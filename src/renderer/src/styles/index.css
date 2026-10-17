@@ -1924,13 +1924,19 @@ html[data-glass~="pane"]
  */
 	html[data-glass~="sidebar"]
 	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
-	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]),
+	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]):not(
+		:where([data-glass-region="chrome"])
+	),
 html[data-glass~="canvas"]
 	main[data-glass-region="canvas-backing"]
-	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]),
+	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]):not(
+		:where([data-glass-region="chrome"])
+	),
 html[data-glass~="pane"]
 	[data-glass-region="pane"]
-	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]) {
+	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]):not(
+		:where([data-glass-region="chrome"])
+	) {
 	background-color: color-mix(
 		in srgb,
 		var(--lo-ink) calc(var(--lo-glass-a-field) * 100%),
@@ -1990,4 +1996,212 @@ html[data-glass~="canvas"] [data-titlebar-lane] {
 }
 html[data-glass~="pane"] [data-titlebar-lane] {
 	--lo-elevated: var(--lo-glass-g-elevated);
+}
+
+/*
+ * ----------------------------------------------------------------------------
+ * WINDOW GLASS, ROUND 2: blocks, wells, chrome, the composer and the popout
+ * ----------------------------------------------------------------------------
+ *
+ * The first round made the COLUMNS translucent and left every text-bearing
+ * block, input and card an opaque island - exactly what the operator
+ * photographed at Full app (a `bg-elevated` composer, `bg-surface` project
+ * cards, `bg-message-surface` bubbles). These rules extend the classification in
+ * `docs/branding.md` (Window glass): a BLOCK whose fill was its only boundary
+ * takes a relative ink veil, a WELL behind blocks paints nothing, a chrome band
+ * inside a pane route is the app sidebar's own rung, and an input is a field.
+ *
+ * EVERY rule here is gated on `html[data-glass]`, so the shipped look is byte
+ * for byte unchanged with the setting off. The alphas are still derived
+ * (`scripts/derive-glass-floors.mjs`) and asserted on all 59 palettes by
+ * `scripts/contrast-contract.mjs`; nothing below chooses a number.
+ */
+
+/*
+ * THE BLOCK VEIL (a user message bubble, a project card, a hub card, a detail
+ * block). The block's fill is its ONLY boundary on the flat system, so on glass
+ * it cannot stay an opaque role fill and it cannot simply go clear. It takes
+ * the palette's `ink` at the derived veil alpha OVER the canvas glass: a
+ * relative step (>= ΔE00 4.0 on every palette at every slider position) that
+ * never vanishes the way a `messageSurface` alpha floor did (measured 0.9-1.2
+ * off canvas on rosewood/oneLight/iceberg).
+ *
+ * SCOPED BY CANVAS COVERAGE: *Sidebars only* leaves every block flat.
+ *
+ * NO HOVER FILL ON A VEILED BLOCK. This unlayered declaration beats the card's
+ * `hover:bg-elevated` utility at every state, which is the decision rather than
+ * an accident: there is no AA room for a step above the veil (measured: +5%
+ * hover breaks `inkMuted` to 4.03 on synthwave), so the card's fill stays the
+ * veil in both states and the pointer affordance rides the cursor and the
+ * card's own controls. Recorded in the design note; do not re-add a hover fill
+ * here without re-deriving the inks.
+ */
+html[data-glass~="canvas"] [data-glass-block] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-block-veil) * 100%),
+		transparent
+	);
+}
+
+/*
+ * THE RUNNING ROW. A tool call in flight had `bg-elevated` - the app's lightest
+ * in-flow plane, near-opaque at its dark floor - so the one row that says "this
+ * is happening now" was the largest slab in the transcript. It takes the
+ * SELECTED row's ink step (the same claim: this row is the subject; the two
+ * states cannot co-occur), published as `--lo-glass-a-row-work` so the meaning
+ * and the number have separate names.
+ *
+ * FAILED ROWS keep their `danger-wash` for now (the design note's V2): a danger
+ * overlay has to be derived with the same machinery before it may go transient.
+ * Expanded detail, output and diff blocks stay solid (`bg-sunken`, payload
+ * class) - unchanged.
+ */
+html[data-glass~="canvas"] [data-glass-state="running"] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-row-work) * 100%),
+		transparent
+	);
+}
+
+/*
+ * A WELL BEHIND BLOCKS IS CLEAR, never painted. The project board's `bg-sunken`
+ * band (and Mesh's graph frame) was a recess in the flat design; under a veiled
+ * card it would be a second ink under the same column, and the alpha-owning law
+ * forbids a well under a veil (two stacked inks break AA). A well that is a
+ * TRACK (a segmented control) keeps the field overlay below; the two are
+ * distinguished by the attribute's value so a call site says which it is.
+ */
+html[data-glass~="canvas"]
+	main[data-glass-region="canvas-backing"]
+	[class~="bg-sunken"][data-glass-well="clear"],
+html[data-glass~="sidebar"]
+	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
+	[class~="bg-sunken"][data-glass-well="clear"],
+html[data-glass~="pane"]
+	[data-glass-region="pane"]
+	[class~="bg-sunken"][data-glass-well="clear"] {
+	background-color: transparent;
+}
+
+/*
+ * A WELL THAT IS A BAND (the list view's team header, `bg-surface`) is still a
+ * well: the field overlay, not a card veil. The existing field rule above only
+ * matches `bg-sunken` tracks; this covers the band's own rung without widening
+ * that selector to every `bg-surface` div.
+ */
+html[data-glass~="canvas"]
+	main[data-glass-region="canvas-backing"]
+	[class~="bg-surface"][data-glass-well],
+html[data-glass~="sidebar"]
+	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
+	[class~="bg-surface"][data-glass-well] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-field) * 100%),
+		transparent
+	);
+}
+
+/*
+ * THE COMPOSER IS A FIELD, NOT A PANE. It was marked `pane` - the `elevated`
+ * role at its floor - which is a near-opaque slab by construction on dark
+ * palettes (effective ~0.87 at 100%). What it actually is, in the system's own
+ * words, is "a faintly lifted well with a firm edge, never an opaque slab": ink
+ * 5% over the canvas glass plus the derived `border-control` mix as its resting
+ * edge. The focus ring is untouched.
+ *
+ * THE EDGE IS DRAWN ONLY ON GLASS (border-width 0 off glass), so enabling the
+ * setting costs 1px of inner size and the shipped composer keeps the no-edge
+ * geometry design round 1 (D12) chose. The coverage gate is `pane`, the gate
+ * the marker carried before: *Sidebars only* leaves the composer flat.
+ */
+html[data-glass~="pane"] [data-glass-region="composer"] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-field) * 100%),
+		transparent
+	);
+	border-width: 1px;
+	border-style: solid;
+	border-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-control-mix) * 100%),
+		var(--lo-border-control)
+	);
+}
+
+/*
+ * THE CHROME BAND (the Browser route's tab strip and URL row). The first round
+ * gave them the PANE role (`elevated`), whose dark floor is 0.87 - the bars
+ * were exactly what the rules said, and the rules were too heavy for chrome.
+ * A chrome band wears the app sidebar's own paint: `surface` at its floor, RAW
+ * over the desktop, so the two read as one edge.
+ *
+ * THE ROUTE HOST STOPS PAINTING when the live page renders (`data-glass-chrome-
+ * live`): the band and the opaque webview cover it. Loading, error and empty
+ * states keep the host's pane paint, which is the state those surfaces were
+ * designed on. Under *Sidebars only* the whole route stays flat (`pane` gate).
+ */
+html[data-glass~="pane"] [data-glass-region="chrome"] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-surface) calc(var(--lo-glass-a-surface) * 100%),
+		transparent
+	);
+}
+/* One alpha-owning layer: a chrome band nested in another paints nothing. */
+html[data-glass~="pane"]
+	[data-glass-region="chrome"]
+	[data-glass-region="chrome"] {
+	background-color: transparent;
+}
+/*
+ * A chrome band inside a CONVERSATION's rail pane (the browser opened beside a
+ * chat) is not the page's chrome: that pane already owns the alpha, so the bands
+ * clear into it rather than stacking a second raw surface over the pane's
+ * elevated. Only the route page, whose host is `data-glass-split`, paints raw.
+ */
+html[data-glass~="pane"]
+	[data-glass-region="pane"]:not([data-glass-split])
+	[data-glass-region="chrome"] {
+	background-color: transparent;
+}
+html[data-glass~="pane"]
+	main[data-glass-region="canvas-backing"]
+	[data-glass-region="pane"][data-glass-split][data-glass-chrome-live] {
+	background-color: transparent;
+}
+
+/*
+ * THE POPOUT'S GROUND. The mini view is a single floating surface with the
+ * window's material beneath it and nothing else in that window, so its card is
+ * `surface` at its floor, RAW - "a small floating glass HUD". The marker also
+ * scopes the composer inside it to the field treatment regardless of the
+ * window's coverage (which is meaningless for a one-surface window): the
+ * popout is enabled-glass or exactly today's opaque card.
+ */
+html[data-glass] [data-glass-region="mini-ground"] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-surface) calc(var(--lo-glass-a-surface) * 100%),
+		transparent
+	);
+}
+html[data-glass]
+	[data-glass-region="mini-ground"]
+	[data-glass-region="composer"] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-field) * 100%),
+		transparent
+	);
+	border-width: 1px;
+	border-style: solid;
+	border-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-control-mix) * 100%),
+		var(--lo-border-control)
+	);
 }
