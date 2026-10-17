@@ -561,7 +561,22 @@ export function glassPaintFor(input: {
 		"--lo-glass-a-elevated": String(raw.elevated),
 		"--lo-glass-a-row-hover": String(GLASS_FLOORS.stateAlpha.hover),
 		"--lo-glass-a-row-selected": String(GLASS_FLOORS.stateAlpha.selected),
+		/*
+		 * A RUNNING ROW is the row that is the subject right now, the same claim a
+		 * selected row makes (and the two cannot co-occur), so the overlay is the
+		 * same derived alpha under its own name: the CSS says "work" where the
+		 * meaning is "in flight", and a future split is one derivation away.
+		 */
+		"--lo-glass-a-row-work": String(GLASS_FLOORS.stateAlpha.work),
 		"--lo-glass-a-field": String(GLASS_FLOORS.stateAlpha.field),
+		/*
+		 * The block veil: a text-bearing block whose fill is its only boundary on
+		 * the flat system (a user message bubble, a project card) takes this ink
+		 * overlay so the fill stays a RELATIVE step off the glass rather than an
+		 * opaque island. Derivation and the failed `messageSurface`-floor
+		 * alternative: `scripts/derive-glass-floors.mjs`.
+		 */
+		"--lo-glass-a-block-veil": String(GLASS_FLOORS.blockVeil[input.scheme]),
 		"--lo-glass-control-mix": String(
 			glassControlMix(input.mechanism, input.material, input.scheme),
 		),
