@@ -201,6 +201,9 @@
 		"role": "Accessible value text and the readout beside the slider label",
 		"tone": "Short, plain.",
 		"length": "Under 30 characters.",
-		"note": "{value} is a whole number 0-100; it names the axis so '60%' is not a bare number."
+		"note": "{value} is a whole number 0-100; it names the axis so '60%' is not a bare number.",
+		"placeholders": {
+			"value": "Whole number 0-100: how far the slider sits toward see-through"
+		}
 	}
 }
