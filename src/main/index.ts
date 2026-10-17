@@ -936,7 +936,12 @@ function createWindow(
 		 * and the ground stands byte for byte (`groundWithGlass`, pinned by
 		 * `scripts/window-glass.test.mjs`).
 		 */
-		...groundWithGlass(chrome.colors.ground, glass.settings, glass.capability),
+		...groundWithGlass(
+			chrome.colors.ground,
+			glass.settings,
+			glass.capability,
+			process.platform,
+		),
 		width: windowLaunch.width,
 		height: windowLaunch.height,
 		// The layout is verified down to 800x600 and not below: the app rail,
