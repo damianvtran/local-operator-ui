@@ -1,0 +1,14 @@
+{
+	"ui.settings.model.provider_callout.sentence": {
+		"role": "Informational callout under the model fields",
+		"tone": "Helpful explanatory prose in second person; leads with signing in, not API keys.",
+		"length": "Wrapping paragraph in the settings content column; ends with a trailing space before the inline Providers link. English is 179 characters including that space.",
+		"note": "Rendered only when no provider is connected. The sentence deliberately ends where the linked word \"Providers\" begins, so translators must keep the trailing space and must not add a full stop here."
+	},
+	"ui.settings.model.provider_callout.providers_link": {
+		"role": "Inline link at the end of the callout",
+		"tone": "Plain noun, the same word the section heading uses.",
+		"length": "One or two words. English is 9 characters.",
+		"note": "It is a button that scrolls to the Model providers section on this page, not a route change. The callout's full stop follows it."
+	}
+}
