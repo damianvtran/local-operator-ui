@@ -29,6 +29,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryPoint } from "./entry-point.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -239,7 +240,9 @@ export function deriveControlMix(floors) {
 	return out;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+/* The shared helper, not a hand-rolled argv compare: a symlinked path (macOS
+ * `/tmp`) must answer the same, and `scripts/entry-point.test.mjs` enforces it. */
+if (isEntryPoint(import.meta.url)) {
 	const derived = derive();
 	if (!process.argv.includes("--check")) {
 		console.log(
