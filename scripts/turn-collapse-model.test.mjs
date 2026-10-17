@@ -5180,6 +5180,89 @@ test("the settle latch: the watched episode's bar still arrives when the settle 
 	assert.equal(episode.internal.live, false, "nor live");
 });
 
+test("the settle latch: a latch that does not hold the run leaves the plan byte-identical - the scoping control", () => {
+	/*
+	 * THE SCOPING CONTROL (settle-latch convergence round, 2026-10-17). The
+	 * latch spends `watched` on the NEWEST run that HOLDS its row id
+	 * (`runHoldsRowId`, containment) and nowhere else; every silence this round
+	 * pins is downstream of that spend. Pin the other side here: an id the newest
+	 * run does not hold changes nothing - every projection, live or quiet, equals
+	 * the no-latch plan, including the dip whose fold the R2 residual keeps for
+	 * unwatched runs. The mounted announce-side control is not constructible in
+	 * the desktop harness (measured: a live pass re-latches the newest run, a
+	 * quiet arrival marshals its receipts into quiet-group bars remembered
+	 * without appearing, and a conversation switch resets the bookkeeping), so
+	 * this byte-identity carries the "unwatched timing is unchanged" control.
+	 */
+	const rows = [
+		user("scp-u"),
+		tool("scp-t0", { durationS: 3 }),
+		answer("scp-a0", { settledAt: TS + 3_000, stopReason: "stop" }),
+		peerRow("scp-w1"),
+		tool("scp-t1", { phase: "running", output: null }),
+	];
+	const outcomes = (options) =>
+		collapsePlan(rows, options).runs.flatMap((run) =>
+			run.segments.map((segment) => ({
+				key: segment.key,
+				collapsed: segment.collapsed,
+				completed: segment.completed,
+				internal:
+					segment.internal === null || segment.internal === undefined
+						? null
+						: {
+								live: segment.internal.live,
+								unsettled: segment.internal.unsettled,
+								receipts: segment.internal.receipts,
+							},
+			})),
+		);
+	for (const live of [true, false]) {
+		assert.deepEqual(
+			outcomes({ live, watchedRunId: "scp-observer" }),
+			outcomes({ live }),
+			`a foreign latch id changes nothing (live: ${live})`,
+		);
+		assert.deepEqual(
+			outcomes({ live, watchedRunId: null }),
+			outcomes({ live }),
+			`an explicit null latch changes nothing (live: ${live})`,
+		);
+	}
+	/*
+	 * CONTAINMENT IS PER-NEWEST-RUN: an id REAL in the rows but not in the
+	 * newest run is equally inert - the latch cannot freeze a run it never
+	 * watched. The close before the second user row is what makes it a second
+	 * RUN at all: a user row inside an open turn is a steer and stays in the
+	 * same run (measured while authoring this case - the merged run legitimately
+	 * held the id).
+	 */
+	const twoRun = [
+		...rows,
+		answer("scp-a1", { settledAt: TS + 9_000, stopReason: "stop" }),
+		user("scp-u2"),
+		tool("scp-t2", { phase: "running", output: null }),
+	];
+	const brief = (options) =>
+		collapsePlan(twoRun, options).runs.flatMap((run) =>
+			run.segments.map((segment) => ({
+				key: segment.key,
+				collapsed: segment.collapsed,
+				internal:
+					segment.internal === null || segment.internal === undefined
+						? null
+						: segment.internal.unsettled,
+			})),
+		);
+	for (const live of [true, false]) {
+		assert.deepEqual(
+			brief({ live, watchedRunId: "scp-u" }),
+			brief({ live }),
+			`an older run's row id is not the newest run's to hold (live: ${live})`,
+		);
+	}
+});
+
 test("F3: a settled bar's own media keeps that bar when a receipt arrives after it", () => {
 	/*
 	 * Pinning media run-wide once ANY receipt existed tore the picture out of the
