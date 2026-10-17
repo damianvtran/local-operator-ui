@@ -3288,6 +3288,13 @@ export const NoticeCopyIsTheAppCopy: Story = {
  * `BlockingSecretGate` is the state that deliberately still refuses: while a gate
  * parks the turn, a send becomes a steer the parked turn cannot read. It is also,
  * visibly, what the queued state used to look like.
+ *
+ * AND THE THREE STATES ROUND 2 ADDED (design round 2, D10-D13; QA round 2, m-E):
+ * `SecretAskSending` is the row mid-put (`onFill` never resolves, so the frame is
+ * the window a slow link shows), `SecretAskRefused` is the sentence a refused
+ * put leaves beside the notice, and `SecretAskMulti` is the primary that opens
+ * the panel rather than posting a value that names no field. Each is driven by
+ * the same `play` shape as `SecretAskConfirm` - a fixture cannot be put in them.
  */
 export const QueuedSecretAsk: Story = {
 	render: () => (
@@ -3306,6 +3313,97 @@ export const QueuedSecretAsk: Story = {
 			/>
 		</Frame>
 	),
+};
+
+export const SecretAskSending: Story = {
+	render: () => (
+		<Frame label="queued secret ask — the put is in flight">
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId="story-secret-ask-sending"
+				onSendMessage={async () => true}
+				secretAsk={{
+					key: "story-ask-sending",
+					fillable: true,
+					onOpen: () => {},
+					/* Never resolves: the frame is the window a slow link shows. */
+					onFill: () => new Promise(() => {}),
+				}}
+			/>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		const box = canvasElement.querySelector("textarea");
+		if (!box) throw new Error("the composer box is not mounted");
+		await userEvent.click(box);
+		await userEvent.type(box, "correct-horse-9");
+		await userEvent.keyboard("{Enter}");
+		const put = [...canvasElement.querySelectorAll("button")].find((button) =>
+			(button.textContent ?? "").includes("Put in secret field"),
+		);
+		if (!put) throw new Error("the confirm's primary is not on screen");
+		await userEvent.click(put);
+	},
+};
+
+/* The sentence a refused Put leaves behind, beside the notice it replaces. */
+export const SecretAskRefused: Story = {
+	render: () => (
+		<Frame label="queued secret ask — the put was refused">
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId="story-secret-ask-refused"
+				onSendMessage={async () => true}
+				secretAsk={{
+					key: "story-ask-refused",
+					fillable: true,
+					onOpen: () => {},
+					onFill: async () => "refused",
+				}}
+			/>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		const box = canvasElement.querySelector("textarea");
+		if (!box) throw new Error("the composer box is not mounted");
+		await userEvent.click(box);
+		await userEvent.type(box, "correct-horse-9");
+		await userEvent.keyboard("{Enter}");
+		const put = [...canvasElement.querySelectorAll("button")].find((button) =>
+			(button.textContent ?? "").includes("Put in secret field"),
+		);
+		if (!put) throw new Error("the confirm's primary is not on screen");
+		await userEvent.click(put);
+	},
+};
+
+/* A value that names no field: the primary opens the panel instead of posting. */
+export const SecretAskMulti: Story = {
+	render: () => (
+		<Frame label="queued secret ask — more than one secret field">
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId="story-secret-ask-multi"
+				onSendMessage={async () => true}
+				secretAsk={{
+					key: "story-ask-multi",
+					fillable: false,
+					onOpen: () => {},
+					onFill: async () => "multi",
+				}}
+			/>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		const box = canvasElement.querySelector("textarea");
+		if (!box) throw new Error("the composer box is not mounted");
+		await userEvent.click(box);
+		await userEvent.type(box, "correct-horse-9");
+		await userEvent.keyboard("{Enter}");
+	},
 };
 
 export const SecretAskConfirm: Story = {

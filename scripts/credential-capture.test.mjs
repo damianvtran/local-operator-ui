@@ -2740,6 +2740,10 @@ test("looksLikeSecret catches credentials and leaves the app's own vocabulary al
 		"abcdefghij0123456789",
 		"LOP_SECRET_4CE3Y48G",
 		"base64+token/with=padding",
+		/* A 32-character hex token: an MD5, and the length many API keys use (m-A). */
+		"098f6bcd4621d373cade4e832627b4f6",
+		/* A password the email clause used to read as `P` @ `ss.w0rd!` (m-A). */
+		"P@ss.w0rd!",
 	];
 	for (const value of secrets)
 		assert.equal(looksLikeSecret(value), true, `${value} is credential-shaped`);
@@ -2782,15 +2786,18 @@ test("looksLikeSecret catches credentials and leaves the app's own vocabulary al
 	/*
 	 * AND THE ROWS THE RULE STILL DOES NOT CATCH, stated so the docblock's
 	 * narrowness is measured rather than asserted: a two-class token under the
-	 * long floor, a passphrase with a space, and a token opening with a chat
-	 * grammar character. The notice above the box is the primary guard; this
-	 * predicate is the second line, and it fails open.
+	 * long floor, a passphrase with a space, a token opening with a chat grammar
+	 * character, and the AWS secret-key shape (40 URL-safe characters containing
+	 * `/`), which the path clause reads as a relative path (round 2, m-A). The
+	 * notice above the box is the primary guard; this predicate is the second
+	 * line, and it fails open.
 	 */
 	const stillMissed = [
 		"password1",
 		"hunter22",
 		"correct horse battery",
 		"$ecret9Aa",
+		"wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
 	];
 	for (const value of stillMissed)
 		assert.equal(

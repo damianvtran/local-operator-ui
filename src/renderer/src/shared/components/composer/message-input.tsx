@@ -4755,6 +4755,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		/** A "Put in secret field" is in flight; the confirm's controls are disabled. */
 		const [secretFilling, setSecretFilling] = useState(false);
 		const secretConfirmPrimary = useRef<HTMLButtonElement | null>(null);
+		/**
+		 * THE ROW ITSELF, focusable while a Put is in flight (UX round 2, U7; design
+		 * round 2, D13): the pressed control is disabled for that window, and a
+		 * disabled control drops the keyboard to <body>, where Escape belongs to
+		 * nobody. See the effect below for the one case it takes the keyboard.
+		 */
+		const secretConfirmGroup = useRef<HTMLFieldSetElement | null>(null);
 		/*
 		 * THE LATEST TEXT, for the reply that lands after the press. The confirm
 		 * answers an ASYNCHRONOUS request, and the box is editable throughout it, so
@@ -4784,6 +4791,26 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		}, [secretConfirm]);
 
 		/*
+		 * THE KEYBOARD STAYS IN THE ROW WHILE THE PUT IS IN FLIGHT. Every control in
+		 * it is disabled for that window, so Chromium blurs the one that was pressed
+		 * and focus lands on <body>: keystrokes go nowhere, and an Escape there is
+		 * claimed by nothing (measured by UX round 2, U7 and design round 2, D13).
+		 * The row takes the keyboard only when it is where the press left it (or
+		 * nowhere), so a click into the box mid-flight keeps the user's own choice.
+		 */
+		useEffect(() => {
+			if (!secretFilling) return;
+			const active = document.activeElement;
+			if (
+				active !== null &&
+				active !== document.body &&
+				!secretConfirmGroup.current?.contains(active)
+			)
+				return;
+			secretConfirmGroup.current?.focus();
+		}, [secretFilling]);
+
+		/*
 		 * THE CONFIRM IS BOUND TO ITS ASK (agent review round 1, m1; QA round 1,
 		 * Q1/Q2). If the ask goes away - answered in the panel, expired, declined -
 		 * or a different ask becomes the head, the question about the old one is
@@ -4800,6 +4827,23 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					? t("ui.chat.composer.secret_fill_gone")
 					: t("ui.chat.composer.secret_fill_changed"),
 			);
+			/*
+			 * THE CARET COMES BACK ONLY FROM THE ROW (agent review round 2, m-C). The
+			 * retirement is not always the user's own last act - an ask answered in the
+			 * panel retires it while the keyboard is in that panel (or a palette), and
+			 * moving it to the box there is the same theft the lane refuses everywhere
+			 * else. The row itself still counts: the effect runs before React removes it,
+			 * so a press that left the keyboard on a confirm control is found by
+			 * `contains` and handed back to the box.
+			 */
+			const active = document.activeElement;
+			if (
+				active !== null &&
+				active !== document.body &&
+				active !== textareaRef.current &&
+				!secretConfirmGroup.current?.contains(active)
+			)
+				return;
 			textareaRef.current?.focus();
 		}, [secretAsk, secretConfirm, textareaRef]);
 
@@ -4833,6 +4877,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		const cancelSecretConfirm = useCallback(() => {
 			setSecretConfirm(null);
+			/*
+			 * THE LAST RECEIPT GOES WITH THE ATTEMPT (UX round 2, U8). Arming a new
+			 * confirm hides the previous refusal's sentence, so cancelling that attempt
+			 * used to bring it back under the notice -- a sentence about the attempt
+			 * before the one the user just withdrew. Cancel is an edit's equal here.
+			 */
+			setSecretRefusal(null);
 			textareaRef.current?.focus();
 		}, [textareaRef]);
 
@@ -5523,7 +5574,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * the Cancel control performs, focus included.
 				 */
 				if (event.key === "Escape" && secretConfirm !== null) {
+					/*
+					 * CLAIMED, NOT ACTED ON, WHILE THE PUT IS IN FLIGHT (agent review round
+					 * 2, m-B): the value is already posting and the outcome is what decides
+					 * the confirm, so a cancel here would say one thing while the request
+					 * did another. The claim also keeps the key from the interrupt ladder.
+					 */
 					event.preventDefault();
+					if (secretFilling) return;
 					cancelSecretConfirm();
 					return;
 				}
@@ -8434,7 +8492,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * is requested as a chord, which is the rail's spelling, and the
 								 * keyboard lands on the card the way it does from the header
 								 * chip (UX round 1, U4).
+								 *
+								 * AND IT IS A DOOR THE DRAWER ALREADY WALKS THROUGH (UX round 2, U6).
+								 * The chord only ASKS for the entry move; the drawer runs it when the
+								 * focused control carries one of its door marks, and it only lets a
+								 * request through unguarded from `<body>` or the menu trigger. A real
+								 * press leaves focus on this button, so without the mark the drawer
+								 * opened with the keyboard still outside it - and an Escape there was
+								 * not the lane's (`askClaimsEscape` said false) while the interrupt
+								 * ladder said true, so it could stop the running turn. The mark is the
+								 * same one the composer chip publishes, and it makes this control a
+								 * door for the return and the Escape claim as well as the entry.
 								 */
+								data-lo-ask-item-toggle=""
 								onClick={() => secretAsk.onOpen()}
 							>
 								{t("ui.chat.composer.secret_ask_open")}
@@ -8464,14 +8534,21 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * rather than `div role="group"` because it IS a group of related
 						 * controls and the element carries that role natively - the reset
 						 * classes below are what keep it drawn exactly as the div was.
+						 *
+						 * `tabIndex={-1}` MAKES IT PROGRAMMATICALLY FOCUSABLE, not a Tab stop:
+						 * while a Put is in flight it is where the keyboard goes instead of
+						 * `<body>` (see the effect above).
 						 */
 						<fieldset
+							ref={secretConfirmGroup}
+							tabIndex={-1}
 							id={SECRET_CONFIRM_ID}
 							aria-labelledby={SECRET_CONFIRM_MESSAGE_ID}
 							aria-busy={secretFilling}
 							onKeyDown={(event) => {
 								if (event.key !== "Escape") return;
 								event.preventDefault();
+								if (secretFilling) return;
 								cancelSecretConfirm();
 							}}
 							className={cn(
@@ -8490,14 +8567,29 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * a count is the one fact that lets a reader notice that
 								 * `README.md` is not what they meant before a second Enter
 								 * puts it in the field.
+								 *
+								 * THE COUNT KEEPS ITS PLACE WHILE THE PUT IS IN FLIGHT (design round 2,
+								 * D12): dropping it rewraps the row and moves the button the press just
+								 * landed on (83 -> 72 px at 520, 119 -> 100 at 340). Hidden rather
+								 * than removed, and `invisible` rather than `hidden`, so it occupies the
+								 * same width it did a moment ago and is not announced under "Sending…".
+								 *
+								 * THE SPACE IS REAL TEXT, not margin (design round 2, D11/UX round 2,
+								 * N-a): `ml-1` gave the sighted gap while `textContent` and the screen
+								 * reader's label read "go?15 characters". `whitespace-nowrap` keeps the
+								 * number and its unit on one line at 520 px, where they used to split.
 								 */}
-								{secretFilling ? null : (
-									<span className="ml-1">
-										{t("ui.chat.composer.secret_confirm_chars", {
-											count: secretConfirm.value.length,
-										})}
-									</span>
-								)}
+								<span
+									className={cn(
+										"whitespace-nowrap",
+										secretFilling && "invisible",
+									)}
+									aria-hidden={secretFilling || undefined}
+								>
+									{` ${t("ui.chat.composer.secret_confirm_chars", {
+										count: secretConfirm.value.length,
+									})}`}
+								</span>
 							</span>
 							<Button
 								ref={secretConfirmPrimary}
