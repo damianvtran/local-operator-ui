@@ -740,7 +740,7 @@ export const FailedCauseQuota: StoryObj = {
 					],
 					detail: [
 						"turn 1: ProviderError status=None kind=quota",
-						"turn 2: ProviderError status=503 kind=transient",
+						"turn 2: ProviderError status=429 kind=quota",
 					],
 				}),
 			]}

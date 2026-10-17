@@ -84,6 +84,13 @@ const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6017";
  * `manifest.themes`. Ids are checked against the palettes on disk rather than
  * trusted: a frame named after a theme the app does not have is worse than a
  * missing one, and `--themes=typo` would otherwise write `typo.webp`.
+ *
+ * A COLD STORYBOOK CAN MISS THE FIRST CAPTURE'S THEME BUDGET (QA note on
+ * #1153, 2026-10-17): while vite optimizes dependencies the document can
+ * arrive without its theme inside the 10s window, which reads as a rig
+ * failure and is not one — warm the server with one page load (or simply
+ * retry once) and the capture takes. The frames are deterministic either way;
+ * only the first hit's timing differs.
  */
 const ONLY = flag("only");
 
@@ -12187,7 +12194,7 @@ export const STORIES = [
 	["chat-turn-supplements--budget-disclosure-expanded", 900, 1366],
 	["chat-turn-supplements--cancelled", 900, 237],
 	["chat-turn-supplements--cancelled-cold", 900, 237],
-	["chat-turn-supplements--failed", 900, 237],
+	["chat-turn-supplements--failed", 900, 360],
 	["chat-turn-supplements--failed-cause-quota", 900, 360],
 	["chat-turn-supplements--done-empty", 900, 220],
 	["chat-turn-supplements--superseded", 900, 220],
