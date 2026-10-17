@@ -30,6 +30,10 @@
  *   6. Row hover, the selected row and a text field read as ink overlays at the
  *      published state alphas (not opaque holes, not invisible), and the field's
  *      border colour is the derived glass edge.
+ *   7. The composer draws no edge at rest, glass on or off (its own contract;
+ *      v0.34.55's glass-only edge was reverted - operator report 2026-10-17.
+ *      This audit reads grounds and alphas, so the edge is asserted by WIDTH
+ *      here: it is exactly the shape the first version could not see).
  * The frames over a high-contrast backdrop are NOT part of this test (they need
  * the OS compositor); they are the PR's evidence, produced by the rig named there.
  *
@@ -140,7 +144,7 @@ const AUDIT = `(() => {
     }
     const own = alphaOf(getComputedStyle(el).backgroundColor);
     const bg = getComputedStyle(el).backgroundColor;
-    out[name] = { pts, slabs, own, bg, bgImage: getComputedStyle(el).backgroundImage, cls: String(el.className) };
+    out[name] = { pts, slabs, own, bg, borderTop: getComputedStyle(el).borderTopWidth, bgImage: getComputedStyle(el).backgroundImage, cls: String(el.className) };
   }
   const root = getComputedStyle(document.documentElement);
   out.vars = Object.fromEntries(["--lo-glass-a-canvas", "--lo-glass-a-surface", "--lo-glass-a-elevated", "--lo-glass-a-row-hover", "--lo-glass-a-row-selected", "--lo-glass-a-row-work", "--lo-glass-a-field", "--lo-glass-a-block-veil"].map((n) => [n, root.getPropertyValue(n).trim() || null]));
@@ -525,6 +529,20 @@ for (const [themeName, label] of [
 									Math.abs(r.own - want) <= TOLERANCE,
 									`${tag}: ${name} paints its own ground at ${r.own}, expected ${want} (${variable ?? "clear"})`,
 								);
+								/*
+								 * THE COMPOSER'S EDGE, asserted by WIDTH because this whole audit reads
+								 * grounds: v0.34.55's glass-only `border-width: 1px` here was invisible
+								 * to every alpha read and reached the operator before anything refused
+								 * it (report 2026-10-17). A bordered composer is a ring around an empty
+								 * box; the focus ring is its only boundary.
+								 */
+								if (name === "composer") {
+									assert.equal(
+										r.borderTop,
+										"0px",
+										`${tag}: the composer draws no edge at rest, saw border-top ${r.borderTop}`,
+									);
+								}
 								continue;
 							}
 							if (name === "chrome") {

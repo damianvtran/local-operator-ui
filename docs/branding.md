@@ -1011,7 +1011,7 @@ on dark palettes by design, not by omission.
 | Column grounds (sidebar, rail, status band, canvas) | role at its derived alpha | AA ink over the worst backdrop, floors per material and scheme |
 | Text-bearing panes (ask drawer, run panel, console, code review, browser) | `pane` region: `elevated` at its floor, near-opaque on dark palettes | text must stay legible over any desktop |
 | Text-bearing blocks (message bubbles, project/hub/node cards, detail blocks) | `data-glass-block`: `ink` at `blockVeil` over the canvas glass | the fill is the block's only boundary; a relative ink step never vanishes |
-| Composer | `data-glass-region="composer"`: ink 5% + the derived edge at rest | it is the app's primary input: a field, not a slab |
+| Composer | `data-glass-region="composer"`: ink 5% (a field), no edge at rest | the composer's own contract wins: no border at rest on or off glass, the ring is its only boundary (v0.34.55's glass-only edge was reverted; operator report 2026-10-17) |
 | Chrome band (Browser tab strip and URL row) | `data-glass-region="chrome"`: `surface` at its floor, raw over the desktop | it is the sidebar's rung, so the two read as one edge |
 | Running tool row | `data-glass-state="running"`: ink at the selected step | an in-flight row is the subject; an opaque rung was a slab |
 | Well behind blocks | `data-glass-well="clear"` paints nothing | a well never sits under a veil |

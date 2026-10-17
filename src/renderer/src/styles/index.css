@@ -2141,27 +2141,28 @@ html[data-glass~="sidebar"]
  * THE COMPOSER IS A FIELD, NOT A PANE. It was marked `pane` - the `elevated`
  * role at its floor - which is a near-opaque slab by construction on dark
  * palettes (effective ~0.87 at 100%). What it actually is, in the system's own
- * words, is "a faintly lifted well with a firm edge, never an opaque slab": ink
- * 5% over the canvas glass plus the derived `border-control` mix as its resting
- * edge. The focus ring is untouched.
+ * words, is "a faintly lifted well": ink 5% over the canvas glass, and that
+ * ground is the whole treatment.
  *
- * THE EDGE IS DRAWN ONLY ON GLASS (border-width 0 off glass), so enabling the
- * setting costs 1px of inner size and the shipped composer keeps the no-edge
- * geometry design round 1 (D12) chose. The coverage gate is `pane`, the gate
- * the marker carried before: *Sidebars only* leaves the composer flat.
+ * NO EDGE AT REST, IN EVERY MODE. v0.34.55 briefly drew a `border-width: 1px`
+ * here - a glass-only edge, on the argument that an input is "a faintly lifted
+ * well with a firm edge" - and the operator reported the shell bordered the
+ * next evening (2026-10-17). The composer's own contract, `docs/branding.md`
+ * ("The composer is an object that leaves the flow"), is the narrower, older
+ * statement and wins: it draws no border at rest, the ground step is what
+ * separates it, and the `:focus-visible` accent ring is its only boundary. The
+ * edge slipped past the glass CDP guard by SHAPE - that audit reads grounds
+ * and alphas, never edges - so the guard now asserts this element's border
+ * width (review of the operator report, 2026-10-17).
+ *
+ * The coverage gate is `pane`, the gate the marker carried before: *Sidebars
+ * only* leaves the composer flat.
  */
 html[data-glass~="pane"] [data-glass-region="composer"] {
 	background-color: color-mix(
 		in srgb,
 		var(--lo-ink) calc(var(--lo-glass-a-field) * 100%),
 		transparent
-	);
-	border-width: 1px;
-	border-style: solid;
-	border-color: color-mix(
-		in srgb,
-		var(--lo-ink) calc(var(--lo-glass-control-mix) * 100%),
-		var(--lo-border-control)
 	);
 }
 
@@ -2243,12 +2244,5 @@ html[data-glass]
 		in srgb,
 		var(--lo-ink) calc(var(--lo-glass-a-field) * 100%),
 		transparent
-	);
-	border-width: 1px;
-	border-style: solid;
-	border-color: color-mix(
-		in srgb,
-		var(--lo-ink) calc(var(--lo-glass-control-mix) * 100%),
-		var(--lo-border-control)
 	);
 }
