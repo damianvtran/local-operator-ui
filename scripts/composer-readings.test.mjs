@@ -1364,6 +1364,40 @@ const SESSION = {
 	active_duration_s: 92,
 };
 
+test("a carried context reading does not claim to be measured now", () => {
+	/*
+	 * DESIGN ROUND 1, D1. A cold/attaching snapshot lands whole: the model, the
+	 * timer and the cost in it are live again, but its occupancy is the journal's
+	 * (the length at an earlier message). The cluster is therefore NOT held - no
+	 * `data-lo-session-strip-held`, no "Last reading" mark - while the context
+	 * sentence must still refuse "Measured now", or the strip states one reading
+	 * two ways.
+	 */
+	const openable = { frontend: SESSION, onCommand: () => undefined };
+	const live = renderStrip(openable);
+	const carried = renderStrip({ ...openable, contextHeld: true });
+
+	const contextOf = (labels) => labels.filter((l) => l.startsWith("Context: "));
+	const liveLabels = readingLabels(live);
+	const carriedLabels = readingLabels(carried);
+	assert.equal(contextOf(carriedLabels).length, 1, "one context reading");
+	assert.match(contextOf(liveLabels)[0], /Measured now;/);
+	assert.doesNotMatch(
+		contextOf(carriedLabels)[0],
+		/Measured now|Estimated now/,
+		"a carried count is a real reading, not a current one",
+	);
+	assert.deepEqual(
+		carriedLabels.filter((l) => !l.startsWith("Context: ")),
+		liveLabels.filter((l) => !l.startsWith("Context: ")),
+		"every other reading is live and renders exactly its live name",
+	);
+	assert.ok(
+		!carried.includes("data-lo-session-strip-held"),
+		"the cluster is not held; only one reading is qualified",
+	);
+});
+
 test("a held reading keeps its value, and the strip says once that it is the last one", () => {
 	/*
 	 * A DISPATCHER, so the context reading is OPENABLE and its closing line is the

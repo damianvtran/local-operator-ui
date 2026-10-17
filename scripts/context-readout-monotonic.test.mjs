@@ -585,6 +585,8 @@ test("a reconnect's cold snapshot does not walk the reading back", async () => {
 		150000,
 		"the journal's older receipt must not repaint the live reading",
 	);
+	// The number is real but not current, so the strip's copy must qualify it.
+	assert.equal(handle.contextCarried, true);
 });
 
 test("the same holds while the facade is still attaching", async () => {
@@ -688,6 +690,11 @@ test("an owner delta may lower it for the same reason", async () => {
 		updateFrame(4, 7, 90000),
 	]);
 	assert.equal(handle.frontend?.context_tokens, 90000);
+	assert.equal(
+		handle.contextCarried,
+		false,
+		"the owner's delta ends the qualification",
+	);
 });
 
 test("the first snapshot still paints the journal reading a cold open has", async () => {
