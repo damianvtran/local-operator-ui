@@ -3678,6 +3678,41 @@ test("F6: a group bar's printed receipt count and its announcement agree", async
 	assert.doesNotMatch(region(), /\b2\b/, "and never the group-only figure");
 });
 
+test("U1: a head-cut group's sentence carries the bar's minimum marker", async (t) => {
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	/*
+	 * Design review round 1, U1. The fixture is a run with NO opening user row
+	 * (the loaded edge): every count in it is a minimum, and the bar says so -
+	 * `2+` with "At least 2 messages - earlier rows are not loaded" on the count
+	 * span. Before the fix the live region said "Peer messages: 2." - a bare
+	 * figure more exact than anything on screen.
+	 */
+	const cut = [
+		peerRecord("hc-p1", { ts: TS + 1_000 }),
+		peerRecord("hc-p2", { ts: TS + 2_000 }),
+		toolRecord("hc-tool", { ts: TS + 3_000, durationS: 1, phase: "running" }),
+	];
+	const mounted = await mount(t, cut, { waiting: true, hasMore: true });
+	assert.match(
+		bar(mounted)?.textContent ?? "",
+		/2\+/,
+		"the bar paints the count with its minimum marker",
+	);
+	await mounted.render(
+		[...cut, answerRecord("hc-final", { ts: TS + 5_000, stopReason: "stop" })],
+		{ hasMore: true, waiting: false },
+	);
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	assert.equal(
+		region(),
+		"Peer messages: at least 2.",
+		"the sentence states the same minimum in words",
+	);
+});
+
 test("a head cut with older rows keeps its live episode condensed; with none it paints", async (t) => {
 	__resetTurnCollapseOpen();
 	/*
