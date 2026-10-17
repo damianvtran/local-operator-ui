@@ -27,6 +27,12 @@ import type {
 	WindowChromeFacts,
 	WindowChromeState,
 } from "../shared/window-chrome";
+import type {
+	GlassScheme,
+	GlassSettings,
+	WindowGlassFacts,
+	WindowGlassState,
+} from "../shared/window-glass";
 import type { DevDriverBridge } from "./dev-driver";
 
 // Matching same type in `src/main/index.ts`
@@ -74,6 +80,16 @@ declare global {
 				}) => Promise<boolean>;
 				popupAppMenu: () => Promise<boolean>;
 				onState: (callback: (state: WindowChromeState) => void) => () => void;
+			};
+			/** The window glass bridge; see `src/shared/window-glass.ts`. */
+			windowGlass: {
+				facts: () => WindowGlassFacts;
+				get: () => Promise<WindowGlassState | null>;
+				set: (
+					patch: Partial<GlassSettings>,
+				) => Promise<WindowGlassState | null>;
+				reportScheme: (scheme: GlassScheme) => Promise<boolean>;
+				onState: (callback: (state: WindowGlassState) => void) => () => void;
 			};
 			desktop: DesktopAPI;
 			/**

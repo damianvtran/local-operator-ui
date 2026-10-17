@@ -63,6 +63,17 @@ import {
 	type WindowChromeState,
 	readWindowChromeArgument,
 } from "../shared/window-chrome";
+import {
+	type GlassScheme,
+	type GlassSettings,
+	WINDOW_GLASS_GET_CHANNEL,
+	WINDOW_GLASS_SCHEME_CHANNEL,
+	WINDOW_GLASS_SET_CHANNEL,
+	WINDOW_GLASS_STATE_CHANNEL,
+	type WindowGlassFacts,
+	type WindowGlassState,
+	readWindowGlassArgument,
+} from "../shared/window-glass";
 import { installDevDriverBridge } from "./dev-driver";
 
 // Custom APIs for renderer
@@ -297,6 +308,31 @@ const api = {
 			ipcRenderer.on(WINDOW_CHROME_STATE_CHANNEL, handler);
 			return () => {
 				ipcRenderer.removeListener(WINDOW_CHROME_STATE_CHANNEL, handler);
+			};
+		},
+	},
+	/**
+	 * The window glass (optional translucency; default off). `facts` is read from
+	 * THIS process's argv, which main composed from the persisted file, so the very
+	 * first paint already knows whether the ground is transparent and at which
+	 * alphas - see `src/shared/window-glass.ts`. `null` is "off": the shipped look.
+	 * The rest is the Settings row's channel; every one is answered only for the
+	 * window that owns the glass.
+	 */
+	windowGlass: {
+		facts: (): WindowGlassFacts => readWindowGlassArgument(process.argv),
+		get: (): Promise<WindowGlassState | null> =>
+			ipcRenderer.invoke(WINDOW_GLASS_GET_CHANNEL),
+		set: (patch: Partial<GlassSettings>): Promise<WindowGlassState | null> =>
+			ipcRenderer.invoke(WINDOW_GLASS_SET_CHANNEL, patch),
+		reportScheme: (scheme: GlassScheme): Promise<boolean> =>
+			ipcRenderer.invoke(WINDOW_GLASS_SCHEME_CHANNEL, scheme),
+		onState: (callback: (state: WindowGlassState) => void): (() => void) => {
+			const handler = (_event: IpcRendererEvent, state: WindowGlassState) =>
+				callback(state);
+			ipcRenderer.on(WINDOW_GLASS_STATE_CHANNEL, handler);
+			return () => {
+				ipcRenderer.removeListener(WINDOW_GLASS_STATE_CHANNEL, handler);
 			};
 		},
 	},

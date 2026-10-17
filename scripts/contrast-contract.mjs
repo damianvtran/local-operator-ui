@@ -59,6 +59,19 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { deltaE, labToHex, r2, toLab } from "./color.mjs";
+import {
+	BACKDROP_GRAY,
+	GLASS_EDGE_FLOOR,
+	GLASS_INKS,
+	GLASS_INK_FLOOR,
+	GLASS_ROLES,
+	GLASS_STATE_DIM_FLOOR,
+	derive as deriveGlassFloors,
+	composite as glassComposite,
+	glassEdge,
+	ratio as glassRatio,
+	schemeOf as glassSchemeOf,
+} from "./derive-glass-floors.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -7283,6 +7296,131 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 			`the fleet: the ${row.bound} row for \`${row.id}\`'s \`${row.role}\` is stale — it records ${row.measured} and the palette no longer misses that bound (${row.reason})`,
 		);
 	}
+}
+
+/* ---- 5b. the window glass (optional translucency), asserted before the report so a violation FAILS the run ---- */
+
+/*
+ * THE WINDOW GLASS'S ALPHA FLOORS (`src/shared/window-glass-floors.json`).
+ *
+ * Everything above measures FLAT hexes, and the file's own header says it "cannot
+ * see an alpha composite". The optional translucent window is exactly that: a role
+ * painted at alpha A over an OS material nobody here controls. So the one thing
+ * this contract can say about it is the floor - the smallest alpha at which ink
+ * still clears AA on every palette over the worst MEASURED backdrop of each
+ * material - and the committed table must not sit below it. A palette added or
+ * edited so that its ink needs more alpha than the table grants fails HERE, not on
+ * somebody's wallpaper. The derivation, and the backdrop measurements it rests on,
+ * are in `scripts/derive-glass-floors.mjs`; it prints the replacement table.
+ */
+{
+	const committed = JSON.parse(
+		readFileSync(join(ROOT, "src/shared/window-glass-floors.json"), "utf8"),
+	).alphaFloor;
+	const derived = deriveGlassFloors();
+	for (const tier of Object.keys(derived)) {
+		for (const scheme of ["dark", "light"]) {
+			for (const role of GLASS_ROLES) {
+				assertions++;
+				const have = committed?.[tier]?.[scheme]?.[role];
+				const need = derived[tier][scheme][role];
+				if (typeof have !== "number" || have < need) {
+					fail(
+						`window glass floor ${tier}/${scheme}/${role} is ${have} but the ${scheme} palettes need ${need} for AA ink over the worst measured backdrop - run \`node scripts/derive-glass-floors.mjs\` and commit the table (never hand-lower it)`,
+					);
+				}
+			}
+		}
+	}
+}
+
+/*
+ * THE GLASS STATES AND CONTROLS, as COMPONENT TRIPLES on the composite (this
+ * file's own rule: ground + fill + border + ink, not token pairs). For every
+ * palette, each glass tier, at the COMMITTED floors, over the worst measured
+ * backdrop, on each ground a control can sit on (`surface`, `canvas`):
+ *
+ *   - "glass text field": the field overlay (ink at `stateAlpha.field`) over the
+ *     ground composite, `ink` and `inkMuted` AA and `inkDim` (placeholder) at the
+ *     stated relaxed floor on the fill, and the glass edge (`borderControl` mixed
+ *     toward `ink` by `controlMix`) 3:1 against the GROUND it is drawn on.
+ *   - "glass row hover" / "glass row selected": the overlay at its alpha, the same
+ *     ink floors on the result, and the step ΔE00 off the ground at its floor, so a
+ *     state cannot vanish over a bright desktop.
+ *   - "glass focus ring": `accent` 3:1 against the composite ground (an outline is
+ *     drawn straight over the glass).
+ * The flat controls' own rows above are unchanged and still hold: glass only
+ * applies inside `html[data-glass]`.
+ */
+{
+	const committed = JSON.parse(
+		readFileSync(join(ROOT, "src/shared/window-glass-floors.json"), "utf8"),
+	);
+	const STEP = { hover: 1.5, selected: 2.5, field: 1.5 };
+	const gray = (n) => `#${n.toString(16).padStart(2, "0").repeat(3)}`;
+	const stepMin = {
+		hover: Number.POSITIVE_INFINITY,
+		selected: Number.POSITIVE_INFINITY,
+		field: Number.POSITIVE_INFINITY,
+	};
+	for (const { id, palette } of palettes) {
+		const scheme = glassSchemeOf(palette);
+		for (const [tier, byScheme] of Object.entries(BACKDROP_GRAY)) {
+			const floors = committed.alphaFloor[tier][scheme];
+			const mix = committed.controlMix[tier][scheme];
+			const backdrop = gray(byScheme[scheme]);
+			for (const ground of ["surface", "canvas"]) {
+				const groundHex = glassComposite(
+					palette[ground],
+					floors[ground],
+					backdrop,
+				);
+				for (const [state, label] of [
+					["hover", "glass row hover"],
+					["selected", "glass row selected"],
+					["field", "glass text field"],
+				]) {
+					const fill = glassComposite(
+						palette.ink,
+						committed.stateAlpha[state],
+						groundHex,
+					);
+					for (const ink of GLASS_INKS) {
+						assertions++;
+						const floor =
+							ink === "inkDim" ? GLASS_STATE_DIM_FLOOR : GLASS_INK_FLOOR;
+						const r = glassRatio(palette[ink], fill);
+						if (r < floor)
+							fail(
+								`${id}: ${label} (${tier}/${scheme}) ${ink} on the fill over ${ground} is ${r2(r)}:1, floor ${floor}`,
+							);
+					}
+					assertions++;
+					const step = deltaE(fill, groundHex);
+					stepMin[state] = Math.min(stepMin[state], step);
+					if (step < STEP[state])
+						fail(
+							`${id}: ${label} (${tier}/${scheme}) over ${ground} is ΔE00 ${r2(step)} off its ground, floor ${STEP[state]}: the state would vanish`,
+						);
+				}
+				assertions++;
+				const edge = glassRatio(glassEdge(palette, mix), groundHex);
+				if (edge < GLASS_EDGE_FLOOR)
+					fail(
+						`${id}: glass text field (${tier}/${scheme}) border-control against ${ground} glass is ${r2(edge)}:1, floor ${GLASS_EDGE_FLOOR} - re-derive controlMix`,
+					);
+				assertions++;
+				const ring = glassRatio(palette.accent, groundHex);
+				if (ring < GLASS_EDGE_FLOOR)
+					fail(
+						`${id}: glass focus ring (${tier}/${scheme}) accent against ${ground} glass is ${r2(ring)}:1, floor ${GLASS_EDGE_FLOOR}`,
+					);
+			}
+		}
+	}
+	console.log(
+		`Window glass states: tightest step ΔE00 off the ground - hover ${r2(stepMin.hover)}, selected ${r2(stepMin.selected)}, field ${r2(stepMin.field)}.`,
+	);
 }
 
 /* ---- 6. report ---------------------------------------------------------- */

@@ -896,6 +896,116 @@ against a future MUI version rather than remembered.
 
 ---
 
+### Window glass (optional translucency, default off)
+
+Settings > Appearance can make the window translucent: the OS draws the blur
+(macOS vibrancy, Windows 11 `backgroundMaterial`) and the app paints its grounds
+at an alpha over it. Off, nothing below applies and the shipped look is byte for
+byte unchanged. The decision lives in `src/shared/window-glass.ts`; the floors in
+`src/shared/window-glass-floors.json`, derived by `scripts/derive-glass-floors.mjs`
+and asserted on all 59 palettes by `scripts/contrast-contract.mjs` ("window glass"
+and "glass row / text field / focus ring" rows). Never hand-lower a floor: re-derive.
+
+**Two coverages, and what each one is.** *Sidebars only* makes the navigation columns
+glass (the app sidebar, the right-hand panel rail, the collapsed strip, the status band
+along the window's foot, and a page's own column: the Settings nav, the Agents rosters)
+and leaves every page and pane solid. *Full app* adds the conversation canvas, the
+pages and the side panes. A third "sidebars and chrome" tier existed in the first
+round and was removed (review D1): its one extra element was the status band, which is
+0 px tall except while an update offer shows, so it painted zero different pixels from
+*Sidebars only*; a header-only tier cannot be made real cheaply, because a glass strip
+over the opaque canvas backing shows the canvas, not the desktop. A profile written by
+that build reads back as *Sidebars only*. `scripts/window-glass-cdp.test.mjs` asserts
+the two coverages differ on the chat route, so a future tier cannot ship as a label
+for nothing.
+
+**One alpha-owning layer per region.** `data-glass-region` marks the OUTERMOST
+ground of a column (`sidebar`, `page-sidebar`, `canvas`, `pane`, `panel`); a marked
+region nested inside one of the same kind is cleared, so the alpha is painted once.
+Grounds of the same role stacked each carrying alpha COMPOUND (0.82 over 0.82 is
+0.97), which is the seam between a sidebar's nav block and its list pane.
+
+**Pages that are a column plus content** (Settings, Agents, and the Browser route) sit
+inside `<main>`, whose backing would otherwise be a second layer under the column
+(measured in review: a 0.67 column over a 0.59 backing read 0.86). Such a page marks
+its root `data-glass-split`; the backing and the root then paint nothing, the column
+paints the RAW alpha over the desktop (so it equals the app sidebar beside it), and only
+the content column (`canvas-content`) paints the canvas: opaque under *Sidebars only*,
+at its alpha under *Full app*.
+
+**What the guard measures.** `scripts/window-glass-cdp.test.mjs` boots the built app
+and, for each of the chat, Settings, Agents, Browser, Schedules and Agent hub routes,
+walks a grid of points through every region that route must contain and fails on a
+region it cannot find (a guard that skips what it cannot find measures nothing), on a
+spread within a region, on an effective alpha that differs from the role variable, on
+the page column differing from the app sidebar beside it, on an opaque slab inside a
+glass region, and on anything not fully opaque outside the chosen coverage. It does NOT
+cover every route (Projects, Mesh, Console and others are not audited) or any state a
+fixture cannot reach, and it needs a display, so no CI job runs it (`pnpm
+test:window-glass`; a result quoted for it is a LOCAL display run, never a CI result).
+Do not give a new ground inside a region its own `bg-surface`
+expecting it to stay solid: it will be cleared or it will show as a slab; add the region
+marker instead.
+
+**What stays solid under *Full app*, by design** (the Settings copy says so in one
+sentence): web pages in the browser view (the page paints itself), document and media
+viewers (PDF, image, video, audio), code and diff grounds, message blocks, inputs and
+cards that carry text (the Agent hub cards, the Projects board and its wells), and
+small deliberate marks. A panel's own *frame* (the Schedules list, the Agent hub
+category rail) is a surface and goes glass; the cards inside it do not.
+
+**Per element, on glass:**
+
+| Element | On glass | Why |
+|---|---|---|
+| Column grounds (sidebar, rail, status band, canvas) | role at its derived alpha | AA ink over the worst backdrop, floors per material and scheme |
+| Text-bearing panes (composer, ask drawer, run panel, console, code review, browser) | `pane` region: `elevated` at its floor, near-opaque on dark palettes | text must stay legible over any desktop |
+| Row hover / selected (nav, list rows, rail, tabs, the active browser tab) | palette `ink` at 0.05 / 0.08 over the glass | an opaque pill is a hole; a faint tint vanishes over a bright desktop. An ink overlay is a step relative to whatever the ground is |
+| Text fields, outlined controls, segmented-control tracks | ink overlay at 0.05; `border-control` mixed toward `ink` by `controlMix` | the BORDER carries the 3:1 edge, the fill only lifts it |
+| Focus | `outline`, never a fill; `accent` held 3:1 against the glass ground | unchanged from section 6 |
+| Pressed (`active:bg-sunken`) | stays opaque `sunken` | a sub-200 ms state of the control, not a surface |
+| Primary buttons, avatars, brand mark, banners | unchanged, opaque | small deliberate marks, not grounds |
+
+**The one relaxation:** `inkDim` (captions, placeholders) is held to 3.5:1, not 4.5:1,
+on a hovered or selected row and on a field's fill over glass; `ink` and `inkMuted`
+keep AA. No ink overlay can keep `inkDim` at 4.5:1 (the flat system already ships it
+at 5.0 on `rowSelected`), and holding it would force every dark ground to alpha 1.0,
+which switches glass off.
+
+**Limits:** a state's visibility is held at a fixed overlay alpha and a minimum
+step (ΔE00 1.5 hover, 2.5 selected) on every palette; the floors assume the measured
+worst backdrops of each material over a flat desktop, not an arbitrary wallpaper.
+
+**Floors versus the evidence frames' backdrop (the envelope).** The floors are derived
+against the material's own composite grey over its worst flat desktop
+(`BACKDROP_GRAY` in `scripts/derive-glass-floors.mjs`: 199 for the light
+under-window tier, 81 dark), because AppKit lifts a black desktop to that grey. The
+PR's evidence frames are a two-layer reconstruction with NO material under the app, so
+a frame's black or white band is OUTSIDE that envelope: the light `inkDim` caption
+reads about 3 over the black band and 5.12 over the measured 199 (derived with the
+same arithmetic as the floors, `localOperatorLight` surface at 0.73). A ratio read
+off a frame's black band is therefore not a floor breach; the floor is the number in
+`window-glass-floors.json`, asserted by `pnpm check-themes`. An arbitrary wallpaper
+darker or lighter than the measured worst case is the stated limit above.
+
+**Panels at Full app (a stack limit).** A panel's frame (the Schedules list, the Agent
+hub category rail) rests ON the canvas backing, and the net-alpha arithmetic cannot
+make it more see-through than the layer under it. On light palettes the canvas target
+(0.78) is higher than the surface one (0.73), so the frame lands at the canvas's tone and
+the step between page and frame is zero there (dark palettes keep a 1 point step). This is
+accepted rather than fixed: the rows' own hairlines carry the separation, as they
+did on the flat panel tier, and giving the frame its own rung would stack a second
+alpha over the backing. `scripts/window-glass-cdp.test.mjs` encodes it as
+`max(surface, canvas)`.
+
+**A window enabled live on macOS follows the window's key state.** `visualEffectState`
+is a CONSTRUCTOR option (Electron 44's `setVibrancy` takes only `animationDuration`), so a
+window launched with glass already on holds the material at full strength, while one
+flipped on from Settings keeps the default `followWindow` and dims its material while
+the window is not key. The next launch is built with the option. Nothing is hidden: the
+Settings copy does not promise otherwise, and this is the one visible difference between
+a live-enabled and a launch-enabled window.
+
 ## 7. Showing agent work: the trace hierarchy
 
 This is the part of the app most likely to drift back toward a developer tool,

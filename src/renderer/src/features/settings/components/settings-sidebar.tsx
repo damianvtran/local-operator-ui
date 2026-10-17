@@ -294,6 +294,7 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 			aria-label={t(
 				"ui.settings.navigation.settings_sidebar.settings_sections",
 			)}
+			data-glass-region="page-sidebar"
 			className="flex h-full w-full flex-col overflow-hidden bg-surface"
 		>
 			{/* `gap-6` between groups rather than a margin on each: a stacking

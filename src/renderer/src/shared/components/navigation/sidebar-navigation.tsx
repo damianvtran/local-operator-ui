@@ -1074,6 +1074,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		return (
 			<div
 				data-sidebar-strip=""
+				data-glass-region="sidebar"
 				className="group/sidebar flex h-full min-h-0 flex-col items-center bg-surface"
 			>
 				<StripFeedKeeper />
@@ -1148,6 +1149,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		 */
 		<div
 			data-sidebar-shell=""
+			data-glass-region="sidebar"
 			className="group/sidebar flex h-full min-h-0 flex-col overflow-hidden bg-surface"
 		>
 			{/*

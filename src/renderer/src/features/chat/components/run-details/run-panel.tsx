@@ -725,6 +725,7 @@ export const RunPanel = ({
 			 * slot moves with it (`chat-layout.tsx`), because a pane-only change leaves
 			 * this tone meeting the lane at y32.
 			 */
+			data-glass-region="pane"
 			className={cn("flex h-full flex-col bg-elevated")}
 		>
 			{/*

@@ -40,6 +40,10 @@ const runtime = await import(
 const themes = [
 	"account",
 	"appearance",
+	/* The window-glass copy lives in its own namespace file: a locale that already
+	 * ships `ui.settings.appearance` (French) carries an audited ledger entry over
+	 * that file's bytes, so new English keys beside it would make the entry stale. */
+	"appearance.window_glass",
 	"configuration",
 	"integrations",
 	"model",

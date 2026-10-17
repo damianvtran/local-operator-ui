@@ -470,7 +470,10 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 	   the window's top (2026-09-27). The roster keeps its ground; the boundary
 	   is the step. */
 	return (
-		<div className="flex h-full w-full flex-col overflow-hidden bg-surface">
+		<div
+			data-glass-region="page-sidebar"
+			className="flex h-full w-full flex-col overflow-hidden bg-surface"
+		>
 			<SidebarHeader
 				title={t("ui.agents.navigation.sidebar.title")}
 				searchQuery={searchQuery}

@@ -333,6 +333,8 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		   the drawer's body, so it wears the drawer's rung and is continuous with the
 		   content area below it, with the strip's own rule the only line above. */
 		<div
+			/* A bar OF the pane: on glass it clears into the pane's own alpha (one alpha-owning layer). */
+			data-glass-region="pane-leaf"
 			className="flex items-center gap-1 border-control border-b bg-elevated px-2 py-1"
 			data-tour-tag="browser-url-bar"
 		>
