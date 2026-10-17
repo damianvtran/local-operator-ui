@@ -998,13 +998,16 @@ did on the flat panel tier, and giving the frame its own rung would stack a seco
 alpha over the backing. `scripts/window-glass-cdp.test.mjs` encodes it as
 `max(surface, canvas)`.
 
-**A window enabled live on macOS follows the window's key state.** `visualEffectState`
-is a CONSTRUCTOR option (Electron 44's `setVibrancy` takes only `animationDuration`), so a
-window launched with glass already on holds the material at full strength, while one
-flipped on from Settings keeps the default `followWindow` and dims its material while
-the window is not key. The next launch is built with the option. Nothing is hidden: the
-Settings copy does not promise otherwise, and this is the one visible difference between
-a live-enabled and a launch-enabled window.
+**A window enabled live on macOS stays active when unfocused.** `visualEffectState` is a
+CONSTRUCTOR option (Electron 44's `setVibrancy` takes only `animationDuration`), so the
+main window - the only window `glassWindowOptions` is applied to; the mini view never
+attaches glass - is built with `visualEffectState: "active"`, including when glass is off:
+without vibrancy it is inert, and it is only one key added to an otherwise off window. A
+live `setVibrancy` therefore creates the same active-state material a launch with glass
+already on gets. Before this, the live view kept the `followWindow` default and went flat
+whenever the window lost key - the operator reported exactly that on 0.34.53 (the glass
+appeared after a focus change, no restart) - which is the defect this construction value
+fixes.
 
 ## 7. Showing agent work: the trace hierarchy
 

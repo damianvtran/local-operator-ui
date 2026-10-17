@@ -181,10 +181,14 @@ export function attachWindowGlass(
 					window.setBackgroundColor(GLASS_TRANSPARENT);
 					/*
 					 * `visualEffectState` is a CONSTRUCTOR option only (Electron 44:
-					 * `setVibrancy` takes just `animationDuration`), so a window that was
-					 * built opaque and flipped on here keeps the default `followWindow`:
-					 * its material dims while the window is not key. A launch with glass
-					 * already on is built with `active`. Stated, not hidden (review R6).
+					 * `setVibrancy` takes just `animationDuration`), so the VIEW CREATED HERE
+					 * can only inherit the window's construction value. Every darwin window is
+					 * built with `"active"` (`glassWindowOptions`, inert without vibrancy) for
+					 * exactly this call: otherwise the live-enabled view used Electron's
+					 * `followWindow` default and rendered inactive whenever the window was not
+					 * key, while a launch-enabled window (constructed `active`) did not. The
+					 * two paths now create the same material (operator-confirmed on 0.34.53:
+					 * the material appeared on a focus change before this fix).
 					 */
 					window.setVibrancy(macVibrancyFor(settings.material));
 					appliedMechanism = "vibrancy";
