@@ -67,6 +67,7 @@ test("the unset member comes first and names the level it resolves to", () => {
 	const rows = defaultEffortOptions({
 		ladder: ["low", "medium", "high"],
 		resolvedLevel: "medium",
+		stored: "",
 	});
 	assert.equal(rows.length, 4);
 	assert.deepEqual(
@@ -90,6 +91,7 @@ test("a level this file does not know is printed as the wire spells it", () => {
 	const rows = defaultEffortOptions({
 		ladder: ["low", "paranoid"],
 		resolvedLevel: null,
+		stored: "",
 	});
 	assert.deepEqual(
 		rows.map((row) => row.name),
@@ -106,11 +108,28 @@ test("xhigh keeps the composer's spelling", () => {
 	const rows = defaultEffortOptions({
 		ladder: ["low", "medium", "high", "xhigh", "max"],
 		resolvedLevel: "high",
+		stored: "",
 	});
 	assert.deepEqual(
 		rows.map((row) => row.name),
 		["Model default", "Low", "Medium", "High", "xHigh", "Max"],
 	);
+});
+
+test("a stored level is not described as the model's own default", () => {
+	/*
+	 * With `max` stored the preview reports `max` CLAMPED into this model's
+	 * ladder - a fact about the selected row, not about `""`. Describing the
+	 * unset row with it would promise a level that clearing the row would not
+	 * run.
+	 */
+	const rows = defaultEffortOptions({
+		ladder: ["low", "medium", "high"],
+		resolvedLevel: "high",
+		stored: "max",
+	});
+	assert.equal(rows[0].name, "Model default");
+	assert.equal(rows[0].description, undefined);
 });
 
 /* -------------------------------------------------------------- selected */
