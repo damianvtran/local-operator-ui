@@ -223,6 +223,30 @@
 				"date": "2026-10-18"
 			},
 			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.canvas",
+			"source_sha256": "6fa13501b59a260373bcb26f212fc6244a3d1219ef1811d2b0c1de05b541f1f5",
+			"target_sha256": "c794fe07b509a330e38642479a00957c4f2a19829bbb92e9a5de0d46b4f7f76f",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.code_review",
+			"source_sha256": "7344c8694a23662bfe3ae12205685cfa14851209d0685abbe463b9f513565085",
+			"target_sha256": "7c0d5331f5a04b211cd2a7fecec57cf5e6750e824dcfe71a9b05d02432fbfb55",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
 		}
 	]
 }

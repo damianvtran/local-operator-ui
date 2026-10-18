@@ -132,10 +132,12 @@ import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
 import frUiAgentsNavigation from "./catalogues/fr/ui.agents.navigation.json";
 import frUiBrowserChrome from "./catalogues/fr/ui.browser.chrome.json";
 import frUiBrowser from "./catalogues/fr/ui.browser.json";
+import frUiCanvas from "./catalogues/fr/ui.canvas.json";
 import frUiChatComposer from "./catalogues/fr/ui.chat.composer.json";
 import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
 import frUiChat from "./catalogues/fr/ui.chat.json";
 import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
+import frUiCodeReview from "./catalogues/fr/ui.code_review.json";
 import frUiCommandPalette from "./catalogues/fr/ui.command_palette.json";
 import frUiCommonActions from "./catalogues/fr/ui.common.actions.json";
 import frUiCommonErrors from "./catalogues/fr/ui.common.errors.json";
@@ -311,10 +313,12 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentsNavigation,
 		...frUiBrowserChrome,
 		...frUiBrowser,
+		...frUiCanvas,
 		...frUiChatComposer,
 		...frUiChatHeader,
 		...frUiChat,
 		...frUiChatSidebarView,
+		...frUiCodeReview,
 		...frUiCommandPalette,
 		...frUiCommonActions,
 		...frUiCommonErrors,

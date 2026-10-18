@@ -499,6 +499,27 @@ const IDENTICAL_OK = new Map([
 		"ui.mesh.mesh_list.sort_conversations",
 		"French cognate: « conversations » has the same spelling.",
 	],
+	[
+		"ui.canvas.files.images",
+		"French cognate: « images » has the same spelling.",
+	],
+	[
+		"ui.canvas.files.documents",
+		"French cognate: « documents » has the same spelling.",
+	],
+	["ui.canvas.files.code", "French cognate: « code » has the same spelling."],
+	[
+		"ui.canvas.files.archives",
+		"French cognate: « archives » has the same spelling.",
+	],
+	[
+		"ui.code_review.code_review_model.code",
+		"French cognate: « code » has the same spelling.",
+	],
+	[
+		"ui.code_review.lane.state.terminal",
+		"French cognate: « terminal » has the same spelling.",
+	],
 ]);
 
 function localeDirs() {
