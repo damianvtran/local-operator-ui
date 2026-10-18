@@ -8,7 +8,8 @@ import {
 } from "../../../../shared/window-glass";
 
 /**
- * The renderer's half of the window glass (optional translucency, default OFF).
+ * The renderer's half of the window glass (translucency, on by default where the
+ * machine supports it).
  *
  * MAIN OWNS THE SETTING (it must know it before a window exists); this file turns
  * what main says into the two things CSS can read: `data-glass` on the document
@@ -18,9 +19,9 @@ import {
  * `data-glass-region`, so nothing here can repaint a card, an input or a menu.
  *
  * ABSENT MEANS THE SHIPPED LOOK. With no attribute and no variables every rule in
- * that section is dormant, which is the default-off guarantee on this side of the
- * process boundary: a launch that never enabled glass runs the stylesheet it
- * always ran.
+ * that section is dormant, which is the inactive guarantee on this side of the
+ * process boundary: a launch whose glass is off (chosen or gated) runs the
+ * stylesheet it always ran.
  *
  * THE SCHEME IS READ FROM THE DOCUMENT (`.dark`, written by
  * `applyThemeToDocument`) because the alpha floors differ by scheme: a dark palette
@@ -153,7 +154,39 @@ export function syncGlassScheme(): void {
 export function subscribeGlassPaint(): () => void {
 	const api = window.api?.windowGlass;
 	if (!api) return () => {};
-	return api.onState((next) => applyGlassState(next));
+	/*
+	 * SUBSCRIBE FIRST, THEN CONVERGE (QA round 2, Q-1). The launch gate is
+	 * deliberately optimistic: Electron reports `disabled_software` for the GPU
+	 * until the first `gpu-info-update`, so a window can be built translucent and
+	 * main can drop the capability BEFORE this document's listener exists. A
+	 * push-only subscription then misses that state and the renderer paints glass
+	 * forever while main answers `active:false` (measured on the built app with
+	 * `--disable-gpu-compositing`). Listening first closes the gap for later
+	 * pushes; the report answer and one `get` catch the state that landed before
+	 * the listener did. IPC messages from main arrive in the order main handled
+	 * them, so a later push still wins over either answer.
+	 */
+	const off = api.onState((next) => applyGlassState(next));
+	const applyAnswer = (next: WindowGlassState | null): void => {
+		if (next) applyGlassState(next);
+	};
+	/*
+	 * The one capability fact only the renderer has (`criterion: detect then
+	 * decide`, renderer half). Sent even when glass is off at this instant: the
+	 * answer decides whether a LATER enable is allowed, and main starts undecided
+	 * so the first frame is never blocked by waiting for this message. A renderer
+	 * without `CSS` (a test host, not Electron) reports nothing rather than a
+	 * false negative.
+	 */
+	if (typeof CSS !== "undefined")
+		void api
+			.reportRenderer?.({
+				backdropFilter: CSS.supports("backdrop-filter: blur(1px)"),
+			})
+			.then(applyAnswer, () => {});
+	/* The authoritative state at boot, for a drop that beat the subscription. */
+	void api.get?.().then(applyAnswer, () => {});
+	return off;
 }
 
 /** The Settings row's view of the glass: the state, and a setter that applies the answer. */

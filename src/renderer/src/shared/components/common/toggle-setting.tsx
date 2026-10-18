@@ -51,6 +51,12 @@ type ToggleSettingProps = {
 	 * Whether the setting is currently being saved
 	 */
 	isSaving?: boolean;
+
+	/**
+	 * Renders the switch non-interactive. Used by a row whose capability gate is
+	 * off: the row stays visible (so its reason can be read) instead of vanishing.
+	 */
+	disabled?: boolean;
 };
 
 /**
@@ -67,6 +73,7 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
 	onChange,
 	icon: Icon,
 	isSaving = false,
+	disabled = false,
 }) => {
 	const [isOn, setIsOn] = useState(value);
 	const fieldId = useId();
@@ -77,7 +84,7 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
 	 * Handles toggling the switch
 	 */
 	const handleToggle = async (checked: boolean) => {
-		if (isSaving) return;
+		if (isSaving || disabled) return;
 
 		setIsOn(checked);
 
@@ -126,6 +133,7 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
 					<Switch
 						checked={isOn}
 						onCheckedChange={handleToggle}
+						disabled={disabled}
 						aria-labelledby={labelId}
 						aria-describedby={description ? descriptionId : undefined}
 					/>
