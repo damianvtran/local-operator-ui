@@ -1,0 +1,13 @@
+Window glass states: tightest step ΔE00 off the ground - hover 1.75, selected 2.73, field 1.75.
+Window glass round 2: tightest block veil ΔE00 off canvas glass - dark 4.26, light 4.2; work row step 2.76; chrome inks 6.92/5.51/4.55, tab step 2.73.
+Window glass round 3: lane roles sunken/surface at scales 0.73/0.72; tightest lane step ΔE00 1.53 (under-window/dark@2), card off lane 4.37 (menu/light@68), tightest ink 5.18:1.
+  lane ΔE00 at 0: dark 1.69 / light 1.59
+  lane ΔE00 at 25: dark 1.91 / light 1.63
+  lane ΔE00 at 50: dark 2.52 / light 1.69
+  lane ΔE00 at 70: dark 2.82 / light 1.83
+  lane ΔE00 at 80: dark 2.95 / light 1.82
+  lane ΔE00 at 100: dark 2.96 / light 1.84
+Identity pairs: tightest `accentAlt`/`info` (the tool row's two identity inks, floor 15) is 8.58 in catppuccinMacchiato, then catppuccinMocha 8.58, catppuccinFrappe 8.6, localOperatorDark 12.57, ayuLight 13.57; 5 palette(s) pinned below it. Tightest `info`/`accent` (settled read ink vs liveness ink, floor 8) is 0 in dune, then neon 0, obsidian 0, radient 0, githubLight 5.87.
+Console terminal: 16 ANSI slots resolve to 6-7 distinct colours across 59 palettes (design 9.2's stated gap, measured); fewest in obsidian 6, alucard 7, arcade 7.
+Contrast contract holds: 185031 assertions across 59 themes, 4 consulted exception(s), 3 ΔE00 exception(s) consulted, 0 pinned ink step(s), 0 pinned control edge(s), 10 pinned identity pair(s).
+Fleet: 14 dark canvas(es) in a 1.5 L* window (max 14), 14 below L* 13.5, spread 9.95 L*; 5 sub-1.0 and 2 identical dark canvas pair(s); light 10 in a 1.5 L* window, 12 at or above L* 91.3, 1 sub-1.0 pair(s); 34 moved value(s) over the 1 degree hue pin and inside the 8-bit envelope.
