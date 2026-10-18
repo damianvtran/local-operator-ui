@@ -23,6 +23,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 export * from "./src/renderer/src/features/chat/chat-tag-groups";
+export * from "./src/renderer/src/features/chat/chat-tag-draft";
 export {parseSidebarView, DEFAULT_SIDEBAR_VIEW} from "./src/renderer/src/features/chat/chat-sidebar-view";
 export {desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract";
 export {useUiPreferencesStore} from "./src/renderer/src/shared/store/ui-preferences-store";
@@ -68,6 +69,7 @@ export const discardPendingSends = () => undefined;
 });
 const {
 	groupChatsByTag,
+	deletedTagNameReused,
 	draftPrimary,
 	parseSidebarView,
 	DEFAULT_SIDEBAR_VIEW,
@@ -335,4 +337,57 @@ test("assignment confirms the exact grouped or Untagged success copy after the w
 		),
 	);
 	assert.ok(source.includes('t("ui.chat.tags.updated_untagged")'));
+});
+
+test("delete plus name-only recreation is blocked without blocking normal add/delete", () => {
+	const registry = [
+		{ id: "a", name: "Review" },
+		{ id: "b", name: "Project" },
+	];
+	assert.equal(
+		deletedTagNameReused(registry, [
+			{ id: "b", name: "Project" },
+			{ name: "Review" },
+		]),
+		"Review",
+	);
+	assert.equal(
+		deletedTagNameReused(registry, [{ name: " review " }]),
+		" review ",
+	);
+	assert.equal(
+		deletedTagNameReused(registry, [{ id: "b", name: "Project" }]),
+		null,
+	);
+	assert.equal(
+		deletedTagNameReused(registry, [...registry, { name: "Concept" }]),
+		null,
+	);
+	assert.equal(
+		deletedTagNameReused(registry, [
+			{ id: "a", name: "Renamed" },
+			{ name: "Review" },
+		]),
+		null,
+	);
+});
+test("save failures are tag-specific, loading errors are not empty registries, and title has no action ellipsis", () => {
+	for (const file of ["chat-session-tags-dialog", "manage-tags-dialog"]) {
+		const source = readFileSync(
+			`src/renderer/src/features/chat/components/${file}.tsx`,
+			"utf8",
+		);
+		assert.ok(source.includes('setError(t("ui.chat.tags.save_failed"))'));
+		assert.ok(!source.includes("userFacingMessage"));
+	}
+	const sidebar = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.ok(sidebar.includes("tagCategoriesError === null"));
+	const copy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.tags.json", "utf8"),
+	);
+	assert.equal(copy["ui.chat.tags.manage_title"], "Manage tags");
+	assert.equal(copy["ui.chat.tags.done"], undefined);
 });

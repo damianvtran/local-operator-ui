@@ -3,7 +3,7 @@ import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-stor
 import { useSessionTagsStore } from "@shared/store/session-tags-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, userEvent, waitFor, within } from "@storybook/test";
+import { expect, fireEvent, userEvent, waitFor, within } from "@storybook/test";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import type {
@@ -15,6 +15,7 @@ import type {
 import { ChatSidebar } from "./chat-sidebar";
 
 let calls: DesktopRequest[] = [];
+let finishRegistry: (() => void) | null = null;
 type Scenario =
 	| "tags-off"
 	| "tags-on"
@@ -30,6 +31,7 @@ type Scenario =
  */
 function installBridge(scenario: Scenario) {
 	calls = [];
+	finishRegistry = null;
 	document.body.dataset.tagsProof = "";
 	let categories: TagCategory[] =
 		scenario === "no-categories"
@@ -127,7 +129,10 @@ function installBridge(scenario: Scenario) {
 			case "tags.list":
 				if (scenario === "old-backend")
 					throw new Error("Old backend must not receive a tags request");
-				if (scenario === "picker-loading") return new Promise(() => {});
+				if (scenario === "picker-loading")
+					return new Promise<DesktopResponse>((resolve) => {
+						finishRegistry = () => resolve(ok({ tags: categories }));
+					});
 				return ok({ tags: categories });
 			case "tags.replace":
 				categories = request.tags.map((tag, index) => ({
@@ -310,6 +315,15 @@ const story = (
 				within(document.body).getByRole("button", { name: "Apply" }),
 			);
 			await within(document.body).findByRole("alert");
+			await within(document.body).findByText("Tags were not saved. Try again.");
+			expect(
+				within(document.body).getByRole("button", { name: "Retry" }),
+			).toBeEnabled();
+			expect(
+				within(document.body).getByRole("checkbox", { name: "Review" }),
+			).toBeChecked();
+			document.body.dataset.tagsProof =
+				"PASS: assignment 503 shows tag-specific save failure + Retry and preserves draft";
 		} else {
 			await ready();
 			if (args.scenario === "old-backend") {
@@ -402,8 +416,8 @@ const editRegistryDraft = async () => {
 	if (!review) throw new Error("Review category missing");
 	await userEvent.click(within(review).getByRole("button", { name: "Rename" }));
 	const rename = body.getByRole("textbox", { name: "Rename Review" });
-	await userEvent.clear(rename);
-	await userEvent.type(rename, "Review renamed");
+	fireEvent.change(rename, { target: { value: "Review renamed" } });
+	await waitFor(() => expect(rename).toHaveValue("Review renamed"));
 	await userEvent.click(body.getByRole("button", { name: "Save" }));
 	await body.findByText("Review renamed");
 	for (let index = 0; index < 3; index++) {
@@ -597,7 +611,11 @@ export const PickerManageRoundTrip: Story = {
 				{ once: true, capture: true },
 			);
 			await userEvent.click(button);
-			await body.findByRole("heading", { name: "Manage tags…" });
+			await body.findByRole("heading", { name: "Manage tags" });
+			await new Promise((resolve) =>
+				requestAnimationFrame(() => requestAnimationFrame(resolve)),
+			);
+			expect(document.activeElement?.closest('[role="dialog"]')).not.toBeNull();
 			expect(document.querySelectorAll("[role=dialog]")).toHaveLength(1);
 		};
 		const restored = async () => {
@@ -610,9 +628,10 @@ export const PickerManageRoundTrip: Story = {
 				"e",
 			);
 			await waitFor(() =>
-				expect(document.activeElement).toBe(
-					body.getByRole("button", { name: "Manage tags…" }),
-				),
+				expect(
+					document.activeElement,
+					`Picker return focus: ${document.activeElement?.getAttribute("role") ?? "button"} ${document.activeElement?.textContent}`,
+				).toBe(body.getByRole("button", { name: "Manage tags…" })),
 			);
 			expect(
 				document.querySelector<HTMLElement>("[role=dialog] .overflow-y-auto")
@@ -659,7 +678,7 @@ export const ManagementFailureRetry: Story = {
 			if (request.op === "tags.replace" && attempts++ === 0) {
 				calls.push(request);
 				return {
-					status: 409,
+					status: 503,
 					body: {
 						detail: "Fixture registry save failed. Retry keeps the draft.",
 					},
@@ -675,6 +694,7 @@ export const ManagementFailureRetry: Story = {
 		await userEvent.click(body.getByRole("button", { name: "Add" }));
 		await userEvent.click(body.getByRole("button", { name: "Apply" }));
 		await body.findByRole("alert");
+		await body.findByText("Tags were not saved. Try again.");
 		expect(body.getByText("Retry category")).toBeTruthy();
 		expect(useSessionTagsStore.getState().categories).toHaveLength(3);
 		await userEvent.click(body.getByRole("button", { name: "Retry" }));
@@ -718,5 +738,83 @@ export const AssignPrimaryAnnouncement: Story = {
 		);
 		document.body.dataset.tagsProof =
 			"PASS: primary assignment announces Tags updated. Grouped under Project.; row focus returned";
+	},
+};
+
+export const DeleteNameReuseGuard: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await manage();
+		const body = within(document.body);
+		const project = document.querySelector<HTMLElement>(
+			'[data-tag-id="project"]',
+		);
+		if (!project) throw new Error("Missing Project tag");
+		await userEvent.click(
+			within(project).getByRole("button", { name: "Delete" }),
+		);
+		await userEvent.click(body.getByRole("button", { name: "Delete tag" }));
+		fireEvent.change(body.getByRole("textbox", { name: "New tag name" }), {
+			target: { value: "Project" },
+		});
+		await userEvent.click(body.getByRole("button", { name: "Add" }));
+		await waitFor(() =>
+			expect(
+				document.querySelector('[data-tag-id="new:Project"]'),
+			).not.toBeNull(),
+		);
+		await userEvent.click(body.getByRole("button", { name: "Apply" }));
+		await body.findByText(
+			"Apply the deletion first, then add “Project” again.",
+		);
+		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
+		expect(
+			useSessionTagsStore
+				.getState()
+				.categories.some((tag) => tag.id === "project"),
+		).toBe(true);
+		await userEvent.click(body.getByRole("button", { name: "Cancel" }));
+		await waitFor(() =>
+			expect(document.querySelector("[role=dialog]")).toBeNull(),
+		);
+		document.body.dataset.tagsProof =
+			"PASS: delete + same-name ID-less add blocks Apply; zero registry writes; existing assignments retained";
+	},
+};
+
+export const PickerLoadingFocus: Story = {
+	...story("picker-loading", 220),
+	play: async () => {
+		await picker();
+		const heading = within(document.body).getByRole("heading", {
+			name: "Tags for “Review the migration safety checks”",
+		});
+		expect(document.activeElement).toBe(heading);
+		const scroller = document.querySelector<HTMLElement>(
+			"[role=dialog] .overflow-y-auto",
+		);
+		if (!scroller) throw new Error("No picker scroll body");
+		const padding = getComputedStyle(scroller);
+		expect(padding.paddingLeft).toBe("4px");
+		expect(padding.paddingBottom).toBe("4px");
+		const manageButton = within(document.body).getByRole("button", {
+			name: "Manage tags…",
+		});
+		const bodyBox = scroller.getBoundingClientRect();
+		const manageBox = manageButton.getBoundingClientRect();
+		expect(manageBox.left - bodyBox.left).toBeGreaterThanOrEqual(4);
+		expect(bodyBox.bottom - manageBox.bottom).toBeGreaterThanOrEqual(4);
+		const measurements = `loading body ${bodyBox.width}×${bodyBox.height}px, ring inset left ${manageBox.left - bodyBox.left}px bottom ${bodyBox.bottom - manageBox.bottom}px`;
+		expect(finishRegistry).not.toBeNull();
+		finishRegistry?.();
+		await waitFor(() =>
+			expect(document.activeElement).toBe(
+				within(document.body).getByRole("checkbox", { name: "Review" }),
+			),
+		);
+		await userEvent.click(
+			within(document.body).getByRole("button", { name: "Cancel" }),
+		);
+		document.body.dataset.tagsProof = `PASS: initial focus heading; loaded focus first checkbox; ${measurements}`;
 	},
 };

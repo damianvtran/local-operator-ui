@@ -114,11 +114,6 @@
 		"tone": "concise, neutral sentence case",
 		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
 	},
-	"ui.chat.tags.done": {
-		"role": "tag dialog or sidebar control",
-		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
-	},
 	"ui.chat.tags.rename": {
 		"role": "tag dialog or sidebar control",
 		"tone": "concise, neutral sentence case",
@@ -199,5 +194,15 @@
 		"role": "compact View options empty-state helper",
 		"tone": "concise",
 		"note": "One line at the narrow sidebar; Manage tags remains the action."
+	},
+	"ui.chat.tags.manage_title": {
+		"role": "management modal heading",
+		"tone": "noun phrase",
+		"note": "No ellipsis: this names the open dialog, not its launch action."
+	},
+	"ui.chat.tags.apply_deletion_first": {
+		"role": "registry draft validation error",
+		"tone": "actionable",
+		"note": "name is a category deleted and recreated in one draft. Two Apply operations are needed so the backend does not reuse its ID and keep assignments."
 	}
 }

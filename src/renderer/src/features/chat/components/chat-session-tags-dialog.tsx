@@ -1,5 +1,4 @@
 import { draftPrimary } from "@features/chat/chat-tag-groups";
-import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import {
 	Button,
 	Checkbox,
@@ -19,7 +18,7 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useSessionTagsStore } from "@shared/store/session-tags-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ManageTagsDialog } from "./manage-tags-dialog";
 
 /** Mount per invocation: assignment is buffered until Apply; registry creation is
@@ -45,11 +44,18 @@ export function ChatSessionTagsDialog({
 	} = useSessionTagsStore();
 	const [managing, setManaging] = useState(false);
 	const pickerBody = useRef<HTMLDivElement>(null);
+	const heading = useRef<HTMLHeadingElement>(null);
 	const manageButton = useRef<HTMLButtonElement>(null);
 	const savedScroll = useRef(0);
+	const returningFromManage = useRef(false);
 	const returnToPicker = () =>
-		requestAnimationFrame(() => {
-			manageButton.current?.focus({ preventScroll: true });
+		queueMicrotask(() => {
+			// Radix removes the closing FocusScope from its stack after the autofocus
+			// callback returns. Restore in the following microtask, not on animation
+			// frames (which an inactive browser can suspend).
+			const invoker = manageButton.current;
+			if (!invoker?.isConnected) return;
+			invoker.focus({ preventScroll: true });
 			if (pickerBody.current)
 				pickerBody.current.scrollTop = savedScroll.current;
 		});
@@ -65,6 +71,21 @@ export function ChatSessionTagsDialog({
 	// original assignment order so removing the primary previews server fallback.
 	const selected = ids.filter((id) => categories.some((tag) => tag.id === id));
 	const effectivePrimary = draftPrimary(selected, primary);
+	useEffect(() => {
+		// While loading, focus has a stable, non-action destination outside the
+		// scroller. Move into the choices only if the reader is still waiting there.
+		if (
+			!managing &&
+			!loading &&
+			loadError === null &&
+			categories.length > 0 &&
+			document.activeElement === heading.current
+		) {
+			pickerBody.current
+				?.querySelector<HTMLElement>('[role="checkbox"]')
+				?.focus();
+		}
+	}, [categories, loading, loadError, managing]);
 	const apply = async () => {
 		setPending(true);
 		setError(null);
@@ -84,8 +105,8 @@ export function ChatSessionTagsDialog({
 					: t("ui.chat.tags.updated_untagged"),
 			);
 			onClose();
-		} catch (cause) {
-			setError(userFacingMessage(cause, t("ui.chat.tags.save_failed")));
+		} catch {
+			setError(t("ui.chat.tags.save_failed"));
 		} finally {
 			setPending(false);
 		}
@@ -111,8 +132,8 @@ export function ChatSessionTagsDialog({
 			}
 			setCreating(false);
 			setName("");
-		} catch (cause) {
-			setError(userFacingMessage(cause, t("ui.chat.tags.save_failed")));
+		} catch {
+			setError(t("ui.chat.tags.save_failed"));
 		} finally {
 			setPending(false);
 		}
@@ -128,6 +149,22 @@ export function ChatSessionTagsDialog({
 				<DialogContent
 					className="flex max-h-[calc(100dvh-32px)] w-[min(420px,calc(100vw-32px))] flex-col"
 					closeDisabled={pending}
+					onOpenAutoFocus={(event) => {
+						event.preventDefault();
+						// The sibling close and this mount can run in either order. Both
+						// restore the same connected invoker rather than initial selection.
+						if (returningFromManage.current) {
+							returnToPicker();
+							return;
+						}
+						const first =
+							!loading && loadError === null
+								? pickerBody.current?.querySelector<HTMLElement>(
+										'[role="checkbox"]',
+									)
+								: null;
+						(first ?? heading.current)?.focus();
+					}}
 					onCloseAutoFocus={(event) => {
 						event.preventDefault();
 						if (!managing) returnFocus();
@@ -140,7 +177,11 @@ export function ChatSessionTagsDialog({
 					}}
 				>
 					<DialogHeader>
-						<DialogTitle className="break-words pr-6">
+						<DialogTitle
+							ref={heading}
+							tabIndex={-1}
+							className="break-words pr-6"
+						>
 							{t("ui.chat.tags.picker_title", {
 								title: row.title || row.session_id,
 							})}
@@ -149,7 +190,10 @@ export function ChatSessionTagsDialog({
 							{t("ui.chat.tags.picker_description")}
 						</DialogDescription>
 					</DialogHeader>
-					<div ref={pickerBody} className="min-h-0 space-y-3 overflow-y-auto">
+					<div
+						ref={pickerBody}
+						className="min-h-0 space-y-3 overflow-y-auto p-1"
+					>
 						{loading ? (
 							<output>{t("ui.chat.tags.loading")}</output>
 						) : loadError !== null ? (
@@ -297,6 +341,7 @@ export function ChatSessionTagsDialog({
 								// Hide only the modal content, not this component: assignment checks,
 								// primary, search and scroll remain a draft while Manage is open.
 								savedScroll.current = pickerBody.current?.scrollTop ?? 0;
+								returningFromManage.current = false;
 								setManaging(true);
 							}}
 						>
@@ -329,7 +374,10 @@ export function ChatSessionTagsDialog({
 			</Dialog>
 			{managing && (
 				<ManageTagsDialog
-					onClose={() => setManaging(false)}
+					onClose={() => {
+						returningFromManage.current = true;
+						setManaging(false);
+					}}
 					returnFocus={returnToPicker}
 				/>
 			)}

@@ -842,6 +842,7 @@ export type MessageParams = {
 	"ui.chat.sidebar_view.time_section": undefined;
 	"ui.chat.tags.add": undefined;
 	"ui.chat.tags.apply": undefined;
+	"ui.chat.tags.apply_deletion_first": { name: string };
 	"ui.chat.tags.applying": undefined;
 	"ui.chat.tags.cancel": undefined;
 	"ui.chat.tags.clear": undefined;
@@ -850,7 +851,6 @@ export type MessageParams = {
 	"ui.chat.tags.delete_tag": undefined;
 	"ui.chat.tags.delete_title": { name: string };
 	"ui.chat.tags.discovery": undefined;
-	"ui.chat.tags.done": undefined;
 	"ui.chat.tags.duplicate_name": { name: string };
 	"ui.chat.tags.empty": undefined;
 	"ui.chat.tags.group": undefined;
@@ -860,6 +860,7 @@ export type MessageParams = {
 	"ui.chat.tags.loading": undefined;
 	"ui.chat.tags.manage": undefined;
 	"ui.chat.tags.manage_description": undefined;
+	"ui.chat.tags.manage_title": undefined;
 	"ui.chat.tags.menu": undefined;
 	"ui.chat.tags.mode_hint": undefined;
 	"ui.chat.tags.move_down": { name: string };
