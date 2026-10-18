@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -188,6 +188,10 @@
  *                          LOCAL_OPERATOR_DESKTOP_TOKEN; the run asserts both
  *   --backend-records <dir> the serve record that backend wrote for itself, which
  *                          `discovery.ts` needs before it admits the daemon
+ *   --allowlist-id <id>    (with --scene agent-messages) the endpoint or account
+ *                          identifier the reach editor adds, then removes
+ *   --allowlist-kind <endpoint|account>  (with --scene agent-messages) which
+ *                          kind that identifier is (default: endpoint)
  *   --backend-revive <cmd> (with --scene connection-drop) the command that starts
  *                          a fresh daemon on the --backend address, run with this
  *                          process's environment when the scene needs the backend
@@ -241,6 +245,7 @@ import { basename, join, resolve, sep } from "node:path";
  * below for the rest of the import contract.
  */
 import sharp from "sharp";
+import { sceneAgentMessages } from "./agent-messages-scene.mjs";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 import { EVIDENCE_TZ } from "./evidence-tz.mjs";
@@ -48927,6 +48932,27 @@ async function main() {
 			else if (SCENE === "drafts") await sceneDrafts(cdp);
 			else if (SCENE === "undo-toasts-stacked")
 				await sceneUndoToastsStacked(cdp);
+			/*
+			 * Settings -> Agent messages over a live daemon: the section's own
+			 * state letter, both palettes, pause/resume, the local switch, and
+			 * the reach editor's two saves. Needs `--backend`,
+			 * `--backend-records` and `--allowlist-id`.
+			 */ else if (SCENE === "agent-messages")
+				await sceneAgentMessages({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					wait,
+					waitForCondition,
+					factsOf,
+					argValue,
+					backend: BACKEND,
+					backendRecords: BACKEND_RECORDS,
+					framesDir: FRAMES,
+					electronUserAgent: ELECTRON_USER_AGENT,
+				});
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
 			/*

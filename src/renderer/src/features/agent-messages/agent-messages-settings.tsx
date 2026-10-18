@@ -177,7 +177,7 @@ export function AgentMessagesSettings({
 			 * The dark launch is a LAUNCH STATE, not a fault: no Alert, no icon that
 			 * says something broke, and no control that would pretend to work.
 			 */
-			<div className="flex flex-col gap-2">
+			<div data-agent-messages-section="" className="flex flex-col gap-2">
 				<h3 className="text-heading text-ink">
 					{t("ui.agentMessages.settings.dark.title")}
 				</h3>
@@ -193,31 +193,33 @@ export function AgentMessagesSettings({
 
 	if (availability === "error") {
 		return (
-			<Alert variant="warning">
-				<AlertTitle>{t("ui.agentMessages.settings.error.title")}</AlertTitle>
-				<AlertDescription>
-					{refusal
-						? settingsRefusalSentence(refusal)
-						: t("ui.agentMessages.settings.refusal.generic")}
-					<Button
-						className="mt-3"
-						variant="secondary"
-						onClick={() => {
-							retry();
-							void onRefreshStatus(true);
-						}}
-					>
-						{t("ui.agentMessages.settings.error.retry")}
-					</Button>
-				</AlertDescription>
-			</Alert>
+			<div data-agent-messages-section="">
+				<Alert variant="warning">
+					<AlertTitle>{t("ui.agentMessages.settings.error.title")}</AlertTitle>
+					<AlertDescription>
+						{refusal
+							? settingsRefusalSentence(refusal)
+							: t("ui.agentMessages.settings.refusal.generic")}
+						<Button
+							className="mt-3"
+							variant="secondary"
+							onClick={() => {
+								retry();
+								void onRefreshStatus(true);
+							}}
+						>
+							{t("ui.agentMessages.settings.error.retry")}
+						</Button>
+					</AlertDescription>
+				</Alert>
+			</div>
 		);
 	}
 
 	if (!status || !accountId) return null;
 
 	return (
-		<div className="flex flex-col gap-6">
+		<div data-agent-messages-section="" className="flex flex-col gap-6">
 			{actionRefusal && (
 				<Alert variant="warning">
 					<AlertDescription>
@@ -439,7 +441,7 @@ const SettingsState: FC<SettingsStateProps> = ({
 
 	if (state === "F") {
 		return (
-			<div className="flex flex-col gap-3">
+			<div data-agent-messages-state={state} className="flex flex-col gap-3">
 				<div className="rounded-md border border-hairline bg-sunken p-3">
 					<p className="text-body-sm text-ink">
 						{status.state_note?.trim()
@@ -481,7 +483,7 @@ const SettingsState: FC<SettingsStateProps> = ({
 	const staleConsent = consentRecord !== null && !consentRecord.current;
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div data-agent-messages-state={state} className="flex flex-col gap-4">
 			<div className="flex flex-wrap items-center gap-2">
 				<h3 className="text-heading text-ink">{t(STATE_TITLE_KEY[state])}</h3>
 				{endpointLabel && (
@@ -524,6 +526,7 @@ const SettingsState: FC<SettingsStateProps> = ({
 				<div className="flex flex-col gap-4">
 					<div className="flex flex-wrap gap-2">
 						<Button
+							data-agent-messages-action="pause"
 							variant="secondary"
 							disabled={disabled}
 							onClick={() => void write("paused")}
@@ -531,6 +534,7 @@ const SettingsState: FC<SettingsStateProps> = ({
 							{t("ui.agentMessages.settings.action.pause")}
 						</Button>
 						<Button
+							data-agent-messages-action="turn_off"
 							variant="secondary"
 							disabled={disabled}
 							onClick={() => void write("disabled")}
@@ -570,6 +574,7 @@ const SettingsState: FC<SettingsStateProps> = ({
 				<div className="flex flex-col gap-4">
 					<div className="flex flex-wrap gap-2">
 						<Button
+							data-agent-messages-action="resume"
 							disabled={disabled}
 							onClick={() =>
 								void write(
@@ -586,6 +591,7 @@ const SettingsState: FC<SettingsStateProps> = ({
 							{t("ui.agentMessages.settings.action.resume")}
 						</Button>
 						<Button
+							data-agent-messages-action="turn_off"
 							variant="secondary"
 							disabled={disabled}
 							onClick={() => void write("disabled")}
@@ -842,7 +848,7 @@ const AllowlistEditor: FC<AllowlistEditorProps> = ({
 	};
 
 	return (
-		<div className="flex flex-col gap-5">
+		<div data-agent-messages-allowlist="" className="flex flex-col gap-5">
 			<div>
 				<h3 className="text-heading text-ink">
 					{t("ui.agentMessages.settings.allowlist.title")}
@@ -933,6 +939,7 @@ type DirectionGroupProps = {
 };
 
 const DirectionGroup: FC<DirectionGroupProps> = ({
+	direction,
 	title,
 	mode,
 	cues,
@@ -945,7 +952,11 @@ const DirectionGroup: FC<DirectionGroupProps> = ({
 	const allowed = entries.filter((entry) => entry.effect === "allow");
 	const blocked = entries.filter((entry) => entry.effect === "deny");
 	return (
-		<fieldset className="flex flex-col gap-3 rounded-md border border-hairline p-3">
+		<fieldset
+			data-agent-messages-direction={direction}
+			data-agent-messages-level={mode}
+			className="flex flex-col gap-3 rounded-md border border-hairline p-3"
+		>
 			<legend className="px-1 text-body-sm text-ink">{title}</legend>
 			<LevelControl mode={mode} disabled={disabled} onMode={onMode} />
 			<div className="flex flex-col gap-1 text-meta text-ink-dim">
