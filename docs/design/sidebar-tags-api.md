@@ -1,9 +1,9 @@
 # Sidebar tags — client contract (desktop, TUI, mobile, relay)
 
 **Status:** current as of the merged first slice (core `7c6db02983`, UI
-`0c8a39a0e3`), plus the V2-1 `expected` precondition marked **target**. The
-store is the single source of truth; no client keeps a second category
-database. The agent `tags` tool is a V2-4 target, not shipped.
+`0c8a39a0e3`), plus the V2-1 `tags_revision`/`expected_revision` precondition
+marked **target**. The store is the single source of truth; no client keeps a
+second category database. The agent `tags` tool is a V2-4 target, not shipped.
 
 ## Capability
 
@@ -20,27 +20,32 @@ tag route. The key is additive; it does not gate the catalogue. The UI reads
 
 ## Catalogue rows
 
-Every row from `GET /v1/desktop/sessions` (and every page/cursor shape) carries:
+Every **local** row from `GET /v1/desktop/sessions` (and every page/cursor
+shape) carries:
 
 ```json
 {
   "session_id": "…",
   "tags": [{"id": "a1b2c3d4e5", "name": "Review"}],
-  "primary": "a1b2c3d4e5"
+  "primary": "a1b2c3d4e5",
+  "tags_revision": "7f3c…"
 }
 ```
 
-- **Both fields are always present.** Untagged is `"tags": []` and
+- **All three fields are always present.** Untagged is `"tags": []`,
   `"primary": null`; an absent key is not a claim, and a merge-style client
-  must let the empty value settle stale optimistic state.
+  must let the empty value settle stale optimistic state. `tags_revision` is an
+  opaque, monotonic per-session token; clients compare it, never order or parse
+  it.
 - `primary` is always one of `tags[].id` or null. `tags` is the assignment
   order used for the oldest-surviving fallback; clients must not reorder it.
 - Unknown/deleted category ids are omitted by the server on the next read.
 - A row appears once. Clients render one primary bucket; they must not
   duplicate a row across its secondary tags.
-- Remote/mesh rows carry `"tags": []`, `"primary": null`; the server refuses a
-  remote assignment with 409 `session_is_remote`, and the UI does not offer
-  tag actions on those rows.
+- Remote/mesh rows may omit `tags`/`primary` in the merged list (the shipped
+  `remote_session_rows` does not add them). Clients normalize absent keys to
+  `[]`/`null` for display and do not offer tag actions; the server refuses a
+  remote assignment with 409 `session_is_remote`.
 
 ## Category registry
 
@@ -65,7 +70,11 @@ PUT /v1/desktop/tags
 Full desired state, in display order. Entry semantics:
 
 - `{name}` with no id reuses the live category with that exact case-insensitive
-  name if one exists, else creates one.
+  name if one exists, else creates one. **Exception:** if that live id is
+  explicitly claimed by another entry in the same PUT, the name-only entry
+  gets a newly minted id instead of reusing it. That is how a rename plus a
+  fresh category with the old name is expressed in one desired-state write;
+  delete-and-recreate of the same name still needs two writes.
 - `{id, name}` with an existing id renames that category; assignments keep the
   id. An unknown id is 422, not an implicit create. Two entries with the same
   id, or a name colliding with a different id, are 422.
@@ -84,13 +93,16 @@ PUT /v1/desktop/sessions/{session_id}/tags
 → {"result": {"session_id":"…",
               "tags":[{"id":"a1b2c3d4e5","name":"Review"},
                       {"id":"f6e5d4c3b2","name":"Project"}],
-              "primary":"a1b2c3d4e5"}}
+              "primary":"a1b2c3d4e5",
+              "tags_revision":"8a41…"}}
 ```
 
 Desired state and retry-safe. `tags` is the full assignment (≤8, distinct known
 ids); `primary` is one of them or null. Empty list + null clears. Delegated/
 hidden session directories are taggable; mesh/remote writes are refused in the
 first slice. A stale/deleted category id returns 422 with no partial write.
+The response's `tags_revision` is the revision the write produced; Undo
+captures it.
 
 **Response is a post-write re-read, not a promise about concurrent deletion.**
 The store re-reads the registry after the write; if another writer deletes a
@@ -99,19 +111,24 @@ category in that window, the response may legitimately be `tags: []` /
 next catalogue read reconcile it; it is not a failed write and must not be
 retried as one.
 
-### Optional `expected` precondition (V2-1 target, additive)
+### Optional `expected_revision` precondition (V2-1 target, additive)
 
 ```json
 {"tags": ["a1b2c3d4e5"], "primary": "a1b2c3d4e5",
- "expected": {"tags": ["a1b2c3d4e5"], "primary": "a1b2c3d4e5"}}
+ "expected_revision": "7f3c…"}
 ```
 
-When `expected` is present, the server compares the current assignment under
-the same store lock and returns **409 `tags_conflict`** with no write if it
-differs. Undo and auto-tag use this to avoid clobbering a manual/agent edit.
-Clients that omit `expected` keep the shipped last-writer-wins behaviour, so
-this is backward compatible; mobile may omit it in its first slice. The
-comparison is over tag ids in assignment order plus primary, not display names.
+When `expected_revision` is present, the server compares the session's current
+revision under the same store lock and returns **409 `tags_conflict`** with no
+write if it differs. The revision increments on any actual assignment change,
+not only a value change: a human add-then-clear changes it twice, so a
+value-only comparison is not sufficient. Undo sends the revision its own write
+returned; auto-tag records the revision at the start of the naming call when the
+row was empty and writes only if it is unchanged. Clients that omit
+`expected_revision` keep the shipped last-writer-wins behaviour, so this is
+backward compatible; mobile may omit it in its first slice. The store's own
+compare-and-set uses the same revision; the route field is its client-facing
+expression, not a second mechanism.
 
 ## Errors
 
@@ -120,7 +137,7 @@ comparison is over tag ids in assignment order plus primary, not display names.
 | 401 | — | missing/invalid desktop token |
 | 404 | — | unknown session id |
 | 409 | `session_is_remote` | remote/mesh target; tag writes are refused |
-| 409 | `tags_conflict` | `expected` did not match the current assignment; no write |
+| 409 | `tags_conflict` | `expected_revision` did not match the current revision; no write |
 | 422 | — | unknown category id, duplicate id, name collision, >8 assignments, primary not in tags, name/cap violation |
 
 No client-side ID generation: ids come from the server. No client-side name
@@ -141,8 +158,8 @@ a failed spelling during assignment. The tool does not exist today; only
 
 ## Rendering rules
 
-- The desktop UI may group by `primary` inside its Time sections when the user
-  enables tags; off means no tag pixels. The TUI and mobile may render a
+- The desktop UI may group by `primary` inside its existing sections when the
+  user enables tags; off means no tag pixels. The TUI and mobile may render a
   compact primary-tag suffix (their own opt-in), never a second grouping store.
 - Drag/drop, chips, and assignment dialogs are client interactions over these
   same writes; they do not invent a client-side assignment queue.
@@ -167,5 +184,9 @@ projects the same store:
 - Remote/mesh rows `tags: []`, `primary: null`, writes refused.
 - External writes are picked up by the relay's tag-store fingerprint on its
   existing 2 s scan tick; auto-tag adds no extra mobile call. Its additive
-  `tags/revision` marker is relay-internal and does not change the desktop
-  contract or `session_tags` semantics.
+  global `tags/revision` marker is relay-internal projection state and is not
+  the desktop per-session `tags_revision`.
+- The mobile first slice may omit `tags_revision`/`expected_revision` and keep
+  last-writer-wins; if it offers Undo, it must expose and compare the
+  per-session revision rather than a value-only snapshot. It does not change
+  the desktop contract or `session_tags` semantics.

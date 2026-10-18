@@ -40,16 +40,18 @@ release window owner.
 ### 3.1 Gesture state machine
 
 - **Click-and-hold anywhere on a conversation row** starts a drag candidate.
-  Arm threshold: **180 ms hold with ≤5 px movement** (the same shape as the
-  board's `armed` distinction). Both numbers are named constants consulted by
-  one pure predicate, not scattered `if`s.
+  Arm threshold: **hold reaches 180 ms with ≤5 px movement** (the same shape as
+  the board's `armed` distinction). Both numbers are named constants consulted
+  by one pure predicate, not scattered `if`s. A press on an interactive
+  descendant (pin grip, menu trigger, chip, link) keeps that control's own
+  gesture; click-hold arming does not start from it.
 - The pointer sequence is a small state machine, not two independent guesses:
 
 | State | Event | Result |
 |---|---|---|
 | pending | pointer moves >5 px before 180 ms | cancel the candidate; this is a scroll/selection, never a click and never a drag |
-| pending | released ≤180 ms and ≤5 px | ordinary click: open the conversation |
-| pending | 180 ms elapses at ≤5 px | **armed**; capture the pointer |
+| pending | released before the hold reaches 180 ms, ≤5 px | ordinary click: open the conversation |
+| pending | hold reaches 180 ms at ≤5 px | **armed**; capture the pointer |
 | armed | pointer moves | drag; preview updates; the completing click is suppressed |
 | armed | released on an eligible target | drop; one assignment write |
 | armed | released elsewhere, Escape, pointercancel, window blur | cancel with no write; no click |
@@ -59,15 +61,25 @@ release window owner.
 - **Pinned rows keep the existing grip and its behaviour.** The grip remains
   the explicit affordance and starts the existing reorder drag exactly as
   today. Click-hold on the pinned row body starts the row drag: over the
-  Pinned section it uses that same reorder model (not a second one), and over
-  an eligible tag header it assigns. It must not regress the grip's insertion
-  indicator, Escape behaviour, or one-row guard.
-- **Pinned reorder defect to fix in V2-1.** The shipped `pinDragRowBoxes` reads
-  grouped DOM order while `movePinnedOrderTo` receives the stored `pinned` list;
-  with two or more occupied Pinned tag buckets a visual no-op can write a
-  reordered list (`[a,b,c]` → `[b,c,a]`). V2-1 makes the slot arithmetic use
-  one order (the stored order the model writes) and adds a regression test at
-  ≥2 occupied buckets, not just a flat Pinned list.
+  dragged row's own primary bucket it uses that same reorder model (not a
+  second one), and over an eligible tag header it assigns. It must not regress
+  the grip's insertion indicator, Escape behaviour, or one-row guard.
+- **Pinned reorder defect to fix in V2-1, and the correct algorithm.** The
+  shipped `pinDragRowBoxes` reads grouped DOM order while `movePinnedOrderTo`
+  receives the flat stored order; `pinDragSlot` is an order-independent
+  midpoint count, so swapping the ids does not repair it. With tag headers,
+  the visual Pinned order is bucket-concatenated, not the stored order. V2-1
+  scopes the grip/body reorder to the dragged row's **own primary bucket**:
+  derive that bucket's ids from the row's primary, filter the measured row
+  boxes to those ids, and pass the bucket ids as `shownIds` to
+  `movePinnedOrderTo` (which already steps through the drawn neighbours while
+  preserving hidden ids). A drop on a different tag header is an assignment,
+  not a reorder; a drop on another bucket's rows is not a reorder target. The
+  write moves the row among that bucket's base-order positions and preserves
+  every other row's relative order. With tags off or no headers, the bucket is
+  the whole Pinned section and the existing flat behaviour is unchanged.
+  Regression tests: visual no-op writes nothing; each direction with ≥2
+  occupied buckets; a cross-bucket drop assigns and does not reorder.
 - Pointer events + `setPointerCapture`, not HTML5 drag: the row must not enter
   the OS drag loop, the drop target is geometry this repository can measure,
   and a committed frame can show the preview. This is the pinned drag's own
@@ -79,10 +91,12 @@ release window owner.
 ### 3.2 Targets and the primary rule
 
 - **Eligible contexts** for tag drops: tags enabled, `groupBy === "section"`,
-  the row is in a Time section, and no search/filter is active. Grouping is
-  suspended outside that context in the shipped UI, so there are no tag
-  headers to target; click-hold then performs no tag drag. The pinned grip and
-  pinned row-body reorder remain available in the Pinned section.
+  no search/filter active, and the row's section draws tag headers. This
+  includes the Pinned section: the shipped Pinned section groups by tags
+  (`taggedRows(orderedPinned)`), so Pinned headers are valid assignment
+  targets. Agent/team and Flat modes have no tag headers; click-hold performs
+  no tag drag there. The pinned grip and pinned row-body reorder remain
+  available as described above.
 - **Visible occupied tag header (28px)** — the whole header is the target.
   Dropping there adds that category if absent and makes it **primary**; other
   assigned tags stay. The row appears in exactly one bucket: its primary. If
@@ -93,7 +107,9 @@ release window owner.
   aiming at. Assign an empty category through `Move to tag…` or the picker.
 - **Visible Untagged header** — removes every assigned tag and clears primary.
   It exists only in a mixed section, which is exactly the section that has a
-  tagged row to clear; a fully untagged section has no header and needs none.
+  tagged row to clear. An all-tagged section has no Untagged header, so a drag
+  there cannot clear; use `Remove all tags (N)` or `Move to tag… → Untagged`.
+  A fully untagged section has no header and needs none.
 - **Only a target in the row's own existing section is eligible.** Pinned/
   Running/Today/This week/Older membership is authoritative; drag does not
   pin, unpin, run, archive, or move a row between time sections. An ineligible
@@ -121,12 +137,15 @@ release window owner.
 - `Escape`, `pointercancel`, window blur, or a pointer released outside all
   eligible targets cancels with **no write** and clears the preview.
 - Success shows an undo toast: `Moved to “Review”` / `Removed all tags` +
-  `Undo`. **Undo is guarded**: V2-1 adds an optional `expected` precondition
-  to the assignment route; Undo sends the state its write produced. A 409
-  `tags_conflict` means another surface changed the row in between — the
-  client refreshes and does not overwrite it. A 409 is a visible "Tags changed
-  elsewhere", not a silent retry. Clients that omit `expected` keep the
-  shipped last-writer-wins behaviour; mobile may omit it in its first slice.
+  `Undo`. **Undo is guarded by a per-session revision.** V2-1 adds an opaque
+  `tags_revision` to the store and catalogue/assignment responses and an
+  optional `expected_revision` to the assignment route. Undo captures the
+  revision its write returned; a 409 `tags_conflict` means any later write
+  changed the row, even if the tag values were returned to the same list, so
+  the client refreshes and does not overwrite it. A 409 is a visible "Tags
+  changed elsewhere", not a silent retry. Clients that omit
+  `expected_revision` keep the shipped last-writer-wins behaviour; mobile may
+  omit it in its first slice.
 - **Failure**: the existing rollback restores the prior bucket/primary and the
   error names the action; a retry is the normal assignment retry, never a
   second drag.
@@ -157,15 +176,19 @@ release window owner.
 - One item, only when the row has ≥1 tag: `Remove all tags (N)` where **N is
   the count of distinct assigned tags**, not conversations. For a multi-tag
   row this clears all N and primary in one atomic assignment.
-- `Move to tag…` is the second new item; `Tags…` already ships. The menu is
-  therefore 9 items for a single-tag row and 10 for a multi-tag row. The
-  shipped menu is `overflow-hidden` with no scroll, and its documented design
-  cap is eight. V2-1 **deliberately exceeds that cap by one or two required
-  actions** and changes the menu to a max-height scroll container with the
-  existing 32 px targets, never a clipped or unreachable item. The alternative
-  — dropping `Remove all tags` or the keyboard move — would fail the operator's
-  request or WCAG. The menu test pins presence, order, conditional count and
-  scroll reach at 220 px and a short viewport.
+- `Move to tag…` is the second new item; `Tags…` already ships. The shipped
+  menu mounts **up to eight** rows on a pinned row (Archive, Pin, Move up/down,
+  Fork, Copy session id, Rename, Tags) and six on a non-pinned row. V2-1 adds
+  `Move to tag…` to every row and `Remove all tags (N)` to every tagged row:
+  the widest state is a **pinned, tagged row at 10 rows** (two over the cap);
+  a non-pinned tagged row is 8, a pinned untagged row 9, a non-pinned untagged
+  row 7. The count does not vary with the number of tags; N varies. The shipped
+  menu is `overflow-hidden` with no scroll, so V2-1 changes it to a max-height
+  scroll container with the existing 32 px targets, never a clipped or
+  unreachable item. The alternative — dropping `Remove all tags` or the
+  keyboard move — would fail the operator's request or WCAG. The menu test
+  pins presence, order, conditional count and scroll reach at 220 px and a
+  short viewport.
 - The actions are disabled while a picker is open on that row. Success offers
   guarded Undo; failure leaves the row unchanged and shows the assignment
   error.
@@ -194,8 +217,15 @@ provider request:
   recognised only after the closing `</title>` (same-line or newline) or as
   the final block; a `<tags>` string inside a title body is not stripped — it
   is title text, and the existing angle-bracket gate rejects it as before.
-  Remove the recognised block before `parse_title` sees the response. The
-  shipped title gate bans angle brackets; a same-line tag block makes the
+  Remove the recognised block before `parse_title` sees the response.
+- **The corrective addendum is tag-gated too.** `_accept_generated_title` takes
+  an optional `tag_contract`; the system prefix gets `<available-tags>` only
+  when it is set, and the corrective addendum uses a tag-bearing variant only
+  when it is set. `generate_retitle` passes `None`, so its prompt (and the
+  title-only corrective addendum) stays byte-identical. Tests cover both
+  variants; do not append the tag contract unconditionally.
+
+  The shipped title gate bans angle brackets; a same-line tag block makes the
   title parser return markup and the title is lost if this order is wrong.
   Tests cover same-line and newline forms, a truncated tags block (no
   assignment, title still accepted), and a stray `<tags>` inside a title.
@@ -203,8 +233,9 @@ provider request:
   up to two fit checks, plus its existing auth retry). Tags from a rejected
   first sample are discarded; tags are written only from the same response
   whose title is accepted. If no title is accepted, no tags are written. The
-  corrective addendum carries the tag contract too; otherwise a retry could
-  silently drop tags.
+  corrective addendum's tag variant carries the tag contract only when the
+  caller supplied `tag_contract`; otherwise the existing addendum is byte-
+  identical.
 - "No tag-specific extra call" is the acceptance claim, not "one provider
   call": compare call count with and without tags on the same fork; the delta
   must be 0. The existing title cascade's bounded calls remain.
@@ -219,18 +250,26 @@ provider request:
   non-empty category registry, the naming caller may write `set_entity_tags`
   with the first returned tag as primary.
 - The desktop UI sends `auto_tag` on the fork request (`tagsEnabled &&
-  autoTagForks`, default true). `Fork` gains `auto_tag: bool = False`; core
-  writes an `auto-tag.json` sidecar only when it is true. The naming worker
-  reads that intent; a missing sidecar means off.
+  autoTagForks`, default true). `Fork` gains `auto_tag: bool = False`; after
+  the fork returns the child id, the desktop route writes an `auto-tag.json`
+  sidecar into the child session directory only when it is true. The
+  shared-slash fork payload remains `{entry_id}`-only; TUI direct forks and
+  peer/desktop-shared-slash forks do not acquire the sidecar. The naming
+  worker reads the sidecar; a missing sidecar means off. The View-options
+  toggle is captured at fork time: changing it later does not change an
+  existing fork's intent, and no existing fork sidecar is repurposed.
 - **Scope:** only the desktop UI fork path carries `auto_tag` in V2-3. The
   TUI's direct `fork_session` call and the peer/shared-slash fork route default
   it to false; they do not acquire the sidecar. A later surface that wants
   auto-tagging must pass the flag explicitly.
-- **Manual edits win.** The auto-tag write is conditional on the session still
-  being untagged (`expected` empty/null in the store's own compare-and-set).
-  If a human, agent, or another surface assigned tags before the naming call
-  returns, auto-tag is skipped, not merged and not retried. If the user clears
-  auto-assigned tags later, auto-tag does not run again for that fork.
+- **Manual edits win, including add-then-clear.** At the start of the naming
+  call, the worker records the session's `tags_revision` when the assignment
+  is empty. The auto-tag write is conditional on that revision, not just on
+  the value being empty: a human who adds `Review` and then clears it before
+  the model returns has still edited the row, so the revision differs and
+  auto-tag skips. If the row already had tags at the start, auto-tag never
+  runs. If the user clears auto-assigned tags later, auto-tag does not run
+  again for that fork.
 - **Registry drift:** validate against the live registry at write time; a
   category deleted during the call is dropped, and if none survive there is no
   assignment. No category is created from model output.
@@ -268,9 +307,11 @@ provider request:
   persisted with the sidebar view. It is visible only when tags are enabled;
   turning tags off never runs auto-tagging. The toggle does not create a
   second call when tags are empty.
-- The added row/line is part of the View-options height budget: measured at
-  220/260 px and in a short viewport, the panel scrolls and no footer/action is
-  clipped.
+- The added row/line is part of the View-options height budget. Tags group,
+  `Auto-tag forked sessions`, and the existing Sections controls share ONE
+  scroller; there is no nested scroll. At 220/260 px and in a short viewport,
+  wrapped Sections controls still leave the panel scrollable and the last
+  action reachable; measured, not estimated.
 - Agent-created sessions are not auto-tagged by this setting; they use the
   explicit `tags` argument/tool. A future surface can opt in with its own
   client setting.
@@ -290,12 +331,18 @@ Proposed picker (420px nominal; `min(420px, viewport - 32px)` actual):
 
 - A combobox input with selected tags as removable chips; the primary chip
   carries a leading dot and an accessible "Primary" description, not a colour.
-- Typing filters the list; `ArrowDown`/`ArrowUp` (plus Home/End) move the
-  active option; `Enter` toggles the active option; `Space` toggles only when
-  an option is active, otherwise it types a space in the query; `Backspace` on
-  an empty query removes the last chip; `Delete` on a focused chip removes it
+- Typing filters the list and resets the active option to the first match.
+  `ArrowDown`/`ArrowUp` (plus Home/End) move the active option (`aria-
+  activedescendant`); `Enter` toggles it. **`Space` toggles only when focus is
+  on an option row** (Tab into the list / roving tabindex); with focus in the
+  input, `Space` types a space, so multi-word names remain typeable. `Backspace`
+  on an empty query removes the last chip; `Delete` on a focused chip removes it
   and returns focus to the input; `Escape` closes the listbox first and a
   second Escape cancels the dialog. Every removal/selection is announced.
+- Focus order: input → selected chips (Tab/Shift+Tab) → option list → Create
+  row when present → Group under radios → Cancel/Apply. Removing a chip returns
+  focus to the input; applying returns focus to the row. The dialog traps focus
+  and restores the trigger on close.
 - `Create “query”` is the last row only when no exact (case-insensitive) match
   exists. Selecting an existing tag never creates a duplicate. **Activating
   Create writes the category immediately** (durable, shared with all
@@ -314,8 +361,9 @@ Proposed picker (420px nominal; `min(420px, viewport - 32px)` actual):
 - Manage dialog: searchable ordered list, inline rename with duplicate
   validation, add, up/down, delete with count and primary consequence. No
   colour/role in this slice; no new dependency.
-- Keyboard-first acceptance: open focus in the input, full traversal, Escape
-  semantics above, Apply commits one assignment, focus returns to the row.
+- **Keyboard-first acceptance:** open focus in the input, the focus order
+  above, Escape semantics above, Apply commits one assignment, focus returns
+  to the row.
 - Before/after frames: sidebar 220/260/320 light/dark for the entry point, and
   the dialog at 420px plus a short/narrow viewport; empty, long/Unicode names,
   no matches, inline create, primary, error and loading. Cap is 32 categories,
@@ -352,10 +400,11 @@ Add one `tags` tool (not a fourth spelling on `sessions`):
 capability is `GET /v1/capabilities` → `result.features.session_tags` (the
 shipped route is not under `/v1/desktop`). It also covers catalogue
 `tags`/`primary`, `GET/PUT /v1/desktop/tags`, `PUT
-/v1/desktop/sessions/{id}/tags`, the optional `expected` precondition, 409
-`session_is_remote`/`tags_conflict`, validation and the rule that clients
-render the store response rather than caching a second category copy. Mobile
-and TUI lanes read this document; they do not reimplement the store.
+/v1/desktop/sessions/{id}/tags`, the optional `expected_revision`
+precondition, 409 `session_is_remote`/`tags_conflict`, validation and the rule
+that clients render the store response rather than caching a second category
+copy. Mobile and TUI lanes read this document; they do not reimplement the
+store.
 
 ### 7.3 TUI session list
 
@@ -392,8 +441,9 @@ the **mobile relay**, not `/v1/desktop/*`:
   extra mobile call;
 - no client-side category database, no local ID generation, no offline name
   authority. The mobile lane's PR must state which of these it uses and must
-  not duplicate the store. Its additive `tags/revision` marker is relay-internal
-  and does not change the desktop contract or `session_tags` semantics.
+  not duplicate the store. Its additive global `tags/revision` marker is
+  relay-internal and is not the desktop per-session `tags_revision`; it does
+  not change the desktop contract or `session_tags` semantics.
 
 ## 8. Acceptance / evidence for each slice
 
@@ -401,9 +451,11 @@ the **mobile relay**, not `/v1/desktop/*`:
   highlighted Untagged, cancelled, optimistic settled, undo toast) at
   220/260/320 light/dark; the §3.1 click-vs-drag table executed in the real
   renderer; pinned reorder regression at ≥2 occupied Pinned buckets (visual
-  no-op writes nothing; up/down per bucket correct); conditional Undo conflict
-  (409 leaves newer tags intact); `Remove all tags (N)` on a multi-tag row;
-  menu scroll/reach at 220 and short viewport; optimistic rollback on failure.
+  no-op writes nothing; each direction per bucket correct; cross-bucket drop
+  assigns); `tags_revision` in catalogue and assignment responses; Undo
+  conflict after an add-then-clear (409 leaves newer tags intact); `Remove all
+  tags (N)` on a multi-tag row; menu widest state 10 rows with scroll/reach at
+  220 and short viewport; optimistic rollback on failure.
 - V2-2: before/after picker and Manage frames at the full matrix; the §6
   keyboard table executed; immediate Create + Cancel persistence; duplicate/
   empty/Unicode/long/error states; dialog at short viewport with pinned footer;
@@ -411,9 +463,10 @@ the **mobile relay**, not `/v1/desktop/*`:
 - V2-3: prompt byte/hash tests; no tag-specific extra call (delta 0 vs the same
   fork without tags; existing title cascade allowed); same-line/newline/
   truncated tag parse; tags only from the accepted sample; invalid/empty output
-  assigns nothing; manual-edit precedence (CAS skip); apply-once; registry
-  drift; fork auto-tag real-path proof; setting persistence; no-tags/off
-  byte-identical prompt; title still runs.
+  assigns nothing; tag-gated corrective addendum; manual-edit precedence by
+  revision including add-then-clear; apply-once; registry drift; fork auto-tag
+  real-path proof; setting persistence; no-tags/off byte-identical prompt; title
+  still runs.
 - V2-4: tool tests (names-only assign, duplicate/unknown/remote 409) and a real
   agent call; TUI frames on/off/narrow; API contract review with the mobile
   owner (session `4264c9a75553`); no second store; full CI terminally.
@@ -425,9 +478,11 @@ the **mobile relay**, not `/v1/desktop/*`:
   renderer, not only Storybook; a click that opens after a drag is a release
   blocker. The grouped pinned-drag slot fix is part of the same slice because
   the first slice's grouping exposed it.
-- **Conditional assignment** is a new optional wire field. It is additive and
-  backward compatible, but it must be tested for 409, atomicity, and the
-  post-write re-read that can legitimately return `tags: []`/`primary: null`
+- **Conditional assignment** is a new optional wire field plus a per-session
+  revision in the store. It is additive and backward compatible, but it must be
+  tested for 409 after an add-then-clear (value returned to the same list),
+  atomicity, and the post-write re-read that can legitimately return
+  `tags: []`/`primary: null`
   after a concurrent category deletion. Clients render that as a settled empty
   row, not a failed write.
 - **Auto-tagging prompt drift** is a title-quality risk: the tag block must be
@@ -439,11 +494,13 @@ the **mobile relay**, not `/v1/desktop/*`:
   naming errand is isolated and has no key seam; stable prefix/hash is what this
   slice can prove. A provider-key change needs its own review of isolation and
   correlation.
-- **Menu height**: adding two items to a `overflow-hidden`, eight-item menu is
-  a real clipping risk; the scroll container and short-viewport test are part
-  of V2-1, not polish.
-- **Combobox chips at 220px** can crowd the 420px modal; wrap and measure, not
-  a nominal-width claim. The modal is viewport-capped, not a fixed 420px.
+- **Menu height**: adding two items to an `overflow-hidden` menu whose widest
+  shipped state is eight rows (ten with the additions) is a real clipping risk;
+  the scroll container and short-viewport test are part of V2-1, not polish.
+- **Combobox chips at narrow widths**: the picker is a viewport-capped modal,
+  not a 220px surface; chips wrap inside it and the sidebar width only affects
+  the entry point. Measure the 420px and short/narrow viewport, not a nominal
+  220px modal.
 - **Agent-created vocabulary** is deliberately bounded: `create` is an explicit
   tool op with the same caps; no free-form auto-creation from a model reply.
 - **TUI opt-in** default off preserves the "never force chips" rule; a later
@@ -454,8 +511,9 @@ the **mobile relay**, not `/v1/desktop/*`:
 
 ## 10. Slice exit
 
-V2-1 is core+UI (the additive precondition and the grouped pinned-drag fix),
-V2-2 is UI, V2-3 is core+UI, V2-4 is core+TUI+docs. Each is review/QA/design/UX
-gated and handed to the window owner. LOH-11 is not "complete" until the
-operator accepts these five items; chips remain a separate, later slice (v2-1
-only sets the no-swap-during-drag latch), not silently dropped.
+V2-1 is core+UI (`tags_revision`/`expected_revision` and the grouped
+pinned-drag fix), V2-2 is UI, V2-3 is core+UI, V2-4 is core+TUI+docs. Each is
+review/QA/design/UX gated and handed to the window owner. LOH-11 is not
+"complete" until the operator accepts these five items; chips remain a
+separate, later slice (v2-1 only sets the no-swap-during-drag latch), not
+silently dropped.

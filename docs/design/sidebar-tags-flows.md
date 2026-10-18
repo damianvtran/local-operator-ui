@@ -235,7 +235,7 @@ Run independent real-path UX/QA in an isolated app profile with durable syntheti
 - **Management:** rename preserves IDs/assignments; category order does not regroup explicit primaries; delete confirmation reports distinct conversation count and safe focus, never deletes conversations. Returning to picker preserves draft and focus. No silently seeded starter categories.
 - **Chip motion:** capture consecutive settled frames on pointer entry, movement within row, keyboard focus, menu open/close, leave, resizing. Record title box/controls/chip rects and computed fit inputs. No chip if action-state title <120px; no crop, wrap, hit-area move, relayout under pointer or status removal. Verify tooltip/full tag name and accessible tags when chip absent.
 - **Agent creation:** known tags accepted and persisted; unknown tag refused without partial session/category; capability mismatch explicit; omitted parameter unchanged; actor provenance factual and human override durable. Restart and second client show same assignments/primary.
-- **Drag slice:** grip versus selection/pan, short and overflowing lists, owning-region autoscroll, first/last/offscreen targets, blur/Escape/outside cancellation, valid add+primary, untouched other tags and section, rollback, guarded Undo, equivalent keyboard picker. Do not close LOH-11 until this is independently exercised.
+- **Drag slice:** grip versus selection/pan, short and overflowing lists, owning-region autoscroll, first/last/offscreen targets, blur/Escape/outside cancellation, valid add+primary, untouched other tags and section, rollback, guarded `expected_revision` Undo (including add-then-clear), equivalent keyboard picker, visible-occupied-only targets, empty categories via picker, all-tagged section without Untagged header via menu, and bucket-scoped pinned reorder at ≥2 occupied buckets. Do not close LOH-11 until this is independently exercised.
 
 ### First vertical slice and verdict
 
@@ -252,21 +252,33 @@ surfaces. The detailed geometry, cache and API decisions are in
 
 ### 9.1 Drag and drop
 
-1. Press and hold any conversation row for **180 ms with ≤5 px movement**;
-   the row arms for drag. The exact outcomes are a state machine: a move >5 px
-   before 180 ms is a scroll/selection (no click, no drag); a release ≤180 ms
-   and ≤5 px is an ordinary click; a completed 180 ms hold at ≤5 px arms the
-   drag and captures the pointer; once armed, the completing click is
+1. Press and hold any conversation row; the hold **reaches 180 ms with ≤5 px
+   movement** and the row arms for drag. A press on an interactive descendant
+   (pin grip, menu trigger, chip, link) keeps that control's own gesture. The
+   exact outcomes are a state machine: a move >5 px before 180 ms is a
+   scroll/selection (no click, no drag); a release before the hold reaches
+   180 ms and ≤5 px is an ordinary click; a completed 180 ms hold at ≤5 px
+   arms the drag and captures the pointer; once armed, the completing click is
    suppressed. A release after a drag never also opens the conversation.
 2. Pinned rows keep the existing grip and its reorder gesture. Click-hold on
-   the pinned row body also arms a row drag; the grip's slot model, insertion
-   indicator, Escape behaviour and one-row guard are unchanged.
+   the pinned row body also arms a row drag. When Pinned has tag headers, the
+   grip/body reorder is scoped to the dragged row's **own primary bucket**:
+   filter the measured row boxes to that bucket and pass the bucket ids as
+   `shownIds` to `movePinnedOrderTo`; the write preserves every other row's
+   relative order. A drop on a different tag header assigns; a drop on another
+   bucket's rows is not a reorder target. The insertion indicator, Escape
+   behaviour and one-row guard are unchanged. The shipped grouped-order bug
+   (`pinDragRowBoxes` vs the flat stored order) is fixed and regression-tested
+   at ≥2 occupied buckets.
 3. The eligible targets are a **visible occupied** 28 px tag-group header and
    the visible Untagged header **in the row's own existing section**, only
-   with tags enabled, `groupBy === "section"`, a Time section, and no active
-   search. Empty categories have no header and are not drag targets; use
-   `Move to tag…` or the picker. Pinned/Running/Today/This week/Older
-   membership never changes by drag. Ineligible headers do not highlight.
+   with tags enabled, `groupBy === "section"`, the section drawing tag
+   headers, and no active search. Pinned is included: the shipped Pinned
+   section groups by tags. Agent/team and Flat modes have no tag headers and
+   no tag drag. Empty categories have no header and are not drag targets; use
+   `Move to tag…` or the picker. An all-tagged section has no Untagged header;
+   clear with `Remove all tags (N)` or `Move to tag… → Untagged`. Section
+   membership (Pinned/Running/Today/This week/Older) never changes by drag.
 4. Drop on a tag header: add that tag if absent and make it primary; keep the
    other assignments. A row is therefore drawn in exactly one bucket, its
    primary. Drop on the current primary is a no-op. Drop on Untagged: clear
@@ -282,13 +294,14 @@ surfaces. The detailed geometry, cache and API decisions are in
    cancels with no write. Autoscroll the owning list in the existing 32 px
    edge zone at 12 px/frame.
 7. Success: `Moved to “Review”` / `Removed all tags` with Undo. Undo is
-   guarded by the optional `expected` precondition: it sends the state its own
-   write produced; a 409 `tags_conflict` means another surface changed the row
-   in between and the client refreshes instead of overwriting. Failure returns
-   the row to its prior bucket/primary and shows the assignment error.
-8. Keyboard equivalent: `Move to tag…` in the row menu, with the category list
-   and Untagged; choosing one performs the same write and returns focus to the
-   row. Drag is never the only route.
+   guarded by the optional `expected_revision` precondition: it sends the
+   per-session revision its own write returned; a 409 `tags_conflict` means a
+   later write changed the row, even if the values were returned to the same
+   list, so the client refreshes instead of overwriting. Failure returns the
+   row to its prior bucket/primary and shows the assignment error.
+8. Keyboard equivalent: `Move to tag…` in the row menu opens the picker in
+   move mode (the categories and Untagged); choosing one performs the same
+   write and returns focus to the row. Drag is never the only route.
 9. While a row drag is armed/settling, suppress any chip hover/focus/menu
    swap so a later chip slice cannot relayout under the pointer. Test the latch
    even though v2-1 draws no chips.
@@ -303,13 +316,13 @@ surfaces. The detailed geometry, cache and API decisions are in
   request. A multi-tag row is the acceptance case.
 - The action is disabled while a picker is open for that row. Success offers
   Undo; failure leaves the row unchanged and shows the assignment error.
-- The shipped menu is `overflow-hidden` with eight items and a documented
-  design cap of eight. V2-1 adds two (`Remove all tags (N)` and `Move to
-  tag…`, where `Move to tag…` opens the picker in move mode rather than
-  listing categories), taking it to ten. This deliberately exceeds the cap by
-  required actions; the plan raises the menu to a scrollable max-height with
-  32 px targets and tests reach at 220 px and a short viewport. `Tags…` is
-  already one of the eight.
+- The shipped menu mounts up to eight rows on a pinned row and six on a
+  non-pinned row; V2-1 adds two (`Remove all tags (N)` and `Move to tag…`),
+  making the widest state a pinned tagged row at 10 rows (a non-pinned tagged
+  row is 8; a pinned untagged row 9; a non-pinned untagged row 7). The eight-
+  item design cap is deliberately exceeded by required actions; the plan raises
+  the menu to a scrollable max-height with 32 px targets and tests reach at
+  220 px and a short viewport. `Tags…` is already one of the eight.
 
 ### 9.3 Auto-tagging in the fork/naming call
 
@@ -318,21 +331,28 @@ surfaces. The detailed geometry, cache and API decisions are in
   The title cascade may still make up to two samples and two fit checks (and
   its auth retry). Tags are parsed from the **accepted sample only**, before
   the title parser sees them; a rejected sample's tags are discarded. The tag
-  block is an optional stable prefix; `tag_set_hash` changes when a category
-  is added/renamed/reordered. A title-only caller's prompt is byte-identical
-  to today. No provider `prompt_cache_key` is added or claimed; the hash is a
-  prompt-byte identity, not a cache-hit promise.
+  block and the tag-bearing corrective addendum are selected only when the
+  caller supplies `tag_contract`; `generate_retitle` passes none, so the
+  title-only prompt/addendum stays byte-identical. The tag block is a stable
+  prefix; `tag_set_hash` changes when a category is added/renamed/reordered.
+  No provider `prompt_cache_key` is added or claimed; the hash is a prompt-byte
+  identity, not a cache-hit promise.
 - Output contract: known ids or exact case-insensitive names, deduped, ≤8;
   unknown/invalid output means no assignment. Tags never change the title
   acceptance and never create a category. Same-line and newline forms,
   truncated blocks and a `<tags>` string inside a title are parse tests.
 - Only **desktop UI forks** with auto-tag enabled and a non-empty registry are
   tagged. `Fork` gains `auto_tag: bool = False`; the UI sends `tagsEnabled &&
-  autoTagForks`; core writes `auto-tag.json` only when true. TUI direct forks
-  and peer/shared-slash forks default to false and do not acquire the sidecar.
-- **Manual edits win:** the auto-tag write is conditional on the session still
-  being untagged; a human/agent assignment before the naming call returns
-  makes it skip, and a later manual clear does not trigger a re-run. Registry
+  autoTagForks`; the desktop route writes `auto-tag.json` into the child
+  session after the fork returns, only when true. The shared-slash payload
+  stays entry_id-only; TUI and peer forks default false and do not acquire the
+  sidecar. The View-options toggle is captured at fork time; changing it later
+  does not change an existing fork's intent.
+- **Manual edits win, including add-then-clear:** the worker records the
+  session's `tags_revision` at the start of the naming call when the row is
+  empty. The auto-tag write is conditional on that revision, not merely on the
+  empty value; an add-then-clear before the model returns changes the revision
+  and skips auto-tag. A later manual clear does not trigger a re-run. Registry
   drift validates at write time; deleted categories are dropped, and no
   category is created from model output. `Tags…` is the visible correction
   route; auto-tag does not reassert afterwards.
@@ -397,11 +417,12 @@ surfaces. The detailed geometry, cache and API decisions are in
 
 ### 9.6 Slice order
 
-V2-1 drag + remove-all (core + UI: optional `expected` precondition and the
-  grouped pinned-drag slot fix), V2-2 picker UX (UI), V2-3 auto-tagging (core
-  + UI), V2-4 agent tool + TUI + contract (core + TUI + docs). Each is gated by
-  tests, i18n, rendered evidence, independent review, QA, and design/UX where the
-  surface changes; no version bump and no release cut by the lane.
+V2-1 drag + remove-all (core + UI: `tags_revision` and the optional
+`expected_revision` precondition, plus the grouped pinned-drag fix), V2-2 picker
+UX (UI), V2-3 auto-tagging (core + UI), V2-4 agent tool + TUI + contract (core +
+TUI + docs). Each is gated by tests, i18n, rendered evidence, independent
+review, QA, and design/UX where the surface changes; no version bump and no
+release cut by the lane.
 
 ### 9.7 Copy additions
 
@@ -410,7 +431,7 @@ V2-1 drag + remove-all (core + UI: optional `expected` precondition and the
 | Drag armed | `Move “{title}”` / `Escape cancels` (live region, once) |
 | Drop target | `Group under “{tag}”` / `Remove all tags` for Untagged |
 | Drag success | `Moved to “{tag}”.` / `Removed all tags.` |
-| Undo | `Undo` (single action, restores exact prior assignment) |
+| Undo | `Undo` (single action; restores the prior assignment only if its revision is unchanged, otherwise shows the conflict) |
 | Drag failure | `Tags were not moved. Try again.` |
 | Remove all menu | `Remove all tags ({N})` |
 | Auto-tag setting | `Auto-tag forked sessions` |
