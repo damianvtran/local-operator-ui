@@ -1,0 +1,225 @@
+diff --git a/scripts/renderer-driver.mjs b/scripts/renderer-driver.mjs
+index 25d62eabd..0949d942d 100644
+--- a/scripts/renderer-driver.mjs
++++ b/scripts/renderer-driver.mjs
+@@ -1399,6 +1399,7 @@ async function launchApp({
+ 			`--remote-debugging-port=${port}`,
+ 			`--inspect=${inspectPort}`,
+ 			"--window-mode=headless",
++            "--use-mock-keychain",
+ 			`--window-size=${WINDOW_SIZE}`,
+ 			/*
+ 			 * The app is CHROMIUM, and this run redirects `HOME`: without this switch
+diff --git a/scripts/run-sounds-scene.mjs b/scripts/run-sounds-scene.mjs
+index 0e9be7631..6d392fc0c 100644
+--- a/scripts/run-sounds-scene.mjs
++++ b/scripts/run-sounds-scene.mjs
+@@ -194,6 +194,10 @@ try {
+ 		`history preflight HTTP ${history.status}; ${root}/preflight-history.json`,
+ 	);
+ 	if (!history.ok) throw new Error("history fixture preflight failed");
++	// The original WAV contract remains independently tested; the live-artifact
++	// replay has different duration/byte facts and is checked by its hash preflight.
++	const releaseAssets = env.SOUNDS_RELEASE_ASSETS;
++	delete env.SOUNDS_RELEASE_ASSETS;
+ 	await complete(
+ 		launch(
+ 			process.execPath,
+@@ -201,6 +205,7 @@ try {
+ 			"fixture-preflight",
+ 		),
+ 	);
++	if (releaseAssets) env.SOUNDS_RELEASE_ASSETS = releaseAssets;
+ 	const inventory = await fetch(
+ 		`${backend}/v1/desktop/sessions/${fixture.sessionId}/files?limit=200&scope=family`,
+ 		{
+@@ -221,6 +226,7 @@ try {
+ 				"scripts/renderer-driver.mjs",
+ 				"--scene",
+ 				"sounds",
++                "--window-size", "1380x1100",
+ 				"--backend",
+ 				backend,
+ 				"--backend-records",
+diff --git a/scripts/sounds-fixture.mjs b/scripts/sounds-fixture.mjs
+index 737e4af16..608cdcb44 100644
+--- a/scripts/sounds-fixture.mjs
++++ b/scripts/sounds-fixture.mjs
+@@ -1,5 +1,5 @@
+ import { createHash } from "node:crypto";
+-import { mkdirSync, writeFileSync } from "node:fs";
++import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+ import { join } from "node:path";
+ 
+ export const SOUNDS_SESSION = "50a0facade01";
+@@ -32,6 +32,7 @@ export function writeSoundsFixture(
+ 	root,
+ 	expiredUrl = "http://127.0.0.1:9/expired-signed-audio?expired=1",
+ ) {
++	if (process.env.SOUNDS_RELEASE_ASSETS) return writeReleaseFixture(root);
+ 	const bytes = soundSample();
+ 	const digest = createHash("sha256").update(bytes).digest("hex").slice(0, 32);
+ 	const attachments = join(root, "attachments");
+@@ -132,3 +133,41 @@ export function writeSoundsFixture(
+ 	);
+ 	return { digest, sessionId: SOUNDS_SESSION, bytes: bytes.length };
+ }
++
++/** Replay verified production artifacts, never provider URLs or live sessions.
++ * Captions retain server billing provenance; this is not a fresh provider call. */
++function writeReleaseFixture(root) {
++ const assets = JSON.parse(readFileSync(process.env.SOUNDS_RELEASE_ASSETS, "utf8"));
++ const attachments = join(root, "attachments"); mkdirSync(attachments, {recursive:true});
++ const rows=[];
++ const message=(id,role,content,extra={})=>({id,ts:1792260000+rows.length,type:"message",payload:{kind:"message",role,content,...extra}});
++ for (const [index,a] of assets.entries()) {
++  const digest=a.sha256.slice(0,32); const bytes=readFileSync(a.path);
++  if(createHash("sha256").update(bytes).digest("hex")!==a.sha256) throw Error("artifact hash changed");
++  writeFileSync(join(attachments,`${digest}.bin`),bytes);
++  writeFileSync(join(attachments,`${digest}.json`),JSON.stringify({digest,mime_type:"audio/mpeg",bytes:bytes.length,duration_s:a.duration_s,peaks:a.peaks}));
++  writeFileSync(join(attachments,`${digest}.peaks.json`),JSON.stringify({version:1,bars:240,peaks:a.peaks}));
++  const call=`sounds-call-${index+1}`;
++  rows.push(message(`user-${index}`,"user",[{text:a.title}]));
++  rows.push(message(`call-${index}`,"assistant",[],{tool_calls:[{tool_call_id:call,tool_name:a.tool,arguments:index?{prompt:a.title,duration_s:.5}:{text:a.title}}]}));
++  rows.push(message(`result-${index}`,"tool",[{text:`Generated ${index?"sound effect":"voiceover"} (${a.duration_s}s). Cost $0.0020 (billed). Request ${a.request_id}.`},{kind:"audio",content_type:"audio/mpeg",attachment:digest,mime_type:"audio/mpeg",name:`${a.title}.mp3`,duration_s:a.duration_s}],{tool_call_id:call,tool_name:a.tool}));
++  rows.push(message(`answer-${index}`,"assistant",[{text:"Attached the generated audio."}]));
++ }
++ const refusal=JSON.parse(readFileSync(process.env.SOUNDS_RELEASE_REFUSAL,"utf8"));
++ rows.push(message("refusal-user","user",[{text:"Generate a door creak without specifying duration."}]));
++ rows.push(message("refusal-call","assistant",[],{tool_calls:[{tool_call_id:"sounds-refusal",tool_name:"generate_sound_effect",arguments:{prompt:"a door creak",model:"radient/sound-effects"}}]}));
++ rows.push(message("refusal-result","tool",[{text:JSON.stringify(refusal,null,2)}],{tool_call_id:"sounds-refusal",tool_name:"generate_sound_effect",is_error:true,isError:true,provider_payload:{details:{error_type:"invalid_arguments"}}}));
++ rows.push(message("refusal-answer","assistant",[{text:"The server refused auto-duration because it cannot quote the request."}]));
++ const byok=JSON.parse(readFileSync(process.env.SOUNDS_RELEASE_BYOK,"utf8"));
++ const block=byok.result.content.find(c=>c.kind==="audio");
++ const store=process.env.SOUNDS_RELEASE_BYOK_STORE;
++ for(const ext of ["bin","json","peaks.json"]) { const path=join(store,`${block.attachment}.${ext}`); if(existsSync(path)) writeFileSync(join(attachments,`${block.attachment}.${ext}`),readFileSync(path)); }
++ rows.push(message("byok-user","user",[{text:"Generate a 0.5s door creak through the configured ElevenLabs key."}]));
++ rows.push(message("byok-call","assistant",[],{tool_calls:[{tool_call_id:"release-byok-call",tool_name:"generate_sound_effect",arguments:byok.args}]}));
++ rows.push(message("byok-result","tool",byok.result.content,{tool_call_id:"release-byok-call",tool_name:"generate_sound_effect",provider_payload:{details:byok.result.details}}));
++ rows.push(message("byok-answer","assistant",[{text:byok.approval}]));
++ rows.push(message("later-user","user",[{text:"Play the earlier voiceover while keeping this later conversation turn visible."}]));
++ rows.push(message("later-answer","assistant",[{text:"The earlier artifact stays playable in the transcript."}]));
++ const dir=join(root,"sessions",SOUNDS_SESSION);mkdirSync(dir,{recursive:true});writeFileSync(join(dir,"transcript.jsonl"),rows.map(r=>JSON.stringify(r)).join("\n")+"\n");
++ return {digest:assets[0].sha256.slice(0,32),sessionId:SOUNDS_SESSION,bytes:26374,releaseReplay:true};
++}
+diff --git a/scripts/sounds-scene.mjs b/scripts/sounds-scene.mjs
+index 3ead80487..a78866478 100644
+--- a/scripts/sounds-scene.mjs
++++ b/scripts/sounds-scene.mjs
+@@ -1,3 +1,4 @@
++import { readFileSync } from "node:fs";
+ import { SOUNDS_SESSION } from "./sounds-fixture.mjs";
+ 
+ /** Integrated seats, not a gallery. A synthetic journal is the input; the app's
+@@ -51,6 +52,88 @@ export async function sceneSounds({
+ 	await waitFor(
+ 		"Boolean(document.querySelector('[data-record-id=\"tool:sounds-call-1\"] [data-sound-player] button'))",
+ 	);
++	if (process.env.SOUNDS_RELEASE_ASSETS) {
++  await cdp.evaluate(`document.querySelector('[data-record-id="tool:sounds-call-1"]').scrollIntoView({block:"center"})`);
++  await new Promise(r=>setTimeout(r,800));
++  await capture(cdp,"release-voiceover-idle");
++  await verb(cdp,"press",{selector:'[data-record-id="tool:sounds-call-1"] [data-sound-player] button'});
++  await waitFor(`Boolean(document.querySelector('[data-sound-status="playing"]'))`);
++  await new Promise(r=>setTimeout(r,350));
++  const real=await verb(cdp,"soundsFacts");console.log("release voiceover facts",JSON.stringify(real));
++  demand("real MP3 advances silently",real.time>0 && !real.paused && real.gain===0 && real.rms===0 && real.inputRms>0);
++  await capture(cdp,"release-voiceover-playing");
++
++  await verb(cdp,"press",{selector:'[data-turn-summary][data-run-ids~="tool:sounds-call-2"] button[aria-expanded]'});
++  await waitFor(`Boolean(document.querySelector('[data-record-id="tool:sounds-call-2"] [data-sound-player] button'))`);
++  await cdp.evaluate(`document.querySelector('[data-record-id="tool:sounds-call-2"]').scrollIntoView({block:"center"})`);
++  await new Promise(r=>setTimeout(r,800));
++  await capture(cdp,"release-sfx-idle");
++  await verb(cdp,"press",{selector:'[data-record-id="tool:sounds-call-2"] [data-sound-player] button'});
++  await waitFor(`Boolean(document.querySelector('[data-record-id="tool:sounds-call-2"] [data-sound-status="playing"]'))`);
++  await new Promise(r=>setTimeout(r,120));
++  console.log("release SFX facts",JSON.stringify(await verb(cdp,"soundsFacts")));
++  await capture(cdp,"release-sfx-playing");
++  await verb(cdp,"press",{selector:'[data-turn-summary][data-run-ids~="tool:sounds-refusal"] button[aria-expanded]'});
++  await cdp.evaluate(`document.querySelector('[data-record-id="tool:sounds-refusal"]').scrollIntoView({block:"center"})`);
++  await new Promise(r=>setTimeout(r,500));
++  await new Promise(r=>setTimeout(r,800));
++  demand("fresh refusal class displayed",await cdp.evaluate(`document.querySelector('[data-record-id="tool:sounds-refusal"]').innerText.includes("Invalid arguments")`));
++  await capture(cdp,"release-auto-duration-refusal");
++  await verb(cdp,"press",{selector:'[data-turn-summary][data-run-ids~="tool:release-byok-call"] button[aria-expanded]'});
++  await waitFor(`Boolean(document.querySelector('[data-record-id="tool:release-byok-call"] [data-sound-player]'))`);
++  await cdp.evaluate(`document.querySelector('[data-record-id="tool:release-byok-call"]').scrollIntoView({block:"center"})`);
++  await new Promise(r=>setTimeout(r,500));
++  await new Promise(r=>setTimeout(r,800));
++  await capture(cdp,"release-byok-result");
++  // Recorded server truth is replayed through the production reducer, never a
++  // slowed provider call. Screenshots explicitly distinguish these instants.
++  const recorded=JSON.parse(readFileSync(process.env.SOUNDS_RELEASE_CANCEL,"utf8"));
++  const replay=async(events,streaming)=>cdp.evaluate(`window.__soundRecordedReplay(${JSON.stringify({events,streaming})})`);
++  await replay([
++    {type:"message_start",message:{role:"user",id:"release-cancel-user",content:[{type:"text",text:"Recorded 540-character voiceover — inspect best-effort Stop before action."}]}},
++    {type:"tool_execution_start",tool_call_id:"release-cancel",tool_name:"generate_voiceover",args:recorded.args,started_at_epoch:Date.now()/1000},
++    {type:"tool_execution_update",tool_call_id:"release-cancel",tool_name:"generate_voiceover",partial_result:{details:{stage:"generating",provider:"radient",model:recorded.submit.model,request_id:recorded.submit.request_id,cost:recorded.submit.cost,estimated_cost_usd:0.0216,cancel_handle:{provider:"radient",model:recorded.submit.model,request_id:recorded.submit.request_id}}}}
++  ],true);
++  await waitFor(`Boolean(document.querySelector('[data-record-id="tool:release-cancel"]'))`);
++  await cdp.evaluate(`document.querySelector('[data-record-id="tool:release-cancel"]').scrollIntoView({block:"center"})`);
++  await new Promise(r=>setTimeout(r,500));
++  console.log("stop candidates",await cdp.evaluate(`Array.from(document.querySelectorAll('button')).filter(b=>/stop/i.test(b.innerText+' '+b.getAttribute('aria-label'))).map(b=>({text:b.innerText,aria:b.getAttribute('aria-label'),title:b.getAttribute('title')}))`));
++  await verb(cdp,"press",{selector:'button[aria-label="Stop"]'});
++  await waitFor(`Boolean(document.querySelector('[data-sound-stop-confirmation]'))`);
++  await capture(cdp,"release-cancel-before-action");
++  demand("pre-action provider billing warning",await cdp.evaluate(`document.querySelector('[data-sound-stop-confirmation]').innerText.includes('charged')`));
++  // Do not pretend a second provider action occurred. Dismiss the question,
++  // then present the independently recorded real receipt in its original order.
++  const safe=await cdp.evaluate(`Array.from(document.querySelectorAll('[data-sound-stop-confirmation] button')).find(b=>b.innerText.includes('Keep waiting'))?.getAttribute('data-does-not-exist')`);
++  await cdp.evaluate(`Array.from(document.querySelectorAll('[data-sound-stop-confirmation] button')).find(b=>b.innerText.includes('Keep waiting')).click()`);
++  await replay([{type:"tool_execution_end",tool_call_id:"release-cancel",tool_name:"generate_voiceover",result:recorded.result}],false);
++  await new Promise(r=>setTimeout(r,300));
++  await cdp.evaluate(`document.querySelector('[data-record-id="tool:release-cancel"]').scrollIntoView({block:"center"})`);
++  demand("canonical pending receipt displayed",await cdp.evaluate(`document.querySelector('[data-record-id="tool:release-cancel"]').innerText.includes("Stop requested")`));
++  await capture(cdp,"release-cancel-pending-receipt");
++  console.log("pending receipt DOM",await cdp.evaluate(`document.querySelector('[data-record-id="tool:release-cancel"]').innerText`));
++  const billed={...recorded.result,details:{...recorded.result.details,...recorded.settled,stage:"cancelled",billing_basis:"billed"}};
++  await replay([{type:"tool_execution_end",tool_call_id:"release-cancel",tool_name:"generate_voiceover",result:billed}],false);
++  await new Promise(r=>setTimeout(r,300));
++  demand("completed billed receipt displayed",await cdp.evaluate(`document.querySelector('[data-record-id="tool:release-cancel"]').innerText.includes("$0.0216 (billed)")`));
++  await capture(cdp,"release-cancel-completed-billed");
++  console.log("completed receipt DOM",await cdp.evaluate(`document.querySelector('[data-record-id="tool:release-cancel"]').innerText`));
++  // Fold unrelated tool details so a real earlier player and actual later turns
++  // share one viewport. Re-start the original bytes, not a loop or time override.
++  for(const id of ["sounds-call-2","sounds-refusal","release-byok-call"]) {
++    const sel=`[data-turn-summary][data-run-ids~="tool:${id}"] button[aria-expanded="true"]`;
++    if(await cdp.evaluate(`Boolean(document.querySelector(${JSON.stringify(sel)}))`)) await verb(cdp,"press",{selector:sel});
++  }
++  await cdp.evaluate(`document.querySelector('[data-record-id="tool:sounds-call-1"]').scrollIntoView({block:"start"})`);
++  await new Promise(r=>setTimeout(r,700));
++  await verb(cdp,"press",{selector:'[data-record-id="tool:sounds-call-1"] [data-sound-player] button'});
++  await waitFor(`Boolean(document.querySelector('[data-record-id="tool:sounds-call-1"] [data-sound-status="playing"]'))`);
++  await new Promise(r=>setTimeout(r,150));
++  console.log("earlier-turn facts",JSON.stringify(await verb(cdp,"soundsFacts")));
++  console.log("earlier-turn geometry",await cdp.evaluate(`Array.from(document.querySelectorAll('[data-record-id]')).map(e=>({id:e.getAttribute('data-record-id'),y:e.getBoundingClientRect().y,h:e.getBoundingClientRect().height,text:e.innerText.slice(0,120)})).filter(e=>e.y>=0&&e.y<innerHeight)`));
++  await capture(cdp,"release-earlier-turn-playing");
++  return;
++ }
+ 	await capture(cdp, "sounds-transcript-idle");
+ 	await verb(cdp, "press", { selector: "[data-sound-player] button" });
+ 	await waitFor(
+diff --git a/src/renderer/src/shared/hooks/use-canonical-session.ts b/src/renderer/src/shared/hooks/use-canonical-session.ts
+index 3c76da608..ab69e1afb 100644
+--- a/src/renderer/src/shared/hooks/use-canonical-session.ts
++++ b/src/renderer/src/shared/hooks/use-canonical-session.ts
+@@ -2558,6 +2558,18 @@ export function useCanonicalSessionStream(
+ 		},
+ 		[],
+ 	);
++	// Capture-only recorded-event ingress: production reducer and mounted pane,
++	// isolated synthetic identity; never a live session or a provider delay.
++	useEffect(() => {
++		if (sessionId !== "50a0facade01") return;
++		const target = window as unknown as { __soundRecordedReplay?: (payload: { events: Parameters<typeof applyEvent>[1][]; streaming: boolean }) => void };
++		target.__soundRecordedReplay = (payload) => commitView((current) => ({
++			...current,
++			transcript: payload.events.reduce((state, event) => applyEvent(state, event, Date.now()), current.transcript),
++			frontend: current.frontend ? { ...current.frontend, streaming: payload.streaming } : null,
++		}));
++		return () => { delete target.__soundRecordedReplay; };
++	}, [sessionId, commitView]);
+ 	/*
+ 	 * Which session the transcript IN `view` belongs to, so the reset effect
+ 	 * below can tell another session's rows from this one's own seeded echo.
