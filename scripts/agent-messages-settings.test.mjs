@@ -177,13 +177,20 @@ async function mount(t, options = {}) {
 		settings = settingsWith("active"),
 		allowlist = allowlistFixture,
 		overrides = {},
+		api: suppliedApi = null,
 		sessions = [
 			{ session_id: "aaaaaaaaaaaa", title: "Research" },
 			{ session_id: "bbbbbbbbbbbb", title: "Triage" },
 		],
 	} = options;
 	window.__agentMessagesState = { accountId, snapshot: { status } };
-	const { api, writes } = makeApi({ settings, allowlist, overrides });
+	const built = suppliedApi
+		? {
+				api: suppliedApi,
+				writes: { settings: [], allowlist: [], local: [], refresh: 0 },
+			}
+		: makeApi({ settings, allowlist, overrides });
+	const { api, writes } = built;
 	const refresh = () => {
 		writes.refresh += 1;
 		return Promise.resolve();
@@ -883,10 +890,32 @@ test("A, signed-out and update-required mount no section at all", () => {
 		});
 		assert.equal(mod.agentMessagesSectionMounted(availability, status), true);
 	}
+	// Retry/account-switch in flight: visible, no held status. The shell (and a
+	// retry Alert when one is outstanding) must stay mounted (R2-2).
+	assert.equal(mod.agentMessagesSectionMounted("visible", null), true);
+	assert.equal(mod.agentMessagesSectionMounted("error", null), true);
+	assert.equal(mod.agentMessagesSectionMounted("absent", null), false);
 });
 
 test("an account switch reloads settings instead of keeping the previous account's state", async (t) => {
-	const mounted = await mount(t);
+	const active = settingsWith("active");
+	const paused = settingsWith("paused");
+	let calls = 0;
+	const stable = makeApi({ settings: active });
+	/*
+	 * ONE stable api, so the only thing that can re-run the load is the account
+	 * change. The pre-fix deps `[visible, tenantId, reloadKey, api]` would see
+	 * the same api and tenant and never call this stub a second time.
+	 */
+	const api = {
+		...stable.api,
+		settings: async () => {
+			calls += 1;
+			return structuredClone(calls === 1 ? active : paused);
+		},
+	};
+	const mounted = await mount(t, { api });
+	assert.equal(calls, 1);
 	assert.equal(
 		document
 			.querySelector("[data-agent-messages-state]")
@@ -894,16 +923,6 @@ test("an account switch reloads settings instead of keeping the previous account
 		"C",
 	);
 
-	const paused = settingsWith("paused");
-	let calls = 0;
-	const second = makeApi({ settings: paused });
-	const secondApi = {
-		...second.api,
-		settings: async () => {
-			calls += 1;
-			return structuredClone(paused);
-		},
-	};
 	await mounted.rerender({
 		status: statusWith({
 			account_id: "account-b",
@@ -911,9 +930,8 @@ test("an account switch reloads settings instead of keeping the previous account
 			local: { enabled: true },
 		}),
 		accountId: "account-b",
-		api: secondApi,
 	});
-	assert.equal(calls, 1, "the new account's settings must be read once");
+	assert.equal(calls, 2, "the account change must re-read settings");
 	assert.equal(
 		document
 			.querySelector("[data-agent-messages-state]")
@@ -921,6 +939,18 @@ test("an account switch reloads settings instead of keeping the previous account
 		"D",
 		"the previous account's C must not survive the switch",
 	);
+});
+
+test("a status from another account refuses writes", async (t) => {
+	// The loaded status says account-a while the live account is account-b.
+	const { writes } = await mount(t, { accountId: "account-b" });
+	const pause = button("Pause");
+	assert.ok(pause);
+	assert.equal(pause.disabled, true);
+	await press(pause);
+	await flush();
+	assert.deepEqual(writes.settings, []);
+	assert.deepEqual(writes.local, []);
 });
 
 test("D disables Resume when consent is required but unavailable", async (t) => {
@@ -979,7 +1009,7 @@ test("a failed settings read renders the mapped refusal sentence, not the except
 	assert.match(document.body.textContent, /Could not load agent messages/);
 	assert.match(
 		document.body.textContent,
-		/Agent messages could not be enabled\. Try again, or enable this later in Settings → Agent messages\./,
+		/No settings were changed\. Try again to check the current status\./,
 	);
 	assert.doesNotMatch(document.body.textContent, /offline/);
 	assert.ok(button("Retry"));

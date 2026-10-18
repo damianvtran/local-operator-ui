@@ -1643,17 +1643,37 @@ export const SettingsPage: FC = () => {
 								description={t("ui.agentMessages.settings.description")}
 								sectionRef={sectionRefs["agent-messages"]}
 								id="agent-messages"
+								/* A peer section, not a subsection of Backend settings
+								   (design round 1, D1): one decorative rule plus the
+								   page's section gap, no card. */
+								className="border-b border-hairline pb-8"
 							>
-								{agentMessagesAvailability === "error" &&
-								!agentMessagesStatus ? (
+								{agentMessagesStatus ? (
+									<AgentMessagesSettings
+										availability={agentMessagesAvailability}
+										status={agentMessagesStatus}
+										accountId={agentMessagesAccountId}
+										refusal={agentMessagesSnapshot.refusal}
+										onRefreshStatus={refreshAgentMessages}
+										sessions={canonicalSessions}
+									/>
+								) : agentMessagesSnapshot.refusal ? (
+									/*
+									 * The model keeps the refusal while a forced retry is
+									 * in flight, so this Alert — and its Retry — stays on
+									 * screen instead of the section blanking (R2-2).
+									 */
 									<Alert variant="warning">
 										<AlertTitle>
 											{t("ui.agentMessages.settings.error.title")}
 										</AlertTitle>
 										<AlertDescription>
-											{agentMessagesSnapshot.refusal
-												? settingsRefusalSentence(agentMessagesSnapshot.refusal)
-												: t("ui.agentMessages.settings.error.unreadable")}
+											<span className="block">
+												{settingsRefusalSentence(agentMessagesSnapshot.refusal)}
+											</span>
+											<span className="block">
+												{t("ui.agentMessages.settings.error.no_changes")}
+											</span>
 											<Button
 												className="mt-3"
 												variant="secondary"
@@ -1664,14 +1684,10 @@ export const SettingsPage: FC = () => {
 										</AlertDescription>
 									</Alert>
 								) : (
-									<AgentMessagesSettings
-										availability={agentMessagesAvailability}
-										status={agentMessagesStatus}
-										accountId={agentMessagesAccountId}
-										refusal={agentMessagesSnapshot.refusal}
-										onRefreshStatus={refreshAgentMessages}
-										sessions={canonicalSessions}
-									/>
+									<div aria-busy="true" className="flex flex-col gap-3">
+										<Skeleton className="h-5 w-40" />
+										<Skeleton className="h-4 w-full max-w-xl" />
+									</div>
 								)}
 							</SettingsSection>
 						)}

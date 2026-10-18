@@ -136,7 +136,8 @@ export const TurnedOff: Story = {
 	args: {
 		status: statusWith({
 			surface_state: "F",
-			state_note: "Your organization turned agent messages off.",
+			read_only: true,
+			state_note: "Agent messages are turned off",
 			local: { enabled: true },
 		}),
 	},
