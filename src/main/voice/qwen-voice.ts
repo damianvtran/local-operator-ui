@@ -37,6 +37,7 @@
  */
 
 import type { GatewayDownMessage, GatewayUpMessage } from "./qwen-gateway";
+import type { QwenMicAccess, QwenVoicePagePort } from "./qwen-voice-page";
 
 export type QwenRigState = "stopped" | "starting" | "ready" | "error";
 
@@ -50,6 +51,12 @@ export type QwenVoiceStatus = {
 	clients?: number;
 	/** `unexpected_exit`: a rig process died while the rig was ready. */
 	cause?: "unexpected_exit" | null;
+	/**
+	 * The macOS microphone verdict for this app's identity (plan §2/§4). Additive
+	 * to the frozen status: `denied` is what turns "unheard" from a step into
+	 * "Microphone blocked - Open Settings".
+	 */
+	mic?: QwenMicAccess;
 };
 
 export const QWEN_IDLE_STOP_MS = 10 * 60_000;
@@ -66,6 +73,8 @@ export const QWEN_CHANNEL = {
 	start: "voice.qwen.start",
 	status: "voice.qwen.status",
 	statusGet: "voice.qwen.status.get",
+	/** Open the OS microphone pane; a main-only path, no renderer URL. */
+	openMicSettings: "voice.qwen.open-mic-settings",
 } as const;
 
 export interface QwenGatewayPort {
@@ -87,8 +96,8 @@ export type QwenVoiceDeps = {
 	speech: QwenSpeechPort;
 	/** Push to the renderer; false when there is no window to receive it. */
 	toRenderer: (channel: string, payload: unknown) => boolean;
-	/** Open the WebUI. Main-built URL only; skipped in agent-driven runs. */
-	openWebUi: (url: string) => void;
+	/** The hidden voice page (plan §1-§3); a no-op in agent-driven runs. */
+	page: QwenVoicePagePort;
 	log?: (message: string) => void;
 	now?: () => number;
 	setTimer?: (fn: () => void, ms: number) => unknown;
@@ -185,16 +194,7 @@ export class QwenVoice {
 	 * LLM). Idempotent; concurrent calls share one start.
 	 */
 	start(reason: "enable" | "renderer"): Promise<QwenVoiceStatus> {
-		if (this.rigUp()) {
-			/*
-			 * ALREADY READY: the renderer's call is the "open the voice page"
-			 * action (shown while no page is connected, e.g. Ben closed the tab),
-			 * so it reopens the page main built; an enable's call changes nothing.
-			 */
-			if (reason === "renderer" && this.status.webui_url)
-				this.deps.openWebUi(this.status.webui_url);
-			return Promise.resolve(this.getStatus());
-		}
+		if (this.rigUp()) return this.readyAgain(reason);
 		if (this.starting) return this.starting;
 		this.disarmIdleStop();
 		this.budgetReason = null;
@@ -210,10 +210,18 @@ export class QwenVoice {
 				 */
 				if (!this.deps.gateway.running)
 					throw new Error("The voice Gateway stopped while the models loaded");
+				/*
+				 * THE MICROPHONE FIRST (plan §2): the prompt belongs to the moment
+				 * voice is turned on, and a denial must become a state the header
+				 * shows. A denied page is not created at all - one that loaded
+				 * would report a client and hear nothing, which reads as Listening.
+				 */
+				const mic = await this.deps.page.prepareMicrophone();
 				this.setStatus({
 					rig: "ready",
 					webui_url: webuiUrl,
 					clients: this.clients,
+					mic,
 				});
 				this.log(`qwen-voice: rig ready (${reason}); WebUI ${webuiUrl}`);
 				this.deps.gateway.send({
@@ -222,7 +230,7 @@ export class QwenVoice {
 				});
 				// Started with nothing holding the slot: the idle stop still applies.
 				if (this.slot === null) this.armIdleStop();
-				this.deps.openWebUi(webuiUrl);
+				if (mic !== "denied") this.deps.page.open(webuiUrl);
 			} catch (error) {
 				const message =
 					this.budgetReason ??
@@ -237,6 +245,35 @@ export class QwenVoice {
 			this.starting = null;
 		});
 		return this.starting;
+	}
+
+	/**
+	 * The rig is already up and nothing restarts. Two callers mean different
+	 * things:
+	 *
+	 * - the renderer's Retry (shown while no page is connected) RECREATES the
+	 *   page - close first, because `open` is idempotent and a page that exists
+	 *   but never connected would otherwise be left exactly as it is;
+	 * - an enable re-reads the microphone, because a person can have granted it
+	 *   in System Settings since the rig started. A page that was never created
+	 *   for a denial is created now that the OS says yes.
+	 */
+	private async readyAgain(
+		reason: "enable" | "renderer",
+	): Promise<QwenVoiceStatus> {
+		const webuiUrl = this.status.webui_url;
+		if (!webuiUrl) return this.getStatus();
+		if (reason === "renderer") {
+			this.deps.page.close();
+			this.deps.page.open(webuiUrl);
+			return this.getStatus();
+		}
+		if (this.status.mic !== "granted") {
+			const mic = await this.deps.page.prepareMicrophone();
+			this.setStatus({ ...this.status, mic });
+			if (mic !== "denied") this.deps.page.open(webuiUrl);
+		}
+		return this.getStatus();
 	}
 
 	/** Both processes are up and the status says so. */
@@ -264,6 +301,25 @@ export class QwenVoice {
 			webui_url: null,
 			reason: `${which === "gateway" ? "The voice Gateway" : "speech-to-speech"} exited (${detail}); see the voice logs.`,
 			cause: "unexpected_exit",
+			clients: 0,
+		});
+	}
+
+	/**
+	 * The hidden page cannot be brought back (a second crash inside a minute).
+	 * Nothing can hear now, so a "ready" rig would be the Listening lie; the
+	 * rig stops and the header says why.
+	 */
+	pageFailed(reason: string): void {
+		if (this.status.rig !== "ready") return;
+		this.log(`qwen-voice: ${reason}`);
+		this.disarmIdleStop();
+		this.deps.page.close();
+		void this.stopProcesses();
+		this.setStatus({
+			rig: "error",
+			webui_url: null,
+			reason,
 			clients: 0,
 		});
 	}
@@ -302,6 +358,7 @@ export class QwenVoice {
 
 	private async stopProcesses(): Promise<void> {
 		this.clients = 0;
+		this.deps.page.close();
 		this.deps.gateway.stop();
 		await this.deps.speech.stop();
 	}
@@ -314,6 +371,7 @@ export class QwenVoice {
 	stopNow(): void {
 		this.clients = 0;
 		this.disarmIdleStop();
+		this.deps.page.close();
 		this.deps.gateway.stop();
 		this.deps.speech.killNow();
 	}

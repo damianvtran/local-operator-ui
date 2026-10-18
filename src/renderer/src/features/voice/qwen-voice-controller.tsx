@@ -635,6 +635,14 @@ async function speakSource(
 		console.warn(`[voice] the rig did not speak: ${answer.reason ?? ""}`);
 }
 
+/**
+ * Open the OS microphone pane. Main owns the URL (a fixed constant); the
+ * renderer names no scheme, so this is not the vetted `open-external` door.
+ */
+export async function openMicrophoneSettings(): Promise<void> {
+	await bridge()?.openMicrophoneSettings();
+}
+
 /** Ask main to start the rig for the slot already held (the relaunch case). */
 export async function startQwenRig(): Promise<void> {
 	const status = await bridge()?.start();

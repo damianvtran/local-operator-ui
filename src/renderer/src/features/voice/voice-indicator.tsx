@@ -5,15 +5,20 @@
  *   whose session holds the machine-wide slot. Because the slot has one holder,
  *   at most one row carries it, and a switch moves it.
  * - `VoicePhase`: the header's word for where voice is on the session that holds
- *   the slot - starting, ready-but-unheard (with "Open voice page"), listening,
- *   working, error (with its reason and "Try again") - from the slot, main's rig
- *   status and this window's exchange (`voicePhaseOf`). While the slot is held
- *   and the rig is STOPPED (the app was relaunched with voice still on; main
- *   never loads the models by itself), it offers "Start voice", which asks main
- *   to start the rig (`voice.qwen.start`).
+ *   the slot - starting, ready-but-unheard, listening, working, error (with its
+ *   reason and "Try again") - from the slot, main's rig status and this window's
+ *   exchange (`voicePhaseOf`). While the slot is held and the rig is STOPPED (the
+ *   app was relaunched with voice still on; main never loads the models by
+ *   itself), it offers "Start voice", which asks main to start the rig
+ *   (`voice.qwen.start`).
+ *
+ * `unheard` IS A FAILURE STATE now that the page is ours (plan §4): the rig is
+ * ready but nothing can hear. A denied macOS microphone reads "Microphone
+ * blocked" with "Open Settings"; anything else reads "Voice page not connected"
+ * with "Retry", which recreates the hidden page.
  *
  * Both render nothing when `features.voice` is absent. Ink, not controls, except
- * the start, open-page and try-again actions.
+ * the start, settings and retry actions.
  */
 
 import { Button } from "@shared/components/ui/button";
@@ -22,7 +27,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { AudioLines } from "lucide-react";
 import type { FC } from "react";
 import type { QwenVoiceStatus } from "../../../../shared/desktop-contract";
-import { startQwenRig } from "./qwen-voice-controller";
+import { openMicrophoneSettings, startQwenRig } from "./qwen-voice-controller";
 import { useVoiceCapability } from "./use-voice-status";
 import {
 	type VoiceExchangeError,
@@ -140,21 +145,30 @@ export const VoicePhase: FC<{ sessionId: string | undefined }> = ({
 		);
 	}
 	/*
-	 * READY, BUT NOTHING CAN HEAR (round 1, D2/U2): the rig is up and no voice
-	 * page is connected - Ben closed the tab, or never pressed "Enable voice".
-	 * Saying "Listening" here was the lie; the action opens the page again.
+	 * READY, BUT NOTHING CAN HEAR (plan §4). A denied microphone is the one case
+	 * Retry cannot fix, so it names the setting and opens it; every other cause
+	 * (a crashed page, a page that never loaded) is the page, and Retry recreates
+	 * it through `voice.qwen.start`.
 	 */
 	if (phase === "unheard") {
+		const blocked = rig?.mic === "denied";
 		return (
 			<span
 				data-voice-phase="unheard"
+				data-voice-mic={blocked ? "denied" : undefined}
 				className="flex shrink-0 items-center gap-1 whitespace-nowrap text-meta text-ink-muted"
 			>
-				{t("ui.chat.voice.phase_unheard")}
+				{t(
+					blocked ? "ui.chat.voice.mic_blocked" : "ui.chat.voice.phase_unheard",
+				)}
 				<PhaseAction
-					phase="open"
-					label={t("ui.chat.voice.open_page")}
-					onPress={() => void startQwenRig()}
+					phase={blocked ? "settings" : "retry"}
+					label={t(
+						blocked ? "ui.chat.voice.open_settings" : "ui.chat.voice.retry",
+					)}
+					onPress={() =>
+						void (blocked ? openMicrophoneSettings() : startQwenRig())
+					}
 				/>
 			</span>
 		);

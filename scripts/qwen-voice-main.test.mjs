@@ -36,6 +36,7 @@ const bundle = await build({
 			'export * from "./src/main/voice/qwen-voice";',
 			'export { gatewayEnv, QwenGatewayHost } from "./src/main/voice/qwen-gateway";',
 			'export { QwenSpeechProcess, resolveQwenPorts, s2sArgs, s2sEnv, s2sLauncherPathFor, qwenMemoryBudget, QWEN_MEM_BUDGET_BYTES, FOOTPRINT_INTERVAL_MS, DEFAULT_QWEN_PORTS, isOurS2s, S2S_RECORD_FILE } from "./src/main/voice/qwen-rig";',
+			'export { QwenVoicePage, noQwenVoicePage, voicePageUrl, QWEN_VOICE_PARTITION, PAGE_CRASH_WINDOW_MS } from "./src/main/voice/qwen-voice-page";',
 			'export { requestDesktopMedia } from "./src/main/desktop-media";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -61,10 +62,11 @@ const m = await import(bundlePath.href);
 /* The coordinator                                                           */
 /* ------------------------------------------------------------------------ */
 
-function rig({ gatewayFails = false } = {}) {
+function rig({ gatewayFails = false, mic = "granted" } = {}) {
 	const sent = [];
 	const toRenderer = [];
 	const opened = [];
+	const closed = [];
 	const timers = [];
 	const calls = {
 		gatewayStart: 0,
@@ -106,6 +108,19 @@ function rig({ gatewayFails = false } = {}) {
 			this.running = false;
 		},
 	};
+	const page = {
+		/** The OS verdict this fake reports; a test may flip it mid-run. */
+		mic,
+		open(url) {
+			opened.push(url);
+		},
+		close() {
+			closed.push(true);
+		},
+		async prepareMicrophone() {
+			return page.mic;
+		},
+	};
 	const voice = new m.QwenVoice({
 		gateway,
 		speech,
@@ -113,7 +128,7 @@ function rig({ gatewayFails = false } = {}) {
 			toRenderer.push({ channel, payload });
 			return true;
 		},
-		openWebUi: (url) => opened.push(url),
+		page,
 		now: () => now,
 		setTimer: (fn, ms) => {
 			const timer = { fn, ms, cleared: false };
@@ -126,9 +141,11 @@ function rig({ gatewayFails = false } = {}) {
 	});
 	return {
 		voice,
+		page,
 		sent,
 		toRenderer,
 		opened,
+		closed,
 		timers,
 		calls,
 		gateway,
@@ -364,14 +381,16 @@ test("minor 1: a Gateway that died while s2s loaded fails the start; it is never
 	);
 });
 
-test("OPEN VOICE PAGE: voice.qwen.start on a ready rig reopens the page; an enable does not", async () => {
+test("RECREATE THE PAGE: voice.qwen.start on a ready rig asks for the page again; an enable does not", async () => {
 	const r = rig();
 	await r.voice.start("renderer");
 	assert.equal(r.opened.length, 1);
 	await r.voice.start("renderer");
-	assert.equal(r.opened.length, 2, "the renderer's call reopens it");
+	assert.equal(r.opened.length, 2, "the renderer's call recreates it");
+	assert.equal(r.closed.length, 1, "a page that exists is closed first");
 	await r.voice.start("enable");
 	assert.equal(r.opened.length, 2, "an enable on a ready rig changes nothing");
+	assert.equal(r.closed.length, 1);
 	assert.equal(r.calls.speechStart, 1, "nothing restarted");
 });
 
@@ -381,6 +400,7 @@ test("stopNow (will-quit) stops both processes synchronously", () => {
 	r.voice.stopNow();
 	assert.equal(r.calls.kill, 2);
 	assert.equal(r.calls.gatewayStop, 2);
+	assert.equal(r.closed.length, 2, "the page goes with the rig");
 });
 
 test("a failed start reports error with the reason and leaves nothing running", async () => {
@@ -480,6 +500,372 @@ test("SPEAK GUARD: the slot moving forgets the old holder's texts and cancels qu
 	});
 });
 
+/* ------------------------------------------------------------------------ */
+/* The hidden voice page (plan §1-§3)                                        */
+/* ------------------------------------------------------------------------ */
+
+const GATEWAY = "http://127.0.0.1:3101";
+
+/** A fake partition session: what it was asked to install, and the answers. */
+function fakeSession() {
+	const installed = {};
+	const listens = {};
+	return {
+		installed,
+		listens,
+		setPermissionRequestHandler: (handler) => {
+			installed.request = handler;
+		},
+		setPermissionCheckHandler: (handler) => {
+			installed.check = handler;
+		},
+		on: (event, listener) => {
+			if (!listens[event]) listens[event] = [];
+			listens[event].push(listener);
+		},
+	};
+}
+
+/** A fake view: what it loads, closes, listens for, and opens in DevTools. */
+function fakeView() {
+	const loaded = [];
+	const listeners = {};
+	const webContents = {
+		closed: 0,
+		devTools: null,
+		loadURL(url) {
+			loaded.push(url);
+			return Promise.resolve();
+		},
+		close() {
+			this.closed += 1;
+		},
+		on(event, listener) {
+			if (!listeners[event]) listeners[event] = [];
+			listeners[event].push(listener);
+		},
+		openDevTools(options) {
+			this.devTools = options;
+		},
+		setWindowOpenHandler(handler) {
+			this.windowOpen = handler;
+		},
+	};
+	return { view: { webContents }, webContents, loaded, listeners };
+}
+
+/** A page with the given fakes; `created` holds every view factory call. */
+function pageCase({
+	mic = "granted",
+	ask = async () => true,
+	devTools = false,
+	origin = GATEWAY,
+} = {}) {
+	const session = fakeSession();
+	const created = [];
+	const stopped = [];
+	const views = [];
+	let now = 1_000_000;
+	const page = new m.QwenVoicePage({
+		session,
+		createView: (options) => {
+			created.push(options);
+			const fake = fakeView();
+			views.push(fake);
+			return fake.view;
+		},
+		mediaAccess: { status: () => mic, ask },
+		gatewayOrigin: origin,
+		devTools,
+		onStopped: (reason) => stopped.push(reason),
+		now: () => now,
+	});
+	return {
+		page,
+		session,
+		created,
+		stopped,
+		views,
+		advance: (ms) => {
+			now += ms;
+		},
+	};
+}
+
+test("§1: the page URL is the WebUI in desktop-orb mode, with no idle sleep", () => {
+	assert.equal(
+		m.voicePageUrl("http://127.0.0.1:3101/"),
+		"http://127.0.0.1:3101/?desktop=orb&autoHideSeconds=0",
+	);
+	assert.equal(
+		m.voicePageUrl("http://127.0.0.1:3101/?next=x#y"),
+		"http://127.0.0.1:3101/?desktop=orb&autoHideSeconds=0",
+		"any other query is replaced, not appended",
+	);
+});
+
+test("§1: the view is sandboxed, preload-free, unthrottled, in its own in-memory partition", () => {
+	const c = pageCase();
+	c.page.open("http://127.0.0.1:3101/");
+	assert.equal(c.created.length, 1);
+	const prefs = c.created[0].webPreferences;
+	assert.equal(prefs.partition, m.QWEN_VOICE_PARTITION);
+	assert.equal(prefs.partition.includes("persist:"), false, "memory only");
+	assert.equal(prefs.sandbox, true);
+	assert.equal(prefs.contextIsolation, true);
+	assert.equal(prefs.nodeIntegration, false);
+	assert.equal(
+		prefs.backgroundThrottling,
+		false,
+		"a hidden page must not throttle",
+	);
+	assert.equal(prefs.autoplayPolicy, "no-user-gesture-required");
+	assert.equal(
+		"preload" in prefs,
+		false,
+		"the package's preload is not wanted",
+	);
+	assert.deepEqual(c.views[0].loaded, [
+		m.voicePageUrl("http://127.0.0.1:3101/"),
+	]);
+});
+
+test("§1: one page at a time; close drops it; a new open creates a new view", () => {
+	const c = pageCase();
+	c.page.open("http://127.0.0.1:3101/");
+	c.page.open("http://127.0.0.1:3101/");
+	assert.equal(c.created.length, 1, "open is idempotent");
+	assert.equal(c.page.isOpen, true);
+	c.page.close();
+	assert.equal(
+		c.views[0].webContents.closed,
+		1,
+		"webContents.close(), not a leaked renderer",
+	);
+	assert.equal(c.page.isOpen, false);
+	c.page.close();
+	assert.equal(c.views[0].webContents.closed, 1, "close is idempotent");
+	c.page.open("http://127.0.0.1:3101/");
+	assert.equal(c.created.length, 2);
+});
+
+test("§3: a page at any other origin is refused before a view exists", () => {
+	const c = pageCase();
+	c.page.open("http://127.0.0.1:3102/");
+	assert.equal(c.created.length, 0);
+	assert.equal(c.page.isOpen, false);
+});
+
+test("§2: the partition grants audio to the page and refuses everything else", () => {
+	const c = pageCase();
+	assert.equal(typeof c.session.installed.request, "function");
+	assert.equal(typeof c.session.installed.check, "function");
+	const page = "http://127.0.0.1:3101/?desktop=orb&autoHideSeconds=0";
+	assert.equal(
+		c.session.installed.check(null, "media", "http://127.0.0.1:3101", {
+			mediaType: "audio",
+			isMainFrame: true,
+			requestingUrl: page,
+		}),
+		true,
+	);
+	assert.equal(
+		c.session.installed.check(null, "media", "http://127.0.0.1:3101", {
+			mediaType: "audio",
+			isMainFrame: true,
+			requestingUrl: "https://evil.test/",
+		}),
+		false,
+	);
+	let granted = null;
+	c.session.installed.request(
+		null,
+		"media",
+		(value) => {
+			granted = value;
+		},
+		{ mediaTypes: ["audio"], isMainFrame: true, requestingUrl: page },
+	);
+	assert.equal(granted, true);
+	c.session.installed.request(
+		null,
+		"clipboard-read",
+		(value) => {
+			granted = value;
+		},
+		{ isMainFrame: true, requestingUrl: page },
+	);
+	assert.equal(granted, false);
+});
+
+test("§3: navigation, popups and downloads are all locked", () => {
+	const c = pageCase();
+	c.page.open("http://127.0.0.1:3101/");
+	const { listeners } = c.views[0];
+	const prevented = () => {
+		let hit = false;
+		return {
+			preventDefault: () => {
+				hit = true;
+			},
+			get hit() {
+				return hit;
+			},
+		};
+	};
+	const away = prevented();
+	for (const event of ["will-navigate", "will-redirect"]) {
+		for (const listener of listeners[event])
+			listener(away, "https://evil.test/");
+	}
+	assert.equal(away.hit, true, "navigation away is prevented");
+	const same = prevented();
+	listeners["will-navigate"][0](same, "http://127.0.0.1:3101/?desktop=orb");
+	assert.equal(same.hit, false, "the page's own origin is allowed");
+	assert.deepEqual(
+		c.views[0].webContents.windowOpen({ url: "https://evil.test/" }),
+		{ action: "deny" },
+		"window.open is denied",
+	);
+	// Downloads are a Session event, and every one is cancelled.
+	const download = prevented();
+	assert.equal(c.session.listens["will-download"].length, 1);
+	c.session.listens["will-download"][0](download);
+	assert.equal(download.hit, true);
+});
+
+test("§3: a crash recreates the page once; a second inside 60 s stops the rig", () => {
+	const c = pageCase();
+	c.page.open("http://127.0.0.1:3101/");
+	const gone = () => c.views.at(-1).listeners["render-process-gone"][0]();
+	gone();
+	assert.equal(c.created.length, 2, "recreated");
+	assert.equal(c.stopped.length, 0);
+	gone();
+	assert.equal(c.stopped.length, 1);
+	assert.equal(c.stopped[0], "The voice page stopped");
+	assert.equal(c.created.length, 2, "a second crash is not retried");
+});
+
+test("§3: a crash more than 60 s after the last one is a fresh first crash", () => {
+	const c = pageCase();
+	c.page.open("http://127.0.0.1:3101/");
+	c.views.at(-1).listeners["render-process-gone"][0]();
+	c.advance(m.PAGE_CRASH_WINDOW_MS + 1);
+	c.views.at(-1).listeners["render-process-gone"][0]();
+	assert.equal(c.stopped.length, 0);
+	assert.equal(c.created.length, 3);
+});
+
+test("§2: the microphone preflight reports granted, denied and not-determined", async () => {
+	assert.equal(
+		await pageCase({ mic: "granted" }).page.prepareMicrophone(),
+		"granted",
+	);
+	assert.equal(
+		await pageCase({ mic: "denied" }).page.prepareMicrophone(),
+		"denied",
+	);
+	assert.equal(
+		await pageCase({ mic: "restricted" }).page.prepareMicrophone(),
+		"denied",
+	);
+	let asked = 0;
+	const page = pageCase({
+		mic: "not-determined",
+		ask: async () => {
+			asked += 1;
+			return false;
+		},
+	}).page;
+	assert.equal(await page.prepareMicrophone(), "denied");
+	assert.equal(asked, 1);
+	assert.equal(
+		await pageCase({
+			mic: "not-determined",
+			ask: async () => true,
+		}).page.prepareMicrophone(),
+		"granted",
+	);
+	assert.equal(
+		await pageCase({ mic: "weird" }).page.prepareMicrophone(),
+		"unknown",
+	);
+});
+
+test("§4: a denied microphone creates NO page, and the status says why", async () => {
+	const r = rig({ mic: "denied" });
+	await r.voice.start("renderer");
+	const status = r.voice.getStatus();
+	assert.equal(status.rig, "ready");
+	assert.equal(status.mic, "denied");
+	assert.deepEqual(r.opened, [], "a page that cannot hear is not created");
+	// And the next start, once the OS says yes, opens it.
+	const ok = rig({ mic: "granted" });
+	await ok.voice.start("renderer");
+	assert.deepEqual(ok.opened, ["http://127.0.0.1:3101/"]);
+});
+
+test("§4: granting the microphone in Settings takes effect on the next enable, without a restart", async () => {
+	const r = rig({ mic: "denied" });
+	await r.voice.start("enable");
+	assert.deepEqual(r.opened, [], "denied: no page");
+	assert.equal(r.voice.getStatus().mic, "denied");
+	// The person allows it in System Settings and turns voice off and on again;
+	// the rig is still up, so the enable re-reads the verdict instead of
+	// returning "ready" over a page that was never created.
+	r.page.mic = "granted";
+	await r.voice.start("enable");
+	assert.deepEqual(r.opened, ["http://127.0.0.1:3101/"]);
+	assert.equal(r.voice.getStatus().mic, "granted");
+	// And a still-denied enable keeps the page away.
+	const denied = rig({ mic: "denied" });
+	await denied.voice.start("enable");
+	denied.page.mic = "denied";
+	await denied.voice.start("enable");
+	assert.deepEqual(denied.opened, []);
+});
+
+test("§3: the page goes with the rig (idle stop, unexpected exit, quit)", async () => {
+	const r = rig();
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	assert.equal(r.opened.length, 1);
+	r.voice.processExited("speech", "code 1, signal null");
+	assert.equal(r.closed.length, 1, "a stalled rig closes its page");
+	assert.equal(r.voice.getStatus().rig, "error");
+});
+
+test("§4: a page that cannot be recreated becomes the rig's error, not a silent Listening", async () => {
+	const c = pageCase();
+	c.page.open("http://127.0.0.1:3101/");
+	// Drive the coordinator with the real page's callback.
+	const r = rig();
+	await r.voice.start("renderer");
+	r.voice.pageFailed("The voice page stopped");
+	const status = r.voice.getStatus();
+	assert.equal(status.rig, "error");
+	assert.equal(status.reason, "The voice page stopped");
+	assert.equal(r.calls.speechStop >= 1, true);
+});
+
+test("§1: LOP_QWEN_NO_WEBUI's port creates nothing and pretends nothing", async () => {
+	const page = m.noQwenVoicePage();
+	page.open("http://127.0.0.1:3101/");
+	page.close();
+	assert.equal(await page.prepareMicrophone(), "unknown");
+});
+
+test("§4: LOP_QWEN_VOICE_DEBUG opens the view's DevTools detached", () => {
+	const c = pageCase({ devTools: true });
+	c.page.open("http://127.0.0.1:3101/");
+	assert.deepEqual(c.views[0].webContents.devTools, { mode: "detach" });
+	const quiet = pageCase();
+	quiet.page.open("http://127.0.0.1:3101/");
+	assert.equal(quiet.views[0].webContents.devTools, null);
+});
+
 test("a take goes to the renderer; with no window it is refused back to the launcher", () => {
 	const r = rig();
 	r.voice.onGatewayMessage({ type: "take", taskId: "task_1", text: "hello" });
@@ -501,7 +887,7 @@ test("a take goes to the renderer; with no window it is refused back to the laun
 			killNow() {},
 		},
 		toRenderer: () => false,
-		openWebUi: () => {},
+		page: m.noQwenVoicePage(),
 	});
 	lonely.onGatewayMessage({ type: "take", taskId: "task_2", text: "hi" });
 	assert.deepEqual(r.sent.at(-1), {
@@ -589,21 +975,25 @@ test("s2s: relay model, offline, no inherited secrets; ports overridable only un
 });
 
 const GIB = 1024 ** 3;
+const LAUNCHER_CACHE_LIMIT = /CACHE_LIMIT_BYTES = 1 \* GIB/;
+const LAUNCHER_SET_CACHE = /mx\.set_cache_limit\(CACHE_LIMIT_BYTES\)/;
+const LAUNCHER_SET_MEMORY =
+	/mx\.set_memory_limit\(budget_bytes\(os\.environ\.get\("LOP_QWEN_MEM_LIMIT_BYTES"\)\)\)/;
+const LAUNCHER_IMPORTS_RIG =
+	/from speech_to_speech\.cli import main as speech_to_speech_main/;
+const LAUNCHER_CALLS_RIG = /speech_to_speech_main\(\)/;
 
 test("§9 layer 1: the launcher caps MLX's cache and memory before the rig's own main()", () => {
 	const source = readFileSync("resources/qwen-voice/s2s-launch.py", "utf8");
-	assert.match(source, /CACHE_LIMIT_BYTES = 1 \* GIB/);
-	assert.match(source, /mx\.set_cache_limit\(CACHE_LIMIT_BYTES\)/);
+	assert.match(source, LAUNCHER_CACHE_LIMIT);
+	assert.match(source, LAUNCHER_SET_CACHE);
+	assert.match(source, LAUNCHER_SET_MEMORY);
 	assert.match(
 		source,
-		/mx\.set_memory_limit\(budget_bytes\(os\.environ\.get\("LOP_QWEN_MEM_LIMIT_BYTES"\)\)\)/,
-	);
-	assert.match(
-		source,
-		/from speech_to_speech\.cli import main as speech_to_speech_main/,
+		LAUNCHER_IMPORTS_RIG,
 		"the rig's own entry point, not a copy of it",
 	);
-	assert.match(source, /speech_to_speech_main\(\)/);
+	assert.match(source, LAUNCHER_CALLS_RIG);
 });
 
 test("§9: the budget is 8 GB or a quarter of RAM; LOP_QWEN_MEM_BUDGET_GB overrides it", () => {
