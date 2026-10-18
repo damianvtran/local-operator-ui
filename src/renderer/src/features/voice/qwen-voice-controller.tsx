@@ -145,7 +145,7 @@ const echoKey = (text: string): string => echoWords(text).join(" ");
 
 /* -------- the fuzzy match for SHORT takes (QA round 2, Q10) ---------------- */
 
-/** Edit distance allowed for a one-word phrase ("Sent." heard as "Scent"). */
+/** Edit distance allowed for a one-word phrase ("Switched." heard as "Switch."). */
 export const ECHO_WORD_EDITS = 2;
 /** Word-level similarity a multi-word short take needs ("Voices off ..."). */
 export const ECHO_WORD_SIMILARITY = 0.8;
@@ -192,9 +192,10 @@ export function isHeardAs(take: string[], target: string[]): boolean {
 	if (take.length === 0 || target.length === 0) return false;
 	/*
 	 * One word: up to `ECHO_WORD_EDITS` edits AND the same first letter. The
-	 * letter is what keeps real one-word commands that sit two edits from
-	 * "sent" ("test", "next", "best", "end") from being dropped, while every
-	 * mishearing measured so far keeps it ("Scent", "Sent", "Sand").
+	 * letter is what keeps a real one-word command two edits from a phrase from
+	 * being dropped ("test", "next", "best", "end" sat within two edits of the
+	 * removed "Sent."), while every measured mishearing keeps the first letter
+	 * ("Switch.", "switched").
 	 */
 	if (target.length === 1)
 		return (
@@ -246,8 +247,9 @@ export const PHRASE_ECHO_WINDOW_MS = 10_000;
 
 /*
  * When the launcher last spoke a phrase, as far as this window can tell: it
- * speaks one for every take outcome except an echo (relay-core
+ * speaks one for a refusal that is not an echo, cancel or close (relay-core
  * `phraseForOutcome`), and "Switched." on a slot change between two sessions.
+ * A successful take speaks nothing.
  */
 let phraseSpokenAt: number | null = null;
 
@@ -463,8 +465,15 @@ export async function sendVoiceTake(text: string): Promise<VoiceTakeOutcome> {
 /** One rig take: the take path, then its admission back to the launcher. */
 async function onRigTake(take: { taskId: string; text: string }) {
 	const outcome = await sendVoiceTake(take.text);
-	// Every outcome but an echo makes the launcher say a phrase.
-	if (outcome.ok || outcome.code !== "echo") markPhraseSpoken();
+	/*
+	 * A SUCCESS IS SILENT (plan §7), and so are an echo, a cancel and a close;
+	 * every other refusal is answered with a phrase, and only then can that
+	 * phrase be heard back. Marking a success as "a phrase was spoken" held the
+	 * one-word echo rule over the next ten seconds of real speech.
+	 */
+	const spoken =
+		!outcome.ok && !["echo", "cancelled", "closed"].includes(outcome.code);
+	if (spoken) markPhraseSpoken();
 	await bridge()?.result(
 		outcome.ok
 			? { taskId: take.taskId, ok: true }

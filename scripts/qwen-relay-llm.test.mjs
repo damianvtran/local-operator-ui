@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { after, before, test } from "node:test";
 import {
@@ -263,8 +264,12 @@ test("tokenOf accepts exactly one bare token", () => {
 	assert.equal(tokenOf(undefined), null);
 });
 
-test("a take's admission maps to a Q7 phrase; an echo, cancel or close is SILENT", () => {
-	assert.equal(phraseForOutcome({ ok: true }), "sent");
+test("a take's admission maps to a Q7 phrase; success, echo, cancel and close are SILENT", () => {
+	assert.equal(
+		phraseForOutcome({ ok: true }),
+		null,
+		"a successful take speaks nothing (plan §7)",
+	);
 	assert.equal(
 		phraseForOutcome({ ok: false, code: "approval_pending" }),
 		"on_screen_first",
@@ -281,10 +286,24 @@ test("a take's admission maps to a Q7 phrase; an echo, cancel or close is SILENT
 		assert.equal(phraseForOutcome({ ok: false, code }), "failed", String(code));
 	// Every phrase it names is in the closed set.
 	for (const outcome of [
-		{ ok: true },
 		{ code: "approval_pending" },
 		{ code: "voice_not_enabled" },
 		{ code: "x" },
 	])
 		assert.ok(phraseForOutcome(outcome) in PHRASES);
+});
+
+test("a successful take sends no `speak` from the launcher", () => {
+	// The two halves of one rule: the mapping returns nothing for a success,
+	// and the launcher speaks only what the mapping returned.
+	assert.equal(phraseForOutcome({ ok: true }), null);
+	const launcher = readFileSync(
+		"resources/qwen-voice/gateway-launcher.mjs",
+		"utf8",
+	);
+	assert.match(
+		launcher,
+		/const phrase = phraseForOutcome\(outcome\);\s*if \(phrase\) speak\(PHRASES\[phrase\], "phrase"\);/,
+		"the launcher speaks a phrase only when there is one",
+	);
 });

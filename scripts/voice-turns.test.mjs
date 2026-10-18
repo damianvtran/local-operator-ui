@@ -1885,9 +1885,6 @@ test("echo guard: the reviewer's real follow-ups are NOT echoes of a long reply"
  * the guide walk's "Sand"), and each is the rig's speech, so each is dropped.
  */
 const HEARD_BACK = [
-	["Scent", "sent"],
-	["Sent", "sent"],
-	["Sand", "sent"],
 	["Voices off for this conversation.", "voice_off"],
 	["Voice's off for this conversation", "voice_off"],
 	["voice is off for this conversation", "voice_off"],
@@ -1915,8 +1912,10 @@ const REAL_SHORT_TAKES = [
 	"voice off please",
 	"what did you send",
 	"is it off",
-	// Review round 3, M1: one-word commands within two edits of "sent" or
-	// "switched", kept whenever the rig has not just spoken a phrase.
+	// Review round 3, M1: one-word commands within two edits of "switched",
+	// kept whenever the rig has not just spoken a phrase. These used to sit
+	// near "Sent." too; now a successful take is silent, and nothing but the
+	// switch phrase can pull them back into the echo window.
 	"send",
 	"set",
 	"see",
@@ -1933,8 +1932,8 @@ const REAL_SHORT_TAKES = [
 	"scene",
 	"sense",
 	"spent",
-	// "sent?" is not here: it normalises to the phrase "Sent." itself, and the
-	// exact phrase match holds at all times (brief, round 3).
+	// "sent" is a real take now (plan §7): it is not a phrase, so no echo rule
+	// reaches it, inside the window or outside it.
 	"switch",
 	"switches",
 ];
@@ -1958,10 +1957,17 @@ test("Q10/M1: a misheard phrase is dropped only within 10 s of the rig speaking 
 	const outside = spokeAt + PHRASE_ECHO_WINDOW_MS + 1_000;
 	for (const take of ["Scent", "Sand", "Voices off for this conversation."])
 		assert.equal(takeIsEcho(take, outside), false, `outside: ${take}`);
+	// A one-word mishearing of the removed phrase is never held back either.
+	for (const [take, at] of [
+		["Scent", spokeAt + 1_000],
+		["Sent", spokeAt + 1_000],
+		["Sand", spokeAt + 1_000],
+	])
+		assert.equal(takeIsEcho(take, at), false, `inside, no phrase: ${take}`);
 	for (const take of ["sync", "sort", "switch", "see", "set", "send", "spent"])
 		assert.equal(takeIsEcho(take, outside), false, `outside: ${take}`);
-	// The exact phrase stays an echo at any time.
-	assert.equal(takeIsEcho("sent", outside), true);
+	// The exact phrase stays an echo at any time; "sent" is not one of them.
+	assert.equal(takeIsEcho("sent", outside), false);
 	assert.equal(takeIsEcho("Switched.", outside), true);
 	// Every kept take is relayed outside the window; inside it, only the
 	// one-word near-phrases are held back, and none of the brief's examples.
@@ -2111,7 +2117,6 @@ test("echo guard: every Q7 phrase heard back is an echo, at any time and any len
 	assert.deepEqual(Object.keys(phrases).sort(), [
 		"failed",
 		"on_screen_first",
-		"sent",
 		"switched",
 		"voice_off",
 	]);
@@ -2123,6 +2128,9 @@ test("echo guard: every Q7 phrase heard back is an echo, at any time and any len
 	}
 	// Not phrases: a sentence that starts like one, and a phrase word in a command.
 	assert.equal(isQwenPhrase("Sent the report to Dana."), false);
+	// The removed phrase is not one either, at any time (plan §7).
+	assert.equal(isQwenPhrase("Sent."), false);
+	assert.equal(takeIsEcho("Sent.", Date.now() + 3_600_000), false);
 	assert.equal(isQwenPhrase("switched it off"), false);
 });
 

@@ -163,15 +163,18 @@ test("an unanswered take times out and does not hold the queue", async () => {
 	assert.equal(backend.status("task_1").state, "not_found");
 });
 
-test("Q7 phrases are the closed set of five", () => {
+test("Q7 phrases are the closed set of four", () => {
 	assert.deepEqual(Object.keys(PHRASES).sort(), [
 		"failed",
 		"on_screen_first",
-		"sent",
 		"switched",
 		"voice_off",
 	]);
-	assert.equal(PHRASES.sent, "Sent.");
+	assert.equal(
+		"sent" in PHRASES,
+		false,
+		"a successful take is silent (plan §7)",
+	);
 });
 
 /* ------------------------------------------------------------------------ */
