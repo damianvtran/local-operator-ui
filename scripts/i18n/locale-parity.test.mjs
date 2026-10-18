@@ -451,6 +451,18 @@ const IDENTICAL_OK = new Map([
 		"ui.schedules.scheduled_task_dialog.prompt",
 		"French technical term kept English by the French style guide (prompt).",
 	],
+	[
+		"ui.hub.links.source_public",
+		"French cognate: « public » has the same spelling.",
+	],
+	[
+		"ui.hub.links.scope_public",
+		"French cognate: « public » has the same spelling.",
+	],
+	[
+		"ui.hub.taxonomy.category.marketing",
+		"French loanword: « marketing » is the established term.",
+	],
 ]);
 
 function localeDirs() {

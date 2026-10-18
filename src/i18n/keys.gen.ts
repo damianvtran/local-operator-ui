@@ -138,6 +138,9 @@ import frUiCommandPalette from "./catalogues/fr/ui.command_palette.json";
 import frUiCommonActions from "./catalogues/fr/ui.common.actions.json";
 import frUiCommonErrors from "./catalogues/fr/ui.common.errors.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
+import frUiHubComments from "./catalogues/fr/ui.hub.comments.json";
+import frUiHub from "./catalogues/fr/ui.hub.json";
+import frUiHubTaxonomy from "./catalogues/fr/ui.hub.taxonomy.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
 import frUiSchedules from "./catalogues/fr/ui.schedules.json";
@@ -311,6 +314,9 @@ export const bundledCatalogues: Readonly<
 		...frUiCommonActions,
 		...frUiCommonErrors,
 		...frUiConsole,
+		...frUiHubComments,
+		...frUiHub,
+		...frUiHubTaxonomy,
 		...frUiOnboarding,
 		...frUiProjects,
 		...frUiSchedules,
