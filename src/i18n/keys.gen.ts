@@ -88,6 +88,14 @@ import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
 import esUiSettings from "./catalogues/es/ui.settings.json";
 import esUiShell from "./catalogues/es/ui.shell.json";
 import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
+import frUiAgentsNavigation from "./catalogues/fr/ui.agents.navigation.json";
+import frUiChatComposer from "./catalogues/fr/ui.chat.composer.json";
+import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
+import frUiChat from "./catalogues/fr/ui.chat.json";
+import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
+import frUiCommandPalette from "./catalogues/fr/ui.command_palette.json";
+import frUiCommonActions from "./catalogues/fr/ui.common.actions.json";
+import frUiCommonErrors from "./catalogues/fr/ui.common.errors.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
 import frUiSettingsAccount from "./catalogues/fr/ui.settings.account.json";
@@ -100,6 +108,8 @@ import frUiSettingsNavigation from "./catalogues/fr/ui.settings.navigation.json"
 import frUiSettingsShortcuts from "./catalogues/fr/ui.settings.shortcuts.json";
 import frUiSettingsSpeech from "./catalogues/fr/ui.settings.speech.json";
 import frUiSettingsUpdates from "./catalogues/fr/ui.settings.updates.json";
+import frUiShell from "./catalogues/fr/ui.shell.json";
+import frUiShellRail from "./catalogues/fr/ui.shell.rail.json";
 import hiUiConsole from "./catalogues/hi/ui.console.json";
 import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
 import hiUiSettings from "./catalogues/hi/ui.settings.json";
@@ -192,6 +202,14 @@ export const bundledCatalogues: Readonly<
 		...esUiShellRail,
 	},
 	fr: {
+		...frUiAgentsNavigation,
+		...frUiChatComposer,
+		...frUiChatHeader,
+		...frUiChat,
+		...frUiChatSidebarView,
+		...frUiCommandPalette,
+		...frUiCommonActions,
+		...frUiCommonErrors,
 		...frUiConsole,
 		...frUiOnboarding,
 		...frUiSettingsAccount,
@@ -204,6 +222,8 @@ export const bundledCatalogues: Readonly<
 		...frUiSettingsShortcuts,
 		...frUiSettingsSpeech,
 		...frUiSettingsUpdates,
+		...frUiShell,
+		...frUiShellRail,
 	},
 	hi: {
 		...hiUiConsole,

@@ -143,6 +143,42 @@ const IDENTICAL_OK = new Map([
 		"ui.agents.navigation.legacy.chat",
 		"Spanish loanword, not untranslated English: «chat» is the established noun in the audited es house voice.",
 	],
+	[
+		"ui.shell.rail.console.aria",
+		"French common noun: « Console » has the same spelling.",
+	],
+	[
+		"ui.command_palette.palette_search.actions",
+		"French cognate: « actions » has the same spelling.",
+	],
+	[
+		"ui.command_palette.palette_search.agents",
+		"French cognate: « agents » has the same spelling.",
+	],
+	[
+		"ui.command_palette.use_palette_sources.session",
+		"French cognate: « session » has the same spelling.",
+	],
+	[
+		"ui.shell.sidebar_navigation.agents",
+		"French cognate: « agents » has the same spelling.",
+	],
+	[
+		"ui.chat.sidebar_view.sections",
+		"French cognate: « sections » has the same spelling.",
+	],
+	[
+		"ui.chat.sidebar_view.section.agents",
+		"French cognate: « agents » has the same spelling.",
+	],
+	[
+		"ui.chat.composer.message",
+		"French cognate: « message » has the same spelling.",
+	],
+	[
+		"ui.agents.navigation.sidebar.title",
+		"French cognate: « agents » has the same spelling.",
+	],
 ]);
 
 function localeDirs() {
