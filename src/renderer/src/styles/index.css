@@ -2147,7 +2147,7 @@ html[data-glass~="sidebar"]
  * NO EDGE AT REST, IN EVERY MODE. v0.34.55 briefly drew a `border-width: 1px`
  * here - a glass-only edge, on the argument that an input is "a faintly lifted
  * well with a firm edge" - and the operator reported the shell bordered the
- * next evening (2026-10-17). The composer's own contract, `docs/branding.md`
+ * that evening (2026-10-17). The composer's own contract, `docs/branding.md`
  * ("The composer is an object that leaves the flow"), is the narrower, older
  * statement and wins: it draws no border at rest, the ground step is what
  * separates it, and the `:focus-visible` accent ring is its only boundary. The

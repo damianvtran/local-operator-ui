@@ -8662,7 +8662,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * (the `elevated` role at its floor), which is a near-opaque slab by
 						 * construction on dark palettes - exactly the operator's island. It
 						 * is a field: ink 5% over the canvas glass (`styles/index.css`), NO
-						 * edge at rest - the borderless-chrome contract holds on glass too, so
+						 * edge at rest - the borderless-shell contract holds on glass too, so
 						 * the shipped no-edge geometry (D12) is the geometry in every mode
 						 * (v0.34.55 briefly drew a glass-only edge here; reverted, operator
 						 * report 2026-10-17). The `pane` COVERAGE gate is kept: Sidebars only
