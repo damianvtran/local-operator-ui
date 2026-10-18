@@ -971,6 +971,88 @@ test("no control in the strip submits the composer it sits inside", async () => 
 });
 
 /* The view model's own answer for the states the DOM cases do not drive. */
+test("QA round 3 Q-1: the mic prompt and denial are app-global, drawn with the slot elsewhere", () => {
+	const base = {
+		active: undefined,
+		rig: undefined,
+		exchange: null,
+		activity: null,
+		cardPending: {},
+		lastTake: null,
+		lastSpoken: null,
+		tick: null,
+	};
+	// The start case: the slot has not moved, so there is no holder at all.
+	const prompting = {
+		...base,
+		rig: { rig: "stopped", webui_url: null, mic: "prompting" },
+	};
+	const view = composerVoiceView(prompting, AT, Date.now());
+	assert.equal(view.kind, "here", "a live OS dialog is not the idle strip");
+	assert.equal(view.chip, "waiting_mic");
+	assert.equal(view.action, "settings");
+	// The slot on another session does not hide it.
+	const elsewhere = { ...base, active: slot("b2b2b2b2b2b2") };
+	const other = composerVoiceView(
+		{ ...elsewhere, rig: prompting.rig },
+		AT,
+		Date.now(),
+	);
+	assert.equal(other.kind, "here");
+	assert.equal(other.chip, "waiting_mic");
+	assert.equal(other.action, "settings");
+	// Denied is the same app-wide fact, with Open Settings.
+	const blocked = composerVoiceView(
+		{
+			...elsewhere,
+			rig: { rig: "ready", webui_url: null, clients: 1, mic: "denied" },
+		},
+		AT,
+		Date.now(),
+	);
+	assert.equal(blocked.kind, "here");
+	assert.equal(blocked.chip, "mic_blocked");
+	assert.equal(blocked.action, "settings");
+	// Without a mic condition the same state is the elsewhere notice again.
+	assert.equal(
+		composerVoiceView(
+			{ ...elsewhere, rig: { rig: "ready", webui_url: null, clients: 1 } },
+			AT,
+			Date.now(),
+		).kind,
+		"elsewhere",
+	);
+});
+
+test("QA round 3 Q-1: the strip renders the mic band while the slot is elsewhere", async () => {
+	await mountStrip();
+	await act(async () => {
+		const store = useVoiceStore.getState();
+		store.setActive(slot("b2b2b2b2b2b2"));
+		store.setRig({ rig: "stopped", webui_url: null, mic: "prompting" });
+	});
+	await flush();
+	assert.equal(chipText(), "Waiting for microphone permission…");
+	assert.equal(
+		window.document.querySelector("[data-voice-action]")?.textContent?.trim(),
+		"Open Settings",
+	);
+	await act(async () => {
+		useVoiceStore.getState().setRig({
+			rig: "ready",
+			webui_url: null,
+			clients: 1,
+			mic: "denied",
+		});
+	});
+	await flush();
+	assert.equal(chipText(), "Microphone blocked");
+	assert.equal(
+		window.document.querySelector("[data-voice-action]")?.textContent?.trim(),
+		"Open Settings",
+	);
+});
+
 test("the view model hides the strip when the slot is empty or belongs elsewhere", () => {
 	const base = {
 		active: undefined,

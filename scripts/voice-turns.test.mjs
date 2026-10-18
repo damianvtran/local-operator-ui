@@ -2454,6 +2454,37 @@ test("M3: the microphone owns the header's word while it is pending or blocked",
 	assert.equal(phase(), "error");
 });
 
+test("QA round 3 Q-1: the microphone is app-global; the slot elsewhere must not hide it", async () => {
+	const { useVoiceStore, voicePhaseOf } = await controller();
+	const phase = (sessionId) =>
+		voicePhaseOf(useVoiceStore.getState(), sessionId);
+	// A start from a click has not moved the slot yet: with no holder at all the
+	// prompt still belongs to the conversation the person is looking at.
+	useVoiceStore.getState().setActive(null);
+	useVoiceStore
+		.getState()
+		.setRig({ rig: "stopped", webui_url: null, mic: "prompting" });
+	assert.equal(phase("s-clicked"), "mic_prompting");
+	useVoiceStore
+		.getState()
+		.setRig({ rig: "stopped", webui_url: null, mic: "denied" });
+	assert.equal(phase("s-clicked"), "mic_blocked");
+	// The slot sitting on ANOTHER session does not hide either verdict.
+	useVoiceStore.getState().setActive({ session_id: "s-holder", enabled_at: 1 });
+	useVoiceStore
+		.getState()
+		.setRig({ rig: "ready", webui_url: null, clients: 1, mic: "prompting" });
+	assert.equal(phase("s-clicked"), "mic_prompting");
+	assert.equal(phase("s-holder"), "mic_prompting");
+	// With no mic condition, the elsewhere session is still off and the holder
+	// still reads the ordinary ready word.
+	useVoiceStore
+		.getState()
+		.setRig({ rig: "ready", webui_url: null, clients: 1 });
+	assert.equal(phase("s-clicked"), "off");
+	assert.equal(phase("s-holder"), "listening");
+});
+
 test("BRIEF-1: a segment at the cap is a dropped take, and the strip has its line", async () => {
 	const mod = await controller();
 	assert.equal(mod.LONG_TAKE_MS, 30_000);
