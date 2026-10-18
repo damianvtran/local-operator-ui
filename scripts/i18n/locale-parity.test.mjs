@@ -542,6 +542,11 @@ const IDENTICAL_OK = new Map([
 		"ui.mesh.mesh_approvals.join_clauses",
 		"Placeholders and punctuation only ({clauses}; {last}); no words to translate.",
 	],
+
+	[
+		"ui.providers.provider_grid.row_action",
+		"Placeholders and a colon only ({action}: {brand}); no words to translate.",
+	],
 ]);
 
 function localeDirs() {
