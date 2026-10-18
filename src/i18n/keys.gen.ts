@@ -75,9 +75,19 @@ import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
 import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
+import esUiAgentsNavigation from "./catalogues/es/ui.agents.navigation.json";
+import esUiChatComposer from "./catalogues/es/ui.chat.composer.json";
+import esUiChatHeader from "./catalogues/es/ui.chat.header.json";
+import esUiChat from "./catalogues/es/ui.chat.json";
+import esUiChatSidebarView from "./catalogues/es/ui.chat.sidebar_view.json";
+import esUiCommandPalette from "./catalogues/es/ui.command_palette.json";
+import esUiCommonActions from "./catalogues/es/ui.common.actions.json";
+import esUiCommonErrors from "./catalogues/es/ui.common.errors.json";
 import esUiConsole from "./catalogues/es/ui.console.json";
 import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
 import esUiSettings from "./catalogues/es/ui.settings.json";
+import esUiShell from "./catalogues/es/ui.shell.json";
+import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
 import frUiSettingsAccount from "./catalogues/fr/ui.settings.account.json";
@@ -167,9 +177,19 @@ export const bundledCatalogues: Readonly<
 > = {
 	en: bundledEnglish,
 	es: {
+		...esUiAgentsNavigation,
+		...esUiChatComposer,
+		...esUiChatHeader,
+		...esUiChat,
+		...esUiChatSidebarView,
+		...esUiCommandPalette,
+		...esUiCommonActions,
+		...esUiCommonErrors,
 		...esUiConsole,
 		...esUiOnboarding,
 		...esUiSettings,
+		...esUiShell,
+		...esUiShellRail,
 	},
 	fr: {
 		...frUiConsole,

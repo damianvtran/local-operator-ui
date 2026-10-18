@@ -1,0 +1,12 @@
+{
+	"ui.chat.header.conversation_name": "Nombre de la conversación",
+	"ui.chat.header.archived_hint": "Esta conversación está archivada. Está oculta de tus chats hasta que la restaures.",
+	"ui.chat.header.archived": "Archivada",
+	"ui.chat.header.actions": "Acciones de la conversación",
+	"ui.chat.header.copy_id": "Copiar ID de sesión",
+	"ui.chat.header.move_device": "Mover a otro dispositivo…",
+	"ui.chat.header.transcript_display": "Vista de la transcripción",
+	"ui.chat.header.delete": "Eliminar conversación…",
+	"ui.chat.header.close_run_details": "Cerrar detalles de ejecución",
+	"ui.chat.header.open_run_details": "Abrir detalles de ejecución"
+}
