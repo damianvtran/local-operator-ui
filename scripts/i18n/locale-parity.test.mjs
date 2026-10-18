@@ -515,6 +515,11 @@ const IDENTICAL_OK = new Map([
 		"ui.projects.projects_toolbar.facet_labels_facet_first_length_1",
 		"Placeholders and separators only; no words to translate.",
 	],
+
+	[
+		"ui.schedules.scheduled_task_dialog.value1_message",
+		"Placeholders and a colon only ({value1}: {message}); no words to translate.",
+	],
 ]);
 
 function localeDirs() {
