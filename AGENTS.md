@@ -377,7 +377,7 @@ never infer a cause from a cut tail. This describes an incompletely acquired
 log, not a guarantee that the runner cannot crash: only after checking the raw
 log should a genuinely absent summary trigger exit/signal/watchdog investigation.
 On #1180, job `117770071277`, the last ok 2114 was where the retrieval stopped:
-the 3,744,446-byte rendered log omitted the rest of the 40,046,456-byte raw log,
+the 3,743,446-byte rendered log omitted the rest of the 40,046,456-byte raw log,
 which ended normally with `pass 9182`, `fail 2` and suite exit 1. The two actual
 assertions were i18n fallback expectations, not evidence of a worker-memory
 failure. The desktop CI job also retains its complete suite log as a failure
