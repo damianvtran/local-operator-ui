@@ -450,6 +450,8 @@ type ChatContentProps = {
 		startingSession?: boolean;
 		startingSince?: number | null;
 		onStop: () => void;
+		/** Only the media card, after its charge warning was accepted. */
+		onConfirmedStop?: () => void;
 		/**
 		 * Whether this backend can interrupt a turn (`session_interrupt`), as
 		 * opposed to ending the session.
@@ -1125,6 +1127,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							active: canonical.turnAlive,
 							stopping: stoppingShown,
 							onStop: canonical.onStop,
+							onConfirmedStop: canonical.onConfirmedStop,
 						}
 					: undefined,
 			[
@@ -1133,6 +1136,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				canonical?.turnAlive,
 				stoppingShown,
 				canonical?.onStop,
+				canonical?.onConfirmedStop,
 			],
 		);
 		const setSessionArchived = useCanonicalSessionsStore(
@@ -2473,7 +2477,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 * memoised rows compare one reference and a press
 										 * takes the same write path as the composer's.
 										 */
-										onInterruptTurn={canonicalStop?.onStop}
+										onInterruptTurn={
+											canonicalStop?.onConfirmedStop ?? canonicalStop?.onStop
+										}
 										/*
 										 * The disputed idle withholds the rung's clock (U9): the
 										 * label stands - the work may be real - but the ticking

@@ -8506,3 +8506,56 @@ test("an ordinary message carries no seal", () => {
 		"the key is absent, not undefined: the gate compares key counts",
 	);
 });
+
+test("late audio_settle_v1 receipt is retained despite its canonical empty detail", () => {
+	// Shape copied from audiogen/settle.py journal: terminal rows have no text.
+	const entry = {
+		id: "settled-audio",
+		ts: 20,
+		type: "message",
+		payload: {
+			kind: "custom",
+			custom_type: "audio_settle_v1",
+			details: {
+				version: 1,
+				tool: "generate_voiceover",
+				request_id: "synthetic-audio-request",
+				status: "completed",
+				terminal: true,
+				settlement_observed: true,
+				cost_usd: 0.0021,
+				billing_basis: "billed",
+				usage_record_id: "synthetic-usage",
+				recorded: true,
+				error_type: null,
+				message: null,
+				asset_error: null,
+				digest: null,
+				duration_s: 1,
+				content_type: "audio/mpeg",
+				size_bytes: null,
+				detail: "",
+			},
+		},
+	};
+	const page = { entries: [entry], has_more: false, cursor_missing: false };
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+	assert.equal(state.records.length, 1);
+	assert.equal(state.records[0].headline, "Cost $0.0021 (billed).");
+	assert.equal(state.records[0].text, "Cost $0.0021 (billed).");
+	assert.equal(applyHistoryPage(state, page), state);
+	for (const details of [
+		{ terminal: true, cost_usd: null, billing_basis: "billed", detail: "" },
+		{ terminal: true, cost_usd: 0.2, billing_basis: "quote", detail: "" },
+	]) {
+		const missing = applyHistoryPage(EMPTY_TRANSCRIPT, {
+			...page,
+			entries: [{ ...entry, payload: { ...entry.payload, details } }],
+		});
+		assert.equal(
+			missing.records.length,
+			0,
+			"never infer a bill from terminal alone",
+		);
+	}
+});

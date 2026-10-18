@@ -112,6 +112,7 @@ import {
 	effectiveGate,
 } from "../ask-queue";
 import { editDraftOf } from "../canonical/skill-row";
+import { useSoundStopGate } from "../canonical/sound-stop-confirmation";
 import { canonicalTranscriptTerminal } from "../canonical/transcript-pane";
 import { useOpenPrefetch } from "../canonical/use-open-prefetch";
 import {
@@ -2987,7 +2988,7 @@ function SessionPanel({
 	 * reason. Both orders were measured safe, which is why this is churn rather
 	 * than a defect: the predicate is unchanged, and the setter pair is stable.
 	 */
-	const stop = useCallback(() => {
+	const dispatchStop = useCallback(() => {
 		if (!sessionId || !interruptAvailable) return;
 		/*
 		 * A PRESS IS COALESCED WHILE ITS PREDECESSOR IS STILL IN FLIGHT (design
@@ -3208,6 +3209,31 @@ function SessionPanel({
 		clearStopAlert,
 		canonical.retry,
 	]);
+	const runningSound = canonical.transcript.records.some(
+		(record) =>
+			record.kind === "tool" &&
+			record.phase === "running" &&
+			!record.stopped &&
+			(record.toolName === "generate_voiceover" ||
+				record.toolName === "generate_sound_effect"),
+	);
+	const restoreSoundStopFocus = useCallback(
+		() => input.current?.focusInput(),
+		[],
+	);
+	// The card invokes dispatchStop only after its own identical warning;
+	// all other entrances go through this gate before issuing an interrupt.
+	const {
+		paneRef,
+		stop,
+		confirmation: soundStopConfirmation,
+	} = useSoundStopGate({
+		sessionId,
+		runningSound,
+		available: interruptAvailable,
+		onInterrupt: dispatchStop,
+		onRestoreFocus: restoreSoundStopFocus,
+	});
 	/*
 	 * THE ONE EDGE THAT RETIRES A TURN'S LATCHES, and why it is not `busy`
 	 * (operator incident 2026-10-07; round 1's D1 and R1-1).
@@ -4256,7 +4282,12 @@ function SessionPanel({
 	);
 
 	return (
-		<div className="flex h-full min-h-0 flex-col">
+		<div
+			ref={paneRef}
+			data-chat-pane=""
+			className="flex h-full min-h-0 flex-col"
+		>
+			{soundStopConfirmation}
 			{/*
 			 * The working directory is edited on the composer's chip, not on a bar
 			 * above the conversation. A full-width labelled input spanning the top
@@ -4657,6 +4688,7 @@ function SessionPanel({
 							admitted.current?.submittedAt ??
 							null,
 						onStop: stop,
+						onConfirmedStop: dispatchStop,
 						stopAvailable: interruptAvailable,
 						/*
 						 * The band carries ONE sentence, and which one is a fact about
