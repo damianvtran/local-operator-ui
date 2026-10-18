@@ -165,6 +165,37 @@ export function imageGenMaterial(toolName: string): ImageGenMaterial {
 }
 
 /**
+ * THE TWO CANCEL SENTENCES (security round 1, 2026-10-17), and the rule they
+ * exist to enforce: STOP IS A REQUEST, GUARANTEED ONLY WHILE QUEUED.
+ *
+ * The frozen contract is explicit that cancellation is best-effort — once the
+ * vendor is IN_PROGRESS there is no cancel endpoint, `cancellation.vendor_
+ * stopped` is `false`, and the generation continues and bills if it produces
+ * audio. So the card may make the no-charge claim ONLY for a stop pressed
+ * before the provider was called, and must state the request (with its cost
+ * consequence) for anything that had started. Showing the queued sentence for
+ * an in-flight cancel is the one wording error that would read as a promise the
+ * platform cannot keep.
+ *
+ * COPIED VERBATIM from the security round's ruling (and its server follow-up,
+ * PR #139): these two sentences are product copy, reviewed as such, and are
+ * asserted byte-for-byte by the card's own suite.
+ *
+ * THE RUNNING SENTENCE'S LAST CLAUSE IS A PENDING-SETTLEMENT STATE, not a
+ * hedge: after a running cancel the harness bounded-polls the provider for up
+ * to ~2 minutes and may later append a settlement notice with the billed cost
+ * and the completed artifact. The card therefore claims "checking", never a
+ * final no-charge, and the later notice renders as an ordinary custom row
+ * (no second player path: a settled artifact enters the session index the
+ * Files/Highlights surfaces already read).
+ */
+export const CANCEL_QUEUED_COPY =
+	"Stopped before the provider was called; you will not be charged.";
+
+export const CANCEL_RUNNING_COPY =
+	"Stop requested. The provider has no cancellation endpoint; the generation continues and will be charged if it produces audio. Checking for settlement.";
+
+/**
  * The material's noun, as the card's sentences spell it.
  *
  * One spelling per material, beside `imageGenMaterial` so a sentence that
@@ -389,7 +420,23 @@ export type ImageGenCardView =
 			 */
 			errorType: string | null;
 	  }
-	| { state: "cancelled" };
+	| {
+			state: "cancelled";
+			/**
+			 * Whether the call had started executing when it was stopped. The
+			 * settled receipt's sentence follows the same queued/running split the
+			 * cancelling line does: an in-flight stop never reads as a no-charge
+			 * cancellation (`CANCEL_RUNNING_COPY`), because the vendor has no
+			 * cancellation endpoint and may have produced (and charged for) audio.
+			 */
+			generating: boolean;
+			/**
+			 * The tool/server detail for the stop — the result's own content when
+			 * it stated one. Preferred over either canned sentence: the wire's
+			 * own words are the receipt (`media_already_completed`'s sibling rule).
+			 */
+			message: string | null;
+	  };
 
 /** The state tag alone, for callers that switch on it without the payload. */
 export type ImageGenCardState = ImageGenCardView["state"];
@@ -423,9 +470,14 @@ export function imageGenCardView(
 	 * interrupt class the ledger already spells `interrupted`, and the card's
 	 * `cancelled` is the same claim: no image was produced, and nothing failed.
 	 */
-	if (record.stopped === true) return { state: "cancelled" };
+	if (record.stopped === true)
+		return {
+			state: "cancelled",
+			generating: record.startedAt !== null,
+			message: canonical.error ?? record.output,
+		};
 	if (record.notRunKind === "skipped" || record.notRunKind === "aborted")
-		return { state: "cancelled" };
+		return { state: "cancelled", generating: false, message: record.output };
 	/*
 	 * ARM 2, the planning verdicts (`unknown_tool`, `invalid_arguments`,
 	 * `duplicate_id`, `denied`, `gate_failed`): the harness's own reason is the
@@ -449,7 +501,8 @@ export function imageGenCardView(
 	 * nothing was measured, so this is a cancellation in the plain sense — the
 	 * restart affordance is the honest one, and no error sentence is invented.
 	 */
-	if (record.neverSent === true) return { state: "cancelled" };
+	if (record.neverSent === true)
+		return { state: "cancelled", generating: false, message: record.output };
 	/*
 	 * ARM 4, the tool's own error result — three readings, in this order:
 	 *
@@ -478,7 +531,15 @@ export function imageGenCardView(
 				receipt: "already-finished",
 			};
 		if (canonical.stage === "cancelled" && canonical.errorType === null)
-			return { state: "cancelled" };
+			return {
+				state: "cancelled",
+				/*
+				 * The result calls itself cancelled; whether that was a queued or
+				 * an in-flight stop is the START fact, which the record carries.
+				 */
+				generating: record.startedAt !== null,
+				message: canonical.error ?? record.output,
+			};
 		return {
 			state: "failed",
 			material,

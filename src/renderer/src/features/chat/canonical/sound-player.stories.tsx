@@ -17,6 +17,14 @@
  *
  * THE STRIPS BELOW show the two variants at the widths the app gives them: the
  * full player in the transcript's column, the compact one in a Files row.
+ *
+ * THE OPERATOR GATE IS ONE HEADLESS COMMAND, and it is NOT these stories:
+ * `LOCAL_OPERATOR_UI_WINDOW_MODE=headless node scripts/renderer-driver.mjs
+ * --scene sounds --out <dir>` (the scene joins the driver with the gate step),
+ * which routes the player's real element through the engine's zero-gain output
+ * graph and proves playback by `currentTime` and the played-ink fill fraction —
+ * never by ear. The seam is `installAudioOutputGraph`; production installs
+ * nothing and plays at gain 1.0.
  */
 
 import { useAudioEngineStore } from "@shared/store/audio-engine-store";
