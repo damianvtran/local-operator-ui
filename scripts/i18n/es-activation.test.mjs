@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+import { ABSENT_LOCALE, withAbsentLocale } from "./absent-locale.mjs";
+
 // Fixture-only activation misses a forgotten locale import. Bundle the actual
 // generated module so these assertions fail if Spanish ships as English again.
 const bundle = await build({
@@ -69,12 +71,15 @@ test("counts render ungrouped (the #1131 fidelity rule); uncarried namespaces us
 		"Paso 1234567 de 2000000",
 	);
 	// Canvas fallback must still select the English source, including its own
-	// group-off rule. Probe this on a SYNTHETIC tag that no real catalogue will
-	// ever carry: `es` now carries ui.canvas, so pinning the fallback arm to the
-	// shipped locale would silently stop testing fallback at all (and assert the
-	// Spanish word instead of the English one).
-	const SYNTHETIC_ABSENT_LOCALE = "xx-absent-probe";
-	locale.setLocale(SYNTHETIC_ABSENT_LOCALE);
+	// group-off rule. Probe it on the shared synthetic tag: `es` now carries
+	// ui.canvas, so pinning the fallback arm to the shipped locale would silently
+	// stop testing fallback at all (and assert the Spanish word instead of the
+	// English one).
+	const restoreLocale = withAbsentLocale({
+		currentLocale: locale.currentLocale,
+		setLocale: locale.setLocale,
+		registerCatalogue: messages.registerCatalogue,
+	});
 	const fallback = messages.t("ui.canvas.files.count", { count: 1234567 });
 	assert.equal(fallback, "1234567 files");
 	assert.equal(
@@ -82,14 +87,14 @@ test("counts render ungrouped (the #1131 fidelity rule); uncarried namespaces us
 		messages.translate(
 			"ui.canvas.files.count",
 			{ count: 1234567 },
-			SYNTHETIC_ABSENT_LOCALE,
+			ABSENT_LOCALE,
 		),
 	);
 	assert.equal(
 		fallback,
 		messages.translate("ui.canvas.files.count", { count: 1234567 }, "en"),
 	);
-	locale.setLocale("es");
+	restoreLocale();
 	console.log(
 		`es counts ungrouped: ${formatted}; English fallback ui.canvas.files.count: ${fallback}`,
 	);
