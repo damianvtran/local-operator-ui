@@ -2330,18 +2330,46 @@ html[data-glass~="pane"]
 	background-color: var(--color-row-hover);
 }
 /*
- * ...BUT NOT INSIDE A VEILED BLOCK (review round 1, F1). The rule above translates
- * ANY hover utility in a covered pane into `row-hover` (ink 5%), and the ask card is
- * a block whose veil is already ink 9-12% - so hovering an option row or a footer
- * button inside it stacked the two and measured `inkMuted` 4.30:1 on synthwave
- * against the 4.5 floor. The earlier suppression only named `hover:bg-row-hover`,
- * which is the PROJECT-LINKS row token; every utility the pane rule translates needs
- * the same answer. The fill goes and the pointer affordance rides the cursor and the
- * control's own focus/hover ink, exactly the decision the veil's no-hover note makes
- * one level up. Scoped to the pane rule's own structural keys and declared after it,
- * so it wins the cascade at equal specificity; off glass nothing is suppressed.
+ * ...BUT NOT INSIDE A VEILED BLOCK (review round 1, F1; round 2, MAJOR). The rule
+ * above translates ANY hover utility in a covered pane into `row-hover` (ink 5%),
+ * and the ask card is a block whose veil is already ink 9-12% - so hovering an
+ * option row or a footer button inside it stacked the two and measured `inkMuted`
+ * 4.30:1 on synthwave against the 4.5 floor. The earlier suppression only named
+ * `hover:bg-row-hover`, which is the PROJECT-LINKS row token; every utility the
+ * pane rule translates needs the same answer.
+ *
+ * GATED ON THE VEIL, NOT ON THE PANE. Round 1 repeated the pane rule's structural
+ * keys (`main[data-glass-region="canvas-backing"]`), and that scope was wrong: the
+ * veil is canvas-gated and NOT main-scoped, while the FLEET asks drawer's pane is a
+ * SIBLING of `<main>` (the raw-alpha pane rule above names it). In that mount the
+ * card was veiled - `hover:bg-sunken` painted an opaque slab over it - and this
+ * suppression could never match. The first selector below is the veil's own gate,
+ * which is the only condition the veil exists under, so it reaches both mounts.
+ *
+ * THE SECOND SELECTOR IS FOR SPECIFICITY, NOT REACH. Where the pane rule DOES
+ * apply (a route pane under `<main>`), it out-ranks the block-only selector: the
+ * translation measures (0,5,2) and `html[data-glass~="canvas"] [data-glass-block]
+ * :is(...):hover` measures (0,4,1), so the translation would win and the hover
+ * would stack again. Repeating the translation's own path and adding the block
+ * attribute wins at (0,6,2) without `!important` and without relying on
+ * declaration order. (Round 1's comment said "equal specificity"; it was never
+ * equal - measured with the jsdom probe over both mounts, see G-11.)
+ *
+ * The fill goes and the pointer affordance rides the cursor and the control's own
+ * ink. WHERE THE LABEL ALREADY SITS AT `ink` there is no brighter step to take, so
+ * those controls' hover is cursor-only and the mark carries the state; the muted
+ * footer controls (`Decline`, `Cancel`) take `hover:text-ink`, which is a TEXT
+ * step and composes on the veil without moving the ground. Off glass nothing is
+ * suppressed.
  */
-html[data-glass~="pane"]
+html[data-glass~="canvas"]
+	[data-glass-block]
+	:is(
+		[class~="hover:bg-surface"],
+		[class~="hover:bg-sunken"],
+		[class~="hover:bg-elevated"]
+	):hover,
+html[data-glass~="canvas"]
 	main[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
 	[data-glass-block]

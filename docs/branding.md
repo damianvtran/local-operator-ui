@@ -1030,6 +1030,7 @@ opaque root behind opaque descendants.
 | Composer | `data-glass-region="composer"`: ink 5% (a field), no edge at rest | the composer's own contract wins: no border at rest on or off glass, the ring is its only boundary (v0.34.55's glass-only edge was reverted; operator report 2026-10-17) |
 | Chrome band (Browser tab strip and URL row) | `data-glass-region="chrome"`: `surface` at its floor, raw over the desktop | it is the sidebar's rung, so the two read as one edge |
 | Running tool row | `data-glass-state="running"`: ink at the selected step | an in-flight row is the subject; an opaque rung was a slab |
+| Chosen row inside a veiled block (ask options, `Other`) | stays `bg-sunken` (one role fill) | a chosen row is a selected SURFACE: the selected ink (0.08) over a veil (0.09-0.12) is the forbidden stack, so the fill is the only layer and the mark is the selection channel |
 | Well behind blocks | `data-glass-well="clear"` paints nothing | a well-as-ink never sits under a veil |
 | Lane (the Projects board's well and column strip) | `data-glass-lane`: the derived scheme role (`sunken` dark / `surface` light) at a scale of the page alpha, over the page glass | the card's veil is the only ink under its text; a wash that tracks the slider keeps its step at every frosted/clear position instead of one |
 | Segmented-control tracks, bands | ink overlay at 0.05 (`data-glass-well` or `role=tablist`) | a track is a well, not a block |
@@ -1066,8 +1067,16 @@ overlay; the rail's `hover:bg-surface` / `hover:bg-sunken` utilities are transla
 by one rule rather than rewritten call site by call site. THAT TRANSLATION STOPS AT
 A VEILED BLOCK: ink 5% over the veil measured `inkMuted` 4.30:1 on synthwave
 (round 1, F1), so a hovered option row or footer button inside one paints no fill,
-and the affordance rides the cursor and the control's own ink, the same decision
-the veil's no-hover rule makes for the block itself.
+and the affordance rides the cursor, the mark, and - where the label is still muted
+- a `hover:text-ink` step (a TEXT step, which does not move the ink ground; a label
+already at `ink` has no brighter step and is cursor-only there). The suppression is
+gated on the VEIL's own condition (`canvas`), not on the pane rule's structure: the
+fleet asks drawer's pane is a sibling of `<main>`, and round 1's main-scoped rule
+never matched it (round 2). The ask card's own worst, recomposed over all 59
+palettes x 3 tiers x 101 positions on its net `elevated` pane: `inkMuted` 4.64:1
+(dracula/popover; 4.67 at 80), `inkDim` 3.70:1 (the 3.5 state floor), card ΔE00 4.16
+off the pane (the 4.0 veil floor) - every floor holds, the `inkMuted` margin over AA
+is 0.14 at the worst point. Independent QA reproduced the same sweep (4.64 worst).
 
 **The lane wash is derived, not chosen - and it tracks the slider.** `laneWash` is
 a `{role, scale}` pair per scheme: the lane paints `role` at `pageAlpha * scale`
