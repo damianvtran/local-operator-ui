@@ -1,0 +1,82 @@
+{
+  "sha": "4579fc97ea9173476fccc5d7f55c7ef49733b7a2",
+  "SESSION": "40db9070d0cb",
+  "frames": [
+    {
+      "frame": "a-one-terminal",
+      "sha": "4579fc97ea9173476fccc5d7f55c7ef49733b7a2",
+      "selected": "con:1:A2r2DrFu_AZQtQsfakRg8g",
+      "activeSurface": "mirror",
+      "inMirror": true,
+      "rows": [
+        "con:1:A2r2DrFu_AZQtQsfakRg8g"
+      ],
+      "empty": false,
+      "note": "one terminal open, before +"
+    },
+    {
+      "frame": "b-after-plus",
+      "sha": "4579fc97ea9173476fccc5d7f55c7ef49733b7a2",
+      "selected": "con:1:A2r2DrFu_AZQtQsfakRg8g",
+      "activeSurface": "mirror",
+      "inMirror": true,
+      "rows": [
+        "con:2:h9ysVMNyAhd4LR6kbZx_TA",
+        "con:1:A2r2DrFu_AZQtQsfakRg8g"
+      ],
+      "empty": false,
+      "note": "right after +; old=con:1:A2r2DrFu_AZQtQsfakRg8g new=con:2:h9ysVMNyAhd4LR6kbZx_TA"
+    },
+    {
+      "frame": "c-typed-marker",
+      "sha": "4579fc97ea9173476fccc5d7f55c7ef49733b7a2",
+      "selected": "con:1:A2r2DrFu_AZQtQsfakRg8g",
+      "activeSurface": "mirror",
+      "inMirror": true,
+      "rows": [
+        "con:1:A2r2DrFu_AZQtQsfakRg8g",
+        "con:2:h9ysVMNyAhd4LR6kbZx_TA"
+      ],
+      "empty": false,
+      "note": "typed \"echo QA1183_base\"; text in new=false in old=true"
+    },
+    {
+      "frame": "d1-empty-state",
+      "sha": "4579fc97ea9173476fccc5d7f55c7ef49733b7a2",
+      "selected": null,
+      "activeSurface": "console-new-surface",
+      "inMirror": false,
+      "rows": [],
+      "empty": true,
+      "note": "all surfaces closed: empty state"
+    },
+    {
+      "frame": "d2-after-empty-create",
+      "sha": "4579fc97ea9173476fccc5d7f55c7ef49733b7a2",
+      "selected": "con:3:HOadXLDkWusZSqiWNEDVkw",
+      "activeSurface": "console-new-surface",
+      "inMirror": false,
+      "rows": [
+        "con:3:HOadXLDkWusZSqiWNEDVkw"
+      ],
+      "empty": false,
+      "note": "after empty-state create"
+    }
+  ],
+  "results": [
+    {
+      "name": "env",
+      "ok": true,
+      "data": {
+        "theme": {
+          "dataTheme": "localOperatorDark",
+          "cls": "dark",
+          "mode": "dark",
+          "w": 1440,
+          "h": 900,
+          "dpr": 1
+        }
+      }
+    }
+  ]
+}
