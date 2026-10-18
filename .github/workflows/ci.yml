@@ -515,6 +515,7 @@ jobs:
           retention-days: 1
 
       - name: Run the desktop suite and assert it actually ran
+        id: desktop_suite
         # ONE run, not two. This job used to invoke `pnpm test:desktop` twice:
         # once for its exit status and again inside its own count assertions,
         # which doubled the dominant cost of the job for no signal. `pipefail`
@@ -620,6 +621,18 @@ jobs:
             echo "The desktop suite exited $SUITE_RC while reporting pass=$PASS fail=$FAIL."
             exit 1
           fi
+
+      # gh's rendered job log can omit the middle of a large run, including
+      # its real assertions and TAP summary. Keep the exact single-run tee file
+      # independently retrievable on failure; no rerun or environment dump.
+      - name: Upload failed desktop suite log
+        if: ${{ always() && (steps.desktop_suite.outcome == 'failure' || steps.desktop_suite.outcome == 'cancelled') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-suite-log-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/desktop-tests.log
+          if-no-files-found: error
+          retention-days: 7
 
       # The suite must not mutate tracked files. `pnpm test:desktop` on a cold
       # tree has been observed writing an `allowBuilds:` block into

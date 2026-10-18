@@ -1152,6 +1152,7 @@ function runDesktopStep(body, scenario) {
 		[
 			"#!/usr/bin/env bash",
 			'cat "$CI_SCOPE_STUB_LOG"',
+			'printf "%s" "$CI_SCOPE_STUB_STDERR" >&2',
 			'exit "$CI_SCOPE_STUB_RC"',
 			"",
 		].join("\n"),
@@ -1173,6 +1174,7 @@ function runDesktopStep(body, scenario) {
 			// reassigned, so a stub reading `SUITE_RC` would have read the step's
 			// own `SUITE_RC=0` and exited green for every case.
 			CI_SCOPE_STUB_LOG: synthetic,
+			CI_SCOPE_STUB_STDERR: scenario.stderr ?? "",
 			CI_SCOPE_STUB_RC: String(scenario.suiteRc),
 		},
 	});
@@ -1415,6 +1417,52 @@ test("A17b: the desktop step is red, and names the red test, on every red shape"
 		}
 	} finally {
 		for (const dir of scratch) rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/**
+ * The log reader can omit the middle of a large job while retaining cleanup.
+ * A failing suite therefore needs its COMPLETE tee file as a separate artifact,
+ * not a tail that can drop the assertion or a second execution for diagnostics.
+ */
+test("A17d: a failed desktop run retains its full log as a failure artifact", () => {
+	const suite = jobs.test.steps.find((step) => step.id === "desktop_suite");
+	assert.ok(
+		suite,
+		"the artifact condition needs the actual suite step outcome",
+	);
+	const artifact = jobs.test.steps.find(
+		(step) => step.name === "Upload failed desktop suite log",
+	);
+	assert.ok(artifact, "a failed suite has no full-log artifact");
+	assert.equal(
+		artifact.if,
+		"${{ always() && (steps.desktop_suite.outcome == 'failure' || steps.desktop_suite.outcome == 'cancelled') }}",
+	);
+	assert.equal(artifact.uses, "actions/upload-artifact@v4");
+	assert.equal(artifact.with.path, "/tmp/desktop-tests.log");
+	assert.equal(artifact.with["retention-days"], 7);
+	assert.equal(artifact.with["if-no-files-found"], "error");
+	assert.ok(jobs.test.steps.indexOf(artifact) > jobs.test.steps.indexOf(suite));
+	assert.match(artifact.with.name, /github\.run_id/);
+	assert.match(artifact.with.name, /github\.run_attempt/);
+	// Exercise the unchanged REAL shell body with an intentionally failed
+	// synthetic suite. Byte equality catches a tail-only or dropped stderr log.
+	const scenario = {
+		log: `${RED_LOG}\n${"diagnostic body\n".repeat(200)}last stdout evidence\n`,
+		stderr: "last stderr evidence\n",
+		suiteRc: 23,
+	};
+	const run = runDesktopStep(suite.run, scenario);
+	try {
+		assert.equal(run.status, 1);
+		assert.equal(
+			readFileSync(join(run.dir, "desktop-tests.log"), "utf8"),
+			scenario.log + scenario.stderr,
+		);
+		assert.match(run.stdout, /desktop suite: rc=23 pass=4547 fail=2/);
+	} finally {
+		rmSync(run.dir, { recursive: true, force: true });
 	}
 });
 
