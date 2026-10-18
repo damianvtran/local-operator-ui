@@ -109,6 +109,40 @@ const IDENTICAL_OK = new Map([
 		"ui.settings.speech.speech_settings_model.radient_pass",
 		"Product name, preserved verbatim by the programme glossary.",
 	],
+	[
+		"ui.shell.collapsible_app_logo.local_operator",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.shell.sidebar_navigation.mesh",
+		// The lop Mesh feature is a named product destination in the audited
+		// Spanish copy: ui.mesh prose says «no hay ningún Mesh» and the store error
+		// names it the same way. «Malla» here would make the sidebar contradict the
+		// page it opens, so the name is kept and this entry records that decision.
+		"Named product destination: the audited es copy keeps the lop Mesh feature name throughout ui.mesh",
+	],
+	[
+		"ui.command_palette.use_palette_sources.mesh",
+		"Named product destination: same lop Mesh feature name as the sidebar row, kept for consistency with the audited ui.mesh copy.",
+	],
+	[
+		"ui.shell.rail.canvas.aria",
+		// Canvas is a named product destination; the only translatable content is
+		// the {chord} placeholder, so the Spanish accessible name is identical.
+		"Named product destination plus a placeholder: Canvas is kept, only {chord} is appended.",
+	],
+	[
+		"ui.command_palette.palette_search.chats",
+		"Spanish loanword, not untranslated English: «chats» is the plural used by the audited es house voice.",
+	],
+	[
+		"ui.command_palette.use_palette_sources.chat",
+		"Spanish loanword, not untranslated English: «chat» is the established noun in the audited es house voice.",
+	],
+	[
+		"ui.agents.navigation.legacy.chat",
+		"Spanish loanword, not untranslated English: «chat» is the established noun in the audited es house voice.",
+	],
 ]);
 
 function localeDirs() {

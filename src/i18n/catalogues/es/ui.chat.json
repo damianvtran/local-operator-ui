@@ -1,0 +1,10 @@
+{
+	"ui.chat.usage.continue": "Cuota incluida agotada; se seguirán usando créditos.",
+	"ui.chat.usage.family_caps": "Los límites por familia de modelos siguen vigentes.",
+	"ui.chat.usage.blocked": "Gasto no disponible",
+	"ui.chat.usage.eligibility_unknown": "Elegibilidad de gasto desconocida",
+	"ui.chat.usage.unlimited": "Cuota de pago ilimitada",
+	"ui.chat.skill_invocation.instructions_label": "Instrucciones de la habilidad enviadas con este mensaje",
+	"ui.chat.skill_invocation.trigger_label": "Instrucciones de la habilidad {token}",
+	"ui.chat.highlights.file_resolution_failed": "No se pudo resolver este archivo en el directorio de trabajo de la sesión. Usa Copiar ruta del archivo para comprobar su ubicación frente al espacio de trabajo de esta sesión antes de volver a intentarlo."
+}
