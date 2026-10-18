@@ -30,8 +30,8 @@ The patch contains no production component change.
 From the repository root at the base above:
 
 ```sh
-gunzip -c docs/evidence/loh-11-design/harness/chat-sidebar-sections.evidence.patch.gz | git apply
 gunzip -c docs/evidence/loh-11-design/harness/chat-sidebar-sections.evidence.patch.gz | git apply --check  # dry run
+gunzip -c docs/evidence/loh-11-design/harness/chat-sidebar-sections.evidence.patch.gz | git apply
 pnpm storybook --ci --no-open            # http://localhost:6006
 ```
 
@@ -43,8 +43,8 @@ afterwards), 1280×720 CSS viewport, DPR 2:
 /iframe.html?id=chat-sidebar-sections--evidence-tags-acts-320&viewMode=story&args=theme:localOperatorDark
 ```
 
-The six width/theme frames and the six action frames in `../before/` use these
-ids. `theme:localOperatorLight` is the light pair.
+The six width/theme frames and the three action frames in `../before/` use
+these ids. `theme:localOperatorLight` is the light pair.
 
 ## Re-derive the numbers
 
