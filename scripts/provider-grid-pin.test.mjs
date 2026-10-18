@@ -820,12 +820,17 @@ test("provider labels refresh and missing namespaces keep English counts", () =>
 			methodName({ method_id: "anthropic", kind: "browser" }),
 			"Claude subscription",
 		);
-		registerCatalogue("fr", {
+		/*
+		 * Synthetic locale: this arm proves per-key English fallback for ABSENT
+		 * messages. Using `fr` coupled the assertion to what fr happened to ship;
+		 * tranche 2 legitimately added these keys and expired that premise.
+		 */
+		registerCatalogue("xx-absent-probe", {
 			"ui.providers.provider_catalog.claude_subscription":
 				"Fixture subscription",
 			"ui.providers.provider_catalog.use_a_subscription": "Fixture group",
 		});
-		setLocale("fr");
+		setLocale("xx-absent-probe");
 		assert.equal(
 			methodName({ method_id: "anthropic", kind: "browser" }),
 			"Fixture subscription",

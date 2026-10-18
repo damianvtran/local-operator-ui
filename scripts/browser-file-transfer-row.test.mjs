@@ -640,10 +640,16 @@ test("a mounted transfer row refreshes language and absent messages keep English
 	const saved = await open(t, { transfers: activity([note()]) });
 	try {
 		assert.ok(saved.spoken().includes("was saved to"));
-		registerCatalogue("fr", {
+		/*
+		 * Use a synthetic locale so this test never couples to what a real shipped
+		 * catalogue happens to contain. The point is the per-key English fallback
+		 * for an ABSENT message; registering against `fr` meant the assertion broke
+		 * the day fr legitimately shipped these keys (tranche 2).
+		 */
+		registerCatalogue("xx-absent-probe", {
 			"ui.browser.browser_file_transfer_row.was_saved_to": "Fixture saved to",
 		});
-		await act(() => setLocale("fr"));
+		await act(() => setLocale("xx-absent-probe"));
 		assert.ok(saved.spoken().includes("Fixture saved to"), saved.spoken());
 		for (const count of [0, 1, 21]) {
 			assert.equal(

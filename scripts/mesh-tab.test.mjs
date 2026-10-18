@@ -4371,10 +4371,15 @@ test("mesh extraction keeps pinned labels and source-language plural fallback", 
 		"Settled approvals",
 	);
 	try {
-		mesh.registerCatalogue("fr", {
+		/*
+		 * Synthetic locale: this arm proves per-key English fallback for ABSENT
+		 * messages. Using `fr` coupled the assertion to what fr happened to ship;
+		 * tranche 2 legitimately added these keys and expired that premise.
+		 */
+		mesh.registerCatalogue("xx-absent-probe", {
 			"ui.mesh.mesh_reach.no_answer": "Fixture no answer",
 		});
-		mesh.setLocale("fr");
+		mesh.setLocale("xx-absent-probe");
 		assert.equal(mesh.reachWords("unanswered"), "Fixture no answer");
 		for (const count of [0, 1, 21, 1000]) {
 			assert.equal(
