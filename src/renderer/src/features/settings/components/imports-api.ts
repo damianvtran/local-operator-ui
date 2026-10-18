@@ -93,7 +93,7 @@ export type ImportProgress = {
 	completed: number;
 	total: number;
 	results: ImportSessionResult[];
-	warnings: string[];
+	warnings: ImportWarning[];
 	error: string;
 	startedAt: number;
 	updatedAt: number;
@@ -194,7 +194,7 @@ type RawJob = {
 	completed: number;
 	total: number;
 	results: RawSessionResult[];
-	warnings: string[];
+	warnings: RawWarning[];
 	error: string;
 	started_at: number;
 	updated_at: number;
@@ -322,7 +322,7 @@ export async function fetchImportJob(jobId: string): Promise<ImportProgress> {
 		completed: raw.completed,
 		total: raw.total,
 		results: raw.results.map(mapSessionResult),
-		warnings: raw.warnings,
+		warnings: raw.warnings.map(mapWarning),
 		error: raw.error,
 		startedAt: raw.started_at,
 		updatedAt: raw.updated_at,

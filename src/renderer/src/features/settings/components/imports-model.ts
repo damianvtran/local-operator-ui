@@ -36,3 +36,29 @@ export const selectionSignature = (
 	source: ImportSourceName | null,
 	selected: Set<string>,
 ): string => `${source ?? ""}\u0000${[...selected].sort().join("\u0000")}`;
+
+/**
+ * The core refuses a single import job above this many selected sessions. Keep
+ * the same ceiling in Select all so the refusal arrives before a preview is
+ * built, rather than as a start failure after the user has waited.
+ */
+export const MAX_IMPORT_SESSIONS = 5000;
+
+export const selectAllWithinCap = (
+	sessions: ImportSession[],
+	query: string,
+	selected: Set<string>,
+	limit = MAX_IMPORT_SESSIONS,
+): { selected: Set<string>; capped: boolean } => {
+	const next = new Set(selected);
+	let capped = false;
+	for (const session of filterSessions(sessions, query)) {
+		if (next.has(session.sourceId)) continue;
+		if (next.size >= limit) {
+			capped = true;
+			break;
+		}
+		next.add(session.sourceId);
+	}
+	return { selected: next, capped };
+};

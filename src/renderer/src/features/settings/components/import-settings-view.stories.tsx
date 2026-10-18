@@ -218,6 +218,8 @@ const Frame: FC<{ overrides: Partial<ImportSettingsViewProps> }> = ({
 			onCancel: noop,
 			onRetry: noop,
 			onImportAnother: noop,
+			onRefresh: noop,
+			selectionNotice: null,
 			onCopyPath: copy,
 			...overrides,
 		}),
@@ -279,6 +281,32 @@ export const Preview: Story = {
 
 export const Progress: Story = {
 	render: () => <Frame overrides={{ progress }} />,
+};
+
+export const Cancelled: Story = {
+	render: () => (
+		<Frame
+			overrides={{
+				progress: {
+					...progress,
+					state: "cancelled",
+					phase: "cancelled",
+					completed: 1,
+					total: 5,
+				},
+				result: {
+					...result,
+					state: "cancelled",
+					sessions: progress.results,
+					messages: 42,
+					compactions: 1,
+				},
+				selected: new Set(["omp-2f1a", "omp-9b02"]),
+				preview,
+				confirmed: true,
+			}}
+		/>
+	),
 };
 
 export const Result: Story = {
