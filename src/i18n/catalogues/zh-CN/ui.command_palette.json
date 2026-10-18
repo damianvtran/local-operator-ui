@@ -1,5 +1,5 @@
 {
-	"ui.command_palette.command_palette.characters_so_chats_are_matched_by_name": "个字符，因此仅按名称匹配对话。",
+	"ui.command_palette.command_palette.characters_so_chats_are_matched_by_name": " 个字符，因此仅按名称匹配对话。",
 	"ui.command_palette.command_palette.chats_are_matched_by_name_update_local_operator_to_search_inside_": "当前仅按名称匹配对话。更新Local Operator后，即可搜索对话内容。",
 	"ui.command_palette.command_palette.clear": "清空",
 	"ui.command_palette.command_palette.clear_search": "清空搜索",
@@ -12,7 +12,7 @@
 	"ui.command_palette.command_palette.results": "结果",
 	"ui.command_palette.command_palette.run": "运行",
 	"ui.command_palette.command_palette.search_chats_settings_pages_and_actions": "搜索对话、设置、页面和操作",
-	"ui.command_palette.command_palette.search_terms_are_limited_to": "搜索词最多为",
+	"ui.command_palette.command_palette.search_terms_are_limited_to": "搜索词最多为 ",
 	"ui.command_palette.command_palette.searching_conversations": "正在搜索对话……",
 	"ui.command_palette.command_palette.to_close": "关闭",
 	"ui.command_palette.command_palette.to_move": "移动选择",

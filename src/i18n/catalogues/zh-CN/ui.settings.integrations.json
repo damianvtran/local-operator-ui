@@ -30,7 +30,7 @@
 	"ui.settings.integrations.credential_manifest.oauth_2_0_access_token_for_google_apis_used_by_local_operator_for": "用于Google API的OAuth 2.0访问令牌。Local Operator使用它向Gmail、Calendar和Drive等Google服务发送经过身份验证的请求。此令牌有效期较短，会自动刷新。",
 	"ui.settings.integrations.credential_manifest.timestamp_in_milliseconds_since_epoch_indicating_when_the_current": "当前Google访问令牌的到期时间戳，以Unix纪元起算的毫秒数表示。系统内部据此管理令牌刷新。",
 	"ui.settings.integrations.credential_manifest.oauth_2_0_refresh_token_for_google_apis_used_to_obtain_new_access": "用于Google API的OAuth 2.0刷新令牌。当前访问令牌到期后，用它获取新的访问令牌。系统会自动、安全地管理此令牌。",
-	"ui.settings.integrations.credential_manifest.api_key_for_anthropic_s_claude_models_known_for_agentic_code_gene": "用于访问Anthropic旗下Claude模型的API密钥，这些模型擅长智能体代码生成。",
+	"ui.settings.integrations.credential_manifest.api_key_for_anthropic_s_claude_models_known_for_agentic_code_gene": "用于访问Anthropic旗下Claude模型的API密钥，这些模型擅长自主编程。",
 	"ui.settings.integrations.credential_manifest.api_key_for_search_engine_results_page_api_allowing_access_to_sea": "搜索引擎结果页面API的密钥，可用于获取搜索引擎数据，让您的智能体在网上搜索信息。",
 	"ui.settings.integrations.credential_manifest.api_key_for_tavily_a_search_api_designed_specifically_for_ai_appl": "Tavily的API密钥。Tavily是专为AI应用设计的搜索API，让您的智能体在网上搜索信息。",
 	"ui.settings.integrations.credential_manifest.api_key_for_brave_search_an_independent_web_index_with_its_own_cr": "Brave Search的API密钥。Brave Search拥有独立的网页索引和爬虫，让您的智能体在网上搜索信息。",

@@ -44,7 +44,7 @@
 	"ui.settings.imports.result_summary_cancelled": "{state} · 已处理{sessions, number}个，共{total, plural, other {#个会话}} · {messages, plural, other {#条消息}}",
 	"ui.settings.imports.result_target": "新会话{target}",
 	"ui.settings.imports.outcome_imported": "已导入",
-	"ui.settings.imports.outcome_resumed": "已续传",
+	"ui.settings.imports.outcome_resumed": "已继续导入",
 	"ui.settings.imports.outcome_skipped": "已导入过",
 	"ui.settings.imports.outcome_metadata": "仅有索引，无内容可导入",
 	"ui.settings.imports.outcome_failed": "失败",

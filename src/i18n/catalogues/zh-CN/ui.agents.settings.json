@@ -44,7 +44,7 @@
 	"ui.agents.settings.general.version": "版本",
 	"ui.agents.settings.security.security_instructions": "安全指令",
 	"ui.agents.settings.security.about_security_instructions": "关于安全指令",
-	"ui.agents.settings.security.this_prompt_is_directed_to_the_ai": "这些指令会发送给AI安全审核智能体，帮助它根据安全要求决定允许或阻止哪些操作。请以对另一个负责监督此智能体的智能体说话的方式编写，例如“允许所有git操作”“禁止智能体访问受限文件夹中的磁盘文件”。如果您频繁遇到安全拦截，可以修改这些指令以允许所需操作。",
+	"ui.agents.settings.security.this_prompt_is_directed_to_the_ai": "这些指令会发送给AI安全审核智能体，帮助它根据安全要求决定允许或阻止哪些操作。请直接向负责监督当前智能体的安全审核智能体说明要求，例如“允许所有git操作”“禁止智能体访问受限文件夹中的磁盘文件”。如果您频繁遇到安全拦截，可以修改这些指令以允许所需操作。",
 	"ui.agents.settings.security.enter_instructions_for_the_security_agent": "输入安全智能体的指令……",
 	"ui.agents.settings.system_prompt.agent_instructions": "智能体指令",
 	"ui.agents.settings.system_prompt.about_agent_instructions": "关于智能体指令",

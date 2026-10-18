@@ -2,7 +2,7 @@
 	"ui.common.account.low_credits_dialog.could_not_load_bonus_credit_information": "无法加载赠送额度信息。",
 	"ui.common.account.low_credits_dialog.detail": "{detail}美元",
 	"ui.common.account.low_credits_dialog.get_more_credits": "充值额度",
-	"ui.common.account.low_credits_dialog.in_bonus_credits_with_your_first_purchase": "赠送额度。",
+	"ui.common.account.low_credits_dialog.in_bonus_credits_with_your_first_purchase": "额度。",
 	"ui.common.account.low_credits_dialog.it_s_pay_as_you_go_with_no_commitments_load_up_what_you_need_star": "按量付费，无需长期承诺。按需充值，小额起充，灵活使用。",
 	"ui.common.account.low_credits_dialog.maybe_later": "稍后再说",
 	"ui.common.account.low_credits_dialog.plus_get": "首次充值还可获赠",
