@@ -345,8 +345,10 @@ export class BrowserHost implements BrowserActionContext {
 	 * update assets shipped. A constructor assignment is inside the transform's
 	 * supported shape, keeps the field `readonly`, and preserves the callback's
 	 * laziness (the tracker only stores it). Do not move it back to a field
-	 * initialiser, and keep new class fields free of arrow initialisers for the
-	 * same reason (2026-10-18). */
+	 * initialiser. Keep arrows out of every non-static class-field initialiser,
+	 * not only the direct form: a callback passed to a constructor
+	 * (`new X(() => ...)`) or sitting inside an object/array literal value is
+	 * refused by the same rule (2026-10-18). */
 	readonly tabAudio: TabAudioTracker;
 	readonly cdp: BrowserActionContext["cdp"];
 	readonly approvals: BrowserActionContext["approvals"];
