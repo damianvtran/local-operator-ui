@@ -1,0 +1,97 @@
+{
+  "args": {
+    "prompt": "a short wooden door creak, close perspective",
+    "duration_s": 0.5
+  },
+  "approval": "Generate a 0.5s sound effect via ElevenLabs \u2014 estimated $0.0010 at published rates (audio-rates@2026-10-17); the billed figure is the provider's.",
+  "estimate": {
+    "amount_usd": 0.001,
+    "units": 0.5,
+    "unit": "seconds",
+    "price_version": "audio-rates@2026-10-17",
+    "provenance": "elevenlabs eleven_text_to_sound_v2 at the central audio rate table (audio-rates@2026-10-17); an estimate from published vendor rates, not a billed figure"
+  },
+  "result": {
+    "tool_call_id": "release-byok-call",
+    "tool_name": "generate_sound_effect",
+    "content": [
+      {
+        "type": "text",
+        "text": "Generated a sound effect with ElevenLabs (eleven_text_to_sound_v2) \u2014 attached to the session (digest 3a679cd9fe08265e7f48e1781cda036d). Cost $0.001 (estimated from published rates; the provider reports no per-call figure)."
+      },
+      {
+        "type": "attachment",
+        "kind": "audio",
+        "content_type": "audio/mpeg",
+        "attachment": "3a679cd9fe08265e7f48e1781cda036d",
+        "source_url": null,
+        "size_bytes": 8820,
+        "width": null,
+        "height": null,
+        "duration_s": null,
+        "name": "eleven-text-to-sound-v2-01.mp3"
+      }
+    ],
+    "details": {
+      "provider": "elevenlabs",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "a short wooden door creak, close perspective",
+      "request_id": null,
+      "cancel_handle": null,
+      "cost_usd": 0.001,
+      "cost_source": "rate_table",
+      "billing_basis": "estimated",
+      "cost_provenance": "elevenlabs eleven_text_to_sound_v2 at the central audio rate table (audio-rates@2026-10-17); an estimate from published vendor rates, not a billed figure",
+      "attempts": [
+        {
+          "route": "elevenlabs",
+          "outcome": "ok",
+          "reason_class": "",
+          "message": ""
+        }
+      ],
+      "audio": {
+        "format": "mp3",
+        "size_bytes": 8820
+      },
+      "artifacts": [
+        {
+          "digest": "3a679cd9fe08265e7f48e1781cda036d",
+          "kind": "audio",
+          "name": "eleven-text-to-sound-v2-01.mp3",
+          "content_type": "audio/mpeg",
+          "size_bytes": 8820,
+          "width": null,
+          "height": null,
+          "duration_s": null
+        }
+      ]
+    },
+    "duration_s": null,
+    "is_error": false,
+    "useless": false
+  },
+  "ledger": [
+    {
+      "record_id": "audio:b2e7b33c15f64fc5b0b36edbfc27ca39",
+      "rev": 0,
+      "ts_ms": 1792305142132,
+      "session_id": "",
+      "parent_session_id": "",
+      "channel": "audio",
+      "provider": "elevenlabs",
+      "model": "eleven_text_to_sound_v2",
+      "units": 0.5,
+      "unit": "seconds",
+      "amount_micro": 1000,
+      "billing_basis": "estimated",
+      "cost_source": "catalogue",
+      "price_version": "elevenlabs eleven_text_to_sound_v2 at the central audio rate table (audio-rates@2026-10-17); an estimate from published vendor rates, not a billed figure",
+      "status": "ok",
+      "quote_micro": null,
+      "request_id": "",
+      "usage_record_id": "",
+      "detail": ""
+    }
+  ]
+}
