@@ -3,8 +3,17 @@ import { readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const RETRY_UNLESS_RIG_ERROR =
-	/rig\?\.rig !== "error" && exchangeReason \? null :/;
+/*
+ * RETRY IS WITHHELD UNLESS THE RIG IS IN ERROR. This used to read the header
+ * indicator's ternary; the header's phase word moved into the composer's strip
+ * (design spec `voice-composer/SPEC.md`), where the same rule is expressed as
+ * the two branches' actions: the exchange-error branch offers none, and the rig
+ * error offers "Try again". Pinned here as both halves, so the rule cannot be
+ * lost by moving a sentence.
+ */
+const ERROR_CASE = /case "error":/;
+const RETRY_ONLY_FOR_THE_RIG =
+	/action: state\.rig\?\.rig === "error" \? "try_again" : null,/;
 const RIG_REASON_SHOWN = /const reason = rig\.reason\?\.trim\(\);/;
 
 /*
@@ -2160,6 +2169,31 @@ test("echo guard runs BEFORE the card check: the rig's own 'Answer it on screen 
 	feedTurns("s-card-echo", { kind: "gate", gate: null });
 });
 
+test("paused: a take is refused before it is sent, and the phase says Paused", async () => {
+	const { sendVoiceTake, useVoiceStore, voicePhaseOf } = await controller();
+	useVoiceStore.getState().setActive({ session_id: "s-paused", enabled_at: 1 });
+	useVoiceStore.getState().setRig({
+		rig: "ready",
+		webui_url: null,
+		clients: 0,
+		paused: true,
+	});
+	globalThis.__voiceUpload = undefined;
+	const outcome = await sendVoiceTake("are you there");
+	assert.equal(outcome.ok, false);
+	assert.equal(outcome.code, "paused");
+	assert.equal(
+		globalThis.__voiceUpload,
+		undefined,
+		"nothing reached the upload: the page that would hear it is closed",
+	);
+	assert.equal(
+		voicePhaseOf(useVoiceStore.getState(), "s-paused"),
+		"paused",
+		"the strip's word outranks the ready one",
+	);
+});
+
 test("echo guard: the rig's 'Voice is off' heard back with the slot empty is an echo, not a voice_not_enabled refusal", async () => {
 	const { sendVoiceTake, useVoiceStore } = await controller();
 	useVoiceStore.getState().setActive(null);
@@ -2183,7 +2217,7 @@ test("U9: a rig error wins over a stale exchange error, so its reason and Try ag
 	});
 	assert.equal(voicePhaseOf(useVoiceStore.getState(), "s-u9"), "error");
 	const indicator = readFileSync(
-		"src/renderer/src/features/voice/voice-indicator.tsx",
+		"src/renderer/src/features/voice/voice-composer.tsx",
 		"utf8",
 	);
 	// The rig's reason is checked before the exchange's, and Try again is
@@ -2193,7 +2227,14 @@ test("U9: a rig error wins over a stale exchange error, so its reason and Try ag
 		reason.indexOf('rig?.rig === "error"') <
 			reason.indexOf('exchange === "not_sent"'),
 	);
-	assert.match(indicator, RETRY_UNLESS_RIG_ERROR);
+	/*
+	 * THE RULE SURVIVES THE MOVE (a rig error wins, and only it offers Try again):
+	 * the strip's error case offers the action on the rig's condition alone, so a
+	 * stale "not sent" can never present a restarted rig it does not need.
+	 */
+	const errorAt = indicator.search(ERROR_CASE);
+	assert.ok(errorAt > 0, "the strip's error case is gone");
+	assert.match(indicator.slice(errorAt, errorAt + 700), RETRY_ONLY_FOR_THE_RIG);
 	// D10: the start failure's own sentence is the visible reason.
 	assert.match(reason, RIG_REASON_SHOWN);
 	store.setExchange(null, null);
@@ -2357,7 +2398,7 @@ test("§8: the cut flag is read when present and tolerated when absent", async (
 	);
 	assert.match(
 		source,
-		/setLastSpoken\(\{\s*sessionId,\s*truncated: spokenTruncated\(spoken\),?\s*\}\)/,
+		/setLastSpoken\(\{\s*sessionId,\s*text: spoken\.text,\s*truncated: spokenTruncated\(spoken\),\s*at: Date\.now\(\),?\s*\}\)/,
 	);
 	assert.match(
 		source,

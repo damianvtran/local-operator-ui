@@ -845,6 +845,96 @@ const CONTROLS = [
 		border: "accentAlt",
 		ink: "accentAlt",
 	},
+	/*
+	 * THE COMPOSER STRIP'S STATE CHIPS (design spec `voice-composer/SPEC.md` §4/§8).
+	 *
+	 * One row per ground a chip can wear, because a chip IS the pairing the reader
+	 * has to resolve: a 12px word on a wash, inside the composer box, on the band's
+	 * own `sunken`.
+	 *
+	 * THE EDGE IS DECLARED AWAY ON EVERY ROW, and that is the spec's design rather
+	 * than an omission: a chip's boundary to the band is its wash, and a wash is
+	 * the one fill that provably cannot carry a 3:1 boundary here - `accentWash`
+	 * and `warningWash` measure 1.00:1 against `sunken` in some palette (synth,
+	 * tokyoNightDay), exactly as `accentWash` does on `canvas` elsewhere in this
+	 * file. What carries the state is the WORD: the spec's own rule is "the word is
+	 * the contract, colour never carries it alone", and the inset hairline on the
+	 * neutral chips is emphasis rather than a boundary the reader navigates by.
+	 * The `-border` roles on three rows are inset rules drawn against the chip's
+	 * own fill, so they are not the ground edge this table's floor measures; the
+	 * rows still assert the ink, which is the half that is read.
+	 *
+	 * THE INKS ARE THE TIGHT HALF AND THEY WERE MEASURED BEFORE THE ROWS WERE
+	 * WRITTEN, over all 59 palettes: `accent` on `accentWash` 4.51:1 at worst
+	 * (everforest), `onAccent` on `accent` 4.97 (tokyoNightDay), `warning` on
+	 * `warningWash` 4.54 (everforestLight), `danger` on `dangerWash` 4.52
+	 * (everforestLight), `inkMuted` on `surface` 6.56 (nightfox), `inkDim` on
+	 * `sunken` 5.00 (rosePineDawn). Every one clears the 4.5:1 text floor with no
+	 * pin, which is why none is listed in `PAIR_PINS`.
+	 */
+	{
+		/* Listening, Speaking, Reply ended - the accent wash. */
+		name: "voice strip chip (listening)",
+		on: ["sunken"],
+		fill: "accentWash",
+		border: null,
+		ink: "accent",
+		edge: false,
+	},
+	{
+		/* Hearing you - the ONE solid fill in the set (design D4). */
+		name: "voice strip chip (hearing)",
+		on: ["sunken"],
+		fill: "accent",
+		border: null,
+		ink: "onAccent",
+		edge: false,
+	},
+	{
+		/* Working - neutral on the box's own surface, with an inset hairline. */
+		name: "voice strip chip (working)",
+		on: ["sunken"],
+		fill: "surface",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		/* Interrupted, and the "Cut short" chip beside the strip. */
+		name: "voice strip chip (interrupted)",
+		on: ["sunken"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "warning",
+		edge: false,
+	},
+	{
+		/* Approve on screen - the approval chip, which is itself a button. */
+		name: "voice strip chip (approval)",
+		on: ["sunken"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "warning",
+		edge: false,
+	},
+	{
+		/* Microphone blocked, voice page not connected, voice error. */
+		name: "voice strip chip (failure)",
+		on: ["sunken"],
+		fill: "dangerWash",
+		border: "dangerBorder",
+		ink: "danger",
+		edge: false,
+	},
+	{
+		/* The caption and the history rows: quiet text on the band's ground. */
+		name: "voice strip caption",
+		on: ["sunken"],
+		fill: null,
+		border: null,
+		ink: "inkDim",
+		edge: false,
+	},
 	{
 		/*
 		 * The composer's credential pill and mask span (`credential-overlay.tsx`).

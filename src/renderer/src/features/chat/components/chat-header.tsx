@@ -1,5 +1,3 @@
-import { VoicePhase } from "@features/voice/voice-indicator";
-import { VoiceToggle } from "@features/voice/voice-toggle";
 import {
 	desktopFeatureState,
 	useDesktopCapabilities,
@@ -1095,13 +1093,11 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				className="ml-auto flex items-center gap-2"
 			>
 				{/*
-				 * SESSION VOICE: the toggle and, while this conversation holds the slot,
-				 * the exchange's phase word. Leading the trailing cluster so it sits
-				 * nearest the title it acts on; both render nothing without
-				 * `features.voice` or on a draft (`features/voice`).
+				 * SESSION VOICE IS NOT HERE ANY MORE (design spec
+				 * `voice-composer/SPEC.md` §1): the toggle and the phase word moved into
+				 * the composer, where the box they describe is. The sidebar row marker
+				 * (`VoiceRowMarker`) stays - it is the only voice mark outside the pane.
 				 */}
-				<VoicePhase sessionId={sessionId} />
-				<VoiceToggle sessionId={sessionId} />
 				{/*
 				 * THE ARCHIVED STATE, and its restore control, as a PAIR.
 				 *
