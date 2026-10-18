@@ -529,6 +529,19 @@ const IDENTICAL_OK = new Map([
 		"ui.browser.browser_new_tab.wordmark",
 		"Product name, preserved verbatim by the programme glossary.",
 	],
+
+	[
+		"ui.mesh.mesh_approvals.approval_title",
+		"Placeholder and final punctuation only ({head}.); no words to translate.",
+	],
+	[
+		"ui.mesh.mesh_approvals.approval_title_with_clauses",
+		"Placeholders, colon and final punctuation only; no words to translate.",
+	],
+	[
+		"ui.mesh.mesh_approvals.join_clauses",
+		"Placeholders and punctuation only ({clauses}; {last}); no words to translate.",
+	],
 ]);
 
 function localeDirs() {
