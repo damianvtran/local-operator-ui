@@ -31,9 +31,13 @@
  *      published state alphas (not opaque holes, not invisible), and the field's
  *      border colour is the derived glass edge.
  *   7. The composer draws no edge at rest, glass on or off (its own contract;
- *      v0.34.55's glass-only edge was reverted - operator report 2026-10-17.
- *      This audit reads grounds and alphas, so the edge is asserted by WIDTH
- *      here: it is exactly the shape the first version could not see).
+ *      v0.34.55's glass-only edge was reverted - operator report 2026-10-17).
+ *      This audit reads grounds and alphas, so the edge is asserted by WIDTH:
+ *      the main window's mount by its computed border-top, and EVERY
+ *      `[data-glass-region="composer"]` stylesheet rule by scanning it for any
+ *      border declaration - which holds the popup's rule too, though no window
+ *      this rig drives carries it. It is exactly the shape the first version
+ *      could not see).
  * The frames over a high-contrast backdrop are NOT part of this test (they need
  * the OS compositor); they are the PR's evidence, produced by the rig named there.
  *
@@ -542,6 +546,39 @@ for (const [themeName, label] of [
 										"0px",
 										`${tag}: the composer draws no edge at rest, saw border-top ${r.borderTop}`,
 									);
+									/*
+									 * THE RULE SCAN (round-2 coverage, D4/m2): every
+									 * `[data-glass-region="composer"]` rule in the built renderer's
+									 * stylesheets must carry no border declaration. The element read
+									 * above covers the main window's mount; the popup's composer is a
+									 * separate renderer document this audit never attaches to, so its
+									 * rule is held statically here. Counted: finding no rule is a
+									 * failure, not a pass.
+									 */
+									const rules = await cdp.ev(
+										`(() => {
+											const out = [];
+											for (const sh of document.styleSheets) {
+												let rs = [];
+												try { rs = [...sh.cssRules]; } catch {}
+												for (const rr of rs) {
+													if (rr.selectorText && rr.selectorText.includes('[data-glass-region="composer"]'))
+														out.push({ sel: rr.selectorText, border: /border(-(top|right|bottom|left|width|style|color))?:/.test(rr.cssText) });
+												}
+											}
+											return out;
+										})()`,
+									);
+									assert.ok(
+										rules.length >= 1,
+										`${tag}: no [data-glass-region="composer"] stylesheet rule was found to scan`,
+									);
+									for (const rule of rules) {
+										assert.ok(
+											!rule.border,
+											`${tag}: a composer rule carries a border declaration: ${rule.sel}`,
+										);
+									}
 								}
 								continue;
 							}
