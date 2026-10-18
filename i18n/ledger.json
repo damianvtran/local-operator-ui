@@ -2440,7 +2440,7 @@
 			"locale": "fr",
 			"namespace": "ui.shell",
 			"source_sha256": "a36a75e15ce94632bad00e774e7f6211ca58d95a2b6f6f50a85e687d64a5b1ea",
-			"target_sha256": "eca30b5e982ebaaf7e36ecff26487ae2f07b3dcd017a4eb7f7fb19586e918571",
+			"target_sha256": "a44110980baaf25ddd2dacd602bb9c2151b0003167ff8564ddfbff4b8e250c02",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -2451,7 +2451,7 @@
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-18",
-					"instance": "7c40d1c357cf",
+					"instance": "72b9b9eb39f3",
 					"result": "clean",
 					"findings": {
 						"blocker": 0,
@@ -2459,10 +2459,10 @@
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7c40d1c357cf-round2.json",
-					"receipt_sha256": "bb0dd9cf343d3c859d940a5b6be5274972456cd386589af0535486a598dbec9e",
-					"scope": "Full round 1 76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..6f04ff634be8863dbb3b7f13fe3352e666143d33; delta 6f04ff634be8863dbb3b7f13fe3352e666143d33..718219be27f3b17e605f2c2af35a20c0c19af88e; unchanged coverage retained",
-					"note": "Actual model openai/gpt-6.1-sol; automatic Anthropic quota fallback disclosed in receipt. F3/F4 remain nonblocking notes."
+					"receipt": "i18n/receipts/72b9b9eb39f3.json",
+					"receipt_sha256": "dde82d4ba9d9c519e8826e898cdd847e36a5a8888032cc6d7407d2c08e3ef6c3",
+					"scope": "718219be27f3b17e605f2c2af35a20c0c19af88e..1346a7755ae170935be57a7bd74c09c74857af7d; one Mesh → Maillage label per namespace; unchanged audit coverage retained",
+					"note": "New delta run, same auditor session 7c40d1c357cf; actual quota-fallback model openai/gpt-6.1-sol. Existing F3 note retained for palette."
 				}
 			],
 			"status": "audited"
@@ -2719,7 +2719,7 @@
 			"locale": "fr",
 			"namespace": "ui.command_palette",
 			"source_sha256": "c48797d973f81dea023e5c89c40c83d8ae0a9cdfaeb2509f6cbc4e9fb8abd7c6",
-			"target_sha256": "21dfa0ea5a7e963362fb45a01dca9c965ff2344b11114fb66d579f1c9d10b522",
+			"target_sha256": "9badf404c82ce83c940005ecb4a4993fe98275f0fe7583072b0f56aeae2e7f9f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -2730,7 +2730,7 @@
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-18",
-					"instance": "7c40d1c357cf",
+					"instance": "72b9b9eb39f3",
 					"result": "clean-with-findings",
 					"findings": {
 						"blocker": 0,
@@ -2738,10 +2738,10 @@
 						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7c40d1c357cf-round2.json",
-					"receipt_sha256": "bb0dd9cf343d3c859d940a5b6be5274972456cd386589af0535486a598dbec9e",
-					"scope": "Full round 1 76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..6f04ff634be8863dbb3b7f13fe3352e666143d33; delta 6f04ff634be8863dbb3b7f13fe3352e666143d33..718219be27f3b17e605f2c2af35a20c0c19af88e; unchanged coverage retained",
-					"note": "Actual model openai/gpt-6.1-sol; automatic Anthropic quota fallback disclosed in receipt. F3/F4 remain nonblocking notes."
+					"receipt": "i18n/receipts/72b9b9eb39f3.json",
+					"receipt_sha256": "dde82d4ba9d9c519e8826e898cdd847e36a5a8888032cc6d7407d2c08e3ef6c3",
+					"scope": "718219be27f3b17e605f2c2af35a20c0c19af88e..1346a7755ae170935be57a7bd74c09c74857af7d; one Mesh → Maillage label per namespace; unchanged audit coverage retained",
+					"note": "New delta run, same auditor session 7c40d1c357cf; actual quota-fallback model openai/gpt-6.1-sol. Existing F3 note retained for palette."
 				}
 			],
 			"status": "audited"
