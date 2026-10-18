@@ -43,10 +43,13 @@ import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store
  *      visible subset (`moveSection`'s own rule and its comment, one axis over).
  *   3. **A new pin arrives at the BOTTOM** (issue #1067). An id the stored order
  *      does not know is drawn below every id it does, so the pins already in the
- *      section keep their positions and the list grows in the order chats were
- *      pinned. A pin pressed in this panel is appended to the stored order at the
- *      press (`appendPinnedOrder`); one made in the terminal arrives unknown and
- *      lands at the bottom through this rule.
+ *      section keep their positions (the pins the panel has loaded: a pin off the
+ *      loaded catalogue page with no stored slot is not in the list the order is
+ *      written from, so it is drawn below the new one once it loads, as after a
+ *      move) and the list grows in the order chats were pinned. A pin pressed
+ *      in this panel is appended to the stored order at the press
+ *      (`appendPinnedOrder`); one made in the terminal arrives unknown and lands
+ *      at the bottom through this rule.
  *   4. **Unpinning forgets.** An id leaves the stored order when it leaves the
  *      pinned set (`forgetPinnedOrder`), so re-pinning is a NEW pin and arrives at
  *      the bottom: the alternative is a slot the reader freed by unpinning, which
@@ -142,6 +145,14 @@ export function pinnedOrder(
  * holds for it (an unpin made in the terminal, which never reached
  * `forgetPinnedOrder`) cannot keep an old slot: the id always ends up last. The
  * result holds no duplicates and no id outside `ids` and `id`.
+ *
+ * WHY THE PANEL WRITES IT: without the write a fresh profile draws the catalogue's
+ * activity order, and the chat just used would land on top; with it, the pins the
+ * panel has loaded keep their places. The panel writes it at the press rather than
+ * after the pin write resolves, like the unpin: if the pin write fails, the stray
+ * id is left out of the DRAWN list by `pinnedOrder`, but it stays in the stored
+ * order until the next materialization rewrites it, so a later terminal pin of that
+ * id lands in that slot rather than at the bottom.
  */
 export function appendPinnedOrder(
 	ids: readonly string[],
@@ -211,8 +222,8 @@ export function canMovePinnedRow(
  * it) makes the materialized base agree with the screen, while every hidden
  * known id keeps its catalogue slot. Seeding extras anywhere else would make the
  * base disagree with what the reader saw, and the first move would swap two rows
- * that were not neighbours on screen (measured under the old top-arrival rule:
- * `a` moved up by one and landed last).
+ * that were not neighbours on screen (historically, under the old top-arrival
+ * rule, `a` moved up by one and landed last).
  *
  * THE MOVE IS A SWAP OF TWO POSITIONS in that materialized permutation, never a
  * splice: everything the move did not name keeps the array index it had, which is
