@@ -1,0 +1,7 @@
+{
+	"ui.chat.response_actions.label": {
+		"role": "accessible name of the hover-revealed toolbar under a settled agent response that does not close its turn (Copy alone)",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"note": "Screen-reader only. Must differ from the closing answer's \"Answer actions\" toolbar, so a turn with several responses does not announce several identical toolbars."
+	}
+}
