@@ -45,6 +45,8 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+import { withAbsentLocale } from "./i18n/absent-locale.mjs";
+
 const bundle = await build({
 	stdin: {
 		contents: `
@@ -57,7 +59,7 @@ const bundle = await build({
 			export * from "./src/renderer/src/features/mesh/mesh-drop";
 			export * from "./src/renderer/src/features/mesh/mesh-drag";
 			export * from "./src/renderer/src/features/mesh/mesh-approvals";
- export { t, setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";
+ export { t, setLocale, registerCatalogue, clearRegisteredCatalogues, currentLocale } from "./src/i18n";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -4370,11 +4372,18 @@ test("mesh extraction keeps pinned labels and source-language plural fallback", 
 		en["ui.mesh.mesh_approvals_tray.settled_approvals"],
 		"Settled approvals",
 	);
+	let restoreLocale = () => {};
 	try {
-		mesh.registerCatalogue("fr", {
+		/*
+		 * Synthetic locale: this arm proves per-key English fallback for ABSENT
+		 * messages. Using `fr` coupled the assertion to what fr happened to ship;
+		 * tranche 2 legitimately added these keys and expired that premise.
+		 * `withAbsentLocale` is the shared form of that probe, so a future
+		 * tranche cannot expire it again.
+		 */
+		restoreLocale = withAbsentLocale(mesh, {
 			"ui.mesh.mesh_reach.no_answer": "Fixture no answer",
 		});
-		mesh.setLocale("fr");
 		assert.equal(mesh.reachWords("unanswered"), "Fixture no answer");
 		for (const count of [0, 1, 21, 1000]) {
 			assert.equal(
@@ -4407,6 +4416,6 @@ test("mesh extraction keeps pinned labels and source-language plural fallback", 
 		}
 	} finally {
 		mesh.clearRegisteredCatalogues();
-		mesh.setLocale("en");
+		restoreLocale();
 	}
 });

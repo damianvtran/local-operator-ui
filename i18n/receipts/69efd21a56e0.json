@@ -1,0 +1,476 @@
+{
+	"schema": 1,
+	"locale": "ru",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"model": "openai/gpt-6.1-sol",
+		"instance": "69efd21a56e0",
+		"session": "4c5ca9d6810d",
+		"instance_kind": "Fresh UUID-derived 12-hex audit-run identifier for tranche 2 chunk D; enclosing session reused from tranche 1 as explicitly requested.",
+		"model_provenance": "Automatic fallback from originally selected anthropic/claude-sonnet-5-5, continued from tranche 1; sessions info on this turn confirms live model openai/gpt-6.1-sol. No Sonnet audit claimed."
+	},
+	"date": "2026-10-18",
+	"status": "changes_requested",
+	"verdict": "FAIL",
+	"scope": {
+		"repository": "damianvtran/local-operator-ui",
+		"pr": 1181,
+		"base": "4579fc97ea9173476fccc5d7f55c7ef49733b7a2",
+		"head": "65ad12e7675a132e4a677ecf7aef95f227379525",
+		"chunk": "D",
+		"namespace_count": 13,
+		"keys": 588
+	},
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "deepseek/deepseek-flash",
+		"date": "2026-10-18",
+		"receipt": "i18n/receipts/ui-ru-batch-2.json",
+		"receipt_sha256": "f1f87e85aef2c2414d7c54e0aee8a56dd0c2ce95f9405e1a83334de2b62c4845"
+	},
+	"independence": "Auditor did not author or edit translations, ledger or generated files and did not push; translator uses a different agent/model. The translator subsequently reported local unpushed fixes; they are not part of this immutable audit.",
+	"references": {
+		"docs/I18N.md": "f6699c1015a16cbf782bbd008a28c50edd63ade3e98f84be2d41dec6b14b95db",
+		"i18n/glossary.md": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+		"i18n/style-guides/ru.md": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+	},
+	"checks": {
+		"key_sets": "13/13 exact en/ru equality, 588 keys independently counted; 26 blobs have unique JSON keys.",
+		"format": "13/13 targets equal canonical tab-indented JSON.",
+		"source_freshness": "All 13 English blobs equal pinned base; all en/ru hashes match committed translator receipt.",
+		"icu": {
+			"plural_keys": 32,
+			"select_keys": 3,
+			"format_samples": 544,
+			"errors": [],
+			"russian_categories": "Every plural has one/few/many/other. Every source argument occurrence/type, #, numeric skeleton and selector retained in every corresponding arm.",
+			"negative_controls": [
+				"ui.settings.integrations.integration_key_dialog.add_keys_heading root/count/few: argument/type set differs",
+				"ui.settings.integrations.integration_key_dialog.add_keys_heading root/count/few: direct argument occurrence/selector/# mismatch",
+				"ui.settings.imports.source_sessions: missing many"
+			]
+		},
+		"native_copy": "Read all 588 paired values. Formal вы and native grammatical reading; exact findings preserved per namespace below.",
+		"typography": "Guillemets balanced; em dashes/ellipses reviewed. No broken markup found. Flag/URL/backtick token scan has no missing tokens; explicit format-string failure is recorded separately.",
+		"width": "Only source/target text-cell lengths and sidecar constraints inspected; no browser or rendered geometry. No clipping/fit claim."
+	},
+	"known_risks": {
+		"provider_names_and_credentials": "Reviewed all 218 integrations keys. Credentials use учётные данные, keys ключ API, access/refresh tokens distinct; header/field identifiers and model names preserved, except product-name policy finding M5.",
+		"reasoning_effort": "Model namespace contains provider/config copy and passes; default_effort fails on the unqualified effort calque M1.",
+		"hold_and_cooling": "Explicit scan of all 588 English/Russian pairs finds no hold/cooling/rate-limit copy in updates or window_glass. The actual account holding-sign-in phrase uses сохранённый вход correctly. Exa/Parallel rate limits in integrations use ограничение частоты/лимиты частоты, not physical cooling. No French defect transplanted speculatively.",
+		"plurals": "All categories/argument structures pass; config pronoun/agreement M3 and imports separate token-count noun M2 remain language findings. No stray trailing preposition found.",
+		"short_labels": "Navigation and shortcut width sidecars give qualitative one-line/nonwrapping rules, not numeric pixel bounds. See width-notes.json for comparisons; navigation passes copy, shortcuts withheld for semantic M4, not unmeasured overflow."
+	},
+	"findings_summary": {
+		"blocker": 0,
+		"major": 2,
+		"minor": 5,
+		"nit": 1
+	},
+	"certification_policy": "Per direct task instruction, do not certify ANY namespace with findings, including minor/nit. No-findings rows only are supplied as audited; failed rows remain in receipt, not hidden or relabelled.",
+	"namespaces": {
+		"ui.settings.integrations": {
+			"status": "changes_requested",
+			"result": "changes_requested",
+			"keys_audited": 218,
+			"sha256": {
+				"en": "36b3507993a0466100ca099c3c1c2b2852d66a81b14f3685031f0a35dfa0f5b3",
+				"ru": "d53754523166432a86d6a23461e80f5d21d3fcf1b4ea50e37cd15b6366d78657"
+			},
+			"source_path": "src/i18n/catalogues/en/ui.settings.integrations.json",
+			"target_path": "src/i18n/catalogues/ru/ui.settings.integrations.json",
+			"context_path": "src/i18n/catalogues/en/ui.settings.integrations.context.json",
+			"context_sha256": "07ec84d1cb9026d17c1813fc22ff577792781f305afca43f7c8debccabf4584f",
+			"findings": [
+				{
+					"id": "RU-D-M5",
+					"severity": "minor",
+					"namespace": "ui.settings.integrations",
+					"key": "ui.settings.integrations.credential_manifest.oauth_2_0_access_token_for_google_apis_used_by_local_operator_for",
+					"related_keys": [],
+					"locations": [
+						{
+							"file": "src/i18n/catalogues/ru/ui.settings.integrations.json",
+							"key": "ui.settings.integrations.credential_manifest.oauth_2_0_access_token_for_google_apis_used_by_local_operator_for",
+							"line": 60
+						}
+					],
+					"text": "The Google-service product-name list `Gmail, Calendar, and Drive` becomes `Gmail, Календарю, Диску`. Those are understandable localized service names, but this task and the sidecar require brand/product names to stay exactly as written. All other reviewed provider/model/header names and credential terminology are preserved.",
+					"recommendation": "Keep the names Gmail, Calendar and Drive unchanged, rephrasing surrounding prose to avoid adding Cyrillic case endings to the Latin names.",
+					"disposition": "open; namespace not certified"
+				}
+			]
+		},
+		"ui.settings.configuration": {
+			"status": "changes_requested",
+			"result": "changes_requested",
+			"keys_audited": 92,
+			"sha256": {
+				"en": "d11a5170a0336449668b91a2b2aa1013ae36ee38c4b70fc69f90541aea3e5050",
+				"ru": "0433ce7b008af353463ddf16a1405eecbe33be07446eecd3f670c977bc46a9c2"
+			},
+			"source_path": "src/i18n/catalogues/en/ui.settings.configuration.json",
+			"target_path": "src/i18n/catalogues/ru/ui.settings.configuration.json",
+			"context_path": "src/i18n/catalogues/en/ui.settings.configuration.context.json",
+			"context_sha256": "62bf11e84f366c4145883f534017e582ecce64e841c9d69707e0ad40b93de45c",
+			"findings": [
+				{
+					"id": "RU-D-A1",
+					"severity": "major",
+					"namespace": "ui.settings.configuration",
+					"key": "ui.settings.configuration.setting_combobox.use_text",
+					"related_keys": [
+						"ui.settings.configuration.retention_duration_control.use_duration"
+					],
+					"locations": [
+						{
+							"file": "src/i18n/catalogues/ru/ui.settings.configuration.json",
+							"key": "ui.settings.configuration.setting_combobox.use_text",
+							"line": 64
+						},
+						{
+							"file": "src/i18n/catalogues/ru/ui.settings.configuration.json",
+							"key": "ui.settings.configuration.retention_duration_control.use_duration",
+							"line": 54
+						}
+					],
+					"text": "The pushed JSON literally contains `[redacted] «{text}»`; retention_duration_control.use_duration likewise contains `[redacted] {duration}`. Existing formatter produces `[redacted] «custom-model»` and `[redacted] 2 дня`. These are real catalogue bytes, not tool-output secret masking: both action verbs are missing.",
+					"recommendation": "Restore an actual Russian action verb (e.g. «Использовать») in both labels; retain both placeholders.",
+					"disposition": "open; namespace not certified"
+				},
+				{
+					"id": "RU-D-A2",
+					"severity": "major",
+					"namespace": "ui.settings.configuration",
+					"key": "ui.settings.configuration.setting_control.one_hop_per_line_as_provider_model_effort_an_empty_chain_moves_to",
+					"related_keys": [],
+					"locations": [
+						{
+							"file": "src/i18n/catalogues/ru/ui.settings.configuration.json",
+							"key": "ui.settings.configuration.setting_control.one_hop_per_line_as_provider_model_effort_an_empty_chain_moves_to",
+							"line": 66
+						}
+					],
+					"text": "The format example `provider/model (effort)` becomes `провайдер/модель (усилия)`. The exact English sidecar explicitly requires keeping both `provider/model` and `(effort)` as written because they show the line format the user must type. This violates the protected input-syntax contract, not merely terminology preference.",
+					"recommendation": "Translate the surrounding prose, but restore the exact literal `provider/model (effort)`.",
+					"disposition": "open; namespace not certified"
+				},
+				{
+					"id": "RU-D-M3",
+					"severity": "minor",
+					"namespace": "ui.settings.configuration",
+					"key": "ui.settings.configuration.settings_filter_bar.advanced_shown",
+					"related_keys": [],
+					"locations": [
+						{
+							"file": "src/i18n/catalogues/ru/ui.settings.configuration.json",
+							"key": "ui.settings.configuration.settings_filter_bar.advanced_shown",
+							"line": 68
+						}
+					],
+					"text": "The `one` arm is also selected for 21/101, producing «показана 21 расширенная настройка … чтобы увидеть её»: «её» incorrectly says to expand just one setting. The few-arm phrase «показано 2 расширенные настройки» also mixes impersonal and agreeing constructions. All ICU arguments/categories are intact; this is grammatical agreement, not placeholder loss.",
+					"recommendation": "Prefer count-neutral text/pronouns or distinguish =1 from the Russian one category; make the few-arm verb/adjective agreement consistent. Preserve the existing count and Expand all action name.",
+					"disposition": "open; namespace not certified"
+				}
+			]
+		},
+		"ui.settings.imports": {
+			"status": "changes_requested",
+			"result": "changes_requested",
+			"keys_audited": 74,
+			"sha256": {
+				"en": "1f8b1941bd65b91c84b1b4c41bfb1406f0e4790936c8690b04bfd788b4a1b082",
+				"ru": "122c05b645944c927b68ea2ee8166c3699c4d9ff6f185e822ab866e7d67a2398"
+			},
+			"source_path": "src/i18n/catalogues/en/ui.settings.imports.json",
+			"target_path": "src/i18n/catalogues/ru/ui.settings.imports.json",
+			"context_path": "src/i18n/catalogues/en/ui.settings.imports.context.json",
+			"context_sha256": "29733af08f4986ec9bb365871c5968581e281e58ac0bec8c0b099b265043bfd7",
+			"findings": [
+				{
+					"id": "RU-D-M2",
+					"severity": "minor",
+					"namespace": "ui.settings.imports",
+					"key": "ui.settings.imports.preview_memory",
+					"related_keys": [],
+					"locations": [
+						{
+							"file": "src/i18n/catalogues/ru/ui.settings.imports.json",
+							"key": "ui.settings.imports.preview_memory",
+							"line": 42
+						}
+					],
+					"text": "The records plural is complete, but the separate variable token count is followed by fixed genitive-plural «токенов». Actual formatter outputs include «1 запись памяти · ~1 токенов» and «2 записи памяти · ~2 токенов».",
+					"recommendation": "Use a count-neutral label (for example «токены: ~{tokens}») or a proper separate Russian plural. Keep both {records} and {tokens}.",
+					"disposition": "open; namespace not certified"
+				}
+			]
+		},
+		"ui.settings.account": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 34,
+			"sha256": {
+				"en": "90960d5e885e5b617af91b7249b64828a049c0b9631bf5da4562a8f8c2f5c066",
+				"ru": "a12a9d95867c7df8d984d02f9972080c073e734c22ebd5657dec457d09c076ba"
+			},
+			"source_path": "src/i18n/catalogues/en/ui.settings.account.json",
+			"target_path": "src/i18n/catalogues/ru/ui.settings.account.json",
+			"context_path": "src/i18n/catalogues/en/ui.settings.account.context.json",
+			"context_sha256": "d3c52532e44bcc6278bc6987fc6a0ca92e0704de42a76d812810ed4b8ade18a2",
+			"findings": []
+		},
+		"ui.settings.model": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 32,
+			"sha256": {
+				"en": "5a09b6ed49e8501d14a6f8052a70ce15ce5104ec8da3756c6b576e6e4d150cf1",
+				"ru": "cd92b810c608f0f0e85a98bac2282e39e39779a5d170e35ce5d0142163155834"
+			},
+			"source_path": "src/i18n/catalogues/en/ui.settings.model.json",
+			"target_path": "src/i18n/catalogues/ru/ui.settings.model.json",
+			"context_path": "src/i18n/catalogues/en/ui.settings.model.context.json",
+			"context_sha256": "289c42e494dfc18f622624464d118742a6c70fdcc04f77cfb3ccd27292496de4",
+			"findings": []
+		},
+		"ui.settings.updates": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 29,
+			"sha256": {
+				"en": "6597aeea3a3a0495f1ba0d9a7ce8078f455d970b53647dbc8350e00fbc9099b2",
+				"ru": "69bb13058b0f42e851eb5dd88a5bc3f0f28c4d229a163d03ea5d9b3ba30b4e01"
+			},
+			"source_path": "src/i18n/catalogues/en/ui.settings.updates.json",
+			"target_path": "src/i18n/catalogues/ru/ui.settings.updates.json",
+			"context_path": "src/i18n/catalogues/en/ui.settings.updates.context.json",
+			"context_sha256": "0dfee8b6b7b953c1b85963179a82469066e97121f5dd08329ca5911ab38dde47",
+			"findings": []
+		},
+		"ui.settings.navigation": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 22,
+			"sha256": {
+				"en": "b0db379acf4e4c13bed8f4fb3f7e551c0b1ebc3dd52ef4508a9797c5fdcf3dbc",
+				"ru": "1c4ee1f588137c82fe85074d3fc637161cfd9f1610f1fd2f55d4a748081321db"
+			},
+			"source_path": "src/i18n/catalogues/en/ui.settings.navigation.json",
+			"target_path": "src/i18n/catalogues/ru/ui.settings.navigation.json",
+			"context_path": "src/i18n/catalogues/en/ui.settings.navigation.context.json",
+			"context_sha256": "eb811454453fc4894a991b7cebf6207151e01929a3bf660fb6a036cb16fe9344",
+			"findings": []
+		},
+		"ui.settings.speech": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 19,
+			"sha256": {
+				"en": "36b1321c4660c345b6c40dfa753e0e233228a66868cfe78218c4ce573609574d",
+				"ru": "8ebfb041b5c937ec009bea3ea850e820ccbf2368a41b3e108503416c8faeaeba"
+			},
+			"source_path": "src/i18n/catalogues/en/ui.settings.speech.json",
+			"target_path": "src/i18n/catalogues/ru/ui.settings.speech.json",
+			"context_path": "src/i18n/catalogues/en/ui.settings.speech.context.json",
+			"context_sha256": "77973b157a564f2ac900062dfc26c6a9079d72d1624aad175c396c5ba9728b1a",
+			"findings": []
+		},
+		"ui.settings.appearance.window_glass": {
+			"status": "changes_requested",
+			"result": "changes_requested",
+			"keys_audited": 28,
+			"sha256": {
+				"en": "d3c6e272273baab454200c41a25b21c451689ae9bf03329aa776dc1cb9f1b33a",
+				"ru": "bf91809de07f94bdd953638b450e9bfcb2a7f9f37c94ffde2f4c2970884c4d92"
+			},
+			"source_path": "src/i18n/catalogues/en/ui.settings.appearance.window_glass.json",
+			"target_path": "src/i18n/catalogues/ru/ui.settings.appearance.window_glass.json",
+			"context_path": "src/i18n/catalogues/en/ui.settings.appearance.window_glass.context.json",
+			"context_sha256": "91fc7249578953f8532df9db875dea4bfb7ff952dd17a9d8db418909ac6046e1",
+			"findings": [
+				{
+					"id": "RU-D-N1",
+					"severity": "nit",
+					"namespace": "ui.settings.appearance.window_glass",
+					"key": "ui.settings.appearance.window_glass.intensity_description",
+					"related_keys": [],
+					"locations": [
+						{
+							"file": "src/i18n/catalogues/ru/ui.settings.appearance.window_glass.json",
+							"key": "ui.settings.appearance.window_glass.intensity_description",
+							"line": 7
+						}
+					],
+					"text": "«Блоки сообщений и карточки становятся оттенками» is a literal calque: UI surfaces do not become hues; they become translucent/tinted surfaces. The sentence is understandable in context, but not idiomatic Russian technical copy.",
+					"recommendation": "Describe them as lightly tinted or translucent surfaces, without promising that code/documents/images become translucent.",
+					"disposition": "open; namespace not certified"
+				}
+			]
+		},
+		"ui.settings.appearance": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 10,
+			"sha256": {
+				"en": "f5db8989cc542fededba171769b0fbaa940cec562de6eccc07347c0f41c784d1",
+				"ru": "a224ed267edad70b37c71160ba24ce0dc1419cb06b96a4c472bc0b94ee72c9d6"
+			},
+			"source_path": "src/i18n/catalogues/en/ui.settings.appearance.json",
+			"target_path": "src/i18n/catalogues/ru/ui.settings.appearance.json",
+			"context_path": "src/i18n/catalogues/en/ui.settings.appearance.context.json",
+			"context_sha256": "5bd64d7069c6f1bfc06a8d7913ad73d9aab4ba970b2e94d42574f01bda78b971",
+			"findings": []
+		},
+		"ui.settings.model.default_effort": {
+			"status": "changes_requested",
+			"result": "changes_requested",
+			"keys_audited": 19,
+			"sha256": {
+				"en": "5a4a01952b8a4242730e336cf082dc926085ac126a147d8b44197e9f04fc3b29",
+				"ru": "f9c5b8a119d702f5ed53a8cdf0544161fc1d744c36593899b799d9ebcbd19b7f"
+			},
+			"source_path": "src/i18n/catalogues/en/ui.settings.model.default_effort.json",
+			"target_path": "src/i18n/catalogues/ru/ui.settings.model.default_effort.json",
+			"context_path": "src/i18n/catalogues/en/ui.settings.model.default_effort.context.json",
+			"context_sha256": "ec2cf07e6b7d273b33a6fc8644453796245291ab68b050d714779b5aafdec109",
+			"findings": [
+				{
+					"id": "RU-D-M1",
+					"severity": "minor",
+					"namespace": "ui.settings.model.default_effort",
+					"key": "ui.settings.model.default_effort.label",
+					"related_keys": [
+						"ui.settings.model.default_effort.busy",
+						"ui.settings.model.default_effort.empty"
+					],
+					"locations": [
+						{
+							"file": "src/i18n/catalogues/ru/ui.settings.model.default_effort.json",
+							"key": "ui.settings.model.default_effort.label",
+							"line": 8
+						},
+						{
+							"file": "src/i18n/catalogues/ru/ui.settings.model.default_effort.json",
+							"key": "ui.settings.model.default_effort.busy",
+							"line": 2
+						},
+						{
+							"file": "src/i18n/catalogues/ru/ui.settings.model.default_effort.json",
+							"key": "ui.settings.model.default_effort.empty",
+							"line": 5
+						}
+					],
+					"text": "«Усилия по умолчанию», «Сохранение усилий по умолчанию» and «Усилия этой модели не настраиваются» read as human exertion rather than a model reasoning-depth/computation setting. The label context explicitly defines a reasoning-effort level for new conversations. The calque recurs throughout the 19-key namespace.",
+					"recommendation": "Use a consistent natural model term such as «Глубина рассуждений» (and inflected forms) or an explicitly qualified «Уровень рассуждений». Keep this distinct from a tier that selects a different model.",
+					"disposition": "open; namespace not certified"
+				}
+			]
+		},
+		"ui.settings.model.provider_callout": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 2,
+			"sha256": {
+				"en": "8d1871aa2d087f99694b77e9f946b33b549a9541525023347b78124f42bbf82f",
+				"ru": "9a08d825423aab14cd1e52ae83e058fbd2cd4e08c4d6837aa1a304d60f5eabb0"
+			},
+			"source_path": "src/i18n/catalogues/en/ui.settings.model.provider_callout.json",
+			"target_path": "src/i18n/catalogues/ru/ui.settings.model.provider_callout.json",
+			"context_path": "src/i18n/catalogues/en/ui.settings.model.provider_callout.context.json",
+			"context_sha256": "62fe3c6d8bcceca7f2c7dddb7f413a6a3f44659ccb64626b6d4333ea751ccf35",
+			"findings": []
+		},
+		"ui.settings.shortcuts": {
+			"status": "changes_requested",
+			"result": "changes_requested",
+			"keys_audited": 9,
+			"sha256": {
+				"en": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
+				"ru": "0e327ce7fbc6d7ac5b5f967f2b4a9866a0e31dc4f623a3bb7ed47f2491665b69"
+			},
+			"source_path": "src/i18n/catalogues/en/ui.settings.shortcuts.json",
+			"target_path": "src/i18n/catalogues/ru/ui.settings.shortcuts.json",
+			"context_path": "src/i18n/catalogues/en/ui.settings.shortcuts.context.json",
+			"context_sha256": "57bc76797ae375d624cf5cf8e2bc347daad5eab09ea07080fa2aeb98410867af",
+			"findings": [
+				{
+					"id": "RU-D-M4",
+					"severity": "minor",
+					"namespace": "ui.settings.shortcuts",
+					"key": "ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you",
+					"related_keys": [],
+					"locations": [
+						{
+							"file": "src/i18n/catalogues/ru/ui.settings.shortcuts.json",
+							"key": "ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you",
+							"line": 10
+						}
+					],
+					"text": "«„Сбросить“ возвращает действие по умолчанию» shifts the meaning to restoring a default action. Reset actually restores the current action’s default keyboard binding; it does not select another action.",
+					"recommendation": "Say that «Сбросить» restores the default key combination for the action (e.g. «возвращает сочетание по умолчанию»); keep Esc and the actual button names.",
+					"disposition": "open; namespace not certified"
+				}
+			]
+		}
+	},
+	"artifacts": {
+		"ledger-rules.mjs": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/ledger-rules.mjs",
+			"sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+		},
+		"icu-run.log": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/icu-run.log",
+			"sha256": "fa84ee4656daa706980d5c72638a32da8af78a0e3a23901b39e6d0e414f04051"
+		},
+		"input.json": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/input.json",
+			"sha256": "0d7494c7172da021d8fbfd122996a85f19cceda5b28cfbf64bfdc545ec62bd29"
+		},
+		"negative-results.json": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/negative-results.json",
+			"sha256": "da4c6037f69ad5052a1731ef38502c60f864d796c7e90b9639cee759203016fd"
+		},
+		"width-notes.json": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/width-notes.json",
+			"sha256": "fc158dffd418f392a94952ae3cf472d0106eaca342f1f7f3a0fd6ea79e50f00e"
+		},
+		"mechanical.json": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/mechanical.json",
+			"sha256": "01dc33fc28fba903b3242c6574be803deffe6a96f79da88faebd971b87388e86"
+		},
+		"paired.txt": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/paired.txt",
+			"sha256": "9ed740defe2082c10b13c7e3687d68310be7f3ca37a9ff3da9ab7df7656982da"
+		},
+		"negative-input.json": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/negative-input.json",
+			"sha256": "97e6e27b90bd0cf9be105e10ee920baa9205c1268ef0e156cb1ca9db9be07666"
+		},
+		"audit-ru.mjs": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/audit-ru.mjs",
+			"sha256": "3b8addb603079ae752e9a28d4e6b44cc20789064070d4dd7688f41b25fff1a2a"
+		},
+		"icu-results.json": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/icu-results.json",
+			"sha256": "cec8768b95eeffdc051d1d33825a1b434f5a438572dcd3dc3d3335ed416e47f5"
+		},
+		"semantic-samples.mjs": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/semantic-samples.mjs",
+			"sha256": "474cfd21043fd8ef188c025b8941741d0b36021f36656732a5d488912b82f0d7"
+		},
+		"negative-run.log": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/negative-run.log",
+			"sha256": "83c0f99fb45d9a1579f13e377122bca9fc1dfdb054b869426bce9e38805c0d05"
+		},
+		"semantic-samples.log": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/semantic-samples.log",
+			"sha256": "3c7f5b1619e8e71803ba4ee85ffde2d4e85a0600a82040182275687e52e1804c"
+		}
+	},
+	"limitations": [
+		"Source/text-format audit only: no browser, installs, builds, heavy runs or rendering.",
+		"Separate high-visibility second audit and design/UX/rendered evidence are not supplied or waived.",
+		"Root must retain exact receipt bytes at i18n/receipts/69efd21a56e0.json before applying matching ledger rows. Scratch is the requested handoff, not a claim that tracked evidence retention is complete."
+	]
+}

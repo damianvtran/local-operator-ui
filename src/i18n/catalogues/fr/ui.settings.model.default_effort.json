@@ -1,0 +1,21 @@
+{
+	"ui.settings.model.default_effort.label": "Effort par défaut",
+	"ui.settings.model.default_effort.placeholder": "Sélectionner un niveau d’effort",
+	"ui.settings.model.default_effort.busy": "Enregistrement de l’effort par défaut",
+	"ui.settings.model.default_effort.model_default": "Valeur par défaut du modèle",
+	"ui.settings.model.default_effort.model_default_resolves": "S’exécute à {level} pour ce modèle.",
+	"ui.settings.model.default_effort.helper_ready": "S’applique aux nouvelles conversations. La valeur par défaut du modèle laisse ce modèle choisir son propre niveau.",
+	"ui.settings.model.default_effort.loading": "Vérification des niveaux d’effort de ce modèle…",
+	"ui.settings.model.default_effort.error": "Les niveaux d’effort de ce modèle n’ont pas pu être lus.",
+	"ui.settings.model.default_effort.no_model": "Sélectionnez un modèle pour choisir ses niveaux d’effort.",
+	"ui.settings.model.default_effort.no_home": "Votre dossier personnel n’est pas encore disponible ; les niveaux d’effort ne peuvent donc pas être lus.",
+	"ui.settings.model.default_effort.settings_loading": "Vérification de votre effort par défaut enregistré…",
+	"ui.settings.model.default_effort.settings_error": "Votre effort par défaut enregistré n’a pas pu être lu.",
+	"ui.settings.model.default_effort.unresolved": "Ce modèle n’a pas encore signalé ses niveaux d’effort.",
+	"ui.settings.model.default_effort.empty": "L’effort n’est pas réglable sur ce modèle.",
+	"ui.settings.model.default_effort.one_level": "Ce modèle propose un seul niveau d’effort : {level}.",
+	"ui.settings.model.default_effort.one_level_sentinel": "Ce modèle n’a aucun niveau d’effort à choisir : il s’exécute toujours à sa propre valeur par défaut.",
+	"ui.settings.model.default_effort.clamped": "{level} n’est pas disponible sur {model}. Utilisation de {resolved}.",
+	"ui.settings.model.default_effort.clamped_unset": "{level} n’est pas disponible sur {model}. Utilisation de la valeur par défaut du modèle.",
+	"ui.settings.model.default_effort.save_failed": "Votre effort par défaut n’a pas été enregistré."
+}
