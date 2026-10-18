@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The detail page's inline editing, as a pure model: the per-field rules the
  * wire will enforce, checked before any request; the changed-fields
@@ -60,14 +61,22 @@ export const PROJECT_TAGS_MAX = 8;
 /** A title is free text, capped as the wire caps it. `""` clears it. */
 export function projectTitleRule(title: string): string | null {
 	if (title.trim().length > PROJECT_TITLE_MAX_CHARS)
-		return `Titles are at most ${PROJECT_TITLE_MAX_CHARS} characters.`;
+		return t(
+			"ui.projects.project_edit_model.titles_are_at_most_value1_characters",
+			{ value1: PROJECT_TITLE_MAX_CHARS },
+		);
 	return null;
 }
 
 /** The description's one local rule; the counter in the editor reads the same cap. */
 export function projectDescriptionRule(description: string): string | null {
 	if (description.length > PROJECT_DESCRIPTION_MAX_CHARS)
-		return `Keep the description within ${PROJECT_DESCRIPTION_MAX_CHARS} characters.`;
+		return t(
+			"ui.projects.project_edit_model.keep_the_description_within_value1_characters",
+			{
+				value1: PROJECT_DESCRIPTION_MAX_CHARS,
+			},
+		);
 	return null;
 }
 
@@ -84,14 +93,24 @@ export function projectAttributionRule(
 	field: "owner" | "team",
 ): string | null {
 	if (value.trim().length > PROJECT_ATTRIBUTION_MAX_CHARS)
-		return `${field === "owner" ? "Owners" : "Teams"} are at most ${PROJECT_ATTRIBUTION_MAX_CHARS} characters.`;
+		return t(
+			"ui.projects.project_edit_model.teams_are_at_most_value2_characters",
+			{
+				teams: String(
+					field === "owner"
+						? t("ui.projects.project_edit_model.owners")
+						: t("ui.projects.project_edit_model.teams"),
+				),
+				value2: PROJECT_ATTRIBUTION_MAX_CHARS,
+			},
+		);
 	return null;
 }
 
 /** One planning date: `YYYY-MM-DD`, or empty to clear. */
 export function projectDateFieldRule(day: string): string | null {
 	if (!PROJECT_DAY_FIELD_PATTERN.test(day))
-		return "Dates are YYYY-MM-DD, or empty.";
+		return t("ui.projects.project_edit_model.dates_are_yyyy_mm_dd_or_empty");
 	return null;
 }
 
@@ -106,7 +125,9 @@ export function projectDateOrderRule(
 	targetDate: string,
 ): string | null {
 	if (startDate && targetDate && targetDate < startDate)
-		return "The target date is before the start date.";
+		return t(
+			"ui.projects.project_edit_model.the_target_date_is_before_the_start_date",
+		);
 	return null;
 }
 
@@ -125,7 +146,9 @@ export function projectEstimateNumberRule(number: string): string | null {
 	if (trimmed === "") return null;
 	const value = Number(trimmed);
 	if (!Number.isFinite(value) || !(value > 0) || value > 1000)
-		return "Estimates are greater than 0 and at most 1000.";
+		return t(
+			"ui.projects.project_edit_model.estimates_are_greater_than_0_and_at_most_1000",
+		);
 	return null;
 }
 
@@ -136,7 +159,12 @@ export function projectTagsFieldRule(raw: string): {
 } {
 	const tags = parseProjectTags(raw);
 	if (tags.length > PROJECT_TAGS_MAX)
-		return { tags, error: `Up to ${PROJECT_TAGS_MAX} tags.` };
+		return {
+			tags,
+			error: t("ui.projects.project_edit_model.up_to_project_tags_max_tags", {
+				PROJECT_TAGS_MAX,
+			}),
+		};
 	for (const tag of tags) {
 		const error = projectTagRule(tag);
 		if (error) return { tags, error };
@@ -162,8 +190,13 @@ export function projectRefusalCopy(input: {
 	message: string;
 }): string {
 	if (input.code === PROJECT_NAME_CONFLICT_CODE)
-		return "A project with this key already exists.";
-	return refusalCopy(input.message) || "The project was not saved.";
+		return t(
+			"ui.projects.project_edit_model.a_project_with_this_key_already_exists",
+		);
+	return (
+		refusalCopy(input.message) ||
+		t("ui.projects.project_edit_model.the_project_was_not_saved")
+	);
 }
 
 /** The estimate row's editing value: a number text and its unit together. */

@@ -1141,7 +1141,7 @@ test("a SECRET-ONLY ask refuses the main box; any fillable question leaves it or
 	assert.equal(
 		queue.askComposerHoldsSecret(secretOnly),
 		true,
-		"the box must refuse",
+		"the box shows the notice and guards the send",
 	);
 
 	// Mixed: the secret question has its own masked field in the panel; the box
@@ -1653,4 +1653,157 @@ test("a row that lapses while the panel is mounted is HELD in place until the ne
 		answered.pending.map((row) => row.ask.ask_id),
 		["a-2"],
 	);
+});
+
+/* -------------------------------------- the Put-in-secret-field wiring ---- */
+
+/*
+ * "PUT IN SECRET FIELD", AS ONE FUNCTION (agent review round 1, m3).
+ *
+ * The wiring used to live in two components: `chat-content.tsx` decided which
+ * head to fill and built the payload map, `chat-page.tsx` mapped the answer's
+ * status to "landed". Neither could be reached by a DOM-free test, and the jsdom
+ * rig that mounts the composer mocks `onFill` - so the map shape, the trim, the
+ * "the ask changed under the confirm" check and the `sent` mapping had no test
+ * at all. `fillSecretField` is that body, extracted: the two components now pass
+ * their head and their answer door in, and these cases drive the real thing.
+ */
+
+const secretQuestion = (over = {}) => ({
+	id: "api_token",
+	question: "Paste the API token.",
+	options: [],
+	multi: false,
+	secret: true,
+	...over,
+});
+
+const secretAskWith = (questions, over = {}) => ask({ questions, ...over });
+
+test("the field a Put would land in is named by the ask AND its question", () => {
+	const one = queue.askSecretField(secretAskWith([secretQuestion()]));
+	assert.match(one.key, /^a-1:/, "the ask id is in the key");
+	assert.match(one.key, /api_token$/, "and so is the question");
+	assert.equal(one.questionId, "api_token");
+
+	const two = queue.askSecretField(
+		secretAskWith([secretQuestion(), secretQuestion({ id: "db_password" })]),
+	);
+	assert.equal(
+		two.questionId,
+		null,
+		"two fields, so no single value names one",
+	);
+	assert.match(
+		two.key,
+		/\*$/,
+		"and the key says so, so a change of shape retires a confirm",
+	);
+
+	const plain = queue.askSecretField(
+		secretAskWith([secretQuestion({ secret: false })]),
+	);
+	assert.equal(
+		plain.questionId,
+		null,
+		"a non-secret question is not a secret field",
+	);
+});
+
+test("a Put posts the question's id, the trimmed value, and reports what happened", async () => {
+	const head = { ask: secretAskWith([secretQuestion()]) };
+	const key = queue.askSecretField(head.ask).key;
+	const calls = [];
+	const sent = await queue.fillSecretField(
+		head,
+		key,
+		"  tok_123456789  ",
+		async (id, answers) => {
+			calls.push([id, answers]);
+			return { status: "sent" };
+		},
+	);
+	assert.equal(sent, "sent");
+	assert.deepEqual(
+		calls,
+		[["a-1", { api_token: ["tok_123456789"] }]],
+		"the wire body is the panel's own shape, trimmed exactly as `askAnswerMap` trims",
+	);
+
+	assert.equal(
+		await queue.fillSecretField(head, key, "x1234567", async () => ({
+			status: "refused",
+		})),
+		"refused",
+	);
+	assert.equal(
+		await queue.fillSecretField(head, key, "x1234567", async () => ({
+			status: "failed",
+		})),
+		"refused",
+		"a transport failure is a refusal to the composer: the value did not land",
+	);
+	assert.equal(
+		await queue.fillSecretField(head, key, "x1234567", async () => ({
+			status: "locked",
+		})),
+		"locked",
+		"and the lock keeps its own reason, so the composer can say which it is",
+	);
+	assert.equal(
+		await queue.fillSecretField(head, key, "x1234567", async () => ({
+			status: "unavailable",
+		})),
+		"unavailable",
+	);
+	assert.equal(
+		await queue.fillSecretField(head, key, "x1234567", async () => undefined),
+		"unavailable",
+		"an answer door that cannot address the owner posts nothing",
+	);
+});
+
+test("a Put whose ask changed posts NOTHING (the binding, QA round 1 Q2)", async () => {
+	const calls = [];
+	const fill = async (...args) => {
+		calls.push(args);
+		return { status: "sent" };
+	};
+	const head = { ask: secretAskWith([secretQuestion()], { ask_id: "a-2" }) };
+	const armedKey = queue.askSecretField(
+		secretAskWith([secretQuestion()], { ask_id: "a-1" }),
+	).key;
+
+	assert.equal(
+		await queue.fillSecretField(head, armedKey, "tok_123456789", fill),
+		"stale",
+		"a value typed for one ask is not posted to whatever ask is head now",
+	);
+	assert.deepEqual(calls, [], "the answer door is never called");
+	assert.equal(
+		await queue.fillSecretField(null, armedKey, "tok_123456789", fill),
+		"stale",
+		"an ask that left the queue is the same refusal",
+	);
+	assert.deepEqual(calls, []);
+});
+
+test("a multi-secret ask is refused by the wiring, not guessed at", async () => {
+	const calls = [];
+	const head = {
+		ask: secretAskWith([
+			secretQuestion(),
+			secretQuestion({ id: "db_password" }),
+		]),
+	};
+	const key = queue.askSecretField(head.ask).key;
+	assert.equal(
+		await queue.fillSecretField(head, key, "tok_123456789", async (...args) => {
+			calls.push(args);
+			return { status: "sent" };
+		}),
+		"multi",
+		"one value names no question, so nothing is posted",
+	);
+	assert.deepEqual(calls, []);
 });

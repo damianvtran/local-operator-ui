@@ -1,0 +1,178 @@
+{
+  "$meta": {
+    "name": "Sanctioned divergences",
+    "what": "The brand register's sanctioned differences between surfaces, in one checked list. Before this register they were recorded in three separate prose sites — the site kit's tokens.json (accent divergence, via the app repos), the desktop palette header (the two sanctioned deviations), and the mobile brand kit § 2.1 — plus two light-mode values that nothing recorded. Everything here is deliberate, measured where a measurement exists, and validated by tools/check-divergences.mjs against the files in this repository.",
+    "note": "A divergence is not drift. Drift is an unrecorded difference; everything in this list is recorded, reasoned, and re-checked on every CI run. If a surface needs a NEW sanctioned difference, it is recorded here first — see the README's editorial-flow section.",
+    "sources": [
+      {
+        "surface": "site (page/island family)",
+        "repo": "damianvtran/local-operator-site",
+        "ref": "b936429df8165b4e13d513440a93455872a51ac5",
+        "artefact": "docs/design-kit/tokens.json (the file this repository was split from)"
+      },
+      {
+        "surface": "desktop app",
+        "repo": "damianvtran/local-operator-ui",
+        "ref": "574fe4840bef2ac5866eca36a14ea40631a802ea",
+        "artefact": "src/renderer/src/shared/themes/palettes/local-operator.ts (header, lines 14-29; the two sanctioned deviations)"
+      },
+      {
+        "surface": "mobile app",
+        "repo": "damianvtran/local-operator-mobile",
+        "ref": "34b8340da2baa764016896367f58d0fc4b3c51d3",
+        "artefact": "docs/design/brand-kit.md § 2.1; design/tokens/tokens.json $meta.accentDivergence"
+      }
+    ],
+    "checkedBy": "node tools/check-divergences.mjs"
+  },
+  "divergences": [
+    {
+      "id": "light-accent",
+      "role": "accent (light theme)",
+      "kind": "measured",
+      "summary": "The light accent differs: the site ships #177b45, the app family ships #137742.",
+      "surfaces": {
+        "site": {
+          "value": "#177b45",
+          "source": "tokens.json color.accent.accent.light"
+        },
+        "app family (desktop + mobile)": {
+          "value": "#137742",
+          "source": "app-family.json palettes.localOperatorLight.values.accent"
+        }
+      },
+      "why": "The site's value fails the app family's contract on two of its grounds: 4.27:1 on `sunken` and 4.29:1 on `row-selected`, both under the 4.5 text floor. The cause is the ground ramp, not the hue — a link colour solved for a single page ground does not clear the four stacked grounds and two row states the app family has. The dark accents agree (#38c96a), so this is a light-theme question only. Reconcile by changing one of the two ramps, never by shipping the page value into the app.",
+      "measurement": {
+        "date": "2026-09-29",
+        "method": "WCAG 2.x relative-luminance ratio on sRGB hex, against the app family's role set",
+        "site #177b45": {
+          "on sunken": 4.27,
+          "on row-selected": 4.29,
+          "floor": 4.5
+        },
+        "app #137742": {
+          "on sunken": 4.51,
+          "on row-selected": 4.53
+        }
+      },
+      "assertions": [
+        { "file": "tokens.json", "path": "/color/accent/accent/light", "value": "#177b45" },
+        { "file": "app-family.json", "path": "/palettes/localOperatorLight/values/accent", "value": "#137742" },
+        { "file": "tokens.json", "path": "/color/accent/accent/dark", "value": "#38c96a" },
+        { "file": "app-family.json", "path": "/palettes/localOperatorDark/values/accent", "value": "#38c96a" }
+      ],
+      "sources": ["brand-kit.md § 2.1", "local-operator.ts header + branding.md § 2", "mobile tokens.json $meta.accentDivergence"]
+    },
+    {
+      "id": "light-ground-ramp",
+      "role": "the light ground ramps (all grounds)",
+      "kind": "structural",
+      "summary": "The app family's light ground ramp is deliberately wider than the site's: a page renders one surface, the app stacks four plus two row states.",
+      "surfaces": {
+        "site": {
+          "values": {
+            "paper": "#f7f4ee",
+            "surface": "#fcfbf7",
+            "elevated": "#fffefb",
+            "sunken": "#efece3"
+          },
+          "note": "one near-white ladder for a single page ground"
+        },
+        "app family (desktop + mobile)": {
+          "values": {
+            "canvas": "#f2ede3",
+            "surface": "#f7f5ee",
+            "elevated": "#fefdfa",
+            "sunken": "#ece6d8"
+          },
+          "note": "wider ladder — the kit's near-white steps made a panel on canvas and a popover on that panel the same pixel to the eye"
+        }
+      },
+      "why": "A page renders one surface; the app stacks four and adds two row states, so the ramp must separate by more than a page needs. This is sanctioned deviation 1 of the desktop palette header, and the same cause § 2.1 gives for the accent divergence. The ladder is kept wider by authoring the steps as luminance offsets from the canvas, with every adjacent pair clearing ΔE00 ≥ 2.0 and the app contract's ratio floor.",
+      "assertions": [
+        { "file": "tokens.json", "path": "/color/surface/paper/light", "value": "#f7f4ee" },
+        { "file": "app-family.json", "path": "/palettes/localOperatorLight/values/canvas", "value": "#f2ede3" }
+      ],
+      "sources": ["local-operator.ts header item 1 + localOperatorLight ramp comment", "brand-kit.md § 2.1"]
+    },
+    {
+      "id": "info-role",
+      "role": "`info` — a fourth semantic the site does not have",
+      "kind": "structural",
+      "summary": "The app family has an `info` role (blue); the site carries informational meaning on the accent instead.",
+      "surfaces": {
+        "site": {
+          "value": "absent",
+          "note": "no fourth semantic: on the site, \"informational\" is the accent"
+        },
+        "app family (desktop + mobile)": {
+          "values": {
+            "info": "#86b3f2",
+            "infoWash": "#192332",
+            "infoBorder": "#5a7ba8"
+          },
+          "note": "dark-theme values shown; a light trio exists too. Read by application code and by MUI's Alert — it once shared the accent's triple with `success`, which made \"it worked\" and \"here is a fact\" the same colour"
+        }
+      },
+      "why": "Application code needs a nameable fourth state (a queued command, a hunk header, a neutral notice); the site's page register does not. Deriving a new fourth semantic per palette is how a fourth hue gets invented by accident, so the app family declares one. This is sanctioned deviation 2 of the desktop palette header.",
+      "assertions": [
+        { "file": "tokens.json", "path": "/color/info", "absent": true },
+        { "file": "app-family.json", "path": "/contract/members", "contains": "info" }
+      ],
+      "sources": ["local-operator.ts header item 2 + info comment", "brand-kit.md § 2.1 point 3"]
+    },
+    {
+      "id": "light-success",
+      "role": "success (light theme)",
+      "kind": "measured",
+      "summary": "The light success colour differs: the site ships #1e7b4e, the app family ships #19764a.",
+      "surfaces": {
+        "site": {
+          "value": "#1e7b4e",
+          "source": "tokens.json color.semantic.success.light"
+        },
+        "app family (desktop + mobile)": {
+          "value": "#19764a",
+          "source": "app-family.json palettes.localOperatorLight.values.success"
+        }
+      },
+      "why": "The app family's value was re-authored with its widened light ground ramp (the desktop legibility pass), against which it measures 4.62:1 on canvas where the site's value was solved for the site ladder. The divergence has the same shape as the accent's and had no recorded home until this register (ADR 0007, QA round 1 Q2).",
+      "measurement": {
+        "method": "WCAG 2.x relative-luminance ratio on sRGB hex",
+        "site #1e7b4e": { "on the site's paper": 4.78 },
+        "app #19764a": { "on the app's canvas": 4.62 }
+      },
+      "assertions": [
+        { "file": "tokens.json", "path": "/color/semantic/success/light", "value": "#1e7b4e" },
+        { "file": "app-family.json", "path": "/palettes/localOperatorLight/values/success", "value": "#19764a" }
+      ],
+      "sources": ["tokens.md § 6 (site ratios)", "local-operator.ts localOperatorLight ramp comment", "ADR 0007 QA round 1 Q2"]
+    },
+    {
+      "id": "light-on-accent",
+      "role": "on-accent (light theme)",
+      "kind": "measured",
+      "summary": "Ink on the accent fill differs: the site ships #ffffff, the app family ships #F6FAF8.",
+      "surfaces": {
+        "site": {
+          "value": "#ffffff",
+          "source": "tokens.json color.fixed.on-accent.light"
+        },
+        "app family (desktop + mobile)": {
+          "value": "#F6FAF8",
+          "source": "app-family.json palettes.localOperatorLight.values.onAccent"
+        }
+      },
+      "why": "The app family re-authored its ink on the accent fill against its own palette — a warm near-white rather than pure white — holding 5.33:1 on the light accent and 8.58:1 on the dark one (white on the dark accent is 2.16:1 and is prohibited outright in both registers). Recorded nowhere until this register (ADR 0007, QA round 1 Q2).",
+      "measurement": {
+        "method": "WCAG 2.x relative-luminance ratio on sRGB hex, from the mobile tokens.json record",
+        "app #F6FAF8": { "on the light accent": 5.33, "on the dark accent": 8.58 }
+      },
+      "assertions": [
+        { "file": "tokens.json", "path": "/color/fixed/on-accent/light", "value": "#ffffff" },
+        { "file": "app-family.json", "path": "/palettes/localOperatorLight/values/onAccent", "value": "#F6FAF8" }
+      ],
+      "sources": ["mobile tokens.json $meta.accentDivergence + § fixed group record", "ADR 0007 QA round 1 Q2"]
+    }
+  ]
+}

@@ -385,6 +385,7 @@ export const DevicePanel: FC<{
 				device: device.label,
 			})}
 			data-mesh-panel={device.id}
+			data-glass-block=""
 			className="flex w-80 shrink-0 flex-col gap-3 overflow-y-auto rounded-md border border-hairline bg-surface p-4"
 		>
 			<header className="flex flex-col gap-1">

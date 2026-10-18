@@ -1,0 +1,26 @@
+{
+	"ui.chat.dialogs.delete_title": {
+		"role": "permanent deletion confirmation heading",
+		"tone": "direct confirmation question",
+		"maxCells": 40,
+		"note": "Shown above the named consequence message; question mark is part of the heading. maxCells is an advisory translator target, not measured fit."
+	},
+	"ui.chat.dialogs.delete_action": {
+		"role": "permanent deletion confirmation button",
+		"tone": "single imperative verb, sentence case",
+		"maxCells": 16,
+		"note": "Danger action; permanently removes this conversation, unlike archive. maxCells is an advisory translator target, not measured fit."
+	},
+	"ui.chat.dialogs.archive_action": {
+		"role": "reversible archive confirmation button",
+		"tone": "single imperative verb, sentence case",
+		"maxCells": 16,
+		"note": "Confirms hiding the conversation from lists; Undo is available afterwards. maxCells is an advisory translator target, not measured fit."
+	},
+	"ui.chat.dialogs.cancel": {
+		"role": "safe dismissal button in archive/delete confirmations",
+		"tone": "single imperative verb, sentence case",
+		"maxCells": 16,
+		"note": "Safe default-focus action. Dismisses without changing or deleting the conversation. maxCells is an advisory translator target, not measured fit."
+	}
+}

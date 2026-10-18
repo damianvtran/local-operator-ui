@@ -133,6 +133,10 @@ export const SlotPaneNotice: FC<SlotPaneNoticeProps> = ({
 		<section
 			aria-label={label}
 			data-slot-pane-notice={kind}
+			/* The session-less state of a rail pane (Run details, Code review): what a
+			   user sees first, so it owns the pane's glass alpha like the pane it stands in
+			   for (QA round 2, Q2-2: it read 1.00 under Full app). */
+			data-glass-region="pane"
 			className={cn("flex h-full flex-col bg-elevated")}
 		>
 			<div

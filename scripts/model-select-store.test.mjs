@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { after, test } from "node:test";
-import { build } from "esbuild";
+import { build, stop } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
 
@@ -42,14 +42,35 @@ for (const key of Object.getOwnPropertyNames(bootstrapDOM.window)) {
 }
 globalThis.window = bootstrapDOM.window;
 globalThis.document = bootstrapDOM.window.document;
-// Node supplies navigator without onLine; the component's connectivity query
-// needs this DOM's navigator, not Node's partial browser-shaped global.
+globalThis.localStorage = bootstrapDOM.window.localStorage;
+/*
+ * Modern Node already exposes Event/CustomEvent. The copy loop above keeps
+ * those Node constructors, but Radix dispatches its global CustomEvent on the
+ * jsdom document: mixing realms throws before the popup can be exercised.
+ * Pin actual DOM constructors before importing react-dom or renderer code.
+ */
+globalThis.Event = bootstrapDOM.window.Event;
+globalThis.CustomEvent = bootstrapDOM.window.CustomEvent;
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+/*
+ * Match connectivity-banner-notice.test.mjs: Node's navigator getter has no
+ * browser onLine value, but the connectivity hook reads that exact property.
+ * Use the actual jsdom navigator (synthetic online state), not an API mock or
+ * a suppressed query error. Restore Node's descriptor when this host exits.
+ */
+const previousNavigator = Object.getOwnPropertyDescriptor(
+	globalThis,
+	"navigator",
+);
 Object.defineProperty(globalThis, "navigator", {
 	value: bootstrapDOM.window.navigator,
 	configurable: true,
 });
-globalThis.localStorage = bootstrapDOM.window.localStorage;
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+after(() => {
+	if (previousNavigator)
+		Object.defineProperty(globalThis, "navigator", previousNavigator);
+	else Reflect.deleteProperty(globalThis, "navigator");
+});
 /*
  * The component's refresh hook arms a `window.setInterval`; nothing here waits for
  * a refresh, and a live interval keeps the event loop open after the assertions,
@@ -103,6 +124,12 @@ const localeNegativeControl =
 	process.env.I18N_TEST_DISABLE_MODEL_SUBSCRIPTION === "1";
 const staleCopyNegativeControl =
 	process.env.I18N_TEST_FREEZE_MODEL_COPY === "1";
+
+// esbuild's native compiler service is an owned subprocess, not native UI
+// evidence. Stop it even when a component assertion fails; the allocation's
+// exact-PID observer remains the final backstop for its process lineage.
+after(() => stop());
+
 const bundle = await build({
 	plugins:
 		localeNegativeControl || staleCopyNegativeControl
@@ -496,6 +523,353 @@ run(
 		assert.equal(
 			container.querySelector('[role="combobox"]').value,
 			"Fixture inherited option",
+		);
+	},
+);
+
+run(
+	"canonical model IDs remain displayable and searchable without saving",
+	async (t) => {
+		const canonical = "gpt-6.1-sol";
+		const pretty = "GPT 6.1 Sol";
+		const saves = [];
+		const realFetch = useModelsStore.getState().fetchModels;
+		useModelsStore.setState({ fetchModels: async () => undefined });
+		t.after(() => useModelsStore.setState({ fetchModels: realFetch }));
+
+		// jsdom has no layout observer. This shim admits the real popup's DOM;
+		// it is not browser geometry, a screenshot, or native application proof.
+		const scrollCalls = [];
+		const originalScroll = Object.getOwnPropertyDescriptor(
+			window.Element.prototype,
+			"scrollIntoView",
+		);
+		// The real active-row effect requires this method; jsdom has no layout.
+		// Reuse backend-settings-collapse.test.mjs's shim, recording calls rather
+		// than claiming scrolling geometry or changing any list/filter state.
+		window.Element.prototype.scrollIntoView = function (options) {
+			scrollCalls.push({ tag: this.tagName, text: this.textContent, options });
+		};
+		t.after(() => {
+			if (originalScroll)
+				Object.defineProperty(
+					window.Element.prototype,
+					"scrollIntoView",
+					originalScroll,
+				);
+			else Reflect.deleteProperty(window.Element.prototype, "scrollIntoView");
+		});
+		const previousObserver = globalThis.ResizeObserver;
+		globalThis.ResizeObserver = class {
+			observe() {}
+			unobserve() {}
+			disconnect() {}
+		};
+		t.after(() => {
+			globalThis.ResizeObserver = previousObserver;
+		});
+
+		const row = (id, name = pretty, provider = "openai") => ({
+			id,
+			name,
+			provider,
+			info: {
+				id,
+				name,
+				description: "Synthetic native catalogue row",
+				recommended: false,
+			},
+		});
+		const render = async (
+			hostingId,
+			value,
+			rows,
+			inspect,
+			knownProvider = true,
+		) => {
+			useModelsStore.setState({
+				isInitialized: true,
+				providers: knownProvider
+					? [
+							{
+								id: hostingId,
+								name: hostingId,
+								description: "Synthetic provider",
+								url: "https://synthetic.invalid",
+								requiredCredentials: [],
+							},
+						]
+					: [],
+				models: rows,
+			});
+			const container = document.createElement("div");
+			document.body.append(container);
+			const root = createRoot(container);
+			try {
+				await act(async () => {
+					root.render(
+						createElement(
+							QueryClientProvider,
+							{ client: queryClient },
+							createElement(ModelSelect, {
+								hostingId,
+								value,
+								allowDefault: false,
+								onSave: async (id) => saves.push(id),
+							}),
+						),
+					);
+				});
+				const input = container.querySelector('input[role="combobox"]');
+				assert.ok(
+					input,
+					"the actual ModelSelect must mount before any product assertion",
+				);
+				return await inspect(input);
+			} finally {
+				await act(async () => root.unmount());
+				container.remove();
+				queryClient.clear();
+			}
+		};
+
+		// Collect both discriminators before failing, so the first defect cannot
+		// hide the second. Exact/foreign/custom controls must pass independently.
+		const display = await render(
+			"openai",
+			`openai/${canonical}`,
+			[row(canonical)],
+			async (input) => input.value,
+		);
+		const exact = await render(
+			"openai",
+			canonical,
+			[row(canonical)],
+			async (input) => input.value,
+		);
+		assert.equal(
+			exact,
+			pretty,
+			"an exact canonical catalogue ID is a known model",
+		);
+		const exactPrefixed = await render(
+			"openai",
+			`openai/${canonical}`,
+			[
+				row(canonical),
+				row(`openai/${canonical}`, "Exact prefixed catalogue row"),
+			],
+			async (input) => input.value,
+		);
+		assert.equal(
+			exactPrefixed,
+			"Exact prefixed catalogue row",
+			"exact ID wins over outer-prefix equivalence",
+		);
+		const foreign = await render(
+			"openrouter",
+			`openai/${canonical}`,
+			[row(canonical, pretty, "openrouter")],
+			async (input) => input.value,
+		);
+		assert.equal(
+			foreign,
+			`openai/${canonical}`,
+			"a foreign upstream prefix must never be stripped",
+		);
+		const nested = await render(
+			"openrouter",
+			`openai/${canonical}`,
+			[row(`openai/${canonical}`, pretty, "openrouter")],
+			async (input) => input.value,
+		);
+		assert.equal(
+			nested,
+			pretty,
+			"a nested upstream ID remains intact when the catalogue knows it",
+		);
+		const unknown = await render(
+			"openai",
+			"openai/synthetic-not-listed",
+			[row(canonical)],
+			async (input) => input.value,
+		);
+		assert.equal(
+			unknown,
+			"openai/synthetic-not-listed",
+			"genuinely unknown custom values remain raw",
+		);
+		const unknownHosting = await render(
+			"synthetic-host",
+			`synthetic-host/${canonical}`,
+			[row(canonical, pretty, "synthetic-host")],
+			async (input) => input.value,
+			false,
+		);
+		assert.equal(
+			unknownHosting,
+			`synthetic-host/${canonical}`,
+			"a hosting ID absent from the provider catalogue must not authorize prefix matching",
+		);
+
+		// Preserve observations before opening the popup: a host setup failure
+		// there must not hide the already measured display/identity controls.
+		console.log("MODEL_SELECT_DISPLAY_CONTROLS", {
+			display,
+			exact,
+			exactPrefixed,
+			foreign,
+			nested,
+			unknown,
+			saves,
+			u1DisplayMatchesKnownRow: display === pretty,
+			syntheticOnline: navigator.onLine,
+		});
+
+		const search = await render(
+			"openai",
+			"",
+			[row(canonical)],
+			async (input) => {
+				await act(async () => input.focus());
+				const actualOptions = () => [
+					...document.querySelectorAll('[role="option"]'),
+				];
+				assert.ok(
+					actualOptions().some(
+						(option) =>
+							option.dataset.comboboxRow !== "typed" &&
+							option.textContent.includes(pretty),
+					),
+					"setup: the actual popup must expose its genuine pretty-name row before filtering",
+				);
+				const setter = Object.getOwnPropertyDescriptor(
+					window.HTMLInputElement.prototype,
+					"value",
+				).set;
+				const type = async (text) => {
+					await act(async () => {
+						setter.call(input, text);
+						input.dispatchEvent(new window.Event("input", { bubbles: true }));
+					});
+					assert.equal(
+						input.value,
+						text,
+						"setup: the controlled input must reflect the typed query",
+					);
+				};
+				// A no-match query proves filtering really consumed the event, not just
+				// a physical input.value assignment leaving the old options on screen.
+				await type("synthetic-unlisted-query");
+				assert.ok(
+					actualOptions().some(
+						(option) =>
+							option.dataset.comboboxRow === "typed" &&
+							option.textContent.includes("synthetic-unlisted-query"),
+					),
+					"setup: the real query state must produce its typed-value fallback",
+				);
+				assert.ok(
+					!actualOptions().some(
+						(option) =>
+							option.dataset.comboboxRow !== "typed" &&
+							option.textContent.includes(pretty),
+					),
+					"setup: no-match filtering must hide the real row",
+				);
+				await type(canonical);
+				assert.equal(
+					input.getAttribute("aria-expanded"),
+					"true",
+					"the real combobox must be open",
+				);
+				const options = actualOptions();
+				for (const option of options.filter(
+					(item) => item.dataset.comboboxRow === "typed",
+				)) {
+					assert.ok(
+						option.textContent.includes(canonical),
+						"setup: raw-ID query must replace the previous typed-row state",
+					);
+				}
+				const raw = {
+					known: options.some(
+						(option) =>
+							option.dataset.comboboxRow !== "typed" &&
+							option.textContent.includes(pretty),
+					),
+					custom: options.some(
+						(option) => option.dataset.comboboxRow === "typed",
+					),
+					text: options.map((option) => option.textContent),
+				};
+				await type(`openai/${canonical}`);
+				assert.ok(
+					actualOptions().some(
+						(option) =>
+							option.dataset.comboboxRow !== "typed" &&
+							option.textContent.includes(pretty),
+					),
+					"the current hosting's authorized selector is searchable",
+				);
+				assert.ok(
+					!actualOptions().some(
+						(option) => option.dataset.comboboxRow === "typed",
+					),
+					"an authorized selector is not offered as an invented custom ID",
+				);
+				return raw;
+			},
+		);
+		const collision = await render(
+			"openai",
+			"",
+			[
+				row(canonical),
+				row(`openai/${canonical}`, "Exact prefixed catalogue row"),
+			],
+			async (input) => {
+				await act(async () => input.focus());
+				const setter = Object.getOwnPropertyDescriptor(
+					window.HTMLInputElement.prototype,
+					"value",
+				).set;
+				await act(async () => {
+					setter.call(input, `openai/${canonical}`);
+					input.dispatchEvent(new window.Event("input", { bubbles: true }));
+				});
+				return [...document.querySelectorAll('[role="option"]')]
+					.filter((option) => option.dataset.comboboxRow !== "typed")
+					.map((option) => option.textContent);
+			},
+		);
+		assert.ok(
+			collision.some((text) => text.includes("Exact prefixed catalogue row")),
+			"an exact canonical ID remains searchable when a presentation selector collides",
+		);
+		assert.ok(
+			!collision.some((text) => text.includes(pretty)),
+			"presentation-equivalent keywords must not shadow another row's exact canonical ID",
+		);
+		assert.deepEqual(
+			saves,
+			[],
+			"normalizing display or filtering must not invoke onSave",
+		);
+		console.log("MODEL_SELECT_U1_U2_ACTUAL", {
+			display,
+			search,
+			saves,
+			scrollCalls,
+		});
+		assert.deepEqual(
+			{ display, knownRawId: search.known, customRawId: search.custom },
+			{
+				display: pretty,
+				knownRawId: true,
+				customRawId: false,
+			},
+			"known hosting-prefix display and canonical raw-ID search must use the real row",
 		);
 	},
 );

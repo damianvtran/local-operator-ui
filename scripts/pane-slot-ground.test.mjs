@@ -135,7 +135,7 @@ const RAIL_RULE_UTILITY =
 const RAIL_GROUND = /\bbg-surface\b/;
 /* The panel rail host's own ground (#872), in the shell. */
 const RAIL_HOST_GROUND =
-	/data-panel-rail-host=""\s*className="[^"]*\b(bg-[\w-]+)\b[^"]*"/;
+	/data-panel-rail-host=""\s*(?:data-glass-region="[\w-]+"\s*)?className="[^"]*\b(bg-[\w-]+)\b[^"]*"/;
 /* Trailing utilities are allowed after the ground: the browser pane's root carries its
  * `@container/bpane` there (#872, D5), and the ground is still the token that follows
  * `flex h-full flex-col`. */

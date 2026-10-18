@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { build } from "esbuild";
 
 /*
  * THE REFUSAL CONTRACT: a composer that will not take input must refuse the
@@ -25,6 +26,23 @@ import { test } from "node:test";
  * `scripts/credential-composer.test.mjs` carries what jsdom CAN prove - the
  * attributes on the mounted composer, and the refused Enter.
  */
+
+// The source pin now names keys; execute the real fallback too so a key with
+// changed English cannot pass merely because the pointer handler stayed put.
+const copyBundle = await build({
+	stdin: {
+		contents: 'export { t, setLocale } from "./src/i18n";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const copy = await import(
+	`data:text/javascript;base64,${Buffer.from(copyBundle.outputFiles[0].text).toString("base64")}`
+);
+copy.setLocale("en");
 
 const read = (path) => readFileSync(path, "utf8");
 
@@ -194,6 +212,8 @@ test("every path that TYPES INTO or SUBMITS the composer answers to the refusal"
 });
 
 test("every control the refusal disables keeps the caret on a press, and only while it refuses", () => {
+	assert.equal(copy.t("ui.chat.composer.start_recording"), "Start recording");
+	assert.equal(copy.t("ui.chat.composer.attach_file"), "Attach file");
 	/*
 	 * QA round 3, Q-1: the refusal's `disabled` term is on the Send control, the
 	 * dictation control and the attach control, and a press on ANY of them takes
@@ -225,11 +245,11 @@ test("every control the refusal disables keeps the caret on a press, and only wh
 		],
 		[
 			"the dictation control",
-			/onPointerDown=\{holdCaretOnRefusedPress\}[\s\S]{0,240}?aria-label="Start recording"/,
+			/onPointerDown=\{holdCaretOnRefusedPress\}[\s\S]{0,240}?aria-label=\{t\("ui\.chat\.composer\.start_recording"\)\}/,
 		],
 		[
 			"the attach control",
-			/onPointerDown=\{holdCaretOnRefusedPress\}[\s\S]{0,240}?aria-label="Attach file"/,
+			/onPointerDown=\{holdCaretOnRefusedPress\}[\s\S]{0,240}?aria-label=\{t\("ui\.chat\.composer\.attach_file"\)\}/,
 		],
 	]) {
 		assert.match(

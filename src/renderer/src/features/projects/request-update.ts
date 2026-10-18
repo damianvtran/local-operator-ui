@@ -1,3 +1,8 @@
+import { formatNumber, t } from "@shared/i18n";
+// Exported source-copy constants remain byte-stable for existing model consumers.
+// Product reads resolve their catalogue key at use time, so changing language
+// does not leave module-initialized labels frozen in the previous locale.
+import { bundledEnglish } from "../../../../i18n/keys.gen";
 /**
  * "Request update": the frozen copy, and the ONE cooldown both entry points share.
  *
@@ -47,13 +52,16 @@ export const REQUEST_UPDATE_TOAST_DURATION_MS = 6_000;
  * so a fast round trip never flashes a card, and replaced in place by the
  * result through the SAME toast id.
  */
-export const REQUEST_UPDATE_LOADING_COPY = "Requesting updates…";
+export const REQUEST_UPDATE_LOADING_COPY =
+	bundledEnglish["ui.projects.request_update.requesting_updates"];
 export const REQUEST_UPDATE_LOADING_DELAY_MS = 400;
 
 /** The detail button's tooltip. REQUIRED: the list view is the DEFAULT view and
  * has no card menu, so the button is the only door most users ever see. */
 export const REQUEST_UPDATE_TOOLTIP =
-	"Ask the sessions linked to this project to post a progress update";
+	bundledEnglish[
+		"ui.projects.request_update.ask_the_sessions_linked_to_this_project_to_post_a_progress_update"
+	];
 
 /**
  * The backend's own sentence for a linked session that has never been engaged
@@ -63,6 +71,8 @@ export const REQUEST_UPDATE_TOOLTIP =
  * session carries it. A backend that rewords it degrades to the generic
  * sentence, which stays true - it does not fabricate anything.
  */
+// Protocol classifier token, not rendered copy: translations must never alter
+// the exact backend detail comparison. Remove only after the route gains a code.
 export const REQUEST_UPDATE_NEVER_STARTED_DETAIL =
 	"linked but not yet in use — it becomes a recipient after the first message";
 
@@ -105,8 +115,16 @@ export type RequestUpdateToast = {
 /** Up to two names, then a count: `A and B`, or `A, B and 2 more`. */
 const namesClause = (names: string[]): string => {
 	if (names.length === 1) return names[0];
-	if (names.length === 2) return `${names[0]} and ${names[1]}`;
-	return `${names[0]}, ${names[1]} and ${names.length - 2} more`;
+	if (names.length === 2)
+		return t("ui.projects.request_update.names_0_and_names_1", {
+			names_0: String(names[0]),
+			names_1: String(names[1]),
+		});
+	return t("ui.projects.request_update.names_0_names_1_and_length_2_more", {
+		names_0: String(names[0]),
+		names_1: String(names[1]),
+		length___2: formatNumber(names.length - 2, { useGrouping: false }),
+	});
 };
 
 const outcomeNames = (
@@ -138,7 +156,14 @@ export function requestUpdateCooldownSentence(
 ): string {
 	const left = Math.max(1, Math.ceil(remainingMs / 1000));
 	const ago = Math.max(0, Math.ceil(REQUEST_UPDATE_COOLDOWN_MS / 1000) - left);
-	return `Update already requested ${ago} s ago on ${display}. Try again in ${left} s.`;
+	return t(
+		"ui.projects.request_update.update_already_requested_ago_s_ago_on_display_try_again_in_left_s",
+		{
+			ago: formatNumber(ago, { useGrouping: false }),
+			display: String(display),
+			left: formatNumber(left, { useGrouping: false }),
+		},
+	);
 }
 
 /**
@@ -166,7 +191,10 @@ export function requestUpdateResultToast(
 	if (result.state === "empty") {
 		return {
 			variant: "info",
-			title: `No linked sessions to ask. Link a session to ${display} first.`,
+			title: t(
+				"ui.projects.request_update.no_linked_sessions_to_ask_link_a_session_to_display_first",
+				{ display: String(display) },
+			),
 			duration: REQUEST_UPDATE_TOAST_DURATION_MS,
 		};
 	}
@@ -188,25 +216,37 @@ export function requestUpdateResultToast(
 	if (delivered >= 1 && failed === 0 && unconfirmed === 0) {
 		return {
 			variant: "success",
-			title:
-				delivered === 1
-					? `Requested an update from 1 session on ${display}.`
-					: `Requested updates from ${delivered} sessions on ${display}.`,
+			title: t("ui.projects.request_update.delivered", { delivered, display }),
 		};
 	}
 	if (delivered >= 1) {
-		let title = `Requested updates from ${delivered} of ${total} sessions on ${display}.`;
+		let title = t(
+			"ui.projects.request_update.requested_updates_from_delivered_of_total_sessions_on_display",
+			{
+				delivered: formatNumber(delivered, { useGrouping: false }),
+				total: total,
+				display: String(display),
+			},
+		);
 		if (failed > 0)
-			title += ` ${namesClause(failedNames)} could not be reached.`;
+			title += t("ui.projects.request_update.value1_could_not_be_reached", {
+				value1: String(namesClause(failedNames)),
+			});
 		if (unconfirmed > 0)
-			title += ` Delivery to ${namesClause(unconfirmedNames)} could not be confirmed.`;
+			title += t(
+				"ui.projects.request_update.delivery_to_value1_could_not_be_confirmed",
+				{ value1: String(namesClause(unconfirmedNames)) },
+			);
 		return { variant: "warning", title, duration: Number.POSITIVE_INFINITY };
 	}
 	if (failed === 0) {
 		/* Every target unconfirmed: nothing may be asserted about arrival. */
 		return {
 			variant: "warning",
-			title: `Could not confirm delivery on ${display} — the requests may still reach its sessions.`,
+			title: t(
+				"ui.projects.request_update.could_not_confirm_delivery_on_display_the_requests_may_still_reac",
+				{ display: String(display) },
+			),
 			duration: Number.POSITIVE_INFINITY,
 		};
 	}
@@ -221,12 +261,15 @@ export function requestUpdateResultToast(
 		 */
 		let title: string;
 		if (neverStarted) {
-			title =
-				total === 1
-					? "The linked session has not started yet — it becomes a recipient after its first message."
-					: `The ${total} linked sessions have not started yet — they become recipients after their first message.`;
+			title = t("ui.projects.request_update.never_started", { total });
 		} else {
-			title = `Could not reach any of the ${total} linked sessions on ${display}.`;
+			title = t(
+				"ui.projects.request_update.could_not_reach_any_of_the_total_linked_sessions_on_display",
+				{
+					total: total,
+					display: String(display),
+				},
+			);
 		}
 		return { variant: "error", title, duration: Number.POSITIVE_INFINITY };
 	}
@@ -236,7 +279,15 @@ export function requestUpdateResultToast(
 	 * subset as "the ones not reached" is what the "any of" wording cannot say. */
 	return {
 		variant: "warning",
-		title: `Could not reach ${failed} of the ${total} linked sessions on ${display}. Delivery to ${namesClause(unconfirmedNames)} could not be confirmed.`,
+		title: t(
+			"ui.projects.request_update.could_not_reach_failed_of_the_total_linked_sessions_on_display_de",
+			{
+				failed: formatNumber(failed, { useGrouping: false }),
+				total: total,
+				display: String(display),
+				value4: String(namesClause(unconfirmedNames)),
+			},
+		),
 		duration: Number.POSITIVE_INFINITY,
 	};
 }

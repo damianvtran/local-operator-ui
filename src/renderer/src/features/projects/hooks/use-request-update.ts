@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The "Request update" press flow, and the two hooks the doors call.
  *
@@ -53,7 +54,6 @@ import type { DesktopProjectRequestUpdateResult } from "../../../../../shared/de
 import { projectDisplayName } from "../project-model";
 import {
 	REQUEST_UPDATE_COOLDOWN_MS,
-	REQUEST_UPDATE_LOADING_COPY,
 	REQUEST_UPDATE_LOADING_DELAY_MS,
 	REQUEST_UPDATE_TOAST_DURATION_MS,
 	armRequestUpdateCooldown,
@@ -121,7 +121,7 @@ export async function sendRequestUpdate(
 	 * press there must still say something (UX round 1, U3) - the loading card
 	 * is idempotent under the stable id, so a repeat replaces, never stacks. */
 	if (isRequestUpdateInFlight(projectId)) {
-		showLoadingToast(REQUEST_UPDATE_LOADING_COPY, {
+		showLoadingToast(t("ui.projects.request_update.requesting_updates"), {
 			id: requestUpdateToastId(projectId),
 		});
 		return;
@@ -151,7 +151,9 @@ export async function sendRequestUpdate(
 	let loadingShown = false;
 	const loadingTimer = setTimeout(() => {
 		loadingShown = true;
-		showLoadingToast(REQUEST_UPDATE_LOADING_COPY, { id: toastId });
+		showLoadingToast(t("ui.projects.request_update.requesting_updates"), {
+			id: toastId,
+		});
 	}, REQUEST_UPDATE_LOADING_DELAY_MS);
 
 	try {
@@ -211,8 +213,13 @@ export async function sendRequestUpdate(
 		 * never survives). */
 		replaceErrorToast(
 			message
-				? `Could not request updates: ${endedSentence(message)}`
-				: "The request could not be confirmed.",
+				? t(
+						"ui.projects.use_request_update.could_not_request_updates_endedsentence_message",
+						{ endedSentence_message: String(endedSentence(message)) },
+					)
+				: t(
+						"ui.projects.use_request_update.the_request_could_not_be_confirmed",
+					),
 			{ id: toastId, duration: Number.POSITIVE_INFINITY },
 		);
 	} finally {

@@ -1,0 +1,587 @@
+/**
+ * Window glass: the OS-drawn translucent window background, as pure decisions.
+ *
+ * WHAT THIS IS. An OPTIONAL, default-OFF appearance setting that lets the desktop
+ * show through the app window, blurred by the operating system: AppKit vibrancy on
+ * macOS (which already renders with the new Liquid Glass materials on macOS 26+) and
+ * Windows 11's `backgroundMaterial` (mica / acrylic / tabbed). It is the same split
+ * `window-chrome.ts` makes, for the same reason: MAIN has to know the answer BEFORE
+ * the window exists (a vibrancy option, a transparent first-paint background) and
+ * only the RENDERER knows the palette, so the decisions live here, in a file that
+ * imports neither Electron nor React, and every process reaches the same answer.
+ *
+ * WHY THERE IS NO NATIVE ADDON. `electron-liquid-glass` and similar packages wrap
+ * `NSGlassEffectView` (macOS 26) in a native module. They would buy the exact Apple
+ * lensing/specular look instead of the vibrancy material, at the price of a
+ * per-arch native build, signing and notarisation of one more binary, a universal
+ * build story, a dependency this repository's "dependency weight is a commons" rule
+ * has no room for, and a private-ish AppKit surface that Electron's own
+ * `setVibrancy` already tracks release by release. Measured on macOS 27.0.1 /
+ * Electron 44.3.0: `setVibrancy("under-window")` composites the live desktop behind
+ * the window (see the PR's evidence), so the cheaper door gets the feature. The
+ * limit is stated rather than hidden: there is no lensing, and the blur radius is
+ * the OS's, not ours.
+ *
+ * WHAT IS NOT FAKED. Linux has no OS-level blur for a window an Electron app owns
+ * (it depends on the compositor and on a per-desktop protocol), so `supported` is
+ * false there and the reason is shown; a translucent window with no blur behind it
+ * is a window with the desktop's own text showing through the app's, which is a
+ * defect rather than a feature.
+ *
+ * THE ALPHA FLOORS. A translucent role is the palette's colour at alpha A over a
+ * backdrop nobody here controls, and `scripts/contrast-contract.mjs` measures flat
+ * hexes, so it cannot see it. `window-glass-floors.json` carries the smallest alpha
+ * at which AA ink still holds over the worst MEASURED backdrop of each material,
+ * derived by `scripts/derive-glass-floors.mjs` and re-asserted by the contract on
+ * every palette. `glassAlphas` never goes below it: the slider's far end is "as
+ * see-through as the text can survive", not "as see-through as CSS allows".
+ */
+
+import GLASS_FLOORS from "./window-glass-floors.json";
+
+/**
+ * Which surfaces the glass covers. `full` includes `sidebars`.
+ *
+ * TWO TIERS, NOT THREE. A middle "sidebars and chrome" tier shipped in the first
+ * round and was removed after design review D1 / QA Q5: its only extra element was
+ * the window-foot status band, 0 px tall except while an update offer shows, so the
+ * option painted zero differing pixels from "sidebars" (measured: byte-identical
+ * frames) under a jargon label. A header or toolbar tier cannot be made real
+ * cheaply either - a glass strip over the opaque canvas backing would show the
+ * canvas, not the desktop - so the band folds into `sidebars` (it is the sidebars'
+ * surface rung along the window's foot) and `chrome` is read back as `sidebars`
+ * from a profile written by that build (`migrateCoverage`).
+ */
+export const GLASS_COVERAGES = ["sidebars", "full"] as const;
+export type GlassCoverage = (typeof GLASS_COVERAGES)[number];
+
+/** `(typeof ...)[number]` rather than a hand list so the tuple is the one source. */
+export const GLASS_MAC_MATERIALS = ["window", "menu", "popover"] as const;
+export const GLASS_WIN_MATERIALS = ["mica", "acrylic", "tabbed"] as const;
+export type GlassMaterial =
+	| (typeof GLASS_MAC_MATERIALS)[number]
+	| (typeof GLASS_WIN_MATERIALS)[number];
+
+/** The scheme the OS material is pinned to, so its tone matches the palette's. */
+export type GlassScheme = "dark" | "light";
+
+export type GlassSettings = {
+	/** The master switch. Default OFF: a launch that never touched this setting
+	 * builds exactly the window it always built. */
+	enabled: boolean;
+	coverage: GlassCoverage;
+	/** 0 = frosted (most opaque), 100 = see-through (down to the alpha floor). */
+	intensity: number;
+	material: GlassMaterial;
+};
+
+export const DEFAULT_GLASS_SETTINGS: GlassSettings = {
+	enabled: false,
+	coverage: "full",
+	intensity: 40,
+	material: "window",
+};
+
+export type GlassMechanism = "vibrancy" | "background-material" | "none";
+
+/** Why a platform can or cannot do glass, as a token the UI maps to copy. */
+export type GlassReason =
+	| "ok"
+	| "reduced-transparency"
+	| "windows-too-old"
+	| "linux-no-native-blur"
+	| "unsupported-platform";
+
+export type GlassCapability = {
+	supported: boolean;
+	mechanism: GlassMechanism;
+	reason: GlassReason;
+	/** The materials the control may offer; empty when unsupported. */
+	materials: readonly GlassMaterial[];
+	defaultMaterial: GlassMaterial;
+	/** macOS 26+: vibrancy renders with the Liquid Glass materials. A label only. */
+	liquid: boolean;
+	/**
+	 * Whether the MASTER switch can flip on a running window. macOS: yes, measured
+	 * (`setBackgroundColor("#00000000")` + `setVibrancy` on a window built opaque
+	 * composites the desktop, and `setVibrancy(null)` + the ground colour restores
+	 * it). Windows: no - Electron documents an alpha `backgroundColor` as honoured
+	 * only for a `transparent` window, which cannot be resized or maximised, so the
+	 * window is built with the material at launch and the toggle waits for a restart.
+	 * Coverage, intensity and material are live on both.
+	 */
+	liveToggle: boolean;
+};
+
+/** Windows 11 22H2: the first build where Electron's `backgroundMaterial` works. */
+export const WIN_BACKGROUND_MATERIAL_MIN_BUILD = 22621;
+
+const parseVersion = (version: string): number[] =>
+	version
+		.split(".")
+		.map((part) => Number.parseInt(part, 10))
+		.map((n) => (Number.isFinite(n) ? n : 0));
+
+/**
+ * What this machine can do, from facts main reads once. PURE: the platform matrix
+ * is exercised on any host by `scripts/window-glass.test.mjs`, which is the only
+ * way Windows and Linux are covered here - no CI job owns a display on either.
+ *
+ * `reducedTransparency` is the OS accessibility switch. It wins over everything
+ * because a user who asked the OS for less transparency has asked this app for it
+ * too, and the fallback (opaque ground, no vibrancy) is the shipped look.
+ *
+ * `osVersion` is `process.getSystemVersion()`: the macOS product version on
+ * darwin, `10.0.<build>` on Windows. Unparseable input is treated as "too old"
+ * on Windows and as "not liquid" on macOS, so a bad read fails to the shipped look.
+ */
+export function glassCapabilityFor(input: {
+	platform: NodeJS.Platform | string;
+	osVersion: string;
+	reducedTransparency: boolean;
+}): GlassCapability {
+	const none = (reason: GlassReason): GlassCapability => ({
+		supported: false,
+		mechanism: "none",
+		reason,
+		materials: [],
+		defaultMaterial: DEFAULT_GLASS_SETTINGS.material,
+		liquid: false,
+		liveToggle: false,
+	});
+	const version = parseVersion(input.osVersion);
+	if (input.platform === "darwin") {
+		if (input.reducedTransparency) return none("reduced-transparency");
+		return {
+			supported: true,
+			mechanism: "vibrancy",
+			reason: "ok",
+			materials: GLASS_MAC_MATERIALS,
+			defaultMaterial: "window",
+			liquid: (version[0] ?? 0) >= 26,
+			liveToggle: true,
+		};
+	}
+	if (input.platform === "win32") {
+		if ((version[2] ?? 0) < WIN_BACKGROUND_MATERIAL_MIN_BUILD)
+			return none("windows-too-old");
+		if (input.reducedTransparency) return none("reduced-transparency");
+		return {
+			supported: true,
+			mechanism: "background-material",
+			reason: "ok",
+			materials: GLASS_WIN_MATERIALS,
+			defaultMaterial: "mica",
+			liquid: false,
+			liveToggle: false,
+		};
+	}
+	if (input.platform === "linux") return none("linux-no-native-blur");
+	return none("unsupported-platform");
+}
+
+const isCoverage = (value: unknown): value is GlassCoverage =>
+	(GLASS_COVERAGES as readonly unknown[]).includes(value);
+
+/** A stored coverage from any build: the retired `chrome` tier becomes `sidebars`. */
+export const migrateCoverage = (value: unknown): unknown =>
+	value === "chrome" ? "sidebars" : value;
+
+/**
+ * A settings value from an untrusted source (the persisted file, an IPC payload),
+ * merged over `base`. Every field is judged on its own, so one bad field keeps its
+ * previous value rather than discarding the rest, and a material that this
+ * platform does not offer falls back to the platform's default instead of reaching
+ * `setVibrancy` / `setBackgroundMaterial`, which throw on an unknown name.
+ */
+export function sanitizeGlassSettings(
+	raw: unknown,
+	capability: GlassCapability,
+	base: GlassSettings = DEFAULT_GLASS_SETTINGS,
+): GlassSettings {
+	const record =
+		raw !== null && typeof raw === "object"
+			? (raw as Record<string, unknown>)
+			: {};
+	const intensity =
+		typeof record.intensity === "number" && Number.isFinite(record.intensity)
+			? Math.min(100, Math.max(0, Math.round(record.intensity)))
+			: base.intensity;
+	const requested =
+		typeof record.material === "string" ? record.material : base.material;
+	/*
+	 * An UNSUPPORTED capability offers no materials, which is a fact about this
+	 * moment (Reduce transparency is on), not about the user's choice: falling to
+	 * the default there rewrote a stored `menu` as `window` across a round trip
+	 * (review R4 / QA Q2). So when nothing is offered the stored value is kept if it
+	 * is a material at all; only the APPLIED one degrades, and that is `none`.
+	 */
+	const offered = capability.materials as readonly string[];
+	const known = [
+		...GLASS_MAC_MATERIALS,
+		...GLASS_WIN_MATERIALS,
+	] as readonly string[];
+	const material: GlassMaterial =
+		offered.length === 0
+			? known.includes(requested)
+				? (requested as GlassMaterial)
+				: base.material
+			: offered.includes(requested)
+				? (requested as GlassMaterial)
+				: capability.defaultMaterial;
+	return {
+		enabled:
+			typeof record.enabled === "boolean" ? record.enabled : base.enabled,
+		coverage: isCoverage(migrateCoverage(record.coverage))
+			? (migrateCoverage(record.coverage) as GlassCoverage)
+			: base.coverage,
+		intensity,
+		material,
+	};
+}
+
+/** Glass is active only when asked for AND the platform can do it. */
+export const glassIsActive = (
+	settings: GlassSettings,
+	capability: GlassCapability,
+): boolean => settings.enabled && capability.supported;
+
+/** The transparent window background, spelled once (`#AARRGGBB`). */
+export const GLASS_TRANSPARENT = "#00000000";
+
+/**
+ * The constructor options glass contributes. OFF contributes `{}` on win32/linux
+ * and, on darwin, only its inert `visualEffectState: "active"`; the palette ground
+ * is the caller's on every platform.
+ *
+ * DEFAULT-OFF IS STILL THE GUARANTEE, with ONE inert exception on macOS. The caller
+ * spreads this AFTER its own `backgroundColor`, so an inactive glass must not add
+ * `vibrancy`, `backgroundMaterial` or a transparent background - or the shipped
+ * window changes for the people who never touched the setting. On darwin,
+ * `visualEffectState: "active"` is contributed EVEN WHEN GLASS IS OFF: it is inert
+ * without a vibrancy view, but it is what a LATER `setVibrancy` uses for the view it
+ * creates. Electron 44 has no setter for it (`setVibrancy` takes only
+ * `animationDuration`), and the default (`followWindow`) renders the material
+ * inactive whenever the window is not key - which is why a live-enabled window went
+ * flat on focus loss while a launch-enabled one did not. Constructing every darwin
+ * window with it makes both paths the same material. win32 and linux get `{}` when
+ * off (Windows' material is construction-time anyway, and Linux has none).
+ *
+ * `visualEffectState: "active"` keeps the material blurred while the window is not
+ * key. The macOS default (`followWindow`) dims an inactive window's material, which
+ * is native behaviour for a document window but makes an app that is glanced at
+ * from another window flicker between two looks; it also is what a never-focused
+ * agent-driven run (`headless`/`inactive`) would otherwise show: no blur at all
+ * (measured: the same window reads the opaque tone until it is key).
+ */
+export function glassWindowOptions(
+	settings: GlassSettings,
+	capability: GlassCapability,
+	platform: NodeJS.Platform | string,
+): {
+	backgroundColor?: string;
+	vibrancy?: MacVibrancy;
+	visualEffectState?: "active";
+	backgroundMaterial?: WinMaterial;
+} {
+	const inactive =
+		platform === "darwin" ? { visualEffectState: "active" as const } : {};
+	if (!glassIsActive(settings, capability)) return inactive;
+	if (capability.mechanism === "vibrancy") {
+		return {
+			backgroundColor: GLASS_TRANSPARENT,
+			vibrancy: macVibrancyFor(settings.material),
+			visualEffectState: "active",
+		};
+	}
+	if (capability.mechanism === "background-material") {
+		return {
+			backgroundColor: GLASS_TRANSPARENT,
+			backgroundMaterial: winMaterialFor(settings.material),
+		};
+	}
+	return inactive;
+}
+
+/**
+ * The window's first-paint ground WITH the glass applied over it, in the one
+ * order that keeps the default path stable.
+ *
+ * WHY A FUNCTION. The order is the guarantee: the palette ground first, the glass
+ * options after, so only an ACTIVE glass can override `backgroundColor` and an
+ * inactive one contributes at most darwin's inert `visualEffectState` (above). That
+ * used to be pinned by a regex over `index.ts`'s source text (review R7), which
+ * proves a spelling; this is what `index.ts` actually spreads, so the test drives
+ * the behaviour. Key order of the result is part of the contract (`JSON.stringify`
+ * equality in the tests).
+ */
+export function groundWithGlass(
+	ground: string,
+	settings: GlassSettings,
+	capability: GlassCapability,
+	platform: NodeJS.Platform | string,
+): ReturnType<typeof glassWindowOptions> & { backgroundColor: string } {
+	return {
+		backgroundColor: ground,
+		...glassWindowOptions(settings, capability, platform),
+	};
+}
+
+/** The subset of Electron's vibrancy names this feature uses, spelled out so the
+ * options object type-checks against `BrowserWindowConstructorOptions` without
+ * this file importing Electron. */
+export type MacVibrancy = "under-window" | "menu" | "popover";
+export type WinMaterial = "mica" | "acrylic" | "tabbed";
+
+/** The AppKit material for a UI material id. `under-window` is Apple's own
+ * material for "the window's background"; `sidebar` measured identical. */
+export function macVibrancyFor(material: GlassMaterial): MacVibrancy {
+	return material === "menu"
+		? "menu"
+		: material === "popover"
+			? "popover"
+			: "under-window";
+}
+
+export function winMaterialFor(material: GlassMaterial): WinMaterial {
+	return material === "acrylic" || material === "tabbed" ? material : "mica";
+}
+
+/** The floors tier a material is held to. Windows' materials were not measurable
+ * here, so they borrow the most demanding measured tier: conservative, and said so
+ * in `derive-glass-floors.mjs`. */
+type FloorTier = "under-window" | "menu" | "popover";
+const floorTierFor = (
+	mechanism: GlassMechanism,
+	material: GlassMaterial,
+): FloorTier => {
+	if (mechanism !== "vibrancy") return "popover";
+	return material === "menu"
+		? "menu"
+		: material === "popover"
+			? "popover"
+			: "under-window";
+};
+
+/** The most opaque a glass role is ever painted: "frosted" is veiled, not solid. */
+export const GLASS_ALPHA_CEILING = 0.96;
+
+/** The three grounds. States are `GLASS_FLOORS.stateAlpha`, a fixed ink overlay. */
+export type GlassAlphas = { canvas: number; surface: number; elevated: number };
+
+const round2 = (n: number): number => Math.round(n * 100) / 100;
+
+/** The smallest alpha each role may take for this material and scheme. */
+export function glassAlphaFloors(
+	mechanism: GlassMechanism,
+	material: GlassMaterial,
+	scheme: GlassScheme,
+): GlassAlphas {
+	const tier =
+		GLASS_FLOORS.alphaFloor[floorTierFor(mechanism, material)][scheme];
+	return {
+		canvas: tier.canvas,
+		surface: tier.surface,
+		elevated: tier.elevated,
+	};
+}
+
+/**
+ * The per-role alphas the renderer paints for a slider position.
+ *
+ * Linear from `GLASS_ALPHA_CEILING` at intensity 0 down to each role's own floor at
+ * 100. Each role has its own floor (the more elevated a ground is, the further its
+ * flat colour sits from the tone the material gives it), so at the same intensity
+ * the roles keep their lightness ORDER - which is what the design system's
+ * elevation ladder is, and what a single shared alpha would flatten.
+ */
+export function glassAlphas(input: {
+	intensity: number;
+	mechanism: GlassMechanism;
+	material: GlassMaterial;
+	scheme: GlassScheme;
+}): GlassAlphas {
+	const t = Math.min(100, Math.max(0, input.intensity)) / 100;
+	const floors = glassAlphaFloors(
+		input.mechanism,
+		input.material,
+		input.scheme,
+	);
+	const at = (floor: number): number => {
+		/* A role whose floor is ABOVE the veil ceiling (dark `elevated` on the
+		 * densest material: 0.97) is held at its floor for the whole slider: the
+		 * floor is the contract, the ceiling only a default. Clamping the top
+		 * DOWN to the ceiling would paint it below its own floor at "frosted". */
+		const top = Math.max(GLASS_ALPHA_CEILING, floor);
+		return round2(top - t * (top - floor));
+	};
+	return {
+		canvas: at(floors.canvas),
+		surface: at(floors.surface),
+		elevated: at(floors.elevated),
+	};
+}
+
+/** What main tells the renderer. `active` is the one the CSS keys on. */
+export type WindowGlassState = {
+	capability: GlassCapability;
+	settings: GlassSettings;
+	active: boolean;
+	/** The master switch was flipped on a platform that cannot do it live: the
+	 * window keeps the look it was built with until the next launch. */
+	restartRequired: boolean;
+};
+
+export const WINDOW_GLASS_ARG = "--lo-window-glass";
+export const WINDOW_GLASS_GET_CHANNEL = "window-glass:get";
+export const WINDOW_GLASS_SET_CHANNEL = "window-glass:set";
+export const WINDOW_GLASS_SCHEME_CHANNEL = "window-glass:scheme";
+export const WINDOW_GLASS_STATE_CHANNEL = "window-glass:state";
+export const WINDOW_GLASS_FILE = "window-glass.json";
+
+/**
+ * The first-frame fact, as one argv entry the preload reads synchronously:
+ * `--lo-window-glass=<mechanism>:<coverage>:<intensity>:<material>:<scheme>`, or
+ * `off`. Synchronous for `window-chrome.ts`'s reason: attributes that arrive after
+ * the first paint are a visible jump on every launch - here, a window that opens
+ * opaque and then turns see-through.
+ */
+export function windowGlassArgument(
+	state: WindowGlassState,
+	scheme: GlassScheme,
+): string {
+	if (!state.active) return `${WINDOW_GLASS_ARG}=off`;
+	const { settings, capability } = state;
+	return `${WINDOW_GLASS_ARG}=${capability.mechanism}:${settings.coverage}:${settings.intensity}:${settings.material}:${scheme}`;
+}
+
+export type WindowGlassFacts = {
+	mechanism: Exclude<GlassMechanism, "none">;
+	coverage: GlassCoverage;
+	intensity: number;
+	material: GlassMaterial;
+	scheme: GlassScheme;
+} | null;
+
+/** The reader. `null` (off) for anything it cannot parse: fail to the shipped look. */
+export function readWindowGlassArgument(
+	argv: readonly string[],
+): WindowGlassFacts {
+	const entry = argv.find((arg) => arg.startsWith(`${WINDOW_GLASS_ARG}=`));
+	if (!entry) return null;
+	const [mechanism, coverage, intensity, material, scheme, ...rest] = entry
+		.slice(WINDOW_GLASS_ARG.length + 1)
+		.split(":");
+	if (rest.length > 0) return null;
+	if (mechanism !== "vibrancy" && mechanism !== "background-material")
+		return null;
+	if (!isCoverage(coverage)) return null;
+	const n = Number(intensity);
+	if (!Number.isInteger(n) || n < 0 || n > 100) return null;
+	const known: readonly string[] = [
+		...GLASS_MAC_MATERIALS,
+		...GLASS_WIN_MATERIALS,
+	];
+	if (!known.includes(material)) return null;
+	if (scheme !== "dark" && scheme !== "light") return null;
+	return {
+		mechanism,
+		coverage,
+		intensity: n,
+		material: material as GlassMaterial,
+		scheme,
+	};
+}
+
+/**
+ * WHICH SURFACES EACH COVERAGE PAINTS, as the kinds `data-glass-region` names.
+ *
+ *  - `sidebar` - the navigation columns (chat, settings and agents sidebars, the
+ *    collapsed strip, the right-hand panel rail) and the top lane's `surface` stops.
+ *  - `canvas`  - the ground the conversation and every page read on: `<main>` is the
+ *    BACKING, and the page grounds inside it go transparent so one alpha applies.
+ *    The worst case for contrast (hours of prose), which is why it is last.
+ *  - `pane`    - the `elevated` side panes (canvas, browser, asks, run details).
+ *    Document viewers inside them (PDF, image, video, audio) keep their own opaque
+ *    ground: media is not text over a veil, and an embedded page paints its own.
+ *
+ * Each coverage includes the one before it. A kind that is not covered keeps its
+ * ordinary opaque role class, so a partial coverage is the shipped look plus some
+ * translucent regions - never a different layout.
+ */
+export const GLASS_KINDS_BY_COVERAGE: Record<GlassCoverage, readonly string[]> =
+	{
+		sidebars: ["sidebar"],
+		full: ["sidebar", "canvas", "pane"],
+	};
+
+export type GlassPaint = {
+	/** The space-separated kinds for `html[data-glass]`. */
+	kinds: string;
+	/** The custom properties for `<html>`, each a bare number 0..1. */
+	vars: Record<string, string>;
+};
+
+/** The border->ink mix (0..1) that holds the 3:1 structural edge on glass. */
+export function glassControlMix(
+	mechanism: GlassMechanism,
+	material: GlassMaterial,
+	scheme: GlassScheme,
+): number {
+	return GLASS_FLOORS.controlMix[floorTierFor(mechanism, material)][scheme];
+}
+
+/**
+ * The renderer's paint: the kinds that go translucent and every alpha they use.
+ *
+ * TWO SETS OF ALPHAS, because one region stacks. `<main>` is the canvas BACKING for
+ * the whole content column (a route that paints no ground of its own would
+ * otherwise be raw text on the desktop), so a surface or pane painted INSIDE it
+ * composites over the backing, and its own alpha is the NET one:
+ * `1 - (1 - target) / (1 - backing)`, which lands the pair on the target. Where the
+ * target is already below the backing's the net is clamped to 0 - the leaf adds
+ * nothing and the region is MORE opaque than its floor, never less. Regions outside
+ * `<main>` (the sidebars, the rail, the fleet asks drawer) paint the raw target.
+ *
+ * The raw targets are `glassAlphas`, which never go below the measured floors.
+ */
+export function glassPaintFor(input: {
+	coverage: GlassCoverage;
+	intensity: number;
+	mechanism: GlassMechanism;
+	material: GlassMaterial;
+	scheme: GlassScheme;
+}): GlassPaint {
+	const raw = glassAlphas(input);
+	const net = (target: number): number =>
+		round2(Math.min(1, Math.max(0, 1 - (1 - target) / (1 - raw.canvas))));
+	const vars: Record<string, string> = {
+		"--lo-glass-a-canvas": String(raw.canvas),
+		"--lo-glass-a-surface": String(raw.surface),
+		"--lo-glass-a-elevated": String(raw.elevated),
+		"--lo-glass-a-row-hover": String(GLASS_FLOORS.stateAlpha.hover),
+		"--lo-glass-a-row-selected": String(GLASS_FLOORS.stateAlpha.selected),
+		/*
+		 * A RUNNING ROW is the row that is the subject right now, the same claim a
+		 * selected row makes (and the two cannot co-occur), so the overlay is the
+		 * same derived alpha under its own name: the CSS says "work" where the
+		 * meaning is "in flight", and a future split is one derivation away.
+		 */
+		"--lo-glass-a-row-work": String(GLASS_FLOORS.stateAlpha.work),
+		"--lo-glass-a-field": String(GLASS_FLOORS.stateAlpha.field),
+		/*
+		 * The block veil: a text-bearing block whose fill is its only boundary on
+		 * the flat system (a user message bubble, a project card) takes this ink
+		 * overlay so the fill stays a RELATIVE step off the glass rather than an
+		 * opaque island. Derivation and the failed `messageSurface`-floor
+		 * alternative: `scripts/derive-glass-floors.mjs`.
+		 */
+		"--lo-glass-a-block-veil": String(GLASS_FLOORS.blockVeil[input.scheme]),
+		"--lo-glass-control-mix": String(
+			glassControlMix(input.mechanism, input.material, input.scheme),
+		),
+		"--lo-glass-in-surface": String(net(raw.surface)),
+		"--lo-glass-in-elevated": String(net(raw.elevated)),
+	};
+	return { kinds: GLASS_KINDS_BY_COVERAGE[input.coverage].join(" "), vars };
+}

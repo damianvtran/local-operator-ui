@@ -1,5 +1,6 @@
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import { reportWindowChromeColors } from "@shared/hooks/use-window-chrome";
+import { syncGlassScheme } from "@shared/hooks/use-window-glass";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC, ReactNode } from "react";
 import { useLayoutEffect } from "react";
@@ -51,6 +52,8 @@ export const ThemeProvider: FC<ThemeProviderProps> = ({ children }) => {
 		 * in THIS effect rather than a second one, so the two cannot disagree.
 		 */
 		reportWindowChromeColors(getTheme(themeName).id);
+		/* The glass alphas and the OS material's tone follow the palette's scheme. */
+		syncGlassScheme();
 	}, [themeName]);
 
 	return (

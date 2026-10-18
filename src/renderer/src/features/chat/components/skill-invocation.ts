@@ -32,12 +32,23 @@
  *     multi-line draft cannot break the single-line tag. ORDER IS THE RULE, and
  *     `&` goes first or `"` would escape into `&amp;quot;`.
  *
- * WHAT IS DELIBERATELY NOT PORTED, so its absence is not read as an oversight:
- * `_unescape_attr`/`typed_line_of` (`invoke.py:227-252`) exist for the TUI's
- * transcript REPLAY — a resumed session repaints the typed line instead of the
- * payload. The desktop has no display/sent split on `sessions.message`: the
- * sent text is the row. Until that wire grows one, the replay half has no
- * caller here, and dead code is not parity (recorded in the PR's notes).
+ * PORTED TOO: `_unescape_attr`/`typed_line_of` (`invoke.py:210-252`), the read
+ * half of the same contract. This file used to record them as deliberately not
+ * ported, on the grounds that the desktop had no display/sent split on
+ * `sessions.message` — the sent text IS the row — so a replay reader had no
+ * caller. That is still true of the WIRE, and the replay half has a caller here
+ * anyway, because the desktop reads the payload back off the row it already
+ * holds: a persisted `$name` turn is the whole payload, and painting it as the
+ * user's row is the "wall of skill body" defect
+ * (the harness repo's `docs/design/history-fold-convergence.md` row D8).
+ * `typedLineOf` recovers the typed line from that payload; `skill-row.ts` is
+ * the caller that turns the
+ * same payload into a row a reader can scan.
+ *
+ * `unescapeSkillAttribute` alone is ported DEAD — nothing here reads an escaped
+ * attribute and then does not unescape it — so it is exported for the round-trip
+ * the suite pins against the harness (`scripts/skill-invocation.test.mjs`) rather
+ * than kept private.
  *
  * Pure and I/O-free: the caller supplies the body it read from `skills.list`.
  */
@@ -66,6 +77,32 @@ export type SkillInvocation = {
  * inline `$` to the front before Enter (`skill-completion.ts`).
  */
 const INVOCATION_RE = /^\$([A-Za-z0-9][A-Za-z0-9._-]*)/;
+
+/**
+ * The opening tag of a rendered payload, as `_INVOCATION_TAG_RE`
+ * (`invoke.py:105`) matches it: the tag, with the typed line in its
+ * `invocation` attribute.
+ *
+ * SEARCHED, not anchored, exactly as the harness searches it. Anchoring it here
+ * would read fewer payloads than the harness does — a payload the composer sent
+ * behind a staged `<reply-to>` prefix begins with the quote, not the header —
+ * and a payload one side recognises and the other does not is a row that
+ * disagrees with the message it describes.
+ *
+ * The harness's own pattern captures the attribute alone, because the typed
+ * line is all it reads; the NAME is captured here too, because a row that shows
+ * `$name` has to say which skill fired, and the tag is where the payload states
+ * it. Both attributes are recorded rather than re-derived, for the reason
+ * `render_invocation` keeps the typed line in the payload at all: the payload IS
+ * the record, and a second store can disagree with it.
+ *
+ * AND IT IS ONLY THE PATTERN. A match here says a tag exists, not that the
+ * message is a payload: prose can carry a whole tag (`skill-row.ts`'s reader is
+ * therefore stricter, and requires the writer's own header line in front of it —
+ * QA round 1, Q1). This constant stays the harness's pattern so the two sides
+ * cannot drift on what a tag LOOKS like.
+ */
+export const SKILL_TAG_RE = /<skill name="([^"]*)" invocation="([^"]*)">/;
 
 /**
  * Resolve a leading `$name` against the discovered vocabulary.
@@ -127,6 +164,25 @@ export function escapeSkillAttribute(value: string): string {
 }
 
 /**
+ * Inverse of {@link escapeSkillAttribute}, and `_unescape_attr` character for
+ * character (`invoke.py:227-240`).
+ *
+ * ORDER IS THE RULE HERE TOO, and it is the other order: `&amp;` goes LAST, or
+ * an escaped `&` would be undone into a bare `&` that the following passes then
+ * read as the start of another entity (`&amp;lt;` would become `<`). The
+ * harness states the same constraint on its own function, and it is the one
+ * property a port of this could silently get wrong.
+ */
+export function unescapeSkillAttribute(value: string): string {
+	return value
+		.replace(/&#10;/g, "\n")
+		.replace(/&gt;/g, ">")
+		.replace(/&lt;/g, "<")
+		.replace(/&quot;/g, '"')
+		.replace(/&amp;/g, "&");
+}
+
+/**
  * Whether a resolved SKILL.md carries anything beyond its frontmatter.
  *
  * A port of `tui/app.py:_skill_body_has_content` (`:1099-1120`), and it exists
@@ -174,4 +230,25 @@ export function renderSkillInvocation(
 	];
 	if (invocation.request) parts.push(invocation.request);
 	return parts.join("\n");
+}
+
+/**
+ * The `$name` line a rendered payload was built from, or `null`
+ * (`typed_line_of`, `invoke.py:243-252`).
+ *
+ * The read side of the `invocation` attribute, and the whole reason it exists:
+ * the payload is what gets PERSISTED, so a resumed session replays this string
+ * as the user's row. STRICTLY the harness's read — it searches the tag anywhere,
+ * because its caller only ever reads strings the writer produced — while
+ * `skill-row.ts`'s `skillRowOf` additionally requires the header line, which is
+ * what tells a payload apart from prose quoting one. Recovering the line here is what lets the row show what the
+ * user typed instead of the SKILL.md body they never wrote — and the same
+ * string is what any caption or title drawn from that row should read.
+ *
+ * `null` for any text that is not one of these payloads, which is every ordinary
+ * message, so a caller falls through to painting it verbatim.
+ */
+export function typedLineOf(text: string): string | null {
+	const match = SKILL_TAG_RE.exec(text);
+	return match ? unescapeSkillAttribute(match[2]) : null;
 }

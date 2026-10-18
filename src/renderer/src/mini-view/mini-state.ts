@@ -71,3 +71,73 @@ export const miniFrameTransitions = {
 		return { ...state, sent: false };
 	},
 };
+
+/**
+ * THE THEME A PREFERENCES WRITE CARRIES, for the popout's live sync.
+ *
+ * WHY THIS EXISTS. `ui-preferences-store` is zustand-persist: each document
+ * hydrates ONE copy at import and zustand does not listen for other documents'
+ * writes. The mini published its theme once at boot and re-read its own stale
+ * in-memory copy on every summon, so a theme selected in the main window never
+ * reached the popout - the operator photographed the popout on tokyoNightStorm
+ * while the app ran obsidian. The platform's own `storage` event is the
+ * transport the draft store already uses across these two documents
+ * (`conversation-input-sync.ts`); this is the reader that says which write is a
+ * theme change and what it says.
+ *
+ * ONLY A CHANGED THEME IS A THEME WRITE. Every persisted blob carries
+ * `themeName` (`partialize: persistedUiPreferences` serialises the whole
+ * preference object), so "the blob has a theme" is true of EVERY preferences
+ * write - a sidebar resize included. The caller must therefore adopt only when
+ * the written theme differs from the one it holds; reacting to the rest is what
+ * made the popout persist its stale whole-preferences snapshot over the main
+ * window's key (review round 1, R1).
+ *
+ * Pure and import-free so the desktop suite drives malformed blobs without a
+ * window: a foreign key, a missing value, an unchanged theme and anything that
+ * is not the persisted `{ state: { themeName } }` shape all answer null, and the
+ * caller leaves the palette it has.
+ */
+export function themeNameFromPreferencesWrite(input: {
+	eventKey: string | null;
+	storeKey: string;
+	newValue: string | null;
+	currentTheme: string;
+}): string | null {
+	if (input.eventKey !== input.storeKey || input.newValue === null) return null;
+	try {
+		const parsed = JSON.parse(input.newValue) as {
+			state?: { themeName?: unknown };
+		};
+		const name = parsed.state?.themeName;
+		if (typeof name !== "string" || name.length === 0) return null;
+		return name === input.currentTheme ? null : name;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * THE WRITE ADAPTER the mini document installs.
+ *
+ * Behavioural, not a convention: the caller hands in exactly two capabilities -
+ * a read-only `rehydrate` and a `publish` that repaints - so there is no path
+ * from a preferences write to a preferences WRITE. A non-theme write (the blob's
+ * theme equals ours) adopts nothing at all. The first version called
+ * `setTheme`, the persist-wrapped setter, and every write to the shared key made
+ * the mini persist its stale snapshot over it (review round 1, R1; round 2, F5
+ * asked for this to be proved by behaviour rather than a source grep).
+ */
+export function adoptPreferencesWrite(input: {
+	eventKey: string | null;
+	storeKey: string;
+	newValue: string | null;
+	currentTheme: string;
+	rehydrate: () => unknown;
+	publish: () => void;
+}): boolean {
+	const themeName = themeNameFromPreferencesWrite(input);
+	if (!themeName) return false;
+	Promise.resolve(input.rehydrate()).then(input.publish, () => {});
+	return true;
+}

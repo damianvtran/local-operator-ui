@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * One project's detail screen (`/projects/:projectId`).
  *
@@ -82,7 +84,6 @@ import {
 } from "../hooks/use-projects-queries";
 import { ProjectMarkdown } from "../project-markdown";
 import {
-	PROGRESS_STALE_LABEL,
 	milestoneSummaryLabel,
 	progressLine,
 	projectDisplayName,
@@ -125,6 +126,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 	projectKey,
 	nowMs,
 }) => {
+	useI18nLocale();
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
 	/*
@@ -158,7 +160,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 	if (detail.isLoading) {
 		return (
 			<div className="flex justify-center py-16">
-				<Spinner label="Loading project" />
+				<Spinner label={t("ui.projects.project_detail.loading_project")} />
 			</div>
 		);
 	}
@@ -182,10 +184,12 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 			<div className="mx-auto flex w-full max-w-200 flex-col items-start gap-4">
 				<Alert variant="danger" className="w-full">
 					{gone
-						? "This project could not be found. It may have been deleted."
+						? t(
+								"ui.projects.project_detail.this_project_could_not_be_found_it_may_have_been_deleted",
+							)
 						: detail.error instanceof Error && detail.error.message
 							? detail.error.message
-							: "The project could not be read."}
+							: t("ui.projects.project_detail.the_project_could_not_be_read")}
 				</Alert>
 				<div className="flex items-center gap-2">
 					{/*
@@ -197,14 +201,14 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 					 * `sm` size: it stands alone there, with nothing to mismatch.
 					 */}
 					<Button variant="secondary" onClick={() => void detail.refetch()}>
-						Try again
+						{t("ui.projects.project_detail.try_again")}
 					</Button>
 					<Button
 						variant="secondary"
 						onClick={() => void navigate("/projects")}
 					>
 						<ArrowLeft />
-						All projects
+						{t("ui.projects.project_detail.all_projects")}
 					</Button>
 				</div>
 			</div>
@@ -298,18 +302,24 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 			);
 			if (admitted === null) {
 				showErrorToast(
-					"That session already has a message going out. Try again in a moment.",
+					t(
+						"ui.projects.project_detail.that_session_already_has_a_message_going_out_try_again_in_a_momen",
+					),
 				);
 				return false;
 			}
 			const row = links.find((item) => item.session_id === sessionId);
-			showSuccessToast(`Sent to ${row ? sessionLabel(row) : sessionId}`);
+			showSuccessToast(
+				t("ui.projects.project_detail.sent_to_value1", {
+					value1: String(row ? sessionLabel(row) : sessionId),
+				}),
+			);
 			return true;
 		} catch (error) {
 			showErrorToast(
 				error instanceof Error && error.message
 					? error.message
-					: "The message was not sent.",
+					: t("ui.projects.project_detail.the_message_was_not_sent"),
 			);
 			return false;
 		}
@@ -325,7 +335,10 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 		const id = await store.createSession(store.cwd || "~", target);
 		if (!id) {
 			/* The store answered without an id and without a throw: nothing to open. */
-			throw new Error(store.error ?? "The session could not be started.");
+			throw new Error(
+				store.error ??
+					t("ui.projects.project_detail.the_session_could_not_be_started"),
+			);
 		}
 		/*
 		 * THE PROMPT IS SEEDED BEFORE THE LINK, so a linking failure cannot
@@ -341,14 +354,26 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 			linkFailure =
 				error instanceof Error && error.message
 					? error.message
-					: "the link was refused";
+					: t("ui.projects.project_detail.the_link_was_refused");
 		}
 		if (linkFailure) {
-			showErrorToast(`Session started, but linking it failed: ${linkFailure}`);
+			showErrorToast(
+				t(
+					"ui.projects.project_detail.session_started_but_linking_it_failed_linkfailure",
+					{ linkFailure: String(linkFailure) },
+				),
+			);
 		} else {
-			const withTarget = target ? ` with ${sessionTargetLabel(target)}` : "";
+			const withTarget = target
+				? t("ui.projects.project_detail.with_value1", {
+						value1: String(sessionTargetLabel(target)),
+					})
+				: "";
 			showSuccessToast(
-				`Session started${withTarget} and linked to ${displayName}.`,
+				t(
+					"ui.projects.project_detail.session_started_withtarget_and_linked_to_displayname",
+					{ withTarget: String(withTarget), displayName: String(displayName) },
+				),
 			);
 		}
 		await openConversation(navigate, id);
@@ -376,7 +401,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 						className="flex w-fit items-center gap-1.5 text-body-sm text-ink-muted hover:text-ink"
 					>
 						<ArrowLeft className="size-4" />
-						All projects
+						{t("ui.projects.project_detail.all_projects")}
 					</button>
 
 					<div className="flex flex-wrap items-start justify-between gap-4">
@@ -392,7 +417,9 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 							<div className="flex flex-wrap items-center gap-2 pt-1.5">
 								<ProjectStatusField project={project} commit={commitFields} />
 								{project.progress_stale && (
-									<Badge variant="warning">{PROGRESS_STALE_LABEL}</Badge>
+									<Badge variant="warning">
+										{t("ui.projects.project_model.stale")}
+									</Badge>
 								)}
 							</div>
 						</div>
@@ -416,7 +443,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 								data-tour-tag="project-delete"
 							>
 								<Trash2 />
-								Delete
+								{t("ui.projects.project_detail.delete")}
 							</Button>
 						</div>
 					</div>
@@ -439,7 +466,9 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 				 */}
 				{project.updates.length === 0 && project.progress && (
 					<section className="flex flex-col gap-2">
-						<h2 className="text-title text-ink">Progress</h2>
+						<h2 className="text-title text-ink">
+							{t("ui.projects.project_detail.progress")}
+						</h2>
 						<ProjectMarkdown className="text-body">
 							{project.progress}
 						</ProjectMarkdown>
@@ -460,7 +489,9 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 								showErrorToast(
 									error instanceof Error && error.message
 										? error.message
-										: "The milestone was not updated.",
+										: t(
+												"ui.projects.project_detail.the_milestone_was_not_updated",
+											),
 								);
 							});
 					}}
@@ -471,7 +502,9 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 								showErrorToast(
 									error instanceof Error && error.message
 										? error.message
-										: "The milestone was not removed.",
+										: t(
+												"ui.projects.project_detail.the_milestone_was_not_removed",
+											),
 								);
 							});
 					}}
@@ -482,7 +515,9 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 								showErrorToast(
 									error instanceof Error && error.message
 										? error.message
-										: "The milestone was not added.",
+										: t(
+												"ui.projects.project_detail.the_milestone_was_not_added",
+											),
 								);
 							});
 					}}
@@ -501,7 +536,9 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 								showErrorToast(
 									error instanceof Error && error.message
 										? error.message
-										: "The session was not linked.",
+										: t(
+												"ui.projects.project_detail.the_session_was_not_linked",
+											),
 								);
 							});
 					}}
@@ -512,7 +549,9 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 								showErrorToast(
 									error instanceof Error && error.message
 										? error.message
-										: "The session was not unlinked.",
+										: t(
+												"ui.projects.project_detail.the_session_was_not_unlinked",
+											),
 								);
 							});
 					}}
@@ -531,7 +570,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 							key: project.id,
 							confirmedName: typedName,
 						});
-						showSuccessToast("Project deleted");
+						showSuccessToast(t("ui.projects.project_detail.project_deleted"));
 						void navigate("/projects");
 					}}
 				/>

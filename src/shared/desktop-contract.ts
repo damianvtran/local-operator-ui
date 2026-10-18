@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { agentMessagesBoundarySchema } from "./agent-messages-contract";
 // The feed's frame family lives beside the session stream's, so the two cannot
 // drift into disagreeing about the envelope they deliberately share.
 import type { DesktopFeedFrame } from "./desktop-session-contract";
@@ -1362,6 +1363,17 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			scope_name: catalogueScopeName.optional(),
 			cursor: catalogueCursor.optional(),
 			with_counts: z.boolean().optional(),
+			/*
+			 * THE ORDER THE PAGE IS READ IN (`session_catalogue_sort`), optional and
+			 * gated on that capability for the same reason the paging four are: a daemon
+			 * that predates the parameter IGNORES it silently, so an un-gated client
+			 * would receive the rank order under a request that asked for the activity
+			 * one - a page whose membership is a wake band, which is the exact defect
+			 * this parameter exists to remove. `activity` is the one value today; a
+			 * literal rather than a string so a typo is a type error here rather than a
+			 * refusal from the route.
+			 */
+			sort: z.literal("activity").optional(),
 		})
 		.strict(),
 	/*
@@ -3070,6 +3082,26 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("auth.cancel"), id }).strict(),
 	z.object({ op: z.literal("auth.key"), provider: id, value: secret }).strict(),
 	z.object({ op: z.literal("auth.logout"), provider: id }).strict(),
+	/*
+	 * Local bearer only: the harness owns Radient OAuth and organization policy.
+	 * The account guard is local-only and is stripped before the hub write.
+	 */
+	z
+		.object({
+			op: z.literal("agent_messages.status"),
+			boundary: agentMessagesBoundarySchema,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("agent_messages.enable"),
+			expected_account_id: id,
+			tenant_id: id,
+			state: z.literal("active"),
+			consent_version: z.string().min(1).max(128),
+			consented_via: z.literal("dialog"),
+		})
+		.strict(),
 	z.object({ op: z.literal("settings.list") }).strict(),
 	z
 		.object({
@@ -5284,6 +5316,7 @@ export const DESKTOP_FOREGROUND_REQUIRED_MESSAGE =
  */
 const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"capabilities",
+	"agent_messages.status",
 	"accounts.list",
 	"analytics.get",
 	"analytics.models",
@@ -6766,6 +6799,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 			// the paging three's: it is a boolean whose route default is false, so the
 			// ordinary request keeps the exact bytes it sent before this flag existed.
 			if (request.include_peers) params.set("include_peers", "true");
+			// AFTER `include_peers`, and omitted when absent, so every request that
+			// predates this parameter keeps its exact byte order too: `sort` is the
+			// newest member of the query string, and nothing that never asks for it
+			// may move.
+			if (request.sort) params.set("sort", request.sort);
 			return {
 				path: `/v1/desktop/sessions?${params}`,
 				method: "GET",
@@ -7828,6 +7866,23 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/auth/providers/${request.provider}/credentials`,
 				method: "DELETE",
+			};
+		case "agent_messages.status":
+			return {
+				path: `/v1/desktop/team-bridge/status?boundary=${request.boundary}`,
+				method: "GET",
+			};
+		case "agent_messages.enable":
+			return {
+				path: "/v1/desktop/team-bridge/settings",
+				method: "PUT",
+				body: {
+					expected_account_id: request.expected_account_id,
+					tenant_id: request.tenant_id,
+					state: request.state,
+					consent_version: request.consent_version,
+					consented_via: request.consented_via,
+				},
 			};
 		case "settings.list":
 			return { path: "/v1/settings", method: "GET" };

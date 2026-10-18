@@ -489,11 +489,17 @@ test("the send control is pressable while a send is in flight", () => {
 	 * ternary now and the old anchor matched nothing at all - a source assertion that
 	 * matches nothing is a failure, which is how the fold surfaced it.
 	 */
-	const at = [...composer.matchAll(/aria-label=\{/g)]
-		.map((match) => match.index)
-		.find((index) =>
-			composer.slice(index, index + 900).includes('"Send message"'),
-		);
+	// Match the actual destination-aware label, not prose mentioning its English
+	// tail within a fixed-size window: that can select a different button.
+	const at =
+		/aria-label=\{\s*aside !== null && !awaitingAnswer\s*\?\s*t\("ui\.chat\.composer\.ask_aside"\)\s*:\s*t\("ui\.chat\.composer\.send_message"\)\s*\}/.exec(
+			composer,
+		)?.index;
+	const copy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.composer.json", "utf8"),
+	);
+	assert.equal(copy["ui.chat.composer.send_message"], "Send message");
+	assert.equal(copy["ui.chat.composer.ask_aside"], "Ask the aside");
 	assert.ok(typeof at === "number" && at > 0, "the send control moved");
 	const button = composer.slice(
 		composer.lastIndexOf("<Button", at),

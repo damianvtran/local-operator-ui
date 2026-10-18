@@ -66,20 +66,30 @@ import { BrowserFileTransferRow } from "./src/renderer/src/features/browser/comp
  * SECOND argument alone, which is exactly the case U10 is about — the host's
  * recorded kind being the only thing left when the tab record is gone.
  */
-export function mount(container, props) {
+function row(props) {
 	const tabLabel = props.answerFromOwnerKind
 		? (_tabId, ownerKind) =>
 				ownerKind === "agent" ? "· on the agent's tab" : "· on another tab"
 		: undefined;
+	return createElement(BrowserFileTransferRow, {
+		transfers: props.transfers,
+		onReveal: () => {},
+		tabLabel,
+	});
+}
+
+export function mount(container, props) {
 	const root = createRoot(container);
-	root.render(
-		createElement(BrowserFileTransferRow, {
-			transfers: props.transfers,
-			onReveal: () => {},
-			tabLabel,
-		}),
-	);
+	root.render(row(props));
 	return root;
+}
+
+/**
+ * Re-render the SAME root with a new projection: how a note that arrives AFTER
+ * the strip mounted is exercised (UX round 1, U2 - the mount-time clock).
+ */
+export function update(root, props) {
+	root.render(row(props));
 }
 
 /**
@@ -119,6 +129,7 @@ const bundlePath = new URL(
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	mount,
+	update,
 	stories,
 	tr,
 	setLocale,
@@ -791,4 +802,69 @@ test("a mounted transfer row refreshes language and absent messages keep English
 		clearRegisteredCatalogues();
 		await act(() => setLocale("en"));
 	}
+});
+
+test("a note delivered after the strip mounted ages from wall time, not from the mount (UX round 1, U2)", async (t) => {
+	// The U2 repro: probe11's refusal happened at t+0 and first painted at
+	// t+121.8 s — late, because U1's missing notification meant the renderer
+	// re-read only when an unrelated event (there, the old deadline's settle)
+	// forced it. The row's mount-time clock then read "· just now" on a
+	// two-minute-old event. This test moves the wall clock BETWEEN the mount
+	// and the late delivery, so the two clocks are distinguishable: with the
+	// `setNow`-on-`latest` seeding in place the age is computed from
+	// `Date.now()` at first paint (2 min); with that seeding reverted it stays
+	// on the mount value and reads "just now".
+	let clock = Date.now();
+	t.mock.method(Date, "now", () => clock);
+
+	const container = document.createElement("div");
+	document.body.append(container);
+	let root = null;
+	await act(() => {
+		// Mounted with nothing to show — the strip's state minutes before any
+		// download was clicked: hooks live, the row returns null.
+		root = mount(container, { transfers: activity([]) });
+	});
+	t.after(async () => {
+		await act(() => root.unmount());
+		container.remove();
+	});
+
+	// The refusal happens now (its `at` is the old clock) and is delivered
+	// 121 s later, the measured U2 timeline.
+	const refusedAt = clock;
+	clock += 121_000;
+	await act(() => {
+		update(root, {
+			transfers: activity([
+				note({
+					name: "huge.pdf",
+					outcome: "refused",
+					reason:
+						"refused: `huge.pdf` is over the 256 MiB per-file download limit; nothing was saved (it is 268435457 bytes)",
+					refusal: { rule: "limit", bytes: 268_435_457, limit: 268_435_456 },
+					at: refusedAt,
+				}),
+			]),
+		});
+	});
+
+	const live = container.querySelector(
+		'[data-tour-tag="browser-file-transfer-row"]',
+	);
+	assert.ok(live, "the late note paints the row");
+	const spoken = [...live.querySelectorAll("span")]
+		.map((span) => span.textContent.trim())
+		.filter(Boolean)
+		.join(" ");
+	assert.match(spoken, /Download refused —/, "the refusal sentence is there");
+	assert.match(
+		spoken,
+		/· 2 min ago/,
+		"the age is wall time, not the mount's clock",
+	);
+	assert.ok(
+		!/just now/.test(spoken),
+		`a 121 s-old refusal must not read as new: ${spoken}`,
+	);
 });

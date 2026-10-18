@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The projects refusals, as sentences: pure mappings from a failed desktop
  * write to what the reader is told.
@@ -11,11 +12,7 @@
 
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import { projectRefusalCopy } from "./project-edit-model";
-import {
-	type DoneGateRefusal,
-	PROJECT_NOT_MOVED_COPY,
-	doneGateRefusal,
-} from "./project-model";
+import { type DoneGateRefusal, doneGateRefusal } from "./project-model";
 
 /**
  * A refused write, as the sentence beside the field.
@@ -53,7 +50,9 @@ export function projectGoneError(error: unknown): boolean {
  */
 export function projectMoveErrorCopy(error: unknown): string {
 	if (!(error instanceof Error) || !error.message)
-		return PROJECT_NOT_MOVED_COPY;
+		return t(
+			"ui.projects.project_model.the_project_was_not_moved_try_again_or_open_it_to_change_its_stat",
+		);
 	/*
 	 * A project deleted (or renamed away) under an open card/dialog: the route's
 	 * own sentence is `no project with id or name '<32-hex id>'`, which names an
@@ -62,7 +61,9 @@ export function projectMoveErrorCopy(error: unknown): string {
 	 * the confirm dialog swaps its primary for Close on it (design round 1, D9).
 	 */
 	if (projectGoneError(error))
-		return "This project could not be found. It may have been deleted.";
+		return t(
+			"ui.projects.project_refusals.this_project_could_not_be_found_it_may_have_been_deleted",
+		);
 	return projectWriteErrorCopy(error);
 }
 /**

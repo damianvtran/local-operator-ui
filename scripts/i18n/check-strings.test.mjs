@@ -263,7 +263,7 @@ test("--update lowers a ceiling, and refuses every raise", () => {
 		 * A REAL, baselined file rather than the excluded fixture: `--update`
 		 * scans the tree's own corpus (fixtures are outside it by design), and
 		 * 99 sits above this file's real count so the update has something to
-		 * lower; the app.tsx entry sits BELOW its real count so the raise case
+		 * lower; the raise-target entry sits BELOW its real count so the raise case
 		 * has something to refuse.
 		 */
 		const lowerTarget =
@@ -282,22 +282,15 @@ test("--update lowers a ceiling, and refuses every raise", () => {
 		// A file recorded at 1 while the tree carries 12: refused, entry intact.
 		assert.equal(main(["--update", raiseTarget], options), 1);
 		assert.equal(loadBaseline(baselinePath).files[raiseTarget], 1);
-		// A file with NO entry that carries literals: refused, with the reason.
+		// The preceding refusal proves raiseTarget still has literals. Remove
+		// only its scratch-baseline entry to exercise the missing-entry case;
+		// a translated product file may legitimately have zero literals now.
+		const afterRaise = loadBaseline(baselinePath);
+		delete afterRaise.files[raiseTarget];
+		saveBaseline(baselinePath, afterRaise.files, afterRaise.enforced, "note");
+		assert.equal(main(["--update", raiseTarget], options), 1);
 		assert.equal(
-			main(
-				[
-					"--update",
-					"src/renderer/src/features/projects/components/project-list.tsx",
-				],
-				options,
-			),
-			1,
-		);
-		assert.equal(
-			Object.hasOwn(
-				loadBaseline(baselinePath).files,
-				"src/renderer/src/features/projects/components/project-list.tsx",
-			),
+			Object.hasOwn(loadBaseline(baselinePath).files, raiseTarget),
 			false,
 		);
 		// A clean file with no entry: nothing to do, no refusal.

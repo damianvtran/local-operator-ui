@@ -142,7 +142,10 @@ export const SettingsFilterBar: FC<SettingsFilterBarProps> = ({
 							"ui.settings.configuration.settings_filter_bar.settings_filters",
 						)}
 					</legend>
-					<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
+					<div
+						data-glass-well=""
+						className="flex gap-0.5 rounded-md bg-sunken p-0.5"
+					>
 						<Button
 							variant="ghost"
 							size="sm"

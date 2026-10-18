@@ -12,11 +12,12 @@
  * honestly hint `backend` for all of them.
  *
  * That stopped being true when a key's control was given a first-class home
- * elsewhere — the interface-language row moved into General, where its own
- * control is the canonical editor and the Backend list filters the row OUT
- * (`hideInterfaceLanguage`). A link that still resolved to Backend then
- * highlighted a section that no longer contains the row, and the user was left
- * to hunt for a control the link claimed to reveal.
+ * elsewhere — the interface-language row moved into General, and the Default
+ * effort row took ownership of `model_effort` — where its own control is the
+ * canonical editor and the Backend list filters the registry row OUT
+ * (`hideInterfaceLanguage`, `hideModelEffort`). A link that still resolved to
+ * Backend then highlighted a section that no longer contains the row, and the
+ * user was left to hunt for a control the link claimed to reveal.
  *
  * ## The rule this file makes mechanical
  *
@@ -46,13 +47,31 @@ import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
 export const GENERAL_SECTION = "general";
 
 /**
+ * The settings-registry key the Default effort row owns.
+ *
+ * Exported here rather than restated at the row and the filter: promotion, the
+ * write path and the hidden registry row must all name the same key, and this
+ * module is already the one place that decides who owns it.
+ */
+export const MODEL_EFFORT_SETTING_KEY = "model_effort";
+
+/**
  * Registry key -> the sidebar section its (promoted) control lives in.
  *
  * A plain map rather than an array of predicates: the lookup is by the exact
  * registry key the backend serves, so it cannot drift from a spelling.
+ *
+ * `model_effort` is here because the Default effort row IS its canonical
+ * editor: the row offers the selected model's own ladder and clamps into it,
+ * while the registry editor offered the global `EFFORT_ORDER` ladder with its
+ * own "auto" label for `""`. Two controls for one key meant two vocabularies
+ * and a silent cross-control overwrite, so the registry row is now filtered out
+ * of Backend settings (`hideModelEffort`) and this map is what sends a
+ * `?setting=model_effort` link to where the control is.
  */
 export const PROMOTED_SETTING_SECTIONS: Readonly<Record<string, string>> = {
 	[LANGUAGE_SETTING_KEY]: GENERAL_SECTION,
+	[MODEL_EFFORT_SETTING_KEY]: GENERAL_SECTION,
 };
 
 /**

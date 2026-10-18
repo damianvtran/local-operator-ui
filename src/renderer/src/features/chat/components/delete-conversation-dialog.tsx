@@ -1,4 +1,6 @@
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { type FC, useEffect, useRef, useState } from "react";
 import {
@@ -37,6 +39,8 @@ export const DeleteConversationDialog: FC<{
 	/** Whether the addressed session started subagent runs; see the copy module. */
 	hasSubagentRuns: boolean;
 }> = ({ title, hasSubagentRuns }) => {
+	// Subscribe without touching candidate/refusal state or modal focus effects.
+	useI18nLocale();
 	const candidate = useCanonicalSessionsStore((state) => state.deleteCandidate);
 	const sessions = useCanonicalSessionsStore((state) => state.sessions);
 	const requestDelete = useCanonicalSessionsStore(
@@ -111,7 +115,7 @@ export const DeleteConversationDialog: FC<{
 	return (
 		<ConfirmationModal
 			open={candidate !== null}
-			title="Delete this conversation?"
+			title={t("ui.chat.dialogs.delete_title")}
 			message={
 				<>
 					<p>{deleteConversationMessage(candidateTitle, hasSubagentRuns)}</p>
@@ -133,8 +137,8 @@ export const DeleteConversationDialog: FC<{
 					)}
 				</>
 			}
-			confirmText="Delete"
-			cancelText="Cancel"
+			confirmText={t("ui.chat.dialogs.delete_action")}
+			cancelText={t("ui.chat.dialogs.cancel")}
 			isDangerous
 			/*
 			 * The refusal is the only thing this dialog can be told that makes the SAFE

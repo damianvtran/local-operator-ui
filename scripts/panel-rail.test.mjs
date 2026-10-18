@@ -1640,6 +1640,17 @@ test("the host is inert outside a shell and portals into the shell's element ins
 /* ----------------------------------------------------------------- source pins */
 
 test("the header no longer renders the five triggers or their shed ladder", () => {
+	const headerCopy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.header.json", "utf8"),
+	);
+	assert.equal(
+		headerCopy["ui.chat.header.close_run_details"],
+		"Close run details",
+	);
+	assert.equal(
+		headerCopy["ui.chat.header.open_run_details"],
+		"Open run details",
+	);
 	const header = read(
 		"src/renderer/src/features/chat/components/chat-header.tsx",
 	);
@@ -1688,7 +1699,7 @@ test("the header no longer renders the five triggers or their shed ladder", () =
 		"the asks item's tag must live on the rail item: it is the drawer's anchor",
 	);
 	for (const label of [
-		"Run details",
+		't("ui.chat.header.open_run_details")',
 		"Close asks",
 		"Open browser",
 		"Open console",
@@ -1702,8 +1713,11 @@ test("the header no longer renders the five triggers or their shed ladder", () =
 		header.includes('{asksOpen ? "Close asks" : "Open asks"}'),
 		"the asks row must be the same toggle sentence as the browser row's",
 	);
-	const runAt = header.indexOf(
-		'{isRunPanelOpen ? "Close run details" : "Open run details"}',
+	/* The run row's label is keyed now (close/open) and its ternary can wrap:
+	   whitespace-tolerant form - the branch is the pin, not the indentation Biome
+	   leaves it at. */
+	const runAt = header.search(
+		/\{isRunPanelOpen\s*\?\s*t\("ui\.chat\.header\.close_run_details"\)\s*:\s*t\("ui\.chat\.header\.open_run_details"\)\}/,
 	);
 	const asksAt = header.indexOf('{asksOpen ? "Close asks" : "Open asks"}');
 	const browserAt = header.indexOf(

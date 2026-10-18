@@ -1,3 +1,8 @@
+import { t } from "@shared/i18n";
+// Exported source-copy constants remain byte-stable for existing model consumers.
+// Product reads resolve their catalogue key at use time, so changing language
+// does not leave module-initialized labels frozen in the previous locale.
+import { bundledEnglish } from "../../../../i18n/keys.gen";
 /**
  * The Projects tab's pure model: every label, tone and derivation the list and
  * the detail read, as functions of the wire DTOs and nothing else.
@@ -26,7 +31,7 @@
  * and the formatter itself is the shared layer, never hardcoded English.
  */
 
-import { formatDate, formatTime } from "@shared/i18n";
+import { formatDate, formatNumber, formatTime } from "@shared/i18n";
 
 import type {
 	DesktopLinkedSession,
@@ -67,13 +72,48 @@ export type ChipMeta = { label: string; variant: ChipVariant };
  * has never heard of is the word itself, not a guessed chip or a crash.
  */
 const PROJECT_STATUS_META: Record<string, ChipMeta> = {
-	planning: { label: "Planning", variant: "info" },
-	active: { label: "Active", variant: "accent" },
-	qa: { label: "QA", variant: "attention" },
-	validation: { label: "Validation", variant: "warning" },
-	done: { label: "Done", variant: "success" },
-	paused: { label: "Paused", variant: "neutral" },
-	archived: { label: "Archived", variant: "outline" },
+	planning: {
+		get label() {
+			return t("ui.projects.project_model.planning");
+		},
+		variant: "info",
+	},
+	active: {
+		get label() {
+			return t("ui.projects.project_model.active");
+		},
+		variant: "accent",
+	},
+	qa: {
+		get label() {
+			return t("ui.projects.project_model.qa");
+		},
+		variant: "attention",
+	},
+	validation: {
+		get label() {
+			return t("ui.projects.project_model.validation");
+		},
+		variant: "warning",
+	},
+	done: {
+		get label() {
+			return t("ui.projects.project_model.done");
+		},
+		variant: "success",
+	},
+	paused: {
+		get label() {
+			return t("ui.projects.project_model.paused");
+		},
+		variant: "neutral",
+	},
+	archived: {
+		get label() {
+			return t("ui.projects.project_model.archived");
+		},
+		variant: "outline",
+	},
 };
 
 /**
@@ -91,7 +131,7 @@ export const PROJECT_STATUS_ORDER: string[] = Object.keys(PROJECT_STATUS_META);
 export function projectStatusMeta(status: string): ChipMeta {
 	return (
 		PROJECT_STATUS_META[status] ?? {
-			label: status || "Unknown",
+			label: status || t("ui.projects.project_model.unknown"),
 			variant: "neutral",
 		}
 	);
@@ -140,9 +180,24 @@ export function statusCarriesCheck(status: string): boolean {
  * case the warning tone the design asks for.
  */
 const MILESTONE_STATUS_META: Record<DesktopMilestoneStatus, ChipMeta> = {
-	completed: { label: "Completed", variant: "success" },
-	overdue: { label: "Overdue", variant: "warning" },
-	upcoming: { label: "Upcoming", variant: "neutral" },
+	completed: {
+		get label() {
+			return t("ui.projects.project_model.completed");
+		},
+		variant: "success",
+	},
+	overdue: {
+		get label() {
+			return t("ui.projects.project_model.overdue");
+		},
+		variant: "warning",
+	},
+	upcoming: {
+		get label() {
+			return t("ui.projects.project_model.upcoming");
+		},
+		variant: "neutral",
+	},
 };
 
 export function milestoneStatusMeta(status: DesktopMilestoneStatus): ChipMeta {
@@ -155,7 +210,8 @@ export function milestoneStatusMeta(status: DesktopMilestoneStatus): ChipMeta {
 }
 
 /** The stale badge's one label. Its presence is `progress_stale`, not a derivation here. */
-export const PROGRESS_STALE_LABEL = "Stale";
+export const PROGRESS_STALE_LABEL =
+	bundledEnglish["ui.projects.project_model.stale"];
 
 /** One ISO day, `YYYY-MM-DD`, as the wire carries it. */
 const PROJECT_DAY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -194,7 +250,11 @@ export function formatProjectDay(
 	);
 	return date.getFullYear() === now.getFullYear()
 		? monthDay
-		: `${monthDay}, ${date.getFullYear()}`;
+		: formatDate(
+				date,
+				{ month: "short", day: "numeric", year: "numeric" },
+				locale,
+			);
 }
 
 /**
@@ -213,10 +273,12 @@ export function progressAge(
 ): string {
 	if (updatedAtSeconds === null || updatedAtSeconds === undefined) return "";
 	const seconds = Math.max(0, Math.floor(nowMs / 1000 - updatedAtSeconds));
-	if (seconds < 60) return "just now";
-	if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-	if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
-	return `${Math.floor(seconds / 86400)}d`;
+	if (seconds < 60) return t("ui.projects.project_model.just_now");
+	if (seconds < 3600)
+		return `${formatNumber(Math.floor(seconds / 60), { useGrouping: false })}m`;
+	if (seconds < 86400)
+		return `${formatNumber(Math.floor(seconds / 3600), { useGrouping: false })}h`;
+	return `${formatNumber(Math.floor(seconds / 86400), { useGrouping: false })}d`;
 }
 
 /**
@@ -230,7 +292,9 @@ export function progressAge(
  * callers go through it.
  */
 export function progressAgePhrase(age: string): string {
-	return age === "just now" ? "just now" : `${age} ago`;
+	return age === t("ui.projects.project_model.just_now")
+		? t("ui.projects.project_model.just_now")
+		: t("ui.projects.project_model.age_ago", { age: String(age) });
 }
 
 /**
@@ -244,7 +308,11 @@ export function progressAgePhrase(age: string): string {
  * test can hold it.
  */
 export function boardProgressText(age: string): string {
-	return age ? `reported ${progressAgePhrase(age)}` : "no progress";
+	return age
+		? t("ui.projects.project_model.reported_progressagephrase_age", {
+				progressAgePhrase_age: String(progressAgePhrase(age)),
+			})
+		: t("ui.projects.project_model.no_progress");
 }
 
 /**
@@ -268,8 +336,11 @@ export const PROJECT_DAY_FIELD_PATTERN = /^$|^\d{4}-\d{2}-\d{2}$/;
  */
 export function progressReporterLabel(reportedBy: string): string {
 	if (!reportedBy) return "";
-	if (reportedBy === "operator") return "the operator";
-	return `session ${reportedBy}`;
+	if (reportedBy === "operator")
+		return t("ui.projects.project_model.the_operator");
+	return t("ui.projects.project_model.session_reportedby", {
+		reportedBy: String(reportedBy),
+	});
 }
 
 /**
@@ -291,11 +362,22 @@ export function progressLine(
 	>,
 	nowMs: number,
 ): string {
-	if (!view.progress) return "not reported yet";
+	if (!view.progress) return t("ui.projects.project_model.not_reported_yet");
 	const age = progressAge(view.progress_updated_at, nowMs);
 	const reporter = progressReporterLabel(view.progress_reported_by);
-	const parts = [age ? `reported ${progressAgePhrase(age)}` : "reported"];
-	if (reporter) parts.push(`by ${reporter}`);
+	const parts = [
+		age
+			? t("ui.projects.project_model.reported_progressagephrase_age", {
+					progressAgePhrase_age: String(progressAgePhrase(age)),
+				})
+			: "reported",
+	];
+	if (reporter)
+		parts.push(
+			t("ui.projects.project_model.by_reporter", {
+				reporter: String(reporter),
+			}),
+		);
 	return parts.join(" ");
 }
 
@@ -313,28 +395,36 @@ export function estimateLabel(
 	unit: string,
 ): string {
 	if (estimate === null || estimate === undefined) return "";
-	const value = String(estimate);
-	if (unit === "points") return `${value} pt`;
-	if (unit === "days") return `${value}d`;
+	const value = formatNumber(estimate, {
+		useGrouping: false,
+		maximumFractionDigits: 20,
+	});
+	if (unit === "points")
+		return t("ui.projects.project_model.value_pt", { value: String(value) });
+	if (unit === "days")
+		return t("ui.projects.project_model.value_d", { value: String(value) });
 	return value;
 }
 
 /** `2/5`, or `""` when the project declares no milestones (nothing to count). */
 export function milestoneCountLabel(completed: number, total: number): string {
 	if (total <= 0) return "";
-	return `${completed}/${total}`;
+	return t("ui.projects.project_model.completed_total", {
+		completed: formatNumber(completed, { useGrouping: false }),
+		total: formatNumber(total, { useGrouping: false }),
+	});
 }
 
 /** `2 live`, or `""` for zero — a chip that says nothing is not drawn. */
 export function liveSessionsLabel(live: number): string {
 	if (live <= 0) return "";
-	return `${live} live`;
+	return t("ui.projects.project_model.live_live", { live });
 }
 
 /** `1 session` / `3 sessions`, or `""` for zero. */
 export function sessionsCountLabel(count: number): string {
 	if (count <= 0) return "";
-	return count === 1 ? "1 session" : `${count} sessions`;
+	return t("ui.projects.count.session", { count });
 }
 
 /**
@@ -352,7 +442,7 @@ export function sessionsCountLabel(count: number): string {
  * the two cannot drift into two vocabularies for one idea.
  */
 export function projectsCountLabel(count: number): string {
-	return count === 1 ? "1 project" : `${count} projects`;
+	return t("ui.projects.count.project", { count });
 }
 
 /**
@@ -373,7 +463,12 @@ export function sessionsTriggerLabel(project: {
 	const count = sessionsCountLabel(project.sessions);
 	if (!count) return "";
 	const live = liveSessionsLabel(project.live_sessions);
-	return live ? `${count} · ${live}` : count;
+	return live
+		? t("ui.projects.project_model.count_live", {
+				count: String(count),
+				live: String(live),
+			})
+		: count;
 }
 
 /**
@@ -392,20 +487,54 @@ export function linkStateMeta(link: {
 	archived: boolean;
 	runtime: { state?: string };
 }): ChipMeta {
-	if (!link.exists) return { label: "Missing", variant: "outline" };
-	if (link.archived) return { label: "Archived", variant: "neutral" };
+	if (!link.exists)
+		return {
+			get label() {
+				return t("ui.projects.project_model.missing");
+			},
+			variant: "outline",
+		};
+	if (link.archived)
+		return {
+			get label() {
+				return t("ui.projects.project_model.archived");
+			},
+			variant: "neutral",
+		};
 	switch (link.runtime?.state) {
 		case "live":
-			return { label: "Live", variant: "success" };
+			return {
+				get label() {
+					return t("ui.projects.project_model.live");
+				},
+				variant: "success",
+			};
 		case "wedged":
-			return { label: "Wedged", variant: "warning" };
+			return {
+				get label() {
+					return t("ui.projects.project_model.wedged");
+				},
+				variant: "warning",
+			};
 		case "stale":
-			return { label: "Stale", variant: "warning" };
+			return {
+				get label() {
+					return t("ui.projects.project_model.stale");
+				},
+				variant: "warning",
+			};
 		case "stopped":
-			return { label: "Stopped", variant: "neutral" };
+			return {
+				get label() {
+					return t("ui.projects.project_model.stopped");
+				},
+				variant: "neutral",
+			};
 		default:
 			return {
-				label: String(link.runtime?.state ?? "Unknown"),
+				label: String(
+					link.runtime?.state ?? t("ui.projects.project_model.unknown"),
+				),
 				variant: "neutral",
 			};
 	}
@@ -423,16 +552,14 @@ export function subagentChipLabel(
 	summary: DesktopLinkedSession["subagents"],
 ): string {
 	if (!summary) return "";
-	if (summary.running > 0)
-		return summary.running === 1
-			? "1 subagent running"
-			: `${summary.running} subagents running`;
-	return summary.settled === 1 ? "1 subagent" : `${summary.settled} subagents`;
+	return summary.running > 0
+		? t("ui.projects.count.subagent_running", { count: summary.running })
+		: t("ui.projects.count.subagent", { count: summary.settled });
 }
 
 export function todoChipLabel(summary: DesktopLinkedSession["todos"]): string {
 	if (!summary) return "";
-	return summary.total === 1 ? "1 todo" : `${summary.total} todos`;
+	return t("ui.projects.count.todo", { count: summary.total });
 }
 
 /**
@@ -462,7 +589,9 @@ export function listRowMeta(
 	if (day) {
 		rows.push({
 			key: project.completed_at ? "completed" : "target",
-			text: project.completed_at ? `completed ${day}` : `due ${day}`,
+			text: project.completed_at
+				? t("ui.projects.project_model.completed_day", { day: String(day) })
+				: t("ui.projects.project_model.due_day", { day: String(day) }),
 		});
 	}
 	const estimate = estimateLabel(project.estimate, project.estimate_unit);
@@ -472,7 +601,12 @@ export function listRowMeta(
 		project.milestones_total,
 	);
 	if (milestones)
-		rows.push({ key: "milestones", text: `milestones ${milestones}` });
+		rows.push({
+			key: "milestones",
+			text: t("ui.projects.project_model.milestones_milestones", {
+				milestones: String(milestones),
+			}),
+		});
 	const live = liveSessionsLabel(project.live_sessions);
 	if (live) rows.push({ key: "live", text: live });
 	return rows;
@@ -561,29 +695,52 @@ export const BOARD_SIDE_COLUMNS = ["paused", "archived"] as const;
 export const BOARD_WINDOWS = [
 	{
 		value: "24h",
-		label: "Last 24 hours",
-		phrase: "the last 24 hours",
+		get label() {
+			return t("ui.projects.project_model.last_24_hours");
+		},
+		get phrase() {
+			return t("ui.projects.project_model.the_last_24_hours");
+		},
 		seconds: 86_400,
 	},
 	{
 		value: "7d",
-		label: "Last 7 days",
-		phrase: "the last 7 days",
+		get label() {
+			return t("ui.projects.project_model.last_7_days");
+		},
+		get phrase() {
+			return t("ui.projects.project_model.the_last_7_days");
+		},
 		seconds: 604_800,
 	},
 	{
 		value: "30d",
-		label: "Last 30 days",
-		phrase: "the last 30 days",
+		get label() {
+			return t("ui.projects.project_model.last_30_days");
+		},
+		get phrase() {
+			return t("ui.projects.project_model.the_last_30_days");
+		},
 		seconds: 2_592_000,
 	},
 	{
 		value: "90d",
-		label: "Last 90 days",
-		phrase: "the last 90 days",
+		get label() {
+			return t("ui.projects.project_model.last_90_days");
+		},
+		get phrase() {
+			return t("ui.projects.project_model.the_last_90_days");
+		},
 		seconds: 7_776_000,
 	},
-	{ value: "all", label: "All time", phrase: null, seconds: null },
+	{
+		value: "all",
+		get label() {
+			return t("ui.projects.project_model.all_time");
+		},
+		phrase: null,
+		seconds: null,
+	},
 ] as const;
 
 export type BoardWindow = (typeof BOARD_WINDOWS)[number]["value"];
@@ -652,7 +809,9 @@ export function boardWindowProjects(
 export function boardWindowEmptyHeading(window: BoardWindow): string | null {
 	const entry = boardWindowMeta(window);
 	if (entry.seconds === null) return null;
-	return `Nothing changed in ${entry.phrase}.`;
+	return t("ui.projects.project_model.nothing_changed_in_phrase", {
+		phrase: String(entry.phrase),
+	});
 }
 
 /**
@@ -908,7 +1067,8 @@ export function managedByLine(
 /* --------------------------------------------- slice 3: team grouping -- */
 
 /** The bucket a project with no team or owner files under. */
-export const NO_TEAM_LABEL = "No team";
+export const NO_TEAM_LABEL =
+	bundledEnglish["ui.projects.project_model.no_team"];
 
 /**
  * The team a project groups under: `team` first, `owner` as the fallback, and
@@ -997,7 +1157,7 @@ export function updatesNewestFirst(
 /** `1 update` / `12 updates`, or `""` for none — a count that says nothing is not drawn. */
 export function updatesCountLabel(count: number): string {
 	if (count <= 0) return "";
-	return count === 1 ? "1 update" : `${count} updates`;
+	return t("ui.projects.count.update", { count });
 }
 
 const pad2 = (value: number) => String(value).padStart(2, "0");
@@ -1038,13 +1198,14 @@ export function updateDayLabel(
 	now: Date = new Date(),
 ): string {
 	if (!dayKey) return "";
-	if (dayKey === localDayKey(now)) return "Today";
+	if (dayKey === localDayKey(now)) return t("ui.projects.project_model.today");
 	const yesterday = new Date(
 		now.getFullYear(),
 		now.getMonth(),
 		now.getDate() - 1,
 	);
-	if (dayKey === localDayKey(yesterday)) return "Yesterday";
+	if (dayKey === localDayKey(yesterday))
+		return t("ui.projects.project_model.yesterday");
 	return formatProjectDay(dayKey, locale, now);
 }
 
@@ -1247,8 +1408,8 @@ export function sessionTargetLabel(
 ): string {
 	if (!target) return "";
 	return target.kind === "team"
-		? `team ${target.name}`
-		: `agent ${target.name}`;
+		? t("ui.projects.project_model.team_name", { name: String(target.name) })
+		: t("ui.projects.project_model.agent_name", { name: String(target.name) });
 }
 
 /* ------------------------------------------ refusals, re-spoken for here ---- */
@@ -1285,15 +1446,21 @@ export const DONE_GATE_NAMES_SHOWN = 3;
 export function doneGateNamesClause(names: string[]): string {
 	if (names.length <= DONE_GATE_NAMES_SHOWN + 1) {
 		if (names.length <= 1) return names.join("");
-		return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+		return t("ui.projects.project_model.join_and_length_1", {
+			join: String(names.slice(0, -1).join(", ")),
+			length___1: String(names[names.length - 1]),
+		});
 	}
 	const hidden = names.length - DONE_GATE_NAMES_SHOWN;
-	return `${names.slice(0, DONE_GATE_NAMES_SHOWN).join(", ")} and ${hidden} more`;
+	return t("ui.projects.project_model.join_and_hidden_more", {
+		join: String(names.slice(0, DONE_GATE_NAMES_SHOWN).join(", ")),
+		hidden: formatNumber(hidden, { useGrouping: false }),
+	});
 }
 
 /** `1 milestone is` / `7 milestones are`: the count agrees with its verb. */
 function milestonesAre(count: number): string {
-	return `${count} milestone${count === 1 ? " is" : "s are"}`;
+	return t("ui.projects.count.milestones_are", { count });
 }
 
 /**
@@ -1330,7 +1497,13 @@ export function refusalCopy(message: string): string {
 		const count = Number(gate[1]);
 		const names = namesFromGateSentence(gate[2]);
 		const clause = names.length > 0 ? doneGateNamesClause(names) : gate[2];
-		return `This can't be marked done yet: ${milestonesAre(count)} still incomplete (${clause}). Complete or remove the incomplete milestones, then mark it done.`;
+		return t(
+			"ui.projects.project_model.this_can_t_be_marked_done_yet_milestonesare_count_still_incomplet",
+			{
+				milestonesAre_count: String(milestonesAre(count)),
+				clause: String(clause),
+			},
+		);
 	}
 	if (!message.includes(DONE_GATE_TAIL)) return message;
 	return message.replace(DONE_GATE_TAIL, DONE_GATE_TAIL_COPY);
@@ -1424,9 +1597,19 @@ export function doneGateRefusal(input: {
 export function doneGateSentence(refusal: DoneGateRefusal): string {
 	if (refusal.count > 0) {
 		const clause = doneGateNamesClause(refusal.names);
-		return `${milestonesAre(refusal.count)} still open${clause ? ` (${clause})` : ""}.`;
+		return t("ui.projects.project_model.count_still_open_clause_clause", {
+			count: String(milestonesAre(refusal.count)),
+			clause________clause: String(
+				clause
+					? t("ui.projects.project_model.clause", { clause: String(clause) })
+					: "",
+			),
+		});
 	}
-	return refusalCopy(refusal.message) || "Some milestones are still open.";
+	return (
+		refusalCopy(refusal.message) ||
+		t("ui.projects.project_model.some_milestones_are_still_open")
+	);
 }
 
 /**
@@ -1439,10 +1622,18 @@ export function doneGateSentence(refusal: DoneGateRefusal): string {
  */
 export function doneGateToastCopy(refusal: DoneGateRefusal): string {
 	if (refusal.count > 0 && refusal.names.length > 0)
-		return `This can't be marked done yet: ${milestonesAre(refusal.count)} still incomplete (${doneGateNamesClause(refusal.names)}). Complete or remove the incomplete milestones, then mark it done.`;
+		return t(
+			"ui.projects.project_model.this_can_t_be_marked_done_yet_count_still_incomplete_names_comple",
+			{
+				count: String(milestonesAre(refusal.count)),
+				names: String(doneGateNamesClause(refusal.names)),
+			},
+		);
 	return (
 		refusalCopy(refusal.message) ||
-		"Milestones are still open on this project. Complete or remove them, then mark it done."
+		t(
+			"ui.projects.project_model.milestones_are_still_open_on_this_project_complete_or_remove_them",
+		)
 	);
 }
 
@@ -1465,16 +1656,21 @@ export function forcedCloseToastText(
 	fallbackCount: number,
 	statusLabel: string,
 ): string {
-	if (!result || result.forced_done !== true) return `Moved to ${statusLabel}`;
+	if (!result || result.forced_done !== true)
+		return t("ui.projects.project_model.moved_to_statuslabel", {
+			statusLabel: String(statusLabel),
+		});
 	const fromRow =
 		typeof result.milestones_total === "number" &&
 		typeof result.milestones_completed === "number"
 			? result.milestones_total - result.milestones_completed
 			: fallbackCount;
 	const open = fromRow > 0 ? fromRow : fallbackCount;
-	return `Moved to ${statusLabel} with ${open} milestone${open === 1 ? "" : "s"} still open`;
+	return t("ui.projects.count.moved_open", { status: statusLabel, open });
 }
 
 /** The sentence shown when a refused move arrives with no message at all. */
 export const PROJECT_NOT_MOVED_COPY =
-	"The project was not moved. Try again, or open it to change its status.";
+	bundledEnglish[
+		"ui.projects.project_model.the_project_was_not_moved_try_again_or_open_it_to_change_its_stat"
+	];

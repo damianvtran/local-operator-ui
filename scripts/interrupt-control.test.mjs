@@ -326,8 +326,8 @@ const resolveRung = (expression, isSmallView) => {
  * respectively.
  */
 const ROW_PARTS = (() => {
-	const mic = ROW.indexOf('aria-label="Start recording"');
-	const stop = ROW.indexOf('aria-label="Stop"');
+	const mic = ROW.indexOf('aria-label={t("ui.chat.composer.start_recording")}');
+	const stop = ROW.indexOf('aria-label={t("ui.chat.composer.stop")}');
 	/*
 	 * The Send control's label is an EXPRESSION while the `/btw` aside can own the
 	 * press ("Ask the aside" when attached, PR #482's U5), so it is found by either
@@ -335,7 +335,7 @@ const ROW_PARTS = (() => {
 	 * is the literal - rather than by one string the row no longer carries.
 	 */
 	const send = ROW.search(
-		/aria-label=(?:"Send message"|\{[^{}]*"Send message"\s*\})/,
+		/aria-label=\{\s*aside !== null && !awaitingAnswer\s*\?\s*t\("ui\.chat\.composer\.ask_aside"\)\s*:\s*t\("ui\.chat\.composer\.send_message"\)\s*\}/,
 	);
 	// The ATTRIBUTE, not the bare name: the name also appears in the source's own
 	// prose, and a slice anchored on a mention inside a comment is a slice of the
@@ -495,6 +495,13 @@ const rowBoxes = (isSmallView, state) => {
 };
 
 test("the row's own controls and the held box, from the source", () => {
+	const copy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.composer.json", "utf8"),
+	);
+	assert.equal(copy["ui.chat.composer.start_recording"], "Start recording");
+	assert.equal(copy["ui.chat.composer.stop"], "Stop");
+	assert.equal(copy["ui.chat.composer.send_message"], "Send message");
+	assert.equal(copy["ui.chat.composer.ask_aside"], "Ask the aside");
 	const { mic, stop, send, reserved } = ROW_PARTS;
 	assert.ok(
 		mic > -1 && stop > -1 && send > -1,

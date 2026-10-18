@@ -20,6 +20,7 @@ import {
 	Home,
 	Lock,
 	LockOpen,
+	Printer,
 	RotateCw,
 	Search,
 	ShieldCheck,
@@ -94,6 +95,14 @@ export interface BrowserUrlBarProps {
 	 */
 	loadFailure?: LoadFailureView | null;
 	onResetZoom?: () => void;
+	/** Print the active page (LOH-13 slice C). A toolbar button beside Find
+	 * rather than a new menu: the url bar is where this app's other
+	 * page-scoped human controls (find, zoom reset) already live, and the
+	 * frozen brief invents no print menu. Optional like `onFind` so a host
+	 * without the intent renders no control rather than a dead one. The
+	 * action itself is main's `webContents.print` with the OS dialog as the
+	 * consent (`page-controls.ts`). */
+	onPrint?: () => void;
 	/** The active tab. A typed draft belongs to ONE tab: see `draft` below. */
 	tabId: number | null;
 	url: string;
@@ -197,6 +206,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	onOpenDownloads,
 	pageZoom = 1,
 	onFind,
+	onPrint,
 	onHome,
 	loadFailure = null,
 	onResetZoom,
@@ -333,6 +343,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		   the drawer's body, so it wears the drawer's rung and is continuous with the
 		   content area below it, with the strip's own rule the only line above. */
 		<div
+			/* A CHROME BAND with the strip above it: on the Browser route it wears the
+			 * app sidebar's paint (surface at its floor, raw over the desktop); inside a
+			 * conversation's rail pane it clears into the pane's own alpha (one
+			 * alpha-owning layer). */
+			data-glass-region="chrome"
 			className="flex items-center gap-1 border-control border-b bg-elevated px-2 py-1"
 			data-tour-tag="browser-url-bar"
 		>
@@ -474,6 +489,23 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						data-tour-tag="browser-find"
 					>
 						<Search aria-hidden className="size-4" />
+					</Button>
+				</Tooltip>
+			)}
+			{onPrint && (
+				<Tooltip
+					content={t("ui.browser.browser_url_bar.print_page")}
+					side="top"
+				>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label={t("ui.browser.browser_url_bar.print_page")}
+						disabled={disabled}
+						onClick={onPrint}
+						data-tour-tag="browser-print"
+					>
+						<Printer aria-hidden className="size-4" />
 					</Button>
 				</Tooltip>
 			)}

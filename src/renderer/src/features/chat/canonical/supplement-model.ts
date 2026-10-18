@@ -15,8 +15,8 @@
  *     (`local_operator/tui/supplements.py`): one spelling per line, because the
  *     two surfaces are reviewed against a shared copy table;
  *   - the paint-boundary string discipline (`displayText`, `fileSizeText`,
- *     `filesSummaryLine`, `moreText`) — the same functions the TUI ports, so
- *     all surfaces agree on what a display string is;
+ *     `countClause`, `moreText`) — the same functions the TUI ports, so all
+ *     surfaces agree on what a display string is;
  *   - the IFRAME MESSAGE WIRE (host-side half): the accepted shapes
  *     (`acceptFrameMessage`, the port of the core's reference implementation),
  *     the nonce rules, the watchdog bounds and the theme-token reader.
@@ -322,6 +322,40 @@ export const COPY_CANCEL = "Cancel";
 export const COPY_RETRY = "Retry";
 
 /**
+ * The longest `cause` a reader keeps. The vocabulary is short allowlisted
+ * tokens (`provider_<kind>`), so the bound guards against a runaway wire
+ * value rather than a display limit: a truncated token stops matching the
+ * table below and paints the bare sentence, which is the hostile-value rule
+ * anyway. Same bound as the core's phone reader (`CAUSE_MAX_CHARS` in
+ * `mobile/web/src/lib/supplement.ts`).
+ */
+export const CAUSE_MAX_CHARS = 64;
+
+/**
+ * The failed line's typed-cause phrases: the ONE word list every surface
+ * transcribes (memo §2.8 as amended by core #2557; the TUI's
+ * `_CAUSE_PHRASES` and the phone's `causePhrase` carry the same words). The
+ * line names the wall a Retry would meet (operator ask, 2026-10-17).
+ * `provider_unknown` — and any token this build does not know — renders NO
+ * phrase: the catch-all folds `aborted` in, and inventing a failure mode for
+ * it is worse than the bare sentence (design round 1, D2).
+ */
+export const CAUSE_PHRASES: Record<string, string> = {
+	provider_quota: "provider limit reached",
+	provider_auth: "provider sign-in needed",
+	provider_transient: "provider temporarily unavailable",
+	provider_timeout: "provider timed out",
+	provider_request: "provider refused the request",
+	provider_content: "provider blocked the content",
+	provider_context: "provider context limit",
+};
+
+/** The muted phrase for a failed row's typed `cause`; `""` when absent/unknown. */
+export function causePhrase(cause: unknown): string {
+	return typeof cause === "string" && cause ? (CAUSE_PHRASES[cause] ?? "") : "";
+}
+
+/**
  * One host-rendered string, safe to paint on one line (the TUI's
  * `display_text`): control sequences stripped, every whitespace run — newlines
  * included — collapsed to a single space. Non-strings read as `""` so a
@@ -339,13 +373,6 @@ export function displayText(value: unknown): string {
 		.filter(Boolean)
 		.join(" ");
 }
-/** `2 files: report.md, bench.csv` — the files-only one-liner (memo §2.8). */
-export function filesSummaryLine(names: readonly string[]): string {
-	const count = names.length;
-	const label = count === 1 ? "1 file" : `${count} files`;
-	return `${label}: ${names.join(", ")}`;
-}
-
 /** The disclosure's words: `3 more files` (memo §2.8). */
 export function moreText(count: number): string {
 	const bounded = Math.max(0, Math.floor(count));
@@ -394,7 +421,11 @@ export function fileRowParts(file: SupplementFile): {
 
 /**
  * One count clause, singular/plural: `1 file` / `2 files`, `1 graphic` /
- * `2 graphics` (design D1's copy table, the condensed line's vocabulary).
+ * `2 graphics` (design D1's copy table). Its remaining caller is the condensed
+ * form's graphics-only clause; the files arms paint the rows and the image grid
+ * instead since the 2026-10-16 rework, so no files clause is built here any
+ * more — a second spelling of one set's count beside its own rows is the
+ * duplication that rework removed.
  */
 export function countClause(count: number, noun: "file" | "graphic"): string {
 	const bounded = Math.max(0, Math.floor(count));
@@ -409,64 +440,6 @@ export function countClause(count: number, noun: "file" | "graphic"): string {
 export function showAllText(count: number): string {
 	const bounded = Math.max(0, Math.floor(count));
 	return bounded === 1 ? "Show all 1 graphic" : `Show all ${bounded} graphics`;
-}
-
-/**
- * The files-only one-liner's names, built from the row's own inputs exactly as
- * the row's ≤2-file summary always built them: featured files first, then the
- * stored tail up to the known count. Shared so the condensed line and the
- * expanded block can never summarize one set two ways.
- */
-export function filesSummaryOf(record: SupplementRecord): string | null {
-	const names: string[] = [];
-	for (const file of record.files) {
-		const { name, path } = fileRowParts(file);
-		if (name || path) names.push(name || path);
-	}
-	if (record.filesMore > 0) {
-		for (const item of record.more.slice(0, record.filesMore)) {
-			const base = displayText(item).split("/").pop() ?? "";
-			if (base) names.push(base);
-		}
-	}
-	const shown = names.filter(Boolean).slice(0, 2);
-	return shown.length > 0 ? filesSummaryLine(shown) : null;
-}
-
-/**
- * The condensed block's one line for a settled (`block`) row — design D1's copy
- * table, verbatim:
- *
- * - components only: `1 graphic` / `N graphics`;
- * - files only, ≤ 2: the existing one-liner, unchanged;
- * - files only, > 2: `N files` (`N = files.length + filesMore`, the known
- *   total) — counts, not names, so one line survives a 20-item list;
- * - mixed: `<files clause> · <graphics clause>` (`2 files · 1 graphic`).
- *
- * `null` when there is nothing to say — a `block` disposition cannot actually
- * reach that arm (itself gated on files-or-components), but the function is
- * total rather than assuming its caller.
- */
-export function condensedBlockLine(record: SupplementRecord): string | null {
-	const files = record.files.length + record.filesMore;
-	const graphics = record.components.length;
-	if (graphics > 0 && files > 0)
-		return `${countClause(files, "file")} · ${countClause(graphics, "graphic")}`;
-	if (graphics > 0) return countClause(graphics, "graphic");
-	if (files === 0) return null;
-	if (files <= 2) return filesSummaryOf(record) ?? countClause(files, "file");
-	return countClause(files, "file");
-}
-
-/**
- * The counts that PREFIX a not-settled state line while condensed (`2 files ·
- * Preparing highlights… · Adjust… · Cancel`), or null when no files are known
- * yet. Only the files clause: components exist only once a job settles (memo
- * §2.7's event shapes).
- */
-export function condensedCountPrefix(record: SupplementRecord): string | null {
-	const files = record.files.length + record.filesMore;
-	return files > 0 ? countClause(files, "file") : null;
 }
 
 /** `Source: …` — the block's one caption line (§2.10). */
@@ -863,6 +836,8 @@ export type SupplementPatch = {
 	more?: string[];
 	components?: SupplementComponent[];
 	error?: string;
+	/** The failed line's typed cause (`provider_<kind>`); the reader bounds it. */
+	cause?: string;
 	model?: string;
 	attempts?: string[];
 	detail?: string[];
@@ -881,10 +856,15 @@ const DIAGNOSTIC_DETAIL =
 const DIAGNOSTIC_ACCESS = /kind=(auth|quota)\b/;
 const DIAGNOSTIC_SERVICE = /kind=(transient|timeout)\b/;
 
-/** Only selectors and typed status/kind survive; never display arbitrary provider prose. */
+/**
+ * Only selectors and typed status/kind survive; never display arbitrary
+ * provider prose. The typed `cause` token is kept whole (bounded) because the
+ * display gate is the word table, not this reader: an unknown token renders
+ * the bare sentence, so no arbitrary value reaches a line.
+ */
 function diagnosticsFrom(
 	value: Record<string, unknown>,
-): Pick<SupplementPatch, "model" | "attempts" | "detail"> {
+): Pick<SupplementPatch, "model" | "attempts" | "detail" | "cause"> {
 	const selector = (item: unknown): string =>
 		typeof item === "string" &&
 		DIAGNOSTIC_SELECTOR.test(item) &&
@@ -904,10 +884,15 @@ function diagnosticsFrom(
 				)
 				.slice(0, 8)
 		: undefined;
+	const cause =
+		typeof value.cause === "string"
+			? value.cause.slice(0, CAUSE_MAX_CHARS)
+			: "";
 	return {
 		...(model ? { model } : {}),
 		...(attempts ? { attempts } : {}),
 		...(detail ? { detail } : {}),
+		...(cause ? { cause } : {}),
 	};
 }
 
@@ -1127,6 +1112,7 @@ export function mergeSupplement(
 			: (previous?.filesMore ?? 0);
 	const more = patch.more !== undefined ? patch.more : (previous?.more ?? []);
 	const error = patch.error ?? (newVersion ? "" : (previous?.error ?? ""));
+	const cause = patch.cause ?? (newVersion ? "" : (previous?.cause ?? ""));
 	const dismissed =
 		patch.dismissed ?? (newVersion ? false : (previous?.dismissed ?? false));
 	const live =
@@ -1159,6 +1145,7 @@ export function mergeSupplement(
 			? (previous?.components ?? [])
 			: components,
 		error,
+		cause,
 		model: patch.model ?? (newVersion ? "" : (previous?.model ?? "")),
 		attempts: patch.attempts ?? (newVersion ? [] : (previous?.attempts ?? [])),
 		detail: patch.detail ?? (newVersion ? [] : (previous?.detail ?? [])),

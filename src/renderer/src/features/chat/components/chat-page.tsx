@@ -103,6 +103,7 @@ import {
 	reviseQueuedAsk,
 } from "../ask-answer";
 import {
+	type AskAnswerAttempt,
 	type AskDraft,
 	type AskOutcome,
 	askClaimsEscape,
@@ -110,6 +111,7 @@ import {
 	askRefusalSentence,
 	effectiveGate,
 } from "../ask-queue";
+import { editDraftOf } from "../canonical/skill-row";
 import { canonicalTranscriptTerminal } from "../canonical/transcript-pane";
 import { useOpenPrefetch } from "../canonical/use-open-prefetch";
 import {
@@ -2784,8 +2786,16 @@ function SessionPanel({
 	const answerAsk = async (
 		taskId: string,
 		answers: Record<string, string[]>,
-	) => {
-		if (!sessionId || sendLock.held) return;
+	): Promise<AskAnswerAttempt> => {
+		/*
+		 * THE TWO PRE-CONDITIONS ARE RETURNED AS THEMSELVES, not as `undefined`
+		 * (agent review round 1, M1). The composer's "Put in secret field" has to say
+		 * WHY nothing landed, and "a message is still sending" and "this pane cannot
+		 * answer" are different sentences; collapsing them into one falsy value is how
+		 * the press came to fail with no words at all.
+		 */
+		if (!sessionId) return { status: "unavailable" };
+		if (sendLock.held) return { status: "locked" };
 		setAdmitting(true);
 		setAskOutcomes((current) => ({
 			...current,
@@ -2801,6 +2811,13 @@ function SessionPanel({
 			setAdmitting(false);
 		}
 		settleAskOutcome(taskId, outcome);
+		/*
+		 * RETURNED for the composer's "Put in secret field" door, which has to know
+		 * whether the value landed before it clears the box. The mapping from this
+		 * status to the confirm's own outcome lives in `fillSecretField` (ask-queue.ts),
+		 * where a DOM-free test can drive it (agent review round 1, m3).
+		 */
+		return outcome;
 	};
 	/*
 	 * THE REVISION DOOR (design §10, #1936). A third sibling of the two above, sharing
@@ -3822,6 +3839,27 @@ function SessionPanel({
 						draft.errorRetry ?? retryOfferedForFailureCode(draft.errorCode),
 				}
 			: (draft.undelivered ?? null);
+	/*
+	 * WHAT `Edit` HANDS BACK, computed once so the press and the dimming beside it
+	 * cannot disagree: `retryDisabled` is spelled as a comparison against THIS
+	 * string, and comparing against the payload would leave the row offering a
+	 * second live press for a message the box already holds.
+	 *
+	 * The typed line rather than the payload, because a `$skill` send persists its
+	 * whole expansion: handing that back would put a wall of SKILL.md in the box to
+	 * edit - and it would not re-expand either, since the recognition rule reads the
+	 * FIRST token of what is submitted and the payload begins with the header
+	 * sentence (`skill-invocation.ts`).
+	 *
+	 * THE QUOTE IS A CHIP, NOT MARKUP IN THE BOX (UX round 1, U1). A quoted
+	 * invocation used to come home as `<reply-to>…</reply-to>` plus the line: the
+	 * composer stages a quote as a chip, so that markup was submitted literally,
+	 * the first token was no longer `$name`, and the skill was silently not
+	 * applied. `editDraftOf` is the one derivation, and the retry gate below
+	 * compares against the same string it hands back.
+	 */
+	const editDraft = deliveryTurn ? editDraftOf(deliveryTurn.text) : null;
+	const editText = deliveryTurn ? (editDraft?.text ?? deliveryTurn.text) : null;
 	const undeliveredTurn = deliveryTurn
 		? {
 				recordId: deliveryTurn.recordId,
@@ -3836,7 +3874,7 @@ function SessionPanel({
 				 * different message and the row's press is re-armed rather than dimmed.
 				 */
 				retryDisabled:
-					composerText.trim().length > 0 && composerText === deliveryTurn.text,
+					composerText.trim().length > 0 && composerText === editText,
 				onSendAgain: () => {
 					void send(deliveryTurn.text, [...deliveryTurn.attachments]);
 				},
@@ -3844,12 +3882,14 @@ function SessionPanel({
 					/*
 					 * The payload comes home, merged under the user's typing and refused while
 					 * an attempt is in flight (`returnPayload`), so pressing Edit twice cannot
-					 * double the message.
+					 * double the message. The quoted run rides the composer's own chip path
+					 * (`editDraftOf`), so a re-send re-assembles the quote AND re-expands the
+					 * `$name` the box now holds.
 					 */
 					useConversationInputStore.getState().returnPayload(identity, {
-						text: deliveryTurn.text,
+						text: editText ?? deliveryTurn.text,
 						attachments: [...deliveryTurn.attachments],
-						replies: [],
+						replies: editDraft?.replies ?? [],
 					});
 					/*
 					 * AND A PROVABLY-NOT-DELIVERED ROW RETIRES WITH THE PAYLOAD. The user
@@ -4138,6 +4178,12 @@ function SessionPanel({
 						held:
 							canonical.frontend === null && canonical.heldFrontend !== null,
 						/*
+						 * The context number in a cold/attaching snapshot is the DURABLE
+						 * reading while the rest of the cluster is live again; the strip
+						 * must not call it "measured now" (design round 1, D1).
+						 */
+						contextHeld: canonical.contextCarried,
+						/*
 						 * Whether the readings were DROPPED at a spent budget rather
 						 * than never painted (task-17, U4): the strip leaves one
 						 * sentence where it was, so the values the reader was
@@ -4184,6 +4230,7 @@ function SessionPanel({
 			sessionId,
 			canonical.frontend,
 			canonical.heldFrontend,
+			canonical.contextCarried,
 			servingLocality,
 			readingsDroppedFor,
 			canonical.pendingModel,
@@ -4643,6 +4690,14 @@ function SessionPanel({
 						 */
 						onAnswerAsk: (taskId: string, answers: Record<string, string[]>) =>
 							void answerAsk(taskId, answers),
+						/*
+						 * The composer's "Put in secret field" door: the same call as the
+						 * panel's, handed over as the outcome itself rather than as a boolean,
+						 * because a refusal and a lock say different things to the user
+						 * (agent review round 1, M1). `fillSecretField` owns the mapping from
+						 * this answer to what the confirm does.
+						 */
+						onFillSecretAnswer: answerAsk,
 						onDeclineAsk: (taskId: string) => void declineAsk(taskId),
 						onReviseAsk: (taskId: string, answers: Record<string, string[]>) =>
 							void reviseAsk(taskId, answers),

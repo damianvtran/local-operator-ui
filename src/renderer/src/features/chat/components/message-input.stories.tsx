@@ -3270,3 +3270,178 @@ export const NoticeCopyIsTheAppCopy: Story = {
 		releaseShutter();
 	},
 };
+
+/*
+ * THE QUEUED SECRET ASK, AND THE TWO STATES THE OPERATOR'S DECISION SPLITS
+ * (ask `a-9e0c`, answered by its recommended option).
+ *
+ * `QueuedSecretAsk` is what this change ships: a secret question waits in the
+ * asks panel, and the conversation stays usable — the sentence above the box says
+ * where the secret goes and offers the panel.
+ *
+ * `SecretAskConfirm` is the guard that replaces the lock: a password-shaped send
+ * is asked about, with "Put in secret field" as the default. It is driven by a
+ * `play` function rather than drawn by a fixture, because the confirm exists only
+ * after a send attempt — a fixture would be a picture of a state the component
+ * cannot actually be put in that way.
+ *
+ * `BlockingSecretGate` is the state that deliberately still refuses: while a gate
+ * parks the turn, a send becomes a steer the parked turn cannot read. It is also,
+ * visibly, what the queued state used to look like.
+ *
+ * AND THE THREE STATES ROUND 2 ADDED (design round 2, D10-D13; QA round 2, m-E):
+ * `SecretAskSending` is the row mid-put (`onFill` never resolves, so the frame is
+ * the window a slow link shows), `SecretAskRefused` is the sentence a refused
+ * put leaves beside the notice, and `SecretAskMulti` is the primary that opens
+ * the panel rather than posting a value that names no field. Each is driven by
+ * the same `play` shape as `SecretAskConfirm` - a fixture cannot be put in them.
+ */
+export const QueuedSecretAsk: Story = {
+	render: () => (
+		<Frame label="queued secret ask — box usable, notice and Open asks">
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId="story-secret-ask"
+				onSendMessage={async () => true}
+				secretAsk={{
+					key: "story-secret-1:api_token",
+					fillable: true,
+					onOpen: () => {},
+					onFill: async () => "sent",
+				}}
+			/>
+		</Frame>
+	),
+};
+
+export const SecretAskSending: Story = {
+	render: () => (
+		<Frame label="queued secret ask — the put is in flight">
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId="story-secret-ask-sending"
+				onSendMessage={async () => true}
+				secretAsk={{
+					key: "story-ask-sending",
+					fillable: true,
+					onOpen: () => {},
+					/* Never resolves: the frame is the window a slow link shows. */
+					onFill: () => new Promise(() => {}),
+				}}
+			/>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		const box = canvasElement.querySelector("textarea");
+		if (!box) throw new Error("the composer box is not mounted");
+		await userEvent.click(box);
+		await userEvent.type(box, "correct-horse-9");
+		await userEvent.keyboard("{Enter}");
+		const put = [...canvasElement.querySelectorAll("button")].find((button) =>
+			(button.textContent ?? "").includes("Put in secret field"),
+		);
+		if (!put) throw new Error("the confirm's primary is not on screen");
+		await userEvent.click(put);
+	},
+};
+
+/* The sentence a refused Put leaves behind, beside the notice it replaces. */
+export const SecretAskRefused: Story = {
+	render: () => (
+		<Frame label="queued secret ask — the put was refused">
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId="story-secret-ask-refused"
+				onSendMessage={async () => true}
+				secretAsk={{
+					key: "story-ask-refused",
+					fillable: true,
+					onOpen: () => {},
+					onFill: async () => "refused",
+				}}
+			/>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		const box = canvasElement.querySelector("textarea");
+		if (!box) throw new Error("the composer box is not mounted");
+		await userEvent.click(box);
+		await userEvent.type(box, "correct-horse-9");
+		await userEvent.keyboard("{Enter}");
+		const put = [...canvasElement.querySelectorAll("button")].find((button) =>
+			(button.textContent ?? "").includes("Put in secret field"),
+		);
+		if (!put) throw new Error("the confirm's primary is not on screen");
+		await userEvent.click(put);
+	},
+};
+
+/* A value that names no field: the primary opens the panel instead of posting. */
+export const SecretAskMulti: Story = {
+	render: () => (
+		<Frame label="queued secret ask — more than one secret field">
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId="story-secret-ask-multi"
+				onSendMessage={async () => true}
+				secretAsk={{
+					key: "story-ask-multi",
+					fillable: false,
+					onOpen: () => {},
+					onFill: async () => "multi",
+				}}
+			/>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		const box = canvasElement.querySelector("textarea");
+		if (!box) throw new Error("the composer box is not mounted");
+		await userEvent.click(box);
+		await userEvent.type(box, "correct-horse-9");
+		await userEvent.keyboard("{Enter}");
+	},
+};
+
+export const SecretAskConfirm: Story = {
+	render: () => (
+		<Frame label="queued secret ask — password-shaped send asks first">
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId="story-secret-ask-confirm"
+				onSendMessage={async () => true}
+				secretAsk={{
+					key: "story-secret-1:api_token",
+					fillable: true,
+					onOpen: () => {},
+					onFill: async () => "sent",
+				}}
+			/>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		const box = canvasElement.querySelector("textarea");
+		if (!box) throw new Error("the composer box is not mounted");
+		await userEvent.click(box);
+		await userEvent.type(box, "correct-horse-9");
+		await userEvent.keyboard("{Enter}");
+	},
+};
+
+export const BlockingSecretGate: Story = {
+	render: () => (
+		<Frame label="blocking secret gate — the refusal that stays">
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId="story-secret-gate"
+				onSendMessage={async () => true}
+				secretAnswer={true}
+			/>
+		</Frame>
+	),
+};

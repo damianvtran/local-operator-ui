@@ -1133,6 +1133,12 @@ test("the self count is this device's own conversations, never another device's"
  *   into an opened picker in another.
  */
 test("the header offers an explicit move door, visible and explained in every state", () => {
+	assert.equal(
+		JSON.parse(
+			readFileSync("src/i18n/catalogues/en/ui.chat.header.json", "utf8"),
+		)["ui.chat.header.move_device"],
+		"Move to another device…",
+	);
 	const header = code(
 		"src/renderer/src/features/chat/components/chat-header.tsx",
 	);
@@ -1140,7 +1146,7 @@ test("the header offers an explicit move door, visible and explained in every st
 	assert.match(header, /data-session-move-action/, "the move item must exist");
 	assert.match(
 		header,
-		/<span>Move to another device…<\/span>/,
+		/<span>\{t\("ui\.chat\.header\.move_device"\)\}<\/span>/,
 		"the item names the operation in words a scanning user reads",
 	);
 	/*

@@ -95,29 +95,52 @@ test("an unclassified key keeps the plain text field", () => {
 	assert.equal(settingComboSource("retry.fallbackChains"), null);
 });
 
+const assertNoMeaningfulRowPlaceholder = (setting, name) => {
+	assert.ok(
+		setting.placeholder === undefined ||
+			setting.placeholder === null ||
+			setting.placeholder === "",
+		`${name}: ${setting.key} carries meaningful placeholder ${JSON.stringify(setting.placeholder)} — revisit the constant's authority if the actual wire begins supplying one`,
+	);
+};
+
 test("every kind has a placeholder, and it cannot come from the row", () => {
 	for (const [kind, placeholder] of Object.entries(COMBO_PLACEHOLDER)) {
 		assert.ok(placeholder.length > 0, `${kind} has no placeholder`);
 	}
 	/*
-	 * The trap this guards. The released `_view` projects no `placeholder` for
-	 * these rows, so a placeholder read from the row would be absent for every
-	 * user while looking right in a frame that carried one. The fixtures are the
-	 * best available stand-in for the wire here, and the fact to pin is that
-	 * they carry none for these five keys — which is exactly why the constant
-	 * exists rather than a fallback onto `setting.placeholder`.
+	 * The trap this guards. Older wire rows omitted `placeholder`; the actual
+	 * current public GET /v1/settings and _view.model_dump serialize the empty
+	 * string default. Both mean NO meaningful server placeholder, not a new
+	 * source for the control. Accept exactly absent/null/empty, never generic
+	 * falsiness or a nonempty future server value. The full authoritative
+	 * fixtures retain the wire's empty string rather than hiding it.
 	 */
 	for (const { name, payload } of fixtures) {
 		for (const setting of rows(payload)) {
 			if (!settingComboSource(setting.key)) continue;
-			assert.ok(
-				setting.placeholder === undefined || setting.placeholder === null,
-				`${name}: ${setting.key} carries the placeholder ${JSON.stringify(setting.placeholder)} — if the wire really sends one, the constant is the wrong source and this test says so`,
-			);
+			assertNoMeaningfulRowPlaceholder(setting, name);
 			assert.notEqual(
 				COMBO_PLACEHOLDER[settingComboSource(setting.key)],
 				setting.placeholder,
 			);
 		}
 	}
+});
+
+test("the row-placeholder guard rejects a meaningful future value, not just truthy values", () => {
+	for (const placeholder of [undefined, null, ""])
+		assert.doesNotThrow(() =>
+			assertNoMeaningfulRowPlaceholder(
+				{ key: "hosting", placeholder },
+				"control",
+			),
+		);
+	for (const placeholder of ["Future server search prompt", " ", false, 0])
+		assert.throws(() =>
+			assertNoMeaningfulRowPlaceholder(
+				{ key: "hosting", placeholder },
+				"counterfactual",
+			),
+		);
 });

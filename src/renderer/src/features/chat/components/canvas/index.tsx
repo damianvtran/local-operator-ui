@@ -756,6 +756,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 			 * outside it.
 			 */
 			data-canvas-shortcuts
+			data-glass-region="pane"
 			className={cn("flex h-full flex-col bg-elevated")}
 		>
 			{/*

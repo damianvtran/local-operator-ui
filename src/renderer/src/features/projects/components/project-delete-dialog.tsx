@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The delete confirmation, with the typed NAME the route requires.
  *
@@ -40,6 +42,7 @@ export const ProjectDeleteDialog: FC<ProjectDeleteDialogProps> = ({
 	onClose,
 	onConfirm,
 }) => {
+	useI18nLocale();
 	const [typed, setTyped] = useState("");
 	const [refusal, setRefusal] = useState<string | null>(null);
 	const [submitting, setSubmitting] = useState(false);
@@ -68,7 +71,7 @@ export const ProjectDeleteDialog: FC<ProjectDeleteDialogProps> = ({
 			setRefusal(
 				error instanceof Error && error.message
 					? error.message
-					: "The project was not deleted.",
+					: t("ui.projects.project_delete_dialog.the_project_was_not_deleted"),
 			);
 		} finally {
 			setSubmitting(false);
@@ -79,39 +82,42 @@ export const ProjectDeleteDialog: FC<ProjectDeleteDialogProps> = ({
 		<BaseDialog
 			open={open}
 			onClose={onClose}
-			title="Delete this project?"
+			title={t("ui.projects.project_delete_dialog.delete_this_project")}
 			dataTourTag="project-delete-dialog"
 			actions={
 				<>
 					<SecondaryButton onClick={onClose} disabled={submitting}>
-						Cancel
+						{t("ui.projects.project_delete_dialog.cancel")}
 					</SecondaryButton>
 					<DangerButton
 						onClick={() => void handleConfirm()}
 						disabled={!matches || submitting}
 					>
 						{submitting && <Spinner size="xs" />}
-						Delete project
+						{t("ui.projects.project_delete_dialog.delete_project")}
 					</DangerButton>
 				</>
 			}
 		>
 			<div className="flex flex-col gap-3">
 				<p className="text-body-sm text-ink">
-					This deletes the project and its milestones. The sessions linked to it
-					are not touched.
+					{t(
+						"ui.projects.project_delete_dialog.this_deletes_the_project_and_its_milestones_the_sessions_linked_t",
+					)}
 				</p>
 				<p className="text-body-sm text-ink-muted">
-					Type{" "}
+					{t("ui.projects.project_delete_dialog.type")}{" "}
 					<span className="font-mono text-mono-sm text-ink">{projectName}</span>{" "}
-					to confirm.
+					{t("ui.projects.project_delete_dialog.to_confirm")}
 				</p>
 				<Input
 					id={`${fieldId}-confirm`}
 					value={typed}
 					onChange={(event) => setTyped(event.target.value)}
 					placeholder={projectName}
-					aria-label="Type the project name to confirm"
+					aria-label={t(
+						"ui.projects.project_delete_dialog.type_the_project_name_to_confirm",
+					)}
 					aria-invalid={typed.length > 0 && !matches}
 					autoFocus
 				/>

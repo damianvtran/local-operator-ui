@@ -350,6 +350,14 @@ const APP_SPAWN_SITES = [
 		"drives the composer's dictation press end to end in the built app to time the acknowledgment - the click that starts dictation is exactly the state a notification is posted from, so a missing switch here banners the operator about a press they just made themselves",
 		/const spawnEnv = withNotificationsOff\(\{/,
 	),
+	guarded(
+		"scripts/window-glass-cdp.test.mjs",
+		"spawn",
+		1,
+		/env:\s*spawnEnv,/,
+		"boots the BUILT app headless on a scratch profile to read the window glass back at a grid of points - a real app with a renderer, so a missing switch banners the operator and counts a test as a product user",
+		/const spawnEnv = withNotificationsOff\(\{/,
+	),
 	exempt(
 		"scripts/session-cookie-electron.test.mjs",
 		"spawn",

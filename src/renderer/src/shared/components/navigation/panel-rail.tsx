@@ -331,6 +331,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 				aria-orientation="vertical"
 				aria-label={t("ui.shell.panel_rail.panels")}
 				data-panel-rail=""
+				data-glass-region="sidebar"
 				onKeyDown={onKeyDown}
 				onFocus={onFocus}
 				className={cn(

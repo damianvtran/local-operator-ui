@@ -1,7 +1,10 @@
 import {
+	clearWebauthnEnding,
 	clearWebauthnRequest,
+	noteWebauthnEnding,
 	noteWebauthnRequest,
 	replaceWebauthnRequests,
+	useWebauthnEnding,
 	useWebauthnRequests,
 	webauthnRequestsSnapshot,
 } from "@shared/browser-webauthn-queue";
@@ -9,11 +12,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { type FC, useCallback, useEffect, useRef, useState } from "react";
-import {
-	type WebauthnEnding,
-	chooserPanel,
-	endingFor,
-} from "../model/webauthn-panel";
+import { chooserPanel, endingFor } from "../model/webauthn-panel";
 import { BrowserWebauthnDialog } from "./browser-webauthn-dialog";
 
 /**
@@ -56,7 +55,12 @@ export const BrowserWebauthnPrompt: FC = () => {
 	useI18nLocale();
 	const requests = useWebauthnRequests();
 	const [answering, setAnswering] = useState(false);
-	const [ending, setEnding] = useState<WebauthnEnding | null>(null);
+	/*
+	 * The ending lives in the shared mirror (round-2 R3), not component state:
+	 * it keeps THIS dialog open until dismissed, so the app shell's modal
+	 * priority has to be able to see it.
+	 */
+	const ending = useWebauthnEnding();
 	/**
 	 * Where focus was before the chooser appeared.
 	 *
@@ -122,7 +126,7 @@ export const BrowserWebauthnPrompt: FC = () => {
 			const settled = held
 				? endingFor(payload.requestId, payload.outcome)
 				: null;
-			if (settled) setEnding(settled);
+			if (settled) noteWebauthnEnding(settled);
 			clearWebauthnRequest(payload.requestId);
 		});
 		return () => {
@@ -302,7 +306,7 @@ export const BrowserWebauthnPrompt: FC = () => {
 				// An ending is only ever shown once nothing is answerable, so dismissing
 				// it always closes the panel.
 				scheduleRestore();
-				setEnding(null);
+				clearWebauthnEnding();
 			}}
 			onCloseAutoFocus={handleCloseAutoFocus}
 		/>

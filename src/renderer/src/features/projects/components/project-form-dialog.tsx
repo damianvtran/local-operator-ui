@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The CREATE sheet for a project, used by the tab's `New project` — the
  * Linear-style replacement for the small two-column dialog.
@@ -80,6 +82,11 @@ import {
  * owner, team, dates, estimate) — applied by the page after the create lands.
  * Absent when the author filled none of them.
  */
+// Identifier examples stay ASCII, and their exemption lives outside JSX so
+// a future neighboring product label cannot inherit a broad element exemption.
+const PROJECT_KEY_EXAMPLE =
+	/* i18n: ignore example identifier; must not be translated */ "payments-migration";
+
 export type ProjectFormSubmit = {
 	fields: ProjectCreateFields;
 	followUp?: ProjectEditFields;
@@ -126,6 +133,7 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 	onClose,
 	onSubmit,
 }) => {
+	useI18nLocale();
 	const [form, setForm] = useState<FormState>(EMPTY_FORM);
 	const [errors, setErrors] = useState<
 		Partial<Record<keyof FormState, string>>
@@ -292,13 +300,16 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 		} catch (error) {
 			const message =
 				error instanceof Error && error.message ? error.message : "";
-			setRefusal(refusalCopy(message) || "The project was not saved.");
+			setRefusal(
+				refusalCopy(message) ||
+					t("ui.projects.project_form_dialog.the_project_was_not_saved"),
+			);
 		} finally {
 			setSubmitting(false);
 		}
 	};
 
-	const title = "New project";
+	const title = t("ui.projects.project_form_dialog.new_project");
 
 	/**
 	 * The live over-limit read the counter's tone and the textarea's
@@ -344,7 +355,7 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 			actions={
 				<>
 					<SecondaryButton onClick={onClose} disabled={submitting}>
-						Cancel
+						{t("ui.projects.project_form_dialog.cancel")}
 					</SecondaryButton>
 					<PrimaryButton
 						data-project-submit=""
@@ -352,7 +363,7 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 						disabled={submitting}
 					>
 						{submitting && <Spinner size="xs" />}
-						Create project
+						{t("ui.projects.project_form_dialog.create_project")}
 					</PrimaryButton>
 				</>
 			}
@@ -370,13 +381,17 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 				 * addressable and editable.
 				 */}
 				<div className="flex flex-col gap-1.5">
-					<Label htmlFor={`${fieldId}-title`}>Title</Label>
+					<Label htmlFor={`${fieldId}-title`}>
+						{t("ui.projects.project_form_dialog.title")}
+					</Label>
 					<Input
 						id={`${fieldId}-title`}
 						data-project-title=""
 						value={form.title}
 						onChange={(event) => set("title", event.target.value)}
-						placeholder="Payments migration"
+						placeholder={t(
+							"ui.projects.project_form_dialog.payments_migration",
+						)}
 						autoFocus
 						className="h-10 text-heading"
 						aria-invalid={Boolean(errors.title)}
@@ -389,7 +404,7 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 							htmlFor={`${fieldId}-key`}
 							className="shrink-0 text-meta text-ink-muted"
 						>
-							Key
+							{t("ui.projects.project_form_dialog.key")}
 						</Label>
 						<Input
 							id={`${fieldId}-key`}
@@ -399,14 +414,18 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 								setKeyTouched(true);
 								set("name", event.target.value);
 							}}
-							placeholder="payments-migration"
+							placeholder={PROJECT_KEY_EXAMPLE}
 							aria-invalid={Boolean(errors.name)}
 							className="h-7 max-w-56 font-mono text-mono-sm"
 						/>
 						<span className="text-meta text-ink-muted">
 							{keyTouched
-								? "Letters, digits, dot, underscore or dash; no spaces."
-								: "Derived from the title until you edit it."}
+								? t(
+										"ui.projects.project_form_dialog.letters_digits_dot_underscore_or_dash_no_spaces",
+									)
+								: t(
+										"ui.projects.project_form_dialog.derived_from_the_title_until_you_edit_it",
+									)}
 						</span>
 					</div>
 					{errors.name && (
@@ -416,7 +435,9 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 
 				<div className="flex flex-col gap-1.5">
 					<div className="flex items-center justify-between gap-3">
-						<Label htmlFor={`${fieldId}-description`}>Description</Label>
+						<Label htmlFor={`${fieldId}-description`}>
+							{t("ui.projects.project_form_dialog.description")}
+						</Label>
 						{/*
 						 * The Write|Preview toggle, the mesh page's own segmented
 						 * pattern (`aria-pressed` on a `fieldset` track) rather than a
@@ -424,7 +445,9 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 						 * the app already ships is the defect this repo names.
 						 */}
 						<fieldset className="m-0 w-fit border-0 p-0">
-							<legend className="sr-only">Description mode</legend>
+							<legend className="sr-only">
+								{t("ui.projects.project_form_dialog.description_mode")}
+							</legend>
 							<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
 								{(["write", "preview"] as const).map((option) => (
 									<button
@@ -441,7 +464,9 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 												"bg-surface text-ink",
 										)}
 									>
-										{option === "write" ? "Write" : "Preview"}
+										{option === "write"
+											? t("ui.projects.project_form_dialog.write")
+											: t("ui.projects.project_form_dialog.preview")}
 									</button>
 								))}
 							</div>
@@ -467,7 +492,7 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 								</ProjectMarkdown>
 							) : (
 								<p className="text-body-sm text-ink-muted">
-									Nothing to preview yet.
+									{t("ui.projects.project_form_dialog.nothing_to_preview_yet")}
 								</p>
 							)}
 						</div>
@@ -480,7 +505,9 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 							onChange={(event) => set("description", event.target.value)}
 							onPaste={handleDescriptionPaste}
 							rows={8}
-							placeholder="Markdown — headings, lists, code."
+							placeholder={t(
+								"ui.projects.project_form_dialog.markdown_headings_lists_code",
+							)}
 							aria-invalid={descriptionOver || Boolean(errors.description)}
 							className="h-44 resize-none"
 						/>
@@ -514,12 +541,14 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 				 */}
 				<div className="grid grid-cols-2 gap-x-4 gap-y-4">
 					<div className="flex flex-col gap-1.5">
-						<Label>Status</Label>
+						<Label>{t("ui.projects.project_form_dialog.status")}</Label>
 						<Select
 							value={form.status}
 							onValueChange={(value) => set("status", value)}
 						>
-							<SelectTrigger aria-label="Status">
+							<SelectTrigger
+								aria-label={t("ui.projects.project_form_dialog.status")}
+							>
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
@@ -532,19 +561,23 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 						</Select>
 						{form.status === "done" && (
 							<p className="text-meta text-ink-muted">
-								Moving a project to Done stamps today as its completion date.
+								{t(
+									"ui.projects.project_form_dialog.moving_a_project_to_done_stamps_today_as_its_completion_date",
+								)}
 							</p>
 						)}
 					</div>
 
 					<div className="flex flex-col gap-1.5">
-						<Label htmlFor={`${fieldId}-owner`}>Owner</Label>
+						<Label htmlFor={`${fieldId}-owner`}>
+							{t("ui.projects.project_form_dialog.owner")}
+						</Label>
 						<Input
 							id={`${fieldId}-owner`}
 							data-project-owner=""
 							value={form.owner}
 							onChange={(event) => set("owner", event.target.value)}
-							placeholder="atlas"
+							placeholder={t("ui.projects.examples.owner")}
 							aria-invalid={Boolean(errors.owner)}
 						/>
 						{errors.owner && (
@@ -553,12 +586,14 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 					</div>
 
 					<div className="flex flex-col gap-1.5">
-						<Label htmlFor={`${fieldId}-team`}>Team</Label>
+						<Label htmlFor={`${fieldId}-team`}>
+							{t("ui.projects.project_form_dialog.team")}
+						</Label>
 						<Input
 							id={`${fieldId}-team`}
 							value={form.team}
 							onChange={(event) => set("team", event.target.value)}
-							placeholder="platform"
+							placeholder={t("ui.projects.examples.team")}
 							aria-invalid={Boolean(errors.team)}
 						/>
 						{errors.team && (
@@ -567,13 +602,17 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 					</div>
 
 					<div className="flex flex-col gap-1.5">
-						<Label htmlFor={`${fieldId}-target`}>Target date</Label>
+						<Label htmlFor={`${fieldId}-target`}>
+							{t("ui.projects.project_form_dialog.target_date")}
+						</Label>
 						<Input
 							id={`${fieldId}-target`}
 							data-project-target=""
 							value={form.targetDate}
 							onChange={(event) => set("targetDate", event.target.value)}
-							placeholder="YYYY-MM-DD"
+							placeholder={
+								/* i18n: ignore Wire date-input grammar, not product prose; owner projects, remove if date syntax changes. */ "YYYY-MM-DD"
+							}
 							aria-invalid={Boolean(errors.targetDate)}
 						/>
 						{errors.targetDate && (
@@ -582,12 +621,16 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 					</div>
 
 					<div className="flex flex-col gap-1.5">
-						<Label htmlFor={`${fieldId}-start`}>Start date</Label>
+						<Label htmlFor={`${fieldId}-start`}>
+							{t("ui.projects.project_form_dialog.start_date")}
+						</Label>
 						<Input
 							id={`${fieldId}-start`}
 							value={form.startDate}
 							onChange={(event) => set("startDate", event.target.value)}
-							placeholder="YYYY-MM-DD"
+							placeholder={
+								/* i18n: ignore Wire date-input grammar, not product prose; owner projects, remove if date syntax changes. */ "YYYY-MM-DD"
+							}
 							aria-invalid={Boolean(errors.startDate)}
 						/>
 						{errors.startDate && (
@@ -596,7 +639,9 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 					</div>
 
 					<div className="flex flex-col gap-1.5">
-						<Label htmlFor={`${fieldId}-estimate`}>Estimate</Label>
+						<Label htmlFor={`${fieldId}-estimate`}>
+							{t("ui.projects.project_form_dialog.estimate")}
+						</Label>
 						<div className="flex items-center gap-3">
 							<Input
 								id={`${fieldId}-estimate`}
@@ -611,12 +656,21 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 								value={form.estimateUnit}
 								onValueChange={(value) => set("estimateUnit", value)}
 							>
-								<SelectTrigger aria-label="Estimate unit" className="max-w-32">
+								<SelectTrigger
+									aria-label={t(
+										"ui.projects.project_form_dialog.estimate_unit",
+									)}
+									className="max-w-32"
+								>
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="points">Points</SelectItem>
-									<SelectItem value="days">Days</SelectItem>
+									<SelectItem value="points">
+										{t("ui.projects.project_form_dialog.points")}
+									</SelectItem>
+									<SelectItem value="days">
+										{t("ui.projects.project_form_dialog.days")}
+									</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
@@ -626,20 +680,23 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 					</div>
 
 					<div className="col-span-2 flex flex-col gap-1.5">
-						<Label htmlFor={`${fieldId}-tags`}>Tags</Label>
+						<Label htmlFor={`${fieldId}-tags`}>
+							{t("ui.projects.project_form_dialog.tags")}
+						</Label>
 						<Input
 							id={`${fieldId}-tags`}
 							value={form.tags}
 							onChange={(event) => set("tags", event.target.value)}
-							placeholder="q4, payments"
+							placeholder={t("ui.projects.project_form_dialog.q4_payments")}
 							aria-invalid={Boolean(errors.tags)}
 						/>
 						{errors.tags ? (
 							<p className="text-meta text-danger">{errors.tags}</p>
 						) : (
 							<p className="text-meta text-ink-muted">
-								Comma-separated, up to 8. Lowercase letters, digits, underscore
-								or dash.
+								{t(
+									"ui.projects.project_form_dialog.comma_separated_up_to_8_lowercase_letters_digits_underscore_or_da",
+								)}
 							</p>
 						)}
 					</div>

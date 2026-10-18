@@ -213,6 +213,20 @@ export type SessionStatusStripProps = {
 	 */
 	held?: boolean;
 	/**
+	 * The CONTEXT reading alone was carried from before a cold/attaching
+	 * snapshot, while the rest of the cluster is live.
+	 *
+	 * WHY THIS IS NOT `held`. `held` is the whole cluster's transport hold: it
+	 * means `frontend` is null and every reading came off the last snapshot. A
+	 * cold/attaching snapshot is different — the snapshot HAS landed, so the
+	 * model, the timer and the cost are live again, while its occupancy is the
+	 * durable journal's (the length at an earlier message). The number is
+	 * therefore real but not current, and the context sentence must not call it
+	 * "Measured now". Scoped to one reading on purpose: marking the cluster would
+	 * be false about the other four (design round 1, D1).
+	 */
+	contextHeld?: boolean;
+	/**
 	 * These readings are not merely absent - they were PAINTED and then dropped,
 	 * because the stream spent its retry budget while holding them (task-17, U4).
 	 *
@@ -962,6 +976,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	pendingModel = null,
 	draft = false,
 	held = false,
+	contextHeld = false,
 	onOpenDraftPicker,
 	draftResolution,
 	readingsDropped = false,
@@ -1502,10 +1517,10 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					draft
 						? DRAFT_CONTEXT_LABEL
 						: reading.status === "no-reading"
-							? `Context: no reading yet. ${contextBreakdownLine("no-reading", Boolean(sessionDispatch), held)}`
+							? `Context: no reading yet. ${contextBreakdownLine("no-reading", Boolean(sessionDispatch), held || contextHeld)}`
 							: `Context: ${reading.spelling}${
 									reading.status === "estimate" ? ", estimated" : ""
-								}. ${contextBreakdownLine(reading.status, Boolean(sessionDispatch), held)}`
+								}. ${contextBreakdownLine(reading.status, Boolean(sessionDispatch), held || contextHeld)}`
 				}
 				tooltip={
 					<TooltipLines
@@ -1528,7 +1543,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 										contextBreakdownLine(
 											reading.status,
 											Boolean(sessionDispatch),
-											held,
+											held || contextHeld,
 										),
 									]
 						}
@@ -1539,7 +1554,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						? () => sessionDispatch({ name: "context", args: "" })
 						: undefined
 				}
-				held={held}
+				held={held || contextHeld}
 				/*
 				 * The ladder's last rung (issue #918; the order and the fit points
 				 * are in the duration reading's comment). The terminal band keeps the

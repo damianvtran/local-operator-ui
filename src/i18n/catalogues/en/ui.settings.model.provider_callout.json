@@ -1,0 +1,4 @@
+{
+	"ui.settings.model.provider_callout.sentence": "Sign in with a provider to reach more models. Your existing Claude, ChatGPT or Radient subscription works here, so you don't need an API key. Connect one in ",
+	"ui.settings.model.provider_callout.providers_link": "Providers"
+}

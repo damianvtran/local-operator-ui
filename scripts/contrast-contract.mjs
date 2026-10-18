@@ -59,6 +59,21 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { deltaE, labToHex, mixOklab, r2, toLab } from "./color.mjs";
+import {
+	BACKDROP_GRAY,
+	GLASS_BLOCK_VEIL_STEP,
+	GLASS_EDGE_FLOOR,
+	GLASS_INKS,
+	GLASS_INK_FLOOR,
+	GLASS_ROLES,
+	GLASS_STATE_DIM_FLOOR,
+	derive as deriveGlassFloors,
+	composite as glassComposite,
+	glassEdge,
+	gray as glassGray,
+	ratio as glassRatio,
+	schemeOf as glassSchemeOf,
+} from "./derive-glass-floors.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -1060,15 +1075,24 @@ const CONTROLS = [
 	},
 	{
 		/*
-		 * The mini composer's field (quick-send design §D; design round 1, D5):
-		 * an `elevated` box with a 1px `border-control` edge on the summoned
-		 * window's `canvas`, whose ink is the base role. A new component with its
-		 * own fill and edge has to be LISTED — by this table's own first rule,
-		 * green output about surfaces nobody named is not evidence about this one.
-		 * The same triple rides under "ask option button (hover)", but that row's
+		 * The mini SHEET (quick-send design §D; design round 1, D5): an
+		 * `elevated` box with a 1px `border-control` edge on the summoned
+		 * window's `canvas`, whose ink is the base role. RENAMED from "mini
+		 * composer field" (design review of the composer-border revert,
+		 * 2026-10-17): it was written when the mini had its own box, the mini
+		 * moved onto the SHARED composer on 2026-09-30 (52ace4f34), and the row
+		 * has described the sheet since - and read as "the composer's edge" to
+		 * whoever wanted one, which it must never again: the v0.34.55 edge
+		 * cited the field doctrine, not this row, and this row is what invites
+		 * the reading. The composer inside the mini ground is
+		 * the shared field: no edge at rest (its rule is scanned by
+		 * `window-glass-cdp.test.mjs`). A new component with its own fill and
+		 * edge has to be LISTED — by this table's own first rule, green output
+		 * about surfaces nobody named is not evidence about this one. The same
+		 * triple rides under "ask option button (hover)", but that row's
 		 * grounds are the pane's, and a summoned window draws on its own canvas.
 		 */
-		name: "mini composer field",
+		name: "mini sheet",
 		on: ["canvas"],
 		fill: "elevated",
 		border: "borderControl",
@@ -3401,6 +3425,51 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/components/message-item/attachment-frame.tsx",
 		must: "rounded-sm border border-control bg-sunken",
 		why: "the compact receipt has no picture to give it an extent, so its `border-control` is its only boundary; removing it with the working tile's edge (which the operator asked to drop) would leave a bare glyph in a well",
+	},
+	{
+		/*
+		 * THE SUPPLEMENT GRID'S GLYPH RECEIPT (operator decision 2026-10-16): the
+		 * tile whose thumbnail cannot load keeps its slot as the file-kind glyph on
+		 * the receipt triple — `border-control` + `sunken` — for the same reason
+		 * `attachment-frame.tsx`'s compact receipt does, and it is a SEPARATE pin
+		 * because that one greps a different file: an edit here could drop the edge
+		 * or move the glyph onto the `mediaSurface` fill (whose ink floors the
+		 * receipt deliberately does not wear; the glyph's `ink-dim` falls under its
+		 * 5.0:1 floor on several light palettes there) and leave every palette
+		 * assertion green.
+		 */
+		what: "supplement image grid glyph receipt edge",
+		file: "src/renderer/src/features/chat/canonical/supplement-image-grid.tsx",
+		must: "flex h-[78px] w-[117px] items-center justify-center rounded-sm border border-control bg-sunken text-ink-dim",
+		why: "a failed thumbnail keeps its slot as the receipt triple; dropping the edge or the `sunken` well leaves every palette ratio computed for the working tile green while the receipt loses its only boundary and its glyph slides under its floor on the media fill",
+	},
+	{
+		/*
+		 * THE SUPPLEMENT GRID'S WORKING TILE wears the SAME control-boundary recipe
+		 * the condensed group's strip does (`AttachmentFrame boundary="control"`,
+		 * whose classes the two pins above and the `mediaSurface` palette rows
+		 * assert) — this pin is what keeps THIS call site from quietly falling back
+		 * to the default `hairline` frame, which would repaint the tile `sunken`
+		 * with a decorative edge and read as a different object in the app.
+		 */
+		what: "supplement image tile wears the control-boundary recipe",
+		file: "src/renderer/src/features/chat/canonical/supplement-image-grid.tsx",
+		must: 'boundary="control"',
+		why: "the tile's fill and returning edge live in `AttachmentFrame`'s `control` boundary; a call site that drops to the default `hairline` frame repaints the well and swaps the control edge for decoration with no palette assertion able to see which boundary a caller chose",
+	},
+	{
+		/*
+		 * THE SUPPLEMENT TILE'S MENU TRIGGER (the overlay half of
+		 * `supplement-file-actions.tsx`): a menu that floats over picture pixels
+		 * wears the `accentWash` chip `image-actions-menu.tsx` measured and set — the
+		 * bare ellipsis failed the 3:1 icon floor over a dark picture (1.63:1). The
+		 * palette row "image actions trigger" asserts the pair (`inkMuted` on
+		 * `accentWash`); only this pin can see that THIS call site keeps the chip.
+		 */
+		what: "supplement file menu trigger chip over picture pixels",
+		file: "src/renderer/src/features/chat/canonical/supplement-file-actions.tsx",
+		must: 'className="bg-accent-wash"',
+		why: "the overlay trigger exists so the glyph reads against a token on every surface; removing the chip returns it to whatever pixels the picture paints, under the 3:1 icon floor, with no palette assertion able to see which class a component renders",
 	},
 	{
 		/*
@@ -7317,6 +7386,285 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 			`the fleet: the ${row.bound} row for \`${row.id}\`'s \`${row.role}\` is stale — it records ${row.measured} and the palette no longer misses that bound (${row.reason})`,
 		);
 	}
+}
+
+/* ---- 5b. the window glass (optional translucency), asserted before the report so a violation FAILS the run ---- */
+
+/*
+ * THE WINDOW GLASS'S ALPHA FLOORS (`src/shared/window-glass-floors.json`).
+ *
+ * Everything above measures FLAT hexes, and the file's own header says it "cannot
+ * see an alpha composite". The optional translucent window is exactly that: a role
+ * painted at alpha A over an OS material nobody here controls. So the one thing
+ * this contract can say about it is the floor - the smallest alpha at which ink
+ * still clears AA on every palette over the worst MEASURED backdrop of each
+ * material - and the committed table must not sit below it. A palette added or
+ * edited so that its ink needs more alpha than the table grants fails HERE, not on
+ * somebody's wallpaper. The derivation, and the backdrop measurements it rests on,
+ * are in `scripts/derive-glass-floors.mjs`; it prints the replacement table.
+ */
+{
+	const committed = JSON.parse(
+		readFileSync(join(ROOT, "src/shared/window-glass-floors.json"), "utf8"),
+	).alphaFloor;
+	const derived = deriveGlassFloors();
+	for (const tier of Object.keys(derived)) {
+		for (const scheme of ["dark", "light"]) {
+			for (const role of GLASS_ROLES) {
+				assertions++;
+				const have = committed?.[tier]?.[scheme]?.[role];
+				const need = derived[tier][scheme][role];
+				if (typeof have !== "number" || have < need) {
+					fail(
+						`window glass floor ${tier}/${scheme}/${role} is ${have} but the ${scheme} palettes need ${need} for AA ink over the worst measured backdrop - run \`node scripts/derive-glass-floors.mjs\` and commit the table (never hand-lower it)`,
+					);
+				}
+			}
+		}
+	}
+}
+
+/*
+ * THE GLASS STATES AND CONTROLS, as COMPONENT TRIPLES on the composite (this
+ * file's own rule: ground + fill + border + ink, not token pairs). For every
+ * palette, each glass tier, at the COMMITTED floors, over the worst measured
+ * backdrop, on each ground a control can sit on (`surface`, `canvas`):
+ *
+ *   - "glass text field": the field overlay (ink at `stateAlpha.field`) over the
+ *     ground composite, `ink` and `inkMuted` AA and `inkDim` (placeholder) at the
+ *     stated relaxed floor on the fill, and the glass edge (`borderControl` mixed
+ *     toward `ink` by `controlMix`) 3:1 against the GROUND it is drawn on.
+ *   - "glass row hover" / "glass row selected": the overlay at its alpha, the same
+ *     ink floors on the result, and the step ΔE00 off the ground at its floor, so a
+ *     state cannot vanish over a bright desktop.
+ *   - "glass focus ring": `accent` 3:1 against the composite ground (an outline is
+ *     drawn straight over the glass).
+ * The flat controls' own rows above are unchanged and still hold: glass only
+ * applies inside `html[data-glass]`.
+ */
+{
+	const committed = JSON.parse(
+		readFileSync(join(ROOT, "src/shared/window-glass-floors.json"), "utf8"),
+	);
+	const STEP = { hover: 1.5, selected: 2.5, field: 1.5 };
+	const stepMin = {
+		hover: Number.POSITIVE_INFINITY,
+		selected: Number.POSITIVE_INFINITY,
+		field: Number.POSITIVE_INFINITY,
+	};
+	for (const { id, palette } of palettes) {
+		const scheme = glassSchemeOf(palette);
+		for (const [tier, byScheme] of Object.entries(BACKDROP_GRAY)) {
+			const floors = committed.alphaFloor[tier][scheme];
+			const mix = committed.controlMix[tier][scheme];
+			const backdrop = glassGray(byScheme[scheme]);
+			for (const ground of ["surface", "canvas"]) {
+				const groundHex = glassComposite(
+					palette[ground],
+					floors[ground],
+					backdrop,
+				);
+				for (const [state, label] of [
+					["hover", "glass row hover"],
+					["selected", "glass row selected"],
+					["field", "glass text field"],
+				]) {
+					const fill = glassComposite(
+						palette.ink,
+						committed.stateAlpha[state],
+						groundHex,
+					);
+					for (const ink of GLASS_INKS) {
+						assertions++;
+						const floor =
+							ink === "inkDim" ? GLASS_STATE_DIM_FLOOR : GLASS_INK_FLOOR;
+						const r = glassRatio(palette[ink], fill);
+						if (r < floor)
+							fail(
+								`${id}: ${label} (${tier}/${scheme}) ${ink} on the fill over ${ground} is ${r2(r)}:1, floor ${floor}`,
+							);
+					}
+					assertions++;
+					const step = deltaE(fill, groundHex);
+					stepMin[state] = Math.min(stepMin[state], step);
+					if (step < STEP[state])
+						fail(
+							`${id}: ${label} (${tier}/${scheme}) over ${ground} is ΔE00 ${r2(step)} off its ground, floor ${STEP[state]}: the state would vanish`,
+						);
+				}
+				assertions++;
+				const edge = glassRatio(glassEdge(palette, mix), groundHex);
+				if (edge < GLASS_EDGE_FLOOR)
+					fail(
+						`${id}: glass text field (${tier}/${scheme}) border-control against ${ground} glass is ${r2(edge)}:1, floor ${GLASS_EDGE_FLOOR} - re-derive controlMix`,
+					);
+				assertions++;
+				const ring = glassRatio(palette.accent, groundHex);
+				if (ring < GLASS_EDGE_FLOOR)
+					fail(
+						`${id}: glass focus ring (${tier}/${scheme}) accent against ${ground} glass is ${r2(ring)}:1, floor ${GLASS_EDGE_FLOOR}`,
+					);
+			}
+		}
+	}
+	console.log(
+		`Window glass states: tightest step ΔE00 off the ground - hover ${r2(stepMin.hover)}, selected ${r2(stepMin.selected)}, field ${r2(stepMin.field)}.`,
+	);
+}
+
+/*
+ * THE GLASS BLOCK VEIL, THE RUNNING ROW AND THE CHROME BAND, as component
+ * triples over the composite (the same method as the block above):
+ *
+ *   - "glass block veil": a text-bearing block (a user message bubble, a project
+ *     card, a hub card) painted as `ink` at `blockVeil[scheme]` over the canvas
+ *     glass at its floor. The step is the block's ONLY boundary, so it is held
+ *     at ΔE00 4.0 on every palette and every material tier - the flat
+ *     `messageSurface` floor's own promise, which no role alpha could keep. Inks
+ *     on the veil: `ink`/`inkMuted` AA; `inkDim` at the states' stated 3.5
+ *     relaxation (captions ride a block the way they ride a field).
+ *   - "glass running row": the work overlay (`stateAlpha.work`, the selected
+ *     step's alias) over the canvas glass. An in-flight row is the subject; its
+ *     step is held at the selected floor (ΔE00 2.5) with AA inks.
+ *   - "glass chrome band": the Browser route's tab strip and URL row wear
+ *     `surface` at its floor RAW over the desktop - the app sidebar's own paint,
+ *     so the two measure equal. Inks on the band are held to AA, `inkDim`
+ *     included (this is a ground, not a state: the 3.5 relaxation does not
+ *     apply). The active tab is the band plus the selected overlay, and that
+ *     pair is the SHIPPED stack: the strip's field layer was withdrawn because
+ *     the tab's `inkDim` mark fell under its floor on 18 palettes (review round
+ *     2, F1). A future layer here has to come back through this row.
+ *
+ * The composer is a field on the CANVAS ground, which the block above already
+ * asserts ("glass text field" over canvas); it needs no separate row, and its
+ * edge is the derived `controlMix` already held at 3:1 there.
+ */
+{
+	const committed = JSON.parse(
+		readFileSync(join(ROOT, "src/shared/window-glass-floors.json"), "utf8"),
+	);
+	const veilMin = {
+		dark: Number.POSITIVE_INFINITY,
+		light: Number.POSITIVE_INFINITY,
+	};
+	const workMin = {
+		step: Number.POSITIVE_INFINITY,
+		inkMuted: 4.5,
+		inkDim: 3.5,
+	};
+	const chromeMin = {
+		ink: Number.POSITIVE_INFINITY,
+		inkMuted: Number.POSITIVE_INFINITY,
+		inkDim: Number.POSITIVE_INFINITY,
+		tabStep: Number.POSITIVE_INFINITY,
+	};
+	for (const { id, palette } of palettes) {
+		const scheme = glassSchemeOf(palette);
+		for (const [tier, byScheme] of Object.entries(BACKDROP_GRAY)) {
+			const floors = committed.alphaFloor[tier][scheme];
+			const backdrop = glassGray(byScheme[scheme]);
+			const canvasGlass = glassComposite(
+				palette.canvas,
+				floors.canvas,
+				backdrop,
+			);
+
+			/* The block veil over the canvas glass. */
+			const veilAlpha = committed.blockVeil[scheme];
+			const veil = glassComposite(palette.ink, veilAlpha, canvasGlass);
+			for (const ink of GLASS_INKS) {
+				assertions++;
+				const floor =
+					ink === "inkDim" ? GLASS_STATE_DIM_FLOOR : GLASS_INK_FLOOR;
+				const r = glassRatio(palette[ink], veil);
+				if (r < floor)
+					fail(
+						`${id}: glass block veil (${tier}/${scheme}) ${ink} on the veil is ${r2(r)}:1, floor ${floor}`,
+					);
+			}
+			assertions++;
+			const veilStep = deltaE(veil, canvasGlass);
+			veilMin[scheme] = Math.min(veilMin[scheme], veilStep);
+			if (veilStep < GLASS_BLOCK_VEIL_STEP)
+				fail(
+					`${id}: glass block veil (${tier}/${scheme}) is ΔE00 ${r2(veilStep)} off the canvas glass, floor ${GLASS_BLOCK_VEIL_STEP} - a block would vanish`,
+				);
+
+			/* The running row's work overlay, the selected step under its own name. */
+			const work = glassComposite(
+				palette.ink,
+				committed.stateAlpha.work,
+				canvasGlass,
+			);
+			for (const ink of GLASS_INKS) {
+				assertions++;
+				const floor =
+					ink === "inkDim" ? GLASS_STATE_DIM_FLOOR : GLASS_INK_FLOOR;
+				const r = glassRatio(palette[ink], work);
+				if (r < floor)
+					fail(
+						`${id}: glass running row (${tier}/${scheme}) ${ink} on the work overlay is ${r2(r)}:1, floor ${floor}`,
+					);
+			}
+			assertions++;
+			const workStep = deltaE(work, canvasGlass);
+			if (workStep < 2.5)
+				fail(
+					`${id}: glass running row (${tier}/${scheme}) is ΔE00 ${r2(workStep)} off the canvas glass, floor 2.5: the row would not read as live`,
+				);
+			workMin.step = Math.min(workMin.step, workStep);
+
+			/* The chrome band: surface at its floor, the sidebar's own paint. */
+			const chrome = glassComposite(palette.surface, floors.surface, backdrop);
+			for (const ink of GLASS_INKS) {
+				assertions++;
+				const r = glassRatio(palette[ink], chrome);
+				if (r < GLASS_INK_FLOOR)
+					fail(
+						`${id}: glass chrome band (${tier}/${scheme}) ${ink} on the band is ${r2(r)}:1, floor ${GLASS_INK_FLOOR}`,
+					);
+				chromeMin[ink] = Math.min(chromeMin[ink], r);
+			}
+			/*
+			 * THE ACTIVE TAB IS THE REAL STACK: selected over chrome, nothing else.
+			 * A field layer under it was tried and withdrawn (review round 2, F1) - its
+			 * 5% ink put this row's `inkDim` (the tab's globe / loading spinner) at
+			 * 3.21:1 on cyberpunk and below 3.5 on 18 dark palettes, on both tiers.
+			 * A re-added LAYER is invisible to this row (it models alphas, not the
+			 * background-image): the CDP guard's `backgroundImage === "none"` assert
+			 * is the tripwire, and this row is the model a layer must be re-derived
+			 * through before it may sit under the tab.
+			 */
+			{
+				const label = "glass chrome tab";
+				const fill = glassComposite(
+					palette.ink,
+					committed.stateAlpha.selected,
+					chrome,
+				);
+				for (const ink of GLASS_INKS) {
+					assertions++;
+					const floor =
+						ink === "inkDim" ? GLASS_STATE_DIM_FLOOR : GLASS_INK_FLOOR;
+					const r = glassRatio(palette[ink], fill);
+					if (r < floor)
+						fail(
+							`${id}: ${label} (${tier}/${scheme}) ${ink} on the fill is ${r2(r)}:1, floor ${floor}`,
+						);
+				}
+				assertions++;
+				const step = deltaE(fill, chrome);
+				chromeMin.tabStep = Math.min(chromeMin.tabStep, step);
+				if (step < 2.5)
+					fail(
+						`${id}: glass chrome tab (${tier}/${scheme}) is ΔE00 ${r2(step)} off the band, floor 2.5`,
+					);
+			}
+		}
+	}
+	console.log(
+		`Window glass round 2: tightest block veil ΔE00 off canvas glass - dark ${r2(veilMin.dark)}, light ${r2(veilMin.light)}; work row step ${r2(workMin.step)}; chrome inks ${r2(chromeMin.ink)}/${r2(chromeMin.inkMuted)}/${r2(chromeMin.inkDim)}, tab step ${r2(chromeMin.tabStep)}.`,
+	);
 }
 
 /* ---- 6. report ---------------------------------------------------------- */

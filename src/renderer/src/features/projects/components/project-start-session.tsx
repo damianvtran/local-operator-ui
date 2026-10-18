@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The start-session picker: choose who a new session runs with — a team, an
  * agent, or nothing in particular — and start it against this project.
@@ -80,6 +82,7 @@ export const ProjectStartSessionDialog: FC<ProjectStartSessionDialogProps> = ({
 	teamsEnabled,
 	profilesEnabled,
 }) => {
+	useI18nLocale();
 	const [selection, setSelection] =
 		useState<StartSessionSelection>(START_SESSION_PLAIN);
 	const [refusal, setRefusal] = useState<string | null>(null);
@@ -104,9 +107,17 @@ export const ProjectStartSessionDialog: FC<ProjectStartSessionDialogProps> = ({
 		const rows: SearchableOption[] = [
 			{
 				id: PLAIN_OPTION_ID,
-				name: "Nothing in particular",
-				description: "A plain session; assign a team or agent later.",
-				group: "Plain",
+				get name() {
+					return t("ui.projects.project_start_session.nothing_in_particular");
+				},
+				get description() {
+					return t(
+						"ui.projects.project_start_session.a_plain_session_assign_a_team_or_agent_later",
+					);
+				},
+				get group() {
+					return t("ui.projects.project_start_session.plain");
+				},
 			},
 		];
 		for (const team of teams.data ?? []) {
@@ -128,8 +139,13 @@ export const ProjectStartSessionDialog: FC<ProjectStartSessionDialogProps> = ({
 				 * through the shared control's `keywords` slot.
 				 */
 				keywords: team.name === teamDisplayName(team) ? undefined : [team.name],
-				description: `Team · manager: ${team.manager}`,
-				group: "Teams",
+				description: t(
+					"ui.projects.project_start_session.team_manager_manager",
+					{ manager: String(team.manager) },
+				),
+				get group() {
+					return t("ui.projects.project_start_session.teams");
+				},
 			});
 		}
 		for (const profile of (profiles.data ?? []).filter(
@@ -139,7 +155,9 @@ export const ProjectStartSessionDialog: FC<ProjectStartSessionDialogProps> = ({
 				id: agentOptionId(profile.name),
 				name: profile.name,
 				description: profile.description || profile.kind,
-				group: "Agents",
+				get group() {
+					return t("ui.projects.project_start_session.agents");
+				},
 			});
 		}
 		return rows;
@@ -162,7 +180,9 @@ export const ProjectStartSessionDialog: FC<ProjectStartSessionDialogProps> = ({
 			setRefusal(
 				error instanceof Error && error.message
 					? error.message
-					: "The session could not be started.",
+					: t(
+							"ui.projects.project_start_session.the_session_could_not_be_started",
+						),
 			);
 		} finally {
 			setSubmitting(false);
@@ -173,39 +193,45 @@ export const ProjectStartSessionDialog: FC<ProjectStartSessionDialogProps> = ({
 		<BaseDialog
 			open={open}
 			onClose={onClose}
-			title="Start a session"
+			title={t("ui.projects.project_start_session.start_a_session")}
 			maxWidth="sm"
 			dataTourTag="project-start-session-dialog"
 			actions={
 				<>
 					<SecondaryButton onClick={onClose} disabled={submitting}>
-						Cancel
+						{t("ui.projects.project_start_session.cancel")}
 					</SecondaryButton>
 					<PrimaryButton onClick={() => void submit()} disabled={submitting}>
 						{submitting && <Spinner size="xs" />}
-						Start session
+						{t("ui.projects.project_start_session.start_session")}
 					</PrimaryButton>
 				</>
 			}
 		>
 			<div className="flex flex-col gap-4 px-1 py-1">
 				<SearchableSelect
-					label="Work with"
-					placeholder="Search teams and agents"
+					label={t("ui.projects.project_start_session.work_with")}
+					placeholder={t(
+						"ui.projects.project_start_session.search_teams_and_agents",
+					)}
 					options={options}
 					selected={selectedOption}
 					onSelect={(option) => setSelection(selectionFromOptionId(option.id))}
 					busy={busy}
-					busyLabel="Loading teams and agents"
+					busyLabel={t(
+						"ui.projects.project_start_session.loading_teams_and_agents",
+					)}
 				/>
 				<p className="text-meta text-ink-muted">
-					The session starts now, links itself to this project, and opens with a
-					prompt you can edit before sending.
+					{t(
+						"ui.projects.project_start_session.the_session_starts_now_links_itself_to_this_project_and_opens_wit",
+					)}
 				</p>
 				{registriesMissing && (
 					<p className="text-meta text-ink-muted">
-						This server does not offer the team or agent catalogues yet, so only
-						a plain session can be started.
+						{t(
+							"ui.projects.project_start_session.this_server_does_not_offer_the_team_or_agent_catalogues_yet_so_on",
+						)}
 					</p>
 				)}
 				{refusal && <p className="text-body-sm text-danger">{refusal}</p>}

@@ -1364,6 +1364,70 @@ const SESSION = {
 	active_duration_s: 92,
 };
 
+test("a carried context reading does not claim to be measured now", () => {
+	/*
+	 * DESIGN ROUND 1, D1. A cold/attaching snapshot lands whole: the model, the
+	 * timer and the cost in it are live again, but its occupancy is the journal's
+	 * (the length at an earlier message). The cluster is therefore NOT held - no
+	 * `data-lo-session-strip-held`, no "Last reading" mark - while the context
+	 * sentence must still refuse "Measured now", or the strip states one reading
+	 * two ways.
+	 */
+	const openable = { frontend: SESSION, onCommand: () => undefined };
+	const live = renderStrip(openable);
+	const carried = renderStrip({ ...openable, contextHeld: true });
+
+	const contextOf = (labels) => labels.filter((l) => l.startsWith("Context: "));
+	const liveLabels = readingLabels(live);
+	const carriedLabels = readingLabels(carried);
+	assert.equal(contextOf(carriedLabels).length, 1, "one context reading");
+	assert.match(contextOf(liveLabels)[0], /Measured now;/);
+	assert.doesNotMatch(
+		contextOf(carriedLabels)[0],
+		/Measured now|Estimated now/,
+		"a carried count is a real reading, not a current one",
+	);
+	assert.deepEqual(
+		carriedLabels.filter((l) => !l.startsWith("Context: ")),
+		liveLabels.filter((l) => !l.startsWith("Context: ")),
+		"every other reading is live and renders exactly its live name",
+	);
+	assert.ok(
+		!carried.includes("data-lo-session-strip-held"),
+		"the cluster is not held; only one reading is qualified",
+	);
+
+	/*
+	 * THE TOOLTIP IS A THIRD BUILD SITE, and static markup cannot see it: Radix
+	 * renders `TooltipContent` only when open, so a suite asserting aria-labels
+	 * alone let the carried reading say "Measured now" in the tooltip while its
+	 * name said the opposite (review round 3, M1). The three sites are pinned by
+	 * source: the no-reading sentence, the measured sentence, and the tooltip's
+	 * closing line.
+	 */
+	const source = readFileSync(
+		new URL(
+			"../src/renderer/src/features/chat/session-status/session-status-strip.tsx",
+			import.meta.url,
+		),
+		"utf8",
+	);
+	/*
+	 * ALL FOUR, not "at least three": the strip has four sites that build the
+	 * context sentence or its held mark (the no-reading label, the measured
+	 * label, the tooltip's closing line, and the reading's own `held`), and a
+	 * count that tolerated three let the tooltip's site regress silently
+	 * (review round 4, MINOR). A fifth site is a change to this contract and
+	 * should fail here too.
+	 */
+	const qualified = source.match(/held \|\| contextHeld/g) ?? [];
+	assert.equal(
+		qualified.length,
+		4,
+		`every context sentence site must take the carried flag (found ${qualified.length})`,
+	);
+});
+
 test("a held reading keeps its value, and the strip says once that it is the last one", () => {
 	/*
 	 * A DISPATCHER, so the context reading is OPENABLE and its closing line is the

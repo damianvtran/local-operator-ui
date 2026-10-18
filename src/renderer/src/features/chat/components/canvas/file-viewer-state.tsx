@@ -40,6 +40,7 @@ export const FileViewerState: FC<FileViewerStateProps> = ({
 	   (`canvas/index.tsx`) — the drawer's rung — rather than the conversation's
 	   `canvas`: it was the ambient body the pane's root was, one layer down. */
 	<div
+		data-glass-region="pane-leaf"
 		className={cn(
 			"flex h-full flex-col items-center justify-center gap-2 bg-elevated p-6 text-center",
 		)}

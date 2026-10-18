@@ -100,14 +100,26 @@ const settlePendingCapabilities = () => {
 		pendingCapabilitiesReply = null;
 	}
 };
-/* Mutable, so a case can move the server's value the way a refetch would. */
-const settingsPayload = () =>
-	JSON.parse(
+/* Only a deliberately limited-server case overrides served choices. Keep the
+ * full captured registry authoritative everywhere else, including later cases.
+ * Every settings.list/readback stub below calls this helper, so refetch cannot
+ * silently switch the limited server back to the full fixture mid-scenario. */
+let servedLanguageChoices = null;
+const settingsPayload = () => {
+	const payload = JSON.parse(
 		readFileSync(
 			"scripts/fixtures/backend-settings-registry-configured.json",
 			"utf8",
 		),
 	);
+	if (servedLanguageChoices !== null) {
+		const row = payload.settings.find((setting) => setting.key === "language");
+		row.choices = row.choices.filter((choice) =>
+			servedLanguageChoices.includes(choice.value),
+		);
+	}
+	return payload;
+};
 const setServerLanguageValue = (value) => {
 	const payload = settingsPayload();
 	const row = payload.settings.find((s) => s.key === "language");
@@ -190,7 +202,7 @@ const withDesktopStub = async (request, body) => {
 	}
 };
 
-const bundle = await build({
+const bundleOptions = {
 	stdin: {
 		contents: [
 			'import { createElement } from "react";',
@@ -200,6 +212,8 @@ const bundle = await build({
 			'export { useI18nLocaleSync } from "./src/renderer/src/shared/i18n/locale-sync";',
 			'export { applyCapabilities, currentLocale } from "./src/renderer/src/shared/i18n";',
 			'export { languageChoices } from "./src/renderer/src/features/settings/components/setting-control";',
+			'export { SettingCombobox } from "./src/renderer/src/features/settings/components/setting-combobox";',
+			'export { COMBO_PLACEHOLDER } from "./src/renderer/src/features/settings/backend-setting-combos";',
 			"export { createElement };",
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -223,7 +237,8 @@ const bundle = await build({
 	loader: { ".css": "empty" },
 	jsx: "automatic",
 	write: false,
-});
+};
+const bundle = await build(bundleOptions);
 
 const bundlePath = new URL("_language-dialog.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
@@ -232,6 +247,8 @@ after(() => unlink(bundlePath).catch(() => {}));
 const {
 	QueryClient,
 	QueryClientProvider,
+	SettingCombobox,
+	COMBO_PLACEHOLDER,
 	createElement,
 	LanguageDialog,
 	saveImmediateLanguageValue,
@@ -311,7 +328,8 @@ const mount = async (
 	return { client };
 };
 
-const mountGeneral = async (t) => {
+const mountGeneral = async (t, { servedChoices = null } = {}) => {
+	servedLanguageChoices = servedChoices;
 	applyCapabilities(null);
 	setCapabilitiesLanguage("en");
 	setCapabilitiesBehavior({ type: "ok", features: { settings: 1, i18n: 1 } });
@@ -332,6 +350,7 @@ const mountGeneral = async (t) => {
 				root.unmount();
 			});
 		} finally {
+			servedLanguageChoices = null;
 			client.clear();
 		}
 		container.remove();
@@ -358,7 +377,7 @@ test(
 	"the General control writes immediately, stays on committed truth and names readback uncertainty",
 	{ timeout: TEST_TIMEOUT_MS },
 	async (t) => {
-		const { client } = await mountGeneral(t);
+		const { client } = await mountGeneral(t, { servedChoices: ["auto", "en"] });
 		await settle(
 			() => Boolean(document.querySelector("[data-setting-key=language]")),
 			"the General language control must render",
@@ -366,8 +385,9 @@ test(
 		await settle(() => currentLocale() === "en", "the store must be seeded");
 		/*
 		 * Availability is the SERVER's answer, not the app's eight-name table:
-		 * this fixture ships `auto` + `en`, so the audited-but-absent locales
-		 * must come back disabled rather than offered as selectable.
+		 * THIS case explicitly serves only `auto` + `en`; the authoritative
+		 * full registry now serves seven. Audited-but-absent locales on this
+		 * limited server must stay disabled, including after a refetch.
 		 */
 		const choiceRow = settingsPayload().settings.find(
 			(row) => row.key === "language",
@@ -814,3 +834,131 @@ test(
 			);
 	},
 );
+
+test("a limited General server never rebaselines the authoritative full choices", () => {
+	assert.equal(
+		servedLanguageChoices,
+		null,
+		"case teardown must discard the limited-server override",
+	);
+	const row = settingsPayload().settings.find(
+		(setting) => setting.key === "language",
+	);
+	const served = row.choices.map((choice) => choice.value);
+	assert.ok(
+		served.length > 2 && served.includes("fr"),
+		"the full captured server is not the auto/en-only scenario",
+	);
+	assert.deepEqual(
+		languageChoices(row)
+			.filter((choice) => choice.enabled)
+			.map((choice) => choice.value),
+		served,
+		"all choices actually served by the full registry remain selectable",
+	);
+});
+
+// Reuse this script's real ReactDOM/Query host and existing aliases instead of
+// adding a fake combobox implementation to the pure keyed-map contract test.
+const COMBOBOX_MODULE = /setting-combobox\.tsx$/;
+const PLACEHOLDER_MISMATCH = /empty wire placeholder/;
+const assertRealComboPlaceholder = async (Component, kind, key) => {
+	const row = settingsPayload().settings.find((setting) => setting.key === key);
+	assert.ok(row, `fixture row ${key} exists`);
+	const client = new QueryClient({
+		defaultOptions: {
+			queries: {
+				retry: false,
+				staleTime: Number.POSITIVE_INFINITY,
+				gcTime: Number.POSITIVE_INFINITY,
+			},
+		},
+	});
+	client.setQueryData(["desktop", "capabilities"], {
+		desktop_available: true,
+		features: {},
+	});
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	try {
+		await act(async () =>
+			root.render(
+				React.createElement(
+					QueryClientProvider,
+					{ client },
+					React.createElement(Component, {
+						setting: { ...row, placeholder: "" },
+						kind,
+						value: "",
+						effectiveHosting: "",
+						onValueChange: () => {},
+					}),
+				),
+			),
+		);
+		const input = container.querySelector('input[role="combobox"]');
+		assert.ok(input, "the shipped searchable control must render a real input");
+		assert.equal(
+			input.getAttribute("placeholder"),
+			COMBO_PLACEHOLDER[kind],
+			"an empty wire placeholder must not replace the source-specific constant",
+		);
+	} finally {
+		await act(async () => root.unmount());
+		client.clear();
+		container.remove();
+	}
+};
+
+test("real SettingCombobox keeps its source placeholder when the wire default is empty", async () => {
+	for (const [kind, key] of [
+		["provider", "hosting"],
+		["model", "model_name"],
+		["provider-model", "subagents.models.hi"],
+	])
+		await assertRealComboPlaceholder(SettingCombobox, kind, key);
+});
+
+test("the actual combobox DOM control rejects a row-placeholder source mutation", async () => {
+	const marker = "placeholder={COMBO_PLACEHOLDER[kind]}";
+	const mutated = await build({
+		...bundleOptions,
+		plugins: [
+			{
+				name: "row-placeholder-counterfactual",
+				setup(builder) {
+					builder.onLoad({ filter: COMBOBOX_MODULE }, ({ path }) => {
+						const source = readFileSync(path, "utf8");
+						assert.equal(
+							source.split(marker).length,
+							2,
+							"mutate exactly the shipped placeholder seam",
+						);
+						return {
+							contents: source.replace(
+								marker,
+								"placeholder={setting.placeholder}",
+							),
+							loader: "tsx",
+						};
+					});
+				},
+			},
+		],
+	});
+	const mutantPath = new URL(
+		"./_language-dialog-combobox-mutant.bundle.mjs",
+		import.meta.url,
+	);
+	await writeFile(mutantPath, mutated.outputFiles[0].text);
+	try {
+		const { SettingCombobox: MutatedCombobox } = await import(mutantPath.href);
+		await assert.rejects(
+			() => assertRealComboPlaceholder(MutatedCombobox, "provider", "hosting"),
+			{ code: "ERR_ASSERTION", message: PLACEHOLDER_MISMATCH },
+		);
+	} finally {
+		await unlink(mutantPath);
+	}
+});

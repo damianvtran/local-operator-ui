@@ -4,5 +4,7 @@
 	"ui.chat.usage.blocked": "Spend unavailable",
 	"ui.chat.usage.eligibility_unknown": "Spend eligibility unknown",
 	"ui.chat.usage.unlimited": "Unlimited paid allowance",
+	"ui.chat.skill_invocation.instructions_label": "Skill instructions sent with this message",
+	"ui.chat.skill_invocation.trigger_label": "{token} skill instructions",
 	"ui.chat.highlights.file_resolution_failed": "Couldn't resolve this file in the session working directory. Use Copy file path to check its location against this session's workspace before trying again."
 }

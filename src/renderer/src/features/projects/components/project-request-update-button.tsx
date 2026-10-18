@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The detail header's "Request update" button: one secondary control with
  * three label states, leading the Edit/Delete cluster.
@@ -47,7 +49,6 @@ import {
 } from "../hooks/use-request-update";
 import { projectDisplayName } from "../project-model";
 import {
-	REQUEST_UPDATE_TOOLTIP,
 	requestUpdateCooldownSentence,
 	requestUpdateCooldownSpanId,
 } from "../request-update";
@@ -59,6 +60,7 @@ export type ProjectRequestUpdateButtonProps = {
 export const ProjectRequestUpdateButton: FC<
 	ProjectRequestUpdateButtonProps
 > = ({ project }) => {
+	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const request = useRequestProjectUpdate();
 	const { sending, cooling, cooldownRemainingMs } = useRequestUpdateState(
@@ -82,7 +84,9 @@ export const ProjectRequestUpdateButton: FC<
 							 * press would raise, computed from the shared window's remainder like
 							 * the sr-only span below. */
 							requestUpdateCooldownSentence(display, cooldownRemainingMs)
-						: REQUEST_UPDATE_TOOLTIP
+						: t(
+								"ui.projects.request_update.ask_the_sessions_linked_to_this_project_to_post_a_progress_update",
+							)
 				}
 			>
 				<Button
@@ -101,7 +105,11 @@ export const ProjectRequestUpdateButton: FC<
 					) : (
 						<MessageSquareMore />
 					)}
-					{sending ? "Requesting…" : cooling ? "Requested" : "Request update"}
+					{sending
+						? t("ui.projects.project_request_update_button.requesting")
+						: cooling
+							? t("ui.projects.project_request_update_button.requested")
+							: t("ui.projects.project_request_update_button.request_update")}
 				</Button>
 			</Tooltip>
 			{cooling && cooldownRemainingMs !== null && (

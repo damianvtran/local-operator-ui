@@ -31,9 +31,16 @@ import { build } from "esbuild";
  * placeholder ladder and the queue module's exports - are asserted by value.
  *
  * WHAT STAYS, and is asserted so a future edit cannot remove it by accident:
- * `askComposerHoldsSecret` (a credential-safety rule for the MAIN box when the only
- * open question is secret - it is not routing), the drawer's Escape claim, and the
+ * `askComposerHoldsSecret` (the MAIN box's secret-ask state when the only open
+ * question is secret - still not routing), the drawer's Escape claim, and the
  * page's draft state (the panel's own controls write it).
+ *
+ * AND WHAT CHANGED SINCE: the predicate no longer closes the box. The operator
+ * overruled the lock (ask `a-9e0c`) because the secret is typed in the asks panel,
+ * so the box stays usable and the predicate now means "show the notice, guard a
+ * password-shaped send". The source pins below therefore assert that the
+ * composer's `secretAnswer` reads the BLOCKING gate alone, and that the queued
+ * state arrives through `secretAsk`.
  */
 
 const read = (path) => readFileSync(path, "utf8");
@@ -176,11 +183,11 @@ test("the queue module no longer offers the answer-mode sentence or the predicat
 	);
 });
 
-test("a secret-ONLY ask still refuses the MAIN box (a credential-safety rule, not routing)", () => {
-	// The refusal exists so a credential is not typed into an ordinary chat message.
-	// Removing the routing does not remove that hazard - the box is now ordinary in
-	// EVERY state - so the rule stays, and it is stated here so deleting it is a
-	// decision rather than collateral.
+test("a secret-ONLY ask still arms the secret-ask state (a credential-safety rule, not routing)", () => {
+	// The predicate exists so a credential typed into the chat box is not sent as a
+	// message without being asked about. It used to close the box; the operator
+	// overruled that (ask a-9e0c) and it now selects the notice + send confirm.
+	// Removing the routing does not remove the hazard, so the rule stays.
 	const secretOnly = queue.askQueueView({
 		asks: [openAsk([{ id: "k", question: "Paste the key", secret: true }])],
 	});
@@ -331,4 +338,135 @@ test("no story or helper still renders the retired answer mode", () => {
 			`${file} passes the retired \`askMode\` prop`,
 		);
 	}
+});
+
+/*
+ * THE LOCK THE OPERATOR REMOVED (ask `a-9e0c`, answered by its recommended option),
+ * pinned at the source because it is a split between two props on one component:
+ * `secretAnswer` is the BLOCKING gate's refusal and nothing else, and the queued
+ * ask arrives through `secretAsk` — the notice, the panel's door, the send confirm.
+ * A future edit that folds the queued read back into `secretAnswer` re-locks the
+ * box, and this is the assertion that fails.
+ */
+test("the composer's refusal is the BLOCKING gate's, and the queued ask is a notice", () => {
+	const content = code(CONTENT);
+	assert.match(
+		content,
+		/secretAnswer=\{gateIsSecret\(gate\)\}/,
+		"the refusal reads the blocking gate alone",
+	);
+	assert.doesNotMatch(
+		content,
+		/secretAnswer=\{gateIsSecret\(gate\)\s*\|\|/,
+		"and no queued term rides along with it",
+	);
+	assert.match(
+		content,
+		/secretAsk=\{secretAsk\}/,
+		"the queued state reaches the composer as its own prop",
+	);
+
+	const input = code(INPUT);
+	assert.match(
+		input,
+		/secretAsk\?: \{/,
+		"the composer carries the queued prop",
+	);
+	assert.match(
+		input,
+		/if \(guardSecretSend\(newMessage\)\) return;[\s\S]{0,80}submitMessage\(\);/,
+		"the form's send door asks the guard first",
+	);
+	assert.match(
+		input,
+		/submitNow: \(\) => \{[\s\S]{0,600}?guardSecretSend\(newMessage\)/,
+		"and so does the Retry door",
+	);
+	assert.match(
+		input,
+		/secretAsk && secretConfirm === null[\s\S]{0,400}?SECRET_ASK_NOTICE_ID/,
+		"the standing notice renders only while no confirm has replaced it",
+	);
+});
+
+/*
+ * THE FILL WIRING IS ONE FUNCTION, AND BOTH COMPONENTS PASS THROUGH IT (agent
+ * review round 1, m3). `chat-content.tsx` owns "which head", `chat-page.tsx` owns
+ * "what the answer's status means", and `ask-queue.ts`'s `fillSecretField` owns
+ * the payload shape, the trim and the stale check - which is what a DOM-free test
+ * can drive (`ask-queue.test.mjs`). These pins keep the two components handing
+ * their facts to it rather than re-growing a second copy: a boolean `onFill`
+ * mapping is exactly the shape the round asked to retire.
+ */
+test("Put in secret field goes through the one fill function", () => {
+	const content = code(CONTENT);
+	assert.match(
+		content,
+		/fillSecretField\(/,
+		"the composer's fill is the shared function",
+	);
+	assert.match(
+		content,
+		/onFill: \(value: string, key: string\)/,
+		"and the confirm's key is handed back, not re-derived",
+	);
+	assert.match(
+		content,
+		/askSecretField\(head\.ask\)/,
+		"the key and the fillability come from the one field reading",
+	);
+
+	const page = code(PAGE);
+	assert.match(
+		page,
+		/onFillSecretAnswer: answerAsk,/,
+		"the page hands its own answer door over, not a boolean wrapper",
+	);
+	assert.match(
+		page,
+		/if \(!sessionId\) return \{ status: "unavailable" \};/,
+		"and an unaddressable pane says which it is",
+	);
+	assert.match(
+		page,
+		/if \(sendLock\.held\) return \{ status: "locked" \};/,
+		"as does a held lock (M1)",
+	);
+
+	const input = code(INPUT);
+	assert.match(
+		input,
+		/secretAsk\?: \{[\s\S]{0,400}?key: string;/,
+		"the composer's prop carries the binding key",
+	);
+	assert.match(
+		input,
+		/secretAsk\?: \{[\s\S]{0,400}?fillable: boolean;/,
+		"and whether a value can name a field (D2)",
+	);
+	assert.match(
+		input,
+		/onFill: \(value: string, key: string\) => Promise<SecretFillOutcome>/,
+		"and the outcome, not a boolean",
+	);
+});
+
+/*
+ * THE MINI VIEW HAS NO ASKS DRAWER, so it has nowhere to send a secret and no
+ * notice to show: a queued ask must leave that box unrefused too, and the
+ * blocking gate's refusal stays. Read through `effectiveGate` so a mirrored ask is
+ * not mistaken for a parked gate — the same one derivation every other reader uses.
+ */
+test("the mini view is not locked by a queued ask", () => {
+	const mini = code("src/renderer/src/mini-view/mini-composer.tsx");
+	assert.match(
+		mini,
+		/secretAnswer=\{gateIsSecret\(effectiveGate\(frontend\)\)\}/,
+		"the mini box refuses the blocking gate only",
+	);
+	assert.doesNotMatch(
+		mini,
+		/askComposerHoldsSecret/,
+		"and reads no queued-ask term at all",
+	);
 });

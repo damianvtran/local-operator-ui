@@ -25,7 +25,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import "../../../styles/index.css";
 import type {
 	DesktopHistoryPage,
@@ -1859,4 +1859,149 @@ export const QuietGroupMixed: Story = {
 			caption="Peer and wake receipts in one run — the mixed family states Messages · 3."
 		/>
 	),
+};
+
+/**
+ * QA's small negative control: a genuine start-with-receipt fragment, NOT a
+ * receipt after a loaded answer. The answer is still being written after the receipt, so it cannot
+ * establish preceding settled work for it. Both rows must remain readable.
+ * Stable capture id: chat-turn-collapse--lone-actionable-peer-negative.
+ */
+export const LoneActionablePeerNegative: Story = {
+	render: () => {
+		const S = TS / 1000;
+		let transcript = applyHistoryPage(EMPTY_TRANSCRIPT, {
+			entries: [
+				quietEntry(
+					"negative-peer",
+					S,
+					peerPayload(
+						"Please check the deployment status before proceeding.",
+						"release-check",
+					),
+				),
+			],
+			has_more: false,
+			cursor_missing: false,
+		});
+		transcript = applyEvent(
+			transcript,
+			{
+				type: "message_start",
+				message: assistantMessage("negative-final", ""),
+			},
+			NOW,
+		);
+		/*
+		 * THE TEXT ARRIVES AS A DELTA, the way the stream writes it. The row is
+		 * opened EMPTY on purpose: the producer assembles `message.content` only
+		 * at the end of a call (`harness/loop.py`), so a `message_start` carrying
+		 * the paragraph painted nothing at all and the caption claimed a row the
+		 * fixture never produced (design review round 1, D1). The delta below is
+		 * the sentence SO FAR - a mid-stream snapshot with both rows readable.
+		 */
+		transcript = applyEvent(
+			transcript,
+			{
+				type: "message_update",
+				delta: "The deployment is paused pending the requested check.",
+				message: assistantMessage("negative-final", ""),
+			},
+			NOW + 500,
+		);
+		return (
+			<Frame
+				transcript={transcript}
+				waiting
+				caption="Negative control: actionable peer plus a visible answer still being written. No earlier answer, quiet close or second receipt licenses an internal episode."
+			/>
+		);
+	},
+};
+
+/**
+ * Exactly four durable records at idle: received peer, outgoing send result,
+ * acknowledgement peer, typed no_reply close. Two receipts establish a genuine
+ * exchange without a synthetic subsequent user send. The no_reply row is hidden
+ * by its typed schema, never by parsing its body. QA switches stages on the SAME
+ * transcript, then expands through the real summary control.
+ */
+const QuietExchangeStagesFrame = () => {
+	const [stage, setStage] = useState<"before" | "during" | "idle" | "expanded">(
+		"before",
+	);
+	const host = useRef<HTMLDivElement>(null);
+	const S = TS / 1000;
+	const received = quietEntry(
+		"exchange-received",
+		S,
+		peerPayload("The staging check is ready.", "release-check"),
+	);
+	const sent = quietEntry("exchange-sent", S + 1, {
+		...toolPayload("exchange-send", "Acknowledged; checked staging.", 1),
+		tool_name: "send",
+	});
+	const acknowledged = quietEntry(
+		"exchange-ack",
+		S + 2,
+		peerPayload("Received; no further action needed.", "release-check"),
+	);
+	const closed = quietEntry(
+		"exchange-quiet",
+		S + 3,
+		quietPayload("exchange-no-reply"),
+	);
+	const entries =
+		stage === "before"
+			? [received]
+			: stage === "during"
+				? [received, sent, acknowledged]
+				: [received, sent, acknowledged, closed];
+	const transcript = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries,
+		has_more: false,
+		cursor_missing: false,
+	});
+	useEffect(() => {
+		// Exercise the existing reader-owned disclosure, not a second open-state
+		// owner in the story. The idempotent check also survives strict effects.
+		const trigger = host.current?.querySelector<HTMLButtonElement>(
+			"[data-turn-summary] button",
+		);
+		if (
+			stage === "expanded" &&
+			trigger?.getAttribute("aria-expanded") === "false"
+		)
+			trigger.click();
+	}, [stage]);
+	return (
+		<div ref={host} data-quiet-exchange-stage={stage}>
+			<div
+				className="flex gap-2 bg-canvas p-4"
+				aria-label="Quiet exchange stages"
+			>
+				{(["before", "during", "idle", "expanded"] as const).map((value) => (
+					<button
+						key={value}
+						type="button"
+						aria-pressed={stage === value}
+						onClick={() => setStage(value)}
+						className="rounded border border-control px-3 py-2 text-body-sm text-ink"
+					>
+						{value}
+					</button>
+				))}
+			</div>
+			<Frame
+				transcript={transcript}
+				waiting={stage === "before" || stage === "during"}
+				caption="Controlled quiet exchange: one received row before; two receipt exchange while thinking; one expandable receipt summary at idle, no synthetic user message."
+			/>
+		</div>
+	);
+};
+
+/** Stable capture id: chat-turn-collapse--quiet-exchange-stages. */
+export const QuietExchangeStages: Story = {
+	render: () => <QuietExchangeStagesFrame />,
 };

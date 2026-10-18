@@ -593,7 +593,11 @@ export function AgentsPage() {
 		: profileDetail.isLoading;
 
 	return (
-		<div className="flex h-full min-h-0 bg-canvas text-ink">
+		<div
+			data-glass-region="canvas"
+			data-glass-split=""
+			className="flex h-full min-h-0 bg-canvas text-ink"
+		>
 			{/*
 			 * The leading column keeps the shell's own ground rule (`chat-layout`).
 			 *
@@ -611,6 +615,7 @@ export function AgentsPage() {
 				// guard reads that literal (`data-open` is true only while a definition
 				// is open, which is exactly when the roster steps aside for the detail).
 				data-open={selected ? "true" : undefined}
+				data-glass-region="page-sidebar"
 				className="flex w-72 shrink-0 flex-col gap-3 bg-surface p-4 max-[999px]:data-[open=true]:hidden"
 			>
 				{/* The page's ONLY h1 (design D9): a definition's name is an h2. */}
@@ -695,7 +700,10 @@ export function AgentsPage() {
 							 * the segments are the visible words. `flex-1` makes the group span the
 							 * column like its two siblings.
 							 */}
-							<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
+							<div
+								data-glass-well=""
+								className="flex gap-0.5 rounded-md bg-sunken p-0.5"
+							>
 								{(Object.keys(SCOPE_LABEL) as Scope[]).map((value) => (
 									<Button
 										key={value}
@@ -775,7 +783,10 @@ export function AgentsPage() {
 			 * slot exists in every state (design § 4.3: a strip that pushes the detail
 			 * pane when it appears is the jank the design calls out).
 			 */}
-			<main className="flex min-w-0 flex-1 flex-col">
+			<main
+				data-glass-region="canvas-content"
+				className="flex min-w-0 flex-1 flex-col"
+			>
 				{/*
 				 * `pb-0`, not `p-6`: the detail's own pinned footer sticks to the BOTTOM
 				 * of this scroller, and a bottom padding under it left a 24px band where

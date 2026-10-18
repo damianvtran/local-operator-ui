@@ -60,6 +60,7 @@ const RE_ANY_MODULE = /.*/;
 const bundle = await build({
 	stdin: {
 		contents: `
+			export { t as chatCopy, setLocale } from "./src/i18n";
 			export {
 				useAsideStore,
 				applyAsideDelta,
@@ -286,6 +287,8 @@ const {
 	batchMovesView,
 	DesktopControlError,
 	parseReplies,
+	chatCopy,
+	setLocale,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -447,9 +450,9 @@ const RE_PANEL_REASON_ID = /<p id=\{blockedId\}/;
  * comment sits between the brace and the expression, hence the optional block.
  */
 const RE_SEND_VERB =
-	/content=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?aside !== null && !awaitingAnswer\s*\?\s*"Ask the aside"\s*:\s*"Send message"\s*\}/;
+	/content=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?aside !== null && !awaitingAnswer\s*\?\s*t\("ui\.chat\.composer\.ask_aside"\)\s*:\s*t\("ui\.chat\.composer\.send_message"\)\s*\}/;
 const RE_SEND_LABEL =
-	/aria-label=\{\s*aside !== null && !awaitingAnswer\s*\?\s*"Ask the aside"\s*:\s*"Send message"\s*\}/;
+	/aria-label=\{\s*aside !== null && !awaitingAnswer\s*\?\s*t\("ui\.chat\.composer\.ask_aside"\)\s*:\s*t\("ui\.chat\.composer\.send_message"\)\s*\}/;
 /*
  * The cap counts the question's MEASURED box and the gap under it (design round 4,
  * D16). `Q` is a number the panel measures, not an assumption about how many lines a
@@ -2919,6 +2922,10 @@ test("a new aside retires the composer's line, and the panel hands focus back", 
  *  - U15/D15: the settle announcement reads the answer's markup aloud.
  */
 test("the panel names its chord's verb, describes its blocked control, and announces the answer", () => {
+	// Key-shaped source pins must also preserve the English destination cue.
+	setLocale("en");
+	assert.equal(chatCopy("ui.chat.composer.ask_aside"), "Ask the aside");
+	assert.equal(chatCopy("ui.chat.composer.send_message"), "Send message");
 	const panel = read(
 		"src/renderer/src/features/chat/components/aside-panel.tsx",
 	);

@@ -141,6 +141,9 @@ const {
 	DesktopControlError,
 } = module;
 
+/** The payload's REQUEST line, which is its last: see the splice test below. */
+const SEAL_REQUEST_RE = /\nplaceholder$/;
+
 const SESSION_ID = "222222222222";
 // The ids the cross-session bound test buffers; named so `reset` can clear them.
 const SCRATCH_SESSIONS = Array.from({ length: 40 }, (_, i) => `session-${i}`);
@@ -819,6 +822,67 @@ test("a post-seed splice updates the row's text, and a re-seed replays the splic
 	);
 	pane.unregister();
 	remount.unregister();
+});
+
+/*
+ * The payload `render_invocation` writes, as a LITERAL: an expectation recomputed
+ * from the code under test would pin nothing. Only the seal-dropping case below
+ * needs one, and it is the shape that has to survive a splice.
+ */
+const SEAL_PAYLOAD = [
+	"The user invoked the `seal-demo` skill directly. Follow it for this request.",
+	'<skill name="seal-demo" invocation="$seal-demo placeholder">',
+	"---\nname: seal-demo\ndescription: Review a diff\n---\n\n# Seal demo\n</skill>",
+	"placeholder",
+].join("\n");
+
+test("a splice re-derives the seal in both directions", async () => {
+	reset();
+	/*
+	 * QA round 2, Q6 / agent review round 2, MINOR-2. The seal is DERIVED from the
+	 * row's text, so a replacement has to re-derive it either way: a payload that
+	 * stays a payload keeps a seal describing the NEW request (the seam's real
+	 * case), and a replacement that is no longer a payload has to LOSE the key -
+	 * a `skill` left behind paints a header, and a body, that no string on the row
+	 * describes.
+	 *
+	 * ITS OWN DRAFT IDENTITY, and the row is found by ID rather than by position:
+	 * the registry is module state that outlives a store reset, so a draft name
+	 * another test already used can drain ITS retained row into this mount and put
+	 * this row at index 1.
+	 */
+	const key = store
+		.getState()
+		.stageDraft({ kind: "agent", name: "seal-splice" });
+	const pane = await mountTranscript(key);
+	const sealed = () =>
+		pane.state().records.find((record) => record.id === "req-seal-splice");
+	paintPendingSend(key, {
+		id: "req-seal-splice",
+		text: SEAL_PAYLOAD,
+		images: [],
+	});
+	assert.equal(sealed()?.skill?.request, "placeholder");
+	replacePendingSendText(
+		key,
+		"req-seal-splice",
+		// The REQUEST is the payload's last line: a bare `replace` would rewrite the
+		// typed line inside the tag's own attribute, which the writer escapes.
+		SEAL_PAYLOAD.replace(SEAL_REQUEST_RE, "\nthe real request"),
+	);
+	assert.equal(
+		sealed()?.skill?.request,
+		"the real request",
+		"a payload that stays a payload re-derives its request",
+	);
+	replacePendingSendText(key, "req-seal-splice", "plain now");
+	assert.equal(sealed()?.text, "plain now");
+	assert.equal(
+		"skill" in (sealed() ?? {}),
+		false,
+		"the stale seal is dropped, not left describing text that is gone",
+	);
+	pane.unregister();
 });
 
 /* ===================================================================== composer */

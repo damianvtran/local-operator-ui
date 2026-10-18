@@ -131,6 +131,12 @@ export type Arrival = "typing" | "completion" | "caret" | "arrival";
 /** The cell painted in place of each character of a typed secret. */
 export const MASK_CELL = "\u2022";
 
+/*
+ * THE PURE WORDS MODULE, not `ask-answer.ts` (see `approval-words.ts`): this
+ * module is bundled from source by `scripts/soft-breaks.test.mjs` with no alias
+ * map, and `ask-answer.ts` reads `@shared`.
+ */
+import { approvalAnswerValue } from "../approval-words";
 import { SEPARATOR, SEPARATOR_CLASS, pyTrim } from "./slash-token";
 
 /**
@@ -2569,3 +2575,184 @@ const randomSuffix = (length: number, draw: Draw): string => {
  */
 export const isStorableCredentialKey = (key: string): boolean =>
 	key.length <= CREDENTIAL_KEY_MAX_LENGTH && CREDENTIAL_KEY_PATTERN.test(key);
+
+/**
+ * The shortest and longest values {@link looksLikeSecret} will call a credential.
+ *
+ * The floor is above every shipped approval token (`yes`, `approve`, `deny`) and
+ * above an option ordinal, and the ceiling is the point where a single token is
+ * no longer a password or a key but a blob -- pasted data, a base64 document, a
+ * long path. A `secret: true` answer can be longer than this, but a value that
+ * long typed into a chat box is not the shape this guard exists to catch, and
+ * flagging it would put a confirm in front of ordinary prose that happens to end
+ * in a long token.
+ */
+const SECRET_SHAPE_MIN = 8;
+const SECRET_SHAPE_MAX = 256;
+/** A URL, an arming word or a chat grammar: text that is visibly not a secret. */
+const SECRET_SHAPE_PREFIX = /^[/@$#]/;
+const SECRET_SHAPE_URL = /^\w+:\/\//;
+const SECRET_SHAPE_LETTERS = /^[A-Za-z]+$/;
+const SECRET_SHAPE_DIGITS = /^\d+$/;
+/**
+ * How a token's character classes are counted: lowercase, uppercase, digit, and
+ * anything that is not one of those three.
+ */
+const SECRET_SHAPE_CLASSES = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/];
+/** Three of the four classes is the mixed-case-and-symbol shape of a credential. */
+const SECRET_SHAPE_CLASS_FLOOR = 3;
+/**
+ * A long token drawn only from the URL-safe/base64 alphabet.
+ *
+ * The length is what replaces the class count here: a 20-character
+ * `[A-Za-z0-9_\-+/=.]` string with no case or digit mix is still far more likely
+ * to be a key than a sentence (sentences contain spaces, and a whitespace-free
+ * token this long is not prose).
+ */
+const SECRET_SHAPE_LONG = 20;
+const SECRET_SHAPE_LONG_TOKEN = /^[A-Za-z0-9_\-+/=.]+$/;
+
+/*
+ * THE SECOND HALF OF THE RULE: the things a chat box carries that are NOT
+ * credentials, one class per clause (agent review round 1, m2; UX round 1, U5).
+ *
+ * The first version of this rule counted character classes and stopped there,
+ * and the review measured what that catches by mistake: a file name, a path, an
+ * email address, a version, a timestamp, a commit SHA, `localhost:6193`, a
+ * branch and a camelCase identifier all have three classes. Every clause below is
+ * a shape the app's own vocabulary produces or a user pastes to ask about, so
+ * none of them belongs under a "this is your password" question.
+ *
+ * WHAT THE CLAUSES COST, stated because it is the trade this predicate exists to
+ * make: a password shaped like any of them is not confirmed. A hyphenated
+ * passphrase of pure words (`correct-horse-staple`) reads as an identifier and is
+ * missed; so is anything ending in a short dot segment. The notice above the box
+ * is the primary guard -- it says where the secret goes before anything is typed
+ * -- and this rule narrows the confirm to the token shapes that really are
+ * secrets, because a confirm that fires on ordinary text teaches the user to
+ * dismiss it.
+ */
+/**
+ * An address, not a secret: `Ben.Tran@gominerva.com`.
+ *
+ * THE TLD MUST BE ALPHABETIC (agent review round 2, m-A): with any final label
+ * allowed, `P@ss.w0rd!` read as an address (`P` @ `ss.w0rd!`) and a password
+ * walked straight past the exclusion. Requiring letters after the last dot keeps
+ * every real address (`x@gominerva.com`, `a@b.co`) and hands the password back
+ * to the class count.
+ */
+const SECRET_SHAPE_EMAIL = new RegExp(
+	`^[^${SEPARATOR_CLASS}@]+@[^${SEPARATOR_CLASS}@]+\\.[A-Za-z]{2,}$`,
+);
+/** A relative path: `feat/x`, `src/renderer/message-input.tsx`. */
+const SECRET_SHAPE_PATH = /^[\w.-]+(?:\/[\w.-]+)+$/;
+/** A file name ending in an extension: `README_v2.final.md`, `App2.tsx`. */
+const SECRET_SHAPE_EXTENSION = /\.[A-Za-z][A-Za-z0-9]{0,7}$/;
+/** A version: `v1.2.3-beta`, `v0.61.8-rc.1`, `1.2.3`. */
+const SECRET_SHAPE_SEMVER = /^v?\d+(?:\.\d+)+(?:[-+][0-9A-Za-z.-]+)?$/;
+/** A timestamp: `2026-10-17T10:00:00Z`, `2026-10-17`, with or without an offset. */
+const SECRET_SHAPE_ISO_TIME =
+	/^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
+/** A host and port: `localhost:6193`, `127.0.0.1:8080`. */
+const SECRET_SHAPE_HOST_PORT = /^[\w.-]+:\d{2,5}$/;
+/**
+ * A commit SHA -- GIT'S OWN LENGTHS, so a 32-character HEX TOKEN is caught
+ * (agent review round 2, m-A). The clause used to cover `7-40`, which swallowed
+ * every key between them: a 32-character hex token (an MD5, and the length many
+ * API keys use) read as a commit and never reached the class count. Git spells
+ * a short SHA as 7-12 characters and a full one as 40; the gap between them is
+ * not a commit, and it lands on the long-token rule below.
+ */
+const SECRET_SHAPE_HEX = /^(?:[0-9a-f]{7,12}|[0-9a-f]{40})$/i;
+/** A snake_case identifier: `test_credential_composer`. */
+const SECRET_SHAPE_SNAKE = /^[a-z]+(?:_[a-z]+)+$/;
+/** A kebab-case identifier of pure words: `correct-horse-staple`. */
+const SECRET_SHAPE_KEBAB = /^[a-z]+(?:-[a-z]+)+$/;
+/** A camelCase identifier: `getUserById2` (an ALL-CAPS tail like `X2` is not this). */
+const SECRET_SHAPE_CAMEL = /^[a-z][a-z0-9]*(?:[A-Z][a-z0-9]+)+$/;
+/** A hyphenated artifact id carrying a year or a date run: `claude-sonnet-4-5-20250929`. */
+const SECRET_SHAPE_KEBAB_WITH_DATE = /^[a-z0-9]+(?:-[a-z0-9]+)+$/;
+const SECRET_SHAPE_DATE_RUN = /\d{4,}/;
+
+/**
+ * Whether text the user is about to SEND looks like a credential.
+ *
+ * THE HAZARD THIS NAMES. The composer is usable while a queued secret ask waits
+ * (the operator's ask, a-9e0c): the ask is answered in its own panel, and the
+ * chat box is an ordinary chat box meanwhile. That leaves one thing the removed
+ * lock did cover -- a password typed into the chat box and sent as a message,
+ * visible while typed and persisted in the draft store and the transcript -- so
+ * the send is CONFIRMED rather than refused. A refusal would be the lock back,
+ * one keystroke later.
+ *
+ * WHY IT IS A SHAPE RULE AND NOT A LIST. There is no vocabulary of credentials
+ * to check against; the only fact available before the send is what the text
+ * looks like. Every clause below therefore excludes a class the app already
+ * sends on purpose, and the rule is deliberately narrow: a false negative is a
+ * message the user sent deliberately (the panel is one click away and says so),
+ * while a false positive is a confirm over ordinary text, which teaches the
+ * user to dismiss it.
+ *
+ * THE CLAUSES, in order: one separator-free token of 8-256 characters; not an
+ * arming word or a chat grammar (`/credential`, `@file`, `$skill`, `#tag`); not
+ * a URL; not a reply to the approval pair (read through `approvalAnswerValue`, so
+ * `yes`/`approve`/a bare ordinal can never be called a secret here while the
+ * answer door still accepts them -- one definition, not a second list that
+ * drifts); not one of the shapes {@link SECRET_SHAPE_EMAIL} through
+ * {@link SECRET_SHAPE_KEBAB_WITH_DATE} name; not purely letters or purely
+ * digits; and then either three of the four character classes or a long
+ * URL-safe token.
+ *
+ * WHAT IT DOES NOT CATCH, so the docblock does not promise more than the code
+ * does (agent review round 1, m2; round 2, m-A): `password1`, `hunter22` and any
+ * other two-class token shorter than 20 characters; any passphrase with a space;
+ * anything that opens with `/`, `@`, `$` or `#`; and a base64-shaped key that
+ * contains `/` and no `+`/`=` (the AWS secret-key shape, 40 URL-safe
+ * characters). The last one is the path clause's cost rather than a hole this
+ * round opened: `SECRET_SHAPE_PATH` reads its two runs as a relative path, and
+ * any rule separating the two would have to call some real path a secret -- so
+ * it stays a documented miss, like the rest of this list. Two shapes this round
+ * DID recover: a 32-character hex token (see `SECRET_SHAPE_HEX`) and
+ * `P@ss.w0rd!` (see `SECRET_SHAPE_EMAIL`). Those narrow spots are deliberate --
+ * the notice, not this predicate, is the surface that tells the user where a
+ * secret goes.
+ *
+ * WHAT IT STILL CATCHES BY MISTAKE: a random-looking token with three classes
+ * that matches none of the exclusions above. That is why the confirm says how
+ * many characters it is about to submit (UX round 1, U5): the reader can see
+ * that `README.md` is not what they meant before a second Enter puts it in the
+ * field.
+ */
+export const looksLikeSecret = (text: string): boolean => {
+	const value = text.trim();
+	if (value.length < SECRET_SHAPE_MIN || value.length > SECRET_SHAPE_MAX)
+		return false;
+	if (SEPARATOR.test(value)) return false;
+	if (SECRET_SHAPE_PREFIX.test(value)) return false;
+	if (SECRET_SHAPE_URL.test(value)) return false;
+	if (approvalAnswerValue(value) !== null) return false;
+	if (SECRET_SHAPE_EMAIL.test(value)) return false;
+	if (SECRET_SHAPE_PATH.test(value)) return false;
+	if (SECRET_SHAPE_EXTENSION.test(value)) return false;
+	if (SECRET_SHAPE_SEMVER.test(value)) return false;
+	if (SECRET_SHAPE_ISO_TIME.test(value)) return false;
+	if (SECRET_SHAPE_HOST_PORT.test(value)) return false;
+	if (SECRET_SHAPE_HEX.test(value)) return false;
+	if (SECRET_SHAPE_SNAKE.test(value)) return false;
+	if (SECRET_SHAPE_KEBAB.test(value)) return false;
+	if (SECRET_SHAPE_CAMEL.test(value)) return false;
+	if (
+		SECRET_SHAPE_KEBAB_WITH_DATE.test(value) &&
+		SECRET_SHAPE_DATE_RUN.test(value)
+	)
+		return false;
+	if (SECRET_SHAPE_LETTERS.test(value) || SECRET_SHAPE_DIGITS.test(value))
+		return false;
+	const classes = SECRET_SHAPE_CLASSES.filter((pattern) =>
+		pattern.test(value),
+	).length;
+	if (classes >= SECRET_SHAPE_CLASS_FLOOR) return true;
+	return (
+		value.length >= SECRET_SHAPE_LONG && SECRET_SHAPE_LONG_TOKEN.test(value)
+	);
+};

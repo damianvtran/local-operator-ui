@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The tab's List view: a header strip, team sections, one row per project.
  *
@@ -69,7 +70,6 @@ import type {
 	FilterState,
 } from "../project-filters";
 import {
-	PROGRESS_STALE_LABEL,
 	groupByTeam,
 	listRowMeta,
 	liveSessionsLabel,
@@ -148,49 +148,63 @@ type Column = {
 const COLUMNS: Column[] = [
 	{
 		key: "name",
-		label: "Project",
+		get label() {
+			return t("ui.projects.project_list.project");
+		},
 		className: "min-w-0 flex-1",
 		sort: "name",
 		facet: null,
 	},
 	{
 		key: "status",
-		label: "Status",
+		get label() {
+			return t("ui.projects.project_list.status");
+		},
 		className: "w-20 shrink-0",
 		sort: "status",
 		facet: "status",
 	},
 	{
 		key: "target",
-		label: "Target",
+		get label() {
+			return t("ui.projects.project_list.target");
+		},
 		className: "hidden w-32 shrink-0 @[40rem]:block",
 		sort: "target",
 		facet: "target",
 	},
 	{
 		key: "estimate",
-		label: "Estimate",
+		get label() {
+			return t("ui.projects.project_list.estimate");
+		},
 		className: "hidden w-16 shrink-0 @[40rem]:block",
 		sort: "estimate",
 		facet: "estimate",
 	},
 	{
 		key: "milestones",
-		label: "Milestones",
+		get label() {
+			return t("ui.projects.project_list.milestones");
+		},
 		className: "hidden w-20 shrink-0 @[34rem]:block",
 		sort: "milestones",
 		facet: "milestones",
 	},
 	{
 		key: "live",
-		label: "Live",
+		get label() {
+			return t("ui.projects.project_list.live");
+		},
 		className: "hidden w-14 shrink-0 @[34rem]:block",
 		sort: "live",
 		facet: "live",
 	},
 	{
 		key: "progress",
-		label: "Progress",
+		get label() {
+			return t("ui.projects.project_list.progress");
+		},
 		className: "w-40 shrink-0",
 		sort: "progress",
 		facet: "progress",
@@ -207,7 +221,7 @@ const COLUMNS: Column[] = [
  */
 function progressCellText(project: DesktopProject, nowMs: number): string {
 	const age = progressAge(project.progress_updated_at, nowMs);
-	if (!age) return "not reported";
+	if (!age) return t("ui.projects.project_list.not_reported");
 	return progressAgePhrase(age);
 }
 
@@ -318,7 +332,10 @@ export const ProjectList: FC<ProjectListProps> = ({
 			 * flex row inside it lays out as the strip always has (a `table`
 			 * display would wrap the flex boxes in anonymous table rows).
 			 */}
-			<table className="block shrink-0" aria-label="Project columns">
+			<table
+				className="block shrink-0"
+				aria-label={t("ui.projects.project_list.project_columns")}
+			>
 				<thead className="block">
 					<tr
 						/*
@@ -376,7 +393,9 @@ export const ProjectList: FC<ProjectListProps> = ({
 										</PopoverTrigger>
 										<PopoverContent
 											align="start"
-											aria-label={`${column.label} column`}
+											aria-label={t("ui.projects.project_list.label_column", {
+												label: String(column.label),
+											})}
 											className="w-72 p-0"
 										>
 											<FilterPopoverScroll>
@@ -445,7 +464,12 @@ export const ProjectList: FC<ProjectListProps> = ({
 											className={cn(
 												"flex w-full items-center gap-3 px-3 py-2 text-left",
 												"transition-colors duration-fast ease-out-quart",
-												"hover:bg-elevated",
+												/* `row-hover` is the role the glass rules rebind to an ink
+												 * overlay; `elevated` would be an opaque slab on glass. Off
+												 * glass the two are different VALUES from the same ladder
+												 * (the row-hover role, not the elevated step), which makes
+												 * the sweep a deliberate flat change rather than a no-op. */
+												"hover:bg-row-hover",
 											)}
 										>
 											<span
@@ -512,7 +536,7 @@ export const ProjectList: FC<ProjectListProps> = ({
 												</span>
 												{project.progress_stale && (
 													<Badge variant="warning">
-														{PROGRESS_STALE_LABEL}
+														{t("ui.projects.project_model.stale")}
 													</Badge>
 												)}
 											</span>

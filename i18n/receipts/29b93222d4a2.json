@@ -1,0 +1,44 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "29b93222d4a2",
+  "locale": "hi",
+  "status": "passed",
+  "namespaces": {
+    "ui.settings": {
+      "status": "passed",
+      "keys_audited": 39,
+      "sha256": {
+        "hi": "f57512b092edb7d7d199f0577d3e0a79875c8cf0c864bff9af81bf97420d948b",
+        "en": "3395192289d49f4d4a4e64a072fbb394ca37e760f3d13fb2f2a295167ae4f571"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.settings.language.general.last_known",
+          "current": "ऐप की पिछली सिंक हुई भाषा: {locale}",
+          "problem": "पिछली सिंक हुई is understandable but can suggest a previous language choice rather than the most recently synchronized app language. Make the last-sync temporal qualifier explicit.",
+          "suggest": "ऐप की आख़िरी बार सिंक हुई भाषा: {locale}"
+        }
+      ]
+    },
+    "ui.console": {
+      "status": "passed",
+      "keys_audited": 57,
+      "sha256": {
+        "hi": "5a4fe045e2a69f5b0e05c4948b40ae2abf4a453160d859fe78ada0e7e4eb26d3",
+        "en": "4fe88a76de4992e0b890a15c6faafe594ac345e7f62a7deb849b486ec3c14c7e"
+      },
+      "findings": []
+    },
+    "ui.onboarding": {
+      "status": "passed",
+      "keys_audited": 47,
+      "sha256": {
+        "hi": "b0b3475b5b9d2294d2c98b4c21edda51693d7befa8220dbba469daebb98d346c",
+        "en": "b086c241aa70e44cdaab8f02d20e5aaac33d4732df09204481afc4128c08a6ae"
+      },
+      "findings": []
+    }
+  }
+}

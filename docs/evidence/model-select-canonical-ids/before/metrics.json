@@ -1,0 +1,221 @@
+{
+  "summary": {
+    "configReads": {
+      "baseline": "openai/gpt-6.1-sol",
+      "afterSearch": "openai/gpt-6.1-sol",
+      "afterCommit": "openai/synthetic-not-listed"
+    },
+    "configUnchangedAcrossDisplayAndSearch": true,
+    "catalogueInFlightCaptured": false,
+    "frames": [
+      "02-select-open-populated.png",
+      "01-stored-value.png",
+      "03-search-canonical-id.png",
+      "04-search-no-match.png",
+      "05-custom-typed-row.png",
+      "06-custom-committed.png",
+      "07-custom-selected-row.png"
+    ]
+  },
+  "states": [
+    {
+      "label": "02-select-open-populated",
+      "frame": "02-select-open-populated.png",
+      "bytes": 455280,
+      "hash": "#/settings",
+      "innerWidth": 1380,
+      "innerHeight": 900,
+      "devicePixelRatio": 2,
+      "inputValue": "openai/gpt-6.1-sol",
+      "inputDisabled": false,
+      "expanded": "true",
+      "busyField": false,
+      "listboxText": "Other models GPT 6.1 Sol Model listed by OpenAI OpenAI openai/gpt-6.1-sol Custom model",
+      "noMatches": false,
+      "optionCount": 2,
+      "rows": [
+        {
+          "text": "GPT 6.1 SolModel listed by OpenAI",
+          "typed": false,
+          "selected": "false"
+        },
+        {
+          "text": "openai/gpt-6.1-solCustom model",
+          "typed": false,
+          "selected": "true"
+        }
+      ],
+      "catalogueRowVisible": true,
+      "typedRowVisible": false,
+      "customDescriptionVisible": true,
+      "selectedRowText": "openai/gpt-6.1-solCustom model",
+      "sectionHead": "Model settings Configure the default AI model and hosting providers used for generating responses. This will be used for all agents that don't have a specific model or hosting provider configured. You"
+    },
+    {
+      "label": "01-stored-value",
+      "frame": "01-stored-value.png",
+      "bytes": 500928,
+      "hash": "#/settings",
+      "innerWidth": 1380,
+      "innerHeight": 900,
+      "devicePixelRatio": 2,
+      "inputValue": "openai/gpt-6.1-sol",
+      "inputDisabled": false,
+      "expanded": "false",
+      "busyField": false,
+      "listboxText": null,
+      "noMatches": null,
+      "optionCount": 0,
+      "rows": [],
+      "catalogueRowVisible": false,
+      "typedRowVisible": false,
+      "customDescriptionVisible": false,
+      "selectedRowText": null,
+      "sectionHead": "Model settings Configure the default AI model and hosting providers used for generating responses. This will be used for all agents that don't have a specific model or hosting provider configured. You"
+    },
+    {
+      "label": "03-search-canonical-id",
+      "frame": "03-search-canonical-id.png",
+      "bytes": 497676,
+      "hash": "#/settings",
+      "innerWidth": 1380,
+      "innerHeight": 900,
+      "devicePixelRatio": 2,
+      "inputValue": "gpt-6.1-sol",
+      "inputDisabled": false,
+      "expanded": "true",
+      "busyField": false,
+      "listboxText": "OpenAI openai/gpt-6.1-sol Custom model Use \"gpt-6.1-sol\" Not in any listing; saved as typed.",
+      "noMatches": false,
+      "optionCount": 2,
+      "rows": [
+        {
+          "text": "openai/gpt-6.1-solCustom model",
+          "typed": false,
+          "selected": "true"
+        },
+        {
+          "text": "Use \"gpt-6.1-sol\"Not in any listing; saved as typed.",
+          "typed": true,
+          "selected": "false"
+        }
+      ],
+      "catalogueRowVisible": false,
+      "typedRowVisible": true,
+      "customDescriptionVisible": true,
+      "selectedRowText": "openai/gpt-6.1-solCustom model",
+      "sectionHead": "Model settings Configure the default AI model and hosting providers used for generating responses. This will be used for all agents that don't have a specific model or hosting provider configured. You"
+    },
+    {
+      "label": "04-search-no-match",
+      "frame": "04-search-no-match.png",
+      "bytes": 492660,
+      "hash": "#/settings",
+      "innerWidth": 1380,
+      "innerHeight": 900,
+      "devicePixelRatio": 2,
+      "inputValue": "zzz-unlisted-query",
+      "inputDisabled": false,
+      "expanded": "true",
+      "busyField": false,
+      "listboxText": "No matches Use \"zzz-unlisted-query\" Not in any listing; saved as typed.",
+      "noMatches": true,
+      "optionCount": 1,
+      "rows": [
+        {
+          "text": "Use \"zzz-unlisted-query\"Not in any listing; saved as typed.",
+          "typed": true,
+          "selected": "false"
+        }
+      ],
+      "catalogueRowVisible": false,
+      "typedRowVisible": true,
+      "customDescriptionVisible": false,
+      "selectedRowText": null,
+      "sectionHead": "Model settings Configure the default AI model and hosting providers used for generating responses. This will be used for all agents that don't have a specific model or hosting provider configured. You"
+    },
+    {
+      "label": "05-custom-typed-row",
+      "frame": "05-custom-typed-row.png",
+      "bytes": 497764,
+      "hash": "#/settings",
+      "innerWidth": 1380,
+      "innerHeight": 900,
+      "devicePixelRatio": 2,
+      "inputValue": "openai/synthetic-not-listed",
+      "inputDisabled": false,
+      "expanded": "true",
+      "busyField": false,
+      "listboxText": "No matches Use \"openai/synthetic-not-listed\" Not in any listing; saved as typed.",
+      "noMatches": true,
+      "optionCount": 1,
+      "rows": [
+        {
+          "text": "Use \"openai/synthetic-not-listed\"Not in any listing; saved as typed.",
+          "typed": true,
+          "selected": "false"
+        }
+      ],
+      "catalogueRowVisible": false,
+      "typedRowVisible": true,
+      "customDescriptionVisible": false,
+      "selectedRowText": null,
+      "sectionHead": "Model settings Configure the default AI model and hosting providers used for generating responses. This will be used for all agents that don't have a specific model or hosting provider configured. You"
+    },
+    {
+      "label": "06-custom-committed",
+      "frame": "06-custom-committed.png",
+      "bytes": 523992,
+      "hash": "#/settings",
+      "innerWidth": 1380,
+      "innerHeight": 900,
+      "devicePixelRatio": 2,
+      "inputValue": "openai/synthetic-not-listed",
+      "inputDisabled": false,
+      "expanded": "false",
+      "busyField": false,
+      "listboxText": null,
+      "noMatches": null,
+      "optionCount": 0,
+      "rows": [],
+      "catalogueRowVisible": false,
+      "typedRowVisible": false,
+      "customDescriptionVisible": false,
+      "selectedRowText": null,
+      "sectionHead": "Model settings Configure the default AI model and hosting providers used for generating responses. This will be used for all agents that don't have a specific model or hosting provider configured. You"
+    },
+    {
+      "label": "07-custom-selected-row",
+      "frame": "07-custom-selected-row.png",
+      "bytes": 478412,
+      "hash": "#/settings",
+      "innerWidth": 1380,
+      "innerHeight": 900,
+      "devicePixelRatio": 2,
+      "inputValue": "openai/synthetic-not-listed",
+      "inputDisabled": false,
+      "expanded": "true",
+      "busyField": false,
+      "listboxText": "Other models GPT 6.1 Sol Model listed by OpenAI OpenAI openai/synthetic-not-listed Custom model",
+      "noMatches": false,
+      "optionCount": 2,
+      "rows": [
+        {
+          "text": "GPT 6.1 SolModel listed by OpenAI",
+          "typed": false,
+          "selected": "false"
+        },
+        {
+          "text": "openai/synthetic-not-listedCustom model",
+          "typed": false,
+          "selected": "true"
+        }
+      ],
+      "catalogueRowVisible": true,
+      "typedRowVisible": false,
+      "customDescriptionVisible": true,
+      "selectedRowText": "openai/synthetic-not-listedCustom model",
+      "sectionHead": "Model settings Configure the default AI model and hosting providers used for generating responses. This will be used for all agents that don't have a specific model or hosting provider configured. You"
+    }
+  ]
+}

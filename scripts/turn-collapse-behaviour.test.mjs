@@ -169,6 +169,8 @@ const bundle = await build({
 		contents: [
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { __resetTurnCollapseOpen, writeRunExpanded, expandedRunsOf, forgetTurnCollapseOpen, __turnCollapseOpenStats } from "./src/renderer/src/shared/store/turn-collapse-open";',
+			/* The settle latch's store: the per-test reset the latch cases below owe, exactly as the expansions' is owed. */
+			'export { __resetWatchedRuns, watchedRunOf, writeWatchedRun } from "./src/renderer/src/shared/store/turn-collapse-watched";',
 			/* The gap tiers as VALUES, so the report's spacing asserts against the shipped table rather than a retyped class. */
 			'export { GAP } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
 			/* The walk's bound, so the assertion below names the shipped number. */
@@ -231,6 +233,9 @@ const {
 	expandedRunsOf,
 	forgetTurnCollapseOpen,
 	__turnCollapseOpenStats,
+	__resetWatchedRuns,
+	watchedRunOf,
+	writeWatchedRun,
 	GAP,
 	ALIGN_WALK_MAX_PAGES,
 	SETTLE_MS,
@@ -400,13 +405,16 @@ const mount = async (t, records, over = {}) => {
 						transcript: {
 							...transcriptOf(next),
 							hasMore: nextOver.hasMore ?? false,
+							viewEpoch: nextOver.viewEpoch,
 						},
+						openFrame: nextOver.openFrame,
 						gate: nextOver.gate ?? null,
 						waiting: nextOver.waiting ?? false,
+						workingLine: nextOver.workingLine,
 						loadingOlder: false,
 						onLoadOlder: nextOver.onLoadOlder ?? (async () => true),
 						containerRef: { current: mounted.container },
-						isSmallView: false,
+						isSmallView: nextOver.isSmallView ?? false,
 						status: "live",
 						failure: null,
 						awaitingHydration: false,
@@ -479,9 +487,8 @@ test("a completed run arrives collapsed: one bar, the work unmounted, the answer
 		"the call's own reported seconds - the foot's quantity, not a wall span",
 	);
 	assert.match(summary.textContent, ONE_ACTION_RE);
-	assert.equal(
-		rowBox(mounted, "tool:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "tool:1") === null,
 		"the hidden row is unmounted, not merely hidden",
 	);
 	assert.ok(rowBox(mounted, "user:1"), "the opening message stays put");
@@ -514,7 +521,7 @@ test("the press opens the run in place, and puts it back", async (t) => {
 		toolRecord("tool:2", { args: { command: "git status --short" } }),
 		answerRecord("answer:1"),
 	]);
-	assert.equal(rowBox(mounted, "tool:1"), null, "collapsed by default");
+	assert.ok(rowBox(mounted, "tool:1") === null, "collapsed by default");
 	await click(barTrigger(mounted));
 	assert.ok(rowBox(mounted, "tool:1"), "the press reveals the work");
 	assert.ok(rowBox(mounted, "tool:2"), "all of it");
@@ -525,9 +532,8 @@ test("the press opens the run in place, and puts it back", async (t) => {
 		"and the foot stays suppressed while open: the bar is still the summary",
 	);
 	await click(barTrigger(mounted));
-	assert.equal(
-		rowBox(mounted, "tool:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "tool:1") === null,
 		"the second press puts it back",
 	);
 });
@@ -560,17 +566,15 @@ test("the expansion follows the conversation, survives a remount, and resets wit
 	remounted.container.remove();
 
 	const other = await mount(t, records, { frontend: { session_id: "chat-b" } });
-	assert.equal(
-		rowBox(other, "tool:1"),
-		null,
+	assert.ok(
+		rowBox(other, "tool:1") === null,
 		"another conversation arrives collapsed: the store is keyed by conversation",
 	);
 
 	__resetTurnCollapseOpen();
 	const fresh = await mount(t, records, { frontend: { session_id: "chat-a" } });
-	assert.equal(
-		rowBox(fresh, "tool:1"),
-		null,
+	assert.ok(
+		rowBox(fresh, "tool:1") === null,
 		"and a reload (a fresh store) returns to the shipped default",
 	);
 });
@@ -605,9 +609,8 @@ test("no failure tally renders: the bar stands in for the failing run, the row i
 		FAILED_I_RE,
 		"the tally is gone from the bar",
 	);
-	assert.equal(
-		summary.querySelector("[data-failed-clause]"),
-		null,
+	assert.ok(
+		summary.querySelector("[data-failed-clause]") === null,
 		"and with it the failure control",
 	);
 	await click(barTrigger(mounted));
@@ -639,11 +642,11 @@ test("a live run renders as today, and the finished run above it still condenses
 		bar(mounted).getAttribute("data-run-ids"),
 		"user:1 tool:1 answer:1",
 	);
-	assert.equal(
-		rowBox(mounted, "tool:2"),
-		[...mounted.container.querySelectorAll("[data-record-kind]")].find(
-			(node) => node.getAttribute("data-record-id") === "tool:2",
-		),
+	assert.ok(
+		rowBox(mounted, "tool:2") ===
+			[...mounted.container.querySelectorAll("[data-record-kind]")].find(
+				(node) => node.getAttribute("data-record-id") === "tool:2",
+			),
 		"the running turn keeps every row: nothing condenses while it is in flight",
 	);
 	assert.equal(
@@ -671,9 +674,8 @@ test("a run the window edge cut only at its opening row aligns and condenses on 
 		answerRecord("answer:1", { ts: TS + 70_000, settledAt: TS + 70_000 }),
 	];
 	const mounted = await mount(t, records);
-	assert.notEqual(
-		bar(mounted),
-		null,
+	assert.ok(
+		bar(mounted) !== null,
 		"the aligned window holds the opening row, so the run condenses",
 	);
 	assert.doesNotMatch(
@@ -1055,9 +1057,8 @@ test("a settle does not fold the run out from under the reader's focus", async (
 	await act(async () => {
 		trigger.focus();
 	});
-	assert.equal(
-		document.activeElement,
-		trigger,
+	assert.ok(
+		document.activeElement === trigger,
 		"the reader's focus is in the row",
 	);
 	const settled = [
@@ -1065,13 +1066,12 @@ test("a settle does not fold the run out from under the reader's focus", async (
 		answerRecord("answer:1", { ts: TS + 3_000, settledAt: TS + 3_000 }),
 	];
 	await mounted.render(settled, {});
-	assert.equal(
-		bar(mounted),
-		null,
+	assert.ok(
+		bar(mounted) === null,
 		"the settle does not fold the run out from under the focus",
 	);
 	assert.ok(rowBox(mounted, "tool:1"), "the focused row stays mounted");
-	assert.equal(document.activeElement, trigger, "and the focus is intact");
+	assert.ok(document.activeElement === trigger, "and the focus is intact");
 	await act(async () => {
 		trigger.blur();
 	});
@@ -1212,9 +1212,8 @@ test("pinned statements never hide: the notice stays mounted, after the bar", as
 	assert.ok(summary, "the run collapsed");
 	const notice = rowBox(mounted, "notice:1");
 	assert.ok(notice, "the pinned notice is mounted while collapsed");
-	assert.equal(
-		rowBox(mounted, "tool:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "tool:1") === null,
 		"the hidden tool row is not mounted while collapsed",
 	);
 	const order = (a, b) =>
@@ -1309,14 +1308,12 @@ test("in-turn receipts collapse with the work (operator feedback, 2026-09-29)", 
 		answerRecord("answer:1", { settledAt: TS + 70_000 }),
 	]);
 	assert.ok(bar(mounted), "the run collapsed");
-	assert.equal(
-		rowBox(mounted, "peer:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "peer:1") === null,
 		"the peer receipt hides while collapsed",
 	);
-	assert.equal(
-		rowBox(mounted, "wake:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "wake:1") === null,
 		"the wake receipt hides while collapsed",
 	);
 	await click(barTrigger(mounted));
@@ -1343,9 +1340,8 @@ test("a collapsed span that produced pictures keeps them under the bar", async (
 		answerRecord("answer:1", { settledAt: TS + 70_000 }),
 	]);
 	assert.ok(bar(mounted), "the run collapsed");
-	assert.equal(
-		rowBox(mounted, "tool:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "tool:1") === null,
 		"the row that would draw them is unmounted",
 	);
 	const strip = bar(mounted)?.querySelector("[data-fold-media]");
@@ -1374,9 +1370,8 @@ test("a collapsed span that produced pictures keeps them under the bar", async (
 	/* Pressing is what trades the strip for the rows that draw their own media. */
 	await click(barTrigger(mounted));
 	await flushFrames();
-	assert.equal(
-		bar(mounted)?.querySelector("[data-fold-media]"),
-		null,
+	assert.ok(
+		bar(mounted)?.querySelector("[data-fold-media]") === null,
 		"open, the strip goes",
 	);
 	assert.ok(rowBox(mounted, "tool:1"), "the press mounts the row again");
@@ -1396,9 +1391,8 @@ test("a span with no pictures is the bar it was: no strip, no clause", async (t)
 		answerRecord("answer:1", { settledAt: TS + 70_000 }),
 	]);
 	assert.ok(bar(mounted), "the run collapsed");
-	assert.equal(
-		bar(mounted)?.querySelector("[data-fold-media]"),
-		null,
+	assert.ok(
+		bar(mounted)?.querySelector("[data-fold-media]") === null,
 		"no pictures, no strip",
 	);
 	assert.doesNotMatch(
@@ -1504,18 +1498,16 @@ test("pressing the bar's count hands focus to the bar's trigger, not to <body> (
 	await act(async () => {
 		count.focus();
 	});
-	assert.equal(document.activeElement, count, "the reader is on the count");
+	assert.ok(document.activeElement === count, "the reader is on the count");
 	await click(count);
-	assert.equal(
-		bar(mounted)?.querySelector("[data-fold-media]"),
-		null,
+	assert.ok(
+		bar(mounted)?.querySelector("[data-fold-media]") === null,
 		"the press opened the block and the strip - with the control - unmounted",
 	);
 	const trigger = barTrigger(mounted);
 	assert.equal(trigger.getAttribute("aria-expanded"), "true");
-	assert.equal(
-		document.activeElement,
-		trigger,
+	assert.ok(
+		document.activeElement === trigger,
 		"focus continues from where the reader pressed: the bar's trigger, not <body>",
 	);
 });
@@ -1646,10 +1638,16 @@ test("a parked turn does not condense: the gate is half of the liveness", async 
 	 * question holds the stage, so the newest run's unsettledness cannot be
 	 * read from the working line alone — the call site composes it from
 	 * `working !== null || gate !== null`. This is the transcript half of the
-	 * composition: the same parked transcript condenses with no gate pending
-	 * (the pre-fix reading) and does not condense once the gate is set.
+	 * composition, in two halves: nothing condenses while the gate is set, and
+	 * the cleared gate alone does not fold the run either - the flip moves
+	 * nothing for a run the pane has watched (the settle latch, operator report
+	 * 2026-10-16; the assertion that used to sit here pinned the pre-latch
+	 * reading, a bare flip folding the run and the resume unfolding it again).
+	 * A structural end - the stopped notice - still condenses it, which is what
+	 * keeps the latch from meaning "never fold".
 	 */
 	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
 	const parked = [
 		userRecord("user:1"),
 		toolRecord("tool:1", {
@@ -1671,15 +1669,131 @@ test("a parked turn does not condense: the gate is half of the liveness", async 
 		question_total: 1,
 	};
 	const mounted = await mount(t, parked, { gate });
-	assert.equal(
-		bar(mounted),
-		null,
+	assert.ok(
+		bar(mounted) === null,
 		"nothing condenses while the turn waits on the gate",
 	);
 	await mounted.render(parked, { gate: null });
+	/*
+	 * THE GATE-CLEAR BEAT IS THE SAME TRANSIENT CLASS (operator report,
+	 * 2026-10-16). The assertion this replaces pinned a bare liveness flip as
+	 * enough to condense - gate cleared, nothing running - and the resume then
+	 * unfolded the run again: exactly the "condensed a parked turn and
+	 * un-condensed it when the call resumed, with no reader action" pair D3's own
+	 * story describes, minus the parked half. The settle latch (the model's
+	 * `watchedRunId`) refuses that pair for a run the pane has watched being
+	 * written, so the flip now moves nothing and only a STRUCTURAL end folds the
+	 * run - here the stopped notice a gate abandonment actually lands with.
+	 */
+	assert.equal(
+		bar(mounted),
+		null,
+		"the cleared gate alone does not fold a run the pane has watched",
+	);
+	assert.ok(
+		rowBox(mounted, "tool:1"),
+		"and its running row stays on screen through the beat",
+	);
+	await mounted.render(
+		[...parked, noticeRecord("notice:1", { text: "Interrupted" })],
+		{ gate: null },
+	);
 	assert.ok(
 		bar(mounted),
-		"the same transcript with no gate pending condenses — the gate is the difference",
+		"a real end (the stopped notice) still condenses the run",
+	);
+});
+
+test("the settle latch: a steering re-entry cannot move a watched run's hides (operator report, 2026-10-16)", async (t) => {
+	/*
+	 * THE MOUNTED REPRO. The operator: "when I send a steering message, it
+	 * alternates between condensing the messages before it and expanding them".
+	 * The model half is pinned in `turn-collapse-model.test.mjs`; this is the
+	 * shipped transcript, driven through the real render path, standing in for
+	 * the live send the mock backend cannot hold.
+	 *
+	 * THE SEQUENCE: a turn whose first cycle settled (`answer:1`), mid-work
+	 * after it, the reader's steer on screen, more work after it - the shape a
+	 * steer actually lands in (`steering is NOT marked on the durable wire`,
+	 * `transcript-rows.ts`): the steer folds INTO the run while its tail is
+	 * mid-work, and it is visible at its arrival slot (V3, `partitionRun`).
+	 * Then the liveness flag dips - the runtime's `frontend.streaming` reads
+	 * false for a beat at a tool-segment boundary (`scripts/stt-dictation-proof.mjs`
+	 * sampled exactly that through a real steer send) - and comes back, twice.
+	 * No reader action, no row change: the plan must not move, and the same
+	 * sequence without the latch is what the fix removes (the dip used to bar
+	 * t2/t3 and the re-entry handed them back).
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const frontend = { session_id: "chat-steer" };
+	const steered = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+		answerRecord("answer:1", {
+			ts: TS + 3_000,
+			settledAt: TS + 3_000,
+			stopReason: "stop",
+		}),
+		toolRecord("tool:2", { ts: TS + 4_000, durationS: 4 }),
+		userRecord("user:2", { ts: TS + 5_000, text: "also check the ledger" }),
+		toolRecord("tool:3", { ts: TS + 6_000, durationS: 5 }),
+	];
+	const mounted = await mount(t, steered, { frontend, waiting: true });
+	const barIds = () =>
+		barsOf(mounted).map((element) => element.getAttribute("data-record-id"));
+	assert.deepEqual(
+		barIds(),
+		["tool:1"],
+		"the settled span wears its bar; the work around the steer draws in place",
+	);
+	assert.ok(
+		rowBox(mounted, "tool:2"),
+		"the work before the steer is on screen",
+	);
+	assert.ok(rowBox(mounted, "user:2"), "the steer itself is on screen");
+	assert.ok(rowBox(mounted, "tool:3"), "and the work after it");
+	/*
+	 * The latch's own write, pinned where it is owed: the live pass armed the
+	 * latch for THIS conversation, naming the watched run by its opening row id.
+	 */
+	assert.equal(
+		watchedRunOf("chat-steer"),
+		"user:1",
+		"the live pass latched the watched run, by its opening row id",
+	);
+	// THE DIP, THE RE-ENTRY, A SECOND DIP: one plan throughout.
+	await mounted.render(steered, { frontend, waiting: false });
+	assert.deepEqual(
+		barIds(),
+		["tool:1"],
+		"the dip adds no bar: nothing the reader was watching folds",
+	);
+	assert.ok(rowBox(mounted, "tool:2"), "t2 stays mounted through the dip");
+	assert.ok(rowBox(mounted, "tool:3"), "t3 stays mounted through the dip");
+	await mounted.render(steered, { frontend, waiting: true });
+	await mounted.render(steered, { frontend, waiting: false });
+	assert.deepEqual(barIds(), ["tool:1"], "a second dip reaches the same plan");
+	assert.ok(rowBox(mounted, "tool:2"), "and nothing was handed back or taken");
+	// A STRUCTURAL END STILL FOLDS: the turn's answer lands.
+	const delivered = [
+		...steered,
+		answerRecord("answer:2", {
+			ts: TS + 8_000,
+			settledAt: TS + 8_000,
+			stopReason: "stop",
+		}),
+	];
+	await mounted.render(delivered, { frontend, waiting: false });
+	assert.deepEqual(
+		barIds(),
+		["tool:1", "tool:2", "tool:3"],
+		"the answer - a row the run itself states - condenses the work it settles",
+	);
+	assert.equal(
+		rowBox(mounted, "tool:2"),
+		null,
+		"and the rows move behind their bars once",
 	);
 });
 
@@ -1699,9 +1813,8 @@ test("the trigger is focusable; the only press inside it toggles", async (t) => 
 	]);
 	const trigger = barTrigger(mounted);
 	trigger.focus();
-	assert.equal(
-		document.activeElement,
-		trigger,
+	assert.ok(
+		document.activeElement === trigger,
 		"the bar's trigger takes keyboard focus",
 	);
 	const controlsInside = [
@@ -1754,8 +1867,8 @@ test("hiding cross-session rows: the receipt and the send row leave, the bar's i
 
 	// On: the receipt and the send row are not mounted; the ordinary call is
 	// only behind the bar (collapsed), not gone.
-	assert.equal(rowBox(mounted, "peer:1"), null, "the receipt is hidden");
-	assert.equal(rowBox(mounted, "tool:2"), null, "the send row is hidden");
+	assert.ok(rowBox(mounted, "peer:1") === null, "the receipt is hidden");
+	assert.ok(rowBox(mounted, "tool:2") === null, "the send row is hidden");
 	assert.equal(
 		bar(mounted)?.getAttribute("data-run-ids"),
 		"user:1 tool:1 answer:1",
@@ -1765,8 +1878,8 @@ test("hiding cross-session rows: the receipt and the send row leave, the bar's i
 	// sits above the collapse, so no interaction can reveal it.
 	await click(barTrigger(mounted));
 	assert.ok(rowBox(mounted, "tool:1"), "the ordinary call is revealed");
-	assert.equal(rowBox(mounted, "tool:2"), null, "the send row stays gone");
-	assert.equal(rowBox(mounted, "peer:1"), null, "the receipt stays gone");
+	assert.ok(rowBox(mounted, "tool:2") === null, "the send row stays gone");
+	assert.ok(rowBox(mounted, "peer:1") === null, "the receipt stays gone");
 
 	// Off, under the same mount: both come back where they belong. The drain is
 	// two ticks rather than one: the query's notification is applied on a TASK
@@ -1924,9 +2037,8 @@ test("a pinned row between two hidden spans stays BETWEEN their bars, before and
 		"opening a bar reorders nothing that stays visible",
 	);
 	assert.ok(rowBox(mounted, "tool:2"), "the second span's row is now mounted");
-	assert.equal(
-		rowBox(mounted, "tool:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "tool:1") === null,
 		"the first span is still condensed",
 	);
 	assert.equal(
@@ -2432,14 +2544,12 @@ test("PR-4: a wake re-opening a settled turn keeps its bar - the same element, s
 	];
 	for (const [i, records] of states.entries()) {
 		await mounted.render(records, { waiting: true });
-		assert.equal(
-			bar(mounted),
-			first,
+		assert.ok(
+			bar(mounted) === first,
 			`state ${i}: the bar is the same element`,
 		);
-		assert.equal(
-			rowBox(mounted, "tool:1"),
-			null,
+		assert.ok(
+			rowBox(mounted, "tool:1") === null,
 			`state ${i}: its work is still unmounted`,
 		);
 		assert.equal(
@@ -2475,7 +2585,7 @@ test("PR-4: the cycle settling adds ONE bar at the tail, announces once, and mov
 	];
 	await mounted.render(settled, { waiting: false });
 	assert.equal(barsOf(mounted).length, 2, "the settled cycle is now a bar");
-	assert.equal(barsOf(mounted)[0], first, "the first bar is the same element");
+	assert.ok(barsOf(mounted)[0] === first, "the first bar is the same element");
 	assert.equal(
 		barsOf(mounted)[1].getAttribute("data-record-id"),
 		"wake:1",
@@ -2491,6 +2601,159 @@ test("PR-4: the cycle settling adds ONE bar at the tail, announces once, and mov
 	assert.equal(barsOf(mounted).length, 2);
 });
 
+test("the settle latch: a dip in a watched episode's cycle moves nothing, and the settle still adds its one bar and sentence", async (t) => {
+	/*
+	 * THE F2 DIP, MOUNTED (convergence round, 2026-10-17; the model half is
+	 * `turn-collapse-model.test.mjs`'s dip-invariance case). Mid-cycle the
+	 * runtime's `frontend.streaming` dips - measured through a real steer send,
+	 * `scripts/stt-dictation-proof.mjs` - and the one-bar gate used to pause on
+	 * the dip: a second bar flashed in and the re-entry took it back. The run is
+	 * one the pane has WATCHED (the latch arms on the live pass below), so the
+	 * dip must reach the plan the reader already has; the settle - a row that
+	 * lands, not a flag that flaps - still adds the bar and its one sentence.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const frontend = { session_id: "chat-f2-dip" };
+	const running = [
+		...settledTurn,
+		...wakeCycle([toolRecord("tool:2", { ts: TS + 11_000, durationS: 4 })]),
+	];
+	const mounted = await mount(t, running, { frontend, waiting: true });
+	const first = bar(mounted);
+	assert.equal(barsOf(mounted).length, 1, "one bar while the cycle runs");
+	assert.equal(
+		watchedRunOf("chat-f2-dip"),
+		"user:1",
+		"the live pass armed the latch for this conversation, by its opening row",
+	);
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	// THE DIP: one bar, the same element, the episode's row in place, silence.
+	await mounted.render(running, { frontend, waiting: false });
+	assert.equal(barsOf(mounted).length, 1, "the dip adds no bar");
+	assert.ok(bar(mounted) === first, "the standing bar is the same element");
+	assert.ok(rowBox(mounted, "tool:2"), "the episode's row stays in place");
+	assert.equal(region(), "", "nothing is announced while the cycle runs");
+	// THE RE-ENTRY reaches the same plan again.
+	await mounted.render(running, { frontend, waiting: true });
+	assert.equal(barsOf(mounted).length, 1, "the re-entry reaches the same bar");
+	assert.ok(bar(mounted) === first);
+	// THE SETTLE: the row that ends the cycle adds the second bar, and the one
+	// sentence lands HERE, not at a dip.
+	const settled = [
+		...running,
+		answerRecord("answer:2", {
+			ts: TS + 15_000,
+			settledAt: TS + 15_000,
+			stopReason: "stop",
+		}),
+	];
+	await mounted.render(settled, { frontend, waiting: false });
+	assert.equal(barsOf(mounted).length, 2, "the settled cycle is now a bar");
+	assert.ok(
+		barsOf(mounted)[0] === first,
+		"the standing bar is still the same element",
+	);
+	assert.equal(
+		barsOf(mounted)[1].getAttribute("data-record-id"),
+		"wake:1",
+		"the new bar sits at the tail, in the cycle's own first slot",
+	);
+	assert.equal(
+		region(),
+		"Wake: took 4s, 1 action.",
+		"exactly one sentence, and it arrives at the settle",
+	);
+});
+
+test("the settle latch: a dip cannot speak a watched episode's sentence early - the sentence waits for the close", async (t) => {
+	/*
+	 * THE ANNOUNCE SEAM OF THE DIP (convergence round, 2026-10-17; the F2 case
+	 * covers the gate). The announce effect read the pane's RAW quiet flag beside
+	 * the episode's own settledness; on a dip the pane reads not-live for a beat,
+	 * so an episode STILL BEING WRITTEN passed as settled: the sentence landed at
+	 * the dip, its key was recorded, and the real settle went silent. The watched
+	 * run's half now anchors like everything else in `planRun`: silence follows
+	 * `internal.unsettled`, and only a landed close flips it.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const frontend = { session_id: "chat-f1-dip" };
+	const rows = [
+		userRecord("f1d-u"),
+		answerRecord("f1d-a", {
+			ts: TS + 2_000,
+			settledAt: TS + 2_000,
+			stopReason: "stop",
+		}),
+		peerRecord("f1d-p", { ts: TS + 3_000 }),
+		toolRecord("f1d-t", { ts: TS + 4_000, durationS: 4 }),
+	];
+	const mounted = await mount(t, rows, { frontend, waiting: true });
+	const first = bar(mounted);
+	assert.equal(barsOf(mounted).length, 1, "the live episode is the one bar");
+	assert.equal(
+		watchedRunOf("chat-f1-dip"),
+		"f1d-u",
+		"the live pass armed the latch for this conversation",
+	);
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	assert.equal(region(), "", "nothing is announced while the cycle runs");
+	assert.equal(
+		first.getAttribute("data-segment-active"),
+		"true",
+		"while live it reads active",
+	);
+	// THE DIP: silent, same bar, same element, still active.
+	await mounted.render(rows, { frontend, waiting: false });
+	assert.equal(
+		region(),
+		"",
+		"a dip does not speak the sentence early - no close has landed",
+	);
+	assert.equal(barsOf(mounted).length, 1, "the dip adds no bar");
+	assert.ok(bar(mounted) === first, "the bar is the same element");
+	assert.equal(
+		bar(mounted).getAttribute("data-segment-active"),
+		"true",
+		"and it still reads active: the cycle still runs",
+	);
+	// THE RE-ENTRY: silent again.
+	await mounted.render(rows, { frontend, waiting: true });
+	assert.equal(region(), "", "nor the re-entry");
+	// THE CLOSE LANDS: the one sentence, here.
+	const settled = [
+		...rows,
+		answerRecord("f1d-a2", {
+			ts: TS + 15_000,
+			settledAt: TS + 15_000,
+			stopReason: "stop",
+		}),
+	];
+	await mounted.render(settled, { frontend, waiting: false });
+	assert.equal(
+		region(),
+		"Peer message: took 4s, 1 action.",
+		"the sentence lands once, at the close",
+	);
+	// AND NOT AGAIN: a further pass holds the same one sentence.
+	await mounted.render(settled, { frontend, waiting: false });
+	assert.equal(
+		region(),
+		"Peer message: took 4s, 1 action.",
+		"the sentence does not repeat",
+	);
+	assert.equal(
+		barsOf(mounted).length,
+		1,
+		"the settled episode keeps its one bar",
+	);
+});
+
 test("PR-4: a bar the reader opened stays that bar, and open, across the wake and the settle", async (t) => {
 	__resetTurnCollapseOpen();
 	const mounted = await mount(t, settledTurn);
@@ -2502,7 +2765,7 @@ test("PR-4: a bar the reader opened stays that bar, and open, across the wake an
 		...wakeCycle([toolRecord("tool:2", { ts: TS + 11_000, durationS: 4 })]),
 	];
 	await mounted.render(running, { waiting: true });
-	assert.equal(bar(mounted), opened, "the wake keeps the SAME bar element");
+	assert.ok(bar(mounted) === opened, "the wake keeps the SAME bar element");
 	assert.ok(rowBox(mounted, "tool:1"), "and it is still the one that is open");
 	await mounted.render(
 		[
@@ -2517,7 +2780,7 @@ test("PR-4: a bar the reader opened stays that bar, and open, across the wake an
 	);
 	const bars = barsOf(mounted);
 	assert.equal(bars.length, 2);
-	assert.equal(bars[0], opened, "the settle keeps it too");
+	assert.ok(bars[0] === opened, "the settle keeps it too");
 	assert.equal(
 		bars[0].querySelector("button").getAttribute("aria-expanded"),
 		"true",
@@ -2531,7 +2794,7 @@ test("PR-4: a bar the reader opened stays that bar, and open, across the wake an
 		rowBox(mounted, "tool:1"),
 		"the first span's row is still on screen",
 	);
-	assert.equal(rowBox(mounted, "tool:2"), null, "the new span is condensed");
+	assert.ok(rowBox(mounted, "tool:2") === null, "the new span is condensed");
 });
 
 test("PR-4: a stale expansion key of an older shape renders collapsed and does not throw", async (t) => {
@@ -2550,7 +2813,7 @@ test("PR-4: a stale expansion key of an older shape renders collapsed and does n
 		"false",
 		"a key that names nothing opens nothing",
 	);
-	assert.equal(rowBox(mounted, "tool:1"), null);
+	assert.ok(rowBox(mounted, "tool:1") === null);
 });
 
 /* -------- reconciliation of #744 and #745: a bar keeps its identity (PR-4/PR-5) -------- */
@@ -2615,9 +2878,8 @@ test("RECONCILE (a): the bar the reader pressed is the SAME element - not a remo
 	for (const [i, records] of wakeStates.entries()) {
 		await mounted.render(records, { frontend, waiting: i < 2 });
 		await flushFrames();
-		assert.equal(
-			pressedBar(mounted),
-			pressed,
+		assert.ok(
+			pressedBar(mounted) === pressed,
 			`state ${i}: the pressed bar is the element that was mounted (no remount)`,
 		);
 		assert.equal(
@@ -2634,7 +2896,7 @@ test("RECONCILE (a): the bar the reader pressed is the SAME element - not a remo
 		"false",
 		"the stored key names the FIRST bar only; the wake's bar is not opened by it",
 	);
-	assert.equal(rowBox(mounted, "tool:3"), null, "the wake's work is condensed");
+	assert.ok(rowBox(mounted, "tool:3") === null, "the wake's work is condensed");
 });
 
 test("RECONCILE (a'): a later answer with no wake row between leaves the pressed bar mounted and open, and the later work is its own bar", async (t) => {
@@ -2659,18 +2921,16 @@ test("RECONCILE (a'): a later answer with no wake row between leaves the pressed
 		{ frontend },
 	);
 	await flushFrames();
-	assert.equal(
-		pressedBar(mounted),
-		pressed,
+	assert.ok(
+		pressedBar(mounted) === pressed,
 		"the pressed bar was not remounted",
 	);
 	assert.ok(
 		rowBox(mounted, "tool:1") && rowBox(mounted, "tool:2"),
 		"still open",
 	);
-	assert.equal(
-		rowBox(mounted, "tool:3"),
-		null,
+	assert.ok(
+		rowBox(mounted, "tool:3") === null,
 		"the later work is its own, condensed bar",
 	);
 	assert.equal(barsOf(mounted).length, 2);
@@ -2692,9 +2952,8 @@ test("RECONCILE (b)+(a): a head-cut bar the reader opened stays open and mounted
 	const headed = [userRecord("user:0", { ts: TS + 100 }), ...cut];
 	await mounted.render(headed, { frontend });
 	await flushFrames();
-	assert.equal(
-		pressedBar(mounted),
-		pressed,
+	assert.ok(
+		pressedBar(mounted) === pressed,
 		"the head landing did not remount it",
 	);
 	assert.ok(rowBox(mounted, "tool:0"), "and it is still open");
@@ -2707,7 +2966,7 @@ test("RECONCILE (b)+(a): a head-cut bar the reader opened stays open and mounted
 		{ frontend },
 	);
 	await flushFrames();
-	assert.equal(pressedBar(mounted), pressed, "nor did the later answer");
+	assert.ok(pressedBar(mounted) === pressed, "nor did the later answer");
 	assert.ok(
 		rowBox(mounted, "tool:0") && rowBox(mounted, "tool:1"),
 		"still open",
@@ -2754,12 +3013,12 @@ test("RECONCILE (d): keys of an older shape, a gone run and a neighbour's row re
 			"no stale key opens either bar",
 		);
 	}
-	assert.equal(rowBox(mounted, "tool:1"), null);
-	assert.equal(rowBox(mounted, "tool:3"), null);
+	assert.ok(rowBox(mounted, "tool:1") === null);
+	assert.ok(rowBox(mounted, "tool:3") === null);
 	await click(barTrigger(mounted));
 	await flushFrames();
 	assert.ok(rowBox(mounted, "tool:1"), "the reader can still open one");
-	assert.equal(rowBox(mounted, "tool:3"), null, "and only that one");
+	assert.ok(rowBox(mounted, "tool:3") === null, "and only that one");
 });
 
 test("PR-4: a turn closed by a terminal marker stays condensed when a wake re-opens it (no assistant close to settle on)", async (t) => {
@@ -2781,8 +3040,8 @@ test("PR-4: a turn closed by a terminal marker stays condensed when a wake re-op
 		],
 		{ waiting: true },
 	);
-	assert.equal(bar(mounted), first, "the same bar element");
-	assert.equal(rowBox(mounted, "tool:1"), null, "still condensed");
+	assert.ok(bar(mounted) === first, "the same bar element");
+	assert.ok(rowBox(mounted, "tool:1") === null, "still condensed");
 	assert.ok(
 		rowBox(mounted, "tool:3"),
 		"only the cycle being written draws in place",
@@ -2803,7 +3062,7 @@ test("PR-4: a lead-in (stopReason toolUse) is not a settle: nothing condenses wh
 		}),
 	];
 	const mounted = await mount(t, turn, { waiting: true });
-	assert.equal(bar(mounted), null, "no bar around a lead-in");
+	assert.ok(bar(mounted) === null, "no bar around a lead-in");
 	assert.ok(rowBox(mounted, "tool:1"), "the work is drawn in place");
 	await mounted.render(
 		[
@@ -2812,7 +3071,7 @@ test("PR-4: a lead-in (stopReason toolUse) is not a settle: nothing condenses wh
 		],
 		{ waiting: true },
 	);
-	assert.equal(bar(mounted), null, "and the call's arrival changes nothing");
+	assert.ok(bar(mounted) === null, "and the call's arrival changes nothing");
 	assert.ok(rowBox(mounted, "tool:1"), "the work never flipped");
 });
 
@@ -2917,9 +3176,8 @@ test("the quiet close: the bar stands in, the row never paints, and the copy is 
 		/Took/,
 		"no fabricated duration for a head-cut span",
 	);
-	assert.equal(
-		rowBox(mounted, "quiet:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "quiet:1") === null,
 		"the quiet row paints nothing (hidden at paint, not by the bar)",
 	);
 	assert.doesNotMatch(
@@ -2931,9 +3189,8 @@ test("the quiet close: the bar stands in, the row never paints, and the copy is 
 	await flushFrames();
 	assert.ok(rowBox(mounted, "peer:1"), "the press brings the receipt back");
 	assert.ok(rowBox(mounted, "tool:1"), "and the work tool");
-	assert.equal(
-		rowBox(mounted, "quiet:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "quiet:1") === null,
 		"the quiet row is STILL not painted when the bar is open",
 	);
 });
@@ -2963,18 +3220,16 @@ test("a run of receipts bars as ONE group line — family, count, receipt span �
 		/action|Took/,
 		"a group bar speaks in receipts, not in the action clauses",
 	);
-	assert.equal(
-		rowBox(mounted, "peer:0"),
-		null,
+	assert.ok(
+		rowBox(mounted, "peer:0") === null,
 		"collapsed: no receipt is mounted",
 	);
 	await click(barTrigger(mounted));
 	await flushFrames();
 	assert.ok(rowBox(mounted, "peer:0"), "the press mounts the first receipt");
 	assert.ok(rowBox(mounted, "peer:11"), "and the last");
-	assert.equal(
-		rowBox(mounted, "quiet:0"),
-		null,
+	assert.ok(
+		rowBox(mounted, "quiet:0") === null,
 		"the quiet rows still paint nothing inside the open bar",
 	);
 });
@@ -3001,7 +3256,7 @@ test("a receipt appended to the open group's tail updates the count without remo
 	await mounted.render([...base, peerRecord("peer:3"), quietRecord("quiet:3")]);
 	await flushFrames();
 	const after = bar(mounted);
-	assert.equal(after, before, "the very same element, updated in place");
+	assert.ok(after === before, "the very same element, updated in place");
 	assert.notEqual(after.textContent, beforeText, "the copy updated");
 	assert.match(after.textContent, /3/, "three receipts");
 	assert.equal(
@@ -3037,9 +3292,8 @@ test("F3: the receipt that forms the group neither re-collapses the bar nor re-a
 	const announced = region();
 	await mounted.render([...settled, peerRecord("peer:2", { ts: TS + 4_000 })]);
 	await flushFrames();
-	assert.equal(
-		bar(mounted),
-		summary,
+	assert.ok(
+		bar(mounted) === summary,
 		"the very same bar element, not a remount",
 	);
 	assert.ok(
@@ -3055,5 +3309,598 @@ test("F3: the receipt that forms the group neither re-collapses the bar nor re-a
 		bar(mounted).getAttribute("data-segment-ids"),
 		"peer:1 tool:1 quiet:1 peer:2",
 		"the bar now hides the grown span, row for row",
+	);
+});
+
+const activeSourceRows = () => [
+	userRecord("active-u"),
+	answerRecord("active-final", { stopReason: "stop" }),
+	peerRecord("active-p"),
+	toolRecord("active-t", {
+		toolName: "eval",
+		phase: "running",
+		output: "Full original synthetic result",
+	}),
+];
+for (const isSmallView of [false, true])
+	test(`active receipt disclosure preserves append, actual phase clock, and every material answer (${isSmallView ? "small" : "wide"})`, async (t) => {
+		__resetTurnCollapseOpen();
+		const frontend = { session_id: `synthetic-active-${isSmallView}` };
+		const phase = {
+			phase: "thinking",
+			activity: "thinking",
+			startedAt: Date.now() - 8000,
+			clock: true,
+		};
+		const options = {
+			frontend,
+			waiting: true,
+			workingLine: phase,
+			isSmallView,
+		};
+		const rows = activeSourceRows();
+		const mounted = await mount(t, rows, options);
+		const first = bar(mounted);
+		assert.ok(first);
+		assert.ok(rowBox(mounted, "active-p") === null);
+		assert.ok(rowBox(mounted, "active-final"));
+		assert.equal(first.getAttribute("data-segment-active"), "true");
+		assert.equal(first.getAttribute("data-segment-complete"), null);
+		assert.doesNotMatch(first.textContent, /Took/);
+		assert.match(first.textContent, /thinking/);
+		assert.equal(
+			mounted.container.querySelectorAll("[data-lo-working-line]").length,
+			1,
+		);
+		await click(first.querySelector("button"));
+		assert.ok(rowBox(mounted, "active-p"));
+		assert.ok(rowBox(mounted, "active-t"));
+		await mounted.render([...rows, peerRecord("active-p2")], options);
+		assert.ok(bar(mounted) === first);
+		assert.equal(
+			first.querySelector("button").getAttribute("aria-expanded"),
+			"true",
+		);
+		assert.ok(rowBox(mounted, "active-p2"));
+		const stopped = [
+			...rows.map((r) => (r.id === "active-t" ? { ...r, phase: "done" } : r)),
+			peerRecord("active-p2"),
+			quietRecord("active-q"),
+		];
+		await mounted.render(stopped, {
+			...options,
+			waiting: false,
+			workingLine: null,
+		});
+		assert.ok(bar(mounted) === first);
+		assert.equal(
+			first.querySelector("button").getAttribute("aria-expanded"),
+			"true",
+		);
+		await mounted.render(
+			[...stopped, answerRecord("active-material", { stopReason: "stop" })],
+			{ ...options, waiting: false, workingLine: null },
+		);
+		assert.ok(bar(mounted) === first);
+		assert.ok(rowBox(mounted, "active-final"));
+		assert.ok(rowBox(mounted, "active-material"));
+	});
+
+test("active summary keeps legacy unanchored clock at footer; known current phase survives a head cut", async (t) => {
+	__resetTurnCollapseOpen();
+	const rows = activeSourceRows();
+	const mounted = await mount(t, rows, {
+		waiting: true,
+		workingLine: { phase: "thinking", activity: "thinking", clock: true },
+	});
+	assert.ok(bar(mounted).querySelector("[data-lo-working-line]") === null);
+	assert.ok(
+		mounted.container.querySelector(
+			"[data-lo-transcript-foot] [data-lo-working-line]",
+		),
+	);
+	const since = Date.now() - 8000;
+	/*
+	 * `hasMore: true` is the FIXTURE's honest statement of what a head cut is: an
+	 * older page exists and has not landed, so the dropped answer is off-page, not
+	 * absent. Without it `rows.slice(2)` is a conversation that genuinely OPENS
+	 * with a receipt, which paints loose (QA Q1/Q2) - and the original fixture,
+	 * which never said older rows existed, failed with `bar(mounted)` null for
+	 * exactly that reason. The expectations below are unchanged.
+	 */
+	await mounted.render(rows.slice(2), {
+		waiting: true,
+		hasMore: true,
+		workingLine: {
+			phase: "thinking",
+			activity: "thinking",
+			clock: true,
+			startedAt: since,
+		},
+	});
+	assert.ok(bar(mounted).querySelector("[data-lo-working-line]"));
+	assert.equal(
+		mounted.container.querySelectorAll("[data-lo-working-line]").length,
+		1,
+	);
+	assert.doesNotMatch(bar(mounted).textContent, /Took/);
+});
+
+for (const frontend of [null, { session_id: "synthetic-main-transition" }]) {
+	test(`closed future-token disclosure keeps visible anchors and announces once (${frontend ? "main" : "embedded"})`, async (t) => {
+		__resetTurnCollapseOpen();
+		const rows = activeSourceRows();
+		const mounted = await mount(t, rows, { waiting: true, frontend });
+		const output = mounted.container.querySelector(
+			"[data-condense-announcement]",
+		);
+		assert.ok(output !== null);
+		const utterances = [];
+		const observer = new window.MutationObserver(() => {
+			if (output.textContent) utterances.push(output.textContent);
+		});
+		observer.observe(output, {
+			childList: true,
+			characterData: true,
+			subtree: true,
+		});
+		t.after(() => observer.disconnect());
+		const updates = [
+			{ text: "", streaming: true },
+			{ text: "Actual material progress", streaming: true },
+			{ text: "Actual material answer", streaming: false, stopReason: "stop" },
+		];
+		for (const shape of updates) {
+			await mounted.render([...rows, answerRecord("future-answer", shape)], {
+				waiting: true,
+				frontend,
+			});
+			/* R3 restores default CLOSED keys to seg:<visible-final>. Unlike a
+			 * reader-open disclosure, this closed bar has no qg ownership to retain.
+			 * Pin visible-final exclusion and exact children, not its DOM node. */
+			const current = bar(mounted);
+			assert.ok(current !== null);
+			assert.equal(
+				current.querySelector("button").getAttribute("aria-expanded"),
+				"false",
+			);
+			assert.deepEqual(
+				(current.getAttribute("data-segment-ids") ?? "").split(" "),
+				["active-p", "active-t"],
+			);
+			assert.ok(
+				rowBox(mounted, "active-final") !== null,
+				"prior final remains visible",
+			);
+			if (shape.text)
+				assert.ok(
+					rowBox(mounted, "future-answer") !== null,
+					"real first token remains visible",
+				);
+			if (shape.streaming)
+				assert.equal(utterances.length, 0, "no announcement while thinking");
+		}
+		assert.equal(utterances.length, 1, "exactly one settlement sentence");
+		await mounted.render(
+			[...rows, answerRecord("future-answer", updates.at(-1))],
+			{ waiting: false, frontend },
+		);
+		assert.equal(
+			utterances.length,
+			1,
+			"same settled episode does not announce twice",
+		);
+	});
+
+	test(`OPEN future-token disclosure retains its element and focused child (${frontend ? "main" : "embedded"})`, async (t) => {
+		__resetTurnCollapseOpen();
+		const rows = activeSourceRows();
+		const mounted = await mount(t, rows, { waiting: true, frontend });
+		await click(barTrigger(mounted));
+		const opened = bar(mounted);
+		const child = rowBox(mounted, "active-t")?.querySelector("button");
+		assert.ok(
+			child != null,
+			"the real expanded child exposes a focusable control",
+		);
+		await act(async () => child.focus());
+		assert.ok(document.activeElement === child);
+		for (const shape of [
+			{ text: "", streaming: true },
+			{ text: "Actual material progress", streaming: true },
+			{ text: "Actual material answer", streaming: false, stopReason: "stop" },
+		]) {
+			await mounted.render([...rows, answerRecord("future-answer", shape)], {
+				waiting: true,
+				frontend,
+			});
+			assert.ok(
+				bar(mounted) === opened,
+				"proved overlap retains the OPEN qg component",
+			);
+			assert.equal(barTrigger(mounted).getAttribute("aria-expanded"), "true");
+			assert.ok(
+				document.activeElement === child,
+				"focused child survives the visible boundary",
+			);
+			assert.ok(rowBox(mounted, "active-final") !== null);
+			if (shape.text) assert.ok(rowBox(mounted, "future-answer") !== null);
+		}
+	});
+}
+
+/* V2 rendered SOURCE controls; JSX/focus still requires actual later execution. */
+test("v2 expanded disclosure counts exactly its own receipt and spawn, never wire totals", async (t) => {
+	const records = [
+		peerRecord("count-peer"),
+		toolRecord("count-tool", { toolName: "task", durationS: 2.6 }),
+		answerRecord("count-final", { stopReason: "stop" }),
+	];
+	const fixture = (n) => ({
+		runs: new Map([
+			[
+				"count-final",
+				{
+					actions: n,
+					workedSeconds: n === 113319 ? 50340 : 100680,
+					failed: 0,
+					complete: true,
+					openingUserId: "offpage",
+					closingAnswerId: "count-final",
+					crossSessionActions: 0,
+					crossSessionWorkedSeconds: 0,
+				},
+			],
+		]),
+		page: { ids: new Set(records.map((r) => r.id)) },
+	});
+	const mounted = await mount(t, records, { openFrame: fixture(113319) });
+	// This file's real helpers: ONE bar per fixture, so `bar`/`barTrigger`.
+	const theBar = bar(mounted);
+	assert.ok(theBar);
+	const button = barTrigger(mounted);
+	assert.match(button.textContent, /1\+? action/);
+	assert.doesNotMatch(button.textContent, /113319|13h59|Took/);
+	await click(button);
+	assert.ok(rowBox(mounted, "count-peer"));
+	assert.ok(rowBox(mounted, "count-tool"));
+	assert.equal(theBar.contains(rowBox(mounted, "count-final")), false);
+	await mounted.render(records, { openFrame: fixture(226638) });
+	assert.ok(bar(mounted) === theBar);
+	assert.equal(button.getAttribute("aria-expanded"), "true");
+	assert.doesNotMatch(button.textContent, /226638|113319|Took/);
+});
+test("v2 one open bar survives 129 unrelated complete owners without opening neighbors", async (t) => {
+	__resetTurnCollapseOpen();
+	const records = [
+		userRecord("alias-user"),
+		answerRecord("alias-final", { stopReason: "stop" }),
+	];
+	for (let i = 0; i < 129; i++)
+		records.push(
+			peerRecord(`alias-peer-${i}`),
+			toolRecord(`alias-tool-${i}`),
+			answerRecord(`alias-answer-${i}`, { stopReason: "stop" }),
+		);
+	const over = {
+		frontend: { session_id: "synthetic-alias-129" },
+		viewEpoch: 1,
+	};
+	const mounted = await mount(t, records, over);
+	assert.ok(bar(mounted) !== null);
+	await click(barTrigger(mounted));
+	assert.equal(barTrigger(mounted).getAttribute("aria-expanded"), "true");
+	const prepended = [
+		...records.slice(0, 2),
+		peerRecord("alias-prefix"),
+		...records.slice(2),
+	];
+	await mounted.render(prepended, over);
+	/*
+	 * WHAT THIS PINS, and what it no longer does. The key is retained across the
+	 * prepend (the plan hands the SAME `qg:alias-peer-0` back, measured), so the
+	 * reader's open state follows it. The bar's DOM NODE is replaced anyway:
+	 * upstream's transcript slots (#1021, `candidateSlots`) key a bar's wrapper on
+	 * its FIRST RECORD ID, and a prepend into the bar changes that id. The same
+	 * assertion fails on base `4ec2dd1` production code, so it is not this
+	 * change's regression; what the reader sees is pinned instead: exactly ONE
+	 * bar open, it is the bar that was opened, its rows are mounted, and no
+	 * neighbour opened. Node identity is deliberately not asserted.
+	 */
+	const bars = [...mounted.container.querySelectorAll("[data-turn-summary]")];
+	const openBars = bars.filter(
+		(el) =>
+			el.querySelector("button")?.getAttribute("aria-expanded") === "true",
+	);
+	assert.ok(
+		openBars.length === 1,
+		`one bar open after the prepend, found ${openBars.length} of ${bars.length}`,
+	);
+	assert.ok(
+		(openBars[0].getAttribute("data-segment-ids") ?? "")
+			.split(" ")
+			.includes("alias-tool-0"),
+		"the open bar is the one the reader opened",
+	);
+	assert.ok(rowBox(mounted, "alias-tool-0") !== null, "its rows are mounted");
+	// Explicit clear invalidates alias evidence without treating unchanged
+	// owner/view epochs as a positive source-transition certificate.
+	await mounted.render([], { ...over, viewEpoch: 2 });
+	await mounted.render(prepended, { ...over, viewEpoch: 2 });
+	/*
+	 * The collapsed half of the pair belongs HERE, not beside the open half:
+	 * the 129-owner prepend is not a source transition, so it leaves the
+	 * reader's bar open, and only the explicit epoch clear above is one, so
+	 * only now does the bar stand collapsed again.
+	 */
+	assert.equal(barTrigger(mounted).getAttribute("aria-expanded"), "false");
+	__resetTurnCollapseOpen();
+});
+
+test("F6: a group bar's printed receipt count and its announcement agree", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * Reviewer F6. A `subagent:` notice is an episode origin but not a quiet-group
+	 * trigger, so `[wake, subagent notice, wake]` has `facts.group.count === 2`
+	 * and `internal.receipts === 3`. The bar prints the receipts figure; the live
+	 * region announced the group figure, so a screen-reader user was told a
+	 * different number from the one on screen. One source for both.
+	 */
+	const running = [
+		userRecord("f6-user", { ts: TS }),
+		answerRecord("f6-final", { ts: TS + 1_000, stopReason: "stop" }),
+		wakeRecord("f6-w1", { ts: TS + 2_000 }),
+		noticeRecord("subagent:f6", {
+			ts: TS + 3_000,
+			level: "info",
+			complete: false,
+			text: "Subagent finished",
+		}),
+		wakeRecord("f6-w2", { ts: TS + 4_000 }),
+		toolRecord("f6-tool", { ts: TS + 5_000, durationS: 1 }),
+	];
+	const mounted = await mount(t, running, { waiting: true });
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	await mounted.render(
+		[
+			...running,
+			answerRecord("f6-final-2", { ts: TS + 6_000, stopReason: "stop" }),
+		],
+		{},
+	);
+	const printed = [...bar(mounted).textContent.matchAll(/\d+/g)].map(
+		(m) => m[0],
+	);
+	assert.ok(printed.includes("3"), `the bar prints 3 receipts: ${printed}`);
+	assert.match(region(), /\b3\b/, `the announcement says 3: "${region()}"`);
+	assert.doesNotMatch(region(), /\b2\b/, "and never the group-only figure");
+});
+
+test("U1: a head-cut group's sentence carries the bar's minimum marker", async (t) => {
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	/*
+	 * Design review round 1, U1. The fixture is a run with NO opening user row
+	 * (the loaded edge): every count in it is a minimum, and the bar says so -
+	 * `2+` with "At least 2 messages - earlier rows are not loaded" on the count
+	 * span. Before the fix the live region said "Peer messages: 2." - a bare
+	 * figure more exact than anything on screen.
+	 */
+	const cut = [
+		peerRecord("hc-p1", { ts: TS + 1_000 }),
+		peerRecord("hc-p2", { ts: TS + 2_000 }),
+		toolRecord("hc-tool", { ts: TS + 3_000, durationS: 1, phase: "running" }),
+	];
+	const mounted = await mount(t, cut, { waiting: true, hasMore: true });
+	assert.match(
+		bar(mounted)?.textContent ?? "",
+		/2\+/,
+		"the bar paints the count with its minimum marker",
+	);
+	await mounted.render(
+		[...cut, answerRecord("hc-final", { ts: TS + 5_000, stopReason: "stop" })],
+		{ hasMore: true, waiting: false },
+	);
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	assert.equal(
+		region(),
+		"Peer messages: at least 2.",
+		"the sentence states the same minimum in words",
+	);
+});
+
+test("a head cut with older rows keeps its live episode condensed; with none it paints", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * The architect's resolution of the head-cut contradiction, caller arm 1
+	 * (`hasMore`). `[peer, running tool]` at the loaded edge: if an older page is
+	 * still to come the answer this episode continues is off-page, so it condenses;
+	 * if nothing is older the receipt genuinely opens the conversation and paints.
+	 */
+	const cut = [
+		peerRecord("hm-peer"),
+		toolRecord("hm-tool", { toolName: "eval", phase: "running" }),
+	];
+	const more = await mount(t, cut, { waiting: true, hasMore: true });
+	assert.ok(bar(more), "older rows exist: the episode condenses");
+	const none = await mount(t, cut, { waiting: true, hasMore: false });
+	assert.ok(bar(none) === null, "nothing older: the receipt paints loose");
+	assert.ok(rowBox(none, "hm-peer"), "and its content is mounted");
+});
+
+test("rows hidden by the render window count as older rows (hidden > 0 arm)", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * Caller arm 2: `hasMore` is FALSE, every row is loaded, but the render window
+	 * shows only the newest, so the visible head is a CUT and a peer at its edge
+	 * must condense like the `hasMore` case.
+	 *
+	 * THE FIXTURE MUST EXCEED THE SNAP'S REACH, and an earlier one did not. The
+	 * window snaps its top edge onto the run's opening user row when that row is
+	 * within `WINDOW_ALIGN_MAX_EXTRA` (300) rows of the edge, so a 62-row run is
+	 * mounted whole and `hidden` is 0 - its precondition was false. 300 tools
+	 * between the answer and the peer put the edge exactly on the peer (362 rows,
+	 * `alignSize` 60, `hidden` 302). The assertions are booleans on purpose: a
+	 * failing `assert.equal(<jsdom node>, null)` makes node format the node and
+	 * the process balloons past 2 GB, which is how that earlier failure presented
+	 * as a kill instead of a message.
+	 */
+	const records = [
+		userRecord("hid-user"),
+		answerRecord("hid-final", { stopReason: "stop" }),
+	];
+	for (let i = 0; i < 300; i += 1)
+		records.push(toolRecord(`hid-pre-${i}`, { phase: "done" }));
+	records.push(peerRecord("hid-peer"));
+	for (let i = 0; i < 58; i += 1)
+		records.push(toolRecord(`hid-post-${i}`, { phase: "done" }));
+	records.push(toolRecord("hid-live", { phase: "running" }));
+	const mounted = await mount(t, records, { waiting: true, hasMore: false });
+	assert.ok(rowBox(mounted, "hid-user") === null, "precondition: head hidden");
+	assert.ok(
+		rowBox(mounted, "hid-final") === null,
+		"precondition: answer hidden",
+	);
+	assert.ok(bar(mounted) !== null, "hidden rows are older rows: it condenses");
+	assert.ok(
+		rowBox(mounted, "hid-peer") === null,
+		"the peer sits behind its bar",
+	);
+});
+
+test("a settled head-cut bar keeps its key, open state and silence when the head lands", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * R2-2. `[peer, 4 tools, settled answer]` with `hasMore` is a SETTLED cut bar:
+	 * it condenses as an ordinary bar either way, so the older-rows seed must not
+	 * turn it into an internal episode keyed `qg:p` - when the head then lands the
+	 * span becomes ordinary again (`seg:a`), the key changes and the reader's open
+	 * disclosure closes with a false settle announcement. Base stays open and silent.
+	 */
+	const cut = [
+		peerRecord("hl-peer"),
+		toolRecord("hl-t1", { ts: TS + 3_000 }),
+		toolRecord("hl-t2", { ts: TS + 4_000 }),
+		toolRecord("hl-t3", { ts: TS + 5_000 }),
+		toolRecord("hl-t4", { ts: TS + 6_000 }),
+		answerRecord("hl-final", { ts: TS + 7_000, stopReason: "stop" }),
+	];
+	const mounted = await mount(t, cut, { hasMore: true });
+	assert.ok(bar(mounted) !== null, "the settled cut bar stands");
+	await click(barTrigger(mounted));
+	assert.equal(barTrigger(mounted).getAttribute("aria-expanded"), "true");
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	await mounted.render([userRecord("hl-user", { ts: TS + 1_000 }), ...cut], {
+		hasMore: false,
+	});
+	assert.equal(
+		barTrigger(mounted).getAttribute("aria-expanded"),
+		"true",
+		"the reader's open bar survives the head landing",
+	);
+	assert.equal(region(), "", "and nothing is announced");
+});
+
+test("R3: a closed appendable episode announces once - at its close, not at a quiet beat (settle-latch convergence round)", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * RETIMED EXPRESSION (settle-latch convergence round, 2026-10-17). The
+	 * original case read the pane's quiet flag as the episode's arrival:
+	 * `waiting: false` with the tool done was treated as the settle, the sentence
+	 * was asserted at that beat, and the close was asserted silent. This pane is
+	 * one the latch has WATCHED (a session-less mount shares the `""` bucket, and
+	 * the live pass below arms it), and a liveness dip reads exactly like that
+	 * beat - flag quiet, no settled close landed, the next step re-enters live -
+	 * so the sentence may no longer land there. What moved is the dip expression
+	 * of (a)+(b): the quiet beat and the re-entry stay silent, and the close that
+	 * actually ends the cycle announces once. The intent is unchanged: a live
+	 * episode is not recorded as announced, the arrival announces exactly once,
+	 * re-entry does not repeat it, and the anchor the closed span gains adds no
+	 * second sentence.
+	 */
+	const head = [
+		userRecord("ak-user"),
+		answerRecord("ak-final", { stopReason: "stop" }),
+	];
+	const live = [
+		...head,
+		peerRecord("ak-peer"),
+		toolRecord("ak-tool", { phase: "running" }),
+	];
+	const mounted = await mount(t, live, { waiting: true });
+	assert.equal(
+		watchedRunOf(null),
+		"ak-user",
+		"the live pass armed the latch for this pane's bucket",
+	);
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	assert.equal(region(), "", "live episode is not recorded as announced");
+	const settled = [
+		...head,
+		peerRecord("ak-peer"),
+		toolRecord("ak-tool", { phase: "done" }),
+	];
+	// THE QUIET BEAT: no sentence - the pane is quiet, but nothing has closed.
+	await mounted.render(settled, { waiting: false });
+	assert.equal(
+		region(),
+		"",
+		"a quiet beat does not announce the still-open episode",
+	);
+	// Re-entering a live pass must not speak it either.
+	await mounted.render(settled, { waiting: true });
+	assert.equal(region(), "", "nor does the re-entry");
+	// THE CLOSE lands: exactly one sentence, and the span gains its visible anchor.
+	const closed = [
+		...settled,
+		toolRecord("ak-tool2"),
+		answerRecord("ak-close", { stopReason: "stop" }),
+	];
+	await mounted.render(closed, { waiting: false });
+	const first = region();
+	assert.equal(first, "Peer message: 2 actions.", "the close announces once");
+	await mounted.render(closed, { waiting: false });
+	assert.equal(region(), first, "and never twice");
+	assert.ok(rowBox(mounted, "ak-final") !== null, "first final stays outside");
+	assert.ok(
+		rowBox(mounted, "ak-close") !== null,
+		"new visible anchor stays outside",
+	);
+});
+
+test("R3: actionable lone peer before a genuine final is a visible negative control", async (t) => {
+	const mounted = await mount(
+		t,
+		[
+			peerRecord("negative-peer", {
+				body: "Please check the deployment status before proceeding.",
+			}),
+			answerRecord("negative-final", {
+				text: "The deployment is paused pending the requested check.",
+				streaming: true,
+				stopReason: null,
+			}),
+		],
+		{ waiting: true },
+	);
+	assert.ok(
+		rowBox(mounted, "negative-peer") !== null,
+		"actionable receipt stays inline",
+	);
+	assert.ok(
+		rowBox(mounted, "negative-final") !== null,
+		"genuine final stays visible",
+	);
+	assert.ok(
+		bar(mounted) === null,
+		"no preceding loaded answer or second receipt licenses an internal episode",
 	);
 });

@@ -60,6 +60,7 @@ import {
 	opensOnArrival,
 	tierFor,
 } from "../backend-settings-tiers";
+import { MODEL_EFFORT_SETTING_KEY } from "../promoted-setting-sections";
 import { DELEGATED_SECTION } from "../retention-duration";
 import { BackendSettingRow, type SettingGate } from "./backend-setting-row";
 import {
@@ -108,6 +109,11 @@ type BackendSettingsSectionProps = {
 	focusKey?: string | null;
 	/** General owns this one row; standalone registry hosts retain it. */
 	hideInterfaceLanguage?: boolean;
+	/**
+	 * General's Default effort row owns this key; the registry editor would be a
+	 * second control for it, with the global ladder as a second vocabulary.
+	 */
+	hideModelEffort?: boolean;
 	/** Initial search filter, e.g. "web-search" from /search. */
 	initialFilter?: string;
 };
@@ -141,6 +147,7 @@ const fold = (value: string) => value.toLowerCase().replace(/[-_.]/g, " ");
 export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	focusKey,
 	hideInterfaceLanguage = false,
+	hideModelEffort = false,
 	initialFilter = "",
 }) => {
 	useI18nLocale();
@@ -278,6 +285,28 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	);
 
 	/**
+	 * Rows whose control this host deliberately does not render.
+	 *
+	 * ONE predicate, because a hidden row must disappear from the LIST and from
+	 * the counts the filter bar prints beside it: a "core" badge that includes a
+	 * row no reader can see is the same defect as a search result the list hides,
+	 * one tier up. (The language row was the first promotion; `model_effort` is
+	 * the second.)
+	 */
+	const isHidden = useCallback(
+		(setting: BackendSetting) =>
+			(hideInterfaceLanguage && setting.key === LANGUAGE_SETTING_KEY) ||
+			(hideModelEffort && setting.key === MODEL_EFFORT_SETTING_KEY),
+		[hideInterfaceLanguage, hideModelEffort],
+	);
+
+	/** Every registry row this host renders, for the counters below. */
+	const visibleRows = useMemo(
+		() => (settings?.settings ?? []).filter((setting) => !isHidden(setting)),
+		[settings, isHidden],
+	);
+
+	/**
 	 * The `hosting` this page will boot on, which is the value the model rows
 	 * narrow their list by.
 	 *
@@ -316,8 +345,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		const needle = fold(filter.trim());
 		const asking = needle.length > 0 || modifiedOnly;
 		return settings.settings.filter((setting) => {
-			if (hideInterfaceLanguage && setting.key === LANGUAGE_SETTING_KEY)
-				return false;
+			if (isHidden(setting)) return false;
 			if (!asking && tierFor(setting) === "advanced" && !showAdvanced) {
 				return false;
 			}
@@ -339,14 +367,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 				].join(" "),
 			).includes(needle);
 		});
-	}, [
-		settings,
-		filter,
-		showAdvanced,
-		modifiedOnly,
-		isModified,
-		hideInterfaceLanguage,
-	]);
+	}, [settings, filter, showAdvanced, modifiedOnly, isModified, isHidden]);
 
 	const filtering = filter.trim().length > 0 || modifiedOnly;
 
@@ -362,11 +383,9 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	const rowsForSection = useCallback(
 		(name: string) =>
 			(settings?.settings ?? []).filter(
-				(s) =>
-					s.section === name &&
-					!(hideInterfaceLanguage && s.key === LANGUAGE_SETTING_KEY),
+				(s) => s.section === name && !isHidden(s),
 			),
-		[settings, hideInterfaceLanguage],
+		[settings, isHidden],
 	);
 	const matchingForSection = (name: string) =>
 		matching.filter((setting) => setting.section === name);
@@ -724,6 +743,9 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	 *
 	 * Keyed on `destinationReady` rather than on the filter, so a filter-clearing
 	 * re-run RESTARTS the loop instead of cancelling it with nothing left to try.
+	 * "On screen" includes the section the row lives in: an element behind
+	 * `[hidden]` is IN the DOM but not laid out, and `focus()`/`scrollIntoView()`
+	 * on it are silent no-ops (see the visibility gate below).
 	 */
 	useEffect(() => {
 		if (!destinationReady || !focusKey) return;
@@ -752,7 +774,23 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 				row?.querySelector<HTMLElement>(
 					`[data-setting-control] :is(input, textarea, select, button[role="switch"], button)`,
 				) ?? row;
-			if (el) {
+			/*
+			 * A ROW BEHIND `[hidden]` IS NOT A CURSOR THAT ARRIVED. `focus()` and
+			 * `scrollIntoView()` are silent no-ops on an element inside a closed
+			 * section's `[hidden]` subtree, and the deep link lands in exactly that
+			 * state from the tier-already-on surface: the section the link must open
+			 * is opened by a commit this loop's first frame can beat (the
+			 * `destinationReady` memo above does not include the section-open state),
+			 * so latching here recorded a landing that never happened and no retry
+			 * ever came - measured on the `settings-account-policy` scene's second
+			 * leg (UX round 2, U2): section open, row at top 1036 against a 900px
+			 * viewport, focus still on the chip. The row counts as reachable only
+			 * when no ancestor carries `hidden` - the same visibility contract
+			 * `backend-settings-collapse.test.mjs` pins, and one that survives a
+			 * layout-less test host where `getClientRects()` is always empty. The
+			 * section-open commit lands well inside FOCUS_ATTEMPTS frames.
+			 */
+			if (el && el.closest("[hidden]") === null) {
 				if (el === row) el.tabIndex = -1;
 				el.focus();
 				el.scrollIntoView({ block: "center" });
@@ -872,7 +910,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		);
 	}
 
-	const tierCounts = settings.settings.reduce(
+	const tierCounts = visibleRows.reduce(
 		(counts, setting) => {
 			counts[tierFor(setting)] += 1;
 			return counts;
@@ -892,7 +930,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 				matchSections={matchSections}
 				coreCount={tierCounts.core}
 				advancedCount={tierCounts.advanced}
-				modifiedCount={settings.settings.filter(isModified).length}
+				modifiedCount={visibleRows.filter(isModified).length}
 				modifiedOnly={modifiedOnly}
 				onModifiedOnlyChange={setModifiedOnly}
 				showAdvanced={showAdvanced}

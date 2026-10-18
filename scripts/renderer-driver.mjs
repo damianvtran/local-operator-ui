@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-language|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -139,6 +139,12 @@
  *                          the dispatcher's own sentence for each and no
  *                          picker - the base tree's half of the pair (issue
  *                          #625)
+ *   --seal-expect <seal|payload>  (with --scene skill-seal) which half of the
+ *                          `$skill` pair this run is in: `seal` (the default)
+ *                          asserts the typed line, the folded purpose and the
+ *                          instructions behind a closed disclosure; `payload`
+ *                          asserts the wall of skill body the base tree paints,
+ *                          so one scene's bytes run on both trees.
  *   --recents-expect <after|before>  (with --scene palette-recents) which half
  *                          of the pair this run records: `after` (the default)
  *                          asserts the Recents section under Unread and the walk
@@ -263,6 +269,7 @@ import { withNotificationsOff } from "./notifications-off.mjs";
  * interpreter, so a new one has to say so there as well as here.
  */
 import { pythonChildEnv } from "./python-child-env.mjs";
+import { SEAL_AUDIT_PURPOSE } from "./skill-seal-fixture.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const ROOT = process.cwd();
@@ -577,6 +584,23 @@ const BIN_EXPECT = argValue("--bin-expect", "prompt");
  * same reason `--authoring-expect` and `--bin-expect` are.
  */
 const SLASH_EXPECT = argValue("--slash-expect", "open");
+/**
+ * Which half of the `$skill` before/after pair this run is in, for
+ * `--scene skill-seal`.
+ *
+ * A FLAG AND NOT TWO SCENES, for the reason `--slash-expect` is one: the base
+ * tree's half has to run the SAME bytes as the head's, so the scene's readings
+ * and captures are one function that asserts whichever claim the tree it is
+ * running on makes.
+ */
+const SEAL_EXPECT = argValue("--seal-expect", "seal");
+/**
+ * The two palettes the scene shoots, per state: the app's own pair, so the
+ * before/after pair is comparable across themes rather than across a user's
+ * choice. Named here because the scene is about the ROW and not about the
+ * sweep's theme matrix.
+ */
+const SEAL_PALETTES = ["localOperatorDark", "localOperatorLight"];
 /**
  * WHICH CLAIM A `--scene project-open` RUN IS IN (operator report, 2026-10-08).
  *
@@ -10341,6 +10365,498 @@ async function sceneOutputArtifact(cdp) {
 		JSON.stringify(replayed.filter((i) => i.naturalWidth === 640)),
 	);
 	frames.push(await captureSettled(cdp, `artifact-after-reload${RUN_LABEL}`));
+	return frames;
+}
+
+/** The token the fixture seeds on its first invocation, and the long-body one. */
+const DEMO_TOKEN = "$seal-demo";
+const STEPS_TOKEN = "$seal-steps";
+/*
+ * The trigger's ACCESSIBLE NAME is what makes the long-body row findable without a
+ * coordinate read: the seal's `triggerLabel` opens with the token, and that name
+ * matches exactly one row.
+ */
+const STEPS_TRIGGER = `[role="log"] button[aria-label^="${STEPS_TOKEN} "]`;
+
+/**
+ * A trigger's centre in viewport coordinates, found by the TOKEN it shows.
+ *
+ * By token rather than by index, because the seal's own header is what a reader
+ * aims at and the transcript's rows are not all rendered at once: the lookup is
+ * on the LIVE DOM, after the row has been scrolled into view.
+ */
+async function triggerPointFor(cdp, token) {
+	const point = await cdp.evaluate(`(() => {
+		const log = document.querySelector('[role="log"]');
+		const trigger = [...(log?.querySelectorAll('button[aria-expanded]') ?? [])].find(
+			(el) => el.innerText.includes(${JSON.stringify(token)}),
+		);
+		if (!trigger) return null;
+		trigger.scrollIntoView({ block: "center" });
+		const r = trigger.getBoundingClientRect();
+		return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+	})()`);
+	// The scroll settles on the next frame, so the rect is read AFTER it.
+	await wait(200);
+	return point;
+}
+
+/** The same trigger's rect against the scroller's own viewport (for U2). */
+async function triggerBoxFor(cdp, token) {
+	return cdp.evaluate(`(() => {
+		const log = document.querySelector('[role="log"]');
+		const trigger = [...(log?.querySelectorAll('button[aria-expanded]') ?? [])].find(
+			(el) => el.innerText.includes(${JSON.stringify(token)}),
+		);
+		if (!trigger || !log) return null;
+		const r = trigger.getBoundingClientRect();
+		const view = log.getBoundingClientRect();
+		return {
+			top: Math.round(r.top),
+			bottom: Math.round(r.bottom),
+			viewTop: Math.round(view.top),
+			viewBottom: Math.round(view.bottom),
+		};
+	})()`);
+}
+
+/** The disclosed instructions block's own geometry, against § 7's cap. */
+async function readSealBody(cdp, token) {
+	return cdp.evaluate(`(() => {
+		const log = document.querySelector('[role="log"]');
+		const trigger = [...(log?.querySelectorAll('button[aria-expanded]') ?? [])].find(
+			(el) => el.innerText.includes(${JSON.stringify(token)}),
+		);
+		const body = trigger?.parentElement?.querySelector('[data-lo-skill-body]');
+		if (!body) return null;
+		return {
+			clientHeight: body.clientHeight,
+			scrollHeight: body.scrollHeight,
+			cap: Math.min(320, Math.round(window.innerHeight * 0.4)),
+		};
+	})()`);
+}
+
+/** The first trigger's own chevron, its ink and the outline a focus would draw. */
+async function readChevronInk(cdp) {
+	return cdp.evaluate(`(() => {
+		const trigger = document.querySelector('[role="log"] button[aria-expanded]');
+		const mark = trigger?.querySelector('svg')?.parentElement ?? null;
+		if (!trigger || !mark) return null;
+		const markStyle = getComputedStyle(mark);
+		const triggerStyle = getComputedStyle(trigger);
+		return {
+			ink: markStyle.color,
+			outlineStyle: triggerStyle.outlineStyle,
+			outlineWidth: triggerStyle.outlineWidth,
+			focusVisible: trigger.matches(':focus-visible'),
+			focused: document.activeElement === trigger,
+		};
+	})()`);
+}
+
+/*
+ * THE `$skill` SEAL: how a persisted invocation reads on the user's own row.
+ *
+ * The payload the harness stores for a `$name` send IS the model's whole
+ * instruction -- the header sentence, the `<skill>` tag, the SKILL.md body
+ * verbatim and the request -- so a row that paints it verbatim shows a wall of
+ * skill body as though the reader had typed it (the harness repo's
+ * `docs/design/history-fold-convergence.md` row D8). This scene reads both
+ * shapes with the SAME bytes: `--seal-expect seal` (the head) asserts the typed
+ * line, the skill's own purpose and the instructions behind a CLOSED
+ * disclosure; `--seal-expect payload` (the base) asserts the wall, that the
+ * front matter is on screen and that no disclosure exists on those rows. One
+ * scene, two trees, so the pair is a before/after rather than two rigs.
+ *
+ * WHAT IT NEEDS, and why the LANE seeds rather than the scene. `--backend` (a
+ * transcript needs the app attached to a daemon) and `--session`, whose history
+ * must already hold two rendered payloads:
+ *
+ *   - `seal-demo`, whose `description:` is a FOLDED block scalar (`>-` over two
+ *     indented lines). That is the shape shipped skills actually use, and the
+ *     row must fold it onto ONE line -- the case that made a single-line-only
+ *     read wrong (this PR's D3').
+ *   - `seal-audit`, whose description is long enough to clip, so the frame and
+ *     the reading carry the truncation case: the purpose span's own
+ *     `scrollWidth > clientWidth`, with the whole sentence in its `title`.
+ *
+ * The seed posts those payloads as the content of two user messages, which is
+ * exactly what the composer persists (`/v1/desktop/sessions/<id>/messages`); the
+ * seed script and its exact command live in `docs/evidence/skill-seal/README.md`.
+ *
+ * WHAT IT CANNOT SAY. It does not exercise the composer's expansion (that is
+ * `scripts/skill-invocation.test.mjs` and the write-half's own suite): what it
+ * photographs is the READ half, which is where the defect was. And a frame
+ * captures the state it captured -- both halves are read back from
+ * `aria-expanded` and the DOM before each capture.
+ */
+async function sceneSkillSeal(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const frames = [];
+	const expectSeal = SEAL_EXPECT !== "payload";
+	const stepsTrigger = STEPS_TRIGGER;
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	/*
+	 * The row's own readings, taken from the DOM the reader has. `transcript` is
+	 * what the assertions are about (the payload's parts must not be in it on the
+	 * head tree, and must be on the base); `seals` is every disclosure trigger on
+	 * the transcript, with the purpose span it carries -- the span's own
+	 * `scrollWidth` against `clientWidth` IS the truncation claim, and its
+	 * `title` is the sentence the ellipsis hides.
+	 */
+	const readRows = () =>
+		cdp.evaluate(`(() => {
+			const log = document.querySelector('[role="log"]');
+			if (!log) return null;
+			const seals = [...log.querySelectorAll('button[aria-expanded]')].map(
+				(trigger) => {
+					const purpose = trigger.querySelector('span[title]');
+					return {
+						text: trigger.innerText,
+						expanded: trigger.getAttribute('aria-expanded'),
+						purpose: purpose
+							? {
+									text: purpose.textContent,
+									title: purpose.getAttribute('title'),
+									clipped: purpose.scrollWidth > purpose.clientWidth + 1,
+								}
+							: null,
+					};
+				},
+			);
+			return { transcript: log.innerText, seals };
+		})()`);
+	const sealTrigger = '[role="log"] button[aria-expanded]';
+	const waitForLabel = (present) =>
+		waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				return Boolean(log) && log.innerText.includes(${JSON.stringify(
+					"Skill instructions sent with this message",
+				)}) === ${present};
+			})()`,
+			15_000,
+		);
+
+	for (const palette of SEAL_PALETTES) {
+		/*
+		 * The capture verb's labels are lowercase letters, digits, dash and
+		 * underscore only, so the palette's own camel case becomes a slug here
+		 * rather than in four file names.
+		 */
+		const paletteSlug = palette === "localOperatorDark" ? "dark" : "light";
+		await verb(cdp, "setTheme", palette);
+		await verb(cdp, "navigate", `/chat/${SESSION}`);
+		const painted = await waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				return Boolean(log && log.innerText.includes(${JSON.stringify("$seal-demo")}));
+			})()`,
+			45_000,
+		);
+		check(
+			`the seeded invocation is on screen (${palette})`,
+			painted.ok,
+			`after ${painted.waitedMs ?? "?"}ms: ${JSON.stringify(painted.last)}`,
+		);
+		const rows = (await readRows()) ?? { transcript: "", seals: [] };
+		note(`rows (${palette})`, JSON.stringify(rows, null, 2));
+
+		if (!expectSeal) {
+			/*
+			 * THE BASE TREE. The wall, asserted rather than described: the header
+			 * sentence, the tag, the front matter and the body are all in the
+			 * transcript, and the row carries no disclosure at all.
+			 */
+			/*
+			 * The header sentence WITHOUT its backticks: the base tree paints the
+			 * payload through the markdown renderer, so the name arrives as a
+			 * `<code>` element and `innerText` never contains the literal
+			 * "\u0060seal-demo\u0060" the writer spelled (this check failed on the
+			 * first frame run for exactly that reason).
+			 */
+			check(
+				"the payload's own header sentence is painted (the defect)",
+				rows.transcript.includes("The user invoked the") &&
+					rows.transcript.includes("skill directly"),
+				rows.transcript.slice(0, 240),
+			);
+			check(
+				"the `<skill>` tag and its front matter are on screen (the defect)",
+				rows.transcript.includes('<skill name="seal-demo"') &&
+					rows.transcript.includes("description:") &&
+					rows.transcript.includes("Answer with one line"),
+				rows.transcript.slice(0, 320),
+			);
+			check(
+				"no disclosure is rendered on an invocation row on this tree",
+				rows.seals.length === 0,
+				JSON.stringify(rows.seals),
+			);
+			frames.push(
+				await captureSettled(cdp, `skill-seal-${size}-${paletteSlug}-payload`),
+			);
+			continue;
+		}
+
+		check(
+			"the typed line is the row, in the composer's own token",
+			rows.transcript.includes("$seal-demo") &&
+				rows.transcript.includes("review the diff"),
+			JSON.stringify({
+				token: rows.transcript.includes("$seal-demo"),
+				request: rows.transcript.includes("review the diff"),
+			}),
+		);
+		check(
+			"a FOLDED description reaches the row as one line",
+			rows.transcript.includes(
+				"Review a diff for the seal demo and say what breaks",
+			),
+			JSON.stringify(rows.seals.map((seal) => seal.purpose?.text ?? null)),
+		);
+		check(
+			"the payload's parts are NOT in the document",
+			!rows.transcript.includes("The user invoked") &&
+				!rows.transcript.includes("<skill name=") &&
+				!rows.transcript.includes("</skill>") &&
+				!rows.transcript.includes("description:") &&
+				!rows.transcript.includes("Answer with one line"),
+			JSON.stringify({
+				header: rows.transcript.includes("The user invoked"),
+				tag: rows.transcript.includes("<skill name="),
+				close: rows.transcript.includes("</skill>"),
+				frontMatter: rows.transcript.includes("description:"),
+				body: rows.transcript.includes("Answer with one line"),
+			}),
+		);
+		check(
+			"every invocation carries a disclosure, closed by default",
+			rows.seals.length === 3 &&
+				rows.seals.every((seal) => seal.expanded === "false"),
+			JSON.stringify(rows.seals.map((seal) => seal.expanded)),
+		);
+		check(
+			"the instructions are not in the document while collapsed",
+			!rows.transcript.includes("Skill instructions sent with this message"),
+			rows.transcript.slice(-200),
+		);
+		frames.push(
+			await captureSettled(cdp, `skill-seal-${size}-${paletteSlug}-collapsed`),
+		);
+
+		/*
+		 * THE PRESS, as the reader makes it: the trigger scrolled into view, then
+		 * the harness's real pointer sequence on it. Both the state and the DOM
+		 * are read back before the second capture.
+		 */
+		await cdp.evaluate(
+			`(() => { const t = document.querySelector(${JSON.stringify(
+				sealTrigger,
+			)}); if (t) t.scrollIntoView({ block: "center" }); return true; })()`,
+		);
+		await wait(300);
+		await clickAt(cdp, sealTrigger);
+		const opened = await waitForLabel(true);
+		check(
+			"the press discloses the instructions sent with the message",
+			opened.ok,
+			`last reading: ${JSON.stringify(opened.last)}`,
+		);
+		const expandedRows = (await readRows()) ?? { transcript: "", seals: [] };
+		check(
+			"the expanded block is labelled and the trigger reports itself open",
+			expandedRows.transcript.includes(
+				"Skill instructions sent with this message",
+			) &&
+				expandedRows.transcript.includes("Seal demo") &&
+				expandedRows.seals[0]?.expanded === "true",
+			JSON.stringify({
+				label: expandedRows.transcript.includes(
+					"Skill instructions sent with this message",
+				),
+				body: expandedRows.transcript.includes("Seal demo"),
+				expanded: expandedRows.seals[0]?.expanded ?? null,
+			}),
+		);
+		check(
+			"the front matter is still stripped from the expanded body",
+			!expandedRows.transcript.includes("description:"),
+			expandedRows.transcript.slice(-400),
+		);
+		frames.push(
+			await captureSettled(cdp, `skill-seal-${size}-${paletteSlug}-expanded`),
+		);
+
+		await clickAt(cdp, sealTrigger);
+		const closed = await waitForLabel(false);
+		check(
+			"a second press puts it back",
+			closed.ok &&
+				((await readRows()) ?? { seals: [] }).seals[0]?.expanded === "false",
+			`last reading: ${JSON.stringify(closed.last)}`,
+		);
+		/*
+		 * THE TRUNCATION CASE, read rather than eyeballed: the second invocation's
+		 * description is longer than the row, so the span clips and the whole
+		 * sentence is one hover away in its `title`.
+		 */
+		const longPurpose = rows.seals[1]?.purpose ?? null;
+		check(
+			"a long purpose is one ellipsized line with the sentence in its title",
+			/*
+			 * The truncation claim is the SPAN's own overflow - `scrollWidth` against
+			 * `clientWidth`, read in `readRows` - and the title is compared against the
+			 * sentence the FIXTURE seeded. The first version of this check required
+			 * `title.length > text.length`, which can never hold when the title is the
+			 * whole sentence and the visible text is its prefix: the frames were right
+			 * and the assertion was wrong (design round 1's note on this PR's own
+			 * evidence run).
+			 */
+			Boolean(longPurpose) &&
+				longPurpose.clipped &&
+				longPurpose.title === SEAL_AUDIT_PURPOSE,
+			JSON.stringify({ ...longPurpose, seeded: SEAL_AUDIT_PURPOSE }),
+		);
+		frames.push(
+			await captureSettled(
+				cdp,
+				`skill-seal-${size}-${paletteSlug}-long-purpose`,
+			),
+		);
+
+		/*
+		 * THE 40-STEP BODY (design round 1, D1). The fixture's third invocation
+		 * carries a body at the length shipped skills run (17-156 lines), and the
+		 * readings are the cap and the scroll: `clientHeight` against § 7's
+		 * `min(320px, 40vh)` and `scrollHeight` against `clientHeight`, taken from
+		 * the block's own hook (`[data-lo-skill-body]`). The row's header is then
+		 * re-read, because "the block is capped" is only half the claim - the other
+		 * half is that opening it does not carry the row the reader pressed off the
+		 * top of the scroller (UX round 1, U2).
+		 */
+		/*
+		 * BY THE TRIGGER'S OWN NAME, not by a point measured first: the coordinate
+		 * read here was the row's centre BEFORE the transcript re-anchored, so the
+		 * press landed on whatever the move had left under it (measured: the
+		 * disclosure never opened, `open:false`). `clickAt` re-reads the rect at the
+		 * moment of the press, which is the shape the demo row's own press uses.
+		 */
+		await cdp.evaluate(
+			`(() => { const t = document.querySelector(${JSON.stringify(
+				stepsTrigger,
+			)}); if (t) t.scrollIntoView({ block: "center" }); return true; })()`,
+		);
+		await wait(300);
+		await clickAt(cdp, stepsTrigger);
+		const stepsOpened = await waitForCondition(
+			cdp,
+			"Boolean(document.querySelector('[data-lo-skill-body]'))",
+			10_000,
+		);
+		const stepsBody = await readSealBody(cdp, STEPS_TOKEN);
+		check(
+			"the 40-step instructions block is capped and scrolls inside itself",
+			stepsOpened.ok &&
+				stepsBody !== null &&
+				stepsBody.clientHeight <= stepsBody.cap + 1 &&
+				stepsBody.scrollHeight > stepsBody.clientHeight + 1,
+			JSON.stringify({ open: stepsOpened.ok, ...stepsBody }),
+			JSON.stringify({ open: stepsOpened.ok, ...stepsBody }),
+		);
+		const stepsTriggerBox = await triggerBoxFor(cdp, STEPS_TOKEN);
+		check(
+			"opening the long body keeps the row's own header inside the scroller",
+			stepsTriggerBox !== null &&
+				stepsTriggerBox.top >= stepsTriggerBox.viewTop - 2 &&
+				stepsTriggerBox.top <= stepsTriggerBox.viewBottom,
+			JSON.stringify(stepsTriggerBox),
+			JSON.stringify(stepsTriggerBox),
+		);
+		frames.push(
+			await captureSettled(cdp, `skill-seal-${size}-${paletteSlug}-long-body`),
+		);
+		await clickAt(cdp, stepsTrigger);
+
+		/*
+		 * HOVER (design round 1, D3). The trigger's hover was a colour step on the
+		 * BUTTON while the chevron pinned its own ink, so nothing inherited it. The
+		 * reading is the chevron's computed colour at rest against the same colour
+		 * under a real pointer move, and only then is the frame taken - a frame alone
+		 * would show a chevron without saying what it changed from.
+		 */
+		// The pointer is parked first: the previous press left it over the steps
+		// row, and a "resting" reading taken under a pointer is not a resting one.
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: 4,
+			y: 4,
+			button: "none",
+		});
+		await wait(300);
+		const restingInk = await readChevronInk(cdp);
+		const hoverPoint = await triggerPointFor(cdp, DEMO_TOKEN);
+		if (hoverPoint) {
+			await cdp.send("Input.dispatchMouseEvent", {
+				type: "mouseMoved",
+				x: hoverPoint.x,
+				y: hoverPoint.y,
+				button: "none",
+			});
+			await wait(300);
+		}
+		const hoveredInk = await readChevronInk(cdp);
+		check(
+			"hovering the trigger steps the chevron's ink (design round 1, D3)",
+			restingInk !== null &&
+				hoveredInk !== null &&
+				restingInk.ink !== hoveredInk.ink,
+			JSON.stringify({ resting: restingInk?.ink, hovered: hoveredInk?.ink }),
+			JSON.stringify({ resting: restingInk?.ink, hovered: hoveredInk?.ink }),
+		);
+		frames.push(
+			await captureSettled(cdp, `skill-seal-${size}-${paletteSlug}-hover`),
+		);
+
+		/*
+		 * KEYBOARD FOCUS (design round 1, D3). The outline is the app's global
+		 * `:focus-visible` rule, so the frame is only honest if the focus arrived the
+		 * way a keyboard user's does: a real Tab, never `element.focus()`, which
+		 * Chrome does not treat as keyboard interaction.
+		 */
+		await cdp.evaluate(
+			"(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); return true; })()",
+		);
+		let focusReading = null;
+		for (let press = 0; press < 60; press += 1) {
+			await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+			focusReading = await readChevronInk(cdp);
+			if (focusReading?.focused === true) break;
+		}
+		check(
+			"a keyboard user reaches the trigger, and the app outlines it (design round 1, D3)",
+			focusReading?.focused === true &&
+				focusReading.focusVisible === true &&
+				focusReading.outlineStyle !== "none",
+			JSON.stringify(focusReading),
+			JSON.stringify(focusReading),
+		);
+		frames.push(
+			await captureSettled(cdp, `skill-seal-${size}-${paletteSlug}-focus`),
+		);
+	}
+
 	return frames;
 }
 
@@ -24900,6 +25416,766 @@ async function sceneUndoToastsStacked(cdp) {
 	return frames;
 }
 
+async function scenePlainNewchatLifecycle(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+
+	/*
+	 * THE PROBE'S OWN WORDS. Unique per run so the row can be found among
+	 * others, plus two topic words the searches ask about, one per turn.
+	 */
+	const run = Date.now().toString(36);
+	const firstWords = "tessellate quokka";
+	const laterWord = "pomegranate";
+	const firstMessage = `Plain new chat lifecycle ${run}: mark ${firstWords} together.`;
+	const laterMessage = `Second turn, later prose: ${laterWord} chronicles for ${run}.`;
+
+	const at = () => new Date().toISOString();
+	const authHeaders = {
+		authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+	};
+	const apiGet = async (path) => {
+		const response = await fetch(`${BACKEND}${path}`, { headers: authHeaders });
+		return {
+			status: response.status,
+			body: await response.json().catch(() => null),
+		};
+	};
+	/* Every catalogue page, so "membership" is the whole store, not one page. */
+	const catalogueRows = async () => {
+		const rows = [];
+		let cursor = null;
+		for (let page = 0; page < 8; page += 1) {
+			const query = `limit=500&include_archived=true${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
+			const answer = await apiGet(`/v1/desktop/sessions?${query}`);
+			const result = answer.body?.result ?? {};
+			rows.push(...(result.sessions ?? []));
+			if (!result.truncated || !result.next_cursor) break;
+			cursor = result.next_cursor;
+		}
+		return rows;
+	};
+	const rowSummary = (row) =>
+		row === undefined || row === null
+			? null
+			: {
+					id: row.id,
+					name: row.name ?? "",
+					status: row.status?.code ?? null,
+					unseen: row.attention?.unseen ?? null,
+					live: row.live_state ?? "",
+					created_at: row.created_at ?? null,
+					pinned: row.pinned ?? null,
+					archived: row.archived ?? null,
+				};
+	/* The catalogue read EVERY phase uses, resolved to OUR row and its rank. */
+	const ourRow = async (id) => {
+		const rows = await catalogueRows();
+		const index = rows.findIndex((row) => row.id === id);
+		return {
+			total: rows.length,
+			rank: index >= 0 ? index + 1 : null,
+			row: index >= 0 ? rowSummary(rows[index]) : null,
+		};
+	};
+
+	/*
+	 * The page's rendered sidebar: rows, drafts, the scroller's numbers and the
+	 * page foot. `[data-sidebar-region="chats"]` is the chats region the panel
+	 * and its own keyboard walk both scope to; `[data-chat-row]` is one row.
+	 */
+	const sidebarRead = () =>
+		cdp.evaluate(`(() => {
+			const squeeze = (el) => el.textContent.replace(/\\s+/g, " ").trim();
+			const rows = [
+				...document.querySelectorAll('[data-sidebar-region="chats"] [data-chat-row]'),
+			];
+			const drafts = [...document.querySelectorAll("[data-draft-row]")].map((el) =>
+				el.getAttribute("data-draft-row"),
+			);
+			const scroller = document.querySelector('[data-sidebar-region="scroller"]');
+			const more = document.querySelector("[data-sidebar-page-more]");
+			return {
+				route: location.hash,
+				rows: rows.map((el) => ({
+					id:
+						el
+							.closest("[data-session-row]")
+							?.getAttribute("data-session-row") ?? null,
+					section:
+						el.closest("[data-chat-section]")?.getAttribute("data-chat-section") ??
+						null,
+					text: squeeze(el).slice(0, 90),
+				})),
+				draftKeys: drafts,
+				more: more === null ? null : squeeze(more),
+				scroller:
+					scroller === null
+						? null
+						: {
+								scrollTop: scroller.scrollTop,
+								scrollHeight: scroller.scrollHeight,
+								clientHeight: scroller.clientHeight,
+							},
+			};
+		})()`);
+
+	/*
+	 * THE SEARCH BOX, through the app's own affordances: its button opens the
+	 * field, its clear control empties it, and typing goes through CDP's input
+	 * pipeline (the field is a React-controlled input).
+	 */
+	const openSearch = async () => {
+		await clickAt(cdp, "[data-sidebar-search]");
+		const opened = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('input[aria-label="Search chats and agents"]'))`,
+			5000,
+		);
+		return opened.ok;
+	};
+	const clearSearchField = () =>
+		cdp.evaluate(
+			`(() => { const button = document.querySelector('[aria-label="Clear search"]'); if (button !== null) button.click(); return button !== null; })()`,
+		);
+	const searchQueries = () =>
+		verb(cdp, "queries")
+			.then((all) =>
+				(Array.isArray(all) ? all : []).filter((entry) =>
+					String(JSON.stringify(entry.key)).includes("search"),
+				),
+			)
+			.catch(() => []);
+	const setSearchQuery = async (text) => {
+		await clearSearchField();
+		await wait(150);
+		await clickAt(cdp, 'input[aria-label="Search chats and agents"]');
+		await cdp.send("Input.insertText", { text });
+		/*
+		 * The settle: the app's OWN search query state must read success with a
+		 * fresh answer, and two consecutive sidebar reads must agree - a fixed
+		 * sleep would either be slower than needed or photograph the box mid-
+		 * debounce.
+		 */
+		let previous = null;
+		for (let attempt = 0; attempt < 40; attempt += 1) {
+			await wait(250);
+			const entries = await searchQueries();
+			const success = entries.some(
+				(entry) => entry.status === "success" && (entry.dataUpdatedAt ?? 0) > 0,
+			);
+			const current = JSON.stringify(await sidebarRead());
+			if (attempt >= 5 && success && current === previous) break;
+			previous = current;
+		}
+	};
+	const apiSearch = async (q) => {
+		const answer = await apiGet(
+			`/v1/desktop/sessions/search?q=${encodeURIComponent(q)}&limit=100`,
+		);
+		const sessions = answer.body?.result?.sessions ?? [];
+		return {
+			q,
+			status: answer.status,
+			total: sessions.length,
+			ids: sessions.map((hit) => hit.id),
+			top: sessions.slice(0, 5).map((hit) => ({
+				id: hit.id,
+				name: hit.name ?? "",
+				rank: hit.rank ?? null,
+				body_match: hit.body_match ?? null,
+			})),
+		};
+	};
+
+	/*
+	 * The completion token, from the machine feed's own open frame. The feed is
+	 * the one channel that carries it (the catalogue redacts it), and it is the
+	 * same channel the app itself reads - the rig takes the token off the wire,
+	 * not out of a store file.
+	 */
+	const feedCompletionToken = async (id) => {
+		const controller = new AbortController();
+		const timer = setTimeout(() => controller.abort(), 8000);
+		try {
+			const response = await fetch(`${BACKEND}/v1/desktop/events`, {
+				headers: authHeaders,
+				signal: controller.signal,
+			});
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder();
+			let buffer = "";
+			while (true) {
+				const { value, done } = await reader.read();
+				if (done) break;
+				buffer += decoder.decode(value, { stream: true });
+				let index = buffer.indexOf("\n\n");
+				while (index !== -1) {
+					const frame = buffer.slice(0, index);
+					buffer = buffer.slice(index + 2);
+					index = buffer.indexOf("\n\n");
+					for (const line of frame.split("\n")) {
+						if (!line.startsWith("data:")) continue;
+						try {
+							const payload = JSON.parse(line.slice(5).trim());
+							const state =
+								payload?.payload?.attention?.[`session/${id}`] ??
+								payload?.attention?.[`session/${id}`];
+							if (state?.completion_token) {
+								controller.abort();
+								return state.completion_token;
+							}
+						} catch {
+							/* a non-JSON frame is not this helper's business */
+						}
+					}
+				}
+			}
+			return null;
+		} catch {
+			return null;
+		} finally {
+			clearTimeout(timer);
+		}
+	};
+
+	/*
+	 * THE ACKNOWLEDGEMENT, as two recorded steps. (1) The app's own completion
+	 * receipt is attempted (bounded): its page-side gate passes under CDP focus
+	 * emulation, but the request leaves through the app's MAIN process, which
+	 * refuses every receipt from a window that is not foreground ("View these
+	 * completions in the foreground before marking them read") - a headless
+	 * window can never be foreground, so the attempt proves itself and not the
+	 * receipt. (2) The rig completes the write the reader's own read would have
+	 * made: the completion token comes off the machine feed's open frame (the
+	 * one channel that carries it; the catalogue redacts it) and goes back
+	 * through the daemon's own seen route. Everything before step (2) is the
+	 * app's own; step (2) is disclosed here and in the run notes.
+	 */
+	const acknowledge = async (id, tag) => {
+		let attention = (await ourRow(id)).row?.unseen ?? null;
+		for (let attempt = 0; attempt < 6 && attention === null; attempt += 1) {
+			await wait(1000);
+			attention = (await ourRow(id)).row?.unseen ?? null;
+		}
+		const pageState = await cdp.evaluate(
+			"({ focus: document.hasFocus(), visibility: document.visibilityState })",
+		);
+		note(
+			`phase ${tag} page state`,
+			JSON.stringify({ at: at(), ...pageState, unseen: attention }),
+		);
+		if (attention === false) {
+			note(
+				`phase ${tag} acknowledgement`,
+				JSON.stringify({
+					at: at(),
+					path: "nothing to clear",
+					unseen: attention,
+				}),
+			);
+			return attention;
+		}
+		await cdp.send("Emulation.setFocusEmulationEnabled", { enabled: true });
+		for (let attempt = 0; attempt < 8 && attention !== false; attempt += 1) {
+			await wait(1000);
+			attention = (await ourRow(id)).row?.unseen;
+		}
+		await cdp.send("Emulation.setFocusEmulationEnabled", { enabled: false });
+		note(
+			`phase ${tag} app receipt attempt`,
+			JSON.stringify({ at: at(), cleared: attention === false }),
+		);
+		let path = "nothing to clear";
+		if (attention !== false) {
+			path = "rig: the feed's token through the daemon's seen route";
+			const token = await feedCompletionToken(id);
+			if (token === null) {
+				path = "rig: no token on the feed";
+			} else {
+				const seen = await fetch(`${BACKEND}/v1/desktop/sessions/${id}/seen`, {
+					method: "POST",
+					headers: { ...authHeaders, "content-type": "application/json" },
+					body: JSON.stringify({ completion_token: token }),
+				});
+				note(
+					`phase ${tag} receipt`,
+					JSON.stringify({ at: at(), status: seen.status }),
+				);
+				for (
+					let attempt = 0;
+					attempt < 15 && attention !== false;
+					attempt += 1
+				) {
+					await wait(1000);
+					attention = (await ourRow(id)).row?.unseen;
+				}
+			}
+		}
+		note(
+			`phase ${tag} acknowledgement`,
+			JSON.stringify({ at: at(), path, unseen: attention }),
+		);
+		return attention;
+	};
+
+	/*
+	 * PHASE 0 - the baseline, on the chat route with no conversation open.
+	 */
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	await verb(cdp, "navigate", "/agent-hub");
+	await verb(cdp, "navigate", "/chat");
+	await wait(1200);
+	const baselineSidebar = await sidebarRead();
+	const baselineCatalogue = await catalogueRows();
+	note(
+		"phase 0 baseline",
+		JSON.stringify({
+			at: at(),
+			sidebar: baselineSidebar,
+			catalogueTotal: baselineCatalogue.length,
+			catalogue: baselineCatalogue.map(rowSummary),
+		}),
+	);
+	const baselineFrame = await captureSettled(cdp, "plain-00-baseline");
+	note("frame", JSON.stringify(baselineFrame));
+
+	/*
+	 * PHASE 1 - the plain New chat: the app-wide chord, from a route that is
+	 * not the chat route, exactly as `sceneNewChat` proves it.
+	 */
+	await verb(cdp, "navigate", "/agent-hub");
+	await pressChord(cdp, {
+		key: "n",
+		code: "KeyN",
+		virtualKeyCode: 78,
+		modifiers: MODIFIER.meta,
+	});
+	const landed = await waitForRoute(cdp, "/chat");
+	const stagedKey = await stagedDraft(cdp);
+	check(
+		"⌘N moved the app to the chat route and staged a fresh draft",
+		landed.route === "/chat" &&
+			typeof stagedKey === "string" &&
+			stagedKey.startsWith("draft:"),
+		`route ${landed.route}, activeDraftKey ${JSON.stringify(stagedKey)}`,
+	);
+	await wait(800);
+	const openSidebar = await sidebarRead();
+	note(
+		"phase 1 new chat open",
+		JSON.stringify({ at: at(), sidebar: openSidebar }),
+	);
+	const openFrame = await captureSettled(cdp, "plain-01-new-chat-open");
+	note("frame", JSON.stringify(openFrame));
+
+	/*
+	 * PHASE 2 - type and send the first message.
+	 */
+	await clickAt(cdp, '[data-tour-tag="chat-input-textarea"] textarea');
+	await cdp.send("Input.insertText", { text: firstMessage });
+	await wait(250);
+	const typedFrame = await captureSettled(cdp, "plain-02-typed");
+	note("frame", JSON.stringify(typedFrame));
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const reached = await waitForCondition(
+		cdp,
+		`(() => { const log = document.querySelector('[role="log"]'); return Boolean(log && log.textContent.includes("tessellate")); })()`,
+		45_000,
+	);
+	check(
+		"the first message reached the transcript",
+		reached.ok,
+		`after ${reached.waitedMs ?? "?"}ms: ${JSON.stringify(reached.last)}`,
+	);
+	await wait(1000);
+	const sentSidebar = await sidebarRead();
+	note("phase 2 sent", JSON.stringify({ at: at(), sidebar: sentSidebar }));
+	const sentFrame = await captureSettled(cdp, "plain-02-sent");
+	note("frame", JSON.stringify(sentFrame));
+
+	/*
+	 * PHASE 3 - the turn completes; the state the row must carry moves to the
+	 * completed/unseen face of the lifecycle.
+	 */
+	const answered = await waitForCondition(
+		cdp,
+		`(() => { const log = document.querySelector('[role="log"]'); return Boolean(log && log.textContent.includes("from the mock provider")); })()`,
+		60_000,
+	);
+	check(
+		"the mock answered the first turn",
+		answered.ok,
+		`after ${answered.waitedMs ?? "?"}ms`,
+	);
+	await wait(1500);
+	const stateNow = await verb(cdp, "state");
+	/*
+	 * THE SESSION ID, from the two places the app itself keeps it: the store's
+	 * active session, and the route (the pane moves to `#/chat/<id>` when the
+	 * create's answer lands). The route is the fallback because `state`'s own
+	 * field is the store's, which is null for a beat after a reload.
+	 */
+	const routeSession = await cdp.evaluate(
+		"(() => { const m = location.hash.match(/#\\/chat\\/([a-f0-9]{12})/); return m === null ? null : m[1]; })()",
+	);
+	const sessionId = stateNow.activeSessionId ?? routeSession ?? null;
+	note(
+		"phase 3 answered",
+		JSON.stringify({
+			at: at(),
+			activeSession: sessionId,
+			sidebar: await sidebarRead(),
+			catalogue: sessionId ? await ourRow(sessionId) : null,
+		}),
+	);
+	const answeredFrame = await captureSettled(cdp, "plain-03-answered");
+	note("frame", JSON.stringify(answeredFrame));
+
+	/*
+	 * PHASE 4 - acknowledge the first turn's completion (see `acknowledge`).
+	 */
+	await acknowledge(sessionId, "4");
+	const ackFrame = await captureSettled(cdp, "plain-04-acknowledged");
+	note("frame", JSON.stringify(ackFrame));
+
+	/*
+	 * PHASE 5 - later prose: one more turn, so the store holds a word that is
+	 * in neither the name nor the opening message.
+	 */
+	await clickAt(cdp, '[data-tour-tag="chat-input-textarea"] textarea');
+	await cdp.send("Input.insertText", { text: laterMessage });
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const laterReached = await waitForCondition(
+		cdp,
+		`(() => { const log = document.querySelector('[role="log"]'); return Boolean(log && log.textContent.includes("${laterWord}")); })()`,
+		45_000,
+	);
+	check(
+		"the second message reached the transcript",
+		laterReached.ok,
+		`after ${laterReached.waitedMs ?? "?"}ms`,
+	);
+	await wait(1500);
+	const secondAnswered = await waitForCondition(
+		cdp,
+		`(() => { const log = document.querySelector('[role="log"]'); const text = log ? log.textContent : ""; return text.split("from the mock provider").length >= 2; })()`,
+		60_000,
+	);
+	check(
+		"the mock answered the second turn",
+		secondAnswered.ok,
+		`after ${secondAnswered.waitedMs ?? "?"}ms`,
+	);
+	note(
+		"phase 5 later prose",
+		JSON.stringify({ at: at(), sidebar: await sidebarRead() }),
+	);
+
+	/*
+	 * PHASE 5B - acknowledge the second turn's completion, so the drain below
+	 * lands on the state a reader who actually looked at the chat leaves behind.
+	 */
+	await wait(1500);
+	await acknowledge(sessionId, "5");
+
+	/*
+	 * PHASE 6 - let the runtime drain: leave the conversation so its watch
+	 * lease lapses (WATCH_TTL 45 s + the drain beside it), and poll the
+	 * catalogue's own live_state until the row is cold.
+	 */
+	await verb(cdp, "navigate", "/agent-hub");
+	let drained = null;
+	const drainStarted = Date.now();
+	for (let attempt = 0; attempt < 40; attempt += 1) {
+		await wait(5000);
+		drained = sessionId ? await ourRow(sessionId) : null;
+		if (drained?.row && drained.row.live === "" && drained.row.unseen === false)
+			break;
+	}
+	note(
+		"phase 6 drain",
+		JSON.stringify({
+			at: at(),
+			drainMs: Date.now() - drainStarted,
+			drained: drained,
+		}),
+	);
+	/*
+	 * THE FRESH FIRST PAINT, which is the state the operator's report describes:
+	 * the app comes back and the sidebar re-reads from scratch. A reload is the
+	 * same door the app's relaunch uses ("the RELAUNCH step is a `Page.reload`"),
+	 * and a running app reaches the same membership whenever its page is fetched
+	 * anew; the doorbell alone did NOT drop a held row (measured: the client
+	 * keeps a stale copy until a full re-read), so the reload is what proves the
+	 * membership the page actually carries now.
+	 */
+	await verb(cdp, "navigate", "/chat");
+	await wait(1000);
+	await cdp.send("Page.reload", { ignoreCache: false });
+	await waitForBridge(cdp, 90_000);
+	const sidebarBack = await waitForCondition(
+		cdp,
+		`document.querySelector('[data-sidebar-region="chats"]') !== null && document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]').length > 0`,
+		30_000,
+	);
+	await wait(1500);
+	note(
+		"phase 6 reload",
+		JSON.stringify({
+			at: at(),
+			sidebarBack: sidebarBack.ok,
+			waitedMs: sidebarBack.waitedMs,
+		}),
+	);
+	await verb(cdp, "navigate", "/chat");
+	await wait(1500);
+	const steadySidebar = await sidebarRead();
+	const steadyState = await verb(cdp, "state");
+	const steady = sessionId ? await ourRow(sessionId) : null;
+	const steadyRendered = steadySidebar.rows.some(
+		(row) => row.id !== null && row.id === sessionId,
+	);
+	note(
+		"phase 6 steady state",
+		JSON.stringify({
+			at: at(),
+			sidebar: steadySidebar,
+			activeSessionId: steadyState.activeSessionId ?? null,
+			catalogue: steady,
+			rowRendered: steadyRendered,
+			/*
+				WHICH PATH PRODUCED THE READS, beside the outcome: the activity flag
+				must be live and the store must hold the HEAD PAGE rather than the
+				legacy whole-catalogue read - on a 62-row store that read carries the
+				row trivially, so the flags are what tell a real pass from a vacuous
+				one.
+			 */
+			catalogueActivityHead: steadyState.catalogueActivityHead ?? false,
+			cataloguePageable: steadyState.cataloguePageable ?? false,
+			sessionCount: steadyState.sessionCount ?? null,
+			cataloguePinnedCount: steadyState.cataloguePinnedCount ?? null,
+		}),
+	);
+	const steadyFrame = await captureSettled(cdp, "plain-06-drained");
+	note("frame", JSON.stringify(steadyFrame));
+	/*
+	 * THE FIRST CLAIM, the operator's "does not appear in the sidebar": on a
+	 * store small enough that the whole catalogue fits one page, the row must
+	 * be rendered in the sidebar's own membership at the drained steady state.
+	 */
+	check(
+		"the conversation is rendered in the sidebar at the drained steady state",
+		steadyRendered,
+		`rows ${JSON.stringify(steadySidebar.rows.map((row) => row.text.slice(0, 40)))}`,
+		`rows ${JSON.stringify(steadySidebar.rows.map((row) => row.text.slice(0, 40)))}`,
+	);
+	/*
+	 * THE PATH, ASSERTED BESIDE THE OUTCOME. The row rendering above is evidence
+	 * about the fix only if the read that carried it was the activity head. The
+	 * rig's daemon advertises `session_catalogue_sort`, so the pane must have
+	 * published the flag and the store must hold the HEAD PAGE; on this store a
+	 * legacy whole-catalogue read carries the row for free, which is exactly the
+	 * vacuous pass these two checks refuse.
+	 */
+	check(
+		"the catalogue is read in the sidebar's own order (session_catalogue_sort live)",
+		steadyState.catalogueActivityHead === true,
+		`catalogueActivityHead=${steadyState.catalogueActivityHead} cataloguePageable=${steadyState.cataloguePageable}`,
+		`catalogueActivityHead=${steadyState.catalogueActivityHead} cataloguePageable=${steadyState.cataloguePageable}`,
+	);
+	check(
+		"the store holds the head page, not the legacy whole-catalogue read",
+		/*
+		 * EXACT FOR PINNED EXTRAS, NOT LOOSE FOR EVERY STORE (QA round 1, Q1). The
+		 * daemon appends pinned rows that fall off the page below the page's own rows
+		 * (the route's own docs: `len(sessions)` may exceed `limit`), so a bound on
+		 * `sessionCount` alone false-fails a correct read the moment one pin falls off
+		 * the page - QA measured 50 page rows + 1 off-page pin = 51, which this check
+		 * would have called a legacy read and failed. Subtracting the pinned count
+		 * keeps the bound tight where it matters: the legacy whole-catalogue read (the
+		 * 500 an early take's store held) still fails it, and an ordinary head page
+		 * passes with or without extras.
+		 */
+		typeof steadyState.sessionCount === "number" &&
+			typeof steadyState.cataloguePinnedCount === "number" &&
+			steadyState.sessionCount - steadyState.cataloguePinnedCount <=
+				LAZY_CATALOGUE_HEAD_PAGE,
+		`sessionCount=${steadyState.sessionCount} pinnedCount=${steadyState.cataloguePinnedCount}`,
+		`sessionCount=${steadyState.sessionCount} minus ${steadyState.cataloguePinnedCount} pinned extra(s) (<= ${LAZY_CATALOGUE_HEAD_PAGE} is the head page)`,
+	);
+
+	/*
+	 * THE SCROLLED FRAME (design round 1, D1). The drained frame above proves
+	 * membership in the DOM; it cannot prove VISIBILITY. On this store the panel's
+	 * fold falls between the pinned row and the first TODAY row - the sidebar
+	 * columns of the before/after pair were pixel-identical, with the cured row
+	 * just past the scroller's edge - so the pair made a membership fix read as
+	 * "no visible change". This step scrolls the chats scroller until the subject
+	 * row sits about a third down the window and captures THAT state, reading back
+	 * where it landed rather than asserting the scroll it asked for. In the before
+	 * half the row is not in the DOM at all and the same step lands on the first
+	 * TODAY row instead: the pair then shows the same window position with and
+	 * without the conversation in it.
+	 */
+	const scrollShot = await cdp.evaluate(`(() => {
+		const rows = [...document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]')];
+		const subject = rows.find((el) => el.getAttribute("data-session-row") === ${JSON.stringify(sessionId)});
+		const target = subject ?? rows.find((el) => el.closest('[data-chat-section]')?.getAttribute("data-chat-section") === "today") ?? null;
+		if (!target) return { ok: false, reason: "no target row" };
+		let list = target.parentElement;
+		while (list && !String(list.className).includes("overflow-y-auto")) list = list.parentElement;
+		if (!list) return { ok: false, reason: "no scroller" };
+		const lr = list.getBoundingClientRect();
+		const tr = target.getBoundingClientRect();
+		list.scrollTop += tr.top - lr.top - lr.height * 0.3;
+		return { ok: true, isSubject: subject !== undefined, scrollTop: list.scrollTop, maxScroll: list.scrollHeight - list.clientHeight };
+	})()`);
+	await wait(450);
+	const scrolledRead = await cdp.evaluate(`(() => {
+		const rows = [...document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]')];
+		const subject = rows.find((el) => el.getAttribute("data-session-row") === ${JSON.stringify(sessionId)});
+		const pick = subject ?? rows.find((el) => el.closest('[data-chat-section]')?.getAttribute("data-chat-section") === "today");
+		const scroller = document.querySelector('[data-sidebar-region="scroller"]');
+		if (!pick || !scroller) return null;
+		const sr = scroller.getBoundingClientRect();
+		const pr = pick.getBoundingClientRect();
+		return {
+			isSubject: subject !== undefined,
+			scrollTop: scroller.scrollTop,
+			clientHeight: scroller.clientHeight,
+			scrollHeight: scroller.scrollHeight,
+			rowTop: pr.top,
+			rowBottom: pr.bottom,
+			windowTop: sr.top,
+			windowBottom: sr.bottom,
+		};
+	})()`);
+	note(
+		"phase 6 scrolled read",
+		JSON.stringify({ at: at(), scrollShot, scrolledRead }),
+	);
+	check(
+		"the scrolled frame is taken with the list's subject (or first TODAY) row inside the window",
+		scrolledRead !== null &&
+			scrolledRead.rowBottom > scrolledRead.windowTop &&
+			scrolledRead.rowTop < scrolledRead.windowBottom,
+		`scrolledRead=${JSON.stringify(scrolledRead)}`,
+		`scrolledRead=${JSON.stringify(scrolledRead)}`,
+	);
+	const scrolledFrame = await captureSettled(cdp, "plain-06-scrolled");
+	note("frame", JSON.stringify(scrolledFrame));
+	await cdp.evaluate(`(() => {
+		const scroller = document.querySelector('[data-sidebar-region="scroller"]');
+		if (scroller) scroller.scrollTop = 0;
+		return scroller ? scroller.scrollTop : null;
+	})()`);
+	await wait(250);
+
+	/*
+	 * INVARIANT 1, MEASURED: the conversation the reader is IN, even one the
+	 * page no longer carries. Opening it BY ROUTE is the design's own scenario
+	 * ("a reader who opens a conversation from a notification, a link or the
+	 * terminal"). The row must be drawn - as the lifted `current` section -
+	 * whatever the page holds.
+	 */
+	await verb(cdp, "navigate", `/chat/${sessionId}`);
+	await wait(2500);
+	const openedSidebar = await sidebarRead();
+	const openRendered = openedSidebar.rows.some(
+		(row) => row.id !== null && row.id === sessionId,
+	);
+	note(
+		"phase 6 open by route",
+		JSON.stringify({
+			at: at(),
+			sidebar: openedSidebar,
+			rowRendered: openRendered,
+		}),
+	);
+	const openRouteFrame = await captureSettled(cdp, "plain-06-open-by-route");
+	note("frame", JSON.stringify(openRouteFrame));
+	check(
+		"the conversation being viewed is on screen even when the page no longer carries it (invariant 1)",
+		openRendered,
+		`rows ${JSON.stringify(openedSidebar.rows.map((row) => row.text.slice(0, 40)))}`,
+	);
+	await verb(cdp, "navigate", "/chat");
+	await wait(1000);
+
+	/*
+	 * PHASE 7 - search, for the words a user remembers: the first message's,
+	 * the topic words, and the later prose's. Both halves of the answer are
+	 * read: the daemon's own search result, and the sidebar's rendered rows
+	 * under the query.
+	 */
+	await openSearch();
+	const searchReads = [];
+	for (const query of ["provider", "tessellate", laterWord, run]) {
+		await setSearchQuery(query);
+		const rendered = await sidebarRead();
+		const api = await apiSearch(query);
+		searchReads.push({
+			query,
+			api,
+			apiFound: sessionId !== null && api.ids.includes(sessionId),
+			renderedRows: rendered.rows,
+			renderedFound: rendered.rows.some(
+				(row) => row.id !== null && row.id === sessionId,
+			),
+		});
+		const searchFrame = await captureSettled(
+			cdp,
+			`plain-07-search-${query.replace(/[^a-z0-9]/gi, "-")}`,
+		);
+		note("frame", JSON.stringify(searchFrame));
+	}
+	await clearSearchField();
+	await wait(200);
+	await pressChord(cdp, { key: "Escape", code: "Escape", virtualKeyCode: 27 });
+	const searchFrame = await captureSettled(cdp, "plain-07-search-closed");
+	note("frame", JSON.stringify(searchFrame));
+	note("phase 7 search", JSON.stringify({ at: at(), reads: searchReads }));
+	/*
+	 * THE SECOND CLAIM, the operator's "cannot be found by search": the words
+	 * below are ones the user remembers from the conversation itself (the
+	 * first message's topic word, and one that only exists in later prose) -
+	 * both within the digest's own scan window, so a miss here is the defect
+	 * rather than the digest bound.
+	 */
+	for (const read of searchReads.filter(
+		(entry) => entry.query === "tessellate" || entry.query === laterWord,
+	)) {
+		check(
+			`search for "${read.query}" finds the conversation`,
+			read.apiFound || read.renderedFound,
+			JSON.stringify({
+				api: read.api.top,
+				apiTotal: read.api.total,
+				rows: read.renderedRows.map((row) => row.text.slice(0, 60)),
+			}),
+		);
+	}
+
+	return [
+		baselineFrame,
+		openFrame,
+		typedFrame,
+		sentFrame,
+		answeredFrame,
+		ackFrame,
+		steadyFrame,
+		searchFrame,
+	];
+}
+
 async function sceneNewChat(cdp) {
 	/*
 	 * Start anywhere but the chat route: `navigate("/chat")` is 80% of what this
@@ -27047,6 +28323,1367 @@ async function sceneSettingsFields(cdp) {
 	return frames;
 }
 
+/* ------------------------------------------------------------------------- *
+ * `settings-default-effort`: the Default effort row beside Hosting provider
+ * and Model, and the provider callout under them.
+ *
+ * WHY A NEW SCENE. The row's whole contract is that its options are the
+ * SELECTED MODEL's ladder as the BACKEND resolves it, and that a model switch
+ * clamps a stored level the new ladder does not carry. Neither claim is
+ * visible in a still on its own, and neither can be asserted against a
+ * Storybook fixture: the ladder comes from `POST /v1/desktop/sessions/preview`
+ * and the clamp lands in the settings registry, so both readings are the
+ * daemon's. This scene drives the real Settings page, reads the daemon's own
+ * answers, and asserts the two against each other.
+ *
+ * WHAT IT DRIVES, all through the page's own controls:
+ *
+ *   1. `/settings?section=general`, settled, the row at rest;
+ *   2. the Default effort list OPEN, with its option rows compared to the
+ *      preview's `reasoning_efforts` for the selected model (read here, never
+ *      hard-coded);
+ *   3. a rung picked and saved (read back from `GET /v1/settings`);
+ *   4. the Model row switched to a model with a DIFFERENT ladder, after which
+ *      the options must be the new ladder and `model_effort` must equal the
+ *      level the backend resolves for that model with no rung chosen — the
+ *      clamp the row's own module documents;
+ *   5. the provider callout, VISIBLE or ABSENT by `--callout-expect`, and the
+ *      "Providers" link pressed with the landing measured in numbers — once by
+ *      pointer, then again as a KEYBOARD walk (real Tab to the link, Enter) so
+ *      the landing target's ring suppression and the next Tab stop are pinned
+ *      rather than inferred.
+ *
+ * The callout needs two daemons, because its predicate is the provider CENSUS:
+ * a config root with no provider credential reports `needsProvider`, and one
+ * whose `openai` env key is present does not. Two runs, one scene, and the
+ * flag names which half is being recorded — see
+ * `docs/evidence/settings-default-effort/README.md`.
+ *
+ *   node scripts/renderer-driver.mjs --scene settings-default-effort \
+ *     --backend http://127.0.0.1:8080 --backend-records <config>/run/serve \
+ *     --seed-onboarding-complete --callout-expect present --out <dir>
+ */
+
+/** The section the three rows and the callout live in. */
+const DEFAULT_EFFORT_SECTION = "#model-settings";
+
+/**
+ * The control inside `<section> <label for=…>`, as an EXPRESSION that evaluates
+ * to the input or null.
+ *
+ * The scene reaches the rows by the labels a reader sees rather than by a
+ * component hook: `HostingSelect`, `ModelSelect` and the new row are all one
+ * `SearchableSelect`, whose input is what its `<label for>` names.
+ */
+function labeledControl(sectionSelector, labelText) {
+	return `(() => {
+		const section = document.querySelector(${JSON.stringify(sectionSelector)});
+		if (!section) return null;
+		const label = [...section.querySelectorAll("label")].find(
+			(node) => (node.textContent ?? "").trim() === ${JSON.stringify(labelText)},
+		);
+		if (!label) return null;
+		const input = label.control ?? (label.getAttribute("for") ? document.getElementById(label.getAttribute("for")) : null);
+		return input instanceof HTMLInputElement ? input : null;
+	})()`;
+}
+
+/** The row's state: value, disabled, expanded, and what it is telling the reader. */
+async function readLabeledRow(cdp, labelText) {
+	return cdp.evaluate(`(() => {
+		const input = ${labeledControl(DEFAULT_EFFORT_SECTION, labelText)};
+		if (!input) return { present: false };
+		const described = (input.getAttribute("aria-describedby") ?? "")
+			.split(/\\s+/)
+			.filter(Boolean)
+			.map((id) => document.getElementById(id))
+			.filter(Boolean)
+			.map((node) => (node.textContent ?? "").trim());
+		return {
+			present: true,
+			value: input.value,
+			disabled: input.disabled,
+			expanded: input.getAttribute("aria-expanded"),
+			helper: described.join(" "),
+		};
+	})()`);
+}
+
+/** The open list, read as text in render order, with label and description apart. */
+const DEFAULT_EFFORT_LIST = `(() => {
+	const list = document.querySelector('[role="listbox"]');
+	if (!list) return { open: false, options: [] };
+	return {
+		open: true,
+		options: [...list.querySelectorAll('[role="option"]')].map((node) => {
+			const head = node.children[0];
+			const detail = node.children[1];
+			return {
+				text: (node.textContent ?? "").replace(/\\s+/g, " ").trim(),
+				label: (head?.textContent ?? "").replace(/\\s+/g, " ").trim(),
+				description: (detail?.textContent ?? "").replace(/\\s+/g, " ").trim(),
+				disabled: node.getAttribute("data-disabled") === "" || node.getAttribute("aria-disabled") === "true",
+			};
+		}),
+	};
+})()`;
+
+/**
+ * The values `model_effort` can store, from the settings registry's own row.
+ *
+ * The scene compares the OFFERED rungs against this set rather than assuming
+ * the ladder is the value space: Radient's ladder carries the `auto` sentinel,
+ * which is the label of `""` and not a storable value.
+ */
+async function storableModelEfforts() {
+	const payload = await rigGetJson("/v1/settings");
+	const rows = payload?.result?.settings ?? [];
+	const row = rows.find((entry) => entry.key === "model_effort");
+	return Array.isArray(row?.choices)
+		? row.choices
+				.map((choice) => choice?.value)
+				.filter((value) => typeof value === "string")
+		: [];
+}
+
+/** The stored state the scene asserts before it starts driving the row. */
+async function waitForEffortRow(cdp, predicate) {
+	return waitForScene(
+		cdp,
+		`(() => {
+			const input = ${labeledControl(DEFAULT_EFFORT_SECTION, "Default effort")};
+			if (!input) return false;
+			return ${predicate};
+		})()`,
+		600,
+	);
+}
+
+/**
+ * Press an element the page found for itself: the row's input, or one option.
+ *
+ * A press at coordinates the component reported, with the topmost element at
+ * that point coming back with the reading — which is how a covered or
+ * disabled control is told from a broken press.
+ */
+async function pressResolved(cdp, expression) {
+	const point = await cdp.evaluate(`(() => {
+		const node = ${expression};
+		if (!node) return null;
+		node.scrollIntoView({ block: "center", inline: "nearest" });
+		const rect = node.getBoundingClientRect();
+		const x = rect.left + Math.min(24, Math.max(1, rect.width / 2));
+		const y = rect.top + rect.height / 2;
+		const top = document.elementFromPoint(x, y);
+		return {
+			x,
+			y,
+			hit: top !== null && (top === node || node.contains(top)),
+			disabled: node.disabled === true,
+			top: top === null ? "none" : top.tagName.toLowerCase(),
+		};
+	})()`);
+	if (!point) return null;
+	await wait(150);
+	await pressPointer(cdp, point.x, point.y);
+	return point;
+}
+
+/** The daemon's own JSON answer to one GET, with this run's bearer. */
+async function rigGetJson(path) {
+	const response = await fetch(`${BACKEND}${path}`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	});
+	return response.json().catch(() => null);
+}
+
+/** The model a preview resolves for a selection, asked exactly as the row asks. */
+async function previewModel(provider, modelId) {
+	const response = await fetch(`${BACKEND}/v1/desktop/sessions/preview`, {
+		method: "POST",
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+			"content-type": "application/json",
+		},
+		body: JSON.stringify({
+			/*
+			 * `request_id` is required by the route (it is carried for envelope
+			 * parity and deliberately not journalled): a body without it is a 422
+			 * that reads exactly like "this model has no ladder".
+			 */
+			request_id: crypto.randomUUID(),
+			cwd: HOME_DIR,
+			model: {
+				provider,
+				model_id: modelId,
+				reasoning_effort: null,
+			},
+		}),
+	});
+	const payload = await response.json().catch(() => null);
+	return payload?.result?.frontend?.snapshot?.effective_model ?? null;
+}
+
+/** `model_effort` as the settings registry holds it. */
+async function storedModelEffort() {
+	const payload = await rigGetJson("/v1/settings");
+	const rows = payload?.result?.settings ?? [];
+	const row = rows.find((entry) => entry.key === "model_effort");
+	return typeof row?.value === "string" ? row.value : null;
+}
+
+/** The configured pair, as `GET /v1/config` reports it. */
+async function backendConfigValues() {
+	const payload = await rigGetJson("/v1/config");
+	const values = payload?.result?.values ?? {};
+	return {
+		hosting: typeof values.hosting === "string" ? values.hosting : "",
+		model: typeof values.model_name === "string" ? values.model_name : "",
+	};
+}
+
+/** Poll until the daemon reports the value this scene is waiting for. */
+async function waitForStoredEffort(expected, attempts = 150) {
+	for (let attempt = 0; attempt < attempts; attempt += 1) {
+		if ((await storedModelEffort()) === expected) return true;
+		await wait(100);
+	}
+	return false;
+}
+
+/** The callout and its link, read out of the Model settings section. */
+const PROVIDER_CALLOUT = `(() => {
+	const section = document.querySelector(${JSON.stringify(DEFAULT_EFFORT_SECTION)});
+	if (!section) return { section: false };
+	const text = (section.textContent ?? "").replace(/\\s+/g, " ").trim();
+	const link = [...section.querySelectorAll("button")].find(
+		(node) => (node.textContent ?? "").trim() === "Providers",
+	);
+	return {
+		section: true,
+		present: text.includes("Sign in with a provider to reach more models"),
+		link: Boolean(link),
+		linkTag: link ? link.tagName : null,
+		hashAnchor: Boolean(section.querySelector('a[href="#providers"]')),
+	};
+})()`;
+
+/**
+ * Where the Providers section sits relative to the element that actually
+ * scrolls, and what the rail says is current.
+ *
+ * `handleSelectSection` moves whichever box can move and leaves `HEADER_ROOM`
+ * (80px) above the section, so the landing is asserted against that rule rather
+ * than against a zero that the page never promises.
+ */
+const PROVIDERS_LANDING = `(() => {
+	const grid = document.querySelector("[data-provider-grid]");
+	const scroller = document.querySelector("[data-settings-content]");
+	if (!grid || !scroller) return { found: false };
+	let section = grid;
+	while (section && !(section.querySelector("h2")?.textContent ?? "").trim().match(/^Model providers$/)) {
+		section = section.parentElement;
+	}
+	if (!section) return { found: false };
+	const rect = section.getBoundingClientRect();
+	const box = scroller.getBoundingClientRect();
+	const nav = document.querySelector('nav[aria-label="Settings sections"]');
+	const current = nav
+		? [...nav.querySelectorAll("button")]
+				.filter((row) => row.getAttribute("aria-current") === "page")
+				.map((row) => (row.textContent ?? "").trim())
+		: [];
+	return {
+		found: true,
+		top: Math.round(rect.top - box.top),
+		scrollerScrollTop: Math.round(scroller.scrollTop),
+		documentScrollTop: Math.round(window.scrollY),
+		current,
+	};
+})()`;
+
+async function sceneSettingsDefaultEffort(cdp) {
+	const hello = await verb(cdp, "hello");
+	const facts = await factsOf(cdp);
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		ELECTRON_USER_AGENT.test(hello.userAgent),
+		hello.userAgent,
+	);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	check(
+		"this scene is running against a live, isolated backend",
+		Boolean(BACKEND),
+		"the row's options and its write both come from the daemon, so this needs --backend",
+	);
+	if (!BACKEND) return [];
+
+	const calloutFlag = argValue("--callout-expect", "present");
+	const calloutExpect = calloutFlag === "present" ? "present" : "absent";
+	check(
+		"--callout-expect names one of the two callout states",
+		["present", "absent"].includes(calloutFlag),
+		JSON.stringify(calloutFlag),
+	);
+	if (!["present", "absent"].includes(calloutFlag)) return [];
+	/*
+	 * THREE RUNS, ONE SCENE. `full` is the ladder/clamp/callout walk the original
+	 * set recorded. `seeded` is the state the unset row's description exists for:
+	 * a model whose own default the backend publishes, with nothing stored (D3).
+	 * `no-model` is the fresh-install composition with no hosting at all (D2):
+	 * empty Hosting provider and Model rows, the effort row's "Select a model"
+	 * helper, and the callout visible.
+	 */
+	const effortMode = argValue("--effort-mode", "full");
+	check(
+		"--effort-mode names one of the three runs",
+		["full", "seeded", "no-model"].includes(effortMode),
+		JSON.stringify(effortMode),
+	);
+	if (!["full", "seeded", "no-model"].includes(effortMode)) return [];
+	/*
+	 * Branding asks a new control for light AND dark. The palette is a flag so the
+	 * same bytes produce both sets; the scene's readings are theme-independent and
+	 * are asserted in both runs.
+	 */
+	const theme = argValue("--theme", "localOperatorDark");
+	check(
+		"--theme names one of the two palettes this change ships",
+		["localOperatorDark", "localOperatorLight"].includes(theme),
+		JSON.stringify(theme),
+	);
+	if (!["localOperatorDark", "localOperatorLight"].includes(theme)) return [];
+
+	const config = await backendConfigValues();
+	note("the daemon's configured pair", JSON.stringify(config));
+
+	if (effortMode === "no-model") {
+		check(
+			"the daemon has NO hosting configured, which is the state this run frames",
+			config.hosting === "" && config.model === "",
+			JSON.stringify(config),
+		);
+		await verb(cdp, "navigate", "/settings?section=general");
+		await verb(cdp, "setTheme", theme);
+		const rendered = await waitForEffortRow(
+			cdp,
+			"input !== null && input.disabled === true",
+		);
+		check(
+			"the Default effort row renders, disabled, with no model configured",
+			rendered === true,
+			"the row never appeared",
+		);
+		if (rendered !== true) return [];
+		const row = await readLabeledRow(cdp, "Default effort");
+		note("the row with no model configured", JSON.stringify(row));
+		check(
+			"the row says a model must be chosen before effort exists",
+			row.helper.includes("Select a model to choose its effort levels."),
+			JSON.stringify(row.helper),
+		);
+		/*
+		 * No chosen row: the stored value is knowable but there is no model for it to
+		 * mean anything about, and a field reading "Model default" beside an empty
+		 * Model row names a default of nothing. The placeholder is the honest fill.
+		 */
+		check(
+			"the field shows its placeholder rather than a chosen row",
+			row.value === "",
+			`value=${JSON.stringify(row.value)}`,
+		);
+		const above = await cdp.evaluate(`(() => {
+			const section = document.querySelector(${JSON.stringify(DEFAULT_EFFORT_SECTION)});
+			if (!section) return { section: false };
+			const value = (label) => {
+				const node = [...section.querySelectorAll("label")].find(
+					(candidate) => (candidate.textContent ?? "").trim() === label,
+				);
+				const input = node
+					? node.control ?? (node.getAttribute("for") ? document.getElementById(node.getAttribute("for")) : null)
+					: null;
+				return input instanceof HTMLInputElement ? input.value.trim() : null;
+			};
+			return { section: true, hosting: value("Hosting provider"), model: value("Model") };
+		})()`);
+		note("the two rows above the effort row", JSON.stringify(above));
+		check(
+			"Hosting provider and Model are both empty",
+			above.section === true && above.hosting === "" && above.model === "",
+			JSON.stringify(above),
+		);
+		const callout = await cdp.evaluate(PROVIDER_CALLOUT);
+		check(
+			"with no hosting and no provider credential the callout is VISIBLE",
+			callout.present === true && callout.link === true,
+			JSON.stringify(callout),
+		);
+		/*
+		 * Land the section at the page's own 80px header room rather than letting
+		 * `scrollIntoView` cut the heading on the scroller's edge: the frame's
+		 * subject is the whole composition, heading included.
+		 */
+		await cdp.evaluate(`(() => {
+			const section = document.querySelector(${JSON.stringify(DEFAULT_EFFORT_SECTION)});
+			const scroller = document.querySelector("[data-settings-content]");
+			if (!section || !scroller) return false;
+			const delta =
+				section.getBoundingClientRect().top -
+				scroller.getBoundingClientRect().top;
+			scroller.scrollTo({ top: Math.max(0, scroller.scrollTop + delta - 80) });
+			return true;
+		})()`);
+		await wait(400);
+		const frame = await captureSettled(
+			cdp,
+			"settings-default-effort-fresh-install",
+		);
+		return [frame];
+	}
+
+	check(
+		"the daemon is configured on a model this scene can read a ladder for",
+		config.hosting !== "" && config.model !== "",
+		JSON.stringify(config),
+	);
+	if (config.hosting === "" || config.model === "") return [];
+
+	await verb(cdp, "navigate", "/settings?section=general");
+	await verb(cdp, "setTheme", theme);
+
+	if (effortMode === "seeded") {
+		/*
+		 * D3: the unset row's description only ever renders while NOTHING is
+		 * stored, and only when the backend reports a level for the model. This
+		 * run pins both halves: the daemon's own seed is non-empty, and the open
+		 * list prints it under Model default.
+		 */
+		const rendered = await waitForEffortRow(
+			cdp,
+			"input !== null && input.disabled === false",
+		);
+		check(
+			"the Default effort row rendered, enabled, on the seeded model",
+			rendered === true,
+			"the row never became enabled: the preview or the settings read did not answer",
+		);
+		if (rendered !== true) return [];
+		const model = await previewModel(config.hosting, config.model);
+		const seed =
+			typeof model?.reasoning_effort === "string"
+				? model.reasoning_effort.trim()
+				: "";
+		note(
+			"the daemon's seeded level for this model",
+			`${config.hosting}/${config.model}: ${JSON.stringify(seed)}`,
+		);
+		check(
+			"with nothing stored the daemon resolves a level for this model",
+			seed !== "",
+			`reasoning_effort=${JSON.stringify(model?.reasoning_effort ?? null)}`,
+		);
+		check(
+			"this run starts with model_effort unset",
+			(await storedModelEffort()) === "",
+			`model_effort=${JSON.stringify(await storedModelEffort())}`,
+		);
+		const rest = await readLabeledRow(cdp, "Default effort");
+		check(
+			"the row reads Model default",
+			rest.value === "Model default",
+			`value=${JSON.stringify(rest.value)}`,
+		);
+		await cdp.evaluate(`(() => {
+			const input = ${labeledControl(DEFAULT_EFFORT_SECTION, "Default effort")};
+			input?.scrollIntoView({ block: "center" });
+			return true;
+		})()`);
+		await wait(400);
+		const seededRestFrame = await captureSettled(
+			cdp,
+			"settings-default-effort-rest",
+		);
+		const opened = await pressResolved(
+			cdp,
+			labeledControl(DEFAULT_EFFORT_SECTION, "Default effort"),
+		);
+		check(
+			"the row's own control took the press",
+			opened?.hit === true,
+			JSON.stringify(opened),
+		);
+		const listOpen = await waitForScene(
+			cdp,
+			`document.querySelectorAll('[role="listbox"] [role="option"]').length > 0`,
+		);
+		check("the list opened on the press", listOpen === true, "no listbox rows");
+		const open = await cdp.evaluate(DEFAULT_EFFORT_LIST);
+		note("the list open on the seeded model", JSON.stringify(open));
+		const unset = open.options[0] ?? {};
+		check(
+			"the unset row is first and reads Model default",
+			unset.label === "Model default",
+			JSON.stringify(open.options.map((option) => option.label)),
+		);
+		check(
+			"the unset row names the level this model resolves to with nothing stored",
+			typeof unset.description === "string" &&
+				unset.description.toLowerCase() ===
+					`runs at ${seed} for this model.`.toLowerCase(),
+			`description=${JSON.stringify(unset.description)} seed=${JSON.stringify(seed)}`,
+		);
+		const seededOpenFrame = await captureSettled(
+			cdp,
+			"settings-default-effort-open",
+		);
+		return [seededRestFrame, seededOpenFrame];
+	}
+
+	/*
+	 * The row is ready when its control is on screen and no longer waiting on
+	 * either read: the settings registry or the preview. A disabled row in this
+	 * configuration would be the defect, so the wait is for enabled.
+	 */
+	const ready = await waitForScene(
+		cdp,
+		`(() => {
+			const input = ${labeledControl(DEFAULT_EFFORT_SECTION, "Default effort")};
+			return Boolean(input) && input.disabled === false;
+		})()`,
+		600,
+	);
+	check(
+		"the Default effort row rendered, enabled, on the configured model",
+		ready === true,
+		"the row never became enabled: the preview or the settings read did not answer",
+	);
+	if (ready !== true) return [];
+
+	const firstModel = await previewModel(config.hosting, config.model);
+	const firstLadder = Array.isArray(firstModel?.reasoning_efforts)
+		? firstModel.reasoning_efforts
+		: [];
+	note(
+		"the daemon's ladder for the configured model",
+		`${config.hosting}/${config.model}: ${JSON.stringify(firstLadder)}`,
+	);
+	const storableValues = await storableModelEfforts();
+	note(
+		"the values model_effort can store, from the settings registry",
+		JSON.stringify(storableValues),
+	);
+	const storableLadder = firstLadder.filter((rung) =>
+		storableValues.some((value) => value.toLowerCase() === rung.toLowerCase()),
+	);
+	note("the ladder rungs this key can store", JSON.stringify(storableLadder));
+	check(
+		"every storable rung of the ladder is one the daemon listed",
+		storableLadder.length > 1,
+		`${JSON.stringify(storableLadder)} — the clamp half needs a multi-rung model with storable rungs`,
+	);
+	if (storableLadder.length < 2) return [];
+
+	const rest = await readLabeledRow(cdp, "Default effort");
+	note("the row at rest", JSON.stringify(rest));
+	check(
+		"the stored value is empty, so the row reads Model default",
+		rest.value === "Model default",
+		`value=${JSON.stringify(rest.value)}`,
+	);
+	/*
+	 * `reasoning_effort: null` is the backend's honest "no level is in force",
+	 * which is not a case to invent one for. The closed row's helper states the
+	 * RULE and never a level; the per-model fact is the unset option's own
+	 * description, read from the open list below and asserted there.
+	 */
+	const resolvedFirst = firstModel?.reasoning_effort ?? null;
+	check(
+		"the closed row's helper states the Model-default rule",
+		rest.helper.includes("Model default lets this model choose its own level."),
+		`helper=${JSON.stringify(rest.helper)}`,
+	);
+	/*
+	 * Put the row at the middle of the viewport before the frame: the Model
+	 * settings section starts below the fold on arrival, and a "rest" picture
+	 * whose subject is cut off at the bottom edge is not evidence of the row.
+	 */
+	await cdp.evaluate(`(() => {
+		const input = ${labeledControl(DEFAULT_EFFORT_SECTION, "Default effort")};
+		input?.scrollIntoView({ block: "center" });
+		return true;
+	})()`);
+	await wait(400);
+	const restFrame = await captureSettled(cdp, "settings-default-effort-rest");
+
+	/* ---------------------------------------------------------------- */
+	/* 2. The list open, against the daemon's ladder                      */
+	/* ---------------------------------------------------------------- */
+
+	const opened = await pressResolved(
+		cdp,
+		labeledControl(DEFAULT_EFFORT_SECTION, "Default effort"),
+	);
+	check(
+		"the row's own control took the press",
+		opened?.hit === true,
+		JSON.stringify(opened),
+	);
+	const listOpen = await waitForScene(
+		cdp,
+		`document.querySelectorAll('[role="listbox"] [role="option"]').length > 0`,
+	);
+	check("the list opened on the press", listOpen === true, "no listbox rows");
+
+	const open = await cdp.evaluate(DEFAULT_EFFORT_LIST);
+	note("the list open", JSON.stringify(open));
+	/*
+	 * THE OPTIONS ARE THE DAEMON'S LADDER, compared with the ladder this SCENE
+	 * read from `/v1/desktop/sessions/preview` — never a table in this file. The
+	 * row labels are the ladder's own values in the app's title case
+	 * (`effortDisplay`), so the comparison folds case rather than restating the
+	 * spelling map.
+	 */
+	/*
+	 * `textContent` glues an option's label to its description, so the comparison
+	 * is "each row STARTS WITH the expected label" rather than equality - the
+	 * unset row's description ("Runs at High for this model.") is part of its
+	 * text and deliberately not part of the ladder this scene reads.
+	 */
+	const offered = open.options.map((option) => option.text.toLowerCase());
+	const expected = [
+		"model default",
+		...storableLadder.map((rung) => rung.toLowerCase()),
+	];
+	check(
+		"the options are the unset member plus the STORABLE ladder, in its order",
+		offered.length === expected.length &&
+			expected.every((label, index) => offered[index].startsWith(label)),
+		`offered=${JSON.stringify(offered)} expected=${JSON.stringify(expected)}`,
+	);
+	/*
+	 * The unset row's description is the only place the model's own default is
+	 * named. With nothing stored and a backend answer of "no level" it must be
+	 * absent rather than carrying any level; when the backend names one (the
+	 * seeded run) it must name exactly that. A description surviving a stored
+	 * value is the stale-answer defect this key's stored value fixes (MAJOR 2).
+	 */
+	const unsetFirst = open.options[0] ?? {};
+	const resolvedIsStorable =
+		typeof resolvedFirst === "string" &&
+		resolvedFirst !== "" &&
+		storableValues.some(
+			(value) => value.toLowerCase() === resolvedFirst.toLowerCase(),
+		);
+	check(
+		"the unset row's description names this model's own default, or is absent when it reports none",
+		resolvedIsStorable
+			? unsetFirst.description.toLowerCase() ===
+					`runs at ${resolvedFirst} for this model.`.toLowerCase()
+			: unsetFirst.description === "",
+		`description=${JSON.stringify(unsetFirst.description)} resolved=${JSON.stringify(resolvedFirst)}`,
+	);
+	const openFrame = await captureSettled(cdp, "settings-default-effort-open");
+
+	/* ---------------------------------------------------------------- */
+	/* 3. Pick the top rung and save it                                  */
+	/* ---------------------------------------------------------------- */
+
+	const topRung = storableLadder[storableLadder.length - 1];
+	const topIndex = open.options.findIndex(
+		(option) => option.label.toLowerCase() === topRung.toLowerCase(),
+	);
+	const topLabel = open.options[topIndex]?.label ?? topRung;
+	check(
+		"the top rung is a row in the open list",
+		topIndex > 0,
+		`topRung=${JSON.stringify(topRung)} rows=${JSON.stringify(open.options.map((option) => option.label))}`,
+	);
+	const picked = await pressResolved(
+		cdp,
+		topIndex > 0
+			? `[...document.querySelectorAll('[role="listbox"] [role="option"]')][${topIndex}] ?? null`
+			: "null",
+	);
+	check(
+		"the top rung's row took the press",
+		picked?.hit === true,
+		JSON.stringify(picked),
+	);
+	const saved = await waitForStoredEffort(topRung);
+	check(
+		"the picked rung is what the daemon's settings registry holds",
+		saved === true,
+		`model_effort=${JSON.stringify(await storedModelEffort())}, expected ${JSON.stringify(topRung)}`,
+	);
+	const afterSave = await readLabeledRow(cdp, "Default effort");
+	check(
+		"the row shows the saved rung after the write lands",
+		afterSave.value.toLowerCase() === topRung.toLowerCase(),
+		`value=${JSON.stringify(afterSave.value)}`,
+	);
+	const savedFrame = await captureSettled(cdp, "settings-default-effort-saved");
+
+	/* ---------------------------------------------------------------- */
+	/* 3b. Clear the value: the preview must answer for the NEW input     */
+	/* ---------------------------------------------------------------- */
+
+	/*
+	 * MAJOR 2's discriminating step. The preview's answer depends on the STORED
+	 * `model_effort` (the backend resolves `reasoning_effort: null` against it),
+	 * so after this row's own write only a key that carries the stored value
+	 * refetches. With `max` stored the row's list would describe "Model default"
+	 * with the old clamp ("Runs at Max"); cleared, the backend answers the
+	 * model's own default, which for this model is "no level" - so the
+	 * description MUST be gone.
+	 */
+	const readyAfterSave = await waitForEffortRow(
+		cdp,
+		"input !== null && input.disabled === false",
+	);
+	check(
+		"the row is ready again after its own write",
+		readyAfterSave === true,
+		"the row stayed disabled after saving",
+	);
+	if (readyAfterSave !== true) return [restFrame, openFrame, savedFrame];
+	const reopenForClear = await pressResolved(
+		cdp,
+		labeledControl(DEFAULT_EFFORT_SECTION, "Default effort"),
+	);
+	check(
+		"the row opens again after the save",
+		reopenForClear?.hit === true,
+		JSON.stringify(reopenForClear),
+	);
+	await waitForScene(
+		cdp,
+		`document.querySelectorAll('[role="listbox"] [role="option"]').length > 0`,
+	);
+	const beforeClear = await cdp.evaluate(DEFAULT_EFFORT_LIST);
+	const unsetIndex = beforeClear.options.findIndex(
+		(option) => option.label === "Model default",
+	);
+	check(
+		"the unset row is in the list opened after the save",
+		unsetIndex === 0,
+		JSON.stringify(beforeClear.options.map((option) => option.label)),
+	);
+	const cleared = await pressResolved(
+		cdp,
+		unsetIndex >= 0
+			? `[...document.querySelectorAll('[role="listbox"] [role="option"]')][${unsetIndex}] ?? null`
+			: "null",
+	);
+	check(
+		"the unset row took the press",
+		cleared?.hit === true,
+		JSON.stringify(cleared),
+	);
+	const clearedStored = await waitForStoredEffort("");
+	check(
+		"clearing the row writes the empty value",
+		clearedStored === true,
+		`model_effort=${JSON.stringify(await storedModelEffort())}`,
+	);
+	const readyAfterClear = await waitForEffortRow(
+		cdp,
+		"input !== null && input.disabled === false",
+	);
+	check(
+		"the row is ready again after clearing",
+		readyAfterClear === true,
+		"the row stayed disabled after clearing",
+	);
+	const afterClear = await readLabeledRow(cdp, "Default effort");
+	check(
+		"the row reads Model default after clearing",
+		afterClear.value === "Model default",
+		`value=${JSON.stringify(afterClear.value)}`,
+	);
+	const reopenedAfterClear = await pressResolved(
+		cdp,
+		labeledControl(DEFAULT_EFFORT_SECTION, "Default effort"),
+	);
+	check(
+		"the row opens after clearing",
+		reopenedAfterClear?.hit === true,
+		JSON.stringify(reopenedAfterClear),
+	);
+	await waitForScene(
+		cdp,
+		`document.querySelectorAll('[role="listbox"] [role="option"]').length > 0`,
+	);
+	const clearedList = await cdp.evaluate(DEFAULT_EFFORT_LIST);
+	const clearedUnset = clearedList.options[0] ?? {};
+	note("the unset row after clearing", JSON.stringify(clearedUnset));
+	check(
+		"the unset row's description is re-derived for the CLEARED value, not the stale Max answer",
+		resolvedIsStorable
+			? clearedUnset.description.toLowerCase() ===
+					`runs at ${resolvedFirst} for this model.`.toLowerCase()
+			: clearedUnset.description === "",
+		`description=${JSON.stringify(clearedUnset.description)} (a stale answer would name the previous level)`,
+	);
+	/* Close without committing, then put the top rung back: the clamp half needs
+	 * an off-ladder stored value, and Escape is the row's own close path. */
+	for (const type of ["rawKeyDown", "keyUp"]) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+		});
+	}
+	await waitForScene(
+		cdp,
+		`document.querySelector('[role="listbox"]') === null`,
+	);
+	const reopenForTop = await pressResolved(
+		cdp,
+		labeledControl(DEFAULT_EFFORT_SECTION, "Default effort"),
+	);
+	check(
+		"the row opens for the second pick",
+		reopenForTop?.hit === true,
+		JSON.stringify(reopenForTop),
+	);
+	await waitForScene(
+		cdp,
+		`document.querySelectorAll('[role="listbox"] [role="option"]').length > 0`,
+	);
+	const repickList = await cdp.evaluate(DEFAULT_EFFORT_LIST);
+	const topIndexAgain = repickList.options.findIndex(
+		(option) => option.label.toLowerCase() === topRung.toLowerCase(),
+	);
+	const repicked = await pressResolved(
+		cdp,
+		topIndexAgain > 0
+			? `[...document.querySelectorAll('[role="listbox"] [role="option"]')][${topIndexAgain}] ?? null`
+			: "null",
+	);
+	check(
+		"the top rung is chosen again for the clamp half",
+		repicked?.hit === true && (await waitForStoredEffort(topRung)) === true,
+		`model_effort=${JSON.stringify(await storedModelEffort())}`,
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 4. Switch the model and watch the clamp                           */
+	/* ---------------------------------------------------------------- */
+
+	const secondModelId = "o3";
+	const focused = await cdp.evaluate(`(() => {
+		const input = ${labeledControl(DEFAULT_EFFORT_SECTION, "Model")};
+		if (!input) return false;
+		input.focus();
+		input.select();
+		return document.activeElement === input;
+	})()`);
+	check(
+		"the Model row's field took focus for the typed switch",
+		focused === true,
+		"the field was not focusable or did not take the caret",
+	);
+	/*
+	 * The canonical selector is typed rather than a row pressed: every model row
+	 * carries its own `provider/model` among its search terms, so this resolves
+	 * to exactly one row and Enter commits that row's id. It is also the honest
+	 * user path for a model a reader knows by name.
+	 */
+	await cdp.send("Input.insertText", {
+		text: `${config.hosting}/${secondModelId}`,
+	});
+	await wait(200);
+	for (const type of ["rawKeyDown", "keyUp"]) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key: "Enter",
+			code: "Enter",
+			windowsVirtualKeyCode: 13,
+		});
+	}
+	const switched = await (async () => {
+		for (let attempt = 0; attempt < 150; attempt += 1) {
+			if ((await backendConfigValues()).model === secondModelId) return true;
+			await wait(100);
+		}
+		return false;
+	})();
+	check(
+		"the Model switch landed on the daemon's configured model",
+		switched === true,
+		`config model_name=${JSON.stringify((await backendConfigValues()).model)}`,
+	);
+	if (!switched) return [restFrame, openFrame, savedFrame];
+
+	const secondModel = await previewModel(config.hosting, secondModelId);
+	const secondLadder = Array.isArray(secondModel?.reasoning_efforts)
+		? secondModel.reasoning_efforts
+		: [];
+	const resolvedSecond =
+		typeof secondModel?.reasoning_effort === "string"
+			? secondModel.reasoning_effort.trim()
+			: "";
+	/*
+	 * What the row's own clamp writes: the daemon's resolved level when this key
+	 * can store it, and the empty value otherwise (the storable-set rule this
+	 * change introduced).
+	 */
+	const clampTarget =
+		resolvedSecond !== "" &&
+		storableValues.some(
+			(value) => value.toLowerCase() === resolvedSecond.toLowerCase(),
+		)
+			? resolvedSecond
+			: "";
+	note(
+		"the daemon's ladder and resolved level for the switched model",
+		`${config.hosting}/${secondModelId}: ladder=${JSON.stringify(secondLadder)} resolved=${JSON.stringify(clampTarget)}`,
+	);
+	check(
+		"the daemon accepted the model switch",
+		secondModel !== null,
+		"the preview did not resolve the switched model",
+	);
+	if (secondModel === null) return [restFrame, openFrame, savedFrame];
+	check(
+		"the switched model's ladder is different from the first model's",
+		secondLadder.length > 1 &&
+			JSON.stringify(secondLadder) !== JSON.stringify(firstLadder),
+		`first=${JSON.stringify(firstLadder)} second=${JSON.stringify(secondLadder)}`,
+	);
+	check(
+		"the stored rung is NOT in the new ladder, so the clamp has something to do",
+		!secondLadder
+			.map((rung) => rung.toLowerCase())
+			.includes(topRung.toLowerCase()),
+		`stored=${JSON.stringify(topRung)} second=${JSON.stringify(secondLadder)}`,
+	);
+
+	const clamped = await waitForStoredEffort(clampTarget);
+	check(
+		"the stored default equals the level the backend resolves for the new model",
+		clamped === true,
+		`model_effort=${JSON.stringify(await storedModelEffort())}, resolved=${JSON.stringify(clampTarget)}`,
+	);
+	const switchedRow = await readLabeledRow(cdp, "Default effort");
+	check(
+		"the row shows the clamped level rather than the previous rung",
+		clampTarget === ""
+			? switchedRow.value === "Model default"
+			: switchedRow.value.toLowerCase() === clampTarget.toLowerCase(),
+		`value=${JSON.stringify(switchedRow.value)} resolved=${JSON.stringify(clampTarget)}`,
+	);
+	/*
+	 * U1: a clamp replaces the level the user chose, so the row must SAY so at
+	 * the row - the toast in view belongs to the Model write. The announcement
+	 * names both the level that is unavailable and the one now in force.
+	 */
+	const clampNoticeExpected =
+		clampTarget === "" ? "using model default." : `using ${clampTarget}.`;
+	check(
+		"the clamp is announced at the row rather than substituted silently",
+		switchedRow.helper
+			.toLowerCase()
+			.includes(`${topLabel.toLowerCase()} is not available on`) &&
+			switchedRow.helper.toLowerCase().includes(clampNoticeExpected),
+		`helper=${JSON.stringify(switchedRow.helper)} expected level=${JSON.stringify(topLabel)} target=${JSON.stringify(clampTarget)}`,
+	);
+	/*
+	 * The announcement's own frame, taken BEFORE the list is reopened: the open
+	 * popover sits over the helper, so a picture of the ladder would hide the
+	 * sentence that says what happened to the stored level.
+	 */
+	const clampedFrame = await captureSettled(
+		cdp,
+		"settings-default-effort-clamped",
+	);
+
+	const reopened = await pressResolved(
+		cdp,
+		labeledControl(DEFAULT_EFFORT_SECTION, "Default effort"),
+	);
+	check(
+		"the switched model's row opens on its own control",
+		reopened?.hit === true,
+		JSON.stringify(reopened),
+	);
+	const secondOpen = await waitForScene(
+		cdp,
+		`document.querySelectorAll('[role="listbox"] [role="option"]').length > 0`,
+	);
+	check(
+		"the list opened after the model switch",
+		secondOpen === true,
+		"no listbox rows",
+	);
+	const switchedList = await cdp.evaluate(DEFAULT_EFFORT_LIST);
+	const offeredSecond = switchedList.options.map((option) =>
+		option.text.toLowerCase(),
+	);
+	const expectedSecond = [
+		"model default",
+		...secondLadder
+			.filter((rung) =>
+				storableValues.some(
+					(value) => value.toLowerCase() === rung.toLowerCase(),
+				),
+			)
+			.map((rung) => rung.toLowerCase()),
+	];
+	check(
+		"the options are the NEW model's ladder, read from the daemon",
+		offeredSecond.length === expectedSecond.length &&
+			expectedSecond.every((label, index) =>
+				offeredSecond[index].startsWith(label),
+			),
+		`offered=${JSON.stringify(offeredSecond)} expected=${JSON.stringify(expectedSecond)}`,
+	);
+	const switchedFrame = await captureSettled(
+		cdp,
+		"settings-default-effort-model-switched",
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 5. The callout, and the Providers jump                            */
+	/* ---------------------------------------------------------------- */
+
+	/*
+	 * The list is still open from the model-switch capture, and a popover
+	 * overlays the callout beneath the field: close it so the frame is the
+	 * callout rather than a list on top of it.
+	 */
+	for (const type of ["rawKeyDown", "keyUp"]) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+		});
+	}
+	await waitForScene(
+		cdp,
+		`document.querySelector('[role="listbox"]') === null`,
+	);
+	const callout = await cdp.evaluate(PROVIDER_CALLOUT);
+	note("the provider callout", JSON.stringify(callout));
+	check(
+		"the Model settings section rendered",
+		callout.section === true,
+		`no ${DEFAULT_EFFORT_SECTION} in the page`,
+	);
+	if (calloutExpect === "present") {
+		check(
+			"with NO provider connected the callout is VISIBLE",
+			callout.present === true && callout.link === true,
+			JSON.stringify(callout),
+		);
+		check(
+			'the "Providers" link is a real button, not a hash anchor',
+			callout.linkTag === "BUTTON" && callout.hashAnchor === false,
+			JSON.stringify(callout),
+		);
+		const calloutFrame = await captureSettled(
+			cdp,
+			"settings-default-effort-callout",
+		);
+		/*
+		 * A probe on the button itself, so a press that lands and a handler that
+		 * never ran are told apart: the counter is the DOM's own record of the
+		 * click, and the landing below is the handler's effect.
+		 */
+		await cdp.evaluate(`(() => {
+			const button = [...document.querySelectorAll(${JSON.stringify(`${DEFAULT_EFFORT_SECTION} button`)})].find(
+				(node) => (node.textContent ?? "").trim() === "Providers",
+			);
+			window.__providersClicks = 0;
+			if (button) {
+				button.addEventListener("click", () => {
+					window.__providersClicks += 1;
+				});
+			}
+			return Boolean(button);
+		})()`);
+		const jumped = await pressResolved(
+			cdp,
+			`[...document.querySelectorAll(${JSON.stringify(`${DEFAULT_EFFORT_SECTION} button`)})].find(
+				(node) => (node.textContent ?? "").trim() === "Providers",
+			) ?? null`,
+		);
+		const clicks = await cdp.evaluate("window.__providersClicks ?? -1");
+		note("clicks the Providers button recorded", JSON.stringify(clicks));
+		check(
+			"the Providers link took the press",
+			jumped?.hit === true,
+			JSON.stringify(jumped),
+		);
+		/*
+		 * Off the link at once. The page scrolls UNDER a stationary pointer, so
+		 * the rows that pass the old coordinates raise their own hover cards -
+		 * the first landing frame carried the Keyboard shortcuts row's "Code
+		 * review / No shortcut" field over the section. The pointer is parked in
+		 * the content's bottom padding, where nothing is a hover target.
+		 */
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: WINDOW_WIDTH - 6,
+			y: WINDOW_HEIGHT - 6,
+			button: "none",
+			buttons: 0,
+		});
+		/*
+		 * The jump is smooth, so the landing is waited for rather than sampled:
+		 * poll until the offset stops moving, then read it.
+		 */
+		/*
+		 * The landing is SMOOTH, so a first sample is a picture of the scroll
+		 * before it starts. Waiting for "two equal samples" broke on exactly
+		 * that (measured: 574px of 3900 taken, the rail still on General), so
+		 * the wait is for the page's own stated destination - HEADER_ROOM of
+		 * 80px above the section - and a miss is a failed check, not a sleep.
+		 */
+		let landing = await cdp.evaluate(PROVIDERS_LANDING);
+		for (let attempt = 0; attempt < 120; attempt += 1) {
+			landing = await cdp.evaluate(PROVIDERS_LANDING);
+			if (landing.found && Math.abs(landing.top - 80) <= 2) break;
+			await wait(100);
+		}
+		await wait(250);
+		/*
+		 * Park the pointer before the shutter. The press leaves it at the old
+		 * coordinates, and after the jump a hover target sits under it - the
+		 * first landing frame carried a live "Code review / No shortcut" hint
+		 * over the section, which is the pointer's own state rather than the
+		 * page's.
+		 */
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: 2,
+			y: 2,
+			button: "none",
+			buttons: 0,
+		});
+		await wait(300);
+		landing = await cdp.evaluate(PROVIDERS_LANDING);
+		note("where the Providers section landed", JSON.stringify(landing));
+		check(
+			"the jump MOVED the page rather than only updating the rail",
+			(landing.scrollerScrollTop ?? 0) > 0 ||
+				(landing.documentScrollTop ?? 0) > 0,
+			JSON.stringify(landing),
+		);
+		check(
+			"the Providers section's top sits at the page's own 80px header room",
+			landing.found === true && Math.abs(landing.top - 80) <= 2,
+			`top=${landing.top} (expected 80), scrollTop=${landing.scrollerScrollTop}`,
+		);
+		check(
+			"the rail names Model providers as the current section",
+			Array.isArray(landing.current) &&
+				landing.current.some((name) => name.includes("Model providers")),
+			JSON.stringify(landing.current),
+		);
+		const landingFrame = await captureSettled(
+			cdp,
+			"settings-default-effort-providers-jump",
+		);
+		/*
+		 * U2: the jump must leave the keyboard where it took the eye. Activation
+		 * moves focus into the section (skip-link pattern), so one Tab continues
+		 * INSIDE it instead of returning to the link's DOM neighbour and pulling
+		 * the scroller back up.
+		 */
+		const focusAfterJump = await cdp.evaluate(`(() => {
+			const section = document.getElementById("model-providers");
+			const active = document.activeElement;
+			return {
+				focusedInside: Boolean(section && active && section.contains(active)),
+				activeTag: active ? active.tagName.toLowerCase() : null,
+			};
+		})()`);
+		note("focus after the Providers jump", JSON.stringify(focusAfterJump));
+		await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+		await wait(250);
+		const afterTabFocus = await cdp.evaluate(`(() => {
+			const section = document.getElementById("model-providers");
+			const active = document.activeElement;
+			return {
+				focusedInside: Boolean(section && active && section.contains(active)),
+				activeTag: active ? active.tagName.toLowerCase() : null,
+			};
+		})()`);
+		const afterTabLanding = await cdp.evaluate(PROVIDERS_LANDING);
+		note(
+			"where the section sits after one Tab",
+			JSON.stringify({ focus: afterTabFocus, landing: afterTabLanding }),
+		);
+		check(
+			"after the jump, one Tab stays inside the Model providers section",
+			afterTabFocus.focusedInside === true,
+			JSON.stringify(afterTabFocus),
+		);
+		check(
+			"the Tab does not pull the view back to the link's position",
+			afterTabLanding.found === true && Math.abs(afterTabLanding.top - 80) <= 4,
+			`top=${afterTabLanding.top} (expected 80), scrollTop=${afterTabLanding.scrollerScrollTop}`,
+		);
+		/*
+		 * D6: the same jump, walked WITHOUT a pointer. The callout is the next tab
+		 * stop after the effort row, so a real Tab from the row reaches the link;
+		 * Enter activates it like a keyboard user would. The section is a
+		 * programmatic `tabIndex={-1}` rest-stop, not a control, so it must land
+		 * without painting the app's 2px ring around its whole box - measured here
+		 * as `:focus-visible` (Chromium's own rule after keyboard activation) plus
+		 * the computed outline style, because a headless frame cannot be trusted to
+		 * photograph a ring the window may never focus.
+		 */
+		await cdp.evaluate(`(() => {
+			const input = ${labeledControl(DEFAULT_EFFORT_SECTION, "Default effort")};
+			input?.focus();
+			return Boolean(input);
+		})()`);
+		await wait(150);
+		await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+		await wait(150);
+		const keyboardLink = await cdp.evaluate(`(() => {
+			const active = document.activeElement;
+			return {
+				tag: active ? active.tagName.toLowerCase() : null,
+				text: (active?.textContent ?? "").trim(),
+			};
+		})()`);
+		note("the tab stop after the effort row", JSON.stringify(keyboardLink));
+		check(
+			"a real Tab from the effort row reaches the Providers link",
+			keyboardLink.tag === "button" && keyboardLink.text === "Providers",
+			JSON.stringify(keyboardLink),
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		/*
+		 * The jump is smooth; wait for the page's own stated destination rather than
+		 * a fixed sleep, the same rule the pointer leg follows.
+		 */
+		let keyboardLanding = await cdp.evaluate(PROVIDERS_LANDING);
+		for (let attempt = 0; attempt < 40; attempt += 1) {
+			const landed =
+				keyboardLanding.found === true &&
+				Math.abs(keyboardLanding.top - 80) <= 2 &&
+				(keyboardLanding.current ?? []).some((name) =>
+					name.includes("Model providers"),
+				);
+			if (landed) break;
+			await wait(100);
+			keyboardLanding = await cdp.evaluate(PROVIDERS_LANDING);
+		}
+		const keyboardFocus = await cdp.evaluate(`(() => {
+			const section = document.getElementById("model-providers");
+			const active = document.activeElement;
+			return {
+				sectionFocused: section !== null && active === section,
+				focusedInside: Boolean(section && active && section.contains(active)),
+				activeTag: active ? active.tagName.toLowerCase() : null,
+				focusVisible: section ? section.matches(":focus-visible") : null,
+				outlineStyle: section ? getComputedStyle(section).outlineStyle : null,
+			};
+		})()`);
+		note(
+			"the keyboard landing and its ring",
+			JSON.stringify({ focus: keyboardFocus, landing: keyboardLanding }),
+		);
+		check(
+			"Enter on the link moves focus INTO the Model providers section",
+			keyboardFocus.focusedInside === true,
+			JSON.stringify(keyboardFocus),
+		);
+		check(
+			"the keyboard landing sits at the page's own 80px header room",
+			keyboardLanding.found === true && Math.abs(keyboardLanding.top - 80) <= 2,
+			`top=${keyboardLanding.top} (expected 80), scrollTop=${keyboardLanding.scrollerScrollTop}`,
+		);
+		check(
+			"the programmatic landing target paints NO focus ring",
+			keyboardFocus.sectionFocused === true &&
+				keyboardFocus.focusVisible === true &&
+				keyboardFocus.outlineStyle === "none",
+			JSON.stringify({
+				focusVisible: keyboardFocus.focusVisible,
+				outlineStyle: keyboardFocus.outlineStyle,
+			}),
+		);
+		const keyboardFrame = await captureSettled(
+			cdp,
+			"settings-default-effort-providers-jump-keyboard",
+		);
+		await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+		await wait(250);
+		const keyboardNext = await cdp.evaluate(`(() => {
+			const section = document.getElementById("model-providers");
+			const active = document.activeElement;
+			return {
+				focusedInside: Boolean(section && active && section.contains(active)),
+				activeTag: active ? active.tagName.toLowerCase() : null,
+				label: active?.getAttribute("aria-label") ?? null,
+			};
+		})()`);
+		const keyboardAfterTab = await cdp.evaluate(PROVIDERS_LANDING);
+		note(
+			"the tab stop after the keyboard jump",
+			JSON.stringify({ focus: keyboardNext, landing: keyboardAfterTab }),
+		);
+		check(
+			"after the keyboard jump, one Tab lands on the providers search field",
+			keyboardNext.focusedInside === true &&
+				keyboardNext.activeTag === "input" &&
+				(keyboardNext.label ?? "").toLowerCase().includes("search"),
+			JSON.stringify(keyboardNext),
+		);
+		check(
+			"the keyboard landing stays put after that Tab",
+			keyboardAfterTab.found === true &&
+				Math.abs(keyboardAfterTab.top - 80) <= 4,
+			`top=${keyboardAfterTab.top} (expected 80), scrollTop=${keyboardAfterTab.scrollerScrollTop}`,
+		);
+		return [
+			restFrame,
+			openFrame,
+			savedFrame,
+			clampedFrame,
+			switchedFrame,
+			calloutFrame,
+			landingFrame,
+			keyboardFrame,
+		];
+	}
+	check(
+		"with a provider connected the callout is ABSENT",
+		callout.present === false && callout.link === false,
+		JSON.stringify(callout),
+	);
+	const absentFrame = await captureSettled(
+		cdp,
+		"settings-default-effort-callout-absent",
+	);
+	return [
+		restFrame,
+		openFrame,
+		savedFrame,
+		clampedFrame,
+		switchedFrame,
+		absentFrame,
+	];
+}
+
 /**
  * THE INTERFACE LANGUAGE ROW, in the section that owns its control.
  *
@@ -28156,6 +30793,960 @@ async function sceneSettingsGate(cdp) {
 		"/schedules is still on the route Suspense fallback after 8s",
 	);
 	return samples;
+}
+
+/**
+ * The row this scene is about: its key, the row's selectors, and the identity
+ * the frozen core that serves it must carry.
+ *
+ * THE PIN IS WHY THIS SCENE CAN NAME STRINGS AT ALL. Every other reading below
+ * compares the DOM against what THIS run's daemon answered, so a daemon that
+ * served the wrong row would agree with itself; the pin is what makes "the
+ * backend owns the copy" a claim about THIS row rather than about two readers
+ * sharing one mistake. It is pinned to the core this lane serves (`v0.73.10`,
+ * the same core the tier fixture was regenerated from), and a core that re-words
+ * the row fails this check by name instead of quietly re-baselining the frames.
+ */
+const ACCOUNT_POLICY_KEY = "retry.accountSelectionPolicy";
+const ACCOUNT_POLICY_ROW = `[data-setting-key="${ACCOUNT_POLICY_KEY}"]`;
+const ACCOUNT_POLICY_BUTTONS = `${ACCOUNT_POLICY_ROW} button`;
+/** The row's control on THIS kind (`enum`): Radix's trigger, `role=combobox`. */
+const ACCOUNT_POLICY_TRIGGER = `${ACCOUNT_POLICY_ROW} [data-setting-control] button[role="combobox"]`;
+const ACCOUNT_POLICY_EXPECTED = {
+	label: "account selection policy",
+	choices: [
+		{ value: "reset-soonest", label: "Reset soonest" },
+		{ value: "headroom", label: "Most headroom" },
+		{ value: "fair", label: "Fair spread" },
+	],
+};
+
+/**
+ * One registry row as the `--backend` daemon serves it.
+ *
+ * The daemon read is the CLAIM the pixels are beside (the same position
+ * `--scene project-inline-edit` takes): the row's copy, its choices and - after
+ * the save - its PERSISTED value are read from `GET /v1/settings` over the
+ * session bearer, never inferred from the UI that just wrote them.
+ */
+async function fetchDaemonSetting(key) {
+	const response = await fetch(`${BACKEND}/v1/settings`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	});
+	const body = await response.json().catch(() => null);
+	return {
+		status: response.status,
+		row: body?.result?.settings?.find((entry) => entry.key === key) ?? null,
+	};
+}
+
+/**
+ * Scroll a found element to the viewport's middle before pressing it.
+ *
+ * WHY `pressFoundElement` CANNOT DO THIS ITSELF: its finder resolves an element
+ * a CSS selector cannot name (a text-matched button), and its press dispatches
+ * at the element's centre READ IN THE SAME BREATH - so an element below the fold
+ * would be pressed at coordinates outside the viewport, the hit test would read
+ * as refused, and the scene would throw about a control that is merely out of
+ * view. This is the scroll-then-press order `pointerPressSelector` uses, for an
+ * element only a finder can name.
+ */
+async function scrollFoundIntoView(cdp, finder) {
+	const scrolled = await cdp.evaluate(`(() => {
+		const element = (${finder})();
+		if (element === null || element === undefined) return false;
+		element.scrollIntoView({ block: "center", inline: "center" });
+		return true;
+	})()`);
+	if (scrolled) await wait(400);
+	return scrolled;
+}
+
+/**
+ * THE ACCOUNT-POLICY ROW (`retry.accountSelectionPolicy`), the row this slice
+ * classifies, photographed and driven on the BUILT app.
+ *
+ * WHY A NEW SCENE. The row is this change's subject and its claims are claims a
+ * story cell cannot carry: the row is NOT in the Basic surface (the tier map
+ * holds it back), search reaches it by its canonical key at EVERY tier, and its
+ * label, help and choices are the DAEMON's copy - which only a run against a
+ * live isolated daemon can show. The story sweep renders the fixture registry
+ * offline and never reaches a save; this scene drives the row's own enum, saves
+ * through the app's own transport (IPC -> HTTP to the daemon) and reads the
+ * persisted value back from the daemon itself.
+ *
+ * WHAT IT DRIVES, in order, each state reached by a REAL control press (a CDP
+ * pointer event at the element's painted centre), never by a store write:
+ *   1. the plain `/settings` page, tier off: the row must NOT be in the DOM;
+ *   2. the search field, typed by the row's own canonical key: found ("1 result
+ *      in 1 section") while the tier is STILL OFF - the tier is a view of the
+ *      list, never a gate on a question;
+ *   3. clearing the search puts the Basic surface back (the row leaves again);
+ *   4. the `Show advanced` chip: the row is admitted, `data-tier="advanced"`;
+ *   5. the chip is pressed AGAIN to put the tier back the way the scene found
+ *      it, so the deep link performs its own reveal (the why is measured, see
+ *      below); the deep link then reveals the TIER, opens its section, scrolls
+ *      the row to the middle and FOCUSES the control - the link's
+ *      keyboard-usefulness, read from `document.activeElement` rather than
+ *      from a ring (see below);
+ *   6. the row's own help reveal: the advanced row's help is behind its
+ *      disclosure, so it is PRESSED open and the sentence is compared against
+ *      the daemon's;
+ *   7. the enum: the trigger opens a real listbox whose options are compared
+ *      (label and description) against the daemon's own choices, then `Most
+ *      headroom` is pressed;
+ *   8. Save, then the REAL readback: the app's own round-trip (a refetch through
+ *      the same transport that saved) plus the daemon's own `GET /v1/settings`
+ *      answer, which must hold `headroom` and `is_default: false`.
+ *
+ * WHY THE TIER IS PUT BACK BEFORE THE LINK, and why the landing wait never
+ * returns on the row's mere existence (both measured by this scene's first
+ * run, output in the frames README):
+ *
+ *   - The first run's wait returned the moment the ROW existed - `waitForCondition`
+ *     treats any truthy value as the answer, and the reading object always was
+ *     one - so it read a sub-second partial state (`focused: elsewhere`, the row
+ *     still below the fold) and failed both landing checks on a reveal that had
+ *     simply not run yet. The wait below therefore returns ONLY the settled
+ *     landing (tier on, section open, row on screen, control focused).
+ *   - The toggle-back removes an ordering dependency the revealed tier exposes:
+ *     with the tier already on, the reveal effect's first `requestAnimationFrame`
+ *     is scheduled in the same commit that queues the section's open state, and a
+ *     frame that wins that race would `focus()` a control still inside the
+ *     section's `[hidden]` subtree - refused silently, with the loop latching as
+ *     success, so neither the focus nor the `scrollIntoView` would happen. From
+ *     the Basic surface the same link cannot race that way: the focus effect is
+ *     gated on the tier (`destinationReady`), so its first frame is scheduled
+ *     only AFTER the commit that reveals the tier and opens the section. The
+ *     link therefore also exercises its FULL contract - reveal, open, scroll,
+ *     focus - from the state a reader is actually in.
+ *
+ * WHAT IT USES THAT IS NOT THE PRODUCT: `Emulation.setFocusEmulationEnabled`
+ * over CDP, enabled before the deep-link leg because a window that is never
+ * shown (`headless`) cannot be focused and the link's own focus contract would
+ * otherwise be unobservable. It moves the PAGE's focus, never the window's, and
+ * the closing survey below re-reads main's facts to prove the window stayed
+ * hidden and unfocused. What it CANNOT show is a `:focus-visible` ring as a
+ * keyboard user sees it: whether the ring paints for a script-focused control
+ * is Chromium's heuristics, so the evidence for the focus is the DOM reading
+ * (`document.activeElement` is the row's trigger) and the frames README says so.
+ *
+ * WHAT IT NEEDS: `--backend <url>` - an isolated daemon this run owns, the
+ * renderer built against the same URL - and `--seed-onboarding-complete`.
+ *
+ *   LOCAL_OPERATOR_DESKTOP_TOKEN="$TOKEN" node scripts/renderer-driver.mjs \
+ *     --scene settings-account-policy --backend http://127.0.0.1:<port> \
+ *     --backend-records <config>/run/serve --seed-onboarding-complete \
+ *     --out <dir>
+ */
+async function sceneSettingsAccountPolicy(cdp) {
+	const hello = await verb(cdp, "hello");
+	const facts = await factsOf(cdp);
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		ELECTRON_USER_AGENT.test(hello.userAgent),
+		hello.userAgent,
+	);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	check(
+		"this scene is running against a live, isolated backend",
+		Boolean(BACKEND),
+		"the registry renders its offline surface without a daemon, and this row's copy and choices ARE the daemon's answer, so the frames need --backend",
+	);
+	if (!BACKEND) return [];
+
+	const collapse = (value) =>
+		String(value ?? "")
+			.replace(/\s+/g, " ")
+			.trim();
+
+	/*
+	 * The daemon's own row, read FIRST: everything the page shows is compared
+	 * against this answer, and the pinned identity check keeps a daemon serving
+	 * some OTHER registry from passing by agreeing with itself.
+	 */
+	const daemonAtRest = await fetchDaemonSetting(ACCOUNT_POLICY_KEY);
+	note(
+		"the daemon's own account-policy row at rest",
+		JSON.stringify(
+			daemonAtRest.row
+				? {
+						key: daemonAtRest.row.key,
+						label: daemonAtRest.row.label,
+						kind: daemonAtRest.row.kind,
+						value: daemonAtRest.row.value,
+						is_default: daemonAtRest.row.is_default,
+						choices: (daemonAtRest.row.choices ?? []).map((choice) => [
+							choice.value,
+							choice.label,
+						]),
+					}
+				: null,
+		),
+	);
+	check(
+		"the run's own daemon serves the account-policy row",
+		daemonAtRest.status === 200 && daemonAtRest.row !== null,
+		`status=${daemonAtRest.status} row=${daemonAtRest.row === null ? "absent" : "present"}`,
+	);
+	if (daemonAtRest.row === null) return [];
+	check(
+		"the daemon's row carries the identity this lane pins (label and choices)",
+		daemonAtRest.row.label === ACCOUNT_POLICY_EXPECTED.label &&
+			JSON.stringify(
+				(daemonAtRest.row.choices ?? []).map((choice) => [
+					choice.value,
+					choice.label,
+				]),
+			) ===
+				JSON.stringify(
+					ACCOUNT_POLICY_EXPECTED.choices.map((choice) => [
+						choice.value,
+						choice.label,
+					]),
+				),
+		JSON.stringify({
+			label: daemonAtRest.row.label,
+			choices: (daemonAtRest.row.choices ?? []).map((choice) => [
+				choice.value,
+				choice.label,
+			]),
+		}),
+	);
+	check(
+		"the row is at its shipped default on this fresh config root",
+		daemonAtRest.row.value === "reset-soonest" &&
+			daemonAtRest.row.is_default === true,
+		`value=${JSON.stringify(daemonAtRest.row.value)} is_default=${daemonAtRest.row.is_default}`,
+	);
+
+	await verb(cdp, "setTheme", "localOperatorDark");
+
+	/* ---------------------------------------------------------------- */
+	/* 1. The Basic surface: the row is not in it                        */
+	/* ---------------------------------------------------------------- */
+
+	await verb(cdp, "navigate", "/settings");
+	const surface = await waitForCondition(
+		cdp,
+		`(() => {
+			const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+			if (!chip) return null;
+			const headers = document.querySelectorAll("[data-section-header]");
+			return headers.length > 0 ? { chipPressed: chip.getAttribute("aria-pressed"), headers: headers.length } : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the settings surface rendered with its tier filter and the section index",
+		surface.ok === true,
+		`after ${surface.waitedMs}ms`,
+	);
+	if (surface.ok !== true) return [];
+
+	const basic = await cdp.evaluate(`(() => {
+		const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+		const header = [...document.querySelectorAll("[data-section-header]")].find((element) => /^Failover and retry/.test(element.getAttribute("data-section-header") ?? ""));
+		return {
+			rowInBasic: Boolean(document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)})),
+			chipPressed: chip ? chip.getAttribute("aria-pressed") : null,
+			headers: document.querySelectorAll("[data-section-header]").length,
+			failoverTrigger: header ? (header.querySelector("button")?.getAttribute("aria-expanded") ?? null) : null,
+		};
+	})()`);
+	note("the Basic surface, read", JSON.stringify(basic));
+	check(
+		"the account-policy row is NOT in the Basic surface (the advanced tier is holding it back)",
+		basic.rowInBasic === false && basic.chipPressed === "false",
+		JSON.stringify(basic),
+	);
+	check(
+		"the page is the registry's own section index, with the failover section among its headers",
+		basic.headers >= 30 && typeof basic.failoverTrigger === "string",
+		`headers=${basic.headers} failover trigger aria-expanded=${JSON.stringify(basic.failoverTrigger)}`,
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 2. Search by the canonical key, tier STILL OFF                    */
+	/* ---------------------------------------------------------------- */
+
+	const searchSelector = 'input[aria-label="Search settings"]';
+	const searchFocused = await focusField(cdp, searchSelector);
+	check(
+		"the search field took the caret",
+		searchFocused === true,
+		`${searchFocused}`,
+	);
+	await cdp.send("Input.insertText", { text: ACCOUNT_POLICY_KEY });
+	const found = await waitForCondition(
+		cdp,
+		`(() => {
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			const line = document.body.innerText.match(/\\d+ results? in \\d+ sections?/);
+			if (!row || !line) return null;
+			const section = row.closest("[data-settings-section]");
+			return {
+				line: line[0],
+				sectionOpen: section ? section.getAttribute("data-open") : null,
+			};
+		})()`,
+		10_000,
+	);
+	check(
+		"search finds the row by its canonical key, with the advanced tier STILL OFF (the tier is a view, not a gate)",
+		found.ok === true && found.last?.line === "1 result in 1 section",
+		JSON.stringify(found.last ?? { waitedMs: found.waitedMs }),
+	);
+	if (found.ok !== true) return [];
+	check(
+		"the search's own section is force-opened onto its match",
+		found.last?.sectionOpen === "true",
+		`section data-open=${JSON.stringify(found.last?.sectionOpen)}`,
+	);
+	const searchFrame = await captureSettled(
+		cdp,
+		"settings-account-policy-search-found-dark",
+	);
+
+	/*
+	 * The ✕ is the field's own control (the surface's own selector list names
+	 * it), and clearing must put the BASIC surface back: with the query gone the
+	 * tier filter applies again and the row leaves the list, which is the
+	 * reversal that proves the chip - not a residual DOM - is what admits it.
+	 */
+	const clearPress = await pressFoundElement(
+		cdp,
+		`() => document.querySelector('button[aria-label="Clear search"]') ?? null`,
+	);
+	note("pressed the search field's own ✕", JSON.stringify(clearPress));
+	const cleared = await waitForCondition(
+		cdp,
+		`(() => {
+			const field = document.querySelector('input[aria-label="Search settings"]');
+			const line = document.body.innerText.match(/\\d+ results? in \\d+ sections?/);
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			return field && field.value === "" && !line && !row ? true : null;
+		})()`,
+		10_000,
+	);
+	check(
+		"the ✕ clears the query, and the Basic surface comes back (the row leaves the list again)",
+		cleared.ok === true,
+		`after ${cleared.waitedMs}ms`,
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 3. The tier revealed: `Show advanced`, pressed                    */
+	/* ---------------------------------------------------------------- */
+
+	const chipFinder =
+		'() => [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced") ?? null';
+	await scrollFoundIntoView(cdp, chipFinder);
+	const chipPress = await pressFoundElement(cdp, chipFinder);
+	note("pressed the Show advanced chip", JSON.stringify(chipPress));
+	check(
+		"the Show advanced chip was found and pressed where it paints",
+		chipPress !== null && chipPress.text === "Show advanced",
+		JSON.stringify(chipPress?.description ?? null),
+	);
+	const revealed = await waitForCondition(
+		cdp,
+		`(() => {
+			const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			if (!row) return null;
+			const section = row.closest("[data-settings-section]");
+			return {
+				chipPressed: chip ? chip.getAttribute("aria-pressed") : null,
+				tier: row.getAttribute("data-tier"),
+				section: section ? section.getAttribute("data-settings-section") : null,
+				sectionOpen: section ? section.getAttribute("data-open") : null,
+			};
+		})()`,
+		10_000,
+	);
+	check(
+		"pressing Show advanced admits the account-policy row to the list, tiered `advanced`",
+		revealed.ok === true &&
+			revealed.last?.chipPressed === "true" &&
+			revealed.last?.tier === "advanced",
+		JSON.stringify(revealed.last ?? { waitedMs: revealed.waitedMs }),
+	);
+	note(
+		"the row's section is still closed on arrival",
+		`the tier admits the row to the list; the section's own header is what opens it too, which the deep link below does - ${JSON.stringify(revealed.last)}`,
+	);
+
+	/*
+	 * THE TOGGLE'S OTHER SIDE, BEFORE THE LINK RUNS: put the tier back the way
+	 * the scene found it, so the deep link below performs its own reveal. WHY is
+	 * in the docstring; what it buys here is that the reveal effect's first
+	 * animation frame is scheduled only AFTER the commit that reveals the tier
+	 * AND opens the section, instead of racing that commit's queued state.
+	 */
+	await scrollFoundIntoView(cdp, chipFinder);
+	const chipBack = await pressFoundElement(cdp, chipFinder);
+	note(
+		"pressed the Show advanced chip a second time (the toggle's other side)",
+		JSON.stringify(chipBack),
+	);
+	const restored = await waitForCondition(
+		cdp,
+		`(() => {
+			const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			return chip && chip.getAttribute("aria-pressed") === "false" && !row
+				? { chipPressed: chip.getAttribute("aria-pressed") }
+				: null;
+		})()`,
+		10_000,
+	);
+	check(
+		"the chip's other side restores the Basic surface (the row leaves the list again)",
+		restored.ok === true,
+		`after ${restored.waitedMs}ms`,
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 4. The deep link: revealed, scrolled to and FOCUSED               */
+	/* ---------------------------------------------------------------- */
+
+	/*
+	 * Focus emulation BEFORE the deep link (see the docstring): the link's own
+	 * contract includes FOCUSING the row's control, and a never-shown window
+	 * paints no `:focus` state without this. The closing survey is what proves
+	 * the window itself stayed hidden.
+	 */
+	await cdp.send("Emulation.setFocusEmulationEnabled", { enabled: true });
+	const emulated = await cdp.evaluate(
+		"({ hasFocus: document.hasFocus(), visibility: document.visibilityState })",
+	);
+	note(
+		"focus emulation",
+		`Emulation.setFocusEmulationEnabled is ON over CDP (the window is never shown): document.hasFocus()=${emulated.hasFocus} visibilityState=${emulated.visibility}`,
+	);
+	check(
+		"the run reads as focused through CDP focus emulation (the window is still never shown)",
+		emulated.hasFocus === true,
+		JSON.stringify(emulated),
+	);
+
+	await verb(cdp, "navigate", `/settings?setting=${ACCOUNT_POLICY_KEY}`);
+	/*
+	 * The wait returns ONLY the settled landing - tier revealed by the LINK, the
+	 * section open, the row on screen and its control focused - not the first
+	 * moment the row exists (the first run's defect: an always-truthy reading
+	 * object is an answer to `waitForCondition`).
+	 */
+	const landed = await waitForCondition(
+		cdp,
+		`(() => {
+			const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			if (!row) return null;
+			const section = row.closest("[data-settings-section]");
+			const trigger = row.querySelector('[data-setting-control] [role="combobox"]');
+			const active = document.activeElement;
+			const rect = row.getBoundingClientRect();
+			const reading = {
+				chipPressed: chip ? chip.getAttribute("aria-pressed") : null,
+				sectionOpen: section ? section.getAttribute("data-open") : null,
+				focused: active === trigger ? "trigger" : (active && row.contains(active) ? "row" : "elsewhere"),
+				activeDescription: active
+					? active.tagName.toLowerCase() +
+						" " +
+						JSON.stringify((active.getAttribute("aria-label") || active.textContent || "").trim().slice(0, 60))
+					: null,
+				top: Math.round(rect.top),
+				bottom: Math.round(rect.bottom),
+				viewport: window.innerHeight,
+				onScreen: rect.top >= 0 && rect.bottom <= window.innerHeight,
+			};
+			const arrived =
+				reading.chipPressed === "true" &&
+				reading.sectionOpen === "true" &&
+				reading.focused === "trigger" &&
+				reading.onScreen === true;
+			return arrived ? reading : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the deep link revealed the advanced tier, opened the section and scrolled the row on screen",
+		landed.ok === true &&
+			landed.last?.chipPressed === "true" &&
+			landed.last?.sectionOpen === "true" &&
+			landed.last?.onScreen === true,
+		JSON.stringify(landed.last ?? { waitedMs: landed.waitedMs }),
+	);
+	check(
+		"the deep link FOCUSED the row's own control (its keyboard-usefulness, not merely a scroll)",
+		landed.last?.focused === "trigger",
+		JSON.stringify(landed.last),
+	);
+	const landedHash = await cdp.evaluate("window.location.hash");
+	check(
+		"the deep link is the one this scene asked for",
+		typeof landedHash === "string" &&
+			landedHash.includes(`setting=${ACCOUNT_POLICY_KEY}`),
+		`hash reads ${JSON.stringify(landedHash)}`,
+	);
+
+	/*
+	 * The row at rest, and then its own help reveal: an advanced row keeps its
+	 * help behind its disclosure (there is no always-on help line), so the
+	 * sentence is PRESSED open and compared - normalised - against the daemon's.
+	 */
+	const restValue = await cdp.evaluate(`(() => {
+		const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+		if (!row) return null;
+		const trigger = row.querySelector('[data-setting-control] [role="combobox"]');
+		const buttons = [...row.querySelectorAll("button")].map((button) => (button.textContent || "").trim());
+		return {
+			value: trigger ? (trigger.textContent || "").trim() : null,
+			triggerLabel: trigger ? trigger.getAttribute("aria-label") : null,
+			expanded: trigger ? trigger.getAttribute("aria-expanded") : null,
+			dot: Boolean(row.querySelector('span[role="img"]')),
+			save: buttons.includes("Save") || buttons.includes("Saving"),
+		};
+	})()`);
+	note("the row at rest, off the deep link", JSON.stringify(restValue));
+	check(
+		"the control is the registry row's own select, named by the daemon's label",
+		restValue?.triggerLabel === daemonAtRest.row.label,
+		`aria-label=${JSON.stringify(restValue?.triggerLabel)} daemon label=${JSON.stringify(daemonAtRest.row.label)}`,
+	);
+	check(
+		"the row is at its shipped default: `Reset soonest`, no changed dot, no Save",
+		restValue?.value === "Reset soonest" &&
+			restValue?.dot === false &&
+			restValue?.save === false,
+		JSON.stringify(restValue),
+	);
+
+	const revealPress = await pressFoundElement(
+		cdp,
+		`() => document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)})?.querySelector("button[aria-expanded]") ?? null`,
+	);
+	note("pressed the row's own help reveal", JSON.stringify(revealPress));
+	const helpShown = await waitForCondition(
+		cdp,
+		`(() => {
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			const button = row ? row.querySelector("button[aria-expanded]") : null;
+			const help = row ? row.querySelector("span.text-meta") : null;
+			return button && button.getAttribute("aria-expanded") === "true" && help
+				? { help: (help.textContent || "").trim() }
+				: null;
+		})()`,
+		10_000,
+	);
+	check(
+		"the row's own disclosure reveals its help (the advanced row's copy, behind the row's reveal)",
+		helpShown.ok === true,
+		`after ${helpShown.waitedMs}ms`,
+	);
+	check(
+		"the help the row shows IS the daemon's sentence",
+		collapse(helpShown.last?.help) === collapse(daemonAtRest.row.help),
+		JSON.stringify({
+			dom: collapse(helpShown.last?.help).slice(0, 100),
+			daemon: collapse(daemonAtRest.row.help).slice(0, 100),
+		}),
+	);
+	const restFrame = await captureSettled(
+		cdp,
+		"settings-account-policy-rest-dark",
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 5. The choices, then a CHANGE through the row's own control       */
+	/* ---------------------------------------------------------------- */
+
+	const trigger = await pointerPressSelector(cdp, ACCOUNT_POLICY_TRIGGER);
+	note("pressed the row's select trigger", JSON.stringify(trigger));
+	const listOpen = await waitForCondition(
+		cdp,
+		`document.querySelectorAll('[role="listbox"] [role="option"]').length > 0 ? true : null`,
+		10_000,
+	);
+	check(
+		"pressing the trigger opened a real listbox",
+		listOpen.ok === true,
+		`after ${listOpen.waitedMs}ms`,
+	);
+	const openReading = await cdp.evaluate(`(() => {
+		const trigger = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_TRIGGER)});
+		const options = [...document.querySelectorAll('[role="listbox"] [role="option"]')].map((option) => ({
+			text: (option.textContent || "").trim(),
+			title: option.getAttribute("title"),
+			disabled: option.getAttribute("data-disabled") === "",
+		}));
+		return { expanded: trigger ? trigger.getAttribute("aria-expanded") : null, options };
+	})()`);
+	note("the listbox open", JSON.stringify(openReading));
+	check(
+		"the listbox is open on the trigger, and offers the daemon's own choices (label and description)",
+		openReading.expanded === "true" &&
+			JSON.stringify(
+				openReading.options.map((option) => [option.text, option.title]),
+			) ===
+				JSON.stringify(
+					(daemonAtRest.row.choices ?? []).map((choice) => [
+						choice.label,
+						choice.description || null,
+					]),
+				),
+		JSON.stringify(openReading),
+	);
+
+	const choicePress = await pressFoundElement(
+		cdp,
+		`() => [...document.querySelectorAll('[role="listbox"] [role="option"]')].find((option) => (option.textContent || "").trim() === "Most headroom") ?? null`,
+	);
+	note("pressed the `Most headroom` option", JSON.stringify(choicePress));
+	check(
+		"the pressed option is the `Most headroom` choice",
+		choicePress !== null && choicePress.text === "Most headroom",
+		JSON.stringify(choicePress?.text ?? null),
+	);
+	const dirty = await waitForCondition(
+		cdp,
+		`(() => {
+			if (document.querySelector('[role="listbox"]') !== null) return null;
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			if (!row) return null;
+			const trigger = row.querySelector('[data-setting-control] [role="combobox"]');
+			const buttons = [...row.querySelectorAll("button")].map((button) => (button.textContent || "").trim());
+			return {
+				value: trigger ? (trigger.textContent || "").trim() : null,
+				save: buttons.includes("Save"),
+				dot: Boolean(row.querySelector('span[role="img"]')),
+				unsaved: /\\b1 unsaved change\\b/.test(document.body.innerText),
+			};
+		})()`,
+		10_000,
+	);
+	check(
+		"the change lands as a DRAFT: the row shows `Most headroom`, its Save and the changed dot, and the page counts 1 unsaved change",
+		dirty.ok === true &&
+			dirty.last?.value === "Most headroom" &&
+			dirty.last?.save === true &&
+			dirty.last?.dot === true &&
+			dirty.last?.unsaved === true,
+		JSON.stringify(dirty.last ?? { waitedMs: dirty.waitedMs }),
+	);
+	const dirtyFrame = await captureSettled(
+		cdp,
+		"settings-account-policy-dirty-dark",
+	);
+
+	/*
+	 * Save, then the REAL readback. The press is the row's own Save; the round
+	 * trip behind it is the app's transport (IPC -> HTTP to the daemon) followed
+	 * by ITS OWN refetch, and the claim is the daemon's `GET /v1/settings`
+	 * answer read from this process - the UI half and the daemon half are two
+	 * readings of one write, and either alone would pass a wrong implementation.
+	 */
+	const savePress = await pressFoundElement(
+		cdp,
+		`() => [...document.querySelectorAll(${JSON.stringify(ACCOUNT_POLICY_BUTTONS)})].find((button) => (button.textContent || "").trim() === "Save") ?? null`,
+	);
+	note("pressed the row's Save", JSON.stringify(savePress));
+	check(
+		"the row's own Save button was found and pressed where it paints",
+		savePress !== null && savePress.text === "Save",
+		JSON.stringify(savePress?.description ?? null),
+	);
+	const saved = await waitForCondition(
+		cdp,
+		`(() => {
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			if (!row) return null;
+			const trigger = row.querySelector('[data-setting-control] [role="combobox"]');
+			const buttons = [...row.querySelectorAll("button")].map((button) => (button.textContent || "").trim());
+			const value = trigger ? (trigger.textContent || "").trim() : null;
+			const done =
+				value === "Most headroom" &&
+				!buttons.includes("Save") &&
+				!buttons.includes("Saving") &&
+				buttons.some((button) => button.startsWith("Use default")) &&
+				Boolean(row.querySelector('span[role="img"]')) &&
+				!/\\d+ unsaved changes?/.test(document.body.innerText);
+			return done ? { value, buttons, unsaved: false } : null;
+		})()`,
+		15_000,
+	);
+	check(
+		"the app's own save round-trip completed: the row is clean, off the default, and shows the new value",
+		saved.ok === true,
+		JSON.stringify(saved.last ?? { waitedMs: saved.waitedMs }),
+	);
+	const daemonAfter = await fetchDaemonSetting(ACCOUNT_POLICY_KEY);
+	note(
+		"the daemon's own answer AFTER the save",
+		JSON.stringify(
+			daemonAfter.row
+				? {
+						value: daemonAfter.row.value,
+						is_default: daemonAfter.row.is_default,
+					}
+				: null,
+		),
+	);
+	check(
+		"the PERSISTED value read back from the daemon is the choice the control wrote",
+		daemonAfter.status === 200 &&
+			daemonAfter.row?.value === "headroom" &&
+			daemonAfter.row?.is_default === false,
+		`status=${daemonAfter.status} value=${JSON.stringify(daemonAfter.row?.value)} is_default=${daemonAfter.row?.is_default}`,
+	);
+	const savedFrame = await captureSettled(
+		cdp,
+		"settings-account-policy-saved-dark",
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 5b. The SECOND deep-link leg: the chip KEPT ON                    */
+	/* ---------------------------------------------------------------- */
+
+	/*
+	 * WHY A SECOND LEG, AND WHY IT IS A FRESH MOUNT (UX round 2, U2). The first
+	 * leg drives the link from Basic, where the ordering is structurally safe
+	 * (the focus loop is gated on the tier, so its first frame is scheduled
+	 * only AFTER the commit that reveals the tier and opens the section). The
+	 * state a palette reader can actually be in is different: the settings pane
+	 * is already mounted with `Show advanced` ON, the destination's section sits
+	 * CLOSED - the row behind its `[hidden]` wrapper at height 0 - and the link
+	 * is followed into THAT. There the ordering is not structurally safe:
+	 * `destinationReady` is true the moment `focusKey` changes (it does not
+	 * include the section-open state), so the close-the-distance loop's first
+	 * frame can run BEFORE the commit that opens the section, read the row
+	 * inside the `[hidden]` subtree - where `focus()` and `scrollIntoView` are
+	 * silent no-ops - latch, and never retry. The first run's record (README,
+	 * "The first run, kept as the record of what it found") named this reading
+	 * open; this leg settles it by measurement instead of assumption, on the
+	 * same build and daemon as the frames above.
+	 *
+	 * WHY A FRESH MOUNT RATHER THAN A REPLAY. `handledFocusKey` and
+	 * `revealedFocusKey` are per-mount refs that deliberately hold the last key
+	 * ACTIONED in this mount, so re-pointing the same link at the same key in
+	 * the same mount is a documented no-op by design - a leg built on that
+	 * would settle nothing about the ordering. The fresh mount (`/chat`, then
+	 * back) with the chip pressed ON reproduces exactly the reachable state:
+	 * pane mounted, tier already on, destination's section closed, the first
+	 * link for this key in this mount. No frame is captured here: the leg is a
+	 * reading, not a picture, and the committed set stays the four frames above.
+	 */
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "navigate", "/settings");
+	const surfaceSecond = await waitForCondition(
+		cdp,
+		`(() => {
+			const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+			if (!chip) return null;
+			const headers = document.querySelectorAll("[data-section-header]");
+			return headers.length > 0
+				? {
+						chipPressed: chip.getAttribute("aria-pressed"),
+						headers: headers.length,
+						rowInBasic: Boolean(document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)})),
+					}
+				: null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the second leg starts from a FRESH mount: the tier reads OFF again and the row is not in the Basic surface",
+		surfaceSecond.ok === true &&
+			surfaceSecond.last?.chipPressed === "false" &&
+			surfaceSecond.last?.rowInBasic === false &&
+			(surfaceSecond.last?.headers ?? 0) >= 30,
+		JSON.stringify(surfaceSecond.last ?? { waitedMs: surfaceSecond.waitedMs }),
+	);
+	await scrollFoundIntoView(cdp, chipFinder);
+	const chipSecond = await pressFoundElement(cdp, chipFinder);
+	note(
+		"pressed the Show advanced chip for the second leg (kept ON)",
+		JSON.stringify(chipSecond),
+	);
+	check(
+		"the second leg's chip press was found and pressed where it paints",
+		chipSecond !== null && chipSecond.text === "Show advanced",
+		JSON.stringify(chipSecond?.description ?? null),
+	);
+	const armed = await waitForCondition(
+		cdp,
+		`(() => {
+			const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			if (!row || !chip) return null;
+			const section = row.closest("[data-settings-section]");
+			const rect = row.getBoundingClientRect();
+			return {
+				chipPressed: chip.getAttribute("aria-pressed"),
+				section: section ? section.getAttribute("data-settings-section") : null,
+				sectionOpen: section ? section.getAttribute("data-open") : null,
+				rowHeight: Math.round(rect.height),
+			};
+		})()`,
+		10_000,
+	);
+	check(
+		"the link is about to be followed from the reachable state: chip ON, the destination's section CLOSED (the row behind `[hidden]`, height 0)",
+		armed.ok === true &&
+			armed.last?.chipPressed === "true" &&
+			armed.last?.sectionOpen === "false" &&
+			armed.last?.rowHeight === 0,
+		JSON.stringify(armed.last ?? { waitedMs: armed.waitedMs }),
+	);
+
+	await verb(cdp, "navigate", `/settings?setting=${ACCOUNT_POLICY_KEY}`);
+	const landedSecond = await waitForCondition(
+		cdp,
+		`(() => {
+			const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			if (!row) return null;
+			const section = row.closest("[data-settings-section]");
+			const trigger = row.querySelector('[data-setting-control] [role="combobox"]');
+			const active = document.activeElement;
+			const rect = row.getBoundingClientRect();
+			const reading = {
+				chipPressed: chip ? chip.getAttribute("aria-pressed") : null,
+				sectionOpen: section ? section.getAttribute("data-open") : null,
+				focused: active === trigger ? "trigger" : (active && row.contains(active) ? "row" : "elsewhere"),
+				activeDescription: active
+					? active.tagName.toLowerCase() +
+						" " +
+						JSON.stringify((active.getAttribute("aria-label") || active.textContent || "").trim().slice(0, 60))
+					: null,
+				top: Math.round(rect.top),
+				bottom: Math.round(rect.bottom),
+				viewport: window.innerHeight,
+				onScreen: rect.top >= 0 && rect.bottom <= window.innerHeight,
+			};
+			const arrived =
+				reading.chipPressed === "true" &&
+				reading.sectionOpen === "true" &&
+				reading.focused === "trigger" &&
+				reading.onScreen === true;
+			return arrived ? reading : null;
+		})()`,
+		30_000,
+	);
+	if (landedSecond.ok !== true) {
+		/*
+		 * The latch diagnosis, on the failure path only: what the settled wait saw
+		 * at its bound, so a FAIL separates "the section never opened" from "the
+		 * section opened after the loop had already latched on the hidden subtree".
+		 */
+		const stuckSecond = await cdp.evaluate(`(() => {
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			if (!row) return { row: "absent" };
+			const section = row.closest("[data-settings-section]");
+			const trigger = row.querySelector('[data-setting-control] [role="combobox"]');
+			const active = document.activeElement;
+			const rect = row.getBoundingClientRect();
+			return {
+				sectionOpen: section ? section.getAttribute("data-open") : null,
+				focused: active === trigger ? "trigger" : (active && row.contains(active) ? "row" : "elsewhere"),
+				activeDescription: active
+					? active.tagName.toLowerCase() +
+						" " +
+						JSON.stringify((active.getAttribute("aria-label") || active.textContent || "").trim().slice(0, 60))
+					: null,
+				top: Math.round(rect.top),
+				bottom: Math.round(rect.bottom),
+				viewport: window.innerHeight,
+				onScreen: rect.top >= 0 && rect.bottom <= window.innerHeight,
+			};
+		})()`);
+		note(
+			"the second leg at the settled wait's bound (the latch diagnosis)",
+			JSON.stringify(stuckSecond),
+		);
+	}
+	check(
+		"the second deep link (chip kept ON from a closed section) settled the same landing: the link opened the section and scrolled the row on screen",
+		landedSecond.ok === true &&
+			landedSecond.last?.chipPressed === "true" &&
+			landedSecond.last?.sectionOpen === "true" &&
+			landedSecond.last?.onScreen === true,
+		JSON.stringify(landedSecond.last ?? { waitedMs: landedSecond.waitedMs }),
+	);
+	check(
+		"the second deep link FOCUSED the row's own control from the tier-already-on state",
+		landedSecond.last?.focused === "trigger",
+		JSON.stringify(landedSecond.last),
+	);
+	const landedSecondHash = await cdp.evaluate("window.location.hash");
+	check(
+		"the second deep link is the one this scene asked for",
+		typeof landedSecondHash === "string" &&
+			landedSecondHash.includes(`setting=${ACCOUNT_POLICY_KEY}`),
+		`hash reads ${JSON.stringify(landedSecondHash)}`,
+	);
+	note(
+		"the second leg's settled reading",
+		JSON.stringify(landedSecond.last ?? { waitedMs: landedSecond.waitedMs }),
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 6. The closing survey: the run stayed out of the way              */
+	/* ---------------------------------------------------------------- */
+
+	const closing = await factsOf(cdp);
+	note("closing facts (from main)", JSON.stringify(closing));
+	check(
+		"the run stayed headless and invisible through the drive (closing survey, from main)",
+		closing.windowMode === "headless" &&
+			closing.visible === false &&
+			closing.focused === false &&
+			closing.minimized === false,
+		`mode=${closing.windowMode} visible=${closing.visible} focused=${closing.focused} minimized=${closing.minimized}`,
+	);
+
+	const frames = [searchFrame, restFrame, dirtyFrame, savedFrame];
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height ===
+					frame.viewport.height * frame.viewport.devicePixelRatio,
+		),
+		frames
+			.map(
+				(f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`,
+			)
+			.join(" | "),
+	);
+	return frames;
 }
 
 async function scenePalette(cdp) {
@@ -44962,6 +48553,16 @@ async function main() {
 			"--scene output-artifact needs --session <id>: it photographs the seeded session, and a default would photograph whatever chat happens to open",
 		);
 	}
+	if (SCENE === "skill-seal" && BACKEND === null) {
+		throw new Error(
+			"--scene skill-seal needs --backend: the invocation it photographs is a PERSISTED payload read back from a daemon's history route, and with no backend the chat route draws its refusal surface instead",
+		);
+	}
+	if (SCENE === "skill-seal" && SESSION === null) {
+		throw new Error(
+			"--scene skill-seal needs --session <id>: the seeded session whose history holds the two rendered payloads is the subject, and a default would photograph whatever chat happens to open",
+		);
+	}
 	if (SCENE === "conversation-start-away-failure" && BACKEND === null) {
 		console.error(
 			"the conversation-start-away-failure scene needs --backend <url>: it drives a real refusal through the tap",
@@ -45316,6 +48917,8 @@ async function main() {
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "btw-aside") await sceneBtwAside(cdp);
 			else if (SCENE === "sessionless-slash") await sceneSessionlessSlash(cdp);
+			else if (SCENE === "plain-newchat-lifecycle")
+				await scenePlainNewchatLifecycle(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
 			else if (SCENE === "sidebar-bin-promptness")
 				await sceneSidebarBinPromptness(cdp);
@@ -45324,6 +48927,14 @@ async function main() {
 				await sceneUndoToastsStacked(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
+			/*
+			 * The Default effort row beside Hosting provider and Model: its options are
+			 * the selected model's ladder (the draft preview's own answer), a model switch
+			 * clamps a stored level the new ladder lacks, and the provider callout is
+			 * conditional on the provider census. Needs `--backend` plus a renderer built
+			 * against the same URL.
+			 */ else if (SCENE === "settings-default-effort")
+				await sceneSettingsDefaultEffort(cdp);
 			/*
 			 * The interface-language row in General — the one surface on this page that
 			 * needs a live backend to photograph its caption, and whose picker's open list
@@ -45338,6 +48949,15 @@ async function main() {
 			 * Needs `--backend`: an isolated daemon this run owns.
 			 */ else if (SCENE === "settings-transcript-display")
 				await sceneSettingsTranscriptDisplay(cdp);
+			/*
+			 * The account-policy row (`retry.accountSelectionPolicy`) in the failover
+			 * section: the tier claim this slice's classification makes, its
+			 * DAEMON-owned copy (label, help, choices) and a change driven through the
+			 * row's own enum and saved to a daemon this run owns. Needs `--backend`:
+			 * the registry renders its offline surface without one, and the readback
+			 * is the daemon's own answer.
+			 */ else if (SCENE === "settings-account-policy")
+				await sceneSettingsAccountPolicy(cdp);
 			else if (SCENE === "settings-gate") await sceneSettingsGate(cdp);
 			else if (SCENE === "settings-integrations")
 				await sceneSettingsIntegrations(cdp);
@@ -45364,6 +48984,7 @@ async function main() {
 			else if (SCENE === "transcript-rail") await sceneTranscriptRail(cdp);
 			else if (SCENE === "imagegen-card") await sceneImageGenCard(cdp);
 			else if (SCENE === "image-copy") await sceneImageCopy(app, cdp);
+			else if (SCENE === "skill-seal") await sceneSkillSeal(cdp);
 			else if (SCENE === "canvas-freshness")
 				await sceneCanvasFreshness(cdp, app);
 			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);

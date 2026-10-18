@@ -155,6 +155,7 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 		<div
 			ref={rootRef}
 			data-code-review-pane=""
+			data-glass-region="pane"
 			aria-label={t("ui.code_review.code_review_pane.code_review")}
 			tabIndex={-1}
 			className={cn("flex h-full flex-col bg-elevated")}

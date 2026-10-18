@@ -233,6 +233,18 @@ const StripFeedKeeper: FC = () => {
 	const setCataloguePageable = useCanonicalSessionsStore(
 		(store) => store.setCataloguePageable,
 	);
+	/*
+	 * The activity-head flag, published HERE as well as in `chat-sidebar.tsx`
+	 * (this strip is another surface that resolves the same capability answer and
+	 * refreshes the same catalogue): the flag is one store value, and either
+	 * publisher writing it is idempotent. Without it a window opened straight
+	 * onto a STUFF route would take the legacy rank read until a `/chat` visit -
+	 * the same route-dependence `cataloguePageDefault` documents for the page
+	 * size.
+	 */
+	const setCatalogueActivityHead = useCanonicalSessionsStore(
+		(store) => store.setCatalogueActivityHead,
+	);
 	const fetchSessions = useCanonicalSessionsStore(
 		(store) => store.fetchSessions,
 	);
@@ -240,9 +252,16 @@ const StripFeedKeeper: FC = () => {
 		capabilities.data,
 		"session_catalogue_page",
 	);
+	const activityHead = desktopFeatureEnabled(
+		capabilities.data,
+		"session_catalogue_sort",
+	);
 	useEffect(() => {
 		setCataloguePageable(pageable);
 	}, [pageable, setCataloguePageable]);
+	useEffect(() => {
+		setCatalogueActivityHead(activityHead);
+	}, [activityHead, setCatalogueActivityHead]);
 	/*
 	 * The gate, spelled as the list spells it: the desktop plane available AND
 	 * the backend advertising `session_catalogue` v2. Below it no read is sent -
@@ -617,6 +636,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		const rowState = item.isActive
 			? rowCurrent
 			: "text-ink-muted hover:bg-row-hover hover:text-ink";
+		const glyph = (
+			<item.icon
+				size={16}
+				aria-hidden="true"
+				className={cn("shrink-0", item.isActive && "text-accent")}
+			/>
+		);
 		return (
 			<li
 				/*
@@ -656,13 +682,43 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						expanded ? "px-2" : "justify-center px-0",
 					)}
 				>
-					<item.icon
-						size={16}
-						aria-hidden="true"
-						className={cn("shrink-0", item.isActive && "text-accent")}
-					/>
+					{expanded ? (
+						glyph
+					) : (
+						/*
+						 * THE STRIP'S COUNT IS A CORNER MARK (#1083). The in-flow slot below
+						 * is the expanded row's: collapsed there is no label and no trailing
+						 * edge, so a mark in flow followed the glyph after the row's 8px gap
+						 * and `justify-center` centred the PAIR - the icon sat 12px left of
+						 * the strip's centre line with the count beside it. Here the glyph
+						 * sits in a 28px box (the strip's hit target, inside the 30px row) and
+						 * the mark is the panel rail's corner mark (`panel-rail.tsx`, the
+						 * browser item's block states the geometry): 14px, pinned at -2px/-2px
+						 * of the box, so the glyph is the button's only in-flow content and
+						 * stays centred. The register stays the quiet one below; only the
+						 * size and the place are the rail's. The busy mark keeps its in-flow
+						 * slot: where a spinner goes in the strip is a design call #1083 does
+						 * not make.
+						 */
+						<span className="relative flex size-7 shrink-0 items-center justify-center">
+							{glyph}
+							{attention > 0 && (
+								<span className="pointer-events-none absolute -top-0.5 -right-0.5 flex">
+									<Badge
+										variant="attentionQuiet"
+										shape="pill"
+										size="count"
+										className="h-3.5 min-w-3.5 px-0.75 leading-none"
+										data-tour-tag={item.attentionTag}
+									>
+										{attention}
+									</Badge>
+								</span>
+							)}
+						</span>
+					)}
 					{expanded && <span className="truncate">{item.label}</span>}
-					{attention > 0 && (
+					{expanded && attention > 0 && (
 						/*
 						 * THE SAME BADGE THE HEADER'S GLOBE CARRIES (design 5.1). In flow at
 						 * the row's trailing edge rather than absolutely positioned: the row is
@@ -670,7 +726,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						 * size a badge would use, and a 16px badge inside a 30px row moves
 						 * neither the label's start nor the row's height.
 						 */
-						<span className={cn(expanded && "ml-auto", "inline-flex")}>
+						<span className="ml-auto inline-flex">
 							{/*
 							 * THE QUIET COUNT (operator ask, 2026-09-30): the rail's badge is
 							 * the `attentionQuiet` register rather than the bordered `attention`
@@ -1018,6 +1074,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		return (
 			<div
 				data-sidebar-strip=""
+				data-glass-region="sidebar"
 				className="group/sidebar flex h-full min-h-0 flex-col items-center bg-surface"
 			>
 				<StripFeedKeeper />
@@ -1092,6 +1149,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		 */
 		<div
 			data-sidebar-shell=""
+			data-glass-region="sidebar"
 			className="group/sidebar flex h-full min-h-0 flex-col overflow-hidden bg-surface"
 		>
 			{/*

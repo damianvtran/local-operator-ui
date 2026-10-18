@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The linked sessions' to-dos, aggregated into rows.
  *
@@ -25,12 +27,15 @@ export type ProjectTodosProps = {
 };
 
 export const ProjectTodos: FC<ProjectTodosProps> = ({ links }) => {
+	useI18nLocale();
 	const aggregate = todosAggregate(links);
 	const rows = links.filter((link) => link.todos !== null);
 	return (
 		<section className="flex flex-col gap-3">
 			<div className="flex items-baseline justify-between gap-3">
-				<h2 className="text-title text-ink">To-dos</h2>
+				<h2 className="text-title text-ink">
+					{t("ui.projects.project_todos.to_dos")}
+				</h2>
 				{aggregate && (
 					<span className="text-meta text-ink-muted tabular-nums">
 						{todosCountLabel(aggregate)}
@@ -40,8 +45,9 @@ export const ProjectTodos: FC<ProjectTodosProps> = ({ links }) => {
 
 			{rows.length === 0 ? (
 				<p className="text-body-sm text-ink-muted">
-					No to-do snapshots from the linked sessions yet. A session publishes
-					its list as it works, and it appears here once it has.
+					{t(
+						"ui.projects.project_todos.no_to_do_snapshots_from_the_linked_sessions_yet_a_session_publish",
+					)}
 				</p>
 			) : (
 				/* Borderless rows, the chat page's chrome: hairlines, no group box. */

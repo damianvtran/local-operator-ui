@@ -1,3 +1,4 @@
+import { formatDate, formatNumber, t } from "@shared/i18n";
 /**
  * The Timeline view's model: the axis, the project bars and the milestone
  * marks — PURE, no React, no DOM, no chart library.
@@ -173,7 +174,7 @@ export function timelineSections(items: TimelineItem[]): {
  * label (no `No dates (25):`, no parenthetical count, no trailing colon).
  */
 export function undatedCountLabel(count: number): string {
-	return `${count} project${count === 1 ? "" : "s"} without dates`;
+	return t("ui.projects.count.undated", { count });
 }
 
 /**
@@ -237,20 +238,10 @@ export type TimelineTick = {
 	major: boolean;
 };
 
-const MONTHS = [
-	"Jan",
-	"Feb",
-	"Mar",
-	"Apr",
-	"May",
-	"Jun",
-	"Jul",
-	"Aug",
-	"Sep",
-	"Oct",
-	"Nov",
-	"Dec",
-];
+// Axis geometry is UTC; month labels must use the same day rather than shift
+// west-of-UTC readers into the previous month. Quarter tokens remain machine notation.
+const monthLabel = (ms: number) =>
+	formatDate(new Date(ms), { month: "short", timeZone: "UTC" });
 
 function utcParts(ms: number) {
 	const at = new Date(ms);
@@ -325,11 +316,11 @@ export function timelineTicks(
 	if (tier === "day") {
 		let afterMonthStart = false;
 		for (let day = startMs; day <= endMs; day += DAY_MS) {
-			const { day: dayOfMonth, month } = utcParts(day);
+			const { day: dayOfMonth } = utcParts(day);
 			if (dayOfMonth === 1) {
 				// The month's own name, NOT "Sep 1": at 24px/day the longer form
 				// runs into the next day's label (measured in the first capture).
-				push(day, MONTHS[month - 1], true);
+				push(day, monthLabel(day), true);
 				afterMonthStart = true;
 			} else if (afterMonthStart) {
 				// AND THE DAY BESIDE IT STANDS DOWN - the TUI's rule for a label
@@ -339,7 +330,7 @@ export function timelineTicks(
 				push(day, "", false);
 				afterMonthStart = false;
 			} else {
-				push(day, String(dayOfMonth), false);
+				push(day, formatNumber(dayOfMonth, { useGrouping: false }), false);
 			}
 		}
 		return ticks;
@@ -356,9 +347,17 @@ export function timelineTicks(
 			// naming a month at all (measured in the first capture).
 			const monthTurn = utcParts(day - 7 * DAY_MS).month !== month;
 			if (monthTurn) {
-				push(day, `${MONTHS[month - 1]} ${dayOfMonth}`, true);
+				push(
+					day,
+					formatDate(new Date(day), {
+						month: "short",
+						day: "numeric",
+						timeZone: "UTC",
+					}),
+					true,
+				);
 			} else {
-				push(day, String(dayOfMonth), false);
+				push(day, formatNumber(dayOfMonth, { useGrouping: false }), false);
 			}
 		}
 		return ticks;
@@ -375,8 +374,8 @@ export function timelineTicks(
 		const { year, month } = utcParts(day);
 		if (tier === "month") {
 			return month === 1 && year !== utcParts(startMs).year
-				? `${MONTHS[0]} '${String(year % 100).padStart(2, "0")}`
-				: MONTHS[month - 1];
+				? `${monthLabel(day)} '${formatNumber(year % 100, { minimumIntegerDigits: 2, useGrouping: false })}`
+				: monthLabel(day);
 		}
 		const quarter = Math.floor((month - 1) / 3) + 1;
 		return quarter === 1 && year !== utcParts(startMs).year

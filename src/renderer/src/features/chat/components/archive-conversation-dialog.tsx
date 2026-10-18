@@ -1,4 +1,6 @@
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { type FC, useEffect, useRef } from "react";
 import {
@@ -40,6 +42,8 @@ import {
  * one has a band that answers it a moment later.
  */
 export const ArchiveConversationDialog: FC = () => {
+	// Subscribe without touching candidate/refusal state or modal focus effects.
+	useI18nLocale();
 	const candidate = useCanonicalSessionsStore(
 		(state) => state.archiveCandidate,
 	);
@@ -180,8 +184,8 @@ export const ArchiveConversationDialog: FC = () => {
 				</span>
 			}
 			message={<p>{ARCHIVE_CONFIRM_MESSAGE}</p>}
-			confirmText="Archive"
-			cancelText="Cancel"
+			confirmText={t("ui.chat.dialogs.archive_action")}
+			cancelText={t("ui.chat.dialogs.cancel")}
 			/*
 			 * The operator explicitly prefers danger treatment for this confirmation,
 			 * superseding the earlier reversible/non-danger rationale. Styling does

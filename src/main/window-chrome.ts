@@ -18,6 +18,7 @@ import {
 	chromePlatformFor,
 	resolveWindowChromeForLaunch,
 } from "../shared/window-chrome";
+import { GLASS_TRANSPARENT } from "../shared/window-glass";
 import { readJson, writeJsonAtomic } from "./browser/atomic-json";
 
 /**
@@ -221,6 +222,14 @@ export type WindowChromeOptions = {
 	/** `windowLaunch.mode === "headless"`, which is the only reason the app-menu
 	 * popup is refused. */
 	headless: boolean;
+	/**
+	 * Whether the window glass is painting. While it is, the OS ground is the
+	 * transparent one and this module must NOT repaint the palette's opaque ground
+	 * over it on a theme report or a re-sync: an opaque `setBackgroundColor` is what
+	 * turns a see-through window back into a solid one. Absent means "never", which
+	 * is every launch that did not opt in.
+	 */
+	isGlassActive?: () => boolean;
 	log: (line: string) => void;
 };
 
@@ -244,6 +253,11 @@ export function attachWindowChrome(
 	options: WindowChromeOptions,
 ): WindowChromeController {
 	const { window, mode, userDataDir, headless, log } = options;
+	const paintGround = (): void => {
+		window.setBackgroundColor(
+			options.isGlassActive?.() ? GLASS_TRANSPARENT : colors.ground,
+		);
+	};
 	let colors = options.colors;
 	let cornerGround: string | undefined;
 	let themeId: string | undefined;
@@ -339,7 +353,7 @@ export function attachWindowChrome(
 			: undefined;
 		cornerGround = nextCorner;
 		if (typeof report?.themeId === "string") themeId = report.themeId;
-		window.setBackgroundColor(colors.ground);
+		paintGround();
 		applyOverlay(!window.isDestroyed() && window.isFocused());
 		persist();
 		log(
@@ -415,11 +429,11 @@ export function attachWindowChrome(
 	 * what the OS paints before the renderer's first frame, and leaving it at
 	 * Electron's default `#FFF` is the white flash this file exists to remove for a
 	 * dark palette. */
-	window.setBackgroundColor(colors.ground);
+	paintGround();
 
 	const sync = (): void => {
 		applyOverlay(!window.isDestroyed() && window.isFocused());
-		window.setBackgroundColor(colors.ground);
+		paintGround();
 		pushState();
 	};
 

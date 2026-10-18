@@ -1,0 +1,149 @@
+{
+	"ui.settings.appearance.window_glass.label": {
+		"role": "Toggle label",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "One line next to a switch; English is 18 characters.",
+		"note": "Master switch for the see-through window effect. Off by default."
+	},
+	"ui.settings.appearance.window_glass.description": {
+		"role": "Help paragraph under the toggle",
+		"tone": "Plain, reassuring second person.",
+		"length": "Wrapping paragraph in the settings column; no length cap, keep every fact.",
+		"note": "Explains the effect, that it is off by default, and that text stays readable because the slider's far end is limited per theme. Plain language only: no mention of floors or contracts."
+	},
+	"ui.settings.appearance.window_glass.restart_needed": {
+		"role": "Inline notice",
+		"tone": "Short instruction.",
+		"length": "One sentence under the toggle.",
+		"note": "Shown on Windows only, where the master switch cannot flip on a running window."
+	},
+	"ui.settings.appearance.window_glass.unsupported_reduced_transparency": {
+		"role": "Explanatory notice replacing the control",
+		"tone": "Calm, explains cause and the way out.",
+		"length": "One or two sentences.",
+		"note": "Shown when the operating system's Reduce transparency accessibility setting is on."
+	},
+	"ui.settings.appearance.window_glass.unsupported_windows_too_old": {
+		"role": "Explanatory notice replacing the control",
+		"tone": "Calm and factual.",
+		"length": "One sentence.",
+		"note": "Windows 10 and early Windows 11 lack the system material this needs; 22H2 is build 22621."
+	},
+	"ui.settings.appearance.window_glass.unsupported_linux": {
+		"role": "Explanatory notice replacing the control",
+		"tone": "Calm and honest about the platform limit.",
+		"length": "Two sentences.",
+		"note": "Linux desktops have no blur an app can request; the control is hidden rather than faked."
+	},
+	"ui.settings.appearance.window_glass.unsupported_other": {
+		"role": "Explanatory notice replacing the control",
+		"tone": "Calm and factual.",
+		"length": "One sentence.",
+		"note": "Fallback for any other platform."
+	},
+	"ui.settings.appearance.window_glass.coverage_label": {
+		"role": "Row label for a segmented choice",
+		"tone": "Neutral phrase in sentence case.",
+		"length": "One line; English is 15 characters.",
+		"note": "Chooses how much of the window is translucent."
+	},
+	"ui.settings.appearance.window_glass.coverage_description": {
+		"role": "Help text under the row label",
+		"tone": "Plain second person.",
+		"length": "One or two sentences.",
+		"note": "Names both options so the reader knows what each leaves solid; the last sentence is the honest limit of Full app (embedded pages and media paint their own opaque ground)."
+	},
+	"ui.settings.appearance.window_glass.coverage_sidebars": {
+		"role": "Segment label (1 of 2)",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Segmented-tab label; English is 13 characters; stay within ~1.5x.",
+		"note": "Narrowest scope: only the navigation columns."
+	},
+	"ui.settings.appearance.window_glass.coverage_full": {
+		"role": "Segment label (2 of 2)",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Segmented-tab label; English is 8 characters.",
+		"note": "Widest scope: every surface including the conversation and pages."
+	},
+	"ui.settings.appearance.window_glass.intensity_label": {
+		"role": "Slider label",
+		"tone": "Neutral phrase in sentence case.",
+		"length": "One line; English is 21 characters.",
+		"note": "The slider runs from mostly solid (frosted) to as clear as text contrast allows (see-through)."
+	},
+	"ui.settings.appearance.window_glass.intensity_description": {
+		"role": "Help text under the slider label",
+		"tone": "Plain second person.",
+		"length": "Wrapping paragraph; keep every fact.",
+		"note": "Explains both ends of the slider and that some surfaces stay solid."
+	},
+	"ui.settings.appearance.window_glass.material_label": {
+		"role": "Row label for a segmented choice",
+		"tone": "Neutral noun in sentence case.",
+		"length": "One word.",
+		"note": "Chooses the operating system material behind the window."
+	},
+	"ui.settings.appearance.window_glass.material_description": {
+		"role": "Help text under the row label",
+		"tone": "Plain.",
+		"length": "One sentence.",
+		"note": "Materials differ in tone and in how far see-through may go."
+	},
+	"ui.settings.appearance.window_glass.material_window": {
+		"role": "Segment label",
+		"tone": "Neutral noun.",
+		"length": "Segmented-tab label; one word.",
+		"note": "Apple's 'window background' material, the clearest. Technical name; do not translate if the platform term is a loanword."
+	},
+	"ui.settings.appearance.window_glass.material_menu": {
+		"role": "Segment label",
+		"tone": "Neutral noun.",
+		"length": "Segmented-tab label; one word.",
+		"note": "Apple's 'menu' material, mid density."
+	},
+	"ui.settings.appearance.window_glass.material_popover": {
+		"role": "Segment label",
+		"tone": "Neutral noun.",
+		"length": "Segmented-tab label; one word.",
+		"note": "Apple's 'popover' material, the densest."
+	},
+	"ui.settings.appearance.window_glass.material_mica": {
+		"role": "Segment label",
+		"tone": "Neutral noun.",
+		"length": "Segmented-tab label; one word.",
+		"note": "Microsoft's Mica material. A product name; keep as is."
+	},
+	"ui.settings.appearance.window_glass.material_acrylic": {
+		"role": "Segment label",
+		"tone": "Neutral noun.",
+		"length": "Segmented-tab label; one word.",
+		"note": "Microsoft's Acrylic material. A product name; keep as is."
+	},
+	"ui.settings.appearance.window_glass.material_tabbed": {
+		"role": "Segment label",
+		"tone": "Neutral noun.",
+		"length": "Segmented-tab label; one word.",
+		"note": "Microsoft's Tabbed Mica material."
+	},
+	"ui.settings.appearance.window_glass.intensity_start": {
+		"role": "Caption under the left end of the slider",
+		"tone": "One word, sentence case.",
+		"length": "One word; English is 7 characters.",
+		"note": "Names the frosted end so the slider's axis is readable without the description."
+	},
+	"ui.settings.appearance.window_glass.intensity_end": {
+		"role": "Caption under the right end of the slider",
+		"tone": "One word, sentence case.",
+		"length": "One word; English is 11 characters.",
+		"note": "Names the see-through end."
+	},
+	"ui.settings.appearance.window_glass.intensity_value": {
+		"role": "Accessible value text and the readout beside the slider label",
+		"tone": "Short, plain.",
+		"length": "Under 30 characters.",
+		"note": "{value} is a whole number 0-100; it names the axis so '60%' is not a bare number.",
+		"placeholders": {
+			"value": "Whole number 0-100: how far the slider sits toward see-through"
+		}
+	}
+}

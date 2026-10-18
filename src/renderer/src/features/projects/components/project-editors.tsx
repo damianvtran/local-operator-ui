@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The projects detail's field editors: every field the retired sheet could
  * edit, as an individually editable surface built on the shared inline-edit
@@ -106,6 +107,13 @@ import { ProjectDoneAnywayDialog } from "./project-done-anyway-dialog";
 import { ProjectStatusBadge } from "./project-status-badge";
 
 /** The one write door every field here commits through. */
+// Identifier examples stay ASCII, and their exemption lives outside JSX so
+// a future neighboring product label cannot inherit a broad element exemption.
+const PROJECT_KEY_CREATE_EXAMPLE =
+	/* i18n: ignore example identifier; must not be translated */ "project-key";
+const PROJECT_KEY_EDIT_EXAMPLE =
+	/* i18n: ignore example identifier; must not be translated */ "project-key";
+
 export type CommitProjectFields = (
 	fields: ProjectEditFields,
 	/**
@@ -122,12 +130,24 @@ export type CommitProjectFields = (
 function editLabels(field: string, display: string): InlineEditLabels {
 	return {
 		name: display,
-		begin: `Edit ${field}`,
-		accept: `Save ${field}`,
-		cancel: `Discard the ${field} edit`,
-		busy: `Saving the ${field}`,
-		saved: `${display} saved`,
-		retry: `Retry saving the ${field}`,
+		begin: t("ui.projects.project_editors.edit_field", {
+			field: String(field),
+		}),
+		accept: t("ui.projects.project_editors.save_field", {
+			field: String(field),
+		}),
+		cancel: t("ui.projects.project_editors.discard_the_field_edit", {
+			field: String(field),
+		}),
+		busy: t("ui.projects.project_editors.saving_the_field", {
+			field: String(field),
+		}),
+		saved: t("ui.projects.project_editors.display_saved", {
+			display: String(display),
+		}),
+		retry: t("ui.projects.project_editors.retry_saving_the_field", {
+			field: String(field),
+		}),
 	};
 }
 
@@ -433,6 +453,7 @@ export const ProjectHeaderIdentity: FC<{
 	project: DesktopProjectView;
 	commit: CommitProjectFields;
 }> = ({ project, commit }) => {
+	useI18nLocale();
 	const title = project.title ?? "";
 	const [addingTitle, setAddingTitle] = useState(false);
 	/*
@@ -464,10 +485,12 @@ export const ProjectHeaderIdentity: FC<{
 						}
 						commitFields={(next) => ({ title: next.trim() })}
 						validate={(next) => projectTitleRule(next)}
-						labels={editLabels("title", "Title")}
+						labels={editLabels("title", t("ui.projects.project_editors.title"))}
 						commit={commit}
 						maxLength={PROJECT_TITLE_MAX_CHARS}
-						placeholder="A short name for the workstream"
+						placeholder={t(
+							"ui.projects.project_editors.a_short_name_for_the_workstream",
+						)}
 						ramp="text-body"
 						bare
 						controlsClassName="self-center"
@@ -489,10 +512,10 @@ export const ProjectHeaderIdentity: FC<{
 						}
 						commitFields={(next) => ({ name: next.trim() })}
 						validate={(next) => projectNameRule(next.trim())}
-						labels={editLabels("key", "Key")}
+						labels={editLabels("key", t("ui.projects.project_editors.key"))}
 						commit={commit}
 						maxLength={PROJECT_KEY_MAX_CHARS}
-						placeholder="project-key"
+						placeholder={PROJECT_KEY_CREATE_EXAMPLE}
 						ramp="text-body"
 						bare
 						controlsClassName="self-center"
@@ -506,7 +529,10 @@ export const ProjectHeaderIdentity: FC<{
 							display={null}
 							commitFields={(next) => ({ title: next.trim() })}
 							validate={(next) => projectTitleRule(next)}
-							labels={editLabels("title", "Title")}
+							labels={editLabels(
+								"title",
+								t("ui.projects.project_editors.title"),
+							)}
 							commit={commit}
 							maxLength={PROJECT_TITLE_MAX_CHARS}
 							placeholder={project.name}
@@ -529,7 +555,7 @@ export const ProjectHeaderIdentity: FC<{
 								"hover:text-ink",
 							)}
 						>
-							Add a title
+							{t("ui.projects.project_editors.add_a_title")}
 						</button>
 					))}
 			</div>
@@ -544,10 +570,10 @@ export const ProjectHeaderIdentity: FC<{
 					}
 					commitFields={(next) => ({ name: next.trim() })}
 					validate={(next) => projectNameRule(next.trim())}
-					labels={editLabels("key", "Key")}
+					labels={editLabels("key", t("ui.projects.project_editors.key"))}
 					commit={commit}
 					maxLength={PROJECT_KEY_MAX_CHARS}
-					placeholder="project-key"
+					placeholder={PROJECT_KEY_EDIT_EXAMPLE}
 					mono
 				/>
 			)}
@@ -577,6 +603,7 @@ export const ProjectStatusField: FC<{
 	project: DesktopProjectView;
 	commit: CommitProjectFields;
 }> = ({ project, commit }) => {
+	useI18nLocale();
 	const [menuOpen, setMenuOpen] = useState(false);
 	const capabilities = useDesktopCapabilities();
 	const forceDoneOffered = desktopFeatureEnabled(
@@ -651,7 +678,7 @@ export const ProjectStatusField: FC<{
 				outcome.current = null;
 			}
 		},
-		labels: editLabels("status", "Status"),
+		labels: editLabels("status", t("ui.projects.project_editors.status")),
 		keyboardCommit: false,
 		errorCopy: projectWriteErrorCopy,
 		onBegin: () => setMenuOpen(true),
@@ -749,7 +776,7 @@ export const ProjectStatusField: FC<{
 							data-project-force-done-door=""
 							onClick={() => setAsked(refusal)}
 						>
-							Mark done anyway…
+							{t("ui.projects.project_editors.mark_done_anyway")}
 						</Button>
 					)}
 					<ProjectDoneAnywayDialog
@@ -758,7 +785,7 @@ export const ProjectStatusField: FC<{
 						projectLabel={projectDisplayName(project)}
 						onClose={() => setAsked(null)}
 						onConfirm={confirmForce}
-						secondaryLabel="Review milestones"
+						secondaryLabel={t("ui.projects.project_editors.review_milestones")}
 						onSecondary={() => {
 							/* The milestones are on this page: drop the held edit and put
 							 * the reader on the list they would complete. The delivery
@@ -786,7 +813,7 @@ export const ProjectStatusField: FC<{
 					<SelectTrigger
 						ref={api.editorRef as RefObject<HTMLButtonElement>}
 						{...api.editorAria}
-						aria-label="Status"
+						aria-label={t("ui.projects.project_editors.status")}
 						data-project-status=""
 						className="h-7 w-fit min-w-36"
 					>
@@ -833,6 +860,7 @@ export const ProjectDescriptionBlock: FC<{
 	project: DesktopProjectView;
 	commit: CommitProjectFields;
 }> = ({ project, commit }) => {
+	useI18nLocale();
 	const [preview, setPreview] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const addDescriptionRef = useRef<HTMLButtonElement | null>(null);
@@ -846,7 +874,10 @@ export const ProjectDescriptionBlock: FC<{
 		equals: (a, b) => a.trim() === b.trim(),
 		validate: (next) => projectDescriptionRule(next),
 		multiline: true,
-		labels: editLabels("description", "Description"),
+		labels: editLabels(
+			"description",
+			t("ui.projects.project_editors.description"),
+		),
 		errorCopy: projectWriteErrorCopy,
 		/*
 		 * The textarea the hook focuses on begin and compares `event.target`
@@ -896,7 +927,9 @@ export const ProjectDescriptionBlock: FC<{
 						 * control: a second spelling of a two-choice toggle beside
 						 * an existing one is the defect this repo names. */}
 						<fieldset className="m-0 w-fit border-0 p-0">
-							<legend className="sr-only">Description mode</legend>
+							<legend className="sr-only">
+								{t("ui.projects.project_editors.description_mode")}
+							</legend>
 							<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
 								{(["write", "preview"] as const).map((option) => (
 									<button
@@ -912,7 +945,9 @@ export const ProjectDescriptionBlock: FC<{
 												"bg-surface text-ink",
 										)}
 									>
-										{option === "write" ? "Write" : "Preview"}
+										{option === "write"
+											? t("ui.projects.project_editors.write")
+											: t("ui.projects.project_editors.preview")}
 									</button>
 								))}
 							</div>
@@ -930,7 +965,7 @@ export const ProjectDescriptionBlock: FC<{
 								</ProjectMarkdown>
 							) : (
 								<p className="text-body-sm text-ink-muted">
-									Nothing to preview yet.
+									{t("ui.projects.project_editors.nothing_to_preview_yet")}
 								</p>
 							)}
 						</div>
@@ -942,7 +977,9 @@ export const ProjectDescriptionBlock: FC<{
 							value={api.draft}
 							readOnly={api.phase === "saving"}
 							rows={8}
-							placeholder="Markdown — headings, lists, code."
+							placeholder={t(
+								"ui.projects.project_editors.markdown_headings_lists_code",
+							)}
 							aria-label={api.labels.name}
 							onChange={(event) => api.setDraft(event.target.value)}
 							onPaste={(event) =>
@@ -987,7 +1024,7 @@ export const ProjectDescriptionBlock: FC<{
 							onClick={api.begin}
 							className="w-fit cursor-pointer text-body-sm text-ink-dim transition-colors duration-fast ease-out-quart hover:text-ink"
 						>
-							Add description
+							{t("ui.projects.project_editors.add_description")}
 						</button>
 					)}
 					{/*
@@ -1015,22 +1052,25 @@ export const ProjectOwnerField: FC<{
 	commit: CommitProjectFields;
 	autoBegin?: boolean;
 	onRetire?: (outcome: "cancelled" | "filled") => void;
-}> = ({ project, commit, autoBegin = false, onRetire }) => (
-	<TextField
-		field="owner"
-		value={project.owner ?? ""}
-		label="Owner"
-		display={<span className="text-body-sm text-ink">{project.owner}</span>}
-		commitFields={(next) => ({ owner: next.trim() })}
-		validate={(next) => projectAttributionRule(next, "owner")}
-		labels={editLabels("owner", "Owner")}
-		commit={commit}
-		maxLength={PROJECT_ATTRIBUTION_MAX_CHARS}
-		placeholder="atlas"
-		autoBegin={autoBegin}
-		onRetire={onRetire}
-	/>
-);
+}> = ({ project, commit, autoBegin = false, onRetire }) => {
+	useI18nLocale();
+	return (
+		<TextField
+			field="owner"
+			value={project.owner ?? ""}
+			label={t("ui.projects.project_editors.owner")}
+			display={<span className="text-body-sm text-ink">{project.owner}</span>}
+			commitFields={(next) => ({ owner: next.trim() })}
+			validate={(next) => projectAttributionRule(next, "owner")}
+			labels={editLabels("owner", t("ui.projects.project_editors.owner"))}
+			commit={commit}
+			maxLength={PROJECT_ATTRIBUTION_MAX_CHARS}
+			placeholder={t("ui.projects.examples.owner")}
+			autoBegin={autoBegin}
+			onRetire={onRetire}
+		/>
+	);
+};
 
 /** Team row; same shape as Owner, its own 80-character copy. */
 export const ProjectTeamField: FC<{
@@ -1045,24 +1085,27 @@ export const ProjectTeamField: FC<{
 	label?: string | null;
 	autoBegin?: boolean;
 	onRetire?: (outcome: "cancelled" | "filled") => void;
-}> = ({ project, commit, label = null, autoBegin = false, onRetire }) => (
-	<TextField
-		field="team"
-		value={project.team ?? ""}
-		label="Team"
-		display={
-			<span className="text-body-sm text-ink">{label ?? project.team}</span>
-		}
-		commitFields={(next) => ({ team: next.trim() })}
-		validate={(next) => projectAttributionRule(next, "team")}
-		labels={editLabels("team", "Team")}
-		commit={commit}
-		maxLength={PROJECT_ATTRIBUTION_MAX_CHARS}
-		placeholder="platform"
-		autoBegin={autoBegin}
-		onRetire={onRetire}
-	/>
-);
+}> = ({ project, commit, label = null, autoBegin = false, onRetire }) => {
+	useI18nLocale();
+	return (
+		<TextField
+			field="team"
+			value={project.team ?? ""}
+			label={t("ui.projects.project_editors.team")}
+			display={
+				<span className="text-body-sm text-ink">{label ?? project.team}</span>
+			}
+			commitFields={(next) => ({ team: next.trim() })}
+			validate={(next) => projectAttributionRule(next, "team")}
+			labels={editLabels("team", t("ui.projects.project_editors.team"))}
+			commit={commit}
+			maxLength={PROJECT_ATTRIBUTION_MAX_CHARS}
+			placeholder={t("ui.projects.examples.team")}
+			autoBegin={autoBegin}
+			onRetire={onRetire}
+		/>
+	);
+};
 
 /**
  * One planning date row (Start or Target).
@@ -1089,7 +1132,10 @@ export const ProjectDateField: FC<{
 	   components use (round-1 review, R1-3). */
 	const locale = useI18nLocale();
 	const display = formatProjectDay(raw, locale, new Date(nowMs));
-	const label = which === "start" ? "Start" : "Target";
+	const label =
+		which === "start"
+			? t("ui.projects.project_editors.start")
+			: t("ui.projects.project_editors.target");
 	return (
 		<TextField
 			field={which === "start" ? "start-date" : "target-date"}
@@ -1106,9 +1152,16 @@ export const ProjectDateField: FC<{
 					? projectDateOrderRule(next, project.target_date ?? "")
 					: projectDateOrderRule(project.start_date ?? "", next);
 			}}
-			labels={editLabels(`${label.toLowerCase()} date`, label)}
+			labels={editLabels(
+				t("ui.projects.project_editors.tolowercase_date", {
+					toLowerCase: String(label.toLowerCase()),
+				}),
+				label,
+			)}
 			commit={commit}
-			placeholder="YYYY-MM-DD"
+			placeholder={
+				/* i18n: ignore Wire date-input grammar, not product prose; owner projects, remove if date syntax changes. */ "YYYY-MM-DD"
+			}
 			autoBegin={autoBegin}
 			onRetire={onRetire}
 		/>
@@ -1130,6 +1183,7 @@ export const ProjectEstimateField: FC<{
 	autoBegin?: boolean;
 	onRetire?: (outcome: "cancelled" | "filled") => void;
 }> = ({ project, commit, autoBegin = false, onRetire }) => {
+	useI18nLocale();
 	const base = {
 		estimate: project.estimate,
 		unit: (project.estimate_unit === "days" ? "days" : "points") as
@@ -1154,7 +1208,7 @@ export const ProjectEstimateField: FC<{
 			if (fields) await commit(fields);
 		},
 		validate: (draft) => projectEstimateNumberRule(draft.number),
-		labels: editLabels("estimate", "Estimate"),
+		labels: editLabels("estimate", t("ui.projects.project_editors.estimate")),
 		selectAllOnBegin: true,
 		beginOnMount: autoBegin,
 		errorCopy: projectWriteErrorCopy,
@@ -1173,7 +1227,7 @@ export const ProjectEstimateField: FC<{
 			fieldRef={api.fieldRef}
 			fieldProps={api.fieldProps}
 			editing={api.editing}
-			label="Estimate"
+			label={t("ui.projects.project_editors.estimate")}
 			display={<span className="text-body-sm text-ink">{display}</span>}
 			slot={api}
 			feedback={api}
@@ -1205,22 +1259,27 @@ export const ProjectEstimateField: FC<{
 						>
 							<SelectTrigger
 								data-project-estimate-unit=""
-								aria-label="Estimate unit"
+								aria-label={t("ui.projects.project_editors.estimate_unit")}
 								aria-invalid={api.editorAria["aria-invalid"]}
 								className="h-8 w-fit min-w-28"
 							>
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="points">Points</SelectItem>
-								<SelectItem value="days">Days</SelectItem>
+								<SelectItem value="points">
+									{t("ui.projects.project_editors.points")}
+								</SelectItem>
+								<SelectItem value="days">
+									{t("ui.projects.project_editors.days")}
+								</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
 					{api.draft.number.trim() === "" && base.estimate !== null && (
 						<p className="text-meta text-ink-muted">
-							Clearing an estimate is not supported yet — saving keeps its
-							current value.
+							{t(
+								"ui.projects.project_editors.clearing_an_estimate_is_not_supported_yet_saving_keeps_its_curren",
+							)}
 						</p>
 					)}
 				</div>
@@ -1243,6 +1302,7 @@ export const ProjectTagsField: FC<{
 	autoBegin?: boolean;
 	onRetire?: (outcome: "cancelled" | "filled") => void;
 }> = ({ project, commit, autoBegin = false, onRetire }) => {
+	useI18nLocale();
 	const [open, setOpen] = useState(autoBegin);
 	useEffect(() => {
 		if (open && project.tags.length > 0) {
@@ -1268,7 +1328,7 @@ export const ProjectTagsField: FC<{
 			await commit({ tags });
 		},
 		validate: (next) => projectTagsFieldRule(next).error,
-		labels: editLabels("tags", "Tags"),
+		labels: editLabels("tags", t("ui.projects.project_editors.tags")),
 		selectAllOnBegin: true,
 		beginOnMount: autoBegin,
 		errorCopy: projectWriteErrorCopy,
@@ -1287,7 +1347,7 @@ export const ProjectTagsField: FC<{
 			fieldRef={api.fieldRef}
 			fieldProps={api.fieldProps}
 			editing={api.editing}
-			label="Tags"
+			label={t("ui.projects.project_editors.tags")}
 			display={
 				<span className="flex flex-wrap items-center gap-1.5">
 					{project.tags.map((tag) => (
@@ -1307,7 +1367,7 @@ export const ProjectTagsField: FC<{
 						data-project-tags=""
 						value={api.draft}
 						readOnly={api.phase === "saving"}
-						placeholder="q4, payments"
+						placeholder={t("ui.projects.project_editors.q4_payments")}
 						aria-label={api.labels.name}
 						onChange={(event) => api.setDraft(event.target.value)}
 						className="h-8 max-w-72"

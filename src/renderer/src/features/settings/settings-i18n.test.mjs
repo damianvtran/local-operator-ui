@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { test } from "node:test";
+import { afterEach, beforeEach, test } from "node:test";
 import { TYPE, parse } from "@formatjs/icu-messageformat-parser";
 import { build } from "esbuild";
 import {
@@ -16,6 +16,7 @@ const bundle = await build({
 		contents: `
 			export * from "./src/i18n/messages";
 			export * from "./src/i18n/locale";
+			export { bundledCatalogues } from "./src/i18n/keys.gen";
 			export { toolCountLabel, integrationCountLabel } from "./src/renderer/src/features/settings/components/integrations/integration-model";
 			export { formatHours, rangeSentence, validateHours } from "./src/renderer/src/features/settings/retention-duration";
 			export { providerOptions } from "./src/renderer/src/features/settings/model-setting-options";
@@ -39,9 +40,18 @@ const runtime = await import(
 const themes = [
 	"account",
 	"appearance",
+	/* The window-glass copy lives in its own namespace file: a locale that already
+	 * ships `ui.settings.appearance` (French) carries an audited ledger entry over
+	 * that file's bytes, so new English keys beside it would make the entry stale. */
+	"appearance.window_glass",
 	"configuration",
 	"integrations",
 	"model",
+	/* Default effort and the provider callout live in their own English-only
+	 * namespace files: `ui.settings.model` ships French with an audited ledger
+	 * entry over its bytes, so new copy beside it would make that entry stale. */
+	"model.default_effort",
+	"model.provider_callout",
 	"navigation",
 	"shortcuts",
 	"speech",
@@ -56,11 +66,27 @@ const catalogue = Object.assign(
 	),
 );
 
+// Every English-source assertion starts from its own locale state. Cleanup must
+// run even after an assertion fails: otherwise one French mismatch cascades into
+// unrelated interpolation, retention, description and provider-heading failures.
+beforeEach(() => runtime.setLocale("en"));
+afterEach(() => {
+	runtime.clearRegisteredCatalogues();
+	runtime.setLocale("en");
+});
+
+// This private-use French tag is a test-only locale with no bundled messages,
+// not a real rollout locale that will eventually acquire these namespaces. Its
+// French zero category differs from English, so 0 still proves that fallback
+// uses the source's plural rules rather than the requested locale's rules.
+const fallbackLocale = "fr-x-source-fallback";
 // Test each quantity, rather than only the English singular, because French's
 // category for zero would produce a false singular if fallback used target rules.
 test("settings helper quantities preserve English for 0, 1, 2 and 1000, including fallback", () => {
-	for (const locale of ["en", "fr"]) {
+	assert.equal(Object.hasOwn(runtime.bundledCatalogues, fallbackLocale), false);
+	for (const locale of ["en", fallbackLocale]) {
 		runtime.setLocale(locale);
+		assert.equal(runtime.currentLocale(), locale);
 		for (const count of [0, 1, 2, 1000]) {
 			assert.equal(
 				runtime.toolCountLabel(count),
@@ -118,7 +144,43 @@ test("settings helper quantities preserve English for 0, 1, 2 and 1000, includin
 			);
 		}
 	}
-	runtime.setLocale("en");
+});
+
+test("real French settings helpers use French text and plural rules", () => {
+	runtime.setLocale("fr");
+	for (const count of [0, 1, 2]) {
+		const plural = count > 1 ? "s" : "";
+		assert.equal(runtime.toolCountLabel(count), `${count} outil${plural}`);
+		assert.equal(
+			runtime.integrationCountLabel(count),
+			`${count} intégration${plural}`,
+		);
+		assert.equal(
+			runtime.t("ui.settings.configuration.settings_filter_bar.unsaved_count", {
+				count,
+			}),
+			`${count} modification${plural} non enregistrée${plural}`,
+		);
+		assert.equal(
+			runtime.t(
+				"ui.settings.configuration.settings_group_header.setting_count",
+				{ count },
+			),
+			`${count} paramètre${plural}`,
+		);
+		assert.equal(runtime.formatHours(count), `${count} heure${plural}`);
+	}
+	assert.equal(
+		runtime.t("ui.settings.configuration.settings_filter_bar.search_count", {
+			matchCount: 1,
+			sectionCount: 2,
+		}),
+		"1 résultat dans 2 sections",
+	);
+	assert.equal(
+		runtime.t("ui.settings.model.settings_page.model_settings"),
+		"Paramètres des modèles",
+	);
 });
 
 test("whole messages keep interpolation and markup-adjacent spaces intact", () => {

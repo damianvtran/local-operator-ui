@@ -970,6 +970,7 @@ export const AskDrawer = ({
 			ref={rootRef}
 			aria-label={scope === "fleet" ? "All asks" : "This conversation's asks"}
 			data-lo-ask-surfaces=""
+			data-glass-region="pane"
 			data-ask-drawer={scope}
 			tabIndex={-1}
 			className={cn("flex h-full flex-col bg-elevated")}

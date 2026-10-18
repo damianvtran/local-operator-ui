@@ -191,7 +191,10 @@ export const MeshList: FC<MeshListProps> = ({
 				<legend className="sr-only">
 					{t("ui.mesh.mesh_list.sort_devices_by")}
 				</legend>
-				<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
+				<div
+					data-glass-well=""
+					className="flex gap-0.5 rounded-md bg-sunken p-0.5"
+				>
 					{MESH_SORTS.map((option) => (
 						<button
 							key={option}

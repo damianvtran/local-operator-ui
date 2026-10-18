@@ -1,0 +1,117 @@
+{
+	"ui.agentMessages.dialog.title": {
+		"role": "onboarding dialog heading",
+		"tone": "sentence case, product name kept as-is",
+		"length": "Short heading; one line at the shipped dialog width.",
+		"placeholders": {},
+		"note": "Names the feature and the product it belongs to. \"Radient\" is the organization product name — never translate. This dialog appears once per account and tenant; the heading is the first thing it says."
+	},
+	"ui.agentMessages.dialog.lead": {
+		"role": "onboarding dialog introductory sentence",
+		"tone": "plain, second person, no marketing claims",
+		"length": "One sentence; may wrap to two lines.",
+		"placeholders": {},
+		"note": "Explains the core offer: the user's agent can exchange messages with other members' agents inside the organization. \"Agent\" here is the product's agent noun; keep it consistent with the rest of the app."
+	},
+	"ui.agentMessages.dialog.reach": {
+		"role": "onboarding dialog scope sentence",
+		"tone": "reassuring, factual default stated plainly",
+		"length": "One sentence naming the Settings path; keep \"Settings → Agent messages\" recognizable.",
+		"placeholders": {},
+		"note": "States the safe default (organization members only) and where to change it. The Settings → Agent messages path is a UI location the user must be able to find in their own locale — translate the \"Settings\" and \"Agent messages\" words only if those surfaces translate them."
+	},
+	"ui.agentMessages.dialog.later": {
+		"role": "quiet helper under the dialog actions",
+		"tone": "low-emphasis, no pressure",
+		"length": "One short sentence; muted styling.",
+		"placeholders": {},
+		"note": "Tells the user enabling can wait; it is the polite dismissal path's companion, not a second button. Must not read as a warning."
+	},
+	"ui.agentMessages.dialog.activities": {
+		"role": "capability list item inside the dialog",
+		"tone": "concrete, verb-first, comma-separated examples",
+		"length": "One line; three examples maximum.",
+		"placeholders": {},
+		"note": "Shows what agent messages are FOR, in user tasks (notes, questions, approvals) rather than protocol language. Not a complete list — do not add \"etc.\"."
+	},
+	"ui.agentMessages.dialog.enable": {
+		"role": "primary action button",
+		"tone": "imperative verb, one word if the language allows",
+		"length": "Button label; keep as short as possible.",
+		"placeholders": {},
+		"note": "The consent action: exactly one click enables agent messages for the signed-in account and tenant. The button stays disabled until a served consent is present."
+	},
+	"ui.agentMessages.dialog.enabling": {
+		"role": "primary action button, in-flight state",
+		"tone": "ongoing, same verb stem as the idle label",
+		"length": "One short word plus ellipsis where the language styles progress that way.",
+		"placeholders": {},
+		"note": "Shown while the enable request is in flight; all three dialog controls — Enable, Not now and the close X — are disabled in this state, so the dialog cannot be dismissed until the request settles. Do not change the verb from the idle \"Enable\" label beyond the grammar the language needs."
+	},
+	"ui.agentMessages.dialog.not_now": {
+		"role": "secondary action button (initial focus)",
+		"tone": "neutral deferral, never \"cancel\" or \"decline\"",
+		"length": "Two short words.",
+		"placeholders": {},
+		"note": "Dismisses the dialog without enabling; the choice is remembered per account and tenant and the dialog does not return on its own. This button receives initial focus, so its label is read first by keyboard and screen-reader users."
+	},
+	"ui.agentMessages.dialog.close": {
+		"role": "icon button accessible name (the X)",
+		"tone": "single word, standard dialog close verb",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "Accessible name only — the visible affordance is the X glyph. Behaves identically to \"Not now\": it dismisses and records the seen flag; mounting alone never enrolls."
+	},
+	"ui.agentMessages.dialog.consent_unavailable": {
+		"role": "in-dialog standing when no consent text is served",
+		"tone": "calm, factual; states the negative outcome first",
+		"length": "One short sentence, may wrap to two lines.",
+		"placeholders": {},
+		"note": "Shown where the served consent paragraph would be when the backend returns none. \"Consent\" is the product's term for the disclosure the user accepts; keep it consistent with Settings. Must not read like an error the user caused."
+	},
+	"ui.agentMessages.dialog.account_guard_unavailable": {
+		"role": "in-dialog refusal when the backend cannot bind consent to the account",
+		"tone": "honest limitation, actionable next step, no internals",
+		"length": "One to two sentences.",
+		"placeholders": {},
+		"note": "The account-guard refusal: this app/backend version cannot safely record consent against the signed-in account, so enabling is withheld. Names updating Local Operator as the fix. Do not name protocol mechanisms or raw error codes — the round-1 review asked for user guidance, not implementation detail."
+	},
+	"ui.agentMessages.dialog.failure": {
+		"role": "enable-request failure notice",
+		"tone": "no blame, no cause speculation, give the retry path",
+		"length": "One to two sentences.",
+		"placeholders": {},
+		"note": "Generic enable failure (e.g. the request was refused). It must not claim which side failed — offer \"try again\" and the Settings → Agent messages path. Never optimistic: the feature remains off."
+	},
+	"ui.agentMessages.dialog.consent_changed": {
+		"role": "stale-consent 409 recovery notice",
+		"tone": "instructional, one clear next action",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "Shown when the served consent version changed under the user (409 consent_version_unknown); the dialog refreshed the consent text and requires a NEW explicit click. Say that the current text must be read and Enable pressed again — there is no silent retry, and this string is what explains the second click."
+	},
+	"ui.agentMessages.dialog.local_failure": {
+		"role": "post-consent local setup failure notice",
+		"tone": "reassuring about the saved consent, clear about the unfinished step",
+		"length": "One to two sentences.",
+		"placeholders": {},
+		"note": "The consent write succeeded but this machine's setup did not finish. Must state the consent WAS saved so the user does not fear a lost choice, then point at Settings → Agent messages to finish. Distinct from the generic failure string."
+	},
+	"ui.agentMessages.dialog.validation_failure": {
+		"role": "leading sentence for a rejected setup request",
+		"tone": "plain refusal, no code language",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "Leads the validation-failure block; the technical {field}: {rule} line follows it as muted secondary detail. This sentence is what a non-technical user reads, so it must stand alone without the detail below it."
+	},
+	"ui.agentMessages.dialog.validation_detail": {
+		"role": "muted secondary diagnostic under the validation-failure sentence",
+		"tone": "technical, unadorned, never the only explanation",
+		"length": "Compact; one identifier pair per line.",
+		"placeholders": {
+			"field": "Machine field name from the backend validation error (an identifier, e.g. a settings key). Keep verbatim — never translate.",
+			"rule": "Machine rule identifier from the backend validation error. Keep verbatim; do not expand into prose."
+		},
+		"note": "Rendered only beneath the human guidance sentence (validation_failure), never instead of it. Design review round 1 required the plain sentence to lead and this pair to remain secondary."
+	}
+}

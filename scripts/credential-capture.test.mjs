@@ -30,6 +30,23 @@ import { build } from "esbuild";
  * re-implemented here.
  */
 
+/*
+ * THE RENDERER'S PATH ALIASES, restated for esbuild.
+ *
+ * `credential-capture` imports `approvalAnswerValue` from `../ask-answer` -- the
+ * ONE definition of a yes/no reply, so the "not a reply to the approval pair"
+ * clause in `looksLikeSecret` cannot drift from the answer door that accepts
+ * those words. That graph resolves `@shared`, `@features` and `@assets`, and a
+ * `stdin` bundle gets no tsconfig path mapping, so the three maps are here.
+ * Measured: the whole ask-answer graph bundles and imports in plain node with no
+ * DOM and no localStorage.
+ */
+const ALIAS = {
+	"@shared": "./src/renderer/src/shared",
+	"@features": "./src/renderer/src/features",
+	"@assets": "./src/renderer/src/assets",
+};
+
 const bundle = await build({
 	stdin: {
 		contents:
@@ -40,6 +57,7 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	alias: ALIAS,
 });
 const {
 	CREDENTIAL_ARMED_NOTICE,
@@ -76,6 +94,7 @@ const {
 	isArmed,
 	isStorableCredentialKey,
 	isTyping,
+	looksLikeSecret,
 	markerChip,
 	markerChipTitle,
 	maskEdit,
@@ -113,6 +132,7 @@ const remarkBundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	alias: ALIAS,
 });
 const {
 	citationFromHref,
@@ -147,6 +167,7 @@ const mathBundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	alias: ALIAS,
 });
 const { containsRenderableMath, maskCitations } = await import(
 	`data:text/javascript;base64,${Buffer.from(mathBundle.outputFiles[0].text).toString("base64")}`
@@ -2694,4 +2715,128 @@ test("the arm's lookbehind is the Python class, not `\\s` (round 3)", () => {
 	);
 	const space = " /credential ";
 	assert.ok(armSpan(space, space.length), "and a plain space still arms");
+});
+
+/*
+ * THE PASSWORD-SHAPED SEND GUARD'S SHAPE RULE (the operator's ask, `a-9e0c`).
+ *
+ * A table rather than prose, because this predicate is the whole of the claim the
+ * composer makes when it asks "is this a secret?": every row is a class the app
+ * either must catch (a password, an API key) or must NOT catch (the words and
+ * grammars the composer already sends on purpose). The narrowness is deliberate
+ * and stated at the function: a false negative is a message the user sent
+ * knowingly (the panel is one press away), while a false positive teaches them to
+ * dismiss the confirm.
+ */
+test("looksLikeSecret catches credentials and leaves the app's own vocabulary alone", () => {
+	const secrets = [
+		"correct-horse-9",
+		"hunter2hunter2X",
+		"sk-live-8f3c22aa91",
+		"AKIAIOSFODNN7EXAMPLE",
+		"ghp_16characterslong",
+		"aB3$xyzQ",
+		"Tr0ub4dor&3",
+		"abcdefghij0123456789",
+		"LOP_SECRET_4CE3Y48G",
+		"base64+token/with=padding",
+		/* A 32-character hex token: an MD5, and the length many API keys use (m-A). */
+		"098f6bcd4621d373cade4e832627b4f6",
+		/* A password the email clause used to read as `P` @ `ss.w0rd!` (m-A). */
+		"P@ss.w0rd!",
+	];
+	for (const value of secrets)
+		assert.equal(looksLikeSecret(value), true, `${value} is credential-shaped`);
+	/*
+	 * THE SECOND TABLE (agent review round 1, m2; UX round 1, U5). Every row here
+	 * was measured as a FALSE POSITIVE of the class-count rule and is a shape the
+	 * chat box carries for reasons that have nothing to do with a credential: a
+	 * file name, a path, an address, a version, a timestamp, a commit, a host and
+	 * port, a branch, an identifier. The old rule called all of them secrets; the
+	 * exclusions in `looksLikeSecret` are what these rows pin.
+	 */
+	const notSecrets = [
+		"README.md",
+		"README_v2.final.md",
+		"use-message-input.ts",
+		"App2.tsx",
+		"src/renderer/message-input.tsx",
+		"src/Components/App2.tsx",
+		"feat/x",
+		"feat/secret-ask-composer-unlock",
+		"Ben.Tran@gominerva.com",
+		"v1.2.3-beta",
+		"v0.61.8-rc.1",
+		"2026-10-17T10:00:00Z",
+		"2026-10-17T10:00:00.123+01:00",
+		"localhost:6193",
+		"127.0.0.1:8080",
+		"7c9e6679f1a2b3c4d5e6f708192a3b4c5d6e7f80",
+		"7c9e667",
+		"test_credential_composer",
+		"getUserById2",
+		"claude-sonnet-4-5-20250929",
+	];
+	for (const value of notSecrets)
+		assert.equal(
+			looksLikeSecret(value),
+			false,
+			`${JSON.stringify(value)} is a shape the app carries, not a credential`,
+		);
+	/*
+	 * AND THE ROWS THE RULE STILL DOES NOT CATCH, stated so the docblock's
+	 * narrowness is measured rather than asserted: a two-class token under the
+	 * long floor, a passphrase with a space, a token opening with a chat grammar
+	 * character, and the AWS secret-key shape (40 URL-safe characters containing
+	 * `/`), which the path clause reads as a relative path (round 2, m-A). The
+	 * notice above the box is the primary guard; this predicate is the second
+	 * line, and it fails open.
+	 */
+	const stillMissed = [
+		"password1",
+		"hunter22",
+		"correct horse battery",
+		"$ecret9Aa",
+		"wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+	];
+	for (const value of stillMissed)
+		assert.equal(
+			looksLikeSecret(value),
+			false,
+			`${JSON.stringify(value)} is a documented false negative`,
+		);
+
+	const ordinary = [
+		"yes",
+		"no",
+		"approve",
+		"deny",
+		"1",
+		"hello",
+		"hello there",
+		"please look at this",
+		"https://example.com/login",
+		"http://localhost:3000",
+		"/credential",
+		"/usage now",
+		"@src/index.ts",
+		"$summarise",
+		"#tag",
+		"abcdefgh",
+		"12345678",
+		"",
+		"   ",
+		"a".repeat(257),
+	];
+	for (const value of ordinary)
+		assert.equal(
+			looksLikeSecret(value),
+			false,
+			`${JSON.stringify(value)} is not credential-shaped`,
+		);
+});
+
+test("looksLikeSecret trims before it judges", () => {
+	assert.equal(looksLikeSecret("  correct-horse-9  "), true);
+	assert.equal(looksLikeSecret("  hello  "), false);
 });

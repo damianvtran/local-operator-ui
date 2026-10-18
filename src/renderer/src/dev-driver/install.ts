@@ -490,6 +490,32 @@ export function installDevDriver(): string[] {
 				),
 				sessionCount: sessions.sessions.length,
 				/*
+				 * AND THE PINNED EXTRAS BESIDE IT (QA round 1, Q1). The daemon appends
+				 * pinned rows that fall off the page below the page's own rows, so the store's
+				 * array can legitimately outgrow the head page by exactly that many - a scene
+				 * guard on `sessionCount <= 50` false-fails the moment a pinned row falls off
+				 * the page (measured: 50 page rows + 1 off-page pin = 51, the guard's own
+				 * message calling a correct read a legacy one). Reported here so the scene can
+				 * subtract them and stay exact on any store.
+				 */
+				cataloguePinnedCount: sessions.sessions.filter(
+					(row) => row.pinned === true,
+				).length,
+				/*
+				 * THE ORDER AND SIZE THE CATALOGUE IS READ IN, reported rather than
+				 * inferred (the plain-newchat scene's own rule): a scene that photographs a
+				 * fresh conversation inside the sidebar after its runtime drained has to be
+				 * able to say WHICH page the store holds and WHICH order produced it -
+				 * "62 rows rendered" and "the head page carried the row" are different
+				 * claims, and only the second one is about the activity head. Both are the
+				 * store's own published flags: `cataloguePageable` sizes an unnamed read
+				 * (`cataloguePageDefault`) and `catalogueActivityHead` decides whether the
+				 * reads ask for `sort=activity`, so a scene can PROVE the fixed path was
+				 * live rather than infer it from a row that happens to render.
+				 */
+				cataloguePageable: sessions.cataloguePageable,
+				catalogueActivityHead: sessions.catalogueActivityHead,
+				/*
 				 * THE PAGED CATALOGUE'S OWN FACTS, reported rather than inferred.
 				 *
 				 * A scene that photographs a group's page has to be able to say WHAT the

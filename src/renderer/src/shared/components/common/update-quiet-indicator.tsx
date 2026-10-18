@@ -180,6 +180,7 @@ export const UpdateQuietIndicatorView: FC<{
 		 */
 		<output
 			data-update-indicator=""
+			data-glass-region="sidebar"
 			data-update-indicator-count={offers.length}
 			/*
 			 * ESCAPE LOWERS THE BAND (review round 1's U1). The handler sits on the

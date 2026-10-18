@@ -1,3 +1,6 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
+import { bundledEnglish } from "../../../../../i18n/keys.gen";
 /**
  * The board's time-window control: the model's ladder drawn as a Select.
  *
@@ -46,52 +49,68 @@ import { BOARD_WINDOWS, type BoardWindow } from "../project-model";
  * read the same sentence the panel paints.
  */
 export const BOARD_WINDOW_HINT =
-	"Shows projects last updated within this window; older ones are hidden.";
+	bundledEnglish[
+		"ui.projects.board_window_select.shows_projects_last_updated_within_this_window_older_ones_are_hid"
+	];
 
 export const BoardWindowSelect: FC<{
 	value: BoardWindow;
 	onChange: (value: BoardWindow) => void;
-}> = ({ value, onChange }) => (
-	<Select value={value} onValueChange={(next) => onChange(next as BoardWindow)}>
-		<Tooltip
-			/*
-			 * NULL AT THE FULL LADDER (design round 2, D6). The sentence says older
-			 * rows are HIDDEN, and at `all` nothing is: the panel was still claiming a
-			 * filter the board had stopped applying (visible in the `board-window-
-			 * widened` frame, where "Show all time" had just handed the caret back to
-			 * this control). The primitive renders `children` alone for a null
-			 * `content`, so the control stays - only the claim goes.
-			 */
-			content={value === "all" ? null : BOARD_WINDOW_HINT}
-			side="bottom"
-			/*
-			 * CLOSES ON LEAVE, the same rule the card title's tooltip carries (QA round
-			 * 1, Q1): the primitive's default waits for the pointer to enter the panel
-			 * to close it, and these panels are `pointer-events: none`, so a hint about
-			 * a control the pointer left would stay painted over the board. Escape and
-			 * blur still dismiss it.
-			 */
-			disableHoverableContent
+}> = ({ value, onChange }) => {
+	useI18nLocale();
+	return (
+		<Select
+			value={value}
+			onValueChange={(next) => onChange(next as BoardWindow)}
 		>
-			<SelectTrigger
-				aria-label="Projects updated within"
+			<Tooltip
 				/*
-				 * `cn`, not a bare className: the primitive's base carries `w-full`,
-				 * and only tailwind-merge (which `cn` registers the app's scales
-				 * with) can drop it in favour of the fixed width.
+				 * NULL AT THE FULL LADDER (design round 2, D6). The sentence says older
+				 * rows are HIDDEN, and at `all` nothing is: the panel was still claiming a
+				 * filter the board had stopped applying (visible in the `board-window-
+				 * widened` frame, where "Show all time" had just handed the caret back to
+				 * this control). The primitive renders `children` alone for a null
+				 * `content`, so the control stays - only the claim goes.
 				 */
-				className={cn("w-36 shrink-0")}
-				data-tour-tag="projects-board-window"
+				content={
+					value === "all"
+						? null
+						: t(
+								"ui.projects.board_window_select.shows_projects_last_updated_within_this_window_older_ones_are_hid",
+							)
+				}
+				side="bottom"
+				/*
+				 * CLOSES ON LEAVE, the same rule the card title's tooltip carries (QA round
+				 * 1, Q1): the primitive's default waits for the pointer to enter the panel
+				 * to close it, and these panels are `pointer-events: none`, so a hint about
+				 * a control the pointer left would stay painted over the board. Escape and
+				 * blur still dismiss it.
+				 */
+				disableHoverableContent
 			>
-				<SelectValue />
-			</SelectTrigger>
-		</Tooltip>
-		<SelectContent>
-			{BOARD_WINDOWS.map((entry) => (
-				<SelectItem key={entry.value} value={entry.value}>
-					{entry.label}
-				</SelectItem>
-			))}
-		</SelectContent>
-	</Select>
-);
+				<SelectTrigger
+					aria-label={t(
+						"ui.projects.board_window_select.projects_updated_within",
+					)}
+					/*
+					 * `cn`, not a bare className: the primitive's base carries `w-full`,
+					 * and only tailwind-merge (which `cn` registers the app's scales
+					 * with) can drop it in favour of the fixed width.
+					 */
+					className={cn("w-36 shrink-0")}
+					data-tour-tag="projects-board-window"
+				>
+					<SelectValue />
+				</SelectTrigger>
+			</Tooltip>
+			<SelectContent>
+				{BOARD_WINDOWS.map((entry) => (
+					<SelectItem key={entry.value} value={entry.value}>
+						{entry.label}
+					</SelectItem>
+				))}
+			</SelectContent>
+		</Select>
+	);
+};

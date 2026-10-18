@@ -36,6 +36,8 @@ const tab = (
 	handedOver: false,
 	failed: false,
 	loading: false,
+	audible: false,
+	muted: false,
 	...overrides,
 	// `sessionId` LAST, and normalised, because the projection always sends one of
 	// `string | null` while `Partial` would let `undefined` through: a specimen is

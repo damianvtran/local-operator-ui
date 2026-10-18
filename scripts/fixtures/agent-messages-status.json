@@ -1,0 +1,37 @@
+{
+	"capability": 1,
+	"consent_account_guard": true,
+	"state": "ready",
+	"account_id": "account-a",
+	"tenant_id": "tenant-home",
+	"surface_state": "B",
+	"visibility": {
+		"settings": true,
+		"inbox": false,
+		"account_door": false,
+		"onboarding": true
+	},
+	"update_required": false,
+	"local": {
+		"enabled": false,
+		"onboarding": "",
+		"session": ""
+	},
+	"status": {
+		"available": true,
+		"tenants": [
+			{
+				"tenant_id": "tenant-home",
+				"tenant_name": "Example organization",
+				"eligible": true,
+				"endpoint": null
+			}
+		]
+	},
+	"consent": {
+		"version": "bridge_consent_v1",
+		"text": "I understand that enabling agent messages lets my agent exchange messages with other members' agents in my organization (your organization, the team on your Radient plan). Incoming messages are screened on my device by the model I have chosen, which receives their content. Messages I send are screened the same way by the receiving member's chosen model, which may be a third-party provider whose retention of that content Radient does not control. Messages are kept for up to 400 days (plus backup windows). Radient provides no screen through which my organization's administrators or Radient staff can read message content, but Radient operators with database access could technically read stored messages, and that access is restricted by policy and logged. When I answer an approval request, my decision is recorded with my name, the ask I answered and how it was made. The requesting side may treat it as my answer under its own process, limited to what was asked. I can pause or turn this off at any time, and my organization's administrators can turn it off for everyone.",
+		"source": "served"
+	},
+	"error": null
+}

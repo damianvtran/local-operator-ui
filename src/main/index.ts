@@ -50,6 +50,7 @@ import {
 	type WindowChromeMode,
 	windowChromeArgumentFor,
 } from "../shared/window-chrome";
+import { groundWithGlass, windowGlassArgument } from "../shared/window-glass";
 import {
 	BackendInstaller,
 	BackendServiceManager,
@@ -137,7 +138,11 @@ import {
 	resolveQwenPorts,
 } from "./voice/qwen-rig";
 import { QwenVoice } from "./voice/qwen-voice";
-import { attachWindowChrome, resolveLaunchWindowChrome } from "./window-chrome";
+import { resolveLaunchWindowChrome } from "./window-chrome";
+import {
+	type ResolvedLaunchGlass,
+	resolveLaunchWindowGlass,
+} from "./window-glass";
 import { openVettedExternal, popupVerdict } from "./window-guards";
 import {
 	guardDownloads,
@@ -180,6 +185,7 @@ import {
 	reportParksAtQuit,
 	reportSkippedWhileQuitting,
 } from "./window-raise";
+import { attachWindowSurface } from "./window-surface";
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
 
@@ -896,6 +902,20 @@ function createWindow(
 	}
 
 	/*
+	 * THE WINDOW GLASS, resolved here for the reason the chrome is: its
+	 * construction half (a transparent first-paint ground and a vibrancy or
+	 * background material) has to be in the constructor options, before any
+	 * renderer exists. OPT-IN AND DEFAULT OFF: with no persisted setting, a
+	 * platform that cannot do it, or the OS's Reduce transparency on, the window
+	 * below is the shipped opaque one - the palette ground on every platform, plus
+	 * darwin's inert `visualEffectState: "active"` (no vibrancy, material or
+	 * transparent ground). See `src/shared/window-glass.ts`.
+	 */
+	const glass = resolveLaunchWindowGlass({
+		userDataDir: app.getPath("userData"),
+	});
+
+	/*
 	 * Resolved once, before any window exists, so an agent-driven run can say
 	 * how it wants the window to behave: `headless` (created, never shown) and
 	 * `inactive` (shown without activating the app) are how a QA rig or a
@@ -918,12 +938,20 @@ function createWindow(
 			colors: chrome.colors,
 		}),
 		/*
-		 * The ground the OS paints before the renderer's first frame. Without it
-		 * Electron's default is `#FFF`, so every launch on a dark palette opened with a
-		 * white flash - the same defect `INSTALL_WINDOW_CANVAS` fixed for the installer
-		 * window, and a hard-coded palette value that a test keeps honest.
+		 * The ground the OS paints before the renderer's first frame, WITH the glass
+		 * over it when it is active. Without a ground Electron's default is `#FFF`, so
+		 * every launch on a dark palette opened with a white flash - the same defect
+		 * `INSTALL_WINDOW_CANVAS` fixed for the installer window. The palette ground
+		 * comes first and the glass overrides it only when ACTIVE; inactive keeps that
+		 * ground on every platform and darwin adds only the inert `visualEffectState`
+		 * above (`groundWithGlass`, pinned by `scripts/window-glass.test.mjs`).
 		 */
-		backgroundColor: chrome.colors.ground,
+		...groundWithGlass(
+			chrome.colors.ground,
+			glass.settings,
+			glass.capability,
+			process.platform,
+		),
 		width: windowLaunch.width,
 		height: windowLaunch.height,
 		// The layout is verified down to 800x600 and not below: the app rail,
@@ -994,7 +1022,12 @@ function createWindow(
 			 * silent. `rendererArgumentFlags` below concatenates them, and is `{}` when
 			 * neither applies, so "adds no option at all" stays literally true.
 			 */
-			...rendererArgumentFlags(initialSession, openCatalogue, chrome.mode),
+			...rendererArgumentFlags(
+				initialSession,
+				openCatalogue,
+				chrome.mode,
+				glass,
+			),
 		},
 	});
 
@@ -1012,15 +1045,32 @@ function createWindow(
 	 * screen. `scripts/window-mode.test.mjs` scans for that family and names this
 	 * module among the ones that must not contain one.
 	 */
-	const chromeController = attachWindowChrome({
+	/*
+	 * The glass is attached BEFORE the chrome, inside `attachWindowSurface`, which is
+	 * where the ordering (and why it matters) lives and is tested.
+	 */
+	const surface = attachWindowSurface({
 		window: mainWindow,
-		mode: chrome.mode,
-		colors: chrome.colors,
+		glass,
 		userDataDir: app.getPath("userData"),
-		headless: windowLaunch.mode === "headless",
+		chrome: {
+			mode: chrome.mode,
+			colors: chrome.colors,
+			headless: windowLaunch.mode === "headless",
+			log: (line) => logger.info(line, LogFileType.BACKEND),
+		},
 		log: (line) => logger.info(line, LogFileType.BACKEND),
+		/*
+		 * EVERY GLASS STATE THIS WINDOW PAINTS, FOR THE POPOUT: the mini view is a
+		 * second BrowserWindow on the same material and its document has no channel
+		 * of its own (it must not own the setting). Forwarded here rather than
+		 * broadcast from the controller so the popout's window, not "every window",
+		 * is the recipient.
+		 */
+		onGlassState: (state) => miniView?.applyGlassState(state),
 	});
-	mainWindow.on("closed", () => chromeController.dispose());
+	mainWindow.on("closed", () => surface.chrome.dispose());
+	mainWindow.on("closed", () => surface.glass.dispose());
 	/*
 	 * THE MINI VIEW MUST NOT DEFEAT THE WINDOWS/LINUX QUIT CONTRACT (quick-send
 	 * design §C.5's platform note, read against this app's existing behaviour).
@@ -1609,6 +1659,7 @@ function rendererArgumentFlags(
 	initialSession: string | null,
 	openCatalogue: boolean,
 	chromeMode: WindowChromeMode,
+	glass: ResolvedLaunchGlass,
 ): { additionalArguments?: string[] } {
 	const flags = [
 		/*
@@ -1619,6 +1670,9 @@ function rendererArgumentFlags(
 		 * `readWindowChromeArgument` for why the guess fails towards `native`.
 		 */
 		windowChromeArgumentFor(process.platform, chromeMode),
+		/* The glass fact, ALWAYS written (`off` included) for the chrome entry's
+		 * reason: the first paint's ground depends on it. */
+		windowGlassArgument(glass.state, glass.scheme),
 		...(launchArgumentFlags(initialSession, openCatalogue)
 			.additionalArguments ?? []),
 		...(devDriverWebPreferences.additionalArguments ?? []),
@@ -2637,6 +2691,15 @@ app
 				url: miniViewUrlFor(rendererUrl),
 				preloadPath: join(__dirname, "../preload/index.js"),
 				show: windowLaunch.show,
+				/*
+				 * The launch's window-glass resolution: the popout is a floating HUD
+				 * on the window's material, and it must be BUILT with it (a Windows
+				 * material cannot be added to a live window). Resolved at this point,
+				 * before the main window exists, from the same persisted file.
+				 */
+				glass: resolveLaunchWindowGlass({
+					userDataDir: app.getPath("userData"),
+				}),
 				/*
 				 * The launch's chrome facts, resolved through the same function the
 				 * main window called — read here rather than threaded through

@@ -595,7 +595,10 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 
 	if (sessionId === null) {
 		return (
-			<div className={cn("flex h-full flex-col bg-elevated")}>
+			<div
+				data-glass-region="pane"
+				className={cn("flex h-full flex-col bg-elevated")}
+			>
 				{/* The slot's bar at the slot's height and with no ground of its own, so
 				    the pane reads as one surface and the bar does not move between a
 				    draft and a conversation — and the CLOSE control is in it for
@@ -867,6 +870,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				 */
 				"relative flex h-full flex-col bg-elevated @container/consolepane",
 			)}
+			data-glass-region="pane"
 			data-tour-tag="console-pane"
 		>
 			{/*

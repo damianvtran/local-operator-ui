@@ -17,8 +17,10 @@
  *
  * - NO header, label or title: the block starts directly with its content under
  *   the answer's last line (the binding amendment);
- * - the files-only finish with ≤ 2 files is ONE line of contents, never the
- *   bare word "Highlights";
+ * - the files-only finish with ≤ 2 files is compact REAL file actions — rows,
+ *   or the thumbnail grid when the files are image-kind — never the bare word
+ *   "Highlights" and never an inert count clause (operator decision
+ *   2026-10-16; these states re-shot with it);
  * - a done block with frames reads files first, then the components, each with
  *   exactly one `Source: …` line under it;
  * - the 40vh/480px aggregate budget, accrued from each frame's RENDERED
@@ -31,8 +33,10 @@
  *   cold reader of the same rows paints the cancelled arm with `Retry` instead
  *   (the stale-row rule);
  * - the FOLDED states (`folded-condensed-*`): while the block's own turn
- *   renders condensed its whole text is ONE line — the design's copy table per
- *   content shape — and nothing else (no file rows, no slots, no frames);
+ *   renders condensed it shows the SAME files section as its expanded self —
+ *   the actionable rows and the image grid — with no slots and no frames; a
+ *   graphics-only finish keeps its plain count clause, and the not-settled
+ *   arms keep their state line under the files;
  * - a supplement-free turn and the `superseded`/`empty` arms render NOTHING
  *   under the answer — the before/after pair for the fold lane.
  */
@@ -129,6 +133,82 @@ function installSupplementMedia(): void {
 	}) as never;
 }
 
+/**
+ * THE FILE-READ BRIDGE for the image-kind tile grid: the same scripted
+ * convention as the media bridge above, one level down.
+ *
+ * `probeFiles` resolves the fixtures' portable paths against a synthetic home
+ * (the resolution shape `CloseoutReplay` already uses), and `readFileBytes`
+ * answers DECODABLE PNG bytes drawn here — deterministically, from a hash of
+ * the path — so the shipped tile pipeline (decode → 640px downscale → blob
+ * ledger) really runs against bytes in these frames. A non-PNG path is refused
+ * the way the pipeline's own unavailable arm is, which is the glyph-fallback
+ * state. Installed beside the media bridge from every `Frame` render, so no
+ * stub outlives a story.
+ */
+const syntheticPngs = new Map<string, Promise<Uint8Array>>();
+function pngFor(path: string): Promise<Uint8Array> {
+	const hit = syntheticPngs.get(path);
+	if (hit) return hit;
+	const run = (async () => {
+		const canvas = new OffscreenCanvas(360, 240);
+		const context = canvas.getContext("2d");
+		if (!context) throw new Error("no 2d context");
+		let seed = 0;
+		for (const char of path) seed = (seed * 31 + char.charCodeAt(0)) % 997;
+		context.fillStyle = "#f2f2ef";
+		context.fillRect(0, 0, 360, 240);
+		for (let bar = 0; bar < 6; bar += 1) {
+			const height = 40 + ((seed * (bar + 3)) % 140);
+			context.fillStyle = bar % 2 ? "#6f8f7a" : "#42525c";
+			context.fillRect(24 + bar * 54, 210 - height, 36, height);
+		}
+		const blob = await canvas.convertToBlob({ type: "image/png" });
+		const bytes = new Uint8Array(await blob.arrayBuffer());
+		return bytes;
+	})();
+	syntheticPngs.set(path, run);
+	return run;
+}
+
+function installSupplementFileReads(): void {
+	const w = window as unknown as {
+		api?: {
+			probeFiles?: unknown;
+			readFileBytes?: unknown;
+		};
+	};
+	if (!w.api) w.api = {};
+	Object.assign(w.api, {
+		probeFiles: async (paths: string[], cwd?: string) =>
+			paths.map((path) => ({
+				input: path,
+				resolved: path.startsWith("/")
+					? path
+					: path.startsWith("~/")
+						? `/synthetic-home/${path.slice(2)}`
+						: `${cwd?.startsWith("~") ? `/synthetic-home${cwd.slice(1)}` : (cwd ?? "")}/${path}`,
+				exists: true,
+				isFile: true,
+				isDirectory: false,
+				sizeBytes: 240_100,
+				mtimeMs: TS,
+				outsideWorkspace: false,
+			})),
+		readFileBytes: async (filePath: string) => {
+			if (!filePath.endsWith(".png")) {
+				return {
+					success: false as const,
+					code: "unreadable" as const,
+					error: "This rig serves PNG bytes only.",
+				};
+			}
+			const data = await pngFor(filePath);
+			return { success: true as const, data, sizeBytes: data.byteLength };
+		},
+	});
+}
+
 const file = (
 	path: string,
 	name: string,
@@ -165,6 +245,7 @@ const supplement = (
 	more: [],
 	components: [],
 	error: "",
+	cause: "",
 	dismissed: false,
 	live: false,
 	...over,
@@ -317,6 +398,45 @@ const MORE_FILES = [
 	file("reports/q4.md", "q4.md", 799),
 ];
 
+/*
+ * The image-kind fixtures (operator decision 2026-10-16): paths stay portable
+ * in the record — the journal's spelling — and only the scripted file-read
+ * bridge below knows the synthetic home they resolve into.
+ */
+const IMAGES = [
+	file(
+		"renders/latency-by-region.png",
+		"latency-by-region.png",
+		240_100,
+		"image",
+	),
+	file(
+		"renders/throughput-per-shard.png",
+		"throughput-per-shard.png",
+		180_000,
+		"image",
+	),
+	file("renders/errors-by-class.png", "errors-by-class.png", 96_500, "image"),
+];
+
+/**
+ * The same Frame with the FILE-READ bridge installed for its render — the one
+ * thing an image state needs beyond the shared frame: its tiles probe and read
+ * at mount, while every other state resolves nothing until a menu press no
+ * still makes. Installed before `Frame` renders, so the bridge is on
+ * `window.api` before the tiles' first effects.
+ */
+function ImagesFrame(props: {
+	records: TranscriptRecord[];
+	height?: number;
+	width?: string;
+	click?: string;
+	cwd?: string;
+}) {
+	installSupplementFileReads();
+	return <Frame {...props} />;
+}
+
 const meta: Meta = {
 	title: "Chat/Turn supplements",
 	parameters: { layout: "fullscreen" },
@@ -398,6 +518,64 @@ export const FilesMoreExpanded: StoryObj = {
 					files: MORE_FILES,
 					filesMore: 3,
 					more: ["reports/q1.md", "reports/q2.md", "data/raw.csv"],
+				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * The image-kind grid (operator decision 2026-10-16): three decodable PNGs
+ * behind the scripted file bridge, so the tiles are REAL pictures through the
+ * shipped thumbnail pipeline — decode, 640px downscale, shared ledger.
+ */
+export const Images: StoryObj = {
+	render: () => (
+		<ImagesFrame
+			cwd="~/workspace/project"
+			height={300}
+			records={[
+				answer("m1", "Three renders came out of this run."),
+				supplement({ id: "s1", files: IMAGES }),
+			]}
+		/>
+	),
+};
+
+/** Mixed: the grid first, then the non-image rows — one coherent section. */
+export const ImagesMixed: StoryObj = {
+	render: () => (
+		<ImagesFrame
+			cwd="~/workspace/project"
+			height={330}
+			records={[
+				answer("m1", "The renders, plus the table behind them."),
+				supplement({
+					id: "s1",
+					files: [IMAGES[0], ...FILES.slice(0, 1), IMAGES[1]],
+				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * The glyph fallback: a HEIC path the rig refuses the way Chromium refuses to
+ * decode one, so the tile keeps its slot as the file-kind receipt instead of
+ * painting damage.
+ */
+export const ImagesUnavailable: StoryObj = {
+	render: () => (
+		<ImagesFrame
+			cwd="~/workspace/project"
+			height={300}
+			records={[
+				answer("m1", "One capture came out of this run."),
+				supplement({
+					id: "s1",
+					files: [
+						file("renders/scatter.heic", "scatter.heic", 96_500, "image"),
+					],
 				}),
 			]}
 		/>
@@ -531,6 +709,38 @@ export const Failed: StoryObj = {
 					detail: [
 						"turn 1: ProviderError status=None kind=quota",
 						"turn 2: ProviderError status=503 kind=transient",
+					],
+				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * The failed line's typed-cause arm (core #2557; operator ask 2026-10-17): a row
+ * carrying `cause` names the wall the Retry would meet, in the one word list
+ * every surface transcribes (`CAUSE_PHRASES`). The bare `Failed` story above is
+ * the absent/unknown control — its line's bytes are unchanged by this arm.
+ */
+export const FailedCauseQuota: StoryObj = {
+	render: () => (
+		<Frame
+			height={360}
+			records={[
+				answer("m1", "The graphics did not make it."),
+				supplement({
+					id: "s1",
+					state: "failed",
+					cause: "provider_quota",
+					error: "generator:ProviderError",
+					model: "openrouter/openai/gpt-6.1-sol",
+					attempts: [
+						"anthropic/claude-sonnet-5-5",
+						"openrouter/openai/gpt-6.1-sol",
+					],
+					detail: [
+						"turn 1: ProviderError status=None kind=quota",
+						"turn 2: ProviderError status=429 kind=quota",
 					],
 				}),
 			]}
@@ -672,16 +882,19 @@ export const Narrow: StoryObj = {
 };
 
 /*
- * THE CONDENSED FORM (design round 1, D1/U3/R2): while the block's own turn
- * renders condensed — one closed bar over its run — the block is ONE passive
- * line and nothing else, per the design's copy table. Each state below mounts
- * the SAME shipped component through the SAME transcript walk the app runs
- * (`prompt` + `turnCall` + `answer` + the block, so the plan really collapses
- * the call and really hands the block `condensed={true}`); no story-only prop
- * is invented here.
+ * THE CONDENSED FORM (design round 1, D1/U3/R2; reworked by the operator
+ * decision of 2026-10-16): while the block's own turn renders condensed — one
+ * closed bar over its run — the block shows the SAME files section as its
+ * expanded self (the actionable rows and the image grid; no slots, no frames),
+ * a graphics-only settle keeps its plain count clause, and the not-settled arms
+ * keep their state line under the files. Each state below mounts the SAME
+ * shipped component through the SAME transcript walk the app runs (`prompt` +
+ * `turnCall` + `answer` + the block, so the plan really collapses the call and
+ * really hands the block `condensed={true}`); no story-only prop is invented
+ * here.
  */
 
-/** Files only, ≤ 2: the existing one-liner, unchanged. */
+/** Files only, ≤ 2: the actionable rows, identical to the expanded form. */
 export const FoldedCondensedFiles: StoryObj = {
 	render: () => (
 		<Frame
@@ -696,11 +909,16 @@ export const FoldedCondensedFiles: StoryObj = {
 	),
 };
 
-/** Files only, > 2: counts, not names (`7 files`, the known total). */
+/**
+ * Files only, > 2: the featured rows plus the `N more files` disclosure.
+ *
+ * 540px, not 400 (agent review round 1's R3, the designer's D1): at the original
+ * height the disclosure the state is named for sat below the crop.
+ */
 export const FoldedCondensedCounts: StoryObj = {
 	render: () => (
 		<Frame
-			height={400}
+			height={540}
 			records={[
 				prompt("u0", "Refresh the weekly reports."),
 				turnCall("c1"),
@@ -716,7 +934,7 @@ export const FoldedCondensedCounts: StoryObj = {
 	),
 };
 
-/** Components only: the count clause alone. */
+/** Components only: the plain count clause — the bar is the expansion. */
 export const FoldedCondensedComponents: StoryObj = {
 	render: () => (
 		<Frame
@@ -832,7 +1050,7 @@ export const CloseoutFourDeliverables: StoryObj = {
 	render: () => <CloseoutReplay />,
 };
 
-/** Mixed: both clauses, the design's separator (`2 files · 1 graphic`). */
+/** Mixed: the files stay actionable and no graphics clause sits beside them. */
 export const FoldedCondensedMixed: StoryObj = {
 	render: () => (
 		<Frame
@@ -845,6 +1063,76 @@ export const FoldedCondensedMixed: StoryObj = {
 					id: "s1",
 					files: FILES,
 					components: [component("chart-a", "Latency by region (ms)", 320)],
+				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * The operator's own screenshot shape (2026-10-16): ONE finished file, whose
+ * block used to be a passive `1 file: …` clause — now the actionable row.
+ */
+export const FoldedCondensedOneFile: StoryObj = {
+	render: () => (
+		<Frame
+			height={400}
+			records={[
+				prompt("u0", "Latest brand kit for the client."),
+				turnCall("c1"),
+				answer("m1", "The kit is ready to send."),
+				supplement({
+					id: "s1",
+					files: [
+						file(
+							"workspace/acme-closeout/Brand-Design-Kit.pdf",
+							"Brand-Design-Kit.pdf",
+							482_000,
+							"pdf",
+						),
+					],
+				}),
+			]}
+		/>
+	),
+};
+
+/** Folded with images: the grid survives the fold, with the rows and no frames. */
+export const FoldedCondensedImages: StoryObj = {
+	render: () => (
+		<ImagesFrame
+			cwd="~/workspace/project"
+			height={400}
+			records={[
+				prompt("u0", "Render the three cuts."),
+				turnCall("c1"),
+				answer("m1", "Three renders came out of this run."),
+				supplement({ id: "s1", files: IMAGES }),
+			]}
+		/>
+	),
+};
+
+/**
+ * Folded while the job still runs: the files are known before the generator
+ * finishes, so the rows lead and the live line (with `Adjust… · Cancel`) sits
+ * under them — the same wiring the expanded preparing arms have.
+ */
+export const FoldedCondensedPreparingFiles: StoryObj = {
+	render: () => (
+		<Frame
+			height={540}
+			records={[
+				prompt("u0", "Refresh the weekly reports and chart them."),
+				turnCall("c1"),
+				answer("m1", "Seven reports were refreshed; charting now."),
+				supplement({
+					id: "s1",
+					state: "queued",
+					live: true,
+					files: MORE_FILES,
+					filesMore: 3,
+					more: ["reports/q1.md", "reports/q2.md", "data/raw.csv"],
 				}),
 			]}
 		/>

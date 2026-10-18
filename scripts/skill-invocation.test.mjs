@@ -24,6 +24,8 @@ const bundle = await build({
 				parseSkillInvocation,
 				renderSkillInvocation,
 				skillBodyHasContent,
+				typedLineOf,
+				unescapeSkillAttribute,
 			} from "./src/renderer/src/features/chat/components/skill-invocation";
 		`,
 		resolveDir: process.cwd(),
@@ -43,6 +45,8 @@ const {
 	parseSkillInvocation,
 	renderSkillInvocation,
 	skillBodyHasContent,
+	typedLineOf,
+	unescapeSkillAttribute,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -199,4 +203,65 @@ test("a stub whose YAML is the whole file is not content", () => {
 	// content, and the user sees the odd result rather than a wrong sentence.
 	assert.equal(skillBodyHasContent("---\nname: research"), true);
 	assert.equal(skillBodyHasContent("plain body"), true);
+});
+
+/* ------------------------------------------------------------------ */
+/* _unescape_attr / typed_line_of: the REPLAY half of the contract      */
+/* ------------------------------------------------------------------ */
+
+test("unescapeSkillAttribute is `_unescape_attr` character-for-character", () => {
+	assert.equal(unescapeSkillAttribute("plain"), "plain");
+	assert.equal(unescapeSkillAttribute("a&quot;b"), 'a"b');
+	assert.equal(unescapeSkillAttribute("&lt;&amp;&gt;"), "<&>");
+	assert.equal(unescapeSkillAttribute("x&#10;y"), "x\ny");
+	// `&amp;` LAST, or the other four would read an escape a literal `&` opened:
+	// `&amp;lt;` is the text `&lt;`, not `<`.
+	assert.equal(unescapeSkillAttribute("&amp;lt;"), "&lt;");
+	assert.equal(unescapeSkillAttribute("&amp;amp;"), "&amp;");
+	assert.equal(unescapeSkillAttribute("&amp;quot;"), "&quot;");
+	// The pair is reversible over the whole character set either side touches.
+	const raw = 'a & b "c" <d> e\nf 5 < 6';
+	assert.equal(unescapeSkillAttribute(escapeSkillAttribute(raw)), raw);
+});
+
+test("typedLineOf reads the typed line out of a payload, and null out of anything else", () => {
+	const payload = renderSkillInvocation(
+		parseSkillInvocation("$research fix the login bug", NAMES),
+		"# Research\n\nRead the code first.",
+	);
+	assert.equal(payload.startsWith(HEADER), true);
+	assert.equal(typedLineOf(payload), "$research fix the login bug");
+	// Escaped INSIDE the attribute and recovered here, so the row shows what the
+	// user typed rather than the transport's spelling of it.
+	assert.equal(
+		typedLineOf(
+			renderSkillInvocation(
+				parseSkillInvocation('$language-tutor compare <a> & "b"', NAMES),
+				"body",
+			),
+		),
+		'$language-tutor compare <a> & "b"',
+	);
+	// A multi-line draft is one line in the tag, and comes back as it was typed.
+	assert.equal(
+		typedLineOf(
+			renderSkillInvocation(
+				{
+					...parseSkillInvocation("$research one", NAMES),
+					typed: "$research one\ntwo",
+				},
+				"body",
+			),
+		),
+		"$research one\ntwo",
+	);
+	// Every ordinary message, and prose that merely quotes the tag, is `null`:
+	// the caller then paints the text verbatim.
+	assert.equal(typedLineOf("plain message"), null);
+	assert.equal(typedLineOf("<reply-to>x</reply-to>\n$research fix"), null);
+	assert.equal(
+		typedLineOf('we say <skill name="research"> without the attribute'),
+		null,
+	);
+	assert.equal(typedLineOf(""), null);
 });

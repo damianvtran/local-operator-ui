@@ -1,3 +1,4 @@
+import { formatNumber, t } from "@shared/i18n";
 /**
  * The tab's Board view: one column per status, cards of facts.
  *
@@ -98,8 +99,6 @@ import { useRequestProjectUpdate } from "../hooks/use-request-update";
 import {
 	BOARD_COLUMNS,
 	BOARD_SIDE_COLUMNS,
-	NO_TEAM_LABEL,
-	PROGRESS_STALE_LABEL,
 	boardColumns,
 	boardProgressText,
 	groupByTeam,
@@ -138,9 +137,15 @@ type ProjectBoardProps = {
 
 /** The column names, in the fixed order the derivation returns them in. */
 const COLUMN_NOTE: Record<string, string> = {
-	active: "In flight",
-	paused: "On hold",
-	done: "Finished",
+	get active() {
+		return t("ui.projects.project_board.in_flight");
+	},
+	get paused() {
+		return t("ui.projects.project_board.on_hold");
+	},
+	get done() {
+		return t("ui.projects.project_board.finished");
+	},
 	/* archived has no note on purpose: a note that repeats the label ("Archived
 	 * Archived") is noise, not information (design round 1, D4). */
 };
@@ -185,8 +190,7 @@ const DRAG_ARM_DISTANCE = 4;
  * answer to Enter/Space (UX round 1, U3 - the route used to live only in the
  * hover tooltip).
  */
-const BOARD_MOVE_HINT =
-	"Drag the header, or press the arrow keys, to move this column.";
+
 const BOARD_MOVE_HINT_ID = "board-column-move-hint";
 
 /** The live gesture: which column is in the air, and where it would land. */
@@ -202,6 +206,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 	movingKeys = [],
 	teamLabelFor = (name) => name,
 }) => {
+	useI18nLocale();
 	/*
 	 * The order is board state, read once per mount from the guarded store the
 	 * view switcher also reads, and written on every move: a failed read or
@@ -248,7 +253,14 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 		setOrder(next);
 		writeBoardColumnOrder(next);
 		setAnnouncement(
-			`Moved ${projectStatusMeta(status).label} column to position ${next.indexOf(status) + 1} of ${next.length}.`,
+			t(
+				"ui.projects.project_board.moved_label_column_to_position_indexof_status_1_of_length",
+				{
+					label: String(projectStatusMeta(status).label),
+					indexOf_status____1: String(next.indexOf(status) + 1),
+					length: formatNumber(next.length, { useGrouping: false }),
+				},
+			),
 		);
 	};
 
@@ -277,10 +289,19 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 		const before = others[over - 1]?.status;
 		const after = others[over]?.status;
 		if (before && after)
-			return `between ${projectStatusMeta(before).label} and ${projectStatusMeta(after).label}`;
-		if (after) return `before ${projectStatusMeta(after).label}`;
-		if (before) return `after ${projectStatusMeta(before).label}`;
-		return "in place";
+			return t("ui.projects.project_board.between_label_and_label_2", {
+				label: String(projectStatusMeta(before).label),
+				label_2: String(projectStatusMeta(after).label),
+			});
+		if (after)
+			return t("ui.projects.project_board.before_label", {
+				label: String(projectStatusMeta(after).label),
+			});
+		if (before)
+			return t("ui.projects.project_board.after_label", {
+				label: String(projectStatusMeta(before).label),
+			});
+		return t("ui.projects.project_board.in_place");
 	};
 
 	/**
@@ -299,7 +320,13 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 		setDrag({ status: live.status, over });
 		/* Announce the landing, not every pixel of travel. */
 		setAnnouncement(
-			`Moving ${projectStatusMeta(live.status).label} column; it will drop ${dropPhrase(live.status, over)}.`,
+			t(
+				"ui.projects.project_board.moving_label_column_it_will_drop_status_over",
+				{
+					label: String(projectStatusMeta(live.status).label),
+					status__over: String(dropPhrase(live.status, over)),
+				},
+			),
 		);
 	};
 
@@ -398,7 +425,11 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 			if (travel < DRAG_ARM_DISTANCE) return;
 			live.armed = true;
 			setDrag({ status: live.status, over: live.over });
-			setAnnouncement(`Moving ${projectStatusMeta(live.status).label} column.`);
+			setAnnouncement(
+				t("ui.projects.project_board.moving_label_column", {
+					label: String(projectStatusMeta(live.status).label),
+				}),
+			);
 			if (autoScrollRef.current === null)
 				autoScrollRef.current = requestAnimationFrame(runAutoScroll);
 		}
@@ -425,7 +456,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 		setDrag(null);
 		if (!live?.armed) return;
 		if (!commit) {
-			setAnnouncement("Move cancelled.");
+			setAnnouncement(t("ui.projects.project_board.move_cancelled"));
 			return;
 		}
 		const from = columns.findIndex((column) => column.status === live.status);
@@ -538,7 +569,11 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 		 */
 		if (event.key === "Enter" || event.key === " ") {
 			event.preventDefault();
-			setAnnouncement(BOARD_MOVE_HINT);
+			setAnnouncement(
+				t(
+					"ui.projects.project_board.drag_the_header_or_press_the_arrow_keys_to_move_this_column",
+				),
+			);
 			return;
 		}
 		if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
@@ -548,7 +583,14 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 		const to = event.key === "ArrowLeft" ? from - 1 : from + 1;
 		if (to < 0 || to >= statuses.length) {
 			setAnnouncement(
-				`${projectStatusMeta(status).label} column is already ${to < 0 ? "the first column" : "the last column"}.`,
+				t("ui.projects.project_board.label_column_is_already_the_last_column", {
+					label: String(projectStatusMeta(status).label),
+					the_last_column: String(
+						to < 0
+							? t("ui.projects.project_board.the_first_column")
+							: t("ui.projects.project_board.the_last_column"),
+					),
+				}),
 			);
 			return;
 		}
@@ -586,7 +628,9 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 			 * Enter/Space answer speaks the same sentence through the live region.
 			 */}
 			<span id={BOARD_MOVE_HINT_ID} className="sr-only">
-				{BOARD_MOVE_HINT}
+				{t(
+					"ui.projects.project_board.drag_the_header_or_press_the_arrow_keys_to_move_this_column",
+				)}
 			</span>
 			<div
 				ref={stripRef}
@@ -688,9 +732,14 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 											variant="ghost"
 											size="icon-sm"
 											data-board-column-grip={column.status}
-											aria-label={`Move ${meta.label} column`}
+											aria-label={t(
+												"ui.projects.project_board.move_label_column",
+												{ label: String(meta.label) },
+											)}
 											aria-describedby={BOARD_MOVE_HINT_ID}
-											title={BOARD_MOVE_HINT}
+											title={t(
+												"ui.projects.project_board.drag_the_header_or_press_the_arrow_keys_to_move_this_column",
+											)}
 											className="-ml-1.5 cursor-grab text-ink-muted active:cursor-grabbing"
 											onKeyDown={(event) => onGripKeyDown(event, column.status)}
 										>
@@ -739,7 +788,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 								<span className="sticky left-3 flex min-w-0 max-w-[calc(100cqw-2.25rem)] items-center gap-2">
 									<span className="truncate text-ink">
 										{band.team == null
-											? NO_TEAM_LABEL
+											? t("ui.projects.project_model.no_team")
 											: teamLabelFor(band.team)}
 									</span>
 									<span className="shrink-0 text-ink-muted">
@@ -768,7 +817,17 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 							 * a column that cannot scroll (or has hit its edge) chains to the
 							 * board's own scroller, which is how the next team comes into view.
 							 */}
-							<div className="flex gap-3 rounded-md bg-sunken py-2">
+							{/*
+							 * THE WELL IS CLEAR ON GLASS (`data-glass-well="clear"`, never
+							 * painted): the card above it carries the derived block veil, and
+							 * a well would be a second ink under the same column - the
+							 * alpha-owning law forbids a well under a veil. On the flat system
+							 * the band's recess is unchanged.
+							 */}
+							<div
+								data-glass-well="clear"
+								className="flex gap-3 rounded-md bg-sunken py-2"
+							>
 								{columns.map((column) => {
 									const cards = band.items.filter(
 										(project) => project.status === column.status,
@@ -951,7 +1010,9 @@ const BoardCard: FC<BoardCardProps> = ({
 			 * AT pass is tracked as a follow-up, not assumed away here. */
 			role="button"
 			tabIndex={0}
-			aria-label={`Open ${displayName}`}
+			aria-label={t("ui.projects.project_board.open_displayname", {
+				displayName: String(displayName),
+			})}
 			onClick={openFromCard}
 			onKeyDown={openFromKeyboard}
 			/*
@@ -968,6 +1029,16 @@ const BoardCard: FC<BoardCardProps> = ({
 			 * target, only the title lifted; now that the whole card is the
 			 * target, the whole card answers the pointer.
 			 */
+			/*
+			 * A BLOCK ON GLASS: the surface fill is the card's boundary in the flat
+			 * system, so it takes the derived block veil instead of staying an opaque
+			 * island (`styles/index.css`, canvas coverage). THE HOVER FILL IS
+			 * DELIBERATELY DROPPED THERE - there is no AA room for a step above the
+			 * veil (measured: +5% breaks `inkMuted` to 4.03 on synthwave) - while the
+			 * flat `hover:bg-elevated` is untouched off glass. The pointer affordance
+			 * rides the cursor and the card's own controls.
+			 */
+			data-glass-block=""
 			className={cn(
 				"group/card flex flex-col gap-2 rounded-sm bg-surface p-3",
 				"transition-colors duration-fast ease-out-quart hover:bg-elevated",
@@ -1045,7 +1116,9 @@ const BoardCard: FC<BoardCardProps> = ({
 						 * page focuses this node by id after a move settles (see
 						 * `useMoveFocusHandoff`). */
 						data-project-menu={project.id}
-						aria-label={`Actions for ${displayName}`}
+						aria-label={t("ui.projects.project_board.actions_for_displayname", {
+							displayName: String(displayName),
+						})}
 						disabled={busy}
 						/* THE CARD'S HANDLER MUST NOT SEE THIS PRESS (mouse or
 						 * keyboard): the trigger acts, the card does not navigate. Radix
@@ -1093,9 +1166,13 @@ const BoardCard: FC<BoardCardProps> = ({
 						align="end"
 						onClick={(event) => event.stopPropagation()}
 					>
-						<DropdownMenuItem onSelect={onOpen}>Open</DropdownMenuItem>
+						<DropdownMenuItem onSelect={onOpen}>
+							{t("ui.projects.project_board.open")}
+						</DropdownMenuItem>
 						<DropdownMenuSub>
-							<DropdownMenuSubTrigger>Set status</DropdownMenuSubTrigger>
+							<DropdownMenuSubTrigger>
+								{t("ui.projects.project_board.set_status")}
+							</DropdownMenuSubTrigger>
 							<DropdownMenuSubContent>
 								<DropdownMenuRadioGroup
 									value={project.status}
@@ -1121,7 +1198,7 @@ const BoardCard: FC<BoardCardProps> = ({
 						 */}
 						{requestUpdateEnabled && (
 							<DropdownMenuItem onSelect={() => requestUpdate(project)}>
-								Request update
+								{t("ui.projects.project_board.request_update")}
 							</DropdownMenuItem>
 						)}
 						<DropdownMenuSeparator />
@@ -1133,8 +1210,12 @@ const BoardCard: FC<BoardCardProps> = ({
 						 * to a reader (design may drop it). The prop stays `onEdit`, so
 						 * what the item MEANS is the page's to change.
 						 */}
-						<DropdownMenuItem onSelect={onEdit}>Edit</DropdownMenuItem>
-						<DropdownMenuItem onSelect={onDelete}>Delete</DropdownMenuItem>
+						<DropdownMenuItem onSelect={onEdit}>
+							{t("ui.projects.project_board.edit")}
+						</DropdownMenuItem>
+						<DropdownMenuItem onSelect={onDelete}>
+							{t("ui.projects.project_board.delete")}
+						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</div>
@@ -1155,7 +1236,11 @@ const BoardCard: FC<BoardCardProps> = ({
 							{entry.text}
 						</span>
 					))}
-				{overdue && <Badge variant="warning">Overdue</Badge>}
+				{overdue && (
+					<Badge variant="warning">
+						{t("ui.projects.project_board.overdue")}
+					</Badge>
+				)}
 			</div>
 			<div className="flex items-center justify-between gap-2">
 				<span className="min-w-0 truncate text-meta text-ink-muted">
@@ -1164,8 +1249,8 @@ const BoardCard: FC<BoardCardProps> = ({
 				<span className="flex shrink-0 items-center gap-1.5">
 					{(project.progress_stale || !age) && (
 						<span
-							aria-label={PROGRESS_STALE_LABEL}
-							title={PROGRESS_STALE_LABEL}
+							aria-label={t("ui.projects.project_model.stale")}
+							title={t("ui.projects.project_model.stale")}
 							className="size-1.5 rounded-full bg-warning"
 						/>
 					)}
@@ -1184,6 +1269,7 @@ const BoardCard: FC<BoardCardProps> = ({
  * never opens a popover on is exactly the waste the counts exist to avoid.
  */
 const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
+	useI18nLocale();
 	const [open, setOpen] = useState(false);
 	const navigate = useNavigate();
 	const detail = useProjectDetail(project.id, open);
@@ -1198,7 +1284,10 @@ const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
 				/* The sweep's own hook into the door, in the `data-project-name`
 				 * family this card already uses. */
 				data-project-sessions={project.id}
-				aria-label={`Sessions linked to ${displayName}`}
+				aria-label={t(
+					"ui.projects.project_board.sessions_linked_to_displayname",
+					{ displayName: String(displayName) },
+				)}
 				/* The card's handler must not see this press either: the door
 				 * opens the popover, the card does not navigate. */
 				onClick={(event) => event.stopPropagation()}
@@ -1234,7 +1323,7 @@ const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
 			>
 				{detail.isLoading ? (
 					<p className="px-1 py-2 text-meta text-ink-muted">
-						Loading linked sessions…
+						{t("ui.projects.project_board.loading_linked_sessions")}
 					</p>
 				) : detail.isError ? (
 					/*
@@ -1247,19 +1336,21 @@ const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
 						<p className="text-meta text-ink-muted">
 							{detail.error instanceof Error && detail.error.message
 								? detail.error.message
-								: "The linked sessions could not be read."}
+								: t(
+										"ui.projects.project_board.the_linked_sessions_could_not_be_read",
+									)}
 						</p>
 						<Button
 							variant="secondary"
 							size="sm"
 							onClick={() => void detail.refetch()}
 						>
-							Try again
+							{t("ui.projects.project_board.try_again")}
 						</Button>
 					</div>
 				) : links.length === 0 ? (
 					<p className="px-1 py-2 text-meta text-ink-muted">
-						No sessions linked yet.
+						{t("ui.projects.project_board.no_sessions_linked_yet")}
 					</p>
 				) : (
 					<ul className="flex flex-col">

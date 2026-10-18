@@ -447,7 +447,10 @@ export const MeshSurface: FC<{
 							<legend className="sr-only">
 								{t("ui.mesh.mesh_page.presentation")}
 							</legend>
-							<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
+							<div
+								data-glass-well=""
+								className="flex gap-0.5 rounded-md bg-sunken p-0.5"
+							>
 								{PRESENTATIONS.map((option) => (
 									<button
 										key={option}
@@ -545,7 +548,10 @@ export const MeshSurface: FC<{
 				 * command's `here` is gone (D8): it pointed at nothing in the surface, since
 				 * the command is the next line.
 				 */
-				<div className="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-hairline bg-surface p-6">
+				<div
+					data-glass-block=""
+					className="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-hairline bg-surface p-6"
+				>
 					<div className="flex flex-col items-start gap-3">
 						<h2 className="text-heading text-ink">
 							{t("ui.mesh.mesh_page.no_network_on_this_device")}
