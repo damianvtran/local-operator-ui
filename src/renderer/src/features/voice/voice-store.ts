@@ -258,9 +258,18 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 				/*
 				 * A TRANSIENT WORD DOES NOT SURVIVE A MOVE: "Interrupted at 0:24"
 				 * belongs to the session that lost the slot, and the new holder's strip
-				 * must not open with a sentence about audio it never played.
+				 * must not open with a sentence about audio it never played. The
+				 * playback clock goes with them, so a tail event from the old session
+				 * cannot say "Reply ended" here (UX round 1, U3).
 				 */
-				...(moved ? { activity: null, tick: null, lastRefused: null } : {}),
+				...(moved
+					? {
+							activity: null,
+							tick: null,
+							lastRefused: null,
+							playbackStartedAt: null,
+						}
+					: {}),
 			});
 		},
 		/*

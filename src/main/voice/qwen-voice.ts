@@ -201,6 +201,13 @@ export class QwenVoice {
 	 */
 	private paused = false;
 	private muted = false;
+	/**
+	 * Whether the page is playing a reply right now, as the Gateway's own events
+	 * say. The ONLY thing a move uses it for is deciding whether there is sound
+	 * to stop (UX round 1, U3): recreating the page is a real cost and kills the
+	 * "Switched." phrase, so a move while nothing plays leaves the page alone.
+	 */
+	private playing = false;
 	/** Voice pages connected to the CURRENT launcher; reset when it stops. */
 	private clients = 0;
 	private relayed: Relayed[] = [];
@@ -273,6 +280,7 @@ export class QwenVoice {
 	pause(): QwenVoiceStatus {
 		if (this.status.rig !== "ready" || this.paused) return this.getStatus();
 		this.paused = true;
+		this.playing = false;
 		this.deps.page.close();
 		/* No page, so no client: the count is not a guess, it is a fact - and the
 		   private counter moves with it, so a stale `client_attached` cannot put a
@@ -350,9 +358,11 @@ export class QwenVoice {
 			if (
 				previous !== null &&
 				next !== null &&
+				this.playing &&
 				this.status.rig === "ready" &&
 				this.status.webui_url
 			) {
+				this.playing = false;
 				this.deps.page.close();
 				this.openPage(this.status.webui_url);
 			}
@@ -632,6 +642,7 @@ export class QwenVoice {
 
 	private async stopProcesses(): Promise<void> {
 		this.clients = 0;
+		this.playing = false;
 		this.deps.page.close();
 		this.deps.gateway.stop();
 		await this.deps.speech.stop();
@@ -650,6 +661,7 @@ export class QwenVoice {
 	stopNow(clearRecord = false): void {
 		this.paused = false;
 		this.clients = 0;
+		this.playing = false;
 		this.disarmIdleStop();
 		this.deps.page.close();
 		this.deps.gateway.stop();
@@ -704,7 +716,16 @@ export class QwenVoice {
 			   from before the pause would put "Hearing you" up over a closed page. */
 			if (this.paused) return;
 			const event = this.voiceEvent(message.event);
-			if (event) this.deps.toRenderer(QWEN_CHANNEL.event, event);
+			if (event) {
+				/* The page's own play state, for a move's stop (U3). */
+				if (event.type === "realtime.playback.started") this.playing = true;
+				else if (
+					event.type === "realtime.playback.ended" ||
+					event.type === "realtime.playback.cancelled"
+				)
+					this.playing = false;
+				this.deps.toRenderer(QWEN_CHANNEL.event, event);
+			}
 			return;
 		}
 		if (message?.type === "take") {

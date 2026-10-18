@@ -1263,13 +1263,18 @@ test("§3: the page goes with the rig (idle stop, unexpected exit, quit)", async
 	assert.equal(r.voice.getStatus().rig, "error");
 });
 
-test("U3/D7: a move destroys and recreates the page, and the person's mute is re-applied", async () => {
+test("U3/D7: a move mid-reply destroys and recreates the page, and the person's mute is re-applied", async () => {
 	const r = rig();
 	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
 	await settle();
 	await settle();
 	assert.equal(r.voice.getStatus().rig, "ready");
 	r.voice.setMuted(true);
+	// Something is playing: the move has sound to stop.
+	r.voice.onGatewayMessage({
+		type: "event",
+		event: { type: "realtime.playback.started", at: AT },
+	});
 	const closed = r.closed.length;
 	const muted = r.muted.length;
 	/*
@@ -1285,6 +1290,19 @@ test("U3/D7: a move destroys and recreates the page, and the person's mute is re
 		r.muted.length > muted && r.muted.at(-1) === true,
 		"a muted page comes back muted",
 	);
+	assert.equal(r.voice.getStatus().rig, "ready");
+});
+
+test("U3: a move while nothing plays keeps the page, so 'Switched.' is not cut off", async () => {
+	const r = rig();
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	const closed = r.closed.length;
+	r.voice.observeFrame(voiceFrame("bbbbbbbbbbbb"));
+	await settle();
+	await settle();
+	assert.equal(r.closed.length, closed, "no audio to stop: the page stays");
 	assert.equal(r.voice.getStatus().rig, "ready");
 });
 
