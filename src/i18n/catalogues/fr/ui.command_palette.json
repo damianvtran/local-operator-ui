@@ -61,7 +61,7 @@
 	"ui.command_palette.use_palette_sources.diagnostics_for_this_conversation": "Diagnostics de cette conversation",
 	"ui.command_palette.use_palette_sources.in_conversation": "Dans la conversation",
 	"ui.command_palette.use_palette_sources.info": "Infos",
-	"ui.command_palette.use_palette_sources.mesh": "Mesh",
+	"ui.command_palette.use_palette_sources.mesh": "Maillage",
 	"ui.command_palette.use_palette_sources.my_agents": "Mes agents",
 	"ui.command_palette.use_palette_sources.new_chat": "Nouvelle conversation",
 	"ui.command_palette.use_palette_sources.open": "Ouvrir",

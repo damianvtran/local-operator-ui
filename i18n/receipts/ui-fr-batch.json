@@ -12,7 +12,7 @@
 			"locale": "fr",
 			"namespace": "ui.shell",
 			"source_sha256": "a36a75e15ce94632bad00e774e7f6211ca58d95a2b6f6f50a85e687d64a5b1ea",
-			"target_sha256": "eca30b5e982ebaaf7e36ecff26487ae2f07b3dcd017a4eb7f7fb19586e918571",
+			"target_sha256": "a44110980baaf25ddd2dacd602bb9c2151b0003167ff8564ddfbff4b8e250c02",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -120,7 +120,7 @@
 			"locale": "fr",
 			"namespace": "ui.command_palette",
 			"source_sha256": "c48797d973f81dea023e5c89c40c83d8ae0a9cdfaeb2509f6cbc4e9fb8abd7c6",
-			"target_sha256": "21dfa0ea5a7e963362fb45a01dca9c965ff2344b11114fb66d579f1c9d10b522",
+			"target_sha256": "9badf404c82ce83c940005ecb4a4993fe98275f0fe7583072b0f56aeae2e7f9f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",

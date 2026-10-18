@@ -10,7 +10,7 @@
 	"ui.shell.sidebar_navigation.close_sidebar": "Fermer la barre latérale",
 	"ui.shell.sidebar_navigation.collapse_sidebar": "Réduire la barre latérale",
 	"ui.shell.sidebar_navigation.expand_sidebar": "Développer la barre latérale",
-	"ui.shell.sidebar_navigation.mesh": "Mesh",
+	"ui.shell.sidebar_navigation.mesh": "Maillage",
 	"ui.shell.sidebar_navigation.mesh_waiting": "Mesh, {count, plural, one {{countText} demande en attente} many {{countText} de demandes en attente} other {{countText} demandes en attente}}",
 	"ui.shell.sidebar_navigation.new_chat": "Nouvelle conversation",
 	"ui.shell.sidebar_navigation.new_chat_shortcut": "Nouvelle conversation ({shortcut})",
