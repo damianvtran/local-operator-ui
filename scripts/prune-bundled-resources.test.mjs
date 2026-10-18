@@ -372,6 +372,14 @@ test("the builder config stages both runtime trees the architecture resolves", (
 	assert.deepEqual(
 		(config.mac.extraResources ?? []).map((entry) => [entry.from, entry.to]),
 		[
+			/*
+			 * The voice Gateway's launcher and relay. Mac-only like the rig it drives
+			 * (Qwen's speech-to-speech runs on Apple silicon), architecture-neutral
+			 * because it is plain `.mjs`, and resolved at `<resources>/qwen-voice` by
+			 * `launcherPathFor` in `src/main/voice/qwen-gateway.ts` - so a build that
+			 * dropped it would ship a voice toggle whose start always fails.
+			 */
+			["resources/qwen-voice", "qwen-voice"],
 			["resources/python", seedResourceDir("x64")],
 			["resources/python_aarch64", seedResourceDir("arm64")],
 			["resources/uv", uvResourceDir("x64")],

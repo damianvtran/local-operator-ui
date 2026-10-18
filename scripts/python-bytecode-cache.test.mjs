@@ -2359,6 +2359,13 @@ const SPAWN_SITES = [
 		1,
 		"the console host's native-capacity probe: the executable is `readNumber`'s parameter, and the app's own callers pass `/usr/sbin/sysctl` (its one real call site). A caller MAY hand it a caller-verified python (`nativeCapacityProbe(trustedPython)`), so this is a pass-through rather than a no-interpreter command — and it needs no bytecode guard because it never inherits an environment: its `env` is a FIXED minimal allowlist (`PATH`, `LANG`, `LC_ALL`), so no ambient `PYTHON*` variable can reach the child, and the python form runs `-I -S -c` (isolated, which also ignores `PYTHON*`) importing only the C extension `resource`, so it writes no `.pyc` anywhere",
 	),
+	runsCommand(
+		"src/main/voice/qwen-rig.ts",
+		"execFileSync",
+		1,
+		/"ps"/,
+		"reads one recorded pid's process group and command line (`ps -o pgid=,command= -p <pid>`) so the voice rig reaps a leftover s2s group only when it is still the s2s this app started from this rig, not a recycled pid; `ps` is that tool and starts no interpreter",
+	),
 ];
 
 test("every child-process spawn site is enumerated, and the python ones carry the guards", () => {

@@ -254,6 +254,15 @@ const STUB_CONTENTS = {
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 	)}
 /*
+ * The header's voice marker (chat-sidebar -> voice-indicator) imports these three
+ * through qwen-voice-controller and voice-stream. Re-exported as the SHIPPED ones,
+ * like the names above, so the bundle links; nothing here presses the marker, so
+ * none of them is called.
+ */
+export {desktopMedia, mediaError, subscribeDesktopStream} from ${JSON.stringify(
+		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
+	)}
+/*
  * The REAL transport, under a second name, for the one case that has to drive a
  * refusal through it: the classification this file's last case asserts lives
  * inside it (desktopRequest), so a case that used the stub for that step would
@@ -331,7 +340,9 @@ export const movePendingSendIdentity = () => undefined;
 export const replacePendingSendText = () => undefined;
 export const discardPendingSends = () => undefined;
 export const pendingSendForView = () => null;
-export const discardPendingEchoes = () => undefined;`,
+export const discardPendingEchoes = () => undefined;
+// voice-stream's reconnect schedule; the voice marker imports it and opens no stream here.
+export const streamRetryDelayMs = () => 1000;`,
 };
 
 const bundle = await build({
