@@ -5,6 +5,7 @@ import type { TabRecord } from "../registry";
 import { settle } from "../settle";
 import { type BrowserActionContext, stringParam } from "./context";
 import {
+	EDITABLE_SELECTOR,
 	FRAME_HOP,
 	type FrameScope,
 	MAX_FRAMES_SEARCHED,
@@ -114,32 +115,45 @@ const CLICK_FUNCTION = `function () {
   }
 }`;
 
+/** Share the frame descent's field policy, but use the DOM's computed
+ * contenteditable state (an attribute alone may be overridden or inherited).
+ * Rechecked by the setter: page handlers may change editability after focus. */
+const EDITABLE_CHECK = `this.isContentEditable ||
+    (typeof this.matches === 'function' && this.matches('input, textarea') && this.matches(${JSON.stringify(EDITABLE_SELECTOR)}))`;
+
 /** The focus+select used before `Input.insertText`, for the same reason as the
  * comment above. */
 const FOCUS_AND_SELECT_FUNCTION = `function () {
+  if (!(${EDITABLE_CHECK})) return 'not_editable';
   const focusFn = this.focus;
   if (typeof focusFn === 'function') focusFn.call(this);
+  // The node's own root covers both frame documents and shadow trees. Never
+  // send targetless text when focus stayed elsewhere or a handler redirected it.
+  if (this.getRootNode().activeElement !== this) return 'not_focused';
   if (typeof this.select === 'function') {
     this.select();
-  } else if (this.isContentEditable && typeof document.execCommand === 'function') {
-    document.execCommand('selectAll');
+  } else if (this.isContentEditable && typeof this.ownerDocument.execCommand === 'function') {
+    this.ownerDocument.execCommand('selectAll');
   }
+  return this.getRootNode().activeElement === this ? 'ready' : 'not_focused';
 }`;
 
 /** Set the value through the prototype's own setter, then announce it. This is
  * the mechanism a framework-controlled field actually listens for.
  *
- * Returns `null` — and writes NOTHING — when the node has no `value` setter
- * anywhere on its prototype chain and is not contenteditable: an `<iframe>`, a
+ * Returns `null` — and writes NOTHING — when the node is not editable or has no
+ * `value` setter anywhere on its prototype chain and is not contenteditable: an `<iframe>`, a
  * `<div>`, a button. The old `else this.value = text` planted an expando on such
  * a node and then read that same expando back as "the value", so `type` aimed at
  * a cross-origin payment frame reported success while nothing was typed. The
  * chain is walked rather than only the immediate prototype so a custom element
  * extending `HTMLInputElement` still finds the inherited setter. */
 const SET_VALUE_FUNCTION = `function (text) {
+  if (!(${EDITABLE_CHECK})) return null;
   if (this.isContentEditable) {
     const focusFn = this.focus;
     if (typeof focusFn === 'function') focusFn.call(this);
+    if (!(${EDITABLE_CHECK})) return null;
     this.textContent = text;
     this.dispatchEvent(new Event('input', { bubbles: true }));
     return this.textContent;
@@ -152,6 +166,7 @@ const SET_VALUE_FUNCTION = `function (text) {
   if (!setter) return null;
   const focusFn = this.focus;
   if (typeof focusFn === 'function') focusFn.call(this);
+  if (!(${EDITABLE_CHECK})) return null;
   setter.call(this, text);
   this.dispatchEvent(new Event('input', { bubbles: true }));
   this.dispatchEvent(new Event('change', { bubbles: true }));
@@ -552,7 +567,7 @@ export async function type(
 	// `ERROR_CODES`); the message names the real cause.
 	throw new BrowserHostError(
 		"element_not_found",
-		`${target} is not an editable field (no value setter, not contenteditable), so nothing was typed${frame ? "; it is an iframe and its document holds no field that took the text either" : `; if the field lives inside an iframe, it cannot be targeted from the top document; address it as <iframe-selector> ${FRAME_HOP} <selector>`}`,
+		`${target} is not an editable field, so nothing was typed${frame ? "; it is an iframe and its document holds no field that took the text either" : `; if the field lives inside an iframe, it cannot be targeted from the top document; address it as <iframe-selector> ${FRAME_HOP} <selector>`}`,
 	);
 }
 
@@ -628,8 +643,8 @@ function quoteReadBack(value: string): string {
  * frame's document does not hold. The fallback's success is likewise a read-back
  * from the page, taken after the setter returns, never the write's own echo: a
  * setter write that does not stick throws instead of being reported. `null` means
- * the node cannot hold text at all (no setter, not contenteditable) and is the
- * only outcome that sends `type` on to the iframe descent or its final refusal.
+ * the node is not a writable text editor (or has no setter) and is the only
+ * outcome that sends `type` on to the iframe descent or its final refusal.
  */
 async function typeInto(
 	ctx: BrowserActionContext,
@@ -638,11 +653,24 @@ async function typeInto(
 	text: string,
 	target: string,
 ): Promise<Record<string, unknown> | null> {
-	await sendIn(ctx, contents, node.sessionId, "Runtime.callFunctionOn", {
-		objectId: node.objectId,
-		functionDeclaration: FOCUS_AND_SELECT_FUNCTION,
-		returnByValue: true,
-	});
+	const focus = await sendIn<{ result?: { value?: unknown } }>(
+		ctx,
+		contents,
+		node.sessionId,
+		"Runtime.callFunctionOn",
+		{
+			objectId: node.objectId,
+			functionDeclaration: FOCUS_AND_SELECT_FUNCTION,
+			returnByValue: true,
+		},
+	);
+	if (focus?.result?.value === "not_editable") return null;
+	if (focus?.result?.value !== "ready") {
+		throw new BrowserHostError(
+			"element_not_found",
+			"the editable target could not retain focus, so nothing was typed",
+		);
+	}
 	await sendIn(ctx, contents, node.sessionId, "Input.insertText", { text });
 	const readBack = await conversationReadBack(ctx, node, contents);
 
