@@ -532,6 +532,18 @@ const IDENTICAL_OK = new Map([
 		"ui.common.updates.update_notification.version",
 		"French cognate: « Version » has the same spelling; trailing space is layout.",
 	],
+	[
+		"ui.settings.appearance.window_glass.material_menu",
+		"French cognate: « Menu » has the same spelling.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_mica",
+		"Proper material name kept verbatim (Windows Mica).",
+	],
+	[
+		"ui.settings.imports.source_heading",
+		"French cognate: « Sources » has the same spelling.",
+	],
 ]);
 
 function localeDirs() {

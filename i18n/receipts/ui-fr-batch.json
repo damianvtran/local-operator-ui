@@ -343,6 +343,54 @@
 				"date": "2026-10-18"
 			},
 			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.appearance.window_glass",
+			"source_sha256": "d3c6e272273baab454200c41a25b21c451689ae9bf03329aa776dc1cb9f1b33a",
+			"target_sha256": "d4766d588a4ad0198dedcee7d9f3ae134bea5c528e0f27cadae12b3554759994",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.imports",
+			"source_sha256": "1f8b1941bd65b91c84b1b4c41bfb1406f0e4790936c8690b04bfd788b4a1b082",
+			"target_sha256": "8594b515f0af79aec12f2c3770a601ad89b321cf08e6277a871253fd2d1d082c",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.model.default_effort",
+			"source_sha256": "5a4a01952b8a4242730e336cf082dc926085ac126a147d8b44197e9f04fc3b29",
+			"target_sha256": "ad6482647d8b27f1050970a4f04ac44507e0ee8a4ae07c453c834d1c85bdbba4",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.model.provider_callout",
+			"source_sha256": "8d1871aa2d087f99694b77e9f946b33b549a9541525023347b78124f42bbf82f",
+			"target_sha256": "f6d251c4280533cab436f8a1736ef059edc2ddc0926cb754ec303f0883c12051",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
 		}
 	]
 }

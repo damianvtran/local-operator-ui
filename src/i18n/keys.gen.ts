@@ -159,10 +159,14 @@ import frUiProviders from "./catalogues/fr/ui.providers.json";
 import frUiSchedules from "./catalogues/fr/ui.schedules.json";
 import frUiSettingsAccount from "./catalogues/fr/ui.settings.account.json";
 import frUiSettingsAppearance from "./catalogues/fr/ui.settings.appearance.json";
+import frUiSettingsAppearanceWindowGlass from "./catalogues/fr/ui.settings.appearance.window_glass.json";
 import frUiSettingsConfiguration from "./catalogues/fr/ui.settings.configuration.json";
+import frUiSettingsImports from "./catalogues/fr/ui.settings.imports.json";
 import frUiSettingsIntegrations from "./catalogues/fr/ui.settings.integrations.json";
 import frUiSettings from "./catalogues/fr/ui.settings.json";
+import frUiSettingsModelDefaultEffort from "./catalogues/fr/ui.settings.model.default_effort.json";
 import frUiSettingsModel from "./catalogues/fr/ui.settings.model.json";
+import frUiSettingsModelProviderCallout from "./catalogues/fr/ui.settings.model.provider_callout.json";
 import frUiSettingsNavigation from "./catalogues/fr/ui.settings.navigation.json";
 import frUiSettingsShortcuts from "./catalogues/fr/ui.settings.shortcuts.json";
 import frUiSettingsSpeech from "./catalogues/fr/ui.settings.speech.json";
@@ -348,10 +352,14 @@ export const bundledCatalogues: Readonly<
 		...frUiSchedules,
 		...frUiSettingsAccount,
 		...frUiSettingsAppearance,
+		...frUiSettingsAppearanceWindowGlass,
 		...frUiSettingsConfiguration,
+		...frUiSettingsImports,
 		...frUiSettingsIntegrations,
 		...frUiSettings,
+		...frUiSettingsModelDefaultEffort,
 		...frUiSettingsModel,
+		...frUiSettingsModelProviderCallout,
 		...frUiSettingsNavigation,
 		...frUiSettingsShortcuts,
 		...frUiSettingsSpeech,
