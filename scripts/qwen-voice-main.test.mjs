@@ -731,6 +731,7 @@ function pageCase({
 	ask = async () => true,
 	devTools = false,
 	origin = GATEWAY,
+	timers = null,
 } = {}) {
 	const session = fakeSession();
 	const created = [];
@@ -750,6 +751,18 @@ function pageCase({
 		devTools,
 		onStopped: (reason) => stopped.push(reason),
 		now: () => now,
+		...(timers
+			? {
+					setTimer: (fn, ms) => {
+						const timer = { fn, ms, cleared: false };
+						timers.push(timer);
+						return timer;
+					},
+					clearTimer: (timer) => {
+						timer.cleared = true;
+					},
+				}
+			: {}),
 	});
 	return {
 		page,
@@ -988,6 +1001,39 @@ test("§2: the microphone preflight reports granted, denied and not-determined",
 		await pageCase({ mic: "weird" }).page.prepareMicrophone(),
 		"unknown",
 	);
+});
+
+test("M3: the page's bounded wait expires into `prompting`; a late answer still reaches onSettled", async () => {
+	const timers = [];
+	let answer = null;
+	const c = pageCase({
+		mic: "not-determined",
+		ask: () =>
+			new Promise((resolve) => {
+				answer = resolve;
+			}),
+		timers,
+	});
+	const settled = [];
+	const pending = c.page.prepareMicrophone({
+		timeoutMs: m.MIC_PROMPT_BUDGET_MS,
+		onSettled: (verdict) => settled.push(verdict),
+	});
+	await Promise.resolve();
+	assert.equal(
+		timers.length,
+		1,
+		"a pending prompt is bounded, not waited on for ever",
+	);
+	assert.equal(timers[0].ms, m.MIC_PROMPT_BUDGET_MS);
+	// The budget expires: the start stops here instead of holding "Starting".
+	timers[0].fn();
+	assert.equal(await pending, "prompting");
+	assert.deepEqual(settled, [], "no answer yet");
+	// The dialog is answered minutes later: the coordinator still hears it.
+	answer(true);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.deepEqual(settled, ["granted"]);
 });
 
 test("§4/M3: the microphone is asked for BEFORE the models, and a denial costs no memory", async () => {
