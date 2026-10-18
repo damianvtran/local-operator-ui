@@ -76,6 +76,18 @@ export type QwenVoiceStatus = {
 	 * Settings", and `prompting` is the bounded wait going on right now.
 	 */
 	mic?: QwenMicAccess;
+	/**
+	 * PAUSED: the hidden page is closed, so the microphone is released, while the
+	 * Gateway and the speech models stay warm. Nothing is heard and nothing is
+	 * spoken; a take cannot arrive, and a playback event cannot be true.
+	 *
+	 * Main owns this rather than the window because the page belongs to main: a
+	 * reloaded renderer that forgot a pause would paint "Listening" over a closed
+	 * page.
+	 */
+	paused?: boolean;
+	/** The page's own playback is silenced (`webContents.setAudioMuted`). */
+	muted?: boolean;
 };
 
 /**
@@ -124,6 +136,10 @@ export const QWEN_CHANNEL = {
 	statusGet: "voice.qwen.status.get",
 	/** Pushed: one allowlisted voice event, `{type, at, reason?}`. */
 	event: "voice.qwen.event",
+	/** The strip's two controls; both answer the new status. */
+	pause: "voice.qwen.pause",
+	resume: "voice.qwen.resume",
+	mute: "voice.qwen.mute",
 	/** Open the OS microphone pane; a main-only path, no renderer URL. */
 	openMicSettings: "voice.qwen.open-mic-settings",
 } as const;
@@ -171,8 +187,19 @@ function slotOf(payload: unknown): string | null {
 }
 
 export class QwenVoice {
-	private status: QwenVoiceStatus = { rig: "stopped", webui_url: null };
+	private status: QwenVoiceStatus = {
+		rig: "stopped",
+		webui_url: null,
+		paused: false,
+		muted: false,
+	};
 	private slot: string | null = null;
+	/**
+	 * The two controls of the strip that main owns, mirrored into `status` so the
+	 * renderer never holds a second copy that can disagree (see `QwenVoiceStatus`).
+	 */
+	private paused = false;
+	private muted = false;
 	/** Voice pages connected to the CURRENT launcher; reset when it stops. */
 	private clients = 0;
 	private relayed: Relayed[] = [];
@@ -216,8 +243,75 @@ export class QwenVoice {
 	}
 
 	private setStatus(next: QwenVoiceStatus): void {
-		this.status = next;
+		/*
+		 * THE TWO CONTROLS SURVIVE EVERY STATUS THAT DOES NOT NAME THEM (a start's
+		 * "starting", an error's sentence, a client count). They move only through
+		 * `pause`/`resume`/`setMuted` - and the places that must CLEAR a pause say
+		 * so by clearing the field first, so a rig that stops is never left paused.
+		 */
+		this.status = {
+			...next,
+			paused: next.paused ?? this.paused,
+			muted: next.muted ?? this.muted,
+		};
 		this.deps.toRenderer(QWEN_CHANNEL.status, this.getStatus());
+	}
+
+	/**
+	 * PAUSE: close the hidden page and keep the rig warm.
+	 *
+	 * The page is where the microphone and the playback live, so closing it
+	 * releases the microphone (and lets this app's dictation use it) without
+	 * unloading ~5 GB of models: the Gateway and s2s are untouched. That is the
+	 * whole of the behaviour, because `open`/`close` already have exactly this
+	 * shape - no new work in the rig, and no timeout re-armed: a paused person
+	 * must not pay a fresh model load.
+	 *
+	 * Only a READY rig can be paused; before that there is no page to close.
+	 */
+	pause(): QwenVoiceStatus {
+		if (this.status.rig !== "ready" || this.paused) return this.getStatus();
+		this.paused = true;
+		this.deps.page.close();
+		/* No page, so no client: the count is not a guess, it is a fact - and the
+		   private counter moves with it, so a stale `client_attached` cannot put a
+		   page back into a count that has none. */
+		this.clients = 0;
+		this.setStatus({ ...this.status, paused: true, clients: 0 });
+		this.log("qwen-voice: paused; the page is closed and the rig stays up");
+		return this.getStatus();
+	}
+
+	/**
+	 * RESUME: recreate the page through the same path as Retry (close, then
+	 * open), which re-applies the mute the page remembers.
+	 */
+	resume(): QwenVoiceStatus {
+		if (!this.paused) return this.getStatus();
+		this.paused = false;
+		const webuiUrl = this.status.webui_url;
+		if (this.status.rig === "ready" && webuiUrl) {
+			/* `open` is idempotent, so a page that exists is closed first - the
+			   Retry path's own reason for doing it in this order. */
+			this.deps.page.close();
+			this.openPage(webuiUrl);
+		}
+		this.setStatus({ ...this.status, paused: false });
+		this.log("qwen-voice: resumed; the page is being recreated");
+		return this.getStatus();
+	}
+
+	/**
+	 * SILENCE THE VOICE'S OWN SPEECH, not the app and not the rig:
+	 * `webContents.setAudioMuted` on the hidden page. Remembered by the page too,
+	 * so a recreate comes back muted; the status carries it so the strip and
+	 * main cannot disagree.
+	 */
+	setMuted(muted: boolean): QwenVoiceStatus {
+		this.muted = muted;
+		this.deps.page.setMuted(muted);
+		this.setStatus({ ...this.status, muted });
+		return this.getStatus();
 	}
 
 	/** One frame off the machine feed (main's own subscription). */
@@ -245,6 +339,16 @@ export class QwenVoice {
 			});
 		}
 		if (next === null) {
+			/*
+			 * TURNING VOICE OFF ENDS A PAUSE. The page was closed by the pause and
+			 * would now stay closed through the next enable - `readyAgain` rightly
+			 * refuses to reopen a paused page - so the flag goes with the slot it
+			 * describes. Mute is the PERSON's preference and outlives the slot.
+			 */
+			if (this.paused) {
+				this.paused = false;
+				this.setStatus({ ...this.status, paused: false });
+			}
 			if (previous !== null || this.idleTimer === null) this.armIdleStop();
 			return;
 		}
@@ -311,7 +415,7 @@ export class QwenVoice {
 				});
 				// Started with nothing holding the slot: the idle stop still applies.
 				if (this.slot === null) this.armIdleStop();
-				this.deps.page.open(webuiUrl);
+				this.openPage(webuiUrl);
 			} catch (error) {
 				const message =
 					this.budgetReason ??
@@ -345,8 +449,9 @@ export class QwenVoice {
 		const webuiUrl = this.status.webui_url;
 		if (!webuiUrl) return this.getStatus();
 		if (reason === "renderer") {
+			if (this.paused) return this.getStatus();
 			this.deps.page.close();
-			this.deps.page.open(webuiUrl);
+			this.openPage(webuiUrl);
 			return this.getStatus();
 		}
 		/*
@@ -357,7 +462,7 @@ export class QwenVoice {
 		 */
 		const mic = await this.preflightMic();
 		this.setStatus({ ...this.status, mic });
-		if (mic === "granted") this.deps.page.open(webuiUrl);
+		if (mic === "granted") this.openPage(webuiUrl);
 		return this.getStatus();
 	}
 
@@ -388,11 +493,23 @@ export class QwenVoice {
 		this.setStatus({ ...this.status, mic });
 		if (mic !== "granted") return;
 		if (this.rigUp() && this.status.webui_url) {
-			this.deps.page.open(this.status.webui_url);
+			this.openPage(this.status.webui_url);
 			return;
 		}
 		// Nothing to resume for if the slot went away while the dialog was up.
 		if (resume && this.slot !== null) void this.start("enable");
+	}
+
+	/**
+	 * THE ONE WAY THE PAGE IS CREATED, so the mute cannot be forgotten: the page
+	 * remembers a mute set while it existed, but a mute set before the FIRST page
+	 * has nothing to remember it yet - this re-applies the coordinator's copy.
+	 * A paused rig creates no page (that is what pause means).
+	 */
+	private openPage(webuiUrl: string): void {
+		if (this.paused) return;
+		this.deps.page.open(webuiUrl);
+		if (this.muted) this.deps.page.setMuted(true);
 	}
 
 	/** Both processes are up and the status says so. */
@@ -413,6 +530,7 @@ export class QwenVoice {
 	processExited(which: "gateway" | "speech", detail: string): void {
 		if (this.status.rig !== "ready") return;
 		this.log(`qwen-voice: ${which} exited unexpectedly (${detail})`);
+		this.paused = false;
 		this.disarmIdleStop();
 		void this.stopProcesses();
 		this.setStatus({
@@ -432,6 +550,7 @@ export class QwenVoice {
 	pageFailed(reason: string): void {
 		if (this.status.rig !== "ready") return;
 		this.log(`qwen-voice: ${reason}`);
+		this.paused = false;
 		this.disarmIdleStop();
 		this.deps.page.close();
 		void this.stopProcesses();
@@ -469,6 +588,7 @@ export class QwenVoice {
 
 	/** Stop both processes. Idempotent. */
 	async stop(): Promise<void> {
+		this.paused = false;
 		this.disarmIdleStop();
 		await this.stopProcesses();
 		if (this.status.rig !== "stopped")
@@ -493,6 +613,7 @@ export class QwenVoice {
 	 * runs behind (review Q-3): see `QwenSpeechProcess.killNow`.
 	 */
 	stopNow(clearRecord = false): void {
+		this.paused = false;
 		this.clients = 0;
 		this.disarmIdleStop();
 		this.deps.page.close();
@@ -544,11 +665,25 @@ export class QwenVoice {
 	/** One message up from the Gateway launcher. */
 	onGatewayMessage(message: GatewayUpMessage): void {
 		if (message?.type === "event") {
+			/* Nothing is hearing or playing while the page is closed; a late frame
+			   from before the pause would put "Hearing you" up over a closed page. */
+			if (this.paused) return;
 			const event = this.voiceEvent(message.event);
 			if (event) this.deps.toRenderer(QWEN_CHANNEL.event, event);
 			return;
 		}
 		if (message?.type === "take") {
+			/* A take cannot be admitted while paused: the page that heard it is
+			   closed, so the only honest answer is the refusal the launcher speaks. */
+			if (this.paused) {
+				this.deps.gateway.send({
+					type: "outcome",
+					taskId: message.taskId,
+					ok: false,
+					code: "paused",
+				});
+				return;
+			}
 			const delivered = this.deps.toRenderer(QWEN_CHANNEL.take, {
 				taskId: message.taskId,
 				text: message.text,
@@ -658,6 +793,7 @@ export class QwenVoice {
 			(entry) => entry.text === value.text && entry.kind === value.kind,
 		);
 		if (index < 0) return { spoken: false, reason: "not_relayed" };
+		if (this.paused) return { spoken: false, reason: "paused" };
 		if (this.status.rig !== "ready")
 			return { spoken: false, reason: "rig_not_ready" };
 		// No voice page connected: nothing would be heard, so nothing is claimed.

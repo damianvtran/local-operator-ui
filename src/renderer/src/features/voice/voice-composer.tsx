@@ -47,8 +47,12 @@ import {
 	ChevronDown,
 	ChevronUp,
 	MicOff,
+	Pause,
+	Play,
 	Square,
 	TriangleAlert,
+	Volume2,
+	VolumeX,
 } from "lucide-react";
 import {
 	type FC,
@@ -64,6 +68,9 @@ import type { DesktopVoiceActive } from "../../../../shared/desktop-control-cont
 import {
 	openMicrophoneSettings,
 	openVoiceSession,
+	pauseQwenVoice,
+	resumeQwenVoice,
+	setQwenMuted,
 	startQwenRig,
 } from "./qwen-voice-controller";
 import { controlVoice, useVoiceCapability } from "./use-voice-status";
@@ -126,7 +133,8 @@ export type VoiceChipKind =
 	| "waiting_mic"
 	| "unheard"
 	| "error"
-	| "stopped";
+	| "stopped"
+	| "paused";
 
 /** The caption's sentence, as a case rather than a string. */
 export type VoiceCaption =
@@ -268,6 +276,20 @@ export function composerVoiceView(
 				chip: "waiting_mic",
 				caption: { kind: "waiting_mic" },
 				action: "settings",
+				cut,
+			};
+		case "paused":
+			/*
+			 * PAUSED (spec §4): the page is closed, so the strip says so in the
+			 * ready register rather than as a warning - nothing is wrong - and its
+			 * one action is Resume. The cut chip stays: it is about the last thing
+			 * that was said, which a pause does not unsay.
+			 */
+			return {
+				kind: "here",
+				chip: "paused",
+				caption: null,
+				action: null,
 				cut,
 			};
 		case "starting":
@@ -412,6 +434,9 @@ const CHIP_TONE: Record<VoiceChipKind, string> = {
 	error:
 		"bg-danger-wash text-danger shadow-[inset_0_0_0_1px_var(--color-danger-border)]",
 	stopped: "text-ink-muted",
+	/* Paused is a WORD on the band, not a wash: the rig is healthy, it is the
+	   microphone that is off. */
+	paused: "text-ink-muted",
 };
 
 const CHIP_WORD: Record<VoiceChipKind, WithoutParams> = {
@@ -428,6 +453,7 @@ const CHIP_WORD: Record<VoiceChipKind, WithoutParams> = {
 	unheard: "ui.chat.voice.phase_unheard",
 	error: "ui.chat.voice.phase_error",
 	stopped: "ui.chat.voice.phase_off",
+	paused: "ui.chat.voice.phase_paused",
 };
 
 /**
@@ -474,6 +500,13 @@ const ChipMark: FC<{ chip: VoiceChipKind }> = ({ chip }) => {
 	if (chip === "ended") return <Check aria-hidden="true" className="size-3" />;
 	if (chip === "interrupted")
 		return <Square aria-hidden="true" className="size-3" />;
+	if (chip === "paused")
+		return (
+			<span aria-hidden="true" className="flex items-center gap-0.5">
+				<span className="h-2.5 w-0.5 rounded-sm bg-current" />
+				<span className="h-2.5 w-0.5 rounded-sm bg-current" />
+			</span>
+		);
 	if (chip === "mic_blocked")
 		return <MicOff aria-hidden="true" className="size-3" />;
 	if (chip === "approval" || chip === "error" || chip === "unheard")
@@ -665,6 +698,7 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 	const story = useVoiceStore((s) => s.story);
 	const clearTick = useVoiceStore((s) => s.clearTick);
 	const pendingControl = useVoiceStore((s) => s.pending);
+	const muted = useVoiceStore((s) => s.rig?.muted === true);
 	/*
 	 * THE COMPOSER MOUNTS IN DOCUMENTS WITH NO PROVIDER (the mini view, the
 	 * agents composer): `useQueryClient` throws there, so the optional seam is
@@ -839,6 +873,20 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 	const chip = view.chip;
 	const tone = CHIP_TONE[chip];
 	const isButton = chip === "approval";
+	/*
+	 * THE TWO CONTROLS BESIDE THE CHIP (spec §4). Pause is offered by every state
+	 * in which the rig is actually working - the ones where the microphone is
+	 * live; it is not offered while the models load, over a failure, or where the
+	 * page is already gone. Resume is the same control in the paused state.
+	 */
+	const pauseable =
+		chip === "paused" ||
+		chip === "listening" ||
+		chip === "hearing" ||
+		chip === "speaking" ||
+		chip === "working" ||
+		chip === "ended" ||
+		chip === "interrupted";
 
 	return (
 		<div
@@ -937,6 +985,63 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 					<span className="min-w-0 flex-1" />
 				)}
 				{failureAction}
+				{pauseable && (
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						data-voice-action={chip === "paused" ? "resume" : "pause"}
+						aria-label={t(
+							chip === "paused"
+								? "ui.chat.voice.strip_resume"
+								: "ui.chat.voice.strip_pause",
+						)}
+						title={t(
+							chip === "paused"
+								? "ui.chat.voice.strip_resume"
+								: "ui.chat.voice.strip_pause",
+						)}
+						onClick={() =>
+							void (chip === "paused" ? resumeQwenVoice() : pauseQwenVoice())
+						}
+						className="shrink-0 text-ink-muted"
+					>
+						{chip === "paused" ? (
+							<Play aria-hidden="true" />
+						) : (
+							<Pause aria-hidden="true" />
+						)}
+					</Button>
+				)}
+				{pauseable && (
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						data-voice-mute={muted ? "on" : "off"}
+						aria-pressed={muted}
+						aria-label={t(
+							muted ? "ui.chat.voice.unmute" : "ui.chat.voice.mute",
+						)}
+						title={t(muted ? "ui.chat.voice.unmute" : "ui.chat.voice.mute")}
+						onClick={() => void setQwenMuted(!muted)}
+						/*
+						 * A MUTED TOGGLE SAYS SO IN ITS GLYPH AND ITS PRESSED FACE: the
+						 * speaker with a slash is the word, the accent wash the state - the
+						 * same pair the wave button uses.
+						 */
+						className={cn(
+							"shrink-0 text-ink-muted",
+							"aria-pressed:bg-[color-mix(in_oklab,var(--color-accent-wash)_80%,var(--color-accent))] aria-pressed:text-accent",
+						)}
+					>
+						{muted ? (
+							<VolumeX aria-hidden="true" />
+						) : (
+							<Volume2 aria-hidden="true" />
+						)}
+					</Button>
+				)}
 				<Button
 					type="button"
 					ref={historyButton}

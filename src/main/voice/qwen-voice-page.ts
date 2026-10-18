@@ -64,6 +64,13 @@ export interface QwenVoicePagePort {
 	open(webuiUrl: string): void;
 	/** Destroy it. Idempotent. */
 	close(): void;
+	/**
+	 * Silence the page's OWN playback without touching this app or the rig.
+	 * Remembered here rather than by the caller because the page is destroyed and
+	 * recreated on a pause, a retry and a crash: a mute that only lived on the
+	 * view would come back talking after every one of those.
+	 */
+	setMuted(muted: boolean): void;
 	/** Ask the OS for the microphone before a page is created (§2). */
 	prepareMicrophone(options?: MicrophonePreflight): Promise<QwenMicAccess>;
 }
@@ -76,6 +83,7 @@ export function noQwenVoicePage(): QwenVoicePagePort {
 	return {
 		open: () => {},
 		close: () => {},
+		setMuted: () => {},
 		prepareMicrophone: async () => "unknown",
 	};
 }
@@ -124,6 +132,12 @@ export type VoicePageWebContents = {
 		handler: (details: { url: string }) => { action: "deny" },
 	) => void;
 	openDevTools?: (options: { mode: "detach" }) => void;
+	/**
+	 * Electron's `webContents.setAudioMuted`. Mutes the PAGE'S audio - which is
+	 * Qwen's speech - without muting this app or the rig, and without the page
+	 * cooperating (it is third-party code and is told nothing).
+	 */
+	setAudioMuted(muted: boolean): void;
 };
 
 export type VoicePageView = { webContents: VoicePageWebContents };
@@ -194,6 +208,8 @@ export type QwenVoicePageDeps = {
 
 export class QwenVoicePage implements QwenVoicePagePort {
 	private view: VoicePageView | null = null;
+	/** Remembered across a close/reopen; see `setMuted`. */
+	private muted = false;
 	private lastUrl: string | null = null;
 	private lastCrashAt: number | null = null;
 	private readonly log: (message: string) => void;
@@ -256,6 +272,12 @@ export class QwenVoicePage implements QwenVoicePagePort {
 		});
 		this.view = view;
 		this.lastUrl = webuiUrl;
+		/*
+		 * MUTE IS A PROPERTY OF THE PERSON, NOT OF THE VIEW. Applied here, on
+		 * CREATE, so a page recreated by a pause/resume, a Retry or a crash
+		 * recovery comes back as quiet as the one it replaced.
+		 */
+		if (this.muted) view.webContents.setAudioMuted(true);
 		this.installNavigationLock(view.webContents);
 		this.installCrashRecovery(view.webContents);
 		if (this.deps.devTools) view.webContents.openDevTools?.({ mode: "detach" });
@@ -266,6 +288,20 @@ export class QwenVoicePage implements QwenVoicePagePort {
 				`qwen-page: load failed: ${error instanceof Error ? error.message : String(error)}`,
 			),
 		);
+	}
+
+	/** Apply a mute now (when a page exists) and remember it for the next one. */
+	setMuted(muted: boolean): void {
+		this.muted = muted;
+		const view = this.view;
+		if (!view) return;
+		try {
+			view.webContents.setAudioMuted(muted);
+		} catch (error) {
+			this.log(
+				`qwen-page: mute failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
 	}
 
 	close(): void {

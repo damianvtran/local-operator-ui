@@ -866,6 +866,7 @@ export type MessageParams = {
 	"ui.chat.voice.mic_blocked": undefined;
 	"ui.chat.voice.mic_blocked_caption": undefined;
 	"ui.chat.voice.move_here": undefined;
+	"ui.chat.voice.mute": undefined;
 	"ui.chat.voice.not_enabled": undefined;
 	"ui.chat.voice.not_sent_approve": undefined;
 	"ui.chat.voice.notice_elsewhere_prefix": undefined;
@@ -878,6 +879,7 @@ export type MessageParams = {
 	"ui.chat.voice.phase_listening": undefined;
 	"ui.chat.voice.phase_mic_prompting": undefined;
 	"ui.chat.voice.phase_off": undefined;
+	"ui.chat.voice.phase_paused": undefined;
 	"ui.chat.voice.phase_speaking": undefined;
 	"ui.chat.voice.phase_starting": undefined;
 	"ui.chat.voice.phase_unheard": undefined;
@@ -889,6 +891,8 @@ export type MessageParams = {
 	"ui.chat.voice.starting_caption": undefined;
 	"ui.chat.voice.stream_lost": undefined;
 	"ui.chat.voice.stream_reconnect": undefined;
+	"ui.chat.voice.strip_pause": undefined;
+	"ui.chat.voice.strip_resume": undefined;
 	"ui.chat.voice.switched_from": { title: string };
 	"ui.chat.voice.switched_from_untitled": undefined;
 	"ui.chat.voice.take_too_long": undefined;
@@ -897,6 +901,7 @@ export type MessageParams = {
 	"ui.chat.voice.toggle_switch": { title: string };
 	"ui.chat.voice.toggle_switch_untitled": undefined;
 	"ui.chat.voice.try_again": undefined;
+	"ui.chat.voice.unmute": undefined;
 	"ui.chat.voice.utterance_failed": { reason: string };
 	"ui.chat.voice.voice_label": undefined;
 	"ui.chat.voice.working_row": undefined;

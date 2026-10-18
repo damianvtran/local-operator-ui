@@ -122,6 +122,40 @@ window.electron = {
 };
 
 /* The capabilities answer the voice gates read: voice is negotiated. */
+/* What the strip's two controls call; replaced per case by `controls()`. */
+let controlCalls = [];
+const controlStatus = (patch) => ({
+	rig: "ready",
+	webui_url: null,
+	clients: 1,
+	paused: false,
+	muted: false,
+	...patch,
+});
+const installControls = (start = {}) => {
+	controlCalls = [];
+	window.api = {
+		...window.api,
+		desktop: {
+			...(window.api.desktop ?? {}),
+			qwenVoice: {
+				pause: async () => {
+					controlCalls.push(["pause"]);
+					return controlStatus({ ...start, paused: true });
+				},
+				resume: async () => {
+					controlCalls.push(["resume"]);
+					return controlStatus({ ...start, paused: false });
+				},
+				setMuted: async (muted) => {
+					controlCalls.push(["mute", muted]);
+					return controlStatus({ ...start, muted });
+				},
+			},
+		},
+	};
+};
+
 window.api = {
 	desktop: {
 		request: async (request) => {
@@ -679,7 +713,10 @@ test("the dictation reason names the two cases and the holder's title", () => {
 		dictationOffReason(true, null),
 		/Voice is on, so dictation is off/,
 	);
-	assert.match(dictationOffReason(true, null), /Turn voice off to dictate/);
+	assert.match(
+		dictationOffReason(true, null),
+		/Pause voice or turn it off to dictate/,
+	);
 	assert.match(
 		dictationOffReason(false, "Fix login redirect"),
 		/Voice is on in “Fix login redirect”/,
@@ -743,6 +780,55 @@ test("voice on here dims the microphone, keeps it focusable, and starts no recor
 	);
 });
 
+test("paused releases the microphone, so dictation comes back", async () => {
+	window.navigator.mediaDevices = {
+		getUserMedia: async () => {
+			throw new Error("paused is not a press");
+		},
+	};
+	window.document.body.innerHTML = "<div id='root'></div>";
+	root = createRoot(window.document.getElementById("root"));
+	await act(async () => {
+		root.render(
+			React.createElement(
+				QueryClientProvider,
+				{ client },
+				React.createElement(MessageInput, {
+					isLoading: false,
+					messages: [{ id: "m", role: "system", timestamp: new Date(0) }],
+					conversationId: AT,
+					onSendMessage: async () => true,
+					recordingProbe: { canUseRadientSpeech: true, speechBlock: "none" },
+				}),
+			),
+		);
+	});
+	await flush();
+	const mic = () =>
+		window.document.querySelector('button[aria-label="Start recording"]');
+	await act(async () => {
+		useVoiceStore.getState().setActive(slot(AT));
+		useVoiceStore
+			.getState()
+			.setRig({ rig: "ready", webui_url: null, clients: 1 });
+	});
+	await flush();
+	assert.equal(mic().getAttribute("aria-disabled"), "true");
+
+	/* Pause: the hidden page is closed, so voice no longer owns the mic. */
+	await act(async () => {
+		useVoiceStore
+			.getState()
+			.setRig({ rig: "ready", webui_url: null, clients: 0, paused: true });
+	});
+	await flush();
+	assert.equal(
+		mic().getAttribute("aria-disabled"),
+		null,
+		"a paused voice leaves dictation usable",
+	);
+});
+
 test("voice in ANOTHER session blocks dictation here too", async () => {
 	window.navigator.mediaDevices = {
 		getUserMedia: async () => {
@@ -802,6 +888,65 @@ test("a rig that is ready with no page offers Retry, and a stopped one offers St
 		window.document.querySelector("[data-voice-action]")?.textContent?.trim(),
 		"Start voice",
 	);
+});
+
+test("paused: the chip says Paused and its control is Resume", async () => {
+	installControls();
+	await mountStrip();
+	await act(async () => {
+		const store = useVoiceStore.getState();
+		store.setActive(slot(AT));
+		store.setRig(controlStatus({ paused: true }));
+	});
+	await flush();
+	assert.equal(chipText(), "Paused");
+	const resume = window.document.querySelector('[data-voice-action="resume"]');
+	assert.ok(resume, "the paused strip offers Resume");
+	assert.equal(resume.getAttribute("aria-label"), "Resume voice");
+	assert.equal(
+		window.document.querySelector('[data-voice-action="pause"]'),
+		null,
+		"Pause is replaced, not shown beside its own opposite",
+	);
+
+	await act(async () => {
+		resume.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+	});
+	await flush();
+	assert.deepEqual(controlCalls, [["resume"]]);
+	assert.equal(chipText(), "Listening", "resume goes back to the ready word");
+});
+
+test("pause is offered while listening, and pressing it asks main", async () => {
+	installControls();
+	await mountStrip();
+	await voiceReady();
+	const pause = window.document.querySelector('[data-voice-action="pause"]');
+	assert.ok(pause, "a listening strip offers Pause");
+	assert.equal(pause.getAttribute("aria-label"), "Pause voice");
+	await act(async () => {
+		pause.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+	});
+	await flush();
+	assert.deepEqual(controlCalls, [["pause"]]);
+	assert.equal(chipText(), "Paused", "the answer is mirrored at once");
+});
+
+test("the mute toggle names what it silences, and is pressed while muted", async () => {
+	installControls();
+	await mountStrip();
+	await voiceReady();
+	const mute = () => window.document.querySelector("[data-voice-mute]");
+	assert.equal(mute().getAttribute("data-voice-mute"), "off");
+	assert.equal(mute().getAttribute("aria-label"), "Silence the voice");
+	await act(async () => {
+		mute().dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+	});
+	await flush();
+	assert.deepEqual(controlCalls, [["mute", true]]);
+	assert.equal(mute().getAttribute("data-voice-mute"), "on");
+	assert.equal(mute().getAttribute("aria-pressed"), "true");
+	assert.equal(mute().getAttribute("aria-label"), "Hear the voice again");
 });
 
 test("no control in the strip submits the composer it sits inside", async () => {

@@ -150,6 +150,19 @@ account"** window. Press **"Skip for now"**: the test backend needs no account.
    You do not close a tab any more, and voice keeps listening while the app is
    in the background: the page is deliberately not throttled.
 
+6. Pause and mute are the strip's two icon controls beside the chip.
+   - **Pause** (the two bars) closes the app's hidden voice page. The microphone
+     is released - so dictation in the composer works again - and the speech
+     models stay loaded: nothing is unloaded, nothing reloads. The chip reads
+     **"Paused"** and the same button becomes **Resume**, which recreates the
+     page. Pause does not restart the ten-minute idle clock; the models stay
+     warm until you turn voice off or that clock runs out.
+   - **Mute** (the speaker) silences only the assistant's spoken replies, using
+     `webContents.setAudioMuted` on the hidden page. Your app, its notifications
+     and everything else on the machine keep their sound. It is remembered
+     across a resume and across a page recreated by Retry, and it is not written
+     to any config file.
+
 If you restart the app while voice is still on, nothing loads by itself. The
 strip's chip reads "Voice off" and offers "Start voice". Press it to load the
 models again.

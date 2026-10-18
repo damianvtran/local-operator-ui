@@ -2169,6 +2169,31 @@ test("echo guard runs BEFORE the card check: the rig's own 'Answer it on screen 
 	feedTurns("s-card-echo", { kind: "gate", gate: null });
 });
 
+test("paused: a take is refused before it is sent, and the phase says Paused", async () => {
+	const { sendVoiceTake, useVoiceStore, voicePhaseOf } = await controller();
+	useVoiceStore.getState().setActive({ session_id: "s-paused", enabled_at: 1 });
+	useVoiceStore.getState().setRig({
+		rig: "ready",
+		webui_url: null,
+		clients: 0,
+		paused: true,
+	});
+	globalThis.__voiceUpload = undefined;
+	const outcome = await sendVoiceTake("are you there");
+	assert.equal(outcome.ok, false);
+	assert.equal(outcome.code, "paused");
+	assert.equal(
+		globalThis.__voiceUpload,
+		undefined,
+		"nothing reached the upload: the page that would hear it is closed",
+	);
+	assert.equal(
+		voicePhaseOf(useVoiceStore.getState(), "s-paused"),
+		"paused",
+		"the strip's word outranks the ready one",
+	);
+});
+
 test("echo guard: the rig's 'Voice is off' heard back with the slot empty is an echo, not a voice_not_enabled refusal", async () => {
 	const { sendVoiceTake, useVoiceStore } = await controller();
 	useVoiceStore.getState().setActive(null);

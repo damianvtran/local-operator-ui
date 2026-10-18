@@ -506,6 +506,14 @@ export function registerQwenVoiceIPC(
 		getStatus: () => unknown;
 		/** Open the OS microphone pane (macOS); a fixed main-only URL. */
 		openMicSettings: () => void;
+		/**
+		 * The strip's two controls. Pause closes the hidden page (releasing the
+		 * microphone) and keeps the models warm; mute silences the page's own
+		 * playback. Both answer the new status, which is what the strip paints.
+		 */
+		pause: () => unknown;
+		resume: () => unknown;
+		setMuted: (muted: boolean) => unknown;
 	},
 ): void {
 	const authorize = (event: IpcMainInvokeEvent): void => {
@@ -532,5 +540,21 @@ export function registerQwenVoiceIPC(
 	ipcMain.handle("voice.qwen.open-mic-settings", (event) => {
 		authorize(event);
 		voice.openMicSettings();
+	});
+	ipcMain.handle("voice.qwen.pause", (event) => {
+		authorize(event);
+		return voice.pause();
+	});
+	ipcMain.handle("voice.qwen.resume", (event) => {
+		authorize(event);
+		return voice.resume();
+	});
+	/**
+	 * MUTE IS TYPED, not passed through: the renderer's value is untrusted, and
+	 * the only two meanings here are "muted" and "not muted".
+	 */
+	ipcMain.handle("voice.qwen.mute", (event, muted: unknown) => {
+		authorize(event);
+		return voice.setMuted(muted === true);
 	});
 }

@@ -5796,9 +5796,17 @@ export type DesktopMediaResponse =
  * - invoke `voice.qwen.speak {text, kind}`: speak a reply or gate text. Main
  *   honours it ONLY for a text it relayed itself as a 200 `/voice/text` answer in
  *   the last 10 minutes; anything else answers `{spoken: false}`.
- * - status `voice.qwen.status {rig, webui_url, reason?, clients?, cause?, mic?}`
+ * - status `voice.qwen.status {rig, webui_url, reason?, clients?, cause?, mic?, paused?, muted?}`
  *   (`onStatus`, `getStatus`). `mic` is additive: the macOS microphone verdict,
  *   which is what turns "unheard" into "Microphone blocked" (plan §2/§4).
+ *   `paused` and `muted` are additive too, and they are MAIN's: the hidden page
+ *   is main's, so a renderer that reloaded cannot paint a stale answer over it.
+ * - invoke `voice.qwen.pause` / `voice.qwen.resume`: close the hidden page (the
+ *   microphone is released; the models stay loaded) and recreate it. Both answer
+ *   the new status.
+ * - invoke `voice.qwen.mute {muted}`: `webContents.setAudioMuted` on the page,
+ *   which silences Qwen's own speech and nothing else. Remembered across a
+ *   recreate and answered with the new status.
  * - invoke `voice.qwen.start`: start the rig for the slot already held; on a
  *   rig that is already ready, recreate the hidden voice page instead.
  * - invoke `voice.qwen.open-mic-settings`: open the OS microphone pane. Main's
@@ -5826,6 +5834,14 @@ export type QwenVoiceStatus = {
 	 * bounded wait: the OS dialog is up and unanswered.
 	 */
 	mic?: "granted" | "denied" | "prompting" | "unknown";
+	/**
+	 * PAUSED: the hidden page is closed, so the microphone is released and
+	 * dictation may use it, while the Gateway and the speech models stay warm.
+	 * Main owns it because the page is main's.
+	 */
+	paused?: boolean;
+	/** The page's own playback silenced (`webContents.setAudioMuted`). */
+	muted?: boolean;
 };
 export type QwenVoiceTake = { taskId: string; text: string };
 export type QwenVoiceEvent = {
@@ -5850,6 +5866,12 @@ export type QwenVoiceBridge = {
 	getStatus: () => Promise<QwenVoiceStatus>;
 	onStatus: (listener: (status: QwenVoiceStatus) => void) => () => void;
 	openMicrophoneSettings: () => Promise<void>;
+	/** Close the hidden page (releasing the microphone), keeping the rig warm. */
+	pause: () => Promise<QwenVoiceStatus>;
+	/** Recreate the hidden page, re-applying the remembered mute. */
+	resume: () => Promise<QwenVoiceStatus>;
+	/** Silence the page's own speech; remembered across a recreate. */
+	setMuted: (muted: boolean) => Promise<QwenVoiceStatus>;
 	onEvent: (listener: (event: QwenVoiceEvent) => void) => () => void;
 };
 

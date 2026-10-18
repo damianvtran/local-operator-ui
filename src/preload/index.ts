@@ -198,6 +198,17 @@ const api = {
 				ipcRenderer.invoke("voice.qwen.status.get"),
 			openMicrophoneSettings: (): Promise<void> =>
 				ipcRenderer.invoke("voice.qwen.open-mic-settings"),
+			/*
+			 * THE STRIP'S TWO CONTROLS. Both answer the new status, which is what
+			 * the strip paints; mute is coerced here as well as in main because this
+			 * object is the boundary a renderer value crosses.
+			 */
+			pause: (): Promise<QwenVoiceStatus> =>
+				ipcRenderer.invoke("voice.qwen.pause"),
+			resume: (): Promise<QwenVoiceStatus> =>
+				ipcRenderer.invoke("voice.qwen.resume"),
+			setMuted: (muted: boolean): Promise<QwenVoiceStatus> =>
+				ipcRenderer.invoke("voice.qwen.mute", muted === true),
 			onStatus: (listener: (status: QwenVoiceStatus) => void) => {
 				const handler = (_event: unknown, status: QwenVoiceStatus) =>
 					listener(status);
