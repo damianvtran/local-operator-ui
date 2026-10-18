@@ -181,13 +181,53 @@ export type ExternalVerdict =
 	| { allowed: false; reason: string };
 
 /**
+ * The one loopback page MAIN may hand to the user's browser: the voice WebUI
+ * its own Gateway serves at `http://127.0.0.1:<port>/`.
+ *
+ * WHY AN ALLOWANCE AND NOT A WIDER RULE: the loopback refusal above exists
+ * because a renderer picks the URL (security review S-5), and it must keep
+ * holding for every renderer-reachable door. Only main constructs this value,
+ * from the port it launched the Gateway on; the `open-external` IPC and the
+ * `window.open` handler call the door with a URL alone, so no renderer input
+ * can carry one. It names ONE page exactly - that host spelling, that port,
+ * path `/`, no query, fragment or credentials - so it cannot be stretched into
+ * "loopback is fine for main": the daemon on its own port, a sibling path on
+ * the Gateway, and every other local or private spelling are still refused.
+ */
+export type LoopbackPageAllowance = { port: number };
+
+/** The host spelling the Gateway listens on and announces, and the only one admitted. */
+const LOOPBACK_PAGE_HOST = "127.0.0.1";
+
+function isAllowedLoopbackPage(
+	url: URL,
+	allowance: LoopbackPageAllowance | undefined,
+): boolean {
+	if (!allowance || !Number.isInteger(allowance.port)) return false;
+	return (
+		url.protocol === "http:" &&
+		url.hostname === LOOPBACK_PAGE_HOST &&
+		url.port === String(allowance.port) &&
+		url.pathname === "/" &&
+		url.search === "" &&
+		url.hash === ""
+	);
+}
+
+/**
  * Whether `raw` may be passed to `shell.openExternal`, and the string to pass.
  *
  * The URL handed back is the PARSED `href`, never the input: parsing strips the
  * leading control characters and whitespace some schemes' handlers have been
  * fooled by, and it is the one string the verdict was actually made about.
+ *
+ * `loopbackPage` is main's own allowance (see `LoopbackPageAllowance`); a
+ * renderer-reachable caller never passes one.
  */
-export function externalUrlVerdict(raw: unknown): ExternalVerdict {
+export function externalUrlVerdict(
+	raw: unknown,
+	loopbackPage?: LoopbackPageAllowance,
+): ExternalVerdict {
 	if (typeof raw !== "string" || raw.length === 0)
 		return { allowed: false, reason: "not a string" };
 	if (raw.length > MAX_EXTERNAL_URL_LENGTH)
@@ -208,7 +248,10 @@ export function externalUrlVerdict(raw: unknown): ExternalVerdict {
 		if (url.username || url.password)
 			return { allowed: false, reason: "URL carries credentials" };
 		if (!url.hostname) return { allowed: false, reason: "URL has no host" };
-		if (isLocalOrPrivateHost(url.hostname))
+		if (
+			isLocalOrPrivateHost(url.hostname) &&
+			!isAllowedLoopbackPage(url, loopbackPage)
+		)
 			return {
 				allowed: false,
 				reason: "URL names a loopback or private-network host",
@@ -233,8 +276,9 @@ export async function openVettedExternal(
 	raw: unknown,
 	open: (url: string) => Promise<void> | void,
 	log: (message: string) => void,
+	loopbackPage?: LoopbackPageAllowance,
 ): Promise<ExternalOpenOutcome> {
-	const verdict = externalUrlVerdict(raw);
+	const verdict = externalUrlVerdict(raw, loopbackPage);
 	if (!verdict.allowed) {
 		log(`[window-guard] refused to open externally: ${verdict.reason}`);
 		return { ok: false, reason: verdict.reason };
