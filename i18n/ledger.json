@@ -4648,8 +4648,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.browser",
-			"source_sha256": "4bdd6666a1c4358ea12dcc82229823659f33e96f225dcca57e0630a94e3e0641",
-			"target_sha256": "5d5b6edc412918897ac0643c14bc2aafbe616a570b530541f87d182968d59795",
+			"source_sha256": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
+			"target_sha256": "e34a2a4bb3fb57ed2d5432c7e61661c1a512278b92f37796b23917a6e5c5f48a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -4658,19 +4658,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
+					"instance": "5aca350128af",
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-18",
-					"result": "clean-with-findings",
-					"instance": "a438d9213a68",
-					"receipt": "i18n/receipts/a438d9213a68.json",
-					"receipt_sha256": "361f6b446d8eb86193adfd36542001c87e205d51f6adc354658a815f6234e068",
-					"scope": "Full native read at 1516984ec99ae09e635b0cb58c4f2e747de1483c, retained for byte-identical values; all five mesh remediation keys delta-read at f82e9ccffea997f040cab6874aaea45019d11219; same independent auditor, not a second independent pass",
+					"result": "clean",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 2
-					}
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/fr-browser-title-delta-5aca350128af.json",
+					"receipt_sha256": "27dc9eefe83889a54c6d5400ca20ac3227deef9bcca8e673c55d51a352ecfcee",
+					"scope": "6ab72e74bda50340fc768216ffcdd60901ed673a..5c2b5f1cddc51b910c881f270bf0ef53e9ae1718",
+					"note": "Placeholder-only delta: five French tab-menu labels gained {title} and the closing quote; rendered output proved byte-identical to the previous split composition. Wording unchanged; no other key moved."
 				}
 			],
 			"status": "audited"

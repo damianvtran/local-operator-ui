@@ -573,6 +573,7 @@ const IDENTICAL_OK = new Map([
 		"ui.settings.updates.update_following.surface_choice",
 		"Placeholders and a colon only ({surface}: {choice}); no words to translate.",
 	],
+	["ui.canvas.files.code", "French cognate: « code » has the same spelling."],
 ]);
 
 function localeDirs() {
