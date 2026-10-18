@@ -23,9 +23,12 @@ export type AnswerActionId = "copy" | "speak" | "fork";
  * `answer` is the turn-closing assistant row the row was built for; `user` is
  * the reader's own turn, which offers Copy and nothing else (speaking the
  * reader's own message back is not an affordance the operator asked for, and
- * the speech engine synthesises agent-side text).
+ * the speech engine synthesises agent-side text). `response` is any OTHER
+ * settled assistant response in the turn (#1043): Copy alone, because the full
+ * row stays the closing answer's (PR #698's one-row-per-turn rule), but
+ * every response the reader can see must be copyable without hand-selecting.
  */
-export type ActionRowRole = "answer" | "user";
+export type ActionRowRole = "answer" | "user" | "response";
 
 /**
  * The row's actions, in order, and the cap that keeps it a row.
@@ -119,6 +122,11 @@ export function answerActionsFor({
 	 */
 	const fork: AnswerActionId[] = forkable ? ["fork"] : [];
 	if (role === "user") return ["copy", ...fork];
+	/*
+	 * A non-closing response offers Copy and nothing else, whatever the caller
+	 * passes: Speak and Fork per paragraph is the repetition #698 removed.
+	 */
+	if (role === "response") return ["copy"];
 	/*
 	 * SPEAK IS ALWAYS LISTED, and the row carries no agent gate. The gate this
 	 * replaced tested an agent id that in this app is the PANE's identity - not
