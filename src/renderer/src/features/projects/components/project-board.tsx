@@ -832,16 +832,18 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 							 * the veil measured `inkMuted` 4.03:1 on synthwave. The operator's
 							 * report is the other half of that trade: with the well clear the
 							 * board lost its lane structure and read as headers floating on
-							 * the page. The resolution is a token that is NOT ink - the
-							 * palette's `surface` at the derived lane alpha
-							 * (`--lo-glass-a-lane`, 0.76 dark / 0.41 light). It is still
-							 * translucent (it composes over the page's canvas glass), it is a
-							 * brightness step in the direction the flat `surface` lift has,
-							 * and the card keeps its veil as the only ink layer under its
-							 * text. Measured over all 59 palettes: the lane steps ΔE00
-							 * 1.87-4.93 off the page at the default intensity (floor 1.5), the
-							 * card steps 4.46-5.97 off the lane (floor 4.0), and `inkMuted`
-							 * on the card holds 5.18:1.
+							 * the page. The resolution is a token that is NOT ink - a derived
+							 * palette role at `pageAlpha * scale`
+							 * (`--lo-glass-a-lane`: `sunken` x 0.73 dark, `surface` x 0.72
+							 * light). It TRACKS the slider rather than sitting at a fixed alpha:
+							 * round 1 measured the fixed version vanishing at the opaque end
+							 * (ΔE00 0.59 dark at 25, 0.99 light at 0), because the page's own
+							 * alpha moves 0.66 -> 0.96 while a constant does not. The card
+							 * keeps its veil as the only ink layer under its text. Measured over
+							 * all 59 palettes at 80: the lane steps ΔE00 1.82-5.73 off the page
+							 * (floor 1.5), the card steps 4.39-6.37 off the lane (floor 4.0), and
+							 * `inkMuted` on the card holds 5.27:1. The contract asserts all 101
+							 * slider positions; the tightest is 1.53.
 							 *
 							 * THE WELL IS CAPPED AT ONE SCREEN (operator refinement): the
 							 * section never grows past the board viewport - every CELL is its

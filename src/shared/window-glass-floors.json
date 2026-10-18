@@ -43,8 +43,14 @@
 		"light": 0.12
 	},
 	"laneWash": {
-		"dark": 0.76,
-		"light": 0.41
+		"dark": {
+			"role": "sunken",
+			"scale": 0.73
+		},
+		"light": {
+			"role": "surface",
+			"scale": 0.72
+		}
 	},
 	"controlMix": {
 		"under-window": {

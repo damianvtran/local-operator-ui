@@ -1031,7 +1031,7 @@ opaque root behind opaque descendants.
 | Chrome band (Browser tab strip and URL row) | `data-glass-region="chrome"`: `surface` at its floor, raw over the desktop | it is the sidebar's rung, so the two read as one edge |
 | Running tool row | `data-glass-state="running"`: ink at the selected step | an in-flight row is the subject; an opaque rung was a slab |
 | Well behind blocks | `data-glass-well="clear"` paints nothing | a well-as-ink never sits under a veil |
-| Lane (the Projects board's well and column strip) | `data-glass-lane`: `surface` at the derived lane wash (0.76 dark / 0.41 light), over the page glass | the card's veil is the only ink under its text; the lane is a brightness step that composes instead of a second ink |
+| Lane (the Projects board's well and column strip) | `data-glass-lane`: the derived scheme role (`sunken` dark / `surface` light) at a scale of the page alpha, over the page glass | the card's veil is the only ink under its text; a wash that tracks the slider keeps its step at every frosted/clear position instead of one |
 | Segmented-control tracks, bands | ink overlay at 0.05 (`data-glass-well` or `role=tablist`) | a track is a well, not a block |
 | Row hover / selected (nav, list rows, rail, tabs, the active browser tab) | palette `ink` at 0.05 / 0.08 over the glass | an opaque pill is a hole; a faint tint vanishes over a bright desktop. An ink overlay is a step relative to whatever the ground is |
 | Text fields, outlined controls, segmented-control tracks | ink overlay at 0.05; `border-control` mixed toward `ink` by `controlMix` | the BORDER carries the 3:1 edge, the fill only lifts it |
@@ -1053,7 +1053,7 @@ be on glass:
 | Plane (a scroll container, list body, viewer body, tab strip) | `data-glass-plane="clear"` | nothing: the region owns the alpha, and a second role fill is the opaque island the report is about |
 | Band (a sticky section header, a toolbar that masks what scrolls under it) | `data-glass-plane="band"` | the field overlay (ink 5%), the same step a track or a field wears |
 | Block (a text-bearing card whose fill is its boundary) | `data-glass-block` | the derived veil (unchanged) |
-| Lane (a well that must read under veiled cards) | `data-glass-lane` | `surface` at the derived lane wash |
+| Lane (a well that must read under veiled cards) | `data-glass-lane` | the derived scheme role at `pageAlpha * scale` (tracks the slider) |
 
 **The selected tab is an overlay, not a pill.** A tab's opaque `bg-surface` /
 `bg-elevated` fill is a hole in a translucent strip; inside a covered pane the
@@ -1063,18 +1063,28 @@ would stack to 12.7% and put `inkMuted` at 4.18:1 on dracula. Measured at 8% ove
 the pane: `inkMuted` 4.76:1, `inkDim` 3.92:1, `ink` 6.16:1 - the worst palette,
 all three material tiers. A row HOVER inside a covered pane is the row-hover ink
 overlay; the rail's `hover:bg-surface` / `hover:bg-sunken` utilities are translated
-by one rule rather than rewritten call site by call site.
+by one rule rather than rewritten call site by call site. THAT TRANSLATION STOPS AT
+A VEILED BLOCK: ink 5% over the veil measured `inkMuted` 4.30:1 on synthwave
+(round 1, F1), so a hovered option row or footer button inside one paints no fill,
+and the affordance rides the cursor and the control's own ink, the same decision
+the veil's no-hover rule makes for the block itself.
 
-**The lane wash is derived, not chosen.** `laneWash` (dark 0.76 / light 0.41) is
-the smallest `surface` alpha at which the lane steps ΔE00 1.5 off the page at the
-default intensity (80) - the binding position, because the page is most opaque
-there. The lane cannot be an ink overlay: the card above it already spends the
-ink budget on its veil, and ink 5% under the veil measured `inkMuted` 4.03:1 on
-synthwave. Measured over all 59 palettes at 80: lane ΔE00 1.87-4.93 off the page,
-card ΔE00 4.46-5.97 off the lane, `inkMuted` on the card 5.18:1 minimum, `inkDim`
-4.16:1. Frosted (intensity 0) is the stated limit: the lane can be subtler there
-because the window itself is nearly solid. The lane's flat form is the opaque
-`sunken` well, unchanged.
+**The lane wash is derived, not chosen - and it tracks the slider.** `laneWash` is
+a `{role, scale}` pair per scheme: the lane paints `role` at `pageAlpha * scale`
+(`sunken` at 0.73 on dark, `surface` at 0.72 on light), so the step is held at
+every slider position rather than at one claimed "binding" point. Round 1 measured
+the fixed-alpha version: the page's alpha runs `0.66 -> 0.96` as intensity FALLS
+while the old wash stayed at `0.76 / 0.41`, and the lane fell to ΔE00 0.59 on dark
+at 25 and 0.99 on light at 0 - "80 is binding" was inverted. The role is derived
+with the scale because a role's distance from `canvas` bounds the step at the
+opaque end: dark `surface` is only ΔE00 1.3-1.6 off `canvas` on several palettes and
+cannot clear at any alpha, while dark `sunken` can; light is the reverse. The lane
+cannot be an ink overlay: the card above it already spends the ink budget on its
+veil, and ink 5% under the veil measured `inkMuted` 4.03:1 on synthwave. Measured
+over all 59 palettes at 80: lane ΔE00 1.82-5.73 off the page, card ΔE00 4.39-6.37
+off the lane, `inkMuted` on the card 5.27:1 minimum, `inkDim` 4.14:1. The contract
+asserts every slider position; the tightest shipped step is ΔE00 1.53 at
+intensity 2. The lane's flat form is the opaque `sunken` well, unchanged.
 
 **The sounds surfaces are covered by the block and field rows.** The sound
 player's waveform and clock are `ink-dim` / `ink-muted` on the message block's

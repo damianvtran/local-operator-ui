@@ -16,7 +16,7 @@ import { test } from "node:test";
 import { build } from "esbuild";
 import {
 	LANE_ALPHA_CEILING,
-	LANE_DEFAULT_INTENSITY,
+	LANE_ROLES,
 	deriveLaneWash,
 } from "./derive-glass-floors.mjs";
 
@@ -598,18 +598,25 @@ test("G-7c the lane wash is committed as derived, and its mirrored constants are
 	for (const scheme of ["dark", "light"]) {
 		const wash = floorsFile.laneWash?.[scheme];
 		assert.ok(
-			typeof wash === "number" && wash > 0 && wash < 1,
-			`laneWash/${scheme} is a committed alpha`,
+			wash !== null &&
+				typeof wash === "object" &&
+				LANE_ROLES.includes(wash.role) &&
+				typeof wash.scale === "number" &&
+				wash.scale > 0 &&
+				wash.scale <= 1,
+			`laneWash/${scheme} is a derived {role, scale}`,
 		);
 	}
 	/*
-	 * THE DERIVATION MIRRORS TWO CONSTANTS because it has no build step. If either
-	 * moves in `src/shared/window-glass.ts` without being carried into
-	 * `scripts/derive-glass-floors.mjs`, the lane would be derived at a different
-	 * intensity than the slider actually ships - a silent second opinion about the
-	 * same number. This is the check that makes the mirror a contract.
+	 * THE DERIVATION MIRRORS ONE CONSTANT because it has no build step. If the
+	 * ceiling moves in `src/shared/window-glass.ts` without being carried into
+	 * `scripts/derive-glass-floors.mjs`, the lane family would be derived against
+	 * a different ground alpha than the slider actually ships - a silent second
+	 * opinion about the same number. This is the check that makes the mirror a
+	 * contract. (The round-1 `LANE_DEFAULT_INTENSITY` mirror is gone with the
+	 * fixed-alpha derivation: the family now covers every slider position, so
+	 * there is no "default" the number could disagree about.)
 	 */
-	assert.equal(LANE_DEFAULT_INTENSITY, glass.DEFAULT_GLASS_INTENSITY);
 	assert.equal(LANE_ALPHA_CEILING, glass.GLASS_ALPHA_CEILING);
 	assert.deepEqual(
 		deriveLaneWash(
@@ -666,7 +673,19 @@ test("G-8 paint: which kinds a coverage turns translucent, and the net alphas", 
 	/* The round-2 overlays are published from the committed table, per scheme. */
 	assert.equal(a("--lo-glass-a-row-work"), floorsFile.stateAlpha.work);
 	assert.equal(a("--lo-glass-a-block-veil"), floorsFile.blockVeil.dark);
-	assert.equal(a("--lo-glass-a-lane"), floorsFile.laneWash.dark);
+	/* The lane is a SCALE of the page's own alpha, so it tracks the slider. */
+	assert.equal(
+		a("--lo-glass-a-lane"),
+		Math.round(
+			a("--lo-glass-a-canvas") * floorsFile.laneWash.dark.scale * 100,
+		) / 100,
+		"the lane alpha is the page alpha at the derived scale",
+	);
+	assert.equal(
+		v["--lo-glass-lane-tone"],
+		`var(--lo-${floorsFile.laneWash.dark.role})`,
+		"the lane tone is the derived role, published once",
+	);
 	const lightVars = glass.glassPaintFor({
 		coverage: "full",
 		intensity: 60,
@@ -681,11 +700,27 @@ test("G-8 paint: which kinds a coverage turns translucent, and the net alphas", 
 	);
 	assert.equal(
 		Number(lightVars["--lo-glass-a-lane"]),
-		floorsFile.laneWash.light,
-		"the lane wash follows the palette's scheme",
+		Math.round(
+			Number(lightVars["--lo-glass-a-canvas"]) *
+				floorsFile.laneWash.light.scale *
+				100,
+		) / 100,
+		"the lane alpha follows the palette's scheme",
 	);
-	/* Every var is a bare number the CSS multiplies by 100%. */
-	for (const value of Object.values(v)) assert.match(value, /^\d(\.\d+)?$/);
+	assert.equal(
+		lightVars["--lo-glass-lane-tone"],
+		`var(--lo-${floorsFile.laneWash.light.role})`,
+		"the lane tone follows the palette's scheme",
+	);
+	/* Every numeric var is a bare number the CSS multiplies by 100%; the tone is
+	 * the one non-numeric reference, and it must stay a single palette var(). */
+	for (const [name, value] of Object.entries(v)) {
+		if (name === "--lo-glass-lane-tone") {
+			assert.match(value, /^var\(--lo-(?:surface|sunken)\)$/);
+			continue;
+		}
+		assert.match(value, /^\d(\.\d+)?$/);
+	}
 });
 
 test("G-9 argv round-trip: the first-frame fact fails closed", () => {
@@ -814,6 +849,30 @@ test("G-11 every region, state and well the CSS names is a marker some component
 		/\[data-glass-block\]\s*\[class~="hover:bg-row-hover"\]:hover\s*\{\s*background-color:\s*transparent;/,
 		"a row inside a veiled block must paint no hover fill: veil + row-hover stacks two inks and breaks AA",
 	);
+	/*
+	 * ROUND 1, F1: THE PANE TRANSLATION IS THE SAME STACK. A hovered option row or
+	 * footer button inside the ask card took the pane rule's `row-hover` (ink 5%)
+	 * over the card's veil and measured `inkMuted` 4.30:1 on synthwave - the
+	 * `hover:bg-row-hover` suppression above did not cover it, because the ask
+	 * rows wear `hover:bg-sunken` and let the PANE rewrite them. Every utility the
+	 * pane rule translates must therefore be suppressed inside a veiled block.
+	 */
+	const paneSuppression = css.match(
+		/\[data-glass-block\]\s*:is\(([^)]*)\):hover\s*\{\s*background-color:\s*transparent;/,
+	)?.[1];
+	assert.ok(
+		paneSuppression !== undefined,
+		"a hover utility inside a veiled block must paint no fill: the pane rule translates it to ink over the veil",
+	);
+	for (const utility of [
+		"hover:bg-surface",
+		"hover:bg-sunken",
+		"hover:bg-elevated",
+	])
+		assert.ok(
+			paneSuppression.includes(utility),
+			`the veiled-block suppression must cover ${utility} (the pane rule translates it)`,
+		);
 	if (/\[data-glass-block\]/.test(css))
 		assert.ok(
 			sources.some((source) => /data-glass-block/.test(source)),
