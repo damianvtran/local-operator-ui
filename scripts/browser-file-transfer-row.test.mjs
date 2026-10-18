@@ -5,6 +5,8 @@ import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import { act } from "react";
 
+import { withAbsentLocale } from "./i18n/absent-locale.mjs";
+
 /*
  * THE TRANSFER ROW'S OWN DOM CONTRACT, against the SHIPPED component.
  *
@@ -101,7 +103,7 @@ export function update(root, props) {
  * to take again. See the D10 case below for why that matters.
  */
 export * as stories from "./src/renderer/src/features/browser/components/browser-file-transfer-row.stories";
-export { t as tr, setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";
+export { t as tr, setLocale, registerCatalogue, clearRegisteredCatalogues, currentLocale } from "./src/i18n";
 `;
 
 const bundle = await build({
@@ -135,6 +137,7 @@ const {
 	setLocale,
 	registerCatalogue,
 	clearRegisteredCatalogues,
+	currentLocale,
 } = await import(bundlePath.href);
 setLocale("en");
 await unlink(bundlePath);
@@ -638,12 +641,25 @@ test("EVERY committed story specimen paints, which is the defect D10 was (review
 // Exercise the subscription on an already-mounted shipped row, not a new render fixture.
 test("a mounted transfer row refreshes language and absent messages keep English plurals", async (t) => {
 	const saved = await open(t, { transfers: activity([note()]) });
+	let restoreLocale = () => {};
 	try {
 		assert.ok(saved.spoken().includes("was saved to"));
-		registerCatalogue("fr", {
-			"ui.browser.browser_file_transfer_row.was_saved_to": "Fixture saved to",
+		/*
+		 * The shared synthetic locale: this test never couples to what a real
+		 * shipped catalogue happens to contain. The point is the per-key English
+		 * fallback for an ABSENT message; registering against `fr` meant the
+		 * assertion broke the day fr legitimately shipped these keys (tranche 2),
+		 * and `ABSENT_LOCALE` keeps that premise true for every future tranche.
+		 */
+		await act(() => {
+			restoreLocale = withAbsentLocale(
+				{ currentLocale, setLocale, registerCatalogue },
+				{
+					"ui.browser.browser_file_transfer_row.was_saved_to":
+						"Fixture saved to",
+				},
+			);
 		});
-		await act(() => setLocale("fr"));
 		assert.ok(saved.spoken().includes("Fixture saved to"), saved.spoken());
 		for (const count of [0, 1, 21]) {
 			assert.equal(
@@ -800,7 +816,7 @@ test("a mounted transfer row refreshes language and absent messages keep English
 		}
 	} finally {
 		clearRegisteredCatalogues();
-		await act(() => setLocale("en"));
+		await act(() => restoreLocale());
 	}
 });
 

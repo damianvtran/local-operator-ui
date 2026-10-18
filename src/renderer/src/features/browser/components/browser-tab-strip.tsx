@@ -1434,8 +1434,9 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 													data-tour-tag="browser-tab-actions"
 												>
 													<DropdownMenuLabel className="truncate">
-														{t("ui.browser.browser_tab_strip.actions_for")}
-														{tabLabel(tab.title)}"
+														{t("ui.browser.browser_tab_strip.actions_for", {
+															title: tabLabel(tab.title),
+														})}
 													</DropdownMenuLabel>
 													{!tab.active && (
 														/* §8.3's "one click to watch": activation is the
@@ -1447,8 +1448,9 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 															onSelect={() => onActivate(tab.tabId)}
 															data-tour-tag="browser-tab-watch"
 														>
-															{t("ui.browser.browser_tab_strip.watch")}
-															{tabLabel(tab.title)}"
+															{t("ui.browser.browser_tab_strip.watch", {
+																title: tabLabel(tab.title),
+															})}
 														</DropdownMenuItem>
 													)}
 													{/*
@@ -1463,8 +1465,11 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 														>
 															{t(
 																"ui.browser.browser_tab_strip.let_an_agent_use",
+																{
+																	title: tabLabel(tab.title),
+																},
 															)}
-															{tabLabel(tab.title)}"…
+															…
 														</DropdownMenuItem>
 													)}
 													{(tab.handedOver || tab.owner === "agent") && (
@@ -1474,8 +1479,10 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 														>
 															{t(
 																"ui.browser.browser_tab_strip.stop_letting_the_agent_use",
+																{
+																	title: tabLabel(tab.title),
+																},
 															)}
-															{tabLabel(tab.title)}"
 														</DropdownMenuItem>
 													)}
 													{/*
@@ -1584,8 +1591,9 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 														onSelect={() => runClose(tab.tabId)}
 														data-tour-tag="browser-tab-actions-close"
 													>
-														{t("ui.browser.browser_tab_strip.close")}
-														{tabLabel(tab.title)}"
+														{t("ui.browser.browser_tab_strip.close", {
+															title: tabLabel(tab.title),
+														})}
 													</DropdownMenuItem>
 													{/*
 													 * THE BULK ACTIONS (design R5), AND THE COUNTS IN THEIR

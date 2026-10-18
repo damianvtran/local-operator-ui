@@ -1,0 +1,141 @@
+{
+  "locale": "ru",
+  "agent": "i18n-auditor",
+  "instance": "607e9ab065c8",
+  "model": "openai/gpt-6.1-sol",
+  "date": "2026-10-18",
+  "scope": "65ad12e7675a132e4a677ecf7aef95f227379525",
+  "independent": true,
+  "model_provenance": "Session initially configured anthropic/claude-sonnet-5-5; quota switch occurred before catalogue/native audit. All substantive audit performed by openai/gpt-6.1-sol.",
+  "translation_receipt": {
+    "path": "i18n/receipts/ui-ru-batch-2.json",
+    "sha256": "f1f87e85aef2c2414d7c54e0aee8a56dd0c2ce95f9405e1a83334de2b62c4845"
+  },
+  "namespaces": {
+    "ui.browser": {
+      "namespace": "ui.browser",
+      "status": "changes_requested",
+      "sha256": {
+        "en": "4bdd6666a1c4358ea12dcc82229823659f33e96f225dcca57e0630a94e3e0641",
+        "ru": "e36966d292000e7a8d80f0e78956042bda393121dfcb80ac1dea3b6edfb39101"
+      },
+      "context_sha256": "10352ba32ef4ded15c52209d0e8b3574b2a053cef038fab1c8d613f2d29e0962",
+      "keys": 224,
+      "findings": [
+        {
+          "id": "RU-B1",
+          "severity": "major",
+          "keys": [
+            "ui.browser.webauthn_chooser.passkeys_waiting"
+          ],
+          "description": "Russian one hard-codes один and loses the count for 21/31/101; actual IntlMessageFormat count=21 prints Ожидает ещё один запрос ключа доступа. Preserve the raw-number placeholder in one as in few/many/other."
+        },
+        {
+          "id": "RU-B3",
+          "severity": "minor",
+          "keys": [
+            "ui.browser.browser_tab_strip.actions_for",
+            "ui.browser.browser_tab_strip.watch",
+            "ui.browser.browser_tab_strip.let_an_agent_use",
+            "ui.browser.browser_tab_strip.stop_letting_the_agent_use",
+            "ui.browser.browser_tab_strip.close"
+          ],
+          "description": "Catalogue opens « but browser-tab-strip.tsx:1437-1478,1587 appends ASCII double quote. Composition yields Действия для «Пример\". Use a complete ICU message including title and both Russian quotes, not locale-specific opening punctuation plus a hard-coded English closer."
+        },
+        {
+          "id": "RU-B5",
+          "severity": "minor",
+          "keys": [
+            "ui.browser.browser_tab_strip.close_conversation_tabs",
+            "ui.browser.browser_tab_strip.close_failed_tabs",
+            "ui.browser.browser_tab_strip.close_other_tabs",
+            "ui.mesh.mesh_node.show_all_conversations",
+            "ui.mesh.mesh_list.show_all_panel"
+          ],
+          "description": "All-category grammar: fixed все produces Закрыть все 1 вкладку and Показать все 1 разговор (also category one at 21); other produces 1,5 сбойные вкладки / 1,5 другие вкладки. Move agreement inside arms or omit все; fractional noun phrases need genitive singular. show_all_panel has показать все 1 в панели. Fractions were exercised deliberately, not claimed reachable UI counts."
+        },
+        {
+          "id": "RU-B7",
+          "severity": "minor",
+          "keys": [
+            "ui.browser.browser_approvals_dock.clearing_cookies_signs_this_app_out_of",
+            "ui.browser.browser_consent_request.one_navigation_for_that_conversation_up_to"
+          ],
+          "description": "Native prose: о уже одобренном сайте needs об уже одобренном сайте; одна навигация is an English calque for the one-time site-navigation permission, use один переход while retaining conversation and ten-minute scope."
+        }
+      ]
+    },
+    "ui.browser.chrome": {
+      "namespace": "ui.browser.chrome",
+      "status": "passed",
+      "sha256": {
+        "en": "73793572e5e36b8bbc8df6c1f27fb98083634b3b9e3cbd05ede27da4813c656c",
+        "ru": "2688af4652d43ca3340da9dcb169ded82a45281bdd09b497667036aa4fd11065"
+      },
+      "context_sha256": "76b9677798c0f80a46de03a67621b558988aae6d8069739d0e0d37c18f4b7393",
+      "keys": 14,
+      "findings": []
+    },
+    "ui.mesh": {
+      "namespace": "ui.mesh",
+      "status": "changes_requested",
+      "sha256": {
+        "en": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+        "ru": "31f6e5471b2947ffeac16e1c3244d10d4d87f4a875cbca471fcbf30ed51dd78c"
+      },
+      "context_sha256": "666c9e1c0299b6dbb49a678e14338711c63993e20f639dedda89e03b88a768f8",
+      "keys": 223,
+      "findings": [
+        {
+          "id": "RU-B2",
+          "severity": "major",
+          "keys": [
+            "ui.mesh.mesh_approvals.that_device_can_check_approvals_signed_on"
+          ],
+          "description": "Security consequence nothing there can sign becomes подписывать там нечего (nothing to sign), not inability to sign. Explicitly say на этом устройстве нельзя подписывать одобрения / устройство не может подписывать одобрения; the remote anchor is verify-only (mesh-approvals.ts:539-552)."
+        },
+        {
+          "id": "RU-B4",
+          "severity": "minor",
+          "keys": [
+            "ui.mesh.mesh_actions.copy_notice",
+            "ui.mesh.mesh_actions.the_other_device_keeps",
+            "ui.mesh.mesh_actions.this_device_keeps"
+          ],
+          "description": "Runtime keeper expands to другое устройство сохранит / это устройство сохранит, yielding а это устройство сохранит останется свой. Rephrase the complete composed sentence so it clearly states which device retains the original (mesh-actions.tsx:97-102)."
+        },
+        {
+          "id": "RU-B5",
+          "severity": "minor",
+          "keys": [
+            "ui.browser.browser_tab_strip.close_conversation_tabs",
+            "ui.browser.browser_tab_strip.close_failed_tabs",
+            "ui.browser.browser_tab_strip.close_other_tabs",
+            "ui.mesh.mesh_node.show_all_conversations",
+            "ui.mesh.mesh_list.show_all_panel"
+          ],
+          "description": "All-category grammar: fixed все produces Закрыть все 1 вкладку and Показать все 1 разговор (also category one at 21); other produces 1,5 сбойные вкладки / 1,5 другие вкладки. Move agreement inside arms or omit все; fractional noun phrases need genitive singular. show_all_panel has показать все 1 в панели. Fractions were exercised deliberately, not claimed reachable UI counts."
+        },
+        {
+          "id": "RU-B6",
+          "severity": "minor",
+          "keys": [
+            "ui.mesh.mesh_approvals.borrow_logins_there",
+            "ui.mesh.mesh_approvals.borrow_the_logins_stored_there",
+            "ui.mesh.mesh_approvals.your_sessions_may_use_the_logins_stored",
+            "ui.mesh.mesh_list.answered_the_peer_read_but_is_in",
+            "ui.mesh.mesh_store.the_move_answered_and_this_app_could"
+          ],
+          "description": "Technical calques obscure meaning: заимствовать входы / сохранённые входы should describe using saved sign-in sessions; ответил, что пир прочитан changes answered the peer read into a claim about reading a peer; Перемещение ответило treats an operation as a speaker. Use ответило на запрос сведений о пире and Получен ответ на запрос перемещения (with the remaining consequence)."
+        }
+      ]
+    }
+  },
+  "verification": {
+    "integrity": "461 keys, exact en/ru key sets, no duplicates, tab-indented JSON; ICU parses, argument/type signatures and select arms preserved; 40 plurals carry one/few/many/other.",
+    "execution": "IntlMessageFormat at 1,2,5,1.5,21,22,25 for all 40 plural messages; chrome accessible_tab and operation_failed select samples.",
+    "composition": "Read actual pinned React callsites for quotation composition and keeper interpolation.",
+    "width": "Six chrome action labels: 19/25/26/21/24/25 code points, all within sidecar aim 28. Static counts only. No rendered or pixel-fit certification.",
+    "limitations": "No browser/Electron launch, rendered screenshots, pseudo-localization or overflow measurement. Only one independent audit instance; no activation or second-auditor claim."
+  }
+}
