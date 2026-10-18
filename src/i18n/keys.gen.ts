@@ -129,7 +129,13 @@ import esUiSettingsSpeech from "./catalogues/es/ui.settings.speech.json";
 import esUiSettingsUpdates from "./catalogues/es/ui.settings.updates.json";
 import esUiShell from "./catalogues/es/ui.shell.json";
 import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
+import frUiAgentMessages from "./catalogues/fr/ui.agentMessages.json";
+import frUiAgentsDialogs from "./catalogues/fr/ui.agents.dialogs.json";
+import frUiAgentsModels from "./catalogues/fr/ui.agents.models.json";
 import frUiAgentsNavigation from "./catalogues/fr/ui.agents.navigation.json";
+import frUiAgentsRefusals from "./catalogues/fr/ui.agents.refusals.json";
+import frUiAgentsSettings from "./catalogues/fr/ui.agents.settings.json";
+import frUiAgentsStarters from "./catalogues/fr/ui.agents.starters.json";
 import frUiBrowserChrome from "./catalogues/fr/ui.browser.chrome.json";
 import frUiBrowser from "./catalogues/fr/ui.browser.json";
 import frUiCanvas from "./catalogues/fr/ui.canvas.json";
@@ -152,6 +158,7 @@ import frUiConsole from "./catalogues/fr/ui.console.json";
 import frUiHubComments from "./catalogues/fr/ui.hub.comments.json";
 import frUiHub from "./catalogues/fr/ui.hub.json";
 import frUiHubTaxonomy from "./catalogues/fr/ui.hub.taxonomy.json";
+import frUiInstaller from "./catalogues/fr/ui.installer.json";
 import frUiMesh from "./catalogues/fr/ui.mesh.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
@@ -322,7 +329,13 @@ export const bundledCatalogues: Readonly<
 		...esUiShellRail,
 	},
 	fr: {
+		...frUiAgentMessages,
+		...frUiAgentsDialogs,
+		...frUiAgentsModels,
 		...frUiAgentsNavigation,
+		...frUiAgentsRefusals,
+		...frUiAgentsSettings,
+		...frUiAgentsStarters,
 		...frUiBrowserChrome,
 		...frUiBrowser,
 		...frUiCanvas,
@@ -345,6 +358,7 @@ export const bundledCatalogues: Readonly<
 		...frUiHubComments,
 		...frUiHub,
 		...frUiHubTaxonomy,
+		...frUiInstaller,
 		...frUiMesh,
 		...frUiOnboarding,
 		...frUiProjects,

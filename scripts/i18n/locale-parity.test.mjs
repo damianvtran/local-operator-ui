@@ -544,6 +544,50 @@ const IDENTICAL_OK = new Map([
 		"ui.settings.imports.source_heading",
 		"French cognate: « Sources » has the same spelling.",
 	],
+	[
+		"ui.installer.installer_panel.local_operator",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.agents.starters.summary.sentence",
+		"Language-neutral composition: {parts} plus a full stop.",
+	],
+	[
+		"ui.agents.starters.summary.separator",
+		"Language-neutral list separator: comma and space.",
+	],
+	[
+		"ui.agents.models.reading.effort_col",
+		"French cognate: « Effort » has the same spelling.",
+	],
+	[
+		"ui.agents.models.reading.effort_auto",
+		"French abbreviation: « auto » has the same spelling.",
+	],
+	[
+		"ui.agents.models.reading.effort_clamped",
+		"Language-neutral: placeholders and an arrow only.",
+	],
+	[
+		"ui.agents.settings.chat.top_p",
+		"Technical sampling parameter kept verbatim.",
+	],
+	[
+		"ui.agents.settings.chat.top_k",
+		"Technical sampling parameter kept verbatim.",
+	],
+	[
+		"ui.agents.settings.general.description",
+		"French cognate: « Description » has the same spelling.",
+	],
+	[
+		"ui.agents.settings.general.id",
+		"Standard technical abbreviation, unchanged in French.",
+	],
+	[
+		"ui.agents.settings.general.version",
+		"French cognate: « Version » has the same spelling.",
+	],
 ]);
 
 function localeDirs() {
