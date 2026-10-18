@@ -151,6 +151,10 @@ const installControls = (start = {}) => {
 					controlCalls.push(["mute", muted]);
 					return controlStatus({ ...start, muted });
 				},
+				start: async () => {
+					controlCalls.push(["start"]);
+					return controlStatus({ ...start, rig: "starting" });
+				},
 			},
 		},
 	};
@@ -163,6 +167,20 @@ window.api = {
 				return {
 					status: 200,
 					body: { result: { desktop_available: true, features: { voice: 1 } } },
+				};
+			}
+			if (request?.op === "voice.control") {
+				return {
+					status: 200,
+					body: {
+						result: {
+							active:
+								request.action === "enable"
+									? { session_id: request.sessionId, enabled_at: Date.now() }
+									: null,
+							replaced: null,
+						},
+					},
 				};
 			}
 			if (request?.op === "voice.status") {
@@ -184,9 +202,9 @@ window.api = {
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { VoiceComposerStrip, ComposerVoiceButton, composerVoiceView, dictationOffReason } from "./src/renderer/src/features/voice/voice-composer";
+			export { VoiceComposerStrip, ComposerVoiceButton, composerVoiceView, dictationOffReason, storyTime } from "./src/renderer/src/features/voice/voice-composer";
 			export { useVoiceStore } from "./src/renderer/src/features/voice/voice-store";
-			export { applyVoiceActive } from "./src/renderer/src/features/voice/use-voice-status";
+			export { applyVoiceActive, controlVoice } from "./src/renderer/src/features/voice/use-voice-status";
 			export { MessageInput } from "./src/renderer/src/shared/components/composer/message-input.tsx";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 		`,
@@ -219,6 +237,8 @@ const {
 	ComposerVoiceButton,
 	composerVoiceView,
 	dictationOffReason,
+	storyTime,
+	controlVoice,
 	MessageInput,
 	QueryClient,
 	QueryClientProvider,
@@ -400,11 +420,16 @@ test("reply ended is a 1.5 s word, then Listening again", async () => {
 			truncated: false,
 			at: Date.now(),
 		});
+		/* An end FOLLOWS a start; an end with no start is not a word (U3). */
+		store.notePlayback("started", AT, Date.now() - 3000);
 		store.notePlayback("ended", AT, Date.now());
 	});
 	await flush();
 	assert.equal(chipText(), "Reply ended");
 	assert.match(caption().textContent, /Said/);
+	/* D6: the finished register, not the live accent wash Speaking wears. */
+	assert.match(chip().className, /bg-surface/);
+	assert.doesNotMatch(chip().className, /bg-accent-wash/);
 
 	/* The same tick, two seconds old: the beat is over and the word is gone. */
 	await act(async () => {
@@ -620,6 +645,252 @@ test("the wave button is un-pressed with an accent dot while another session hol
 });
 
 /* -------------------------------------------------------------------------- */
+/* DESIGN ROUND 1 / UX ROUND 1                                                 */
+/* -------------------------------------------------------------------------- */
+
+test("D1: a history row prints a clock, and its cell sizes itself", async () => {
+	// The formatter: Intl's bare default is a DATE, which is what every row showed.
+	assert.match(
+		storyTime(Date.parse("2026-10-18T22:18:00Z")),
+		/^\d{1,2}:\d{2}\s?[ap]m$/i,
+	);
+	assert.equal(
+		storyTime(Number.NaN),
+		"",
+		"no wrong day for an unreadable stamp",
+	);
+
+	await mountStrip();
+	await voiceReady();
+	await act(async () => {
+		useVoiceStore.setState({ story });
+	});
+	await openHistory();
+	const row = window.document.querySelector('[data-voice-story="exchange"]');
+	const cell = row.firstElementChild;
+	assert.match(cell.textContent, /^\d{1,2}:\d{2}\s?[ap]m$/i);
+	assert.doesNotMatch(cell.textContent, /2026|\//, "no date in the row");
+	// A fixed 42px column is what overflowed; the column takes its own width now.
+	assert.match(row.className, /grid-cols-\[auto_1fr\]/);
+	assert.doesNotMatch(row.className, /42px/);
+	assert.match(cell.className, /whitespace-nowrap/);
+});
+
+test("D4: the strip, its history and the notice share the composer's content column", async () => {
+	await mountStrip();
+	await voiceReady();
+	const band = window.document.querySelector("[data-voice-strip]");
+	assert.match(band.className, /\bpx-4\b/);
+	assert.doesNotMatch(band.className, /px-2\.5/);
+
+	await act(async () => {
+		applyVoiceActive(slot("b2b2b2b2b2b2"), client);
+	});
+	await flush();
+	const notice = window.document.querySelector("[data-voice-notice]");
+	assert.match(notice.className, /\bpx-4\b/);
+});
+
+test("D8: the History chevron points down when closed and up when open", async () => {
+	await mountStrip();
+	await voiceReady();
+	const toggle = () =>
+		window.document.querySelector("[data-voice-history-toggle]");
+	/* The panel's open state is remembered per window, so close it if a prior case left it open. */
+	if (toggle().getAttribute("aria-expanded") === "true") {
+		await act(async () => {
+			toggle().dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+		});
+		await flush();
+	}
+	// The glyph's own path, so the assertion is about direction, not class names.
+	assert.match(toggle().innerHTML, /m6 9 6 6 6-6/, "closed: points down");
+	await openHistory();
+	assert.match(toggle().innerHTML, /m18 15-6-6-6 6/, "open: points up");
+	assert.doesNotMatch(toggle().innerHTML, /m6 9 6 6 6-6/);
+});
+
+test("D2: the first frame of an enable is Starting voice, never the stale rig status", async () => {
+	installControls();
+	await mountStrip();
+	await act(async () => {
+		const store = useVoiceStore.getState();
+		store.setActive(slot(AT));
+		store.setRig({
+			rig: "error",
+			webui_url: null,
+			reason: "Port 8765 is in use; stop the other voice rig first",
+		});
+	});
+	await flush();
+	assert.equal(chipText(), "Voice error");
+
+	let enabling;
+	await act(async () => {
+		enabling = controlVoice("enable", AT, client);
+	});
+	assert.equal(
+		chipText(),
+		"Starting voice",
+		"the press paints the neutral word before the route answers",
+	);
+	await act(async () => {
+		await enabling;
+	});
+	await flush();
+	assert.equal(chipText(), "Starting voice");
+});
+
+test("D5: the lit wave on a stopped rig starts it instead of turning voice off", async () => {
+	installControls();
+	window.document.body.innerHTML = "<div id='root'></div>";
+	root = createRoot(window.document.getElementById("root"));
+	await act(async () => {
+		root.render(
+			React.createElement(
+				QueryClientProvider,
+				{ client },
+				React.createElement(ComposerVoiceButton, { sessionId: AT }),
+			),
+		);
+	});
+	await flush();
+	await act(async () => {
+		applyVoiceActive(slot(AT), client);
+		useVoiceStore
+			.getState()
+			.setRig(controlStatus({ rig: "stopped", clients: 0 }));
+	});
+	await flush();
+	const wave = window.document.querySelector("[data-voice-toggle]");
+	assert.equal(
+		wave.getAttribute("aria-pressed"),
+		"true",
+		"the slot is still held",
+	);
+	assert.equal(wave.getAttribute("aria-label"), "Start voice");
+	await act(async () => {
+		wave.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+	});
+	await flush();
+	assert.deepEqual(
+		controlCalls,
+		[["start"]],
+		"not disable: the wave is the way back in",
+	);
+});
+
+test("D7: a muted reply says Silenced, and the mute face is not the live accent", async () => {
+	installControls();
+	await mountStrip();
+	await voiceReady();
+	await act(async () => {
+		const store = useVoiceStore.getState();
+		store.setRig(controlStatus({ muted: true }));
+		store.setActivity("speaking");
+	});
+	await flush();
+	assert.equal(chipText(), "Silenced");
+	assert.match(caption().textContent, /on screen/);
+	const mute = window.document.querySelector("[data-voice-mute]");
+	assert.equal(mute.getAttribute("aria-pressed"), "true");
+	assert.match(mute.className, /aria-pressed:bg-surface/);
+	assert.doesNotMatch(
+		mute.className,
+		/aria-pressed:bg-\[color-mix/,
+		"the live accent mix is the wave's register, not a muted control's",
+	);
+});
+
+test("U1: a take refused by a card says so in place, with the words it dropped", async () => {
+	await mountStrip();
+	await voiceReady();
+	await act(async () => {
+		const store = useVoiceStore.getState();
+		store.setCardPending(AT, true);
+		store.noteNotSent(AT, "please also check the tests", Date.now());
+	});
+	await flush();
+	assert.equal(chipText(), "Approve on screen");
+	assert.match(
+		caption().textContent,
+		/Answer the question or approval on screen first/,
+	);
+	assert.match(caption().textContent, /please also check the tests/);
+});
+
+test("U5: focus returns to the same control after Resume", async () => {
+	installControls({ rig: "starting" });
+	await mountStrip();
+	await act(async () => {
+		const store = useVoiceStore.getState();
+		store.setActive(slot(AT));
+		store.setRig(controlStatus({ paused: true }));
+	});
+	await flush();
+	const resume = window.document.querySelector('[data-voice-action="resume"]');
+	resume.focus();
+	assert.equal(window.document.activeElement, resume);
+	await act(async () => {
+		resume.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+	});
+	await flush();
+	/*
+	 * The resume answer is "Starting voice": the Pause/Resume control is not drawn
+	 * in that state, so the button the press landed on is gone.
+	 */
+	assert.equal(
+		window.document.querySelector('[data-voice-action="pause"]'),
+		null,
+	);
+	await act(async () => {
+		useVoiceStore.getState().setRig(controlStatus());
+	});
+	await flush();
+	const pause = window.document.querySelector('[data-voice-action="pause"]');
+	assert.ok(pause);
+	assert.equal(
+		window.document.activeElement,
+		pause,
+		"focus came back to the toggle it left",
+	);
+});
+
+test("U6: Escape closes History from anywhere in the composer, not only the band", async () => {
+	window.document.body.innerHTML = "<div id='root'></div>";
+	const composer = window.document.createElement("form");
+	composer.setAttribute("data-chat-region", "composer");
+	composer.innerHTML =
+		"<textarea data-test-field></textarea><div id='strip'></div>";
+	window.document.getElementById("root").appendChild(composer);
+	root = createRoot(window.document.getElementById("strip"));
+	await act(async () => {
+		root.render(
+			React.createElement(
+				QueryClientProvider,
+				{ client },
+				React.createElement(VoiceComposerStrip, { sessionId: AT }),
+			),
+		);
+	});
+	await flush();
+	await voiceReady();
+	await act(async () => {
+		useVoiceStore.setState({ story });
+	});
+	await openHistory();
+	assert.ok(window.document.querySelector("[data-voice-history]"));
+	const field = composer.querySelector("[data-test-field]");
+	await act(async () => {
+		field.dispatchEvent(
+			new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+		);
+	});
+	await flush();
+	assert.equal(window.document.querySelector("[data-voice-history]"), null);
+});
+
+/* -------------------------------------------------------------------------- */
 /* THE HISTORY PANEL                                                           */
 /* -------------------------------------------------------------------------- */
 
@@ -762,6 +1033,8 @@ test("voice on here dims the microphone, keeps it focusable, and starts no recor
 		"aria-disabled, not the attribute: the control keeps focus and its tooltip",
 	);
 	assert.match(mic().className, /aria-disabled:text-ink-disabled/);
+	/* D3: the ink step alone measured pixel-identical in the trial. */
+	assert.match(mic().className, /aria-disabled:opacity-50/);
 
 	await act(async () => {
 		mic().dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
@@ -865,12 +1138,28 @@ test("voice in ANOTHER session blocks dictation here too", async () => {
 	);
 });
 
-test("a rig that is ready with no page offers Retry, and a stopped one offers Start voice", async () => {
+test("a fresh ready rig connects neutrally; past the grace it offers Retry; stopped says Voice idle", async () => {
 	await mountStrip();
 	await act(async () => {
 		const store = useVoiceStore.getState();
 		store.setActive(slot(AT));
 		store.setRig({ rig: "ready", webui_url: null, clients: 0 });
+	});
+	await flush();
+	/*
+	 * D2/U8: the page connects ~200 ms after the models are up. That window is
+	 * "Connecting voice" - a neutral word with no action - not the red failure.
+	 */
+	assert.equal(chipText(), "Connecting voice");
+	assert.equal(
+		window.document.querySelector("[data-voice-action]"),
+		null,
+		"a start in progress offers nothing to press",
+	);
+
+	await act(async () => {
+		/* The grace expires with no page: now it is the failure it names. */
+		useVoiceStore.setState({ readyAt: Date.now() - 10_000 });
 	});
 	await flush();
 	assert.equal(chipText(), "Voice page not connected");
@@ -883,11 +1172,12 @@ test("a rig that is ready with no page offers Retry, and a stopped one offers St
 		useVoiceStore.getState().setRig({ rig: "stopped", webui_url: null });
 	});
 	await flush();
-	assert.equal(chipText(), "Voice off");
-	assert.equal(
-		window.document.querySelector("[data-voice-action]")?.textContent?.trim(),
-		"Start voice",
-	);
+	/*
+	 * D5: the slot is still held, so the chip may not say "off" while the wave is
+	 * lit - and the lit wave is the way back in, not a second action here.
+	 */
+	assert.equal(chipText(), "Voice idle");
+	assert.equal(window.document.querySelector("[data-voice-action]"), null);
 });
 
 test("paused: the chip says Paused and its control is Resume", async () => {

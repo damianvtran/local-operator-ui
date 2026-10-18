@@ -333,5 +333,25 @@
 	"ui.chat.voice.unmute": {
 		"role": "icon button in the composer strip, and its tooltip",
 		"note": "Brings the assistant’s spoken replies back after they were silenced."
+	},
+	"ui.chat.voice.phase_connecting": {
+		"role": "composer strip chip",
+		"tone": "present participle, sentence case",
+		"note": "Shown for a few seconds on a successful start while the hidden page loads and connects; not a failure, so it offers no action."
+	},
+	"ui.chat.voice.phase_silenced": {
+		"role": "composer strip chip",
+		"tone": "past participle, one word",
+		"note": "The reply is playing but the speaker is muted, so nothing is audible."
+	},
+	"ui.chat.voice.connecting_caption": {
+		"role": "strip caption beside the chip",
+		"tone": "present participle, no full stop",
+		"note": "Says what the connecting chip is waiting on."
+	},
+	"ui.chat.voice.silenced_caption": {
+		"role": "strip caption beside the chip",
+		"tone": "sentence, no full stop",
+		"note": "Where the words the person cannot hear are; the reply is in the transcript."
 	}
 }

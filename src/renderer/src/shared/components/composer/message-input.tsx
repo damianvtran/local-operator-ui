@@ -9737,7 +9737,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 														 * feature-unavailable one read the same - the reason in the tooltip
 														 * is what differs, and it is the one that says what to do.
 														 */
-														"aria-disabled:text-ink-disabled aria-disabled:hover:bg-transparent aria-disabled:hover:text-ink-disabled",
+														"aria-disabled:text-ink-disabled aria-disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:hover:bg-transparent aria-disabled:hover:text-ink-disabled",
 													)}
 													onPointerDown={holdCaretOnRefusedPress}
 													onClick={handleStartRecording}

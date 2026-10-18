@@ -1263,6 +1263,31 @@ test("§3: the page goes with the rig (idle stop, unexpected exit, quit)", async
 	assert.equal(r.voice.getStatus().rig, "error");
 });
 
+test("U3/D7: a move destroys and recreates the page, and the person's mute is re-applied", async () => {
+	const r = rig();
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	assert.equal(r.voice.getStatus().rig, "ready");
+	r.voice.setMuted(true);
+	const closed = r.closed.length;
+	const muted = r.muted.length;
+	/*
+	 * `cancel_all` reaches the Gateway, but audio already queued in the page keeps
+	 * playing; destroying the page is the stop this app owns, and it is what keeps
+	 * the old conversation's speech out of the new one (UX round 1, U3).
+	 */
+	r.voice.observeFrame(voiceFrame("bbbbbbbbbbbb"));
+	await settle();
+	await settle();
+	assert.equal(r.closed.length, closed + 1, "the page is destroyed");
+	assert.ok(
+		r.muted.length > muted && r.muted.at(-1) === true,
+		"a muted page comes back muted",
+	);
+	assert.equal(r.voice.getStatus().rig, "ready");
+});
+
 test("§4: a page that cannot be recreated becomes the rig's error, not a silent Listening", async () => {
 	const c = pageCase();
 	c.page.open("http://127.0.0.1:3101/");

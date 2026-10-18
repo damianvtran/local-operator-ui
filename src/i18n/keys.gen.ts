@@ -843,6 +843,7 @@ export type MessageParams = {
 	"ui.chat.voice.approve_on_screen": undefined;
 	"ui.chat.voice.card_pending": undefined;
 	"ui.chat.voice.card_pending_short": undefined;
+	"ui.chat.voice.connecting_caption": undefined;
 	"ui.chat.voice.cut_chip": undefined;
 	"ui.chat.voice.cut_note": undefined;
 	"ui.chat.voice.dictation_off_voice": undefined;
@@ -873,6 +874,7 @@ export type MessageParams = {
 	"ui.chat.voice.notice_elsewhere_untitled": undefined;
 	"ui.chat.voice.open_session": undefined;
 	"ui.chat.voice.open_settings": undefined;
+	"ui.chat.voice.phase_connecting": undefined;
 	"ui.chat.voice.phase_error": undefined;
 	"ui.chat.voice.phase_hearing": undefined;
 	"ui.chat.voice.phase_interrupted": undefined;
@@ -880,6 +882,7 @@ export type MessageParams = {
 	"ui.chat.voice.phase_mic_prompting": undefined;
 	"ui.chat.voice.phase_off": undefined;
 	"ui.chat.voice.phase_paused": undefined;
+	"ui.chat.voice.phase_silenced": undefined;
 	"ui.chat.voice.phase_speaking": undefined;
 	"ui.chat.voice.phase_starting": undefined;
 	"ui.chat.voice.phase_unheard": undefined;
@@ -887,6 +890,7 @@ export type MessageParams = {
 	"ui.chat.voice.reply_ended": undefined;
 	"ui.chat.voice.retry": undefined;
 	"ui.chat.voice.said_label": undefined;
+	"ui.chat.voice.silenced_caption": undefined;
 	"ui.chat.voice.start_rig": undefined;
 	"ui.chat.voice.starting_caption": undefined;
 	"ui.chat.voice.stream_lost": undefined;

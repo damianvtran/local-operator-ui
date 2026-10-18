@@ -873,7 +873,7 @@ const CONTROLS = [
 	 * pin, which is why none is listed in `PAIR_PINS`.
 	 */
 	{
-		/* Listening, Speaking, Reply ended - the accent wash. */
+		/* Listening and Speaking - the accent wash. */
 		name: "voice strip chip (listening)",
 		on: ["sunken"],
 		fill: "accentWash",
@@ -891,7 +891,13 @@ const CONTROLS = [
 		edge: false,
 	},
 	{
-		/* Working - neutral on the box's own surface, with an inset hairline. */
+		/*
+		 * Working, Connecting, Silenced and Reply ended - neutral on the box's own
+		 * surface, with an inset hairline. Reply ended moved HERE from the accent
+		 * wash in design round 1 (D6): on the live wash it read as Speaking with a
+		 * check, and a finished reply is not a live one. The pair is the same one
+		 * this row already measures.
+		 */
 		name: "voice strip chip (working)",
 		on: ["sunken"],
 		fill: "surface",

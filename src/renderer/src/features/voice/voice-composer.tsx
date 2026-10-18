@@ -56,7 +56,6 @@ import {
 } from "lucide-react";
 import {
 	type FC,
-	type KeyboardEvent as ReactKeyboardEvent,
 	useCallback,
 	useEffect,
 	useId,
@@ -134,7 +133,9 @@ export type VoiceChipKind =
 	| "unheard"
 	| "error"
 	| "stopped"
-	| "paused";
+	| "paused"
+	| "connecting"
+	| "silenced";
 
 /** The caption's sentence, as a case rather than a string. */
 export type VoiceCaption =
@@ -147,6 +148,8 @@ export type VoiceCaption =
 	| { kind: "not_sent"; text: string | null }
 	| { kind: "mic_blocked" }
 	| { kind: "waiting_mic" }
+	| { kind: "connecting" }
+	| { kind: "silenced" }
 	| { kind: "reason"; text: string };
 
 export type VoiceComposerView =
@@ -183,6 +186,14 @@ function errorReason(
 }
 
 /**
+ * How long a ready rig with no connected page reads as CONNECTING rather than as
+ * the "not connected" failure (design D2 / UX round 1, U8). Measured at ~200 ms
+ * on a successful start; the grace is generous enough to cover a retried page
+ * and short enough that a page that truly never arrives still offers Retry.
+ */
+export const PAGE_CONNECT_GRACE_MS = 5_000;
+
+/**
  * Where the strip is, from the one state the slot, the rig and the exchange are
  * mirrored into. Derived, never stored, so the three cannot disagree - the same
  * rule `voicePhaseOf` keeps, extended with the two transient words and the cut
@@ -209,6 +220,12 @@ export function composerVoiceView(
 			truncated: boolean;
 			at: number;
 		} | null;
+		/** The take a card refused, for the band's own refusal line (U1). */
+		lastRefused: { sessionId: string; text: string; at: number } | null;
+		/** The speaker mute (D7): a muted reply is "Silenced", not "Speaking". */
+		muted: boolean;
+		/** When the rig became ready, for the page-connect grace (D2/U8). */
+		readyAt: number | null;
 		tick: VoiceTick | null;
 	},
 	sessionId: string | undefined,
@@ -262,6 +279,20 @@ export function composerVoiceView(
 	const take = state.lastTake?.sessionId === sessionId ? state.lastTake : null;
 	const spoken =
 		state.lastSpoken?.sessionId === sessionId ? state.lastSpoken : null;
+	const refused =
+		state.lastRefused?.sessionId === sessionId ? state.lastRefused : null;
+	/*
+	 * A READY RIG WITH NO PAGE IS A START FOR A MOMENT (design D2 / UX round 1,
+	 * U8): the page is created and connects ~200 ms after the models are up, so
+	 * "Voice page not connected" + Retry would flash on every successful start.
+	 * The grace belongs to the ready TRANSITION, so a page that drops later still
+	 * says it at once.
+	 */
+	const connecting =
+		state.rig?.rig === "ready" &&
+		(state.rig.clients ?? 0) === 0 &&
+		state.readyAt !== null &&
+		now - state.readyAt < PAGE_CONNECT_GRACE_MS;
 
 	/*
 	 * THE BASE WORD IS `voicePhaseOf`'s, NOT A SECOND COPY OF ITS PRECEDENCE. That
@@ -325,12 +356,17 @@ export function composerVoiceView(
 				cut,
 			};
 		case "off":
-			/* The slot is held but the rig is stopped (an app relaunch). */
+			/*
+			 * THE SLOT IS HELD BUT THE RIG IS STOPPED (an app relaunch). The chip may
+			 * not say "off" while the wave is lit and the sidebar says on (UX round 1,
+			 * D5): one truth, so this is its own word, and the lit wave is the way
+			 * back in - not a second "Start voice" mystery action beside it.
+			 */
 			return {
 				kind: "here",
 				chip: "stopped",
 				caption: null,
-				action: "start",
+				action: null,
 				cut,
 			};
 		case "hearing":
@@ -342,6 +378,20 @@ export function composerVoiceView(
 				cut,
 			};
 		case "speaking":
+			/*
+			 * A MUTED REPLY IS STILL PLAYING, AND SILENT (design D7 / UX round 1,
+			 * U4): saying "Speaking" over a muted page is the app claiming sound it is
+			 * not making. The word is "Silenced" and the caption says where the words
+			 * are, because the person is missing them.
+			 */
+			if (state.muted)
+				return {
+					kind: "here",
+					chip: "silenced",
+					caption: { kind: "silenced" },
+					action: null,
+					cut,
+				};
 			return {
 				kind: "here",
 				chip: "speaking",
@@ -358,7 +408,11 @@ export function composerVoiceView(
 				return {
 					kind: "here",
 					chip: "approval",
-					caption: take ? { kind: "not_sent", text: take.text } : null,
+					caption: refused
+						? { kind: "not_sent", text: refused.text }
+						: take
+							? { kind: "not_sent", text: take.text }
+							: null,
 					action: "approve",
 					cut,
 				};
@@ -370,6 +424,14 @@ export function composerVoiceView(
 				cut,
 			};
 		case "unheard":
+			if (connecting)
+				return {
+					kind: "here",
+					chip: "connecting",
+					caption: { kind: "connecting" },
+					action: null,
+					cut,
+				};
 			return {
 				kind: "here",
 				chip: "unheard",
@@ -414,7 +476,11 @@ export function composerVoiceView(
 		return {
 			kind: "here",
 			chip: "approval",
-			caption: take ? { kind: "not_sent", text: take.text } : null,
+			caption: refused
+				? { kind: "not_sent", text: refused.text }
+				: take
+					? { kind: "not_sent", text: take.text }
+					: null,
 			action: "approve",
 			cut,
 		};
@@ -446,7 +512,14 @@ const CHIP_TONE: Record<VoiceChipKind, string> = {
 		"bg-surface text-ink-muted shadow-[inset_0_0_0_1px_var(--color-hairline)]",
 	speaking:
 		"bg-accent-wash text-accent shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_40%,transparent)]",
-	ended: "bg-accent-wash text-accent",
+	/* Reply ended: a FINISHED register, off the accent the live words use (D6). */
+	ended:
+		"bg-surface text-ink-muted shadow-[inset_0_0_0_1px_var(--color-hairline)]",
+	connecting:
+		"bg-surface text-ink-muted shadow-[inset_0_0_0_1px_var(--color-hairline)]",
+	/* Silenced: neutral, because nothing is being said (D7). */
+	silenced:
+		"bg-surface text-ink-muted shadow-[inset_0_0_0_1px_var(--color-hairline)]",
 	interrupted: "bg-warning-wash text-warning",
 	approval:
 		"bg-warning-wash text-warning shadow-[inset_0_0_0_1px_var(--color-warning-border)]",
@@ -470,6 +543,8 @@ const CHIP_WORD: Record<VoiceChipKind, WithoutParams> = {
 	working: "ui.chat.voice.phase_working",
 	speaking: "ui.chat.voice.phase_speaking",
 	ended: "ui.chat.voice.reply_ended",
+	connecting: "ui.chat.voice.phase_connecting",
+	silenced: "ui.chat.voice.phase_silenced",
 	interrupted: "ui.chat.voice.phase_interrupted",
 	approval: "ui.chat.voice.approve_on_screen",
 	mic_blocked: "ui.chat.voice.mic_blocked",
@@ -486,7 +561,7 @@ const CHIP_WORD: Record<VoiceChipKind, WithoutParams> = {
  * value holds at .3 and the hearing chip opens fully (spec §4's fallback).
  */
 const ChipMark: FC<{ chip: VoiceChipKind }> = ({ chip }) => {
-	if (chip === "starting" || chip === "waiting_mic")
+	if (chip === "starting" || chip === "waiting_mic" || chip === "connecting")
 		return <Spinner size="xs" />;
 	if (chip === "hearing")
 		return (
@@ -521,7 +596,10 @@ const ChipMark: FC<{ chip: VoiceChipKind }> = ({ chip }) => {
 				}}
 			/>
 		);
-	if (chip === "ended") return <Check aria-hidden="true" className="size-3" />;
+	if (chip === "ended")
+		return <Check aria-hidden="true" className="size-3.5" strokeWidth={2.5} />;
+	if (chip === "silenced")
+		return <VolumeX aria-hidden="true" className="size-3" />;
 	if (chip === "interrupted")
 		return <Square aria-hidden="true" className="size-3" />;
 	if (chip === "paused")
@@ -578,11 +656,16 @@ const Caption: FC<{ caption: VoiceCaption }> = ({ caption }) => {
 				</>
 			);
 		case "not_sent":
+			/*
+			 * THE REFUSAL IN PLACE, IN THE WORDS THAT EXPLAIN IT (UX round 1, U1):
+			 * a take refused by a card used to show nothing where the person was
+			 * looking - only a row inside collapsed History - so it read as a take
+			 * that vanished. The sentence is the same one the launcher speaks, and
+			 * the refused words follow it so the person recognises what was dropped.
+			 */
 			return (
 				<>
-					<span className="shrink-0">
-						{t("ui.chat.voice.not_sent_approve")}
-					</span>{" "}
+					<span className="shrink-0">{t("ui.chat.voice.card_pending")}</span>{" "}
 					{caption.text ? (
 						<span className="truncate">{caption.text}</span>
 					) : null}
@@ -592,6 +675,10 @@ const Caption: FC<{ caption: VoiceCaption }> = ({ caption }) => {
 			return <>{t("ui.chat.voice.mic_blocked_caption")}</>;
 		case "waiting_mic":
 			return <>{t("ui.chat.voice.phase_mic_prompting")}</>;
+		case "connecting":
+			return <>{t("ui.chat.voice.connecting_caption")}</>;
+		case "silenced":
+			return <>{t("ui.chat.voice.silenced_caption")}</>;
 		case "reason":
 			return <span className="truncate">{caption.text}</span>;
 	}
@@ -615,7 +702,22 @@ export function formatSeconds(total: number): string {
  */
 let historyOpen = false;
 
-const StoryRow: FC<{ row: VoiceStoryRow }> = ({ row }) => {
+/**
+ * The history row's clock, in the locale's own clock order (`10:18 PM`).
+ *
+ * `formatTime` with NO options is `Intl`'s DEFAULT, which is a DATE: every row
+ * printed `10/18/2026` into a 42px column, spilling over the You label and the
+ * heard text (design round 1, D1). The minutes are pinned and the hour is the
+ * locale's, matching the app's other clock stamps; an unparseable stamp prints
+ * nothing rather than a wrong day.
+ */
+export function storyTime(at: number): string {
+	const date = new Date(at);
+	if (Number.isNaN(date.getTime())) return "";
+	return formatTime(date, { hour: "numeric", minute: "2-digit" });
+}
+
+const StoryRow: FC<{ row: VoiceStoryRow; pad: string }> = ({ row, pad }) => {
 	useI18nLocale();
 	if (row.kind === "interrupted") {
 		return (
@@ -629,8 +731,8 @@ const StoryRow: FC<{ row: VoiceStoryRow }> = ({ row }) => {
 						time: formatSeconds(row.seconds),
 					})}
 				</span>
-				<span className="ml-auto text-ink-dim tabular-nums">
-					{formatTime(row.at)}
+				<span className="ml-auto whitespace-nowrap text-ink-dim tabular-nums">
+					{storyTime(row.at)}
 				</span>
 			</div>
 		);
@@ -639,12 +741,15 @@ const StoryRow: FC<{ row: VoiceStoryRow }> = ({ row }) => {
 		return (
 			<div
 				data-voice-story="not_sent"
-				className="flex items-center gap-1.5 border-t border-hairline bg-danger-wash px-3 py-1 text-meta text-danger"
+				className={cn(
+					"flex items-center gap-1.5 border-t border-hairline bg-danger-wash py-1 text-meta text-danger",
+					pad,
+				)}
 			>
 				<TriangleAlert aria-hidden="true" className="size-3" />
 				<span>{t("ui.chat.voice.not_sent_approve")}</span>
-				<span className="ml-auto text-ink-dim tabular-nums">
-					{formatTime(row.at)}
+				<span className="ml-auto whitespace-nowrap text-ink-dim tabular-nums">
+					{storyTime(row.at)}
 				</span>
 			</div>
 		);
@@ -652,10 +757,13 @@ const StoryRow: FC<{ row: VoiceStoryRow }> = ({ row }) => {
 	return (
 		<div
 			data-voice-story="exchange"
-			className="grid grid-cols-[42px_1fr] gap-x-2 border-t border-hairline px-3 py-1.5 text-body-sm"
+			className={cn(
+				"grid grid-cols-[auto_1fr] gap-x-2 border-t border-hairline py-1.5 text-body-sm",
+				pad,
+			)}
 		>
-			<span className="row-span-2 pt-0.5 text-meta text-ink-dim tabular-nums">
-				{formatTime(row.at)}
+			<span className="row-span-2 whitespace-nowrap pt-0.5 text-meta text-ink-dim tabular-nums">
+				{storyTime(row.at)}
 			</span>
 			<span className="flex min-w-0 gap-1.5">
 				<span className="w-8 shrink-0 text-meta text-ink-dim">
@@ -718,6 +826,8 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 	const cardPending = useVoiceStore((s) => s.cardPending);
 	const lastTake = useVoiceStore((s) => s.lastTake);
 	const lastSpoken = useVoiceStore((s) => s.lastSpoken);
+	const lastRefused = useVoiceStore((s) => s.lastRefused);
+	const readyAt = useVoiceStore((s) => s.readyAt);
 	const tick = useVoiceStore((s) => s.tick);
 	const story = useVoiceStore((s) => s.story);
 	const clearTick = useVoiceStore((s) => s.clearTick);
@@ -735,7 +845,10 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 	const [now, setNow] = useState(() => Date.now());
 	const [open, setOpen] = useState(historyOpen);
 	const historyButton = useRef<HTMLButtonElement | null>(null);
+	const pauseButton = useRef<HTMLButtonElement | null>(null);
 	const panel = useRef<HTMLDivElement | null>(null);
+	/** A Resume press is waiting to put focus back on its own control (U5). */
+	const resumeFocus = useRef(false);
 	const panelId = useId();
 
 	/*
@@ -767,6 +880,9 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 			cardPending,
 			lastTake,
 			lastSpoken,
+			lastRefused,
+			muted,
+			readyAt,
 			tick,
 		},
 		sessionId,
@@ -787,17 +903,72 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 	}, []);
 
 	/*
-	 * ESCAPE IS SCOPED TO THIS BAND (spec §6). A window listener would also fire
-	 * for an Escape aimed at the composer - which is the page's own interrupt
-	 * ladder - so the listener rides the band the panel belongs to, and only while
-	 * the panel is open.
+	 * ESCAPE DISMISSES HISTORY FROM ANYWHERE IN THE COMPOSER (spec §6; UX round 1,
+	 * U6): the band's own `onKeyDown` only saw keys pressed inside the band, so a
+	 * person typing in the textarea could not close the panel. The composer is
+	 * marked `data-chat-region="composer"` on its form; the listener acts only for
+	 * a target inside it - or inside the band itself, which is what the standalone
+	 * harness mounts - so the page's own interrupt ladder keeps every Escape aimed
+	 * elsewhere.
 	 */
-	const onStripKeyDown = (event: ReactKeyboardEvent) => {
-		if (!open || event.key !== "Escape") return;
-		event.preventDefault();
-		event.stopPropagation();
-		collapse();
-	};
+	useEffect(() => {
+		if (!open) return undefined;
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== "Escape") return;
+			const target = event.target;
+			if (!(target instanceof window.Element)) return;
+			if (!target.closest('[data-voice-band], [data-chat-region="composer"]'))
+				return;
+			event.preventDefault();
+			event.stopPropagation();
+			collapse();
+		};
+		window.document.addEventListener("keydown", onKeyDown, true);
+		return () =>
+			window.document.removeEventListener("keydown", onKeyDown, true);
+	}, [open, collapse]);
+
+	/*
+	 * THE READY-WITH-NO-PAGE GRACE NEEDS ONE RE-RENDER AT ITS EDGE (design D2 / U8):
+	 * `now` only moves when a transient word retires, so without this the strip
+	 * would stay on "Connecting voice" until something else re-rendered it, even
+	 * when the page never arrived. Armed only while the window can still expire.
+	 */
+	useEffect(() => {
+		if (readyAt === null || rig?.rig !== "ready" || (rig.clients ?? 0) > 0)
+			return undefined;
+		const remaining = readyAt + PAGE_CONNECT_GRACE_MS - Date.now();
+		if (remaining <= 0) return undefined;
+		const timer = window.setTimeout(() => setNow(Date.now()), remaining);
+		return () => window.clearTimeout(timer);
+	}, [readyAt, rig]);
+
+	/*
+	 * RESUME PUTS FOCUS BACK ON THE CONTROL THAT ASKED (UX round 1, U5): resuming
+	 * recreates the page, and the strip can pass through "Starting voice" - a state
+	 * with no Pause/Resume control - so the button the press landed on unmounted and
+	 * focus fell to the body. Once the control is back on screen it takes focus
+	 * again; a resume that fails clears the debt instead of holding it.
+	 */
+	useEffect(() => {
+		if (!resumeFocus.current) return;
+		const chipNow = view.kind === "here" ? view.chip : null;
+		if (chipNow === "error") {
+			resumeFocus.current = false;
+			return;
+		}
+		const shown =
+			chipNow === "paused" ||
+			chipNow === "listening" ||
+			chipNow === "hearing" ||
+			chipNow === "speaking" ||
+			chipNow === "working" ||
+			chipNow === "ended" ||
+			chipNow === "interrupted";
+		if (!shown) return;
+		resumeFocus.current = false;
+		pauseButton.current?.focus();
+	}, [view]);
 
 	if (!enabled || !sessionId || view.kind === "off") return null;
 
@@ -806,6 +977,14 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 	const inset = isSmallView
 		? "-mx-2 -mt-2 rounded-t-md"
 		: "-mx-4 -mt-4 rounded-t-frame";
+	/*
+	 * THE CONTENT COLUMN IS THE BOX'S OWN (design round 1, D4): the band pays the
+	 * box's padding back at the edges, so it must then use the SAME padding inside
+	 * - 16px, or 8px in the small view - or the chip, history and caption sit a few
+	 * pixels off the textarea, the mic and Send. Measured before: 10px left / 4px
+	 * right against the box's 16px.
+	 */
+	const pad = isSmallView ? "px-2" : "px-4";
 	/* A failure's one action, 28px high in text, beside the reason it answers. */
 	/*
 	 * EVERY CONTROL IN THIS FILE IS `type="button"`, and that is load-bearing
@@ -847,9 +1026,10 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 			<div
 				data-voice-notice=""
 				className={cn(
-					"flex min-h-10 items-center gap-2 border-b px-3 pr-1.5",
+					"flex min-h-10 items-center gap-2 border-b",
 					inset,
 					box,
+					pad,
 				)}
 			>
 				<span className="min-w-0 flex-1 truncate text-meta text-ink-muted">
@@ -908,13 +1088,15 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 		chip === "listening" ||
 		chip === "hearing" ||
 		chip === "speaking" ||
+		/* A muted reply is still playing: Pause and the unmute both apply (D7). */
+		chip === "silenced" ||
 		chip === "working" ||
 		chip === "ended" ||
 		chip === "interrupted";
 
 	return (
 		<div
-			onKeyDown={onStripKeyDown}
+			data-voice-band=""
 			className={cn(
 				/*
 				 * FLUSH WITH THE BOX'S TOP EDGE (spec §1): the box pads its children by
@@ -932,26 +1114,31 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 					data-voice-history=""
 					className="max-h-[min(50vh,320px)] overflow-y-auto border-b border-hairline"
 				>
-					<div className="flex items-center gap-2 px-3 pt-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-dim">
+					<div
+						className={cn(
+							"flex items-center gap-2 pt-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-dim",
+							pad,
+						)}
+					>
 						<span>{t("ui.chat.voice.history")}</span>
 						<span className="font-normal normal-case tracking-normal">
 							{t("ui.chat.voice.history_last", { count: String(story.length) })}
 						</span>
 					</div>
 					{story.length === 0 ? (
-						<p className="px-3 pb-2 text-meta text-ink-dim">
+						<p className={cn("pb-2 text-meta text-ink-dim", pad)}>
 							{t("ui.chat.voice.empty_history")}
 						</p>
 					) : (
 						story.map((row) => (
-							<StoryRow key={`${row.kind}:${row.at}`} row={row} />
+							<StoryRow key={`${row.kind}:${row.at}`} row={row} pad={pad} />
 						))
 					)}
 				</div>
 			)}
 			<div
 				data-voice-strip=""
-				className="flex min-h-10 items-center gap-2 px-2.5 pr-1"
+				className={cn("flex min-h-10 items-center gap-2", pad)}
 			>
 				{isButton ? (
 					<button
@@ -1000,8 +1187,7 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 				{view.caption ? (
 					<span
 						data-voice-caption=""
-						/* Hidden with the caption on a narrow box, not from the reading. */
-						className="hidden min-w-0 flex-1 items-baseline gap-1 truncate whitespace-nowrap text-meta text-ink-dim @min-[360px]/chatcol:flex"
+						className="flex min-w-0 flex-1 items-baseline gap-1 truncate whitespace-nowrap text-meta text-ink-dim"
 					>
 						<Caption caption={view.caption} />
 					</span>
@@ -1012,6 +1198,7 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 				{pauseable && (
 					<Button
 						type="button"
+						ref={pauseButton}
 						variant="ghost"
 						size="icon"
 						data-voice-action={chip === "paused" ? "resume" : "pause"}
@@ -1025,9 +1212,14 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 								? "ui.chat.voice.strip_resume"
 								: "ui.chat.voice.strip_pause",
 						)}
-						onClick={() =>
-							void (chip === "paused" ? resumeQwenVoice() : pauseQwenVoice())
-						}
+						onClick={() => {
+							if (chip === "paused") {
+								resumeFocus.current = true;
+								void resumeQwenVoice();
+								return;
+							}
+							void pauseQwenVoice();
+						}}
 						className="shrink-0 text-ink-muted"
 					>
 						{chip === "paused" ? (
@@ -1054,9 +1246,17 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 						 * speaker with a slash is the word, the accent wash the state - the
 						 * same pair the wave button uses.
 						 */
+						/*
+						 * A MUTED TOGGLE IS NOT A LIVE ONE (design round 1, D7): the accent
+						 * fill is the wave's "voice is running" register, so painting it here
+						 * made a silenced rig look live. The engaged face is the quiet one -
+						 * the box's own surface, a hairline and muted ink - while the glyph
+						 * (a speaker with a slash) is the word.
+						 */
 						className={cn(
 							"shrink-0 text-ink-muted",
-							"aria-pressed:bg-[color-mix(in_oklab,var(--color-accent-wash)_80%,var(--color-accent))] aria-pressed:text-accent",
+							"aria-pressed:bg-surface aria-pressed:text-ink-muted",
+							"aria-pressed:shadow-[inset_0_0_0_1px_var(--color-hairline-strong)]",
 						)}
 					>
 						{muted ? (
@@ -1081,15 +1281,15 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 						setNow(Date.now());
 					}}
 				>
-					<span className="hidden @min-[420px]/chatcol:inline">
+					<span>
 						{open
 							? t("ui.chat.voice.history_hide")
 							: t("ui.chat.voice.history")}
 					</span>
 					{open ? (
-						<ChevronDown aria-hidden="true" className="size-3.5" />
-					) : (
 						<ChevronUp aria-hidden="true" className="size-3.5" />
+					) : (
+						<ChevronDown aria-hidden="true" className="size-3.5" />
 					)}
 				</Button>
 			</div>
@@ -1133,14 +1333,24 @@ export const ComposerVoiceButton: FC<{
 	const { client } = useOptionalQueryClient();
 	if (!enabled || !sessionId) return null;
 	const on = holder === sessionId;
+	/*
+	 * A LIT WAVE ON A STOPPED RIG IS THE WAY BACK IN (UX round 1, D5): after an app
+	 * restart the slot is still held (the wave is lit, the sidebar says on) but no
+	 * models are loaded. Pressing it starts them, which is what a lit control means;
+	 * the strip no longer offers a second "Start voice" action beside it. Turning
+	 * voice off is the next press, once it is running.
+	 */
+	const stopped = on && rig?.rig === "stopped";
 	const holderTitle = voiceSessionTitle(holder);
-	const label = on
-		? t("ui.chat.voice.toggle_off")
-		: holder
-			? holderTitle
-				? t("ui.chat.voice.toggle_switch", { title: holderTitle })
-				: t("ui.chat.voice.toggle_switch_untitled")
-			: t("ui.chat.voice.toggle_on");
+	const label = stopped
+		? t("ui.chat.voice.start_rig")
+		: on
+			? t("ui.chat.voice.toggle_off")
+			: holder
+				? holderTitle
+					? t("ui.chat.voice.toggle_switch", { title: holderTitle })
+					: t("ui.chat.voice.toggle_switch_untitled")
+				: t("ui.chat.voice.toggle_on");
 
 	/* The dot is a second cue for a state the strip already names in words. */
 	const dot = on
@@ -1155,6 +1365,10 @@ export const ComposerVoiceButton: FC<{
 
 	const press = async () => {
 		if (pending) return;
+		if (stopped) {
+			await startQwenRig();
+			return;
+		}
 		try {
 			const result = await controlVoice(
 				on ? "disable" : "enable",
@@ -1205,6 +1419,14 @@ export const ComposerVoiceButton: FC<{
 				 */
 				"aria-pressed:bg-[color-mix(in_oklab,var(--color-accent-wash)_80%,var(--color-accent))] aria-pressed:text-accent",
 				"aria-pressed:hover:bg-[color-mix(in_oklab,var(--color-accent-wash)_70%,var(--color-accent))] aria-pressed:hover:text-ink",
+				/*
+				 * THE OFF WAVE HOVERS ON THE BOX, NOT ON THE PRESSED MINT (design round
+				 * 1, nit): the ghost variant's `hover:bg-accent-wash` is the same wash
+				 * the pressed state uses, so in the light theme hovering an OFF wave
+				 * looked pressed. The raised step is the ordinary hover of the other
+				 * composer controls.
+				 */
+				"hover:bg-elevated hover:text-ink",
 			)}
 		>
 			<AudioLines aria-hidden="true" />
@@ -1213,7 +1435,11 @@ export const ComposerVoiceButton: FC<{
 					aria-hidden="true"
 					data-voice-dot-mark=""
 					className={cn(
-						"absolute top-1 right-1 size-[7px] rounded-full ring-2 ring-[var(--color-elevated)]",
+						/*
+						 * OFF THE GLYPH, on the button's own corner: at `top-1 right-1` the
+						 * 7px dot sat on the waveform and its knockout ring read as none.
+						 */
+						"absolute -top-0.5 -right-0.5 size-[7px] rounded-full ring-2 ring-[var(--color-elevated)]",
 						dot === "danger" && "bg-danger",
 						dot === "warning" && "bg-warning",
 						dot === "elsewhere" && "bg-accent",

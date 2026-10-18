@@ -818,26 +818,26 @@ export const QwenVoiceController: FC = () => {
 			if (next !== null)
 				useVoiceStore.getState().setActivity(next === "idle" ? null : next);
 			/*
-			 * THE PLAYBACK'S OWN CLOCK (design D2/D3): "Reply ended" and "Interrupted
-			 * at m:ss" are said for a fixed beat and then replaced by "Listening", so
-			 * the two moments they are said about are recorded where the events arrive
-			 * rather than re-derived in the strip. The rig's `at` is the Gateway's
-			 * clock; a frame without a parseable one falls back to this window's, which
-			 * only costs the interruption's seconds their precision.
+			 * THE PLAYBACK'S OWN CLOCK IS THIS WINDOW'S (design D2/D3, D9): "Reply
+			 * ended" and "Interrupted at m:ss" are said for a fixed beat, and the
+			 * interruption's second is the time between the two events AS THIS WINDOW
+			 * SAW THEM. The Gateway's log time is not that clock - its `started` and
+			 * `cancelled` records can share a second, which is why every interruption
+			 * read "Stopped at 0:00".
 			 */
 			const at = Date.parse(event.at);
-			const playedAt = Number.isFinite(at) ? at : Date.now();
 			const holder = useVoiceStore.getState().active?.session_id;
 			if (holder) {
+				const seenAt = Date.now();
 				if (event.type === "realtime.playback.started")
-					useVoiceStore.getState().notePlayback("started", holder, playedAt);
+					useVoiceStore.getState().notePlayback("started", holder, seenAt);
 				else if (
 					event.type === "realtime.playback.ended" &&
 					event.accepted === true
 				)
-					useVoiceStore.getState().notePlayback("ended", holder, playedAt);
+					useVoiceStore.getState().notePlayback("ended", holder, seenAt);
 				else if (event.type === "realtime.playback.cancelled")
-					useVoiceStore.getState().notePlayback("cancelled", holder, playedAt);
+					useVoiceStore.getState().notePlayback("cancelled", holder, seenAt);
 			}
 			/*
 			 * A LONG TAKE IS DROPPED BY THE VAD (BRIEF-1): the segment never
