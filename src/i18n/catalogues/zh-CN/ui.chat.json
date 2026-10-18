@@ -1,0 +1,10 @@
+{
+	"ui.chat.usage.continue": "套餐内配额已用完，将继续扣减额度。",
+	"ui.chat.usage.family_caps": "模型系列用量上限仍然适用。",
+	"ui.chat.usage.blocked": "无法付费使用",
+	"ui.chat.usage.eligibility_unknown": "付费使用资格未知",
+	"ui.chat.usage.unlimited": "付费用量不限",
+	"ui.chat.skill_invocation.instructions_label": "随此消息发送的技能指令",
+	"ui.chat.skill_invocation.trigger_label": "{token}技能指令",
+	"ui.chat.highlights.file_resolution_failed": "无法在此会话的工作目录中定位该文件。请使用“复制文件路径”，核对此路径是否位于当前会话的工作区后再重试。"
+}

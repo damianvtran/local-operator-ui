@@ -1,0 +1,22 @@
+{
+	"ui.shell.rail.ask.aria": "请求{chord}，{subject}",
+	"ui.shell.rail.ask.aria_count": "请求{chord}，{subject}，{count, plural, other {{countText}项待处理}}",
+	"ui.shell.rail.browser.aria": "浏览器{chord}",
+	"ui.shell.rail.browser.aria_count": "浏览器{chord}，{count, plural, other {{countText}项待处理}}",
+	"ui.shell.rail.browser.tooltip": "{state, select, open {关闭浏览器{chord}} other {打开浏览器{chord}}}",
+	"ui.shell.rail.browser.tooltip_count": "{state, select, open {关闭浏览器{chord}} other {打开浏览器{chord}}}，{count, plural, other {{countText}项审批}}待处理",
+	"ui.shell.rail.canvas.aria": "画布{chord}",
+	"ui.shell.rail.canvas.aria_count": "画布{chord}，{count, plural, other {{countText}个文件}}",
+	"ui.shell.rail.canvas.tooltip": "{state, select, open {关闭画布{chord}} other {打开画布{chord}}}",
+	"ui.shell.rail.canvas.tooltip_count": "{state, select, open {关闭画布{chord}} other {打开画布{chord}}}，{count, plural, other {{countText}个文件}}",
+	"ui.shell.rail.code.aria": "代码审查{chord}{mark}",
+	"ui.shell.rail.code.aria_details": "代码审查{chord}，{details}{mark}",
+	"ui.shell.rail.code.mentioned": "{count, plural, other {已提及{countText}项}}",
+	"ui.shell.rail.code.opened": "{count, plural, other {已创建{countText}项}}",
+	"ui.shell.rail.code.tooltip": "{state, select, open {关闭代码审查{chord}} other {打开代码审查{chord}}}{mark}",
+	"ui.shell.rail.code.tooltip_details": "{state, select, open {关闭代码审查{chord}} other {打开代码审查{chord}}}，{details}{mark}",
+	"ui.shell.rail.console.aria": "控制台{chord}",
+	"ui.shell.rail.console.aria_count": "控制台{chord}，{count, plural, other {上次查看后已完成{countText}项}}",
+	"ui.shell.rail.console.tooltip": "{state, select, open {关闭控制台{chord}} other {打开控制台{chord}}}",
+	"ui.shell.rail.console.tooltip_count": "{state, select, open {关闭控制台{chord}} other {打开控制台{chord}}}，{count, plural, other {上次查看后已完成{countText}项}}"
+}
