@@ -8,5 +8,5 @@
 	"ui.common.connection.connectivity_banner.this_app_s_updates_require": "Для обновлений приложения требуется",
 	"ui.common.connection.connectivity_banner.you_are_offline": "Вы не в сети. {detail} подключение к интернету.",
 	"ui.common.connection.floating_alert.dismiss": "Скрыть",
-	"ui.common.connection.provider.requires": "Настроенный провайдер ({provider}) требует"
+	"ui.common.connection.provider.requires": "Настроенному провайдеру ({provider}) требуется"
 }

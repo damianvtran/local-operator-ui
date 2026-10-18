@@ -7,5 +7,5 @@
 	"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels": "Нажмите нужные клавиши; Esc отменяет.",
 	"ui.settings.shortcuts.keyboard_shortcuts_section.reset": "Сбросить",
 	"ui.settings.shortcuts.keyboard_shortcuts_section.reset_label_to_its_default": "Сбросить {label} к значению по умолчанию",
-	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you": "Сочетания для панели. Установите фокус на поле и нажмите нужные клавиши; Esc отменяет, «Сбросить» возвращает действие по умолчанию, «Очистить» оставляет его без сочетания."
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you": "Сочетания для панели. Установите фокус на поле и нажмите нужные клавиши; Esc отменяет, «Сбросить» возвращает сочетание по умолчанию для этого действия, «Очистить» оставляет действие без сочетания."
 }

@@ -13,7 +13,7 @@
 	"ui.chat.tags.duplicate_name": "Тег с именем «{name}» уже существует.",
 	"ui.chat.tags.empty": "Теги упорядочивают разговоры, не меняя их названия. Создайте тег, чтобы начать.",
 	"ui.chat.tags.group": "Группировать чаты по тегам",
-	"ui.chat.tags.group_under": "Сгруппировать под",
+	"ui.chat.tags.group_under": "Основной тег",
 	"ui.chat.tags.label": "Теги",
 	"ui.chat.tags.load_failed": "Не удалось загрузить теги. Повторите попытку.",
 	"ui.chat.tags.loading": "Загрузка тегов…",
@@ -38,7 +38,7 @@
 	"ui.chat.tags.save_failed": "Теги не сохранены. Повторите попытку.",
 	"ui.chat.tags.search": "Поиск тегов",
 	"ui.chat.tags.untagged": "Без тега",
-	"ui.chat.tags.updated_grouped": "Теги обновлены. Сгруппировано под {tag}.",
+	"ui.chat.tags.updated_grouped": "Теги обновлены. Основной тег: {tag}.",
 	"ui.chat.tags.updated_untagged": "Теги обновлены. Показано в «Без тега».",
 	"ui.chat.tags.use_time": "Перейти к разделам по времени"
 }

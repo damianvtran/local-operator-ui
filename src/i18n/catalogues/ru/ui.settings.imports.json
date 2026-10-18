@@ -39,7 +39,7 @@
 	"ui.settings.imports.phase_selecting": "выбор",
 	"ui.settings.imports.preview_confirm": "Проверьте выбранное выше, затем подтвердите копирование.",
 	"ui.settings.imports.preview_heading": "Предпросмотр",
-	"ui.settings.imports.preview_memory": "{records, plural, one {# запись памяти} few {# записи памяти} many {# записей памяти} other {# записи памяти}} · ~{tokens} токенов",
+	"ui.settings.imports.preview_memory": "{records, plural, one {# запись памяти} few {# записи памяти} many {# записей памяти} other {# записи памяти}} · токенов: ~{tokens}",
 	"ui.settings.imports.preview_required": "Выберите хотя бы одну сессию и сначала постройте предпросмотр.",
 	"ui.settings.imports.preview_summary": "{sessions, plural, one {# сессия} few {# сессии} many {# сессий} other {# сессии}} · {messages, plural, one {# сообщение} few {# сообщения} many {# сообщений} other {# сообщения}} · {compactions, plural, one {# сжатие} few {# сжатия} many {# сжатий} other {# сжатия}}",
 	"ui.settings.imports.progress_heading": "Импорт разговоров",

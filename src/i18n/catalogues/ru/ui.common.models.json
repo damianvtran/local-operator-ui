@@ -4,7 +4,7 @@
 	"ui.common.models.hosting_select.custom_hosting_provider": "Свой провайдер",
 	"ui.common.models.hosting_select.detail": "{description} (требуются дополнительные учётные данные)",
 	"ui.common.models.hosting_select.hosting_provider": "Провайдер",
-	"ui.common.models.hosting_select.no_hosting_providers_available_sign_in_to_a_provider_or_add_a_pro": "Нет доступных провайдеров. Войдите к провайдеру или добавьте его ключ API в настройках, в разделе «Провайдеры».",
+	"ui.common.models.hosting_select.no_hosting_providers_available_sign_in_to_a_provider_or_add_a_pro": "Нет доступных провайдеров. Войдите в учётную запись провайдера или добавьте его ключ API в настройках, в разделе «Провайдеры».",
 	"ui.common.models.hosting_select.saving_hosting_provider": "Сохранение провайдера",
 	"ui.common.models.hosting_select.select_a_hosting_provider": "Выберите провайдера…",
 	"ui.common.models.hosting_select.select_the_ai_provider_that_you_want_to_use_each_provider_has_dif": "Выберите провайдера ИИ. У каждого провайдера свои модели. Рекомендуется: Radient",

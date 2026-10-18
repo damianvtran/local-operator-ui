@@ -30,7 +30,7 @@
 	"ui.canvas.files.missing": "Больше нет на диске",
 	"ui.canvas.files.modified": "Изменён",
 	"ui.canvas.files.name": "Название",
-	"ui.canvas.files.narrowCount": "{shown} из {total} файлов",
+	"ui.canvas.files.narrowCount": "Файлы: {shown} из {total}",
 	"ui.canvas.files.noMatch": "Нет файлов по этому запросу и фильтру",
 	"ui.canvas.files.order": "Порядок",
 	"ui.canvas.files.other": "Другое",

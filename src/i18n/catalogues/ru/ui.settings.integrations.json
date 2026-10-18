@@ -57,7 +57,7 @@
 	"ui.settings.integrations.credential_manifest.name_serp_api_key": "Ключ API SERP",
 	"ui.settings.integrations.credential_manifest.name_tavily_api_key": "Ключ API Tavily",
 	"ui.settings.integrations.credential_manifest.name_xai_api_key": "Ключ API xAI",
-	"ui.settings.integrations.credential_manifest.oauth_2_0_access_token_for_google_apis_used_by_local_operator_for": "Токен доступа OAuth 2.0 для API Google. Local Operator использует его для авторизованных запросов к Gmail, Календарю, Диску и другим сервисам Google. Токен недолговечен и обновляется автоматически.",
+	"ui.settings.integrations.credential_manifest.oauth_2_0_access_token_for_google_apis_used_by_local_operator_for": "Токен доступа OAuth 2.0 для API Google. Local Operator использует его для авторизованных запросов к Gmail, Calendar, Drive и другим сервисам Google. Токен недолговечен и обновляется автоматически.",
 	"ui.settings.integrations.credential_manifest.oauth_2_0_refresh_token_for_google_apis_used_to_obtain_new_access": "Токен обновления OAuth 2.0 для API Google. Используется для получения новых токенов доступа по истечении текущего. Управляется безопасно и автоматически.",
 	"ui.settings.integrations.credential_manifest.timestamp_in_milliseconds_since_epoch_indicating_when_the_current": "Отметка времени (в миллисекундах с начала эпохи), когда истекает текущий токен доступа Google. Используется внутренне для обновления токена.",
 	"ui.settings.integrations.integration_key_dialog.add_keys_heading": "{count, plural, one {Добавьте ключ для {name}} few {Добавьте ключи для {name}} many {Добавьте ключи для {name}} other {Добавьте ключи для {name}}}",
