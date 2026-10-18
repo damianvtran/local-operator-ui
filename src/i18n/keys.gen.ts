@@ -851,6 +851,7 @@ export type MessageParams = {
 	"ui.chat.tags.delete_title": { name: string };
 	"ui.chat.tags.discovery": undefined;
 	"ui.chat.tags.done": undefined;
+	"ui.chat.tags.duplicate_name": { name: string };
 	"ui.chat.tags.empty": undefined;
 	"ui.chat.tags.group": undefined;
 	"ui.chat.tags.group_under": undefined;
@@ -866,6 +867,7 @@ export type MessageParams = {
 	"ui.chat.tags.new": undefined;
 	"ui.chat.tags.new_name": undefined;
 	"ui.chat.tags.no_matches": { query: string };
+	"ui.chat.tags.none_yet": undefined;
 	"ui.chat.tags.picker_description": undefined;
 	"ui.chat.tags.picker_title": { title: string };
 	"ui.chat.tags.primary": undefined;
@@ -876,6 +878,8 @@ export type MessageParams = {
 	"ui.chat.tags.save_failed": undefined;
 	"ui.chat.tags.search": undefined;
 	"ui.chat.tags.untagged": undefined;
+	"ui.chat.tags.updated_grouped": { tag: string };
+	"ui.chat.tags.updated_untagged": undefined;
 	"ui.chat.tags.use_time": undefined;
 	"ui.code_review.activity.close": undefined;
 	"ui.code_review.activity.comment": undefined;

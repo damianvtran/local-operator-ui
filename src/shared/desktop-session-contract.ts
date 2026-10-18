@@ -95,7 +95,9 @@ export type SessionCatalogueRow = {
 	 * terminal and a pin made here are the same pin.
 	 */
 	pinned: boolean;
+	/** Durable assignments; absence supports backends predating session_tags. */
 	tags?: TagRef[];
+	/** Explicit primary ID (a member of tags), or null for Untagged. */
 	primary?: string | null;
 	/**
 	 * Whether this conversation is ARCHIVED, as the backend's own store holds it.
