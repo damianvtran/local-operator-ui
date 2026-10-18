@@ -633,6 +633,7 @@ export type MessageParams = {
 	"ui.agentMessages.settings.allowlist.add": undefined;
 	"ui.agentMessages.settings.allowlist.add_allowed": undefined;
 	"ui.agentMessages.settings.allowlist.add_blocked": undefined;
+	"ui.agentMessages.settings.allowlist.agent_id": undefined;
 	"ui.agentMessages.settings.allowlist.allowed_empty": undefined;
 	"ui.agentMessages.settings.allowlist.allowed_heading": undefined;
 	"ui.agentMessages.settings.allowlist.anyone": undefined;
@@ -644,6 +645,8 @@ export type MessageParams = {
 	"ui.agentMessages.settings.allowlist.description": undefined;
 	"ui.agentMessages.settings.allowlist.identifier": undefined;
 	"ui.agentMessages.settings.allowlist.identifier_empty": undefined;
+	"ui.agentMessages.settings.allowlist.identifier_help_agent": undefined;
+	"ui.agentMessages.settings.allowlist.identifier_help_person": undefined;
 	"ui.agentMessages.settings.allowlist.identifier_invalid": undefined;
 	"ui.agentMessages.settings.allowlist.identifier_long": undefined;
 	"ui.agentMessages.settings.allowlist.kind": undefined;
@@ -652,6 +655,7 @@ export type MessageParams = {
 	"ui.agentMessages.settings.allowlist.level": undefined;
 	"ui.agentMessages.settings.allowlist.listed_only": undefined;
 	"ui.agentMessages.settings.allowlist.needs_entry": undefined;
+	"ui.agentMessages.settings.allowlist.person_id": undefined;
 	"ui.agentMessages.settings.allowlist.read_only": undefined;
 	"ui.agentMessages.settings.allowlist.receive": undefined;
 	"ui.agentMessages.settings.allowlist.remove": undefined;
@@ -673,6 +677,7 @@ export type MessageParams = {
 	"ui.agentMessages.settings.dark.nothing_enabled": undefined;
 	"ui.agentMessages.settings.dark.title": undefined;
 	"ui.agentMessages.settings.description": undefined;
+	"ui.agentMessages.settings.error.no_changes": undefined;
 	"ui.agentMessages.settings.error.refresh": undefined;
 	"ui.agentMessages.settings.error.retry": undefined;
 	"ui.agentMessages.settings.error.title": undefined;

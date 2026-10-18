@@ -558,5 +558,40 @@
 		"length": "One short sentence.",
 		"placeholders": {},
 		"note": "Shown when the status says read_only (state F). Explains why the level controls, add/remove rows and Save are disabled rather than letting the reader press a write the server refuses."
+	},
+	"ui.agentMessages.settings.allowlist.agent_id": {
+		"role": "allowlist row label",
+		"tone": "sentence case, plain, factual",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "Names the identifier type on an allowed/blocked row. The wire carries only an endpoint id; this label makes the machine identifier honest rather than presenting it as a person."
+	},
+	"ui.agentMessages.settings.allowlist.person_id": {
+		"role": "allowlist row label",
+		"tone": "sentence case, plain, factual",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "Names the identifier type on a person-targeted row. The wire carries only an account id; do not invent a display name."
+	},
+	"ui.agentMessages.settings.allowlist.identifier_help_agent": {
+		"role": "add-entry input help",
+		"tone": "sentence case, plain, factual",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "Explains that the input expects an agent endpoint id and shows its prefix. The id itself is never translated."
+	},
+	"ui.agentMessages.settings.allowlist.identifier_help_person": {
+		"role": "add-entry input help",
+		"tone": "sentence case, plain, factual",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "Explains that the input expects a person's account id and shows its prefix. The id itself is never translated."
+	},
+	"ui.agentMessages.settings.error.no_changes": {
+		"role": "read-failure reassurance",
+		"tone": "sentence case, plain, factual",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "States that a failed settings read changed nothing, then asks the reader to retry for the current status. Never implies messages were disabled or enabled."
 	}
 }

@@ -111,7 +111,6 @@ async function mount(
 				endpoint: {
 					id: "bep-example",
 					state: "active",
-					account_id: body.expected_account_id,
 					tenant_id: body.tenant_id,
 				},
 			};

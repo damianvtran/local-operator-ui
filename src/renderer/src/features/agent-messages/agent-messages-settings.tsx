@@ -165,7 +165,6 @@ export function AgentMessagesSettings({
 		return () => {
 			cancelled = true;
 		};
-		// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the explicit retry trigger, not a value the effect reads.
 	}, [visible, accountId, loadAccount, tenantId, reloadKey, api]);
 
 	/*
@@ -274,7 +273,15 @@ export function AgentMessagesSettings({
 				<Alert variant="warning">
 					<AlertTitle>{t("ui.agentMessages.settings.error.title")}</AlertTitle>
 					<AlertDescription>
-						{settingsRefusalSentence(load.refusal)}
+						{load.refusal.code !== "invalid_response" &&
+							load.refusal.code !== "client_unavailable" && (
+								<span className="block">
+									{settingsRefusalSentence(load.refusal)}
+								</span>
+							)}
+						<span className="block">
+							{t("ui.agentMessages.settings.error.no_changes")}
+						</span>
 						<Button className="mt-3" variant="secondary" onClick={retry}>
 							{t("ui.agentMessages.settings.error.retry")}
 						</Button>
@@ -301,7 +308,6 @@ export function AgentMessagesSettings({
 						}
 						onLocalEnabled={setLocalEnabled}
 						onRefreshStatus={onRefreshStatus}
-						onRetry={retry}
 						setPending={setPending}
 					/>
 
@@ -389,7 +395,6 @@ type SettingsStateProps = {
 	onSettings: (settings: AgentMessagesSettingsResult) => void;
 	onLocalEnabled: (enabled: boolean) => void;
 	onRefreshStatus: (force?: boolean) => Promise<unknown> | undefined;
-	onRetry: () => void;
 	setPending: (pending: string | null) => void;
 };
 
@@ -421,7 +426,6 @@ const SettingsState: FC<SettingsStateProps> = ({
 	onSettings,
 	onLocalEnabled,
 	onRefreshStatus,
-	onRetry,
 	setPending,
 }) => {
 	const consent = agentMessagesSettingsConsent(status);
@@ -667,16 +671,6 @@ const SettingsState: FC<SettingsStateProps> = ({
 						/>
 					)}
 				</div>
-			)}
-
-			{state === "B" && !settings.endpoint && (
-				<button
-					type="button"
-					className="self-start text-body-sm text-ink-muted underline-offset-4 hover:underline"
-					onClick={onRetry}
-				>
-					{t("ui.agentMessages.settings.error.refresh")}
-				</button>
 			)}
 		</div>
 	);
@@ -1160,12 +1154,17 @@ const EntryRow: FC<{
 }> = ({ entry, disabled, onRemove }) => (
 	<div className="flex items-center justify-between gap-3 rounded border border-hairline px-2 py-1">
 		<div className="flex min-w-0 items-baseline gap-2">
-			<span className="text-meta text-ink-dim">
+			<span className="shrink-0 text-meta text-ink-dim">
 				{entry.kind === "endpoint"
-					? t("ui.agentMessages.settings.allowlist.kind_agent")
-					: t("ui.agentMessages.settings.allowlist.kind_person")}
+					? t("ui.agentMessages.settings.allowlist.agent_id")
+					: t("ui.agentMessages.settings.allowlist.person_id")}
 			</span>
-			<span className="truncate text-body-sm text-ink">{entry.id}</span>
+			{/* The full id stays visible and selectable: it is the only
+			    identity the wire carries, and truncation would make it
+			    unverifiable. */}
+			<span className="break-all font-mono text-body-sm text-ink">
+				{entry.id}
+			</span>
 		</div>
 		<Button
 			variant="secondary"
@@ -1244,6 +1243,11 @@ const AddEntryForm: FC<{
 					{t("ui.agentMessages.settings.allowlist.add")}
 				</Button>
 			</div>
+			<p className="text-meta text-ink-dim">
+				{kind === "endpoint"
+					? t("ui.agentMessages.settings.allowlist.identifier_help_agent")
+					: t("ui.agentMessages.settings.allowlist.identifier_help_person")}
+			</p>
 			{error && <p className="text-meta text-danger">{error}</p>}
 		</div>
 	);

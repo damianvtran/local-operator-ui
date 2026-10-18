@@ -91,11 +91,16 @@ export type AgentMessagesSettingsState = "B" | "C" | "D" | "E" | "F";
  */
 export function agentMessagesSectionMounted(
 	availability: AgentMessagesSettingsAvailability,
-	status: AgentMessagesStatus | null,
+	_status: AgentMessagesStatus | null,
 ): boolean {
-	return (
-		availability !== "absent" && (status !== null || availability === "error")
-	);
+	/*
+	 * A non-absent answer mounts the SHELL even while a read is in flight with
+	 * no held status: pressing Retry after a failure, or switching accounts,
+	 * must not blank the heading and the retry surface for the duration of the
+	 * check (round-2 R2-2). The page chooses the body: status -> section,
+	 * outstanding refusal -> retry Alert, otherwise a skeleton.
+	 */
+	return availability !== "absent";
 }
 
 /**

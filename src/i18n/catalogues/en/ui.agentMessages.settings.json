@@ -78,5 +78,10 @@
 	"ui.agentMessages.settings.refusal.rate_limited": "Too many requests. Wait a moment, then try again.",
 	"ui.agentMessages.settings.refusal.invalid_request": "That change was not accepted. Check the entry and try again.",
 	"ui.agentMessages.settings.refusal.generic": "Agent messages could not be updated. Try again.",
-	"ui.agentMessages.settings.allowlist.read_only": "Reach settings are read-only while agent messages are turned off."
+	"ui.agentMessages.settings.allowlist.read_only": "Reach settings are read-only while agent messages are turned off.",
+	"ui.agentMessages.settings.allowlist.agent_id": "Agent ID",
+	"ui.agentMessages.settings.allowlist.person_id": "Person ID",
+	"ui.agentMessages.settings.allowlist.identifier_help_agent": "Enter an agent ID (bep_…)",
+	"ui.agentMessages.settings.allowlist.identifier_help_person": "Enter a person ID (acc_…)",
+	"ui.agentMessages.settings.error.no_changes": "No settings were changed. Try again to check the current status."
 }

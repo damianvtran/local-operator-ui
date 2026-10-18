@@ -406,6 +406,38 @@ export async function sceneAgentMessages({
 	);
 	await shoot("agent-messages-local-on");
 
+	/*
+	 * QA round 1: the OFF direction is a real state change, not just the
+	 * absence of the on path. Turn it off, prove the attribute, capture it,
+	 * then restore on so the allowlist steps run from the enabled posture.
+	 */
+	await cdp.evaluate(`${SWITCH}?.click()`);
+	const localOff = await waitForCondition(
+		cdp,
+		`${SWITCH}?.getAttribute("aria-checked") === "false"`,
+		20_000,
+	);
+	check(
+		"the machine-local switch turns off",
+		localOff.ok === true,
+		`waited ${localOff.waitedMs}ms; aria-checked never became false`,
+		`off after ${localOff.waitedMs}ms`,
+	);
+	await wait(250);
+	await shoot("agent-messages-local-off");
+	await cdp.evaluate(`${SWITCH}?.click()`);
+	const localRestored = await waitForCondition(
+		cdp,
+		`${SWITCH}?.getAttribute("aria-checked") === "true"`,
+		20_000,
+	);
+	check(
+		"the machine-local switch is restored on",
+		localRestored.ok === true,
+		`waited ${localRestored.waitedMs}ms; aria-checked never returned to true`,
+		`on after ${localRestored.waitedMs}ms`,
+	);
+
 	// -- f. receive -> listed-only with one added identifier ------------------
 	const allowlistScrolled = await cdp.evaluate(
 		scrollSettingsNode("[data-agent-messages-allowlist]"),
