@@ -267,7 +267,7 @@ test("the failure pair reads verbatim, the conflict is a receipt, and a plain ca
 		state: "failed",
 		material: "image",
 		message: "out of credits",
-		errorType: "insufficient_credits",
+		errorType: null,
 	});
 	// The mid-walk frame (`stage: null`, the pair present, the call unsettled):
 	// the LIVE presentation with the sentence as its interim note (design round
@@ -417,7 +417,7 @@ test("a failure carries the error text verbatim, and a verdict keeps its own", (
 		state: "failed",
 		material: "image",
 		message: "invalid arguments for generate_image: 'prompt' is required",
-		errorType: "invalid_arguments",
+		errorType: null,
 	});
 	// A record built by hand carries no `notRunReason` key at all; an absent
 	// key must not read as a verdict.
@@ -527,7 +527,9 @@ test("controls render only where wired and where the state can act", () => {
  */
 const componentBundle = await build({
 	stdin: {
-		contents: `export { ImageGenCard } from "./src/renderer/src/features/chat/canonical/image-gen-card";`,
+		contents: `export { ImageGenCard } from "./src/renderer/src/features/chat/canonical/image-gen-card";
+ export { useSoundStopGate } from "./src/renderer/src/features/chat/canonical/sound-stop-confirmation";
+ export { useInterruptOnEscape } from "./src/renderer/src/features/chat/hooks/use-interrupt-on-escape";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -571,8 +573,12 @@ const componentBundlePath = new URL(
 );
 await writeFile(componentBundlePath, componentBundle.outputFiles[0].text);
 let ImageGenCard;
+let useSoundStopGate;
+let useInterruptOnEscape;
 try {
-	({ ImageGenCard } = await import(componentBundlePath.href));
+	({ ImageGenCard, useSoundStopGate, useInterruptOnEscape } = await import(
+		componentBundlePath.href
+	));
 } finally {
 	await unlink(componentBundlePath);
 }
@@ -1262,7 +1268,7 @@ test("a rate-limited call states the server's sentence, preferring the result's 
 		}),
 	);
 	assert.equal(onlyType.state, "failed");
-	assert.equal(onlyType.errorType, "audio_rate_limited");
+	assert.equal(onlyType.errorType, "Audio rate limited");
 	assert.equal(
 		onlyType.message,
 		"Audio generation is busy right now. Wait a moment and try again.",
@@ -1304,7 +1310,10 @@ test("sound receipts retain billed/estimated provenance and never turn quotes in
 				details: { cost_usd: amount, billing_basis: basis },
 			}),
 		);
-		assert.equal(view.costCaption, `Cost $${amount.toFixed(4)} (${basis})`);
+		assert.equal(
+			view.costCaption,
+			`Cost $${Number(amount.toFixed(4))} (${basis}).`,
+		);
 	}
 	for (const details of [
 		{ cost_usd: null, billing_basis: "billed" },
@@ -1316,12 +1325,13 @@ test("sound receipts retain billed/estimated provenance and never turn quotes in
 	const pending = imageGenCardView(
 		tool({
 			stopped: true,
+			toolName: "generate_voiceover",
 			details: { settled: null, cost_usd: null, cost: { basis: "quote" } },
 		}),
 	);
 	assert.equal(
 		pending.settlementCaption,
-		'Settlement pending · settled:null · cost_usd:null · cost.basis:"quote"',
+		"Settlement pending — the final charge will appear once the provider reports it.",
 	);
 });
 
@@ -1335,6 +1345,10 @@ test("audio result details survive reducer retention and settlement revisions", 
 	assert.equal(preferProgressDetails(revised, billed), revised);
 	const pending = { settled: null, cost_usd: null, cost: { basis: "quote" } };
 	assert.equal(preferProgressDetails(pending, billed), pending);
+	assert.equal(
+		preferProgressDetails(structuredClone(pending), pending),
+		pending,
+	);
 	assert.equal(preferProgressDetails(null, pending), pending);
 	const settled = {
 		...pending,
@@ -1353,7 +1367,7 @@ test("the sound card shows result costs and the agent's refusal class above its 
 			details: { cost_usd: 0.002, billing_basis: "billed" },
 		}),
 	);
-	assert.ok(markupOf(billed).includes("Cost $0.0020 (billed)"));
+	assert.ok(markupOf(billed).includes("Cost $0.002 (billed)."));
 	const old = imageGenCardView(
 		tool({
 			toolName: "generate_voiceover",
@@ -1364,10 +1378,14 @@ test("the sound card shows result costs and the agent's refusal class above its 
 	const body =
 		'{"code":"audio_rejected","error":"This audio request could not be accepted."}';
 	const refusal = imageGenCardView(
-		tool({ notRunKind: "invalid_arguments", notRunReason: body }),
+		tool({
+			toolName: "generate_voiceover",
+			notRunKind: "invalid_arguments",
+			notRunReason: body,
+		}),
 	);
 	const html = markupOf(refusal);
-	assert.ok(html.indexOf("invalid_arguments") < html.indexOf("audio_rejected"));
+	assert.ok(html.indexOf("Invalid arguments") < html.indexOf("audio_rejected"));
 	assert.equal(refusal.message, body);
 });
 
@@ -1415,12 +1433,30 @@ test("a running sound stop warns before invoking the real action handler", async
 		};
 		await press("Stop");
 		assert.equal(calls, 0);
+		assert.equal(dom.window.document.activeElement.textContent, "Keep waiting");
+		assert.equal(
+			dom.window.document.querySelector("[aria-live=polite]").textContent,
+			"Stop this generation?",
+		);
 		assert.ok(
 			dom.window.document.body.textContent.includes(
 				"The provider has no cancellation endpoint. The generation continues and will be charged if it produces audio.",
 			),
 		);
+		await act(async () =>
+			dom.window.document.dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: "Escape",
+					bubbles: true,
+					cancelable: true,
+				}),
+			),
+		);
+		assert.equal(calls, 0);
+		assert.equal(dom.window.document.activeElement.textContent, "Stop");
+		await press("Stop");
 		await press("Keep waiting");
+		assert.equal(dom.window.document.activeElement.textContent, "Stop");
 		assert.equal(calls, 0);
 		await press("Stop");
 		await press("Request stop");
@@ -1430,5 +1466,237 @@ test("a running sound stop warns before invoking the real action handler", async
 		dom.window.close();
 		Object.assign(globalThis, previous);
 		globalThis.IS_REACT_ACT_ENVIRONMENT = undefined;
+	}
+});
+
+test("sound failure labels are human, scoped, and do not repeat a sentence opening", () => {
+	for (const toolName of ["generate_image", "generate_video"]) {
+		const view = imageGenCardView(
+			tool({
+				toolName,
+				isError: true,
+				details: {
+					error_type: "insufficient_credits",
+					error: "out of credits",
+				},
+			}),
+		);
+		assert.equal(view.errorType, null);
+		assert.equal(
+			markupOf({ ...view, errorType: "insufficient_credits" }).includes(
+				"insufficient_credits",
+			),
+			false,
+		);
+		const done = imageGenCardView(
+			tool({
+				toolName,
+				output: "Cost $0.002 (billed).",
+				details: { cost_usd: 0.002, billing_basis: "billed" },
+			}),
+		);
+		assert.equal(done.costCaption, null);
+	}
+	const view = imageGenCardView(
+		tool({
+			toolName: "generate_voiceover",
+			isError: true,
+			details: {
+				error_type: "invalid_arguments",
+				error: "Invalid arguments: duration is required.",
+			},
+		}),
+	);
+	assert.equal(view.errorType, null);
+	assert.equal(view.message, "Invalid arguments: duration is required.");
+});
+
+test("cancelled sound receipts retain explicit pending and completed billing facts", () => {
+	// Canonical #2588 cancel fields and the completed observer's billed fields:
+	// these are contract fixtures, not a claim that a provider was called here.
+	const cancelled = {
+		settled: null,
+		cost_usd: null,
+		cost: {
+			v: 1,
+			amount_usd: 0.0216,
+			basis: "quote",
+			units: 540,
+			unit: "char",
+			unit_price_usd: 4e-5,
+			provider: "radient",
+			model: "radient/voiceover-flash",
+			tool_type: "speech_generation",
+			usage_record_id: "fixture-audio-usage",
+			price_version: "audio-rates@2026-10-17",
+		},
+		cancellation: {
+			requested: true,
+			vendor_stopped: false,
+			reason: "provider_has_no_cancel_api",
+			detail:
+				"The provider has no cancellation endpoint. The generation continues and will be charged if it produces audio.",
+		},
+		note: "Cancellation is best-effort: the request settles at its terminal outcome. A completed generation is charged normally.",
+	};
+	const record = tool({
+		toolName: "generate_voiceover",
+		stopped: true,
+		details: cancelled,
+	});
+	assert.ok(
+		imageGenCardView(record).settlementCaption.startsWith("Settlement pending"),
+	);
+	const settled = imageGenCardView({
+		...record,
+		details: { settled: true, cost_usd: 0.0021, billing_basis: "billed" },
+	});
+	assert.equal(settled.settlementCaption, "Cost $0.0021 (billed).");
+	assert.ok(markupOf(settled).includes("Cost $0.0021 (billed)."));
+	for (const details of [
+		{ settled: true, cost_usd: null, billing_basis: "billed" },
+		{ settled: null, cost_usd: null },
+		{ settled: null, cost_usd: 0.2, cost: { basis: "quote" } },
+	])
+		assert.equal(
+			imageGenCardView({ ...record, details }).settlementCaption,
+			undefined,
+		);
+});
+
+test("pane Stop and the production Escape accelerator share sound charge admission", async () => {
+	const { JSDOM } = await import("jsdom");
+	const { createRoot } = await import("react-dom/client");
+	const { act } = await import("react");
+	const dom = new JSDOM('<div id="root"></div>', { url: "http://localhost" });
+	const previous = {
+		window: globalThis.window,
+		document: globalThis.document,
+		HTMLElement: globalThis.HTMLElement,
+		IS_REACT_ACT_ENVIRONMENT: globalThis.IS_REACT_ACT_ENVIRONMENT,
+	};
+	Object.assign(globalThis, {
+		window: dom.window,
+		document: dom.window.document,
+		HTMLElement: dom.window.HTMLElement,
+		IS_REACT_ACT_ENVIRONMENT: true,
+	});
+	const root = createRoot(document.getElementById("root"));
+	let calls = 0;
+	const dispatch = () => calls++;
+	const restore = () => document.querySelector("textarea").focus();
+	const Pane = ({
+		sound = true,
+		available = true,
+		sessionId = "[redacted]-sound-pane",
+	}) => {
+		const { paneRef, stop, confirmation } = useSoundStopGate({
+			sessionId,
+			runningSound: sound,
+			available,
+			onInterrupt: dispatch,
+			onRestoreFocus: restore,
+		});
+		useInterruptOnEscape({
+			sessionId,
+			turnAlive: true,
+			available,
+			onInterrupt: stop,
+		});
+		return h(
+			"div",
+			{ ref: paneRef, "data-chat-pane": "" },
+			sound
+				? h(ImageGenCard, {
+						scope: null,
+						view: imageGenCardView(
+							tool({
+								toolName: "generate_voiceover",
+								phase: "running",
+								startedAt: Date.now(),
+							}),
+						),
+						actions: { onCancel: dispatch },
+					})
+				: null,
+			confirmation,
+			h("textarea"),
+			h("button", { type: "button", onClick: stop }, "Pane stop"),
+		);
+	};
+	const press = async (label) => {
+		const button = [...document.querySelectorAll("button")].find(
+			(b) => b.textContent === label,
+		);
+		assert.ok(button);
+		await act(async () => button.click());
+	};
+	const pressEscape = async () => {
+		await act(async () =>
+			document.dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: "Escape",
+					bubbles: true,
+					cancelable: true,
+				}),
+			),
+		);
+	};
+	try {
+		await act(async () => root.render(h(Pane)));
+		await press("Stop");
+		await press("Pane stop");
+		assert.equal(document.querySelectorAll("fieldset").length, 1);
+		assert.equal(calls, 0);
+		await pressEscape();
+		assert.equal(document.activeElement.textContent, "Stop");
+		await press("Pane stop");
+		await press("Stop");
+		assert.equal(document.querySelectorAll("fieldset").length, 1);
+		assert.equal(calls, 0);
+		await pressEscape();
+		await press("Pane stop");
+		assert.equal(calls, 0);
+		assert.equal(document.activeElement.textContent, "Keep waiting");
+		await press("Pane stop");
+		assert.equal(document.querySelectorAll("fieldset").length, 1);
+		assert.equal(calls, 0);
+		await pressEscape();
+		assert.equal(calls, 0);
+		assert.equal(document.activeElement.tagName, "TEXTAREA");
+		assert.equal(document.querySelector("fieldset"), null);
+		await pressEscape();
+		assert.equal(calls, 0);
+		assert.ok(document.querySelector("fieldset"));
+		await pressEscape();
+		assert.equal(calls, 0);
+		assert.equal(document.querySelector("fieldset"), null);
+		await press("Pane stop");
+		await press("Keep waiting");
+		assert.equal(calls, 0);
+		await press("Pane stop");
+		await press("Request stop");
+		assert.equal(calls, 1);
+		await press("Stop");
+		await act(async () => root.render(h(Pane, { sound: false })));
+		assert.equal(
+			document.activeElement.tagName,
+			"TEXTAREA",
+			"removing a confirming card restores its own pane composer",
+		);
+		await press("Pane stop");
+		assert.equal(calls, 2, "ordinary turn interrupt remains immediate");
+		await pressEscape();
+		assert.equal(calls, 3);
+		await act(async () =>
+			root.render(h(Pane, { sound: true, available: false })),
+		);
+		await press("Pane stop");
+		await pressEscape();
+		assert.equal(calls, 3, "capability denial remains authoritative");
+	} finally {
+		await act(async () => root.unmount());
+		dom.window.close();
+		Object.assign(globalThis, previous);
 	}
 });

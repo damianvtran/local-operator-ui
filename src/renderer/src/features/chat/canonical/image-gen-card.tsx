@@ -77,7 +77,13 @@
 
 import { Button, Progress } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { useEffect, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	formatBytes,
 	formatDuration,
@@ -96,6 +102,7 @@ import {
 	imageGenCardControls,
 	imageGenMaterialNoun,
 } from "./image-gen-card-model";
+import { SoundStopConfirmation } from "./sound-stop-confirmation";
 import type { AttachmentScope } from "./use-attachment-url";
 
 export type ImageGenCardProps = {
@@ -363,9 +370,38 @@ function controlLabel(
 
 export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 	const [confirmStop, setConfirmStop] = useState(false);
+	const keepWaiting = useCallback(() => setConfirmStop(false), []);
+	const root = useRef<HTMLDivElement>(null);
+	const wasConfirming = useRef(false);
+	useLayoutEffect(() => {
+		if (wasConfirming.current && !confirmStop) {
+			(
+				root.current?.querySelector<HTMLButtonElement>(
+					"[data-imagegen-controls] button",
+				) ?? root.current
+			)?.focus();
+		}
+		wasConfirming.current = confirmStop;
+	}, [confirmStop]);
+	useLayoutEffect(() => {
+		const card = root.current;
+		return () => {
+			// If the live row disappears, return the keyboard to its own pane,
+			// never a composer belonging to a different conversation.
+			if (card?.contains(document.activeElement)) {
+				card
+					.closest("[data-chat-pane]")
+					?.querySelector<HTMLTextAreaElement>("textarea")
+					?.focus();
+			}
+		};
+	}, []);
 	const soundRunning =
 		view.state === "running" &&
 		(view.material === "voiceover" || view.material === "sound-effect");
+	useEffect(() => {
+		if (!soundRunning) setConfirmStop(false);
+	}, [soundRunning]);
 	const startedAtMs =
 		view.state === "running" || view.state === "cancelling"
 			? view.startedAtMs
@@ -393,12 +429,16 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			: null;
 	return (
 		<div
+			ref={root}
+			tabIndex={-1}
 			data-imagegen-card={view.state}
 			className={cn("flex w-full flex-col gap-2")}
 		>
 			{generatingBody ? <GeneratingTile /> : null}
-			{view.state === "failed" && view.errorType ? (
-				<p className={cn("text-body-sm text-ink")}>{view.errorType}</p>
+			{view.state === "failed" &&
+			(view.material === "voiceover" || view.material === "sound-effect") &&
+			view.errorType ? (
+				<p className={cn("text-meta text-ink")}>{view.errorType}</p>
 			) : null}
 			<StateLine view={view} elapsed={elapsed} />
 			{view.state === "done" && view.costCaption ? (
@@ -408,30 +448,13 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 				<NoteLine line={view.settlementCaption} />
 			) : null}
 			{soundRunning && confirmStop ? (
-				<fieldset
-					aria-label="Confirm stop request"
-					className={cn("flex flex-col items-start gap-2")}
-				>
-					<NoteLine line="The provider has no cancellation endpoint. The generation continues and will be charged if it produces audio." />
-					<NoteLine line="Stopping is best-effort; it does not guarantee cancellation or no charge." />
-					<Button
-						variant="secondary"
-						size="sm"
-						onClick={() => {
-							setConfirmStop(false);
-							actions?.onCancel?.();
-						}}
-					>
-						Request stop
-					</Button>
-					<Button
-						variant="secondary"
-						size="sm"
-						onClick={() => setConfirmStop(false)}
-					>
-						Keep waiting
-					</Button>
-				</fieldset>
+				<SoundStopConfirmation
+					onKeepWaiting={keepWaiting}
+					onRequestStop={() => {
+						setConfirmStop(false);
+						actions?.onCancel?.();
+					}}
+				/>
 			) : null}
 			{/*
 			 * THE INTERIM'S ACCOUNT (design round 1, D1): the mid-walk failure's
@@ -556,7 +579,19 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 							}
 							onClick={
 								control.kind === "cancel" && soundRunning
-									? () => setConfirmStop(true)
+									? () => {
+											// A pane Stop may already own the same question.
+											const existing = root.current
+												?.closest("[data-chat-pane]")
+												?.querySelector<HTMLButtonElement>(
+													"[data-sound-stop-confirmation] button",
+												);
+											if (existing) {
+												existing.focus();
+												return;
+											}
+											setConfirmStop(true);
+										}
 									: handlers[control.kind]
 							}
 						>

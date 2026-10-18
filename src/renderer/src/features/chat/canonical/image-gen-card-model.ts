@@ -427,11 +427,10 @@ export type ImageGenCardView =
 			 */
 			message: string | null;
 			/**
-			 * The frozen `error_type` (FAL's structured code or a `media_*` platform
-			 * code), carried for structure rather than display; `null` when no frame
-			 * states one. The field is wired (harness PR #2089; `canonicalProgress`
-			 * reads it): `media_already_completed` and a plain cancel's absent type
-			 * are what decide the state above.
+			 * Human-readable sound/planning failure class, or null for other media
+			 * and when the unchanged error sentence already opens with that class.
+			 * The raw wire discriminator stays in `canonicalProgress` for state
+			 * selection; identifiers must not leak into the reader-facing label.
 			 */
 			errorType: string | null;
 	  }
@@ -479,6 +478,10 @@ export function imageGenCardView(
 	 * the tool name again.
 	 */
 	const material = imageGenMaterial(record.toolName);
+	const sound = material === "voiceover" || material === "sound-effect";
+	const settlementCaption = sound
+		? soundSettlementCaption(record.details)
+		: null;
 	/*
 	 * ARM 1, the interrupts. `stopped` is the call that was running when the
 	 * turn was aborted; `skipped`/`aborted` are the harness's verdicts that the
@@ -491,9 +494,7 @@ export function imageGenCardView(
 			state: "cancelled",
 			generating: record.startedAt !== null,
 			message: canonical.error ?? record.output,
-			...(soundSettlementCaption(record.details)
-				? { settlementCaption: soundSettlementCaption(record.details) }
-				: {}),
+			...(settlementCaption ? { settlementCaption } : {}),
 		};
 	if (record.notRunKind === "skipped" || record.notRunKind === "aborted")
 		return { state: "cancelled", generating: false, message: record.output };
@@ -512,7 +513,9 @@ export function imageGenCardView(
 			state: "failed",
 			material,
 			message: record.notRunReason,
-			errorType: record.notRunKind ?? null,
+			errorType: sound
+				? humanErrorClass(record.notRunKind, record.notRunReason)
+				: null,
 		};
 	/*
 	 * ARM 3, the turn that died while the call was still being dictated: the
@@ -558,9 +561,7 @@ export function imageGenCardView(
 				 */
 				generating: record.startedAt !== null,
 				message: canonical.error ?? record.output,
-				...(soundSettlementCaption(record.details)
-					? { settlementCaption: soundSettlementCaption(record.details) }
-					: {}),
+				...(settlementCaption ? { settlementCaption } : {}),
 			};
 		return {
 			state: "failed",
@@ -578,7 +579,9 @@ export function imageGenCardView(
 				(canonical.errorType === "audio_rate_limited"
 					? AUDIO_RATE_LIMITED_COPY
 					: null),
-			errorType: canonical.errorType,
+			errorType: sound
+				? humanErrorClass(canonical.errorType, canonical.error ?? record.output)
+				: null,
 		};
 	}
 	/*
@@ -655,7 +658,9 @@ export function imageGenCardView(
 				material,
 				durationS: record.durationS ?? null,
 				receipt: "generated",
-				costCaption: soundCostCaption(record.details, record.output),
+				costCaption: sound
+					? soundCostCaption(record.details, record.output)
+					: null,
 			};
 	}
 }
@@ -665,18 +670,30 @@ function soundSettlementCaption(details: unknown): string | null {
 	if (!details || typeof details !== "object") return null;
 	const result = details as Record<string, unknown>;
 	const cost = result.cost as Record<string, unknown> | null;
+	if (result.settled === true) return soundCostCaption(details);
 	return result.settled === null &&
 		result.cost_usd === null &&
 		cost?.basis === "quote"
-		? 'Settlement pending · settled:null · cost_usd:null · cost.basis:"quote"'
+		? "Settlement pending — the final charge will appear once the provider reports it."
 		: null;
+}
+
+/** Labels are for sound/planning failures only; never repeat the opening sentence. */
+function humanErrorClass(
+	kind: string | null | undefined,
+	message?: string | null,
+): string | null {
+	if (!kind) return null;
+	const words = kind.replace(/_/g, " ");
+	if (message?.toLowerCase().startsWith(words.toLowerCase())) return null;
+	return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 const LEGACY_COST_CAPTION =
 	/Cost \$[0-9]+(?:\.[0-9]+)? \((?:billed|estimated[^)]*)\)\.?/;
 
 /** Keep settlement provenance: a quote or an absent amount is not a charge. */
-function soundCostCaption(
+export function soundCostCaption(
 	details: unknown,
 	output?: string | null,
 ): string | null {
@@ -690,7 +707,7 @@ function soundCostCaption(
 	if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0)
 		return legacy;
 	if (basis !== "billed" && basis !== "estimated") return null;
-	return `Cost $${amount.toFixed(4)} (${basis})`;
+	return `Cost $${Number(amount.toFixed(4)).toString()} (${basis}).`;
 }
 
 /** Which affordance a control is. */
