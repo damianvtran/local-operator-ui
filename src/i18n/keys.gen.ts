@@ -140,6 +140,8 @@ import frUiBrowserChrome from "./catalogues/fr/ui.browser.chrome.json";
 import frUiBrowser from "./catalogues/fr/ui.browser.json";
 import frUiCanvas from "./catalogues/fr/ui.canvas.json";
 import frUiChatComposer from "./catalogues/fr/ui.chat.composer.json";
+import frUiChatComposerMedia from "./catalogues/fr/ui.chat.composer_media.json";
+import frUiChatDialogs from "./catalogues/fr/ui.chat.dialogs.json";
 import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
 import frUiChat from "./catalogues/fr/ui.chat.json";
 import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
@@ -340,6 +342,8 @@ export const bundledCatalogues: Readonly<
 		...frUiBrowser,
 		...frUiCanvas,
 		...frUiChatComposer,
+		...frUiChatComposerMedia,
+		...frUiChatDialogs,
 		...frUiChatHeader,
 		...frUiChat,
 		...frUiChatSidebarView,
