@@ -96,6 +96,8 @@ const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 	const [playbackFailed, setPlaybackFailed] = useState(false);
 	return (
 		<div
+			/* The pane owns the ground; a viewer body is a plane, not a second one. */
+			data-glass-plane="clear"
 			className={cn("flex h-full min-h-0 w-full flex-1 flex-col bg-elevated")}
 		>
 			<ViewerChrome>
@@ -177,6 +179,8 @@ const PathVideoPreview: FC<{ document: CanvasDocument }> = ({ document }) => {
 	   bar. */
 	return (
 		<div
+			/* The pane owns the ground; a viewer body is a plane, not a second one. */
+			data-glass-plane="clear"
 			className={cn("flex h-full min-h-0 w-full flex-1 flex-col bg-elevated")}
 		>
 			<ViewerChrome path={document.path} />

@@ -14,6 +14,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { JSDOM } from "jsdom";
+import {
+	LANE_ALPHA_CEILING,
+	LANE_ROLES,
+	deriveLaneWash,
+} from "./derive-glass-floors.mjs";
 
 const ROOT = process.cwd();
 
@@ -35,6 +41,294 @@ const glass = await bundleOf("./src/shared/window-glass");
 const floorsFile = JSON.parse(
 	readFileSync(`${ROOT}/src/shared/window-glass-floors.json`, "utf8"),
 );
+
+/*
+ * THE VEILED-BLOCK HOVER PROBE (G-11). Shared by the two-mount assertion and its
+ * negative controls. It reads the real stylesheet, so a rule that stops matching
+ * fails here the way it would fail in the app; the only synthesized input is
+ * Tailwind's utility layer, which a clean checkout has not built.
+ */
+const HOVER_PROBE_CLASS = "glass-probe-hover";
+
+const stripCssComments = (text) => text.replace(/\/\*[\s\S]*?\*\//g, "");
+
+const matchingDelimiter = (text, start) => {
+	const open = text[start];
+	const close = open === "[" ? "]" : open === "(" ? ")" : "}";
+	let depth = 0;
+	for (let i = start; i < text.length; i++) {
+		if (text[i] === open) depth++;
+		else if (text[i] === close) {
+			depth--;
+			if (depth === 0) return i;
+		}
+	}
+	return text.length;
+};
+
+/** Qualified rules in source order, each with the enclosing `@layer` (or null). */
+const cssRules = (text) => {
+	const src = stripCssComments(text);
+	const rules = [];
+	const stack = [];
+	let i = 0;
+	let start = 0;
+	let order = 0;
+	while (i < src.length) {
+		const ch = src[i];
+		if (ch === "{") {
+			const prelude = src.slice(start, i).trim();
+			if (prelude.startsWith("@")) {
+				const layer = /^@layer\s+([\w.-]+)/.exec(prelude)?.[1];
+				stack.push(layer ?? stack.at(-1) ?? null);
+				i++;
+				start = i;
+				continue;
+			}
+			const close = matchingDelimiter(src, i);
+			rules.push({
+				selector: prelude,
+				body: src.slice(i + 1, close),
+				layer: stack.at(-1) ?? null,
+				order: order++,
+			});
+			i = close + 1;
+			start = i;
+			continue;
+		}
+		if (ch === "}") {
+			stack.pop();
+			i++;
+			start = i;
+			continue;
+		}
+		if (ch === ";") {
+			i++;
+			start = i;
+			continue;
+		}
+		i++;
+	}
+	return rules;
+};
+
+const splitSelectorList = (text) => {
+	const out = [];
+	let depth = 0;
+	let start = 0;
+	for (let i = 0; i < text.length; i++) {
+		const ch = text[i];
+		if (ch === "(" || ch === "[") depth++;
+		else if (ch === ")" || ch === "]") depth--;
+		else if (ch === "," && depth === 0) {
+			out.push(text.slice(start, i).trim());
+			start = i + 1;
+		}
+	}
+	out.push(text.slice(start).trim());
+	return out.filter(Boolean);
+};
+
+const skipIdent = (text, i) => {
+	let j = i;
+	while (j < text.length && /[\w-]/.test(text[j])) j++;
+	return j;
+};
+
+/** CSS specificity as [ids, classes, types]; `:is()/:not()/:has()` take their
+ * most specific argument and `:where()` contributes nothing. */
+const specificityOf = (selector) => {
+	const score = [0, 0, 0];
+	let i = 0;
+	while (i < selector.length) {
+		const ch = selector[i];
+		if (ch === "[") {
+			score[1]++;
+			i = matchingDelimiter(selector, i) + 1;
+			continue;
+		}
+		if (ch === "#") {
+			score[0]++;
+			i = skipIdent(selector, i + 1);
+			continue;
+		}
+		if (ch === ".") {
+			score[1]++;
+			i = skipIdent(selector, i + 1);
+			continue;
+		}
+		if (ch === ":") {
+			if (selector[i + 1] === ":") {
+				score[2]++;
+				i = skipIdent(selector, i + 2);
+				continue;
+			}
+			const end = skipIdent(selector, i + 1);
+			const name = selector.slice(i + 1, end).toLowerCase();
+			if (selector[end] !== "(") {
+				score[1]++;
+				i = end;
+				continue;
+			}
+			const close = matchingDelimiter(selector, end);
+			const args = selector.slice(end + 1, close);
+			if (name === "is" || name === "not" || name === "has") {
+				let best = [0, 0, 0];
+				for (const arg of splitSelectorList(args)) {
+					const candidate = specificityOf(arg);
+					const cmp =
+						candidate[0] - best[0] ||
+						candidate[1] - best[1] ||
+						candidate[2] - best[2];
+					if (cmp > 0) best = candidate;
+				}
+				score[0] += best[0];
+				score[1] += best[1];
+				score[2] += best[2];
+			} else if (name !== "where") {
+				score[1]++;
+			}
+			i = close + 1;
+			continue;
+		}
+		if (/[a-zA-Z]/.test(ch) && !/[\w-]/.test(selector[i - 1] ?? " "))
+			score[2]++;
+		i++;
+	}
+	return score;
+};
+
+const UTILITY_LAYER_CSS = `
+@layer utilities {
+	.bg-sunken { background-color: var(--color-sunken); }
+	.hover\\:bg-sunken:hover { background-color: var(--color-sunken); }
+	.hover\\:bg-surface:hover { background-color: var(--color-surface); }
+	.hover\\:bg-elevated:hover { background-color: var(--color-elevated); }
+}
+`;
+
+const VEILED_HOVER_MOUNTS = {
+	/* A route pane inside `<main>` (the canvas's own ask pane). */
+	session: `<main data-glass-region="canvas-backing">
+		<div data-glass-region="pane">
+			<div data-glass-block=""><button class="probe-row hover:bg-sunken">option</button></div>
+		</div>
+	</main>`,
+	/* The fleet asks drawer: its pane is a SIBLING of `<main>` (`chat-layout.tsx`). */
+	fleet: `<div class="content-column">
+		<main data-glass-region="canvas-backing"><div></div></main>
+		<div data-glass-region="pane" data-ask-mode="docked">
+			<div data-glass-block=""><button class="probe-row hover:bg-sunken">option</button></div>
+		</div>
+	</div>`,
+};
+
+/**
+ * Resolve the winning `background-color` for a hovered row inside a veiled block,
+ * in both mounts, the way CSS does: unlayered beats layered, then specificity,
+ * then source order. Returns the block's veil state too (the precondition).
+ * `keepBranches` drops one selector of the suppression rule to build the controls.
+ */
+const veiledHoverOutcome = (css, { keepBranches } = {}) => {
+	const suppressionRule = cssRules(css).find(
+		(rule) =>
+			/background-color:\s*transparent/.test(rule.body) &&
+			/\[data-glass-block\]/.test(rule.selector) &&
+			/\[class~="hover:bg-sunken"\]/.test(rule.selector),
+	);
+	if (!suppressionRule)
+		throw new Error(
+			"no veiled-block hover suppression rule (data-glass-block + hover:bg-sunken + transparent)",
+		);
+	let subject = css;
+	if (keepBranches) {
+		const branches = splitSelectorList(suppressionRule.selector);
+		const keep = (branch) =>
+			keepBranches === "block"
+				? !branch.includes("main[")
+				: branch.includes("main[");
+		const kept = branches.filter(keep);
+		if (kept.length === 0 || kept.length === branches.length)
+			throw new Error(
+				`control has nothing to drop: keepBranches=${keepBranches}`,
+			);
+		subject = css.replace(suppressionRule.selector, kept.join(",\n"));
+	}
+	const rules = [...cssRules(UTILITY_LAYER_CSS), ...cssRules(subject)];
+	const outcome = {};
+	for (const [mount, markup] of Object.entries(VEILED_HOVER_MOUNTS)) {
+		const dom = new JSDOM(
+			`<!doctype html><html data-glass="canvas pane"><body>${markup}</body></html>`,
+		);
+		const { document } = dom.window;
+		const row = document.querySelector(".probe-row");
+		const block = document.querySelector("[data-glass-block]");
+		row.classList.add(HOVER_PROBE_CLASS);
+		const resolve = (element) => {
+			const matches = [];
+			for (const rule of rules) {
+				const value = /background-color:\s*([^;]+);/
+					.exec(rule.body)?.[1]
+					.trim();
+				if (!value) continue;
+				for (const selector of splitSelectorList(rule.selector)) {
+					const probe = selector.replace(/:hover\b/g, `.${HOVER_PROBE_CLASS}`);
+					let hit = false;
+					try {
+						hit = element.matches(probe);
+					} catch {
+						hit = false;
+					}
+					if (hit)
+						matches.push({
+							selector,
+							value,
+							layer: rule.layer,
+							order: rule.order,
+							specificity: specificityOf(selector),
+						});
+				}
+			}
+			matches.sort((x, y) => {
+				const rank = (entry) => (entry.layer === null ? 1 : 0);
+				return (
+					rank(x) - rank(y) ||
+					x.specificity[0] - y.specificity[0] ||
+					x.specificity[1] - y.specificity[1] ||
+					x.specificity[2] - y.specificity[2] ||
+					x.order - y.order
+				);
+			});
+			return matches.at(-1) ?? null;
+		};
+		const veil = resolve(block);
+		const winner = resolve(row);
+		const translation = rules
+			.filter((rule) => {
+				const value = /background-color:\s*([^;]+);/.exec(rule.body)?.[1] ?? "";
+				return value.includes("--color-row-hover");
+			})
+			.flatMap((rule) => splitSelectorList(rule.selector))
+			.find((selector) => {
+				try {
+					return row.matches(
+						selector.replace(/:hover\b/g, `.${HOVER_PROBE_CLASS}`),
+					);
+				} catch {
+					return false;
+				}
+			});
+		outcome[mount] = {
+			veil: !!veil?.value.includes("--lo-ink"),
+			value: winner?.value ?? "none",
+			selector: winner?.selector ?? "none",
+			translationSpecificity: translation
+				? `(${specificityOf(translation).join(",")})`
+				: "none",
+		};
+	}
+	return outcome;
+};
 
 const MAC = {
 	platform: "darwin",
@@ -589,6 +883,41 @@ test("G-7b the block veil and the work alpha are committed as derived, not chose
 	);
 });
 
+test("G-7c the lane wash is committed as derived, and its mirrored constants are the module's", () => {
+	for (const scheme of ["dark", "light"]) {
+		const wash = floorsFile.laneWash?.[scheme];
+		assert.ok(
+			wash !== null &&
+				typeof wash === "object" &&
+				LANE_ROLES.includes(wash.role) &&
+				typeof wash.scale === "number" &&
+				wash.scale > 0 &&
+				wash.scale <= 1,
+			`laneWash/${scheme} is a derived {role, scale}`,
+		);
+	}
+	/*
+	 * THE DERIVATION MIRRORS ONE CONSTANT because it has no build step. If the
+	 * ceiling moves in `src/shared/window-glass.ts` without being carried into
+	 * `scripts/derive-glass-floors.mjs`, the lane family would be derived against
+	 * a different ground alpha than the slider actually ships - a silent second
+	 * opinion about the same number. This is the check that makes the mirror a
+	 * contract. (The round-1 `LANE_DEFAULT_INTENSITY` mirror is gone with the
+	 * fixed-alpha derivation: the family now covers every slider position, so
+	 * there is no "default" the number could disagree about.)
+	 */
+	assert.equal(LANE_ALPHA_CEILING, glass.GLASS_ALPHA_CEILING);
+	assert.deepEqual(
+		deriveLaneWash(
+			JSON.parse(
+				readFileSync(`${ROOT}/src/shared/window-glass-floors.json`, "utf8"),
+			).alphaFloor,
+		),
+		floorsFile.laneWash,
+		"the committed lane wash is the derived one (never hand-lowered)",
+	);
+});
+
 test("G-8 paint: which kinds a coverage turns translucent, and the net alphas", () => {
 	const paint = (coverage) =>
 		glass.glassPaintFor({
@@ -633,6 +962,19 @@ test("G-8 paint: which kinds a coverage turns translucent, and the net alphas", 
 	/* The round-2 overlays are published from the committed table, per scheme. */
 	assert.equal(a("--lo-glass-a-row-work"), floorsFile.stateAlpha.work);
 	assert.equal(a("--lo-glass-a-block-veil"), floorsFile.blockVeil.dark);
+	/* The lane is a SCALE of the page's own alpha, so it tracks the slider. */
+	assert.equal(
+		a("--lo-glass-a-lane"),
+		Math.round(
+			a("--lo-glass-a-canvas") * floorsFile.laneWash.dark.scale * 100,
+		) / 100,
+		"the lane alpha is the page alpha at the derived scale",
+	);
+	assert.equal(
+		v["--lo-glass-lane-tone"],
+		`var(--lo-${floorsFile.laneWash.dark.role})`,
+		"the lane tone is the derived role, published once",
+	);
 	const lightVars = glass.glassPaintFor({
 		coverage: "full",
 		intensity: 60,
@@ -645,8 +987,29 @@ test("G-8 paint: which kinds a coverage turns translucent, and the net alphas", 
 		floorsFile.blockVeil.light,
 		"the veil follows the palette's scheme",
 	);
-	/* Every var is a bare number the CSS multiplies by 100%. */
-	for (const value of Object.values(v)) assert.match(value, /^\d(\.\d+)?$/);
+	assert.equal(
+		Number(lightVars["--lo-glass-a-lane"]),
+		Math.round(
+			Number(lightVars["--lo-glass-a-canvas"]) *
+				floorsFile.laneWash.light.scale *
+				100,
+		) / 100,
+		"the lane alpha follows the palette's scheme",
+	);
+	assert.equal(
+		lightVars["--lo-glass-lane-tone"],
+		`var(--lo-${floorsFile.laneWash.light.role})`,
+		"the lane tone follows the palette's scheme",
+	);
+	/* Every numeric var is a bare number the CSS multiplies by 100%; the tone is
+	 * the one non-numeric reference, and it must stay a single palette var(). */
+	for (const [name, value] of Object.entries(v)) {
+		if (name === "--lo-glass-lane-tone") {
+			assert.match(value, /^var\(--lo-(?:surface|sunken)\)$/);
+			continue;
+		}
+		assert.match(value, /^\d(\.\d+)?$/);
+	}
 });
 
 test("G-9 argv round-trip: the first-frame fact fails closed", () => {
@@ -747,6 +1110,21 @@ test("G-11 every region, state and well the CSS names is a marker some component
 			carried("data-glass-well", well),
 			`CSS names well "${well}" but no component carries it`,
 		);
+	/* Round 3: a plane is a clear surface or a masking band, and a lane is the
+	 * board's surface wash. Both are attribute markers, so the same closed-
+	 * vocabulary check holds them. */
+	const planes = valuesNamedBy("data-glass-plane");
+	assert.ok(planes.has("clear") && planes.has("band"));
+	for (const plane of planes)
+		assert.ok(
+			carried("data-glass-plane", plane),
+			`CSS names plane "${plane}" but no component carries it`,
+		);
+	if (/\[data-glass-lane\]/.test(css))
+		assert.ok(
+			sources.some((source) => /data-glass-lane/.test(source)),
+			"CSS names data-glass-lane but no component carries it",
+		);
 	/*
 	 * THE STACKED INK IS FORBIDDEN, NOT MEASURED. A row inside a veiled
 	 * block once took `hover:bg-row-hover` over the veil - ink 5% over ink 9% -
@@ -759,6 +1137,69 @@ test("G-11 every region, state and well the CSS names is a marker some component
 		css,
 		/\[data-glass-block\]\s*\[class~="hover:bg-row-hover"\]:hover\s*\{\s*background-color:\s*transparent;/,
 		"a row inside a veiled block must paint no hover fill: veil + row-hover stacks two inks and breaks AA",
+	);
+	/*
+	 * ROUND 1, F1 + ROUND 2, MAJOR: THE PANE TRANSLATION IS THE SAME STACK, AND THE
+	 * SUPPRESSION MUST REACH WHEREVER THE VEIL DOES. A hovered option row or footer
+	 * button inside the ask card took the pane rule's `row-hover` (ink 5%) over the
+	 * card's veil and measured `inkMuted` 4.30:1 on synthwave - the
+	 * `hover:bg-row-hover` suppression above did not cover it, because the ask rows
+	 * wear `hover:bg-sunken` and let the PANE rewrite them.
+	 *
+	 * A REGEX CANNOT SEE SCOPE, and that is how round 1 passed while the FLEET asks
+	 * drawer still painted an opaque hover over its veil: the suppression repeated
+	 * the pane rule's `main[...]` path, the drawer's pane is a SIBLING of `<main>`,
+	 * and no pattern over the rule's own text noticed that the rule could not match
+	 * there. The assertion below is therefore the real cascade: both mounts are
+	 * built as DOM, the stylesheet is the shipped `index.css`, Tailwind's utilities
+	 * are injected at the layer and specificity it emits, and jsdom does the
+	 * selector matching. `:hover` is rewritten to a class because jsdom has no
+	 * pointer state. Two control variants then prove both halves are load-bearing:
+	 * drop the block-only selector and the FLEET mount fills again; drop the
+	 * structural one and the SESSION mount's translation out-specifies the
+	 * suppression and fills again.
+	 */
+	const hover = veiledHoverOutcome(css);
+	assert.equal(
+		hover.session.veil,
+		true,
+		"the session mount's card must be veiled for the suppression to matter",
+	);
+	assert.equal(
+		hover.fleet.veil,
+		true,
+		"the fleet mount's card must be veiled: the veil is canvas-gated, not main-scoped",
+	);
+	assert.equal(
+		hover.session.value,
+		"transparent",
+		`session mount: the pane translation (${hover.session.translationSpecificity}) must lose to the suppression, got ${hover.session.value} from ${hover.session.selector}`,
+	);
+	assert.equal(
+		hover.fleet.value,
+		"transparent",
+		`fleet mount: the raw hover utility must paint no fill over the veil, got ${hover.fleet.value} from ${hover.fleet.selector}`,
+	);
+	assert.match(
+		hover.fleet.selector,
+		/html\[data-glass~="canvas"\]/,
+		"the fleet-reachable selector must be gated on the veil's own gate",
+	);
+	assert.ok(
+		!hover.fleet.selector.includes("main["),
+		"the fleet mount is a sibling of <main>: the selector that wins there cannot be the pane path",
+	);
+	const withoutFleet = veiledHoverOutcome(css, { keepBranches: "pane" });
+	assert.notEqual(
+		withoutFleet.fleet.value,
+		"transparent",
+		"control: with the block-only selector dropped, the fleet mount must fill again - otherwise the assertion is vacuous",
+	);
+	const withoutPane = veiledHoverOutcome(css, { keepBranches: "block" });
+	assert.notEqual(
+		withoutPane.session.value,
+		"transparent",
+		"control: with the structural selector dropped, the pane translation out-specifies the suppression - the second selector is not redundant",
 	);
 	if (/\[data-glass-block\]/.test(css))
 		assert.ok(

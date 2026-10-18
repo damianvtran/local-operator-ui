@@ -63,11 +63,16 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
  * rows react because they open a project; a section label does not.
  *
  * THE MASKING CONTRACT. The List pins the band itself (`sticky top-0 z-10`
- * through `className`), and the band's opaque fill spans the same box as the
- * rows - the scrolling `<ul>`'s `px-6` inset, so the band and a row both run
+ * through `className`), and the band's fill spans the same box as the rows -
+ * the scrolling `<ul>`'s `px-6` inset, so the band and a row both run
  * x=24..1256 at the 1280px frame - which is what lets a row scroll fully under
- * it with no pixel escaping beside it. A solid role fill needs no
- * `backdrop-blur` and no scrim.
+ * it with no pixel escaping beside it. OFF GLASS the fill is opaque and needs
+ * no `backdrop-blur` and no scrim. ON GLASS it is the field overlay
+ * (`data-glass-well`): deliberately translucent, because a solid plate inside a
+ * translucent column is the hard seam the surface pass removed. A row's text
+ * can therefore be glimpsed under the band; the design takes that over the
+ * seam, and the band's own inks are asserted over the field (styles/index.css,
+ * window glass round 3).
  *
  * The `data-project-team` hook rides through `...rest` to the band: it is the
  * stories' and the rig's handle on the sticky geometry.
@@ -110,8 +115,10 @@ export const TeamSectionHeader: FC<TeamSectionHeaderProps> = ({
 			{...rest}
 			/* A BAND, NOT A BLOCK: it sits behind the list's rows rather than being
 			 * one, so on glass it is a well (the field overlay), not a card veil.
-			 * The list view's own sticky headers stay solid by the scroll-under rule;
-			 * this band is the non-sticky one. */
+			 * This band IS the list's sticky header (`project-list.tsx` pins it), and
+			 * on glass it is the field overlay: a solid plate in a translucent
+			 * column is the seam the surface pass exists to remove (docs/branding.md,
+			 * window glass round 3). Off glass it is the opaque `surface` band. */
 			data-glass-well=""
 			className={cn(
 				"flex h-8 cursor-default items-center gap-2 bg-surface px-3 text-meta",
