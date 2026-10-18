@@ -1075,15 +1075,24 @@ const CONTROLS = [
 	},
 	{
 		/*
-		 * The mini composer's field (quick-send design §D; design round 1, D5):
-		 * an `elevated` box with a 1px `border-control` edge on the summoned
-		 * window's `canvas`, whose ink is the base role. A new component with its
-		 * own fill and edge has to be LISTED — by this table's own first rule,
-		 * green output about surfaces nobody named is not evidence about this one.
-		 * The same triple rides under "ask option button (hover)", but that row's
+		 * The mini SHEET (quick-send design §D; design round 1, D5): an
+		 * `elevated` box with a 1px `border-control` edge on the summoned
+		 * window's `canvas`, whose ink is the base role. RENAMED from "mini
+		 * composer field" (design review of the composer-border revert,
+		 * 2026-10-17): it was written when the mini had its own box, the mini
+		 * moved onto the SHARED composer on 2026-09-30 (52ace4f34), and the row
+		 * has described the sheet since - and read as "the composer's edge" to
+		 * whoever wanted one, which it must never again: the v0.34.55 edge
+		 * cited the field doctrine, not this row, and this row is what invites
+		 * the reading. The composer inside the mini ground is
+		 * the shared field: no edge at rest (its rule is scanned by
+		 * `window-glass-cdp.test.mjs`). A new component with its own fill and
+		 * edge has to be LISTED — by this table's own first rule, green output
+		 * about surfaces nobody named is not evidence about this one. The same
+		 * triple rides under "ask option button (hover)", but that row's
 		 * grounds are the pane's, and a summoned window draws on its own canvas.
 		 */
-		name: "mini composer field",
+		name: "mini sheet",
 		on: ["canvas"],
 		fill: "elevated",
 		border: "borderControl",
