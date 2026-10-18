@@ -212,7 +212,19 @@ const stateFor = (
 		capability,
 		settings,
 		active,
-		restartRequired: !capability.liveToggle && active !== launchedActive,
+		/*
+		 * A RESTART IS ONLY PENDING WHEN THE EFFECT IS AVAILABLE AND NOT LIVE.
+		 * `liveToggle: false` is also true of `mechanism: "none"`, so a capability
+		 * DROP (GPU software fallback, backdrop-filter report, Reduce transparency)
+		 * satisfied the old expression and told the user to restart while the window
+		 * had already fallen back to opaque. The unsupported state has its own
+		 * cause line; this notice is only for a supported change that needs a new
+		 * window (QA Q-1 / design D2).
+		 */
+		restartRequired:
+			capability.supported &&
+			!capability.liveToggle &&
+			active !== launchedActive,
 	};
 };
 
@@ -459,8 +471,20 @@ export function attachWindowGlass(
 			next.mechanism === capability.mechanism
 		)
 			return;
+		const wasSupported = capability.supported;
 		capability = next;
 		settings = sanitizeGlassSettings(settings, capability, settings);
+		/*
+		 * A DEFAULT RESOLVED AT LAUNCH IS NOT A CHOICE. If the gate returns and
+		 * `enabled` was never explicit, re-derive it from today's default: without
+		 * this, a user who launched under Reduce transparency (or with the GPU
+		 * unavailable) and then turned it off mid-session sees the row enable while
+		 * the window stays opaque until the next launch. The next launch resolves the
+		 * same value again because `explicit` still does not name `enabled`
+		 * (review R1-3).
+		 */
+		if (next.supported && !wasSupported && !explicit.has("enabled"))
+			settings.enabled = defaultGlassSettings(next).enabled;
 		applyToWindow();
 		push();
 		log(

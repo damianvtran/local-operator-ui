@@ -316,7 +316,8 @@ const api = {
 		},
 	},
 	/**
-	 * The window glass (optional translucency; default off). `facts` is read from
+	 * The window glass (optional translucency, on by default where the capability
+	 * gate passes). `facts` is read from
 	 * THIS process's argv, which main composed from the persisted file, so the very
 	 * first paint already knows whether the ground is transparent and at which
 	 * alphas - see `src/shared/window-glass.ts`. `null` is "off": the shipped look.

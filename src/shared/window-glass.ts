@@ -123,6 +123,13 @@ export type GlassCapability = {
 	/** macOS 26+: vibrancy renders with the Liquid Glass materials. A label only. */
 	liquid: boolean;
 	/**
+	 * Whether a launch with NO stored choice turns the effect on. True only where
+	 * the platform mechanism is both available and verified by this project:
+	 * macOS. Windows and Linux stay off until they are verified (see
+	 * `glassCapabilityFor`), so the default flip cannot be an unverified claim.
+	 */
+	defaultEnabled: boolean;
+	/**
 	 * Whether the MASTER switch can flip on a running window. macOS: yes, measured
 	 * (`setBackgroundColor("#00000000")` + `setVibrancy` on a window built opaque
 	 * composites the desktop, and `setVibrancy(null)` + the ground colour restores
@@ -131,21 +138,17 @@ export type GlassCapability = {
 	 * window is built with the material at launch and the toggle waits for a restart.
 	 * Coverage, intensity and material are live on both.
 	 */
-	/**
-	 * Whether a launch with NO stored choice turns the effect on. True only where
-	 * the platform mechanism is both available and verified by this project:
-	 * macOS. Windows and Linux stay off until they are verified (see
-	 * `glassCapabilityFor`), so the default flip cannot be an unverified claim.
-	 */
-	defaultEnabled: boolean;
 	liveToggle: boolean;
 };
 
-/** The subset of Electron's `GPUFeatureStatus` the gate reads. */
+/**
+ * The subset of Electron's `GPUFeatureStatus` the gate reads. Both keys are
+ * required by Electron's own type; a missing/empty field in a status object that
+ * DID report is therefore a shape change (a renamed key), and the gate fails
+ * closed on it rather than reading it as "fine".
+ */
 export type GlassGpuFeatureStatus = {
-	/** `gpu_compositing`; absent/empty until the GPU process reports. */
 	compositing?: string;
-	/** `rasterization`; absent/empty until the GPU process reports. */
 	rasterization?: string;
 };
 
@@ -181,9 +184,14 @@ const parseVersion = (version: string): number[] =>
  * statuses are `enabled`, `enabled_readback`, `enabled_force*` for a working
  * compositor and `disabled_*` / `unavailable_*` for software or off, so the
  * prefix is the test: a readback or forced-on compositor still composites.
+ *
+ * AN ABSENT FIELD IS NOT USABLE. "Not reported yet" is represented one level up
+ * as `gpu: null` (readiness in `readGlassEnvironmentFacts`); a status object that
+ * exists but lacks a key is a shape change, and passing it would let a renamed
+ * Electron field silently open the gate (review R1-7).
  */
 const gpuFeatureUsable = (status: string | undefined): boolean =>
-	status === undefined || status === "" || status.startsWith("enabled");
+	typeof status === "string" && status.startsWith("enabled");
 
 /**
  * The first environment fact that makes a translucent window dishonest, or null.
@@ -200,8 +208,9 @@ function glassEnvironmentObjection(
 	)
 		return "hardware-acceleration-disabled";
 	if (
-		!gpuFeatureUsable(environment.gpu?.compositing) ||
-		!gpuFeatureUsable(environment.gpu?.rasterization)
+		environment.gpu &&
+		(!gpuFeatureUsable(environment.gpu.compositing) ||
+			!gpuFeatureUsable(environment.gpu.rasterization))
 	)
 		return "gpu-unavailable";
 	if (environment.backdropFilter === false)
@@ -416,14 +425,29 @@ export function resolveStoredGlass(
 	if (record.settings === null || typeof record.settings !== "object")
 		return null;
 	const defaults = defaultGlassSettings(capability);
-	const stored = sanitizeGlassSettings(record.settings, capability, defaults);
 	/*
-	 * A version-2 file must carry the list. Without it the file cannot distinguish
-	 * a choice from a copied default, so it gets the legacy treatment rather than
-	 * silently making every field "unset" (which would re-enable glass over an
-	 * explicit off).
+	 * SANITISE AGAINST THE OPAQUE BASELINE, not today's default. A corrupt
+	 * explicit value must fall to the shipped opaque look - the sentence on
+	 * `DEFAULT_GLASS_SETTINGS` - instead of inheriting `enabled: true` just
+	 * because this machine is capable. Unclaimed fields are replaced by `defaults`
+	 * immediately below, so this base only decides corrupt/missing values inside a
+	 * field the file claims (review R1-1).
 	 */
-	const explicit: GlassSettingsField[] = !Array.isArray(record.explicit)
+	const stored = sanitizeGlassSettings(
+		record.settings,
+		capability,
+		DEFAULT_GLASS_SETTINGS,
+	);
+	/*
+	 * The version is LOAD-BEARING, not decoration: a v2 file carries the list and
+	 * an older one cannot, so a missing or older marker is the legacy treatment -
+	 * every field treated as chosen - rather than silently making every field
+	 * "unset" (which would re-enable glass over an explicit off). A v2 file that
+	 * lost its list is corruption, and gets the same conservative answer.
+	 */
+	const legacy =
+		record.version !== GLASS_FILE_VERSION || !Array.isArray(record.explicit);
+	const explicit: GlassSettingsField[] = legacy
 		? [...GLASS_SETTINGS_FIELDS]
 		: GLASS_SETTINGS_FIELDS.filter((field) =>
 				(record.explicit as readonly unknown[]).includes(field),

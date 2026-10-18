@@ -2,7 +2,7 @@
 	"ui.settings.appearance.window_glass.label": "Translucent window",
 	"ui.settings.appearance.window_glass.description": "Lets your desktop show through the app window, blurred by the system. On by default on macOS where the system supports it, and off elsewhere. Text stays readable on every theme: the slider stops before any theme's text gets hard to read.",
 	"ui.settings.appearance.window_glass.restart_needed": "Restart Local Operator to apply this change. The window keeps its current look until then.",
-	"ui.settings.appearance.window_glass.unsupported_reduced_transparency": "Translucent window is unavailable because Reduce transparency is on in your system accessibility settings. Turn it off there and this control will appear.",
+	"ui.settings.appearance.window_glass.unsupported_reduced_transparency": "Translucent window is unavailable because Reduce transparency is on in your system accessibility settings. Turn it off there to enable this control.",
 	"ui.settings.appearance.window_glass.unsupported_windows_too_old": "Translucent window needs Windows 11 version 22H2 or later.",
 	"ui.settings.appearance.window_glass.unsupported_linux": "Translucent window is not available on Linux: there is no native window blur an app can request. Desktop translucency there depends on the compositor (X11 or Wayland) and can fall back to software blur, which would show the desktop's text through the app's.",
 	"ui.settings.appearance.window_glass.unsupported_other": "Translucent window is not available on this platform: only macOS is verified to composite a blurred window, and the Windows 11 material is not verified on a real machine yet.",

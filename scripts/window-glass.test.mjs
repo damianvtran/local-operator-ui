@@ -131,8 +131,8 @@ test("G-1b the live environment gate: detect, then decide", () => {
 	assert.equal(reason({}), "ok");
 	assert.equal(
 		reason({ gpu: {} }),
-		"ok",
-		"an empty status object is 'not reported yet' - it must not turn the default off",
+		"gpu-unavailable",
+		"a status object that reported but lost its keys is a shape change: fail closed (R1-7)",
 	);
 	assert.equal(
 		reason({ gpu: { compositing: "enabled", rasterization: "enabled" } }),
@@ -150,8 +150,15 @@ test("G-1b the live environment gate: detect, then decide", () => {
 	);
 	assert.equal(
 		reason({ gpu: { compositing: "enabled_force" } }),
+		"gpu-unavailable",
+		"a present status missing rasterisation fails closed rather than reading as fine",
+	);
+	assert.equal(
+		reason({
+			gpu: { compositing: "enabled_force", rasterization: "enabled" },
+		}),
 		"ok",
-		"a forced-on compositor still composites",
+		"a forced-on compositor still composites when both facts are present",
 	);
 	assert.equal(
 		reason({ hardwareAcceleration: false }),
@@ -879,6 +886,45 @@ test("G-12 unset vs explicit: a default change never overturns a recorded choice
 	);
 	assert.equal(missingList.settings.enabled, false);
 
+	/* A CORRUPT explicit value falls to the opaque floor, not to today's ON. */
+	const corrupt = glass.resolveStoredGlass(
+		{ version: 2, settings: { enabled: "yes" }, explicit: ["enabled"] },
+		cap,
+	);
+	assert.equal(
+		corrupt.settings.enabled,
+		false,
+		"a corrupt explicit enabled keeps the shipped opaque look (R1-1)",
+	);
+	const missingEnabledLegacy = glass.resolveStoredGlass(
+		{ settings: { intensity: 50 } },
+		cap,
+	);
+	assert.equal(
+		missingEnabledLegacy.settings.enabled,
+		false,
+		"a legacy file whose enabled is missing resolves opaque, never default-ON",
+	);
+	assert.equal(missingEnabledLegacy.settings.intensity, 50);
+
+	/* The version marker is read: an old marker gets the legacy (all-explicit)
+	 * treatment even if a list somehow rides along (R1-9). */
+	const oldVersion = glass.resolveStoredGlass(
+		{
+			version: 1,
+			settings: { enabled: true, intensity: 70 },
+			explicit: ["intensity"],
+		},
+		cap,
+	);
+	assert.deepEqual(oldVersion.explicit, [
+		"enabled",
+		"coverage",
+		"intensity",
+		"material",
+	]);
+	assert.equal(oldVersion.settings.enabled, true);
+
 	/* Unknown explicit entries are ignored; the rest are honoured. */
 	const junk = glass.resolveStoredGlass(
 		{
@@ -913,7 +959,7 @@ test("G-12 unset vs explicit: a default change never overturns a recorded choice
 	);
 });
 
-test("G-13 the launch gate line names support, default, value and reason once", () => {
+test("G-13 the launch gate line names platform, support, default, value and reason", () => {
 	const mac = glass.glassCapabilityFor(MAC);
 	const line = glass.glassGateLine(
 		mac,
