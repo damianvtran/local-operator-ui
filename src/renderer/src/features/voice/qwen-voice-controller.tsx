@@ -280,7 +280,12 @@ export function takeDroppedNotice(): string {
 	return t("ui.chat.voice.take_too_long");
 }
 
-let speechSegmentStartedAt: number | null = null;
+/**
+ * The drop guard's segment clock. Owned by the component instance (a ref), not
+ * the module: a remount is a new listener, and it must not inherit a segment
+ * the mount before it opened (review round 2, nit 1).
+ */
+export type SpeechSegmentClock = { startedAt: number | null };
 
 /**
  * Fold one speech event into the drop guard, on the Gateway's clock.
@@ -291,14 +296,18 @@ let speechSegmentStartedAt: number | null = null;
  * throws away when it does throw one away, so its length is the only local
  * evidence. Returns the time of the drop, or null when this event says nothing.
  */
-export function noteSpeechSegment(type: string, at: number): number | null {
+export function noteSpeechSegment(
+	clock: SpeechSegmentClock,
+	type: string,
+	at: number,
+): number | null {
 	if (type === "realtime.provider.speech_started") {
-		speechSegmentStartedAt = at;
+		clock.startedAt = at;
 		return null;
 	}
 	if (type !== "realtime.provider.speech_stopped") return null;
-	const started = speechSegmentStartedAt;
-	speechSegmentStartedAt = null;
+	const started = clock.startedAt;
+	clock.startedAt = null;
 	if (started === null) return null;
 	return at - started >= LONG_TAKE_MS ? at : null;
 }
@@ -742,6 +751,7 @@ export const QwenVoiceController: FC = () => {
 	}, [feed.voiceActive, client]);
 
 	// 2. The rig mirror, and the takes main relays from the rig.
+	const segmentClock = useRef<SpeechSegmentClock>({ startedAt: null });
 	useEffect(() => {
 		const rig = bridge();
 		if (!rig) return;
@@ -767,7 +777,7 @@ export const QwenVoiceController: FC = () => {
 			 */
 			const at = Date.parse(event.at);
 			if (Number.isFinite(at)) {
-				const dropped = noteSpeechSegment(event.type, at);
+				const dropped = noteSpeechSegment(segmentClock.current, event.type, at);
 				if (dropped !== null) useVoiceStore.getState().setDroppedTake(dropped);
 			}
 			/*

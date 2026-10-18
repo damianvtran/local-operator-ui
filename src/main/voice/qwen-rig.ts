@@ -160,6 +160,17 @@ export function qwenMemoryBudget(
  * whole growing buffer on each revision (~3.55x cost for a 60 s take, ~n^2/2).
  * The cap stays as the cheap backstop for a segment that never soft-ends, and a
  * drop is surfaced as `ui.chat.voice.take_too_long`.
+ *
+ * `--no_enable_live_transcription` is not a preference (final review,
+ * decided): the flag is ON by default and drives
+ * `SmartProgressiveStreamingHandler` at its 500 ms pause, decoding 2 ticks a
+ * second at 0.26-0.74 s each - 0.5-1.5 s of MLX work per second of speech,
+ * holding the same lock the final decode needs. Every VAD reopen resets the
+ * handler and discards `fixed_sentences`, so the tail-only final decode it
+ * was meant to buy is thrown away; this app shows no partial captions, so
+ * the user-visible benefit is zero. The cost is real: each tick allocates a
+ * distinct buffer shape that MLX caches - the measured route to 29 GB. The
+ * 1 GiB cache cap stays as the bound; this line stays one edit from reversal.
  */
 export function s2sArgs(ports: QwenPorts): string[] {
 	return [
@@ -175,6 +186,7 @@ export function s2sArgs(ports: QwenPorts): string[] {
 		String(ports.s2s),
 		"--max_speech_ms",
 		"30000",
+		"--no_enable_live_transcription",
 	];
 }
 
@@ -572,8 +584,16 @@ export class QwenSpeechProcess {
 		this.footprintBusy = false;
 		const handle = this.setIntervalImpl(
 			// The promise is returned so a test can await one poll; setInterval
-			// ignores it.
-			() => this.checkFootprint(),
+			// ignores the return. The catch is the interval's only rejection path
+			// (review round 2, minor 3): a `footprint` read that throws used to
+			// become an unhandled rejection nobody sees, because the interval
+			// discards the promise.
+			() =>
+				this.checkFootprint().catch((error) =>
+					this.log(
+						`qwen-rig: footprint check failed: ${error instanceof Error ? error.message : String(error)}`,
+					),
+				),
 			FOOTPRINT_INTERVAL_MS,
 		);
 		// Never a reason for the app to stay alive.

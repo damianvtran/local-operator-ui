@@ -60,6 +60,12 @@ export type MicrophonePreflight = {
  * coordinator imports a type, never Electron.
  */
 export interface QwenVoicePagePort {
+	/**
+	 * Whether this run may create a page at all (review round 2, minor 1).
+	 * False means nothing can hear the rig, so `QwenVoice.start` refuses before
+	 * it spawns ~5.5 GB for a window that is not there.
+	 */
+	readonly allowed: boolean;
 	/** Create the hidden page at the Gateway's WebUI URL; idempotent. */
 	open(webuiUrl: string): void;
 	/** Destroy it. Idempotent. */
@@ -74,11 +80,21 @@ export interface QwenVoicePagePort {
  */
 export function noQwenVoicePage(): QwenVoicePagePort {
 	return {
+		allowed: false,
 		open: () => {},
 		close: () => {},
 		prepareMicrophone: async () => "unknown",
 	};
 }
+
+/**
+ * The header's sentence for a run that may not create a page: a mode that is
+ * not `normal` or `LOP_QWEN_NO_WEBUI=1`. Nobody is at that window by
+ * definition, so this usually reaches a log; it exists so the refusal is a
+ * sentence like R1's machine-size one, not a silent no-op.
+ */
+export const QWEN_NO_VOICE_WINDOW =
+	"Voice needs a normal app window to hear you.";
 
 /**
  * Whether this launch may create the page at all (review R2): a normal window
@@ -193,6 +209,7 @@ export type QwenVoicePageDeps = {
 };
 
 export class QwenVoicePage implements QwenVoicePagePort {
+	readonly allowed = true;
 	private view: VoicePageView | null = null;
 	private lastUrl: string | null = null;
 	private lastCrashAt: number | null = null;

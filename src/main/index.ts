@@ -1616,6 +1616,7 @@ const qwenVoice: QwenVoice = new QwenVoice({
 			return page;
 		};
 		return {
+			allowed: true,
 			open: (url: string) => instance().open(url),
 			close: () => page?.close(),
 			prepareMicrophone: async () => instance().prepareMicrophone(),
@@ -1633,10 +1634,16 @@ const qwenVoice: QwenVoice = new QwenVoice({
  *
  * So the signal paths stop the rig themselves, synchronously, and clear the
  * record: nothing runs behind them to reap it. Idempotent (a second signal does
- * nothing), and bounded - the timer is unref'd and only matters if some other
- * listener keeps the process alive after the stop.
+ * nothing).
+ *
+ * NOTHING HERE NEEDS A BOUND (review round 2, minor 2): `stopNow`/
+ * `killNow` only issue signals, check group liveness and unlink the record -
+ * all synchronous, no await and no child to wait on. The old 3 s `app.exit(1)`
+ * timer was unreachable anyway (an unconditional `clearTimeout` ran before the
+ * event loop could fire it), so it bounded nothing and made
+ * `SIGNAL_STOP_BOUND_MS` look like a live guard; both are gone rather than
+ * left as decoration.
  */
-const SIGNAL_STOP_BOUND_MS = 3_000;
 let signalStoppedVoice = false;
 const stopVoiceOnTerminatingSignal = (signal: NodeJS.Signals): void => {
 	if (signalStoppedVoice) return;
@@ -1645,8 +1652,6 @@ const stopVoiceOnTerminatingSignal = (signal: NodeJS.Signals): void => {
 		`Received ${signal}; stopping the voice rig before exit.`,
 		LogFileType.BACKEND,
 	);
-	const bound = setTimeout(() => app.exit(1), SIGNAL_STOP_BOUND_MS);
-	bound.unref?.();
 	try {
 		qwenVoice.stopNow(true);
 	} catch (error) {
@@ -1655,7 +1660,6 @@ const stopVoiceOnTerminatingSignal = (signal: NodeJS.Signals): void => {
 			LogFileType.BACKEND,
 		);
 	}
-	clearTimeout(bound);
 };
 
 /**
