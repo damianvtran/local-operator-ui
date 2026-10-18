@@ -173,5 +173,145 @@
 		"role": "one-line notice in the voice strip",
 		"tone": "plain statement plus one short instruction",
 		"note": "A take was discarded because it ran past the speech VAD cap. Rare; the person should keep takes shorter."
+	},
+	"ui.chat.voice.phase_interrupted": {
+		"role": "status chip in the composer strip",
+		"tone": "short status, sentence case",
+		"note": "The reply being played was cut off — by speech, by a new take, or by turning voice off."
+	},
+	"ui.chat.voice.phase_off": {
+		"role": "status chip in the composer strip",
+		"tone": "short status, sentence case",
+		"note": "Voice holds this conversation but the speech rig is stopped (the app was relaunched). Followed by a “Start voice” action."
+	},
+	"ui.chat.voice.starting_caption": {
+		"role": "caption beside the strip’s status chip",
+		"tone": "plain statement, sentence case",
+		"note": "The local speech models are loading; about 15-20 seconds the first time."
+	},
+	"ui.chat.voice.idle_caption": {
+		"role": "caption beside the strip’s status chip",
+		"tone": "plain instruction, sentence case",
+		"note": "The microphone is live: the person can speak, or type in the box below."
+	},
+	"ui.chat.voice.heard_label": {
+		"role": "lead-in before the words a take was heard as",
+		"tone": "two words, sentence case",
+		"note": "Followed by the take’s transcript, quoted by the surrounding markup."
+	},
+	"ui.chat.voice.said_label": {
+		"role": "lead-in before the words a reply was spoken as",
+		"tone": "one word, sentence case",
+		"note": "Followed by the spoken text; the server may have cut it at the character cap."
+	},
+	"ui.chat.voice.reply_ended": {
+		"role": "status chip in the composer strip, shown for 1.5 s",
+		"tone": "short status, sentence case",
+		"note": "The reply finished playing; the strip returns to “Listening” by itself. Never shown when a reply was cancelled."
+	},
+	"ui.chat.voice.interrupted_caption": {
+		"role": "caption beside the strip’s “Interrupted” chip",
+		"tone": "plain statement, em dash",
+		"note": "{time} is m:ss into the reply, e.g. 0:24, so a real barge-in is distinguishable from a phantom cut."
+	},
+	"ui.chat.voice.interrupted_at": {
+		"role": "event row in the voice history panel",
+		"tone": "plain statement",
+		"note": "{time} is m:ss into the reply, e.g. 0:24. The row stays in the history after the strip’s chip has gone."
+	},
+	"ui.chat.voice.not_sent_approve": {
+		"role": "caption beside the strip’s approval chip, and an event row in the history",
+		"tone": "two words, sentence case",
+		"note": "Words spoken while an approval or question card is on screen are refused; the card must be answered there. May be followed by the refused transcript."
+	},
+	"ui.chat.voice.approve_on_screen": {
+		"role": "chip that is itself a button, in the composer strip",
+		"tone": "imperative, sentence case",
+		"note": "Pressing it scrolls the conversation to the card that is waiting for an answer."
+	},
+	"ui.chat.voice.mic_blocked_caption": {
+		"role": "caption beside the strip’s “Microphone blocked” chip",
+		"tone": "plain statement, second person",
+		"note": "macOS denied microphone access to this app; the Open Settings action is beside it."
+	},
+	"ui.chat.voice.cut_chip": {
+		"role": "chip-shaped button in the composer strip",
+		"tone": "short label with an arrow",
+		"note": "The reply that was just spoken was cut at the character cap; the rest is in the message above. Pressing it scrolls there. Stays until the next take."
+	},
+	"ui.chat.voice.cut_note": {
+		"role": "note under the spoken half of a voice history row",
+		"tone": "plain statement",
+		"note": "The number is deliberately absent: the cap is a server setting the renderer does not read on this surface."
+	},
+	"ui.chat.voice.history_hide": {
+		"role": "text on the history toggle while the panel is open",
+		"tone": "imperative, sentence case",
+		"note": "Collapses the voice history panel above the strip."
+	},
+	"ui.chat.voice.history_last": {
+		"role": "count beside the voice history panel’s heading",
+		"tone": "lower-case fragment",
+		"note": "{count} is how many rows the panel holds, at most five."
+	},
+	"ui.chat.voice.empty_history": {
+		"role": "empty state inside the voice history panel",
+		"tone": "short invitation",
+		"note": "Nothing has been said through voice in this window yet. The example in quotes is a real thing to try."
+	},
+	"ui.chat.voice.you_label": {
+		"role": "row label in the voice history panel",
+		"tone": "single word",
+		"note": "The person’s own speech, transcribed by the local recogniser."
+	},
+	"ui.chat.voice.voice_label": {
+		"role": "row label in the voice history panel",
+		"tone": "single word",
+		"note": "What the assistant said back through the speakers."
+	},
+	"ui.chat.voice.working_row": {
+		"role": "placeholder under the Voice label while a take is being answered",
+		"tone": "single word with an ellipsis",
+		"note": "The answer is not known yet; it is replaced by the spoken text when it arrives."
+	},
+	"ui.chat.voice.notice_elsewhere_prefix": {
+		"role": "the “voice is on elsewhere” notice in the composer, before the conversation title",
+		"tone": "plain statement, sentence case",
+		"note": "The title follows in bold, then two actions: move the slot here, or go there."
+	},
+	"ui.chat.voice.notice_elsewhere_untitled": {
+		"role": "the “voice is on elsewhere” notice when that conversation has no title",
+		"tone": "plain statement, sentence case",
+		"note": "Used in place of the prefix plus a title."
+	},
+	"ui.chat.voice.move_here": {
+		"role": "text action in the “voice is on elsewhere” notice",
+		"tone": "imperative, two words",
+		"note": "Moves the voice slot to the conversation on screen; the other conversation loses it."
+	},
+	"ui.chat.voice.go_there": {
+		"role": "text action in the “voice is on elsewhere” notice",
+		"tone": "imperative, two words",
+		"note": "Opens the conversation that holds voice now."
+	},
+	"ui.chat.voice.another_conversation": {
+		"role": "fragment inside the dictation tooltip",
+		"tone": "lower-case noun phrase",
+		"note": "Stands in for a conversation title when the holder has none."
+	},
+	"ui.chat.voice.dictation_off_voice": {
+		"role": "tooltip on the dictation microphone while voice holds this conversation",
+		"tone": "two sentences, second person",
+		"note": "Voice and dictation cannot both hold the microphone. The escape named is turning voice off."
+	},
+	"ui.chat.voice.dictation_off_voice_elsewhere": {
+		"role": "tooltip on the dictation microphone while voice holds another conversation",
+		"tone": "two sentences, second person",
+		"note": "{title} is the conversation that holds voice; it is quoted. Moving the slot here keeps dictation off, turning voice off restores it."
+	},
+	"ui.chat.voice.history": {
+		"role": "text on the voice strip's history toggle, and the heading of the panel it opens",
+		"tone": "single word",
+		"note": "Opens this window's list of spoken exchanges; the same word labels it once open."
 	}
 }

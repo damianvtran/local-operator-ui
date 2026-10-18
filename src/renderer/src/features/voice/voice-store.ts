@@ -41,8 +41,44 @@ export type VoicePhase =
 /** The live half of the exchange, as the rig reports it. */
 export type VoiceActivity = "speaking" | "hearing";
 
-/** Why one exchange failed, as the header says it. */
+/** Why one exchange failed, as the strip says it. */
 export type VoiceExchangeError = "not_sent";
+
+/**
+ * THE TWO TRANSIENT WORDS, each said once and then replaced by "Listening"
+ * (design D2/D3). They are store state rather than component state because the
+ * EVENTS that start them - a reply that ended, a playback that was cut - arrive
+ * in the controller, one window's single subscription to the rig.
+ *
+ * `at` is when the word went up, so the strip can retire it without guessing.
+ */
+export type VoiceTick =
+	| { kind: "ended"; sessionId: string; at: number; text: string | null }
+	| { kind: "interrupted"; sessionId: string; at: number; seconds: number };
+
+/**
+ * ONE ROW OF THE COMPOSER'S HISTORY: an exchange (what was heard and what was
+ * said back), or an event that belongs in the same list because the spoken half
+ * never happened (an interruption, a take the card refused).
+ *
+ * The rows are this window's own record - the rig keeps no history the renderer
+ * can read - and they are bounded by `VOICE_STORY_LIMIT`; "last 5" is the panel's
+ * whole claim.
+ */
+export type VoiceStoryRow =
+	| {
+			kind: "exchange";
+			at: number;
+			sessionId: string;
+			heard: string;
+			spoken: string | null;
+			truncated: boolean;
+	  }
+	| { kind: "interrupted"; at: number; sessionId: string; seconds: number }
+	| { kind: "not_sent"; at: number; sessionId: string; heard: string };
+
+/** How many rows the history panel keeps; "last 5" is its stated bound. */
+export const VOICE_STORY_LIMIT = 5;
 
 type VoiceStoreState = {
 	/** The slot as the server last stated it, or `undefined` before any read. */
@@ -55,8 +91,31 @@ type VoiceStoreState = {
 	 * rather than a stuck "Speaking".
 	 */
 	activity: VoiceActivity | null;
-	/** The last text this window had spoken, with the server's cut flag (§8). */
-	lastSpoken: { sessionId: string; truncated: boolean } | null;
+	/**
+	 * The last text this window had spoken, with the server's cut flag (§8). The
+	 * TEXT is kept because the strip's caption and the history row both quote it;
+	 * it is the server's own words for the answer, never a renderer-composed line.
+	 */
+	lastSpoken: {
+		sessionId: string;
+		text: string;
+		truncated: boolean;
+		/** When the words went out, so the cut chip can retire on the next take. */
+		at: number;
+	} | null;
+	/**
+	 * The last take this window relayed, so the strip can say "You said …" while
+	 * the answer is being worked out. The take's text is the rig's transcript of
+	 * what was heard - there is no partial transcript to show, so this is the
+	 * first and only text of a take the renderer ever sees.
+	 */
+	lastTake: { sessionId: string; text: string; at: number } | null;
+	/** Where the reply being played started, on the Gateway's clock, or null. */
+	playbackStartedAt: number | null;
+	/** The transient word in the strip, or null when there is none. */
+	tick: VoiceTick | null;
+	/** The composer history panel's rows, oldest first, at most VOICE_STORY_LIMIT. */
+	story: VoiceStoryRow[];
 	/**
 	 * When a take was DROPPED for length (BRIEF-1), on the Gateway's clock, or
 	 * null. The VAD discards a segment over `--max_speech_ms`, so the strip owes
@@ -89,12 +148,60 @@ type VoiceStoreActions = {
 		reason?: VoiceExchangeError,
 	) => void;
 	setActivity: (activity: VoiceActivity | null) => void;
-	setLastSpoken: (spoken: { sessionId: string; truncated: boolean }) => void;
+	setLastSpoken: (spoken: {
+		sessionId: string;
+		text: string;
+		truncated: boolean;
+		at: number;
+	}) => void;
 	setDroppedTake: (at: number | null) => void;
+	/** A take was relayed: the strip's subject and the history's `You:` half. */
+	noteTake: (sessionId: string, text: string, at: number) => void;
+	/** A take was refused because a card is on screen: an event row, no words. */
+	noteNotSent: (sessionId: string, heard: string, at: number) => void;
+	/**
+	 * The rig's audio moved. `started` arms the interruption clock; `ended` says
+	 * "Reply ended" for 1.5 s; `cancelled` says "Interrupted at m:ss" for 3 s and
+	 * never plays the end cue (design D2/D3).
+	 */
+	notePlayback: (
+		kind: "started" | "ended" | "cancelled",
+		sessionId: string,
+		at: number,
+	) => void;
+	/** Retire a transient word (the strip's own timer calls this). */
+	clearTick: () => void;
 	setPending: (pending: boolean) => void;
 	setReplaced: (sessionId: string | null) => void;
 	setCardPending: (sessionId: string, pending: boolean) => void;
 };
+
+/** Oldest rows fall off the front, so the panel's "last 5" is the whole bound. */
+function capStory(story: VoiceStoryRow[]): VoiceStoryRow[] {
+	return story.length > VOICE_STORY_LIMIT
+		? story.slice(story.length - VOICE_STORY_LIMIT)
+		: story;
+}
+
+/** Fill the newest unanswered exchange for a session, or add nothing. */
+function completeStoryRow(
+	story: VoiceStoryRow[],
+	spoken: { sessionId: string; text: string; truncated: boolean; at: number },
+): VoiceStoryRow[] {
+	for (let index = story.length - 1; index >= 0; index--) {
+		const row = story[index];
+		if (
+			row.kind !== "exchange" ||
+			row.sessionId !== spoken.sessionId ||
+			row.spoken !== null
+		)
+			continue;
+		const next = [...story];
+		next[index] = { ...row, spoken: spoken.text, truncated: spoken.truncated };
+		return next;
+	}
+	return story;
+}
 
 export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 	(set, get) => ({
@@ -102,6 +209,10 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 		rig: undefined,
 		activity: null,
 		lastSpoken: null,
+		lastTake: null,
+		playbackStartedAt: null,
+		tick: null,
+		story: [],
 		droppedTakeAt: null,
 		exchange: null,
 		pending: false,
@@ -123,7 +234,12 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 			set({
 				active,
 				...(lost ? { exchange: null } : {}),
-				...(moved ? { activity: null } : {}),
+				/*
+				 * A TRANSIENT WORD DOES NOT SURVIVE A MOVE: "Interrupted at 0:24"
+				 * belongs to the session that lost the slot, and the new holder's strip
+				 * must not open with a sentence about audio it never played.
+				 */
+				...(moved ? { activity: null, tick: null } : {}),
 			});
 		},
 		/*
@@ -139,8 +255,82 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 					rig.rig === "ready" && (rig.clients ?? 0) > 0 ? state.activity : null,
 			})),
 		setActivity: (activity) => set({ activity }),
-		setLastSpoken: (lastSpoken) => set({ lastSpoken }),
+		setLastSpoken: (lastSpoken) =>
+			set((state) => ({
+				lastSpoken,
+				/*
+				 * The history's `Voice:` half lands on the row its take opened: the take is
+				 * relayed first and the reply is spoken afterwards, so the newest row for
+				 * this session that nothing has answered yet is that take's own row. A
+				 * spoken line with no such row (a gate announcement, or a reply spoken
+				 * after the window was reloaded) has no exchange to complete and adds
+				 * none - a row with no question would say nothing true.
+				 */
+				story: completeStoryRow(state.story, lastSpoken),
+			})),
 		setDroppedTake: (droppedTakeAt) => set({ droppedTakeAt }),
+		noteTake: (sessionId, text, at) =>
+			set((state) => ({
+				lastTake: { sessionId, text, at },
+				story: capStory([
+					...state.story,
+					{
+						kind: "exchange",
+						at,
+						sessionId,
+						heard: text,
+						spoken: null,
+						truncated: false,
+					},
+				]),
+			})),
+		noteNotSent: (sessionId, heard, at) =>
+			set((state) => ({
+				story: capStory([
+					...state.story,
+					{ kind: "not_sent", at, sessionId, heard },
+				]),
+			})),
+		notePlayback: (kind, sessionId, at) => {
+			const state = get();
+			if (kind === "started") {
+				set({ playbackStartedAt: at });
+				return;
+			}
+			if (kind === "ended") {
+				set({
+					playbackStartedAt: null,
+					tick: {
+						kind: "ended",
+						sessionId,
+						at,
+						text: state.lastSpoken?.text ?? null,
+					},
+				});
+				return;
+			}
+			/*
+			 * A CANCELLED PLAYBACK IS AN INTERRUPTION, and how far into the reply it
+			 * happened is the one number that separates a real barge-in from a
+			 * phantom cut (design D3). With no start time on record the words would
+			 * have to be invented, so the strip says nothing instead.
+			 */
+			const startedAt = state.playbackStartedAt;
+			if (startedAt === null) {
+				set({ activity: null });
+				return;
+			}
+			const seconds = Math.max(0, Math.round((at - startedAt) / 1000));
+			set({
+				playbackStartedAt: null,
+				tick: { kind: "interrupted", sessionId, at, seconds },
+				story: capStory([
+					...state.story,
+					{ kind: "interrupted", at, sessionId, seconds },
+				]),
+			});
+		},
+		clearTick: () => set({ tick: null }),
 		setExchange: (kind, sessionId, reason) =>
 			set({
 				exchange:
