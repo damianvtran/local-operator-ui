@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "locale": "es",
+  "namespace": "ui.browser",
+  "date": "2026-10-18",
+  "status": "passed",
+  "audit_kind": "placeholder-only-delta",
+  "scope": "040e7c186929ed034e627d37d89c78b6d6cfc3e7..26b4a4f936c4132fb9cd25a02717d203fd8c4ae5",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "866e7b60158e",
+    "model": "openai/gpt-6.1-sol"
+  },
+  "sha256": {
+    "en": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
+    "es": "bac6ad3270fdb7df8c14b0a21df86b3607e849dd9598e3220eb67ba77b4714fe"
+  },
+  "findings": [],
+  "note": "Five Spanish tab-menu labels gained the {title} placeholder and their closing quote; wording unchanged. Rendered output proved byte-identical to the old split composition for representative titles. No other key changed."
+}

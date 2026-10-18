@@ -3411,8 +3411,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.browser",
-			"source_sha256": "4bdd6666a1c4358ea12dcc82229823659f33e96f225dcca57e0630a94e3e0641",
-			"target_sha256": "4e351b25be606fd2675038da9d217fa3517767e8c3de85920c58b23f753a37a0",
+			"source_sha256": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
+			"target_sha256": "bac6ad3270fdb7df8c14b0a21df86b3607e849dd9598e3220eb67ba77b4714fe",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3421,19 +3421,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"instance": "ea3629c2a645",
+					"instance": "866e7b60158e",
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-18",
-					"result": "clean-with-findings",
+					"result": "clean",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ea3629c2a645.json",
-					"receipt_sha256": "1adcf5201c953c8581cc9ebb888ae927bb4547d324f2ae550e1b8ca27f25874d",
-					"scope": "Full semantic read; exhaustive mechanical checks."
+					"receipt": "i18n/receipts/es-browser-title-delta-866e7b60158e.json",
+					"receipt_sha256": "4c97079aca39cbc87c9af20dbf97d945173606bb56e5e526dbe1f88d18a7f713",
+					"scope": "040e7c186929ed034e627d37d89c78b6d6cfc3e7..26b4a4f936c4132fb9cd25a02717d203fd8c4ae5",
+					"note": "Placeholder-only delta: five Spanish tab-menu labels gained {title} and the closing quote; rendered output proved byte-identical to the previous split composition. Wording unchanged; no other key moved."
 				}
 			],
 			"status": "audited"
