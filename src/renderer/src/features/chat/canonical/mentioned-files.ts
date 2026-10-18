@@ -368,6 +368,12 @@ const ARTIFACT_TOOLS = new Set([
 	"generate_image",
 	"generate_video",
 	"video_status",
+	// The two audio producers (sound phase): their artifacts arrive with a block
+	// exactly as an image's does, but a result whose block was pruned still
+	// states the digest in prose, and the allow-list is what admits that receipt
+	// without admitting every hex string a bash row prints.
+	"generate_voiceover",
+	"generate_sound_effect",
 ]);
 
 /**
@@ -428,7 +434,13 @@ function artifactMentionsOf(record: TranscriptRecord): MentionedPath[] {
 		// A block without `kind` is a legacy image (a browser screenshot, a
 		// pasted picture): not generated media. See the module header.
 		if (!image.attachment || image.kind === undefined) continue;
-		if (image.kind === "audio") continue;
+		/*
+		 * AUDIO IS ADMITTED NOW (sound phase). It used to be skipped because the
+		 * Files list had no seat a sound could take; the "Sounds" section and its
+		 * band are that seat, so the mention reaches the authoritative list the
+		 * same way a video's does — and an artifact whose kind no surface can
+		 * render would be the F2 class of defect, not a cautious omission.
+		 */
 		const artifact: ArtifactMention = {
 			digest: image.attachment,
 			kind: image.kind,
@@ -445,9 +457,17 @@ function artifactMentionsOf(record: TranscriptRecord): MentionedPath[] {
 	}
 	if (ARTIFACT_TOOLS.has(record.toolName) && record.output) {
 		// A video result is text only, so its kind comes from the tool that
-		// produced it. `video_status` and `generate_video` are the video tools;
-		// an image caption always arrives with a block (above) when not pruned.
-		const kind = record.toolName === "generate_image" ? "image" : "video";
+		// produced it. `video_status` and `generate_video` are the video tools; a
+		// voiceover or a sound effect is the audio lane's (a `digest` phrase in
+		// its text means the same store the block path reads); an image caption
+		// always arrives with a block (above) when not pruned.
+		const kind =
+			record.toolName === "generate_image"
+				? "image"
+				: record.toolName === "generate_voiceover" ||
+						record.toolName === "generate_sound_effect"
+					? "audio"
+					: "video";
 		for (const phrase of record.output.matchAll(DIGEST_PHRASE)) {
 			for (const digest of phrase[1].match(DIGEST_TOKEN) ?? [])
 				push(digest, { digest, kind });
@@ -470,13 +490,23 @@ function artifactForBinPath(
 ): ArtifactMention {
 	const block =
 		record.kind === "tool"
-			? record.images.find(
-					(image) => image.attachment === digest && image.kind !== "audio",
-				)
+			? record.images.find((image) => image.attachment === digest)
 			: undefined;
+	/*
+	 * Three kinds, the block's own first: a `.bin` path read in a real transcript
+	 * is usually a pasted screenshot, so "image" is the default — but a video or
+	 * a sound block that names this digest is the better evidence, and the sound
+	 * phase's blocks are what make a `generate_voiceover` read path land in the
+	 * Sounds section instead of a picture tile.
+	 */
 	const artifact: ArtifactMention = {
 		digest,
-		kind: block?.kind === "video" ? "video" : "image",
+		kind:
+			block?.kind === "video"
+				? "video"
+				: block?.kind === "audio"
+					? "audio"
+					: "image",
 	};
 	if (block?.mimeType) artifact.contentType = block.mimeType;
 	return artifact;

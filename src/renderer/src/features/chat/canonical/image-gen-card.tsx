@@ -79,6 +79,7 @@ import {
 	formatDuration,
 	formatSettledDuration,
 } from "../components/trace/tool-row-model";
+import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
 import { CanonicalVideo } from "./canonical-video";
 import {
@@ -87,6 +88,7 @@ import {
 	type ImageGenCardState,
 	type ImageGenCardView,
 	imageGenCardControls,
+	imageGenMaterialNoun,
 } from "./image-gen-card-model";
 import type { AttachmentScope } from "./use-attachment-url";
 
@@ -224,11 +226,14 @@ function StateLine({
 			break;
 		case "running":
 			/*
-			 * THE NOUN IS THE MATERIAL FACT (design spec §4, V2): a video call's
-			 * line says `Generating video…` and nothing else about the line moves.
+			 * THE NOUN IS THE MATERIAL FACT (design spec §4, V2; extended by the
+			 * sound phase): a video call's line says `Generating video…`, a voiceover
+			 * `Generating voiceover…`, a sound effect `Generating sound effect…`, and
+			 * nothing else about the line moves. The noun comes off
+			 * `imageGenMaterialNoun` so the state line, the done receipt and the
+			 * failure fallback cannot spell one material three ways.
 			 */
-			text =
-				view.material === "video" ? "Generating video…" : "Generating image…";
+			text = `Generating ${imageGenMaterialNoun(view.material)}…`;
 			detail = elapsed === null ? null : formatDuration(elapsed);
 			break;
 		case "cancelling":
@@ -245,9 +250,7 @@ function StateLine({
 			text =
 				view.receipt === "already-finished"
 					? "Already finished."
-					: view.material === "video"
-						? "Generated video"
-						: "Generated image";
+					: `Generated ${imageGenMaterialNoun(view.material)}`;
 			detail =
 				view.receipt === "already-finished" || view.durationS === null
 					? null
@@ -265,9 +268,7 @@ function StateLine({
 			 */
 			text =
 				view.message ??
-				(view.material === "video"
-					? "The video could not be generated."
-					: "The image could not be generated.");
+				`The ${imageGenMaterialNoun(view.material)} could not be generated.`;
 			emphasis = true;
 			break;
 		case "cancelled":
@@ -402,23 +403,38 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			{view.state === "done" && view.images.length > 0 ? (
 				<div className={cn("flex flex-col gap-2")}>
 					{/*
-					 * THE ONE PLAYER SEAT (design spec §3.3). Each entry mounts by its
-					 * KIND: a picture through the existing image path, a video through
-					 * the digest-fed player — the reducer admits both kinds into
-					 * `record.images`, and "extend the filter AND the render together"
-					 * is exactly this branch. The label follows the entry's kind for
-					 * the same reason. A video entry is fetched here and nowhere the
-					 * picture path could decode it as an image.
+					 * THE ONE PLAYER SEAT (design spec §3.3; sound phase extends it). Each
+					 * entry mounts by its KIND: a picture through the existing image path,
+					 * a video through the digest-fed player, a sound through the audio
+					 * player (`CanonicalAudio`) — the reducer admits all three kinds into
+					 * `record.images`, and "extend the filter AND the render together" is
+					 * exactly this branch. An audio entry is fetched here, the tool row's
+					 * media block and the Files/highlight seats; none of them decodes it
+					 * as a picture.
 					 */}
 					{view.images.map((image, index) => {
-						const noun =
-							image.kind === "video" ? "Generated video" : "Generated image";
+						/*
+						 * THE ENTRY'S KIND PICKS THE PLAYER, AND THE CARD'S MATERIAL PICKS
+						 * THE NOUN. A sound entry only knows it is audio; whether it is a
+						 * voiceover or a sound effect is the fact `view.material` carries, so
+						 * the label reads `Generated voiceover`, never `Generated audio`.
+						 */
+						const noun = `Generated ${imageGenMaterialNoun(
+							image.kind === "audio" ? view.material : (image.kind ?? "image"),
+						)}`;
 						const label =
 							view.images.length === 1 ? noun : `${noun} ${index + 1}`;
 						return image.kind === "video" ? (
 							<CanonicalVideo
 								key={image.id}
 								video={image}
+								scope={scope}
+								label={label}
+							/>
+						) : image.kind === "audio" ? (
+							<CanonicalAudio
+								key={image.id}
+								audio={image}
 								scope={scope}
 								label={label}
 							/>

@@ -104,9 +104,34 @@ export type ImageGenToolRecord = Extract<TranscriptRecord, { kind: "tool" }>;
  */
 export const VIDEO_GEN_TOOL_NAME = "generate_video";
 
+/**
+ * The two audio members of the detection set (sound phase, 2026-10-17), named
+ * here because exactly one string may spell each one: the set routes the card
+ * (`isImageGenTool`), and `imageGenMaterial` below is the noun fact every copy
+ * branch reads. Two literals would be two edits at rename time.
+ *
+ * These calls ride the card's whole six-state machine unchanged — their live
+ * life is submit-to-receipt like the image lane's — and the facts that differ
+ * from the image lane are the MATERIAL NOUN and the artifact render (a sound
+ * through `CanonicalAudio`, mounted from the done body by the entry's kind).
+ * Nothing about their state vocabulary, progress fields or settling rules is
+ * new: the harness registers them as ordinary tool calls, so the card that
+ * already speaks the record's `details` wire reads them as-is.
+ *
+ * vs VIDEO's mount rule, `imageGenCardMountActions` below spells the one
+ * behavioural difference: a video call is a detached job an in-turn press
+ * cannot cancel, so it draws no Cancel; the audio tools are interruptible
+ * (`interruptible=True` in the frozen tool schema), so an unsettled one keeps
+ * the pane's interrupt exactly as an image call does.
+ */
+export const VOICEOVER_GEN_TOOL_NAME = "generate_voiceover";
+export const SOUND_EFFECT_GEN_TOOL_NAME = "generate_sound_effect";
+
 export const IMAGE_GEN_TOOL_NAMES: ReadonlySet<string> = new Set([
 	"generate_image",
 	VIDEO_GEN_TOOL_NAME,
+	VOICEOVER_GEN_TOOL_NAME,
+	SOUND_EFFECT_GEN_TOOL_NAME,
 ]);
 
 /** Whether a tool call is one this surface renders as a generating-media card. */
@@ -126,13 +151,38 @@ export function isVideoGenTool(toolName: string): boolean {
  * carried on the arms that can render a material word — never re-derived at a
  * call site, so the state line and the failure fallback cannot come to disagree
  * about what an artifact is. The enumeration of strings it may steer is the
- * design spec's V-list (§4), and nothing outside that list branches on it.
+ * design spec's V-list (§4) extended by the sound phase's own delta: the two
+ * audio arms name their artifact and nothing else about the card moves.
  */
-export type ImageGenMaterial = "image" | "video";
+export type ImageGenMaterial = "image" | "video" | "voiceover" | "sound-effect";
 
 /** The material fact for one tool call. */
 export function imageGenMaterial(toolName: string): ImageGenMaterial {
-	return isVideoGenTool(toolName) ? "video" : "image";
+	if (toolName === VIDEO_GEN_TOOL_NAME) return "video";
+	if (toolName === VOICEOVER_GEN_TOOL_NAME) return "voiceover";
+	if (toolName === SOUND_EFFECT_GEN_TOOL_NAME) return "sound-effect";
+	return "image";
+}
+
+/**
+ * The material's noun, as the card's sentences spell it.
+ *
+ * One spelling per material, beside `imageGenMaterial` so a sentence that
+ * wants a noun cannot invent a second spelling of one ("sound effect" vs
+ * "sound-effect" vs "sfx"): the state line, the done receipt and the failure
+ * fallback all read THIS function.
+ */
+export function imageGenMaterialNoun(material: ImageGenMaterial): string {
+	switch (material) {
+		case "video":
+			return "video";
+		case "voiceover":
+			return "voiceover";
+		case "sound-effect":
+			return "sound effect";
+		default:
+			return "image";
+	}
 }
 
 /**
@@ -593,5 +643,17 @@ export function imageGenCardMountActions(
 	onInterruptTurn: (() => void) | undefined,
 ): ImageGenCardActions | undefined {
 	if (isVideoGenTool(toolName)) return undefined;
+	/*
+	 * AND THE AUDIO CALLS KEEP THE INTERRUPT — the only cancel affordance this
+	 * card may draw for them, because it is the only one that cannot lie. The
+	 * frozen tool schema registers `generate_voiceover`/`generate_sound_effect`
+	 * as `interruptible=True`, so the pane's own interrupt is a real press on
+	 * the wire (the harness cancels the call), which is exactly the claim the
+	 * control's hint makes. What the card must NOT grow is a per-job "stop the
+	 * vendor" button: cancellation is best-effort once the vendor is mid-flight
+	 * (`cancellation.vendor_stopped:false` in the frozen contract), so a control
+	 * promising a guaranteed stop would lie about the sound, and a control whose
+	 * hint had to hedge ("may stop") would be a question where a button belongs.
+	 */
 	return onInterruptTurn ? { onCancel: onInterruptTurn } : undefined;
 }

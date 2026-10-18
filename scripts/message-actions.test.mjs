@@ -77,6 +77,43 @@ globalThis.localStorage = {
 	removeItem: (key) => persisted.delete(key),
 };
 
+/*
+ * AUDIO SAFETY (the sound lane's rule): this suite's Speak press reaches the
+ * REAL `playSpeech`, which drives the shared audio engine's element. Under
+ * JSDOM that element is a real `HTMLAudioElement` whose `play()` is "not
+ * implemented" - close enough to silent today, but a suite must never depend on
+ * an unimplemented stub for "no sound comes out". A fake `Audio` injected here,
+ * before the bundle loads, is the same control every audio-driving suite in this
+ * repository uses (`scripts/audio-engine.test.mjs`'s guard enforces it).
+ */
+class FakeAudio {
+	constructor() {
+		this.src = null;
+		this.played = false;
+		this.paused = false;
+		this.currentTime = 0;
+		this.duration = 0;
+		this.volume = 1;
+		this.playbackRate = 1;
+		this.preload = "";
+		this.onended = null;
+		this.onerror = null;
+	}
+	play() {
+		this.played = true;
+		this.paused = false;
+		return Promise.resolve();
+	}
+	pause() {
+		this.paused = true;
+	}
+	removeAttribute(name) {
+		if (name === "src") this.src = null;
+	}
+	load() {}
+}
+globalThis.Audio = FakeAudio;
+
 const ROW_SOURCE = readFileSync(
 	"src/renderer/src/features/chat/canonical/message-actions-row.tsx",
 	"utf8",
