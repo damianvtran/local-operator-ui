@@ -574,6 +574,18 @@ const IDENTICAL_OK = new Map([
 		"Placeholders and a colon only ({surface}: {choice}); no words to translate.",
 	],
 	["ui.canvas.files.code", "French cognate: « code » has the same spelling."],
+	[
+		"ui.projects.project_editors.q4_payments",
+		"Sample tag identifier (q4_payments), not prose; it is rendered verbatim as an example handle.",
+	],
+	[
+		"ui.projects.project_form_dialog.q4_payments",
+		"Sample tag identifier (q4_payments), not prose; it is rendered verbatim as an example handle.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_window",
+		"System material name kept English: Window is the window-region material in the glass picker.",
+	],
 ]);
 
 function localeDirs() {
