@@ -82,6 +82,10 @@ export const agentMessagesStatusSchema = z
 		// Present only on a killed/lapsed organization (surface F); the section
 		// renders it when the server chose to explain the state.
 		state_note: z.string().nullable().optional(),
+		// F's posture: the server admits only safety-increasing edits. The
+		// section gates the reach editor's controls rather than letting a reader
+		// press a Save the server will refuse.
+		read_only: z.boolean().optional(),
 	})
 	.passthrough();
 export type AgentMessagesStatus = z.infer<typeof agentMessagesStatusSchema>;
@@ -130,7 +134,9 @@ export const agentMessagesSettingsResultSchema = z
 	.object({
 		endpoint: endpointSchema
 			.extend({
-				account_id: z.string().min(1),
+				// NO account_id: the upstream BridgeEndpointResponse does not carry
+				// one. The write's captured-account receipt (expected_account_id) is
+				// the account guard, and the caller's endpoint is already its own.
 				tenant_id: z.string().min(1),
 				label: z.string().optional(),
 				consent: consentRecordSchema.nullable().optional(),
@@ -168,6 +174,14 @@ const allowlistTargetSchema = z
 	.refine(
 		(target) => Boolean(target.endpoint_id) !== Boolean(target.account_id),
 		"An allowlist target names exactly one of endpoint_id or account_id",
+	)
+	.refine(
+		(target) =>
+			target.kind === undefined ||
+			(target.kind === "endpoint"
+				? target.endpoint_id !== undefined
+				: target.account_id !== undefined),
+		"An allowlist target's kind must agree with the id it carries",
 	);
 
 const allowlistEntrySchema = z

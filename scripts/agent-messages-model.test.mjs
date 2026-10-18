@@ -30,11 +30,12 @@ const fixture = JSON.parse(
 	readFileSync("scripts/fixtures/agent-messages-status.json", "utf8"),
 );
 const status = (patch = {}) => structuredClone({ ...fixture, ...patch });
-const response = (account = "account-a", tenant = "tenant-home") => ({
+// The upstream endpoint carries no account id; the account receipt is the
+// request's own guard. So a "wrong response identity" is a wrong ORG or STATE.
+const response = (tenant = "tenant-home", state = "active") => ({
 	endpoint: {
 		id: "bep-example",
-		state: "active",
-		account_id: account,
+		state,
 		tenant_id: tenant,
 	},
 });
@@ -289,8 +290,8 @@ test("failed consent, wrong response identity, and failed local designation neve
 		async () => {
 			throw { code: "messaging_unavailable" };
 		},
-		async () => response("account-b"),
-		async () => response("account-a", "other"),
+		async () => response("tenant-home", "paused"),
+		async () => response("other"),
 	]) {
 		const { model, calls } = rig({ enable: write });
 		model.setAccount("account-a");

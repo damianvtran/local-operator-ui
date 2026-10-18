@@ -82,6 +82,23 @@ export function agentMessagesSettingsAvailability(input: {
 export type AgentMessagesSettingsState = "B" | "C" | "D" | "E" | "F";
 
 /**
+ * Whether the page mounts the whole section (heading included).
+ *
+ * Absent is the default and mounts NOTHING (RFC §5.6): a heading over an empty
+ * body is an up-sell the ineligible reader must not see, and it flashed on
+ * every Settings open before this predicate existed. The error state still
+ * mounts a retry surface even when the held status was cleared by the failure.
+ */
+export function agentMessagesSectionMounted(
+	availability: AgentMessagesSettingsAvailability,
+	status: AgentMessagesStatus | null,
+): boolean {
+	return (
+		availability !== "absent" && (status !== null || availability === "error")
+	);
+}
+
+/**
  * The state letter the body renders, from the settings read plus the status.
  *
  * The endpoint is the authority on C/D/E (the settings read is fresher than
@@ -127,17 +144,12 @@ export function allowlistTargetKind(entry: AgentMessagesAllowlistEntry): {
 	kind: AllowlistEntryKind;
 	id: string;
 } {
-	const endpoint = entry.target.endpoint_id;
-	const account = entry.target.account_id;
-	if (endpoint)
-		return {
-			kind: entry.target.kind === "account" ? "account" : "endpoint",
-			id: endpoint,
-		};
-	return {
-		kind: "account",
-		id: account ?? "",
-	};
+	// DERIVED from the id, never from `kind`: the schema now refuses a
+	// disagreement, and a derivation cannot be the code path that reintroduces
+	// the mismatch the refine exists to stop.
+	if (entry.target.endpoint_id)
+		return { kind: "endpoint", id: entry.target.endpoint_id };
+	return { kind: "account", id: entry.target.account_id ?? "" };
 }
 
 export function allowlistDraft(

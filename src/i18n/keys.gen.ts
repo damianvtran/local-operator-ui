@@ -652,6 +652,7 @@ export type MessageParams = {
 	"ui.agentMessages.settings.allowlist.level": undefined;
 	"ui.agentMessages.settings.allowlist.listed_only": undefined;
 	"ui.agentMessages.settings.allowlist.needs_entry": undefined;
+	"ui.agentMessages.settings.allowlist.read_only": undefined;
 	"ui.agentMessages.settings.allowlist.receive": undefined;
 	"ui.agentMessages.settings.allowlist.remove": undefined;
 	"ui.agentMessages.settings.allowlist.save": undefined;

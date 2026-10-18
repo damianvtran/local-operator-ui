@@ -49,7 +49,7 @@ const require = createRequire(import.meta.url);
 const bundled = await build({
 	stdin: {
 		contents:
-			'export {AgentMessagesSettings} from "./src/renderer/src/features/agent-messages/agent-messages-settings"; export {desktopEndpoint} from "./src/shared/desktop-contract"; export {agentMessagesSettingsAvailability,agentMessagesSettingsState,allowlistReplaceSet,allowlistSaveGate,allowlistDraft,allowlistIdentifierError,settingsRefusalSentence} from "./src/renderer/src/features/agent-messages/agent-messages-settings-model";',
+			'export {AgentMessagesSettings} from "./src/renderer/src/features/agent-messages/agent-messages-settings"; export {desktopEndpoint} from "./src/shared/desktop-contract"; export {agentMessagesSettingsAvailability,agentMessagesSettingsState,agentMessagesSectionMounted,allowlistReplaceSet,allowlistSaveGate,allowlistDraft,allowlistIdentifierError,settingsRefusalSentence} from "./src/renderer/src/features/agent-messages/agent-messages-settings-model"; export {agentMessagesSettingsResultSchema,agentMessagesAllowlistResultSchema} from "./src/shared/agent-messages-contract"; export {DesktopControlError} from "./src/renderer/src/shared/api/local-operator/desktop-api"; export {agentMessagesRefusal} from "./src/renderer/src/features/agent-messages/agent-messages-refusal";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -75,7 +75,7 @@ const bundled = await build({
 				}));
 				builder.onLoad({ filter: ALL_MODULES, namespace: "fixture" }, () => ({
 					contents:
-						"export const agentMessagesApi = {}; export const useAgentMessages = () => window.__agentMessagesState; export const checkAgentMessagesSurface = () => {}; export const agentMessagesRefusal = (error) => ({ code: error?.code ?? 'client_unavailable', message: error?.message ?? 'refused' });",
+						"export const agentMessagesApi = {}; export const useAgentMessages = () => window.__agentMessagesState; export const checkAgentMessagesSurface = () => {};",
 					loader: "js",
 				}));
 				builder.onResolve({ filter: REACT_MODULE }, (args) => {
@@ -125,7 +125,7 @@ function settingsWith(state) {
 		return {
 			endpoint: null,
 			settings: {
-				tenant_id: "tenant-home",
+				tenant_id: "tnt_bridge_e2e",
 				eligible: true,
 				consent_version: "bridge_consent_v1",
 				consent_required: true,
@@ -195,22 +195,28 @@ async function mount(t, options = {}) {
 		await act(async () => root.unmount());
 		container.remove();
 	});
+	const props = (next = {}) => ({
+		availability: next.availability ?? availability,
+		status: next.status ?? status,
+		accountId: next.accountId ?? accountId,
+		refusal: null,
+		api: next.api ?? api,
+		onRefreshStatus: refresh,
+		sessions,
+	});
 	await act(async () =>
-		root.render(
-			React.createElement(mod.AgentMessagesSettings, {
-				availability,
-				status,
-				accountId,
-				refusal: null,
-				api,
-				onRefreshStatus: refresh,
-				sessions,
-			}),
-		),
+		root.render(React.createElement(mod.AgentMessagesSettings, props())),
 	);
 	await flush();
 	await flush();
-	return { api, writes, container, root };
+	const rerender = async (next = {}) => {
+		await act(async () =>
+			root.render(React.createElement(mod.AgentMessagesSettings, props(next))),
+		);
+		await flush();
+		await flush();
+	};
+	return { api, writes, container, root, rerender };
 }
 
 const button = (label, scope = document) =>
@@ -465,7 +471,7 @@ test("B shows the served consent text byte-equal, and Enable sends the exact ver
 	assert.deepEqual(writes.settings, [
 		{
 			expected_account_id: "account-a",
-			tenant_id: "tenant-home",
+			tenant_id: "tnt_bridge_e2e",
 			state: "active",
 			consent_version: "bridge_consent_v1",
 			consented_via: "settings",
@@ -522,7 +528,7 @@ test("E requires the consent echo; D resumes without one", async (t) => {
 	await flush();
 	assert.deepEqual(paused.writes.settings[0], {
 		expected_account_id: "account-a",
-		tenant_id: "tenant-home",
+		tenant_id: "tnt_bridge_e2e",
 		state: "active",
 	});
 });
@@ -533,7 +539,7 @@ test("C pauses and turns off as state-only writes", async (t) => {
 	await flush();
 	assert.deepEqual(writes.settings[0], {
 		expected_account_id: "account-a",
-		tenant_id: "tenant-home",
+		tenant_id: "tnt_bridge_e2e",
 		state: "paused",
 	});
 	// Pause is "not now": the machine-local preference is untouched.
@@ -542,7 +548,7 @@ test("C pauses and turns off as state-only writes", async (t) => {
 	await flush();
 	assert.deepEqual(writes.settings[1], {
 		expected_account_id: "account-a",
-		tenant_id: "tenant-home",
+		tenant_id: "tnt_bridge_e2e",
 		state: "disabled",
 	});
 	// Opting out IS off: the machine-local enable follows the endpoint.
@@ -560,7 +566,7 @@ test("C shows the consent record and the local switch stays a local preference",
 	});
 	assert.match(document.body.textContent, /bridge_consent_v1/);
 	assert.match(document.body.textContent, /Settings/);
-	assert.match(document.body.textContent, /2026-10-01/);
+	assert.match(document.body.textContent, /2026-10-18/);
 	assert.match(document.body.textContent, /Read the consent text/);
 	const consentText = [...document.querySelectorAll("p")].find(
 		(entry) => entry.textContent === CONSENT_TEXT,
@@ -639,7 +645,7 @@ test("choosing listed-only blocks Save until an entry exists, then saves the com
 	assert.equal(writes.allowlist.length, 1);
 	assert.deepEqual(writes.allowlist[0], {
 		expected_account_id: "account-a",
-		tenant_id: "tenant-home",
+		tenant_id: "tnt_bridge_e2e",
 		entries: [
 			{
 				direction: "receive",
@@ -750,10 +756,10 @@ test("the four desktop ops build the settings and allowlist routes", () => {
 	assert.deepEqual(
 		mod.desktopEndpoint({
 			op: "agent_messages.settings",
-			tenant_id: "tenant-home",
+			tenant_id: "tnt_bridge_e2e",
 		}),
 		{
-			path: "/v1/desktop/team-bridge/settings?tenant_id=tenant-home",
+			path: "/v1/desktop/team-bridge/settings?tenant_id=tnt_bridge_e2e",
 			method: "GET",
 		},
 	);
@@ -808,7 +814,161 @@ test("the four desktop ops build the settings and allowlist routes", () => {
 // Load failures
 // ---------------------------------------------------------------------------
 
-test("a failed settings read renders the refusal sentence with a Retry", async (t) => {
+test("the settings fixture is the served shape, with no endpoint account id", () => {
+	// The upstream BridgeEndpointResponse has no account_id; requiring one made
+	// every enrolled account read as unreadable (round-1 R1).
+	assert.equal("account_id" in settingsFixture.endpoint, false);
+	const parsed =
+		mod.agentMessagesSettingsResultSchema.safeParse(settingsFixture);
+	assert.equal(
+		parsed.success,
+		true,
+		JSON.stringify(parsed.error?.issues ?? []),
+	);
+	assert.equal(parsed.data.endpoint?.tenant_id, "tnt_bridge_e2e");
+});
+
+test("an allowlist target whose kind disagrees with its id is refused", () => {
+	const good = structuredClone(allowlistFixture);
+	assert.equal(
+		mod.agentMessagesAllowlistResultSchema.safeParse(good).success,
+		true,
+	);
+	const bad = structuredClone(allowlistFixture);
+	bad.allowlist.entries[0].target = {
+		kind: "account",
+		endpoint_id: "bep_x",
+	};
+	bad.view.entries = structuredClone(bad.allowlist.entries);
+	assert.equal(
+		mod.agentMessagesAllowlistResultSchema.safeParse(bad).success,
+		false,
+	);
+});
+
+test("A, signed-out and update-required mount no section at all", () => {
+	const cases = [
+		statusWith({
+			surface_state: "A",
+			visibility: {
+				settings: false,
+				inbox: false,
+				account_door: false,
+				onboarding: false,
+			},
+		}),
+		statusWith({ state: "signed_out" }),
+		statusWith({ update_required: true }),
+	];
+	for (const status of cases) {
+		const availability = mod.agentMessagesSettingsAvailability({
+			status,
+			refused: false,
+			everVisible: true,
+		});
+		assert.equal(availability, "absent", JSON.stringify(status.state));
+		assert.equal(
+			mod.agentMessagesSectionMounted(availability, status),
+			false,
+			JSON.stringify(status.state),
+		);
+	}
+	const b = statusWith({ surface_state: "B" });
+	const c = statusWith({ surface_state: "C" });
+	for (const status of [b, c]) {
+		const availability = mod.agentMessagesSettingsAvailability({
+			status,
+			refused: false,
+			everVisible: false,
+		});
+		assert.equal(mod.agentMessagesSectionMounted(availability, status), true);
+	}
+});
+
+test("an account switch reloads settings instead of keeping the previous account's state", async (t) => {
+	const mounted = await mount(t);
+	assert.equal(
+		document
+			.querySelector("[data-agent-messages-state]")
+			?.getAttribute("data-agent-messages-state"),
+		"C",
+	);
+
+	const paused = settingsWith("paused");
+	let calls = 0;
+	const second = makeApi({ settings: paused });
+	const secondApi = {
+		...second.api,
+		settings: async () => {
+			calls += 1;
+			return structuredClone(paused);
+		},
+	};
+	await mounted.rerender({
+		status: statusWith({
+			account_id: "account-b",
+			surface_state: "C",
+			local: { enabled: true },
+		}),
+		accountId: "account-b",
+		api: secondApi,
+	});
+	assert.equal(calls, 1, "the new account's settings must be read once");
+	assert.equal(
+		document
+			.querySelector("[data-agent-messages-state]")
+			?.getAttribute("data-agent-messages-state"),
+		"D",
+		"the previous account's C must not survive the switch",
+	);
+});
+
+test("D disables Resume when consent is required but unavailable", async (t) => {
+	const paused = settingsWith("paused");
+	paused.settings.consent_required = true;
+	await mount(t, {
+		status: statusWith({
+			surface_state: "D",
+			consent: null,
+			local: { enabled: true },
+		}),
+		settings: paused,
+	});
+	assert.equal(button("Resume").disabled, true);
+	assert.match(
+		document.body.textContent,
+		/Consent is unavailable\. Agent messages have not been enabled\./,
+	);
+});
+
+test("F with read_only gates the reach editor and says why", async (t) => {
+	await mount(t, {
+		status: statusWith({
+			surface_state: "F",
+			read_only: true,
+			local: { enabled: true },
+		}),
+	});
+	assert.match(
+		document.body.textContent,
+		/Reach settings are read-only while agent messages are turned off\./,
+	);
+	assert.equal(button("Save reach settings").disabled, true);
+	const receive = directionGroup("Who can message you");
+	assert.ok(receive);
+	for (const level of receive.querySelectorAll("button[aria-pressed]"))
+		assert.equal(level.disabled, true);
+});
+
+test("each Remove control names its target", async (t) => {
+	await mount(t);
+	const remove = document.querySelector(
+		'button[aria-label="Remove bep_peer_send"]',
+	);
+	assert.ok(remove, "the allow row's Remove names its endpoint");
+});
+
+test("a failed settings read renders the mapped refusal sentence, not the exception", async (t) => {
 	await mount(t, {
 		overrides: {
 			settings: async () => {
@@ -817,18 +977,31 @@ test("a failed settings read renders the refusal sentence with a Retry", async (
 		},
 	});
 	assert.match(document.body.textContent, /Could not load agent messages/);
-	assert.match(document.body.textContent, /offline/);
+	assert.match(
+		document.body.textContent,
+		/Agent messages could not be enabled\. Try again, or enable this later in Settings → Agent messages\./,
+	);
+	assert.doesNotMatch(document.body.textContent, /offline/);
 	assert.ok(button("Retry"));
+	// The mapper itself, without a component: a non-transport failure is the
+	// whitelisted sentence this app authored, never the exception's text.
+	const mapped = mod.agentMessagesRefusal(new Error("secret detail"));
+	assert.equal(mapped.code, "client_unavailable");
+	assert.doesNotMatch(mapped.message, /secret detail/);
 });
 
 test("a failed write renders the refusal sentence, never the raw exception", async (t) => {
 	await mount(t, {
 		overrides: {
 			updateSettings: async () => {
-				const error = new Error("raw upstream detail");
-				error.code = "bridge_disabled";
-				error.name = "DesktopControlError";
-				throw error;
+				// The real transport class: the mapper reads its `code`, which a
+				// plain Error carrying a property would not reach.
+				throw new mod.DesktopControlError(
+					403,
+					"raw upstream detail",
+					undefined,
+					"bridge_disabled",
+				);
 			},
 		},
 	});

@@ -77,5 +77,6 @@
 	"ui.agentMessages.settings.refusal.disabled": "Your organization has turned off agent messages.",
 	"ui.agentMessages.settings.refusal.rate_limited": "Too many requests. Wait a moment, then try again.",
 	"ui.agentMessages.settings.refusal.invalid_request": "That change was not accepted. Check the entry and try again.",
-	"ui.agentMessages.settings.refusal.generic": "Agent messages could not be updated. Try again."
+	"ui.agentMessages.settings.refusal.generic": "Agent messages could not be updated. Try again.",
+	"ui.agentMessages.settings.allowlist.read_only": "Reach settings are read-only while agent messages are turned off."
 }

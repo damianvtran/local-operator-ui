@@ -1,6 +1,6 @@
 {
 	"allowlist": {
-		"tenant_id": "tenant-home",
+		"tenant_id": "tnt_bridge_e2e",
 		"entries": [
 			{
 				"id": "bal_send_allow",
@@ -23,7 +23,7 @@
 		]
 	},
 	"view": {
-		"tenant_id": "tenant-home",
+		"tenant_id": "tnt_bridge_e2e",
 		"entries": [
 			{
 				"id": "bal_send_allow",
