@@ -57,7 +57,8 @@ import type {
 } from "../../../../shared/desktop-contract";
 import type { DesktopVoiceText } from "../../../../shared/desktop-control-contract";
 import { applyVoiceActive, useVoiceStatus } from "./use-voice-status";
-import { useVoiceStore } from "./voice-store";
+import { playReplyEndTone } from "./voice-earcons";
+import { activityOfEvent, useVoiceStore } from "./voice-store";
 import { type VoiceStreamHandle, subscribeVoiceStream } from "./voice-stream";
 import {
 	VOICE_TAKE_ROW_TTL_MS,
@@ -609,6 +610,17 @@ function showCardToast(sessionId: string, message: string): void {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * Whether the server cut the spoken text at its cap (plan §8). An absent field
+ * is "not cut": the backend slice that adds `truncated` lands in parallel, so a
+ * reply without it is the normal case, not an error.
+ */
+export function spokenTruncated(
+	spoken: DesktopVoiceText | null | undefined,
+): boolean {
+	return spoken?.truncated === true;
+}
+
+/**
  * Speak one source reference: the server resolves the words (`/voice/text`),
  * main checks they are the words it just relayed, and the rig says them. The
  * renderer never composes what is spoken.
@@ -639,6 +651,16 @@ async function speakSource(
 	if (useVoiceStore.getState().active?.session_id !== sessionId) return;
 	const kind = source.kind === "gate" ? "gate" : "reply";
 	rememberSpoken(spoken.text);
+	/*
+	 * THE CUT FLAG (plan §8): the server says whether the spoken text was cut at
+	 * the cap, and the panel marks it. Absent means not cut - the backend slice
+	 * that adds the field lands in parallel, so the missing case is the normal
+	 * one until it ships.
+	 */
+	useVoiceStore.getState().setLastSpoken({
+		sessionId,
+		truncated: spokenTruncated(spoken),
+	});
 	const answer = await bridge()?.speak({ text: spoken.text, kind });
 	if (answer && !answer.spoken)
 		console.warn(`[voice] the rig did not speak: ${answer.reason ?? ""}`);
@@ -691,9 +713,22 @@ export const QwenVoiceController: FC = () => {
 		void rig.getStatus().then(setRig, () => undefined);
 		const offStatus = rig.onStatus(setRig);
 		const offTake = rig.onTake((take) => void onRigTake(take));
+		/*
+		 * THE RIG'S OWN AUDIO EVENTS (plan §8/§10): only the Gateway knows when
+		 * sound is actually moving, so the header's "Hearing you" and "Speaking"
+		 * come from here, and a finished reply plays the end tone. A cancelled
+		 * playback clears the phase and stays silent.
+		 */
+		const offEvent = rig.onEvent((event) => {
+			const next = activityOfEvent(event.type);
+			if (next !== null)
+				useVoiceStore.getState().setActivity(next === "idle" ? null : next);
+			if (event.type === "realtime.playback.ended") void playReplyEndTone();
+		});
 		return () => {
 			offStatus();
 			offTake();
+			offEvent();
 		};
 	}, []);
 

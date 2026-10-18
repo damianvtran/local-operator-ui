@@ -1484,7 +1484,7 @@ const READS_INPUT_MODE = /input_mode|inputMode/;
 const controllerBundle = await build({
 	stdin: {
 		contents:
-			'export { feedTurns, sendVoiceTake, takeIsEcho, isEcho, isQwenPhrase, isQwenPhraseHeard, markPhraseSpoken, PHRASE_ECHO_WINDOW_MS, rememberSpoken, speechMs, viewedSessionId } from "./src/renderer/src/features/voice/qwen-voice-controller"; export { useVoiceStore, voicePhaseOf } from "./src/renderer/src/features/voice/voice-store";',
+			'export { feedTurns, sendVoiceTake, takeIsEcho, isEcho, isQwenPhrase, isQwenPhraseHeard, markPhraseSpoken, PHRASE_ECHO_WINDOW_MS, rememberSpoken, speechMs, viewedSessionId, spokenTruncated } from "./src/renderer/src/features/voice/qwen-voice-controller"; export { useVoiceStore, voicePhaseOf, activityOfEvent } from "./src/renderer/src/features/voice/voice-store"; export { scheduleReplyEndTone, playReplyEndTone, END_TONE_HZ, END_NOTE_SECONDS } from "./src/renderer/src/features/voice/voice-earcons";',
 		resolveDir: process.cwd(),
 		loader: "tsx",
 	},
@@ -2234,4 +2234,134 @@ test("echo guard: a take matching recent speech is dropped unsent", async () => 
 	assert.notEqual(globalThis.__voiceUpload, null, "an ordinary take is sent");
 	settle();
 	assert.equal((await sent).ok, true);
+});
+
+/* ------------------------------------------------------------------------ */
+/* The event path: phases, the end cue, the cut flag (plan §8, §10)          */
+/* ------------------------------------------------------------------------ */
+
+test("§8: the Gateway's events drive Hearing you / Speaking and clear on their own end", async () => {
+	const { activityOfEvent } = await controller();
+	assert.equal(activityOfEvent("realtime.playback.started"), "speaking");
+	assert.equal(activityOfEvent("realtime.provider.speech_started"), "hearing");
+	for (const type of [
+		"realtime.playback.ended",
+		"realtime.playback.cancelled",
+		"realtime.provider.speech_stopped",
+	])
+		assert.equal(activityOfEvent(type), "idle", type);
+	for (const type of [
+		"realtime.response.done",
+		"task.running",
+		"task.completed",
+		"something.else",
+	])
+		assert.equal(activityOfEvent(type), null, type);
+});
+
+test("§8: Speaking beats Working; the slot moving clears it; no activity is Listening", async () => {
+	const { useVoiceStore, voicePhaseOf } = await controller();
+	const phase = (sessionId) =>
+		voicePhaseOf(useVoiceStore.getState(), sessionId);
+	useVoiceStore.getState().setActive({ session_id: "s-live", enabled_at: 1 });
+	assert.equal(phase("s-live"), "listening");
+	useVoiceStore.getState().setExchange("working", "s-live");
+	assert.equal(phase("s-live"), "working");
+	useVoiceStore.getState().setActivity("speaking");
+	assert.equal(phase("s-live"), "speaking", "audio moving wins over working");
+	useVoiceStore.getState().setActivity("hearing");
+	assert.equal(phase("s-live"), "hearing");
+	useVoiceStore.getState().setActivity(null);
+	assert.equal(phase("s-live"), "working", "the turn is still out");
+	useVoiceStore.getState().setExchange(null, null);
+	// A slot move clears the live half; the new holder reads Listening.
+	useVoiceStore.getState().setActivity("speaking");
+	useVoiceStore.getState().setActive({ session_id: "s-next", enabled_at: 2 });
+	assert.equal(useVoiceStore.getState().activity, null);
+	assert.equal(phase("s-next"), "listening");
+	// A failed take still outranks a hearing state: it is what to act on.
+	useVoiceStore.getState().setExchange("error", "s-next", "not_sent");
+	useVoiceStore.getState().setActivity("hearing");
+	assert.equal(phase("s-next"), "error");
+});
+
+test("§8: the end cue is a short falling two-note tone, under VAD's min_speech_ms", async () => {
+	const { scheduleReplyEndTone, END_TONE_HZ, END_NOTE_SECONDS } =
+		await controller();
+	const starts = [];
+	const stops = [];
+	const ramps = [];
+	const audio = {
+		currentTime: 10,
+		destination: { sink: true },
+		createOscillator: () => ({
+			type: "",
+			frequency: {
+				setValueAtTime: (hz, at) => starts.push({ hz, at }),
+			},
+			connect: () => {},
+			start: (at) => starts.push({ at }),
+			stop: (at) => stops.push(at),
+		}),
+		createGain: () => ({
+			gain: {
+				setValueAtTime: (v, at) => ramps.push(["set", v, at]),
+				linearRampToValueAtTime: (v, at) => ramps.push(["lin", v, at]),
+				exponentialRampToValueAtTime: (v, at) => ramps.push(["exp", v, at]),
+			},
+			connect: () => {},
+		}),
+	};
+	const end = scheduleReplyEndTone(audio, 10);
+	assert.equal(END_TONE_HZ.length, 2);
+	assert.ok(END_TONE_HZ[0] > END_TONE_HZ[1], "it falls");
+	assert.equal(stops.length, 2);
+	assert.deepEqual(
+		stops.map((at) => Number(at.toFixed(3))),
+		[10 + END_NOTE_SECONDS, 10 + END_NOTE_SECONDS * 2 + 0.02].map((at) =>
+			Number(at.toFixed(3)),
+		),
+	);
+	assert.ok(end - 10 <= 0.384, "under s2s's 384 ms min_speech_ms");
+	assert.ok(
+		ramps.some(([kind]) => kind === "lin") &&
+			ramps.some(([kind]) => kind === "exp"),
+		"a fade in and a fast decay, not a click",
+	);
+});
+
+test("§8: playing the cue is silent where there is no Web Audio", async () => {
+	const { playReplyEndTone } = await controller();
+	assert.equal(globalThis.AudioContext, undefined);
+	await playReplyEndTone();
+});
+
+test("§8: the cut flag is read when present and tolerated when absent", async () => {
+	const { spokenTruncated } = await controller();
+	assert.equal(spokenTruncated({ text: "a", spoken_chars: 1 }), false);
+	assert.equal(
+		spokenTruncated({ text: "a", spoken_chars: 1, truncated: false }),
+		false,
+	);
+	assert.equal(
+		spokenTruncated({ text: "a", spoken_chars: 1, truncated: true }),
+		true,
+	);
+	assert.equal(spokenTruncated(undefined), false);
+	assert.equal(spokenTruncated(null), false);
+	// And the speak path records it for the panel, and plays the cue only on an
+	// ended playback (a cancelled one is an interruption, not an end).
+	const source = readFileSync(
+		"src/renderer/src/features/voice/qwen-voice-controller.tsx",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/setLastSpoken\(\{\s*sessionId,\s*truncated: spokenTruncated\(spoken\),?\s*\}\)/,
+	);
+	assert.match(
+		source,
+		/if \(event\.type === "realtime\.playback\.ended"\) void playReplyEndTone\(\);/,
+	);
+	assert.doesNotMatch(source, /playback\.cancelled"\).*playReplyEndTone/);
 });

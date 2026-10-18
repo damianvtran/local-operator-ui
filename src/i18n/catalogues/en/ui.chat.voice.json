@@ -10,6 +10,8 @@
 	"ui.chat.voice.open_settings": "Open Settings",
 	"ui.chat.voice.retry": "Retry",
 	"ui.chat.voice.phase_listening": "Listening",
+	"ui.chat.voice.phase_hearing": "Hearing you",
+	"ui.chat.voice.phase_speaking": "Speaking",
 	"ui.chat.voice.phase_working": "Working",
 	"ui.chat.voice.phase_error": "Voice error",
 	"ui.chat.voice.error_start_failed": "Voice could not start.",

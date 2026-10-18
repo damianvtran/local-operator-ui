@@ -853,7 +853,9 @@ export type MessageParams = {
 	"ui.chat.voice.open_session": undefined;
 	"ui.chat.voice.open_settings": undefined;
 	"ui.chat.voice.phase_error": undefined;
+	"ui.chat.voice.phase_hearing": undefined;
 	"ui.chat.voice.phase_listening": undefined;
+	"ui.chat.voice.phase_speaking": undefined;
 	"ui.chat.voice.phase_starting": undefined;
 	"ui.chat.voice.phase_unheard": undefined;
 	"ui.chat.voice.phase_working": undefined;

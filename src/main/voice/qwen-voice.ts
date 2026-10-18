@@ -41,6 +41,9 @@ import type { QwenMicAccess, QwenVoicePagePort } from "./qwen-voice-page";
 
 export type QwenRigState = "stopped" | "starting" | "ready" | "error";
 
+/** `voice.qwen.event`, one allowlisted thing the voice did (plan §10). */
+export type QwenVoiceEvent = { type: string; at: string; reason?: string };
+
 /** `voice.qwen.status`, the frozen main <-> renderer status shape. */
 export type QwenVoiceStatus = {
 	rig: QwenRigState;
@@ -59,6 +62,25 @@ export type QwenVoiceStatus = {
 	mic?: QwenMicAccess;
 };
 
+/**
+ * The events that may cross to the renderer: the twin of `VOICE_EVENTS` in
+ * `resources/qwen-voice/relay-core.mjs`, which is the launcher's side of the
+ * same whitelist (a test asserts the two lists are equal).
+ */
+export const VOICE_EVENT_TYPES = [
+	"realtime.provider.speech_started",
+	"realtime.provider.speech_stopped",
+	"realtime.playback.started",
+	"realtime.playback.ended",
+	"realtime.playback.cancelled",
+	"realtime.response.done",
+	"task.running",
+	"task.completed",
+] as const;
+
+/** A reason worth crossing: a word, never a sentence. */
+const EVENT_REASON = /^[a-z_]{1,32}$/;
+
 export const QWEN_IDLE_STOP_MS = 10 * 60_000;
 export const QWEN_SPEAK_GUARD_MS = 10 * 60_000;
 const RELAYED_LIMIT = 64;
@@ -73,6 +95,8 @@ export const QWEN_CHANNEL = {
 	start: "voice.qwen.start",
 	status: "voice.qwen.status",
 	statusGet: "voice.qwen.status.get",
+	/** Pushed: one allowlisted voice event, `{type, at, reason?}`. */
+	event: "voice.qwen.event",
 	/** Open the OS microphone pane; a main-only path, no renderer URL. */
 	openMicSettings: "voice.qwen.open-mic-settings",
 } as const;
@@ -393,8 +417,37 @@ export class QwenVoice {
 		this.idleTimer = null;
 	}
 
+	/**
+	 * One allowlisted voice event from the launcher, or null. The launcher
+	 * shapes it already; this is the second check, because the Gateway is
+	 * third-party code and only a type, a time and a one-word reason may cross.
+	 */
+	private voiceEvent(raw: unknown): QwenVoiceEvent | null {
+		const value = raw as {
+			type?: unknown;
+			at?: unknown;
+			reason?: unknown;
+		} | null;
+		if (!value || typeof value.type !== "string") return null;
+		if (!(VOICE_EVENT_TYPES as readonly string[]).includes(value.type))
+			return null;
+		if (typeof value.at !== "string" || value.at.length === 0) return null;
+		const event: QwenVoiceEvent = {
+			type: value.type,
+			at: value.at.slice(0, 40),
+		};
+		if (typeof value.reason === "string" && EVENT_REASON.test(value.reason))
+			event.reason = value.reason;
+		return event;
+	}
+
 	/** One message up from the Gateway launcher. */
 	onGatewayMessage(message: GatewayUpMessage): void {
+		if (message?.type === "event") {
+			const event = this.voiceEvent(message.event);
+			if (event) this.deps.toRenderer(QWEN_CHANNEL.event, event);
+			return;
+		}
 		if (message?.type === "take") {
 			const delivered = this.deps.toRenderer(QWEN_CHANNEL.take, {
 				taskId: message.taskId,

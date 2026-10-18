@@ -57,6 +57,9 @@ const bundlePath = new URL(
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
 after(() => rmSync(bundlePath, { force: true }));
 const m = await import(bundlePath.href);
+// The launcher's own module, imported where it lives: its phrase table is read
+// relative to its file, which a bundle copied into scripts/ would break.
+const relayCore = await import("../resources/qwen-voice/relay-core.mjs");
 
 /* ------------------------------------------------------------------------ */
 /* The coordinator                                                           */
@@ -162,6 +165,64 @@ function rig({ gatewayFails = false, mic = "granted" } = {}) {
 			}),
 	};
 }
+
+/** Every `voice.qwen.event` payload the coordinator pushed. */
+const voiceEvents = (r) =>
+	r.toRenderer
+		.filter((x) => x.channel === "voice.qwen.event")
+		.map((x) => x.payload);
+
+const AT = "2026-10-18T05:36:39.412Z";
+
+test("§10: an allowlisted event crosses as {type, at, reason?}; anything else is dropped", () => {
+	const r = rig();
+	const send = (event) => r.voice.onGatewayMessage({ type: "event", event });
+	send({ type: "realtime.playback.started", at: AT });
+	assert.deepEqual(voiceEvents(r), [
+		{ type: "realtime.playback.started", at: AT },
+	]);
+	send({ type: "realtime.playback.cancelled", at: AT, reason: "barge_in" });
+	assert.deepEqual(voiceEvents(r).at(-1), {
+		type: "realtime.playback.cancelled",
+		at: AT,
+		reason: "barge_in",
+	});
+	// Third-party code cannot send an arbitrary event, a free-text reason, or a
+	// message body across.
+	const before = voiceEvents(r).length;
+	send({ type: "task.persistence_warning", at: AT });
+	send({ type: "realtime.playback.ended" });
+	send({ type: "realtime.playback.ended", at: AT, message: "private words" });
+	send({ type: "realtime.playback.ended", at: AT, reason: "a whole sentence" });
+	// Both trailing records carry a valid type and time, so both cross - with
+	// the free text stripped, which is the property that matters.
+	assert.equal(voiceEvents(r).length, before + 2);
+	assert.equal("message" in voiceEvents(r).at(-1), false);
+	assert.equal("reason" in voiceEvents(r).at(-1), false);
+	assert.equal(voiceEvents(r).at(-1).type, "realtime.playback.ended");
+});
+
+test("§10: the launcher keeps the file AND posts allowlisted events through one sink", () => {
+	const launcher = readFileSync(
+		"resources/qwen-voice/gateway-launcher.mjs",
+		"utf8",
+	);
+	// The file sink is the one the Gateway wrote before this change; the tee
+	// adds the post, so nothing moved out of the log.
+	assert.match(launcher, /new JsonLineFileSink\(/);
+	assert.match(launcher, /fileSink\?\.write\(record\);/);
+	assert.match(launcher, /if \(event\) post\(\{ type: "event", event \}\);/);
+	// And the Gateway is composed WITH that logger: a connection's
+	// `logger.child(...)` shares the same sink.
+	assert.match(launcher, /createGatewayApplication\(\{\s*logger,/);
+});
+
+test("§10: main's event allowlist IS the launcher's, not a copy that can drift", () => {
+	assert.deepEqual(
+		[...m.VOICE_EVENT_TYPES].sort(),
+		[...relayCore.VOICE_EVENTS].sort(),
+	);
+});
 
 const voiceFrame = (sessionId) => ({
 	type: "voice",

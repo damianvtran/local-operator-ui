@@ -13,11 +13,13 @@
  *
  * `phase` is the exchange, hands-free now (design Q8): `off` when this session
  * does not hold the slot, `starting` while the rig loads, `unheard` while the rig
- * is ready but no voice page is connected (nothing can hear Ben, so it must not
- * say "Listening"), `listening` while it is ready, a page is connected and
- * nothing is owed, `working` while a take this window relayed is out or its turn
- * runs, `error` when the rig or the last step failed. Speaking is the rig's (it
- * is heard, in the WebUI), not a phase this window tracks.
+ * is ready but nothing can hear (the header says which failure), `hearing` while
+ * the rig's VAD says Ben is speaking, `speaking` while the rig is playing a
+ * reply, `listening` while it is ready, a page is connected and nothing is owed,
+ * `working` while a take this window relayed is out or its turn runs, `error`
+ * when the rig or the last step failed. `hearing` and `speaking` come from the
+ * Gateway's allowlisted events (`voice.qwen.event`), because only the rig knows
+ * when audio is actually moving.
  */
 
 import { create } from "zustand";
@@ -28,9 +30,14 @@ export type VoicePhase =
 	| "off"
 	| "starting"
 	| "unheard"
+	| "hearing"
+	| "speaking"
 	| "listening"
 	| "working"
 	| "error";
+
+/** The live half of the exchange, as the rig reports it. */
+export type VoiceActivity = "speaking" | "hearing";
 
 /** Why one exchange failed, as the header says it. */
 export type VoiceExchangeError = "not_sent";
@@ -40,6 +47,14 @@ type VoiceStoreState = {
 	active: DesktopVoiceActive | undefined;
 	/** Main's rig status, or `undefined` outside Electron (browser development). */
 	rig: QwenVoiceStatus | undefined;
+	/**
+	 * What the rig is doing with audio right now (`voice.qwen.event`), or null.
+	 * Cleared by its own stop/end events, so a lost event leaves "Listening"
+	 * rather than a stuck "Speaking".
+	 */
+	activity: VoiceActivity | null;
+	/** The last text this window had spoken, with the server's cut flag (§8). */
+	lastSpoken: { sessionId: string; truncated: boolean } | null;
 	/** `working` (a take owed an answer) or `error` for one session; else null. */
 	exchange: {
 		kind: "working" | "error";
@@ -65,6 +80,8 @@ type VoiceStoreActions = {
 		sessionId: string | null,
 		reason?: VoiceExchangeError,
 	) => void;
+	setActivity: (activity: VoiceActivity | null) => void;
+	setLastSpoken: (spoken: { sessionId: string; truncated: boolean }) => void;
 	setPending: (pending: boolean) => void;
 	setReplaced: (sessionId: string | null) => void;
 	setCardPending: (sessionId: string, pending: boolean) => void;
@@ -74,6 +91,8 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 	(set, get) => ({
 		active: undefined,
 		rig: undefined,
+		activity: null,
+		lastSpoken: null,
 		exchange: null,
 		pending: false,
 		replaced: null,
@@ -84,12 +103,22 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 			 * THE SLOT MOVING ENDS AN EXCHANGE FOR THE SESSION THAT LOST IT. A turn
 			 * already admitted keeps running in that session - voice does not cancel
 			 * agent work - but its answer is no longer spoken.
+			 *
+			 * It also clears the live activity: the rig cancels on a move, but a
+			 * lost cancel must not leave the new holder's header saying "Speaking".
 			 */
 			const lost =
 				exchange !== null && active?.session_id !== exchange.sessionId;
-			set(lost ? { active, exchange: null } : { active });
+			const moved = get().active?.session_id !== active?.session_id;
+			set({
+				active,
+				...(lost ? { exchange: null } : {}),
+				...(moved ? { activity: null } : {}),
+			});
 		},
 		setRig: (rig) => set({ rig }),
+		setActivity: (activity) => set({ activity }),
+		setLastSpoken: (lastSpoken) => set({ lastSpoken }),
 		setExchange: (kind, sessionId, reason) =>
 			set({
 				exchange:
@@ -112,6 +141,27 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 	}),
 );
 
+/**
+ * What one Gateway event does to the activity: a new activity, `"idle"` to
+ * clear it, or null when the event says nothing about audio (a response
+ * finishing, a task moving). `playback.ended` and `playback.cancelled` both
+ * clear; the cancelled one never plays the end earcon, which the caller owns.
+ */
+export function activityOfEvent(type: string): VoiceActivity | "idle" | null {
+	switch (type) {
+		case "realtime.playback.started":
+			return "speaking";
+		case "realtime.provider.speech_started":
+			return "hearing";
+		case "realtime.playback.ended":
+		case "realtime.playback.cancelled":
+		case "realtime.provider.speech_stopped":
+			return "idle";
+		default:
+			return null;
+	}
+}
+
 /** The session holding the slot, or null when voice is off everywhere. */
 export const voiceSessionOf = (
 	active: DesktopVoiceActive | undefined,
@@ -122,7 +172,7 @@ export const voiceSessionOf = (
  * rig and the exchange cannot disagree about it.
  */
 export function voicePhaseOf(
-	state: Pick<VoiceStoreState, "active" | "rig" | "exchange">,
+	state: Pick<VoiceStoreState, "active" | "rig" | "exchange" | "activity">,
 	sessionId: string | undefined,
 ): VoicePhase {
 	if (!sessionId || state.active?.session_id !== sessionId) return "off";
@@ -130,12 +180,24 @@ export function voicePhaseOf(
 	// A RIG error wins over this window's exchange (UX round 2, U9): a stale
 	// "not sent" would hide the rig's reason and its "Try again".
 	if (rig === "error") return "error";
-	if (state.exchange?.sessionId === sessionId) return state.exchange.kind;
+	// A failed take is the state the person must act on, even while they talk.
+	if (
+		state.exchange?.sessionId === sessionId &&
+		state.exchange.kind === "error"
+	)
+		return "error";
 	if (rig === "starting") return "starting";
 	// `stopped` while the slot is held (an app relaunch) is `off` with the
 	// "Start voice" action; the indicator reads `rig` for that.
 	if (rig === "stopped") return "off";
 	// Outside Electron there is no rig to ask (browser development): as before.
 	if (state.rig === undefined) return "listening";
+	/*
+	 * AUDIO MOVING BEATS "WORKING": the moment the rig plays a reply the turn is
+	 * no longer what the person is waiting on, and while they speak, "Hearing
+	 * you" is the honest word even if a turn is out.
+	 */
+	if (state.activity) return state.activity;
+	if (state.exchange?.sessionId === sessionId) return state.exchange.kind;
 	return (state.rig.clients ?? 0) > 0 ? "listening" : "unheard";
 }
