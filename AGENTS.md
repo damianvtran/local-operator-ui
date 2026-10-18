@@ -368,6 +368,22 @@ reader had dropped. Fetch the job log from the API instead: `gh api
 Pass `--allow-escape-sequences`, or `gh` refuses the body outright ("the response
 contains terminal escape sequences") and prints nothing.
 
+**Missing-summary rule: acquire the complete log BEFORE proposing a cause.**
+`gh run view --log` truncates (measured at ~3.7 MB of a 40 MB job log). For any
+CI failure analysis, fetch the raw log with
+`gh api --allow-escape-sequences repos/<owner>/<repo>/actions/jobs/<id>/logs`.
+A desktop TAP log that ends without `# pass`/`# fail` is UNREAD, not a crash —
+never infer a cause from a cut tail. This describes an incompletely acquired
+log, not a guarantee that the runner cannot crash: only after checking the raw
+log should a genuinely absent summary trigger exit/signal/watchdog investigation.
+On #1180, job `117770071277`, the last ok 2114 was where the retrieval stopped:
+the 3,743,446-byte rendered log omitted the rest of the 40,046,456-byte raw log,
+which ended normally with `pass 9182`, `fail 2` and suite exit 1. The two actual
+assertions were i18n fallback expectations, not evidence of a worker-memory
+failure. The desktop CI job also retains its complete suite log as a failure
+artifact for seven days; use that or the raw API, never a rerun just to retrieve
+evidence.
+
 **A green `evidence-manifest.test.mjs` is not evidence about the CITATIONS.** The
 counts half above is sound. The citation half is not, in two ways that both live on a
 shallow clone. (1) The ancestry test (`the SHIPPED manifest's head citations lie in
