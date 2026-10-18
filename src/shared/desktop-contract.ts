@@ -278,6 +278,31 @@ const profileName = z
 const target = z
 	.object({ kind: z.enum(["agent", "team"]), name: profileName })
 	.strict();
+const importSourceName = z.enum(["claude", "codex", "omp"]);
+/*
+ * A selected-session map keyed by source. The backend caps the whole job at
+ * 5,000 rows; the client states the same ceiling so a selection cannot grow a
+ * body the control plane refuses after the user has waited for a preview.
+ */
+const importSessionIds = z.record(
+	z.string(),
+	z.array(z.string().min(1).max(512)).max(5000),
+);
+const importRequestFields = {
+	sources: z.array(importSourceName).max(3).optional(),
+	sessionIds: importSessionIds.optional(),
+	/*
+	 * Kept on the wire for the CLI/TUI and future callers, but the Settings
+	 * surface never sets it: no-default-all is enforced in the UI by requiring
+	 * an explicit per-session selection before preview and again before import.
+	 */
+	all: z.boolean().optional(),
+	includeSubagents: z.boolean().optional(),
+	includeClearedSegments: z.boolean().optional(),
+	includeMemory: z.boolean().optional(),
+	includeInstructions: z.boolean().optional(),
+	maxSessions: z.number().int().min(1).max(5000).optional(),
+};
 /**
  * The model a NEW conversation will be born on, picked on the draft pane.
  *
@@ -1093,6 +1118,37 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z.object({ op: z.literal("profiles.list") }).strict(),
 	z.object({ op: z.literal("profiles.get"), name: profileName }).strict(),
+	/*
+	 * The harness import plane. Reads are fixed-shape GETs; preview and start
+	 * carry the same explicit request fields, and neither is allowed to infer a
+	 * selection: the UI paints an empty selection and makes the user choose.
+	 */
+	z
+		.object({ op: z.literal("imports.sources") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("imports.sessions"),
+			source: importSourceName,
+			includeSubagents: z.boolean().optional(),
+		})
+		.strict(),
+	z
+		.object({ op: z.literal("imports.preview"), ...importRequestFields })
+		.strict(),
+	z.object({ op: z.literal("imports.start"), ...importRequestFields }).strict(),
+	z
+		.object({
+			op: z.literal("imports.status"),
+			jobId: z.string().min(1).max(128),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("imports.cancel"),
+			jobId: z.string().min(1).max(128),
+		})
+		.strict(),
 	/*
 	 * Definition CAS (proposed additive wire, b-wire-receipt-definition-cas-and-adopt).
 	 * `expectedDefinitionRevision` is an opaque echo of the `definition_revision` the
@@ -4851,6 +4907,18 @@ const DESKTOP_SYSTEM_PROMPT_BYTE_BUDGET = 1_100_000;
  * the same discipline `local_operator/imaging.py:167-182` applies when it
  * repairs to a 1960px edge against a 2000px ceiling.
  */
+/*
+ * Import preview/start can carry a user's explicit selection of up to 5,000
+ * session ids, so they sit on the large-body budget rather than the control
+ * budget. The surface never sends `all`, but Select all is a legitimate
+ * explicit user action and must not be refused by the transport after the
+ * preview it asked for already succeeded.
+ */
+const IMPORT_OPS: ReadonlySet<string> = new Set([
+	"imports.preview",
+	"imports.start",
+]);
+
 const MESSAGE_OPS: ReadonlySet<string> = new Set([
 	"sessions.message",
 	"sessions.command",
@@ -4865,7 +4933,7 @@ const MESSAGE_OPS: ReadonlySet<string> = new Set([
 export function desktopRequestByteBudget(op: DesktopRequest["op"]): number {
 	if (op === "legacy.agent.systemPrompt.update")
 		return DESKTOP_SYSTEM_PROMPT_BYTE_BUDGET;
-	return MESSAGE_OPS.has(op)
+	return MESSAGE_OPS.has(op) || IMPORT_OPS.has(op)
 		? DESKTOP_MESSAGE_BYTE_BUDGET
 		: DESKTOP_CONTROL_BYTE_BUDGET;
 }
@@ -6285,6 +6353,33 @@ function assertPairedPublicationTarget(request: {
 	}
 }
 
+type HarnessImportStart = Extract<
+	DesktopRequest,
+	{ op: "imports.preview" | "imports.start" }
+>;
+
+/**
+ * The backend's snake_case import body, assembled in ONE place so preview and
+ * start cannot drift. Defaults are sent explicitly rather than left to the
+ * server: the screen and the audit trail then describe the same request.
+ */
+function harnessImportBody(
+	request: HarnessImportStart,
+): Record<string, unknown> {
+	return {
+		sources: request.sources ?? null,
+		session_ids: request.sessionIds ?? {},
+		all: request.all ?? false,
+		include_subagents: request.includeSubagents ?? false,
+		include_cleared_segments: request.includeClearedSegments ?? false,
+		include_memory: request.includeMemory ?? true,
+		include_instructions: request.includeInstructions ?? true,
+		...(request.maxSessions === undefined
+			? {}
+			: { max_sessions: request.maxSessions }),
+	};
+}
+
 export function desktopEndpoint(request: DesktopRequest): {
 	path: string;
 	method: string;
@@ -6386,6 +6481,38 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: "/v1/desktop/profiles/install",
 				method: "POST",
 				body: { request_id: request.requestId, name: request.name },
+			};
+		case "imports.sources":
+			return { path: "/v1/desktop/imports/sources", method: "GET" };
+		case "imports.sessions": {
+			const query = new URLSearchParams({ source: request.source });
+			if (request.includeSubagents) query.set("include_subagents", "true");
+			return {
+				path: `/v1/desktop/imports/sessions?${query.toString()}`,
+				method: "GET",
+			};
+		}
+		case "imports.preview":
+			return {
+				path: "/v1/desktop/imports/preview",
+				method: "POST",
+				body: harnessImportBody(request),
+			};
+		case "imports.start":
+			return {
+				path: "/v1/desktop/imports/jobs",
+				method: "POST",
+				body: harnessImportBody(request),
+			};
+		case "imports.status":
+			return {
+				path: `/v1/desktop/imports/jobs/${encodeURIComponent(request.jobId)}`,
+				method: "GET",
+			};
+		case "imports.cancel":
+			return {
+				path: `/v1/desktop/imports/jobs/${encodeURIComponent(request.jobId)}`,
+				method: "DELETE",
 			};
 		case "profiles.create":
 			return {
