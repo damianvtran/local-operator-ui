@@ -164,6 +164,9 @@ const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({
 	return (
 		<div className={cn("flex h-full w-full flex-col")}>
 			<div
+				/* A BAND: the viewer's mode bar takes the field overlay, not a
+				 * second ground inside the pane. */
+				data-glass-plane="band"
 				className={cn(
 					"flex min-h-8 items-center justify-end gap-1",
 					"border-hairline border-b bg-surface px-2 py-1.5",

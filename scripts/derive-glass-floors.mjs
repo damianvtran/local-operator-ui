@@ -117,6 +117,39 @@ export const GLASS_STATE_ALPHA = {
  */
 export const GLASS_BLOCK_VEIL_STEP = 4.0;
 export const GLASS_STATE_STEP = { hover: 1.5, selected: 2.5, field: 1.5 };
+
+/**
+ * A LANE IS A WELL THAT MUST READ ON A TRANSLUCENT PAGE, and it cannot be an ink
+ * overlay the way a field or a track is.
+ *
+ * WHY NOT INK. A lane sits UNDER text-bearing blocks (the Projects board's cards),
+ * and the block veil is already an ink layer over the ground. Ink 5% under a veil
+ * measured `inkMuted` 4.03:1 on synthwave (the stack the veil's note forbids) - the
+ * card's own text is the thing a lane would spend. So a lane takes a SURFACE wash
+ * instead: the palette's own `surface` at an alpha over the page's canvas glass,
+ * which is a brightness step in the same direction the flat `surface` lift is. It
+ * composes (a surface over a translucent canvas is still a surface) and it leaves
+ * the veil as the only ink layer under the card.
+ *
+ * DERIVED AT THE DEFAULT INTENSITY, and that is deliberate rather than convenient:
+ * the slider moves the PAGE's alpha, so the lane's step off the page is weakest at
+ * the most opaque end. The floors here are the worst-measured-backdrop envelope,
+ * the same one the alpha floors use; the default (80) is the shipped look the
+ * evidence is required to hold, and the full-transparent end (100) measures a
+ * larger step than this derivation asks for. Frosted (0) is the stated limit: a
+ * lane can be subtler there because the window itself is nearly solid.
+ */
+export const GLASS_LANE_STEP = 1.5;
+/**
+ * Mirrors `DEFAULT_GLASS_INTENSITY` and `GLASS_ALPHA_CEILING` in
+ * `src/shared/window-glass.ts`. This script has no build step and cannot import the
+ * TypeScript module, so `window-glass.test.mjs` (G-7c) asserts the mirror: a change
+ * to either constant that is not carried here fails the suite rather than silently
+ * moving the derivation.
+ */
+export const LANE_DEFAULT_INTENSITY = 80;
+export const LANE_ALPHA_CEILING = 0.96;
+
 /**
  * THE ONE RELAXATION, stated: `inkDim` (captions, metadata, placeholders) is held to
  * 3.5:1, not 4.5:1, on a hovered or selected row and on a field's fill over glass.
@@ -246,6 +279,56 @@ export function deriveBlockVeil(floors) {
 	return out;
 }
 
+export function deriveLaneWash(floors) {
+	const palettes = loadPalettes();
+	const out = {};
+	const at = (floor) =>
+		Math.round(
+			(LANE_ALPHA_CEILING -
+				(LANE_DEFAULT_INTENSITY / 100) * (LANE_ALPHA_CEILING - floor)) *
+				100,
+		) / 100;
+	for (const scheme of ["dark", "light"]) {
+		/*
+		 * THE SMALLEST ALPHA THAT CLEARS ON EVERY PALETTE AND TIER, scanned from the
+		 * least opaque end. Taking the maximum of each palette's own first-clearing
+		 * alpha is NOT the same number: 8-bit compositing makes the step non-monotone
+		 * near a palette's own surface/canvas tone (obsidian's page #303031, surface
+		 * #2A2A2D: alpha 0.59 measures ΔE00 1.86, 0.63 measures 1.44, 0.76 measures
+		 * 2.09), so a per-palette minimum can sit on a peak that a shared constant
+		 * lands beside. This asks the question the contract asks: one constant, every
+		 * palette, the committed value itself.
+		 */
+		let chosen = 1;
+		for (let a = 0.05; a <= 1.0001; a = Math.round((a + 0.01) * 100) / 100) {
+			let clears = true;
+			for (const tier of Object.keys(BACKDROP_GRAY)) {
+				for (const { palette } of palettes) {
+					if (schemeOf(palette) !== scheme) continue;
+					const page = composite(
+						palette.canvas,
+						at(floors[tier][scheme].canvas),
+						gray(BACKDROP_GRAY[tier][scheme]),
+					);
+					if (
+						deltaE(composite(palette.surface, a, page), page) < GLASS_LANE_STEP
+					) {
+						clears = false;
+						break;
+					}
+				}
+				if (!clears) break;
+			}
+			if (clears) {
+				chosen = a;
+				break;
+			}
+		}
+		out[scheme] = Math.round(chosen * 100) / 100;
+	}
+	return out;
+}
+
 export function derive() {
 	const palettes = loadPalettes();
 	const out = {};
@@ -320,6 +403,7 @@ if (isEntryPoint(import.meta.url)) {
 				{
 					alphaFloor: derived,
 					blockVeil: deriveBlockVeil(derived),
+					laneWash: deriveLaneWash(derived),
 					controlMix: deriveControlMix(derived),
 					stateAlpha: GLASS_STATE_ALPHA,
 				},
@@ -348,6 +432,14 @@ if (isEntryPoint(import.meta.url)) {
 				bad++;
 				console.error(
 					`block veil ${scheme} is ${file.blockVeil?.[scheme]} but the palettes need ${veil[scheme]} for a ΔE00 ${GLASS_BLOCK_VEIL_STEP} step off the canvas glass - re-derive, never hand-lower it`,
+				);
+			}
+		const lane = deriveLaneWash(committed);
+		for (const scheme of ["dark", "light"])
+			if ((file.laneWash?.[scheme] ?? 0) < lane[scheme]) {
+				bad++;
+				console.error(
+					`lane wash ${scheme} is ${file.laneWash?.[scheme]} but the palettes need ${lane[scheme]} for a ΔE00 ${GLASS_LANE_STEP} step off the page at intensity ${LANE_DEFAULT_INTENSITY} - re-derive, never hand-lower it`,
 				);
 			}
 		process.exit(bad ? 1 : 0);

@@ -42,6 +42,10 @@
 		"dark": 0.09,
 		"light": 0.12
 	},
+	"laneWash": {
+		"dark": 0.76,
+		"light": 0.41
+	},
 	"controlMix": {
 		"under-window": {
 			"dark": 0.15,
