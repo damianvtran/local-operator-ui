@@ -158,6 +158,36 @@ export function AgentMessagesSettings({
 		};
 	}, [visible, tenantId, reloadKey, api]);
 
+	/*
+	 * B -> C creates an endpoint without changing the tenant or visibility, so
+	 * the first read legitimately carried `allowlist: null`. The reach editor
+	 * needs that policy as soon as the endpoint exists; fetch it directly
+	 * rather than re-running the whole load, which would flash the skeletons
+	 * over the state the enable just confirmed.
+	 */
+	useEffect(() => {
+		if (!visible || load.kind !== "ready" || !load.settings.endpoint)
+			return undefined;
+		if (load.allowlist) return undefined;
+		let cancelled = false;
+		void (async () => {
+			try {
+				const allowlist = await api.allowlist(load.settings.settings.tenant_id);
+				if (cancelled || !allowlist) return;
+				setLoad((current) =>
+					current.kind === "ready" && !current.allowlist
+						? { ...current, allowlist }
+						: current,
+				);
+			} catch (error) {
+				if (!cancelled) setActionRefusal(agentMessagesRefusal(error));
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [visible, load, api]);
+
 	// A status refresh (a boundary read) can change the org, endpoint state or
 	// the local preference underneath a mounted section. Mirror those facts
 	// rather than leaving a stale switch.
@@ -508,6 +538,7 @@ const SettingsState: FC<SettingsStateProps> = ({
 					)}
 					<div className="flex flex-wrap items-center gap-3">
 						<Button
+							data-agent-messages-action="enable"
 							onClick={() => void enable()}
 							disabled={disabled || !consent}
 						>
@@ -630,6 +661,7 @@ const ConsentRenewal: FC<{ onRenew: () => void; disabled: boolean }> = ({
 		<AlertDescription>
 			{t("ui.agentMessages.settings.consent.renew")}
 			<Button
+				data-agent-messages-action="enable"
 				className="mt-3"
 				variant="secondary"
 				disabled={disabled}
