@@ -367,8 +367,11 @@ export async function sceneAgentMessages({
 	);
 
 	// -- e. the machine-local switch -----------------------------------------
+	// Scoped to the SECTION: the settings page has other switches, and the
+	// first one on the page is not necessarily this section's local enable.
+	const SWITCH = `document.querySelector('[data-agent-messages-section] [role="switch"]')`;
 	const switchAtRest = await cdp.evaluate(`(() => {
-		const control = document.querySelector('[role="switch"]');
+		const control = ${SWITCH};
 		if (!control) return null;
 		const name = (control.getAttribute("aria-labelledby") ?? "")
 			.split(/\\s+/)
@@ -388,11 +391,11 @@ export async function sceneAgentMessages({
 		JSON.stringify(switchAtRest),
 	);
 	if (switchAtRest && switchAtRest.checked !== "true") {
-		await cdp.evaluate(`document.querySelector('[role="switch"]')?.click()`);
+		await cdp.evaluate(`${SWITCH}?.click()`);
 	}
 	const localOn = await waitForCondition(
 		cdp,
-		`document.querySelector('[role="switch"]')?.getAttribute("aria-checked") === "true"`,
+		`${SWITCH}?.getAttribute("aria-checked") === "true"`,
 		20_000,
 	);
 	check(
