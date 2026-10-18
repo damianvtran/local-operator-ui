@@ -125,6 +125,7 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 			 */
 			/* `@container/bpane` is the container the bar's shed rules query (D5); it trails
 			   the ground so `pane-slot-ground.test.mjs` still reads the ground off this run. */
+			data-glass-region="pane"
 			className={cn("flex h-full flex-col bg-elevated @container/bpane")}
 			data-tour-tag="browser-pane"
 		>

@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The List view's team band (issue #703, RESHAPED on operator direction).
  *
@@ -73,7 +75,7 @@
 
 import { cn } from "@shared/lib/utils";
 import type { FC, HTMLAttributes } from "react";
-import { NO_TEAM_LABEL, projectsCountLabel } from "../project-model";
+import { projectsCountLabel } from "../project-model";
 
 export type TeamSectionHeaderProps = Omit<
 	HTMLAttributes<HTMLDivElement>,
@@ -101,22 +103,30 @@ export const TeamSectionHeader: FC<TeamSectionHeaderProps> = ({
 	headingId,
 	className,
 	...rest
-}) => (
-	<div
-		{...rest}
-		className={cn(
-			"flex h-8 cursor-default items-center gap-2 bg-surface px-3 text-meta",
-			className,
-		)}
-	>
-		<h3 id={headingId} className="truncate text-ink">
-			{team ?? NO_TEAM_LABEL}
-		</h3>
-		<span
-			className="shrink-0 text-ink-muted"
-			aria-label={projectsCountLabel(count)}
+}) => {
+	useI18nLocale();
+	return (
+		<div
+			{...rest}
+			/* A BAND, NOT A BLOCK: it sits behind the list's rows rather than being
+			 * one, so on glass it is a well (the field overlay), not a card veil.
+			 * The list view's own sticky headers stay solid by the scroll-under rule;
+			 * this band is the non-sticky one. */
+			data-glass-well=""
+			className={cn(
+				"flex h-8 cursor-default items-center gap-2 bg-surface px-3 text-meta",
+				className,
+			)}
 		>
-			{count}
-		</span>
-	</div>
-);
+			<h3 id={headingId} className="truncate text-ink">
+				{team ?? t("ui.projects.project_model.no_team")}
+			</h3>
+			<span
+				className="shrink-0 text-ink-muted"
+				aria-label={projectsCountLabel(count)}
+			>
+				{count}
+			</span>
+		</div>
+	);
+};

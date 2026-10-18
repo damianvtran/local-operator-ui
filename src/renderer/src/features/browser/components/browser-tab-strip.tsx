@@ -27,6 +27,8 @@ import {
 	LoaderCircle,
 	MessagesSquare,
 	Plus,
+	Volume2,
+	VolumeX,
 	X,
 } from "lucide-react";
 import type { FC } from "react";
@@ -168,7 +170,10 @@ export interface BrowserTabStripProps {
 	onCloseTabs: (intent: CloseTabsIntent) => Promise<boolean> | undefined;
 	onNewTab: () => void;
 	onReorder?: (ids: number[]) => Promise<void>;
-	onTabAction?: (tabId: number, action: "duplicate" | "reload") => void;
+	onTabAction?: (
+		tabId: number,
+		action: "duplicate" | "reload" | "mute" | "unmute",
+	) => void;
 	/** What the `+` calls itself. The host's own sentence, because only the host
 	 * knows whether a tab opened here is attributed to a conversation (design R1):
 	 * a `+` labelled `New tab` in both hosts would leave the difference to be
@@ -206,7 +211,19 @@ type CloseFocusPending = {
  * chip plus a separate page mark used to erase the title at the 144px floor.
  * Distinct ownership glyphs are not colour-only; the tab's complete accessible
  * name and menu retain every state when the single compact badge has to choose.
- * No favicon bytes are published by main, so this never fetches a remote icon. */
+ * No favicon bytes are published by main, so this never fetches a remote icon.
+ *
+ * FAVICON: DEFERRED (LOH-13 slice C). Electron's `page-favicon-updated`
+ * delivers favicon URLs, but rendering one here would be a RENDERER fetch
+ * of a page-chosen URL — the frozen design brief rules that out ("never a
+ * renderer fetch"; a favicon is "main-owned, consent/origin-gated,
+ * degrading to the state glyph"). An honest favicon therefore needs a
+ * main-side fetch/cache that publishes bytes or a data URL through this
+ * projection, behind the same origin/consent floor as the embedded
+ * browser — a broader change than this slice, and the brief's own open
+ * question. Until that lands the state glyph below is the tab's icon,
+ * which has the virtue of never claiming a site identity the app has not
+ * actually verified. */
 // The `animate` prop this slot used to take is gone with the pulse it drove:
 // loading now spins for every tab (below), so there is no per-call-site
 // motion left to switch.
@@ -922,6 +939,13 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			// `border-control`, not `hairline`: this is the strip's only boundary
 			// against the page area, so it is structural and carries a 3:1 floor
 			// (design 11.2). It is also the rule the active tab's notch interrupts.
+			/*
+			 * A CHROME BAND, not a well and not a pane: on glass it wears the app
+			 * sidebar's own paint (`surface` at its floor, raw over the desktop), and
+			 * the active tab's `data-glass-active` overlay sits on it. Under Sidebars
+			 * only nothing selects it and the flat `sunken` track is unchanged.
+			 */
+			data-glass-region="chrome"
 			className="flex flex-col border-control border-b bg-sunken"
 			role="tablist"
 			aria-label={t("ui.browser.browser_tab_strip.browser_tabs")}
@@ -1173,6 +1197,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											runClose(tab.tabId);
 										}
 									}}
+									data-glass-active={active ? "" : undefined}
 									className={cn(
 										// Two 28px targets, 8px padding, 8px gaps and borders leave
 										// 70px for the actual title at the 144px floor. The menu
@@ -1181,7 +1206,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 
 										floor,
 										active
-											? "border-control border-x border-t bg-elevated text-ink"
+											? "border-control border-x border-t bg-elevated text-ink data-[glass-active]:bg-row-selected"
 											: "text-ink-muted hover:bg-row-hover hover:text-ink",
 										dragging === tab.tabId &&
 											"border-control bg-row-selected hover:bg-row-selected text-ink",
@@ -1194,6 +1219,55 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											"bg-elevated text-ink",
 									)}
 								>
+									{(tab.audible || tab.muted) && onTabAction && (
+										// The mute control (LOH-13 slice C, brief 2.5): a SIBLING
+										// of the label button, never inside it (button-in-button
+										// is invalid markup, the rule the close control already
+										// follows). Shown only while the tab is producing sound
+										// or is muted — a silent tab has nothing to silence.
+										// THE SHARED BUTTON, NOT A RAW `<button>` (design round 1,
+										// D2/D3): the raw form carried its own hover fill
+										// (`row-hover` measured ΔE00 0.00 against the active tab's
+										// `elevated` in arcade and under the contract's 5.0 floor
+										// in 19 of 59 palettes) where every sibling control steps
+										// to `accent-wash`; `Button` ghost, `icon-sm` is that
+										// sibling register. THE TOOLTIP (UX round 1, U3): every
+										// other icon-only control in the strip names itself on
+										// hover; this one did not.
+										// It does not activate the tab: silencing a background
+										// tab must not steal the page being read — the keyboard
+										// path to the same verb is the actions menu's own item
+										// (UX round 1, U4; design round 1, D1).
+										<Tooltip
+											content={
+												tab.muted
+													? t("ui.browser.browser_tab_strip.unmute_tab")
+													: t("ui.browser.browser_tab_strip.mute_tab")
+											}
+										>
+											<Button
+												variant="ghost"
+												size="icon-sm"
+												aria-label={
+													tab.muted
+														? t("ui.browser.browser_tab_strip.unmute_tab")
+														: t("ui.browser.browser_tab_strip.mute_tab")
+												}
+												aria-pressed={tab.muted}
+												tabIndex={active ? 0 : -1}
+												data-tour-tag="browser-tab-mute"
+												onClick={() =>
+													onTabAction(tab.tabId, tab.muted ? "unmute" : "mute")
+												}
+											>
+												{tab.muted ? (
+													<VolumeX aria-hidden className="size-3.5" />
+												) : (
+													<Volume2 aria-hidden className="size-3.5" />
+												)}
+											</Button>
+										</Tooltip>
+									)}
 									<button
 										type="button"
 										role="tab"
@@ -1456,6 +1530,36 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 													)}
 													{onTabAction && (
 														<>
+															{/*
+															 * THE MENU PATH TO THE SAME VERB, FOR THE KEYBOARD (UX round 1,
+															 * U4; design round 1, D1): the control itself is
+															 * `tabIndex={-1}` on a background tab, and the arrow keys that
+															 * reach that tab ACTIVATE it — the page-stealing the control's
+															 * own comment forbids. The menu is the tab's whole verb list,
+															 * including when it is opened from a tab the person has not
+															 * activated, so the verb lives here too. Shown on the control's
+															 * own condition — a silent tab has nothing to silence.
+															 */}
+															{(tab.audible || tab.muted) && (
+																<DropdownMenuItem
+																	onSelect={() => {
+																		setActionsTabId(null);
+																		onTabAction(
+																			tab.tabId,
+																			tab.muted ? "unmute" : "mute",
+																		);
+																	}}
+																	data-tour-tag="browser-tab-actions-mute"
+																>
+																	{tab.muted
+																		? t(
+																				"ui.browser.browser_tab_strip.unmute_tab",
+																			)
+																		: t(
+																				"ui.browser.browser_tab_strip.mute_tab",
+																			)}
+																</DropdownMenuItem>
+															)}
 															<DropdownMenuItem
 																onSelect={() => {
 																	setActionsTabId(null);

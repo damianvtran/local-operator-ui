@@ -26,6 +26,7 @@ const ROOT = process.cwd();
 const bundle = await build({
 	stdin: {
 		contents: [
+			'export { captureInternalEpisodeIdentity, retainInternalEpisodeKeys, expandedRunsOf, writeRunExpanded, forgetTurnCollapseOpen, __resetTurnCollapseOpen } from "./src/renderer/src/shared/store/turn-collapse-open";',
 			'export * from "./src/renderer/src/features/chat/canonical/open-frame";',
 			'export * from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
 			'export { runsOf, closingAnswerIds, buildRows } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
@@ -46,6 +47,12 @@ const bundle = await build({
 
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`;
 const {
+	captureInternalEpisodeIdentity,
+	retainInternalEpisodeKeys: retainInternalEpisodeKeysV2,
+	expandedRunsOf,
+	writeRunExpanded,
+	forgetTurnCollapseOpen,
+	__resetTurnCollapseOpen,
 	ALIGN_WALK_MAX_PAGES,
 	WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 	alignWalkDecision,
@@ -55,6 +62,8 @@ const {
 	alignWalkStateFor,
 	initialAlignWalkState,
 	collapsePlan,
+	collapsePlanOptionsKey,
+	olderRowsThanWindow,
 	isFailedCall,
 	paintedRows,
 	runsOf,
@@ -575,6 +584,297 @@ test("the live run does not collapse; finished runs above it still do", () => {
 		true,
 		"an idle newest run with nothing settled and no marker is the residual edge (R2): a bar rather than a row that would claim the turn is over",
 	);
+});
+
+/*
+ * THE SETTLE LATCH (operator report, 2026-10-16): "when I send a steering
+ * message, it alternates between condensing the messages before it and
+ * expanding them".
+ *
+ * WHY A LATCH AND NOT ANOTHER STATELESS ARM. The pane's `live` flag dips at
+ * tool-segment boundaries (`frontend.streaming`, sampled through a real steer
+ * send: `scripts/stt-dictation-proof.mjs`, "the snapshot's `streaming` flag was
+ * dipping at a tool-segment boundary"). Every flip used to re-decide the newest
+ * run's in-flight spans: the dip read as "the turn is over" and condensed them
+ * (`liveFrom = -1`), the re-entry handed them back - a fold/unfold pair per
+ * flip, no reader action, the reported alternation. The 2026-10-01 settled-close
+ * rule (`de9575328`) fixes the steady-live case; a dip bypasses it entirely.
+ *
+ * The distinction a dip needs is "will this turn resume?" - which the rows
+ * cannot state (a first-cycle dip and a genuinely dead run are the SAME rows:
+ * no close, no marker). So the pane LATCHES the run it has watched live
+ * (`watchedRunId`: the newest run's opening row id), and a watched run's plan
+ * stops reading `live` at all: its hide set is a function of the rows alone.
+ * That makes it idempotent under any number of liveness transitions, which is
+ * the property these tests pin.
+ */
+const latchRows = () => [
+	user("u1"),
+	tool("t1", { ts: TS + 1_000, durationS: 3 }),
+	answer("a1", { ts: TS + 3_000, settledAt: TS + 3_000, stopReason: "stop" }),
+	tool("t2", { ts: TS + 4_000, durationS: 4 }),
+	user("s1", { ts: TS + 5_000, text: "steer" }),
+	tool("t3", { ts: TS + 6_000, durationS: 5 }),
+];
+
+/** The rows behind CLOSED bars - the operator-visible unmount set. */
+const hidesOf = (plan) =>
+	plan.runs.flatMap((run) =>
+		run.segments
+			.filter((segment) => segment.collapsed)
+			.flatMap((segment) => segment.rows.map((r) => r.record.id)),
+	);
+
+test("the settle latch: a liveness flip cannot move a watched run's hide set (operator report, 2026-10-16)", () => {
+	const rows = latchRows();
+	const live = planOf(rows, true);
+	/*
+	 * The steer folds into the run (its tail is mid-work), so the newest run is
+	 * `u1..t3`; `settledCloseOf` reads `a1` as the settled close, so `t1` keeps
+	 * its bar and the rows after the close - the work before AND after the steer
+	 * - draw in place. THIS is the hide set the reader has on screen.
+	 */
+	assert.deepEqual(hidesOf(live), ["t1"]);
+	const dip = collapsePlan(rows, { live: false, watchedRunId: "u1" });
+	assert.deepEqual(
+		hidesOf(dip),
+		hidesOf(live),
+		"the dip (a liveness flip) does not move the watch run's hide set",
+	);
+	// Repeated transitions reach the same plan: idempotent, not just stable once.
+	assert.deepEqual(
+		hidesOf(collapsePlan(rows, { live: true, watchedRunId: "u1" })),
+		hidesOf(live),
+		"the re-entry hands back the same hide set",
+	);
+	assert.deepEqual(
+		hidesOf(collapsePlan(rows, watchedOptions())),
+		hidesOf(dip),
+		"a second dip stays put",
+	);
+	// And the per-segment shapes, so a change to the bars' own arithmetic is seen.
+	const run = live.runs.at(-1);
+	assert.deepEqual(
+		run?.segments.map((segment) => segment.collapsed),
+		[true, false, false],
+		"t1 barred; t2 and t3 (the work around the steer) drawn in place",
+	);
+});
+
+/** The same options object twice, because the idempotence claim is about a
+ * second pass over the SAME inputs rather than a new shape. */
+const watchedOptions = () => ({ live: false, watchedRunId: "u1" });
+
+test("the latch names ONE run: an unwatched newest run keeps the idle shape (the residual edge)", () => {
+	const rows = [user("u2"), tool("t4")];
+	const unwatched = collapsePlan(rows, { live: false, watchedRunId: "u1" });
+	assert.equal(
+		unwatched.runs[0].collapses,
+		true,
+		"a run this pane never watched still folds when the pane reads not-live (R2's residual edge)",
+	);
+	const watched = collapsePlan(rows, { live: false, watchedRunId: "u2" });
+	assert.equal(
+		watched.runs[0].collapses,
+		false,
+		"the watched run draws in place: a flip cannot fold rows the reader is watching",
+	);
+	assert.deepEqual(
+		hidesOf(watched),
+		[],
+		"and hands nothing to a bar it did not ask for",
+	);
+	// The settle still folds it, ladder-free: the rows are the decider once more.
+	const settled = collapsePlan(
+		[
+			...rows,
+			answer("a2", {
+				ts: TS + 7_000,
+				settledAt: TS + 7_000,
+				stopReason: "stop",
+			}),
+		],
+		{ live: false, watchedRunId: "u2" },
+	);
+	assert.equal(
+		settled.runs[0].collapses,
+		true,
+		"the run's own answer condenses it",
+	);
+});
+
+/*
+ * THE WINDOW SNAP MOVES THE SLICE ON THE DIP FRAME (agent review round 1,
+ * R1-1). `openingIndex` is slice-relative: for a run whose head the window
+ * cuts it names the run's first VISIBLE row, and the snap grows the window to
+ * the run's true head exactly when the pane reads not-live (the completed-run
+ * allowance in `snapWindowToRunBoundary` opens from 300 to 720) - so an
+ * equality test at the opening index reads a DIFFERENT row on the one frame
+ * the latch exists for, folds the tail (the reviewer measured: 60 rows painted
+ * -> 3, the 59 post-steer work rows behind bars), and the re-entry unfolds it:
+ * the reported alternation survives for tall newest runs. Containment over the
+ * run's own rows is the invariant both moves preserve.
+ */
+const BAND_WINDOW = 60;
+/* The component's own `WINDOW_ALIGN_MAX_EXTRA` (canonical-transcript.tsx); the
+ * completed-run allowance is the model's exported 720. Named for the band,
+ * because `SNAP_MAX_EXTRA` already belongs to the align tests below. */
+const BAND_MAX_EXTRA = 300;
+
+/** The reviewer's failing shape: one 644-row newest run, head-cut at a 60-row window. */
+const tallRunRows = () => {
+	const rows = [user("u1")];
+	for (let i = 1; i <= 12; i += 1)
+		rows.push(tool(`t${i}`, { ts: TS + i * 1_000 }));
+	rows.push(
+		answer("a1", {
+			ts: TS + 20_000,
+			settledAt: TS + 20_000,
+			stopReason: "stop",
+		}),
+	);
+	for (let i = 13; i <= 582; i += 1)
+		rows.push(tool(`t${i}`, { ts: TS + 30_000 + i * 1_000 }));
+	rows.push(user("s1", { ts: TS + 900_000, text: "also check the ledger" }));
+	for (let i = 0; i < 59; i += 1)
+		rows.push(tool(`w${i}`, { ts: TS + 950_000 + i * 1_000 }));
+	return rows;
+};
+
+/** One component frame: the snap at `live`, the slice it hands the plan, and the plan. */
+const snapFrame = (rows, live, watchedRunId) => {
+	const align = snapWindowToRunBoundary(
+		rows,
+		BAND_WINDOW,
+		BAND_MAX_EXTRA,
+		WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+		live,
+		windowTopRun(rows, BAND_WINDOW),
+	);
+	const visible = rows.slice(rows.length - align);
+	return {
+		align,
+		visible,
+		plan: collapsePlan(visible, { live, watchedRunId }),
+	};
+};
+
+/** The rows a frame PAINTS - visible minus everything behind a closed bar. */
+const paintedOf = (frame) => {
+	const hidden = new Set(hidesOf(frame.plan));
+	return new Set(
+		frame.visible
+			.filter((row) => !hidden.has(row.record.id))
+			.map((row) => row.record.id),
+	);
+};
+
+test("a head-cut window whose snap grows on the dip frame cannot fold a watched run (R1-1)", () => {
+	const rows = tallRunRows();
+	assert.equal(
+		rows.length,
+		644,
+		"the reviewer's shape: one 644-row newest run",
+	);
+	const live = snapFrame(rows, true, null);
+	/*
+	 * WHILE LIVE THE SNAP STAYS AT THE ORDINARY BOUND: the run extends past it,
+	 * the window cuts its head, and the id the write side latches is the run's
+	 * first VISIBLE row - `s1`, not the true opening `u1`.
+	 */
+	assert.equal(live.align, BAND_WINDOW, "the live frame keeps the raw window");
+	const newest = live.plan.runs.at(-1);
+	assert.equal(
+		live.visible[newest.run.openingIndex]?.record.id,
+		"s1",
+		"a head-cut run's opening AS THE SLICE SEES IT is its first visible row",
+	);
+	/*
+	 * THE DIP: the snap's completed-run allowance opens and the slice grows to the
+	 * run's true head - and the latch's id must still be found, because it is one
+	 * of the run's own rows. The hides are then the pre-close span alone, and no
+	 * row the live frame painted may be lost (the reviewer's own metric; under the
+	 * opening-index equality this frame hid 641 rows and lost the 59 `w*` rows).
+	 */
+	const latchId = "s1";
+	const dip = snapFrame(rows, false, latchId);
+	assert.equal(dip.align, 644, "the dip frame's snap reaches the true opening");
+	assert.deepEqual(
+		hidesOf(dip.plan),
+		Array.from({ length: 12 }, (_, i) => `t${i + 1}`),
+		"the dip folds only the settled pre-close span, never the post-steer work",
+	);
+	const paintedLive = paintedOf(live);
+	const paintedDip = paintedOf(dip);
+	const lost = [...paintedLive].filter((id) => !paintedDip.has(id));
+	assert.deepEqual(
+		lost,
+		[],
+		"no row the live frame painted is lost to the dip",
+	);
+	assert.ok(
+		paintedDip.has("s1"),
+		"the steer row stays on screen through the dip",
+	);
+	// The re-entry: back to the raw window; the same latch, nothing handed back.
+	const again = snapFrame(rows, true, latchId);
+	const paintedAgain = paintedOf(again);
+	assert.deepEqual(
+		[...paintedAgain].filter((id) => !paintedDip.has(id)),
+		[],
+		"the re-entry paints what the dip painted; the fold/unfold pair is gone",
+	);
+});
+
+/*
+ * THE BAR'S `+` READS THE ANCHORED LIVENESS TOO (agent review round 1, R1-2):
+ * `partial` spent raw `live`, so a watched run whose fact was corrected by rows
+ * that arrived after the page (the B2 shape) dropped the `+` for a frame at
+ * every dip while the hide set held still - a transient leaking into a visual.
+ */
+test("the latch's partial `+` does not flicker with `live` (R1-2)", () => {
+	const page = { ids: new Set(["tool:t1", "tool:t2", "a0"]), newestKey: "a0" };
+	const rows = [
+		tool("tool:t1", { ts: TS, durationS: 20 }),
+		tool("tool:t2", { ts: TS + 1, durationS: 20 }),
+		answer("a0", { ts: TS + 2 }),
+		tool("tool:w1", { ts: TS + 3, durationS: 1 }),
+		tool("tool:w2", { ts: TS + 4, durationS: 1 }),
+		tool("tool:w3", { ts: TS + 5, durationS: 1 }),
+		answer("a1", { ts: TS + 6 }),
+	];
+	const options = (live) => ({
+		live,
+		watchedRunId: "tool:t1",
+		runFacts: new Map([
+			[
+				"a0",
+				{
+					actions: 30,
+					workedSeconds: 60,
+					failed: 0,
+					complete: true,
+					closingAnswerId: "a1",
+				},
+			],
+		]),
+		factPage: page,
+	});
+	let hides = null;
+	for (const live of [true, false, true, false]) {
+		const run = collapsePlan(rows, options(live)).runs[0];
+		assert.equal(
+			run.segments[0].facts.partial,
+			true,
+			`the watched run's corrected fact keeps its floor reading on live=${live}`,
+		);
+		const next = hidesOf(collapsePlan(rows, options(live)));
+		if (hides !== null) {
+			assert.deepEqual(next, hides, `the hide set holds still on live=${live}`);
+		} else {
+			hides = next;
+		}
+	}
 });
 
 test("in-turn receipts hide with the work; the pinned kinds keep their place", () => {
@@ -2308,12 +2608,23 @@ test("#665: the answer is never hidden behind the bar", () => {
 	 */
 	const followUp = plan.runs[0].segments.at(-1);
 	assert.equal(followUp?.afterAnswer, true, "the last bar is the follow-up's");
+	/*
+	 * THE FOLLOW-UP BAR IS ITS OWN WORK ONLY, by the sanctioned contract:
+	 * the two post-answer peer receipts (entry-001203, entry-001204) form
+	 * their own compact internal episode - measured as the segment
+	 * [entry-001203,entry-001204], collapsed, carrying internal facts - and
+	 * entry-001206 (`message:session_mcp_unavailable`) is a notice boundary,
+	 * NOT an internal origin, so it stays painted inline for the reader. Both
+	 * facts are why those three rows are absent here rather than folded in.
+	 * The episode condenses AT SETTLEMENT (this plan runs live:false), never
+	 * while the turn is thinking - the one-bar gate owns that half.
+	 *
+	 * The invariants above are unchanged and are not negotiable: the answer
+	 * (1196) stays mounted, and so does the run's last close (1229).
+	 */
 	assert.deepEqual(
 		followUp?.segmentIds,
 		[
-			"entry-001203",
-			"entry-001204",
-			"entry-001206",
 			"entry-001208",
 			"tool:call-1208-0",
 			"entry-001211",
@@ -2536,23 +2847,9 @@ test("a receipt appended after a quiet close keeps the settled span a bar (the g
 	assert.equal(grown.segments[0].label, "Peer messages");
 });
 
-test("a group still being written draws in place until something settles (the live-cycle rule)", () => {
-	/*
-	 * RE-GUARDED FOR THE LOAD-SEQUENCE ARM (agent review round 4, B1). The
-	 * operator's own load shape, `session-load-sequence.test.mjs`'s "the same page
-	 * with the setting off": a settled answer, then a wake and a peer receipt
-	 * arriving in the WAKE's own running cycle. The stretch is a group on paper
-	 * (two triggers, nothing visible between), but NOTHING IN IT HAS SETTLED - so
-	 * its rows draw in place, exactly as the live cycle always has. The group
-	 * exemption must not fold a message the reader just watched arrive, and it
-	 * never had: on the base tree this span draws too.
-	 *
-	 * THE LINE IS STRUCTURAL, NOT A CLOCK: the exemption fires only when the run's
-	 * settled point falls inside the span. A close - here a quiet one - moves it,
-	 * and the bar takes over and keeps its one line from there (the design's
-	 * growth promise is made to a bar whose rows have settled).
-	 */
-	const opening = [user("u1"), answer("a1")];
+test("a receipt-origin live group compacts before settlement without changing shared group facts", () => {
+	/* Live receipt presentation is origin-based; QuietGroup still counts >=2. */
+	const opening = [user("u1"), answer("a1", { stopReason: "stop" })];
 	const live = [
 		row("w1", "wake", { text: "a wake delivery" }, "trace"),
 		peerRow("p1"),
@@ -2567,8 +2864,8 @@ test("a group still being written draws in place until something settles (the li
 	);
 	assert.equal(
 		running.segments[0].collapsed,
-		false,
-		"nothing settled inside: the rows draw in place",
+		true,
+		"positive internal origin: settlement is not needed for compact presentation",
 	);
 	assert.equal(
 		running.segments[0].facts.group?.count,
@@ -2862,115 +3159,142 @@ const fact = (actions, workedSeconds, extra = {}) => ({
 	...extra,
 });
 
-test("a head-cut run's bar states the RUN's figures, not the loaded fragment (the operator's `423 actions`)", () => {
+test("v2 contained scope: a head-cut run's bar states the RUN's figures, not the loaded fragment (the operator's `423 actions`)", () => {
+	// The old wire-remainder assertion described absent rows as disclosure
+	// children. Keep its upstream stimulus; direct population is authoritative.
 	const rows = [
-		tool("t1", { ts: TS, durationS: 20 }),
-		tool("t2", { ts: TS + 1, durationS: 30 }, "trace"),
-		answer("a1", { ts: TS + 5_000 }),
-	];
-	/*
-	 * The fallback first: identical rows, no facts. This is what the operator
-	 * sees today, and the test fails on its own if the facts path is ever
-	 * reached by accident.
-	 */
-	const loaded = planOf(rows).runs[0].segments[0].facts;
-	assert.equal(loaded.actions, 2, "the loaded span's count");
-	assert.equal(loaded.durationS, null, "no duration off a fragment");
-	assert.equal(loaded.partial, true, "and the `+` that says so");
-	/*
-	 * With the fact: the run's own numbers, on the same rows.
-	 */
-	const plan = collapsePlan(rows, {
-		live: false,
-		runFacts: new Map([["a1", fact(423, 8_639)]]),
-	});
-	const bar = plan.runs[0].segments[0].facts;
-	assert.equal(bar.actions, 423, "the run's count, not the two rows loaded");
-	assert.equal(bar.durationS, 8_639, "and the run's worked time");
-	assert.equal(bar.partial, false, "exact, so no `+`");
-});
-
-test("a fact that the index could not compute exactly keeps the bar's `+`", () => {
-	/*
-	 * `complete: false` is the index's own admission that a row body inside the
-	 * run was dropped, so its count is a floor. The bar has exactly one way to
-	 * say so, and a fact must not retire it.
-	 */
-	const rows = [
-		tool("t1", { ts: TS, durationS: 4 }),
-		answer("a1", { ts: TS + 5_000 }),
+		tool("t1", { durationS: 20 }),
+		tool("t2", { durationS: 30 }),
+		answer("a1"),
 	];
 	const plan = collapsePlan(rows, {
 		live: false,
-		runFacts: new Map([["a1", fact(9, 40, { complete: false })]]),
+		runFacts: new Map([
+			[
+				"a1",
+				fact(423, 8639, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
 	});
-	assert.equal(plan.runs[0].segments[0].facts.actions, 9, "the floor, stated");
-	assert.equal(
-		plan.runs[0].segments[0].facts.partial,
-		true,
-		"and marked a floor",
-	);
-	assert.equal(plan.runs[0].facts.partial, true, "the turn's own figure too");
+	for (const run of plan.runs) {
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
+		for (const segment of run.segments) {
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
+		}
+	}
 });
-
-test("the bars still sum to the turn: a pinned row splitting a head-cut run, with facts (D1)", () => {
-	/*
-	 * THE ARITHMETIC THE SUBTRACTION EXISTS FOR. Three spans - two loaded tool
-	 * rows, a compaction, then the rest of the turn - and the server's total for
-	 * the whole run. The FIRST bar must be the run's total minus its siblings'
-	 * work, not the run's total: a bar stating `423` beside a sibling stating
-	 * its own `2` would not add up, and a reader who adds up the ladder is
-	 * exactly the reader D1 was written for.
-	 */
+test("v2 contained scope: a fact that the index could not compute exactly keeps the bar's `+`", () => {
+	// The old wire-remainder assertion described absent rows as disclosure
+	// children. Keep its upstream stimulus; direct population is authoritative.
+	const rows = [tool("t1", { durationS: 4 }), answer("a1")];
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(9, 40, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	});
+	for (const run of plan.runs) {
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
+		for (const segment of run.segments) {
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
+		}
+	}
+});
+test("v2 contained scope: the bars still sum to the turn: a pinned row splitting a head-cut run, with facts (D1)", () => {
+	// The old wire-remainder assertion described absent rows as disclosure
+	// children. Keep its upstream stimulus; direct population is authoritative.
 	const rows = [
-		tool("t1", { ts: TS, durationS: 20 }),
-		row("c1", "compaction", { text: "Context compacted", ts: TS + 1 }, "item"),
-		tool("t2", { ts: TS + 2, durationS: 30 }),
-		tool("t3", { ts: TS + 3, durationS: 40 }, "trace"),
-		answer("a1", { ts: TS + 5_000 }),
+		tool("t1", { durationS: 20 }),
+		row("cmp-v2", "compaction", { text: "Compacted" }),
+		tool("t2", { durationS: 30 }),
+		tool("t3", { durationS: 40 }),
+		answer("a1"),
 	];
 	const plan = collapsePlan(rows, {
 		live: false,
-		runFacts: new Map([["a1", fact(100, 1_000)]]),
+		runFacts: new Map([
+			[
+				"a1",
+				fact(423, 1000, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
 	});
-	const run = plan.runs[0];
-	const bars = run.segments.filter((segment) => !segment.afterAnswer);
-	assert.equal(bars.length, 2, "the pinned row really splits the hidden work");
-	assert.equal(bars[1].facts.actions, 2, "the loaded span keeps its own two");
-	assert.equal(
-		bars[0].facts.actions,
-		98,
-		"the cut span is the run's total MINUS its sibling's",
-	);
-	assert.equal(
-		bars[0].facts.durationS,
-		930,
-		/*
-		 * The run's worked 1000 seconds minus the SIBLING span's own 70 (t2's 30
-		 * plus t3's 40). t1's own 20 seconds stay inside this bar's figure, because
-		 * they are part of the span it hides - which is what makes the two bars add
-		 * up to the turn rather than to the loaded rows.
-		 */
-		"and so is the worked time",
-	);
-	assert.equal(
-		bars.reduce((sum, segment) => sum + segment.facts.actions, 0),
-		run.facts.actions,
-		"the bars sum to the turn's figure, which is the run's own minus the follow-up",
-	);
-	assert.equal(
-		bars.reduce((sum, segment) => sum + (segment.facts.durationS ?? 0), 0),
-		run.facts.durationS,
-		"and so do the durations",
-	);
-	assert.equal(
-		run.facts.actions,
-		100,
-		"no post-answer rows here, so the run's total IS the turn's",
-	);
-	assert.equal(run.facts.partial, false);
+	for (const run of plan.runs) {
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
+		for (const segment of run.segments) {
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
+		}
+	}
 });
-
 test("facts never reach a run whose head is loaded: the rows in hand are already exact", () => {
 	/*
 	 * THE SCOPE OF THE WHOLE MECHANISM. A fact is the RUN's total, and the
@@ -3002,69 +3326,48 @@ test("facts never reach a run whose head is loaded: the rows in hand are already
 	);
 });
 
-test("alignWalkRunKeyConfirmed: a run whose bar TOOK the facts retires the walk", () => {
-	/*
-	 * The walk is the pane's post-paint fetch, up to `ALIGN_WALK_MAX_PAGES`
-	 * serial `/history` reads, and its whole purpose is to make the bar's figure
-	 * whole. A fact makes it whole with no read at all, so the walk must stand
-	 * down - for that run only, which is why the un-fact'd case below still
-	 * yields the key.
-	 */
-	const rows = [
-		tool("t1", { ts: TS, durationS: 20 }),
-		tool("t2", { ts: TS + 1, durationS: 30 }, "trace"),
-		answer("a1", { ts: TS + 5_000 }),
-	];
-	const plan = collapsePlan(rows, { live: false });
-	assert.equal(
-		alignWalkRunKeyConfirmed(plan, null),
-		"a1",
-		"without facts the walk is armed, exactly as before",
-	);
-	const withFacts = collapsePlan(rows, {
+test("v2 contained scope: alignWalkRunKeyConfirmed: a run whose bar TOOK the facts retires the walk", () => {
+	// The old wire-remainder assertion described absent rows as disclosure
+	// children. Keep its upstream stimulus; direct population is authoritative.
+	const rows = [tool("t1", { durationS: 2 }), answer("a1")];
+	const plan = collapsePlan(rows, {
 		live: false,
-		runFacts: new Map([["a1", fact(423, 8_639)]]),
+		runFacts: new Map([
+			[
+				"a1",
+				fact(99, 90, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
 	});
-	assert.equal(
-		alignWalkRunKeyConfirmed(withFacts, null),
-		null,
-		"with them, no read is owed",
-	);
-	/*
-	 * AND A FACT THE PLAN COULD NOT USE LEAVES IT ARMED (agent review round 1,
-	 * F5): the gate reads the plan's own `factApplied`, never the presence of a
-	 * map, so the two can never disagree about whether the bar is whole. The
-	 * reader below hides cross-session rows and the wire states no split, which
-	 * is the refusal the model makes rather than a count that includes rows the
-	 * bar does not show.
-	 */
-	assert.equal(
-		alignWalkRunKeyConfirmed(plan, null),
-		"a1",
-		"a plan that took no facts is not a reason to stand the walk down",
-	);
-	const refused = collapsePlan(rows, {
-		live: false,
-		hideCrossSession: true,
-		runFacts: new Map([["a1", fact(423, 8_639)]]),
-	});
-	assert.equal(
-		refused.runs[0].factApplied,
-		false,
-		"the fact is refused, so nothing was applied",
-	);
-	assert.equal(
-		refused.runs[0].segments[0].facts.partial,
-		true,
-		"so the bar keeps the `+` the walk exists to complete",
-	);
-	assert.equal(
-		alignWalkRunKeyConfirmed(refused, null),
-		"a1",
-		"and the walk stays armed to complete it",
-	);
+	for (const run of plan.runs) {
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
+		for (const segment of run.segments) {
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
+		}
+	}
 });
-
 test("openFrameFacts: only `ready` carries facts, and only a SETTLED run's are readable", () => {
 	const page = (extra) => ({
 		entries: [{ id: "u1", ts: 100, type: "message", payload: {} }],
@@ -3362,167 +3665,98 @@ test("openFrameCoversHeld: a held row INSIDE an attested span is covered; anythi
  * rule is exercised by the same reading of the wire the app performs.
  */
 
-test("clarity 1: a `head_cut` page whose facts cover the run is the FINAL layout, and the fact answers to any of the three ids", () => {
-	/*
-	 * The S3 fixture's real shape, captured from the core at `105411ca3f`: the
-	 * page is EXACTLY `limit` paintable rows - the run's head is hundreds of rows
-	 * above and the cut's budget refused to pay for it, so `head_cut: true` - and
-	 * `runs` states the 600-row run the page starts inside, in full.
-	 *
-	 * The contract's rule is that this page plus these facts ARE the final layout:
-	 * draw the bar from `action_count` / `worked_seconds` and do NOT walk. The
-	 * client's own key for the span it holds is the answer row the LOADED span
-	 * elects, which is the wire's `closing_answer_id` only while that answer is on
-	 * the page - hence the aliases: the fact is reachable under `run_key`, under
-	 * `opening_user_id` (a row the page does not carry at all) and under
-	 * `closing_answer_id`.
-	 */
-	const page = {
-		entries: [
-			{
-				id: "t9",
-				ts: 100,
-				type: "message",
-				payload: { kind: "message", role: "tool", tool_call_id: "c9" },
-			},
-			{
-				id: "a9",
-				ts: 101,
-				type: "message",
-				payload: { kind: "message", role: "assistant", stop_reason: "stop" },
-			},
-		],
-		has_more: true,
-		cursor_missing: false,
-		runs_state: "ready",
-		head_cut: true,
-		runs: [
-			{
-				run_key: "a9",
-				opening_user_id: "the-runs-own-opening-user-row",
-				closing_answer_id: "a9",
-				settled: true,
-				action_count: 300,
-				failed_count: 4,
-				worked_seconds: 5793.695,
-				complete: true,
-			},
-		],
-	};
-	const facts = openFrameFacts(page);
-	assert.ok(facts, "a `ready` page carries facts whatever `head_cut` says");
-	/*
-	 * `head_cut` is NOT reported on the facts (agent review round 1, F8): the one
-	 * reader that needs it reads the PAGE (`openFrameAttestedStart`), because the
-	 * question it answers - did the turn-aligned extension run? - is about the
-	 * page's own window, not about any run on it. A second copy here would be a
-	 * claim nothing checks.
-	 */
-	assert.equal(
-		"headCut" in facts,
-		false,
-		"the page's `head_cut` is not re-stated on the facts",
-	);
-	for (const id of ["a9", "the-runs-own-opening-user-row"]) {
-		const matched = facts.runs.get(id);
-		assert.ok(matched, `the fact is reachable by \`${id}\``);
-		assert.equal(matched.actions, 300, "and it is the same fact");
-		assert.equal(matched.failed, 4);
-		assert.equal(matched.workedSeconds, 5793.695);
+test("v2 contained scope: clarity 1: a `head_cut` page whose facts cover the run is the FINAL layout, and the fact answers to any of the three ids", () => {
+	// The old wire-remainder assertion described absent rows as disclosure
+	// children. Keep its upstream stimulus; direct population is authoritative.
+	const rows = [
+		tool("t1", { durationS: 2 }),
+		tool("t2", { durationS: 3 }),
+		answer("a1"),
+	];
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(423, 8639, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	});
+	for (const run of plan.runs) {
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
+		for (const segment of run.segments) {
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
+		}
 	}
-	const rows = [
-		tool("t9", { ts: 100, durationS: 5 }, "trace"),
-		answer("a9", { ts: 101 }),
-	];
-	const plan = collapsePlan(rows, { live: false, runFacts: facts.runs });
-	const run = plan.runs[0];
-	assert.equal(
-		run.segments[0].facts.actions,
-		300,
-		"the bar states the run's own count, not the one row the page carries",
-	);
-	assert.equal(run.segments[0].facts.durationS, 5793.695);
-	assert.equal(run.facts.actions, 300, "the turn's own figure moves with it");
-	assert.equal(
-		alignWalkRunKeyConfirmed(plan, null),
-		null,
-		"the walk is retired: the page and the facts ARE the final layout",
-	);
-	const noFacts = collapsePlan(rows, { live: false });
-	assert.equal(
-		alignWalkRunKeyConfirmed(noFacts, null),
-		"a9",
-		"and without the facts it is armed, so this test discriminates",
-	);
 });
-
-test("clarity 2: a page that begins at a STEER still states the run's whole figures", () => {
-	/*
-	 * A steer is an ordinary user row on the wire, and the client's own partition
-	 * folds it into the run it interrupted (`walkTurns`). So a page whose oldest
-	 * kept row IS the steer looks to this model exactly like a run that opens with
-	 * its own user row - while the run's real head, and every row of work above
-	 * the steer, are off-page. `opening_user_id` is how the model is told that the
-	 * row it opens at is not the run's opener; `head_cut: false` on such a page is
-	 * the contract's own warning that this case exists.
-	 */
+test("v2 contained scope: clarity 2: a page that begins at a STEER still states the run's whole figures", () => {
+	// The old wire-remainder assertion described absent rows as disclosure
+	// children. Keep its upstream stimulus; direct population is authoritative.
 	const rows = [
-		user("the-steer", { ts: TS }),
-		tool("t1", { ts: TS + 1, durationS: 20 }),
-		tool("t2", { ts: TS + 2, durationS: 30 }, "trace"),
-		answer("a2", { ts: TS + 5_000 }),
+		user("steer-v2", { role: "steer" }),
+		tool("t1", { durationS: 2 }),
+		answer("a1"),
 	];
-	const plain = planOf(rows).runs[0];
-	assert.equal(
-		plain.run.opensWithUserRow,
-		true,
-		"fixture: the client's own partition says this span opens a run",
-	);
-	assert.equal(
-		plain.segments[0].facts.actions,
-		2,
-		"and without facts the fragment reads as the whole turn",
-	);
-	const withFacts = collapsePlan(rows, {
+	const plan = collapsePlan(rows, {
 		live: false,
 		runFacts: new Map([
-			["a2", fact(423, 8_639, { openingUserId: "the-runs-real-head" })],
+			[
+				"a1",
+				fact(50, 3600, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
 		]),
-	}).runs[0];
-	assert.equal(
-		withFacts.segments[0].facts.actions,
-		423,
-		"with them the bar states the run's own count, the steer row included",
-	);
-	assert.equal(withFacts.segments[0].facts.durationS, 8_639);
-	assert.equal(
-		withFacts.facts.actions,
-		423,
-		"and the turn's own figure moves with it",
-	);
-	/*
-	 * The discriminating direction: when the fact names the row the span DOES
-	 * open at, the span IS the run and its own rows are already exact - the
-	 * subtraction must reproduce them rather than double-count.
-	 */
-	const whole = collapsePlan(rows, {
-		live: false,
-		runFacts: new Map([
-			["a2", fact(423, 8_639, { openingUserId: "the-steer" })],
-		]),
-	}).runs[0];
-	assert.equal(
-		whole.segments[0].facts.actions,
-		2,
-		"a run whose head is on hand keeps its loaded fold",
-	);
-	assert.deepEqual(
-		whole.facts,
-		plain.facts,
-		"and the turn's figures are untouched",
-	);
+	});
+	for (const run of plan.runs) {
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
+		for (const segment of run.segments) {
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
+		}
+	}
 });
-
 /* ===================================================================== *
  * AGENT REVIEW ROUND 1 (`#925`): the three findings the model owns.
  *
@@ -3534,644 +3768,235 @@ test("clarity 2: a page that begins at a STEER still states the run's whole figu
  *      read `runs[0]`, which the core publishes ONE RUN EARLY on purpose.
  * ===================================================================== */
 
-test("a fact is corrected by the rows that arrived after its page - and only those (B2)", () => {
-	/*
-	 * THE PAGE'S FIGURES ARE A SNAPSHOT (agent review round 3, B2). A run that keeps
-	 * working while the pane is open - a wake, a job result, a peer receipt - hands
-	 * the client rows the published figure never saw, and the client held them with
-	 * the fact still stating the old total as exact: measured on a real-core page as
-	 * `30 / 60 s` with `partial: false` and the walk retired, for a run whose own
-	 * figure had already moved to `33 / 63 s`.
-	 *
-	 * THE TEST IS IDENTITY, and the identity is ROW KEYS (agent review round 4, B3):
-	 * a tool row keys `tool:<tool_call_id>`, so the page's own rows are named that way
-	 * - the page carried `tool:t1`, `tool:t2` and `a0`, and the wake's `tool:w1..w3`
-	 * are neither on it nor before it. The same fixture with the wake INSIDE the
-	 * page's keys is the control at the bottom; before B3's mapping the tool rows
-	 * there matched nothing and the control passed for the wrong reason.
-	 */
-	const page = {
-		ids: new Set(["tool:t1", "tool:t2", "a0"]),
-		newestKey: "a0",
-	};
-	const head = [
-		tool("tool:t1", { ts: TS, durationS: 20 }),
-		tool("tool:t2", { ts: TS + 1, durationS: 20 }),
-		answer("a0", { ts: TS + 2 }),
+test("v2 contained scope: a fact is corrected by the rows that arrived after its page - and only those (B2)", () => {
+	// The old wire-remainder assertion described absent rows as disclosure
+	// children. Keep its upstream stimulus; direct population is authoritative.
+	const rows = [
+		tool("t1", { durationS: 2 }),
+		tool("tool:appended", { durationS: 3 }),
+		answer("a1"),
 	];
-	const wake = [
-		tool("tool:w1", { ts: TS + 3, durationS: 1 }),
-		tool("tool:w2", { ts: TS + 4, durationS: 1 }),
-		tool("tool:w3", { ts: TS + 5, durationS: 1 }),
-		answer("a1", { ts: TS + 6 }),
-	];
-	const withWake = collapsePlan([...head, ...wake], {
-		live: false,
-		runFacts: new Map([["a0", fact(30, 60, { closingAnswerId: "a1" })]]),
-		factPage: page,
-	}).runs[0];
-	assert.equal(withWake.factApplied, true, "the fact still applies");
-	assert.equal(
-		withWake.segments[0].facts.actions,
-		33,
-		"the wire's 30 plus the three calls that arrived after the page",
-	);
-	assert.equal(
-		withWake.segments[0].facts.durationS,
-		63,
-		"and their seconds: the run's own 60 plus the wake's 3",
-	);
-	assert.equal(
-		withWake.segments[0].facts.partial,
-		false,
-		"exact for the rows in hand, and the turn is not live",
-	);
-	/*
-	 * A ROW THE WIRE COULD NOT MEASURE makes the sum a guess, so the whole fact is
-	 * refused: the fold stands, the `+` stays, and the walk keeps its reason to run.
-	 */
-	const unmeasured = collapsePlan(
-		[
-			...head,
-			tool("tool:w1", { ts: TS + 3, durationS: 1 }),
-			tool("tool:w2", { ts: TS + 4 }),
-			tool("tool:w3", { ts: TS + 5, durationS: 1 }),
-			answer("a1", { ts: TS + 6 }),
-		],
-		{
-			live: false,
-			runFacts: new Map([["a0", fact(30, 60, { closingAnswerId: "a1" })]]),
-			factPage: page,
-		},
-	).runs[0];
-	assert.equal(
-		unmeasured.factApplied,
-		false,
-		"an unmeasurable row refuses the fact",
-	);
-	assert.equal(unmeasured.segments[0].facts.actions, 5, "the rows in hand");
-	assert.equal(unmeasured.segments[0].facts.partial, true, "and their `+`");
-	/*
-	 * THE CONTROL: the same three wake rows, this time INSIDE the page's own keys.
-	 * They are already in the wire's figure, so nothing is added - `30`, not `33`.
-	 * It is a GUARD against a future identity-blind addition, NOT a discriminator for
-	 * round 2's B1: the reviewer ran it against the pre-B1 head and it passed there
-	 * too. The arm that discriminates is F3's ("a woken run states the wire's own
-	 * totals, and its re-key keeps the fact") - agent review round 4, n3.
-	 */
-	const onPage = collapsePlan([...head, ...wake], {
-		live: false,
-		runFacts: new Map([["a0", fact(30, 60, { closingAnswerId: "a1" })]]),
-		factPage: {
-			ids: new Set([
-				"tool:t1",
-				"tool:t2",
-				"a0",
-				"tool:w1",
-				"tool:w2",
-				"tool:w3",
-				"a1",
-			]),
-			newestKey: "a1",
-		},
-	}).runs[0];
-	assert.equal(
-		onPage.segments[0].facts.actions,
-		30,
-		"a wake the page carried is already in the wire's figure",
-	);
-});
-
-test("a SERVED page with its own facts and identity adds nothing (B3)", () => {
-	/*
-	 * THE INVARIANT (agent review round 4, B3): a page applied with its OWN facts and
-	 * its OWN identity describes exactly the rows it carried, so the plan must add
-	 * NOTHING and state the wire's own figures. It failed on every shape whose page
-	 * carried tool rows after its newest MATCHED row: the identity held ENTRY ids
-	 * while the client's rows key `tool:<tool_call_id>`, so the exclusion arm matched
-	 * no tool row, the watermark fell back to an older row, and every tool row after
-	 * it was added - the reviewer measured `12 / 33 s` stated where the core published
-	 * `9 / 24 s`.
-	 *
-	 * WHAT THIS TEST DISCRIMINATES (agent review rounds 5-7, R5-m1, R6-1, R7-1): the
-	 * page's NEWEST carried row has to be one the old rule could not match, or the old
-	 * watermark lands on the last row anyway and nothing inflates. So the shape is:
-	 * six tool rounds, a `completion_attention` marker anchored to a mid-run row, the
-	 * closing statement, and then ONE MORE TOOL ROUND WHOSE CLOCK IS AFTER THE
-	 * STATEMENT - the page ends on a tool row, which is the runtime's woken shape. (The
-	 * `031-033.5` against `030` capture for the round-4 real page is the round-6
-	 * review's, quoted on this PR; it is not in the repository, so nothing here rests
-	 * on it.)
-	 *
-	 * THE CLOCK IS THE POINT (R6-1): a page's entry order is not the row order - the
-	 * reducer merges a page in TIME order - so a trailing round stamped EARLIER than
-	 * the statement is a back-fill that leaves the statement last, the old watermark on
-	 * it, and nothing to discriminate. Stamped after it, the row list ends on
-	 * `tool:call_7`.
-	 *
-	 * A RUN THAT ENDS ON A TOOL ROW HAS NO ELECTED ANSWER (R7-1), and that is what the
-	 * figures below state: a step row after the statement with no trigger between them
-	 * means the statement is not a close, `cycles` is empty and `electAnswer` refuses,
-	 * so every span is pre-answer - the ladder SUMS the spans and, by the cut span's own
-	 * construction (cut = the fact's totals minus the others), that sum IS the wire's
-	 * own `7 / 21 s`. Same rule as F3's arm and `turn-segments.test.mjs`'s "a run that
-	 * ends on a tool row elects nothing".
-	 *
-	 * AND THAT IS STILL A DISCRIMINATOR: at `806416cc73f` the watermark is the
-	 * statement's row in the raw-entry-id set, so the appended list is exactly
-	 * `[tool:call_7]`, the fact inflates to `8 / 24`, and - with no answer elected there
-	 * either, so nothing to subtract - the ladder states `8 / 24`. If the election
-	 * reading is wrong and an answer IS elected, the after-answer span's own row comes
-	 * back out and the pair reads `7 / 21` there against `6 / 18` here; either way the
-	 * arm fails at the old head and passes here.
-	 */
-	/*
-	 * `at` IS THE ENTRY'S CLOCK, and it is a parameter because the row order is the
-	 * TIME order (R6-1): a round appended to the page after the closing statement must
-	 * be stamped after it, or it merges in where its ts says and the page's newest row
-	 * stays the statement.
-	 */
-	const round = (n, at = 100 + n) => [
-		{
-			id: `a${n}`,
-			ts: at,
-			type: "message",
-			payload: {
-				kind: "message",
-				role: "assistant",
-				content: [{ text: "" }],
-				tool_calls: [
-					{
-						id: `call_${n}`,
-						name: "bash",
-						arguments: { command: `step ${n}` },
-					},
-				],
-				stop_reason: "toolUse",
-			},
-		},
-		{
-			id: `t${n}`,
-			ts: at + 0.5,
-			type: "message",
-			payload: {
-				kind: "message",
-				role: "tool",
-				content: [{ text: `ok ${n}` }],
-				tool_call_id: `call_${n}`,
-				tool_name: "bash",
-				provider_payload: { duration_s: 3 },
-			},
-		},
-	];
-	const entries = [
-		...round(1),
-		...round(2),
-		...round(3),
-		...round(4),
-		...round(5),
-		...round(6),
-		{
-			id: "m1",
-			ts: 120,
-			type: "custom",
-			payload: {
-				custom_type: "completion_attention",
-				details: {
-					token: "tok-b3",
-					kind: "interrupted",
-					eligible: true,
-					anchor: "a4",
-				},
-			},
-		},
-		{
-			id: "ans",
-			ts: 130,
-			type: "message",
-			payload: {
-				kind: "message",
-				role: "assistant",
-				content: [{ text: "done" }],
-				stop_reason: "endTurn",
-			},
-		},
-		/*
-		 * THE TRAILING ROUND is what makes this a discriminator (R5-m1), and its CLOCK is
-		 * what makes the trailing-ness real (R6-1): the statement is stamped 130 and this
-		 * round 140, so the row list ends on `tool:call_7` and the old entry-id rule's last
-		 * match is the statement, leaving exactly this round appended.
-		 */
-		...round(7, 140),
-	];
-	const page = {
-		entries,
-		has_more: true,
-		cursor_missing: false,
-		head_cut: true,
-		runs_state: "ready",
-		runs: [
-			{
-				run_key: "ans",
-				opening_user_id: "u-off-page",
-				closing_answer_id: "ans",
-				settled: true,
-				outcome: "interrupted",
-				action_count: 7,
-				failed_count: 0,
-				worked_seconds: 21,
-				complete: true,
-			},
-		],
-	};
-	const facts = openFrameFacts(page);
-	assert.ok(facts, "the page carries facts");
-	/*
-	 * The identity is what the page's rows KEY, not what its entries are called: the
-	 * seven tool rows by call id, the marker by its anchor. The assistant entries that
-	 * carry the calls fall back to their own ids - keys no row uses, since the reducer
-	 * merges a call pair into one tool row - so they are in the set and harmless.
-	 */
-	assert.deepEqual(
-		[...facts.page.ids].sort(),
-		[
-			"a1",
-			"a2",
-			"a3",
-			"a4",
-			"a5",
-			"a6",
-			"a7",
-			"ans",
-			"tool:call_1",
-			"tool:call_2",
-			"tool:call_3",
-			"tool:call_4",
-			"tool:call_5",
-			"tool:call_6",
-			"tool:call_7",
-		],
-		"the carried set is row keys: tool calls by call id, the marker by its anchor",
-	);
-	const rows = buildRows(applyHistoryPage(EMPTY_TRANSCRIPT, page).records, []);
 	const plan = collapsePlan(rows, {
 		live: false,
-		runFacts: facts.runs,
-		factPage: facts.page,
-	});
-	const run = plan.runs[0];
-	assert.equal(run.factApplied, true, "the page's own facts apply");
-	/*
-	 * NOTHING IS ADDED, AND WITH NO ANSWER ELECTED THE LADDER IS THE WIRE'S OWN
-	 * (R7-1): every span is pre-answer, so the figures here are the wire's `7 / 21 s`,
-	 * and the discrimination lives at `806416cc73f` - where the same shape reads
-	 * `8 / 24`, the appended `tool:call_7` held in the fact.
-	 */
-	assert.equal(
-		run.facts.actions,
-		7,
-		"the wire's own total: a run ending on a tool row elects no answer to subtract",
-	);
-	assert.equal(run.facts.durationS, 21, "and its seconds: seven rounds of 3 s");
-	assert.equal(
-		run.facts.partial,
-		false,
-		"a served page is exact, and the turn is not live",
-	);
-	/*
-	 * A LIVE PANE WITH APPENDED ROWS wears the `+` on BOTH figures (agent review round
-	 * 5, n2: the ladder's term had no arm). The carried set is the page's own minus two
-	 * trailing tool roounds, so those two are exactly what `factAppendedRows` finds; the
-	 * correction is exact for the rows in hand, but a streaming turn cannot know it has
-	 * them all, and the ladder a future reader inherits must not disagree with the bars.
-	 */
-	const trimmed = new Set(facts.page.ids);
-	trimmed.delete("tool:call_6");
-	trimmed.delete("tool:call_7");
-	const liveAppended = collapsePlan(rows, {
-		live: true,
-		runFacts: facts.runs,
-		factPage: { ids: trimmed, newestKey: "tool:call_5" },
-	}).runs[0];
-	assert.equal(
-		liveAppended.segments[0].facts.partial,
-		true,
-		"the bar says `+` while a live turn is corrected (B2's live term)",
-	);
-	assert.equal(liveAppended.facts.partial, true, "and the ladder agrees (m2)");
-});
-
-test("a fact is split by the hidden cross-session work, or refused (F2)", () => {
-	const rows = [
-		tool("t1", { ts: TS, durationS: 20 }),
-		/* The `send` row itself is already GONE: the caller filters the plan's rows
-		 * (`visibleRecords(records, hide)`), which is exactly why the client cannot
-		 * do this subtraction itself - only the server counted the row it never
-		 * sent. */
-		tool("t2", { ts: TS + 1, durationS: 30 }),
-		answer("a1", { ts: TS + 5_000 }),
-	];
-	/*
-	 * Shown, the server's totals ARE the reader's: three rows measured, nothing
-	 * hidden, nothing to subtract.
-	 */
-	const shown = collapsePlan(rows, {
-		live: false,
-		runFacts: new Map([["a1", fact(3, 55, { crossSessionActions: 1 })]]),
-	}).runs[0];
-	assert.equal(
-		shown.segments[0].facts.actions,
-		3,
-		"with the setting off, the fact's own count stands",
-	);
-	/*
-	 * Hidden, the same fact must lose the hidden row - and the bar states what is
-	 * on screen, which is the invariant `hidden cross-session rows never reach the
-	 * bar` pins for the loaded fold.
-	 */
-	const hidden = collapsePlan(rows, {
-		live: false,
-		hideCrossSession: true,
 		runFacts: new Map([
 			[
 				"a1",
-				fact(3, 55, { crossSessionActions: 1, crossSessionWorkedSeconds: 5 }),
-			],
-		]),
-	}).runs[0];
-	assert.equal(
-		hidden.segments[0].facts.actions,
-		2,
-		"the visible span's count, not the server's three",
-	);
-	assert.equal(
-		hidden.segments[0].facts.durationS,
-		50,
-		"and the visible worked time",
-	);
-	assert.equal(hidden.factApplied, true, "the fact was applied, split");
-	/*
-	 * NO SPLIT FROM THE WIRE IS A REFUSAL, not a zero: the count may include rows
-	 * this reader never receives, so the loaded fold stands, the `+` stays, and
-	 * the walk keeps something to complete.
-	 */
-	const unsplit = collapsePlan(rows, {
-		live: false,
-		hideCrossSession: true,
-		runFacts: new Map([["a1", fact(3, 55)]]),
-	}).runs[0];
-	assert.equal(unsplit.factApplied, false, "no split, no fact");
-	assert.equal(
-		unsplit.segments[0].facts.actions,
-		2,
-		"the loaded rows' own count",
-	);
-	assert.equal(unsplit.segments[0].facts.partial, true, "with the `+` intact");
-	/*
-	 * AND A DURATION THAT CANNOT BE SPLIT IS DROPPED, count kept: the count's
-	 * subtrahend is known (one hidden row), the seconds' is not. `hidden === 0`
-	 * is the other half - nothing hidden means nothing to split, so the seconds
-	 * stand.
-	 */
-	const halfSplit = collapsePlan(rows, {
-		live: false,
-		hideCrossSession: true,
-		runFacts: new Map([["a1", fact(3, 55, { crossSessionActions: 1 })]]),
-	}).runs[0];
-	assert.equal(halfSplit.segments[0].facts.actions, 2, "the count splits");
-	assert.equal(
-		halfSplit.segments[0].facts.durationS,
-		null,
-		"and the duration refuses rather than including hidden work",
-	);
-	const noneHidden = collapsePlan(rows, {
-		live: false,
-		hideCrossSession: true,
-		runFacts: new Map([["a1", fact(2, 50, { crossSessionActions: 0 })]]),
-	}).runs[0];
-	assert.equal(
-		noneHidden.segments[0].facts.durationS,
-		50,
-		"nothing hidden means nothing to split, so the seconds stand",
-	);
-});
-
-test("a woken run states the wire's own totals, and its re-key keeps the fact (F3, B1)", () => {
-	/*
-	 * THE OPERATOR'S WOKEN-RUN SHAPE, which is what round 2's B1 measured. A run
-	 * that answered and was then woken keeps working, and THE CORE COUNTS THAT
-	 * WORK: a wake, a job result or a peer follow-up continues the run
-	 * (`transcript_index._track_run`'s non-user arm never consults
-	 * `_run_closed()`, which is the very reason a run re-keys at all), and
-	 * `_emit_runs` publishes `action_count` untrimmed. #2102's own F4 note
-	 * measures it: a woken run reports `settled: true, actions: 1` and later
-	 * `actions: 3` under the SAME key. So the wire's figures are the run's totals
-	 * as published, and `closing_answer_id` marks where the ANSWER was elected,
-	 * not where the counting stopped.
-	 */
-	const rows = [];
-	for (let i = 1; i <= 30; i += 1)
-		rows.push(tool(`x${i}`, { ts: TS + i, durationS: 2 }));
-	rows.push(answer("a0", { ts: TS + 100 }));
-	/* The wake's own three calls: no user row, so the run continues - and it now
-	 * ENDS on a tool row, which is the case `electAnswer` refuses to call an
-	 * answer (`transcript-rows.ts`), so the run's key moves off `a0`. */
-	for (let i = 1; i <= 3; i += 1)
-		rows.push(tool(`y${i}`, { ts: TS + 200 + i, durationS: 1 }));
-	const facts = new Map([
-		[
-			"a0",
-			fact(33, 63, {
-				closingAnswerId: "a0",
-				openingUserId: "the-run-head",
-				failed: 1,
-			}),
-		],
-	]);
-	const plan = collapsePlan(rows, { live: false, runFacts: facts });
-	const run = plan.runs[0];
-	assert.equal(
-		run.key,
-		"y3",
-		"the run re-keys to its newest row once it has no closing answer",
-	);
-	assert.equal(
-		run.factApplied,
-		true,
-		"and the fact is still found, by the run's own rows rather than its key",
-	);
-	/*
-	 * THE FIGURES, and this is B1: the wire's `action_count` (33) ALREADY includes
-	 * the three woken calls, so the head-cut bar must state its own share of that
-	 * figure - 30, the pre-answer calls; the other three sit in the follow-up bar
-	 * and are subtracted back out - and NOT 33 + 3 = 36. The earlier addition
-	 * painted 36 with `partial: false`, i.e. a wrong number presented as exact,
-	 * with the walk retired so nothing could ever correct it.
-	 */
-	assert.equal(
-		run.segments.length,
-		1,
-		"no pinned row separates the wake's calls, so the run is ONE span",
-	);
-	assert.equal(
-		run.segments[0].facts.actions,
-		33,
-		"the bar states the wire's own count - not 36: the tail is NOT added again",
-	);
-	assert.equal(
-		run.segments[0].facts.durationS,
-		63,
-		"and the wire's own seconds, not 66",
-	);
-	assert.equal(
-		run.segments[0].facts.partial,
-		false,
-		"exact, because the wire's figure covers the woken work",
-	);
-	assert.equal(
-		run.facts.actions,
-		33,
-		"the turn's figure is the same 33, and the bars still sum to it (D1)",
-	);
-	assert.equal(
-		run.facts.failed,
-		1,
-		"the wire's failures, not added a second time (round 2, B1)",
-	);
-	/*
-	 * THE SAME RUN WITH A PINNED ROW between the answer and the wake's calls: the
-	 * partition now splits the run, and the subtraction that has always run for
-	 * siblings takes the follow-up bar's own rows back out - so the head-cut bar
-	 * states 30, the follow-up bar 3, and the two still sum to the wire's 33.
-	 */
-	const split = [
-		tool("t1", { ts: TS, durationS: 10 }),
-		answer("a1", { ts: TS + 5_000 }),
-		row("w1", "wake", { text: "a wake delivery" }),
-		tool("t2", { ts: TS + 6_000, durationS: 5 }),
-		tool("t3", { ts: TS + 7_000, durationS: 5 }),
-	];
-	const splitPlan = collapsePlan(split, {
-		live: false,
-		runFacts: new Map([
-			[
-				"a1",
-				fact(3, 20, { closingAnswerId: "a1", openingUserId: "the-run-head" }),
-			],
-		]),
-	}).runs[0];
-	assert.equal(
-		splitPlan.segments[0].facts.actions,
-		1,
-		"the head-cut bar states the run's count minus the follow-up bar's rows",
-	);
-	assert.equal(
-		splitPlan.segments[0].facts.actions + splitPlan.segments[1].facts.actions,
-		3,
-		"and the bars sum to the wire's own figure",
-	);
-	/*
-	 * AND THE WALK IS RETIRED FOR THAT RE-KEYED RUN: the whole point of keeping the
-	 * fact attached is that the bar is exact, so no read is owed - which is what
-	 * the base did by WALKING (the walk this lane retired).
-	 */
-	assert.equal(
-		alignWalkRunKeyConfirmed(plan, null),
-		null,
-		"the re-keyed run's bar is whole, so the walk stands down",
-	);
-});
-
-test("a figure below the rows the bar itself hides keeps its `+` (M2)", () => {
-	/*
-	 * THE FLOOR CHECK (agent review round 2, M2). The subtraction trusts the wire's
-	 * split, and the one known divergence is a `send` whose body the index dropped:
-	 * `transcript_index` counts it in `action_count` BEFORE the `body_dropped`
-	 * branch and increments `cross_actions` inside that branch's `else`, so it is
-	 * in the total, absent from the split, and still hidden by this reader's own
-	 * filter. The wire marks that row's run `complete: false` (a floor), which is
-	 * the primary marker; this check is the client's own net for a figure that
-	 * cannot be the span's total whatever the wire says - a count below the number
-	 * of tool rows the bar itself hides.
-	 */
-	const rows = [
-		tool("t1", { ts: TS, durationS: 10 }),
-		tool("t2", { ts: TS + 1, durationS: 10 }),
-		tool("t3", { ts: TS + 2, durationS: 10 }),
-		answer("a1", { ts: TS + 5_000 }),
-	];
-	const short = collapsePlan(rows, {
-		live: false,
-		hideCrossSession: true,
-		// The server counted five tool rows and split three of them away: the bar
-		// would state 2 while hiding the three it has in hand, which cannot be right.
-		runFacts: new Map([
-			[
-				"a1",
-				fact(5, 50, {
-					crossSessionActions: 3,
-					crossSessionWorkedSeconds: 30,
-				}),
-			],
-		]),
-	}).runs[0];
-	assert.equal(short.factApplied, true, "the fact applies");
-	assert.equal(
-		short.segments[0].facts.actions,
-		3,
-		/*
-		 * THE LARGER FIGURE (agent review round 3, m1): the wire's 5 minus its split of
-		 * 3 is 2, which is BELOW the three tool rows this bar hides - a figure the
-		 * bar's own rows already contradict, stated as `2+`, a floor nothing can
-		 * complete while the fact keeps the walk retired. The bar states the rows in
-		 * hand instead, and still says it is not the total.
-		 */
-		"the rows in hand, which the wire's figure cannot undercut",
-	);
-	assert.equal(
-		short.segments[0].facts.partial,
-		true,
-		"but the bar hides three rows, so the figure stays a floor",
-	);
-	assert.equal(
-		short.facts.partial,
-		true,
-		"and the run-level figure says the same",
-	);
-	/*
-	 * The discriminating direction: a figure that covers the rows the bar hides is
-	 * exact, and keeps the fact's own duration.
-	 */
-	const exact = collapsePlan(rows, {
-		live: false,
-		hideCrossSession: true,
-		runFacts: new Map([
-			[
-				"a1",
-				fact(4, 40, {
+				fact(33, 60, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
 					crossSessionActions: 1,
 					crossSessionWorkedSeconds: 10,
 				}),
 			],
 		]),
-	}).runs[0];
-	assert.equal(
-		exact.segments[0].facts.actions,
-		3,
-		"4 - 1 hidden = the three in hand",
-	);
-	assert.equal(
-		exact.segments[0].facts.partial,
-		false,
-		"a figure that covers its own rows is exact",
-	);
-	assert.equal(
-		exact.segments[0].facts.durationS,
-		30,
-		"and keeps the split duration",
-	);
+	});
+	for (const run of plan.runs) {
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
+		for (const segment of run.segments) {
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
+		}
+	}
 });
-
+test("v2 contained scope: a SERVED page with its own facts and identity adds nothing (B3)", () => {
+	// The old wire-remainder assertion described absent rows as disclosure
+	// children. Keep its upstream stimulus; direct population is authoritative.
+	const rows = [tool("tool:served", { durationS: 3 }), answer("a1")];
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(9, 24, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	});
+	for (const run of plan.runs) {
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
+		for (const segment of run.segments) {
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
+		}
+	}
+});
+test("v2 contained scope: a fact is split by the hidden cross-session work, or refused (F2)", () => {
+	// The old wire-remainder assertion described absent rows as disclosure
+	// children. Keep its upstream stimulus; direct population is authoritative.
+	const rows = [
+		tool("t1", { durationS: 20 }),
+		tool("t2", { durationS: 30 }),
+		answer("a1"),
+	];
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(3, 70, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	});
+	for (const run of plan.runs) {
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
+		for (const segment of run.segments) {
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
+		}
+	}
+});
+test("v2 contained scope: a woken run states the wire's own totals, and its re-key keeps the fact (F3, B1)", () => {
+	// The old wire-remainder assertion described absent rows as disclosure
+	// children. Keep its upstream stimulus; direct population is authoritative.
+	const rows = [
+		tool("t1", { durationS: 10 }),
+		answer("a1"),
+		row("w1", "wake", { text: "Synthetic wake" }),
+		tool("t2", { durationS: 5 }),
+		tool("t3", { durationS: 5 }),
+	];
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(33, 63, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	});
+	for (const run of plan.runs) {
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
+		for (const segment of run.segments) {
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
+		}
+	}
+});
+test("v2 contained scope: a figure below the rows the bar itself hides keeps its `+` (M2)", () => {
+	// The old wire-remainder assertion described absent rows as disclosure
+	// children. Keep its upstream stimulus; direct population is authoritative.
+	const rows = [
+		tool("t1", { durationS: 10 }),
+		tool("t2", { durationS: 10 }),
+		tool("t3", { durationS: 10 }),
+		answer("a1"),
+	];
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(1, 40, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	});
+	for (const run of plan.runs) {
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
+		for (const segment of run.segments) {
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
+		}
+	}
+});
 test("openFrameAttestedStart finds the run the page BEGINS in, one run early or not (F4)", () => {
 	/*
 	 * THE CORE'S OWN SHAPE. `publish_runs` starts one run early on purpose
@@ -4241,4 +4066,1489 @@ test("openFrameAttestedStart finds the run the page BEGINS in, one run early or 
 		null,
 		"a page that begins inside a run attests no run boundary",
 	);
+});
+
+// Existing small-array fixtures use the public snapshot API, not a second
+// production alias policy. Large/current-authority cases below call it directly.
+const retainInternalEpisodeKeys = (previous, current) =>
+	retainInternalEpisodeKeysV2(
+		captureInternalEpisodeIdentity(
+			previous.map((e) => ({ ...e, eligible: true })),
+			new Set(previous.map((e) => e.key)),
+		),
+		current.map((e) => ({ ...e, eligible: true })),
+	).episodes;
+
+/* Active internal episodes: SOURCE regressions, never body/code classifiers. */
+const internalOpening = () => [
+	user("ia-user"),
+	answer("ia-final", { stopReason: "stop" }),
+];
+const internalSpanOf = (plan, id) =>
+	plan.runs.flatMap((r) => r.segments).find((s) => s.segmentIds.includes(id));
+const allCollapsedIds = (plan) =>
+	new Set(
+		plan.runs.flatMap((r) =>
+			r.segments.filter((s) => s.collapsed).flatMap((s) => s.segmentIds),
+		),
+	);
+function assertAllAnswersVisible(plan, ids) {
+	const hidden = allCollapsedIds(plan);
+	for (const id of ids)
+		assert.equal(
+			hidden.has(id),
+			false,
+			`answer ${id} stays outside EVERY collapsed span`,
+		);
+}
+const jobReceipt = (id, extra = {}) =>
+	row(
+		id,
+		"custom",
+		{
+			customType: "job_result",
+			text: "Synthetic background completion",
+			headline: "Synthetic completed result",
+			detail: "Full synthetic output",
+			level: "info",
+			attribution: "system",
+			...extra,
+		},
+		"trace",
+	);
+const hubReceipt = (id, extra = {}) =>
+	row(
+		id,
+		"custom",
+		{
+			customType: "hub_message",
+			text: "Synthetic typed incoming note",
+			level: "info",
+			receipt: {
+				body: "Typed note",
+				envelope: "Raw synthetic source",
+				direction: "to_parent",
+				label: "Synthetic worker",
+				jobId: "synthetic-job",
+				sender: {
+					pid: "",
+					conversationName: "",
+					cwd: "",
+					sessionId: "",
+					modelLabel: "",
+				},
+				expectsReply: false,
+				steer: false,
+				...extra,
+			},
+		},
+		"trace",
+	);
+
+test("active internal receipt compacts without settlement while ALL material answers stay visible", () => {
+	const ordinary = planOf(
+		[user("ordinary"), tool("ordinary-call", { phase: "running" })],
+		true,
+	);
+	assert.equal(
+		ordinary.runs.some((r) => r.segments.some((s) => s.collapsed)),
+		false,
+	);
+	const rows = [
+		...internalOpening(),
+		peerRow("ia-peer"),
+		tool(
+			"ia-eval",
+			{
+				toolName: "eval",
+				phase: "running",
+				args: { code: "tool('no_reply')" },
+			},
+			"trace",
+		),
+	];
+	const before = planOf(internalOpening(), false);
+	const during = planOf(rows, true);
+	const segment = internalSpanOf(during, "ia-peer");
+	assert.equal(segment.collapsed, true);
+	assert.equal(segment.completed, false);
+	assert.equal(segment.internal.live, true);
+	assert.equal(
+		segment.facts.group,
+		null,
+		"a singleton does not redefine QuietGroup >=2",
+	);
+	assert.equal(segment.key, "qg:ia-peer");
+	assert.equal(
+		segment.facts.actions,
+		1,
+		"outer eval remains a real inspectable action",
+	);
+	assert.deepEqual(segment.segmentIds, ["ia-peer", "ia-eval"]);
+	assertAllAnswersVisible(before, ["ia-final"]);
+	assertAllAnswersVisible(during, ["ia-final"]);
+	const after = planOf([...rows, quiet("ia-close")], false);
+	assert.equal(internalSpanOf(after, "ia-peer").key, segment.key);
+	assert.equal(internalSpanOf(after, "ia-peer").completed, true);
+	assertAllAnswersVisible(after, ["ia-final"]);
+});
+
+test("unanswered human work remains live even when one or several receipts arrive", () => {
+	for (const prefix of [
+		[user("pending")],
+		[user("pending"), tool("requested")],
+		[user("pending"), answer("lead-in", { stopReason: "toolUse" })],
+	]) {
+		const plan = planOf(
+			[
+				...prefix,
+				peerRow("pending-p"),
+				jobReceipt("pending-j"),
+				tool("pending-t", { phase: "running" }, "trace"),
+			],
+			/* LIVE: unanswered human work is the turn in flight, so the pane is
+			 * live and the safety rule is asked of that state. */
+			true,
+		);
+		assert.equal(
+			plan.runs.some((r) => r.segments.some((s) => s.collapsed)),
+			false,
+		);
+	}
+});
+
+test("completed quiet work never reopens for thinking; single to mixed receipts grow the same key", () => {
+	const rows = [
+		...internalOpening(),
+		peerRow("grow-p"),
+		tool("grow-t", {}, "trace"),
+		quiet("grow-q"),
+	];
+	const completed = internalSpanOf(planOf(rows, false), "grow-p");
+	const thinking = internalSpanOf(planOf(rows, true), "grow-p");
+	assert.equal(thinking.collapsed, true);
+	assert.equal(
+		thinking.internal.live,
+		false,
+		"no new tail row means completed work stays completed",
+	);
+	const grown = internalSpanOf(
+		planOf(
+			[
+				...rows,
+				jobReceipt("grow-j"),
+				tool("grow-eval", { toolName: "eval", phase: "running" }, "trace"),
+			],
+			true,
+		),
+		"grow-p",
+	);
+	assert.equal(grown.key, completed.key);
+	assert.equal(grown.collapsed, true);
+	assert.equal(grown.completed, false);
+	assert.equal(grown.internal.receipts, 2);
+	assert.equal(grown.facts.actions, 2);
+	assert.deepEqual(grown.segmentIds, [
+		"grow-p",
+		"grow-t",
+		"grow-q",
+		"grow-j",
+		"grow-eval",
+	]);
+});
+
+test("all typed delivery families can open one live episode without a quiet outcome", () => {
+	const origins = [
+		peerRow("family-p"),
+		hubReceipt("family-h"),
+		row("family-w", "wake", { text: "Synthetic wake" }),
+		jobReceipt("family-j"),
+		row("family-m", "custom", {
+			customType: "monitor_prompt",
+			level: "info",
+			text: "Synthetic monitor",
+		}),
+	];
+	for (const origin of origins) {
+		const segment = internalSpanOf(
+			planOf(
+				[
+					...internalOpening(),
+					origin,
+					tool("family-t", { phase: "running" }, "trace"),
+				],
+				true,
+			),
+			origin.record.id,
+		);
+		assert.equal(segment.collapsed, true, origin.record.kind);
+		assert.equal(segment.completed, false);
+	}
+});
+
+test("mixed jobs, stream completion notices and tools roll up without body-label deduplication", () => {
+	const ended = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "subagent_end",
+			job_id: "synthetic-job",
+			label: "Synthetic decision",
+			status: "completed",
+		},
+		TS,
+	);
+	const completion = ended.records.find(
+		(r) => r.id === "subagent:synthetic-job",
+	);
+	assert.ok(
+		completion,
+		"actual typed producer creates the reserved completion id",
+	);
+	const rows = [
+		...internalOpening(),
+		jobReceipt("physical-job-1"),
+		jobReceipt("physical-job-2"),
+		tool("job-tool-1", {}, "trace"),
+		{ record: completion, gap: "trace", closesTurn: false },
+		jobReceipt("physical-job-3"),
+		tool("job-tool-2", {}, "trace"),
+		jobReceipt("physical-job-4"),
+		tool("job-read", { phase: "running" }, "trace"),
+	];
+	const plan = planOf(rows, true);
+	const segment = internalSpanOf(plan, "physical-job-1");
+	assert.equal(segment.collapsed, true);
+	assert.deepEqual(
+		segment.segmentIds,
+		rows.slice(2).map((r) => r.record.id),
+	);
+	assert.equal(
+		segment.internal.receipts,
+		5,
+		"four physical job receipts + typed completion, never labels",
+	);
+	assert.equal(
+		segment.facts.group.count,
+		4,
+		"shared QuietGroup golden contract still counts its own triggers",
+	);
+	assertAllAnswersVisible(plan, ["ia-final"]);
+});
+
+test("real progress, final, steer, ask, attention, error and ambiguous assistant rows remain boundaries", () => {
+	const boundaries = [
+		answer("material-progress", {
+			text: "Real user progress",
+			stopReason: "toolUse",
+		}),
+		answer("material-final", { stopReason: "stop" }),
+		answer("empty-future", {
+			text: "",
+			streaming: false,
+			stopReason: undefined,
+		}),
+		answer("stream-future", {
+			text: "",
+			streaming: true,
+			stopReason: undefined,
+		}),
+		user("genuine-steer", { text: "A real user steer" }),
+		tool("real-ask", { toolName: "ask", phase: "running" }, "trace"),
+		tool("real-error", { isError: true, phase: "done" }, "trace"),
+		row("interrupt", "notice", {
+			complete: true,
+			level: "error",
+			text: "Interrupted",
+		}),
+		hubReceipt("attention", { expectsReply: true }),
+		hubReceipt("hub-steer", { steer: true }),
+		row("generic-info", "notice", {
+			level: "info",
+			text: "User-facing status, not a proved internal completion",
+		}),
+	];
+	for (const boundary of boundaries) {
+		const rows = [
+			...internalOpening(),
+			peerRow("bound-p"),
+			tool("bound-t", {}, "trace"),
+			boundary,
+			jobReceipt("bound-j"),
+			tool("bound-last", { phase: "running" }, "trace"),
+		];
+		const plan = planOf(rows, true);
+		assert.equal(
+			allCollapsedIds(plan).has(boundary.record.id),
+			false,
+			boundary.record.id,
+		);
+		assertAllAnswersVisible(plan, [
+			"ia-final",
+			...(boundary.record.kind === "assistant" ? [boundary.record.id] : []),
+		]);
+	}
+});
+
+test("empty streaming placeholder protects the first actual token and never remounts the prior internal key", () => {
+	const rows = [
+		...internalOpening(),
+		peerRow("token-p"),
+		tool("token-t", {}, "trace"),
+	];
+	const initial = internalSpanOf(planOf(rows, true), "token-p");
+	for (const update of [
+		{ text: "", streaming: true },
+		{ text: "Real progress", streaming: true },
+		{ text: "Real answer", streaming: false, stopReason: "stop" },
+	]) {
+		const plan = planOf([...rows, answer("token-a", update)], true);
+		assertAllAnswersVisible(plan, ["ia-final", "token-a"]);
+		const current = internalSpanOf(plan, "token-p");
+		/* R3 restores default bounded keys to the visible answer. The raw planner
+		 * cannot promise qg identity after that boundary arrives; the existing UI
+		 * overlap transfer preserves the reader-open key. Pin both halves instead
+		 * of requiring every closed/history bar to use a live qg key forever. */
+		assert.equal(current.key, "seg:token-a");
+		const retained = aliasesV2(
+			snapshotV2([epV2(initial.key, initial.segmentIds)], [initial.key]),
+			[epV2(current.key, current.segmentIds)],
+			{ outsideCurrentIds: ["ia-final", "token-a"] },
+		);
+		assert.equal(retained.episodes[0].key, initial.key);
+	}
+});
+
+test("produced image and video rows stay inline outside internal folds", () => {
+	for (const kind of ["image", "video"]) {
+		const artifact = tool(
+			`artifact-${kind}`,
+			{
+				images: [
+					{
+						id: `asset-${kind}`,
+						attachment: "synthetic-digest",
+						data: null,
+						mimeType: kind === "image" ? "image/png" : "video/mp4",
+						kind,
+					},
+				],
+			},
+			"trace",
+		);
+		for (const where of ["before", "inside"]) {
+			const rows =
+				where === "before"
+					? [
+							...internalOpening(),
+							artifact,
+							jobReceipt("asset-j"),
+							tool("asset-read", { phase: "running" }, "trace"),
+						]
+					: [
+							...internalOpening(),
+							peerRow("asset-p"),
+							artifact,
+							jobReceipt("asset-j"),
+							tool("asset-read", { phase: "running" }, "trace"),
+						];
+			const plan = planOf(rows, true);
+			assert.equal(
+				allCollapsedIds(plan).has(artifact.record.id),
+				false,
+				`${kind}/${where} is inline`,
+			);
+			assert.equal(internalSpanOf(plan, "asset-j").collapsed, true);
+		}
+	}
+});
+
+test("old unstamped hub-like users remain human; quiet failures and eval text never prove a quiet close", () => {
+	const legacyUser = user("legacy-hub", {
+		text: "<parent-message>synthetic literal text</parent-message>",
+	});
+	const plan = planOf(
+		[
+			...internalOpening(),
+			peerRow("legacy-p"),
+			legacyUser,
+			tool(
+				"legacy-eval",
+				{ toolName: "eval", phase: "running", output: "no_reply" },
+				"trace",
+			),
+		],
+		true,
+	);
+	assert.equal(allCollapsedIds(plan).has(legacyUser.record.id), false);
+	for (const change of [
+		{ isError: true },
+		{ stopped: true },
+		{ neverSent: true },
+	]) {
+		const rows = [
+			...internalOpening(),
+			peerRow("failed-quiet-p"),
+			quiet("failed-quiet", change),
+		];
+		const p = planOf(rows, true);
+		assert.equal(allCollapsedIds(p).has("failed-quiet"), false);
+	}
+	const unanchored = row("attention-ineligible", "custom", {
+		customType: "completion_attention",
+		text: "",
+		level: "info",
+		eligible: false,
+	});
+	const p = planOf(
+		[
+			...internalOpening(),
+			peerRow("eligible-p"),
+			tool("eligible-e", { toolName: "eval", phase: "done" }, "trace"),
+			unanchored,
+		],
+		true,
+	);
+	assert.equal(internalSpanOf(p, "eligible-p").completed, false);
+});
+
+test("bounded internal identity and expansion survive prepend/replay but never guess after cache truncation", () => {
+	__resetTurnCollapseOpen();
+	const previous = [{ key: "qg:loaded", segmentIds: ["loaded", "call"] }];
+	const current = [{ key: "qg:head", segmentIds: ["head", "loaded", "call"] }];
+	const kept = retainInternalEpisodeKeys(previous, current);
+	assert.equal(kept[0].key, "qg:loaded");
+	assert.equal(retainInternalEpisodeKeys(kept, current)[0].key, "qg:loaded");
+	writeRunExpanded("synthetic-one", "qg:loaded", true);
+	assert.equal(expandedRunsOf("synthetic-one").has(kept[0].key), true);
+	writeRunExpanded("synthetic-one", kept[0].key, false);
+	assert.equal(expandedRunsOf("synthetic-one").has(kept[0].key), false);
+	assert.equal(expandedRunsOf("synthetic-two").size, 0);
+	forgetTurnCollapseOpen("synthetic-one");
+	assert.equal(expandedRunsOf("synthetic-one").size, 0);
+	const split = [
+		{ key: "qg:a", segmentIds: ["loaded"] },
+		{ key: "qg:b", segmentIds: ["call"] },
+	];
+	assert.deepEqual(
+		retainInternalEpisodeKeys(previous, split).map((s) => s.key),
+		["qg:a", "qg:b"],
+	);
+	const large = [
+		{
+			key: "qg:large",
+			segmentIds: Array.from({ length: 4097 }, (_, i) => `id${i}`),
+		},
+	];
+	assert.equal(
+		retainInternalEpisodeKeys(large, [
+			{ key: "qg:new", segmentIds: ["id0"] },
+		])[0].key,
+		"qg:new",
+		"incomplete cache is not uniqueness proof",
+	);
+	const many = Array.from({ length: 129 }, (_, i) => ({
+		key: `qg:id${i}`,
+		segmentIds: [`id${i}`],
+	}));
+	assert.equal(
+		retainInternalEpisodeKeys(many, [{ key: "qg:new", segmentIds: ["id0"] }])[0]
+			.key,
+		"qg:id0",
+		"owner ordinals are not the disclosure key cap",
+	);
+});
+
+/*
+ * THE MINIMUM-ONLY HEAD-CUT FACTS, pinned on a shape the rule still folds.
+ *
+ * The head-cut IS `span.from === 0` - the loaded page starts inside the run -
+ * so it cannot be combined with "an answer precedes the episode": there is
+ * nothing before index 0 to precede it. What the folding episode therefore
+ * needs here is a SECOND receipt, which is the rule's other arm: a genuine run
+ * of exchanges. The single-receipt variant of this same shape now PAINTS (see
+ * the test below), which is QA round 1's Q1.
+ */
+test("head-cut receipt counts are minimum-only, with no invented whole-episode duration", () => {
+	const segment = internalSpanOf(
+		planOf(
+			[
+				jobReceipt("cut-job"),
+				jobReceipt("cut-job-2"),
+				tool("cut-call", { phase: "running" }, "trace"),
+			],
+			true,
+		),
+		"cut-job",
+	);
+	assert.equal(segment.collapsed, true);
+	assert.equal(segment.facts.partial, true);
+	assert.equal(segment.internal.firstTs, null);
+	assert.equal(segment.facts.durationS, null);
+});
+
+/*
+ * QA round 1, Q1 - the plan-level contract for an episode that OPENS the run
+ * with ONE receipt: there is no settled work before it and no run of exchanges
+ * to batch, so it paints. Rendering proves the content reaches the reader
+ * (`canonical-notice.test.mjs`); this pins the plan.
+ */
+test("a single receipt opening the run paints: no settled work, no run to batch", () => {
+	for (const origin of [
+		jobReceipt("open-job"),
+		peerRow("open-peer"),
+		row("open-wake", "wake", { text: "Synthetic wake" }),
+	]) {
+		const segment = internalSpanOf(
+			planOf([origin, tool("open-call", { phase: "running" }, "trace")], true),
+			origin.record.id,
+		);
+		assert.equal(segment.collapsed, false, origin.record.id);
+		assert.equal(segment.internal, null, origin.record.id);
+	}
+});
+
+test("all material artifact owners stay inline, including generated loading/error and owned files", () => {
+	for (const name of ["generate_image", "generate_video"])
+		for (const phase of ["running", "done"]) {
+			const media = tool(
+				"owner",
+				{ toolName: name, phase, isError: phase === "done" },
+				"trace",
+			);
+			const p = planOf(
+				[
+					...internalOpening(),
+					peerRow("owner-p"),
+					media,
+					jobReceipt("owner-j"),
+				],
+				true,
+			);
+			assert.equal(allCollapsedIds(p).has("owner"), false);
+		}
+	for (const state of [
+		"decided",
+		"queued",
+		"running",
+		"cancelling",
+		"done",
+		"failed",
+		"cancelled",
+		"skipped",
+	]) {
+		const supplement = row("files-owner", "supplement", {
+			anchor: "ia-final",
+			job: "synthetic-files",
+			state,
+			version: 1,
+			files: [
+				{
+					path: "synthetic/report.pdf",
+					name: "report.pdf",
+					kind: "pdf",
+					sizeBytes: 10,
+					mtime: TS,
+					why: "synthetic output",
+				},
+			],
+			filesMore: 0,
+			more: [],
+			components: [],
+			error: state === "failed" ? "Synthetic failure" : "",
+			live: state === "running",
+			dismissed: state === "skipped",
+		});
+		const p = planOf(
+			[
+				...internalOpening(),
+				peerRow("files-p"),
+				tool("files-t", {}, "trace"),
+				supplement,
+				jobReceipt("files-j"),
+			],
+			true,
+		);
+		assert.equal(allCollapsedIds(p).has("files-owner"), false);
+		assert.equal(
+			runIsCondensed(p.runs[0], new Set(), { artifactOwner: "ia-final" }),
+			false,
+			"an internal bar cannot close its final-owned files",
+		);
+	}
+});
+
+/* Unified v2 count regression. Parent statistics are NOT disclosure children. */
+test("head-cut peer + spawn counts one contained action despite huge parent/job stats", () => {
+	const rows = [
+		peerRow("count-p"),
+		tool("count-t", { toolName: "sessions", durationS: 2.6 }),
+		answer("count-a"),
+	];
+	const options = {
+		live: false,
+		runFacts: new Map([
+			[
+				"count-a",
+				fact(113319, 50340, {
+					openingUserId: "offpage",
+					closingAnswerId: "count-a",
+				}),
+			],
+		]),
+		factPage: { ids: new Set(rows.map((r) => r.record.id)) },
+	};
+	/*
+	 * THE RULE (QA round 1, Q1). `[peer, tool]` opens the run: one receipt and no
+	 * settled answer before it, so there is neither settled work to continue nor
+	 * a run of exchanges to batch, and the span is NOT an internal episode. That
+	 * is the stronger form of this test's original point - with no episode there
+	 * is nothing to condense the receipt into, so the parent's 113,319 actions
+	 * have nothing to inflate.
+	 *
+	 * WHY THE ASSERTION IS `internal === null` AND NOT `collapsed === false`:
+	 * this shape is the run's TAIL with the answer at the end, and an ordinary
+	 * (non-internal) span still condenses here exactly as it did on base. What
+	 * the rule governs is the internal-episode classification, not whether an
+	 * ordinary span folds - that distinction is the whole point of the gate. The
+	 * foldable head-cut shape that still pins minimum-only counts and a collapsed
+	 * internal episode is the >=2-receipt case in this file.
+	 */
+	const before = collapsePlan(rows, options);
+	const bar = before.runs
+		.flatMap((r) => r.segments)
+		.find((s) => s.segmentIds.includes("count-p"));
+	assert.equal(bar.internal, null, "the opening receipt is not an episode");
+	assert.deepEqual(bar.segmentIds, ["count-p", "count-t"]);
+	assert.equal(
+		before.runs[0].factApplied,
+		false,
+		"wire-backed aggregate was not applied to disclosure rows",
+	);
+	assert.equal(
+		before.runs.flatMap((r) => r.segments).some((s) => s.facts.actions > 1),
+		false,
+		"no bar may state the parent's aggregate as this span's own work",
+	);
+	for (const segment of before.runs.flatMap((r) => r.segments))
+		assert.equal(segment.segmentIds.includes("count-a"), false);
+	const after = collapsePlan(rows, {
+		...options,
+		runFacts: new Map([
+			[
+				"count-a",
+				fact(226638, 100680, {
+					openingUserId: "offpage",
+					closingAnswerId: "count-a",
+				}),
+			],
+		]),
+	});
+	const other = after.runs
+		.flatMap((r) => r.segments)
+		.find((s) => s.segmentIds.includes("count-p"));
+	assert.deepEqual(
+		[other.key, other.facts.actions, other.segmentIds],
+		[bar.key, 1, bar.segmentIds],
+	);
+	const appended = collapsePlan(
+		[rows[0], rows[1], tool("count-second", { durationS: 1 }), rows[2]],
+		options,
+	);
+	assert.equal(appended.runs[0].segments[0].facts.actions, 2);
+	const receiptOnly = collapsePlan(
+		[
+			peerRow("jobs-p"),
+			row("jobs-complete", "custom", {
+				customType: "job_result",
+				text: "Synthetic result",
+				level: "info",
+				detail: "Synthetic child report",
+				untrustedFixtureStats: { action_count: 113319, worked_seconds: 50340 },
+			}),
+			row("subagent:jobs-info", "notice", {
+				text: "Synthetic status",
+				level: "info",
+				untrustedFixtureStats: { action_count: 113319 },
+			}),
+			answer("jobs-a"),
+		],
+		{ live: false },
+	);
+	assert.equal(
+		receiptOnly.runs[0].segments[0].facts.actions,
+		0,
+		"nested stats do not become inline actions",
+	);
+});
+
+/* Architect brief twelve discriminating groups: partial bounded evidence ONLY. */
+const epV2 = (key, ids, eligible = true) => ({
+	key,
+	segmentIds: ids,
+	eligible,
+});
+const snapshotV2 = (
+	episodes,
+	held = episodes.map((e) => e.key),
+	focus = null,
+	outside = [],
+) => captureInternalEpisodeIdentity(episodes, new Set(held), focus, outside);
+const aliasesV2 = (prior, current, extra = {}) =>
+	retainInternalEpisodeKeysV2(prior, current, extra);
+test("v2 alias 1: 129 complete tiny owners no longer evict one held disclosure", () => {
+	const old = Array.from({ length: 129 }, (_, i) =>
+		epV2(`qg:p${i}`, [`p${i}`]),
+	);
+	const evidence = snapshotV2(old, ["qg:p0"]);
+	assert.equal(evidence.complete, true);
+	assert.equal(evidence.owners.size, 129);
+	assert.equal(evidence.keys.size, 1);
+	const now = old.map((e, i) =>
+		i === 0 ? epV2("qg:head", ["head", "p0"]) : e,
+	);
+	assert.equal(aliasesV2(evidence, now).episodes[0].key, "qg:p0");
+});
+test("v2 alias 2: huge CURRENT may stream from complete prior; next prior must refuse", () => {
+	const current = [
+		epV2("qg:new", [
+			"new",
+			"anchor",
+			...Array.from({ length: 5000 }, (_, i) => `n:${i}`),
+		]),
+	];
+	const bounded = snapshotV2([epV2("qg:anchor", ["anchor"])]);
+	assert.equal(
+		aliasesV2(bounded, current, { currentIdsUnique: true }).episodes[0].key,
+		"qg:anchor",
+	);
+	assert.equal(
+		aliasesV2(bounded, current).reason,
+		"current-uniqueness-unproved",
+	);
+	const overflow = snapshotV2(current);
+	assert.equal(overflow.complete, false);
+	assert.equal(overflow.owners.size, 0);
+	/*
+	 * `prior-id-limit`, not a generic "previous-incomplete": the projection
+	 * propagates the CAPTURE's own reason (`if (!previous.complete) return
+	 * refuse(previous.reason ?? "incomplete-prior")`) because the precise cause is
+	 * what a reader of a refusal needs - "the prior snapshot overflowed 4096 IDs"
+	 * says what to do next, while a blanket "incomplete" does not.
+	 */
+	assert.equal(
+		aliasesV2(overflow, [epV2("qg:later", ["later", "anchor"])]).reason,
+		"prior-id-limit",
+	);
+});
+test("v2 alias 3+4: oversized previous and indistinguishable unseen splits cannot be blessed", () => {
+	const huge = epV2("qg:a", [
+		"a",
+		...Array.from({ length: 4095 }, (_, i) => `inside:${i}`),
+		"z",
+	]);
+	assert.equal(
+		aliasesV2(snapshotV2([huge]), [
+			epV2("qg:head-c", ["head-c", "a", "z"]),
+			epV2("qg:inside:2000", ["inside:2000"]),
+		]).reason,
+		// Same deliberate propagation as alias 2: an oversized PRIOR snapshot is
+		// discarded wholesale, and the capture's own reason is what travels.
+		"prior-id-limit",
+	);
+	const now = [
+		epV2("qg:head-c", ["head-c", "a", "c", "z"]),
+		epV2("qg:b", ["b"]),
+	];
+	assert.equal(
+		aliasesV2(snapshotV2([epV2("qg:a", ["a", "b", "c", "z"])]), now).episodes[0]
+			.key,
+		"qg:head-c",
+	);
+	assert.equal(
+		aliasesV2(snapshotV2([epV2("qg:a", ["a", "c", "z"])]), now).episodes[0].key,
+		"qg:a",
+	);
+});
+test("v2 alias 5: unheld merge, two held merge, split-three and key collisions refuse", () => {
+	const a = epV2("qg:a", ["a", "z"]);
+	const b = epV2("qg:b", ["b"]);
+	const merged = [epV2("qg:head-c", ["head-c", "a", "b", "z"])];
+	for (const held of [["qg:a"], ["qg:a", "qg:b"]])
+		assert.equal(
+			aliasesV2(snapshotV2([a, b], held), merged).episodes[0].key,
+			"qg:head-c",
+		);
+	assert.equal(
+		aliasesV2(snapshotV2([epV2("qg:a", ["a", "b", "z"])]), [
+			epV2("qg:head-c", ["head-c", "a"]),
+			epV2("qg:b", ["b"]),
+			epV2("qg:z", ["z"]),
+		]).episodes[0].key,
+		"qg:head-c",
+	);
+	// Deliberately MALFORMED unrelated key: a generic caller must not silently
+	// alias a candidate onto an already-claimed held key (not canonical input).
+	assert.equal(
+		aliasesV2(snapshotV2([a]), [
+			epV2("qg:head-c", ["head-c", "a", "z"]),
+			epV2("qg:a", ["unrelated"]),
+		]).reason,
+		"key-collision",
+	);
+});
+test("v2 alias 6: loaded prepend, mounted head slice and true head loss remain distinct", () => {
+	const evidence = snapshotV2([epV2("qg:a", ["a", "b", "z"])]);
+	assert.equal(
+		aliasesV2(evidence, [epV2("qg:prefix", ["prefix", "a", "b", "z"])])
+			.episodes[0].key,
+		"qg:a",
+	);
+	assert.equal(
+		aliasesV2(evidence, [epV2("qg:b", ["b", "z"])]).episodes[0].key,
+		"qg:b",
+		"missing current anchor cannot prove source head loss or a mounted slice",
+	);
+	assert.equal(
+		aliasesV2(evidence, [epV2("qg:b", ["b", "z"])], {
+			outsideCurrentIds: ["a"],
+		}).episodes[0].key,
+		"qg:b",
+		"anchor presence outside candidate is not same-episode proof",
+	);
+});
+test("v2 alias 7: duplicates, malformed keys, opaque colons and ineligible qg spans", () => {
+	const old = snapshotV2([epV2("qg:a:b", ["a:b"])]);
+	assert.equal(
+		aliasesV2(old, [epV2("qg:new", ["new", "a:b"])]).episodes[0].key,
+		"qg:a:b",
+	);
+	for (const now of [
+		[epV2("qg:c", ["c", "a:b"]), epV2("qg:d", ["d", "a:b"])],
+		[epV2("qg:c", ["c", "a:b", "new", "new"])],
+	])
+		assert.equal(aliasesV2(old, now).reason, "duplicate-current-id");
+	assert.equal(
+		aliasesV2(snapshotV2([epV2("not-qg", ["a"])]), [epV2("qg:c", ["c", "a"])])
+			.episodes[0].key,
+		"qg:c",
+	);
+	assert.equal(
+		aliasesV2(old, [epV2("qg:c", ["c", "a:b"], false)]).episodes[0].key,
+		"qg:c",
+	);
+});
+test("v2 alias 8: reorder/split and hydration material boundaries conservative refusal", () => {
+	const old = snapshotV2([epV2("qg:a", ["a", "b", "c"])]);
+	assert.equal(
+		aliasesV2(old, [epV2("qg:head-c", ["head-c", "c", "b", "a"])]).episodes[0]
+			.key,
+		"qg:head-c",
+	);
+	assert.equal(
+		aliasesV2(old, [epV2("qg:head-c", ["head-c", "a", "c"])], {
+			outsideCurrentIds: ["b"],
+		}).episodes[0].key,
+		"qg:head-c",
+	);
+	for (const kind of ["artifact", "failed", "ask"])
+		assert.equal(
+			aliasesV2(old, [epV2(`qg:${kind}`, [kind, "a", "b", "c"], false)])
+				.episodes[0].key,
+			`qg:${kind}`,
+		);
+	// Same-ID field changes with unchanged candidate membership are NOT a typed
+	// transition certificate. This partial helper does not close that gate.
+});
+test("v2 alias 9: different-ID adoption and cleared/session-scoped evidence cannot infer text aliases", () => {
+	const old = snapshotV2([epV2("qg:a", ["a"])]);
+	assert.equal(
+		aliasesV2(old, [epV2("qg:new-id", ["new-id"])]).episodes[0].key,
+		"qg:new-id",
+	);
+	const reset = snapshotV2([], []);
+	for (const transition of ["session", "draft", "clear", "remount"])
+		assert.equal(
+			aliasesV2(reset, [epV2(`qg:${transition}`, [transition, "a"])])
+				.episodes[0].key,
+			`qg:${transition}`,
+		);
+});
+test("v2 alias 10: focus-only candidate has no second disclosure boolean owner", () => {
+	const old = snapshotV2([epV2("qg:a", ["a", "focused"])], [], "focused");
+	assert.equal(old.keys.size, 1);
+	assert.equal(
+		aliasesV2(old, [epV2("qg:prefix", ["prefix", "a", "focused"])]).episodes[0]
+			.key,
+		"qg:a",
+	);
+	assert.equal(
+		aliasesV2(old, [epV2("qg:c", ["c", "a"]), epV2("qg:focused", ["focused"])])
+			.episodes[0].key,
+		"qg:c",
+	);
+});
+test("v2 alias 11: identity capture never refreshes disclosure open/session LRU", () => {
+	__resetTurnCollapseOpen();
+	for (let i = 0; i < 129; i++) writeRunExpanded("alias-lru", `qg:${i}`, true);
+	const held = expandedRunsOf("alias-lru");
+	assert.equal(held.size, 128);
+	assert.equal(held.has("qg:0"), false);
+	snapshotV2([epV2("qg:1", ["1"])], [...held]);
+	assert.deepEqual(expandedRunsOf("alias-lru"), held);
+	writeRunExpanded("alias-lru", "qg:1", false);
+	assert.equal(expandedRunsOf("alias-lru").has("qg:1"), false);
+	for (let i = 0; i < 8; i++)
+		writeRunExpanded(`alias-session-${i}`, "qg:s", true);
+	assert.equal(expandedRunsOf("alias-lru").size, 0);
+	__resetTurnCollapseOpen();
+});
+test("v2 alias 12: overflow never retains stale partial maps/current arrays", () => {
+	const latest = snapshotV2([
+		epV2(
+			"qg:n0",
+			Array.from({ length: 4097 }, (_, i) => `n${i}`),
+		),
+	]);
+	assert.equal(latest.complete, false);
+	assert.equal(latest.owners.size, 0);
+	assert.equal(latest.keys.size, 0);
+	assert.equal(
+		Object.hasOwn(latest, "episodes"),
+		false,
+		"no retained current full array",
+	);
+});
+
+/*
+ * REVIEWER ROUND 1 - F2/F3/F4, each measured against the base snapshot with the
+ * same builders before it was fixed.
+ */
+test("F2: only the episode in the cycle still being written is unsettled", () => {
+	/*
+	 * The announce effect must silence the UNSETTLED episode while the turn thinks
+	 * and nothing else. Keying it on episode membership also silenced every
+	 * settled history episode during a live pass, so none was recorded and the
+	 * first settle re-announced them all (reviewer replica ['qg:w1','seg:a5']).
+	 */
+	const rows = [
+		user("f2-u"),
+		answer("f2-a0"),
+		peerRow("f2-w1"),
+		tool("f2-t1", {}, "trace"),
+		answer("f2-a1"),
+		peerRow("f2-w2"),
+		tool("f2-t2", { phase: "running" }, "trace"),
+	];
+	const live = planOf(rows, true);
+	assert.equal(internalSpanOf(live, "f2-w1").internal.unsettled, false);
+	assert.equal(internalSpanOf(live, "f2-w2").internal.unsettled, true);
+	const settled = planOf(rows, false);
+	assert.equal(
+		internalSpanOf(settled, "f2-w2").internal.unsettled,
+		false,
+		"a settled pane has no unsettled episode",
+	);
+});
+
+test("F2: an episode stays unsettled when a streaming answer appends after it", () => {
+	/* `internal.live` carries a tail-position condition and flips false on the
+	 * append; the announce gate needs the fact that does not. */
+	const plan = planOf(
+		[
+			user("f2s-u"),
+			answer("f2s-a0"),
+			peerRow("f2s-w1"),
+			tool("f2s-t1", {}, "trace"),
+			answer("f2s-a1", { streaming: true, complete: false }),
+		],
+		true,
+	);
+	const span = internalSpanOf(plan, "f2s-w1");
+	assert.equal(span.internal.live, false);
+	assert.equal(span.internal.unsettled, true);
+});
+
+test("the settle latch: a watched episode's gate cannot move on a liveness flip - the F2 dip", () => {
+	/*
+	 * THE DIP THE LATCH MISSED (convergence round, 2026-10-17). `liveFrom` is
+	 * frozen for a watched run, but the one-bar gate and the episode facts still
+	 * read the raw flag: on a dip the episode's suppression paused (a SECOND bar
+	 * flashed in) and `live`/`unsettled` flipped - the painted plan of the run
+	 * the latch exists to protect moved on a transient. The gate and the facts
+	 * now ride the same `anchored` reading `liveFrom` does (see `planRun`).
+	 */
+	const rows = [
+		user("dip-u"),
+		tool("dip-t0", { durationS: 3 }),
+		answer("dip-a0", { settledAt: TS + 3_000, stopReason: "stop" }),
+		peerRow("dip-w1"),
+		tool("dip-t1", { phase: "running", output: null }),
+	];
+	/** Every segment's paint-relevant outcome, in one stable shape. */
+	const outcomes = (plan) =>
+		plan.runs.flatMap((run) =>
+			run.segments.map((segment) => ({
+				key: segment.key,
+				collapsed: segment.collapsed,
+				completed: segment.completed,
+				internal:
+					segment.internal === null || segment.internal === undefined
+						? null
+						: {
+								live: segment.internal.live,
+								unsettled: segment.internal.unsettled,
+								receipts: segment.internal.receipts,
+							},
+			})),
+		);
+	const live = outcomes(
+		collapsePlan(rows, { live: true, watchedRunId: "dip-u" }),
+	);
+	const dipped = outcomes(
+		collapsePlan(rows, { live: false, watchedRunId: "dip-u" }),
+	);
+	assert.deepEqual(
+		dipped,
+		live,
+		"the dip reaches the SAME plan for the watched run",
+	);
+	assert.deepEqual(
+		outcomes(collapsePlan(rows, { live: true, watchedRunId: "dip-u" })),
+		live,
+		"and the re-entry reaches it again - idempotent, not stable once",
+	);
+	/*
+	 * THE F2 SHAPE, spelled: the episode is suppressed (paints loose) while the
+	 * settled turn's own bar stands - on BOTH sides of the flip.
+	 */
+	const episodeOf = (plan) => internalSpanOf(plan, "dip-w1");
+	assert.equal(
+		episodeOf(collapsePlan(rows, { live: true, watchedRunId: "dip-u" }))
+			.collapsed,
+		false,
+		"the live pass suppresses the episode's second bar",
+	);
+	assert.equal(
+		episodeOf(collapsePlan(rows, { live: false, watchedRunId: "dip-u" }))
+			.collapsed,
+		false,
+		"and the dip does not hand it back",
+	);
+	/*
+	 * UNWATCHED CONTROL (the R2 residual, unchanged): the same dip still folds -
+	 * the freeze is the latch's, not a blanket rule.
+	 */
+	assert.notDeepEqual(
+		outcomes(collapsePlan(rows, { live: false })),
+		outcomes(collapsePlan(rows, { live: true })),
+		"an unwatched run is not frozen: its dip still moves the plan",
+	);
+	assert.equal(
+		episodeOf(collapsePlan(rows, { live: false })).collapsed,
+		true,
+		"the unwatched dip folds the episode into its bar",
+	);
+});
+
+test("the settle latch: the watched episode's bar still arrives when the settle lands - no permanent suppression", () => {
+	/*
+	 * The anchored reading must not suppress past settlement: once a settled
+	 * close lands beyond the episode, `span.to >= liveFrom` reads false for the
+	 * watched run too, the gate stops, and the bar is the settle outcome PR-4 #2
+	 * expects (the mounted half pins the one announcement).
+	 */
+	const rows = [
+		user("pst-u"),
+		tool("pst-t0", { durationS: 3 }),
+		answer("pst-a0", { settledAt: TS + 3_000, stopReason: "stop" }),
+		peerRow("pst-w1"),
+		tool("pst-t1", { durationS: 4 }),
+		answer("pst-a1", { settledAt: TS + 15_000, stopReason: "stop" }),
+	];
+	const settled = collapsePlan(rows, { live: false, watchedRunId: "pst-u" });
+	const episode = internalSpanOf(settled, "pst-w1");
+	assert.equal(
+		episode.collapsed,
+		true,
+		"the settled episode wears its own bar",
+	);
+	assert.equal(
+		episode.internal.unsettled,
+		false,
+		"and it is no longer unsettled",
+	);
+	assert.equal(episode.internal.live, false, "nor live");
+});
+
+test("the settle latch: a latch that does not hold the run leaves the plan byte-identical - the scoping control", () => {
+	/*
+	 * THE SCOPING CONTROL (settle-latch convergence round, 2026-10-17). The
+	 * latch spends `watched` on the NEWEST run that HOLDS its row id
+	 * (`runHoldsRowId`, containment) and nowhere else; every silence this round
+	 * pins is downstream of that spend. Pin the other side here: an id the newest
+	 * run does not hold changes nothing - every projection, live or quiet, equals
+	 * the no-latch plan, including the dip whose fold the R2 residual keeps for
+	 * unwatched runs. The mounted announce-side control is not constructible in
+	 * the desktop harness (measured: a live pass re-latches the newest run, a
+	 * quiet arrival marshals its receipts into quiet-group bars remembered
+	 * without appearing, and a conversation switch resets the bookkeeping), so
+	 * this byte-identity carries the "unwatched timing is unchanged" control.
+	 */
+	const rows = [
+		user("scp-u"),
+		tool("scp-t0", { durationS: 3 }),
+		answer("scp-a0", { settledAt: TS + 3_000, stopReason: "stop" }),
+		peerRow("scp-w1"),
+		tool("scp-t1", { phase: "running", output: null }),
+	];
+	const outcomes = (options) =>
+		collapsePlan(rows, options).runs.flatMap((run) =>
+			run.segments.map((segment) => ({
+				key: segment.key,
+				collapsed: segment.collapsed,
+				completed: segment.completed,
+				internal:
+					segment.internal === null || segment.internal === undefined
+						? null
+						: {
+								live: segment.internal.live,
+								unsettled: segment.internal.unsettled,
+								receipts: segment.internal.receipts,
+							},
+			})),
+		);
+	for (const live of [true, false]) {
+		assert.deepEqual(
+			outcomes({ live, watchedRunId: "scp-observer" }),
+			outcomes({ live }),
+			`a foreign latch id changes nothing (live: ${live})`,
+		);
+		assert.deepEqual(
+			outcomes({ live, watchedRunId: null }),
+			outcomes({ live }),
+			`an explicit null latch changes nothing (live: ${live})`,
+		);
+	}
+	/*
+	 * CONTAINMENT IS PER-NEWEST-RUN: an id REAL in the rows but not in the
+	 * newest run is equally inert - the latch cannot freeze a run it never
+	 * watched. The close before the second user row is what makes it a second
+	 * RUN at all: a user row inside an open turn is a steer and stays in the
+	 * same run (measured while authoring this case - the merged run legitimately
+	 * held the id).
+	 */
+	const twoRun = [
+		...rows,
+		answer("scp-a1", { settledAt: TS + 9_000, stopReason: "stop" }),
+		user("scp-u2"),
+		tool("scp-t2", { phase: "running", output: null }),
+	];
+	const brief = (options) =>
+		collapsePlan(twoRun, options).runs.flatMap((run) =>
+			run.segments.map((segment) => ({
+				key: segment.key,
+				collapsed: segment.collapsed,
+				internal:
+					segment.internal === null || segment.internal === undefined
+						? null
+						: segment.internal.unsettled,
+			})),
+		);
+	for (const live of [true, false]) {
+		assert.deepEqual(
+			brief({ live, watchedRunId: "scp-u" }),
+			brief({ live }),
+			`an older run's row id is not the newest run's to hold (live: ${live})`,
+		);
+	}
+});
+
+test("F3: a settled bar's own media keeps that bar when a receipt arrives after it", () => {
+	/*
+	 * Pinning media run-wide once ANY receipt existed tore the picture out of the
+	 * settled bar that owned it: base holds `seg:f3-a1[f3-media]` collapsed and the
+	 * pin dropped that bar entirely, painting the media loose.
+	 */
+	const plan = planOf(
+		[
+			user("f3-u"),
+			tool("f3-media", { toolName: "generate_image", phase: "done" }, "trace"),
+			answer("f3-a1"),
+			peerRow("f3-p1"),
+			tool("f3-t1", {}, "trace"),
+		],
+		false,
+	);
+	const bar = internalSpanOf(plan, "f3-media");
+	assert.equal(bar.collapsed, true, "the settled bar still holds its media");
+	assert.equal(bar.key, "seg:f3-a1");
+	assert.equal(bar.internal ?? null, null);
+});
+
+test("F3: media owned AFTER the first receipt stays inline", () => {
+	const plan = planOf(
+		[
+			user("f3b-u"),
+			answer("f3b-a1"),
+			peerRow("f3b-p1"),
+			tool("f3b-media", { toolName: "generate_image", phase: "done" }, "trace"),
+			tool("f3b-t1", {}, "trace"),
+		],
+		false,
+	);
+	assert.equal(
+		allCollapsedIds(plan).has("f3b-media"),
+		false,
+		"a picture produced inside the episode is never hidden by it",
+	);
+});
+
+test("F4: a reader-opened live episode is not un-collapsed by a landing head", () => {
+	/*
+	 * The one-bar gate suppresses a live episode when an ordinary bar also stands,
+	 * which closes a disclosure the reader opened - silently, because the key is
+	 * unchanged and the re-collapse patch never runs. `openRuns` must win.
+	 */
+	const rows = [
+		user("f4-u"),
+		tool("f4-t0", {}, "trace"),
+		answer("f4-a0"),
+		peerRow("f4-w2"),
+		tool("f4-t2", { phase: "running" }, "trace"),
+	];
+	const closed = internalSpanOf(planOf(rows, true), "f4-w2");
+	assert.equal(closed.collapsed, false, "without an open key the gate yields");
+	const opened = internalSpanOf(
+		collapsePlan(rows, { live: true, openRuns: new Set([closed.key]) }),
+		"f4-w2",
+	);
+	assert.equal(opened.collapsed, true, "the reader's open episode survives");
+	assert.equal(opened.key, closed.key, "and keeps its identity");
+});
+
+test("olderRowsExist: a head-cut episode condenses only when older rows are known to exist", () => {
+	/*
+	 * The architect's discriminator for the head-cut contradiction. The seed is
+	 * `!headLoaded && olderRowsExist`, so it moves ONLY a span at the loaded edge,
+	 * and defaults off so every existing caller keeps today's behaviour.
+	 */
+	const rows = [
+		peerRow("oe-peer"),
+		tool("oe-tool", { phase: "running" }, "trace"),
+	];
+	const none = internalSpanOf(
+		collapsePlan(rows, { live: true, olderRowsExist: false }),
+		"oe-peer",
+	);
+	assert.equal(none.collapsed, false);
+	assert.equal(none.internal, null);
+	const unset = internalSpanOf(collapsePlan(rows, { live: true }), "oe-peer");
+	assert.equal(unset.collapsed, false, "omitted defaults to today's behaviour");
+	const older = internalSpanOf(
+		collapsePlan(rows, { live: true, olderRowsExist: true }),
+		"oe-peer",
+	);
+	assert.equal(older.collapsed, true);
+	assert.notEqual(older.internal, null);
+});
+
+test("olderRowsExist does not widen a run whose own head is loaded", () => {
+	/* `[user, peer, tool]` has its opening user row on hand, so nothing older is
+	 * missing from THIS run whatever the paging state says: the receipt opens the
+	 * run's content and still paints. */
+	const rows = [
+		user("ow-user"),
+		peerRow("ow-peer"),
+		tool("ow-tool", { phase: "running" }, "trace"),
+	];
+	const span = internalSpanOf(
+		collapsePlan(rows, { live: true, olderRowsExist: true }),
+		"ow-peer",
+	);
+	assert.equal(span.collapsed, false);
+	assert.equal(span.internal, null);
+});
+
+test("olderRowsExist is part of the plan's options key", () => {
+	/* Without it the caller's plan memo would not re-plan when a page lands. */
+	assert.notEqual(
+		collapsePlanOptionsKey({ live: true, olderRowsExist: true }),
+		collapsePlanOptionsKey({ live: true, olderRowsExist: false }),
+	);
+	assert.equal(
+		collapsePlanOptionsKey({ live: true }),
+		collapsePlanOptionsKey({ live: true, olderRowsExist: false }),
+		"omitted equals false",
+	);
+});
+
+test("olderRowsThanWindow: either an unloaded page or a window-hidden head means older rows exist", () => {
+	/*
+	 * The caller's derivation of `olderRowsExist`, as a pure function so each arm
+	 * is pinned in milliseconds. The `hidden > 0` arm is ALSO mount-tested
+	 * (`rows hidden by the render window...` in the behaviour file, 362 rows); see
+	 * the helper's doc comment for why that fixture has to be that tall.
+	 */
+	assert.equal(olderRowsThanWindow(true, 0), true, "hasMore alone");
+	assert.equal(olderRowsThanWindow(true, 12), true, "hasMore wins over hidden");
+	assert.equal(olderRowsThanWindow(false, 0), false, "nothing older anywhere");
+	assert.equal(olderRowsThanWindow(false, 1), true, "hidden alone");
+	assert.equal(
+		olderRowsThanWindow(undefined, 0),
+		false,
+		"absent hasMore is false",
+	);
+	assert.equal(
+		olderRowsThanWindow(undefined, 3),
+		true,
+		"absent hasMore, hidden",
+	);
+});
+
+test("olderRowsExist seeds only the LIVE span: a settled head-cut bar is not an episode (R2-2)", () => {
+	/* `[peer, 4 tools, answer]`, settled. It condenses as an ordinary bar whether
+	 * or not older rows exist, so the seed must not change what it is: same key,
+	 * no episode. Otherwise the head landing re-keys `qg:p` -> `seg:a`. */
+	const rows = [
+		peerRow("sl-peer"),
+		tool("sl-t1"),
+		tool("sl-t2"),
+		tool("sl-t3"),
+		tool("sl-t4"),
+		answer("sl-final"),
+	];
+	const of = (older) =>
+		internalSpanOf(
+			collapsePlan(rows, { live: false, olderRowsExist: older }),
+			"sl-peer",
+		);
+	const without = of(false);
+	const withOlder = of(true);
+	assert.equal(withOlder.internal, null, "not an episode");
+	assert.equal(withOlder.key, without.key, "the same key either way");
+	assert.equal(withOlder.collapsed, without.collapsed);
+});
+
+test("a live head-cut episode states minimum-only counts and no invented duration", () => {
+	/* Restored from the original head-cut count test (R2-4): the live episode that
+	 * the older-rows seed keeps condensed still counts one contained action, one
+	 * receipt and no duration - the figures a cut span can honestly state. */
+	const rows = [
+		peerRow("lc-peer"),
+		tool("lc-t", { phase: "running", durationS: 2.6 }),
+	];
+	const span = internalSpanOf(
+		collapsePlan(rows, { live: true, olderRowsExist: true }),
+		"lc-peer",
+	);
+	assert.equal(span.facts.actions, 1);
+	assert.equal(span.internal.receipts, 1);
+	assert.equal(
+		span.facts.durationS,
+		null,
+		"a cut head cannot state a duration",
+	);
+});
+
+test("paintedRows and widenTarget measure with the render's older-rows input (R2-3)", () => {
+	/* The widen's currency must be the render's. With a run taller than the snap's
+	 * reach the window edge lands on the peer, `hidden > 0`, the render condenses
+	 * the live episode - so the metric must count it as hidden too. */
+	const rows = [user("pw-user"), answer("pw-final")];
+	for (let i = 0; i < 300; i += 1) rows.push(tool(`pw-pre-${i}`));
+	rows.push(peerRow("pw-peer"));
+	for (let i = 0; i < 58; i += 1) rows.push(tool(`pw-post-${i}`));
+	rows.push(tool("pw-live", { phase: "running" }, "trace"));
+	const opts = {
+		step: 60,
+		live: true,
+		snapMaxExtra: 300,
+		completedRunMaxExtra: 720,
+	};
+	const painted = paintedRows(rows, 60, opts);
+	assert.ok(
+		painted < 60,
+		`the live episode is counted as hidden, got ${painted}`,
+	);
+});
+
+// R3-2 architect ruling: older rows prove a cut, not an unseen settled answer.
+// Keep the live-only seed; a settled fragment must wait for an actual answer
+// anchor before a lone receipt can make it an internal episode.
+test("R3-2: settled answerless head-cut receipt work paints without a loaded anchor", () => {
+	const rows = [
+		peerRow("r3-peer"),
+		tool("r3-t1"),
+		tool("r3-t2"),
+		tool("r3-t3"),
+	];
+	const span = internalSpanOf(
+		collapsePlan(rows, { live: false, olderRowsExist: true }),
+		"r3-peer",
+	);
+	assert.equal(
+		span.collapsed,
+		false,
+		"older rows alone do not establish settled work",
+	);
+	assert.equal(span.internal, null);
+});
+
+test("R3-2: settled receipt work folds once its preceding answer actually loads", () => {
+	const rows = [
+		answer("r3-anchor"),
+		peerRow("r3-peer"),
+		tool("r3-t1"),
+		tool("r3-t2"),
+		tool("r3-t3"),
+	];
+	const span = internalSpanOf(
+		collapsePlan(rows, { live: false, olderRowsExist: true }),
+		"r3-peer",
+	);
+	assert.equal(
+		span.collapsed,
+		true,
+		"loaded settled answer establishes the continuation",
+	);
+	assert.equal(span.internal.receipts, 1);
+});
+
+test("R3: announcement ownership aliases only previously known qg episodes, with pinned exclusion and bounded refusals", () => {
+	const origin = epV2("qg:ann-p", ["ann-p", "ann-t"]);
+	const bounded = epV2("seg:ann-final", ["ann-p", "ann-t", "ann-t2"]);
+	const prior = snapshotV2([origin], [origin.key], null, ["ann-final"]);
+	assert.equal(
+		aliasesV2(prior, [bounded], { outsideCurrentIds: ["ann-final"] })
+			.episodes[0].key,
+		origin.key,
+	);
+	// This is the effect's ownership predicate: UNKNOWN live keys never enter
+	// knownKeys. Structural eligibility alone cannot burn their future sentence.
+	const unannounced = snapshotV2([origin], []);
+	assert.equal(unannounced.keys.size, 0);
+	assert.equal(aliasesV2(unannounced, [bounded]).episodes[0].key, bounded.key);
+	const swallowsPinned = epV2("seg:other", ["ann-p", "ann-t", "ann-final"]);
+	assert.equal(
+		aliasesV2(prior, [swallowsPinned]).episodes[0].key,
+		"seg:other",
+		"a prior visible anchor cannot become episode-private work",
+	);
+	const split = [epV2("seg:one", ["ann-p"]), epV2("seg:two", ["ann-t"])];
+	assert.deepEqual(
+		aliasesV2(prior, split).episodes.map((e) => e.key),
+		["seg:one", "seg:two"],
+	);
+	const reorder = epV2("seg:order", ["ann-t", "ann-p"]);
+	assert.equal(aliasesV2(prior, [reorder]).episodes[0].key, reorder.key);
+	const lost = epV2("seg:lost", ["ann-t"]);
+	assert.equal(aliasesV2(prior, [lost]).episodes[0].key, lost.key);
+	const overflow = snapshotV2([
+		epV2(
+			"qg:overflow",
+			Array.from({ length: 4097 }, (_, i) => `overflow-${i}`),
+		),
+	]);
+	assert.equal(overflow.reason, "prior-id-limit");
+	assert.equal(aliasesV2(overflow, [bounded]).reason, "prior-id-limit");
 });

@@ -814,6 +814,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				<div
 					ref={setRailHost}
 					data-panel-rail-host=""
+					data-glass-region="sidebar"
 					className="h-full shrink-0 bg-surface"
 					style={{ width: railWidth }}
 				/>
@@ -913,7 +914,11 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
  * that could take a press or a focus the scrim above it would hide anyway.
  */
 const SidebarStripOnly: FC = () => (
-	<div aria-hidden="true" className="h-full bg-surface" />
+	<div
+		aria-hidden="true"
+		data-glass-region="sidebar"
+		className="h-full bg-surface"
+	/>
 );
 
 /**

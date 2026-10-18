@@ -3254,6 +3254,19 @@ export type CatalogueScopeKind = "team" | "agent";
 export const CATALOGUE_HEAD_PAGE = 50;
 
 /**
+ * The `sort` value that asks the daemon for the sidebar's OWN head order.
+ *
+ * `sort=activity` is the server's name for the membership rule this panel
+ * already draws by: rows that need the reader first, then everything else
+ * newest-activity-first. It exists because the rank order's head page is a wake
+ * band on a store with scheduled conversations, so the conversation a reader has
+ * just used can sort past the page entirely - the reported defect this parameter
+ * answers (`chat-sidebar.tsx` publishes the capability that gates it; this
+ * constant is the one place the value is spelled).
+ */
+export const CATALOGUE_SORT_ACTIVITY = "activity";
+
+/**
  * The rows one expanded group asks for at a time.
  *
  * Smaller than the head page because a group is opened on intent, one at a time,
@@ -3688,6 +3701,17 @@ type CanonicalSessionsState = {
 	 */
 	cataloguePageable: boolean;
 	/**
+	 * Whether this daemon advertises `session_catalogue_sort`, as published by the
+	 * surface that resolves the capability (`setCatalogueActivityHead`). While true,
+	 * the catalogue reads ask for the SIDEBAR'S OWN ORDER (`sort=activity`) -
+	 * active rows first, then newest-activity-first - which is what keeps the
+	 * conversation a reader has just used inside the first page on a store whose
+	 * cold population a wake band would otherwise fill. It is `false` until
+	 * something says otherwise: the fail-closed direction, and also exactly the
+	 * request this app has always made.
+	 */
+	catalogueActivityHead: boolean;
+	/**
 	 * Whether this daemon advertises `session_draft_warm`, as published by the
 	 * surface that resolves the capability (`setDraftWarmable`). It gates the
 	 * mint a NEW chat's first keystroke would spend — see `ensureDraftWarm` — and
@@ -4057,6 +4081,13 @@ type CanonicalSessionsState = {
 	 * for nothing.
 	 */
 	setCataloguePageable: (pageable: boolean) => void;
+	/**
+	 * Publish whether the daemon negotiates the activity head order
+	 * (`session_catalogue_sort`), read from the same capability answer the other
+	 * flags come from. The store does not read the capability itself, for the
+	 * reason `cataloguePageDefault` states, and `false` is the pre-change request.
+	 */
+	setCatalogueActivityHead: (activityHead: boolean) => void;
 	/**
 	 * Publish whether the daemon can warm a new chat's draft, so the composer's
 	 * keystroke can mint one. A no-op when the value has not moved, for the same
@@ -5289,6 +5320,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 		(set, get) => ({
 			sessions: [],
 			cataloguePageable: false,
+			catalogueActivityHead: false,
 			// Fail-closed until a mounted pane resolves the capability and publishes it
 			// (`setDraftWarmable`): no backend this app has ever shipped warms drafts
 			// by default, and the absent flag is what keeps every older daemon on
@@ -5493,6 +5525,21 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 * includes every caller but the sidebar's own refresh.
 								 */
 								...(pageCounts ? { with_counts: true } : {}),
+								/*
+								 * THE ORDER THE PAGE IS READ IN, omitted unless the daemon advertises
+								 * `session_catalogue_sort` (`catalogueActivityHead`). An older daemon
+								 * IGNORES the parameter silently, so sending it un-gated would receive
+								 * the rank order under a request that asked for another one - a page
+								 * whose membership is the wake band rather than the reader's own
+								 * recent conversations, with nothing in the answer to tell. The
+								 * conditional shape is `with_counts`'s, so the request this app sends
+								 * without the capability is byte-identical to the one it always
+								 * sent. `fetchCatalogueTail` sends the same value, which its own
+								 * comment owns: the two must agree with the cursor.
+								 */
+								...(get().catalogueActivityHead
+									? { sort: CATALOGUE_SORT_ACTIVITY }
+									: {}),
 							}),
 					);
 					if (generation !== refreshGeneration) return;
@@ -5836,6 +5883,18 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						limit: CATALOGUE_HEAD_PAGE,
 						include_archived: true,
 						cursor,
+						/*
+						 * THE SAME ORDER THE HEAD PAGE WAS READ IN, and that sameness is the
+						 * point rather than a convenience: `tailCursor` was minted by a page
+						 * read under this flag, and the cursor carries the order it was minted
+						 * in - a tail request in the OTHER order is answered as a foreign
+						 * cursor (the store's first page), so the extension would re-read the
+						 * top and append nothing. Both sites read the one flag, which is what
+						 * makes a mismatched pair unreachable except across a capability flip.
+						 */
+						...(get().catalogueActivityHead
+							? { sort: CATALOGUE_SORT_ACTIVITY }
+							: {}),
 					});
 					const page = answerRows(result.sessions, get().forgotten);
 					set((state) => {
@@ -6063,6 +6122,10 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			setCataloguePageable: (pageable) => {
 				if (get().cataloguePageable !== pageable)
 					set({ cataloguePageable: pageable });
+			},
+			setCatalogueActivityHead: (activityHead) => {
+				if (get().catalogueActivityHead !== activityHead)
+					set({ catalogueActivityHead: activityHead });
 			},
 			setDraftWarmable: (warmable) => {
 				if (get().draftWarmable === warmable) return;

@@ -609,6 +609,12 @@ test("the archived state is a pill badge with its own restore control beside it"
 });
 
 test("the header's menu is the session's actions, and its delete only ASKS", () => {
+	assert.equal(
+		JSON.parse(
+			readFileSync("src/i18n/catalogues/en/ui.chat.header.json", "utf8"),
+		)["ui.chat.header.delete"],
+		"Delete conversation…",
+	);
 	/*
 	 * THE SLICE STARTS AT THE TRIGGER rather than at the condition that gates it.
 	 * It used to read `between(HEADER, "(archiveEnabled || deleteEnabled) && (", …)`,
@@ -638,7 +644,7 @@ test("the header's menu is the session's actions, and its delete only ASKS", () 
 	 * stage a candidate, because the wire requires a confirmation and a menu pick is
 	 * not one.
 	 */
-	assert.match(menu, /Delete conversation…/);
+	assert.ok(menu.includes('t("ui.chat.header.delete")'));
 	assert.match(menu, /className="text-danger"/);
 	assert.match(menu, /onRequestDelete\?\.\(\)/);
 	assert.equal(
@@ -835,6 +841,11 @@ test("a typed /archive STAGES the confirmation, and /unarchive still writes stra
 });
 
 test("the confirmation asks the reversible question, and the copy is written in ONE place", () => {
+	const labels = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.dialogs.json", "utf8"),
+	);
+	assert.equal(labels["ui.chat.dialogs.archive_action"], "Archive");
+	assert.equal(labels["ui.chat.dialogs.cancel"], "Cancel");
 	const dialog = code(ARCHIVE_DIALOG);
 	const copy = code(ARCHIVE_CONFIRM);
 	/*
@@ -890,8 +901,11 @@ test("the confirmation asks the reversible question, and the copy is written in 
 	 * opt-in: the shared modal's default must not silently make this primary again.
 	 */
 	assert.match(dialog, /isDangerous=\{true\}/);
-	assert.match(dialog, /confirmText="Archive"/);
-	assert.match(dialog, /cancelText="Cancel"/);
+	assert.match(
+		dialog,
+		/confirmText=\{t\("ui\.chat\.dialogs\.archive_action"\)\}/,
+	);
+	assert.match(dialog, /cancelText=\{t\("ui\.chat\.dialogs\.cancel"\)\}/);
 });
 
 test("danger treatment keeps Cancel first without an archive autofocus override", () => {

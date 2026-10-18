@@ -27,6 +27,12 @@ import type {
 	WindowChromeFacts,
 	WindowChromeState,
 } from "../shared/window-chrome";
+import type {
+	GlassScheme,
+	GlassSettings,
+	WindowGlassFacts,
+	WindowGlassState,
+} from "../shared/window-glass";
 import type { DevDriverBridge } from "./dev-driver";
 
 // Matching same type in `src/main/index.ts`
@@ -75,6 +81,16 @@ declare global {
 				popupAppMenu: () => Promise<boolean>;
 				onState: (callback: (state: WindowChromeState) => void) => () => void;
 			};
+			/** The window glass bridge; see `src/shared/window-glass.ts`. */
+			windowGlass: {
+				facts: () => WindowGlassFacts;
+				get: () => Promise<WindowGlassState | null>;
+				set: (
+					patch: Partial<GlassSettings>,
+				) => Promise<WindowGlassState | null>;
+				reportScheme: (scheme: GlassScheme) => Promise<boolean>;
+				onState: (callback: (state: WindowGlassState) => void) => () => void;
+			};
 			desktop: DesktopAPI;
 			/**
 			 * The mini view's bridge (design §D.3): the summon/dismiss pair and the
@@ -110,7 +126,14 @@ declare global {
 			browser: {
 				pageControl: (
 					tabId: number,
-					action: "open" | "close" | "search" | "in" | "out" | "reset",
+					action:
+						| "open"
+						| "close"
+						| "search"
+						| "print"
+						| "in"
+						| "out"
+						| "reset",
 					query: string,
 					forward: boolean,
 					next: boolean,
@@ -129,7 +152,7 @@ declare global {
 				reorderTabs: (ids: number[]) => Promise<unknown>;
 				actOnTab: (
 					tabId: number,
-					action: "duplicate" | "reload",
+					action: "duplicate" | "reload" | "mute" | "unmute",
 				) => Promise<HumanTabActionOutcome>;
 				newTab: (sessionId?: string | null) => Promise<unknown>;
 				closeTab: (tabId: number) => Promise<unknown>;

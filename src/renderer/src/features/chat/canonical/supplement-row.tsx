@@ -6,7 +6,10 @@
  * starts directly with its content and position alone carries its relationship
  * to the answer above; spacing does the seam. Files first, then components
  * (memo §0), with compact actionable file rows even in a small files-only finish:
- * an inert count sentence must not be the only route to a refused preview.
+ * an inert count sentence must not be the only route to a refused preview — a
+ * principle the condensed form below now carries too. Image-kind files render
+ * as a thumbnail grid instead of rows (operator decision 2026-10-16); see
+ * `supplement-image-grid.tsx` for that form's own why and bounds.
  *
  * THE STATE LINE is the image-gen card's state machine in miniature: the same
  * frozen vocabulary, the same copy bytes as the TUI (`Preparing highlights…`,
@@ -23,54 +26,49 @@
  * HTTP string (the round-1 U2 finding: a bare `Not Found` is not a sentence a
  * user may be shown).
  *
- * THE CONDENSED FORM (round-1 D1/U3/R2, implemented here): while the block's
- * own turn renders condensed — one closed bar over its run; the flag arrives
- * from the transcript's collapse plan, never re-derived here — the block is ONE
- * line and nothing else. No file rows and no `[data-supplement-slot]`/iframe:
- * absent, not hidden, so no document fetch either. The line is passive (the
- * turn's own bar is the expansion); the settled arms carry counts per the
- * design's copy table and the not-settled arms keep the state line and their
- * actions exactly as the expanded form wires them.
+ * THE CONDENSED FORM (round-1 D1/U3/R2, reworked by the operator decision of
+ * 2026-10-16): while the block's own turn renders condensed — one closed bar
+ * over its run; the flag arrives from the transcript's collapse plan, never
+ * re-derived here — the block shows THE SAME FILES SECTION as its expanded
+ * self (the image grid, the rows, the `N more files` disclosure) and nothing
+ * else. No `[data-supplement-slot]`/iframe: absent, not hidden, so no document
+ * fetch either — and no graphics, whose route is the turn's own bar. The
+ * operator's ruling is the small-set principle above extended to this form:
+ * the passive count clause (`1 file: X`, `2 files: a, b`, `N files · M
+ * graphics`) was the ONLY route to a file the reader may want to open while
+ * the run is still folded, so it is replaced by the actionable rows themselves.
+ * A graphics-ONLY finish keeps its plain count clause (`1 graphic`, `N
+ * graphics`): there is no file to act on and the bar is the expansion frames
+ * render in. The not-settled arms keep the state line and their actions exactly
+ * as the expanded form wires them, with the files section ABOVE the line once
+ * files are known — which is why the old counts prefix (`2 files · Preparing
+ * highlights…`) has no job left and is gone: the rows say it.
  *
  * THE DISCLOSURES (round-1 D3/U5/U7): both are the app's one disclosure idiom
  * (`Disclosure` — chevron, `ink-dim` mark, one ink for both siblings), both are
  * toggles (`N more files` ⇄ `Show fewer`), and the expanded files tail renders
  * as the compact row grammar (glyph + name + menu), never bare paths.
  *
- * THE WARNINGS ABOUT VARYING FORMS: the ≤2-file summary, the counts prefix and
- * the condensed line's clauses all come from `supplement-model`'s own copy
- * functions, so the row and the model cannot summarize one set two ways.
+ * THE WARNINGS ABOUT VARYING FORMS: the graphics count clause, the disclosure's
+ * words and the size column all come from `supplement-model`'s own copy
+ * functions, so the row and the model cannot paint one set two ways.
  */
 
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-	Tooltip,
-} from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
-import { t } from "@shared/i18n";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import {
-	ClipboardCopy,
-	Ellipsis,
-	File as FileIcon,
-	FileImage,
-	FileSpreadsheet,
-	FileText,
-	FolderOpen,
-	LayoutGrid,
-} from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import type { CanvasPane } from "../utils/canvas-pane";
 import { useCanvasPane } from "../utils/canvas-pane";
 import { fileKind } from "../utils/file-kind";
-import { openLocalTarget, revealLocalTarget } from "../utils/link-open";
-import { opensInCanvas } from "../utils/open-in-canvas";
+import {
+	FileActionsMenu,
+	FileGlyph,
+	useFileTargets,
+} from "./supplement-file-actions";
 import { SupplementFrame } from "./supplement-frame";
+import { SupplementImageGrid } from "./supplement-image-grid";
 import {
 	COPY_ADJUST,
 	COPY_CANCEL,
@@ -80,9 +78,10 @@ import {
 	COPY_RETRY,
 	STEER_TEXT_MAX_CHARS,
 	type SupplementComponent,
+	type SupplementFile,
 	type SupplementRecord,
-	condensedBlockLine,
-	condensedCountPrefix,
+	causePhrase,
+	countClause,
 	diagnosticDisplay,
 	displayText,
 	failureExplanation,
@@ -94,25 +93,6 @@ import {
 	supplementDisposition,
 } from "./supplement-model";
 import { useSupplementDocument } from "./use-supplement-document";
-
-/** The type glyph for one callout row, from the shared file classifier. */
-function FileGlyph({ path }: { path: string }) {
-	const kind = fileKind(path);
-	switch (kind) {
-		case "image":
-			return <FileImage aria-hidden="true" className="size-3.5 shrink-0" />;
-		case "spreadsheet":
-			return (
-				<FileSpreadsheet aria-hidden="true" className="size-3.5 shrink-0" />
-			);
-		case "markdown":
-		case "text":
-		case "document":
-			return <FileText aria-hidden="true" className="size-3.5 shrink-0" />;
-		default:
-			return <FileIcon aria-hidden="true" className="size-3.5 shrink-0" />;
-	}
-}
 
 /**
  * One callout row: the file's NAME is the content, and everything else lives in
@@ -126,6 +106,9 @@ function FileGlyph({ path }: { path: string }) {
  * the display spelling (the pre-refactor component handed its action legs the
  * same string it displayed, so a root-level file whose name equals its path
  * acted on the empty suffix).
+ *
+ * The plumbing itself is `supplement-file-actions.tsx`'s, shared with the image
+ * grid's tiles so one file's actions cannot become two implementations.
  */
 const SupplementFileLine = memo(function SupplementFileLine({
 	actionPath,
@@ -142,33 +125,7 @@ const SupplementFileLine = memo(function SupplementFileLine({
 	size: string;
 	pane: CanvasPane | null;
 }) {
-	const canOpenInCanvas = opened(pane, actionPath);
-	const [copied, setCopied] = useState(false);
-	/*
-	 * Journal paths deliberately retain their portable spelling. Resolve only at
-	 * the action boundary, using the session's cwd (never Electron's launch cwd).
-	 * Every action consumes the same main-process identity seam, including the
-	 * disclosure tail; a failed probe must not fall back to an unrooted path.
-	 */
-	const withTarget = async (action: (path: string) => unknown) => {
-		try {
-			const [file] = await window.api.probeFiles(
-				[actionPath],
-				cwd ?? undefined,
-			);
-			if (!file?.resolved.startsWith("/")) {
-				throw new Error("File path has no session working directory");
-			}
-			await action(file.resolved);
-		} catch {
-			showErrorToast(t("ui.chat.highlights.file_resolution_failed"));
-		}
-	};
-	const press = () =>
-		withTarget(async (path) => {
-			if (canOpenInCanvas && pane && (await pane.openInCanvas(path))) return;
-			await openLocalTarget(path);
-		});
+	const { press } = useFileTargets(actionPath, cwd, pane);
 	return (
 		<div className="group flex w-full items-center gap-2 text-meta">
 			<FileGlyph path={actionPath} />
@@ -187,70 +144,15 @@ const SupplementFileLine = memo(function SupplementFileLine({
 				)}
 			</button>
 			{size && <span className="shrink-0 text-ink-dim">{size}</span>}
-			<DropdownMenu>
-				<Tooltip content="File actions">
-					<DropdownMenuTrigger asChild={true}>
-						<button
-							type="button"
-							className="flex size-6 shrink-0 items-center justify-center text-ink-dim opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-							aria-label={`Actions for ${label || "this file"}`}
-						>
-							<Ellipsis aria-hidden="true" className="size-3.5" />
-						</button>
-					</DropdownMenuTrigger>
-				</Tooltip>
-				<DropdownMenuContent align="end" className="min-w-45">
-					{canOpenInCanvas && (
-						<DropdownMenuItem
-							onSelect={() => {
-								void withTarget((path) => pane?.openInCanvas(path));
-							}}
-						>
-							<LayoutGrid aria-hidden="true" />
-							<span>Open in canvas</span>
-						</DropdownMenuItem>
-					)}
-					<DropdownMenuItem
-						onSelect={() => {
-							void withTarget(openLocalTarget);
-						}}
-					>
-						<FileIcon aria-hidden="true" />
-						<span>Open in default app</span>
-					</DropdownMenuItem>
-					<DropdownMenuItem
-						onSelect={() => {
-							void withTarget(revealLocalTarget);
-						}}
-					>
-						<FolderOpen aria-hidden="true" />
-						<span>Reveal in Finder</span>
-					</DropdownMenuItem>
-					<DropdownMenuItem
-						onSelect={() => {
-							void navigator.clipboard
-								.writeText(actionPath)
-								.then(() => setCopied(true))
-								.catch(() => showErrorToast("Failed to copy file path"));
-						}}
-					>
-						<ClipboardCopy aria-hidden="true" />
-						<span>{copied ? "Copied" : "Copy file path"}</span>
-					</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
+			<FileActionsMenu
+				actionPath={actionPath}
+				label={label}
+				cwd={cwd}
+				pane={pane}
+			/>
 		</div>
 	);
 });
-
-/** Whether this pane can show this path at all (the shared predicate). */
-function opened(pane: CanvasPane | null, path: string): boolean {
-	try {
-		return opensInCanvas(pane, path);
-	} catch {
-		return false;
-	}
-}
 
 /**
  * One component's slot: the lazy-mount gate (§2.11 — a frame mounts only when
@@ -370,6 +272,13 @@ export const SupplementRow = memo(function SupplementRow({
 	const [sticky, setSticky] = useState(0);
 
 	const disposition = supplementDisposition(record, record.live);
+	/*
+	 * The failed line's typed cause phrase (operator ask 2026-10-17; core #2557
+	 * licenses the variant and ONE word list — `CAUSE_PHRASES` is that list's
+	 * desktop transcription). A row without a cause, or carrying a token this
+	 * build does not know, paints the bare sentence exactly as before.
+	 */
+	const failedCause = causePhrase(record.cause);
 
 	const files = record.files;
 	const moreCount = record.filesMore;
@@ -465,11 +374,14 @@ export const SupplementRow = memo(function SupplementRow({
 	 * The one quiet line for the arms that carry one (§2.8's copy table). The
 	 * shimmer is the image-gen card's own `animate-shimmer` treatment at the
 	 * inline scale — the same motion vocabulary, the same reduced-motion
-	 * behaviour, no new animation. `countsPrefix` is the condensed not-settled
-	 * form's leading clause (`2 files · Preparing highlights…`), null everywhere
-	 * else.
+	 * behaviour, no new animation.
+	 *
+	 * NO FILE CLAUSE LIVES HERE since the 2026-10-16 rework: the files section
+	 * is drawn whenever files are known (condensed included), so the old
+	 * condensed counts prefix (`2 files · Preparing highlights…`) counted the
+	 * same set a second time beside its own rows.
 	 */
-	const stateLine = (countsPrefix: string | null) =>
+	const stateLine = () =>
 		disposition === "preparing" ||
 		disposition === "files_preparing" ||
 		disposition === "cancelled_retry" ||
@@ -480,14 +392,6 @@ export const SupplementRow = memo(function SupplementRow({
 				className="flex flex-wrap items-center gap-2 text-meta"
 				data-supplement-line=""
 			>
-				{countsPrefix !== null && (
-					<>
-						<span className="text-ink-muted">{countsPrefix}</span>
-						<span aria-hidden="true" className="text-ink-dim">
-							·
-						</span>
-					</>
-				)}
 				{(disposition === "preparing" || disposition === "files_preparing") && (
 					<>
 						<span
@@ -509,7 +413,10 @@ export const SupplementRow = memo(function SupplementRow({
 				)}
 				{(disposition === "failed_retry" ||
 					disposition === "files_failed_retry") && (
-					<span className="text-ink-muted">{COPY_FAILED}</span>
+					<span className="text-ink-muted">
+						{COPY_FAILED}
+						{failedCause ? ` — ${failedCause}` : ""}
+					</span>
 				)}
 				{/*
 				 * The pair is drawn TOGETHER or not at all (D10). Both actions are
@@ -602,27 +509,125 @@ export const SupplementRow = memo(function SupplementRow({
 	if (disposition === "nothing") return null;
 
 	/*
-	 * THE CONDENSED FORM (design D1, exactly). One line and nothing else: no
-	 * file rows, no `[data-supplement-slot]`/iframe — absent, not hidden, so no
-	 * document fetch either. The line is passive: no chevron, no handler,
-	 * `data-supplement-condensed` as its pin; the turn's own bar is the
-	 * expansion and restores the full block.
+	 * THE FILES SECTION, computed once and shared by BOTH forms (the operator
+	 * decision of 2026-10-16): the condensed block shows the same files section
+	 * as its expanded self — image-kind files as the thumbnail grid
+	 * (`supplement-image-grid.tsx`), the rest as the compact row grammar, the
+	 * `N more files` disclosure verbatim — so the two forms cannot drift apart.
+	 * The files half comes first (memo §0), and the small-set arms apply when no
+	 * COMPONENT rides the row and the whole known set is two files or fewer (the
+	 * TUI's own rule, `total_files <= 2 and not components_present`); they serve
+	 * the preparing arm's callouts too — they are the same callouts a moment
+	 * earlier.
+	 */
+	let filesSection: JSX.Element | null = null;
+	if (files.length > 0 || moreCount > 0) {
+		const imageFiles: SupplementFile[] = [];
+		const rowFiles: SupplementFile[] = [];
+		for (const file of files) {
+			if (fileKind(file.path) === "image") imageFiles.push(file);
+			else rowFiles.push(file);
+		}
+		const summaryArm =
+			totalFiles <= 2 && components.length === 0 && moreCount === 0;
+		filesSection = (
+			<div
+				className="flex flex-col gap-1"
+				data-supplement-files-summary={summaryArm ? "" : undefined}
+				data-supplement-files={summaryArm ? undefined : ""}
+			>
+				{imageFiles.length > 0 && (
+					/*
+					 * The grid's own bottom step keeps the section's 4px row pitch from
+					 * gluing pictures to the rows under them when a set is mixed.
+					 */
+					<SupplementImageGrid
+						files={imageFiles}
+						cwd={cwd}
+						pane={pane}
+						className={
+							rowFiles.length > 0 || moreCount > 0 ? "mb-1" : undefined
+						}
+					/>
+				)}
+				{rowFiles.map((file) => {
+					const { name, path, size } = fileRowParts(file);
+					return (
+						<SupplementFileLine
+							key={`${file.path}:${file.name}`}
+							actionPath={file.path}
+							cwd={cwd}
+							label={name || path}
+							suffix={path}
+							size={size}
+							pane={pane}
+						/>
+					);
+				})}
+				{moreCount > 0 && (
+					/*
+					 * ONE disclosure grammar for both siblings (D3): the app's
+					 * Disclosure idiom — chevron in the rows' own meta ink, a
+					 * colour step on hover — as a TOGGLE (`N more files` ⇄
+					 * `Show fewer`; U5), its tail rendered as the compact row
+					 * (glyph + name + menu; D3b) rather than bare paths. The
+					 * `rowClassName` override is the dense-list case the
+					 * primitive's own docs carve out: this block's pitch is
+					 * tighter than the default 24px disclosure row.
+					 */
+					<Disclosure
+						chevronClassName="text-ink-dim"
+						open={expandedMore}
+						onOpenChange={setExpandedMore}
+						rowClassName="min-h-0 py-0"
+						summary={
+							<span data-supplement-more="">
+								{expandedMore ? "Show fewer" : moreText(moreCount)}
+							</span>
+						}
+					>
+						{record.more.slice(0, 20).map((item) => (
+							<SupplementFileLine
+								key={item}
+								actionPath={item}
+								cwd={cwd}
+								label={item}
+								suffix=""
+								size=""
+								pane={pane}
+							/>
+						))}
+					</Disclosure>
+				)}
+			</div>
+		);
+	}
+
+	/*
+	 * THE CONDENSED FORM (round-1 D1/U3/R2, reworked by the 2026-10-16 operator
+	 * decision). The files section above is drawn IDENTICALLY here — actionable
+	 * rows and the image grid; no `[data-supplement-slot]`/iframe (absent, not
+	 * hidden, so no document fetch either) and no graphics, whose route is the
+	 * turn's own bar. A graphics-only settle keeps the design's plain count
+	 * clause; the not-settled arms keep the state line and their actions exactly
+	 * as the expanded form wires them, now under the files a reader can act on
+	 * while the run is still folded.
 	 */
 	if (condensed) {
 		if (disposition === "block") {
-			const line = condensedBlockLine(record);
-			if (line === null) return null;
+			if (filesSection === null && components.length === 0) return null;
 			return (
 				<div
 					className="flex flex-col gap-2"
 					data-supplement-record={record.anchor}
+					data-supplement-condensed=""
 				>
-					<div
-						className="text-ink-muted text-meta"
-						data-supplement-condensed=""
-					>
-						{line}
-					</div>
+					{filesSection}
+					{filesSection === null && components.length > 0 && (
+						<div className="text-ink-muted text-meta">
+							{countClause(components.length, "graphic")}
+						</div>
+					)}
 				</div>
 			);
 		}
@@ -630,103 +635,19 @@ export const SupplementRow = memo(function SupplementRow({
 			<div
 				className="flex flex-col gap-2"
 				data-supplement-record={record.anchor}
+				data-supplement-condensed=""
 			>
-				{stateLine(condensedCountPrefix(record))}
+				{filesSection}
+				{stateLine()}
 				{adjustLine}
 			</div>
 		);
 	}
 
-	/*
-	 * The files half first (memo §0). The small-set file actions apply when no
-	 * COMPONENT rides the row and the whole known set is two files or fewer
-	 * (the TUI's own rule, `total_files <= 2 and not components_present`), and
-	 * it serves the preparing arm's callouts too — they are the same callouts
-	 * a moment earlier. The names come from the model's own builder so the
-	 * condensed line and this summary can never disagree.
-	 */
-	let filesSection: JSX.Element | null = null;
-	if (files.length > 0 || moreCount > 0) {
-		if (totalFiles <= 2 && components.length === 0 && moreCount === 0) {
-			filesSection = (
-				<div className="flex flex-col gap-1" data-supplement-files-summary="">
-					{files.map((file) => {
-						const { name, path, size } = fileRowParts(file);
-						return (
-							<SupplementFileLine
-								key={file.path}
-								actionPath={file.path}
-								cwd={cwd}
-								label={name || path}
-								suffix={path}
-								size={size}
-								pane={pane}
-							/>
-						);
-					})}
-				</div>
-			);
-		} else {
-			filesSection = (
-				<div className="flex flex-col gap-1" data-supplement-files="">
-					{files.map((file) => {
-						const { name, path, size } = fileRowParts(file);
-						return (
-							<SupplementFileLine
-								key={`${file.path}:${file.name}`}
-								actionPath={file.path}
-								cwd={cwd}
-								label={name || path}
-								suffix={path}
-								size={size}
-								pane={pane}
-							/>
-						);
-					})}
-					{moreCount > 0 && (
-						/*
-						 * ONE disclosure grammar for both siblings (D3): the app's
-						 * Disclosure idiom — chevron in the rows' own meta ink, a
-						 * colour step on hover — as a TOGGLE (`N more files` ⇄
-						 * `Show fewer`; U5), its tail rendered as the compact row
-						 * (glyph + name + menu; D3b) rather than bare paths. The
-						 * `rowClassName` override is the dense-list case the
-						 * primitive's own docs carve out: this block's pitch is
-						 * tighter than the default 24px disclosure row.
-						 */
-						<Disclosure
-							chevronClassName="text-ink-dim"
-							open={expandedMore}
-							onOpenChange={setExpandedMore}
-							rowClassName="min-h-0 py-0"
-							summary={
-								<span data-supplement-more="">
-									{expandedMore ? "Show fewer" : moreText(moreCount)}
-								</span>
-							}
-						>
-							{record.more.slice(0, 20).map((item) => (
-								<SupplementFileLine
-									key={item}
-									actionPath={item}
-									cwd={cwd}
-									label={item}
-									suffix=""
-									size=""
-									pane={pane}
-								/>
-							))}
-						</Disclosure>
-					)}
-				</div>
-			);
-		}
-	}
-
 	return (
 		<div className="flex flex-col gap-2" data-supplement-record={record.anchor}>
 			{filesSection}
-			{stateLine(null)}
+			{stateLine()}
 			{record.detail?.includes("prepared:unsupported") && (
 				<p className="text-meta text-ink-muted" data-supplement-refusal="">
 					Inline preview unavailable. This HTML needs unsupported resources or

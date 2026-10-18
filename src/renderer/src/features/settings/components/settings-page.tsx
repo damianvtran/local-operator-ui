@@ -2,6 +2,7 @@ import { formatDayBucket } from "@features/chat/pickers/panels/formatters";
 import { parseTranscriptDisplayMode } from "@features/chat/transcript-display-mode";
 import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
 import { ProviderGrid } from "@features/providers/provider-grid";
+import { useProviderStatus } from "@features/providers/use-provider-status";
 import { pairingCardCopy } from "@shared/api/local-operator/backend-error";
 import type { ConfigUpdate } from "@shared/api/local-operator/types";
 import { useLaneLeadingColumn } from "@shared/components/common/chat-layout";
@@ -25,6 +26,7 @@ import {
 } from "@shared/hooks/use-radient-user-query";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
+import { useWindowGlass } from "@shared/hooks/use-window-glass";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -52,11 +54,16 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import { useLocation } from "react-router-dom";
+import { WindowGlassSetting } from "./window-glass-setting";
 
 import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
-import { sectionForSettingKey } from "../promoted-setting-sections";
+import {
+	MODEL_EFFORT_SETTING_KEY,
+	sectionForSettingKey,
+} from "../promoted-setting-sections";
 import { AppUpdatesSection } from "./app-updates-section";
 import { BackendSettingsSection } from "./backend-settings-section";
+import { DefaultEffortSelect } from "./default-effort-select";
 import { GeneralLanguageSetting } from "./language-dialog";
 
 import { KeyboardShortcutsSection } from "./keyboard-shortcuts-section";
@@ -211,7 +218,10 @@ const UsageInfo: FC = () => {
 					<legend className="sr-only">
 						{t("ui.settings.account.settings_page.usage_metric")}
 					</legend>
-					<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
+					<div
+						data-glass-well=""
+						className="flex gap-0.5 rounded-md bg-sunken p-0.5"
+					>
 						{USAGE_METRICS.map(({ id, label }) => (
 							<Button
 								key={id}
@@ -315,6 +325,7 @@ export const SettingsPage: FC = () => {
 	 */
 	useI18nLocale();
 	const laneLeadingColumn = useLaneLeadingColumn("surface");
+	const glass = useWindowGlass();
 	const showAgentReasoning = useUiPreferencesStore(
 		(state) => state.showAgentReasoning,
 	);
@@ -339,6 +350,15 @@ export const SettingsPage: FC = () => {
 		error: configError,
 		refetch,
 	} = useConfig();
+	/*
+	 * Whether the contract below is worth showing at all. `needsProvider` is true
+	 * only when the answer is KNOWN - the provider census answered, no cloud
+	 * provider has a credential, and no default is configured - so the callout
+	 * never nags over a read this app could not complete. It reads the CENSUS and
+	 * the configured default, never keys in config: a provider signed in through
+	 * its own login is connected without any key of the user's.
+	 */
+	const { needsProvider } = useProviderStatus();
 
 	/*
 	 * THE CAUSE BEFORE THE SENTENCE, and at a top-level hook site rather than inside
@@ -951,7 +971,11 @@ export const SettingsPage: FC = () => {
 	   no `max-*` breakpoint utilities at all, which is how the rest of the app
 	   is written. */
 	return (
-		<div className="flex h-full w-full overflow-hidden bg-canvas">
+		<div
+			data-glass-region="canvas"
+			data-glass-split=""
+			className="flex h-full w-full overflow-hidden bg-canvas"
+		>
 			{/*
 			 * No edge on this wrapper any more. The rail is `surface` (see
 			 * `settings-sidebar`'s ground note), so the boundary beside the content
@@ -1006,6 +1030,7 @@ export const SettingsPage: FC = () => {
 			<div
 				ref={contentContainerRef}
 				data-settings-content
+				data-glass-region="canvas-content"
 				data-tour-tag="settings-general-section"
 				className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8"
 			>
@@ -1261,14 +1286,61 @@ export const SettingsPage: FC = () => {
 										allowCustom={true}
 										allowDefault={false}
 									/>
-									<Alert
-										variant="neutral"
-										icon={<Info className="size-4" aria-hidden="true" />}
-									>
-										{t(
-											"ui.settings.model.settings_page.you_need_a_radient_account_or_your_own_api_keys_to_reach_cloud_pr",
-										)}
-									</Alert>
+									{/*
+									 * Beside the two rows it depends on, in the same chrome: the
+									 * effort ladder is the SELECTED model's, read from the
+									 * preview the composer's own effort picker uses.
+									 */}
+									<DefaultEffortSelect
+										hosting={config.values.hosting}
+										modelName={config.values.model_name}
+										/*
+										 * The same reveal the language row gets: this key is promoted
+										 * out of the backend registry, so the section's `focusKey` is
+										 * suppressed for it and the row has to focus itself.
+										 */
+										focus={settingFocusKey === MODEL_EFFORT_SETTING_KEY}
+									/>
+									{/*
+									 * ONLY WHEN NO PROVIDER IS CONNECTED. Leading with "sign in"
+									 * rather than API keys, because a subscription login is the
+									 * path most readers have: the sentence names it, and the inline
+									 * link jumps to the Providers section on this page (a real
+									 * button, not a hash href - this is a hash router, where a
+									 * hash link would read as a route change).
+									 */}
+									{needsProvider && (
+										<Alert
+											variant="neutral"
+											icon={<Info className="size-4" aria-hidden="true" />}
+										>
+											<span>
+												{t("ui.settings.model.provider_callout.sentence")}
+												<button
+													type="button"
+													className="text-accent underline underline-offset-2"
+													onClick={() => {
+														handleSelectSection("providers");
+														/*
+														 * Keep the landing and make the jump keyboard-complete: the
+														 * container is focusable (`tabIndex={-1}` via its `id`), so
+														 * `preventScroll` keeps the smooth scroll's destination while
+														 * the next Tab continues INSIDE the section. Scoped to this
+														 * jump only; the sidebar keeps its pointer-first behaviour.
+														 */
+														sectionRefs.providers.current?.focus({
+															preventScroll: true,
+														});
+													}}
+												>
+													{t(
+														"ui.settings.model.provider_callout.providers_link",
+													)}
+												</button>
+												.
+											</span>
+										</Alert>
+									)}
 								</div>
 							</SettingsSection>
 
@@ -1370,6 +1442,14 @@ export const SettingsPage: FC = () => {
 									value={parseTranscriptDisplayMode(transcriptDisplayMode)}
 									onChange={(next) => setTranscriptDisplayMode(next)}
 								/>
+								{/*
+								 * OPTIONAL WINDOW TRANSLUCENCY, default off. Owned by the main process
+								 * (it must know before the window exists), so this row reads and
+								 * writes through `useWindowGlass` rather than the preferences store.
+								 * Absent outside the desktop app; replaced by its reason where the
+								 * platform cannot do it. See `window-glass-setting.tsx`.
+								 */}
+								<WindowGlassSetting state={glass.state} onChange={glass.set} />
 							</div>
 						</SettingsSection>
 
@@ -1397,6 +1477,29 @@ export const SettingsPage: FC = () => {
 								"ui.settings.navigation.settings_page.sign_in_to_the_services_your_agents_think_with_new_chats_use_your",
 							)}
 							sectionRef={sectionRefs.providers}
+							/*
+							 * An anchor for the callout's jump: `id` makes the container a
+							 * `tabIndex={-1}` focus target, so activation can move focus INTO
+							 * the section (skip-link pattern) and the next Tab continues through
+							 * its controls instead of pulling the view back to where the link
+							 * sits in DOM order.
+							 */
+							id="model-providers"
+							/*
+							 * The landing target draws NO ring. `tabIndex={-1}` makes it a
+							 * programmatic rest-stop, not a control, and Chromium counts a
+							 * scripted `.focus()` after keyboard input as `:focus-visible` - so
+							 * the app's 2px accent ring would outline the whole section,
+							 * heading through provider grid, with nothing actionable in it.
+							 * `index.css` allows `outline-none` exactly when "focus is moved
+							 * there programmatically and a ring would be noise"; the `!` is
+							 * required because the ring is an unlayered `html :focus-visible`
+							 * rule that outranks utilities (same escape the browser pane's
+							 * U9 rest-stop uses). Every focusable CHILD keeps its own ring,
+							 * and the landing is already unmistakable: the scroll puts the
+							 * heading at the header room and the rail moves to this section.
+							 */
+							className="focus-visible:outline-none!"
 						>
 							<ProviderGrid
 								initialProviderId={providerFromQuery}
@@ -1457,10 +1560,12 @@ export const SettingsPage: FC = () => {
 						>
 							<BackendSettingsSection
 								hideInterfaceLanguage
+								hideModelEffort
 								focusKey={
-									settingFocusKey === LANGUAGE_SETTING_KEY
-										? null
-										: settingFocusKey
+									settingFocusKey &&
+									sectionForSettingKey(settingFocusKey, "backend") === "backend"
+										? settingFocusKey
+										: null
 								}
 								initialFilter={settingsSearchFilter}
 							/>

@@ -550,7 +550,18 @@ test("the main window takes the frame and the ground from the closed decision", 
 	 * first frame. It is the same defect `INSTALL_WINDOW_CANVAS` fixed for the
 	 * installer window.
 	 */
-	assert.match(main, /backgroundColor:\s*chrome\.colors\.ground/);
+	/*
+	 * The ground is composed by `groundWithGlass(chrome.colors.ground, ...)`: glass
+	 * off keeps the palette ground on every platform and adds only darwin's inert
+	 * `visualEffectState: "active"`, pinned exactly by `scripts/window-glass.test.mjs`
+	 * (G-3), the default-off guarantee. This asserts the call still takes the
+	 * palette's ground, so the first paint cannot lose its colour.
+	 */
+	assert.match(
+		main,
+		/groundWithGlass\(\s*chrome\.colors\.ground\s*,/,
+		"the window's first-paint ground must come from the palette ground",
+	);
 	/*
 	 * THE ASSERTION HAS TO SEE THE CALL, NOT THE PARAMETER (agent review round 1, R2).
 	 *

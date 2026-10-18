@@ -21,6 +21,7 @@
  * file itself to be part of the contract.
  */
 
+import enUiAgentMessages from "./catalogues/en/ui.agentMessages.json";
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
 import enUiAgentsModels from "./catalogues/en/ui.agents.models.json";
@@ -31,7 +32,10 @@ import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
 import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
+import enUiChatComposer from "./catalogues/en/ui.chat.composer.json";
 import enUiChatComposerMedia from "./catalogues/en/ui.chat.composer_media.json";
+import enUiChatDialogs from "./catalogues/en/ui.chat.dialogs.json";
+import enUiChatHeader from "./catalogues/en/ui.chat.header.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
 import enUiChatVoice from "./catalogues/en/ui.chat.voice.json";
@@ -58,22 +62,50 @@ import enUiProviders from "./catalogues/en/ui.providers.json";
 import enUiSchedules from "./catalogues/en/ui.schedules.json";
 import enUiSettingsAccount from "./catalogues/en/ui.settings.account.json";
 import enUiSettingsAppearance from "./catalogues/en/ui.settings.appearance.json";
+import enUiSettingsAppearanceWindowGlass from "./catalogues/en/ui.settings.appearance.window_glass.json";
 import enUiSettingsConfiguration from "./catalogues/en/ui.settings.configuration.json";
 import enUiSettingsIntegrations from "./catalogues/en/ui.settings.integrations.json";
 import enUiSettings from "./catalogues/en/ui.settings.json";
+import enUiSettingsModelDefaultEffort from "./catalogues/en/ui.settings.model.default_effort.json";
 import enUiSettingsModel from "./catalogues/en/ui.settings.model.json";
+import enUiSettingsModelProviderCallout from "./catalogues/en/ui.settings.model.provider_callout.json";
 import enUiSettingsNavigation from "./catalogues/en/ui.settings.navigation.json";
 import enUiSettingsShortcuts from "./catalogues/en/ui.settings.shortcuts.json";
 import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
 import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
+import esUiConsole from "./catalogues/es/ui.console.json";
+import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
+import esUiSettings from "./catalogues/es/ui.settings.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
+import frUiSettingsAccount from "./catalogues/fr/ui.settings.account.json";
+import frUiSettingsAppearance from "./catalogues/fr/ui.settings.appearance.json";
+import frUiSettingsConfiguration from "./catalogues/fr/ui.settings.configuration.json";
+import frUiSettingsIntegrations from "./catalogues/fr/ui.settings.integrations.json";
 import frUiSettings from "./catalogues/fr/ui.settings.json";
+import frUiSettingsModel from "./catalogues/fr/ui.settings.model.json";
+import frUiSettingsNavigation from "./catalogues/fr/ui.settings.navigation.json";
+import frUiSettingsShortcuts from "./catalogues/fr/ui.settings.shortcuts.json";
+import frUiSettingsSpeech from "./catalogues/fr/ui.settings.speech.json";
+import frUiSettingsUpdates from "./catalogues/fr/ui.settings.updates.json";
+import hiUiConsole from "./catalogues/hi/ui.console.json";
+import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
+import hiUiSettings from "./catalogues/hi/ui.settings.json";
+import ruUiConsole from "./catalogues/ru/ui.console.json";
+import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
+import ruUiSettings from "./catalogues/ru/ui.settings.json";
+import viUiConsole from "./catalogues/vi/ui.console.json";
+import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
+import viUiSettings from "./catalogues/vi/ui.settings.json";
+import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
+import zhCNUiOnboarding from "./catalogues/zh-CN/ui.onboarding.json";
+import zhCNUiSettings from "./catalogues/zh-CN/ui.settings.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
+	...enUiAgentMessages,
 	...enUiAgentsDialogs,
 	...enUiAgents,
 	...enUiAgentsModels,
@@ -84,7 +116,10 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiBrowserChrome,
 	...enUiBrowser,
 	...enUiCanvas,
+	...enUiChatComposer,
 	...enUiChatComposerMedia,
+	...enUiChatDialogs,
+	...enUiChatHeader,
 	...enUiChat,
 	...enUiChatSidebarView,
 	...enUiChatVoice,
@@ -111,10 +146,13 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSchedules,
 	...enUiSettingsAccount,
 	...enUiSettingsAppearance,
+	...enUiSettingsAppearanceWindowGlass,
 	...enUiSettingsConfiguration,
 	...enUiSettingsIntegrations,
 	...enUiSettings,
+	...enUiSettingsModelDefaultEffort,
 	...enUiSettingsModel,
+	...enUiSettingsModelProviderCallout,
 	...enUiSettingsNavigation,
 	...enUiSettingsShortcuts,
 	...enUiSettingsSpeech,
@@ -128,15 +166,65 @@ export const bundledCatalogues: Readonly<
 	Record<string, Readonly<Record<string, string>>>
 > = {
 	en: bundledEnglish,
+	es: {
+		...esUiConsole,
+		...esUiOnboarding,
+		...esUiSettings,
+	},
 	fr: {
 		...frUiConsole,
 		...frUiOnboarding,
+		...frUiSettingsAccount,
+		...frUiSettingsAppearance,
+		...frUiSettingsConfiguration,
+		...frUiSettingsIntegrations,
 		...frUiSettings,
+		...frUiSettingsModel,
+		...frUiSettingsNavigation,
+		...frUiSettingsShortcuts,
+		...frUiSettingsSpeech,
+		...frUiSettingsUpdates,
+	},
+	hi: {
+		...hiUiConsole,
+		...hiUiOnboarding,
+		...hiUiSettings,
+	},
+	ru: {
+		...ruUiConsole,
+		...ruUiOnboarding,
+		...ruUiSettings,
+	},
+	vi: {
+		...viUiConsole,
+		...viUiOnboarding,
+		...viUiSettings,
+	},
+	"zh-CN": {
+		...zhCNUiConsole,
+		...zhCNUiOnboarding,
+		...zhCNUiSettings,
 	},
 };
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
 export type MessageParams = {
+	"ui.agentMessages.dialog.account_guard_unavailable": undefined;
+	"ui.agentMessages.dialog.activities": undefined;
+	"ui.agentMessages.dialog.close": undefined;
+	"ui.agentMessages.dialog.consent_changed": undefined;
+	"ui.agentMessages.dialog.consent_unavailable": undefined;
+	"ui.agentMessages.dialog.enable": undefined;
+	"ui.agentMessages.dialog.enabling": undefined;
+	"ui.agentMessages.dialog.failure": undefined;
+	"ui.agentMessages.dialog.later": undefined;
+	"ui.agentMessages.dialog.lead": undefined;
+	"ui.agentMessages.dialog.local_failure": undefined;
+	"ui.agentMessages.dialog.not_now": undefined;
+	"ui.agentMessages.dialog.reach": undefined;
+	"ui.agentMessages.dialog.title": undefined;
+	"ui.agentMessages.dialog.validation_detail": { field: string; rule: string };
+	"ui.agentMessages.dialog.validation_failure": undefined;
 	"ui.agents.dialogs.clear.cancel": undefined;
 	"ui.agents.dialogs.clear.confirm": undefined;
 	"ui.agents.dialogs.clear.title": undefined;
@@ -542,11 +630,13 @@ export type MessageParams = {
 	"ui.browser.browser_tab_strip.copy_url": undefined;
 	"ui.browser.browser_tab_strip.hide_all_tabs": undefined;
 	"ui.browser.browser_tab_strip.let_an_agent_use": undefined;
+	"ui.browser.browser_tab_strip.mute_tab": undefined;
 	"ui.browser.browser_tab_strip.new_tab": undefined;
 	"ui.browser.browser_tab_strip.no_conversation": undefined;
 	"ui.browser.browser_tab_strip.stop_letting_the_agent_use": undefined;
 	"ui.browser.browser_tab_strip.tab_actions": { title: string };
 	"ui.browser.browser_tab_strip.this_tab": undefined;
+	"ui.browser.browser_tab_strip.unmute_tab": undefined;
 	"ui.browser.browser_tab_strip.watch": undefined;
 	"ui.browser.browser_url_bar.address": undefined;
 	"ui.browser.browser_url_bar.approvals_waiting": { count: number };
@@ -561,6 +651,7 @@ export type MessageParams = {
 	"ui.browser.browser_url_bar.latest_download": { name: string };
 	"ui.browser.browser_url_bar.newest_download": { name: string; count: number };
 	"ui.browser.browser_url_bar.page_zoom_reset": { zoom: number };
+	"ui.browser.browser_url_bar.print_page": undefined;
 	"ui.browser.browser_url_bar.reload": undefined;
 	"ui.browser.browser_url_bar.reset_page_zoom_shortcut": { shortcut: string };
 	"ui.browser.browser_url_bar.site_file": undefined;
@@ -659,6 +750,43 @@ export type MessageParams = {
 	"ui.canvas.files.unreadable": undefined;
 	"ui.canvas.files.videos": undefined;
 	"ui.canvas.files.working": undefined;
+	"ui.chat.composer.ask_aside": undefined;
+	"ui.chat.composer.attach_file": undefined;
+	"ui.chat.composer.cancel_recording": undefined;
+	"ui.chat.composer.cancel_recording_hint": undefined;
+	"ui.chat.composer.clear_message": undefined;
+	"ui.chat.composer.confirm_recording": undefined;
+	"ui.chat.composer.confirm_recording_hint": undefined;
+	"ui.chat.composer.delivery_remedies_hint": undefined;
+	"ui.chat.composer.message": undefined;
+	"ui.chat.composer.processing_audio": undefined;
+	"ui.chat.composer.secret_ask_notice": undefined;
+	"ui.chat.composer.secret_ask_open": undefined;
+	"ui.chat.composer.secret_confirm_cancel": undefined;
+	"ui.chat.composer.secret_confirm_chars": { count: number };
+	"ui.chat.composer.secret_confirm_message": undefined;
+	"ui.chat.composer.secret_confirm_put": undefined;
+	"ui.chat.composer.secret_confirm_put_multi": undefined;
+	"ui.chat.composer.secret_confirm_send": undefined;
+	"ui.chat.composer.secret_confirm_sending": undefined;
+	"ui.chat.composer.secret_fill_changed": undefined;
+	"ui.chat.composer.secret_fill_gone": undefined;
+	"ui.chat.composer.secret_fill_locked": undefined;
+	"ui.chat.composer.secret_fill_multi": undefined;
+	"ui.chat.composer.secret_fill_refused": undefined;
+	"ui.chat.composer.secret_fill_unavailable": undefined;
+	"ui.chat.composer.send_message": undefined;
+	"ui.chat.composer.start_recording": undefined;
+	"ui.chat.composer.start_recording_hint": {
+		shortcut: string;
+		pushToTalk: string;
+	};
+	"ui.chat.composer.starting": undefined;
+	"ui.chat.composer.starting_recording": undefined;
+	"ui.chat.composer.stop": undefined;
+	"ui.chat.composer.stop_agent": undefined;
+	"ui.chat.composer.stop_work_hint": undefined;
+	"ui.chat.composer.welcome": undefined;
 	"ui.chat.composer_media.cancels": undefined;
 	"ui.chat.composer_media.confirms": undefined;
 	"ui.chat.composer_media.pasted_file": undefined;
@@ -666,7 +794,23 @@ export type MessageParams = {
 	"ui.chat.composer_media.preview_failed": undefined;
 	"ui.chat.composer_media.recording": undefined;
 	"ui.chat.composer_media.remove_attachment": undefined;
+	"ui.chat.dialogs.archive_action": undefined;
+	"ui.chat.dialogs.cancel": undefined;
+	"ui.chat.dialogs.delete_action": undefined;
+	"ui.chat.dialogs.delete_title": undefined;
+	"ui.chat.header.actions": undefined;
+	"ui.chat.header.archived": undefined;
+	"ui.chat.header.archived_hint": undefined;
+	"ui.chat.header.close_run_details": undefined;
+	"ui.chat.header.conversation_name": undefined;
+	"ui.chat.header.copy_id": undefined;
+	"ui.chat.header.delete": undefined;
+	"ui.chat.header.move_device": undefined;
+	"ui.chat.header.open_run_details": undefined;
+	"ui.chat.header.transcript_display": undefined;
 	"ui.chat.highlights.file_resolution_failed": undefined;
+	"ui.chat.skill_invocation.instructions_label": undefined;
+	"ui.chat.skill_invocation.trigger_label": { token: string };
 	"ui.chat.usage.blocked": undefined;
 	"ui.chat.usage.continue": undefined;
 	"ui.chat.usage.eligibility_unknown": undefined;
@@ -1748,6 +1892,548 @@ export type MessageParams = {
 	"ui.onboarding.search.row.save_failed": undefined;
 	"ui.onboarding.search.row.saved": undefined;
 	"ui.onboarding.search.row.saving": { name: string };
+	"ui.projects.board_window_select.projects_updated_within": undefined;
+	"ui.projects.board_window_select.shows_projects_last_updated_within_this_window_older_ones_are_hid": undefined;
+	"ui.projects.count.milestones_are": { count: number };
+	"ui.projects.count.moved_open": { status: string; open: number };
+	"ui.projects.count.project": { count: number };
+	"ui.projects.count.session": { count: number };
+	"ui.projects.count.subagent": { count: number };
+	"ui.projects.count.subagent_running": { count: number };
+	"ui.projects.count.todo": { count: number };
+	"ui.projects.count.undated": { count: number };
+	"ui.projects.count.update": { count: number };
+	"ui.projects.examples.owner": undefined;
+	"ui.projects.examples.team": undefined;
+	"ui.projects.project_board.actions_for_displayname": { displayName: string };
+	"ui.projects.project_board.after_label": { label: string };
+	"ui.projects.project_board.before_label": { label: string };
+	"ui.projects.project_board.between_label_and_label_2": {
+		label: string;
+		label_2: string;
+	};
+	"ui.projects.project_board.delete": undefined;
+	"ui.projects.project_board.drag_the_header_or_press_the_arrow_keys_to_move_this_column": undefined;
+	"ui.projects.project_board.edit": undefined;
+	"ui.projects.project_board.finished": undefined;
+	"ui.projects.project_board.in_flight": undefined;
+	"ui.projects.project_board.in_place": undefined;
+	"ui.projects.project_board.label_column_is_already_the_last_column": {
+		label: string;
+		the_last_column: string;
+	};
+	"ui.projects.project_board.loading_linked_sessions": undefined;
+	"ui.projects.project_board.move_cancelled": undefined;
+	"ui.projects.project_board.move_label_column": { label: string };
+	"ui.projects.project_board.moved_label_column_to_position_indexof_status_1_of_length": {
+		label: string;
+		indexOf_status____1: string;
+		length: string;
+	};
+	"ui.projects.project_board.moving_label_column": { label: string };
+	"ui.projects.project_board.moving_label_column_it_will_drop_status_over": {
+		label: string;
+		status__over: string;
+	};
+	"ui.projects.project_board.no_sessions_linked_yet": undefined;
+	"ui.projects.project_board.on_hold": undefined;
+	"ui.projects.project_board.open": undefined;
+	"ui.projects.project_board.open_displayname": { displayName: string };
+	"ui.projects.project_board.overdue": undefined;
+	"ui.projects.project_board.request_update": undefined;
+	"ui.projects.project_board.sessions_linked_to_displayname": {
+		displayName: string;
+	};
+	"ui.projects.project_board.set_status": undefined;
+	"ui.projects.project_board.the_first_column": undefined;
+	"ui.projects.project_board.the_last_column": undefined;
+	"ui.projects.project_board.the_linked_sessions_could_not_be_read": undefined;
+	"ui.projects.project_board.try_again": undefined;
+	"ui.projects.project_delete_dialog.cancel": undefined;
+	"ui.projects.project_delete_dialog.delete_project": undefined;
+	"ui.projects.project_delete_dialog.delete_this_project": undefined;
+	"ui.projects.project_delete_dialog.the_project_was_not_deleted": undefined;
+	"ui.projects.project_delete_dialog.this_deletes_the_project_and_its_milestones_the_sessions_linked_t": undefined;
+	"ui.projects.project_delete_dialog.to_confirm": undefined;
+	"ui.projects.project_delete_dialog.type": undefined;
+	"ui.projects.project_delete_dialog.type_the_project_name_to_confirm": undefined;
+	"ui.projects.project_detail.all_projects": undefined;
+	"ui.projects.project_detail.delete": undefined;
+	"ui.projects.project_detail.loading_project": undefined;
+	"ui.projects.project_detail.progress": undefined;
+	"ui.projects.project_detail.project_deleted": undefined;
+	"ui.projects.project_detail.sent_to_value1": { value1: string };
+	"ui.projects.project_detail.session_started_but_linking_it_failed_linkfailure": {
+		linkFailure: string;
+	};
+	"ui.projects.project_detail.session_started_withtarget_and_linked_to_displayname": {
+		withTarget: string;
+		displayName: string;
+	};
+	"ui.projects.project_detail.that_session_already_has_a_message_going_out_try_again_in_a_momen": undefined;
+	"ui.projects.project_detail.the_link_was_refused": undefined;
+	"ui.projects.project_detail.the_message_was_not_sent": undefined;
+	"ui.projects.project_detail.the_milestone_was_not_added": undefined;
+	"ui.projects.project_detail.the_milestone_was_not_removed": undefined;
+	"ui.projects.project_detail.the_milestone_was_not_updated": undefined;
+	"ui.projects.project_detail.the_project_could_not_be_read": undefined;
+	"ui.projects.project_detail.the_session_could_not_be_started": undefined;
+	"ui.projects.project_detail.the_session_was_not_linked": undefined;
+	"ui.projects.project_detail.the_session_was_not_unlinked": undefined;
+	"ui.projects.project_detail.this_project_could_not_be_found_it_may_have_been_deleted": undefined;
+	"ui.projects.project_detail.try_again": undefined;
+	"ui.projects.project_detail.with_value1": { value1: string };
+	"ui.projects.project_done_anyway_dialog.cancel": undefined;
+	"ui.projects.project_done_anyway_dialog.close": undefined;
+	"ui.projects.project_done_anyway_dialog.mark_done_anyway": undefined;
+	"ui.projects.project_done_anyway_dialog.mark_done_with_open_milestones": undefined;
+	"ui.projects.project_done_anyway_dialog.projectlabel_moves_to_done_and_its_milestones_stay_open": {
+		projectLabel: string;
+	};
+	"ui.projects.project_done_anyway_dialog.show_all_length_open_milestones": {
+		length: number;
+	};
+	"ui.projects.project_done_anyway_dialog.the_project_moves_to_done_and_its_milestones_stay_open": undefined;
+	"ui.projects.project_edit_model.a_project_with_this_key_already_exists": undefined;
+	"ui.projects.project_edit_model.dates_are_yyyy_mm_dd_or_empty": undefined;
+	"ui.projects.project_edit_model.estimates_are_greater_than_0_and_at_most_1000": undefined;
+	"ui.projects.project_edit_model.keep_the_description_within_value1_characters": {
+		value1: number;
+	};
+	"ui.projects.project_edit_model.owners": undefined;
+	"ui.projects.project_edit_model.teams": undefined;
+	"ui.projects.project_edit_model.teams_are_at_most_value2_characters": {
+		teams: string;
+		value2: number;
+	};
+	"ui.projects.project_edit_model.the_project_was_not_saved": undefined;
+	"ui.projects.project_edit_model.the_target_date_is_before_the_start_date": undefined;
+	"ui.projects.project_edit_model.titles_are_at_most_value1_characters": {
+		value1: number;
+	};
+	"ui.projects.project_edit_model.up_to_project_tags_max_tags": {
+		PROJECT_TAGS_MAX: number;
+	};
+	"ui.projects.project_editors.a_short_name_for_the_workstream": undefined;
+	"ui.projects.project_editors.add_a_title": undefined;
+	"ui.projects.project_editors.add_description": undefined;
+	"ui.projects.project_editors.clearing_an_estimate_is_not_supported_yet_saving_keeps_its_curren": undefined;
+	"ui.projects.project_editors.days": undefined;
+	"ui.projects.project_editors.description": undefined;
+	"ui.projects.project_editors.description_mode": undefined;
+	"ui.projects.project_editors.discard_the_field_edit": { field: string };
+	"ui.projects.project_editors.display_saved": { display: string };
+	"ui.projects.project_editors.edit_field": { field: string };
+	"ui.projects.project_editors.estimate": undefined;
+	"ui.projects.project_editors.estimate_unit": undefined;
+	"ui.projects.project_editors.key": undefined;
+	"ui.projects.project_editors.mark_done_anyway": undefined;
+	"ui.projects.project_editors.markdown_headings_lists_code": undefined;
+	"ui.projects.project_editors.nothing_to_preview_yet": undefined;
+	"ui.projects.project_editors.owner": undefined;
+	"ui.projects.project_editors.points": undefined;
+	"ui.projects.project_editors.preview": undefined;
+	"ui.projects.project_editors.q4_payments": undefined;
+	"ui.projects.project_editors.retry_saving_the_field": { field: string };
+	"ui.projects.project_editors.review_milestones": undefined;
+	"ui.projects.project_editors.save_field": { field: string };
+	"ui.projects.project_editors.saving_the_field": { field: string };
+	"ui.projects.project_editors.start": undefined;
+	"ui.projects.project_editors.status": undefined;
+	"ui.projects.project_editors.tags": undefined;
+	"ui.projects.project_editors.target": undefined;
+	"ui.projects.project_editors.team": undefined;
+	"ui.projects.project_editors.title": undefined;
+	"ui.projects.project_editors.tolowercase_date": { toLowerCase: string };
+	"ui.projects.project_editors.write": undefined;
+	"ui.projects.project_filters.complete": undefined;
+	"ui.projects.project_filters.days": undefined;
+	"ui.projects.project_filters.due_within_30_days": undefined;
+	"ui.projects.project_filters.due_within_7_days": undefined;
+	"ui.projects.project_filters.estimate": undefined;
+	"ui.projects.project_filters.has_live_sessions": undefined;
+	"ui.projects.project_filters.incomplete": undefined;
+	"ui.projects.project_filters.live_sessions": undefined;
+	"ui.projects.project_filters.milestones": undefined;
+	"ui.projects.project_filters.no_estimate": undefined;
+	"ui.projects.project_filters.no_live_sessions": undefined;
+	"ui.projects.project_filters.no_owner": undefined;
+	"ui.projects.project_filters.no_target_date": undefined;
+	"ui.projects.project_filters.no_team": undefined;
+	"ui.projects.project_filters.none_set": undefined;
+	"ui.projects.project_filters.not_reported": undefined;
+	"ui.projects.project_filters.overdue": undefined;
+	"ui.projects.project_filters.owner": undefined;
+	"ui.projects.project_filters.points": undefined;
+	"ui.projects.project_filters.progress": undefined;
+	"ui.projects.project_filters.stale": undefined;
+	"ui.projects.project_filters.status": undefined;
+	"ui.projects.project_filters.tags": undefined;
+	"ui.projects.project_filters.target_date": undefined;
+	"ui.projects.project_filters.team": undefined;
+	"ui.projects.project_filters.up_to_date": undefined;
+	"ui.projects.project_filters_panel.clear_all": undefined;
+	"ui.projects.project_filters_panel.filters": undefined;
+	"ui.projects.project_filters_panel.sort_by_key": { key: string };
+	"ui.projects.project_filters_panel.sort_by_sortcolumnlabel_column": {
+		sortColumnLabel_column: string;
+	};
+	"ui.projects.project_filters_panel.sort_by_sortcolumnlabel_column_value2": {
+		sortColumnLabel_column: string;
+		value2: string;
+	};
+	"ui.projects.project_form_dialog.cancel": undefined;
+	"ui.projects.project_form_dialog.comma_separated_up_to_8_lowercase_letters_digits_underscore_or_da": undefined;
+	"ui.projects.project_form_dialog.create_project": undefined;
+	"ui.projects.project_form_dialog.days": undefined;
+	"ui.projects.project_form_dialog.derived_from_the_title_until_you_edit_it": undefined;
+	"ui.projects.project_form_dialog.description": undefined;
+	"ui.projects.project_form_dialog.description_mode": undefined;
+	"ui.projects.project_form_dialog.estimate": undefined;
+	"ui.projects.project_form_dialog.estimate_unit": undefined;
+	"ui.projects.project_form_dialog.key": undefined;
+	"ui.projects.project_form_dialog.letters_digits_dot_underscore_or_dash_no_spaces": undefined;
+	"ui.projects.project_form_dialog.markdown_headings_lists_code": undefined;
+	"ui.projects.project_form_dialog.moving_a_project_to_done_stamps_today_as_its_completion_date": undefined;
+	"ui.projects.project_form_dialog.new_project": undefined;
+	"ui.projects.project_form_dialog.nothing_to_preview_yet": undefined;
+	"ui.projects.project_form_dialog.owner": undefined;
+	"ui.projects.project_form_dialog.payments_migration": undefined;
+	"ui.projects.project_form_dialog.points": undefined;
+	"ui.projects.project_form_dialog.preview": undefined;
+	"ui.projects.project_form_dialog.q4_payments": undefined;
+	"ui.projects.project_form_dialog.start_date": undefined;
+	"ui.projects.project_form_dialog.status": undefined;
+	"ui.projects.project_form_dialog.tags": undefined;
+	"ui.projects.project_form_dialog.target_date": undefined;
+	"ui.projects.project_form_dialog.team": undefined;
+	"ui.projects.project_form_dialog.the_project_was_not_saved": undefined;
+	"ui.projects.project_form_dialog.title": undefined;
+	"ui.projects.project_form_dialog.write": undefined;
+	"ui.projects.project_links.busy": undefined;
+	"ui.projects.project_links.close": undefined;
+	"ui.projects.project_links.conversations_already_linked_to_this_project_are_not_listed": undefined;
+	"ui.projects.project_links.link_a_session": undefined;
+	"ui.projects.project_links.link_session": undefined;
+	"ui.projects.project_links.linked_sessions": undefined;
+	"ui.projects.project_links.loading_sessions": undefined;
+	"ui.projects.project_links.message_title": { title: string };
+	"ui.projects.project_links.new_session": undefined;
+	"ui.projects.project_links.no_sessions_linked_yet_link_the_conversations_that_are_working_on": undefined;
+	"ui.projects.project_links.search_conversations": undefined;
+	"ui.projects.project_links.search_sessions": undefined;
+	"ui.projects.project_links.session": undefined;
+	"ui.projects.project_links.unlink_title": { title: string };
+	"ui.projects.project_list.estimate": undefined;
+	"ui.projects.project_list.label_column": { label: string };
+	"ui.projects.project_list.live": undefined;
+	"ui.projects.project_list.milestones": undefined;
+	"ui.projects.project_list.not_reported": undefined;
+	"ui.projects.project_list.progress": undefined;
+	"ui.projects.project_list.project": undefined;
+	"ui.projects.project_list.project_columns": undefined;
+	"ui.projects.project_list.status": undefined;
+	"ui.projects.project_list.target": undefined;
+	"ui.projects.project_milestones.add": undefined;
+	"ui.projects.project_milestones.beta_cut": undefined;
+	"ui.projects.project_milestones.dates_are_yyyy_mm_dd_or_empty": undefined;
+	"ui.projects.project_milestones.mark_name_complete": { name: string };
+	"ui.projects.project_milestones.mark_name_not_complete": { name: string };
+	"ui.projects.project_milestones.milestones": undefined;
+	"ui.projects.project_milestones.new_milestone": undefined;
+	"ui.projects.project_milestones.no_milestones_yet_add_one_below_to_mark_the_dates_this_project_is": undefined;
+	"ui.projects.project_milestones.remove_name": { name: string };
+	"ui.projects.project_milestones.target_date": undefined;
+	"ui.projects.project_model.active": undefined;
+	"ui.projects.project_model.age_ago": { age: string };
+	"ui.projects.project_model.agent_name": { name: string };
+	"ui.projects.project_model.all_time": undefined;
+	"ui.projects.project_model.archived": undefined;
+	"ui.projects.project_model.by_reporter": { reporter: string };
+	"ui.projects.project_model.clause": { clause: string };
+	"ui.projects.project_model.completed": undefined;
+	"ui.projects.project_model.completed_day": { day: string };
+	"ui.projects.project_model.completed_total": {
+		completed: string;
+		total: string;
+	};
+	"ui.projects.project_model.count_live": { count: string; live: string };
+	"ui.projects.project_model.count_still_open_clause_clause": {
+		count: string;
+		clause________clause: string;
+	};
+	"ui.projects.project_model.done": undefined;
+	"ui.projects.project_model.due_day": { day: string };
+	"ui.projects.project_model.join_and_hidden_more": {
+		join: string;
+		hidden: string;
+	};
+	"ui.projects.project_model.join_and_length_1": {
+		join: string;
+		length___1: string;
+	};
+	"ui.projects.project_model.just_now": undefined;
+	"ui.projects.project_model.last_24_hours": undefined;
+	"ui.projects.project_model.last_30_days": undefined;
+	"ui.projects.project_model.last_7_days": undefined;
+	"ui.projects.project_model.last_90_days": undefined;
+	"ui.projects.project_model.live": undefined;
+	"ui.projects.project_model.live_live": { live: number };
+	"ui.projects.project_model.milestones_are_still_open_on_this_project_complete_or_remove_them": undefined;
+	"ui.projects.project_model.milestones_milestones": { milestones: string };
+	"ui.projects.project_model.missing": undefined;
+	"ui.projects.project_model.moved_to_statuslabel": { statusLabel: string };
+	"ui.projects.project_model.no_progress": undefined;
+	"ui.projects.project_model.no_team": undefined;
+	"ui.projects.project_model.not_reported_yet": undefined;
+	"ui.projects.project_model.nothing_changed_in_phrase": { phrase: string };
+	"ui.projects.project_model.overdue": undefined;
+	"ui.projects.project_model.paused": undefined;
+	"ui.projects.project_model.planning": undefined;
+	"ui.projects.project_model.qa": undefined;
+	"ui.projects.project_model.reported_progressagephrase_age": {
+		progressAgePhrase_age: string;
+	};
+	"ui.projects.project_model.session_reportedby": { reportedBy: string };
+	"ui.projects.project_model.some_milestones_are_still_open": undefined;
+	"ui.projects.project_model.stale": undefined;
+	"ui.projects.project_model.stopped": undefined;
+	"ui.projects.project_model.team_name": { name: string };
+	"ui.projects.project_model.the_last_24_hours": undefined;
+	"ui.projects.project_model.the_last_30_days": undefined;
+	"ui.projects.project_model.the_last_7_days": undefined;
+	"ui.projects.project_model.the_last_90_days": undefined;
+	"ui.projects.project_model.the_operator": undefined;
+	"ui.projects.project_model.the_project_was_not_moved_try_again_or_open_it_to_change_its_stat": undefined;
+	"ui.projects.project_model.this_can_t_be_marked_done_yet_count_still_incomplete_names_comple": {
+		count: string;
+		names: string;
+	};
+	"ui.projects.project_model.this_can_t_be_marked_done_yet_milestonesare_count_still_incomplet": {
+		milestonesAre_count: string;
+		clause: string;
+	};
+	"ui.projects.project_model.today": undefined;
+	"ui.projects.project_model.unknown": undefined;
+	"ui.projects.project_model.upcoming": undefined;
+	"ui.projects.project_model.validation": undefined;
+	"ui.projects.project_model.value_d": { value: string };
+	"ui.projects.project_model.value_pt": { value: string };
+	"ui.projects.project_model.wedged": undefined;
+	"ui.projects.project_model.yesterday": undefined;
+	"ui.projects.project_properties.add": undefined;
+	"ui.projects.project_properties.completed": undefined;
+	"ui.projects.project_properties.estimate": undefined;
+	"ui.projects.project_properties.no_dates_estimate_tags_owner_or_team_yet": undefined;
+	"ui.projects.project_properties.owner": undefined;
+	"ui.projects.project_properties.properties": undefined;
+	"ui.projects.project_properties.start_date": undefined;
+	"ui.projects.project_properties.tags": undefined;
+	"ui.projects.project_properties.target_date": undefined;
+	"ui.projects.project_properties.team": undefined;
+	"ui.projects.project_properties.updated": undefined;
+	"ui.projects.project_quick_send.choose_a_session_to_send_to": undefined;
+	"ui.projects.project_quick_send.message_the_session_paste_an_image_to_attach_it": undefined;
+	"ui.projects.project_quick_send.no_session_selected": undefined;
+	"ui.projects.project_quick_send.quick_send_follows_the_conversation_s_directory": undefined;
+	"ui.projects.project_quick_send.select_the_session_to_message": undefined;
+	"ui.projects.project_quick_send.send_to": undefined;
+	"ui.projects.project_quick_send.sending": undefined;
+	"ui.projects.project_quick_send.the_session_is_working_this_message_steers_the_running_turn": undefined;
+	"ui.projects.project_refusals.this_project_could_not_be_found_it_may_have_been_deleted": undefined;
+	"ui.projects.project_request_update_button.request_update": undefined;
+	"ui.projects.project_request_update_button.requested": undefined;
+	"ui.projects.project_request_update_button.requesting": undefined;
+	"ui.projects.project_search.searches_names_descriptions_tags_owners_and_teams_update_text_is": undefined;
+	"ui.projects.project_search.searches_names_descriptions_tags_owners_teams_and_update_text_cle": undefined;
+	"ui.projects.project_sort.a_to_z": undefined;
+	"ui.projects.project_sort.archived_first": undefined;
+	"ui.projects.project_sort.days_first": undefined;
+	"ui.projects.project_sort.default_as_listed": undefined;
+	"ui.projects.project_sort.estimate": undefined;
+	"ui.projects.project_sort.fewest_first": undefined;
+	"ui.projects.project_sort.join_and_length_1_cleared": {
+		join: string;
+		length___1: string;
+	};
+	"ui.projects.project_sort.latest_first": undefined;
+	"ui.projects.project_sort.least_complete_first": undefined;
+	"ui.projects.project_sort.live": undefined;
+	"ui.projects.project_sort.milestones": undefined;
+	"ui.projects.project_sort.most_complete_first": undefined;
+	"ui.projects.project_sort.most_first": undefined;
+	"ui.projects.project_sort.most_recent_first": undefined;
+	"ui.projects.project_sort.most_stale_first": undefined;
+	"ui.projects.project_sort.parts_0_cleared": { parts_0: string };
+	"ui.projects.project_sort.planning_first": undefined;
+	"ui.projects.project_sort.points_first": undefined;
+	"ui.projects.project_sort.progress": undefined;
+	"ui.projects.project_sort.project": undefined;
+	"ui.projects.project_sort.soonest_first": undefined;
+	"ui.projects.project_sort.sort_cleared": undefined;
+	"ui.projects.project_sort.sorted_by_key_direction": {
+		key: string;
+		direction: string;
+	};
+	"ui.projects.project_sort.status": undefined;
+	"ui.projects.project_sort.target": undefined;
+	"ui.projects.project_sort.z_to_a": undefined;
+	"ui.projects.project_start_session.a_plain_session_assign_a_team_or_agent_later": undefined;
+	"ui.projects.project_start_session.agents": undefined;
+	"ui.projects.project_start_session.cancel": undefined;
+	"ui.projects.project_start_session.loading_teams_and_agents": undefined;
+	"ui.projects.project_start_session.nothing_in_particular": undefined;
+	"ui.projects.project_start_session.plain": undefined;
+	"ui.projects.project_start_session.search_teams_and_agents": undefined;
+	"ui.projects.project_start_session.start_a_session": undefined;
+	"ui.projects.project_start_session.start_session": undefined;
+	"ui.projects.project_start_session.team_manager_manager": { manager: string };
+	"ui.projects.project_start_session.teams": undefined;
+	"ui.projects.project_start_session.the_session_could_not_be_started": undefined;
+	"ui.projects.project_start_session.the_session_starts_now_links_itself_to_this_project_and_opens_wit": undefined;
+	"ui.projects.project_start_session.this_server_does_not_offer_the_team_or_agent_catalogues_yet_so_on": undefined;
+	"ui.projects.project_start_session.work_with": undefined;
+	"ui.projects.project_timeline.days": undefined;
+	"ui.projects.project_timeline.length_dated_length_2_without_dates_value3": {
+		length: string;
+		length_2: string;
+		value3: string;
+	};
+	"ui.projects.project_timeline.loading_milestones_for_pendingdetails": {
+		pendingDetails: string;
+	};
+	"ui.projects.project_timeline.months": undefined;
+	"ui.projects.project_timeline.quarters": undefined;
+	"ui.projects.project_timeline.set_a_start_date_a_target_date_or_a_milestone_date_and_it_will_ap": undefined;
+	"ui.projects.project_timeline.try_again": undefined;
+	"ui.projects.project_timeline.weeks": undefined;
+	"ui.projects.project_timeline.zoom_in": undefined;
+	"ui.projects.project_timeline.zoom_in_finer": undefined;
+	"ui.projects.project_timeline.zoom_out": undefined;
+	"ui.projects.project_timeline.zoom_out_coarser": undefined;
+	"ui.projects.project_todos.no_to_do_snapshots_from_the_linked_sessions_yet_a_session_publish": undefined;
+	"ui.projects.project_todos.to_dos": undefined;
+	"ui.projects.project_updates.attachment": undefined;
+	"ui.projects.project_updates.file_actions_for_name": { name: string };
+	"ui.projects.project_updates.loading": undefined;
+	"ui.projects.project_updates.no_updates_yet_progress_reported_by_you_or_by_the_sessions_workin": undefined;
+	"ui.projects.project_updates.open_name": { name: string };
+	"ui.projects.project_updates.updates": undefined;
+	"ui.projects.projects_page.checking_the_server_s_projects_support": undefined;
+	"ui.projects.projects_page.clear_all": undefined;
+	"ui.projects.projects_page.create_one_here_or_ask_an_agent_to_create_one_and_link_this_sessi": undefined;
+	"ui.projects.projects_page.length_of_length_2_in_window": {
+		length: string;
+		length_2: string;
+	};
+	"ui.projects.projects_page.length_of_length_2_projects": {
+		length: string;
+		length_2: number;
+	};
+	"ui.projects.projects_page.loading_projects": undefined;
+	"ui.projects.projects_page.moved_to_label": { label: string };
+	"ui.projects.projects_page.new_project": undefined;
+	"ui.projects.projects_page.no_projects_match": undefined;
+	"ui.projects.projects_page.no_projects_match_trim": { trim: string };
+	"ui.projects.projects_page.no_projects_yet": undefined;
+	"ui.projects.projects_page.older_projects_are_hidden_by_the_window": undefined;
+	"ui.projects.projects_page.open_project": undefined;
+	"ui.projects.projects_page.project_deleted": undefined;
+	"ui.projects.projects_page.project_label_created": { label: string };
+	"ui.projects.projects_page.project_label_was_created_but_the_extra_fields_were_not_saved_val": {
+		label: string;
+		value2: string;
+	};
+	"ui.projects.projects_page.projects": undefined;
+	"ui.projects.projects_page.refresh_projects": undefined;
+	"ui.projects.projects_page.searching": undefined;
+	"ui.projects.projects_page.show_all_time": undefined;
+	"ui.projects.projects_page.the_local_operator_server_is_older_than_this_app_expects_so_proje": undefined;
+	"ui.projects.projects_page.the_projects_could_not_be_read": undefined;
+	"ui.projects.projects_page.the_server_refused_them": undefined;
+	"ui.projects.projects_page.the_server_s_capabilities_could_not_be_read_so_projects_are_unava": undefined;
+	"ui.projects.projects_page.this_app_is_not_paired_with_the_local_operator_server_so_projects": undefined;
+	"ui.projects.projects_page.try_again": undefined;
+	"ui.projects.projects_page.try_removing_a_filter_clearing_the_filters_restores_the_list": undefined;
+	"ui.projects.projects_page.view_project": undefined;
+	"ui.projects.projects_page.workstreams_you_and_your_agents_track_across_sessions": undefined;
+	"ui.projects.projects_toolbar.clear_all": undefined;
+	"ui.projects.projects_toolbar.clear_search": undefined;
+	"ui.projects.projects_toolbar.facet_labels_facet_first": {
+		FACET_LABELS_facet: string;
+		first: string;
+	};
+	"ui.projects.projects_toolbar.facet_labels_facet_first_length_1": {
+		FACET_LABELS_facet: string;
+		first: string;
+		length___1: string;
+	};
+	"ui.projects.projects_toolbar.filters": undefined;
+	"ui.projects.projects_toolbar.remove_filter_facet_labels_facet_join": {
+		FACET_LABELS_facet: string;
+		join: string;
+	};
+	"ui.projects.projects_toolbar.remove_sort_key_direction": {
+		key: string;
+		direction: string;
+	};
+	"ui.projects.projects_toolbar.search_projects": undefined;
+	"ui.projects.projects_toolbar.sort_key": { key: string };
+	"ui.projects.projects_view_switcher.board": undefined;
+	"ui.projects.projects_view_switcher.list": undefined;
+	"ui.projects.projects_view_switcher.project_view": undefined;
+	"ui.projects.projects_view_switcher.timeline": undefined;
+	"ui.projects.request_update.ask_the_sessions_linked_to_this_project_to_post_a_progress_update": undefined;
+	"ui.projects.request_update.could_not_confirm_delivery_on_display_the_requests_may_still_reac": {
+		display: string;
+	};
+	"ui.projects.request_update.could_not_reach_any_of_the_total_linked_sessions_on_display": {
+		total: number;
+		display: string;
+	};
+	"ui.projects.request_update.could_not_reach_failed_of_the_total_linked_sessions_on_display_de": {
+		failed: string;
+		total: number;
+		display: string;
+		value4: string;
+	};
+	"ui.projects.request_update.delivered": {
+		delivered: number;
+		display: string;
+	};
+	"ui.projects.request_update.delivery_to_value1_could_not_be_confirmed": {
+		value1: string;
+	};
+	"ui.projects.request_update.names_0_and_names_1": {
+		names_0: string;
+		names_1: string;
+	};
+	"ui.projects.request_update.names_0_names_1_and_length_2_more": {
+		names_0: string;
+		names_1: string;
+		length___2: string;
+	};
+	"ui.projects.request_update.never_started": { total: number };
+	"ui.projects.request_update.no_linked_sessions_to_ask_link_a_session_to_display_first": {
+		display: string;
+	};
+	"ui.projects.request_update.requested_updates_from_delivered_of_total_sessions_on_display": {
+		delivered: string;
+		total: number;
+		display: string;
+	};
+	"ui.projects.request_update.requesting_updates": undefined;
+	"ui.projects.request_update.update_already_requested_ago_s_ago_on_display_try_again_in_left_s": {
+		ago: string;
+		display: string;
+		left: string;
+	};
+	"ui.projects.request_update.value1_could_not_be_reached": { value1: string };
+	"ui.projects.timeline.read_failed": { count: number };
+	"ui.projects.use_request_update.could_not_request_updates_endedsentence_message": {
+		endedSentence_message: string;
+	};
+	"ui.projects.use_request_update.the_request_could_not_be_confirmed": undefined;
 	"ui.providers.connect_provider_card.connect": undefined;
 	"ui.providers.connect_provider_card.connect_a_model_provider_to_start": undefined;
 	"ui.providers.connect_provider_card.connect_a_provider": undefined;
@@ -2205,6 +2891,30 @@ export type MessageParams = {
 	"ui.settings.appearance.transcript_display_mode_setting.by_turn": undefined;
 	"ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every": undefined;
 	"ui.settings.appearance.transcript_display_mode_setting.transcript_display": undefined;
+	"ui.settings.appearance.window_glass.coverage_description": undefined;
+	"ui.settings.appearance.window_glass.coverage_full": undefined;
+	"ui.settings.appearance.window_glass.coverage_label": undefined;
+	"ui.settings.appearance.window_glass.coverage_sidebars": undefined;
+	"ui.settings.appearance.window_glass.description": undefined;
+	"ui.settings.appearance.window_glass.intensity_description": undefined;
+	"ui.settings.appearance.window_glass.intensity_end": undefined;
+	"ui.settings.appearance.window_glass.intensity_label": undefined;
+	"ui.settings.appearance.window_glass.intensity_start": undefined;
+	"ui.settings.appearance.window_glass.intensity_value": { value: string };
+	"ui.settings.appearance.window_glass.label": undefined;
+	"ui.settings.appearance.window_glass.material_acrylic": undefined;
+	"ui.settings.appearance.window_glass.material_description": undefined;
+	"ui.settings.appearance.window_glass.material_label": undefined;
+	"ui.settings.appearance.window_glass.material_menu": undefined;
+	"ui.settings.appearance.window_glass.material_mica": undefined;
+	"ui.settings.appearance.window_glass.material_popover": undefined;
+	"ui.settings.appearance.window_glass.material_tabbed": undefined;
+	"ui.settings.appearance.window_glass.material_window": undefined;
+	"ui.settings.appearance.window_glass.restart_needed": undefined;
+	"ui.settings.appearance.window_glass.unsupported_linux": undefined;
+	"ui.settings.appearance.window_glass.unsupported_other": undefined;
+	"ui.settings.appearance.window_glass.unsupported_reduced_transparency": undefined;
+	"ui.settings.appearance.window_glass.unsupported_windows_too_old": undefined;
 	"ui.settings.configuration.backend_setting_row.gate_note": { gate: string };
 	"ui.settings.configuration.backend_setting_row.not_set": undefined;
 	"ui.settings.configuration.backend_setting_row.read_only": undefined;
@@ -2653,6 +3363,32 @@ export type MessageParams = {
 	"ui.settings.tour.action": undefined;
 	"ui.settings.tour.description": undefined;
 	"ui.settings.tour.title": undefined;
+	"ui.settings.model.default_effort.busy": undefined;
+	"ui.settings.model.default_effort.clamped": {
+		level: string;
+		model: string;
+		resolved: string;
+	};
+	"ui.settings.model.default_effort.clamped_unset": {
+		level: string;
+		model: string;
+	};
+	"ui.settings.model.default_effort.empty": undefined;
+	"ui.settings.model.default_effort.error": undefined;
+	"ui.settings.model.default_effort.helper_ready": undefined;
+	"ui.settings.model.default_effort.label": undefined;
+	"ui.settings.model.default_effort.loading": undefined;
+	"ui.settings.model.default_effort.model_default": undefined;
+	"ui.settings.model.default_effort.model_default_resolves": { level: string };
+	"ui.settings.model.default_effort.no_home": undefined;
+	"ui.settings.model.default_effort.no_model": undefined;
+	"ui.settings.model.default_effort.one_level": { level: string };
+	"ui.settings.model.default_effort.one_level_sentinel": undefined;
+	"ui.settings.model.default_effort.placeholder": undefined;
+	"ui.settings.model.default_effort.save_failed": undefined;
+	"ui.settings.model.default_effort.settings_error": undefined;
+	"ui.settings.model.default_effort.settings_loading": undefined;
+	"ui.settings.model.default_effort.unresolved": undefined;
 	"ui.settings.model.backend_setting_combos.search_models": undefined;
 	"ui.settings.model.backend_setting_combos.search_providers": undefined;
 	"ui.settings.model.model_setting_options.copy_current_value_group": undefined;
@@ -2691,6 +3427,8 @@ export type MessageParams = {
 	"ui.settings.model.system_prompt.saving": undefined;
 	"ui.settings.model.system_prompt.system_prompt": undefined;
 	"ui.settings.model.system_prompt.unknown_error": undefined;
+	"ui.settings.model.provider_callout.providers_link": undefined;
+	"ui.settings.model.provider_callout.sentence": undefined;
 	"ui.settings.navigation.settings_page.backend_settings": undefined;
 	"ui.settings.navigation.settings_page.every_setting_the_backend_registry_owns_searchable_with_typed_edi": undefined;
 	"ui.settings.navigation.settings_page.loading_settings": undefined;

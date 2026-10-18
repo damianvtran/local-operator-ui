@@ -1,3 +1,5 @@
+import { formatNumber, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The tab's Timeline view: a time-scaled schedule — bars, milestone marks and
  * a today marker — under a pinned name column.
@@ -40,7 +42,6 @@ import { CalendarOff, Minus, Plus } from "lucide-react";
 import type { FC } from "react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-	NO_TEAM_LABEL,
 	formatProjectDay,
 	groupByTeam,
 	projectDisplayName,
@@ -70,10 +71,18 @@ const NAME_COL_PX = 224;
 const ROW_PX = 36;
 
 const TIER_LABEL: Record<TimelineTier, string> = {
-	day: "Days",
-	week: "Weeks",
-	month: "Months",
-	quarter: "Quarters",
+	get day() {
+		return t("ui.projects.project_timeline.days");
+	},
+	get week() {
+		return t("ui.projects.project_timeline.weeks");
+	},
+	get month() {
+		return t("ui.projects.project_timeline.months");
+	},
+	get quarter() {
+		return t("ui.projects.project_timeline.quarters");
+	},
 };
 
 type ProjectTimelineProps = {
@@ -104,6 +113,7 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 	onRetryDetails,
 	teamLabelFor = (name) => name,
 }) => {
+	useI18nLocale();
 	const [manual, setManual] = useState<TimelineTier | null>(null);
 	const [width, setWidth] = useState(0);
 	/*
@@ -158,7 +168,7 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 			<div className="flex shrink-0 items-center justify-between gap-3 px-9 py-2">
 				<span className="truncate text-meta text-ink-muted" data-timeline-note>
 					{failedDetails > 0
-						? `Milestones could not be read for ${failedDetails} project${failedDetails === 1 ? "" : "s"}.`
+						? t("ui.projects.timeline.read_failed", { count: failedDetails })
 						: /*
 							 * THE PENDING CLAUSE IS APPENDED, NOT SWAPPED (design item 1/
 							 * §3): the sentence keeps saying the counts it already gave,
@@ -166,11 +176,29 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 							 * the old swap read as the toolbar re-indexing live while the
 							 * reader watched.
 							 */
-							`${sections.dated.length} dated · ${sections.undated.length} without dates${
-								pendingDetails > 0
-									? ` · loading milestones for ${pendingDetails}…`
-									: ""
-							}`}
+							t(
+								"ui.projects.project_timeline.length_dated_length_2_without_dates_value3",
+								{
+									length: formatNumber(sections.dated.length, {
+										useGrouping: false,
+									}),
+									length_2: formatNumber(sections.undated.length, {
+										useGrouping: false,
+									}),
+									value3: String(
+										pendingDetails > 0
+											? t(
+													"ui.projects.project_timeline.loading_milestones_for_pendingdetails",
+													{
+														pendingDetails: formatNumber(pendingDetails, {
+															useGrouping: false,
+														}),
+													},
+												)
+											: "",
+									),
+								},
+							)}
 				</span>
 				<span className="flex shrink-0 items-center gap-1">
 					{failedDetails > 0 && (
@@ -178,14 +206,14 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 						 * a door back (review round 1) — this surface would otherwise
 						 * draw a bar with silently missing marks. */
 						<Button variant="secondary" size="sm" onClick={onRetryDetails}>
-							Try again
+							{t("ui.projects.project_timeline.try_again")}
 						</Button>
 					)}
 					<Button
 						variant="secondary"
 						size="icon"
-						aria-label="Zoom in"
-						title="Zoom in (finer)"
+						aria-label={t("ui.projects.project_timeline.zoom_in")}
+						title={t("ui.projects.project_timeline.zoom_in_finer")}
 						disabled={!span || tier === TIMELINE_TIERS[0]}
 						onClick={() => step(1)}
 					>
@@ -197,8 +225,8 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 					<Button
 						variant="secondary"
 						size="icon"
-						aria-label="Zoom out"
-						title="Zoom out (coarser)"
+						aria-label={t("ui.projects.project_timeline.zoom_out")}
+						title={t("ui.projects.project_timeline.zoom_out_coarser")}
 						disabled={
 							!span || tier === TIMELINE_TIERS[TIMELINE_TIERS.length - 1]
 						}
@@ -239,7 +267,7 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 									>
 										<span className="truncate text-ink">
 											{group.team == null
-												? NO_TEAM_LABEL
+												? t("ui.projects.project_model.no_team")
 												: teamLabelFor(group.team)}
 										</span>
 										<span className="shrink-0 text-ink-muted">
@@ -299,8 +327,9 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 					>
 						{sections.dated.length === 0 && (
 							<p className="pb-1 text-meta text-ink-muted">
-								Set a start date, a target date or a milestone date and it will
-								appear on the timeline.
+								{t(
+									"ui.projects.project_timeline.set_a_start_date_a_target_date_or_a_milestone_date_and_it_will_ap",
+								)}
 							</p>
 						)}
 						<ul className="flex max-h-24 flex-wrap gap-x-3 gap-y-1 overflow-y-auto">
@@ -380,7 +409,8 @@ const TimelineRow: FC<{
 			type="button"
 			onClick={onOpen}
 			data-project-name={project.name}
-			className="flex w-full items-stretch text-left transition-colors duration-fast ease-out-quart hover:bg-elevated"
+			/* The row hover role the glass rules rebind (see `project-list.tsx`). */
+			className="flex w-full items-stretch text-left transition-colors duration-fast ease-out-quart hover:bg-row-hover"
 		>
 			<span
 				className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r border-hairline bg-canvas px-3"

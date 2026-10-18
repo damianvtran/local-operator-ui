@@ -1,3 +1,4 @@
+import { formatDateTime, t } from "@shared/i18n";
 /**
  * The detail page's properties block: the planning dates, the estimate, the
  * tags, the attributions and when the record last moved — each editable fact
@@ -62,12 +63,42 @@ export type ProjectPropertiesProps = {
 
 /** The rows the + Add menu can birth, in the order the menu lists them. */
 const ADDABLE_FIELDS = [
-	{ field: "owner", label: "Owner" },
-	{ field: "team", label: "Team" },
-	{ field: "start", label: "Start date" },
-	{ field: "target", label: "Target date" },
-	{ field: "estimate", label: "Estimate" },
-	{ field: "tags", label: "Tags" },
+	{
+		field: "owner",
+		get label() {
+			return t("ui.projects.project_properties.owner");
+		},
+	},
+	{
+		field: "team",
+		get label() {
+			return t("ui.projects.project_properties.team");
+		},
+	},
+	{
+		field: "start",
+		get label() {
+			return t("ui.projects.project_properties.start_date");
+		},
+	},
+	{
+		field: "target",
+		get label() {
+			return t("ui.projects.project_properties.target_date");
+		},
+	},
+	{
+		field: "estimate",
+		get label() {
+			return t("ui.projects.project_properties.estimate");
+		},
+	},
+	{
+		field: "tags",
+		get label() {
+			return t("ui.projects.project_properties.tags");
+		},
+	},
 ] as const;
 
 type AddableField = (typeof ADDABLE_FIELDS)[number]["field"];
@@ -149,7 +180,18 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 			: "";
 	const absoluteUpdated =
 		project.updated_at > 0
-			? new Date(project.updated_at * 1000).toLocaleString(locale)
+			? formatDateTime(
+					new Date(project.updated_at * 1000),
+					{
+						year: "numeric",
+						month: "numeric",
+						day: "numeric",
+						hour: "numeric",
+						minute: "numeric",
+						second: "numeric",
+					},
+					locale,
+				)
 			: "";
 
 	/* One predicate for the `dl`, derived from the same reads the rows use. */
@@ -172,7 +214,9 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 	return (
 		<section className="flex flex-col gap-3">
 			<div className="flex items-center justify-between gap-3">
-				<h2 className="text-title text-ink">Properties</h2>
+				<h2 className="text-title text-ink">
+					{t("ui.projects.project_properties.properties")}
+				</h2>
 				{missing.length > 0 && (
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
@@ -186,7 +230,7 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 								)}
 							>
 								<Plus className="size-3" aria-hidden="true" />
-								Add
+								{t("ui.projects.project_properties.add")}
 							</button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent
@@ -252,7 +296,11 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 							onRetire={(outcome) => retire("target", outcome)}
 						/>
 					)}
-					{completed && <ReadRow label="Completed">{completed}</ReadRow>}
+					{completed && (
+						<ReadRow label={t("ui.projects.project_properties.completed")}>
+							{completed}
+						</ReadRow>
+					)}
 					{showEstimate && (
 						<ProjectEstimateField
 							project={project}
@@ -270,7 +318,7 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 						/>
 					)}
 					{project.updated_at > 0 && (
-						<ReadRow label="Updated">
+						<ReadRow label={t("ui.projects.project_properties.updated")}>
 							{/* Two readings of one fact, the read block's own split:
 							 * the phrase is scanned, the instant is the title. */}
 							<time
@@ -284,7 +332,9 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 				</dl>
 			) : (
 				<p className="text-body-sm text-ink-muted">
-					No dates, estimate, tags, owner or team yet.
+					{t(
+						"ui.projects.project_properties.no_dates_estimate_tags_owner_or_team_yet",
+					)}
 				</p>
 			)}
 		</section>

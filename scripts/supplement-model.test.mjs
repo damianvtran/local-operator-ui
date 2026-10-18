@@ -321,11 +321,96 @@ test("the copy table is byte-identical to the TUI's constants", () => {
 	assert.equal(model.COPY_RETRY, "Retry");
 	assert.equal(model.moreText(1), "1 more file");
 	assert.equal(model.moreText(3), "3 more files");
+	assert.equal(model.countClause(1, "file"), "1 file");
+	assert.equal(model.countClause(2, "file"), "2 files");
+	assert.equal(model.countClause(1, "graphic"), "1 graphic");
+	assert.equal(model.countClause(2, "graphic"), "2 graphics");
+});
+
+test("the failed line's cause phrases are the TUI's one word list, byte-identical", () => {
+	assert.equal(model.CAUSE_PHRASES.provider_quota, "provider limit reached");
+	assert.equal(model.CAUSE_PHRASES.provider_auth, "provider sign-in needed");
 	assert.equal(
-		model.filesSummaryLine(["a.md", "b.csv"]),
-		"2 files: a.md, b.csv",
+		model.CAUSE_PHRASES.provider_transient,
+		"provider temporarily unavailable",
 	);
-	assert.equal(model.filesSummaryLine(["a.md"]), "1 file: a.md");
+	assert.equal(model.CAUSE_PHRASES.provider_timeout, "provider timed out");
+	assert.equal(
+		model.CAUSE_PHRASES.provider_request,
+		"provider refused the request",
+	);
+	assert.equal(
+		model.CAUSE_PHRASES.provider_content,
+		"provider blocked the content",
+	);
+	assert.equal(model.CAUSE_PHRASES.provider_context, "provider context limit");
+	/*
+	 * Unknown, empty and malformed tokens render NO phrase (design round 1,
+	 * D2): the catch-all folds `aborted` in, and the bare sentence is the
+	 * honest ceiling for a token the surface cannot name.
+	 */
+	for (const token of [
+		"provider_unknown",
+		"provider_from_the_future",
+		"",
+		undefined,
+		42,
+		null,
+	]) {
+		assert.equal(model.causePhrase(token), "", String(token));
+	}
+});
+
+test("the typed cause is read bounded, additive, and version-reset like the error", () => {
+	// A row carrying the vocabulary token keeps it on both envelopes.
+	const withCause = { ...row("failed"), cause: "provider_quota" };
+	for (const patch of [
+		model.supplementPatchFromDetails(withCause),
+		model.supplementPatchFromEvent(withCause),
+	]) {
+		assert.equal(patch.cause, "provider_quota");
+	}
+	// Absent or non-string causes add nothing: the row behaves exactly as today.
+	for (const value of [undefined, 42, null, {}]) {
+		const patch = model.supplementPatchFromDetails({
+			...row("failed"),
+			cause: value,
+		});
+		assert.equal(patch.cause, undefined, String(value));
+	}
+	// A runaway token is bounded at the core reader's own length; the truncated
+	// spelling no longer matches the table, so the line renders bare.
+	const patch = model.supplementPatchFromDetails({
+		...row("failed"),
+		cause: `provider_${"x".repeat(200)}`,
+	});
+	assert.equal(patch.cause.length, model.CAUSE_MAX_CHARS);
+	assert.equal(model.causePhrase(patch.cause), "");
+	// The merge carries a stated cause and resets it on a new version, like `error`.
+	const first = model.mergeSupplement(
+		null,
+		model.supplementPatchFromDetails({
+			...row("failed"),
+			cause: "provider_auth",
+		}),
+		0,
+	);
+	assert.equal(first.cause, "provider_auth");
+	const next = model.mergeSupplement(
+		first,
+		model.supplementPatchFromDetails({ ...row("failed"), version: 2 }),
+		1,
+	);
+	assert.equal(next.cause, "");
+	const restated = model.mergeSupplement(
+		first,
+		model.supplementPatchFromDetails({
+			...row("failed"),
+			cause: "provider_timeout",
+		}),
+		1,
+	);
+	assert.equal(restated.cause, "provider_timeout");
 });
 
 // --- the mount URL and the budget -------------------------------------------
@@ -447,7 +532,7 @@ test("row parsing keeps only the contract's fields and bounds the more list", ()
 	);
 });
 
-// --- the condensed copy table (design D1) and the budget's accrual (D5) ------
+// --- the budget's accrual (D5) ---------------------------------------------
 
 const blockRecord = (over) => ({
 	kind: "supplement",
@@ -465,76 +550,12 @@ const blockRecord = (over) => ({
 	live: false,
 	...over,
 });
-const fileRow = (path, name, sizeBytes) => ({
-	path,
-	name,
-	kind: "markdown",
-	sizeBytes,
-	mtime: 0,
-	why: "w",
-});
 const comp = (seed, hint) => ({
 	attachment: seed.padEnd(32, "0").slice(0, 32),
 	title: seed,
 	source: "s",
 	mime: "text/html",
 	heightHint: hint,
-});
-
-test("the condensed line follows the design's copy table for every arm", () => {
-	assert.equal(
-		model.condensedBlockLine(blockRecord({ components: [comp("a", 320)] })),
-		"1 graphic",
-	);
-	assert.equal(
-		model.condensedBlockLine(
-			blockRecord({ components: [comp("a", 320), comp("b", 320)] }),
-		),
-		"2 graphics",
-	);
-	assert.equal(
-		model.condensedBlockLine(
-			blockRecord({
-				files: [
-					fileRow("reports/latency.md", "latency.md", 4120),
-					fileRow("data/bench.csv", "bench.csv", 913),
-				],
-			}),
-		),
-		"2 files: latency.md, bench.csv",
-	);
-	assert.equal(
-		model.condensedBlockLine(
-			blockRecord({
-				files: [fileRow("a.md", "a.md", 1), fileRow("b.md", "b.md", 1)],
-				filesMore: 5,
-				more: ["c.md", "d.md", "e.md", "f.md", "g.md"],
-			}),
-		),
-		"7 files",
-	);
-	assert.equal(
-		model.condensedBlockLine(
-			blockRecord({
-				files: [fileRow("a.md", "a.md", 1), fileRow("b.md", "b.md", 1)],
-				components: [comp("a", 320)],
-			}),
-		),
-		"2 files · 1 graphic",
-	);
-	assert.equal(model.condensedBlockLine(blockRecord({})), null);
-	// The not-settled prefix: files in, files+more out, nothing when unknown.
-	assert.equal(
-		model.condensedCountPrefix(
-			blockRecord({
-				files: [fileRow("a.md", "a.md", 1)],
-				filesMore: 1,
-				more: ["b.md"],
-			}),
-		),
-		"2 files",
-	);
-	assert.equal(model.condensedCountPrefix(blockRecord({})), null);
 });
 
 test("the budget accrues RENDERED heights once measured, hints until then (D5)", () => {

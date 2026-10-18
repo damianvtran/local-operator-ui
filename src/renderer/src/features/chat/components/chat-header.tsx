@@ -21,6 +21,8 @@ import {
 	Skeleton,
 } from "@shared/components/ui";
 import { useHomeDirectory } from "@shared/hooks";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { formatDirectory, middleTruncatePath } from "@shared/utils/path-utils";
@@ -328,6 +330,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	 * `session_transfer` gates the move inside that. Read here rather than threaded
 	 * from the page, so the menu and the chip cannot drift about which gate is closed.
 	 */
+	// Labels follow locale changes without resetting editor/menu state or effects.
+	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const peerState = desktopFeatureState(capabilities.data, "peers");
 	const transferState = desktopFeatureState(
@@ -845,7 +849,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							 * types rather than the keystrokes simply vanishing.
 							 */
 							readOnly={renameSaving}
-							aria-label="Conversation name"
+							aria-label={t("ui.chat.header.conversation_name")}
 							onChange={(event) => setRenameDraft(event.target.value)}
 							onKeyDown={(event) => {
 								if (event.key === "Enter") {
@@ -1124,10 +1128,10 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						<Badge
 							shape="pill"
 							data-session-archived-pill
-							title="This conversation is archived. It is hidden from your chats until you restore it."
+							title={t("ui.chat.header.archived_hint")}
 						>
 							<Archive aria-hidden="true" />
-							Archived
+							{t("ui.chat.header.archived")}
 						</Badge>
 						{onSetArchived && (
 							<Button
@@ -1191,7 +1195,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								 * reach for.
 								 */
 								data-conversation-actions
-								aria-label="Conversation actions"
+								aria-label={t("ui.chat.header.actions")}
 							>
 								<MoreHorizontal aria-hidden="true" />
 							</Button>
@@ -1249,7 +1253,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									onSelect={() => void copySessionId(sessionId)}
 								>
 									<Copy aria-hidden="true" />
-									<span>Copy session ID</span>
+									<span>{t("ui.chat.header.copy_id")}</span>
 								</DropdownMenuItem>
 							)}
 							{/*
@@ -1311,7 +1315,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								>
 									<MonitorSmartphone aria-hidden="true" />
 									<span className="flex min-w-0 flex-col items-start gap-0.5">
-										<span>Move to another device…</span>
+										<span>{t("ui.chat.header.move_device")}</span>
 										{moveReason ? (
 											/*
 											 * THE REASON WRAPS WITHIN A CAPPED WIDTH (design round 1 D4, then measured
@@ -1351,7 +1355,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							<DropdownMenuSub>
 								<DropdownMenuSubTrigger>
 									<Rows3 aria-hidden="true" />
-									<span>Transcript display</span>
+									<span>{t("ui.chat.header.transcript_display")}</span>
 									{/*
 									 * THE ACTIVE MODE, named beside the stable name (agent review round 1,
 									 * m3). The trigger's own words stay fixed, so a reader who learned the
@@ -1452,7 +1456,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									disabled={!onRequestDelete}
 								>
 									<Trash2 aria-hidden="true" />
-									<span>Delete conversation…</span>
+									<span>{t("ui.chat.header.delete")}</span>
 								</DropdownMenuItem>
 							)}
 							{/*
@@ -1499,7 +1503,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								>
 									<Info aria-hidden="true" />
 									<span>
-										{isRunPanelOpen ? "Close run details" : "Open run details"}
+										{isRunPanelOpen
+											? t("ui.chat.header.close_run_details")
+											: t("ui.chat.header.open_run_details")}
 									</span>
 								</DropdownMenuItem>
 							)}

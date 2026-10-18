@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The detail page's milestones block: the list, the complete/uncomplete
  * toggle, the remove control and the add row.
@@ -92,7 +93,7 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 					tabIndex={-1}
 					data-project-milestones-heading=""
 				>
-					Milestones
+					{t("ui.projects.project_milestones.milestones")}
 				</h2>
 				{summary && milestones.length > 0 && (
 					<span className="text-meta text-ink-muted tabular-nums">
@@ -102,15 +103,19 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 			</div>
 			{milestones.length === 0 ? (
 				<p className="text-body-sm text-ink-muted">
-					No milestones yet. Add one below to mark the dates this project is
-					planned around.
+					{t(
+						"ui.projects.project_milestones.no_milestones_yet_add_one_below_to_mark_the_dates_this_project_is",
+					)}
 				</p>
 			) : (
 				/*
 				 * Borderless group, main's card restyle (#608): surface ground, stepped
 				 * radius, no border.
 				 */
-				<ul className="flex flex-col divide-y divide-hairline rounded-md bg-surface">
+				<ul
+					data-glass-block=""
+					className="flex flex-col divide-y divide-hairline rounded-md bg-surface"
+				>
 					{milestones.map((milestone) => {
 						const meta = milestoneStatusMeta(milestone.status);
 						const completed = milestone.completed_at !== null;
@@ -127,8 +132,13 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 									}
 									aria-label={
 										completed
-											? `Mark ${milestone.name} not complete`
-											: `Mark ${milestone.name} complete`
+											? t(
+													"ui.projects.project_milestones.mark_name_not_complete",
+													{ name: String(milestone.name) },
+												)
+											: t("ui.projects.project_milestones.mark_name_complete", {
+													name: String(milestone.name),
+												})
 									}
 								/>
 								<span className="min-w-0 flex-1 truncate text-body-sm text-ink">
@@ -144,7 +154,9 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 									variant="ghost"
 									size="icon-sm"
 									disabled={busy}
-									aria-label={`Remove ${milestone.name}`}
+									aria-label={t("ui.projects.project_milestones.remove_name", {
+										name: String(milestone.name),
+									})}
 									onClick={() => onRemove(milestone.name)}
 								>
 									<X />
@@ -158,12 +170,14 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 			{/* The add row: name + an optional target date, both typed. */}
 			<div className="flex items-end gap-3">
 				<div className="flex min-w-0 flex-1 flex-col gap-1.5">
-					<Label htmlFor="project-milestone-name">New milestone</Label>
+					<Label htmlFor="project-milestone-name">
+						{t("ui.projects.project_milestones.new_milestone")}
+					</Label>
 					<Input
 						id="project-milestone-name"
 						value={draftName}
 						onChange={(event) => setDraftName(event.target.value)}
-						placeholder="beta cut"
+						placeholder={t("ui.projects.project_milestones.beta_cut")}
 						onKeyDown={(event) => {
 							if (event.key === "Enter") {
 								event.preventDefault();
@@ -173,17 +187,23 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 					/>
 				</div>
 				<div className="flex w-40 flex-col gap-1.5">
-					<Label htmlFor="project-milestone-date">Target date</Label>
+					<Label htmlFor="project-milestone-date">
+						{t("ui.projects.project_milestones.target_date")}
+					</Label>
 					<Input
 						id="project-milestone-date"
 						value={draftDate}
 						onChange={(event) => setDraftDate(event.target.value)}
-						placeholder="YYYY-MM-DD"
+						placeholder={
+							/* i18n: ignore Wire date-input grammar, not product prose; owner projects, remove if date syntax changes. */ "YYYY-MM-DD"
+						}
 						aria-invalid={dateInvalid}
 					/>
 					{dateInvalid && (
 						<p className="text-meta text-danger">
-							Dates are YYYY-MM-DD, or empty.
+							{t(
+								"ui.projects.project_milestones.dates_are_yyyy_mm_dd_or_empty",
+							)}
 						</p>
 					)}
 				</div>
@@ -194,7 +214,7 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 					data-tour-tag="project-milestone-add"
 				>
 					<Plus />
-					Add
+					{t("ui.projects.project_milestones.add")}
 				</Button>
 			</div>
 		</section>

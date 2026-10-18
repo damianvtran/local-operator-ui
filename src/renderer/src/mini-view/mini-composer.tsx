@@ -40,6 +40,7 @@
 
 import { AIDA_DISABLED_SENTENCE } from "@features/aida/aida-control";
 import { gateIsSecret } from "@features/chat/ask-answer";
+import { effectiveGate } from "@features/chat/ask-queue";
 import { formatContextTokens } from "@features/chat/pickers/panels/formatters";
 import { encodeImageAttachments } from "@features/chat/utils/attachment-encode";
 import {
@@ -1008,6 +1009,15 @@ export function MiniComposer() {
 
 	return (
 		<div
+			/*
+			 * THE POPOUT'S ONE GROUND. With window glass on, this is `surface` at its
+			 * floor, RAW over the material - the window's material is beneath it and
+			 * nothing else is in this window, so it reads as a small floating glass HUD
+			 * (`styles/index.css`). Glass off: exactly the shipped opaque `canvas`
+			 * card, untouched. The marker also scopes the composer inside it to the
+			 * field treatment, since coverage is meaningless for a one-surface window.
+			 */
+			data-glass-region="mini-ground"
 			className="flex h-screen w-screen flex-col overflow-hidden bg-canvas text-ink"
 			onKeyDown={onFrameKeyDown}
 			data-tour-tag="mini-frame"
@@ -1071,7 +1081,17 @@ export function MiniComposer() {
 					cwdReadOnlyReason={MINI_COPY.cwdReadOnly}
 					sessionStatus={sessionStatus}
 					recordingProbe={recordingProbe}
-					secretAnswer={gateIsSecret(frontend?.pending_gate)}
+					/*
+					 * THE BLOCKING GATE ONLY, read through `effectiveGate` so a mirrored
+					 * ask is not read as a parked gate (the ONE derivation
+					 * `ask-queue.ts` states). A QUEUED secret ask does not lock this box:
+					 * the mini view has no asks drawer to point at, and the main
+					 * composer's notice would promise a panel this surface cannot open.
+					 * The send confirm does not apply here either — the mini view is a
+					 * quick-send box outside the conversation, and the operator's ask
+					 * was about the main composer.
+					 */
+					secretAnswer={gateIsSecret(effectiveGate(frontend))}
 					onDictationStateChange={(active) => {
 						dictationActiveRef.current = active;
 						setDictating(active);

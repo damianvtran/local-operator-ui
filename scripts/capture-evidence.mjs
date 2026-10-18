@@ -84,6 +84,13 @@ const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6017";
  * `manifest.themes`. Ids are checked against the palettes on disk rather than
  * trusted: a frame named after a theme the app does not have is worse than a
  * missing one, and `--themes=typo` would otherwise write `typo.webp`.
+ *
+ * A COLD STORYBOOK CAN MISS THE FIRST CAPTURE'S THEME BUDGET (QA note on
+ * #1153, 2026-10-17): while vite optimizes dependencies the document can
+ * arrive without its theme inside the 10s window, which reads as a rig
+ * failure and is not one — warm the server with one page load (or simply
+ * retry once) and the capture takes. The frames are deterministic either way;
+ * only the first hit's timing differs.
  */
 const ONLY = flag("only");
 
@@ -800,6 +807,21 @@ export const STORIES = [
 		{ expectPresent: 'a[href*="section=providers"]' },
 	],
 
+	/*
+	 * THE COMPOSER'S SECRET-ASK STATES (ask `a-9e0c`). SIX rows: the queued state
+	 * this change ships (a usable box, the sentence and its door), the send confirm
+	 * the story's `play` drives into existence, the three states round 2 added (a put
+	 * in flight, a refused put's sentence, and a value that names no field), and the
+	 * blocking gate that deliberately still refuses. Registered so the sweep
+	 * photographs them; this PR's own frames are a narrowed run of the same rig (see
+	 * `countsMean.surfaces`).
+	 */
+	["chat-message-input--queued-secret-ask", 1280, 620],
+	["chat-message-input--secret-ask-confirm", 1280, 620],
+	["chat-message-input--secret-ask-sending", 1280, 620],
+	["chat-message-input--secret-ask-refused", 1280, 620],
+	["chat-message-input--secret-ask-multi", 1280, 620],
+	["chat-message-input--blocking-secret-gate", 1280, 620],
 	["chat-trace--conversation", 1280, 1308],
 	["chat-trace--conversation-with-reasoning", 1280, 1409],
 	["chat-trace--conversation-reasoning-open", 1280, 3327],
@@ -1401,6 +1423,59 @@ export const STORIES = [
 			dir: "substance-then-addendum-response",
 		},
 	],
+	/*
+	 * THE LIVE RECEIPT EPISODE FOLD'S OWN SEQUENCE (this change): one story's
+	 * four stages, driven through the story's own buttons - `before` (a single
+	 * received row while the turn waits: a lone opening receipt PAINTS, because
+	 * the bar would replace the reader's only content), `during` (the exchange's
+	 * receipts arriving while the turn thinks condense into ONE bar), `idle`
+	 * (settled: the same bar stands, no second one, the sentence once),
+	 * `expanded` (the reader's press through the bar's own control, which the
+	 * story exercises itself). `quiet-exchange-before`/`-during`/`-idle`/
+	 * `-expanded` are the STATE directories rather than the story leaf, so one
+	 * story writes four cells; the before half, shot on the pre-change tree,
+	 * lives in `../chat-turn-collapse-before/` and mirrors these names.
+	 * `lone-actionable-peer-negative` is the counterexample the rule must not
+	 * overreach: a run that OPENS with a single actionable receipt - no settled
+	 * answer precedes it - keeps painting loose, and no bar may replace it.
+	 */
+	[
+		"chat-turn-collapse--quiet-exchange-stages",
+		1280,
+		900,
+		{ dir: "quiet-exchange-before" },
+	],
+	[
+		"chat-turn-collapse--quiet-exchange-stages",
+		1280,
+		900,
+		{
+			dir: "quiet-exchange-during",
+			press: '[aria-label="Quiet exchange stages"] button:nth-of-type(2)',
+			pressSettleMs: 400,
+		},
+	],
+	[
+		"chat-turn-collapse--quiet-exchange-stages",
+		1280,
+		900,
+		{
+			dir: "quiet-exchange-idle",
+			press: '[aria-label="Quiet exchange stages"] button:nth-of-type(3)',
+			pressSettleMs: 400,
+		},
+	],
+	[
+		"chat-turn-collapse--quiet-exchange-stages",
+		1280,
+		900,
+		{
+			dir: "quiet-exchange-expanded",
+			press: '[aria-label="Quiet exchange stages"] button:nth-of-type(4)',
+			pressSettleMs: 600,
+		},
+	],
+	["chat-turn-collapse--lone-actionable-peer-negative", 1280, 900],
 	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
 	 * is a SENTENCE rather than a row: the reducer marks a row whose text is real
@@ -12134,7 +12209,8 @@ export const STORIES = [
 	["chat-turn-supplements--budget-disclosure-expanded", 900, 1366],
 	["chat-turn-supplements--cancelled", 900, 237],
 	["chat-turn-supplements--cancelled-cold", 900, 237],
-	["chat-turn-supplements--failed", 900, 237],
+	["chat-turn-supplements--failed", 900, 360],
+	["chat-turn-supplements--failed-cause-quota", 900, 360],
 	["chat-turn-supplements--done-empty", 900, 220],
 	["chat-turn-supplements--superseded", 900, 220],
 	["chat-turn-supplements--frame-error", 900, 237],
@@ -12142,13 +12218,24 @@ export const STORIES = [
 	["chat-turn-supplements--narrow", 560, 514],
 	["chat-turn-supplements--supplement-free", 900, 314],
 	/*
-	 * THE CONDENSED FORM'S OWN STATES (design round 1, D1/U3/R2): the folded
-	 * block per content shape, plus the same block at the shell's narrow width.
-	 * Each frame's turn really carries a closed bar (the stories drive the same
-	 * plan the app does), so these are the one-line form on the production walk.
+	 * THE CONDENSED FORM'S OWN STATES (design round 1, D1/U3/R2; reworked by
+	 * the operator decision of 2026-10-16): the folded block per content shape
+	 * — the SAME files section as its expanded self (actionable rows, the image
+	 * grid) with no slots and no frames; a graphics-only settle keeps its plain
+	 * count clause — plus the same block at the shell's narrow width. Each
+	 * frame's turn really carries a closed bar (the stories drive the same plan
+	 * the app does).
+	 *
+	 * TWO STATES SIT TALLER (agent review round 1's R3, the designer's D1): at
+	 * 900x400, `folded-condensed-counts` ended at the fourth featured row with
+	 * its `N more files` disclosure below the crop and
+	 * `folded-condensed-preparing-files` lost the `Preparing highlights…  Adjust…  Cancel` line the
+	 * same way, so both are taken at 900x540 — the height that carries each
+	 * state's own line. The count-valued siblings stay at 400: their content
+	 * fits, and a re-take would move bytes no finding named.
 	 */
 	["chat-turn-supplements--folded-condensed-files", 900, 400],
-	["chat-turn-supplements--folded-condensed-counts", 900, 400],
+	["chat-turn-supplements--folded-condensed-counts", 900, 540],
 	["chat-turn-supplements--folded-condensed-components", 900, 400],
 	["chat-turn-supplements--folded-condensed-mixed", 900, 400],
 	[
@@ -12156,6 +12243,83 @@ export const STORIES = [
 		560,
 		400,
 		{ dir: "folded-condensed-narrow" },
+	],
+	/*
+	 * THE 2026-10-16 REWORK'S OWN STATES (operator decision): the condensed
+	 * form's files are the expanded files section, and image-kind files are the
+	 * thumbnail grid behind the scripted file-read bridge — the polls wait for
+	 * the tile's DECODED picture (or its glyph receipt) rather than photographing
+	 * a reserved box under a painted state's name.
+	 */
+	["chat-turn-supplements--folded-condensed-one-file", 900, 400],
+	[
+		"chat-turn-supplements--folded-condensed-images",
+		900,
+		400,
+		{
+			expect: {
+				pollMs: 15000,
+				expression: `(() => {
+						const img = document.querySelector("[data-supplement-images] img");
+						if (!img) return "the grid has no painted picture yet";
+						if (!img.complete || img.naturalWidth === 0) return "the tile's picture has not decoded";
+						return true;
+					})()`,
+				message: "the folded grid's tiles are painted before the shutter",
+			},
+		},
+	],
+	["chat-turn-supplements--folded-condensed-preparing-files", 900, 540],
+	[
+		"chat-turn-supplements--images",
+		900,
+		300,
+		{
+			expect: {
+				pollMs: 15000,
+				expression: `(() => {
+						const img = document.querySelector("[data-supplement-images] img");
+						if (!img) return "the grid has no painted picture yet";
+						if (!img.complete || img.naturalWidth === 0) return "the tile's picture has not decoded";
+						return true;
+					})()`,
+				message: "the grid's tiles are painted before the shutter",
+			},
+		},
+	],
+	[
+		"chat-turn-supplements--images-mixed",
+		900,
+		330,
+		{
+			expect: {
+				pollMs: 15000,
+				expression: `(() => {
+						const img = document.querySelector("[data-supplement-images] img");
+						if (!img) return "the grid has no painted picture yet";
+						if (!img.complete || img.naturalWidth === 0) return "the tile's picture has not decoded";
+						if (!document.querySelector("[data-supplement-files] [data-supplement-file]") && !document.querySelector("[data-supplement-files-summary] [data-supplement-file]")) return "the non-image row is not drawn beside the grid";
+						return true;
+					})()`,
+				message:
+					"the mixed set's grid and row are both painted before the shutter",
+			},
+		},
+	],
+	[
+		"chat-turn-supplements--images-unavailable",
+		900,
+		300,
+		{
+			expect: {
+				pollMs: 15000,
+				expression: `(() => {
+						if (!document.querySelector("[data-supplement-image-fallback]")) return "the glyph receipt is not drawn yet";
+						return true;
+					})()`,
+				message: "the failed tile's glyph receipt is drawn before the shutter",
+			},
+		},
 	],
 	/*
 	 * THE IMAGE VIEWER'S CONTROLS AND CAROUSEL

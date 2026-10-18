@@ -122,3 +122,197 @@ export function __turnCollapseOpenStats(): {
 	for (const set of store.values()) runs += set.size;
 	return { sessions: store.size, runs };
 }
+
+export type InternalEpisodeIdentity = {
+	key: string;
+	segmentIds: readonly string[];
+	eligible?: boolean;
+};
+/** Disclosure keys are bounded by reader ownership, NOT episode ordinals. */
+export const INTERNAL_IDENTITY_MAX_EPISODES = 128;
+export const INTERNAL_IDENTITY_MAX_IDS = 4096;
+export type InternalEpisodeIdentitySnapshot = {
+	complete: boolean;
+	owners: ReadonlyMap<string, { ordinal: number; order: number }>;
+	keys: ReadonlyMap<number, string>;
+	reason: string | null;
+};
+const emptyIdentity = (
+	reason: string | null,
+): InternalEpisodeIdentitySnapshot => ({
+	complete: reason === null,
+	owners: new Map(),
+	keys: new Map(),
+	reason,
+});
+const isEpisodeKey = (key: string) => key.startsWith("qg:") && key.length > 3;
+
+/**
+ * Retain COMPLETE previous ID ownership, including unheld/ineligible groups,
+ * so an unheld neighbor cannot disappear from merge exclusion evidence. Only
+ * <=128 existing OPEN keys (+one transient focused child) are retained. This
+ * metadata never writes/refreshes disclosure LRU. >4096 IDs discards the WHOLE
+ * snapshot: keeping an older smaller one would falsely certify later overlap.
+ *
+ * This is only a bounded overlap improvement, NOT a topology transition
+ * certificate. Oversized previous groups, source head loss and same-ID field
+ * reclassification remain gate-blocking. No body, epoch or label proves them.
+ */
+export function captureInternalEpisodeIdentity(
+	episodes: readonly InternalEpisodeIdentity[],
+	openKeys: ReadonlySet<string>,
+	focusedId: string | null = null,
+	allCurrentIds: Iterable<string> = [],
+): InternalEpisodeIdentitySnapshot {
+	const owners = new Map<string, { ordinal: number; order: number }>();
+	const keys = new Map<number, string>();
+	for (let ordinal = 0; ordinal < episodes.length; ordinal += 1) {
+		const episode = episodes[ordinal];
+		for (let order = 0; order < episode.segmentIds.length; order += 1) {
+			const id = episode.segmentIds[order];
+			if (owners.has(id)) return emptyIdentity("duplicate-prior-id");
+			if (owners.size === INTERNAL_IDENTITY_MAX_IDS)
+				return emptyIdentity("prior-id-limit");
+			owners.set(id, { ordinal, order });
+		}
+		if (
+			episode.eligible !== false &&
+			isEpisodeKey(episode.key) &&
+			openKeys.has(episode.key) &&
+			keys.size < INTERNAL_IDENTITY_MAX_EPISODES
+		)
+			keys.set(ordinal, episode.key);
+	}
+	// Visible pinned records are exclusion evidence, not candidate disclosures.
+	// IDs already owned by a segment are expected in this second projection.
+	for (const id of allCurrentIds) {
+		if (owners.has(id)) continue;
+		if (owners.size === INTERNAL_IDENTITY_MAX_IDS)
+			return emptyIdentity("prior-id-limit");
+		owners.set(id, { ordinal: -1, order: -1 });
+	}
+	const focusOwner = focusedId === null ? undefined : owners.get(focusedId);
+	if (focusOwner !== undefined && focusOwner.ordinal >= 0) {
+		const episode = episodes[focusOwner.ordinal];
+		if (episode.eligible !== false && isEpisodeKey(episode.key))
+			keys.set(focusOwner.ordinal, episode.key);
+	}
+	return { complete: true, owners, keys, reason: null };
+}
+
+/**
+ * Stream ALL current segments; retain no N-sized current owner index. Prior
+ * ordinals may exceed128 because their complete IDs still fit4096. Generic
+ * arrays use bounded duplicate checking and refuse >4096 unless the caller's
+ * existing canonical projection supplies uniqueness authority. That authority
+ * is ONLY current-ID uniqueness, never historical segmentation/topology proof.
+ * Matched duplicates and key collisions are rejected even with that authority.
+ */
+export function retainInternalEpisodeKeys<T extends InternalEpisodeIdentity>(
+	previous: InternalEpisodeIdentitySnapshot,
+	current: readonly T[],
+	options: {
+		currentIdsUnique?: boolean;
+		/** Already-visible records outside candidate segments detect reclassification. */
+		outsideCurrentIds?: Iterable<string>;
+	} = {},
+): { episodes: T[]; reason: string | null } {
+	const refuse = (reason: string) => ({ episodes: [...current], reason });
+	if (!previous.complete) return refuse(previous.reason ?? "incomplete-prior");
+	if (previous.owners.size > INTERNAL_IDENTITY_MAX_IDS)
+		return refuse("prior-id-limit");
+	const matched = new Set<string>(); // <=P, never all current IDs
+	const genericSeen =
+		options.currentIdsUnique === true ? null : new Set<string>();
+	const state = new Map<
+		number,
+		{
+			current: number;
+			many: boolean;
+			lastOrder: number;
+			reordered: boolean;
+			outside: boolean;
+		}
+	>();
+	const candidates = new Map<number, { owner: number; key: string }>(); // <=H
+	const touch = (owner: number, at: number, order: number) => {
+		const prior = state.get(owner);
+		if (prior === undefined)
+			state.set(owner, {
+				current: at,
+				many: false,
+				lastOrder: order,
+				reordered: false,
+				outside: false,
+			});
+		else {
+			if (prior.current !== at) prior.many = true;
+			if (order <= prior.lastOrder) prior.reordered = true;
+			prior.lastOrder = order;
+		}
+	};
+	for (let at = 0; at < current.length; at += 1) {
+		const episode = current[at];
+		let incoming: number | null = null;
+		let multiple = false;
+		for (const id of episode.segmentIds) {
+			if (genericSeen !== null) {
+				if (genericSeen.has(id)) return refuse("duplicate-current-id");
+				if (genericSeen.size === INTERNAL_IDENTITY_MAX_IDS)
+					return refuse("current-uniqueness-unproved");
+				genericSeen.add(id);
+			}
+			const old = previous.owners.get(id);
+			if (old === undefined) continue;
+			if (matched.has(id)) return refuse("duplicate-current-id");
+			matched.add(id);
+			touch(old.ordinal, at, old.order);
+			if (incoming === null) incoming = old.ordinal;
+			else if (incoming !== old.ordinal) multiple = true;
+		}
+		if (
+			episode.eligible === false ||
+			multiple ||
+			incoming === null ||
+			incoming < 0
+		)
+			continue;
+		const key = previous.keys.get(incoming);
+		if (key !== undefined) candidates.set(at, { owner: incoming, key });
+	}
+	for (const id of options.outsideCurrentIds ?? []) {
+		const old = previous.owners.get(id);
+		if (old === undefined || matched.has(id)) continue;
+		const group = state.get(old.ordinal);
+		if (group !== undefined) group.outside = true;
+	}
+	for (const [at, candidate] of candidates) {
+		const group = state.get(candidate.owner);
+		// A qg suffix is an opaque canonical anchor (colons inside are retained).
+		// If it truly vanished, surviving tail witnesses cannot prove head loss.
+		const anchor = candidate.key.slice(3);
+		if (
+			group === undefined ||
+			group.many ||
+			group.reordered ||
+			group.outside ||
+			!matched.has(anchor)
+		)
+			candidates.delete(at);
+	}
+	const held = new Set(previous.keys.values());
+	const projectedOwners = new Set<string>(); // <=H; unrelated keys are not retained
+	for (let at = 0; at < current.length; at += 1) {
+		const key = candidates.get(at)?.key ?? current[at].key;
+		if (!held.has(key)) continue;
+		if (projectedOwners.has(key)) return refuse("key-collision");
+		projectedOwners.add(key);
+	}
+	return {
+		episodes: current.map((item, at) => {
+			const candidate = candidates.get(at);
+			return candidate === undefined ? item : { ...item, key: candidate.key };
+		}),
+		reason: null,
+	};
+}

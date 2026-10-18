@@ -9,6 +9,8 @@ import {
 	useNavigate,
 } from "react-router-dom";
 
+import { AgentMessagesOnboarding } from "@features/agent-messages/agent-messages-onboarding";
+import { useAgentMessagesBusy } from "@features/agent-messages/use-agent-messages-busy";
 import { useConsentAttentionLifetime } from "@features/browser/hooks/use-consent-attention-lifetime";
 // ChatPage is the boot route (/ redirects to /chat), so it stays statically
 // imported: lazy-loading it would put a Suspense fallback on first paint.
@@ -361,6 +363,17 @@ const App: FC = () => {
 			draft?.sessionId,
 			state.activeSessionId,
 		);
+	});
+	/*
+	 * The §5.3 busy rule (staged draft, unsent composer text, turn in flight,
+	 * archive confirmation, passkey chooser) lives in the feature's own hook so
+	 * its terms and their tests stay in one place. The hook only reports the
+	 * fact; WHEN the on-ramp may present is the model's boundary-latched
+	 * decision (`armBoundary`).
+	 */
+	const agentMessagesBusy = useAgentMessagesBusy({
+		displayedSessionId,
+		archiveEnabled,
 	});
 	/* The console pane's slot claim, for a banner click that names a surface (design
 	 * 12.3): the click lands the conversation AND the pane that shows it. */
@@ -766,6 +779,23 @@ const App: FC = () => {
 						<BrowserWebauthnPrompt />
 					</Suspense>
 
+					{/* Existing prompts own priority; this on-ramp never stacks with
+					    onboarding, credits, palette or agent-creation consent, and it
+					    waits while the displayed conversation is streaming or a composer
+					    draft is staged (§5.3's busy rule). */}
+					<AgentMessagesOnboarding
+						blocked={
+							isOnboardingActive ||
+							isLowCreditsDialogOpen ||
+							isCommandPaletteOpen ||
+							isCreateAgentDialogOpen ||
+							agentMessagesBusy
+						}
+						sessionId={
+							pathname.startsWith("/chat") ? (displayedSessionId ?? null) : null
+						}
+					/>
+
 					<LowCreditsDialog
 						open={isLowCreditsDialogOpen}
 						onClose={onLowCreditsDialogClose}
@@ -781,7 +811,10 @@ const App: FC = () => {
 					<ChatLayout
 						sidebar={<SidebarNavigation />}
 						content={
-							<main className="flex grow flex-col overflow-hidden">
+							<main
+								data-glass-region="canvas-backing"
+								className="flex grow flex-col overflow-hidden"
+							>
 								{/*
 								 * THE NON-CHAT ROUTES' DRAG BAND, WHERE THE LANE IS NOT.
 								 *

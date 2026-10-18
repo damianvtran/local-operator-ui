@@ -1141,6 +1141,42 @@ export function ChatSidebar({
 		setCataloguePageable(pageable);
 	}, [pageable, setCataloguePageable]);
 	/*
+	 * Whether this backend can read the catalogue in the SIDEBAR'S OWN ORDER
+	 * (`session_catalogue_sort` - the request's `sort=activity`).
+	 *
+	 * THE DEFECT THIS GATE ANSWERS, because it is the reported one: the catalogue's
+	 * default order leads with its status bands, and on a store whose cold
+	 * population is scheduled conversations the wake band fills the first page -
+	 * so a plain conversation, once its completion was read and its runtime drained,
+	 * left the sidebar entirely (measured rank 61-95 of stores that hold 50+ wake
+	 * rows, outside the 50-row page the panel fetches). This panel is a time-binned
+	 * list: its sections partition by the activity clock and its pagination reads
+	 * "show the latest 10", so the page it fetches has to be the same clock - rows
+	 * that need the reader first, then everything else newest-activity-first.
+	 *
+	 * FALSE IS TODAY, EXACTLY, on the same rule the paging flag above states: a
+	 * daemon that predates the parameter IGNORES it silently, so the request must
+	 * not carry it until the capability answer says the daemon understands it -
+	 * and an older daemon then renders the byte-identical request it always got.
+	 */
+	const activityHead = desktopFeatureEnabled(
+		capabilities.data,
+		"session_catalogue_sort",
+	);
+	/*
+	 * PUBLISHED, like `setCataloguePageable` above and for the same reason: the
+	 * store holds the flag rather than reading the capability itself, because it is
+	 * the module every desktop suite bundles - see `cataloguePageDefault`. Both the
+	 * head read and the tail extension follow it (the tail's cursor carries the
+	 * order it was minted in), so one flag keeps the pair consistent.
+	 */
+	const setCatalogueActivityHead = useCanonicalSessionsStore(
+		(store) => store.setCatalogueActivityHead,
+	);
+	useEffect(() => {
+		setCatalogueActivityHead(activityHead);
+	}, [activityHead, setCatalogueActivityHead]);
+	/*
 	 * The paged catalogue's own state, subscribed HERE rather than in the group
 	 * renderer because a subscription is a hook and the group is a plain function
 	 * called from the render body - the same reason `sessions` above is a hook.
@@ -9363,6 +9399,7 @@ export function ChatSidebar({
 			 * at EVERY width: the shed, and the container declaration it measured against, went
 			 * with it. This panel does not change what it draws by width.
 			 */
+			data-glass-region="sidebar"
 			className="relative flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
 			onKeyDown={keyDown}
 		>

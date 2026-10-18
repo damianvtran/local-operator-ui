@@ -23,6 +23,9 @@ import {
 	ASKS_CONTROL_PINNED,
 	ASKS_RAIL_CLOSE_POST_STATE,
 	CASES,
+	CONTROL_REUSE_PARTS,
+	controlReusePlan,
+	describeMainPreloadReuse,
 	describePressRead,
 	pressWhenActionable,
 	railCloseAssertion,
@@ -582,50 +585,86 @@ test("the control revision is DERIVED, and satisfies the reuse assertion by cons
 		);
 		return;
 	}
-	for (const part of [
-		"src/main",
-		"src/preload",
-		"electron.vite.config.js",
-		"pnpm-lock.yaml",
-	]) {
-		const atControl = execFileSync("git", ["rev-parse", `${base}:${part}`], {
-			encoding: "utf8",
-			cwd: REPO,
-		}).trim();
-		const atHead = execFileSync("git", ["rev-parse", `HEAD:${part}`], {
-			encoding: "utf8",
-			cwd: REPO,
-		}).trim();
-		assert.equal(
-			atControl,
-			atHead,
-			`the derived control ${base} disagrees with HEAD on ${part}; the producer would refuse to boot the control leg`,
-		);
-	}
 	/*
-	 * And the derivation is not accidental: the branch must not touch the reused
-	 * parts, or "the merge-base is byte-identical" would be a coincidence rather
-	 * than a property. This is the claim the derivation rests on.
+	 * THE PLAN THE PRODUCER WILL TAKE, derived from the real trees with the same
+	 * function it boots with. Two outcomes are both legitimate:
+	 *  - reuse: the four parts are byte-identical, so the candidate's main/preload
+	 *    ARE the control's and the producer copies them (the original assertion,
+	 *    unchanged for this case);
+	 *  - rebuild: this branch changes main, preload or the vite config (a window
+	 *    option, an IPC channel), so the control builds its own from its own source.
+	 * What is never legitimate is a differing lockfile: the control shares the
+	 * candidate's node_modules, so that is a different experiment, and the producer
+	 * refuses it. This test fails for that reason and no other.
 	 */
+	const plan = controlReusePlan(
+		(spec) =>
+			execFileSync("git", ["rev-parse", spec], {
+				encoding: "utf8",
+				cwd: REPO,
+			}).trim(),
+		base,
+		"HEAD",
+	);
+	assert.equal(
+		plan.lockDiffers,
+		false,
+		`the lockfile differs between the control ${base} and HEAD: the control would run on dependencies it was not built for`,
+	);
 	const touched = execFileSync(
 		"git",
-		[
-			"diff",
-			"--name-only",
-			base,
-			"HEAD",
-			"--",
-			"src/main",
-			"src/preload",
-			"electron.vite.config.js",
-			"pnpm-lock.yaml",
-		],
+		["diff", "--name-only", base, "HEAD", "--", ...CONTROL_REUSE_PARTS],
 		{ encoding: "utf8", cwd: REPO },
 	).trim();
+	/* The plan and the diff are two spellings of one fact; they must agree. */
 	assert.equal(
-		touched,
-		"",
-		`this branch changes the control leg's reused parts, so a merge-base control cannot be byte-identical: ${touched}`,
+		plan.reuse,
+		touched === "",
+		`the reuse plan (${plan.reuse ? "reuse" : `rebuild: ${plan.differing.join(", ")}`}) disagrees with the diff of the reused parts (${JSON.stringify(touched)})`,
+	);
+});
+
+test("controlReusePlan: identical trees reuse; a main/preload/config change rebuilds; a lockfile change is refused", () => {
+	const same = (spec) => `tree:${spec.split(":")[1]}`;
+	const plan0 = controlReusePlan(same, "ctl", "HEAD");
+	assert.deepEqual(plan0, { reuse: true, differing: [], lockDiffers: false });
+	const changedMain = (spec) =>
+		spec.startsWith("ctl:") && spec.endsWith(":src/main")
+			? "other"
+			: same(spec);
+
+	/* A change in each BUILD INPUT is a rebuild, and names what differed. */
+	for (const part of ["src/main", "src/preload", "electron.vite.config.js"]) {
+		const changed = (spec) =>
+			spec.startsWith("ctl:") && spec.endsWith(`:${part}`)
+				? "other"
+				: same(spec);
+		const p = controlReusePlan(changed, "ctl", "HEAD");
+		assert.equal(p.reuse, false, `${part} differing must not reuse`);
+		assert.deepEqual(p.differing, [part]);
+		assert.equal(p.lockDiffers, false, `${part} is a rebuild, not a refusal`);
+	}
+
+	/* The lockfile is the one part that is NOT redirected to a rebuild. */
+	const lock = (spec) =>
+		spec.startsWith("ctl:") && spec.endsWith(":pnpm-lock.yaml")
+			? "other"
+			: same(spec);
+	const l = controlReusePlan(lock, "ctl", "HEAD");
+	assert.equal(l.reuse, false);
+	assert.equal(l.lockDiffers, true);
+
+	/*
+	 * The provenance string is a function of the plan, so it is asserted through
+	 * the producer's own export rather than by reading its source (review R7).
+	 */
+	assert.equal(
+		describeMainPreloadReuse(plan0),
+		"byte-identical source/config/lock",
+	);
+	assert.equal(
+		describeMainPreloadReuse(controlReusePlan(changedMain, "ctl", "HEAD")),
+		"rebuilt from control source (main/preload differ: src/main)",
 	);
 });
 test("synthetic canonical snapshot is open, bounded and session-scoped", () => {

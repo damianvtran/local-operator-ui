@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The quick-send strip: pick a linked session, type a message, send it — from
  * the project view, without opening the conversation.
@@ -113,6 +115,7 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 	onSend,
 	focusTick,
 }) => {
+	useI18nLocale();
 	const inputRef = useRef<MessageInputHandle | null>(null);
 	const recordingProbe = useRadientCredentialProbe();
 	/*
@@ -190,10 +193,13 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 			 * ladder already defines between `canvas` and `elevated`, so the box steps off
 			 * its card exactly as it steps off a chat column.
 			 */
+			data-glass-block=""
 			className="flex flex-col gap-2 rounded-md bg-surface p-3"
 		>
 			<div className="flex flex-wrap items-center gap-2">
-				<span className="text-meta text-ink-muted">Send to</span>
+				<span className="text-meta text-ink-muted">
+					{t("ui.projects.project_quick_send.send_to")}
+				</span>
 				<Select
 					value={target ?? undefined}
 					/*
@@ -208,10 +214,16 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 					onValueChange={(value) => onTargetChange(value)}
 				>
 					<SelectTrigger
-						aria-label="Select the session to message"
+						aria-label={t(
+							"ui.projects.project_quick_send.select_the_session_to_message",
+						)}
 						className="max-w-72"
 					>
-						<SelectValue placeholder="No session selected" />
+						<SelectValue
+							placeholder={t(
+								"ui.projects.project_quick_send.no_session_selected",
+							)}
+						/>
 					</SelectTrigger>
 					<SelectContent>
 						{sendable.map((link) => (
@@ -232,11 +244,13 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 				{sending ? (
 					/* biome-ignore lint/a11y/useSemanticElements: `role="status"` is the polite announcement this sentence wants, and `<output>` - the element the rule suggests - is a form-result element with its own implied semantics; this is a statement about a send, not a form result. The same suppression, for the same reason, is on the readings strip's dropped-readings line. */
 					<span role="status" className="text-meta text-ink-muted">
-						Sending…
+						{t("ui.projects.project_quick_send.sending")}
 					</span>
 				) : busy ? (
 					<span className="text-meta text-ink-muted">
-						The session is working — this message steers the running turn.
+						{t(
+							"ui.projects.project_quick_send.the_session_is_working_this_message_steers_the_running_turn",
+						)}
 					</span>
 				) : null}
 			</div>
@@ -278,9 +292,13 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 				 * only thing that says so. It is truthful for the file dialog and the drop
 				 * zone too - paste is simply the route that has no visible affordance.
 				 */
-				placeholderOverride="Message the session — paste an image to attach it"
+				placeholderOverride={t(
+					"ui.projects.project_quick_send.message_the_session_paste_an_image_to_attach_it",
+				)}
 				cwd={frontend?.cwd}
-				cwdReadOnlyReason="Quick send follows the conversation's directory."
+				cwdReadOnlyReason={t(
+					"ui.projects.project_quick_send.quick_send_follows_the_conversation_s_directory",
+				)}
 				/*
 				 * THE READINGS BELONG TO A TARGET, SO THEY LEAVE WITH IT (review round 2,
 				 * n1). The hook retires the previous session's snapshot when the target
@@ -320,11 +338,17 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 								id: "project-quick-send-no-target",
 								node: (
 									<p className="text-meta text-ink-muted">
-										Choose a session to send to.
+										{t(
+											"ui.projects.project_quick_send.choose_a_session_to_send_to",
+										)}
 									</p>
 								),
 								blocksInput: true,
-								placeholder: "Choose a session to send to.",
+								get placeholder() {
+									return t(
+										"ui.projects.project_quick_send.choose_a_session_to_send_to",
+									);
+								},
 							}
 				}
 				onSendMessage={async (content, attachments) => {

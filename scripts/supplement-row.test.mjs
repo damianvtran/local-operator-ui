@@ -1,13 +1,14 @@
 /**
  * The supplement block's DOM contract, asked of the SHIPPED row.
  *
- * WHAT THIS FILE IS FOR (design round 1, D1's pin): while the block's own turn
- * renders condensed the block is ONE PASSIVE LINE — `[data-supplement-condensed]`
- * on it, no `[data-supplement-slot]`, no iframe, and its whole text is the line
- * itself with nothing else — and the expanded form is what carries the
- * slots and the disclosures. It also pins the condensed copy table's bytes
- * (`condensedBlockLine`'s arms, rendered) and the graphics disclosure's
- * singular arm (`Show all 1 graphic`, U7).
+ * WHAT THIS FILE IS FOR (design round 1, D1's pin; reworked by the operator
+ * decision of 2026-10-16): while the block's own turn renders condensed the
+ * block shows the SAME files section as its expanded self — actionable
+ * `[data-supplement-file]` rows and the `[data-supplement-images]` tile grid —
+ * with no `[data-supplement-slot]`, no iframe and no graphics beside them; a
+ * graphics-ONLY finish keeps the design's plain count clause. It also pins the
+ * glyph-fallback slot of an image tile and the graphics disclosure's singular
+ * arm (`Show all 1 graphic`, U7).
  *
  * WHY STATIC MARKUP AND NOT A MOUNT. The contract is about what the row
  * RENDERS; `renderToStaticMarkup` runs every render pass and no effect, so a
@@ -120,12 +121,50 @@ const textOf = (markup) =>
 		.replace(/<[^>]*>/g, "")
 		.replace(/&amp;/g, "&")
 		.replace(/&middot;/g, "·")
+		.replace(/&#x27;/g, "'")
 		.replace(/\s+/g, " ")
 		.trim();
 
+/* --------------------------- the failed line ----------------------------- */
+
+test("the failed line names the typed cause, and stays bare without one", () => {
+	const failed = { state: "failed", error: "generator:ProviderError" };
+	const withCause = render(supplement({ ...failed, cause: "provider_quota" }));
+	assert.ok(
+		textOf(withCause).includes(
+			"Couldn't prepare highlights — provider limit reached",
+		),
+		textOf(withCause),
+	);
+	/*
+	 * A token this build does not know and a row without one both keep the
+	 * bare sentence byte-for-byte (the additive claim).
+	 */
+	const unknown = render(
+		supplement({ ...failed, cause: "provider_from_the_future" }),
+	);
+	assert.ok(
+		textOf(unknown).includes("Couldn't prepare highlights"),
+		textOf(unknown),
+	);
+	assert.ok(!textOf(unknown).includes(" — "), textOf(unknown));
+	const bare = render(supplement(failed));
+	assert.ok(textOf(bare).includes("Couldn't prepare highlights"), textOf(bare));
+	assert.ok(!textOf(bare).includes(" — "), textOf(bare));
+	// The Retry affordance is unchanged on every arm.
+	for (const markup of [withCause, unknown, bare]) {
+		assert.ok(markup.includes("data-supplement-retry"), "retry pin");
+	}
+});
+
 /* -------------------------- the condensed arms --------------------------- */
 
-test("a condensed block is one passive line: no slot, no iframe, nothing else", () => {
+test("a condensed block keeps the design's quiet arms: no slot, no iframe, no graphics", () => {
+	/*
+	 * THE GRAPHICS-ONLY ARM keeps the design's plain count clause (there is no
+	 * file to act on, and the turn's own bar is the expansion frames render in),
+	 * and it is still pinned on the DOM by `data-supplement-condensed`.
+	 */
 	const arms = [
 		// components only
 		[supplement({ components: [component("one", "Chart", 320)] }), "1 graphic"],
@@ -138,45 +177,12 @@ test("a condensed block is one passive line: no slot, no iframe, nothing else", 
 			}),
 			"2 graphics",
 		],
-		// files only, ≤ 2: the existing one-liner, unchanged
-		[
-			supplement({
-				files: [
-					file("reports/latency.md", "latency.md", 4120),
-					file("data/bench.csv", "bench.csv", 913, "csv"),
-				],
-			}),
-			"2 files: latency.md, bench.csv",
-		],
-		// files only, > 2: counts, not names
-		[
-			supplement({
-				files: [
-					file("reports/latency.md", "latency.md", 4120),
-					file("data/bench.csv", "bench.csv", 913, "csv"),
-				],
-				filesMore: 5,
-				more: ["a/q1.md", "a/q2.md", "a/q3.md", "a/q4.md", "a/q5.md"],
-			}),
-			"7 files",
-		],
-		// mixed: both clauses, the design's separator
-		[
-			supplement({
-				files: [
-					file("reports/latency.md", "latency.md", 4120),
-					file("data/bench.csv", "bench.csv", 913, "csv"),
-				],
-				components: [component("one", "Chart", 320)],
-			}),
-			"2 files · 1 graphic",
-		],
 	];
 	for (const [record, line] of arms) {
 		const markup = render(record, true);
 		assert.ok(
 			markup.includes("data-supplement-condensed"),
-			`the condensed line must be pinned on the DOM: ${line}`,
+			`the condensed form must be pinned on the DOM: ${line}`,
 		);
 		assert.ok(
 			!markup.includes("data-supplement-slot"),
@@ -186,11 +192,55 @@ test("a condensed block is one passive line: no slot, no iframe, nothing else", 
 			!markup.includes("<iframe"),
 			`no iframe under a condensed block: ${line}`,
 		);
-		assert.equal(textOf(markup), line, `whole text is the one line: ${line}`);
+		assert.equal(textOf(markup), line, `whole text is the one clause: ${line}`);
 	}
 });
 
-test("a not-settled condensed block leads with its counts and keeps its actions", () => {
+test("a condensed block's files are the SAME actionable rows as the expanded form", () => {
+	/*
+	 * The operator decision of 2026-10-16: the expanded files section IS the
+	 * condensed form's files part (the small-set principle — an inert count
+	 * sentence must not be the only route to a file — extended to the folded
+	 * turn). The passive clause's bytes (`2 files: latency.md, bench.csv`) must
+	 * not survive anywhere, and the rows must be full `data-supplement-file`
+	 * rows without a slot or an iframe beside them.
+	 */
+	const files = [
+		file("reports/latency.md", "latency.md", 4120),
+		file("data/bench.csv", "bench.csv", 913, "csv"),
+	];
+	for (const condensed of [true, false]) {
+		const markup = render(supplement({ files }), condensed);
+		assert.ok(
+			markup.includes("data-supplement-condensed") === condensed,
+			`condensed marker matches the form (condensed=${condensed})`,
+		);
+		assert.equal(
+			(markup.match(/data-supplement-file=""/g) ?? []).length,
+			2,
+			`both files render as actionable rows (condensed=${condensed})`,
+		);
+		assert.ok(
+			!textOf(markup).includes("files:"),
+			`the passive count clause is gone (condensed=${condensed})`,
+		);
+		assert.ok(!markup.includes("data-supplement-slot"));
+		assert.ok(!markup.includes("<iframe"));
+	}
+	/*
+	 * The mixed set renders the files and NOT a graphics clause beside them:
+	 * the graphics' route is the turn's bar, and a count of frames the reader
+	 * cannot reach from here would be a dead end the design does not draw.
+	 */
+	const mixed = render(
+		supplement({ files, components: [component("one", "Chart", 320)] }),
+		true,
+	);
+	assert.equal((mixed.match(/data-supplement-file=""/g) ?? []).length, 2);
+	assert.ok(!mixed.includes("graphic"), "no graphics clause beside rows");
+});
+
+test("a not-settled condensed block leads with its rows and keeps its actions", () => {
 	const record = supplement({
 		state: "queued",
 		live: true,
@@ -201,15 +251,67 @@ test("a not-settled condensed block leads with its counts and keeps its actions"
 	});
 	const markup = render(record, true);
 	/*
-	 * The separators are their OWN spans and the gaps between segments are flex
-	 * gaps — the state line's existing grammar (its measured children were
-	 * shimmer / copy / `·` / `Adjust…` / `Cancel` on an 8px pitch). The dots are
-	 * therefore in the TEXT and the spaces are not; the assertion pins exactly
-	 * that: three `·`, the counts clause leading, and both actions present.
+	 * The rows are known while the job runs, so they are drawn above the state
+	 * line and the old counts prefix (`2 files`) has no job left — the text is
+	 * the rows' own names, then the shimmer line and the action pair. The
+	 * separators are their OWN spans and the gaps between segments are flex
+	 * gaps — the state line's existing grammar — so the dots are in the TEXT
+	 * and the spaces are not.
 	 */
-	assert.equal(textOf(markup), "2 files·Preparing highlights…·Adjust…Cancel");
+	assert.equal((markup.match(/data-supplement-file=""/g) ?? []).length, 2);
+	const text = textOf(markup);
+	assert.ok(!text.includes("2 files"), "the counts prefix is gone");
+	assert.ok(text.includes("Preparing highlights…"), text);
+	assert.ok(text.includes("Adjust…") && text.includes("Cancel"), text);
 	assert.ok(!markup.includes("data-supplement-slot"));
-	assert.ok(!markup.includes("data-supplement-file="));
+	assert.ok(!markup.includes("<iframe"));
+});
+
+test("image-kind files render as a tile grid, rows keep the rest, in both forms", () => {
+	/*
+	 * The operator decision of 2026-10-16, second half: image files become the
+	 * thumbnail grid (`data-supplement-images` with one tile per image), and a
+	 * mixed set renders the grid AND the rows coherently. Static markup runs no
+	 * effects, so the tiles are the RESERVED slot here — the picture arrives at
+	 * mount through the shared thumbnail pipeline, whose own contract lives in
+	 * `chat-image-expand.test.mjs` and the frames.
+	 */
+	const record = supplement({
+		files: [
+			file("renders/latency.png", "latency.png", 240_100, "image"),
+			file("reports/latency.md", "latency.md", 4120),
+			file("renders/throughput.png", "throughput.png", 180_000, "image"),
+		],
+	});
+	for (const condensed of [true, false]) {
+		const markup = render(record, condensed);
+		assert.ok(markup.includes("data-supplement-images"), "grid present");
+		assert.equal(
+			(markup.match(/data-supplement-image-tile=""/g) ?? []).length,
+			2,
+			`one tile per image-kind file (condensed=${condensed})`,
+		);
+		assert.equal(
+			(markup.match(/data-supplement-file=""/g) ?? []).length,
+			1,
+			`non-image files keep the row grammar (condensed=${condensed})`,
+		);
+		// The tile is a real control with a name, never a bare picture.
+		assert.ok(markup.includes('aria-label="Open latency.png"'), markup);
+	}
+	/*
+	 * A thumbnail that cannot load keeps its slot as the glyph receipt (the
+	 * finder grid's own answer), pinned by class so the receipt's floored
+	 * `border-control`/`sunken` triple can be grepped from the DOM marker's
+	 * sibling.
+	 */
+	const noBridge = render(
+		supplement({
+			files: [file("renders/latency.png", "latency.png", 240_100, "image")],
+		}),
+		true,
+	);
+	assert.ok(noBridge.includes("data-supplement-image-tile"));
 });
 
 test("the expanded form carries the slots and the disclosures' own grammar", () => {

@@ -32,6 +32,7 @@ export const BrowserPage: FC = () => (
 		tabScope="all"
 		requestScope="all"
 		hostSessionId={null}
+		isRoutePage
 		surfaceTag="browser-route"
 		dockSurfaceTag="browser-approvals-dock"
 	/>

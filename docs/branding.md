@@ -3,11 +3,13 @@
 The visual and verbal system for the Local Operator desktop app, and the rules
 that keep it consistent as it changes.
 
-This is the app-side companion to the design kit that owns the marketing site
-(`docs/design-kit/` in the `local-operator-site` repo). Where the two disagree
-about the brand, the kit wins; where they disagree about *how a desktop app
-should behave*, this file wins, because a tool read for hours at arm's length is
-not a page read once.
+This is the app-side companion to the design kit at
+`damianvtran/local-operator-design` — the home of record for the brand — of
+which this repository vendors a pinned slice under
+[`docs/design-kit/`](./design-kit/README.md). Where the two disagree about the
+brand, the kit wins; where they disagree about *how a desktop app should
+behave*, this file wins, because a tool read for hours at arm's length is not a
+page read once.
 
 **Read this before changing any visual surface.** The parts of this system that
 are enforceable are enforced by `pnpm check-themes`; the rest is here because a
@@ -37,11 +39,22 @@ One source, two consumers. Do not add a third.
 
 ```mermaid
 graph LR
-  A["palettes/*.ts<br/>ThemePalette x59"] --> B["createBaseTheme()<br/>MUI, hex values"]
+  K["damianvtran/local-operator-design<br/>the kit, pinned v1.2.0"] -->|"brand values — the two<br/>localOperator* palettes only"| A["palettes/*.ts<br/>ThemePalette x59"]
+  K -.->|"vendored slice<br/>docs/design-kit/"| F["check-design-kit.mjs<br/>the parity gate"]
+  A --> B["createBaseTheme()<br/>MUI, hex values"]
   A --> C["generate-theme-css.mjs<br/>--lo-* variables"]
   C --> D["styles/index.css<br/>@theme role utilities"]
   A --> E["contrast-contract.mjs<br/>the floors"]
+  A --> F
 ```
+
+The kit is **upstream** of the brand values, not a parallel source. It feeds
+only the two `localOperator*` palettes — the other fifty-seven are
+community-owned identities the kit never authors — and it arrives here as the
+pinned slice under `docs/design-kit/`. "One source, two consumers. Do not add a
+third." still stands for the app's internal pipeline: `palettes/*.ts` remains
+the single source the app renders from, and the parity gate is an additional
+*consumer* of that source.
 
 - **`src/renderer/src/shared/themes/palettes/*.ts`** — the single source of
   truth. Fifty-nine `ThemePalette` objects, 38 roles each, every value a literal
@@ -53,6 +66,13 @@ graph LR
   `styles/themes.generated.css`; never hand-edit it.
 - **`pnpm check-themes`** verifies the generated file is current and that every
   palette clears the floors in § 3.
+- **The kit is upstream, pinned in [`docs/design-kit/`](./design-kit/README.md)** —
+  a locked slice of `app-family.json`, `divergences.json` and `LICENSE`.
+  `scripts/check-design-kit.mjs`, the third step of `pnpm check-themes`, proves
+  the slice equals the kit at the pinned ref and that both `localOperator*`
+  palettes re-derive to it. Pins move only by a deliberate pin-bump PR recording
+  its reason, and a sanctioned departure from the kit is recorded in the kit's
+  `divergences.json` before it lands here — never edited into the slice.
 
 The theme provider sets `document.documentElement.dataset.theme`. That attribute
 is what every Tailwind role utility resolves against — without it, the ported
@@ -876,6 +896,185 @@ against a future MUI version rather than remembered.
 
 ---
 
+### Window glass (optional translucency, default off)
+
+Settings > Appearance can make the window translucent: the OS draws the blur
+(macOS vibrancy, Windows 11 `backgroundMaterial`) and the app paints its grounds
+at an alpha over it. Off, nothing below applies and the shipped look is byte for
+byte unchanged. The decision lives in `src/shared/window-glass.ts`; the floors in
+`src/shared/window-glass-floors.json`, derived by `scripts/derive-glass-floors.mjs`
+and asserted on all 59 palettes by `scripts/contrast-contract.mjs` ("window glass"
+and "glass row / text field / focus ring" rows). Never hand-lower a floor: re-derive.
+
+**Two coverages, and what each one is.** *Sidebars only* makes the navigation columns
+glass (the app sidebar, the right-hand panel rail, the collapsed strip, the status band
+along the window's foot, and a page's own column: the Settings nav, the Agents rosters)
+and leaves every page and pane solid. *Full app* adds the conversation canvas, the
+pages and the side panes. A third "sidebars and chrome" tier existed in the first
+round and was removed (review D1): its one extra element was the status band, which is
+0 px tall except while an update offer shows, so it painted zero different pixels from
+*Sidebars only*; a header-only tier cannot be made real cheaply, because a glass strip
+over the opaque canvas backing shows the canvas, not the desktop. A profile written by
+that build reads back as *Sidebars only*. `scripts/window-glass-cdp.test.mjs` asserts
+the two coverages differ on the chat route, so a future tier cannot ship as a label
+for nothing.
+
+**One alpha-owning layer per region.** `data-glass-region` marks the OUTERMOST
+ground of a column (`sidebar`, `page-sidebar`, `canvas`, `pane`, `panel`); a marked
+region nested inside one of the same kind is cleared, so the alpha is painted once.
+Grounds of the same role stacked each carrying alpha COMPOUND (0.82 over 0.82 is
+0.97), which is the seam between a sidebar's nav block and its list pane.
+
+**Pages that are a column plus content** (Settings, Agents, and the Browser route) sit
+inside `<main>`, whose backing would otherwise be a second layer under the column
+(measured in review: a 0.67 column over a 0.59 backing read 0.86). Such a page marks
+its root `data-glass-split`; the backing and the root then paint nothing, the column
+paints the RAW alpha over the desktop (so it equals the app sidebar beside it), and only
+the content column (`canvas-content`) paints the canvas: opaque under *Sidebars only*,
+at its alpha under *Full app*.
+
+**What the guard measures.** `scripts/window-glass-cdp.test.mjs` boots the built app
+and, for each of the chat, Settings, Agents, Projects, Browser, Schedules and Agent hub
+routes, walks a grid of points through every region that route must contain and fails on
+a region it cannot find (a guard that skips what it cannot find measures nothing), on a
+spread within a region, on an effective alpha that differs from the role variable, on
+the page column differing from the app sidebar beside it, on an opaque slab inside a
+glass region, and on anything not fully opaque outside the chosen coverage, and on a
+composer shell that draws any border at rest (asserted by WIDTH, because this audit
+then reads grounds and alphas only - which is how v0.34.55's glass-only edge shipped;
+operator report, 2026-10-17; a stylesheet scan holds every
+`[data-glass-region="composer"]` rule edge-free, the popup's included, though this
+rig drives no popup window). Round 2
+adds the composer (its own alpha must be the field overlay), the block veil (a project
+card's own alpha), the board's clear well, and the Browser chrome band (which must
+measure equal to the app sidebar). Projects cards are data-dependent: on a profile with
+no projects the test REPORTS that it could not measure them rather than passing over
+them. It does NOT cover every route (Mesh, Console and others are not audited) or any
+state a fixture cannot reach (a running tool row is a contract row plus a QA frame), and
+it needs a display, so no CI job runs it (`pnpm test:window-glass`; a result quoted for
+it is a LOCAL display run, never a CI result).
+Do not give a new ground inside a region its own `bg-surface`
+expecting it to stay solid: it will be cleared or it will show as a slab; add the region
+marker instead.
+
+**Blocks, wells and chrome (round 2).** A text-bearing BLOCK whose fill was its
+only boundary on the flat system (a user message bubble, a project card, an Agent
+hub card, a detail block) is a **tint** on glass, not a solid: the palette's `ink`
+at the derived `blockVeil` (dark 0.09 / light 0.12) over the canvas glass. Its step
+off the ground is held at ΔE00 4.0 on every palette and every material tier - the
+flat `messageSurface` floor's own promise, which no role alpha could keep (an
+`elevated`/`messageSurface` alpha floor measured 0.77 dark / 0.46 light and
+collapsed to ΔE00 0.9-1.2 off the canvas on rosewood/oneLight/iceberg). The block
+keeps no hover fill on glass: there is no AA room for a step above the veil
+(measured: +5% breaks `inkMuted` to 4.03 on synthwave), so the pointer affordance
+rides the cursor and the block's own controls. Off glass the flat hover is
+untouched.
+
+A WELL behind blocks (the Projects board's `bg-sunken` band, Mesh's graph frame)
+**paints nothing** on glass: a well never sits under a veiled block - two stacked
+inks break AA, and the alpha-owning law forbids it. A well that is a TRACK (a
+segmented control, the Settings usage and filter tracks) keeps the field overlay;
+`data-glass-well="clear"` is the painted-nothing kind, and the two are never
+confused. Sticky headers (scroll-under) stay **solid** - a translucent sticky
+shows rows through it, which is text over text - and so do the chips, badges and
+avatars inside a block.
+
+The **composer is a field**, not a pane: ink 5% over the canvas glass - and **no
+edge at rest**, the same no-edge geometry the flat build has. v0.34.55 briefly drew
+a glass-only `border-control` mix as its resting edge; reverted the same evening
+(operator report, 2026-10-17). The `:focus-visible` accent ring is its only
+boundary. A **running tool row** is the selected step's ink
+overlay (`--lo-glass-a-row-work`, the same alpha as a selected row: both mean "this
+row is the subject"), never the `elevated` slab it wears flat; a failed row keeps
+its `danger-wash` until a danger overlay is derived (V2).
+
+A **chrome band** inside the Browser route (the tab strip and URL row) wears the
+app sidebar's own paint - `surface` at its floor, RAW over the desktop - and the
+route host paints nothing while a live page and its opaque webview cover it.
+The strip and the URL row are ONE band: the note's "strip = chrome + field
+overlay" composition was withdrawn because the field's 5% ink lifts a dark
+palette's band, and the active tab's own selected step over it put its `inkDim`
+mark (the globe / loading spinner) at 3.21:1 on cyberpunk and below the 3.5
+floor on 18 of 59 palettes, on both shipped tiers; any field alpha small enough
+to hold the floor measures ΔE00 0.45 off the band, which is not a step. Without
+a live page the bars paint **nothing** (their `sunken`/`elevated` utilities are
+cleared too), so the route host's pane rung is the only ground in the loading,
+error and empty states. Under *Sidebars only* the whole route stays flat.
+
+**What stays solid under *Full app*, by design** (the Settings copy says so in one
+sentence): web pages in the browser view (the page paints itself), document and
+media viewers (PDF, image, video, audio), code and diff grounds, a message's reply
+quote and attachment tiles, leave-flow surfaces (menus, dialogs, popovers, the
+palette, toasts, drag previews), sticky scroll-under headers, theme preview tiles,
+and small deliberate marks. A panel's own *frame* (the Schedules list, the Agent hub
+category rail) is a surface and goes glass; the cards inside it are blocks (tints).
+Console, code-review and canvas panes are text-bearing panes and stay near-opaque
+on dark palettes by design, not by omission.
+
+**Per element, on glass:**
+
+| Element | On glass | Why |
+|---|---|---|
+| Column grounds (sidebar, rail, status band, canvas) | role at its derived alpha | AA ink over the worst backdrop, floors per material and scheme |
+| Text-bearing panes (ask drawer, run panel, console, code review, browser) | `pane` region: `elevated` at its floor, near-opaque on dark palettes | text must stay legible over any desktop |
+| Text-bearing blocks (message bubbles, project/hub/node cards, detail blocks) | `data-glass-block`: `ink` at `blockVeil` over the canvas glass | the fill is the block's only boundary; a relative ink step never vanishes |
+| Composer | `data-glass-region="composer"`: ink 5% (a field), no edge at rest | the composer's own contract wins: no border at rest on or off glass, the ring is its only boundary (v0.34.55's glass-only edge was reverted; operator report 2026-10-17) |
+| Chrome band (Browser tab strip and URL row) | `data-glass-region="chrome"`: `surface` at its floor, raw over the desktop | it is the sidebar's rung, so the two read as one edge |
+| Running tool row | `data-glass-state="running"`: ink at the selected step | an in-flight row is the subject; an opaque rung was a slab |
+| Well behind blocks | `data-glass-well="clear"` paints nothing | a well never sits under a veil |
+| Segmented-control tracks, bands | ink overlay at 0.05 (`data-glass-well` or `role=tablist`) | a track is a well, not a block |
+| Row hover / selected (nav, list rows, rail, tabs, the active browser tab) | palette `ink` at 0.05 / 0.08 over the glass | an opaque pill is a hole; a faint tint vanishes over a bright desktop. An ink overlay is a step relative to whatever the ground is |
+| Text fields, outlined controls, segmented-control tracks | ink overlay at 0.05; `border-control` mixed toward `ink` by `controlMix` | the BORDER carries the 3:1 edge, the fill only lifts it |
+| Focus | `outline`, never a fill; `accent` held 3:1 against the glass ground | unchanged from section 6 |
+| Pressed (`active:bg-sunken`) | stays opaque `sunken` | a sub-200 ms state of the control, not a surface |
+| Primary buttons, avatars, brand mark, banners | unchanged, opaque | small deliberate marks, not grounds |
+| Sticky headers (scroll-under) | stay solid | a translucent sticky is text over text |
+| Popout (quick send) | card ground `surface` at its floor raw; input a field; picker sheet solid | a single floating HUD on the window's material |
+
+**The one relaxation:** `inkDim` (captions, placeholders) is held to 3.5:1, not 4.5:1,
+on a hovered or selected row, on a field's fill over glass, and on the block veil (a
+node card's state caption is the case that ships); `ink` and `inkMuted` keep AA. No ink overlay can keep `inkDim` at 4.5:1 (the flat system already ships it
+at 5.0 on `rowSelected`), and holding it would force every dark ground to alpha 1.0,
+which switches glass off.
+
+**Limits:** a state's visibility is held at a fixed overlay alpha and a minimum
+step (ΔE00 1.5 hover, 2.5 selected) on every palette; the floors assume the measured
+worst backdrops of each material over a flat desktop, not an arbitrary wallpaper.
+
+**Floors versus the evidence frames' backdrop (the envelope).** The floors are derived
+against the material's own composite grey over its worst flat desktop
+(`BACKDROP_GRAY` in `scripts/derive-glass-floors.mjs`: 199 for the light
+under-window tier, 81 dark), because AppKit lifts a black desktop to that grey. The
+PR's evidence frames are a two-layer reconstruction with NO material under the app, so
+a frame's black or white band is OUTSIDE that envelope: the light `inkDim` caption
+reads about 3 over the black band and 5.12 over the measured 199 (derived with the
+same arithmetic as the floors, `localOperatorLight` surface at 0.73). A ratio read
+off a frame's black band is therefore not a floor breach; the floor is the number in
+`window-glass-floors.json`, asserted by `pnpm check-themes`. An arbitrary wallpaper
+darker or lighter than the measured worst case is the stated limit above.
+
+**Panels at Full app (a stack limit).** A panel's frame (the Schedules list, the Agent
+hub category rail) rests ON the canvas backing, and the net-alpha arithmetic cannot
+make it more see-through than the layer under it. On light palettes the canvas target
+(0.78) is higher than the surface one (0.73), so the frame lands at the canvas's tone and
+the step between page and frame is zero there (dark palettes keep a 1 point step). This is
+accepted rather than fixed: the rows' own hairlines carry the separation, as they
+did on the flat panel tier, and giving the frame its own rung would stack a second
+alpha over the backing. `scripts/window-glass-cdp.test.mjs` encodes it as
+`max(surface, canvas)`.
+
+**A window enabled live on macOS stays active when unfocused.** `visualEffectState` is a
+CONSTRUCTOR option (Electron 44's `setVibrancy` takes only `animationDuration`), so the
+main window and the mini view are both built through `glassWindowOptions` (the popout
+carries the same `visualEffectState` and the same argv glass fact), so both are built
+with `visualEffectState: "active"`, including when glass is off:
+without vibrancy it is inert, and it is only one key added to an otherwise off window. A
+live `setVibrancy` therefore creates the same active-state material a launch with glass
+already on gets. Before this, the live view kept the `followWindow` default and went flat
+whenever the window lost key - the operator reported exactly that on 0.34.53 (the glass
+appeared after a focus change, no restart) - which is the defect this construction value
+fixes.
+
 ## 7. Showing agent work: the trace hierarchy
 
 This is the part of the app most likely to drift back toward a developer tool,
@@ -911,7 +1110,7 @@ equally important**, and the interface must not present them as though they are.
   answers "what is it doing right now?" by naming the call in flight (`Running
   pnpm vitest run`) beside its counts and its wall-clock span. It condenses
   the same way — the reader's press is the only close; no state update closes
-  a fold — and nothing condenses while a call in it is still running, nor
+  a fold — and ordinary human work does not condense while a call in it is still running, nor
   while the turn waits on the reader's own gate (an approval or question parks
   the turn; a parked turn is unsettled, so nothing condenses). A finished turn
   also carries one turn-foot line (`Worked for 1m 12s · 8 actions`) — EXCEPT a
@@ -1034,6 +1233,46 @@ text in the transcript — code, stdout and diffs share the treatment — opens
   response to it.
 
 ---
+
+### Live internal receipt episodes
+
+A positively typed incoming peer, hub note, wake, monitor or background
+completion and its contiguous private actions may condense into the existing
+summary while the turn is still being written. This does not lower the
+three-action fold threshold or reclassify unanswered human work merely because
+a peer arrives.
+
+**When an episode may condense.** Only on settled work: an answer already
+precedes it in the run, or it holds two or more receipts. An episode that opens
+the run's content with a single receipt PAINTS, whatever its type: the bar would
+replace the reader's only content (a failed job's verdict, a peer's request, a
+wake's prompt), and a failed `job_result` is `level: "info"`, so the bar label
+would not say which way it went. The check reads settled answers and counted
+receipts, never a row's text.
+
+**One bar.** While the turn thinks, a live episode condenses into ONE compact
+bar and yields to an ordinary (non-episode) bar already standing in the run, so
+the settled turn's own bar stays the same element. A reader who has opened the
+live episode keeps it open: their expansion outranks the bar count. At
+settlement the episode's own bar and its single announcement appear. A settled
+episode followed by a live one still shows two bars (one settled, one live):
+yielding to a fellow episode left the second episode's rows loose.
+
+**What the bar says.** Compact is presentation, not completion: no success
+check or finished `Took` clause while active. Reuse the actual working phase and
+its producer clock; never label time since a receipt as time spent thinking.
+With no phase anchor, leave the existing footer clock intact. A bar counts only
+the rows it contains (receipts separately from actions); a head-cut span states
+`N+` with no duration. The printed receipt count and the announced count are the
+same figure.
+
+**What stays outside.** User prose (including future/empty streaming rows),
+questions, errors and actual image/video/file owners remain outside. Media
+produced after the last settled answer before the first receipt stays inline;
+media a settled bar already owns keeps that bar. Final-owned files/frames do not
+close just because an ambient internal bar closes. Expansion belongs to the
+reader across append/settlement; paging identity transfer requires complete
+bounded canonical-ID overlap, never labels.
 
 ## 8. Voice
 

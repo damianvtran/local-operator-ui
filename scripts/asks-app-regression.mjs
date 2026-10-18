@@ -38,10 +38,12 @@ const execute = promisify(execFile);
  * WHY THE MERGE-BASE IS THE RIGHT DERIVATION. In CI this job checks out GitHub's
  * RECOMPUTED `refs/pull/N/merge`, whose first parent is `main` as of that run, and
  * `git merge-base origin/main HEAD` resolves to that same commit here. The candidate
- * is a descendant of it, this branch touches none of the four reused parts (proved
- * by `git diff --name-only <base> HEAD` in the property test), and the assertion
- * below therefore still holds - it is not weakened, it is kept and made the thing
- * that verifies the derivation.
+ * is a descendant of it. When this branch touches none of the four reused parts
+ * (`CONTROL_REUSE_PARTS`, proved by the property test) the byte-identity assertion
+ * holds and main/preload are reused. When it DOES touch main, preload or the vite
+ * config, the control builds its own main/preload from its own source instead
+ * (`controlReusePlan`); only a differing lockfile stays a hard stop. The identical
+ * case is not weakened - the rebuild is the branch for a change that has to differ.
  *
  * WHAT IS LOST, STATED PLAINLY. A pinned commit let the control be any historical
  * revision at all, including one whose renderer predates this line of work. The
@@ -214,20 +216,67 @@ function files(root) {
 			: [path];
 	});
 }
+/**
+ * Whether the control may REUSE the candidate's built main + preload, or must
+ * build its own.
+ *
+ * WHY IT IS A FUNCTION OF FOUR TREE IDS. The control leg exists so its frames differ
+ * from the candidate's for ONE reason - the change under test. Reusing the
+ * candidate's `out/main` and `out/preload` for the control is only honest when those
+ * sources are byte-identical at both revisions; then the reuse saves a build and
+ * changes nothing. A PR that changes main-process or preload code (a window option,
+ * an IPC channel, a preload bridge) is exactly the PR whose frames most need a real
+ * control, and used to die here with `control reuse mismatch src/main` before
+ * rendering anything - so a main-touching change could not pass the one job that
+ * photographs it. Now it takes the other branch: the control's main and preload are
+ * BUILT from the control's own source, so the pair still differs by the change only.
+ *
+ * TWO PARTS STAY HARD STOPS, and they are not part of "reuse":
+ *  - `pnpm-lock.yaml`: the control boots against the candidate's `node_modules`
+ *    (symlinked, never duplicated), so a differing lockfile means the control would
+ *    run on dependencies it was not built for. That is a different experiment, and
+ *    it stops dispatch rather than producing frames that look comparable.
+ *  - a missing tree: a revision whose source cannot be read stops dispatch.
+ * The byte-identical case keeps its original assertion; only the mismatch of the
+ * three build INPUTS (`src/main`, `src/preload`, `electron.vite.config.js`) is
+ * redirected to a rebuild instead of a throw.
+ */
+export const CONTROL_REUSE_PARTS = [
+	"src/main",
+	"src/preload",
+	"electron.vite.config.js",
+	"pnpm-lock.yaml",
+];
+export function controlReusePlan(revParse, control, head) {
+	const differing = CONTROL_REUSE_PARTS.filter(
+		(part) => revParse(`${control}:${part}`) !== revParse(`${head}:${part}`),
+	);
+	return {
+		reuse: differing.length === 0,
+		differing,
+		lockDiffers: differing.includes("pnpm-lock.yaml"),
+	};
+}
+/** The provenance line for a plan: the manifest's `mainPreloadReuse`. */
+export function describeMainPreloadReuse(plan) {
+	return plan.reuse
+		? "byte-identical source/config/lock"
+		: `rebuilt from control source (main/preload differ: ${plan.differing.join(", ")})`;
+}
 async function prepareControl(root, output) {
-	// Real historical source, not a callback mutation. Main/preload/config can be
-	// reused only when the source identities agree. Missing source stops dispatch.
-	for (const part of [
-		"src/main",
-		"src/preload",
-		"electron.vite.config.js",
-		"pnpm-lock.yaml",
-	])
-		assert.equal(
-			git("rev-parse", `${ASKS_CONTROL}:${part}`),
-			git("rev-parse", `HEAD:${part}`),
-			`control reuse mismatch ${part}`,
-		);
+	// Real historical source, not a callback mutation. Main/preload are reused
+	// from the candidate only when the source identities agree (`controlReusePlan`);
+	// otherwise they are built from the control's own source below.
+	const plan = controlReusePlan(
+		(spec) => git("rev-parse", spec),
+		ASKS_CONTROL,
+		"HEAD",
+	);
+	assert.equal(
+		plan.lockDiffers,
+		false,
+		"control reuse mismatch pnpm-lock.yaml: the control shares the candidate's node_modules, so a differing lockfile is a different experiment, not a rebuild",
+	);
 	const tar = join(output, "control-source.tar");
 	execFileSync("git", [
 		"archive",
@@ -251,20 +300,30 @@ async function prepareControl(root, output) {
 	mkdirSync(root);
 	execFileSync("tar", ["-xf", tar, "-C", root]);
 	symlinkSync(resolve("node_modules"), join(root, "node_modules"), "dir");
-	for (const part of ["main", "preload"])
-		cpSync(join("out", part), join(root, "out", part), { recursive: true });
-	const code =
-		"import {resolveConfig} from 'electron-vite';import {build} from 'vite';const c=await resolveConfig({},'build','production');await build(c.config.renderer);";
+	if (plan.reuse) {
+		for (const part of ["main", "preload"])
+			cpSync(join("out", part), join(root, "out", part), { recursive: true });
+	}
+	/*
+	 * Same `resolveConfig` approach as the renderer, run in the control's root so the
+	 * control's own `electron.vite.config.js` and sources are what build. Main and
+	 * preload are built only when they could not be reused; the renderer always is.
+	 */
+	const targets = plan.reuse
+		? "renderer"
+		: "main, c.config.preload, c.config.renderer";
+	const code = `import {resolveConfig} from 'electron-vite';import {build} from 'vite';const c=await resolveConfig({},'build','production');for (const cfg of [c.config.${targets}]) await build(cfg);`;
 	await execute(process.execPath, ["--input-type=module", "-e", code], {
 		cwd: root,
 		env: { ...process.env, LOCAL_OPERATOR_UI_NO_BYTECODE: "true" },
-		timeout: 120000,
+		// A rebuild adds two bundles (main, preload) to the renderer build.
+		timeout: plan.reuse ? 120000 : 240000,
 		maxBuffer: 4 * 1024 * 1024,
 	});
 	return {
 		commit: ASKS_CONTROL,
 		srcTree: git("rev-parse", `${ASKS_CONTROL}:src`),
-		mainPreloadReuse: "byte-identical source/config/lock",
+		mainPreloadReuse: describeMainPreloadReuse(plan),
 		rendererOutputs: Object.fromEntries(
 			files(join(root, "out/renderer")).map((p) => [
 				p.slice(root.length + 1),

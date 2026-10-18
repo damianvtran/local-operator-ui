@@ -47,6 +47,7 @@ import {
 	entryRecordKey,
 	openFrameCoversHeld,
 } from "@features/chat/canonical/open-frame";
+import { skillOf } from "@features/chat/canonical/skill-row";
 import {
 	EMPTY_TRANSCRIPT,
 	RECONCILE_TAIL_ENTRIES,
@@ -103,6 +104,7 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { dropPaint, readPaint, writePaint } from "@shared/store/paint-cache";
 import { forgetTurnCollapseOpen } from "@shared/store/turn-collapse-open";
+import { forgetWatchedRun } from "@shared/store/turn-collapse-watched";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { desktopRequestTimeoutMs } from "../../../../shared/desktop-contract";
 import {
@@ -146,6 +148,71 @@ import { applySubagentPulse, seedSubagentPulses } from "./subagent-pulse";
  * on screen — a defect that would look like the model stuttering, and one the
  * authoritative settle would then hide at the end of the answer.
  */
+
+/**
+ * The occupancy a COLD or ATTACHING snapshot may install over a painted one.
+ *
+ * WHY THIS EXISTS. A session has two legitimate sources of the context reading,
+ * and they are not equally current:
+ *
+ * - the LIVE owner's state, carried by `frontend.update` frames and by a
+ *   snapshot served once the facade is attached. This is the authority.
+ * - the DURABLE journal, which is what a COLD facade can read (the newest
+ *   receipt persisted in `transcript.jsonl`), and what an ATTACHING facade is
+ *   still serving while its sync to the owner is in flight (`payload.cold` /
+ *   `payload.attaching` in `utils/desktop_sessions.py`).
+ *
+ * The second source is honest about what the journal knows, and it is exactly
+ * what a first open should paint. It is NOT a statement about the current turn:
+ * messages reach the journal at the owner's own boundaries, so during a turn the
+ * journal can sit at the length the conversation had at an earlier message while
+ * the live reading has moved on. A reconnect (or a re-target) that lands in that
+ * window therefore hands the pane an OLDER number, and before this rule the
+ * snapshot arm replaced the painted reading with it wholesale - a backwards
+ * step on a readout the operator watches, and the reason a long conversation's
+ * context number flickered between an earlier value and the current one.
+ *
+ * The rule is deliberately narrow, in both directions:
+ *
+ * - ONLY a `cold`/`attaching` snapshot is subordinate. A snapshot from an
+ *   ATTACHED owner is authoritative and may legitimately go DOWN (a compaction
+ *   shrinks the conversation), so it is never second-guessed here. The same is
+ *   true of `frontend.update`: compaction and off-record accruals both move the
+ *   reading, and the owner's clock orders those frames itself.
+ * - It never BLANKS: an absent incoming reading keeps the painted one, because
+ *   "we do not know yet" is not a state that may erase the last known value.
+ * - It never RAISES a stale figure over a newer one either: when the journal's
+ *   reading is the higher of the two (another viewer's turns are durable
+ *   already), the snapshot's number wins.
+ *
+ * `last_usage` travels WITH the carried reading: the strip and the cost chip
+ * read the pair, and a numerator carried beside a different receipt would state
+ * one reading two ways (the defect `session-cost.ts` calls out).
+ */
+function subordinateOccupancy(
+	painted: CanonicalFrontendState | null | undefined,
+	incoming: CanonicalFrontendState,
+	subordinate: boolean,
+): Partial<CanonicalFrontendState> {
+	if (!subordinate || !painted) return {};
+	const before = painted.context_tokens;
+	if (typeof before !== "number" || !Number.isFinite(before) || before <= 0)
+		return {};
+	const after = incoming.context_tokens;
+	if (typeof after === "number" && Number.isFinite(after) && after >= before)
+		return {};
+	return {
+		context_tokens: before,
+		context_is_estimate:
+			painted.context_is_estimate ?? incoming.context_is_estimate,
+		context_window: painted.context_window ?? incoming.context_window,
+		// NULL, not the incoming receipt: a number carried beside a receipt from
+		// another reading would state the pair two ways. The field is nullable
+		// for exactly this "we have the count, not its receipt" case.
+		last_usage: painted.last_usage ?? null,
+	};
+}
+
 function applyAsideDeltas(frames: DesktopSessionFrame[]): void {
 	for (const frame of frames) {
 		if (frame.type !== "aside_delta") continue;
@@ -234,6 +301,19 @@ export type CanonicalSessionView = {
 	 * (`SessionStatusStripProps["held"]`).
 	 */
 	heldFrontend: CanonicalFrontendState | null;
+	/**
+	 * Whether the context reading the pane is painting was CARRIED from before a
+	 * cold/attaching snapshot rather than measured by the live owner.
+	 *
+	 * `heldFrontend` answers "is this frontend the last one we were told", and it
+	 * is only true while `frontend` is null. This answers a narrower question the
+	 * strip's copy needs: the panes' OTHER readings (model, timer, cost) are live
+	 * again as soon as the snapshot lands, but the occupancy in that snapshot is
+	 * the DURABLE one, so a sentence calling it "Measured now" would be false.
+	 * Cleared by the next `frontend.update` (the owner speaking) or by a snapshot
+	 * whose own reading is not subordinate.
+	 */
+	contextCarried: boolean;
 	/**
 	 * A model the user just chose, painted before the owner confirms it.
 	 *
@@ -1567,7 +1647,21 @@ function replaceLocalRecordText(
 	)
 		return state;
 	const records = state.records.slice();
-	records[at] = { ...record, text };
+	/*
+	 * THE SEAL IS DERIVED FROM THE TEXT, so a replacement has to re-derive it:
+	 * the credential seam rewrites a pending send's text after the row is painted
+	 * (`replacePendingSendText`, `canonical-sessions-store.ts`), and a `skill` left
+	 * over from the pre-substitution string would keep painting the placeholder
+	 * request in the row's header until the owner's durable row replaced it
+	 * (agent review round 1, MINOR-2). The other direction is the stale seal (agent
+	 * review round 2, MINOR-2; QA round 2, Q6): a replacement that is no longer a
+	 * payload has to LOSE the key, or the row keeps a seal no string on it
+	 * describes. `skillOf` is the reducer's own derivation, and the key is
+	 * absent-not-undefined for the reason its callers give.
+	 */
+	const { skill: _staleSeal, ...rest } = record;
+	const skill = skillOf(text);
+	records[at] = skill ? { ...rest, text, skill } : { ...rest, text };
 	return { ...state, records };
 }
 
@@ -2356,6 +2450,7 @@ export function useCanonicalSessionStream(
 			// that has never had a snapshot is genuinely without readings, and a
 			// held copy here would be a claim this mount never received.
 			heldFrontend: null,
+			contextCarried: false,
 			pendingModel: null,
 			history: null,
 			cold: false,
@@ -4519,8 +4614,14 @@ export function useCanonicalSessionStream(
 								"lop:open:seed:start",
 								"lop:open:seed:end",
 							);
+							const carriedReading = subordinateOccupancy(
+								next.frontend ?? next.heldFrontend,
+								snapshot.frontend.snapshot,
+								snapshot.cold === true || snapshot.attaching === true,
+							);
 							next = {
 								...next,
+								contextCarried: Object.keys(carriedReading).length > 0,
 								// The pulse is SEEDED here rather than merged: a snapshot is the
 								// authoritative statement of what this viewer has seen, and it is
 								// the frame that follows a reconnect or a fresh subscription —
@@ -4537,6 +4638,12 @@ export function useCanonicalSessionStream(
 								stale: false,
 								frontend: {
 									...snapshot.frontend.snapshot,
+									/*
+									 * A cold/attaching snapshot is the DURABLE reading, not the
+									 * live one; it must not walk a painted measurement back. See
+									 * `subordinateOccupancy`.
+									 */
+									...carriedReading,
 									attention: mergeCompletionAttention(
 										next.frontend?.attention,
 										snapshot.frontend.snapshot.attention,
@@ -4622,6 +4729,9 @@ export function useCanonicalSessionStream(
 							// keys over the current state.
 							next = {
 								...next,
+								// THE OWNER SPOKE: whatever it says about occupancy is its own
+								// live reading, so a carried qualification ends here.
+								contextCarried: false,
 								ownerEpoch: rollover ? update.epoch : next.ownerEpoch,
 								frontend: {
 									...next.frontend,
@@ -4682,10 +4792,23 @@ export function useCanonicalSessionStream(
 							acceptFrontendReplace(priorCursor, sessionId, frame)
 						) {
 							const replaced = frame.payload.frontend;
+							const carriedReplacement = subordinateOccupancy(
+								next.frontend,
+								replaced.snapshot,
+								frame.payload.cold === true,
+							);
 							next = {
 								...next,
+								contextCarried: Object.keys(carriedReplacement).length > 0,
 								frontend: {
 									...replaced.snapshot,
+									/*
+									 * A replacement can be published from the cold/attaching
+									 * window (`publish_frontend_replace` sends the facade's own
+									 * `state()`), so its occupancy is durable rather than live and
+									 * must obey the same rule as a cold snapshot's.
+									 */
+									...carriedReplacement,
 									attention: mergeCompletionAttention(
 										next.frontend.attention,
 										replaced.snapshot.attention,
@@ -5081,9 +5204,13 @@ export function useCanonicalSessionStream(
 							// go too (agent review round 1, R1-2): `forgetTurnCollapseOpen` is
 							// the same sibling of `dropPaint` the store's own doc names, and an
 							// id this host does not have should not keep a remembered set.
+							// The settle latch goes with them (agent review round 1 on #1142,
+							// R1-3): it remembers a run for the same conversation id, and the
+							// store's own doc names this event as its forget site.
 							if (sessionId) {
 								dropPaint(sessionId);
 								forgetTurnCollapseOpen(sessionId);
+								forgetWatchedRun(sessionId);
 							}
 							commitView((current) => ({
 								...current,
@@ -5554,6 +5681,10 @@ export function useCanonicalSessionStream(
 			 * conversation nobody is looking at any more.
 			 */
 			heldFrontend: sameSession ? current.heldFrontend : null,
+			// The carried qualification follows the readings it qualifies: a genuine
+			// session change leaves nothing painted, so nothing is carried into it
+			// (review round 3, M2).
+			contextCarried: sameSession ? current.contextCarried : false,
 			// A different session's unconfirmed paint describes the model of a
 			// conversation that is no longer on screen.
 			pendingModel: null,

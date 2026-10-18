@@ -1081,8 +1081,21 @@ test("the board's menu item is wired after Set status, gated on its own key, and
 	 * calls the shared action with the row it belongs to. The runtime press is
 	 * the keyboard story's play - a real browser, every capture.
 	 */
+	// The menu's placement follows its typed message call, while the English
+	// catalogue independently retains the frozen copy contract. Searching for
+	// raw rendered English would reject a correctly extracted component.
+	const labelKey = "ui.projects.project_board.request_update";
+	const labelCall = `t("${labelKey}")`;
+	const english = JSON.parse(
+		readSource("src/i18n/catalogues/en/ui.projects.json"),
+	);
+	assert.equal(
+		english[labelKey],
+		"Request update",
+		"the English label stays frozen",
+	);
 	const sub = board.indexOf("</DropdownMenuSub>");
-	const item = board.indexOf("Request update");
+	const item = board.indexOf(labelCall);
 	const separator = board.indexOf("<DropdownMenuSeparator />", sub);
 	assert.ok(sub !== -1 && item !== -1, "the menu carries the item");
 	assert.ok(
@@ -1105,8 +1118,8 @@ test("the board's menu item is wired after Set status, gated on its own key, and
 	assert.ok(itemStart !== -1 && itemEnd !== -1, "the item is mounted");
 	const itemJsx = board.slice(itemStart, itemEnd);
 	assert.ok(
-		itemJsx.includes("Request update"),
-		"the item carries the frozen label",
+		itemJsx.includes(labelCall),
+		"the item renders the exact typed key for its frozen English label",
 	);
 	assert.ok(
 		!itemJsx.includes("className") &&

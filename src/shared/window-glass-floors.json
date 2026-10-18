@@ -1,0 +1,65 @@
+{
+	"_why": "Minimum ground alphas, the state/field overlay alphas and the edge mix the window-glass feature paints, derived by scripts/derive-glass-floors.mjs (AA ink over the worst measured backdrop WITH the state overlay stacked; the 3:1 structural edge via a border->ink mix). Asserted by scripts/contrast-contract.mjs. Never hand-lower a value: re-derive.",
+	"alphaFloor": {
+		"under-window": {
+			"dark": {
+				"canvas": 0.59,
+				"surface": 0.67,
+				"elevated": 0.87
+			},
+			"light": {
+				"canvas": 0.61,
+				"surface": 0.5,
+				"elevated": 0.45
+			}
+		},
+		"menu": {
+			"dark": {
+				"canvas": 0.73,
+				"surface": 0.79,
+				"elevated": 0.94
+			},
+			"light": {
+				"canvas": 0.79,
+				"surface": 0.7,
+				"elevated": 0.65
+			}
+		},
+		"popover": {
+			"dark": {
+				"canvas": 0.79,
+				"surface": 0.85,
+				"elevated": 0.97
+			},
+			"light": {
+				"canvas": 0.86,
+				"surface": 0.79,
+				"elevated": 0.75
+			}
+		}
+	},
+	"blockVeil": {
+		"dark": 0.09,
+		"light": 0.12
+	},
+	"controlMix": {
+		"under-window": {
+			"dark": 0.15,
+			"light": 0.2
+		},
+		"menu": {
+			"dark": 0.15,
+			"light": 0.2
+		},
+		"popover": {
+			"dark": 0.15,
+			"light": 0.15
+		}
+	},
+	"stateAlpha": {
+		"hover": 0.05,
+		"selected": 0.08,
+		"field": 0.05,
+		"work": 0.08
+	}
+}

@@ -59,6 +59,7 @@ import {
 	rememberJournalCalls,
 } from "./journal-order";
 import { freezeRecordDeep } from "./record-immutability";
+import { type SkillRow, skillOf } from "./skill-row";
 import {
 	SUPPLEMENT_CUSTOM_TYPE,
 	type SupplementComponent,
@@ -198,6 +199,25 @@ type TranscriptPayloadRecord =
 			 * the echo above the page's pre-send rows (review round 1, F2).
 			 */
 			provisional?: boolean;
+			/**
+			 * The `$skill` invocation this row's text is a payload for, when it is one
+			 * (`skill-row.ts`).
+			 *
+			 * WHY THE RECORD CARRIES IT RATHER THAN THE ROW DERIVING IT. The payload is
+			 * what the wire holds and the user's row would otherwise paint it: the
+			 * header sentence, the `<skill>` tag, the whole SKILL.md body and the
+			 * request, standing in for one typed line that the payload also records
+			 * (the harness repo's `docs/design/history-fold-convergence.md` row D8).
+			 * Deriving it here means the LIVE row and the REPLAYED one are the same
+			 * record shape, which
+			 * is the property every test of this folds: a durable page row and the
+			 * optimistic echo differ by `local`/`provisional` and by nothing else.
+			 *
+			 * ABSENT for every ordinary message — the key's absence is the spelling,
+			 * like `provisional`'s, because `shallowEqual` counts keys and an explicit
+			 * `undefined` would read as a different record on every merge.
+			 */
+			skill?: SkillRow;
 	  }
 	| {
 			kind: "assistant";
@@ -707,6 +727,12 @@ type TranscriptPayloadRecord =
 			components: readonly SupplementComponent[];
 			/** `superseded` renders nothing; a job-level failure renders its line. */
 			error: string;
+			/**
+			 * The failed line's typed cause (`provider_<kind>`, the allowlisted
+			 * vocabulary), bounded by the reader; "" when absent or unknown, and the
+			 * row then paints the bare failure sentence (memo §2.8).
+			 */
+			cause: string;
 			/** Additive typed facts; old rows keep generic failure copy. */
 			model?: string;
 			attempts?: readonly string[];
@@ -1753,9 +1779,43 @@ function shallowEqual(a: TranscriptRecord, b: TranscriptRecord) {
 			)
 				continue;
 		}
+		// `skill` is a VALUE too, derived from the row's own text: every construction
+		// site parses the payload afresh, so reference equality would report an
+		// unchanged row as changed on every history re-read and replace the record
+		// (and re-render it) for a seal that is byte-identical. Compared field by
+		// field rather than with a general deep-equality helper, because the five
+		// fields ARE the contract: `sameSkill` is the one place that says what makes
+		// two readings of one payload the same row.
+		if (key === "skill") {
+			const before = left[key] as SkillRow | undefined;
+			const after = right[key] as SkillRow | undefined;
+			if (
+				before !== undefined &&
+				after !== undefined &&
+				sameSkill(before, after)
+			)
+				continue;
+		}
 		return false;
 	}
 	return true;
+}
+
+/**
+ * Whether two derivations of a payload describe the same invocation.
+ *
+ * The `skill` field's own equality, kept beside the field it compares for the
+ * reason `sameImages` is: the reducer's gate and the values it weighs belong
+ * together, and both are only ever asked about a row's own content.
+ */
+function sameSkill(a: SkillRow, b: SkillRow): boolean {
+	return (
+		a.name === b.name &&
+		a.token === b.token &&
+		a.request === b.request &&
+		a.purpose === b.purpose &&
+		a.body === b.body
+	);
 }
 
 /**
@@ -3216,6 +3276,13 @@ function durableRecord(
 		if (text.startsWith("Harness recovery notice:")) {
 			return { kind: "notice", id: entry.id, ts, text, level: "warning" };
 		}
+		/*
+		 * A `$skill` payload is stamped with the row it belongs to, so a REPLAYED
+		 * invocation paints the seal the live one painted (see the `skill` field's
+		 * own note). Read off the payload every host already stores, which is what
+		 * makes this reach the sessions written before the row existed.
+		 */
+		const skill = skillOf(text);
 		return {
 			kind: "user",
 			id: entry.id,
@@ -3226,6 +3293,7 @@ function durableRecord(
 				entry.id,
 				previous?.kind === "user" ? previous.images : undefined,
 			),
+			...(skill ? { skill } : {}),
 		};
 	}
 	if (role === "assistant") {
@@ -5032,6 +5100,12 @@ export function applyEvent(
 				 */
 				const keepsHold =
 					current?.kind === "user" && current.provisional === true;
+				/* The live half of the `skill` derivation; the durable half is in
+				 * `durableRecord`, and both are needed for the same reason the harness
+				 * suppression above spells out: they are different arms over different
+				 * payload shapes, and a session reopened from a page would otherwise
+				 * disagree with the one that painted it live. */
+				const skill = skillOf(text);
 				return upsert(state, {
 					kind: "user",
 					id: messageId,
@@ -5046,6 +5120,7 @@ export function applyEvent(
 						current?.kind === "user" ? current.images : undefined,
 					),
 					...(keepsHold ? { provisional: true } : {}),
+					...(skill ? { skill } : {}),
 				});
 			}
 			if (message.role !== "assistant") return state;
@@ -7404,12 +7479,21 @@ export function appendPendingUser(
 	// The owner's row wins over a later echo for the same id: re-echoing would
 	// otherwise overwrite reconciled content with the composer's original text.
 	if (state.index.has(id)) return state;
+	/*
+	 * THE ECHO CARRIES THE SEAL TOO, and it must: the payload the composer submits
+	 * is the payload the owner records, so this row and the durable one that
+	 * replaces it differ by `local`/`provisional` and by nothing else — a row that
+	 * painted the payload wall for the length of a send and then collapsed into a
+	 * seal would be the same message shown as two shapes.
+	 */
+	const skill = skillOf(text);
 	return upsert(state, {
 		kind: "user",
 		id,
 		ts: monotonicStamp(state, now),
 		text,
 		images,
+		...(skill ? { skill } : {}),
 		local: true,
 		// Every echo holds its place until the owner states the row: "no rows
 		// painted" was never the boundary (agent review round 1, F1/F3 — an

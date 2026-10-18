@@ -1,3 +1,8 @@
+import { t } from "@shared/i18n";
+// Exported source-copy constants remain byte-stable for existing model consumers.
+// Product reads resolve their catalogue key at use time, so changing language
+// does not leave module-initialized labels frozen in the previous locale.
+import { bundledEnglish } from "../../../../i18n/keys.gen";
 /**
  * The Projects tab's sort model: one key at a time, the direction toggling,
  * nulls ALWAYS last, and the words a screen reader hears about it.
@@ -45,7 +50,8 @@ export type SortSpec = { key: SortKey; direction: SortDirection };
 export const PROJECTS_SORT_STORAGE_KEY = "projects-sort";
 
 /** The "no explicit sort" radio item's exact copy (the ux round keeps it). */
-export const DEFAULT_SORT_LABEL = "Default (as listed)";
+export const DEFAULT_SORT_LABEL =
+	bundledEnglish["ui.projects.project_sort.default_as_listed"];
 
 /** Whether a stored/unknown string is a sort key this build knows. */
 export function isSortKey(value: string): value is SortKey {
@@ -101,19 +107,19 @@ export function writeProjectsSort(spec: SortSpec | null): void {
 export function sortColumnLabel(key: SortKey): string {
 	switch (key) {
 		case "name":
-			return "Project";
+			return t("ui.projects.project_sort.project");
 		case "status":
-			return "Status";
+			return t("ui.projects.project_sort.status");
 		case "target":
-			return "Target";
+			return t("ui.projects.project_sort.target");
 		case "estimate":
-			return "Estimate";
+			return t("ui.projects.project_sort.estimate");
 		case "milestones":
-			return "Milestones";
+			return t("ui.projects.project_sort.milestones");
 		case "live":
-			return "Live";
+			return t("ui.projects.project_sort.live");
 		case "progress":
-			return "Progress";
+			return t("ui.projects.project_sort.progress");
 	}
 }
 
@@ -139,19 +145,33 @@ export function sortDirectionWords(
 	const desc = direction === "desc";
 	switch (key) {
 		case "name":
-			return desc ? "Z to A" : "A to Z";
+			return desc
+				? t("ui.projects.project_sort.z_to_a")
+				: t("ui.projects.project_sort.a_to_z");
 		case "status":
-			return desc ? "Archived first" : "Planning first";
+			return desc
+				? t("ui.projects.project_sort.archived_first")
+				: t("ui.projects.project_sort.planning_first");
 		case "target":
-			return desc ? "latest first" : "soonest first";
+			return desc
+				? t("ui.projects.project_sort.latest_first")
+				: t("ui.projects.project_sort.soonest_first");
 		case "estimate":
-			return desc ? "days first" : "points first";
+			return desc
+				? t("ui.projects.project_sort.days_first")
+				: t("ui.projects.project_sort.points_first");
 		case "milestones":
-			return desc ? "most complete first" : "least complete first";
+			return desc
+				? t("ui.projects.project_sort.most_complete_first")
+				: t("ui.projects.project_sort.least_complete_first");
 		case "live":
-			return desc ? "most first" : "fewest first";
+			return desc
+				? t("ui.projects.project_sort.most_first")
+				: t("ui.projects.project_sort.fewest_first");
 		case "progress":
-			return desc ? "most recent first" : "most stale first";
+			return desc
+				? t("ui.projects.project_sort.most_recent_first")
+				: t("ui.projects.project_sort.most_stale_first");
 	}
 }
 
@@ -162,8 +182,11 @@ export function sortDirectionWords(
  * "Search cleared." is.
  */
 export function sortAnnouncement(spec: SortSpec | null): string {
-	if (spec === null) return "Sort cleared.";
-	return `Sorted by ${sortColumnLabel(spec.key)}, ${sortDirectionWords(spec.key, spec.direction)}.`;
+	if (spec === null) return t("ui.projects.project_sort.sort_cleared");
+	return t("ui.projects.project_sort.sorted_by_key_direction", {
+		key: String(sortColumnLabel(spec.key)),
+		direction: String(sortDirectionWords(spec.key, spec.direction)),
+	});
 }
 
 /**
@@ -185,8 +208,13 @@ export function clearAllAnnouncement(cleared: {
 	if (parts.length === 0) return "";
 	const sentence =
 		parts.length === 1
-			? `${parts[0]} cleared.`
-			: `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]} cleared.`;
+			? t("ui.projects.project_sort.parts_0_cleared", {
+					parts_0: String(parts[0]),
+				})
+			: t("ui.projects.project_sort.join_and_length_1_cleared", {
+					join: String(parts.slice(0, -1).join(", ")),
+					length___1: String(parts[parts.length - 1]),
+				});
 	/*
 	 * U17: the capital belongs to the SENTENCE, not to any fragment. These
 	 * used to be spelled `Search`/`filters`/`sort`, which read correctly only
