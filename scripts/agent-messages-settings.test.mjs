@@ -149,8 +149,7 @@ function makeApi({ settings, allowlist = allowlistFixture, overrides = {} }) {
 				endpoint: { ...settings.endpoint, state: body.state },
 			};
 		},
-		allowlist: async () =>
-			settings.endpoint ? structuredClone(allowlist) : null,
+		allowlist: async () => (allowlist ? structuredClone(allowlist) : null),
 		updateAllowlist: async (body) => {
 			writes.allowlist.push(body);
 			return structuredClone(allowlist);
@@ -474,6 +473,19 @@ test("B shows the served consent text byte-equal, and Enable sends the exact ver
 	]);
 	assert.deepEqual(writes.local, [{ key: "team_bridge.enabled", value: true }]);
 	assert.ok(writes.refresh >= 1, "the status is refreshed after local enable");
+	// B -> C creates the endpoint, so the reach editor must now load its policy
+	// without a remount (the first read legitimately had no allowlist).
+	await flush();
+	assert.equal(
+		document
+			.querySelector("[data-agent-messages-state]")
+			?.getAttribute("data-agent-messages-state"),
+		"C",
+	);
+	assert.ok(
+		document.querySelector("[data-agent-messages-allowlist]"),
+		"the reach editor mounted after the endpoint was created",
+	);
 });
 
 test("B disables Enable when consent is unavailable", async (t) => {
