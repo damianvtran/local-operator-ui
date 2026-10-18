@@ -112,6 +112,83 @@ test("Highlights precede collapsed working files with no duplicated members; nar
 	);
 	assert.equal(filtered.flatMap((s) => s.items).length, 2);
 });
+test("a sound row gets a Sounds section and an audio band; images and videos keep theirs", () => {
+	/*
+	 * The sound phase's Files seat: `row.kind === "audio"` gets its own section
+	 * (never merged into Other) and its own band kind, because a sound's row
+	 * carries a compact player rather than a name-only row. The other two media
+	 * kinds are asserted beside it so the addition cannot have displaced them.
+	 */
+	const items = itemsOf([
+		record(1, "audio"),
+		record(2, "video"),
+		record(3, "image"),
+	]);
+	const grouped = finderSections(items, DEFAULT_FINDER, false, new Set());
+	assert.deepEqual(
+		grouped.map((section) => section.id),
+		["Images", "Videos", "Sounds"],
+		"the section list keeps the grouped order, with Sounds beside the other media",
+	);
+	const layout = layoutFinder(grouped, 600, true);
+	const bands = layout.bands.filter((band) => band.kind !== "header");
+	assert.deepEqual(
+		bands.map((band) => band.kind),
+		["tiles", "video", "audio"],
+		"each media section keeps its own band kind",
+	);
+	const audioBand = bands[2];
+	assert.equal(audioBand.items.length, 1);
+	assert.equal(
+		audioBand.height,
+		80,
+		"one fixed transport row - no per-item measuring",
+	);
+	// A closed Sounds section draws its header and no band: the fold hides the
+	// SOUND, not the fact that the section exists.
+	const folded = finderSections(
+		items,
+		DEFAULT_FINDER,
+		false,
+		new Set(["Sounds"]),
+	);
+	const foldedLayout = layoutFinder(folded, 600, true);
+	assert.equal(
+		foldedLayout.bands.some((band) => band.kind === "audio"),
+		false,
+	);
+	assert.equal(
+		foldedLayout.bands.filter((band) => band.kind === "header").length,
+		3,
+	);
+});
+
+test("an audio artifact projects to kind audio, and its row names the media fact", () => {
+	// The wire's row kind decides the projection (and therefore the section);
+	// a digest-backed sound carries its content type and duration across.
+	const sound = {
+		...record(9, "audio"),
+		ref: {
+			type: "artifact",
+			digest: "c".repeat(32),
+			content_type: "audio/mpeg",
+		},
+		duration_s: 4.25,
+	};
+	const document = indexedDocument(sound, "aaaaaaaaaaaa");
+	assert.equal(document.type, "audio");
+	assert.equal(document.artifact.kind, "audio");
+	assert.equal(document.artifact.contentType, "audio/mpeg");
+	assert.equal(document.artifact.durationS, 4.25);
+	const rows = buildFileRows([document]);
+	assert.equal(rows[0].kind, "audio");
+	assert.equal(
+		rows[0].media,
+		"audio",
+		"the media fact routes the row to the player seat",
+	);
+});
+
 test("5000 mixed items mount a bounded window at first/middle/last, with focused target pinned", () => {
 	const records = Array.from({ length: 5000 }, (_, i) =>
 		record(i + 1, i % 4 === 0 ? "video" : i % 4 === 1 ? "text" : "image"),
