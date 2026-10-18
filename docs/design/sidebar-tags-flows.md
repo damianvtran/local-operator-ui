@@ -262,14 +262,15 @@ surfaces. The detailed geometry, cache and API decisions are in
    suppressed. A release after a drag never also opens the conversation.
 2. Pinned rows keep the existing grip and its reorder gesture. Click-hold on
    the pinned row body also arms a row drag. When Pinned has tag headers, the
-   grip/body reorder is scoped to the dragged row's **own primary bucket**:
-   filter the measured row boxes to that bucket and pass the bucket ids as
-   `shownIds` to `movePinnedOrderTo`; the write preserves every other row's
-   relative order. A drop on a different tag header assigns; a drop on another
-   bucket's rows is not a reorder target. The insertion indicator, Escape
-   behaviour and one-row guard are unchanged. The shipped grouped-order bug
-   (`pinDragRowBoxes` vs the flat stored order) is fixed and regression-tested
-   at ≥2 occupied buckets.
+   grip/body reorder is scoped to the dragged row's **own bucket**, derived
+   with `groupChatsByTag`'s rule (primary only if non-null, known and present
+   in `tags`; else `untagged`): filter the measured row boxes to that bucket
+   and pass the bucket ids as `shownIds` to `movePinnedOrderTo`; the write
+   preserves every other row's relative order. A drop on a different tag header
+   assigns; a drop on another bucket's rows is not a reorder target. The
+   insertion indicator, Escape behaviour and one-row guard are unchanged. The
+   shipped grouped-order bug (`pinDragRowBoxes` vs the flat stored order) is
+   fixed and regression-tested at ≥2 occupied buckets.
 3. The eligible targets are a **visible occupied** 28 px tag-group header and
    the visible Untagged header **in the row's own existing section**, only
    with tags enabled, `groupBy === "section"`, the section drawing tag
@@ -348,11 +349,14 @@ surfaces. The detailed geometry, cache and API decisions are in
   stays entry_id-only; TUI and peer forks default false and do not acquire the
   sidecar. The View-options toggle is captured at fork time; changing it later
   does not change an existing fork's intent.
-- **Manual edits win, including add-then-clear:** the worker records the
-  session's `tags_revision` at the start of the naming call when the row is
-  empty. The auto-tag write is conditional on that revision, not merely on the
-  empty value; an add-then-clear before the model returns changes the revision
-  and skips auto-tag. A later manual clear does not trigger a re-run. Registry
+- **Manual edits win, including add-then-clear before the first turn:** the
+  desktop route records the child's **fork-time `tags_revision`** in
+  `auto-tag.json` (a new/empty child has the stable zero revision). The
+  auto-tag write is conditional on that recorded revision, not a snapshot
+  taken when naming starts; a human who tags and clears the fork before its
+  first substantive turn changes the revision and skips auto-tag. A child that
+  already has tags at fork time never runs auto-tag. A later manual clear does
+  not trigger a re-run. Registry
   drift validates at write time; deleted categories are dropped, and no
   category is created from model output. `Tags…` is the visible correction
   route; auto-tag does not reassert afterwards.

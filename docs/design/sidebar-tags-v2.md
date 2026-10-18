@@ -59,19 +59,22 @@ release window owner.
 - Once armed, suppress the click that would otherwise open the row for that
   pointer sequence. A release after a drag must not also open the conversation.
 - **Pinned rows keep the existing grip and its behaviour.** The grip remains
-  the explicit affordance and starts the existing reorder drag exactly as
-  today. Click-hold on the pinned row body starts the row drag: over the
-  dragged row's own primary bucket it uses that same reorder model (not a
-  second one), and over an eligible tag header it assigns. It must not regress
-  the grip's insertion indicator, Escape behaviour, or one-row guard.
+  the explicit affordance and starts the existing reorder gesture. Click-hold
+  on the pinned row body starts the row drag: over the dragged row's own
+  bucket it uses that same reorder model (not a second one), and over an
+  eligible tag header it assigns. The gesture keeps its insertion indicator,
+  Escape behaviour and one-row guard; its slot arithmetic is bucket-scoped as
+  described next, so it is not identical to the flat case.
 - **Pinned reorder defect to fix in V2-1, and the correct algorithm.** The
   shipped `pinDragRowBoxes` reads grouped DOM order while `movePinnedOrderTo`
   receives the flat stored order; `pinDragSlot` is an order-independent
   midpoint count, so swapping the ids does not repair it. With tag headers,
   the visual Pinned order is bucket-concatenated, not the stored order. V2-1
-  scopes the grip/body reorder to the dragged row's **own primary bucket**:
-  derive that bucket's ids from the row's primary, filter the measured row
-  boxes to those ids, and pass the bucket ids as `shownIds` to
+  scopes the grip/body reorder to the dragged row's **own bucket**: derive the
+  bucket id with the same rule `groupChatsByTag` uses — the row's `primary`
+  only when it is non-null, present in the category registry, and present in
+  the row's `tags`; otherwise `untagged` — then filter the measured row boxes
+  to that bucket's ids and pass those ids as `shownIds` to
   `movePinnedOrderTo` (which already steps through the drawn neighbours while
   preserving hidden ids). A drop on a different tag header is an assignment,
   not a reorder; a drop on another bucket's rows is not a reorder target. The
@@ -94,9 +97,8 @@ release window owner.
   no search/filter active, and the row's section draws tag headers. This
   includes the Pinned section: the shipped Pinned section groups by tags
   (`taggedRows(orderedPinned)`), so Pinned headers are valid assignment
-  targets. Agent/team and Flat modes have no tag headers; click-hold performs
-  no tag drag there. The pinned grip and pinned row-body reorder remain
-  available as described above.
+  targets. Agent/team and Flat modes have no tag headers and no pinned
+  section, so neither the grip nor the pinned row-body reorder exists there.
 - **Visible occupied tag header (28px)** — the whole header is the target.
   Dropping there adds that category if absent and makes it **primary**; other
   assigned tags stay. The row appears in exactly one bucket: its primary. If
@@ -115,10 +117,10 @@ release window owner.
   pin, unpin, run, archive, or move a row between time sections. An ineligible
   header does not highlight. This is the rule that prevents a "silent second
   group".
-- **Grip/pinned reorder** keeps its existing slot model and insertion
-  indicator. Tag-header drops show a header highlight (accent-wash + accent
-  outline) rather than a row insertion line, because they assign rather than
-  reorder.
+- **Grip/pinned reorder** keeps its insertion indicator and one-row guard;
+  its slot arithmetic is bucket-scoped as described above. Tag-header drops
+  show a header highlight (accent-wash + accent outline) rather than a row
+  insertion line, because they assign rather than reorder.
 - **No arbitrary row order inside a tag group**: the group's order is the
   existing sort. "Reorder feedback" is the pinned gesture's insertion line plus
   the tag header's highlight; after a tag change the row re-sorts by the
@@ -177,8 +179,9 @@ release window owner.
   the count of distinct assigned tags**, not conversations. For a multi-tag
   row this clears all N and primary in one atomic assignment.
 - `Move to tag…` is the second new item; `Tags…` already ships. The shipped
-  menu mounts **up to eight** rows on a pinned row (Archive, Pin, Move up/down,
-  Fork, Copy session id, Rename, Tags) and six on a non-pinned row. V2-1 adds
+  menu mounts **up to eight** rows on a pinned row (Archive, Pin, Fork, Copy
+  session id, Rename, Tags, then the conditional Move up/down pair) and six on
+  a non-pinned row. V2-1 adds
   `Move to tag…` to every row and `Remove all tags (N)` to every tagged row:
   the widest state is a **pinned, tagged row at 10 rows** (two over the cap);
   a non-pinned tagged row is 8, a pinned untagged row 9, a non-pinned untagged
@@ -252,9 +255,11 @@ provider request:
 - The desktop UI sends `auto_tag` on the fork request (`tagsEnabled &&
   autoTagForks`, default true). `Fork` gains `auto_tag: bool = False`; after
   the fork returns the child id, the desktop route writes an `auto-tag.json`
-  sidecar into the child session directory only when it is true. The
+  sidecar into the child session directory only when true. The sidecar carries
+  the child's **fork-time `tags_revision`** as well as the enable bit: this is
+  the eligibility snapshot, not a value read later at naming time. The
   shared-slash fork payload remains `{entry_id}`-only; TUI direct forks and
-  peer/desktop-shared-slash forks do not acquire the sidecar. The naming
+  peer/shared-slash forks do not acquire the sidecar. The naming
   worker reads the sidecar; a missing sidecar means off. The View-options
   toggle is captured at fork time: changing it later does not change an
   existing fork's intent, and no existing fork sidecar is repurposed.
@@ -262,14 +267,15 @@ provider request:
   TUI's direct `fork_session` call and the peer/shared-slash fork route default
   it to false; they do not acquire the sidecar. A later surface that wants
   auto-tagging must pass the flag explicitly.
-- **Manual edits win, including add-then-clear.** At the start of the naming
-  call, the worker records the session's `tags_revision` when the assignment
-  is empty. The auto-tag write is conditional on that revision, not just on
-  the value being empty: a human who adds `Review` and then clears it before
-  the model returns has still edited the row, so the revision differs and
-  auto-tag skips. If the row already had tags at the start, auto-tag never
-  runs. If the user clears auto-assigned tags later, auto-tag does not run
-  again for that fork.
+- **Manual edits win, including add-then-clear before the first turn.** At
+  fork creation, the sidecar records the child's fork-time `tags_revision`
+  (a new/empty child has the store's stable zero revision). The auto-tag write
+  is conditional on that recorded revision, not on a snapshot taken when the
+  naming call starts: a human who tags and then clears the fork before its
+  first substantive turn has still edited the row, so the revision differs
+  from the fork-time value and auto-tag skips. If the child already has tags at
+  fork time, auto-tag never runs. If the user clears auto-assigned tags later,
+  auto-tag does not run again for that fork.
 - **Registry drift:** validate against the live registry at write time; a
   category deleted during the call is dropped, and if none survive there is no
   assignment. No category is created from model output.
@@ -458,15 +464,16 @@ the **mobile relay**, not `/v1/desktop/*`:
   220 and short viewport; optimistic rollback on failure.
 - V2-2: before/after picker and Manage frames at the full matrix; the §6
   keyboard table executed; immediate Create + Cancel persistence; duplicate/
-  empty/Unicode/long/error states; dialog at short viewport with pinned footer;
-  0/1/32 category density.
+  empty/Unicode/long/error states; dialog at short viewport with pinned footer
+  and a visible focus ring; Tags helper on/off and font-scale variants; content
+  height vs client height recorded; 0/1/32 category density.
 - V2-3: prompt byte/hash tests; no tag-specific extra call (delta 0 vs the same
   fork without tags; existing title cascade allowed); same-line/newline/
   truncated tag parse; tags only from the accepted sample; invalid/empty output
   assigns nothing; tag-gated corrective addendum; manual-edit precedence by
-  revision including add-then-clear; apply-once; registry drift; fork auto-tag
-  real-path proof; setting persistence; no-tags/off byte-identical prompt; title
-  still runs.
+  fork-time revision including pre-naming add-then-clear; apply-once; registry
+  drift; fork auto-tag real-path proof; setting persistence; no-tags/off
+  byte-identical prompt; title still runs.
 - V2-4: tool tests (names-only assign, duplicate/unknown/remote 409) and a real
   agent call; TUI frames on/off/narrow; API contract review with the mobile
   owner (session `4264c9a75553`); no second store; full CI terminally.
