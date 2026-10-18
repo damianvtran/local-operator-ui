@@ -282,21 +282,33 @@ export const KNOWN_LIVE_ROOT_FILES = new Set([
  * config, and a renderer is never bytecode).
  *
  * `src/main/**` is the tree, but it is not the whole input: `src/main` imports
- * `src/shared/**`, and `electron.vite.config.js` imports `scripts/vite-plugins/**`
- * at config time, so a change to either can change the main chunk without
- * touching a file under `src/main`. Narrower than `live` on purpose: a
- * renderer-only change cannot reach this chunk, and the bytecode job exists to
- * catch a packaging defect where it can hide, not to pay a second full build on
- * every pull request.
+ * `src/shared/**` and `src/i18n/**` - `messages.ts` pulls `keys.gen` plus the
+ * 81 locale catalogue JSONs into the chunk - and `electron.vite.config.js`
+ * imports `scripts/vite-plugins/**` at config time, so a change to any of them
+ * can change the main chunk without touching a file under `src/main`. Narrower
+ * than `live` on purpose: a renderer-only change cannot reach this chunk, and
+ * the bytecode job exists to catch a packaging defect where it can hide, not to
+ * pay a second full build on every pull request.
  */
 const MAIN_BUNDLE_PREFIXES = [
 	"src/main/",
 	"src/shared/",
+	"src/i18n/",
 	"scripts/vite-plugins/",
 ];
 
-/** Root files outside those trees that still decide the main chunk's shape. */
-const MAIN_BUNDLE_ROOT_FILES = new Set(["electron.vite.config.js"]);
+/**
+ * Root files outside those trees that still decide the main chunk's shape.
+ * `tsconfig.node.json` is the main/preload project, and esbuild discovers the
+ * root `tsconfig.json` from every file it compiles; the renderer's own projects
+ * (`tsconfig.app.json`, `tsconfig.web.json`) cannot change this chunk, so they
+ * are deliberately absent rather than matched by a `tsconfig*` glob.
+ */
+const MAIN_BUNDLE_ROOT_FILES = new Set([
+	"electron.vite.config.js",
+	"tsconfig.json",
+	"tsconfig.node.json",
+]);
 
 /**
  * Whether the category table NAMED this path's tree, rather than reaching its
@@ -513,7 +525,7 @@ export const FLAG_REASONS = {
 	types: "a changed path that is neither prose nor committed evidence",
 	unit: "a changed path that is neither prose nor committed evidence, or a `docs/evidence/**` change (the desktop suite reads committed evidence at runtime)",
 	bytecode:
-		"a path compiled into the main bundle (`src/main/**`, `src/shared/**`, `scripts/vite-plugins/**`, `electron.vite.config.js`, a tsconfig), the install (`package.json` or a lockfile), an unrecognised path, or `.github/**` (every flag is true there)",
+		"a path compiled into the main bundle (`src/main/**`, `src/shared/**`, `src/i18n/**`, `scripts/vite-plugins/**`, `electron.vite.config.js`, `tsconfig.json`, `tsconfig.node.json`), the install (`package.json` or a lockfile), an unrecognised path, or `.github/**` (every flag is true there)",
 	evidence: `a \`docs/evidence/**\` change, one of the modules that produce the sweep's verdict (${[...EVIDENCE_SOURCES].join(", ")}), a palette change (the palettes ARE the grounds a frame is judged against), or a change to the install (\`package.json\` or a lockfile): \`sharp\`, the decoder the verdict is produced with, is a devDependency`,
 	runtime_deps:
 		"`package.json` or one of the scripts the runtime-dependency step executes (`scripts/check-runtime-deps.mjs`, `scripts/require-report.sh`)",
@@ -648,7 +660,6 @@ export function flagsFor(categories, paths, releaseBump) {
 		(path) =>
 			MAIN_BUNDLE_PREFIXES.some((prefix) => path.startsWith(prefix)) ||
 			MAIN_BUNDLE_ROOT_FILES.has(path) ||
-			KNOWN_LIVE_ROOT_RE.test(path) ||
 			(categoryOf(path) === CAT_OTHER && !isNamedLivePath(path)),
 	);
 	/*
