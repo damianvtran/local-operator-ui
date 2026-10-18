@@ -59,7 +59,12 @@
 	"ui.chat.voice.move_here": "Move here",
 	"ui.chat.voice.go_there": "Go there",
 	"ui.chat.voice.another_conversation": "another conversation",
-	"ui.chat.voice.dictation_off_voice": "Voice is on, so dictation is off. Turn voice off to dictate.",
+	"ui.chat.voice.dictation_off_voice": "Voice is on, so dictation is off. Pause voice or turn it off to dictate.",
 	"ui.chat.voice.dictation_off_voice_elsewhere": "Voice is on in “{title}”. Move it here or turn it off to dictate.",
-	"ui.chat.voice.history": "History"
+	"ui.chat.voice.history": "History",
+	"ui.chat.voice.phase_paused": "Paused",
+	"ui.chat.voice.strip_pause": "Pause voice",
+	"ui.chat.voice.strip_resume": "Resume voice",
+	"ui.chat.voice.mute": "Silence the voice",
+	"ui.chat.voice.unmute": "Hear the voice again"
 }

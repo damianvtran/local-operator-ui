@@ -1618,6 +1618,11 @@ const qwenVoice: QwenVoice = new QwenVoice({
 		return {
 			open: (url: string) => instance().open(url),
 			close: () => page?.close(),
+			/*
+			 * NO PAGE IS CREATED FOR A MUTE: with none, the coordinator's own copy is
+			 * re-applied when the page is first opened (`QwenVoice.openPage`).
+			 */
+			setMuted: (muted: boolean) => page?.setMuted(muted),
 			prepareMicrophone: async () => instance().prepareMicrophone(),
 		};
 	})(),
@@ -3048,6 +3053,9 @@ app
 			start: (reason) => qwenVoice.start(reason),
 			getStatus: () => qwenVoice.getStatus(),
 			openMicSettings: openMicrophoneSettings,
+			pause: () => qwenVoice.pause(),
+			resume: () => qwenVoice.resume(),
+			setMuted: (muted) => qwenVoice.setMuted(muted),
 		});
 
 		/*

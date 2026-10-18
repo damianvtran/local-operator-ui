@@ -32,6 +32,7 @@ export type VoicePhase =
 	| "unheard"
 	| "mic_prompting"
 	| "mic_blocked"
+	| "paused"
 	| "hearing"
 	| "speaking"
 	| "listening"
@@ -404,6 +405,13 @@ export function voicePhaseOf(
 	 * Without these a stopped rig would offer "Start voice" over a blocked mic,
 	 * and a start waiting on the OS dialog would read "Starting voice" forever.
 	 */
+	/*
+	 * PAUSE OUTRANKS THE MICROPHONE AND THE READY WORDS: while paused the page is
+	 * closed, so there is nothing hearing, nothing to speak through and no
+	 * microphone to be blocked - the mic's verdict is about a page that is not
+	 * there. The rig's ERROR above it still wins: dead models are news.
+	 */
+	if (state.rig?.paused) return "paused";
 	if (state.rig?.mic === "denied") return "mic_blocked";
 	if (state.rig?.mic === "prompting") return "mic_prompting";
 	if (rig === "starting") return "starting";

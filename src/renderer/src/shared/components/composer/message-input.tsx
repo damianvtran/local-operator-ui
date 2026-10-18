@@ -2053,6 +2053,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const voiceCapable = useVoiceCapability();
 		const voiceHolder = useVoiceStore((s) => s.active?.session_id ?? null);
+		/*
+		 * PAUSED RELEASES THE MICROPHONE. Pause closes main's hidden voice page, so
+		 * voice no longer owns the microphone and dictation is usable again - the
+		 * escape the spec's own tooltip names.
+		 */
+		const voicePaused = useVoiceStore((s) => s.rig?.paused === true);
 		const voiceSessionId = entitySessionId(conversationId);
 		const voiceOnHere = Boolean(
 			voiceCapable && voiceSessionId && voiceHolder === voiceSessionId,
@@ -2060,7 +2066,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		const voiceElsewhere = Boolean(
 			voiceCapable && voiceHolder && voiceHolder !== voiceSessionId,
 		);
-		const voiceBlocksDictation = voiceOnHere || voiceElsewhere;
+		const voiceBlocksDictation =
+			(voiceOnHere || voiceElsewhere) && !voicePaused;
 		const dictationOff = voiceBlocksDictation
 			? dictationOffReason(
 					voiceOnHere,

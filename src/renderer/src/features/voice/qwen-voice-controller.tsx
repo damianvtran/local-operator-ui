@@ -428,6 +428,13 @@ export async function sendVoiceTake(text: string): Promise<VoiceTakeOutcome> {
 	}
 	if (!sessionId)
 		return { ok: false, status: 0, code: "voice_not_enabled", sessionId };
+	/*
+	 * PAUSED ADMITS NO TAKES. The page that would hear one is closed, so a take
+	 * arriving here is a stale one - and admitting it would put "Working" up for
+	 * words nobody heard. Silent, like the echo guard: there is nothing to say.
+	 */
+	if (useVoiceStore.getState().rig?.paused)
+		return { ok: false, status: 0, code: "paused", sessionId };
 	if (!text.trim())
 		return { ok: false, status: 0, code: "empty_transcript", sessionId };
 	/*
@@ -513,7 +520,8 @@ async function onRigTake(take: { taskId: string; text: string }) {
 	 * one-word echo rule over the next ten seconds of real speech.
 	 */
 	const spoken =
-		!outcome.ok && !["echo", "cancelled", "closed"].includes(outcome.code);
+		!outcome.ok &&
+		!["echo", "cancelled", "closed", "paused"].includes(outcome.code);
 	if (spoken) markPhraseSpoken();
 	await bridge()?.result(
 		outcome.ok
@@ -728,6 +736,31 @@ export async function openMicrophoneSettings(): Promise<void> {
 /** Ask main to start the rig for the slot already held (the relaunch case). */
 export async function startQwenRig(): Promise<void> {
 	const status = await bridge()?.start();
+	if (status) useVoiceStore.getState().setRig(status);
+}
+
+/**
+ * THE STRIP'S TWO CONTROLS (design spec §4). Main owns both and answers with the
+ * new status, which is mirrored at once so the chip and the buttons move
+ * without waiting for a push (the push follows and agrees).
+ *
+ * PAUSE closes the app's hidden voice page: the microphone is released - which
+ * is what lets this window dictate again - and the Gateway and the models stay
+ * warm. Resume recreates the page through the same path as Retry.
+ */
+export async function pauseQwenVoice(): Promise<void> {
+	const status = await bridge()?.pause();
+	if (status) useVoiceStore.getState().setRig(status);
+}
+
+export async function resumeQwenVoice(): Promise<void> {
+	const status = await bridge()?.resume();
+	if (status) useVoiceStore.getState().setRig(status);
+}
+
+/** Silence Qwen's own speech (the page's audio), not this app's. */
+export async function setQwenMuted(muted: boolean): Promise<void> {
+	const status = await bridge()?.setMuted(muted);
 	if (status) useVoiceStore.getState().setRig(status);
 }
 

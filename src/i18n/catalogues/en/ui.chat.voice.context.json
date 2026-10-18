@@ -313,5 +313,25 @@
 		"role": "text on the voice strip's history toggle, and the heading of the panel it opens",
 		"tone": "single word",
 		"note": "Opens this window's list of spoken exchanges; the same word labels it once open."
+	},
+	"ui.chat.voice.phase_paused": {
+		"role": "status chip in the composer strip",
+		"note": "Voice is paused: the hidden page is closed so nothing is heard or spoken, and the speech models stay loaded. The action beside it is Resume."
+	},
+	"ui.chat.voice.strip_pause": {
+		"role": "icon button in the composer strip, and its tooltip",
+		"note": "Stops the voice from listening and speaking and releases the microphone, without unloading the models. Dictation can then be used again."
+	},
+	"ui.chat.voice.strip_resume": {
+		"role": "icon button in the composer strip, and its tooltip",
+		"note": "Recreates the hidden voice page and starts listening again, keeping any mute the person had set."
+	},
+	"ui.chat.voice.mute": {
+		"role": "icon button in the composer strip, and its tooltip",
+		"note": "Silences the assistant’s own spoken replies only - not this app and not any other sound on the machine."
+	},
+	"ui.chat.voice.unmute": {
+		"role": "icon button in the composer strip, and its tooltip",
+		"note": "Brings the assistant’s spoken replies back after they were silenced."
 	}
 }
