@@ -1225,32 +1225,48 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										// is invalid markup, the rule the close control already
 										// follows). Shown only while the tab is producing sound
 										// or is muted — a silent tab has nothing to silence.
-										// The 24px target carries a 14px glyph at `ink-dim`,
-										// the brief's register for this mark; no waveform
-										// animation, because animation is reserved for
-										// entrances. It does not activate the tab: silencing a
-										// background tab must not steal the page being read.
-										<button
-											type="button"
-											className="flex size-6 shrink-0 items-center justify-center self-center rounded-sm text-ink-dim hover:bg-row-hover hover:text-ink"
-											aria-label={
+										// THE SHARED BUTTON, NOT A RAW `<button>` (design round 1,
+										// D2/D3): the raw form carried its own hover fill
+										// (`row-hover` measured ΔE00 0.00 against the active tab's
+										// `elevated` in arcade and under the contract's 5.0 floor
+										// in 19 of 59 palettes) where every sibling control steps
+										// to `accent-wash`; `Button` ghost, `icon-sm` is that
+										// sibling register. THE TOOLTIP (UX round 1, U3): every
+										// other icon-only control in the strip names itself on
+										// hover; this one did not.
+										// It does not activate the tab: silencing a background
+										// tab must not steal the page being read — the keyboard
+										// path to the same verb is the actions menu's own item
+										// (UX round 1, U4; design round 1, D1).
+										<Tooltip
+											content={
 												tab.muted
 													? t("ui.browser.browser_tab_strip.unmute_tab")
 													: t("ui.browser.browser_tab_strip.mute_tab")
 											}
-											aria-pressed={tab.muted}
-											tabIndex={active ? 0 : -1}
-											data-tour-tag="browser-tab-mute"
-											onClick={() =>
-												onTabAction(tab.tabId, tab.muted ? "unmute" : "mute")
-											}
 										>
-											{tab.muted ? (
-												<VolumeX aria-hidden className="size-3.5" />
-											) : (
-												<Volume2 aria-hidden className="size-3.5" />
-											)}
-										</button>
+											<Button
+												variant="ghost"
+												size="icon-sm"
+												aria-label={
+													tab.muted
+														? t("ui.browser.browser_tab_strip.unmute_tab")
+														: t("ui.browser.browser_tab_strip.mute_tab")
+												}
+												aria-pressed={tab.muted}
+												tabIndex={active ? 0 : -1}
+												data-tour-tag="browser-tab-mute"
+												onClick={() =>
+													onTabAction(tab.tabId, tab.muted ? "unmute" : "mute")
+												}
+											>
+												{tab.muted ? (
+													<VolumeX aria-hidden className="size-3.5" />
+												) : (
+													<Volume2 aria-hidden className="size-3.5" />
+												)}
+											</Button>
+										</Tooltip>
 									)}
 									<button
 										type="button"
@@ -1514,6 +1530,36 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 													)}
 													{onTabAction && (
 														<>
+															{/*
+															 * THE MENU PATH TO THE SAME VERB, FOR THE KEYBOARD (UX round 1,
+															 * U4; design round 1, D1): the control itself is
+															 * `tabIndex={-1}` on a background tab, and the arrow keys that
+															 * reach that tab ACTIVATE it — the page-stealing the control's
+															 * own comment forbids. The menu is the tab's whole verb list,
+															 * including when it is opened from a tab the person has not
+															 * activated, so the verb lives here too. Shown on the control's
+															 * own condition — a silent tab has nothing to silence.
+															 */}
+															{(tab.audible || tab.muted) && (
+																<DropdownMenuItem
+																	onSelect={() => {
+																		setActionsTabId(null);
+																		onTabAction(
+																			tab.tabId,
+																			tab.muted ? "unmute" : "mute",
+																		);
+																	}}
+																	data-tour-tag="browser-tab-actions-mute"
+																>
+																	{tab.muted
+																		? t(
+																				"ui.browser.browser_tab_strip.unmute_tab",
+																			)
+																		: t(
+																				"ui.browser.browser_tab_strip.mute_tab",
+																			)}
+																</DropdownMenuItem>
+															)}
 															<DropdownMenuItem
 																onSelect={() => {
 																	setActionsTabId(null);

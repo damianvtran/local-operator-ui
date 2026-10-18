@@ -73,7 +73,6 @@ import {
 	installBrowserSessionHandlers,
 	resolveBrowserSession,
 } from "./profile";
-import { COMMAND_TIMEOUTS_S } from "./protocol";
 import { BACKGROUND_VIEWPORT, TabRegistry, surfaceToken } from "./registry";
 import { type RpcServer, startRpcServer } from "./rpc";
 import {
@@ -481,10 +480,12 @@ async function initializeBrowserHost(
 			// composes it here for the same reason the reveal channel takes
 			// no path: no renderer or page string ever becomes a directory.
 			humanDownloadDir: () => app.getPath("downloads"),
-			// The human capture gets the SAME budget the armed path's caller
-			// allows (review minor 4): without it a capture would live — and
-			// keep its runtime-cap sampler ticking — until the tab closed.
-			humanDeadlineMs: COMMAND_TIMEOUTS_S.download * 1000,
+			// NO `humanDeadlineMs` WIRING (review round 2, MAJOR): the wall-clock
+			// budget this used to pass settled — and cancelled, discarding the
+			// partial — a legitimate in-flight human download at 120 s. A human
+			// capture now ends only on a guard, the quiet window, or the tab.
+			// `COMMAND_TIMEOUTS_S.download` remains the AGENT call's own budget,
+			// passed by its caller and unchanged.
 			log,
 			onActivity: () => {
 				// The project is the ONE projection: `chromeState` carries the activity and
