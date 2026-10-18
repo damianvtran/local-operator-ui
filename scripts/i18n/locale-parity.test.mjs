@@ -185,7 +185,7 @@ const IDENTICAL_OK = new Map([
 	],
 	[
 		"ui.agents.models.reading.effort_clamped",
-		"Placeholders and an arrow only ({requested} → {value}); no words to translate.",
+		"Language-neutral: placeholders and an arrow only.",
 	],
 	[
 		"ui.agents.starters.summary.sentence",
@@ -193,19 +193,19 @@ const IDENTICAL_OK = new Map([
 	],
 	[
 		"ui.agents.starters.summary.separator",
-		"Language-neutral list separator (comma and space); identical in Russian and Spanish.",
+		"Language-neutral list separator (comma and space), identical across shipped locales.",
 	],
 	[
 		"ui.agents.settings.chat.top_k",
-		"Model sampling parameter name kept English by the Russian and Spanish style guides.",
+		"Model sampling parameter name kept English by the fr, ru and es style guides.",
 	],
 	[
 		"ui.agents.settings.chat.top_p",
-		"Model sampling parameter name kept English by the Russian and Spanish style guides.",
+		"Model sampling parameter name kept English by the fr, ru and es style guides.",
 	],
 	[
 		"ui.agents.settings.general.id",
-		"Standard technical abbreviation, unchanged across locales.",
+		"Standard technical abbreviation, unchanged across shipped locales.",
 	],
 	[
 		"ui.common.account.low_credits_dialog.detail",
@@ -293,15 +293,15 @@ const IDENTICAL_OK = new Map([
 	],
 	[
 		"ui.projects.project_model.qa",
-		"Standard QA abbreviation, unchanged in Spanish.",
+		"Standard QA abbreviation, unchanged across shipped locales.",
 	],
 	[
 		"ui.schedules.schedule_form_dialog.prompt",
-		"Prompt is kept English by the es style guide; trailing space is part of the fragment.",
+		"Technical term kept English by the fr and es style guides; trailing space is part of the fragment.",
 	],
 	[
 		"ui.schedules.scheduled_task_dialog.prompt",
-		"Prompt is kept English by the es style guide; trailing space is part of the fragment.",
+		"Technical term kept English by the fr and es style guides; trailing space is part of the fragment.",
 	],
 	[
 		"ui.agents.models.reading.effort_auto",
@@ -309,7 +309,7 @@ const IDENTICAL_OK = new Map([
 	],
 	[
 		"ui.code_review.lane.state.terminal",
-		"Spanish cognate: «terminal» has the same spelling as the lowercase state word.",
+		"Cognate: « terminal » has the same spelling in fr and es.",
 	],
 	[
 		"ui.common.models.model_select.general",
@@ -325,11 +325,11 @@ const IDENTICAL_OK = new Map([
 	],
 	[
 		"ui.hub.taxonomy.category.marketing",
-		"Loanword Marketing, settled in Spanish UI usage.",
+		"Loanword Marketing, settled in fr and es UI usage.",
 	],
 	[
 		"ui.providers.provider_labels.local",
-		"Spanish cognate: «Local» has the same spelling.",
+		"Cognate: « local » has the same spelling in fr and es.",
 	],
 	[
 		"ui.settings.appearance.window_glass.material_label",
@@ -388,22 +388,6 @@ const IDENTICAL_OK = new Map([
 		"French cognate plus placeholder: « agent » is unchanged and {name} is preserved.",
 	],
 	[
-		"ui.projects.project_model.clause",
-		"Language-neutral parenthetical: punctuation and {clause} only.",
-	],
-	[
-		"ui.projects.project_model.completed_total",
-		"Language-neutral counter: placeholders and '/' only.",
-	],
-	[
-		"ui.projects.project_model.count_live",
-		"Language-neutral counter: placeholders and a separator only.",
-	],
-	[
-		"ui.projects.project_model.qa",
-		"Stage name kept as the technical abbreviation QA.",
-	],
-	[
 		"ui.projects.project_model.session_reportedby",
 		"French cognate plus placeholder: « session » is unchanged and {reportedBy} is preserved.",
 	],
@@ -412,20 +396,8 @@ const IDENTICAL_OK = new Map([
 		"French cognate: « validation » has the same spelling.",
 	],
 	[
-		"ui.projects.project_model.value_pt",
-		"Language-neutral unit abbreviation plus placeholder.",
-	],
-	[
 		"ui.projects.project_start_session.agents",
 		"French cognate: « agents » has the same spelling.",
-	],
-	[
-		"ui.projects.projects_toolbar.facet_labels_facet_first",
-		"Language-neutral label composition: placeholders and a separator only.",
-	],
-	[
-		"ui.projects.projects_toolbar.facet_labels_facet_first_length_1",
-		"Language-neutral label composition: placeholders, '+', and a separator only.",
 	],
 	[
 		"ui.schedules.schedule_form_dialog.agent",
@@ -436,20 +408,12 @@ const IDENTICAL_OK = new Map([
 		"French cognate: « minutes » has the same spelling.",
 	],
 	[
-		"ui.schedules.schedule_form_dialog.prompt",
-		"French technical term kept English by the French style guide (prompt).",
-	],
-	[
 		"ui.schedules.scheduled_task_dialog.conversation",
 		"French cognate: « conversation » has the same spelling.",
 	],
 	[
 		"ui.schedules.scheduled_task_dialog.minutes",
 		"French cognate: « minutes » has the same spelling.",
-	],
-	[
-		"ui.schedules.scheduled_task_dialog.prompt",
-		"French technical term kept English by the French style guide (prompt).",
 	],
 	[
 		"ui.hub.links.source_public",
@@ -460,24 +424,8 @@ const IDENTICAL_OK = new Map([
 		"French cognate: « public » has the same spelling.",
 	],
 	[
-		"ui.hub.taxonomy.category.marketing",
-		"French loanword: « marketing » is the established term.",
-	],
-	[
 		"ui.browser.browser_hand_over_dialog.session",
 		"French cognate: « session » has the same spelling.",
-	],
-	[
-		"ui.browser.browser_new_tab.wordmark",
-		"Product name, preserved verbatim by the programme glossary.",
-	],
-	[
-		"ui.browser.browser_new_tab.address_placeholder",
-		"Literal sample URL; context requires it to remain byte-identical.",
-	],
-	[
-		"ui.mesh.mesh_approvals.approval_title",
-		"Language-neutral: only {head} and a full stop.",
 	],
 	[
 		"ui.mesh.mesh_approvals.via_transport",
@@ -492,10 +440,6 @@ const IDENTICAL_OK = new Map([
 		"French cognate: « conversations » has the same spelling.",
 	],
 	[
-		"ui.mesh.mesh_page.canvas",
-		"Shared UI term: Canvas is the product surface name, preserved verbatim.",
-	],
-	[
 		"ui.mesh.mesh_list.sort_conversations",
 		"French cognate: « conversations » has the same spelling.",
 	],
@@ -507,7 +451,6 @@ const IDENTICAL_OK = new Map([
 		"ui.canvas.files.documents",
 		"French cognate: « documents » has the same spelling.",
 	],
-	["ui.canvas.files.code", "French cognate: « code » has the same spelling."],
 	[
 		"ui.canvas.files.archives",
 		"French cognate: « archives » has the same spelling.",
@@ -515,18 +458,6 @@ const IDENTICAL_OK = new Map([
 	[
 		"ui.code_review.code_review_model.code",
 		"French cognate: « code » has the same spelling.",
-	],
-	[
-		"ui.code_review.lane.state.terminal",
-		"French cognate: « terminal » has the same spelling.",
-	],
-	[
-		"ui.providers.provider_labels.local",
-		"French cognate: « local » has the same spelling.",
-	],
-	[
-		"ui.common.account.low_credits_dialog.radient_pass",
-		"Product name, preserved verbatim by the programme glossary.",
 	],
 	[
 		"ui.common.updates.update_notification.version",
@@ -537,53 +468,18 @@ const IDENTICAL_OK = new Map([
 		"French cognate: « Menu » has the same spelling.",
 	],
 	[
-		"ui.settings.appearance.window_glass.material_mica",
-		"Proper material name kept verbatim (Windows Mica).",
-	],
-	[
 		"ui.settings.imports.source_heading",
 		"French cognate: « Sources » has the same spelling.",
-	],
-	[
-		"ui.installer.installer_panel.local_operator",
-		"Product name, preserved verbatim by the programme glossary.",
-	],
-	[
-		"ui.agents.starters.summary.sentence",
-		"Language-neutral composition: {parts} plus a full stop.",
-	],
-	[
-		"ui.agents.starters.summary.separator",
-		"Language-neutral list separator: comma and space.",
 	],
 	[
 		"ui.agents.models.reading.effort_col",
 		"French cognate: « Effort » has the same spelling.",
 	],
 	[
-		"ui.agents.models.reading.effort_auto",
-		"French abbreviation: « auto » has the same spelling.",
-	],
-	[
-		"ui.agents.models.reading.effort_clamped",
-		"Language-neutral: placeholders and an arrow only.",
-	],
-	[
-		"ui.agents.settings.chat.top_p",
-		"Technical sampling parameter kept verbatim.",
-	],
-	[
-		"ui.agents.settings.chat.top_k",
-		"Technical sampling parameter kept verbatim.",
-	],
-	[
 		"ui.agents.settings.general.description",
 		"French cognate: « Description » has the same spelling.",
 	],
-	[
-		"ui.agents.settings.general.id",
-		"Standard technical abbreviation, unchanged in French.",
-	],
+	["ui.canvas.files.code", "French cognate: « code » has the same spelling."],
 	[
 		"ui.agents.settings.general.version",
 		"French cognate: « Version » has the same spelling.",
