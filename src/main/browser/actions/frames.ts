@@ -547,6 +547,17 @@ export function candidatePath(scope: FrameScope, selector: string): string {
 export const EDITABLE_SELECTOR =
 	'input:not([type=hidden]):not([type=button]):not([type=submit]):not([type=reset]):not([type=checkbox]):not([type=radio]):not([type=file]):not([type=image]):not([type=range]):not([type=color]):not([disabled]):not([readonly]), textarea:not([disabled]):not([readonly]), [contenteditable]:not([contenteditable="false"])';
 
+/** A contenteditable target must be the editing HOST itself, never an
+ * interactive or void descendant that only inherits `isContentEditable` from
+ * one. Requiring the attribute excludes ordinary descendants (they inherit
+ * editability without carrying it); the control exclusions close the case where
+ * a page puts the attribute on a control. Without this, typing at a button or
+ * link inside an editing host rewrote that descendant's textContent and fired
+ * `input` on it before the refusal. Kept beside EDITABLE_SELECTOR so both
+ * policies name the same control set. */
+export const CONTENTEDITABLE_SELECTOR =
+	'[contenteditable]:not([contenteditable="false"]):not([contenteditable="inherit"]):not(button):not(a):not(input):not(select):not(textarea):not(iframe):not(img):not(video):not(audio):not([disabled]):not([readonly])';
+
 /** Run against the frame's DOCUMENT. `mode` "active": the focused editable, or
  * null. "list": a selector per editable field, for the candidate refusal. "only":
  * the editable field itself. A fixed function with arguments, never interpolated
@@ -628,7 +639,7 @@ export async function editableInFrame(
 		if (fields.length === 0) {
 			throw new BrowserHostError(
 				"element_not_found",
-				`${target} is not an editable field (no value setter, not contenteditable), so nothing was typed; it is an iframe and its document holds no editable field either`,
+				`${target} is not an editable field, so nothing was typed; it is an iframe and its document holds no editable field either`,
 			);
 		}
 		throw new BrowserHostError(

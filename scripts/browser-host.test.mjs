@@ -7688,11 +7688,20 @@ function executingCdp(cdp, node) {
 	};
 }
 
-/** An `<iframe>`-shaped element: focusable, dispatches events, has NO `value`. */
+/** An `<iframe>`-shaped element: focusable, dispatches events, has NO `value`.
+ * `matches` models only the contenteditable policy the typing guards ask: an
+ * element carrying the attribute IS the editing host; an interactive or void
+ * descendant that merely inherits `isContentEditable` is not. */
 class FakeFrameElement extends EventTarget {
 	ownerDocument = {};
-	matches() {
-		return false;
+	matches(selector) {
+		return (
+			selector.includes("[contenteditable]") &&
+			this.isContentEditable === true &&
+			!["BUTTON", "A", "INPUT", "SELECT", "TEXTAREA", "IFRAME", "IMG"].includes(
+				this.tagName,
+			)
+		);
 	}
 	tagName = "IFRAME";
 	isContentEditable = false;
@@ -7761,6 +7770,66 @@ test("type aimed at an iframe fails instead of reporting its own expando as type
 		Object.hasOwn(frame, "value"),
 		false,
 		"type must not plant a `value` expando on a non-editable element",
+	);
+});
+
+test("the top-document refusal is the sentence the browser-host proof asserts", async () => {
+	const { host, cdp } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const heading = new FakeFrameElement();
+	heading.tagName = "H1";
+	executingCdp(cdp, heading);
+
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"type",
+				{ ...owner, tab, selector: "h1", text: "nope" },
+				"type",
+			),
+		(error) =>
+			error.code === "element_not_found" &&
+			error.message ===
+				"h1 is not an editable field, so nothing was typed; if the field lives inside an iframe, it cannot be targeted from the top document; address it as <iframe-selector> >>> <selector>",
+	);
+});
+
+test("type refuses an interactive descendant of a contenteditable host without rewriting its text", async () => {
+	const { host, cdp } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	// A button inside `<div contenteditable>`: `isContentEditable` is true
+	// because it inherits from the editing host, but the host itself is the only
+	// node typing may target. Before the host requirement, the setter rewrote
+	// this button's textContent and dispatched `input` on it.
+	const target = new FakeFrameElement();
+	target.tagName = "BUTTON";
+	target.isContentEditable = true;
+	target.textContent = "Pay now";
+	// The old (reverted) guard would reach focus and the setter on this fake, so
+	// give it the root contract those paths ask for — the test must fail on the
+	// rewrite it observes, not on a missing fixture method.
+	target.getRootNode = FakeInputElement.prototype.getRootNode;
+	let events = 0;
+	for (const name of ["input", "change"])
+		target.addEventListener(name, () => events++);
+	executingCdp(cdp, target);
+
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"type",
+				{ ...owner, tab, selector: "#pay", text: "private text" },
+				"type",
+			),
+		(error) =>
+			error.code === "element_not_found" &&
+			/not an editable field/.test(error.message),
+	);
+	assert.equal(target.textContent, "Pay now");
+	assert.equal(events, 0);
+	assert.equal(
+		cdp.calls.some((call) => call.method === "Input.insertText"),
+		false,
 	);
 });
 
