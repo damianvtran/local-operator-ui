@@ -1,0 +1,1184 @@
+import { agentMessagesApi } from "@shared/api/local-operator/agent-messages-api";
+import {
+	Alert,
+	AlertDescription,
+	AlertTitle,
+	Button,
+	Input,
+	Label,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+	Skeleton,
+	Switch,
+} from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import type { WithoutParams } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
+import { cn } from "@shared/lib/utils";
+import { Save } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import type { FC } from "react";
+import type {
+	AgentMessagesAllowlistResult,
+	AgentMessagesRefusal,
+	AgentMessagesSettingsResult,
+	AgentMessagesStatus,
+} from "../../../../shared/agent-messages-contract";
+import { InfoGrid, InfoItem } from "../settings/components/settings-section";
+import {
+	type AgentMessagesSettingsAvailability,
+	type AllowlistDirection,
+	type AllowlistDraftEntry,
+	type AllowlistEntryKind,
+	type AllowlistMode,
+	agentMessagesSettingsAvailability,
+	agentMessagesSettingsConsent,
+	agentMessagesSettingsState,
+	allowlistDraft,
+	allowlistIdentifierError,
+	allowlistReplaceSet,
+	allowlistSaveGate,
+	allowlistSignature,
+	settingsRefusalSentence,
+} from "./agent-messages-settings-model";
+import {
+	agentMessagesRefusal,
+	checkAgentMessagesSurface,
+	useAgentMessages,
+} from "./use-agent-messages";
+
+export type AgentMessagesSettingsApi = Pick<
+	typeof agentMessagesApi,
+	| "settings"
+	| "updateSettings"
+	| "allowlist"
+	| "updateAllowlist"
+	| "localSetting"
+>;
+
+type Load =
+	| { kind: "loading" }
+	| {
+			kind: "ready";
+			settings: AgentMessagesSettingsResult;
+			allowlist: AgentMessagesAllowlistResult | null;
+	  }
+	| { kind: "error"; refusal: AgentMessagesRefusal };
+
+export type AgentMessagesSettingsProps = {
+	availability: AgentMessagesSettingsAvailability;
+	status: AgentMessagesStatus | null;
+	accountId: string | null;
+	refusal?: AgentMessagesRefusal | null;
+	api?: AgentMessagesSettingsApi;
+	onRefreshStatus: (force?: boolean) => Promise<unknown> | undefined;
+	/** The real canonical sessions store; the section never invents a row. */
+	sessions?: readonly { session_id: string; title?: string | null }[];
+};
+
+/** Radix refuses an empty item value, and "" is the designation's own word. */
+const NO_SESSION = "__none__";
+
+/**
+ * Settings -> Agent messages (RFC §5.6). One section body over the settings
+ * read; the global status model above it owns visibility and consent text.
+ *
+ * The component is prop-driven rather than store-driven so stories and the
+ * test lane can render a state without a daemon, a signed-in account or a
+ * five-minute status cache.
+ */
+export function AgentMessagesSettings({
+	availability,
+	status,
+	accountId,
+	refusal = null,
+	api = agentMessagesApi,
+	onRefreshStatus,
+	sessions = [],
+}: AgentMessagesSettingsProps) {
+	useI18nLocale();
+	const [load, setLoad] = useState<Load>({ kind: "loading" });
+	const [reloadKey, setReloadKey] = useState(0);
+	const [pending, setPending] = useState<string | null>(null);
+	const [actionRefusal, setActionRefusal] =
+		useState<AgentMessagesRefusal | null>(null);
+	const [localEnabled, setLocalEnabled] = useState(
+		status?.local.enabled ?? false,
+	);
+	const [sessionValue, setSessionValue] = useState(status?.local.session ?? "");
+
+	const tenantId = status?.tenant_id ?? undefined;
+	const visible = availability === "visible";
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the explicit retry trigger, not a value the effect reads.
+	useEffect(() => {
+		if (!visible) return undefined;
+		let cancelled = false;
+		setLoad({ kind: "loading" });
+		void (async () => {
+			try {
+				const settings = await api.settings(tenantId);
+				if (cancelled) return;
+				if (!settings) {
+					setLoad({
+						kind: "error",
+						refusal: {
+							code: "invalid_response",
+							message: t("ui.agentMessages.settings.error.unreadable"),
+						},
+					});
+					return;
+				}
+				let allowlist: AgentMessagesAllowlistResult | null = null;
+				if (settings.endpoint) {
+					allowlist = await api.allowlist(settings.settings.tenant_id);
+					if (cancelled) return;
+					if (!allowlist) {
+						setLoad({
+							kind: "error",
+							refusal: {
+								code: "invalid_response",
+								message: t("ui.agentMessages.settings.error.unreadable"),
+							},
+						});
+						return;
+					}
+				}
+				setLoad({ kind: "ready", settings, allowlist });
+			} catch (error) {
+				if (cancelled) return;
+				setLoad({ kind: "error", refusal: agentMessagesRefusal(error) });
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [visible, tenantId, reloadKey, api]);
+
+	// A status refresh (a boundary read) can change the org, endpoint state or
+	// the local preference underneath a mounted section. Mirror those facts
+	// rather than leaving a stale switch.
+	useEffect(() => {
+		if (!status) return;
+		setLocalEnabled(status.local.enabled);
+		setSessionValue(status.local.session);
+	}, [status]);
+
+	const retry = () => setReloadKey((key) => key + 1);
+
+	if (availability === "absent") return null;
+
+	if (availability === "dark") {
+		return (
+			/*
+			 * The dark launch is a LAUNCH STATE, not a fault: no Alert, no icon that
+			 * says something broke, and no control that would pretend to work.
+			 */
+			<div className="flex flex-col gap-2">
+				<h3 className="text-heading text-ink">
+					{t("ui.agentMessages.settings.dark.title")}
+				</h3>
+				<p className="max-w-2xl text-body-sm text-ink-muted">
+					{t("ui.agentMessages.settings.dark.body")}
+				</p>
+				<p className="max-w-2xl text-body-sm text-ink-muted">
+					{t("ui.agentMessages.settings.dark.nothing_enabled")}
+				</p>
+			</div>
+		);
+	}
+
+	if (availability === "error") {
+		return (
+			<Alert variant="warning">
+				<AlertTitle>{t("ui.agentMessages.settings.error.title")}</AlertTitle>
+				<AlertDescription>
+					{refusal
+						? settingsRefusalSentence(refusal)
+						: t("ui.agentMessages.settings.refusal.generic")}
+					<Button
+						className="mt-3"
+						variant="secondary"
+						onClick={() => {
+							retry();
+							void onRefreshStatus(true);
+						}}
+					>
+						{t("ui.agentMessages.settings.error.retry")}
+					</Button>
+				</AlertDescription>
+			</Alert>
+		);
+	}
+
+	if (!status || !accountId) return null;
+
+	return (
+		<div className="flex flex-col gap-6">
+			{actionRefusal && (
+				<Alert variant="warning">
+					<AlertDescription>
+						{settingsRefusalSentence(actionRefusal)}
+					</AlertDescription>
+				</Alert>
+			)}
+
+			{load.kind === "loading" && <SettingsSkeleton />}
+
+			{load.kind === "error" && (
+				<Alert variant="warning">
+					<AlertTitle>{t("ui.agentMessages.settings.error.title")}</AlertTitle>
+					<AlertDescription>
+						{settingsRefusalSentence(load.refusal)}
+						<Button className="mt-3" variant="secondary" onClick={retry}>
+							{t("ui.agentMessages.settings.error.retry")}
+						</Button>
+					</AlertDescription>
+				</Alert>
+			)}
+
+			{load.kind === "ready" && (
+				<>
+					<SettingsState
+						state={agentMessagesSettingsState(status, load.settings)}
+						status={status}
+						settings={load.settings}
+						accountId={accountId}
+						api={api}
+						pending={pending}
+						localEnabled={localEnabled}
+						onActionRefusal={setActionRefusal}
+						onSettings={(settings) =>
+							setLoad((current) =>
+								current.kind === "ready" ? { ...current, settings } : current,
+							)
+						}
+						onLocalEnabled={setLocalEnabled}
+						onRefreshStatus={onRefreshStatus}
+						onRetry={retry}
+						setPending={setPending}
+					/>
+
+					<SessionDesignation
+						value={sessionValue}
+						sessions={sessions}
+						pending={pending === "session"}
+						disabled={pending !== null}
+						onSave={async (next) => {
+							setPending("session");
+							setActionRefusal(null);
+							try {
+								await api.localSetting("team_bridge.session", next);
+								setSessionValue(next);
+								await onRefreshStatus(true);
+							} catch (error) {
+								setActionRefusal(agentMessagesRefusal(error));
+							} finally {
+								setPending(null);
+							}
+						}}
+					/>
+
+					{load.allowlist &&
+						(agentMessagesSettingsState(status, load.settings) === "C" ||
+							agentMessagesSettingsState(status, load.settings) === "D" ||
+							agentMessagesSettingsState(status, load.settings) === "F") && (
+							<AllowlistEditor
+								key={load.allowlist.view.tenant_id ?? "tenant"}
+								allowlist={load.allowlist}
+								accountId={accountId}
+								pending={pending !== null}
+								onSaving={(saving) => setPending(saving ? "allowlist" : null)}
+								onRefusal={setActionRefusal}
+								onSaved={(allowlist) =>
+									setLoad((current) =>
+										current.kind === "ready"
+											? { ...current, allowlist }
+											: current,
+									)
+								}
+								api={api}
+							/>
+						)}
+				</>
+			)}
+		</div>
+	);
+}
+
+function SettingsSkeleton() {
+	return (
+		<div className="flex flex-col gap-3" aria-busy="true">
+			<Skeleton className="h-5 w-40" />
+			<Skeleton className="h-4 w-full max-w-xl" />
+			<Skeleton className="h-9 w-36" />
+			<Skeleton className="h-4 w-64" />
+		</div>
+	);
+}
+
+/** The consent block every state that collects consent renders verbatim. */
+const ConsentText: FC<{ text: string }> = ({ text }) => (
+	<div className="rounded-md border border-hairline bg-sunken p-3">
+		<p className="whitespace-pre-wrap text-body-sm text-ink-muted">{text}</p>
+	</div>
+);
+
+type SettingsStateProps = {
+	state: "B" | "C" | "D" | "E" | "F";
+	status: AgentMessagesStatus;
+	settings: AgentMessagesSettingsResult;
+	accountId: string;
+	api: AgentMessagesSettingsApi;
+	pending: string | null;
+	localEnabled: boolean;
+	onActionRefusal: (refusal: AgentMessagesRefusal | null) => void;
+	onSettings: (settings: AgentMessagesSettingsResult) => void;
+	onLocalEnabled: (enabled: boolean) => void;
+	onRefreshStatus: (force?: boolean) => Promise<unknown> | undefined;
+	onRetry: () => void;
+	setPending: (pending: string | null) => void;
+};
+
+const STATE_TITLE_KEY: Record<SettingsStateProps["state"], WithoutParams> = {
+	B: "ui.agentMessages.settings.state.b_title",
+	C: "ui.agentMessages.settings.state.c_title",
+	D: "ui.agentMessages.settings.state.d_title",
+	E: "ui.agentMessages.settings.state.e_title",
+	F: "ui.agentMessages.settings.state.f_title",
+};
+const STATE_BODY_KEY: Record<SettingsStateProps["state"], WithoutParams> = {
+	B: "ui.agentMessages.settings.state.b_body",
+	C: "ui.agentMessages.settings.state.c_body",
+	D: "ui.agentMessages.settings.state.d_body",
+	E: "ui.agentMessages.settings.state.e_body",
+	F: "ui.agentMessages.settings.state.f_body",
+};
+
+const SettingsState: FC<SettingsStateProps> = ({
+	state,
+	status,
+	settings,
+	accountId,
+	api,
+	pending,
+	localEnabled,
+	onActionRefusal,
+	onSettings,
+	onLocalEnabled,
+	onRefreshStatus,
+	onRetry,
+	setPending,
+}) => {
+	const consent = agentMessagesSettingsConsent(status);
+	const tenant = settings.settings.tenant_id;
+	const disabled = pending !== null;
+
+	async function write(
+		next: "active" | "paused" | "disabled",
+		extra: { consent_version?: string; consented_via?: "settings" } = {},
+	) {
+		setPending(next);
+		onActionRefusal(null);
+		try {
+			const result = await api.updateSettings({
+				expected_account_id: accountId,
+				tenant_id: tenant,
+				state: next,
+				...extra,
+			});
+			onSettings(result);
+			if (next === "disabled") {
+				// Opting out IS the endpoint's off switch, so the machine-local
+				// preference follows it. Pause deliberately does not: "not now" is
+				// not "off", and the enrollment stays usable for other machines.
+				try {
+					await api.localSetting("team_bridge.enabled", false);
+					onLocalEnabled(false);
+				} catch (error) {
+					// The endpoint is already off; say the local preference failed
+					// rather than implying the server write did.
+					onActionRefusal(agentMessagesRefusal(error));
+				}
+			}
+			return result;
+		} catch (error) {
+			const refusal = agentMessagesRefusal(error);
+			onActionRefusal(refusal);
+			if (refusal.code === "consent_version_unknown") {
+				// Refresh and re-render; the NEXT click carries the new version.
+				await onRefreshStatus(true);
+			}
+			return null;
+		} finally {
+			setPending(null);
+		}
+	}
+
+	async function enable() {
+		if (!consent) return;
+		const result = await write("active", {
+			consent_version: consent.version,
+			consented_via: "settings",
+		});
+		if (!result) return;
+		setPending("local");
+		try {
+			await api.localSetting("team_bridge.enabled", true);
+			onLocalEnabled(true);
+			await onRefreshStatus(true);
+		} catch (error) {
+			onActionRefusal(agentMessagesRefusal(error));
+		} finally {
+			setPending(null);
+		}
+	}
+
+	if (state === "F") {
+		return (
+			<div className="flex flex-col gap-3">
+				<div className="rounded-md border border-hairline bg-sunken p-3">
+					<p className="text-body-sm text-ink">
+						{status.state_note?.trim()
+							? status.state_note
+							: t("ui.agentMessages.settings.state.turned_off_title")}
+					</p>
+					<p className="mt-1 text-body-sm text-ink-muted">
+						{t("ui.agentMessages.settings.state.turned_off_org")}
+					</p>
+				</div>
+				<p className="text-body-sm text-ink-muted">
+					{t("ui.agentMessages.settings.state.read_only")}
+				</p>
+				<EndpointConsent settings={settings} status={status} readOnly />
+				<LocalSwitch
+					value={localEnabled}
+					disabled={disabled}
+					description={t("ui.agentMessages.settings.local.stays_enrolled")}
+					onChange={async (next) => {
+						setPending("local");
+						onActionRefusal(null);
+						try {
+							await api.localSetting("team_bridge.enabled", next);
+							onLocalEnabled(next);
+							await onRefreshStatus(true);
+						} catch (error) {
+							onActionRefusal(agentMessagesRefusal(error));
+						} finally {
+							setPending(null);
+						}
+					}}
+				/>
+			</div>
+		);
+	}
+
+	const endpointLabel = settings.endpoint?.label?.trim();
+	const consentRecord = settings.endpoint?.consent ?? null;
+	const staleConsent = consentRecord !== null && !consentRecord.current;
+
+	return (
+		<div className="flex flex-col gap-4">
+			<div className="flex flex-wrap items-center gap-2">
+				<h3 className="text-heading text-ink">{t(STATE_TITLE_KEY[state])}</h3>
+				{endpointLabel && (
+					<span className="text-body-sm text-ink-muted">{endpointLabel}</span>
+				)}
+			</div>
+			<p className="max-w-2xl text-body-sm text-ink-muted">
+				{t(STATE_BODY_KEY[state])}
+			</p>
+
+			{/* B and E collect consent: the served text is shown EXACTLY. */}
+			{(state === "B" || state === "E") && (
+				<div className="flex flex-col gap-3">
+					{consent ? (
+						<ConsentText text={consent.text} />
+					) : (
+						<Alert variant="warning">
+							<AlertDescription>
+								{t("ui.agentMessages.settings.consent.unavailable")}
+							</AlertDescription>
+						</Alert>
+					)}
+					<div className="flex flex-wrap items-center gap-3">
+						<Button
+							onClick={() => void enable()}
+							disabled={disabled || !consent}
+						>
+							{state === "B"
+								? t("ui.agentMessages.settings.action.enable")
+								: t("ui.agentMessages.settings.action.enable_again")}
+						</Button>
+						<span className="text-meta text-ink-dim">
+							{t("ui.agentMessages.settings.off_by_default")}
+						</span>
+					</div>
+				</div>
+			)}
+
+			{state === "C" && settings.endpoint && (
+				<div className="flex flex-col gap-4">
+					<div className="flex flex-wrap gap-2">
+						<Button
+							variant="secondary"
+							disabled={disabled}
+							onClick={() => void write("paused")}
+						>
+							{t("ui.agentMessages.settings.action.pause")}
+						</Button>
+						<Button
+							variant="secondary"
+							disabled={disabled}
+							onClick={() => void write("disabled")}
+						>
+							{t("ui.agentMessages.settings.action.turn_off")}
+						</Button>
+					</div>
+					<EndpointConsent settings={settings} status={status} />
+					{staleConsent && (
+						<ConsentRenewal
+							onRenew={() => void enable()}
+							disabled={disabled || !consent}
+						/>
+					)}
+					<LocalSwitch
+						value={localEnabled}
+						disabled={disabled}
+						description={t("ui.agentMessages.settings.local.stays_enrolled")}
+						onChange={async (next) => {
+							setPending("local");
+							onActionRefusal(null);
+							try {
+								await api.localSetting("team_bridge.enabled", next);
+								onLocalEnabled(next);
+								await onRefreshStatus(true);
+							} catch (error) {
+								onActionRefusal(agentMessagesRefusal(error));
+							} finally {
+								setPending(null);
+							}
+						}}
+					/>
+				</div>
+			)}
+
+			{state === "D" && settings.endpoint && (
+				<div className="flex flex-col gap-4">
+					<div className="flex flex-wrap gap-2">
+						<Button
+							disabled={disabled}
+							onClick={() =>
+								void write(
+									"active",
+									settings.settings.consent_required && consent
+										? {
+												consent_version: consent.version,
+												consented_via: "settings",
+											}
+										: {},
+								)
+							}
+						>
+							{t("ui.agentMessages.settings.action.resume")}
+						</Button>
+						<Button
+							variant="secondary"
+							disabled={disabled}
+							onClick={() => void write("disabled")}
+						>
+							{t("ui.agentMessages.settings.action.turn_off")}
+						</Button>
+					</div>
+					<EndpointConsent settings={settings} status={status} />
+					{staleConsent && (
+						<ConsentRenewal
+							onRenew={() => void enable()}
+							disabled={disabled || !consent}
+						/>
+					)}
+				</div>
+			)}
+
+			{state === "B" && !settings.endpoint && (
+				<button
+					type="button"
+					className="self-start text-body-sm text-ink-muted underline-offset-4 hover:underline"
+					onClick={onRetry}
+				>
+					{t("ui.agentMessages.settings.error.refresh")}
+				</button>
+			)}
+		</div>
+	);
+};
+
+const ConsentRenewal: FC<{ onRenew: () => void; disabled: boolean }> = ({
+	onRenew,
+	disabled,
+}) => (
+	<Alert variant="warning">
+		<AlertDescription>
+			{t("ui.agentMessages.settings.consent.renew")}
+			<Button
+				className="mt-3"
+				variant="secondary"
+				disabled={disabled}
+				onClick={onRenew}
+			>
+				{t("ui.agentMessages.settings.action.enable_again")}
+			</Button>
+		</AlertDescription>
+	</Alert>
+);
+
+/**
+ * The consent/enrollment record in C/D. `readOnly` keeps F's retained record
+ * read-only: a kill ends the flow, not the history, and no control may imply
+ * the user can renew their way out of an organization's decision.
+ */
+const EndpointConsent: FC<{
+	settings: AgentMessagesSettingsResult;
+	status: AgentMessagesStatus;
+	readOnly?: boolean;
+}> = ({ settings, status, readOnly = false }) => {
+	const record = settings.endpoint?.consent ?? null;
+	const consent = agentMessagesSettingsConsent(status);
+	if (!record) {
+		return (
+			<p className="text-body-sm text-ink-muted">
+				{t("ui.agentMessages.settings.consent.no_record")}
+			</p>
+		);
+	}
+	return (
+		<div className="flex flex-col gap-3">
+			<InfoGrid>
+				<InfoItem
+					label={t("ui.agentMessages.settings.consent.version")}
+					value={record.version}
+				/>
+				<InfoItem
+					label={t("ui.agentMessages.settings.consent.via")}
+					value={t(
+						`ui.agentMessages.settings.consent.via_${record.consented_via}`,
+					)}
+				/>
+				<InfoItem
+					label={t("ui.agentMessages.settings.consent.at")}
+					value={record.consented_at}
+				/>
+			</InfoGrid>
+			{!readOnly && consent && (
+				<details>
+					<summary className="cursor-pointer text-body-sm text-ink-muted">
+						{t("ui.agentMessages.settings.consent.show")}
+					</summary>
+					<p className="mt-2 whitespace-pre-wrap text-body-sm text-ink-muted">
+						{consent.text}
+					</p>
+				</details>
+			)}
+		</div>
+	);
+};
+
+const LocalSwitch: FC<{
+	value: boolean;
+	disabled: boolean;
+	description: string;
+	onChange: (next: boolean) => Promise<void> | void;
+}> = ({ value, disabled, description, onChange }) => {
+	const id = useId();
+	return (
+		<div className="flex items-start justify-between gap-4">
+			<div className="min-w-0">
+				<p id={id} className="text-body-sm text-ink">
+					{t("ui.agentMessages.settings.local.label")}
+				</p>
+				<p className="mt-0.5 text-meta text-ink-dim">{description}</p>
+			</div>
+			<Switch
+				aria-labelledby={id}
+				checked={value}
+				disabled={disabled}
+				onCheckedChange={(next) => void onChange(next)}
+			/>
+		</div>
+	);
+};
+
+const SessionDesignation: FC<{
+	value: string;
+	sessions: readonly { session_id: string; title?: string | null }[];
+	pending: boolean;
+	disabled: boolean;
+	onSave: (value: string) => Promise<void>;
+}> = ({ value, sessions, pending, disabled, onSave }) => {
+	const known = sessions.some((session) => session.session_id === value);
+	return (
+		<div className="flex flex-col gap-2">
+			<h3 className="text-heading text-ink">
+				{t("ui.agentMessages.settings.session.title")}
+			</h3>
+			<p className="max-w-2xl text-meta text-ink-dim">
+				{t("ui.agentMessages.settings.session.help")}
+			</p>
+			<Select
+				value={value === "" ? NO_SESSION : value}
+				disabled={disabled}
+				onValueChange={(next) => void onSave(next === NO_SESSION ? "" : next)}
+			>
+				<SelectTrigger
+					className="w-full max-w-md"
+					aria-label={t("ui.agentMessages.settings.session.title")}
+				>
+					<SelectValue />
+				</SelectTrigger>
+				<SelectContent>
+					<SelectItem value={NO_SESSION}>
+						{t("ui.agentMessages.settings.session.none")}
+					</SelectItem>
+					{sessions.map((session) => (
+						<SelectItem key={session.session_id} value={session.session_id}>
+							{session.title?.trim() || session.session_id}
+						</SelectItem>
+					))}
+					{value !== "" && !known && (
+						<SelectItem value={value}>{value}</SelectItem>
+					)}
+				</SelectContent>
+			</Select>
+			{value !== "" && !known && (
+				<p className="text-meta text-ink-dim">
+					{t("ui.agentMessages.settings.session.unavailable")}
+				</p>
+			)}
+			{pending && (
+				<p className="text-meta text-ink-dim" aria-live="polite">
+					{t("ui.agentMessages.settings.saving")}
+				</p>
+			)}
+		</div>
+	);
+};
+
+type AllowlistEditorProps = {
+	allowlist: AgentMessagesAllowlistResult;
+	accountId: string;
+	pending: boolean;
+	api: AgentMessagesSettingsApi;
+	onSaving: (saving: boolean) => void;
+	onRefusal: (refusal: AgentMessagesRefusal | null) => void;
+	onSaved: (allowlist: AgentMessagesAllowlistResult) => void;
+};
+
+const AllowlistEditor: FC<AllowlistEditorProps> = ({
+	allowlist,
+	accountId,
+	pending,
+	api,
+	onSaving,
+	onRefusal,
+	onSaved,
+}) => {
+	const [entries, setEntries] = useState<AllowlistDraftEntry[]>(() =>
+		allowlistDraft(allowlist.allowlist.entries),
+	);
+	const [modes, setModes] = useState<Record<AllowlistDirection, AllowlistMode>>(
+		() => ({
+			send: allowlist.view.directions.send.mode,
+			receive: allowlist.view.directions.receive.mode,
+		}),
+	);
+	const savedSignature = allowlistSignature(
+		allowlistReplaceSet(entriesFromWire(allowlist), modesFromView(allowlist)),
+	);
+	const gate = allowlistSaveGate({
+		entries,
+		modes,
+		savedSignature,
+		saving: pending,
+	});
+
+	// A local sequence, not a clock: two adds in one tick must not collide on a
+	// React key (the clock can repeat within a millisecond).
+	const sequence = useRef(0);
+	const add = (entry: Omit<AllowlistDraftEntry, "key">) =>
+		setEntries((current) => [
+			...current,
+			{
+				...entry,
+				key: `${entry.direction}:${entry.effect}:${sequence.current++}`,
+			},
+		]);
+	const remove = (key: string) =>
+		setEntries((current) => current.filter((entry) => entry.key !== key));
+
+	const save = async () => {
+		onSaving(true);
+		onRefusal(null);
+		try {
+			const result = await api.updateAllowlist({
+				expected_account_id: accountId,
+				tenant_id: allowlist.allowlist.tenant_id,
+				entries: allowlistReplaceSet(entries, modes),
+			});
+			const wire = allowlistDraft(result.allowlist.entries);
+			setEntries(wire);
+			setModes({
+				send: result.view.directions.send.mode,
+				receive: result.view.directions.receive.mode,
+			});
+			onSaved(result);
+		} catch (error) {
+			onRefusal(agentMessagesRefusal(error));
+		} finally {
+			onSaving(false);
+		}
+	};
+
+	return (
+		<div className="flex flex-col gap-5">
+			<div>
+				<h3 className="text-heading text-ink">
+					{t("ui.agentMessages.settings.allowlist.title")}
+				</h3>
+				<p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
+					{t("ui.agentMessages.settings.allowlist.description")}
+				</p>
+			</div>
+
+			<DirectionGroup
+				direction="receive"
+				title={t("ui.agentMessages.settings.allowlist.receive")}
+				mode={modes.receive}
+				cues={allowlist.view.cues}
+				entries={entries.filter((entry) => entry.direction === "receive")}
+				disabled={pending}
+				onMode={(mode) =>
+					setModes((current) => ({ ...current, receive: mode }))
+				}
+				onAdd={(entry) => add({ ...entry, direction: "receive" })}
+				onRemove={remove}
+			/>
+			<DirectionGroup
+				direction="send"
+				title={t("ui.agentMessages.settings.allowlist.send")}
+				mode={modes.send}
+				cues={allowlist.view.cues}
+				entries={entries.filter((entry) => entry.direction === "send")}
+				disabled={pending}
+				onMode={(mode) => setModes((current) => ({ ...current, send: mode }))}
+				onAdd={(entry) => add({ ...entry, direction: "send" })}
+				onRemove={remove}
+			/>
+
+			<div className="flex flex-wrap items-center gap-3">
+				<Button onClick={() => void save()} disabled={gate.disabled}>
+					<Save size={14} />
+					{t("ui.agentMessages.settings.allowlist.save")}
+				</Button>
+				{gate.disabled && gate.reason === "needs_entry" && (
+					<span className="text-meta text-ink-dim">
+						{t("ui.agentMessages.settings.allowlist.needs_entry")}
+					</span>
+				)}
+				{gate.disabled && gate.reason === "unchanged" && (
+					<span className="text-meta text-ink-dim">
+						{t("ui.agentMessages.settings.allowlist.unchanged")}
+					</span>
+				)}
+				{pending && (
+					<span className="text-meta text-ink-dim" aria-live="polite">
+						{t("ui.agentMessages.settings.saving")}
+					</span>
+				)}
+			</div>
+		</div>
+	);
+};
+
+/** The saved policy as draft rows, WITHOUT the editor's live edits. */
+function entriesFromWire(allowlist: AgentMessagesAllowlistResult) {
+	return allowlistDraft(allowlist.allowlist.entries);
+}
+
+function modesFromView(
+	allowlist: AgentMessagesAllowlistResult,
+): Record<AllowlistDirection, AllowlistMode> {
+	return {
+		send: allowlist.view.directions.send.mode,
+		receive: allowlist.view.directions.receive.mode,
+	};
+}
+
+type DirectionGroupProps = {
+	direction: AllowlistDirection;
+	title: string;
+	mode: AllowlistMode;
+	cues: AgentMessagesAllowlistResult["view"]["cues"];
+	entries: readonly AllowlistDraftEntry[];
+	disabled: boolean;
+	onMode: (mode: AllowlistMode) => void;
+	onAdd: (entry: {
+		effect: "allow" | "deny";
+		kind: AllowlistEntryKind;
+		id: string;
+	}) => void;
+	onRemove: (key: string) => void;
+};
+
+const DirectionGroup: FC<DirectionGroupProps> = ({
+	title,
+	mode,
+	cues,
+	entries,
+	disabled,
+	onMode,
+	onAdd,
+	onRemove,
+}) => {
+	const allowed = entries.filter((entry) => entry.effect === "allow");
+	const blocked = entries.filter((entry) => entry.effect === "deny");
+	return (
+		<fieldset className="flex flex-col gap-3 rounded-md border border-hairline p-3">
+			<legend className="px-1 text-body-sm text-ink">{title}</legend>
+			<LevelControl mode={mode} disabled={disabled} onMode={onMode} />
+			<div className="flex flex-col gap-1 text-meta text-ink-dim">
+				{cues.allow_entry_switches_direction_to_listed_only && (
+					<p>{t("ui.agentMessages.settings.allowlist.cue_listed_only")}</p>
+				)}
+				{cues.removing_allow_does_not_stop_open_thread && (
+					<p>{t("ui.agentMessages.settings.allowlist.cue_remove")}</p>
+				)}
+				{cues.deny_stops_pair_both_directions && (
+					<p>{t("ui.agentMessages.settings.allowlist.cue_deny")}</p>
+				)}
+			</div>
+
+			{mode === "listed_only" && (
+				<div className="flex flex-col gap-2">
+					<p className="text-meta text-ink-dim">
+						{t("ui.agentMessages.settings.allowlist.allowed_heading")}
+					</p>
+					{allowed.length === 0 && (
+						<p className="text-body-sm text-ink-muted">
+							{t("ui.agentMessages.settings.allowlist.allowed_empty")}
+						</p>
+					)}
+					{allowed.map((entry) => (
+						<EntryRow
+							key={entry.key}
+							entry={entry}
+							disabled={disabled}
+							onRemove={() => onRemove(entry.key)}
+						/>
+					))}
+					<AddEntryForm
+						label={t("ui.agentMessages.settings.allowlist.add_allowed")}
+						disabled={disabled}
+						onAdd={(entry) => onAdd({ ...entry, effect: "allow" })}
+					/>
+				</div>
+			)}
+
+			<div className="flex flex-col gap-2">
+				<p className="text-meta text-ink-dim">
+					{t("ui.agentMessages.settings.allowlist.blocked_heading")}
+				</p>
+				{blocked.length === 0 && (
+					<p className="text-body-sm text-ink-muted">
+						{t("ui.agentMessages.settings.allowlist.blocked_empty")}
+					</p>
+				)}
+				{blocked.map((entry) => (
+					<EntryRow
+						key={entry.key}
+						entry={entry}
+						disabled={disabled}
+						onRemove={() => onRemove(entry.key)}
+					/>
+				))}
+				<AddEntryForm
+					label={t("ui.agentMessages.settings.allowlist.add_blocked")}
+					disabled={disabled}
+					onAdd={(entry) => onAdd({ ...entry, effect: "deny" })}
+				/>
+			</div>
+		</fieldset>
+	);
+};
+
+const LevelControl: FC<{
+	mode: AllowlistMode;
+	disabled: boolean;
+	onMode: (mode: AllowlistMode) => void;
+}> = ({ mode, disabled, onMode }) => {
+	const options: { value: AllowlistMode; label: string }[] = [
+		{
+			value: "class_default",
+			label: t("ui.agentMessages.settings.allowlist.anyone"),
+		},
+		{
+			value: "listed_only",
+			label: t("ui.agentMessages.settings.allowlist.listed_only"),
+		},
+	];
+	return (
+		/*
+		 * The shipped segmented-pair idiom (settings-page UsageInfo): a sunken
+		 * well holding ghost Buttons, the pressed one lifted to `surface`. No
+		 * new fill or border triple is introduced, so the contrast contract
+		 * needs no row for it.
+		 */
+		<fieldset className="m-0 w-fit border-0 p-0">
+			<legend className="sr-only">
+				{t("ui.agentMessages.settings.allowlist.level")}
+			</legend>
+			<div
+				data-glass-well=""
+				className="flex gap-0.5 rounded-md bg-sunken p-0.5"
+			>
+				{options.map((option) => (
+					<Button
+						key={option.value}
+						variant="ghost"
+						size="sm"
+						aria-pressed={mode === option.value}
+						disabled={disabled}
+						onClick={() => onMode(option.value)}
+						className={cn(
+							mode === option.value && "bg-surface text-ink hover:bg-surface",
+						)}
+					>
+						{option.label}
+					</Button>
+				))}
+			</div>
+		</fieldset>
+	);
+};
+
+const EntryRow: FC<{
+	entry: AllowlistDraftEntry;
+	disabled: boolean;
+	onRemove: () => void;
+}> = ({ entry, disabled, onRemove }) => (
+	<div className="flex items-center justify-between gap-3 rounded border border-hairline px-2 py-1">
+		<div className="flex min-w-0 items-baseline gap-2">
+			<span className="text-meta text-ink-dim">
+				{entry.kind === "endpoint"
+					? t("ui.agentMessages.settings.allowlist.kind_agent")
+					: t("ui.agentMessages.settings.allowlist.kind_person")}
+			</span>
+			<span className="truncate text-body-sm text-ink">{entry.id}</span>
+		</div>
+		<Button
+			variant="secondary"
+			size="sm"
+			disabled={disabled}
+			onClick={onRemove}
+		>
+			{t("ui.agentMessages.settings.allowlist.remove")}
+		</Button>
+	</div>
+);
+
+const AddEntryForm: FC<{
+	label: string;
+	disabled: boolean;
+	onAdd: (entry: { kind: AllowlistEntryKind; id: string }) => void;
+}> = ({ label, disabled, onAdd }) => {
+	const [kind, setKind] = useState<AllowlistEntryKind>("endpoint");
+	const [value, setValue] = useState("");
+	const [error, setError] = useState<string | null>(null);
+	const fieldId = useId();
+
+	const submit = () => {
+		const problem = allowlistIdentifierError(value.trim());
+		setError(problem);
+		if (problem) return;
+		onAdd({ kind, id: value.trim() });
+		setValue("");
+	};
+
+	return (
+		<div className="flex flex-col gap-2">
+			<Label htmlFor={fieldId}>{label}</Label>
+			<div className="flex flex-wrap items-center gap-2">
+				<Select
+					value={kind}
+					disabled={disabled}
+					onValueChange={(next) => setKind(next as AllowlistEntryKind)}
+				>
+					<SelectTrigger
+						className="w-32"
+						aria-label={t("ui.agentMessages.settings.allowlist.kind")}
+					>
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="endpoint">
+							{t("ui.agentMessages.settings.allowlist.kind_agent")}
+						</SelectItem>
+						<SelectItem value="account">
+							{t("ui.agentMessages.settings.allowlist.kind_person")}
+						</SelectItem>
+					</SelectContent>
+				</Select>
+				<Input
+					id={fieldId}
+					className="max-w-xs"
+					value={value}
+					disabled={disabled}
+					placeholder={t("ui.agentMessages.settings.allowlist.identifier")}
+					onChange={(event) => setValue(event.target.value)}
+					onKeyDown={(event) => {
+						if (event.key === "Enter") {
+							event.preventDefault();
+							submit();
+						}
+					}}
+				/>
+				<Button
+					variant="secondary"
+					size="sm"
+					disabled={disabled}
+					onClick={submit}
+				>
+					{t("ui.agentMessages.settings.allowlist.add")}
+				</Button>
+			</div>
+			{error && <p className="text-meta text-danger">{error}</p>}
+		</div>
+	);
+};
+
+/**
+ * The availability latch for the page and rail. Once the section has been
+ * observable, a later failed read keeps an error surface on screen; a status
+ * this client never observed keeps it absent.
+ */
+export function useAgentMessagesSettingsAvailability(): AgentMessagesSettingsAvailability {
+	const { snapshot } = useAgentMessages();
+	const [everVisible, setEverVisible] = useState(false);
+	const availability = agentMessagesSettingsAvailability({
+		status: snapshot.status,
+		refused: snapshot.refusal !== null,
+		everVisible,
+		checking: snapshot.checking,
+	});
+	useEffect(() => {
+		if (availability !== "absent") setEverVisible(true);
+	}, [availability]);
+	// Settings mounting is one of §5.1's natural boundaries. The shared model's
+	// five-minute floor still applies; this is not a timer.
+	useEffect(() => {
+		void checkAgentMessagesSurface();
+	}, []);
+	return availability;
+}

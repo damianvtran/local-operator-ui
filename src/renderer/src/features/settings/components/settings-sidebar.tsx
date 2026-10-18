@@ -9,6 +9,7 @@ import {
 	Download,
 	FolderInput,
 	Keyboard,
+	MessageSquare,
 	Paintbrush,
 	Plug,
 	Puzzle,
@@ -106,7 +107,7 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
 		get label() {
 			return t("ui.settings.navigation.settings_sidebar.account");
 		},
-		ids: ["providers", "integrations", "radient"],
+		ids: ["providers", "integrations", "radient", "agent-messages"],
 	},
 	// The backend registry section was rendered but reachable only by deep
 	// link because it sat in no group; the rail filters by group membership.
@@ -351,6 +352,15 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 			return t("ui.settings.navigation.settings_sidebar.radient_account");
 		},
 		icon: RadientMark,
+	},
+	{
+		// Present only while the agent-messages status says Settings is part of
+		// the surface (RFC §5.6); settings-page filters this entry out otherwise.
+		id: "agent-messages",
+		get label() {
+			return t("ui.agentMessages.settings.section");
+		},
+		icon: MessageSquare,
 	},
 	{
 		id: "integrations",
