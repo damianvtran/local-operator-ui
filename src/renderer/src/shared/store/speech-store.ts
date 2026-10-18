@@ -56,6 +56,19 @@
  * element was built from, and stop/end/error revoke THAT URL - the previous
  * implementation rebuilt a fresh URL from the cached blob to revoke it, which
  * released nothing and leaked the one that was actually playing.
+ *
+ * THE ELEMENT BELONGS TO THE SHARED ENGINE (sound phase, 2026-10-17). Until
+ * the generated-sound lane landed, this store built its own
+ * `HTMLAudioElement` per press - and so did every audio widget, which is how
+ * a TTS press and a playing sound could overlap, and how a transcript
+ * re-render could take the playing element away with the row. The shared
+ * engine (`audio-engine-store.ts`) now owns THE one element and the exclusivity
+ * rule (any start stops whatever held it); this store keeps everything that is
+ * speech's own - the fetch, the cache, the press order - and delegates playback
+ * through `speechOwnerId(key)`. `audioElement` below is therefore the ENGINE's
+ * element when a press owns it, kept so the surfaces and the store's tests can
+ * ask which element a press used; the URL revocation remains here because the
+ * URL was created here (the engine never creates or revokes one).
  */
 
 import { createLocalOperatorClient } from "@shared/api/local-operator";
@@ -67,6 +80,7 @@ import {
 	speechFailureCopy,
 } from "@shared/lib/speech-errors";
 import { fetchSpeechAgentId } from "@shared/lib/speech-target";
+import { useAudioEngineStore } from "@shared/store/audio-engine-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { create } from "zustand";
 
@@ -76,6 +90,20 @@ export const AUDIO_CACHE_LIMIT = 20;
 /** The store key of a message's own words. */
 export const messageSpeechKey = (messageId: string): string =>
 	`msg:${messageId}`;
+
+/**
+ * The engine identity of one speech press.
+ *
+ * Speech shares the one audio engine with generated sound
+ * (`audio-engine-store.ts`), so a TTS press and a sound player cannot play at
+ * once: the engine's `play` stops whatever held the element. The prefix is what
+ * lets `stopSpeech` stop SPEECH's playback without silencing a sound the reader
+ * is listening to — "stop the reading" must not be a global mute.
+ */
+export const speechOwnerId = (key: string): string => `speech:${key}`;
+
+/** Whether the engine's current owner is a speech press (see `stopSpeech`). */
+const SPEECH_OWNER_PREFIX = "speech:";
 
 /**
  * FNV-1a, 32-bit, lowercase hex. Non-cryptographic on purpose: the key only
@@ -199,6 +227,11 @@ type SpeechState = {
 	playingKey: string | null;
 	/** The last failure, for the surfaces' own tests; the toast is the reader's. */
 	error: string | null;
+	/**
+	 * The engine element this store's current press plays through, or null when
+	 * no press owns it. Kept as the surfaces' (and the tests') handle on "which
+	 * element is this press's" - see the header.
+	 */
 	audioElement: HTMLAudioElement | null;
 	/** The object URL `audioElement` was built from. See the header. */
 	currentUrl: string | null;
@@ -347,54 +380,65 @@ export const useSpeechStore = create<SpeechState & SpeechActions>(
 
 				if (get().generation !== generation) return;
 
-				const audioUrl = URL.createObjectURL(audioBlob);
-				const audioElement = new Audio(audioUrl);
-				audioElement.onended = () => {
-					URL.revokeObjectURL(audioUrl);
-					set((state) =>
-						state.audioElement === audioElement
-							? { playingKey: null, audioElement: null, currentUrl: null }
-							: {},
-					);
-				};
-				audioElement.onerror = () => {
-					URL.revokeObjectURL(audioUrl);
-					const wasCurrent = get().audioElement === audioElement;
-					set((state) =>
-						state.audioElement === audioElement
-							? {
-									error: "Error playing audio.",
-									playingKey: null,
-									audioElement: null,
-									currentUrl: null,
-								}
-							: {},
-					);
-					if (!wasCurrent) return;
-					/*
-					 * THE PLAYBACK HALF OF "NO SILENT FAILURES" (copy review round 1,
-					 * C1): a press that fetched and then failed to play used to return to
-					 * rest with nothing said. Same channel as the fetch path; the element's
-					 * own detail has no reader sentence, so the sentence is fixed and the
-					 * detail stays in the console.
-					 */
-					console.error(
-						`${SPEECH_FAILURE_DETAIL_PREFIX} playback failed for ${key}`,
-					);
-					showErrorToast(SPEECH_PLAYBACK_COPY);
-				};
-
-				await audioElement.play();
 				/*
-				 * `play()` is the last await before this press owns the element, so
-				 * the generation is re-read here too: a press that arrived while the
-				 * element was starting would otherwise be overwritten by this one's
-				 * `playingKey` the moment the promise settles.
+				 * PLAYBACK IS THE SHARED ENGINE'S JOB NOW. The store still owns what it
+				 * always owned — the URL and its revocation — while the element, the
+				 * exclusivity stop and the stale-start guard moved to
+				 * `audio-engine-store.ts`: a generated sound playing in another row is
+				 * stopped by this press (the engine's one element), and a TTS press is
+				 * stopped by a sound's press, which is the overlap the one engine exists
+				 * to end.
 				 */
-				if (get().generation !== generation) {
-					audioElement.pause();
-					audioElement.onended = null;
-					audioElement.onerror = null;
+				const audioUrl = URL.createObjectURL(audioBlob);
+				const owned = await useAudioEngineStore
+					.getState()
+					.play(speechOwnerId(key), audioUrl, {
+						onEnded: () => {
+							URL.revokeObjectURL(audioUrl);
+							set((state) =>
+								state.audioElement === useAudioEngineStore.getState().element
+									? {
+											playingKey: null,
+											audioElement: null,
+											currentUrl: null,
+										}
+									: {},
+							);
+						},
+						onError: () => {
+							URL.revokeObjectURL(audioUrl);
+							set((state) =>
+								state.audioElement === useAudioEngineStore.getState().element
+									? {
+											error: "Error playing audio.",
+											playingKey: null,
+											audioElement: null,
+											currentUrl: null,
+										}
+									: {},
+							);
+							/*
+							 * THE PLAYBACK HALF OF "NO SILENT FAILURES" (copy review round 1,
+							 * C1), unchanged in the move to the shared engine: the element's
+							 * own detail has no reader sentence, so the sentence is fixed and
+							 * the detail stays in the console.
+							 */
+							console.error(
+								`${SPEECH_FAILURE_DETAIL_PREFIX} playback failed for ${key}`,
+							);
+							showErrorToast(SPEECH_PLAYBACK_COPY);
+						},
+					});
+				/*
+				 * `play()` is the last await before this press owns the element, so the
+				 * generation is re-read here too: a press that arrived while the
+				 * element was starting would otherwise be overwritten by this one's
+				 * `playingKey` the moment the promise settles. The engine's own guard
+				 * covers its slot; THIS guard covers the store's (a dismissal bumps
+				 * it without touching the engine's).
+				 */
+				if (!owned || get().generation !== generation) {
+					useAudioEngineStore.getState().stop(speechOwnerId(key));
 					URL.revokeObjectURL(audioUrl);
 					return;
 				}
@@ -408,7 +452,7 @@ export const useSpeechStore = create<SpeechState & SpeechActions>(
 				set({
 					playingKey: key,
 					loadingKey: null,
-					audioElement,
+					audioElement: useAudioEngineStore.getState().element,
 					currentUrl: audioUrl,
 					heardKeys: heard,
 				});
@@ -431,18 +475,23 @@ export const useSpeechStore = create<SpeechState & SpeechActions>(
 		},
 
 		stopSpeech: () => {
-			const { audioElement, currentUrl } = get();
-			if (audioElement) {
-				audioElement.pause();
-				audioElement.onended = null; // Clean up listener
-				audioElement.onerror = null; // Clean up listener
-				/*
-				 * Revoke the URL the element was actually built from. The previous
-				 * spelling recomputed a URL from the cached blob and revoked THAT,
-				 * which released nothing and left the playing URL alive.
-				 */
-				if (currentUrl) URL.revokeObjectURL(currentUrl);
-			}
+			/*
+			 * ONLY SPEECH'S OWN PLAYBACK, AND ONLY WHEN IT IS SPEECH'S. The shared
+			 * engine may be holding a generated sound the reader is listening to, and
+			 * "stop the reading" must not silence it; the owner prefix is how this
+			 * press tells the two apart. `stopSpeech` is also the first act of every
+			 * press (see `speak`), where the owner is whatever the previous press
+			 * left behind — the same test covers both.
+			 */
+			const engine = useAudioEngineStore.getState();
+			if (engine.ownerId?.startsWith(SPEECH_OWNER_PREFIX)) engine.stop();
+			const { currentUrl } = get();
+			/*
+			 * Revoke the URL the element was actually built from. The previous
+			 * spelling recomputed a URL from the cached blob and revoked THAT,
+			 * which released nothing and left the playing URL alive.
+			 */
+			if (currentUrl) URL.revokeObjectURL(currentUrl);
 			set({ playingKey: null, audioElement: null, currentUrl: null });
 		},
 

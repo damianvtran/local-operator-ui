@@ -1,5 +1,6 @@
 /**
- * The window glass setting: optional translucency of the app window, default OFF.
+ * The window glass setting: translucency of the app window, on by default where
+ * the machine can composite it.
  *
  * WHAT IT IS. A master switch and three controls beneath it - which surfaces go
  * translucent (coverage), how far (frosted to see-through) and which system
@@ -16,10 +17,13 @@
  * to `useWindowGlass`.
  *
  * WHERE IT DOES NOT SHOW. With no bridge (Storybook, a browser) the row is absent:
- * there is nothing to control. Where the platform cannot do it the row is replaced
- * by one sentence saying WHY - the operator asked for the reason to be stated
- * rather than the control silently vanishing - and the sentence is the only thing
- * rendered, so nothing is a dead control.
+ * there is nothing to control. Where the gate refuses (Windows until verified,
+ * Linux, Reduce transparency, GPU off or software-only, no backdrop blur) the row
+ * STAYS, greyed and disabled, with the exact cause as a tooltip and the same
+ * sentence under it. Hidden controls teach nobody why the feature is missing, and
+ * a dead-looking switch with no reason is the vaguer failure the operator called
+ * out. The gate is enforced again at render time in main (`glassIsActive`), so a
+ * stale enabled value cannot paint a window the platform cannot composite.
  *
  * THE SLIDER IS LABELLED BY ITS ENDS. "Frosted to see-through" names the axis, the
  * native range input gives keyboard and `aria-valuenow` for free (`slider-setting`'s
@@ -31,7 +35,7 @@
  */
 
 import { ToggleSetting } from "@shared/components/common/toggle-setting";
-import { Tabs, TabsList, TabsTrigger } from "@shared/components/ui";
+import { Tabs, TabsList, TabsTrigger, Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { type CSSProperties, type FC, useId, useRef, useState } from "react";
@@ -83,8 +87,20 @@ const unsupportedCopy = (reason: GlassReason): string => {
 			return t(
 				"ui.settings.appearance.window_glass.unsupported_windows_too_old",
 			);
-		case "linux-no-native-blur":
+		case "windows-unverified":
+			return t(
+				"ui.settings.appearance.window_glass.unsupported_windows_unverified",
+			);
+		case "linux-compositor-dependent":
 			return t("ui.settings.appearance.window_glass.unsupported_linux");
+		case "hardware-acceleration-disabled":
+			return t("ui.settings.appearance.window_glass.unsupported_acceleration");
+		case "gpu-unavailable":
+			return t("ui.settings.appearance.window_glass.unsupported_gpu");
+		case "backdrop-filter-unavailable":
+			return t(
+				"ui.settings.appearance.window_glass.unsupported_backdrop_filter",
+			);
 		default:
 			return t("ui.settings.appearance.window_glass.unsupported_other");
 	}
@@ -142,16 +158,16 @@ export const WindowGlassSetting: FC<WindowGlassSettingProps> = ({
 
 	if (!state) return null;
 
-	if (!state.capability.supported) {
-		return (
-			<p
-				data-glass-unsupported={state.capability.reason}
-				className="max-w-2xl text-body-sm text-ink-muted"
-			>
-				{unsupportedCopy(state.capability.reason)}
-			</p>
-		);
-	}
+	/*
+	 * UNSUPPORTED IS GREYED, NOT HIDDEN. The row below renders disabled with the
+	 * reason as a tooltip and as a line of its own; the three dependent controls
+	 * are withheld because they would all be inert. `data-glass-gate` is the
+	 * stable hook the design and QA rigs read (a reason token, not copy).
+	 */
+	const unsupported = !state.capability.supported;
+	const reasonCopy = unsupported
+		? unsupportedCopy(state.capability.reason)
+		: null;
 
 	/*
 	 * ONE WRITE IN FLIGHT, THE LATEST VALUE WINS. `pending` holds the newest value
@@ -182,13 +198,40 @@ export const WindowGlassSetting: FC<WindowGlassSettingProps> = ({
 	const shown = dragValue ?? intensity;
 
 	return (
-		<div className="flex flex-col gap-4" data-window-glass="">
-			<ToggleSetting
-				value={enabled}
-				label={t("ui.settings.appearance.window_glass.label")}
-				description={t("ui.settings.appearance.window_glass.description")}
-				onChange={async (next) => onChange({ enabled: next })}
-			/>
+		<div
+			className="flex flex-col gap-4"
+			data-window-glass=""
+			data-glass-gate={state.capability.reason}
+		>
+			<Tooltip content={reasonCopy} disabled={!unsupported}>
+				<div className={unsupported ? "opacity-60" : undefined}>
+					{/*
+					 * A GREYED ROW SHOWS OFF, NOT A CHECKED EFFECT IT CANNOT RUN. The
+					 * stored choice is kept in `settings` (and on a stale profile), but a
+					 * checked switch promises a translucency that is not on screen; the
+					 * cause line is what explains the refusal (QA Q-2). The `key` remounts
+					 * the toggle when the gate flips, because `ToggleSetting` keeps its own
+					 * copy of the value and would otherwise show the last interactive state
+					 * (including a checked one) after a live capability drop.
+					 */}
+					<ToggleSetting
+						key={unsupported ? "unavailable" : "available"}
+						value={unsupported ? false : enabled}
+						disabled={unsupported}
+						label={t("ui.settings.appearance.window_glass.label")}
+						description={t("ui.settings.appearance.window_glass.description")}
+						onChange={async (next) => onChange({ enabled: next })}
+					/>
+				</div>
+			</Tooltip>
+			{reasonCopy && (
+				<p
+					data-glass-unsupported={state.capability.reason}
+					className="max-w-2xl text-body-sm text-ink-muted"
+				>
+					{reasonCopy}
+				</p>
+			)}
 			{state.restartRequired && (
 				<output
 					className="block max-w-2xl text-body-sm text-ink"
@@ -197,7 +240,7 @@ export const WindowGlassSetting: FC<WindowGlassSettingProps> = ({
 					{t("ui.settings.appearance.window_glass.restart_needed")}
 				</output>
 			)}
-			{enabled && (
+			{enabled && !unsupported && (
 				<>
 					<SegmentRow
 						label={t("ui.settings.appearance.window_glass.coverage_label")}

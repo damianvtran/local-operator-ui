@@ -51,6 +51,7 @@ import {
 import { revealLocalTarget } from "../../utils/link-open";
 import { viewerFor } from "../../utils/viewer-routing";
 import { ImageActionsMenu } from "../image-actions-menu";
+import { AudioDocumentPlayer } from "./audio-document-player";
 import { FILE_KIND_GROUPS, filterAndSearchRows } from "./file-rows";
 import {
 	type FinderBand,
@@ -76,6 +77,12 @@ const sectionLabels: Record<string, () => string> = {
 	"Working files": () => t("ui.canvas.files.working"),
 	Images: () => t("ui.canvas.files.images"),
 	Videos: () => t("ui.canvas.files.videos"),
+	/*
+	 * The Sounds section reads the same catalogue word the filter menu's group
+	 * and the sort-by-kind column use (`ui.canvas.files.audio`, whose en value is
+	 * "Sounds"): one group, one word, three surfaces (file-rows.ts's comment).
+	 */
+	Sounds: () => t("ui.canvas.files.audio"),
 	Documents: () => t("ui.canvas.files.documents"),
 	Spreadsheets: () => t("ui.canvas.files.spreadsheets"),
 	Other: () => t("ui.canvas.files.other"),
@@ -918,6 +925,97 @@ function FinderEntry({
 				: doc.artifact
 					? t("ui.canvas.files.sessionOnly")
 					: (item.row.size ?? "");
+
+	/*
+	 * THE SOUND BAND'S ROW, WHICH IS NOT A BUTTON (sound phase). Every other
+	 * band's entry is one `<button>` because the whole row is one action; a
+	 * sound's row carries a PLAYER, and a button inside a button is invalid HTML
+	 * - so here the row's NAME is the button (open is the same click every other
+	 * band's row performs) and the player sits beside it, sharing the row's
+	 * hover ground. Focus, keyboard and context-menu behaviour are the button
+	 * band's, which is what keeps `controls`, the layout model and the arrow-key
+	 * walk one implementation across all six band kinds.
+	 */
+	if (band.kind === "audio") {
+		return (
+			<div
+				ref={nearRef}
+				className={cn(
+					"group relative min-w-0 rounded-sm px-1 py-0.5",
+					current ? rowCurrent : "hover:bg-row-hover",
+				)}
+				data-tour-tag="file-row"
+				data-file-id={doc.id}
+				onContextMenu={(event) => {
+					event.preventDefault();
+					setMenuOpen(true);
+				}}
+			>
+				<div className={cn("flex min-w-0 items-center gap-2 pr-8")}>
+					<button
+						type="button"
+						ref={(node) => {
+							rowControl.current = node;
+							buttonRef(node);
+						}}
+						tabIndex={tabIndex}
+						onFocus={onFocus}
+						title={tooltip}
+						onClick={onOpen}
+						onKeyDown={(event) => {
+							if (
+								(event.shiftKey && event.key === "F10") ||
+								event.key === "ContextMenu"
+							) {
+								event.preventDefault();
+								setMenuOpen(true);
+							} else onKeyDown(event);
+						}}
+						className={cn(
+							"min-w-0 flex-1 truncate rounded-sm py-1 text-left text-body-sm",
+							item.row.missing ? "text-ink-muted" : "text-ink",
+						)}
+					>
+						{item.row.name}
+					</button>
+					<span
+						title={
+							timestamp === null ? undefined : formatDateTime(timestamp * 1000)
+						}
+						className={cn("shrink-0 text-meta text-ink-dim")}
+					>
+						{meta}
+					</span>
+				</div>
+				<AudioDocumentPlayer doc={doc} label={item.row.name} />
+				<div className={REVEAL} onKeyDown={(event) => event.stopPropagation()}>
+					<ImageActionsMenu
+						file={doc.path}
+						tooltip={t("ui.canvas.files.fileActions")}
+						label={doc.title}
+						open={menuOpen}
+						onOpenChange={setMenuOpen}
+						onCloseAutoFocus={(event) => {
+							event.preventDefault();
+							rowControl.current?.focus({ preventScroll: true });
+						}}
+						triggerTabIndex={-1}
+						mediaKind="audio"
+						onShowInCanvas={
+							viewerFor(doc.path, doc.type) === null ? undefined : onOpen
+						}
+						resolveBytes={() => finderOriginal(doc)}
+						saveName={doc.artifact ? artifactFileName(doc.artifact) : undefined}
+						resolvePath={
+							doc.artifact && !item.row.missing ? materialise : undefined
+						}
+						missing={item.row.missing && !doc.artifact}
+					/>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div
 			ref={nearRef}

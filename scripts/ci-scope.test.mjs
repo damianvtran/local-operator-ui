@@ -1690,6 +1690,70 @@ test("A24: a command that DEFERS (rc 75) is named, and is not a failure", (t) =>
 });
 
 // ---------------------------------------------------------------------------
+// A25 - the bytecode build check follows the MAIN bundle, not the whole repo
+// ---------------------------------------------------------------------------
+
+/*
+ * Defect: the bytecode job is gated by a predicate that can go wrong in two
+ * directions, and both look like an ordinary green run. Too narrow, and the
+ * check skips the diffs that can reach the chunk `vite:bytecode` transforms -
+ * which is the v0.35.0 failure repeating. Too wide, and every renderer-only
+ * pull request pays a full build for a chunk it cannot touch, which is the cost
+ * this classifier exists to remove.
+ * Mutation: drop `src/main/` or `src/shared/` from `MAIN_BUNDLE_PREFIXES`; or
+ * gate the job on `live` instead of on `bytecode`.
+ */
+test("A25: the bytecode check follows the main bundle's inputs", () => {
+	for (const path of [
+		"src/main/browser/host.ts",
+		"src/shared/mini-view.ts",
+		// `src/main` imports `src/i18n`, and `messages.ts` pulls the generated keys
+		// and every locale catalogue into the main chunk - the reason this prefix
+		// is here and not left to fail-open (a `src/` path is a KNOWN live path, so
+		// an unrecognised-path fallback never sees it).
+		"src/i18n/messages.ts",
+		"src/i18n/catalogues/en/ui.agentMessages.json",
+		"scripts/vite-plugins/replace-backend-config.ts",
+		"electron.vite.config.js",
+		"tsconfig.json",
+		"tsconfig.node.json",
+		"package.json",
+		"pnpm-lock.yaml",
+	]) {
+		assert.equal(
+			classify([path]).bytecode,
+			true,
+			`'${path}' can change the main bundle and did not select the bytecode check`,
+		);
+	}
+	// D14: the workflow that decides this gate must run it, or this PR could
+	// disarm the job it adds.
+	assert.equal(classify([".github/workflows/ci.yml"]).bytecode, true);
+	// A path the table does not name must fail OPEN, like every other live flag.
+	assert.equal(classify(["newdir/x"]).bytecode, true);
+
+	for (const path of [
+		"src/renderer/src/App.tsx",
+		"src/preload/index.ts",
+		// Renderer-only TypeScript projects: they typecheck the window, and the
+		// main bundle is not compiled through them.
+		"tsconfig.app.json",
+		"tsconfig.web.json",
+		"scripts/ci-scope.mjs",
+		"bin/local-operator-ui.js",
+		"docs/BUILD.md",
+		"docs/evidence/mini.png",
+		"README.md",
+	]) {
+		assert.equal(
+			classify([path]).bytecode,
+			false,
+			`'${path}' cannot change the bytecode-compiled main chunk and must not pay a full build`,
+		);
+	}
+});
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 

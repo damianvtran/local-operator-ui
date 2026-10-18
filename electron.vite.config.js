@@ -26,6 +26,15 @@ const emitBytecode = process.env.LOCAL_OPERATOR_UI_NO_BYTECODE !== "true";
 
 // bytecodePlugin() returns a plugin object; dropping it entirely (rather than
 // passing an option) is what makes electron-vite emit ordinary .js.
+// NOTE FOR ANYONE EDITING A `src/main` CLASS: this transform CANNOT compile an
+// arrow function inside a class PROPERTY. The failure is `[vite:bytecode]
+// unknown file: Unable to transform arrow inside class property`, and it fires
+// only on the bytecode build - the plain-JS `build:npm` path never sees it, so
+// it is invisible to every gate that builds that way. Write the initialiser as a
+// constructor assignment instead (`readonly x: T; ... this.x = new T(() =>
+// this.y());`). Incident: `src/main/browser/host.ts:339`, all three v0.35.0
+// platform builds, 2026-10-18 - a whole release spent because this constraint
+// was discovered at publish rather than at the pull request.
 const bytecodePlugins = emitBytecode ? [bytecodePlugin()] : [];
 
 // The PRELOAD never gets bytecode, not even in the packaged desktop builds.

@@ -356,7 +356,15 @@ const APP_SPAWN_SITES = [
 		1,
 		/env:\s*spawnEnv,/,
 		"boots the BUILT app headless on a scratch profile to read the window glass back at a grid of points - a real app with a renderer, so a missing switch banners the operator and counts a test as a product user",
-		/const spawnEnv = withNotificationsOff\(\{/,
+		/withNotificationsOff\(\{/,
+	),
+	guarded(
+		"scripts/window-glass-cdp.test.mjs",
+		"spawn",
+		2,
+		/env:\s*childEnv\(\),/,
+		"boots a SECOND headless app with --disable-gpu-compositing on its own scratch profile to reproduce a capability drop before the renderer subscribes - the same real app and renderer as #1, so the same banner risk",
+		/withNotificationsOff\(\{/,
 	),
 	exempt(
 		"scripts/session-cookie-electron.test.mjs",

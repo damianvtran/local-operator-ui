@@ -277,6 +277,40 @@ export const KNOWN_LIVE_ROOT_FILES = new Set([
 ]);
 
 /**
+ * Paths whose content decides the shape of the MAIN bundle - the only chunk
+ * `electron-vite`'s `vite:bytecode` plugin transforms (the preload opts out by
+ * config, and a renderer is never bytecode).
+ *
+ * `src/main/**` is the tree, but it is not the whole input: `src/main` imports
+ * `src/shared/**` and `src/i18n/**` - `messages.ts` pulls `keys.gen` plus the
+ * 81 locale catalogue JSONs into the chunk - and `electron.vite.config.js`
+ * imports `scripts/vite-plugins/**` at config time, so a change to any of them
+ * can change the main chunk without touching a file under `src/main`. Narrower
+ * than `live` on purpose: a renderer-only change cannot reach this chunk, and
+ * the bytecode job exists to catch a packaging defect where it can hide, not to
+ * pay a second full build on every pull request.
+ */
+const MAIN_BUNDLE_PREFIXES = [
+	"src/main/",
+	"src/shared/",
+	"src/i18n/",
+	"scripts/vite-plugins/",
+];
+
+/**
+ * Root files outside those trees that still decide the main chunk's shape.
+ * `tsconfig.node.json` is the main/preload project, and esbuild discovers the
+ * root `tsconfig.json` from every file it compiles; the renderer's own projects
+ * (`tsconfig.app.json`, `tsconfig.web.json`) cannot change this chunk, so they
+ * are deliberately absent rather than matched by a `tsconfig*` glob.
+ */
+const MAIN_BUNDLE_ROOT_FILES = new Set([
+	"electron.vite.config.js",
+	"tsconfig.json",
+	"tsconfig.node.json",
+]);
+
+/**
  * Whether the category table NAMED this path's tree, rather than reaching its
  * answer through the `other` catch-all. See `KNOWN_LIVE_PREFIXES`.
  */
@@ -338,6 +372,7 @@ export const FLAGS = [
 	"lint",
 	"types",
 	"unit",
+	"bytecode",
 	"evidence",
 	"runtime_deps",
 	"audit",
@@ -359,6 +394,7 @@ export const JOB_FLAGS = {
 	"runtime-deps": ["runtime_deps"],
 	"check-types": ["types"],
 	test: ["unit"],
+	"bytecode-build": ["bytecode"],
 	evidence: ["evidence"],
 	audit: ["audit"],
 	"npx-sanity-check": ["pack"],
@@ -438,6 +474,10 @@ export const JOB_COMMANDS = {
 		'bash scripts/require-report.sh "Build environment contracts" node scripts/check-build-env.mjs',
 	],
 	test: ["pnpm test:desktop"],
+	// The same command the job runs, with the developer's own `.env` supplying
+	// the four `VITE_*` values the build config refuses to start without. CI
+	// substitutes placeholders; neither set ends up in a shipped artifact.
+	"bytecode-build": ["pnpm build"],
 };
 
 /**
@@ -484,6 +524,8 @@ export const FLAG_REASONS = {
 	lint: "a changed path that is neither prose nor committed evidence",
 	types: "a changed path that is neither prose nor committed evidence",
 	unit: "a changed path that is neither prose nor committed evidence, or a `docs/evidence/**` change (the desktop suite reads committed evidence at runtime)",
+	bytecode:
+		"a path compiled into the main bundle (`src/main/**`, `src/shared/**`, `src/i18n/**`, `scripts/vite-plugins/**`, `electron.vite.config.js`, `tsconfig.json`, `tsconfig.node.json`), the install (`package.json` or a lockfile), an unrecognised path, or `.github/**` (every flag is true there)",
 	evidence: `a \`docs/evidence/**\` change, one of the modules that produce the sweep's verdict (${[...EVIDENCE_SOURCES].join(", ")}), a palette change (the palettes ARE the grounds a frame is judged against), or a change to the install (\`package.json\` or a lockfile): \`sharp\`, the decoder the verdict is produced with, is a devDependency`,
 	runtime_deps:
 		"`package.json` or one of the scripts the runtime-dependency step executes (`scripts/check-runtime-deps.mjs`, `scripts/require-report.sh`)",
@@ -606,6 +648,21 @@ export function flagsFor(categories, paths, releaseBump) {
 	const unit = [...cats].some((cat) => !INERT_CATEGORIES.has(cat));
 	const manifest = cats.has(CAT_MANIFEST);
 	/*
+	 * The bytecode job compiles `out/main` to V8 bytecode - the step PR CI never
+	 * ran, which is how a class-field arrow passed every gate and then failed
+	 * all three v0.35.0 platform builds at publish. Its flag follows the MAIN
+	 * bundle's inputs (see `MAIN_BUNDLE_PREFIXES`) plus the install, because a
+	 * dependency bump can change the transform's toolchain. An UNRECOGNISED path
+	 * selects it for the reason every other live flag does: it fails open, so a
+	 * path nobody enumerated cannot skip the check.
+	 */
+	const mainBundleInput = [...pathSet].some(
+		(path) =>
+			MAIN_BUNDLE_PREFIXES.some((prefix) => path.startsWith(prefix)) ||
+			MAIN_BUNDLE_ROOT_FILES.has(path) ||
+			(categoryOf(path) === CAT_OTHER && !isNamedLivePath(path)),
+	);
+	/*
 	 * The frame sweep's selection, and why each term is there. The frames and the
 	 * manifest are what it asserts over; the sweep's own modules are the
 	 * comparison; the palettes are the grounds it compares against; and
@@ -622,6 +679,7 @@ export function flagsFor(categories, paths, releaseBump) {
 		lint: live,
 		types: live,
 		unit,
+		bytecode: manifest || cats.has(CAT_LOCK) || mainBundleInput,
 		evidence:
 			cats.has(CAT_EVIDENCE) || evidence || manifest || cats.has(CAT_LOCK),
 		runtime_deps:

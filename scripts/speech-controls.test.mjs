@@ -117,6 +117,7 @@ const bundle = await build({
 				SPEECH_PLAYBACK_COPY,
 			} from "@shared/lib/speech-errors";
 			export { useSpeechStore, messageSpeechKey } from "@shared/store/speech-store";
+			export { useAudioEngineStore } from "@shared/store/audio-engine-store";
 			export { SpeakButton } from "@shared/components/common/speak-control";
 		`,
 		resolveDir: process.cwd(),
@@ -208,15 +209,33 @@ class FakeAudio {
 		this.paused = false;
 		this.onended = null;
 		this.onerror = null;
+		/*
+		 * The shared engine's surface on a real element (sound phase):
+		 * `removeAttribute` + `load` are how it detaches a source so a revoked
+		 * URL cannot be re-fetched, and preload/currentTime/duration/volume/
+		 * playbackRate are the fields it reads and writes. The fake carries them
+		 * because playback now runs through the ONE engine element rather than
+		 * an element per press.
+		 */
+		this.currentTime = 0;
+		this.duration = 0;
+		this.volume = 1;
+		this.playbackRate = 1;
+		this.preload = "";
 		fakeAudios.push(this);
 	}
 	play() {
 		this.played = true;
+		this.paused = false;
 		return Promise.resolve();
 	}
 	pause() {
 		this.paused = true;
 	}
+	removeAttribute(name) {
+		if (name === "src") this.src = null;
+	}
+	load() {}
 }
 globalThis.Audio = FakeAudio;
 
@@ -713,7 +732,13 @@ test("a playback failure raises the error toast through the same channel (C1)", 
 	const { button, press, unmount } = await mount();
 	await press("Speak aloud");
 	assert.ok(button("Stop"), "the press is playing before the failure");
-	const element = fakeAudios.at(-1);
+	/*
+	 * The engine's element, not `fakeAudios.at(-1)`: playback moved to the one
+	 * shared element (sound phase), which a later mount does not reconstruct -
+	 * the array only counts constructions, and the element under test is the
+	 * engine's own.
+	 */
+	const element = mod.useAudioEngineStore.getState().element;
 	const original = console.error;
 	console.error = () => {};
 	try {

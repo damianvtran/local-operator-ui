@@ -279,6 +279,23 @@ type ChatContentProps = {
 	/** A failed send, rendered against the composer; see `ComposerSendError`. */
 	sendError?: ComposerSendError;
 	/**
+	 * The pane's stop question, rendered in the composer's band beside the
+	 * control that raises it.
+	 *
+	 * It used to be the pane column's FIRST child - above the header, the
+	 * transcript and the composer - so pressing Stop (or Escape) inserted a
+	 * ~120px block at the opposite end of a full-height pane, shifting the
+	 * conversation down and moving focus hundreds of pixels from the press
+	 * (design D6, UX U7). A question about the composer's own Stop belongs
+	 * where a failed send already renders: in the band directly above the box.
+	 *
+	 * An element rather than a boolean because the owner of the gate
+	 * (`useSoundStopGate` in `chat-page.tsx`) already builds it; this pane only
+	 * forwards it. Memoised at the source, so the composer's memo boundary sees
+	 * one identity across stream flushes.
+	 */
+	soundStopConfirmation?: React.ReactNode;
+	/**
 	 * The session's readings and the dispatcher that opens their pickers.
 	 * Forwarded verbatim to the composer; see `MessageInputProps`.
 	 */
@@ -450,6 +467,8 @@ type ChatContentProps = {
 		startingSession?: boolean;
 		startingSince?: number | null;
 		onStop: () => void;
+		/** Only the media card, after its charge warning was accepted. */
+		onConfirmedStop?: () => void;
 		/**
 		 * Whether this backend can interrupt a turn (`session_interrupt`), as
 		 * opposed to ending the session.
@@ -846,6 +865,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		cwdPendingAccepted,
 		cwdReadOnlyReason,
 		sendError,
+		soundStopConfirmation,
 		sessionStatus,
 		onSlashCommand,
 		onSlashNote,
@@ -1125,6 +1145,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							active: canonical.turnAlive,
 							stopping: stoppingShown,
 							onStop: canonical.onStop,
+							onConfirmedStop: canonical.onConfirmedStop,
 						}
 					: undefined,
 			[
@@ -1133,6 +1154,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				canonical?.turnAlive,
 				stoppingShown,
 				canonical?.onStop,
+				canonical?.onConfirmedStop,
 			],
 		);
 		const setSessionArchived = useCanonicalSessionsStore(
@@ -2473,7 +2495,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 * memoised rows compare one reference and a press
 										 * takes the same write path as the composer's.
 										 */
-										onInterruptTurn={canonicalStop?.onStop}
+										/*
+										 * `onConfirmedStop` ALONE, never a fallback to `onStop`.
+										 * The card asks its own identical question before
+										 * dispatching, so handing it the pane's gated `onStop`
+										 * would ask twice (card, then gate) for an embedder
+										 * that supplied only that prop. Absent
+										 * `onConfirmedStop` therefore draws no cancel control,
+										 * which is the fail-closed reading: a card that cannot
+										 * skip the ask does not offer the press.
+										 */
+										onInterruptTurn={canonicalStop?.onConfirmedStop}
 										/*
 										 * The disputed idle withholds the rung's clock (U9): the
 										 * label stands - the work may be real - but the ticking
@@ -2935,6 +2967,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								cwdPendingAccepted={cwdPendingAccepted}
 								cwdReadOnlyReason={cwdReadOnlyReason}
 								sendError={sendError}
+								stopConfirmation={soundStopConfirmation}
 								sessionStatus={sessionStatus}
 								onSlashCommand={onSlashCommand}
 								onSlashNote={onSlashNote}

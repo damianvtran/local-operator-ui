@@ -17,7 +17,7 @@
  * composes the EFFECTIVE alpha of the ground layers stacked there
  * (`1 - prod(1 - a_i)`, from `document.elementsFromPoint` and computed style).
  * It asserts:
- *   1. WITH GLASS OFF every point is fully opaque (default-off is byte-identical).
+ *   1. WITH GLASS EXPLICITLY OFF every point is fully opaque (the shipped look).
  *   2. Inside a covered region the effective alpha is IDENTICAL at every sampled
  *      point (the seam guard), and equals the role's published variable
  *      (`--lo-glass-a-surface` for sidebars, rail and chrome, `--lo-glass-a-canvas`
@@ -47,7 +47,13 @@
  */
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -189,21 +195,13 @@ async function until(fn, ms, what) {
 	}
 }
 
-before(async () => {
-	if (skip) return;
-	root = mkdtempSync(join(tmpdir(), "glass-cdp-"));
-	userData = join(root, "ud");
-	mkdirSync(userData, { recursive: true });
-	const port = await free();
-	debugPort = port;
-	/*
-	 * THE ENVIRONMENT IS BUILT THROUGH THE SHARED SWITCHES, not set by hand: this
-	 * boots the real app, so a missing notification or telemetry switch would banner
-	 * the operator's Notification Center or count a test as a product user
-	 * (`notification-spawn-sites.test.mjs` pins the site; `chrome-keychain.test.mjs`
-	 * pins the keychain switch to its one module).
-	 */
-	const spawnEnv = withNotificationsOff({
+/**
+ * The environment every launch in this file uses: the shared kill switches, an
+ * inherited environment with the harness's own CMUX_* and XPC_FLAGS removed, and
+ * a headless window.
+ */
+function childEnv() {
+	const env = withNotificationsOff({
 		...Object.fromEntries(
 			Object.entries(process.env).filter(
 				([k]) =>
@@ -214,23 +212,12 @@ before(async () => {
 		),
 		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 	});
-	withTelemetryOff(spawnEnv);
-	child = spawn(
-		electronPath,
-		[
-			repoRoot,
-			"--window-mode=headless",
-			"--window-size=1240x820",
-			`--user-data-dir=${userData}`,
-			`--remote-debugging-port=${port}`,
-			...withMockKeychain([]),
-		],
-		{ env: spawnEnv, detached: true, stdio: "ignore" },
-	);
-	child.on("exit", () => {
-		exited = true;
-	});
-	reapOnExit({ pid: child.pid, userData });
+	withTelemetryOff(env);
+	return env;
+}
+
+/** Attach to a launched app's page over CDP; the command channel is one ws. */
+async function connect(port) {
 	const target = await until(
 		async () =>
 			(await (await fetch(`http://127.0.0.1:${port}/json`)).json()).find(
@@ -268,7 +255,64 @@ before(async () => {
 			throw new Error(JSON.stringify(r.exceptionDetails).slice(0, 400));
 		return r.result.value;
 	};
-	cdp = { send, ev };
+	return { send, ev };
+}
+
+before(async () => {
+	if (skip) return;
+	root = mkdtempSync(join(tmpdir(), "glass-cdp-"));
+	userData = join(root, "ud");
+	mkdirSync(userData, { recursive: true });
+	/*
+	 * AN EXPLICIT OFF, because the product default is now ON on a capable Mac.
+	 * The suite's first phase is the shipped OPAQUE look ("no attribute, every
+	 * point opaque"), which is now what a user who chose OFF gets; seeding the
+	 * choice keeps that phase measuring the look it names instead of silently
+	 * auditing a default-on window. The later phases enable glass through the
+	 * real IPC row, so the default path itself is covered by the unit suites and
+	 * a fresh-profile boot is left to QA's real-path pass.
+	 */
+	writeFileSync(
+		join(userData, "window-glass.json"),
+		JSON.stringify({
+			version: 2,
+			settings: {
+				enabled: false,
+				coverage: "full",
+				intensity: 80,
+				material: "window",
+			},
+			explicit: ["enabled"],
+			scheme: "dark",
+		}),
+	);
+	const port = await free();
+	debugPort = port;
+	/*
+	 * THE ENVIRONMENT IS BUILT THROUGH THE SHARED SWITCHES, not set by hand: this
+	 * boots the real app, so a missing notification or telemetry switch would banner
+	 * the operator's Notification Center or count a test as a product user
+	 * (`notification-spawn-sites.test.mjs` pins the site; `chrome-keychain.test.mjs`
+	 * pins the keychain switch to its one module).
+	 */
+	const spawnEnv = childEnv();
+	child = spawn(
+		electronPath,
+		[
+			repoRoot,
+			"--window-mode=headless",
+			"--window-size=1240x820",
+			`--user-data-dir=${userData}`,
+			`--remote-debugging-port=${port}`,
+			...withMockKeychain([]),
+		],
+		{ env: spawnEnv, detached: true, stdio: "ignore" },
+	);
+	child.on("exit", () => {
+		exited = true;
+	});
+	reapOnExit({ pid: child.pid, userData });
+	cdp = await connect(port);
 });
 
 after(async () => {
@@ -304,6 +348,103 @@ const setGlass = async (patch) => {
 	);
 	await wait(900);
 };
+
+/*
+ * QA ROUND 2, Q-1: THE DROP THAT BEATS THE SUBSCRIPTION.
+ *
+ * The launch gate is optimistic by necessity (Electron reads `disabled_software`
+ * until `gpu-info-update`), so a launch with software compositing can be built
+ * translucent and lose the capability before the renderer has registered its
+ * push listener. Main then answers `active:false` while the document keeps
+ * painting `data-glass`. This boots a SECOND headless app with
+ * `--disable-gpu-compositing` on its own profile and requires the renderer to
+ * converge on main's inactive state: no attribute, no alpha variables, within a
+ * bounded window. The optimistic half is timing-dependent (the drop may land
+ * before the window is built on a slower boot); the convergence assertion is
+ * unconditional, and the log line records whether the optimistic shape was
+ * actually exercised.
+ */
+test(
+	"a capability drop before the renderer subscribes converges to opaque",
+	{ timeout: 180_000 },
+	async () => {
+		if (skip) return;
+		/*
+		 * THREE ATTEMPTS, and the optimistic shape is logged rather than asserted:
+		 * whether the drop beats the window's construction is a scheduling fact
+		 * (measured 2/3 on the QA rig, 0/1 on a fast boot here). Every attempt must
+		 * CONVERGE, which is the actual contract; the deterministic shape is covered
+		 * by `window-glass-renderer.test.mjs` (R-1).
+		 */
+		let exercised = false;
+		for (let attempt = 1; attempt <= 3; attempt++) {
+			const dir = join(root, `race-ud-${attempt}`);
+			mkdirSync(dir, { recursive: true });
+			const port = await free();
+			const proc = spawn(
+				electronPath,
+				[
+					repoRoot,
+					"--window-mode=headless",
+					"--window-size=1240x820",
+					"--disable-gpu-compositing",
+					`--user-data-dir=${dir}`,
+					`--remote-debugging-port=${port}`,
+					...withMockKeychain([]),
+				],
+				{ env: childEnv(), detached: true, stdio: "ignore" },
+			);
+			let gone = false;
+			proc.on("exit", () => {
+				gone = true;
+			});
+			reapOnExit({ pid: proc.pid, userData: dir });
+			try {
+				const rcdp = await connect(port);
+				const facts = await rcdp.ev("window.api.windowGlass.facts()");
+				exercised = exercised || facts !== null;
+				console.log(
+					`[glass-cdp] race attempt ${attempt}: optimistic launch exercised: ${facts !== null}`,
+				);
+				const converged = await until(
+					async () => {
+						const state = await rcdp.ev("window.api.windowGlass.get()");
+						const paint = await rcdp.ev(
+							"document.documentElement.dataset.glass ?? null",
+						);
+						return state && state.active === false && paint === null
+							? { state, paint }
+							: null;
+					},
+					20_000,
+					"renderer converged on main's inactive state",
+				);
+				assert.equal(
+					converged.state.capability.reason,
+					"gpu-unavailable",
+					"the launch is refused for the software compositor, not some other reason",
+				);
+				assert.equal(
+					await rcdp.ev(
+						'getComputedStyle(document.documentElement).getPropertyValue("--lo-glass-a-canvas").trim()',
+					),
+					"",
+					"no alpha variable survives the convergence",
+				);
+			} finally {
+				await stopAppTree({
+					pid: proc.pid,
+					userData: dir,
+					isExited: () => gone,
+				});
+			}
+			if (exercised) break;
+		}
+		console.log(
+			`[glass-cdp] optimistic launch exercised in this run: ${exercised}`,
+		);
+	},
+);
 
 const uniform = (pts) => Math.max(...pts) - Math.min(...pts);
 const mean = (pts) => pts.reduce((a, b) => a + b, 0) / pts.length;
@@ -388,6 +529,15 @@ for (const [themeName, label] of [
 		async () => {
 			await loadTheme(themeName);
 			/*
+			 * MAKE THE OFF PHASE ACTUALLY OFF. The light pass starts with the glass
+			 * ON in main (the dark pass enabled it through the real bridge); the old
+			 * push-only renderer painted the LAUNCH-TIME argv fact (off) after the
+			 * reload and hid that, so this phase passed without ever asking main for
+			 * its state. The renderer now converges on main's answer (QA round 2,
+			 * Q-1), so the state is set to OFF through the same bridge the row uses.
+			 */
+			await setGlass({ enabled: false });
+			/*
 			 * Wait for the route's regions to EXIST, not for a duration: the first visit to a
 			 * lazy route took longer than a fixed 1.3 s once (a cold run reported
 			 * "pageSidebar is missing" and passed on rerun). Readiness is polled for up to
@@ -463,7 +613,7 @@ for (const [themeName, label] of [
 				`${label}: the URL bar is present, so the chrome band can be measured over a live page`,
 			);
 
-			/* 1. DEFAULT OFF: every route opaque, no attribute. */
+			/* 1. EXPLICIT OFF (the shipped opaque look): every route opaque, no attribute. */
 			for (const route of ROUTES) {
 				await go(route);
 				const off = await cdp.ev(AUDIT);

@@ -52,7 +52,11 @@ import {
 	type WindowChromeMode,
 	windowChromeArgumentFor,
 } from "../shared/window-chrome";
-import { groundWithGlass, windowGlassArgument } from "../shared/window-glass";
+import {
+	glassGateLine,
+	groundWithGlass,
+	windowGlassArgument,
+} from "../shared/window-glass";
 import {
 	BackendInstaller,
 	BackendServiceManager,
@@ -890,6 +894,14 @@ const authPopupWindowOptions: BrowserWindowConstructorOptions = {
 	},
 };
 
+/**
+ * ONE launch, ONE gate line. `createWindow` can run more than once in a process
+ * (macOS recreates the window after the last one closes, and a second launch can
+ * ask for another), but the capability decision belongs to the launch - repeating
+ * it would make a bug report's log look like the gate changed mid-run.
+ */
+let glassGateLogged = false;
+
 function createWindow(
 	initialSession: string | null = null,
 	openCatalogue = false,
@@ -930,15 +942,27 @@ function createWindow(
 	 * THE WINDOW GLASS, resolved here for the reason the chrome is: its
 	 * construction half (a transparent first-paint ground and a vibrancy or
 	 * background material) has to be in the constructor options, before any
-	 * renderer exists. OPT-IN AND DEFAULT OFF: with no persisted setting, a
-	 * platform that cannot do it, or the OS's Reduce transparency on, the window
-	 * below is the shipped opaque one - the palette ground on every platform, plus
-	 * darwin's inert `visualEffectState: "active"` (no vibrancy, material or
-	 * transparent ground). See `src/shared/window-glass.ts`.
+	 * renderer exists. CAPABILITY-AWARE DEFAULT: with no persisted choice a Mac
+	 * that can composite the effect starts translucent at 80%; every platform the
+	 * gate refuses (Windows until verified, Linux, Reduce transparency, GPU off or
+	 * software-only, no backdrop blur) starts on the shipped opaque window - the
+	 * palette ground, plus darwin's inert `visualEffectState: "active"` (no
+	 * vibrancy, material or transparent ground). See `src/shared/window-glass.ts`.
+	 *
+	 * The gate line is written once per launch (below) so a bug report can be
+	 * bucketed supported/unsupported and by reason without asking the user to run
+	 * anything.
 	 */
 	const glass = resolveLaunchWindowGlass({
 		userDataDir: app.getPath("userData"),
 	});
+	if (!glassGateLogged) {
+		glassGateLogged = true;
+		logger.info(
+			glassGateLine(glass.capability, glass.settings, process.platform),
+			LogFileType.BACKEND,
+		);
+	}
 
 	/*
 	 * Resolved once, before any window exists, so an agent-driven run can say

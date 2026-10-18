@@ -74,6 +74,7 @@ jobs:
       lint: ${{ steps.classify.outputs.lint }}
       types: ${{ steps.classify.outputs.types }}
       unit: ${{ steps.classify.outputs.unit }}
+      bytecode: ${{ steps.classify.outputs.bytecode }}
       evidence: ${{ steps.classify.outputs.evidence }}
       runtime_deps: ${{ steps.classify.outputs.runtime_deps }}
       audit: ${{ steps.classify.outputs.audit }}
@@ -633,6 +634,74 @@ jobs:
             exit 1
           fi
           echo "Working tree clean after the desktop suite."
+
+  # The check that would have stopped v0.35.0 at the pull request.
+  #
+  # The publish path compiles the MAIN bundle to V8 bytecode, and electron-vite's
+  # `vite:bytecode` transform refuses an arrow function inside a class property:
+  # `[vite:bytecode] unknown file: Unable to transform arrow inside class
+  # property`. PR CI only ever built the npm bundle, which sets
+  # LOCAL_OPERATOR_UI_NO_BYTECODE=true and therefore never runs that transform,
+  # so `src/main/browser/host.ts:339` (`readonly tabAudio = new
+  # TabAudioTracker(() => this.onChanged())`) passed every pull request and then
+  # failed all three platform builds at publish on 2026-10-18. A whole release
+  # was spent before anything noticed.
+  #
+  # `pnpm build` IS the bytecode build: it is what the installers ship, and it is
+  # deliberately not `build:npm`, the plain-JS path that let the defect through.
+  # No signing and no repository secrets are involved. The four VITE_* values are
+  # required by `replace-backend-config` before any bundle is emitted; they are
+  # placeholders for this check only and are never uploaded. MEASURED COST on a
+  # hosted runner: ~34s of bundling (main 5s, preload 178ms, renderer 29s) and
+  # 6s of install; the job ran 78s end to end. The 20-minute ceiling is a bound,
+  # not an expectation.
+  bytecode-build:
+    name: Bytecode Build Check
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      needs.changes.outputs.bytecode != 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build main with V8 bytecode
+        env:
+          VITE_GOOGLE_CLIENT_ID: ci-bytecode-check
+          VITE_GOOGLE_CLIENT_SECRET: ci-bytecode-check
+          VITE_MICROSOFT_CLIENT_ID: ci-bytecode-check
+          VITE_MICROSOFT_TENANT_ID: ci-bytecode-check
+        run: pnpm build
+
+      # A green build is not enough. If the bytecode plugin were dropped from
+      # `electron.vite.config.js`, `pnpm build` would emit plain JS, pass, and
+      # verify nothing - the shape of absence this repository treats as worse
+      # than no gate. The `.jsc` is the artifact this job exists to produce.
+      - name: Assert the main bundle really is bytecode
+        run: |
+          if [ ! -f out/main/index.jsc ]; then
+            echo 'out/main/index.jsc is missing: the main bundle was not compiled to V8 bytecode, so this check verified nothing.'
+            ls -l out/main || true
+            exit 1
+          fi
+          echo 'Main bundle compiled to V8 bytecode.'
 
   # The frame sweep - `pnpm check-evidence` - which NO workflow ran until this
   # job existed.

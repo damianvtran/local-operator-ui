@@ -34,17 +34,24 @@
  *   story did not wire renders nothing rather than a dead button.
  */
 
+import { Button } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
+import { useInterruptOnEscape } from "../hooks/use-interrupt-on-escape";
+import { useSoundStopGate } from "./sound-stop-confirmation";
 import "../../../styles/index.css";
 import { CanonicalTranscript } from "./canonical-transcript";
 import { ImageGenCard } from "./image-gen-card";
+import { imageGenCardView } from "./image-gen-card-model";
 import type {
 	ImageGenCardView,
 	ImageGenMaterial,
 	ImageGenProgress,
 } from "./image-gen-card-model";
+import { EMPTY_TRANSCRIPT, applyHistoryPage } from "./transcript-reducer";
 import type {
 	TranscriptImage,
 	TranscriptRecord,
@@ -573,12 +580,22 @@ export const Affordances: Story = {
 				}}
 				scope={null}
 			/>
+			{/*
+			 * Two settled stops, side by side, because the security round (2026-10-17)
+			 * made them DIFFERENT sentences: a queued stop may claim no charge, and an
+			 * in-flight one may only say the request was made and settlement is being
+			 * checked. `message` is null in both: these frames show the fallbacks, and
+			 * a record that states the tool's own detail prefers that instead.
+			 */}
 			<ImageGenCard
-				view={{ state: "cancelled" }}
+				view={{ state: "cancelled", generating: false, message: null }}
 				scope={null}
 				actions={{ onCancel: noop, onRestart: noop, onEditRestart: noop }}
 			/>
-			<ImageGenCard view={{ state: "cancelled" }} scope={null} />
+			<ImageGenCard
+				view={{ state: "cancelled", generating: true, message: null }}
+				scope={null}
+			/>
 		</CardFrame>
 	),
 };
@@ -904,5 +921,282 @@ export const VideoConflict: Story = {
 				}),
 			]}
 		/>
+	),
+};
+
+/** The production stop control, with its pre-action warning. This is a
+ * presentation/interaction fixture, not a provider cancellation receipt. */
+export const SoundStopWarning: Story = {
+	render: () => (
+		<CardFrame>
+			<ImageGenCard
+				view={runningView(
+					{ fraction: null, logs: [], queuePosition: null },
+					"voiceover",
+				)}
+				scope={null}
+				actions={{ onCancel: noop }}
+			/>
+		</CardFrame>
+	),
+};
+
+/** Receipt-only replays: real caption fields, no fabricated player/artifact. */
+export const SoundReceipts: Story = {
+	render: () => (
+		<CardFrame>
+			<p className="text-meta text-ink-muted">Voiceover receipt</p>
+			<ImageGenCard
+				scope={null}
+				view={imageGenCardView(
+					genTool({
+						id: "story-sound",
+						toolName: "generate_voiceover",
+						output: "Generated voiceover. Cost $0.002 (billed).",
+					}),
+				)}
+			/>
+			<p className="text-meta text-ink-muted">BYOK sound-effect receipt</p>
+			<ImageGenCard
+				scope={null}
+				view={imageGenCardView(
+					genTool({
+						id: "story-sound",
+						toolName: "generate_sound_effect",
+						details: { cost_usd: 0.001, billing_basis: "estimated" },
+					}),
+				)}
+			/>
+		</CardFrame>
+	),
+};
+
+/** Contract fixture from harness #2588, 5e684700: explicit forwarded unknowns.
+ * This is not a claim of a fresh provider cancellation or integrated capture. */
+export const SoundPendingSettlement: Story = {
+	render: () => (
+		<CardFrame>
+			<ImageGenCard
+				scope={null}
+				view={imageGenCardView(
+					genTool({
+						id: "story-sound",
+						toolName: "generate_voiceover",
+						stopped: true,
+						startedAt: TS,
+						output: "Stop requested. Checking for settlement.",
+						details: {
+							stage: "cancelled",
+							settling: true,
+							vendor_stopped: false,
+							settled: null,
+							cost_usd: null,
+							cost: {
+								v: 1,
+								amount_usd: 0.0216,
+								basis: "quote",
+								units: 540,
+								unit: "char",
+								unit_price_usd: 4e-5,
+								provider: "radient",
+								model: "radient/voiceover-flash",
+								tool_type: "speech_generation",
+								usage_record_id: "fixture-audio-usage",
+								price_version: "audio-rates@2026-10-17",
+							},
+							cancellation: {
+								requested: true,
+								vendor_stopped: false,
+								reason: "provider_has_no_cancel_api",
+								detail:
+									"The provider has no cancellation endpoint. The generation continues and will be charged if it produces audio.",
+							},
+							note: "Cancellation is best-effort: the request settles at its terminal outcome. A completed generation is charged normally.",
+						},
+					}),
+				)}
+			/>
+		</CardFrame>
+	),
+};
+
+export const SoundSettledCancellation: Story = {
+	render: () => (
+		<Frame
+			records={[
+				genTool({
+					id: "story-sound",
+					toolName: "generate_voiceover",
+					stopped: true,
+					startedAt: TS,
+					output: "Stop requested. Checking for settlement.",
+				}),
+				...applyHistoryPage(EMPTY_TRANSCRIPT, {
+					entries: [
+						{
+							id: "sound-settlement",
+							ts: TS / 1000 + 2,
+							type: "message",
+							payload: {
+								kind: "custom",
+								custom_type: "audio_settle_v1",
+								details: {
+									version: 1,
+									tool: "generate_voiceover",
+									request_id: "story-audio-request",
+									status: "completed",
+									terminal: true,
+									settlement_observed: true,
+									cost_usd: 0.0021,
+									billing_basis: "billed",
+									recorded: true,
+									detail: "",
+								},
+							},
+						},
+					],
+					has_more: false,
+					cursor_missing: false,
+				}).records,
+			]}
+			height={240}
+		/>
+	),
+};
+
+export const SoundPlanningRefusal: Story = {
+	render: () => (
+		<CardFrame>
+			<ImageGenCard
+				scope={null}
+				view={imageGenCardView(
+					genTool({
+						id: "story-sound",
+						toolName: "generate_sound_effect",
+						notRunKind: "invalid_arguments",
+						notRunReason:
+							'{"code":"audio_rejected","error":"This audio request could not be accepted."}',
+					}),
+				)}
+			/>
+		</CardFrame>
+	),
+};
+
+const PaneStopFixture = () => {
+	const restore = useCallback(
+		() =>
+			document
+				.querySelector<HTMLTextAreaElement>("[data-story-sound-composer]")
+				?.focus(),
+		[],
+	);
+	const { paneRef, stop, confirmation } = useSoundStopGate({
+		sessionId: "story-sound-pane",
+		runningSound: true,
+		available: true,
+		onInterrupt: noop,
+		onRestoreFocus: restore,
+	});
+	useInterruptOnEscape({
+		sessionId: "story-sound-pane",
+		turnAlive: true,
+		available: true,
+		onInterrupt: stop,
+	});
+	return (
+		<div
+			ref={paneRef}
+			data-chat-pane=""
+			/*
+			 * The column the composer's measure resolves against. Production names
+			 * it once, on the element that owns the column's width; without it the
+			 * band's `CHAT_MEASURE` rows would resolve against the viewport and the
+			 * fixture would be a composition the app never paints.
+			 */
+			className={cn(CHAT_COLUMN_CONTAINER, "flex h-full min-h-0 flex-col")}
+		>
+			<div className="min-h-0 flex-1">
+				{/*
+				 * THE TRANSCRIPT SIDE OF THE SAME COLUMN: the card sits on the
+				 * composer's measure, so the fixture's two halves share one left
+				 * edge exactly as the transcript and composer do in production.
+				 */}
+				<div className={CHAT_MEASURE}>
+					<CardFrame>
+						<ImageGenCard
+							scope={null}
+							view={runningView(
+								{ fraction: null, logs: [], queuePosition: null },
+								"voiceover",
+							)}
+							actions={{ onCancel: noop }}
+						/>
+					</CardFrame>
+				</div>
+			</div>
+			{/*
+			 * PRODUCTION ORDER, MIRRORED (design D6, UX U7): the question is a row of
+			 * the composer's BAND, the last row before the box, exactly where
+			 * `MessageInput` mounts it - not between the transcript and a bare
+			 * textarea, and never above the transcript. The composer yields no
+			 * layout in the fixture; the band wrapper carries the same padding steps
+			 * the composer's own rows use, so the measured composition is the one
+			 * production paints.
+			 */}
+			<div className="w-full shrink-0 p-2">
+				{confirmation ? (
+					<div className={cn(CHAT_MEASURE, "px-4 pb-2")}>{confirmation}</div>
+				) : null}
+				<div className={cn(CHAT_MEASURE, "relative flex items-end gap-2")}>
+					<textarea
+						data-story-sound-composer=""
+						aria-label="Message"
+						className="min-w-0 flex-1 border border-control bg-surface text-ink"
+					/>
+					<Button variant="secondary" size="sm" onClick={stop}>
+						Pane stop
+					</Button>
+				</div>
+			</div>
+		</div>
+	);
+};
+
+/** Uses the same admission and Escape hooks as SessionPanel, with no RPC. */
+export const SoundPaneStopWarning: Story = {
+	render: () => <PaneStopFixture />,
+};
+
+export const SoundVoiceoverReceipt: Story = {
+	render: () => (
+		<CardFrame>
+			<ImageGenCard
+				scope={null}
+				view={imageGenCardView(
+					genTool({
+						id: "story-voiceover-receipt",
+						toolName: "generate_voiceover",
+						output: "Generated voiceover. Cost $0.002 (billed).",
+					}),
+				)}
+			/>
+		</CardFrame>
+	),
+};
+export const SoundByokReceipt: Story = {
+	render: () => (
+		<CardFrame>
+			<ImageGenCard
+				scope={null}
+				view={imageGenCardView(
+					genTool({
+						id: "story-byok-receipt",
+						toolName: "generate_sound_effect",
+						details: { cost_usd: 0.001, billing_basis: "estimated" },
+					}),
+				)}
+			/>
+		</CardFrame>
 	),
 };

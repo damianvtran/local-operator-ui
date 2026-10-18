@@ -836,7 +836,11 @@ test("the popout can turn glass off and on again in one session, and its restart
 	);
 	const windowsState = {
 		active: true,
-		capability: { liveToggle: false, mechanism: "background-material" },
+		capability: {
+			supported: true,
+			liveToggle: false,
+			mechanism: "background-material",
+		},
 		settings: { material: "mica" },
 		restartRequired: true,
 	};
@@ -849,6 +853,22 @@ test("the popout can turn glass off and on again in one session, and its restart
 		mini.miniDocumentState(windowsState, true).restartRequired,
 		false,
 		"a popout launched with glass performs the off -> on itself, so it paints at once",
+	);
+	assert.equal(
+		mini.miniDocumentState(
+			{
+				...windowsState,
+				active: false,
+				capability: {
+					supported: false,
+					liveToggle: false,
+					mechanism: "none",
+				},
+			},
+			true,
+		).restartRequired,
+		false,
+		"a capability drop is the unsupported state, not a restart-pending change",
 	);
 });
 

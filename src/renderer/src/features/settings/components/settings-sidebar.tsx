@@ -7,6 +7,7 @@ import { cn } from "@shared/lib/utils";
 import {
 	AudioLines,
 	Download,
+	FolderInput,
 	Keyboard,
 	Paintbrush,
 	Plug,
@@ -113,7 +114,7 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
 		get label() {
 			return t("ui.settings.navigation.settings_sidebar.backend");
 		},
-		ids: ["backend"],
+		ids: ["backend", "imports"],
 	},
 	{
 		get label() {
@@ -392,6 +393,13 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 			return t("ui.settings.navigation.settings_sidebar.backend_settings");
 		},
 		icon: SlidersHorizontal,
+	},
+	{
+		id: "imports",
+		get label() {
+			return t("ui.settings.imports.title");
+		},
+		icon: FolderInput,
 	},
 	{
 		id: "updates",

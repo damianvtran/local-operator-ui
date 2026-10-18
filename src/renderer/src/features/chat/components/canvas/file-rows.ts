@@ -179,7 +179,12 @@ export function displayParent(
 export const FILE_KIND_GROUPS = [
 	{ id: "images", label: "Images" },
 	{ id: "video", label: "Video" },
-	{ id: "audio", label: "Audio" },
+	// "Sounds", not "Audio": the brief's word for the group, and the same word
+	// the Finder's own section header uses (`finder-layout.ts`'s sectionKind) -
+	// one group, one label, so the filter menu and the section list cannot read
+	// as two different taxonomies. `ui.canvas.files.audio`'s value is the same
+	// "Sounds" for the same reason (see the catalogue).
+	{ id: "audio", label: "Sounds" },
 	{ id: "documents", label: "Documents" },
 	{ id: "spreadsheets", label: "Spreadsheets" },
 	{ id: "presentations", label: "Presentations" },
@@ -250,9 +255,11 @@ export type FileRow = {
 	/**
 	 * The leading visual: a real thumbnail for these kinds, a type glyph for
 	 * everything else. A clip of the frame is the one thing a name cannot carry,
-	 * so the media kinds keep it.
+	 * so the media kinds keep it. `audio` is the third media kind (sound phase):
+	 * it carries no thumbnail either (peaks are not a picture), but it is the
+	 * fact that picks the row's compact player seat over the generic file row.
 	 */
-	media: "image" | "video" | null;
+	media: "image" | "video" | "audio" | null;
 	/**
 	 * The size label the probe's answer yields, or `null` when it did not answer.
 	 *
@@ -381,8 +388,15 @@ function mediaOf(
 	document: CanvasDocument,
 	artifact: CanvasArtifact | null,
 ): FileRow["media"] {
-	if (artifact) return artifact.kind === "image" ? "image" : null;
-	return document.type === "image" || document.type === "video"
+	if (artifact)
+		return artifact.kind === "image"
+			? "image"
+			: artifact.kind === "audio"
+				? "audio"
+				: null;
+	return document.type === "image" ||
+		document.type === "video" ||
+		document.type === "audio"
 		? document.type
 		: null;
 }

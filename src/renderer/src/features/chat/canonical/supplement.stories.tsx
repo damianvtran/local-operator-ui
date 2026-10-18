@@ -244,6 +244,10 @@ const supplement = (
 	filesMore: 0,
 	more: [],
 	components: [],
+	// Empty unless a story overrides it: a story about the sounds section sets
+	// `sounds` itself, and every other story renders the section's absence
+	// (which is what the absent-on-older-rows path looks like).
+	sounds: [],
 	error: "",
 	cause: "",
 	dismissed: false,

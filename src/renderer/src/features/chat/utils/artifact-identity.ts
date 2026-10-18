@@ -82,15 +82,35 @@ export function digestOfAttachmentBinPath(path: string): string | null {
 }
 
 /**
+ * The artifact kinds these identity helpers name. `audio` joined the union in
+ * the sound phase; every helper below is kind-GENERIC (it names, extensions and
+ * cues whatever kind it is handed), so the union widened in ONE place rather
+ * than in each signature - the drift a per-signature union invites is how a
+ * sound would end up labelled `File c0ffee12` in one surface and `Sound
+ * c0ffee12` in another.
+ */
+export type ArtifactIdentityKind = "image" | "video" | "audio" | "file";
+
+/**
  * What an artifact is called when the producer gave it no name: the kind and
  * the head of the digest, which is the only thing that tells two nameless ones
- * apart.
+ * apart. A sound says "Sound" - the one word the Files section, the filter
+ * group and this fallback all use for the kind.
  */
 export function fallbackArtifactName(
-	kind: "image" | "video" | "file",
+	kind: ArtifactIdentityKind,
 	digest: string,
 ): string {
-	return `${kind === "video" ? "Video" : kind === "image" ? "Image" : "File"} ${digest.slice(0, 8)}`;
+	switch (kind) {
+		case "video":
+			return `Video ${digest.slice(0, 8)}`;
+		case "image":
+			return `Image ${digest.slice(0, 8)}`;
+		case "audio":
+			return `Sound ${digest.slice(0, 8)}`;
+		default:
+			return `File ${digest.slice(0, 8)}`;
+	}
 }
 
 /**
@@ -128,7 +148,7 @@ const HAS_EXTENSION = /\.[A-Za-z0-9]{2,5}$/;
  */
 export function artifactFileName(artifact: {
 	digest: string;
-	kind: "image" | "video" | "file";
+	kind: ArtifactIdentityKind;
 	name?: string;
 	contentType?: string;
 }): string {
@@ -138,7 +158,9 @@ export function artifactFileName(artifact: {
 			? "mp4"
 			: artifact.kind === "image"
 				? "png"
-				: "bin");
+				: artifact.kind === "audio"
+					? "mp3"
+					: "bin");
 	const given = artifact.name?.replace(/[\\/]/g, "-").trim();
 	if (given && HAS_EXTENSION.test(given)) return given;
 	// The fallback name already ends in the digest head, so only a producer's
@@ -159,10 +181,13 @@ export const ARTIFACT_HEAD_LENGTH = 8;
  * disk and why `Open folder` exists. An artifact has no path, so without this the
  * shorter menu (no Open file / Open folder) is unexplained (UX U4, design D7).
  */
-export function artifactCue(kind: "image" | "video" | "file"): string {
-	return kind === "file"
-		? "File kept in this session"
-		: `Generated ${kind}, kept in this session`;
+export function artifactCue(kind: ArtifactIdentityKind): string {
+	if (kind === "file") return "File kept in this session";
+	// "Generated sound" rather than "Generated audio": the cue shares the word
+	// the row's own fallback name and the Sounds section use (`artifactCue` is
+	// read by the tooltip alone, but one kind should read one way).
+	if (kind === "audio") return "Generated sound, kept in this session";
+	return `Generated ${kind}, kept in this session`;
 }
 
 /**
@@ -174,7 +199,7 @@ export function artifactCue(kind: "image" | "video" | "file"): string {
  */
 export function artifactTooltip(artifact: {
 	digest: string;
-	kind: "image" | "video" | "file";
+	kind: ArtifactIdentityKind;
 	title: string;
 }): string {
 	const head = artifact.digest.slice(0, ARTIFACT_HEAD_LENGTH);

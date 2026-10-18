@@ -99,12 +99,21 @@ export function indexedDocument(
 		path: `artifact:${row.ref.digest}`,
 		artifact: {
 			digest: row.ref.digest,
+			/*
+			 * Three media kinds now (sound phase): a sound keeps the digest, the
+			 * content type and the duration the same way a clip does, and the row's
+			 * seat picks its player off this kind rather than off the MIME - the
+			 * wire's `kind` is the harness's own classification and is the one
+			 * spelling both the Files list and the transcript agree on.
+			 */
 			kind:
 				row.kind === "video"
 					? "video"
 					: row.kind === "image"
 						? "image"
-						: "file",
+						: row.kind === "audio"
+							? "audio"
+							: "file",
 			// Child bytes are served through the parent's children route, not through
 			// a guessed child session on this device. Preserve its owner explicitly.
 			sessionId: parentSessionId,

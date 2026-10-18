@@ -812,8 +812,10 @@ export function foldRuns(
  * expanding the group mounts the rows again, and the card that produced the
  * video is one of them, so the artifact stays reachable one press away; a
  * video tile in the strip is a design decision the video spec deliberately did
- * not make ("no per-video geometry"). Audio never reaches here (the reducer
- * does not admit it).
+ * not make ("no per-video geometry"). AUDIO is filtered by the same predicate:
+ * a sound's player is a transport with a seek surface, so a 117px tile is not
+ * a seat it can take either — its seats are the card's done body and the tool
+ * row's media block (`canonical-audio.tsx`), both one expansion press away.
  */
 export const foldImages = (rows: readonly Row[]): TranscriptImage[] => {
 	const images: TranscriptImage[] = [];

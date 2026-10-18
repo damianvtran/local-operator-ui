@@ -273,8 +273,16 @@ export function miniDocumentState(
 ): WindowGlassState {
 	return {
 		...state,
+		/*
+		 * Same rule as the main window's `stateFor`: a restart is only pending for a
+		 * SUPPORTED change that cannot be applied live. Without the `supported` term a
+		 * capability drop (`mechanism: "none"`, also `liveToggle: false`) reads as a
+		 * restart-pending change in the popout as well.
+		 */
 		restartRequired:
-			!state.capability.liveToggle && state.active !== launchedGlassOn,
+			state.capability.supported &&
+			!state.capability.liveToggle &&
+			state.active !== launchedGlassOn,
 	};
 }
 

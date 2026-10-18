@@ -99,6 +99,21 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			digest: z.string().regex(/^[a-f0-9]{32}$/),
 		})
 		.strict(),
+	// A generated sound's PRE-RENDER peaks sidecar (`<digest>.peaks.json`, 240
+	// bars). It rides this relay because it is content IN the session store,
+	// served beside the audio it describes by the same attachment route family -
+	// the renderer asks the store one question ("what did this session keep under
+	// this digest?") rather than learning the store's layout - and because the
+	// route needs the bearer, which this relay attaches and the JSON transport's
+	// callers would have to re-plumb. Same shape constraints as the attachment op
+	// above for the same reason: main builds the path.
+	z
+		.object({
+			op: z.literal("sessions.attachment.waveform"),
+			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
+			digest: z.string().regex(/^[a-f0-9]{32}$/),
+		})
+		.strict(),
 	// One supplement component's assembled HTML document (turn-supplements
 	// memo §2.7), as `{ html }` JSON. Both identifiers are shape-constrained
 	// here for the same reason the attachment ops' are: the path is built in
@@ -178,6 +193,11 @@ function endpoint(request: DesktopMediaRequest): {
 				path: `/v1/desktop/sessions/${request.sessionId}/children/${request.childId}/attachments/${request.digest}`,
 				method: "GET",
 			};
+		case "sessions.attachment.waveform":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/attachments/${request.digest}/waveform`,
+				method: "GET",
+			};
 		case "sessions.supplementDocument":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/supplements/${request.digest}/document`,
@@ -255,6 +275,7 @@ export async function requestDesktopMediaOutcome(
 		request.op === "agent.export" ||
 		request.op === "sessions.attachment" ||
 		request.op === "subagents.attachment" ||
+		request.op === "sessions.attachment.waveform" ||
 		request.op === "sessions.supplementDocument"
 	) {
 		// A GET carries no body; `fetch` rejects one outright.

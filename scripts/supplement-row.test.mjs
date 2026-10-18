@@ -346,3 +346,98 @@ test("the expanded form carries the slots and the disclosures' own grammar", () 
 	// The tail rows stay unmounted while collapsed; the toggle owns them.
 	assert.ok(!withFiles.includes("q3.md"));
 });
+
+/* ------------------------------ the sounds ------------------------------- */
+
+/*
+ * THE SOUNDS SECTION (sound phase, 2026-10-17). Two facts are pinned, in both
+ * forms of the block:
+ *
+ *   - a row THAT CARRIES sounds draws one `[data-supplement-sounds]` section
+ *     with a compact player per sound, digest-scoped (the same `sound:<digest>`
+ *     engine identity the transcript uses);
+ *   - a row that carries NONE renders no section at all — not an empty one, not
+ *     a heading — which is the shape every pre-sound-phase row arrives in.
+ */
+const sound = (seed, title, durationS) => ({
+	attachment: digest(seed),
+	mime: "audio/mpeg",
+	title,
+	durationS,
+});
+
+test("a row with sounds draws them in both forms; a row without draws nothing", () => {
+	const record = supplement({
+		files: [file("/w/report.md", "report.md", 1200)],
+		sounds: [sound("s1", "Storm swell", 6.5), sound("s2", "", null)],
+	});
+	const expanded = render(record, false);
+	assert.equal((expanded.match(/data-supplement-sounds=""/g) ?? []).length, 1);
+	/*
+	 * A DIGEST has no bytes in a static render, so each sound line draws its
+	 * RESERVED row at the player's height (no spinner, no receipt) — the same
+	 * place-holder the picture and video seats reserve. The players themselves
+	 * mount once the resolver answers, which is the mount's job (and the
+	 * operator gate's); what a static render can prove is that each sound has
+	 * its own line and that the section exists exactly once.
+	 */
+	assert.equal(
+		(expanded.match(/data-sound-player="compact"/g) ?? []).length,
+		0,
+		"no player before its bytes resolve",
+	);
+	assert.ok(expanded.includes("Storm swell"), "the producer's title is shown");
+	// Both lines reserve their space, so the block's height is right on the
+	// first paint and does not jump when the bytes land.
+	assert.equal(
+		(expanded.match(/class="h-11"/g) ?? []).length,
+		2,
+		"one reserved line per unresolved sound",
+	);
+
+	const condensed = render(record, true);
+	assert.equal(
+		(condensed.match(/data-supplement-sounds=""/g) ?? []).length,
+		1,
+		"the condensed form keeps the actionable media, as it does for files",
+	);
+	assert.equal(
+		(condensed.match(/class="h-11"/g) ?? []).length,
+		2,
+		"both lines reserve, exactly as in the expanded form",
+	);
+	assert.equal(
+		(condensed.match(/data-sound-player="compact"/g) ?? []).length,
+		0,
+	);
+	assert.equal(
+		condensed.includes("data-supplement-slot"),
+		false,
+		"and still draws no component slot",
+	);
+});
+
+test("a row whose sounds are absent or empty renders no sounds section at all", () => {
+	for (const sounds of [
+		/*
+		 * ABSENT, which is what every row older than the wire change is: the
+		 * shape is built without the key rather than deleted after the fact, so
+		 * the absence is the fixture rather than a mutation.
+		 */
+		undefined,
+		// Explicitly empty: the harness states the list only when it has one.
+		[],
+	]) {
+		const base = supplement({ files: [file("/w/a.md", "a.md", 10)] });
+		const record = sounds === undefined ? base : { ...base, sounds };
+		for (const condensed of [false, true]) {
+			const markup = render(record, condensed);
+			assert.equal(
+				markup.includes("data-supplement-sounds"),
+				false,
+				"never a stub section, in either form",
+			);
+			assert.equal(markup.includes("data-sound-player"), false);
+		}
+	}
+});

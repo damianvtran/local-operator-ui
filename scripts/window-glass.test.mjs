@@ -55,6 +55,11 @@ test("G-1 capability: one decision per platform, with a reason where it says no"
 		[true, "vibrancy", "ok", true],
 	);
 	assert.equal(
+		mac.defaultEnabled,
+		true,
+		"macOS is the one platform whose effect is measured, so it is the default",
+	);
+	assert.equal(
 		mac.liquid,
 		true,
 		"macOS 26+ renders vibrancy with the Liquid Glass materials",
@@ -72,10 +77,11 @@ test("G-1 capability: one decision per platform, with a reason where it says no"
 	const win = glass.glassCapabilityFor(WIN11);
 	assert.deepEqual(
 		[win.supported, win.mechanism, win.reason, win.liveToggle],
-		[true, "background-material", "ok", false],
-		"Windows builds the window with its material: the master switch needs a restart",
+		[false, "none", "windows-unverified", false],
+		"Windows 11 has the mechanism but no verification: the row is greyed, not defaulted on",
 	);
-	assert.deepEqual([...win.materials], ["mica", "acrylic", "tabbed"]);
+	assert.deepEqual([...win.materials], []);
+	assert.equal(win.defaultEnabled, false);
 
 	for (const build of ["10.0.19045", "10.0.22000", "10.0.22620"]) {
 		const old = glass.glassCapabilityFor({ ...WIN11, osVersion: build });
@@ -86,11 +92,6 @@ test("G-1 capability: one decision per platform, with a reason where it says no"
 		);
 		assert.deepEqual([...old.materials], []);
 	}
-	assert.equal(
-		glass.glassCapabilityFor({ ...WIN11, osVersion: "10.0.22621" }).supported,
-		true,
-		"22621 (22H2) is the first supported build",
-	);
 	assert.equal(
 		glass.glassCapabilityFor({ ...WIN11, osVersion: "garbage" }).reason,
 		"windows-too-old",
@@ -104,7 +105,7 @@ test("G-1 capability: one decision per platform, with a reason where it says no"
 	});
 	assert.deepEqual(
 		[linux.supported, linux.mechanism, linux.reason],
-		[false, "none", "linux-no-native-blur"],
+		[false, "none", "linux-compositor-dependent"],
 		"no native blur on Linux: the control is explained, not faked",
 	);
 	assert.equal(
@@ -117,131 +118,194 @@ test("G-1 capability: one decision per platform, with a reason where it says no"
 	);
 });
 
-test("G-2 Reduce transparency wins on every platform", () => {
-	for (const input of [MAC, WIN11]) {
-		const cap = glass.glassCapabilityFor({
-			...input,
-			reducedTransparency: true,
-		});
-		assert.deepEqual(
-			[cap.supported, cap.mechanism, cap.reason],
-			[false, "none", "reduced-transparency"],
-		);
-		assert.deepEqual(
-			glass.glassWindowOptions(ON, cap, input.platform),
-			input.platform === "darwin" ? { visualEffectState: "active" } : {},
-			"the OS accessibility switch drops the window to the shipped opaque ground (darwin keeps only the inert visual-effect state)",
-		);
-	}
+test("G-1b the live environment gate: detect, then decide", () => {
+	const env = (facts) =>
+		glass.glassCapabilityFor({ ...MAC, environment: facts });
+	const reason = (facts) => env(facts).reason;
+
+	assert.equal(
+		reason(undefined),
+		"ok",
+		"no facts read yet is undecided, not refused",
+	);
+	assert.equal(reason({}), "ok");
+	assert.equal(
+		reason({ gpu: {} }),
+		"gpu-unavailable",
+		"a status object that reported but lost its keys is a shape change: fail closed (R1-7)",
+	);
+	assert.equal(
+		reason({ gpu: { compositing: "enabled", rasterization: "enabled" } }),
+		"ok",
+	);
+	assert.equal(
+		reason({ gpu: { compositing: "unavailable_software" } }),
+		"gpu-unavailable",
+		"software compositing cannot draw a blurred material",
+	);
+	assert.equal(
+		reason({ gpu: { compositing: "enabled", rasterization: "disabled_off" } }),
+		"gpu-unavailable",
+		"rasterisation off is the same machine claim under the other status field",
+	);
+	assert.equal(
+		reason({ gpu: { compositing: "enabled_force" } }),
+		"gpu-unavailable",
+		"a present status missing rasterisation fails closed rather than reading as fine",
+	);
+	assert.equal(
+		reason({
+			gpu: { compositing: "enabled_force", rasterization: "enabled" },
+		}),
+		"ok",
+		"a forced-on compositor still composites when both facts are present",
+	);
+	assert.equal(
+		reason({ hardwareAcceleration: false }),
+		"hardware-acceleration-disabled",
+	);
+	assert.equal(
+		reason({ accelerationDisabledByLaunch: true }),
+		"hardware-acceleration-disabled",
+		"--disable-gpu is named as the launch's own choice, not as a broken machine",
+	);
+	assert.equal(
+		reason({ backdropFilter: false }),
+		"backdrop-filter-unavailable",
+	);
+	assert.equal(
+		reason({ backdropFilter: false, accelerationDisabledByLaunch: true }),
+		"hardware-acceleration-disabled",
+		"the launch flag is the first cause named, because it is the one the user can undo",
+	);
+	const refused = env({ hardwareAcceleration: false });
+	assert.deepEqual(
+		[refused.supported, refused.mechanism, refused.defaultEnabled],
+		[false, "none", false],
+	);
 });
 
-test("G-3 DEFAULT OFF: the shipped window stands, plus one inert darwin option", () => {
+test("G-2 Reduce transparency wins on every platform it could otherwise support", () => {
+	/* macOS is the one platform whose effect this build turns on, so it is the one
+	 * where the OS switch has an effect to withdraw. Windows is already refused as
+	 * unverified, and that reason is the more actionable one to name there. */
+	const cap = glass.glassCapabilityFor({ ...MAC, reducedTransparency: true });
+	assert.deepEqual(
+		[cap.supported, cap.mechanism, cap.reason],
+		[false, "none", "reduced-transparency"],
+	);
+	assert.deepEqual(
+		glass.glassWindowOptions(ON, cap, "darwin"),
+		{ visualEffectState: "active" },
+		"the OS accessibility switch drops the window to the shipped opaque ground (darwin keeps only the inert visual-effect state)",
+	);
+	const win = glass.glassCapabilityFor({ ...WIN11, reducedTransparency: true });
+	assert.equal(win.reason, "windows-unverified");
+	assert.deepEqual(glass.glassWindowOptions(ON, win, "win32"), {});
+});
+
+test("G-3 THE DEFAULT FLIP: capability-aware, unset-only, and inert where refused", () => {
 	const LINUX = {
 		platform: "linux",
 		osVersion: "6.8.0",
 		reducedTransparency: false,
 	};
-	for (const input of [MAC, WIN11, LINUX]) {
-		const cap = glass.glassCapabilityFor(input);
-		assert.equal(
-			glass.DEFAULT_GLASS_SETTINGS.enabled,
-			false,
-			"the master switch defaults OFF",
-		);
-		const opts = glass.glassWindowOptions(
-			glass.DEFAULT_GLASS_SETTINGS,
-			cap,
-			input.platform,
-		);
-		if (input.platform === "darwin") {
-			/*
-			 * The ONE exception, and it is inert: no vibrancy view exists to be in
-			 * that state, but a live `setVibrancy` later inherits the constructor
-			 * value (Electron has no setter). Nothing else about the window changes.
-			 */
-			assert.deepEqual(opts, { visualEffectState: "active" });
-			for (const key of ["vibrancy", "backgroundMaterial", "backgroundColor"])
-				assert.equal(
-					key in opts,
-					false,
-					`darwin off must not contribute ${key}`,
-				);
-		} else {
-			assert.deepEqual(
-				opts,
-				{},
-				"not `vibrancy: undefined`, not a transparent background: the caller's own backgroundColor stands byte for byte",
-			);
-		}
-		assert.equal(glass.glassIsActive(glass.DEFAULT_GLASS_SETTINGS, cap), false);
-	}
-	/* The spread the main process does: darwin gains one key, win32 is untouched. */
-	const before = { backgroundColor: "#22201c", titleBarStyle: "hidden" };
-	const darwinSpread = {
-		...before,
-		...glass.glassWindowOptions(
-			glass.DEFAULT_GLASS_SETTINGS,
-			glass.glassCapabilityFor(MAC),
-			"darwin",
-		),
-	};
-	assert.equal(
-		JSON.stringify(darwinSpread),
-		JSON.stringify({ ...before, visualEffectState: "active" }),
-		"darwin: the inert visual-effect state is appended; ground and frame are byte-identical",
-	);
-	const winSpread = {
-		...before,
-		...glass.glassWindowOptions(
-			glass.DEFAULT_GLASS_SETTINGS,
-			glass.glassCapabilityFor(WIN11),
-			"win32",
-		),
-	};
-	assert.equal(
-		JSON.stringify(winSpread),
-		JSON.stringify(before),
-		"win32: off contributes nothing at all, byte for byte, key order included",
-	);
-	/*
-	 * The composition `index.ts` spreads into the BrowserWindow options: the palette
-	 * ground, then the glass. Off keeps the ground; only an active glass overrides it.
-	 */
-	const ground = "#22201c";
 	const capMac = glass.glassCapabilityFor(MAC);
 	const capWin = glass.glassCapabilityFor(WIN11);
+	const capLinux = glass.glassCapabilityFor(LINUX);
+
+	/* 1. A launch with no stored choice: on at 80 where the machine is capable. */
+	assert.deepEqual(glass.defaultGlassSettings(capMac), {
+		enabled: true,
+		coverage: "full",
+		intensity: 80,
+		material: "window",
+	});
+	assert.equal(glass.DEFAULT_GLASS_INTENSITY, 80);
+	for (const cap of [capWin, capLinux]) {
+		const settings = glass.defaultGlassSettings(cap);
+		assert.equal(
+			settings.enabled,
+			false,
+			`${cap.reason}: an unverified/unsupported platform never defaults on`,
+		);
+		assert.equal(settings.intensity, 80, "the chosen intensity still travels");
+	}
+	/* The unset baseline is the opaque floor, never itself a launch default. */
+	assert.equal(glass.DEFAULT_GLASS_SETTINGS.enabled, false);
+
+	/* 2. Where refused, an ENABLED value in a stale profile is inert at render time. */
+	for (const [cap, platform] of [
+		[capWin, "win32"],
+		[capLinux, "linux"],
+		[
+			glass.glassCapabilityFor({
+				...MAC,
+				environment: { hardwareAcceleration: false },
+			}),
+			"darwin",
+		],
+	]) {
+		assert.equal(
+			glass.glassIsActive(ON, cap),
+			false,
+			`${platform}: the gate wins`,
+		);
+		const opts = glass.glassWindowOptions(ON, cap, platform);
+		assert.equal(
+			"backgroundColor" in opts,
+			false,
+			`${platform}: a refused glass must not make the window transparent`,
+		);
+		assert.equal("vibrancy" in opts, false);
+		assert.equal("backgroundMaterial" in opts, false);
+	}
+	const ground = "#22201c";
+	assert.equal(
+		glass.groundWithGlass(
+			ground,
+			ON,
+			glass.glassCapabilityFor({
+				...MAC,
+				environment: { gpu: { compositing: "unavailable_software" } },
+			}),
+			"darwin",
+		).backgroundColor,
+		ground,
+		"unsupported + stale enabled: the palette ground, byte for byte",
+	);
+
+	/* 3. An explicit OFF on a capable Mac keeps the shipped window. */
+	const explicitOff = { ...glass.defaultGlassSettings(capMac), enabled: false };
+	assert.deepEqual(
+		glass.glassWindowOptions(explicitOff, capMac, "darwin"),
+		{ visualEffectState: "active" },
+		"the one inert darwin exception, and nothing else",
+	);
 	assert.equal(
 		JSON.stringify(
-			glass.groundWithGlass(
-				ground,
-				glass.DEFAULT_GLASS_SETTINGS,
-				capMac,
-				"darwin",
-			),
+			glass.groundWithGlass(ground, explicitOff, capMac, "darwin"),
 		),
 		JSON.stringify({ backgroundColor: ground, visualEffectState: "active" }),
 	);
+
+	/* 4. The launch default on a capable Mac IS the active glass. */
 	assert.equal(
-		JSON.stringify(
-			glass.groundWithGlass(
-				ground,
-				glass.DEFAULT_GLASS_SETTINGS,
-				capWin,
-				"win32",
-			),
-		),
-		JSON.stringify({ backgroundColor: ground }),
-		"win32 off is the ground alone, byte for byte",
+		glass.glassIsActive(glass.defaultGlassSettings(capMac), capMac),
+		true,
 	);
 	assert.equal(
-		glass.groundWithGlass(ground, ON, capMac, "darwin").backgroundColor,
+		glass.groundWithGlass(
+			ground,
+			glass.defaultGlassSettings(capMac),
+			capMac,
+			"darwin",
+		).backgroundColor,
 		"#00000000",
-		"an active glass replaces the ground with the transparent one",
+		"no stored choice on macOS: the default paints the transparent ground",
 	);
-	assert.equal(
-		glass.groundWithGlass(ground, ON, capWin, "win32").backgroundColor,
-		"#00000000",
-	);
+
+	/* 5. Reduce transparency is still the shipped ground, even for a stored ON. */
 	assert.equal(
 		glass.groundWithGlass(
 			ground,
@@ -250,11 +314,27 @@ test("G-3 DEFAULT OFF: the shipped window stands, plus one inert darwin option",
 			"darwin",
 		).backgroundColor,
 		ground,
-		"Reduce transparency is the shipped opaque ground",
 	);
 });
 
 test("G-4 enabled + supported: the constructor options per mechanism", () => {
+	/*
+	 * A SYNTHETIC VERIFIED WINDOWS CAPABILITY. The shipped gate says
+	 * `windows-unverified` (no Windows machine has run this), so the mechanism's
+	 * option mapping cannot be reached from `glassCapabilityFor` any more. It is
+	 * still the code Windows will use the day it is verified, so the mapping is
+	 * driven directly here rather than left untested until then.
+	 */
+	const WIN_CAP = {
+		supported: true,
+		mechanism: "background-material",
+		reason: "ok",
+		materials: glass.GLASS_WIN_MATERIALS,
+		defaultMaterial: "mica",
+		liquid: false,
+		defaultEnabled: false,
+		liveToggle: false,
+	};
 	const mac = glass.glassWindowOptions(
 		ON,
 		glass.glassCapabilityFor(MAC),
@@ -283,7 +363,7 @@ test("G-4 enabled + supported: the constructor options per mechanism", () => {
 	);
 	const win = glass.glassWindowOptions(
 		{ ...ON, material: "acrylic" },
-		glass.glassCapabilityFor(WIN11),
+		WIN_CAP,
 		"win32",
 	);
 	assert.deepEqual(win, {
@@ -291,11 +371,8 @@ test("G-4 enabled + supported: the constructor options per mechanism", () => {
 		backgroundMaterial: "acrylic",
 	});
 	assert.equal(
-		glass.glassWindowOptions(
-			{ ...ON, material: "window" },
-			glass.glassCapabilityFor(WIN11),
-			"win32",
-		).backgroundMaterial,
+		glass.glassWindowOptions({ ...ON, material: "window" }, WIN_CAP, "win32")
+			.backgroundMaterial,
 		"mica",
 		"a macOS material id never reaches setBackgroundMaterial: it falls to the platform's own",
 	);
@@ -381,13 +458,18 @@ test("G-5 sanitising an untrusted settings value", () => {
 		glass.sanitizeGlassSettings({ material: "mica" }, mac).material,
 		"window",
 	);
+	/* The read path passes the platform's defaults as the base; do the same here. */
+	const winBase = glass.defaultGlassSettings(win);
 	assert.equal(
-		glass.sanitizeGlassSettings({ material: "popover" }, win).material,
-		"mica",
+		glass.sanitizeGlassSettings({ material: "popover" }, win, winBase).material,
+		"popover",
+		"an unsupported moment keeps the stored material (it is not the user's fault)",
 	);
 	assert.equal(
-		glass.sanitizeGlassSettings({ material: "../../etc" }, win).material,
+		glass.sanitizeGlassSettings({ material: "../../etc" }, win, winBase)
+			.material,
 		"mica",
+		"a material this platform does not know falls to its own default",
 	);
 });
 
@@ -696,4 +778,213 @@ test("G-11 every region, state and well the CSS names is a marker some component
 			`CSS names ${attribute} but no component carries it`,
 		);
 	}
+});
+
+test("G-12 unset vs explicit: a default change never overturns a recorded choice", () => {
+	const cap = glass.glassCapabilityFor(MAC);
+	const win = glass.glassCapabilityFor(WIN11);
+
+	/* NO FILE AT ALL: every field is today's default. */
+	assert.equal(glass.resolveStoredGlass(null, cap), null, "missing is missing");
+	assert.equal(
+		glass.resolveStoredGlass("nope", cap),
+		null,
+		"corrupt is missing",
+	);
+	assert.equal(glass.resolveStoredGlass({}, cap), null);
+
+	/* A version-2 file records only what the user touched. */
+	const intensityOnly = glass.resolveStoredGlass(
+		{ version: 2, settings: { intensity: 50 }, explicit: ["intensity"] },
+		cap,
+	);
+	assert.deepEqual(
+		intensityOnly,
+		{
+			settings: {
+				enabled: true,
+				coverage: "full",
+				intensity: 50,
+				material: "window",
+			},
+			explicit: ["intensity"],
+			scheme: "dark",
+		},
+		"a stored 50 is kept; enabled comes from today's default",
+	);
+
+	const explicitOff = glass.resolveStoredGlass(
+		{ version: 2, settings: { enabled: false }, explicit: ["enabled"] },
+		cap,
+	);
+	assert.equal(
+		explicitOff.settings.enabled,
+		false,
+		"an explicit OFF stays off across the default flip",
+	);
+	assert.equal(
+		explicitOff.settings.intensity,
+		80,
+		"its untouched intensity is the new default",
+	);
+
+	const fullChoice = glass.resolveStoredGlass(
+		{
+			version: 2,
+			settings: {
+				enabled: false,
+				coverage: "sidebars",
+				intensity: 35,
+				material: "menu",
+			},
+			explicit: ["enabled", "coverage", "intensity", "material"],
+			scheme: "light",
+		},
+		cap,
+	);
+	assert.deepEqual(fullChoice.settings, {
+		enabled: false,
+		coverage: "sidebars",
+		intensity: 35,
+		material: "menu",
+	});
+	assert.equal(fullChoice.scheme, "light");
+
+	/* A v1 file (no `explicit`) carries a FULL settings object and no intent.
+	 * Every field it holds is preserved: the conservative reading, because an
+	 * OFF copied from the old default is indistinguishable from a chosen OFF. */
+	const legacy = glass.resolveStoredGlass(
+		{
+			settings: {
+				enabled: false,
+				coverage: "full",
+				intensity: 40,
+				material: "window",
+			},
+			scheme: "dark",
+		},
+		cap,
+	);
+	assert.deepEqual(legacy.settings, {
+		enabled: false,
+		coverage: "full",
+		intensity: 40,
+		material: "window",
+	});
+	assert.deepEqual(legacy.explicit, [
+		"enabled",
+		"coverage",
+		"intensity",
+		"material",
+	]);
+
+	/* A version-2 file MISSING the list is treated as legacy, not as "nothing was
+	 * chosen": otherwise an explicit off would be silently re-enabled. */
+	const missingList = glass.resolveStoredGlass(
+		{ version: 2, settings: { enabled: false } },
+		cap,
+	);
+	assert.equal(missingList.settings.enabled, false);
+
+	/* A CORRUPT explicit value falls to the opaque floor, not to today's ON. */
+	const corrupt = glass.resolveStoredGlass(
+		{ version: 2, settings: { enabled: "yes" }, explicit: ["enabled"] },
+		cap,
+	);
+	assert.equal(
+		corrupt.settings.enabled,
+		false,
+		"a corrupt explicit enabled keeps the shipped opaque look (R1-1)",
+	);
+	const missingEnabledLegacy = glass.resolveStoredGlass(
+		{ settings: { intensity: 50 } },
+		cap,
+	);
+	assert.equal(
+		missingEnabledLegacy.settings.enabled,
+		false,
+		"a legacy file whose enabled is missing resolves opaque, never default-ON",
+	);
+	assert.equal(missingEnabledLegacy.settings.intensity, 50);
+
+	/* The version marker is read: an old marker gets the legacy (all-explicit)
+	 * treatment even if a list somehow rides along (R1-9). */
+	const oldVersion = glass.resolveStoredGlass(
+		{
+			version: 1,
+			settings: { enabled: true, intensity: 70 },
+			explicit: ["intensity"],
+		},
+		cap,
+	);
+	assert.deepEqual(oldVersion.explicit, [
+		"enabled",
+		"coverage",
+		"intensity",
+		"material",
+	]);
+	assert.equal(oldVersion.settings.enabled, true);
+
+	/* Unknown explicit entries are ignored; the rest are honoured. */
+	const junk = glass.resolveStoredGlass(
+		{
+			version: 2,
+			settings: { intensity: 20 },
+			explicit: ["intensity", "bogus"],
+		},
+		cap,
+	);
+	assert.deepEqual(junk.explicit, ["intensity"]);
+	assert.equal(junk.settings.intensity, 20);
+
+	/* Windows never defaults on, whatever the file says about enabled. */
+	const winUnset = glass.resolveStoredGlass(
+		{ version: 2, settings: {}, explicit: [] },
+		win,
+	);
+	assert.equal(winUnset.settings.enabled, false);
+	const winStaleOn = glass.resolveStoredGlass(
+		{ version: 2, settings: { enabled: true }, explicit: ["enabled"] },
+		win,
+	);
+	assert.equal(
+		winStaleOn.settings.enabled,
+		true,
+		"the choice is kept in storage for a future verified Windows",
+	);
+	assert.equal(
+		glass.glassIsActive(winStaleOn.settings, win),
+		false,
+		"but it is INERT at render time - the gate is below the UI",
+	);
+});
+
+test("G-13 the launch gate line names platform, support, default, value and reason", () => {
+	const mac = glass.glassCapabilityFor(MAC);
+	const line = glass.glassGateLine(
+		mac,
+		glass.defaultGlassSettings(mac),
+		"darwin",
+	);
+	assert.match(line, /^\[window-glass\] launch gate /);
+	for (const part of [
+		"platform=darwin",
+		"supported=true",
+		"default=true",
+		"enabled=true",
+		"intensity=80",
+		"reason=ok",
+		"mechanism=vibrancy",
+	])
+		assert.ok(line.includes(part), `gate line names ${part}`);
+
+	const win = glass.glassCapabilityFor(WIN11);
+	const refused = glass.glassGateLine(
+		win,
+		glass.defaultGlassSettings(win),
+		"win32",
+	);
+	assert.ok(refused.includes("supported=false"));
+	assert.ok(refused.includes("reason=windows-unverified"));
+	assert.ok(refused.includes("enabled=false"));
 });

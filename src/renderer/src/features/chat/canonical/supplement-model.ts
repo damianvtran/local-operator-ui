@@ -184,6 +184,55 @@ export function componentsFrom(value: unknown): SupplementComponent[] {
 	return components;
 }
 
+/**
+ * One generated sound a highlight job referenced (`SupplementSound` on the
+ * wire; sound phase, 2026-10-17).
+ *
+ * WHY THE SOUND IS REFERENCED BY DIGEST RATHER THAN BY PATH: a generated
+ * sound's bytes live in the attachment store (the transcript's own media), so
+ * the row addresses them the way every other canonical attachment does — and
+ * the block's player mounts through the SAME resolver the transcript uses
+ * (`useAttachmentSource` + `SoundPlayer`), which is the whole point of
+ * referencing rather than carrying anything else.
+ */
+export type SupplementSound = {
+	/** The attachment digest the player resolves. */
+	attachment: string;
+	mime: string;
+	/** The sound's display title, from the producer; never chrome. */
+	title: string;
+	/** Seconds, from the record that wrote it; `null` when it stated none. */
+	durationS: number | null;
+};
+
+/** One sound entry, read field-by-field; a malformed entry is dropped. */
+function soundFrom(value: unknown): SupplementSound | null {
+	if (!value || typeof value !== "object") return null;
+	const sound = value as Record<string, unknown>;
+	const attachment =
+		typeof sound.attachment === "string" ? sound.attachment : "";
+	// The digest is the entry's one routing key: a sound without a valid one
+	// could be listed but never played, so it is dropped rather than shown as a
+	// player that can never fill (the same rule `componentFrom` above states).
+	if (!isDigest(attachment)) return null;
+	return {
+		attachment,
+		mime: typeof sound.mime === "string" ? sound.mime : "audio/mpeg",
+		title: typeof sound.title === "string" ? sound.title : "",
+		durationS: finiteNumber(sound.duration_s),
+	};
+}
+
+export function soundsFrom(value: unknown): SupplementSound[] {
+	if (!Array.isArray(value)) return [];
+	const sounds: SupplementSound[] = [];
+	for (const entry of value) {
+		const sound = soundFrom(entry);
+		if (sound) sounds.push(sound);
+	}
+	return sounds;
+}
+
 /** The contract's digest shape: 32 lowercase hex characters. */
 export const DIGEST_RE = /^[a-f0-9]{32}$/;
 
@@ -287,7 +336,10 @@ export function supplementDisposition(
 		// none of them (no v1 producer generates one, §3.4) — a row whose only
 		// content were images would paint an empty block, so the clause returns
 		// with their renderer rather than admitting a block that shows nothing.
-		return record.files.length || record.components.length
+		// A sounds-only highlight is content too; otherwise its player never mounts.
+		return record.files.length ||
+			record.components.length ||
+			record.sounds?.length
 			? "block"
 			: "nothing";
 	}
@@ -835,6 +887,8 @@ export type SupplementPatch = {
 	filesMore?: number;
 	more?: string[];
 	components?: SupplementComponent[];
+	/** Present only on a beat that stated the list (the `done` beat, or a durable row's `details`). */
+	sounds?: SupplementSound[];
 	error?: string;
 	/** The failed line's typed cause (`provider_<kind>`); the reader bounds it. */
 	cause?: string;
@@ -940,11 +994,17 @@ export function supplementPatchFromEvent(
 		state,
 		// The wire carries `files` only on `decided`/`done` and `components` only
 		// on `done` (memo §2.7); anything else leaves the held value in place.
+		// `sounds` is the sound phase's sibling of `components`: the harness states
+		// it on the same `done` beat (and on the durable row's `details`), and a
+		// beat that does not state it leaves whatever the row already held.
 		...(state === "decided" || state === "done"
 			? { files: filesFrom(event.files) }
 			: {}),
 		...(state === "done"
-			? { components: componentsFrom(event.components) }
+			? {
+					components: componentsFrom(event.components),
+					sounds: soundsFrom(event.sounds),
+				}
 			: {}),
 		...(typeof event.error === "string" && event.error
 			? { error: event.error.slice(0, ERROR_MSG_MAX_CHARS) }
@@ -986,6 +1046,10 @@ export function supplementPatchFromDetails(
 		filesMore,
 		more,
 		components: componentsFrom(details.components),
+		// Absent on every row older than the sound phase; `soundsFrom` answers an
+		// empty list for those, and the merge below keeps a previous list when the
+		// patch does not state one — the same rule `files`/`components` follow.
+		sounds: soundsFrom(details.sounds),
 		...diagnosticsFrom(details),
 		...(details.dismissed === true ? { dismissed: true } : {}),
 		...(typeof details.error === "string" && details.error
@@ -1076,6 +1140,28 @@ function sameComponents(
 }
 
 /**
+ * Whether two sound lists are the same list, for the merge's identity rule:
+ * a patch that restates an identical list keeps the PREVIOUS array, so the
+ * block's memoised children do not re-render for a beat that said nothing new.
+ */
+function sameSounds(
+	a: readonly SupplementSound[],
+	b: readonly SupplementSound[],
+) {
+	if (a === b) return true;
+	if (a.length !== b.length) return false;
+	return a.every((sound, index) => {
+		const other = b[index];
+		return (
+			sound.attachment === other.attachment &&
+			sound.mime === other.mime &&
+			sound.title === other.title &&
+			sound.durationS === other.durationS
+		);
+	});
+}
+
+/**
  * Fold one patch onto the record this anchor holds (or nothing, for a new
  * anchor). Returns the record to store, or `null` when the patch is OLDER than
  * what stands — the (version, rank) rule, plus the version-scoped error and
@@ -1106,6 +1192,13 @@ export function mergeSupplement(
 		patch.components !== undefined
 			? patch.components
 			: (previous?.components ?? []);
+	/*
+	 * The sound list follows the components rule exactly: a patch that states one
+	 * replaces it, a patch that does not keeps whatever the row held, and a row
+	 * older than the sound phase holds an empty list that renders nothing.
+	 */
+	const sounds =
+		patch.sounds !== undefined ? patch.sounds : (previous?.sounds ?? []);
 	const filesMore =
 		patch.filesMore !== undefined
 			? patch.filesMore
@@ -1144,6 +1237,9 @@ export function mergeSupplement(
 		components: sameComponents(components, previous?.components ?? [])
 			? (previous?.components ?? [])
 			: components,
+		sounds: sameSounds(sounds, previous?.sounds ?? [])
+			? (previous?.sounds ?? [])
+			: sounds,
 		error,
 		cause,
 		model: patch.model ?? (newVersion ? "" : (previous?.model ?? "")),

@@ -262,13 +262,34 @@ class FakeAudio {
 	constructor(src) {
 		this.src = src;
 		this.played = false;
+		this.paused = false;
+		this.onended = null;
+		this.onerror = null;
+		/*
+		 * The shared engine's surface on a real element (sound phase): see
+		 * `speech-store.test.mjs`'s double for why the fake carries
+		 * `removeAttribute`/`load` and the element fields - playback runs
+		 * through the one engine element now, not an element per press.
+		 */
+		this.currentTime = 0;
+		this.duration = 0;
+		this.volume = 1;
+		this.playbackRate = 1;
+		this.preload = "";
 		fakeAudios.push(this);
 	}
 	play() {
 		this.played = true;
+		this.paused = false;
 		return Promise.resolve();
 	}
-	pause() {}
+	pause() {
+		this.paused = true;
+	}
+	removeAttribute(name) {
+		if (name === "src") this.src = null;
+	}
+	load() {}
 }
 globalThis.Audio = FakeAudio;
 URL.createObjectURL = () => "blob:test/speech";

@@ -374,7 +374,15 @@ const APP_SPAWN_SITES = [
 		1,
 		/env:\s*spawnEnv,/,
 		"boots the BUILT app headless on a scratch profile to read the window glass back at a grid of points, so the renderer's provider is live in it and would report the test as a session",
-		/withTelemetryOff\(spawnEnv\);/,
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/window-glass-cdp.test.mjs",
+		"spawn",
+		2,
+		/env:\s*childEnv\(\),/,
+		"boots a SECOND headless app with --disable-gpu-compositing on its own scratch profile to reproduce a capability drop before the renderer subscribes - the same real app and renderer as #1, so the same reporting risk",
+		/withTelemetryOff\(env\);/,
 	),
 	exempt(
 		"scripts/session-cookie-electron.test.mjs",

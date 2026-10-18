@@ -64,6 +64,7 @@ import {
 import { AppUpdatesSection } from "./app-updates-section";
 import { BackendSettingsSection } from "./backend-settings-section";
 import { DefaultEffortSelect } from "./default-effort-select";
+import { ImportSettingsSection } from "./import-settings-section";
 import { GeneralLanguageSetting } from "./language-dialog";
 
 import { KeyboardShortcutsSection } from "./keyboard-shortcuts-section";
@@ -461,6 +462,7 @@ export const SettingsPage: FC = () => {
 		keyboard: useRef<HTMLDivElement>(null),
 		providers: useRef<HTMLDivElement>(null),
 		backend: useRef<HTMLDivElement>(null),
+		imports: useRef<HTMLDivElement>(null),
 		updates: useRef<HTMLDivElement>(null),
 	}).current;
 
@@ -1570,6 +1572,10 @@ export const SettingsPage: FC = () => {
 								initialFilter={settingsSearchFilter}
 							/>
 						</SettingsSection>
+
+						<div ref={sectionRefs.imports}>
+							<ImportSettingsSection />
+						</div>
 
 						<div ref={sectionRefs.updates}>
 							<AppUpdatesSection />

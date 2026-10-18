@@ -270,6 +270,7 @@ import { withNotificationsOff } from "./notifications-off.mjs";
  */
 import { pythonChildEnv } from "./python-child-env.mjs";
 import { SEAL_AUDIT_PURPOSE } from "./skill-seal-fixture.mjs";
+import { sceneSounds } from "./sounds-scene.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const ROOT = process.cwd();
@@ -48982,6 +48983,15 @@ async function main() {
 			else if (SCENE === "mentions") await sceneMentions(cdp);
 			else if (SCENE === "shell-evidence") await sceneShellEvidence(cdp);
 			else if (SCENE === "transcript-rail") await sceneTranscriptRail(cdp);
+			else if (SCENE === "sounds")
+				await sceneSounds({
+					cdp,
+					verb,
+					capture,
+					check,
+					waitForCondition,
+					factsOf,
+				});
 			else if (SCENE === "imagegen-card") await sceneImageGenCard(cdp);
 			else if (SCENE === "image-copy") await sceneImageCopy(app, cdp);
 			else if (SCENE === "skill-seal") await sceneSkillSeal(cdp);

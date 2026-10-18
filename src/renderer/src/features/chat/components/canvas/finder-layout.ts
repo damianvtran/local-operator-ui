@@ -50,6 +50,7 @@ export function sanitizeFinderPreferences(value: unknown): FinderPreferences {
 								"Highlights",
 								"Images",
 								"Videos",
+								"Sounds",
 								"Documents",
 								"Spreadsheets",
 								"Other",
@@ -82,7 +83,7 @@ export type FinderSection = {
 export type FinderBand = {
 	top: number;
 	height: number;
-	kind: "header" | "compact" | "highlight" | "tiles" | "video";
+	kind: "header" | "compact" | "highlight" | "tiles" | "video" | "audio";
 	section: FinderSection;
 	items: FinderItem[];
 	cols: number;
@@ -136,6 +137,8 @@ const sectionKind = (item: FinderItem): string => {
 			return "Images";
 		case "video":
 			return "Videos";
+		case "audio":
+			return "Sounds";
 		case "spreadsheets":
 			return "Spreadsheets";
 		case "documents":
@@ -187,6 +190,7 @@ export function finderSections(
 		for (const kind of [
 			"Images",
 			"Videos",
+			"Sounds",
 			"Documents",
 			"Spreadsheets",
 			"Other",
@@ -252,6 +256,16 @@ export function layoutFinder(
 					Math.min(Math.round(((w - 8) * 9) / 16), 280) + 32,
 					[item],
 				);
+		else if (grouped && section.id === "Sounds")
+			/*
+			 * One fixed row per sound, not a per-item measurement: a sound's compact
+			 * player is a transport row (control + waveform + clock), and its height
+			 * does not depend on the clip's length or aspect the way a video's does.
+			 * The 44 px content floor is the brief's touch target; the extra 4 px is
+			 * the row's own breathing room, matching the compact row's 36 -> band 32
+			 * arithmetic above.
+			 */
+			for (const item of section.items) push(section, "audio", 80, [item]);
 		else for (const item of section.items) push(section, "compact", 36, [item]);
 	}
 	return { bands, height: top, columns: cols, positions };

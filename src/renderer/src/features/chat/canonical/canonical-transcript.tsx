@@ -147,6 +147,7 @@ import {
 } from "../transcript-display-mode";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
+import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
 import { visibleRecords } from "./cross-session-visibility";
@@ -158,6 +159,7 @@ import {
 	imageGenCardMountActions,
 	imageGenCardView,
 	isImageGenTool,
+	isSoundGenTool,
 } from "./image-gen-card-model";
 import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
@@ -842,6 +844,21 @@ const toolImageLabel = (
 	index: number,
 	count: number,
 ): string => image.name ?? (count === 1 ? "Image" : `Image ${index + 1}`);
+
+/**
+ * The audio sibling of `toolImageLabel`: the same rule (the wire's own name
+ * wins where one travelled), the material's noun otherwise.
+ *
+ * "Sound" rather than "Generated voiceover": THIS seat knows the ref, not the
+ * call — a tool row's artifact is named by what it is here, the same reason its
+ * picture sibling says "Image" and not "Generated image" (the card, which does
+ * know the call, is the seat that spells the producer's noun).
+ */
+const toolAudioLabel = (
+	audio: TranscriptImage,
+	index: number,
+	count: number,
+): string => audio.name ?? (count === 1 ? "Sound" : `Sound ${index + 1}`);
 
 const UserRow = memo(function UserRow({
 	record,
@@ -1892,6 +1909,7 @@ const ToolRow = memo(function ToolRow({
 	labelHoldLate = false,
 	labelMarked = false,
 	stopping = false,
+	settledSound = false,
 	onInterruptTurn,
 }: {
 	record: Extract<TranscriptRecord, { kind: "tool" }>;
@@ -1905,6 +1923,8 @@ const ToolRow = memo(function ToolRow({
 	labelMarked?: boolean;
 	/** The pane's stop is in flight; see `TranscriptRow`'s copy of this prop. */
 	stopping?: boolean;
+	/** A terminal settlement exists for this call; see `TranscriptRow`'s copy. */
+	settledSound?: boolean;
 	/** The pane's interrupt press, for the card's Cancel; absent = no control. */
 	onInterruptTurn?: () => void;
 }) {
@@ -1930,7 +1950,7 @@ const ToolRow = memo(function ToolRow({
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
 				<ImageGenCard
-					view={imageGenCardView(record, { stopping })}
+					view={imageGenCardView(record, { stopping, settled: settledSound })}
 					scope={scope}
 					actions={imageGenCardMountActions(record.toolName, onInterruptTurn)}
 				/>
@@ -2115,34 +2135,54 @@ const ToolRow = memo(function ToolRow({
 	 * quiet mattered most.
 	 */
 	const details = body ? <>{body}</> : undefined;
-	// Screenshots sit under the row and OUTSIDE the disclosure, which is where
-	// the TUI mounts them. Hiding a picture behind a toggle is the complaint
-	// being fixed, not a smaller version of it.
 	/*
-	 * The row's PICTURES, by the media array's shared predicate (`isPictureRef`):
-	 * media rendered here are `<img>` frames, and a video ref (a future non-card
+	 * The row's PICTURES AND SOUNDS, mounted under the row and OUTSIDE the
+	 * disclosure, which is where the TUI mounts them. Hiding a picture behind a
+	 * toggle is the complaint being fixed, not a smaller version of it.
+	 *
+	 * PICTURES are the media array's shared predicate (`isPictureRef`): media
+	 * rendered here are `<img>` frames, and a video ref (a future non-card
 	 * tool's artifact — today only the card's detection set produces video)
-	 * must not be handed to one. The player's seat is the card's done body.
+	 * must not be handed to one. The video player's seat is the card's done
+	 * body.
+	 *
+	 * SOUNDS take the same row seat their picture siblings do (the brief's
+	 * mount list: "the tool row and the image-gen card's done body"), because a
+	 * sound's player has no card to live in when the call that produced it is
+	 * NOT in the detection set — a future audio tool outside it must still be
+	 * playable from its own row. The two are interleaved in the record's own
+	 * order so a call that produced both reads in the order it produced them.
 	 */
 	const pictures = record.images.filter(isPictureRef);
+	const rowMedia = record.images.filter(
+		(ref) => isPictureRef(ref) || ref.kind === "audio",
+	);
 	const media =
-		pictures.length > 0 ? (
+		rowMedia.length > 0 ? (
 			<div className={cn("mt-1 ml-5 flex flex-col gap-2")}>
-				{pictures.map((image, index) => (
-					<CanonicalImage
-						key={image.id}
-						image={image}
-						scope={scope}
-						label={toolImageLabel(image, index, pictures.length)}
-						/*
-						 * THIS ROW is the group: a tool call's own screenshots are one set
-						 * (the reader pressed inside it, so the walk stays inside it), the
-						 * same boundary the condensed strip draws when the row's group is
-						 * collapsed.
-						 */
-						group={{ images: pictures, index, labelFor: toolImageLabel }}
-					/>
-				))}
+				{rowMedia.map((ref, index) =>
+					ref.kind === "audio" ? (
+						<CanonicalAudio
+							key={ref.id}
+							audio={ref}
+							scope={scope}
+							label={toolAudioLabel(ref, index, rowMedia.length)}
+						/>
+					) : (
+						<CanonicalImage
+							key={ref.id}
+							image={ref}
+							scope={scope}
+							label={toolImageLabel(ref, index, pictures.length)}
+							/*
+							 * THIS ROW is the group: a tool call's own screenshots are one set (the
+							 * reader pressed inside it, so the walk stays inside it), the same
+							 * boundary the condensed strip draws when the row's group is collapsed.
+							 */
+							group={{ images: pictures, index, labelFor: toolImageLabel }}
+						/>
+					),
+				)}
 			</div>
 		) : undefined;
 	return (
@@ -2880,6 +2920,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	labelHoldLate = false,
 	labelMarked = false,
 	stopping = false,
+	settledSound = false,
 	supplementCondensed = false,
 	onInterruptTurn,
 }: {
@@ -2923,6 +2964,13 @@ const TranscriptRow = memo(function TranscriptRow({
 	 * that changes once per press is cheaper compared than threaded as state.
 	 */
 	stopping?: boolean;
+	/**
+	 * A terminal settlement row for this sound call exists later in the
+	 * transcript, so its cancelled line retires the "Checking for settlement"
+	 * clause (design D7, UX U9). A per-row BOOLEAN for `stopping`'s reason: the
+	 * rows are memoised and this fact is set membership, not state.
+	 */
+	settledSound?: boolean;
 	/**
 	 * Whether the supplement block's own turn currently renders condensed (one
 	 * closed bar over its run; `runIsCondensed`). Delivered to the ROW only - the
@@ -2994,6 +3042,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					labelHoldLate={labelHoldLate}
 					labelMarked={labelMarked}
 					stopping={stopping}
+					settledSound={settledSound}
 					onInterruptTurn={onInterruptTurn}
 				/>
 			);
@@ -3290,6 +3339,39 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		previousRows.current = next;
 		return next;
 	}, [shownRecords]);
+	/*
+	 * WHICH STOPPED SOUND CALLS HAVE ALREADY SETTLED (design D7, UX U9).
+	 *
+	 * A terminal settlement can arrive as its OWN journal row (`audio_settle_v1`)
+	 * rather than as fields on the call's details, so the card that asked
+	 * "Checking for settlement" never learns the answer and goes on claiming the
+	 * check beside the receipt. The link is order, not identity: the settle row
+	 * is appended after the call it settles, so it binds every sound call since
+	 * the previous settlement - and a row that reaches the transcript at all has
+	 * passed the reducer's terminal gate (`audio_settle_v1` rows with nothing to
+	 * say are dropped there), which is what makes "seen" mean "settled".
+	 *
+	 * A Set of ids rather than a per-row fact threaded through buildRows: the
+	 * derivation is a fact about the LIST, and buildRows' memo contract is about
+	 * one record's own frames.
+	 */
+	const settledSoundRowIds = useMemo(() => {
+		const settled = new Set<string>();
+		let awaiting: string[] = [];
+		for (const row of rows) {
+			const record = row.record;
+			if (record.kind === "tool" && isSoundGenTool(record.toolName))
+				awaiting.push(record.id);
+			else if (
+				record.kind === "custom" &&
+				record.customType === "audio_settle_v1"
+			) {
+				for (const id of awaiting) settled.add(id);
+				awaiting = [];
+			}
+		}
+		return settled;
+	}, [rows]);
 	/*
 	 * The jump's read of the row model BETWEEN awaits. `ensureReachable`'s
 	 * callbacks run after frame waits and page loads, so they must see the
@@ -5626,6 +5708,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					undelivered={undelivered}
 					answerRail={answerRail}
 					stopping={stopping === true}
+					settledSound={settledSoundRowIds.has(row.record.id)}
 					onInterruptTurn={onInterruptTurn}
 				/>
 			));
@@ -5726,6 +5809,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								undelivered={undelivered}
 								answerRail={answerRail}
 								stopping={stopping === true}
+								settledSound={settledSoundRowIds.has(row.record.id)}
 								onInterruptTurn={onInterruptTurn}
 							/>
 						))
@@ -5760,6 +5844,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				undelivered={undelivered}
 				answerRail={answerRail}
 				stopping={stopping === true}
+				settledSound={settledSoundRowIds.has(group.row.record.id)}
 				supplementCondensed={supplementCondensed}
 				onInterruptTurn={onInterruptTurn}
 			/>
