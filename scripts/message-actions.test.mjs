@@ -134,6 +134,7 @@ const RE_ROW_MOUNT =
 const RE_CLOSES_TURN_LINE = /\{closesTurn && \(/;
 const RE_ROW_MOUNT_SITES = /<AnswerActionRow\b/g;
 const RE_USER_ROW_MOUNT = /<AnswerActionRow\s+kind="user"/;
+const RE_RESPONSE_ROW_MOUNT = /<AnswerActionRow\s+kind="response"/;
 
 /**
  * One in-memory build of the shipped row and its model.
@@ -266,6 +267,11 @@ test("fork is offered LAST, and only for a row with a cut point", () => {
 		mod.answerActionsFor({ role: "user", forkable: true }),
 		["copy", "fork"],
 		"the user arm takes fork too, and still never takes speak",
+	);
+	assert.deepEqual(
+		mod.answerActionsFor({ role: "response", forkable: true }),
+		["copy"],
+		"a non-closing response is Copy alone even at a cut point (#1043): the full row stays the closing answer's",
 	);
 });
 
@@ -688,8 +694,8 @@ test("the row rides the turn-closing line and the user row's column, and nothing
 	);
 	assert.equal(
 		(TRANSCRIPT_SOURCE.match(RE_ROW_MOUNT_SITES) ?? []).length,
-		2,
-		"two mount sites: the closing answer's own line, and the user row's copy arm",
+		3,
+		"three mount sites: the closing answer's own line, the user row's copy arm, and every other settled response's Copy (#1043)",
 	);
 	/*
 	 * And each site names itself: the answer arm hands over the visible text the
@@ -700,6 +706,10 @@ test("the row rides the turn-closing line and the user row's column, and nothing
 	assert.ok(
 		RE_USER_ROW_MOUNT.test(TRANSCRIPT_SOURCE),
 		"the user arm is mounted with its role",
+	);
+	assert.ok(
+		RE_RESPONSE_ROW_MOUNT.test(TRANSCRIPT_SOURCE),
+		"the non-closing response arm is mounted with its role, which limits it to Copy",
 	);
 });
 

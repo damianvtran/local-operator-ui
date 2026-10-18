@@ -463,7 +463,9 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 			 */
 			{...(kind === "user"
 				? { "data-lo-user-actions": "" }
-				: { "data-lo-answer-actions": "" })}
+				: kind === "response"
+					? { "data-lo-response-actions": "" }
+					: { "data-lo-answer-actions": "" })}
 			/*
 			 * `shrink-0` and one line at every width (memo (c)): the buttons are the
 			 * row's fixed part and the caption beside them is the part that truncates,

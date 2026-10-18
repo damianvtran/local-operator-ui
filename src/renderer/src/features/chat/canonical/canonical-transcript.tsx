@@ -1702,6 +1702,25 @@ const AssistantRow = memo(function AssistantRow({
 			 * (`scripts/chat-alignment-geometry.mjs`), and the numbers are in
 			 * `docs/evidence/chat-canonical-message-actions/README.md`.
 			 */}
+			{/*
+			 * EVERY OTHER SETTLED RESPONSE CAN BE COPIED (#1043). The full row stays
+			 * on the closing answer below - one row per turn, PR #698's rule - but an
+			 * earlier response (prose between calls, an update after the answer) had
+			 * no copy route but hand-selection. It gets Copy alone, in the same
+			 * hover reveal the user turn's row uses, so at rest the transcript is
+			 * unchanged. `quotable` is the settled-and-has-words gate: a streaming
+			 * prefix has nothing settled to copy.
+			 */}
+			{!closesTurn && quotable && (
+				<div className={cn("mt-1 flex justify-end")}>
+					<AnswerActionRow
+						kind="response"
+						bodyText={remainingContent}
+						revealId={record.id}
+						revealAt={record.ts}
+					/>
+				</div>
+			)}
 			{closesTurn && (
 				/*
 				 * THE TURN-FOOT LINE (§E3), and the one line D9 leaves behind.
