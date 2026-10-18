@@ -1,0 +1,11 @@
+{
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear": "Borrar",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset": "Restablecer",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels": "Pulsa las teclas que quieras; Esc cancela.",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.keyboard_shortcuts": "Atajos de teclado",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you": "Atajos para la barra de paneles. Enfoca un campo y pulsa las teclas que quieras; Esc cancela, Restablecer devuelve el atajo predeterminado de una acción y Borrar la deja sin atajo.",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.no_shortcut": "Sin atajo",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.label_press_the_keys_you_want": "{label}: pulsa las teclas que quieras",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut": "Borrar el atajo de {label}",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset_label_to_its_default": "Restablecer {label} a su valor predeterminado"
+}

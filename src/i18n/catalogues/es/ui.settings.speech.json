@@ -1,0 +1,21 @@
+{
+	"ui.settings.speech.speech_section.try_again": "Volver a intentar",
+	"ui.settings.speech.speech_section.retry": "Reintentar",
+	"ui.settings.speech.speech_section.speaks_through": "Habla mediante",
+	"ui.settings.speech.speech_section.availability": "Disponibilidad",
+	"ui.settings.speech.speech_section.the_setting_could_not_be_saved": "No se pudo guardar el ajuste.",
+	"ui.settings.speech.speech_section.the_setting_could_not_be_reset": "No se pudo restablecer el ajuste.",
+	"ui.settings.speech.speech_section.speech_voicing": "Voz del asistente",
+	"ui.settings.speech.speech_section.how_the_assistant_sounds_when_it_speaks_aloud": "Cómo suena el asistente cuando habla en voz alta.",
+	"ui.settings.speech.speech_section.speech_settings_could_not_be_loaded": "No se pudieron cargar los ajustes de voz.",
+	"ui.settings.speech.speech_section.nothing_yet": "Nada todavía",
+	"ui.settings.speech.speech_section.no_provider": "Ningún proveedor",
+	"ui.settings.speech.speech_section.available": "(disponible)",
+	"ui.settings.speech.speech_section.not_available": "(no disponible)",
+	"ui.settings.speech.speech_settings_model.radient_pass": "Radient Pass",
+	"ui.settings.speech.speech_settings_model.no_provider": "Ningún proveedor",
+	"ui.settings.speech.speech_section.copy_backend_older_sentence": "Este backend no ofrece los ajustes de voz. Actualiza el backend para ajustar cómo suena el asistente.",
+	"ui.settings.speech.speech_section.copy_unavailable_sentence": "No se pudo leer la disponibilidad de voz.",
+	"ui.settings.speech.speech_section.ready": "Listo",
+	"ui.settings.speech.speech_section.missing_voice_rows": "{count, plural, one {Este backend aún no registra {rows}, así que esa fila no se muestra.} many {Este backend aún no registra {rows}, así que esas filas no se muestran.} other {Este backend aún no registra {rows}, así que esas filas no se muestran.}}"
+}
