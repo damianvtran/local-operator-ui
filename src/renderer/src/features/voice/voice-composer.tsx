@@ -1099,11 +1099,21 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 			data-voice-band=""
 			className={cn(
 				/*
-				 * FLUSH WITH THE BOX'S TOP EDGE (spec §1): the box pads its children by
-				 * 16px, so the band pays that padding back and takes the box's own top
-				 * radius. The panel and the strip stack inside with no seam.
+				 * FLUSH WITH THE BOX'S TOP EDGE (spec §1): the band pays the box's own
+				 * padding back and takes the box's top radius, so the panel and the
+				 * strip stack inside with no seam.
+				 *
+				 * FROM THE SAME PAIR AS THE BOX (design round 2, D11): this was
+				 * hardcoded `-mx-4 -mt-4`, which is 16px - but the composer's padding
+				 * shrinks to 8px at the narrow width (`p-2`), so at a 620px viewport
+				 * the band hung 8px outside the box on each side and the chip started
+				 * at the box's edge while the textarea started 8px in. `inset` is
+				 * derived from the same `isSmallView` the composer's padding is, and
+				 * the elsewhere notice already used it; the band was the one caller
+				 * that did not.
 				 */
-				"-mx-4 -mt-4 overflow-hidden rounded-t-frame border-b",
+				inset,
+				"overflow-hidden border-b",
 				box,
 			)}
 		>
@@ -1242,20 +1252,19 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 						title={t(muted ? "ui.chat.voice.unmute" : "ui.chat.voice.mute")}
 						onClick={() => void setQwenMuted(!muted)}
 						/*
-						 * A MUTED TOGGLE SAYS SO IN ITS GLYPH AND ITS PRESSED FACE: the
-						 * speaker with a slash is the word, the accent wash the state - the
-						 * same pair the wave button uses.
-						 */
-						/*
-						 * A MUTED TOGGLE IS NOT A LIVE ONE (design round 1, D7): the accent
-						 * fill is the wave's "voice is running" register, so painting it here
-						 * made a silenced rig look live. The engaged face is the quiet one -
-						 * the box's own surface, a hairline and muted ink - while the glyph
-						 * (a speaker with a slash) is the word.
+						 * A MUTED TOGGLE IS NOT A LIVE ONE (design round 1, D7), AND THE
+						 * QUIET FACE HAS TO BE QUIET IN BOTH THEMES (design round 2, N4):
+						 * `bg-surface` is one step off the band in dark (a lift) but
+						 * near-white in light, where it pulled the eye to the silenced
+						 * control instead. An 8% ink mix with the band's own ground is
+						 * the same barely-there step in both - toward the text colour,
+						 * so light darkens and dark lightens - and the glyph (a speaker
+						 * with a slash) plus the inset hairline carry the state.
 						 */
 						className={cn(
 							"shrink-0 text-ink-muted",
-							"aria-pressed:bg-surface aria-pressed:text-ink-muted",
+							"aria-pressed:bg-[color-mix(in_oklab,var(--color-sunken)_92%,var(--color-ink))]",
+							"aria-pressed:text-ink-muted",
 							"aria-pressed:shadow-[inset_0_0_0_1px_var(--color-hairline-strong)]",
 						)}
 					>
