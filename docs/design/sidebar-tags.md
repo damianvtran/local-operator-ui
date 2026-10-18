@@ -1,6 +1,12 @@
 # LOH-11 — optional conversation tags
 
-Design brief · 2026-10-18 · **PROPOSED, not implemented**.
+Design brief · 2026-10-18 · **first slice implemented** (UI #1177 / core #2600).
+
+> **V2:** the operator's 2026-10-18 feedback (drag/click-hold, remove-all,
+> auto-tagging, a modern tag picker, agent operations and cross-surface tags)
+> is planned in [sidebar-tags-v2.md](sidebar-tags-v2.md); the client contract
+> is [sidebar-tags-api.md](sidebar-tags-api.md). This v1 brief remains the
+> measured baseline for the shipped off/grouped view.
 
 Designer: designer / **openai/gpt-6.1-sol**, temporary fallback after Anthropic quota exhaustion. Baseline inspected: `76dda0304bfa4b54ebd42cccd32bbd05841ca4a3`; worktree HEAD and origin/main both resolved to that SHA when this brief was written. Independent interaction contract: [sidebar-tags-flows.md](sidebar-tags-flows.md). This PR (#1176) is the docs-only design phase; no implementation PR exists yet.
 
