@@ -77,6 +77,9 @@ import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
 import esUiAgentsNavigation from "./catalogues/es/ui.agents.navigation.json";
+import esUiBrowserChrome from "./catalogues/es/ui.browser.chrome.json";
+import esUiBrowser from "./catalogues/es/ui.browser.json";
+import esUiCanvas from "./catalogues/es/ui.canvas.json";
 import esUiChatComposer from "./catalogues/es/ui.chat.composer.json";
 import esUiChatHeader from "./catalogues/es/ui.chat.header.json";
 import esUiChat from "./catalogues/es/ui.chat.json";
@@ -88,6 +91,7 @@ import esUiConsole from "./catalogues/es/ui.console.json";
 import esUiHubComments from "./catalogues/es/ui.hub.comments.json";
 import esUiHub from "./catalogues/es/ui.hub.json";
 import esUiHubTaxonomy from "./catalogues/es/ui.hub.taxonomy.json";
+import esUiMesh from "./catalogues/es/ui.mesh.json";
 import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
 import esUiSchedules from "./catalogues/es/ui.schedules.json";
@@ -211,6 +215,9 @@ export const bundledCatalogues: Readonly<
 	en: bundledEnglish,
 	es: {
 		...esUiAgentsNavigation,
+		...esUiBrowserChrome,
+		...esUiBrowser,
+		...esUiCanvas,
 		...esUiChatComposer,
 		...esUiChatHeader,
 		...esUiChat,
@@ -222,6 +229,7 @@ export const bundledCatalogues: Readonly<
 		...esUiHubComments,
 		...esUiHub,
 		...esUiHubTaxonomy,
+		...esUiMesh,
 		...esUiOnboarding,
 		...esUiProjects,
 		...esUiSchedules,
