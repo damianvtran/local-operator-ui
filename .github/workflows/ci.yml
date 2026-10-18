@@ -651,9 +651,10 @@ jobs:
   # deliberately not `build:npm`, the plain-JS path that let the defect through.
   # No signing and no repository secrets are involved. The four VITE_* values are
   # required by `replace-backend-config` before any bundle is emitted; they are
-  # placeholders for this check only and are never uploaded. MEASURED COST: ~15s
-  # of bundling once the install is warm, so the install dominates; the ceiling
-  # is a bound, not an expectation.
+  # placeholders for this check only and are never uploaded. MEASURED COST on a
+  # hosted runner: ~34s of bundling (main 5s, preload 178ms, renderer 29s) and
+  # 6s of install; the job ran 78s end to end. The 20-minute ceiling is a bound,
+  # not an expectation.
   bytecode-build:
     name: Bytecode Build Check
     needs: [changes]

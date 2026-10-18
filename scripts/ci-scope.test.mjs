@@ -1707,8 +1707,15 @@ test("A25: the bytecode check follows the main bundle's inputs", () => {
 	for (const path of [
 		"src/main/browser/host.ts",
 		"src/shared/mini-view.ts",
+		// `src/main` imports `src/i18n`, and `messages.ts` pulls the generated keys
+		// and every locale catalogue into the main chunk - the reason this prefix
+		// is here and not left to fail-open (a `src/` path is a KNOWN live path, so
+		// an unrecognised-path fallback never sees it).
+		"src/i18n/messages.ts",
+		"src/i18n/catalogues/en/ui.agentMessages.json",
 		"scripts/vite-plugins/replace-backend-config.ts",
 		"electron.vite.config.js",
+		"tsconfig.json",
 		"tsconfig.node.json",
 		"package.json",
 		"pnpm-lock.yaml",
@@ -1728,6 +1735,10 @@ test("A25: the bytecode check follows the main bundle's inputs", () => {
 	for (const path of [
 		"src/renderer/src/App.tsx",
 		"src/preload/index.ts",
+		// Renderer-only TypeScript projects: they typecheck the window, and the
+		// main bundle is not compiled through them.
+		"tsconfig.app.json",
+		"tsconfig.web.json",
 		"scripts/ci-scope.mjs",
 		"bin/local-operator-ui.js",
 		"docs/BUILD.md",
