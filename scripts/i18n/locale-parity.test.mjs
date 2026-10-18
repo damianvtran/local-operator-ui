@@ -520,6 +520,10 @@ const IDENTICAL_OK = new Map([
 		"ui.code_review.lane.state.terminal",
 		"French cognate: « terminal » has the same spelling.",
 	],
+	[
+		"ui.providers.provider_labels.local",
+		"French cognate: « local » has the same spelling.",
+	],
 ]);
 
 function localeDirs() {

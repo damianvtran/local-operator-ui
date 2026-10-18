@@ -148,6 +148,7 @@ import frUiHubTaxonomy from "./catalogues/fr/ui.hub.taxonomy.json";
 import frUiMesh from "./catalogues/fr/ui.mesh.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
+import frUiProviders from "./catalogues/fr/ui.providers.json";
 import frUiSchedules from "./catalogues/fr/ui.schedules.json";
 import frUiSettingsAccount from "./catalogues/fr/ui.settings.account.json";
 import frUiSettingsAppearance from "./catalogues/fr/ui.settings.appearance.json";
@@ -329,6 +330,7 @@ export const bundledCatalogues: Readonly<
 		...frUiMesh,
 		...frUiOnboarding,
 		...frUiProjects,
+		...frUiProviders,
 		...frUiSchedules,
 		...frUiSettingsAccount,
 		...frUiSettingsAppearance,
