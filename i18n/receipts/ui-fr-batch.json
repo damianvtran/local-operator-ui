@@ -132,7 +132,7 @@
 			"locale": "fr",
 			"namespace": "ui.projects",
 			"source_sha256": "6b12f695845c3d01500291f5bc4eb50ea9b35e60c68bc69f21ee219c5f9d7f52",
-			"target_sha256": "bf3f7d4f2d6f41c88d7158e3d2a0dcebcbe220e815d68ec1f3ea887a3a8c02d3",
+			"target_sha256": "64cc3e529f94feb252da0fe27eb070b5aa79395676bab6a40c6f2bd2754688fe",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -156,7 +156,7 @@
 			"locale": "fr",
 			"namespace": "ui.hub",
 			"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
-			"target_sha256": "d2c789abc99245d9812b2acd1ad487adcd4e3e8d7d51588a644103b8f7121688",
+			"target_sha256": "7fec3dc3011e8e78867767c0cb61b203ce351ceba64b0ed2b47634903c0ae2ea",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -168,7 +168,7 @@
 			"locale": "fr",
 			"namespace": "ui.hub.comments",
 			"source_sha256": "5c20d0e9a7f66f753561ded1d104aa5cf0e1fd0d5a73f7f0a7e3349a28c6f2c4",
-			"target_sha256": "52199d1dd762db27b06dce61d567c63e5f8a448005a9d0f857fe163f8887f685",
+			"target_sha256": "805efe0fff569ed11e51f511e9a0ceb10f1e0e91863b62290d1c2cc6629e0fce",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -216,7 +216,7 @@
 			"locale": "fr",
 			"namespace": "ui.mesh",
 			"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
-			"target_sha256": "0dd309c2736571452b3eb1cf5e24afd2dcfee9a7e8afca1fee635eb23112f667",
+			"target_sha256": "ee294ca42484fa4aebe7f50abdbf31676153a49f981ddd3c36f50b711f0f2740",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -228,7 +228,7 @@
 			"locale": "fr",
 			"namespace": "ui.canvas",
 			"source_sha256": "6fa13501b59a260373bcb26f212fc6244a3d1219ef1811d2b0c1de05b541f1f5",
-			"target_sha256": "c794fe07b509a330e38642479a00957c4f2a19829bbb92e9a5de0d46b4f7f76f",
+			"target_sha256": "5f7f7de240978be3ce955c5d51c5dd82400bc603d7797ba99de3ee64ec0f2592",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -252,7 +252,7 @@
 			"locale": "fr",
 			"namespace": "ui.providers",
 			"source_sha256": "9981637a98afbcbc166d889b461795bae7685e42274f4d607b711f4b0f9085f2",
-			"target_sha256": "b920955cb1c1c4dcbf29ffc6f14b43a3d767334f59c4a5a78479995d27b87f4c",
+			"target_sha256": "6326ad0c5fbeda685fe01a2f51641480685f53f601ddaf345d63551de9e428ee",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",

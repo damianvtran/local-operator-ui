@@ -1,5 +1,5 @@
 {
-	"ui.canvas.files.highlights": "Points forts",
+	"ui.canvas.files.highlights": "À la une",
 	"ui.canvas.files.working": "Fichiers de travail",
 	"ui.canvas.files.images": "Images",
 	"ui.canvas.files.videos": "Vidéos",
@@ -47,7 +47,7 @@
 	"ui.canvas.files.error": "Impossible de charger les fichiers de la session",
 	"ui.canvas.files.remote": "Les fichiers distants sont indisponibles ici",
 	"ui.canvas.files.inSession": "Dans la session",
-	"ui.canvas.files.count": "{count, plural, one {{count, number, ::group-off} fichier} many {{count, number, ::group-off} de fichiers} other {{count, number, ::group-off} fichiers}}",
+	"ui.canvas.files.count": "{count, plural, one {{count, number, ::group-off} fichier} many {{count, number, ::group-off} fichiers} other {{count, number, ::group-off} fichiers}}",
 	"ui.canvas.files.narrowCount": "{shown} sur {total} fichiers",
 	"ui.canvas.files.gone": "Plus dans la session",
 	"ui.canvas.files.earlier": "Rechercher dans les messages précédents",

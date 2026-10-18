@@ -21,11 +21,11 @@
 	"ui.hub.comments.mutation.post_failed": "Impossible de publier le commentaire : {reason}",
 	"ui.hub.comments.mutation.update_failed": "Impossible de mettre à jour le commentaire : {reason}",
 	"ui.hub.comments.mutation.delete_failed": "Impossible de supprimer le commentaire : {reason}",
-	"ui.hub.comments.age.seconds": "{count, plural, one {il y a {count} seconde} many {il y a {count} de secondes} other {il y a {count} secondes}}",
-	"ui.hub.comments.age.minutes": "{count, plural, one {il y a {count} minute} many {il y a {count} de minutes} other {il y a {count} minutes}}",
-	"ui.hub.comments.age.hours": "{count, plural, one {il y a {count} heure} many {il y a {count} d’heures} other {il y a {count} heures}}",
-	"ui.hub.comments.age.days": "{count, plural, one {il y a {count} jour} many {il y a {count} de jours} other {il y a {count} jours}}",
-	"ui.hub.comments.age.months": "{count, plural, one {il y a {count} mois} many {il y a {count} de mois} other {il y a {count} mois}}",
-	"ui.hub.comments.age.years": "{count, plural, one {il y a {count} an} many {il y a {count} d’années} other {il y a {count} ans}}",
+	"ui.hub.comments.age.seconds": "{count, plural, one {il y a {count} seconde} many {il y a {count} secondes} other {il y a {count} secondes}}",
+	"ui.hub.comments.age.minutes": "{count, plural, one {il y a {count} minute} many {il y a {count} minutes} other {il y a {count} minutes}}",
+	"ui.hub.comments.age.hours": "{count, plural, one {il y a {count} heure} many {il y a {count} heures} other {il y a {count} heures}}",
+	"ui.hub.comments.age.days": "{count, plural, one {il y a {count} jour} many {il y a {count} jours} other {il y a {count} jours}}",
+	"ui.hub.comments.age.months": "{count, plural, one {il y a {count} mois} many {il y a {count} mois} other {il y a {count} mois}}",
+	"ui.hub.comments.age.years": "{count, plural, one {il y a {count} an} many {il y a {count} ans} other {il y a {count} ans}}",
 	"ui.hub.comments.age.fallback": "il y a {duration}"
 }
