@@ -300,7 +300,22 @@ async function flush() {
 	});
 }
 
-async function mountStrip({ sessionId = AT, onScrollToNewest } = {}) {
+async function mountStrip({
+	sessionId = AT,
+	onScrollToNewest,
+	isSmallView = false,
+} = {}) {
+	/*
+	 * ONE ROOT AT A TIME: a test that mounts a second strip (the width pair)
+	 * would otherwise leave the first root live, and a React root nobody unmounts
+	 * keeps this process from exiting after the assertions have run.
+	 */
+	if (root) {
+		await act(async () => {
+			root.unmount();
+		});
+		root = null;
+	}
 	window.document.body.innerHTML = "<div id='root'></div>";
 	root = createRoot(window.document.getElementById("root"));
 	await act(async () => {
@@ -311,6 +326,7 @@ async function mountStrip({ sessionId = AT, onScrollToNewest } = {}) {
 				React.createElement(VoiceComposerStrip, {
 					sessionId,
 					onScrollToNewest,
+					isSmallView,
 				}),
 			),
 		);
@@ -710,6 +726,51 @@ test("D8: the History chevron points down when closed and up when open", async (
 	assert.doesNotMatch(toggle().innerHTML, /m6 9 6 6 6-6/);
 });
 
+test("D11: at the narrow width the band pays back the composer's own 8px, so the chip shares the textarea's x", async () => {
+	/*
+	 * jsdom has no layout engine, so an x cannot be read here. What CAN be
+	 * asserted is the arithmetic an x is made of: the band pulls itself left by
+	 * the box's padding and then pads its content by the same amount, so content
+	 * starts at box.x + padding - the textarea's own line. The failure D11
+	 * measured was exactly a mismatch of those two numbers (16px pulled back over
+	 * an 8px-padded box, so the band hung 8px out and the chip started 8px left
+	 * of the textarea). Both come from `isSmallView`, so both are checked at both
+	 * values.
+	 */
+	const pxOf = (className, pattern) => {
+		const found = pattern.exec(className);
+		return found ? Number(found[1]) * 4 : null;
+	};
+	for (const narrow of [true, false]) {
+		await mountStrip({ isSmallView: narrow });
+		await voiceReady();
+		const band = window.document.querySelector("[data-voice-band]");
+		const row = window.document.querySelector("[data-voice-strip]");
+		assert.ok(band && row);
+		const pulled = pxOf(band.className, /(?:^|\s)-mx-(\d)(?:\s|$)/);
+		const padded = pxOf(row.className, /(?:^|\s)px-(\d)(?:\s|$)/);
+		assert.equal(
+			pulled,
+			narrow ? 8 : 16,
+			`${narrow ? "narrow" : "wide"}: the band pulls back the box's padding`,
+		);
+		assert.equal(
+			padded,
+			narrow ? 8 : 16,
+			`${narrow ? "narrow" : "wide"}: and puts it back on the content`,
+		);
+		assert.equal(
+			pulled,
+			padded,
+			"the two must match, or the content column leaves the textarea's",
+		);
+		assert.ok(
+			band.className.includes(narrow ? "-mx-2" : "-mx-4"),
+			`${narrow ? "narrow" : "wide"}: the responsive pair, not a hardcoded edge`,
+		);
+	}
+});
+
 test("D2: the first frame of an enable is Starting voice, never the stale rig status", async () => {
 	installControls();
 	await mountStrip();
@@ -794,11 +855,24 @@ test("D7: a muted reply says Silenced, and the mute face is not the live accent"
 	assert.match(caption().textContent, /on screen/);
 	const mute = window.document.querySelector("[data-voice-mute]");
 	assert.equal(mute.getAttribute("aria-pressed"), "true");
-	assert.match(mute.className, /aria-pressed:bg-surface/);
+	/*
+	 * N4: the quiet face is an ink mix with the BAND's ground in both themes.
+	 * `bg-surface` was right in dark and near-white in light, where a silenced
+	 * strip pointed at the one control that is doing nothing.
+	 */
+	assert.match(
+		mute.className,
+		/aria-pressed:bg-\[color-mix\(in_oklab,var\(--color-sunken\)_92%,var\(--color-ink\)\)\]/,
+	);
 	assert.doesNotMatch(
 		mute.className,
-		/aria-pressed:bg-\[color-mix/,
-		"the live accent mix is the wave's register, not a muted control's",
+		/aria-pressed:bg-surface/,
+		"surface is near-white in the light theme",
+	);
+	assert.doesNotMatch(
+		mute.className,
+		/aria-pressed:bg-\[color-mix\(in_oklab,var\(--color-accent-wash\)/,
+		"the live accent wash is the wave's register, not a muted control's",
 	);
 });
 
