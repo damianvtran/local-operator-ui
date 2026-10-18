@@ -792,3 +792,19 @@ test("a restated sounds list keeps the previous array; a new one replaces it", (
 	assert.notEqual(changed.sounds, base.sounds);
 	assert.equal(changed.sounds[0].title, "Other");
 });
+
+test("sounds-only done highlights remain visible", () => {
+	const sound = model.supplementRecordFromDetails(1, {
+		anchor: "answer",
+		state: "done",
+		sounds: [
+			{
+				attachment: "a".repeat(32),
+				mime: "audio/wav",
+				title: "Storm",
+				duration_s: 12,
+			},
+		],
+	});
+	assert.equal(model.supplementDisposition(sound, false), "block");
+});

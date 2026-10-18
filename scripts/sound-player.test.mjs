@@ -114,6 +114,11 @@ globalThis.localStorage = {
 const bundle = await build({
 	stdin: {
 		contents: [
+			'export { CanvasFileViewer } from "./src/renderer/src/features/chat/components/canvas/canvas-file-viewer";',
+			'export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store";',
+			'export { AudioDocumentPlayer } from "./src/renderer/src/features/chat/components/canvas/audio-document-player";',
+			'export { AudioPreview } from "./src/renderer/src/features/chat/components/canvas/audio-preview";',
+			'export { indexedDocument } from "./src/renderer/src/features/chat/canonical/session-files";',
 			'export { SoundPlayer } from "./src/renderer/src/features/chat/canonical/sound-player";',
 			'export { useAudioEngineStore, audioEngineElement } from "./src/renderer/src/shared/store/audio-engine-store";',
 		].join("\n"),
@@ -148,9 +153,16 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(async () => {
 	await unlink(bundlePath);
 });
-const { SoundPlayer, useAudioEngineStore, audioEngineElement } = await import(
-	bundlePath.href
-);
+const {
+	CanvasFileViewer,
+	useCanvasStore,
+	AudioDocumentPlayer,
+	AudioPreview,
+	indexedDocument,
+	SoundPlayer,
+	useAudioEngineStore,
+	audioEngineElement,
+} = await import(bundlePath.href);
 const React = await import("react");
 const { createRoot } = await import("react-dom/client");
 const { act } = await import("react");
@@ -160,7 +172,7 @@ const h = React.createElement;
 
 const OWNER = `sound:${"a".repeat(32)}`;
 
-async function mount() {
+async function mount(overrides = {}) {
 	const container = document.createElement("div");
 	document.body.appendChild(container);
 	const root = createRoot(container);
@@ -171,6 +183,7 @@ async function mount() {
 				src: "blob:test",
 				label: "Storm swell",
 				peaks: [0.2, 0.9, 0.4, 0.7],
+				...overrides,
 			}),
 		);
 	});
@@ -405,4 +418,288 @@ test("another sound's playback makes this row show its rest state", async () => 
 		"Play Storm swell",
 	);
 	await unmount();
+});
+
+test("failed playback is retryable through the pointer Play control", async () => {
+	resetEngine();
+	const { container, unmount } = await mount();
+	await act(async () => {
+		container.querySelector("button").click();
+	});
+	const element = audioEngineElement();
+	await act(async () => {
+		element.onerror();
+	});
+	assert.equal(container.querySelector("button").disabled, false);
+	assert.equal(
+		container.querySelector("[data-sound-player]").dataset.soundStatus,
+		"error",
+	);
+	await act(async () => {
+		container.querySelector("button").click();
+	});
+	assert.equal(useAudioEngineStore.getState().status, "playing");
+	assert.equal(container.querySelector("[data-sound-error]"), null);
+	await unmount();
+});
+for (const other of [false, true]) {
+	test(`idle pointer drag retains position without stealing other=${other}`, async () => {
+		resetEngine();
+		if (other)
+			await act(async () => {
+				await useAudioEngineStore.getState().play("speech:other", "blob:other");
+			});
+		const { slider, container, unmount } = await mount({ durationHint: 20 });
+		dom.window.Element.prototype.getBoundingClientRect = () => ({
+			left: 0,
+			width: 200,
+			top: 0,
+			height: 44,
+			right: 200,
+			bottom: 44,
+			x: 0,
+			y: 0,
+			toJSON: () => ({}),
+		});
+		const fire = (type, clientX) => {
+			const event = new dom.window.MouseEvent(type, { bubbles: true, clientX });
+			Object.defineProperty(event, "pointerId", { value: 4 });
+			slider.dispatchEvent(event);
+		};
+		await act(async () => {
+			fire("pointerdown", 0);
+			fire("pointermove", 100);
+		});
+		await act(async () => {
+			fire("pointerup", 100);
+		});
+		assert.equal(
+			useAudioEngineStore.getState().ownerId,
+			other ? "speech:other" : null,
+		);
+		assert.equal(slider.getAttribute("aria-valuenow"), "10");
+		await act(async () => {
+			container.querySelector("button").click();
+		});
+		assert.equal(audioEngineElement().currentTime, 10);
+		await unmount();
+	});
+}
+
+test("opening indexed audio resolves its digest and shares row/speech ownership", async () => {
+	resetEngine();
+	const reads = [];
+	const requests = [];
+	window.api = {
+		desktop: {
+			media: async (request) => {
+				requests.push(request);
+				return request.op.endsWith("waveform")
+					? { kind: "json", data: { peaks: [0.2, 0.8] } }
+					: {
+							kind: "bytes",
+							data: new Uint8Array([1, 2, 3]),
+							mimeType: "audio/wav",
+						};
+			},
+		},
+		readFileBytes: async (path) => {
+			reads.push(path);
+			return { success: false, code: "not-found" };
+		},
+	};
+	const doc = indexedDocument(
+		{
+			id: "artifact-row",
+			ref: {
+				type: "artifact",
+				digest: "b".repeat(32),
+				content_type: "audio/wav",
+			},
+			name: "Indexed storm.wav",
+			kind: "audio",
+			size_bytes: 3,
+			modified_at: null,
+			session: { id: "fixture", role: "self", child_id: null },
+			duration_s: 12,
+		},
+		"fixture",
+	);
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	await act(async () => {
+		root.render(h(AudioPreview, { document: doc }));
+	});
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 20));
+	});
+	assert.deepEqual(
+		reads,
+		[],
+		"artifact pseudo-path never reaches the filesystem bridge",
+	);
+	assert.ok(
+		requests.some(
+			(request) =>
+				request.op === "sessions.attachment" &&
+				request.digest === "b".repeat(32),
+		),
+	);
+	assert.equal(container.querySelector("audio"), null);
+	const play = container.querySelector("[data-sound-player] button");
+	assert.ok(play, "indexed sound opens a working shared player");
+	await act(async () => {
+		play.click();
+	});
+	const element = audioEngineElement();
+	assert.equal(
+		useAudioEngineStore.getState().ownerId,
+		`sound:${"b".repeat(32)}`,
+	);
+	await act(async () => {
+		await useAudioEngineStore.getState().play("speech:fixture", "blob:speech");
+	});
+	assert.equal(
+		audioEngineElement(),
+		element,
+		"preview and speech use one element",
+	);
+	assert.equal(
+		container.querySelector("button").getAttribute("aria-label"),
+		"Play Indexed storm.wav",
+	);
+	await act(async () => root.unmount());
+	container.remove();
+});
+
+test("path preview and Files row arbitrate through one engine", async () => {
+	resetEngine();
+	const doc = {
+		id: "/fixture.wav",
+		path: "data:audio/wav;base64,AQI=",
+		title: "Local sound",
+		content: "",
+		type: "audio",
+	};
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	await act(async () => {
+		root.render(
+			h(
+				"div",
+				null,
+				h(AudioDocumentPlayer, { doc, label: doc.title }),
+				h(AudioPreview, { document: doc }),
+			),
+		);
+	});
+	assert.equal(container.querySelectorAll("audio").length, 0);
+	const buttons = container.querySelectorAll("[data-sound-player] button");
+	assert.equal(buttons.length, 2);
+	await act(async () => {
+		buttons[0].click();
+	});
+	const element = audioEngineElement();
+	assert.equal(useAudioEngineStore.getState().status, "playing");
+	await act(async () => {
+		buttons[1].click();
+	});
+	assert.equal(
+		useAudioEngineStore.getState().status,
+		"paused",
+		"same owner preview pauses row rather than layering audio",
+	);
+	assert.equal(audioEngineElement(), element);
+	await act(async () => root.unmount());
+	container.remove();
+});
+
+test("Files filename opens generated audio without materialising away its digest", async () => {
+	resetEngine();
+	const requests = [];
+	window.api = {
+		desktop: {
+			media: async (request) => {
+				requests.push(request);
+				return {
+					kind: "bytes",
+					data: new Uint8Array([1, 2]),
+					mimeType: "audio/wav",
+				};
+			},
+		},
+		probeFiles: async () => {
+			throw new Error("audio artifact must not be probed as a path");
+		},
+	};
+	const row = {
+		id: "indexed-sound",
+		ref: {
+			type: "artifact",
+			digest: "c".repeat(32),
+			content_type: "audio/wav",
+		},
+		name: "Indexed storm.wav",
+		kind: "audio",
+		size_bytes: 2,
+		created_at: 1,
+		modified_at: 1,
+		duration_s: 12,
+		origin: "generated",
+		first_seq: 1,
+		last_seq: 1,
+		first_ts: 1,
+		last_ts: 1,
+		exists: true,
+		session: { id: "fixture", role: "self", child_id: null },
+	};
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	let opened = null;
+	await act(async () => {
+		root.render(
+			h(CanvasFileViewer, {
+				conversationId: "sound-file-open",
+				sessionId: "fixture",
+				index: {
+					mode: "index",
+					state: "ready",
+					rows: [row],
+					total: 1,
+					statComplete: true,
+					error: null,
+					coveredBytes: 100,
+					totalBytes: 100,
+					loadedRows: 1,
+					pendingTotal: 0,
+					refresh: () => {},
+				},
+				onSwitchToDocumentView: (id) => {
+					opened = id;
+				},
+			}),
+		);
+	});
+	const filename = container.querySelector(
+		'[data-tour-tag="file-row"] button.flex-1',
+	);
+	assert.ok(filename);
+	await act(async () => {
+		filename.click();
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	});
+	assert.equal(opened, `artifact:${"c".repeat(32)}`);
+	const stored =
+		useCanvasStore.getState().conversations["sound-file-open"].files[0];
+	assert.equal(stored.artifact.digest, "c".repeat(32));
+	assert.equal(stored.path, `artifact:${"c".repeat(32)}`);
+	assert.equal(
+		requests.some((request) => request.op.includes("material")),
+		false,
+	);
+	await act(async () => root.unmount());
+	container.remove();
 });

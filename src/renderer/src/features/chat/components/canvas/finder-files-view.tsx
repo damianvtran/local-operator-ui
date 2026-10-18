@@ -13,7 +13,6 @@ import {
 } from "@shared/components/ui";
 import { fold } from "@shared/components/ui/searchable-select";
 import { useEverInView } from "@shared/hooks/use-ever-in-view";
-import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
 import { createBlobUrl, revokeBlobUrl } from "@shared/lib/blob-url-cache";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
@@ -31,7 +30,6 @@ import {
 } from "lucide-react";
 import {
 	type KeyboardEvent,
-	memo,
 	useCallback,
 	useEffect,
 	useMemo,
@@ -44,19 +42,16 @@ import {
 	formatDateTime,
 	formatNumber,
 } from "../../../../../../i18n/format";
-import { SoundPlayer } from "../../canonical/sound-player";
-import { useAttachmentSource } from "../../canonical/use-attachment-url";
 import type { FileIndexState } from "../../canonical/use-session-files";
-import { useWaveform } from "../../canonical/use-waveform";
-import type { CanvasArtifact, CanvasDocument } from "../../types/canvas";
+import type { CanvasDocument } from "../../types/canvas";
 import {
 	artifactFileName,
 	artifactTooltip,
 } from "../../utils/artifact-identity";
-import { mimeTypeForPath } from "../../utils/file-kind";
 import { revealLocalTarget } from "../../utils/link-open";
 import { viewerFor } from "../../utils/viewer-routing";
 import { ImageActionsMenu } from "../image-actions-menu";
+import { AudioDocumentPlayer } from "./audio-document-player";
 import { FILE_KIND_GROUPS, filterAndSearchRows } from "./file-rows";
 import {
 	type FinderBand,
@@ -877,117 +872,6 @@ export function FinderFilesView({
 	);
 }
 
-/**
- * The compact sound player for one Files row, fed by whichever store the row's
- * bytes live in.
- *
- * TWO STORES, ONE PLAYER. An artifact row's bytes come over the media relay by
- * digest (the same resolver the transcript mounts); a path-backed row's come
- * over the file bridge (`useFileBlobUrl`, the hook the audio PREVIEW uses).
- * Two components rather than one branch because each mounts one resolver hook
- * unconditionally - a merged branch would ask the attachment route about every
- * path-backed row and read a file for every digest.
- *
- * PEAKS FOLLOW THE SAME SPLIT: a digest has a sidecar to ask for
- * (`useWaveform`); a path has none, so it draws the honest flat scrubber.
- */
-const FinderSoundPlayer = memo(function FinderSoundPlayer({
-	doc,
-	label,
-}: {
-	doc: CanvasDocument;
-	label: string;
-}) {
-	return doc.artifact ? (
-		<FinderArtifactSound artifact={doc.artifact} label={label} />
-	) : (
-		<FinderPathSound doc={doc} label={label} />
-	);
-});
-
-const FinderArtifactSound = memo(function FinderArtifactSound({
-	artifact,
-	label,
-}: {
-	artifact: CanvasArtifact;
-	label: string;
-}) {
-	/*
-	 * The scope object is rebuilt from its two primitives rather than from
-	 * `artifact`: the resolver depends on the ids, and a new object identity per
-	 * render would be noise it already documents it ignores.
-	 */
-	const sessionId = artifact.sessionId;
-	const childId = artifact.childId ?? null;
-	const scope = useMemo(() => ({ sessionId, childId }), [sessionId, childId]);
-	const source = useAttachmentSource(
-		{
-			data: null,
-			attachment: artifact.digest,
-			mimeType: artifact.contentType ?? "audio/mpeg",
-		},
-		scope,
-	);
-	const peaks = useWaveform(artifact.digest, scope);
-	if (source.state === "missing") {
-		return (
-			<span className={cn("px-1 py-2 text-meta text-ink-muted")}>
-				{t("ui.canvas.files.unreadable")}
-			</span>
-		);
-	}
-	if (source.state === "resolving") {
-		// A reserved line at the player's own height, so the row does not jump when
-		// the bytes land (the same reason the transcript's boxes reserve).
-		return <div className={cn("h-11")} aria-hidden={true} />;
-	}
-	return (
-		<SoundPlayer
-			variant="compact"
-			/* The digest is the identity, exactly as in the transcript. */
-			ownerId={`sound:${artifact.digest}`}
-			src={source.url}
-			label={label}
-			peaks={peaks}
-			durationHint={artifact.durationS ?? null}
-		/>
-	);
-});
-
-const FinderPathSound = memo(function FinderPathSound({
-	doc,
-	label,
-}: {
-	doc: CanvasDocument;
-	label: string;
-}) {
-	const state = useFileBlobUrl(doc.path, {
-		mtimeMs: doc.lastAgentModified,
-		mimeType: mimeTypeForPath(doc.path),
-		sizeBytes: doc.sizeBytes,
-	});
-	if (state.status === "unavailable") {
-		return (
-			<span className={cn("px-1 py-2 text-meta text-ink-muted")}>
-				{t("ui.canvas.files.unreadable")}
-			</span>
-		);
-	}
-	if (state.status === "loading") {
-		return <div className={cn("h-11")} aria-hidden={true} />;
-	}
-	return (
-		<SoundPlayer
-			variant="compact"
-			/* A path-backed sound has no digest; the path is its identity here. */
-			ownerId={`sound:path:${doc.path}`}
-			src={state.url}
-			label={label}
-			peaks={null}
-		/>
-	);
-});
-
 function FinderEntry({
 	item,
 	current,
@@ -1103,7 +987,7 @@ function FinderEntry({
 						{meta}
 					</span>
 				</div>
-				<FinderSoundPlayer doc={doc} label={item.row.name} />
+				<AudioDocumentPlayer doc={doc} label={item.row.name} />
 				<div className={REVEAL} onKeyDown={(event) => event.stopPropagation()}>
 					<ImageActionsMenu
 						file={doc.path}

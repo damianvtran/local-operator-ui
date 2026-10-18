@@ -43,15 +43,12 @@ export type WaveformBar = {
 };
 
 /**
- * How many bars fit in `width`, inside the edge fades. At least one: a
+ * How many bars fit in `width`, including the edge fades. At least one: a
  * zero-bar waveform would draw nothing and offer nothing to aim at.
  */
 export function barCountForWidth(width: number): number {
 	if (!Number.isFinite(width) || width <= 0) return 1;
-	return Math.max(
-		1,
-		Math.floor((width - 2 * EDGE_FADE_PX + BAR_GAP) / BAR_PITCH),
-	);
+	return Math.max(1, Math.floor((width + BAR_GAP) / BAR_PITCH));
 }
 
 /**
@@ -109,7 +106,8 @@ export function waveformBars(
 	// The ramp's denominator is count-1; one bar has nothing to ramp across.
 	const rampDenominator = Math.max(1, count - 1);
 	for (let i = 0; i < count; i += 1) {
-		const x = EDGE_FADE_PX + i * BAR_PITCH;
+		// Draw through the fade zone: an empty inset cannot fade any ink.
+		const x = i * BAR_PITCH;
 		const centerX = x + BAR_WIDTH / 2;
 		const value = values === null ? 0 : values[i];
 		const raw = value * height * VALUE_SCALE;

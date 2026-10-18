@@ -69,13 +69,13 @@ test("the recipe is the bar-wave constants the design spec names", () => {
 });
 
 test("a width's bar count fills it without overrunning, and never reaches zero", () => {
-	// 24 px of fade each side, then pitch-wide cells. 300 px: (300-48+2)/6 = 42.
-	assert.equal(barCountForWidth(300), 42);
+	// Bars include the fade zones so the ramp changes drawn ink.
+	assert.equal(barCountForWidth(300), 50);
 	assert.equal(barCountForWidth(0), 1, "a zero-width box still has one bar");
 	assert.equal(barCountForWidth(Number.NaN), 1);
 	assert.equal(barCountForWidth(-40), 1);
 	const narrow = barCountForWidth(40);
-	assert.equal(narrow, 1, "narrower than the fades: one bar, not none");
+	assert.equal(narrow, 7, "narrow widths still draw through both fade zones");
 });
 
 test("the edge fade ramps from 0 at each edge to 1 at 24 px in", () => {
@@ -121,7 +121,7 @@ test("no peaks draws the FLAT scrubber - never a fabricated envelope", () => {
 test("a peak's bar is value x height x 0.8, floored at the base height", () => {
 	const peaks = new Array(42).fill(0.5);
 	const bars = waveformBars(peaks, 300, 40);
-	assert.equal(bars.length, 42);
+	assert.equal(bars.length, 50);
 	assert.equal(bars[0].height, Math.round(0.5 * 40 * VALUE_SCALE));
 	// A silent bucket still shows the base bar, so the wave has a baseline.
 	const quiet = waveformBars(new Array(42).fill(0), 300, 40);
@@ -132,12 +132,13 @@ test("a peak's bar is value x height x 0.8, floored at the base height", () => {
 	assert.ok(loud[0].height < 40);
 });
 
-test("bars are pitch-spaced inside the fades, and the alpha ramp is 0.3 to 1.0", () => {
+test("bars are pitch-spaced through the fades, and the alpha ramp is 0.3 to 1.0", () => {
 	const bars = waveformBars(new Array(42).fill(1), 300, 40);
 	for (let i = 1; i < bars.length; i += 1) {
 		assert.equal(bars[i].x - bars[i - 1].x, BAR_PITCH);
 	}
-	assert.equal(bars[0].x, EDGE_FADE_PX);
+	assert.equal(bars[0].x, 0);
+	assert.ok(bars[0].alpha < ALPHA_MIN);
 	/*
 	 * The alpha ramp runs 0.3 at the FIRST bar to 1.0 at the LAST, across the
 	 * whole wave (the recipe's left-to-right reading), and then the 24 px edge
@@ -148,20 +149,22 @@ test("bars are pitch-spaced inside the fades, and the alpha ramp is 0.3 to 1.0",
 	const lastCentre = last.x + BAR_WIDTH / 2;
 	assert.ok(Math.abs(last.alpha - edgeFade(lastCentre, 300)) < 1e-9);
 	// The wave's middle is outside the fade, so it shows the ramp alone: for 42
-	// bars that is 0.3 + 0.7 * (21 / 41).
+	// bars that is 0.3 + 0.7 * (21 / (bars.length - 1)).
 	const middle = bars[21];
 	assert.ok(
-		Math.abs(middle.alpha - (ALPHA_MIN + (ALPHA_MAX - ALPHA_MIN) * (21 / 41))) <
-			1e-9,
+		Math.abs(
+			middle.alpha -
+				(ALPHA_MIN + (ALPHA_MAX - ALPHA_MIN) * (21 / (bars.length - 1))),
+		) < 1e-9,
 	);
-	// A one-bar wave has no ramp to run across: it sits at the ramp's start and
-	// is then faded by its own distance to the edges (a 40 px box has no room to
-	// be 24 px from both), which is the fade doing its job rather than a ramp
-	// the bar count cannot express.
-	const single = waveformBars(null, 40, 40);
+	const single = waveformBars(null, 4, 40);
 	assert.equal(single.length, 1);
-	assert.ok(single[0].alpha > 0 && single[0].alpha <= ALPHA_MAX);
-	assert.ok(Math.abs(single[0].alpha - ALPHA_MIN * edgeFade(26, 40)) < 1e-9);
+	assert.ok(Math.abs(single[0].alpha - ALPHA_MIN * edgeFade(2, 4)) < 1e-9);
+	for (const width of [340, 210, 100]) {
+		const drawn = waveformBars(null, width, 44);
+		assert.ok(edgeFade(drawn[0].x + BAR_WIDTH / 2, width) < 1);
+		assert.ok(edgeFade(drawn.at(-1).x + BAR_WIDTH / 2, width) < 1);
+	}
 });
 
 /* ------------------------------------------------------------- the clock */
