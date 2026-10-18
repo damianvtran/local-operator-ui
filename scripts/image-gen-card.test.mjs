@@ -327,7 +327,7 @@ test("the failure pair reads verbatim, the conflict is a receipt, and a plain ca
 				details: canonical({ stage: "cancelled" }),
 			}),
 		),
-		{ state: "cancelled" },
+		{ state: "cancelled", generating: false, message: "Cancelled" },
 	);
 	// An error-shaped result with no canonical payload keeps the old read.
 	assert.deepEqual(imageGenCardView(tool({ isError: true, output: "boom" })), {
@@ -430,7 +430,22 @@ test("a failure carries the error text verbatim, and a verdict keeps its own", (
 test("the interrupted endings map to cancelled, with no text claimed for them", () => {
 	assert.deepEqual(imageGenCardView(tool({ stopped: true })), {
 		state: "cancelled",
+		/*
+		 * The fixture states no `startedAt` and no output, so the stop is a QUEUED
+		 * one with no detail: `generating: false` is what picks the no-charge
+		 * sentence at the card, and `message: null` is what leaves it to fall
+		 * back rather than to claim a detail the record never had.
+		 */
+		generating: false,
+		message: null,
 	});
+	// A stop on a call that HAD started: the in-flight split.
+	const startedStop = imageGenCardView(
+		tool({ stopped: true, startedAt: 1_000, output: "stopped by the reader" }),
+	);
+	assert.equal(startedStop.state, "cancelled");
+	assert.equal(startedStop.generating, true);
+	assert.equal(startedStop.message, "stopped by the reader");
 	for (const kind of ["skipped", "aborted"]) {
 		assert.equal(
 			imageGenCardView(
@@ -586,8 +601,18 @@ test("a cancelling card wears the generating body only when one existed (F3)", (
 	});
 	assert.equal(neverGenerated.includes('role="progressbar"'), false);
 	assert.equal(neverGenerated.includes("data-imagegen-tile"), false);
-	// The words are honest either way: the plain state line stays.
-	assert.equal(neverGenerated.includes("Cancelling"), true);
+	/*
+	 * THE LINE IS THE SECURITY ROUND'S, NOT "Cancelling…" (2026-10-17): a stop
+	 * pressed before the provider was called is the one case that may claim no
+	 * charge, and the sentence says exactly that.
+	 */
+	assert.equal(
+		neverGenerated.includes(
+			"Stopped before the provider was called; you will not be charged.",
+		),
+		true,
+	);
+	assert.equal(neverGenerated.includes("Cancelling…"), false);
 
 	const wasGenerating = markupOf({
 		state: "cancelling",
@@ -598,6 +623,19 @@ test("a cancelling card wears the generating body only when one existed (F3)", (
 	assert.equal(wasGenerating.includes("data-imagegen-tile"), true);
 	// No fraction, no bar — the same rule the running pin below carries.
 	assert.equal(wasGenerating.includes('role="progressbar"'), false);
+	/*
+	 * AND THE OTHER SENTENCE for an in-flight stop: a REQUEST, with its billing
+	 * consequence, and the settlement check that follows it. The no-charge line
+	 * must NOT appear here — that is the inversion the split exists to prevent.
+	 */
+	assert.equal(wasGenerating.includes("Stop requested."), true);
+	assert.equal(wasGenerating.includes("Checking for settlement."), true);
+	assert.equal(
+		wasGenerating.includes(
+			"Stopped before the provider was called; you will not be charged.",
+		),
+		false,
+	);
 
 	// A running call had a generation by definition, so the tile is there.
 	const running = markupOf({
@@ -713,7 +751,16 @@ test("the mid-walk note rides under the live body, and the live affordances stay
 	assert.equal(note.includes("Generating image…"), true);
 	assert.equal(note.includes("data-imagegen-note"), true);
 	assert.equal(note.includes("out of credits"), true);
-	assert.equal(note.includes("Cancel"), true);
+	/*
+	 * The affordance is called "Stop" now, and its hint is the contract in one
+	 * line: an in-flight press REQUESTS a stop the provider may ignore (and
+	 * bill for), which is why the label is not "Cancel".
+	 */
+	assert.equal(note.includes(">Stop<"), true);
+	assert.equal(
+		note.includes("Requests a stop; the provider may finish anyway."),
+		true,
+	);
 
 	// The recovered frame: same state, the note gone — the control neither
 	// leaves nor disables, because no state the wire does not claim was painted.
@@ -729,7 +776,7 @@ test("the mid-walk note rides under the live body, and the live affordances stay
 	assert.equal(recovered.includes("data-imagegen-note"), false);
 	assert.equal(recovered.includes("out of credits"), false);
 	assert.equal(recovered.includes("data-imagegen-tile"), true);
-	assert.equal(recovered.includes("Cancel"), true);
+	assert.equal(recovered.includes(">Stop<"), true);
 });
 
 /*
@@ -1090,4 +1137,109 @@ test("the video stories' embedded MP4 decodes to a real, whole file", async () =
 	assert.equal(boxes[0], "ftyp", "the bytes open with an ftyp box");
 	assert.ok(boxes.includes("moov"), "the movie box is present");
 	assert.ok(boxes.includes("mdat"), "the media payload is present");
+});
+
+/*
+ * THE CANCEL WORDING, PINNED (security round 1, 2026-10-17; server follow-up on
+ * PR #139). Stop is a REQUEST, and only a stop pressed before the provider was
+ * called may claim no charge. These two sentences are product copy reviewed as
+ * such, so they are asserted byte-for-byte, and the inversion — the no-charge
+ * line on an in-flight stop — is asserted absent from the running frame.
+ */
+test("the cancel copy is the security round's queued/running split, byte for byte", () => {
+	const QUEUED =
+		"Stopped before the provider was called; you will not be charged.";
+	const RUNNING =
+		"Stop requested. The provider has no cancellation endpoint; the generation continues and will be charged if it produces audio. Checking for settlement.";
+
+	const queuedFrame = markupOf(
+		{
+			state: "cancelling",
+			generating: false,
+			startedAtMs: null,
+			progress: NO_PROGRESS,
+		},
+		{ onCancel: () => {} },
+	);
+	assert.equal(
+		queuedFrame.includes(QUEUED),
+		true,
+		"a queued stop states the guarantee it can keep",
+	);
+	assert.equal(
+		queuedFrame.includes(RUNNING),
+		false,
+		"and never the in-flight sentence",
+	);
+
+	const runningFrame = markupOf(
+		{
+			state: "cancelling",
+			generating: true,
+			startedAtMs: 1000,
+			progress: NO_PROGRESS,
+		},
+		{ onCancel: () => {} },
+	);
+	assert.equal(
+		runningFrame.includes(RUNNING),
+		true,
+		"an in-flight stop states the request, its cost consequence and the settlement check",
+	);
+	assert.equal(
+		runningFrame.includes(QUEUED),
+		false,
+		"and NEVER the no-charge line",
+	);
+
+	/*
+	 * THE SETTLED RECEIPT follows the same split, and prefers the tool/server
+	 * detail when the record carries one: the wire's own words outrank either
+	 * canned sentence.
+	 */
+	const settledQueued = markupOf({
+		state: "cancelled",
+		generating: false,
+		message: null,
+	});
+	assert.equal(settledQueued.includes(QUEUED), true);
+	const settledRunning = markupOf({
+		state: "cancelled",
+		generating: true,
+		message: null,
+	});
+	assert.equal(settledRunning.includes(RUNNING), true);
+	assert.equal(settledRunning.includes(QUEUED), false);
+	const settledWithDetail = markupOf({
+		state: "cancelled",
+		generating: true,
+		message: "stopped after the provider answered; billed 0.12 USD",
+	});
+	assert.equal(
+		settledWithDetail.includes(
+			"stopped after the provider answered; billed 0.12 USD",
+		),
+		true,
+		"the server's settlement detail is the receipt",
+	);
+	assert.equal(settledWithDetail.includes(RUNNING), false);
+
+	/*
+	 * THE AFFORDANCE NEVER PROMISES A GUARANTEED STOP: it is called "Stop", and
+	 * the queued frame's hint is the only one that says the press is final.
+	 */
+	assert.equal(queuedFrame.includes(">Stop<"), true);
+	assert.equal(
+		queuedFrame.includes("Stops before the provider is called."),
+		true,
+	);
+	assert.equal(runningFrame.includes(">Stop<"), true);
+	assert.equal(
+		runningFrame.includes("Requests a stop; the provider may finish anyway."),
+		true,
+	);
+	assert.equal(
+		runningFrame.includes("Stops before the provider is called."),
+		false,
+	);
 });
