@@ -193,15 +193,51 @@ import ruUiAgentsNavigation from "./catalogues/ru/ui.agents.navigation.json";
 import ruUiAgentsRefusals from "./catalogues/ru/ui.agents.refusals.json";
 import ruUiAgentsSettings from "./catalogues/ru/ui.agents.settings.json";
 import ruUiAgentsStarters from "./catalogues/ru/ui.agents.starters.json";
+import ruUiBrowserChrome from "./catalogues/ru/ui.browser.chrome.json";
+import ruUiBrowser from "./catalogues/ru/ui.browser.json";
+import ruUiCanvas from "./catalogues/ru/ui.canvas.json";
 import ruUiChatComposer from "./catalogues/ru/ui.chat.composer.json";
 import ruUiChatComposerMedia from "./catalogues/ru/ui.chat.composer_media.json";
 import ruUiChatDialogs from "./catalogues/ru/ui.chat.dialogs.json";
 import ruUiChatHeader from "./catalogues/ru/ui.chat.header.json";
 import ruUiChat from "./catalogues/ru/ui.chat.json";
 import ruUiChatSidebarView from "./catalogues/ru/ui.chat.sidebar_view.json";
+import ruUiChatTags from "./catalogues/ru/ui.chat.tags.json";
+import ruUiCodeReview from "./catalogues/ru/ui.code_review.json";
+import ruUiCommandPalette from "./catalogues/ru/ui.command_palette.json";
+import ruUiCommonAccount from "./catalogues/ru/ui.common.account.json";
+import ruUiCommonActions from "./catalogues/ru/ui.common.actions.json";
+import ruUiCommonConnection from "./catalogues/ru/ui.common.connection.json";
+import ruUiCommonEditing from "./catalogues/ru/ui.common.editing.json";
+import ruUiCommonErrors from "./catalogues/ru/ui.common.errors.json";
+import ruUiCommonForms from "./catalogues/ru/ui.common.forms.json";
+import ruUiCommonLoading from "./catalogues/ru/ui.common.loading.json";
+import ruUiCommonModels from "./catalogues/ru/ui.common.models.json";
+import ruUiCommonUpdates from "./catalogues/ru/ui.common.updates.json";
 import ruUiConsole from "./catalogues/ru/ui.console.json";
+import ruUiHubComments from "./catalogues/ru/ui.hub.comments.json";
+import ruUiHub from "./catalogues/ru/ui.hub.json";
+import ruUiHubTaxonomy from "./catalogues/ru/ui.hub.taxonomy.json";
+import ruUiInstaller from "./catalogues/ru/ui.installer.json";
+import ruUiMesh from "./catalogues/ru/ui.mesh.json";
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
+import ruUiProjects from "./catalogues/ru/ui.projects.json";
+import ruUiProviders from "./catalogues/ru/ui.providers.json";
+import ruUiSchedules from "./catalogues/ru/ui.schedules.json";
+import ruUiSettingsAccount from "./catalogues/ru/ui.settings.account.json";
+import ruUiSettingsAppearance from "./catalogues/ru/ui.settings.appearance.json";
+import ruUiSettingsAppearanceWindowGlass from "./catalogues/ru/ui.settings.appearance.window_glass.json";
+import ruUiSettingsConfiguration from "./catalogues/ru/ui.settings.configuration.json";
+import ruUiSettingsImports from "./catalogues/ru/ui.settings.imports.json";
+import ruUiSettingsIntegrations from "./catalogues/ru/ui.settings.integrations.json";
 import ruUiSettings from "./catalogues/ru/ui.settings.json";
+import ruUiSettingsModelDefaultEffort from "./catalogues/ru/ui.settings.model.default_effort.json";
+import ruUiSettingsModel from "./catalogues/ru/ui.settings.model.json";
+import ruUiSettingsModelProviderCallout from "./catalogues/ru/ui.settings.model.provider_callout.json";
+import ruUiSettingsNavigation from "./catalogues/ru/ui.settings.navigation.json";
+import ruUiSettingsShortcuts from "./catalogues/ru/ui.settings.shortcuts.json";
+import ruUiSettingsSpeech from "./catalogues/ru/ui.settings.speech.json";
+import ruUiSettingsUpdates from "./catalogues/ru/ui.settings.updates.json";
 import ruUiShell from "./catalogues/ru/ui.shell.json";
 import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
@@ -399,15 +435,51 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentsRefusals,
 		...ruUiAgentsSettings,
 		...ruUiAgentsStarters,
+		...ruUiBrowserChrome,
+		...ruUiBrowser,
+		...ruUiCanvas,
 		...ruUiChatComposer,
 		...ruUiChatComposerMedia,
 		...ruUiChatDialogs,
 		...ruUiChatHeader,
 		...ruUiChat,
 		...ruUiChatSidebarView,
+		...ruUiChatTags,
+		...ruUiCodeReview,
+		...ruUiCommandPalette,
+		...ruUiCommonAccount,
+		...ruUiCommonActions,
+		...ruUiCommonConnection,
+		...ruUiCommonEditing,
+		...ruUiCommonErrors,
+		...ruUiCommonForms,
+		...ruUiCommonLoading,
+		...ruUiCommonModels,
+		...ruUiCommonUpdates,
 		...ruUiConsole,
+		...ruUiHubComments,
+		...ruUiHub,
+		...ruUiHubTaxonomy,
+		...ruUiInstaller,
+		...ruUiMesh,
 		...ruUiOnboarding,
+		...ruUiProjects,
+		...ruUiProviders,
+		...ruUiSchedules,
+		...ruUiSettingsAccount,
+		...ruUiSettingsAppearance,
+		...ruUiSettingsAppearanceWindowGlass,
+		...ruUiSettingsConfiguration,
+		...ruUiSettingsImports,
+		...ruUiSettingsIntegrations,
 		...ruUiSettings,
+		...ruUiSettingsModelDefaultEffort,
+		...ruUiSettingsModel,
+		...ruUiSettingsModelProviderCallout,
+		...ruUiSettingsNavigation,
+		...ruUiSettingsShortcuts,
+		...ruUiSettingsSpeech,
+		...ruUiSettingsUpdates,
 		...ruUiShell,
 		...ruUiShellRail,
 	},
