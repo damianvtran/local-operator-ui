@@ -71,12 +71,18 @@ All four replacement caption PNGs and all new PNGs are **RGB, no alpha channel**
 - `voiceover-before.png` / `voiceover-after.png`, `byok-before.png` / `byok-after.png`: opaque baseline/remediation receipt pairs.
 - `receipts-remediation-after.png`: both current receipt styles together.
 - `stop-warning.png` (initial head) → `stop-warning-remediation.png` / `stop-warning-remediation-light.png`: old versus new card warning hierarchy. Both required consequence sentences remain, in one paragraph instead of two repeated note blocks.
-- `pane-stop-remediation.png`: the pane entrance uses the same confirmation; measured fieldset **512 × 119.9 CSS px**, overflow visible. Choices share y=363.4, heights **28px**, x=24 and 121.95: a horizontal row with **8px** gap, not stacked choices.
-- `refusal-remediation.png`: **Invalid arguments** in `text-meta`, unchanged error body beneath it.
-- `settlement-pending-contract.png`: human pending copy from explicit null/quote fields.
-- `settlement-billed-contract.png`: the late custom journal row goes through the real reducer and renders a billed receipt despite its empty wire `detail`.
+- `pane-stop-remediation.png`: **round 2 re-capture.** The pane entrance is the composer's own band, the last row before the box, which is where `MessageInput` mounts it; the `SoundPaneStopWarning` fixture now mirrors that production order (`CHAT_COLUMN_CONTAINER` on the pane, `CHAT_MEASURE` on both the transcript card and the band row) instead of placing the confirmation between the card and a bare textarea. Measured at a 1024 CSS px viewport: fieldset **778 × 100.4 CSS px** (the 810px column measure minus the band's 16px insets), choices horizontal at y=351.9, heights **28px**, **8px** gap; the composer box begins immediately below it. In production the same block sits above the user's textarea/Stop, so the transcript yields above it rather than the whole conversation shifting down from the pane's top edge.
+- `refusal-remediation.png`: **round 2 re-capture.** **Invalid arguments** now in `text-meta text-ink-dim` (`rgb(166,160,145)` on the dark ground, **6.24:1**) as a provenance label; the error body beneath keeps `text-ink` (`rgb(241,238,230)`, 14.03:1).
+- `settlement-pending-contract.png`: **round 2 re-capture.** Human pending copy from explicit null/quote fields, now the only pending statement: the call's line reads **Stop requested.** and the pending sentence follows it.
+- `settlement-billed-contract.png`: **round 2 re-capture.** The late custom journal row goes through the real reducer and renders a billed receipt despite its empty wire `detail`; the cancelled call's line now reads **Stop requested.** because the transcript links a terminal `audio_settle_v1` row to the sound call it follows and retires the "Checking for settlement" clause.
 
 Pending/billed settlement and refusal frames are **contract fixtures**, not final real-provider release-gate captures. State 4's final integrated capture still waits on #2588 merging; the corrected BYOK and real refusal receipts likewise remain the owning release stream's gates.
+
+### Round 2 remediation
+
+Design D6 / UX U7 (MAJOR placement): the pane's stop question left the pane column's first child and is now a row of the composer's band, directly above the box that holds Stop, threaded `chat-page` → `ChatContent` → `MessageInput` as an already-memoised element. D7 / UX U8-U9 (duplicate and stale settlement copy): the cancelled line's trailing "Checking for settlement." clause is retired whenever a settlement answers it - the card's own caption, or a later terminal `audio_settle_v1` row that the transcript links to the call by order. D8: the humanised failure class takes `text-ink-dim`. Review round 2's MINOR on sub-cent receipts: a nonzero charge under $0.00005 prints **Cost <$0.0001 (billed).** rather than rounding to an uncharged **$0**. Of the two NITs, the gate now restores focus to the composer when a sound call settles under an open question, and the card's interrupt is `onConfirmedStop` alone (no double ask for an embedder that supplies only `onStop`).
+
+The final integrated state-4 native capture is still **BLOCKED on harness #2588** and is not claimed here; the settlement frames above remain contract fixtures.
 
 ### Targeted validation
 

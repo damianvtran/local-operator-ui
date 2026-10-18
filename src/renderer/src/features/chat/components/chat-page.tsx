@@ -4287,7 +4287,16 @@ function SessionPanel({
 			data-chat-pane=""
 			className="flex h-full min-h-0 flex-col"
 		>
-			{soundStopConfirmation}
+			{/*
+			 * THE STOP QUESTION IS NOT MOUNTED HERE. A question about the
+			 * composer's own Stop used to be this column's first child, so the
+			 * answer appeared ~120px at the TOP of a full-height pane while the
+			 * control that raised it sat at the bottom: the whole conversation
+			 * shifted and focus jumped away from the press (design D6, UX U7) -
+			 * the same placement this file's send-error note rejects at 4296.
+			 * `soundStopConfirmation` now travels with the composer's other
+			 * press outcomes, into the band directly above the box.
+			 */}
 			{/*
 			 * The working directory is edited on the composer's chip, not on a bar
 			 * above the conversation. A full-width labelled input spanning the top
@@ -4541,6 +4550,7 @@ function SessionPanel({
 					 */
 					paneHasSession={paneHasSession}
 					sendError={composerSendError}
+					soundStopConfirmation={soundStopConfirmation}
 					undelivered={undeliveredTurn}
 					/*
 					 * The session's readings, straight off the canonical stream, and

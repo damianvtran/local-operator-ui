@@ -35,9 +35,11 @@
  */
 
 import { Button } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef } from "react";
+import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
 import { useInterruptOnEscape } from "../hooks/use-interrupt-on-escape";
 import { useSoundStopGate } from "./sound-stop-confirmation";
 import "../../../styles/index.css";
@@ -1103,26 +1105,60 @@ const PaneStopFixture = () => {
 		onInterrupt: stop,
 	});
 	return (
-		<div ref={paneRef} data-chat-pane="">
-			<CardFrame>
-				<ImageGenCard
-					scope={null}
-					view={runningView(
-						{ fraction: null, logs: [], queuePosition: null },
-						"voiceover",
-					)}
-					actions={{ onCancel: noop }}
-				/>
-				{confirmation}
-				<textarea
-					data-story-sound-composer=""
-					aria-label="Message"
-					className="border border-control bg-surface text-ink"
-				/>
-				<Button variant="secondary" size="sm" onClick={stop}>
-					Pane stop
-				</Button>
-			</CardFrame>
+		<div
+			ref={paneRef}
+			data-chat-pane=""
+			/*
+			 * The column the composer's measure resolves against. Production names
+			 * it once, on the element that owns the column's width; without it the
+			 * band's `CHAT_MEASURE` rows would resolve against the viewport and the
+			 * fixture would be a composition the app never paints.
+			 */
+			className={cn(CHAT_COLUMN_CONTAINER, "flex h-full min-h-0 flex-col")}
+		>
+			<div className="min-h-0 flex-1">
+				{/*
+				 * THE TRANSCRIPT SIDE OF THE SAME COLUMN: the card sits on the
+				 * composer's measure, so the fixture's two halves share one left
+				 * edge exactly as the transcript and composer do in production.
+				 */}
+				<div className={CHAT_MEASURE}>
+					<CardFrame>
+						<ImageGenCard
+							scope={null}
+							view={runningView(
+								{ fraction: null, logs: [], queuePosition: null },
+								"voiceover",
+							)}
+							actions={{ onCancel: noop }}
+						/>
+					</CardFrame>
+				</div>
+			</div>
+			{/*
+			 * PRODUCTION ORDER, MIRRORED (design D6, UX U7): the question is a row of
+			 * the composer's BAND, the last row before the box, exactly where
+			 * `MessageInput` mounts it - not between the transcript and a bare
+			 * textarea, and never above the transcript. The composer yields no
+			 * layout in the fixture; the band wrapper carries the same padding steps
+			 * the composer's own rows use, so the measured composition is the one
+			 * production paints.
+			 */}
+			<div className="w-full shrink-0 p-2">
+				{confirmation ? (
+					<div className={cn(CHAT_MEASURE, "px-4 pb-2")}>{confirmation}</div>
+				) : null}
+				<div className={cn(CHAT_MEASURE, "relative flex items-end gap-2")}>
+					<textarea
+						data-story-sound-composer=""
+						aria-label="Message"
+						className="min-w-0 flex-1 border border-control bg-surface text-ink"
+					/>
+					<Button variant="secondary" size="sm" onClick={stop}>
+						Pane stop
+					</Button>
+				</div>
+			</div>
 		</div>
 	);
 };

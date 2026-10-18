@@ -1333,6 +1333,24 @@ test("sound receipts retain billed/estimated provenance and never turn quotes in
 		pending.settlementCaption,
 		"Settlement pending — the final charge will appear once the provider reports it.",
 	);
+	/*
+	 * SUB-CENT CHARGES (review round 2, MINOR): four decimals is the receipt's
+	 * precision, and trimming it is what keeps `$0.002` from reading as
+	 * `$0.0020`. An amount below half a unit of that precision must therefore
+	 * state the BOUND instead of rounding to `$0`: a charged call printing as an
+	 * uncharged one is the one thing this receipt line exists to prevent.
+	 */
+	const subCent = (cost_usd) =>
+		imageGenCardView(
+			tool({
+				toolName: "generate_voiceover",
+				details: { cost_usd, billing_basis: "billed" },
+			}),
+		).costCaption;
+	assert.equal(subCent(0.00004), "Cost <$0.0001 (billed).");
+	assert.equal(subCent(0.000049), "Cost <$0.0001 (billed).");
+	assert.equal(subCent(0.00005), "Cost $0.0001 (billed).");
+	assert.equal(subCent(0), "Cost $0 (billed).");
 });
 
 test("audio result details survive reducer retention and settlement revisions", () => {
@@ -1553,6 +1571,42 @@ test("cancelled sound receipts retain explicit pending and completed billing fac
 	});
 	assert.equal(settled.settlementCaption, "Cost $0.0021 (billed).");
 	assert.ok(markupOf(settled).includes("Cost $0.0021 (billed)."));
+	/*
+	 * ONE FACT, ONE ROW (design D7, UX U8/U9). The settlement row below the line
+	 * IS the answer to "Checking for settlement", so keeping the clause above it
+	 * repeats the fact in the pending state and contradicts it once billed. Both
+	 * arms retire the clause; the rest of the sentence is untouched.
+	 */
+	assert.equal(
+		markupOf(imageGenCardView(record)).includes("Checking for settlement"),
+		false,
+	);
+	assert.ok(markupOf(imageGenCardView(record)).includes("Settlement pending"));
+	assert.equal(markupOf(settled).includes("Checking for settlement"), false);
+	/*
+	 * THE SAME RETIREMENT WHEN THE SETTLEMENT IS ITS OWN ROW: a terminal
+	 * `audio_settle_v1` journal row follows the call instead of amending its
+	 * details, which is how the harness actually delivers this state. The
+	 * transcript links the row to the call by order and passes `settled`; the
+	 * call's line must then stop asking, without printing a second receipt.
+	 */
+	const settledElsewhere = imageGenCardView(
+		tool({
+			toolName: "generate_voiceover",
+			stopped: true,
+			startedAt: 1_760_000_000_000,
+			output: "Stop requested. Checking for settlement.",
+		}),
+		{ settled: true },
+	);
+	assert.equal(settledElsewhere.settled, true);
+	const settledElsewhereMarkup = markupOf(settledElsewhere);
+	assert.ok(settledElsewhereMarkup.includes("Stop requested."));
+	assert.equal(
+		settledElsewhereMarkup.includes("Checking for settlement"),
+		false,
+	);
+	assert.equal(settledElsewhereMarkup.includes("Cost $"), false);
 	for (const details of [
 		{ settled: true, cost_usd: null, billing_basis: "billed" },
 		{ settled: null, cost_usd: null },
@@ -1677,6 +1731,22 @@ test("pane Stop and the production Escape accelerator share sound charge admissi
 		await press("Pane stop");
 		await press("Request stop");
 		assert.equal(calls, 1);
+		/*
+		 * THE QUESTION'S SUBJECT SETTLED UNDER IT (review round 2, NIT): the safe
+		 * choice that holds focus unmounts with the open question, so the gate must
+		 * restore the composer rather than leave the keyboard on `<body>`.
+		 */
+		await press("Pane stop");
+		assert.ok(document.querySelector("fieldset"));
+		await act(async () => root.render(h(Pane, { sound: false })));
+		assert.equal(document.querySelector("fieldset"), null);
+		assert.equal(
+			document.activeElement.tagName,
+			"TEXTAREA",
+			"a sound call settling mid-question restores the pane composer",
+		);
+		assert.equal(calls, 1);
+		await act(async () => root.render(h(Pane)));
 		await press("Stop");
 		await act(async () => root.render(h(Pane, { sound: false })));
 		assert.equal(
