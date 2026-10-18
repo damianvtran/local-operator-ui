@@ -335,8 +335,19 @@ export class BrowserHost implements BrowserActionContext {
 	readonly pageControls: PageControls;
 	/** Per-tab audio for the strip's mute control (LOH-13 slice C). Main owns
 	 * it for the reason `tabLoading` is read here: a background tab's sound
-	 * is legible only through this projection. */
-	readonly tabAudio = new TabAudioTracker(() => this.onChanged());
+	 * is legible only through this projection.
+	 *
+	 * ASSIGNED IN THE CONSTRUCTOR, NOT INITIALISED HERE. The shipping main
+	 * bundle is compiled to V8 bytecode by electron-vite, and its `vite:bytecode`
+	 * transform refuses an arrow function inside a class PROPERTY: "Unable to
+	 * transform arrow inside class property". This initialiser was that arrow,
+	 * and it failed the v0.35.0 platform builds identically on every OS, so no
+	 * update assets shipped. A constructor assignment is inside the transform's
+	 * supported shape, keeps the field `readonly`, and preserves the callback's
+	 * laziness (the tracker only stores it). Do not move it back to a field
+	 * initialiser, and keep new class fields free of arrow initialisers for the
+	 * same reason (2026-10-18). */
+	readonly tabAudio: TabAudioTracker;
 	readonly cdp: BrowserActionContext["cdp"];
 	readonly approvals: BrowserActionContext["approvals"];
 	readonly ownership: BrowserActionContext["ownership"];
@@ -371,6 +382,9 @@ export class BrowserHost implements BrowserActionContext {
 		this.downloads = options.downloads;
 		this.log = options.log;
 		this.onChanged = options.onChanged;
+		// See the field's doc comment: an arrow in a class-property initialiser is
+		// the one shape `vite:bytecode` cannot transform (v0.35.0 publish failure).
+		this.tabAudio = new TabAudioTracker(() => this.onChanged());
 		this.facts = options.facts;
 		this.forgetSiteData = options.forgetSiteData;
 	}
