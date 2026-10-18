@@ -50,6 +50,7 @@ import {
 	preferProgressDetails,
 } from "../components/trace/tool-row-model";
 import { isHarnessChromeText } from "./harness-chrome";
+import { soundCostCaption } from "./image-gen-card-model";
 import {
 	type JournalOrderRead,
 	type JournalPosition,
@@ -2385,6 +2386,17 @@ function customRow(
 	Extract<TranscriptRecord, { kind: "custom" }>,
 	"level" | "headline" | "detail" | "category" | "provider"
 > {
+	if (customType === "audio_settle_v1") {
+		// Settlement arrives after the cancelled call as its own durable row.
+		// Keep the actual receipt visible, rather than an implementation label.
+		return {
+			level: "info",
+			headline: text,
+			detail: null,
+			category: "Audio settlement",
+			provider: null,
+		};
+	}
 	if (customType === "session_incident") {
 		return { level: "error", ...incidentRow(text, details) };
 	}
@@ -3193,7 +3205,13 @@ function durableRecord(
 		if (customType === SUPPLEMENT_CUSTOM_TYPE) {
 			return supplementRecordFromDetails(ts, details, previous);
 		}
-		const text = String(details.text ?? details.detail ?? "");
+		// Terminal audio settlements deliberately have an empty `detail`.
+		// Their explicit amount/basis is the receipt, not absence of a row.
+		const settlement =
+			customType === "audio_settle_v1" && details.terminal === true
+				? soundCostCaption(details)
+				: null;
+		const text = settlement ?? String(details.text ?? details.detail ?? "");
 		// A row with nothing to say paints nothing. `trim()` rather than a falsy
 		// test, because a whitespace-only body would otherwise reach `headlineOf`
 		// and produce an empty headline — which is the shape the operator reported
