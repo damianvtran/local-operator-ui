@@ -35,7 +35,7 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/main/voice/qwen-voice";',
 			'export { gatewayEnv, QwenGatewayHost } from "./src/main/voice/qwen-gateway";',
-			'export { QwenSpeechProcess, resolveQwenPorts, s2sArgs, s2sEnv, DEFAULT_QWEN_PORTS, isOurS2s, S2S_RECORD_FILE } from "./src/main/voice/qwen-rig";',
+			'export { QwenSpeechProcess, resolveQwenPorts, s2sArgs, s2sEnv, s2sLauncherPathFor, qwenMemoryBudget, QWEN_MEM_BUDGET_BYTES, FOOTPRINT_INTERVAL_MS, DEFAULT_QWEN_PORTS, isOurS2s, S2S_RECORD_FILE } from "./src/main/voice/qwen-rig";',
 			'export { requestDesktopMedia } from "./src/main/desktop-media";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -588,6 +588,201 @@ test("s2s: relay model, offline, no inherited secrets; ports overridable only un
 	);
 });
 
+const GIB = 1024 ** 3;
+
+test("§9 layer 1: the launcher caps MLX's cache and memory before the rig's own main()", () => {
+	const source = readFileSync("resources/qwen-voice/s2s-launch.py", "utf8");
+	assert.match(source, /CACHE_LIMIT_BYTES = 1 \* GIB/);
+	assert.match(source, /mx\.set_cache_limit\(CACHE_LIMIT_BYTES\)/);
+	assert.match(
+		source,
+		/mx\.set_memory_limit\(budget_bytes\(os\.environ\.get\("LOP_QWEN_MEM_LIMIT_BYTES"\)\)\)/,
+	);
+	assert.match(
+		source,
+		/from speech_to_speech\.cli import main as speech_to_speech_main/,
+		"the rig's own entry point, not a copy of it",
+	);
+	assert.match(source, /speech_to_speech_main\(\)/);
+});
+
+test("§9: the budget is 8 GB or a quarter of RAM; LOP_QWEN_MEM_BUDGET_GB overrides it", () => {
+	assert.equal(m.qwenMemoryBudget({}, 64 * GIB), 8 * GIB);
+	assert.equal(m.qwenMemoryBudget({}, 16 * GIB), 4 * GIB);
+	assert.equal(
+		m.qwenMemoryBudget({ LOP_QWEN_MEM_BUDGET_GB: "6" }, 64 * GIB),
+		6 * GIB,
+	);
+	for (const bad of ["", "nonsense", "0", "-2"])
+		assert.equal(
+			m.qwenMemoryBudget({ LOP_QWEN_MEM_BUDGET_GB: bad }, 16 * GIB),
+			4 * GIB,
+			`${bad || "empty"} falls back to the RAM fraction`,
+		);
+});
+
+test("§9 layers 1-2: s2s runs the launcher under the rig's python, one turn is bounded", async () => {
+	const args = m.s2sArgs(m.DEFAULT_QWEN_PORTS);
+	assert.deepEqual(args.slice(-2), ["--max_speech_ms", "20000"]);
+	const spawned = [];
+	const rigDir = fakeRigDir();
+	const state = join(rigDir, "state");
+	mkdirSync(state);
+	let listening = false;
+	let alive = true;
+	const proc = new m.QwenSpeechProcess(
+		launcherPathFor(rigDir),
+		rigDir,
+		m.DEFAULT_QWEN_PORTS,
+		state,
+		{
+			probe: async () => listening,
+			sleep: async () => {
+				listening = true;
+			},
+			kill: (_pid, signal) => {
+				if (signal === "SIGTERM") alive = false;
+				if (signal === 0 && !alive) throw new Error("ESRCH");
+			},
+			spawnImpl: (file, argv, options) => {
+				spawned.push({ file, argv, options });
+				return { pid: 5001, exitCode: null, once() {} };
+			},
+		},
+	);
+	await proc.start();
+	assert.equal(spawned.length, 1);
+	assert.equal(
+		spawned[0].file,
+		join(rigDir, "s2s-venv", "bin", "python"),
+		"the rig's own interpreter, not a system python",
+	);
+	assert.equal(spawned[0].argv[0], launcherPathFor(rigDir));
+	assert.deepEqual(spawned[0].argv.slice(1), args);
+	assert.equal(
+		spawned[0].options.env.LOP_QWEN_MEM_LIMIT_BYTES,
+		String(m.qwenMemoryBudget(process.env)),
+		"layer 1's limit is the budget layer 3 enforces",
+	);
+	await proc.stop();
+	rmSync(rigDir, { recursive: true, force: true });
+});
+
+test("§9 layer 3: every 5 s the group footprint is read; over budget the rig is stopped", async () => {
+	const rigDir = fakeRigDir();
+	const state = join(rigDir, "state");
+	mkdirSync(state);
+	const intervals = [];
+	const exceeded = [];
+	const signals = [];
+	let alive = true;
+	let spawned = false;
+	let used = 0;
+	const proc = new m.QwenSpeechProcess(
+		launcherPathFor(rigDir),
+		rigDir,
+		m.DEFAULT_QWEN_PORTS,
+		state,
+		{
+			probe: async () => spawned,
+			sleep: async () => {},
+			kill: (pid, signal) => {
+				signals.push([pid, signal]);
+				if (signal === "SIGTERM" && pid === -6001) alive = false;
+				if (signal === 0 && !alive) throw new Error("ESRCH");
+			},
+			spawnImpl: () => {
+				spawned = true;
+				return { pid: 6001, exitCode: null, once() {} };
+			},
+			budgetBytes: 1_000,
+			footprint: () => used,
+			onBudgetExceeded: (limit) => exceeded.push(limit),
+			setInterval: (fn, ms) => {
+				const handle = { fn, ms, cleared: false, unref() {} };
+				intervals.push(handle);
+				return handle;
+			},
+			clearInterval: (handle) => {
+				handle.cleared = true;
+			},
+		},
+	);
+	await proc.start();
+	assert.equal(intervals.length, 1);
+	assert.equal(intervals[0].ms, 5_000);
+	used = 999;
+	intervals[0].fn();
+	assert.deepEqual(exceeded, [], "under budget: nothing is stopped");
+	assert.equal(intervals[0].cleared, false);
+	used = 1_001;
+	intervals[0].fn();
+	assert.deepEqual(exceeded, [1_000], "the owner is told the budget");
+	assert.equal(intervals[0].cleared, true, "the poll stops with the process");
+	assert.deepEqual(signals[0], [-6001, "SIGTERM"], "by the group, as always");
+	await new Promise((resolve) => setImmediate(resolve));
+	rmSync(rigDir, { recursive: true, force: true });
+});
+
+test("§9 layer 3: an unreadable footprint is not a reason to stop a working rig", async () => {
+	const rigDir = fakeRigDir();
+	const state = join(rigDir, "state");
+	mkdirSync(state);
+	const intervals = [];
+	const exceeded = [];
+	let alive = true;
+	let spawned = false;
+	const proc = new m.QwenSpeechProcess(
+		launcherPathFor(rigDir),
+		rigDir,
+		m.DEFAULT_QWEN_PORTS,
+		state,
+		{
+			probe: async () => spawned,
+			sleep: async () => {},
+			kill: (_pid, signal) => {
+				if (signal === "SIGTERM") alive = false;
+				if (signal === 0 && !alive) throw new Error("ESRCH");
+			},
+			spawnImpl: () => {
+				spawned = true;
+				return { pid: 7001, exitCode: null, once() {} };
+			},
+			budgetBytes: 1_000,
+			footprint: () => null,
+			onBudgetExceeded: (limit) => exceeded.push(limit),
+			setInterval: (fn, ms) => {
+				const handle = { fn, ms, cleared: false, unref() {} };
+				intervals.push(handle);
+				return handle;
+			},
+			clearInterval: (handle) => {
+				handle.cleared = true;
+			},
+		},
+	);
+	await proc.start();
+	intervals[0].fn();
+	assert.deepEqual(exceeded, []);
+	assert.equal(intervals[0].cleared, false);
+	await proc.stop();
+	rmSync(rigDir, { recursive: true, force: true });
+});
+
+test("Q12: the guard's own sentence wins over the start path's \"exited during start\"", async () => {
+	const r = rig();
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	r.voice.budgetExceeded(8 * GIB);
+	assert.equal(r.voice.getStatus().rig, "error");
+	assert.equal(
+		r.voice.getStatus().reason,
+		"Voice stopped: it used more than 8 GB",
+	);
+	assert.equal(r.calls.speechStop >= 1, true, "the rig is stopped too");
+});
+
 test("s2s is stopped by its recorded PROCESS GROUP, SIGTERM then SIGKILL, idempotently", async () => {
 	const signals = [];
 	let alive = true;
@@ -597,6 +792,7 @@ test("s2s is stopped by its recorded PROCESS GROUP, SIGTERM then SIGKILL, idempo
 		once() {},
 	};
 	const proc = new m.QwenSpeechProcess(
+		"/rig/qwen-voice/s2s-launch.py",
 		"/nonexistent-rig",
 		m.DEFAULT_QWEN_PORTS,
 		"/tmp",
@@ -677,6 +873,11 @@ test("Q12: with the rig absent the Gateway is never forked, and the start names 
  * alive, leads the recorded group and runs THIS rig's s2s on the relay model.
  * Anything else holding the port keeps the "Port ... is in use" error.
  */
+/** The launcher this app runs in place of the rig's console script. */
+function launcherPathFor(rigDir) {
+	return join(rigDir, "qwen-voice", "s2s-launch.py");
+}
+
 function fakeRigDir() {
 	const root = mkdtempSync(join(tmpdir(), `qv-rig-${process.pid}-`));
 	for (const dir of [
@@ -685,6 +886,7 @@ function fakeRigDir() {
 		"hf-cache",
 	])
 		mkdirSync(join(root, dir), { recursive: true });
+	writeFileSync(join(root, "s2s-venv", "bin", "python"), "");
 	writeFileSync(join(root, "s2s-venv", "bin", "speech-to-speech"), "");
 	writeFileSync(
 		join(root, "qwa", "node_modules", "qwen-audio-agent", "package.json"),
@@ -704,27 +906,33 @@ function orphanCase({ command, pgid = 777 }) {
 	let portHeld = true;
 	const signals = [];
 	const spawned = [];
-	const proc = new m.QwenSpeechProcess(rigDir, m.DEFAULT_QWEN_PORTS, state, {
-		inspect: (pid) =>
-			pid === 777 && portHeld ? { pgid, command: command(rigDir) } : null,
-		kill: (pid, signal) => {
-			signals.push([pid, signal]);
-			if (signal === "SIGTERM" && pid === -777) portHeld = false;
-			if (signal === 0 && !portHeld) throw new Error("ESRCH");
+	const proc = new m.QwenSpeechProcess(
+		launcherPathFor(rigDir),
+		rigDir,
+		m.DEFAULT_QWEN_PORTS,
+		state,
+		{
+			inspect: (pid) =>
+				pid === 777 && portHeld ? { pgid, command: command(rigDir) } : null,
+			kill: (pid, signal) => {
+				signals.push([pid, signal]);
+				if (signal === "SIGTERM" && pid === -777) portHeld = false;
+				if (signal === 0 && !portHeld) throw new Error("ESRCH");
+			},
+			probe: async () => portHeld,
+			sleep: async () => {},
+			spawnImpl: () => {
+				const child = {
+					pid: 9001,
+					exitCode: null,
+					once() {},
+				};
+				spawned.push(child);
+				portHeld = true; // the new s2s listens at once
+				return child;
+			},
 		},
-		probe: async () => portHeld,
-		sleep: async () => {},
-		spawnImpl: () => {
-			const child = {
-				pid: 9001,
-				exitCode: null,
-				once() {},
-			};
-			spawned.push(child);
-			portHeld = true; // the new s2s listens at once
-			return child;
-		},
-	});
+	);
 	return { proc, signals, spawned, rigDir, state };
 }
 
@@ -749,6 +957,42 @@ test("ORPHAN: a recorded s2s of THIS rig left by a SIGKILLed app is reaped by gr
 	await c.proc.stop();
 	assert.equal(existsSync(join(c.state, m.S2S_RECORD_FILE)), false);
 	rmSync(c.rigDir, { recursive: true, force: true });
+});
+
+test("ORPHAN: the launcher this app starts now is recognised as our s2s; a stray python is not", () => {
+	const rig = "/rig";
+	const record = { pid: 5, pgid: 5 };
+	const facts = (command) => ({ pgid: 5, command });
+	assert.equal(
+		m.isOurS2s(
+			facts(
+				"/rig/s2s-venv/bin/python /app/resources/qwen-voice/s2s-launch.py serve --model_name lop-relay",
+			),
+			record,
+			rig,
+		),
+		true,
+		"the shape this app spawns",
+	);
+	assert.equal(
+		m.isOurS2s(
+			facts("/rig/s2s-venv/bin/speech-to-speech serve --model_name lop-relay"),
+			record,
+			rig,
+		),
+		true,
+		"a rig started by an older build is still ours to reap",
+	);
+	assert.equal(
+		m.isOurS2s(
+			facts(
+				"/rig/s2s-venv/bin/python /tmp/other.py serve --model_name lop-relay",
+			),
+			record,
+			rig,
+		),
+		false,
+	);
 });
 
 test("ORPHAN: a port holder that is not ours is NEVER killed, and the clear error stays", async () => {
@@ -791,21 +1035,27 @@ test("ORPHAN: an s2s that dies under us reports an unexpected exit once and clea
 	let exitListener = null;
 	let listening = false;
 	const exits = [];
-	const proc = new m.QwenSpeechProcess(rigDir, m.DEFAULT_QWEN_PORTS, state, {
-		probe: async () => listening,
-		sleep: async () => {
-			listening = true;
-		},
-		kill: () => {},
-		onUnexpectedExit: (detail) => exits.push(detail),
-		spawnImpl: () => ({
-			pid: 4321,
-			exitCode: null,
-			once: (_event, listener) => {
-				exitListener = listener;
+	const proc = new m.QwenSpeechProcess(
+		launcherPathFor(rigDir),
+		rigDir,
+		m.DEFAULT_QWEN_PORTS,
+		state,
+		{
+			probe: async () => listening,
+			sleep: async () => {
+				listening = true;
 			},
-		}),
-	});
+			kill: () => {},
+			onUnexpectedExit: (detail) => exits.push(detail),
+			spawnImpl: () => ({
+				pid: 4321,
+				exitCode: null,
+				once: (_event, listener) => {
+					exitListener = listener;
+				},
+			}),
+		},
+	);
 	await proc.start();
 	assert.equal(existsSync(join(state, m.S2S_RECORD_FILE)), true);
 	exitListener(null, "SIGKILL");

@@ -135,7 +135,9 @@ import { QwenGatewayHost, launcherPathFor } from "./voice/qwen-gateway";
 import {
 	DEFAULT_QWEN_RIG_DIR,
 	QwenSpeechProcess,
+	qwenMemoryBudget,
 	resolveQwenPorts,
+	s2sLauncherPathFor,
 } from "./voice/qwen-rig";
 import { QwenVoice } from "./voice/qwen-voice";
 import { resolveLaunchWindowChrome } from "./window-chrome";
@@ -1508,6 +1510,8 @@ let mainWindow: BrowserWindow | null = null;
 const qwenPorts = resolveQwenPorts(process.env.LOP_QWEN_PORTS, app.isPackaged);
 const qwenRigDir = process.env.LOP_QWEN_RIG_DIR || DEFAULT_QWEN_RIG_DIR;
 const qwenStateDir = join(app.getPath("userData"), "qwen-voice");
+/** Layers 1 and 3 share this one number (§9). */
+const qwenMemBudgetBytes = qwenMemoryBudget(process.env);
 const qwenVoice: QwenVoice = new QwenVoice({
 	gateway: new QwenGatewayHost(
 		launcherPathFor(app.getAppPath(), process.resourcesPath, app.isPackaged),
@@ -1537,10 +1541,18 @@ const qwenVoice: QwenVoice = new QwenVoice({
 		(message) => logger.info(message, LogFileType.BACKEND),
 		(detail) => qwenVoice.processExited("gateway", detail),
 	),
-	speech: new QwenSpeechProcess(qwenRigDir, qwenPorts, qwenStateDir, {
-		log: (message) => logger.info(message, LogFileType.BACKEND),
-		onUnexpectedExit: (detail) => qwenVoice.processExited("speech", detail),
-	}),
+	speech: new QwenSpeechProcess(
+		s2sLauncherPathFor(app.getAppPath(), process.resourcesPath, app.isPackaged),
+		qwenRigDir,
+		qwenPorts,
+		qwenStateDir,
+		{
+			log: (message) => logger.info(message, LogFileType.BACKEND),
+			onUnexpectedExit: (detail) => qwenVoice.processExited("speech", detail),
+			budgetBytes: qwenMemBudgetBytes,
+			onBudgetExceeded: (limit) => qwenVoice.budgetExceeded(limit),
+		},
+	),
 	toRenderer: (channel, payload) => {
 		const window = mainWindow;
 		if (!window || window.isDestroyed()) return false;
