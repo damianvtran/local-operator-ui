@@ -145,7 +145,9 @@ export type CanonicalSessionRow = {
 	 * terminal, or another window.
 	 */
 	pinned?: boolean;
+	/** Durable assignments; absence supports backends predating session_tags. */
 	tags?: TagRef[];
+	/** Explicit primary ID (a member of tags), or null for Untagged. */
 	primary?: string | null;
 	/**
 	 * The backend's ARCHIVE state for this conversation, as the catalogue row

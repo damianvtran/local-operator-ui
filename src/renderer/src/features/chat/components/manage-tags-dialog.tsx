@@ -13,13 +13,14 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useSessionTagsStore } from "@shared/store/session-tags-store";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
 	DesiredTag,
 	TagCategory,
 } from "../../../../../shared/desktop-contract";
 
-/** Registry operations are durable immediately; Done only closes the manager.
+/** Registry changes stay local until one desired-state Apply. Cancel cannot
+ * mutate shared categories, assignments or the picker draft that opened this dialog.
  * Explicit ID-bearing replacements preserve assignments and their primary tag.
  */
 export function ManageTagsDialog({
@@ -34,13 +35,28 @@ export function ManageTagsDialog({
 		fetchCategories,
 		replaceCategories,
 	} = useSessionTagsStore();
+	const [draft, setDraft] = useState<DesiredTag[]>(() =>
+		categories.map(({ id, name }) => ({ id, name })),
+	);
+	const [initialized, setInitialized] = useState(
+		!loading && loadError === null,
+	);
+	useEffect(() => {
+		if (!initialized && !loading && loadError === null) {
+			setDraft(categories.map(({ id, name }) => ({ id, name })));
+			setInitialized(true);
+		}
+	}, [categories, initialized, loading, loadError]);
 	const [name, setName] = useState("");
 	const [renaming, setRenaming] = useState<string | null>(null);
 	const [rename, setRename] = useState("");
-	const [deleting, setDeleting] = useState<TagCategory | null>(null);
+	const [deleting, setDeleting] = useState<Pick<
+		TagCategory,
+		"id" | "name" | "conversations"
+	> | null>(null);
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [retry, setRetry] = useState<(() => void) | null>(null);
+	const [retry, setRetry] = useState(false);
 	const root = useRef<HTMLDivElement>(null);
 	const addInput = useRef<HTMLInputElement>(null);
 	const focusRow = (id?: string) => {
@@ -53,28 +69,41 @@ export function ManageTagsDialog({
 			(target ?? addInput.current)?.focus();
 		});
 	};
-	const save = async (desired: DesiredTag[], after: () => void) => {
+	const tagKey = (tag: DesiredTag) => tag.id ?? `new:${tag.name}`;
+	const uniqueName = (value: string, except?: string) => {
+		if (!value.trim()) return false;
+		if (
+			draft.some(
+				(tag) =>
+					tagKey(tag) !== except &&
+					tag.name.toLocaleLowerCase() === value.trim().toLocaleLowerCase(),
+			)
+		) {
+			setError(t("ui.chat.tags.duplicate_name", { name: value.trim() }));
+			setRetry(false);
+			return false;
+		}
+		setError(null);
+		return true;
+	};
+	const apply = async () => {
 		setPending(true);
 		setError(null);
-		setRetry(() => () => void save(desired, after));
+		setRetry(true);
 		try {
-			await replaceCategories(desired);
-			after();
+			await replaceCategories(draft);
+			onClose();
 		} catch (cause) {
 			setError(userFacingMessage(cause, t("ui.chat.tags.save_failed")));
 		} finally {
 			setPending(false);
 		}
 	};
-	const desired = categories.map(({ id, name: tagName }) => ({
-		id,
-		name: tagName,
-	}));
 	const move = (index: number, delta: number) => {
-		const next = [...desired];
+		const next = [...draft];
 		[next[index], next[index + delta]] = [next[index + delta], next[index]];
-		const id = categories[index].id;
-		void save(next, () => focusRow(id));
+		setDraft(next);
+		focusRow(tagKey(draft[index]));
 	};
 	return (
 		<Dialog
@@ -127,34 +156,32 @@ export function ManageTagsDialog({
 						</div>
 					) : (
 						<>
-							{categories.length === 0 && (
+							{draft.length === 0 && (
 								<p className="text-body-sm text-ink-muted">
 									{t("ui.chat.tags.empty")}
 								</p>
 							)}
 							<ol>
-								{categories.map((tag, index) => (
+								{draft.map((tag, index) => (
 									<li
-										key={tag.id}
-										data-tag-id={tag.id}
+										key={tagKey(tag)}
+										data-tag-id={tagKey(tag)}
 										className="flex min-h-9 items-center gap-1 border-hairline border-b py-1"
 									>
-										{renaming === tag.id ? (
+										{renaming === tagKey(tag) ? (
 											<form
 												className="flex min-w-0 flex-1 gap-1"
 												onSubmit={(event) => {
 													event.preventDefault();
-													void save(
-														desired.map((item) =>
-															item.id === tag.id
-																? { ...item, name: rename.trim() }
-																: item,
+													if (!uniqueName(rename, tagKey(tag))) return;
+													const next = { ...tag, name: rename.trim() };
+													setDraft(
+														draft.map((item, at) =>
+															at === index ? next : item,
 														),
-														() => {
-															setRenaming(null);
-															focusRow(tag.id);
-														},
 													);
+													setRenaming(null);
+													focusRow(tagKey(next));
 												}}
 											>
 												<Input
@@ -178,7 +205,7 @@ export function ManageTagsDialog({
 													disabled={pending}
 													onClick={() => {
 														setRenaming(null);
-														focusRow(tag.id);
+														focusRow(tagKey(tag));
 													}}
 												>
 													{t("ui.chat.tags.cancel")}
@@ -209,7 +236,7 @@ export function ManageTagsDialog({
 													aria-label={t("ui.chat.tags.move_down", {
 														name: tag.name,
 													})}
-													disabled={pending || index === categories.length - 1}
+													disabled={pending || index === draft.length - 1}
 													onClick={() => move(index, 1)}
 												>
 													<ChevronDown aria-hidden="true" />
@@ -218,7 +245,7 @@ export function ManageTagsDialog({
 													variant="ghost"
 													disabled={pending}
 													onClick={() => {
-														setRenaming(tag.id);
+														setRenaming(tagKey(tag));
 														setRename(tag.name);
 													}}
 												>
@@ -227,7 +254,16 @@ export function ManageTagsDialog({
 												<Button
 													variant="ghost"
 													disabled={pending}
-													onClick={() => setDeleting(tag)}
+													onClick={() =>
+														setDeleting({
+															id: tagKey(tag),
+															name: tag.name,
+															conversations:
+																categories.find(
+																	(category) => category.id === tag.id,
+																)?.conversations ?? 0,
+														})
+													}
 												>
 													{t("ui.chat.tags.delete")}
 												</Button>
@@ -270,18 +306,16 @@ export function ManageTagsDialog({
 									variant="danger"
 									disabled={pending}
 									onClick={() => {
-										const index = categories.findIndex(
-											(tag) => tag.id === deleting.id,
+										const index = draft.findIndex(
+											(tag) => tagKey(tag) === deleting.id,
 										);
-										const focus =
-											categories[index + 1]?.id ?? categories[index - 1]?.id;
-										void save(
-											desired.filter((tag) => tag.id !== deleting.id),
-											() => {
-												setDeleting(null);
-												focusRow(focus);
-											},
+										const next = draft.filter(
+											(tag) => tagKey(tag) !== deleting.id,
 										);
+										const focus = next[index] ?? next[index - 1];
+										setDraft(next);
+										setDeleting(null);
+										focusRow(focus ? tagKey(focus) : undefined);
 									}}
 								>
 									{t("ui.chat.tags.delete_tag")}
@@ -293,10 +327,10 @@ export function ManageTagsDialog({
 						className="flex gap-2"
 						onSubmit={(event) => {
 							event.preventDefault();
-							void save([...desired, { name: name.trim() }], () => {
-								setName("");
-								addInput.current?.focus();
-							});
+							if (!uniqueName(name)) return;
+							setDraft([...draft, { name: name.trim() }]);
+							setName("");
+							addInput.current?.focus();
 						}}
 					>
 						<Input
@@ -318,15 +352,30 @@ export function ManageTagsDialog({
 					{error && (
 						<div role="alert" className="text-body-sm text-danger">
 							<p>{error}</p>
-							<Button disabled={pending} onClick={() => retry?.()}>
-								{t("ui.chat.tags.retry")}
-							</Button>
+							{retry && (
+								<Button disabled={pending} onClick={() => void apply()}>
+									{t("ui.chat.tags.retry")}
+								</Button>
+							)}
 						</div>
 					)}
 				</div>
 				<DialogFooter>
-					<Button disabled={pending} onClick={onClose}>
-						{t("ui.chat.tags.done")}
+					<Button variant="ghost" disabled={pending} onClick={onClose}>
+						{t("ui.chat.tags.cancel")}
+					</Button>
+					<Button
+						disabled={
+							pending ||
+							loading ||
+							loadError !== null ||
+							!initialized ||
+							renaming !== null ||
+							deleting !== null
+						}
+						onClick={() => void apply()}
+					>
+						{pending ? t("ui.chat.tags.applying") : t("ui.chat.tags.apply")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

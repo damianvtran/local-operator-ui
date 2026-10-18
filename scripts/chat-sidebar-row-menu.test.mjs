@@ -585,7 +585,7 @@ test("the withdrawn panel carries no trigger, and the menu exists only where a c
 	 */
 	const withdrawn = between(
 		SIDEBAR_CODE,
-		"if (!pinsEnabled && !archiveEnabled) {",
+		"if (!menuEnabled) {",
 		"const bothControls =",
 	);
 	assert.equal(

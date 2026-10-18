@@ -117,6 +117,7 @@ type Props = {
 	view: SidebarView;
 	counts?: ViewMenuCounts;
 	tagsAvailable?: boolean;
+	tagsEmpty?: boolean;
 	onManageTags?: () => void;
 	/** Called with the WHOLE next view - the model returns complete values. */
 	onView: (view: SidebarView) => void;
@@ -184,6 +185,7 @@ export function ChatSidebarViewMenu({
 	counts,
 	onView,
 	tagsAvailable = false,
+	tagsEmpty = false,
 	onManageTags,
 }: Props) {
 	// Refresh all option/section labels when the backend-owned locale changes.
@@ -361,6 +363,11 @@ export function ChatSidebarViewMenu({
 							{t("ui.chat.tags.manage")}
 						</Button>
 					</div>
+					{view.tagsEnabled && tagsEmpty && (
+						<p className="px-1 pb-1 text-meta text-ink-muted">
+							{t("ui.chat.tags.none_yet")}
+						</p>
+					)}
 					<span id="sidebar-tags-help" className="sr-only">
 						{t("ui.chat.tags.discovery")}
 					</span>

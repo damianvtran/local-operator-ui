@@ -66,6 +66,7 @@ import { Tooltip, TooltipProvider } from "@shared/components/ui/tooltip";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	CATALOGUE_HEAD_PAGE,
@@ -984,6 +985,7 @@ export function ChatSidebar({
 	onSelectConversation,
 	onStageDraft,
 }: Props) {
+	useI18nLocale();
 	const navigate = useNavigate();
 	const location = useLocation();
 	const requestPanel = usePanelPresentationStore((state) => state.requestPanel);
@@ -1365,6 +1367,7 @@ export function ChatSidebar({
 		"session_tags",
 	);
 	const tagCategories = useSessionTagsStore((state) => state.categories);
+	const tagCategoriesLoading = useSessionTagsStore((state) => state.loading);
 	const fetchTagCategories = useSessionTagsStore(
 		(state) => state.fetchCategories,
 	);
@@ -4089,7 +4092,10 @@ export function ChatSidebar({
 		const groups = groupChatsByTag(
 			rows,
 			tagCategories,
-			tagsAvailable && view.tagsEnabled && view.groupBy === "section" && !query,
+			tagsAvailable &&
+				view.tagsEnabled &&
+				view.groupBy === "section" &&
+				!query.trim(),
 		);
 		if (!groups) return rows.map((row) => sessionRow(row));
 		return groups.map((bucket) => (
@@ -5074,7 +5080,7 @@ export function ChatSidebar({
 				{box}
 			</Tooltip>
 		);
-		if (!pinsEnabled && !archiveEnabled) {
+		if (!menuEnabled) {
 			return withFlyout(
 				<div
 					onBlur={keepFlyoutWhileFocusStaysInRow}
@@ -5960,7 +5966,7 @@ export function ChatSidebar({
 				 * chord would be a hint for a gesture that does nothing. It is drawn from the
 				 * sidebar's own `unstarted` statement (`forkable`, above).
 				 *
-				 * THE MENU'S CAP IS SEVEN ROWS, and the rule - not a number - is what the design
+				 * THE MENU'S CAP IS EIGHT ROWS, and the rule - not a number - is what the design
 				 * record now concludes with: a row earns its place by being an act on THIS row
 				 * that has NO OTHER DOOR THE USER CAN FIND. Archive and Pin qualify (the strip's
 				 * pair is `tabIndex={-1}` and reachable only through chords the row prints
@@ -5976,9 +5982,9 @@ export function ChatSidebar({
 				 * inline editor is threaded the page's own `sessionId` (`chat-page.tsx`), and
 				 * `/rename` from the composer or the palette is the pane's too, so for a row the
 				 * user has NOT opened NEITHER door reaches it - which is the whole asymmetry the
-				 * row menu exists for. Each raise moved the number rather than replacing a row,
+				 * row menu exists for. Tags is the eighth, one row-scoped picker rather than one item per category. Each raise moved the number rather than replacing a row,
 				 * and the cap's widest state is a pinned row, where the Move rows draw their full
-				 * chords - it now draws SEVEN rows, so the pinned-row frame and its measurement
+				 * chords - it now draws EIGHT rows, so the pinned-row frame and its measurement
 				 * are re-derived in the evidence pass
 				 * (`docs/evidence/chat-sidebar-row-context-menu/README.md`); the five-row panel this
 				 * note used to carry (296 × 184 at a 280px sidebar) no longer describes it, and no
@@ -9483,11 +9489,6 @@ export function ChatSidebar({
 					key={tagRow.session_id}
 					row={tagRow}
 					onClose={() => setTagRow(null)}
-					onManage={() => {
-						// The picker-to-manager path keeps the row's stable return identity.
-						setTagRow(null);
-						setManageTagsOpen(true);
-					}}
 					returnFocus={returnTagsFocus}
 				/>
 			)}
@@ -9628,6 +9629,9 @@ export function ChatSidebar({
 									view={view}
 									counts={viewCounts}
 									tagsAvailable={tagsAvailable}
+									tagsEmpty={
+										!tagCategoriesLoading && tagCategories.length === 0
+									}
 									onManageTags={() => {
 										tagsInvoker.current = document.querySelector<HTMLElement>(
 											"[data-sidebar-view-options]",

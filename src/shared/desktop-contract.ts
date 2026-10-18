@@ -2048,6 +2048,28 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			completionToken: z.string().uuid(),
 		})
 		.strict(),
+	// Registry writes and assignments carry desired state, making retries idempotent.
+	z
+		.object({ op: z.literal("tags.list") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("tags.replace"),
+			tags: z.array(
+				z.object({ id: z.string().optional(), name: z.string() }).strict(),
+			),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.tags"),
+			sessionId,
+			// Whole desired assignment, not a toggle; identity survives a display rename.
+			tags: z.array(z.string()),
+			// Explicit grouping choice: one assigned tag ID, or null when untagged.
+			primary: z.string().nullable(),
+		})
+		.strict(),
 	/*
 	 * Pin or unpin a conversation, in the SHARED pin store the terminal's `f10`
 	 * writes (`local_operator/tui/sidebar_pins.py`), so a conversation pinned in
@@ -2068,26 +2090,6 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 * Deliberately NOT a `MESSAGE_OPS` member (see `desktopRequestByteBudget`):
 	 * a boolean and a 12-char id are not prose, so this costs the control budget.
 	 */
-	// Registry writes and assignments carry desired state, making retries idempotent.
-	z
-		.object({ op: z.literal("tags.list") })
-		.strict(),
-	z
-		.object({
-			op: z.literal("tags.replace"),
-			tags: z.array(
-				z.object({ id: z.string().optional(), name: z.string() }).strict(),
-			),
-		})
-		.strict(),
-	z
-		.object({
-			op: z.literal("sessions.tags"),
-			sessionId,
-			tags: z.array(z.string()),
-			primary: z.string().nullable(),
-		})
-		.strict(),
 	z
 		.object({
 			op: z.literal("sessions.pin"),

@@ -122,7 +122,7 @@ test("grouping is suspended outside Time sections and while searching", () => {
 	);
 	assert.match(
 		source,
-		/tagsAvailable &&[\s\S]*?view.tagsEnabled &&[\s\S]*?view.groupBy === "section" &&[\s\S]*?!query/,
+		/tagsAvailable &&[\s\S]*?view.tagsEnabled &&[\s\S]*?view.groupBy === "section" &&[\s\S]*?!query\.trim\(\)/,
 	);
 });
 test("parser accepts only boolean tagsEnabled and retains it across mode changes", () => {
@@ -295,4 +295,44 @@ test("clear uses one assignment and settles the canonical row on the response", 
 	);
 	assert.deepEqual(canonical.getState().sessions[0].tags, []);
 	assert.equal(canonical.getState().sessions[0].primary, null);
+});
+
+test("management has one explicit desired-state write and buffered local operations", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/manage-tags-dialog.tsx",
+		"utf8",
+	);
+	assert.equal(source.split("await replaceCategories(").length - 1, 1);
+	assert.ok(source.includes("await replaceCategories(draft)"));
+	assert.ok(source.includes("setDraft(next)"));
+	assert.ok(source.includes('t("ui.chat.tags.cancel")'));
+	assert.ok(source.includes('t("ui.chat.tags.apply")'));
+	assert.ok(!source.includes('t("ui.chat.tags.done")'));
+});
+test("assignment confirms the exact grouped or Untagged success copy after the write", () => {
+	const copy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.tags.json", "utf8"),
+	);
+	assert.equal(
+		copy["ui.chat.tags.updated_grouped"],
+		"Tags updated. Grouped under {tag}.",
+	);
+	assert.equal(
+		copy["ui.chat.tags.updated_untagged"],
+		"Tags updated. Shown under Untagged.",
+	);
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-session-tags-dialog.tsx",
+		"utf8",
+	);
+	assert.ok(
+		source.indexOf("showSuccessToast(") >
+			source.indexOf("await assignSessionTags("),
+	);
+	assert.ok(
+		source.includes(
+			't("ui.chat.tags.updated_grouped", { tag: primaryTag.name })',
+		),
+	);
+	assert.ok(source.includes('t("ui.chat.tags.updated_untagged")'));
 });
