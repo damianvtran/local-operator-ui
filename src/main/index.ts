@@ -143,7 +143,11 @@ import {
 	type ResolvedLaunchGlass,
 	resolveLaunchWindowGlass,
 } from "./window-glass";
-import { openVettedExternal, popupVerdict } from "./window-guards";
+import {
+	type LoopbackPageAllowance,
+	openVettedExternal,
+	popupVerdict,
+} from "./window-guards";
 import {
 	guardDownloads,
 	guardNavigation,
@@ -823,12 +827,20 @@ const trustedRendererDocuments = (): readonly string[] => [
  * (`window.open` and the `open-external` IPC both land here). The scheme and
  * shape rules are `window-guards.ts`'s; this binds them to `shell`, and the
  * outcome travels to whoever asked (round-2 R-4).
+ *
+ * `loopbackPage` is main's own allowance for the voice WebUI and is never
+ * reachable from a renderer: both renderer doors call this with the URL alone
+ * (`guardWindowOpen` and the `open-external` handler below).
  */
-const openExternalVetted = (raw: unknown): Promise<ExternalOpenOutcome> =>
+const openExternalVetted = (
+	raw: unknown,
+	loopbackPage?: LoopbackPageAllowance,
+): Promise<ExternalOpenOutcome> =>
 	openVettedExternal(
 		raw,
 		(url) => shell.openExternal(url),
 		(message) => logger.warn(message, LogFileType.BACKEND),
+		loopbackPage,
 	);
 
 /**
@@ -1536,16 +1548,17 @@ const qwenVoice: QwenVoice = new QwenVoice({
 		return true;
 	},
 	/*
-	 * The WebUI is where Ben talks in slice 2 (design Q9). Opened with `shell`
-	 * directly, not `openExternalVetted`: that door refuses loopback hosts on
-	 * purpose (it is the renderer's), and this URL is built by main from its own
-	 * port, never from renderer input. An agent-driven run opens nothing: it
-	 * must never take the operator's browser focus.
+	 * The WebUI is where Ben talks in slice 2 (design Q9). Through the one vetted
+	 * door, so `shell.openExternal` keeps its two call sites: the door refuses
+	 * loopback for renderer input, and the allowance admits exactly the page the
+	 * Gateway serves on the port main launched it on (`http://127.0.0.1:<port>/`),
+	 * nothing else on that host. An agent-driven run opens nothing: it must never
+	 * take the operator's browser focus.
 	 */
 	openWebUi: (url) => {
 		if (windowLaunch.mode !== "normal" || process.env.LOP_QWEN_NO_WEBUI === "1")
 			return;
-		void shell.openExternal(url);
+		void openExternalVetted(url, { port: qwenPorts.gateway });
 	},
 	log: (message) => logger.info(message, LogFileType.BACKEND),
 });

@@ -819,6 +819,18 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 		 * below); the record's own exactly-once rule is `relaunch-pending`'s and is
 		 * covered by `scripts/relaunch-during-quit-proof.test.mjs`, not restated here.
 		 */
+		/*
+		 * The voice rig's synchronous stop, which the handler runs above the
+		 * owned-cleanup guard. Counted, not merely supplied: a stub that only
+		 * silenced `qwenVoice is not defined` would stay green if the call were
+		 * removed, which is the regression it exists to catch.
+		 */
+		const qwenVoiceStub = {
+			stops: 0,
+			stopNow() {
+				this.stops++;
+			},
+		};
 		const relaunchPendingStub = {
 			scheduled: [],
 			hasPending: () => false,
@@ -853,6 +865,7 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 			backendService,
 			viewerEndpoint: viewerEndpointStub,
 			viewerRecord: viewerRecordStub,
+			qwenVoice: qwenVoiceStub,
 			activeUpdateService: null,
 			relaunchPending: relaunchPendingStub,
 			logger: { error: (message) => errors.push(String(message)) },
@@ -881,11 +894,19 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 				prevented++;
 			},
 		});
+		assert.equal(
+			qwenVoiceStub.stops,
+			1,
+			"one will-quit pass stops the voice rig exactly once",
+		);
 		app.emit("will-quit", {
 			preventDefault() {
 				prevented++;
 			},
 		});
+		// Once per pass, not once per quit: the handler is re-entered by design and
+		// `stopNow` is idempotent, so the second pass stops it again.
+		assert.equal(qwenVoiceStub.stops, 2);
 		assert.equal(stops, 1);
 		assert.equal(quit, 0);
 		assert.equal(prevented, 2);
