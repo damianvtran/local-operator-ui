@@ -38,6 +38,7 @@ import enUiChatDialogs from "./catalogues/en/ui.chat.dialogs.json";
 import enUiChatHeader from "./catalogues/en/ui.chat.header.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
+import enUiChatTags from "./catalogues/en/ui.chat.tags.json";
 import enUiCodeReview from "./catalogues/en/ui.code_review.json";
 import enUiCommandPalette from "./catalogues/en/ui.command_palette.json";
 import enUiCommonAccount from "./catalogues/en/ui.common.account.json";
@@ -122,6 +123,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatHeader,
 	...enUiChat,
 	...enUiChatSidebarView,
+	...enUiChatTags,
 	...enUiCodeReview,
 	...enUiCommandPalette,
 	...enUiCommonAccount,
@@ -838,6 +840,41 @@ export type MessageParams = {
 	"ui.chat.sidebar_view.sections": undefined;
 	"ui.chat.sidebar_view.time_basis": undefined;
 	"ui.chat.sidebar_view.time_section": undefined;
+	"ui.chat.tags.add": undefined;
+	"ui.chat.tags.apply": undefined;
+	"ui.chat.tags.applying": undefined;
+	"ui.chat.tags.cancel": undefined;
+	"ui.chat.tags.clear": undefined;
+	"ui.chat.tags.delete": undefined;
+	"ui.chat.tags.delete_description": { count: number };
+	"ui.chat.tags.delete_tag": undefined;
+	"ui.chat.tags.delete_title": { name: string };
+	"ui.chat.tags.discovery": undefined;
+	"ui.chat.tags.done": undefined;
+	"ui.chat.tags.empty": undefined;
+	"ui.chat.tags.group": undefined;
+	"ui.chat.tags.group_under": undefined;
+	"ui.chat.tags.label": undefined;
+	"ui.chat.tags.loading": undefined;
+	"ui.chat.tags.manage": undefined;
+	"ui.chat.tags.manage_description": undefined;
+	"ui.chat.tags.menu": undefined;
+	"ui.chat.tags.mode_hint": undefined;
+	"ui.chat.tags.move_down": { name: string };
+	"ui.chat.tags.move_up": { name: string };
+	"ui.chat.tags.new": undefined;
+	"ui.chat.tags.new_name": undefined;
+	"ui.chat.tags.no_matches": undefined;
+	"ui.chat.tags.picker_description": undefined;
+	"ui.chat.tags.picker_title": { title: string };
+	"ui.chat.tags.primary": undefined;
+	"ui.chat.tags.rename": undefined;
+	"ui.chat.tags.rename_label": { name: string };
+	"ui.chat.tags.retry": undefined;
+	"ui.chat.tags.save": undefined;
+	"ui.chat.tags.search": undefined;
+	"ui.chat.tags.untagged": undefined;
+	"ui.chat.tags.use_time": undefined;
 	"ui.code_review.activity.close": undefined;
 	"ui.code_review.activity.comment": undefined;
 	"ui.code_review.activity.edit": undefined;

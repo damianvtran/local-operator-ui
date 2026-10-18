@@ -1,0 +1,177 @@
+{
+	"ui.chat.tags.label": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.menu": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.group": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.manage": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.mode_hint": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.use_time": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.discovery": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.picker_title": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.picker_description": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.search": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.empty": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.loading": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.applying": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.retry": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.cancel": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.apply": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.clear": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.new": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.new_name": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.add": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.primary": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.group_under": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.untagged": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.done": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.rename": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.save": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.delete": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.delete_tag": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.delete_title": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.delete_description": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.move_up": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.move_down": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.manage_description": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.rename_label": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.no_matches": {
+		"role": "tag dialog or sidebar control",
+		"tone": "concise, neutral sentence case",
+		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	}
+}
