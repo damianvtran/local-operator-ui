@@ -359,6 +359,74 @@ const IDENTICAL_OK = new Map([
 		"ui.settings.navigation.settings_sidebar.backend",
 		"Established es loanword: the audited house voice uses «backend» throughout.",
 	],
+	[
+		"ui.projects.project_editors.description",
+		"French cognate: « description » has the same spelling.",
+	],
+	[
+		"ui.projects.project_form_dialog.description",
+		"French cognate: « description » has the same spelling.",
+	],
+	[
+		"ui.projects.project_editors.points",
+		"French cognate: « points » has the same spelling.",
+	],
+	[
+		"ui.projects.project_filters.points",
+		"French cognate: « points » has the same spelling.",
+	],
+	[
+		"ui.projects.project_form_dialog.points",
+		"French cognate: « points » has the same spelling.",
+	],
+	[
+		"ui.projects.project_links.session",
+		"French cognate: « session » has the same spelling.",
+	],
+	[
+		"ui.projects.project_model.agent_name",
+		"French cognate plus placeholder: « agent » is unchanged and {name} is preserved.",
+	],
+	[
+		"ui.projects.project_model.clause",
+		"Language-neutral parenthetical: punctuation and {clause} only.",
+	],
+	[
+		"ui.projects.project_model.completed_total",
+		"Language-neutral counter: placeholders and '/' only.",
+	],
+	[
+		"ui.projects.project_model.count_live",
+		"Language-neutral counter: placeholders and a separator only.",
+	],
+	[
+		"ui.projects.project_model.qa",
+		"Stage name kept as the technical abbreviation QA.",
+	],
+	[
+		"ui.projects.project_model.session_reportedby",
+		"French cognate plus placeholder: « session » is unchanged and {reportedBy} is preserved.",
+	],
+	[
+		"ui.projects.project_model.validation",
+		"French cognate: « validation » has the same spelling.",
+	],
+	[
+		"ui.projects.project_model.value_pt",
+		"Language-neutral unit abbreviation plus placeholder.",
+	],
+	[
+		"ui.projects.project_start_session.agents",
+		"French cognate: « agents » has the same spelling.",
+	],
+	[
+		"ui.projects.projects_toolbar.facet_labels_facet_first",
+		"Language-neutral label composition: placeholders and a separator only.",
+	],
+	[
+		"ui.projects.projects_toolbar.facet_labels_facet_first_length_1",
+		"Language-neutral label composition: placeholders, '+', and a separator only.",
+	],
 ]);
 
 function localeDirs() {
