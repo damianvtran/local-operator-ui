@@ -117,6 +117,47 @@ export const GLASS_STATE_ALPHA = {
  */
 export const GLASS_BLOCK_VEIL_STEP = 4.0;
 export const GLASS_STATE_STEP = { hover: 1.5, selected: 2.5, field: 1.5 };
+
+/**
+ * A LANE IS A WELL THAT MUST READ ON A TRANSLUCENT PAGE, and it cannot be an ink
+ * overlay the way a field or a track is.
+ *
+ * WHY NOT INK. A lane sits UNDER text-bearing blocks (the Projects board's cards),
+ * and the block veil is already an ink layer over the ground. Ink 5% under a veil
+ * measured `inkMuted` 4.03:1 on synthwave (the stack the veil's note forbids) - the
+ * card's own text is the thing a lane would spend. So a lane is a palette ROLE at an
+ * alpha over the page's canvas glass. It composes and leaves the veil as the only
+ * ink layer under the card.
+ *
+ * THE ALPHA TRACKS THE SLIDER. Review round 1 (F2) measured the failure of a fixed
+ * wash: the page moved `0.66 -> 0.96` with intensity while the lane stayed at one
+ * alpha, and the step fell to ΔE00 0.59 on dark at 25 and 0.99 on light at 0 - the
+ * lane vanished exactly where the window was most opaque. The lane therefore takes a
+ * SCALE of the page's own alpha (`pageAlpha * scale`), so it converges on the flat
+ * role at the opaque end and keeps the same share of the ground's translucency at
+ * the clear end. ONE constant per scheme, but the family is derived at EVERY slider
+ * position (0..100) and every material tier, and the committed scale is the max the
+ * worst position needs.
+ *
+ * THE ROLE IS DERIVED TOO, because a single role cannot carry both schemes: at the
+ * opaque end the page is nearly the canvas colour, so the lane can only step as far
+ * as the role's own distance from `canvas` allows. Dark `surface` is ΔE00 1.3-1.6
+ * off `canvas` on several palettes and cannot clear at any alpha; dark `sunken`
+ * can. Light `sunken` is equally close to `canvas`; light `surface` can. The wash
+ * therefore recesses on dark and lifts on light - the direction that moves AWAY from
+ * the material tone the page composites toward. Derived, never hand-picked.
+ */
+export const GLASS_LANE_STEP = 1.5;
+/**
+ * Mirrors `GLASS_ALPHA_CEILING` in `src/shared/window-glass.ts`. This script has no
+ * build step and cannot import the TypeScript module, so `window-glass.test.mjs`
+ * (G-7c) asserts the mirror: a change that is not carried here fails the suite
+ * rather than silently moving the derivation.
+ */
+export const LANE_ALPHA_CEILING = 0.96;
+/** The roles the derivation may choose between, in preference order. */
+export const LANE_ROLES = ["sunken", "surface"];
+
 /**
  * THE ONE RELAXATION, stated: `inkDim` (captions, metadata, placeholders) is held to
  * 3.5:1, not 4.5:1, on a hovered or selected row and on a field's fill over glass.
@@ -246,6 +287,102 @@ export function deriveBlockVeil(floors) {
 	return out;
 }
 
+/**
+ * The lane's role and the scale of the page alpha it is painted at, per scheme.
+ *
+ * For every candidate role and every slider position and material tier, the
+ * smallest alpha that clears `GLASS_LANE_STEP` off the page composite is found; a
+ * role is feasible only if such an alpha exists at every position (at the opaque
+ * end it may not: see the note above). The committed scale is the largest ratio of
+ * the needed alpha to the page's own alpha, rounded UP to 0.01 - the one constant
+ * the whole family is multiplied by. Rounding up covers every position; the
+ * contract then asserts the exact shipped composite at each one.
+ */
+export function deriveLaneWash(floors) {
+	const palettes = loadPalettes();
+	const positions = Array.from({ length: 101 }, (_, i) => i);
+	const pageAlpha = (floor, intensity) =>
+		Math.round(
+			(LANE_ALPHA_CEILING - (intensity / 100) * (LANE_ALPHA_CEILING - floor)) *
+				100,
+		) / 100;
+	/* The smallest alpha clearing the floor on every palette for one tier and
+	 * position, or null when no alpha can (the role is too close to the canvas). */
+	const needAt = (role, scheme, intensity, tier) => {
+		for (let a = 0.05; a <= 1.0001; a = Math.round((a + 0.01) * 100) / 100) {
+			let clears = true;
+			for (const { palette } of palettes) {
+				if (schemeOf(palette) !== scheme) continue;
+				const page = composite(
+					palette.canvas,
+					pageAlpha(floors[tier][scheme].canvas, intensity),
+					gray(BACKDROP_GRAY[tier][scheme]),
+				);
+				if (deltaE(composite(palette[role], a, page), page) < GLASS_LANE_STEP) {
+					clears = false;
+					break;
+				}
+			}
+			if (clears) return a;
+		}
+		return null;
+	};
+	const out = {};
+	for (const scheme of ["dark", "light"]) {
+		let best = null;
+		for (const role of LANE_ROLES) {
+			let scale = 0;
+			let feasible = true;
+			for (const tier of Object.keys(BACKDROP_GRAY)) {
+				for (const intensity of positions) {
+					const need = needAt(role, scheme, intensity, tier);
+					if (need === null) {
+						feasible = false;
+						break;
+					}
+					scale = Math.max(
+						scale,
+						need / pageAlpha(floors[tier][scheme].canvas, intensity),
+					);
+				}
+				if (!feasible) break;
+			}
+			if (!feasible) continue;
+			/* Round up, then bump until the RUNTIME rounding (2dp of `pageAlpha *
+			 * scale`, exactly what `glassPaintFor` publishes) clears at every position. */
+			let committed = Math.ceil(scale * 100) / 100;
+			for (;;) {
+				let clears = true;
+				for (const tier of Object.keys(BACKDROP_GRAY)) {
+					for (const intensity of positions) {
+						const a =
+							Math.round(
+								pageAlpha(floors[tier][scheme].canvas, intensity) *
+									committed *
+									100,
+							) / 100;
+						if (a < needAt(role, scheme, intensity, tier)) {
+							clears = false;
+							break;
+						}
+					}
+					if (!clears) break;
+				}
+				if (clears) break;
+				committed = Math.round((committed + 0.01) * 100) / 100;
+			}
+			const candidate = { role, scale: committed };
+			if (best === null || candidate.scale < best.scale) best = candidate;
+		}
+		if (best === null)
+			throw new Error(
+				`no lane role clears ΔE00 ${GLASS_LANE_STEP} on ${scheme} at every slider position`,
+			);
+		out[scheme] = best;
+	}
+	return out;
+}
+
 export function derive() {
 	const palettes = loadPalettes();
 	const out = {};
@@ -320,6 +457,7 @@ if (isEntryPoint(import.meta.url)) {
 				{
 					alphaFloor: derived,
 					blockVeil: deriveBlockVeil(derived),
+					laneWash: deriveLaneWash(derived),
 					controlMix: deriveControlMix(derived),
 					stateAlpha: GLASS_STATE_ALPHA,
 				},
@@ -348,6 +486,17 @@ if (isEntryPoint(import.meta.url)) {
 				bad++;
 				console.error(
 					`block veil ${scheme} is ${file.blockVeil?.[scheme]} but the palettes need ${veil[scheme]} for a ΔE00 ${GLASS_BLOCK_VEIL_STEP} step off the canvas glass - re-derive, never hand-lower it`,
+				);
+			}
+		const lane = deriveLaneWash(committed);
+		for (const scheme of ["dark", "light"])
+			if (
+				file.laneWash?.[scheme]?.role !== lane[scheme].role ||
+				file.laneWash?.[scheme]?.scale !== lane[scheme].scale
+			) {
+				bad++;
+				console.error(
+					`lane wash ${scheme} is ${JSON.stringify(file.laneWash?.[scheme])} but the palettes need ${JSON.stringify(lane[scheme])} for a ΔE00 ${GLASS_LANE_STEP} step off the page at every slider position - re-derive, never hand-lower it`,
 				);
 			}
 		process.exit(bad ? 1 : 0);

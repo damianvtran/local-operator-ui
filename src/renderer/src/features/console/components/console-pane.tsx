@@ -1195,6 +1195,10 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				   sibling of the tab button (a button inside a button is not HTML), and the
 				   two states it serves are named on the row itself. */
 				<div
+					/* A tab strip is chrome, not a track: clear on glass, with the
+					 * selected surface's pill taking the selected ink overlay
+					 * (styles/index.css, window glass round 3). */
+					data-glass-plane="clear"
 					className={cn(
 						"flex shrink-0 items-center gap-1 overflow-x-auto border-hairline border-b bg-surface px-2 py-1",
 					)}
