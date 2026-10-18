@@ -475,6 +475,30 @@ const IDENTICAL_OK = new Map([
 		"ui.browser.browser_new_tab.address_placeholder",
 		"Literal sample URL; context requires it to remain byte-identical.",
 	],
+	[
+		"ui.mesh.mesh_approvals.approval_title",
+		"Language-neutral: only {head} and a full stop.",
+	],
+	[
+		"ui.mesh.mesh_approvals.via_transport",
+		"French preposition « via » has the same spelling; {transport} is preserved.",
+	],
+	[
+		"ui.mesh.mesh_approvals.session_suffix",
+		"French cognate plus placeholder: « session » is unchanged.",
+	],
+	[
+		"ui.mesh.mesh_card.conversations",
+		"French cognate: « conversations » has the same spelling.",
+	],
+	[
+		"ui.mesh.mesh_page.canvas",
+		"Shared UI term: Canvas is the product surface name, preserved verbatim.",
+	],
+	[
+		"ui.mesh.mesh_list.sort_conversations",
+		"French cognate: « conversations » has the same spelling.",
+	],
 ]);
 
 function localeDirs() {
