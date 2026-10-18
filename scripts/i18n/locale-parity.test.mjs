@@ -520,6 +520,15 @@ const IDENTICAL_OK = new Map([
 		"ui.schedules.scheduled_task_dialog.value1_message",
 		"Placeholders and a colon only ({value1}: {message}); no words to translate.",
 	],
+
+	[
+		"ui.browser.browser_new_tab.address_placeholder",
+		"Sample domain in an address placeholder; an example, not prose.",
+	],
+	[
+		"ui.browser.browser_new_tab.wordmark",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
 ]);
 
 function localeDirs() {
