@@ -129,22 +129,53 @@ import esUiSettingsSpeech from "./catalogues/es/ui.settings.speech.json";
 import esUiSettingsUpdates from "./catalogues/es/ui.settings.updates.json";
 import esUiShell from "./catalogues/es/ui.shell.json";
 import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
+import frUiAgentMessages from "./catalogues/fr/ui.agentMessages.json";
+import frUiAgentsDialogs from "./catalogues/fr/ui.agents.dialogs.json";
+import frUiAgentsModels from "./catalogues/fr/ui.agents.models.json";
 import frUiAgentsNavigation from "./catalogues/fr/ui.agents.navigation.json";
+import frUiAgentsRefusals from "./catalogues/fr/ui.agents.refusals.json";
+import frUiAgentsSettings from "./catalogues/fr/ui.agents.settings.json";
+import frUiAgentsStarters from "./catalogues/fr/ui.agents.starters.json";
+import frUiBrowserChrome from "./catalogues/fr/ui.browser.chrome.json";
+import frUiBrowser from "./catalogues/fr/ui.browser.json";
+import frUiCanvas from "./catalogues/fr/ui.canvas.json";
 import frUiChatComposer from "./catalogues/fr/ui.chat.composer.json";
+import frUiChatComposerMedia from "./catalogues/fr/ui.chat.composer_media.json";
+import frUiChatDialogs from "./catalogues/fr/ui.chat.dialogs.json";
 import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
 import frUiChat from "./catalogues/fr/ui.chat.json";
 import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
+import frUiCodeReview from "./catalogues/fr/ui.code_review.json";
 import frUiCommandPalette from "./catalogues/fr/ui.command_palette.json";
+import frUiCommonAccount from "./catalogues/fr/ui.common.account.json";
 import frUiCommonActions from "./catalogues/fr/ui.common.actions.json";
+import frUiCommonConnection from "./catalogues/fr/ui.common.connection.json";
+import frUiCommonEditing from "./catalogues/fr/ui.common.editing.json";
 import frUiCommonErrors from "./catalogues/fr/ui.common.errors.json";
+import frUiCommonForms from "./catalogues/fr/ui.common.forms.json";
+import frUiCommonLoading from "./catalogues/fr/ui.common.loading.json";
+import frUiCommonModels from "./catalogues/fr/ui.common.models.json";
+import frUiCommonUpdates from "./catalogues/fr/ui.common.updates.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
+import frUiHubComments from "./catalogues/fr/ui.hub.comments.json";
+import frUiHub from "./catalogues/fr/ui.hub.json";
+import frUiHubTaxonomy from "./catalogues/fr/ui.hub.taxonomy.json";
+import frUiInstaller from "./catalogues/fr/ui.installer.json";
+import frUiMesh from "./catalogues/fr/ui.mesh.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
+import frUiProjects from "./catalogues/fr/ui.projects.json";
+import frUiProviders from "./catalogues/fr/ui.providers.json";
+import frUiSchedules from "./catalogues/fr/ui.schedules.json";
 import frUiSettingsAccount from "./catalogues/fr/ui.settings.account.json";
 import frUiSettingsAppearance from "./catalogues/fr/ui.settings.appearance.json";
+import frUiSettingsAppearanceWindowGlass from "./catalogues/fr/ui.settings.appearance.window_glass.json";
 import frUiSettingsConfiguration from "./catalogues/fr/ui.settings.configuration.json";
+import frUiSettingsImports from "./catalogues/fr/ui.settings.imports.json";
 import frUiSettingsIntegrations from "./catalogues/fr/ui.settings.integrations.json";
 import frUiSettings from "./catalogues/fr/ui.settings.json";
+import frUiSettingsModelDefaultEffort from "./catalogues/fr/ui.settings.model.default_effort.json";
 import frUiSettingsModel from "./catalogues/fr/ui.settings.model.json";
+import frUiSettingsModelProviderCallout from "./catalogues/fr/ui.settings.model.provider_callout.json";
 import frUiSettingsNavigation from "./catalogues/fr/ui.settings.navigation.json";
 import frUiSettingsShortcuts from "./catalogues/fr/ui.settings.shortcuts.json";
 import frUiSettingsSpeech from "./catalogues/fr/ui.settings.speech.json";
@@ -300,22 +331,53 @@ export const bundledCatalogues: Readonly<
 		...esUiShellRail,
 	},
 	fr: {
+		...frUiAgentMessages,
+		...frUiAgentsDialogs,
+		...frUiAgentsModels,
 		...frUiAgentsNavigation,
+		...frUiAgentsRefusals,
+		...frUiAgentsSettings,
+		...frUiAgentsStarters,
+		...frUiBrowserChrome,
+		...frUiBrowser,
+		...frUiCanvas,
 		...frUiChatComposer,
+		...frUiChatComposerMedia,
+		...frUiChatDialogs,
 		...frUiChatHeader,
 		...frUiChat,
 		...frUiChatSidebarView,
+		...frUiCodeReview,
 		...frUiCommandPalette,
+		...frUiCommonAccount,
 		...frUiCommonActions,
+		...frUiCommonConnection,
+		...frUiCommonEditing,
 		...frUiCommonErrors,
+		...frUiCommonForms,
+		...frUiCommonLoading,
+		...frUiCommonModels,
+		...frUiCommonUpdates,
 		...frUiConsole,
+		...frUiHubComments,
+		...frUiHub,
+		...frUiHubTaxonomy,
+		...frUiInstaller,
+		...frUiMesh,
 		...frUiOnboarding,
+		...frUiProjects,
+		...frUiProviders,
+		...frUiSchedules,
 		...frUiSettingsAccount,
 		...frUiSettingsAppearance,
+		...frUiSettingsAppearanceWindowGlass,
 		...frUiSettingsConfiguration,
+		...frUiSettingsImports,
 		...frUiSettingsIntegrations,
 		...frUiSettings,
+		...frUiSettingsModelDefaultEffort,
 		...frUiSettingsModel,
+		...frUiSettingsModelProviderCallout,
 		...frUiSettingsNavigation,
 		...frUiSettingsShortcuts,
 		...frUiSettingsSpeech,
