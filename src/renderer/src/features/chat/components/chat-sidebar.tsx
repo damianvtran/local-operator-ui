@@ -3,6 +3,7 @@ import {
 	builtinOfferSignature,
 } from "@features/agents/builtin-offer";
 import { InstallBuiltinAgents } from "@features/agents/components/install-builtin-agents";
+import { groupChatsByTag } from "@features/chat/chat-tag-groups";
 /*
  * THE NETWORKS READ, for the remote rows' hover sentence: ONE observer, `poll:
  * false`, riding whatever the rail or the Mesh tab already fetched (one read per
@@ -64,6 +65,7 @@ import {
 import { Tooltip, TooltipProvider } from "@shared/components/ui/tooltip";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import {
 	CATALOGUE_HEAD_PAGE,
@@ -74,12 +76,14 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
+import { useSessionTagsStore } from "@shared/store/session-tags-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
 	dismissToast,
 	showSuccessToast,
 	showWarningToast,
 } from "@shared/utils/toast-manager";
+import { Tag } from "lucide-react";
 import {
 	Archive,
 	ArchiveRestore,
@@ -267,6 +271,7 @@ import {
 import { ChatRemoteMark } from "./chat-remote-mark";
 import { ChatRowHoverIntent } from "./chat-row-hover-intent";
 import { ChatRowTitle } from "./chat-row-title";
+import { ChatSessionTagsDialog } from "./chat-session-tags-dialog";
 import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
 import {
 	HubLinkAggregateMark,
@@ -280,6 +285,7 @@ import {
 	HubSectionLines,
 	HubUpdateMark,
 } from "./hub-update-mark";
+import { ManageTagsDialog } from "./manage-tags-dialog";
 import { TeamAvatarBubble } from "./team-avatar-bubble";
 
 /*
@@ -1353,6 +1359,37 @@ export function ChatSidebar({
 	 * they are additive, each with its own `useMemo`/hook, and neither depends
 	 * on the other's order).
 	 */
+	// Capability absence is the entire old-backend path: no fetch, menu or dialog.
+	const tagsAvailable = desktopFeatureEnabled(
+		capabilities.data,
+		"session_tags",
+	);
+	const tagCategories = useSessionTagsStore((state) => state.categories);
+	const fetchTagCategories = useSessionTagsStore(
+		(state) => state.fetchCategories,
+	);
+	const [tagRow, setTagRow] = useState<CanonicalSessionRow | null>(null);
+	const [manageTagsOpen, setManageTagsOpen] = useState(false);
+	const tagsInvoker = useRef<HTMLElement | null>(null);
+	const tagsOriginId = useRef<string | null>(null);
+	useEffect(() => {
+		if (ready && tagsAvailable) void fetchTagCategories();
+	}, [ready, tagsAvailable, fetchTagCategories]);
+	const returnTagsFocus = () => {
+		// Applying can move the row into another bucket and remount its button.
+		// Resolve the stable identity after the modal's focus trap has torn down,
+		// rather than focusing the detached element the context menu opened from.
+		requestAnimationFrame(() => {
+			const id = tagsOriginId.current;
+			const target = id
+				? document.querySelector<HTMLElement>(
+						`[data-session-row="${CSS.escape(id)}"] [data-chat-row]`,
+					)
+				: tagsInvoker.current;
+			target?.focus();
+			target?.scrollIntoView({ block: "nearest" });
+		});
+	};
 	const teamLabels = useMemo(
 		() =>
 			new Map(
@@ -4048,6 +4085,27 @@ export function ChatSidebar({
 	 * banners are suppressed there), so that is a record of what the code does rather than
 	 * a measurement.
 	 */
+	const taggedRows = (rows: CanonicalSessionRow[]) => {
+		const groups = groupChatsByTag(
+			rows,
+			tagCategories,
+			tagsAvailable && view.tagsEnabled && view.groupBy === "section" && !query,
+		);
+		if (!groups) return rows.map((row) => sessionRow(row));
+		return groups.map((bucket) => (
+			<div key={bucket.id} data-chat-tag-group={bucket.id}>
+				<div className="flex h-7 items-center gap-2 px-2 text-meta text-ink-dim">
+					<span className="min-w-0 flex-1 truncate" title={bucket.name}>
+						{bucket.id === "untagged"
+							? t("ui.chat.tags.untagged")
+							: bucket.name}
+					</span>
+					<span>{bucket.rows.length}</span>
+				</div>
+				{bucket.rows.map((row) => sessionRow(row))}
+			</div>
+		));
+	};
 	const sessionRow = (row: CanonicalSessionRow, nested = false) => {
 		const trailing = rowTrailingStatement({
 			marked: conversationMatches.has(row.session_id),
@@ -4190,7 +4248,7 @@ export function ChatSidebar({
 		 * With neither capability the menu does not exist (the withdrawn path
 		 * returns before it), and this is what keeps its clause off that row.
 		 */
-		const menuEnabled = pinsEnabled || archiveEnabled;
+		const menuEnabled = pinsEnabled || archiveEnabled || tagsAvailable;
 		/*
 		 * WHETHER THE MENU OFFERS FORK ON THIS ROW - the one named predicate, read
 		 * once, for the item below. A fork copies a conversation's TRANSCRIPT, and the
@@ -5973,6 +6031,7 @@ export function ChatSidebar({
 						 * composed after this one and checks `defaultPrevented`.
 						 */
 						event.preventDefault();
+						if (tagRow) return;
 						const remembered = menuFocusReturnRef.current;
 						menuFocusReturnRef.current = null;
 						if (!menuOpenedByKeyboard.current) {
@@ -6155,6 +6214,21 @@ export function ChatSidebar({
 						<Pencil aria-hidden="true" />
 						<span>Rename conversation</span>
 					</ContextMenuItem>
+					{tagsAvailable && (
+						<ContextMenuItem
+							onSelect={() => {
+								tagsInvoker.current = document.querySelector<HTMLElement>(
+									`[data-session-row="${CSS.escape(row.session_id)}"] [data-chat-row]`,
+								);
+								tagsOriginId.current = row.session_id;
+								setTagRow(row);
+							}}
+						>
+							<Tag aria-hidden="true" className="size-3.5" />
+							{t("ui.chat.tags.menu")}
+						</ContextMenuItem>
+					)}
+
 					{offersMove && (
 						<>
 							{/*
@@ -9117,7 +9191,7 @@ export function ChatSidebar({
 					className="relative"
 				>
 					{sectionLabel("Pinned")}
-					{orderedPinned.map((row) => sessionRow(row))}
+					{taggedRows(orderedPinned)}
 					{/*
 					 * THE INSERTION INDICATOR, and it exists ONLY while a drag does: a 2px line in
 					 * the gap the row would land in, `bg-accent`'s colour step and nothing else -
@@ -9173,7 +9247,7 @@ export function ChatSidebar({
 								 */
 								key === firstSection ? markAllReadControl : undefined,
 							)}
-							{rows.map((row) => sessionRow(row))}
+							{taggedRows(rows)}
 						</section>
 					);
 				})}
@@ -9404,6 +9478,21 @@ export function ChatSidebar({
 			 * `skipDelayDuration`, so sweeping from one row to the next would re-wait on
 			 * every one. Sharing it is what makes the panel's hover read as one surface.
 			 */}
+			{tagsAvailable && tagRow && (
+				<ChatSessionTagsDialog
+					key={tagRow.session_id}
+					row={tagRow}
+					onClose={() => setTagRow(null)}
+					returnFocus={returnTagsFocus}
+				/>
+			)}
+			{tagsAvailable && manageTagsOpen && (
+				<ManageTagsDialog
+					onClose={() => setManageTagsOpen(false)}
+					returnFocus={returnTagsFocus}
+				/>
+			)}
+
 			<TooltipProvider>
 				{/*
 				 * THE BAND: the segment that divides the destinations above from the
@@ -9533,6 +9622,15 @@ export function ChatSidebar({
 								<ChatSidebarViewMenu
 									view={view}
 									counts={viewCounts}
+									tagsAvailable={tagsAvailable}
+									onManageTags={() => {
+										tagsInvoker.current = document.querySelector<HTMLElement>(
+											"[data-sidebar-view-options]",
+										);
+										tagsOriginId.current = null;
+										setViewOpen(false);
+										setManageTagsOpen(true);
+									}}
 									onView={setChatSidebarView}
 								/>
 							</PopoverContent>

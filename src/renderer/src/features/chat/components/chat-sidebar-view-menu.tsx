@@ -78,6 +78,7 @@ import {
 	toggleSection,
 } from "@features/chat/chat-sidebar-view";
 import { Button } from "@shared/components/ui";
+import { Switch } from "@shared/components/ui/switch";
 import { type WithoutParams, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -115,6 +116,8 @@ export type ViewMenuCounts = Partial<Record<SidebarSectionKey, number>>;
 type Props = {
 	view: SidebarView;
 	counts?: ViewMenuCounts;
+	tagsAvailable?: boolean;
+	onManageTags?: () => void;
 	/** Called with the WHOLE next view - the model returns complete values. */
 	onView: (view: SidebarView) => void;
 };
@@ -176,7 +179,13 @@ const choice = (
 	</button>
 );
 
-export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
+export function ChatSidebarViewMenu({
+	view,
+	counts,
+	onView,
+	tagsAvailable = false,
+	onManageTags,
+}: Props) {
 	// Refresh all option/section labels when the backend-owned locale changes.
 	useI18nLocale();
 	/*
@@ -329,6 +338,48 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 					),
 				)}
 			</fieldset>
+			{tagsAvailable && (
+				<div
+					className="border-hairline border-b py-1"
+					data-sidebar-tags-options
+				>
+					<div className="flex h-8 items-center gap-2 px-1">
+						<span className="flex-1 text-meta text-ink-dim">
+							{t("ui.chat.tags.label")}
+						</span>
+						<Switch
+							aria-label={t("ui.chat.tags.group")}
+							aria-describedby="sidebar-tags-help"
+							checked={view.tagsEnabled}
+							onCheckedChange={(tagsEnabled) =>
+								onView({ ...view, tagsEnabled })
+							}
+						/>
+						<Button
+							variant="ghost"
+							className="h-7 px-1 text-meta"
+							onClick={onManageTags}
+						>
+							{t("ui.chat.tags.manage")}
+						</Button>
+					</div>
+					<span id="sidebar-tags-help" className="sr-only">
+						{t("ui.chat.tags.discovery")}
+					</span>
+					{view.groupBy !== "section" && (
+						<div className="px-1 text-meta text-ink-muted">
+							<p>{t("ui.chat.tags.mode_hint")}</p>
+							<Button
+								variant="ghost"
+								className="h-7 px-1 text-meta"
+								onClick={() => onView({ ...view, groupBy: "section" })}
+							>
+								{t("ui.chat.tags.use_time")}
+							</Button>
+						</div>
+					)}
+				</div>
+			)}
 			{/*
 			 * THE SECTION SWITCHES, over the VIEW's own order rather than over the
 			 * canonical one: a list that re-sorted itself here would undo the
