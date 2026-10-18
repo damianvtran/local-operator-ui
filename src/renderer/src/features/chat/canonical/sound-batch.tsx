@@ -1,5 +1,5 @@
 import { cn } from "@shared/lib/utils";
-import { CanonicalAudio } from "./canonical-audio";
+import { CanonicalAudio, soundOwnerId } from "./canonical-audio";
 import type { SoundBatchItem } from "./sound-batch-model";
 import type { AttachmentScope } from "./use-attachment-url";
 
@@ -10,9 +10,11 @@ import type { AttachmentScope } from "./use-attachment-url";
  */
 export function SoundBatch({
 	items,
+	summary,
 	scope,
 }: {
 	items: readonly SoundBatchItem[];
+	summary: string;
 	scope: AttachmentScope | null;
 }) {
 	return (
@@ -25,46 +27,47 @@ export function SoundBatch({
 					"text-meta text-ink-muted break-words [overflow-wrap:anywhere]",
 				)}
 			>
-				{items.filter((item) => item.status === "completed").length} completed ·{" "}
-				{items.filter((item) => item.status === "failed").length} failed
-				{items.some((item) => item.status === "cancelled")
-					? ` · ${items.filter((item) => item.status === "cancelled").length} cancelled/stopped`
-					: ""}{" "}
-				— {items.map((item) => item.label).join(", ")}
+				{summary}
 			</p>
-			{items.map((item) => (
-				<div key={item.id} data-sound-batch-item="" className={cn("min-w-0")}>
-					<p
-						className={cn(
-							"text-body text-ink break-words [overflow-wrap:anywhere]",
-						)}
-					>
-						{item.label}
-					</p>
-					{item.error ? (
+			<ul className="flex min-w-0 flex-col gap-4">
+				{items.map((item) => (
+					<li key={item.id} data-sound-batch-item="" className={cn("min-w-0")}>
 						<p
 							className={cn(
-								"text-meta text-ink-muted break-words [overflow-wrap:anywhere]",
+								"text-body text-ink break-words [overflow-wrap:anywhere]",
 							)}
 						>
-							{item.error}
+							{item.label}
+							{item.status !== "completed"
+								? ` · ${item.status === "unknown" ? "Status unknown" : item.status === "cancelled" ? "Stopped" : "Failed"}`
+								: ""}
 						</p>
-					) : item.audio ? (
-						<CanonicalAudio
-							audio={item.audio}
-							scope={scope}
-							label={item.label}
-						/>
-					) : (
-						<p className={cn("text-meta text-ink-muted")}>
-							Audio attachment unavailable.
+						{item.error ? (
+							<p
+								className={cn(
+									"text-body-sm text-ink break-words [overflow-wrap:anywhere]",
+								)}
+							>
+								{item.error}
+							</p>
+						) : item.audio ? (
+							<CanonicalAudio
+								audio={item.audio}
+								ownerId={`${soundOwnerId(item.audio)}:batch:${item.audio.id}:${item.id}`}
+								scope={scope}
+								label={item.label}
+							/>
+						) : (
+							<p className={cn("text-meta text-ink-muted")}>
+								Audio attachment unavailable.
+							</p>
+						)}
+						<p className={cn("text-meta text-ink-dim")}>
+							{item.costCaption ?? "Cost not yet known."}
 						</p>
-					)}
-					<p className={cn("text-meta text-ink-muted")}>
-						{item.costCaption ?? "Cost not yet known."}
-					</p>
-				</div>
-			))}
+					</li>
+				))}
+			</ul>
 		</div>
 	);
 }
