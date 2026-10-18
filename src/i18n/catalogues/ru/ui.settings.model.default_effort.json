@@ -1,0 +1,21 @@
+{
+	"ui.settings.model.default_effort.busy": "Сохранение усилий по умолчанию",
+	"ui.settings.model.default_effort.clamped": "{level} недоступен для {model}. Используется {resolved}.",
+	"ui.settings.model.default_effort.clamped_unset": "{level} недоступен для {model}. Используется значение модели по умолчанию.",
+	"ui.settings.model.default_effort.empty": "Усилия этой модели не настраиваются.",
+	"ui.settings.model.default_effort.error": "Не удалось прочитать уровни усилий этой модели.",
+	"ui.settings.model.default_effort.helper_ready": "Применяется к новым разговорам. «По умолчанию у модели» позволяет модели выбрать уровень самой.",
+	"ui.settings.model.default_effort.label": "Усилия по умолчанию",
+	"ui.settings.model.default_effort.loading": "Проверка уровней усилий этой модели…",
+	"ui.settings.model.default_effort.model_default": "По умолчанию у модели",
+	"ui.settings.model.default_effort.model_default_resolves": "Для этой модели выполняется на уровне {level}.",
+	"ui.settings.model.default_effort.no_home": "Домашняя папка ещё недоступна, поэтому уровни усилий прочитать нельзя.",
+	"ui.settings.model.default_effort.no_model": "Выберите модель, чтобы задать её уровни усилий.",
+	"ui.settings.model.default_effort.one_level": "Эта модель предлагает один уровень усилий: {level}.",
+	"ui.settings.model.default_effort.one_level_sentinel": "У этой модели нет выбора уровня усилий: она всегда работает на своём значении по умолчанию.",
+	"ui.settings.model.default_effort.placeholder": "Выберите уровень усилий",
+	"ui.settings.model.default_effort.save_failed": "Усилия по умолчанию не сохранены.",
+	"ui.settings.model.default_effort.settings_error": "Не удалось прочитать сохранённые усилия по умолчанию.",
+	"ui.settings.model.default_effort.settings_loading": "Проверка сохранённых усилий по умолчанию…",
+	"ui.settings.model.default_effort.unresolved": "Эта модель ещё не сообщила свои уровни усилий."
+}

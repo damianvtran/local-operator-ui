@@ -1,0 +1,20 @@
+{
+	"ui.installer.expectation": "Обычно это занимает меньше минуты.",
+	"ui.installer.installer_panel.cancel_setup": "Отменить настройку",
+	"ui.installer.installer_panel.getting_started": "Начало работы.",
+	"ui.installer.installer_panel.local_operator": "Local Operator",
+	"ui.installer.installer_panel.quit": "Выйти",
+	"ui.installer.installer_panel.setup_complete": "Настройка завершена.",
+	"ui.installer.installer_panel.setup_keeps_everything_it_installs_in_its_own_folder_nothing_of_y": "Настройка хранит всё установленное в отдельной папке; ваши данные не затронуты.",
+	"ui.installer.installer_panel.you_can_minimize_this_window_and_keep_working_closing_it_stops_se": "Можно свернуть это окно и продолжить работу. Закрытие остановит настройку.",
+	"ui.installer.phase.detail.components": "Скачивание пакетов, на которых работает Local Operator.",
+	"ui.installer.phase.detail.environment": "Создание отдельной приватной папки Local Operator, к которой ничего больше не обращается.",
+	"ui.installer.phase.detail.python": "Поиск копии Python, на которой работает Local Operator.",
+	"ui.installer.phase.detail.verify": "Однократный запуск Local Operator для проверки.",
+	"ui.installer.phase.label.components": "Скачивание необходимого",
+	"ui.installer.phase.label.environment": "Настройка Local Operator",
+	"ui.installer.phase.label.python": "Подготовка",
+	"ui.installer.phase.label.verify": "Запуск",
+	"ui.installer.status.elapsed": "{step} · прошло {elapsed} · {eta}",
+	"ui.installer.status.step": "Шаг {step} из {total}"
+}

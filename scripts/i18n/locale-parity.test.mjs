@@ -556,6 +556,23 @@ const IDENTICAL_OK = new Map([
 		"ui.common.account.low_credits_dialog.radient_pass",
 		"Product name, preserved verbatim by the programme glossary.",
 	],
+
+	[
+		"ui.installer.installer_panel.local_operator",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_acrylic",
+		"System material name kept English: Acrylic is the Windows compositor material.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_mica",
+		"System material name kept English: Mica is the Windows compositor material.",
+	],
+	[
+		"ui.settings.updates.update_following.surface_choice",
+		"Placeholders and a colon only ({surface}: {choice}); no words to translate.",
+	],
 ]);
 
 function localeDirs() {
