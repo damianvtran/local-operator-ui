@@ -2485,6 +2485,77 @@ test("QA round 3 Q-1: the microphone is app-global; the slot elsewhere must not 
 	assert.equal(phase("s-holder"), "listening");
 });
 
+test("U3/D9/D6: an end with no start says nothing, and a cancel in the first second is a phantom", async () => {
+	const { useVoiceStore } = await controller();
+	/* An empty, bounded story: the panel keeps five rows, so count from zero. */
+	useVoiceStore.setState({ story: [], tick: null, playbackStartedAt: null });
+	const store = useVoiceStore.getState();
+	store.setActive({ session_id: "s1", enabled_at: 1 });
+	const before = useVoiceStore.getState().story.length;
+	// After a move, the old session's tail can still arrive: not this strip's word.
+	store.notePlayback("ended", "s1", Date.now());
+	assert.equal(useVoiceStore.getState().tick, null);
+	// The rig cancels the response it is replacing as a take starts: phantom.
+	store.notePlayback("started", "s1", Date.now());
+	store.notePlayback("cancelled", "s1", Date.now() + 200);
+	assert.equal(useVoiceStore.getState().tick, null);
+	assert.equal(useVoiceStore.getState().story.length, before);
+	// A real interruption names its second, once.
+	store.notePlayback("started", "s1", Date.now() - 24_000);
+	store.notePlayback("cancelled", "s1", Date.now());
+	const tick = useVoiceStore.getState().tick;
+	assert.equal(tick?.kind, "interrupted");
+	assert.equal(tick?.seconds, 24, "the real second, not 0:00");
+	assert.equal(useVoiceStore.getState().story.length, before + 1);
+	store.notePlayback("cancelled", "s1", Date.now());
+	assert.equal(
+		useVoiceStore.getState().story.length,
+		before + 1,
+		"one row per interruption",
+	);
+});
+
+test("U1: a refused take is recorded for the band, and the next take clears it", async () => {
+	const { useVoiceStore } = await controller();
+	const store = useVoiceStore.getState();
+	store.setActive({ session_id: "s1", enabled_at: 1 });
+	store.noteNotSent("s1", "check the tests", 1000);
+	assert.deepEqual(useVoiceStore.getState().lastRefused, {
+		sessionId: "s1",
+		text: "check the tests",
+		at: 1000,
+	});
+	store.noteTake("s1", "hello", 2000);
+	assert.equal(useVoiceStore.getState().lastRefused, null);
+});
+
+test("D2/U8: the page-connect window opens on ready and again when a connected page drops", async () => {
+	const { useVoiceStore } = await controller();
+	const store = useVoiceStore.getState();
+	store.setRig({ rig: "starting", webui_url: null });
+	assert.equal(useVoiceStore.getState().readyAt, null);
+	store.setRig({ rig: "ready", webui_url: null, clients: 0 });
+	assert.notEqual(
+		useVoiceStore.getState().readyAt,
+		null,
+		"ready with no page yet: a window to connect in",
+	);
+	store.setRig({ rig: "ready", webui_url: null, clients: 1 });
+	assert.equal(
+		useVoiceStore.getState().readyAt,
+		null,
+		"connected: no grace owed",
+	);
+	store.setRig({ rig: "ready", webui_url: null, clients: 0 });
+	assert.notEqual(
+		useVoiceStore.getState().readyAt,
+		null,
+		"a dropped page opens a fresh window",
+	);
+	store.setRig({ rig: "stopped", webui_url: null });
+	assert.equal(useVoiceStore.getState().readyAt, null);
+});
+
 test("BRIEF-1: a segment at the cap is a dropped take, and the strip has its line", async () => {
 	const mod = await controller();
 	assert.equal(mod.LONG_TAKE_MS, 30_000);

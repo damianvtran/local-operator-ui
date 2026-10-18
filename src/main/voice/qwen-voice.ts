@@ -338,6 +338,24 @@ export class QwenVoice {
 				type: "slot",
 				active: next ? { session_id: next } : null,
 			});
+			/*
+			 * A MOVE STOPS THE OLD SESSION'S SOUND (UX round 1, U3): `cancel_all`
+			 * reaches the Gateway, but audio the hidden page has already queued keeps
+			 * playing, and its playback events then arrive attributed to the
+			 * conversation the person moved TO. Recreating the page is the only stop
+			 * this app owns: it destroys the queued audio, and `openPage` re-applies
+			 * the person's mute for the new holder. Only a move between two live
+			 * slots - an enable from nothing has no page yet.
+			 */
+			if (
+				previous !== null &&
+				next !== null &&
+				this.status.rig === "ready" &&
+				this.status.webui_url
+			) {
+				this.deps.page.close();
+				this.openPage(this.status.webui_url);
+			}
 		}
 		if (next === null) {
 			/*

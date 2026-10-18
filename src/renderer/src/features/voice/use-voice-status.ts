@@ -113,7 +113,23 @@ export async function controlVoice(
 	client: QueryClient = appQueryClient,
 ): Promise<DesktopVoiceControlResult> {
 	const store = useVoiceStore.getState();
+	const before = store.rig;
 	store.setPending(true);
+	/*
+	 * THE FIRST FRAME OF AN ENABLE IS "STARTING VOICE" (design round 1, D2): the
+	 * slot arrives from the route in ~84 ms while the rig's own status is still the
+	 * last one this window had - a stale `error`, or "stopped" after a restart - so
+	 * the strip painted that for up to a second before main said `starting`. The
+	 * press IS a request to start, so the optimistic frame is the neutral word the
+	 * person just asked for; main's status replaces it as soon as it speaks.
+	 */
+	if (
+		action === "enable" &&
+		before?.rig !== "ready" &&
+		before?.rig !== "starting"
+	) {
+		store.setRig({ ...(before ?? { webui_url: null }), rig: "starting" });
+	}
 	try {
 		const result = await desktopResult<DesktopVoiceControlResult>({
 			op: "voice.control",
@@ -123,6 +139,10 @@ export async function controlVoice(
 		applyVoiceActive(result.active, client);
 		store.setReplaced(result.replaced);
 		return result;
+	} catch (error) {
+		// The route refused: the optimistic starting frame was never true.
+		if (action === "enable" && before !== undefined) store.setRig(before);
+		throw error;
 	} finally {
 		useVoiceStore.getState().setPending(false);
 	}

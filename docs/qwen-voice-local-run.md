@@ -46,7 +46,9 @@ closes your shell if a check fails; they print what is wrong instead.
     (the order is page, speech, relay). This works only in the dev app; a
     packaged app always uses 3101, 8765 and 8766.
 - **No key.** The test backend uses the `test` hosting and a mock model that
-  answers "Hello from the mock provider!".
+  answers "Hello from the mock provider!". The mock also titles every
+  conversation with that same sentence, so the strip's "voice is on in …"
+  notice names it in each case - a mock artifact, not the app.
 
 ## 2. Start the test backend (terminal 1)
 
@@ -164,8 +166,10 @@ account"** window. Press **"Skip for now"**: the test backend needs no account.
      to any config file.
 
 If you restart the app while voice is still on, nothing loads by itself. The
-strip's chip reads "Voice off" and offers "Start voice". Press it to load the
-models again.
+strip's chip reads **"Voice idle"** - the conversation still holds voice, so
+the wave beside the mic stays lit - and the LIT WAVE is the way back in: press
+it to load the models again. Press it a second time, once voice is running, to
+turn voice off.
 
 ## 5. What to say, and what should happen
 
@@ -189,7 +193,7 @@ and a later message does not trigger it, so this needs a NEW conversation:
 
 | You say | You hear | You see in the app |
 |---|---|---|
-| "Please also check the tests" while the card is up | "Answer it on screen first." | An approval card for `bash`, and the strip's chip reads "Approve on screen" — nothing is sent, because the card must be answered there. Nothing is sent. Voice never answers a card. Click Approve or Deny on screen. |
+| "Please also check the tests" while the card is up | "Answer it on screen first." | An approval card for `bash`, and the strip's chip reads "Approve on screen" with "Answer the question or approval on screen first." and the refused words beside it — the band says you were heard and deliberately not sent, because the card must be answered there. Voice never answers a card. Click Approve or Deny on screen. |
 | "Yes, go ahead" (while the card is up) | "Answer it on screen first." | Nothing changes. |
 
 If you are looking at another conversation when a card appears in the voice

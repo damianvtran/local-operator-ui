@@ -111,8 +111,26 @@ type VoiceStoreState = {
 	 * first and only text of a take the renderer ever sees.
 	 */
 	lastTake: { sessionId: string; text: string; at: number } | null;
-	/** Where the reply being played started, on the Gateway's clock, or null. */
+	/**
+	 * The last take a card REFUSED, so the strip can say why in place (UX round 1,
+	 * U1). The history keeps its own `not_sent` row; this is the same fact in the
+	 * band's own words, because a refusal that only lands in the collapsed panel
+	 * reads as a take that vanished.
+	 */
+	lastRefused: { sessionId: string; text: string; at: number } | null;
+	/**
+	 * When this window SAW the reply start playing, or null. The strip's
+	 * interruption clock is this window's, not the Gateway's log time (design D9:
+	 * the log's two records can share a second, so "Stopped at 0:00" was every
+	 * interruption).
+	 */
 	playbackStartedAt: number | null;
+	/**
+	 * When the rig last became `ready`, for the short page-connect window (design
+	 * D2 / U8): a ready rig with no page for a moment is a start, not a failure,
+	 * and only after the grace does "Voice page not connected" mean it.
+	 */
+	readyAt: number | null;
 	/** The transient word in the strip, or null when there is none. */
 	tick: VoiceTick | null;
 	/** The composer history panel's rows, oldest first, at most VOICE_STORY_LIMIT. */
@@ -211,7 +229,9 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 		activity: null,
 		lastSpoken: null,
 		lastTake: null,
+		lastRefused: null,
 		playbackStartedAt: null,
+		readyAt: null,
 		tick: null,
 		story: [],
 		droppedTakeAt: null,
@@ -240,7 +260,7 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 				 * belongs to the session that lost the slot, and the new holder's strip
 				 * must not open with a sentence about audio it never played.
 				 */
-				...(moved ? { activity: null, tick: null } : {}),
+				...(moved ? { activity: null, tick: null, lastRefused: null } : {}),
 			});
 		},
 		/*
@@ -254,6 +274,22 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 				rig,
 				activity:
 					rig.rig === "ready" && (rig.clients ?? 0) > 0 ? state.activity : null,
+				/*
+				 * THE PAGE-CONNECT WINDOW (design D2 / U8) opens on the ready
+				 * transition AND again whenever a connected page drops while the rig
+				 * stays ready - which is what a move does when main recreates the page
+				 * to stop the old session's audio (U3). A later drop deserves the same
+				 * neutral "Connecting voice" beat a startup gets; only the window's END
+				 * turns into the "not connected" failure.
+				 */
+				readyAt:
+					rig.rig !== "ready"
+						? null
+						: (rig.clients ?? 0) > 0
+							? null
+							: state.rig?.rig === "ready" && (state.rig.clients ?? 0) > 0
+								? Date.now()
+								: (state.readyAt ?? Date.now()),
 			})),
 		setActivity: (activity) => set({ activity }),
 		setLastSpoken: (lastSpoken) =>
@@ -273,6 +309,7 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 		noteTake: (sessionId, text, at) =>
 			set((state) => ({
 				lastTake: { sessionId, text, at },
+				lastRefused: null,
 				story: capStory([
 					...state.story,
 					{
@@ -287,6 +324,7 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 			})),
 		noteNotSent: (sessionId, heard, at) =>
 			set((state) => ({
+				lastRefused: { sessionId, text: heard, at },
 				story: capStory([
 					...state.story,
 					{ kind: "not_sent", at, sessionId, heard },
@@ -299,6 +337,16 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 				return;
 			}
 			if (kind === "ended") {
+				/*
+				 * AN END WE DID NOT SEE START IS NOT A WORD (UX round 1, U3): after a
+				 * slot move the old session's tail can still arrive, attributed here.
+				 * Without a start on record there is nothing this strip can honestly
+				 * say it finished.
+				 */
+				if (state.playbackStartedAt === null) {
+					set({ activity: null });
+					return;
+				}
 				set({
 					playbackStartedAt: null,
 					tick: {
@@ -322,6 +370,26 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 				return;
 			}
 			const seconds = Math.max(0, Math.round((at - startedAt) / 1000));
+			/*
+			 * A CANCEL INSIDE THE FIRST SECOND IS A PHANTOM (UX round 1, D6/U9): the
+			 * rig cancels the response it is replacing as the next take starts, and
+			 * that cancel used to add a second "Stopped at 0:00" row for the same
+			 * interruption. Nothing audible was played, so there is nothing to say.
+			 */
+			if (seconds === 0) {
+				set({ playbackStartedAt: null, activity: null });
+				return;
+			}
+			/* One row per interruption, however many cancels name it. */
+			const last = state.story.at(-1);
+			if (
+				last?.kind === "interrupted" &&
+				last.sessionId === sessionId &&
+				last.at === at
+			) {
+				set({ playbackStartedAt: null });
+				return;
+			}
 			set({
 				playbackStartedAt: null,
 				tick: { kind: "interrupted", sessionId, at, seconds },
