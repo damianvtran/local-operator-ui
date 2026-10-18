@@ -38,7 +38,7 @@ node scripts/run-desktop-tests.mjs \
   scripts/renderer-driver-api.test.mjs
 ```
 
-Actual result: **213 tests passed, 0 failed**. Targeted Biome and `git diff --check` pass (pre-existing warnings remain). Web TypeScript reports five pre-existing diagnostics; reverting the sole production-file change and repeating the command produces byte-identical diagnostics. No full local pass is claimed: `pnpm check-changed` selected broad desktop coverage and that run was stopped/reaped; full automated coverage is left to CI, not duplicated locally.
+Actual result: **213 tests passed, 0 failed**. The repository's real pre-push gate passes all three legs: changed-script Biome, changed-source Biome, and serial TypeScript checks for `tsconfig.node.json` then `tsconfig.app.json`; no bypass was used. `git diff --check` passes. An additional check of the legacy `tsconfig.web.json` reports five pre-existing diagnostics; reverting the sole production-file change and repeating that command produces byte-identical diagnostics. No full local pass is claimed: `pnpm check-changed` selected broad desktop coverage and that run was stopped/reaped; full automated coverage is left to CI, not duplicated locally.
 
 ## Waveform: a separate backend/runtime defect, not a design choice
 
