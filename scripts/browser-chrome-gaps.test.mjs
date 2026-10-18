@@ -271,3 +271,103 @@ test("human downloads: agent-owned tabs stay armed-only, and no human dir closes
 	await arm.done;
 	armer.forget(7);
 });
+
+test("human downloads: a healthy in-flight write survives the budget that used to kill it (review round 2, MAJOR)", async () => {
+	// THE DEADLINE MUST NOT COME BACK. `index.ts` used to wire
+	// `humanDeadlineMs: COMMAND_TIMEOUTS_S.download * 1000` (120 s) and
+	// `humanCapture` armed a wall-clock `settle` with it, so a legitimate
+	// in-flight write was cancelled — and its partial DELETED — when the clock
+	// ran out (review round 2 reproduced it with a 200 MiB file at ~1 MiB/s).
+	// The fixed armer no longer reads the option; it is passed here anyway so
+	// that a re-introduced budget bites HERE instead of shipping: with the old
+	// code, the 60 ms deadline fires well inside the wait below and
+	// `slow.cancelled` flips true.
+	const humanDir = mkdtempSync(join(tmpdir(), "lo-human-dl-"));
+	const owners = new Map([[7, "user"]]);
+	const armer = new DownloadArmer({
+		tabForWebContents: (id) => (id === 101 ? 7 : null),
+		ownerKindFor: (tabId) => owners.get(tabId) ?? null,
+		humanDownloadDir: () => humanDir,
+		log: () => {},
+		quietMs: 5,
+		humanDeadlineMs: 60,
+	});
+
+	const slow = new FakeDownloadItem({ filename: "slow.bin", total: 10 });
+	slow.received = 4; // mid-write: the state the deadline used to kill
+	const decision = armer.decide(slow, 101);
+	assert.equal(decision.cancel, false, "a user tab's write starts");
+	const plannedPath = slow.savePath;
+	assert.equal(plannedPath.startsWith(humanDir), true);
+
+	await new Promise((resolve) => setTimeout(resolve, 180)); // 3x the former budget
+	assert.equal(
+		slow.cancelled,
+		false,
+		"the former wall-clock budget must never cancel a healthy in-flight human write",
+	);
+	assert.equal(
+		slow.savePath,
+		plannedPath,
+		"and nothing was discarded or re-pathed",
+	);
+
+	// The write finishes the way a real one does, and the capture answers the
+	// way it always did: a saved note, on the quiet window.
+	slow.received = slow.total;
+	slow.finish("completed");
+	await new Promise((resolve) => setTimeout(resolve, 20));
+	const notes = armer.activityFor(7).notes;
+	assert.equal(
+		notes[0]?.outcome,
+		"saved",
+		"the completed write is reported as saved",
+	);
+	assert.ok(
+		notes.every((note) => note.outcome !== "refused"),
+		"no refusal was ever written for the healthy write",
+	);
+});
+
+test("human downloads: a refusal notifies the chrome at once (UX round 1, U1, MAJOR)", () => {
+	// THE REFUSAL WAS THE ONE STATE CHANGE THAT DID NOT NOTIFY. `refuse()`
+	// called `note()` and stopped there, so an executable refusal stayed
+	// invisible until some UNRELATED event forced the renderer to re-read the
+	// projection — measured at t+121.8 s, and there only because the human
+	// deadline's own settle fired `onActivity`. With the `onActivity` call in
+	// `refuse()` reverted, the counter below stays at zero and this test fails.
+	const humanDir = mkdtempSync(join(tmpdir(), "lo-human-dl-"));
+	const owners = new Map([[7, "user"]]);
+	let activity = 0;
+	const armer = new DownloadArmer({
+		tabForWebContents: (id) => (id === 101 ? 7 : null),
+		ownerKindFor: (tabId) => owners.get(tabId) ?? null,
+		humanDownloadDir: () => humanDir,
+		log: () => {},
+		quietMs: 5,
+		onActivity: () => {
+			activity += 1;
+		},
+	});
+
+	const before = activity; // the human capture's own creation does not notify
+	const exe = new FakeDownloadItem({ filename: "evil.exe" });
+	const refused = armer.decide(exe, 101);
+	assert.equal(
+		refused.cancel,
+		true,
+		"the executable fails the same way it always did",
+	);
+	assert.equal(
+		activity > before,
+		true,
+		"the refusal must fire the activity notification the other state changes fire",
+	);
+	const notes = armer.activityFor(7).notes;
+	assert.ok(
+		notes.some(
+			(note) => note.outcome === "refused" && note.name === "evil.exe",
+		),
+		"and the refusal note itself is on the ledger",
+	);
+});

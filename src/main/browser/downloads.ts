@@ -313,9 +313,10 @@ interface Capture {
 	finish: (() => void) | null;
 	settled: boolean;
 	/** True for a HUMAN capture (see `humanCapture`): no caller is awaiting
-	 * `done()`, there is no deadline budget, and the capture retires on the
-	 * quiet window so the per-call file cap bounds one human burst rather
-	 * than the person's whole session. */
+	 * `done()`, there is no deadline budget, and the capture retires at
+	 * `settle`/`forget` — on a guard, on the quiet window after its last
+	 * write, or with its tab — so the per-call file cap bounds one human burst
+	 * rather than the person's whole session. */
 	human: boolean;
 }
 
@@ -342,21 +343,6 @@ export interface DownloadArmerOptions {
 	 * caller-named directory would be the disclosure primitive `ipc.ts`'s
 	 * reveal channel is designed against. */
 	humanDownloadDir?: () => string | null;
-	/** How long a HUMAN capture lives before it settles itself, in
-	 * milliseconds (LOH-13 slice C, review minor 4).
-	 *
-	 * WITHOUT A DEADLINE a human capture has no upper bound at all: it is
-	 * created on the first download of a user-owned tab and, absent one, sits
-	 * in `captures` with its `CAP_SAMPLE_MS` sampler running until the tab is
-	 * closed — a timer and a map entry for the life of the tab. The armed path
-	 * is bounded by the caller's `timeout_s`; this gives the human path the
-	 * SAME budget (the wiring passes `COMMAND_TIMEOUTS_S.download`), after
-	 * which the capture settles and its sampler stops. A settled capture is
-	 * replaced by the next download on that tab, so the person's next click is
-	 * never refused by an old capture's budget. Optional and defaulting to no
-	 * deadline, so a test that builds an armer without a clock keeps the
-	 * simpler behaviour. */
-	humanDeadlineMs?: number;
 	log: (message: string) => void;
 	/** Called whenever the surface's state changes (arm, accept, refusal, finish),
 	 * so the chrome can re-render the row without polling. */
@@ -787,19 +773,16 @@ export class DownloadArmer {
 			CAP_SAMPLE_MS,
 		);
 		capture.capTimer.unref?.();
-		// A BOUNDED HUMAN CAPTURE (review minor 4): see `humanDeadlineMs`. The
-		// deadline uses `settle`, which cancels anything still writing rather
-		// than letting a write outlive the capture and land unjudged, exactly
-		// as the armed path's deadline does. `capture.timeoutMs` is set to the
-		// real budget so a cancellation sentence and a `deadline` refusal rule
-		// name the same number the armed path would.
-		const deadlineMs = this.options.humanDeadlineMs;
-		if (deadlineMs && deadlineMs > 0) {
-			capture.timeoutMs = deadlineMs;
-			const deadline = setTimeout(() => this.settle(capture), deadlineMs);
-			deadline.unref?.();
-			capture.deadlineTimer = deadline;
-		}
+		// A HUMAN CAPTURE HAS NO WALL-CLOCK BUDGET (review round 2, MAJOR). The
+		// deadline minor 4 added here settled — and CANCELLED, discarding the
+		// partial — a legitimate in-flight human write at 120 s (reproduced with
+		// a 200 MiB file at ~1 MiB/s; the agent may raise its own budget to 600 s
+		// while the person has no escape, and one burst's later files inherited a
+		// window that started at its first write). A person's download ends when
+		// the page ends it, when a guard bites, when the tab closes, or on the
+		// quiet window after its last write — never because a clock ran out.
+		// What still bounds it is the RUNTIME CAP above, which is about the disk
+		// rather than about time, and the map entry retires in `settle`/`forget`.
 		this.captures.set(tabId, capture);
 		return capture;
 	}
@@ -1157,6 +1140,18 @@ export class DownloadArmer {
 		capture.settled = true;
 		capture.active = null;
 		this.clearTimers(capture);
+		// SETTLE IS THE SINGLE CLEANUP POINT (review round 2, MAJOR): with the
+		// wall-clock deadline gone, the capture's map entry is retired HERE
+		// rather than left until the person's next download — so no map entry
+		// and no timer (clearTimers above, `capTimer` included) outlive the
+		// settle. `decide` treats a missing entry exactly as it treated a
+		// settled one (both build a fresh human capture), and `forget` stays a
+		// safe no-op for a tab whose entry is already gone. The identity guard
+		// is what makes a capture that raced its own replacement harmless: it
+		// cannot delete the NEWER capture of the same tab.
+		if (this.captures.get(capture.tabId) === capture) {
+			this.captures.delete(capture.tabId);
+		}
 		capture.finish?.();
 		this.options.onActivity?.();
 	}
@@ -1194,6 +1189,15 @@ export class DownloadArmer {
 		capture.refusals.push(reason);
 		this.note(capture, clean, "refused", 1, reason, refusal);
 		this.options.log(`[browser] ${reason}`);
+		// A REFUSAL IS A STATE CHANGE LIKE EVERY OTHER (UX round 1, U1, MAJOR).
+		// This was the only writer of a note that did not notify the chrome, so
+		// an executable refusal stayed invisible until some UNRELATED event made
+		// the renderer re-read the projection — measured at t+121.8 s, and there
+		// only because the human deadline's own settle forced the read. The row
+		// for a refusal has its own 5-minute TTL, so notifying here cannot flood
+		// anything, and it is the same `onActivity` every other state change
+		// (arm, noteUpload, track, done, progress, refuseLive, settle) fires.
+		this.options.onActivity?.();
 		return { cancel: true, reason };
 	}
 
