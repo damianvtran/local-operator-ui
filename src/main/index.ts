@@ -1619,7 +1619,12 @@ const qwenVoice: QwenVoice = new QwenVoice({
 			allowed: true,
 			open: (url: string) => instance().open(url),
 			close: () => page?.close(),
-			prepareMicrophone: async () => instance().prepareMicrophone(),
+			// The options MUST cross: they carry the 5 s bound and `onSettled`. A
+			// zero-argument lambda here dropped both, and the page fell back to
+			// `timeoutMs ?? 0` - wait forever (QA round 2: 2m12s on "Starting
+			// voice", no `mic` field ever reported).
+			prepareMicrophone: async (options) =>
+				instance().prepareMicrophone(options),
 		};
 	})(),
 	log: (message) => logger.info(message, LogFileType.BACKEND),
