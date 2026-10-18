@@ -103,6 +103,7 @@ import {
 	imageGenMaterialNoun,
 	withoutSettlementClause,
 } from "./image-gen-card-model";
+import { SoundBatch } from "./sound-batch";
 import { SoundStopConfirmation } from "./sound-stop-confirmation";
 import type { AttachmentScope } from "./use-attachment-url";
 
@@ -271,7 +272,9 @@ function StateLine({
 			text =
 				view.receipt === "already-finished"
 					? "Already finished."
-					: `Generated ${imageGenMaterialNoun(view.material)}`;
+					: view.batch
+						? "Sound effect batch"
+						: `Generated ${imageGenMaterialNoun(view.material)}`;
 			detail =
 				view.receipt === "already-finished" || view.durationS === null
 					? null
@@ -287,9 +290,10 @@ function StateLine({
 			 * copy too, and the seat its remedy clause lands on when Retry wires
 			 * (branding section 8).
 			 */
-			text =
-				view.message ??
-				`The ${imageGenMaterialNoun(view.material)} could not be generated.`;
+			text = view.batch
+				? "Sound effect batch failed."
+				: (view.message ??
+					`The ${imageGenMaterialNoun(view.material)} could not be generated.`);
 			emphasis = true;
 			break;
 		case "cancelled": {
@@ -307,8 +311,9 @@ function StateLine({
 			const line =
 				view.message ??
 				(view.generating ? CANCEL_RUNNING_COPY : CANCEL_QUEUED_COPY);
-			text =
-				view.settlementCaption || view.settled
+			text = view.batch
+				? "Sound effect batch stopped."
+				: view.settlementCaption || view.settled
 					? withoutSettlementClause(line)
 					: line;
 			break;
@@ -452,7 +457,10 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 				<p className={cn("text-meta text-ink-dim")}>{view.errorType}</p>
 			) : null}
 			<StateLine view={view} elapsed={elapsed} />
-			{view.state === "done" && view.costCaption ? (
+			{(view.state === "done" ||
+				view.state === "failed" ||
+				view.state === "cancelled") &&
+			view.costCaption ? (
 				<NoteLine line={view.costCaption} />
 			) : null}
 			{view.state === "cancelled" && view.settlementCaption ? (
@@ -501,7 +509,12 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 				/>
 			) : null}
 			{logTail === null ? null : <LogTail line={logTail} />}
-			{view.state === "done" && view.images.length > 0 ? (
+			{(view.state === "done" ||
+				view.state === "failed" ||
+				view.state === "cancelled") &&
+			view.batch ? (
+				<SoundBatch items={view.batch} scope={scope} />
+			) : view.state === "done" && view.images.length > 0 ? (
 				<div className={cn("flex flex-col gap-2")}>
 					{/*
 					 * THE ONE PLAYER SEAT (design spec §3.3; sound phase extends it). Each
