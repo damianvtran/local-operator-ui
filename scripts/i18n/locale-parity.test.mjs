@@ -179,6 +179,35 @@ const IDENTICAL_OK = new Map([
 		"ui.agents.navigation.sidebar.title",
 		"French cognate: « agents » has the same spelling.",
 	],
+
+	[
+		"ui.agentMessages.dialog.validation_detail",
+		"Placeholders and punctuation only ({field}: {rule}); no words to translate.",
+	],
+	[
+		"ui.agents.models.reading.effort_clamped",
+		"Placeholders and an arrow only ({requested} → {value}); no words to translate.",
+	],
+	[
+		"ui.agents.starters.summary.sentence",
+		"Placeholder and final punctuation only ({parts}.); the sentence body is translated.",
+	],
+	[
+		"ui.agents.starters.summary.separator",
+		"Language-neutral list separator (comma and space); identical in Russian.",
+	],
+	[
+		"ui.agents.settings.chat.top_k",
+		"Model sampling parameter name kept English by the Russian style guide.",
+	],
+	[
+		"ui.agents.settings.chat.top_p",
+		"Model sampling parameter name kept English by the Russian style guide.",
+	],
+	[
+		"ui.agents.settings.general.id",
+		"Standard technical abbreviation, unchanged in Russian.",
+	],
 ]);
 
 function localeDirs() {
