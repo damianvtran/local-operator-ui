@@ -312,6 +312,12 @@ interface Capture {
 	capTimer: ReturnType<typeof setInterval> | null;
 	finish: (() => void) | null;
 	settled: boolean;
+	/** True for a HUMAN capture (see `humanCapture`): no caller is awaiting
+	 * `done()`, there is no deadline budget, and the capture retires at
+	 * `settle`/`forget` — on a guard, on the quiet window after its last
+	 * write, or with its tab — so the per-call file cap bounds one human burst
+	 * rather than the person's whole session. */
+	human: boolean;
 }
 
 /** What a caller holds between `arm` and `release`. */
@@ -329,6 +335,14 @@ export interface DownloadArmerOptions {
 	 * U10). Optional because a test armer has no registry: absent means "cannot
 	 * say", which the row renders as it did before rather than inventing a kind. */
 	ownerKindFor?: (tabId: number) => "user" | "agent" | null;
+	/** The directory a HUMAN-initiated download lands in (LOH-13 slice C):
+	 * the person's own downloads folder, composed by the wiring that owns
+	 * the app paths. Optional because a test armer has no app: absent means
+	 * the human path is closed and an un-armed download is cancelled exactly
+	 * as before. Never harness-composed and never renderer-supplied — a
+	 * caller-named directory would be the disclosure primitive `ipc.ts`'s
+	 * reveal channel is designed against. */
+	humanDownloadDir?: () => string | null;
 	log: (message: string) => void;
 	/** Called whenever the surface's state changes (arm, accept, refusal, finish),
 	 * so the chrome can re-render the row without polling. */
@@ -454,6 +468,7 @@ export class DownloadArmer {
 			capTimer: null,
 			finish: null,
 			settled: false,
+			human: false,
 		};
 		this.captures.set(tabId, capture);
 		const deadline = setTimeout(() => this.settle(capture), timeoutMs);
@@ -525,9 +540,33 @@ export class DownloadArmer {
 	 */
 	decide(item: DownloadItemLike, webContentsId: number): DownloadDecision {
 		const tabId = this.options.tabForWebContents(webContentsId);
-		const capture = tabId === null ? undefined : this.captures.get(tabId);
+		let capture = tabId === null ? undefined : this.captures.get(tabId);
 		if (!capture || capture.settled) {
-			return { cancel: true, reason: "no download call is armed on this tab" };
+			// THE HUMAN PATH (LOH-13 slice C). `will-download` cannot tell a
+			// person's click on a download link from a page script starting a
+			// download — Electron delivers the same item either way — so the
+			// distinction this host CAN honestly make is WHO OWNS THE TAB.
+			// On a user-owned tab the person is the actor browsing, and a
+			// download the page starts there is the one they asked the page
+			// for; on an agent-owned (or handed-over) tab a page script could
+			// start one exactly as easily, so those tabs stay armed-only and
+			// the agent must use its `download` call, whose harness-composed
+			// quarantine directory and Python verdict are the point of that
+			// path. The human capture below reuses EVERY guard the armed
+			// path applies (executable names, per-file cap before the write,
+			// runtime cap while writing, per-burst file count, sanitised
+			// name, unique path) — what changes is only the destination
+			// (the person's own downloads folder, not a quarantine) and the
+			// absence of a waiting caller. Nothing here weakens the armed
+			// path: an armed capture is found above and this branch is never
+			// reached for it.
+			capture = (tabId !== null ? this.humanCapture(tabId) : null) ?? undefined;
+			if (!capture) {
+				return {
+					cancel: true,
+					reason: "no download call is armed on this tab",
+				};
+			}
 		}
 		const raw = item.getFilename();
 		const clean = safeName(raw);
@@ -685,6 +724,69 @@ export class DownloadArmer {
 		return [...this.captures.values()].at(-1)?.dir ?? dirs.at(-1) ?? null;
 	}
 
+	/** Build (or reuse) the human capture for one user-owned tab.
+	 *
+	 * Returns null — leaving the caller to cancel — when this host cannot
+	 * honestly call the download human-initiated: the tab is agent-owned or
+	 * handed to an agent (`ownerKindOf` reads the registry's CURRENT owner,
+	 * which hand-over flips), the armer was built without a human directory,
+	 * or that directory cannot be made. A settled human capture is replaced
+	 * rather than reused, so its file count bounds one burst (up to the
+	 * quiet window after the last write) and never the session.
+	 *
+	 * The directory is NOT chmodded, unlike `arm`: it is the person's own
+	 * downloads folder, which predates this app and whose mode is theirs.
+	 * The runtime-cap sampler IS started, for the reason `CAP_SAMPLE_MS`
+	 * states: an unknown-size human download has the same disk to fill as
+	 * an agent's. */
+	private humanCapture(tabId: number): Capture | null {
+		if (this.ownerKindOf(tabId) !== "user") return null;
+		const dir = this.options.humanDownloadDir?.() ?? null;
+		if (!dir) return null;
+		try {
+			mkdirSync(dir, { recursive: true });
+		} catch {
+			return null;
+		}
+		const capture: Capture = {
+			tabId,
+			dir,
+			timeoutMs: 0,
+			startedAt: (this.options.now ?? Date.now)(),
+			files: [],
+			refusals: [],
+			pending: 0,
+			started: false,
+			live: [],
+			handedOut: new Set(),
+			active: null,
+			lastProgressAt: 0,
+			quietTimer: null,
+			deadlineTimer: null,
+			capTimer: null,
+			finish: null,
+			settled: false,
+			human: true,
+		};
+		capture.capTimer = setInterval(
+			() => this.sampleCaps(capture),
+			CAP_SAMPLE_MS,
+		);
+		capture.capTimer.unref?.();
+		// A HUMAN CAPTURE HAS NO WALL-CLOCK BUDGET (review round 2, MAJOR). The
+		// deadline minor 4 added here settled — and CANCELLED, discarding the
+		// partial — a legitimate in-flight human write at 120 s (reproduced with
+		// a 200 MiB file at ~1 MiB/s; the agent may raise its own budget to 600 s
+		// while the person has no escape, and one burst's later files inherited a
+		// window that started at its first write). A person's download ends when
+		// the page ends it, when a guard bites, when the tab closes, or on the
+		// quiet window after its last write — never because a clock ran out.
+		// What still bounds it is the RUNTIME CAP above, which is about the disk
+		// rather than about time, and the map entry retires in `settle`/`forget`.
+		this.captures.set(tabId, capture);
+		return capture;
+	}
+
 	/** One upload's own line (review round 1, U3).
 	 *
 	 * WHY AN UPLOAD HAS A NOTE AT ALL, when §16.4 deliberately has no upload
@@ -810,7 +912,17 @@ export class DownloadArmer {
 				// the design states rather than the load-bearing half. It is BEST EFFORT for
 				// the same reason the audit append is: a chmod that failed would otherwise cost
 				// the user a file that did land.
-				restrictMode(savePath, this.options.log);
+				// THE 0600 IS SCOPED TO THE ARMED PATH (LOH-13 slice C, review
+				// minor 3). It is the quarantine's promise — "private by
+				// construction: created 0700, files 0600" — and a HUMAN capture
+				// does not land in a quarantine: it lands in the person's own
+				// downloads folder, which predates this app and where a file
+				// forced to 0600 would be one their own file-sharing or backup
+				// cannot read without a chmod they never asked for. So the human
+				// path takes the platform's normal mode (the process umask),
+				// exactly as the browser they would otherwise have used, and the
+				// armed path keeps its asserted mode unchanged.
+				if (!capture.human) restrictMode(savePath, this.options.log);
 				capture.files.push(fileFact(item, savePath));
 				this.note(capture, name, "saved", 1, "", null);
 			} else {
@@ -1028,6 +1140,18 @@ export class DownloadArmer {
 		capture.settled = true;
 		capture.active = null;
 		this.clearTimers(capture);
+		// SETTLE IS THE SINGLE CLEANUP POINT (review round 2, MAJOR): with the
+		// wall-clock deadline gone, the capture's map entry is retired HERE
+		// rather than left until the person's next download — so no map entry
+		// and no timer (clearTimers above, `capTimer` included) outlive the
+		// settle. `decide` treats a missing entry exactly as it treated a
+		// settled one (both build a fresh human capture), and `forget` stays a
+		// safe no-op for a tab whose entry is already gone. The identity guard
+		// is what makes a capture that raced its own replacement harmless: it
+		// cannot delete the NEWER capture of the same tab.
+		if (this.captures.get(capture.tabId) === capture) {
+			this.captures.delete(capture.tabId);
+		}
 		capture.finish?.();
 		this.options.onActivity?.();
 	}
@@ -1065,6 +1189,15 @@ export class DownloadArmer {
 		capture.refusals.push(reason);
 		this.note(capture, clean, "refused", 1, reason, refusal);
 		this.options.log(`[browser] ${reason}`);
+		// A REFUSAL IS A STATE CHANGE LIKE EVERY OTHER (UX round 1, U1, MAJOR).
+		// This was the only writer of a note that did not notify the chrome, so
+		// an executable refusal stayed invisible until some UNRELATED event made
+		// the renderer re-read the projection — measured at t+121.8 s, and there
+		// only because the human deadline's own settle forced the read. The row
+		// for a refusal has its own 5-minute TTL, so notifying here cannot flood
+		// anything, and it is the same `onActivity` every other state change
+		// (arm, noteUpload, track, done, progress, refuseLive, settle) fires.
+		this.options.onActivity?.();
 		return { cancel: true, reason };
 	}
 

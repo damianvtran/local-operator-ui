@@ -121,6 +121,14 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 	// can see (this app's own toast module records the same rule).
 	useEffect(() => {
 		if (!latest) return;
+		// SEED THE CLOCK ON THE NOTE, NOT ON THE MOUNT (UX round 1, U2). The
+		// state above initializes when the strip MOUNTS, which can precede its
+		// first note by minutes; the interval below only repaints on its next
+		// 15 s tick, so a note delivered late painted its age against the
+		// mount-time clock and read "just now" for a 121 s-old refusal (measured
+		// in probe11). Seeding from `Date.now()` whenever `latest` changes makes
+		// the first paint after any new note age from wall time.
+		setNow(Date.now());
 		const timer = setInterval(() => setNow(Date.now()), AGE_TICK_MS);
 		return () => clearInterval(timer);
 	}, [latest]);
