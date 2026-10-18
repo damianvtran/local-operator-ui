@@ -633,6 +633,86 @@ export function voiceCardPending(sessionId: string): boolean {
 export const voiceCardToastId = (sessionId: string): string =>
 	`voice-card:${sessionId}`;
 
+/* -------------------------------------------------------------------------- */
+/* WHAT A GATEWAY EVENT MAY DO HERE                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * How long after this window asks the rig to speak a `playback.started` may
+ * still count as that request's own start. The audio begins well inside this on
+ * every measured run; the bound exists so a `lastSpoken` left over from an
+ * earlier reply cannot re-arm "Speaking" minutes later.
+ */
+const PLAYBACK_START_WINDOW_MS = 30_000;
+
+type VoiceEventState = Pick<
+	ReturnType<typeof useVoiceStore.getState>,
+	"active" | "exchange" | "playbackStartedAt" | "lastSpoken"
+>;
+
+/**
+ * THE GATEWAY'S PLAYBACK EVENTS ARE GLOBAL; THIS WINDOW'S ARE NOT (QA round 4's
+ * note). The events name no session, and after a move the old conversation's
+ * tail still arrives. `setActive` clears the exchange and the playback clock at
+ * the move, so the tail that arrives afterwards had no reason to be speaking
+ * here — yet the handler used to set the activity for every event and play the
+ * end cue for every accepted `ended`, which put "Speaking" then "Reply ended"
+ * on a conversation that never played anything.
+ *
+ * The rule is derived from what must be true for a playback to exist HERE:
+ *   - the slot is held by this window (an event with no slot is about nothing);
+ *   - `started` needs a reason to be speaking now: an owed exchange (a take this
+ *     window relayed), an already-open playback (a repeated start frame), or a
+ *     speak this window issued for THIS session just before. Typed replies and
+ *     gate announcements come through that same `speakSource` door, so
+ *     `lastSpoken` is the record of both;
+ *   - `ended` / `cancelled` need the playback clock open — the start this window
+ *     admitted. Without it they are the old session's tail: no phase, no tick,
+ *     no cue.
+ * Speech events are not playback events and are deliberately not gated: they
+ * come from our own microphone and fire legitimately right after a resume.
+ * `realtime.response.done` drives no phase (`activityOfEvent` answers null), so
+ * there is nothing there to gate.
+ */
+export function voiceEventEffects(
+	state: VoiceEventState,
+	type: string,
+	accepted: boolean | undefined,
+	now: number,
+): {
+	/** The activity to mirror; `undefined` leaves it alone. */
+	activity: "speaking" | "hearing" | null | undefined;
+	/** The playback note to record, if this window may record it. */
+	playback: "started" | "ended" | "cancelled" | null;
+	/** Whether the reply-end cue may play. */
+	tone: boolean;
+} {
+	const playbackEvent = type.startsWith("realtime.playback.");
+	const holder = state.active?.session_id;
+	const spoken = state.lastSpoken;
+	const ours =
+		!playbackEvent ||
+		(Boolean(holder) &&
+			(type === "realtime.playback.started"
+				? state.playbackStartedAt !== null ||
+					state.exchange?.kind === "working" ||
+					(spoken !== null &&
+						spoken.sessionId === holder &&
+						now - spoken.at < PLAYBACK_START_WINDOW_MS)
+				: state.playbackStartedAt !== null));
+	const next = activityOfEvent(type);
+	const activity =
+		next === null || !ours ? undefined : next === "idle" ? null : next;
+	let playback: "started" | "ended" | "cancelled" | null = null;
+	if (ours && holder) {
+		if (type === "realtime.playback.started") playback = "started";
+		else if (type === "realtime.playback.ended" && accepted === true)
+			playback = "ended";
+		else if (type === "realtime.playback.cancelled") playback = "cancelled";
+	}
+	return { activity, playback, tone: playback === "ended" };
+}
+
 /** The router's navigate, set by the mounted controller (it sits inside the router). */
 let openSession: ((sessionId: string) => void) | null = null;
 
@@ -814,9 +894,21 @@ export const QwenVoiceController: FC = () => {
 		 * playback clears the phase and stays silent.
 		 */
 		const offEvent = rig.onEvent((event) => {
-			const next = activityOfEvent(event.type);
-			if (next !== null)
-				useVoiceStore.getState().setActivity(next === "idle" ? null : next);
+			/*
+			 * ONE DECISION, THEN THE SIDE EFFECTS (see `voiceEventEffects`): a
+			 * playback event is applied only when it belongs to something this
+			 * window is doing, and a tail from the conversation that lost the slot
+			 * cannot raise a phase, a tick or the end cue here.
+			 */
+			const now = Date.now();
+			const effects = voiceEventEffects(
+				useVoiceStore.getState(),
+				event.type,
+				event.accepted,
+				now,
+			);
+			if (effects.activity !== undefined)
+				useVoiceStore.getState().setActivity(effects.activity);
 			/*
 			 * THE PLAYBACK'S OWN CLOCK IS THIS WINDOW'S (design D2/D3, D9): "Reply
 			 * ended" and "Interrupted at m:ss" are said for a fixed beat, and the
@@ -827,18 +919,8 @@ export const QwenVoiceController: FC = () => {
 			 */
 			const at = Date.parse(event.at);
 			const holder = useVoiceStore.getState().active?.session_id;
-			if (holder) {
-				const seenAt = Date.now();
-				if (event.type === "realtime.playback.started")
-					useVoiceStore.getState().notePlayback("started", holder, seenAt);
-				else if (
-					event.type === "realtime.playback.ended" &&
-					event.accepted === true
-				)
-					useVoiceStore.getState().notePlayback("ended", holder, seenAt);
-				else if (event.type === "realtime.playback.cancelled")
-					useVoiceStore.getState().notePlayback("cancelled", holder, seenAt);
-			}
+			if (holder && effects.playback !== null)
+				useVoiceStore.getState().notePlayback(effects.playback, holder, now);
 			/*
 			 * A LONG TAKE IS DROPPED BY THE VAD (BRIEF-1): the segment never
 			 * becomes a take, so the only evidence is its own duration against the
@@ -849,13 +931,13 @@ export const QwenVoiceController: FC = () => {
 				if (dropped !== null) useVoiceStore.getState().setDroppedTake(dropped);
 			}
 			/*
-			 * THE END CUE NEEDS AN ACCEPTED RECEIPT (review M1): the Gateway logs
-			 * `playback.ended` even for a response this connection was not
-			 * playing, and a tone for that would announce a reply that never
-			 * happened here.
+			 * THE END CUE NEEDS AN ACCEPTED RECEIPT **AND AN OPEN PLAYBACK THIS
+			 * WINDOW ADMITTED** (review M1; QA round 4): the Gateway logs
+			 * `playback.ended` even for a response this connection was not playing,
+			 * and a tone for that would announce a reply that never happened here -
+			 * including one that belonged to the conversation the person just left.
 			 */
-			if (event.type === "realtime.playback.ended" && event.accepted === true)
-				void playReplyEndTone();
+			if (effects.tone) void playReplyEndTone();
 		});
 		return () => {
 			offStatus();
