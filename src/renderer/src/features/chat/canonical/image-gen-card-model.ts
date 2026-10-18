@@ -145,6 +145,21 @@ export function isVideoGenTool(toolName: string): boolean {
 }
 
 /**
+ * Whether a tool call is one of the two AUDIO calls, whose settlement can
+ * arrive later on its own journal row (`audio_settle_v1`).
+ *
+ * A separate predicate from `isImageGenTool` because the settlement link is
+ * a fact about the audio lifecycle only: images and videos have no
+ * bounded-poll settlement row, so nothing there can retire a clause.
+ */
+export function isSoundGenTool(toolName: string): boolean {
+	return (
+		toolName === VOICEOVER_GEN_TOOL_NAME ||
+		toolName === SOUND_EFFECT_GEN_TOOL_NAME
+	);
+}
+
+/**
  * Which artifact a card's sentence names when it names one.
  *
  * ONE fact, derived once from the record's tool name in `imageGenCardView` and
@@ -438,6 +453,17 @@ export type ImageGenCardView =
 			state: "cancelled";
 			settlementCaption?: string | null;
 			/**
+			 * Whether a TERMINAL settlement for this call exists somewhere else in
+			 * the transcript - the `audio_settle_v1` journal row that arrives after
+			 * the cancelled call and renders as its own receipt.
+			 *
+			 * Distinct from `settlementCaption`, which is the same fact carried on
+			 * the call's own details. Both retire the cancelled line's
+			 * "Checking for settlement." clause (design D7, UX U9); only the
+			 * caption also paints the amount under the call.
+			 */
+			settled?: boolean;
+			/**
 			 * Whether the call had started executing when it was stopped. The
 			 * settled receipt's sentence follows the same queued/running split the
 			 * cancelling line does: an in-flight stop never reads as a no-charge
@@ -467,7 +493,18 @@ export type ImageGenCardState = ImageGenCardView["state"];
  */
 export function imageGenCardView(
 	record: ImageGenToolRecord,
-	{ stopping = false }: { stopping?: boolean } = {},
+	{
+		stopping = false,
+		settled = false,
+	}: {
+		stopping?: boolean;
+		/**
+		 * A terminal settlement row for this call exists later in the transcript.
+		 * Read by the cancelled arms only, and only to retire the pending clause -
+		 * the receipt itself is that row's to paint.
+		 */
+		settled?: boolean;
+	} = {},
 ): ImageGenCardView {
 	/* The canonical payload, read once for every arm below that branches on it. */
 	const canonical = canonicalProgress(record.details);
@@ -495,6 +532,7 @@ export function imageGenCardView(
 			generating: record.startedAt !== null,
 			message: canonical.error ?? record.output,
 			...(settlementCaption ? { settlementCaption } : {}),
+			...(settlementCaption || settled ? { settled: true } : {}),
 		};
 	if (record.notRunKind === "skipped" || record.notRunKind === "aborted")
 		return { state: "cancelled", generating: false, message: record.output };
@@ -562,6 +600,7 @@ export function imageGenCardView(
 				generating: record.startedAt !== null,
 				message: canonical.error ?? record.output,
 				...(settlementCaption ? { settlementCaption } : {}),
+				...(settlementCaption || settled ? { settled: true } : {}),
 			};
 		return {
 			state: "failed",
@@ -665,6 +704,23 @@ export function imageGenCardView(
 	}
 }
 
+/** The clause `withoutSettlementClause` retires; top-level so it compiles once. */
+const SETTLEMENT_PENDING_CLAUSE = /\s*Checking for settlement\.?\s*$/;
+
+/**
+ * The cancelled line minus the clause a settlement row answers.
+ *
+ * ONE FACT, ONE ROW (design D7, UX U8/U9). "Checking for settlement." is a
+ * present-tense claim about work still outstanding; once a pending row or a
+ * billed receipt exists it IS the answer, so keeping the clause above it
+ * either repeats it (pending) or contradicts it (settled). Only the trailing
+ * clause is retired - the sentence's own stop facts stay as the wire wrote
+ * them, and a row with no settlement row is untouched.
+ */
+export function withoutSettlementClause(sentence: string): string {
+	return sentence.replace(SETTLEMENT_PENDING_CLAUSE, "").trimEnd();
+}
+
 /** A cancelled request can still be billed: retain the server's unknowns. */
 function soundSettlementCaption(details: unknown): string | null {
 	if (!details || typeof details !== "object") return null;
@@ -707,7 +763,17 @@ export function soundCostCaption(
 	if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0)
 		return legacy;
 	if (basis !== "billed" && basis !== "estimated") return null;
-	return `Cost $${Number(amount.toFixed(4)).toString()} (${basis}).`;
+	/*
+	 * A CHARGED CALL MUST NOT PRINT AS $0. Four decimals is the receipt's
+	 * precision, and trimming them is what keeps `$0.002` from reading as
+	 * `$0.0020` (design D5) - but amounts below the half-unit of that precision
+	 * (`(0, 0.00005)`) trim to "0" and would render a real charge
+	 * indistinguishably from an uncharged call. The bound is stated instead of
+	 * rounded up, because rounding would overstate what was taken.
+	 */
+	const rounded = Number(amount.toFixed(4));
+	const printed = rounded === 0 && amount > 0 ? "<$0.0001" : `$${rounded}`;
+	return `Cost ${printed} (${basis}).`;
 }
 
 /** Which affordance a control is. */

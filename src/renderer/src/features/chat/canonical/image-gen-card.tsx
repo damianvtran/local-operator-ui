@@ -101,6 +101,7 @@ import {
 	type ImageGenCardView,
 	imageGenCardControls,
 	imageGenMaterialNoun,
+	withoutSettlementClause,
 } from "./image-gen-card-model";
 import { SoundStopConfirmation } from "./sound-stop-confirmation";
 import type { AttachmentScope } from "./use-attachment-url";
@@ -291,17 +292,27 @@ function StateLine({
 				`The ${imageGenMaterialNoun(view.material)} could not be generated.`;
 			emphasis = true;
 			break;
-		case "cancelled":
+		case "cancelled": {
 			/*
 			 * The settled receipt prefers the TOOL/SERVER detail (`message`); the
 			 * canned sentence is only the fallback, and it follows the same
 			 * queued/running split the live line does — a settled in-flight stop
 			 * must still not read as a no-charge cancellation.
+			 *
+			 * THE PENDING CLAUSE IS RETIRED BY ITS OWN ANSWER: the settlement row
+			 * rendered under this line states the pending fact or the final charge,
+			 * so the sentence that asks "Checking for settlement" would either
+			 * repeat it or contradict it (design D7, UX U8/U9).
 			 */
-			text =
+			const line =
 				view.message ??
 				(view.generating ? CANCEL_RUNNING_COPY : CANCEL_QUEUED_COPY);
+			text =
+				view.settlementCaption || view.settled
+					? withoutSettlementClause(line)
+					: line;
 			break;
+		}
 	}
 	return (
 		<p className={cn("flex min-w-0 items-baseline gap-1.5 text-body-sm")}>
@@ -438,7 +449,7 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			{view.state === "failed" &&
 			(view.material === "voiceover" || view.material === "sound-effect") &&
 			view.errorType ? (
-				<p className={cn("text-meta text-ink")}>{view.errorType}</p>
+				<p className={cn("text-meta text-ink-dim")}>{view.errorType}</p>
 			) : null}
 			<StateLine view={view} elapsed={elapsed} />
 			{view.state === "done" && view.costCaption ? (

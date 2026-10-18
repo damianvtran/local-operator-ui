@@ -1,5 +1,12 @@
 import { Button } from "@shared/components/ui/button";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 
 /** Admission for both pane Stop and its Escape accelerator, before any RPC. */
 export function useSoundStopGate({
@@ -19,10 +26,21 @@ export function useSoundStopGate({
 	const paneRef = useRef<HTMLDivElement>(null);
 	const previousSession = useRef(sessionId);
 	useEffect(() => {
-		if (!runningSound || previousSession.current !== sessionId)
-			setConfirming(false);
+		const sessionChanged = previousSession.current !== sessionId;
 		previousSession.current = sessionId;
-	}, [sessionId, runningSound]);
+		if (!sessionChanged && runningSound) return;
+		if (!confirming) return;
+		setConfirming(false);
+		/*
+		 * THE QUESTION HAS LOST ITS SUBJECT. A sound call that settles while the
+		 * question is open - or a switch to another session - unmounts the safe
+		 * choice that currently holds focus, which drops the keyboard to `<body>`:
+		 * the next keystroke goes nowhere. The card's own gate restores to its
+		 * Stop; this gate's restore is the composer that raised it, so the same
+		 * explicit dismissal path runs here.
+		 */
+		onRestoreFocus();
+	}, [sessionId, runningSound, confirming, onRestoreFocus]);
 	const keepWaiting = useCallback(() => {
 		setConfirming(false);
 		onRestoreFocus();
@@ -44,17 +62,26 @@ export function useSoundStopGate({
 		}
 		onInterrupt();
 	}, [sessionId, available, runningSound, onInterrupt]);
-	const confirmation =
-		confirming && runningSound ? (
-			<SoundStopConfirmation
-				onKeepWaiting={keepWaiting}
-				onRequestStop={() => {
-					setConfirming(false);
-					onRestoreFocus();
-					onInterrupt();
-				}}
-			/>
-		) : null;
+	const requestStop = useCallback(() => {
+		setConfirming(false);
+		onRestoreFocus();
+		onInterrupt();
+	}, [onInterrupt, onRestoreFocus]);
+	/*
+	 * MEMOISED, because this element now crosses the composer's `memo` boundary:
+	 * an inline element would be a fresh prop on every page render (once per
+	 * stream flush) and re-render the whole box. Frozen on the facts it reads.
+	 */
+	const confirmation = useMemo(
+		() =>
+			confirming && runningSound ? (
+				<SoundStopConfirmation
+					onKeepWaiting={keepWaiting}
+					onRequestStop={requestStop}
+				/>
+			) : null,
+		[confirming, runningSound, keepWaiting, requestStop],
+	);
 	return { paneRef, stop, confirmation };
 }
 
