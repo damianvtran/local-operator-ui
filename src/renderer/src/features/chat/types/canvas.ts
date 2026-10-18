@@ -32,9 +32,13 @@ export type CanvasDocumentType =
 export type CanvasArtifact = {
 	/** The attachment store's key: 32 lowercase hex characters. */
 	digest: string;
-	/** Images/videos paint by digest. An opaque file keeps its MIME/type and is
-	 * materialised only by an explicit action needing a path-backed viewer. */
-	kind: "image" | "video" | "file";
+	/** Images/videos paint by digest. A sound paints nothing by digest — its
+	 * player resolves the same bytes and draws the stored peaks — but the kind is
+	 * still the fact that routes it to the audio seat (`mediaOf`, the Finder
+	 * band's compact player, the row's media block) rather than the generic file
+	 * glyph. An opaque file keeps its MIME/type and is materialised only by an
+	 * explicit action needing a path-backed viewer. */
+	kind: "image" | "video" | "audio" | "file";
 	/**
 	 * The conversation the bytes are served through. The attachment route is
 	 * scoped to the transcript that REFERENCES a digest, so a bare digest cannot be

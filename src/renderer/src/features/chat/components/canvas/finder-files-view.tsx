@@ -13,6 +13,7 @@ import {
 } from "@shared/components/ui";
 import { fold } from "@shared/components/ui/searchable-select";
 import { useEverInView } from "@shared/hooks/use-ever-in-view";
+import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
 import { createBlobUrl, revokeBlobUrl } from "@shared/lib/blob-url-cache";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
@@ -30,6 +31,7 @@ import {
 } from "lucide-react";
 import {
 	type KeyboardEvent,
+	memo,
 	useCallback,
 	useEffect,
 	useMemo,
@@ -42,12 +44,16 @@ import {
 	formatDateTime,
 	formatNumber,
 } from "../../../../../../i18n/format";
+import { SoundPlayer } from "../../canonical/sound-player";
+import { useAttachmentSource } from "../../canonical/use-attachment-url";
 import type { FileIndexState } from "../../canonical/use-session-files";
-import type { CanvasDocument } from "../../types/canvas";
+import { useWaveform } from "../../canonical/use-waveform";
+import type { CanvasArtifact, CanvasDocument } from "../../types/canvas";
 import {
 	artifactFileName,
 	artifactTooltip,
 } from "../../utils/artifact-identity";
+import { mimeTypeForPath } from "../../utils/file-kind";
 import { revealLocalTarget } from "../../utils/link-open";
 import { viewerFor } from "../../utils/viewer-routing";
 import { ImageActionsMenu } from "../image-actions-menu";
@@ -76,6 +82,12 @@ const sectionLabels: Record<string, () => string> = {
 	"Working files": () => t("ui.canvas.files.working"),
 	Images: () => t("ui.canvas.files.images"),
 	Videos: () => t("ui.canvas.files.videos"),
+	/*
+	 * The Sounds section reads the same catalogue word the filter menu's group
+	 * and the sort-by-kind column use (`ui.canvas.files.audio`, whose en value is
+	 * "Sounds"): one group, one word, three surfaces (file-rows.ts's comment).
+	 */
+	Sounds: () => t("ui.canvas.files.audio"),
 	Documents: () => t("ui.canvas.files.documents"),
 	Spreadsheets: () => t("ui.canvas.files.spreadsheets"),
 	Other: () => t("ui.canvas.files.other"),
@@ -865,6 +877,117 @@ export function FinderFilesView({
 	);
 }
 
+/**
+ * The compact sound player for one Files row, fed by whichever store the row's
+ * bytes live in.
+ *
+ * TWO STORES, ONE PLAYER. An artifact row's bytes come over the media relay by
+ * digest (the same resolver the transcript mounts); a path-backed row's come
+ * over the file bridge (`useFileBlobUrl`, the hook the audio PREVIEW uses).
+ * Two components rather than one branch because each mounts one resolver hook
+ * unconditionally - a merged branch would ask the attachment route about every
+ * path-backed row and read a file for every digest.
+ *
+ * PEAKS FOLLOW THE SAME SPLIT: a digest has a sidecar to ask for
+ * (`useWaveform`); a path has none, so it draws the honest flat scrubber.
+ */
+const FinderSoundPlayer = memo(function FinderSoundPlayer({
+	doc,
+	label,
+}: {
+	doc: CanvasDocument;
+	label: string;
+}) {
+	return doc.artifact ? (
+		<FinderArtifactSound artifact={doc.artifact} label={label} />
+	) : (
+		<FinderPathSound doc={doc} label={label} />
+	);
+});
+
+const FinderArtifactSound = memo(function FinderArtifactSound({
+	artifact,
+	label,
+}: {
+	artifact: CanvasArtifact;
+	label: string;
+}) {
+	/*
+	 * The scope object is rebuilt from its two primitives rather than from
+	 * `artifact`: the resolver depends on the ids, and a new object identity per
+	 * render would be noise it already documents it ignores.
+	 */
+	const sessionId = artifact.sessionId;
+	const childId = artifact.childId ?? null;
+	const scope = useMemo(() => ({ sessionId, childId }), [sessionId, childId]);
+	const source = useAttachmentSource(
+		{
+			data: null,
+			attachment: artifact.digest,
+			mimeType: artifact.contentType ?? "audio/mpeg",
+		},
+		scope,
+	);
+	const peaks = useWaveform(artifact.digest, scope);
+	if (source.state === "missing") {
+		return (
+			<span className={cn("px-1 py-2 text-meta text-ink-muted")}>
+				{t("ui.canvas.files.unreadable")}
+			</span>
+		);
+	}
+	if (source.state === "resolving") {
+		// A reserved line at the player's own height, so the row does not jump when
+		// the bytes land (the same reason the transcript's boxes reserve).
+		return <div className={cn("h-11")} aria-hidden={true} />;
+	}
+	return (
+		<SoundPlayer
+			variant="compact"
+			/* The digest is the identity, exactly as in the transcript. */
+			ownerId={`sound:${artifact.digest}`}
+			src={source.url}
+			label={label}
+			peaks={peaks}
+			durationHint={artifact.durationS ?? null}
+		/>
+	);
+});
+
+const FinderPathSound = memo(function FinderPathSound({
+	doc,
+	label,
+}: {
+	doc: CanvasDocument;
+	label: string;
+}) {
+	const state = useFileBlobUrl(doc.path, {
+		mtimeMs: doc.lastAgentModified,
+		mimeType: mimeTypeForPath(doc.path),
+		sizeBytes: doc.sizeBytes,
+	});
+	if (state.status === "unavailable") {
+		return (
+			<span className={cn("px-1 py-2 text-meta text-ink-muted")}>
+				{t("ui.canvas.files.unreadable")}
+			</span>
+		);
+	}
+	if (state.status === "loading") {
+		return <div className={cn("h-11")} aria-hidden={true} />;
+	}
+	return (
+		<SoundPlayer
+			variant="compact"
+			/* A path-backed sound has no digest; the path is its identity here. */
+			ownerId={`sound:path:${doc.path}`}
+			src={state.url}
+			label={label}
+			peaks={null}
+		/>
+	);
+});
+
 function FinderEntry({
 	item,
 	current,
@@ -918,6 +1041,97 @@ function FinderEntry({
 				: doc.artifact
 					? t("ui.canvas.files.sessionOnly")
 					: (item.row.size ?? "");
+
+	/*
+	 * THE SOUND BAND'S ROW, WHICH IS NOT A BUTTON (sound phase). Every other
+	 * band's entry is one `<button>` because the whole row is one action; a
+	 * sound's row carries a PLAYER, and a button inside a button is invalid HTML
+	 * - so here the row's NAME is the button (open is the same click every other
+	 * band's row performs) and the player sits beside it, sharing the row's
+	 * hover ground. Focus, keyboard and context-menu behaviour are the button
+	 * band's, which is what keeps `controls`, the layout model and the arrow-key
+	 * walk one implementation across all six band kinds.
+	 */
+	if (band.kind === "audio") {
+		return (
+			<div
+				ref={nearRef}
+				className={cn(
+					"group relative min-w-0 rounded-sm px-1 py-0.5",
+					current ? rowCurrent : "hover:bg-row-hover",
+				)}
+				data-tour-tag="file-row"
+				data-file-id={doc.id}
+				onContextMenu={(event) => {
+					event.preventDefault();
+					setMenuOpen(true);
+				}}
+			>
+				<div className={cn("flex min-w-0 items-center gap-2 pr-8")}>
+					<button
+						type="button"
+						ref={(node) => {
+							rowControl.current = node;
+							buttonRef(node);
+						}}
+						tabIndex={tabIndex}
+						onFocus={onFocus}
+						title={tooltip}
+						onClick={onOpen}
+						onKeyDown={(event) => {
+							if (
+								(event.shiftKey && event.key === "F10") ||
+								event.key === "ContextMenu"
+							) {
+								event.preventDefault();
+								setMenuOpen(true);
+							} else onKeyDown(event);
+						}}
+						className={cn(
+							"min-w-0 flex-1 truncate rounded-sm py-1 text-left text-body-sm",
+							item.row.missing ? "text-ink-muted" : "text-ink",
+						)}
+					>
+						{item.row.name}
+					</button>
+					<span
+						title={
+							timestamp === null ? undefined : formatDateTime(timestamp * 1000)
+						}
+						className={cn("shrink-0 text-meta text-ink-dim")}
+					>
+						{meta}
+					</span>
+				</div>
+				<FinderSoundPlayer doc={doc} label={item.row.name} />
+				<div className={REVEAL} onKeyDown={(event) => event.stopPropagation()}>
+					<ImageActionsMenu
+						file={doc.path}
+						tooltip={t("ui.canvas.files.fileActions")}
+						label={doc.title}
+						open={menuOpen}
+						onOpenChange={setMenuOpen}
+						onCloseAutoFocus={(event) => {
+							event.preventDefault();
+							rowControl.current?.focus({ preventScroll: true });
+						}}
+						triggerTabIndex={-1}
+						mediaKind="audio"
+						onShowInCanvas={
+							viewerFor(doc.path, doc.type) === null ? undefined : onOpen
+						}
+						resolveBytes={() => finderOriginal(doc)}
+						saveName={doc.artifact ? artifactFileName(doc.artifact) : undefined}
+						resolvePath={
+							doc.artifact && !item.row.missing ? materialise : undefined
+						}
+						missing={item.row.missing && !doc.artifact}
+					/>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div
 			ref={nearRef}

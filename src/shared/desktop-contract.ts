@@ -5714,6 +5714,25 @@ export type DesktopMediaRequest =
 			digest: string;
 	  }
 	/*
+	 * A generated sound's PRE-RENDER peaks sidecar (`<digest>.peaks.json`), as
+	 * `{ peaks: number[] }` JSON from
+	 * `/v1/desktop/sessions/{id}/attachments/{digest}/waveform`.
+	 *
+	 * WHY ON THIS RELAY, when it is JSON and not bytes: the sidecar is a file
+	 * the session STORE holds beside the audio it describes, so it is served by
+	 * the same bearer-scoped attachment route family the bytes come from - one
+	 * place answers "what is in this session's store", and the renderer never
+	 * learns the store's layout. `sessions.supplementDocument` below took the
+	 * same route for the same reason. A session that predates the peaks sidecar
+	 * answers not-found; the renderer's waveform hook degrades to a flat scrubber
+	 * rather than synthesizing a shape the audio does not have.
+	 */
+	| {
+			op: "sessions.attachment.waveform";
+			sessionId: string;
+			digest: string;
+	  }
+	/*
 	 * One supplement component's assembled HTML document (turn-supplements memo
 	 * §2.7, lane U-b), as `{ html }` JSON from
 	 * `/v1/desktop/sessions/{id}/supplements/{digest}/document`.

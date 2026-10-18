@@ -49,6 +49,7 @@ const {
 	imageGenCardMountActions,
 	imageGenCardView,
 	imageGenMaterial,
+	imageGenMaterialNoun,
 	isImageGenTool,
 	isVideoGenTool,
 } = await import(
@@ -101,13 +102,22 @@ const ALL_ACTIONS = {
 	onEditRestart: () => {},
 };
 
-test("the detection set is the two frozen tool names, and the material fact derives from them", () => {
+test("the detection set is the four frozen tool names, and the material fact derives from them", () => {
+	/*
+	 * The set grew by the sound phase's two members (2026-10-17): the audio
+	 * tools are ordinary interruptible tool calls, so they ride this card's
+	 * whole six-state machine and this set is the one edit that routes them.
+	 */
 	assert.deepEqual([...IMAGE_GEN_TOOL_NAMES].sort(), [
 		"generate_image",
+		"generate_sound_effect",
 		"generate_video",
+		"generate_voiceover",
 	]);
 	assert.equal(isImageGenTool("generate_image"), true);
 	assert.equal(isImageGenTool("generate_video"), true);
+	assert.equal(isImageGenTool("generate_voiceover"), true);
+	assert.equal(isImageGenTool("generate_sound_effect"), true);
 	// The image-to-image edit rides `source_image_path` on the SAME tool; the
 	// second image name was frozen away before it ever had a producer. The video
 	// phase adds exactly one member, and only one spelling of it.
@@ -116,12 +126,22 @@ test("the detection set is the two frozen tool names, and the material fact deri
 	// Exact match only — a case or spelling drift must not silently detect.
 	assert.equal(isImageGenTool("Generate_Image"), false);
 	assert.equal(isImageGenTool("generate_image "), false);
+	assert.equal(isImageGenTool("Generate_Voiceover"), false);
 	assert.equal(isImageGenTool(""), false);
-	// The material fact is derived once, from the call's own name.
+	// The material fact is derived once, from the call's own name — and the
+	// noun it steers is spelled once, beside it, so the three strings cannot
+	// come to name one material two ways.
 	assert.equal(isVideoGenTool("generate_video"), true);
 	assert.equal(isVideoGenTool("generate_image"), false);
 	assert.equal(imageGenMaterial("generate_video"), "video");
 	assert.equal(imageGenMaterial("generate_image"), "image");
+	assert.equal(imageGenMaterial("generate_voiceover"), "voiceover");
+	assert.equal(imageGenMaterial("generate_sound_effect"), "sound-effect");
+	assert.equal(imageGenMaterial("bash"), "image");
+	assert.equal(imageGenMaterialNoun("video"), "video");
+	assert.equal(imageGenMaterialNoun("image"), "image");
+	assert.equal(imageGenMaterialNoun("voiceover"), "voiceover");
+	assert.equal(imageGenMaterialNoun("sound-effect"), "sound effect");
 });
 
 test("a dictated or waiting call maps to queued, with the byte count it has", () => {
@@ -780,9 +800,29 @@ test("the mount passes a video card no Cancel, and an image card the pane's inte
 	assert.deepEqual(imageGenCardMountActions("generate_image", interrupt), {
 		onCancel: interrupt,
 	});
+	/*
+	 * The audio calls keep the pane's interrupt, and that is the ONLY cancel
+	 * affordance they draw: the frozen tool schema marks both `interruptible`,
+	 * so the press really reaches the call - while a per-job "stop the vendor"
+	 * control would lie (cancellation is best-effort once the vendor is
+	 * mid-flight; contract §"cancellation is best-effort").
+	 */
+	assert.deepEqual(imageGenCardMountActions("generate_voiceover", interrupt), {
+		onCancel: interrupt,
+	});
+	assert.deepEqual(
+		imageGenCardMountActions("generate_sound_effect", interrupt),
+		{
+			onCancel: interrupt,
+		},
+	);
 	// And a mount with no interrupt wired passes nothing either way.
 	assert.equal(
 		imageGenCardMountActions("generate_image", undefined),
+		undefined,
+	);
+	assert.equal(
+		imageGenCardMountActions("generate_voiceover", undefined),
 		undefined,
 	);
 });
@@ -815,6 +855,46 @@ test("the material noun reaches the three strings, and only those strings move (
 	});
 	assert.equal(failed.includes("The video could not be generated."), true);
 	assert.equal(failed.includes("could not be generated."), true);
+
+	/*
+	 * THE SOUND ARMS (2026-10-17): the same three strings, steered by the same
+	 * `material` fact - `voiceover` and `sound effect` are the only words that
+	 * move, and the failure fallback spells the noun the state line does.
+	 */
+	const voiceoverRunning = markupOf({
+		state: "running",
+		material: "voiceover",
+		startedAtMs: null,
+		progress: NO_PROGRESS,
+	});
+	assert.equal(voiceoverRunning.includes("Generating voiceover…"), true);
+	assert.equal(voiceoverRunning.includes("Generating image"), false);
+	const soundEffectRunning = markupOf({
+		state: "running",
+		material: "sound-effect",
+		startedAtMs: null,
+		progress: NO_PROGRESS,
+	});
+	assert.equal(soundEffectRunning.includes("Generating sound effect…"), true);
+	const voiceoverDone = markupOf({
+		state: "done",
+		material: "voiceover",
+		images: [],
+		durationS: 12.5,
+		receipt: "generated",
+	});
+	assert.equal(voiceoverDone.includes("Generated voiceover"), true);
+	assert.equal(voiceoverDone.includes("Generated image"), false);
+	const soundEffectFailed = markupOf({
+		state: "failed",
+		material: "sound-effect",
+		message: null,
+		errorType: null,
+	});
+	assert.equal(
+		soundEffectFailed.includes("The sound effect could not be generated."),
+		true,
+	);
 
 	// The image rendering is byte-identical to what it always was: same views,
 	// `material: "image"`.
@@ -879,6 +959,64 @@ test("a done card mounts a video ref through the player, never through an img", 
 	);
 	assert.equal(resolving.includes("data-attachment-reserved"), true);
 	assert.equal(resolving.includes("<video"), false);
+});
+
+test("a done card mounts a sound ref through the player, never through an img", () => {
+	/*
+	 * The audio arm of the player seam: a voiceover's artifact is `kind:
+	 * "audio"`, and the card mounts it through `CanonicalAudio` -> the shared
+	 * `SoundPlayer` (never an `<img>`, which cannot decode it, and never the
+	 * `<video>` player, which would paint a blank frame). The label reads the
+	 * CARD's material noun, because the ref only knows it is audio.
+	 */
+	const scope = { sessionId: "session-1", childId: null };
+	const live = {
+		id: "a1",
+		data: "AAAA",
+		attachment: null,
+		mimeType: "audio/mpeg",
+		kind: "audio",
+		durationS: 12.5,
+		width: null,
+		height: null,
+	};
+	const ready = markupOf(
+		{
+			state: "done",
+			material: "voiceover",
+			images: [live],
+			durationS: 12.5,
+			receipt: "generated",
+		},
+		undefined,
+		scope,
+	);
+	assert.equal(ready.includes('data-sound-player="full"'), true);
+	assert.equal(ready.includes('role="slider"'), true);
+	assert.equal(
+		ready.includes('aria-label="Generated voiceover position"'),
+		true,
+		"the slider names the card's material, not the wire's bare kind",
+	);
+	assert.equal(ready.includes("<img"), false);
+	assert.equal(ready.includes("<video"), false);
+
+	// A DURABLE ref (digest) with a scope reserves the box while the bytes
+	// travel — the same state hook the picture and video paths carry.
+	const durable = { ...live, id: "a2", data: null, attachment: "c".repeat(32) };
+	const resolving = markupOf(
+		{
+			state: "done",
+			material: "sound-effect",
+			images: [durable],
+			durationS: null,
+			receipt: "generated",
+		},
+		undefined,
+		scope,
+	);
+	assert.equal(resolving.includes("data-attachment-reserved"), true);
+	assert.equal(resolving.includes('data-sound-player="full"'), false);
 });
 
 /**

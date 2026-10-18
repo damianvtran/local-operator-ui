@@ -131,10 +131,12 @@ export type ImageActionsOptions = {
 	source: string;
 	/**
 	 * What the bytes are, for the `artifact` kind only: a video has a player and
-	 * a download but no clipboard form, so `Copy image` is withheld from it.
-	 * Absent means a picture, which is every other kind's only possibility.
+	 * a download but no clipboard form, so `Copy image` is withheld from it - and
+	 * a SOUND is the same case (a player, a download, no clipboard form), so the
+	 * two non-picture kinds share the arm. Absent means a picture, which is every
+	 * other kind's only possibility.
 	 */
-	mediaKind?: "image" | "video";
+	mediaKind?: "image" | "video" | "audio";
 };
 
 const OPEN_FILE: ImageAction = { id: "open-file", label: "Open file" };
@@ -200,7 +202,7 @@ export function imageActions(
 					? [OPEN_FILE, OPEN_FOLDER, COPY_FILE_PATH]
 					: []),
 				SAVE_AS,
-				...(mediaKind === "video" ? [] : [COPY_IMAGE]),
+				...(mediaKind === "video" || mediaKind === "audio" ? [] : [COPY_IMAGE]),
 			];
 		case "path":
 			return [
@@ -208,7 +210,7 @@ export function imageActions(
 				OPEN_FILE,
 				OPEN_FOLDER,
 				COPY_FILE_PATH,
-				...(mediaKind === "video" ? [] : [COPY_IMAGE]),
+				...(mediaKind === "video" || mediaKind === "audio" ? [] : [COPY_IMAGE]),
 			];
 		case "data":
 			/*

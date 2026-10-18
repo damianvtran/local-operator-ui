@@ -147,6 +147,7 @@ import {
 } from "../transcript-display-mode";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
+import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
 import { visibleRecords } from "./cross-session-visibility";
@@ -842,6 +843,21 @@ const toolImageLabel = (
 	index: number,
 	count: number,
 ): string => image.name ?? (count === 1 ? "Image" : `Image ${index + 1}`);
+
+/**
+ * The audio sibling of `toolImageLabel`: the same rule (the wire's own name
+ * wins where one travelled), the material's noun otherwise.
+ *
+ * "Sound" rather than "Generated voiceover": THIS seat knows the ref, not the
+ * call — a tool row's artifact is named by what it is here, the same reason its
+ * picture sibling says "Image" and not "Generated image" (the card, which does
+ * know the call, is the seat that spells the producer's noun).
+ */
+const toolAudioLabel = (
+	audio: TranscriptImage,
+	index: number,
+	count: number,
+): string => audio.name ?? (count === 1 ? "Sound" : `Sound ${index + 1}`);
 
 const UserRow = memo(function UserRow({
 	record,
@@ -2115,34 +2131,54 @@ const ToolRow = memo(function ToolRow({
 	 * quiet mattered most.
 	 */
 	const details = body ? <>{body}</> : undefined;
-	// Screenshots sit under the row and OUTSIDE the disclosure, which is where
-	// the TUI mounts them. Hiding a picture behind a toggle is the complaint
-	// being fixed, not a smaller version of it.
 	/*
-	 * The row's PICTURES, by the media array's shared predicate (`isPictureRef`):
-	 * media rendered here are `<img>` frames, and a video ref (a future non-card
+	 * The row's PICTURES AND SOUNDS, mounted under the row and OUTSIDE the
+	 * disclosure, which is where the TUI mounts them. Hiding a picture behind a
+	 * toggle is the complaint being fixed, not a smaller version of it.
+	 *
+	 * PICTURES are the media array's shared predicate (`isPictureRef`): media
+	 * rendered here are `<img>` frames, and a video ref (a future non-card
 	 * tool's artifact — today only the card's detection set produces video)
-	 * must not be handed to one. The player's seat is the card's done body.
+	 * must not be handed to one. The video player's seat is the card's done
+	 * body.
+	 *
+	 * SOUNDS take the same row seat their picture siblings do (the brief's
+	 * mount list: "the tool row and the image-gen card's done body"), because a
+	 * sound's player has no card to live in when the call that produced it is
+	 * NOT in the detection set — a future audio tool outside it must still be
+	 * playable from its own row. The two are interleaved in the record's own
+	 * order so a call that produced both reads in the order it produced them.
 	 */
 	const pictures = record.images.filter(isPictureRef);
+	const rowMedia = record.images.filter(
+		(ref) => isPictureRef(ref) || ref.kind === "audio",
+	);
 	const media =
-		pictures.length > 0 ? (
+		rowMedia.length > 0 ? (
 			<div className={cn("mt-1 ml-5 flex flex-col gap-2")}>
-				{pictures.map((image, index) => (
-					<CanonicalImage
-						key={image.id}
-						image={image}
-						scope={scope}
-						label={toolImageLabel(image, index, pictures.length)}
-						/*
-						 * THIS ROW is the group: a tool call's own screenshots are one set
-						 * (the reader pressed inside it, so the walk stays inside it), the
-						 * same boundary the condensed strip draws when the row's group is
-						 * collapsed.
-						 */
-						group={{ images: pictures, index, labelFor: toolImageLabel }}
-					/>
-				))}
+				{rowMedia.map((ref, index) =>
+					ref.kind === "audio" ? (
+						<CanonicalAudio
+							key={ref.id}
+							audio={ref}
+							scope={scope}
+							label={toolAudioLabel(ref, index, rowMedia.length)}
+						/>
+					) : (
+						<CanonicalImage
+							key={ref.id}
+							image={ref}
+							scope={scope}
+							label={toolImageLabel(ref, index, pictures.length)}
+							/*
+							 * THIS ROW is the group: a tool call's own screenshots are one set (the
+							 * reader pressed inside it, so the walk stays inside it), the same
+							 * boundary the condensed strip draws when the row's group is collapsed.
+							 */
+							group={{ images: pictures, index, labelFor: toolImageLabel }}
+						/>
+					),
+				)}
 			</div>
 		) : undefined;
 	return (

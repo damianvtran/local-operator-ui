@@ -172,6 +172,18 @@ export const VIDEO_UNAVAILABLE_COPY =
 	"could not be played. Its stored copy is not available to this reader.";
 
 /**
+ * What a digest-backed AUDIO row says when its bytes do not arrive or do not
+ * decode.
+ *
+ * The same sentence as the video receipt, deliberately: the differing word is
+ * the VERB, and "played" is the verb of both player materials — the copy delta
+ * the design spec enumerates (§4, V7) is between a displayed picture and a
+ * played clip, not between the two things a playhead plays. A second sentence
+ * that differed would be two spellings of one fact.
+ */
+export const AUDIO_UNAVAILABLE_COPY = VIDEO_UNAVAILABLE_COPY;
+
+/**
  * What the reader sees instead of a torn-page glyph.
  *
  * Voice rule: what happened, what it means, what to do. The name says which
