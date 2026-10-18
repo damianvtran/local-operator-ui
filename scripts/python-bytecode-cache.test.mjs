@@ -2366,6 +2366,20 @@ const SPAWN_SITES = [
 		/"ps"/,
 		"reads one recorded pid's process group and command line (`ps -o pgid=,command= -p <pid>`) so the voice rig reaps a leftover s2s group only when it is still the s2s this app started from this rig, not a recycled pid; `ps` is that tool and starts no interpreter",
 	),
+	runsCommand(
+		"src/main/voice/qwen-rig.ts",
+		"execFileSync",
+		2,
+		/"ps"/,
+		"enumerates the s2s process group's pids (`ps -o pid= -g <pgid>`) for the footprint guard (§9 layer 3); `ps` reads the process table and starts no interpreter",
+	),
+	runsCommand(
+		"src/main/voice/qwen-rig.ts",
+		"execFileSync",
+		3,
+		/"footprint"/,
+		"sums the s2s group's memory footprint (`footprint -f bytes --noCategories <pids>`), the only reading that counts Metal/GPU buffers - `ps` RSS reports the CPU side only and the leak the budget guard exists for is Metal; it starts no interpreter",
+	),
 ];
 
 test("every child-process spawn site is enumerated, and the python ones carry the guards", () => {

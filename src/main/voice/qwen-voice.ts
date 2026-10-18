@@ -112,6 +112,12 @@ export class QwenVoice {
 	private clients = 0;
 	private relayed: Relayed[] = [];
 	private idleTimer: unknown = null;
+	/**
+	 * The sentence a start's catch must report instead of its own, set when the
+	 * memory guard stops the rig mid-warmup: the guard knows WHY, and the start
+	 * path only sees "exited during start".
+	 */
+	private budgetReason: string | null = null;
 	private starting: Promise<QwenVoiceStatus> | null = null;
 	private readonly log: (message: string) => void;
 	private readonly now: () => number;
@@ -191,6 +197,7 @@ export class QwenVoice {
 		}
 		if (this.starting) return this.starting;
 		this.disarmIdleStop();
+		this.budgetReason = null;
 		this.setStatus({ rig: "starting", webui_url: null });
 		this.starting = (async () => {
 			try {
@@ -217,7 +224,10 @@ export class QwenVoice {
 				if (this.slot === null) this.armIdleStop();
 				this.deps.openWebUi(webuiUrl);
 			} catch (error) {
-				const message = error instanceof Error ? error.message : String(error);
+				const message =
+					this.budgetReason ??
+					(error instanceof Error ? error.message : String(error));
+				this.budgetReason = null;
 				this.log(`qwen-voice: rig failed to start: ${message}`);
 				await this.stopProcesses();
 				this.setStatus({ rig: "error", webui_url: null, reason: message });
@@ -254,6 +264,30 @@ export class QwenVoice {
 			webui_url: null,
 			reason: `${which === "gateway" ? "The voice Gateway" : "speech-to-speech"} exited (${detail}); see the voice logs.`,
 			cause: "unexpected_exit",
+			clients: 0,
+		});
+	}
+
+	/**
+	 * §9 layer 3: the speech process's group footprint passed the budget and the
+	 * guard stopped it. Reported as the rig's own error, because nothing else is
+	 * true and a silent "ready" over a stopped rig is the failure this exists to
+	 * prevent.
+	 */
+	budgetExceeded(limitBytes: number): void {
+		const gib = Number((limitBytes / 1024 ** 3).toFixed(1));
+		const message = `Voice stopped: it used more than ${gib} GB`;
+		this.log(`qwen-voice: ${message}`);
+		this.budgetReason = message;
+		// Mid-start: the start path is about to throw and will report this.
+		if (this.status.rig === "starting") return;
+		if (this.status.rig !== "ready") return;
+		this.disarmIdleStop();
+		void this.stopProcesses();
+		this.setStatus({
+			rig: "error",
+			webui_url: null,
+			reason: message,
 			clients: 0,
 		});
 	}
