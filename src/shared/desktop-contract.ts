@@ -5821,11 +5821,21 @@ export type QwenVoiceStatus = {
 	clients?: number;
 	/** Why the rig is in `error` when it was not a start failure. */
 	cause?: "unexpected_exit" | null;
-	/** The macOS microphone verdict for this app's identity. */
-	mic?: "granted" | "denied" | "unknown";
+	/**
+	 * The macOS microphone verdict for this app's identity. `prompting` is the
+	 * bounded wait: the OS dialog is up and unanswered.
+	 */
+	mic?: "granted" | "denied" | "prompting" | "unknown";
 };
 export type QwenVoiceTake = { taskId: string; text: string };
-export type QwenVoiceEvent = { type: string; at: string; reason?: string };
+export type QwenVoiceEvent = {
+	type: string;
+	/** ISO-8601, the Gateway's own clock. */
+	at: string;
+	reason?: string;
+	/** The Gateway's playback receipt: `false` means it was not this page's. */
+	accepted?: boolean;
+};
 export type QwenVoiceResult =
 	| { taskId: string; ok: true }
 	| { taskId: string; ok: false; code: string };

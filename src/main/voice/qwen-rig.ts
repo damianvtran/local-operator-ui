@@ -14,7 +14,12 @@
  * name or pattern. Every method is idempotent.
  */
 
-import { type ChildProcess, execFileSync, spawn } from "node:child_process";
+import {
+	type ChildProcess,
+	execFile,
+	execFileSync,
+	spawn,
+} from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
@@ -99,13 +104,37 @@ export function s2sLauncherPathFor(
 
 const GIB = 1024 ** 3;
 
-/** §9 layer 3's default ceiling: 8 GiB, or a quarter of RAM if that is less. */
+/**
+ * §9's budget FLOOR, and the one number to tune: the two models are ~4.8 GB on
+ * disk, and a healthy idle rig measured ~5.5 GB (QA round 1). A budget below
+ * that would stop a rig that is merely working, so the default never goes under
+ * this - the quarter-of-RAM rule only ever raises it (review R1).
+ */
 export const QWEN_MEM_BUDGET_BYTES = 8 * GIB;
+
+/** Under this much RAM the rig cannot fit beside the app at all. */
+export const QWEN_MIN_MACHINE_BYTES = 16 * GIB;
+
+/** The header sentence a machine that is too small gets, verbatim. */
+export const QWEN_MACHINE_TOO_SMALL =
+	"Voice needs a machine with at least 16 GB of memory.";
+
+/**
+ * The refusal sentence for a machine too small to hold the rig, or null. THE
+ * CHECK LIVES IN THE COORDINATOR (`qwen-voice.ts`), before anything is spawned:
+ * the header has to say it and no process or prompt may start first.
+ */
+export function qwenMachineTooSmall(
+	totalBytes: number = totalmem(),
+): string | null {
+	return totalBytes < QWEN_MIN_MACHINE_BYTES ? QWEN_MACHINE_TOO_SMALL : null;
+}
 
 /**
  * The memory budget both layers share: `LOP_QWEN_MEM_BUDGET_GB` when it names a
- * positive number, else min(8 GiB, a quarter of physical RAM). The quarter keeps
- * a 16 GB machine's rig from being allowed to take the app and the OS with it.
+ * positive number, else max(8 GiB, a quarter of physical RAM). The floor is the
+ * healthy footprint; the quarter keeps a big machine's rig from being allowed to
+ * take the app and the OS with it.
  */
 export function qwenMemoryBudget(
 	env: NodeJS.ProcessEnv,
@@ -114,7 +143,7 @@ export function qwenMemoryBudget(
 	const override = Number(env.LOP_QWEN_MEM_BUDGET_GB);
 	if (Number.isFinite(override) && override > 0)
 		return Math.floor(override * GIB);
-	return Math.min(QWEN_MEM_BUDGET_BYTES, Math.floor(totalBytes / 4));
+	return Math.max(QWEN_MEM_BUDGET_BYTES, Math.floor(totalBytes / 4));
 }
 
 /**
@@ -122,9 +151,15 @@ export function qwenMemoryBudget(
  * chat-completions backend never loads a model; it only names the one the
  * relay serves (measured: listening in 11 s with `HF_HUB_OFFLINE=1`).
  *
- * `--max_speech_ms 20000` bounds one turn: a continuous-speech segment used to
- * be unbounded (default `inf`), and 70 s of re-opened "speech" was measured on
- * one interrupted reply (plan §8).
+ * `--max_speech_ms 30000` is a SAFETY NET, not the thing that bounds a turn
+ * (review BRIEF-1, corrected after QA measured the real rig): segments soft-end
+ * through smart-turn at ~10.6 s, and the discarding branch the flag guards never
+ * ran in QA's 60 s take - zero `VAD: discarding segment` lines. What actually
+ * bounds memory is the MLX cache limit (layer 1) and the group-footprint
+ * watchdog (layer 3); what grows is TIME, because the final STT re-runs over the
+ * whole growing buffer on each revision (~3.55x cost for a 60 s take, ~n^2/2).
+ * The cap stays as the cheap backstop for a segment that never soft-ends, and a
+ * drop is surfaced as `ui.chat.voice.take_too_long`.
  */
 export function s2sArgs(ports: QwenPorts): string[] {
 	return [
@@ -139,7 +174,7 @@ export function s2sArgs(ports: QwenPorts): string[] {
 		"--port",
 		String(ports.s2s),
 		"--max_speech_ms",
-		"20000",
+		"30000",
 	];
 }
 
@@ -161,8 +196,9 @@ export function s2sEnv(
 		LANG: parent.LANG ?? "en_US.UTF-8",
 		HF_HOME: join(rigDir, "hf-cache"),
 		HF_HUB_OFFLINE: "1",
-		// Layer 1's memory limit, passed to `s2s-launch.py`; layer 3 uses the
-		// same number, so the guard and the allocator never disagree.
+		// Layer 1's memory limit, passed to `s2s-launch.py`. MLX treats it as a
+		// SOFT hint, so layer 3 - the footprint watchdog - is the hard enforcer
+		// of the same number.
 		LOP_QWEN_MEM_LIMIT_BYTES: String(budgetBytes),
 	};
 }
@@ -183,7 +219,7 @@ export type QwenRigDeps = {
 	/** The budget layers 1 and 3 share; defaults to `qwenMemoryBudget`. */
 	budgetBytes?: number;
 	/** A process group's total footprint in bytes, or null (a test seam). */
-	footprint?: (pgid: number) => number | null;
+	footprint?: (pgid: number) => Promise<number | null> | number | null;
 	/** The footprint guard stopped the rig; `limit` is the budget in bytes. */
 	onBudgetExceeded?: (limitBytes: number) => void;
 	setInterval?: (fn: () => void, ms: number) => ReturnType<typeof setInterval>;
@@ -230,21 +266,29 @@ const defaultInspect = (pid: number): ProcessFacts | null => {
 const FOOTPRINT_SUMMARY = /Summary Footprint:\s*(\d+)\s*B/;
 const FOOTPRINT_SINGLE = /Footprint:\s*(\d+)\s*B/;
 
-const defaultGroupFootprint = (pgid: number): number | null => {
+/** One bounded, ASYNC child: the watchdog runs on the main thread (review M4). */
+const capture = (file: string, args: string[]): Promise<string> =>
+	new Promise((resolve, reject) => {
+		execFile(file, args, { encoding: "utf8", timeout: 5_000 }, (error, out) => {
+			if (error) reject(error);
+			else resolve(out);
+		});
+	});
+
+const defaultGroupFootprint = async (pgid: number): Promise<number | null> => {
 	try {
-		const pids = execFileSync("ps", ["-o", "pid=", "-g", String(pgid)], {
-			encoding: "utf8",
-			timeout: 5_000,
-		})
+		const listing = await capture("ps", ["-o", "pid=", "-g", String(pgid)]);
+		const pids = listing
 			.split("\n")
 			.map((line) => line.trim())
 			.filter(Boolean);
 		if (pids.length === 0) return null;
-		const out = execFileSync(
-			"footprint",
-			["-f", "bytes", "--noCategories", ...pids],
-			{ encoding: "utf8", timeout: 5_000 },
-		);
+		const out = await capture("footprint", [
+			"-f",
+			"bytes",
+			"--noCategories",
+			...pids,
+		]);
 		// Several pids print one summary; one pid prints only its own total.
 		const summary = FOOTPRINT_SUMMARY.exec(out);
 		if (summary) return Number(summary[1]);
@@ -299,6 +343,9 @@ export class QwenSpeechProcess {
 	private pgid: number | null = null;
 	private starting: Promise<void> | null = null;
 	private watchdog: ReturnType<typeof setInterval> | null = null;
+	/** Consecutive failed footprint reads; 0 while the guard can see. */
+	private footprintFailures = 0;
+	private footprintBusy = false;
 	private readonly spawnImpl: typeof spawn;
 	private readonly kill: (pid: number, signal: NodeJS.Signals | 0) => void;
 	private readonly probe: (port: number) => Promise<boolean>;
@@ -307,7 +354,7 @@ export class QwenSpeechProcess {
 	private readonly onUnexpectedExit: (detail: string) => void;
 	private readonly sleep: (ms: number) => Promise<void>;
 	private readonly budgetBytes: number;
-	private readonly footprint: (pgid: number) => number | null;
+	private readonly footprint: (pgid: number) => Promise<number | null>;
 	private readonly onBudgetExceeded: (limitBytes: number) => void;
 	private readonly setIntervalImpl: (
 		fn: () => void,
@@ -333,7 +380,9 @@ export class QwenSpeechProcess {
 		this.sleep =
 			deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
 		this.budgetBytes = deps.budgetBytes ?? qwenMemoryBudget(process.env);
-		this.footprint = deps.footprint ?? defaultGroupFootprint;
+		this.footprint = deps.footprint
+			? async (pgid) => (await deps.footprint?.(pgid)) ?? null
+			: defaultGroupFootprint;
 		this.onBudgetExceeded = deps.onBudgetExceeded ?? (() => {});
 		this.setIntervalImpl =
 			deps.setInterval ?? ((fn, ms) => setInterval(fn, ms));
@@ -493,18 +542,23 @@ export class QwenSpeechProcess {
 	}
 
 	/**
-	 * The synchronous last resort for `will-quit`, where nothing may be awaited:
-	 * SIGKILL the recorded group so no model process outlives the app.
+	 * The synchronous last resort for `will-quit` and a terminating SIGNAL, where
+	 * nothing may be awaited: SIGKILL the recorded group so no model process
+	 * outlives the app.
+	 *
+	 * `clearRecord` is for the paths where NOTHING will reap later (a signal
+	 * handler, review Q-3): SIGKILL cannot be ignored, so a record that still
+	 * looked alive a microsecond after the signal is stale, not a live claim.
+	 * The quit paths leave the default, which re-checks the group.
 	 */
-	killNow(): void {
+	killNow(clearRecord = false): void {
 		this.stopWatchdog();
 		const pgid = this.pgid;
 		this.child = null;
 		this.pgid = null;
 		if (pgid === null) return;
 		this.signalGroup(pgid, "SIGKILL");
-		// The record outlives a failed kill on purpose: the next start re-checks it.
-		if (!this.groupAlive(pgid)) this.clearRecord();
+		if (clearRecord || !this.groupAlive(pgid)) this.clearRecord();
 	}
 
 	/**
@@ -514,7 +568,11 @@ export class QwenSpeechProcess {
 	 */
 	private startWatchdog(): void {
 		this.stopWatchdog();
+		this.footprintFailures = 0;
+		this.footprintBusy = false;
 		const handle = this.setIntervalImpl(
+			// The promise is returned so a test can await one poll; setInterval
+			// ignores it.
 			() => this.checkFootprint(),
 			FOOTPRINT_INTERVAL_MS,
 		);
@@ -529,13 +587,38 @@ export class QwenSpeechProcess {
 		this.watchdog = null;
 	}
 
-	private checkFootprint(): void {
+	private async checkFootprint(): Promise<void> {
 		const pgid = this.pgid;
-		if (pgid === null) return;
-		const used = this.footprint(pgid);
-		// Unreadable is not over budget: refusing to stop a working rig on a
-		// failed `footprint` invocation would be the worse error.
-		if (used === null || used <= this.budgetBytes) return;
+		// One poll at a time: a slow `footprint` must not stack reads.
+		if (pgid === null || this.footprintBusy) return;
+		this.footprintBusy = true;
+		let used: number | null;
+		try {
+			used = await this.footprint(pgid);
+		} finally {
+			this.footprintBusy = false;
+		}
+		/*
+		 * Unreadable is not over budget - refusing to stop a working rig on a
+		 * failed read would be the worse error - but it must not be SILENT either
+		 * (review M4): the first failure and a periodic count say the guard is
+		 * blind, instead of a line every 5 s for the life of the rig.
+		 */
+		if (used === null) {
+			this.footprintFailures += 1;
+			if (this.footprintFailures === 1 || this.footprintFailures % 12 === 0)
+				this.log(
+					`qwen-rig: footprint unreadable (${this.footprintFailures} consecutive failed reads); the memory guard is blind until it recovers`,
+				);
+			return;
+		}
+		if (this.footprintFailures > 0) {
+			this.log(
+				`qwen-rig: footprint readable again after ${this.footprintFailures} failed read(s)`,
+			);
+			this.footprintFailures = 0;
+		}
+		if (used <= this.budgetBytes) return;
 		this.log(
 			`qwen-rig: s2s group footprint ${used} B exceeds ${this.budgetBytes} B; stopping`,
 		);

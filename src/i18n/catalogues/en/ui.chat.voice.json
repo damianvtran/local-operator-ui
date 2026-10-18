@@ -6,6 +6,7 @@
 	"ui.chat.voice.marker": "Voice on",
 	"ui.chat.voice.phase_starting": "Starting voice",
 	"ui.chat.voice.phase_unheard": "Voice page not connected",
+	"ui.chat.voice.phase_mic_prompting": "Waiting for microphone permission…",
 	"ui.chat.voice.mic_blocked": "Microphone blocked",
 	"ui.chat.voice.open_settings": "Open Settings",
 	"ui.chat.voice.retry": "Retry",
@@ -29,6 +30,7 @@
 	"ui.chat.voice.approval_waiting": "Approve or deny it on screen. Voice can't answer approvals.",
 	"ui.chat.voice.card_pending": "Answer the question or approval on screen first.",
 	"ui.chat.voice.card_pending_short": "Answer on screen first.",
+	"ui.chat.voice.take_too_long": "That was a long one — voice dropped it. Keep takes under 30 seconds.",
 	"ui.chat.voice.open_session": "Open",
 	"ui.chat.voice.stream_lost": "Voice lost this conversation's updates. Answers will not be spoken until it reconnects.",
 	"ui.chat.voice.stream_reconnect": "Reconnect"

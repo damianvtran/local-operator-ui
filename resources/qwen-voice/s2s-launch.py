@@ -5,13 +5,17 @@ The rig's console script (`s2s-venv/bin/speech-to-speech`) only imports
 BEFORE the models load, then hands over to that same entry point, so nothing of
 the rig's own STT/TTS code is copied or changed:
 
-  - MLX's buffer cache is capped at 1 GiB. Its default is the equal of the
-    memory limit, 34.2 GB measured on the operator's machine, and freed Metal
-    buffers stay cached up to that size - so the cache keeps the high-water
-    mark of every shape a long transcription or a long TTS reply has produced.
-  - MLX's memory limit is the budget main computed (min(8 GiB, a quarter of
-    RAM), or `LOP_QWEN_MEM_BUDGET_GB`). `qwen-rig.ts` passes the same number to
-    its group-footprint watchdog (layer 3), so the two cannot disagree.
+  - MLX's buffer cache is capped at 1 GiB. THIS IS THE REAL BOUND. Its default
+    equals the memory limit (34.2 GB measured on the operator's machine), and
+    freed Metal buffers stay cached up to that size, so the cache would keep the
+    high-water mark of every shape a long transcription or a long TTS reply has
+    produced.
+  - MLX's memory limit is the budget main computed (max(8 GiB, a quarter of
+    RAM), or `LOP_QWEN_MEM_BUDGET_GB`). It is a SOFT HINT, not a ceiling: MLX
+    treats it as a guideline and measured runs go past it (review M5). The only
+    HARD enforcer is the group-footprint watchdog in `qwen-rig.ts` (layer 3),
+    which reads `footprint` - GPU memory included - every 5 s and stops the rig
+    over the same number.
 """
 
 from __future__ import annotations

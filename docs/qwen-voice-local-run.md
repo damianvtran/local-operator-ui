@@ -123,11 +123,18 @@ account"** window. Press **"Skip for now"**: the test backend needs no account.
    click - and the header changes from **"Starting voice"** to **"Listening"**
    once that page is connected.
 
-   **The first time, macOS asks for the microphone.** The app asks before it
-   opens the page, because the page is where the audio is captured. If you
-   allow it, voice carries on. If you deny it, the header says **"Microphone
-   blocked"** with **"Open Settings"**, which opens the macOS Microphone pane
+   **The first time, macOS asks for the microphone - before the models load**,
+   so a denial costs no memory and the prompt is not hidden behind a minute of
+   "Starting voice". If you allow it, voice carries on. If nobody answers for
+   five seconds the header says **"Waiting for microphone permission…"** with
+   **"Open Settings"**; if you deny it, the header says **"Microphone blocked"**
+   with the same action. Either way the action opens the macOS Microphone pane
    for this app; change it there, then turn voice off and on again.
+
+   (A source checkout shows this prompt against the process that launched the
+   app - the session host, not the dev app - because macOS attributes a prompt
+   to the responsible process. The packaged app is its own bundle and answers
+   its own prompt.)
 
    **The Qwen page's own welcome text does not apply here.** It says "You
    speak, I orchestrate." and suggests things to try. In this setup the page is
@@ -188,9 +195,9 @@ To switch voice to another conversation:
 
 **Turning voice off** (press the button again) stops your words reaching any
 conversation; if you speak, you hear "Voice is off for this conversation.". It
-does **not** close the microphone: the Qwen page keeps it open. Close the Qwen tab
-to cut the microphone. The models unload by themselves 10 minutes after voice is
-turned off, and at once when you quit the app.
+does **not** close the microphone: the hidden page keeps it open while the rig is
+up, so the macOS microphone indicator stays on until the models unload - 10
+minutes after voice is turned off - or the app quits.
 
 ## 6. Stopping everything, and what to check if it does not talk
 
@@ -198,9 +205,11 @@ turned off, and at once when you quit the app.
 
 1. Quit the trial app (Cmd+Q in its window, or Ctrl+C in terminal 2). This
    stops the rig processes the app started.
-2. Close the Qwen tab in your browser.
-3. Press Ctrl+C in terminal 1 to stop the test backend.
-4. Delete the trial folder: `rm -rf "$HOME/qwen-voice-trial"`.
+2. Press Ctrl+C in terminal 1 to stop the test backend.
+3. Delete the trial folder: `rm -rf "$HOME/qwen-voice-trial"`.
+
+A `kill -TERM` of the app is covered too: the signal stops the rig and clears
+its `s2s.json` record before the process exits.
 
 **If the app crashed or was force-quit**, the speech process it started can be
 left running (about 5 GB of memory, holding port 8765). You do not need to find
@@ -226,9 +235,10 @@ holds the port, the header says "Voice error" with the reason.
    use; stop the other voice rig first" or "Voice rig not found at …"; hover it
    for the full text if it is cut short. "Your last words were not sent."
    is about one take only; the next thing you say is tried again. "Voice
-   stopped: it used more than 8 GB" is the memory guard: the rig passed its
-   budget and was stopped before it could take the machine with it (raise the
-   budget with `LOP_QWEN_MEM_BUDGET_GB` only if you know the machine can).
+   stopped: it used more than N GB" is the memory guard: the rig passed its
+   budget (8 GB, or a quarter of RAM if that is larger) and was stopped before
+   it could take the machine with it. `LOP_QWEN_MEM_BUDGET_GB` moves the number,
+   and under 16 GB of RAM voice refuses to start at all.
 4. **Logs:**
    - the speech process: `$QV/profile/qwen-voice/qwen-s2s.log`;
    - the app, including its `qwen-voice:` and `qwen-rig:` lines:

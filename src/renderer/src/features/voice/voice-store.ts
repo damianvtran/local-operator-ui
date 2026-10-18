@@ -30,6 +30,8 @@ export type VoicePhase =
 	| "off"
 	| "starting"
 	| "unheard"
+	| "mic_prompting"
+	| "mic_blocked"
 	| "hearing"
 	| "speaking"
 	| "listening"
@@ -55,6 +57,12 @@ type VoiceStoreState = {
 	activity: VoiceActivity | null;
 	/** The last text this window had spoken, with the server's cut flag (§8). */
 	lastSpoken: { sessionId: string; truncated: boolean } | null;
+	/**
+	 * When a take was DROPPED for length (BRIEF-1), on the Gateway's clock, or
+	 * null. The VAD discards a segment over `--max_speech_ms`, so the strip owes
+	 * the person a line instead of silence.
+	 */
+	droppedTakeAt: number | null;
 	/** `working` (a take owed an answer) or `error` for one session; else null. */
 	exchange: {
 		kind: "working" | "error";
@@ -82,6 +90,7 @@ type VoiceStoreActions = {
 	) => void;
 	setActivity: (activity: VoiceActivity | null) => void;
 	setLastSpoken: (spoken: { sessionId: string; truncated: boolean }) => void;
+	setDroppedTake: (at: number | null) => void;
 	setPending: (pending: boolean) => void;
 	setReplaced: (sessionId: string | null) => void;
 	setCardPending: (sessionId: string, pending: boolean) => void;
@@ -93,6 +102,7 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 		rig: undefined,
 		activity: null,
 		lastSpoken: null,
+		droppedTakeAt: null,
 		exchange: null,
 		pending: false,
 		replaced: null,
@@ -116,9 +126,21 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 				...(moved ? { activity: null } : {}),
 			});
 		},
-		setRig: (rig) => set({ rig }),
+		/*
+		 * A RIG THAT IS NOT READY, OR A PAGE THAT IS GONE, HAS NO LIVE ACTIVITY
+		 * (review M1): a lost `playback.ended` must not leave "Speaking" up after
+		 * the rig stopped or the page dropped, so the mirror clears whenever the
+		 * status could no longer support the claim.
+		 */
+		setRig: (rig) =>
+			set((state) => ({
+				rig,
+				activity:
+					rig.rig === "ready" && (rig.clients ?? 0) > 0 ? state.activity : null,
+			})),
 		setActivity: (activity) => set({ activity }),
 		setLastSpoken: (lastSpoken) => set({ lastSpoken }),
+		setDroppedTake: (droppedTakeAt) => set({ droppedTakeAt }),
 		setExchange: (kind, sessionId, reason) =>
 			set({
 				exchange:
@@ -186,6 +208,14 @@ export function voicePhaseOf(
 		state.exchange.kind === "error"
 	)
 		return "error";
+	/*
+	 * THE MICROPHONE OUTRANKS THE READY/STOPPED WORDS (review M3): a pending
+	 * prompt is what is happening right now, and a denial is the thing to fix.
+	 * Without these a stopped rig would offer "Start voice" over a blocked mic,
+	 * and a start waiting on the OS dialog would read "Starting voice" forever.
+	 */
+	if (state.rig?.mic === "denied") return "mic_blocked";
+	if (state.rig?.mic === "prompting") return "mic_prompting";
 	if (rig === "starting") return "starting";
 	// `stopped` while the slot is held (an app relaunch) is `off` with the
 	// "Start voice" action; the indicator reads `rig` for that.

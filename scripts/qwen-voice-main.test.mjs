@@ -35,8 +35,8 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/main/voice/qwen-voice";',
 			'export { gatewayEnv, QwenGatewayHost } from "./src/main/voice/qwen-gateway";',
-			'export { QwenSpeechProcess, resolveQwenPorts, s2sArgs, s2sEnv, s2sLauncherPathFor, qwenMemoryBudget, QWEN_MEM_BUDGET_BYTES, FOOTPRINT_INTERVAL_MS, DEFAULT_QWEN_PORTS, isOurS2s, S2S_RECORD_FILE } from "./src/main/voice/qwen-rig";',
-			'export { QwenVoicePage, noQwenVoicePage, voicePageUrl, QWEN_VOICE_PARTITION, PAGE_CRASH_WINDOW_MS } from "./src/main/voice/qwen-voice-page";',
+			'export { QwenSpeechProcess, resolveQwenPorts, s2sArgs, s2sEnv, s2sLauncherPathFor, qwenMemoryBudget, qwenMachineTooSmall, QWEN_MEM_BUDGET_BYTES, QWEN_MIN_MACHINE_BYTES, QWEN_MACHINE_TOO_SMALL, FOOTPRINT_INTERVAL_MS, DEFAULT_QWEN_PORTS, isOurS2s, S2S_RECORD_FILE } from "./src/main/voice/qwen-rig";',
+			'export { QwenVoicePage, noQwenVoicePage, voicePageUrl, voicePageAllowed, QWEN_VOICE_PARTITION, PAGE_CRASH_WINDOW_MS } from "./src/main/voice/qwen-voice-page";',
 			'export { requestDesktopMedia } from "./src/main/desktop-media";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -65,8 +65,15 @@ const relayCore = await import("../resources/qwen-voice/relay-core.mjs");
 /* The coordinator                                                           */
 /* ------------------------------------------------------------------------ */
 
-function rig({ gatewayFails = false, mic = "granted" } = {}) {
+function rig({
+	gatewayFails = false,
+	mic = "granted",
+	machineBytes = 36 * 1024 ** 3,
+} = {}) {
 	const sent = [];
+	/** Every step that costs something, in the order it happened. */
+	const order = [];
+	const settled = [];
 	const toRenderer = [];
 	const opened = [];
 	const closed = [];
@@ -100,14 +107,16 @@ function rig({ gatewayFails = false, mic = "granted" } = {}) {
 		running: false,
 		async start() {
 			calls.speechStart += 1;
+			order.push("speech");
 			this.running = true;
 		},
 		async stop() {
 			calls.speechStop += 1;
 			this.running = false;
 		},
-		killNow() {
+		killNow(clearRecord) {
 			calls.kill += 1;
+			calls.killClearRecord = clearRecord === true;
 			this.running = false;
 		},
 	};
@@ -120,7 +129,9 @@ function rig({ gatewayFails = false, mic = "granted" } = {}) {
 		close() {
 			closed.push(true);
 		},
-		async prepareMicrophone() {
+		async prepareMicrophone(options = {}) {
+			order.push("mic");
+			page.preflight = options;
 			return page.mic;
 		},
 	};
@@ -132,6 +143,7 @@ function rig({ gatewayFails = false, mic = "granted" } = {}) {
 			return true;
 		},
 		page,
+		machineBytes: () => machineBytes,
 		now: () => now,
 		setTimer: (fn, ms) => {
 			const timer = { fn, ms, cleared: false };
@@ -145,6 +157,8 @@ function rig({ gatewayFails = false, mic = "granted" } = {}) {
 	return {
 		voice,
 		page,
+		order,
+		settled,
 		sent,
 		toRenderer,
 		opened,
@@ -199,6 +213,19 @@ test("§10: an allowlisted event crosses as {type, at, reason?}; anything else i
 	assert.equal(voiceEvents(r).length, before + 2);
 	assert.equal("message" in voiceEvents(r).at(-1), false);
 	assert.equal("reason" in voiceEvents(r).at(-1), false);
+
+	// M1: the Gateway's playback receipt crosses, so the renderer can tell an
+	// accepted end from one this connection was not playing.
+	send({ type: "realtime.playback.ended", at: AT, accepted: false });
+	assert.equal(voiceEvents(r).at(-1).accepted, false);
+	send({ type: "realtime.playback.ended", at: AT, accepted: "yes" });
+	assert.equal("accepted" in voiceEvents(r).at(-1), false, "booleans only");
+
+	// N3: only an ISO-8601 time crosses; the renderer parses it as a time.
+	const beforeBad = voiceEvents(r).length;
+	for (const bad of ["", "yesterday", "05:36:39", "2026-10-18 05:36:39", 17])
+		send({ type: "realtime.response.done", at: bad });
+	assert.equal(voiceEvents(r).length, beforeBad, "no time, no event");
 	assert.equal(voiceEvents(r).at(-1).type, "realtime.playback.ended");
 });
 
@@ -450,8 +477,12 @@ test("RECREATE THE PAGE: voice.qwen.start on a ready rig asks for the page again
 	assert.equal(r.opened.length, 2, "the renderer's call recreates it");
 	assert.equal(r.closed.length, 1, "a page that exists is closed first");
 	await r.voice.start("enable");
-	assert.equal(r.opened.length, 2, "an enable on a ready rig changes nothing");
-	assert.equal(r.closed.length, 1);
+	assert.equal(r.closed.length, 1, "an enable does not tear the page down");
+	assert.equal(
+		r.opened.length,
+		3,
+		"it re-reads the microphone and asks the page open (idempotent in the real page)",
+	);
 	assert.equal(r.calls.speechStart, 1, "nothing restarted");
 });
 
@@ -462,6 +493,48 @@ test("stopNow (will-quit) stops both processes synchronously", () => {
 	assert.equal(r.calls.kill, 2);
 	assert.equal(r.calls.gatewayStop, 2);
 	assert.equal(r.closed.length, 2, "the page goes with the rig");
+});
+
+test("Q-3: the SIGNAL stop clears the s2s record, because nothing runs behind it", () => {
+	const r = rig();
+	r.voice.stopNow(true);
+	assert.equal(r.calls.killClearRecord, true, "the record is cleared");
+	const ordinary = rig();
+	ordinary.voice.stopNow();
+	assert.equal(
+		ordinary.calls.killClearRecord,
+		false,
+		"a quit keeps the record for the next start to re-check",
+	);
+});
+
+test("Q-3: SIGTERM-with-no-quit and SIGINT both stop the rig before handing the signal on", () => {
+	const source = readFileSync("src/main/index.ts", "utf8");
+	assert.match(
+		source,
+		/const stopVoiceOnTerminatingSignal = \(signal: NodeJS\.Signals\): void => \{/,
+		"one stop, shared by both signals",
+	);
+	const term = source.slice(
+		source.indexOf("const onSigtermDuringQuit"),
+		source.indexOf('process.on("SIGINT"'),
+	);
+	assert.match(
+		term,
+		/stopVoiceOnTerminatingSignal\("SIGTERM"\)/,
+		"the no-quit TERM path stops the rig before Chromium's shutdown",
+	);
+	assert.match(source, /process\.on\("SIGINT", onSigint\)/);
+	assert.match(
+		source.slice(source.indexOf("const onSigint")),
+		/stopVoiceOnTerminatingSignal\("SIGINT"\)/,
+	);
+	assert.match(
+		source,
+		/signalStoppedVoice/,
+		"idempotent: a second signal does nothing",
+	);
+	assert.match(source, /SIGNAL_STOP_BOUND_MS = 3_000/);
 });
 
 test("a failed start reports error with the reason and leaves nothing running", async () => {
@@ -759,7 +832,7 @@ test("§2: the partition grants audio to the page and refuses everything else", 
 	assert.equal(granted, false);
 });
 
-test("§3: navigation, popups and downloads are all locked", () => {
+test("§3/M2: navigation, popups and downloads are all locked, and the lock reads event.url", () => {
 	const c = pageCase();
 	c.page.open("http://127.0.0.1:3101/");
 	const { listeners } = c.views[0];
@@ -774,15 +847,36 @@ test("§3: navigation, popups and downloads are all locked", () => {
 			},
 		};
 	};
-	const away = prevented();
-	for (const event of ["will-navigate", "will-redirect"]) {
+	for (const event of [
+		"will-navigate",
+		"will-redirect",
+		"will-frame-navigate",
+	]) {
+		const away = prevented();
 		for (const listener of listeners[event])
-			listener(away, "https://evil.test/");
+			listener({ ...away, url: "https://evil.test/" });
+		assert.equal(away.hit, true, `${event} away is prevented`);
 	}
-	assert.equal(away.hit, true, "navigation away is prevented");
 	const same = prevented();
-	listeners["will-navigate"][0](same, "http://127.0.0.1:3101/?desktop=orb");
+	listeners["will-navigate"][0]({
+		...same,
+		url: "http://127.0.0.1:3101/?desktop=orb",
+	});
 	assert.equal(same.hit, false, "the page's own origin is allowed");
+	// FAIL CLOSED: an event that does not say where it is going is prevented,
+	// and so is one whose url cannot be parsed.
+	for (const event of [
+		"will-navigate",
+		"will-redirect",
+		"will-frame-navigate",
+	]) {
+		const silent = prevented();
+		listeners[event][0](silent);
+		assert.equal(silent.hit, true, `${event} with no url is prevented`);
+		const malformed = prevented();
+		listeners[event][0]({ ...malformed, url: "not a url" });
+		assert.equal(malformed.hit, true, `${event} with a bad url is prevented`);
+	}
 	assert.deepEqual(
 		c.views[0].webContents.windowOpen({ url: "https://evil.test/" }),
 		{ action: "deny" },
@@ -801,6 +895,11 @@ test("§3: a crash recreates the page once; a second inside 60 s stops the rig",
 	const gone = () => c.views.at(-1).listeners["render-process-gone"][0]();
 	gone();
 	assert.equal(c.created.length, 2, "recreated");
+	assert.equal(
+		c.views[0].webContents.closed,
+		1,
+		"N4: the dead contents is closed before the view is dropped",
+	);
 	assert.equal(c.stopped.length, 0);
 	gone();
 	assert.equal(c.stopped.length, 1);
@@ -854,37 +953,71 @@ test("§2: the microphone preflight reports granted, denied and not-determined",
 	);
 });
 
-test("§4: a denied microphone creates NO page, and the status says why", async () => {
+test("§4/M3: the microphone is asked for BEFORE the models, and a denial costs no memory", async () => {
 	const r = rig({ mic: "denied" });
-	await r.voice.start("renderer");
-	const status = r.voice.getStatus();
-	assert.equal(status.rig, "ready");
+	const status = await r.voice.start("renderer");
+	assert.deepEqual(r.order, ["mic"], "the check is the only thing that ran");
+	assert.equal(r.calls.gatewayStart, 0, "a denial spawns nothing");
+	assert.equal(r.calls.speechStart, 0, "and loads no model");
+	assert.equal(status.rig, "stopped");
 	assert.equal(status.mic, "denied");
 	assert.deepEqual(r.opened, [], "a page that cannot hear is not created");
-	// And the next start, once the OS says yes, opens it.
+	// The next start, once the OS says yes, asks again and starts for real.
 	const ok = rig({ mic: "granted" });
 	await ok.voice.start("renderer");
+	assert.deepEqual(ok.order, ["mic", "speech"]);
 	assert.deepEqual(ok.opened, ["http://127.0.0.1:3101/"]);
+	assert.equal(ok.voice.getStatus().rig, "ready");
+});
+
+test("M3: an unanswered prompt stops the start, reports `prompting`, and resumes when the OS answers", async () => {
+	const r = rig({ mic: "prompting" });
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	const pending = r.voice.getStatus();
+	assert.equal(pending.rig, "stopped");
+	assert.equal(pending.mic, "prompting");
+	assert.deepEqual(r.order, ["mic"], "the check is the only thing that ran");
+	assert.equal(r.calls.speechStart, 0, "no model loads behind the prompt");
+	assert.equal(r.page.preflight.timeoutMs, m.MIC_PROMPT_BUDGET_MS);
+	// The person answers the dialog: the coordinator is told and starts.
+	r.page.mic = "granted";
+	r.page.preflight.onSettled("granted");
+	await settle();
+	await settle();
+	assert.equal(r.voice.getStatus().rig, "ready");
+	assert.equal(r.voice.getStatus().mic, "granted");
+	assert.deepEqual(r.opened, ["http://127.0.0.1:3101/"]);
+	// A denial from the same path is the blocked state, with nothing running.
+	const denied = rig({ mic: "prompting" });
+	denied.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	denied.page.preflight.onSettled("denied");
+	await settle();
+	assert.equal(denied.voice.getStatus().mic, "denied");
+	assert.equal(denied.calls.speechStart, 0);
 });
 
 test("§4: granting the microphone in Settings takes effect on the next enable, without a restart", async () => {
 	const r = rig({ mic: "denied" });
 	await r.voice.start("enable");
-	assert.deepEqual(r.opened, [], "denied: no page");
+	assert.deepEqual(r.opened, [], "denied: no page, no models");
 	assert.equal(r.voice.getStatus().mic, "denied");
-	// The person allows it in System Settings and turns voice off and on again;
-	// the rig is still up, so the enable re-reads the verdict instead of
-	// returning "ready" over a page that was never created.
+	// The person allows it in System Settings and turns voice off and on again.
 	r.page.mic = "granted";
 	await r.voice.start("enable");
+	await settle();
 	assert.deepEqual(r.opened, ["http://127.0.0.1:3101/"]);
 	assert.equal(r.voice.getStatus().mic, "granted");
-	// And a still-denied enable keeps the page away.
-	const denied = rig({ mic: "denied" });
-	await denied.voice.start("enable");
-	denied.page.mic = "denied";
-	await denied.voice.start("enable");
-	assert.deepEqual(denied.opened, []);
+	// A rig that IS up re-reads the verdict on an enable, too (readyAgain).
+	const up = rig();
+	await up.voice.start("enable");
+	assert.equal(up.voice.getStatus().mic, "granted");
+	up.page.mic = "denied";
+	await up.voice.start("enable");
+	assert.equal(up.voice.getStatus().mic, "denied");
 });
 
 test("§3: the page goes with the rig (idle stop, unexpected exit, quit)", async () => {
@@ -1057,24 +1190,60 @@ test("§9 layer 1: the launcher caps MLX's cache and memory before the rig's own
 	assert.match(source, LAUNCHER_CALLS_RIG);
 });
 
-test("§9: the budget is 8 GB or a quarter of RAM; LOP_QWEN_MEM_BUDGET_GB overrides it", () => {
-	assert.equal(m.qwenMemoryBudget({}, 64 * GIB), 8 * GIB);
-	assert.equal(m.qwenMemoryBudget({}, 16 * GIB), 4 * GIB);
+test("§9/R1: the budget is a flat 8 GB FLOOR or a quarter of RAM, whichever is larger", () => {
+	// The models alone are ~4.8 GB and a healthy idle rig ~5.5 GB: a 16 GB
+	// machine's quarter (4 GiB) would stop a rig that is merely working.
+	assert.equal(m.qwenMemoryBudget({}, 16 * GIB), 8 * GIB);
+	assert.equal(m.qwenMemoryBudget({}, 32 * GIB), 8 * GIB);
+	assert.equal(m.qwenMemoryBudget({}, 64 * GIB), 16 * GIB);
 	assert.equal(
 		m.qwenMemoryBudget({ LOP_QWEN_MEM_BUDGET_GB: "6" }, 64 * GIB),
 		6 * GIB,
+		"the override still wins, down as well as up",
 	);
 	for (const bad of ["", "nonsense", "0", "-2"])
 		assert.equal(
-			m.qwenMemoryBudget({ LOP_QWEN_MEM_BUDGET_GB: bad }, 16 * GIB),
-			4 * GIB,
-			`${bad || "empty"} falls back to the RAM fraction`,
+			m.qwenMemoryBudget({ LOP_QWEN_MEM_BUDGET_GB: bad }, 64 * GIB),
+			16 * GIB,
+			`${bad || "empty"} falls back to the RAM rule`,
 		);
 });
 
-test("§9 layers 1-2: s2s runs the launcher under the rig's python, one turn is bounded", async () => {
+test("R1: a machine under 16 GB is refused with a sentence, before anything spawns", async () => {
+	assert.equal(m.qwenMachineTooSmall(16 * GIB), null);
+	assert.equal(m.qwenMachineTooSmall(8 * GIB), m.QWEN_MACHINE_TOO_SMALL);
+	assert.equal(
+		m.QWEN_MACHINE_TOO_SMALL,
+		"Voice needs a machine with at least 16 GB of memory.",
+	);
+	const r = rig({ machineBytes: 8 * GIB });
+	const status = await r.voice.start("renderer");
+	assert.equal(status.rig, "error");
+	assert.equal(status.reason, m.QWEN_MACHINE_TOO_SMALL);
+	assert.equal(r.calls.gatewayStart, 0, "no gateway");
+	assert.equal(r.calls.speechStart, 0, "no models");
+	assert.deepEqual(r.opened, [], "no page");
+	// The same machine says the same thing on the renderer's retry.
+	const again = await r.voice.start("renderer");
+	assert.equal(again.reason, m.QWEN_MACHINE_TOO_SMALL);
+});
+
+test("R2: only a normal window may create the page; the env switch still opts out", () => {
+	const page = m.voicePageAllowed;
+	assert.equal(page("normal", {}), true);
+	assert.equal(page("headless", {}), false, "nobody is at the screen");
+	assert.equal(page("inactive", {}), false);
+	assert.equal(page("normal", { LOP_QWEN_NO_WEBUI: "1" }), false);
+	assert.equal(page("headless", { LOP_QWEN_NO_WEBUI: "1" }), false);
+});
+
+test("§9 layers 1-2: s2s runs the launcher under the rig's python, with the cap as a safety net", async () => {
 	const args = m.s2sArgs(m.DEFAULT_QWEN_PORTS);
-	assert.deepEqual(args.slice(-2), ["--max_speech_ms", "20000"]);
+	assert.deepEqual(
+		args.slice(-2),
+		["--max_speech_ms", "30000"],
+		"BRIEF-1: 20 s dropped a natural 21 s take; 30 s is the backstop",
+	);
 	const spawned = [];
 	const rigDir = fakeRigDir();
 	const state = join(rigDir, "state");
@@ -1163,11 +1332,11 @@ test("§9 layer 3: every 5 s the group footprint is read; over budget the rig is
 	assert.equal(intervals.length, 1);
 	assert.equal(intervals[0].ms, 5_000);
 	used = 999;
-	intervals[0].fn();
+	await intervals[0].fn();
 	assert.deepEqual(exceeded, [], "under budget: nothing is stopped");
 	assert.equal(intervals[0].cleared, false);
 	used = 1_001;
-	intervals[0].fn();
+	await intervals[0].fn();
 	assert.deepEqual(exceeded, [1_000], "the owner is told the budget");
 	assert.equal(intervals[0].cleared, true, "the poll stops with the process");
 	assert.deepEqual(signals[0], [-6001, "SIGTERM"], "by the group, as always");
@@ -1175,12 +1344,13 @@ test("§9 layer 3: every 5 s the group footprint is read; over budget the rig is
 	rmSync(rigDir, { recursive: true, force: true });
 });
 
-test("§9 layer 3: an unreadable footprint is not a reason to stop a working rig", async () => {
+test("§9/M4: an unreadable footprint is not a reason to stop a working rig, and it is not silent", async () => {
 	const rigDir = fakeRigDir();
 	const state = join(rigDir, "state");
 	mkdirSync(state);
 	const intervals = [];
 	const exceeded = [];
+	const logs = [];
 	let alive = true;
 	let spawned = false;
 	const proc = new m.QwenSpeechProcess(
@@ -1200,8 +1370,9 @@ test("§9 layer 3: an unreadable footprint is not a reason to stop a working rig
 				return { pid: 7001, exitCode: null, once() {} };
 			},
 			budgetBytes: 1_000,
-			footprint: () => null,
+			footprint: async () => null,
 			onBudgetExceeded: (limit) => exceeded.push(limit),
+			log: (line) => logs.push(line),
 			setInterval: (fn, ms) => {
 				const handle = { fn, ms, cleared: false, unref() {} };
 				intervals.push(handle);
@@ -1213,9 +1384,24 @@ test("§9 layer 3: an unreadable footprint is not a reason to stop a working rig
 		},
 	);
 	await proc.start();
-	intervals[0].fn();
+	await intervals[0].fn();
 	assert.deepEqual(exceeded, []);
 	assert.equal(intervals[0].cleared, false);
+	assert.match(
+		logs.join("\n"),
+		/footprint unreadable \(1 consecutive failed reads\)/,
+		"M4: the FIRST failed read is logged",
+	);
+	for (let i = 0; i < 10; i += 1) await intervals[0].fn();
+	const blind = logs.filter((line) => /unreadable/.test(line));
+	assert.equal(blind.length, 1, "and then it is not a line every 5 s");
+	await intervals[0].fn();
+	assert.equal(
+		logs.filter((line) => /unreadable/.test(line)).length,
+		2,
+		"the count returns every twelfth failure",
+	);
+	assert.match(logs.join("\n"), /12 consecutive failed reads/);
 	await proc.stop();
 	rmSync(rigDir, { recursive: true, force: true });
 });
@@ -1513,6 +1699,48 @@ test("ORPHAN: an s2s that dies under us reports an unexpected exit once and clea
 	assert.deepEqual(exits, ["code null, signal SIGKILL"]);
 	assert.equal(existsSync(join(state, m.S2S_RECORD_FILE)), false);
 	assert.equal(proc.running, false);
+	rmSync(rigDir, { recursive: true, force: true });
+});
+
+test("Q-3: killNow(true) forgets a record its SIGKILL cannot be seen to have released", async () => {
+	const rigDir = fakeRigDir();
+	const state = join(rigDir, "state");
+	mkdirSync(state);
+	let listening = false;
+	// The group still reads as alive right after the signal - the case a
+	// signal handler cannot wait out - so only the explicit flag clears it.
+	const proc = new m.QwenSpeechProcess(
+		launcherPathFor(rigDir),
+		rigDir,
+		m.DEFAULT_QWEN_PORTS,
+		state,
+		{
+			probe: async () => listening,
+			sleep: async () => {
+				listening = true;
+			},
+			kill: () => {},
+			spawnImpl: () => ({ pid: 4321, exitCode: null, once() {} }),
+		},
+	);
+	await proc.start();
+	assert.equal(existsSync(join(state, m.S2S_RECORD_FILE)), true);
+	proc.killNow(true);
+	assert.equal(
+		existsSync(join(state, m.S2S_RECORD_FILE)),
+		false,
+		"the signal path leaves nothing for a next start to reap",
+	);
+	// The quit path keeps it: a start that finds a live group re-checks it.
+	listening = false;
+	await proc.start();
+	assert.equal(existsSync(join(state, m.S2S_RECORD_FILE)), true);
+	proc.killNow();
+	assert.equal(
+		existsSync(join(state, m.S2S_RECORD_FILE)),
+		true,
+		"unchanged for the paths nothing runs behind differently",
+	);
 	rmSync(rigDir, { recursive: true, force: true });
 });
 

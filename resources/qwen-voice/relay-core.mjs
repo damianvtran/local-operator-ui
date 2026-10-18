@@ -87,6 +87,13 @@ export const VOICE_EVENTS = Object.freeze([
 const EVENT_REASON = /^[a-z_]{1,32}$/;
 
 /**
+ * The Gateway's log times are ISO-8601 (`new Date().toISOString()`); anything
+ * that is not that shape is refused rather than passed on to be parsed as a
+ * time it is not (review N3).
+ */
+const EVENT_AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/;
+
+/**
  * The `voice.qwen.event` payload for one log record, or null when the record is
  * not one of the allowlisted events. `at` is the record's own ISO time, so the
  * panel reads the Gateway's clock rather than this process's.
@@ -94,10 +101,15 @@ const EVENT_REASON = /^[a-z_]{1,32}$/;
 export function voiceEventOf(record) {
 	if (!record || typeof record.event !== "string") return null;
 	if (!VOICE_EVENTS.includes(record.event)) return null;
-	if (typeof record.time !== "string" || record.time.length === 0) return null;
+	if (typeof record.time !== "string" || !EVENT_AT.test(record.time))
+		return null;
 	const event = { type: record.event, at: record.time };
 	if (typeof record.reason === "string" && EVENT_REASON.test(record.reason))
 		event.reason = record.reason;
+	// The playback receipts log `accepted`; a `false` means this connection was
+	// not playing the response, and the renderer must not announce its end
+	// (review M1).
+	if (typeof record.accepted === "boolean") event.accepted = record.accepted;
 	return event;
 }
 
