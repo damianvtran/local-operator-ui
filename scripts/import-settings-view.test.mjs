@@ -45,13 +45,16 @@ globalThis.window = dom.window;
 globalThis.document = dom.window.document;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 globalThis.CSS = { escape: (value) => String(value) };
-dom.window.Element.prototype.scrollIntoView = () => {};
+let scrollIntoViewCalls = 0;
+dom.window.Element.prototype.scrollIntoView = () => {
+	scrollIntoViewCalls += 1;
+};
 
 const bundle = await build({
 	stdin: {
 		contents: `
 			export { ImportSettingsView } from "./src/renderer/src/features/settings/components/import-settings-view";
-			export { cleanSessionTitle, filterSessions, selectionSignature } from "./src/renderer/src/features/settings/components/imports-model";
+			export { cleanSessionTitle, filterSessions, MAX_IMPORT_SESSIONS, selectAllWithinCap, selectionSignature } from "./src/renderer/src/features/settings/components/imports-model";
 			export { desktopEndpoint } from "./src/shared/desktop-contract";
 			export { fetchImportSources, previewImport, startImport, fetchImportJob } from "./src/renderer/src/features/settings/components/imports-api";
 		`,
@@ -72,6 +75,8 @@ const {
 	ImportSettingsView,
 	cleanSessionTitle,
 	filterSessions,
+	MAX_IMPORT_SESSIONS,
+	selectAllWithinCap,
 	selectionSignature,
 	desktopEndpoint,
 	fetchImportSources,
@@ -172,6 +177,8 @@ const render = async (overrides = {}) => {
 		onCancel: () => calls.push(["cancel"]),
 		onRetry: () => calls.push(["retry"]),
 		onImportAnother: () => calls.push(["another"]),
+		onRefresh: () => calls.push(["refresh"]),
+		selectionNotice: null,
 		onCopyPath: async () => true,
 		...overrides,
 	};
@@ -238,7 +245,10 @@ test("sessions start unselected and no import control exists before preview", as
 	const { host } = await render();
 	assert.match(host.textContent ?? "", /0 selected/);
 	assert.equal(buttonByText(host, "Import "), undefined);
-	assert.match(host.textContent ?? "", /Index only — no conversation body/);
+	assert.match(
+		host.textContent ?? "",
+		/source index has an entry but no conversation body/,
+	);
 });
 
 test("search filters rows and select-all is explicit", async () => {
@@ -265,10 +275,12 @@ test("search filters rows and select-all is explicit", async () => {
 });
 
 test("a preview without confirmation cannot be imported; confirmation enables it", async () => {
+	scrollIntoViewCalls = 0;
 	const { host, click } = await render({
 		selected: new Set(["omp-one"]),
 		preview,
 	});
+	assert.ok(scrollIntoViewCalls > 0);
 	const checkboxes = host.querySelectorAll('[role="checkbox"]');
 	const checkbox = checkboxes.item(checkboxes.length - 1);
 	assert.ok(checkbox);
@@ -357,14 +369,11 @@ test("progress and result rows carry per-session outcomes and review paths", asy
 	});
 	assert.match(finished.host.textContent ?? "", /Import result/);
 	assert.match(finished.host.textContent ?? "", /New session target-one/);
-	assert.match(
-		finished.host.textContent ?? "",
-		/Instructions saved for review at \/tmp\/imports\/instructions\/omp\.md/,
-	);
-	assert.match(
-		finished.host.textContent ?? "",
-		/Unattached memory saved for review at \/tmp\/imports\/memory\/omp\.md/,
-	);
+	const finishedText = finished.host.textContent ?? "";
+	assert.match(finishedText, /Instructions saved for review/);
+	assert.match(finishedText, /\/tmp\/imports\/instructions\/omp\.md/);
+	assert.match(finishedText, /Unattached memory saved for review/);
+	assert.match(finishedText, /\/tmp\/imports\/memory\/omp\.md/);
 	assert.match(finished.host.textContent ?? "", /Re-running is safe/);
 });
 
@@ -395,12 +404,93 @@ test("a cancelled job's interrupted row reads cancelled and hides its empty targ
 		warnings: [],
 		error: "",
 	};
-	const { host } = await render({ result });
+	const { host } = await render({
+		result,
+		progress: {
+			jobId: "imp-cancel",
+			state: "cancelled",
+			phase: "cancelled",
+			source: "omp",
+			sessionId: "",
+			completed: 0,
+			total: 5,
+			results: [],
+			warnings: [],
+			error: "",
+			startedAt: 0,
+			updatedAt: 0,
+		},
+	});
 	const text = host.textContent ?? "";
 	assert.ok((text.match(/cancelled/g) ?? []).length >= 2, text);
 	assert.doesNotMatch(text, /failed/);
 	assert.doesNotMatch(text, /New session empty-target/);
 	assert.doesNotMatch(host.textContent ?? "", /1 warning/);
+	assert.match(text, /1 of 5 sessions/);
+});
+
+test("a skipped row still shows the target it was already imported into", async () => {
+	const result = {
+		jobId: "imp-noop",
+		state: "done",
+		sessions: [
+			{
+				source: "omp",
+				sourceId: "omp-one",
+				targetSessionId: "existing-target",
+				outcome: "skipped_already_imported",
+				messages: 0,
+				compactions: 0,
+				redactions: 0,
+				skipped: 0,
+				warnings: [],
+			},
+		],
+		messages: 0,
+		compactions: 0,
+		memoryImported: 0,
+		memorySkipped: 0,
+		memoryReviewPath: "",
+		instructionReviewPath: "",
+		redactions: 0,
+		warnings: [],
+		error: "",
+	};
+	const { host } = await render({ result });
+	assert.match(host.textContent ?? "", /already imported/);
+	assert.match(host.textContent ?? "", /New session existing-target/);
+});
+
+test("source cards and Refresh are disabled while a job is active", async () => {
+	const progress = {
+		jobId: "imp-active",
+		state: "running",
+		phase: "importing",
+		source: "omp",
+		sessionId: "omp-one",
+		completed: 0,
+		total: 1,
+		results: [],
+		warnings: [],
+		error: "",
+		startedAt: 0,
+		updatedAt: 0,
+	};
+	const { host, click } = await render({
+		progress,
+		selected: new Set(["omp-one"]),
+	});
+	const sourceCard = buttonByText(host, "omp");
+	assert.ok(sourceCard);
+	assert.equal(sourceCard.disabled, true);
+	const refresh = buttonByText(host, "Refresh");
+	assert.ok(refresh);
+	assert.equal(refresh.disabled, true);
+	await click(sourceCard);
+	assert.equal(
+		calls.some(([name]) => name === "source"),
+		false,
+	);
 });
 
 test("error state exposes the reason and a retry", async () => {
@@ -433,6 +523,13 @@ test("filtering and signatures are deterministic", () => {
 		selectionSignature("omp", new Set(["a"])),
 		selectionSignature("claude", new Set(["a"])),
 	);
+	const many = Array.from({ length: MAX_IMPORT_SESSIONS + 1 }, (_, index) => ({
+		...sessions[0],
+		sourceId: `row-${index}`,
+	}));
+	const capped = selectAllWithinCap(many, "", new Set());
+	assert.equal(capped.selected.size, MAX_IMPORT_SESSIONS);
+	assert.equal(capped.capped, true);
 });
 
 test("the control-plane endpoints map to the desktop import routes", () => {
@@ -525,7 +622,14 @@ test("the API client maps the control-plane envelope and keeps the request expli
 							completed: 1,
 							total: 1,
 							results: [],
-							warnings: [],
+							warnings: [
+								{
+									source: "claude",
+									session_id: "a",
+									code: "preview_counts_estimated",
+									message: "Preview counts are estimates.",
+								},
+							],
 							error: "",
 							started_at: 0,
 							updated_at: 0,
@@ -555,7 +659,9 @@ test("the API client maps the control-plane envelope and keeps the request expli
 		await startImport({ sources: ["claude"], sessionIds: { claude: ["a"] } }),
 		"imp-1",
 	);
-	assert.equal((await fetchImportJob("imp-1")).state, "done");
+	const progress = await fetchImportJob("imp-1");
+	assert.equal(progress.state, "done");
+	assert.equal(progress.warnings[0].code, "preview_counts_estimated");
 	assert.deepEqual(
 		requests.map((request) => request.op),
 		["imports.sources", "imports.preview", "imports.start", "imports.status"],

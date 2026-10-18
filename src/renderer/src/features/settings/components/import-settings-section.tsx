@@ -36,7 +36,11 @@ import type {
 	ImportSource,
 	ImportSourceName,
 } from "./imports-api";
-import { filterSessions, selectionSignature } from "./imports-model";
+import {
+	MAX_IMPORT_SESSIONS,
+	selectAllWithinCap,
+	selectionSignature,
+} from "./imports-model";
 
 const TERMINAL = new Set(["done", "failed", "cancelled"]);
 
@@ -60,7 +64,11 @@ export const ImportSettingsSection: FC = () => {
 	const [progress, setProgress] = useState<ImportProgress | null>(null);
 	const [result, setResult] = useState<ImportResult | null>(null);
 	const [cancelling, setCancelling] = useState(false);
+	const [selectionNotice, setSelectionNotice] = useState<string | null>(null);
+	const [pollAttempt, setPollAttempt] = useState(0);
 	const sessionRequest = useRef(0);
+	const jobError = useRef<string | null>(null);
+	const jobActive = progress !== null && !TERMINAL.has(progress.state);
 
 	const loadSources = useCallback(async () => {
 		setBusy("sources");
@@ -76,7 +84,9 @@ export const ImportSettingsSection: FC = () => {
 				return next.find((source) => source.detected)?.source ?? null;
 			});
 		} catch (cause) {
-			setError(`Could not read the source stores. ${reason(cause)}`);
+			setError(
+				t("ui.settings.imports.error_sources", { reason: reason(cause) }),
+			);
 		} finally {
 			setBusy(null);
 		}
@@ -128,12 +138,21 @@ export const ImportSettingsSection: FC = () => {
 		setPreview(null);
 		setPreviewSignature(null);
 		setConfirmed(false);
+		setSelectionNotice(null);
 	}, []);
 
-	const onSelectSource = useCallback((source: ImportSourceName) => {
-		setActiveSource(source);
-		setQuery("");
-	}, []);
+	const onSelectSource = useCallback(
+		(source: ImportSourceName) => {
+			// Changing source clears `progress` in the active-source effect below,
+			// so it would silently abandon a running job's monitor and Cancel
+			// control while the core job kept writing. The cards are disabled for
+			// the same reason; this guard also covers keyboard/programmatic use.
+			if (jobActive) return;
+			setActiveSource(source);
+			setQuery("");
+		},
+		[jobActive],
+	);
 
 	const onToggleSession = useCallback(
 		(sourceId: string) => {
@@ -146,11 +165,15 @@ export const ImportSettingsSection: FC = () => {
 	);
 
 	const onSelectAll = useCallback(() => {
-		const next = new Set(selected);
-		for (const session of filterSessions(sessions, query)) {
-			next.add(session.sourceId);
+		const result = selectAllWithinCap(sessions, query, selected);
+		resetSelection(result.selected);
+		if (result.capped) {
+			setSelectionNotice(
+				t("ui.settings.imports.selection_limit", {
+					max: MAX_IMPORT_SESSIONS,
+				}),
+			);
 		}
-		resetSelection(next);
 	}, [query, resetSelection, selected, sessions]);
 
 	const onClearSelection = useCallback(() => {
@@ -238,22 +261,38 @@ export const ImportSettingsSection: FC = () => {
 			try {
 				const next = await fetchImportJob(jobId);
 				if (!alive) return;
+				if (jobError.current) {
+					const previous = jobError.current;
+					jobError.current = null;
+					setError((current) => (current === previous ? null : current));
+				}
 				setProgress(next);
-				if (next.result) setResult(next.result);
+				// The nested result carries its own job id; the polled id is the
+				// one this screen started and keyed the monitor on, so reconcile
+				// rather than letting two ids disagree in the same result view.
+				if (next.result) setResult({ ...next.result, jobId: next.jobId });
 				if (!TERMINAL.has(next.state)) {
 					timer = setTimeout(tick, 900);
 				}
 			} catch (cause) {
 				if (!alive) return;
-				setError(t("ui.settings.imports.error_job", { reason: reason(cause) }));
+				const message = t("ui.settings.imports.error_job", {
+					reason: reason(cause),
+				});
+				jobError.current = message;
+				setError(message);
+				// A transient read must not end monitoring: the job keeps running
+				// on the backend, so retry until a terminal state arrives. Retry
+				// restarts this effect immediately via `pollAttempt`.
+				timer = setTimeout(tick, 2000);
 			}
 		};
-		timer = setTimeout(tick, 700);
+		timer = setTimeout(tick, pollAttempt > 0 ? 0 : 700);
 		return () => {
 			alive = false;
 			if (timer) clearTimeout(timer);
 		};
-	}, [jobId, jobState]);
+	}, [jobId, jobState, pollAttempt]);
 
 	const onCancel = useCallback(async () => {
 		if (!progress || TERMINAL.has(progress.state)) return;
@@ -275,6 +314,7 @@ export const ImportSettingsSection: FC = () => {
 		setPreview(null);
 		setPreviewSignature(null);
 		setConfirmed(false);
+		setSelectionNotice(null);
 		setResult(null);
 		setProgress(null);
 		setError(null);
@@ -290,10 +330,23 @@ export const ImportSettingsSection: FC = () => {
 		}
 	}, []);
 
+	// Refresh means both halves of the screen: source card counts were stale
+	// after a source grew, and reloading only the rows left the card misleading.
+	const onRefresh = useCallback(async () => {
+		if (jobActive) return;
+		setSelectionNotice(null);
+		await loadSources();
+		if (activeSource) await loadSessions(activeSource);
+	}, [activeSource, jobActive, loadSessions, loadSources]);
+
 	const onRetry = useCallback(() => {
-		if (activeSource) void loadSessions(activeSource);
-		else void loadSources();
-	}, [activeSource, loadSessions, loadSources]);
+		if (jobActive) {
+			setError(null);
+			setPollAttempt((value) => value + 1);
+			return;
+		}
+		void onRefresh();
+	}, [jobActive, onRefresh]);
 
 	return (
 		<ImportSettingsView
@@ -321,6 +374,8 @@ export const ImportSettingsSection: FC = () => {
 			onCancel={() => void onCancel()}
 			onRetry={onRetry}
 			onImportAnother={onImportAnother}
+			onRefresh={onRefresh}
+			selectionNotice={selectionNotice}
 			onCopyPath={onCopyPath}
 		/>
 	);

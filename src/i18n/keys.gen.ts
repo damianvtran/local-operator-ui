@@ -3062,7 +3062,6 @@ export type MessageParams = {
 	"ui.settings.imports.phase_queued": undefined;
 	"ui.settings.imports.phase_selecting": undefined;
 	"ui.settings.imports.preview_confirm": undefined;
-	"ui.settings.imports.preview_estimated": undefined;
 	"ui.settings.imports.preview_heading": undefined;
 	"ui.settings.imports.preview_memory": { records: number; tokens: string };
 	"ui.settings.imports.preview_required": undefined;
@@ -3082,13 +3081,20 @@ export type MessageParams = {
 		sessions: number;
 		messages: number;
 	};
+	"ui.settings.imports.result_summary_cancelled": {
+		state: string;
+		sessions: number;
+		total: number;
+		messages: number;
+	};
 	"ui.settings.imports.result_target": { target: string };
 	"ui.settings.imports.retry": undefined;
-	"ui.settings.imports.review_instructions": { path: string };
-	"ui.settings.imports.review_memory": { path: string };
+	"ui.settings.imports.review_instructions": undefined;
+	"ui.settings.imports.review_memory": undefined;
 	"ui.settings.imports.search_placeholder": undefined;
 	"ui.settings.imports.select_all": undefined;
 	"ui.settings.imports.selected": { count: number };
+	"ui.settings.imports.selection_limit": { max: number };
 	"ui.settings.imports.session_importing": undefined;
 	"ui.settings.imports.session_index_only": undefined;
 	"ui.settings.imports.session_meta": { messages: number; compactions: number };

@@ -34,10 +34,9 @@ import {
 	RefreshCw,
 	Search,
 	Square,
-	TriangleAlert,
 } from "lucide-react";
 import type { FC } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
 	ImportAvailability,
 	ImportOutcome,
@@ -53,6 +52,11 @@ import { cleanSessionTitle, filterSessions } from "./imports-model";
 import { SettingsSection } from "./settings-section";
 
 const CANCEL_WARNING = /cancel/i;
+const TERMINAL_STATES = new Set<ImportProgress["state"]>([
+	"done",
+	"failed",
+	"cancelled",
+]);
 
 export type ImportBusy = "sources" | "sessions" | "preview" | "start" | null;
 
@@ -81,6 +85,8 @@ export type ImportSettingsViewProps = {
 	onCancel: () => void;
 	onRetry: () => void;
 	onImportAnother: () => void;
+	onRefresh: () => void;
+	selectionNotice: string | null;
 	onCopyPath: (path: string) => Promise<boolean>;
 };
 
@@ -238,6 +244,14 @@ const ProgressRows: FC<{
 					{t("ui.settings.imports.progress_pending", { count: pending })}
 				</p>
 			)}
+			{progress.warnings.map((warning) => (
+				<p
+					key={`${warning.code}:${warning.sessionId}:${warning.message}`}
+					className="text-meta text-warning"
+				>
+					{warning.message}
+				</p>
+			))}
 		</div>
 	);
 };
@@ -266,15 +280,17 @@ export const SessionResultRow: FC<{
 					})}
 				</span>
 			</div>
-			{/* A zero-row cancelled/failed target is not a session the user can
-			    open; showing its id advertised an empty directory. */}
-			{row.targetSessionId && row.messages > 0 && (
-				<p className="mt-1 break-all font-mono text-meta text-ink-muted">
-					{t("ui.settings.imports.result_target", {
-						target: row.targetSessionId,
-					})}
-				</p>
-			)}
+			{/* A skipped row has no new messages but its existing target is the
+			    whole point of the result; only zero-row cancelled/failed targets
+			    are empty directories and stay hidden. */}
+			{row.targetSessionId &&
+				(row.messages > 0 || row.outcome === "skipped_already_imported") && (
+					<p className="mt-1 break-all font-mono text-meta text-ink-muted">
+						{t("ui.settings.imports.result_target", {
+							target: row.targetSessionId,
+						})}
+					</p>
+				)}
 			{row.warnings.map((warning) => (
 				<p key={warning} className="mt-1 text-meta text-warning">
 					{warning}
@@ -309,10 +325,23 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 	onCancel,
 	onRetry,
 	onImportAnother,
+	onRefresh,
+	selectionNotice,
 	onCopyPath,
 }) => {
 	useI18nLocale();
+	const previewRef = useRef<HTMLDivElement>(null);
 	const active = sources.find((source) => source.source === activeSource);
+	const jobActive = progress !== null && !TERMINAL_STATES.has(progress.state);
+	const resultTotal = progress?.total ?? selected.size;
+	useEffect(() => {
+		if (preview && !previewStale && !progress && !result) {
+			// A built preview can land below the fold (measured at 1380x900);
+			// bring the confirmation and its Import control into view rather than
+			// asking the user to discover them by scrolling.
+			previewRef.current?.scrollIntoView({ block: "start", inline: "nearest" });
+		}
+	}, [preview, previewStale, progress, result]);
 	const visibleSessions = useMemo(
 		() => filterSessions(sessions, query),
 		[query, sessions],
@@ -340,7 +369,6 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 			<div className="flex flex-col gap-5">
 				{error && (
 					<Alert variant="warning">
-						<TriangleAlert size={16} data-alert-mark />
 						<AlertTitle>{t("ui.settings.imports.title")}</AlertTitle>
 						<AlertDescription>
 							<span className="flex flex-wrap items-center justify-between gap-3">
@@ -375,8 +403,10 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 							<Button
 								variant="ghost"
 								size="sm"
-								onClick={onRetry}
-								disabled={busy === "sources"}
+								onClick={onRefresh}
+								disabled={
+									jobActive || busy === "sources" || busy === "sessions"
+								}
 							>
 								<RefreshCw
 									size={14}
@@ -390,7 +420,7 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 								{t("ui.settings.imports.empty_sources")}
 							</p>
 						)}
-						<div className="grid gap-2 sm:grid-cols-3">
+						<div className="grid gap-2 lg:grid-cols-3">
 							{sources.map((source) => {
 								const isActive = source.source === activeSource;
 								const availability = source.detected
@@ -401,9 +431,10 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 										key={source.source}
 										type="button"
 										aria-pressed={isActive}
+										disabled={jobActive}
 										onClick={() => onSelectSource(source.source)}
 										className={cn(
-											"rounded-lg border p-3 text-left transition-colors",
+											"rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60",
 											"focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
 											isActive
 												? "border-accent bg-accent-wash"
@@ -463,6 +494,11 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 								</span>
 							</div>
 						</div>
+						{selectionNotice && (
+							<output className="text-meta text-warning">
+								{selectionNotice}
+							</output>
+						)}
 
 						<div className="relative">
 							<Search
@@ -551,7 +587,12 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 													{session.cwd}
 												</span>
 											)}
-											{session.availability !== "full" && (
+											{session.availability === "metadata_only" && (
+												<span className="mt-1 block text-meta text-warning">
+													{t("ui.settings.imports.metadata_only_explain")}
+												</span>
+											)}
+											{session.availability === "unsupported" && (
 												<span className="mt-1 block text-meta text-warning">
 													{t("ui.settings.imports.session_index_only")}
 												</span>
@@ -565,7 +606,10 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 				)}
 
 				{active && selectedCount > 0 && !progress && !result && (
-					<div className="flex flex-col gap-3 border-t border-hairline pt-5">
+					<div
+						ref={previewRef}
+						className="flex flex-col gap-3 border-t border-hairline pt-5"
+					>
 						<div className="flex flex-wrap items-center justify-between gap-2">
 							<h3 className="text-heading text-ink">
 								{t("ui.settings.imports.preview_heading")}
@@ -588,7 +632,6 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 						</div>
 						{previewStale && (
 							<Alert variant="warning">
-								<TriangleAlert size={16} data-alert-mark />
 								<AlertDescription>
 									{t("ui.settings.imports.preview_required")}
 								</AlertDescription>
@@ -603,11 +646,6 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 										compactions: preview.totalCompactions,
 									})}
 								</p>
-								{preview.messageCountsEstimated && (
-									<p className="text-meta text-ink-muted">
-										{t("ui.settings.imports.preview_estimated")}
-									</p>
-								)}
 								<p className="text-meta text-ink-muted">
 									{t("ui.settings.imports.preview_memory", {
 										records: preview.totalMemoryRecords,
@@ -718,11 +756,18 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 							</Button>
 						</div>
 						<p className="text-body-sm text-ink">
-							{t("ui.settings.imports.result_summary", {
-								state: t(stateKey(result.state)),
-								sessions: result.sessions.length,
-								messages: result.messages,
-							})}
+							{result.state === "cancelled"
+								? t("ui.settings.imports.result_summary_cancelled", {
+										state: t(stateKey(result.state)),
+										sessions: result.sessions.length,
+										total: resultTotal,
+										messages: result.messages,
+									})
+								: t("ui.settings.imports.result_summary", {
+										state: t(stateKey(result.state)),
+										sessions: result.sessions.length,
+										messages: result.messages,
+									})}
 						</p>
 						{result.sessions.map((row) => (
 							<SessionResultRow
@@ -736,18 +781,14 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 								{result.instructionReviewPath && (
 									<ReviewPath
 										path={result.instructionReviewPath}
-										label={t("ui.settings.imports.review_instructions", {
-											path: result.instructionReviewPath,
-										})}
+										label={t("ui.settings.imports.review_instructions")}
 										onCopyPath={onCopyPath}
 									/>
 								)}
 								{result.memoryReviewPath && (
 									<ReviewPath
 										path={result.memoryReviewPath}
-										label={t("ui.settings.imports.review_memory", {
-											path: result.memoryReviewPath,
-										})}
+										label={t("ui.settings.imports.review_memory")}
 										onCopyPath={onCopyPath}
 									/>
 								)}
@@ -755,7 +796,6 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 						)}
 						{result.warnings.length > 0 && (
 							<Alert variant="warning">
-								<TriangleAlert size={16} data-alert-mark />
 								<AlertDescription>
 									<span className="flex flex-col gap-1">
 										<span>

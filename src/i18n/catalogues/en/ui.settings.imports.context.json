@@ -167,12 +167,6 @@
 		"length": "Short settings copy; wraps in the 896px content column.",
 		"note": "Preview totals for sessions, messages and compactions."
 	},
-	"ui.settings.imports.preview_estimated": {
-		"role": "Settings import surface",
-		"tone": "Plain, factual sentence case; no exclamation, no blame.",
-		"length": "Short settings copy; wraps in the 896px content column.",
-		"note": "Caveat that preview message counts are source metadata estimates."
-	},
 	"ui.settings.imports.preview_memory": {
 		"role": "Settings import surface",
 		"tone": "Plain, factual sentence case; no exclamation, no blame.",
@@ -303,13 +297,13 @@
 		"role": "Settings import surface",
 		"tone": "Plain, factual sentence case; no exclamation, no blame.",
 		"length": "Short settings copy; wraps in the 896px content column.",
-		"note": "Path to the instruction review artifact."
+		"note": "Label above the absolute instruction review-artifact path; the path is rendered once below it."
 	},
 	"ui.settings.imports.review_memory": {
 		"role": "Settings import surface",
 		"tone": "Plain, factual sentence case; no exclamation, no blame.",
 		"length": "Short settings copy; wraps in the 896px content column.",
-		"note": "Path to the unattached-memory review artifact."
+		"note": "Label above the absolute unattached-memory review-artifact path; the path is rendered once below it."
 	},
 	"ui.settings.imports.copy_path": {
 		"role": "Settings import surface",
@@ -436,5 +430,17 @@
 		"tone": "Plain, factual sentence case; no exclamation, no blame.",
 		"length": "Short settings copy; wraps in the 896px content column.",
 		"note": "Source/session availability: unsupported."
+	},
+	"ui.settings.imports.selection_limit": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Select all reached the 5,000-session job limit; tells the user to batch."
+	},
+	"ui.settings.imports.result_summary_cancelled": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Cancelled result summary; processed and selected totals must both be visible."
 	}
 }
