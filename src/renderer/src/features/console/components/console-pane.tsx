@@ -631,7 +631,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			/*
 			 * THE REQUEST IS CLEARED WHEN THE CREATE ANSWERS, not when it is made — the same
 			 * rule the comment above states, applied one step further than the first cut did.
-			 * Clearing it here, beside `setCreating(true)`, still painted the empty state for
+			 * Clearing it here, beside `beginCreate()`, still painted the empty state for
 			 * one commit, and the reason is the instrument's: a write to the preferences store
 			 * inside this effect flushes a render of its own (the store is read through
 			 * `useSyncExternalStore`, whose update is sync-lane) BEFORE the `creating` update
@@ -641,7 +641,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			 * a state sampled after the round trip never could.
 			 *
 			 * THE CARET IS ARMED BY THE ANSWER, NOT BY THE PRESS (agent review round 3, M1).
-			 * It used to be armed on the way IN, beside `setCreating(true)`, and the created
+			 * It used to be armed on the way IN, beside `beginCreate()`, and the created
 			 * surface's own mirror then spent it on mount — which works for a create that
 			 * succeeds and leaves the request armed for a create that FAILS, with nothing
 			 * that will ever spend it: the next surface to appear in this conversation by ANY
