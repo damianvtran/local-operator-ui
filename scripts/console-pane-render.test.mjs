@@ -581,6 +581,16 @@ test("a create the host refused reports the refusal, with its reason and a retry
 			TERMINAL,
 			"the retry runs another create and the pane lands on the terminal",
 		);
+		await settle(80);
+		const live = harness.__terminals.filter(
+			(terminal) => !terminal.wasDisposed,
+		);
+		assert.equal(live.length, 1, "the retry mounted one terminal");
+		assert.equal(
+			live[0].focusCount,
+			1,
+			"the caret lands in the terminal the empty state's create made (F-4)",
+		);
 	} finally {
 		root.unmount();
 		container.remove();
@@ -727,6 +737,114 @@ test("the + with a terminal already open shows the NEW surface and gives it the 
 			.filter((terminal) => !terminal.wasDisposed);
 		assert.equal(live.length, 1, "the new surface's mirror mounted once");
 		assert.equal(live[0].focusCount, 1, "the caret lands in the new terminal");
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("two quick presses of + before the bridge answers make exactly one create (F-2)", async () => {
+	resetIntent();
+	const OLD = "con:1:twice-old";
+	const NEW = "con:2:twice-new";
+	harness.useUiPreferencesStore.getState().setConsoleActiveSurface(OLD);
+	let answer;
+	const bridge = installBridge({
+		surfaces: [surfaceRow(OLD)],
+		create: ({ setListing }) =>
+			new Promise((resolve) => {
+				answer = () => {
+					setListing([surfaceRow(OLD), surfaceRow(NEW, { last_activity: 2 })]);
+					resolve({ surface: NEW });
+				};
+			}),
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() => TERMINAL.test(container.textContent ?? ""));
+		await settle(80);
+		const plus = container.querySelector(
+			'[data-tour-tag="console-new-surface"]',
+		);
+		// Two clicks in one tick, before React can commit the disabled button.
+		plus.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+		plus.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+		await settle(40);
+		plus.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+		await settle(40);
+		assert.equal(
+			bridge.calls.create,
+			1,
+			"one create for the presses in flight",
+		);
+		assert.equal(
+			plus.disabled,
+			true,
+			"the + is disabled while the create runs",
+		);
+		answer();
+		await waitFor(() => container.querySelector(`[data-surface="${NEW}"]`));
+		await settle(80);
+		assert.equal(bridge.calls.create, 1, "still one create after it lands");
+		assert.equal(
+			plus.disabled,
+			false,
+			"the + is enabled again once it answered",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("a row picked while a + create is in flight is not overridden when it lands (F-3)", async () => {
+	resetIntent();
+	const A = "con:1:pick-a";
+	const B = "con:2:pick-b";
+	const C = "con:3:pick-c";
+	harness.useUiPreferencesStore.getState().setConsoleActiveSurface(A);
+	let answer;
+	installBridge({
+		surfaces: [surfaceRow(A), surfaceRow(B)],
+		create: ({ setListing }) =>
+			new Promise((resolve) => {
+				answer = () => {
+					setListing([
+						surfaceRow(A),
+						surfaceRow(B),
+						surfaceRow(C, { last_activity: 3 }),
+					]);
+					resolve({ surface: C });
+				};
+			}),
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() => TERMINAL.test(container.textContent ?? ""));
+		await settle(80);
+		container
+			.querySelector('[data-tour-tag="console-new-surface"]')
+			.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+		await settle(40);
+		const rowB = container.querySelector(`[data-surface="${B}"] [role="tab"]`);
+		assert.ok(rowB, "row B is rendered");
+		rowB.click();
+		await waitFor(
+			() => harness.useUiPreferencesStore.getState().consoleActiveSurface === B,
+		);
+		const before = harness.__terminals.length;
+		answer();
+		await waitFor(() => container.querySelector(`[data-surface="${C}"]`));
+		await settle(80);
+		assert.equal(
+			harness.useUiPreferencesStore.getState().consoleActiveSurface,
+			B,
+			"the user's later pick stands",
+		);
+		const focused = harness.__terminals
+			.slice(before)
+			.filter((terminal) => terminal.focusCount > 0);
+		assert.equal(focused.length, 0, "the landing create arms no caret");
 	} finally {
 		root.unmount();
 		container.remove();
