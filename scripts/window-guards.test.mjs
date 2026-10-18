@@ -143,86 +143,6 @@ test("openVettedExternal calls the OS only for an allowed URL, and answers with 
 	assert.match(logs.join("\n"), /could not open the URL: no handler/);
 });
 
-test("main's loopback-page allowance admits exactly the voice page and nothing beside it", async () => {
-	const page = { port: 3101 };
-	const v = guards.externalUrlVerdict("http://127.0.0.1:3101/", page);
-	assert.deepEqual(v, { allowed: true, url: "http://127.0.0.1:3101/" });
-	// Without the allowance - every renderer-reachable caller - the same URL is
-	// refused: the allowance is the only thing that admits it.
-	assert.match(
-		guards.externalUrlVerdict("http://127.0.0.1:3101/").reason,
-		/loopback or private/,
-	);
-	const refused = [
-		// A different host: other loopback spellings, a private host, a public one
-		// that is not the Gateway's announced spelling.
-		"http://localhost:3101/",
-		"http://127.0.0.2:3101/",
-		"http://[::1]:3101/",
-		"http://[::ffff:127.0.0.1]:3101/",
-		"http://192.168.1.1:3101/",
-		"http://0.0.0.0:3101/",
-		// A different port: the daemon's, the s2s server's, and no port at all.
-		"http://127.0.0.1:1111/",
-		"http://127.0.0.1:8765/",
-		"http://127.0.0.1/",
-		// A different path, or the same path carrying more.
-		"http://127.0.0.1:3101/v1/desktop/sessions",
-		"http://127.0.0.1:3101/index.html",
-		"http://127.0.0.1:3101/?next=x",
-		"http://127.0.0.1:3101/#x",
-		// The right page under another scheme, or with credentials.
-		"https://127.0.0.1:3101/",
-		"http://u:p@127.0.0.1:3101/",
-	];
-	for (const raw of refused) {
-		const verdict = guards.externalUrlVerdict(raw, page);
-		assert.equal(verdict.allowed, false, `${raw} must be refused`);
-	}
-	// A malformed allowance admits nothing.
-	assert.equal(
-		guards.externalUrlVerdict("http://127.0.0.1:3101/", { port: Number.NaN })
-			.allowed,
-		false,
-	);
-	// The door threads the allowance through to the verdict.
-	const opened = [];
-	const open = (url) => {
-		opened.push(url);
-	};
-	assert.deepEqual(
-		await guards.openVettedExternal(
-			"http://127.0.0.1:3101/",
-			open,
-			() => {},
-			page,
-		),
-		{ ok: true },
-	);
-	const sibling = await guards.openVettedExternal(
-		"http://127.0.0.1:1111/",
-		open,
-		() => {},
-		page,
-	);
-	assert.equal(sibling.ok, false);
-	assert.deepEqual(opened, ["http://127.0.0.1:3101/"]);
-});
-
-test("the voice WebUI leaves through the vetted door with the Gateway's own port, and nothing renderer-reachable carries an allowance", () => {
-	const src = code("src/main/index.ts");
-	assert.match(
-		src,
-		/openWebUi: \(url\) => \{[\s\S]*?void openExternalVetted\(url, \{ port: qwenPorts\.gateway \}\);/,
-	);
-	// Every other use of the door passes the URL alone, or the door itself as a
-	// one-argument callback: an allowance on one of them would reopen S-5.
-	const calls = [...src.matchAll(/openExternalVetted\(([^)]*)\)/g)].map(
-		(m) => m[1],
-	);
-	assert.deepEqual(calls.sort(), ["url", "url, { port: qwenPorts.gateway }"]);
-});
-
 // --- window.open --------------------------------------------------------------
 
 test("sign-in providers still get the sandboxed popup; lookalikes do not", () => {
@@ -768,6 +688,81 @@ test("permissions: deny by default, grant only what the app's own documents use"
 		assert.equal(ask(permission), false, permission);
 });
 
+test("the voice page's rule: audio only, main frame only, the Gateway's exact origin", () => {
+	const origin = "http://127.0.0.1:3101";
+	const ask = (permission, extra = {}) =>
+		guards.voicePagePermissionVerdict(
+			{
+				permission,
+				requestingUrl: `${origin}/?desktop=orb&autoHideSeconds=0`,
+				isMainFrame: true,
+				...extra,
+			},
+			origin,
+		);
+	// The page's own ask: audio, from the gateway, in the main frame.
+	assert.equal(ask("media", { mediaTypes: ["audio"] }), true);
+	assert.equal(ask("media", { mediaType: "audio" }), true);
+	for (const mediaTypes of [["video"], ["audio", "video"], []])
+		assert.equal(ask("media", { mediaTypes }), false, String(mediaTypes));
+	assert.equal(ask("media", { mediaType: "video" }), false);
+	assert.equal(
+		ask("media", { mediaType: "unknown" }),
+		false,
+		"device enumeration is not ours to grant",
+	);
+	// ONE permission: the page is third-party code, not one of our documents.
+	for (const permission of [
+		"clipboard-sanitized-write",
+		"fullscreen",
+		"geolocation",
+		"notifications",
+		"openExternal",
+		"",
+	])
+		assert.equal(ask(permission), false, permission);
+	assert.equal(
+		ask("media", { mediaTypes: ["audio"], isMainFrame: false }),
+		false,
+		"a sub-frame hears nothing",
+	);
+	// The origin, exactly: another port, another host spelling, another scheme,
+	// or an origin smuggled into the userinfo\/suffix.
+	for (const requestingUrl of [
+		"http://127.0.0.1:3102/",
+		"http://localhost:3101/",
+		"https://127.0.0.1:3101/",
+		"http://127.0.0.1:3101.evil.test/",
+		"http://evil.test/",
+	])
+		assert.equal(
+			ask("media", { mediaTypes: ["audio"], requestingUrl }),
+			false,
+			requestingUrl,
+		);
+	// A document ON that origin is the page, however its path is spelled.
+	assert.equal(
+		ask("media", {
+			mediaTypes: ["audio"],
+			requestingUrl: `${origin}/anything`,
+		}),
+		true,
+	);
+	// A malformed gateway origin admits nothing at all.
+	assert.equal(
+		guards.voicePagePermissionVerdict(
+			{
+				permission: "media",
+				mediaTypes: ["audio"],
+				isMainFrame: true,
+				requestingUrl: `${origin}/`,
+			},
+			"not a URL",
+		),
+		false,
+	);
+});
+
 test("permissions: a sub-frame or a foreign document gets nothing, even the allowed ones", () => {
 	assert.equal(
 		ask("media", { mediaTypes: ["audio"], isMainFrame: false }),
@@ -1104,8 +1099,13 @@ test("shell.openExternal is reached only through the vetted door in the main win
 	const uses = [...src.matchAll(/shell\.openExternal\(([^)]*)\)/g)].map(
 		(m) => m[1],
 	);
-	// The vetted door itself, and the fixed "local-operator.com" menu item.
-	assert.deepEqual(uses.sort(), ['"https://local-operator.com"', "url"].sort());
+	// The vetted door itself, the fixed "local-operator.com" menu item, and the
+	// macOS microphone pane - a fixed constant with no input, so it is main's
+	// own path rather than the renderer's door (plan §4).
+	assert.deepEqual(
+		uses.sort(),
+		['"https://local-operator.com"', "MICROPHONE_SETTINGS_URL", "url"].sort(),
+	);
 	assert.match(
 		src,
 		/ipcMain\.handle\("open-external", async \(_, url\) => openExternalVetted\(url\)\);/,

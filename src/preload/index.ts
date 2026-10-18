@@ -195,6 +195,8 @@ const api = {
 				ipcRenderer.invoke("voice.qwen.start"),
 			getStatus: (): Promise<QwenVoiceStatus> =>
 				ipcRenderer.invoke("voice.qwen.status.get"),
+			openMicrophoneSettings: (): Promise<void> =>
+				ipcRenderer.invoke("voice.qwen.open-mic-settings"),
 			onStatus: (listener: (status: QwenVoiceStatus) => void) => {
 				const handler = (_event: unknown, status: QwenVoiceStatus) =>
 					listener(status);

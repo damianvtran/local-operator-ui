@@ -5796,10 +5796,13 @@ export type DesktopMediaResponse =
  * - invoke `voice.qwen.speak {text, kind}`: speak a reply or gate text. Main
  *   honours it ONLY for a text it relayed itself as a 200 `/voice/text` answer in
  *   the last 10 minutes; anything else answers `{spoken: false}`.
- * - status `voice.qwen.status {rig, webui_url, reason?, clients?, cause?}`
- *   (`onStatus`, `getStatus`).
+ * - status `voice.qwen.status {rig, webui_url, reason?, clients?, cause?, mic?}`
+ *   (`onStatus`, `getStatus`). `mic` is additive: the macOS microphone verdict,
+ *   which is what turns "unheard" into "Microphone blocked" (plan §2/§4).
  * - invoke `voice.qwen.start`: start the rig for the slot already held; on a
- *   rig that is already ready, open the voice page again instead.
+ *   rig that is already ready, recreate the hidden voice page instead.
+ * - invoke `voice.qwen.open-mic-settings`: open the OS microphone pane. Main's
+ *   own fixed URL, never a renderer-supplied one.
  */
 export type QwenRigState = "stopped" | "starting" | "ready" | "error";
 export type QwenVoiceStatus = {
@@ -5814,6 +5817,8 @@ export type QwenVoiceStatus = {
 	clients?: number;
 	/** Why the rig is in `error` when it was not a start failure. */
 	cause?: "unexpected_exit" | null;
+	/** The macOS microphone verdict for this app's identity. */
+	mic?: "granted" | "denied" | "unknown";
 };
 export type QwenVoiceTake = { taskId: string; text: string };
 export type QwenVoiceResult =
@@ -5829,6 +5834,7 @@ export type QwenVoiceBridge = {
 	start: () => Promise<QwenVoiceStatus>;
 	getStatus: () => Promise<QwenVoiceStatus>;
 	onStatus: (listener: (status: QwenVoiceStatus) => void) => () => void;
+	openMicrophoneSettings: () => Promise<void>;
 };
 
 export type DesktopAPI = {

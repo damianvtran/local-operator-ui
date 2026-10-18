@@ -24,9 +24,9 @@ closes your shell if a check fails; they print what is wrong instead.
   never runs `start.sh` and never writes into that folder. If yours lives
   elsewhere, add `LOP_QWEN_RIG_DIR=/path/to/rig` to the step 3 command.
 - **Headphones.** With speakers, the microphone can hear the rig. The app drops
-  anything that is one of the rig's own short phrases ("Sent.", "Switched." and
-  so on), or that repeats a reply spoken in the last 30 s. Headphones avoid the
-  problem altogether.
+  anything that is one of the rig's own short phrases ("Answer it on screen
+  first.", "Switched." and so on), or that repeats a reply spoken in the last
+  30 s. Headphones avoid the problem altogether.
 - **The ports are free.** Run:
 
   ```sh
@@ -119,34 +119,41 @@ account"** window. Press **"Skip for now"**: the test backend needs no account.
    - "Starting voice" appears beside it;
    - a sound-wave mark appears on that conversation's row in the sidebar.
 4. After about 15-20 s the speech models are loaded (the very first run can take
-   longer). Your browser **comes to the front** with the Qwen page at
-   `http://127.0.0.1:3101/` (or the first port you set in `LOP_QWEN_PORTS`).
-   The app's header says **"Voice ready"** with an **"Open voice page"** action
-   until that page has loaded, then changes to **"Listening"**.
+   longer). The app opens its own hidden Qwen page - no browser tab, nothing to
+   click - and the header changes from **"Starting voice"** to **"Listening"**
+   once that page is connected.
 
-   **The Qwen page's own welcome text does not apply here.** It says "You speak,
-   I orchestrate." and suggests things to try. In this setup the page is only
-   the microphone and the speaker: EVERYTHING you say, including "hello", goes
-   to the conversation with voice on, and what you hear back is that
+   **The first time, macOS asks for the microphone.** The app asks before it
+   opens the page, because the page is where the audio is captured. If you
+   allow it, voice carries on. If you deny it, the header says **"Microphone
+   blocked"** with **"Open Settings"**, which opens the macOS Microphone pane
+   for this app; change it there, then turn voice off and on again.
+
+   **The Qwen page's own welcome text does not apply here.** It says "You
+   speak, I orchestrate." and suggests things to try. In this setup the page is
+   only the microphone and the speaker: EVERYTHING you say, including "hello",
+   goes to the conversation with voice on, and what you hear back is that
    conversation's reply.
-5. On the Qwen page, press **"Enable microphone"** and allow the microphone when
-   your browser asks. The header already says "Listening" once the page has
-   loaded, but nothing reaches the conversation until the microphone is on.
 
-If you close the Qwen tab, the header goes back to "Voice ready". Press
-"Open voice page" to open it again.
+5. If the header says **"Voice page not connected"** with **"Retry"**, the
+   hidden page is not talking to the Gateway. Press Retry: it recreates the
+   page. Nothing else needs a browser.
+
+   You do not close a tab any more, and voice keeps listening while the app is
+   in the background: the page is deliberately not throttled.
 
 If you restart the app while voice is still on, nothing loads by itself. The
 header shows "Start voice". Press it to load the models again.
 
 ## 5. What to say, and what should happen
 
-Speak in the Qwen page, with headphones on.
+Speak, with headphones on. There is no page to speak into: the app's own
+hidden page is listening.
 
 | You say | You hear | You see in the app |
 |---|---|---|
-| "Hello" | "Sent.", then "Hello from the mock provider!" | "Hello" appears in the conversation as your message, then the mock's reply. The header says "Working", then "Listening". |
-| "What files are here?" | "Sent." | Your exact words appear in the conversation as your message. The header says "Working". |
+| "Hello" | "Hello from the mock provider!" | "Hello" appears in the conversation as your message, then the mock's reply. The header says "Working", then "Listening". |
+| "What files are here?" | nothing until the reply | Your exact words appear in the conversation as your message. The header says "Working". |
 | (nothing; wait a second) | "Hello from the mock provider!" | That reply in the conversation. The header returns to "Listening". |
 
 **Approvals.** The mock asks to run a shell command only when a conversation's
@@ -205,18 +212,23 @@ holds the port, the header says "Voice error" with the reason.
 
 **It does not talk.** Check these in order:
 
-1. **The header says "Voice ready", not "Listening":** no Qwen page is
-   connected. Press "Open voice page".
-   **The header says "Listening" but nothing happens when you speak:** the page
-   is open but its microphone is off. Press "Enable microphone" on the page.
-2. **Microphone permission:** the browser must be allowed to use the microphone
-   for `http://127.0.0.1:3101` (or your `LOP_QWEN_PORTS` page port).
+1. **The header says "Microphone blocked":** macOS has denied this app the
+   microphone. Press "Open Settings", allow Local Operator (in the dev app, the
+   entry is "Electron"), then turn voice off and on again.
+   **The header says "Voice page not connected":** the hidden page never
+   connected. Press "Retry"; if it stays that way, the logs in item 4 say why.
+2. **Nothing is asked and nothing connects:** check `LOP_QWEN_NO_WEBUI` is not
+   set in the app's environment - it is the switch that creates no page at all,
+   for agent-driven runs.
 3. **"Voice error":** the reason is written beside it, and "Try again" restarts
    the models. "Voice stopped unexpectedly." means a rig process died while
    voice was on. A failed start shows its cause, for example "Port 8765 is in
    use; stop the other voice rig first" or "Voice rig not found at …"; hover it
    for the full text if it is cut short. "Your last words were not sent."
-   is about one take only; the next thing you say is tried again.
+   is about one take only; the next thing you say is tried again. "Voice
+   stopped: it used more than 8 GB" is the memory guard: the rig passed its
+   budget and was stopped before it could take the machine with it (raise the
+   budget with `LOP_QWEN_MEM_BUDGET_GB` only if you know the machine can).
 4. **Logs:**
    - the speech process: `$QV/profile/qwen-voice/qwen-s2s.log`;
    - the app, including its `qwen-voice:` and `qwen-rig:` lines:
@@ -225,5 +237,6 @@ holds the port, the header says "Voice error" with the reason.
 5. **Wrong conversation:** words go only to the conversation with the accent
    button and the sidebar mark. If you hear "Voice is off for this
    conversation.", voice moved or was turned off.
-6. **"Sent." but no reply:** the conversation is still working. Look at the
-   conversation itself. A reply is spoken only for a turn your voice started.
+6. **Your words appear but no reply is spoken:** the conversation is still
+   working, or the turn was not one voice started. Look at the conversation
+   itself: a reply is spoken only for a turn that carries a take.

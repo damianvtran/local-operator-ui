@@ -105,14 +105,9 @@
 		"note": "Voice moved to this conversation from one that has no title."
 	},
 	"ui.chat.voice.phase_unheard": {
-		"role": "status word beside the voice button",
+		"role": "status word beside the voice control",
 		"tone": "short status, sentence case",
-		"note": "The speech models are loaded, but no voice page is open, so nothing can hear yet. Followed by the open_page action."
-	},
-	"ui.chat.voice.open_page": {
-		"role": "small text button beside the status word",
-		"tone": "imperative, sentence case",
-		"note": "Opens the local voice page in the browser, where the microphone is."
+		"note": "The speech models are loaded, but the hidden voice page is not connected, so nothing can hear yet. Followed by a Retry action."
 	},
 	"ui.chat.voice.try_again": {
 		"role": "small text button beside the error",
@@ -143,5 +138,20 @@
 		"role": "toast action button",
 		"tone": "one word, imperative",
 		"note": "Opens the conversation that holds voice, where an approval or question waits."
+	},
+	"ui.chat.voice.mic_blocked": {
+		"role": "status word beside the voice control",
+		"tone": "short status, sentence case",
+		"note": "macOS has denied the app the microphone, so the voice page cannot hear. Followed by an Open Settings action."
+	},
+	"ui.chat.voice.open_settings": {
+		"role": "small text button beside the status word",
+		"tone": "imperative, sentence case",
+		"note": "Opens the macOS Microphone privacy pane where the app can be allowed."
+	},
+	"ui.chat.voice.retry": {
+		"role": "small text button beside the status word",
+		"tone": "single verb",
+		"note": "Recreates the hidden voice page and reconnects it to the local speech models."
 	}
 }

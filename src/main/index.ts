@@ -7,6 +7,7 @@ import {
 	BrowserWindow,
 	type BrowserWindowConstructorOptions,
 	Menu,
+	WebContentsView,
 	app,
 	dialog,
 	globalShortcut,
@@ -14,6 +15,7 @@ import {
 	nativeImage,
 	session,
 	shell,
+	systemPreferences,
 	utilityProcess,
 	webContents,
 } from "electron";
@@ -140,16 +142,19 @@ import {
 	s2sLauncherPathFor,
 } from "./voice/qwen-rig";
 import { QwenVoice } from "./voice/qwen-voice";
+import {
+	QWEN_VOICE_PARTITION,
+	QwenVoicePage,
+	type VoicePageSession,
+	type VoicePageView,
+	noQwenVoicePage,
+} from "./voice/qwen-voice-page";
 import { resolveLaunchWindowChrome } from "./window-chrome";
 import {
 	type ResolvedLaunchGlass,
 	resolveLaunchWindowGlass,
 } from "./window-glass";
-import {
-	type LoopbackPageAllowance,
-	openVettedExternal,
-	popupVerdict,
-} from "./window-guards";
+import { openVettedExternal, popupVerdict } from "./window-guards";
 import {
 	guardDownloads,
 	guardNavigation,
@@ -829,21 +834,26 @@ const trustedRendererDocuments = (): readonly string[] => [
  * (`window.open` and the `open-external` IPC both land here). The scheme and
  * shape rules are `window-guards.ts`'s; this binds them to `shell`, and the
  * outcome travels to whoever asked (round-2 R-4).
- *
- * `loopbackPage` is main's own allowance for the voice WebUI and is never
- * reachable from a renderer: both renderer doors call this with the URL alone
- * (`guardWindowOpen` and the `open-external` handler below).
  */
-const openExternalVetted = (
-	raw: unknown,
-	loopbackPage?: LoopbackPageAllowance,
-): Promise<ExternalOpenOutcome> =>
+const openExternalVetted = (raw: unknown): Promise<ExternalOpenOutcome> =>
 	openVettedExternal(
 		raw,
 		(url) => shell.openExternal(url),
 		(message) => logger.warn(message, LogFileType.BACKEND),
-		loopbackPage,
 	);
+
+/**
+ * The macOS microphone pane. A MAIN-ONLY path (plan §4): the URL is a fixed
+ * constant with no input, so it is not the renderer's vetted door, whose
+ * `x-apple.systempreferences:` scheme is refused on purpose.
+ */
+const MICROPHONE_SETTINGS_URL =
+	"x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone";
+
+const openMicrophoneSettings = (): void => {
+	if (process.platform !== "darwin") return;
+	void shell.openExternal(MICROPHONE_SETTINGS_URL);
+};
 
 /**
  * The sign-in popup's window options, supplied to `guardWindowOpen` at every
@@ -1560,18 +1570,49 @@ const qwenVoice: QwenVoice = new QwenVoice({
 		return true;
 	},
 	/*
-	 * The WebUI is where Ben talks in slice 2 (design Q9). Through the one vetted
-	 * door, so `shell.openExternal` keeps its two call sites: the door refuses
-	 * loopback for renderer input, and the allowance admits exactly the page the
-	 * Gateway serves on the port main launched it on (`http://127.0.0.1:<port>/`),
-	 * nothing else on that host. An agent-driven run opens nothing: it must never
-	 * take the operator's browser focus.
+	 * THE HIDDEN VOICE PAGE (plan §1): Qwen's own WebUI in an unattached view,
+	 * so no browser tab, no "Enable microphone" click and no permission prompt
+	 * in someone else's browser. Agent-driven runs create no page - they must
+	 * never cost a renderer for voice nobody is listening to.
+	 *
+	 * BUILT ON FIRST USE, not here: `session.fromPartition` is only valid after
+	 * `app.whenReady()`, and this coordinator is constructed at module load. The
+	 * first use is a start, which cannot happen before there is a window.
 	 */
-	openWebUi: (url) => {
-		if (windowLaunch.mode !== "normal" || process.env.LOP_QWEN_NO_WEBUI === "1")
-			return;
-		void openExternalVetted(url, { port: qwenPorts.gateway });
-	},
+	page: (() => {
+		if (process.env.LOP_QWEN_NO_WEBUI === "1") return noQwenVoicePage();
+		let page: QwenVoicePage | null = null;
+		const instance = (): QwenVoicePage => {
+			page ??= new QwenVoicePage({
+				// The seams are structural subsets of Electron's Session and
+				// WebContentsView; Electron's overloaded `on` is not assignable to
+				// one signature, so the adapter casts once, here.
+				session: session.fromPartition(
+					QWEN_VOICE_PARTITION,
+				) as unknown as VoicePageSession,
+				createView: (options) =>
+					new WebContentsView(
+						options as unknown as ConstructorParameters<
+							typeof WebContentsView
+						>[0],
+					) as unknown as VoicePageView,
+				mediaAccess: {
+					status: () => systemPreferences.getMediaAccessStatus("microphone"),
+					ask: async () => systemPreferences.askForMediaAccess("microphone"),
+				},
+				gatewayOrigin: `http://127.0.0.1:${qwenPorts.gateway}`,
+				devTools: process.env.LOP_QWEN_VOICE_DEBUG === "1",
+				log: (message) => logger.info(message, LogFileType.BACKEND),
+				onStopped: (reason) => qwenVoice.pageFailed(reason),
+			});
+			return page;
+		};
+		return {
+			open: (url: string) => instance().open(url),
+			close: () => page?.close(),
+			prepareMicrophone: async () => instance().prepareMicrophone(),
+		};
+	})(),
 	log: (message) => logger.info(message, LogFileType.BACKEND),
 });
 
@@ -2948,6 +2989,7 @@ app
 			speak: (input) => qwenVoice.speak(input),
 			start: (reason) => qwenVoice.start(reason),
 			getStatus: () => qwenVoice.getStatus(),
+			openMicSettings: openMicrophoneSettings,
 		});
 
 		/*

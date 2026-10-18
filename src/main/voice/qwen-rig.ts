@@ -227,6 +227,9 @@ const defaultInspect = (pid: number): ProcessFacts | null => {
  * not only the python process that leads it. `--noCategories` keeps the parse to
  * the summary line.
  */
+const FOOTPRINT_SUMMARY = /Summary Footprint:\s*(\d+)\s*B/;
+const FOOTPRINT_SINGLE = /Footprint:\s*(\d+)\s*B/;
+
 const defaultGroupFootprint = (pgid: number): number | null => {
 	try {
 		const pids = execFileSync("ps", ["-o", "pid=", "-g", String(pgid)], {
@@ -243,9 +246,9 @@ const defaultGroupFootprint = (pgid: number): number | null => {
 			{ encoding: "utf8", timeout: 5_000 },
 		);
 		// Several pids print one summary; one pid prints only its own total.
-		const summary = /Summary Footprint:\s*(\d+)\s*B/.exec(out);
+		const summary = FOOTPRINT_SUMMARY.exec(out);
 		if (summary) return Number(summary[1]);
-		const single = /Footprint:\s*(\d+)\s*B/.exec(out);
+		const single = FOOTPRINT_SINGLE.exec(out);
 		return single ? Number(single[1]) : null;
 	} catch {
 		return null;
@@ -332,7 +335,8 @@ export class QwenSpeechProcess {
 		this.budgetBytes = deps.budgetBytes ?? qwenMemoryBudget(process.env);
 		this.footprint = deps.footprint ?? defaultGroupFootprint;
 		this.onBudgetExceeded = deps.onBudgetExceeded ?? (() => {});
-		this.setIntervalImpl = deps.setInterval ?? ((fn, ms) => setInterval(fn, ms));
+		this.setIntervalImpl =
+			deps.setInterval ?? ((fn, ms) => setInterval(fn, ms));
 		this.clearIntervalImpl =
 			deps.clearInterval ?? ((handle) => clearInterval(handle));
 	}

@@ -848,14 +848,16 @@ export type MessageParams = {
 	"ui.chat.voice.error_not_sent": undefined;
 	"ui.chat.voice.error_start_failed": undefined;
 	"ui.chat.voice.marker": undefined;
+	"ui.chat.voice.mic_blocked": undefined;
 	"ui.chat.voice.not_enabled": undefined;
-	"ui.chat.voice.open_page": undefined;
 	"ui.chat.voice.open_session": undefined;
+	"ui.chat.voice.open_settings": undefined;
 	"ui.chat.voice.phase_error": undefined;
 	"ui.chat.voice.phase_listening": undefined;
 	"ui.chat.voice.phase_starting": undefined;
 	"ui.chat.voice.phase_unheard": undefined;
 	"ui.chat.voice.phase_working": undefined;
+	"ui.chat.voice.retry": undefined;
 	"ui.chat.voice.start_rig": undefined;
 	"ui.chat.voice.stream_lost": undefined;
 	"ui.chat.voice.stream_reconnect": undefined;

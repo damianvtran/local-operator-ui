@@ -504,6 +504,8 @@ export function registerQwenVoiceIPC(
 		speak: (input: unknown) => { spoken: boolean; reason?: string };
 		start: (reason: "renderer") => Promise<unknown>;
 		getStatus: () => unknown;
+		/** Open the OS microphone pane (macOS); a fixed main-only URL. */
+		openMicSettings: () => void;
 	},
 ): void {
 	const authorize = (event: IpcMainInvokeEvent): void => {
@@ -526,5 +528,9 @@ export function registerQwenVoiceIPC(
 	ipcMain.handle("voice.qwen.status.get", (event) => {
 		authorize(event);
 		return voice.getStatus();
+	});
+	ipcMain.handle("voice.qwen.open-mic-settings", (event) => {
+		authorize(event);
+		voice.openMicSettings();
 	});
 }
