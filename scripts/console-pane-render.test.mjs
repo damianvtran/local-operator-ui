@@ -427,6 +427,8 @@ test("the pane never paints the empty state between the user's open and the term
 		create: async ({ setListing }) => {
 			await new Promise((r) => setTimeout(r, 60));
 			setListing([surfaceRow("con:1:render-test")]);
+			// Main's reply carries the id (`CreateSurfaceResult.surface`).
+			return { surface: "con:1:render-test" };
 		},
 	});
 	const { root, container } = await mountPane();
@@ -496,6 +498,8 @@ test("the pending open masks the empty state in the commit before the dispatcher
 		readDelayMs: 30,
 		create: async ({ setListing }) => {
 			setListing([surfaceRow("con:1:render-test")]);
+			// Main's reply carries the id (`CreateSurfaceResult.surface`).
+			return { surface: "con:1:render-test" };
 		},
 	});
 	const { root, container } = await mountPane();
@@ -529,6 +533,8 @@ test("a create the host refused reports the refusal, with its reason and a retry
 		create: async ({ setListing }) => {
 			if (fail) throw new Error(reason);
 			setListing([surfaceRow("con:1:render-test")]);
+			// Main's reply carries the id (`CreateSurfaceResult.surface`).
+			return { surface: "con:1:render-test" };
 		},
 	});
 	const { root, container } = await mountPane();
@@ -652,6 +658,8 @@ test("a create that answers with a surface still arms the caret for it", async (
 	installBridge({
 		create: async ({ setListing }) => {
 			setListing([surfaceRow("con:1:render-test")]);
+			// Main's reply carries the id (`CreateSurfaceResult.surface`).
+			return { surface: "con:1:render-test" };
 		},
 	});
 	const { root, container } = await mountPane();
@@ -679,6 +687,52 @@ test("a create that answers with a surface still arms the caret for it", async (
 	}
 });
 
+test("the + with a terminal already open shows the NEW surface and gives it the caret (#1084)", async () => {
+	/*
+	 * An explicit `+` is a request for a new terminal to work in. The stored lens used
+	 * to win over the arrival, so the pane kept showing (and focusing) the old one and
+	 * the new surface only appeared as a list row.
+	 */
+	resetIntent();
+	const OLD = "con:1:plus-old";
+	const NEW = "con:2:plus-new";
+	harness.useUiPreferencesStore.getState().setConsoleActiveSurface(OLD);
+	installBridge({
+		surfaces: [surfaceRow(OLD)],
+		create: async ({ setListing }) => {
+			setListing([surfaceRow(OLD), surfaceRow(NEW, { last_activity: 2 })]);
+			return { surface: NEW, cols: 80, rows: 24, pid: 2, live: true };
+		},
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() => TERMINAL.test(container.textContent ?? ""));
+		await settle(80);
+		const before = harness.__terminals.length;
+		const plus = container.querySelector(
+			'[data-tour-tag="console-new-surface"]',
+		);
+		assert.ok(plus, "the + is rendered");
+		plus.click();
+		// Wait for the create's round trip (the new row in the list), not for the fix.
+		await waitFor(() => container.querySelector(`[data-surface="${NEW}"]`));
+		await settle(80);
+		assert.equal(
+			harness.useUiPreferencesStore.getState().consoleActiveSurface,
+			NEW,
+			"the pane shows the surface the + created",
+		);
+		const live = harness.__terminals
+			.slice(before)
+			.filter((terminal) => !terminal.wasDisposed);
+		assert.equal(live.length, 1, "the new surface's mirror mounted once");
+		assert.equal(live[0].focusCount, 1, "the caret lands in the new terminal");
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
 test("a request made for another conversation is not answered here", async () => {
 	/*
 	 * THE OTHER HALF OF F-6, and the half only a render can pin: the store's request
@@ -691,6 +745,8 @@ test("a request made for another conversation is not answered here", async () =>
 	installBridge({
 		create: async ({ setListing }) => {
 			setListing([surfaceRow("con:1:render-test")]);
+			// Main's reply carries the id (`CreateSurfaceResult.surface`).
+			return { surface: "con:1:render-test" };
 		},
 	});
 	const { root, container } = await mountPane();

@@ -15,7 +15,14 @@ import {
 	Plus,
 	X,
 } from "lucide-react";
-import { type FC, useEffect, useMemo, useRef, useState } from "react";
+import {
+	type FC,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useConsoleBlipPulse } from "../hooks/use-console-attention";
 import { useConsoleSession } from "../hooks/use-console-session";
 import {
@@ -441,6 +448,36 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	}, [surfaces, surface, pendingClose, pendingDismiss]);
 
 	/*
+	 * THE USER'S OWN CREATE SHOWS WHAT IT MADE (#1084). An explicit `+` (or the empty
+	 * state's create, or its retry) is a request for a new terminal to work in, so the
+	 * lens moves to the created surface and the caret is armed for it. Without this the
+	 * stored lens won `pickActiveSurface` and the pane kept showing the old surface,
+	 * with the new one only a list row. Armed by the ANSWER, as the open-from-outside
+	 * path is (agent review round 3, M1): a refused or empty create arms nothing.
+	 *
+	 * THE LENS IS MOVED BY AN EFFECT, NOT IN THE `.then`. The store update is sync-lane
+	 * and the listing that holds the new surface is React state queued in the same tick,
+	 * so writing the lens directly rendered once with the new id and the OLD listing:
+	 * `pickActiveSurface` fell back to the old surface and the lens-sync effect below
+	 * wrote it straight back. Held as state, the id commits together with the listing.
+	 * The lens is set before the caret is armed because the token is consumed by the
+	 * mirror that mounts with it, and that has to be the new surface's mirror.
+	 */
+	const [showCreated, setShowCreated] = useState<string | null>(null);
+	const createFromPress = useCallback(() => {
+		void session.createSurface().then((created) => {
+			if (created !== null) setShowCreated(created);
+		});
+	}, [session.createSurface]);
+	useEffect(() => {
+		if (showCreated === null) return;
+		if (!surfaces.some((row) => row.surface === showCreated)) return;
+		setShowCreated(null);
+		setStored(showCreated);
+		setFocusRequest((value) => value + 1);
+	}, [showCreated, surfaces, setStored]);
+
+	/*
 	 * The lens follows what is actually shown, and that write is what makes the
 	 * recall survive a switch: the pane is unmounted while the user is in another
 	 * conversation, so the only thing that can remember "this session was reading
@@ -569,7 +606,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			void session
 				.createSurface()
 				.then((created) => {
-					if (!created) return;
+					if (created === null) return;
 					setAwaitingSurface(true);
 					setFocusRequest((value) => value + 1);
 				})
@@ -718,13 +755,13 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				return (
 					<ConsoleCreateFailed
 						message={session.createError}
-						onRetry={session.createSurface}
+						onRetry={createFromPress}
 					/>
 				);
 			}
 			return (
 				<ConsoleEmpty
-					onCreate={session.createSurface}
+					onCreate={createFromPress}
 					disabled={sessionId === null}
 				/>
 			);
@@ -1076,7 +1113,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 							variant="ghost"
 							size="icon-sm"
 							aria-label={t("ui.console.new")}
-							onClick={session.createSurface}
+							onClick={createFromPress}
 							/* DISABLED WHEN THERE IS NOTHING TO ACT ON, which is the pane's
 							   own stated principle ("a control with nothing to act on lies"):
 							   in the unavailable state the `+` rendered identically to the
