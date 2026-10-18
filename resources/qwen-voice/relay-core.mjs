@@ -21,7 +21,7 @@
  *
  * So every non-empty word the rig can say is one this process registered: a
  * reply or gate text main relayed from `/v1/desktop/voice/text`, or one of the
- * five Q7 phrases. `qwen-relay-llm.test.mjs` pins that as an invariant.
+ * four Q7 phrases. `qwen-relay-llm.test.mjs` pins that as an invariant.
  */
 
 import { randomUUID } from "node:crypto";
@@ -36,13 +36,16 @@ export const PHRASE_KINDS = Object.freeze(Object.keys(PHRASES));
 /**
  * The Q7 phrase a take's admission is answered with, or null for SILENCE.
  *
+ * A SUCCESS IS SILENT (plan §7): "Sent." was a receipt for words the person had
+ * just said, on every single take, and the reply is what they are waiting for.
+ *
  * `echo` is silent above all: it is the renderer's echo guard dropping the rig's
  * own speech heard back through the microphone, and answering it with "That did
  * not go through." would be heard back in turn (QA round 1, Q4). `cancelled` and
  * `closed` are the Gateway tearing a task down, not a take being refused.
  */
 export function phraseForOutcome(outcome) {
-	if (outcome?.ok) return "sent";
+	if (outcome?.ok) return null;
 	switch (outcome?.code) {
 		case "echo":
 		case "cancelled":
