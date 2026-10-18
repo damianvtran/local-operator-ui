@@ -15,7 +15,7 @@ import { AgentMessagesModel } from "./agent-messages-model";
 const REFUSAL_CONTROLS = /[\p{Cc}\p{Cf}]/gu;
 
 /** Refusal copy is server-authored text, never HTML, markdown or an exception. */
-function safeRefusal(error: unknown): AgentMessagesRefusal {
+export function agentMessagesRefusal(error: unknown): AgentMessagesRefusal {
 	const plain = (value: string) =>
 		value.replace(REFUSAL_CONTROLS, "").slice(0, 1024);
 	if (error instanceof DesktopControlError) {
@@ -46,7 +46,7 @@ export const agentMessagesModel = new AgentMessagesModel({
 	...agentMessagesApi,
 	markSeen: (accountId, tenantId) =>
 		useAgentMessagesOnboardingStore.getState().markSeen(accountId, tenantId),
-	describe: safeRefusal,
+	describe: agentMessagesRefusal,
 });
 export const checkAgentMessagesSurface = () =>
 	agentMessagesModel.check("surface_open");

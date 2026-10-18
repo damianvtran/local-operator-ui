@@ -13,7 +13,13 @@ import { Spinner } from "@shared/components/common/spinner";
 import { ToggleSetting } from "@shared/components/common/toggle-setting";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
 import { ModelSelect } from "@shared/components/hosting/model-select";
-import { Alert, Button, Skeleton } from "@shared/components/ui";
+import {
+	Alert,
+	AlertDescription,
+	AlertTitle,
+	Button,
+	Skeleton,
+} from "@shared/components/ui";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useCreditBalance } from "@shared/hooks/use-credit-balance";
@@ -46,6 +52,7 @@ import {
 	CreditCard,
 	ExternalLink,
 	Info,
+	MessageSquare,
 	Plug,
 	Settings,
 	SlidersHorizontal,
@@ -56,7 +63,14 @@ import type { FC, RefObject } from "react";
 import { useLocation } from "react-router-dom";
 import { WindowGlassSetting } from "./window-glass-setting";
 
+import {
+	AgentMessagesSettings,
+	useAgentMessagesSettingsAvailability,
+} from "@features/agent-messages/agent-messages-settings";
+import { settingsRefusalSentence } from "@features/agent-messages/agent-messages-settings-model";
+import { useAgentMessages } from "@features/agent-messages/use-agent-messages";
 import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
+import type { AgentMessagesStatus } from "../../../../../shared/agent-messages-contract";
 import {
 	MODEL_EFFORT_SETTING_KEY,
 	sectionForSettingKey,
@@ -412,6 +426,41 @@ export const SettingsPage: FC = () => {
 	const activeSessionId = useCanonicalSessionsStore(
 		(state) => state.activeSessionId,
 	);
+	// The CoS designation's options are the REAL canonical store, never a
+	// synthetic list; the section renders this same array.
+	const canonicalSessions = useCanonicalSessionsStore(
+		(state) => state.sessions,
+	);
+	/*
+	 * Agent messages is the one settings section whose existence is a server
+	 * decision (RFC §5.6). The hook subscribes to the shared status model and
+	 * latches the last observable answer; `status` is held across a forced
+	 * refresh so an action's re-read does not unmount the section mid-write.
+	 */
+	const agentMessagesAvailability = useAgentMessagesSettingsAvailability();
+	const {
+		accountId: agentMessagesAccountId,
+		snapshot: agentMessagesSnapshot,
+		model: agentMessagesModel,
+	} = useAgentMessages();
+	const lastAgentMessagesStatus = useRef<AgentMessagesStatus | null>(null);
+	if (agentMessagesSnapshot.status)
+		lastAgentMessagesStatus.current = agentMessagesSnapshot.status;
+	const agentMessagesStatus =
+		agentMessagesSnapshot.status ?? lastAgentMessagesStatus.current;
+	const settingsSections = useMemo(
+		() =>
+			DEFAULT_SETTINGS_SECTIONS.filter(
+				(section) =>
+					section.id !== "agent-messages" ||
+					agentMessagesAvailability !== "absent",
+			),
+		[agentMessagesAvailability],
+	);
+	const refreshAgentMessages = useCallback(
+		() => agentMessagesModel.check("surface_open", true),
+		[agentMessagesModel],
+	);
 	const [activeSection, setActiveSection] = useState<string>("general");
 	const [isScrolling, setIsScrolling] = useState(false);
 	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -461,6 +510,7 @@ export const SettingsPage: FC = () => {
 		speech: useRef<HTMLDivElement>(null),
 		keyboard: useRef<HTMLDivElement>(null),
 		providers: useRef<HTMLDivElement>(null),
+		"agent-messages": useRef<HTMLDivElement>(null),
 		backend: useRef<HTMLDivElement>(null),
 		imports: useRef<HTMLDivElement>(null),
 		updates: useRef<HTMLDivElement>(null),
@@ -662,6 +712,13 @@ export const SettingsPage: FC = () => {
 		const targetSection = settingKey
 			? sectionForSettingKey(settingKey, "backend")
 			: sectionFromQuery;
+		// A link to a section this build does not show has nowhere to land; the
+		// rail has no row for it either.
+		if (
+			targetSection === "agent-messages" &&
+			agentMessagesAvailability === "absent"
+		)
+			return undefined;
 
 		const ref = targetSection ? sectionRefs[targetSection] : undefined;
 		if (!targetSection || !ref) return undefined;
@@ -739,7 +796,12 @@ export const SettingsPage: FC = () => {
 			observer.disconnect();
 			window.clearTimeout(deadline);
 		};
-	}, [location.search, sectionRefs, handleSelectSection]); // Rerun when URL search params change or refs are updated
+	}, [
+		location.search,
+		sectionRefs,
+		handleSelectSection,
+		agentMessagesAvailability,
+	]); // Rerun when URL search params change or refs are updated
 
 	// Handle updating a specific config field
 	const handleUpdateField = async (
@@ -1025,7 +1087,7 @@ export const SettingsPage: FC = () => {
 				<SettingsSidebar
 					activeSection={activeSection}
 					onSelectSection={handleSelectSection}
-					sections={DEFAULT_SETTINGS_SECTIONS}
+					sections={settingsSections}
 				/>
 			</div>
 
@@ -1553,6 +1615,43 @@ export const SettingsPage: FC = () => {
 						</SettingsSection>
 
 						<SettingsSection
+							title={t("ui.agentMessages.settings.section")}
+							icon={MessageSquare}
+							description={t("ui.agentMessages.settings.description")}
+							sectionRef={sectionRefs["agent-messages"]}
+							id="agent-messages"
+						>
+							{agentMessagesAvailability === "error" && !agentMessagesStatus ? (
+								<Alert variant="warning">
+									<AlertTitle>
+										{t("ui.agentMessages.settings.error.title")}
+									</AlertTitle>
+									<AlertDescription>
+										{agentMessagesSnapshot.refusal
+											? settingsRefusalSentence(agentMessagesSnapshot.refusal)
+											: t("ui.agentMessages.settings.error.unreadable")}
+										<Button
+											className="mt-3"
+											variant="secondary"
+											onClick={() => void refreshAgentMessages()}
+										>
+											{t("ui.agentMessages.settings.error.retry")}
+										</Button>
+									</AlertDescription>
+								</Alert>
+							) : (
+								<AgentMessagesSettings
+									availability={agentMessagesAvailability}
+									status={agentMessagesStatus}
+									accountId={agentMessagesAccountId}
+									refusal={agentMessagesSnapshot.refusal}
+									onRefreshStatus={refreshAgentMessages}
+									sessions={canonicalSessions}
+								/>
+							)}
+						</SettingsSection>
+
+						<SettingsSection
 							title={t("ui.settings.navigation.settings_page.backend_settings")}
 							icon={Settings}
 							description={t(
@@ -1563,6 +1662,7 @@ export const SettingsPage: FC = () => {
 							<BackendSettingsSection
 								hideInterfaceLanguage
 								hideModelEffort
+								hideAgentMessages
 								focusKey={
 									settingFocusKey &&
 									sectionForSettingKey(settingFocusKey, "backend") === "backend"
