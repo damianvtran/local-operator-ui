@@ -1,0 +1,3 @@
+Source: harness browser consecutive screenshots chips-dark-first.png and chips-dark-settled.png.
+PNG dimensions2560x1440; PIL ImageChops.difference(...).getbbox() == None: True
+Static prototype only; not proof of live implementation settling.
