@@ -1,0 +1,179 @@
+{
+	"sourceSession": "8d652185377c",
+	"note": "Actual journal message and supplement records; replay/usage/provider data and signed URLs omitted; documentation read bodies elided. Real MP3 is not committed.",
+	"entries": [
+		{
+			"id": "14104e16-6a90-45e6-b951-af541aacdd43",
+			"ts": 1792364221.4819698,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "user",
+				"content": [
+					{
+						"text": "Can you make a sound effect of a bird"
+					}
+				],
+				"input_mode": "typed",
+				"producer_command_id": "14104e16-6a90-45e6-b951-af541aacdd43"
+			}
+		},
+		{
+			"id": "4d4cf012f2624a85aeeccde045dd4f87",
+			"ts": 1792364223.867558,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"text": "I'll check the sound-generation playbook and the tool docs first."
+					}
+				],
+				"tool_calls": [
+					{
+						"id": "call_00_ET_3JOCtAK6iDvTXxOxy47O2579",
+						"name": "read",
+						"arguments": {
+							"path": "guide://sound-generation",
+							"i": "Reading sound generation guide"
+						}
+					},
+					{
+						"id": "call_01_ET_auCmNE4RIo6bSRYd2D1P9402",
+						"name": "read",
+						"arguments": {
+							"path": "tool://generate_sound_effect",
+							"i": "Reading sound effect tool docs"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "3de8fe68500e4aef9549b84fb652ebd4",
+			"ts": 1792364223.8675652,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "Documentation read (body omitted from regression fixture)."
+					}
+				],
+				"tool_call_id": "call_00_ET_3JOCtAK6iDvTXxOxy47O2579",
+				"tool_name": "read"
+			}
+		},
+		{
+			"id": "9f88f2d5e551428883b78e87facc604f",
+			"ts": 1792364223.867569,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "Documentation read (body omitted from regression fixture)."
+					}
+				],
+				"tool_call_id": "call_01_ET_auCmNE4RIo6bSRYd2D1P9402",
+				"tool_name": "read"
+			}
+		},
+		{
+			"id": "7eddd93e743f40849f7c746b6f61c78b",
+			"ts": 1792364229.898658,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call_00_0ZEkwxAUIRjgCT7g1ATR6064",
+						"name": "generate_sound_effect",
+						"arguments": {
+							"i": "Generating bird chirp sound effect",
+							"prompt": "A single small songbird chirping sweetly in a quiet garden \u2014 bright natural avian chirps with a couple of short melodic phrases, close-mic, clean with subtle outdoor air, no music",
+							"duration_s": 4,
+							"prompt_influence": 0.4
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "8c8100ff0a4445c7a1bd5387f34485b6",
+			"ts": 1792364229.898674,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "Generated a sound effect (4.04898s) with Radient (radient/sound-effects) \u2014 attached to the session (digest 50d01a45566ce76e99e521ef0abcf9ca). Cost $0.008 (billed)."
+					},
+					{
+						"kind": "audio",
+						"content_type": "audio/mpeg",
+						"attachment": "50d01a45566ce76e99e521ef0abcf9ca",
+						"size_bytes": 65244,
+						"duration_s": 4.048979591836734,
+						"name": "radient-sound-effects-01.mp3"
+					}
+				],
+				"tool_call_id": "call_00_0ZEkwxAUIRjgCT7g1ATR6064",
+				"tool_name": "generate_sound_effect"
+			}
+		},
+		{
+			"id": "987168ecb0764c2ca2b0440df7a45c12",
+			"ts": 1792364232.212671,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"text": "Done \u2014 here's a 4-second songbird clip: bright garden chirps, no music bed.\n\n- **Prompt:** a small songbird chirping in a quiet garden, short melodic phrases\n- **Route:** Radient (`radient/sound-effects`), 4.05 s, billed $0.008\n- **Format:** MP3, attached to this session\n\nWant a different bird (crow, owl, seagull, dawn chorus) or a longer looping ambience? I can generate a batch of variants in one go."
+					}
+				],
+				"stop_reason": "stop"
+			}
+		},
+		{
+			"id": "67d2bcf9f35c46ab9ed64bbdf933f827",
+			"ts": 1792364232.2250218,
+			"type": "custom",
+			"payload": {
+				"custom_type": "supplement_v1",
+				"details": {
+					"anchor": "987168ecb0764c2ca2b0440df7a45c12",
+					"job": "93e6f9482ea2",
+					"version": 1,
+					"state": "done",
+					"files": [],
+					"components": [],
+					"decision": {
+						"vendor": "none",
+						"files_p": {},
+						"graphics_p": 0.0,
+						"skipped": null
+					},
+					"at": 1792364232.225009,
+					"sounds": [
+						{
+							"attachment": "50d01a45566ce76e99e521ef0abcf9ca",
+							"mime": "audio/mpeg",
+							"title": "radient-sound-effects-01.mp3",
+							"duration_s": 4.048979591836734
+						}
+					]
+				}
+			}
+		}
+	]
+}
