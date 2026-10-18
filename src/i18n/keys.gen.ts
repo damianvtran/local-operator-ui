@@ -77,18 +77,31 @@ import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
+import esUiAgentsDialogs from "./catalogues/es/ui.agents.dialogs.json";
+import esUiAgentsModels from "./catalogues/es/ui.agents.models.json";
 import esUiAgentsNavigation from "./catalogues/es/ui.agents.navigation.json";
+import esUiAgentsRefusals from "./catalogues/es/ui.agents.refusals.json";
+import esUiAgentsSettings from "./catalogues/es/ui.agents.settings.json";
+import esUiAgentsStarters from "./catalogues/es/ui.agents.starters.json";
 import esUiBrowserChrome from "./catalogues/es/ui.browser.chrome.json";
 import esUiBrowser from "./catalogues/es/ui.browser.json";
 import esUiCanvas from "./catalogues/es/ui.canvas.json";
 import esUiChatComposer from "./catalogues/es/ui.chat.composer.json";
+import esUiChatComposerMedia from "./catalogues/es/ui.chat.composer_media.json";
+import esUiChatDialogs from "./catalogues/es/ui.chat.dialogs.json";
 import esUiChatHeader from "./catalogues/es/ui.chat.header.json";
 import esUiChat from "./catalogues/es/ui.chat.json";
 import esUiChatSidebarView from "./catalogues/es/ui.chat.sidebar_view.json";
 import esUiCodeReview from "./catalogues/es/ui.code_review.json";
 import esUiCommandPalette from "./catalogues/es/ui.command_palette.json";
+import esUiCommonAccount from "./catalogues/es/ui.common.account.json";
 import esUiCommonActions from "./catalogues/es/ui.common.actions.json";
+import esUiCommonConnection from "./catalogues/es/ui.common.connection.json";
+import esUiCommonEditing from "./catalogues/es/ui.common.editing.json";
 import esUiCommonErrors from "./catalogues/es/ui.common.errors.json";
+import esUiCommonForms from "./catalogues/es/ui.common.forms.json";
+import esUiCommonLoading from "./catalogues/es/ui.common.loading.json";
+import esUiCommonModels from "./catalogues/es/ui.common.models.json";
 import esUiCommonUpdates from "./catalogues/es/ui.common.updates.json";
 import esUiConsole from "./catalogues/es/ui.console.json";
 import esUiHubComments from "./catalogues/es/ui.hub.comments.json";
@@ -100,7 +113,20 @@ import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
 import esUiProviders from "./catalogues/es/ui.providers.json";
 import esUiSchedules from "./catalogues/es/ui.schedules.json";
+import esUiSettingsAccount from "./catalogues/es/ui.settings.account.json";
+import esUiSettingsAppearance from "./catalogues/es/ui.settings.appearance.json";
+import esUiSettingsAppearanceWindowGlass from "./catalogues/es/ui.settings.appearance.window_glass.json";
+import esUiSettingsConfiguration from "./catalogues/es/ui.settings.configuration.json";
+import esUiSettingsImports from "./catalogues/es/ui.settings.imports.json";
+import esUiSettingsIntegrations from "./catalogues/es/ui.settings.integrations.json";
 import esUiSettings from "./catalogues/es/ui.settings.json";
+import esUiSettingsModelDefaultEffort from "./catalogues/es/ui.settings.model.default_effort.json";
+import esUiSettingsModel from "./catalogues/es/ui.settings.model.json";
+import esUiSettingsModelProviderCallout from "./catalogues/es/ui.settings.model.provider_callout.json";
+import esUiSettingsNavigation from "./catalogues/es/ui.settings.navigation.json";
+import esUiSettingsShortcuts from "./catalogues/es/ui.settings.shortcuts.json";
+import esUiSettingsSpeech from "./catalogues/es/ui.settings.speech.json";
+import esUiSettingsUpdates from "./catalogues/es/ui.settings.updates.json";
 import esUiShell from "./catalogues/es/ui.shell.json";
 import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
 import frUiAgentsNavigation from "./catalogues/fr/ui.agents.navigation.json";
@@ -220,18 +246,31 @@ export const bundledCatalogues: Readonly<
 	en: bundledEnglish,
 	es: {
 		...esUiAgentMessages,
+		...esUiAgentsDialogs,
+		...esUiAgentsModels,
 		...esUiAgentsNavigation,
+		...esUiAgentsRefusals,
+		...esUiAgentsSettings,
+		...esUiAgentsStarters,
 		...esUiBrowserChrome,
 		...esUiBrowser,
 		...esUiCanvas,
 		...esUiChatComposer,
+		...esUiChatComposerMedia,
+		...esUiChatDialogs,
 		...esUiChatHeader,
 		...esUiChat,
 		...esUiChatSidebarView,
 		...esUiCodeReview,
 		...esUiCommandPalette,
+		...esUiCommonAccount,
 		...esUiCommonActions,
+		...esUiCommonConnection,
+		...esUiCommonEditing,
 		...esUiCommonErrors,
+		...esUiCommonForms,
+		...esUiCommonLoading,
+		...esUiCommonModels,
 		...esUiCommonUpdates,
 		...esUiConsole,
 		...esUiHubComments,
@@ -243,7 +282,20 @@ export const bundledCatalogues: Readonly<
 		...esUiProjects,
 		...esUiProviders,
 		...esUiSchedules,
+		...esUiSettingsAccount,
+		...esUiSettingsAppearance,
+		...esUiSettingsAppearanceWindowGlass,
+		...esUiSettingsConfiguration,
+		...esUiSettingsImports,
+		...esUiSettingsIntegrations,
 		...esUiSettings,
+		...esUiSettingsModelDefaultEffort,
+		...esUiSettingsModel,
+		...esUiSettingsModelProviderCallout,
+		...esUiSettingsNavigation,
+		...esUiSettingsShortcuts,
+		...esUiSettingsSpeech,
+		...esUiSettingsUpdates,
 		...esUiShell,
 		...esUiShellRail,
 	},

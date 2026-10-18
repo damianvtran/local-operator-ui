@@ -1,0 +1,5 @@
+{
+	"ui.common.editing.conflict": "Esto cambió mientras lo editabas",
+	"ui.common.editing.keep_mine": "Mantener el mío",
+	"ui.common.editing.use_theirs": "Usar el suyo"
+}
