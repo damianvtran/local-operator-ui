@@ -1243,3 +1243,49 @@ test("the cancel copy is the security round's queued/running split, byte for byt
 		false,
 	);
 });
+
+/*
+ * THE RATE-LIMITED STATE (sound phase, 2026-10-17). `audio_rate_limited` is a
+ * retryable error whose reader sentence the server authors; the card renders
+ * the tool result's message when it has one and the fixed copy when only the
+ * type survives — never a control that promises the next call will succeed.
+ */
+test("a rate-limited call states the server's sentence, preferring the result's own text", () => {
+	const onlyType = imageGenCardView(
+		tool({
+			toolName: "generate_sound_effect",
+			isError: true,
+			output: null,
+			details: canonical({ error_type: "audio_rate_limited" }),
+		}),
+	);
+	assert.equal(onlyType.state, "failed");
+	assert.equal(onlyType.errorType, "audio_rate_limited");
+	assert.equal(
+		onlyType.message,
+		"Audio generation is busy right now. Wait a moment and try again.",
+	);
+
+	// A result that stated its own sentence WINS over the type's fixed copy.
+	const withResult = imageGenCardView(
+		tool({
+			toolName: "generate_sound_effect",
+			isError: true,
+			output: "the provider's own words",
+			details: canonical({ error_type: "audio_rate_limited" }),
+		}),
+	);
+	assert.equal(withResult.message, "the provider's own words");
+
+	const markup = markupOf(onlyType);
+	assert.equal(
+		markup.includes(
+			"Audio generation is busy right now. Wait a moment and try again.",
+		),
+		true,
+	);
+	// The card's own failure line: no retry control unless a mount wires one,
+	// and no promise about the next call.
+	assert.equal(markup.includes(">Stop<"), false);
+	assert.equal(markup.includes(">Retry<"), false);
+});
