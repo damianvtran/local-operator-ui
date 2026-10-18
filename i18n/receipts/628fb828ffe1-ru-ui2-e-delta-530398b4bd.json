@@ -1,0 +1,254 @@
+{
+  "schema": 1,
+  "locale": "ru",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "628fb828ffe1-ru-ui2-e-delta-530398b4bd",
+    "model": "anthropic/claude-sonnet-5-5"
+  },
+  "date": "2026-10-18",
+  "pr": "https://github.com/damianvtran/local-operator-ui/pull/1181",
+  "head": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29",
+  "previous_head": "65ad12e7675a132e4a677ecf7aef95f227379525",
+  "scope": "Remediation delta only: 20 changed keys and 7 direct-neighbor keys (27 ICU messages); retained prior full native audit for unchanged copy, NOT a new full audit.",
+  "baseline": {
+    "receipt": "i18n/receipts/628fb828ffe1-ru-ui2-e-6d1511a350df.json",
+    "sha256": "1c062efa2d35ec91193ed6188d11827f35cefbd7bd3dde3e55c27e44e2ba1476",
+    "comment": "https://github.com/damianvtran/local-operator-ui/pull/1181#issuecomment-6254385538",
+    "actual_model": "openai/gpt-6.1-sol"
+  },
+  "translation_receipt": {
+    "path": "i18n/receipts/ui-ru-batch-2.json",
+    "sha256": "2993d20528aba86aaf73b54ccb9a8e204127bdda086f9ebeb226ceacf49769c5"
+  },
+  "remediation": [
+    {
+      "id": "RUE-01",
+      "original_severity": "major",
+      "key": "ui.code_review.activity.merge",
+      "status": "FIXED",
+      "commit": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29"
+    },
+    {
+      "id": "RUE-02",
+      "original_severity": "major",
+      "key": "ui.code_review.activity.you",
+      "status": "FIXED",
+      "commit": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29"
+    },
+    {
+      "id": "RUE-03",
+      "original_severity": "minor",
+      "key": "ui.common.updates.update_notification.a_newer_version",
+      "status": "FIXED",
+      "commit": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29"
+    },
+    {
+      "id": "RUE-04",
+      "original_severity": "minor",
+      "key": "ui.common.connection.provider.requires",
+      "status": "FIXED",
+      "commit": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29"
+    },
+    {
+      "id": "RUE-05",
+      "original_severity": "minor",
+      "key": "ui.command_palette.matches.best",
+      "status": "FIXED",
+      "commit": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29"
+    },
+    {
+      "id": "RUE-06",
+      "original_severity": "minor",
+      "key": "ui.chat.tags.group_under",
+      "status": "FIXED",
+      "commit": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29"
+    },
+    {
+      "id": "RUE-07",
+      "original_severity": "minor",
+      "key": "ui.common.models.hosting_select.no_hosting_providers_available_sign_in_to_a_provider_or_add_a_pro",
+      "status": "FIXED",
+      "commit": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29"
+    }
+  ],
+  "verification": {
+    "changed_ru_values": 20,
+    "unchanged_ru_values": 410,
+    "delta_and_neighbors": 27,
+    "icu_failures": [],
+    "changed_plural_messages": 1,
+    "plural_arms": [
+      "one",
+      "few",
+      "many",
+      "other"
+    ],
+    "samples": [
+      0,
+      1,
+      2,
+      5,
+      11,
+      21,
+      22,
+      25,
+      1.5
+    ],
+    "all_english_catalogues_byte_identical": true,
+    "seven_previously_certified_ru_catalogues_byte_identical": true,
+    "five_composition_callers_byte_identical": true,
+    "tag_names": "Roadmap / Q4 [API] preserved verbatim",
+    "rendered_qa": "NOT PERFORMED; no overflow/pixel claims",
+    "evidence_files": [
+      "/Users/damian/.local-operator/sessions/628fb828ffe1/scratchpad/ru-e-delta-icu.json",
+      "/Users/damian/.local-operator/sessions/628fb828ffe1/scratchpad/ru-e-delta-repro.json",
+      "/Users/damian/.local-operator/sessions/628fb828ffe1/scratchpad/ru-e-delta-extra.json"
+    ]
+  },
+  "namespaces": {
+    "ui.common.updates": {
+      "status": "passed",
+      "source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
+      "target_sha256": "ec6311342a381689d87a58896a21eb0a88253fd8779b8bd574e7fc4e3caebd81",
+      "keys": 127,
+      "changed_keys": [
+        "ui.common.updates.update_notification.a_newer_build",
+        "ui.common.updates.update_notification.a_newer_version",
+        "ui.common.updates.update_notification.an_older_build",
+        "ui.common.updates.update_notification.an_update_you_started_before_quitting_finished_while_local",
+        "ui.common.updates.update_notification.the_build_it_loaded",
+        "ui.common.updates.update_notification.the_new_version"
+      ],
+      "audit_basis": "delta plus retained prior full audit",
+      "findings": []
+    },
+    "ui.common.forms": {
+      "status": "passed",
+      "source_sha256": "28a63a53e5b6c3c4fccb9995eb07637c8521ce9d5019e304f3fedb0ddbc053d9",
+      "target_sha256": "559ad395fd9746c277003592a6ef6b6ce9e77140263e7a6bd62cf74a5789339d",
+      "keys": 27,
+      "changed_keys": [],
+      "audit_basis": "prior full audit retained: en and ru raw blobs byte-identical",
+      "findings": []
+    },
+    "ui.common.models": {
+      "status": "passed",
+      "source_sha256": "561e39a0105425d66cac7d7497306d740d79f7b2e3921424b1993f3405e08d77",
+      "target_sha256": "0c51a21f2ad533bc866a012732c0c220843a0f993807dbc398424ab7a1d2594a",
+      "keys": 24,
+      "changed_keys": [
+        "ui.common.models.hosting_select.no_hosting_providers_available_sign_in_to_a_provider_or_add_a_pro"
+      ],
+      "audit_basis": "delta plus retained prior full audit",
+      "findings": []
+    },
+    "ui.common.account": {
+      "status": "passed",
+      "source_sha256": "72e2a848a2aa4b46ecdc0ede34ed5f59b280b73e3fc544d5e563ce22ab2743e0",
+      "target_sha256": "55b74f8862da25ae2924c889a0a4ba390018df9ec708f595a3d82c01315ce349",
+      "keys": 18,
+      "changed_keys": [],
+      "audit_basis": "prior full audit retained: en and ru raw blobs byte-identical",
+      "findings": []
+    },
+    "ui.common.connection": {
+      "status": "passed",
+      "source_sha256": "d1acb6a1fae70e3f85255d880a91d9e35ed49a8bf7d04ef14722ce115d7c69bb",
+      "target_sha256": "9f49c1e9b163b6c9404fbb2543c6fc5ebbbd66eb51a27be9c4cb904bbcd023f3",
+      "keys": 10,
+      "changed_keys": [
+        "ui.common.connection.provider.requires"
+      ],
+      "audit_basis": "delta plus retained prior full audit",
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "source_sha256": "bf151da8ad56c3b32b05be1d505764d3f4cfb72e9792f9ec68b8a570239f6976",
+      "target_sha256": "e859531eeeb16b3f9f5a8aca89e741aa77df7f8dbbf10d96e88be8e959956cc2",
+      "keys": 6,
+      "changed_keys": [],
+      "audit_basis": "prior full audit retained: en and ru raw blobs byte-identical",
+      "findings": []
+    },
+    "ui.common.errors": {
+      "status": "passed",
+      "source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+      "target_sha256": "d1dfe6dd624d682b8f0842900e6718825f5a7707c11315948b4b525b6991cd17",
+      "keys": 4,
+      "changed_keys": [],
+      "audit_basis": "prior full audit retained: en and ru raw blobs byte-identical",
+      "findings": []
+    },
+    "ui.common.editing": {
+      "status": "passed",
+      "source_sha256": "e7ddf3b75f3e46d6900aacab976f1180eb10fdb121b5f46d2dc231fd6b4f5bb5",
+      "target_sha256": "c9fd21de49444b05c05dd64c3e5f201c53f9e344117ad48de29d13608e3c55bf",
+      "keys": 3,
+      "changed_keys": [],
+      "audit_basis": "prior full audit retained: en and ru raw blobs byte-identical",
+      "findings": []
+    },
+    "ui.common.loading": {
+      "status": "passed",
+      "source_sha256": "e629186e32cd51d7eb98dcd3e8f6587765447bd1da9bdba5c5d327ad2bdcd87e",
+      "target_sha256": "359602109cf41b4b3fe96a88538bfd71f3315facc3bb5168977c953cac7feafe",
+      "keys": 1,
+      "changed_keys": [],
+      "audit_basis": "prior full audit retained: en and ru raw blobs byte-identical",
+      "findings": []
+    },
+    "ui.chat.tags": {
+      "status": "passed",
+      "source_sha256": "ffb1c6b985fd1ab521a2a5fc49955978d76cabc5671437dc2bc6b31cfa1ada74",
+      "target_sha256": "eeaa3a1db34d79397086be7555824fd551efbdb4a298c09ae69de9936c174e39",
+      "keys": 42,
+      "changed_keys": [
+        "ui.chat.tags.group_under",
+        "ui.chat.tags.updated_grouped"
+      ],
+      "audit_basis": "delta plus retained prior full audit",
+      "findings": []
+    },
+    "ui.code_review": {
+      "status": "passed",
+      "source_sha256": "7344c8694a23662bfe3ae12205685cfa14851209d0685abbe463b9f513565085",
+      "target_sha256": "fe334788f98d102dbe3b5df2bb4d8a0303eaab1ec504fac8e0bb29dc4986bb07",
+      "keys": 75,
+      "changed_keys": [
+        "ui.code_review.activity.close",
+        "ui.code_review.activity.comment",
+        "ui.code_review.activity.edit",
+        "ui.code_review.activity.merge",
+        "ui.code_review.activity.push",
+        "ui.code_review.activity.ready",
+        "ui.code_review.activity.review",
+        "ui.code_review.code_review_model.merged"
+      ],
+      "audit_basis": "delta plus retained prior full audit",
+      "findings": []
+    },
+    "ui.command_palette": {
+      "status": "passed",
+      "source_sha256": "c48797d973f81dea023e5c89c40c83d8ae0a9cdfaeb2509f6cbc4e9fb8abd7c6",
+      "target_sha256": "2a294ecae827daa08eb1557f2743c254edf37a1e1f7a983cc62bf0d3f2948093",
+      "keys": 75,
+      "changed_keys": [
+        "ui.command_palette.command_palette.search_terms_are_limited_to",
+        "ui.command_palette.matches.best"
+      ],
+      "audit_basis": "delta plus retained prior full audit",
+      "findings": []
+    },
+    "ui.installer": {
+      "status": "passed",
+      "source_sha256": "35b34093f3d065acf26e96a4e9601cb2906bd9439230a7fa7f9fc9a43784f7a3",
+      "target_sha256": "65c10faa593e071cac044937bd668c92082c9b20d167f64f825ab625dd1d94a1",
+      "keys": 18,
+      "changed_keys": [],
+      "audit_basis": "prior full audit retained: en and ru raw blobs byte-identical",
+      "findings": []
+    }
+  }
+}

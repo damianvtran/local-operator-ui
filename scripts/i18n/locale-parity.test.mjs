@@ -479,11 +479,101 @@ const IDENTICAL_OK = new Map([
 		"ui.agents.settings.general.description",
 		"French cognate: « Description » has the same spelling.",
 	],
-	["ui.canvas.files.code", "French cognate: « code » has the same spelling."],
 	[
 		"ui.agents.settings.general.version",
 		"French cognate: « Version » has the same spelling.",
 	],
+	[
+		"ui.projects.examples.owner",
+		"Sample owner handle in a placeholder; an example identifier, not prose.",
+	],
+	[
+		"ui.projects.examples.team",
+		"Sample team handle in a placeholder; an example identifier, not prose.",
+	],
+	[
+		"ui.projects.project_model.clause",
+		"Parentheses and a placeholder only ({clause}); no words to translate.",
+	],
+	[
+		"ui.projects.project_model.completed_total",
+		"Placeholders and a slash only ({completed}/{total}); no words to translate.",
+	],
+	[
+		"ui.projects.project_model.count_live",
+		"Placeholders and a middle dot only ({count} · {live}); no words to translate.",
+	],
+	[
+		"ui.projects.project_model.qa",
+		"Standard QA abbreviation, unchanged in Russian.",
+	],
+	[
+		"ui.projects.projects_toolbar.facet_labels_facet_first",
+		"Placeholders and a middle dot only ({FACET_LABELS_facet} · {first}); no words to translate.",
+	],
+	[
+		"ui.projects.projects_toolbar.facet_labels_facet_first_length_1",
+		"Placeholders and separators only; no words to translate.",
+	],
+
+	[
+		"ui.schedules.scheduled_task_dialog.value1_message",
+		"Placeholders and a colon only ({value1}: {message}); no words to translate.",
+	],
+
+	[
+		"ui.browser.browser_new_tab.address_placeholder",
+		"Sample domain in an address placeholder; an example, not prose.",
+	],
+	[
+		"ui.browser.browser_new_tab.wordmark",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+
+	[
+		"ui.mesh.mesh_approvals.approval_title",
+		"Placeholder and final punctuation only ({head}.); no words to translate.",
+	],
+	[
+		"ui.mesh.mesh_approvals.approval_title_with_clauses",
+		"Placeholders, colon and final punctuation only; no words to translate.",
+	],
+	[
+		"ui.mesh.mesh_approvals.join_clauses",
+		"Placeholders and punctuation only ({clauses}; {last}); no words to translate.",
+	],
+
+	[
+		"ui.providers.provider_grid.row_action",
+		"Placeholders and a colon only ({action}: {brand}); no words to translate.",
+	],
+
+	[
+		"ui.common.account.low_credits_dialog.detail",
+		"Currency placeholder and ISO code only (${detail} USD); no words to translate.",
+	],
+	[
+		"ui.common.account.low_credits_dialog.radient_pass",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+
+	[
+		"ui.installer.installer_panel.local_operator",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_acrylic",
+		"System material name kept English: Acrylic is the Windows compositor material.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_mica",
+		"System material name kept English: Mica is the Windows compositor material.",
+	],
+	[
+		"ui.settings.updates.update_following.surface_choice",
+		"Placeholders and a colon only ({surface}: {choice}); no words to translate.",
+	],
+	["ui.canvas.files.code", "French cognate: « code » has the same spelling."],
 ]);
 
 function localeDirs() {

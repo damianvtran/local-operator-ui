@@ -1,0 +1,130 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "51938ccfdcee",
+  "date": "2026-10-18",
+  "locale": "ru",
+  "head": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29",
+  "previous_head": "65ad12e7675a132e4a677ecf7aef95f227379525",
+  "status": "passed",
+  "scope": "Remediation delta only: 12 changed keys + direct composition neighbors. Cumulative coverage relies on the immutable full 446-key round-1 audit; unchanged keys not re-audited.",
+  "previous_receipt": {
+    "path": "i18n/receipts/51938ccfdcee-ui-ru-tranche2-chunk-c.json",
+    "sha256": "ec8d3c562667207f214f78a801fb544ebdb4ecfdeb7af7245d4353450cc0b441"
+  },
+  "source_receipt": {
+    "path": "i18n/receipts/ui-ru-batch-2.json",
+    "sha256": "2993d20528aba86aaf73b54ccb9a8e204127bdda086f9ebeb226ceacf49769c5"
+  },
+  "remediation": {
+    "RUC-1": "FIXED",
+    "RUC-2": "FIXED",
+    "RUC-3": "FIXED",
+    "RUC-4": "FIXED",
+    "RUC-5": "FIXED"
+  },
+  "reproductions": {
+    "RUC-1": "Проверяем: Ollama запущен",
+    "RUC-2 host": "Вставьте код, который claude.ai покажет после одобрения",
+    "RUC-2 fallback": "Вставьте код, который провайдер покажет после одобрения",
+    "RUC-3 direction_pull": "Не удалось завершить действие: Входящее обновление для demo в Public. Проверьте статус перед повторной попыткой.",
+    "RUC-3 direction_push": "Не удалось завершить действие: Исходящая публикация для demo в Public. Проверьте статус перед повторной попыткой.",
+    "RUC-4 total 1": "Файлы: 1 из 1",
+    "RUC-4 total 2": "Файлы: 1 из 2",
+    "RUC-4 total 5": "Файлы: 1 из 5",
+    "RUC-4 total 11": "Файлы: 1 из 11",
+    "RUC-4 total 21": "Файлы: 1 из 21",
+    "RUC-4 total 22": "Файлы: 1 из 22"
+  },
+  "mechanical_checks": {
+    "changed_keys_checked": 12,
+    "argument_signatures_match_English": true,
+    "ICU_parse_and_format": "PASS for each changed key",
+    "all_15_plural_messages_unchanged": true,
+    "English_catalogues_all_byte_identical": true,
+    "comments_taxonomy_en_ru_byte_identical": true,
+    "unchanged_callsite_blob_ids": {
+      "src/renderer/src/features/providers/provider-detail.tsx": "53d073a85d26cbbd213b6af3c12bd20c7be14c7d",
+      "src/renderer/src/features/chat/components/canvas/finder-files-view.tsx": "ecaf6dd1594a6df0efa357a5280134210f19896c",
+      "src/renderer/src/features/agent-hub/components/hub-skill-publication.tsx": "17b7cfb469aea5fe466d3c80c91d4c3ed81699e8",
+      "src/renderer/src/features/agents/components/hub-links-panel.tsx": "ad8dce92e4be6350a19d47fa359bd24d0578c989"
+    }
+  },
+  "namespaces": {
+    "ui.providers": {
+      "status": "passed",
+      "keys_audited_in_delta": 10,
+      "keys_covered_cumulatively": 189,
+      "changed_keys": [
+        "ui.providers.phone.address_label",
+        "ui.providers.phone.consent",
+        "ui.providers.phone.outcome.reservation_existing",
+        "ui.providers.phone.outcome.reservation_saved",
+        "ui.providers.phone.outcome.reservation_unconfirmed",
+        "ui.providers.phone.outcome.stage_reservation",
+        "ui.providers.provider_detail.checking_whether",
+        "ui.providers.provider_detail.paste_the_code",
+        "ui.providers.provider_detail.shows_after_you_approve",
+        "ui.providers.provider_detail.the_provider"
+      ],
+      "sha256": {
+        "en": "9981637a98afbcbc166d889b461795bae7685e42274f4d607b711f4b0f9085f2",
+        "ru": "d4373b3acf6be78c89d609c470472579d2121951aae848e44a7f2517ffb30c2b"
+      },
+      "findings": []
+    },
+    "ui.hub": {
+      "status": "passed",
+      "keys_audited_in_delta": 1,
+      "keys_covered_cumulatively": 150,
+      "changed_keys": [
+        "ui.hub.links.action_failed"
+      ],
+      "sha256": {
+        "en": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+        "ru": "0cd898c494ad2cefcdb902c1806049c11943090dafee8c2e70c4222c6c767d6d"
+      },
+      "findings": []
+    },
+    "ui.hub.comments": {
+      "status": "passed",
+      "keys_audited_in_delta": 0,
+      "keys_covered_cumulatively": 29,
+      "changed_keys": [],
+      "sha256": {
+        "en": "5c20d0e9a7f66f753561ded1d104aa5cf0e1fd0d5a73f7f0a7e3349a28c6f2c4",
+        "ru": "dd13f888231744b0e8ddf8dd28efb27abf75f8bd0924aeb277dc56f854158b7a"
+      },
+      "findings": []
+    },
+    "ui.hub.taxonomy": {
+      "status": "passed",
+      "keys_audited_in_delta": 0,
+      "keys_covered_cumulatively": 21,
+      "changed_keys": [],
+      "sha256": {
+        "en": "4614e6b5eb2c56f0f48ccbee9bf26266193701a79994da4d9cf533386f1d3717",
+        "ru": "a45bd4d68e753efb4c4aa69ef5f8ee64cca3f4a9223a34a48051ab27beee0667"
+      },
+      "findings": []
+    },
+    "ui.canvas": {
+      "status": "passed",
+      "keys_audited_in_delta": 1,
+      "keys_covered_cumulatively": 57,
+      "changed_keys": [
+        "ui.canvas.files.narrowCount"
+      ],
+      "sha256": {
+        "en": "6fa13501b59a260373bcb26f212fc6244a3d1219ef1811d2b0c1de05b541f1f5",
+        "ru": "2315c024040842c07f51dfae8aacd252c7a390476e7cb6409598968f4030d266"
+      },
+      "findings": []
+    }
+  },
+  "limitations": [
+    "No repository writes, catalogue/ledger edits, merge, or rendered-fit claim.",
+    "No new full audit; baseline plus bounded remediation delta only.",
+    "Receipt and ledger block are scratch-staged handoff files. Root must persist unchanged receipt bytes under canonical i18n/receipts path before consuming rows."
+  ]
+}
