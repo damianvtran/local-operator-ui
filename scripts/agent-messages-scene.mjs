@@ -119,6 +119,13 @@ export async function sceneAgentMessages({
 
 	const allowlistId = argValue("--allowlist-id", null);
 	const allowlistKind = argValue("--allowlist-kind", "endpoint");
+	const expectStart = argValue("--expect-start", "c");
+	check(
+		"--expect-start names b or c",
+		["b", "c"].includes(expectStart),
+		JSON.stringify(expectStart),
+	);
+	if (!["b", "c"].includes(expectStart)) return [];
 	check(
 		"--allowlist-id names the identifier the reach editor adds",
 		typeof allowlistId === "string" && allowlistId.trim().length > 0,
@@ -157,32 +164,144 @@ export async function sceneAgentMessages({
 		`waited ${mounted.waitedMs}ms; the section never appeared (absent for this account, or the page did not render)`,
 		`present after ${mounted.waitedMs}ms`,
 	);
-	if (!mounted.ok) return [];
+	if (!mounted.ok) {
+		const page = await cdp.evaluate(`(() => ({
+			href: location.href,
+			settingsContent: Boolean(document.querySelector("[data-settings-content]")),
+			headings: [...document.querySelectorAll("h1, h2")].map((node) => (node.textContent ?? "").trim()).slice(0, 8),
+			text: document.body.innerText.slice(0, 1200),
+		}))()`);
+		note("the page at the failed deep link", JSON.stringify(page));
+		await capture(cdp, "agent-messages-missing");
+		return [];
+	}
 
+	/*
+	 * The one-time agent-messages dialog is a SECOND client of the same status:
+	 * on a fresh scratch profile it mounts over Settings in state B. It is
+	 * dismissed through its own "Not now" control rather than by seeding the
+	 * persisted store, so the frame is the app's real presentation and a dialog
+	 * regression cannot be hidden by the rig.
+	 */
+	const dialog = await waitForCondition(
+		cdp,
+		`[...document.querySelectorAll('[role="dialog"]')].some((node) => node.textContent.includes("Agent messages on Radient"))`,
+		5_000,
+	);
+	if (dialog.ok) {
+		const dismissed = await cdp.evaluate(`(() => {
+			const node = [...document.querySelectorAll('[role="dialog"]')].find(
+				(candidate) => candidate.textContent.includes("Agent messages on Radient"),
+			);
+			const button = node && [...node.querySelectorAll("button")].find(
+				(candidate) => candidate.textContent.trim() === "Not now",
+			);
+			if (!button) return false;
+			button.click();
+			return true;
+		})()`);
+		check(
+			"the one-time dialog was dismissed before any frame",
+			dismissed === true,
+			"the dialog had no 'Not now' control",
+		);
+		const closed = await waitForCondition(
+			cdp,
+			`![...document.querySelectorAll('[role="dialog"]')].some((node) => node.textContent.includes("Agent messages on Radient"))`,
+			15_000,
+		);
+		check(
+			"the dialog closed before the section was captured",
+			closed.ok === true,
+			`waited ${closed.waitedMs}ms; the dialog stayed open`,
+			`closed after ${closed.waitedMs}ms`,
+		);
+	} else {
+		note(
+			"no one-time dialog was presented",
+			"already seen, or the surface is not in state B",
+		);
+	}
+
+	const wantedState = expectStart === "b" ? "B" : "C";
 	const named = await waitForCondition(
 		cdp,
-		`Boolean(document.querySelector("[data-agent-messages-state]"))`,
+		`document.querySelector("[data-agent-messages-state]")?.getAttribute("data-agent-messages-state") === ${JSON.stringify(wantedState)}`,
 		30_000,
 	);
+	const namedFacts = await cdp.evaluate(AGENT_MESSAGES_FACTS);
 	check(
-		"the section published a state letter",
-		named.ok === true,
-		`waited ${named.waitedMs}ms; no [data-agent-messages-state] appeared`,
-		`present after ${named.waitedMs}ms`,
+		"the section starts in the state --expect-start names",
+		named.ok === true && namedFacts.state === wantedState,
+		`waited ${named.waitedMs}ms; data-agent-messages-state=${JSON.stringify(namedFacts.state)} (expected ${JSON.stringify(wantedState)})`,
+		JSON.stringify(namedFacts),
 	);
-	if (!named.ok) return [];
+	if (named.ok !== true || namedFacts.state !== wantedState) return [];
+
+	// -- B: the real consent on-ramp, then Enable -> C ------------------------
+	if (expectStart === "b") {
+		await cdp.evaluate(scrollSettingsNode(AGENT_MESSAGES_SECTION));
+		await wait(400);
+		const onRamp = await cdp.evaluate(`(() => {
+			const section = document.querySelector(${JSON.stringify(AGENT_MESSAGES_SECTION)});
+			return { text: section ? section.textContent : "", facts: ${AGENT_MESSAGES_FACTS} };
+		})()`);
+		note("the on-ramp at rest", JSON.stringify(onRamp.facts));
+		check(
+			"the on-ramp renders the served consent sentence",
+			onRamp.text.includes("I understand that enabling agent messages"),
+			"the served consent fragment was not in the section's textContent",
+		);
+		await shoot("agent-messages-on-ramp");
+
+		const enabledPressed = await cdp.evaluate(`(() => {
+			const button = document.querySelector('[data-agent-messages-action="enable"]');
+			if (!button || button.disabled) return false;
+			button.scrollIntoView({ block: "center" });
+			button.click();
+			return true;
+		})()`);
+		check(
+			"the Enable action is present, enabled, and was pressed",
+			enabledPressed === true,
+			"no enabled [data-agent-messages-action=enable] control in state B",
+		);
+		if (enabledPressed !== true) return frames;
+		const enabled = await waitForCondition(
+			cdp,
+			`(() => {
+				const state = document.querySelector("[data-agent-messages-state]");
+				const allowlist = document.querySelector("[data-agent-messages-allowlist]");
+				return Boolean(state) && state.getAttribute("data-agent-messages-state") === "C" && Boolean(allowlist);
+			})()`,
+			30_000,
+		);
+		const enabledFacts = await cdp.evaluate(AGENT_MESSAGES_FACTS);
+		note("the section after Enable", JSON.stringify(enabledFacts));
+		check(
+			"Enable moved the section to state C, with the reach editor mounted",
+			enabled.ok === true &&
+				enabledFacts.state === "C" &&
+				enabledFacts.allowlist === true,
+			`waited ${enabled.waitedMs}ms; state=${JSON.stringify(enabledFacts.state)} allowlist=${enabledFacts.allowlist}`,
+			JSON.stringify(enabledFacts),
+		);
+		if (enabled.ok !== true) return frames;
+		await wait(300);
+		await shoot("agent-messages-enabled");
+	}
 
 	await cdp.evaluate(scrollSettingsNode(AGENT_MESSAGES_SECTION));
 	await wait(400);
 	const atRest = await cdp.evaluate(AGENT_MESSAGES_FACTS);
 	note("the section's published hooks at rest", JSON.stringify(atRest));
 	check(
-		"the rig's account renders the enabled state (C)",
+		"the scene continues from the enabled state (C)",
 		atRest.state === "C",
-		`data-agent-messages-state=${JSON.stringify(atRest.state)} (this scene requires an account already enabled on the rig)`,
+		`data-agent-messages-state=${JSON.stringify(atRest.state)}`,
 		JSON.stringify(atRest),
 	);
-	if (atRest.state !== "C") return [];
+	if (atRest.state !== "C") return frames;
 	await shoot("agent-messages-populated");
 
 	// -- b. both palettes ------------------------------------------------------

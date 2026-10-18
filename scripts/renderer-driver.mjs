@@ -192,6 +192,9 @@
  *                          identifier the reach editor adds, then removes
  *   --allowlist-kind <endpoint|account>  (with --scene agent-messages) which
  *                          kind that identifier is (default: endpoint)
+ *   --expect-start <b|c>   (with --scene agent-messages) the state the rig is
+ *                          expected to start in: B enables through the consent
+ *                          on-ramp first, C assumes an enabled endpoint
  *   --backend-revive <cmd> (with --scene connection-drop) the command that starts
  *                          a fresh daemon on the --backend address, run with this
  *                          process's environment when the scene needs the backend
