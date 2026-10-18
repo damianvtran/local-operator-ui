@@ -298,7 +298,15 @@ function progressDetailsFrom(details: unknown): Record<string, unknown> | null {
 	if (!details || typeof details !== "object" || Array.isArray(details))
 		return null;
 	const record = details as Record<string, unknown>;
-	if (!("stage" in record) && !("error_type" in record)) return null;
+	// Audio receipts have no progress stage. Preserve their explicit billing
+	// provenance too, or the card loses costs on both live end and replay.
+	if (
+		!("stage" in record) &&
+		!("error_type" in record) &&
+		!("billing_basis" in record) &&
+		!("settled" in record)
+	)
+		return null;
 	return record;
 }
 
@@ -316,6 +324,10 @@ const PROGRESS_DETAIL_KEYS = [
 	"log_lines",
 	"error",
 	"error_type",
+	"cost_usd",
+	"billing_basis",
+	"settled",
+	"cost",
 ] as const;
 
 /** Whether two `log_lines` values state the same messages at the same times. */

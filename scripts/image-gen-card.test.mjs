@@ -35,6 +35,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/chat/canonical/image-gen-card-model";',
+			'export { preferProgressDetails } from "./src/renderer/src/features/chat/components/trace/tool-row-model";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -52,6 +53,7 @@ const {
 	imageGenMaterialNoun,
 	isImageGenTool,
 	isVideoGenTool,
+	preferProgressDetails,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -415,7 +417,7 @@ test("a failure carries the error text verbatim, and a verdict keeps its own", (
 		state: "failed",
 		material: "image",
 		message: "invalid arguments for generate_image: 'prompt' is required",
-		errorType: null,
+		errorType: "invalid_arguments",
 	});
 	// A record built by hand carries no `notRunReason` key at all; an absent
 	// key must not read as a verdict.
@@ -1288,4 +1290,145 @@ test("a rate-limited call states the server's sentence, preferring the result's 
 	// and no promise about the next call.
 	assert.equal(markup.includes(">Stop<"), false);
 	assert.equal(markup.includes(">Retry<"), false);
+});
+
+test("sound receipts retain billed/estimated provenance and never turn quotes into charges", () => {
+	for (const [amount, basis] of [
+		[0.002, "billed"],
+		[0.001, "estimated"],
+		[0.0216, "billed"],
+	]) {
+		const view = imageGenCardView(
+			tool({
+				toolName: "generate_sound_effect",
+				details: { cost_usd: amount, billing_basis: basis },
+			}),
+		);
+		assert.equal(view.costCaption, `Cost $${amount.toFixed(4)} (${basis})`);
+	}
+	for (const details of [
+		{ cost_usd: null, billing_basis: "billed" },
+		{ cost_usd: 0.0216, billing_basis: "quote" },
+		{ cost_usd: 0.002 },
+	]) {
+		assert.equal(imageGenCardView(tool({ details })).costCaption, null);
+	}
+	const pending = imageGenCardView(
+		tool({
+			stopped: true,
+			details: { settled: null, cost_usd: null, cost: { basis: "quote" } },
+		}),
+	);
+	assert.equal(
+		pending.settlementCaption,
+		'Settlement pending · settled:null · cost_usd:null · cost.basis:"quote"',
+	);
+});
+
+test("audio result details survive reducer retention and settlement revisions", () => {
+	const billed = { cost_usd: 0.002, billing_basis: "billed" };
+	assert.equal(preferProgressDetails(billed, null), billed);
+	assert.equal(preferProgressDetails({ ...billed }, billed), billed);
+	const estimated = { ...billed, billing_basis: "estimated" };
+	assert.equal(preferProgressDetails(estimated, billed), estimated);
+	const revised = { ...billed, cost_usd: 0.0216 };
+	assert.equal(preferProgressDetails(revised, billed), revised);
+	const pending = { settled: null, cost_usd: null, cost: { basis: "quote" } };
+	assert.equal(preferProgressDetails(pending, billed), pending);
+	assert.equal(preferProgressDetails(null, pending), pending);
+	const settled = {
+		...pending,
+		settled: true,
+		cost_usd: 0.0216,
+		billing_basis: "billed",
+		cost: { basis: "billed" },
+	};
+	assert.equal(preferProgressDetails(settled, pending), settled);
+});
+
+test("the sound card shows result costs and the agent's refusal class above its exact body", () => {
+	const billed = imageGenCardView(
+		tool({
+			toolName: "generate_voiceover",
+			details: { cost_usd: 0.002, billing_basis: "billed" },
+		}),
+	);
+	assert.ok(markupOf(billed).includes("Cost $0.0020 (billed)"));
+	const old = imageGenCardView(
+		tool({
+			toolName: "generate_voiceover",
+			output: "Generated audio. Cost $0.002 (billed).",
+		}),
+	);
+	assert.equal(old.costCaption, "Cost $0.002 (billed).");
+	const body =
+		'{"code":"audio_rejected","error":"This audio request could not be accepted."}';
+	const refusal = imageGenCardView(
+		tool({ notRunKind: "invalid_arguments", notRunReason: body }),
+	);
+	const html = markupOf(refusal);
+	assert.ok(html.indexOf("invalid_arguments") < html.indexOf("audio_rejected"));
+	assert.equal(refusal.message, body);
+});
+
+test("a running sound stop warns before invoking the real action handler", async () => {
+	const { JSDOM } = await import("jsdom");
+	const { createRoot } = await import("react-dom/client");
+	const { act } = await import("react");
+	const dom = new JSDOM('<div id="root"></div>', { url: "http://localhost" });
+	const previous = {
+		window: globalThis.window,
+		document: globalThis.document,
+		HTMLElement: globalThis.HTMLElement,
+	};
+	Object.assign(globalThis, {
+		window: dom.window,
+		document: dom.window.document,
+		HTMLElement: dom.window.HTMLElement,
+		IS_REACT_ACT_ENVIRONMENT: true,
+	});
+	const root = createRoot(dom.window.document.getElementById("root"));
+	let calls = 0;
+	const view = imageGenCardView(
+		tool({
+			toolName: "generate_voiceover",
+			phase: "running",
+			startedAt: Date.now(),
+		}),
+	);
+	try {
+		await act(async () =>
+			root.render(
+				h(ImageGenCard, {
+					view,
+					scope: null,
+					actions: { onCancel: () => calls++ },
+				}),
+			),
+		);
+		const press = async (label) => {
+			const button = [...dom.window.document.querySelectorAll("button")].find(
+				(b) => b.textContent === label,
+			);
+			assert.ok(button, `button ${label} exists`);
+			await act(async () => button.click());
+		};
+		await press("Stop");
+		assert.equal(calls, 0);
+		assert.ok(
+			dom.window.document.body.textContent.includes(
+				"The provider has no cancellation endpoint. The generation continues and will be charged if it produces audio.",
+			),
+		);
+		await press("Keep waiting");
+		assert.equal(calls, 0);
+		await press("Stop");
+		await press("Request stop");
+		assert.equal(calls, 1);
+	} finally {
+		await act(async () => root.unmount());
+		dom.window.close();
+		Object.assign(globalThis, previous);
+		globalThis.IS_REACT_ACT_ENVIRONMENT = undefined;
+	}
 });
