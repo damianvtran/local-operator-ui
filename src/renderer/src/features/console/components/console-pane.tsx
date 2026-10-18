@@ -155,7 +155,22 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	 * would be an answer to a question nobody is asking, with a second press in it
 	 * making a second surface.
 	 */
-	const [creating, setCreating] = useState(false);
+	/*
+	 * A COUNT, NOT A FLAG (agent review round 2, m-1): the `+` press and the
+	 * open-from-outside path can both have a create in flight, and with one boolean
+	 * whichever answered first re-enabled the `+` while the other was still running.
+	 * `creating` is true while ANY create runs.
+	 */
+	const [createsInFlight, setCreatesInFlight] = useState(0);
+	const creating = createsInFlight > 0;
+	const beginCreate = useCallback(
+		() => setCreatesInFlight((count) => count + 1),
+		[],
+	);
+	const endCreate = useCallback(
+		() => setCreatesInFlight((count) => Math.max(0, count - 1)),
+		[],
+	);
 	/* One answer for the whole list: whether a completion is still fresh enough to
 	   pulse (§12.2's two states), asked once rather than per row. */
 	const blipPulsing = useConsoleBlipPulse(unseen);
@@ -478,7 +493,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	const createFromPress = useCallback(() => {
 		if (pressInFlight.current) return;
 		pressInFlight.current = true;
-		setCreating(true);
+		beginCreate();
 		// The lens at press time: a row the user picks while the create is in flight is
 		// a later, explicit choice, and the landing create must not override it (F-3).
 		const from = stored;
@@ -489,12 +504,19 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			})
 			.finally(() => {
 				pressInFlight.current = false;
-				setCreating(false);
+				endCreate();
 			});
-	}, [session.createSurface, stored]);
+	}, [session.createSurface, stored, beginCreate, endCreate]);
 	useEffect(() => {
 		if (showCreated === null) return;
-		if (stored !== showCreated.from) {
+		/*
+		 * `stored === showCreated.id` is not a later pick (agent review round 2, M-1):
+		 * main broadcasts the state change BEFORE the create's reply, so the hook's
+		 * re-read can commit the new listing first and the lens-sync effect below
+		 * already moved the lens to the created surface (an empty-state create or retry,
+		 * where `from` is null). Dropping here lost the caret.
+		 */
+		if (stored !== showCreated.from && stored !== showCreated.id) {
 			setShowCreated(null);
 			return;
 		}
@@ -605,7 +627,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		 * choose.
 		 */
 		if (action === "create") {
-			setCreating(true);
+			beginCreate();
 			/*
 			 * THE REQUEST IS CLEARED WHEN THE CREATE ANSWERS, not when it is made — the same
 			 * rule the comment above states, applied one step further than the first cut did.
@@ -638,7 +660,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 					setFocusRequest((value) => value + 1);
 				})
 				.finally(() => {
-					setCreating(false);
+					endCreate();
 					clearOpenIntent(sessionId);
 				});
 		} else {
@@ -655,6 +677,8 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		available,
 		surface,
 		clearOpenIntent,
+		beginCreate,
+		endCreate,
 	]);
 
 	if (sessionId === null) {
