@@ -114,9 +114,25 @@ import frUiShellRail from "./catalogues/fr/ui.shell.rail.json";
 import hiUiConsole from "./catalogues/hi/ui.console.json";
 import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
 import hiUiSettings from "./catalogues/hi/ui.settings.json";
+import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
+import ruUiAgentsDialogs from "./catalogues/ru/ui.agents.dialogs.json";
+import ruUiAgents from "./catalogues/ru/ui.agents.json";
+import ruUiAgentsModels from "./catalogues/ru/ui.agents.models.json";
+import ruUiAgentsNavigation from "./catalogues/ru/ui.agents.navigation.json";
+import ruUiAgentsRefusals from "./catalogues/ru/ui.agents.refusals.json";
+import ruUiAgentsSettings from "./catalogues/ru/ui.agents.settings.json";
+import ruUiAgentsStarters from "./catalogues/ru/ui.agents.starters.json";
+import ruUiChatComposer from "./catalogues/ru/ui.chat.composer.json";
+import ruUiChatComposerMedia from "./catalogues/ru/ui.chat.composer_media.json";
+import ruUiChatDialogs from "./catalogues/ru/ui.chat.dialogs.json";
+import ruUiChatHeader from "./catalogues/ru/ui.chat.header.json";
+import ruUiChat from "./catalogues/ru/ui.chat.json";
+import ruUiChatSidebarView from "./catalogues/ru/ui.chat.sidebar_view.json";
 import ruUiConsole from "./catalogues/ru/ui.console.json";
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
 import ruUiSettings from "./catalogues/ru/ui.settings.json";
+import ruUiShell from "./catalogues/ru/ui.shell.json";
+import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
 import viUiSettings from "./catalogues/vi/ui.settings.json";
@@ -233,9 +249,25 @@ export const bundledCatalogues: Readonly<
 		...hiUiSettings,
 	},
 	ru: {
+		...ruUiAgentMessages,
+		...ruUiAgentsDialogs,
+		...ruUiAgents,
+		...ruUiAgentsModels,
+		...ruUiAgentsNavigation,
+		...ruUiAgentsRefusals,
+		...ruUiAgentsSettings,
+		...ruUiAgentsStarters,
+		...ruUiChatComposer,
+		...ruUiChatComposerMedia,
+		...ruUiChatDialogs,
+		...ruUiChatHeader,
+		...ruUiChat,
+		...ruUiChatSidebarView,
 		...ruUiConsole,
 		...ruUiOnboarding,
 		...ruUiSettings,
+		...ruUiShell,
+		...ruUiShellRail,
 	},
 	vi: {
 		...viUiConsole,
