@@ -68,14 +68,28 @@ test("counts render ungrouped (the #1131 fidelity rule); uncarried namespaces us
 		}),
 		"Paso 1234567 de 2000000",
 	);
-	// Canvas is intentionally uncarried: source selection must still select the
-	// English source, including its own group-off rule.
+	// Canvas fallback must still select the English source, including its own
+	// group-off rule. Probe this on a SYNTHETIC tag that no real catalogue will
+	// ever carry: `es` now carries ui.canvas, so pinning the fallback arm to the
+	// shipped locale would silently stop testing fallback at all (and assert the
+	// Spanish word instead of the English one).
+	const SYNTHETIC_ABSENT_LOCALE = "xx-absent-probe";
+	locale.setLocale(SYNTHETIC_ABSENT_LOCALE);
 	const fallback = messages.t("ui.canvas.files.count", { count: 1234567 });
 	assert.equal(fallback, "1234567 files");
 	assert.equal(
 		fallback,
+		messages.translate(
+			"ui.canvas.files.count",
+			{ count: 1234567 },
+			SYNTHETIC_ABSENT_LOCALE,
+		),
+	);
+	assert.equal(
+		fallback,
 		messages.translate("ui.canvas.files.count", { count: 1234567 }, "en"),
 	);
+	locale.setLocale("es");
 	console.log(
 		`es counts ungrouped: ${formatted}; English fallback ui.canvas.files.count: ${fallback}`,
 	);

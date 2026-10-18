@@ -179,7 +179,6 @@ const IDENTICAL_OK = new Map([
 		"ui.agents.navigation.sidebar.title",
 		"French cognate: « agents » has the same spelling.",
 	],
-
 	[
 		"ui.agentMessages.dialog.validation_detail",
 		"Placeholders and punctuation only ({field}: {rule}); no words to translate.",
@@ -194,19 +193,171 @@ const IDENTICAL_OK = new Map([
 	],
 	[
 		"ui.agents.starters.summary.separator",
-		"Language-neutral list separator (comma and space); identical in Russian.",
+		"Language-neutral list separator (comma and space); identical in Russian and Spanish.",
 	],
 	[
 		"ui.agents.settings.chat.top_k",
-		"Model sampling parameter name kept English by the Russian style guide.",
+		"Model sampling parameter name kept English by the Russian and Spanish style guides.",
 	],
 	[
 		"ui.agents.settings.chat.top_p",
-		"Model sampling parameter name kept English by the Russian style guide.",
+		"Model sampling parameter name kept English by the Russian and Spanish style guides.",
 	],
 	[
 		"ui.agents.settings.general.id",
-		"Standard technical abbreviation, unchanged in Russian.",
+		"Standard technical abbreviation, unchanged across locales.",
+	],
+	[
+		"ui.common.account.low_credits_dialog.detail",
+		"Language-neutral currency amount: placeholder plus the USD token.",
+	],
+	[
+		"ui.mesh.mesh_approvals.approval_title",
+		"Language-neutral: only {head} and a full stop.",
+	],
+	[
+		"ui.mesh.mesh_approvals.approval_title_with_clauses",
+		"Language-neutral: placeholders and punctuation only.",
+	],
+	[
+		"ui.mesh.mesh_approvals.join_clauses",
+		"Language-neutral: placeholders and punctuation only.",
+	],
+	[
+		"ui.projects.project_model.clause",
+		"Language-neutral: a parenthesised {clause} placeholder.",
+	],
+	[
+		"ui.projects.project_model.completed_total",
+		"Language-neutral counter: placeholders and a slash.",
+	],
+	[
+		"ui.projects.project_model.count_live",
+		"Language-neutral counter: placeholders and a middle dot.",
+	],
+	[
+		"ui.projects.project_model.value_d",
+		"Language-neutral unit: {value} plus the day suffix d.",
+	],
+	[
+		"ui.projects.project_model.value_pt",
+		"Language-neutral unit: {value} plus the points abbreviation pt.",
+	],
+	[
+		"ui.projects.projects_toolbar.facet_labels_facet_first",
+		"Language-neutral: placeholders and a middle dot.",
+	],
+	[
+		"ui.projects.projects_toolbar.facet_labels_facet_first_length_1",
+		"Language-neutral: placeholders and punctuation only.",
+	],
+	[
+		"ui.providers.provider_grid.row_action",
+		"Language-neutral: {action} and {brand} with a colon.",
+	],
+	[
+		"ui.schedules.scheduled_task_dialog.value1_message",
+		"Language-neutral: {value1} and {message} with a colon.",
+	],
+	[
+		"ui.settings.updates.update_following.surface_choice",
+		"Language-neutral: {surface} and {choice} with a colon.",
+	],
+	[
+		"ui.browser.browser_new_tab.wordmark",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.installer.installer_panel.local_operator",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.common.account.low_credits_dialog.radient_pass",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.browser.browser_new_tab.address_placeholder",
+		"Literal sample host (example.com); context requires it byte-identical.",
+	],
+	[
+		"ui.projects.examples.owner",
+		"Literal example owner handle (atlas), not prose to translate.",
+	],
+	[
+		"ui.mesh.mesh_page.canvas",
+		"Named product destination Canvas, kept as the feature name.",
+	],
+	[
+		"ui.mesh.mesh_page.mesh",
+		"Named product destination: the lop Mesh feature, consistent with the audited ui.mesh copy.",
+	],
+	[
+		"ui.projects.project_model.qa",
+		"Standard QA abbreviation, unchanged in Spanish.",
+	],
+	[
+		"ui.schedules.schedule_form_dialog.prompt",
+		"Prompt is kept English by the es style guide; trailing space is part of the fragment.",
+	],
+	[
+		"ui.schedules.scheduled_task_dialog.prompt",
+		"Prompt is kept English by the es style guide; trailing space is part of the fragment.",
+	],
+	[
+		"ui.agents.models.reading.effort_auto",
+		"Wire vocabulary token (auto) deliberately printed untranslated, per the en sidecar.",
+	],
+	[
+		"ui.code_review.lane.state.terminal",
+		"Spanish cognate: «terminal» has the same spelling as the lowercase state word.",
+	],
+	[
+		"ui.common.models.model_select.general",
+		"Spanish cognate: «General» has the same spelling.",
+	],
+	[
+		"ui.hub.taxonomy.category.legal",
+		"Spanish cognate: «Legal» has the same spelling.",
+	],
+	[
+		"ui.hub.taxonomy.category.software",
+		"Loanword Software, settled in Spanish UI usage.",
+	],
+	[
+		"ui.hub.taxonomy.category.marketing",
+		"Loanword Marketing, settled in Spanish UI usage.",
+	],
+	[
+		"ui.providers.provider_labels.local",
+		"Spanish cognate: «Local» has the same spelling.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_label",
+		"Spanish cognate: «Material» has the same spelling.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_popover",
+		"Apple material name (Popover), kept verbatim per the en sidecar.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_mica",
+		"Microsoft product name (Mica), kept verbatim per the en sidecar.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_acrylic",
+		"Microsoft product name (Acrylic), kept verbatim per the en sidecar.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_tabbed",
+		"Microsoft material name (Tabbed Mica), kept verbatim per the en sidecar.",
+	],
+	[
+		"ui.settings.navigation.settings_sidebar.general",
+		"Spanish cognate: «General» has the same spelling.",
+	],
+	[
+		"ui.settings.navigation.settings_sidebar.backend",
+		"Established es loanword: the audited house voice uses «backend» throughout.",
 	],
 ]);
 
