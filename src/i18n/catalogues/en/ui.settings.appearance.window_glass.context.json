@@ -9,7 +9,7 @@
 		"role": "Help paragraph under the toggle",
 		"tone": "Plain, reassuring second person.",
 		"length": "Wrapping paragraph in the settings column; no length cap, keep every fact.",
-		"note": "Explains the effect, that it is off by default, and that text stays readable because the slider's far end is limited per theme. Plain language only: no mention of floors or contracts."
+		"note": "Explains the effect, that it is enabled by default on macOS and off elsewhere, and that text stays readable because the slider's far end is limited per theme. Plain language only: no mention of floors, capabilities or contracts."
 	},
 	"ui.settings.appearance.window_glass.restart_needed": {
 		"role": "Inline notice",
@@ -18,28 +18,28 @@
 		"note": "Shown on Windows only, where the master switch cannot flip on a running window."
 	},
 	"ui.settings.appearance.window_glass.unsupported_reduced_transparency": {
-		"role": "Explanatory notice replacing the control",
+		"role": "Explanatory notice under a disabled control; the row itself stays visible",
 		"tone": "Calm, explains cause and the way out.",
 		"length": "One or two sentences.",
 		"note": "Shown when the operating system's Reduce transparency accessibility setting is on."
 	},
 	"ui.settings.appearance.window_glass.unsupported_windows_too_old": {
-		"role": "Explanatory notice replacing the control",
+		"role": "Explanatory notice under a disabled control; the row itself stays visible",
 		"tone": "Calm and factual.",
 		"length": "One sentence.",
 		"note": "Windows 10 and early Windows 11 lack the system material this needs; 22H2 is build 22621."
 	},
 	"ui.settings.appearance.window_glass.unsupported_linux": {
-		"role": "Explanatory notice replacing the control",
-		"tone": "Calm and honest about the platform limit.",
-		"length": "Two sentences.",
-		"note": "Linux desktops have no blur an app can request; the control is hidden rather than faked."
+		"role": "Explanatory notice under a disabled control",
+		"tone": "Calm, explains the platform limit.",
+		"length": "One or two sentences.",
+		"note": "No native blur on Linux; compositor-dependent and software blur would show the desktop's text through the app's. Names the reason class (compositor) rather than a vague refusal."
 	},
 	"ui.settings.appearance.window_glass.unsupported_other": {
-		"role": "Explanatory notice replacing the control",
+		"role": "Explanatory notice under a disabled control",
 		"tone": "Calm and factual.",
-		"length": "One sentence.",
-		"note": "Fallback for any other platform."
+		"length": "One or two sentences.",
+		"note": "Fallback for a platform this build has no evidence for. Names what IS verified (macOS) rather than a vague 'not supported'."
 	},
 	"ui.settings.appearance.window_glass.coverage_label": {
 		"role": "Row label for a segmented choice",
@@ -145,5 +145,29 @@
 		"placeholders": {
 			"value": "Whole number 0-100: how far the slider sits toward see-through"
 		}
+	},
+	"ui.settings.appearance.window_glass.unsupported_windows_unverified": {
+		"role": "Explanatory notice under a disabled control",
+		"tone": "Calm, factual, says what is missing.",
+		"length": "One or two sentences.",
+		"note": "Windows has Mica/Acrylic implemented but never verified on a real machine; the row stays visible but disabled. Name the missing evidence, not a vague 'not supported'."
+	},
+	"ui.settings.appearance.window_glass.unsupported_gpu": {
+		"role": "Explanatory notice under a disabled control",
+		"tone": "Calm, names the live cause and the recovery.",
+		"length": "One or two sentences.",
+		"note": "The GPU reports compositing/rasterisation as off or software-only (driver, remote session). The capability is re-checked at runtime, so the copy says it may come back without a restart."
+	},
+	"ui.settings.appearance.window_glass.unsupported_acceleration": {
+		"role": "Explanatory notice under a disabled control",
+		"tone": "Direct instruction.",
+		"length": "One sentence.",
+		"note": "Hardware acceleration is disabled for this launch by --disable-gpu or a crash fallback; the user can relaunch with it on."
+	},
+	"ui.settings.appearance.window_glass.unsupported_backdrop_filter": {
+		"role": "Explanatory notice under a disabled control",
+		"tone": "Factual.",
+		"length": "One sentence.",
+		"note": "The renderer reports CSS.supports('backdrop-filter: blur(1px)') false, so no translucent material can be drawn correctly."
 	}
 }

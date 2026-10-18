@@ -1,8 +1,9 @@
 /**
  * Window glass: the OS-drawn translucent window background, as pure decisions.
  *
- * WHAT THIS IS. An OPTIONAL, default-OFF appearance setting that lets the desktop
- * show through the app window, blurred by the operating system: AppKit vibrancy on
+ * WHAT THIS IS. An appearance setting that lets the desktop show through the app
+ * window, blurred by the operating system: ON BY DEFAULT where the machine can
+ * composite it (macOS, verified here), off and greyed everywhere else. AppKit vibrancy on
  * macOS (which already renders with the new Liquid Glass materials on macOS 26+) and
  * Windows 11's `backgroundMaterial` (mica / acrylic / tabbed). It is the same split
  * `window-chrome.ts` makes, for the same reason: MAIN has to know the answer BEFORE
@@ -66,8 +67,9 @@ export type GlassMaterial =
 export type GlassScheme = "dark" | "light";
 
 export type GlassSettings = {
-	/** The master switch. Default OFF: a launch that never touched this setting
-	 * builds exactly the window it always built. */
+	/** The master switch. The EFFECTIVE launch default is capability-aware
+	 * (`defaultGlassSettings`): on where the machine can composite it, off where it
+	 * cannot. An unset value must never be read as an explicit OFF. */
 	enabled: boolean;
 	coverage: GlassCoverage;
 	/** 0 = frosted (most opaque), 100 = see-through (down to the alpha floor). */
@@ -75,10 +77,25 @@ export type GlassSettings = {
 	material: GlassMaterial;
 };
 
+/**
+ * The intensity a launch that never chose one gets. 80 is the operator's chosen
+ * out-of-box look: far enough toward see-through to be the feature people asked
+ * for, short of the floors where text begins to suffer on any one theme.
+ */
+export const DEFAULT_GLASS_INTENSITY = 80;
+
+/**
+ * The UNSET BASELINE, and deliberately not the launch default: `enabled` is false
+ * here because any path that cannot establish a capability must fail to the
+ * shipped opaque window, never to a transparent one nobody asked for. A launch
+ * resolves `defaultGlassSettings(capability)` instead; this object is only the
+ * floor under `sanitizeGlassSettings` (a corrupt field keeps the opaque look) and
+ * the shape stories/tests compare against.
+ */
 export const DEFAULT_GLASS_SETTINGS: GlassSettings = {
 	enabled: false,
 	coverage: "full",
-	intensity: 40,
+	intensity: DEFAULT_GLASS_INTENSITY,
 	material: "window",
 };
 
@@ -89,7 +106,11 @@ export type GlassReason =
 	| "ok"
 	| "reduced-transparency"
 	| "windows-too-old"
-	| "linux-no-native-blur"
+	| "windows-unverified"
+	| "linux-compositor-dependent"
+	| "gpu-unavailable"
+	| "hardware-acceleration-disabled"
+	| "backdrop-filter-unavailable"
 	| "unsupported-platform";
 
 export type GlassCapability = {
@@ -102,6 +123,13 @@ export type GlassCapability = {
 	/** macOS 26+: vibrancy renders with the Liquid Glass materials. A label only. */
 	liquid: boolean;
 	/**
+	 * Whether a launch with NO stored choice turns the effect on. True only where
+	 * the platform mechanism is both available and verified by this project:
+	 * macOS. Windows and Linux stay off until they are verified (see
+	 * `glassCapabilityFor`), so the default flip cannot be an unverified claim.
+	 */
+	defaultEnabled: boolean;
+	/**
 	 * Whether the MASTER switch can flip on a running window. macOS: yes, measured
 	 * (`setBackgroundColor("#00000000")` + `setVibrancy` on a window built opaque
 	 * composites the desktop, and `setVibrancy(null)` + the ground colour restores
@@ -113,6 +141,35 @@ export type GlassCapability = {
 	liveToggle: boolean;
 };
 
+/**
+ * The subset of Electron's `GPUFeatureStatus` the gate reads. Both keys are
+ * required by Electron's own type; a missing/empty field in a status object that
+ * DID report is therefore a shape change (a renamed key), and the gate fails
+ * closed on it rather than reading it as "fine".
+ */
+export type GlassGpuFeatureStatus = {
+	compositing?: string;
+	rasterization?: string;
+};
+
+/**
+ * The live environment the capability gate needs, as facts MAIN reads and the
+ * renderer reports. Every field is optional on purpose: an unreadable fact is
+ * UNKNOWN, not "unsupported". `app.getGPUFeatureStatus()` is documented as
+ * usable only after the first `gpu-info-update`, so a launch that read it too
+ * early must not turn the default off - the next update decides.
+ */
+export type GlassEnvironmentFacts = {
+	/** `app.isHardwareAccelerationEnabled()`; null when it could not be read. */
+	hardwareAcceleration?: boolean | null;
+	/** The launch asked for no GPU (`--disable-gpu` / disableHardwareAcceleration). */
+	accelerationDisabledByLaunch?: boolean;
+	/** `app.getGPUFeatureStatus()`; null when it could not be read. */
+	gpu?: GlassGpuFeatureStatus | null;
+	/** The renderer's `CSS.supports("backdrop-filter: blur(1px)")`; null until it reports. */
+	backdropFilter?: boolean | null;
+};
+
 /** Windows 11 22H2: the first build where Electron's `backgroundMaterial` works. */
 export const WIN_BACKGROUND_MATERIAL_MIN_BUILD = 22621;
 
@@ -121,6 +178,45 @@ const parseVersion = (version: string): number[] =>
 		.split(".")
 		.map((part) => Number.parseInt(part, 10))
 		.map((n) => (Number.isFinite(n) ? n : 0));
+
+/**
+ * A Chromium GPU feature is usable only when it is on the hardware path. The
+ * statuses are `enabled`, `enabled_readback`, `enabled_force*` for a working
+ * compositor and `disabled_*` / `unavailable_*` for software or off, so the
+ * prefix is the test: a readback or forced-on compositor still composites.
+ *
+ * AN ABSENT FIELD IS NOT USABLE. "Not reported yet" is represented one level up
+ * as `gpu: null` (readiness in `readGlassEnvironmentFacts`); a status object that
+ * exists but lacks a key is a shape change, and passing it would let a renamed
+ * Electron field silently open the gate (review R1-7).
+ */
+const gpuFeatureUsable = (status: string | undefined): boolean =>
+	typeof status === "string" && status.startsWith("enabled");
+
+/**
+ * The first environment fact that makes a translucent window dishonest, or null.
+ * Order is the order the tooltip should name: a launch flag the user chose, then
+ * the machine's live GPU state, then the renderer's own ability to blur.
+ */
+function glassEnvironmentObjection(
+	environment: GlassEnvironmentFacts | undefined,
+): GlassReason | null {
+	if (!environment) return null;
+	if (
+		environment.accelerationDisabledByLaunch ||
+		environment.hardwareAcceleration === false
+	)
+		return "hardware-acceleration-disabled";
+	if (
+		environment.gpu &&
+		(!gpuFeatureUsable(environment.gpu.compositing) ||
+			!gpuFeatureUsable(environment.gpu.rasterization))
+	)
+		return "gpu-unavailable";
+	if (environment.backdropFilter === false)
+		return "backdrop-filter-unavailable";
+	return null;
+}
 
 /**
  * What this machine can do, from facts main reads once. PURE: the platform matrix
@@ -134,24 +230,39 @@ const parseVersion = (version: string): number[] =>
  * `osVersion` is `process.getSystemVersion()`: the macOS product version on
  * darwin, `10.0.<build>` on Windows. Unparseable input is treated as "too old"
  * on Windows and as "not liquid" on macOS, so a bad read fails to the shipped look.
+ *
+ * `environment` is the LIVE half of the gate (criterion: detect-then-decide). It
+ * is why macOS is not unconditionally supported: a Mac launched with
+ * `--disable-gpu`, with Reduce Motion's compositor fallback, or under a
+ * remote-desktop session is a machine that cannot draw a blurred material, and a
+ * `defaultEnabled` there would paint a see-through window with nothing behind it.
+ * Every unknown fact is treated as "keep looking", never "unsupported": the
+ * caller re-evaluates on `gpu-info-update` and on the renderer's report.
  */
 export function glassCapabilityFor(input: {
 	platform: NodeJS.Platform | string;
 	osVersion: string;
 	reducedTransparency: boolean;
+	environment?: GlassEnvironmentFacts;
 }): GlassCapability {
-	const none = (reason: GlassReason): GlassCapability => ({
+	const none = (
+		reason: GlassReason,
+		defaultMaterial: GlassMaterial = DEFAULT_GLASS_SETTINGS.material,
+	): GlassCapability => ({
 		supported: false,
 		mechanism: "none",
 		reason,
 		materials: [],
-		defaultMaterial: DEFAULT_GLASS_SETTINGS.material,
+		defaultMaterial,
 		liquid: false,
+		defaultEnabled: false,
 		liveToggle: false,
 	});
 	const version = parseVersion(input.osVersion);
 	if (input.platform === "darwin") {
 		if (input.reducedTransparency) return none("reduced-transparency");
+		const objection = glassEnvironmentObjection(input.environment);
+		if (objection) return none(objection);
 		return {
 			supported: true,
 			mechanism: "vibrancy",
@@ -159,25 +270,48 @@ export function glassCapabilityFor(input: {
 			materials: GLASS_MAC_MATERIALS,
 			defaultMaterial: "window",
 			liquid: (version[0] ?? 0) >= 26,
+			defaultEnabled: true,
 			liveToggle: true,
 		};
 	}
 	if (input.platform === "win32") {
 		if ((version[2] ?? 0) < WIN_BACKGROUND_MATERIAL_MIN_BUILD)
-			return none("windows-too-old");
-		if (input.reducedTransparency) return none("reduced-transparency");
-		return {
-			supported: true,
-			mechanism: "background-material",
-			reason: "ok",
-			materials: GLASS_WIN_MATERIALS,
-			defaultMaterial: "mica",
-			liquid: false,
-			liveToggle: false,
-		};
+			return none("windows-too-old", "mica");
+		/*
+		 * UNVERIFIED, SO NOT SUPPORTED. The `backgroundMaterial` code below is real
+		 * and stays (a Windows build can be driven by tests with a synthetic
+		 * capability), but no Windows machine has ever run this app's glass, and the
+		 * operator's rule is that an unverified effect is not switched on - nor
+		 * offered as if it were known to work. The row remains, greyed, naming that
+		 * reason; the value in a stale profile is ignored at render time
+		 * (`glassIsActive`), which is the enforcement below the UI.
+		 */
+		return none("windows-unverified", "mica");
 	}
-	if (input.platform === "linux") return none("linux-no-native-blur");
+	/*
+	 * Linux has no OS-drawn blur an app can request (X11/Wayland compositors differ
+	 * and a see-through window without blur shows the desktop's own text through the
+	 * app's). It is not an opt-in here: nothing would be drawn, so offering a switch
+	 * would be the dead control the operator asked us not to have.
+	 */
+	if (input.platform === "linux") return none("linux-compositor-dependent");
 	return none("unsupported-platform");
+}
+
+/**
+ * What a launch with no stored choice gets. This is the default flip's ONLY
+ * entry point, so "unsupported means off" cannot be bypassed by a caller that
+ * reads `DEFAULT_GLASS_SETTINGS` directly.
+ */
+export function defaultGlassSettings(
+	capability: GlassCapability,
+): GlassSettings {
+	return {
+		enabled: capability.defaultEnabled,
+		coverage: "full",
+		intensity: DEFAULT_GLASS_INTENSITY,
+		material: capability.defaultMaterial,
+	};
 }
 
 const isCoverage = (value: unknown): value is GlassCoverage =>
@@ -240,6 +374,108 @@ export function sanitizeGlassSettings(
 	};
 }
 
+/**
+ * The persisted file's schema version. Version 2 records WHICH fields the user
+ * chose, which is the fact a default flip must not overwrite: before it, every
+ * write stored a complete settings object, so an OFF a user never picked and an
+ * OFF they picked read identically. A file without this marker is treated as
+ * entirely explicit - the conservative reading, because the one thing the flip
+ * must never do is overturn a real choice.
+ */
+export const GLASS_FILE_VERSION = 2;
+
+export const GLASS_SETTINGS_FIELDS = [
+	"enabled",
+	"coverage",
+	"intensity",
+	"material",
+] as const;
+export type GlassSettingsField = (typeof GLASS_SETTINGS_FIELDS)[number];
+
+export type ResolvedStoredGlass = {
+	settings: GlassSettings;
+	/** The fields the stored file carries as chosen; defaults fill the rest. */
+	explicit: GlassSettingsField[];
+	scheme: GlassScheme;
+};
+
+/**
+ * Resolve a persisted file against today's defaults, keeping the user's choices
+ * and only filling what they never made. PURE, so the unset-vs-explicit contract
+ * is testable without a profile directory; the file I/O is
+ * `src/main/window-glass.ts`.
+ *
+ * A RECORDED FIELD IS TAKEN AS WRITTEN (after sanitising), even when the current
+ * capability disagrees: `sanitizeGlassSettings` already keeps a stored material
+ * through an unsupported moment (Reduce transparency), and dropping an explicit
+ * `enabled: true` here would make the setting reappear the user chose to lose.
+ * The RENDER gate (`glassIsActive`) is what makes an unsupported value inert.
+ */
+export function resolveStoredGlass(
+	raw: unknown,
+	capability: GlassCapability,
+): ResolvedStoredGlass | null {
+	if (raw === null || typeof raw !== "object") return null;
+	const record = raw as Record<string, unknown>;
+	/*
+	 * A file with no settings object is not a choice record: every writer this app
+	 * has shipped stored one, so its absence is corruption. It must resolve to
+	 * "unset" (today's defaults), not to "all fields chosen from nothing".
+	 */
+	if (record.settings === null || typeof record.settings !== "object")
+		return null;
+	const defaults = defaultGlassSettings(capability);
+	/*
+	 * SANITISE AGAINST THE OPAQUE BASELINE, not today's default. A corrupt
+	 * explicit value must fall to the shipped opaque look - the sentence on
+	 * `DEFAULT_GLASS_SETTINGS` - instead of inheriting `enabled: true` just
+	 * because this machine is capable. Unclaimed fields are replaced by `defaults`
+	 * immediately below, so this base only decides corrupt/missing values inside a
+	 * field the file claims (review R1-1).
+	 */
+	const stored = sanitizeGlassSettings(
+		record.settings,
+		capability,
+		DEFAULT_GLASS_SETTINGS,
+	);
+	/*
+	 * The version is LOAD-BEARING, not decoration: a v2 file carries the list and
+	 * an older one cannot, so a missing or older marker is the legacy treatment -
+	 * every field treated as chosen - rather than silently making every field
+	 * "unset" (which would re-enable glass over an explicit off). A v2 file that
+	 * lost its list is corruption, and gets the same conservative answer.
+	 */
+	const legacy =
+		record.version !== GLASS_FILE_VERSION || !Array.isArray(record.explicit);
+	const explicit: GlassSettingsField[] = legacy
+		? [...GLASS_SETTINGS_FIELDS]
+		: GLASS_SETTINGS_FIELDS.filter((field) =>
+				(record.explicit as readonly unknown[]).includes(field),
+			);
+	const settings = { ...defaults };
+	for (const field of explicit)
+		(settings as Record<GlassSettingsField, unknown>)[field] = stored[field];
+	return {
+		settings,
+		explicit,
+		scheme: record.scheme === "light" ? "light" : "dark",
+	};
+}
+
+/**
+ * The once-per-launch gate line for the existing diagnostics. Main appends it to
+ * the backend log; a bug report can then be bucketed without asking the user to
+ * run anything. PURE so the format is asserted by a unit test rather than only
+ * observed in a built app.
+ */
+export function glassGateLine(
+	capability: GlassCapability,
+	settings: GlassSettings,
+	platform: NodeJS.Platform | string,
+): string {
+	return `[window-glass] launch gate platform=${platform} supported=${capability.supported} default=${capability.defaultEnabled} enabled=${settings.enabled} intensity=${settings.intensity} reason=${capability.reason} mechanism=${capability.mechanism}`;
+}
+
 /** Glass is active only when asked for AND the platform can do it. */
 export const glassIsActive = (
 	settings: GlassSettings,
@@ -254,7 +490,7 @@ export const GLASS_TRANSPARENT = "#00000000";
  * and, on darwin, only its inert `visualEffectState: "active"`; the palette ground
  * is the caller's on every platform.
  *
- * DEFAULT-OFF IS STILL THE GUARANTEE, with ONE inert exception on macOS. The caller
+ * AN INACTIVE GLASS IS STILL THE GUARANTEE, with ONE inert exception on macOS. The caller
  * spreads this AFTER its own `backgroundColor`, so an inactive glass must not add
  * `vibrancy`, `backgroundMaterial` or a transparent background - or the shipped
  * window changes for the people who never touched the setting. On darwin,
@@ -437,6 +673,8 @@ export const WINDOW_GLASS_GET_CHANNEL = "window-glass:get";
 export const WINDOW_GLASS_SET_CHANNEL = "window-glass:set";
 export const WINDOW_GLASS_SCHEME_CHANNEL = "window-glass:scheme";
 export const WINDOW_GLASS_STATE_CHANNEL = "window-glass:state";
+/** The renderer's one-time capability report (`backdrop-filter` support). */
+export const WINDOW_GLASS_RENDERER_CHANNEL = "window-glass:renderer";
 export const WINDOW_GLASS_FILE = "window-glass.json";
 
 /**

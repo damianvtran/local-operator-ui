@@ -2,24 +2,31 @@ import { join } from "node:path";
 import {
 	type BrowserWindow,
 	type IpcMainInvokeEvent,
+	app,
 	ipcMain,
 	nativeTheme,
 } from "electron";
 import {
-	DEFAULT_GLASS_SETTINGS,
+	GLASS_FILE_VERSION,
+	GLASS_SETTINGS_FIELDS,
 	GLASS_TRANSPARENT,
 	type GlassCapability,
+	type GlassEnvironmentFacts,
 	type GlassScheme,
 	type GlassSettings,
+	type GlassSettingsField,
 	WINDOW_GLASS_FILE,
 	WINDOW_GLASS_GET_CHANNEL,
+	WINDOW_GLASS_RENDERER_CHANNEL,
 	WINDOW_GLASS_SCHEME_CHANNEL,
 	WINDOW_GLASS_SET_CHANNEL,
 	WINDOW_GLASS_STATE_CHANNEL,
 	type WindowGlassState,
+	defaultGlassSettings,
 	glassCapabilityFor,
 	glassIsActive,
 	macVibrancyFor,
+	resolveStoredGlass,
 	sanitizeGlassSettings,
 	winMaterialFor,
 } from "../shared/window-glass";
@@ -49,35 +56,111 @@ import { readJson, writeJsonAtomic } from "./browser/atomic-json";
  * a dark source and 224 with a light one. The contrast floors in
  * `window-glass-floors.json` assume the scheme matches, so the pin is what makes
  * them true. It is released the moment glass goes inactive, and never touched by a
- * launch that never enabled glass - the default-off path is unchanged.
+ * launch whose glass is inactive - the shipped opaque path is unchanged.
+ *
+ * THE DEFAULT IS CAPABILITY-AWARE (criterion: default flip, unset-only). A launch
+ * with no stored choice gets `defaultGlassSettings(capability)` - enabled at 80%
+ * on a Mac that can composite it, off everywhere the gate says no. A stored file
+ * records WHICH fields the user chose (`explicit`); only fields absent from that
+ * list are filled by today's default, so an explicit off or an explicit 50 is
+ * never rewritten by a later default change.
  */
 
 export function windowGlassFilePath(userDataDir: string): string {
 	return join(userDataDir, WINDOW_GLASS_FILE);
 }
 
-type PersistedGlass = { settings: GlassSettings; scheme: GlassScheme };
+type PersistedGlass = {
+	settings: GlassSettings;
+	explicit: GlassSettingsField[];
+	scheme: GlassScheme;
+};
+
+/**
+ * Whether the GPU process has reported at least once.
+ *
+ * MEASURED, AND LOAD-BEARING: before the first `gpu-info-update`, Electron's
+ * feature status reads `disabled_software` on a perfectly capable Mac (probe on
+ * Electron 44.3.0 / macOS 27.0: pre-ready and ready both `disabled_software`;
+ * the event then reads `enabled`). Reading it at launch therefore cannot tell
+ * "this machine cannot composite" from "the GPU has not answered yet", and the
+ * default-on flip would open opaque and turn glass on a moment later. Until the
+ * event, the status is UNKNOWN and the gate stays optimistic; the event itself
+ * re-decides (`attachWindowGlass` listens).
+ */
+let gpuInfoReported = false;
+app.on("gpu-info-update", () => {
+	gpuInfoReported = true;
+});
+
+/**
+ * The live facts Electron reports at one instant. `getGPUFeatureStatus()` and
+ * `isHardwareAccelerationEnabled()` are documented as usable only after the first
+ * `gpu-info-update`; read earlier they can throw or report the placeholder status
+ * above. "Not reported yet" must not be read as "disabled", so every unreadable
+ * fact is `null`, `glassCapabilityFor` treats it as undecided, and the controller
+ * asks again on the next GPU event.
+ */
+export function readGlassEnvironmentFacts(): GlassEnvironmentFacts {
+	const facts: GlassEnvironmentFacts = {};
+	/*
+	 * `hasSwitch` reports the flag this PROCESS launched with, which is the case
+	 * `app.isHardwareAccelerationEnabled()` cannot distinguish from a blocklisted
+	 * GPU: both are "no compositor", but only one has a flag the tooltip can name.
+	 */
+	try {
+		facts.accelerationDisabledByLaunch =
+			app.commandLine.hasSwitch("disable-gpu");
+	} catch {
+		facts.accelerationDisabledByLaunch = false;
+	}
+	try {
+		facts.hardwareAcceleration = app.isHardwareAccelerationEnabled();
+	} catch {
+		facts.hardwareAcceleration = null;
+	}
+	try {
+		/*
+		 * Only once the GPU has answered. A pre-report read is `disabled_software`
+		 * (see `gpuInfoReported`), which is a statement about the read's timing, not
+		 * about the machine - and treating it as a refusal would contradict
+		 * criteria 1 and 2 on every launch of a capable Mac.
+		 */
+		const status = gpuInfoReported ? app.getGPUFeatureStatus() : null;
+		facts.gpu = status
+			? {
+					compositing: status.gpu_compositing,
+					rasterization: status.rasterization,
+				}
+			: null;
+	} catch {
+		facts.gpu = null;
+	}
+	return facts;
+}
 
 /** The persisted file, or null; a missing and a corrupt file are one answer. */
 export function readPersistedWindowGlass(
 	userDataDir: string,
 	capability: GlassCapability,
 ): PersistedGlass | null {
-	const raw = readJson<{ settings?: unknown; scheme?: unknown }>(
+	const raw = readJson<Record<string, unknown>>(
 		windowGlassFilePath(userDataDir),
 	);
-	if (raw === null || typeof raw !== "object") return null;
-	return {
-		settings: sanitizeGlassSettings(raw.settings, capability),
-		scheme: raw.scheme === "light" ? "light" : "dark",
-	};
+	return resolveStoredGlass(raw, capability);
 }
 
 export type ResolvedLaunchGlass = {
 	capability: GlassCapability;
 	settings: GlassSettings;
+	/** The fields the stored file carries as the user's own; today's defaults fill
+	 * the rest and a later default change must not overturn them. */
+	explicit: GlassSettingsField[];
 	scheme: GlassScheme;
 	state: WindowGlassState;
+	/** The environment facts this launch decided on, kept so a live re-check can
+	 * merge the renderer's report into them rather than reading them afresh. */
+	environment: GlassEnvironmentFacts;
 };
 
 /**
@@ -89,12 +172,16 @@ export function resolveLaunchWindowGlass(input: {
 	platform?: NodeJS.Platform | string;
 	osVersion?: string;
 	reducedTransparency?: boolean;
+	/** Injected by tests; the real read is `readGlassEnvironmentFacts`. */
+	environment?: GlassEnvironmentFacts;
 }): ResolvedLaunchGlass {
+	const environment = input.environment ?? readGlassEnvironmentFacts();
 	const capability = glassCapabilityFor({
 		platform: input.platform ?? process.platform,
 		osVersion: input.osVersion ?? process.getSystemVersion(),
 		reducedTransparency:
 			input.reducedTransparency ?? nativeTheme.prefersReducedTransparency,
+		environment,
 	});
 	let persisted: PersistedGlass | null = null;
 	try {
@@ -102,13 +189,16 @@ export function resolveLaunchWindowGlass(input: {
 	} catch {
 		persisted = null;
 	}
-	const settings = persisted?.settings ?? DEFAULT_GLASS_SETTINGS;
+	const settings = persisted?.settings ?? defaultGlassSettings(capability);
+	const explicit = persisted?.explicit ?? [];
 	const scheme = persisted?.scheme ?? "dark";
 	return {
 		capability,
 		settings,
+		explicit,
 		scheme,
 		state: stateFor(settings, capability),
+		environment,
 	};
 }
 
@@ -122,7 +212,19 @@ const stateFor = (
 		capability,
 		settings,
 		active,
-		restartRequired: !capability.liveToggle && active !== launchedActive,
+		/*
+		 * A RESTART IS ONLY PENDING WHEN THE EFFECT IS AVAILABLE AND NOT LIVE.
+		 * `liveToggle: false` is also true of `mechanism: "none"`, so a capability
+		 * DROP (GPU software fallback, backdrop-filter report, Reduce transparency)
+		 * satisfied the old expression and told the user to restart while the window
+		 * had already fallen back to opaque. The unsupported state has its own
+		 * cause line; this notice is only for a supported change that needs a new
+		 * window (QA Q-1 / design D2).
+		 */
+		restartRequired:
+			capability.supported &&
+			!capability.liveToggle &&
+			active !== launchedActive,
 	};
 };
 
@@ -159,6 +261,18 @@ export function attachWindowGlass(
 	let capability = options.initial.capability;
 	let settings = options.initial.settings;
 	let scheme = options.initial.scheme;
+	/*
+	 * WHAT THE USER ACTUALLY CHOSE. Held here because every write is what extends
+	 * it: the launch resolution has already filled the rest from today's defaults,
+	 * and this set is what the next launch is allowed to keep. A patch's own keys
+	 * are the explicit claim (`set` below); nothing else joins it implicitly.
+	 */
+	const explicit = new Set<GlassSettingsField>(options.initial.explicit);
+	/*
+	 * The live facts, merged over a fresh read on every re-check so the renderer's
+	 * report (the one fact main cannot read) survives a GPU event.
+	 */
+	let environment: GlassEnvironmentFacts = { ...options.initial.environment };
 	const launchedActive = glassIsActive(settings, capability);
 	let pinnedTheme = false;
 	/*
@@ -249,7 +363,17 @@ export function attachWindowGlass(
 		 * in-memory state stays authoritative for this run (review R9).
 		 */
 		if (
-			!writeJsonAtomic(windowGlassFilePath(userDataDir), { settings, scheme })
+			!writeJsonAtomic(windowGlassFilePath(userDataDir), {
+				/*
+				 * Versioned and per-field: the next launch fills only what this list does
+				 * not name from its own defaults. Writing the full `settings` object alone
+				 * is what made an untouched OFF indistinguishable from a chosen one.
+				 */
+				version: GLASS_FILE_VERSION,
+				settings,
+				explicit: GLASS_SETTINGS_FIELDS.filter((field) => explicit.has(field)),
+				scheme,
+			})
 		)
 			log(
 				"[window-glass] the setting could not be saved - it applies to this run and will not survive a restart",
@@ -274,6 +398,16 @@ export function attachWindowGlass(
 		(event, patch: unknown): WindowGlassState | null => {
 			if (!fromOwnWindow(event)) return null;
 			settings = sanitizeGlassSettings(patch, capability, settings);
+			/*
+			 * A PATCH IS THE CHOICE. Only the fields the renderer actually sent join
+			 * the explicit set: the sanitised result carries defaults for everything
+			 * else, and copying those in would turn today's default into tomorrow's
+			 * explicit value on the very first slider move.
+			 */
+			if (patch !== null && typeof patch === "object")
+				for (const field of Object.keys(patch))
+					if ((GLASS_SETTINGS_FIELDS as readonly string[]).includes(field))
+						explicit.add(field as GlassSettingsField);
 			applyToWindow();
 			persist();
 			push();
@@ -295,30 +429,85 @@ export function attachWindowGlass(
 	});
 
 	/*
-	 * The OS accessibility switch is live: turning "Reduce transparency" on while
-	 * glass is showing must drop the window to the opaque ground at once, and
-	 * turning it off again brings the user's own setting back.
+	 * The renderer's one gate fact: whether this Chromium can paint a backdrop
+	 * blur at all. Reported once at boot by `subscribeGlassPaint`; main does not
+	 * trust a launch to wait for it (the first frame must not be blocked by our
+	 * own message), so it starts undecided and drops the effect when the answer is
+	 * no - the gate lives below the UI, exactly like `enable` does.
 	 */
-	const onNativeThemeUpdated = (): void => {
+	ipcMain.handle(WINDOW_GLASS_RENDERER_CHANNEL, (event, report: unknown) => {
+		if (!fromOwnWindow(event)) return null;
+		if (report !== null && typeof report === "object") {
+			const value = (report as { backdropFilter?: unknown }).backdropFilter;
+			if (typeof value === "boolean")
+				environment = { ...environment, backdropFilter: value };
+		}
+		reevaluate();
+		return current();
+	});
+
+	/*
+	 * EVERY RE-CHECK goes through here: the OS accessibility switch, a GPU update
+	 * (driver change, acceleration lost or regained, a remote session), and the
+	 * renderer's report. It is idempotent when nothing material changed, so a burst
+	 * of GPU events cannot repaint the window repeatedly.
+	 */
+	function reevaluate(): void {
+		environment = {
+			...readGlassEnvironmentFacts(),
+			...(environment.backdropFilter === undefined
+				? {}
+				: { backdropFilter: environment.backdropFilter }),
+		};
 		const next = glassCapabilityFor({
 			platform: process.platform,
 			osVersion: process.getSystemVersion(),
 			reducedTransparency: nativeTheme.prefersReducedTransparency,
+			environment,
 		});
 		if (
 			next.supported === capability.supported &&
-			next.reason === capability.reason
+			next.reason === capability.reason &&
+			next.mechanism === capability.mechanism
 		)
 			return;
+		const wasSupported = capability.supported;
 		capability = next;
 		settings = sanitizeGlassSettings(settings, capability, settings);
+		/*
+		 * A DEFAULT RESOLVED AT LAUNCH IS NOT A CHOICE. If the gate returns and
+		 * `enabled` was never explicit, re-derive it from today's default: without
+		 * this, a user who launched under Reduce transparency (or with the GPU
+		 * unavailable) and then turned it off mid-session sees the row enable while
+		 * the window stays opaque until the next launch. The next launch resolves the
+		 * same value again because `explicit` still does not name `enabled`
+		 * (review R1-3).
+		 */
+		if (next.supported && !wasSupported && !explicit.has("enabled"))
+			settings.enabled = defaultGlassSettings(next).enabled;
 		applyToWindow();
 		push();
 		log(
 			`[window-glass] capability changed supported=${next.supported} reason=${next.reason}`,
 		);
-	};
+	}
+
+	const onNativeThemeUpdated = (): void => reevaluate();
 	nativeTheme.on("updated", onNativeThemeUpdated);
+	/*
+	 * A GPU process that died is re-launched by Electron and its status may come
+	 * back software-only (the crash fallback the criteria name). `gpu-info-update`
+	 * is the documented signal; the child-process-gone hook asks again in case the
+	 * status object settles after the event.
+	 */
+	app.on("gpu-info-update", reevaluate);
+	const onChildProcessGone = (
+		_event: unknown,
+		details: { type?: string } | undefined,
+	): void => {
+		if (details?.type === "GPU") setTimeout(reevaluate, 0);
+	};
+	app.on("child-process-gone", onChildProcessGone);
 
 	/* A launch with glass on already has the construction options; this brings
 	 * the process-wide tone pin in line without touching the window twice. */
@@ -333,7 +522,10 @@ export function attachWindowGlass(
 			ipcMain.removeHandler(WINDOW_GLASS_GET_CHANNEL);
 			ipcMain.removeHandler(WINDOW_GLASS_SET_CHANNEL);
 			ipcMain.removeHandler(WINDOW_GLASS_SCHEME_CHANNEL);
+			ipcMain.removeHandler(WINDOW_GLASS_RENDERER_CHANNEL);
 			nativeTheme.removeListener("updated", onNativeThemeUpdated);
+			app.removeListener("gpu-info-update", reevaluate);
+			app.removeListener("child-process-gone", onChildProcessGone);
 			if (pinnedTheme) nativeTheme.themeSource = "system";
 		},
 	};
