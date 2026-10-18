@@ -1,9 +1,9 @@
 {
-	"ui.agents.navigation.updates.preview.empty": "Aucune différence à afficher : la version du hub correspond à la vôtre.",
+	"ui.agents.navigation.updates.preview.empty": "Aucune différence à afficher : la version du hub correspond à la vôtre.",
 	"ui.agents.navigation.updates.preview.local": "La vôtre",
 	"ui.agents.navigation.updates.preview.remote": "Celle du hub",
 	"ui.agents.navigation.updates.accessible": "Mise à jour du hub",
-	"ui.agents.navigation.updates.baseline_unknown": "Rien ne consigne les modifications que vous avez apportées sur cet appareil. Chacun des deux choix intègre les ajouts du hub sans supprimer aucun des vôtres ; là où les deux versions diffèrent, votre choix détermine quelle formulation est conservée.",
+	"ui.agents.navigation.updates.baseline_unknown": "Rien ne consigne les modifications que vous avez apportées sur cet appareil. Chacun des deux choix intègre les ajouts du hub sans supprimer aucun des vôtres ; là où les deux versions diffèrent, votre choix détermine quelle formulation est conservée.",
 	"ui.agents.navigation.updates.merge_guidance": "Là où les deux versions diffèrent, votre choix détermine quelle formulation est conservée. Tout le reste est fusionné et votre version actuelle est d’abord enregistrée comme sauvegarde.",
 	"ui.agents.navigation.updates.action.updating": "Mise à jour…",
 	"ui.agents.navigation.updates.action.update": "Mettre à jour depuis le hub",

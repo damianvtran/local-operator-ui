@@ -36,7 +36,7 @@
 			"locale": "fr",
 			"namespace": "ui.chat",
 			"source_sha256": "29169c4c0801689781d503f724d457757275416c49e975bfb6ae4872d90c2c46",
-			"target_sha256": "09387b21dc4b96e8b7e91e5ed4110a23a99dc4d2cf61d7797e5ff0b3e3b6ebf4",
+			"target_sha256": "3cd942b2ff623a18d68995c148d5edf1d5a4028033932b71f6ed161f7ba03722",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -60,7 +60,7 @@
 			"locale": "fr",
 			"namespace": "ui.chat.composer",
 			"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
-			"target_sha256": "d456387f26ac7374e4981ea56cd1c178d39c5c51152e1dd30db9b052b05f68a1",
+			"target_sha256": "c52bea44cef9c409b6ccc1ac16eaa685500bc25bc8a27aa9740977c369b7dda0",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -84,7 +84,7 @@
 			"locale": "fr",
 			"namespace": "ui.agents.navigation",
 			"source_sha256": "23f591cd7c2d52c2563e0b5cbb4cbb2164f7cd01c2568b050738b3be976a5729",
-			"target_sha256": "0892ac412bd6643f6a307c2014f155f3b13d00e65b67b7201cdeacbcc99b8f6e",
+			"target_sha256": "179d48ca93cee5a0e76707bb1a2210b19cebe125eceb8d6be21e622e06181091",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -120,7 +120,7 @@
 			"locale": "fr",
 			"namespace": "ui.command_palette",
 			"source_sha256": "c48797d973f81dea023e5c89c40c83d8ae0a9cdfaeb2509f6cbc4e9fb8abd7c6",
-			"target_sha256": "30569cac058ad3a6581b8f07d895f0baf2172d06cf24ca6f09eda409603b672b",
+			"target_sha256": "21dfa0ea5a7e963362fb45a01dca9c965ff2344b11114fb66d579f1c9d10b522",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
