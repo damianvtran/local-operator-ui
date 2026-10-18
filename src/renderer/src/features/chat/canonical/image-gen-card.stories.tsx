@@ -573,12 +573,22 @@ export const Affordances: Story = {
 				}}
 				scope={null}
 			/>
+			{/*
+			 * Two settled stops, side by side, because the security round (2026-10-17)
+			 * made them DIFFERENT sentences: a queued stop may claim no charge, and an
+			 * in-flight one may only say the request was made and settlement is being
+			 * checked. `message` is null in both: these frames show the fallbacks, and
+			 * a record that states the tool's own detail prefers that instead.
+			 */}
 			<ImageGenCard
-				view={{ state: "cancelled" }}
+				view={{ state: "cancelled", generating: false, message: null }}
 				scope={null}
 				actions={{ onCancel: noop, onRestart: noop, onEditRestart: noop }}
 			/>
-			<ImageGenCard view={{ state: "cancelled" }} scope={null} />
+			<ImageGenCard
+				view={{ state: "cancelled", generating: true, message: null }}
+				scope={null}
+			/>
 		</CardFrame>
 	),
 };

@@ -679,3 +679,132 @@ test("terminal bounds override recovered quota and prepared refusal stays fixed"
 	});
 	assert.deepEqual(patch.detail, ["prepared:unsupported"]);
 });
+
+/*
+ * THE SOUNDS LIST (sound phase, 2026-10-17). `supplement_v1` rows gain a
+ * `sounds` list; the merge rules are the components' own, and the absent case
+ * must render nothing rather than an empty section (the brief's "never a stub").
+ */
+
+test("sounds parse off a row's details, drop malformed entries, and never invent one", () => {
+	const digest = "d".repeat(32);
+	const patch = model.supplementPatchFromDetails({
+		...row("done_populated"),
+		sounds: [
+			{
+				attachment: digest,
+				mime: "audio/mpeg",
+				title: "Storm swell",
+				duration_s: 6.5,
+			},
+			// No digest: nothing could ever play it, so the entry is dropped
+			// rather than listed as a dead player.
+			{ mime: "audio/mpeg", title: "Nameless" },
+			// A malformed digest is the same fact.
+			{ attachment: "not-a-digest", title: "Broken" },
+			// A stated-but-odd duration reads as absent, never as NaN.
+			{ attachment: "e".repeat(32), mime: "audio/wav", duration_s: null },
+		],
+	});
+	assert.deepEqual(patch.sounds, [
+		{
+			attachment: digest,
+			mime: "audio/mpeg",
+			title: "Storm swell",
+			durationS: 6.5,
+		},
+		{
+			attachment: "e".repeat(32),
+			mime: "audio/wav",
+			title: "",
+			durationS: null,
+		},
+	]);
+	// Absent on every row older than the wire change: an empty list, which the
+	// block renders as nothing at all.
+	assert.deepEqual(
+		model.supplementPatchFromDetails(row("done_populated")).sounds,
+		[],
+	);
+});
+
+test("a restated sounds list keeps the previous array; a new one replaces it", () => {
+	const digest = "f".repeat(32);
+	const sound = {
+		attachment: digest,
+		mime: "audio/mpeg",
+		title: "Chime",
+		duration_s: 2,
+	};
+	const base = model.mergeSupplement(
+		null,
+		{
+			anchor: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+			job: "3f9c1a7e5b20",
+			version: 1,
+			state: "done",
+			sounds: model.soundsFrom([sound]),
+		},
+		0,
+	);
+	assert.equal(base.sounds.length, 1);
+	// A later beat that says nothing about sounds keeps what the row held.
+	const quiet = model.mergeSupplement(
+		base,
+		{
+			anchor: base.anchor,
+			job: base.job,
+			version: 2,
+			state: "done",
+		},
+		1,
+	);
+	assert.equal(
+		quiet.sounds,
+		base.sounds,
+		"the same ARRAY survives, for the memoised row",
+	);
+	// The identical list restated is still the previous array (identity rule).
+	const restated = model.mergeSupplement(
+		base,
+		{
+			anchor: base.anchor,
+			job: base.job,
+			version: 3,
+			state: "done",
+			sounds: model.soundsFrom([sound]),
+		},
+		2,
+	);
+	assert.equal(restated.sounds, base.sounds);
+	// A different list is a new one.
+	const changed = model.mergeSupplement(
+		base,
+		{
+			anchor: base.anchor,
+			job: base.job,
+			version: 4,
+			state: "done",
+			sounds: model.soundsFrom([{ ...sound, title: "Other" }]),
+		},
+		3,
+	);
+	assert.notEqual(changed.sounds, base.sounds);
+	assert.equal(changed.sounds[0].title, "Other");
+});
+
+test("sounds-only done highlights remain visible", () => {
+	const sound = model.supplementRecordFromDetails(1, {
+		anchor: "answer",
+		state: "done",
+		sounds: [
+			{
+				attachment: "a".repeat(32),
+				mime: "audio/wav",
+				title: "Storm",
+				duration_s: 12,
+			},
+		],
+	});
+	assert.equal(model.supplementDisposition(sound, false), "block");
+});

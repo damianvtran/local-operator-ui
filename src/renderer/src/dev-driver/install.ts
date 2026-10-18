@@ -43,6 +43,7 @@ import {
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Query } from "@tanstack/react-query";
+import { soundDriverVerbs } from "./sounds";
 
 /** One animation frame, so a capture sees the paint the action caused. */
 function nextFrame(): Promise<void> {
@@ -404,6 +405,7 @@ export function installDevDriver(): string[] {
 	if (!bridge?.armed) return [];
 
 	return bridge.install({
+		...soundDriverVerbs,
 		/** Where the driver is, right now, in the app's own terms. */
 		hello: () => ({
 			armed: true,

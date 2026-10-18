@@ -63,14 +63,39 @@ class FakeAudio {
 		this.paused = false;
 		this.onended = null;
 		this.onerror = null;
+		/*
+		 * The shared engine's surface on a real element: it detaches a source by
+		 * removing the attribute and re-loading (so a revoked URL cannot be
+		 * re-fetched), sets preload, and reads/sets currentTime and duration.
+		 * The fake carries them because the engine now drives THIS element rather
+		 * than one per press - a double that lacked them would fail the engine's
+		 * detach path, which is a test-double gap, not a product behaviour.
+		 */
+		this.currentTime = 0;
+		this.duration = 0;
+		this.volume = 1;
+		this.playbackRate = 1;
+		this.preload = "";
+		this.srcRemoved = 0;
+		this.loaded = 0;
 		fakeAudios.push(this);
 	}
 	play() {
 		this.played = true;
+		this.paused = false;
 		return Promise.resolve();
 	}
 	pause() {
 		this.paused = true;
+	}
+	removeAttribute(name) {
+		if (name === "src") {
+			this.src = null;
+			this.srcRemoved += 1;
+		}
+	}
+	load() {
+		this.loaded += 1;
 	}
 	/** What a real element would fire when the audio finishes. */
 	fireEnded() {
@@ -97,6 +122,7 @@ const bundle = await build({
 	stdin: {
 		contents:
 			'export * from "./src/renderer/src/shared/store/speech-store";\n' +
+			'export * from "./src/renderer/src/shared/store/audio-engine-store";\n' +
 			'export { SPEECH_FAILURE_COPY, SPEECH_PLAYBACK_COPY } from "./src/renderer/src/shared/lib/speech-errors";',
 		resolveDir: process.cwd(),
 	},
@@ -154,11 +180,19 @@ const {
 	selectionSpeechKey,
 	SPEECH_FAILURE_COPY,
 	SPEECH_PLAYBACK_COPY,
+	useAudioEngineStore,
 	useSpeechStore,
 } = mod;
 
 const store = useSpeechStore;
 const state = () => store.getState();
+/*
+ * THE SHARED ELEMENT (sound phase). Playback moved to the one engine, so its
+ * element is created ONCE for the module's lifetime and re-sourced per press -
+ * `fakeAudios.length` therefore counts elements CONSTRUCTED since the last
+ * reset, and the element under test is read from the engine's own state.
+ */
+const live = () => useAudioEngineStore.getState().element;
 
 globalThis.__speechToasts = { errors: [], infos: [] };
 const toasts = () => globalThis.__speechToasts;
@@ -174,6 +208,10 @@ const reset = () => {
 		currentUrl: null,
 		generation: 0,
 	});
+	// The engine is stopped too, so each test starts from idle: the element
+	// survives (it is the module's ONE element) but holds no source and no
+	// activation's handlers.
+	useAudioEngineStore.getState().stop();
 	fakeAudios.length = 0;
 	urls.created.length = 0;
 	urls.revoked.length = 0;
@@ -236,7 +274,16 @@ test("a cached key replays without a fetch", () => {
 			return new Blob(["other"]);
 		});
 		assert.equal(fetchedAgain, false, "the fetcher is not consulted on a hit");
-		assert.equal(fakeAudios.length, 2, "a second element carries the replay");
+		assert.equal(
+			fakeAudios.length,
+			0,
+			"the replay builds no second element - the shared engine re-sources the one",
+		);
+		assert.equal(
+			live().src,
+			urls.created[1],
+			"and the one element plays the replay's URL",
+		);
 		assert.equal(state().playingKey, "msg:a");
 	})();
 });
@@ -248,7 +295,7 @@ test("stopSpeech revokes the URL the element was built from", () => {
 		const url = urls.created[0];
 		const createdBeforeStop = urls.created.length;
 		state().stopSpeech();
-		assert.equal(fakeAudios[0].paused, true, "the element is paused");
+		assert.equal(live().paused, true, "the shared element is paused");
 		assert.deepEqual(
 			urls.revoked,
 			[url],
@@ -268,7 +315,7 @@ test("a finished element clears the slot and revokes its URL", () => {
 	reset();
 	return (async () => {
 		await state().speak("msg:a", async () => new Blob(["audio"]));
-		fakeAudios[0].fireEnded();
+		live().fireEnded();
 		assert.equal(state().playingKey, null);
 		assert.equal(state().audioElement, null);
 		assert.deepEqual(urls.revoked, [urls.created[0]]);
@@ -465,7 +512,10 @@ test("a playback failure raises the error toast through the same channel (C1)", 
 		const original = console.error;
 		console.error = () => {};
 		try {
-			fakeAudios[0].onerror();
+			// The engine's element carries THIS press's error handler (the engine
+			// wires the current activation's callbacks), so the fire below is the
+			// real path the decode failure takes.
+			live().onerror();
 		} finally {
 			console.error = original;
 		}
@@ -621,7 +671,11 @@ test("dismiss stops this key's playback and touches no other key", () => {
 			null,
 			"the dismissed key's playback stops",
 		);
-		assert.equal(fakeAudios[1].paused, true, "its element is paused");
+		assert.equal(
+			live().paused,
+			true,
+			"the shared element - carrying the dismissed key's press - is paused",
+		);
 	})();
 });
 
@@ -634,8 +688,12 @@ test("playSpeech keeps its signature and speaks under the message key", () => {
 		store.setState({ audioCache: new Map([["msg:a1", new Blob(["cached"])]]) });
 		await state().playSpeech("a1", "c1", "the words");
 		assert.equal(state().playingKey, "msg:a1");
-		assert.equal(fakeAudios.length, 1);
-		assert.equal(fakeAudios[0].played, true);
+		assert.equal(
+			fakeAudios.length,
+			0,
+			"no element is constructed for the press - the shared engine already holds the one",
+		);
+		assert.equal(live()?.played, true, "the shared element was started");
 	})();
 });
 

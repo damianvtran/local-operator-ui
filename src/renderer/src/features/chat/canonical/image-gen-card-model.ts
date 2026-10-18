@@ -104,9 +104,34 @@ export type ImageGenToolRecord = Extract<TranscriptRecord, { kind: "tool" }>;
  */
 export const VIDEO_GEN_TOOL_NAME = "generate_video";
 
+/**
+ * The two audio members of the detection set (sound phase, 2026-10-17), named
+ * here because exactly one string may spell each one: the set routes the card
+ * (`isImageGenTool`), and `imageGenMaterial` below is the noun fact every copy
+ * branch reads. Two literals would be two edits at rename time.
+ *
+ * These calls ride the card's whole six-state machine unchanged — their live
+ * life is submit-to-receipt like the image lane's — and the facts that differ
+ * from the image lane are the MATERIAL NOUN and the artifact render (a sound
+ * through `CanonicalAudio`, mounted from the done body by the entry's kind).
+ * Nothing about their state vocabulary, progress fields or settling rules is
+ * new: the harness registers them as ordinary tool calls, so the card that
+ * already speaks the record's `details` wire reads them as-is.
+ *
+ * vs VIDEO's mount rule, `imageGenCardMountActions` below spells the one
+ * behavioural difference: a video call is a detached job an in-turn press
+ * cannot cancel, so it draws no Cancel; the audio tools are interruptible
+ * (`interruptible=True` in the frozen tool schema), so an unsettled one keeps
+ * the pane's interrupt exactly as an image call does.
+ */
+export const VOICEOVER_GEN_TOOL_NAME = "generate_voiceover";
+export const SOUND_EFFECT_GEN_TOOL_NAME = "generate_sound_effect";
+
 export const IMAGE_GEN_TOOL_NAMES: ReadonlySet<string> = new Set([
 	"generate_image",
 	VIDEO_GEN_TOOL_NAME,
+	VOICEOVER_GEN_TOOL_NAME,
+	SOUND_EFFECT_GEN_TOOL_NAME,
 ]);
 
 /** Whether a tool call is one this surface renders as a generating-media card. */
@@ -126,13 +151,82 @@ export function isVideoGenTool(toolName: string): boolean {
  * carried on the arms that can render a material word — never re-derived at a
  * call site, so the state line and the failure fallback cannot come to disagree
  * about what an artifact is. The enumeration of strings it may steer is the
- * design spec's V-list (§4), and nothing outside that list branches on it.
+ * design spec's V-list (§4) extended by the sound phase's own delta: the two
+ * audio arms name their artifact and nothing else about the card moves.
  */
-export type ImageGenMaterial = "image" | "video";
+export type ImageGenMaterial = "image" | "video" | "voiceover" | "sound-effect";
 
 /** The material fact for one tool call. */
 export function imageGenMaterial(toolName: string): ImageGenMaterial {
-	return isVideoGenTool(toolName) ? "video" : "image";
+	if (toolName === VIDEO_GEN_TOOL_NAME) return "video";
+	if (toolName === VOICEOVER_GEN_TOOL_NAME) return "voiceover";
+	if (toolName === SOUND_EFFECT_GEN_TOOL_NAME) return "sound-effect";
+	return "image";
+}
+
+/**
+ * THE TWO CANCEL SENTENCES (security round 1, 2026-10-17), and the rule they
+ * exist to enforce: STOP IS A REQUEST, GUARANTEED ONLY WHILE QUEUED.
+ *
+ * The frozen contract is explicit that cancellation is best-effort — once the
+ * vendor is IN_PROGRESS there is no cancel endpoint, `cancellation.vendor_
+ * stopped` is `false`, and the generation continues and bills if it produces
+ * audio. So the card may make the no-charge claim ONLY for a stop pressed
+ * before the provider was called, and must state the request (with its cost
+ * consequence) for anything that had started. Showing the queued sentence for
+ * an in-flight cancel is the one wording error that would read as a promise the
+ * platform cannot keep.
+ *
+ * COPIED VERBATIM from the security round's ruling (and its server follow-up,
+ * PR #139): these two sentences are product copy, reviewed as such, and are
+ * asserted byte-for-byte by the card's own suite.
+ *
+ * THE RUNNING SENTENCE'S LAST CLAUSE IS A PENDING-SETTLEMENT STATE, not a
+ * hedge: after a running cancel the harness bounded-polls the provider for up
+ * to ~2 minutes and may later append a settlement notice with the billed cost
+ * and the completed artifact. The card therefore claims "checking", never a
+ * final no-charge, and the later notice renders as an ordinary custom row
+ * (no second player path: a settled artifact enters the session index the
+ * Files/Highlights surfaces already read).
+ */
+export const CANCEL_QUEUED_COPY =
+	"Stopped before the provider was called; you will not be charged.";
+
+export const CANCEL_RUNNING_COPY =
+	"Stop requested. The provider has no cancellation endpoint; the generation continues and will be charged if it produces audio. Checking for settlement.";
+
+/**
+ * THE RATE-LIMITED SENTENCE (sound phase, 2026-10-17). The server's fixed copy
+ * for `audio_rate_limited`: a submit-time 429 the harness backs off from, or a
+ * vendor 429 that settles the job as an error at zero cost. Retryable by
+ * calling again — NOT by a control that promises the next call will succeed.
+ *
+ * Used only when the record names the TYPE and states no sentence: a tool
+ * result's own message always wins (the failure arm's verbatim rule), and this
+ * sentence is the absence's copy rather than a replacement for supplied text.
+ */
+export const AUDIO_RATE_LIMITED_COPY =
+	"Audio generation is busy right now. Wait a moment and try again.";
+
+/**
+ * The material's noun, as the card's sentences spell it.
+ *
+ * One spelling per material, beside `imageGenMaterial` so a sentence that
+ * wants a noun cannot invent a second spelling of one ("sound effect" vs
+ * "sound-effect" vs "sfx"): the state line, the done receipt and the failure
+ * fallback all read THIS function.
+ */
+export function imageGenMaterialNoun(material: ImageGenMaterial): string {
+	switch (material) {
+		case "video":
+			return "video";
+		case "voiceover":
+			return "voiceover";
+		case "sound-effect":
+			return "sound effect";
+		default:
+			return "image";
+	}
 }
 
 /**
@@ -339,7 +433,23 @@ export type ImageGenCardView =
 			 */
 			errorType: string | null;
 	  }
-	| { state: "cancelled" };
+	| {
+			state: "cancelled";
+			/**
+			 * Whether the call had started executing when it was stopped. The
+			 * settled receipt's sentence follows the same queued/running split the
+			 * cancelling line does: an in-flight stop never reads as a no-charge
+			 * cancellation (`CANCEL_RUNNING_COPY`), because the vendor has no
+			 * cancellation endpoint and may have produced (and charged for) audio.
+			 */
+			generating: boolean;
+			/**
+			 * The tool/server detail for the stop — the result's own content when
+			 * it stated one. Preferred over either canned sentence: the wire's
+			 * own words are the receipt (`media_already_completed`'s sibling rule).
+			 */
+			message: string | null;
+	  };
 
 /** The state tag alone, for callers that switch on it without the payload. */
 export type ImageGenCardState = ImageGenCardView["state"];
@@ -373,9 +483,14 @@ export function imageGenCardView(
 	 * interrupt class the ledger already spells `interrupted`, and the card's
 	 * `cancelled` is the same claim: no image was produced, and nothing failed.
 	 */
-	if (record.stopped === true) return { state: "cancelled" };
+	if (record.stopped === true)
+		return {
+			state: "cancelled",
+			generating: record.startedAt !== null,
+			message: canonical.error ?? record.output,
+		};
 	if (record.notRunKind === "skipped" || record.notRunKind === "aborted")
-		return { state: "cancelled" };
+		return { state: "cancelled", generating: false, message: record.output };
 	/*
 	 * ARM 2, the planning verdicts (`unknown_tool`, `invalid_arguments`,
 	 * `duplicate_id`, `denied`, `gate_failed`): the harness's own reason is the
@@ -399,7 +514,8 @@ export function imageGenCardView(
 	 * nothing was measured, so this is a cancellation in the plain sense — the
 	 * restart affordance is the honest one, and no error sentence is invented.
 	 */
-	if (record.neverSent === true) return { state: "cancelled" };
+	if (record.neverSent === true)
+		return { state: "cancelled", generating: false, message: record.output };
 	/*
 	 * ARM 4, the tool's own error result — three readings, in this order:
 	 *
@@ -428,11 +544,31 @@ export function imageGenCardView(
 				receipt: "already-finished",
 			};
 		if (canonical.stage === "cancelled" && canonical.errorType === null)
-			return { state: "cancelled" };
+			return {
+				state: "cancelled",
+				/*
+				 * The result calls itself cancelled; whether that was a queued or
+				 * an in-flight stop is the START fact, which the record carries.
+				 */
+				generating: record.startedAt !== null,
+				message: canonical.error ?? record.output,
+			};
 		return {
 			state: "failed",
 			material,
-			message: canonical.error ?? record.output,
+			/*
+			 * The sentence precedence, in the card's own order: the wire's error
+			 * text, then the tool result's own content, and only then the fixed
+			 * copy for a type that states nothing to read. `audio_rate_limited` is
+			 * the one type the server authors a reader sentence for; every other
+			 * absence keeps the card's generic fallback.
+			 */
+			message:
+				canonical.error ??
+				record.output ??
+				(canonical.errorType === "audio_rate_limited"
+					? AUDIO_RATE_LIMITED_COPY
+					: null),
 			errorType: canonical.errorType,
 		};
 	}
@@ -593,5 +729,17 @@ export function imageGenCardMountActions(
 	onInterruptTurn: (() => void) | undefined,
 ): ImageGenCardActions | undefined {
 	if (isVideoGenTool(toolName)) return undefined;
+	/*
+	 * AND THE AUDIO CALLS KEEP THE INTERRUPT — the only cancel affordance this
+	 * card may draw for them, because it is the only one that cannot lie. The
+	 * frozen tool schema registers `generate_voiceover`/`generate_sound_effect`
+	 * as `interruptible=True`, so the pane's own interrupt is a real press on
+	 * the wire (the harness cancels the call), which is exactly the claim the
+	 * control's hint makes. What the card must NOT grow is a per-job "stop the
+	 * vendor" button: cancellation is best-effort once the vendor is mid-flight
+	 * (`cancellation.vendor_stopped:false` in the frozen contract), so a control
+	 * promising a guaranteed stop would lie about the sound, and a control whose
+	 * hint had to hedge ("may stop") would be a question where a button belongs.
+	 */
 	return onInterruptTurn ? { onCancel: onInterruptTurn } : undefined;
 }

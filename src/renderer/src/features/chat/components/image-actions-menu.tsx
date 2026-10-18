@@ -97,9 +97,10 @@ export type ImageActionsMenuProps = {
 	onShowInCanvas?: (() => void) | undefined;
 	/**
 	 * For a session artifact: what the bytes are. A video is offered `Save as...`
-	 * and no clipboard copy (there is no video clipboard form).
+	 * and no clipboard copy (there is no video clipboard form) — and a sound is
+	 * the same case, so it rides the same arm (`image-actions.ts`).
 	 */
-	mediaKind?: "image" | "video";
+	mediaKind?: "image" | "video" | "audio";
 	/**
 	 * For a session artifact: the name `Save as...` proposes
 	 * (`artifactFileName`). Required for that entry to work, which is why the

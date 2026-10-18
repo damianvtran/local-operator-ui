@@ -49,6 +49,7 @@ const {
 	imageGenCardMountActions,
 	imageGenCardView,
 	imageGenMaterial,
+	imageGenMaterialNoun,
 	isImageGenTool,
 	isVideoGenTool,
 } = await import(
@@ -101,13 +102,22 @@ const ALL_ACTIONS = {
 	onEditRestart: () => {},
 };
 
-test("the detection set is the two frozen tool names, and the material fact derives from them", () => {
+test("the detection set is the four frozen tool names, and the material fact derives from them", () => {
+	/*
+	 * The set grew by the sound phase's two members (2026-10-17): the audio
+	 * tools are ordinary interruptible tool calls, so they ride this card's
+	 * whole six-state machine and this set is the one edit that routes them.
+	 */
 	assert.deepEqual([...IMAGE_GEN_TOOL_NAMES].sort(), [
 		"generate_image",
+		"generate_sound_effect",
 		"generate_video",
+		"generate_voiceover",
 	]);
 	assert.equal(isImageGenTool("generate_image"), true);
 	assert.equal(isImageGenTool("generate_video"), true);
+	assert.equal(isImageGenTool("generate_voiceover"), true);
+	assert.equal(isImageGenTool("generate_sound_effect"), true);
 	// The image-to-image edit rides `source_image_path` on the SAME tool; the
 	// second image name was frozen away before it ever had a producer. The video
 	// phase adds exactly one member, and only one spelling of it.
@@ -116,12 +126,22 @@ test("the detection set is the two frozen tool names, and the material fact deri
 	// Exact match only — a case or spelling drift must not silently detect.
 	assert.equal(isImageGenTool("Generate_Image"), false);
 	assert.equal(isImageGenTool("generate_image "), false);
+	assert.equal(isImageGenTool("Generate_Voiceover"), false);
 	assert.equal(isImageGenTool(""), false);
-	// The material fact is derived once, from the call's own name.
+	// The material fact is derived once, from the call's own name — and the
+	// noun it steers is spelled once, beside it, so the three strings cannot
+	// come to name one material two ways.
 	assert.equal(isVideoGenTool("generate_video"), true);
 	assert.equal(isVideoGenTool("generate_image"), false);
 	assert.equal(imageGenMaterial("generate_video"), "video");
 	assert.equal(imageGenMaterial("generate_image"), "image");
+	assert.equal(imageGenMaterial("generate_voiceover"), "voiceover");
+	assert.equal(imageGenMaterial("generate_sound_effect"), "sound-effect");
+	assert.equal(imageGenMaterial("bash"), "image");
+	assert.equal(imageGenMaterialNoun("video"), "video");
+	assert.equal(imageGenMaterialNoun("image"), "image");
+	assert.equal(imageGenMaterialNoun("voiceover"), "voiceover");
+	assert.equal(imageGenMaterialNoun("sound-effect"), "sound effect");
 });
 
 test("a dictated or waiting call maps to queued, with the byte count it has", () => {
@@ -307,7 +327,7 @@ test("the failure pair reads verbatim, the conflict is a receipt, and a plain ca
 				details: canonical({ stage: "cancelled" }),
 			}),
 		),
-		{ state: "cancelled" },
+		{ state: "cancelled", generating: false, message: "Cancelled" },
 	);
 	// An error-shaped result with no canonical payload keeps the old read.
 	assert.deepEqual(imageGenCardView(tool({ isError: true, output: "boom" })), {
@@ -410,7 +430,22 @@ test("a failure carries the error text verbatim, and a verdict keeps its own", (
 test("the interrupted endings map to cancelled, with no text claimed for them", () => {
 	assert.deepEqual(imageGenCardView(tool({ stopped: true })), {
 		state: "cancelled",
+		/*
+		 * The fixture states no `startedAt` and no output, so the stop is a QUEUED
+		 * one with no detail: `generating: false` is what picks the no-charge
+		 * sentence at the card, and `message: null` is what leaves it to fall
+		 * back rather than to claim a detail the record never had.
+		 */
+		generating: false,
+		message: null,
 	});
+	// A stop on a call that HAD started: the in-flight split.
+	const startedStop = imageGenCardView(
+		tool({ stopped: true, startedAt: 1_000, output: "stopped by the reader" }),
+	);
+	assert.equal(startedStop.state, "cancelled");
+	assert.equal(startedStop.generating, true);
+	assert.equal(startedStop.message, "stopped by the reader");
 	for (const kind of ["skipped", "aborted"]) {
 		assert.equal(
 			imageGenCardView(
@@ -566,8 +601,18 @@ test("a cancelling card wears the generating body only when one existed (F3)", (
 	});
 	assert.equal(neverGenerated.includes('role="progressbar"'), false);
 	assert.equal(neverGenerated.includes("data-imagegen-tile"), false);
-	// The words are honest either way: the plain state line stays.
-	assert.equal(neverGenerated.includes("Cancelling"), true);
+	/*
+	 * THE LINE IS THE SECURITY ROUND'S, NOT "Cancelling…" (2026-10-17): a stop
+	 * pressed before the provider was called is the one case that may claim no
+	 * charge, and the sentence says exactly that.
+	 */
+	assert.equal(
+		neverGenerated.includes(
+			"Stopped before the provider was called; you will not be charged.",
+		),
+		true,
+	);
+	assert.equal(neverGenerated.includes("Cancelling…"), false);
 
 	const wasGenerating = markupOf({
 		state: "cancelling",
@@ -578,6 +623,19 @@ test("a cancelling card wears the generating body only when one existed (F3)", (
 	assert.equal(wasGenerating.includes("data-imagegen-tile"), true);
 	// No fraction, no bar — the same rule the running pin below carries.
 	assert.equal(wasGenerating.includes('role="progressbar"'), false);
+	/*
+	 * AND THE OTHER SENTENCE for an in-flight stop: a REQUEST, with its billing
+	 * consequence, and the settlement check that follows it. The no-charge line
+	 * must NOT appear here — that is the inversion the split exists to prevent.
+	 */
+	assert.equal(wasGenerating.includes("Stop requested."), true);
+	assert.equal(wasGenerating.includes("Checking for settlement."), true);
+	assert.equal(
+		wasGenerating.includes(
+			"Stopped before the provider was called; you will not be charged.",
+		),
+		false,
+	);
 
 	// A running call had a generation by definition, so the tile is there.
 	const running = markupOf({
@@ -693,7 +751,16 @@ test("the mid-walk note rides under the live body, and the live affordances stay
 	assert.equal(note.includes("Generating image…"), true);
 	assert.equal(note.includes("data-imagegen-note"), true);
 	assert.equal(note.includes("out of credits"), true);
-	assert.equal(note.includes("Cancel"), true);
+	/*
+	 * The affordance is called "Stop" now, and its hint is the contract in one
+	 * line: an in-flight press REQUESTS a stop the provider may ignore (and
+	 * bill for), which is why the label is not "Cancel".
+	 */
+	assert.equal(note.includes(">Stop<"), true);
+	assert.equal(
+		note.includes("Requests a stop; the provider may finish anyway."),
+		true,
+	);
 
 	// The recovered frame: same state, the note gone — the control neither
 	// leaves nor disables, because no state the wire does not claim was painted.
@@ -709,7 +776,7 @@ test("the mid-walk note rides under the live body, and the live affordances stay
 	assert.equal(recovered.includes("data-imagegen-note"), false);
 	assert.equal(recovered.includes("out of credits"), false);
 	assert.equal(recovered.includes("data-imagegen-tile"), true);
-	assert.equal(recovered.includes("Cancel"), true);
+	assert.equal(recovered.includes(">Stop<"), true);
 });
 
 /*
@@ -780,9 +847,29 @@ test("the mount passes a video card no Cancel, and an image card the pane's inte
 	assert.deepEqual(imageGenCardMountActions("generate_image", interrupt), {
 		onCancel: interrupt,
 	});
+	/*
+	 * The audio calls keep the pane's interrupt, and that is the ONLY cancel
+	 * affordance they draw: the frozen tool schema marks both `interruptible`,
+	 * so the press really reaches the call - while a per-job "stop the vendor"
+	 * control would lie (cancellation is best-effort once the vendor is
+	 * mid-flight; contract §"cancellation is best-effort").
+	 */
+	assert.deepEqual(imageGenCardMountActions("generate_voiceover", interrupt), {
+		onCancel: interrupt,
+	});
+	assert.deepEqual(
+		imageGenCardMountActions("generate_sound_effect", interrupt),
+		{
+			onCancel: interrupt,
+		},
+	);
 	// And a mount with no interrupt wired passes nothing either way.
 	assert.equal(
 		imageGenCardMountActions("generate_image", undefined),
+		undefined,
+	);
+	assert.equal(
+		imageGenCardMountActions("generate_voiceover", undefined),
 		undefined,
 	);
 });
@@ -815,6 +902,46 @@ test("the material noun reaches the three strings, and only those strings move (
 	});
 	assert.equal(failed.includes("The video could not be generated."), true);
 	assert.equal(failed.includes("could not be generated."), true);
+
+	/*
+	 * THE SOUND ARMS (2026-10-17): the same three strings, steered by the same
+	 * `material` fact - `voiceover` and `sound effect` are the only words that
+	 * move, and the failure fallback spells the noun the state line does.
+	 */
+	const voiceoverRunning = markupOf({
+		state: "running",
+		material: "voiceover",
+		startedAtMs: null,
+		progress: NO_PROGRESS,
+	});
+	assert.equal(voiceoverRunning.includes("Generating voiceover…"), true);
+	assert.equal(voiceoverRunning.includes("Generating image"), false);
+	const soundEffectRunning = markupOf({
+		state: "running",
+		material: "sound-effect",
+		startedAtMs: null,
+		progress: NO_PROGRESS,
+	});
+	assert.equal(soundEffectRunning.includes("Generating sound effect…"), true);
+	const voiceoverDone = markupOf({
+		state: "done",
+		material: "voiceover",
+		images: [],
+		durationS: 12.5,
+		receipt: "generated",
+	});
+	assert.equal(voiceoverDone.includes("Generated voiceover"), true);
+	assert.equal(voiceoverDone.includes("Generated image"), false);
+	const soundEffectFailed = markupOf({
+		state: "failed",
+		material: "sound-effect",
+		message: null,
+		errorType: null,
+	});
+	assert.equal(
+		soundEffectFailed.includes("The sound effect could not be generated."),
+		true,
+	);
 
 	// The image rendering is byte-identical to what it always was: same views,
 	// `material: "image"`.
@@ -879,6 +1006,64 @@ test("a done card mounts a video ref through the player, never through an img", 
 	);
 	assert.equal(resolving.includes("data-attachment-reserved"), true);
 	assert.equal(resolving.includes("<video"), false);
+});
+
+test("a done card mounts a sound ref through the player, never through an img", () => {
+	/*
+	 * The audio arm of the player seam: a voiceover's artifact is `kind:
+	 * "audio"`, and the card mounts it through `CanonicalAudio` -> the shared
+	 * `SoundPlayer` (never an `<img>`, which cannot decode it, and never the
+	 * `<video>` player, which would paint a blank frame). The label reads the
+	 * CARD's material noun, because the ref only knows it is audio.
+	 */
+	const scope = { sessionId: "session-1", childId: null };
+	const live = {
+		id: "a1",
+		data: "AAAA",
+		attachment: null,
+		mimeType: "audio/mpeg",
+		kind: "audio",
+		durationS: 12.5,
+		width: null,
+		height: null,
+	};
+	const ready = markupOf(
+		{
+			state: "done",
+			material: "voiceover",
+			images: [live],
+			durationS: 12.5,
+			receipt: "generated",
+		},
+		undefined,
+		scope,
+	);
+	assert.equal(ready.includes('data-sound-player="full"'), true);
+	assert.equal(ready.includes('role="slider"'), true);
+	assert.equal(
+		ready.includes('aria-label="Generated voiceover position"'),
+		true,
+		"the slider names the card's material, not the wire's bare kind",
+	);
+	assert.equal(ready.includes("<img"), false);
+	assert.equal(ready.includes("<video"), false);
+
+	// A DURABLE ref (digest) with a scope reserves the box while the bytes
+	// travel — the same state hook the picture and video paths carry.
+	const durable = { ...live, id: "a2", data: null, attachment: "c".repeat(32) };
+	const resolving = markupOf(
+		{
+			state: "done",
+			material: "sound-effect",
+			images: [durable],
+			durationS: null,
+			receipt: "generated",
+		},
+		undefined,
+		scope,
+	);
+	assert.equal(resolving.includes("data-attachment-reserved"), true);
+	assert.equal(resolving.includes('data-sound-player="full"'), false);
 });
 
 /**
@@ -952,4 +1137,155 @@ test("the video stories' embedded MP4 decodes to a real, whole file", async () =
 	assert.equal(boxes[0], "ftyp", "the bytes open with an ftyp box");
 	assert.ok(boxes.includes("moov"), "the movie box is present");
 	assert.ok(boxes.includes("mdat"), "the media payload is present");
+});
+
+/*
+ * THE CANCEL WORDING, PINNED (security round 1, 2026-10-17; server follow-up on
+ * PR #139). Stop is a REQUEST, and only a stop pressed before the provider was
+ * called may claim no charge. These two sentences are product copy reviewed as
+ * such, so they are asserted byte-for-byte, and the inversion — the no-charge
+ * line on an in-flight stop — is asserted absent from the running frame.
+ */
+test("the cancel copy is the security round's queued/running split, byte for byte", () => {
+	const QUEUED =
+		"Stopped before the provider was called; you will not be charged.";
+	const RUNNING =
+		"Stop requested. The provider has no cancellation endpoint; the generation continues and will be charged if it produces audio. Checking for settlement.";
+
+	const queuedFrame = markupOf(
+		{
+			state: "cancelling",
+			generating: false,
+			startedAtMs: null,
+			progress: NO_PROGRESS,
+		},
+		{ onCancel: () => {} },
+	);
+	assert.equal(
+		queuedFrame.includes(QUEUED),
+		true,
+		"a queued stop states the guarantee it can keep",
+	);
+	assert.equal(
+		queuedFrame.includes(RUNNING),
+		false,
+		"and never the in-flight sentence",
+	);
+
+	const runningFrame = markupOf(
+		{
+			state: "cancelling",
+			generating: true,
+			startedAtMs: 1000,
+			progress: NO_PROGRESS,
+		},
+		{ onCancel: () => {} },
+	);
+	assert.equal(
+		runningFrame.includes(RUNNING),
+		true,
+		"an in-flight stop states the request, its cost consequence and the settlement check",
+	);
+	assert.equal(
+		runningFrame.includes(QUEUED),
+		false,
+		"and NEVER the no-charge line",
+	);
+
+	/*
+	 * THE SETTLED RECEIPT follows the same split, and prefers the tool/server
+	 * detail when the record carries one: the wire's own words outrank either
+	 * canned sentence.
+	 */
+	const settledQueued = markupOf({
+		state: "cancelled",
+		generating: false,
+		message: null,
+	});
+	assert.equal(settledQueued.includes(QUEUED), true);
+	const settledRunning = markupOf({
+		state: "cancelled",
+		generating: true,
+		message: null,
+	});
+	assert.equal(settledRunning.includes(RUNNING), true);
+	assert.equal(settledRunning.includes(QUEUED), false);
+	const settledWithDetail = markupOf({
+		state: "cancelled",
+		generating: true,
+		message: "stopped after the provider answered; billed 0.12 USD",
+	});
+	assert.equal(
+		settledWithDetail.includes(
+			"stopped after the provider answered; billed 0.12 USD",
+		),
+		true,
+		"the server's settlement detail is the receipt",
+	);
+	assert.equal(settledWithDetail.includes(RUNNING), false);
+
+	/*
+	 * THE AFFORDANCE NEVER PROMISES A GUARANTEED STOP: it is called "Stop", and
+	 * the queued frame's hint is the only one that says the press is final.
+	 */
+	assert.equal(queuedFrame.includes(">Stop<"), true);
+	assert.equal(
+		queuedFrame.includes("Stops before the provider is called."),
+		true,
+	);
+	assert.equal(runningFrame.includes(">Stop<"), true);
+	assert.equal(
+		runningFrame.includes("Requests a stop; the provider may finish anyway."),
+		true,
+	);
+	assert.equal(
+		runningFrame.includes("Stops before the provider is called."),
+		false,
+	);
+});
+
+/*
+ * THE RATE-LIMITED STATE (sound phase, 2026-10-17). `audio_rate_limited` is a
+ * retryable error whose reader sentence the server authors; the card renders
+ * the tool result's message when it has one and the fixed copy when only the
+ * type survives — never a control that promises the next call will succeed.
+ */
+test("a rate-limited call states the server's sentence, preferring the result's own text", () => {
+	const onlyType = imageGenCardView(
+		tool({
+			toolName: "generate_sound_effect",
+			isError: true,
+			output: null,
+			details: canonical({ error_type: "audio_rate_limited" }),
+		}),
+	);
+	assert.equal(onlyType.state, "failed");
+	assert.equal(onlyType.errorType, "audio_rate_limited");
+	assert.equal(
+		onlyType.message,
+		"Audio generation is busy right now. Wait a moment and try again.",
+	);
+
+	// A result that stated its own sentence WINS over the type's fixed copy.
+	const withResult = imageGenCardView(
+		tool({
+			toolName: "generate_sound_effect",
+			isError: true,
+			output: "the provider's own words",
+			details: canonical({ error_type: "audio_rate_limited" }),
+		}),
+	);
+	assert.equal(withResult.message, "the provider's own words");
+
+	const markup = markupOf(onlyType);
+	assert.equal(
+		markup.includes(
+			"Audio generation is busy right now. Wait a moment and try again.",
+		),
+		true,
+	);
+	// The card's own failure line: no retry control unless a mount wires one,
+	// and no promise about the next call.
+	assert.equal(markup.includes(">Stop<"), false);
+	assert.equal(markup.includes(">Retry<"), false);
 });
