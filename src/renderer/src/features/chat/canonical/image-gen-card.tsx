@@ -248,7 +248,9 @@ function StateLine({
 			 * `imageGenMaterialNoun` so the state line, the done receipt and the
 			 * failure fallback cannot spell one material three ways.
 			 */
-			text = `Generating ${imageGenMaterialNoun(view.material)}…`;
+			text = view.batchProgress
+				? `Generating ${view.batchProgress.total} ${imageGenMaterialNoun(view.material)}${view.batchProgress.total === 1 ? "" : "s"}…`
+				: `Generating ${imageGenMaterialNoun(view.material)}…`;
 			detail = elapsed === null ? null : formatDuration(elapsed);
 			break;
 		case "cancelling":
@@ -273,7 +275,7 @@ function StateLine({
 				view.receipt === "already-finished"
 					? "Already finished."
 					: view.batch
-						? "Sound effect batch"
+						? `${batchMaterialTitle(view.material)} batch`
 						: `Generated ${imageGenMaterialNoun(view.material)}`;
 			detail =
 				view.receipt === "already-finished" || view.durationS === null
@@ -291,7 +293,7 @@ function StateLine({
 			 * (branding section 8).
 			 */
 			text = view.batch
-				? "Sound effect batch failed."
+				? `${batchMaterialTitle(view.material)} batch failed.`
 				: (view.message ??
 					`The ${imageGenMaterialNoun(view.material)} could not be generated.`);
 			emphasis = true;
@@ -312,7 +314,7 @@ function StateLine({
 				view.message ??
 				(view.generating ? CANCEL_RUNNING_COPY : CANCEL_QUEUED_COPY);
 			text = view.batch
-				? "Sound effect batch stopped."
+				? `${batchMaterialTitle(view.material ?? "sound-effect")} batch stopped.`
 				: view.settlementCaption || view.settled
 					? withoutSettlementClause(line)
 					: line;
@@ -353,11 +355,24 @@ function LogTail({ line }: { line: string }) {
  * live state takes. It wraps rather than truncating, like the failed arm's
  * own sentence: the text is authored to be read whole.
  */
-function NoteLine({ line }: { line: string }) {
+function batchMaterialTitle(
+	material: Parameters<typeof imageGenMaterialNoun>[0],
+): string {
+	const noun = imageGenMaterialNoun(material);
+	return noun.charAt(0).toUpperCase() + noun.slice(1);
+}
+
+function NoteLine({
+	line,
+	prominent = false,
+}: { line: string; prominent?: boolean }) {
 	return (
 		<p
 			data-imagegen-note=""
-			className={cn("min-w-0 text-body-sm text-ink-dim")}
+			className={cn(
+				"min-w-0 text-body-sm",
+				prominent ? "text-ink-muted" : "text-ink-dim",
+			)}
 		>
 			{line}
 		</p>
@@ -461,7 +476,16 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 				view.state === "failed" ||
 				view.state === "cancelled") &&
 			view.costCaption ? (
-				<NoteLine line={view.costCaption} />
+				<NoteLine line={view.costCaption} prominent={Boolean(view.batch)} />
+			) : null}
+			{(view.state === "done" ||
+				view.state === "failed" ||
+				view.state === "cancelled") &&
+			view.batchNote ? (
+				<NoteLine line={view.batchNote} prominent />
+			) : null}
+			{view.state === "running" && view.batchProgress?.note ? (
+				<NoteLine line={view.batchProgress.note} />
 			) : null}
 			{view.state === "cancelled" && view.settlementCaption ? (
 				<NoteLine line={view.settlementCaption} />
@@ -513,7 +537,11 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 				view.state === "failed" ||
 				view.state === "cancelled") &&
 			view.batch ? (
-				<SoundBatch items={view.batch} scope={scope} />
+				<SoundBatch
+					items={view.batch}
+					summary={view.batchSummary ?? `${view.batch.length} items`}
+					scope={scope}
+				/>
 			) : view.state === "done" && view.images.length > 0 ? (
 				<div className={cn("flex flex-col gap-2")}>
 					{/*

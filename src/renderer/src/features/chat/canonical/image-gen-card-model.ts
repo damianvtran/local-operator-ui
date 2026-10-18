@@ -84,6 +84,9 @@ import {
 	type SoundBatchItem,
 	soundBatchCostCaption,
 	soundBatchItems,
+	soundBatchNote,
+	soundBatchProgress,
+	soundBatchSummary,
 } from "./sound-batch-model";
 import type { TranscriptImage, TranscriptRecord } from "./transcript-reducer";
 
@@ -386,6 +389,7 @@ export type ImageGenCardView =
 	  }
 	| {
 			state: "running";
+			batchProgress?: { total: number; note: string | null };
 			/**
 			 * Which artifact this call produces — the one fact the state line's noun
 			 * branches on ("Generating image…" / "Generating video…"). The failure
@@ -424,6 +428,8 @@ export type ImageGenCardView =
 			costCaption?: string | null;
 			/** Additive batch receipts; null retains the approved single-player body. */
 			batch?: SoundBatchItem[] | null;
+			batchSummary?: string;
+			batchNote?: string | null;
 			images: readonly TranscriptImage[];
 			/** The material noun this receipt names ("Generated image" / "Generated video"). */
 			material: ImageGenMaterial;
@@ -440,6 +446,8 @@ export type ImageGenCardView =
 	| {
 			state: "failed";
 			batch?: SoundBatchItem[] | null;
+			batchSummary?: string;
+			batchNote?: string | null;
 			costCaption?: string | null;
 			/** The material noun the absence sentence names when no text was stated. */
 			material: ImageGenMaterial;
@@ -462,7 +470,10 @@ export type ImageGenCardView =
 	  }
 	| {
 			state: "cancelled";
+			material?: ImageGenMaterial;
 			batch?: SoundBatchItem[] | null;
+			batchSummary?: string;
+			batchNote?: string | null;
 			costCaption?: string | null;
 			settlementCaption?: string | null;
 			/**
@@ -533,6 +544,16 @@ export function imageGenCardView(
 		sound && record.phase === "done"
 			? soundBatchItems(record.details, record.images ?? [])
 			: null;
+	const batchProgress = sound
+		? soundBatchProgress(record.args, record.details)
+		: null;
+	const batchFields = batch
+		? {
+				batch,
+				batchSummary: soundBatchSummary(record.details, batch),
+				batchNote: soundBatchNote(record.details, record.output),
+			}
+		: {};
 	const settlementCaption = sound
 		? soundSettlementCaption(record.details)
 		: null;
@@ -549,7 +570,11 @@ export function imageGenCardView(
 			generating: record.startedAt !== null,
 			message: canonical.error ?? record.output,
 			...(batch
-				? { batch, costCaption: soundBatchCostCaption(record.details) }
+				? {
+						...batchFields,
+						material,
+						costCaption: soundBatchCostCaption(record.details),
+					}
 				: {}),
 			...(settlementCaption ? { settlementCaption } : {}),
 			...(settlementCaption || settled ? { settled: true } : {}),
@@ -589,9 +614,12 @@ export function imageGenCardView(
 		return {
 			state: "failed",
 			material,
-			message: null,
-			errorType: null,
-			batch,
+			message: canonical.error ?? record.output,
+			errorType: humanErrorClass(
+				canonical.errorType,
+				canonical.error ?? record.output,
+			),
+			...batchFields,
 			costCaption: soundBatchCostCaption(record.details),
 		};
 	/*
@@ -712,6 +740,7 @@ export function imageGenCardView(
 				startedAtMs,
 				progress: progressFrom(canonical),
 				note: canonical.error,
+				...(batchProgress ? { batchProgress } : {}),
 			};
 		}
 		case "done": {
@@ -732,6 +761,7 @@ export function imageGenCardView(
 				durationS: record.durationS ?? null,
 				receipt: "generated",
 				batch,
+				...batchFields,
 				costCaption: batch ? soundBatchCostCaption(record.details) : cost,
 			};
 		}

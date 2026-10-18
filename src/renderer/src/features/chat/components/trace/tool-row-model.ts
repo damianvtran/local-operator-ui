@@ -278,17 +278,18 @@ export function preferDeliveryState(
  * carries `stage` - present even when `null`, which is a mid-walk failure -
  * and the terminal `ImageGenerationUnavailable` result carries `error_type`
  * without one. Audio receipts also discriminate on `billing_basis` or
- * `settled`: they may carry no progress stage at all. Requiring one of these
- * four explicit keys keeps free-form tool details out of this carrier.
+ * `settled`: they may carry no progress stage at all. Named batches also carry
+ * `artifacts`, and live item updates identify `item`/`total`. Requiring one of these
+ * explicit contract discriminators keeps free-form tool details out of this carrier.
  *
  * SCOPE, stated so the boundary is not re-derived: the gate is deliberately
  * TOOL-AGNOSTIC. A non-imagegen frame whose free-form `details` happen to
- * carry one of those four discriminators IS stored on the record — a tool's payload is
+ * carry one of those contract discriminators IS stored on the record — a tool's payload is
  * its own business, and the reducer does not know which tools will say what —
  * and it is INERT: `record.details` has exactly one reader (the image-gen
  * card's adapter, which renders only for the detection set), so nothing
  * paints it and the transcript's rendering is untouched. An un-gated payload
- * (none of the four discriminators present) is a no-op even at the record; the suite pins that
+ * (none of the contract discriminators present) is a no-op even at the record; the suite pins that
  * half (agent review round 1, F1).
  */
 function progressDetailsFrom(details: unknown): Record<string, unknown> | null {
@@ -302,7 +303,8 @@ function progressDetailsFrom(details: unknown): Record<string, unknown> | null {
 		!("error_type" in record) &&
 		!("billing_basis" in record) &&
 		!("settled" in record) &&
-		!("artifacts" in record)
+		!("artifacts" in record) &&
+		!(typeof record.total === "number" && typeof record.item === "number")
 	)
 		return null;
 	return record;
@@ -328,6 +330,12 @@ const PROGRESS_DETAIL_KEYS = [
 	"cost",
 	"artifacts",
 	"cost_complete",
+	"completed",
+	"failed",
+	"cancelled",
+	"total",
+	"item",
+	"name",
 ] as const;
 
 /** Whether two `log_lines` values state the same messages at the same times. */

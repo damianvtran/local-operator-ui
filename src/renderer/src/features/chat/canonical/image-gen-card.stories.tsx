@@ -1256,10 +1256,13 @@ function batchSoundFixture(count: number, failed = -1) {
 		isError: failed === -2,
 		toolName: "generate_sound_effect",
 		details: {
-			...(count === 1 ? { billing_basis: "estimated" } : {}),
 			artifacts,
 			cost_usd: artifacts.reduce((sum, item) => sum + item.cost_usd, 0),
-			cost: { basis: "estimated" },
+			cost: {
+				basis: artifacts.every((item) => item.cost.basis === "billed")
+					? "billed"
+					: "estimated",
+			},
 			cost_complete: true,
 			cancelled: 0,
 			completed: artifacts.filter((item) => !item.error).length,
@@ -1297,7 +1300,25 @@ const BatchSoundStory = ({
 	</div>
 );
 
+/** A legacy single-form result, NOT a one-item sounds batch. */
 export const SoundBatchSingleUnchanged: Story = {
+	render: () => {
+		const single = batchSoundFixture(1);
+		single.details = {
+			artifacts: single.details?.artifacts,
+			cost_usd: 0.001,
+			billing_basis: "estimated",
+		};
+		return (
+			<div className="h-screen overflow-y-auto">
+				<div className="flex w-full max-w-[560px] flex-col gap-6 p-6">
+					<ImageGenCard scope={null} view={imageGenCardView(single)} />
+				</div>
+			</div>
+		);
+	},
+};
+export const SoundBatchOne: Story = {
 	render: () => <BatchSoundStory count={1} />,
 };
 export const SoundBatchFour: Story = {
@@ -1318,7 +1339,7 @@ export const SoundBatchAllFailed: Story = {
 };
 export const SoundBatchLoading: Story = {
 	render: () => (
-		<CardFrame>
+		<div className="flex w-full max-w-[560px] flex-col gap-6 p-6">
 			<ImageGenCard
 				scope={null}
 				view={imageGenCardView(
@@ -1326,14 +1347,109 @@ export const SoundBatchLoading: Story = {
 						id: "batch-loading",
 						toolName: "generate_sound_effect",
 						phase: "running",
+						args: {
+							sounds: Array.from({ length: 10 }, (_, index) => ({
+								name: `Sound ${index + 1}`,
+								prompt: "Fixture",
+							})),
+						},
 						startedAt: Date.now() - 12_000,
 						details: canonical({
 							tool_name: "generate_sound_effect",
 							stage: "running",
+							item: 3,
+							total: 10,
+							name: "Sound 3",
 						}),
 					}),
 				)}
 			/>
-		</CardFrame>
+		</div>
+	),
+};
+
+/** Contract negative states, not live provider outcomes. */
+function BatchReceiptEdge({
+	kind,
+}: { kind: "cancelled" | "unavailable" | "shared" }) {
+	const record = batchSoundFixture(
+		kind === "shared" ? 2 : 4,
+		kind === "shared" ? -1 : 1,
+	);
+	const details = record.details;
+	if (!details) return null;
+	const artifacts = details.artifacts as Record<string, unknown>[];
+	if (kind === "shared") {
+		artifacts[1].digest = artifacts[0].digest;
+		record.images = record.images?.filter(
+			(image) => image.attachment === artifacts[0].digest,
+		);
+	} else {
+		details.cost_complete = false;
+		artifacts[1].cost_usd = null;
+		artifacts[1].cost = { amount_usd: null, basis: "quote" };
+		if (kind === "cancelled") {
+			record.stopped = true;
+			artifacts[1].status = "cancelled";
+			artifacts[1].error = "Stop requested; provider outcome unknown";
+			details.failed = 0;
+			details.cancelled = 1;
+			record.output =
+				"Sound effects: 3 completed, 0 failed, 1 cancelled/stopped. Known total $0.008 (estimated); unknown or late charges are not included. Batch stop requested. In-flight stop is best-effort, not a guaranteed vendor cancellation.";
+		} else {
+			artifacts[0].digest = "fixture-attachment-unavailable";
+			artifacts[0].cost_usd = null;
+			artifacts[0].cost = { amount_usd: null, basis: "quote" };
+			details.cost_usd = 0.007;
+		}
+	}
+	return (
+		<div className="h-screen overflow-y-auto">
+			<div className="flex w-full max-w-[560px] flex-col gap-6 p-6">
+				<ImageGenCard scope={null} view={imageGenCardView(record)} />
+			</div>
+		</div>
+	);
+}
+
+export const SoundBatchCancelled: Story = {
+	render: () => <BatchReceiptEdge kind="cancelled" />,
+};
+export const SoundBatchUnavailable: Story = {
+	render: () => <BatchReceiptEdge kind="unavailable" />,
+};
+export const SoundBatchSharedDigest: Story = {
+	render: () => <BatchReceiptEdge kind="shared" />,
+};
+
+export const SoundBatchLoadingNarrow: Story = {
+	render: () => (
+		<div style={{ width: 390 }} className="max-w-full">
+			<div className="flex w-full flex-col gap-6 p-6">
+				<ImageGenCard
+					scope={null}
+					view={imageGenCardView(
+						genTool({
+							id: "batch-loading-narrow",
+							toolName: "generate_sound_effect",
+							phase: "running",
+							args: {
+								sounds: Array.from({ length: 10 }, () => ({
+									prompt: "Fixture",
+								})),
+							},
+							details: { item: 3, total: 10, name: "Rain on glass" },
+						}),
+					)}
+				/>
+			</div>
+		</div>
+	),
+};
+export const SoundBatchPartialNarrow: Story = {
+	render: () => (
+		<div style={{ width: 390 }} className="max-w-full">
+			<BatchSoundStory count={4} failed={1} />
+		</div>
 	),
 };
