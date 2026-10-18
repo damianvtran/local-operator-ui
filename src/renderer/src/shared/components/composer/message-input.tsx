@@ -99,6 +99,14 @@ import {
 import { SessionModelAccessBand } from "@features/chat/session-status/session-model-access";
 import { SessionStatusStrip } from "@features/chat/session-status/session-status-strip";
 import type { Message } from "@features/chat/types/message";
+import { useVoiceCapability } from "@features/voice/use-voice-status";
+import {
+	ComposerVoiceButton,
+	VoiceComposerStrip,
+	dictationOffReason,
+	voiceSessionTitle,
+} from "@features/voice/voice-composer";
+import { useVoiceStore } from "@features/voice/voice-store";
 import {
 	DesktopControlError,
 	desktopRequestTimeoutMs,
@@ -2022,6 +2030,43 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const { canUseRadientSpeech, speechBlock } = recordingProbe;
 		const canEnableRecordingFeature = canUseRadientSpeech;
+
+		/*
+		 * ONE MICROPHONE, TWO INPUT MODES (design spec `voice-composer/SPEC.md` §3).
+		 *
+		 * While session voice holds the slot, the rig's own page owns the
+		 * microphone: two capture paths would double-send, and dictation would be
+		 * heard by voice as well. So dictation is OFF - announced with
+		 * `aria-disabled` rather than the `disabled` attribute, so the control keeps
+		 * focus and its tooltip (the repo's established disabled mic is `disabled`,
+		 * but a disabled button answers no hover and carries no reason).
+		 *
+		 * A HOLDER IN ANOTHER SESSION BLOCKS IT HERE TOO: that rig is still
+		 * listening, so this window's recorder would be a second one on the same
+		 * machine.
+		 *
+		 * THE SLOT IS READ FROM THE STORE, not through `useVoiceStatus`: this
+		 * composer mounts in documents with no QueryClient (the mini view, the
+		 * agents composer), and that hook's `useQuery` throws there. The store is
+		 * filled by the app's one `QwenVoiceController`; with no controller, nothing
+		 * holds the slot and dictation is untouched.
+		 */
+		const voiceCapable = useVoiceCapability();
+		const voiceHolder = useVoiceStore((s) => s.active?.session_id ?? null);
+		const voiceSessionId = entitySessionId(conversationId);
+		const voiceOnHere = Boolean(
+			voiceCapable && voiceSessionId && voiceHolder === voiceSessionId,
+		);
+		const voiceElsewhere = Boolean(
+			voiceCapable && voiceHolder && voiceHolder !== voiceSessionId,
+		);
+		const voiceBlocksDictation = voiceOnHere || voiceElsewhere;
+		const dictationOff = voiceBlocksDictation
+			? dictationOffReason(
+					voiceOnHere,
+					voiceHolder ? voiceSessionTitle(voiceHolder) : null,
+				)
+			: undefined;
 
 		/*
 		 * The reason the control is off, from the one copy table the five speech
@@ -6761,6 +6806,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 */
 			if (isInputDisabled || !canEnableRecordingFeature) return;
 			/*
+			 * AND VOICE'S OWN REFUSAL, deliberately SILENT (spec §3): the control says
+			 * why in its tooltip, and a toast for a press on a dimmed button is noise.
+			 * This is the only guard the hold path reaches, so it is where "voice on"
+			 * has to be refused for the keyboard and the push-to-talk chord alike.
+			 */
+			if (voiceBlocksDictation) return;
+			/*
 			 * ONE RECORDER AT A TIME (review round 1, M2). Without this, two engagements
 			 * inside the `getUserMedia` window - a double-click on the mic, two taps of
 			 * the binding - overwrite the pending attempt and leave the FIRST recorder
@@ -6874,7 +6926,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				   this did not choose a browser and cannot change it. */
 				showErrorToast("Dictation is not available on this device.");
 			}
-		}, [canEnableRecordingFeature, isInputDisabled]);
+		}, [canEnableRecordingFeature, isInputDisabled, voiceBlocksDictation]);
 
 		const handleConfirmRecording = useCallback(() => {
 			if (!isRecording) return;
@@ -7057,6 +7109,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						!isRecording &&
 						!isTranscribing &&
 						canEnableRecordingFeature &&
+						!voiceBlocksDictation &&
 						boxOnScreenRef.current,
 				),
 		);
@@ -8718,6 +8771,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						data-lo-composer-measure=""
 						data-tour-tag="chat-input-textarea"
 					>
+						{/*
+						 * SESSION VOICE'S OWN BAND (design spec `voice-composer/SPEC.md` §1):
+						 * the history panel, the strip and the "on in another session" notice
+						 * all live INSIDE this box, above the field, because all three describe
+						 * the input mode of the box below them. Nothing is added under the
+						 * header any more.
+						 */}
+						<VoiceComposerStrip
+							sessionId={voiceSessionId}
+							onScrollToNewest={scrollToBottom}
+							isSmallView={isSmallView}
+						/>
 						{(replies.length > 0 || attachments.length > 0) && (
 							/*
 							 * The previews carry their own bound, on a SIBLING of the popup
@@ -9644,20 +9709,33 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													? t("ui.chat.composer.starting_recording")
 													: !canEnableRecordingFeature
 														? recordingUnavailableReason
-														: t("ui.chat.composer.start_recording_hint", {
-																shortcut: shortcutText,
-																pushToTalk: resolvePushToTalkBinding().label,
-															})
+														: voiceBlocksDictation
+															? dictationOff
+															: t("ui.chat.composer.start_recording_hint", {
+																	shortcut: shortcutText,
+																	pushToTalk: resolvePushToTalkBinding().label,
+																})
 											}
 										>
 											<span>
 												<Button
 													variant="ghost"
 													size={isSmallView ? "icon-sm" : "icon"}
-													className="text-ink-dim hover:bg-elevated hover:text-ink"
+													className={cn(
+														"text-ink-dim hover:bg-elevated hover:text-ink",
+														/*
+														 * THE DIMMED FACE OF A REFUSAL THAT KEEPS ITS TOOLTIP (spec §3):
+														 * `aria-disabled` carries the state and the ink step matches the
+														 * ghost variant's own `disabled:` line, so a voice-blocked mic and a
+														 * feature-unavailable one read the same - the reason in the tooltip
+														 * is what differs, and it is the one that says what to do.
+														 */
+														"aria-disabled:text-ink-disabled aria-disabled:hover:bg-transparent aria-disabled:hover:text-ink-disabled",
+													)}
 													onPointerDown={holdCaretOnRefusedPress}
 													onClick={handleStartRecording}
 													aria-label={t("ui.chat.composer.start_recording")}
+													aria-disabled={voiceBlocksDictation || undefined}
 													/*
 													 * BUSY IS ITS OWN FACE (operator feedback via Aida,
 													 * 2026-10-01): while the recorder is being acquired the
@@ -9761,6 +9839,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											</Tooltip>
 										</>
 									)}
+									{/*
+									 * THE WAVE TOGGLE (spec §1): the two input modes sit together -
+									 * dictation, then voice - and Send stays last and rightmost.
+									 * Hidden on a draft and without `features.voice`, exactly as the
+									 * header toggle was.
+									 */}
+									<ComposerVoiceButton
+										sessionId={voiceSessionId}
+										isSmallView={isSmallView}
+									/>
 									{/*
 									 * THE STOP CONTROL'S BOX, HELD FOR A GRACE WINDOW AFTER THE
 									 * TURN IT BELONGED TO ENDS - and empty otherwise.
