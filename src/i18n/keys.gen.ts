@@ -85,7 +85,12 @@ import esUiCommandPalette from "./catalogues/es/ui.command_palette.json";
 import esUiCommonActions from "./catalogues/es/ui.common.actions.json";
 import esUiCommonErrors from "./catalogues/es/ui.common.errors.json";
 import esUiConsole from "./catalogues/es/ui.console.json";
+import esUiHubComments from "./catalogues/es/ui.hub.comments.json";
+import esUiHub from "./catalogues/es/ui.hub.json";
+import esUiHubTaxonomy from "./catalogues/es/ui.hub.taxonomy.json";
 import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
+import esUiProjects from "./catalogues/es/ui.projects.json";
+import esUiSchedules from "./catalogues/es/ui.schedules.json";
 import esUiSettings from "./catalogues/es/ui.settings.json";
 import esUiShell from "./catalogues/es/ui.shell.json";
 import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
@@ -214,7 +219,12 @@ export const bundledCatalogues: Readonly<
 		...esUiCommonActions,
 		...esUiCommonErrors,
 		...esUiConsole,
+		...esUiHubComments,
+		...esUiHub,
+		...esUiHubTaxonomy,
 		...esUiOnboarding,
+		...esUiProjects,
+		...esUiSchedules,
 		...esUiSettings,
 		...esUiShell,
 		...esUiShellRail,
