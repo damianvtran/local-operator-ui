@@ -1493,7 +1493,7 @@ const READS_INPUT_MODE = /input_mode|inputMode/;
 const controllerBundle = await build({
 	stdin: {
 		contents:
-			'export { feedTurns, sendVoiceTake, takeIsEcho, isEcho, isQwenPhrase, isQwenPhraseHeard, markPhraseSpoken, PHRASE_ECHO_WINDOW_MS, rememberSpoken, speechMs, viewedSessionId, spokenTruncated, LONG_TAKE_MS, noteSpeechSegment, takeDroppedNotice } from "./src/renderer/src/features/voice/qwen-voice-controller"; export { useVoiceStore, voicePhaseOf, activityOfEvent } from "./src/renderer/src/features/voice/voice-store"; export { scheduleReplyEndTone, playReplyEndTone, END_TONE_HZ, END_NOTE_SECONDS } from "./src/renderer/src/features/voice/voice-earcons";',
+			'export { feedTurns, sendVoiceTake, takeIsEcho, isEcho, isQwenPhrase, isQwenPhraseHeard, markPhraseSpoken, PHRASE_ECHO_WINDOW_MS, rememberSpoken, speechMs, viewedSessionId, spokenTruncated, LONG_TAKE_MS, noteSpeechSegment, takeDroppedNotice, voiceEventEffects } from "./src/renderer/src/features/voice/qwen-voice-controller"; export { useVoiceStore, voicePhaseOf, activityOfEvent } from "./src/renderer/src/features/voice/voice-store"; export { scheduleReplyEndTone, playReplyEndTone, END_TONE_HZ, END_NOTE_SECONDS } from "./src/renderer/src/features/voice/voice-earcons";',
 		resolveDir: process.cwd(),
 		loader: "tsx",
 	},
@@ -2326,6 +2326,155 @@ test("§8: Speaking beats Working; the slot moving clears it; no activity is Lis
 	assert.equal(phase("s-next"), "error");
 });
 
+test("QA round 4: a playback tail after a move raises no phase, no tick and no cue", async () => {
+	const { useVoiceStore, voiceEventEffects, voicePhaseOf } = await controller();
+	const now = Date.now();
+	const store = useVoiceStore.getState();
+	/* A's reply was spoken; the person then moves to B, which has a card up. */
+	store.setActive({ session_id: "A", enabled_at: 1 });
+	store.setLastSpoken({
+		sessionId: "A",
+		text: "The build passed.",
+		truncated: false,
+		at: now - 2_000,
+	});
+	store.notePlayback("started", "A", now - 2_000);
+	store.setActive({ session_id: "B", enabled_at: 2 });
+	useVoiceStore.getState().setCardPending("B", true);
+	/* The tail arrives AFTER the move: global events, no session in them. */
+	const start = voiceEventEffects(
+		useVoiceStore.getState(),
+		"realtime.playback.started",
+		undefined,
+		now,
+	);
+	assert.equal(start.activity, undefined, "B was not speaking");
+	assert.equal(start.playback, null, "and no clock opens here");
+	const end = voiceEventEffects(
+		useVoiceStore.getState(),
+		"realtime.playback.ended",
+		true,
+		now,
+	);
+	assert.equal(end.activity, undefined);
+	assert.equal(end.playback, null, "no ended tick, so no Reply ended");
+	assert.equal(end.tone, false, "and no end cue");
+	/* Applying them the way the controller does leaves the strip on the card. */
+	assert.equal(useVoiceStore.getState().tick, null);
+	assert.equal(useVoiceStore.getState().activity, null);
+	assert.equal(voicePhaseOf(useVoiceStore.getState(), "B"), "listening");
+	/*
+	 * AND THE HANDLER APPLIES THAT PLAN rather than deciding again inline (the
+	 * source scan is this file's established shape for the event path): a plan
+	 * nobody applies would leave the defect in place with a green unit test.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/voice/qwen-voice-controller.tsx",
+		"utf8",
+	);
+	assert.match(source, /if \(effects\.activity !== undefined\)/);
+	assert.match(source, /notePlayback\(effects\.playback, holder, now\)/);
+});
+
+test("QA round 4: a reply this window is speaking still shows Speaking and plays the cue", async () => {
+	const { useVoiceStore, voiceEventEffects } = await controller();
+	const now = Date.now();
+	const store = useVoiceStore.getState();
+	store.setActive({ session_id: "s1", enabled_at: 1 });
+	store.setExchange("working", "s1");
+	store.setLastSpoken({
+		sessionId: "s1",
+		text: "Three suites ran.",
+		truncated: false,
+		at: now,
+	});
+	const start = voiceEventEffects(
+		useVoiceStore.getState(),
+		"realtime.playback.started",
+		undefined,
+		now,
+	);
+	assert.equal(start.activity, "speaking");
+	assert.equal(start.playback, "started");
+	store.notePlayback("started", "s1", now);
+	const end = voiceEventEffects(
+		useVoiceStore.getState(),
+		"realtime.playback.ended",
+		true,
+		now + 1_000,
+	);
+	assert.equal(end.activity, null);
+	assert.equal(end.playback, "ended");
+	assert.equal(end.tone, true, "the cue is this window's own reply ending");
+	store.notePlayback("ended", "s1", now + 1_000);
+	assert.equal(useVoiceStore.getState().tick?.kind, "ended");
+
+	/* A TYPED turn's reply has no exchange; the speak this window issued is the
+	   anchor that admits it (the same door gate announcements use). */
+	store.setExchange(null, null);
+	const typed = voiceEventEffects(
+		useVoiceStore.getState(),
+		"realtime.playback.started",
+		undefined,
+		now + 2_000,
+	);
+	assert.equal(typed.activity, "speaking");
+	assert.equal(typed.playback, "started");
+});
+
+test("QA round 4: no slot, an aged speak, or a response frame admits nothing", async () => {
+	const { useVoiceStore, voiceEventEffects } = await controller();
+	const now = Date.now();
+	/* No slot: a playback event is about nothing this window is doing. */
+	useVoiceStore.getState().setActive(null);
+	assert.equal(
+		voiceEventEffects(
+			useVoiceStore.getState(),
+			"realtime.playback.started",
+			undefined,
+			now,
+		).activity,
+		undefined,
+	);
+	/* Held slot, but the last speak was minutes ago: not this start's reason. */
+	useVoiceStore.getState().setActive({ session_id: "s-old", enabled_at: 1 });
+	useVoiceStore.getState().setLastSpoken({
+		sessionId: "s-old",
+		text: "Old words.",
+		truncated: false,
+		at: now - 60_000,
+	});
+	assert.equal(
+		voiceEventEffects(
+			useVoiceStore.getState(),
+			"realtime.playback.started",
+			undefined,
+			now,
+		).playback,
+		null,
+	);
+	/* `realtime.response.done` drives no phase, so there is nothing to gate. */
+	assert.deepEqual(
+		voiceEventEffects(
+			useVoiceStore.getState(),
+			"realtime.response.done",
+			true,
+			now,
+		),
+		{ activity: undefined, playback: null, tone: false },
+	);
+	/* Speech events come from our own microphone and stay ungated. */
+	assert.equal(
+		voiceEventEffects(
+			useVoiceStore.getState(),
+			"realtime.provider.speech_started",
+			undefined,
+			now,
+		).activity,
+		"hearing",
+	);
+});
+
 test("§8: the end cue is a short falling two-note tone, under VAD's min_speech_ms", async () => {
 	const { scheduleReplyEndTone, END_TONE_HZ, END_NOTE_SECONDS } =
 		await controller();
@@ -2400,11 +2549,17 @@ test("§8: the cut flag is read when present and tolerated when absent", async (
 		source,
 		/setLastSpoken\(\{\s*sessionId,\s*text: spoken\.text,\s*truncated: spokenTruncated\(spoken\),\s*at: Date\.now\(\),?\s*\}\)/,
 	);
+	/*
+	 * THE DECISION MOVED INTO `voiceEventEffects` (QA round 4), so the scan names
+	 * its receiver-free spelling; the rule is unchanged - an ended receipt must be
+	 * ACCEPTED for the cue - and the handler may now only fire on that plan.
+	 */
 	assert.match(
 		source,
-		/event\.type === "realtime\.playback\.ended" &&\s*event\.accepted === true/,
+		/type === "realtime\.playback\.ended" &&\s*accepted === true/,
 		"M1: the cue needs an ACCEPTED receipt, not merely an ended one",
 	);
+	assert.match(source, /if \(effects\.tone\) void playReplyEndTone\(\);/);
 	assert.doesNotMatch(source, /playback\.cancelled"\).*playReplyEndTone/);
 });
 
