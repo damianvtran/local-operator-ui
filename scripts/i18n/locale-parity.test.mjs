@@ -479,10 +479,41 @@ const IDENTICAL_OK = new Map([
 		"ui.agents.settings.general.description",
 		"French cognate: « Description » has the same spelling.",
 	],
-	["ui.canvas.files.code", "French cognate: « code » has the same spelling."],
 	[
 		"ui.agents.settings.general.version",
 		"French cognate: « Version » has the same spelling.",
+	],
+	[
+		"ui.projects.examples.owner",
+		"Sample owner handle in a placeholder; an example identifier, not prose.",
+	],
+	[
+		"ui.projects.examples.team",
+		"Sample team handle in a placeholder; an example identifier, not prose.",
+	],
+	[
+		"ui.projects.project_model.clause",
+		"Parentheses and a placeholder only ({clause}); no words to translate.",
+	],
+	[
+		"ui.projects.project_model.completed_total",
+		"Placeholders and a slash only ({completed}/{total}); no words to translate.",
+	],
+	[
+		"ui.projects.project_model.count_live",
+		"Placeholders and a middle dot only ({count} · {live}); no words to translate.",
+	],
+	[
+		"ui.projects.project_model.qa",
+		"Standard QA abbreviation, unchanged in Russian.",
+	],
+	[
+		"ui.projects.projects_toolbar.facet_labels_facet_first",
+		"Placeholders and a middle dot only ({FACET_LABELS_facet} · {first}); no words to translate.",
+	],
+	[
+		"ui.projects.projects_toolbar.facet_labels_facet_first_length_1",
+		"Placeholders and separators only; no words to translate.",
 	],
 ]);
 
