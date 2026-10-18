@@ -1037,6 +1037,34 @@ test("M3: an unanswered prompt stops the start, reports `prompting`, and resumes
 	assert.equal(denied.calls.speechStart, 0);
 });
 
+test("M3: the production page adapter forwards the microphone options (the 5 s bound was lost here)", () => {
+	const source = readFileSync("src/main/index.ts", "utf8");
+	/*
+	 * The adapter is the ONLY path from `QwenVoice` to `QwenVoicePage`, and the
+	 * old zero-argument lambda dropped `{timeoutMs, onSettled}`: the page read
+	 * `options.timeoutMs ?? 0` and waited forever, so the 5 s bound never fired
+	 * (QA round 2 measured 2m12s on "Starting voice" with no `mic` field). The
+	 * page's own test cannot see this seam, and neither could the coordinator's
+	 * fake-page test - only the production wiring can, which is why this reads
+	 * it.
+	 */
+	assert.match(
+		source,
+		/prepareMicrophone:\s*async\s*\(\s*options\s*\)\s*=>/,
+		"the adapter takes the options",
+	);
+	assert.match(
+		source,
+		/instance\(\)\.prepareMicrophone\(\s*options\s*\)/,
+		"and passes them straight through",
+	);
+	assert.doesNotMatch(
+		source,
+		/prepareMicrophone:\s*async\s*\(\s*\)\s*=>/,
+		"a zero-argument adapter is how the bound disappears",
+	);
+});
+
 test("§4: granting the microphone in Settings takes effect on the next enable, without a restart", async () => {
 	const r = rig({ mic: "denied" });
 	await r.voice.start("enable");

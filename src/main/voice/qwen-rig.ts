@@ -171,6 +171,9 @@ export function qwenMemoryBudget(
  * the user-visible benefit is zero. The cost is real: each tick allocates a
  * distinct buffer shape that MLX caches - the measured route to 29 GB. The
  * 1 GiB cache cap stays as the bound; this line stays one edit from reversal.
+ * If partial captions ever ship, `--live_transcription_update_interval 2`
+ * (1-2 s) is the cheaper lever than the 500 ms default (QA round 2) - turn
+ * this flag back on WITH that interval, not instead of it.
  */
 export function s2sArgs(ports: QwenPorts): string[] {
 	return [
