@@ -224,6 +224,15 @@ const STUB_CONTENTS = {
 	"@shared/api/local-operator/desktop-api": `export {DESKTOP_REFUSAL_PLACEHOLDER, DesktopControlError, UserFacingError, userFacingMessage, isRemoteReceiptDeferral} from ${JSON.stringify(
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 	)}
+/*
+ * The header's voice marker (chat-sidebar -> voice-indicator) imports these three
+ * through qwen-voice-controller and voice-stream. Re-exported as the SHIPPED ones,
+ * like the names above, so the bundle links; nothing here presses the marker, so
+ * none of them is called.
+ */
+export {desktopMedia, mediaError, subscribeDesktopStream} from ${JSON.stringify(
+		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
+	)}
 export {DESKTOP_FOREGROUND_REQUIRED_CODE, DESKTOP_FOREGROUND_REQUIRED_MESSAGE} from ${JSON.stringify(
 		`${process.cwd()}/src/shared/desktop-contract.ts`,
 	)}
@@ -281,7 +290,9 @@ export const movePendingSendIdentity = () => undefined;
 export const replacePendingSendText = () => undefined;
 export const discardPendingSends = () => undefined;
 export const pendingSendForView = () => null;
-export const discardPendingEchoes = () => undefined;`,
+export const discardPendingEchoes = () => undefined;
+// voice-stream's reconnect schedule; the voice marker imports it and opens no stream here.
+export const streamRetryDelayMs = () => 1000;`,
 };
 
 const bundle = await build({

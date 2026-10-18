@@ -70,6 +70,14 @@ const bundle = await build({
 			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 			export { BACKEND_PAIRING_SENTENCE } from "./src/renderer/src/shared/api/local-operator/backend-error";
 			export * as fixtures from "./${RUN}/run-details.fixtures";
+			/*
+			 * The query client, EXPORTED FROM THIS BUNDLE so the provider the harness
+			 * renders is the same module instance the header's voice toggle reads
+			 * (\`agents-offer-dismiss.test.mjs\` documents the same rule). The app's
+			 * root mounts one (\`main.tsx\`), so a header rendered without it is a tree
+			 * the app never builds.
+			 */
+			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 		`,
 		resolveDir: ROOT,
 	},
@@ -147,6 +155,8 @@ const {
 	SLOT_NOTICE_PROGRESS_DELAY_MS,
 	DesktopControlError,
 	BACKEND_PAIRING_SENTENCE,
+	QueryClient,
+	QueryClientProvider,
 } = await import(pathToFileURL(bundlePath).href);
 
 const read = (path) => readFileSync(join(ROOT, path), "utf8");
@@ -250,6 +260,15 @@ async function mount(render) {
 		value: shims.matchMedia,
 	});
 	const root = createRoot(window.document.getElementById("root"));
+	/*
+	 * Every render sits under a QueryClientProvider, as every tree in the app does:
+	 * the header's voice toggle calls `useQueryClient()`, which throws without one.
+	 * One client per mount, no retries, so no case inherits another's cache and a
+	 * read that fails (this harness has no backend) settles at once.
+	 */
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
 	const api = {
 		window,
 		document: window.document,
@@ -298,7 +317,13 @@ async function mount(render) {
 		},
 		render: async (element) => {
 			act(() => {
-				root.render(element);
+				root.render(
+					React.createElement(
+						QueryClientProvider,
+						{ client: queryClient },
+						element,
+					),
+				);
 			});
 			await act(async () => {});
 		},
@@ -308,6 +333,7 @@ async function mount(render) {
 	} finally {
 		act(() => root.unmount());
 		await act(async () => {});
+		queryClient.clear();
 		window.close();
 		for (const [key, descriptor] of originals) {
 			if (descriptor) Object.defineProperty(globalThis, key, descriptor);
