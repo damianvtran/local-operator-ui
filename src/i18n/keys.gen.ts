@@ -64,6 +64,7 @@ import enUiSettingsAccount from "./catalogues/en/ui.settings.account.json";
 import enUiSettingsAppearance from "./catalogues/en/ui.settings.appearance.json";
 import enUiSettingsAppearanceWindowGlass from "./catalogues/en/ui.settings.appearance.window_glass.json";
 import enUiSettingsConfiguration from "./catalogues/en/ui.settings.configuration.json";
+import enUiSettingsImports from "./catalogues/en/ui.settings.imports.json";
 import enUiSettingsIntegrations from "./catalogues/en/ui.settings.integrations.json";
 import enUiSettings from "./catalogues/en/ui.settings.json";
 import enUiSettingsModelDefaultEffort from "./catalogues/en/ui.settings.model.default_effort.json";
@@ -148,6 +149,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsAppearance,
 	...enUiSettingsAppearanceWindowGlass,
 	...enUiSettingsConfiguration,
+	...enUiSettingsImports,
 	...enUiSettingsIntegrations,
 	...enUiSettings,
 	...enUiSettingsModelDefaultEffort,
@@ -2954,10 +2956,14 @@ export type MessageParams = {
 	"ui.settings.appearance.window_glass.material_tabbed": undefined;
 	"ui.settings.appearance.window_glass.material_window": undefined;
 	"ui.settings.appearance.window_glass.restart_needed": undefined;
+	"ui.settings.appearance.window_glass.unsupported_acceleration": undefined;
+	"ui.settings.appearance.window_glass.unsupported_backdrop_filter": undefined;
+	"ui.settings.appearance.window_glass.unsupported_gpu": undefined;
 	"ui.settings.appearance.window_glass.unsupported_linux": undefined;
 	"ui.settings.appearance.window_glass.unsupported_other": undefined;
 	"ui.settings.appearance.window_glass.unsupported_reduced_transparency": undefined;
 	"ui.settings.appearance.window_glass.unsupported_windows_too_old": undefined;
+	"ui.settings.appearance.window_glass.unsupported_windows_unverified": undefined;
 	"ui.settings.configuration.backend_setting_row.gate_note": { gate: string };
 	"ui.settings.configuration.backend_setting_row.not_set": undefined;
 	"ui.settings.configuration.backend_setting_row.read_only": undefined;
@@ -3095,6 +3101,93 @@ export type MessageParams = {
 	"ui.settings.configuration.settings_page.no_description_available": undefined;
 	"ui.settings.configuration.settings_page.system_information_about_the_current_configuration": undefined;
 	"ui.settings.configuration.settings_page.version": undefined;
+	"ui.settings.imports.availability_full": undefined;
+	"ui.settings.imports.availability_metadata_only": undefined;
+	"ui.settings.imports.availability_unsupported": undefined;
+	"ui.settings.imports.cancel": undefined;
+	"ui.settings.imports.cancelling": undefined;
+	"ui.settings.imports.clear_all": undefined;
+	"ui.settings.imports.confirm_label": undefined;
+	"ui.settings.imports.copied": undefined;
+	"ui.settings.imports.copy_path": undefined;
+	"ui.settings.imports.description": undefined;
+	"ui.settings.imports.empty_filter": undefined;
+	"ui.settings.imports.empty_sessions": { source: string };
+	"ui.settings.imports.empty_sources": undefined;
+	"ui.settings.imports.error_cancel": { reason: string };
+	"ui.settings.imports.error_job": { reason: string };
+	"ui.settings.imports.error_preview": { reason: string };
+	"ui.settings.imports.error_sessions": { source: string; reason: string };
+	"ui.settings.imports.error_sources": { reason: string };
+	"ui.settings.imports.error_start": { reason: string };
+	"ui.settings.imports.import_another": undefined;
+	"ui.settings.imports.import_button": { count: number };
+	"ui.settings.imports.importing": undefined;
+	"ui.settings.imports.loading_preview": undefined;
+	"ui.settings.imports.loading_sessions": { source: string };
+	"ui.settings.imports.loading_sources": undefined;
+	"ui.settings.imports.metadata_only_explain": undefined;
+	"ui.settings.imports.outcome_cancelled": undefined;
+	"ui.settings.imports.outcome_failed": undefined;
+	"ui.settings.imports.outcome_imported": undefined;
+	"ui.settings.imports.outcome_metadata": undefined;
+	"ui.settings.imports.outcome_resumed": undefined;
+	"ui.settings.imports.outcome_skipped": undefined;
+	"ui.settings.imports.phase_cancelled": undefined;
+	"ui.settings.imports.phase_done": undefined;
+	"ui.settings.imports.phase_importing": undefined;
+	"ui.settings.imports.phase_memory": undefined;
+	"ui.settings.imports.phase_queued": undefined;
+	"ui.settings.imports.phase_selecting": undefined;
+	"ui.settings.imports.preview_confirm": undefined;
+	"ui.settings.imports.preview_heading": undefined;
+	"ui.settings.imports.preview_memory": { records: number; tokens: string };
+	"ui.settings.imports.preview_required": undefined;
+	"ui.settings.imports.preview_summary": {
+		sessions: number;
+		messages: number;
+		compactions: number;
+	};
+	"ui.settings.imports.progress_heading": undefined;
+	"ui.settings.imports.progress_job": { job: string; state: string };
+	"ui.settings.imports.progress_pending": { count: number };
+	"ui.settings.imports.refresh": undefined;
+	"ui.settings.imports.rerun_safe": undefined;
+	"ui.settings.imports.result_heading": undefined;
+	"ui.settings.imports.result_summary": {
+		state: string;
+		sessions: number;
+		messages: number;
+	};
+	"ui.settings.imports.result_summary_cancelled": {
+		state: string;
+		sessions: number;
+		total: number;
+		messages: number;
+	};
+	"ui.settings.imports.result_target": { target: string };
+	"ui.settings.imports.retry": undefined;
+	"ui.settings.imports.review_instructions": undefined;
+	"ui.settings.imports.review_memory": undefined;
+	"ui.settings.imports.search_placeholder": undefined;
+	"ui.settings.imports.select_all": undefined;
+	"ui.settings.imports.selected": { count: number };
+	"ui.settings.imports.selection_limit": { max: number };
+	"ui.settings.imports.session_importing": undefined;
+	"ui.settings.imports.session_index_only": undefined;
+	"ui.settings.imports.session_meta": { messages: number; compactions: number };
+	"ui.settings.imports.session_pending": undefined;
+	"ui.settings.imports.session_updated": { date: string };
+	"ui.settings.imports.source_heading": undefined;
+	"ui.settings.imports.source_not_found": undefined;
+	"ui.settings.imports.source_sessions": { count: number };
+	"ui.settings.imports.state_cancelled": undefined;
+	"ui.settings.imports.state_done": undefined;
+	"ui.settings.imports.state_failed": undefined;
+	"ui.settings.imports.state_queued": undefined;
+	"ui.settings.imports.state_running": undefined;
+	"ui.settings.imports.title": undefined;
+	"ui.settings.imports.warnings_heading": { count: number };
 	"ui.settings.integrations.add_integration_form.add_integration": undefined;
 	"ui.settings.integrations.add_integration_form.all_chats": undefined;
 	"ui.settings.integrations.add_integration_form.arguments": undefined;

@@ -58,10 +58,15 @@ import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-erro
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	AUDIO_UNAVAILABLE_COPY,
+	BrokenAttachment,
+} from "../components/message-item/attachment-frame";
 import type { CanvasPane } from "../utils/canvas-pane";
 import { useCanvasPane } from "../utils/canvas-pane";
 import { fileKind } from "../utils/file-kind";
+import { SoundPlayer } from "./sound-player";
 import {
 	FileActionsMenu,
 	FileGlyph,
@@ -80,6 +85,7 @@ import {
 	type SupplementComponent,
 	type SupplementFile,
 	type SupplementRecord,
+	type SupplementSound,
 	causePhrase,
 	countClause,
 	diagnosticDisplay,
@@ -92,7 +98,9 @@ import {
 	showAllText,
 	supplementDisposition,
 } from "./supplement-model";
+import { useAttachmentSource } from "./use-attachment-url";
 import { useSupplementDocument } from "./use-supplement-document";
+import { useWaveform } from "./use-waveform";
 
 /**
  * One callout row: the file's NAME is the content, and everything else lives in
@@ -164,6 +172,80 @@ const SupplementFileLine = memo(function SupplementFileLine({
  * (`onHeight`): that is the figure the aggregate budget accrues once a frame is
  * on screen (design D5 — hints are estimates and a document may overrun them).
  */
+/**
+ * One generated sound's row: its title (when the producer stated one) over the
+ * shared compact player.
+ *
+ * THE PLAYER IS DIGEST-SCOPED, exactly as every other seat: the bytes resolve
+ * through `useAttachmentSource` with `{ sessionId, childId: null }` — the
+ * supplement block belongs to the conversation it anchors, and the harness
+ * references the sound by attachment digest, which is the identity the resolver
+ * and the engine both key on. The peaks come from the same sidecar route the
+ * transcript reads (`useWaveform`): a session without it draws the flat
+ * scrubber rather than a fabricated shape.
+ */
+const SupplementSoundLine = memo(function SupplementSoundLine({
+	sound,
+	sessionId,
+}: {
+	sound: SupplementSound;
+	sessionId: string | null;
+}) {
+	// One scope object per session, so the resolver's effect does not see a new
+	// identity per render (it reads the ids, but the object is cheap to keep).
+	const scope = useMemo(
+		() => (sessionId ? { sessionId, childId: null } : null),
+		[sessionId],
+	);
+	const source = useAttachmentSource(
+		{
+			data: null,
+			attachment: sound.attachment,
+			mimeType: sound.mime,
+		},
+		scope,
+	);
+	const peaks = useWaveform(sound.attachment, scope);
+	const label = sound.title || "Generated sound";
+	/*
+	 * THE NAME DOES NOT WAIT FOR THE BYTES. A sound's title is known the moment
+	 * the record arrives (it is the producer's own string), so it is drawn over
+	 * whichever body state the resolver is in — a reserved row, the player, or
+	 * the unavailable receipt. A title that appeared only after the fetch would
+	 * leave the reader looking at an unnamed line and then watch it reflow.
+	 */
+	return (
+		<div className="flex min-w-0 flex-col gap-0.5">
+			{sound.title && (
+				<span
+					data-supplement-sound-title=""
+					title={sound.title}
+					className="truncate text-meta text-ink-muted"
+				>
+					{displayText(sound.title)}
+				</span>
+			)}
+			{source.state === "missing" ? (
+				<BrokenAttachment name={label} detail={AUDIO_UNAVAILABLE_COPY} />
+			) : source.state === "resolving" ? (
+				// A reserved line at the player's height (the same reason the two
+				// media components reserve): the block must not jump when the bytes
+				// land.
+				<div className="h-11" aria-hidden={true} />
+			) : (
+				<SoundPlayer
+					variant="compact"
+					ownerId={`sound:${sound.attachment}`}
+					src={source.url}
+					label={label}
+					peaks={peaks}
+					durationHint={sound.durationS}
+				/>
+			)}
+		</div>
+	);
+});
+
 const SupplementFrameSlot = memo(function SupplementFrameSlot({
 	component,
 	sessionId,
@@ -283,6 +365,15 @@ export const SupplementRow = memo(function SupplementRow({
 	const files = record.files;
 	const moreCount = record.filesMore;
 	const components = record.components;
+	/*
+	 * The turn's generated sounds (sound phase): EMPTY on every row older than
+	 * the wire change, and an empty list renders NOTHING at all - not a heading
+	 * with nothing under it (the block's no-label rule and the brief's "never a
+	 * stub" meet in the same place). The `?? []` is for the record shapes that
+	 * predate the field: a reducer-built row always carries one, but a stale
+	 * snapshot or a hand-built fixture must read as "no sounds", not crash.
+	 */
+	const sounds = record.sounds ?? [];
 	const totalFiles = files.length + moreCount;
 
 	/** One desktop op, with the app's ordinary refusal surface on failure. */
@@ -604,14 +695,40 @@ export const SupplementRow = memo(function SupplementRow({
 	}
 
 	/*
+	 * THE SOUNDS SECTION (sound phase): the same section grammar as the files
+	 * above - a 4px-pitched column of rows - with the shared compact player as
+	 * the row's content. It draws in the condensed form too, for the reason the
+	 * files section does (the 2026-10-16 ruling: the block shows the media a
+	 * reader can act on while the run is folded), and it draws AFTER the files
+	 * because a sound's row is taller than a file row and the compact rows read
+	 * first. No heading: the block's own rule is that position carries the
+	 * relationship (the header comment above).
+	 */
+	const soundsSection =
+		sounds.length > 0 ? (
+			<div className="flex flex-col gap-1" data-supplement-sounds="">
+				{sounds.map((sound) => (
+					<SupplementSoundLine
+						key={sound.attachment}
+						sound={sound}
+						sessionId={sessionId}
+					/>
+				))}
+			</div>
+		) : null;
+
+	/*
 	 * THE CONDENSED FORM (round-1 D1/U3/R2, reworked by the 2026-10-16 operator
 	 * decision). The files section above is drawn IDENTICALLY here — actionable
-	 * rows and the image grid; no `[data-supplement-slot]`/iframe (absent, not
-	 * hidden, so no document fetch either) and no graphics, whose route is the
-	 * turn's own bar. A graphics-only settle keeps the design's plain count
-	 * clause; the not-settled arms keep the state line and their actions exactly
-	 * as the expanded form wires them, now under the files a reader can act on
-	 * while the run is still folded.
+	 * rows and the image grid, and the sounds section with them (a generated
+	 * sound is the same class of thing: media the reader can act on while the
+	 * run is folded, and the player is not a document fetch). No
+	 * `[data-supplement-slot]`/iframe (absent, not hidden, so no document fetch
+	 * either) and no graphics, whose route is the turn's own bar. A
+	 * graphics-only settle keeps the design's plain count clause; the
+	 * not-settled arms keep the state line and their actions exactly as the
+	 * expanded form wires them, now under the media a reader can act on while
+	 * the run is still folded.
 	 */
 	if (condensed) {
 		if (disposition === "block") {
@@ -623,6 +740,7 @@ export const SupplementRow = memo(function SupplementRow({
 					data-supplement-condensed=""
 				>
 					{filesSection}
+					{soundsSection}
 					{filesSection === null && components.length > 0 && (
 						<div className="text-ink-muted text-meta">
 							{countClause(components.length, "graphic")}
@@ -638,6 +756,7 @@ export const SupplementRow = memo(function SupplementRow({
 				data-supplement-condensed=""
 			>
 				{filesSection}
+				{soundsSection}
 				{stateLine()}
 				{adjustLine}
 			</div>
@@ -647,6 +766,7 @@ export const SupplementRow = memo(function SupplementRow({
 	return (
 		<div className="flex flex-col gap-2" data-supplement-record={record.anchor}>
 			{filesSection}
+			{soundsSection}
 			{stateLine()}
 			{record.detail?.includes("prepared:unsupported") && (
 				<p className="text-meta text-ink-muted" data-supplement-refusal="">

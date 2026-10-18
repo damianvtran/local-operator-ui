@@ -50,6 +50,7 @@ import {
 	preferProgressDetails,
 } from "../components/trace/tool-row-model";
 import { isHarnessChromeText } from "./harness-chrome";
+import { soundCostCaption } from "./image-gen-card-model";
 import {
 	type JournalOrderRead,
 	type JournalPosition,
@@ -65,6 +66,7 @@ import {
 	type SupplementComponent,
 	type SupplementFile,
 	type SupplementRowState,
+	type SupplementSound,
 	mergeSupplement,
 	supplementKeyForEntry,
 	supplementPatchFromEvent,
@@ -725,6 +727,15 @@ type TranscriptPayloadRecord =
 			/** Up to `MORE_MAX` of the held-back paths, same denylist as `files`. */
 			more: readonly string[];
 			components: readonly SupplementComponent[];
+			/**
+			 * The generated sounds the job referenced, from `details.sounds` on
+			 * `supplement_v1` rows (`SupplementSound`: attachment digest, MIME, title,
+			 * duration). EMPTY on older rows, and an empty list renders NOTHING - the
+			 * Sounds section has no stub state, because a heading with no sound under
+			 * it would claim the turn produced one (the harness writes `sounds` only
+			 * when it did).
+			 */
+			sounds: readonly SupplementSound[];
 			/** `superseded` renders nothing; a job-level failure renders its line. */
 			error: string;
 			/**
@@ -1167,18 +1178,18 @@ function extractImages(
 		const kind = artifactKind(block);
 		if (kind === null && !isImageBlock(block)) continue;
 		/*
-		 * PICTURES AND VIDEOS, TOGETHER (review round 1 F2's rule, walked
+		 * PICTURES, VIDEOS AND SOUNDS, TOGETHER (review round 1 F2's rule, walked
 		 * forward). The filter admits a video artifact because the RENDER for one
-		 * now exists: the imagegen card's done body mounts each entry by its KIND,
-		 * a video through the digest-fed player (`canonical-video.tsx`). What F2
-		 * forbade was admitting a kind no render could play — an `<img>` handed
+		 * now exists (the imagegen card's done body mounts each entry by its KIND,
+		 * a video through the digest-fed player), and it admits AUDIO for the same
+		 * reason in its own lane: `canonical-audio.tsx` is the sound player's seat,
+		 * mounted by the card's done body AND by the tool row's media block. What
+		 * F2 forbade was admitting a kind no render could play — an `<img>` handed
 		 * video bytes fails decode into a false "unavailable" receipt — so the
 		 * seats that still draw pictures only (the fold strip, the two media
-		 * blocks) filter by `isPictureRef`, and the player seat is the one mount
-		 * that reads video refs. AUDIO has no seat at all and stays out: its
-		 * follow-on player is a named deferral, and nothing would render it.
+		 * blocks, the lightbox) filter by `isPictureRef`, and the player seats are
+		 * the mounts that read the other two kinds.
 		 */
-		if (kind === "audio") continue;
 		const entry: TranscriptImage = {
 			// Position among IMAGE-ish blocks only, so a text block appearing
 			// between two pictures cannot renumber them and remount both. An
@@ -2375,6 +2386,17 @@ function customRow(
 	Extract<TranscriptRecord, { kind: "custom" }>,
 	"level" | "headline" | "detail" | "category" | "provider"
 > {
+	if (customType === "audio_settle_v1") {
+		// Settlement arrives after the cancelled call as its own durable row.
+		// Keep the actual receipt visible, rather than an implementation label.
+		return {
+			level: "info",
+			headline: text,
+			detail: null,
+			category: "Audio settlement",
+			provider: null,
+		};
+	}
 	if (customType === "session_incident") {
 		return { level: "error", ...incidentRow(text, details) };
 	}
@@ -3183,7 +3205,13 @@ function durableRecord(
 		if (customType === SUPPLEMENT_CUSTOM_TYPE) {
 			return supplementRecordFromDetails(ts, details, previous);
 		}
-		const text = String(details.text ?? details.detail ?? "");
+		// Terminal audio settlements deliberately have an empty `detail`.
+		// Their explicit amount/basis is the receipt, not absence of a row.
+		const settlement =
+			customType === "audio_settle_v1" && details.terminal === true
+				? soundCostCaption(details)
+				: null;
+		const text = settlement ?? String(details.text ?? details.detail ?? "");
 		// A row with nothing to say paints nothing. `trim()` rather than a falsy
 		// test, because a whitespace-only body would otherwise reach `headlineOf`
 		// and produce an empty headline — which is the shape the operator reported

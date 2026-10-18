@@ -22,8 +22,12 @@
  *              with the call's own elapsed clock, the progress bar (pulsing
  *              while no fraction is known; the determinate fill when one is),
  *              and the log tail when lines are present.
- *   cancelling the running body with its line swapped, after Cancel and until
- *              the interrupt settles; the tile stays while the work does.
+ *   cancelling the running body with its line swapped, after Stop and until
+ *              the interrupt settles; the tile stays while the work does. The
+ *              line is the SECURITY ROUND'S split (2026-10-17): a stop pressed
+ *              before the provider was called states the no-charge guarantee,
+ *              and an in-flight stop states a REQUEST with its billing
+ *              consequence and the settlement check that follows it.
  *   done       the artifact under a quiet one-line receipt: a picture through the
  *              EXISTING path (`CanonicalImage` -> `ImageAttachment`, so the
  *              reserved box, the lightbox expansion and the canvas affordance
@@ -40,11 +44,11 @@
  *   cancelled  a plain state line and the restart slots when wired.
  *
  * AFFORDANCES ARE OPT-IN. The card draws only the controls its `actions`
- * provide (`imageGenCardControls`): integration wires Cancel — the existing
+ * provide (`imageGenCardControls`): integration wires Stop — the existing
  * turn-interrupt path, capability-gated like the composer's Stop — and leaves
  * the restart/steer slots for the round that names them; stories stand those
  * up with stub handlers so the design round can review them. A VIDEO call gets
- * no Cancel from its mount at all (contract §4.2: an in-turn press cannot
+ * no Stop from its mount at all (contract §4.2: an in-turn press cannot
  * cancel a detached video job; the post-turn rail is the run-details Jobs row),
  * so the absence is the mount's decision and this card only ever draws what it
  * is handed.
@@ -73,21 +77,33 @@
 
 import { Button, Progress } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { useEffect, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	formatBytes,
 	formatDuration,
 	formatSettledDuration,
 } from "../components/trace/tool-row-model";
+import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
 import { CanonicalVideo } from "./canonical-video";
 import {
+	CANCEL_QUEUED_COPY,
+	CANCEL_RUNNING_COPY,
 	type ImageGenActionKind,
 	type ImageGenCardActions,
 	type ImageGenCardState,
 	type ImageGenCardView,
 	imageGenCardControls,
+	imageGenMaterialNoun,
+	withoutSettlementClause,
 } from "./image-gen-card-model";
+import { SoundStopConfirmation } from "./sound-stop-confirmation";
 import type { AttachmentScope } from "./use-attachment-url";
 
 export type ImageGenCardProps = {
@@ -224,15 +240,25 @@ function StateLine({
 			break;
 		case "running":
 			/*
-			 * THE NOUN IS THE MATERIAL FACT (design spec §4, V2): a video call's
-			 * line says `Generating video…` and nothing else about the line moves.
+			 * THE NOUN IS THE MATERIAL FACT (design spec §4, V2; extended by the
+			 * sound phase): a video call's line says `Generating video…`, a voiceover
+			 * `Generating voiceover…`, a sound effect `Generating sound effect…`, and
+			 * nothing else about the line moves. The noun comes off
+			 * `imageGenMaterialNoun` so the state line, the done receipt and the
+			 * failure fallback cannot spell one material three ways.
 			 */
-			text =
-				view.material === "video" ? "Generating video…" : "Generating image…";
+			text = `Generating ${imageGenMaterialNoun(view.material)}…`;
 			detail = elapsed === null ? null : formatDuration(elapsed);
 			break;
 		case "cancelling":
-			text = "Cancelling…";
+			/*
+			 * THE SECURITY ROUND'S SPLIT (2026-10-17): a stop pressed before the
+			 * provider was called is the one case that may claim no charge; an
+			 * in-flight stop is a REQUEST — there is no vendor cancel endpoint —
+			 * and its line says so, including the settlement check that follows.
+			 * Never the no-charge sentence for an in-flight cancel.
+			 */
+			text = view.generating ? CANCEL_RUNNING_COPY : CANCEL_QUEUED_COPY;
 			break;
 		case "done":
 			/*
@@ -245,9 +271,7 @@ function StateLine({
 			text =
 				view.receipt === "already-finished"
 					? "Already finished."
-					: view.material === "video"
-						? "Generated video"
-						: "Generated image";
+					: `Generated ${imageGenMaterialNoun(view.material)}`;
 			detail =
 				view.receipt === "already-finished" || view.durationS === null
 					? null
@@ -265,14 +289,30 @@ function StateLine({
 			 */
 			text =
 				view.message ??
-				(view.material === "video"
-					? "The video could not be generated."
-					: "The image could not be generated.");
+				`The ${imageGenMaterialNoun(view.material)} could not be generated.`;
 			emphasis = true;
 			break;
-		case "cancelled":
-			text = "Cancelled";
+		case "cancelled": {
+			/*
+			 * The settled receipt prefers the TOOL/SERVER detail (`message`); the
+			 * canned sentence is only the fallback, and it follows the same
+			 * queued/running split the live line does — a settled in-flight stop
+			 * must still not read as a no-charge cancellation.
+			 *
+			 * THE PENDING CLAUSE IS RETIRED BY ITS OWN ANSWER: the settlement row
+			 * rendered under this line states the pending fact or the final charge,
+			 * so the sentence that asks "Checking for settlement" would either
+			 * repeat it or contradict it (design D7, UX U8/U9).
+			 */
+			const line =
+				view.message ??
+				(view.generating ? CANCEL_RUNNING_COPY : CANCEL_QUEUED_COPY);
+			text =
+				view.settlementCaption || view.settled
+					? withoutSettlementClause(line)
+					: line;
 			break;
+		}
 	}
 	return (
 		<p className={cn("flex min-w-0 items-baseline gap-1.5 text-body-sm")}>
@@ -327,12 +367,52 @@ function controlLabel(
 	kind: ImageGenActionKind,
 	state: ImageGenCardState,
 ): string {
-	if (kind === "cancel") return "Cancel";
+	/*
+	 * "Stop", not "Cancel": cancellation is a REQUEST (best-effort once the
+	 * vendor is working), and the button's own hint states which promise it can
+	 * keep — the queued case stops before the call, the running case only asks.
+	 * A control labelled "Cancel" would imply a guaranteed stop that the frozen
+	 * contract explicitly does not offer.
+	 */
+	if (kind === "cancel") return "Stop";
 	if (kind === "restart") return state === "failed" ? "Retry" : "Restart";
 	return "Edit and restart";
 }
 
 export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
+	const [confirmStop, setConfirmStop] = useState(false);
+	const keepWaiting = useCallback(() => setConfirmStop(false), []);
+	const root = useRef<HTMLDivElement>(null);
+	const wasConfirming = useRef(false);
+	useLayoutEffect(() => {
+		if (wasConfirming.current && !confirmStop) {
+			(
+				root.current?.querySelector<HTMLButtonElement>(
+					"[data-imagegen-controls] button",
+				) ?? root.current
+			)?.focus();
+		}
+		wasConfirming.current = confirmStop;
+	}, [confirmStop]);
+	useLayoutEffect(() => {
+		const card = root.current;
+		return () => {
+			// If the live row disappears, return the keyboard to its own pane,
+			// never a composer belonging to a different conversation.
+			if (card?.contains(document.activeElement)) {
+				card
+					.closest("[data-chat-pane]")
+					?.querySelector<HTMLTextAreaElement>("textarea")
+					?.focus();
+			}
+		};
+	}, []);
+	const soundRunning =
+		view.state === "running" &&
+		(view.material === "voiceover" || view.material === "sound-effect");
+	useEffect(() => {
+		if (!soundRunning) setConfirmStop(false);
+	}, [soundRunning]);
 	const startedAtMs =
 		view.state === "running" || view.state === "cancelling"
 			? view.startedAtMs
@@ -360,15 +440,37 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			: null;
 	return (
 		<div
+			ref={root}
+			tabIndex={-1}
 			data-imagegen-card={view.state}
 			className={cn("flex w-full flex-col gap-2")}
 		>
 			{generatingBody ? <GeneratingTile /> : null}
+			{view.state === "failed" &&
+			(view.material === "voiceover" || view.material === "sound-effect") &&
+			view.errorType ? (
+				<p className={cn("text-meta text-ink-dim")}>{view.errorType}</p>
+			) : null}
 			<StateLine view={view} elapsed={elapsed} />
+			{view.state === "done" && view.costCaption ? (
+				<NoteLine line={view.costCaption} />
+			) : null}
+			{view.state === "cancelled" && view.settlementCaption ? (
+				<NoteLine line={view.settlementCaption} />
+			) : null}
+			{soundRunning && confirmStop ? (
+				<SoundStopConfirmation
+					onKeepWaiting={keepWaiting}
+					onRequestStop={() => {
+						setConfirmStop(false);
+						actions?.onCancel?.();
+					}}
+				/>
+			) : null}
 			{/*
 			 * THE INTERIM'S ACCOUNT (design round 1, D1): the mid-walk failure's
 			 * sentence under the live body, verbatim — the call keeps its tile,
-			 * clock and Cancel while the walk continues, and the note simply
+			 * clock and Stop while the walk continues, and the note simply
 			 * disappears with the frame that carried it (a note, never a latch:
 			 * nothing the wire does not claim is painted). Only the running state
 			 * carries one; the type-guard tolerates hand-built views too.
@@ -402,23 +504,38 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			{view.state === "done" && view.images.length > 0 ? (
 				<div className={cn("flex flex-col gap-2")}>
 					{/*
-					 * THE ONE PLAYER SEAT (design spec §3.3). Each entry mounts by its
-					 * KIND: a picture through the existing image path, a video through
-					 * the digest-fed player — the reducer admits both kinds into
-					 * `record.images`, and "extend the filter AND the render together"
-					 * is exactly this branch. The label follows the entry's kind for
-					 * the same reason. A video entry is fetched here and nowhere the
-					 * picture path could decode it as an image.
+					 * THE ONE PLAYER SEAT (design spec §3.3; sound phase extends it). Each
+					 * entry mounts by its KIND: a picture through the existing image path,
+					 * a video through the digest-fed player, a sound through the audio
+					 * player (`CanonicalAudio`) — the reducer admits all three kinds into
+					 * `record.images`, and "extend the filter AND the render together" is
+					 * exactly this branch. An audio entry is fetched here, the tool row's
+					 * media block and the Files/highlight seats; none of them decodes it
+					 * as a picture.
 					 */}
 					{view.images.map((image, index) => {
-						const noun =
-							image.kind === "video" ? "Generated video" : "Generated image";
+						/*
+						 * THE ENTRY'S KIND PICKS THE PLAYER, AND THE CARD'S MATERIAL PICKS
+						 * THE NOUN. A sound entry only knows it is audio; whether it is a
+						 * voiceover or a sound effect is the fact `view.material` carries, so
+						 * the label reads `Generated voiceover`, never `Generated audio`.
+						 */
+						const noun = `Generated ${imageGenMaterialNoun(
+							image.kind === "audio" ? view.material : (image.kind ?? "image"),
+						)}`;
 						const label =
 							view.images.length === 1 ? noun : `${noun} ${index + 1}`;
 						return image.kind === "video" ? (
 							<CanonicalVideo
 								key={image.id}
 								video={image}
+								scope={scope}
+								label={label}
+							/>
+						) : image.kind === "audio" ? (
+							<CanonicalAudio
+								key={image.id}
+								audio={image}
 								scope={scope}
 								label={label}
 							/>
@@ -433,7 +550,7 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 					})}
 				</div>
 			) : null}
-			{controls.length > 0 ? (
+			{controls.length > 0 && !(soundRunning && confirmStop) ? (
 				/*
 				 * Secondary `sm` for all three, which is the app's one quiet control
 				 * under a row (`ProviderAction`'s own reasoning): these are remedies
@@ -449,7 +566,45 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 							variant="secondary"
 							size="sm"
 							disabled={control.disabled}
-							onClick={handlers[control.kind]}
+							/*
+							 * The hint is the contract in one line: a queued stop is
+							 * guaranteed; a running one is a request the provider may
+							 * ignore (and bill for). Absent on the other controls.
+							 */
+							title={
+								control.kind === "cancel"
+									? /*
+										 * The hint follows the SAME fact the sentence does:
+										 * a call that never started can be stopped for
+										 * certain, and one that started can only be asked.
+										 * Keying it on the state alone made a `cancelling`
+										 * row promise a queued stop after the provider was
+										 * already working — the exact inversion the split
+										 * exists to prevent.
+										 */
+										view.state === "queued" ||
+										(view.state === "cancelling" && !view.generating)
+										? "Stops before the provider is called."
+										: "Requests a stop; the provider may finish anyway."
+									: undefined
+							}
+							onClick={
+								control.kind === "cancel" && soundRunning
+									? () => {
+											// A pane Stop may already own the same question.
+											const existing = root.current
+												?.closest("[data-chat-pane]")
+												?.querySelector<HTMLButtonElement>(
+													"[data-sound-stop-confirmation] button",
+												);
+											if (existing) {
+												existing.focus();
+												return;
+											}
+											setConfirmStop(true);
+										}
+									: handlers[control.kind]
+							}
 						>
 							{controlLabel(control.kind, view.state)}
 						</Button>

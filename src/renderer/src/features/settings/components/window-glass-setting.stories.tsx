@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { type FC, useState } from "react";
 import {
-	DEFAULT_GLASS_SETTINGS,
+	type GlassEnvironmentFacts,
 	type GlassSettings,
 	type WindowGlassState,
+	defaultGlassSettings,
 	glassCapabilityFor,
 } from "../../../../../shared/window-glass";
 import { WindowGlassSetting } from "./window-glass-setting";
@@ -12,9 +13,10 @@ import { WindowGlassSetting } from "./window-glass-setting";
  * Settings > Appearance > Window glass, in every state the control can be in.
  *
  * WHY A STORY. The control is presentational (state in, patch out), so each branch
- * of the capability decision - supported on macOS, on Windows 11 with its restart
- * note, and each reason a platform cannot do it - is reachable here without an
- * Electron window. The frames of the LIVE window (OS material behind the app) need
+ * of the capability decision is reachable here without an Electron window: the
+ * macOS default-on state, each environment fact that greys it (GPU off, no
+ * backdrop filter), and each platform reason (Windows unverified, Linux, Reduce
+ * transparency). The frames of the LIVE window (OS material behind the app) need
  * the compositor and come from the PR's native rig; a story cannot show a blur and
  * does not pretend to.
  */
@@ -22,14 +24,17 @@ const Harness: FC<{
 	platform: string;
 	osVersion: string;
 	reducedTransparency?: boolean;
+	environment?: GlassEnvironmentFacts;
 	initial?: Partial<GlassSettings>;
-	/** Windows only: the master switch was flipped and needs a restart (the window
-	 * was built without its material), which no other state makes visible. */
+	/** The master switch was flipped and needs a restart (Windows): reachable only
+	 * with a supported Windows capability, which the shipped gate does not produce
+	 * until Windows is verified. Kept for that day. */
 	restartRequired?: boolean;
 }> = ({
 	platform,
 	osVersion,
 	reducedTransparency = false,
+	environment,
 	initial,
 	restartRequired = false,
 }) => {
@@ -37,9 +42,10 @@ const Harness: FC<{
 		platform,
 		osVersion,
 		reducedTransparency,
+		environment,
 	});
 	const [settings, setSettings] = useState<GlassSettings>({
-		...DEFAULT_GLASS_SETTINGS,
+		...defaultGlassSettings(capability),
 		...initial,
 	});
 	const state: WindowGlassState = {
@@ -66,7 +72,8 @@ const meta: Meta<typeof Harness> = {
 export default meta;
 type Story = StoryObj<typeof Harness>;
 
-export const MacOffByDefault: Story = {
+/** The out-of-box state: on at 80% where the machine can composite it. */
+export const MacDefaultOn: Story = {
 	args: { platform: "darwin", osVersion: "26.0.0" },
 };
 export const MacOnFullApp: Story = {
@@ -83,26 +90,38 @@ export const MacOnSidebarsOnly: Story = {
 		initial: { enabled: true, coverage: "sidebars", intensity: 30 },
 	},
 };
-export const Windows11: Story = {
+/** Hardware acceleration off (a launch flag or a crash fallback): greyed. */
+export const MacAccelerationDisabled: Story = {
 	args: {
-		platform: "win32",
-		osVersion: "10.0.22631",
-		initial: { enabled: true },
+		platform: "darwin",
+		osVersion: "26.0.0",
+		environment: { hardwareAcceleration: false },
 	},
 };
-/** The one Windows-specific visible state (design review D4). */
-export const Windows11RestartNeeded: Story = {
+/** The GPU reports compositing/rasterisation off or software-only: greyed. */
+export const MacGpuUnavailable: Story = {
 	args: {
-		platform: "win32",
-		osVersion: "10.0.22631",
-		initial: { enabled: true },
-		restartRequired: true,
+		platform: "darwin",
+		osVersion: "26.0.0",
+		environment: { gpu: { compositing: "unavailable_software" } },
 	},
+};
+/** The renderer cannot draw a backdrop blur: greyed. */
+export const MacNoBackdropFilter: Story = {
+	args: {
+		platform: "darwin",
+		osVersion: "26.0.0",
+		environment: { backdropFilter: false },
+	},
+};
+/** Windows 11: implemented, unverified on a real machine - off and greyed. */
+export const Windows11Unverified: Story = {
+	args: { platform: "win32", osVersion: "10.0.22631" },
 };
 export const Windows10Unsupported: Story = {
 	args: { platform: "win32", osVersion: "10.0.19045" },
 };
-export const LinuxUnsupported: Story = {
+export const LinuxCompositorDependent: Story = {
 	args: { platform: "linux", osVersion: "6.8.0" },
 };
 export const ReducedTransparency: Story = {

@@ -41,6 +41,7 @@ const {
 	appendLocalNote,
 	removeRecord,
 	queuedAskEngineLive,
+	isPictureRef,
 } = reducer;
 
 /** A fresh empty transcript, so each echo test starts from a known state. */
@@ -1235,15 +1236,18 @@ test("a live artifact frame maps the same way as the durable row", () => {
 	assert.equal(tool.images[0].sourceUrl, null);
 });
 
-test("video artifacts enter the view array, with their metadata, once a player exists", () => {
+test("video and sound artifacts enter the view array, with their metadata, once a player exists", () => {
 	// The video phase walked F2's rule forward: the filter admits a video ref
 	// BECAUSE the render for one exists — the imagegen card's done body mounts
 	// each entry by its kind, a video through the digest-fed player
-	// (`canonical-video.tsx`). What the old assertion guarded (an `<img>` handed
-	// video bytes failing decode into a false "unavailable" receipt) is now the
-	// picture seats' contract, held by `isPictureRef`; this test pins the
-	// extraction half: the ref arrives, kind and figure intact, and audio —
-	// which has no seat at all — still does not.
+	// (`canonical-video.tsx`). The SOUND phase does the same for audio: its
+	// player is `canonical-audio.tsx`, mounted by the card's done body and the
+	// tool row's media block. What F2 forbade was admitting a kind no render
+	// could play — an `<img>` handed video bytes fails decode into a false
+	// "unavailable" receipt — so the seats that still draw pictures only (the
+	// fold strip, the two media blocks, the lightbox) filter by `isPictureRef`,
+	// and this test pins the extraction half: both player kinds arrive, kind
+	// and figure intact, and the picture predicate refuses them.
 	const video = {
 		kind: "video",
 		content_type: "video/mp4",
@@ -1278,12 +1282,20 @@ test("video artifacts enter the view array, with their metadata, once a player e
 		cursor_missing: false,
 	});
 	const tool = state.records.find((r) => r.kind === "tool");
-	assert.equal(tool.images.length, 1);
+	assert.equal(tool.images.length, 2, "both player kinds are extracted now");
 	assert.equal(tool.images[0].kind, "video");
 	assert.equal(tool.images[0].mimeType, "video/mp4");
 	assert.equal(tool.images[0].attachment, DIGEST);
 	assert.equal(tool.images[0].durationS, 6.5);
 	assert.equal(tool.images[0].width, 1920);
+	assert.equal(tool.images[1].kind, "audio");
+	assert.equal(tool.images[1].mimeType, "audio/mpeg");
+	assert.equal(
+		isPictureRef(tool.images[0]),
+		false,
+		"a picture seat must not be handed the video player's bytes",
+	);
+	assert.equal(isPictureRef(tool.images[1]), false, "nor the sound player's");
 });
 
 test("a durable row's metadata lands over a bare live frame", () => {
@@ -8493,4 +8505,57 @@ test("an ordinary message carries no seal", () => {
 		false,
 		"the key is absent, not undefined: the gate compares key counts",
 	);
+});
+
+test("late audio_settle_v1 receipt is retained despite its canonical empty detail", () => {
+	// Shape copied from audiogen/settle.py journal: terminal rows have no text.
+	const entry = {
+		id: "settled-audio",
+		ts: 20,
+		type: "message",
+		payload: {
+			kind: "custom",
+			custom_type: "audio_settle_v1",
+			details: {
+				version: 1,
+				tool: "generate_voiceover",
+				request_id: "synthetic-audio-request",
+				status: "completed",
+				terminal: true,
+				settlement_observed: true,
+				cost_usd: 0.0021,
+				billing_basis: "billed",
+				usage_record_id: "synthetic-usage",
+				recorded: true,
+				error_type: null,
+				message: null,
+				asset_error: null,
+				digest: null,
+				duration_s: 1,
+				content_type: "audio/mpeg",
+				size_bytes: null,
+				detail: "",
+			},
+		},
+	};
+	const page = { entries: [entry], has_more: false, cursor_missing: false };
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+	assert.equal(state.records.length, 1);
+	assert.equal(state.records[0].headline, "Cost $0.0021 (billed).");
+	assert.equal(state.records[0].text, "Cost $0.0021 (billed).");
+	assert.equal(applyHistoryPage(state, page), state);
+	for (const details of [
+		{ terminal: true, cost_usd: null, billing_basis: "billed", detail: "" },
+		{ terminal: true, cost_usd: 0.2, billing_basis: "quote", detail: "" },
+	]) {
+		const missing = applyHistoryPage(EMPTY_TRANSCRIPT, {
+			...page,
+			entries: [{ ...entry, payload: { ...entry.payload, details } }],
+		});
+		assert.equal(
+			missing.records.length,
+			0,
+			"never infer a bill from terminal alone",
+		);
+	}
 });

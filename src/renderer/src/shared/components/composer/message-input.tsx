@@ -874,6 +874,24 @@ export type MessageInputProps = {
 	 */
 	sendError?: ComposerSendError;
 	/**
+	 * The pane's stop question, mounted in the band directly above the box.
+	 *
+	 * STOP IS THE CONTROL THIS QUESTION IS ABOUT, and the composer is the only
+	 * entry point that raises it (the card has its own inline copy). Rendering
+	 * it anywhere else in the pane put the answer at the far end of the
+	 * conversation from the press (design D6, UX U7), so the band - the same
+	 * place a failed send renders - is the placement: the question appears where
+	 * the user is already looking, the transcript above yields instead of
+	 * shifting, and the two choices sit one step from the Stop they replace.
+	 *
+	 * A node from the host that owns the admission gate (`useSoundStopGate`),
+	 * not a boolean: this composer has no business knowing what a sound call is.
+	 * Kept off the box itself because the box is one control with one focus
+	 * ring (`COMPOSER_BOX`), and a fieldset of two buttons inside that ring
+	 * would be two more controls inside the thing it frames.
+	 */
+	stopConfirmation?: React.ReactNode;
+	/**
 	 * The label pool an empty chat samples from. `readonly` because the pool is
 	 * a constant the caller owns: the composer draws a sample and never sorts,
 	 * appends to or otherwise edits what it was handed.
@@ -1806,6 +1824,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			canonicalStopAvailable = false,
 			interruptNotice,
 			sendError,
+			stopConfirmation,
 			initialSuggestions,
 			noProvider = false,
 			noModel = false,
@@ -8364,6 +8383,25 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						onReturnFocus={() => textareaRef.current?.focus()}
 					/>
 				)}
+				{/*
+				 * THE STOP QUESTION, LAST IN THE BAND AND SO NEAREST THE BOX.
+				 * The band's order is row, alert, notice, aside panel, then this, then
+				 * the box: everything above states a fact about the conversation or a
+				 * previous press, while this is a question the control below has just
+				 * asked, so it takes the step closest to that control. Same measure and
+				 * padding steps as the alert beside it, which is what keeps the choices
+				 * on the composer's own column instead of the window's.
+				 */}
+				{stopConfirmation ? (
+					<div
+						className={cn(
+							CHAT_MEASURE,
+							isSmallView ? "px-2 pb-2" : "px-4 pb-2",
+						)}
+					>
+						{stopConfirmation}
+					</div>
+				) : null}
 				{/*
 				 * THE SENTENCE AND THE BOX SHARE ONE ANCHORING ELEMENT, and that is the round-3
 				 * fix for the composer's own layout around the capture (design round 3, D1; UX

@@ -74,6 +74,7 @@ import {
 	type GlassScheme,
 	type GlassSettings,
 	WINDOW_GLASS_GET_CHANNEL,
+	WINDOW_GLASS_RENDERER_CHANNEL,
 	WINDOW_GLASS_SCHEME_CHANNEL,
 	WINDOW_GLASS_SET_CHANNEL,
 	WINDOW_GLASS_STATE_CHANNEL,
@@ -374,7 +375,8 @@ const api = {
 		},
 	},
 	/**
-	 * The window glass (optional translucency; default off). `facts` is read from
+	 * The window glass (optional translucency, on by default where the capability
+	 * gate passes). `facts` is read from
 	 * THIS process's argv, which main composed from the persisted file, so the very
 	 * first paint already knows whether the ground is transparent and at which
 	 * alphas - see `src/shared/window-glass.ts`. `null` is "off": the shipped look.
@@ -389,6 +391,15 @@ const api = {
 			ipcRenderer.invoke(WINDOW_GLASS_SET_CHANNEL, patch),
 		reportScheme: (scheme: GlassScheme): Promise<boolean> =>
 			ipcRenderer.invoke(WINDOW_GLASS_SCHEME_CHANNEL, scheme),
+		/**
+		 * The renderer's one capability fact: whether `backdrop-filter` exists here.
+		 * Main starts the gate undecided and re-evaluates on this answer, so a
+		 * renderer that cannot blur never keeps a translucent window.
+		 */
+		reportRenderer: (report: {
+			backdropFilter: boolean;
+		}): Promise<WindowGlassState | null> =>
+			ipcRenderer.invoke(WINDOW_GLASS_RENDERER_CHANNEL, report),
 		onState: (callback: (state: WindowGlassState) => void): (() => void) => {
 			const handler = (_event: IpcRendererEvent, state: WindowGlassState) =>
 				callback(state);
