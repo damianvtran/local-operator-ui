@@ -3056,6 +3056,22 @@ export function ChatSidebar({
 	 */
 	const view = parseSidebarView(chatSidebarView);
 	/*
+	 * A pin pressed in this panel is written at the BOTTOM of the stored order (issue
+	 * #1067, rule 3; the WHY is on `appendPinnedOrder`). Kept out of the pin control's
+	 * handler so that handler stays short beside the row markup it sits in.
+	 */
+	const appendPin = (id: string) =>
+		setChatSidebarView({
+			...view,
+			pins: appendPinnedOrder(
+				pinnedRows([...listed, ...heldRows], pinsEnabled).map(
+					(entry) => entry.session_id,
+				),
+				view.pins,
+				id,
+			),
+		});
+	/*
 	 * THE PINNED SECTION'S OWN ORDER (issue #693), and the lists it is taken from -
 	 * each one because a different rule needs a different list.
 	 *
@@ -5376,27 +5392,7 @@ export function ChatSidebar({
 								title: row.title ?? undefined,
 								updated_at: row.updated_at ?? undefined,
 							});
-							/*
-							 * A PIN IS APPENDED AT THE BOTTOM (issue #1067, rule 3): the drawn order is
-							 * materialized with the new id last, so pins already in the section keep
-							 * their places. Without the write a fresh profile draws the catalogue's
-							 * activity order, and the chat just used would land on top. Written at the
-							 * press rather than after `setSessionPin` resolves, like the unpin below: if
-							 * the pin write fails the entry names an id that is not pinned, which
-							 * `pinnedOrder` drops on read.
-							 */
-							if (!pinned) {
-								setChatSidebarView({
-									...view,
-									pins: appendPinnedOrder(
-										pinnedRows([...listed, ...heldRows], pinsEnabled).map(
-											(entry) => entry.session_id,
-										),
-										view.pins,
-										row.session_id,
-									),
-								});
-							}
+							if (!pinned) appendPin(row.session_id); // rule 3, see `appendPin`
 							/*
 							 * AN UNPIN FORGETS ITS SLOT (issue #693 rule 4, `chat-pin-order.ts`): the id
 							 * leaves the stored manual order with it, so re-pinning is a NEW pin at the
