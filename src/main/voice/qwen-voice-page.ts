@@ -34,8 +34,25 @@ import {
 /** The partition name; `qwen-voice` without `persist:` is memory-only. */
 export const QWEN_VOICE_PARTITION = "qwen-voice";
 
-/** What the macOS privacy (TCC) check found, as far as this app can tell. */
-export type QwenMicAccess = "granted" | "denied" | "unknown";
+/**
+ * What the macOS privacy (TCC) check found, as far as this app can tell.
+ * `prompting` is the bounded-wait outcome (review M3): the OS dialog went up and
+ * is still unanswered, so nothing can be decided yet.
+ */
+export type QwenMicAccess = "granted" | "denied" | "prompting" | "unknown";
+
+/** The two answers the OS can still give after `prompting` was reported. */
+export type QwenMicSettled = "granted" | "denied";
+
+/**
+ * How the microphone is asked for. `timeoutMs` bounds the wait (`0` waits
+ * forever, the old behaviour); after it, the caller gets `prompting` and
+ * `onSettled` fires once when the dialog is finally answered.
+ */
+export type MicrophonePreflight = {
+	timeoutMs?: number;
+	onSettled?: (settled: QwenMicSettled) => void;
+};
 
 /**
  * The coordinator's view of the page: `qwen-voice.ts` owns the rig and calls
@@ -48,7 +65,7 @@ export interface QwenVoicePagePort {
 	/** Destroy it. Idempotent. */
 	close(): void;
 	/** Ask the OS for the microphone before a page is created (§2). */
-	prepareMicrophone(): Promise<QwenMicAccess>;
+	prepareMicrophone(options?: MicrophonePreflight): Promise<QwenMicAccess>;
 }
 
 /**
@@ -63,6 +80,23 @@ export function noQwenVoicePage(): QwenVoicePagePort {
 	};
 }
 
+/**
+ * Whether this launch may create the page at all (review R2): a normal window
+ * only, and never when the run opted out with `LOP_QWEN_NO_WEBUI=1`.
+ *
+ * WHY THE MODE MATTERS: a headless or inactive run has nobody at the screen, and
+ * creating the page there makes the OS ask for a microphone against the process
+ * the launch belongs to - QA saw the prompt land on the session host and voice
+ * sit on "Starting voice" for four minutes. Those runs create no page and ask
+ * for nothing.
+ */
+export function voicePageAllowed(
+	mode: string,
+	env: NodeJS.ProcessEnv,
+): boolean {
+	return mode === "normal" && env.LOP_QWEN_NO_WEBUI !== "1";
+}
+
 /** The URL main loads: the WebUI in desktop-orb mode, with no idle sleep. */
 export function voicePageUrl(webuiUrl: string): string {
 	const url = new URL(webuiUrl);
@@ -71,8 +105,12 @@ export function voicePageUrl(webuiUrl: string): string {
 	return url.toString();
 }
 
-/** The Electron event object every listener here uses (only this method). */
-export type PageEvent = { preventDefault?: () => void };
+/**
+ * The Electron event object every navigation listener here uses. `url` is the
+ * NEW API (review M2): the positional `(event, url)` form is deprecated, and a
+ * handler that read it would miss the event's own field.
+ */
+export type PageEvent = { preventDefault?: () => void; url?: string };
 
 /** The subset of Electron's WebContents this page uses (a test seam). */
 export type VoicePageWebContents = {
@@ -145,6 +183,9 @@ export type QwenVoicePageDeps = {
 	gatewayOrigin: string;
 	/** `LOP_QWEN_VOICE_DEBUG=1`: the view's own DevTools, detached. */
 	devTools?: boolean;
+	/** Timers for the bounded microphone wait (a test seam). */
+	setTimer?: (fn: () => void, ms: number) => unknown;
+	clearTimer?: (handle: unknown) => void;
 	log?: (message: string) => void;
 	/** A page that cannot be brought back; the rig cannot hear, so say so. */
 	onStopped: (reason: string) => void;
@@ -157,10 +198,22 @@ export class QwenVoicePage implements QwenVoicePagePort {
 	private lastCrashAt: number | null = null;
 	private readonly log: (message: string) => void;
 	private readonly now: () => number;
+	private readonly setTimer: (fn: () => void, ms: number) => unknown;
+	private readonly clearTimer: (handle: unknown) => void;
 
 	constructor(private readonly deps: QwenVoicePageDeps) {
 		this.log = deps.log ?? (() => {});
 		this.now = deps.now ?? Date.now;
+		this.setTimer =
+			deps.setTimer ??
+			((fn, ms) => {
+				const handle = setTimeout(fn, ms);
+				handle.unref?.();
+				return handle;
+			});
+		this.clearTimer =
+			deps.clearTimer ??
+			((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>));
 		this.installPermissions();
 		this.installDownloadGuard();
 	}
@@ -230,7 +283,9 @@ export class QwenVoicePage implements QwenVoicePagePort {
 		}
 	}
 
-	async prepareMicrophone(): Promise<QwenMicAccess> {
+	async prepareMicrophone(
+		options: MicrophonePreflight = {},
+	): Promise<QwenMicAccess> {
 		let status: string;
 		try {
 			status = this.deps.mediaAccess.status();
@@ -244,17 +299,53 @@ export class QwenVoicePage implements QwenVoicePagePort {
 		if (status === "denied" || status === "restricted") return "denied";
 		if (status !== "not-determined") return "unknown";
 		/*
-		 * Ask while voice is being turned on, not from inside a silent page: a
+		 * Ask while voice is being turned ON, not from inside a silent page: a
 		 * denial becomes a state the header shows, instead of a page that loads
 		 * with `clients: 1` and hears nothing.
+		 *
+		 * WHERE THE DIALOG IS ATTRIBUTED (QA round 1, Q-4, no code): macOS gives
+		 * a prompt to the RESPONSIBLE process, not necessarily the one that asked.
+		 * In a dev harness that was the lop session host, so the dev app's prompt
+		 * never appeared there. That is a harness artifact - the packaged app is
+		 * its own bundle and answers its own prompt - and not something this call
+		 * can change. Do not chase it here.
 		 */
+		const answer = this.askMicrophone();
+		const timeoutMs = options.timeoutMs ?? 0;
+		if (timeoutMs <= 0) return (await answer) ?? "unknown";
+		/*
+		 * BOUNDED (review M3/QA): macOS can leave the dialog up indefinitely, and
+		 * a start must not hold on it. The wait expires into `prompting`; the
+		 * answer, whenever it comes, reaches the caller through `onSettled`.
+		 */
+		return new Promise<QwenMicAccess>((resolve) => {
+			let settled = false;
+			const timer = this.setTimer(() => {
+				if (settled) return;
+				settled = true;
+				resolve("prompting");
+				void answer.then((value) => {
+					if (value) options.onSettled?.(value);
+				});
+			}, timeoutMs);
+			void answer.then((value) => {
+				if (settled) return;
+				settled = true;
+				this.clearTimer(timer);
+				resolve(value ?? "unknown");
+			});
+		});
+	}
+
+	/** One `askForMediaAccess`, mapped to the two answers or null on error. */
+	private async askMicrophone(): Promise<QwenMicSettled | null> {
 		try {
 			return (await this.deps.mediaAccess.ask()) ? "granted" : "denied";
 		} catch (error) {
 			this.log(
 				`qwen-page: microphone prompt failed: ${error instanceof Error ? error.message : String(error)}`,
 			);
-			return "unknown";
+			return null;
 		}
 	}
 
@@ -293,20 +384,33 @@ export class QwenVoicePage implements QwenVoicePagePort {
 	}
 
 	private installNavigationLock(contents: VoicePageWebContents): void {
-		const block = (event: PageEvent, url?: unknown): void => {
-			if (typeof url !== "string") return;
-			let origin: string;
-			try {
-				origin = new URL(url).origin;
-			} catch {
-				origin = "";
+		/*
+		 * FAIL CLOSED (review M2). The url comes from `event.url`, not the
+		 * deprecated positional argument; an event that names no url is a
+		 * navigation this page may not take, so it is prevented rather than
+		 * allowed through.
+		 */
+		const block = (event: PageEvent): void => {
+			const url = event?.url;
+			let origin = "";
+			if (typeof url === "string" && url.length > 0) {
+				try {
+					origin = new URL(url).origin;
+				} catch {
+					origin = "";
+				}
 			}
 			if (origin === this.deps.gatewayOrigin) return;
-			event.preventDefault?.();
-			this.log(`qwen-page: blocked navigation to ${String(url).slice(0, 200)}`);
+			event?.preventDefault?.();
+			this.log(
+				`qwen-page: blocked navigation to ${(url ?? "<no url>").slice(0, 200)}`,
+			);
 		};
 		contents.on("will-navigate", block);
 		contents.on("will-redirect", block);
+		// Defence in depth: a sub-frame's navigation is not the page's, but the
+		// origin lock is the one rule that must hold for every frame it contains.
+		contents.on("will-frame-navigate", block);
 		contents.setWindowOpenHandler?.(() => {
 			this.log("qwen-page: denied window.open");
 			return { action: "deny" };
@@ -317,7 +421,17 @@ export class QwenVoicePage implements QwenVoicePagePort {
 		contents.on("render-process-gone", () => {
 			if (this.view === null) return;
 			this.log("qwen-page: the renderer is gone");
-			// The renderer is dead; drop the view without pretending to close it.
+			/*
+			 * Close the DEAD contents before dropping the reference (review N4):
+			 * a crashed WebContents still owns a process and its profile files
+			 * until it is closed, and a bare null is how a renderer leaks across a
+			 * crash loop.
+			 */
+			try {
+				contents.close();
+			} catch {
+				// Already gone: nothing to close.
+			}
 			this.view = null;
 			const at = this.now();
 			const recent =

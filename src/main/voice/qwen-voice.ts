@@ -36,13 +36,29 @@
  *   desktop transport, which this file never sees a credential of.
  */
 
+import { totalmem } from "node:os";
 import type { GatewayDownMessage, GatewayUpMessage } from "./qwen-gateway";
-import type { QwenMicAccess, QwenVoicePagePort } from "./qwen-voice-page";
+import { qwenMachineTooSmall } from "./qwen-rig";
+import type {
+	QwenMicAccess,
+	QwenMicSettled,
+	QwenVoicePagePort,
+} from "./qwen-voice-page";
 
 export type QwenRigState = "stopped" | "starting" | "ready" | "error";
 
 /** `voice.qwen.event`, one allowlisted thing the voice did (plan §10). */
-export type QwenVoiceEvent = { type: string; at: string; reason?: string };
+export type QwenVoiceEvent = {
+	type: string;
+	at: string;
+	reason?: string;
+	/**
+	 * The Gateway's own `accepted` on a playback receipt (review M1): `false`
+	 * means the page reported an end for a response this connection was not
+	 * playing, so the renderer must not announce it.
+	 */
+	accepted?: boolean;
+};
 
 /** `voice.qwen.status`, the frozen main <-> renderer status shape. */
 export type QwenVoiceStatus = {
@@ -55,9 +71,9 @@ export type QwenVoiceStatus = {
 	/** `unexpected_exit`: a rig process died while the rig was ready. */
 	cause?: "unexpected_exit" | null;
 	/**
-	 * The macOS microphone verdict for this app's identity (plan §2/§4). Additive
-	 * to the frozen status: `denied` is what turns "unheard" from a step into
-	 * "Microphone blocked - Open Settings".
+	 * The macOS microphone verdict for this app's identity (plan §2/§4, review
+	 * M3). Additive to the frozen status: `denied` is "Microphone blocked - Open
+	 * Settings", and `prompting` is the bounded wait going on right now.
 	 */
 	mic?: QwenMicAccess;
 };
@@ -80,6 +96,17 @@ export const VOICE_EVENT_TYPES = [
 
 /** A reason worth crossing: a word, never a sentence. */
 const EVENT_REASON = /^[a-z_]{1,32}$/;
+
+/** The Gateway writes ISO-8601; anything else is not a time this app trusts. */
+const EVENT_AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/;
+
+/**
+ * How long a first-run microphone prompt may hold a start (review M3). QA saw
+ * the dialog sit unanswered for over four minutes with nobody at the screen;
+ * past this the header says "Waiting for microphone permission…" and the start
+ * stops until the OS answers.
+ */
+export const MIC_PROMPT_BUDGET_MS = 5_000;
 
 export const QWEN_IDLE_STOP_MS = 10 * 60_000;
 export const QWEN_SPEAK_GUARD_MS = 10 * 60_000;
@@ -111,7 +138,7 @@ export interface QwenGatewayPort {
 export interface QwenSpeechPort {
 	start(): Promise<void>;
 	stop(): Promise<void>;
-	killNow(): void;
+	killNow(clearRecord?: boolean): void;
 	readonly running: boolean;
 }
 
@@ -122,6 +149,11 @@ export type QwenVoiceDeps = {
 	toRenderer: (channel: string, payload: unknown) => boolean;
 	/** The hidden voice page (plan §1-§3); a no-op in agent-driven runs. */
 	page: QwenVoicePagePort;
+	/**
+	 * Physical memory in bytes. A machine under 16 GB cannot hold the rig, and
+	 * the header says so before anything spawns (review R1).
+	 */
+	machineBytes?: () => number;
 	log?: (message: string) => void;
 	now?: () => number;
 	setTimer?: (fn: () => void, ms: number) => unknown;
@@ -151,15 +183,22 @@ export class QwenVoice {
 	 * path only sees "exited during start".
 	 */
 	private budgetReason: string | null = null;
+	/**
+	 * A start stopped on an unanswered microphone prompt, waiting for the OS to
+	 * answer so it can resume (review M3). Cleared by the answer either way.
+	 */
+	private awaitingMic = false;
 	private starting: Promise<QwenVoiceStatus> | null = null;
 	private readonly log: (message: string) => void;
 	private readonly now: () => number;
+	private readonly machineBytes: () => number;
 	private readonly setTimer: (fn: () => void, ms: number) => unknown;
 	private readonly clearTimer: (handle: unknown) => void;
 
 	constructor(private readonly deps: QwenVoiceDeps) {
 		this.log = deps.log ?? (() => {});
 		this.now = deps.now ?? Date.now;
+		this.machineBytes = deps.machineBytes ?? totalmem;
 		this.setTimer =
 			deps.setTimer ??
 			((fn, ms) => {
@@ -219,12 +258,37 @@ export class QwenVoice {
 	 */
 	start(reason: "enable" | "renderer"): Promise<QwenVoiceStatus> {
 		if (this.rigUp()) return this.readyAgain(reason);
+		/*
+		 * A MACHINE THAT CANNOT HOLD THE RIG IS TOLD SO, FIRST (review R1): the
+		 * models alone are ~4.8 GB and a healthy idle rig ~5.5 GB, so under 16 GB
+		 * the honest answer is a sentence in the header, not a rig that swaps the
+		 * machine and then trips the memory guard.
+		 */
+		const tooSmall = qwenMachineTooSmall(this.machineBytes());
+		if (tooSmall) {
+			this.log(`qwen-voice: refusing to start: ${tooSmall}`);
+			this.setStatus({ rig: "error", webui_url: null, reason: tooSmall });
+			return Promise.resolve(this.getStatus());
+		}
 		if (this.starting) return this.starting;
 		this.disarmIdleStop();
 		this.budgetReason = null;
 		this.setStatus({ rig: "starting", webui_url: null });
 		this.starting = (async () => {
 			try {
+				/*
+				 * THE MICROPHONE BEFORE THE MODELS (review M3): a first-run prompt
+				 * must appear in the first second, and a denial or a prompt nobody
+				 * answers must cost no memory. `prompting` means the dialog is up
+				 * and unanswered; the start stops here and resumes from
+				 * `micSettled` when the OS answers.
+				 */
+				const mic = await this.preflightMic();
+				if (mic === "denied" || mic === "prompting") {
+					this.awaitingMic = mic === "prompting";
+					this.setStatus({ rig: "stopped", webui_url: null, mic });
+					return this.getStatus();
+				}
 				const webuiUrl = await this.deps.gateway.start();
 				await this.deps.speech.start();
 				/*
@@ -234,13 +298,6 @@ export class QwenVoice {
 				 */
 				if (!this.deps.gateway.running)
 					throw new Error("The voice Gateway stopped while the models loaded");
-				/*
-				 * THE MICROPHONE FIRST (plan §2): the prompt belongs to the moment
-				 * voice is turned on, and a denial must become a state the header
-				 * shows. A denied page is not created at all - one that loaded
-				 * would report a client and hear nothing, which reads as Listening.
-				 */
-				const mic = await this.deps.page.prepareMicrophone();
 				this.setStatus({
 					rig: "ready",
 					webui_url: webuiUrl,
@@ -254,7 +311,7 @@ export class QwenVoice {
 				});
 				// Started with nothing holding the slot: the idle stop still applies.
 				if (this.slot === null) this.armIdleStop();
-				if (mic !== "denied") this.deps.page.open(webuiUrl);
+				this.deps.page.open(webuiUrl);
 			} catch (error) {
 				const message =
 					this.budgetReason ??
@@ -292,12 +349,50 @@ export class QwenVoice {
 			this.deps.page.open(webuiUrl);
 			return this.getStatus();
 		}
-		if (this.status.mic !== "granted") {
-			const mic = await this.deps.page.prepareMicrophone();
-			this.setStatus({ ...this.status, mic });
-			if (mic !== "denied") this.deps.page.open(webuiUrl);
-		}
+		/*
+		 * EVERY ENABLE RE-READS THE VERDICT, not only a cached denial: a person
+		 * can revoke the microphone in System Settings just as easily as grant
+		 * it, and the enable is the moment they expect voice to work. A cached
+		 * "granted" would otherwise keep a revoked mic looking healthy.
+		 */
+		const mic = await this.preflightMic();
+		this.setStatus({ ...this.status, mic });
+		if (mic === "granted") this.deps.page.open(webuiUrl);
 		return this.getStatus();
+	}
+
+	/** The microphone check, bounded; a pending prompt resumes via `micSettled`. */
+	private async preflightMic(): Promise<QwenMicAccess> {
+		try {
+			return await this.deps.page.prepareMicrophone({
+				timeoutMs: MIC_PROMPT_BUDGET_MS,
+				onSettled: (settled) => this.micSettled(settled),
+			});
+		} catch (error) {
+			this.log(
+				`qwen-voice: microphone preflight failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+			return "unknown";
+		}
+	}
+
+	/**
+	 * The OS finally answered a prompt that outlived its budget. A grant starts
+	 * the rig (or opens the page on one already up); a denial is the header's
+	 * "Microphone blocked".
+	 */
+	private micSettled(mic: QwenMicSettled): void {
+		const resume = this.awaitingMic;
+		this.awaitingMic = false;
+		if (this.status.mic === mic && !resume) return;
+		this.setStatus({ ...this.status, mic });
+		if (mic !== "granted") return;
+		if (this.rigUp() && this.status.webui_url) {
+			this.deps.page.open(this.status.webui_url);
+			return;
+		}
+		// Nothing to resume for if the slot went away while the dialog was up.
+		if (resume && this.slot !== null) void this.start("enable");
 	}
 
 	/** Both processes are up and the status says so. */
@@ -392,12 +487,17 @@ export class QwenVoice {
 	 * process may outlive us. Synchronous and idempotent, so the two quit paths
 	 * can both call it.
 	 */
-	stopNow(): void {
+	/**
+	 * `will-quit`, `process.on("exit")`, and a terminating SIGNAL. Synchronous
+	 * and idempotent. `clearRecord` is passed by the signal path, which nothing
+	 * runs behind (review Q-3): see `QwenSpeechProcess.killNow`.
+	 */
+	stopNow(clearRecord = false): void {
 		this.clients = 0;
 		this.disarmIdleStop();
 		this.deps.page.close();
 		this.deps.gateway.stop();
-		this.deps.speech.killNow();
+		this.deps.speech.killNow(clearRecord);
 	}
 
 	private armIdleStop(): void {
@@ -427,17 +527,17 @@ export class QwenVoice {
 			type?: unknown;
 			at?: unknown;
 			reason?: unknown;
+			accepted?: unknown;
 		} | null;
 		if (!value || typeof value.type !== "string") return null;
 		if (!(VOICE_EVENT_TYPES as readonly string[]).includes(value.type))
 			return null;
-		if (typeof value.at !== "string" || value.at.length === 0) return null;
-		const event: QwenVoiceEvent = {
-			type: value.type,
-			at: value.at.slice(0, 40),
-		};
+		// ISO-8601 only (review N3): the renderer parses this as a time.
+		if (typeof value.at !== "string" || !EVENT_AT.test(value.at)) return null;
+		const event: QwenVoiceEvent = { type: value.type, at: value.at };
 		if (typeof value.reason === "string" && EVENT_REASON.test(value.reason))
 			event.reason = value.reason;
+		if (typeof value.accepted === "boolean") event.accepted = value.accepted;
 		return event;
 	}
 

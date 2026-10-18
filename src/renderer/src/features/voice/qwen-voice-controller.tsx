@@ -266,6 +266,43 @@ function phraseJustSpoken(now: number): boolean {
 	);
 }
 
+/**
+ * s2s's `--max_speech_ms` cap. It is a SAFETY NET, not a normal bound (review
+ * BRIEF-1): segments soft-end through smart-turn at ~10.6 s, and QA's 60 s take
+ * produced no discard at all. A segment that DOES reach the cap is thrown away
+ * whole by the VAD with no take and no error, so the app owes the person a line
+ * instead of silence. Rare, therefore cheap.
+ */
+export const LONG_TAKE_MS = 30_000;
+
+/** The line the strip owes after a dropped take, as its catalogue key. */
+export function takeDroppedNotice(): string {
+	return t("ui.chat.voice.take_too_long");
+}
+
+let speechSegmentStartedAt: number | null = null;
+
+/**
+ * Fold one speech event into the drop guard, on the Gateway's clock.
+ *
+ * WHY DURATION AND NOT "NO TAKE ARRIVED": a take reaches this window seconds
+ * after the segment ends (STT runs first), so "no take yet" cannot be told apart
+ * from "take still transcribing". A segment at the cap is exactly what the VAD
+ * throws away when it does throw one away, so its length is the only local
+ * evidence. Returns the time of the drop, or null when this event says nothing.
+ */
+export function noteSpeechSegment(type: string, at: number): number | null {
+	if (type === "realtime.provider.speech_started") {
+		speechSegmentStartedAt = at;
+		return null;
+	}
+	if (type !== "realtime.provider.speech_stopped") return null;
+	const started = speechSegmentStartedAt;
+	speechSegmentStartedAt = null;
+	if (started === null) return null;
+	return at - started >= LONG_TAKE_MS ? at : null;
+}
+
 /** The longest run of consecutive words `a` and `b` share. */
 function longestSharedRun(a: string[], b: string[]): number {
 	let best = 0;
@@ -723,7 +760,24 @@ export const QwenVoiceController: FC = () => {
 			const next = activityOfEvent(event.type);
 			if (next !== null)
 				useVoiceStore.getState().setActivity(next === "idle" ? null : next);
-			if (event.type === "realtime.playback.ended") void playReplyEndTone();
+			/*
+			 * A LONG TAKE IS DROPPED BY THE VAD (BRIEF-1): the segment never
+			 * becomes a take, so the only evidence is its own duration against the
+			 * cap. The strip says so instead of leaving a silent failure.
+			 */
+			const at = Date.parse(event.at);
+			if (Number.isFinite(at)) {
+				const dropped = noteSpeechSegment(event.type, at);
+				if (dropped !== null) useVoiceStore.getState().setDroppedTake(dropped);
+			}
+			/*
+			 * THE END CUE NEEDS AN ACCEPTED RECEIPT (review M1): the Gateway logs
+			 * `playback.ended` even for a response this connection was not
+			 * playing, and a tone for that would announce a reply that never
+			 * happened here.
+			 */
+			if (event.type === "realtime.playback.ended" && event.accepted === true)
+				void playReplyEndTone();
 		});
 		return () => {
 			offStatus();

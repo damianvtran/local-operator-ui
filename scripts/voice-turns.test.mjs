@@ -1484,7 +1484,7 @@ const READS_INPUT_MODE = /input_mode|inputMode/;
 const controllerBundle = await build({
 	stdin: {
 		contents:
-			'export { feedTurns, sendVoiceTake, takeIsEcho, isEcho, isQwenPhrase, isQwenPhraseHeard, markPhraseSpoken, PHRASE_ECHO_WINDOW_MS, rememberSpoken, speechMs, viewedSessionId, spokenTruncated } from "./src/renderer/src/features/voice/qwen-voice-controller"; export { useVoiceStore, voicePhaseOf, activityOfEvent } from "./src/renderer/src/features/voice/voice-store"; export { scheduleReplyEndTone, playReplyEndTone, END_TONE_HZ, END_NOTE_SECONDS } from "./src/renderer/src/features/voice/voice-earcons";',
+			'export { feedTurns, sendVoiceTake, takeIsEcho, isEcho, isQwenPhrase, isQwenPhraseHeard, markPhraseSpoken, PHRASE_ECHO_WINDOW_MS, rememberSpoken, speechMs, viewedSessionId, spokenTruncated, LONG_TAKE_MS, noteSpeechSegment, takeDroppedNotice } from "./src/renderer/src/features/voice/qwen-voice-controller"; export { useVoiceStore, voicePhaseOf, activityOfEvent } from "./src/renderer/src/features/voice/voice-store"; export { scheduleReplyEndTone, playReplyEndTone, END_TONE_HZ, END_NOTE_SECONDS } from "./src/renderer/src/features/voice/voice-earcons";',
 		resolveDir: process.cwd(),
 		loader: "tsx",
 	},
@@ -2361,7 +2361,87 @@ test("§8: the cut flag is read when present and tolerated when absent", async (
 	);
 	assert.match(
 		source,
-		/if \(event\.type === "realtime\.playback\.ended"\) void playReplyEndTone\(\);/,
+		/event\.type === "realtime\.playback\.ended" &&\s*event\.accepted === true/,
+		"M1: the cue needs an ACCEPTED receipt, not merely an ended one",
 	);
 	assert.doesNotMatch(source, /playback\.cancelled"\).*playReplyEndTone/);
+});
+
+/*
+ * ROUND 1 of the in-app page review (M1, M3) and BRIEF-1: the store's mirror of
+ * the rig, the two microphone phases, and the dropped-take notice.
+ */
+
+test("M1: activity is cleared when the rig is not ready or no page is connected", async () => {
+	const { useVoiceStore } = await controller();
+	const store = useVoiceStore.getState();
+	store.setActivity("speaking");
+	assert.equal(useVoiceStore.getState().activity, "speaking");
+	// Still ready with a page: the activity is a live claim and stays.
+	store.setRig({ rig: "ready", webui_url: null, clients: 1 });
+	assert.equal(useVoiceStore.getState().activity, "speaking");
+	// The page dropped: nothing can be playing into it.
+	store.setRig({ rig: "ready", webui_url: null, clients: 0 });
+	assert.equal(useVoiceStore.getState().activity, null, "clients 0 clears it");
+	store.setActivity("hearing");
+	store.setRig({ rig: "stopped", webui_url: null, clients: 0 });
+	assert.equal(
+		useVoiceStore.getState().activity,
+		null,
+		"a stopped rig clears it",
+	);
+	store.setActivity("speaking");
+	store.setRig({ rig: "error", webui_url: null, reason: "x" });
+	assert.equal(useVoiceStore.getState().activity, null, "an error clears it");
+});
+
+test("M3: the microphone owns the header's word while it is pending or blocked", async () => {
+	const { useVoiceStore, phase } = await controller();
+	const store = useVoiceStore.getState();
+	store.setActive({ session_id: "s1", enabled_at: 1 });
+	// A prompt the OS has not answered: not "Starting voice" for ever.
+	store.setRig({ rig: "stopped", webui_url: null, mic: "prompting" });
+	assert.equal(phase(), "mic_prompting");
+	// Denied, with the rig never started: the thing to fix, not "Start voice".
+	store.setRig({ rig: "stopped", webui_url: null, mic: "denied" });
+	assert.equal(phase(), "mic_blocked");
+	// Granted and ready with a page: back to the ordinary words.
+	store.setRig({ rig: "ready", webui_url: null, clients: 1, mic: "granted" });
+	assert.equal(phase(), "listening");
+	// A rig error still wins: the reason must not be hidden by a mic verdict.
+	store.setRig({ rig: "error", webui_url: null, mic: "denied", reason: "x" });
+	assert.equal(phase(), "error");
+});
+
+test("BRIEF-1: a segment at the cap is a dropped take, and the strip has its line", async () => {
+	const mod = await controller();
+	assert.equal(mod.LONG_TAKE_MS, 30_000);
+	const at = Date.parse("2026-10-18T05:00:00.000Z");
+	assert.equal(
+		mod.noteSpeechSegment("realtime.provider.speech_started", at),
+		null,
+	);
+	// A natural take soft-ends well under the cap: nothing to say.
+	assert.equal(
+		mod.noteSpeechSegment("realtime.provider.speech_stopped", at + 10_600),
+		null,
+	);
+	// One that reaches the cap is what the VAD throws away whole.
+	assert.equal(
+		mod.noteSpeechSegment("realtime.provider.speech_started", at),
+		null,
+	);
+	assert.equal(
+		mod.noteSpeechSegment("realtime.provider.speech_stopped", at + 31_000),
+		at + 31_000,
+	);
+	// A stop with no start it saw says nothing.
+	assert.equal(
+		mod.noteSpeechSegment("realtime.provider.speech_stopped", at),
+		null,
+	);
+	// The line the strip renders, and the store slot it fills.
+	assert.equal(mod.takeDroppedNotice(), "ui.chat.voice.take_too_long");
+	mod.useVoiceStore.getState().setDroppedTake(at);
+	assert.equal(mod.useVoiceStore.getState().droppedTakeAt, at);
 });

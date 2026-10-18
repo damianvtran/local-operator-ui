@@ -163,5 +163,15 @@
 		"role": "small text button beside the status word",
 		"tone": "single verb",
 		"note": "Recreates the hidden voice page and reconnects it to the local speech models."
+	},
+	"ui.chat.voice.phase_mic_prompting": {
+		"role": "status word beside the voice control",
+		"tone": "short status, sentence case",
+		"note": "The OS microphone prompt is up and has not been answered yet. Followed by an Open Settings action."
+	},
+	"ui.chat.voice.take_too_long": {
+		"role": "one-line notice in the voice strip",
+		"tone": "plain statement plus one short instruction",
+		"note": "A take was discarded because it ran past the speech VAD cap. Rare; the person should keep takes shorter."
 	}
 }

@@ -855,6 +855,7 @@ export type MessageParams = {
 	"ui.chat.voice.phase_error": undefined;
 	"ui.chat.voice.phase_hearing": undefined;
 	"ui.chat.voice.phase_listening": undefined;
+	"ui.chat.voice.phase_mic_prompting": undefined;
 	"ui.chat.voice.phase_speaking": undefined;
 	"ui.chat.voice.phase_starting": undefined;
 	"ui.chat.voice.phase_unheard": undefined;
@@ -865,6 +866,7 @@ export type MessageParams = {
 	"ui.chat.voice.stream_reconnect": undefined;
 	"ui.chat.voice.switched_from": { title: string };
 	"ui.chat.voice.switched_from_untitled": undefined;
+	"ui.chat.voice.take_too_long": undefined;
 	"ui.chat.voice.toggle_off": undefined;
 	"ui.chat.voice.toggle_on": undefined;
 	"ui.chat.voice.toggle_switch": { title: string };

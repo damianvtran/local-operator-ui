@@ -147,30 +147,46 @@ export const VoicePhase: FC<{ sessionId: string | undefined }> = ({
 		);
 	}
 	/*
-	 * READY, BUT NOTHING CAN HEAR (plan §4). A denied microphone is the one case
-	 * Retry cannot fix, so it names the setting and opens it; every other cause
-	 * (a crashed page, a page that never loaded) is the page, and Retry recreates
-	 * it through `voice.qwen.start`.
+	 * THE MICROPHONE (review M3). A prompt the OS has not answered reads
+	 * "Waiting for microphone permission…" rather than "Starting voice" forever;
+	 * a denial reads "Microphone blocked". Both offer Open Settings, the one
+	 * place either can be changed, and neither is a page problem Retry can fix.
 	 */
-	if (phase === "unheard") {
-		const blocked = rig?.mic === "denied";
+	if (phase === "mic_prompting" || phase === "mic_blocked") {
+		const blocked = phase === "mic_blocked";
 		return (
 			<span
-				data-voice-phase="unheard"
-				data-voice-mic={blocked ? "denied" : undefined}
+				data-voice-phase={phase}
 				className="flex shrink-0 items-center gap-1 whitespace-nowrap text-meta text-ink-muted"
 			>
 				{t(
-					blocked ? "ui.chat.voice.mic_blocked" : "ui.chat.voice.phase_unheard",
+					blocked
+						? "ui.chat.voice.mic_blocked"
+						: "ui.chat.voice.phase_mic_prompting",
 				)}
 				<PhaseAction
-					phase={blocked ? "settings" : "retry"}
-					label={t(
-						blocked ? "ui.chat.voice.open_settings" : "ui.chat.voice.retry",
-					)}
-					onPress={() =>
-						void (blocked ? openMicrophoneSettings() : startQwenRig())
-					}
+					phase="settings"
+					label={t("ui.chat.voice.open_settings")}
+					onPress={() => void openMicrophoneSettings()}
+				/>
+			</span>
+		);
+	}
+	/*
+	 * READY, BUT NOTHING CAN HEAR (plan §4): the rig is up and no page is
+	 * connected. Retry recreates the page through `voice.qwen.start`.
+	 */
+	if (phase === "unheard") {
+		return (
+			<span
+				data-voice-phase="unheard"
+				className="flex shrink-0 items-center gap-1 whitespace-nowrap text-meta text-ink-muted"
+			>
+				{t("ui.chat.voice.phase_unheard")}
+				<PhaseAction
+					phase="retry"
+					label={t("ui.chat.voice.retry")}
+					onPress={() => void startQwenRig()}
 				/>
 			</span>
 		);

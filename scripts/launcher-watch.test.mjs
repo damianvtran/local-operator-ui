@@ -367,17 +367,42 @@ test("SIGTERM during a quit is a logged exit, and only during a quit", () => {
 	// Quitting: the reopen record is completed and the exit is deterministic.
 	assert.match(index, /scheduleReopenAtQuitTerminal\(\); app\.exit\(0\);/);
 	assert.match(index, /process\.on\("SIGTERM", onSigtermDuringQuit\);/);
-	// Exactly one literal SIGTERM registration, and SIGINT keeps its single
-	// owner — the headless loop above — because nothing else may take a person's
-	// Ctrl-C.
+	// Exactly one literal SIGTERM registration.
 	assert.equal(
 		index.split('process.on("SIGTERM"').length - 1,
 		1,
 		"expected exactly one literal SIGTERM registration (the quit-gated handler)",
 	);
+	/*
+	 * SIGINT: ONE listener outside the headless loop, and it must HAND THE
+	 * SIGNAL BACK (added 2026-10-18, QA round 1 Q-3). `kill -TERM` was measured
+	 * taking the Electron group down in 2 s while the detached 5.69 GB s2s group
+	 * survived with its record - the same is true of a Ctrl-C in the dev
+	 * terminal, which is the trial's own stop gesture. So the listener stops the
+	 * rig, removes itself and re-raises; a person's Ctrl-C still means exactly
+	 * what it did. What this forbids is unchanged: anything that takes the exit
+	 * into its own hands, or a second owner. A first draft of this pin demanded
+	 * ZERO literal SIGINT registrations; that letter protected the meaning, and
+	 * the meaning is what the three assertions below keep.
+	 */
 	assert.equal(
 		index.split('process.on("SIGINT"').length - 1,
-		0,
-		"SIGINT must stay inside the headless loop, registered by its own variable",
+		1,
+		"one handing-back SIGINT listener outside the headless loop",
+	);
+	const sigintBody = index.slice(
+		index.indexOf("const onSigint"),
+		index.lastIndexOf('process.on("SIGINT"'),
+	);
+	assert.match(sigintBody, /stopVoiceOnTerminatingSignal\("SIGINT"\)/);
+	assert.match(
+		sigintBody,
+		/process\.removeListener\("SIGINT", onSigint\); process\.kill\(process\.pid, "SIGINT"\);/,
+		"it must hand the signal back, not own it",
+	);
+	assert.doesNotMatch(
+		sigintBody,
+		/app\.exit\(|process\.exit\(/,
+		"a handler that exits on its own is what this forbids",
 	);
 });

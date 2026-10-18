@@ -148,6 +148,7 @@ import {
 	type VoicePageSession,
 	type VoicePageView,
 	noQwenVoicePage,
+	voicePageAllowed,
 } from "./voice/qwen-voice-page";
 import { resolveLaunchWindowChrome } from "./window-chrome";
 import {
@@ -1580,7 +1581,14 @@ const qwenVoice: QwenVoice = new QwenVoice({
 	 * first use is a start, which cannot happen before there is a window.
 	 */
 	page: (() => {
-		if (process.env.LOP_QWEN_NO_WEBUI === "1") return noQwenVoicePage();
+		/*
+		 * NO PAGE OUTSIDE A NORMAL WINDOW (review R2): a headless or inactive run
+		 * has nobody at the screen, and the OS microphone prompt would land on
+		 * whatever process this launch belongs to - QA watched it sit unanswered
+		 * for four minutes against the session host.
+		 */
+		if (!voicePageAllowed(windowLaunch.mode, process.env))
+			return noQwenVoicePage();
 		let page: QwenVoicePage | null = null;
 		const instance = (): QwenVoicePage => {
 			page ??= new QwenVoicePage({
@@ -1615,6 +1623,40 @@ const qwenVoice: QwenVoice = new QwenVoice({
 	})(),
 	log: (message) => logger.info(message, LogFileType.BACKEND),
 });
+
+/**
+ * A TERMINATING SIGNAL STOPS THE RIG FIRST (QA round 1, Q-3). Measured: `kill
+ * -TERM` took the whole Electron group down in under 2 s, but the s2s group
+ * (5.69 GB) survived with `s2s.json` still naming it - `before-quit`,
+ * `will-quit` and `process.on("exit")` never ran, because the SIGTERM handler
+ * below hands a signal with no quit under way back to Chromium.
+ *
+ * So the signal paths stop the rig themselves, synchronously, and clear the
+ * record: nothing runs behind them to reap it. Idempotent (a second signal does
+ * nothing), and bounded - the timer is unref'd and only matters if some other
+ * listener keeps the process alive after the stop.
+ */
+const SIGNAL_STOP_BOUND_MS = 3_000;
+let signalStoppedVoice = false;
+const stopVoiceOnTerminatingSignal = (signal: NodeJS.Signals): void => {
+	if (signalStoppedVoice) return;
+	signalStoppedVoice = true;
+	logger.info(
+		`Received ${signal}; stopping the voice rig before exit.`,
+		LogFileType.BACKEND,
+	);
+	const bound = setTimeout(() => app.exit(1), SIGNAL_STOP_BOUND_MS);
+	bound.unref?.();
+	try {
+		qwenVoice.stopNow(true);
+	} catch (error) {
+		logger.warn(
+			`voice stop on ${signal} failed: ${error instanceof Error ? error.message : String(error)}`,
+			LogFileType.BACKEND,
+		);
+	}
+	clearTimeout(bound);
+};
 
 /**
  * The one-shot mount permits for supplement frames (turn-supplements memo §4.1,
@@ -2436,7 +2478,12 @@ app
 					 * listener and re-raising. libuv restores the saved sigaction
 					 * when the last listener for a signal goes, so the re-raise
 					 * reaches whatever handled TERM before this block did.
+					 *
+					 * THE RIG IS STOPPED HERE, BEFORE THE HAND-OFF (QA round 1,
+					 * Q-3): Chromium's shutdown runs no quit path, so this is the
+					 * only chance to take the 5.7 GB s2s group with us.
 					 */
+					stopVoiceOnTerminatingSignal("SIGTERM");
 					process.removeListener("SIGTERM", onSigtermDuringQuit);
 					process.kill(process.pid, "SIGTERM");
 					return;
@@ -2449,6 +2496,17 @@ app
 				app.exit(0);
 			};
 			process.on("SIGTERM", onSigtermDuringQuit);
+			/*
+			 * Ctrl-C in the dev terminal is the same class of exit: Chromium runs
+			 * no quit path for SIGINT either, so the rig is stopped here and the
+			 * signal then re-raised to its previous disposition.
+			 */
+			const onSigint = () => {
+				stopVoiceOnTerminatingSignal("SIGINT");
+				process.removeListener("SIGINT", onSigint);
+				process.kill(process.pid, "SIGINT");
+			};
+			process.on("SIGINT", onSigint);
 		}
 
 		// Default open or close DevTools by F12 in development

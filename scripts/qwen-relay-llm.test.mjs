@@ -341,6 +341,37 @@ test("§10: only the allowlisted events cross, and never a word of the message",
 		null,
 		"no time",
 	);
+	// N3: only an ISO-8601 time crosses - the renderer parses it as a time.
+	for (const bad of [
+		"",
+		"yesterday",
+		"05:36:39",
+		"2026-10-18 05:36:39",
+		"2026-10-18T05:36:39",
+	])
+		assert.equal(
+			voiceEventOf({ event: "realtime.response.done", time: bad }),
+			null,
+			bad || "empty",
+		);
+	// M1: the playback receipt's own `accepted` crosses, booleans only.
+	assert.deepEqual(
+		voiceEventOf({
+			event: "realtime.playback.ended",
+			time: at,
+			accepted: false,
+		}),
+		{ type: "realtime.playback.ended", at, accepted: false },
+	);
+	assert.deepEqual(
+		voiceEventOf({
+			event: "realtime.playback.ended",
+			time: at,
+			accepted: "no",
+		}),
+		{ type: "realtime.playback.ended", at },
+		"a non-boolean is not a receipt",
+	);
 	// A reason crosses only as a word: a sentence or a length are dropped.
 	assert.deepEqual(
 		voiceEventOf({

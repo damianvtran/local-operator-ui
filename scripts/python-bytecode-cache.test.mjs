@@ -2368,17 +2368,10 @@ const SPAWN_SITES = [
 	),
 	runsCommand(
 		"src/main/voice/qwen-rig.ts",
-		"execFileSync",
-		2,
-		/"ps"/,
-		"enumerates the s2s process group's pids (`ps -o pid= -g <pgid>`) for the footprint guard (§9 layer 3); `ps` reads the process table and starts no interpreter",
-	),
-	runsCommand(
-		"src/main/voice/qwen-rig.ts",
-		"execFileSync",
-		3,
-		/"footprint"/,
-		"sums the s2s group's memory footprint (`footprint -f bytes --noCategories <pids>`), the only reading that counts Metal/GPU buffers - `ps` RSS reports the CPU side only and the leak the budget guard exists for is Metal; it starts no interpreter",
+		"execFile",
+		1,
+		/^\s*file,\s*args,/,
+		"the ONE async helper (`capture`) behind the footprint guard (§9 layer 3): it enumerates the s2s group with `ps -o pid= -g <pgid>` and sums it with `footprint -f bytes --noCategories <pids>`, the only reading that counts Metal/GPU buffers - `ps` RSS reports the CPU side only and the leak the budget guard exists for is Metal. ASYNC on purpose (review M4): the 5 s poll runs on the main thread. Neither tool starts an interpreter",
 	),
 ];
 
