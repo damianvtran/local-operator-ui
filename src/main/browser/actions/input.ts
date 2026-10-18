@@ -5,6 +5,7 @@ import type { TabRecord } from "../registry";
 import { settle } from "../settle";
 import { type BrowserActionContext, stringParam } from "./context";
 import {
+	CONTENTEDITABLE_SELECTOR,
 	EDITABLE_SELECTOR,
 	FRAME_HOP,
 	type FrameScope,
@@ -115,10 +116,18 @@ const CLICK_FUNCTION = `function () {
   }
 }`;
 
+/** True only for the editing HOST the agent may type at, not an interactive or
+ * void descendant that merely inherits `isContentEditable` from one: without
+ * the host requirement, typing at a button or link inside a contenteditable
+ * rewrote that descendant's textContent and fired `input` before refusing. */
+const CONTENTEDITABLE_CHECK = `(this.isContentEditable === true &&
+    typeof this.matches === 'function' && this.matches(${JSON.stringify(CONTENTEDITABLE_SELECTOR)}))`;
+
 /** Share the frame descent's field policy, but use the DOM's computed
- * contenteditable state (an attribute alone may be overridden or inherited).
+ * contenteditable state (an attribute alone may be overridden or inherited),
+ * narrowed to an editing host as CONTENTEDITABLE_CHECK explains.
  * Rechecked by the setter: page handlers may change editability after focus. */
-const EDITABLE_CHECK = `this.isContentEditable ||
+const EDITABLE_CHECK = `${CONTENTEDITABLE_CHECK} ||
     (typeof this.matches === 'function' && this.matches('input, textarea') && this.matches(${JSON.stringify(EDITABLE_SELECTOR)}))`;
 
 /** The focus+select used before `Input.insertText`, for the same reason as the
@@ -132,7 +141,7 @@ const FOCUS_AND_SELECT_FUNCTION = `function () {
   if (this.getRootNode().activeElement !== this) return 'not_focused';
   if (typeof this.select === 'function') {
     this.select();
-  } else if (this.isContentEditable && typeof this.ownerDocument.execCommand === 'function') {
+  } else if (${CONTENTEDITABLE_CHECK} && typeof this.ownerDocument.execCommand === 'function') {
     this.ownerDocument.execCommand('selectAll');
   }
   return this.getRootNode().activeElement === this ? 'ready' : 'not_focused';
@@ -141,16 +150,17 @@ const FOCUS_AND_SELECT_FUNCTION = `function () {
 /** Set the value through the prototype's own setter, then announce it. This is
  * the mechanism a framework-controlled field actually listens for.
  *
- * Returns `null` — and writes NOTHING — when the node is not editable or has no
- * `value` setter anywhere on its prototype chain and is not contenteditable: an `<iframe>`, a
- * `<div>`, a button. The old `else this.value = text` planted an expando on such
- * a node and then read that same expando back as "the value", so `type` aimed at
- * a cross-origin payment frame reported success while nothing was typed. The
+ * Returns `null` — and writes NOTHING — when the node is not an editable text
+ * target: an `<iframe>`, a `<div>`, a button, or an interactive descendant of
+ * a contenteditable host (the editing host itself is the only contenteditable
+ * target). The old `else this.value = text` planted an expando on such a node and
+ * then read that same expando back as "the value", so `type` aimed at a
+ * cross-origin payment frame reported success while nothing was typed. The
  * chain is walked rather than only the immediate prototype so a custom element
  * extending `HTMLInputElement` still finds the inherited setter. */
 const SET_VALUE_FUNCTION = `function (text) {
   if (!(${EDITABLE_CHECK})) return null;
-  if (this.isContentEditable) {
+  if (${CONTENTEDITABLE_CHECK}) {
     const focusFn = this.focus;
     if (typeof focusFn === 'function') focusFn.call(this);
     if (!(${EDITABLE_CHECK})) return null;
