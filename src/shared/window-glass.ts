@@ -815,6 +815,13 @@ export function glassPaintFor(input: {
 		 * alternative: `scripts/derive-glass-floors.mjs`.
 		 */
 		"--lo-glass-a-block-veil": String(GLASS_FLOORS.blockVeil[input.scheme]),
+		/*
+		 * The LANE wash: a well behind veiled blocks cannot be an ink overlay (the
+		 * veil is already the one ink layer under the card's text), so it is the
+		 * palette's `surface` at the derived alpha. The step off the page, not the
+		 * card, is what this number is derived for.
+		 */
+		"--lo-glass-a-lane": String(GLASS_FLOORS.laneWash[input.scheme]),
 		"--lo-glass-control-mix": String(
 			glassControlMix(input.mechanism, input.material, input.scheme),
 		),

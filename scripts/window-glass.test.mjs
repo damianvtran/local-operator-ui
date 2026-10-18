@@ -14,6 +14,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
+import {
+	LANE_ALPHA_CEILING,
+	LANE_DEFAULT_INTENSITY,
+	deriveLaneWash,
+} from "./derive-glass-floors.mjs";
 
 const ROOT = process.cwd();
 
@@ -589,6 +594,34 @@ test("G-7b the block veil and the work alpha are committed as derived, not chose
 	);
 });
 
+test("G-7c the lane wash is committed as derived, and its mirrored constants are the module's", () => {
+	for (const scheme of ["dark", "light"]) {
+		const wash = floorsFile.laneWash?.[scheme];
+		assert.ok(
+			typeof wash === "number" && wash > 0 && wash < 1,
+			`laneWash/${scheme} is a committed alpha`,
+		);
+	}
+	/*
+	 * THE DERIVATION MIRRORS TWO CONSTANTS because it has no build step. If either
+	 * moves in `src/shared/window-glass.ts` without being carried into
+	 * `scripts/derive-glass-floors.mjs`, the lane would be derived at a different
+	 * intensity than the slider actually ships - a silent second opinion about the
+	 * same number. This is the check that makes the mirror a contract.
+	 */
+	assert.equal(LANE_DEFAULT_INTENSITY, glass.DEFAULT_GLASS_INTENSITY);
+	assert.equal(LANE_ALPHA_CEILING, glass.GLASS_ALPHA_CEILING);
+	assert.deepEqual(
+		deriveLaneWash(
+			JSON.parse(
+				readFileSync(`${ROOT}/src/shared/window-glass-floors.json`, "utf8"),
+			).alphaFloor,
+		),
+		floorsFile.laneWash,
+		"the committed lane wash is the derived one (never hand-lowered)",
+	);
+});
+
 test("G-8 paint: which kinds a coverage turns translucent, and the net alphas", () => {
 	const paint = (coverage) =>
 		glass.glassPaintFor({
@@ -633,6 +666,7 @@ test("G-8 paint: which kinds a coverage turns translucent, and the net alphas", 
 	/* The round-2 overlays are published from the committed table, per scheme. */
 	assert.equal(a("--lo-glass-a-row-work"), floorsFile.stateAlpha.work);
 	assert.equal(a("--lo-glass-a-block-veil"), floorsFile.blockVeil.dark);
+	assert.equal(a("--lo-glass-a-lane"), floorsFile.laneWash.dark);
 	const lightVars = glass.glassPaintFor({
 		coverage: "full",
 		intensity: 60,
@@ -644,6 +678,11 @@ test("G-8 paint: which kinds a coverage turns translucent, and the net alphas", 
 		Number(lightVars["--lo-glass-a-block-veil"]),
 		floorsFile.blockVeil.light,
 		"the veil follows the palette's scheme",
+	);
+	assert.equal(
+		Number(lightVars["--lo-glass-a-lane"]),
+		floorsFile.laneWash.light,
+		"the lane wash follows the palette's scheme",
 	);
 	/* Every var is a bare number the CSS multiplies by 100%. */
 	for (const value of Object.values(v)) assert.match(value, /^\d(\.\d+)?$/);
@@ -746,6 +785,21 @@ test("G-11 every region, state and well the CSS names is a marker some component
 		assert.ok(
 			carried("data-glass-well", well),
 			`CSS names well "${well}" but no component carries it`,
+		);
+	/* Round 3: a plane is a clear surface or a masking band, and a lane is the
+	 * board's surface wash. Both are attribute markers, so the same closed-
+	 * vocabulary check holds them. */
+	const planes = valuesNamedBy("data-glass-plane");
+	assert.ok(planes.has("clear") && planes.has("band"));
+	for (const plane of planes)
+		assert.ok(
+			carried("data-glass-plane", plane),
+			`CSS names plane "${plane}" but no component carries it`,
+		);
+	if (/\[data-glass-lane\]/.test(css))
+		assert.ok(
+			sources.some((source) => /data-glass-lane/.test(source)),
+			"CSS names data-glass-lane but no component carries it",
 		);
 	/*
 	 * THE STACKED INK IS FORBIDDEN, NOT MEASURED. A row inside a veiled

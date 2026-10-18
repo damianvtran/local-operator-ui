@@ -989,6 +989,10 @@ const AskRow = ({
 			 * the transcript's own turn rule takes the hairline for the same reason
 			 * (design round 1, D9).
 			 */
+			/* A text-bearing card whose fill is its boundary: a block on glass
+			 * (the veil), so the ask does not read as an opaque island in the
+			 * glass drawer. The hairline stays; the fill is the veil. */
+			data-glass-block=""
 			className="flex flex-col gap-2 rounded-md border border-hairline bg-surface p-3"
 		>
 			{conversation === null ? null : (

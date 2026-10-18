@@ -708,6 +708,13 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 									key={column.status}
 									data-board-column={column.status}
 									/*
+									 * THE COLUMN STRIP IS PART OF THE LANE on glass: it and the well
+									 * below wear the same surface wash, so the header and its lane
+									 * read as one object rather than a sunken strip above a lifted
+									 * band. Off glass it keeps the flat `sunken` recess.
+									 */
+									data-glass-lane=""
+									/*
 									 * The cell PINS as part of its row (the row is the sticky layer),
 									 * and its height is the fixed 44 (`h-11`) the band headers' `top-11`
 									 * offset is written against — the two constants stay one fact
@@ -818,14 +825,39 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 							 * board's own scroller, which is how the next team comes into view.
 							 */}
 							{/*
-							 * THE WELL IS CLEAR ON GLASS (`data-glass-well="clear"`, never
-							 * painted): the card above it carries the derived block veil, and
-							 * a well would be a second ink under the same column - the
-							 * alpha-owning law forbids a well under a veil. On the flat system
-							 * the band's recess is unchanged.
+							 * THE LANE IS A SURFACE WASH ON GLASS, not a clear well.
+							 *
+							 * Round 2 cleared this well because the card above it carries the
+							 * block veil, and a SECOND INK under a veil breaks AA: ink 5% under
+							 * the veil measured `inkMuted` 4.03:1 on synthwave. The operator's
+							 * report is the other half of that trade: with the well clear the
+							 * board lost its lane structure and read as headers floating on
+							 * the page. The resolution is a token that is NOT ink - the
+							 * palette's `surface` at the derived lane alpha
+							 * (`--lo-glass-a-lane`, 0.76 dark / 0.41 light). It is still
+							 * translucent (it composes over the page's canvas glass), it is a
+							 * brightness step in the direction the flat `surface` lift has,
+							 * and the card keeps its veil as the only ink layer under its
+							 * text. Measured over all 59 palettes: the lane steps ΔE00
+							 * 1.87-4.93 off the page at the default intensity (floor 1.5), the
+							 * card steps 4.46-5.97 off the lane (floor 4.0), and `inkMuted`
+							 * on the card holds 5.18:1.
+							 *
+							 * THE WELL IS CAPPED AT ONE SCREEN (operator refinement): the
+							 * section never grows past the board viewport - every CELL is its
+							 * own bounded vertical scroller (`max-h` = one screen minus the
+							 * pinned row and this band's header, `100cqh - 92`), so a long
+							 * queue scrolls inside its column while a short one shrinks to
+							 * content (a max, not a height). Cells still cross-stretch to the
+							 * well's tallest, so the band stays one rectangle. NOTHING TRAPS
+							 * THE WHEEL: no `overscroll-behavior` anywhere on this path and no
+							 * `overflow: hidden` between the cells and the strip - a wheel
+							 * over a column that cannot scroll (or has hit its edge) chains to
+							 * the board's own scroller, which is how the next team comes into
+							 * view.
 							 */}
 							<div
-								data-glass-well="clear"
+								data-glass-lane=""
 								className="flex gap-3 rounded-md bg-sunken py-2"
 							>
 								{columns.map((column) => {

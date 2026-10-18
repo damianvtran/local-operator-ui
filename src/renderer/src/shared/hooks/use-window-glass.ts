@@ -41,6 +41,7 @@ const GLASS_VARS = [
 	"--lo-glass-a-row-selected",
 	"--lo-glass-a-row-work",
 	"--lo-glass-a-block-veil",
+	"--lo-glass-a-lane",
 	"--lo-glass-a-field",
 	"--lo-glass-control-mix",
 	"--lo-glass-in-surface",

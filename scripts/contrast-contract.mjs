@@ -65,8 +65,11 @@ import {
 	GLASS_EDGE_FLOOR,
 	GLASS_INKS,
 	GLASS_INK_FLOOR,
+	GLASS_LANE_STEP,
 	GLASS_ROLES,
 	GLASS_STATE_DIM_FLOOR,
+	LANE_ALPHA_CEILING,
+	LANE_DEFAULT_INTENSITY,
 	derive as deriveGlassFloors,
 	composite as glassComposite,
 	glassEdge,
@@ -7585,6 +7588,109 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 	}
 	console.log(
 		`Window glass round 2: tightest block veil ΔE00 off canvas glass - dark ${r2(veilMin.dark)}, light ${r2(veilMin.light)}; work row step ${r2(workMin.step)}; chrome inks ${r2(chromeMin.ink)}/${r2(chromeMin.inkMuted)}/${r2(chromeMin.inkDim)}, tab step ${r2(chromeMin.tabStep)}.`,
+	);
+}
+
+/*
+ * ---- 5c. the window glass lane wash (round 3) ---------------------------
+ *
+ * A LANE is the Projects board's well and its column strip: a well that must read
+ * on a translucent page while the cards above it already carry the block veil.
+ * It cannot be an ink overlay (ink 5% under the veil measured `inkMuted` 4.03:1
+ * on synthwave), so it is a `surface` wash at `laneWash[scheme]`, derived at the
+ * DEFAULT intensity (80) because that is where the page is most opaque and the
+ * step is weakest.
+ *
+ * What this asserts, over every palette and each material tier, at that intensity:
+ *
+ *   - "glass lane wash": the lane steps ΔE00 `GLASS_LANE_STEP` off the page. This
+ *     is the field/well floor: below it the lane is not structure.
+ *   - "glass lane inks": ink and inkMuted on the lane keep AA, inkDim keeps the
+ *     stated 3.5 relaxation - the board's column header and count are read there.
+ *   - "glass card on lane": the card's veil still steps ΔE00 4.0 off the LANE
+ *     (the block's own boundary) and its inks keep the same floors. This is the
+ *     row that would have caught the easy wrong answer - raising the lane until
+ *     the card's text lost AA.
+ *
+ * The lane is deliberately checked at the shipped default, not at 100: the step
+ * GROWS toward the see-through end (the page gets lighter), so 80 is the binding
+ * position. Frosted is excluded by construction and recorded in `docs/branding.md`.
+ */
+{
+	const committed = JSON.parse(
+		readFileSync(join(ROOT, "src/shared/window-glass-floors.json"), "utf8"),
+	);
+	const at = (floor) =>
+		Math.round(
+			(LANE_ALPHA_CEILING -
+				(LANE_DEFAULT_INTENSITY / 100) * (LANE_ALPHA_CEILING - floor)) *
+				100,
+		) / 100;
+	const minStep = {
+		lane: Number.POSITIVE_INFINITY,
+		card: Number.POSITIVE_INFINITY,
+	};
+	let worstLane = null;
+	let worstCard = null;
+	let worstInk = Number.POSITIVE_INFINITY;
+	for (const { palette } of palettes) {
+		const scheme = glassSchemeOf(palette);
+		for (const [tier, byScheme] of Object.entries(BACKDROP_GRAY)) {
+			const floors = committed.alphaFloor[tier][scheme];
+			const page = glassComposite(
+				palette.canvas,
+				at(floors.canvas),
+				glassGray(byScheme[scheme]),
+			);
+			const lane = glassComposite(
+				palette.surface,
+				committed.laneWash[scheme],
+				page,
+			);
+			const card = glassComposite(
+				palette.ink,
+				committed.blockVeil[scheme],
+				lane,
+			);
+			assertions += 2;
+			const laneStep = deltaE(lane, page);
+			const cardStep = deltaE(card, lane);
+			if (laneStep < GLASS_LANE_STEP)
+				fail(
+					`glass lane wash (${tier}/${scheme}): ΔE00 ${r2(laneStep)} off the page, floor ${GLASS_LANE_STEP} - the lane is not structure`,
+				);
+			if (cardStep < GLASS_BLOCK_VEIL_STEP)
+				fail(
+					`glass card on lane (${tier}/${scheme}): ΔE00 ${r2(cardStep)} off the lane, floor ${GLASS_BLOCK_VEIL_STEP} - the card would vanish`,
+				);
+			if (laneStep < minStep.lane) {
+				minStep.lane = laneStep;
+				worstLane = `${tier}/${scheme}`;
+			}
+			if (cardStep < minStep.card) {
+				minStep.card = cardStep;
+				worstCard = `${tier}/${scheme}`;
+			}
+			for (const [ground, label] of [
+				[lane, "glass lane inks"],
+				[card, "glass card on lane"],
+			]) {
+				for (const ink of GLASS_INKS) {
+					assertions++;
+					const floor =
+						ink === "inkDim" ? GLASS_STATE_DIM_FLOOR : GLASS_INK_FLOOR;
+					const r = glassRatio(palette[ink], ground);
+					if (r < floor)
+						fail(
+							`${label} (${tier}/${scheme}) ${ink} is ${r2(r)}:1, floor ${floor}`,
+						);
+					if (ink !== "inkDim") worstInk = Math.min(worstInk, r);
+				}
+			}
+		}
+	}
+	console.log(
+		`Window glass round 3: tightest lane step ΔE00 ${r2(minStep.lane)} (${worstLane}), card off lane ${r2(minStep.card)} (${worstCard}), tightest ink ${r2(worstInk)}:1.`,
 	);
 }
 
