@@ -139,8 +139,15 @@ import frUiChat from "./catalogues/fr/ui.chat.json";
 import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
 import frUiCodeReview from "./catalogues/fr/ui.code_review.json";
 import frUiCommandPalette from "./catalogues/fr/ui.command_palette.json";
+import frUiCommonAccount from "./catalogues/fr/ui.common.account.json";
 import frUiCommonActions from "./catalogues/fr/ui.common.actions.json";
+import frUiCommonConnection from "./catalogues/fr/ui.common.connection.json";
+import frUiCommonEditing from "./catalogues/fr/ui.common.editing.json";
 import frUiCommonErrors from "./catalogues/fr/ui.common.errors.json";
+import frUiCommonForms from "./catalogues/fr/ui.common.forms.json";
+import frUiCommonLoading from "./catalogues/fr/ui.common.loading.json";
+import frUiCommonModels from "./catalogues/fr/ui.common.models.json";
+import frUiCommonUpdates from "./catalogues/fr/ui.common.updates.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
 import frUiHubComments from "./catalogues/fr/ui.hub.comments.json";
 import frUiHub from "./catalogues/fr/ui.hub.json";
@@ -321,8 +328,15 @@ export const bundledCatalogues: Readonly<
 		...frUiChatSidebarView,
 		...frUiCodeReview,
 		...frUiCommandPalette,
+		...frUiCommonAccount,
 		...frUiCommonActions,
+		...frUiCommonConnection,
+		...frUiCommonEditing,
 		...frUiCommonErrors,
+		...frUiCommonForms,
+		...frUiCommonLoading,
+		...frUiCommonModels,
+		...frUiCommonUpdates,
 		...frUiConsole,
 		...frUiHubComments,
 		...frUiHub,

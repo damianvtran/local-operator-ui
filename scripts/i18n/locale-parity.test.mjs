@@ -524,6 +524,14 @@ const IDENTICAL_OK = new Map([
 		"ui.providers.provider_labels.local",
 		"French cognate: « local » has the same spelling.",
 	],
+	[
+		"ui.common.account.low_credits_dialog.radient_pass",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.common.updates.update_notification.version",
+		"French cognate: « Version » has the same spelling; trailing space is layout.",
+	],
 ]);
 
 function localeDirs() {
