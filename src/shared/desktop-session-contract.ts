@@ -1,3 +1,4 @@
+import type { TagRef } from "./desktop-contract";
 // These are the canonical backend wire shapes, not legacy agent/job identities.
 // Owner state revisions and HTTP semantic receipt cursors are independent. See
 // docs/desktop-controls.md before implementing replay or notifications.
@@ -94,6 +95,10 @@ export type SessionCatalogueRow = {
 	 * terminal and a pin made here are the same pin.
 	 */
 	pinned: boolean;
+	/** Durable assignments; absence supports backends predating session_tags. */
+	tags?: TagRef[];
+	/** Explicit primary ID (a member of tags), or null for Untagged. */
+	primary?: string | null;
 	/**
 	 * Whether this conversation is ARCHIVED, as the backend's own store holds it.
 	 *
