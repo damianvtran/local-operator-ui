@@ -159,6 +159,7 @@ import {
 } from "../chat-list-sections";
 import {
 	type PinMoveStep,
+	appendPinnedOrder,
 	canMovePinnedRow,
 	chatPinMoveCapJoined,
 	chatPinMoveChord,
@@ -5376,9 +5377,30 @@ export function ChatSidebar({
 								updated_at: row.updated_at ?? undefined,
 							});
 							/*
+							 * A PIN IS APPENDED AT THE BOTTOM (issue #1067, rule 3): the drawn order is
+							 * materialized with the new id last, so pins already in the section keep
+							 * their places. Without the write a fresh profile draws the catalogue's
+							 * activity order, and the chat just used would land on top. Written at the
+							 * press rather than after `setSessionPin` resolves, like the unpin below: if
+							 * the pin write fails the entry names an id that is not pinned, which
+							 * `pinnedOrder` drops on read.
+							 */
+							if (!pinned) {
+								setChatSidebarView({
+									...view,
+									pins: appendPinnedOrder(
+										pinnedRows([...listed, ...heldRows], pinsEnabled).map(
+											(entry) => entry.session_id,
+										),
+										view.pins,
+										row.session_id,
+									),
+								});
+							}
+							/*
 							 * AN UNPIN FORGETS ITS SLOT (issue #693 rule 4, `chat-pin-order.ts`): the id
 							 * leaves the stored manual order with it, so re-pinning is a NEW pin at the
-							 * top rather than the resurrection of a position the reader unwound - and the
+							 * bottom rather than the resurrection of a position the reader unwound - and the
 							 * stored list cannot grow entries for conversations that are no longer in
 							 * the section it orders. Guarded on membership, so the common unpin (of a
 							 * row nobody has moved) writes no preference at all.
