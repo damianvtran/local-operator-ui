@@ -187,6 +187,30 @@
 				"date": "2026-10-18"
 			},
 			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.browser",
+			"source_sha256": "4bdd6666a1c4358ea12dcc82229823659f33e96f225dcca57e0630a94e3e0641",
+			"target_sha256": "9a78db4d345b12e542e092185dad060c0088bf8425f476aaa200fc9759f4c855",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.browser.chrome",
+			"source_sha256": "73793572e5e36b8bbc8df6c1f27fb98083634b3b9e3cbd05ede27da4813c656c",
+			"target_sha256": "bfe5db5900dd28dac60993c23e71c4bcbfd3bbd21e81cf3fe8158d931f0d6d43",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
 		}
 	]
 }

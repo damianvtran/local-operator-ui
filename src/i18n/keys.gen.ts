@@ -130,6 +130,8 @@ import esUiSettingsUpdates from "./catalogues/es/ui.settings.updates.json";
 import esUiShell from "./catalogues/es/ui.shell.json";
 import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
 import frUiAgentsNavigation from "./catalogues/fr/ui.agents.navigation.json";
+import frUiBrowserChrome from "./catalogues/fr/ui.browser.chrome.json";
+import frUiBrowser from "./catalogues/fr/ui.browser.json";
 import frUiChatComposer from "./catalogues/fr/ui.chat.composer.json";
 import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
 import frUiChat from "./catalogues/fr/ui.chat.json";
@@ -306,6 +308,8 @@ export const bundledCatalogues: Readonly<
 	},
 	fr: {
 		...frUiAgentsNavigation,
+		...frUiBrowserChrome,
+		...frUiBrowser,
 		...frUiChatComposer,
 		...frUiChatHeader,
 		...frUiChat,

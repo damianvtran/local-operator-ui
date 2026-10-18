@@ -463,6 +463,18 @@ const IDENTICAL_OK = new Map([
 		"ui.hub.taxonomy.category.marketing",
 		"French loanword: « marketing » is the established term.",
 	],
+	[
+		"ui.browser.browser_hand_over_dialog.session",
+		"French cognate: « session » has the same spelling.",
+	],
+	[
+		"ui.browser.browser_new_tab.wordmark",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.browser.browser_new_tab.address_placeholder",
+		"Literal sample URL; context requires it to remain byte-identical.",
+	],
 ]);
 
 function localeDirs() {
