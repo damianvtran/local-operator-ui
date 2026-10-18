@@ -641,12 +641,35 @@ test("the move is a row control: a menu, a chord, and a live region", () => {
 		source,
 		/const offersPinnedMove = \(sessionId: string, nested = false\) =>\s*pinsEnabled &&\s*view\.groupBy === "section" &&\s*!nested &&\s*pinnedIndex\.has\(sessionId\)/,
 	);
-	// The row it renders is the ordered one: the section draws the permutation,
-	// not the catalogue list it was computed from.
-	assert.match(
-		source,
-		/\{orderedPinned\.map\(\(row\) => sessionRow\(row\)\)\}/,
+	// Tags subdivide the ranked input, never replace it with catalogue order.
+	// The flat path and every occupied bucket still use the same row renderer;
+	// the tag grouping lane separately pins stable order within each bucket.
+	assert.ok(source.includes("{taggedRows(orderedPinned)}"));
+	const grouping = source.slice(
+		source.indexOf("const taggedRows = ("),
+		source.indexOf("const sessionRow = ("),
 	);
+	assert.ok(
+		grouping.includes(
+			"if (!groups) return rows.map((row) => sessionRow(row));",
+		),
+	);
+	assert.ok(grouping.includes("bucket.rows.map((row) => sessionRow(row))"));
+	// LOH-11 deliberately spends one metadata slot before the unchanged Move pair.
+	// Read only shipped menu markup so a comment cannot satisfy the item budget.
+	const code = source.replace(/\/\*[\s\S]*?\*\//g, "");
+	const menuStart = code.indexOf("<ContextMenuContent");
+	const menu = code.slice(
+		menuStart,
+		code.indexOf("</ContextMenuContent>", menuStart),
+	);
+	assert.equal(menu.split("<ContextMenuItem").length - 1, 8);
+	assert.equal(menu.split('t("ui.chat.tags.menu")').length - 1, 1);
+	const tagsGate = menu.indexOf("{tagsAvailable && (");
+	const tagsLabel = menu.indexOf('t("ui.chat.tags.menu")');
+	assert.ok(tagsGate >= 0 && tagsGate < tagsLabel);
+	assert.ok(tagsLabel < menu.indexOf("</ContextMenuItem>", tagsGate));
+	assert.ok(tagsLabel < menu.indexOf("{offersMove && ("));
 });
 
 /*
