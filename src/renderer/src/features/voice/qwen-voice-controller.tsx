@@ -437,6 +437,13 @@ export async function sendVoiceTake(text: string): Promise<VoiceTakeOutcome> {
 	}
 	if (!sessionId)
 		return { ok: false, status: 0, code: "voice_not_enabled", sessionId };
+	/*
+	 * PAUSED ADMITS NO TAKES. The page that would hear one is closed, so a take
+	 * arriving here is a stale one - and admitting it would put "Working" up for
+	 * words nobody heard. Silent, like the echo guard: there is nothing to say.
+	 */
+	if (useVoiceStore.getState().rig?.paused)
+		return { ok: false, status: 0, code: "paused", sessionId };
 	if (!text.trim())
 		return { ok: false, status: 0, code: "empty_transcript", sessionId };
 	/*
@@ -447,6 +454,7 @@ export async function sendVoiceTake(text: string): Promise<VoiceTakeOutcome> {
 	 */
 	if (voiceCardPending(sessionId)) {
 		showCardToast(sessionId, t("ui.chat.voice.card_pending"));
+		useVoiceStore.getState().noteNotSent(sessionId, text, Date.now());
 		return { ok: false, status: 409, code: "approval_pending", sessionId };
 	}
 	/*
@@ -459,6 +467,8 @@ export async function sendVoiceTake(text: string): Promise<VoiceTakeOutcome> {
 	feedTurns(sessionId, { kind: "armed", requestId });
 	scheduleTakeExpiry(sessionId, requestId);
 	useVoiceStore.getState().setExchange("working", sessionId);
+	/* The strip's subject and the history's `You:` half, from the same call. */
+	useVoiceStore.getState().noteTake(sessionId, text, Date.now());
 	let result: DesktopMediaResponse;
 	try {
 		result = await desktopMedia(
@@ -519,7 +529,8 @@ async function onRigTake(take: { taskId: string; text: string }) {
 	 * one-word echo rule over the next ten seconds of real speech.
 	 */
 	const spoken =
-		!outcome.ok && !["echo", "cancelled", "closed"].includes(outcome.code);
+		!outcome.ok &&
+		!["echo", "cancelled", "closed", "paused"].includes(outcome.code);
 	if (spoken) markPhraseSpoken();
 	await bridge()?.result(
 		outcome.ok
@@ -625,6 +636,15 @@ export const voiceCardToastId = (sessionId: string): string =>
 /** The router's navigate, set by the mounted controller (it sits inside the router). */
 let openSession: ((sessionId: string) => void) | null = null;
 
+/**
+ * Go to the conversation that holds the slot, for the composer's "Go there".
+ * The chat page installs the navigator while its controller is mounted (see
+ * `QwenVoiceController`), so this is the same door the card toast's "Open" uses.
+ */
+export function openVoiceSession(sessionId: string): void {
+	openSession?.(sessionId);
+}
+
 /** The session the window shows now, from the `HashRouter` URL. */
 const VIEWED_CHAT = /^#\/chat\/([^/?#]+)/;
 export function viewedSessionId(
@@ -705,7 +725,9 @@ async function speakSource(
 	 */
 	useVoiceStore.getState().setLastSpoken({
 		sessionId,
+		text: spoken.text,
 		truncated: spokenTruncated(spoken),
+		at: Date.now(),
 	});
 	const answer = await bridge()?.speak({ text: spoken.text, kind });
 	if (answer && !answer.spoken)
@@ -723,6 +745,31 @@ export async function openMicrophoneSettings(): Promise<void> {
 /** Ask main to start the rig for the slot already held (the relaunch case). */
 export async function startQwenRig(): Promise<void> {
 	const status = await bridge()?.start();
+	if (status) useVoiceStore.getState().setRig(status);
+}
+
+/**
+ * THE STRIP'S TWO CONTROLS (design spec §4). Main owns both and answers with the
+ * new status, which is mirrored at once so the chip and the buttons move
+ * without waiting for a push (the push follows and agrees).
+ *
+ * PAUSE closes the app's hidden voice page: the microphone is released - which
+ * is what lets this window dictate again - and the Gateway and the models stay
+ * warm. Resume recreates the page through the same path as Retry.
+ */
+export async function pauseQwenVoice(): Promise<void> {
+	const status = await bridge()?.pause();
+	if (status) useVoiceStore.getState().setRig(status);
+}
+
+export async function resumeQwenVoice(): Promise<void> {
+	const status = await bridge()?.resume();
+	if (status) useVoiceStore.getState().setRig(status);
+}
+
+/** Silence Qwen's own speech (the page's audio), not this app's. */
+export async function setQwenMuted(muted: boolean): Promise<void> {
+	const status = await bridge()?.setMuted(muted);
 	if (status) useVoiceStore.getState().setRig(status);
 }
 
@@ -771,11 +818,32 @@ export const QwenVoiceController: FC = () => {
 			if (next !== null)
 				useVoiceStore.getState().setActivity(next === "idle" ? null : next);
 			/*
+			 * THE PLAYBACK'S OWN CLOCK (design D2/D3): "Reply ended" and "Interrupted
+			 * at m:ss" are said for a fixed beat and then replaced by "Listening", so
+			 * the two moments they are said about are recorded where the events arrive
+			 * rather than re-derived in the strip. The rig's `at` is the Gateway's
+			 * clock; a frame without a parseable one falls back to this window's, which
+			 * only costs the interruption's seconds their precision.
+			 */
+			const at = Date.parse(event.at);
+			const playedAt = Number.isFinite(at) ? at : Date.now();
+			const holder = useVoiceStore.getState().active?.session_id;
+			if (holder) {
+				if (event.type === "realtime.playback.started")
+					useVoiceStore.getState().notePlayback("started", holder, playedAt);
+				else if (
+					event.type === "realtime.playback.ended" &&
+					event.accepted === true
+				)
+					useVoiceStore.getState().notePlayback("ended", holder, playedAt);
+				else if (event.type === "realtime.playback.cancelled")
+					useVoiceStore.getState().notePlayback("cancelled", holder, playedAt);
+			}
+			/*
 			 * A LONG TAKE IS DROPPED BY THE VAD (BRIEF-1): the segment never
 			 * becomes a take, so the only evidence is its own duration against the
 			 * cap. The strip says so instead of leaving a silent failure.
 			 */
-			const at = Date.parse(event.at);
 			if (Number.isFinite(at)) {
 				const dropped = noteSpeechSegment(segmentClock.current, event.type, at);
 				if (dropped !== null) useVoiceStore.getState().setDroppedTake(dropped);

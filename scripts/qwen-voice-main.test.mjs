@@ -121,6 +121,7 @@ function rig({
 			this.running = false;
 		},
 	};
+	const muted = [];
 	const page = pageOverride ?? {
 		/** The OS verdict this fake reports; a test may flip it mid-run. */
 		mic,
@@ -129,6 +130,9 @@ function rig({
 		},
 		close() {
 			closed.push(true);
+		},
+		setMuted(value) {
+			muted.push(value);
 		},
 		async prepareMicrophone(options = {}) {
 			order.push("mic");
@@ -164,6 +168,7 @@ function rig({
 		toRenderer,
 		opened,
 		closed,
+		muted,
 		timers,
 		calls,
 		gateway,
@@ -671,6 +676,117 @@ test("SPEAK GUARD: the slot moving forgets the old holder's texts and cancels qu
 	});
 });
 
+test("§4: pause closes the page, keeps the models warm, and admits no takes", async () => {
+	const r = rig();
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	assert.equal(r.opened.length, 1, "one page, as Listening needs");
+	assert.equal(r.timers.length, 0, "a held slot never arms the idle stop");
+
+	const paused = r.voice.pause();
+	assert.equal(paused.paused, true);
+	assert.equal(paused.rig, "ready", "the models stay loaded");
+	assert.equal(paused.clients, 0, "a closed page is no client");
+	assert.equal(
+		r.closed.length,
+		1,
+		"the page - and the microphone - are released",
+	);
+	assert.equal(r.calls.speechStop, 0, "nothing is unloaded");
+	assert.equal(r.calls.gatewayStop, 0);
+	/*
+	 * NO TIMER IS TOUCHED. Pausing must not re-arm (or disarm) the idle stop: a
+	 * paused person who pays a fresh model load on resume has been punished for
+	 * using the control.
+	 */
+	assert.equal(r.timers.length, 0);
+
+	/* A take cannot be admitted while the page that would hear it is closed. */
+	r.voice.onGatewayMessage({
+		type: "take",
+		taskId: "t1",
+		text: "are you there",
+	});
+	assert.deepEqual(r.sent.at(-1), {
+		type: "outcome",
+		taskId: "t1",
+		ok: false,
+		code: "paused",
+	});
+
+	/* And no audio event can be true over a closed page. */
+	const before = voiceEvents(r).length;
+	r.voice.onGatewayMessage({
+		type: "event",
+		event: { type: "realtime.playback.started", at: AT },
+	});
+	assert.equal(voiceEvents(r).length, before);
+});
+
+test("§4: resume recreates the page through Retry's path and carries the mute", async () => {
+	const r = rig();
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	r.voice.pause();
+	r.voice.setMuted(true);
+	assert.deepEqual(r.muted, [true], "main forwards the mute to the page");
+
+	const resumed = r.voice.resume();
+	assert.equal(resumed.paused, false);
+	assert.equal(r.closed.length, 2, "closed, then opened: the Retry order");
+	assert.equal(r.opened.length, 2);
+	assert.equal(r.voice.getStatus().muted, true, "the status carries it");
+	/* Re-applied on the recreate, because the page adapter drops a mute it was
+	   never given a view for. */
+	assert.equal(r.muted.at(-1), true);
+});
+
+test("§4: turning voice off clears a pause, so the next enable opens a page", async () => {
+	const r = rig();
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	r.voice.pause();
+	assert.equal(r.voice.getStatus().paused, true);
+	/* The slot goes away while paused. */
+	r.voice.observeFrame({ type: "voice", payload: { active: null } });
+	assert.equal(
+		r.voice.getStatus().paused,
+		false,
+		"a pause does not outlive its slot",
+	);
+	assert.equal(
+		r.voice.getStatus().muted,
+		false,
+		"mute is the person's, not the slot's",
+	);
+	/* Turning it back on recreates the page. */
+	r.voice.observeFrame(voiceFrame("bbbbbbbbbbbb"));
+	await settle();
+	await settle();
+	assert.equal(r.opened.length, 2, "the new enable opened a page");
+});
+
+test("§4: the page applies a remembered mute on create and on every toggle", () => {
+	const c = pageCase();
+	assert.equal(c.views.length, 0);
+	/* Muted before the first page exists. */
+	c.page.setMuted(true);
+	c.page.open(GATEWAY);
+	assert.equal(c.views.length, 1);
+	assert.equal(c.views[0].webContents.muted, true, "applied on create");
+	c.page.setMuted(false);
+	assert.equal(c.views[0].webContents.muted, false, "applied on toggle");
+	/* A recreate (pause/resume, Retry, crash) comes back as quiet as it left. */
+	c.page.setMuted(true);
+	c.page.close();
+	c.page.open(GATEWAY);
+	assert.equal(c.views.length, 2);
+	assert.equal(c.views[1].webContents.muted, true, "applied again on recreate");
+});
+
 /* ------------------------------------------------------------------------ */
 /* The hidden voice page (plan §1-§3)                                        */
 /* ------------------------------------------------------------------------ */
@@ -720,6 +836,11 @@ function fakeView() {
 		},
 		setWindowOpenHandler(handler) {
 			this.windowOpen = handler;
+		},
+		/** The last value main set; `undefined` until it sets one. */
+		muted: undefined,
+		setAudioMuted(value) {
+			this.muted = value;
 		},
 	};
 	return { view: { webContents }, webContents, loaded, listeners };

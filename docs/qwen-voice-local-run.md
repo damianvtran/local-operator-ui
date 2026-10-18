@@ -112,23 +112,24 @@ account"** window. Press **"Skip for now"**: the test backend needs no account.
 1. Open a conversation and send it a first message by typing, for example
    "hello". **The voice button appears only once a conversation has its first
    message**; a fresh New chat draft does not have one yet.
-2. In the conversation's header there is a sound-wave button: "Turn on voice for
-   this conversation". Press it.
+2. In the composer's control row, between the microphone and Send, there is a
+   sound-wave button: "Turn on voice for this conversation". Press it.
 3. What you should see:
    - the button turns accent-coloured;
-   - "Starting voice" appears beside it;
+   - a band appears at the top of the composer box, above the textarea, whose
+     chip reads **"Starting voice"**;
    - a sound-wave mark appears on that conversation's row in the sidebar.
 4. After about 15-20 s the speech models are loaded (the very first run can take
    longer). The app opens its own hidden Qwen page - no browser tab, nothing to
-   click - and the header changes from **"Starting voice"** to **"Listening"**
-   once that page is connected.
+   click - and the strip's chip changes from **"Starting voice"** to
+   **"Listening"** once that page is connected.
 
    **The first time, macOS asks for the microphone - before the models load**,
    so a denial costs no memory and the prompt is not hidden behind a minute of
    "Starting voice". If you allow it, voice carries on. If nobody answers for
-   five seconds the header says **"Waiting for microphone permission…"** with
-   **"Open Settings"**; if you deny it, the header says **"Microphone blocked"**
-   with the same action. Either way the action opens the macOS Microphone pane
+   five seconds the strip's chip says **"Waiting for microphone permission…"**
+   with **"Open Settings"**; if you deny it, the chip says **"Microphone
+   blocked"** with the same action. Either way the action opens the macOS Microphone pane
    for this app; change it there, then turn voice off and on again.
 
    (A source checkout shows this prompt against the process that launched the
@@ -142,15 +143,29 @@ account"** window. Press **"Skip for now"**: the test backend needs no account.
    goes to the conversation with voice on, and what you hear back is that
    conversation's reply.
 
-5. If the header says **"Voice page not connected"** with **"Retry"**, the
+5. If the strip's chip says **"Voice page not connected"** with **"Retry"**, the
    hidden page is not talking to the Gateway. Press Retry: it recreates the
    page. Nothing else needs a browser.
 
    You do not close a tab any more, and voice keeps listening while the app is
    in the background: the page is deliberately not throttled.
 
+6. Pause and mute are the strip's two icon controls beside the chip.
+   - **Pause** (the two bars) closes the app's hidden voice page. The microphone
+     is released - so dictation in the composer works again - and the speech
+     models stay loaded: nothing is unloaded, nothing reloads. The chip reads
+     **"Paused"** and the same button becomes **Resume**, which recreates the
+     page. Pause does not restart the ten-minute idle clock; the models stay
+     warm until you turn voice off or that clock runs out.
+   - **Mute** (the speaker) silences only the assistant's spoken replies, using
+     `webContents.setAudioMuted` on the hidden page. Your app, its notifications
+     and everything else on the machine keep their sound. It is remembered
+     across a resume and across a page recreated by Retry, and it is not written
+     to any config file.
+
 If you restart the app while voice is still on, nothing loads by itself. The
-header shows "Start voice". Press it to load the models again.
+strip's chip reads "Voice off" and offers "Start voice". Press it to load the
+models again.
 
 ## 5. What to say, and what should happen
 
@@ -159,9 +174,9 @@ hidden page is listening.
 
 | You say | You hear | You see in the app |
 |---|---|---|
-| "Hello" | "Hello from the mock provider!" | "Hello" appears in the conversation as your message, then the mock's reply. The header says "Working", then "Listening". |
-| "What files are here?" | nothing until the reply | Your exact words appear in the conversation as your message. The header says "Working". |
-| (nothing; wait a second) | "Hello from the mock provider!" | That reply in the conversation. The header returns to "Listening". |
+| "Hello" | "Hello from the mock provider!" | "Hello" appears in the conversation as your message, then the mock's reply. The strip says "Working", then "Listening". |
+| "What files are here?" | nothing until the reply | Your exact words appear in the conversation as your message. The strip says "Working". |
+| (nothing; wait a second) | "Hello from the mock provider!" | That reply in the conversation. The strip returns to "Listening". |
 
 **Approvals.** The mock asks to run a shell command only when a conversation's
 **first** message contains the literal `[bash:1]`. Speech will not spell that,
@@ -174,7 +189,7 @@ and a later message does not trigger it, so this needs a NEW conversation:
 
 | You say | You hear | You see in the app |
 |---|---|---|
-| "Please also check the tests" while the card is up | "Answer it on screen first." | An approval card for `bash`, and the header says "Answer on screen first.". Nothing is sent. Voice never answers a card. Click Approve or Deny on screen. |
+| "Please also check the tests" while the card is up | "Answer it on screen first." | An approval card for `bash`, and the strip's chip reads "Approve on screen" — nothing is sent, because the card must be answered there. Nothing is sent. Voice never answers a card. Click Approve or Deny on screen. |
 | "Yes, go ahead" (while the card is up) | "Answer it on screen first." | Nothing changes. |
 
 If you are looking at another conversation when a card appears in the voice
@@ -188,8 +203,10 @@ To switch voice to another conversation:
 
 1. Open a second conversation (one that already has a message).
 2. Press its voice button. The label says "Move voice to this conversation from
-   “<first conversation's title>”".
-3. The first conversation's header goes quiet. The sidebar mark moves. You hear
+   “<first conversation's title>”". (In the first conversation, the strip is
+   replaced by a one-line notice - "Voice is on in <title>" - with **"Move
+   here"** and **"Go there"**.)
+3. The first conversation's strip goes quiet. The sidebar mark moves. You hear
    "Switched.".
 4. Your next words go to the second conversation.
 
@@ -217,14 +234,14 @@ it: the next time you start voice, the app recognises the process it started
 earlier, from the record it keeps in `$QV/profile/qwen-voice/s2s.json`, and
 stops it before loading the models again. You only see a slightly longer
 "Starting voice". It never stops a process it did not start; if something else
-holds the port, the header says "Voice error" with the reason.
+holds the port, the strip's chip says "Voice error" with the reason.
 
 **It does not talk.** Check these in order:
 
-1. **The header says "Microphone blocked":** macOS has denied this app the
+1. **The strip says "Microphone blocked":** macOS has denied this app the
    microphone. Press "Open Settings", allow Local Operator (in the dev app, the
    entry is "Electron"), then turn voice off and on again.
-   **The header says "Voice page not connected":** the hidden page never
+   **The strip says "Voice page not connected":** the hidden page never
    connected. Press "Retry"; if it stays that way, the logs in item 4 say why.
 2. **Nothing is asked and nothing connects:** check `LOP_QWEN_NO_WEBUI` is not
    set in the app's environment - it is the switch that creates no page at all,

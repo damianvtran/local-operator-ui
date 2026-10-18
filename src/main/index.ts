@@ -1619,6 +1619,11 @@ const qwenVoice: QwenVoice = new QwenVoice({
 			allowed: true,
 			open: (url: string) => instance().open(url),
 			close: () => page?.close(),
+			/*
+			 * NO PAGE IS CREATED FOR A MUTE: with none, the coordinator's own copy is
+			 * re-applied when the page is first opened (`QwenVoice.openPage`).
+			 */
+			setMuted: (muted: boolean) => page?.setMuted(muted),
 			// The options MUST cross: they carry the 5 s bound and `onSettled`. A
 			// zero-argument lambda here dropped both, and the page fell back to
 			// `timeoutMs ?? 0` - wait forever (QA round 2: 2m12s on "Starting
@@ -3057,6 +3062,9 @@ app
 			start: (reason) => qwenVoice.start(reason),
 			getStatus: () => qwenVoice.getStatus(),
 			openMicSettings: openMicrophoneSettings,
+			pause: () => qwenVoice.pause(),
+			resume: () => qwenVoice.resume(),
+			setMuted: (muted) => qwenVoice.setMuted(muted),
 		});
 
 		/*
