@@ -76,6 +76,7 @@ import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
 import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
+import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
 import esUiAgentsNavigation from "./catalogues/es/ui.agents.navigation.json";
 import esUiBrowserChrome from "./catalogues/es/ui.browser.chrome.json";
 import esUiBrowser from "./catalogues/es/ui.browser.json";
@@ -84,16 +85,20 @@ import esUiChatComposer from "./catalogues/es/ui.chat.composer.json";
 import esUiChatHeader from "./catalogues/es/ui.chat.header.json";
 import esUiChat from "./catalogues/es/ui.chat.json";
 import esUiChatSidebarView from "./catalogues/es/ui.chat.sidebar_view.json";
+import esUiCodeReview from "./catalogues/es/ui.code_review.json";
 import esUiCommandPalette from "./catalogues/es/ui.command_palette.json";
 import esUiCommonActions from "./catalogues/es/ui.common.actions.json";
 import esUiCommonErrors from "./catalogues/es/ui.common.errors.json";
+import esUiCommonUpdates from "./catalogues/es/ui.common.updates.json";
 import esUiConsole from "./catalogues/es/ui.console.json";
 import esUiHubComments from "./catalogues/es/ui.hub.comments.json";
 import esUiHub from "./catalogues/es/ui.hub.json";
 import esUiHubTaxonomy from "./catalogues/es/ui.hub.taxonomy.json";
+import esUiInstaller from "./catalogues/es/ui.installer.json";
 import esUiMesh from "./catalogues/es/ui.mesh.json";
 import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
+import esUiProviders from "./catalogues/es/ui.providers.json";
 import esUiSchedules from "./catalogues/es/ui.schedules.json";
 import esUiSettings from "./catalogues/es/ui.settings.json";
 import esUiShell from "./catalogues/es/ui.shell.json";
@@ -214,6 +219,7 @@ export const bundledCatalogues: Readonly<
 > = {
 	en: bundledEnglish,
 	es: {
+		...esUiAgentMessages,
 		...esUiAgentsNavigation,
 		...esUiBrowserChrome,
 		...esUiBrowser,
@@ -222,16 +228,20 @@ export const bundledCatalogues: Readonly<
 		...esUiChatHeader,
 		...esUiChat,
 		...esUiChatSidebarView,
+		...esUiCodeReview,
 		...esUiCommandPalette,
 		...esUiCommonActions,
 		...esUiCommonErrors,
+		...esUiCommonUpdates,
 		...esUiConsole,
 		...esUiHubComments,
 		...esUiHub,
 		...esUiHubTaxonomy,
+		...esUiInstaller,
 		...esUiMesh,
 		...esUiOnboarding,
 		...esUiProjects,
+		...esUiProviders,
 		...esUiSchedules,
 		...esUiSettings,
 		...esUiShell,

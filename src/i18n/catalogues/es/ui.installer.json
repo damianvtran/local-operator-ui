@@ -1,0 +1,20 @@
+{
+	"ui.installer.expectation": "Suele tardar menos de un minuto.",
+	"ui.installer.installer_panel.cancel_setup": "Cancelar la configuración",
+	"ui.installer.installer_panel.getting_started": "Empezando.",
+	"ui.installer.installer_panel.local_operator": "Local Operator",
+	"ui.installer.installer_panel.quit": "Salir",
+	"ui.installer.installer_panel.setup_complete": "Configuración completada.",
+	"ui.installer.installer_panel.setup_keeps_everything_it_installs_in_its_own_folder_nothing_of_y": "La configuración guarda todo lo que instala en su propia carpeta; no se tocó nada de lo tuyo.",
+	"ui.installer.installer_panel.you_can_minimize_this_window_and_keep_working_closing_it_stops_se": "Puedes minimizar esta ventana y seguir trabajando. Si la cierras, se detiene la configuración.",
+	"ui.installer.phase.detail.components": "Descargando los paquetes que Local Operator necesita para funcionar.",
+	"ui.installer.phase.detail.environment": "Creando para Local Operator su propia carpeta privada, fuera del alcance de todo lo demás.",
+	"ui.installer.phase.detail.python": "Buscando la copia de Python con la que se ejecuta Local Operator.",
+	"ui.installer.phase.detail.verify": "Iniciando Local Operator una vez para comprobar que arranca.",
+	"ui.installer.phase.label.components": "Descargando lo necesario",
+	"ui.installer.phase.label.environment": "Configurando Local Operator",
+	"ui.installer.phase.label.python": "Preparándolo todo",
+	"ui.installer.phase.label.verify": "Arrancando",
+	"ui.installer.status.elapsed": "{step} · {elapsed} transcurrido · {eta}",
+	"ui.installer.status.step": "Paso {step} de {total}"
+}
