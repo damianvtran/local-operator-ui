@@ -28,6 +28,7 @@ import type {
 	AgentMessagesStatus,
 } from "../../../../shared/agent-messages-contract";
 import { InfoGrid, InfoItem } from "../settings/components/settings-section";
+import { agentMessagesRefusal } from "./agent-messages-refusal";
 import {
 	type AgentMessagesSettingsAvailability,
 	type AllowlistDirection,
@@ -45,7 +46,6 @@ import {
 	settingsRefusalSentence,
 } from "./agent-messages-settings-model";
 import {
-	agentMessagesRefusal,
 	checkAgentMessagesSurface,
 	useAgentMessages,
 } from "./use-agent-messages";
@@ -112,12 +112,21 @@ export function AgentMessagesSettings({
 
 	const tenantId = status?.tenant_id ?? undefined;
 	const visible = availability === "visible";
+	/*
+	 * The load belongs to ONE account. `tenant_id` alone is not enough: two
+	 * accounts in the same organization share it, so a sign-in switch would keep
+	 * the previous account's settings and allowlist while the writes carry the
+	 * new account's receipt (round-1 R2).
+	 */
+	const loadAccount = status?.account_id ?? null;
+	const accountMatches = loadAccount !== null && loadAccount === accountId;
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the explicit retry trigger, not a value the effect reads.
 	useEffect(() => {
 		if (!visible) return undefined;
 		let cancelled = false;
 		setLoad({ kind: "loading" });
+		setActionRefusal(null);
 		void (async () => {
 			try {
 				const settings = await api.settings(tenantId);
@@ -156,7 +165,8 @@ export function AgentMessagesSettings({
 		return () => {
 			cancelled = true;
 		};
-	}, [visible, tenantId, reloadKey, api]);
+		// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the explicit retry trigger, not a value the effect reads.
+	}, [visible, accountId, loadAccount, tenantId, reloadKey, api]);
 
 	/*
 	 * B -> C creates an endpoint without changing the tenant or visibility, so
@@ -278,7 +288,8 @@ export function AgentMessagesSettings({
 						state={agentMessagesSettingsState(status, load.settings)}
 						status={status}
 						settings={load.settings}
-						accountId={accountId}
+						accountId={loadAccount ?? accountId}
+						accountMatches={accountMatches}
 						api={api}
 						pending={pending}
 						localEnabled={localEnabled}
@@ -321,7 +332,12 @@ export function AgentMessagesSettings({
 							<AllowlistEditor
 								key={load.allowlist.view.tenant_id ?? "tenant"}
 								allowlist={load.allowlist}
-								accountId={accountId}
+								accountId={loadAccount ?? accountId}
+								accountMatches={accountMatches}
+								readOnly={
+									status.read_only === true &&
+									agentMessagesSettingsState(status, load.settings) === "F"
+								}
 								pending={pending !== null}
 								onSaving={(saving) => setPending(saving ? "allowlist" : null)}
 								onRefusal={setActionRefusal}
@@ -364,6 +380,8 @@ type SettingsStateProps = {
 	status: AgentMessagesStatus;
 	settings: AgentMessagesSettingsResult;
 	accountId: string;
+	/** False while the section's status belongs to a different account. */
+	accountMatches: boolean;
 	api: AgentMessagesSettingsApi;
 	pending: string | null;
 	localEnabled: boolean;
@@ -395,6 +413,7 @@ const SettingsState: FC<SettingsStateProps> = ({
 	status,
 	settings,
 	accountId,
+	accountMatches,
 	api,
 	pending,
 	localEnabled,
@@ -407,12 +426,14 @@ const SettingsState: FC<SettingsStateProps> = ({
 }) => {
 	const consent = agentMessagesSettingsConsent(status);
 	const tenant = settings.settings.tenant_id;
-	const disabled = pending !== null;
+	const disabled = pending !== null || !accountMatches;
 
 	async function write(
 		next: "active" | "paused" | "disabled",
 		extra: { consent_version?: string; consented_via?: "settings" } = {},
 	) {
+		// The controls are disabled in this state; this is the second gate.
+		if (!accountMatches) return null;
 		setPending(next);
 		onActionRefusal(null);
 		try {
@@ -451,7 +472,7 @@ const SettingsState: FC<SettingsStateProps> = ({
 	}
 
 	async function enable() {
-		if (!consent) return;
+		if (!consent || !accountMatches) return;
 		const result = await write("active", {
 			consent_version: consent.version,
 			consented_via: "settings",
@@ -606,7 +627,10 @@ const SettingsState: FC<SettingsStateProps> = ({
 					<div className="flex flex-wrap gap-2">
 						<Button
 							data-agent-messages-action="resume"
-							disabled={disabled}
+							disabled={
+								disabled ||
+								(settings.settings.consent_required && consent === null)
+							}
 							onClick={() =>
 								void write(
 									"active",
@@ -630,6 +654,11 @@ const SettingsState: FC<SettingsStateProps> = ({
 							{t("ui.agentMessages.settings.action.turn_off")}
 						</Button>
 					</div>
+					{settings.settings.consent_required && !consent && (
+						<p className="text-body-sm text-ink-muted">
+							{t("ui.agentMessages.settings.consent.unavailable")}
+						</p>
+					)}
 					<EndpointConsent settings={settings} status={status} />
 					{staleConsent && (
 						<ConsentRenewal
@@ -807,6 +836,10 @@ const SessionDesignation: FC<{
 type AllowlistEditorProps = {
 	allowlist: AgentMessagesAllowlistResult;
 	accountId: string;
+	/** False while the section's status belongs to a different account. */
+	accountMatches: boolean;
+	/** F's posture: the server admits only safety-increasing edits. */
+	readOnly: boolean;
 	pending: boolean;
 	api: AgentMessagesSettingsApi;
 	onSaving: (saving: boolean) => void;
@@ -817,6 +850,8 @@ type AllowlistEditorProps = {
 const AllowlistEditor: FC<AllowlistEditorProps> = ({
 	allowlist,
 	accountId,
+	accountMatches,
+	readOnly,
 	pending,
 	api,
 	onSaving,
@@ -832,6 +867,7 @@ const AllowlistEditor: FC<AllowlistEditorProps> = ({
 			receive: allowlist.view.directions.receive.mode,
 		}),
 	);
+	const disabled = pending || readOnly || !accountMatches;
 	const savedSignature = allowlistSignature(
 		allowlistReplaceSet(entriesFromWire(allowlist), modesFromView(allowlist)),
 	);
@@ -857,6 +893,9 @@ const AllowlistEditor: FC<AllowlistEditorProps> = ({
 		setEntries((current) => current.filter((entry) => entry.key !== key));
 
 	const save = async () => {
+		// The controls are disabled, so this is the second gate: a read-only or
+		// cross-account state must never send a replace-set.
+		if (disabled) return;
 		onSaving(true);
 		onRefusal(null);
 		try {
@@ -896,7 +935,7 @@ const AllowlistEditor: FC<AllowlistEditorProps> = ({
 				mode={modes.receive}
 				cues={allowlist.view.cues}
 				entries={entries.filter((entry) => entry.direction === "receive")}
-				disabled={pending}
+				disabled={disabled}
 				onMode={(mode) =>
 					setModes((current) => ({ ...current, receive: mode }))
 				}
@@ -909,14 +948,17 @@ const AllowlistEditor: FC<AllowlistEditorProps> = ({
 				mode={modes.send}
 				cues={allowlist.view.cues}
 				entries={entries.filter((entry) => entry.direction === "send")}
-				disabled={pending}
+				disabled={disabled}
 				onMode={(mode) => setModes((current) => ({ ...current, send: mode }))}
 				onAdd={(entry) => add({ ...entry, direction: "send" })}
 				onRemove={remove}
 			/>
 
 			<div className="flex flex-wrap items-center gap-3">
-				<Button onClick={() => void save()} disabled={gate.disabled}>
+				<Button
+					onClick={() => void save()}
+					disabled={gate.disabled || disabled}
+				>
 					<Save size={14} />
 					{t("ui.agentMessages.settings.allowlist.save")}
 				</Button>
@@ -928,6 +970,11 @@ const AllowlistEditor: FC<AllowlistEditorProps> = ({
 				{gate.disabled && gate.reason === "unchanged" && (
 					<span className="text-meta text-ink-dim">
 						{t("ui.agentMessages.settings.allowlist.unchanged")}
+					</span>
+				)}
+				{readOnly && (
+					<span className="text-meta text-ink-dim">
+						{t("ui.agentMessages.settings.allowlist.read_only")}
 					</span>
 				)}
 				{pending && (
@@ -1124,6 +1171,7 @@ const EntryRow: FC<{
 			variant="secondary"
 			size="sm"
 			disabled={disabled}
+			aria-label={`${t("ui.agentMessages.settings.allowlist.remove")} ${entry.id}`}
 			onClick={onRemove}
 		>
 			{t("ui.agentMessages.settings.allowlist.remove")}

@@ -45,7 +45,7 @@ function settingsWith(
 		return {
 			endpoint: null,
 			settings: {
-				tenant_id: "tenant-home",
+				tenant_id: "tnt_bridge_e2e",
 				eligible: true,
 				consent_version: "bridge_consent_v1",
 				consent_required: true,

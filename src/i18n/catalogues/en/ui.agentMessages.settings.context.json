@@ -551,5 +551,12 @@
 		"length": "One short line.",
 		"placeholders": {},
 		"note": "Refusal surface copy."
+	},
+	"ui.agentMessages.settings.allowlist.read_only": {
+		"role": "read-only note in the reach editor",
+		"tone": "sentence case, factual, no blame",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "Shown when the status says read_only (state F). Explains why the level controls, add/remove rows and Save are disabled rather than letting the reader press a write the server refuses."
 	}
 }

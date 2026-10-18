@@ -67,7 +67,10 @@ import {
 	AgentMessagesSettings,
 	useAgentMessagesSettingsAvailability,
 } from "@features/agent-messages/agent-messages-settings";
-import { settingsRefusalSentence } from "@features/agent-messages/agent-messages-settings-model";
+import {
+	agentMessagesSectionMounted,
+	settingsRefusalSentence,
+} from "@features/agent-messages/agent-messages-settings-model";
 import { useAgentMessages } from "@features/agent-messages/use-agent-messages";
 import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
 import type { AgentMessagesStatus } from "../../../../../shared/agent-messages-contract";
@@ -443,11 +446,33 @@ export const SettingsPage: FC = () => {
 		snapshot: agentMessagesSnapshot,
 		model: agentMessagesModel,
 	} = useAgentMessages();
-	const lastAgentMessagesStatus = useRef<AgentMessagesStatus | null>(null);
-	if (agentMessagesSnapshot.status)
-		lastAgentMessagesStatus.current = agentMessagesSnapshot.status;
+	/*
+	 * The held status is scoped to the account it belongs to. A sign-in switch
+	 * must not leave the previous account's state rendering under the new
+	 * account's writes (round-1 R2), and a failed read must not resurrect it:
+	 * the page's error branch is the retry surface.
+	 */
+	const heldAgentMessagesStatus = useRef<{
+		accountId: string | null;
+		status: AgentMessagesStatus;
+	} | null>(null);
+	if (agentMessagesSnapshot.status) {
+		heldAgentMessagesStatus.current = {
+			accountId: agentMessagesAccountId,
+			status: agentMessagesSnapshot.status,
+		};
+	} else if (!agentMessagesSnapshot.checking) {
+		heldAgentMessagesStatus.current = null;
+	}
 	const agentMessagesStatus =
-		agentMessagesSnapshot.status ?? lastAgentMessagesStatus.current;
+		agentMessagesSnapshot.status ??
+		(heldAgentMessagesStatus.current?.accountId === agentMessagesAccountId
+			? heldAgentMessagesStatus.current.status
+			: null);
+	const agentMessagesSectionVisible = agentMessagesSectionMounted(
+		agentMessagesAvailability,
+		agentMessagesStatus,
+	);
 	const settingsSections = useMemo(
 		() =>
 			DEFAULT_SETTINGS_SECTIONS.filter(
@@ -714,10 +739,7 @@ export const SettingsPage: FC = () => {
 			: sectionFromQuery;
 		// A link to a section this build does not show has nowhere to land; the
 		// rail has no row for it either.
-		if (
-			targetSection === "agent-messages" &&
-			agentMessagesAvailability === "absent"
-		)
+		if (targetSection === "agent-messages" && !agentMessagesSectionVisible)
 			return undefined;
 
 		const ref = targetSection ? sectionRefs[targetSection] : undefined;
@@ -800,7 +822,7 @@ export const SettingsPage: FC = () => {
 		location.search,
 		sectionRefs,
 		handleSelectSection,
-		agentMessagesAvailability,
+		agentMessagesSectionVisible,
 	]); // Rerun when URL search params change or refs are updated
 
 	// Handle updating a specific config field
@@ -1614,42 +1636,45 @@ export const SettingsPage: FC = () => {
 							</div>
 						</SettingsSection>
 
-						<SettingsSection
-							title={t("ui.agentMessages.settings.section")}
-							icon={MessageSquare}
-							description={t("ui.agentMessages.settings.description")}
-							sectionRef={sectionRefs["agent-messages"]}
-							id="agent-messages"
-						>
-							{agentMessagesAvailability === "error" && !agentMessagesStatus ? (
-								<Alert variant="warning">
-									<AlertTitle>
-										{t("ui.agentMessages.settings.error.title")}
-									</AlertTitle>
-									<AlertDescription>
-										{agentMessagesSnapshot.refusal
-											? settingsRefusalSentence(agentMessagesSnapshot.refusal)
-											: t("ui.agentMessages.settings.error.unreadable")}
-										<Button
-											className="mt-3"
-											variant="secondary"
-											onClick={() => void refreshAgentMessages()}
-										>
-											{t("ui.agentMessages.settings.error.retry")}
-										</Button>
-									</AlertDescription>
-								</Alert>
-							) : (
-								<AgentMessagesSettings
-									availability={agentMessagesAvailability}
-									status={agentMessagesStatus}
-									accountId={agentMessagesAccountId}
-									refusal={agentMessagesSnapshot.refusal}
-									onRefreshStatus={refreshAgentMessages}
-									sessions={canonicalSessions}
-								/>
-							)}
-						</SettingsSection>
+						{agentMessagesSectionVisible && (
+							<SettingsSection
+								title={t("ui.agentMessages.settings.section")}
+								icon={MessageSquare}
+								description={t("ui.agentMessages.settings.description")}
+								sectionRef={sectionRefs["agent-messages"]}
+								id="agent-messages"
+							>
+								{agentMessagesAvailability === "error" &&
+								!agentMessagesStatus ? (
+									<Alert variant="warning">
+										<AlertTitle>
+											{t("ui.agentMessages.settings.error.title")}
+										</AlertTitle>
+										<AlertDescription>
+											{agentMessagesSnapshot.refusal
+												? settingsRefusalSentence(agentMessagesSnapshot.refusal)
+												: t("ui.agentMessages.settings.error.unreadable")}
+											<Button
+												className="mt-3"
+												variant="secondary"
+												onClick={() => void refreshAgentMessages()}
+											>
+												{t("ui.agentMessages.settings.error.retry")}
+											</Button>
+										</AlertDescription>
+									</Alert>
+								) : (
+									<AgentMessagesSettings
+										availability={agentMessagesAvailability}
+										status={agentMessagesStatus}
+										accountId={agentMessagesAccountId}
+										refusal={agentMessagesSnapshot.refusal}
+										onRefreshStatus={refreshAgentMessages}
+										sessions={canonicalSessions}
+									/>
+								)}
+							</SettingsSection>
+						)}
 
 						<SettingsSection
 							title={t("ui.settings.navigation.settings_page.backend_settings")}
