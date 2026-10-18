@@ -1,0 +1,5 @@
+{
+	"ui.common.editing.conflict": "Это изменилось, пока вы редактировали",
+	"ui.common.editing.keep_mine": "Оставить моё",
+	"ui.common.editing.use_theirs": "Взять их вариант"
+}

@@ -547,6 +547,15 @@ const IDENTICAL_OK = new Map([
 		"ui.providers.provider_grid.row_action",
 		"Placeholders and a colon only ({action}: {brand}); no words to translate.",
 	],
+
+	[
+		"ui.common.account.low_credits_dialog.detail",
+		"Currency placeholder and ISO code only (${detail} USD); no words to translate.",
+	],
+	[
+		"ui.common.account.low_credits_dialog.radient_pass",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
 ]);
 
 function localeDirs() {
