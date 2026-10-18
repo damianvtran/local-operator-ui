@@ -13,7 +13,7 @@
 	"ui.agents.models.reading.unavailable": "{member} ne peut pas démarrer : {reason}",
 	"ui.agents.models.reading.unavailable_editor": "Réglage enregistré — {member} ne peut pas démarrer : {reason}",
 	"ui.agents.models.reading.unavailable_hint": "Ajoutez le niveau dans les paramètres.",
-	"ui.agents.models.reading.read_failed": "Les modèles effectifs n’ont pas pu être lus ; les remplacements ne peuvent donc pas être modifiés.",
+	"ui.agents.models.reading.read_failed": "Les modèles effectifs n’ont pas pu être lus ; les remplacements ne peuvent donc pas être modifiés.",
 	"ui.agents.models.reading.try_again": "Réessayer",
 	"ui.agents.models.reading.refreshing": "Mise à jour…",
 	"ui.agents.models.reading.no_probe_hint": "Enregistrez l’équipe pour définir des remplacements de modèle par membre.",

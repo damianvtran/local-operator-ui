@@ -8,7 +8,7 @@
 	"ui.settings.model.default_effort.loading": "Vérification des niveaux d’effort de ce modèle…",
 	"ui.settings.model.default_effort.error": "Les niveaux d’effort de ce modèle n’ont pas pu être lus.",
 	"ui.settings.model.default_effort.no_model": "Sélectionnez un modèle pour choisir ses niveaux d’effort.",
-	"ui.settings.model.default_effort.no_home": "Votre dossier personnel n’est pas encore disponible ; les niveaux d’effort ne peuvent donc pas être lus.",
+	"ui.settings.model.default_effort.no_home": "Votre dossier personnel n’est pas encore disponible ; les niveaux d’effort ne peuvent donc pas être lus.",
 	"ui.settings.model.default_effort.settings_loading": "Vérification de votre effort par défaut enregistré…",
 	"ui.settings.model.default_effort.settings_error": "Votre effort par défaut enregistré n’a pas pu être lu.",
 	"ui.settings.model.default_effort.unresolved": "Ce modèle n’a pas encore signalé ses niveaux d’effort.",

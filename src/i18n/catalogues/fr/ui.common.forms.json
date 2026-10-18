@@ -24,6 +24,6 @@
 	"ui.common.forms.searchable_select.clear_the": "Effacer {detail}",
 	"ui.common.forms.searchable_select.clear_value": "Effacer la valeur",
 	"ui.common.forms.searchable_select.no_matches": "Aucun résultat",
-	"ui.common.forms.searchable_select.use": "Utiliser \"{text}\"",
-	"ui.common.forms.select.unlisted_value": "Absent de toute liste ; enregistré tel que saisi."
+	"ui.common.forms.searchable_select.use": "Utiliser « {text} »",
+	"ui.common.forms.select.unlisted_value": "Absent de toute liste ; enregistré tel que saisi."
 }

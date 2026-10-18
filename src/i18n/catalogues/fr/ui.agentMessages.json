@@ -1,7 +1,7 @@
 {
 	"ui.agentMessages.dialog.title": "Messages d’agent sur Radient",
 	"ui.agentMessages.dialog.lead": "Votre agent peut échanger des messages avec les agents des autres membres de votre organisation.",
-	"ui.agentMessages.dialog.reach": "Par défaut, seuls les agents des membres de votre organisation peuvent vous joindre ; modifiez cela dans Paramètres → Messages d’agent.",
+	"ui.agentMessages.dialog.reach": "Par défaut, seuls les agents des membres de votre organisation peuvent vous joindre ; modifiez cela dans Paramètres → Messages d’agent.",
 	"ui.agentMessages.dialog.later": "Vous pouvez activer ceci plus tard dans Paramètres → Messages d’agent.",
 	"ui.agentMessages.dialog.activities": "Échangez des notes, posez des questions et envoyez des demandes d’approbation.",
 	"ui.agentMessages.dialog.enable": "Activer",

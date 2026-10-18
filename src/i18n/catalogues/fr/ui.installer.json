@@ -5,7 +5,7 @@
 	"ui.installer.installer_panel.local_operator": "Local Operator",
 	"ui.installer.installer_panel.quit": "Quitter",
 	"ui.installer.installer_panel.setup_complete": "Configuration terminée.",
-	"ui.installer.installer_panel.setup_keeps_everything_it_installs_in_its_own_folder_nothing_of_y": "La configuration conserve tout ce qu’elle installe dans son propre dossier ; rien de ce qui vous appartient n’a été touché.",
+	"ui.installer.installer_panel.setup_keeps_everything_it_installs_in_its_own_folder_nothing_of_y": "La configuration conserve tout ce qu’elle installe dans son propre dossier ; rien de ce qui vous appartient n’a été touché.",
 	"ui.installer.installer_panel.you_can_minimize_this_window_and_keep_working_closing_it_stops_se": "Vous pouvez réduire cette fenêtre et continuer à travailler. La fermer arrête la configuration.",
 	"ui.installer.phase.detail.components": "Téléchargement des paquets sur lesquels Local Operator s’exécute.",
 	"ui.installer.phase.detail.environment": "Création d’un dossier privé pour Local Operator, auquel rien d’autre ne touche.",

@@ -75,7 +75,7 @@
 	"ui.projects.project_done_anyway_dialog.mark_done_anyway": "Marquer comme terminé quand même",
 	"ui.projects.project_done_anyway_dialog.mark_done_with_open_milestones": "Marquer comme terminé avec des jalons ouverts  ",
 	"ui.projects.project_done_anyway_dialog.projectlabel_moves_to_done_and_its_milestones_stay_open": "{projectLabel} passe à Terminé et ses jalons restent ouverts.",
-	"ui.projects.project_done_anyway_dialog.show_all_length_open_milestones": "Afficher {length, plural, one {le jalon ouvert} many {les {length, number, ::group-off} de jalons ouverts} other {les {length, number, ::group-off} jalons ouverts}}",
+	"ui.projects.project_done_anyway_dialog.show_all_length_open_milestones": "Afficher {length, plural, one {{length, number, ::group-off} jalon ouvert} many {{length, number, ::group-off} de jalons ouverts} other {les {length, number, ::group-off} jalons ouverts}}",
 	"ui.projects.project_done_anyway_dialog.the_project_moves_to_done_and_its_milestones_stay_open": "Le projet passe à Terminé et ses jalons restent ouverts.",
 	"ui.projects.project_edit_model.a_project_with_this_key_already_exists": "Un projet avec cette clé existe déjà.",
 	"ui.projects.project_edit_model.dates_are_yyyy_mm_dd_or_empty": "Les dates sont au format YYYY-MM-DD, ou vides.",
