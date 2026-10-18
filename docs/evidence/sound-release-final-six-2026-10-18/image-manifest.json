@@ -1,0 +1,79 @@
+[
+  {
+    "file": "01-voiceover-playing.png",
+    "width": 2760,
+    "height": 2200,
+    "mode": "RGB",
+    "sha256": "1fb24f1291c7b9bced406144f3df0e0c501d72c86d026315169edef6bcc287b7"
+  },
+  {
+    "file": "02-sfx-playing.png",
+    "width": 2760,
+    "height": 2200,
+    "mode": "RGB",
+    "sha256": "3bc3885de04f488978afb298912dd17052a59674a3e3dbcff66fb178e8452557"
+  },
+  {
+    "file": "03-invalid-arguments.png",
+    "width": 2760,
+    "height": 2200,
+    "mode": "RGB",
+    "sha256": "bb84bd1724a170d6cafc4b55580ddd463e676698fdb460455fd9756cd358a337"
+  },
+  {
+    "file": "04-running-cancel-three-instants.png",
+    "width": 1750,
+    "height": 3210,
+    "mode": "RGB",
+    "sha256": "cb8302bf4c787ec44a8f14077d845087c03ff6355f215293d690af4774cd400d"
+  },
+  {
+    "file": "05-fresh-byok-estimated.png",
+    "width": 2760,
+    "height": 2200,
+    "mode": "RGB",
+    "sha256": "1075d8f8b67e51eda6ae546179a4835ac93349f9ae054bfc365550ad3d85f29a"
+  },
+  {
+    "file": "06-earlier-turn-playing.png",
+    "width": 2760,
+    "height": 2200,
+    "mode": "RGB",
+    "sha256": "b4d6ecdaa73c161bb37970758afade619c17557d170864a63a0c2262eeab5265"
+  },
+  {
+    "file": "supporting/release-cancel-before-action.png",
+    "width": 2760,
+    "height": 2200,
+    "mode": "RGB",
+    "sha256": "5d23aba70c1c9122b0716f6e538aa831c319895df384d8abd1f3867618951611"
+  },
+  {
+    "file": "supporting/release-cancel-completed-billed.png",
+    "width": 2760,
+    "height": 2200,
+    "mode": "RGB",
+    "sha256": "087c61dd3eedfeada4be1c05f8e2b0a89281ac26ba1cc4ef405a3adae21a981d"
+  },
+  {
+    "file": "supporting/release-cancel-pending-receipt.png",
+    "width": 2760,
+    "height": 2200,
+    "mode": "RGB",
+    "sha256": "7f5a63670cde6d6d6fe4d31b1c3ba4aa4bed0daffc6ff48779dafaefcdee66b0"
+  },
+  {
+    "file": "supporting/release-sfx-idle.png",
+    "width": 2760,
+    "height": 2200,
+    "mode": "RGB",
+    "sha256": "80297c3babe435056e0b124f2e6c6b885b8f302db12d687592b8534a8880dfed"
+  },
+  {
+    "file": "supporting/release-voiceover-idle.png",
+    "width": 2760,
+    "height": 2200,
+    "mode": "RGB",
+    "sha256": "126145909aacc260b9ee1db2a6b932f74f5c86889d66332d9e2dfa7349a5d1ac"
+  }
+]

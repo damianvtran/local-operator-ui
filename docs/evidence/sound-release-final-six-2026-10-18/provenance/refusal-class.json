@@ -1,0 +1,16 @@
+{
+  "tool_call_id": "fresh-invalid-class",
+  "tool_name": "generate_sound_effect",
+  "content": [
+    {
+      "type": "text",
+      "text": "invalid arguments: 1 validation error for GenerateSoundEffectParams\nduration_s\n  Field required [type=missing, input_value={'prompt': 'a door creak'...'radient/sound-effects'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.14/v/missing"
+    }
+  ],
+  "details": {
+    "__fault": "invalid_arguments"
+  },
+  "duration_s": null,
+  "is_error": true,
+  "useless": false
+}

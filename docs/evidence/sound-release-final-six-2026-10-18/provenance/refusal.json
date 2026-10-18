@@ -1,0 +1,7 @@
+{
+  "code": "audio_rejected",
+  "details": {
+    "reason": "duration_seconds is required: the provider's auto-duration mode cannot be quoted"
+  },
+  "error": "This audio request could not be accepted."
+}
