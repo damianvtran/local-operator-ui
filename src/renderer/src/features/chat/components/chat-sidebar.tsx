@@ -9483,6 +9483,11 @@ export function ChatSidebar({
 					key={tagRow.session_id}
 					row={tagRow}
 					onClose={() => setTagRow(null)}
+					onManage={() => {
+						// The picker-to-manager path keeps the row's stable return identity.
+						setTagRow(null);
+						setManageTagsOpen(true);
+					}}
 					returnFocus={returnTagsFocus}
 				/>
 			)}

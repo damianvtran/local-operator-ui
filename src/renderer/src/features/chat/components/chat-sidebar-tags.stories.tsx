@@ -408,7 +408,7 @@ export const ManagementRoundTrip: Story = {
 		await waitFor(() =>
 			expect(
 				body.getByText(
-					"Remove this tag from 2 conversations. Conversations will not be deleted.",
+					"Remove this tag from 2 conversations. Conversations grouped here move to their oldest remaining tag, or Untagged. Conversations will not be deleted.",
 				),
 			).toBeTruthy(),
 		);
@@ -439,5 +439,60 @@ export const ManagementRoundTrip: Story = {
 		);
 		document.body.dataset.tagsProof =
 			"PASS: add; rename keeps ID; reorder keeps primary/focus; delete count 2; 5 chats retained; trigger focus returned";
+	},
+};
+
+export const ViewOptions220: Story = {
+	...story("on", 220),
+	play: async () => {
+		await ready();
+		const trigger = document.querySelector<HTMLElement>(
+			"[data-sidebar-view-options]",
+		);
+		if (!trigger) throw new Error("No view trigger");
+		await userEvent.click(trigger);
+		const action = await within(document.body).findByRole("button", {
+			name: "Manage tags…",
+		});
+		const group = action.closest<HTMLElement>("[data-sidebar-tags-options]");
+		if (!group) throw new Error("No Tags row");
+		const box = group.getBoundingClientRect();
+		const button = action.getBoundingClientRect();
+		const range = document.createRange();
+		range.selectNodeContents(action);
+		const lines = range.getClientRects().length;
+		expect(box.height).toBe(40);
+		expect(lines).toBe(1);
+		expect(action.scrollWidth).toBeLessThanOrEqual(action.clientWidth);
+		document.body.dataset.tagsProof = `PASS: 220px sidebar; Tags row ${box.width}×${box.height}px; Manage ${button.width}×${button.height}px; text lines ${lines}; no horizontal overflow`;
+	},
+};
+
+export const PickerManageRoundTrip: Story = {
+	...story("on", 220),
+	play: async () => {
+		await picker();
+		await userEvent.click(
+			within(document.body).getByRole("button", { name: "Manage tags…" }),
+		);
+		await within(document.body).findByRole("heading", { name: "Manage tags…" });
+		await new Promise((resolve) =>
+			requestAnimationFrame(() => requestAnimationFrame(resolve)),
+		);
+		expect(document.querySelectorAll("[role=dialog]")).toHaveLength(1);
+		expect(document.activeElement?.closest("[role=dialog]")).not.toBeNull();
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
+		await userEvent.click(
+			within(document.body).getByRole("button", { name: "Done" }),
+		);
+		await waitFor(() =>
+			expect(document.activeElement).toBe(
+				document.querySelector(
+					'[data-session-row="111111111111"] [data-chat-row]',
+				),
+			),
+		);
+		document.body.dataset.tagsProof =
+			"PASS: picker → Manage; one modal; no assignment; originating row focus returned";
 	},
 };

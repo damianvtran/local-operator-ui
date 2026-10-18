@@ -61,9 +61,7 @@ export function ManageTagsDialog({
 			await replaceCategories(desired);
 			after();
 		} catch (cause) {
-			setError(
-				userFacingMessage(cause, "Could not save tags. Retry your change."),
-			);
+			setError(userFacingMessage(cause, t("ui.chat.tags.save_failed")));
 		} finally {
 			setPending(false);
 		}

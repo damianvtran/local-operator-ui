@@ -24,10 +24,12 @@ export function ChatSessionTagsDialog({
 	row,
 	onClose,
 	returnFocus,
+	onManage,
 }: {
 	row: CanonicalSessionRow;
 	onClose: () => void;
 	returnFocus: () => void;
+	onManage: () => void;
 }) {
 	useI18nLocale();
 	const {
@@ -58,9 +60,7 @@ export function ChatSessionTagsDialog({
 			await assignSessionTags(row.session_id, selected, effectivePrimary);
 			onClose();
 		} catch (cause) {
-			setError(
-				userFacingMessage(cause, "Could not save tags. Retry your change."),
-			);
+			setError(userFacingMessage(cause, t("ui.chat.tags.save_failed")));
 		} finally {
 			setPending(false);
 		}
@@ -87,9 +87,7 @@ export function ChatSessionTagsDialog({
 			setCreating(false);
 			setName("");
 		} catch (cause) {
-			setError(
-				userFacingMessage(cause, "Could not save tags. Retry your change."),
-			);
+			setError(userFacingMessage(cause, t("ui.chat.tags.save_failed")));
 		} finally {
 			setPending(false);
 		}
@@ -128,9 +126,9 @@ export function ChatSessionTagsDialog({
 				<div className="min-h-0 space-y-3 overflow-y-auto">
 					{loading ? (
 						<output>{t("ui.chat.tags.loading")}</output>
-					) : loadError ? (
+					) : loadError !== null ? (
 						<div role="alert">
-							<p>{loadError}</p>
+							<p>{loadError.trim() || t("ui.chat.tags.load_failed")}</p>
 							<Button onClick={() => void fetchCategories()}>
 								{t("ui.chat.tags.retry")}
 							</Button>
@@ -184,7 +182,7 @@ export function ChatSessionTagsDialog({
 									tag.name
 										.toLocaleLowerCase()
 										.includes(query.toLocaleLowerCase()),
-								) && <p>{t("ui.chat.tags.no_matches")}</p>}
+								) && <p>{t("ui.chat.tags.no_matches", { query })}</p>}
 							{selected.length >= 2 ? (
 								<fieldset className="min-w-0 border-hairline border-t pt-2">
 									<legend className="text-meta text-ink-muted">
@@ -239,7 +237,7 @@ export function ChatSessionTagsDialog({
 						</Button>
 						<Button
 							variant="ghost"
-							disabled={pending || loading || !!loadError}
+							disabled={pending || loading || loadError !== null}
 							onClick={() => setCreating(true)}
 						>
 							{t("ui.chat.tags.new")}
@@ -265,6 +263,9 @@ export function ChatSessionTagsDialog({
 							</Button>
 						</form>
 					)}
+					<Button variant="ghost" disabled={pending} onClick={onManage}>
+						{t("ui.chat.tags.manage")}
+					</Button>
 					{error && (
 						<div role="alert" className="text-body-sm text-danger">
 							<p>{error}</p>
@@ -282,7 +283,7 @@ export function ChatSessionTagsDialog({
 						{t("ui.chat.tags.cancel")}
 					</Button>
 					<Button
-						disabled={pending || loading || !!loadError}
+						disabled={pending || loading || loadError !== null}
 						onClick={() => void apply()}
 					>
 						{pending ? t("ui.chat.tags.applying") : t("ui.chat.tags.apply")}

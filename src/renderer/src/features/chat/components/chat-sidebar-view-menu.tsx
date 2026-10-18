@@ -339,11 +339,9 @@ export function ChatSidebarViewMenu({
 				)}
 			</fieldset>
 			{tagsAvailable && (
-				<div
-					className="border-hairline border-b py-1"
-					data-sidebar-tags-options
-				>
-					<div className="flex h-8 items-center gap-2 px-1">
+				<div className="border-hairline border-b" data-sidebar-tags-options>
+					{/* 39px content plus the group hairline is the contracted 40px insertion. */}
+					<div className="flex h-[39px] items-center gap-2 px-1">
 						<span className="flex-1 text-meta text-ink-dim">
 							{t("ui.chat.tags.label")}
 						</span>

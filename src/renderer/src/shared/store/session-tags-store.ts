@@ -2,6 +2,7 @@ import {
 	desktopResult,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
+import { t } from "@shared/i18n";
 import { create } from "zustand";
 import type {
 	DesiredTag,
@@ -38,10 +39,7 @@ export const useSessionTagsStore = create<State>((set, get) => ({
 			set({ categories: result.tags, loading: false });
 		} catch (error) {
 			set({
-				error: userFacingMessage(
-					error,
-					"Could not load or save tags. Retry your change.",
-				),
+				error: userFacingMessage(error, t("ui.chat.tags.load_failed")),
 				loading: false,
 			});
 		}

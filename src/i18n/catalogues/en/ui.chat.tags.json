@@ -5,11 +5,11 @@
 	"ui.chat.tags.manage": "Manage tags…",
 	"ui.chat.tags.mode_hint": "Tag groups use Time section grouping.",
 	"ui.chat.tags.use_time": "Use Time section",
-	"ui.chat.tags.discovery": "Right-click a conversation and choose Tags… (Shift+F10).",
+	"ui.chat.tags.discovery": "Right-click a conversation and choose Tags… (Shift+F10, with Fn on most Mac keyboards).",
 	"ui.chat.tags.picker_title": "Tags for “{title}”",
 	"ui.chat.tags.picker_description": "Choose tags, then Apply. New tags are saved immediately.",
 	"ui.chat.tags.search": "Search tags",
-	"ui.chat.tags.empty": "No tags yet. Create a tag to get started.",
+	"ui.chat.tags.empty": "Tags organise conversations without changing their titles. Create a tag to get started.",
 	"ui.chat.tags.loading": "Loading tags…",
 	"ui.chat.tags.applying": "Applying tags…",
 	"ui.chat.tags.retry": "Retry",
@@ -28,10 +28,12 @@
 	"ui.chat.tags.delete": "Delete",
 	"ui.chat.tags.delete_tag": "Delete tag",
 	"ui.chat.tags.delete_title": "Delete “{name}”?",
-	"ui.chat.tags.delete_description": "Remove this tag from {count, plural, one {# conversation} other {# conversations}}. Conversations will not be deleted.",
+	"ui.chat.tags.delete_description": "Remove this tag from {count, plural, one {# conversation} other {# conversations}}. Conversations grouped here move to their oldest remaining tag, or Untagged. Conversations will not be deleted.",
 	"ui.chat.tags.move_up": "Move {name} up",
 	"ui.chat.tags.move_down": "Move {name} down",
 	"ui.chat.tags.manage_description": "Create, rename and order tags. This does not change an explicit primary tag.",
 	"ui.chat.tags.rename_label": "Rename {name}",
-	"ui.chat.tags.no_matches": "No matching tags."
+	"ui.chat.tags.no_matches": "No tags match “{query}”.",
+	"ui.chat.tags.save_failed": "Tags were not saved. Try again.",
+	"ui.chat.tags.load_failed": "Tags could not be loaded. Try again."
 }
