@@ -54,6 +54,8 @@ export const VoiceRowMarker: FC<{ sessionId: string }> = ({ sessionId }) => {
 
 const PHASE_KEY = {
 	starting: "ui.chat.voice.phase_starting",
+	hearing: "ui.chat.voice.phase_hearing",
+	speaking: "ui.chat.voice.phase_speaking",
 	listening: "ui.chat.voice.phase_listening",
 	working: "ui.chat.voice.phase_working",
 } as const;

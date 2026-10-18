@@ -732,7 +732,16 @@ export type DesktopVoiceState = {
 };
 
 /** `POST /v1/desktop/voice/text`'s answer: the words to speak, already cleaned. */
-export type DesktopVoiceText = { text: string; spoken_chars: number };
+export type DesktopVoiceText = {
+	text: string;
+	spoken_chars: number;
+	/**
+	 * Whether the reply was cut at the server's character cap (plan §8). Optional:
+	 * the backend slice that adds it lands separately, and an absent field means
+	 * "not cut", never an error.
+	 */
+	truncated?: boolean;
+};
 
 /**
  * `POST /v1/desktop/voice`'s answer. `replaced` is the session that LOST the slot

@@ -6,12 +6,14 @@ import {
 	PHRASES,
 	RELAY_MODEL,
 	SayRegistry,
+	VOICE_EVENTS,
 	createRelayHandler,
 	decideRelay,
 	phraseForOutcome,
 	relayStream,
 	sayToken,
 	tokenOf,
+	voiceEventOf,
 } from "../resources/qwen-voice/relay-core.mjs";
 
 const NAMES_Q7 = /Q7/;
@@ -306,4 +308,61 @@ test("a successful take sends no `speak` from the launcher", () => {
 		/const phrase = phraseForOutcome\(outcome\);\s*if \(phrase\) speak\(PHRASES\[phrase\], "phrase"\);/,
 		"the launcher speaks a phrase only when there is one",
 	);
+});
+
+/* ------------------------------------------------------------------------ */
+/* The event whitelist (plan §10)                                            */
+/* ------------------------------------------------------------------------ */
+
+test("§10: only the allowlisted events cross, and never a word of the message", () => {
+	const at = "2026-10-18T05:36:39.412Z";
+	for (const type of VOICE_EVENTS)
+		assert.deepEqual(
+			voiceEventOf({
+				event: type,
+				time: at,
+				message: "task text",
+				level: "info",
+			}),
+			{ type, at },
+			type,
+		);
+	// Everything else the Gateway logs stays in the file.
+	for (const event of [
+		"conversation_history.restored",
+		"task.persistence_warning",
+		"gateway.client_connected",
+		"",
+	])
+		assert.equal(voiceEventOf({ event, time: at }), null, event);
+	assert.equal(voiceEventOf(null), null);
+	assert.equal(
+		voiceEventOf({ event: "realtime.playback.ended" }),
+		null,
+		"no time",
+	);
+	// A reason crosses only as a word: a sentence or a length are dropped.
+	assert.deepEqual(
+		voiceEventOf({
+			event: "realtime.playback.cancelled",
+			time: at,
+			reason: "barge_in",
+		}),
+		{ type: "realtime.playback.cancelled", at, reason: "barge_in" },
+	);
+	for (const reason of [
+		"the user said something private",
+		"Barge In",
+		"barge-in",
+		`${"a".repeat(40)}`,
+	])
+		assert.equal(
+			voiceEventOf({
+				event: "realtime.playback.cancelled",
+				time: at,
+				reason,
+			}).reason,
+			undefined,
+			reason,
+		);
 });

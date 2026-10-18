@@ -22,6 +22,14 @@ import { type QwenPorts, rigMissing } from "./qwen-rig";
 export type GatewayUpMessage =
 	| { type: "take"; taskId: string; text: string }
 	| { type: "status"; event: string; [key: string]: unknown }
+	/**
+	 * One allowlisted voice event (plan §10). The launcher shapes it already;
+	 * main validates it again before it crosses to the renderer.
+	 */
+	| {
+			type: "event";
+			event: { type?: unknown; at?: unknown; reason?: unknown };
+	  }
 	| { type: "qwen-voice:ready"; webuiUrl: string }
 	| { type: "qwen-voice:error"; reason: string };
 

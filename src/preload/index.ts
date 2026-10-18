@@ -30,6 +30,7 @@ import {
 	type ExternalOpenOutcome,
 	type ExternalOpenRefusedPayload,
 	type FileActionOutcome,
+	type QwenVoiceEvent,
 	type QwenVoiceResult,
 	type QwenVoiceStatus,
 	type QwenVoiceTake,
@@ -203,6 +204,14 @@ const api = {
 				ipcRenderer.on("voice.qwen.status", handler);
 				return () => {
 					ipcRenderer.removeListener("voice.qwen.status", handler);
+				};
+			},
+			onEvent: (listener: (event: QwenVoiceEvent) => void) => {
+				const handler = (_event: unknown, event: QwenVoiceEvent) =>
+					listener(event);
+				ipcRenderer.on("voice.qwen.event", handler);
+				return () => {
+					ipcRenderer.removeListener("voice.qwen.event", handler);
 				};
 			},
 		},

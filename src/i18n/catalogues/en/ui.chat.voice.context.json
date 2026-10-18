@@ -29,6 +29,16 @@
 		"tone": "short status, sentence case",
 		"note": "Voice is on, the models are loaded and a voice page is connected, so the microphone is live."
 	},
+	"ui.chat.voice.phase_hearing": {
+		"role": "status word beside the voice control",
+		"tone": "short status, sentence case",
+		"note": "The local speech recogniser says someone is speaking right now."
+	},
+	"ui.chat.voice.phase_speaking": {
+		"role": "status word beside the voice control",
+		"tone": "short status, sentence case",
+		"note": "The voice is playing a reply right now; it returns to Listening when the reply ends."
+	},
 	"ui.chat.voice.phase_working": {
 		"role": "status word beside the voice button",
 		"tone": "short status, sentence case",

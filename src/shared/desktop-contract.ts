@@ -5803,6 +5803,10 @@ export type DesktopMediaResponse =
  *   rig that is already ready, recreate the hidden voice page instead.
  * - invoke `voice.qwen.open-mic-settings`: open the OS microphone pane. Main's
  *   own fixed URL, never a renderer-supplied one.
+ * - event `voice.qwen.event {type, at, reason?}` (plan §10): one allowlisted
+ *   thing the voice did - the rig hearing, the rig speaking, a response
+ *   finishing, a task moving. A type, a Gateway time and at most a one-word
+ *   reason; no message text crosses.
  */
 export type QwenRigState = "stopped" | "starting" | "ready" | "error";
 export type QwenVoiceStatus = {
@@ -5821,6 +5825,7 @@ export type QwenVoiceStatus = {
 	mic?: "granted" | "denied" | "unknown";
 };
 export type QwenVoiceTake = { taskId: string; text: string };
+export type QwenVoiceEvent = { type: string; at: string; reason?: string };
 export type QwenVoiceResult =
 	| { taskId: string; ok: true }
 	| { taskId: string; ok: false; code: string };
@@ -5835,6 +5840,7 @@ export type QwenVoiceBridge = {
 	getStatus: () => Promise<QwenVoiceStatus>;
 	onStatus: (listener: (status: QwenVoiceStatus) => void) => () => void;
 	openMicrophoneSettings: () => Promise<void>;
+	onEvent: (listener: (event: QwenVoiceEvent) => void) => () => void;
 };
 
 export type DesktopAPI = {

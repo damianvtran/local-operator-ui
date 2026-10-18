@@ -36,6 +36,7 @@ import {
 	createVerbatimProvider,
 	phraseForOutcome,
 	tokenOf,
+	voiceEventOf,
 } from "./relay-core.mjs";
 
 /** The package version this launcher's internal imports were read against. */
@@ -120,6 +121,34 @@ async function main() {
 	}
 
 	const registry = new SayRegistry();
+
+	/*
+	 * ONE LOGGER, TWO DESTINATIONS (plan §10): the file keeps every record as
+	 * before, and an ALLOWLISTED few also go up to main as `voice.qwen.event`.
+	 * Every connection logs through `logger.child(...)`, which shares this sink
+	 * (`shared/logger.mjs`), so a new log line cannot bypass the whitelist.
+	 */
+	const { JsonLineFileSink, createLogger, defaultLogDirectory } =
+		await internal("shared/logger.mjs");
+	const fileSink =
+		env.QWEN_AUDIO_LOG_FILE === "0"
+			? null
+			: new JsonLineFileSink({
+					directory: defaultLogDirectory(env),
+					fileName: "gateway.log",
+				});
+	const logger = createLogger({
+		component: "gateway",
+		sink: {
+			path: fileSink?.path ?? null,
+			write(record) {
+				fileSink?.write(record);
+				const event = voiceEventOf(record);
+				if (event) post({ type: "event", event });
+			},
+			flush: () => fileSink?.flush(),
+		},
+	});
 
 	/*
 	 * ONE getFrontend PER REALTIME CONNECTION, newest last. A WebUI tab and a
@@ -214,6 +243,7 @@ async function main() {
 	});
 
 	const application = createGatewayApplication({
+		logger,
 		agent: createBackendAgentHost(backend, { name: "lop-slot" }),
 		realtimeProviderRegistry,
 		realtimeProvider: provider.key,

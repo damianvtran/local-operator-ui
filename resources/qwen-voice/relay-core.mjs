@@ -60,6 +60,47 @@ export function phraseForOutcome(outcome) {
 	}
 }
 
+/**
+ * THE EVENT SET THE PANEL MAY SEE (plan §10): the Gateway's own log events that
+ * say what voice is doing - the rig hearing, the rig speaking, a response
+ * finishing, a task moving. EVERYTHING ELSE the Gateway logs (task text,
+ * persistence warnings, restored history) stays in the file: this is a
+ * whitelist, and the payload carries a TYPE, a TIME and at most a one-word
+ * reason, never a message.
+ *
+ * `task.running`/`task.completed` are the task store's own event names
+ * (2.0.1 `task/task-events.mjs`); the store does not write them through the
+ * logger today, so they are here for the Gateway version that does.
+ */
+export const VOICE_EVENTS = Object.freeze([
+	"realtime.provider.speech_started",
+	"realtime.provider.speech_stopped",
+	"realtime.playback.started",
+	"realtime.playback.ended",
+	"realtime.playback.cancelled",
+	"realtime.response.done",
+	"task.running",
+	"task.completed",
+]);
+
+/** A reason worth crossing: a word, never a sentence. */
+const EVENT_REASON = /^[a-z_]{1,32}$/;
+
+/**
+ * The `voice.qwen.event` payload for one log record, or null when the record is
+ * not one of the allowlisted events. `at` is the record's own ISO time, so the
+ * panel reads the Gateway's clock rather than this process's.
+ */
+export function voiceEventOf(record) {
+	if (!record || typeof record.event !== "string") return null;
+	if (!VOICE_EVENTS.includes(record.event)) return null;
+	if (typeof record.time !== "string" || record.time.length === 0) return null;
+	const event = { type: record.event, at: record.time };
+	if (typeof record.reason === "string" && EVENT_REASON.test(record.reason))
+		event.reason = record.reason;
+	return event;
+}
+
 /** The relay's model name; s2s is started with `--model_name lop-relay`. */
 export const RELAY_MODEL = "lop-relay";
 
