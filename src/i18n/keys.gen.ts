@@ -855,6 +855,7 @@ export type MessageParams = {
 	"ui.chat.tags.group": undefined;
 	"ui.chat.tags.group_under": undefined;
 	"ui.chat.tags.label": undefined;
+	"ui.chat.tags.load_failed": undefined;
 	"ui.chat.tags.loading": undefined;
 	"ui.chat.tags.manage": undefined;
 	"ui.chat.tags.manage_description": undefined;
@@ -864,7 +865,7 @@ export type MessageParams = {
 	"ui.chat.tags.move_up": { name: string };
 	"ui.chat.tags.new": undefined;
 	"ui.chat.tags.new_name": undefined;
-	"ui.chat.tags.no_matches": undefined;
+	"ui.chat.tags.no_matches": { query: string };
 	"ui.chat.tags.picker_description": undefined;
 	"ui.chat.tags.picker_title": { title: string };
 	"ui.chat.tags.primary": undefined;
@@ -872,6 +873,7 @@ export type MessageParams = {
 	"ui.chat.tags.rename_label": { name: string };
 	"ui.chat.tags.retry": undefined;
 	"ui.chat.tags.save": undefined;
+	"ui.chat.tags.save_failed": undefined;
 	"ui.chat.tags.search": undefined;
 	"ui.chat.tags.untagged": undefined;
 	"ui.chat.tags.use_time": undefined;

@@ -173,5 +173,13 @@
 		"role": "tag dialog or sidebar control",
 		"tone": "concise, neutral sentence case",
 		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+	},
+	"ui.chat.tags.save_failed": {
+		"role": "inline save failure",
+		"tone": "concise and actionable"
+	},
+	"ui.chat.tags.load_failed": {
+		"role": "inline load failure",
+		"tone": "concise and actionable"
 	}
 }
