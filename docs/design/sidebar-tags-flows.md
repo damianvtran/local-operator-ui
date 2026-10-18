@@ -185,7 +185,7 @@ Use sentence case. Ellipsis means opening another surface, not a save action.
 | No matches | `No tags match “{query}”.` / `Create “{query}”…` |
 | Group fallback | `Untagged` |
 | Loading | `Loading tags…` |
-| Load failure | `Could not load tags. Try again.` / `Retry` |
+| Load failure | `Tags could not be loaded. Try again.` / `Retry` |
 | Save pending | `Applying tags…` |
 | Save failure | `Tags were not saved. Try again.` / `Retry` |
 | Offline | `You’re offline. You can review your changes; reconnect to save them.` |
