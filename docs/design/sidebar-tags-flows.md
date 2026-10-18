@@ -242,3 +242,137 @@ Run independent real-path UX/QA in an isolated app profile with durable syntheti
 Smallest usable slice: durable category/assignment/explicit-primary contract + agent known-tag validation; capability-gated optional grouping; View options discovery; Tags… draft picker; add/rename/reorder/delete management; stable focus/error handling. **Chips are not in this slice** — they are the separate, independently proven slice described in `sidebar-tags.md` §11(a). Likewise, **defer drag as a separate interaction proof**, rather than pretend title text is a safe drag handle.
 
 **Design round verdict: TERMINAL for the flow specification with the recorded minor risks carried into implementation acceptance.** This is not implementation approval or a full LOH-11 completion verdict. Remaining unverified: physical keyboard/right-click targets, Escape/focus return beyond the observed pin action, successful archive/pin baseline mutation, complete wide/narrow resize sweep, tags screens themselves, chip flicker, durable/network/concurrent behaviour and drag. Repeated browser-host loss prevented further current-flow captures; no substitute browser was launched. Implementation PR must supply the discriminating live paths above, not relabel these before frames as after evidence.
+
+## 9. V2 addendum — operator feedback, 2026-10-18
+
+This section supersedes the v1 deferral of drag and adds the four other v2
+surfaces. The detailed geometry, cache and API decisions are in
+[`sidebar-tags-v2.md`](sidebar-tags-v2.md); the client contract is
+[`sidebar-tags-api.md`](sidebar-tags-api.md).
+
+### 9.1 Drag and drop
+
+1. Press and hold any conversation row for **180 ms with ≤5 px movement**;
+   the row arms for drag. Release before the hold, or move beyond the click
+   tolerance before arming, and the press remains an ordinary click that opens
+   the conversation. Once armed, the completing click does not open it.
+2. Pinned rows keep the existing grip and its reorder gesture. Click-hold on
+   the pinned row body also arms a row drag; the grip's slot model, insertion
+   indicator, Escape behaviour and one-row guard are unchanged.
+3. The eligible targets are the 28 px tag-group header and the Untagged header
+   **in the row's own existing section**. Pinned/Running/Today/This week/Older
+   membership never changes by drag. Ineligible headers do not highlight.
+4. Drop on a tag header: add that tag if absent and make it primary; keep the
+   other assignments. A row is therefore drawn in exactly one bucket, its
+   primary. Drop on the current primary is a no-op. Drop on Untagged: clear
+   every assignment and primary in one write.
+5. Preview: the target header gets accent-wash + accent outline; an armed row
+   carries the established drag mark. No row is cloned or moved until the
+   write settles. Pinned reorder keeps its insertion line. No arbitrary manual
+   order inside a tag group in this slice; the existing sort re-applies.
+6. Escape, pointercancel, window blur, or release outside an eligible target
+   cancels with no write. Autoscroll the owning list in the existing 32 px
+   edge zone at 12 px/frame.
+7. Success: `Moved to “Review”` / `Removed all tags` with Undo; Undo restores
+   the exact prior tag list and primary in one write. Failure returns the row
+   to its prior bucket/primary and shows the assignment error.
+8. Keyboard equivalent: `Move to tag…` in the row menu, with the category list
+   and Untagged; choosing one performs the same write and returns focus to the
+   row. Drag is never the only route.
+9. While a row drag is armed/settling, suppress any chip hover/focus/menu
+   swap so a later chip slice cannot relayout under the pointer. Test the latch
+   even though v2-1 draws no chips.
+10. At 220 px: 32 px rows, 28 px header targets, no horizontal overflow, no
+    title displacement before the write settles. Light/dark frames.
+
+### 9.2 Remove all tags
+
+- The row menu shows `Remove all tags (N)` only for a row with ≥1 tag, where N
+  is the number of distinct assigned tags. It clears all N and primary in one
+  request. A multi-tag row is the acceptance case.
+- The action is disabled while a picker is open for that row. Success offers
+  Undo; failure leaves the row unchanged and shows the assignment error.
+- The row menu remains scrollable; the new conditional item and `Move to tag…`
+  are pinned by order/presence tests.
+
+### 9.3 Auto-tagging in the fork/naming call
+
+- The fork naming call (`generate_title_acceptance`) returns title **and**
+  tags in one bounded call when the caller supplies the current registry. The
+  tag block is a stable cacheable prefix; `tag_set_hash` changes when a
+  category is added/renamed/reordered. A title-only caller's prompt is
+  byte-identical to today.
+- Output contract: known ids or exact case-insensitive names, deduped, ≤8;
+  unknown/invalid output means no assignment. Tags never change the title
+  acceptance and never create a category.
+- Only forks with auto-tag enabled and a non-empty registry are tagged. The UI
+  sends `auto_tag` with the fork request (`tagsEnabled && autoTagForks`); core
+  stores the intent; no second client call. Tags off or empty registry: no tag
+  block, no tag work, no extra call.
+- View options Tags group gains `Auto-tag forked sessions`, default **on**,
+  visible only with tags enabled; it persists with the view. Agent-created
+  sessions use their explicit `tags` argument, not this setting.
+- Fork/naming acceptance: one provider call (no second request), prefix/hash
+  tests, invalid-output test, no-tags/off no-op, real fork result shows the
+  chosen tags and primary.
+
+### 9.4 Tag creation UX
+
+- Replace the checkbox-only picker with a 420 px combobox: selected tags as
+  removable chips in the input, filtered list, Arrow/Enter/Space, Backspace
+  removes the last chip on an empty query, and an inline `Create “query”` row
+  only when no exact case-insensitive match exists. Selecting an existing tag
+  never duplicates it; creation is a registry write only on activation, never
+  on Cancel.
+- The primary chip carries a leading dot and an accessible "Primary"
+  description, not a colour. `Group under` remains a compact radio row among
+  selected tags when ≥2; one selected tag is statically primary; zero previews
+  Untagged.
+- Manage becomes a searchable ordered list with inline rename, duplicate
+  validation, add, up/down, and delete with count and primary consequence.
+- No colour/role in this slice. Chips wrap inside the 420 px dialog, never
+  horizontally scroll or truncate the title column. Keyboard-first proof and
+  before/after frames at 220/260/320 light/dark.
+
+### 9.5 Agents and cross-surface
+
+- Add the `tags` tool: `list`, `create(name)`, `rename(id, name)`,
+  `assign(session_id, tags[], primary?)`, same store/validation as `sessions
+  spawn tags`, atomic and receipted. Creation is explicit; a misspelling is
+  refused, never auto-created. Delegated/hidden sessions are assignable;
+  mesh/remote writes are refused in this slice.
+- The store stays the only authority. Desktop, TUI, mobile and relay read the
+  same catalogue/registry and write through the same routes. Mobile is a
+  separate lane and must not keep a second category database; the contract is
+  `sidebar-tags-api.md`.
+- TUI parity in this slice is read-only and opt-in: `/tags on|off` (default
+  off) shows the primary tag as a compact `#Tag` suffix when it fits; no
+  grouping, chips or assignment. Narrow widths shed the suffix before the
+  title. The full assignment remains available through the agent tool.
+- Acceptance: tool list/create/rename/assign tests and a real agent call; TUI
+  on/off/narrow frames; mobile owner confirms the contract covers read and
+  assign with no duplicated store.
+
+### 9.6 Slice order
+
+V2-1 drag + remove-all (UI), V2-2 picker UX (UI), V2-3 auto-tagging (core +
+UI), V2-4 agent tool + TUI + contract (core + TUI + docs). Each is gated by
+tests, i18n, rendered evidence, independent review, QA, and design/UX where the
+surface changes; no version bump and no release cut by the lane.
+
+### 9.7 Copy additions
+
+| State | Copy |
+|---|---|
+| Drag armed | `Move “{title}”` / `Escape cancels` (live region, once) |
+| Drop target | `Group under “{tag}”` / `Remove all tags` for Untagged |
+| Drag success | `Moved to “{tag}”.` / `Removed all tags.` |
+| Undo | `Undo` (single action, restores exact prior assignment) |
+| Drag failure | `Tags were not moved. Try again.` |
+| Remove all menu | `Remove all tags ({N})` |
+| Auto-tag setting | `Auto-tag forked sessions` |
+| Auto-tag helper | `Uses your existing tags when naming a fork.` |
+| Move to tag | `Move to tag…` / `Untagged` |
+| Picker create | `Create “{query}”` |
+| Picker primary | `Primary` / `Group under` |
+| Manage duplicate | `A tag named “{name}” already exists.` |
