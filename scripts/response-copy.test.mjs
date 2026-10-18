@@ -63,6 +63,12 @@ for (const name of [
 	if (bootstrap.window[name]) globalThis[name] = bootstrap.window[name];
 }
 
+/* Hoisted for biome's useTopLevelRegex: the esbuild fixture filters. */
+const RE_CREDENTIALS = /@shared\/hooks\/use-credentials/;
+const RE_TOAST = /@shared\/utils\/toast-manager/;
+const RE_ANY = /.*/;
+const RE_STREAMING_TEXT = /Update: the fourth/;
+
 const bundle = await build({
 	stdin: {
 		contents: `
@@ -95,15 +101,15 @@ const bundle = await build({
 		{
 			name: "speech-fixtures",
 			setup(builder) {
-				builder.onResolve(
-					{ filter: /@shared\/hooks\/use-credentials/ },
-					() => ({ path: "probe", namespace: "fixture" }),
-				);
-				builder.onResolve({ filter: /@shared\/utils\/toast-manager/ }, () => ({
+				builder.onResolve({ filter: RE_CREDENTIALS }, () => ({
+					path: "probe",
+					namespace: "fixture",
+				}));
+				builder.onResolve({ filter: RE_TOAST }, () => ({
 					path: "toast",
 					namespace: "fixture",
 				}));
-				builder.onLoad({ filter: /.*/, namespace: "fixture" }, (args) => {
+				builder.onLoad({ filter: RE_ANY, namespace: "fixture" }, (args) => {
 					if (args.path === "probe") {
 						return {
 							loader: "js",
@@ -172,7 +178,7 @@ const gateAnswer = (id, text) => ({
 	error: false,
 });
 
-const mountTranscript = async (records) => {
+const mountTranscript = async (records, { waiting = false } = {}) => {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		url: "http://localhost/",
 		pretendToBeVisual: true,
@@ -189,6 +195,18 @@ const mountTranscript = async (records) => {
 	globalThis.requestAnimationFrame = (callback) =>
 		setTimeout(() => callback(0), 0);
 	globalThis.cancelAnimationFrame = (handle) => clearTimeout(handle);
+	/* The live-turn path (`waiting: true`) reads `matchMedia`; jsdom has none. */
+	dom.window.matchMedia = (query) => ({
+		matches: false,
+		media: query,
+		onchange: null,
+		addEventListener() {},
+		removeEventListener() {},
+		addListener() {},
+		removeListener() {},
+		dispatchEvent: () => false,
+	});
+	globalThis.matchMedia = dom.window.matchMedia;
 	globalThis.ResizeObserver = class {
 		observe() {}
 		unobserve() {}
@@ -239,7 +257,7 @@ const mountTranscript = async (records) => {
 					transcript,
 					frontend: null,
 					gate: null,
-					waiting: false,
+					waiting,
 					starting: false,
 					loadingOlder: false,
 					onLoadOlder: async () => true,
@@ -299,6 +317,16 @@ test("an earlier settled response carries a hover-revealed Copy; the closing ans
 		["Copy"],
 		"Copy alone - no Speak or Fork per response",
 	);
+	assert.equal(
+		rows[0].getAttribute("aria-label"),
+		"Response actions",
+		'its own accessible name, not a second "Answer actions" toolbar',
+	);
+	assert.equal(
+		rows[0].hasAttribute("data-lo-arrive"),
+		false,
+		"no arrival flash on a response row, though the record is fresh (#698)",
+	);
 	assert.ok(rows[0].classList.contains("opacity-0"), "fades at rest");
 	assert.ok(
 		rows[0].classList.contains("group-hover:opacity-100"),
@@ -319,33 +347,38 @@ test("an earlier settled response carries a hover-revealed Copy; the closing ans
 });
 
 test("a response still streaming offers no Copy", async () => {
-	const { dom, unmount } = await mountTranscript([
-		gateUser("u1", "Is the March import finished?"),
-		gateAnswer("a1", "It finished with four invoices outstanding."),
-		{
-			...gateAnswer("a2", "Update: the fourth"),
-			ts: GATE_TS + 2_000,
-			streaming: true,
-			complete: false,
-		},
-	]);
 	/*
-	 * The live response is drawn inside the turn's working fold, not as a
-	 * prose row, so the assertion is scoped by record id: nothing under it
-	 * offers a Copy while it is still receiving deltas.
+	 * `waiting: true` is the live turn: without it the streaming record folds
+	 * into the turn's summary bar and its prose never renders, so "no Copy under
+	 * it" would hold whether or not the gate exists.
 	 */
-	const streaming = dom.window.document.querySelectorAll(
-		'[data-record-id="a2"]',
+	const { dom, unmount } = await mountTranscript(
+		[
+			gateUser("u1", "Is the March import finished?"),
+			gateAnswer("a1", "It finished with four invoices outstanding."),
+			{
+				...gateAnswer("a2", "Update: the fourth"),
+				ts: GATE_TS + 2_000,
+				streaming: true,
+				complete: false,
+			},
+		],
+		{ waiting: true },
 	);
-	assert.ok(streaming.length > 0, "the streaming response is on screen");
-	for (const node of streaming) {
-		assert.equal(
-			node.querySelector('button[aria-label="Copy"]'),
-			null,
-			"the streaming response carries no Copy",
-		);
-	}
-	/* The settled response before it still can be copied. */
+	const streaming = dom.window.document.querySelector(
+		'[data-record-kind="assistant"][data-record-id="a2"]',
+	);
+	assert.ok(streaming, "the streaming response is mounted as a prose row");
+	assert.match(
+		streaming.textContent ?? "",
+		RE_STREAMING_TEXT,
+		"and its text is on screen",
+	);
+	assert.equal(
+		streaming.querySelector("[data-lo-response-actions]"),
+		null,
+		"the streaming response carries no Copy",
+	);
 	assert.equal(
 		dom.window.document.querySelectorAll(
 			'[data-record-id="a1"] [data-lo-response-actions]',

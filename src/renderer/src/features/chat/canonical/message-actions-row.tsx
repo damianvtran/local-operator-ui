@@ -39,10 +39,12 @@
  * (`ARRIVED`), and its resting state is where it ends: nothing here can leave
  * the row permanently visible.
  *
- * ONE COMPONENT, TWO KINDS. `kind` decides what the row offers
+ * ONE COMPONENT, THREE KINDS. `kind` decides what the row offers
  * (`answerActionsFor`), which marker it carries and what its accessible name
  * is; an answer row offers Copy + Speak + Fork, a user row Copy + Fork - Speak
- * is the one action the answer arm owns alone. The
+ * is the one action the answer arm owns alone - and a `response` row (any
+ * settled assistant response that does not close its turn, #1043) Copy alone,
+ * so every response is copyable while the full row stays one per turn. The
  * user arm exists because the operator asked for a copy affordance on their
  * own messages, and it is this component rather than a second one because
  * everything here - the copy press, the reveal, the toolbar semantics - is the
@@ -75,6 +77,8 @@ import {
 	useSpeakControl,
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useSpeechBindingFor } from "@shared/lib/speech-target";
 import { cn } from "@shared/lib/utils";
 import { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
@@ -245,6 +249,8 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 	 * bound to an agent or not).
 	 */
 	const forkable = Boolean(conversationId && entryId);
+	/* `t()` reads the locale at call time; subscribing repaints the row's name on a switch. */
+	useI18nLocale();
 	const actions = answerActionsFor({ role: kind, forkable });
 
 	/*
@@ -441,7 +447,18 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 	return (
 		<div
 			role="toolbar"
-			aria-label={kind === "user" ? USER_ACTIONS_LABEL : ANSWER_ACTIONS_LABEL}
+			/*
+			 * The name follows the role, as the marker below does: a turn with
+			 * several responses must not announce several "Answer actions"
+			 * toolbars when only one of them is the answer.
+			 */
+			aria-label={
+				kind === "user"
+					? USER_ACTIONS_LABEL
+					: kind === "response"
+						? t("ui.chat.response_actions.label")
+						: ANSWER_ACTIONS_LABEL
+			}
 			ref={revealRef}
 			onAnimationEnd={(event) => {
 				/*
