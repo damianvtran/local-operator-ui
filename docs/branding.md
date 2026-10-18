@@ -896,12 +896,15 @@ against a future MUI version rather than remembered.
 
 ---
 
-### Window glass (optional translucency, default off)
+### Window glass (translucency, on by default where supported)
 
 Settings > Appearance can make the window translucent: the OS draws the blur
-(macOS vibrancy, Windows 11 `backgroundMaterial`) and the app paints its grounds
-at an alpha over it. Off, nothing below applies and the shipped look is byte for
-byte unchanged. The decision lives in `src/shared/window-glass.ts`; the floors in
+(macOS vibrancy) and the app paints its grounds at an alpha over it. On macOS it
+is on by default at 80% where the machine can composite it; Windows 11
+`backgroundMaterial` and Linux are off and greyed with the reason (unverified /
+no native blur), and an explicit OFF or Reduce transparency keeps the shipped
+look. Where glass is off or gated, nothing below applies and the shipped look is
+byte for byte unchanged. The decision lives in `src/shared/window-glass.ts`; the floors in
 `src/shared/window-glass-floors.json`, derived by `scripts/derive-glass-floors.mjs`
 and asserted on all 59 palettes by `scripts/contrast-contract.mjs` ("window glass"
 and "glass row / text field / focus ring" rows). Never hand-lower a floor: re-derive.

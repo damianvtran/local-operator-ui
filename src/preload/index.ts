@@ -70,6 +70,7 @@ import {
 	type GlassScheme,
 	type GlassSettings,
 	WINDOW_GLASS_GET_CHANNEL,
+	WINDOW_GLASS_RENDERER_CHANNEL,
 	WINDOW_GLASS_SCHEME_CHANNEL,
 	WINDOW_GLASS_SET_CHANNEL,
 	WINDOW_GLASS_STATE_CHANNEL,
@@ -330,6 +331,15 @@ const api = {
 			ipcRenderer.invoke(WINDOW_GLASS_SET_CHANNEL, patch),
 		reportScheme: (scheme: GlassScheme): Promise<boolean> =>
 			ipcRenderer.invoke(WINDOW_GLASS_SCHEME_CHANNEL, scheme),
+		/**
+		 * The renderer's one capability fact: whether `backdrop-filter` exists here.
+		 * Main starts the gate undecided and re-evaluates on this answer, so a
+		 * renderer that cannot blur never keeps a translucent window.
+		 */
+		reportRenderer: (report: {
+			backdropFilter: boolean;
+		}): Promise<WindowGlassState | null> =>
+			ipcRenderer.invoke(WINDOW_GLASS_RENDERER_CHANNEL, report),
 		onState: (callback: (state: WindowGlassState) => void): (() => void) => {
 			const handler = (_event: IpcRendererEvent, state: WindowGlassState) =>
 				callback(state);

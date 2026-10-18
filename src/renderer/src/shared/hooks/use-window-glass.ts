@@ -8,7 +8,8 @@ import {
 } from "../../../../shared/window-glass";
 
 /**
- * The renderer's half of the window glass (optional translucency, default OFF).
+ * The renderer's half of the window glass (translucency, on by default where the
+ * machine supports it).
  *
  * MAIN OWNS THE SETTING (it must know it before a window exists); this file turns
  * what main says into the two things CSS can read: `data-glass` on the document
@@ -18,9 +19,9 @@ import {
  * `data-glass-region`, so nothing here can repaint a card, an input or a menu.
  *
  * ABSENT MEANS THE SHIPPED LOOK. With no attribute and no variables every rule in
- * that section is dormant, which is the default-off guarantee on this side of the
- * process boundary: a launch that never enabled glass runs the stylesheet it
- * always ran.
+ * that section is dormant, which is the inactive guarantee on this side of the
+ * process boundary: a launch whose glass is off (chosen or gated) runs the
+ * stylesheet it always ran.
  *
  * THE SCHEME IS READ FROM THE DOCUMENT (`.dark`, written by
  * `applyThemeToDocument`) because the alpha floors differ by scheme: a dark palette
@@ -153,6 +154,18 @@ export function syncGlassScheme(): void {
 export function subscribeGlassPaint(): () => void {
 	const api = window.api?.windowGlass;
 	if (!api) return () => {};
+	/*
+	 * The one capability fact only the renderer has (`criterion: detect then
+	 * decide`, renderer half). Sent even when glass is off at this instant: the
+	 * answer decides whether a LATER enable is allowed, and main starts undecided
+	 * so the first frame is never blocked by waiting for this message. A renderer
+	 * without `CSS` (a test host, not Electron) reports nothing rather than a
+	 * false negative.
+	 */
+	if (typeof CSS !== "undefined")
+		void api.reportRenderer?.({
+			backdropFilter: CSS.supports("backdrop-filter: blur(1px)"),
+		});
 	return api.onState((next) => applyGlassState(next));
 }
 

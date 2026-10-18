@@ -2882,10 +2882,14 @@ export type MessageParams = {
 	"ui.settings.appearance.window_glass.material_tabbed": undefined;
 	"ui.settings.appearance.window_glass.material_window": undefined;
 	"ui.settings.appearance.window_glass.restart_needed": undefined;
+	"ui.settings.appearance.window_glass.unsupported_acceleration": undefined;
+	"ui.settings.appearance.window_glass.unsupported_backdrop_filter": undefined;
+	"ui.settings.appearance.window_glass.unsupported_gpu": undefined;
 	"ui.settings.appearance.window_glass.unsupported_linux": undefined;
 	"ui.settings.appearance.window_glass.unsupported_other": undefined;
 	"ui.settings.appearance.window_glass.unsupported_reduced_transparency": undefined;
 	"ui.settings.appearance.window_glass.unsupported_windows_too_old": undefined;
+	"ui.settings.appearance.window_glass.unsupported_windows_unverified": undefined;
 	"ui.settings.configuration.backend_setting_row.gate_note": { gate: string };
 	"ui.settings.configuration.backend_setting_row.not_set": undefined;
 	"ui.settings.configuration.backend_setting_row.read_only": undefined;
