@@ -16,7 +16,7 @@ Minimal alignment to the designer's measured and viewed corrections, supplied by
 
 ## 1. Evidence and boundaries
 
-Sources: operator brief `~/workspace/loh-11/brief.md`, including the manager's correction that a row context menu already ships; `docs/branding.md` §§6/9; `docs/design/sidebar-row-space.md`; `docs/design/sidebar-sections.md`; `chat-sidebar.tsx`, `chat-sidebar-view-menu.tsx`, `chat-row-context-menu.stories.tsx`, and `shared/components/ui/context-menu.tsx`.
+Sources: the operator's 2026-10-18 LOH-11 request (scope reproduced in the design brief), including the manager's correction that a row context menu already ships; `docs/branding.md` §§6/9; `docs/design/sidebar-row-space.md`; `docs/design/sidebar-sections.md`; `chat-sidebar.tsx`, `chat-sidebar-view-menu.tsx`, `chat-row-context-menu.stories.tsx`, and `shared/components/ui/context-menu.tsx`.
 
 The historical geometry documents contain previous bases/clamps. They are context, not new measurements. The current brief's 220–320px panel range governs implementation. The manager reports a 47px pinned title clip at 220px; **that number was not independently measured in this UX run**. Chip eligibility must use the designer's current measured geometry, never the old tables' nominal widths.
 
@@ -79,8 +79,8 @@ The following steps are **specified, not observed tags interactions**.
 3. Search narrows category choices, **not** the sidebar. Check multiple tags without dismissing the modal. An inline `Group under` radio group lists only checked tags; no separate primary-selection step or surface. Make the full checkbox-label area clickable; radios are separate sibling controls, never nested inside checkboxes. Cancel/Apply stays in the footer.
 4. First assignment selects an initial primary. Adding a second preserves it. Selecting Project in the inline `Group under` radio group previews `This conversation will appear under Project.` Only one primary is possible.
 5. Remove primary: preview the stable replacement by name, or `This conversation will be untagged.` Clear all is one draft action, recoverable before Apply. No hidden reorder-induced replacement.
-6. Apply writes once. Show `Saving tags…`; prevent duplicate submissions. On success dismiss, announce `Tags updated. Grouped under Project.` and focus the moved row by stable session ID, scrolling that row into view, not an old coordinate. Never navigate/open a different conversation.
-7. On failure retain draft and dialog; inline `Could not save tags. Your changes are still here.` with Retry and Cancel. On concurrent edits refresh the server state and show `Tags changed elsewhere. Review the latest tags before applying.` Do not silently overwrite another actor's primary.
+6. Apply writes once. Show `Applying tags…`; prevent duplicate submissions. On success dismiss, announce `Tags updated. Grouped under Project.` and focus the moved row by stable session ID, scrolling that row into view, not an old coordinate. Never navigate/open a different conversation.
+7. On failure retain draft and dialog; inline `Tags were not saved. Try again.` with Retry and Cancel. On concurrent edits refresh the server state and show `Tags changed elsewhere. Review the latest tags before applying.` Do not silently overwrite another actor's primary.
 8. Cancel/Escape before submit discards draft, returns to the origin row, no write. A pending request is not cancelled by pretending it never happened: prevent dismissal while saving only for a bounded request, with visible feedback; timeout transitions to an actionable error. Reconcile ambiguous network results from the server before claiming failure/success.
 
 ### F3 — category management
@@ -156,7 +156,7 @@ This is the **required map**, not a claim that it was executed. Only the story-d
 | Assign multiple | Space on labelled checkbox; arrows within result list if using roving focus | Selection does not close picker |
 | Choose primary | Inline labelled Group under radio group among checked tags; arrows/Space, no second step | Selected primary announced by name |
 | Clear all | Tab to Clear tags, Enter/Space | Draft only; Cancel restores original |
-| Submit | Tab to Apply, Enter/Space; Saving tags… | Error focus stays in dialog; retry reachable |
+| Submit | Tab to Apply, Enter/Space; Applying tags… | Error focus stays in dialog; retry reachable |
 | Create | New tag…, named input, Save/Cancel | Cancel returns to picker/management trigger |
 | Manage/reorder | Manage tags…, Move {name} up/down buttons | Preserve category ID focus after move |
 | Delete category | Delete {name}, confirmation, Tab to Delete tag | Escape/Cancel → category Delete control |
@@ -186,13 +186,13 @@ Use sentence case. Ellipsis means opening another surface, not a save action.
 | Group fallback | `Untagged` |
 | Loading | `Loading tags…` |
 | Load failure | `Could not load tags. Try again.` / `Retry` |
-| Save pending | `Saving tags…` |
-| Save failure | `Could not save tags. Your changes are still here.` / `Retry` |
+| Save pending | `Applying tags…` |
+| Save failure | `Tags were not saved. Try again.` / `Retry` |
 | Offline | `You’re offline. You can review your changes; reconnect to save them.` |
 | Conflict | `Tags changed elsewhere. Review the latest tags before applying.` |
 | Assignment success | `Tags updated. Grouped under {tag}.` |
-| Clear success | `Tags cleared.` |
-| Management | `Manage tags` / `Tag name` / `Colour role` / `Add tag` / `Rename` / `Save` / `Cancel` / `Apply` |
+| Clear success | `Shown under Untagged.` |
+| Management | `Manage tags` / `Tag name` / `Add tag` / `Rename` / `Delete` / `Done` |
 | Duplicate / blank | `A tag named “{name}” already exists.` / `Enter a tag name.` |
 | Delete title | `Delete “{tag}”?` |
 | Delete body | `Remove this tag from {N} conversations? Conversations will not be deleted. Other tags stay.` |
@@ -239,6 +239,6 @@ Run independent real-path UX/QA in an isolated app profile with durable syntheti
 
 ### First vertical slice and verdict
 
-Smallest usable slice: durable category/assignment/explicit-primary contract + agent known-tag validation; capability-gated optional grouping; View options discovery; Tags… draft picker; add/rename/reorder/delete management; stable focus/error handling. Include automatic full-label chips only behind the exact fit gate and all chip motion/fit checks above. **Defer drag as a separate interaction proof**, rather than pretend title text is a safe drag handle.
+Smallest usable slice: durable category/assignment/explicit-primary contract + agent known-tag validation; capability-gated optional grouping; View options discovery; Tags… draft picker; add/rename/reorder/delete management; stable focus/error handling. **Chips are not in this slice** — they are the separate, independently proven slice described in `sidebar-tags.md` §11(a). Likewise, **defer drag as a separate interaction proof**, rather than pretend title text is a safe drag handle.
 
 **Design round verdict: TERMINAL for the flow specification with the recorded minor risks carried into implementation acceptance.** This is not implementation approval or a full LOH-11 completion verdict. Remaining unverified: physical keyboard/right-click targets, Escape/focus return beyond the observed pin action, successful archive/pin baseline mutation, complete wide/narrow resize sweep, tags screens themselves, chip flicker, durable/network/concurrent behaviour and drag. Repeated browser-host loss prevented further current-flow captures; no substitute browser was launched. Implementation PR must supply the discriminating live paths above, not relabel these before frames as after evidence.

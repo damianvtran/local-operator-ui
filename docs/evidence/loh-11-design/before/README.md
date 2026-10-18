@@ -1,6 +1,6 @@
 # LOH-11 — real before frames
 
-Captured through the harness browser from the existing real ChatSidebar in Storybook at `http://localhost:6006`. Baseline: `76dda0304bfa4b54ebd42cccd32bbd05841ca4a3`. Only the sections **evidence harness** was extended; production sidebar source is unchanged.
+Captured through the harness browser from the existing real ChatSidebar in Storybook at `http://localhost:6006`. Baseline: `76dda0304bfa4b54ebd42cccd32bbd05841ca4a3`. The sections **evidence harness** is an evidence-only story patch archived at [`../harness/`](../harness/README.md); it is not applied in this docs-only PR and lands with the UI implementation PR. Production sidebar source is unchanged in both. The archived patch is what makes these frames and measurements reproducible from this head.
 
 All captures: **1280×720 CSS viewport, DPR 2, PNG 2560×1440**. Themes are story args `theme:localOperatorLight` / `theme:localOperatorDark`. Example iframe URL: `/iframe.html?id=chat-sidebar-sections--evidence-tags-220&viewMode=story&args=theme:localOperatorDark`.
 
