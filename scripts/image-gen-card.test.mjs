@@ -35,6 +35,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/chat/canonical/image-gen-card-model";',
+			'export * from "./src/renderer/src/features/chat/canonical/sound-batch-model";',
 			'export { preferProgressDetails } from "./src/renderer/src/features/chat/components/trace/tool-row-model";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -54,6 +55,7 @@ const {
 	isImageGenTool,
 	isVideoGenTool,
 	preferProgressDetails,
+	soundBatchItems,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -1769,4 +1771,240 @@ test("pane Stop and the production Escape accelerator share sound charge admissi
 		dom.window.close();
 		Object.assign(globalThis, previous);
 	}
+});
+
+/** Same attachment refs as the canonical reducer, deliberately reverse ordered. */
+const batchFixture = (count, failed = -1) => {
+	const artifacts = Array.from({ length: count }, (_, index) => ({
+		name: index < 2 ? "Rain on glass" : `Sound ${index + 1}`,
+		digest: index === failed ? null : `batch-${index}`,
+		path: index === failed ? null : `/fixture/sound-${index}.wav`,
+		duration_s: 2 + index,
+		format: "wav",
+		cost_usd: index === failed ? 0 : (index + 1) / 1000,
+		cost: {
+			amount_usd: index === failed ? 0 : (index + 1) / 1000,
+			basis: index % 2 ? "estimated" : "billed",
+		},
+		status: index === failed ? "failed" : "completed",
+		request_id: `fixture-${index}`,
+		error:
+			index === failed
+				? "audio_rejected: server returned 400 — invalid duration"
+				: null,
+	}));
+	const images = artifacts
+		.flatMap((item) =>
+			item.error
+				? []
+				: [
+						{
+							id: item.digest,
+							attachment: item.digest,
+							kind: "audio",
+							data: "AAAA",
+							mimeType: "audio/wav",
+							durationS: item.duration_s,
+							name: item.name,
+						},
+					],
+		)
+		.reverse();
+	return { artifacts, images };
+};
+
+test("batch receipts preserve duplicate names, attachment identity and billing basis", () => {
+	const { artifacts, images } = batchFixture(4, 1);
+	const items = soundBatchItems({ artifacts }, images);
+	assert.equal(items.length, 4);
+	assert.deepEqual(
+		items.map((item) => item.label),
+		["Rain on glass", "Rain on glass (2)", "Sound 3", "Sound 4"],
+	);
+	assert.equal(
+		items[1].name,
+		"Rain on glass",
+		"backend identity remains verbatim",
+	);
+	assert.equal(items[0].audio, images[2], "match digest, not completion order");
+	assert.equal(items[1].audio, null);
+	assert.ok(
+		items[1].error.includes("audio_rejected") && items[1].error.includes("400"),
+	);
+	assert.equal(items[0].costCaption, "Cost $0.001 (billed).");
+	assert.equal(items[3].costCaption, "Cost $0.004 (estimated).");
+});
+
+test("batch adapter leaves absent, malformed and single-result receipts on the approved path", () => {
+	const { artifacts, images } = batchFixture(1);
+	for (const details of [null, {}, { artifacts }, { artifacts: [null, {}] }]) {
+		assert.equal(soundBatchItems(details, images), null);
+	}
+});
+
+test("4, 5 and 10 item batches render the existing players and honest partial failures", () => {
+	for (const count of [4, 5, 10]) {
+		const { artifacts, images } = batchFixture(count, count === 4 ? 1 : -1);
+		const view = imageGenCardView(
+			tool({
+				toolName: "generate_sound_effect",
+				details: {
+					artifacts,
+					cost_usd: 0.008,
+					cost: { basis: "billed" },
+					cost_complete: true,
+				},
+				images,
+			}),
+		);
+		const html = markupOf(view);
+		assert.equal(html.split("data-sound-batch-item=").length - 1, count);
+		assert.equal(html.split("data-sound-player=").length - 1, images.length);
+		assert.ok(html.includes("Rain on glass (2)"));
+		assert.ok(html.includes("Total cost $0.008 (billed)"));
+		assert.ok(html.includes("Cost $0.003 (billed)"));
+		if (count === 4) {
+			assert.ok(html.includes("3 completed · 1 failed"));
+			assert.ok(html.includes("audio_rejected: server returned 400"));
+		}
+	}
+});
+
+test("batch detail carrier accepts receipts and preserves equal replay identity without hiding edits", () => {
+	const details = { artifacts: batchFixture(4, 1).artifacts };
+	assert.equal(preferProgressDetails(details, null), details);
+	assert.equal(
+		preferProgressDetails(structuredClone(details), details),
+		details,
+	);
+	for (const [field, changed] of [
+		["name", "New name"],
+		["error", "audio_rejected: new server reason"],
+		["cost_usd", 0.25],
+		["digest", "another-digest"],
+	]) {
+		const next = structuredClone(details);
+		next.artifacts[0][field] = changed;
+		assert.equal(
+			preferProgressDetails(next, details),
+			next,
+			`${field} must invalidate the receipt`,
+		);
+	}
+});
+
+test("byte-identical named requests retain separate rows, players and costs", () => {
+	const { artifacts, images } = batchFixture(2);
+	artifacts[1].name = "Different request, identical bytes";
+	artifacts[1].digest = artifacts[0].digest;
+	artifacts[1].request_id = artifacts[0].request_id;
+	const items = soundBatchItems({ artifacts }, [images[1]]);
+	assert.equal(items.length, 2);
+	assert.equal(items[0].audio, items[1].audio);
+	assert.notEqual(items[0].id, items[1].id);
+	assert.equal(items[1].name, "Different request, identical bytes");
+	const html = markupOf(
+		imageGenCardView(
+			tool({
+				toolName: "generate_sound_effect",
+				details: { artifacts },
+				images: [images[1]],
+			}),
+		),
+	);
+	assert.equal(html.split("data-sound-player=").length - 1, 2);
+	assert.ok(html.includes("Cost $0.001 (billed)."));
+	assert.ok(html.includes("Cost $0.002 (estimated)."));
+});
+
+test("all-failed batch retains its failed state and every server reason", () => {
+	const { artifacts } = batchFixture(4);
+	for (const item of artifacts) {
+		item.error = "audio_rejected: server 400";
+		item.status = "failed";
+		item.cost_usd = null;
+		item.cost = { amount_usd: null, basis: "quote" };
+	}
+	const view = imageGenCardView(
+		tool({
+			toolName: "generate_sound_effect",
+			isError: true,
+			details: {
+				artifacts,
+				cost_usd: null,
+				cost_complete: false,
+				cost: { basis: "estimated" },
+			},
+		}),
+	);
+	assert.equal(view.state, "failed");
+	const html = markupOf(view);
+	assert.equal(html.split("data-sound-batch-item=").length - 1, 4);
+	assert.equal(html.split("data-sound-player=").length - 1, 0);
+	assert.ok(html.includes("0 completed · 4 failed"));
+	assert.ok(html.includes("Total cost not yet known."));
+});
+
+test("incomplete cost is labelled a known subtotal and never a final charge", () => {
+	const { artifacts, images } = batchFixture(4, 1);
+	const view = imageGenCardView(
+		tool({
+			toolName: "generate_sound_effect",
+			details: {
+				artifacts,
+				cost_usd: 0.008,
+				cost: { basis: "estimated" },
+				cost_complete: false,
+			},
+			images,
+		}),
+	);
+	assert.equal(
+		view.costCaption,
+		"Known total cost $0.008 (estimated). Unknown or late charges are not included.",
+	);
+	const updated = structuredClone({ artifacts });
+	updated.artifacts[0].cost.basis = "estimated";
+	const previous = { artifacts };
+	assert.equal(preferProgressDetails(updated, previous), updated);
+	assert.equal(
+		preferProgressDetails(structuredClone(previous), previous),
+		previous,
+	);
+});
+
+test("stopped batches retain successes, cancelled items and known subtotal warnings", () => {
+	const { artifacts, images } = batchFixture(4, 1);
+	artifacts[1].status = "cancelled";
+	artifacts[1].error = "Stop requested; provider outcome unknown";
+	artifacts[1].cost_usd = null;
+	artifacts[1].cost = { basis: "quote" };
+	const view = imageGenCardView(
+		tool({
+			toolName: "generate_sound_effect",
+			stopped: true,
+			details: {
+				artifacts,
+				cost_usd: 0.008,
+				cost: { basis: "estimated" },
+				cost_complete: false,
+			},
+			images,
+		}),
+	);
+	assert.equal(view.state, "cancelled");
+	const html = markupOf(view);
+	assert.equal(html.split("data-sound-player=").length - 1, 3);
+	assert.ok(html.includes("1 cancelled/stopped"));
+	assert.ok(html.includes("Unknown or late charges are not included."));
+});
+
+test("duplicate display suffixes never steal a literal backend name", () => {
+	const { artifacts, images } = batchFixture(4);
+	artifacts[0].name = "Rain";
+	artifacts[1].name = "Rain";
+	artifacts[2].name = "Rain (2)";
+	const items = soundBatchItems({ artifacts }, images);
+	assert.equal(new Set(items.map((item) => item.label)).size, 4);
+	assert.equal(items[2].label, "Rain (2)");
 });

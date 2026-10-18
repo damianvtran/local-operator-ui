@@ -301,7 +301,8 @@ function progressDetailsFrom(details: unknown): Record<string, unknown> | null {
 		!("stage" in record) &&
 		!("error_type" in record) &&
 		!("billing_basis" in record) &&
-		!("settled" in record)
+		!("settled" in record) &&
+		!("artifacts" in record)
 	)
 		return null;
 	return record;
@@ -325,6 +326,8 @@ const PROGRESS_DETAIL_KEYS = [
 	"billing_basis",
 	"settled",
 	"cost",
+	"artifacts",
+	"cost_complete",
 ] as const;
 
 /** Whether two `log_lines` values state the same messages at the same times. */
@@ -349,6 +352,41 @@ function sameLogLines(x: unknown, y: unknown): boolean {
 	return true;
 }
 
+const SOUND_ARTIFACT_KEYS = [
+	"name",
+	"digest",
+	"path",
+	"duration_s",
+	"format",
+	"cost_usd",
+	"billing_basis",
+	"request_id",
+	"error",
+	"status",
+	"cost",
+] as const;
+
+function sameSoundArtifacts(a: unknown, b: unknown): boolean {
+	if (a === b) return true;
+	if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length)
+		return false;
+	return a.every((item, index) => {
+		const other = b[index];
+		if (
+			!item ||
+			typeof item !== "object" ||
+			!other ||
+			typeof other !== "object"
+		)
+			return item === other;
+		return SOUND_ARTIFACT_KEYS.every((key) =>
+			key === "cost"
+				? item.cost?.basis === other.cost?.basis
+				: item[key] === other[key],
+		);
+	});
+}
+
 /** Whether two payloads state the same contract facts. */
 function sameProgressDetails(
 	a: Record<string, unknown>,
@@ -357,6 +395,13 @@ function sameProgressDetails(
 	for (const key of PROGRESS_DETAIL_KEYS) {
 		const x = a[key];
 		const y = b[key];
+		if (key === "artifacts") {
+			// The batch is a durable receipt, not an append-only stream. Compare
+			// its consumed scalar facts so a name/error/cost change reaches the
+			// card even when the call's aggregate cost and stage did not change.
+			if (!sameSoundArtifacts(x, y)) return false;
+			continue;
+		}
 		if (key === "cost") {
 			// Only basis is consumed by the card. Replayed JSON objects with the
 			// same fact must preserve identity just like replayed log lines.

@@ -1200,3 +1200,140 @@ export const SoundByokReceipt: Story = {
 		</CardFrame>
 	),
 };
+
+/**
+ * Contract-only batch fixtures while the harness PR is in flight. The silent
+ * PCM bytes are valid audio (so the real player can decode and seek) but cannot
+ * put generated sound in the operator's room. No provider/live billing proof.
+ */
+function batchSoundFixture(count: number, failed = -1) {
+	const samples = 24_000;
+	const buffer = new ArrayBuffer(44 + samples * 2);
+	const view = new DataView(buffer);
+	const word = (offset: number, value: string) => {
+		for (let i = 0; i < value.length; i++)
+			view.setUint8(offset + i, value.charCodeAt(i));
+	};
+	word(0, "RIFF");
+	view.setUint32(4, 36 + samples * 2, true);
+	word(8, "WAVE");
+	word(12, "fmt ");
+	view.setUint32(16, 16, true);
+	view.setUint16(20, 1, true);
+	view.setUint16(22, 1, true);
+	view.setUint32(24, 8_000, true);
+	view.setUint32(28, 16_000, true);
+	view.setUint16(32, 2, true);
+	view.setUint16(34, 16, true);
+	word(36, "data");
+	view.setUint32(40, samples * 2, true);
+	const data = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+	const artifacts = Array.from({ length: count }, (_, index) => ({
+		name:
+			index < 2
+				? "Rain on glass"
+				: index === 2
+					? "An exceptionally long backend-defaulted sound name that wraps without hiding the waveform, duration, or cost — café / 雨 / rain"
+					: `Sound ${index + 1}`,
+		digest: `fixture-sound-${index}`,
+		path: `/fixture/sound-${index}.wav`,
+		duration_s: 3,
+		format: "wav",
+		cost_usd: index === failed || failed === -2 ? 0 : 0.001 * (index + 1),
+		cost: {
+			amount_usd: index === failed || failed === -2 ? 0 : 0.001 * (index + 1),
+			basis: index % 2 ? "estimated" : "billed",
+		},
+		status: index === failed || failed === -2 ? "failed" : "completed",
+		request_id: `fixture-request-${index}`,
+		error:
+			index === failed || failed === -2
+				? "audio_rejected: server returned 400 — invalid duration"
+				: null,
+	}));
+	return genTool({
+		id: `batch-fixture-${count}-${failed}`,
+		isError: failed === -2,
+		toolName: "generate_sound_effect",
+		details: {
+			...(count === 1 ? { billing_basis: "estimated" } : {}),
+			artifacts,
+			cost_usd: artifacts.reduce((sum, item) => sum + item.cost_usd, 0),
+			cost: { basis: "estimated" },
+			cost_complete: true,
+			cancelled: 0,
+			completed: artifacts.filter((item) => !item.error).length,
+			failed: artifacts.filter((item) => item.error).length,
+		},
+		images: artifacts.flatMap((item) =>
+			item.error
+				? []
+				: [
+						{
+							id: item.digest,
+							attachment: item.digest,
+							data,
+							kind: "audio" as const,
+							mimeType: "audio/wav",
+							durationS: item.duration_s,
+							name: item.name,
+						},
+					],
+		),
+	});
+}
+
+const BatchSoundStory = ({
+	count,
+	failed = -1,
+}: { count: number; failed?: number }) => (
+	<div className="h-screen overflow-y-auto">
+		<div className="flex w-full max-w-[560px] flex-col gap-6 p-6">
+			<ImageGenCard
+				scope={null}
+				view={imageGenCardView(batchSoundFixture(count, failed))}
+			/>
+		</div>
+	</div>
+);
+
+export const SoundBatchSingleUnchanged: Story = {
+	render: () => <BatchSoundStory count={1} />,
+};
+export const SoundBatchFour: Story = {
+	render: () => <BatchSoundStory count={4} />,
+};
+export const SoundBatchFive: Story = {
+	render: () => <BatchSoundStory count={5} />,
+};
+export const SoundBatchTen: Story = {
+	render: () => <BatchSoundStory count={10} />,
+};
+export const SoundBatchPartialFailure: Story = {
+	render: () => <BatchSoundStory count={4} failed={1} />,
+};
+
+export const SoundBatchAllFailed: Story = {
+	render: () => <BatchSoundStory count={4} failed={-2} />,
+};
+export const SoundBatchLoading: Story = {
+	render: () => (
+		<CardFrame>
+			<ImageGenCard
+				scope={null}
+				view={imageGenCardView(
+					genTool({
+						id: "batch-loading",
+						toolName: "generate_sound_effect",
+						phase: "running",
+						startedAt: Date.now() - 12_000,
+						details: canonical({
+							tool_name: "generate_sound_effect",
+							stage: "running",
+						}),
+					}),
+				)}
+			/>
+		</CardFrame>
+	),
+};
