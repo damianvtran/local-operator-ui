@@ -70,17 +70,20 @@ test("counts render ungrouped (the #1131 fidelity rule); uncarried namespaces us
 		}),
 		"Шаг 1234567 из 2000000",
 	);
-	// Canvas is not carried: the English source applies, including its own
-	// group-off rule.
+	// Fallback is asserted on a synthetic, permanently uncarried tag, not on a
+	// real locale: a test that sets `ru` and expects English is asserting
+	// something tranche completion deliberately makes false. `xx-absent-probe`
+	// keeps the fallback contract meaningful for every future tranche without
+	// weakening or deleting the assertion. (Same probe tag as the es/fr lanes.)
+	locale.setLocale("xx-absent-probe");
 	const fallback = messages.t("ui.canvas.files.count", { count: 1234567 });
 	assert.equal(fallback, "1234567 files");
 	assert.equal(
 		fallback,
 		messages.translate("ui.canvas.files.count", { count: 1234567 }, "en"),
 	);
-	console.log(
-		`ru counts ungrouped: ${formatted}; English fallback ui.canvas.files.count: ${fallback}`,
-	);
+	console.log(`xx-absent-probe fallback ui.canvas.files.count: ${fallback}`);
+	locale.setLocale("ru");
 });
 const DOUBLED_SPACE = / {2,}/;
 const UNRENDERED_PLACEHOLDER = /\{/;

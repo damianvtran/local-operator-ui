@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "locale": "fr",
+  "namespace": "ui.browser",
+  "date": "2026-10-18",
+  "status": "passed",
+  "audit_kind": "placeholder-only-delta",
+  "scope": "6ab72e74bda50340fc768216ffcdd60901ed673a..5c2b5f1cddc51b910c881f270bf0ef53e9ae1718",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "5aca350128af",
+    "model": "openai/gpt-6.1-sol"
+  },
+  "sha256": {
+    "en": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
+    "fr": "e34a2a4bb3fb57ed2d5432c7e61661c1a512278b92f37796b23917a6e5c5f48a"
+  },
+  "findings": [],
+  "note": "Five French tab-menu labels gained the {title} placeholder and their closing quote; wording unchanged. Rendered output proved byte-identical to the old split composition for representative titles. No other key changed."
+}
