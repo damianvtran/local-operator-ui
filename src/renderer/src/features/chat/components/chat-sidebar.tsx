@@ -1368,6 +1368,7 @@ export function ChatSidebar({
 	);
 	const tagCategories = useSessionTagsStore((state) => state.categories);
 	const tagCategoriesLoading = useSessionTagsStore((state) => state.loading);
+	const tagCategoriesError = useSessionTagsStore((state) => state.error);
 	const fetchTagCategories = useSessionTagsStore(
 		(state) => state.fetchCategories,
 	);
@@ -9630,7 +9631,9 @@ export function ChatSidebar({
 									counts={viewCounts}
 									tagsAvailable={tagsAvailable}
 									tagsEmpty={
-										!tagCategoriesLoading && tagCategories.length === 0
+										!tagCategoriesLoading &&
+										tagCategoriesError === null &&
+										tagCategories.length === 0
 									}
 									onManageTags={() => {
 										tagsInvoker.current = document.querySelector<HTMLElement>(

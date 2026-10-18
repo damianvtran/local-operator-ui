@@ -1,4 +1,4 @@
-import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
+import { deletedTagNameReused } from "@features/chat/chat-tag-draft";
 import {
 	Button,
 	Dialog,
@@ -87,14 +87,20 @@ export function ManageTagsDialog({
 		return true;
 	};
 	const apply = async () => {
+		const reused = deletedTagNameReused(categories, draft);
+		if (reused !== null) {
+			setError(t("ui.chat.tags.apply_deletion_first", { name: reused }));
+			setRetry(false);
+			return;
+		}
 		setPending(true);
 		setError(null);
 		setRetry(true);
 		try {
 			await replaceCategories(draft);
 			onClose();
-		} catch (cause) {
-			setError(userFacingMessage(cause, t("ui.chat.tags.save_failed")));
+		} catch {
+			setError(t("ui.chat.tags.save_failed"));
 		} finally {
 			setPending(false);
 		}
@@ -139,7 +145,7 @@ export function ManageTagsDialog({
 				}}
 			>
 				<DialogHeader>
-					<DialogTitle>{t("ui.chat.tags.manage")}</DialogTitle>
+					<DialogTitle>{t("ui.chat.tags.manage_title")}</DialogTitle>
 					<DialogDescription>
 						{t("ui.chat.tags.manage_description")}
 					</DialogDescription>

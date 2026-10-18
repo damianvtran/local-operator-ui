@@ -22,7 +22,6 @@
 	"ui.chat.tags.primary": "Primary",
 	"ui.chat.tags.group_under": "Group under",
 	"ui.chat.tags.untagged": "Untagged",
-	"ui.chat.tags.done": "Done",
 	"ui.chat.tags.rename": "Rename",
 	"ui.chat.tags.save": "Save",
 	"ui.chat.tags.delete": "Delete",
@@ -39,5 +38,7 @@
 	"ui.chat.tags.duplicate_name": "A tag named “{name}” already exists.",
 	"ui.chat.tags.updated_grouped": "Tags updated. Grouped under {tag}.",
 	"ui.chat.tags.updated_untagged": "Tags updated. Shown under Untagged.",
-	"ui.chat.tags.none_yet": "No tags yet"
+	"ui.chat.tags.none_yet": "No tags yet",
+	"ui.chat.tags.manage_title": "Manage tags",
+	"ui.chat.tags.apply_deletion_first": "Apply the deletion first, then add “{name}” again."
 }
