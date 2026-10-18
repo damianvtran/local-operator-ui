@@ -18,13 +18,13 @@
 		"note": "Shown on Windows only, where the master switch cannot flip on a running window."
 	},
 	"ui.settings.appearance.window_glass.unsupported_reduced_transparency": {
-		"role": "Explanatory notice replacing the control",
+		"role": "Explanatory notice under a disabled control; the row itself stays visible",
 		"tone": "Calm, explains cause and the way out.",
 		"length": "One or two sentences.",
 		"note": "Shown when the operating system's Reduce transparency accessibility setting is on."
 	},
 	"ui.settings.appearance.window_glass.unsupported_windows_too_old": {
-		"role": "Explanatory notice replacing the control",
+		"role": "Explanatory notice under a disabled control; the row itself stays visible",
 		"tone": "Calm and factual.",
 		"length": "One sentence.",
 		"note": "Windows 10 and early Windows 11 lack the system material this needs; 22H2 is build 22621."

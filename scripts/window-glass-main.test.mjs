@@ -57,6 +57,9 @@ export const app = {
 export const emitGpuInfoUpdate = () => {
 	for (const [e, f] of appListeners) if (e === "gpu-info-update") f();
 };
+export const emitChildProcessGone = (details) => {
+	for (const [e, f] of appListeners) if (e === "child-process-gone") f({}, details);
+};
 export const nativeTheme = {
 	themeSource: "system",
 	prefersReducedTransparency: false,
@@ -456,7 +459,14 @@ test("M-7 Windows: a stale enabled value is inert and names the unverified gate"
 	}
 });
 
-test("M-8 a fresh profile starts translucent at 80, and the launch writes no choice", () => {
+/*
+ * THE CONTRACT IS "RECORDS NO EXPLICIT CHOICE", not "writes no file": a light
+ * palette makes the theme provider's scheme report persist
+ * `{version:2, settings:<launch defaults>, explicit:[], scheme:"light"}` (QA
+ * round 1, Q-3). This harness mounts no renderer, so on the dark path no file is
+ * written at all; the assertion that matters is the empty `explicit` list.
+ */
+test("M-8 a fresh profile starts translucent at 80 and records no explicit choice", () => {
 	const dir = profile(null);
 	const b = boot(dir);
 	try {
@@ -469,10 +479,15 @@ test("M-8 a fresh profile starts translucent at 80, and the launch writes no cho
 			["#00000000"],
 			"the first paint is the transparent ground, not the palette one",
 		);
+		/*
+		 * No renderer here, so the dark path writes nothing. A real light launch may
+		 * write the scheme report; what must never happen is a non-empty `explicit`,
+		 * because that would freeze today's default as a choice.
+		 */
 		assert.equal(
 			existsSync(join(dir, "window-glass.json")),
 			false,
-			"the launch must not freeze today's default as the user's explicit choice",
+			"no scheme report in this harness: the launch itself writes nothing",
 		);
 	} finally {
 		b.restore();
@@ -542,6 +557,11 @@ test("M-10 a GPU drop at runtime falls back to opaque, and its return brings the
 		const during = await invoke("window-glass:get", b.window);
 		assert.equal(during.active, false);
 		assert.equal(during.capability.reason, "gpu-unavailable");
+		assert.equal(
+			during.restartRequired,
+			false,
+			"an unsupported fallback is not a restart-pending change (Q-1/D2)",
+		);
 
 		electron.calls.length = 0;
 		electron.gpuFacts.compositing = "enabled";
@@ -569,6 +589,11 @@ test("M-11 the renderer's backdrop-filter answer is part of the gate, live", asy
 		});
 		assert.equal(refused.active, false);
 		assert.equal(refused.capability.reason, "backdrop-filter-unavailable");
+		assert.equal(
+			refused.restartRequired,
+			false,
+			"the row must not tell the user to restart after the window already fell back",
+		);
 		assert.equal(b.surface.glass.isActive(), false);
 		assert.ok(
 			electron.calls.some((c) => c[0] === "vibrancy" && c[1] === null),
@@ -578,6 +603,70 @@ test("M-11 the renderer's backdrop-filter answer is part of the gate, live", asy
 			backdropFilter: true,
 		});
 		assert.equal(restored.active, true);
+	} finally {
+		b.restore();
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("M-12 a launch default is re-derived when the capability returns (R1-3)", async () => {
+	const dir = profile(null);
+	const b = boot(dir, { reduced: true });
+	try {
+		assert.equal(b.glass.state.active, false);
+		assert.equal(b.glass.settings.enabled, false);
+		electron.calls.length = 0;
+		electron.nativeTheme.prefersReducedTransparency = false;
+		electron.emitNativeThemeUpdated();
+		const after = await invoke("window-glass:get", b.window);
+		assert.equal(
+			after.settings.enabled,
+			true,
+			"an unset enabled follows the capability back on, without a relaunch",
+		);
+		assert.equal(after.active, true);
+		assert.equal(after.restartRequired, false);
+		assert.ok(
+			electron.calls.some(
+				(c) => c[0] === "vibrancy" && c[1] === "under-window",
+			),
+			"the material is applied on the returning capability",
+		);
+		assert.equal(
+			existsSync(join(dir, "window-glass.json")),
+			false,
+			"the re-derivation did not turn today's default into an explicit choice",
+		);
+	} finally {
+		b.restore();
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("M-13 a GPU child-process death re-checks the capability (R1-5)", async () => {
+	const dir = profile(null);
+	const b = boot(dir);
+	try {
+		electron.emitGpuInfoUpdate();
+		assert.equal(b.glass.state.active, true);
+		electron.calls.length = 0;
+		electron.gpuFacts.compositing = "unavailable_software";
+		electron.emitChildProcessGone({ type: "Utility" });
+		await new Promise((r) => setTimeout(r, 10));
+		assert.equal(
+			(await invoke("window-glass:get", b.window)).active,
+			true,
+			"a non-GPU child exiting changes nothing",
+		);
+		electron.emitChildProcessGone({ type: "GPU" });
+		await new Promise((r) => setTimeout(r, 10));
+		const after = await invoke("window-glass:get", b.window);
+		assert.equal(after.active, false);
+		assert.equal(after.capability.reason, "gpu-unavailable");
+		assert.ok(
+			electron.calls.some((c) => c[0] === "vibrancy" && c[1] === null),
+			"the GPU trigger runs the same teardown as gpu-info-update",
+		);
 	} finally {
 		b.restore();
 		rmSync(dir, { recursive: true, force: true });

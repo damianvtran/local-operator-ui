@@ -205,8 +205,18 @@ export const WindowGlassSetting: FC<WindowGlassSettingProps> = ({
 		>
 			<Tooltip content={reasonCopy} disabled={!unsupported}>
 				<div className={unsupported ? "opacity-60" : undefined}>
+					{/*
+					 * A GREYED ROW SHOWS OFF, NOT A CHECKED EFFECT IT CANNOT RUN. The
+					 * stored choice is kept in `settings` (and on a stale profile), but a
+					 * checked switch promises a translucency that is not on screen; the
+					 * cause line is what explains the refusal (QA Q-2). The `key` remounts
+					 * the toggle when the gate flips, because `ToggleSetting` keeps its own
+					 * copy of the value and would otherwise show the last interactive state
+					 * (including a checked one) after a live capability drop.
+					 */}
 					<ToggleSetting
-						value={enabled}
+						key={unsupported ? "unavailable" : "available"}
+						value={unsupported ? false : enabled}
 						disabled={unsupported}
 						label={t("ui.settings.appearance.window_glass.label")}
 						description={t("ui.settings.appearance.window_glass.description")}
