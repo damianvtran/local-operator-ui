@@ -939,7 +939,12 @@ routes, walks a grid of points through every region that route must contain and 
 a region it cannot find (a guard that skips what it cannot find measures nothing), on a
 spread within a region, on an effective alpha that differs from the role variable, on
 the page column differing from the app sidebar beside it, on an opaque slab inside a
-glass region, and on anything not fully opaque outside the chosen coverage. Round 2
+glass region, and on anything not fully opaque outside the chosen coverage, and on a
+composer shell that draws any border at rest (asserted by WIDTH, because this audit
+then reads grounds and alphas only - which is how v0.34.55's glass-only edge shipped;
+operator report, 2026-10-17; a stylesheet scan holds every
+`[data-glass-region="composer"]` rule edge-free, the popup's included, though this
+rig drives no popup window). Round 2
 adds the composer (its own alpha must be the field overlay), the block veil (a project
 card's own alpha), the board's clear well, and the Browser chrome band (which must
 measure equal to the app sidebar). Projects cards are data-dependent: on a profile with
@@ -974,9 +979,11 @@ confused. Sticky headers (scroll-under) stay **solid** - a translucent sticky
 shows rows through it, which is text over text - and so do the chips, badges and
 avatars inside a block.
 
-The **composer is a field**, not a pane: ink 5% over the canvas glass plus the
-derived `border-control` mix as its resting edge (drawn only on glass, so the flat
-no-edge geometry is unchanged). A **running tool row** is the selected step's ink
+The **composer is a field**, not a pane: ink 5% over the canvas glass - and **no
+edge at rest**, the same no-edge geometry the flat build has. v0.34.55 briefly drew
+a glass-only `border-control` mix as its resting edge; reverted the same evening
+(operator report, 2026-10-17). The `:focus-visible` accent ring is its only
+boundary. A **running tool row** is the selected step's ink
 overlay (`--lo-glass-a-row-work`, the same alpha as a selected row: both mean "this
 row is the subject"), never the `elevated` slab it wears flat; a failed row keeps
 its `danger-wash` until a danger overlay is derived (V2).
@@ -1011,7 +1018,7 @@ on dark palettes by design, not by omission.
 | Column grounds (sidebar, rail, status band, canvas) | role at its derived alpha | AA ink over the worst backdrop, floors per material and scheme |
 | Text-bearing panes (ask drawer, run panel, console, code review, browser) | `pane` region: `elevated` at its floor, near-opaque on dark palettes | text must stay legible over any desktop |
 | Text-bearing blocks (message bubbles, project/hub/node cards, detail blocks) | `data-glass-block`: `ink` at `blockVeil` over the canvas glass | the fill is the block's only boundary; a relative ink step never vanishes |
-| Composer | `data-glass-region="composer"`: ink 5% + the derived edge at rest | it is the app's primary input: a field, not a slab |
+| Composer | `data-glass-region="composer"`: ink 5% (a field), no edge at rest | the composer's own contract wins: no border at rest on or off glass, the ring is its only boundary (v0.34.55's glass-only edge was reverted; operator report 2026-10-17) |
 | Chrome band (Browser tab strip and URL row) | `data-glass-region="chrome"`: `surface` at its floor, raw over the desktop | it is the sidebar's rung, so the two read as one edge |
 | Running tool row | `data-glass-state="running"`: ink at the selected step | an in-flight row is the subject; an opaque rung was a slab |
 | Well behind blocks | `data-glass-well="clear"` paints nothing | a well never sits under a veil |
