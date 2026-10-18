@@ -386,9 +386,16 @@ test("the output graph is installed at element creation and reported", async () 
  * element - there is no engine in an SSR pass - so it has no device path and
  * flagging it would be noise. `useAudioEngineStore` counts because a suite that
  * reaches the store at all can press it.
+ *
+ * `speak(` CARRIES A RECEIVER EXCLUSION, because the name is not unique to this
+ * engine: the Qwen rig's main-process suite calls `voice.speak()` - an IPC
+ * method that hands words to the rig's Gateway, in a process with no DOM and no
+ * `Audio` - and a bare `.speak(` scan flagged it as an unremediated device path
+ * when the two branches folded. The lookbehind keeps the rule exact for the
+ * renderer's speech store (`state().speak(`) while leaving the IPC name alone.
  */
 const PLAYBACK_CALLS =
-	/(\.playSpeech\(|\.speak\(|\.toggle\(|useAudioEngineStore\s*\.|\.play\(\s*")/;
+	/(\.playSpeech\(|(?<!voice)\.speak\(|\.toggle\(|useAudioEngineStore\s*\.|\.play\(\s*")/;
 const FAKE_AUDIO = /globalThis\.Audio\s*=/;
 const ZERO_GAIN_GRAPH = /installAudioOutputGraph\s*\(/;
 
