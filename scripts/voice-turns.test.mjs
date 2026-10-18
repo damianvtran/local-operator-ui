@@ -2417,28 +2417,58 @@ test("BRIEF-1: a segment at the cap is a dropped take, and the strip has its lin
 	const mod = await controller();
 	assert.equal(mod.LONG_TAKE_MS, 30_000);
 	const at = Date.parse("2026-10-18T05:00:00.000Z");
+	const clock = { startedAt: null };
 	assert.equal(
-		mod.noteSpeechSegment("realtime.provider.speech_started", at),
+		mod.noteSpeechSegment(clock, "realtime.provider.speech_started", at),
 		null,
 	);
 	// A natural take soft-ends well under the cap: nothing to say.
 	assert.equal(
-		mod.noteSpeechSegment("realtime.provider.speech_stopped", at + 10_600),
+		mod.noteSpeechSegment(
+			clock,
+			"realtime.provider.speech_stopped",
+			at + 10_600,
+		),
 		null,
 	);
 	// One that reaches the cap is what the VAD throws away whole.
 	assert.equal(
-		mod.noteSpeechSegment("realtime.provider.speech_started", at),
+		mod.noteSpeechSegment(clock, "realtime.provider.speech_started", at),
 		null,
 	);
 	assert.equal(
-		mod.noteSpeechSegment("realtime.provider.speech_stopped", at + 31_000),
+		mod.noteSpeechSegment(
+			clock,
+			"realtime.provider.speech_stopped",
+			at + 31_000,
+		),
 		at + 31_000,
 	);
 	// A stop with no start it saw says nothing.
 	assert.equal(
-		mod.noteSpeechSegment("realtime.provider.speech_stopped", at),
+		mod.noteSpeechSegment(clock, "realtime.provider.speech_stopped", at),
 		null,
+	);
+	// The clock has an owner (review round 2, nit 1): a remount's clock does not
+	// inherit a segment the previous mount opened.
+	const remount = { startedAt: null };
+	mod.noteSpeechSegment(clock, "realtime.provider.speech_started", at);
+	assert.equal(
+		mod.noteSpeechSegment(
+			remount,
+			"realtime.provider.speech_stopped",
+			at + 31_000,
+		),
+		null,
+		"a new mount never sees the old listener's start",
+	);
+	assert.equal(
+		mod.noteSpeechSegment(
+			clock,
+			"realtime.provider.speech_stopped",
+			at + 31_000,
+		),
+		at + 31_000,
 	);
 	// The line the strip renders, and the store slot it fills.
 	assert.equal(mod.takeDroppedNotice(), "ui.chat.voice.take_too_long");

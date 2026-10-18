@@ -36,7 +36,7 @@ const bundle = await build({
 			'export * from "./src/main/voice/qwen-voice";',
 			'export { gatewayEnv, QwenGatewayHost } from "./src/main/voice/qwen-gateway";',
 			'export { QwenSpeechProcess, resolveQwenPorts, s2sArgs, s2sEnv, s2sLauncherPathFor, qwenMemoryBudget, qwenMachineTooSmall, QWEN_MEM_BUDGET_BYTES, QWEN_MIN_MACHINE_BYTES, QWEN_MACHINE_TOO_SMALL, FOOTPRINT_INTERVAL_MS, DEFAULT_QWEN_PORTS, isOurS2s, S2S_RECORD_FILE } from "./src/main/voice/qwen-rig";',
-			'export { QwenVoicePage, noQwenVoicePage, voicePageUrl, voicePageAllowed, QWEN_VOICE_PARTITION, PAGE_CRASH_WINDOW_MS } from "./src/main/voice/qwen-voice-page";',
+			'export { QwenVoicePage, noQwenVoicePage, voicePageUrl, voicePageAllowed, QWEN_NO_VOICE_WINDOW, QWEN_VOICE_PARTITION, PAGE_CRASH_WINDOW_MS } from "./src/main/voice/qwen-voice-page";',
 			'export { requestDesktopMedia } from "./src/main/desktop-media";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -69,6 +69,7 @@ function rig({
 	gatewayFails = false,
 	mic = "granted",
 	machineBytes = 36 * 1024 ** 3,
+	page: pageOverride = null,
 } = {}) {
 	const sent = [];
 	/** Every step that costs something, in the order it happened. */
@@ -120,7 +121,7 @@ function rig({
 			this.running = false;
 		},
 	};
-	const page = {
+	const page = pageOverride ?? {
 		/** The OS verdict this fake reports; a test may flip it mid-run. */
 		mic,
 		open(url) {
@@ -525,16 +526,52 @@ test("Q-3: SIGTERM-with-no-quit and SIGINT both stop the rig before handing the 
 		"the no-quit TERM path stops the rig before Chromium's shutdown",
 	);
 	assert.match(source, /process\.on\("SIGINT", onSigint\)/);
-	assert.match(
-		source.slice(source.indexOf("const onSigint")),
-		/stopVoiceOnTerminatingSignal\("SIGINT"\)/,
+	/*
+	 * The region that matters is the handler's body AND the helper it delegates
+	 * into. Slicing to `process.on("SIGINT"` only ever saw the handler, while
+	 * the exit the assertion hunts lives one call away (review round 2, minor
+	 * 2). The stop is synchronous, so neither region may reach for an exit, and
+	 * the dead bound must not come back.
+	 */
+	const sigint = source.slice(
+		source.indexOf("const onSigint"),
+		source.indexOf('process.on("SIGINT", onSigint)'),
 	);
+	const helper = source.slice(
+		source.indexOf("const stopVoiceOnTerminatingSignal"),
+		source.indexOf("const supplementMounts"),
+	);
+	assert.match(sigint, /stopVoiceOnTerminatingSignal\("SIGINT"\)/);
+	assert.doesNotMatch(
+		`${sigint}\n${helper}`,
+		/app\.exit\(|process\.exit\(/,
+		"the signal path is a synchronous stop, not an exit",
+	);
+	assert.doesNotMatch(helper, /setTimeout/);
 	assert.match(
 		source,
 		/signalStoppedVoice/,
 		"idempotent: a second signal does nothing",
 	);
-	assert.match(source, /SIGNAL_STOP_BOUND_MS = 3_000/);
+});
+
+test("R2 minor 1: a run with no page refuses before it spawns anything", async () => {
+	const r = rig({ page: m.noQwenVoicePage() });
+	const status = await r.voice.start("renderer");
+	assert.equal(status.rig, "error");
+	assert.equal(status.reason, m.QWEN_NO_VOICE_WINDOW);
+	assert.equal(
+		r.calls.gatewayStart,
+		0,
+		"no models for a window that cannot hear",
+	);
+	assert.equal(r.calls.speechStart, 0);
+	// The feed's enable path is the same door, not a second one.
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	assert.equal(r.calls.gatewayStart, 0);
+	assert.equal(r.calls.speechStart, 0);
 });
 
 test("a failed start reports error with the reason and leaves nothing running", async () => {
@@ -1144,6 +1181,10 @@ test("s2s: relay model, offline, no inherited secrets; ports overridable only un
 		["--model_name", "lop-relay"],
 	);
 	assert.ok(args.includes("http://127.0.0.1:8766/v1"));
+	assert.ok(
+		args.includes("--no_enable_live_transcription"),
+		"live transcription burns the final decode's lock and caches a buffer per tick",
+	);
 	const env = m.s2sEnv("/rig", {
 		PATH: "/p",
 		LOCAL_OPERATOR_DESKTOP_TOKEN: "x",
@@ -1240,9 +1281,9 @@ test("R2: only a normal window may create the page; the env switch still opts ou
 test("§9 layers 1-2: s2s runs the launcher under the rig's python, with the cap as a safety net", async () => {
 	const args = m.s2sArgs(m.DEFAULT_QWEN_PORTS);
 	assert.deepEqual(
-		args.slice(-2),
-		["--max_speech_ms", "30000"],
-		"BRIEF-1: 20 s dropped a natural 21 s take; 30 s is the backstop",
+		args.slice(-3),
+		["--max_speech_ms", "30000", "--no_enable_live_transcription"],
+		"BRIEF-1: 20 s dropped a natural 21 s take; 30 s is the backstop, and live transcription is off (final review)",
 	);
 	const spawned = [];
 	const rigDir = fakeRigDir();
@@ -1341,6 +1382,56 @@ test("§9 layer 3: every 5 s the group footprint is read; over budget the rig is
 	assert.equal(intervals[0].cleared, true, "the poll stops with the process");
 	assert.deepEqual(signals[0], [-6001, "SIGTERM"], "by the group, as always");
 	await new Promise((resolve) => setImmediate(resolve));
+	rmSync(rigDir, { recursive: true, force: true });
+});
+
+test("§9/M4: a rejecting footprint read is caught, not an unhandled rejection", async () => {
+	const rigDir = fakeRigDir();
+	const state = join(rigDir, "state");
+	mkdirSync(state);
+	const intervals = [];
+	const logs = [];
+	let spawned = false;
+	const proc = new m.QwenSpeechProcess(
+		launcherPathFor(rigDir),
+		rigDir,
+		m.DEFAULT_QWEN_PORTS,
+		state,
+		{
+			probe: async () => spawned,
+			sleep: async () => {},
+			kill: () => {},
+			spawnImpl: () => {
+				spawned = true;
+				return { pid: 7002, exitCode: null, once() {} };
+			},
+			budgetBytes: 1_000,
+			footprint: async () => {
+				throw new Error("footprint: not a Mach-O file");
+			},
+			log: (line) => logs.push(line),
+			setInterval: (fn, ms) => {
+				const handle = { fn, ms, cleared: false, unref() {} };
+				intervals.push(handle);
+				return handle;
+			},
+			clearInterval: (handle) => {
+				handle.cleared = true;
+			},
+		},
+	);
+	await proc.start();
+	/*
+	 * The interval discards the promise it is given, so without the call-site
+	 * catch this rejection would be unhandled (review round 2, minor 3). The
+	 * returned promise settling rather than rejecting is the fix's evidence.
+	 */
+	await intervals[0].fn();
+	assert.match(
+		logs.join("\n"),
+		/footprint check failed: footprint: not a Mach-O file/,
+	);
+	assert.equal(intervals[0].cleared, false, "a failed read never stops a rig");
 	rmSync(rigDir, { recursive: true, force: true });
 });
 

@@ -39,10 +39,11 @@
 import { totalmem } from "node:os";
 import type { GatewayDownMessage, GatewayUpMessage } from "./qwen-gateway";
 import { qwenMachineTooSmall } from "./qwen-rig";
-import type {
-	QwenMicAccess,
-	QwenMicSettled,
-	QwenVoicePagePort,
+import {
+	QWEN_NO_VOICE_WINDOW,
+	type QwenMicAccess,
+	type QwenMicSettled,
+	type QwenVoicePagePort,
 } from "./qwen-voice-page";
 
 export type QwenRigState = "stopped" | "starting" | "ready" | "error";
@@ -268,6 +269,22 @@ export class QwenVoice {
 		if (tooSmall) {
 			this.log(`qwen-voice: refusing to start: ${tooSmall}`);
 			this.setStatus({ rig: "error", webui_url: null, reason: tooSmall });
+			return Promise.resolve(this.getStatus());
+		}
+		/*
+		 * NO PAGE, NO RIG (review round 2, minor 1): `voicePageAllowed` hands a
+		 * non-normal run `noQwenVoicePage()`, whose `prepareMicrophone` answers
+		 * "unknown" - so the microphone gate below passed and ~5.5 GB of models
+		 * loaded for a page that does not exist. Refuse here, in the same shape as
+		 * R1's machine-size refusal.
+		 */
+		if (this.deps.page.allowed === false) {
+			this.log(`qwen-voice: refusing to start: ${QWEN_NO_VOICE_WINDOW}`);
+			this.setStatus({
+				rig: "error",
+				webui_url: null,
+				reason: QWEN_NO_VOICE_WINDOW,
+			});
 			return Promise.resolve(this.getStatus());
 		}
 		if (this.starting) return this.starting;
