@@ -139,6 +139,18 @@
 				"date": "2026-10-18"
 			},
 			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.schedules",
+			"source_sha256": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
+			"target_sha256": "e061deddc619292084af1b89b331deaeccbfc3532166cc957a4029348a5df7a2",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
 		}
 	]
 }

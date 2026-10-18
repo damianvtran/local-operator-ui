@@ -140,6 +140,7 @@ import frUiCommonErrors from "./catalogues/fr/ui.common.errors.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
+import frUiSchedules from "./catalogues/fr/ui.schedules.json";
 import frUiSettingsAccount from "./catalogues/fr/ui.settings.account.json";
 import frUiSettingsAppearance from "./catalogues/fr/ui.settings.appearance.json";
 import frUiSettingsConfiguration from "./catalogues/fr/ui.settings.configuration.json";
@@ -312,6 +313,7 @@ export const bundledCatalogues: Readonly<
 		...frUiConsole,
 		...frUiOnboarding,
 		...frUiProjects,
+		...frUiSchedules,
 		...frUiSettingsAccount,
 		...frUiSettingsAppearance,
 		...frUiSettingsConfiguration,

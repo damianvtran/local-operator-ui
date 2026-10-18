@@ -427,6 +427,30 @@ const IDENTICAL_OK = new Map([
 		"ui.projects.projects_toolbar.facet_labels_facet_first_length_1",
 		"Language-neutral label composition: placeholders, '+', and a separator only.",
 	],
+	[
+		"ui.schedules.schedule_form_dialog.agent",
+		"French cognate: « agent » has the same spelling; trailing space is layout.",
+	],
+	[
+		"ui.schedules.schedule_form_dialog.minutes",
+		"French cognate: « minutes » has the same spelling.",
+	],
+	[
+		"ui.schedules.schedule_form_dialog.prompt",
+		"French technical term kept English by the French style guide (prompt).",
+	],
+	[
+		"ui.schedules.scheduled_task_dialog.conversation",
+		"French cognate: « conversation » has the same spelling.",
+	],
+	[
+		"ui.schedules.scheduled_task_dialog.minutes",
+		"French cognate: « minutes » has the same spelling.",
+	],
+	[
+		"ui.schedules.scheduled_task_dialog.prompt",
+		"French technical term kept English by the French style guide (prompt).",
+	],
 ]);
 
 function localeDirs() {
