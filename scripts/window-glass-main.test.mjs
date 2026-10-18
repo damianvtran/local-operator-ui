@@ -15,7 +15,13 @@
  * right order, against the right state.
  */
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -28,6 +34,29 @@ const STUB = `
 export const calls = [];
 export const handlers = new Map();
 export const listeners = [];
+export const appListeners = [];
+/* Mutable GPU facts: a test flips them, emits the event, and watches main re-decide. */
+export const gpuFacts = {
+	acceleration: true,
+	compositing: "enabled",
+	rasterization: "enabled",
+	disableGpu: false,
+};
+export const app = {
+	commandLine: {
+		hasSwitch: (name) => (name === "disable-gpu" ? gpuFacts.disableGpu : false),
+	},
+	isHardwareAccelerationEnabled: () => gpuFacts.acceleration,
+	getGPUFeatureStatus: () => ({
+		gpu_compositing: gpuFacts.compositing,
+		rasterization: gpuFacts.rasterization,
+	}),
+	on: (e, f) => appListeners.push([e, f]),
+	removeListener: () => {},
+};
+export const emitGpuInfoUpdate = () => {
+	for (const [e, f] of appListeners) if (e === "gpu-info-update") f();
+};
 export const nativeTheme = {
 	themeSource: "system",
 	prefersReducedTransparency: false,
@@ -94,6 +123,9 @@ const mod = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 const { electron } = mod;
+/* Listeners the MODULE registered at import (the GPU-readiness flag). `boot`
+ * clears per-controller listeners; this is how many belong to the module. */
+const MODULE_APP_LISTENERS = electron.appListeners.length;
 
 const MAC = {
 	platform: "darwin",
@@ -106,13 +138,25 @@ const COLORS = {
 	symbolInactive: "#999999",
 };
 
-/** A profile directory, optionally with a persisted glass file. */
-function profile(settings) {
+/**
+ * A profile directory, optionally with a persisted glass file.
+ *
+ * The default shape is the LEGACY one (no `explicit`): every field in it is
+ * preserved, which is what the pre-flip tests meant by "this is the user's value".
+ * A test about the flip's unset path passes `null` and gets a truly fresh profile;
+ * one about the new schema passes `{ version: 2, explicit }`.
+ */
+function profile(settings, { version, explicit } = {}) {
 	const dir = mkdtempSync(join(tmpdir(), "glass-main-"));
 	if (settings)
 		writeFileSync(
 			join(dir, "window-glass.json"),
-			JSON.stringify({ settings, scheme: "dark" }),
+			JSON.stringify({
+				...(version ? { version } : {}),
+				settings,
+				...(explicit ? { explicit } : {}),
+				scheme: "dark",
+			}),
 		);
 	return dir;
 }
@@ -120,9 +164,21 @@ function profile(settings) {
 /** Boot the real surface attach against the stubbed Electron. */
 function boot(
 	dir,
-	{ reduced = false, platform = "darwin", osVersion = "27.0.1" } = {},
+	{
+		reduced = false,
+		platform = "darwin",
+		osVersion = "27.0.1",
+		environment,
+	} = {},
 ) {
 	electron.calls.length = 0;
+	electron.appListeners.length = MODULE_APP_LISTENERS;
+	Object.assign(electron.gpuFacts, {
+		acceleration: true,
+		compositing: "enabled",
+		rasterization: "enabled",
+		disableGpu: false,
+	});
 	electron.nativeTheme.prefersReducedTransparency = reduced;
 	electron.nativeTheme.themeSource = "system";
 	electron.handlers.clear();
@@ -137,6 +193,7 @@ function boot(
 			platform,
 			osVersion,
 			reducedTransparency: reduced,
+			environment,
 		});
 		const window = electron.makeWindow();
 		const logs = [];
@@ -194,8 +251,11 @@ test("M-1 a glass launch never paints the opaque ground over the transparent win
 	}
 });
 
-test("M-2 a launch that never enabled glass paints the palette ground and touches no material", () => {
-	const dir = profile(null);
+test("M-2 an explicitly-OFF launch paints the palette ground and touches no material", () => {
+	const dir = profile(
+		{ enabled: false, coverage: "full", intensity: 40, material: "window" },
+		{ version: 2, explicit: ["enabled", "coverage", "intensity", "material"] },
+	);
 	const b = boot(dir);
 	try {
 		assert.deepEqual(bgCalls(), [COLORS.ground]);
@@ -227,7 +287,10 @@ test("M-2 a launch that never enabled glass paints the palette ground and touche
 });
 
 test("M-3 live enable and disable apply and undo the material, and a restart is never demanded on macOS", async () => {
-	const dir = profile(null);
+	const dir = profile(
+		{ enabled: false, coverage: "full", intensity: 40, material: "window" },
+		{ version: 2, explicit: ["enabled"] },
+	);
 	const b = boot(dir);
 	try {
 		electron.calls.length = 0;
@@ -336,7 +399,10 @@ test("M-5 a launch under Reduce transparency keeps the stored material for later
 });
 
 test("M-6 an unwritable profile is said once and the in-memory state still applies (R9)", async () => {
-	const dir = profile(null);
+	const dir = profile(
+		{ enabled: false, coverage: "full", intensity: 40, material: "window" },
+		{ version: 2, explicit: ["enabled"] },
+	);
 	const b = boot(dir);
 	try {
 		/* Make the write fail: the profile path becomes a file. */
@@ -354,37 +420,164 @@ test("M-6 an unwritable profile is said once and the in-memory state still appli
 	}
 });
 
-test("M-7 Windows: a window launched with glass can go off and on again and the material is not hidden behind an opaque ground (R2-2)", async () => {
+/*
+ * WINDOWS IS GREYED NOW (unverified), so the shipped gate cannot reach the
+ * background-material branch. The mechanism's mapping is driven at the pure level
+ * (`window-glass.test.mjs`, G-4); what matters here is the SECOND enforcement:
+ * a Windows profile that still says enabled:true must not make the window
+ * transparent, and the state must report the unverified reason.
+ */
+test("M-7 Windows: a stale enabled value is inert and names the unverified gate", () => {
 	const dir = profile({
 		enabled: true,
 		coverage: "full",
 		intensity: 50,
 		material: "mica",
 	});
-	const b = boot(dir, { platform: "win32", osVersion: "10.0.22621" });
+	const b = boot(dir, { platform: "win32", osVersion: "10.0.22631" });
 	try {
-		assert.equal(b.glass.capability.mechanism, "background-material");
-		electron.calls.length = 0;
-		await invoke("window-glass:set", b.window, { enabled: false });
-		assert.ok(
-			electron.calls.some((c) => c[0] === "material" && c[1] === "none"),
-			"off removes the material",
+		assert.equal(b.glass.capability.reason, "windows-unverified");
+		assert.equal(b.glass.state.active, false);
+		assert.equal(b.surface.glass.isActive(), false);
+		assert.deepEqual(
+			bgCalls(),
+			[COLORS.ground],
+			"the palette ground, never the transparent one",
 		);
 		assert.equal(
-			bgCalls().at(-1),
-			COLORS.ground,
-			"and leaves the palette ground in place",
+			electron.calls.filter((c) => c[0] === "material").length,
+			0,
+			"no background material is ever applied",
 		);
-		electron.calls.length = 0;
-		await invoke("window-glass:set", b.window, { enabled: true });
-		const order = electron.calls
-			.filter((c) => c[0] === "bg" || c[0] === "material")
-			.map((c) => c.join(":"));
+		assert.equal(b.glass.settings.enabled, true, "the stored choice is kept");
+	} finally {
+		b.restore();
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("M-8 a fresh profile starts translucent at 80, and the launch writes no choice", () => {
+	const dir = profile(null);
+	const b = boot(dir);
+	try {
+		assert.equal(b.glass.capability.defaultEnabled, true);
+		assert.equal(b.glass.state.active, true);
+		assert.equal(b.glass.settings.intensity, 80);
+		assert.equal(b.glass.settings.enabled, true);
 		assert.deepEqual(
-			order,
-			["bg:#00000000", "material:mica"],
-			"re-enable makes the ground transparent first, then applies the material",
+			bgCalls(),
+			["#00000000"],
+			"the first paint is the transparent ground, not the palette one",
 		);
+		assert.equal(
+			existsSync(join(dir, "window-glass.json")),
+			false,
+			"the launch must not freeze today's default as the user's explicit choice",
+		);
+	} finally {
+		b.restore();
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("M-9 an explicit OFF survives a launch, and a later unrelated write does not re-enable it", async () => {
+	const dir = profile(
+		{ enabled: false, coverage: "full", intensity: 40, material: "window" },
+		{ version: 2, explicit: ["enabled"] },
+	);
+	const b = boot(dir);
+	try {
+		assert.equal(b.glass.state.active, false);
+		assert.deepEqual(bgCalls(), [COLORS.ground]);
+		const after = await invoke("window-glass:set", b.window, { intensity: 50 });
+		assert.equal(
+			after.active,
+			false,
+			"moving the slider does not turn glass on",
+		);
+		assert.equal(after.settings.enabled, false);
+		const persisted = JSON.parse(
+			readFileSync(join(dir, "window-glass.json"), "utf8"),
+		);
+		assert.equal(persisted.version, 2);
+		assert.deepEqual(
+			[...persisted.explicit].sort(),
+			["enabled", "intensity"],
+			"only the fields the user actually set are recorded as chosen",
+		);
+		assert.equal(persisted.settings.enabled, false);
+		assert.equal(persisted.settings.intensity, 50);
+		/* The next launch keeps the explicit OFF and the chosen intensity. */
+		const next = mod.resolveLaunchWindowGlass({
+			userDataDir: dir,
+			platform: "darwin",
+			osVersion: "27.0.1",
+			reducedTransparency: false,
+		});
+		assert.equal(next.settings.enabled, false);
+		assert.equal(next.settings.intensity, 50);
+		assert.equal(next.state.active, false);
+	} finally {
+		b.restore();
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("M-10 a GPU drop at runtime falls back to opaque, and its return brings the user's setting back", async () => {
+	const dir = profile(null);
+	const b = boot(dir);
+	try {
+		assert.equal(b.glass.state.active, true);
+		electron.calls.length = 0;
+		electron.gpuFacts.compositing = "unavailable_software";
+		electron.emitGpuInfoUpdate();
+		assert.ok(
+			electron.calls.some((c) => c[0] === "vibrancy" && c[1] === null),
+			"the vibrancy view is removed when compositing goes software-only",
+		);
+		assert.ok(
+			bgCalls().includes(COLORS.ground),
+			"and the opaque palette ground is restored",
+		);
+		const during = await invoke("window-glass:get", b.window);
+		assert.equal(during.active, false);
+		assert.equal(during.capability.reason, "gpu-unavailable");
+
+		electron.calls.length = 0;
+		electron.gpuFacts.compositing = "enabled";
+		electron.emitGpuInfoUpdate();
+		assert.deepEqual(
+			electron.calls.filter((c) => c[0] === "vibrancy"),
+			[["vibrancy", "under-window"]],
+			"the capability returning re-applies the user's material, with no restart",
+		);
+		const after = await invoke("window-glass:get", b.window);
+		assert.equal(after.active, true);
+	} finally {
+		b.restore();
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("M-11 the renderer's backdrop-filter answer is part of the gate, live", async () => {
+	const dir = profile(null);
+	const b = boot(dir);
+	try {
+		assert.equal(b.glass.state.active, true);
+		const refused = await invoke("window-glass:renderer", b.window, {
+			backdropFilter: false,
+		});
+		assert.equal(refused.active, false);
+		assert.equal(refused.capability.reason, "backdrop-filter-unavailable");
+		assert.equal(b.surface.glass.isActive(), false);
+		assert.ok(
+			electron.calls.some((c) => c[0] === "vibrancy" && c[1] === null),
+			"the material is torn down",
+		);
+		const restored = await invoke("window-glass:renderer", b.window, {
+			backdropFilter: true,
+		});
+		assert.equal(restored.active, true);
 	} finally {
 		b.restore();
 		rmSync(dir, { recursive: true, force: true });

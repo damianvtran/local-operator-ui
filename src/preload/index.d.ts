@@ -89,6 +89,10 @@ declare global {
 					patch: Partial<GlassSettings>,
 				) => Promise<WindowGlassState | null>;
 				reportScheme: (scheme: GlassScheme) => Promise<boolean>;
+				/** The renderer's `backdrop-filter` support; the gate re-decides on it. */
+				reportRenderer: (report: {
+					backdropFilter: boolean;
+				}) => Promise<WindowGlassState | null>;
 				onState: (callback: (state: WindowGlassState) => void) => () => void;
 			};
 			desktop: DesktopAPI;

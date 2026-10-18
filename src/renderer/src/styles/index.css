@@ -1676,7 +1676,7 @@ html [data-device-chip]:focus-visible {
 
 /*
  * ============================================================================
- * WINDOW GLASS (optional, default OFF)
+ * WINDOW GLASS (on by default where the machine can composite it; absent = off)
  * ============================================================================
  *
  * Everything here is gated on `html[data-glass]`, which `use-window-glass.ts`

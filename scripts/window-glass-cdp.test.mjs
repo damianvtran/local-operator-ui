@@ -17,7 +17,7 @@
  * composes the EFFECTIVE alpha of the ground layers stacked there
  * (`1 - prod(1 - a_i)`, from `document.elementsFromPoint` and computed style).
  * It asserts:
- *   1. WITH GLASS OFF every point is fully opaque (default-off is byte-identical).
+ *   1. WITH GLASS EXPLICITLY OFF every point is fully opaque (the shipped look).
  *   2. Inside a covered region the effective alpha is IDENTICAL at every sampled
  *      point (the seam guard), and equals the role's published variable
  *      (`--lo-glass-a-surface` for sidebars, rail and chrome, `--lo-glass-a-canvas`
@@ -47,7 +47,13 @@
  */
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -194,6 +200,29 @@ before(async () => {
 	root = mkdtempSync(join(tmpdir(), "glass-cdp-"));
 	userData = join(root, "ud");
 	mkdirSync(userData, { recursive: true });
+	/*
+	 * AN EXPLICIT OFF, because the product default is now ON on a capable Mac.
+	 * The suite's first phase is the shipped OPAQUE look ("no attribute, every
+	 * point opaque"), which is now what a user who chose OFF gets; seeding the
+	 * choice keeps that phase measuring the look it names instead of silently
+	 * auditing a default-on window. The later phases enable glass through the
+	 * real IPC row, so the default path itself is covered by the unit suites and
+	 * a fresh-profile boot is left to QA's real-path pass.
+	 */
+	writeFileSync(
+		join(userData, "window-glass.json"),
+		JSON.stringify({
+			version: 2,
+			settings: {
+				enabled: false,
+				coverage: "full",
+				intensity: 80,
+				material: "window",
+			},
+			explicit: ["enabled"],
+			scheme: "dark",
+		}),
+	);
 	const port = await free();
 	debugPort = port;
 	/*
@@ -463,7 +492,7 @@ for (const [themeName, label] of [
 				`${label}: the URL bar is present, so the chrome band can be measured over a live page`,
 			);
 
-			/* 1. DEFAULT OFF: every route opaque, no attribute. */
+			/* 1. EXPLICIT OFF (the shipped opaque look): every route opaque, no attribute. */
 			for (const route of ROUTES) {
 				await go(route);
 				const off = await cdp.ev(AUDIT);
