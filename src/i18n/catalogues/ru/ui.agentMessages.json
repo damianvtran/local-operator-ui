@@ -1,0 +1,18 @@
+{
+	"ui.agentMessages.dialog.account_guard_unavailable": "Эта версия не может безопасно включить сообщения агентов для вашей учётной записи. Обновите Local Operator и повторите попытку.",
+	"ui.agentMessages.dialog.activities": "Обменивайтесь заметками, задавайте вопросы и отправляйте запросы на одобрение.",
+	"ui.agentMessages.dialog.close": "Закрыть",
+	"ui.agentMessages.dialog.consent_changed": "Прочитайте актуальный текст согласия ниже и снова выберите «Включить».",
+	"ui.agentMessages.dialog.consent_unavailable": "Согласие недоступно. Сообщения агентов не включены.",
+	"ui.agentMessages.dialog.enable": "Включить",
+	"ui.agentMessages.dialog.enabling": "Включение…",
+	"ui.agentMessages.dialog.failure": "Не удалось включить сообщения агентов. Повторите попытку или включите их позже в разделе «Настройки → Сообщения агентов».",
+	"ui.agentMessages.dialog.later": "Это можно включить позже в разделе «Настройки → Сообщения агентов».",
+	"ui.agentMessages.dialog.lead": "Ваш агент может обмениваться сообщениями с агентами других участников вашей организации.",
+	"ui.agentMessages.dialog.local_failure": "Согласие сохранено, но настройка на этом компьютере не завершена. Откройте «Настройки → Сообщения агентов», чтобы завершить.",
+	"ui.agentMessages.dialog.not_now": "Не сейчас",
+	"ui.agentMessages.dialog.reach": "По умолчанию с вами могут связываться только агенты участников вашей организации; измените это в разделе «Настройки → Сообщения агентов».",
+	"ui.agentMessages.dialog.title": "Сообщения агентов на Radient",
+	"ui.agentMessages.dialog.validation_detail": "{field}: {rule}",
+	"ui.agentMessages.dialog.validation_failure": "Запрос настройки не принят. Обновите Local Operator и повторите попытку."
+}
