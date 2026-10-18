@@ -70,9 +70,9 @@ export interface ConsoleSessionApi {
 	) => void;
 	/** Ask main for a surface the USER owns, with main's own defaults (§6.1).
 	 *
-	 * Resolves `true` when the answer left this conversation with a surface to show, and
-	 * `false` when it did not (refused, or answered with nothing) — and that boolean is
-	 * what the pane arms its caret request on, because a caret request stood up by a
+	 * Resolves the created id when the answer left this conversation with a surface to
+	 * show, and `null` when it did not (refused, or answered with nothing) — and that
+	 * answer is what the pane arms its caret request on, because a caret request stood up by a
 	 * request that produced no terminal is a request with nowhere to land that a LATER
 	 * surface would then inherit (agent review round 3, M1). It is not "did main accept
 	 * the call": the listing is read inside this promise, so the answer is the id main
@@ -277,9 +277,9 @@ export const useConsoleSession = (
 				// resolves. A `void read()` here left one render with no surface, no
 				// `creating` and no loading — the empty state with a live `+`.
 				//
-				// THE ANSWER IS THE LISTING, not the create's reply (round 3, M1): a call
-				// main accepted but that left nothing to show is not an answer with a
-				// terminal in it.
+				// THE ANSWER IS THE REPLY'S ID, GATED BY THE LISTING (round 3, M1; #1084):
+				// a call main accepted but that left nothing to show is not an answer
+				// with a terminal in it, so an id the re-read does not list is `null`.
 				read().then((listing) => {
 					const id = createdSurfaceId(reply);
 					return id !== null &&

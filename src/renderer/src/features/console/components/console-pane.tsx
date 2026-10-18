@@ -463,19 +463,46 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	 * The lens is set before the caret is armed because the token is consumed by the
 	 * mirror that mounts with it, and that has to be the new surface's mirror.
 	 */
-	const [showCreated, setShowCreated] = useState<string | null>(null);
+	const [showCreated, setShowCreated] = useState<{
+		id: string;
+		from: string | null;
+	} | null>(null);
+	/*
+	 * ONE CREATE PER PRESS IN FLIGHT (agent review round 1, F-2). The press holds
+	 * `creating` for the round trip, exactly as the open-from-outside path does, so the
+	 * header `+` is disabled while it runs. The ref is the guard and the state is the
+	 * render: two clicks dispatched before React commits the disabled button would
+	 * both read `creating` as false.
+	 */
+	const pressInFlight = useRef(false);
 	const createFromPress = useCallback(() => {
-		void session.createSurface().then((created) => {
-			if (created !== null) setShowCreated(created);
-		});
-	}, [session.createSurface]);
+		if (pressInFlight.current) return;
+		pressInFlight.current = true;
+		setCreating(true);
+		// The lens at press time: a row the user picks while the create is in flight is
+		// a later, explicit choice, and the landing create must not override it (F-3).
+		const from = stored;
+		void session
+			.createSurface()
+			.then((created) => {
+				if (created !== null) setShowCreated({ id: created, from });
+			})
+			.finally(() => {
+				pressInFlight.current = false;
+				setCreating(false);
+			});
+	}, [session.createSurface, stored]);
 	useEffect(() => {
 		if (showCreated === null) return;
-		if (!surfaces.some((row) => row.surface === showCreated)) return;
+		if (stored !== showCreated.from) {
+			setShowCreated(null);
+			return;
+		}
+		if (!surfaces.some((row) => row.surface === showCreated.id)) return;
 		setShowCreated(null);
-		setStored(showCreated);
+		setStored(showCreated.id);
 		setFocusRequest((value) => value + 1);
-	}, [showCreated, surfaces, setStored]);
+	}, [showCreated, surfaces, stored, setStored]);
 
 	/*
 	 * The lens follows what is actually shown, and that write is what makes the
@@ -600,8 +627,8 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			 * `console_create` fires) mounted a mirror that inherited the armed token and
 			 * pulled the caret out of the composer, which is the case UX's U1 named. So the
 			 * invariant is now "the caret is armed by the ANSWER, and only when there is a
-			 * surface to put it in": `createSurface` resolves whether the listing after the
-			 * create holds one, and a refused or empty answer arms nothing.
+			 * surface to put it in": `createSurface` resolves the created id when the listing
+			 * after the create holds it, or `null`, and a `null` answer arms nothing.
 			 */
 			void session
 				.createSurface()
