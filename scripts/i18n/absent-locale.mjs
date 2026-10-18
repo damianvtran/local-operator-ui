@@ -20,8 +20,10 @@
  * to prove a tag with NO catalogue still falls back passes an empty fixture.
  */
 
-/** Deliberately not a BCP-47 tag: `xx` is the private-use block, so no real
- * locale can claim it and no tranche can ever add catalogue keys under it. */
+/** Deliberately not an assigned language tag: ISO 639-1 has no `xx`, and the
+ * private-use mechanisms live elsewhere (the `x-` singleton subtag and the
+ * `qaa`-`qtz` range), so no catalogue this repository ships can claim it - a
+ * shipped tag is a directory under `src/i18n/catalogues/`. */
 export const ABSENT_LOCALE = "xx-absent-probe";
 
 /**
@@ -38,6 +40,18 @@ export const ABSENT_LOCALE = "xx-absent-probe";
  * Switching the locale can drive React state in a mounted harness, and this
  * module must not import React: call sites that render wrap the call in `act`
  * themselves.
+ *
+ * IT DOES NOT UNREGISTER ON RESTORE. The runtime has no per-tag removal -
+ * `clearRegisteredCatalogues` drops EVERY locale's registered catalogue, which
+ * would also discard a harness's own fixtures - so `restore` only switches the
+ * locale back; the fixture stays registered under `ABSENT_LOCALE` for the rest
+ * of the process. That is inert for the partial fixtures these call sites pass
+ * (they carry only the keys a test names, and `es`/`ru`/`hi`/`vi`/`zh-CN` pass
+ * an empty one), but two call sites in one process that register DIFFERENT
+ * fixtures under the tag will merge, because `registerCatalogue` assigns into
+ * the existing entry. A call site that needs a clean store clears it itself
+ * with `clearRegisteredCatalogues()` in its cleanup, as the feature harnesses
+ * already do.
  */
 export function withAbsentLocale(i18n, fixture = {}) {
 	const previous = i18n.currentLocale();

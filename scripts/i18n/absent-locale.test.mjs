@@ -76,10 +76,12 @@ test("the tag cannot collide with a shipped catalogue", () => {
 		.filter((entry) => entry.isDirectory())
 		.map((entry) => entry.name);
 
-	// A shipped tag is a real BCP-47 tag; `xx` is the private-use block. If a
-	// catalogue ever appeared under this name the tag's whole premise — that it
-	// is permanently absent — would be false, and every fallback assertion using
-	// it would silently become a translation assertion.
+	// A shipped tag is a real BCP-47 tag; `xx` is unassigned (the private-use
+	// mechanisms are the `x-` singleton subtag and the `qaa`-`qtz` range), so the
+	// probe occupies no real locale. If a catalogue ever appeared under this name
+	// the tag's whole premise — that it is permanently absent — would be false,
+	// and every fallback assertion using it would silently become a translation
+	// assertion.
 	assert.ok(
 		shipped.length > 0,
 		"the catalogues directory must list shipped tags",
@@ -91,6 +93,6 @@ test("the tag cannot collide with a shipped catalogue", () => {
 	assert.match(ABSENT_LOCALE, /^xx-/);
 	assert.ok(
 		shipped.every((tag) => !tag.startsWith("xx")),
-		"no shipped tag may live in the private-use block this probe occupies",
+		"no shipped tag may start with the probe's unassigned prefix",
 	);
 });

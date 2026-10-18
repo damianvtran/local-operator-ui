@@ -75,29 +75,35 @@ test("counts render ungrouped (the #1131 fidelity rule); uncarried namespaces us
 	// ui.canvas, so pinning the fallback arm to the shipped locale would silently
 	// stop testing fallback at all (and assert the Spanish word instead of the
 	// English one).
+	// restoreLocale() leaves the (empty) fixture registered under the probe tag:
+	// the runtime has no per-tag unregister, and it carries no keys, so it cannot
+	// answer a lookup.
 	const restoreLocale = withAbsentLocale({
 		currentLocale: locale.currentLocale,
 		setLocale: locale.setLocale,
 		registerCatalogue: messages.registerCatalogue,
 	});
-	const fallback = messages.t("ui.canvas.files.count", { count: 1234567 });
-	assert.equal(fallback, "1234567 files");
-	assert.equal(
-		fallback,
-		messages.translate(
-			"ui.canvas.files.count",
-			{ count: 1234567 },
-			ABSENT_LOCALE,
-		),
-	);
-	assert.equal(
-		fallback,
-		messages.translate("ui.canvas.files.count", { count: 1234567 }, "en"),
-	);
-	restoreLocale();
-	console.log(
-		`es counts ungrouped: ${formatted}; English fallback ui.canvas.files.count: ${fallback}`,
-	);
+	try {
+		const fallback = messages.t("ui.canvas.files.count", { count: 1234567 });
+		assert.equal(fallback, "1234567 files");
+		assert.equal(
+			fallback,
+			messages.translate(
+				"ui.canvas.files.count",
+				{ count: 1234567 },
+				ABSENT_LOCALE,
+			),
+		);
+		assert.equal(
+			fallback,
+			messages.translate("ui.canvas.files.count", { count: 1234567 }, "en"),
+		);
+		console.log(
+			`es counts ungrouped: ${formatted}; English fallback ui.canvas.files.count: ${fallback}`,
+		);
+	} finally {
+		restoreLocale();
+	}
 });
 const DOUBLED_SPACE = / {2,}/;
 const UNRENDERED_PLACEHOLDER = /\{/;

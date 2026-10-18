@@ -77,19 +77,25 @@ test("counts render ungrouped (the #1131 fidelity rule); uncarried namespaces us
 	// asserting something tranche completion deliberately makes false.
 	// `ABSENT_LOCALE` keeps the fallback contract meaningful for every future
 	// tranche without weakening or deleting the assertion.
+	// restoreLocale() leaves the (empty) fixture registered under the probe tag:
+	// the runtime has no per-tag unregister, and it carries no keys, so it cannot
+	// answer a lookup.
 	const restoreLocale = withAbsentLocale({
 		currentLocale: locale.currentLocale,
 		setLocale: locale.setLocale,
 		registerCatalogue: messages.registerCatalogue,
 	});
-	const fallback = messages.t("ui.canvas.files.count", { count: 1234567 });
-	assert.equal(fallback, "1234567 files");
-	assert.equal(
-		fallback,
-		messages.translate("ui.canvas.files.count", { count: 1234567 }, "en"),
-	);
-	console.log(`${ABSENT_LOCALE} fallback ui.canvas.files.count: ${fallback}`);
-	restoreLocale();
+	try {
+		const fallback = messages.t("ui.canvas.files.count", { count: 1234567 });
+		assert.equal(fallback, "1234567 files");
+		assert.equal(
+			fallback,
+			messages.translate("ui.canvas.files.count", { count: 1234567 }, "en"),
+		);
+		console.log(`${ABSENT_LOCALE} fallback ui.canvas.files.count: ${fallback}`);
+	} finally {
+		restoreLocale();
+	}
 });
 const DOUBLED_SPACE = / {2,}/;
 const UNRENDERED_PLACEHOLDER = /\{/;
