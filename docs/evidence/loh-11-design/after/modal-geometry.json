@@ -5,12 +5,12 @@
     "content": [
       {
         "type": "text",
-        "text": "PROPOSED LOH-11 picker 220 light \u2014 http://localhost:[redacted]@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-220-light.html\n\n{\n \"sidebar\": 220,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+        "text": "PROPOSED LOH-11 picker 220 light \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-220-light.html\n\n{\n \"sidebar\": 220,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
       }
     ],
     "details": {
       "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
-      "url": "http://localhost:6006/@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-220-light.html",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-220-light.html",
       "title": "PROPOSED LOH-11 picker 220 light",
       "selector": "#metrics"
     },
@@ -24,12 +24,12 @@
     "content": [
       {
         "type": "text",
-        "text": "PROPOSED LOH-11 picker 260 light \u2014 http://localhost:[redacted]@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-260-light.html\n\n{\n \"sidebar\": 260,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+        "text": "PROPOSED LOH-11 picker 260 light \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-260-light.html\n\n{\n \"sidebar\": 260,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
       }
     ],
     "details": {
       "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
-      "url": "http://localhost:6006/@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-260-light.html",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-260-light.html",
       "title": "PROPOSED LOH-11 picker 260 light",
       "selector": "#metrics"
     },
@@ -43,12 +43,12 @@
     "content": [
       {
         "type": "text",
-        "text": "PROPOSED LOH-11 picker 320 light \u2014 http://localhost:[redacted]@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-320-light.html\n\n{\n \"sidebar\": 320,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+        "text": "PROPOSED LOH-11 picker 320 light \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-320-light.html\n\n{\n \"sidebar\": 320,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
       }
     ],
     "details": {
       "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
-      "url": "http://localhost:6006/@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-320-light.html",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-320-light.html",
       "title": "PROPOSED LOH-11 picker 320 light",
       "selector": "#metrics"
     },
@@ -62,12 +62,12 @@
     "content": [
       {
         "type": "text",
-        "text": "PROPOSED LOH-11 manage 220 light \u2014 http://localhost:[redacted]@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-220-light.html\n\n{\n \"sidebar\": 220,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+        "text": "PROPOSED LOH-11 manage 220 light \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-220-light.html\n\n{\n \"sidebar\": 220,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
       }
     ],
     "details": {
       "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
-      "url": "http://localhost:6006/@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-220-light.html",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-220-light.html",
       "title": "PROPOSED LOH-11 manage 220 light",
       "selector": "#metrics"
     },
@@ -81,12 +81,12 @@
     "content": [
       {
         "type": "text",
-        "text": "PROPOSED LOH-11 manage 260 light \u2014 http://localhost:[redacted]@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-260-light.html\n\n{\n \"sidebar\": 260,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+        "text": "PROPOSED LOH-11 manage 260 light \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-260-light.html\n\n{\n \"sidebar\": 260,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
       }
     ],
     "details": {
       "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
-      "url": "http://localhost:6006/@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-260-light.html",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-260-light.html",
       "title": "PROPOSED LOH-11 manage 260 light",
       "selector": "#metrics"
     },
@@ -100,12 +100,12 @@
     "content": [
       {
         "type": "text",
-        "text": "PROPOSED LOH-11 manage 320 light \u2014 http://localhost:[redacted]@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-320-light.html\n\n{\n \"sidebar\": 320,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+        "text": "PROPOSED LOH-11 manage 320 light \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-320-light.html\n\n{\n \"sidebar\": 320,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
       }
     ],
     "details": {
       "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
-      "url": "http://localhost:6006/@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-320-light.html",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-320-light.html",
       "title": "PROPOSED LOH-11 manage 320 light",
       "selector": "#metrics"
     },
@@ -119,12 +119,12 @@
     "content": [
       {
         "type": "text",
-        "text": "PROPOSED LOH-11 picker 220 dark \u2014 http://localhost:[redacted]@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-220-dark.html\n\n{\n \"sidebar\": 220,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+        "text": "PROPOSED LOH-11 picker 220 dark \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-220-dark.html\n\n{\n \"sidebar\": 220,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
       }
     ],
     "details": {
       "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
-      "url": "http://localhost:6006/@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-220-dark.html",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-220-dark.html",
       "title": "PROPOSED LOH-11 picker 220 dark",
       "selector": "#metrics"
     },
@@ -138,12 +138,12 @@
     "content": [
       {
         "type": "text",
-        "text": "PROPOSED LOH-11 picker 260 dark \u2014 http://localhost:[redacted]@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-260-dark.html\n\n{\n \"sidebar\": 260,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+        "text": "PROPOSED LOH-11 picker 260 dark \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-260-dark.html\n\n{\n \"sidebar\": 260,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
       }
     ],
     "details": {
       "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
-      "url": "http://localhost:6006/@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-260-dark.html",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-260-dark.html",
       "title": "PROPOSED LOH-11 picker 260 dark",
       "selector": "#metrics"
     },
@@ -157,12 +157,12 @@
     "content": [
       {
         "type": "text",
-        "text": "PROPOSED LOH-11 picker 320 dark \u2014 http://localhost:[redacted]@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-320-dark.html\n\n{\n \"sidebar\": 320,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+        "text": "PROPOSED LOH-11 picker 320 dark \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-320-dark.html\n\n{\n \"sidebar\": 320,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
       }
     ],
     "details": {
       "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
-      "url": "http://localhost:6006/@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-320-dark.html",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-320-dark.html",
       "title": "PROPOSED LOH-11 picker 320 dark",
       "selector": "#metrics"
     },
@@ -176,12 +176,12 @@
     "content": [
       {
         "type": "text",
-        "text": "PROPOSED LOH-11 manage 220 dark \u2014 http://localhost:[redacted]@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-220-dark.html\n\n{\n \"sidebar\": 220,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+        "text": "PROPOSED LOH-11 manage 220 dark \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-220-dark.html\n\n{\n \"sidebar\": 220,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
       }
     ],
     "details": {
       "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
-      "url": "http://localhost:6006/@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-220-dark.html",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-220-dark.html",
       "title": "PROPOSED LOH-11 manage 220 dark",
       "selector": "#metrics"
     },
@@ -195,12 +195,12 @@
     "content": [
       {
         "type": "text",
-        "text": "PROPOSED LOH-11 manage 260 dark \u2014 http://localhost:[redacted]@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-260-dark.html\n\n{\n \"sidebar\": 260,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+        "text": "PROPOSED LOH-11 manage 260 dark \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-260-dark.html\n\n{\n \"sidebar\": 260,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
       }
     ],
     "details": {
       "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
-      "url": "http://localhost:6006/@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-260-dark.html",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-260-dark.html",
       "title": "PROPOSED LOH-11 manage 260 dark",
       "selector": "#metrics"
     },
@@ -214,12 +214,12 @@
     "content": [
       {
         "type": "text",
-        "text": "PROPOSED LOH-11 manage 320 dark \u2014 http://localhost:[redacted]@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-320-dark.html\n\n{\n \"sidebar\": 320,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+        "text": "PROPOSED LOH-11 manage 320 dark \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-320-dark.html\n\n{\n \"sidebar\": 320,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
       }
     ],
     "details": {
       "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
-      "url": "http://localhost:6006/@fs/Users/damian/local-operator-ui/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-320-dark.html",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-320-dark.html",
       "title": "PROPOSED LOH-11 manage 320 dark",
       "selector": "#metrics"
     },

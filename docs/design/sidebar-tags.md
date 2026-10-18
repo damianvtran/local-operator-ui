@@ -2,13 +2,13 @@
 
 Design brief · 2026-10-18 · **PROPOSED, not implemented**.
 
-Designer: designer / **openai/gpt-6.1-sol**, temporary fallback after Anthropic quota exhaustion. Baseline inspected: `76dda0304bfa4b54ebd42cccd32bbd05841ca4a3`; worktree HEAD and origin/main both resolved to that SHA when this brief was written. Independent interaction contract: [sidebar-tags-flows.md](sidebar-tags-flows.md). No MR exists for this phase.
+Designer: designer / **openai/gpt-6.1-sol**, temporary fallback after Anthropic quota exhaustion. Baseline inspected: `76dda0304bfa4b54ebd42cccd32bbd05841ca4a3`; worktree HEAD and origin/main both resolved to that SHA when this brief was written. Independent interaction contract: [sidebar-tags-flows.md](sidebar-tags-flows.md). This PR (#1176) is the docs-only design phase; no implementation PR exists yet.
 
 ## 1. Problem, scope and references
 
 The operator wants optional structured conversation tags, enabled in sidebar **View options**, grouping *inside* existing Pinned / Running / Today / This week / Older sections. The panel is resizable: **220–320px, default 260px**, collapsed strip 56px. Tags must not consume the title merely because a sidebar has a nominal width. Assignment must support multiple tags, categories must be manageable, and a later slice must allow dropping a conversation onto a tag group. Agent-created sessions should accept optional tags. LOH-1 may consume the same metadata for tabs later; there are no tabs here.
 
-Source of operator scope and reference: `~/workspace/loh-11/brief.md`, including its corrected current-context-menu facts. Sherman’s 2026-10-14 Slack reference, as transcribed there, shows a Codex sidebar with `[Review]`, `[Fix]`, `[Project]`, `[Concept]` title prefixes, not coloured chips. That establishes a recognition pattern, not a requirement to copy the encoding. **Never parse, prepend, strip or rewrite titles.** Structured IDs support persistence, grouping and later tabs without damaging user-authored bracketed text.
+Source of operator scope and reference: the operator's 2026-10-18 LOH-11 request (reproduced in §1) and its corrected current-context-menu facts. Sherman's 2026-10-14 Slack reference, as transcribed there, shows a Codex sidebar with `[Review]`, `[Fix]`, `[Project]`, `[Concept]` title prefixes, not coloured chips. That establishes a recognition pattern, not a requirement to copy the encoding. **Never parse, prepend, strip or rewrite titles.** Structured IDs support persistence, grouping and later tabs without damaging user-authored bracketed text.
 
 Sources inspected: `docs/branding.md` §§0/3/5/6/9; `docs/design/sidebar-row-space.md`; `docs/design/sidebar-sections.md`; `chat-sidebar-layout.ts`, `chat-sidebar-view.ts`, `chat-list-sections.ts`; `chat-sidebar.tsx`, `chat-sidebar-view-menu.tsx`, sections stories; `shared/components/ui/{badge,context-menu,popover}.tsx`; generated theme CSS; `ui-preferences-store.ts`.
 
@@ -96,7 +96,7 @@ Readings came from harness `browser.styles` on the live Storybook fixtures at **
 
 Unpinned pair: **24 + 4 + 24 = 52**, plus outer row gap **4 = 56px**. Pinned cluster: **24 archive + 4 + 24 grip + 4 + 24 pin = 80**, plus outer gap **4 = 84px**. Resting pin already costs **24 + 4 = 28px**. The pinned row's timestamp withdraws on action reveal, so its measured title loss is **29.59px**, not blindly 56px. Running has no timestamp withdrawal: its measured title loss is **56px exactly**.
 
-The original section fixture omits archive capability and does not publish `pinned:false` on unpinned rows. For action measurements only, the evidence harness enables archive and supplies explicit false pin values, then seeds the real hover-intent layout attribute. Without that payload correction an unpinned row has only a 24px archive control, **not** a measured 52px pair. Final readings in `before/action-measurements.json` use the complete payload. These are rendered layout-state measurements, not an executed pointer-dwell gesture or mutation test.
+The original section fixture omits archive capability and does not publish `pinned:false` on unpinned rows. For action measurements only, the evidence story patch archived at `docs/evidence/loh-11-design/harness/` enables archive and supplies explicit false pin values, then seeds the real hover-intent layout attribute. Without that payload correction an unpinned row has only a 24px archive control, **not** a measured 52px pair. Final readings in `before/action-measurements.json` use the complete payload. These are rendered layout-state measurements, not an executed pointer-dwell gesture or mutation test.
 
 Dark/light row geometry is compatible; base light pinned glyph metrics differ by a few hundredths on some rows, so raw per-theme readings are retained. Do not claim byte-identical theme text rasterisation. Groups-only proposals reproduce the above first pinned/running title widths and row widths in both themes.
 
@@ -243,10 +243,11 @@ Root: `docs/evidence/loh-11-design/`.
 - `before/{220,260,320}-dark-acts.png`: real seeded action layout, complete feature/pin payload; no gesture claim.
 - `before/view-options-{light,dark}.png`: real open View options.
 - `before/{measurements,action-measurements}.json`: harness style responses.
+- `harness/`: the evidence-only `chat-sidebar-sections.stories.tsx` patch and reproduction instructions. The patch is archived, not applied in this docs-only PR; it lands with the UI implementation PR.
 - `after/{off,groups,chips,chips-acts,context,drag,view}-{light,dark}.{html,png}`: proposed comparisons, three widths per sheet; chip placements illustrative, actions/drag static.
 - `after/{picker,manage}-{220,260,320}-{light,dark}.{html,png}`: corrected420px modal proposals. Short aliases `picker-light`, `picker-dark`, `manage-light`, `manage-dark` point to the220 scenario content, not the rejected narrow modal.
 - `after/view-scrolled-{light,dark}.png`: proposed popover's last controls reachable by scroll.
 - `after/{geometry-records,modal-geometry}.json`, contrast/audit outputs: measured self-readouts and commands' actual output.
 - `after/chips-dark-{first,settled}.png`, `stability.txt`: earlier static proposal consecutive frames only; these are **not the final modal/chevron correction state** and carry no current-head interaction sign-off.
 
-All frames were obtained through the harness browser, never an installed/scripted browser engine. The owned browser tab was closed after corrected modal capture. Only documentation, evidence and the explicitly labelled sections evidence harness were changed.
+All frames were obtained through the harness browser, never an installed/scripted browser engine. The owned browser tab was closed after corrected modal capture. Only documentation, evidence and the evidence-only story patch archived at `docs/evidence/loh-11-design/harness/` were involved; the story patch lands with the UI implementation PR, not here.
