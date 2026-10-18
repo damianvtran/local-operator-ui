@@ -132,7 +132,7 @@
 			"locale": "fr",
 			"namespace": "ui.projects",
 			"source_sha256": "6b12f695845c3d01500291f5bc4eb50ea9b35e60c68bc69f21ee219c5f9d7f52",
-			"target_sha256": "596af4f64bc68b7ffbcb79684639e070c738ffd57f19124de651c401463bc9d1",
+			"target_sha256": "bf3f7d4f2d6f41c88d7158e3d2a0dcebcbe220e815d68ec1f3ea887a3a8c02d3",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
