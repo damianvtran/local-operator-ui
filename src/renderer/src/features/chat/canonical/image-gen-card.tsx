@@ -77,7 +77,13 @@
 
 import { Button, Progress } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { useEffect, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	formatBytes,
 	formatDuration,
@@ -95,7 +101,9 @@ import {
 	type ImageGenCardView,
 	imageGenCardControls,
 	imageGenMaterialNoun,
+	withoutSettlementClause,
 } from "./image-gen-card-model";
+import { SoundStopConfirmation } from "./sound-stop-confirmation";
 import type { AttachmentScope } from "./use-attachment-url";
 
 export type ImageGenCardProps = {
@@ -284,17 +292,27 @@ function StateLine({
 				`The ${imageGenMaterialNoun(view.material)} could not be generated.`;
 			emphasis = true;
 			break;
-		case "cancelled":
+		case "cancelled": {
 			/*
 			 * The settled receipt prefers the TOOL/SERVER detail (`message`); the
 			 * canned sentence is only the fallback, and it follows the same
 			 * queued/running split the live line does — a settled in-flight stop
 			 * must still not read as a no-charge cancellation.
+			 *
+			 * THE PENDING CLAUSE IS RETIRED BY ITS OWN ANSWER: the settlement row
+			 * rendered under this line states the pending fact or the final charge,
+			 * so the sentence that asks "Checking for settlement" would either
+			 * repeat it or contradict it (design D7, UX U8/U9).
 			 */
-			text =
+			const line =
 				view.message ??
 				(view.generating ? CANCEL_RUNNING_COPY : CANCEL_QUEUED_COPY);
+			text =
+				view.settlementCaption || view.settled
+					? withoutSettlementClause(line)
+					: line;
 			break;
+		}
 	}
 	return (
 		<p className={cn("flex min-w-0 items-baseline gap-1.5 text-body-sm")}>
@@ -362,6 +380,39 @@ function controlLabel(
 }
 
 export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
+	const [confirmStop, setConfirmStop] = useState(false);
+	const keepWaiting = useCallback(() => setConfirmStop(false), []);
+	const root = useRef<HTMLDivElement>(null);
+	const wasConfirming = useRef(false);
+	useLayoutEffect(() => {
+		if (wasConfirming.current && !confirmStop) {
+			(
+				root.current?.querySelector<HTMLButtonElement>(
+					"[data-imagegen-controls] button",
+				) ?? root.current
+			)?.focus();
+		}
+		wasConfirming.current = confirmStop;
+	}, [confirmStop]);
+	useLayoutEffect(() => {
+		const card = root.current;
+		return () => {
+			// If the live row disappears, return the keyboard to its own pane,
+			// never a composer belonging to a different conversation.
+			if (card?.contains(document.activeElement)) {
+				card
+					.closest("[data-chat-pane]")
+					?.querySelector<HTMLTextAreaElement>("textarea")
+					?.focus();
+			}
+		};
+	}, []);
+	const soundRunning =
+		view.state === "running" &&
+		(view.material === "voiceover" || view.material === "sound-effect");
+	useEffect(() => {
+		if (!soundRunning) setConfirmStop(false);
+	}, [soundRunning]);
 	const startedAtMs =
 		view.state === "running" || view.state === "cancelling"
 			? view.startedAtMs
@@ -389,11 +440,33 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			: null;
 	return (
 		<div
+			ref={root}
+			tabIndex={-1}
 			data-imagegen-card={view.state}
 			className={cn("flex w-full flex-col gap-2")}
 		>
 			{generatingBody ? <GeneratingTile /> : null}
+			{view.state === "failed" &&
+			(view.material === "voiceover" || view.material === "sound-effect") &&
+			view.errorType ? (
+				<p className={cn("text-meta text-ink-dim")}>{view.errorType}</p>
+			) : null}
 			<StateLine view={view} elapsed={elapsed} />
+			{view.state === "done" && view.costCaption ? (
+				<NoteLine line={view.costCaption} />
+			) : null}
+			{view.state === "cancelled" && view.settlementCaption ? (
+				<NoteLine line={view.settlementCaption} />
+			) : null}
+			{soundRunning && confirmStop ? (
+				<SoundStopConfirmation
+					onKeepWaiting={keepWaiting}
+					onRequestStop={() => {
+						setConfirmStop(false);
+						actions?.onCancel?.();
+					}}
+				/>
+			) : null}
 			{/*
 			 * THE INTERIM'S ACCOUNT (design round 1, D1): the mid-walk failure's
 			 * sentence under the live body, verbatim — the call keeps its tile,
@@ -477,7 +550,7 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 					})}
 				</div>
 			) : null}
-			{controls.length > 0 ? (
+			{controls.length > 0 && !(soundRunning && confirmStop) ? (
 				/*
 				 * Secondary `sm` for all three, which is the app's one quiet control
 				 * under a row (`ProviderAction`'s own reasoning): these are remedies
@@ -515,7 +588,23 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 										: "Requests a stop; the provider may finish anyway."
 									: undefined
 							}
-							onClick={handlers[control.kind]}
+							onClick={
+								control.kind === "cancel" && soundRunning
+									? () => {
+											// A pane Stop may already own the same question.
+											const existing = root.current
+												?.closest("[data-chat-pane]")
+												?.querySelector<HTMLButtonElement>(
+													"[data-sound-stop-confirmation] button",
+												);
+											if (existing) {
+												existing.focus();
+												return;
+											}
+											setConfirmStop(true);
+										}
+									: handlers[control.kind]
+							}
 						>
 							{controlLabel(control.kind, view.state)}
 						</Button>

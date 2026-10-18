@@ -277,28 +277,33 @@ export function preferDeliveryState(
  * `imagegen/rungs.progress_details`): every live `tool_execution_update`
  * carries `stage` - present even when `null`, which is a mid-walk failure -
  * and the terminal `ImageGenerationUnavailable` result carries `error_type`
- * without one. EITHER key marks the payload as the progress contract's rather
- * than another tool's detail object; `"stage" in details` alone would drop
- * the settled failure's pair, and a looser gate would hand the carrier any
- * tool's free-form `details` (the same reasoning the reducer's `artifactKind`
- * states one layer down: a stray key must not turn a payload into something
- * it is not).
+ * without one. Audio receipts also discriminate on `billing_basis` or
+ * `settled`: they may carry no progress stage at all. Requiring one of these
+ * four explicit keys keeps free-form tool details out of this carrier.
  *
  * SCOPE, stated so the boundary is not re-derived: the gate is deliberately
  * TOOL-AGNOSTIC. A non-imagegen frame whose free-form `details` happen to
- * carry `stage`/`error_type` IS stored on the record — a tool's payload is
+ * carry one of those four discriminators IS stored on the record — a tool's payload is
  * its own business, and the reducer does not know which tools will say what —
  * and it is INERT: `record.details` has exactly one reader (the image-gen
  * card's adapter, which renders only for the detection set), so nothing
  * paints it and the transcript's rendering is untouched. An un-gated payload
- * (neither key present) is a no-op even at the record; the suite pins that
+ * (none of the four discriminators present) is a no-op even at the record; the suite pins that
  * half (agent review round 1, F1).
  */
 function progressDetailsFrom(details: unknown): Record<string, unknown> | null {
 	if (!details || typeof details !== "object" || Array.isArray(details))
 		return null;
 	const record = details as Record<string, unknown>;
-	if (!("stage" in record) && !("error_type" in record)) return null;
+	// Audio receipts have no progress stage. Preserve their explicit billing
+	// provenance too, or the card loses costs on both live end and replay.
+	if (
+		!("stage" in record) &&
+		!("error_type" in record) &&
+		!("billing_basis" in record) &&
+		!("settled" in record)
+	)
+		return null;
 	return record;
 }
 
@@ -316,6 +321,10 @@ const PROGRESS_DETAIL_KEYS = [
 	"log_lines",
 	"error",
 	"error_type",
+	"cost_usd",
+	"billing_basis",
+	"settled",
+	"cost",
 ] as const;
 
 /** Whether two `log_lines` values state the same messages at the same times. */
@@ -348,6 +357,16 @@ function sameProgressDetails(
 	for (const key of PROGRESS_DETAIL_KEYS) {
 		const x = a[key];
 		const y = b[key];
+		if (key === "cost") {
+			// Only basis is consumed by the card. Replayed JSON objects with the
+			// same fact must preserve identity just like replayed log lines.
+			const basis = (value: unknown) =>
+				value && typeof value === "object"
+					? (value as Record<string, unknown>).basis
+					: undefined;
+			if (basis(x) !== basis(y)) return false;
+			continue;
+		}
 		if (key === "log_lines") {
 			if (!sameLogLines(x, y)) return false;
 			continue;
