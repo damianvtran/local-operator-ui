@@ -1,0 +1,446 @@
+{
+	"ui.settings.imports.title": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Settings section heading and sidebar destination."
+	},
+	"ui.settings.imports.description": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "One-paragraph explanation under the heading: sources, read-only promise."
+	},
+	"ui.settings.imports.source_heading": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Subheading above the three harness cards."
+	},
+	"ui.settings.imports.source_not_found": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Availability label when a known harness root does not exist."
+	},
+	"ui.settings.imports.source_sessions": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Detected session count on a source card."
+	},
+	"ui.settings.imports.loading_sources": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Status while the source stores are being detected."
+	},
+	"ui.settings.imports.loading_sessions": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Status while one source harness is being listed."
+	},
+	"ui.settings.imports.loading_preview": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Status while the backend builds a no-write preview."
+	},
+	"ui.settings.imports.empty_sources": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Empty state when no harness store exists on this machine."
+	},
+	"ui.settings.imports.empty_sessions": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Empty state for a detected harness with no conversations."
+	},
+	"ui.settings.imports.empty_filter": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Empty state when the session search filters every row out."
+	},
+	"ui.settings.imports.error_sources": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Error when the source-store read fails."
+	},
+	"ui.settings.imports.error_sessions": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Error when a source session listing fails."
+	},
+	"ui.settings.imports.error_preview": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Error when preview construction fails."
+	},
+	"ui.settings.imports.error_start": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Error when a job cannot be accepted."
+	},
+	"ui.settings.imports.error_job": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Error when polling a running import fails."
+	},
+	"ui.settings.imports.error_cancel": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Error when cancellation cannot be requested."
+	},
+	"ui.settings.imports.retry": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Retry action for a failed read."
+	},
+	"ui.settings.imports.refresh": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Refresh action for source detection."
+	},
+	"ui.settings.imports.search_placeholder": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Placeholder in the session search field."
+	},
+	"ui.settings.imports.select_all": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Explicitly select every visible session."
+	},
+	"ui.settings.imports.clear_all": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Clear the current selection."
+	},
+	"ui.settings.imports.selected": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Count of selected sessions."
+	},
+	"ui.settings.imports.session_meta": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Per-session message and compaction counts."
+	},
+	"ui.settings.imports.session_updated": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Per-session local updated timestamp."
+	},
+	"ui.settings.imports.session_index_only": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Availability note for a metadata-only source session."
+	},
+	"ui.settings.imports.preview_heading": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Preview panel heading."
+	},
+	"ui.settings.imports.preview_summary": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Preview totals for sessions, messages and compactions."
+	},
+	"ui.settings.imports.preview_memory": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Preview count of curated memory records and projected tokens."
+	},
+	"ui.settings.imports.preview_confirm": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Instruction that the import needs an explicit confirmation."
+	},
+	"ui.settings.imports.preview_required": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Shown when import is attempted before preview."
+	},
+	"ui.settings.imports.confirm_label": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Checkbox acknowledging that conversations are copied."
+	},
+	"ui.settings.imports.import_button": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Confirmation button label with selected count."
+	},
+	"ui.settings.imports.importing": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Button/state label while a job is accepted."
+	},
+	"ui.settings.imports.progress_heading": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Progress panel heading."
+	},
+	"ui.settings.imports.progress_job": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Canonical job id and state line."
+	},
+	"ui.settings.imports.progress_pending": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Count of sessions not yet started in a progress list."
+	},
+	"ui.settings.imports.cancel": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Cancel the running import job."
+	},
+	"ui.settings.imports.cancelling": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Cancel request in flight."
+	},
+	"ui.settings.imports.result_heading": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Result panel heading."
+	},
+	"ui.settings.imports.result_summary": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Result totals for state, sessions and messages."
+	},
+	"ui.settings.imports.result_target": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Target session id for one imported source conversation."
+	},
+	"ui.settings.imports.outcome_imported": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Per-session outcome label: imported."
+	},
+	"ui.settings.imports.outcome_resumed": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Per-session outcome label: resumed an existing target."
+	},
+	"ui.settings.imports.outcome_skipped": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Per-session outcome label: already imported."
+	},
+	"ui.settings.imports.outcome_metadata": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Per-session outcome label: index only, nothing imported."
+	},
+	"ui.settings.imports.outcome_failed": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Per-session outcome label: failed."
+	},
+	"ui.settings.imports.outcome_cancelled": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Per-session outcome label: cancelled."
+	},
+	"ui.settings.imports.warnings_heading": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Count of warnings in a result or preview."
+	},
+	"ui.settings.imports.review_instructions": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Label above the absolute instruction review-artifact path; the path is rendered once below it."
+	},
+	"ui.settings.imports.review_memory": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Label above the absolute unattached-memory review-artifact path; the path is rendered once below it."
+	},
+	"ui.settings.imports.copy_path": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Copy a review-artifact path."
+	},
+	"ui.settings.imports.copied": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Copy confirmation."
+	},
+	"ui.settings.imports.rerun_safe": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Reassurance that re-running an import is idempotent."
+	},
+	"ui.settings.imports.import_another": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Return to the source/session picker after a result."
+	},
+	"ui.settings.imports.metadata_only_explain": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Explanation that an index-only source has no body to import."
+	},
+	"ui.settings.imports.state_queued": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Job state: queued."
+	},
+	"ui.settings.imports.state_running": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Job state: running."
+	},
+	"ui.settings.imports.state_done": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Job state: done."
+	},
+	"ui.settings.imports.state_failed": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Job state: failed."
+	},
+	"ui.settings.imports.state_cancelled": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Job state: cancelled."
+	},
+	"ui.settings.imports.phase_queued": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Progress phase: queued."
+	},
+	"ui.settings.imports.phase_selecting": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Progress phase: selecting source sessions."
+	},
+	"ui.settings.imports.phase_importing": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Progress phase: writing target sessions."
+	},
+	"ui.settings.imports.phase_memory": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Progress phase: importing curated memory."
+	},
+	"ui.settings.imports.phase_done": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Progress phase: finishing."
+	},
+	"ui.settings.imports.phase_cancelled": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Progress phase: cancelled."
+	},
+	"ui.settings.imports.session_pending": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Per-session progress row: not started."
+	},
+	"ui.settings.imports.session_importing": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Per-session progress row: currently importing."
+	},
+	"ui.settings.imports.availability_full": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Source/session availability: full conversation body."
+	},
+	"ui.settings.imports.availability_metadata_only": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Source/session availability: index only."
+	},
+	"ui.settings.imports.availability_unsupported": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Source/session availability: unsupported."
+	},
+	"ui.settings.imports.selection_limit": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Select all reached the 5,000-session job limit; tells the user to batch."
+	},
+	"ui.settings.imports.result_summary_cancelled": {
+		"role": "Settings import surface",
+		"tone": "Plain, factual sentence case; no exclamation, no blame.",
+		"length": "Short settings copy; wraps in the 896px content column.",
+		"note": "Cancelled result summary; processed and selected totals must both be visible."
+	}
+}
