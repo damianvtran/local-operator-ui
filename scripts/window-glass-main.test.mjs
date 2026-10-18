@@ -672,3 +672,32 @@ test("M-13 a GPU child-process death re-checks the capability (R1-5)", async () 
 		rmSync(dir, { recursive: true, force: true });
 	}
 });
+
+test("M-14 an explicit OFF stays off when the capability returns (R2-1)", async () => {
+	const dir = profile(
+		{ enabled: false, coverage: "full", intensity: 40, material: "window" },
+		{ version: 2, explicit: ["enabled"] },
+	);
+	const b = boot(dir, { reduced: true });
+	try {
+		assert.equal(b.glass.state.active, false);
+		electron.calls.length = 0;
+		electron.nativeTheme.prefersReducedTransparency = false;
+		electron.emitNativeThemeUpdated();
+		const after = await invoke("window-glass:get", b.window);
+		assert.equal(
+			after.settings.enabled,
+			false,
+			"the re-derivation must not overturn a chosen OFF",
+		);
+		assert.equal(after.active, false);
+		assert.equal(
+			electron.calls.filter((c) => c[0] === "vibrancy").length,
+			0,
+			"no material is applied over the explicit OFF",
+		);
+	} finally {
+		b.restore();
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
