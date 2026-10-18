@@ -1708,8 +1708,9 @@ const AssistantRow = memo(function AssistantRow({
 			 * earlier response (prose between calls, an update after the answer) had
 			 * no copy route but hand-selection. It gets Copy alone, in the same
 			 * reveal the user turn's row uses (hidden at rest under a pointer, its
-			 * height reserved so nothing shifts on hover). `quotable` is the settled-and-has-words gate: a streaming
-			 * prefix has nothing settled to copy.
+			 * height reserved so nothing shifts on hover). `quotable` is the
+			 * settled-and-has-words gate: a streaming prefix has nothing settled to
+			 * copy.
 			 *
 			 * NO `revealId`: the one-time arrival flash is the closing answer's
 			 * discoverability cue. Passing it here would flash a Copy under every

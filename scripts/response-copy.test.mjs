@@ -322,11 +322,6 @@ test("an earlier settled response carries a hover-revealed Copy; the closing ans
 		"Response actions",
 		'its own accessible name, not a second "Answer actions" toolbar',
 	);
-	assert.equal(
-		rows[0].hasAttribute("data-lo-arrive"),
-		false,
-		"no arrival flash on a response row, though the record is fresh (#698)",
-	);
 	assert.ok(rows[0].classList.contains("opacity-0"), "fades at rest");
 	assert.ok(
 		rows[0].classList.contains("group-hover:opacity-100"),
@@ -374,9 +369,13 @@ test("a response still streaming offers no Copy", async () => {
 		RE_STREAMING_TEXT,
 		"and its text is on screen",
 	);
+	/*
+	 * Compared as a boolean: a failing `assert.equal(element, null)` makes the
+	 * reporter walk the jsdom element, which ran this process out of memory.
+	 */
 	assert.equal(
-		streaming.querySelector("[data-lo-response-actions]"),
-		null,
+		streaming.querySelector("[data-lo-response-actions]") === null,
+		true,
 		"the streaming response carries no Copy",
 	);
 	assert.equal(
@@ -385,6 +384,34 @@ test("a response still streaming offers no Copy", async () => {
 		).length,
 		1,
 		"the settled response before it keeps its Copy",
+	);
+	await unmount();
+});
+
+test("a response row plays no arrival flash, even on a fresh record (#698)", async () => {
+	/*
+	 * FRESH timestamps, and ids no other case uses: the row skips the flash for
+	 * a record older than ROW_ARRIVAL_RECENT_MS and for an id it has already
+	 * flashed, so GATE_TS (2025) would let this pass whatever the mount does.
+	 */
+	const now = Date.now();
+	const { dom, unmount } = await mountTranscript([
+		{ ...gateUser("fu1", "Is the March import finished?"), ts: now - 3_000 },
+		{
+			...gateAnswer("fa1", "It finished with four invoices outstanding."),
+			ts: now - 2_000,
+		},
+		{
+			...gateAnswer("fa2", "Update: the fourth one cleared."),
+			ts: now - 1_000,
+		},
+	]);
+	const rows = responseRows(dom);
+	assert.equal(rows.length, 1, "the fresh non-closing response has its row");
+	assert.equal(
+		rows[0].hasAttribute("data-lo-arrive"),
+		false,
+		"no arrival flash on a response row",
 	);
 	await unmount();
 });
