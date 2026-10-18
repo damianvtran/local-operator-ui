@@ -278,17 +278,18 @@ export function preferDeliveryState(
  * carries `stage` - present even when `null`, which is a mid-walk failure -
  * and the terminal `ImageGenerationUnavailable` result carries `error_type`
  * without one. Audio receipts also discriminate on `billing_basis` or
- * `settled`: they may carry no progress stage at all. Requiring one of these
- * four explicit keys keeps free-form tool details out of this carrier.
+ * `settled`: they may carry no progress stage at all. Named batches also carry
+ * `artifacts`, and live item updates identify `item`/`total`. Requiring one of these
+ * explicit contract discriminators keeps free-form tool details out of this carrier.
  *
  * SCOPE, stated so the boundary is not re-derived: the gate is deliberately
  * TOOL-AGNOSTIC. A non-imagegen frame whose free-form `details` happen to
- * carry one of those four discriminators IS stored on the record — a tool's payload is
+ * carry one of those contract discriminators IS stored on the record — a tool's payload is
  * its own business, and the reducer does not know which tools will say what —
  * and it is INERT: `record.details` has exactly one reader (the image-gen
  * card's adapter, which renders only for the detection set), so nothing
  * paints it and the transcript's rendering is untouched. An un-gated payload
- * (none of the four discriminators present) is a no-op even at the record; the suite pins that
+ * (none of the contract discriminators present) is a no-op even at the record; the suite pins that
  * half (agent review round 1, F1).
  */
 function progressDetailsFrom(details: unknown): Record<string, unknown> | null {
@@ -301,7 +302,9 @@ function progressDetailsFrom(details: unknown): Record<string, unknown> | null {
 		!("stage" in record) &&
 		!("error_type" in record) &&
 		!("billing_basis" in record) &&
-		!("settled" in record)
+		!("settled" in record) &&
+		!("artifacts" in record) &&
+		!(typeof record.total === "number" && typeof record.item === "number")
 	)
 		return null;
 	return record;
@@ -325,6 +328,14 @@ const PROGRESS_DETAIL_KEYS = [
 	"billing_basis",
 	"settled",
 	"cost",
+	"artifacts",
+	"cost_complete",
+	"completed",
+	"failed",
+	"cancelled",
+	"total",
+	"item",
+	"name",
 ] as const;
 
 /** Whether two `log_lines` values state the same messages at the same times. */
@@ -349,6 +360,41 @@ function sameLogLines(x: unknown, y: unknown): boolean {
 	return true;
 }
 
+const SOUND_ARTIFACT_KEYS = [
+	"name",
+	"digest",
+	"path",
+	"duration_s",
+	"format",
+	"cost_usd",
+	"billing_basis",
+	"request_id",
+	"error",
+	"status",
+	"cost",
+] as const;
+
+function sameSoundArtifacts(a: unknown, b: unknown): boolean {
+	if (a === b) return true;
+	if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length)
+		return false;
+	return a.every((item, index) => {
+		const other = b[index];
+		if (
+			!item ||
+			typeof item !== "object" ||
+			!other ||
+			typeof other !== "object"
+		)
+			return item === other;
+		return SOUND_ARTIFACT_KEYS.every((key) =>
+			key === "cost"
+				? item.cost?.basis === other.cost?.basis
+				: item[key] === other[key],
+		);
+	});
+}
+
 /** Whether two payloads state the same contract facts. */
 function sameProgressDetails(
 	a: Record<string, unknown>,
@@ -357,6 +403,13 @@ function sameProgressDetails(
 	for (const key of PROGRESS_DETAIL_KEYS) {
 		const x = a[key];
 		const y = b[key];
+		if (key === "artifacts") {
+			// The batch is a durable receipt, not an append-only stream. Compare
+			// its consumed scalar facts so a name/error/cost change reaches the
+			// card even when the call's aggregate cost and stage did not change.
+			if (!sameSoundArtifacts(x, y)) return false;
+			continue;
+		}
 		if (key === "cost") {
 			// Only basis is consumed by the card. Replayed JSON objects with the
 			// same fact must preserve identity just like replayed log lines.
