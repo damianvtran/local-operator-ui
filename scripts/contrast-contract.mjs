@@ -1082,8 +1082,9 @@ const CONTROLS = [
 		 * 2026-10-17): it was written when the mini had its own box, the mini
 		 * moved onto the SHARED composer on 2026-09-30 (52ace4f34), and the row
 		 * has described the sheet since - and read as "the composer's edge" to
-		 * whoever wanted one, which is exactly the citation the v0.34.55
-		 * regression armed itself with. The composer inside the mini ground is
+		 * whoever wanted one, which it must never again: the v0.34.55 edge
+		 * cited the field doctrine, not this row, and this row is what invites
+		 * the reading. The composer inside the mini ground is
 		 * the shared field: no edge at rest (its rule is scanned by
 		 * `window-glass-cdp.test.mjs`). A new component with its own fill and
 		 * edge has to be LISTED — by this table's own first rule, green output
