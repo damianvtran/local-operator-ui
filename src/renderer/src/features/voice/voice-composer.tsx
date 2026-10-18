@@ -215,8 +215,32 @@ export function composerVoiceView(
 	now: number,
 ): VoiceComposerView {
 	const holder = state.active?.session_id ?? null;
-	if (!sessionId || !holder) return { kind: "off" };
-	if (holder !== sessionId) {
+	if (!sessionId) return { kind: "off" };
+	if (!holder || holder !== sessionId) {
+		/*
+		 * THE MICROPHONE IS APP-GLOBAL AND IS DRAWN BEFORE THE ELSEWHERE NOTICE (QA
+		 * round 3, Q-1): during a start the slot has not moved yet, so a clicked
+		 * conversation fell through to "off" - "Start voice" over a live OS dialog.
+		 * A denial is the same app-wide fact. Nothing was spoken in THIS session, so
+		 * there is no cut chip to carry.
+		 */
+		if (state.rig?.mic === "denied")
+			return {
+				kind: "here",
+				chip: "mic_blocked",
+				caption: { kind: "mic_blocked" },
+				action: "settings",
+				cut: false,
+			};
+		if (state.rig?.mic === "prompting")
+			return {
+				kind: "here",
+				chip: "waiting_mic",
+				caption: { kind: "waiting_mic" },
+				action: "settings",
+				cut: false,
+			};
+		if (!holder) return { kind: "off" };
 		return {
 			kind: "elsewhere",
 			holder,

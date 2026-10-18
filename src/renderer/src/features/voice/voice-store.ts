@@ -388,7 +388,22 @@ export function voicePhaseOf(
 	state: Pick<VoiceStoreState, "active" | "rig" | "exchange" | "activity">,
 	sessionId: string | undefined,
 ): VoicePhase {
-	if (!sessionId || state.active?.session_id !== sessionId) return "off";
+	const holder = Boolean(sessionId) && state.active?.session_id === sessionId;
+	/*
+	 * THE MICROPHONE IS APP-GLOBAL, NOT THE SLOT'S (QA round 3, Q-1): there is one
+	 * hidden page and one OS dialog for the whole app, and during a start the slot
+	 * has not moved yet - so gating these on the slot resolved to "off" and drew
+	 * "Start voice" over a live prompt on the conversation the person had just
+	 * clicked. Prompting and blocked surface on whichever conversation is being
+	 * viewed. The rig's own error still wins on the session that holds the slot.
+	 */
+	if (!holder) {
+		if (state.rig?.mic === "denied") return "mic_blocked";
+		if (state.rig?.mic === "prompting") return "mic_prompting";
+		return "off";
+	}
+	// `holder` is only true for a defined session; this is the type's narrowing.
+	if (sessionId === undefined) return "off";
 	const rig = state.rig?.rig;
 	// A RIG error wins over this window's exchange (UX round 2, U9): a stale
 	// "not sent" would hide the rig's reason and its "Try again".
