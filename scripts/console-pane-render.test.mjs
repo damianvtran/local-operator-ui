@@ -851,6 +851,97 @@ test("a row picked while a + create is in flight is not overridden when it lands
 	}
 });
 
+test("an empty-state create whose listing commits before its reply still gives the new terminal the caret (M-1)", async () => {
+	/*
+	 * THE SPLIT COMMIT the real app produces: main broadcasts the state change BEFORE
+	 * the create's invoke reply, so the hook's coalesced re-read commits the listing,
+	 * the lens-sync effect moves the lens to the new surface, and only then does the
+	 * reply land. The press's `from` was null; the lens is already the created id.
+	 */
+	resetIntent();
+	const NEW = "con:1:split-commit";
+	let bridge;
+	bridge = installBridge({
+		create: async ({ setListing }) => {
+			setListing([surfaceRow(NEW)]);
+			bridge.fireStateChanged();
+			await new Promise((r) => setTimeout(r, 400));
+			return { surface: NEW };
+		},
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() => EMPTY_STATE.test(container.textContent ?? ""));
+		const before = harness.__terminals.length;
+		await press(
+			container.querySelector('[data-tour-tag="console-new-surface"]'),
+		);
+		await waitFor(
+			() =>
+				harness.useUiPreferencesStore.getState().consoleActiveSurface === NEW,
+		);
+		assert.equal(bridge.calls.create, 1, "one create");
+		await settle(600);
+		const live = harness.__terminals
+			.slice(before)
+			.filter((terminal) => !terminal.wasDisposed);
+		assert.equal(live.length, 1, "the new surface's mirror mounted once");
+		assert.equal(live[0].focusCount, 1, "the caret lands in the new terminal");
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("the + stays disabled until an overlapping press and open have both answered (m-1)", async () => {
+	resetIntent();
+	/*
+	 * An empty pane: the open-from-outside path only creates when there is no surface,
+	 * and an empty-state press followed by an open is the overlap that reaches both.
+	 */
+	const answers = [];
+	installBridge({
+		create: ({ setListing, calls }) =>
+			new Promise((resolve) => {
+				const id = `con:${calls.create}:overlap`;
+				answers.push(() => {
+					setListing([surfaceRow(id)]);
+					resolve({ surface: id });
+				});
+			}),
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() => EMPTY_STATE.test(container.textContent ?? ""));
+		const plus = container.querySelector(
+			'[data-tour-tag="console-new-surface"]',
+		);
+		await press(plus);
+		pressOpenConsole();
+		assert.ok(
+			await waitFor(() => answers.length === 2),
+			"both creates are in flight",
+		);
+		answers[0]();
+		await settle(120);
+		assert.equal(
+			container.querySelector('[data-tour-tag="console-new-surface"]').disabled,
+			true,
+			"the + stays disabled while the other create runs",
+		);
+		answers[1]();
+		const plusNow = () =>
+			container.querySelector('[data-tour-tag="console-new-surface"]');
+		assert.ok(
+			await waitFor(() => plusNow()?.disabled === false),
+			"the + is enabled once both answered",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
 test("a request made for another conversation is not answered here", async () => {
 	/*
 	 * THE OTHER HALF OF F-6, and the half only a render can pin: the store's request
