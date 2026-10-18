@@ -6,7 +6,7 @@
  * device and (b) put sound in the operator's room while someone scrolls the
  * gallery — the lane's audio-safety rule, stated in the engine's header. So each
  * story writes the ENGINE's state directly: the same fields a real press settles,
- * with no `play()` behind them. The player reads exactly those fields, which is
+ * with a clock-only fake element and no `play()` behind them. The player reads its live clock, which is
  * why the frames are honest about layout, ink and labels while making no claim
  * about decoding.
  *
@@ -19,9 +19,9 @@
  * full player in the transcript's column, the compact one in a Files row.
  *
  * THE OPERATOR GATE IS ONE HEADLESS COMMAND, and it is NOT these stories:
- * `LOCAL_OPERATOR_UI_WINDOW_MODE=headless node scripts/renderer-driver.mjs
- * --scene sounds --out <dir>` (the scene joins the driver with the gate step),
- * which routes the player's real element through the engine's zero-gain output
+ * `node scripts/run-sounds-scene.mjs` seeds the isolated daemon, builds this
+ * source and invokes `renderer-driver.mjs --scene sounds` headlessly. It routes
+ * the player's real element through the engine's zero-gain output
  * graph and proves playback by `currentTime` and the played-ink fill fraction —
  * never by ear. The seam is `installAudioOutputGraph`; production installs
  * nothing and plays at gain 1.0.
@@ -29,7 +29,7 @@
 
 import { useAudioEngineStore } from "@shared/store/audio-engine-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import "../../../styles/index.css";
 import { SoundPlayer } from "./sound-player";
 
@@ -56,11 +56,11 @@ function EngineState({
 		const active = status !== "idle";
 		useAudioEngineStore.setState({
 			/*
-			 * No element and no source: the fields below are what the player
+			 * A clock-only fake element: the fields below are what the player
 			 * reads, and an element that never played is what keeps a gallery
 			 * silent. `ownerId` is what makes the row read "this one is mine".
 			 */
-			element: null,
+			element: { currentTime: current, duration } as HTMLAudioElement,
 			ownerId: active ? OWNER : null,
 			url: active ? "story://silent" : null,
 			status,
@@ -139,15 +139,45 @@ export const Playing: Story = {
 	),
 };
 
-export const Scrubbing: Story = {
-	render: () => (
-		<>
-			{/* A scrub frame: the playhead follows the pointer, not the element. */}
+/** Hold a real pointer-handler scrub frame against the clock-only fake. */
+function ScrubbingFrame() {
+	const root = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		const slider = root.current?.querySelector<HTMLElement>(
+			"[data-sound-slider]",
+		);
+		if (!slider) return;
+		const oldCapture = slider.setPointerCapture;
+		slider.setPointerCapture = () => {};
+		const frame = requestAnimationFrame(() => {
+			const box = slider.getBoundingClientRect();
+			for (const [type, x] of [
+				["pointerdown", box.left + 1],
+				["pointermove", box.left + box.width * (8.1 / 12.4)],
+			] as const) {
+				slider.dispatchEvent(
+					new PointerEvent(type, {
+						pointerId: 3,
+						clientX: x,
+						clientY: box.top + 20,
+						bubbles: true,
+					}),
+				);
+			}
+		});
+		return () => {
+			cancelAnimationFrame(frame);
+			slider.setPointerCapture = oldCapture;
+		};
+	}, []);
+	return (
+		<div ref={root} className="w-[488px]">
 			<EngineState status="paused" current={8.1} duration={12.4} />
 			{player()}
-		</>
-	),
-};
+		</div>
+	);
+}
+export const Scrubbing: Story = { render: () => <ScrubbingFrame /> };
 
 export const Ended: Story = {
 	render: () => (
@@ -205,6 +235,32 @@ export const BothVariants: Story = {
 					{player({ variant: "compact", label: "Chime", durationHint: 6 })}
 				</div>
 			</div>
+		</>
+	),
+};
+
+/** Placement fixtures complement, but never replace, the integrated sounds scene. */
+export const CanvasFilesSounds: Story = {
+	name: "Canvas Files / Sounds",
+	render: () => (
+		<>
+			<EngineState status="paused" current={5.2} duration={12.4} />
+			<section className="w-[340px] border-t border-hairline py-2">
+				<h3 className="text-meta text-ink-muted">Sounds</h3>
+				{player({ variant: "compact" })}
+			</section>
+		</>
+	),
+};
+export const HighlightsSounds: Story = {
+	name: "Highlights / Sounds",
+	render: () => (
+		<>
+			<EngineState status="ended" current={12.4} duration={12.4} />
+			<section className="w-[340px] py-2">
+				<h3 className="text-meta text-ink-muted">Sounds</h3>
+				{player({ variant: "compact" })}
+			</section>
 		</>
 	),
 };

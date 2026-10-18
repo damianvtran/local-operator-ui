@@ -14,7 +14,7 @@
  *
  * THE GENERATION COUNTER IS THE PRESS ORDER, the same rule the speech store
  * documents: `play()` increments `generation`, and a start whose generation is
- * stale when `play()` resolves pauses itself instead of claiming playback the
+ * stale when `play()` resolves returns without touching the shared element the
  * reader has since redirected. It is re-read after the await because `play()`
  * is the last await before this press would own the element.
  *
@@ -154,6 +154,8 @@ const clamp = (value: number, min: number, max: number) =>
 export const useAudioEngineStore = create<
 	AudioEngineState & AudioEngineActions
 >((set, get) => {
+	// A seek on an idle row belongs to that owner, not the currently audible row.
+	const pendingSeeks = new Map<string, number>();
 	/** The one wiring point for the element's events, reached on creation. */
 	const wire = (audio: ScrubbableAudio) => {
 		audio.onended = () => {
@@ -257,8 +259,12 @@ export const useAudioEngineStore = create<
 			if (get().generation !== generation) {
 				// A newer press overtook this one while it was starting: it must
 				// not steal the slot back (the speech store's own rule).
-				audio.pause();
 				return false;
+			}
+			const pending = pendingSeeks.get(ownerId);
+			if (pending !== undefined) {
+				get().seek(ownerId, pending);
+				pendingSeeks.delete(ownerId);
 			}
 			set({ status: "playing" });
 			return true;
@@ -268,16 +274,18 @@ export const useAudioEngineStore = create<
 			const { element: audio, ownerId: current, status } = get();
 			if (!audio || current !== ownerId) return false;
 			if (status !== "paused" && status !== "ended") return false;
+			const generation = get().generation + 1;
+			set({ generation, status: "loading" });
 			if (status === "ended") audio.currentTime = 0;
 			try {
 				await audio.play();
 			} catch {
+				if (get().generation !== generation) return false;
 				set({ status: "error" });
 				get().handlers?.onError?.();
 				return false;
 			}
-			if (get().ownerId !== ownerId) {
-				audio.pause();
+			if (get().generation !== generation) {
 				return false;
 			}
 			set({ status: "playing" });
@@ -288,7 +296,11 @@ export const useAudioEngineStore = create<
 			const { element: audio, ownerId: current } = get();
 			if (!audio || current !== ownerId) return;
 			audio.pause();
-			set({ status: "paused", currentTime: audio.currentTime });
+			set({
+				generation: get().generation + 1,
+				status: "paused",
+				currentTime: audio.currentTime,
+			});
 		},
 
 		toggle: async (ownerId, url, handlers) => {
@@ -304,7 +316,10 @@ export const useAudioEngineStore = create<
 
 		seek: (ownerId, seconds) => {
 			const { element: audio, ownerId: current, duration } = get();
-			if (!audio || current !== ownerId) return;
+			if (!audio || current !== ownerId) {
+				pendingSeeks.set(ownerId, Math.max(0, seconds));
+				return;
+			}
 			const target = clamp(seconds, 0, duration > 0 ? duration : seconds);
 			audio.currentTime = target;
 			set({ currentTime: target });
@@ -312,7 +327,10 @@ export const useAudioEngineStore = create<
 
 		scrub: (ownerId, seconds) => {
 			const { element: audio, ownerId: current, duration } = get();
-			if (!audio || current !== ownerId) return;
+			if (!audio || current !== ownerId) {
+				pendingSeeks.set(ownerId, Math.max(0, seconds));
+				return;
+			}
 			const target = clamp(seconds, 0, duration > 0 ? duration : seconds);
 			if (typeof audio.fastSeek === "function") audio.fastSeek(target);
 			else audio.currentTime = target;
@@ -324,6 +342,7 @@ export const useAudioEngineStore = create<
 			if (ownerId !== undefined && current !== ownerId) return;
 			detach(audio);
 			set({
+				generation: get().generation + 1,
 				ownerId: null,
 				url: null,
 				status: "idle",

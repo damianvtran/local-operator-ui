@@ -336,7 +336,10 @@ export function supplementDisposition(
 		// none of them (no v1 producer generates one, §3.4) — a row whose only
 		// content were images would paint an empty block, so the clause returns
 		// with their renderer rather than admitting a block that shows nothing.
-		return record.files.length || record.components.length
+		// A sounds-only highlight is content too; otherwise its player never mounts.
+		return record.files.length ||
+			record.components.length ||
+			record.sounds?.length
 			? "block"
 			: "nothing";
 	}

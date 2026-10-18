@@ -237,6 +237,10 @@ export const SoundPlayer = ({
 		(seconds: number) => {
 			const fraction = progressFraction(seconds, duration);
 			const ink = inkCanvasRef.current;
+			boxRef.current?.style.setProperty(
+				"--sound-progress",
+				`${fraction * 100}%`,
+			);
 			if (ink) ink.style.clipPath = `inset(0 ${(1 - fraction) * 100}% 0 0)`;
 			const time = formatClock(seconds);
 			if (timeRef.current && timeRef.current.textContent !== time)
@@ -265,7 +269,11 @@ export const SoundPlayer = ({
 		 * playing, and a resting row must not borrow it.
 		 */
 		const paintAtRest = () =>
-			paintProgress(isActive ? (audioEngineElement()?.currentTime ?? 0) : 0);
+			paintProgress(
+				isActive
+					? (audioEngineElement()?.currentTime ?? 0)
+					: pendingSeconds.current,
+			);
 		if (!active) {
 			paintAtRest();
 			return;
@@ -329,6 +337,7 @@ export const SoundPlayer = ({
 
 	/* ------------------------------------------------------------ scrubbing */
 
+	const pendingSeconds = useRef(0);
 	const dragState = useRef<{
 		pointerId: number;
 		startX: number;
@@ -348,7 +357,7 @@ export const SoundPlayer = ({
 	);
 
 	const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-		if (errored) return;
+		if (loading) return;
 		const target = event.currentTarget;
 		// Optional-called: pointer capture is what keeps a drag alive when it
 		// leaves the canvas, but a host without it (an embedded view, a test's
@@ -400,6 +409,7 @@ export const SoundPlayer = ({
 		event.currentTarget.releasePointerCapture?.(event.pointerId);
 		const seconds = secondsAt(event.clientX);
 		if (drag.moved) {
+			pendingSeconds.current = seconds;
 			setScrubbing(false);
 			// The release COMMITS the position exactly once (see the header).
 			useAudioEngineStore.getState().seek(ownerId, seconds);
@@ -455,7 +465,7 @@ export const SoundPlayer = ({
 			<button
 				type="button"
 				className={ICON_BUTTON_CLASS}
-				disabled={loading || errored}
+				disabled={loading}
 				onClick={() => void toggle()}
 				aria-label={`${playing ? "Pause" : "Play"} ${label}`}
 			>
@@ -478,7 +488,7 @@ export const SoundPlayer = ({
 				aria-valuetext={ariaValueText(0, duration)}
 				data-sound-slider=""
 				className={cn(
-					"relative min-h-11 min-w-0 flex-1 cursor-pointer touch-none select-none",
+					"group relative min-h-11 min-w-0 flex-1 cursor-pointer touch-none select-none",
 					"rounded-sm outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent",
 					errored && "cursor-default",
 				)}
@@ -504,22 +514,34 @@ export const SoundPlayer = ({
 						style={{ clipPath: "inset(0 100% 0 0)" }}
 						className="absolute inset-0 h-full w-full text-ink-muted"
 					/>
+					<span
+						data-sound-thumb=""
+						className={cn(
+							"pointer-events-none absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink-muted group-hover:bg-ink group-focus-visible:bg-accent",
+							scrubbing && "bg-accent",
+						)}
+						style={{ left: "var(--sound-progress, 0%)" }}
+					/>
 				</div>
 			</div>
 			<span
 				ref={timeRef}
 				data-sound-time=""
-				className={cn("min-w-10 shrink-0 text-center text-meta text-ink-muted")}
+				className={cn(
+					"min-w-10 shrink-0 text-center text-meta text-ink-muted tabular-nums",
+				)}
 			>
 				{formatClock(0)}
 			</span>
-			{compact ? null : (
+			{
 				<span
-					className={cn("min-w-10 shrink-0 text-center text-meta text-ink-dim")}
+					className={cn(
+						"min-w-10 shrink-0 text-center text-meta text-ink-dim tabular-nums",
+					)}
 				>
 					{formatClock(duration)}
 				</span>
-			)}
+			}
 			{errored ? (
 				<span
 					data-sound-error=""

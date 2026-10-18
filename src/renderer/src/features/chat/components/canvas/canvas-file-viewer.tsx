@@ -339,7 +339,10 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 				if (
 					document.artifact &&
 					document.type !== "image" &&
-					document.type !== "video"
+					document.type !== "video" &&
+					// Audio is digest-backed too: materialising here loses its shared
+					// identity and waveform before the artifact-aware preview opens.
+					document.type !== "audio"
 				) {
 					void materialise(document)
 						.then((path) =>

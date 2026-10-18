@@ -173,6 +173,7 @@ test("a superseded press cannot claim the slot back after play() resolves", asyn
 	let held = 0;
 	element.play = () => {
 		element.played = true;
+		element.paused = false;
 		if (held === 0) {
 			held = 1;
 			return gated.then(() => undefined);
@@ -194,6 +195,11 @@ test("a superseded press cannot claim the slot back after play() resolves", asyn
 		engine().ownerId,
 		"sound:fast",
 		"the newer press still owns playback",
+	);
+	assert.equal(
+		element.paused,
+		false,
+		"stale completion must not pause the newer owner",
 	);
 });
 
@@ -403,3 +409,54 @@ test("every suite that drives audio injects a fake element or the zero-gain grap
 		"a suite that drives the audio engine must inject a fake Audio or install the zero-gain graph (no suite may reach the operator's speakers)",
 	);
 });
+
+for (const action of ["pause", "stop"]) {
+	test(`${action} invalidates an awaited start`, async () => {
+		reset();
+		let settle;
+		const element = new Audio();
+		element.play = () =>
+			new Promise((resolve) => {
+				element.paused = false;
+				settle = resolve;
+			});
+		useAudioEngineStore.setState({ element });
+		const pending = engine().play("sound:pending", "blob:pending");
+		engine()[action]("sound:pending");
+		settle();
+		assert.equal(await pending, false);
+		assert.equal(engine().status, action === "stop" ? "idle" : "paused");
+		assert.equal(element.paused, true);
+	});
+}
+test("stale resume rejection cannot poison a newer sound", async () => {
+	reset();
+	await engine().play("sound:a", "blob:a");
+	engine().pause("sound:a");
+	const element = engine().element;
+	let reject;
+	element.play = () =>
+		new Promise((_, no) => {
+			reject = no;
+		});
+	const pending = engine().resume("sound:a");
+	element.play = () => {
+		element.paused = false;
+		return Promise.resolve();
+	};
+	await engine().play("sound:b", "blob:b");
+	reject(new Error("superseded"));
+	assert.equal(await pending, false);
+	assert.equal(engine().status, "playing");
+	assert.equal(element.paused, false);
+});
+for (const other of [false, true]) {
+	test(`inactive seek retained without stealing playback: other=${other}`, async () => {
+		reset();
+		if (other) await engine().play("speech:other", "blob:other");
+		engine().seek("sound:idle", 9);
+		assert.equal(engine().ownerId, other ? "speech:other" : null);
+		await engine().play("sound:idle", "blob:idle");
+		assert.equal(engine().element.currentTime, 9);
+	});
+}
