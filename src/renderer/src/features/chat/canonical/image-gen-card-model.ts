@@ -196,6 +196,19 @@ export const CANCEL_RUNNING_COPY =
 	"Stop requested. The provider has no cancellation endpoint; the generation continues and will be charged if it produces audio. Checking for settlement.";
 
 /**
+ * THE RATE-LIMITED SENTENCE (sound phase, 2026-10-17). The server's fixed copy
+ * for `audio_rate_limited`: a submit-time 429 the harness backs off from, or a
+ * vendor 429 that settles the job as an error at zero cost. Retryable by
+ * calling again — NOT by a control that promises the next call will succeed.
+ *
+ * Used only when the record names the TYPE and states no sentence: a tool
+ * result's own message always wins (the failure arm's verbatim rule), and this
+ * sentence is the absence's copy rather than a replacement for supplied text.
+ */
+export const AUDIO_RATE_LIMITED_COPY =
+	"Audio generation is busy right now. Wait a moment and try again.";
+
+/**
  * The material's noun, as the card's sentences spell it.
  *
  * One spelling per material, beside `imageGenMaterial` so a sentence that
@@ -543,7 +556,19 @@ export function imageGenCardView(
 		return {
 			state: "failed",
 			material,
-			message: canonical.error ?? record.output,
+			/*
+			 * The sentence precedence, in the card's own order: the wire's error
+			 * text, then the tool result's own content, and only then the fixed
+			 * copy for a type that states nothing to read. `audio_rate_limited` is
+			 * the one type the server authors a reader sentence for; every other
+			 * absence keeps the card's generic fallback.
+			 */
+			message:
+				canonical.error ??
+				record.output ??
+				(canonical.errorType === "audio_rate_limited"
+					? AUDIO_RATE_LIMITED_COPY
+					: null),
 			errorType: canonical.errorType,
 		};
 	}
