@@ -916,3 +916,20 @@ export const VideoConflict: Story = {
 		/>
 	),
 };
+
+/** The production stop control, with its pre-action warning. This is a
+ * presentation/interaction fixture, not a provider cancellation receipt. */
+export const SoundStopWarning: Story = {
+	render: () => (
+		<CardFrame>
+			<ImageGenCard
+				view={runningView(
+					{ fraction: null, logs: [], queuePosition: null },
+					"voiceover",
+				)}
+				scope={null}
+				actions={{ onCancel: noop }}
+			/>
+		</CardFrame>
+	),
+};

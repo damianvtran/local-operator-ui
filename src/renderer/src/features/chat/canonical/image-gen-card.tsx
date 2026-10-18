@@ -362,6 +362,10 @@ function controlLabel(
 }
 
 export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
+	const [confirmStop, setConfirmStop] = useState(false);
+	const soundRunning =
+		view.state === "running" &&
+		(view.material === "voiceover" || view.material === "sound-effect");
 	const startedAtMs =
 		view.state === "running" || view.state === "cancelling"
 			? view.startedAtMs
@@ -393,7 +397,42 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			className={cn("flex w-full flex-col gap-2")}
 		>
 			{generatingBody ? <GeneratingTile /> : null}
+			{view.state === "failed" && view.errorType ? (
+				<p className={cn("text-body-sm text-ink")}>{view.errorType}</p>
+			) : null}
 			<StateLine view={view} elapsed={elapsed} />
+			{view.state === "done" && view.costCaption ? (
+				<NoteLine line={view.costCaption} />
+			) : null}
+			{view.state === "cancelled" && view.settlementCaption ? (
+				<NoteLine line={view.settlementCaption} />
+			) : null}
+			{soundRunning && confirmStop ? (
+				<fieldset
+					aria-label="Confirm stop request"
+					className={cn("flex flex-col items-start gap-2")}
+				>
+					<NoteLine line="The provider has no cancellation endpoint. The generation continues and will be charged if it produces audio." />
+					<NoteLine line="Stopping is best-effort; it does not guarantee cancellation or no charge." />
+					<Button
+						variant="secondary"
+						size="sm"
+						onClick={() => {
+							setConfirmStop(false);
+							actions?.onCancel?.();
+						}}
+					>
+						Request stop
+					</Button>
+					<Button
+						variant="secondary"
+						size="sm"
+						onClick={() => setConfirmStop(false)}
+					>
+						Keep waiting
+					</Button>
+				</fieldset>
+			) : null}
 			{/*
 			 * THE INTERIM'S ACCOUNT (design round 1, D1): the mid-walk failure's
 			 * sentence under the live body, verbatim — the call keeps its tile,
@@ -477,7 +516,7 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 					})}
 				</div>
 			) : null}
-			{controls.length > 0 ? (
+			{controls.length > 0 && !(soundRunning && confirmStop) ? (
 				/*
 				 * Secondary `sm` for all three, which is the app's one quiet control
 				 * under a row (`ProviderAction`'s own reasoning): these are remedies
@@ -515,7 +554,11 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 										: "Requests a stop; the provider may finish anyway."
 									: undefined
 							}
-							onClick={handlers[control.kind]}
+							onClick={
+								control.kind === "cancel" && soundRunning
+									? () => setConfirmStop(true)
+									: handlers[control.kind]
+							}
 						>
 							{controlLabel(control.kind, view.state)}
 						</Button>

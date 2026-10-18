@@ -66,7 +66,7 @@
  *     the design round ruled the SETTLED failure's copy, not this live arm's,
  *     so it is recorded in the PR body rather than treated as ruled.
  *   - the error sentence renders VERBATIM (a stable platform sentence that is
- *     safe to read as-is; `error_type` is carried for structure, not display).
+ *     safe to read as-is; `error_type` labels the refusal above that text).
  *
  * AND ONE CODE IS A RECEIPT RATHER THAN AN ERROR: a cancel against an
  * already-finished job comes back as a conflict with `error_type:
@@ -398,6 +398,8 @@ export type ImageGenCardView =
 	  }
 	| {
 			state: "done";
+			/** A result-backed receipt, never a quote relabelled as a charge. */
+			costCaption?: string | null;
 			images: readonly TranscriptImage[];
 			/** The material noun this receipt names ("Generated image" / "Generated video"). */
 			material: ImageGenMaterial;
@@ -435,6 +437,7 @@ export type ImageGenCardView =
 	  }
 	| {
 			state: "cancelled";
+			settlementCaption?: string | null;
 			/**
 			 * Whether the call had started executing when it was stopped. The
 			 * settled receipt's sentence follows the same queued/running split the
@@ -488,6 +491,9 @@ export function imageGenCardView(
 			state: "cancelled",
 			generating: record.startedAt !== null,
 			message: canonical.error ?? record.output,
+			...(soundSettlementCaption(record.details)
+				? { settlementCaption: soundSettlementCaption(record.details) }
+				: {}),
 		};
 	if (record.notRunKind === "skipped" || record.notRunKind === "aborted")
 		return { state: "cancelled", generating: false, message: record.output };
@@ -506,7 +512,7 @@ export function imageGenCardView(
 			state: "failed",
 			material,
 			message: record.notRunReason,
-			errorType: null,
+			errorType: record.notRunKind ?? null,
 		};
 	/*
 	 * ARM 3, the turn that died while the call was still being dictated: the
@@ -552,6 +558,9 @@ export function imageGenCardView(
 				 */
 				generating: record.startedAt !== null,
 				message: canonical.error ?? record.output,
+				...(soundSettlementCaption(record.details)
+					? { settlementCaption: soundSettlementCaption(record.details) }
+					: {}),
 			};
 		return {
 			state: "failed",
@@ -646,8 +655,42 @@ export function imageGenCardView(
 				material,
 				durationS: record.durationS ?? null,
 				receipt: "generated",
+				costCaption: soundCostCaption(record.details, record.output),
 			};
 	}
+}
+
+/** A cancelled request can still be billed: retain the server's unknowns. */
+function soundSettlementCaption(details: unknown): string | null {
+	if (!details || typeof details !== "object") return null;
+	const result = details as Record<string, unknown>;
+	const cost = result.cost as Record<string, unknown> | null;
+	return result.settled === null &&
+		result.cost_usd === null &&
+		cost?.basis === "quote"
+		? 'Settlement pending · settled:null · cost_usd:null · cost.basis:"quote"'
+		: null;
+}
+
+const LEGACY_COST_CAPTION =
+	/Cost \$[0-9]+(?:\.[0-9]+)? \((?:billed|estimated[^)]*)\)\.?/;
+
+/** Keep settlement provenance: a quote or an absent amount is not a charge. */
+function soundCostCaption(
+	details: unknown,
+	output?: string | null,
+): string | null {
+	// Older durable rows retained only text. Preserve the tool's own labelled
+	// cost sentence verbatim rather than guessing its billing basis or amount.
+	const legacy = output?.match(LEGACY_COST_CAPTION)?.[0] ?? null;
+	if (!details || typeof details !== "object") return legacy;
+	const result = details as Record<string, unknown>;
+	const amount = result.cost_usd;
+	const basis = result.billing_basis;
+	if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0)
+		return legacy;
+	if (basis !== "billed" && basis !== "estimated") return null;
+	return `Cost $${amount.toFixed(4)} (${basis})`;
 }
 
 /** Which affordance a control is. */
