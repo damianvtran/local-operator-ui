@@ -776,7 +776,8 @@ export const SupplementRow = memo(function SupplementRow({
 						)}
 					</div>
 				)}
-			{adjustLine}
+			{(disposition === "preparing" || disposition === "files_preparing") &&
+				adjustLine}
 			{!condensed && disposition === "block" && components.length > 0 && (
 				<div className="flex flex-col gap-2" data-supplement-components="">
 					{head.map((component) => (

@@ -405,6 +405,7 @@ const mount = async (t, records, over = {}) => {
 					{ client },
 					h(CanonicalTranscript, {
 						frontend: nextOver.frontend ?? null,
+						attachmentScope: nextOver.attachmentScope,
 						transcript: {
 							...transcriptOf(next),
 							hasMore: nextOver.hasMore ?? false,
@@ -4002,4 +4003,67 @@ test("8d652185377c highlights remain answer siblings with the trace closed and o
 	assertDurable(true);
 	await click(barTrigger(mounted));
 	assertDurable(true);
+});
+
+// R1-1: an open steering draft must not outlive the job it could still steer.
+// Keep a file on the done row so this tests the form guard, not row removal.
+test("a condensed Highlights adjustment closes when preparation settles", async (t) => {
+	__resetTurnCollapseOpen();
+	const supplement = {
+		kind: "supplement",
+		id: "supplement:answer:adjust",
+		ts: TS + 4000,
+		anchor: "answer:adjust",
+		job: "0123456789ab",
+		version: 1,
+		state: "running",
+		live: true,
+		dismissed: false,
+		error: "",
+		files: [
+			{
+				path: "notes.txt",
+				name: "notes.txt",
+				kind: "text",
+				sizeBytes: 40,
+				mtime: 0,
+				why: "regression",
+			},
+		],
+		filesMore: 0,
+		more: [],
+		components: [],
+	};
+	const rows = [
+		userRecord("user:adjust"),
+		toolRecord("tool:adjust"),
+		answerRecord("answer:adjust"),
+		supplement,
+	];
+	const options = {
+		attachmentScope: { sessionId: "faced00d0001", childId: null },
+	};
+	const mounted = await mount(t, rows, options);
+	await click(mounted.container.querySelector("[data-supplement-adjust]"));
+	assert.ok(
+		mounted.container.querySelector("[data-supplement-adjust-form]"),
+		"preparing job accepts an adjustment",
+	);
+	await mounted.render(
+		rows.map((row) =>
+			row === supplement ? { ...row, state: "done", live: false } : row,
+		),
+		options,
+	);
+	assert.ok(
+		mounted.container.querySelector(
+			"[data-supplement-condensed] [data-supplement-file]",
+		),
+		"the done Highlights row remains present and condensed",
+	);
+	assert.equal(
+		Boolean(mounted.container.querySelector("[data-supplement-adjust-form]")),
+		false,
+		"a settled job exposes no live steer input",
+	);
 });
