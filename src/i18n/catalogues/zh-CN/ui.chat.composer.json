@@ -18,7 +18,7 @@
 	"ui.chat.composer.processing_audio": "正在处理音频",
 	"ui.chat.composer.welcome": "今天有什么需要帮忙的？",
 	"ui.chat.composer.delivery_remedies_hint": "未能送达的消息位于输入框上方的对话中，可选择“重新发送”或“编辑”；按Shift+Tab可移至这些控件。",
-	"ui.chat.composer.secret_ask_notice": "智能体需要您提供敏感信息。请在请求面板中输入，期间仍可继续聊天。",
+	"ui.chat.composer.secret_ask_notice": "智能体需要你提供敏感信息。请在请求面板中输入，期间仍可继续聊天。",
 	"ui.chat.composer.secret_ask_open": "打开请求",
 	"ui.chat.composer.secret_confirm_message": "这看起来像密码或密钥。要填入哪里？",
 	"ui.chat.composer.secret_confirm_chars": "{count, plural, other {#个字符}}",
@@ -27,10 +27,10 @@
 	"ui.chat.composer.secret_confirm_put_multi": "打开请求面板",
 	"ui.chat.composer.secret_confirm_send": "作为消息发送",
 	"ui.chat.composer.secret_confirm_cancel": "取消",
-	"ui.chat.composer.secret_fill_locked": "未填入敏感信息字段：仍有消息正在发送。您的文本已保留，请待消息送达后重试。",
-	"ui.chat.composer.secret_fill_changed": "未填入敏感信息字段：请求已发生变化。您的文本已保留。",
-	"ui.chat.composer.secret_fill_gone": "未填入敏感信息字段：该请求已不再等待回复。您的文本已保留。",
-	"ui.chat.composer.secret_fill_refused": "敏感信息字段未接受此值。您的文本已保留，请在请求面板中查看原因。",
-	"ui.chat.composer.secret_fill_unavailable": "无法访问敏感信息字段。您的文本已保留。",
-	"ui.chat.composer.secret_fill_multi": "此请求需要多项敏感信息。您的文本已保留，请在请求面板中选择要填写的字段。"
+	"ui.chat.composer.secret_fill_locked": "未填入敏感信息字段：仍有消息正在发送。文本已保留，请待消息送达后重试。",
+	"ui.chat.composer.secret_fill_changed": "未填入敏感信息字段：请求已发生变化。文本已保留。",
+	"ui.chat.composer.secret_fill_gone": "未填入敏感信息字段：该请求已不再等待回复。文本已保留。",
+	"ui.chat.composer.secret_fill_refused": "敏感信息字段未接受此值。文本已保留，请在请求面板中查看原因。",
+	"ui.chat.composer.secret_fill_unavailable": "无法访问敏感信息字段。文本已保留。",
+	"ui.chat.composer.secret_fill_multi": "此请求需要多项敏感信息。文本已保留，请在请求面板中选择要填写的字段。"
 }
