@@ -131,6 +131,15 @@ export type QuoteAnchorInput = {
 	 * rule does not need a magic number: see `MID_ROW_LINES`.
 	 */
 	belowWhenOffFirstLine?: boolean;
+	/**
+	 * Whether the control may take a free seat in the row's trailing gutter.
+	 *
+	 * The transcript's content measure is narrower than the pane at wide sizes;
+	 * that outer slack is the only place a selection strip can sit without
+	 * covering prose. The quote control asks for it (design round 2, D1); the
+	 * link toolbar keeps its historical placement.
+	 */
+	preferGutter?: boolean;
 };
 
 /**
@@ -187,6 +196,7 @@ export function placeQuoteControl({
 	gap = QUOTE_CONTROL_GAP,
 	row,
 	belowWhenOffFirstLine = false,
+	preferGutter = false,
 }: QuoteAnchorInput): QuotePlacement | null {
 	if (lines.length === 0) return null;
 	const limits = overlap(container, viewport);
@@ -203,6 +213,35 @@ export function placeQuoteControl({
 	const lineHeight = Math.max(first.bottom - first.top, 1);
 	const offFirstLine =
 		row !== undefined && first.top - row.top > lineHeight * MID_ROW_LINES;
+	/*
+	 * THE OUTER GUTTER WINS WHEN IT FITS. A strip painted above a highlight in a
+	 * dense transcript always covers the line before it; the content measure
+	 * leaves a real gutter at wide sizes, so use it first and keep the overlay
+	 * above/below for the narrow case where no such seat exists.
+	 */
+	if (preferGutter) {
+		const gutterLeft = (row?.right ?? first.right) + 2;
+		if (gutterLeft + size.width <= limits.right) {
+			return {
+				top: clamp(first.top, limits.top, limits.bottom - size.height),
+				left: gutterLeft,
+				placement: "above",
+			};
+		}
+		/*
+		 * NO OUTER GUTTER (the 480px pane floor, and the 1024px frame where the
+		 * scroller itself IS the 810px measure). A compact strip over the
+		 * highlight's own trailing edge is the honest fallback: it covers the
+		 * reader's selected line rather than the unselected line above it. The
+		 * alternative the design rule names - a broad panel over a neighbour - is
+		 * what this replaces.
+		 */
+		return {
+			top: clamp(first.top, limits.top, limits.bottom - size.height),
+			left: Math.max(limits.left, limits.right - size.width),
+			placement: "above",
+		};
+	}
 	const roomAbove = first.top - gap - size.height >= limits.top;
 	const roomBelow = last.bottom + gap + size.height <= limits.bottom;
 	/*

@@ -32,14 +32,14 @@ are overlays.
 | Prose-to-next-block gap | **12px** (`GAP.item`) | no reserved line between the prose and the next record |
 | Saved vertical space | **32px** per settled response | 4px margin + 28px row no longer in flow |
 | User row control | **0px layout**, in the 32px turn boundary above the bubble | `overlay` + `-top-8`, revealed by the focusable row's `group` |
-| Selection toolbar | **0px layout** | shared `TextSelectionControls`, absolute |
+| Selection toolbar | **0px layout** | one absolute strip per highlight: `QuoteToolkit` (Copy + Quote + Speak) on a quotable turn, shared `TextSelectionControls` (Copy + Speak) elsewhere |
 | Context menu | **0px layout** | Radix portal; mounted only while open |
 | Focus indicator | ring around the **message block** | row wrapper draws no ring (`focus-visible:outline-none`); the bubble/answer box draws the 2px accent ring |
 
 ### Rendered-frame index
 
 All after frames were captured from the branch head in the running Storybook
-(`http://127.0.0.1:6013`), through the production `CanonicalTranscript`; the
+(a fresh instance; 6006 for the round-2 re-captures), through the production `CanonicalTranscript`; the
 menu, selection and focus states are driven by the stories' own play steps
 (real `contextmenu`, focus and selection events), not by a CSS class.
 
@@ -51,7 +51,7 @@ menu, selection and focus states are driven by the stories' own play steps
 | [`after-response-gutter.png`](./after-response-gutter.png) | `chat-canonical-transcript-copy--resting`, `a1` clicked | An intermediate response focused: Copy-only gutter at the trailing edge, zero flow height |
 | [`after-context-menu-prose.png`](./after-context-menu-prose.png) | `chat-canonical-transcript-copy--context-menu-on-prose` | Right-click on prose: Copy text / Copy as Markdown / Copy selection (disabled) |
 | [`after-context-menu-tool.png`](./after-context-menu-tool.png) | `chat-canonical-transcript-copy--context-menu-on-tool-row` | Right-click on an expanded ledger row |
-| [`after-selection-toolbar.png`](./after-selection-toolbar.png) | `chat-canonical-transcript-copy--selection-toolbar` | A partial selection raises the shared Copy/Speak strip |
+| [`after-selection-toolbar.png`](./after-selection-toolbar.png) | `chat-canonical-transcript-copy--selection-toolbar` | A partial assistant selection raises ONE strip: Quote, Copy and one Speak |
 
 ### Measured in the browser (same run that produced the frames)
 
@@ -59,8 +59,9 @@ menu, selection and focus states are driven by the stories' own play steps
 | --- | --- |
 | Intermediate answer row (`[data-record-id="a1"]`) | **22.4px** high; no `[data-lo-response-actions]` |
 | Next record's top (`a2`) | 12px below `a1` — the `GAP.item` step |
-| Response gutter (`[data-lo-gutter-actions]`) | `position: absolute`, **38x32px**, `opacity: 0` at rest, `1` once the row holds focus |
+| Response gutter (`[data-lo-gutter-actions]`) | `position: absolute`, **38x32px**, at x=919 while the prose box ends at x=917 (entirely in the outer gutter), `opacity: 0` at rest, `1` once the row holds focus |
 | User gutter (`[data-lo-user-actions]`) | `position: absolute`, **70x32px**, sits at y=44 while the bubble starts at y=76 (fully inside the 32px turn boundary) |
+| Selection strip (`[data-lo-quote-toolkit]`) | **90x32px**, at x=918 while the prose box ends at x=917 (no overlap), with Quote, Copy selection and one Speak |
 | Context menu | 224x104.5px portal, opened on the pointed line |
 | Focus ring | `outline: none` on the row; 2px accent ring on the bubble/answer box |
 
@@ -68,6 +69,20 @@ The pixel readings are from this Storybook run; jsdom has no layout engine. The
 native app was not driven for these frames; the stories mount the production
 component and the interactions are real events, and QA's report states the same
 limitation.
+
+### Placement constraint (design round 2, D2)
+
+The user control stays **above** the bubble rather than beside it, and this is a
+measured constraint rather than a preference. A user bubble is right-aligned and
+ends at the row's trailing edge, so a side-anchored control has no gutter inside
+the row; at the 480px pane floor a `-right-8` seat would extend 32px past a
+scroller that only has 16px of padding and would add horizontal overflow. The
+32px `GAP.turn` above the bubble is exactly the control's height, so the
+top-trailing seat is the only zero-overlap one at every width. The intermediate
+answer's Copy-only control moves to the outer 40px gutter at
+`@min-[900px]/chatcol` (where the measure leaves that slack) and falls back to
+the row's trailing edge below that. Both remain absolute and cost zero flow
+height.
 
 ## What the automated tests cover
 
@@ -79,12 +94,14 @@ limitation.
   `[data-lo-gutter-actions]` and carries `absolute`;
 - the user row's control is absolute, the row is focusable, named and reveals
   under `focus-within`;
-- right-click opens the menu on prose, a tool row, a fold header and a receipt;
-  Copy as Markdown writes the record's own source (a fence and a list survive);
+- right-click opens the menu on prose, a tool row, a fold header and a peer
+  receipt; Copy as Markdown writes the record's own source (a fence and a list
+  survive), while Copy text writes the visible words;
 - `Shift+F10` opens a focused message's menu; `Mod+Shift+C` copies the focused
   message, or the selection when no row is focused;
-- a partial selection mounts the shared selection toolbar, and the menu's
-  `Copy selection` writes exactly the highlight.
+- a partial assistant selection raises one Quote/Copy/Speak strip and no second
+  shared toolbar; a selection outside a quotable turn gets the shared
+  Copy/Speak strip; both Copy presses write exactly the highlight.
 
 `scripts/message-actions.test.mjs` pins the pure rule:
 `transcriptRowActions` is true only for `user` and `assistant` rows.

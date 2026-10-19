@@ -10,14 +10,20 @@
  *
  * TWO PAYLOADS PER ROW, deliberately:
  *
- * - `copyTextForRecord` is what the reader can SEE, so a reply-quoted turn
- *   copies the reply rather than the `<reply-to>` transport markup - the same
- *   derivation the prose renders (`parseReplies(...).remainingContent`), which
- *   is what keeps the clipboard from disagreeing with the screen.
- * - `copyMarkdownForRecord` is the ORIGINAL source where one exists
- *   (`record.text`), because code fences, lists and headings are the value a
- *   markdown reader pastes into a document. It is never derived from
- *   `innerText`: that loses fences and turns a list into prose.
+ * - `copyTextForRecord` is the PLAIN TEXT the reader can see: markdown syntax
+ *   is stripped (fence markers, list bullets, heading hashes and emphasis all
+ *   disappear) and a reply-quoted turn copies the reply rather than the
+ *   `<reply-to>` transport markup. It never derives from `innerText` - the
+ *   record is the subject, and a windowed row's DOM is not.
+ * - `copyMarkdownForRecord` is the ORIGINAL source where one exists, because
+ *   code fences, lists and headings are the value a markdown reader pastes into
+ *   a document. It is never derived from `innerText`: that loses fences and
+ *   turns a list into prose.
+ *
+ * A `$skill` USER TURN IS READ THROUGH `skillRowOf` FIRST, exactly as the row
+ * paints it. The persisted payload is the expanded header + SKILL.md body + the
+ * typed request; both clipboard forms must be the typed line the reader sees,
+ * not the wall of instructions the bubble already hides (`skill-row.ts`).
  *
  * TOOL ROWS have no markdown payload of their own, so both forms carry a fenced
  * block - the row's name, the call's identity/command, and its output - which
@@ -28,6 +34,7 @@
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import { summaryFromArgs } from "../components/trace/tool-row-model";
 import { parseReplies } from "../utils/reply-utils";
+import { skillRowOf } from "./skill-row";
 import type { TranscriptRecord } from "./transcript-reducer";
 
 /** The row's output without the newline its transport always leaves. */
@@ -44,6 +51,75 @@ export type CopyableGroupSummary = { units: readonly string[] };
  */
 export function transcriptRowActions(record: TranscriptRecord): boolean {
 	return record.kind === "user" || record.kind === "assistant";
+}
+
+/**
+ * The typed line a persisted user turn stands for, before `parseReplies`.
+ *
+ * A skill payload is read back to the line the composer sent (`skill-row.ts`);
+ * every other record is its own text. The reply prefix is dropped later, so a
+ * skill turn that was itself a reply keeps the same split every turn gets.
+ */
+function visibleSourceFor(record: TranscriptRecord): string {
+	if (record.kind !== "user" && record.kind !== "assistant") return "";
+	return skillRowOf(record.text)?.text ?? record.text;
+}
+
+/**
+ * Markdown source reduced to the words a reader sees.
+ *
+ * WHY A LOCAL DERIVATION. The two menu items are different promises: `Copy
+ * text` is for pasting into prose, `Copy as Markdown` is for pasting into a
+ * document that understands fences and lists. Returning the source for both
+ * made the labels lie. The transform is deliberately small and line-oriented -
+ * it handles the constructs the transcript renders most (fences, headings,
+ * lists, tables, emphasis, links) and leaves anything it does not recognise as
+ * written rather than guessing at a second markdown parser.
+ */
+function markdownToText(markdown: string): string {
+	const lines = markdown.split("\n");
+	const out: string[] = [];
+	let inFence = false;
+	for (const line of lines) {
+		if (/^\s*(```|~~~)/.test(line)) {
+			inFence = !inFence;
+			continue;
+		}
+		if (inFence) {
+			out.push(line);
+			continue;
+		}
+		const tableRule = /^\s*\|?[\s:-]+\|[\s:|-]*$/.test(line);
+		if (tableRule) continue;
+		const heading = line.replace(/^\s{0,3}#{1,6}\s+/, "");
+		const quoted = heading.replace(/^\s{0,3}>\s?/, "");
+		const bullet = quoted.replace(/^\s{0,3}[-*+]\s+/, "• ");
+		const ordered = bullet.replace(/^\s{0,3}(\d+)[.)]\s+/, "$1. ");
+		const task = ordered.replace(/^\s{0,3}\[[ xX]\]\s+/, "");
+		const table = task.includes("|")
+			? task
+					.replace(/^\s*\|/, "")
+					.replace(/\|\s*$/, "")
+					.split("|")
+					.map((cell) => cell.trim())
+					.join(" | ")
+			: task;
+		out.push(
+			table
+				.replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+				.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+				.replace(/`([^`]+)`/g, "$1")
+				.replace(/\*\*([^*]+)\*\*/g, "$1")
+				.replace(/__([^_]+)__/g, "$1")
+				.replace(/~~([^~]+)~~/g, "$1")
+				.replace(/(^|[^\w])\*([^*\n]+)\*(?=[^\w]|$)/g, "$1$2")
+				.replace(/(^|[^\w])_([^_\n]+)_(?=[^\w]|$)/g, "$1$2"),
+		);
+	}
+	return out
+		.join("\n")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
 }
 
 /** The row's name and command, in the ledger's own vocabulary. */
@@ -80,16 +156,18 @@ function toolMarkdown(
 }
 
 /**
- * The visible words of a row.
+ * The visible words of a row, as plain text.
  *
- * A record kind this switch does not know is a compile error in the default
- * arm's `satisfies` check, so a new row cannot silently copy nothing.
+ * A record kind this switch does not know fails the declared `string` return,
+ * so a new row cannot silently copy nothing.
  */
 export function copyTextForRecord(record: TranscriptRecord): string {
 	switch (record.kind) {
 		case "user":
 		case "assistant":
-			return parseReplies(record.text).remainingContent;
+			return markdownToText(
+				parseReplies(visibleSourceFor(record)).remainingContent,
+			);
 		case "tool":
 			return toolText(record);
 		case "custom":
@@ -128,9 +206,11 @@ export function copyMarkdownForRecord(record: TranscriptRecord): string {
 			 * The raw source, not the rendered text: a fence, a list and a table
 			 * survive here and do not survive an `innerText` read. The
 			 * `<reply-to>` prefix is transport, not markdown the reader wrote, so
-			 * it is dropped for the same reason the visible half drops it.
+			 * it is dropped for the same reason the visible half drops it. A skill
+			 * payload is read back to the typed line first, so markdown does not
+			 * smuggle the expanded SKILL.md past the row's own gate.
 			 */
-			return parseReplies(record.text).remainingContent;
+			return parseReplies(visibleSourceFor(record)).remainingContent;
 		case "tool":
 			return toolMarkdown(record);
 		default:
