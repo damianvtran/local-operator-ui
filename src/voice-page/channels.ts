@@ -18,5 +18,15 @@ export const VOICE_PAGE_CHANNELS = {
 
 export type VadEventKind = "speech_start" | "speech_end";
 
-/** `last` marks a reply's final segment, so the page knows when to drain. */
-export type PlayMessage = { id: string; bytes: Uint8Array; last?: boolean };
+/**
+ * One segment of a reply. `id.replyId` names the reply and `id.index` the
+ * segment's place in it (from 0). The page plays only the current reply: a
+ * message for any other (retired) reply is dropped, and a new `replyId` resets
+ * the page's inbox. `last` marks the reply's final segment, so the page knows
+ * when to drain.
+ */
+export type PlayMessage = {
+	id: { replyId: string; index: number };
+	bytes: Uint8Array;
+	last?: boolean;
+};

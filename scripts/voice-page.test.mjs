@@ -17,6 +17,7 @@ const bundle = await build({
 			'export * from "./src/voice-page/vad";',
 			'export * from "./src/voice-page/csp";',
 			'export * from "./src/voice-page/channels";',
+			'export * from "./src/voice-page/reply-inbox";',
 			'export { appVoicePagePermissionVerdict } from "./src/main/window-guards";',
 			'export { appVoicePageUrl, isAppVoicePageUrl, appVoicePageVerdict } from "./src/main/voice/qwen-voice-page";',
 		].join("\n"),
@@ -455,4 +456,104 @@ test("BUILD: the page and its preload are declared where the build and the dev s
 		"renderer dev input AND rollupOptions.input",
 	);
 	assert.equal(config.includes("src/preload/voice-page.ts"), true);
+});
+
+/* ------------------------- REPLY INBOX (page glue) ------------------------ */
+
+// The page's wiring, reduced to what main.ts does: onPlay -> push -> play,
+// onStop -> inbox.stop + scheduler.stop. Segment bytes are [index] so the
+// "decoded" first byte says which segment played.
+function pageRig() {
+	const inbox = new m.ReplyInbox();
+	const played = [];
+	const tick = () => new Promise((r) => setImmediate(r));
+	const sched = new m.SegmentScheduler({
+		audio: {
+			currentTime: 0,
+			async decode(bytes) {
+				return { duration: 1, buffer: bytes[1] };
+			},
+			start(buffer) {
+				played.push(buffer);
+				return { stop() {} };
+			},
+			waitUntil(_t, signal) {
+				return new Promise((resolve, reject) => {
+					setImmediate(resolve);
+					signal.addEventListener("abort", () => reject(new Error("x")));
+				});
+			},
+		},
+		fetchSegment: (i, s) => inbox.pull(i, s),
+		onDrained: () => inbox.drained(),
+	});
+	const seg = (replyId, index, tag, last) => ({
+		id: { replyId, index },
+		bytes: new Uint8Array([index, tag]),
+		last,
+	});
+	return {
+		played,
+		sched,
+		inbox,
+		tick,
+		onPlay(msg) {
+			const r = inbox.push(msg);
+			if (!r.accepted) return r;
+			if (r.fresh || !sched.playing) void sched.play();
+			return r;
+		},
+		onStop() {
+			inbox.stop();
+			sched.stop();
+		},
+		seg,
+	};
+}
+
+test("INBOX (M1): play, stop, play - the second reply plays segment 0 first", async () => {
+	const r = pageRig();
+	// Reply A starts: the scheduler is parked waiting on segment 0's pull.
+	void r.sched.play();
+	await r.tick();
+	r.onStop(); // aborts the pending pull
+	await r.tick();
+	r.onPlay(r.seg("B", 0, 20, false));
+	r.onPlay(r.seg("B", 1, 21, true));
+	for (let i = 0; i < 10; i += 1) await r.tick();
+	assert.deepEqual(r.played, [20, 21], "B's segment 0 was not eaten");
+});
+
+test("INBOX (M1): barge-in mid-reply, then a new reply - segment 0 plays first", async () => {
+	const r = pageRig();
+	r.onPlay(r.seg("A", 0, 10, false));
+	for (let i = 0; i < 5; i += 1) await r.tick();
+	assert.deepEqual(r.played, [10]);
+	// The scheduler is now parked pulling A's segment 1; barge-in (stopPlayback).
+	r.onStop();
+	await r.tick();
+	r.onPlay(r.seg("B", 0, 30, false));
+	r.onPlay(r.seg("B", 1, 31, true));
+	for (let i = 0; i < 10; i += 1) await r.tick();
+	assert.deepEqual(r.played, [10, 30, 31], "B starts at its own segment 0");
+});
+
+test("INBOX (m1): a stale segment from the old reply after a stop is never played", async () => {
+	const r = pageRig();
+	r.onPlay(r.seg("A", 0, 10, false));
+	for (let i = 0; i < 5; i += 1) await r.tick();
+	r.onStop();
+	const late = r.onPlay(r.seg("A", 1, 11, true));
+	assert.equal(late.accepted, false);
+	for (let i = 0; i < 5; i += 1) await r.tick();
+	assert.deepEqual(r.played, [10], "A's late segment 1 stayed silent");
+	assert.equal(r.sched.playing, false, "and did not restart playback");
+});
+
+test("INBOX (m1): a new replyId resets the inbox - the old reply's leftovers are gone", async () => {
+	const r = pageRig();
+	r.inbox.push(r.seg("A", 3, 13, false)); // out-of-order leftover
+	r.onPlay(r.seg("B", 0, 40, true));
+	for (let i = 0; i < 10; i += 1) await r.tick();
+	assert.deepEqual(r.played, [40]);
 });
