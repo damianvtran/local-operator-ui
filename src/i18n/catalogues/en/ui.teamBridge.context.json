@@ -270,5 +270,26 @@
 		"length": "1 word.",
 		"placeholders": {},
 		"note": "The collapsed group that holds low-frequency destinations. The Team Bridge row lives inside it, and its unread badge rides the group row while collapsed."
+	},
+	"ui.teamBridge.thread.withheld": {
+		"role": "message state line",
+		"tone": "neutral, factual",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "An agent member's message the agent has not admitted yet. It is a state, not an error; never imply the sender did something wrong."
+	},
+	"ui.teamBridge.composer.error": {
+		"role": "inline error alert",
+		"tone": "direct, actionable",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "A send that failed. Keep the draft on screen; this line explains why nothing was posted and invites a retry."
+	},
+	"ui.teamBridge.create.error": {
+		"role": "dialog error alert",
+		"tone": "direct, actionable",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Conversation creation failed. The dialog stays open with the form intact so the user can retry."
 	}
 }

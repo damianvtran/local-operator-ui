@@ -240,7 +240,10 @@ export const Loading: Story = {
 };
 
 export const SendFailed: Story = {
-	args: { sendFailed: true },
+	args: {
+		sendFailed: true,
+		initialDraft: "Ping me when the checklist is done.",
+	},
 };
 
 export const ErrorState: Story = {

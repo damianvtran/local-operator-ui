@@ -280,7 +280,10 @@ const App: FC = () => {
 	/* The conversation surface rides the bridge capability: with the backend
 	   dark or older, `/team-bridge` falls through to the catch-all like any
 	   unknown path instead of rendering a page whose every read would 503. */
-	const bridgeState = desktopFeatureState(capabilities.data, "team_bridge");
+	const bridgeState = desktopFeatureState(
+		capabilities.data,
+		"team_bridge_conversations",
+	);
 
 	const handleAgentCreated = (agent: { id: string; name: string }) => {
 		/*
@@ -901,7 +904,9 @@ const App: FC = () => {
 										{/* The Team Bridge page. The SIDEBAR row is the Library lane's
 										    overflow group (one nav file, one owner); this route makes the
 										    page reachable by URL and by that row the moment it lands.
-										    Mounted only with `features.team_bridge`. */}
+										    Mounted only with `features.team_bridge_conversations`:
+										    `team_bridge` alone is the pair lane, whose backends do
+										    not have these routes. */}
 										{bridgeState === "enabled" && (
 											<Route path="/team-bridge" element={<TeamBridgePage />} />
 										)}
