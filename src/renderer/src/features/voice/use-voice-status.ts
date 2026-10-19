@@ -27,6 +27,7 @@ import type {
 	DesktopVoiceControlResult,
 	DesktopVoiceState,
 } from "../../../../shared/desktop-control-contract";
+import { useVoiceSwitch } from "./use-voice-switch";
 import { useVoiceStore, voiceSessionOf } from "./voice-store";
 
 export const voiceKeys = {
@@ -36,7 +37,10 @@ export const voiceKeys = {
 /** Whether this backend serves session voice at all. */
 export function useVoiceCapability(): boolean {
 	const capabilities = useDesktopCapabilities();
-	return desktopFeatureEnabled(capabilities.data, "voice", 1);
+	// Two halves, both required: the daemon serves voice AND the person turned it
+	// on in this app (default off).
+	const switchedOn = useVoiceSwitch();
+	return switchedOn && desktopFeatureEnabled(capabilities.data, "voice", 1);
 }
 
 /**

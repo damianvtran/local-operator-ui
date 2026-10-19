@@ -500,6 +500,9 @@ export function registerQwenVoiceIPC(
 	window: () => BrowserWindow | null,
 	expectedUrl: string,
 	voice: {
+		/** The person's switch (default off); see `qwen-voice-setting.ts`. */
+		getEnabled: () => boolean;
+		setEnabled: (on: boolean) => Promise<boolean>;
 		result: (input: unknown) => boolean;
 		speak: (input: unknown) => { spoken: boolean; reason?: string };
 		start: (reason: "renderer") => Promise<unknown>;
@@ -521,6 +524,14 @@ export function registerQwenVoiceIPC(
 			throw new Error("This window cannot use desktop controls.");
 		}
 	};
+	ipcMain.handle("voice.qwen.enabled.get", (event) => {
+		authorize(event);
+		return voice.getEnabled();
+	});
+	ipcMain.handle("voice.qwen.enabled.set", (event, on: unknown) => {
+		authorize(event);
+		return voice.setEnabled(on === true);
+	});
 	ipcMain.handle("voice.qwen.result", (event, input: unknown) => {
 		authorize(event);
 		return voice.result(input);

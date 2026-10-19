@@ -178,6 +178,18 @@ const api = {
 		 * relayed itself (`QwenVoiceBridge` in the contract).
 		 */
 		qwenVoice: {
+			getEnabled: (): Promise<boolean> =>
+				ipcRenderer.invoke("voice.qwen.enabled.get"),
+			setEnabled: (on: boolean): Promise<boolean> =>
+				ipcRenderer.invoke("voice.qwen.enabled.set", on === true),
+			onEnabled: (listener: (enabled: boolean) => void) => {
+				const handler = (_event: unknown, enabled: boolean) =>
+					listener(enabled === true);
+				ipcRenderer.on("voice.qwen.enabled", handler);
+				return () => {
+					ipcRenderer.removeListener("voice.qwen.enabled", handler);
+				};
+			},
 			onTake: (listener: (take: QwenVoiceTake) => void) => {
 				const handler = (_event: unknown, take: QwenVoiceTake) =>
 					listener(take);

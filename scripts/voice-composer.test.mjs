@@ -206,6 +206,7 @@ const bundle = await build({
 			export { useVoiceStore } from "./src/renderer/src/features/voice/voice-store";
 			export { applyVoiceActive, controlVoice } from "./src/renderer/src/features/voice/use-voice-status";
 			export { MessageInput } from "./src/renderer/src/shared/components/composer/message-input.tsx";
+			export { useVoiceSwitchStore } from "./src/renderer/src/features/voice/use-voice-switch";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 		`,
 		resolveDir: process.cwd(),
@@ -244,8 +245,11 @@ const {
 	QueryClientProvider,
 	applyVoiceActive,
 	useVoiceStore,
+	useVoiceSwitchStore,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
+// The switch is OFF by default; these cases are about voice ON.
+useVoiceSwitchStore.setState({ enabled: true });
 
 const React = await import("react");
 const { createRoot } = await import("react-dom/client");
@@ -1435,4 +1439,25 @@ test("the view model hides the strip when the slot is empty or belongs elsewhere
 			.kind,
 		"elsewhere",
 	);
+});
+
+test("SWITCH: with the switch off the wave button does not render", async () => {
+	useVoiceSwitchStore.setState({ enabled: false });
+	try {
+		window.document.body.innerHTML = "<div id='root'></div>";
+		root = createRoot(window.document.getElementById("root"));
+		await act(async () => {
+			root.render(
+				React.createElement(
+					QueryClientProvider,
+					{ client },
+					React.createElement(ComposerVoiceButton, { sessionId: AT }),
+				),
+			);
+		});
+		await flush();
+		assert.equal(window.document.querySelector("[data-voice-toggle]"), null);
+	} finally {
+		useVoiceSwitchStore.setState({ enabled: true });
+	}
 });

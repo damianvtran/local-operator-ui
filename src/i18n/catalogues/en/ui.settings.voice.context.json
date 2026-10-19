@@ -1,0 +1,14 @@
+{
+	"ui.settings.voice.label": {
+		"role": "Toggle label",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "One line next to a switch; English is 13 characters.",
+		"note": "Master switch for session voice. Off by default."
+	},
+	"ui.settings.voice.description": {
+		"role": "Help paragraph under the toggle",
+		"tone": "Plain, reassuring second person.",
+		"length": "Wrapping paragraph in the settings column; keep every fact.",
+		"note": "States that voice is off by default, that nothing runs while off, that on adds a composer button, and that off stops voice and frees the microphone at once."
+	}
+}

@@ -5976,6 +5976,10 @@ export type QwenVoiceResult =
 	| { taskId: string; ok: true }
 	| { taskId: string; ok: false; code: string };
 export type QwenVoiceBridge = {
+	/** The person's voice switch (default OFF), owned by main. */
+	getEnabled: () => Promise<boolean>;
+	setEnabled: (on: boolean) => Promise<boolean>;
+	onEnabled: (listener: (enabled: boolean) => void) => () => void;
 	onTake: (listener: (take: QwenVoiceTake) => void) => () => void;
 	result: (result: QwenVoiceResult) => Promise<boolean>;
 	speak: (input: {

@@ -37,6 +37,7 @@ const bundle = await build({
 			'export { gatewayEnv, QwenGatewayHost } from "./src/main/voice/qwen-gateway";',
 			'export { QwenSpeechProcess, resolveQwenPorts, s2sArgs, s2sEnv, s2sLauncherPathFor, qwenMemoryBudget, qwenMachineTooSmall, QWEN_MEM_BUDGET_BYTES, QWEN_MIN_MACHINE_BYTES, QWEN_MACHINE_TOO_SMALL, FOOTPRINT_INTERVAL_MS, DEFAULT_QWEN_PORTS, isOurS2s, S2S_RECORD_FILE } from "./src/main/voice/qwen-rig";',
 			'export { QwenVoicePage, noQwenVoicePage, voicePageUrl, voicePageAllowed, QWEN_NO_VOICE_WINDOW, QWEN_VOICE_PARTITION, PAGE_CRASH_WINDOW_MS } from "./src/main/voice/qwen-voice-page";',
+			'export { readQwenVoiceEnabled, writeQwenVoiceEnabled } from "./src/main/voice/qwen-voice-setting";',
 			'export { requestDesktopMedia } from "./src/main/desktop-media";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -70,6 +71,7 @@ function rig({
 	mic = "granted",
 	machineBytes = 36 * 1024 ** 3,
 	page: pageOverride = null,
+	enabled = true,
 } = {}) {
 	const sent = [];
 	/** Every step that costs something, in the order it happened. */
@@ -159,6 +161,8 @@ function rig({
 			timer.cleared = true;
 		},
 	});
+	// The switch is OFF by default; every pre-existing case exercises voice ON.
+	if (enabled) void voice.setEnabled(true);
 	return {
 		voice,
 		page,
@@ -1452,6 +1456,7 @@ test("a take goes to the renderer; with no window it is refused back to the laun
 		toRenderer: () => false,
 		page: m.noQwenVoicePage(),
 	});
+	void lonely.setEnabled(true);
 	lonely.noteDesktopAnswer(
 		{ op: "voice.status" },
 		{
@@ -2291,4 +2296,86 @@ test("a voice refusal keeps its code as voiceCode", async () => {
 	assert.equal(response.kind, "error");
 	assert.equal(response.status, 409);
 	assert.equal(response.voiceCode, "approval_pending");
+});
+
+/* ------------------------------------------------------------------------ */
+/* THE SWITCH: off by default, and off means nothing                         */
+/* ------------------------------------------------------------------------ */
+
+test("SWITCH: a fresh profile is off; only an explicit stored true is on", async () => {
+	const setting = m;
+	const dir = mkdtempSync(join(tmpdir(), "qwen-switch-"));
+	assert.equal(setting.readQwenVoiceEnabled(dir), false, "no file: off");
+	writeFileSync(join(dir, "voice-setting.json"), "{not json");
+	assert.equal(setting.readQwenVoiceEnabled(dir), false, "corrupt: off");
+	writeFileSync(join(dir, "voice-setting.json"), '{"enabled":"yes"}');
+	assert.equal(setting.readQwenVoiceEnabled(dir), false, "truthy string: off");
+	setting.writeQwenVoiceEnabled(dir, true);
+	assert.equal(setting.readQwenVoiceEnabled(dir), true);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("SWITCH: off means no start, no spawn, no page, no timer, no message, whatever arrives", async () => {
+	const r = rig({ enabled: false });
+	assert.equal(r.voice.isEnabled(), false);
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await r.voice.start("renderer");
+	await r.voice.start("enable");
+	r.voice.noteDesktopAnswer(
+		{ op: "voice.status" },
+		{
+			status: 200,
+			body: { result: { active: { session_id: "aaaaaaaaaaaa" } } },
+		},
+	);
+	r.voice.onGatewayMessage({ type: "take", taskId: "t1", text: "hi" });
+	assert.equal(r.voice.result({ taskId: "t1", ok: true }), false);
+	assert.deepEqual(r.voice.speak({ text: "x", kind: "reply" }), {
+		spoken: false,
+		reason: "voice_disabled",
+	});
+	r.voice.pause();
+	r.voice.resume();
+	assert.equal(r.calls.gatewayStart, 0, "no Gateway fork");
+	assert.equal(r.calls.speechStart, 0, "no s2s spawn");
+	assert.deepEqual(r.order, [], "no microphone preflight either");
+	assert.deepEqual(r.opened, [], "no page");
+	assert.equal(r.timers.length, 0, "no idle timer");
+	assert.deepEqual(r.sent, [], "nothing sent to the Gateway");
+	assert.deepEqual(r.toRenderer, [], "no status or take pushed");
+});
+
+test("SWITCH: off while running stops everything now, not after the idle window", async () => {
+	const r = rig();
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	assert.equal(r.voice.getStatus().rig, "ready");
+	assert.equal(r.opened.length, 1);
+	await r.voice.setEnabled(false);
+	const status = r.voice.getStatus();
+	assert.equal(status.rig, "stopped");
+	assert.equal(status.clients ?? 0, 0);
+	assert.ok(
+		r.closed.length >= 1,
+		"the page - and the microphone - are released",
+	);
+	assert.equal(r.calls.gatewayStop, 1, "Gateway stopped");
+	assert.equal(r.calls.speechStop, 1, "s2s stopped");
+	assert.equal(
+		r.timers.filter((t) => !t.cleared).length,
+		0,
+		"no live timer is left behind",
+	);
+	/* And it stays inert: a later frame starts nothing. */
+	const starts = r.calls.gatewayStart;
+	r.voice.observeFrame(voiceFrame("bbbbbbbbbbbb"));
+	await settle();
+	assert.equal(r.calls.gatewayStart, starts);
+	/* On again lifts the guards; the next enable starts the rig. */
+	await r.voice.setEnabled(true);
+	r.voice.observeFrame(voiceFrame("bbbbbbbbbbbb"));
+	await settle();
+	await settle();
+	assert.equal(r.voice.getStatus().rig, "ready");
 });
