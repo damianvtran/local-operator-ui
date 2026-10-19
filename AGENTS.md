@@ -140,10 +140,13 @@ The mechanics:
 - **Commands/gate:** `pnpm check-i18n` runs generator freshness (`--check`),
   `scripts/i18n/check-strings.mjs`, the ledger and context gates, and
   `scripts/i18n/check-coverage.mjs`, which fails when a `supported` manifest
-  language is missing an English key. Known gaps live in
-  `i18n/coverage-allowance.json`, one `(locale, namespace)` pair per reason, and
-  that list is shrink-only: a pair that is complete again fails until
-  `--update` removes it, and adding a row for new copy is not allowed.
+  language is missing an English key - key by key, so a new key added inside
+  an already-incomplete namespace cannot slip through. Known gaps live in
+  `i18n/coverage-allowance.json`, one `(locale, namespace)` entry per reason
+  with the exact sorted missing key IDs, an owner and a payoff (ticket or ISO
+  date). That list is shrink-only: a listed key that is no longer missing fails
+  until `--update` drops it, adding keys for new copy is not allowed, and the
+  check fails when the allowance grows relative to the base branch.
   `pnpm check-types` checks typed call sites. The scanner ratchets literal JSX
   text and copy attributes against `i18n/baseline.json`: only its `enforced`
   prefixes block, other areas remain advisory. Lower ceilings with
