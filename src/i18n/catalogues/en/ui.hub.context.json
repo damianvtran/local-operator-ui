@@ -664,6 +664,26 @@
 		"tone": "plain, precise; safety statements must not weaken or promise success",
 		"note": "The irreversibility warning beside the confirm control, raised to a body-level callout (design D5-D12). Must not weaken: it states that a wrong source is permanent. No placeholders; wraps at a comfortable measure."
 	},
+	"ui.hub.links.unresolved_what": {
+		"role": "body",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The WHAT sentence of the source-confirmation card: it says the record IS linked to the hub while its source and scope are still unconfirmed, so the reader can tell what this is without inferring it. {item} is escaped UNTRUSTED user-authored display bytes, never authority and never interpolated as markup. Must not imply the link is broken, that the record is damaged, or that the hub is at fault."
+	},
+	"ui.hub.links.unresolved_why": {
+		"role": "body",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The WHY sentence: it states the consequence of an unconfirmed source - hub updates are not applied to this record until the source is confirmed. Must not weaken that consequence and must not promise that updates arrive anyway. {item} is escaped UNTRUSTED user-authored display bytes, never authority."
+	},
+	"ui.hub.links.unresolved_next": {
+		"role": "body",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The WHAT TO DO sentence: it names the one deliberate act and the scope that act carries, so the reader knows what to do without inferring it. No Public/current-organization inference: the scope is chosen by the operator, never assumed. No placeholders; wraps at a comfortable measure."
+	},
+	"ui.hub.links.hub_id": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The hub id, labelled as a diagnostic and never as an origin: it identifies the hub-side record and says nothing about where this copy came from. {address} is a stable technical identifier and is not translated. Never rendered as a heading."
+	},
 	"ui.hub.conflict.title": {
 		"role": "heading",
 		"tone": "plain, precise; safety statements must not weaken or promise success",
