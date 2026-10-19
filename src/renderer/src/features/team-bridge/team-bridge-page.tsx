@@ -39,7 +39,7 @@ import {
  * LAYOUT. One 288px list column and a flexible thread, matching the app's own
  * docked-sidebar geometry (30px rows, 13px labels) rather than importing a
  * second set of metrics. Every surface colour is a token role (`bg-surface`,
- * `border-border`, `text-ink-muted`, `bg-row-hover`) so light, dark and every
+ * `border-hairline`, `text-ink-muted`, `bg-row-hover`) so light, dark and every
  * palette resolve without a per-theme branch, and the page root opts into the
  * desktop's glass regions (`data-glass-region="canvas"`) so a glass setting is
  * not defeated by an opaque layer.
@@ -171,8 +171,13 @@ const MessageRow: FC<{
 				</div>
 				<p
 					className={cn(
-						"mt-0.5 whitespace-pre-wrap break-words rounded-md px-2 py-1 text-[13px] leading-relaxed",
-						own ? "bg-accent-wash text-ink" : "bg-sunken text-ink",
+						"mt-0.5 whitespace-pre-wrap break-words rounded-md text-[13px] leading-relaxed",
+						// Own messages get the accent wash — the app's "yours" tint, soft
+						// enough not to shout beside an agent's plain text but distinct in
+						// every palette. Other people's messages are plain text on the
+						// thread ground, which is what keeps a busy channel from turning
+						// into a column of boxes.
+						own ? "bg-accent-wash px-2.5 py-1.5 text-ink" : "text-ink",
 					)}
 				>
 					{/* A null body is an agent member's unadmitted message; the copy
@@ -235,7 +240,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		>
 			<aside
 				data-glass-region="page-sidebar"
-				className="flex w-72 shrink-0 flex-col border-border border-r"
+				/* BORDERLESS CHROME: the column is separated by its own ground, not a
+				   rule. A full-height border beside a 30px-row list reads as a hard
+				   frame; the sunken tint does the same job and survives glass, where a
+				   solid line is the one thing a translucent surface cannot hide. */
+				className="flex w-72 shrink-0 flex-col"
 			>
 				<header className="flex h-11 shrink-0 items-center gap-2 px-3">
 					<h1 className="min-w-0 flex-1 truncate font-medium text-[13px] text-ink">
@@ -286,30 +295,39 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				</ScrollArea>
 			</aside>
 
-			<section className="flex min-w-0 flex-1 flex-col">
+			{/* The ONE ground split: the rail inherits the page canvas, the thread
+			    carries the surface. In every palette `surface` sits off `canvas`, so the
+			    two regons read apart in light and dark without a single rule between
+			    them — which is also what survives the glass settings, where a hard
+			    line is the one thing a translucent ground cannot hide. */}
+			<section className="flex min-w-0 flex-1 flex-col bg-surface">
 				{selected === null ? (
-					<div className="flex flex-1 items-center justify-center px-6">
-						<div className="max-w-sm text-center">
-							<p className="font-medium text-[13px] text-ink">
-								{t("ui.teamBridge.list.empty.title")}
-							</p>
-							<p className="mt-1 text-[13px] text-ink-muted">
-								{t("ui.teamBridge.list.empty.body")}
-							</p>
-							<Button
-								size="sm"
-								variant="primary"
-								className="mt-3"
-								onClick={onNewConversation}
-							>
-								<Plus size={14} />
-								{t("ui.teamBridge.page.new_conversation")}
-							</Button>
+					listState === "ready" ? (
+						<div className="flex flex-1 items-center justify-center px-6">
+							<div className="max-w-sm text-center">
+								<p className="font-medium text-[13px] text-ink">
+									{t("ui.teamBridge.list.empty.title")}
+								</p>
+								<p className="mt-1 text-[13px] text-ink-muted">
+									{t("ui.teamBridge.list.empty.body")}
+								</p>
+								<Button
+									size="sm"
+									variant="primary"
+									className="mt-3"
+									onClick={onNewConversation}
+								>
+									<Plus size={14} />
+									{t("ui.teamBridge.page.new_conversation")}
+								</Button>
+							</div>
 						</div>
-					</div>
+					) : null
 				) : (
 					<>
-						<header className="flex h-11 shrink-0 items-center gap-2 border-border border-b px-3">
+						{/* No rule under the header: the thread's own ground already
+						    separates it, and Slack's chrome carries no line here either. */}
+						<header className="flex h-11 shrink-0 items-center gap-2 px-3">
 							<h2 className="min-w-0 truncate font-medium text-[13px] text-ink">
 								{conversationTitle(selected, selfAccountId) ??
 									t("ui.teamBridge.list.untitled")}
@@ -349,40 +367,51 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							</div>
 						</header>
 
-						<ScrollArea className="min-h-0 flex-1">
-							{messageState === "loading" && (
-								<div className="flex items-center justify-center py-10">
-									<Spinner
-										size="sm"
-										label={t("ui.teamBridge.thread.loading")}
-									/>
-								</div>
-							)}
-							{messageState === "error" && (
-								<p className="px-4 py-8 text-[13px] text-ink-muted">
-									{t("ui.teamBridge.thread.error")}
-								</p>
-							)}
-							{messageState === "ready" && ordered.length === 0 && (
-								<p className="px-4 py-10 text-center text-[13px] text-ink-muted">
-									{t("ui.teamBridge.thread.empty")}
-								</p>
-							)}
-							{messageState === "ready" && ordered.length > 0 && (
-								<ul className="flex flex-col gap-3 px-3 py-4">
-									{ordered.map((message) => (
-										<MessageRow
-											key={message.id}
-											message={message}
-											selfAccountId={selfAccountId}
+						{/* Radix wraps children in an auto-height table cell; these
+						    arbitrary variants make that wrapper fill the viewport so the
+						    list can justify-end (Slack anchors a short history at the
+						    bottom, next to the composer). */}
+						<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block [&_[data-radix-scroll-area-viewport]>div]:h-full">
+							<div className="flex h-full flex-col">
+								{messageState === "loading" && (
+									<div className="flex items-center justify-center py-10">
+										<Spinner
+											size="sm"
+											label={t("ui.teamBridge.thread.loading")}
 										/>
-									))}
-									<div ref={threadEnd} />
-								</ul>
-							)}
+									</div>
+								)}
+								{messageState === "error" && (
+									<p className="px-4 py-8 text-[13px] text-ink-muted">
+										{t("ui.teamBridge.thread.error")}
+									</p>
+								)}
+								{messageState === "ready" && ordered.length === 0 && (
+									<p className="px-4 py-10 text-center text-[13px] text-ink-muted">
+										{t("ui.teamBridge.thread.empty")}
+									</p>
+								)}
+								{messageState === "ready" && ordered.length > 0 && (
+									/* SLACK'S ANCHOR: a short history sits at the BOTTOM of the
+								   pane and grows upward, so the newest message is always next to
+								   the composer. `min-h-full justify-end` does that inside the
+								   scroll area and collapses to plain flow once the list is
+								   taller than the pane. */
+									<ul className="mt-auto flex flex-col gap-3 px-4 py-4">
+										{ordered.map((message) => (
+											<MessageRow
+												key={message.id}
+												message={message}
+												selfAccountId={selfAccountId}
+											/>
+										))}
+										<div ref={threadEnd} />
+									</ul>
+								)}
+							</div>
 						</ScrollArea>
 
-						<div className="shrink-0 border-border border-t px-3 py-2">
+						<div className="shrink-0 px-3 pt-1 pb-2">
 							<div className="flex items-end gap-2">
 								<textarea
 									value={draft}
@@ -397,7 +426,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									placeholder={t("ui.teamBridge.composer.placeholder")}
 									aria-label={t("ui.teamBridge.composer.placeholder")}
 									className={cn(
-										"max-h-40 min-h-8 flex-1 resize-none rounded-md border border-border bg-surface px-2 py-1.5",
+										"max-h-40 min-h-8 flex-1 resize-none rounded-lg border border-hairline bg-surface px-2.5 py-1.5",
 										"text-[13px] text-ink placeholder:text-ink-dim",
 										"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent",
 									)}

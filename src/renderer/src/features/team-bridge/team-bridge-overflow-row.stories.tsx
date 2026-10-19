@@ -88,7 +88,7 @@ const GroupBoard = ({
 		>
 			<div
 				data-glass-region="page-sidebar"
-				className="w-[260px] rounded-lg border border-border bg-surface/80 p-2"
+				className="w-[260px] shrink-0 rounded-lg bg-surface/80 p-2"
 			>
 				<ul className="flex flex-col gap-0.5">
 					{expanded ? (
@@ -106,17 +106,27 @@ const GroupBoard = ({
 							/>
 						</>
 					) : (
-						<>
-							<Row
-								label={t("ui.teamBridge.nav.label")}
-								expanded={false}
-								unread={unread}
-							/>
-							<li className="flex h-[30px] items-center justify-center rounded-md text-ink-muted">
-								<span className="sr-only">{t("ui.teamBridge.group.more")}</span>
-								<MoreHorizontal size={16} aria-hidden="true" />
-							</li>
-						</>
+						/* Collapsed: the count rides the More row ITSELF. There is no Team
+						   Bridge row here, which is the point of the overflow group — the rail
+						   spends no row on a destination it is not showing. */
+						<li
+							className={cn(
+								"flex h-[30px] w-full items-center gap-2 rounded-md px-2",
+								"text-ink-muted hover:bg-row-hover hover:text-ink",
+							)}
+						>
+							<span className="min-w-0 flex-1 truncate text-[13px]">
+								{t("ui.teamBridge.group.more")}
+							</span>
+							{unread > 0 && (
+								<span className="inline-flex shrink-0">
+									<Badge variant="attentionQuiet" shape="pill" size="count">
+										{countLabel(unread, 99)}
+									</Badge>
+								</span>
+							)}
+							<MoreHorizontal size={16} aria-hidden="true" />
+						</li>
 					)}
 				</ul>
 			</div>

@@ -186,6 +186,7 @@ const meta = {
 		onSelect: () => {},
 		onSend: () => {},
 		onNewConversation: () => {},
+		onRetry: () => {},
 	},
 } satisfies Meta<typeof TeamBridgePageView>;
 
