@@ -30,7 +30,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { ciClause, laneStateClause, roundSegments, laneLines, commentClause, linkOnlyRemedy, toolOutputNote, forgeSigil, identityLabel, repoName, rowAriaLabel, attentionCause, needsAttention, rowHasPendingCi, chipClause, coolingClauses, groupRows, laneSegmentTone, refreshCaption, rowNotice, fetchStateOf, rowIsLoading, PENDING_REVEAL_MS } from "./src/renderer/src/features/code-review/code-review-model";',
+			'export { ciClause, laneStateClause, roundSegments, laneLines, commentClause, linkOnlyRemedy, toolOutputNote, forgeSigil, identityLabel, repoName, pathLineFor, rowAriaLabel, attentionCause, needsAttention, rowHasPendingCi, chipClause, coolingClauses, groupRows, laneSegmentTone, refreshCaption, rowNotice, fetchStateOf, rowIsLoading, PENDING_REVEAL_MS } from "./src/renderer/src/features/code-review/code-review-model";',
 			'export { intervalFor, SCAN_POLL_MS, codeRequestsEnabled, appliedAfterFrame, chipState } from "./src/renderer/src/features/code-review/hooks/use-code-requests";',
 			'export { populatedRows, linkOnlyList, couldNotRefreshList, pendingList, staleList, rateLimitedList, viaRows } from "./src/renderer/src/features/code-review/code-review-fixtures";',
 		].join("\n"),
@@ -64,6 +64,7 @@ const {
 	forgeSigil,
 	identityLabel,
 	repoName,
+	pathLineFor,
 	rowAriaLabel,
 	attentionCause,
 	needsAttention,
@@ -496,6 +497,35 @@ test("the repo NAME is the last segment of the forge's project path", () => {
 	// Nothing is nothing - a row with no project has no name to show.
 	assert.equal(repoName(""), "");
 	assert.equal(repoName("   "), "");
+});
+
+/*
+ * THE PATH LINE'S PREDICATE (agent review round 1, R1-5).
+ *
+ * The second line under the identity exists to carry the full path beside
+ * the name that identifies the repository. A project with NO separator IS its
+ * own name, so the line would repeat the name above it and say nothing - and
+ * that rule is a derivation about the same project path as the name above
+ * it, so it lives in the model beside `repoName` and is tested here.
+ *
+ * The trailing-separator case is the one that distinguishes the two
+ * derivations: `repoName("owner/repo/")` is `repo`, but the path that would
+ * be drawn is the whole `owner/repo/`, which is not the name - so the line
+ * IS drawn, and it carries the path as it came.
+ */
+test("the path line is drawn only when the path says more than the name", () => {
+	// A path with a separator: the line carries the whole path.
+	assert.equal(pathLineFor("owner/repo"), "owner/repo");
+	assert.equal(pathLineFor("group/subgroup/project"), "group/subgroup/project");
+	assert.equal(pathLineFor("org/project/_git/repo"), "org/project/_git/repo");
+	// A bare name IS its own name: no line, because it would repeat it.
+	assert.equal(pathLineFor("platform-core"), null);
+	assert.equal(pathLineFor(""), null);
+	assert.equal(pathLineFor("   "), null);
+	// A trailing separator: the name is `repo`, the path is not - the line
+	// is drawn, and it carries the path AS IT CAME.
+	assert.equal(repoName("owner/repo/"), "repo");
+	assert.equal(pathLineFor("owner/repo/"), "owner/repo/");
 });
 
 /*

@@ -927,6 +927,30 @@ export function repoName(project: string): string {
 }
 
 /**
+ * The FULL PATH for the line BELOW the identity, or null when there is
+ * nothing to put there.
+ *
+ * WHY A NULL AND NOT AN EMPTY STRING. The second line exists to carry the
+ * full path next to the name that identifies the repository, and a project
+ * with no separator IS its own name - so the line would repeat the name
+ * above it and say nothing. `null` is the absence of the line, and the row
+ * draws the line when this is a string.
+ *
+ * WHY IT LIVES HERE, BESIDE `repoName` (agent review round 1, R1-5): the
+ * model file's own header says "one derived string per fact ... so the
+ * stories, the components and any later test drive one implementation", and
+ * the predicate that decides whether the second line is drawn AT ALL is a
+ * derivation about the same project path as the name above it. A predicate
+ * in the component is a second implementation of a fact the model owns.
+ */
+export function pathLineFor(project: string): string | null {
+	const trimmed = project.trim();
+	if (trimmed === "") return null;
+	if (trimmed === repoName(project)) return null;
+	return project;
+}
+
+/**
  * The row's ACCESSIBLE NAME (agent review round 1, N4 / UX U4):
  * `<project> <#N>: <title>, <state>, <lane clauses>, opens in your browser`.
  *

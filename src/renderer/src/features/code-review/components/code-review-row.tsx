@@ -13,6 +13,7 @@ import {
 	commentClause,
 	fetchStateOf,
 	forgeSigil,
+	pathLineFor,
 	relationTag,
 	repoName,
 	rowAriaLabel,
@@ -105,12 +106,12 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({
 	 */
 	const name = repoName(row.project);
 	/*
-	 * THE PATH LINE IS CONDITIONAL: a project with no separator IS its own
-	 * name, and a second line repeating the name above it says nothing. The
-	 * line is drawn only when the path actually carries a separator.
+	 * THE PATH LINE IS CONDITIONAL, and the predicate lives in the model beside
+	 * `repoName` (agent review round 1, R1-5): a project with no separator IS
+	 * its own name, and a second line repeating the name above it says nothing.
+	 * `pathLineFor` returns the path to draw, or null when there is no line.
 	 */
-	const projectPath = row.project.trim();
-	const showsPath = projectPath !== "" && projectPath !== name;
+	const projectPath = pathLineFor(row.project);
 	/*
 	 * The row's ONE quiet line: the backend's own sentence for a row whose
 	 * state could not be read, chosen by `rowNotice`'s precedence (a link-only
@@ -174,8 +175,11 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({
 					 *
 					 * THE NUMBER NEVER TRUNCATES (design D3 / UX U8): at the 320px floor
 					 * the merged rows all read `damianvtran/local-operator #2…` and were
-					 * indistinguishable. The NAME truncates; the `#N` (`!N` on GitLab,
-					 * D6) is `shrink-0`; the relation tag yields before either.
+					 * indistinguishable. The budget order on this line is NUMBER >
+					 * NAME > RELATION TAG: the `#N` (`!N` on GitLab, D6) is `shrink-0`
+					 * and never yields; the name is readable whenever the line has
+					 * room for it; the relation tag - context, not identity - is what
+					 * gives way.
 					 *
 					 * THE NAME, NOT THE PATH (the operator's ask): the line carries
 					 * the repo NAME - the last segment of the forge's project path -
@@ -187,44 +191,41 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({
 						{/*
 						 * THE WRAPPER OWNS THE WHOLE SQUEEZE (design round 2, D9): the
 						 * relation tag sits INSIDE it, after the number, so one flex
-						 * container distributes the shrink - the project (shrink 1) and
-						 * the tag (shrink 2) truncate, the `shrink-0` number never yields.
-						 * The round-1 shape kept the tag outside the wrapper, whose basis
-						 * was 0 while the tag kept its full text width; at the 320px floor
-						 * nothing then shrank, the wrapper got only the remainder, and the
-						 * `shrink-0` number spilled out of it OVER the tag (measured: a
-						 * 29.2px wrapper under a 33.4px number on the Open variant).
+						 * container distributes the shrink - the name and the tag give
+						 * way, the `shrink-0` number never yields. The round-1 shape
+						 * kept the tag outside the wrapper, whose basis was 0 while the
+						 * tag kept its full text width; at the 320px floor nothing then
+						 * shrank, the wrapper got only the remainder, and the
+						 * `shrink-0` number spilled out of it OVER the tag (measured:
+						 * a 29.2px wrapper under a 33.4px number on the Open variant).
 						 */}
 						<span className={cn("flex min-w-0 flex-1 items-baseline gap-1")}>
 							{/*
-							 * THE NAME IS `shrink-0` (the operator's ask, measured).
+							 * THE NAME IS THE SECOND YIELDER, AND IT IS SHRINKABLE.
 							 *
-							 * Flexbox distributes a squeeze by SHRINK FACTOR x BASE
-							 * SIZE, so the relation tag - whose base is its whole
-							 * sentence, `via subagent coder › reviewer` - took
-							 * almost all of it and the NAME took what was left: at
-							 * the 320px floor the wrapper was 193.1px and the name
-							 * was allotted 22.6px, which ellipsised a four-character
-							 * name (`core`) to `c…`. The name is the one element on
-							 * this line that must be READABLE (it is what says which
-							 * repository the row is about), so it does not shrink at
-							 * all and the tag yields alone - which is the invariant
-							 * the wrapper's own comment above already names: the
-							 * number never truncates, the tag yields first, and now
-							 * the name does not yield either.
+							 * The name is what says which repository the row is about,
+							 * so it must be readable whenever the line has room for it -
+							 * and it must NOT be what pushes the number out of the row.
+							 * Both hold because the name is a NORMAL flex item
+							 * (`min-w-0`, shrink 1): flexbox clamps a shrinkable item
+							 * to the space the line has left, so the name can never
+							 * push the `shrink-0` number past the state pill. The tag
+							 * is what gives way first (below), so the name is not
+							 * squeezed by the tag's sentence either.
 							 *
-							 * THE TRADEOFF, STATED: a repository name longer than
-							 * the floor's budget for it (~24 characters at 320px) no
-							 * longer squeezes the line, so it would push the
-							 * `shrink-0` number out. That is the right way round for
-							 * a name - ONE path segment, and the full path is on the
-							 * line below with the identity in the `title` - and the
-							 * alternative (a name that reads `c…`) loses the row's
-							 * subject entirely.
+							 * THE MEASURED DEFECT THIS REPLACES, because it was in
+							 * this change's first round: with the name at `shrink-0` it
+							 * kept its full width, and at the 320px floor a 28-character
+							 * name put the number's right edge at 241.5px against a
+							 * state pill whose left edge is at 239.8px - the number
+							 * UNDER the pill - while at 40 characters it left the pane
+							 * altogether (317.0px against the 308px content edge). The
+							 * same markup with the name shrinkable keeps the number
+							 * inside the clip and clear of the pill at every length.
 							 */}
 							<span
 								className={cn(
-									"min-w-0 shrink-0 truncate text-meta text-ink-muted tabular-nums",
+									"min-w-0 truncate text-meta text-ink-muted tabular-nums",
 								)}
 								title={`${row.project} ${forgeSigil(row)}${row.number}`}
 							>
@@ -237,9 +238,36 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({
 								{row.number}
 							</span>
 							{relation && (
+								/*
+								 * THE RELATION TAG IS THE YIELDER (design D3 / UX U8,
+								 * measured).
+								 *
+								 * `basis-0 grow` is the whole mechanism. The tag's FLEX
+								 * BASIS is zero, so it asks for no width of its own and
+								 * takes only the slack the line has left: a short name is
+								 * never squeezed by the tag's sentence (`via subagent
+								 * coder › reviewer`), and a name too long for the line is
+								 * the thing that ellipsises, not the number. The tag's
+								 * old `shrink-[2]` measured the squeeze by BASE SIZE,
+								 * which handed the tag almost all of it and took the
+								 * name's box down to 22.6px of a 193.1px wrapper at the
+								 * 320px floor - a four-character name (`core`) rendered as
+								 * `c…`.
+								 *
+								 * THE BUDGET ORDER ON THIS LINE IS NUMBER > NAME > TAG
+								 * (design D3 / UX U8): the number never yields, the name
+								 * yields only when the line is full, and the tag - which
+								 * is context, not identity - yields FIRST. So the tag
+								 * has no floor of its own: a floor comes straight out of
+								 * the name's budget, and the measurement says the name
+								 * needs every pixel of it (at the 320px floor a floor of
+								 * 2ch cost the name 15.1px, which is exactly what a
+								 * 20-character repository name needs to stay whole
+								 * beside the widest state pill).
+								 */
 								<span
 									className={cn(
-										"min-w-0 shrink-[2] truncate text-meta text-ink-dim",
+										"min-w-0 basis-0 grow truncate text-meta text-ink-dim",
 									)}
 									title={
 										row.relation === "unknown"
@@ -294,12 +322,12 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({
 					 * separator is its own name, and a line that repeats the name
 					 * above it says nothing (see `showsPath`).
 					 */}
-					{showsPath && (
+					{projectPath !== null && (
 						<span
 							className={cn("truncate text-meta text-ink-dim")}
 							title={row.project}
 						>
-							{row.project}
+							{projectPath}
 						</span>
 					)}
 					{/* LINE C - the title, in `ink` (the row's loudest run). */}
