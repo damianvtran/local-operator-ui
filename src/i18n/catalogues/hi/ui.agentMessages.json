@@ -11,7 +11,7 @@
 	"ui.agentMessages.dialog.consent_unavailable": "सहमति उपलब्ध नहीं है। एजेंट संदेश चालू नहीं किए गए हैं।",
 	"ui.agentMessages.dialog.account_guard_unavailable": "यह संस्करण आपके खाते के लिए एजेंट संदेश सुरक्षित रूप से चालू नहीं कर सकता। Local Operator अपडेट करें, फिर कोशिश करें।",
 	"ui.agentMessages.dialog.failure": "एजेंट संदेश चालू नहीं किए जा सके। फिर कोशिश करें, या इसे बाद में सेटिंग्स → एजेंट संदेश में चालू करें।",
-	"ui.agentMessages.dialog.consent_changed": "नीचे सहमति का मौजूदा पाठ पढ़ें, फिर “चालू करें” दोबारा चुनें।",
+	"ui.agentMessages.dialog.consent_changed": "सहमति का मौजूदा पाठ पढ़ें, फिर “चालू करें” दोबारा चुनें।",
 	"ui.agentMessages.dialog.local_failure": "आपकी सहमति सहेजी गई, लेकिन इस मशीन पर सेटअप पूरा नहीं हुआ। सेटअप पूरा करने के लिए सेटिंग्स → एजेंट संदेश खोलें।",
 	"ui.agentMessages.dialog.validation_detail": "{field}: {rule}",
 	"ui.agentMessages.dialog.validation_failure": "सेटअप का यह अनुरोध स्वीकार नहीं हुआ। Local Operator अपडेट करें, फिर कोशिश करें।"
