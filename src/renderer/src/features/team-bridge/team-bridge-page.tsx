@@ -203,8 +203,10 @@ export type TeamBridgePageViewProps = {
 	selfAccountId?: string;
 	sending?: boolean;
 	sendFailed?: boolean;
+	/** Story/test seed only: the page's real draft is user-owned state. */
+	initialDraft?: string;
 	onSelect: (conversationId: string) => void;
-	onSend: (body: string) => Promise<unknown> | undefined;
+	onSend: (body: string, clientRef: string) => Promise<unknown> | undefined;
 	onNewConversation: () => void;
 	onRetry?: () => void;
 };
@@ -218,13 +220,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	selfAccountId,
 	sending = false,
 	sendFailed = false,
+	initialDraft = "",
 	onSelect,
 	onSend,
 	onNewConversation,
 	onRetry,
 }) => {
 	useI18nLocale();
-	const [draft, setDraft] = useState("");
+	const [draft, setDraft] = useState(initialDraft);
 	const threadEnd = useRef<HTMLDivElement>(null);
 	const ordered = useMemo(() => chronological(messages), [messages]);
 
@@ -233,16 +236,30 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		threadEnd.current?.scrollIntoView({ block: "end" });
 	}, [selected?.id, ordered.length]);
 
+	// The retry's idempotency key: a failed send is retried with the SAME
+	// `client_ref`, so an ambiguous failure (request landed, answer lost) cannot
+	// post the message twice. A genuinely different draft gets a fresh key.
+	const pendingSend = useRef<{ body: string; clientRef: string } | null>(null);
 	const submit = () => {
 		const body = draft.trim();
 		if (!body || sending) return;
+		const clientRef =
+			pendingSend.current?.body === body
+				? pendingSend.current.clientRef
+				: crypto.randomUUID();
+		pendingSend.current = { body, clientRef };
 		// Keep the draft until the send resolves: a refused send must not erase
-		// what the person wrote. A synchronous handler (a story) clears at once.
-		const result = onSend(body);
+		// what the person wrote. Clear only if the field still holds what was
+		// sent — text typed while it was in flight is not the send's to discard.
+		const result = onSend(body, clientRef);
+		const settle = () => {
+			pendingSend.current = null;
+			setDraft((current) => (current.trim() === body ? "" : current));
+		};
 		if (result instanceof Promise) {
-			void result.then(() => setDraft("")).catch(() => {});
+			void result.then(settle).catch(() => {});
 		} else {
-			setDraft("");
+			settle();
 		}
 	};
 
@@ -539,6 +556,13 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	// these messages; leaving the cursor behind would keep the badge counting a
 	// conversation the reader is looking at. The server applies `$max`, so this
 	// is safe to repeat on a refetch.
+	// A refusal belongs to the conversation it happened in; selecting another
+	// conversation must not leave the line on screen.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset only when the selection changes.
+	useEffect(() => {
+		send.reset();
+	}, [selected?.id]);
+
 	const newest = messages.data?.messages.reduce<number | undefined>(
 		(max, message) =>
 			max === undefined || message.seq > max ? message.seq : max,
@@ -573,9 +597,9 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				sending={send.isPending}
 				sendFailed={send.isError}
 				onSelect={setSelectedId}
-				onSend={(body) => {
+				onSend={(body, clientRef) => {
 					if (selected === null) return;
-					return send.mutateAsync({ clientRef: crypto.randomUUID(), body });
+					return send.mutateAsync({ clientRef, body });
 				}}
 				onNewConversation={() => setCreateOpen(true)}
 				onRetry={() => {
