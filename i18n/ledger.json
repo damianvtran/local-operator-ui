@@ -8388,6 +8388,1680 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agentMessages",
+			"source_sha256": "065cbea39ca4df33aa114fc027e5f75bcc6e74e9cb21d4f14e42628d3795cbcb",
+			"target_sha256": "c15cbc96d9f9c5222f319a83fd02f5b4fcfd2c0f4690c5008204846c20d2ddba",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "4f53d9a1df52",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4f53d9a1df52.json",
+					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+					"scope": "hi ui.agentMessages vs en source — round 1 independent full pass, 16 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agentMessages.settings",
+			"source_sha256": "9f323c46102978c0fa60b8f006e4b380d78c18ab81a7205cd233438d867c5d5d",
+			"target_sha256": "59b337c1e350dd326d38ec5e9d5607aab384cb171a34c0f9395bda55117cc6f7",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "6fe703c77eb5",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6fe703c77eb5.json",
+					"receipt_sha256": "b9dde3ddd3247c68d0ff0756bc0467ad449ee42885d89f4f35798ea92156027c",
+					"scope": "hi ui.agentMessages.settings vs en source — round 1 independent full pass, 84 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents",
+			"source_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+			"target_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "11e4c64c11d5",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/11e4c64c11d5.json",
+					"receipt_sha256": "d0d2adb696d84959d52ff8b95d2e6d484d9d9dd5678a31049089009e14326ddd",
+					"scope": "hi ui.agents vs en source — round 1 independent full pass, 0 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents.dialogs",
+			"source_sha256": "99fc8672fbb4139aa2721542a8fb994506301b0c678d86c21439e939f5dd2bf4",
+			"target_sha256": "df645beab7ac36f9300b0041d5cf29e39b3907c31885aee11bd0a138fc271b05",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "11e4c64c11d5",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/11e4c64c11d5.json",
+					"receipt_sha256": "d0d2adb696d84959d52ff8b95d2e6d484d9d9dd5678a31049089009e14326ddd",
+					"scope": "hi ui.agents.dialogs vs en source — round 1 independent full pass, 33 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents.models",
+			"source_sha256": "0775863598346b25001f9131bdf4bf207aba0d036858ce08b7cc49b00f44a540",
+			"target_sha256": "468101a0b1dad2a0a9862c006a3db0dbb2a05bd18080b61f75d99c6716e69926",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "11e4c64c11d5",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/11e4c64c11d5.json",
+					"receipt_sha256": "d0d2adb696d84959d52ff8b95d2e6d484d9d9dd5678a31049089009e14326ddd",
+					"scope": "hi ui.agents.models vs en source — round 1 independent full pass, 38 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents.navigation",
+			"source_sha256": "23f591cd7c2d52c2563e0b5cbb4cbb2164f7cd01c2568b050738b3be976a5729",
+			"target_sha256": "e4976309f63cebc9d73f10ea8921b4e7663d3612f216be98b957a807d0035210",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "11e4c64c11d5",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/11e4c64c11d5.json",
+					"receipt_sha256": "d0d2adb696d84959d52ff8b95d2e6d484d9d9dd5678a31049089009e14326ddd",
+					"scope": "hi ui.agents.navigation vs en source — round 1 independent full pass, 32 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents.refusals",
+			"source_sha256": "457cb86efa40d800d2adf711ec2b4289d22b4b9013fd48189082c4b8808d3f20",
+			"target_sha256": "5117cdc87bd4c6de51b46189ea7a1dca0e88dd873c0cdb8fcfff357f26678b51",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "b5fb13d46f25",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/b5fb13d46f25.json",
+					"receipt_sha256": "5ed84478c030d4607ae07fb89ecc55d74beee1f42d16a94bd424e1798a856471",
+					"scope": "hi ui.agents.refusals vs en source — round 2 remediation-diff audit on final bytes",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents.settings",
+			"source_sha256": "2e2a8a28891db681fd72396a3b8323e8705e4ea9c0397e49237e3ed3f7e1a897",
+			"target_sha256": "a68fe3ea664a9501f28b804c973be035d07e51e9048a6beccfa04a20c4cdb897",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "11e4c64c11d5",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/11e4c64c11d5.json",
+					"receipt_sha256": "d0d2adb696d84959d52ff8b95d2e6d484d9d9dd5678a31049089009e14326ddd",
+					"scope": "hi ui.agents.settings vs en source — round 1 independent full pass, 58 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents.starters",
+			"source_sha256": "7d7170328807a0ae0018bb69c4cd5fe49f6d5e47f7ca34484cf71b2a74612cec",
+			"target_sha256": "bc44917e2c7af2ce5309dccad72353ea6a4d4a35ed1ce818a2b06b9f21fb5201",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "b5fb13d46f25",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/b5fb13d46f25.json",
+					"receipt_sha256": "5ed84478c030d4607ae07fb89ecc55d74beee1f42d16a94bd424e1798a856471",
+					"scope": "hi ui.agents.starters vs en source — round 2 remediation-diff audit on final bytes",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.browser",
+			"source_sha256": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
+			"target_sha256": "1fbfd6c2d67143ca58fdc35a3a4c203c91ffd1b489e90d79e58e879d29fcf934",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "eb574eea2c14",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/eb574eea2c14.json",
+					"receipt_sha256": "e32f0689ba384be88a36ff918eed3217cc3dc1ef18ee1d29fe2fa1de7044079f",
+					"scope": "hi ui.browser vs en source — round 2 remediation-diff audit on final bytes",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.browser.chrome",
+			"source_sha256": "73793572e5e36b8bbc8df6c1f27fb98083634b3b9e3cbd05ede27da4813c656c",
+			"target_sha256": "c91c3e3b1396c4c1d7737c1be3fe06052b9c8243b4763a00cf3c08f23cec6381",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "8acf71c41820",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8acf71c41820.json",
+					"receipt_sha256": "2d922819325ce86bebe0d54a411d1210452c812add72f4c33567078ead75ed57",
+					"scope": "hi ui.browser.chrome vs en source — round 1 independent full pass, 14 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.canvas",
+			"source_sha256": "6fa13501b59a260373bcb26f212fc6244a3d1219ef1811d2b0c1de05b541f1f5",
+			"target_sha256": "74af20633ce454cb37119274c48033e640923cbae97a81af6f47d1a77ba33f11",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "11e4c64c11d5",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/11e4c64c11d5.json",
+					"receipt_sha256": "d0d2adb696d84959d52ff8b95d2e6d484d9d9dd5678a31049089009e14326ddd",
+					"scope": "hi ui.canvas vs en source — round 1 independent full pass, 57 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat",
+			"source_sha256": "29169c4c0801689781d503f724d457757275416c49e975bfb6ae4872d90c2c46",
+			"target_sha256": "460ff3fd6acc1733fd59b30d2d5cf92dedbcd921071b18d8c5c3c9954fc9e0bd",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "4f53d9a1df52",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4f53d9a1df52.json",
+					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+					"scope": "hi ui.chat vs en source — round 1 independent full pass, 8 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.composer",
+			"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+			"target_sha256": "a0c2fa0c3a94869933de815b2657af69196bfaccfc7463d2f98dd84cfb4e3cd3",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "4f53d9a1df52",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4f53d9a1df52.json",
+					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+					"scope": "hi ui.chat.composer vs en source — round 1 independent full pass, 34 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.composer_media",
+			"source_sha256": "47ec03f574b6665bafaf900f15067ef522fbf8b7fe665402b0bb4be03d0aa0ff",
+			"target_sha256": "8f136b57e162e5b0165b5cc6ce910d3742e023faed31b35259cdb5f8daa10349",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "4f53d9a1df52",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4f53d9a1df52.json",
+					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+					"scope": "hi ui.chat.composer_media vs en source — round 1 independent full pass, 7 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.dialogs",
+			"source_sha256": "783d72141bae3491cc1ecfbdfc983339e327406cd4385e7ce8f9dfa1360997fc",
+			"target_sha256": "b152ef39e4fc101229c2cd6040c8d4b2801d63c365e5fa860f540825460cda35",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "4f53d9a1df52",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4f53d9a1df52.json",
+					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+					"scope": "hi ui.chat.dialogs vs en source — round 1 independent full pass, 4 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.header",
+			"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+			"target_sha256": "3926976b399bbd38fd7c16df427e26114b31c287abc84be598b3557c2f5d6ce5",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "4f53d9a1df52",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4f53d9a1df52.json",
+					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+					"scope": "hi ui.chat.header vs en source — round 1 independent full pass, 10 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.response_actions",
+			"source_sha256": "3c3e9480cf38316dda324d31e127ab9e63e2bf846c8e46f8efee7306fe4e47d5",
+			"target_sha256": "94d5bef00a3a6dcb4f3c56bc0baedb277c7a7c22a67285774397d8f32186bffd",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "4f53d9a1df52",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4f53d9a1df52.json",
+					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+					"scope": "hi ui.chat.response_actions vs en source — round 1 independent full pass, 1 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.sidebar_view",
+			"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+			"target_sha256": "fcbc4336613474d15fbba5612d40839ab136b9829928d86c5a3298da64d25c23",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "4f53d9a1df52",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4f53d9a1df52.json",
+					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+					"scope": "hi ui.chat.sidebar_view vs en source — round 1 independent full pass, 22 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.tags",
+			"source_sha256": "ffb1c6b985fd1ab521a2a5fc49955978d76cabc5671437dc2bc6b31cfa1ada74",
+			"target_sha256": "ca02ff46272e83e297d960de35088c648eadfd4b365b3f0e243c087ce0502279",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "4f53d9a1df52",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4f53d9a1df52.json",
+					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+					"scope": "hi ui.chat.tags vs en source — round 1 independent full pass, 42 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.code_review",
+			"source_sha256": "7344c8694a23662bfe3ae12205685cfa14851209d0685abbe463b9f513565085",
+			"target_sha256": "f09b13bfc53e5d7e9f2c33746f9a0d39212d9542be206fcd7c6b0fc625e9fe48",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "11e4c64c11d5",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/11e4c64c11d5.json",
+					"receipt_sha256": "d0d2adb696d84959d52ff8b95d2e6d484d9d9dd5678a31049089009e14326ddd",
+					"scope": "hi ui.code_review vs en source — round 1 independent full pass, 75 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.command_palette",
+			"source_sha256": "c48797d973f81dea023e5c89c40c83d8ae0a9cdfaeb2509f6cbc4e9fb8abd7c6",
+			"target_sha256": "f9c706b077306a6dbea5e589455bb7736904b1fbe3083ea35b2bf912cef42ba6",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "aa4d6c3f5c30",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/aa4d6c3f5c30.json",
+					"receipt_sha256": "4b039a88e1d26dba2176ec7cef13aeac281ff50f7a5ffd94b57aaa7ea87794de",
+					"scope": "hi ui.command_palette vs en source — round 2 remediation-diff audit on final bytes",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.actions",
+			"source_sha256": "bf151da8ad56c3b32b05be1d505764d3f4cfb72e9792f9ec68b8a570239f6976",
+			"target_sha256": "00e2bfbf7b4f3c0ace2a25a3e480a661e60f6347da50ad81859b0859dd0b562c",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "4f53d9a1df52",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4f53d9a1df52.json",
+					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+					"scope": "hi ui.common.actions vs en source — round 1 independent full pass, 6 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.connection",
+			"source_sha256": "d1acb6a1fae70e3f85255d880a91d9e35ed49a8bf7d04ef14722ce115d7c69bb",
+			"target_sha256": "8c40d9b1627ebd3244648e6ec37d8cdd915a68aca86af3d3d16864399cc6fc04",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "4f53d9a1df52",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4f53d9a1df52.json",
+					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+					"scope": "hi ui.common.connection vs en source — round 1 independent full pass, 10 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.editing",
+			"source_sha256": "e7ddf3b75f3e46d6900aacab976f1180eb10fdb121b5f46d2dc231fd6b4f5bb5",
+			"target_sha256": "38cb6d8fa3ef4a2ede73082301030207dabffb72710cd713c705f7e3d051d5ea",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "4f53d9a1df52",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4f53d9a1df52.json",
+					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+					"scope": "hi ui.common.editing vs en source — round 1 independent full pass, 3 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.errors",
+			"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+			"target_sha256": "cccc445c93b170ad4f70a7cc8a24ead16dd8b77b59ced866dd55dc704506c4a4",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "4f53d9a1df52",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4f53d9a1df52.json",
+					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+					"scope": "hi ui.common.errors vs en source — round 1 independent full pass, 4 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.forms",
+			"source_sha256": "28a63a53e5b6c3c4fccb9995eb07637c8521ce9d5019e304f3fedb0ddbc053d9",
+			"target_sha256": "b119957f85772f7212a6ab28caf1f1b1fa79f3b7dd476a82649999c016b32894",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "aa4d6c3f5c30",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/aa4d6c3f5c30.json",
+					"receipt_sha256": "4b039a88e1d26dba2176ec7cef13aeac281ff50f7a5ffd94b57aaa7ea87794de",
+					"scope": "hi ui.common.forms vs en source — round 2 remediation-diff audit on final bytes",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.loading",
+			"source_sha256": "e629186e32cd51d7eb98dcd3e8f6587765447bd1da9bdba5c5d327ad2bdcd87e",
+			"target_sha256": "fa0f4215fcf1dbada3bc6055f60a35669524b45bc10a5bfd0cecf9ff97f58fc0",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "4f53d9a1df52",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4f53d9a1df52.json",
+					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+					"scope": "hi ui.common.loading vs en source — round 1 independent full pass, 1 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.models",
+			"source_sha256": "561e39a0105425d66cac7d7497306d740d79f7b2e3921424b1993f3405e08d77",
+			"target_sha256": "a6afc99c89dd7fa0f384c34771bc1d7cf226270a6e3084e77c67db8e082b8c8d",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "4f53d9a1df52",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4f53d9a1df52.json",
+					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+					"scope": "hi ui.common.models vs en source — round 1 independent full pass, 24 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.updates",
+			"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
+			"target_sha256": "4d9eb811ac0b6129ed71eca397ad2667ca1986084639e89b904bfb8db67b7a3d",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "45b32a06bf7b",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/45b32a06bf7b.json",
+					"receipt_sha256": "65b4e51c287e2c51708607dd333d37dfb27360eda9d05c60f5d3d79eefd77a07",
+					"scope": "hi ui.common.updates vs en source — round 2 remediation-diff audit on final bytes",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.hub",
+			"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+			"target_sha256": "49fe87a117529075b464b2e49224cf3357f9b2325f030cecc334dd8a07ee775b",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "d8c851a1b9f8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d8c851a1b9f8.json",
+					"receipt_sha256": "599c245251b6571bd534c323d2d6e26ffb21ad8fae78315f7fad847390625419",
+					"scope": "hi ui.hub vs en source — round 1 independent full pass, 150 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.hub.comments",
+			"source_sha256": "5c20d0e9a7f66f753561ded1d104aa5cf0e1fd0d5a73f7f0a7e3349a28c6f2c4",
+			"target_sha256": "3cdf34ead00bbaa900d905d53fffcb247d7932cd5b220c54dbc9648101776c38",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "d8c851a1b9f8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d8c851a1b9f8.json",
+					"receipt_sha256": "599c245251b6571bd534c323d2d6e26ffb21ad8fae78315f7fad847390625419",
+					"scope": "hi ui.hub.comments vs en source — round 1 independent full pass, 29 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.hub.taxonomy",
+			"source_sha256": "4614e6b5eb2c56f0f48ccbee9bf26266193701a79994da4d9cf533386f1d3717",
+			"target_sha256": "7bd2f24fc1885c5961d3c001a8c841d0283c31c5cb7ee24ae65d1ab00341d859",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "d8c851a1b9f8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d8c851a1b9f8.json",
+					"receipt_sha256": "599c245251b6571bd534c323d2d6e26ffb21ad8fae78315f7fad847390625419",
+					"scope": "hi ui.hub.taxonomy vs en source — round 1 independent full pass, 21 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.installer",
+			"source_sha256": "35b34093f3d065acf26e96a4e9601cb2906bd9439230a7fa7f9fc9a43784f7a3",
+			"target_sha256": "a0a4ae791bf906984220916d7d3280f486a5d8c7a2c305c0f5f5b4fc076a16b8",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "aa4d6c3f5c30",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/aa4d6c3f5c30.json",
+					"receipt_sha256": "4b039a88e1d26dba2176ec7cef13aeac281ff50f7a5ffd94b57aaa7ea87794de",
+					"scope": "hi ui.installer vs en source — round 2 remediation-diff audit on final bytes",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.library",
+			"source_sha256": "c442f7a9dde6d005d2b5246d29849910f2e504fa7175a6f4a4cdc5e6373e9bd1",
+			"target_sha256": "9eb01dde09071729a2257a1ceb6d24552a7162d597643c0bfa19a313b3ee969f",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "1699379ffbee",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1699379ffbee.json",
+					"receipt_sha256": "e538487d30740f70d70bff4388b5c2098621514fb2ee1723dd8854907d246de0",
+					"scope": "hi ui.library vs en source — round 2 remediation-diff audit on final bytes",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.mesh",
+			"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+			"target_sha256": "4722b82aac523de404aa92d166fb769b8553b67a48bc714bfed6615f62ba201d",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "d77aef7c18eb",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d77aef7c18eb.json",
+					"receipt_sha256": "6a5bf0f5d488f0f8bc33ba9e1019f393c88a4695e8b51ff02c21fff8103be2d6",
+					"scope": "hi ui.mesh vs en source — round 2 remediation-diff audit on final bytes",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.projects",
+			"source_sha256": "6b12f695845c3d01500291f5bc4eb50ea9b35e60c68bc69f21ee219c5f9d7f52",
+			"target_sha256": "62933ace172cd881a6294a4a0ed3bb475df1d0302d5e75df18a9823419ee6bdc",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "c5cea54414a0",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c5cea54414a0.json",
+					"receipt_sha256": "3b4c2080f6175bf6113b6e11671aaa50944f93bd97b9bb1faaeba8381775ef1f",
+					"scope": "hi ui.projects vs en source — round 2 remediation-diff audit on final bytes",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.providers",
+			"source_sha256": "9981637a98afbcbc166d889b461795bae7685e42274f4d607b711f4b0f9085f2",
+			"target_sha256": "5449f365ad5be61c9bb0ba7a48e43dd4bee71800e3d826a07e4f8527c2779548",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "b5fb13d46f25",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/b5fb13d46f25.json",
+					"receipt_sha256": "5ed84478c030d4607ae07fb89ecc55d74beee1f42d16a94bd424e1798a856471",
+					"scope": "hi ui.providers vs en source — round 2 remediation-diff audit on final bytes",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.schedules",
+			"source_sha256": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
+			"target_sha256": "7c1fbe64037137926bd763d5f20816838a32dc4560d09ac37d5524b386e32dd0",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "d77aef7c18eb",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d77aef7c18eb.json",
+					"receipt_sha256": "6a5bf0f5d488f0f8bc33ba9e1019f393c88a4695e8b51ff02c21fff8103be2d6",
+					"scope": "hi ui.schedules vs en source — round 2 remediation-diff audit on final bytes",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.account",
+			"source_sha256": "90960d5e885e5b617af91b7249b64828a049c0b9631bf5da4562a8f8c2f5c066",
+			"target_sha256": "069fcf65a13ccc5dbaf1f39cf70a251a887c8af18fad0455e62ce1b93925d9b9",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "a9ae4f038cc4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a9ae4f038cc4.json",
+					"receipt_sha256": "ec989e0af2c264081d50d722bc33a6d7956f94477723b0e330af5e1c2101b07d",
+					"scope": "hi ui.settings.account vs en source — round 1 independent full pass, 34 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.appearance",
+			"source_sha256": "f5db8989cc542fededba171769b0fbaa940cec562de6eccc07347c0f41c784d1",
+			"target_sha256": "5f882bb8e082ae36e701ffc666c4e37273e7be32d01f943751a9619c9efeea89",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "a9ae4f038cc4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a9ae4f038cc4.json",
+					"receipt_sha256": "ec989e0af2c264081d50d722bc33a6d7956f94477723b0e330af5e1c2101b07d",
+					"scope": "hi ui.settings.appearance vs en source — round 1 independent full pass, 10 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.appearance.window_glass",
+			"source_sha256": "d3c6e272273baab454200c41a25b21c451689ae9bf03329aa776dc1cb9f1b33a",
+			"target_sha256": "11d6f9be3b9e1bc21f61ee604f5e90299b32fa0c7e34957970093453eb34c9ac",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "a9ae4f038cc4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a9ae4f038cc4.json",
+					"receipt_sha256": "ec989e0af2c264081d50d722bc33a6d7956f94477723b0e330af5e1c2101b07d",
+					"scope": "hi ui.settings.appearance.window_glass vs en source — round 1 independent full pass, 28 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.configuration",
+			"source_sha256": "d11a5170a0336449668b91a2b2aa1013ae36ee38c4b70fc69f90541aea3e5050",
+			"target_sha256": "b2bbf8cd929acf432725953f24a52a6f5dfad4b063c0ca2068f4f52beb17ba4b",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "a9ae4f038cc4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a9ae4f038cc4.json",
+					"receipt_sha256": "ec989e0af2c264081d50d722bc33a6d7956f94477723b0e330af5e1c2101b07d",
+					"scope": "hi ui.settings.configuration vs en source — round 1 independent full pass, 92 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.imports",
+			"source_sha256": "1f8b1941bd65b91c84b1b4c41bfb1406f0e4790936c8690b04bfd788b4a1b082",
+			"target_sha256": "92586260bf13ec863bf900dadb3525e8cca43947a2430e91bd05a7890f4e6ca7",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "eb574eea2c14",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/eb574eea2c14.json",
+					"receipt_sha256": "e32f0689ba384be88a36ff918eed3217cc3dc1ef18ee1d29fe2fa1de7044079f",
+					"scope": "hi ui.settings.imports vs en source — round 2 remediation-diff audit on final bytes",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.integrations",
+			"source_sha256": "36b3507993a0466100ca099c3c1c2b2852d66a81b14f3685031f0a35dfa0f5b3",
+			"target_sha256": "0f5a346e41ee1295790c4f551c379dcd3a797eefe98550a670b5bdead65ca39f",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "8acf71c41820",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8acf71c41820.json",
+					"receipt_sha256": "2d922819325ce86bebe0d54a411d1210452c812add72f4c33567078ead75ed57",
+					"scope": "hi ui.settings.integrations vs en source — round 1 independent full pass, 218 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.model",
+			"source_sha256": "5a09b6ed49e8501d14a6f8052a70ce15ce5104ec8da3756c6b576e6e4d150cf1",
+			"target_sha256": "0dad97887cc03d32195e8893ea24fa05f3286ce5fcad64f95052013fae939212",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "a9ae4f038cc4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a9ae4f038cc4.json",
+					"receipt_sha256": "ec989e0af2c264081d50d722bc33a6d7956f94477723b0e330af5e1c2101b07d",
+					"scope": "hi ui.settings.model vs en source — round 1 independent full pass, 32 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.model.default_effort",
+			"source_sha256": "5a4a01952b8a4242730e336cf082dc926085ac126a147d8b44197e9f04fc3b29",
+			"target_sha256": "91873e538fe9762875834e9cf88e42954ef44dfa5974206fff023311c14b29bb",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "a9ae4f038cc4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a9ae4f038cc4.json",
+					"receipt_sha256": "ec989e0af2c264081d50d722bc33a6d7956f94477723b0e330af5e1c2101b07d",
+					"scope": "hi ui.settings.model.default_effort vs en source — round 1 independent full pass, 19 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.model.provider_callout",
+			"source_sha256": "8d1871aa2d087f99694b77e9f946b33b549a9541525023347b78124f42bbf82f",
+			"target_sha256": "6f955ddffa56e40f8c74a756f079b9574cf00356f1724576b1ca594c10748ca8",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "a9ae4f038cc4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a9ae4f038cc4.json",
+					"receipt_sha256": "ec989e0af2c264081d50d722bc33a6d7956f94477723b0e330af5e1c2101b07d",
+					"scope": "hi ui.settings.model.provider_callout vs en source — round 1 independent full pass, 2 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.navigation",
+			"source_sha256": "b0db379acf4e4c13bed8f4fb3f7e551c0b1ebc3dd52ef4508a9797c5fdcf3dbc",
+			"target_sha256": "e78691251123866f3f928a5fedadd7d351a8b1204cf2ec51e0c16cf0d39a3a63",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "a9ae4f038cc4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a9ae4f038cc4.json",
+					"receipt_sha256": "ec989e0af2c264081d50d722bc33a6d7956f94477723b0e330af5e1c2101b07d",
+					"scope": "hi ui.settings.navigation vs en source — round 1 independent full pass, 22 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.shortcuts",
+			"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
+			"target_sha256": "b59e479900ad025144c963fe37dea88ef41d4ffc6129354c15c1c9db8b8e445d",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "a9ae4f038cc4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a9ae4f038cc4.json",
+					"receipt_sha256": "ec989e0af2c264081d50d722bc33a6d7956f94477723b0e330af5e1c2101b07d",
+					"scope": "hi ui.settings.shortcuts vs en source — round 1 independent full pass, 9 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.speech",
+			"source_sha256": "36b1321c4660c345b6c40dfa753e0e233228a66868cfe78218c4ce573609574d",
+			"target_sha256": "526de9138803d24da4fe9114f420cc07ea2716e46c9761f8b260458c5611c907",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "a9ae4f038cc4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a9ae4f038cc4.json",
+					"receipt_sha256": "ec989e0af2c264081d50d722bc33a6d7956f94477723b0e330af5e1c2101b07d",
+					"scope": "hi ui.settings.speech vs en source — round 1 independent full pass, 19 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.updates",
+			"source_sha256": "6597aeea3a3a0495f1ba0d9a7ce8078f455d970b53647dbc8350e00fbc9099b2",
+			"target_sha256": "df0d0e09e5f2a584f08ba4a94fea0ba10cf35d400171f9840fa0cf98118e0e92",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "a9ae4f038cc4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a9ae4f038cc4.json",
+					"receipt_sha256": "ec989e0af2c264081d50d722bc33a6d7956f94477723b0e330af5e1c2101b07d",
+					"scope": "hi ui.settings.updates vs en source — round 1 independent full pass, 29 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.shell",
+			"source_sha256": "a36a75e15ce94632bad00e774e7f6211ca58d95a2b6f6f50a85e687d64a5b1ea",
+			"target_sha256": "e2d4b58282a26cb5b4e457c7aed0cbe807fe1c734268117904fd2ba7b516b06f",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "a9ae4f038cc4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a9ae4f038cc4.json",
+					"receipt_sha256": "ec989e0af2c264081d50d722bc33a6d7956f94477723b0e330af5e1c2101b07d",
+					"scope": "hi ui.shell vs en source — round 1 independent full pass, 29 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.shell.rail",
+			"source_sha256": "82f946fe2d2944d03100d85263ff5e9e595dc34f953a0d57aa9794ea0879f3eb",
+			"target_sha256": "e77705c076e650662f94fd7a6649a4e01f4f98b78c4894064257b59d8de4a73a",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "a9ae4f038cc4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a9ae4f038cc4.json",
+					"receipt_sha256": "ec989e0af2c264081d50d722bc33a6d7956f94477723b0e330af5e1c2101b07d",
+					"scope": "hi ui.shell.rail vs en source — round 1 independent full pass, 20 keys",
+					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

@@ -1,0 +1,12 @@
+{
+	"ui.settings.appearance.settings_page.appearance": "दिखावट",
+	"ui.settings.appearance.settings_page.customize_the_look_and_feel_of_local_operator": "Local Operator की दिखावट अपने हिसाब से बदलें",
+	"ui.settings.appearance.settings_page.show_agent_reasoning": "एजेंट का तर्क दिखाएँ",
+	"ui.settings.appearance.settings_page.adds_the_agent_s_reasoning_and_thinking_rows_to_conversations_the": "बातचीत में एजेंट की तर्क और सोच वाली पंक्तियाँ जोड़ता है। जब तक आप कोई पंक्ति नहीं खोलते, वह बंद रहती है। सिर्फ़ तर्क: टर्न के बीच एजेंट जो विवरण लिखता है, वह ट्रांसक्रिप्ट का हिस्सा है, तर्क नहीं — किसी भी दिखाने के तरीके में उसे हटाया नहीं जाता (टर्न के अनुसार उसे टर्न की पट्टियों के पीछे समेटता है, जवाब के अनुसार उसे स्क्रीन पर रखता है)।",
+	"ui.settings.appearance.theme_selector.dark": "डार्क",
+	"ui.settings.appearance.theme_selector.light": "लाइट",
+	"ui.settings.appearance.transcript_display_mode_setting.transcript_display": "ट्रांसक्रिप्ट दिखाने का तरीका",
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every": "टर्न के अनुसार हर टर्न को उसके जवाब तक समेटता है। जवाब के अनुसार हर पूरा जवाब स्क्रीन पर रखता है और टर्न का अंतिम जवाब भी चिह्नित रहता है।",
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn": "टर्न के अनुसार",
+	"ui.settings.appearance.transcript_display_mode_setting.by_response": "जवाब के अनुसार"
+}
