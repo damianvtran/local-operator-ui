@@ -126,10 +126,18 @@ function writeFilters(filters: LibraryListFilters) {
 
 /** The library page's own width: the page root excludes the app sidebar. */
 function useWorkspaceWidth() {
-	const ref = useRef<HTMLDivElement>(null);
+	/*
+	 * A CALLBACK REF, not a ref read in a one-shot layout effect. The page's
+	 * capability gate returns before the workspace node exists on a cold mount,
+	 * so an effect with `[]` measured `null` once and kept the width at 0 after
+	 * the gate resolved - which is how a fresh 1440 mount rendered the narrow
+	 * Filters button and a standalone preview until a resize forced a second
+	 * pass. Keying the observer on the node makes the measurement attach the
+	 * moment the real page renders, and re-attach if React replaces it.
+	 */
+	const [node, setNode] = useState<HTMLDivElement | null>(null);
 	const [width, setWidth] = useState(0);
 	useLayoutEffect(() => {
-		const node = ref.current;
 		if (!node) return;
 		setWidth(node.getBoundingClientRect().width);
 		const observer = new ResizeObserver((entries) => {
@@ -138,8 +146,8 @@ function useWorkspaceWidth() {
 		});
 		observer.observe(node);
 		return () => observer.disconnect();
-	}, []);
-	return { ref, width };
+	}, [node]);
+	return { ref: setNode, width };
 }
 
 function useViewportWidth() {

@@ -22,8 +22,10 @@ import { TagsInputChips } from "@shared/components/common/tags-input-chips";
 import { Badge, Button, Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { cn } from "@shared/lib/utils";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import {
+	ChevronDown,
 	ChevronLeft,
 	Download,
 	ExternalLink,
@@ -36,7 +38,7 @@ import {
 	X,
 } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
 import {
 	useAssignLibraryTags,
@@ -138,6 +140,25 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 	const rootRef = useRef<HTMLDivElement>(null);
 	const nameRef = useRef<HTMLDivElement>(null);
 	const tagsRef = useRef<HTMLDivElement>(null);
+	/*
+	 * SHORT PREVIEWS COMPACT THE METADATA (design spec §2): below 700px of
+	 * preview height the description and tag editor collapse behind Details, so
+	 * the viewer keeps a usable slide/document area instead of being squeezed
+	 * between a full metadata block and the composer's reserved footer. Height,
+	 * not viewport, is the fact: the dock and the full-view route have different
+	 * budgets at the same window size.
+	 */
+	const [compact, setCompact] = useState(false);
+	const [detailsOpen, setDetailsOpen] = useState(false);
+	useLayoutEffect(() => {
+		const node = rootRef.current;
+		if (!node) return;
+		const measure = () => setCompact(node.getBoundingClientRect().height < 700);
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(node);
+		return () => observer.disconnect();
+	}, []);
 
 	const names = useMemo(() => asset.tags.map((tag) => tag.name), [asset.tags]);
 
@@ -199,6 +220,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 			ref={rootRef}
 			className="flex h-full min-h-0 flex-col bg-canvas"
 			data-library-preview={asset.id}
+			data-library-compact={compact ? "" : undefined}
 			data-glass-region="pane"
 		>
 			<header className="flex shrink-0 flex-col gap-2 px-4 pt-3 pb-2">
@@ -387,41 +409,67 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 						</Button>
 					) : null}
 				</div>
-				<div className="flex flex-col gap-1">
-					<EditableField
-						label={t("ui.library.preview.description")}
-						value={asset.description}
-						multiline
-						rows={3}
-						placeholder={t("ui.library.preview.add_description")}
-						onSave={(value) => saveField({ description: value })}
-						isSaving={update.isPending}
-					/>
-				</div>
-				<div ref={tagsRef} className="flex items-start gap-2">
-					<div className="min-w-0 flex-1">
-						<TagsInputChips
-							label={t("ui.library.preview.tags")}
-							value={names}
-							disabled={tagsSaving}
-							onChange={(next) => void commit(next)}
-							placeholder={t("ui.library.preview.add_tag")}
-						/>
-					</div>
-					{tagsSaving && (
-						<LoaderCircle
-							size={14}
+				{compact && (
+					<Button
+						variant="ghost"
+						size="sm"
+						className="self-start"
+						aria-expanded={detailsOpen}
+						onClick={() => setDetailsOpen((open) => !open)}
+					>
+						<ChevronDown
 							aria-hidden="true"
-							className="mt-6 motion-safe:animate-spin text-ink-muted"
+							className={cn(
+								"transition-transform duration-fast",
+								detailsOpen && "rotate-180",
+							)}
 						/>
-					)}
-				</div>
+						{t("ui.library.preview.details")}
+					</Button>
+				)}
+				{(!compact || detailsOpen) && (
+					<>
+						<div className="flex flex-col gap-1">
+							<EditableField
+								label={t("ui.library.preview.description")}
+								value={asset.description}
+								multiline
+								rows={3}
+								placeholder={t("ui.library.preview.add_description")}
+								onSave={(value) => saveField({ description: value })}
+								isSaving={update.isPending}
+							/>
+						</div>
+						<div ref={tagsRef} className="flex items-start gap-2">
+							<div className="min-w-0 flex-1">
+								<TagsInputChips
+									label={t("ui.library.preview.tags")}
+									value={names}
+									disabled={tagsSaving}
+									onChange={(next) => void commit(next)}
+									placeholder={t("ui.library.preview.add_tag")}
+								/>
+							</div>
+							{tagsSaving && (
+								<LoaderCircle
+									size={14}
+									aria-hidden="true"
+									className="mt-6 motion-safe:animate-spin text-ink-muted"
+								/>
+							)}
+						</div>
+					</>
+				)}
 			</header>
 			<div className="flex min-h-0 flex-1 flex-col bg-sunken">
 				<LibraryViewer asset={asset} />
 			</div>
 			<div className="shrink-0">
-				<LibraryComposer asset={asset} focusSignal={composerFocusSignal} />
+				<LibraryComposer
+					asset={asset}
+					focusSignal={composerFocusSignal}
+					compact={compact}
+				/>
 			</div>
 		</div>
 	);

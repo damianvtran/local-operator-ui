@@ -139,5 +139,11 @@
 	"ui.library.preview.expand": "Open full view",
 	"ui.library.page.more": "More",
 	"ui.library.page.more_destinations": "More destinations",
-	"ui.library.preview.breadcrumb": "Library / {name}"
+	"ui.library.preview.breadcrumb": "Library / {name}",
+	"ui.library.preview.checking_file": "Checking the file…",
+	"ui.library.preview.details": "Details",
+	"ui.library.composer.link_failed": "Message sent, but the chat could not be linked: {message}",
+	"ui.library.composer.link_failed_short": "Message sent, but the chat could not be linked.",
+	"ui.library.composer.message_sent_link_failed": "Message sent. The chat link failed.",
+	"ui.library.composer.retry_link": "Retry link"
 }

@@ -897,5 +897,17 @@
 		"placeholders": {
 			"name": "Runtime value passed by the Library page or preview."
 		}
+	},
+	"ui.library.preview.checking_file": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Checking the file…. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 18 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.details": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Details. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 7 source characters. Keep the same shape and a comparable width."
 	}
 }
