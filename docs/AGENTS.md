@@ -21,7 +21,7 @@ input, a menu or a popover.
   is a second, redundant mark and it cannot reach the top through the shell's
   clipped columns. `border-control` stays the boundary of an input, select,
   checkbox or outlined button — not a panel edge.
-- **Chrome controls are borderless too.** The Library search, sort and filter controls take the `elevated` ground on a `surface` panel and the shared accent focus ring; no resting stroke. Reserve `border-control` for a form field or an actual boundary a ground cannot express, never as decoration on a toolbar control.
+- **Chrome controls are borderless too.** A grouped segmented control (for example the Library grid/list toggle) may keep one shared `border-control` boundary around the group; the edge belongs to the group affordance, not to each button. The Library search, sort and filter controls take the `elevated` ground on a `surface` panel and the shared accent focus ring; no resting stroke. Reserve `border-control` for a form field or an actual boundary a ground cannot express, never as decoration on a toolbar control.
 - **A scrolling panel fades at its top edge.** Put
   `data-lo-sidebar-edge-cues` on the panel's scroller; the shared scroll-driven
   mask in `styles/index.css` dissolves content under the top spacing instead of

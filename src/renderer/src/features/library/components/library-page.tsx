@@ -484,7 +484,9 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			}
 			if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
 			if (event.key === "Escape") {
-				if (selectedId) goBack();
+				/* A preview can be open from the story/selection state even when the
+				 * route has not caught up; close on either, not only on the id. */
+				if (selectedId || selected) goBack();
 				return;
 			}
 			if (event.key.toLowerCase() === "g") {
@@ -511,7 +513,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 		};
 		document.addEventListener("keydown", onKeyDown);
 		return () => document.removeEventListener("keydown", onKeyDown);
-	}, [goBack, goToAsset, rows, selectedId, standalone]);
+	}, [goBack, goToAsset, rows, selected, selectedId, standalone]);
 
 	if (!enabled) {
 		return (
