@@ -12,6 +12,12 @@ import { JSDOM } from "jsdom";
  * WHAT IS PINNED:
  * - the four catalogue states (loading skeleton, empty, error with Retry,
  *   populated);
+ * - the header's layout contract: it sizes to its content while keeping the
+ *   design's 136px floor, and the building line is one of its flow rows above
+ *   the results (the fixed-height defect painted it over the grid);
+ * - a failed refetch with last-good pages keeps the rows and adds an inline
+ *   warning rather than replacing the painted grid with the blocking error;
+ * - an image card's thumbnail read waits for the card to be near the viewport;
  * - selection entering `/library/assets/:id` and the preview rendering there
  *   (the standalone branch in this harness, because a JSDOM page reports no
  *   workspace width - the dock branch is a rendered-frame concern);
@@ -44,11 +50,35 @@ globalThis.ResizeObserver = class {
 	unobserve() {}
 	disconnect() {}
 };
-globalThis.IntersectionObserver = class {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-};
+/*
+ * A CONTROLLABLE IntersectionObserver. jsdom has no layout and implements no
+ * observer; the previous no-op stub could never answer, which would make a
+ * thumbnail-gating case pass for the wrong reason (nothing "near" because
+ * nothing observes). Every instance records the elements it watches, so a case
+ * can deliver an intersection the way a real observer would and prove the read
+ * happens only after that delivery.
+ */
+const OBSERVERS = [];
+class TestIntersectionObserver {
+	constructor(callback) {
+		this.callback = callback;
+		this.targets = new Set();
+		OBSERVERS.push(this);
+	}
+
+	observe(target) {
+		this.targets.add(target);
+	}
+
+	unobserve(target) {
+		this.targets.delete(target);
+	}
+
+	disconnect() {
+		this.targets.clear();
+	}
+}
+globalThis.IntersectionObserver = TestIntersectionObserver;
 dom.window.matchMedia = () => ({
 	matches: false,
 	media: "",
@@ -67,6 +97,19 @@ const { after } = await import("node:test");
 const { build } = await import("esbuild");
 const { act } = await import("react");
 
+/** Deliver one intersection to the observer watching a matching element. */
+const intersect = async (predicate) => {
+	for (const observer of OBSERVERS) {
+		const target = [...observer.targets].find(predicate);
+		if (!target) continue;
+		await act(async () =>
+			observer.callback([{ isIntersecting: true, target }], observer),
+		);
+		return target;
+	}
+	return null;
+};
+
 /*
  * THE HARNESS IS BUNDLED THE WAY `projects-card-click.test.mjs` bundles its
  * card: the entry runs the SHIPPED page with the app's real providers, and
@@ -80,6 +123,7 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { LibraryPage } from "./src/renderer/src/features/library/components/library-page";
+export { filterAssets, NO_LIBRARY_FILTERS } from "./src/renderer/src/features/library/library-model";
 
 function Jump() {
 	const navigate = useNavigate();
@@ -151,10 +195,16 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { mountLibrary } = await import(bundlePath.href);
+const { mountLibrary, filterAssets, NO_LIBRARY_FILTERS } = await import(
+	bundlePath.href
+);
 await unlink(bundlePath);
 
 const NOW = new Date(2026, 9, 18, 12, 0, 0).getTime();
+
+/* Class-token readers, hoisted so the layout case allocates no regex per row. */
+const CLASS_TOKENS = /\s+/;
+const OUT_OF_FLOW = /(^|\s)(absolute|fixed)(\s|$)/;
 
 const tag = (id, name) => ({ id, name, category: "topic" });
 const asset = (id, patch = {}) => ({
@@ -184,7 +234,7 @@ const asset = (id, patch = {}) => ({
 	modified_at: 1_700_000_100,
 	last_seen_at: 1_700_000_200,
 	exists: true,
-	highlighted: false,
+	highlighted: true,
 	highlight_why: null,
 	occurrences: [
 		{
@@ -226,9 +276,17 @@ const ROWS = [
 const ANSWER = {
 	rows: [],
 	failList: null,
+	failNextPage: false,
 	hang: false,
 	detail: null,
+	state: "ready",
+	nextCursor: null,
+	allTotal: null,
+	librarianHang: false,
+	librarianGate: null,
+	releaseLibrarian: null,
 	ops: [],
+	mediaOps: [],
 	gate: null,
 	releaseHang: null,
 };
@@ -249,6 +307,13 @@ const desktopRequest = async (request) => {
 		};
 	}
 	if (request.op === "library.list") {
+		/*
+		 * A next-page read is the one failure that must NOT surface as the
+		 * top-of-grid warning: the page renders its own load-more block. This
+		 * answers the cursor page with 500 while the first page stays good.
+		 */
+		if (request.cursor && ANSWER.failNextPage)
+			return { status: 500, body: { detail: "The next page did not answer." } };
 		if (ANSWER.hang) {
 			/*
 			 * ONE GATE, NOT ONE RESOLVER PER REQUEST. The page can issue a second
@@ -265,21 +330,35 @@ const desktopRequest = async (request) => {
 		if (ANSWER.failList)
 			if (ANSWER.failList)
 				return { status: 500, body: { detail: ANSWER.failList } };
+		/*
+		 * The route scopes BEFORE counting: a `final` answer keeps only
+		 * highlighted or generated assets and reports totals/counts over that
+		 * population. `all` is the whole fixture set.
+		 */
+		const scoped = filterAssets(ANSWER.rows, {
+			...NO_LIBRARY_FILTERS,
+			scope: request.scope === "final" ? "final" : "all",
+		});
+		const tally = (key) =>
+			scoped.reduce((acc, row) => {
+				acc[row[key]] = (acc[row[key]] ?? 0) + 1;
+				return acc;
+			}, {});
 		return {
 			status: 200,
 			body: {
 				result: {
-					state: "ready",
+					state: ANSWER.state,
 					revision: 1,
-					total: ANSWER.rows.length,
+					total: scoped.length,
 					counts: {
-						category: { document: ANSWER.rows.length },
-						origin_group: { created: ANSWER.rows.length },
-						kind: { markdown: ANSWER.rows.length },
+						category: tally("category"),
+						origin_group: tally("origin_group"),
+						kind: tally("kind"),
 					},
 					tags: [tag("t1", "finance")],
-					rows: ANSWER.rows,
-					next_cursor: null,
+					rows: scoped,
+					next_cursor: ANSWER.nextCursor,
 					cursor_reset: false,
 					scan: { sessions_total: 1, sessions_scanned: 1 },
 					librarian: {
@@ -300,6 +379,16 @@ const desktopRequest = async (request) => {
 		return { status: 200, body: { result: row } };
 	}
 	if (request.op === "library.librarian") {
+		/*
+		 * The status read can hang so a case can prove the header reserves the
+		 * 40px Librarian track while the row has no content yet.
+		 */
+		if (ANSWER.librarianHang) {
+			ANSWER.librarianGate ??= new Promise((resolve) => {
+				ANSWER.releaseLibrarian = resolve;
+			});
+			await ANSWER.librarianGate;
+		}
 		return {
 			status: 200,
 			body: {
@@ -310,6 +399,10 @@ const desktopRequest = async (request) => {
 					last_run_at: 1_700_000_000,
 					last_summary: null,
 					unorganized: 2,
+					library: {
+						total: ANSWER.allTotal ?? ANSWER.rows.length,
+						unorganized: 2,
+					},
 				},
 			},
 		};
@@ -370,12 +463,15 @@ const desktopRequest = async (request) => {
 const api = dom.window.api ?? {};
 api.desktop = {
 	request: desktopRequest,
-	media: async () => ({
-		status: 200,
-		kind: "bytes",
-		mimeType: "text/markdown",
-		data: new TextEncoder().encode("# Notes\n\nA document."),
-	}),
+	media: async (request) => {
+		ANSWER.mediaOps.push(request);
+		return {
+			status: 200,
+			kind: "bytes",
+			mimeType: "text/markdown",
+			data: new TextEncoder().encode("# Notes\n\nA document."),
+		};
+	},
 };
 api.openFile = async () => {};
 api.showItemInFolder = async () => {};
@@ -387,6 +483,15 @@ const flush = async (rounds = 8) => {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 		});
 	}
+};
+
+/** Poll a rendered condition without guessing how many 100ms rounds it needs. */
+const waitFor = async (predicate, rounds = 24) => {
+	for (let index = 0; index < rounds; index += 1) {
+		if (predicate()) return;
+		await flush(1);
+	}
+	assert.fail("the rendered condition did not appear within the wait budget");
 };
 
 const MOUNTED = [];
@@ -441,6 +546,441 @@ test("a failed listing draws the error and its Retry control", async () => {
 	assert.ok(text(container).includes("Retry"));
 	await act(async () => root.unmount());
 	ANSWER.failList = null;
+});
+
+/*
+ * THE HEADER'S LAYOUT CONTRACT, at both widths the fix is required at.
+ *
+ * WHAT THIS LANE CAN AND CANNOT SEE, stated rather than implied: jsdom performs
+ * no layout, so every `getBoundingClientRect` is 0x0 and an intersection
+ * assertion here would pass whether or not the defect exists. This case pins
+ * the CAUSE instead: the header no longer declares a fixed height at >=800px
+ * (the box the overflowing tracks escaped), its minimum is the design's 136px,
+ * every track it renders is a direct child in normal flow, and the results
+ * container follows the header rather than sitting under an absolutely
+ * positioned overlay. The pixels were measured separately from the rendered
+ * Storybook stories (Library/Tab/Building and InShellBuilding) at
+ * 1380x900 and 900x800; those readings are in the pull request description.
+ */
+test("the header sizes to its tracks and the building row stays above the results at both widths", async () => {
+	ANSWER.rows = ROWS;
+	ANSWER.state = "building";
+	for (const [width, height] of [
+		[1380, 900],
+		[900, 800],
+	]) {
+		Object.defineProperty(dom.window, "innerWidth", {
+			configurable: true,
+			value: width,
+		});
+		Object.defineProperty(dom.window, "innerHeight", {
+			configurable: true,
+			value: height,
+		});
+		const { container, root } = await mount();
+		const header = container.querySelector("[data-library-header]");
+		const building = container.querySelector("[data-library-building]");
+		const results = container.querySelector("[data-library-results]");
+		assert.ok(header, `the header renders at ${width}x${height}`);
+		assert.ok(building, `the building line renders at ${width}x${height}`);
+		assert.ok(results, `the results container renders at ${width}x${height}`);
+
+		assert.equal(
+			building.parentElement,
+			header,
+			"the building line is a header row, not a floating element",
+		);
+		assert.ok(
+			header.nextElementSibling?.contains(results),
+			"the results container follows the header in the page flow",
+		);
+		/*
+		 * THE PAGE IS A HORIZONTAL ROW and the header lives in the vertical
+		 * column to the right of the rail. jsdom reports every width as 0, so the
+		 * rail itself is absent in this lane; its geometry is measured from the
+		 * Storybook story. This pins the structure that makes rail-top ==
+		 * header-top possible: both columns start at the page's top edge.
+		 */
+		const rightColumn = header.parentElement;
+		const pageRoot = rightColumn?.parentElement;
+		assert.ok(
+			rightColumn && pageRoot,
+			"the header has the page column above it",
+		);
+		assert.ok(
+			rightColumn.className.split(CLASS_TOKENS).includes("flex-col"),
+			"the header's column is vertical",
+		);
+		assert.equal(
+			pageRoot.className.split(CLASS_TOKENS).includes("flex-col"),
+			false,
+			"the page root is a horizontal row, not a vertical stack",
+		);
+
+		const headerClasses = header.className.split(CLASS_TOKENS);
+		assert.ok(
+			headerClasses.includes("min-[800px]:min-h-[136px]"),
+			"the design's 136px remains a floor at >=800px",
+		);
+		assert.equal(
+			headerClasses.includes("min-[800px]:h-[136px]"),
+			false,
+			"a fixed 136px height is exactly what let 188px of tracks overflow",
+		);
+
+		/* The four rendered tracks the old fixed box under-counted. */
+		const tracks = [...header.children].map((child) =>
+			child.className.split(CLASS_TOKENS),
+		);
+		assert.equal(
+			tracks.filter((classes) => classes.includes("h-12")).length,
+			2,
+		);
+		assert.equal(
+			tracks.filter((classes) => classes.includes("min-h-10")).length,
+			1,
+		);
+		assert.ok(
+			header.querySelector("[data-library-librarian-track]"),
+			"the 40px Librarian track is reserved even while its row is empty",
+		);
+		assert.equal(tracks.filter((classes) => classes.includes("h-4")).length, 1);
+		for (const child of header.children) {
+			assert.equal(
+				OUT_OF_FLOW.test(child.className),
+				false,
+				"no header track leaves normal flow",
+			);
+		}
+		await act(async () => root.unmount());
+	}
+	ANSWER.state = "ready";
+});
+
+test("an offscreen image card does not read its thumbnail until it is near", async () => {
+	ANSWER.rows = [
+		asset("la_0000000000000016", {
+			name: "A photo",
+			kind: "image",
+			category: "image",
+			width: 1600,
+			height: 900,
+		}),
+	];
+	ANSWER.mediaOps = [];
+	const { container, root } = await mount();
+	assert.ok(
+		container.querySelector('[data-library-card-id="la_0000000000000016"]'),
+		"the image card is mounted",
+	);
+	assert.equal(
+		ANSWER.mediaOps.filter((op) => op.op === "library.thumbnail").length,
+		0,
+		"a card nobody has scrolled near must not read bytes over IPC",
+	);
+	const target = await intersect(
+		(element) =>
+			element.closest('[data-library-card-id="la_0000000000000016"]') !== null,
+	);
+	assert.ok(target, "the card's picture slot is observed");
+	await waitFor(
+		() =>
+			ANSWER.mediaOps.filter((op) => op.op === "library.thumbnail").length ===
+			1,
+	);
+	assert.equal(
+		ANSWER.mediaOps.find((op) => op.op === "library.thumbnail").assetId,
+		"la_0000000000000016",
+	);
+	await act(async () => root.unmount());
+});
+
+test("a failed refetch keeps the painted rows and warns inline", async () => {
+	ANSWER.rows = ROWS;
+	const { container, root, client } = await mount();
+	const cardId = "la_0000000000000011";
+	assert.ok(container.querySelector(`[data-library-card-id="${cardId}"]`));
+
+	ANSWER.failList = "The library did not answer in time.";
+	await act(async () => {
+		await client.invalidateQueries({
+			queryKey: ["desktop", "library", "list"],
+		});
+	});
+	await flush(6);
+
+	assert.ok(
+		container.querySelector(`[data-library-card-id="${cardId}"]`),
+		"the last good rows stay painted after the refetch fails",
+	);
+	const warning = container.querySelector("[data-library-partial-error]");
+	assert.ok(
+		warning,
+		"the failure is reported inline instead of replacing the grid",
+	);
+	assert.equal(warning.getAttribute("role"), "alert");
+	assert.ok(text(container).includes("The library did not answer in time."));
+	/*
+	 * Alert's body is a flex COLUMN; the message and Retry must be one row inside
+	 * it, or the button stacks under the sentence and stretches full width.
+	 */
+	const warningRow = warning.querySelector("[data-library-partial-row]");
+	assert.ok(warningRow, "the warning body is one explicit row");
+	const rowClasses = warningRow.className.split(CLASS_TOKENS);
+	for (const required of ["flex", "w-full", "items-center"])
+		assert.ok(rowClasses.includes(required), `the warning row is ${required}`);
+	const retry = warning.querySelector("button");
+	assert.ok(retry, "the inline warning carries its own Retry control");
+	assert.ok(
+		retry.className.split(CLASS_TOKENS).includes("shrink-0"),
+		"the Retry control does not stretch or shrink in the warning row",
+	);
+	assert.equal(
+		warning.querySelectorAll("button").length,
+		1,
+		"the warning has one action, not one per child",
+	);
+	await act(async () => root.unmount());
+	ANSWER.failList = null;
+});
+
+test("the header shares the results' single canvas-content glass region", async () => {
+	ANSWER.rows = ROWS;
+	const { container, root } = await mount();
+	const header = container.querySelector("[data-library-header]");
+	const results = container.querySelector("[data-library-results]");
+	const region = header.closest('[data-glass-region="canvas-content"]');
+	assert.ok(region, "the header is inside a canvas-content region");
+	assert.equal(
+		results.closest('[data-glass-region="canvas-content"]'),
+		region,
+		"the header and the results paint from the same region",
+	);
+	assert.equal(
+		results.hasAttribute("data-glass-region"),
+		false,
+		"the results section does not nest a second region",
+	);
+	await act(async () => root.unmount());
+});
+
+test("the Librarian track is reserved while its status loads", async () => {
+	ANSWER.rows = ROWS;
+	ANSWER.librarianHang = true;
+	const { container, root } = await mount();
+	const track = container.querySelector("[data-library-librarian-track]");
+	assert.ok(track, "the reserved track renders before the status answers");
+	assert.ok(track.className.split(CLASS_TOKENS).includes("min-h-10"));
+	assert.equal(
+		container.querySelector("[data-library-librarian]"),
+		null,
+		"the row itself still waits for the status",
+	);
+	ANSWER.librarianHang = false;
+	ANSWER.releaseLibrarian?.();
+	await waitFor(
+		() => container.querySelector("[data-library-librarian]") !== null,
+	);
+	await act(async () => root.unmount());
+	ANSWER.librarianGate = null;
+	ANSWER.releaseLibrarian = null;
+});
+
+test("a failed next page stays on the load-more surface, not the top warning", async () => {
+	ANSWER.rows = ROWS;
+	ANSWER.nextCursor = "cursor-2";
+	const { container, root } = await mount();
+	assert.ok(
+		container.querySelector('[data-library-card-id="la_0000000000000011"]'),
+		"the first page is painted",
+	);
+	const loadMore = [...container.querySelectorAll("button")].find(
+		(button) => button.textContent?.trim() === "Load more",
+	);
+	assert.ok(loadMore, "the load-more control renders when a cursor exists");
+	ANSWER.failNextPage = true;
+	await act(async () => loadMore.click());
+	await waitFor(() => text(container).includes("Couldn't load more assets."));
+	assert.equal(
+		container.querySelectorAll("[data-library-partial-error]").length,
+		0,
+		"a next-page failure does not add the refetch warning",
+	);
+	assert.equal(
+		[...container.querySelectorAll("button")].filter(
+			(button) => button.textContent?.trim() === "Retry",
+		).length,
+		1,
+		"exactly one Retry: the load-more one",
+	);
+	await act(async () => root.unmount());
+	ANSWER.nextCursor = null;
+	ANSWER.failNextPage = false;
+});
+
+test("the rail renders as the page row's first column at 1380px", async () => {
+	ANSWER.rows = ROWS;
+	Object.defineProperty(dom.window, "innerWidth", {
+		configurable: true,
+		value: 1380,
+	});
+	const original = dom.window.Element.prototype.getBoundingClientRect;
+	/*
+	 * A scoped width shim, not a layout engine. `useWorkspaceWidth` reads the
+	 * page root's rect and jsdom reports 0 for every element; returning a width
+	 * for the one node that carries `data-glass-split` makes the real
+	 * `railVisible` conditional render. No observer is involved, and the
+	 * assertions below stay boolean so a failure never serialises a DOM node.
+	 * The rail's top/bottom geometry is measured from Storybook frames.
+	 */
+	dom.window.Element.prototype.getBoundingClientRect = function () {
+		if (this.hasAttribute?.("data-glass-split")) {
+			return {
+				width: 1380,
+				height: 900,
+				top: 0,
+				left: 0,
+				right: 1380,
+				bottom: 900,
+				x: 0,
+				y: 0,
+				toJSON: () => ({}),
+			};
+		}
+		return original.call(this);
+	};
+	try {
+		const { container, root } = await mount();
+		const rail = container.querySelector("[data-library-rail]");
+		assert.ok(rail, "the rail renders at 1380px");
+		assert.ok(
+			rail.parentElement?.hasAttribute("data-glass-split"),
+			"the rail is a child of the page row",
+		);
+		assert.ok(
+			rail.nextElementSibling?.querySelector("[data-library-header]") !== null,
+			"the header is in the column right of the rail",
+		);
+		await act(async () => root.unmount());
+	} finally {
+		dom.window.Element.prototype.getBoundingClientRect = original;
+	}
+});
+
+test("the default listing is final artifacts and the rail switches to all inclusions", async () => {
+	ANSWER.rows = [
+		asset("la_0000000000000041", {
+			name: "Generated report",
+			origin: "generated",
+			origin_group: "generated",
+		}),
+		asset("la_0000000000000042", { name: "Kept note", highlighted: true }),
+		asset("la_0000000000000043", {
+			name: "Mentioned file",
+			origin: "mentioned",
+			origin_group: "mentioned",
+			highlighted: false,
+		}),
+		asset("la_0000000000000044", {
+			name: "Created scratch",
+			origin: "written",
+			origin_group: "created",
+			highlighted: false,
+		}),
+	];
+	ANSWER.allTotal = 4;
+	ANSWER.ops = [];
+	Object.defineProperty(dom.window, "innerWidth", {
+		configurable: true,
+		value: 1380,
+	});
+	const original = dom.window.Element.prototype.getBoundingClientRect;
+	/* Same scoped width shim as the rail case: the rail must render so its
+	 * Scope rows are clickable. No observer is involved. */
+	dom.window.Element.prototype.getBoundingClientRect = function () {
+		if (this.hasAttribute?.("data-glass-split")) {
+			return {
+				width: 1380,
+				height: 900,
+				top: 0,
+				left: 0,
+				right: 1380,
+				bottom: 900,
+				x: 0,
+				y: 0,
+				toJSON: () => ({}),
+			};
+		}
+		return original.call(this);
+	};
+	try {
+		const { container, root } = await mount();
+		const firstList = ANSWER.ops.find((op) => op.op === "library.list");
+		assert.equal(
+			firstList?.scope,
+			"final",
+			"the default listing asks the route for final artifacts",
+		);
+		assert.ok(text(container).includes("Generated report"));
+		assert.ok(text(container).includes("Kept note"));
+		assert.equal(text(container).includes("Mentioned file"), false);
+		assert.equal(text(container).includes("Created scratch"), false);
+		const railButton = (label) =>
+			[...container.querySelectorAll("[data-library-rail] button")].find(
+				(button) => button.textContent?.trim().startsWith(label),
+			);
+		assert.equal(
+			railButton("Mentioned"),
+			undefined,
+			"a zero-count source is hidden under final",
+		);
+
+		const scopeAll = railButton("All inclusions");
+		assert.ok(scopeAll, "the rail offers the all-inclusions scope");
+		assert.ok(
+			scopeAll.textContent?.includes("4"),
+			"the all scope carries the catalog-wide total",
+		);
+		await act(async () => scopeAll.click());
+		await flush(6);
+		const lastList = [...ANSWER.ops]
+			.filter((op) => op.op === "library.list")
+			.at(-1);
+		assert.equal(lastList?.scope, "all");
+		assert.ok(text(container).includes("Mentioned file"));
+		assert.ok(text(container).includes("Created scratch"));
+		const mentioned = railButton("Mentioned");
+		assert.ok(mentioned, "the all scope shows every source row");
+
+		/* m-3: the active source must survive the scope switch. An All ->
+		 * Final move preserves originGroup; hiding its zero-count row would
+		 * leave an empty grid with no visible cause. */
+		await act(async () => mentioned.click());
+		await flush(4);
+		const scopedList = [...ANSWER.ops]
+			.filter((op) => op.op === "library.list")
+			.at(-1);
+		assert.equal(scopedList?.origin_group, "mentioned");
+		await act(async () => railButton("Final artifacts").click());
+		await flush(4);
+		const activeMentioned = railButton("Mentioned");
+		assert.ok(
+			activeMentioned,
+			"the active source row stays visible when the scope empties it",
+		);
+		assert.equal(activeMentioned.getAttribute("aria-pressed"), "true");
+		const finalScopedList = [...ANSWER.ops]
+			.filter((op) => op.op === "library.list")
+			.at(-1);
+		assert.equal(finalScopedList?.scope, "final");
+		assert.equal(finalScopedList?.origin_group, "mentioned");
+		assert.equal(text(container).includes("Mentioned file"), false);
+		await act(async () => root.unmount());
+	} finally {
+		dom.window.Element.prototype.getBoundingClientRect = original;
+	}
+	ANSWER.allTotal = null;
+	ANSWER.rows = ROWS;
 });
 
 test("a card selects its asset route and the preview renders there", async () => {

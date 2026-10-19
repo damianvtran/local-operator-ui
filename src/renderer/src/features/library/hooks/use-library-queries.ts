@@ -64,6 +64,7 @@ export const LIBRARY_PAGE_SIZE = 60;
 function listRequest(filters: LibraryListFilters, cursor?: string) {
 	return {
 		op: "library.list" as const,
+		scope: filters.scope,
 		...(filters.q.trim() ? { q: filters.q.trim() } : {}),
 		...(filters.category ? { category: filters.category } : {}),
 		...(filters.originGroup ? { origin_group: filters.originGroup } : {}),
