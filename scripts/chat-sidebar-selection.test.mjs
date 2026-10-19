@@ -92,6 +92,12 @@ const ROOT = process.cwd();
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 const SETTINGS_RAIL =
 	"src/renderer/src/features/settings/components/settings-sidebar.tsx";
+const LIBRARY_CARD =
+	"src/renderer/src/features/library/components/library-card.tsx";
+const LIBRARY_FILTER_RAIL =
+	"src/renderer/src/features/library/components/library-filter-rail.tsx";
+const LIBRARY_PAGE =
+	"src/renderer/src/features/library/components/library-page.tsx";
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 
 /*
@@ -1488,6 +1494,54 @@ const ROW_STATE_GROUNDS = [
 				{},
 			),
 		groundFile: FINDER_FILES_VIEW,
+	},
+	/* card: its own ground; tailwind-merge drops the resting bg-surface once
+	 * bg-row-selected follows it, so read the ground with the role stubbed out */
+	{
+		what: "the Library asset card",
+		rowFile: LIBRARY_CARD,
+		expression: () => expressionAfter(LIBRARY_CARD, "export const LibraryCard"),
+		stubs: { selected: true, rowCurrent },
+		ground: () =>
+			merged(
+				LIBRARY_CARD,
+				expressionAfter(LIBRARY_CARD, "export const LibraryCard"),
+				{ selected: true, rowCurrent: "" },
+			),
+		groundFile: LIBRARY_CARD,
+	},
+	/* list row: same file, second call site */
+	{
+		what: "the Library asset list row",
+		rowFile: LIBRARY_CARD,
+		expression: () =>
+			expressionAfterWithin(
+				LIBRARY_CARD,
+				"export const LibraryRow",
+				"data-library-card-id",
+			),
+		stubs: { selected: true, rowCurrent },
+		ground: () =>
+			merged(
+				LIBRARY_CARD,
+				expressionAfterWithin(
+					LIBRARY_CARD,
+					"export const LibraryRow",
+					"data-library-card-id",
+				),
+				{ selected: true, rowCurrent: "" },
+			),
+		groundFile: LIBRARY_CARD,
+	},
+	/* rail: rows are painted on the page-sidebar aside, which owns bg-surface */
+	{
+		what: "the Library filter rail",
+		rowFile: LIBRARY_FILTER_RAIL,
+		expression: () => expressionAfter(LIBRARY_FILTER_RAIL, "const RailRow"),
+		stubs: { active: true, indent: false, rowCurrent },
+		ground: () =>
+			literalClassAt(LIBRARY_PAGE, 'data-glass-region="page-sidebar"', "after"),
+		groundFile: LIBRARY_PAGE,
 	},
 ];
 
