@@ -11446,33 +11446,59 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "ffb1c6b985fd1ab521a2a5fc49955978d76cabc5671437dc2bc6b31cfa1ada74",
-			"target_sha256": "a8721bb84e61221bbda6d5f22987f6a0f3fa1a45b6b6dfefa4f324364eb153ca",
+			"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+			"target_sha256": "bf38af2e698a1a475a03078714de875596c59d2d05a8f5519b0e2925676ed85d",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-18"
+				"date": "2026-10-19"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
+					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "6a1c5f8e3d29",
+					"instance": "8b3e6f1c9d24",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6a1c5f8e3d29.json",
-					"receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
-					"scope": "full namespace; post-remediation verification of round-1 native audit findings",
-					"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+					"receipt": "i18n/receipts/8b3e6f1c9d24.json",
+					"receipt_sha256": "2243a2332a513758386d81e5c2b3ff269a6e1b3767d5bf2c828e8e20c52075bc",
+					"scope": "post-#1202 drift repair: vi/ui.chat.tags 12 V2-1 keys + vi/ui.agentMessages consent delta",
+					"note": "Vietnamese half of the drift repair. Independent audit of the changed bytes; zero findings. Both roles ran on the harness-reported fallback model openai/gpt-6.1-sol."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ffb1c6b985fd1ab521a2a5fc49955978d76cabc5671437dc2bc6b31cfa1ada74",
+					"target_sha256": "a8721bb84e61221bbda6d5f22987f6a0f3fa1a45b6b6dfefa4f324364eb153ca",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "6a1c5f8e3d29",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6a1c5f8e3d29.json",
+							"receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
+							"scope": "full namespace; post-remediation verification of round-1 native audit findings",
+							"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
@@ -11775,33 +11801,59 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.agentMessages",
-			"source_sha256": "065cbea39ca4df33aa114fc027e5f75bcc6e74e9cb21d4f14e42628d3795cbcb",
-			"target_sha256": "841101c8a5ea653820292ef0117573a7dc9d40ddc855ab5e52df7d24b17c4ceb",
+			"source_sha256": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+			"target_sha256": "d67fc9c4dd503ec1e14f4deed61ebb143ff32aa21da9e23d09eaa63c2f75df07",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-18"
+				"date": "2026-10-19"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
+					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "6a1c5f8e3d29",
+					"instance": "8b3e6f1c9d24",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6a1c5f8e3d29.json",
-					"receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
-					"scope": "full namespace; post-remediation verification of round-1 native audit findings",
-					"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+					"receipt": "i18n/receipts/8b3e6f1c9d24.json",
+					"receipt_sha256": "2243a2332a513758386d81e5c2b3ff269a6e1b3767d5bf2c828e8e20c52075bc",
+					"scope": "post-#1202 drift repair: vi/ui.chat.tags 12 V2-1 keys + vi/ui.agentMessages consent delta",
+					"note": "Vietnamese half of the drift repair. Independent audit of the changed bytes; zero findings. Both roles ran on the harness-reported fallback model openai/gpt-6.1-sol."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "065cbea39ca4df33aa114fc027e5f75bcc6e74e9cb21d4f14e42628d3795cbcb",
+					"target_sha256": "841101c8a5ea653820292ef0117573a7dc9d40ddc855ab5e52df7d24b17c4ceb",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "6a1c5f8e3d29",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6a1c5f8e3d29.json",
+							"receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
+							"scope": "full namespace; post-remediation verification of round-1 native audit findings",
+							"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
