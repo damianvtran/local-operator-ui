@@ -10189,6 +10189,15 @@
         "The nav frames are the production sidebar-navigation component: the More row carries the count while closed and the Team Bridge row carries it when open.",
         "These are browser-tool PNGs, not sweep frames: check-evidence counts only palette-named frames in a declared set, so the declared count is zero."
       ]
+    },
+    {
+      "path": "tag-drop-ux",
+      "frames": 0,
+      "surfaces": 1,
+      "themes": 2,
+      "capturedAt": "2026-10-19T13:21:43.870Z",
+      "source": "Six harness browser-tool PNG captures of source-backed sidebar tag Storybook fixtures: two baseline resting target areas at 220/dark and 640/light, plus four held whole-group previews at 220/640 in light/dark. Actual capture window: 2026-10-19T12:51:08Z to 13:21:44Z; measurements and before/after provenance are recorded in tag-drop-ux/README.md and measurements.json.",
+      "why": "The PNG stems name states, not palettes, so these six captures are supplementary unjudged evidence, not palette-sweep frames. They show the target-area and whole-group preview change; native cursor rendering is not captured in a still. Cursor claims come from computed styles, and gestures use synthetic DOM PointerEvents through the rendered sidebar."
     }
   ],
   "remediationRecord": {
