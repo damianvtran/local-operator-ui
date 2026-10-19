@@ -4,5 +4,5 @@
 	"ui.common.actions.copied": "已复制",
 	"ui.common.actions.copy_failed": "无法复制。请选中内容后手动复制。",
 	"ui.common.actions.retry": "重试",
-	"ui.common.actions.retry_again": "重试"
+	"ui.common.actions.retry_again": "再试一次"
 }

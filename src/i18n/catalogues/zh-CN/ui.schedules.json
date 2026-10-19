@@ -128,7 +128,7 @@
 	"ui.schedules.scheduled_task_model.the_wake_supervisor_is_installed_but_not_running_so_the_wakes_bel": "唤醒监管服务已安装但未运行，以下唤醒不会触发。",
 	"ui.schedules.scheduled_task_model.wakes_are_not_supervised_on_this_platform_yet_so_the_wakes_below": "此平台暂不支持唤醒监管，因此以下唤醒仅在对话运行时才会触发。",
 	"ui.schedules.scheduled_task_model.wakes_repeat_no_more_often_than_once_a_minute": "唤醒的重复间隔不得短于1分钟。",
-	"ui.schedules.scheduled_task_model.your_home_folder": "您的主文件夹",
+	"ui.schedules.scheduled_task_model.your_home_folder": "您的主目录",
 	"ui.schedules.schedules_page.ask_an_agent_in_chat_to_do_something_on_a_regular_basis_send_me_t": "在对话中让智能体定期做事，例如“每天早上8点把新闻发给我”，任务就会显示在这里。您也可以手动设置。",
 	"ui.schedules.schedules_page.could_not_cancel_the_wake": "无法取消唤醒。",
 	"ui.schedules.schedules_page.could_not_cancel_the_wake_message": "无法取消唤醒：{message}",
