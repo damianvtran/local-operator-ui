@@ -64,6 +64,16 @@ export function time(value: unknown): number | null {
 	return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+/** A nullable whole count: absence is not a measured zero. */
+export function nullableCount(value: unknown): number | null {
+	return typeof value === "number" &&
+		Number.isFinite(value) &&
+		value >= 0 &&
+		Number.isInteger(value)
+		? value
+		: null;
+}
+
 /** A whole count, or `0`. Negative and fractional answers are not counts. */
 export function count(value: unknown): number {
 	if (typeof value !== "number" || !Number.isFinite(value)) return 0;
@@ -118,7 +128,7 @@ export type PeerRow = {
 	 * publishes about a device - `size_class` is unimplemented and `PeerRow` has no
 	 * `kind` - so it is what a node's size may be ranked by, and it is NOT capacity.
 	 */
-	session_count: number;
+	session_count: number | null;
 	/**
 	 * ALWAYS `null` in this build, and honestly so: no link records a round trip, and
 	 * the backend's own comment explains that the only way to fill this would be a
@@ -214,7 +224,7 @@ export function peerList(value: unknown): PeerList {
 			reachable: raw.reachable,
 			unreachable_reason: textOrNull(raw.unreachable_reason ?? raw.reason),
 			last_seen_at: time(raw.last_seen_at),
-			session_count: count(raw.session_count),
+			session_count: nullableCount(raw.session_count),
 			rtt_ms: time(raw.rtt_ms),
 		});
 	}
@@ -341,6 +351,9 @@ export type MeshSessionRow = {
 		label: string | null;
 		session: string | null;
 	};
+	active?: boolean;
+	waiting_on?: number | null;
+	jobs_running?: number | null;
 	subagents_running?: number | null;
 	subagents_queued?: number | null;
 };
@@ -440,8 +453,11 @@ export function sessionRows(value: unknown): MeshSessionRow[] {
 			archived: flag(raw.archived, false),
 			created_at: time(raw.created_at),
 			pinned: flag(raw.pinned, false),
-			subagents_running: time(raw.subagents_running),
-			subagents_queued: time(raw.subagents_queued),
+			...(typeof raw.active === "boolean" ? { active: raw.active } : {}),
+			waiting_on: nullableCount(raw.waiting_on),
+			jobs_running: nullableCount(raw.jobs_running),
+			subagents_running: nullableCount(raw.subagents_running),
+			subagents_queued: nullableCount(raw.subagents_queued),
 			...(status ? { status } : {}),
 			...(binding ? { binding } : {}),
 			...(openedBy ? { opened_by: openedBy } : {}),

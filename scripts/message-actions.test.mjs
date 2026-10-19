@@ -133,8 +133,10 @@ const RE_ROW_MOUNT =
 	/<AnswerActionRow\b[\s\S]{0,200}bodyText=\{remainingContent\}/;
 const RE_CLOSES_TURN_LINE = /\{closesTurn && \(/;
 const RE_ROW_MOUNT_SITES = /<AnswerActionRow\b/g;
-const RE_USER_ROW_MOUNT = /<AnswerActionRow\s+kind="user"/;
-const RE_RESPONSE_ROW_MOUNT = /<AnswerActionRow\s+kind="response"/;
+const RE_USER_ROW_MOUNT = /<AnswerActionRow[\s\S]{0,160}kind="user"/;
+const RE_RESPONSE_ROW_MOUNT = /<AnswerActionRow[\s\S]{0,160}kind="response"/;
+const RE_USER_ROW_OVERLAY =
+	/<AnswerActionRow[\s\S]{0,120}overlay[\s\S]{0,160}kind="user"/;
 
 /**
  * One in-memory build of the shipped row and its model.
@@ -151,6 +153,7 @@ const bundle = await build({
 		contents: `
 			export { AnswerActionRow } from "./src/renderer/src/features/chat/canonical/message-actions-row";
 			export { answerActionsFor, forkEntryId, forkExcerpt, FORK_EXCERPT_MAX_CHARS, ANSWER_ACTIONS_LABEL, COPY_FEEDBACK_MS } from "./src/renderer/src/features/chat/canonical/message-actions";
+			export { transcriptRowActions } from "./src/renderer/src/features/chat/canonical/transcript-copy";
 			export { parseReplies } from "./src/renderer/src/features/chat/utils/reply-utils";
 			export { EMPTY_TRANSCRIPT, applyHistoryPage } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
@@ -234,6 +237,63 @@ const bundlePath = new URL("./_message-actions.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const mod = await import(bundlePath.href);
 await unlink(bundlePath);
+
+/*
+ * WHICH ROWS OWN A COPY AFFORDANCE, as a rule rather than a frame. The gutter
+ * control and the background menu are different surfaces; only the gutter is
+ * restricted to message-level rows. This asserts the restriction directly so a
+ * later "add the action row to tool rows too" cannot ride in on a screenshot
+ * of the one row it happens to paint.
+ */
+test("only user and assistant rows own the message-level copy affordance", () => {
+	const user = { kind: "user", id: "u1", ts: 0, text: "hi", images: [] };
+	const assistant = {
+		kind: "assistant",
+		id: "a1",
+		ts: 0,
+		text: "there",
+		streaming: false,
+		stopReason: null,
+		error: false,
+	};
+	const tool = {
+		kind: "tool",
+		id: "tool:1",
+		ts: 0,
+		toolCallId: "1",
+		toolName: "bash",
+		intent: null,
+		args: null,
+		phase: "done",
+		argumentBytes: 0,
+		output: "ok",
+	};
+	const receipt = {
+		kind: "custom",
+		id: "c1",
+		ts: 0,
+		customType: "hub_receipt",
+		text: "receipt",
+		level: "info",
+		headline: "Receipt",
+		detail: null,
+		category: null,
+		provider: null,
+		attribution: "system",
+	};
+	assert.equal(mod.transcriptRowActions(user), true);
+	assert.equal(mod.transcriptRowActions(assistant), true);
+	assert.equal(
+		mod.transcriptRowActions(tool),
+		false,
+		"a tool row is a line, not a message",
+	);
+	assert.equal(
+		mod.transcriptRowActions(receipt),
+		false,
+		"a receipt has a context menu but no gutter control",
+	);
+});
 
 /* ------------------------------------------------------------ the rules */
 
@@ -706,6 +766,10 @@ test("the row rides the turn-closing line and the user row's column, and nothing
 	assert.ok(
 		RE_USER_ROW_MOUNT.test(TRANSCRIPT_SOURCE),
 		"the user arm is mounted with its role",
+	);
+	assert.ok(
+		RE_USER_ROW_OVERLAY.test(TRANSCRIPT_SOURCE),
+		"and it is the OVERLAY variant: a flow child under the bubble is the invisible 32px the excess-space report removed",
 	);
 	assert.ok(
 		RE_RESPONSE_ROW_MOUNT.test(TRANSCRIPT_SOURCE),
