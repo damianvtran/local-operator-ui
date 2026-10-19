@@ -3,6 +3,7 @@ import type {
 	DesktopToolCallStats,
 	DesktopUsageAggregate,
 } from "../../../../../../shared/desktop-contract";
+import { channelBasisWords } from "../../session-status/session-cost";
 import {
 	formatDayBucket,
 	formatMicroUsd,
@@ -166,6 +167,7 @@ export type BarRow = {
 	/** Share of the section's total in the same metric. */
 	fraction: number | null;
 	note?: string;
+	basis?: string;
 };
 
 const metricOf = (
@@ -213,8 +215,8 @@ function barRows(
 export const modelRows = (
 	report: DesktopSessionReport,
 	metric: SessionMetric,
-): BarRow[] =>
-	barRows(
+): BarRow[] => {
+	const rows = barRows(
 		report.by_model.map((entry) => ({
 			key: `${entry.provider}/${entry.model_id}`,
 			label: `${entry.provider}/${entry.model_id}`,
@@ -222,6 +224,58 @@ export const modelRows = (
 		})),
 		metric,
 	);
+	const modelBasis = report.by_model_basis;
+	if (metric !== "cost" || !modelBasis) return rows;
+	return rows.map((row) => ({
+		...row,
+		// A model can use multiple credentials in one turn. Preserve every
+		// recorded basis rather than attributing its total to its latest key.
+		basis:
+			channelBasisWords(
+				modelBasis
+					.filter((entry) => `${entry.provider}/${entry.model_id}` === row.key)
+					.map((entry) => entry.billing_basis),
+			).join(" · ") || "—",
+	}));
+};
+
+/** Inference payment provenance: never mix the separate channel-call ledger into Cost. */
+export function spendBasisLegend(report: DesktopSessionReport): string | null {
+	if (!report.by_model_basis) return null;
+	const buckets = new Map<
+		string,
+		{ micro: number; known: number; calls: number }
+	>();
+	// Model entries are OWN scope; descendants are a disjoint subtree partition.
+	// An absent child split is not zero child spend: the title explicitly says own.
+	for (const entry of [
+		...report.by_model_basis,
+		...(report.descendants_by_basis ?? []),
+	]) {
+		const bucket = buckets.get(entry.billing_basis) ?? {
+			micro: 0,
+			known: 0,
+			calls: 0,
+		};
+		bucket.micro += entry.aggregate.cost_micro;
+		bucket.known += entry.aggregate.cost_known_calls;
+		bucket.calls += entry.aggregate.calls;
+		buckets.set(entry.billing_basis, bucket);
+	}
+	return (
+		[...buckets]
+			.map(
+				([basis, bucket]) =>
+					`${channelBasisWords([basis])[0] ?? "Without a tracked basis"} ${formatMicroUsd(bucket.micro, bucket.known, bucket.calls)}${basis === "subscription_api_equivalent" ? " (API-equivalent)" : ""}`,
+			)
+			.join(" · ") || null
+	);
+}
+
+export const spendBasisTitle = (report: DesktopSessionReport): string =>
+	report.descendants_by_basis === undefined
+		? "Spend by basis (own)"
+		: "Spend by basis";
 
 /**
  * Purpose rows.
