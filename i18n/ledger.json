@@ -8268,6 +8268,126 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.response_actions",
+			"source_sha256": "3c3e9480cf38316dda324d31e127ab9e63e2bf846c8e46f8efee7306fe4e47d5",
+			"target_sha256": "93158dd21279839c79f8055143a449bd812f0f9a7b2bc95487cefd9568caaeb2",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "69b4870007e6",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/69b4870007e6.json",
+					"receipt_sha256": "3f3b967011c6bdd9b71f1ebaf29e5cf81de8daa635f52f0bb6df74890f0b6b3c",
+					"scope": "First audit of the new one-key namespace; four full-coverage locales"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.response_actions",
+			"source_sha256": "3c3e9480cf38316dda324d31e127ab9e63e2bf846c8e46f8efee7306fe4e47d5",
+			"target_sha256": "22255dc9c6c29eb3b5a9409d79fc4b35bc41301f624c2c1d100c4ff908dae4d8",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "69b4870007e6",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/69b4870007e6.json",
+					"receipt_sha256": "3f3b967011c6bdd9b71f1ebaf29e5cf81de8daa635f52f0bb6df74890f0b6b3c",
+					"scope": "First audit of the new one-key namespace; four full-coverage locales"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.response_actions",
+			"source_sha256": "3c3e9480cf38316dda324d31e127ab9e63e2bf846c8e46f8efee7306fe4e47d5",
+			"target_sha256": "2352b3d5d9c99e8b07b39f7f922f48afb39b7f7a1403398961b17f95f2c02c36",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "69b4870007e6",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/69b4870007e6.json",
+					"receipt_sha256": "3f3b967011c6bdd9b71f1ebaf29e5cf81de8daa635f52f0bb6df74890f0b6b3c",
+					"scope": "First audit of the new one-key namespace; four full-coverage locales"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.response_actions",
+			"source_sha256": "3c3e9480cf38316dda324d31e127ab9e63e2bf846c8e46f8efee7306fe4e47d5",
+			"target_sha256": "f697f5879bd07dc0f5c72e8357c2f2e8ba301d58071af156cc52ca4ac34ab8ed",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "69b4870007e6",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/69b4870007e6.json",
+					"receipt_sha256": "3f3b967011c6bdd9b71f1ebaf29e5cf81de8daa635f52f0bb6df74890f0b6b3c",
+					"scope": "First audit of the new one-key namespace; four full-coverage locales"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
