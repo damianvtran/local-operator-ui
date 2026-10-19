@@ -20,6 +20,12 @@ import { build } from "esbuild";
  * shipped menu is wired to the model's option list and toggle rather than to a
  * second copy of the copy.
  *
+ * THE NOTIFY OPTIONS ARE DRIVEN. The optimistic write's rollback is the one
+ * claim a still cannot make, so the last test drives the exact options object
+ * `useSetTeamBridgeNotify` hands to `useMutation` — `onMutate` then `onError` —
+ * against a real QueryClient, and asserts both cached pages return to their
+ * exact snapshots. The hook itself is the one-line wrapper over these options.
+ *
  * The component bundle is imported from a real temp module (with `packages:
  * "external"`) rather than a data URL, because the components and this test
  * must share ONE React instance. The file is removed on exit, like the sibling
@@ -32,6 +38,7 @@ const bundle = await build({
 		contents: `
 			export { TeamBridgePageView, TeamBridgePreviewBanner } from "./src/renderer/src/features/team-bridge/team-bridge-page";
 			export { TeamBridgeConversationMenu } from "./src/renderer/src/features/team-bridge/team-bridge-conversation-menu";
+			export { notifyMutationOptions, teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
 		`,
 		resolveDir: ROOT,
 		sourcefile: "team-bridge-channels.mjs",
@@ -63,6 +70,7 @@ process.on("exit", () => {
 
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
+const { QueryClient } = await import("@tanstack/react-query");
 const ui = await import(modulePath.href);
 
 const selfMember = {
@@ -151,6 +159,23 @@ test("a preview shows the join banner and never a message body", () => {
 	assert.doesNotMatch(html, /Message this conversation/);
 });
 
+test("a refused notification write is stated under the header", () => {
+	const selected = conversation({ notify: "mute", muted: true });
+	const html = renderToStaticMarkup(
+		createElement(
+			ui.TeamBridgePageView,
+			viewProps({
+				selected,
+				conversations: [selected],
+				notifyFailed: true,
+				messageState: "ready",
+			}),
+		),
+	);
+	assert.match(html, /Your notification preference was not saved/);
+	assert.match(html, /role="alert"/);
+});
+
 test("a refused join is stated above a still-available action", () => {
 	const failed = renderToStaticMarkup(
 		createElement(ui.TeamBridgePreviewBanner, {
@@ -199,4 +224,39 @@ test("the menu renders the model's levels and toggle, inside Radix's radio group
 	assert.match(source, /notificationPreference\(conversation\)/);
 	// Story/capture seed: the open state is a prop, never a click from the test.
 	assert.match(source, /<DropdownMenu defaultOpen=\{defaultOpen\}>/);
+});
+
+test("the notify options restore both cached pages when the write is refused", async () => {
+	const client = new QueryClient({
+		// The seeded pages have no observer: gc must not collect them before the
+		// options run. `client.clear()` at the end drops the timers.
+		defaultOptions: {
+			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+		},
+	});
+	const row = conversation({ id: "bcv_2", notify: "all", muted: false });
+	const sibling = conversation({ id: "bcv_3" });
+	const page = { conversations: [row, sibling], has_more: true };
+	const orgKey = ui.teamBridgeKeys.conversations("tnt_1");
+	const allKey = ui.teamBridgeKeys.conversations("all");
+	client.setQueryData(orgKey, structuredClone(page));
+	client.setQueryData(allKey, structuredClone(page));
+	// The claim under test is the snapshot restore, not the settle-time re-read.
+	client.invalidateQueries = async () => {};
+
+	const options = ui.notifyMutationOptions(client, "bcv_2", "tnt_1");
+	const context = await options.onMutate("mute");
+	assert.equal(client.getQueryData(orgKey).conversations[0].notify, "mute");
+	assert.equal(client.getQueryData(orgKey).conversations[0].muted, true);
+	assert.equal(client.getQueryData(allKey).conversations[0].notify, "mute");
+	assert.equal(client.getQueryData(orgKey).conversations[1].notify, undefined);
+
+	options.onError(new Error("refused"), "mute", context);
+	// Both scope-keyed pages must be back exactly as they were: the snapshot is
+	// per page, and a rollback that restores only the visible one leaves the
+	// merged view claiming a preference the server refused.
+	assert.deepEqual(client.getQueryData(orgKey), page);
+	assert.deepEqual(client.getQueryData(allKey), page);
+	await options.onSettled();
+	client.clear();
 });

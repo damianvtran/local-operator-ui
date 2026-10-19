@@ -143,8 +143,14 @@ const ConversationRow: FC<{
 						{/* The merged view moves the timestamp to the chip line: the org
 						    name is the fact that distinguishes two same-named conversations,
 						    so it keeps the title line's room. */}
+						{/*
+						 * The timestamp is the FIRST row item to yield. It keeps its basis
+						 * (`shrink` 1, `min-w-0`) while the title is `flex-1` over a zero basis,
+						 * so an over-full row spends the timestamp's width before the title's:
+						 * the name is the identification task, and Preview/unread stay whole.
+						 */}
 						{lastMessage && !showOrganization && (
-							<span className="shrink-0 text-meta-sm text-ink-dim">
+							<span className="min-w-0 truncate text-meta-sm text-ink-dim">
 								{lastMessage}
 							</span>
 						)}
@@ -286,6 +292,8 @@ export type TeamBridgePageViewProps = {
 	joining?: boolean;
 	/** The last join was refused; the banner states it above the action. */
 	joinFailed?: boolean;
+	/** The last notification write was refused; the line under the header says so. */
+	notifyFailed?: boolean;
 	/** Join the selected discoverable channel (the banner's primary action). */
 	onJoin?: () => void;
 	/** Write the selected conversation's notification preference. */
@@ -319,6 +327,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	sendFailed = false,
 	joining = false,
 	joinFailed = false,
+	notifyFailed = false,
 	onJoin,
 	onNotifyChange,
 	defaultMenuOpen = false,
@@ -584,6 +593,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								)}
 							</div>
 						</header>
+						{notifyFailed && (
+							<p role="alert" className="px-3 pb-1 text-[12px] text-danger">
+								{t("ui.teamBridge.notify.error")}
+							</p>
+						)}
 
 						{/* Radix wraps children in an auto-height table cell; these
 						    arbitrary variants make that wrapper fill the viewport so the
@@ -887,6 +901,10 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	useEffect(() => {
 		send.reset();
 		join.reset();
+		// A refusal is about the conversation the reader was in; the next
+		// selection starts with a clean line, as the next successful write does
+		// (a mutation that succeeds is no longer in its error state).
+		notify.reset();
 	}, [selected?.id]);
 
 	const newest = messages.data?.messages.reduce<number | undefined>(
@@ -933,6 +951,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				sendFailed={send.isError}
 				joining={join.isPending}
 				joinFailed={join.isError}
+				notifyFailed={notify.isError}
 				onJoin={() => join.mutate()}
 				onNotifyChange={(next) => notify.mutate(next)}
 				onSelect={setSelectedId}

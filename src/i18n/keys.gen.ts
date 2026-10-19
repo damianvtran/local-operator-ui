@@ -4810,6 +4810,7 @@ export type MessageParams = {
 	"ui.teamBridge.nav.label": undefined;
 	"ui.teamBridge.nav.unread": { count: number };
 	"ui.teamBridge.notify.all": undefined;
+	"ui.teamBridge.notify.error": undefined;
 	"ui.teamBridge.notify.label": undefined;
 	"ui.teamBridge.notify.mention": undefined;
 	"ui.teamBridge.notify.mute": undefined;

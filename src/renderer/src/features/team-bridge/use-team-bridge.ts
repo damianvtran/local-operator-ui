@@ -23,6 +23,9 @@
  */
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 import {
+	type QueryClient,
+	type QueryKey,
+	type UseMutationOptions,
 	type UseMutationResult,
 	type UseQueryResult,
 	useMutation,
@@ -217,25 +220,34 @@ export function useJoinTeamBridgeConversation(
 	});
 }
 
+/** The rollback snapshot carried from `onMutate` to `onError`. */
+export type TeamBridgeNotifyMutationContext = {
+	snapshots: Array<[QueryKey, TeamBridgeConversationList | undefined]>;
+};
+
 /**
- * Set one conversation's notification preference, optimistically.
+ * The notify mutation's options, separated from the hook.
  *
- * The menu is a control a reader uses repeatedly; waiting for a round trip to
- * paint the checkmark would make every choice feel ignored. The update patches
- * every cached conversation page that holds the row (the merged list and its
- * org's list), and a refusal restores the exact snapshots taken before the
- * patch. `onSettled` then re-reads the truth, so a server that canonicalises a
- * value cannot leave the optimistic guess in place.
+ * `useSetTeamBridgeNotify` is a one-line wrapper: these options are the object
+ * React Query actually runs, and keeping them callable lets the test that owns
+ * the rollback claim drive `onMutate`/`onError` against a real cache without a
+ * DOM. The hook passes its query client, so the cache the options read is the
+ * one the page renders from.
  */
-export function useSetTeamBridgeNotify(
+export function notifyMutationOptions(
+	client: QueryClient,
 	conversationId: string,
 	tenantId?: string,
-): UseMutationResult<TeamBridgeReadState, Error, TeamBridgeNotify> {
-	const client = useQueryClient();
-	return useMutation({
-		mutationFn: (notify) =>
+): UseMutationOptions<
+	TeamBridgeReadState,
+	Error,
+	TeamBridgeNotify,
+	TeamBridgeNotifyMutationContext
+> {
+	return {
+		mutationFn: (notify: TeamBridgeNotify) =>
 			TeamBridgeApi.setNotify(conversationId, notify, tenantId),
-		onMutate: async (notify) => {
+		onMutate: async (notify: TeamBridgeNotify) => {
 			await client.cancelQueries({
 				queryKey: teamBridgeKeys.conversationsPrefix,
 			});
@@ -264,7 +276,25 @@ export function useSetTeamBridgeNotify(
 				queryKey: teamBridgeKeys.unreadPrefix,
 			});
 		},
-	});
+	};
+}
+
+/**
+ * Set one conversation's notification preference, optimistically.
+ *
+ * The menu is a control a reader uses repeatedly; waiting for a round trip to
+ * paint the checkmark would make every choice feel ignored. The update patches
+ * every cached conversation page that holds the row (the merged list and its
+ * org's list), and a refusal restores the exact snapshots taken before the
+ * patch. `onSettled` then re-reads the truth, so a server that canonicalises a
+ * value cannot leave the optimistic guess in place.
+ */
+export function useSetTeamBridgeNotify(
+	conversationId: string,
+	tenantId?: string,
+): UseMutationResult<TeamBridgeReadState, Error, TeamBridgeNotify> {
+	const client = useQueryClient();
+	return useMutation(notifyMutationOptions(client, conversationId, tenantId));
 }
 
 export function useMarkTeamBridgeRead(

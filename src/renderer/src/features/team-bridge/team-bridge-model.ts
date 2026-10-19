@@ -201,17 +201,22 @@ export function withNotificationPreference(
 /**
  * The count the thread header states.
  *
- * A discoverable non-member has no `members` rows to count — membership is the
- * fact the preview withholds — so the server's `member_count` is the only
- * truthful number there. Insiders keep the live member array, which is the
- * fresher answer for a page that has just added someone.
+ * Insiders keep the live member array and count its ACTIVE rows: the server's
+ * `member_count` also includes invitees (agent-server counts active + invited),
+ * so preferring it for an insider would make the header disagree with both the
+ * avatars beside it and the previous UI's number. A discoverable non-member has
+ * no `members` rows at all — membership is the fact the preview withholds — so
+ * `member_count` is the only metadata there, and its invited-inclusive total is
+ * the honest number the preview can state.
  */
 export function conversationMemberCount(
 	conversation: Pick<TeamBridgeConversation, "member_count" | "members">,
 ): number {
-	if (conversation.member_count !== undefined) return conversation.member_count;
-	return conversation.members.filter((member) => member.state === "active")
-		.length;
+	if (conversation.members.length > 0) {
+		return conversation.members.filter((member) => member.state === "active")
+			.length;
+	}
+	return conversation.member_count ?? 0;
 }
 
 /** True when at least one ACTIVE member is an agent. Badges read this. */
