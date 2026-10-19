@@ -1,4 +1,5 @@
 import {
+	estimatedSpend,
 	legacySpend,
 	mixedSpend,
 	paygoSpend,
@@ -1887,5 +1888,10 @@ export const PaymentPaygo: Story = {
 
 export const PaymentLegacyUntracked: Story = {
 	args: { ...Channels.args, channels: legacySpend },
+	play: () => scrollPanelToSection("By channel"),
+};
+
+export const PaymentEstimated: Story = {
+	args: { ...Channels.args, channels: estimatedSpend },
 	play: () => scrollPanelToSection("By channel"),
 };

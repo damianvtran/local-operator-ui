@@ -1,4 +1,5 @@
 import {
+	estimatedSpend,
 	legacySpend,
 	mixedSpend,
 	paygoSpend,
@@ -2263,6 +2264,16 @@ export const PaymentLegacyUntracked: Story = {
 		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
 			<Frame width={900}>
 				<FocusedSpend override={{ spend_channels: legacySpend }} />
+			</Frame>
+		</div>
+	),
+};
+
+export const PaymentEstimated: Story = {
+	render: () => (
+		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend override={{ spend_channels: estimatedSpend }} />
 			</Frame>
 		</div>
 	),

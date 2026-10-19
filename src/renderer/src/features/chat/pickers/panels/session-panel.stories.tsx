@@ -1,4 +1,5 @@
 import {
+	estimatedSpend,
 	legacySpend,
 	mixedSpend,
 	paygoSpend,
@@ -470,4 +471,38 @@ export const PaymentPaygo: Story = {
 
 export const PaymentLegacyUntracked: Story = {
 	args: { ...base, metric: "cost", report: paymentReport(legacySpend, false) },
+};
+
+export const PaymentEstimated: Story = {
+	args: {
+		...base,
+		metric: "cost",
+		report: {
+			...paymentReport(estimatedSpend, false),
+			by_model_basis: [
+				{
+					provider: "anthropic",
+					model_id: "claude-sonnet-5-5",
+					billing_basis: "estimated",
+					aggregate: aggregate({
+						calls: 1,
+						ok_calls: 1,
+						cost_known_calls: 1,
+						cost_micro: 790_000,
+					}),
+				},
+			],
+			descendants_by_basis: [
+				{
+					billing_basis: "estimated",
+					aggregate: aggregate({
+						calls: 1,
+						ok_calls: 1,
+						cost_known_calls: 1,
+						cost_micro: 11_620_000,
+					}),
+				},
+			],
+		},
+	},
 };

@@ -83,7 +83,7 @@ test("the fixture renders as the panel's table, in this panel's ladder", () => {
 	// one consistent description.
 	assert.equal(
 		view.planClause,
-		"Includes $0.053 included in your plan (API-equivalent).",
+		"Includes $0.053 plan-covered (API-equivalent, not charged).",
 	);
 	assert.equal(
 		view.basisLine,
