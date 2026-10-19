@@ -659,10 +659,7 @@ test("refused TCP, a timeout and a closed handshake are three states, not one", 
 	assert.equal(relayDown.peers[0].remote_relay, "not_listening");
 	assert.deepEqual(
 		relayDown.peers[0].attempts.map((attempt) => attempt.detail),
-		[
-			"connect_failed:ConnectionRefusedError",
-			"connect_failed:TimeoutError",
-		],
+		["connect_failed:ConnectionRefusedError", "connect_failed:TimeoutError"],
 		"the per-address evidence survives the normaliser in wire order",
 	);
 	const relayGraph = meshGraph({

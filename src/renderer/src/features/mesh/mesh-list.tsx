@@ -367,27 +367,30 @@ export const MeshList: FC<MeshListProps> = ({
 									 * at a time, in the backend's own order. It appears only when there is evidence,
 									 * and an older backend (no `attempts`) keeps the unchanged sentence below.
 									 */}
-									{(headline !== "" || attempts.length > 0) && !device.reachable && (
-										<div className="flex flex-col gap-0.5">
-											{headline && (
-												<span className="text-meta text-warning">{headline}</span>
-											)}
-											{attempts.map((attempt, index) => {
-												const words = attemptWords(attempt.detail);
-												return (
-													<span
-														key={`${attempt.endpoint}:${index}`}
-														data-mesh-attempt={attempt.endpoint}
-														className="text-meta text-ink-dim"
-													>
-														{words
-															? `${attempt.endpoint} — ${words}`
-															: attempt.endpoint}
+									{(headline !== "" || attempts.length > 0) &&
+										!device.reachable && (
+											<div className="flex flex-col gap-0.5">
+												{headline && (
+													<span className="text-meta text-warning">
+														{headline}
 													</span>
-												);
-											})}
-										</div>
-									)}
+												)}
+												{attempts.map((attempt, index) => {
+													const words = attemptWords(attempt.detail);
+													return (
+														<span
+															key={`${attempt.endpoint}:${index}`}
+															data-mesh-attempt={attempt.endpoint}
+															className="text-meta text-ink-dim"
+														>
+															{words
+																? `${attempt.endpoint} — ${words}`
+																: attempt.endpoint}
+														</span>
+													);
+												})}
+											</div>
+										)}
 									{conversationsLinkDown(device, nowSeconds) ? (
 										<span className="text-meta text-warning">
 											{t("ui.mesh.mesh_card.conversations")} (

@@ -44,13 +44,13 @@
  */
 
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
+import { t } from "../../../../i18n/messages";
 import type {
 	PeerAttempt,
 	PeerLinkFacts,
 	PeerLinkState,
 	PeerRelayState,
 } from "../../../../shared/desktop-session-contract";
-import { t } from "../../../../i18n/messages";
 
 /*
  * The peer LINK vocabulary is the shared contract's (see
