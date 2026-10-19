@@ -124,6 +124,29 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			digest: z.string().regex(/^[a-f0-9]{32}$/),
 		})
 		.strict(),
+	/*
+	 * The Library's content and thumbnail bytes. The asset id is shape-checked
+	 * here as well as by the backend route: this relay's premise is that
+	 * renderer code cannot pick a URL, and an unvalidated id would become a path
+	 * segment. The width is the thumbnail route's own ceiling (`w=480` is the
+	 * documented maximum), so a caller cannot ask the daemon for an unbounded
+	 * rasterisation.
+	 */
+	z
+		.object({
+			op: z.literal("library.content"),
+			assetId: z.string().regex(/^la_[0-9a-f]{16}$/),
+			/** `?download=1` asks the route for an attachment disposition. */
+			download: z.boolean().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("library.thumbnail"),
+			assetId: z.string().regex(/^la_[0-9a-f]{16}$/),
+			width: z.number().int().min(1).max(480).optional(),
+		})
+		.strict(),
 ]);
 
 export type DesktopMediaRequest = z.infer<typeof mediaRequestSchema>;
@@ -179,6 +202,16 @@ function endpoint(request: DesktopMediaRequest): {
 		case "sessions.supplementDocument":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/supplements/${request.digest}/document`,
+				method: "GET",
+			};
+		case "library.content":
+			return {
+				path: `/v1/desktop/library/assets/${request.assetId}/content${request.download ? "?download=1" : ""}`,
+				method: "GET",
+			};
+		case "library.thumbnail":
+			return {
+				path: `/v1/desktop/library/assets/${request.assetId}/thumbnail?w=${request.width ?? 480}`,
 				method: "GET",
 			};
 	}
@@ -252,7 +285,9 @@ export async function requestDesktopMediaOutcome(
 		request.op === "sessions.attachment" ||
 		request.op === "subagents.attachment" ||
 		request.op === "sessions.attachment.waveform" ||
-		request.op === "sessions.supplementDocument"
+		request.op === "sessions.supplementDocument" ||
+		request.op === "library.content" ||
+		request.op === "library.thumbnail"
 	) {
 		// A GET carries no body; `fetch` rejects one outright.
 		body = undefined;
