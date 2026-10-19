@@ -11,7 +11,7 @@
 	"ui.agentMessages.dialog.consent_unavailable": "El consentimiento no está disponible. No se han activado los mensajes de agentes.",
 	"ui.agentMessages.dialog.account_guard_unavailable": "Esta versión no puede activar los mensajes de agentes de forma segura para tu cuenta. Actualiza Local Operator e inténtalo de nuevo.",
 	"ui.agentMessages.dialog.failure": "No se pudieron activar los mensajes de agentes. Inténtalo de nuevo o actívalos más adelante en Ajustes → Mensajes de agentes.",
-	"ui.agentMessages.dialog.consent_changed": "Lee el texto de consentimiento actual que aparece abajo y vuelve a elegir Activar.",
+	"ui.agentMessages.dialog.consent_changed": "Lee el texto de consentimiento actual y vuelve a elegir Activar.",
 	"ui.agentMessages.dialog.local_failure": "Tu consentimiento se guardó, pero la configuración en este equipo no terminó. Abre Ajustes → Mensajes de agentes para completarla.",
 	"ui.agentMessages.dialog.validation_detail": "{field}: {rule}",
 	"ui.agentMessages.dialog.validation_failure": "Esta solicitud de configuración no se aceptó. Actualiza Local Operator e inténtalo de nuevo."
