@@ -218,7 +218,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 	return (
 		<div
 			ref={rootRef}
-			className="flex h-full min-h-0 flex-col bg-surface"
+			className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-surface"
 			data-library-preview={asset.id}
 			data-library-compact={compact ? "" : undefined}
 			data-glass-region="pane"
