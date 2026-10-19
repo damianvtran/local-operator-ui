@@ -549,6 +549,14 @@ export const Loading: Story = { render: () => page({ hang: true }) };
 export const Building: Story = {
 	render: () => page({ rows: ROWS.slice(0, 2), building: true }),
 };
+/*
+ * The building line inside the real shell, which is the state the header's
+ * fixed-height defect painted over the grid. Kept as a story rather than a
+ * one-off rig so the geometry can be re-measured from the shipped component.
+ */
+export const InShellBuilding: Story = {
+	render: () => page({ shell: true, building: true }),
+};
 export const LoadError: Story = {
 	render: () => page({ rows: [], failList: "The backend did not answer." }),
 };

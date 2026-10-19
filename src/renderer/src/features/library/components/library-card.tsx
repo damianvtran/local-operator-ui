@@ -17,6 +17,7 @@
 
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { Badge, Button } from "@shared/components/ui";
+import { useEverInView } from "@shared/hooks/use-ever-in-view";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { LoaderCircle, MessagesSquare, Star } from "lucide-react";
@@ -55,11 +56,23 @@ const CardPicture: FC<{ asset: DesktopLibraryAsset; large?: boolean }> = ({
 	asset,
 	large = false,
 }) => {
-	const wantsThumbnail = asset.kind === "image" && asset.exists;
+	/*
+	 * THUMBNAIL READS WAIT UNTIL THE CARD IS NEAR THE VIEWPORT. The renderer
+	 * starts a `library.thumbnail` IPC read per mounted image card, and a page
+	 * is 60 cards; gating on the latch means a grid that is mostly below the
+	 * fold reads the bytes a reader actually scrolls to. `300px` starts the
+	 * read one row ahead so the picture is usually painted by the time the card
+	 * arrives, and `useEverInView` latches so scrolling back never re-reads.
+	 * The kind glyph stays until the bytes land, exactly as for a card with no
+	 * picture at all.
+	 */
+	const [pictureRef, near] = useEverInView("300px");
+	const wantsThumbnail = asset.kind === "image" && asset.exists && near;
 	const thumbnail = useLibraryBytes(asset.id, "thumbnail", wantsThumbnail);
 	const source = useObjectUrl(thumbnail.bytes, thumbnail.mimeType);
 	return (
 		<div
+			ref={pictureRef}
 			className={cn(
 				"relative flex shrink-0 items-center justify-center overflow-hidden bg-canvas",
 				large ? "aspect-[16/10] w-full" : "h-24 w-32",
