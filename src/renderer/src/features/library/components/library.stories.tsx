@@ -424,7 +424,7 @@ const GlassFrame: FC<{
 	useLayoutEffect(() => {
 		const paint = glassPaintFor({
 			coverage,
-			intensity: 0.5,
+			intensity: 50,
 			mechanism: "vibrancy",
 			material: "window",
 			scheme,

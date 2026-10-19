@@ -20,6 +20,7 @@
 import { Button, Progress } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import {
 	ChevronLeft,
 	ChevronRight,
@@ -31,7 +32,13 @@ import {
 } from "lucide-react";
 import { PptxRenderer } from "pptx-browser";
 import type { FC } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
 import { saveAssetCopy } from "../library-download";
 
@@ -60,6 +67,25 @@ export const PptxViewer: FC<PptxViewerProps> = ({
 	const [slide, setSlide] = useState(0);
 	const [zoom, setZoom] = useState(1);
 	const [attempt, setAttempt] = useState(0);
+	const [saving, setSaving] = useState(false);
+	const rootRef = useRef<HTMLDivElement>(null);
+	/*
+	 * SHORT VIEWERS DROP THE THUMBNAIL RAIL rather than overflowing their own
+	 * column. At a 720px window the dock has ~300px for the viewer after the
+	 * compact metadata and composer; a 72px rail plus a 40px toolbar left the
+	 * slide at zero. The rail is a convenience, the slide is the content, so the
+	 * rail yields first and the toolbar wraps if its controls need a second line.
+	 */
+	const [short, setShort] = useState(false);
+	useLayoutEffect(() => {
+		const node = rootRef.current;
+		if (!node) return;
+		const measure = () => setShort(node.getBoundingClientRect().height < 360);
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(node);
+		return () => observer.disconnect();
+	}, []);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` is the retry trigger the effect must observe.
 	useEffect(() => {
@@ -151,7 +177,19 @@ export const PptxViewer: FC<PptxViewerProps> = ({
 					<Button
 						variant="secondary"
 						size="sm"
-						onClick={() => void saveAssetCopy(asset)}
+						disabled={saving}
+						onClick={() => {
+							setSaving(true);
+							void saveAssetCopy(asset)
+								.catch((error: unknown) =>
+									showErrorToast(
+										error instanceof Error && error.message
+											? error.message
+											: t("ui.library.menu.save_failed"),
+									),
+								)
+								.finally(() => setSaving(false));
+						}}
 					>
 						<Download aria-hidden="true" />
 						{t("ui.library.menu.download")}
@@ -188,7 +226,10 @@ export const PptxViewer: FC<PptxViewerProps> = ({
 			}}
 		>
 			<div className="flex min-h-0 flex-1 flex-col gap-2">
-				<div className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center rounded-md bg-canvas p-2">
+				<div
+					data-pptx-slide=""
+					className="flex min-h-[120px] min-w-0 flex-1 flex-col items-center justify-center rounded-md bg-canvas p-2"
+				>
 					{state.phase === "loading" ? (
 						<div className="flex w-60 flex-col items-center gap-2">
 							<LoaderCircle
@@ -212,7 +253,7 @@ export const PptxViewer: FC<PptxViewerProps> = ({
 						/>
 					)}
 				</div>
-				{state.phase === "ready" && (
+				{state.phase === "ready" && !short && (
 					<div className="flex h-[72px] shrink-0 flex-row gap-1 overflow-x-auto overflow-y-hidden">
 						{state.thumbnails.map((thumbnail, index) => (
 							<button

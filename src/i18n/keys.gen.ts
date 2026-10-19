@@ -1938,8 +1938,12 @@ export type MessageParams = {
 	"ui.library.composer.continue_placeholder": undefined;
 	"ui.library.composer.could_not_start": undefined;
 	"ui.library.composer.label": undefined;
+	"ui.library.composer.link_failed": { message: string };
+	"ui.library.composer.link_failed_short": undefined;
+	"ui.library.composer.message_sent_link_failed": undefined;
 	"ui.library.composer.not_sent": undefined;
 	"ui.library.composer.open_chat": undefined;
+	"ui.library.composer.retry_link": undefined;
 	"ui.library.composer.send": undefined;
 	"ui.library.composer.unlink": undefined;
 	"ui.library.filter.categories": undefined;
@@ -2014,9 +2018,11 @@ export type MessageParams = {
 	"ui.library.preview.add_description": undefined;
 	"ui.library.preview.add_tag": undefined;
 	"ui.library.preview.breadcrumb": { name: string };
+	"ui.library.preview.checking_file": undefined;
 	"ui.library.preview.close": undefined;
 	"ui.library.preview.could_not_load": undefined;
 	"ui.library.preview.description": undefined;
+	"ui.library.preview.details": undefined;
 	"ui.library.preview.download": undefined;
 	"ui.library.preview.expand": undefined;
 	"ui.library.preview.fit": undefined;

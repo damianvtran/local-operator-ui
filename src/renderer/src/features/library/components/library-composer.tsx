@@ -46,6 +46,8 @@ type LibraryComposerProps = {
 	asset: DesktopLibraryAsset;
 	/** A counter the page bumps when the menu's "Ask about this asset" fires. */
 	focusSignal: number;
+	/** Short previews reserve the 152px footer, not 176px (design spec §5). */
+	compact?: boolean;
 };
 
 /** The MIME types `sessionImage` admits. */
@@ -85,6 +87,7 @@ function assetReference(asset: DesktopLibraryAsset): string {
 export const LibraryComposer: FC<LibraryComposerProps> = ({
 	asset,
 	focusSignal,
+	compact = false,
 }) => {
 	useI18nLocale();
 	const navigate = useNavigate();
@@ -103,6 +106,17 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 	};
 	const [value, setValue] = useState("");
 	const [sending, setSending] = useState(false);
+	/*
+	 * THE ACCEPTED SEND IS THE COMMIT POINT. A created session whose link write
+	 * failed must not be forgotten: the message is already in the transcript,
+	 * and the next Send creating a second session would submit the same prompt
+	 * again and split the conversation. `pendingSessionId` survives that failure
+	 * (and a dock/full-view remount of this component is not promised, so it is
+	 * deliberately local state rather than a store entry), while `linkFailed`
+	 * asks for the retry row.
+	 */
+	const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
+	const [linkFailed, setLinkFailed] = useState(false);
 	const link = useLinkAssetChat();
 	const unlink = useUnlinkAssetChat();
 	/*
@@ -123,7 +137,7 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 		setSending(true);
 		try {
 			const store = useCanonicalSessionsStore.getState();
-			let sessionId = asset.chat?.session_id ?? null;
+			let sessionId = asset.chat?.session_id ?? pendingSessionId ?? null;
 			if (!sessionId) {
 				sessionId = await store.createSession(store.cwd || "~");
 				if (!sessionId) {
@@ -147,13 +161,50 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 			}
 			await desktopResult(body);
 			/*
+			 * The backend accepted the turn: the draft is committed and clears
+			 * HERE, before the association write. A later link refusal must not
+			 * leave the accepted message's words in the composer for a second
+			 * submit.
+			 */
+			setValue("");
+			/*
 			 * Only a NEW association is written. Continuing the linked chat must
 			 * not re-record the link: the route verifies the session and would
 			 * accept the same id, but a second write is a needless round trip and
 			 * makes a link failure look like a send failure.
 			 */
-			if (!asset.chat) await link.mutateAsync({ id: asset.id, sessionId });
-			setValue("");
+			if (!asset.chat && !pendingSessionId) {
+				try {
+					await link.mutateAsync({ id: asset.id, sessionId });
+				} catch (error) {
+					/*
+					 * Partial success: say what actually happened, keep the session
+					 * id for the next Send, and do not navigate away from the
+					 * asset whose link is still missing.
+					 */
+					setPendingSessionId(sessionId);
+					setLinkFailed(true);
+					showErrorToast(
+						error instanceof Error && error.message
+							? t("ui.library.composer.link_failed", {
+									message: error.message,
+								})
+							: t("ui.library.composer.link_failed_short"),
+					);
+					return;
+				}
+			}
+			if (pendingSessionId) {
+				try {
+					await link.mutateAsync({ id: asset.id, sessionId });
+					setPendingSessionId(null);
+					setLinkFailed(false);
+				} catch {
+					setLinkFailed(true);
+					showErrorToast(t("ui.library.composer.link_failed_short"));
+					return;
+				}
+			}
 			await openConversation(navigate, sessionId);
 		} catch (error) {
 			showErrorToast(
@@ -167,12 +218,46 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 	};
 
 	const linked = asset.chat;
+	const retryLink = async () => {
+		const sessionId = pendingSessionId ?? asset.chat?.session_id;
+		if (!sessionId) return;
+		try {
+			await link.mutateAsync({ id: asset.id, sessionId });
+			setPendingSessionId(null);
+			setLinkFailed(false);
+		} catch {
+			showErrorToast(t("ui.library.composer.link_failed_short"));
+		}
+	};
 
 	return (
 		<div
-			className="mx-auto flex h-44 w-[min(calc(100%-24px),720px)] flex-col justify-end gap-2 pb-4"
+			className={cn(
+				"mx-auto flex w-[min(calc(100%-24px),720px)] flex-col justify-end gap-2 pb-4",
+				compact ? "h-38" : "h-44",
+			)}
 			data-library-composer=""
 		>
+			{linkFailed && pendingSessionId && (
+				<div
+					className="flex flex-wrap items-center gap-2 rounded-md bg-sunken px-2 py-1 text-meta text-ink"
+					data-library-link-failed=""
+				>
+					<span className="min-w-0 flex-1">
+						{t("ui.library.composer.message_sent_link_failed")}
+					</span>
+					<Button variant="ghost" size="sm" onClick={() => void retryLink()}>
+						{t("ui.library.composer.retry_link")}
+					</Button>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => void openConversation(navigate, pendingSessionId)}
+					>
+						{t("ui.library.composer.open_chat")}
+					</Button>
+				</div>
+			)}
 			{linked && (
 				<div className="flex items-center gap-2 text-meta text-ink-muted">
 					<Link2 size={13} aria-hidden="true" />

@@ -65,7 +65,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const { after } = await import("node:test");
 const { build } = await import("esbuild");
-const { createElement, act } = await import("react");
+const { act } = await import("react");
 
 /*
  * THE HARNESS IS BUNDLED THE WAY `projects-card-click.test.mjs` bundles its
@@ -312,10 +312,30 @@ const desktopRequest = async (request) => {
 	if (request.op === "library.tags") {
 		return { status: 200, body: { result: [tag("t1", "finance")] } };
 	}
+	if (request.op === "sessions.create") {
+		return {
+			status: 200,
+			body: {
+				result: {
+					session_id: "abcdef123456",
+					binding: {},
+				},
+			},
+		};
+	}
 	if (request.op === "sessions.message") {
+		if (ANSWER.failMessage) {
+			return { status: 500, body: { detail: "The send was refused." } };
+		}
 		return { status: 200, body: { result: { accepted: true } } };
 	}
 	if (request.op === "library.chat.link") {
+		if (ANSWER.linkFails > 0) {
+			ANSWER.linkFails -= 1;
+			/* 400, not 500: the app retries a 5xx once, and this test needs the
+			 * refusal to remain a refusal on the first Send. */
+			return { status: 400, body: { detail: "The link was refused." } };
+		}
 		return {
 			status: 200,
 			body: {
@@ -331,6 +351,14 @@ const desktopRequest = async (request) => {
 			},
 		};
 	}
+	/*
+	 * Navigation and session creation have follow-up reads this page test does
+	 * not exercise. Answering their namespace with an empty result keeps the
+	 * harness's event loop settled instead of leaving an unresolved request
+	 * from a store that outlives the unmounted route.
+	 */
+	if (request.op.startsWith("sessions."))
+		return { status: 200, body: { result: {} } };
 	throw new TypeError(`unexpected desktop op in this test: ${request.op}`);
 };
 
@@ -472,4 +500,110 @@ test("a linked chat is shown and continued with its own session", async () => {
 		"continuing a linked chat does not link it again",
 	);
 	await act(async () => root.unmount());
+});
+
+test("an accepted send survives a link failure and the next send reuses its session", async () => {
+	ANSWER.rows = [asset("la_0000000000000014", { name: "Unlinked asset" })];
+	ANSWER.ops = [];
+	ANSWER.linkFails = 1;
+	const { container, root } = await mount();
+	const card = container.querySelector(
+		'[data-library-card-id="la_0000000000000014"] button',
+	);
+	await act(async () => card.click());
+	await flush();
+	const textarea = () =>
+		container.querySelector("[data-library-composer] textarea");
+	const type = async (text) => {
+		await act(async () => {
+			const setter = Object.getOwnPropertyDescriptor(
+				dom.window.HTMLTextAreaElement.prototype,
+				"value",
+			).set;
+			setter.call(textarea(), text);
+			textarea().dispatchEvent(
+				new dom.window.Event("input", { bubbles: true }),
+			);
+		});
+		await flush(2);
+	};
+	const send = () =>
+		container.querySelector(
+			'[data-library-composer] button[aria-label="Send"]',
+		);
+	await type("First message");
+	await act(async () => send().click());
+	await flush(10);
+	assert.equal(
+		ANSWER.ops.filter((op) => op.op === "sessions.message").length,
+		1,
+	);
+	assert.equal(textarea().value, "", "the accepted draft is cleared");
+	assert.ok(
+		container.querySelector("[data-library-link-failed]"),
+		"the link failure is shown as partial success",
+	);
+	await type("Second message");
+	await act(async () => send().click());
+	await flush(10);
+	const messages = ANSWER.ops.filter((op) => op.op === "sessions.message");
+	assert.equal(messages.length, 2);
+	assert.equal(messages[0].sessionId, "abcdef123456");
+	assert.equal(messages[1].sessionId, "abcdef123456");
+	assert.equal(
+		ANSWER.ops.filter((op) => op.op === "sessions.create").length,
+		1,
+		"the second send reuses the created session",
+	);
+	await act(async () =>
+		container.querySelector("[data-library-link-failed] button")?.click(),
+	);
+	await flush(6);
+	assert.equal(container.querySelector("[data-library-link-failed]"), null);
+	await act(async () => root.unmount());
+	ANSWER.linkFails = 0;
+});
+
+test("a send refusal keeps the draft and writes no link", async () => {
+	ANSWER.rows = [
+		asset("la_0000000000000015", {
+			name: "Send refusal",
+			chat: {
+				session_id: "abcdef123456",
+				title: "Existing chat",
+				updated_at: 1_700_000_000,
+			},
+		}),
+	];
+	ANSWER.ops = [];
+	ANSWER.failMessage = true;
+	const { container, root } = await mount();
+	const card = container.querySelector(
+		'[data-library-card-id="la_0000000000000015"] button',
+	);
+	await act(async () => card.click());
+	await flush();
+	const textarea = container.querySelector("[data-library-composer] textarea");
+	await act(async () => {
+		const setter = Object.getOwnPropertyDescriptor(
+			dom.window.HTMLTextAreaElement.prototype,
+			"value",
+		).set;
+		setter.call(textarea, "Will not send");
+		textarea.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+	});
+	await flush(2);
+	await act(async () =>
+		container
+			.querySelector('[data-library-composer] button[aria-label="Send"]')
+			.click(),
+	);
+	await flush(8);
+	assert.equal(textarea.value, "Will not send");
+	assert.equal(
+		ANSWER.ops.some((op) => op.op === "library.chat.link"),
+		false,
+	);
+	await act(async () => root.unmount());
+	ANSWER.failMessage = false;
 });

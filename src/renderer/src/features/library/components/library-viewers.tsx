@@ -18,19 +18,21 @@
  * offer writes the route cannot accept.
  */
 
+import { probeLocalFile } from "@features/chat/components/canvas/file-freshness";
 import { WysiwygMarkdownEditor } from "@features/chat/components/canvas/wysiwyg-markdown-editor";
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { Button } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { Download, LoaderCircle } from "lucide-react";
 import type { FC } from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import * as XLSX from "xlsx";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
 import { useLibraryBytes, useObjectUrl } from "../hooks/use-library-queries";
 import { saveAssetCopy } from "../library-download";
+import { libraryMarkdownDocument } from "../library-markdown";
 import { KindGlyph } from "./library-glyph";
 import { PptxViewer } from "./pptx-viewer";
 
@@ -188,30 +190,33 @@ const MarkdownAssetView: FC<{
 }> = ({ asset, text }) => {
 	const local =
 		asset.ref.type === "path" && Boolean(asset.ref.path) && asset.exists;
-	const document = useMemo<CanvasDocument | null>(() => {
-		if (!local || !asset.ref.path) return null;
-		return {
-			id: `library:${asset.id}`,
-			title: asset.name.trim() || asset.derived_name || asset.ref.path,
-			path: asset.ref.path,
-			content: text,
-			type: "markdown",
-			readMtimeMs: asset.modified_at
-				? Math.round(asset.modified_at * 1000)
-				: undefined,
-			sizeBytes: asset.size_bytes,
-			availability: "present",
+	const path = asset.ref.path;
+	const [probe, setProbe] = useState<
+		{ state: "pending" } | { state: "done"; mtimeMs: number | null }
+	>({ state: "pending" });
+	useEffect(() => {
+		if (!local || !path) return;
+		let cancelled = false;
+		void probeLocalFile(path).then((answer) => {
+			if (!cancelled) {
+				setProbe({ state: "done", mtimeMs: answer?.mtimeMs ?? null });
+			}
+		});
+		return () => {
+			cancelled = true;
 		};
-	}, [
-		asset.derived_name,
-		asset.id,
-		asset.modified_at,
-		asset.name,
-		asset.ref.path,
-		asset.size_bytes,
-		local,
-		text,
-	]);
+	}, [local, path]);
+	const document = useMemo<CanvasDocument | null>(() => {
+		if (!local || !path || probe.state !== "done") return null;
+		return libraryMarkdownDocument(asset, text, probe.mtimeMs);
+	}, [asset, local, path, probe, text]);
+	if (local && probe.state === "pending") {
+		return (
+			<div className="flex min-h-0 flex-1 items-center justify-center">
+				<Loading label={t("ui.library.preview.checking_file")} />
+			</div>
+		);
+	}
 	if (document) {
 		return (
 			<div className="min-h-0 flex-1 overflow-y-auto bg-canvas">
@@ -247,7 +252,7 @@ const MarkdownAssetView: FC<{
 	);
 };
 
-/** Markdown, plain text and code, decoded from the content bytes. */
+/** Markdown, plain text and code, decoded from the content bytes. */ /** Markdown, plain text and code, decoded from the content bytes. */
 const TextViewer: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
 	const { bytes, error, loading } = useLibraryBytes(asset.id, "content", true);
 	if (loading) return <Loading />;
