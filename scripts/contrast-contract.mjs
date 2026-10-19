@@ -397,6 +397,23 @@ const KEYCAP_DELTA_E = 2.0;
  * against the ground behind it.
  */
 const CONTROLS = [
+	// Source confirmation paints its remedy and diagnostic on warningWash;
+	// ground-only button/text checks do not cover either of these pairings.
+	{
+		name: "hub source confirmation remedy",
+		on: ["warningWash"],
+		fill: "accent",
+		border: "accent",
+		ink: "onAccent",
+	},
+	{
+		name: "hub source confirmation diagnostic",
+		on: ["canvas"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "inkMuted",
+	},
+
 	// Find is a chrome-band row, never a DOM panel over WebContentsView. Its
 	// standard Input uses the existing input-control contract; this pins the
 	// row's elevated ground, control rule and politely announced count.

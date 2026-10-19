@@ -121,7 +121,7 @@
 	"ui.hub.links.resolve_title": "Confirma el origen de este enlace",
 	"ui.hub.links.resolve_description": "Confirma solo si sabes que {item} vino de aquí.",
 	"ui.hub.links.resolve_action": "Confirmar origen",
-	"ui.hub.links.resolve_conflict": "Ese origen entra en conflicto con el origen guardado. No se cambió nada.",
+	"ui.hub.links.resolve_conflict": "Este origen o ámbito de publicación entra en conflicto con el enlace confirmado. No se cambió nada. Cancela y comprueba el origen y el ámbito. Para un origen diferente, usa una copia local separada.",
 	"ui.hub.links.scope_label": "Ámbito de publicación",
 	"ui.hub.links.scope_public": "Público",
 	"ui.hub.links.scope_private": "{organization} · Privado",

@@ -121,7 +121,7 @@
 	"ui.hub.links.resolve_title": "确认此关联的来源",
 	"ui.hub.links.resolve_description": "只有在确定{item}来自此处时，才应确认。",
 	"ui.hub.links.resolve_action": "确认来源",
-	"ui.hub.links.resolve_conflict": "此来源与已保存的来源冲突，未做任何更改。",
+	"ui.hub.links.resolve_conflict": "此来源或发布范围与已确认的关联冲突。未做任何更改。取消并检查来源和范围。如需使用其他来源，使用单独的本地副本。",
 	"ui.hub.links.scope_label": "发布范围",
 	"ui.hub.links.scope_public": "公开",
 	"ui.hub.links.scope_private": "{organization} · 私有",

@@ -263,9 +263,6 @@ const unresolved = [
 	},
 ];
 
-/** Whether the source confirmation has been accepted for the legacy row. */
-let legacyResolved = false;
-
 /** v1 vs unsupported: the library reads capability off the response contract. */
 const skillContract = () =>
 	SKILLS_UNSUPPORTED
@@ -738,6 +735,11 @@ const route = async (method, pathname, query, body) => {
 					},
 				};
 			}
+			// The solo fixture represents a stored, conflicting scope. Refusal must
+			// leave inventory untouched so the UI can keep its recovery controls.
+			if (row.name === "legacy-solo") {
+				return { status: 409, body: { detail: { code: "origin-conflict" } } };
+			}
 			const isOrg = body.visibility === "org";
 			const adopted = {
 				link_id: `link-${row.local_id}`,
@@ -761,11 +763,10 @@ const route = async (method, pathname, query, body) => {
 				pull: direction({ state: "idle" }),
 				push: direction({ state: "idle", enabled: false }),
 			};
-			if (!legacyResolved) {
-				legacyResolved = true;
-				unresolved.length = 0;
-				links.push(adopted);
-			}
+			// Confirming one record cannot erase another record's outstanding
+			// diagnostic. Keep the team/error fixtures available after agent success.
+			unresolved.splice(unresolved.indexOf(row), 1);
+			links.push(adopted);
 			return ok({
 				reports: [],
 				/*

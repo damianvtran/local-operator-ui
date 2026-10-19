@@ -121,7 +121,7 @@
 	"ui.hub.links.resolve_title": "Xác nhận nguồn của liên kết này",
 	"ui.hub.links.resolve_description": "Chỉ xác nhận nếu bạn biết {item} đến từ đây.",
 	"ui.hub.links.resolve_action": "Xác nhận nguồn",
-	"ui.hub.links.resolve_conflict": "Nguồn đó mâu thuẫn với nguồn gốc đã lưu. Không có gì thay đổi.",
+	"ui.hub.links.resolve_conflict": "Nguồn hoặc phạm vi xuất bản này mâu thuẫn với liên kết đã xác nhận. Không có gì thay đổi. Hủy và kiểm tra nguồn cùng phạm vi. Với nguồn khác, hãy dùng bản sao cục bộ riêng.",
 	"ui.hub.links.scope_label": "Phạm vi xuất bản",
 	"ui.hub.links.scope_public": "Công khai",
 	"ui.hub.links.scope_private": "{organization} · Riêng tư",

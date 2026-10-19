@@ -612,7 +612,7 @@
 	"ui.hub.links.resolve_conflict": {
 		"role": "error status",
 		"tone": "plain, precise; a confirmation is deliberate and not silently reversible; no inference of source or scope",
-		"note": "Shown when the service refuses the confirmation because the stored origin has a DIFFERENT KNOWN scope. The old state is left byte-unchanged, so the copy must say nothing was changed and must not promise a retry that could overwrite. Not a generic failure; no raw provider/credential bytes. Wrap naturally; no fixed width cap."
+		"note": "A settled refusal of a source or publish scope that conflicts with the confirmed link. Explicitly states that nothing changed. Recovery is to Cancel and check the source and scope; a different source requires a separate local copy. Must not suggest retrying can overwrite the confirmed source or change permanent identity in place. No placeholders; prose wraps naturally."
 	},
 	"ui.hub.links.scope_label": {
 		"role": "form label",

@@ -34,7 +34,6 @@ import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useEffect, useId, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { hubLinkView } from "../hub-link-adapter";
@@ -511,6 +510,7 @@ export function HubUnresolvedSource({
 	isAuthenticated,
 	onSignIn,
 	initialOpen,
+	onResolved,
 }: {
 	row: HubUnresolvedLink;
 	/** The approved/configured credential-free source this app already holds. */
@@ -522,6 +522,7 @@ export function HubUnresolvedSource({
 	onSignIn: () => void;
 	/** Opened on arrival for a `?resolve=1` deep link from the sidebar affordance. */
 	initialOpen?: boolean;
+	onResolved?: () => void;
 }) {
 	useI18nLocale();
 	const [open, setOpen] = useState(initialOpen ?? false);
@@ -532,7 +533,7 @@ export function HubUnresolvedSource({
 	 * of inaction, which is exactly what this control must not do.
 	 */
 	const [target, setTarget] = useState<string>("");
-	const resolution = useHubSourceResolution();
+	const resolution = useHubSourceResolution(onResolved);
 	/*
 	 * Focus moves INTO the confirmation region when it opens, so a deliberate
 	 * irreversible act is not one keystroke from a control the reader cannot see
@@ -545,19 +546,15 @@ export function HubUnresolvedSource({
 	 * never a keystroke from an unseen control), and CANCEL returns focus to the
 	 * opener so the reader is not dropped back to `body`.
 	 */
+	const returnToOpener = useRef(false);
 	useEffect(() => {
 		if (open) resolveRegionRef.current?.focus();
+		else if (returnToOpener.current) {
+			// Cancel's opener exists only AFTER the close commit, not in its handler.
+			returnToOpener.current = false;
+			openerRef.current?.focus();
+		}
 	}, [open]);
-	/*
-	 * UX U4': a completed confirmation is announced, not merely reflected in the
-	 * button's own label - a polite toast is the one channel that tells a
-	 * screen-reader user the act succeeded after the region unmounts. Fired once
-	 * per success transition.
-	 */
-	useEffect(() => {
-		if (resolution.isSuccess)
-			showSuccessToast(t("ui.hub.links.resolve_action_done"));
-	}, [resolution.isSuccess]);
 	const targetIsOrg = target !== "public" && target !== "";
 	const org = targetIsOrg
 		? organizations.find((candidate) => candidate.tenant_id === target)
@@ -641,7 +638,7 @@ export function HubUnresolvedSource({
 					<p className="text-meta text-ink-muted">
 						{t("ui.hub.links.source_address", { address: source })}
 					</p>
-					<p className="break-all text-mono-sm text-ink-dim">
+					<p className="break-all text-mono-sm text-ink-muted">
 						{t("ui.hub.links.hub_id", { address: row.hub_id })}
 					</p>
 					{/*
@@ -673,6 +670,7 @@ export function HubUnresolvedSource({
 					{open ? null : (
 						<Button
 							ref={openerRef}
+							variant="primary"
 							size="sm"
 							className="self-start"
 							onClick={() => setOpen(true)}
@@ -742,8 +740,8 @@ export function HubUnresolvedSource({
 							variant="outline"
 							disabled={resolution.isPending}
 							onClick={() => {
+								returnToOpener.current = true;
 								setOpen(false);
-								openerRef.current?.focus();
 							}}
 						>
 							{t("ui.hub.subscriptions.cancel")}
@@ -935,6 +933,17 @@ export function HubLinksPanel({
 	 * payload. One state here, synced on the transition INTO attention, opens on
 	 * the answer without a second owner fighting the reader's clicks.
 	 */
+	const panelRef = useRef<HTMLDivElement>(null);
+	const [resolutionCompleted, setResolutionCompleted] = useState(false);
+	useEffect(() => {
+		if (!resolutionCompleted || rows.length === 0) return;
+		// The diagnostic disappears on success. Its surviving link disclosure,
+		// rather than BODY or a detached confirm button, owns the next keyboard step.
+		panelRef.current
+			?.querySelector<HTMLButtonElement>("button[aria-expanded]")
+			?.focus();
+		setResolutionCompleted(false);
+	}, [resolutionCompleted, rows]);
 	const [open, setOpen] = useState(needsAttention);
 	const wasAttention = useRef(needsAttention);
 	useEffect(() => {
@@ -986,7 +995,11 @@ export function HubLinksPanel({
 		 * expander in the pane, which is now some other control (the panel sits
 		 * below the record's title, so the record's own disclosures come first).
 		 */
-		<div className="flex min-w-0 flex-col gap-3" data-hub-links-panel>
+		<div
+			ref={panelRef}
+			className="flex min-w-0 flex-col gap-3"
+			data-hub-links-panel
+		>
 			{/*
 			 * THE UNRESOLVED ROW IS A CARD, NOT A LINE IN THE DISCLOSURE. It is
 			 * the one thing on this surface that asks the reader to ACT, and an
@@ -1006,6 +1019,7 @@ export function HubLinksPanel({
 					isAuthenticated={isAuthenticated}
 					onSignIn={() => navigate("/settings")}
 					initialOpen={openResolve}
+					onResolved={() => setResolutionCompleted(true)}
 				/>
 			))}
 			{rows.length > 0 ? (
