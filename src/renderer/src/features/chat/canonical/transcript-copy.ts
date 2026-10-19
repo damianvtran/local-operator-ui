@@ -10,11 +10,12 @@
  *
  * TWO PAYLOADS PER ROW, deliberately:
  *
- * - `copyTextForRecord` is the PLAIN TEXT the reader can see: markdown syntax
- *   is stripped (fence markers, list bullets, heading hashes and emphasis all
- *   disappear) and a reply-quoted turn copies the reply rather than the
- *   `<reply-to>` transport markup. It never derives from `innerText` - the
- *   record is the subject, and a windowed row's DOM is not.
+ * - `copyTextForRecord` is the PLAIN TEXT the reader can see: markdown
+ *   delimiters are dropped (fence markers, heading hashes and emphasis) while
+ *   list structure is kept as markers and indentation, and a reply-quoted turn
+ *   copies the reply rather than the `<reply-to>` transport markup. It never
+ *   derives from `innerText` - the record is the subject, and a windowed row's
+ *   DOM is not.
  * - `copyMarkdownForRecord` is the ORIGINAL source where one exists, because
  *   code fences, lists and headings are the value a markdown reader pastes into
  *   a document. It is never derived from `innerText`: that loses fences and
@@ -144,22 +145,31 @@ function listText(node: MdNode, depth: number): string {
 	const lines: string[] = [];
 	(node.children ?? []).forEach((item, index) => {
 		const marker = ordered ? `${start + index}. ` : "- ";
-		const content: string[] = [];
-		const nested: string[] = [];
+		let emitted = false;
 		for (const child of item.children ?? []) {
-			if (child.type === "list") nested.push(listText(child, depth + 1));
-			else content.push(blockText(child, depth));
+			if (child.type === "list") {
+				const nested = listText(child, depth + 1);
+				if (!emitted) {
+					lines.push(`${indent}${marker.trimEnd()}`);
+					emitted = true;
+				}
+				lines.push(nested);
+				continue;
+			}
+			const text = blockText(child, depth);
+			if (text.trim().length === 0) continue;
+			const textLines = text.split("\n");
+			if (!emitted) {
+				lines.push(`${indent}${marker}${textLines[0] ?? ""}`);
+				for (const line of textLines.slice(1)) {
+					lines.push(line.length > 0 ? `${indent}  ${line}` : line);
+				}
+				emitted = true;
+				continue;
+			}
+			lines.push(indentLines(text, `${indent}  `));
 		}
-		const first = content[0] ?? "";
-		const firstLines = first.split("\n");
-		lines.push(`${indent}${marker}${firstLines[0] ?? ""}`);
-		for (const line of firstLines.slice(1)) {
-			lines.push(line.length > 0 ? `${indent}  ${line}` : line);
-		}
-		for (const block of content.slice(1)) {
-			lines.push(indentLines(block, `${indent}  `));
-		}
-		for (const block of nested) lines.push(block);
+		if (!emitted) lines.push(`${indent}${marker.trimEnd()}`);
 	});
 	return lines.join("\n");
 }
