@@ -187,6 +187,7 @@ import {
 	type TurnFoot,
 	foldImages,
 	foldRuns,
+	receiptFoldUnits,
 	turnFeet,
 	workedSecondsOf,
 } from "./trace-fold-model";
@@ -3876,9 +3877,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * arithmetic over the row list that a test can ask about without rendering a
 	 * transcript: which runs fold, what a fold says, and what a turn's foot reports.
 	 *
-	 * Action arithmetic is still the tool ledger alone. Incoming peer/hub receipts
-	 * may bridge that ledger in place, with their own message count and historical
-	 * reply/steer indication. Operator asks, prose and notices remain boundaries.
+	 * Action arithmetic is still the tool ledger alone. Internal receipts -
+	 * peer/hub messages, job results, wake deliveries and monitor prompts - may
+	 * bridge that ledger in place, with their own family counts and historical
+	 * reply/steer indication. Operator asks, prose and arbitrary notices remain
+	 * boundaries.
 	 */
 	const rowGroups = useMemo(() => {
 		/*
@@ -3932,24 +3935,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			isFoldable: (row) =>
 				row.record.kind === "tool" && !isQuietTurnCall(row.record),
 			isReceipt: (row) => isInternalReceipt(row.record),
-			receiptSummaryOf: (rows) =>
-				rows.length
-					? [
-							`${rows.length} incoming ${rows.length === 1 ? "message" : "messages"}`,
-							...(rows.some(
-								({ record }) =>
-									record.kind === "custom" && record.receipt?.expectsReply,
-							)
-								? ["Reply requested"]
-								: []),
-							...(rows.some(
-								({ record }) =>
-									record.kind === "custom" && record.receipt?.steer,
-							)
-								? ["Steered"]
-								: []),
-						]
-					: [],
+			/*
+			 * The unit grammar lives in the model (`receiptFoldUnits`): each internal
+			 * family states its own noun, in a fixed order, and a family with no rows
+			 * says nothing. That is what lets a mixed group's header agree with the
+			 * rows expanding it - `3 job results` means exactly three job-result
+			 * rows, never a count that lumped them in as "incoming messages".
+			 */
+			receiptSummaryOf: (rows) => receiptFoldUnits(rows),
 		});
 		return groups.map((group) =>
 			group.kind === "run"
@@ -5742,7 +5735,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				className={GAP[group.gap][isSmallView ? 1 : 0]}
 				recordIds={group.rows.map((row) => row.record.id)}
 				summary={group.summary}
-				actionCount={group.actions.length}
 				span={group.span}
 				live={group.live}
 				/*

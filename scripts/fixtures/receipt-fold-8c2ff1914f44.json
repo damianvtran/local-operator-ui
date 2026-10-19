@@ -1,0 +1,4802 @@
+{
+	"sourceSession": "8c2ff1914f44",
+	"note": "Actual journal lines 600-830, sanitized: entry/call ids, timestamps, paths, commands, URLs, prose bodies and hub envelopes are neutral; replay/usage/provider payloads omitted. Job-result texts keep the real headline shape (including `pinned <model>, ran on <model>`) without the session content.",
+	"entries": [
+		{
+			"id": "r000",
+			"ts": 1792000000.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-000-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r001",
+			"ts": 1792000000.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-000-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.256
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r002",
+			"ts": 1792000000.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-002-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r003",
+			"ts": 1792000000.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-002-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.505
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r004",
+			"ts": 1792000001.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-004-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r005",
+			"ts": 1792000001.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-004-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.693
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r006",
+			"ts": 1792000001.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-006-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r007",
+			"ts": 1792000001.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-006-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 1.946
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r008",
+			"ts": 1792000002.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-008-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r009",
+			"ts": 1792000002.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-008-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.998
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r010",
+			"ts": 1792000002.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-010-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r011",
+			"ts": 1792000002.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-010-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.301
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r012",
+			"ts": 1792000003.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-012-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r013",
+			"ts": 1792000003.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-012-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.374
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r014",
+			"ts": 1792000003.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-014-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r015",
+			"ts": 1792000003.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-014-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.421
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r016",
+			"ts": 1792000004.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-016-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r017",
+			"ts": 1792000004.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-016-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.32
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r018",
+			"ts": 1792000004.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-018-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r019",
+			"ts": 1792000004.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-018-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 1.55
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r020",
+			"ts": 1792000005.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-020-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r021",
+			"ts": 1792000005.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-020-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.734
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r022",
+			"ts": 1792000005.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-022-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r023",
+			"ts": 1792000005.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 1\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-022-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.453
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r024",
+			"ts": 1792000006.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-024-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r025",
+			"ts": 1792000006.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-024-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 1.01
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r026",
+			"ts": 1792000006.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-026-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r027",
+			"ts": 1792000006.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-026-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.921
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r028",
+			"ts": 1792000007.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-028-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r029",
+			"ts": 1792000007.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-028-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.422
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r030",
+			"ts": 1792000007.5,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "job_result",
+				"attribution": "user",
+				"details": {
+					"job_id": "job-01",
+					"text": "background job 'job-01' completed:\nSummary of the finished job."
+				}
+			}
+		},
+		{
+			"id": "r031",
+			"ts": 1792000007.75,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "job_result",
+				"attribution": "user",
+				"details": {
+					"job_id": "job-01",
+					"text": "background job 'job-01' completed:\nSummary of the finished job."
+				}
+			}
+		},
+		{
+			"id": "r032",
+			"ts": 1792000008.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-032-0",
+						"name": "wait",
+						"arguments": {
+							"job_id": ["job-01"],
+							"wait_ms": 60000
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r033",
+			"ts": 1792000008.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-032-0",
+				"tool_name": "wait",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "completed"
+					},
+					"useless": false,
+					"duration_s": 211.158
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r034",
+			"ts": 1792000008.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-034-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r035",
+			"ts": 1792000008.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-034-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 1.761
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r036",
+			"ts": 1792000009.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-036-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r037",
+			"ts": 1792000009.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-036-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 1.618
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r038",
+			"ts": 1792000009.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-038-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r039",
+			"ts": 1792000009.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-038-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 1.755
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r040",
+			"ts": 1792000010.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-040-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r041",
+			"ts": 1792000010.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-040-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 6.887
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r042",
+			"ts": 1792000010.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-042-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r043",
+			"ts": 1792000010.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-042-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 2.919
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r044",
+			"ts": 1792000011.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-044-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r045",
+			"ts": 1792000011.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-044-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.364
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r046",
+			"ts": 1792000011.5,
+			"type": "custom",
+			"payload": {
+				"custom_type": "code_request_event.v1",
+				"details": {
+					"v": 1,
+					"kind": "opened",
+					"at": 1792000011.5
+				}
+			}
+		},
+		{
+			"id": "r047",
+			"ts": 1792000011.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-047-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r048",
+			"ts": 1792000012.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-047-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 1.996
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r049",
+			"ts": 1792000012.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-049-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r050",
+			"ts": 1792000012.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-049-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 2.685
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r051",
+			"ts": 1792000012.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-051-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r052",
+			"ts": 1792000013.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-051-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 1.259
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r053",
+			"ts": 1792000013.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-053-0",
+						"name": "task",
+						"arguments": {
+							"i": "Doing the work"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r054",
+			"ts": 1792000013.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-053-0",
+				"tool_name": "task",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "completed"
+					},
+					"useless": false,
+					"duration_s": 0.059
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r055",
+			"ts": 1792000013.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-055-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r056",
+			"ts": 1792000014.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-055-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "running"
+					},
+					"useless": false,
+					"duration_s": 0.049
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r057",
+			"ts": 1792000014.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-057-0",
+						"name": "wait",
+						"arguments": {
+							"job_id": ["job-01"],
+							"wait_ms": 60000
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r058",
+			"ts": 1792000014.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-057-0",
+				"tool_name": "wait",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "completed"
+					},
+					"useless": false,
+					"duration_s": 0.004
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r059",
+			"ts": 1792000014.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-059-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r060",
+			"ts": 1792000015.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-059-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.857
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r061",
+			"ts": 1792000015.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-061-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r062",
+			"ts": 1792000015.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-061-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.171
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r063",
+			"ts": 1792000015.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-063-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r064",
+			"ts": 1792000016.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 1\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-063-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.121
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r065",
+			"ts": 1792000016.25,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "job_result",
+				"attribution": "user",
+				"details": {
+					"job_id": "job-01",
+					"text": "background job 'job-01' completed:\nSummary of the finished job."
+				}
+			}
+		},
+		{
+			"id": "r066",
+			"ts": 1792000016.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-066-0",
+						"name": "wait",
+						"arguments": {
+							"job_id": ["job-01"],
+							"wait_ms": 60000
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r067",
+			"ts": 1792000016.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-066-0",
+				"tool_name": "wait",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "completed"
+					},
+					"useless": false,
+					"duration_s": 14.55
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r068",
+			"ts": 1792000017.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-068-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r069",
+			"ts": 1792000017.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-068-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 10.251
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r070",
+			"ts": 1792000017.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-070-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r071",
+			"ts": 1792000017.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-070-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.108
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r072",
+			"ts": 1792000018.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-072-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r073",
+			"ts": 1792000018.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-072-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.109
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r074",
+			"ts": 1792000018.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-074-0",
+						"name": "wait",
+						"arguments": {
+							"job_id": ["job-01"],
+							"wait_ms": 60000
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r075",
+			"ts": 1792000018.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-074-0",
+				"tool_name": "wait",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "running"
+					},
+					"useless": false,
+					"duration_s": 120.003
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r076",
+			"ts": 1792000019.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-076-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r077",
+			"ts": 1792000019.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-076-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "running"
+					},
+					"useless": false,
+					"duration_s": 0.049
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r078",
+			"ts": 1792000019.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-078-0",
+						"name": "wait",
+						"arguments": {
+							"job_id": ["job-01"],
+							"wait_ms": 60000
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r079",
+			"ts": 1792000019.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-078-0",
+				"tool_name": "wait",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "running"
+					},
+					"useless": false,
+					"duration_s": 49.841
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r080",
+			"ts": 1792000020.0,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "hub_message",
+				"attribution": "user",
+				"details": {
+					"direction": "to_parent",
+					"job_id": "job-01",
+					"label": "worker-01",
+					"body": "A short note from a sibling session.",
+					"text": "<subagent-message label='worker-01' job='job-01'>\nA short note from a sibling session.\n</subagent-message>"
+				}
+			}
+		},
+		{
+			"id": "r081",
+			"ts": 1792000020.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-081-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r082",
+			"ts": 1792000020.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-081-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.086
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r083",
+			"ts": 1792000020.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-083-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r084",
+			"ts": 1792000021.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-083-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "running"
+					},
+					"useless": false,
+					"duration_s": 0.063
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r085",
+			"ts": 1792000021.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-085-0",
+						"name": "wait",
+						"arguments": {
+							"job_id": ["job-01"],
+							"wait_ms": 60000
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r086",
+			"ts": 1792000021.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-085-0",
+				"tool_name": "wait",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "running"
+					},
+					"useless": false,
+					"duration_s": 8.951
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r087",
+			"ts": 1792000021.75,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "hub_message",
+				"attribution": "user",
+				"details": {
+					"direction": "to_parent",
+					"job_id": "job-01",
+					"label": "worker-01",
+					"body": "A short note from a sibling session.",
+					"text": "<subagent-message label='worker-01' job='job-01'>\nA short note from a sibling session.\n</subagent-message>"
+				}
+			}
+		},
+		{
+			"id": "r088",
+			"ts": 1792000022.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-088-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r089",
+			"ts": 1792000022.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-088-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.004
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r090",
+			"ts": 1792000022.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-090-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r091",
+			"ts": 1792000022.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-090-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.142
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r092",
+			"ts": 1792000023.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-092-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r093",
+			"ts": 1792000023.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-092-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.121
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r094",
+			"ts": 1792000023.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-094-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r095",
+			"ts": 1792000023.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-094-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.155
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r096",
+			"ts": 1792000024.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-096-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r097",
+			"ts": 1792000024.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-096-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.173
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r098",
+			"ts": 1792000024.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-098-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r099",
+			"ts": 1792000024.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-098-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.009
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r100",
+			"ts": 1792000025.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-100-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r101",
+			"ts": 1792000025.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-100-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.939
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r102",
+			"ts": 1792000025.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-102-0",
+						"name": "wait",
+						"arguments": {
+							"job_id": ["job-01"],
+							"wait_ms": 60000
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r103",
+			"ts": 1792000025.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-102-0",
+				"tool_name": "wait",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "running"
+					},
+					"useless": false,
+					"duration_s": 29.208
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r104",
+			"ts": 1792000026.0,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "hub_message",
+				"attribution": "user",
+				"details": {
+					"direction": "to_parent",
+					"job_id": "job-01",
+					"label": "worker-01",
+					"body": "A short note from a sibling session.",
+					"text": "<subagent-message label='worker-01' job='job-01'>\nA short note from a sibling session.\n</subagent-message>"
+				}
+			}
+		},
+		{
+			"id": "r105",
+			"ts": 1792000026.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-105-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r106",
+			"ts": 1792000026.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-105-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.003
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r107",
+			"ts": 1792000026.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-107-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r108",
+			"ts": 1792000027.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-107-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "running"
+					},
+					"useless": false,
+					"duration_s": 0.069
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r109",
+			"ts": 1792000027.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-109-0",
+						"name": "jobs",
+						"arguments": {
+							"i": "Doing the work"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r110",
+			"ts": 1792000027.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-109-0",
+				"tool_name": "jobs",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.001
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r111",
+			"ts": 1792000027.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-111-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r112",
+			"ts": 1792000028.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-111-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.005
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r113",
+			"ts": 1792000028.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-113-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r114",
+			"ts": 1792000028.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-113-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.004
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r115",
+			"ts": 1792000028.75,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "hub_message",
+				"attribution": "user",
+				"details": {
+					"direction": "to_parent",
+					"job_id": "job-01",
+					"label": "worker-01",
+					"body": "A short note from a sibling session.",
+					"text": "<subagent-message label='worker-01' job='job-01'>\nA short note from a sibling session.\n</subagent-message>"
+				}
+			}
+		},
+		{
+			"id": "r116",
+			"ts": 1792000029.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-116-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r117",
+			"ts": 1792000029.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-116-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.718
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r118",
+			"ts": 1792000029.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-118-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r119",
+			"ts": 1792000029.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-118-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "running"
+					},
+					"useless": false,
+					"duration_s": 0.075
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r120",
+			"ts": 1792000030.0,
+			"type": "custom",
+			"payload": {
+				"custom_type": "code_request_event.v1",
+				"details": {
+					"v": 1,
+					"kind": "acted",
+					"at": 1792000030.0
+				}
+			}
+		},
+		{
+			"id": "r121",
+			"ts": 1792000030.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-121-0",
+						"name": "wait",
+						"arguments": {
+							"job_id": ["job-01"],
+							"wait_ms": 60000
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r122",
+			"ts": 1792000030.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-121-0",
+				"tool_name": "wait",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "running"
+					},
+					"useless": false,
+					"duration_s": 32.427
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r123",
+			"ts": 1792000030.75,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "hub_message",
+				"attribution": "user",
+				"details": {
+					"direction": "to_parent",
+					"job_id": "job-01",
+					"label": "worker-01",
+					"body": "A short note from a sibling session.",
+					"text": "<subagent-message label='worker-01' job='job-01'>\nA short note from a sibling session.\n</subagent-message>"
+				}
+			}
+		},
+		{
+			"id": "r124",
+			"ts": 1792000031.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-124-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r125",
+			"ts": 1792000031.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-124-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.453
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r126",
+			"ts": 1792000031.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-126-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r127",
+			"ts": 1792000031.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-126-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.114
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r128",
+			"ts": 1792000032.0,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "job_result",
+				"attribution": "user",
+				"details": {
+					"job_id": "job-01",
+					"text": "background job 'review-backend-library' completed (pinned anthropic/claude-sonnet-5-5, ran on openai/gpt-6.1-sol):\nSummary of the finished job."
+				}
+			}
+		},
+		{
+			"id": "r129",
+			"ts": 1792000032.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-129-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r130",
+			"ts": 1792000032.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-129-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.172
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r131",
+			"ts": 1792000032.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-131-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r132",
+			"ts": 1792000033.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-131-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.25
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r133",
+			"ts": 1792000033.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-133-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r134",
+			"ts": 1792000033.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-133-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.83
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r135",
+			"ts": 1792000033.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-135-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r136",
+			"ts": 1792000034.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-135-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 17.942
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r137",
+			"ts": 1792000034.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-137-0",
+						"name": "read",
+						"arguments": {
+							"path": "/tmp/neutral.txt",
+							"i": "Reading a file"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r138",
+			"ts": 1792000034.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-137-0",
+				"tool_name": "read",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.07
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r139",
+			"ts": 1792000034.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-139-0",
+						"name": "read",
+						"arguments": {
+							"path": "/tmp/neutral.txt",
+							"i": "Reading a file"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r140",
+			"ts": 1792000035.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-139-0",
+				"tool_name": "read",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.095
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r141",
+			"ts": 1792000035.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-141-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r142",
+			"ts": 1792000035.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-141-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.215
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r143",
+			"ts": 1792000035.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-143-0",
+						"name": "read",
+						"arguments": {
+							"path": "/tmp/neutral.txt",
+							"i": "Reading a file"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r144",
+			"ts": 1792000036.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-143-0",
+				"tool_name": "read",
+				"is_error": true,
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.001
+				}
+			}
+		},
+		{
+			"id": "r145",
+			"ts": 1792000036.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-145-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r146",
+			"ts": 1792000036.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-145-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.186
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r147",
+			"ts": 1792000036.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-147-0",
+						"name": "read",
+						"arguments": {
+							"path": "/tmp/neutral.txt",
+							"i": "Reading a file"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r148",
+			"ts": 1792000037.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-147-0",
+				"tool_name": "read",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.106
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r149",
+			"ts": 1792000037.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-149-0",
+						"name": "read",
+						"arguments": {
+							"path": "/tmp/neutral.txt",
+							"i": "Reading a file"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r150",
+			"ts": 1792000037.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-149-0",
+				"tool_name": "read",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.1
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r151",
+			"ts": 1792000037.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-151-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r152",
+			"ts": 1792000038.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-151-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.326
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r153",
+			"ts": 1792000038.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-153-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r154",
+			"ts": 1792000038.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-153-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 2.018
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r155",
+			"ts": 1792000038.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-155-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r156",
+			"ts": 1792000039.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-155-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 1.004
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r157",
+			"ts": 1792000039.25,
+			"type": "custom",
+			"payload": {
+				"custom_type": "code_request_event.v1",
+				"details": {
+					"v": 1,
+					"kind": "opened",
+					"at": 1792000039.25
+				}
+			}
+		},
+		{
+			"id": "r158",
+			"ts": 1792000039.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-158-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r159",
+			"ts": 1792000039.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-158-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 2.07
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r160",
+			"ts": 1792000040.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-160-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r161",
+			"ts": 1792000040.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-160-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 1.366
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r162",
+			"ts": 1792000040.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-162-0",
+						"name": "agent",
+						"arguments": {
+							"i": "Doing the work"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r163",
+			"ts": 1792000040.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-162-0",
+				"tool_name": "agent",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.709
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r164",
+			"ts": 1792000041.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-164-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r165",
+			"ts": 1792000041.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-164-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.241
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r166",
+			"ts": 1792000041.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-166-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r167",
+			"ts": 1792000041.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-166-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.271
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r168",
+			"ts": 1792000042.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-168-0",
+						"name": "task",
+						"arguments": {
+							"i": "Doing the work"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r169",
+			"ts": 1792000042.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-168-0",
+				"tool_name": "task",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "completed"
+					},
+					"useless": false,
+					"duration_s": 0.06
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r170",
+			"ts": 1792000042.5,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "job_result",
+				"attribution": "user",
+				"details": {
+					"job_id": "job-01",
+					"text": "background job 'qa-backend-library' completed (pinned anthropic/claude-sonnet-5-5, ran on openai/gpt-6.1-sol):\nSummary of the finished job."
+				}
+			}
+		},
+		{
+			"id": "r171",
+			"ts": 1792000042.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-171-0",
+						"name": "wait",
+						"arguments": {
+							"job_id": ["job-01"],
+							"wait_ms": 60000
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r172",
+			"ts": 1792000043.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-171-0",
+				"tool_name": "wait",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "running"
+					},
+					"useless": false,
+					"duration_s": 31.562
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r173",
+			"ts": 1792000043.25,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "hub_message",
+				"attribution": "user",
+				"details": {
+					"direction": "to_parent",
+					"job_id": "job-01",
+					"label": "worker-01",
+					"body": "A short note from a sibling session.",
+					"text": "<subagent-message label='worker-01' job='job-01'>\nA short note from a sibling session.\n</subagent-message>"
+				}
+			}
+		},
+		{
+			"id": "r174",
+			"ts": 1792000043.5,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "hub_message",
+				"attribution": "user",
+				"details": {
+					"direction": "to_parent",
+					"job_id": "job-01",
+					"label": "worker-01",
+					"body": "A short note from a sibling session.",
+					"text": "<subagent-message label='worker-01' job='job-01'>\nA short note from a sibling session.\n</subagent-message>"
+				}
+			}
+		},
+		{
+			"id": "r175",
+			"ts": 1792000043.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-175-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r176",
+			"ts": 1792000044.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-175-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.195
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r177",
+			"ts": 1792000044.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-177-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r178",
+			"ts": 1792000044.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-177-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.22
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r179",
+			"ts": 1792000044.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-179-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r180",
+			"ts": 1792000045.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-179-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.008
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r181",
+			"ts": 1792000045.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-181-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r182",
+			"ts": 1792000045.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-181-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "running"
+					},
+					"useless": false,
+					"duration_s": 0.043
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r183",
+			"ts": 1792000045.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-183-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r184",
+			"ts": 1792000046.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-183-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 1.51
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r185",
+			"ts": 1792000046.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-185-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r186",
+			"ts": 1792000046.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-185-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "running"
+					},
+					"useless": false,
+					"duration_s": 0.186
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r187",
+			"ts": 1792000046.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-187-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r188",
+			"ts": 1792000047.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-187-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.025
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r189",
+			"ts": 1792000047.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-189-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r190",
+			"ts": 1792000047.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-189-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.562
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r191",
+			"ts": 1792000047.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-191-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r192",
+			"ts": 1792000048.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-191-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "running"
+					},
+					"useless": false,
+					"duration_s": 0.05
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r193",
+			"ts": 1792000048.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-193-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r194",
+			"ts": 1792000048.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-193-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.283
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r195",
+			"ts": 1792000048.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-195-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r196",
+			"ts": 1792000049.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-195-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 1.175
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r197",
+			"ts": 1792000049.25,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "hub_message",
+				"attribution": "user",
+				"details": {
+					"direction": "to_parent",
+					"job_id": "job-01",
+					"label": "worker-01",
+					"body": "A short note from a sibling session.",
+					"text": "<subagent-message label='worker-01' job='job-01'>\nA short note from a sibling session.\n</subagent-message>"
+				}
+			}
+		},
+		{
+			"id": "r198",
+			"ts": 1792000049.5,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "job_result",
+				"attribution": "user",
+				"details": {
+					"job_id": "job-01",
+					"text": "background job 'job-01' completed:\nSummary of the finished job."
+				}
+			}
+		},
+		{
+			"id": "r199",
+			"ts": 1792000049.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-199-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r200",
+			"ts": 1792000050.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-199-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.004
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r201",
+			"ts": 1792000050.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-201-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r202",
+			"ts": 1792000050.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-201-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 6.039
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r203",
+			"ts": 1792000050.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-203-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r204",
+			"ts": 1792000051.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-203-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.002
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r205",
+			"ts": 1792000051.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-205-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r206",
+			"ts": 1792000051.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-205-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 6.489
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r207",
+			"ts": 1792000051.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-207-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r208",
+			"ts": 1792000052.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-207-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.629
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r209",
+			"ts": 1792000052.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-209-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r210",
+			"ts": 1792000052.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-209-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.443
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r211",
+			"ts": 1792000052.75,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "job_result",
+				"attribution": "user",
+				"details": {
+					"job_id": "job-01",
+					"text": "background job 'job-01' completed:\nSummary of the finished job."
+				}
+			}
+		},
+		{
+			"id": "r212",
+			"ts": 1792000053.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-212-0",
+						"name": "wait",
+						"arguments": {
+							"job_id": ["job-01"],
+							"wait_ms": 60000
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r213",
+			"ts": 1792000053.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-212-0",
+				"tool_name": "wait",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "running"
+					},
+					"useless": false,
+					"duration_s": 85.999
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r214",
+			"ts": 1792000053.5,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "hub_message",
+				"attribution": "user",
+				"details": {
+					"direction": "to_parent",
+					"job_id": "job-01",
+					"label": "worker-01",
+					"body": "A short note from a sibling session.",
+					"text": "<subagent-message label='worker-01' job='job-01'>\nA short note from a sibling session.\n</subagent-message>"
+				}
+			}
+		},
+		{
+			"id": "r215",
+			"ts": 1792000053.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-215-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r216",
+			"ts": 1792000054.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-215-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.125
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r217",
+			"ts": 1792000054.25,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "job_result",
+				"attribution": "user",
+				"details": {
+					"job_id": "job-01",
+					"text": "background job 'design-mobile-web-library' completed (pinned anthropic/claude-sonnet-5-5, ran on openai/gpt-6.1-sol):\nSummary of the finished job."
+				}
+			}
+		},
+		{
+			"id": "r218",
+			"ts": 1792000054.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-218-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r219",
+			"ts": 1792000054.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-218-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.102
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r220",
+			"ts": 1792000055.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-220-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r221",
+			"ts": 1792000055.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-220-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "completed"
+					},
+					"useless": false,
+					"duration_s": 0.118
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r222",
+			"ts": 1792000055.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-222-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r223",
+			"ts": 1792000055.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-222-0",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.518
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r224",
+			"ts": 1792000056.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-224-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r225",
+			"ts": 1792000056.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-224-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.161
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r226",
+			"ts": 1792000056.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-226-0",
+						"name": "hub",
+						"arguments": {
+							"op": "status",
+							"i": "Checking a job"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r227",
+			"ts": 1792000056.75,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-226-0",
+				"tool_name": "hub",
+				"provider_payload": {
+					"details": {
+						"job_id": "job-01",
+						"status": "running"
+					},
+					"useless": false,
+					"duration_s": 0.059
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r228",
+			"ts": 1792000057.0,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-228-0",
+						"name": "read",
+						"arguments": {
+							"path": "/tmp/neutral.txt",
+							"i": "Reading a file"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "r229",
+			"ts": 1792000057.25,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n(output omitted)\n--- stderr ---"
+					}
+				],
+				"tool_call_id": "call-228-0",
+				"tool_name": "read",
+				"provider_payload": {
+					"details": null,
+					"useless": false,
+					"duration_s": 0.165
+				},
+				"is_error": false
+			}
+		},
+		{
+			"id": "r230",
+			"ts": 1792000057.5,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "call-230-0",
+						"name": "bash",
+						"arguments": {
+							"command": "git status",
+							"i": "Inspecting the repository"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		}
+	]
+}

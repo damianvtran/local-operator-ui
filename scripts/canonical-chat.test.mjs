@@ -10,16 +10,25 @@ import { build } from "esbuild";
  * (`pnpm lint:scripts`, which compares each changed file against its baseline)
  * is the only thing that would have said so.
  */
-const RE_FOLD_ACTION_COUNT = /actionCount=\{group\.actions\.length\}/;
-const RE_FOLD_MEMBER_COUNT = /actionCount=\{group\.rows\.length\}/;
+const RE_FOLD_SUMMARY_BINDING = /summary=\{group\.summary\}/;
+const RE_FOLD_DEAD_ACTION_COUNT = /actionCount=\{group\.actions\.length\}/;
 
-test("mixed TraceFold binding counts actual actions rather than member receipts", () => {
+/*
+ * The fold's header is bound to the GROUP SUMMARY, the units the collapsed line
+ * paints - no second `actionCount` prop for a tooltip to compose a claim from.
+ * The old pin existed because a tooltip said `${actionCount} actions`; removing
+ * the prop without moving the pin would have left a test asserting a binding
+ * nothing reads. What matters is that the header states its own contents,
+ * including receipt-only groups, so the guard now asserts the live binding and
+ * the absence of the dead one.
+ */
+test("the fold header is bound to the group summary, not a member count", () => {
 	const source = readFileSync(
 		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
 		"utf8",
 	);
-	assert.match(source, RE_FOLD_ACTION_COUNT);
-	assert.doesNotMatch(source, RE_FOLD_MEMBER_COUNT);
+	assert.match(source, RE_FOLD_SUMMARY_BINDING);
+	assert.doesNotMatch(source, RE_FOLD_DEAD_ACTION_COUNT);
 });
 
 const RE_STATUSUNAVAILABLE_INCLUDES_LIVENESS =
