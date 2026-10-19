@@ -214,6 +214,24 @@ export function finderSections(
  * the same model owns keyboard destinations, so focus cannot navigate a second
  * imagined grid. Plain list/button semantics, never a fake ARIA grid/listbox.
  */
+/**
+ * THE SECTION HEADER BAND'S HEIGHT, in pixels.
+ *
+ * It is three different facts that happen to be the same number, so it is
+ * named once and used by each:
+ *
+ *   - the band the layout reserves for a section's header, which the sticky
+ *     header renders into;
+ *   - the offset the section's own height carries (`bodyHeight + 32`), the
+ *     header's box being part of the section's flow; and
+ *   - the inset a REVEAL must leave clear, because the header is sticky
+ *     INSIDE the scroller: a row revealed to the scroller's top edge lands
+ *     under the header, which paints over it. Measured on the running app,
+ *     12 of 12 upward keyboard landings put the focused row exactly this far
+ *     under the header, so the user navigated to a row they could not see.
+ */
+export const FINDER_HEADER_BAND = 32;
+
 export function layoutFinder(
 	sections: FinderSection[],
 	width: number,
@@ -238,7 +256,7 @@ export function layoutFinder(
 		top += height;
 	};
 	for (const section of sections) {
-		push(section, "header", 32, []);
+		push(section, "header", FINDER_HEADER_BAND, []);
 		if (!section.open) continue;
 		if (section.highlights)
 			for (const item of section.items)

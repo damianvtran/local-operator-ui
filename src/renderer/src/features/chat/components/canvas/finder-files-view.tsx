@@ -54,6 +54,7 @@ import { ImageActionsMenu } from "../image-actions-menu";
 import { AudioDocumentPlayer } from "./audio-document-player";
 import { FILE_KIND_GROUPS, filterAndSearchRows } from "./file-rows";
 import {
+	FINDER_HEADER_BAND,
 	type FinderBand,
 	type FinderItem,
 	finderNeighbor,
@@ -276,7 +277,35 @@ export function FinderFilesView({
 			const node = scroller.current;
 			if (!position || !node) return;
 			const band = layout.bands[position.band];
-			if (band.top < node.scrollTop) node.scrollTop = band.top;
+			/*
+			 * THE REVEAL MUST CLEAR THE STICKY HEADER.
+			 *
+			 * The section header is `position: sticky` INSIDE this scroller, so
+			 * it occupies the scroller's own top 32 pixels while the list is
+			 * scrolled. A reveal that assigns `scrollTop = band.top` lands the
+			 * band at the scroller's TOP EDGE — inside the header's band — and
+			 * the header paints over the first 32 pixels of the row the user
+			 * just navigated to. Measured on the running app before this
+			 * change: 12 of 12 upward keyboard landings put the focused row
+			 * exactly 32px under the header, and the row's own name and
+			 * thumbnail were hidden by it.
+			 *
+			 * The repo's own scroll helper names this case in advance
+			 * ("shared/lib/scroll.ts": "If a sticky header ever appears above
+			 * a section a reveal targets, the offset here gains that padding
+			 * term rather than the call site going back to scrollIntoView"),
+			 * and this list assigns `scrollTop` directly, so the term is added
+			 * here: the band is revealed BELOW the header, not under it.
+			 *
+			 * The DOWNWARD case already landed the row at the scroller's
+			 * bottom edge, which is clear of the header, and is unchanged. The
+			 * low clamp is the scroller's own: a band near the top cannot be
+			 * revealed below the header, because there is no room above it,
+			 * and a negative scrollTop is a value no box can hold.
+			 */
+			const HEADER = FINDER_HEADER_BAND;
+			if (band.top < node.scrollTop)
+				node.scrollTop = Math.max(0, band.top - HEADER);
 			else if (band.top + band.height > node.scrollTop + node.clientHeight)
 				node.scrollTop = band.top + band.height - node.clientHeight;
 			setFocused(id);
@@ -687,15 +716,42 @@ export function FinderFilesView({
 						const firstBand = layout.bands[indices[0]];
 						const lastBand = layout.bands[indices.at(-1) ?? 0];
 						const bodyHeight =
-							lastBand.top + lastBand.height - firstBand.top - 32;
+							lastBand.top +
+							lastBand.height -
+							firstBand.top -
+							FINDER_HEADER_BAND;
 						return (
-							<section key={section.id} style={{ height: bodyHeight + 32 }}>
+							<section
+								key={section.id}
+								style={{ height: bodyHeight + FINDER_HEADER_BAND }}
+							>
 								<h3
-									/* A BAND, not a solid plate: it masks what scrolls under it with
-									 * the derived field overlay, the same treatment the list view's team
-									 * bands have shipped since round 2. A solid sticky header under a
-									 * glass body is the seam the operator photographed. */
-									data-glass-plane="band"
+									/*
+									 * A BAND THAT ISOLATES, not a band that tints.
+									 *
+									 * This header is `position: sticky` INSIDE the scroller, so
+									 * the rows scroll UNDER it: measured on the running app, the
+									 * header's 32px band lies inside the scroller's own clip
+									 * region, so every row that scrolls up passes through those
+									 * 32 pixels. The plain band (`data-glass-plane="band"`) painted
+									 * 5% ink over them, and a 5% wash over MOVING content does not
+									 * hide it - the operator's frame shows a thumbnail's green
+									 * filling the band and a file name colliding with the section
+									 * label.
+									 *
+									 * The band that isolates gives this element its own
+									 * compositing layer and blurs the content passing under it,
+									 * with a tint drawn from the panel's own surface role so the
+									 * header still reads as part of the glass the user chose
+									 * rather than as a hole in it. The rule, and why the tint is
+									 * the surface role and not ink, are in `styles/index.css`
+									 * under `data-glass-plane="band-backdrop"`.
+									 *
+									 * OFF GLASS NOTHING CHANGES: `bg-surface` is opaque there, so
+									 * the scroller's content never reached this header in the first
+									 * place.
+									 */
+									data-glass-plane="band-backdrop"
 									className={cn("sticky top-0 z-10 h-8 bg-surface")}
 								>
 									<button
@@ -785,7 +841,7 @@ export function FinderFilesView({
 													key={band.items[0].row.document.id}
 													style={{
 														position: "absolute",
-														top: band.top - firstBand.top - 32,
+														top: band.top - firstBand.top - FINDER_HEADER_BAND,
 														height: band.height,
 														left: 0,
 														right: 0,

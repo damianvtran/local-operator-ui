@@ -2308,6 +2308,61 @@ html[data-glass~="pane"]
 		transparent
 	);
 }
+/*
+ * A BAND THAT ISOLATES (`data-glass-plane="band-backdrop"`), and the reason it
+ * is a KIND of band and not a band.
+ *
+ * THE DEFECT THIS EXISTS FOR (operator report, 2026-10-19). The Files tab's
+ * section headers are `position: sticky` INSIDE the scroller, so the rows
+ * scroll UNDER them. The plain band painted 5% ink over them, which is a
+ * translucent wash over moving content: the operator's frame shows a
+ * thumbnail's green filling the header band and a file name colliding with
+ * the section label. Measured on the running app: the band's computed
+ * background was `color(srgb ... / 0.05)` with `backdrop-filter: none`, and
+ * the band was 32px of the scroller's own clip region, so every row that
+ * scrolled up passed through those 32 pixels.
+ *
+ * A LOW-ALPHA FILL CANNOT ISOLATE, WHATEVER IT COVERS. Any fill under 100%
+ * alpha leaves the content behind it visible; the content under a sticky
+ * header is MOVING, so the collision is not a one-frame overlap but a
+ * continuous one. The only two ways to isolate are an opaque fill (which is
+ * the hard seam in a translucent column the glass report removed) or an
+ * ISOLATING BACKDROP: the element gets its own compositing layer, the
+ * backdrop behind it is BLURRED, and a tint derived from the panel's own
+ * surface role knocks the rest back.
+ *
+ * WHY THE TINT IS THE SURFACE ROLE AND NOT INK. The band's job is to be the
+ * panel's own material, sampled over the content that passes under it. The
+ * surface role is the panel's own ground; the ink field overlay is a STATE
+ * step (a hover, a selection) and is deliberately near-invisible. A state
+ * step cannot be a mask: at 5% it hides nothing, and the content under it
+ * stays legible. The surface role at the surface alpha is the panel's own
+ * translucency, so the band reads as part of the glass the user chose
+ * rather than as a hole in it - and the alpha is the PUBLISHED surface alpha,
+ * so the band thickens as the user turns the translucency down and thins as
+ * they turn it up, exactly as the pane around it does.
+ *
+ * THE BLUR IS WHAT DOES THE ISOLATING. `backdrop-filter` samples what is
+ * painted behind the element, so the rows passing under are blurred into a
+ * wash that no text survives; the tint then keeps the band reading as a
+ * material rather than as a fog. The blur radius is deliberately larger than
+ * a row's text height, because the failure this fixes is TEXT colliding with
+ * a LABEL, not a fill meeting a fill.
+ *
+ * OFF GLASS NOTHING CHANGES: the element's own `bg-surface` is opaque there
+ * and the scroller's content never reaches it.
+ */
+html[data-glass~="pane"]
+	main[data-glass-region="canvas-backing"]
+	[data-glass-region="pane"]
+	[data-glass-plane="band-backdrop"] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-surface) calc(var(--lo-glass-a-surface) * 100%),
+		transparent
+	);
+	backdrop-filter: blur(12px);
+}
 html[data-glass~="pane"]
 	main[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
