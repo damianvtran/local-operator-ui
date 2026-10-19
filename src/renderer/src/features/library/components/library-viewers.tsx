@@ -23,6 +23,7 @@ import { WysiwygMarkdownEditor } from "@features/chat/components/canvas/wysiwyg-
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { Button } from "@shared/components/ui";
 import { t } from "@shared/i18n";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import { Download, LoaderCircle } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -50,23 +51,38 @@ const Loading: FC<{ label?: string }> = ({ label }) => (
 const Failure: FC<{ detail: string; asset: DesktopLibraryAsset }> = ({
 	detail,
 	asset,
-}) => (
-	<div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-		<KindGlyph kind={asset.kind} size={28} className="text-ink-dim" />
-		<p className="text-body text-ink">
-			{t("ui.library.preview.could_not_load")}
-		</p>
-		<p className="max-w-90 text-body-sm text-ink-muted">{detail}</p>
-		<Button
-			variant="secondary"
-			size="sm"
-			onClick={() => void saveAssetCopy(asset)}
-		>
-			<Download aria-hidden="true" />
-			{t("ui.library.menu.download")}
-		</Button>
-	</div>
-);
+}) => {
+	const [saving, setSaving] = useState(false);
+	return (
+		<div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+			<KindGlyph kind={asset.kind} size={28} className="text-ink-dim" />
+			<p className="text-body text-ink">
+				{t("ui.library.preview.could_not_load")}
+			</p>
+			<p className="max-w-90 text-body-sm text-ink-muted">{detail}</p>
+			<Button
+				variant="secondary"
+				size="sm"
+				disabled={saving}
+				onClick={() => {
+					setSaving(true);
+					void saveAssetCopy(asset)
+						.catch((error: unknown) =>
+							showErrorToast(
+								error instanceof Error && error.message
+									? error.message
+									: t("ui.library.menu.save_failed"),
+							),
+						)
+						.finally(() => setSaving(false));
+				}}
+			>
+				<Download aria-hidden="true" />
+				{t("ui.library.menu.download")}
+			</Button>
+		</div>
+	);
+};
 
 const Unsupported: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => (
 	<div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">

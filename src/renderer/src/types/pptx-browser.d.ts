@@ -16,6 +16,18 @@ declare module "pptx-browser" {
 			width?: number,
 		): Promise<void>;
 		renderAllSlides(width?: number): Promise<HTMLCanvasElement[]>;
+		/** Text shapes on one slide, in draw order. Used for the visible transcript. */
+		extractSlide(index: number): Promise<{
+			title: string;
+			textShapes: Array<{ type: string; text: string }>;
+			text?: string;
+		}>;
+		extractAll(): Promise<
+			Array<{
+				title: string;
+				textShapes: Array<{ type: string; text: string }>;
+			}>
+		>;
 		readonly slideCount: number;
 		destroy(): void;
 	}

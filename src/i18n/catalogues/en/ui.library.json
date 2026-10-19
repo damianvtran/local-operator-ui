@@ -145,5 +145,7 @@
 	"ui.library.composer.link_failed": "Message sent, but the chat could not be linked: {message}",
 	"ui.library.composer.link_failed_short": "Message sent, but the chat could not be linked.",
 	"ui.library.composer.message_sent_link_failed": "Message sent. The chat link failed.",
-	"ui.library.composer.retry_link": "Retry link"
+	"ui.library.composer.retry_link": "Retry link",
+	"ui.library.preview.pptx_text": "Text",
+	"ui.library.preview.pptx_no_text": "This slide has no extractable text."
 }

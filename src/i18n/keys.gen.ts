@@ -2040,8 +2040,10 @@ export type MessageParams = {
 	"ui.library.preview.pptx_failed": undefined;
 	"ui.library.preview.pptx_failed_detail": undefined;
 	"ui.library.preview.pptx_loading": { percent: string };
+	"ui.library.preview.pptx_no_text": undefined;
 	"ui.library.preview.pptx_opening": undefined;
 	"ui.library.preview.pptx_preparing": undefined;
+	"ui.library.preview.pptx_text": undefined;
 	"ui.library.preview.previous_slide": undefined;
 	"ui.library.preview.read_only_markdown": undefined;
 	"ui.library.preview.retry": undefined;
