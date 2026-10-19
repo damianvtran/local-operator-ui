@@ -24,6 +24,7 @@ type Gesture = {
 	armed: boolean;
 	owner: HTMLElement;
 	section: HTMLElement;
+	bucket: string;
 	capture: HTMLElement;
 	timer: ReturnType<typeof setTimeout> | null;
 };
@@ -41,24 +42,37 @@ type Options = {
 
 /** Pointer capture owns delivery, not hit testing. Resolve the underlying header
  * from viewport geometry, clipped to the owning scroll list, so hidden/offscreen
- * buckets never become drop targets during auto-scroll. Section membership is
- * authoritative: a header in another section is never an assignment target. */
-export function tagHeaderAt(
+ * buckets never become drop targets during auto-scroll. Only Untagged sources
+ * may cross sections; tagged sources keep their existing section boundary.
+ * Own-bucket bodies remain reorder space, not tag assignment targets. */
+export function tagDropTargetAt(
 	owner: HTMLElement,
 	x: number,
 	y: number,
 	section: Element,
+	sourceBucket?: string,
+	includeBodies = true,
 ): HTMLElement | null {
 	const rect = owner.getBoundingClientRect();
 	if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom)
 		return null;
 	return (
 		Array.from(
-			owner.querySelectorAll<HTMLElement>("[data-tag-drop-target]"),
+			owner.querySelectorAll<HTMLElement>(
+				includeBodies
+					? "[data-tag-drop-target]"
+					: "[data-tag-drop-target]:not([data-tag-drop-body])",
+			),
 		).find((header) => {
 			const box = header.getBoundingClientRect();
 			return (
-				header.closest("[data-chat-section]") === section &&
+				(header.closest("[data-chat-section]") === section ||
+					(sourceBucket === "untagged" &&
+						header.dataset.tagDropTarget !== "untagged")) &&
+				!(
+					header.dataset.tagDropBody !== undefined &&
+					header.dataset.tagDropTarget === sourceBucket
+				) &&
 				box.height > 0 &&
 				x >= box.left &&
 				x <= box.right &&
@@ -67,6 +81,16 @@ export function tagHeaderAt(
 			);
 		}) ?? null
 	);
+}
+
+/** Pinned reorder retains its original header-only, section-local hit test. */
+export function tagHeaderAt(
+	owner: HTMLElement,
+	x: number,
+	y: number,
+	section: Element,
+): HTMLElement | null {
+	return tagDropTargetAt(owner, x, y, section, undefined, false);
 }
 
 /** A rejected pending gesture still consumes its completing click. Keyboard
@@ -83,11 +107,12 @@ export function useChatTagDrag(options: Options) {
 	const refresh = useCallback(() => {
 		const gesture = live.current;
 		if (!gesture?.armed) return;
-		const header = tagHeaderAt(
+		const header = tagDropTargetAt(
 			gesture.owner,
 			gesture.lastX,
 			gesture.lastY,
 			gesture.section,
+			gesture.bucket,
 		);
 		setTarget(header);
 		latest.current.move(
@@ -142,11 +167,12 @@ export function useChatTagDrag(options: Options) {
 		frame.current = null;
 		const header =
 			commit && gesture.armed
-				? tagHeaderAt(
+				? tagDropTargetAt(
 						gesture.owner,
 						gesture.lastX,
 						gesture.lastY,
 						gesture.section,
+						gesture.bucket,
 					)
 				: null;
 		if (gesture.capture.hasPointerCapture(gesture.pointer))
@@ -256,8 +282,18 @@ export function useChatTagDrag(options: Options) {
 	}, [options.enabled]);
 	useEffect(() => {
 		if (!target) return;
-		target.classList.add(...TAG_DROP_PREVIEW_CLASSES);
-		return () => target.classList.remove(...TAG_DROP_PREVIEW_CLASSES);
+		const group =
+			target.closest<HTMLElement>("[data-chat-tag-group]") ?? target;
+		// A single group marker paints opaque row grounds too, without replacing
+		// their selection classes. Keep the hit element marked for existing headers.
+		group.dataset.tagDropPreview = "true";
+		group.classList.add(...TAG_DROP_PREVIEW_CLASSES);
+		target.classList.add("bg-row-selected");
+		return () => {
+			delete group.dataset.tagDropPreview;
+			group.classList.remove(...TAG_DROP_PREVIEW_CLASSES);
+			target.classList.remove("bg-row-selected");
+		};
 	}, [target]);
 	return {
 		armedId,
@@ -302,6 +338,9 @@ export function useChatTagDrag(options: Options) {
 				armed: false,
 				owner,
 				section,
+				bucket:
+					event.currentTarget.closest<HTMLElement>("[data-chat-tag-group]")
+						?.dataset.chatTagGroup ?? "",
 				capture: event.currentTarget,
 				timer: null,
 			};
