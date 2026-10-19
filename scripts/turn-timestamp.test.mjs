@@ -1715,6 +1715,31 @@ test("the user stamp is a sibling of the toolbar, outside the faded strip", () =
 	assert.ok(!stamp.className.includes("opacity-0"));
 	assert.ok(stamp.className.includes("whitespace-nowrap"));
 	assert.match(stamp.getAttribute("aria-label"), /^Sent /);
+	// Not inside the bubble (`data-glass-block`), whose words a quote sweeps.
+	assert.equal(stamp.closest("[data-glass-block]"), null);
+	// Its parent is the items-end column that carries the bubble's right edge.
+	assert.ok(stamp.parentElement.className.includes("items-end"));
+	unmount();
+});
+
+test("by-response: the answer stamp is a visible in-flow line, apart from the gutter overlay", () => {
+	const { container, unmount } = mount(turn(), {
+		settings: ON,
+		mode: "by-response",
+	});
+	const gutter = container.querySelector("[data-lo-gutter-actions]");
+	assert.ok(gutter, "the Copy gutter overlay still exists");
+	const mid = stamps(container, "answer").find(
+		(el) => el.closest("[data-record-id]")?.dataset.recordId === "a:1",
+	);
+	assert.ok(mid, "the non-closing response carries an Answered stamp");
+	assert.equal(mid.closest("[data-lo-gutter-actions]"), null);
+	assert.ok(!gutter.contains(mid));
+	assert.ok(!mid.parentElement.className.includes("absolute"));
+	const row = mid.closest("[data-record-id]");
+	for (let el = mid; el && el !== row; el = el.parentElement) {
+		assert.ok(!el.className.includes("opacity-0"), "never faded at rest");
+	}
 	unmount();
 });
 

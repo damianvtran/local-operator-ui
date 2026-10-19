@@ -1789,7 +1789,7 @@ const AssistantRow = memo(function AssistantRow({
 			 * overlay stays a sibling and the stamp is outside any toolbar.
 			 */}
 			{!closesTurn && quotable && timestamps.enabled && (
-				<div className={cn("mt-1 flex justify-end")}>
+				<div className="mt-1 flex justify-end">
 					<TurnTimestamp timestamp={record.ts} scope="answer" />
 				</div>
 			)}
