@@ -1,0 +1,12 @@
+{
+	"ui.common.connection.backend_compatibility_banner.the_backend_update_could_not_start_retry_or_update_from_settings_": "Không thể bắt đầu cập nhật máy chủ. Hãy thử lại, hoặc cập nhật từ Cài đặt, mục Cập nhật ứng dụng.",
+	"ui.common.connection.backend_compatibility_banner.update_backend": "Cập nhật máy chủ",
+	"ui.common.connection.backend_compatibility_banner.updating": "Đang cập nhật",
+	"ui.common.connection.connectivity_banner.a_connectivity_issue_has_been_detected": "Đã phát hiện sự cố kết nối.",
+	"ui.common.connection.connectivity_banner.dismiss": "ẩn",
+	"ui.common.connection.connectivity_banner.dismiss_inline": "Ẩn",
+	"ui.common.connection.connectivity_banner.this_app_s_updates_require": "Cập nhật ứng dụng này cần",
+	"ui.common.connection.connectivity_banner.you_are_offline": "Bạn đang ngoại tuyến. {detail} kết nối internet.",
+	"ui.common.connection.floating_alert.dismiss": "Ẩn",
+	"ui.common.connection.provider.requires": "Nhà cung cấp dịch vụ mô hình bạn đã cấu hình ({provider}) cần"
+}

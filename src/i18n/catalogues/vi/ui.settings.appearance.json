@@ -1,0 +1,12 @@
+{
+	"ui.settings.appearance.settings_page.appearance": "Giao diện",
+	"ui.settings.appearance.settings_page.customize_the_look_and_feel_of_local_operator": "Tùy chỉnh giao diện của Local Operator",
+	"ui.settings.appearance.settings_page.show_agent_reasoning": "Hiện suy luận của tác nhân",
+	"ui.settings.appearance.settings_page.adds_the_agent_s_reasoning_and_thinking_rows_to_conversations_the": "Thêm các dòng Suy luận và Suy nghĩ của tác nhân vào cuộc trò chuyện. Các dòng này thu gọn cho đến khi bạn mở. Chỉ áp dụng cho suy luận: lời dẫn mà tác nhân viết trong lượt là nội dung cuộc trò chuyện, không phải suy luận — không bị loại bỏ ở cả hai chế độ hiển thị (theo lượt thu gọn nội dung này sau các thanh của lượt, theo phản hồi giữ nội dung trên màn hình).",
+	"ui.settings.appearance.theme_selector.dark": "Tối",
+	"ui.settings.appearance.theme_selector.light": "Sáng",
+	"ui.settings.appearance.transcript_display_mode_setting.transcript_display": "Hiển thị cuộc trò chuyện",
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every": "Theo lượt thu gọn mỗi lượt còn câu trả lời. Theo phản hồi giữ mọi phản hồi đã hoàn tất trên màn hình và vẫn đánh dấu câu trả lời cuối của lượt.",
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn": "Theo lượt",
+	"ui.settings.appearance.transcript_display_mode_setting.by_response": "Theo phản hồi"
+}
