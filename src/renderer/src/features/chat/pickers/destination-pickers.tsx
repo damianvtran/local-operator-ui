@@ -3727,7 +3727,7 @@ export const RenamePicker: FC<PickerContext> = ({
 					/>
 				</PickerField>
 			}
-			onSubmit={() => {
+			onSubmit={async () => {
 				const next = renameSubmission({ name, openedWith });
 				/*
 				 * A no-op submit CLOSES without a command - the header editor's exit
@@ -3737,7 +3737,11 @@ export const RenamePicker: FC<PickerContext> = ({
 					onClose();
 					return;
 				}
-				void command.run("rename", next);
+				const { result } = await command.run("rename", next);
+				if (result.tone === "success") {
+					showSuccessToast(result.text);
+					onClose();
+				}
 			}}
 			submitLabel="Rename"
 			submitDisabled={!name.trim()}
