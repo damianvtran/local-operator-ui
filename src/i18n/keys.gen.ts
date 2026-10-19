@@ -41,6 +41,7 @@ import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
 import enUiChatTags from "./catalogues/en/ui.chat.tags.json";
+import enUiChatTranscriptCopy from "./catalogues/en/ui.chat.transcript_copy.json";
 import enUiCodeReview from "./catalogues/en/ui.code_review.json";
 import enUiCommandPalette from "./catalogues/en/ui.command_palette.json";
 import enUiCommonAccount from "./catalogues/en/ui.common.account.json";
@@ -60,6 +61,7 @@ import enUiInstaller from "./catalogues/en/ui.installer.json";
 import enUiLibrary from "./catalogues/en/ui.library.json";
 import enUiMesh from "./catalogues/en/ui.mesh.json";
 import enUiOnboarding from "./catalogues/en/ui.onboarding.json";
+import enUiPresence from "./catalogues/en/ui.presence.json";
 import enUiProjects from "./catalogues/en/ui.projects.json";
 import enUiProviders from "./catalogues/en/ui.providers.json";
 import enUiSchedules from "./catalogues/en/ui.schedules.json";
@@ -495,6 +497,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatResponseActions,
 	...enUiChatSidebarView,
 	...enUiChatTags,
+	...enUiChatTranscriptCopy,
 	...enUiCodeReview,
 	...enUiCommandPalette,
 	...enUiCommonAccount,
@@ -514,6 +517,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiLibrary,
 	...enUiMesh,
 	...enUiOnboarding,
+	...enUiPresence,
 	...enUiProjects,
 	...enUiProviders,
 	...enUiSchedules,
@@ -1719,6 +1723,14 @@ export type MessageParams = {
 	"ui.chat.tags.updated_grouped": { tag: string };
 	"ui.chat.tags.updated_untagged": undefined;
 	"ui.chat.tags.use_time": undefined;
+	"ui.chat.transcript_copy.menu.copy_markdown": undefined;
+	"ui.chat.transcript_copy.menu.copy_selection": undefined;
+	"ui.chat.transcript_copy.menu.copy_text": undefined;
+	"ui.chat.transcript_copy.row.agent_message": undefined;
+	"ui.chat.transcript_copy.row.your_message": undefined;
+	"ui.chat.transcript_copy.selection.copy": undefined;
+	"ui.chat.transcript_copy.toast.copied_markdown": undefined;
+	"ui.chat.transcript_copy.toast.copied_selection": undefined;
 	"ui.code_review.activity.close": undefined;
 	"ui.code_review.activity.comment": undefined;
 	"ui.code_review.activity.edit": undefined;
@@ -2291,6 +2303,7 @@ export type MessageParams = {
 		subscribe: string;
 		autoPush: string;
 	};
+	"ui.hub.links.hub_id": { address: string };
 	"ui.hub.links.last_success": { time: string };
 	"ui.hub.links.links_count": { count: number };
 	"ui.hub.links.load_failed": undefined;
@@ -2336,6 +2349,9 @@ export type MessageParams = {
 	"ui.hub.links.title": undefined;
 	"ui.hub.links.unknown_baseline": undefined;
 	"ui.hub.links.unresolved_mark": { item: string };
+	"ui.hub.links.unresolved_next": undefined;
+	"ui.hub.links.unresolved_what": { item: string };
+	"ui.hub.links.unresolved_why": { item: string };
 	"ui.hub.links.updated": { item: string; source: string };
 	"ui.hub.skills.catalogue_failed": { source: string };
 	"ui.hub.skills.empty": undefined;
@@ -2773,6 +2789,16 @@ export type MessageParams = {
 	"ui.mesh.mesh_drop.on_owner": { owner: string };
 	"ui.mesh.mesh_drop.on_this_device": undefined;
 	"ui.mesh.mesh_drop.owner_no_answer": { device: string; reason: string };
+	"ui.mesh.mesh_drop.owner_reach_refusal": {
+		device: string;
+		reach: string;
+		reason: string;
+	};
+	"ui.mesh.mesh_drop.reach_refusal": {
+		device: string;
+		reach: string;
+		reason: string;
+	};
 	"ui.mesh.mesh_drop.recall_first": { owner: string };
 	"ui.mesh.mesh_drop.recall_it": undefined;
 	"ui.mesh.mesh_drop.running_now": { conversation: string; where: string };
@@ -2781,17 +2807,22 @@ export type MessageParams = {
 	"ui.mesh.mesh_drop.this_conversation": undefined;
 	"ui.mesh.mesh_drop.this_device": undefined;
 	"ui.mesh.mesh_drop.turn_in_flight": { conversation: string };
+	"ui.mesh.mesh_graph.address_unreachable_count": { count: number };
 	"ui.mesh.mesh_graph.conversation_unit": { count: number };
 	"ui.mesh.mesh_graph.conversations_not_reported": undefined;
 	"ui.mesh.mesh_graph.device_count": { count: number };
+	"ui.mesh.mesh_graph.handshake_refused_count": { count: number };
 	"ui.mesh.mesh_graph.identity_suspect": undefined;
 	"ui.mesh.mesh_graph.just_now": undefined;
 	"ui.mesh.mesh_graph.last_status_frame": { age: string };
 	"ui.mesh.mesh_graph.network_count": { count: number };
 	"ui.mesh.mesh_graph.no_answer_count": { count: number };
+	"ui.mesh.mesh_graph.no_endpoint_count": { count: number };
 	"ui.mesh.mesh_graph.no_sessions_reported": undefined;
+	"ui.mesh.mesh_graph.not_a_member_count": { count: number };
 	"ui.mesh.mesh_graph.not_asked_count": { count: number };
 	"ui.mesh.mesh_graph.reached_count": { count: number };
+	"ui.mesh.mesh_graph.relay_down_count": { count: number };
 	"ui.mesh.mesh_graph.revoked_membership": undefined;
 	"ui.mesh.mesh_graph.self_conversations": { conversations: string };
 	"ui.mesh.mesh_graph.self_identity": { device: string };
@@ -2838,9 +2869,24 @@ export type MessageParams = {
 	"ui.mesh.mesh_page.the_copy_here_is_gone": undefined;
 	"ui.mesh.mesh_page.the_move_could_not_be_sent_nothing": undefined;
 	"ui.mesh.mesh_page.this_device_is_not_in_any_network": undefined;
+	"ui.mesh.mesh_reach.address_unreachable": undefined;
+	"ui.mesh.mesh_reach.addresses_tried": undefined;
+	"ui.mesh.mesh_reach.attempt_answered": undefined;
+	"ui.mesh.mesh_reach.attempt_bad_address": undefined;
+	"ui.mesh.mesh_reach.attempt_could_not_connect": undefined;
+	"ui.mesh.mesh_reach.attempt_no_answer": undefined;
+	"ui.mesh.mesh_reach.attempt_not_tried": undefined;
+	"ui.mesh.mesh_reach.attempt_nothing_listening": undefined;
+	"ui.mesh.mesh_reach.handshake_refused": undefined;
+	"ui.mesh.mesh_reach.handshake_refused_hint": undefined;
 	"ui.mesh.mesh_reach.no_answer": undefined;
+	"ui.mesh.mesh_reach.no_endpoint": undefined;
+	"ui.mesh.mesh_reach.not_a_member": undefined;
 	"ui.mesh.mesh_reach.not_asked": undefined;
+	"ui.mesh.mesh_reach.peer_closed_handshake": undefined;
+	"ui.mesh.mesh_reach.peer_relay_not_running": undefined;
 	"ui.mesh.mesh_reach.reached": undefined;
+	"ui.mesh.mesh_reach.relay_not_running": undefined;
 	"ui.mesh.mesh_reach.unknown": undefined;
 	"ui.mesh.mesh_scope.declared": undefined;
 	"ui.mesh.mesh_scope.same_prefix": undefined;
@@ -2896,6 +2942,15 @@ export type MessageParams = {
 	"ui.onboarding.search.row.save_failed": undefined;
 	"ui.onboarding.search.row.saved": undefined;
 	"ui.onboarding.search.row.saving": { name: string };
+	"ui.presence.days_ago": { count: number };
+	"ui.presence.device_link_down": { reason: string; age: string };
+	"ui.presence.device_unreachable": undefined;
+	"ui.presence.hours_ago": { count: number };
+	"ui.presence.just_now": undefined;
+	"ui.presence.link_down_compact": { age: string };
+	"ui.presence.link_down_last_seen": { age: string };
+	"ui.presence.minutes_ago": { count: number };
+	"ui.presence.unknown": undefined;
 	"ui.projects.board_window_select.projects_updated_within": undefined;
 	"ui.projects.board_window_select.shows_projects_last_updated_within_this_window_older_ones_are_hid": undefined;
 	"ui.projects.count.milestones_are": { count: number };

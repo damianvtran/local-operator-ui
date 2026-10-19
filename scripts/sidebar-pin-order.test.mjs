@@ -707,7 +707,11 @@ test("the move is a row control: a menu, a chord, and a live region", () => {
 			"if (!groups) return rows.map((row) => sessionRow(row));",
 		),
 	);
-	assert.ok(grouping.includes("bucket.rows.map((row) => sessionRow(row))"));
+	// Grouped rows are non-nested and opt into the tag-drag cursor; ungrouped
+	// rows above retain the default renderer without advertising tag dragging.
+	assert.ok(
+		grouping.includes("bucket.rows.map((row) => sessionRow(row, false, true))"),
+	);
 	// LOH-11 deliberately spends one metadata slot before the unchanged Move pair.
 	// Read only shipped menu markup so a comment cannot satisfy the item budget.
 	const code = source.replace(/\/\*[\s\S]*?\*\//g, "");
