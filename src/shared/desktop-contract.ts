@@ -3284,6 +3284,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			scope: z.literal("account").optional(),
 			tenant_id: id.optional(),
 			limit: z.number().int().min(1).max(100).optional(),
+			/* The account page's opaque cursor; the tenant page uses `before`. */
+			cursor: z.string().min(1).max(64).optional(),
 			before: z.string().min(1).max(64).optional(),
 		})
 		.strict(),
@@ -4111,6 +4113,23 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 				code: z.ZodIssueCode.custom,
 				message: "An account-scoped read cannot name a tenant",
 				path: ["scope"],
+			});
+			return;
+		}
+		/*
+		 * The account page pages on `cursor`; `before` is the tenant page's
+		 * parameter and the route refuses it beside `scope=account`. Refusing it
+		 * here keeps the renderer from composing a request the route rejects.
+		 */
+		if (
+			request.op === "team_bridge.conversations.list" &&
+			request.scope === "account" &&
+			request.before !== undefined
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "An account-scoped page uses cursor, not before",
+				path: ["before"],
 			});
 			return;
 		}
@@ -8364,6 +8383,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
 			if (request.limit !== undefined)
 				query.set("limit", String(request.limit));
+			if (request.cursor) query.set("cursor", request.cursor);
 			if (request.before) query.set("before", request.before);
 			const suffix = query.size > 0 ? `?${query.toString()}` : "";
 			return {

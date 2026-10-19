@@ -3403,13 +3403,13 @@ test("team_bridge.conversations.members.add matches the desktop route's body sha
 	]);
 });
 
-test("team_bridge account-scoped reads map scope=account and keep the paging cursor", () => {
+test("team_bridge account-scoped reads map scope=account and page on cursor", () => {
 	/*
 	 * The renderer's All organizations view sends `scope: "account"` through the
 	 * desktop op. Before the op schema accepted it, the strict member answered 422
 	 * `Invalid desktop operation.` before any HTTP, so the default view and the
-	 * sidebar badge could never load. These pin the wire shape the route reads,
-	 * including the opaque `before` cursor the merged list pages with.
+	 * sidebar badge could never load. These pin the wire shape the route reads:
+	 * the account page pages on `cursor`, while `before` belongs to a tenant page.
 	 */
 	// The op schema admits the account scope before the endpoint sees it; a
 	// strict member that omits it is the 422 this test exists to prevent.
@@ -3430,12 +3430,24 @@ test("team_bridge account-scoped reads map scope=account and keep the paging cur
 		op: "team_bridge.conversations.list",
 		scope: "account",
 		limit: 20,
-		before: "cursor_1",
+		cursor: "cursor_1",
 	});
 	assert.equal(list.method, "GET");
 	assert.equal(
 		list.path,
-		"/v1/desktop/team-bridge/conversations?scope=account&limit=20&before=cursor_1",
+		"/v1/desktop/team-bridge/conversations?scope=account&limit=20&cursor=cursor_1",
+	);
+
+	// The tenant page keeps its own `before`; the two paging parameters are not
+	// interchangeable.
+	const tenantPage = jobsCancelEndpoint({
+		op: "team_bridge.conversations.list",
+		tenant_id: "tnt_1",
+		before: "before_1",
+	});
+	assert.equal(
+		tenantPage.path,
+		"/v1/desktop/team-bridge/conversations?tenant_id=tnt_1&before=before_1",
 	);
 
 	const unread = jobsCancelEndpoint({
@@ -3461,7 +3473,7 @@ test("team_bridge account-scoped reads map scope=account and keep the paging cur
 				scope: "account",
 				tenant_id: "tnt_1",
 			}),
-		"An account-scoped read cannot name a tenant",
+		{ message: /An account-scoped read cannot name a tenant/ },
 	);
 	assert.throws(
 		() =>
@@ -3470,6 +3482,18 @@ test("team_bridge account-scoped reads map scope=account and keep the paging cur
 				scope: "account",
 				tenant_id: "tnt_1",
 			}),
-		"An account-scoped read cannot name a tenant",
+		{ message: /An account-scoped read cannot name a tenant/ },
+	);
+	// `before` beside the account scope is the request shape the route refuses;
+	// the op boundary refuses it too, and the test names the rule rather than
+	// accepting any throw.
+	assert.throws(
+		() =>
+			jobsCancelSchema.parse({
+				op: "team_bridge.conversations.list",
+				scope: "account",
+				before: "before_1",
+			}),
+		{ message: /An account-scoped page uses cursor, not before/ },
 	);
 });
