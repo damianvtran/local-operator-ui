@@ -36,6 +36,7 @@ const bundle = await build({
 			'export * from "./src/main/voice/qwen-voice";',
 			'export { gatewayEnv, QwenGatewayHost } from "./src/main/voice/qwen-gateway";',
 			'export { QwenSpeechProcess, resolveQwenPorts, s2sArgs, s2sEnv, s2sLauncherPathFor, qwenMemoryBudget, qwenMachineTooSmall, QWEN_MEM_BUDGET_BYTES, QWEN_MIN_MACHINE_BYTES, QWEN_MACHINE_TOO_SMALL, FOOTPRINT_INTERVAL_MS, DEFAULT_QWEN_PORTS, isOurS2s, S2S_RECORD_FILE } from "./src/main/voice/qwen-rig";',
+			'export { appVoicePageUrl, isAppVoicePageUrl, appVoicePageVerdict } from "./src/main/voice/qwen-voice-page";',
 			'export { QwenVoicePage, noQwenVoicePage, voicePageUrl, voicePageAllowed, QWEN_NO_VOICE_WINDOW, QWEN_VOICE_PARTITION, PAGE_CRASH_WINDOW_MS } from "./src/main/voice/qwen-voice-page";',
 			'export { readQwenVoiceEnabled, writeQwenVoiceEnabled } from "./src/main/voice/qwen-voice-setting";',
 			'export { requestDesktopMedia } from "./src/main/desktop-media";',
@@ -2343,6 +2344,19 @@ test("SWITCH: off means no start, no spawn, no page, no timer, no message, whate
 	assert.equal(r.timers.length, 0, "no idle timer");
 	assert.deepEqual(r.sent, [], "nothing sent to the Gateway");
 	assert.deepEqual(r.toRenderer, [], "no status or take pushed");
+});
+
+test("SWITCH (U1): off means the REAL page adapter never creates a view, and the app page URL is only computed, never loaded", async () => {
+	const c = pageCase();
+	const r = rig({ enabled: false, page: c.page });
+	await r.voice.start("renderer");
+	await r.voice.start("enable");
+	r.voice.pause();
+	r.voice.resume();
+	r.voice.speak({ text: "x", kind: "reply" });
+	assert.equal(c.created.length, 0, "no WebContentsView, so no renderer");
+	assert.equal(c.page.isOpen, false);
+	assert.deepEqual(r.order, [], "no microphone preflight");
 });
 
 test("SWITCH: off while running stops everything now, not after the idle window", async () => {

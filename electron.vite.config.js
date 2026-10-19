@@ -66,6 +66,16 @@ export default defineConfig({
 		// No bytecode plugin here on purpose -- see the note above. It is absent
 		// rather than an empty spread, so the decision reads as one.
 		plugins: [externalizeDepsPlugin()],
+		build: {
+			rollupOptions: {
+				input: {
+					index: resolve(__dirname, "src/preload/index.ts"),
+					// The hidden voice page's own, narrow preload (plan D2). A
+					// sandboxed preload cannot require siblings, so it is its own entry.
+					"voice-page": resolve(__dirname, "src/preload/voice-page.ts"),
+				},
+			},
+		},
 	},
 	renderer: {
 		resolve: {
@@ -97,6 +107,9 @@ export default defineConfig({
 			 * for this document by a case in `scripts/console-host.test.mjs`.
 			 */
 			mini: resolve(__dirname, "src/renderer/mini.html"),
+			// The app-owned voice page (plan D2/U1): in BOTH lists, for the mini
+			// view's reason above.
+			"voice-page": resolve(__dirname, "src/voice-page/voice-page.html"),
 		},
 		build: {
 			// electron-vite defaults the renderer to minify:false on the assumption
@@ -137,6 +150,7 @@ export default defineConfig({
 					 * serves it — both halves are load-bearing and a test pins them.
 					 */
 					mini: resolve(__dirname, "src/renderer/mini.html"),
+					"voice-page": resolve(__dirname, "src/voice-page/voice-page.html"),
 				},
 			},
 		},
