@@ -887,13 +887,11 @@ const ChannelsTable: FC<{ view: ChannelsView }> = ({ view }) => {
 				}
 			/>
 			{/*
-			 * The plan-funded gloss first, then the composition: `Includes …
-			 * API-equivalent` keeps plan dollars from reading as cash, and the
-			 * composition line lists every bucket the published total is made of,
-			 * so the figure above it can be reconciled on screen (design round 1,
-			 * D1).
+			 * The complete composition already qualifies included money. Keep the
+			 * older plan gloss only as a fallback, not a second description of the
+			 * same bucket beside the split (payment-basis design round 1, D2).
 			 */}
-			{view.planClause && <Legend text={view.planClause} />}
+			{!view.basisLine && view.planClause && <Legend text={view.planClause} />}
 			{view.basisLine && <Legend text={view.basisLine} />}
 		</>
 	);
