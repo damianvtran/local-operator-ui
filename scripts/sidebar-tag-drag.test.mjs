@@ -242,7 +242,7 @@ test("remove action formatting is exact singular only at one, including Russian 
 		const catalogue = JSON.parse(
 			readFileSync(`src/i18n/catalogues/${locale}/ui.chat.tags.json`, "utf8"),
 		);
-		assert.equal(Object.keys(catalogue).length, 54);
+		assert.equal(Object.keys(catalogue).length, 73);
 		const message = new IntlMessageFormat(
 			catalogue["ui.chat.tags.remove_all"],
 			locale,
@@ -269,7 +269,7 @@ test("shipping Chinese tag namespace preserves exact-one removal semantics", () 
 	const zh = JSON.parse(
 		readFileSync("src/i18n/catalogues/zh-CN/ui.chat.tags.json", "utf8"),
 	);
-	assert.equal(Object.keys(zh).length, 54);
+	assert.equal(Object.keys(zh).length, 73);
 	const message = new IntlMessageFormat(zh["ui.chat.tags.remove_all"], "zh-CN");
 	assert.equal(message.format({ count: 1 }), "移除标签（1）");
 	for (const count of [2, 21, 101])

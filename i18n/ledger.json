@@ -6480,8 +6480,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
-			"target_sha256": "4141b03647493eea8e4b760dd6a921bb6d0e678b517d4122dc7aa88aa4ba5129",
+			"source_sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+			"target_sha256": "5738510a615aac72a780de2a704c577fcb3f03d5ee19a72cd4c1cc41fa0552de",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6490,20 +6490,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor-ru",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-18",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "b6e2d9f04c17",
+					"instance": "d0e1f2a3b4c5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b6e2d9f04c17.json",
-					"receipt_sha256": "431f6bb624bca81eaeb862acb285babb37ee2678e7bfcffcddaa68d1e6bcd41b",
-					"scope": "V2-1 12-key delta; exact =1 singular fixes RU-V2-1-01; unchanged 42-key baseline retained",
-					"note": "Baseline translator retained mechanically; delta translator coder/openai/gpt-6.1-sol. Re-audited after exact =1 fix; 21/101 use plural action."
+					"receipt": "i18n/receipts/d0e1f2a3b4c5.json",
+					"receipt_sha256": "375e25dce4ade7d9399400136bee1f698acae517b84f1c4233992603db13c924",
+					"scope": "V2-2 full73-key namespace;19 new picker/Manage messages, baseline unchanged",
+					"note": "Baseline translator retained mechanically; delta by coder/anthropic/claude-sonnet-5-5. Copy fixes independently re-audited. ZH3nits accepted unchanged; rendered-fit separate QA/design gate."
 				}
 			],
 			"status": "audited",
@@ -6550,6 +6550,30 @@
 							"receipt": "i18n/receipts/9f4c2a71b3d8.json",
 							"receipt_sha256": "ab49a0f93f020efe0f57dd7ee748a11db777bf528d7be19251b601313d3e5ff3",
 							"scope": "V2-1 11-key drag/move/remove delta; unchanged 42-key baseline retained"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+					"target_sha256": "4141b03647493eea8e4b760dd6a921bb6d0e678b517d4122dc7aa88aa4ba5129",
+					"auditors": [
+						{
+							"agent": "i18n-auditor-ru",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "b6e2d9f04c17",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b6e2d9f04c17.json",
+							"receipt_sha256": "431f6bb624bca81eaeb862acb285babb37ee2678e7bfcffcddaa68d1e6bcd41b",
+							"scope": "V2-1 12-key delta; exact =1 singular fixes RU-V2-1-01; unchanged 42-key baseline retained",
+							"note": "Baseline translator retained mechanically; delta translator coder/openai/gpt-6.1-sol. Re-audited after exact =1 fix; 21/101 use plural action."
 						}
 					],
 					"status": "audited"
@@ -6649,8 +6673,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
-			"target_sha256": "68ec44a83e066bf7e303ba7699edcafd7e97062e8e0e6e7606076fa6adaea943",
+			"source_sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+			"target_sha256": "38cb3bfafe458380b4d22cef2155e1545421b108626c05e890414436a904381c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6659,20 +6683,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor-es",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
-					"result": "clean-with-findings",
-					"instance": "c3e8a1f72b95",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "a7b8c9d0e1f2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/c3e8a1f72b95.json",
-					"receipt_sha256": "7608bff695af415552245687883feaa4d3a8f137f31207c19f96cee477e7f54b",
-					"scope": "V2-1 12-key delta; unchanged 42-key baseline retained",
-					"note": "Baseline translator retained mechanically; delta translator coder/openai/gpt-6.1-sol. ES-1/2/3 accepted: million-count wording, Eliminar vs Quitar, quote-style consistency; no blocker/major."
+					"receipt": "i18n/receipts/a7b8c9d0e1f2.json",
+					"receipt_sha256": "7981bbb2c0d16ba539716a4339ffd70a11289df2abfe09300a4ecb44ad008635",
+					"scope": "V2-2 full73-key namespace;19 new picker/Manage messages, baseline unchanged",
+					"note": "Baseline translator retained mechanically; delta by coder/anthropic/claude-sonnet-5-5. Copy fixes independently re-audited. ZH3nits accepted unchanged; rendered-fit separate QA/design gate."
 				}
 			],
 			"status": "audited",
@@ -6699,14 +6723,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+					"target_sha256": "68ec44a83e066bf7e303ba7699edcafd7e97062e8e0e6e7606076fa6adaea943",
+					"auditors": [
+						{
+							"agent": "i18n-auditor-es",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean-with-findings",
+							"instance": "c3e8a1f72b95",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/c3e8a1f72b95.json",
+							"receipt_sha256": "7608bff695af415552245687883feaa4d3a8f137f31207c19f96cee477e7f54b",
+							"scope": "V2-1 12-key delta; unchanged 42-key baseline retained",
+							"note": "Baseline translator retained mechanically; delta translator coder/openai/gpt-6.1-sol. ES-1/2/3 accepted: million-count wording, Eliminar vs Quitar, quote-style consistency; no blocker/major."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
-			"target_sha256": "24d8654dd7bf6b6da1746e7c9d1640b7bf8da3437fd7e0368be8d6307f15729e",
+			"source_sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+			"target_sha256": "6b731c9d4f552a5f78aa149ba41027ffa38c35c625f6323eb81c4c42eb86e686",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6715,20 +6763,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor-fr",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
-					"result": "clean-with-findings",
-					"instance": "8d2f6a4c91e7",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "b8c9d0e1f2a3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/8d2f6a4c91e7.json",
-					"receipt_sha256": "b871098f30cd26f50dc92d5a7a0db1480890f988462fe8bf061952e104a47b4e",
-					"scope": "V2-1 12-key delta; unchanged 42-key baseline retained",
-					"note": "Baseline translator retained mechanically; delta translator coder/openai/gpt-6.1-sol. FR-1/2 accepted: million-count wording and guillemet spacing; no blocker/major."
+					"receipt": "i18n/receipts/b8c9d0e1f2a3.json",
+					"receipt_sha256": "e2869fe6b3ec64d013a64d668188a86488976bbdfa26c5102fde8681aeaa8c63",
+					"scope": "V2-2 full73-key namespace;19 new picker/Manage messages, baseline unchanged",
+					"note": "Baseline translator retained mechanically; delta by coder/anthropic/claude-sonnet-5-5. Copy fixes independently re-audited. ZH3nits accepted unchanged; rendered-fit separate QA/design gate."
 				}
 			],
 			"status": "audited",
@@ -6752,6 +6800,30 @@
 							"receipt": "i18n/receipts/264b5f1fe4f0.json",
 							"receipt_sha256": "d6878de69a422f3cafb8f963fa78f0010059bc7d3706214a875702487b14b484",
 							"scope": "Round-2 re-audit: four-line remediation delta; 40 unchanged keys byte-identical"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+					"target_sha256": "24d8654dd7bf6b6da1746e7c9d1640b7bf8da3437fd7e0368be8d6307f15729e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor-fr",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean-with-findings",
+							"instance": "8d2f6a4c91e7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/8d2f6a4c91e7.json",
+							"receipt_sha256": "b871098f30cd26f50dc92d5a7a0db1480890f988462fe8bf061952e104a47b4e",
+							"scope": "V2-1 12-key delta; unchanged 42-key baseline retained",
+							"note": "Baseline translator retained mechanically; delta translator coder/openai/gpt-6.1-sol. FR-1/2 accepted: million-count wording and guillemet spacing; no blocker/major."
 						}
 					],
 					"status": "audited"
@@ -7862,8 +7934,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
-			"target_sha256": "3140c3250e1652cd338af2194f10d75732b971f370ac1daf9b8adcb5dd3fb5ba",
+			"source_sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+			"target_sha256": "9ef8a855eb33c1d8cc4a85598f1ccc5343d48079a2498f92414959ba599f3e42",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -7873,19 +7945,19 @@
 				{
 					"agent": "i18n-auditor-zh",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
+					"date": "2026-10-19",
 					"result": "clean-with-findings",
-					"instance": "7c1a5e9b3d42",
+					"instance": "f6a1b2c3d4e5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/7c1a5e9b3d42.json",
-					"receipt_sha256": "19e31d012ba1de23f4427f6b98b5bc3275225fc91ef8dc835245625e1828b295",
-					"scope": "12-key V2-1 delta over preserved 42-key shipping Chinese baseline",
-					"note": "Baseline translator retained mechanically; delta translator coder/openai/gpt-6.1-sol. ZH-N1 ellipsis-style nit accepted; no blocker/major/minor."
+					"receipt": "i18n/receipts/f6a1b2c3d4e5.json",
+					"receipt_sha256": "3833454adfc4b95a511a9bfcdea6cadca35c30ebf1e52ad08b041c6e5ef7b827",
+					"scope": "V2-2 full73-key namespace;19 additions, baseline unchanged",
+					"note": "Baseline translator retained; delta by coder/anthropic/claude-sonnet-5-5. Three nits accepted unchanged; no rendered-fit claim."
 				}
 			],
 			"status": "audited",
@@ -7910,6 +7982,30 @@
 							"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
 							"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
 							"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+					"target_sha256": "3140c3250e1652cd338af2194f10d75732b971f370ac1daf9b8adcb5dd3fb5ba",
+					"auditors": [
+						{
+							"agent": "i18n-auditor-zh",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean-with-findings",
+							"instance": "7c1a5e9b3d42",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/7c1a5e9b3d42.json",
+							"receipt_sha256": "19e31d012ba1de23f4427f6b98b5bc3275225fc91ef8dc835245625e1828b295",
+							"scope": "12-key V2-1 delta over preserved 42-key shipping Chinese baseline",
+							"note": "Baseline translator retained mechanically; delta translator coder/openai/gpt-6.1-sol. ZH-N1 ellipsis-style nit accepted; no blocker/major/minor."
 						}
 					],
 					"status": "audited"
@@ -9314,8 +9410,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
-			"target_sha256": "d080a7a26f02b412ab00642049c54391280d91afbfb5dcaf2fdc611724463101",
+			"source_sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+			"target_sha256": "c0748d717e603b0ed083768dcf50a17cbd322f075d4e653651b7ed6b3535ba20",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -9323,21 +9419,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "i18n-auditor-hi",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "f290d34143fb",
+					"instance": "c9d0e1f2a3b4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f290d34143fb.json",
-					"receipt_sha256": "fe00a1582d23089953c6c308cd2de4c7506b9195f04ea0e736552971cf122221",
-					"scope": "hi ui.chat.tags vs current en source — main-repair delta audit (16 values across 3 namespaces)",
-					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+					"receipt": "i18n/receipts/c9d0e1f2a3b4.json",
+					"receipt_sha256": "9be97acc8d06740f55500f2218d3648b121f1cf4fdc332a5f9e8227ecd3eed5e",
+					"scope": "V2-2 full73-key namespace;19 new picker/Manage messages, baseline unchanged",
+					"note": "Baseline translator retained mechanically; delta by coder/anthropic/claude-sonnet-5-5. Copy fixes independently re-audited. ZH3nits accepted unchanged; rendered-fit separate QA/design gate."
 				}
 			],
 			"status": "audited",
@@ -9361,6 +9457,30 @@
 							"receipt": "i18n/receipts/4f53d9a1df52.json",
 							"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
 							"scope": "hi ui.chat.tags vs en source — round 1 independent full pass, 42 keys",
+							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+					"target_sha256": "d080a7a26f02b412ab00642049c54391280d91afbfb5dcaf2fdc611724463101",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "f290d34143fb",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f290d34143fb.json",
+							"receipt_sha256": "fe00a1582d23089953c6c308cd2de4c7506b9195f04ea0e736552971cf122221",
+							"scope": "hi ui.chat.tags vs current en source — main-repair delta audit (16 values across 3 namespaces)",
 							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
 						}
 					],
@@ -11522,8 +11642,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
-			"target_sha256": "bf38af2e698a1a475a03078714de875596c59d2d05a8f5519b0e2925676ed85d",
+			"source_sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+			"target_sha256": "4de3cdde2b12b0ff5bd1bf9b7c04c13edf9aacbbfd4bd259fc0b55513cb21b23",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -11531,21 +11651,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "i18n-auditor-vi",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "8b3e6f1c9d24",
+					"instance": "e1f2a3b4c5d6",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/8b3e6f1c9d24.json",
-					"receipt_sha256": "2243a2332a513758386d81e5c2b3ff269a6e1b3767d5bf2c828e8e20c52075bc",
-					"scope": "post-#1202 drift repair: vi/ui.chat.tags 12 V2-1 keys + vi/ui.agentMessages consent delta",
-					"note": "Vietnamese half of the drift repair. Independent audit of the changed bytes; zero findings. Both roles ran on the harness-reported fallback model openai/gpt-6.1-sol."
+					"receipt": "i18n/receipts/e1f2a3b4c5d6.json",
+					"receipt_sha256": "9e8d44ad76976802465a0fef785d959220d9edf842d7568c37eabd9e48c4dd35",
+					"scope": "V2-2 full73-key namespace;19 additions, baseline unchanged",
+					"note": "Baseline translator retained; delta by coder/anthropic/claude-sonnet-5-5; independent remediation audit."
 				}
 			],
 			"status": "audited",
@@ -11570,6 +11690,30 @@
 							"receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
 							"scope": "full namespace; post-remediation verification of round-1 native audit findings",
 							"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+					"target_sha256": "bf38af2e698a1a475a03078714de875596c59d2d05a8f5519b0e2925676ed85d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "8b3e6f1c9d24",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8b3e6f1c9d24.json",
+							"receipt_sha256": "2243a2332a513758386d81e5c2b3ff269a6e1b3767d5bf2c828e8e20c52075bc",
+							"scope": "post-#1202 drift repair: vi/ui.chat.tags 12 V2-1 keys + vi/ui.agentMessages consent delta",
+							"note": "Vietnamese half of the drift repair. Independent audit of the changed bytes; zero findings. Both roles ran on the harness-reported fallback model openai/gpt-6.1-sol."
 						}
 					],
 					"status": "audited"
