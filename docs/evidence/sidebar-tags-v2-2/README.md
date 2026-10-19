@@ -38,7 +38,7 @@ Option heights in the regular fixture are36px. All seven localized Create/no-mat
 
 ## Audits and validation
 
-See [audit-table.md](audit-table.md) for exact independent receipt instances, actual models, results and SHA256. All seven catalogues73 keys (54 preserved +19 new); six target-language rows freshly audited. ES/FR million-count, HI grammar, RU terminology/primary and VI terminology/grouping fixes were re-audited. ZH3nits accepted unchanged. Prior receipts retained as cited historical rounds, not duplicate current approvals.
+See [audit-table.md](audit-table.md) for exact independent receipt instances, actual models, results and SHA256. All eight current catalogues73 keys (54 preserved +19 new); seven target-language rows independently audited, including Urdu added during final main convergence. ES/FR million-count, HI grammar, RU terminology/primary and VI terminology/grouping fixes were re-audited. ZH3nits accepted unchanged. Prior receipts retained as cited historical rounds, not duplicate current approvals.
 
 Terminal affected Node lanes:110/110 passing across two bounded serial invocations, zero skips. Node TypeScript, source/script lint, `check-i18n`/ledger334 and generated keys passed. **Current merged-head renderer TypeScript is RESOURCE-BLOCKED at a1.5GiB process-group ceiling, with zero diagnostics; manager authorized publication with CI typecheck authoritative and required before merge.** It is not a local pass. Earlier pre-convergence checkpoints passed both projects. See validation-results.md for exact commands and recovery provenance. No full local suite.
 
@@ -47,3 +47,7 @@ Exactly two authorized `biome-ignore lint/a11y/useSemanticElements` comments app
 Residual independent gates: native OS keys/IME and screen reader, exhaustive font/display/helper axes and59-theme rendering, real-core persistence/concurrent registry replacement and transport ambiguity. Synthetic bridge results do not substitute for them. No design/UX/QA sign-off is claimed before independent rounds on the PR.
 
 Evidence guard at the earlier checkpoint:53 tests,52 pass,1 shallow-history ancestry skip. Inventory/count assertions passed; citation ancestry is not claimed validated on this shallow clone.
+
+### Final Urdu convergence
+
+Urdu19-key delta is independently source/ICU-audited clean (f0a1b2c3d4e5); all54 baseline value bytes retained. Final `pnpm check-i18n` PASS, ledger392 rows (existing Urdu row updated, not duplicated). The34 captured PNGs cover the original seven locales; **Urdu rendered RTL/glyph/overflow validation remains QA scope**, not a claimed frame. Final affected-lane rerun after dependency cleanup:79PASS,2 file-setup failures (selection and picker lanes require the now-dangling shared tree; their31 cases did not run). Earlier110PASS checkpoint retained because feature-source bytes are unchanged. No install/relink or test weakening; complete fresh suite/typecheck remains mandatory in CI.

@@ -21,3 +21,13 @@ Actual mounted Manage duplicate rename:one inline alert stays in its editor, zer
 Earlier resource interruptions are not hidden:an initial1GiB Node batch was interrupted; the unfinished lanes were rerun under a512MiB V8 heap and passed. Renderer resource-block remains explicitly deferred to CI, not bypassed by weakening tests/types.
 
 Native keyboard/IME/screen-reader, real-core persistence/races and exhaustive font/display/helper/palette axes remain independent QA scope. No review/QA/design/UX sign-off, merge, release or bump is claimed.
+
+## Audited Urdu final-tree checks
+
+Independent receiptf0a1b2c3d4e5, SHA256b71e4560203cb59b7e17964d0ac1e1a9b97b9af73f731d31a0ef4705e1a6dc40, clean/zero findings. Actual auditor modelopenai/gpt-6.1-sol after anthropic quota exhaustion; only provenance header corrected, by auditor. Author did not alter/approve receipt. Urdu catalogue73 keys, SHA2561ebc41a63a56910daa408deebd50e875828ab7b88bb22b6d36a666dac37d4a5b;54 baseline values untouched.
+
+`ledger-assemble` accepted corrected receipt. `pnpm check-i18n` PASS on the final merged working tree, including byte-identical generated keys, check-strings, ledger-check392 complete/fresh/independent rows and context parity. Existing196 allowed context gaps/16 advisory literals remain unrelated baseline. Count392 is tool-derived:existing Urdu row upserted; prior audits superseded.
+
+Targeted Node rerun used --max-old-space-size=512 --test-concurrency=1 over the same9 affected lanes. Actual81 reported:79PASS,2 file-setup failures (selection dependency import and picker mkdir ENOTDIR on dangling node_modules). Their31 cases did not execute. This does NOT replace the earlier110/110 source-identical checkpoint with a false green final rerun. No test/source weakening, relink, install or extra tree. CI must supply complete fresh tests and the authoritative renderer TypeScript check. Urdu RTL rendered-fit remains independent QA scope.
+
+Final merged evidence inventory rerun:53 tests,52PASS,0FAIL,1shallow-history ancestry skip. Counts/inventory validated on the final converged tree.

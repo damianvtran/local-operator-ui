@@ -13792,8 +13792,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
-			"target_sha256": "06ae29d9932af286d112532ef4e1d60691059a8521b453c3f86e7f2e97108828",
+			"source_sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+			"target_sha256": "1ebc41a63a56910daa408deebd50e875828ab7b88bb22b6d36a666dac37d4a5b",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -13801,21 +13801,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
+					"agent": "reviewer",
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "2e23db9ac7c0",
+					"instance": "f0a1b2c3d4e5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2e23db9ac7c0.json",
-					"receipt_sha256": "e6f5f7c8a40bb1ab74a0168145c8649325809a745d0c59cf323d5e502570b8dd",
-					"scope": "Post-merge drift: new English keys carried at the final bytes.",
-					"note": "New keys landed on main after the tranche; translated and independently audited."
+					"receipt": "i18n/receipts/f0a1b2c3d4e5.json",
+					"receipt_sha256": "b71e4560203cb59b7e17964d0ac1e1a9b97b9af73f731d31a0ef4705e1a6dc40",
+					"scope": "All73 keys;19 V2-2 additions;54 unchanged baseline values; ICU parity",
+					"note": "V2-2 Urdu delta authored by coder/anthropic/claude-sonnet-5-5; baseline translator metadata retained. Independent auditor used openai/gpt-6.1-sol after anthropic quota exhaustion; no inherited conclusions."
 				}
 			],
 			"status": "audited",
@@ -13840,6 +13840,30 @@
 							"receipt_sha256": "9cf5311d3e87ee9ff90304782aae6ea3a5535cb78213ad107f9f48c737df1d63",
 							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
 							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+					"target_sha256": "06ae29d9932af286d112532ef4e1d60691059a8521b453c3f86e7f2e97108828",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "2e23db9ac7c0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2e23db9ac7c0.json",
+							"receipt_sha256": "e6f5f7c8a40bb1ab74a0168145c8649325809a745d0c59cf323d5e502570b8dd",
+							"scope": "Post-merge drift: new English keys carried at the final bytes.",
+							"note": "New keys landed on main after the tranche; translated and independently audited."
 						}
 					],
 					"status": "audited"
