@@ -11047,6 +11047,22 @@ export const STORIES = [
 	 */
 	["mesh-tab--reach-states-list", 1380, 900],
 	/*
+	 * THE THREE TRANSPORT FAILURES, SEPARATELY (mesh link resilience). The shipped set
+	 * proved only the generic "unreachable" face; these frames are the ones the incident
+	 * lacked — a peer whose relay is not listening (TCP refused), an address that timed
+	 * out, and a peer that answered and then closed the handshake. Same 1380x900 frame as
+	 * the rest of the tab so a reader compares the words, not the crop.
+	 */
+	["mesh-tab--relay-down", 1380, 900],
+	/*
+	 * The LIST half of the same evidence: the per-address rows are rendered by a
+	 * different component (`mesh-list.tsx`), so the canvas/panel frame cannot prove
+	 * them. The play presses the real List toggle.
+	 */
+	["mesh-tab--relay-down-list", 1380, 900],
+	["mesh-tab--address-unreachable", 1380, 900],
+	["mesh-tab--handshake-refused", 1380, 900],
+	/*
 	 * THE SCOPE LAYER'S DRAWN TIERS, on addresses that make the collision real: two peers on
 	 * WireGuard's default subnet (dashed, `same prefix`), one on this device's own (solid,
 	 * `shared with this device`), and two that group with nothing.
@@ -11223,6 +11239,12 @@ export const STORIES = [
 		1380,
 		900,
 		{ expectSentence: "Wait for the turn to finish" },
+	],
+	[
+		"mesh-tab--refusal-notice",
+		1380,
+		900,
+		{ expectSentence: "relay not running" },
 	],
 	["mesh-tab--move-copy-with-undo", 1380, 900],
 	/*
