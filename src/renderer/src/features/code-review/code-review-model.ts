@@ -968,7 +968,14 @@ export function pathLineFor(project: string): string | null {
 
 /**
  * The row's ACCESSIBLE NAME (agent review round 1, N4 / UX U4):
- * `<project> <#N>: <title>, <state>, <lane clauses>, opens in your browser`.
+ * `<project> <#N>: <title>, <state>, <relation>, <lane clauses>, opens in your
+ * browser`.
+ *
+ * The `<relation>` part is the marker line the row DRAWS, carried here so a
+ * screen reader never loses the one word that keeps a row from claiming to
+ * be opened when the backend never said so (QA round 2, Q-3). It is absent
+ * when the row carries no marker, and it comes from the same derivation the
+ * row draws (`rowTag`), so the two can never state the relation two ways.
  *
  * One derived string rather than the concatenated row text, because the
  * concatenation read lane clauses in visual order with no punctuation and
