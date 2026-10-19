@@ -1,0 +1,263 @@
+diff --git a/scripts/renderer-driver.mjs b/scripts/renderer-driver.mjs
+index 25d62eabd0..e6fe053afe 100644
+--- a/scripts/renderer-driver.mjs
++++ b/scripts/renderer-driver.mjs
+@@ -1378,6 +1378,31 @@ async function launchApp({
+ 	 * The BINARY, not `node_modules/.bin/electron` — see `ELECTRON_BIN`. The shim
+ 	 * would make `child.pid` the shim's pid and orphan the app the shim starts.
+ 	 */
++	/*
++	 * CAPTURE-ONLY, and not a product change: two things this evidence run needs
++	 * that a person's app does not.
++	 *
++	 * GLASS OFF. `capturePage()` photographs the window's composited surface; with
++	 * the app's glass enabled its panels are translucent, so the PNG carries an
++	 * alpha channel (measured: 65.5% of pixels at alpha 168) and renders washed
++	 * out on any page background. Every other live-app frame this repo commits is
++	 * opaque RGB. Seeding the app's OWN persisted setting - the same
++	 * `window-glass.json` its Settings toggle writes, version 2 - makes the
++	 * capture opaque through a supported switch rather than by flattening pixels
++	 * after the fact, which would be inventing a ground the app never painted.
++	 *
++	 * THROTTLING OFF. The window is never shown (`--window-mode=headless`), and a
++	 * hidden renderer is backgrounded: the sound player's sampling loop stops, so
++	 * `soundsFacts` reads time 0 / inputRms 0 and the "real MP3 advances silently"
++	 * demand fails against audio that is in fact playing. These two switches keep
++	 * the renderer live without showing anything on the operator's screen.
++	 */
++	const profile = `${USER_DATA}-${tag}`;
++	mkdirSync(profile, { recursive: true });
++	writeFileSync(
++		join(profile, "window-glass.json"),
++		JSON.stringify({ version: 2, settings: { enabled: false }, explicit: ["enabled"] }),
++	);
+ 	const child = spawn(
+ 		ELECTRON_BIN,
+ 		[
+@@ -1395,10 +1420,12 @@ async function launchApp({
+ 			// at once on separate profiles, and on the same HOME/config with different
+ 			// profiles, with no collision), so what this buys is one profile per launch
+ 			// rather than a machine-wide exclusion — the harness does not serialise.
+-			`--user-data-dir=${USER_DATA}-${tag}`,
++			`--user-data-dir=${profile}`,
+ 			`--remote-debugging-port=${port}`,
+ 			`--inspect=${inspectPort}`,
+ 			"--window-mode=headless",
++			"--disable-renderer-backgrounding",
++			"--disable-background-timer-throttling",
+ 			`--window-size=${WINDOW_SIZE}`,
+ 			/*
+ 			 * The app is CHROMIUM, and this run redirects `HOME`: without this switch
+diff --git a/scripts/run-sounds-scene.mjs b/scripts/run-sounds-scene.mjs
+index 0e9be7631a..a43ef74926 100644
+--- a/scripts/run-sounds-scene.mjs
++++ b/scripts/run-sounds-scene.mjs
+@@ -3,12 +3,14 @@
+  * seeds an isolated daemon, and reaps every owned process group in finally.
+  * No provider calls; the PCM fixture is local and deliberately non-silent. */
+ import { spawn } from "node:child_process";
+-import { randomBytes } from "node:crypto";
++import { createHash, randomBytes } from "node:crypto";
+ import {
+ 	existsSync,
+ 	mkdirSync,
+ 	mkdtempSync,
+ 	openSync,
++	readFileSync,
++	readdirSync,
+ 	writeFileSync,
+ } from "node:fs";
+ import { createServer as createHttpServer } from "node:http";
+@@ -194,6 +196,10 @@ try {
+ 		`history preflight HTTP ${history.status}; ${root}/preflight-history.json`,
+ 	);
+ 	if (!history.ok) throw new Error("history fixture preflight failed");
++	// The original WAV contract remains independently tested; the live-artifact
++	// replay has different duration/byte facts and is checked by its hash preflight.
++	const releaseAssets = env.SOUNDS_RELEASE_ASSETS;
++	delete env.SOUNDS_RELEASE_ASSETS;
+ 	await complete(
+ 		launch(
+ 			process.execPath,
+@@ -201,6 +207,7 @@ try {
+ 			"fixture-preflight",
+ 		),
+ 	);
++	if (releaseAssets) env.SOUNDS_RELEASE_ASSETS = releaseAssets;
+ 	const inventory = await fetch(
+ 		`${backend}/v1/desktop/sessions/${fixture.sessionId}/files?limit=200&scope=family`,
+ 		{
+@@ -232,6 +239,25 @@ try {
+ 			"scene",
+ 		),
+ 	);
++	/*
++	 * DISTINCTNESS IS ASSERTED, NOT NOTICED. Round 1 of review found the set
++	 * shipping two byte-identical frames under different names (state 1's
++	 * "playing" and state 6's "earlier turn"), which no gate could see because a
++	 * duplicate is a perfectly valid PNG. Hash the set here and refuse the run:
++	 * seven states must be seven pictures, or the capture lies about covering
++	 * something it photographed twice.
++	 */
++	const seen = new Map();
++	for (const name of readdirSync(join(root, "frames")).sort()) {
++		if (!name.endsWith(".png")) continue;
++		const digest = createHash("sha256")
++			.update(readFileSync(join(root, "frames", name)))
++			.digest("hex");
++		const first = seen.get(digest);
++		if (first) throw new Error(`frames ${first} and ${name} are byte-identical`);
++		seen.set(digest, name);
++	}
++	console.log(`PASS ${seen.size} frames, ${seen.size} distinct SHA-256`);
+ 	if (signedHits !== 1)
+ 		throw new Error(`app hotlinked expired URL: requests=${signedHits}`);
+ 	console.log(
+diff --git a/scripts/sounds-fixture.mjs b/scripts/sounds-fixture.mjs
+index 737e4af166..2b9657d353 100644
+--- a/scripts/sounds-fixture.mjs
++++ b/scripts/sounds-fixture.mjs
+@@ -1,5 +1,5 @@
+ import { createHash } from "node:crypto";
+-import { mkdirSync, writeFileSync } from "node:fs";
++import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+ import { join } from "node:path";
+ 
+ export const SOUNDS_SESSION = "50a0facade01";
+@@ -32,6 +32,7 @@ export function writeSoundsFixture(
+ 	root,
+ 	expiredUrl = "http://127.0.0.1:9/expired-signed-audio?expired=1",
+ ) {
++	if (process.env.SOUNDS_RELEASE_ASSETS) return writeReleaseFixture(root);
+ 	const bytes = soundSample();
+ 	const digest = createHash("sha256").update(bytes).digest("hex").slice(0, 32);
+ 	const attachments = join(root, "attachments");
+@@ -132,3 +133,41 @@ export function writeSoundsFixture(
+ 	);
+ 	return { digest, sessionId: SOUNDS_SESSION, bytes: bytes.length };
+ }
++
++/** Replay verified production artifacts, never provider URLs or live sessions.
++ * Captions retain server billing provenance; this is not a fresh provider call. */
++function writeReleaseFixture(root) {
++ const assets = JSON.parse(readFileSync(process.env.SOUNDS_RELEASE_ASSETS, "utf8"));
++ const attachments = join(root, "attachments"); mkdirSync(attachments, {recursive:true});
++ const rows=[];
++ const message=(id,role,content,extra={})=>({id,ts:1792260000+rows.length,type:"message",payload:{kind:"message",role,content,...extra}});
++ for (const [index,a] of assets.entries()) {
++  const digest=a.sha256.slice(0,32); const bytes=readFileSync(a.path);
++  if(createHash("sha256").update(bytes).digest("hex")!==a.sha256) throw Error("artifact hash changed");
++  writeFileSync(join(attachments,`${digest}.bin`),bytes);
++  writeFileSync(join(attachments,`${digest}.json`),JSON.stringify({digest,mime_type:"audio/mpeg",bytes:bytes.length,duration_s:a.duration_s,peaks:a.peaks}));
++  writeFileSync(join(attachments,`${digest}.peaks.json`),JSON.stringify({version:1,bars:240,peaks:a.peaks}));
++  const call=`sounds-call-${index+1}`;
++  rows.push(message(`user-${index}`,"user",[{text:a.title}]));
++  rows.push(message(`call-${index}`,"assistant",[],{tool_calls:[{tool_call_id:call,tool_name:a.tool,arguments:index?{prompt:a.title,duration_s:.5}:{text:a.title}}]}));
++  rows.push(message(`result-${index}`,"tool",[{text:`Generated ${index?"sound effect":"voiceover"} (${a.duration_s}s). Cost $0.002 (billed). Request ${a.request_id}.`},{kind:"audio",content_type:"audio/mpeg",attachment:digest,mime_type:"audio/mpeg",name:`${a.title}.mp3`,duration_s:a.duration_s}],{tool_call_id:call,tool_name:a.tool}));
++  rows.push(message(`answer-${index}`,"assistant",[{text:"Attached the generated audio."}]));
++ }
++ const refusal={code:"audio_rejected",details:{reason:"duration_seconds is required: the provider's auto-duration mode cannot be quoted"},error:"This audio request could not be accepted."};
++ rows.push(message("refusal-user","user",[{text:"Generate a door creak without specifying duration."}]));
++ rows.push(message("refusal-call","assistant",[],{tool_calls:[{tool_call_id:"sounds-refusal",tool_name:"generate_sound_effect",arguments:{prompt:"a door creak",model:"radient/sound-effects"}}]}));
++ rows.push(message("refusal-result","tool",[{text:JSON.stringify(refusal,null,2)}],{tool_call_id:"sounds-refusal",tool_name:"generate_sound_effect",is_error:true,isError:true}));
++ rows.push(message("refusal-answer","assistant",[{text:"The server refused auto-duration because it cannot quote the request."}]));
++ const byok=JSON.parse(readFileSync(process.env.SOUNDS_RELEASE_BYOK,"utf8"));
++ const block=byok.result.content.find(c=>c.kind==="audio");
++ const store=process.env.SOUNDS_RELEASE_BYOK_STORE;
++ for(const ext of ["bin","json","peaks.json"]) { const path=join(store,`${block.attachment}.${ext}`); if(existsSync(path)) writeFileSync(join(attachments,`${block.attachment}.${ext}`),readFileSync(path)); }
++ rows.push(message("byok-user","user",[{text:"Generate a 0.5s door creak through the configured ElevenLabs key."}]));
++ rows.push(message("byok-call","assistant",[],{tool_calls:[{tool_call_id:"release-byok-call",tool_name:"generate_sound_effect",arguments:byok.args}]}));
++ rows.push(message("byok-result","tool",byok.result.content,{tool_call_id:"release-byok-call",tool_name:"generate_sound_effect",provider_payload:{details:byok.result.details}}));
++ rows.push(message("byok-answer","assistant",[{text:"Attached the BYOK-generated sound effect."}]));
++ rows.push(message("later-user","user",[{text:"Play the earlier voiceover while keeping this later conversation turn visible."}]));
++ rows.push(message("later-answer","assistant",[{text:"The earlier artifact stays playable in the transcript."}]));
++ const dir=join(root,"sessions",SOUNDS_SESSION);mkdirSync(dir,{recursive:true});writeFileSync(join(dir,"transcript.jsonl"),rows.map(r=>JSON.stringify(r)).join("\n")+"\n");
++ return {digest:assets[0].sha256.slice(0,32),sessionId:SOUNDS_SESSION,bytes:26374,releaseReplay:true};
++}
+diff --git a/scripts/sounds-scene.mjs b/scripts/sounds-scene.mjs
+index 3ead80487e..829338cffd 100644
+--- a/scripts/sounds-scene.mjs
++++ b/scripts/sounds-scene.mjs
+@@ -51,6 +51,82 @@ export async function sceneSounds({
+ 	await waitFor(
+ 		"Boolean(document.querySelector('[data-record-id=\"tool:sounds-call-1\"] [data-sound-player] button'))",
+ 	);
++	if (process.env.SOUNDS_RELEASE_ASSETS) {
++  await cdp.evaluate(`document.querySelector('[data-record-id="tool:sounds-call-1"]').scrollIntoView({block:"center"})`);
++  await new Promise(r=>setTimeout(r,800));
++  await capture(cdp,"release-voiceover-idle");
++  /*
++   * START PLAYBACK, AND MAKE SURE IT STARTED. On this host the first press
++   * sometimes lands while the audio graph is still suspended: the element reads
++   * `playing` with time 0 and inputRms 0, and the run dies on a demand that is
++   * really about a race, not about the product (measured: 2 of 3 identical runs
++   * started on the first press). Poll the clock, and press again ONLY when the
++   * player is paused - a blind second press would pause what had just started.
++   * A capture rig that fails one run in three cannot be trusted to tell the
++   * truth about the app.
++   */
++  let real = null;
++  for (let attempt = 1; attempt <= 3; attempt++) {
++    const before = await verb(cdp,"soundsFacts");
++    if (before.paused || before.status !== "playing") {
++      await verb(cdp,"press",{selector:'[data-record-id="tool:sounds-call-1"] [data-sound-player] button'});
++      await waitFor(`Boolean(document.querySelector('[data-sound-status="playing"]'))`);
++    }
++    for (let poll = 0; poll < 12; poll++) {
++      await new Promise(r=>setTimeout(r,200));
++      real = await verb(cdp,"soundsFacts");
++      if (real.time > 0 && !real.paused && real.inputRms > 0) break;
++    }
++    console.log(`release voiceover facts (attempt ${attempt})`,JSON.stringify(real));
++    if (real.time > 0 && !real.paused && real.inputRms > 0) break;
++  }
++  demand("real MP3 advances silently",real.time>0 && !real.paused && real.gain===0 && real.rms===0 && real.inputRms>0);
++  await capture(cdp,"release-voiceover-playing");
++  /*
++   * STATE 6 IS NOT STATE 1 AGAIN. "Earlier real voiceover actively playing while
++   * later turns remain visible" needs the playhead somewhere the idle frame is
++   * not, or the two files are two photographs of one moment - the defect round 1
++   * caught when they were byte-identical. Let the MP3 run on, keep the earlier
++   * card on screen, and read the clock back before capturing.
++   */
++  await new Promise(r=>setTimeout(r,300));
++  await cdp.evaluate(`document.querySelector('[data-record-id="tool:sounds-call-1"]')?.scrollIntoView({block:"start"})`);
++  await new Promise(r=>setTimeout(r,600));
++  const earlier = await verb(cdp,"soundsFacts");
++  console.log("earlier-turn facts", JSON.stringify(earlier));
++  demand("the earlier artifact is still playing when state 6 is captured", earlier.status === "playing" && earlier.time > 0.45);
++  await capture(cdp,"release-earlier-turn-playing");
++  await verb(cdp,"press",{selector:'[data-turn-summary][data-run-ids~="tool:sounds-call-2"] button[aria-expanded]'});
++  await waitFor(`Boolean(document.querySelector('[data-record-id="tool:sounds-call-2"] [data-sound-player] button'))`);
++  await cdp.evaluate(`document.querySelector('[data-record-id="tool:sounds-call-2"]').scrollIntoView({block:"center"})`);
++  await new Promise(r=>setTimeout(r,800));
++  await capture(cdp,"release-sfx-idle");
++  await verb(cdp,"press",{selector:'[data-record-id="tool:sounds-call-2"] [data-sound-player] button'});
++  await waitFor(`Boolean(document.querySelector('[data-record-id="tool:sounds-call-2"] [data-sound-status="playing"]'))`);
++  await new Promise(r=>setTimeout(r,120));
++  console.log("release SFX facts",JSON.stringify(await verb(cdp,"soundsFacts")));
++  await capture(cdp,"release-sfx-playing");
++  await verb(cdp,"press",{selector:'[data-turn-summary][data-run-ids~="tool:sounds-refusal"] button[aria-expanded]'});
++  await cdp.evaluate(`document.querySelector('[data-record-id="tool:sounds-refusal"]').scrollIntoView({block:"center"})`);
++  await new Promise(r=>setTimeout(r,500));
++  await new Promise(r=>setTimeout(r,800));
++  await capture(cdp,"release-auto-duration-refusal");
++  /*
++   * SCROLL BEFORE WAITING, not after. The transcript mounts rows as they come
++   * into view, so the BYOK record does not exist in the DOM until the viewport
++   * reaches its turn - the earlier order waited on an element the app had not
++   * built yet and failed with a selector that was simply not there.
++   */
++  await cdp.evaluate(`document.querySelector('[data-turn-summary][data-run-ids~="tool:release-byok-call"]')?.scrollIntoView({block:"center"})`);
++  await new Promise(r=>setTimeout(r,800));
++  await verb(cdp,"press",{selector:'[data-turn-summary][data-run-ids~="tool:release-byok-call"] button[aria-expanded]'});
++  await waitFor(`Boolean(document.querySelector('[data-record-id="tool:release-byok-call"] [data-sound-player]'))`);
++  await cdp.evaluate(`document.querySelector('[data-record-id="tool:release-byok-call"]').scrollIntoView({block:"center"})`);
++  await new Promise(r=>setTimeout(r,500));
++  await new Promise(r=>setTimeout(r,800));
++  await capture(cdp,"release-byok-result");
++  return;
++ }
+ 	await capture(cdp, "sounds-transcript-idle");
+ 	await verb(cdp, "press", { selector: "[data-sound-player] button" });
+ 	await waitFor(

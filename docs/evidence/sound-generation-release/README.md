@@ -51,6 +51,51 @@ initializer. Captures use the existing supported plain-JS/npm build switch
 An existing Babel plugin was linked inside the isolated cloned dependencies to
 repair their missing root resolution; the primary installation was untouched.
 
+## Re-capture (2026-10-19)
+
+Round 1 of review found that two of the seven frames did not show what their
+filenames claim: the voiceover idle/playing pair was scrolled to the transcript's
+latest turn with no player in view, and `release-earlier-turn-playing.png` was
+byte-identical to `release-voiceover-playing.png` — six distinct images, not
+seven. **Six frames were re-captured. No product source changed**; the app tree
+is still `60948819`, and `rig-recapture.patch` is the rig as run for this pass
+(self-contained: it includes the release-asset extension of the first run).
+
+Why the first capture missed the card, and the three rig fixes:
+
+- **Camera.** The scene scrolled to the record and photographed it in the same
+  step; the transcript mounts rows as they enter the viewport, so the press that
+  followed could re-anchor the scroll before the capture. Each capture now
+  scrolls, lets the layout settle, then photographs. The BYOK step scrolls
+  *before* it waits for the record to exist — the earlier order waited on an
+  element the app had not built yet.
+- **Opacity.** Every frame carried an alpha channel (measured 65.5% of pixels at
+  alpha 168) because `capturePage()` photographs the window's composited glass.
+  The rig now seeds the app's OWN persisted setting — `window-glass.json`,
+  version 2, `enabled: false`, the same file its Settings toggle writes — so the
+  capture is opaque at the source rather than flattened after the fact. All six
+  re-captured frames are colour type 2 (RGB), like every other live-app set.
+- **Playback.** A hidden window is backgrounded: the player reported `playing`
+  with `time 0, inputRms 0`, and the "real MP3 advances silently" demand failed
+  on one run in three. The rig passes `--disable-renderer-backgrounding` and
+  `--disable-background-timer-throttling` and polls the clock, re-pressing only
+  when the player is paused. Measured on the accepted run: voiceover
+  `time 0.2467, inputRms 0.0947, gain 0, rms 0`. State 6 is read back at
+  `time 1.205743` of `duration 1.578957` with `ownerId sound:b44d1c36…` — the
+  **earlier voiceover** is the playing card, and the later turns are visible
+  below it.
+
+Distinctness is **asserted by the rig**, not eyeballed: seven frames must hash to
+seven SHA-256 values or the run fails. The seven committed PNGs do.
+
+**Not re-captured: `release-byok-result.png`.** The BYOK record renders **no
+player at all**, because the recorded tool result carries `duration_s: null` —
+the two Radient rows carry `1.619592` and `0.522449` and do render players. The
+server row for this call reports `0.522449 s`, so the duration was known and is
+absent from the recorded result: a defect in the BYOK result shape, not a capture
+problem. The frame is therefore left as the **pre-re-capture** capture and is
+disclosed as such in state 5 below, rather than being edited into looking newer.
+
 ## Required-state matrix
 
 | State | Actual result | Frame |
@@ -59,7 +104,7 @@ repair their missing root resolution; the primary installation was untouched.
 | 2. SFX with billed cost | **PARTIAL/BLOCKED**: real SFX plays; billed caption is absent; sub-second clock displays `0:00 / 0:00` | `release-sfx-playing.png`; `release-sfx-idle.png` |
 | 3. Invalid arguments + exact server refusal body | **PARTIAL/BLOCKED**: exact HTTP-400 body is replayed and visible; not a newly executed tool refusal and not the requested invalid-arguments labelled row | `release-auto-duration-refusal.png` |
 | 4. Running cancel warning BEFORE action, then pending settlement | **BLOCKED/NOT CAPTURED**: no real pre-action warning/action flow was obtained; the forwarded post-cancel rows do not prove it | No fabricated frame |
-| 5. BYOK `cost:null` plus labelled estimate | **PARTIAL/BLOCKED**: actual merged harness BYOK generation succeeded, but estimate is `$0.0010`, not requested `$0.0020`; estimate caption is absent from merged card; no server `cost:null` row exists for this direct-provider path | `release-byok-result.png`; `byok-actual.json` |
+| 5. BYOK `cost:null` plus labelled estimate | **PARTIAL/BLOCKED**: actual merged harness BYOK generation succeeded, but estimate is `$0.0010`, not requested `$0.0020`; estimate caption is absent from merged card; no server `cost:null` row exists for this direct-provider path; **the record renders no player** (`duration_s: null` in the recorded result, see Re-capture) | `release-byok-result.png` (**pre-re-capture**); `byok-actual.json` |
 | 6. Earlier-turn artifact playing mid-transcript | **PASS**: earlier real voiceover actively playing while later turns remain visible, not a thumbnail | `release-earlier-turn-playing.png` |
 
 Loading/empty states were not captured by this attempt; populated, playing and
