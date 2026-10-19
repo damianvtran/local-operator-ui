@@ -1,0 +1,127 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "9e3f8a2b6c47",
+  "date": "2026-10-18",
+  "locale": "vi",
+  "status": "passed",
+  "namespaces": {
+    "ui.settings.integrations": {
+      "namespace": "ui.settings.integrations",
+      "status": "passed",
+      "sha256": {
+        "source": "36b3507993a0466100ca099c3c1c2b2852d66a81b14f3685031f0a35dfa0f5b3",
+        "target": "9def3f4b417a18417b4bc6dbd2ee842d7b24b329d3bd8d9f83706c46b6784e8e"
+      },
+      "findings": []
+    },
+    "ui.settings.configuration": {
+      "namespace": "ui.settings.configuration",
+      "status": "passed",
+      "sha256": {
+        "source": "d11a5170a0336449668b91a2b2aa1013ae36ee38c4b70fc69f90541aea3e5050",
+        "target": "af09dee171b1ddee4d86e9409065eadb0da59d476c5de4f2b71890fb3befbdc4"
+      },
+      "findings": []
+    },
+    "ui.settings.imports": {
+      "namespace": "ui.settings.imports",
+      "status": "passed",
+      "sha256": {
+        "source": "1f8b1941bd65b91c84b1b4c41bfb1406f0e4790936c8690b04bfd788b4a1b082",
+        "target": "21fd357c25cc8f99b15b2f27dc19e2fce989e8f98dd23ab13318a3eb881bf9fe"
+      },
+      "findings": []
+    },
+    "ui.settings.account": {
+      "namespace": "ui.settings.account",
+      "status": "passed",
+      "sha256": {
+        "source": "90960d5e885e5b617af91b7249b64828a049c0b9631bf5da4562a8f8c2f5c066",
+        "target": "3d67fa8541a3d35c18640328cebcc507fd52ee4f34ab22e06a8cc79c3814ff02"
+      },
+      "findings": []
+    },
+    "ui.settings.model": {
+      "namespace": "ui.settings.model",
+      "status": "passed",
+      "sha256": {
+        "source": "5a09b6ed49e8501d14a6f8052a70ce15ce5104ec8da3756c6b576e6e4d150cf1",
+        "target": "adeb4d60c9422033a06bf6589b4f57b27fbda47af4a627e35ecd5d6786db7d9d"
+      },
+      "findings": []
+    },
+    "ui.settings.updates": {
+      "namespace": "ui.settings.updates",
+      "status": "passed",
+      "sha256": {
+        "source": "6597aeea3a3a0495f1ba0d9a7ce8078f455d970b53647dbc8350e00fbc9099b2",
+        "target": "93a0a7f168ffdbb97f05e50430d859b46600e3520cd143bf89cb7ba03a1954e1"
+      },
+      "findings": []
+    },
+    "ui.settings.appearance.window_glass": {
+      "namespace": "ui.settings.appearance.window_glass",
+      "status": "passed",
+      "sha256": {
+        "source": "d3c6e272273baab454200c41a25b21c451689ae9bf03329aa776dc1cb9f1b33a",
+        "target": "2af1d2c59c994f1c763626e8d3014433c287eba7df15ce19ccd7a6c79738f026"
+      },
+      "findings": []
+    },
+    "ui.settings.navigation": {
+      "namespace": "ui.settings.navigation",
+      "status": "passed",
+      "sha256": {
+        "source": "b0db379acf4e4c13bed8f4fb3f7e551c0b1ebc3dd52ef4508a9797c5fdcf3dbc",
+        "target": "b596e60f3083a29b7356e7fd5ec580aa55efc46c2b235f1f8875c07e5c8f9040"
+      },
+      "findings": []
+    },
+    "ui.settings.model.default_effort": {
+      "namespace": "ui.settings.model.default_effort",
+      "status": "passed",
+      "sha256": {
+        "source": "5a4a01952b8a4242730e336cf082dc926085ac126a147d8b44197e9f04fc3b29",
+        "target": "2c4bac2faeb5247192523de2e259aec0411e75377923b1368cfd5ccead780ba4"
+      },
+      "findings": []
+    },
+    "ui.settings.speech": {
+      "namespace": "ui.settings.speech",
+      "status": "passed",
+      "sha256": {
+        "source": "36b1321c4660c345b6c40dfa753e0e233228a66868cfe78218c4ce573609574d",
+        "target": "8634710919101d4e787d232dea59d7f814b9bb552e190ab148dd159e6ce3bfd9"
+      },
+      "findings": []
+    },
+    "ui.settings.appearance": {
+      "namespace": "ui.settings.appearance",
+      "status": "passed",
+      "sha256": {
+        "source": "f5db8989cc542fededba171769b0fbaa940cec562de6eccc07347c0f41c784d1",
+        "target": "c8cd6fa03a8a9316553885d82ff5489f8c4816c53b17f7c90bb9cd8709884290"
+      },
+      "findings": []
+    },
+    "ui.settings.shortcuts": {
+      "namespace": "ui.settings.shortcuts",
+      "status": "passed",
+      "sha256": {
+        "source": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
+        "target": "0da64aff8d8ea8c8e914375a49061b999d3739ecaf4e16f6310d3489c8f1f506"
+      },
+      "findings": []
+    },
+    "ui.settings.model.provider_callout": {
+      "namespace": "ui.settings.model.provider_callout",
+      "status": "passed",
+      "sha256": {
+        "source": "8d1871aa2d087f99694b77e9f946b33b549a9541525023347b78124f42bbf82f",
+        "target": "76944145a8402d69afac36eb11f4bb3a8d94b83d355a487502f4e304c087a9cd"
+      },
+      "findings": []
+    }
+  }
+}

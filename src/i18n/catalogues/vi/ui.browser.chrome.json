@@ -1,0 +1,16 @@
+{
+	"ui.browser.chrome.approvals": "Phê duyệt và quyền truy cập trang web",
+	"ui.browser.chrome.error_title": "Không tải được trang",
+	"ui.browser.chrome.move_left": "Chuyển tab sang trái",
+	"ui.browser.chrome.move_right": "Chuyển tab sang phải",
+	"ui.browser.chrome.duplicate": "Nhân bản tab",
+	"ui.browser.chrome.reload": "Tải lại tab",
+	"ui.browser.chrome.scroll_left": "Cuộn tab sang trái",
+	"ui.browser.chrome.scroll_right": "Cuộn tab sang phải",
+	"ui.browser.chrome.accessible_tab": "{title}{loading, select, yes{, đang tải} other{}}{failed, select, yes{, không tải được} other{}}{owner, select, agent{, thuộc tác nhân} shared{, chia sẻ với tác nhân} other{}}{waiting, select, none{} other{, yêu cầu {waiting} đang chờ}}{restored, select, yes{, đã khôi phục} other{}}",
+	"ui.browser.chrome.invalid_order": "Thứ tự tab trình duyệt không hợp lệ.",
+	"ui.browser.chrome.duplicate_refused": "Chỉ có thể nhân bản trang web.",
+	"ui.browser.chrome.invalid_action": "Thao tác với tab trình duyệt không hợp lệ.",
+	"ui.browser.chrome.tab_gone": "Tab trình duyệt đó không còn mở.",
+	"ui.browser.chrome.operation_failed": "{action, select, duplicate{Không thể nhân bản tab. Bạn có thể thử lại từ menu của tab.} other{Không thể tải lại tab. Bạn có thể thử lại từ menu của tab.}}"
+}

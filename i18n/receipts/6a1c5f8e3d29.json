@@ -1,0 +1,199 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "6a1c5f8e3d29",
+  "date": "2026-10-18",
+  "locale": "vi",
+  "status": "passed",
+  "namespaces": {
+    "ui.common.updates": {
+      "namespace": "ui.common.updates",
+      "status": "passed",
+      "sha256": {
+        "source": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
+        "target": "32269bf0a1061019e35659b6324bb58583ab55c302999e7f43095803f75c3e60"
+      },
+      "findings": []
+    },
+    "ui.chat.tags": {
+      "namespace": "ui.chat.tags",
+      "status": "passed",
+      "sha256": {
+        "source": "ffb1c6b985fd1ab521a2a5fc49955978d76cabc5671437dc2bc6b31cfa1ada74",
+        "target": "a8721bb84e61221bbda6d5f22987f6a0f3fa1a45b6b6dfefa4f324364eb153ca"
+      },
+      "findings": []
+    },
+    "ui.chat.composer": {
+      "namespace": "ui.chat.composer",
+      "status": "passed",
+      "sha256": {
+        "source": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+        "target": "66aa8330c2e0d6de8adc509c9dce22cf092d37b906f1849eda0b4c684b231bbb"
+      },
+      "findings": []
+    },
+    "ui.shell": {
+      "namespace": "ui.shell",
+      "status": "passed",
+      "sha256": {
+        "source": "a36a75e15ce94632bad00e774e7f6211ca58d95a2b6f6f50a85e687d64a5b1ea",
+        "target": "78294b2cab391ec7ebe419e28810cf870c95243599cc87529f7bba3fe6833b87"
+      },
+      "findings": []
+    },
+    "ui.common.forms": {
+      "namespace": "ui.common.forms",
+      "status": "passed",
+      "sha256": {
+        "source": "28a63a53e5b6c3c4fccb9995eb07637c8521ce9d5019e304f3fedb0ddbc053d9",
+        "target": "658e428c1efc1d36dd590ff4ea997997a0f88229bc9f269a9e38fef823ffcbc7"
+      },
+      "findings": []
+    },
+    "ui.common.models": {
+      "namespace": "ui.common.models",
+      "status": "passed",
+      "sha256": {
+        "source": "561e39a0105425d66cac7d7497306d740d79f7b2e3921424b1993f3405e08d77",
+        "target": "ab0b0442531ee74ea1b874ca820720592b55f87a4f0adc0b13a14d54e37dbaaa"
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar_view": {
+      "namespace": "ui.chat.sidebar_view",
+      "status": "passed",
+      "sha256": {
+        "source": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+        "target": "29332139e12d9e63a1800290d36d60c8b7f29b4769f5530bd3314ad4daef38ae"
+      },
+      "findings": []
+    },
+    "ui.shell.rail": {
+      "namespace": "ui.shell.rail",
+      "status": "passed",
+      "sha256": {
+        "source": "82f946fe2d2944d03100d85263ff5e9e595dc34f953a0d57aa9794ea0879f3eb",
+        "target": "391a96542a54832aaf24f021cd96e2aeefeea6aacc7b5c65d4cfbed1c9dc7ad9"
+      },
+      "findings": []
+    },
+    "ui.common.account": {
+      "namespace": "ui.common.account",
+      "status": "passed",
+      "sha256": {
+        "source": "72e2a848a2aa4b46ecdc0ede34ed5f59b280b73e3fc544d5e563ce22ab2743e0",
+        "target": "02abb017bd9174ae6ebb57ceb1694e62e1df347710fffcd5f13d10bbfd90fc86"
+      },
+      "findings": []
+    },
+    "ui.installer": {
+      "namespace": "ui.installer",
+      "status": "passed",
+      "sha256": {
+        "source": "35b34093f3d065acf26e96a4e9601cb2906bd9439230a7fa7f9fc9a43784f7a3",
+        "target": "57c126db0b6269cd3b509400b83aba5f4d5725be4039b761665e69a3ffe2c623"
+      },
+      "findings": []
+    },
+    "ui.agentMessages": {
+      "namespace": "ui.agentMessages",
+      "status": "passed",
+      "sha256": {
+        "source": "065cbea39ca4df33aa114fc027e5f75bcc6e74e9cb21d4f14e42628d3795cbcb",
+        "target": "841101c8a5ea653820292ef0117573a7dc9d40ddc855ab5e52df7d24b17c4ceb"
+      },
+      "findings": []
+    },
+    "ui.common.connection": {
+      "namespace": "ui.common.connection",
+      "status": "passed",
+      "sha256": {
+        "source": "d1acb6a1fae70e3f85255d880a91d9e35ed49a8bf7d04ef14722ce115d7c69bb",
+        "target": "c3d1e44bc41cf306048bb2ef30bc8a3375d11f3681d2889f7055fa8b39ea72a6"
+      },
+      "findings": []
+    },
+    "ui.chat.header": {
+      "namespace": "ui.chat.header",
+      "status": "passed",
+      "sha256": {
+        "source": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+        "target": "403864dd874acd8b95d426454d01a7b06bdbdb4fc97ba812b531d35c4521ee9b"
+      },
+      "findings": []
+    },
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "sha256": {
+        "source": "29169c4c0801689781d503f724d457757275416c49e975bfb6ae4872d90c2c46",
+        "target": "bc899cead09340bf5402ea26900fa201f3902c7a0b66fb2ff4a2c17faff160ff"
+      },
+      "findings": []
+    },
+    "ui.chat.composer_media": {
+      "namespace": "ui.chat.composer_media",
+      "status": "passed",
+      "sha256": {
+        "source": "47ec03f574b6665bafaf900f15067ef522fbf8b7fe665402b0bb4be03d0aa0ff",
+        "target": "0f890377dce67fd710e985841cf261c09ae91579ee7a380f1a85a6127c098bcf"
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "namespace": "ui.common.actions",
+      "status": "passed",
+      "sha256": {
+        "source": "bf151da8ad56c3b32b05be1d505764d3f4cfb72e9792f9ec68b8a570239f6976",
+        "target": "1d08dd684d93e03bf47443f77a35125686cce8f76b1ad43a6390531af82155cd"
+      },
+      "findings": []
+    },
+    "ui.chat.dialogs": {
+      "namespace": "ui.chat.dialogs",
+      "status": "passed",
+      "sha256": {
+        "source": "783d72141bae3491cc1ecfbdfc983339e327406cd4385e7ce8f9dfa1360997fc",
+        "target": "1a476387d151434c64cc2695975a6a7ef56bf118740c807d0942cf05245260bb"
+      },
+      "findings": []
+    },
+    "ui.common.errors": {
+      "namespace": "ui.common.errors",
+      "status": "passed",
+      "sha256": {
+        "source": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+        "target": "213e355b1280d2b9ab1bf8468cf1a2c0381f0d1811e83e28985158ed71558f67"
+      },
+      "findings": []
+    },
+    "ui.common.editing": {
+      "namespace": "ui.common.editing",
+      "status": "passed",
+      "sha256": {
+        "source": "e7ddf3b75f3e46d6900aacab976f1180eb10fdb121b5f46d2dc231fd6b4f5bb5",
+        "target": "7c3ee7641537accc574ccb0d733b73d240fcba501d15680a59e24bd8640bc3b8"
+      },
+      "findings": []
+    },
+    "ui.common.loading": {
+      "namespace": "ui.common.loading",
+      "status": "passed",
+      "sha256": {
+        "source": "e629186e32cd51d7eb98dcd3e8f6587765447bd1da9bdba5c5d327ad2bdcd87e",
+        "target": "616a16cbc3c8f877a095104fc7926358763ba62ebcbe542211f55ccd689ba785"
+      },
+      "findings": []
+    },
+    "ui.chat.response_actions": {
+      "namespace": "ui.chat.response_actions",
+      "status": "passed",
+      "sha256": {
+        "source": "3c3e9480cf38316dda324d31e127ab9e63e2bf846c8e46f8efee7306fe4e47d5",
+        "target": "d83eee0e7b7d12bc74367420d9e007c4ff67ba05bb67d35815cc9df4297ab38e"
+      },
+      "findings": []
+    }
+  }
+}

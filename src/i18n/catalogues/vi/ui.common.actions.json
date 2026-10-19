@@ -1,0 +1,8 @@
+{
+	"ui.common.actions.cancel": "Hủy",
+	"ui.common.actions.close": "Đóng",
+	"ui.common.actions.copied": "Đã sao chép",
+	"ui.common.actions.copy_failed": "Không sao chép được. Hãy chọn và sao chép thủ công.",
+	"ui.common.actions.retry": "Thử lại",
+	"ui.common.actions.retry_again": "Thử lại"
+}
