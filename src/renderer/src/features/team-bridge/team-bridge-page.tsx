@@ -436,7 +436,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						    (`elevated` over `surface`) does the separating, never an edge. */}
 						<div className="shrink-0 px-3 pb-3">
 							{sendFailed && (
-								<p role="alert" className="px-2 pb-1 text-meta-sm text-danger">
+								<p role="alert" className="px-2 pb-1 text-[12px] text-danger">
 									{t("ui.teamBridge.composer.error")}
 								</p>
 							)}
