@@ -203,13 +203,12 @@ if (explicitFlag === undefined) {
 }
 nodeArgs.push(`--import=${GUARD_PRELOAD.href}`);
 /*
- * A test file that leaves a resolved-but-unsettled promise (a component store
- * that outlives the unmounted route) otherwise holds the whole file open until
- * the lane bound kills it, even though every test passed. Node's own
- * `--test-force-exit` is the runner-level answer: the file's tests and their
- * assertions have already finished by the time it fires.
+ * NEVER add `--test-force-exit` here. A test file can register tests after a
+ * top-level await, and force-exit makes the runner report a false green by
+ * leaving before that registration runs (the lane-bound test in
+ * `run-desktop-tests.test.mjs` caught it). Files that hang on an unsettled
+ * promise must release that promise in their own cleanup.
  */
-nodeArgs.push("--test-force-exit");
 nodeArgs.push(...args);
 
 /*
