@@ -3265,6 +3265,130 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 				.max(200),
 		})
 		.strict(),
+	/*
+	 * The conversation domain (docs/TEAM-BRIDGE-CONVERSATIONS.md). These are
+	 * plain desktop pass-throughs: the server owns membership, consent,
+	 * joined_seq, screening and unread, and this client adds no policy of its
+	 * own. `client_ref` is required by the send route and is minted by the
+	 * caller so a retry is idempotent.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.list"),
+			tenant_id: id.optional(),
+			limit: z.number().int().min(1).max(100).optional(),
+			before: z.string().min(1).max(64).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.get"),
+			conversation_id: id,
+			tenant_id: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.create"),
+			tenant_id: id.optional(),
+			kind: z.enum(["dm", "group", "channel"]),
+			name: z.string().min(1).max(128).optional(),
+			topic: z.string().min(1).max(512).optional(),
+			visibility: z.enum(["private", "tenant"]).optional(),
+			agent_capable: z.boolean().optional(),
+			members: z
+				.array(
+					z
+						.object({
+							account_id: id,
+							kind: z.enum(["human", "agent"]),
+							endpoint_id: id.optional(),
+							display_label: z.string().min(1).max(64),
+						})
+						.strict(),
+				)
+				.max(500),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.lifecycle"),
+			conversation_id: id,
+			action: z.enum(["archive", "unarchive", "join", "leave"]),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.members.add"),
+			conversation_id: id,
+			tenant_id: id.optional(),
+			members: z
+				.array(
+					z
+						.object({
+							account_id: id,
+							kind: z.enum(["human", "agent"]),
+							endpoint_id: id.optional(),
+							display_label: z.string().min(1).max(64),
+						})
+						.strict(),
+				)
+				.min(1)
+				.max(500),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.members.remove"),
+			conversation_id: id,
+			account_id: id,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.consent"),
+			conversation_id: id,
+			account_id: id,
+			decision: z.enum(["accept", "decline"]),
+			consent_version: z.string().min(1).max(128),
+			tenant_id: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.messages.list"),
+			conversation_id: id,
+			tenant_id: id.optional(),
+			limit: z.number().int().min(1).max(100).optional(),
+			before_seq: z.number().int().nonnegative().optional(),
+			endpoint_id: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.messages.send"),
+			conversation_id: id,
+			tenant_id: id.optional(),
+			client_ref: id,
+			body: z.string().min(1),
+			agent_label: z.string().min(1).max(64).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.read"),
+			conversation_id: id,
+			tenant_id: id.optional(),
+			seq: z.number().int().nonnegative().optional(),
+			muted: z.boolean().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.unread"),
+			tenant_id: id.optional(),
+		})
+		.strict(),
 	z.object({ op: z.literal("settings.list") }).strict(),
 	z
 		.object({
@@ -5579,6 +5703,10 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"agent_messages.status",
 	"agent_messages.settings",
 	"agent_messages.allowlist.get",
+	"team_bridge.conversations.list",
+	"team_bridge.conversations.get",
+	"team_bridge.messages.list",
+	"team_bridge.unread",
 	"accounts.list",
 	"analytics.get",
 	"analytics.models",
@@ -8201,6 +8329,112 @@ export function desktopEndpoint(request: DesktopRequest): {
 						: { tenant_id: request.tenant_id }),
 					entries: request.entries,
 				},
+			};
+		case "team_bridge.conversations.list": {
+			const query = new URLSearchParams();
+			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			if (request.before) query.set("before", request.before);
+			const suffix = query.size > 0 ? `?${query.toString()}` : "";
+			return {
+				path: `/v1/desktop/team-bridge/conversations${suffix}`,
+				method: "GET",
+			};
+		}
+		case "team_bridge.conversations.get":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}${tenantQuery(request.tenant_id)}`,
+				method: "GET",
+			};
+		case "team_bridge.conversations.create":
+			return {
+				path: "/v1/desktop/team-bridge/conversations",
+				method: "POST",
+				body: {
+					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+					kind: request.kind,
+					...(request.name ? { name: request.name } : {}),
+					...(request.topic ? { topic: request.topic } : {}),
+					...(request.visibility ? { visibility: request.visibility } : {}),
+					...(request.agent_capable === undefined
+						? {}
+						: { agent_capable: request.agent_capable }),
+					members: request.members,
+				},
+			};
+		case "team_bridge.conversations.lifecycle":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/${request.action}`,
+				method: "POST",
+			};
+		case "team_bridge.conversations.members.add": {
+			/* The route's body IS the member array and `tenant_id` is a query
+			   parameter (ConversationMemberIn list + tenant_id query). Wrapping
+			   both in an object, as this op used to, guaranteed a 422. */
+			const query = new URLSearchParams();
+			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			const suffix = query.size > 0 ? `?${query.toString()}` : "";
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/members${suffix}`,
+				method: "POST",
+				body: request.members,
+			};
+		}
+		case "team_bridge.conversations.members.remove":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/members/${encodeURIComponent(request.account_id)}`,
+				method: "DELETE",
+			};
+		case "team_bridge.conversations.consent":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/members/${encodeURIComponent(request.account_id)}/consent`,
+				method: "POST",
+				body: {
+					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+					decision: request.decision,
+					consent_version: request.consent_version,
+				},
+			};
+		case "team_bridge.messages.list": {
+			const query = new URLSearchParams();
+			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			if (request.before_seq !== undefined)
+				query.set("before_seq", String(request.before_seq));
+			if (request.endpoint_id) query.set("endpoint_id", request.endpoint_id);
+			const suffix = query.size > 0 ? `?${query.toString()}` : "";
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages${suffix}`,
+				method: "GET",
+			};
+		}
+		case "team_bridge.messages.send":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages`,
+				method: "POST",
+				body: {
+					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+					client_ref: request.client_ref,
+					body: request.body,
+					...(request.agent_label ? { agent_label: request.agent_label } : {}),
+				},
+			};
+		case "team_bridge.read":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/read`,
+				method: "POST",
+				body: {
+					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+					...(request.seq === undefined ? {} : { seq: request.seq }),
+					...(request.muted === undefined ? {} : { muted: request.muted }),
+				},
+			};
+		case "team_bridge.unread":
+			return {
+				path: `/v1/desktop/team-bridge/unread${tenantQuery(request.tenant_id)}`,
+				method: "GET",
 			};
 		case "settings.list":
 			return { path: "/v1/settings", method: "GET" };

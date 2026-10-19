@@ -3382,3 +3382,23 @@ test("the stream-subscribe IPC forwards the complete peer-source declaration, an
 	);
 	assert.equal(seen.length, 1, "a refused declaration never reaches the relay");
 });
+
+test("team_bridge.conversations.members.add matches the desktop route's body shape", () => {
+	// The route takes the member array AS the body and tenant_id as a query
+	// parameter. Wrapping both in an object (the original mapping) answered 422
+	// before the handler ran; this pins the wire shape the route actually reads.
+	const endpoint = jobsCancelEndpoint({
+		op: "team_bridge.conversations.members.add",
+		conversation_id: "bcv_abc12345",
+		tenant_id: "tnt_1",
+		members: [{ account_id: "acc_b", kind: "human", display_label: "Bea" }],
+	});
+	assert.equal(endpoint.method, "POST");
+	assert.equal(
+		endpoint.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/members?tenant_id=tnt_1",
+	);
+	assert.deepEqual(endpoint.body, [
+		{ account_id: "acc_b", kind: "human", display_label: "Bea" },
+	]);
+});
