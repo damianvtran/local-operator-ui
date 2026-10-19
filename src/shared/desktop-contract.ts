@@ -139,6 +139,22 @@ const meshId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
  * is refused HERE, by name, rather than by the daemon's generic 422.
  */
 const approvalId = z.string().regex(/^ap_[0-9a-hjkmnp-tv-z]{1,64}$/);
+/**
+ * The Library's two opaque identifiers, bounded at the boundary.
+ *
+ * An asset id is `la_` + 16 hex characters (the design contract's derivation);
+ * a tag id is opaque today, so this accepts the route's own URL-safe shape
+ * without inventing a format the backend has not frozen. Both are encoded into
+ * a path segment by the endpoint mapper, so a `/` or `..` must not survive
+ * here even if a caller built the request by hand.
+ */
+const libraryAssetId = z.string().regex(/^la_[0-9a-f]{16}$/);
+const libraryTagId = z
+	.string()
+	.min(1)
+	.max(128)
+	.regex(/^[A-Za-z0-9_.:-]+$/);
+
 const sessionImage = z
 	.object({
 		data_b64: z.string().min(1).max(1_000_000),
@@ -3187,6 +3203,68 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			consented_via: z.literal("dialog"),
 		})
 		.strict(),
+	/*
+	 * The settings section's four ops (RFC §5.2/§6.1). The enable op above is
+	 * the one-time dialog's narrower receipt; these carry the same
+	 * captured-account guard plus the states a returning user manages.
+	 *
+	 * `consented_via` is asserted by the client, not verified by the server: it
+	 * names the surface that showed the text, so the section must say
+	 * "settings" rather than borrow the dialog's value.
+	 */
+	z
+		.object({
+			op: z.literal("agent_messages.settings"),
+			tenant_id: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("agent_messages.settings.put"),
+			expected_account_id: id,
+			tenant_id: id.optional(),
+			consent_version: z.string().min(1).max(128).optional(),
+			consented_via: z.enum(["dialog", "settings"]).optional(),
+			label: z.string().min(1).max(128).optional(),
+			state: z.enum(["active", "paused", "disabled"]),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("agent_messages.allowlist.get"),
+			tenant_id: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("agent_messages.allowlist.put"),
+			expected_account_id: id,
+			tenant_id: id.optional(),
+			// The server's own target model takes exactly one id and no `kind`;
+			// the read adds `kind`, which this client never sends back.
+			entries: z
+				.array(
+					z
+						.object({
+							direction: z.enum(["send", "receive"]),
+							effect: z.enum(["allow", "deny"]),
+							target: z
+								.object({
+									endpoint_id: id.optional(),
+									account_id: id.optional(),
+								})
+								.strict()
+								.refine(
+									(target) =>
+										Boolean(target.endpoint_id) !== Boolean(target.account_id),
+									"An allowlist target names exactly one of endpoint_id or account_id",
+								),
+						})
+						.strict(),
+				)
+				.max(200),
+		})
+		.strict(),
 	z.object({ op: z.literal("settings.list") }).strict(),
 	z
 		.object({
@@ -3603,6 +3681,130 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			route: z.enum(["images", "videos", "audio", "html"]),
 			path: z.string().min(1),
 			ttlS: z.number().int().min(1).max(3600).optional(),
+		})
+		.strict(),
+	/*
+	 * THE LIBRARY SURFACE (design contract § 4). One op per route, mirroring the
+	 * HTTP verbs exactly: a listing read, a detail read, a metadata patch, a tag
+	 * vocabulary family, an asset's tag set, the chat link pair, and the
+	 * Librarian control.
+	 *
+	 * WHY THE FILTER PARAMETERS ARE TYPED ENUMS HERE rather than strings: the
+	 * page's filter rail offers exactly these values, and a call site holding the
+	 * same union cannot build a request the route will silently ignore. The
+	 * sort default and order default remain the route's own - omitted fields are
+	 * not sent, so an older daemon answers its documented default.
+	 *
+	 * `library.list` is a control budget read, not a long read: the route answers
+	 * `building` within its own ~1.5 s budget while the index continues in the
+	 * background, and the page polls while that state holds.
+	 */
+	z
+		.object({
+			op: z.literal("library.list"),
+			q: z.string().max(512).optional(),
+			category: z.string().min(1).max(64).optional(),
+			kind: z.string().min(1).max(64).optional(),
+			origin_group: z.enum(["generated", "created", "mentioned"]).optional(),
+			origin: z.string().min(1).max(64).optional(),
+			tag: z.string().min(1).max(128).optional(),
+			tag_mode: z.enum(["all", "any"]).optional(),
+			highlighted: z.boolean().optional(),
+			organized: z.boolean().optional(),
+			favorite: z.boolean().optional(),
+			session: z.string().min(1).max(12).optional(),
+			/**
+			 * The same filter as a comma list: the backend's `session_id`
+			 * (`max_length=512`, each entry a session-id shape). The provenance
+			 * menu's "show all assets from this conversation" sends this form.
+			 */
+			session_id: z.string().min(1).max(512).optional(),
+			sort: z
+				.enum([
+					"recent",
+					"name",
+					"kind",
+					"size",
+					"created",
+					"modified",
+					"organized",
+				])
+				.optional(),
+			order: z.enum(["asc", "desc"]).optional(),
+			limit: z.number().int().min(1).max(200).optional(),
+			cursor: z.string().max(512).optional(),
+		})
+		.strict(),
+	z.object({ op: z.literal("library.get"), id: libraryAssetId }).strict(),
+	z
+		.object({
+			op: z.literal("library.update"),
+			id: libraryAssetId,
+			/*
+			 * A NESTED `fields` object for the same reason `projects.update` has one:
+			 * the editable set differs per surface, and a flat op would put every
+			 * future field at the top level of a union member. `archived` is accepted
+			 * at the boundary the contract names even though this release's desktop
+			 * surface does not expose it.
+			 */
+			fields: z
+				.object({
+					name: z.string().max(200).optional(),
+					description: z.string().max(2_000).optional(),
+					favorite: z.boolean().optional(),
+					locked: z.boolean().optional(),
+					archived: z.boolean().optional(),
+				})
+				.strict(),
+		})
+		.strict(),
+	z.object({ op: z.literal("library.tags") }).strict(),
+	z
+		.object({
+			op: z.literal("library.tags.create"),
+			name: z.string().trim().min(1).max(24),
+			category: z.string().min(1).max(64).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("library.tags.update"),
+			id: libraryTagId,
+			name: z.string().trim().min(1).max(24).optional(),
+			category: z.string().min(1).max(64).optional(),
+		})
+		.strict(),
+	z.object({ op: z.literal("library.tags.delete"), id: libraryTagId }).strict(),
+	z
+		.object({
+			op: z.literal("library.tags.merge"),
+			id: libraryTagId,
+			into: libraryTagId,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("library.tags.assign"),
+			id: libraryAssetId,
+			tags: z.array(libraryTagId).max(64),
+			primary: z.string().max(128).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("library.chat.link"),
+			id: libraryAssetId,
+			sessionId,
+		})
+		.strict(),
+	z
+		.object({ op: z.literal("library.chat.clear"), id: libraryAssetId })
+		.strict(),
+	z
+		.object({
+			op: z.literal("library.librarian"),
+			/** `status` is the read's own op; the other four are the writes. */
+			action: z.enum(["status", "open", "pause", "resume", "run"]).optional(),
 		})
 		.strict(),
 ]);
@@ -5369,6 +5571,8 @@ export const DESKTOP_FOREGROUND_REQUIRED_MESSAGE =
 const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"capabilities",
 	"agent_messages.status",
+	"agent_messages.settings",
+	"agent_messages.allowlist.get",
 	"accounts.list",
 	"analytics.get",
 	"analytics.models",
@@ -5767,6 +5971,16 @@ export type DesktopMediaRequest =
 			sessionId: string;
 			digest: string;
 	  }
+	/*
+	 * THE LIBRARY'S BYTES. Content and thumbnail are addressed by ASSET ID, never
+	 * by a caller path: the backend resolves the id to its indexed ref and
+	 * re-checks the denylist, so the renderer cannot turn a preview into a file
+	 * reader. They ride this relay rather than the JSON transport for the reason
+	 * the attachment ops above do - the envelope has nowhere to put bytes - and
+	 * an `<img src>` cannot carry the bearer the route requires.
+	 */
+	| { op: "library.content"; assetId: string; download?: boolean }
+	| { op: "library.thumbnail"; assetId: string; width?: number }
 	/*
 	 * One supplement component's assembled HTML document (turn-supplements memo
 	 * §2.7, lane U-b), as `{ html }` JSON from
@@ -6432,6 +6646,13 @@ function harnessImportBody(
 			? {}
 			: { max_sessions: request.maxSessions }),
 	};
+}
+
+/** A query suffix that is empty when no tenant was selected, never `?tenant_id=`. */
+function tenantQuery(tenantId: string | undefined): string {
+	return tenantId === undefined
+		? ""
+		: `?tenant_id=${encodeURIComponent(tenantId)}`;
 }
 
 export function desktopEndpoint(request: DesktopRequest): {
@@ -7934,6 +8155,47 @@ export function desktopEndpoint(request: DesktopRequest): {
 					consented_via: request.consented_via,
 				},
 			};
+		case "agent_messages.settings":
+			return {
+				path: `/v1/desktop/team-bridge/settings${tenantQuery(request.tenant_id)}`,
+				method: "GET",
+			};
+		case "agent_messages.settings.put":
+			return {
+				path: "/v1/desktop/team-bridge/settings",
+				method: "PUT",
+				body: {
+					expected_account_id: request.expected_account_id,
+					...(request.tenant_id === undefined
+						? {}
+						: { tenant_id: request.tenant_id }),
+					...(request.consent_version === undefined
+						? {}
+						: { consent_version: request.consent_version }),
+					...(request.consented_via === undefined
+						? {}
+						: { consented_via: request.consented_via }),
+					...(request.label === undefined ? {} : { label: request.label }),
+					state: request.state,
+				},
+			};
+		case "agent_messages.allowlist.get":
+			return {
+				path: `/v1/desktop/team-bridge/allowlist${tenantQuery(request.tenant_id)}`,
+				method: "GET",
+			};
+		case "agent_messages.allowlist.put":
+			return {
+				path: "/v1/desktop/team-bridge/allowlist",
+				method: "PUT",
+				body: {
+					expected_account_id: request.expected_account_id,
+					...(request.tenant_id === undefined
+						? {}
+						: { tenant_id: request.tenant_id }),
+					entries: request.entries,
+				},
+			};
 		case "settings.list":
 			return { path: "/v1/settings", method: "GET" };
 		case "settings.edit":
@@ -7973,6 +8235,128 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "PATCH",
 				body: { key: request.key, value: request.value },
 			};
+		/*
+		 * THE LIBRARY ROUTES (design contract § 4). The listing is the one op whose
+		 * arguments travel as a QUERY STRING: omitted filters are not sent at all,
+		 * so the route's documented defaults apply and an older daemon never sees
+		 * a parameter it does not know (FastAPI ignores unknown query parameters,
+		 * which is exactly why the page only offers the frozen set). Booleans are
+		 * `0|1` on this route, never `true|false`; the endpoint mapper is the one
+		 * place that spelling lives.
+		 *
+		 * `library.librarian` splits by `action`: the read is a GET, every write is
+		 * the POST whose body names the action. The request field cannot be called
+		 * `op` because that key already names the desktop operation.
+		 */
+		case "library.list": {
+			const query = new URLSearchParams();
+			if (request.q) query.set("q", request.q);
+			if (request.category) query.set("category", request.category);
+			if (request.kind) query.set("kind", request.kind);
+			if (request.origin_group) query.set("origin_group", request.origin_group);
+			if (request.origin) query.set("origin", request.origin);
+			if (request.tag) query.set("tag", request.tag);
+			if (request.tag_mode) query.set("tag_mode", request.tag_mode);
+			if (request.highlighted !== undefined)
+				query.set("highlighted", request.highlighted ? "1" : "0");
+			if (request.organized !== undefined)
+				query.set("organized", request.organized ? "1" : "0");
+			if (request.favorite !== undefined)
+				query.set("favorite", request.favorite ? "1" : "0");
+			if (request.session) query.set("session", request.session);
+			if (request.session_id) query.set("session_id", request.session_id);
+			if (request.sort) query.set("sort", request.sort);
+			if (request.order) query.set("order", request.order);
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			if (request.cursor) query.set("cursor", request.cursor);
+			const suffix = query.toString();
+			return {
+				path: `/v1/desktop/library/assets${suffix ? `?${suffix}` : ""}`,
+				method: "GET",
+			};
+		}
+		case "library.get":
+			return {
+				path: `/v1/desktop/library/assets/${encodeURIComponent(request.id)}`,
+				method: "GET",
+			};
+		case "library.update":
+			return {
+				path: `/v1/desktop/library/assets/${encodeURIComponent(request.id)}`,
+				method: "PATCH",
+				// Exactly the keys the caller included travel, so an omitted field is
+				// untouched and an empty string clears a description (the route's
+				// `model_fields_set` edit model).
+				body: request.fields,
+			};
+		case "library.tags":
+			return { path: "/v1/desktop/library/tags", method: "GET" };
+		case "library.tags.create":
+			return {
+				path: "/v1/desktop/library/tags",
+				method: "POST",
+				body: {
+					name: request.name,
+					...(request.category !== undefined
+						? { category: request.category }
+						: {}),
+				},
+			};
+		case "library.tags.update":
+			return {
+				path: `/v1/desktop/library/tags/${encodeURIComponent(request.id)}`,
+				method: "PATCH",
+				body: {
+					...(request.name !== undefined ? { name: request.name } : {}),
+					...(request.category !== undefined
+						? { category: request.category }
+						: {}),
+				},
+			};
+		case "library.tags.delete":
+			return {
+				path: `/v1/desktop/library/tags/${encodeURIComponent(request.id)}`,
+				method: "DELETE",
+			};
+		case "library.tags.merge":
+			return {
+				path: `/v1/desktop/library/tags/${encodeURIComponent(request.id)}/merge`,
+				method: "POST",
+				body: { into: request.into },
+			};
+		case "library.tags.assign":
+			return {
+				path: `/v1/desktop/library/assets/${encodeURIComponent(request.id)}/tags`,
+				method: "PUT",
+				body: {
+					tags: request.tags,
+					...(request.primary !== undefined
+						? { primary: request.primary }
+						: {}),
+				},
+			};
+		case "library.chat.link":
+			return {
+				path: `/v1/desktop/library/assets/${encodeURIComponent(request.id)}/chat`,
+				method: "PUT",
+				body: { session_id: request.sessionId },
+			};
+		case "library.chat.clear":
+			return {
+				path: `/v1/desktop/library/assets/${encodeURIComponent(request.id)}/chat`,
+				method: "DELETE",
+			};
+		case "library.librarian": {
+			const action = request.action ?? "status";
+			if (action === "status")
+				return { path: "/v1/desktop/librarian", method: "GET" };
+			return {
+				path: "/v1/desktop/librarian",
+				method: "POST",
+				body: { op: action },
+			};
+		}
 		/*
 		 * The Projects routes, in the store's own wire vocabulary: snake_case
 		 * bodies, the typed NAME in `confirm` for the delete (the route compares

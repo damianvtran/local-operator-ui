@@ -166,6 +166,7 @@ import {
 } from "../chat-list-sections";
 import {
 	type PinMoveStep,
+	appendPinnedOrder,
 	canMovePinnedRow,
 	chatPinMoveCapJoined,
 	chatPinMoveChord,
@@ -3063,6 +3064,22 @@ export function ChatSidebar({
 	 */
 	const view = parseSidebarView(chatSidebarView);
 	/*
+	 * A pin pressed in this panel is written at the BOTTOM of the stored order (issue
+	 * #1067, rule 3; the WHY is on `appendPinnedOrder`). Kept out of the pin control's
+	 * handler so that handler stays short beside the row markup it sits in.
+	 */
+	const appendPin = (id: string) =>
+		setChatSidebarView({
+			...view,
+			pins: appendPinnedOrder(
+				pinnedRows([...listed, ...heldRows], pinsEnabled).map(
+					(entry) => entry.session_id,
+				),
+				view.pins,
+				id,
+			),
+		});
+	/*
 	 * THE PINNED SECTION'S OWN ORDER (issue #693), and the lists it is taken from -
 	 * each one because a different rule needs a different list.
 	 *
@@ -5503,10 +5520,11 @@ export function ChatSidebar({
 								title: row.title ?? undefined,
 								updated_at: row.updated_at ?? undefined,
 							});
+							if (!pinned) appendPin(row.session_id); // rule 3, see `appendPin`
 							/*
 							 * AN UNPIN FORGETS ITS SLOT (issue #693 rule 4, `chat-pin-order.ts`): the id
 							 * leaves the stored manual order with it, so re-pinning is a NEW pin at the
-							 * top rather than the resurrection of a position the reader unwound - and the
+							 * bottom rather than the resurrection of a position the reader unwound - and the
 							 * stored list cannot grow entries for conversations that are no longer in
 							 * the section it orders. Guarded on membership, so the common unpin (of a
 							 * row nobody has moved) writes no preference at all.

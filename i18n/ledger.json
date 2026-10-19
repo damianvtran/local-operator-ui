@@ -6679,6 +6679,1722 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents",
+			"source_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+			"target_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6f463700d574",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6f463700d574.json",
+					"receipt_sha256": "6926970ec11860b9fc15a04c151bc3196b194829ea3fb5cbdef512b58aace715",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.projects",
+			"source_sha256": "6b12f695845c3d01500291f5bc4eb50ea9b35e60c68bc69f21ee219c5f9d7f52",
+			"target_sha256": "d4599b21ef1c20b07d079d33490c1b81b402c0891347e48def7488524af0022d",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "61c5125becf8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/61c5125becf8.json",
+					"receipt_sha256": "860602d6d6022c8b23593b69b1521f2236accddb05150d7dfca21c3ef7c46146",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.schedules",
+			"source_sha256": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
+			"target_sha256": "1d42084e83f0167f11772a9103e0ac847273479c8aa2c59cbdb4a4f125a44d6c",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "e02498805f1d",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e02498805f1d.json",
+					"receipt_sha256": "4444602124b4eb89c5471c048f9dec623be5c1ac54de84c771c601526ead1add",
+					"scope": "round 3: agent-review remediation delta at aead165c5f, three namespaces",
+					"note": "Independent delta audit of the two agent-review nits; zero findings."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
+					"target_sha256": "0326f7e38941588160fcb662a9389f5da3f37f23c9902cc20cdb15e5ce99c08b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "61c5125becf8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/61c5125becf8.json",
+							"receipt_sha256": "860602d6d6022c8b23593b69b1521f2236accddb05150d7dfca21c3ef7c46146",
+							"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+							"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.browser",
+			"source_sha256": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
+			"target_sha256": "bea8f7be4be83b4b37d3bdc43252c4e4071da3ae49afb54a774cc6a372436861",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "1967c57d57f4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1967c57d57f4.json",
+					"receipt_sha256": "d4f3719cf6b590959abcaabbead2543ab6c5fc61d42a0ddfbca3ba6e1ddf9a5d",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.browser.chrome",
+			"source_sha256": "73793572e5e36b8bbc8df6c1f27fb98083634b3b9e3cbd05ede27da4813c656c",
+			"target_sha256": "806233c4963e479eedb06baaac1b3102b5d4a84d4d962c9c5ed4263c6cada455",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "1967c57d57f4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1967c57d57f4.json",
+					"receipt_sha256": "d4f3719cf6b590959abcaabbead2543ab6c5fc61d42a0ddfbca3ba6e1ddf9a5d",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.mesh",
+			"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+			"target_sha256": "a6cb2ff40fa18d48215a1d0737984cc07ca36997a089e92cbe91dd9617f19cce",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "1967c57d57f4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1967c57d57f4.json",
+					"receipt_sha256": "d4f3719cf6b590959abcaabbead2543ab6c5fc61d42a0ddfbca3ba6e1ddf9a5d",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.providers",
+			"source_sha256": "9981637a98afbcbc166d889b461795bae7685e42274f4d607b711f4b0f9085f2",
+			"target_sha256": "830ffedbcde83312cff3ca1a3da25a01438861c380ac6d7984b2fb92decf0b34",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "056f4565646f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/056f4565646f.json",
+					"receipt_sha256": "a460f43b0f13504a0e99df5c63c4083a632af09b1c492ea6e5aa849ebe2df42e",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.hub",
+			"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+			"target_sha256": "395a16cf201cdc3318096629cfecbea7d3e19954f6ea200a917ba93ebe118109",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "056f4565646f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/056f4565646f.json",
+					"receipt_sha256": "a460f43b0f13504a0e99df5c63c4083a632af09b1c492ea6e5aa849ebe2df42e",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.canvas",
+			"source_sha256": "6fa13501b59a260373bcb26f212fc6244a3d1219ef1811d2b0c1de05b541f1f5",
+			"target_sha256": "c643ebba12f7fbc6b0b0959e00e47e937ca90350aa2de25ccc9dd3aa649a2501",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "056f4565646f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/056f4565646f.json",
+					"receipt_sha256": "a460f43b0f13504a0e99df5c63c4083a632af09b1c492ea6e5aa849ebe2df42e",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.hub.comments",
+			"source_sha256": "5c20d0e9a7f66f753561ded1d104aa5cf0e1fd0d5a73f7f0a7e3349a28c6f2c4",
+			"target_sha256": "b236dcc33c7c7b692538c30a77d7a7ed202c835a5a1416d8c38584700ebab261",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "056f4565646f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/056f4565646f.json",
+					"receipt_sha256": "a460f43b0f13504a0e99df5c63c4083a632af09b1c492ea6e5aa849ebe2df42e",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.hub.taxonomy",
+			"source_sha256": "4614e6b5eb2c56f0f48ccbee9bf26266193701a79994da4d9cf533386f1d3717",
+			"target_sha256": "f13098788f664c49574934bb629970f4a532d24924987af0720eee591e312ff9",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "056f4565646f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/056f4565646f.json",
+					"receipt_sha256": "a460f43b0f13504a0e99df5c63c4083a632af09b1c492ea6e5aa849ebe2df42e",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.settings.integrations",
+			"source_sha256": "36b3507993a0466100ca099c3c1c2b2852d66a81b14f3685031f0a35dfa0f5b3",
+			"target_sha256": "46fd4dcf72bc346b24b7e6a47aa8f9251651556f46a3c1b5eebc8a438eb1d14d",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "37675258247c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/37675258247c.json",
+					"receipt_sha256": "76bff713ad227dc3b457b96b465a669fb73f33f59fdbfc372b59764b9c241ef7",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.settings.configuration",
+			"source_sha256": "d11a5170a0336449668b91a2b2aa1013ae36ee38c4b70fc69f90541aea3e5050",
+			"target_sha256": "e3da946801e657ad25dfdb1eb09083a16345559b6840d5bbf740883bc53007ee",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "37675258247c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/37675258247c.json",
+					"receipt_sha256": "76bff713ad227dc3b457b96b465a669fb73f33f59fdbfc372b59764b9c241ef7",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.settings.imports",
+			"source_sha256": "1f8b1941bd65b91c84b1b4c41bfb1406f0e4790936c8690b04bfd788b4a1b082",
+			"target_sha256": "a3e913824b7b4dc0598cf388fb16f1650249380d60e7517c02fa0fd89ba37f27",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "37675258247c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/37675258247c.json",
+					"receipt_sha256": "76bff713ad227dc3b457b96b465a669fb73f33f59fdbfc372b59764b9c241ef7",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.settings.account",
+			"source_sha256": "90960d5e885e5b617af91b7249b64828a049c0b9631bf5da4562a8f8c2f5c066",
+			"target_sha256": "87c4901b0f80a4c43df14bdbfae7784eb439b15811afd3b0d59eda7bacddf145",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "37675258247c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/37675258247c.json",
+					"receipt_sha256": "76bff713ad227dc3b457b96b465a669fb73f33f59fdbfc372b59764b9c241ef7",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.settings.model",
+			"source_sha256": "5a09b6ed49e8501d14a6f8052a70ce15ce5104ec8da3756c6b576e6e4d150cf1",
+			"target_sha256": "4aadb4d9d6045f0b084a1b70b9ad369b654beb87b170640f306b5fbcf80835c9",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "37675258247c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/37675258247c.json",
+					"receipt_sha256": "76bff713ad227dc3b457b96b465a669fb73f33f59fdbfc372b59764b9c241ef7",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.settings.model.default_effort",
+			"source_sha256": "5a4a01952b8a4242730e336cf082dc926085ac126a147d8b44197e9f04fc3b29",
+			"target_sha256": "904f9ef4dc2921cf062fa71764364ee1b3a5241c300270a45f6aad8708354d45",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "e02498805f1d",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e02498805f1d.json",
+					"receipt_sha256": "4444602124b4eb89c5471c048f9dec623be5c1ac54de84c771c601526ead1add",
+					"scope": "round 3: agent-review remediation delta at aead165c5f, three namespaces",
+					"note": "Independent delta audit of the two agent-review nits; zero findings."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "5a4a01952b8a4242730e336cf082dc926085ac126a147d8b44197e9f04fc3b29",
+					"target_sha256": "8ac0644b122ceaf0b8dade2f3b1aabd610d4cc1ca97b333cc9dd7e25c0fa3ed0",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "37675258247c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/37675258247c.json",
+							"receipt_sha256": "76bff713ad227dc3b457b96b465a669fb73f33f59fdbfc372b59764b9c241ef7",
+							"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+							"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.settings.model.provider_callout",
+			"source_sha256": "8d1871aa2d087f99694b77e9f946b33b549a9541525023347b78124f42bbf82f",
+			"target_sha256": "13c15006cc1b1eaf6d9ddd827af05a536799b1a469f3d5228ed657e4d9a2c08a",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "37675258247c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/37675258247c.json",
+					"receipt_sha256": "76bff713ad227dc3b457b96b465a669fb73f33f59fdbfc372b59764b9c241ef7",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.settings.speech",
+			"source_sha256": "36b1321c4660c345b6c40dfa753e0e233228a66868cfe78218c4ce573609574d",
+			"target_sha256": "38e50bd3225759ba58070b8e269ca5edf881408d9d5d557854038d03287c7c68",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "37675258247c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/37675258247c.json",
+					"receipt_sha256": "76bff713ad227dc3b457b96b465a669fb73f33f59fdbfc372b59764b9c241ef7",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.settings.updates",
+			"source_sha256": "6597aeea3a3a0495f1ba0d9a7ce8078f455d970b53647dbc8350e00fbc9099b2",
+			"target_sha256": "a9dceff8ef8601ce8bebc07f2373db6b8a30ca999f1d2366fdc25b0f21c552a0",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "37675258247c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/37675258247c.json",
+					"receipt_sha256": "76bff713ad227dc3b457b96b465a669fb73f33f59fdbfc372b59764b9c241ef7",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.settings.navigation",
+			"source_sha256": "b0db379acf4e4c13bed8f4fb3f7e551c0b1ebc3dd52ef4508a9797c5fdcf3dbc",
+			"target_sha256": "baffa72805a533cd9096fe8dc650c501d4b70a1fd6728025504397133c28e06e",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "37675258247c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/37675258247c.json",
+					"receipt_sha256": "76bff713ad227dc3b457b96b465a669fb73f33f59fdbfc372b59764b9c241ef7",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.settings.appearance.window_glass",
+			"source_sha256": "d3c6e272273baab454200c41a25b21c451689ae9bf03329aa776dc1cb9f1b33a",
+			"target_sha256": "77e4636b11715a2f3ea5ddf0cd0a9525d2d4d48f411f93ef8c68d74863b69fc6",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "37675258247c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/37675258247c.json",
+					"receipt_sha256": "76bff713ad227dc3b457b96b465a669fb73f33f59fdbfc372b59764b9c241ef7",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.settings.appearance",
+			"source_sha256": "f5db8989cc542fededba171769b0fbaa940cec562de6eccc07347c0f41c784d1",
+			"target_sha256": "0942def10f967cbe6c886985bceadeaf01725443d934dd58dd63135142bce547",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "37675258247c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/37675258247c.json",
+					"receipt_sha256": "76bff713ad227dc3b457b96b465a669fb73f33f59fdbfc372b59764b9c241ef7",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.settings.shortcuts",
+			"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
+			"target_sha256": "4f749e6b45807009cd2d7039cc29c8c30bd9786c25e3431f87602ad008afe93e",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "37675258247c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/37675258247c.json",
+					"receipt_sha256": "76bff713ad227dc3b457b96b465a669fb73f33f59fdbfc372b59764b9c241ef7",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.common.updates",
+			"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
+			"target_sha256": "de8f039bdb657ec4922cf714bf120366e2a269f76bf30760c4b354ef6b5fc541",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.common.forms",
+			"source_sha256": "28a63a53e5b6c3c4fccb9995eb07637c8521ce9d5019e304f3fedb0ddbc053d9",
+			"target_sha256": "5f9200058da5be61679bc6956b8195cc9ad0ad328856badc9ac819b3d9f23466",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.common.models",
+			"source_sha256": "561e39a0105425d66cac7d7497306d740d79f7b2e3921424b1993f3405e08d77",
+			"target_sha256": "1d45fe28e4cfc2993c0370aef091738e4a2b266dbd32e71560432701e6adcca1",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.common.account",
+			"source_sha256": "72e2a848a2aa4b46ecdc0ede34ed5f59b280b73e3fc544d5e563ce22ab2743e0",
+			"target_sha256": "b6311b899769a6cbbd35e4077c784b6a7857ab286addab93cd6444429e5dc253",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.common.connection",
+			"source_sha256": "d1acb6a1fae70e3f85255d880a91d9e35ed49a8bf7d04ef14722ce115d7c69bb",
+			"target_sha256": "9494258b3ed1c606702fdb1c6e1aea99545a191f62aa0b232754f022de8b7316",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.common.actions",
+			"source_sha256": "bf151da8ad56c3b32b05be1d505764d3f4cfb72e9792f9ec68b8a570239f6976",
+			"target_sha256": "8cc3da3dd7430eb13f1f20516f79e274ce2581af9f2f2923f4fe450b27e926a1",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "e02498805f1d",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e02498805f1d.json",
+					"receipt_sha256": "4444602124b4eb89c5471c048f9dec623be5c1ac54de84c771c601526ead1add",
+					"scope": "round 3: agent-review remediation delta at aead165c5f, three namespaces",
+					"note": "Independent delta audit of the two agent-review nits; zero findings."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "bf151da8ad56c3b32b05be1d505764d3f4cfb72e9792f9ec68b8a570239f6976",
+					"target_sha256": "f3eafaf35e91d4ed3660931fa94060fa4ee3fbe345d4dc9cc45db9ffcd0a78b5",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "6b6868c6f100",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6b6868c6f100.json",
+							"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+							"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+							"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.common.errors",
+			"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+			"target_sha256": "abaa7006d3acf97c27a0612db81a6e1c328ba66d8ce3622ada0b65cf3c76c390",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.common.editing",
+			"source_sha256": "e7ddf3b75f3e46d6900aacab976f1180eb10fdb121b5f46d2dc231fd6b4f5bb5",
+			"target_sha256": "85b1dcb4551902fc877683c63f75d30461d81556e58b672bb9debfaef8f5bb5c",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.common.loading",
+			"source_sha256": "e629186e32cd51d7eb98dcd3e8f6587765447bd1da9bdba5c5d327ad2bdcd87e",
+			"target_sha256": "f3f0ed1e3ac9d6d279966ce1ffa4182c1edef8da897cbf97890e336c20c32ced",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.tags",
+			"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+			"target_sha256": "3140c3250e1652cd338af2194f10d75732b971f370ac1daf9b8adcb5dd3fb5ba",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor-zh",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean-with-findings",
+					"instance": "7c1a5e9b3d42",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/7c1a5e9b3d42.json",
+					"receipt_sha256": "19e31d012ba1de23f4427f6b98b5bc3275225fc91ef8dc835245625e1828b295",
+					"scope": "12-key V2-1 delta over preserved 42-key shipping Chinese baseline",
+					"note": "Baseline translator retained mechanically; delta translator coder/openai/gpt-6.1-sol. ZH-N1 ellipsis-style nit accepted; no blocker/major/minor."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ffb1c6b985fd1ab521a2a5fc49955978d76cabc5671437dc2bc6b31cfa1ada74",
+					"target_sha256": "f55f1e8abdf819f48a0f77c09e3864dc8363ef0a752f8eed2b2dad76e83facbe",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "6b6868c6f100",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6b6868c6f100.json",
+							"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+							"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+							"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.composer",
+			"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+			"target_sha256": "1fae5e2a5ed42aa616d2c6e80cc91e4f68c2168bcff9e0de55a513c0fb3b0059",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.sidebar_view",
+			"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+			"target_sha256": "bfae15169232e85dc7d346da0c1906652b61d8716b2760910a5f315ba866a372",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.header",
+			"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+			"target_sha256": "cb3016cb9651db9ce7d0eb57db27e712bd948daef0cbfc21351b1f98cf4dd195",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.composer_media",
+			"source_sha256": "47ec03f574b6665bafaf900f15067ef522fbf8b7fe665402b0bb4be03d0aa0ff",
+			"target_sha256": "dd0f8662fdc5b1b996b9cd65c1ce8282cf870b5bdfec05c72c626d2d82b8232b",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.dialogs",
+			"source_sha256": "783d72141bae3491cc1ecfbdfc983339e327406cd4385e7ce8f9dfa1360997fc",
+			"target_sha256": "2433556664b8e7c370e6405a3200f22c5776ed318120869c66c04d79617828f5",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat",
+			"source_sha256": "29169c4c0801689781d503f724d457757275416c49e975bfb6ae4872d90c2c46",
+			"target_sha256": "7332f8a833c0d746c81ab563dbe1b913a6d16e10a27b8d0b5153c52a886ad668",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.shell",
+			"source_sha256": "a36a75e15ce94632bad00e774e7f6211ca58d95a2b6f6f50a85e687d64a5b1ea",
+			"target_sha256": "df7feb98c6f4b3328055f7be3955f88ad3b43939eb67506085d472e19ea3902d",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.shell.rail",
+			"source_sha256": "82f946fe2d2944d03100d85263ff5e9e595dc34f953a0d57aa9794ea0879f3eb",
+			"target_sha256": "944c9c5dcfca42aa48c1d5cb9b7204655439afb1f0f77735e824759786731937",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.installer",
+			"source_sha256": "35b34093f3d065acf26e96a4e9601cb2906bd9439230a7fa7f9fc9a43784f7a3",
+			"target_sha256": "ff804d5dbf37d2bccdcf2bbfedc77288d3a25a2145b166dae657cdd48797c6ff",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agentMessages",
+			"source_sha256": "065cbea39ca4df33aa114fc027e5f75bcc6e74e9cb21d4f14e42628d3795cbcb",
+			"target_sha256": "b4074f74723df9cd128d1e85764b1b38d9a2053ad405ca75819797dd70bcf80e",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6b6868c6f100",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6b6868c6f100.json",
+					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.settings",
+			"source_sha256": "2e2a8a28891db681fd72396a3b8323e8705e4ea9c0397e49237e3ed3f7e1a897",
+			"target_sha256": "e3978955d19fbe42aefe9208c7428c7863f306f639272191cd830ff69c212f15",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6f463700d574",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6f463700d574.json",
+					"receipt_sha256": "6926970ec11860b9fc15a04c151bc3196b194829ea3fb5cbdef512b58aace715",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.models",
+			"source_sha256": "0775863598346b25001f9131bdf4bf207aba0d036858ce08b7cc49b00f44a540",
+			"target_sha256": "4abca46d5591664a5ae1b4a0fb9952a89128154868945e60ed231385173f6dec",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6f463700d574",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6f463700d574.json",
+					"receipt_sha256": "6926970ec11860b9fc15a04c151bc3196b194829ea3fb5cbdef512b58aace715",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.dialogs",
+			"source_sha256": "99fc8672fbb4139aa2721542a8fb994506301b0c678d86c21439e939f5dd2bf4",
+			"target_sha256": "fdc6b780e6559bef221f3e04144a8d6731bb3294872bb7a31cf5f88752726446",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6f463700d574",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6f463700d574.json",
+					"receipt_sha256": "6926970ec11860b9fc15a04c151bc3196b194829ea3fb5cbdef512b58aace715",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.navigation",
+			"source_sha256": "23f591cd7c2d52c2563e0b5cbb4cbb2164f7cd01c2568b050738b3be976a5729",
+			"target_sha256": "1f0ab5462bbff08540f168ebb1dee709afc756005863f2ae1cbda9d20fdc4a52",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6f463700d574",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6f463700d574.json",
+					"receipt_sha256": "6926970ec11860b9fc15a04c151bc3196b194829ea3fb5cbdef512b58aace715",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.refusals",
+			"source_sha256": "457cb86efa40d800d2adf711ec2b4289d22b4b9013fd48189082c4b8808d3f20",
+			"target_sha256": "ae0f9f651a32f6d5471bb97b0cd19813553f41bc5377fbdcd9081d2f44bae15d",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6f463700d574",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6f463700d574.json",
+					"receipt_sha256": "6926970ec11860b9fc15a04c151bc3196b194829ea3fb5cbdef512b58aace715",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.starters",
+			"source_sha256": "7d7170328807a0ae0018bb69c4cd5fe49f6d5e47f7ca34484cf71b2a74612cec",
+			"target_sha256": "336f52d3df2af9ccdeacaaffe82be26f3c969b78fc7cf15b8ac814596614b173",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6f463700d574",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6f463700d574.json",
+					"receipt_sha256": "6926970ec11860b9fc15a04c151bc3196b194829ea3fb5cbdef512b58aace715",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.code_review",
+			"source_sha256": "7344c8694a23662bfe3ae12205685cfa14851209d0685abbe463b9f513565085",
+			"target_sha256": "a685e851406ec08a864a3be03c37bfea6fc6d57d0fb6925cb679a633ca5c99bf",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6f463700d574",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6f463700d574.json",
+					"receipt_sha256": "6926970ec11860b9fc15a04c151bc3196b194829ea3fb5cbdef512b58aace715",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.command_palette",
+			"source_sha256": "c48797d973f81dea023e5c89c40c83d8ae0a9cdfaeb2509f6cbc4e9fb8abd7c6",
+			"target_sha256": "1c85b9bf4bf6bf8860000fa9fd93b3e8d6f216b3f7d9d90febf34b05ca8f0aa1",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "6f463700d574",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6f463700d574.json",
+					"receipt_sha256": "6926970ec11860b9fc15a04c151bc3196b194829ea3fb5cbdef512b58aace715",
+					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

@@ -264,3 +264,14 @@ test("drop preview uses the contracted row ground, while only the detached menu 
 	assert.ok(CHAT_ROW_MENU_SCROLL_CLASS.includes("50dvh"));
 	assert.ok(CHAT_ROW_MENU_SCROLL_CLASS.includes("min-h-8"));
 });
+
+test("shipping Chinese tag namespace preserves exact-one removal semantics", () => {
+	const zh = JSON.parse(
+		readFileSync("src/i18n/catalogues/zh-CN/ui.chat.tags.json", "utf8"),
+	);
+	assert.equal(Object.keys(zh).length, 54);
+	const message = new IntlMessageFormat(zh["ui.chat.tags.remove_all"], "zh-CN");
+	assert.equal(message.format({ count: 1 }), "移除标签（1）");
+	for (const count of [2, 21, 101])
+		assert.equal(message.format({ count }), `移除所有标签（${count}）`);
+});

@@ -42,6 +42,7 @@ import type { CanvasDocument } from "../../types/canvas";
 import { closeDocumentBuffer } from "./close-report";
 import {
 	adoptBuffer,
+	bufferText,
 	commitCanvasDocument,
 	proposeBuffer,
 	saveBuffer,
@@ -399,7 +400,16 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	agentId,
 	initialFormatMenuOpen = false,
 }) => {
-	const [content, setContent] = useState(document.content);
+	/*
+	 * A REMOUNT MUST SHOW THE RETAINED DRAFT, not the file's bytes. The buffer
+	 * owner outlives this component (dock/route switches unmount it), so the
+	 * editor's first paint and its document-id effect below both hydrate from
+	 * `bufferText` when a buffer exists; `document.content` is only the fallback
+	 * for a document the owner has never seen.
+	 */
+	const [content, setContent] = useState(
+		() => bufferText(document.id) ?? document.content,
+	);
 	const [hasUserChanges, setHasUserChanges] = useState(false);
 	const [currentTextType, setCurrentTextType] = useState<TextType>("paragraph");
 	const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
@@ -827,15 +837,17 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: We need to run this effect only when the document is changed by the user
 	useEffect(() => {
 		if (editorRef.current && document.id) {
-			// Set editor content
-			const htmlContent = markdownToHtml(document.content);
+			// A retained draft wins over the file body; see the state initializer.
+			const retained = bufferText(document.id);
+			const shown = retained ?? document.content;
+			const htmlContent = markdownToHtml(shown);
 
 			if (editorRef.current.innerHTML !== htmlContent) {
 				editorRef.current.innerHTML = htmlContent;
 			}
 
-			setContent(document.content);
-			setHasUserChanges(false);
+			setContent(shown);
+			setHasUserChanges(retained !== null && retained !== document.content);
 			originalContentRef.current = document.content;
 			isInitialLoadRef.current = true;
 		}

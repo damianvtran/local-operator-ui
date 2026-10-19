@@ -22,6 +22,7 @@
  */
 
 import enUiAgentMessages from "./catalogues/en/ui.agentMessages.json";
+import enUiAgentMessagesSettings from "./catalogues/en/ui.agentMessages.settings.json";
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
 import enUiAgentsModels from "./catalogues/en/ui.agents.models.json";
@@ -37,6 +38,7 @@ import enUiChatComposerMedia from "./catalogues/en/ui.chat.composer_media.json";
 import enUiChatDialogs from "./catalogues/en/ui.chat.dialogs.json";
 import enUiChatHeader from "./catalogues/en/ui.chat.header.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
+import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
 import enUiChatTags from "./catalogues/en/ui.chat.tags.json";
 import enUiCodeReview from "./catalogues/en/ui.code_review.json";
@@ -55,6 +57,7 @@ import enUiHubComments from "./catalogues/en/ui.hub.comments.json";
 import enUiHub from "./catalogues/en/ui.hub.json";
 import enUiHubTaxonomy from "./catalogues/en/ui.hub.taxonomy.json";
 import enUiInstaller from "./catalogues/en/ui.installer.json";
+import enUiLibrary from "./catalogues/en/ui.library.json";
 import enUiMesh from "./catalogues/en/ui.mesh.json";
 import enUiOnboarding from "./catalogues/en/ui.onboarding.json";
 import enUiProjects from "./catalogues/en/ui.projects.json";
@@ -245,13 +248,66 @@ import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
 import viUiSettings from "./catalogues/vi/ui.settings.json";
+import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
+import zhCNUiAgentsDialogs from "./catalogues/zh-CN/ui.agents.dialogs.json";
+import zhCNUiAgents from "./catalogues/zh-CN/ui.agents.json";
+import zhCNUiAgentsModels from "./catalogues/zh-CN/ui.agents.models.json";
+import zhCNUiAgentsNavigation from "./catalogues/zh-CN/ui.agents.navigation.json";
+import zhCNUiAgentsRefusals from "./catalogues/zh-CN/ui.agents.refusals.json";
+import zhCNUiAgentsSettings from "./catalogues/zh-CN/ui.agents.settings.json";
+import zhCNUiAgentsStarters from "./catalogues/zh-CN/ui.agents.starters.json";
+import zhCNUiBrowserChrome from "./catalogues/zh-CN/ui.browser.chrome.json";
+import zhCNUiBrowser from "./catalogues/zh-CN/ui.browser.json";
+import zhCNUiCanvas from "./catalogues/zh-CN/ui.canvas.json";
+import zhCNUiChatComposer from "./catalogues/zh-CN/ui.chat.composer.json";
+import zhCNUiChatComposerMedia from "./catalogues/zh-CN/ui.chat.composer_media.json";
+import zhCNUiChatDialogs from "./catalogues/zh-CN/ui.chat.dialogs.json";
+import zhCNUiChatHeader from "./catalogues/zh-CN/ui.chat.header.json";
+import zhCNUiChat from "./catalogues/zh-CN/ui.chat.json";
+import zhCNUiChatSidebarView from "./catalogues/zh-CN/ui.chat.sidebar_view.json";
+import zhCNUiChatTags from "./catalogues/zh-CN/ui.chat.tags.json";
+import zhCNUiCodeReview from "./catalogues/zh-CN/ui.code_review.json";
+import zhCNUiCommandPalette from "./catalogues/zh-CN/ui.command_palette.json";
+import zhCNUiCommonAccount from "./catalogues/zh-CN/ui.common.account.json";
+import zhCNUiCommonActions from "./catalogues/zh-CN/ui.common.actions.json";
+import zhCNUiCommonConnection from "./catalogues/zh-CN/ui.common.connection.json";
+import zhCNUiCommonEditing from "./catalogues/zh-CN/ui.common.editing.json";
+import zhCNUiCommonErrors from "./catalogues/zh-CN/ui.common.errors.json";
+import zhCNUiCommonForms from "./catalogues/zh-CN/ui.common.forms.json";
+import zhCNUiCommonLoading from "./catalogues/zh-CN/ui.common.loading.json";
+import zhCNUiCommonModels from "./catalogues/zh-CN/ui.common.models.json";
+import zhCNUiCommonUpdates from "./catalogues/zh-CN/ui.common.updates.json";
 import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
+import zhCNUiHubComments from "./catalogues/zh-CN/ui.hub.comments.json";
+import zhCNUiHub from "./catalogues/zh-CN/ui.hub.json";
+import zhCNUiHubTaxonomy from "./catalogues/zh-CN/ui.hub.taxonomy.json";
+import zhCNUiInstaller from "./catalogues/zh-CN/ui.installer.json";
+import zhCNUiMesh from "./catalogues/zh-CN/ui.mesh.json";
 import zhCNUiOnboarding from "./catalogues/zh-CN/ui.onboarding.json";
+import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
+import zhCNUiProviders from "./catalogues/zh-CN/ui.providers.json";
+import zhCNUiSchedules from "./catalogues/zh-CN/ui.schedules.json";
+import zhCNUiSettingsAccount from "./catalogues/zh-CN/ui.settings.account.json";
+import zhCNUiSettingsAppearance from "./catalogues/zh-CN/ui.settings.appearance.json";
+import zhCNUiSettingsAppearanceWindowGlass from "./catalogues/zh-CN/ui.settings.appearance.window_glass.json";
+import zhCNUiSettingsConfiguration from "./catalogues/zh-CN/ui.settings.configuration.json";
+import zhCNUiSettingsImports from "./catalogues/zh-CN/ui.settings.imports.json";
+import zhCNUiSettingsIntegrations from "./catalogues/zh-CN/ui.settings.integrations.json";
 import zhCNUiSettings from "./catalogues/zh-CN/ui.settings.json";
+import zhCNUiSettingsModelDefaultEffort from "./catalogues/zh-CN/ui.settings.model.default_effort.json";
+import zhCNUiSettingsModel from "./catalogues/zh-CN/ui.settings.model.json";
+import zhCNUiSettingsModelProviderCallout from "./catalogues/zh-CN/ui.settings.model.provider_callout.json";
+import zhCNUiSettingsNavigation from "./catalogues/zh-CN/ui.settings.navigation.json";
+import zhCNUiSettingsShortcuts from "./catalogues/zh-CN/ui.settings.shortcuts.json";
+import zhCNUiSettingsSpeech from "./catalogues/zh-CN/ui.settings.speech.json";
+import zhCNUiSettingsUpdates from "./catalogues/zh-CN/ui.settings.updates.json";
+import zhCNUiShell from "./catalogues/zh-CN/ui.shell.json";
+import zhCNUiShellRail from "./catalogues/zh-CN/ui.shell.rail.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentMessages,
+	...enUiAgentMessagesSettings,
 	...enUiAgentsDialogs,
 	...enUiAgents,
 	...enUiAgentsModels,
@@ -267,6 +323,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatDialogs,
 	...enUiChatHeader,
 	...enUiChat,
+	...enUiChatResponseActions,
 	...enUiChatSidebarView,
 	...enUiChatTags,
 	...enUiCodeReview,
@@ -285,6 +342,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiHub,
 	...enUiHubTaxonomy,
 	...enUiInstaller,
+	...enUiLibrary,
 	...enUiMesh,
 	...enUiOnboarding,
 	...enUiProjects,
@@ -493,9 +551,61 @@ export const bundledCatalogues: Readonly<
 		...viUiSettings,
 	},
 	"zh-CN": {
+		...zhCNUiAgentMessages,
+		...zhCNUiAgentsDialogs,
+		...zhCNUiAgents,
+		...zhCNUiAgentsModels,
+		...zhCNUiAgentsNavigation,
+		...zhCNUiAgentsRefusals,
+		...zhCNUiAgentsSettings,
+		...zhCNUiAgentsStarters,
+		...zhCNUiBrowserChrome,
+		...zhCNUiBrowser,
+		...zhCNUiCanvas,
+		...zhCNUiChatComposer,
+		...zhCNUiChatComposerMedia,
+		...zhCNUiChatDialogs,
+		...zhCNUiChatHeader,
+		...zhCNUiChat,
+		...zhCNUiChatSidebarView,
+		...zhCNUiChatTags,
+		...zhCNUiCodeReview,
+		...zhCNUiCommandPalette,
+		...zhCNUiCommonAccount,
+		...zhCNUiCommonActions,
+		...zhCNUiCommonConnection,
+		...zhCNUiCommonEditing,
+		...zhCNUiCommonErrors,
+		...zhCNUiCommonForms,
+		...zhCNUiCommonLoading,
+		...zhCNUiCommonModels,
+		...zhCNUiCommonUpdates,
 		...zhCNUiConsole,
+		...zhCNUiHubComments,
+		...zhCNUiHub,
+		...zhCNUiHubTaxonomy,
+		...zhCNUiInstaller,
+		...zhCNUiMesh,
 		...zhCNUiOnboarding,
+		...zhCNUiProjects,
+		...zhCNUiProviders,
+		...zhCNUiSchedules,
+		...zhCNUiSettingsAccount,
+		...zhCNUiSettingsAppearance,
+		...zhCNUiSettingsAppearanceWindowGlass,
+		...zhCNUiSettingsConfiguration,
+		...zhCNUiSettingsImports,
+		...zhCNUiSettingsIntegrations,
 		...zhCNUiSettings,
+		...zhCNUiSettingsModelDefaultEffort,
+		...zhCNUiSettingsModel,
+		...zhCNUiSettingsModelProviderCallout,
+		...zhCNUiSettingsNavigation,
+		...zhCNUiSettingsShortcuts,
+		...zhCNUiSettingsSpeech,
+		...zhCNUiSettingsUpdates,
+		...zhCNUiShell,
+		...zhCNUiShellRail,
 	},
 };
 
@@ -517,6 +627,90 @@ export type MessageParams = {
 	"ui.agentMessages.dialog.title": undefined;
 	"ui.agentMessages.dialog.validation_detail": { field: string; rule: string };
 	"ui.agentMessages.dialog.validation_failure": undefined;
+	"ui.agentMessages.settings.action.enable": undefined;
+	"ui.agentMessages.settings.action.enable_again": undefined;
+	"ui.agentMessages.settings.action.pause": undefined;
+	"ui.agentMessages.settings.action.resume": undefined;
+	"ui.agentMessages.settings.action.turn_off": undefined;
+	"ui.agentMessages.settings.allowlist.add": undefined;
+	"ui.agentMessages.settings.allowlist.add_allowed": undefined;
+	"ui.agentMessages.settings.allowlist.add_blocked": undefined;
+	"ui.agentMessages.settings.allowlist.agent_id": undefined;
+	"ui.agentMessages.settings.allowlist.allowed_empty": undefined;
+	"ui.agentMessages.settings.allowlist.allowed_heading": undefined;
+	"ui.agentMessages.settings.allowlist.anyone": undefined;
+	"ui.agentMessages.settings.allowlist.blocked_empty": undefined;
+	"ui.agentMessages.settings.allowlist.blocked_heading": undefined;
+	"ui.agentMessages.settings.allowlist.cue_deny": undefined;
+	"ui.agentMessages.settings.allowlist.cue_listed_only": undefined;
+	"ui.agentMessages.settings.allowlist.cue_remove": undefined;
+	"ui.agentMessages.settings.allowlist.description": undefined;
+	"ui.agentMessages.settings.allowlist.identifier": undefined;
+	"ui.agentMessages.settings.allowlist.identifier_empty": undefined;
+	"ui.agentMessages.settings.allowlist.identifier_help_agent": undefined;
+	"ui.agentMessages.settings.allowlist.identifier_help_person": undefined;
+	"ui.agentMessages.settings.allowlist.identifier_invalid": undefined;
+	"ui.agentMessages.settings.allowlist.identifier_long": undefined;
+	"ui.agentMessages.settings.allowlist.kind": undefined;
+	"ui.agentMessages.settings.allowlist.kind_agent": undefined;
+	"ui.agentMessages.settings.allowlist.kind_person": undefined;
+	"ui.agentMessages.settings.allowlist.level": undefined;
+	"ui.agentMessages.settings.allowlist.listed_only": undefined;
+	"ui.agentMessages.settings.allowlist.needs_entry": undefined;
+	"ui.agentMessages.settings.allowlist.person_id": undefined;
+	"ui.agentMessages.settings.allowlist.read_only": undefined;
+	"ui.agentMessages.settings.allowlist.receive": undefined;
+	"ui.agentMessages.settings.allowlist.remove": undefined;
+	"ui.agentMessages.settings.allowlist.save": undefined;
+	"ui.agentMessages.settings.allowlist.send": undefined;
+	"ui.agentMessages.settings.allowlist.title": undefined;
+	"ui.agentMessages.settings.allowlist.unchanged": undefined;
+	"ui.agentMessages.settings.consent.at": undefined;
+	"ui.agentMessages.settings.consent.changed": undefined;
+	"ui.agentMessages.settings.consent.no_record": undefined;
+	"ui.agentMessages.settings.consent.renew": undefined;
+	"ui.agentMessages.settings.consent.show": undefined;
+	"ui.agentMessages.settings.consent.unavailable": undefined;
+	"ui.agentMessages.settings.consent.version": undefined;
+	"ui.agentMessages.settings.consent.via": undefined;
+	"ui.agentMessages.settings.consent.via_dialog": undefined;
+	"ui.agentMessages.settings.consent.via_settings": undefined;
+	"ui.agentMessages.settings.dark.body": undefined;
+	"ui.agentMessages.settings.dark.nothing_enabled": undefined;
+	"ui.agentMessages.settings.dark.title": undefined;
+	"ui.agentMessages.settings.description": undefined;
+	"ui.agentMessages.settings.error.no_changes": undefined;
+	"ui.agentMessages.settings.error.retry": undefined;
+	"ui.agentMessages.settings.error.title": undefined;
+	"ui.agentMessages.settings.error.unreadable": undefined;
+	"ui.agentMessages.settings.local.label": undefined;
+	"ui.agentMessages.settings.local.stays_enrolled": undefined;
+	"ui.agentMessages.settings.off_by_default": undefined;
+	"ui.agentMessages.settings.refusal.disabled": undefined;
+	"ui.agentMessages.settings.refusal.generic": undefined;
+	"ui.agentMessages.settings.refusal.invalid_request": undefined;
+	"ui.agentMessages.settings.refusal.not_available": undefined;
+	"ui.agentMessages.settings.refusal.rate_limited": undefined;
+	"ui.agentMessages.settings.refusal.sign_in": undefined;
+	"ui.agentMessages.settings.saving": undefined;
+	"ui.agentMessages.settings.section": undefined;
+	"ui.agentMessages.settings.session.help": undefined;
+	"ui.agentMessages.settings.session.none": undefined;
+	"ui.agentMessages.settings.session.title": undefined;
+	"ui.agentMessages.settings.session.unavailable": undefined;
+	"ui.agentMessages.settings.state.b_body": undefined;
+	"ui.agentMessages.settings.state.b_title": undefined;
+	"ui.agentMessages.settings.state.c_body": undefined;
+	"ui.agentMessages.settings.state.c_title": undefined;
+	"ui.agentMessages.settings.state.d_body": undefined;
+	"ui.agentMessages.settings.state.d_title": undefined;
+	"ui.agentMessages.settings.state.e_body": undefined;
+	"ui.agentMessages.settings.state.e_title": undefined;
+	"ui.agentMessages.settings.state.f_body": undefined;
+	"ui.agentMessages.settings.state.f_title": undefined;
+	"ui.agentMessages.settings.state.read_only": undefined;
+	"ui.agentMessages.settings.state.turned_off_org": undefined;
+	"ui.agentMessages.settings.state.turned_off_title": undefined;
 	"ui.agents.dialogs.clear.cancel": undefined;
 	"ui.agents.dialogs.clear.confirm": undefined;
 	"ui.agents.dialogs.clear.title": undefined;
@@ -1108,6 +1302,7 @@ export type MessageParams = {
 	"ui.chat.usage.eligibility_unknown": undefined;
 	"ui.chat.usage.family_caps": undefined;
 	"ui.chat.usage.unlimited": undefined;
+	"ui.chat.response_actions.label": undefined;
 	"ui.chat.sidebar_view.active_first": undefined;
 	"ui.chat.sidebar_view.agent_team": undefined;
 	"ui.chat.sidebar_view.clock_hint": undefined;
@@ -1932,6 +2127,155 @@ export type MessageParams = {
 	"ui.installer.phase.label.verify": undefined;
 	"ui.installer.status.elapsed": { step: string; elapsed: string; eta: string };
 	"ui.installer.status.step": { step: string; total: string };
+	"ui.library.card.conversations": { count: number };
+	"ui.library.card.highlighted": undefined;
+	"ui.library.category.all": undefined;
+	"ui.library.category.code": undefined;
+	"ui.library.category.documents": undefined;
+	"ui.library.category.images": undefined;
+	"ui.library.category.other": undefined;
+	"ui.library.category.presentations": undefined;
+	"ui.library.category.sounds": undefined;
+	"ui.library.category.spreadsheets": undefined;
+	"ui.library.category.video": undefined;
+	"ui.library.composer.ask_placeholder": undefined;
+	"ui.library.composer.chat_about": { title: string };
+	"ui.library.composer.continue_placeholder": undefined;
+	"ui.library.composer.could_not_start": undefined;
+	"ui.library.composer.label": undefined;
+	"ui.library.composer.link_failed": { message: string };
+	"ui.library.composer.link_failed_short": undefined;
+	"ui.library.composer.message_sent_link_failed": undefined;
+	"ui.library.composer.not_sent": undefined;
+	"ui.library.composer.open_chat": undefined;
+	"ui.library.composer.retry_link": undefined;
+	"ui.library.composer.send": undefined;
+	"ui.library.composer.unlink": undefined;
+	"ui.library.filter.categories": undefined;
+	"ui.library.filter.clear_conversation": undefined;
+	"ui.library.filter.clear_filters": undefined;
+	"ui.library.filter.one_conversation": undefined;
+	"ui.library.filter.source": undefined;
+	"ui.library.filter.status": undefined;
+	"ui.library.filter.tag_mode": { mode: string };
+	"ui.library.filter.tags": undefined;
+	"ui.library.grid.load_more": undefined;
+	"ui.library.grid.loading_more": undefined;
+	"ui.library.librarian.control_failed": undefined;
+	"ui.library.librarian.disabled": undefined;
+	"ui.library.librarian.enabled": undefined;
+	"ui.library.librarian.last_organized": { at: string };
+	"ui.library.librarian.never_run": undefined;
+	"ui.library.librarian.open": undefined;
+	"ui.library.librarian.organize_now": undefined;
+	"ui.library.librarian.paused": undefined;
+	"ui.library.librarian.title": undefined;
+	"ui.library.librarian.unorganized": { count: number };
+	"ui.library.menu.ask_about_asset": undefined;
+	"ui.library.menu.asset_actions": undefined;
+	"ui.library.menu.asset_actions_label": { name: string };
+	"ui.library.menu.asset_id_copied": undefined;
+	"ui.library.menu.copy_asset_id": undefined;
+	"ui.library.menu.copy_failed": undefined;
+	"ui.library.menu.copy_path": undefined;
+	"ui.library.menu.download": undefined;
+	"ui.library.menu.edit_metadata": undefined;
+	"ui.library.menu.edit_tags": undefined;
+	"ui.library.menu.favorite": undefined;
+	"ui.library.menu.open_source_conversation": undefined;
+	"ui.library.menu.path_copied": undefined;
+	"ui.library.menu.reveal_in_finder": undefined;
+	"ui.library.menu.save_a_copy": undefined;
+	"ui.library.menu.save_failed": undefined;
+	"ui.library.menu.saved_a_copy": undefined;
+	"ui.library.menu.show_from_conversation": undefined;
+	"ui.library.menu.unfavorite": undefined;
+	"ui.library.origin.created": undefined;
+	"ui.library.origin.generated": undefined;
+	"ui.library.origin.mentioned": undefined;
+	"ui.library.origin.other": undefined;
+	"ui.library.page.back": undefined;
+	"ui.library.page.building": { scanned: string; total: string };
+	"ui.library.page.checking": undefined;
+	"ui.library.page.clear_all": undefined;
+	"ui.library.page.close_filters": undefined;
+	"ui.library.page.empty_detail": undefined;
+	"ui.library.page.empty_title": undefined;
+	"ui.library.page.filters": undefined;
+	"ui.library.page.grid_view": undefined;
+	"ui.library.page.list_view": undefined;
+	"ui.library.page.load_failed": undefined;
+	"ui.library.page.load_more_failed": undefined;
+	"ui.library.page.loaded_count": { loaded: string; total: string };
+	"ui.library.page.more": undefined;
+	"ui.library.page.more_destinations": undefined;
+	"ui.library.page.no_matches": undefined;
+	"ui.library.page.no_matches_detail": undefined;
+	"ui.library.page.preview": undefined;
+	"ui.library.page.results": undefined;
+	"ui.library.page.retry": undefined;
+	"ui.library.page.reverse_order": undefined;
+	"ui.library.page.search": undefined;
+	"ui.library.page.select_asset": undefined;
+	"ui.library.page.sort": undefined;
+	"ui.library.page.title": undefined;
+	"ui.library.page.unavailable": undefined;
+	"ui.library.preview.add_description": undefined;
+	"ui.library.preview.add_tag": undefined;
+	"ui.library.preview.breadcrumb": { name: string };
+	"ui.library.preview.checking_file": undefined;
+	"ui.library.preview.close": undefined;
+	"ui.library.preview.could_not_load": undefined;
+	"ui.library.preview.description": undefined;
+	"ui.library.preview.details": undefined;
+	"ui.library.preview.download": undefined;
+	"ui.library.preview.expand": undefined;
+	"ui.library.preview.fit": undefined;
+	"ui.library.preview.from_conversation": { title: string };
+	"ui.library.preview.go_to_slide": { index: string };
+	"ui.library.preview.loading": undefined;
+	"ui.library.preview.lock": undefined;
+	"ui.library.preview.missing_file": undefined;
+	"ui.library.preview.name": undefined;
+	"ui.library.preview.next_slide": undefined;
+	"ui.library.preview.not_saved": undefined;
+	"ui.library.preview.open": undefined;
+	"ui.library.preview.open_externally": undefined;
+	"ui.library.preview.organized_by": { by: string; at: string };
+	"ui.library.preview.pptx_failed": undefined;
+	"ui.library.preview.pptx_failed_detail": undefined;
+	"ui.library.preview.pptx_loading": { percent: string };
+	"ui.library.preview.pptx_no_text": undefined;
+	"ui.library.preview.pptx_opening": undefined;
+	"ui.library.preview.pptx_preparing": undefined;
+	"ui.library.preview.pptx_text": undefined;
+	"ui.library.preview.previous_slide": undefined;
+	"ui.library.preview.read_only_markdown": undefined;
+	"ui.library.preview.retry": undefined;
+	"ui.library.preview.reveal": undefined;
+	"ui.library.preview.sheet_name": { name: string };
+	"ui.library.preview.sheet_truncated": undefined;
+	"ui.library.preview.sheet_unreadable": undefined;
+	"ui.library.preview.slide_of": { index: string; count: string };
+	"ui.library.preview.tags": undefined;
+	"ui.library.preview.tags_not_saved": undefined;
+	"ui.library.preview.unavailable": undefined;
+	"ui.library.preview.unavailable_detail": undefined;
+	"ui.library.preview.unlock": undefined;
+	"ui.library.preview.unorganized": undefined;
+	"ui.library.preview.unsupported": { kind: string };
+	"ui.library.preview.zoom_in": undefined;
+	"ui.library.preview.zoom_out": undefined;
+	"ui.library.sort.created": undefined;
+	"ui.library.sort.kind": undefined;
+	"ui.library.sort.modified": undefined;
+	"ui.library.sort.name": undefined;
+	"ui.library.sort.organized": undefined;
+	"ui.library.sort.recent": undefined;
+	"ui.library.sort.size": undefined;
+	"ui.library.status.favorites": undefined;
+	"ui.library.status.highlighted": undefined;
+	"ui.library.status.unorganized": undefined;
 	"ui.mesh.approval.approved_apply_hint": undefined;
 	"ui.mesh.approval.approved_details_missing": undefined;
 	"ui.mesh.approval.approved_pending_apply": undefined;
