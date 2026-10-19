@@ -33,9 +33,10 @@ background" shape the fix had to remove.
   below still carries the glass lane wash; the header is the clip boundary and
   does not rely on alpha for legibility.
 - **Horizontal scrolling still moves headers with columns.** The header
-  window's `scrollLeft` is synced from the body's scroll event (with a
+  window's `scrollLeft` and the body's are mirrored in BOTH directions (with a
   padding-right copy of the body's scrollbar gutter, so both max offsets
-  match); wheel over the 44px header is forwarded to the body. The drag
+  match), so a UA focus scroll of the header window moves the real scroller
+  too; wheel over the 44px header is forwarded to the body. The drag
   measurement, auto-scroll and indicator read the body and the header row. The
   pointer reorder story still commits and persists
   `planning,qa,validation,active,done,paused`.

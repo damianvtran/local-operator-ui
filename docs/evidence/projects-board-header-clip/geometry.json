@@ -110,7 +110,8 @@
       "body_scrollLeft": 111,
       "header_window_scrollLeft": 111,
       "header_cell_shift": 111,
-      "band_cell_shift": 111
+      "band_cell_shift": 111,
+      "sync": "bidirectional; a UA focus scroll of a clipped grip moves the body and both windows settle on the same offset (active header and band cell both return to x 292)"
     },
     "pointer_reorder": {
       "story": "projects-tab--board-column-drop-commits",
