@@ -61,6 +61,19 @@ export function askFixture(now = Date.now()) {
 export function sessionSnapshot(id, ask, sequence = 1, claimless = false) {
 	const index = ASK_SESSION_IDS.indexOf(id);
 	const askless = index !== 0 || !ask;
+	/*
+	 * THE WIRE SHAPE, NOT THE STORED ONE (review R1-5). The checkpoint stores
+	 * None, but the serializer POPS the null ask fields
+	 * (`frontend_state.py:3548-3558`), so a claimless snapshot OMITS all three
+	 * keys; a present-null frame is not a frame the app ever receives. The
+	 * live-empty case keeps its list: an empty array plus a zero tally is how the
+	 * wire publishes a live-but-empty queue.
+	 */
+	const askClaim = askless
+		? { asks: [], asks_open: 0, asks_truncated: false }
+		: claimless
+			? {}
+			: { asks: [ask], asks_open: 1, asks_truncated: false };
 	const frontend = {
 		state_version: 1,
 		session_id: id,
@@ -78,14 +91,7 @@ export function sessionSnapshot(id, ask, sequence = 1, claimless = false) {
 		streaming: false,
 		generation: 0,
 		pending_gate: null,
-		/*
-		 * A RESUMED conversation's checkpoint: both ask fields present but NULL - the
-		 * real durable frame (`frontend_state.py` strips them), and the one the
-		 * pre-fix UI read as "this runtime doesn't support queued asks".
-		 */
-		asks: askless ? [] : claimless ? null : [ask],
-		asks_open: askless ? 0 : claimless ? null : 1,
-		asks_truncated: !askless && claimless ? null : false,
+		...askClaim,
 		history_cursor: null,
 		live_events: [],
 		queued_steering: [],

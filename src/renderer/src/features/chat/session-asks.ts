@@ -6,9 +6,10 @@
  * A resumed conversation's DURABLE checkpoint deliberately carries no ask claim:
  * the backend's `frontend_state.py` strips `asks` and `asks_open` from the saved
  * copy, and the resumed session republishes them from the ask log on its first
- * refresh. So the first snapshot of a cold conversation is a frame that is
- * PRESENT and PUBLISHED-BUT-CLAIMLESS - neither `asks` nor `asks_open` on it -
- * while the queue is perfectly readable from the aggregate index.
+ * refresh. The serializer also POPS the null fields rather than sending them
+ * (`frontend_state.py:3548-3558`), so the first snapshot of a cold conversation
+ * is a frame whose ask keys are ABSENT while the queue is perfectly readable
+ * from the aggregate index.
  *
  * The UI used to read that frame as a capability answer (`ask-queue.ts`'s
  * `askQueuePublished` is false), and a false `published` is the one shape the
@@ -17,9 +18,10 @@
  * were sitting in the index the whole time. Measured on a copied real session
  * with 20 ask rows in the index (no currently-open row at copy time; QA seeds
  * open rows through the store's own append+fold for the visual leg): core emits
- * `open` at 1,457 ms and the snapshot at 1,465 ms with both ask fields absent, and no ask-bearing
- * update follows within 15 s - while `GET /v1/desktop/asks` answers in 6 ms
- * from the derived index, with no session opened and no runtime dialled.
+ * `open` at 1,457 ms and the snapshot at 1,465 ms with both ask fields absent,
+ * and no ask-bearing update follows within 15 s - while `GET /v1/desktop/asks`
+ * answers in 6 ms from the derived index, with no session opened and no runtime
+ * dialled.
  *
  * ## Two sources, one frame, three answers
  *
@@ -27,9 +29,11 @@
  * array (including an empty one - the wire fix publishes a live-but-empty queue
  * as `asks` absent with `asks_open: 0`, so an array is a list and a zero tally
  * is a count) or an `asks_open` tally. When it does not, the AGGREGATE answers
- * instead: `/v1/desktop/asks` is the index-backed read, uncapped and
- * runtime-free, and its rows name their own `session_id`, so the session's slice
- * is a filter rather than a second source.
+ * instead: `/v1/desktop/asks` is the index-backed read, uncapped ACROSS
+ * conversations and runtime-free, and its rows name their own `session_id`, so
+ * the session's slice is a filter rather than a second source. Each
+ * conversation's entry is its own fold projection, capped - see
+ * {@link ASK_AGGREGATE_SESSION_CAP}.
  *
  * The third answer is the absence of both reads, and the split inside it is the
  * whole point:
@@ -38,10 +42,12 @@
  *    failure): return `null`, which every reader already words as "Reading the
  *    asks…". THE UNAVAILABLE COPY IS UNREACHABLE HERE WHILE A READ IS PENDING;
  *  - the aggregate route itself is ABSENT (a 404 from a backend that predates
- *    it): return the resolved claimless frame `{asks: null, asks_open: null}`,
- *    the one shape that may say the runtime does not support queued asks. That
- *    is a statement about the runtime, not about a read in flight, and it is
- *    only made when the route answered that it does not exist.
+ *    it) AND the session's own frame has answered (claimless): return the
+ *    resolved claimless frame `{asks: null, asks_open: null}`, the one shape
+ *    that may say the runtime does not support queued asks. That is a statement
+ *    about the runtime, not about a read in flight, so it waits for the
+ *    canonical frame as well as the 404; before that frame arrives the answer
+ *    stays `null`.
  *
  * ## Why this is a function rather than an expression at the mount
  *
@@ -121,15 +127,16 @@ const rowsForSession = (
  * | tally-only, count > 0             | this session's rows  | canonical tally + those rows    |
  * | tally-only, count 0               | anything             | canonical (live-but-empty)      |
  * | claimless / absent                | rows answered        | aggregate slice (empty -> 0)    |
- * | claimless / absent                | route absent (404)   | resolved unavailable frame      |
+ * | claimless (present)               | route absent (404)   | resolved unavailable frame      |
+ * | canonical not arrived yet         | route absent (404)   | `null` (still reading)          |
  * | claimless / absent                | in flight / failure  | `null` (loading)                |
  *
  * The tally-only row exists for the wire's BOUND: `_bound_asks_in_place` drops
  * the row list while deliberately keeping `asks_open`, so a frame can state a
- * count and carry no card. When the uncapped aggregate has this session's rows,
- * the cards are filled in beside the count; when it does not, the tally-only
- * frame is passed through unchanged (the drawer's own `N outstanding` clause
- * is the honest reading of it).
+ * count and carry no card. When the aggregate has this session's rows, the
+ * cards are filled in beside the count (the count stays the frame's own - review
+ * R1-2); when it does not, the tally-only frame is passed through unchanged
+ * (the drawer's own `N outstanding` clause is the honest reading of it).
  */
 export function resolveSessionAskFrame(
 	sessionId: string | null | undefined,
@@ -153,16 +160,17 @@ export function resolveSessionAskFrame(
 			};
 		}
 		/*
-		 * TALLY-ONLY. A nonzero count with rows available from the uncapped index is
-		 * the bound's own state, and the rows belong to the frame that stated the
-		 * count - fill them rather than making the drawer say it cannot show any.
-		 * `asks_truncated` is dropped because the list being shown is no longer the
-		 * bounded one the flag describes.
+		 * TALLY-ONLY. A nonzero count with rows available from the index is the
+		 * bound's own state, and the rows belong to the frame that stated the count
+		 * - fill them rather than making the drawer say it cannot show any. THE
+		 * CANONICAL TALLY IS KEPT, not recomputed from the filled rows: the count is
+		 * the frame's own statement of record (review R1-2), and the rows are a
+		 * convenience beside it.
 		 */
 		const tally = canonical?.asks_open;
 		if (typeof tally === "number" && tally > 0 && aggregate.rows !== null) {
 			const mine = sessionId ? rowsForSession(aggregate.rows, sessionId) : [];
-			if (mine.length > 0) return aggregateFrame(mine);
+			if (mine.length > 0) return aggregateFrame(mine, tally);
 		}
 		return {
 			asks: null,
@@ -183,16 +191,35 @@ export function resolveSessionAskFrame(
 	if (aggregate.rows !== null) {
 		return aggregateFrame(rowsForSession(aggregate.rows, sessionId));
 	}
-	if (aggregate.capability === "absent") {
-		/*
-		 * THE ONE UNSUPPORTED FRAME. The route answered 404, so the runtime really
-		 * does not publish the aggregate; the drawer may say so. A transient
-		 * failure (500/503/transport) deliberately falls through to `null` below.
-		 */
+	/*
+	 * THE ONE UNSUPPORTED FRAME - and it waits for BOTH reads (review R1-1). A 404
+	 * is a statement about the runtime, but the module's own rule is that no
+	 * terminal claim is made while a read is pending: `canonical == null` is the
+	 * stream before its first snapshot, when the drawer must keep reading. Only
+	 * after the session's own frame has answered (claimless) does the route's
+	 * absence become the resolved unsupported reading. A transient failure
+	 * (500/503/transport) deliberately falls through to `null` below.
+	 */
+	if (canonical != null && aggregate.capability === "absent") {
 		return { asks: null, asks_open: null, asks_truncated: false };
 	}
 	return null;
 }
+
+/**
+ * How many rows one conversation's aggregate entry can carry.
+ *
+ * NOT A UI LIMIT: it is the core's own per-session projection cap. `index_asks`
+ * folds each session's ask log into its index entry with `PROJECTION_CAP = 20`
+ * (`local_operator/asks/queue.py:1856`) and publishes no truncation marker, and
+ * the TUI treats exactly-at-cap as possibly truncated for that reason
+ * (`local_operator/tui/app.py:27875-27901`: a split computed from the rows a
+ * frame happens to carry would let a prefix pass for the whole queue). So a
+ * slice at the cap cannot be known complete; the conservative flag costs
+ * nothing here because open rows sort first (`queue.py:1846-1855`), which keeps
+ * the counts the surfaces read.
+ */
+export const ASK_AGGREGATE_SESSION_CAP = 20;
 
 /**
  * The aggregate's slice as a frame.
@@ -204,13 +231,21 @@ export function resolveSessionAskFrame(
  * queue; the siblings read both the same way (`askQueuePublished`), and the
  * distinction that matters here is vs. `null` on BOTH fields.
  *
- * `asks_truncated: false` is knowable rather than assumed: the aggregate route
- * is uncapped and untruncated, so its rows ARE the population.
+ * `asks_open` is the caller's tally when it has one (the tally-only arm keeps
+ * the canonical count), otherwise this slice's own open-row count.
+ *
+ * `asks_truncated` is CONSERVATIVE, not false (review R1-6): the entry is a
+ * capped projection, so a slice that reaches {@link ASK_AGGREGATE_SESSION_CAP}
+ * may be a prefix. Below the cap the list is the whole population and the flag
+ * is false.
  */
-function aggregateFrame(rows: readonly PendingAsk[]): SessionAskFrame {
+function aggregateFrame(
+	rows: readonly PendingAsk[],
+	asksOpen?: number,
+): SessionAskFrame {
 	return {
 		asks: rows.length > 0 ? [...rows] : null,
-		asks_open: openCount(rows),
-		asks_truncated: false,
+		asks_open: asksOpen ?? openCount(rows),
+		asks_truncated: rows.length >= ASK_AGGREGATE_SESSION_CAP,
 	};
 }

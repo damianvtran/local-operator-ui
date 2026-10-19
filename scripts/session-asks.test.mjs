@@ -49,7 +49,16 @@ try {
 	// Removed even when the import throws: a stray bundle in `scripts/` is repo scratch.
 	await unlink(bundlePath).catch(() => {});
 }
-const { resolveSessionAskFrame, askQueueView } = mod;
+const { ASK_AGGREGATE_SESSION_CAP, resolveSessionAskFrame, askQueueView } = mod;
+
+/*
+ * The page-to-pane wiring, as patterns hoisted to module scope (a regex literal
+ * in a test body is rebuilt per call - `ask-open-render.test.mjs` states the same
+ * rule).
+ */
+const PAGE_RESOLVES_FRAME = /const sessionAskFrame = useMemo\(/;
+const CONTENT_FORWARDS_STATUS = /sessionStatus=\{sessionStatus\}/;
+const COMPOSER_HANDS_FRAME = /askFrontend=\{sessionStatus\?\.asks\}/;
 
 const TS = 1_760_000_000_000;
 const SESSION = "fa1107000001";
@@ -71,11 +80,14 @@ const row = (over = {}) => ({
 });
 
 /**
- * The frame a resumed conversation's durable checkpoint produces: `asks` and
- * `asks_open` both present-but-null, which `askQueuePublished` reads as "no
- * claim" (the state the pre-fix UI worded as an unsupported runtime).
+ * The frame a resumed conversation's durable checkpoint produces ON THE WIRE:
+ * the ask keys are ABSENT, not present-null (the core's serializer pops the
+ * null fields - `frontend_state.py:3548-3558`), which `askQueuePublished` reads
+ * as "no claim" (the state the pre-fix UI worded as an unsupported runtime).
+ * The resolver treats null and undefined alike, but the rig models the bytes
+ * the app actually receives.
  */
-const CLAIMLESS = { asks: null, asks_open: null, asks_truncated: null };
+const CLAIMLESS = {};
 const PENDING = { rows: null, capability: "unknown" };
 const answered = (rows) => ({ rows, capability: "live" });
 
@@ -123,6 +135,23 @@ test("an empty aggregate slice is a RESOLVED empty queue, not an unavailable one
 	assert.equal(view.rows.length, 0);
 });
 
+test("a 404 before the session frame has answered is still LOADING (R1-1)", () => {
+	/*
+	 * The pre-snapshot window of a conversation switch (or a restart with the
+	 * drawer carried open): the aggregate answers in ~6 ms, the stream's first
+	 * snapshot is ~1.4 s away. `askQueuePublished(null)` is false for both "no
+	 * canonical frame" and "a claimless one", so the absent arm used to fire on
+	 * the first and make a terminal claim while the session's own read was
+	 * pending. It must wait for the claimless frame.
+	 */
+	const frame = resolveSessionAskFrame(SESSION, null, {
+		rows: null,
+		capability: "absent",
+	});
+	assert.equal(frame, null);
+	assert.equal(askQueueView(frame).unread, true);
+});
+
 test("only a 404 may become the resolved unavailable frame", () => {
 	const frame = resolveSessionAskFrame(SESSION, CLAIMLESS, {
 		rows: null,
@@ -165,6 +194,28 @@ test("a canonical live-but-empty list is not overridden by a stale aggregate", (
 	const view = askQueueView(frame);
 	assert.equal(view.published, true);
 	assert.equal(view.rows.length, 0);
+});
+
+test("a tally-only frame keeps the canonical tally when the index holds fewer rows (R1-2)", () => {
+	const canonical = { asks: null, asks_open: 5, asks_truncated: true };
+	const frame = resolveSessionAskFrame(
+		SESSION,
+		canonical,
+		answered([
+			row({ ask_id: "a-1" }),
+			row({ ask_id: "a-2" }),
+			row({ ask_id: "a-3" }),
+		]),
+	);
+	assert.equal(
+		frame.asks_open,
+		5,
+		"the frame's own count of record must survive the row fill",
+	);
+	assert.deepEqual(
+		frame.asks.map((entry) => entry.ask_id),
+		["a-1", "a-2", "a-3"],
+	);
 });
 
 test("canonical rows win over the aggregate", () => {
@@ -219,6 +270,76 @@ test("a tally-only zero is the live-but-empty canonical answer", () => {
 	const frame = resolveSessionAskFrame(SESSION, canonical, PENDING);
 	assert.deepEqual(frame, canonical);
 	assert.equal(askQueueView(frame).rows.length, 0);
+});
+
+test("a slice at the projection cap is conservatively marked possibly truncated (R1-6)", () => {
+	const cap = ASK_AGGREGATE_SESSION_CAP;
+	const rows = (count) =>
+		Array.from({ length: count }, (_, index) =>
+			row({ ask_id: `cap-${index}` }),
+		);
+	const atCap = resolveSessionAskFrame(SESSION, CLAIMLESS, answered(rows(cap)));
+	assert.equal(
+		atCap.asks_truncated,
+		true,
+		"at the cap the prefix may be partial",
+	);
+	assert.equal(askQueueView(atCap).rows.length, cap);
+	const below = resolveSessionAskFrame(
+		SESSION,
+		CLAIMLESS,
+		answered(rows(cap - 1)),
+	);
+	assert.equal(
+		below.asks_truncated,
+		false,
+		"below the cap the slice is the population",
+	);
+});
+
+test("the page resolves the frame once and both surfaces receive it (R1-3)", async () => {
+	const { readFileSync } = await import("node:fs");
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	assert.match(page, PAGE_RESOLVES_FRAME);
+	/*
+	 * TWO HAND-OFFS, in two windows: `liveSessionStatus` is the composer's
+	 * `sessionStatus.asks` (built before the mount), and the `ChatContent`
+	 * `canonical` object is the drawer/count/policy frame. A single global count
+	 * would still pass if one hand-off moved into the other's place, which is the
+	 * drift this pins.
+	 */
+	const liveAt = page.indexOf("const liveSessionStatus = useMemo(");
+	const contentAt = page.indexOf("<ChatContent");
+	assert.ok(liveAt !== -1 && contentAt > liveAt, "both anchors must exist");
+	assert.ok(
+		page.slice(liveAt, contentAt).includes("asks: sessionAskFrame,"),
+		"liveSessionStatus must carry the resolved frame as `asks`",
+	);
+	assert.ok(
+		page.slice(contentAt).includes("asks: sessionAskFrame,"),
+		"the ChatContent canonical object must carry the resolved frame",
+	);
+	const content = readFileSync(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+		"utf8",
+	);
+	assert.match(
+		content,
+		CONTENT_FORWARDS_STATUS,
+		"chat-content must forward sessionStatus to the composer",
+	);
+	const input = readFileSync(
+		"src/renderer/src/shared/components/composer/message-input.tsx",
+		"utf8",
+	);
+	assert.match(
+		input,
+		COMPOSER_HANDS_FRAME,
+		"the composer must hand the merged frame to its status row",
+	);
 });
 
 test("a draft has no queue to resolve, even when the aggregate has rows", () => {
