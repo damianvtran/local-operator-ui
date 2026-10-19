@@ -509,6 +509,25 @@ test("an intermediate answer has no in-flow action row and no reserved line", as
 		gutter.classList.contains("absolute"),
 		"absolutely positioned, so it contributes no line to the row's height",
 	);
+	/*
+	 * THE REVEAL'S GROUP IS THE FOCUSABLE WRAPPER. The first after-frame showed
+	 * the gutter at opacity 0 with the row focused: the tab stop was the
+	 * `[data-record-id]` wrapper, while every `group` was an inner box that the
+	 * focus was not inside. The wrapper must therefore wear `group`, and the
+	 * answer's content box draws the focus ring the wrapper suppresses.
+	 */
+	assert.ok(
+		responseRow.classList.contains("group"),
+		"the focusable row wrapper is the group the gutter reveal reads",
+	);
+	assert.ok(
+		responseRow.className.includes("focus-visible:outline-none"),
+		"the full-width row ring is suppressed",
+	);
+	const answerRing = responseRow.querySelector(
+		'[class*="group-focus-visible:outline-2"]',
+	);
+	assert.ok(answerRing, "the content box draws the focus ring instead");
 	assert.equal(
 		responseRow.classList.contains("mt-1"),
 		false,
@@ -537,6 +556,21 @@ test("the user row's control is an absolute overlay, focusable with the row", as
 	assert.equal(userRow.tabIndex, 0, "message rows are tab stops");
 	assert.equal(userRow.getAttribute("role"), "group");
 	assert.ok(userRow.getAttribute("aria-label"), "and named");
+	assert.ok(
+		userRow.classList.contains("group"),
+		"the focusable row wrapper is the group the reveal reads",
+	);
+	assert.ok(
+		userRow.className.includes("focus-visible:outline-none"),
+		"the full-width row ring is suppressed",
+	);
+	const bubble = userRow.querySelector("[data-glass-block]");
+	assert.ok(bubble, "the user bubble is on screen");
+	assert.ok(
+		bubble.className.includes("group-focus-visible:outline-2") &&
+			bubble.className.includes("group-focus-visible:outline-accent"),
+		"the bubble draws the ring the row suppresses",
+	);
 	const control = userRow.querySelector("[data-lo-user-actions]");
 	assert.ok(control, "the reader's own copy control is present");
 	assert.ok(control.classList.contains("absolute"), "outside the flow");
