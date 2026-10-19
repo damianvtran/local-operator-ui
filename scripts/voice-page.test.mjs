@@ -16,6 +16,7 @@ const bundle = await build({
 			'export * from "./src/voice-page/scheduler";',
 			'export * from "./src/voice-page/vad";',
 			'export * from "./src/voice-page/csp";',
+			'export * from "./src/voice-page/vad-assets";',
 			'export * from "./src/voice-page/channels";',
 			'export * from "./src/voice-page/reply-inbox";',
 			'export { appVoicePagePermissionVerdict } from "./src/main/window-guards";',
@@ -337,7 +338,7 @@ test("CSP: the page's policy is the plan's, and the html carries exactly it", ()
 	assert.match(m.VOICE_PAGE_CSP, /default-src 'none'/);
 	assert.equal(m.VOICE_PAGE_CSP.includes("unsafe-inline"), false);
 	assert.equal(m.VOICE_PAGE_CSP.includes("http"), false, "no remote origin");
-	const html = readFileSync("src/voice-page/voice-page.html", "utf8");
+	const html = readFileSync("src/renderer/voice-page.html", "utf8");
 	const meta = html.match(/Content-Security-Policy"\s+content="([^"]+)"/);
 	assert.equal(meta?.[1], m.VOICE_PAGE_CSP);
 });
@@ -451,7 +452,7 @@ test("NAVIGATION: only the page's own URL passes the lock", () => {
 test("BUILD: the page and its preload are declared where the build and the dev server read them", () => {
 	const config = readFileSync("electron.vite.config.js", "utf8");
 	assert.equal(
-		config.split("src/voice-page/voice-page.html").length - 1,
+		config.split("src/renderer/voice-page.html").length - 1,
 		2,
 		"renderer dev input AND rollupOptions.input",
 	);
@@ -556,4 +557,40 @@ test("INBOX (m1): a new replyId resets the inbox - the old reply's leftovers are
 	r.onPlay(r.seg("B", 0, 40, true));
 	for (let i = 0; i < 10; i += 1) await r.tick();
 	assert.deepEqual(r.played, [40]);
+});
+
+/*
+ * The detector's assets must be emitted by the build and found where the page
+ * looks. Reads the shared asset list, the source files it names, and the build
+ * config/plugin wiring, so a later change cannot silently drop one. When
+ * `out/renderer` exists (after `pnpm build`) it also checks the emitted files.
+ */ test("vad assets: list, sources, wiring and CSP agree", async () => {
+	const { existsSync, statSync } = await import("node:fs");
+	const { createRequire } = await import("node:module");
+	const { join } = await import("node:path");
+	const req = createRequire(`${process.cwd()}/package.json`);
+	const files = m.VAD_ASSETS.map((a) => a.file);
+	assert.equal(files.filter((f) => f.endsWith(".onnx")).length, 1, "model");
+	assert.equal(files.filter((f) => f.endsWith(".wasm")).length, 1, "ONE wasm");
+	assert.ok(files.includes(m.VAD_WORKLET_FILE), "worklet");
+	assert.ok(files.includes(m.ORT_MODULE_FILE), "ort loader module");
+	// Every source file exists in the installed packages.
+	for (const { from } of m.VAD_ASSETS) {
+		const parts = from.split("/");
+		const pkg = parts.slice(0, from.startsWith("@") ? 2 : 1).join("/");
+		const rest = parts.slice(pkg.split("/").length).join("/");
+		const root = join(process.cwd(), "node_modules", pkg);
+		assert.ok(statSync(join(root, rest)).size > 1000, `${from} exists`);
+	}
+	assert.match(
+		readFileSync("electron.vite.config.js", "utf8"),
+		/voicePageVadPlugin\(\)/,
+	);
+	assert.ok(m.VOICE_PAGE_CSP.includes("'wasm-unsafe-eval'"));
+	assert.ok(!m.VOICE_PAGE_CSP.includes("'unsafe-eval'"));
+	// After `pnpm build`, the files must sit where the page resolves them.
+	const out = join("out/renderer", m.VAD_ASSET_DIR);
+	if (existsSync("out/renderer/voice-page.html")) {
+		for (const f of files) assert.ok(existsSync(join(out, f)), `built ${f}`);
+	}
 });
