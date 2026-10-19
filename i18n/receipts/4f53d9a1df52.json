@@ -1,0 +1,144 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "openai/gpt-6.1-sol",
+	"instance": "4f53d9a1df52",
+	"locale": "hi",
+	"round": 1,
+	"namespaces": {
+		"ui.agentMessages": {
+			"status": "passed",
+			"keys_audited": 16,
+			"sha256": {
+				"en": "065cbea39ca4df33aa114fc027e5f75bcc6e74e9cb21d4f14e42628d3795cbcb",
+				"hi": "c15cbc96d9f9c5222f319a83fd02f5b4fcfd2c0f4690c5008204846c20d2ddba"
+			},
+			"findings": []
+		},
+		"ui.chat": {
+			"status": "passed",
+			"keys_audited": 8,
+			"sha256": {
+				"en": "29169c4c0801689781d503f724d457757275416c49e975bfb6ae4872d90c2c46",
+				"hi": "460ff3fd6acc1733fd59b30d2d5cf92dedbcd921071b18d8c5c3c9954fc9e0bd"
+			},
+			"findings": []
+		},
+		"ui.chat.composer": {
+			"status": "passed",
+			"keys_audited": 34,
+			"sha256": {
+				"en": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+				"hi": "a0c2fa0c3a94869933de815b2657af69196bfaccfc7463d2f98dd84cfb4e3cd3"
+			},
+			"findings": []
+		},
+		"ui.chat.composer_media": {
+			"status": "passed",
+			"keys_audited": 7,
+			"sha256": {
+				"en": "47ec03f574b6665bafaf900f15067ef522fbf8b7fe665402b0bb4be03d0aa0ff",
+				"hi": "8f136b57e162e5b0165b5cc6ce910d3742e023faed31b35259cdb5f8daa10349"
+			},
+			"findings": []
+		},
+		"ui.chat.dialogs": {
+			"status": "passed",
+			"keys_audited": 4,
+			"sha256": {
+				"en": "783d72141bae3491cc1ecfbdfc983339e327406cd4385e7ce8f9dfa1360997fc",
+				"hi": "b152ef39e4fc101229c2cd6040c8d4b2801d63c365e5fa860f540825460cda35"
+			},
+			"findings": []
+		},
+		"ui.chat.header": {
+			"status": "passed",
+			"keys_audited": 10,
+			"sha256": {
+				"en": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+				"hi": "3926976b399bbd38fd7c16df427e26114b31c287abc84be598b3557c2f5d6ce5"
+			},
+			"findings": []
+		},
+		"ui.chat.response_actions": {
+			"status": "passed",
+			"keys_audited": 1,
+			"sha256": {
+				"en": "3c3e9480cf38316dda324d31e127ab9e63e2bf846c8e46f8efee7306fe4e47d5",
+				"hi": "94d5bef00a3a6dcb4f3c56bc0baedb277c7a7c22a67285774397d8f32186bffd"
+			},
+			"findings": []
+		},
+		"ui.chat.sidebar_view": {
+			"status": "passed",
+			"keys_audited": 22,
+			"sha256": {
+				"en": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+				"hi": "fcbc4336613474d15fbba5612d40839ab136b9829928d86c5a3298da64d25c23"
+			},
+			"findings": []
+		},
+		"ui.chat.tags": {
+			"status": "passed",
+			"keys_audited": 42,
+			"sha256": {
+				"en": "ffb1c6b985fd1ab521a2a5fc49955978d76cabc5671437dc2bc6b31cfa1ada74",
+				"hi": "ca02ff46272e83e297d960de35088c648eadfd4b365b3f0e243c087ce0502279"
+			},
+			"findings": []
+		},
+		"ui.common.actions": {
+			"status": "passed",
+			"keys_audited": 6,
+			"sha256": {
+				"en": "bf151da8ad56c3b32b05be1d505764d3f4cfb72e9792f9ec68b8a570239f6976",
+				"hi": "00e2bfbf7b4f3c0ace2a25a3e480a661e60f6347da50ad81859b0859dd0b562c"
+			},
+			"findings": []
+		},
+		"ui.common.connection": {
+			"status": "passed",
+			"keys_audited": 10,
+			"sha256": {
+				"en": "d1acb6a1fae70e3f85255d880a91d9e35ed49a8bf7d04ef14722ce115d7c69bb",
+				"hi": "8c40d9b1627ebd3244648e6ec37d8cdd915a68aca86af3d3d16864399cc6fc04"
+			},
+			"findings": []
+		},
+		"ui.common.editing": {
+			"status": "passed",
+			"keys_audited": 3,
+			"sha256": {
+				"en": "e7ddf3b75f3e46d6900aacab976f1180eb10fdb121b5f46d2dc231fd6b4f5bb5",
+				"hi": "38cb6d8fa3ef4a2ede73082301030207dabffb72710cd713c705f7e3d051d5ea"
+			},
+			"findings": []
+		},
+		"ui.common.errors": {
+			"status": "passed",
+			"keys_audited": 4,
+			"sha256": {
+				"en": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+				"hi": "cccc445c93b170ad4f70a7cc8a24ead16dd8b77b59ced866dd55dc704506c4a4"
+			},
+			"findings": []
+		},
+		"ui.common.loading": {
+			"status": "passed",
+			"keys_audited": 1,
+			"sha256": {
+				"en": "e629186e32cd51d7eb98dcd3e8f6587765447bd1da9bdba5c5d327ad2bdcd87e",
+				"hi": "fa0f4215fcf1dbada3bc6055f60a35669524b45bc10a5bfd0cecf9ff97f58fc0"
+			},
+			"findings": []
+		},
+		"ui.common.models": {
+			"status": "passed",
+			"keys_audited": 24,
+			"sha256": {
+				"en": "561e39a0105425d66cac7d7497306d740d79f7b2e3921424b1993f3405e08d77",
+				"hi": "a6afc99c89dd7fa0f384c34771bc1d7cf226270a6e3084e77c67db8e082b8c8d"
+			},
+			"findings": []
+		}
+	}
+}
