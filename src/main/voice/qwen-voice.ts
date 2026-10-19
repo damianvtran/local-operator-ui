@@ -378,10 +378,25 @@ export class QwenVoice {
 				this.paused = false;
 				this.setStatus({ ...this.status, paused: false });
 			}
+			/*
+			 * NOTHING LISTENS WITHOUT A HOLDER (privacy): the page owns the live
+			 * microphone track, so an empty slot closes it at once. The models stay
+			 * warm for the idle window, as with Pause. Unconditional (not only on a
+			 * change): a learned empty slot must also close a page an earlier path
+			 * left open.
+			 */
+			this.closePageForEmptySlot();
 			if (previous !== null || this.idleTimer === null) this.armIdleStop();
 			return;
 		}
 		this.disarmIdleStop();
+		/*
+		 * A relaunch with voice still on: the renderer's start ran before the slot
+		 * was learned, so `openPage` refused (no holder). Open it now the holder
+		 * is known; `open` is idempotent for a page that exists.
+		 */
+		if (!start && previous === null && this.rigUp() && this.status.webui_url)
+			this.openPage(this.status.webui_url);
 		if (start) void this.start("enable");
 	}
 
@@ -551,8 +566,21 @@ export class QwenVoice {
 	 * has nothing to remember it yet - this re-applies the coordinator's copy.
 	 * A paused rig creates no page (that is what pause means).
 	 */
+	private closePageForEmptySlot(): void {
+		this.playing = false;
+		this.deps.page.close();
+		if (this.clients !== 0 || this.status.clients !== 0) {
+			this.clients = 0;
+			this.setStatus({ ...this.status, clients: 0 });
+		}
+		if (this.status.rig === "ready")
+			this.log("qwen-voice: no session holds voice; the page is closed");
+	}
+
 	private openPage(webuiUrl: string): void {
 		if (this.paused) return;
+		// No holder, no microphone: every open path (start, retry, mic grant) stops here.
+		if (this.slot === null) return;
 		this.deps.page.open(webuiUrl);
 		if (this.muted) this.deps.page.setMuted(true);
 	}
@@ -729,6 +757,19 @@ export class QwenVoice {
 			return;
 		}
 		if (message?.type === "take") {
+			/* NOTHING RELAYS WITHOUT A HOLDER (privacy): a take with an empty slot
+			   is dropped. `closed` is a SILENT outcome in the launcher, so the
+			   task settles without a spoken phrase and never reaches the session. */
+			if (this.slot === null) {
+				this.log("qwen-voice: dropped a take: no session holds voice");
+				this.deps.gateway.send({
+					type: "outcome",
+					taskId: message.taskId,
+					ok: false,
+					code: "closed",
+				});
+				return;
+			}
 			/* A take cannot be admitted while paused: the page that heard it is
 			   closed, so the only honest answer is the refusal the launcher speaks. */
 			if (this.paused) {

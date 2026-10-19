@@ -274,6 +274,15 @@ const textAnswer = (sessionId, kind, text, status = 200) => [
 	},
 	{ status, body: { result: { text, spoken_chars: text.length } } },
 ];
+/** A session holds voice: learned, so nothing starts by itself. */
+const hold = (r) =>
+	r.voice.noteDesktopAnswer(
+		{ op: "voice.status" },
+		{
+			status: 200,
+			body: { result: { active: { session_id: "aaaaaaaaaaaa" } } },
+		},
+	);
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
 test("an enable frame starts the rig once and opens the WebUI", async () => {
@@ -477,6 +486,7 @@ test("minor 1: a Gateway that died while s2s loaded fails the start; it is never
 
 test("RECREATE THE PAGE: voice.qwen.start on a ready rig asks for the page again; an enable does not", async () => {
 	const r = rig();
+	hold(r);
 	await r.voice.start("renderer");
 	assert.equal(r.opened.length, 1);
 	await r.voice.start("renderer");
@@ -722,6 +732,78 @@ test("§4: pause closes the page, keeps the models warm, and admits no takes", a
 		event: { type: "realtime.playback.started", at: AT },
 	});
 	assert.equal(voiceEvents(r).length, before);
+});
+
+test("PRIVACY: voice-off closes the page at once, drops any take, and re-enable reopens with the mute", async () => {
+	const r = rig();
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	r.voice.setMuted(true);
+	assert.equal(r.opened.length, 1);
+	r.voice.observeFrame({ type: "voice", payload: { active: null } });
+	assert.equal(
+		r.closed.length,
+		1,
+		"the page - and the microphone - are released",
+	);
+	const status = r.voice.getStatus();
+	assert.equal(status.rig, "ready", "the models stay warm for the idle window");
+	assert.equal(status.clients, 0);
+	/* A stray take is dropped silently: no renderer delivery, a silent outcome. */
+	const delivered = r.toRenderer.length;
+	r.voice.onGatewayMessage({ type: "take", taskId: "t9", text: "hello" });
+	assert.equal(r.toRenderer.length, delivered, "no take reaches the session");
+	assert.deepEqual(r.sent.at(-1), {
+		type: "outcome",
+		taskId: "t9",
+		ok: false,
+		code: "closed",
+	});
+	assert.equal(
+		relayCore.phraseForOutcome({ ok: false, code: "closed" }),
+		null,
+		"that outcome speaks nothing",
+	);
+	/* The renderer's retry must not reopen a page nobody holds. */
+	await r.voice.start("renderer");
+	assert.equal(r.opened.length, 1, "no page while the slot is empty");
+	/* Re-enable (any session) opens the page and re-applies the mute. */
+	r.voice.observeFrame(voiceFrame("bbbbbbbbbbbb"));
+	await settle();
+	await settle();
+	assert.equal(r.opened.length, 2);
+	assert.equal(r.muted.at(-1), true);
+});
+
+test("PRIVACY: a slot learned empty (session deleted, server dropped it) closes the page too", async () => {
+	const r = rig();
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	r.voice.noteDesktopAnswer(
+		{ op: "voice.status" },
+		{ status: 200, body: { result: { active: null } } },
+	);
+	assert.equal(r.closed.length, 1);
+	assert.equal(r.voice.getStatus().clients, 0);
+});
+
+test("PRIVACY: a relaunch starts with no page; learning a holder afterwards opens it", async () => {
+	const r = rig();
+	await r.voice.start("renderer");
+	assert.equal(r.opened.length, 0, "no holder known yet: no microphone");
+	hold(r);
+	assert.equal(r.opened.length, 1, "the learned holder gets its page");
+});
+
+test("PRIVACY: the idle stop still ends the models after the page is closed", async () => {
+	const r = rig();
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	r.voice.observeFrame({ type: "voice", payload: { active: null } });
+	assert.equal(r.timers.length, 1, "the idle stop is armed");
 });
 
 test("§4: resume recreates the page through Retry's path and carries the mute", async () => {
@@ -1159,6 +1241,7 @@ test("M3: the page's bounded wait expires into `prompting`; a late answer still 
 
 test("§4/M3: the microphone is asked for BEFORE the models, and a denial costs no memory", async () => {
 	const r = rig({ mic: "denied" });
+	hold(r);
 	const status = await r.voice.start("renderer");
 	assert.deepEqual(r.order, ["mic"], "the check is the only thing that ran");
 	assert.equal(r.calls.gatewayStart, 0, "a denial spawns nothing");
@@ -1168,6 +1251,7 @@ test("§4/M3: the microphone is asked for BEFORE the models, and a denial costs 
 	assert.deepEqual(r.opened, [], "a page that cannot hear is not created");
 	// The next start, once the OS says yes, asks again and starts for real.
 	const ok = rig({ mic: "granted" });
+	hold(ok);
 	await ok.voice.start("renderer");
 	assert.deepEqual(ok.order, ["mic", "speech"]);
 	assert.deepEqual(ok.opened, ["http://127.0.0.1:3101/"]);
@@ -1234,6 +1318,7 @@ test("M3: the production page adapter forwards the microphone options (the 5 s b
 
 test("§4: granting the microphone in Settings takes effect on the next enable, without a restart", async () => {
 	const r = rig({ mic: "denied" });
+	hold(r);
 	await r.voice.start("enable");
 	assert.deepEqual(r.opened, [], "denied: no page, no models");
 	assert.equal(r.voice.getStatus().mic, "denied");
@@ -1245,6 +1330,7 @@ test("§4: granting the microphone in Settings takes effect on the next enable, 
 	assert.equal(r.voice.getStatus().mic, "granted");
 	// A rig that IS up re-reads the verdict on an enable, too (readyAgain).
 	const up = rig();
+	hold(up);
 	await up.voice.start("enable");
 	assert.equal(up.voice.getStatus().mic, "granted");
 	up.page.mic = "denied";
@@ -1337,6 +1423,14 @@ test("§4: LOP_QWEN_VOICE_DEBUG opens the view's DevTools detached", () => {
 
 test("a take goes to the renderer; with no window it is refused back to the launcher", () => {
 	const r = rig();
+	// A take is only relayed while a session holds voice.
+	r.voice.noteDesktopAnswer(
+		{ op: "voice.status" },
+		{
+			status: 200,
+			body: { result: { active: { session_id: "aaaaaaaaaaaa" } } },
+		},
+	);
 	r.voice.onGatewayMessage({ type: "take", taskId: "task_1", text: "hello" });
 	assert.deepEqual(r.toRenderer.at(-1), {
 		channel: "voice.qwen.take",
@@ -1358,6 +1452,13 @@ test("a take goes to the renderer; with no window it is refused back to the laun
 		toRenderer: () => false,
 		page: m.noQwenVoicePage(),
 	});
+	lonely.noteDesktopAnswer(
+		{ op: "voice.status" },
+		{
+			status: 200,
+			body: { result: { active: { session_id: "aaaaaaaaaaaa" } } },
+		},
+	);
 	lonely.onGatewayMessage({ type: "take", taskId: "task_2", text: "hi" });
 	assert.deepEqual(r.sent.at(-1), {
 		type: "outcome",

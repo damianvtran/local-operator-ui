@@ -305,7 +305,7 @@ test("a successful take sends no `speak` from the launcher", () => {
 	);
 	assert.match(
 		launcher,
-		/const phrase = phraseForOutcome\(outcome\);\s*if \(phrase\) speak\(PHRASES\[phrase\], "phrase"\);/,
+		/const phrase = phraseForOutcome\(outcome\);[^;]*?\n\s*if \(phrase && slotActive !== null\) speak\(PHRASES\[phrase\], "phrase"\);/,
 		"the launcher speaks a phrase only when there is one",
 	);
 });
