@@ -586,6 +586,26 @@ const IDENTICAL_OK = new Map([
 		"ui.settings.appearance.window_glass.material_window",
 		"System material name kept English: Window is the window-region material in the glass picker.",
 	],
+	[
+		"ui.agents.settings.chat.temperature",
+		"Model sampling parameter name kept English by the vi style guide: it names the API parameter `temperature` verbatim.",
+	],
+	[
+		"ui.agents.settings.chat.seed",
+		"Model sampling parameter name kept English by the vi style guide: it names the API parameter `seed` verbatim.",
+	],
+	[
+		"ui.agents.settings.chat.frequency_penalty",
+		"Model sampling parameter name kept English by the vi style guide: it names the API parameter `frequency_penalty` verbatim.",
+	],
+	[
+		"ui.agents.settings.chat.presence_penalty",
+		"Model sampling parameter name kept English by the vi style guide: it names the API parameter `presence_penalty` verbatim.",
+	],
+	[
+		"ui.settings.account.radient_account_section.email",
+		"Vietnamese uses the standard loanword «Email» for the address field; every diacritic alternative is unidiomatic.",
+	],
 ]);
 
 function localeDirs() {
