@@ -363,11 +363,12 @@ const SpreadsheetTable: FC<{
 };
 
 /** The dispatcher, so the preview pane knows one component. */
-export const LibraryViewer: FC<{ asset: DesktopLibraryAsset }> = ({
-	asset,
-}) => {
+export const LibraryViewer: FC<{
+	asset: DesktopLibraryAsset;
+	dense?: boolean;
+}> = ({ asset, dense = false }) => {
 	if (asset.kind === "pptx") {
-		return <PptxPreview asset={asset} />;
+		return <PptxPreview asset={asset} dense={dense} />;
 	}
 	if (
 		asset.kind === "image" ||
@@ -389,10 +390,13 @@ export const LibraryViewer: FC<{ asset: DesktopLibraryAsset }> = ({
 };
 
 /** PPTX needs its bytes before the viewer can exist; this owns that fetch. */
-const PptxPreview: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
+const PptxPreview: FC<{ asset: DesktopLibraryAsset; dense?: boolean }> = ({
+	asset,
+	dense = false,
+}) => {
 	const { bytes, error, loading } = useLibraryBytes(asset.id, "content", true);
 	if (loading) return <Loading label={t("ui.library.preview.pptx_opening")} />;
 	if (error || !bytes)
 		return <Failure detail={error || "The bytes were empty."} asset={asset} />;
-	return <PptxViewer asset={asset} bytes={bytes} />;
+	return <PptxViewer asset={asset} bytes={bytes} dense={dense} />;
 };
