@@ -78,8 +78,18 @@ const ENTRY = `
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { LibraryPage } from "./src/renderer/src/features/library/components/library-page";
+
+function Jump() {
+	const navigate = useNavigate();
+	return createElement(
+		"div",
+		null,
+		createElement("button", { "data-go-a": "" , onClick: () => navigate("/library/assets/la_0000000000000014") }, "A"),
+		createElement("button", { "data-go-b": "" , onClick: () => navigate("/library/assets/la_0000000000000012") }, "B"),
+	);
+}
 
 export function mountLibrary(container, nowMs) {
 	const client = new QueryClient({
@@ -93,6 +103,7 @@ export function mountLibrary(container, nowMs) {
 			createElement(
 				MemoryRouter,
 				{ initialEntries: ["/library"] },
+				createElement(Jump),
 				createElement(
 					Routes,
 					null,
@@ -503,7 +514,10 @@ test("a linked chat is shown and continued with its own session", async () => {
 });
 
 test("an accepted send survives a link failure and the next send reuses its session", async () => {
-	ANSWER.rows = [asset("la_0000000000000014", { name: "Unlinked asset" })];
+	ANSWER.rows = [
+		asset("la_0000000000000014", { name: "Unlinked asset" }),
+		asset("la_0000000000000012", { name: "Second asset" }),
+	];
 	ANSWER.ops = [];
 	ANSWER.linkFails = 1;
 	const { container, root } = await mount();
@@ -543,6 +557,18 @@ test("an accepted send survives a link failure and the next send reuses its sess
 		container.querySelector("[data-library-link-failed]"),
 		"the link failure is shown as partial success",
 	);
+
+	/* Same composer instance, different asset: B must not inherit A's row. */
+	await act(async () => container.querySelector("[data-go-b]").click());
+	await flush(8);
+	assert.equal(
+		container.querySelector("[data-library-link-failed]"),
+		null,
+		"B does not inherit A's pending link",
+	);
+	await act(async () => container.querySelector("[data-go-a]").click());
+	await flush(8);
+	assert.ok(container.querySelector("[data-library-link-failed]"));
 	await type("Second message");
 	await act(async () => send().click());
 	await flush(10);
@@ -606,4 +632,10 @@ test("a send refusal keeps the draft and writes no link", async () => {
 	);
 	await act(async () => root.unmount());
 	ANSWER.failMessage = false;
+});
+
+after(() => {
+	// jsdom keeps window timers alive; close it so a stray debounce or query
+	// timer cannot hold the node:test process open after every case unmounts.
+	dom.window.close();
 });

@@ -71,6 +71,8 @@ export const PptxViewer: FC<PptxViewerProps> = ({
 	const [zoom, setZoom] = useState(1);
 	const [attempt, setAttempt] = useState(0);
 	const [saving, setSaving] = useState(false);
+	const [transcript, setTranscript] = useState<string[]>([]);
+	const [transcriptOpen, setTranscriptOpen] = useState(!dense);
 	const rootRef = useRef<HTMLDivElement>(null);
 	/*
 	 * SHORT VIEWERS DROP THE THUMBNAIL RAIL rather than overflowing their own
@@ -80,6 +82,9 @@ export const PptxViewer: FC<PptxViewerProps> = ({
 	 * rail yields first and the toolbar wraps if its controls need a second line.
 	 */
 	const [short, setShort] = useState(false);
+	useEffect(() => {
+		setTranscriptOpen(!dense);
+	}, [dense]);
 	useLayoutEffect(() => {
 		const node = rootRef.current;
 		if (!node) return;
@@ -156,6 +161,26 @@ export const PptxViewer: FC<PptxViewerProps> = ({
 		void renderCanvas();
 	}, [renderCanvas]);
 
+	useEffect(() => {
+		const renderer = rendererRef.current;
+		if (!renderer || state.phase !== "ready") return;
+		let cancelled = false;
+		void renderer
+			.extractSlide(slide)
+			.then((content) => {
+				if (cancelled) return;
+				setTranscript(
+					content.textShapes.map((shape) => shape.text.trim()).filter(Boolean),
+				);
+			})
+			.catch(() => {
+				if (!cancelled) setTranscript([]);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [slide, state.phase]);
+
 	const slideCount = state.phase === "ready" ? state.slideCount : 0;
 	const go = (next: number) => {
 		if (slideCount === 0) return;
@@ -210,6 +235,7 @@ export const PptxViewer: FC<PptxViewerProps> = ({
 
 	return (
 		<div
+			ref={rootRef}
 			className="flex min-h-0 flex-1 flex-col gap-2 p-3"
 			data-pptx-viewer=""
 			onKeyDown={(event) => {
@@ -286,6 +312,40 @@ export const PptxViewer: FC<PptxViewerProps> = ({
 					</div>
 				)}
 			</div>
+			{state.phase === "ready" && (
+				<div
+					className="shrink-0 rounded-md bg-canvas px-2 py-1"
+					data-pptx-transcript=""
+				>
+					{dense ? (
+						<Button
+							variant="ghost"
+							size="sm"
+							aria-expanded={transcriptOpen}
+							onClick={() => setTranscriptOpen((open) => !open)}
+						>
+							{t("ui.library.preview.pptx_text")}
+						</Button>
+					) : null}
+					{transcriptOpen && (
+						<div className="max-h-24 overflow-y-auto text-meta text-ink-muted">
+							{transcript.length ? (
+								transcript.map((line, index) => (
+									<p
+										key={`${index}:${line}`}
+										data-pptx-transcript-line=""
+										className="truncate"
+									>
+										{line}
+									</p>
+								))
+							) : (
+								<p>{t("ui.library.preview.pptx_no_text")}</p>
+							)}
+						</div>
+					)}
+				</div>
+			)}
 			<div className="flex min-h-10 shrink-0 flex-wrap items-center justify-between gap-1 px-1 py-1">
 				<div className="flex items-center gap-1">
 					<Button

@@ -909,5 +909,44 @@
 		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
 		"note": "English source: Details. Dynamic values are bindings; do not translate their names.",
 		"length": "English is 7 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.composer.link_failed": {
+		"role": "Library surface: link failed",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Message sent, but the chat could not be linked: {message}. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 57 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"message": "Runtime value passed by the Library page or preview."
+		}
+	},
+	"ui.library.composer.link_failed_short": {
+		"role": "Library surface: link failed short",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Message sent, but the chat could not be linked.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 47 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.composer.message_sent_link_failed": {
+		"role": "Library surface: message sent link failed",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Message sent. The chat link failed.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 35 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.composer.retry_link": {
+		"role": "Library surface: retry link",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Retry link. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 10 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.pptx_text": {
+		"role": "Library surface: pptx text",
+		"tone": "Concise neutral desktop UI copy, sentence case.",
+		"note": "English source: Text.",
+		"length": "English is 4 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.pptx_no_text": {
+		"role": "Library surface: pptx no text",
+		"tone": "Concise neutral desktop UI copy, sentence case.",
+		"note": "English source: This slide has no extractable text..",
+		"length": "English is 35 source characters. Keep the same shape and a comparable width."
 	}
 }

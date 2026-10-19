@@ -115,8 +115,17 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 	 * deliberately local state rather than a store entry), while `linkFailed`
 	 * asks for the retry row.
 	 */
-	const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
-	const [linkFailed, setLinkFailed] = useState(false);
+	/*
+	 * RECOVERY IS KEYED BY ASSET. One composer instance serves every selection
+	 * (the preview does not remount on an asset change), so a single pending id
+	 * would show A's partial-success row on B and Retry would link B to A's
+	 * session. The map keeps each asset's accepted-but-unlinked session with the
+	 * asset it belongs to; the draft itself clears on selection change.
+	 */
+	const [recoveries, setRecoveries] = useState<Record<string, string>>({});
+	const [linkFailedFor, setLinkFailedFor] = useState<string | null>(null);
+	const pendingSessionId = recoveries[asset.id] ?? null;
+	const linkFailed = linkFailedFor === asset.id;
 	const link = useLinkAssetChat();
 	const unlink = useUnlinkAssetChat();
 	/*
@@ -125,6 +134,11 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 	 * viewer already has the bytes).
 	 */
 	const image = useLibraryBytes(asset.id, "content", asset.kind === "image");
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: asset.id is the reset trigger, not a value the body reads.
+	useEffect(() => {
+		setValue("");
+	}, [asset.id]);
 
 	useEffect(() => {
 		if (focusSignal === 0) return;
@@ -137,7 +151,8 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 		setSending(true);
 		try {
 			const store = useCanonicalSessionsStore.getState();
-			let sessionId = asset.chat?.session_id ?? pendingSessionId ?? null;
+			let sessionId: string | null =
+				asset.chat?.session_id ?? pendingSessionId ?? null;
 			if (!sessionId) {
 				sessionId = await store.createSession(store.cwd || "~");
 				if (!sessionId) {
@@ -182,8 +197,11 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 					 * id for the next Send, and do not navigate away from the
 					 * asset whose link is still missing.
 					 */
-					setPendingSessionId(sessionId);
-					setLinkFailed(true);
+					setRecoveries((previous) => ({
+						...previous,
+						[asset.id]: sessionId,
+					}));
+					setLinkFailedFor(asset.id);
 					showErrorToast(
 						error instanceof Error && error.message
 							? t("ui.library.composer.link_failed", {
@@ -197,10 +215,14 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 			if (pendingSessionId) {
 				try {
 					await link.mutateAsync({ id: asset.id, sessionId });
-					setPendingSessionId(null);
-					setLinkFailed(false);
+					setRecoveries((previous) => {
+						const next = { ...previous };
+						delete next[asset.id];
+						return next;
+					});
+					setLinkFailedFor(null);
 				} catch {
-					setLinkFailed(true);
+					setLinkFailedFor(asset.id);
 					showErrorToast(t("ui.library.composer.link_failed_short"));
 					return;
 				}
@@ -223,8 +245,12 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 		if (!sessionId) return;
 		try {
 			await link.mutateAsync({ id: asset.id, sessionId });
-			setPendingSessionId(null);
-			setLinkFailed(false);
+			setRecoveries((previous) => {
+				const next = { ...previous };
+				delete next[asset.id];
+				return next;
+			});
+			setLinkFailedFor(null);
 		} catch {
 			showErrorToast(t("ui.library.composer.link_failed_short"));
 		}
