@@ -338,13 +338,27 @@ const SpreadsheetTable: FC<{
 			<table className="w-full border-collapse text-meta">
 				<thead>
 					<tr>
-						<th className="sticky top-0 bg-sunken px-2 py-1 text-left text-ink-muted">
+						<th
+							/*
+							 * A STICKY HEADER THAT SCROLLS UNDER ITS OWN ROWS, so it
+							 * gets the isolating band rather than a bare fill: the
+							 * sheet's rows pass under these cells, and on glass a
+							 * `bg-sunken` plate is an opaque island in a translucent
+							 * column. The shared treatment is one rule
+							 * (`data-glass-plane="band-backdrop"` in
+							 * `styles/index.css`); the reason is the same as the
+							 * Files tab's section headers'.
+							 */
+							data-glass-plane="band-backdrop"
+							className="sticky top-0 bg-sunken px-2 py-1 text-left text-ink-muted"
+						>
 							#
 						</th>
 						{(rows[0] ?? []).slice(0, MAX_COLS).map((_, index) => (
 							<th
 								// biome-ignore lint/suspicious/noArrayIndexKey: a column is its index.
 								key={index}
+								data-glass-plane="band-backdrop"
 								className="sticky top-0 border-b border-hairline bg-sunken px-2 py-1 text-left font-medium text-ink-muted"
 							>
 								{String.fromCharCode(65 + (index % 26))}
