@@ -25,6 +25,7 @@ import {
 	useMarkTeamBridgeRead,
 	useSendTeamBridgeMessage,
 	useTeamBridgeConversations,
+	useTeamBridgeIdentity,
 	useTeamBridgeMessages,
 } from "./use-team-bridge";
 
@@ -180,9 +181,13 @@ const MessageRow: FC<{
 						own ? "bg-accent-wash px-2.5 py-1.5 text-ink" : "text-ink",
 					)}
 				>
-					{/* A null body is an agent member's unadmitted message; the copy
-					    states that rather than rendering an empty bubble. */}
-					{message.body ?? ""}
+					{/* A null body is an agent member's unadmitted message: say so
+					    rather than rendering an empty bubble. */}
+					{message.body ?? (
+						<span className="text-ink-dim italic">
+							{t("ui.teamBridge.thread.withheld")}
+						</span>
+					)}
 				</p>
 			</div>
 		</li>
@@ -197,8 +202,9 @@ export type TeamBridgePageViewProps = {
 	messages: TeamBridgeMessage[];
 	selfAccountId?: string;
 	sending?: boolean;
+	sendFailed?: boolean;
 	onSelect: (conversationId: string) => void;
-	onSend: (body: string) => void;
+	onSend: (body: string) => Promise<unknown> | undefined;
 	onNewConversation: () => void;
 	onRetry?: () => void;
 };
@@ -211,6 +217,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	messages,
 	selfAccountId,
 	sending = false,
+	sendFailed = false,
 	onSelect,
 	onSend,
 	onNewConversation,
@@ -229,8 +236,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const submit = () => {
 		const body = draft.trim();
 		if (!body || sending) return;
-		onSend(body);
-		setDraft("");
+		// Keep the draft until the send resolves: a refused send must not erase
+		// what the person wrote. A synchronous handler (a story) clears at once.
+		const result = onSend(body);
+		if (result instanceof Promise) {
+			void result.then(() => setDraft("")).catch(() => {});
+		} else {
+			setDraft("");
+		}
 	};
 
 	return (
@@ -422,6 +435,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						    this box is shorter, so 16 read as a pill at rest. The ground
 						    (`elevated` over `surface`) does the separating, never an edge. */}
 						<div className="shrink-0 px-3 pb-3">
+							{sendFailed && (
+								<p role="alert" className="px-2 pb-1 text-meta-sm text-danger">
+									{t("ui.teamBridge.composer.error")}
+								</p>
+							)}
 							<div
 								className={cn(
 									"rounded-xl bg-elevated",
@@ -434,7 +452,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									value={draft}
 									onChange={(event) => setDraft(event.target.value)}
 									onKeyDown={(event) => {
-										if (event.key === "Enter" && !event.shiftKey) {
+										// An IME candidate confirmation is Enter too; sending on it
+										// would post the half-composed text.
+										if (
+											event.key === "Enter" &&
+											!event.shiftKey &&
+											!event.nativeEvent.isComposing
+										) {
 											event.preventDefault();
 											submit();
 										}
@@ -485,10 +509,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
  * looking at. The write is idempotent on the server (`$max`), so a focus
  * re-render cannot move the cursor backwards.
  */
-export const TeamBridgePage: FC<{ selfAccountId?: string }> = ({
-	selfAccountId,
-}) => {
+export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	const list = useTeamBridgeConversations();
+	// The page mounted from the route has no prop caller; identity comes from
+	// the bridge status read, which is the one place the hub account is published.
+	const identity = useTeamBridgeIdentity();
+	const selfAccountId = identity.data ?? undefined;
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [createOpen, setCreateOpen] = useState(false);
 	const conversations = list.data?.conversations ?? [];
@@ -513,7 +539,11 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = ({
 	// these messages; leaving the cursor behind would keep the badge counting a
 	// conversation the reader is looking at. The server applies `$max`, so this
 	// is safe to repeat on a refetch.
-	const newest = messages.data?.messages.at(-1)?.seq;
+	const newest = messages.data?.messages.reduce<number | undefined>(
+		(max, message) =>
+			max === undefined || message.seq > max ? message.seq : max,
+		undefined,
+	);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: advance the cursor only when the conversation or its newest seq changes; including the mutation object or the whole conversation would re-fire on every render.
 	useEffect(() => {
 		if (selected === null || newest === undefined) return;
@@ -541,10 +571,11 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = ({
 				messages={messages.data?.messages ?? []}
 				selfAccountId={selfAccountId}
 				sending={send.isPending}
+				sendFailed={send.isError}
 				onSelect={setSelectedId}
 				onSend={(body) => {
 					if (selected === null) return;
-					send.mutate({ clientRef: crypto.randomUUID(), body });
+					return send.mutateAsync({ clientRef: crypto.randomUUID(), body });
 				}}
 				onNewConversation={() => setCreateOpen(true)}
 				onRetry={() => {
@@ -554,6 +585,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = ({
 			<TeamBridgeCreateDialog
 				open={createOpen}
 				pending={create.isPending}
+				error={create.isError ? t("ui.teamBridge.create.error") : undefined}
 				onClose={() => setCreateOpen(false)}
 				onCreate={(input) => {
 					create.mutate(input, {

@@ -8368,15 +8368,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/${request.action}`,
 				method: "POST",
 			};
-		case "team_bridge.conversations.members.add":
+		case "team_bridge.conversations.members.add": {
+			/* The route's body IS the member array and `tenant_id` is a query
+			   parameter (ConversationMemberIn list + tenant_id query). Wrapping
+			   both in an object, as this op used to, guaranteed a 422. */
+			const query = new URLSearchParams();
+			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			const suffix = query.size > 0 ? `?${query.toString()}` : "";
 			return {
-				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/members`,
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/members${suffix}`,
 				method: "POST",
-				body: {
-					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
-					members: request.members,
-				},
+				body: request.members,
 			};
+		}
 		case "team_bridge.conversations.members.remove":
 			return {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/members/${encodeURIComponent(request.account_id)}`,

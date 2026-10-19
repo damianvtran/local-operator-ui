@@ -83,7 +83,23 @@ export function useTeamBridgeMessages(
 			TeamBridgeApi.listMessages(conversationId as string, { tenantId }),
 		enabled: Boolean(conversationId),
 		staleTime: 5_000,
+		/* A conversation needs to feel live: without a poll an incoming message
+		   never appears until the reader clicks away. Eight seconds is Slack's
+		   order of immediacy for a background tab without an events stream;
+		   `refetchIntervalInBackground` stays false so a hidden window does not
+		   poll this. */
+		refetchInterval: 8_000,
 		refetchOnWindowFocus: true,
+	});
+}
+
+/** The signed-in hub account id (own-message alignment, DM titles). */
+export function useTeamBridgeIdentity(): UseQueryResult<string | null> {
+	return useQuery({
+		queryKey: [...teamBridgeKeys.all, "identity"] as const,
+		queryFn: () => TeamBridgeApi.identity(),
+		staleTime: 5 * 60_000,
+		retry: 1,
 	});
 }
 

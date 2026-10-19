@@ -112,6 +112,12 @@ export const teamBridgeUnreadSchema = z
 	.passthrough();
 export type TeamBridgeUnread = z.infer<typeof teamBridgeUnreadSchema>;
 
+/** The status read's identity slice: the signed-in hub account, or null. */
+export const teamBridgeIdentitySchema = z
+	.object({ account_id: z.string().min(1).nullable().optional() })
+	.passthrough();
+export type TeamBridgeIdentity = z.infer<typeof teamBridgeIdentitySchema>;
+
 export const teamBridgeReadStateSchema = z
 	.object({
 		conversation_id: id,

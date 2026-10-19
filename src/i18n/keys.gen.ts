@@ -4599,6 +4599,7 @@ export type MessageParams = {
 		count: number;
 		countText: string;
 	};
+	"ui.teamBridge.composer.error": undefined;
 	"ui.teamBridge.composer.hint": undefined;
 	"ui.teamBridge.composer.placeholder": undefined;
 	"ui.teamBridge.composer.send": undefined;
@@ -4606,6 +4607,7 @@ export type MessageParams = {
 	"ui.teamBridge.create.add_member": undefined;
 	"ui.teamBridge.create.cancel": undefined;
 	"ui.teamBridge.create.confirm": undefined;
+	"ui.teamBridge.create.error": undefined;
 	"ui.teamBridge.create.member_account": undefined;
 	"ui.teamBridge.create.member_agent": undefined;
 	"ui.teamBridge.create.member_kind": undefined;
@@ -4636,6 +4638,7 @@ export type MessageParams = {
 	"ui.teamBridge.thread.empty": undefined;
 	"ui.teamBridge.thread.error": undefined;
 	"ui.teamBridge.thread.loading": undefined;
+	"ui.teamBridge.thread.withheld": undefined;
 	"ui.teamBridge.unread.count": { count: number };
 };
 

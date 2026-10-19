@@ -21,6 +21,7 @@ import {
 	type TeamBridgeUnread,
 	teamBridgeConversationListSchema,
 	teamBridgeConversationSchema,
+	teamBridgeIdentitySchema,
 	teamBridgeMessagePageSchema,
 	teamBridgeReadStateSchema,
 	teamBridgeUnreadSchema,
@@ -115,6 +116,21 @@ export const TeamBridgeApi = {
 			...(input.muted === undefined ? {} : { muted: input.muted }),
 		});
 		return teamBridgeReadStateSchema.parse(answer);
+	},
+
+	/**
+	 * The signed-in hub account id, from the existing status read. The page
+	 * needs it to tell "mine" from "theirs" (own-message alignment and a DM's
+	 * title); it is the one identity the bridge surface already publishes, and
+	 * this reads it rather than inventing a second notion of self.
+	 */
+	async identity(): Promise<string | null> {
+		const answer = await desktopResult<unknown>({
+			op: "agent_messages.status",
+			boundary: "surface_open",
+		});
+		const parsed = teamBridgeIdentitySchema.parse(answer);
+		return parsed.account_id ?? null;
 	},
 
 	async unread(tenantId?: string): Promise<TeamBridgeUnread> {
