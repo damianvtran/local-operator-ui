@@ -1322,6 +1322,12 @@ const HUB_LINK_MARK =
 	"src/renderer/src/features/chat/components/hub-link-sidebar-mark.tsx";
 const PROJECT_TIMELINE =
 	"src/renderer/src/features/projects/components/project-timeline.tsx";
+const LIBRARY_CARD =
+	"src/renderer/src/features/library/components/library-card.tsx";
+const LIBRARY_FILTER_RAIL =
+	"src/renderer/src/features/library/components/library-filter-rail.tsx";
+const LIBRARY_PAGE =
+	"src/renderer/src/features/library/components/library-page.tsx";
 
 /*
  * The regex metacharacters an anchor may carry, and the literal spaces that stand
@@ -1488,6 +1494,69 @@ const ROW_STATE_GROUNDS = [
 				{},
 			),
 		groundFile: FINDER_FILES_VIEW,
+	},
+	{
+		/*
+		 * THE LIBRARY'S OWN ROWS (the census named this file and
+		 * `library-filter-rail.tsx` while this table did not). Unlike every entry
+		 * above, the row's own resting class carries `bg-surface`: the card or list
+		 * row IS the panel it is painted on (the results section is `canvas`, and a
+		 * row state on `canvas` is a rung below the panel it steps off). So the
+		 * ground is resolved from the SAME expression with the state stubbed OFF -
+		 * what the tile is before it becomes the current one - rather than from an
+		 * ancestor. The two shapes are separate entries because they are separate
+		 * class expressions; pinning one would leave the other's ground asserted by
+		 * nothing.
+		 */
+		what: "the Library asset grid tile",
+		rowFile: LIBRARY_CARD,
+		expression: () => expressionBefore(LIBRARY_CARD, "selected && rowCurrent"),
+		stubs: { selected: true, rowCurrent },
+		ground: () =>
+			merged(
+				LIBRARY_CARD,
+				expressionBefore(LIBRARY_CARD, "selected && rowCurrent"),
+				{ selected: false, rowCurrent },
+			),
+		groundFile: LIBRARY_CARD,
+	},
+	{
+		what: "the Library asset list row",
+		rowFile: LIBRARY_CARD,
+		expression: () =>
+			expressionBefore(
+				LIBRARY_CARD,
+				"items-center gap-3 rounded-md border border-hairline",
+			),
+		stubs: { selected: true, rowCurrent },
+		ground: () =>
+			merged(
+				LIBRARY_CARD,
+				expressionBefore(
+					LIBRARY_CARD,
+					"items-center gap-3 rounded-md border border-hairline",
+				),
+				{ selected: false, rowCurrent },
+			),
+		groundFile: LIBRARY_CARD,
+	},
+	{
+		/*
+		 * The rail row carries no ground of its own - its class expression is
+		 * layout plus a state or hover step - so the ground is the page's filter
+		 * aside, the column `library-page.tsx` paints `bg-surface` and mounts the
+		 * rail in. The narrow layout re-hosts the same rail inside the shared Sheet;
+		 * that ground belongs to the sheet, not to the rail, so it is not the
+		 * surface a row state here is authored against.
+		 */
+		what: "the Library filter rail",
+		rowFile: LIBRARY_FILTER_RAIL,
+		expression: () =>
+			expressionBefore(LIBRARY_FILTER_RAIL, "active ? rowCurrent"),
+		stubs: { active: true, indent: false, rowCurrent },
+		ground: () =>
+			literalClassAt(LIBRARY_PAGE, 'data-glass-region="page-sidebar"', "after"),
+		groundFile: LIBRARY_PAGE,
 	},
 ];
 

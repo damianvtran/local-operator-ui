@@ -353,7 +353,20 @@ export function bufferGeneration(documentId: string): number {
 
 export function bufferText(documentId: string): string | null {
 	const entry = buffers.get(documentId);
-	if (!entry || entry.closed) return null;
+	if (!entry) return null;
+	/*
+	 * A CLOSED BUFFER IS READABLE ONLY WHILE IT STILL HOLDS UNWRITTEN WORDS.
+	 *
+	 * The editor hydrates from this function on mount, so a clean closed entry
+	 * must answer null: its words are the file's, and re-showing them would
+	 * resurrect a document the reader closed and then reopened from disk. But a
+	 * close whose write was REFUSED leaves the reader's words here - dirty and
+	 * held - and those are exactly the words the promise is about: the close
+	 * reports `keptWords`, and reopening the same path must put them back. The
+	 * blanket `closed` guard this replaces made `bufferText` return null for
+	 * both, which is the regression `canvas-tab-close.test.mjs` case (c) pins.
+	 */
+	if (entry.closed && !dirtyOf(entry)) return null;
 	return entry.serialize ? entry.serialize().text : entry.token;
 }
 
