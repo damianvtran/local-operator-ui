@@ -774,7 +774,7 @@ export function foldLive(actions: FoldableAction[]): FoldLive | null {
  * new turn and therefore a new run, which is how the boundary between two turns
  * is respected without this model knowing anything about turns. Rows the
  * transcript does not treat as trace-like (prose and notices) break a run.
- * Positively classified incoming receipts may bridge calls, but are excluded
+ * Positively classified internal receipts may bridge calls, but are excluded
  * from the action threshold, work duration, failures and live execution. This
  * preserves chronology without claiming that a received message was an action.
  * Two or more CONSECUTIVE receipts with no actions between them fold on their
