@@ -304,6 +304,64 @@ import ruUiSettingsSpeech from "./catalogues/ru/ui.settings.speech.json";
 import ruUiSettingsUpdates from "./catalogues/ru/ui.settings.updates.json";
 import ruUiShell from "./catalogues/ru/ui.shell.json";
 import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
+import urUiAgentMessages from "./catalogues/ur/ui.agentMessages.json";
+import urUiAgentMessagesSettings from "./catalogues/ur/ui.agentMessages.settings.json";
+import urUiAgentsDialogs from "./catalogues/ur/ui.agents.dialogs.json";
+import urUiAgents from "./catalogues/ur/ui.agents.json";
+import urUiAgentsModels from "./catalogues/ur/ui.agents.models.json";
+import urUiAgentsNavigation from "./catalogues/ur/ui.agents.navigation.json";
+import urUiAgentsRefusals from "./catalogues/ur/ui.agents.refusals.json";
+import urUiAgentsSettings from "./catalogues/ur/ui.agents.settings.json";
+import urUiAgentsStarters from "./catalogues/ur/ui.agents.starters.json";
+import urUiBrowserChrome from "./catalogues/ur/ui.browser.chrome.json";
+import urUiBrowser from "./catalogues/ur/ui.browser.json";
+import urUiCanvas from "./catalogues/ur/ui.canvas.json";
+import urUiChatComposer from "./catalogues/ur/ui.chat.composer.json";
+import urUiChatComposerMedia from "./catalogues/ur/ui.chat.composer_media.json";
+import urUiChatDialogs from "./catalogues/ur/ui.chat.dialogs.json";
+import urUiChatHeader from "./catalogues/ur/ui.chat.header.json";
+import urUiChat from "./catalogues/ur/ui.chat.json";
+import urUiChatResponseActions from "./catalogues/ur/ui.chat.response_actions.json";
+import urUiChatSidebarView from "./catalogues/ur/ui.chat.sidebar_view.json";
+import urUiChatTags from "./catalogues/ur/ui.chat.tags.json";
+import urUiCodeReview from "./catalogues/ur/ui.code_review.json";
+import urUiCommandPalette from "./catalogues/ur/ui.command_palette.json";
+import urUiCommonAccount from "./catalogues/ur/ui.common.account.json";
+import urUiCommonActions from "./catalogues/ur/ui.common.actions.json";
+import urUiCommonConnection from "./catalogues/ur/ui.common.connection.json";
+import urUiCommonEditing from "./catalogues/ur/ui.common.editing.json";
+import urUiCommonErrors from "./catalogues/ur/ui.common.errors.json";
+import urUiCommonForms from "./catalogues/ur/ui.common.forms.json";
+import urUiCommonLoading from "./catalogues/ur/ui.common.loading.json";
+import urUiCommonModels from "./catalogues/ur/ui.common.models.json";
+import urUiCommonUpdates from "./catalogues/ur/ui.common.updates.json";
+import urUiConsole from "./catalogues/ur/ui.console.json";
+import urUiHubComments from "./catalogues/ur/ui.hub.comments.json";
+import urUiHub from "./catalogues/ur/ui.hub.json";
+import urUiHubTaxonomy from "./catalogues/ur/ui.hub.taxonomy.json";
+import urUiInstaller from "./catalogues/ur/ui.installer.json";
+import urUiLibrary from "./catalogues/ur/ui.library.json";
+import urUiMesh from "./catalogues/ur/ui.mesh.json";
+import urUiOnboarding from "./catalogues/ur/ui.onboarding.json";
+import urUiProjects from "./catalogues/ur/ui.projects.json";
+import urUiProviders from "./catalogues/ur/ui.providers.json";
+import urUiSchedules from "./catalogues/ur/ui.schedules.json";
+import urUiSettingsAccount from "./catalogues/ur/ui.settings.account.json";
+import urUiSettingsAppearance from "./catalogues/ur/ui.settings.appearance.json";
+import urUiSettingsAppearanceWindowGlass from "./catalogues/ur/ui.settings.appearance.window_glass.json";
+import urUiSettingsConfiguration from "./catalogues/ur/ui.settings.configuration.json";
+import urUiSettingsImports from "./catalogues/ur/ui.settings.imports.json";
+import urUiSettingsIntegrations from "./catalogues/ur/ui.settings.integrations.json";
+import urUiSettings from "./catalogues/ur/ui.settings.json";
+import urUiSettingsModelDefaultEffort from "./catalogues/ur/ui.settings.model.default_effort.json";
+import urUiSettingsModel from "./catalogues/ur/ui.settings.model.json";
+import urUiSettingsModelProviderCallout from "./catalogues/ur/ui.settings.model.provider_callout.json";
+import urUiSettingsNavigation from "./catalogues/ur/ui.settings.navigation.json";
+import urUiSettingsShortcuts from "./catalogues/ur/ui.settings.shortcuts.json";
+import urUiSettingsSpeech from "./catalogues/ur/ui.settings.speech.json";
+import urUiSettingsUpdates from "./catalogues/ur/ui.settings.updates.json";
+import urUiShell from "./catalogues/ur/ui.shell.json";
+import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
 import viUiAgentsDialogs from "./catalogues/vi/ui.agents.dialogs.json";
 import viUiAgents from "./catalogues/vi/ui.agents.json";
@@ -715,6 +773,66 @@ export const bundledCatalogues: Readonly<
 		...ruUiSettingsUpdates,
 		...ruUiShell,
 		...ruUiShellRail,
+	},
+	ur: {
+		...urUiAgentMessages,
+		...urUiAgentMessagesSettings,
+		...urUiAgentsDialogs,
+		...urUiAgents,
+		...urUiAgentsModels,
+		...urUiAgentsNavigation,
+		...urUiAgentsRefusals,
+		...urUiAgentsSettings,
+		...urUiAgentsStarters,
+		...urUiBrowserChrome,
+		...urUiBrowser,
+		...urUiCanvas,
+		...urUiChatComposer,
+		...urUiChatComposerMedia,
+		...urUiChatDialogs,
+		...urUiChatHeader,
+		...urUiChat,
+		...urUiChatResponseActions,
+		...urUiChatSidebarView,
+		...urUiChatTags,
+		...urUiCodeReview,
+		...urUiCommandPalette,
+		...urUiCommonAccount,
+		...urUiCommonActions,
+		...urUiCommonConnection,
+		...urUiCommonEditing,
+		...urUiCommonErrors,
+		...urUiCommonForms,
+		...urUiCommonLoading,
+		...urUiCommonModels,
+		...urUiCommonUpdates,
+		...urUiConsole,
+		...urUiHubComments,
+		...urUiHub,
+		...urUiHubTaxonomy,
+		...urUiInstaller,
+		...urUiLibrary,
+		...urUiMesh,
+		...urUiOnboarding,
+		...urUiProjects,
+		...urUiProviders,
+		...urUiSchedules,
+		...urUiSettingsAccount,
+		...urUiSettingsAppearance,
+		...urUiSettingsAppearanceWindowGlass,
+		...urUiSettingsConfiguration,
+		...urUiSettingsImports,
+		...urUiSettingsIntegrations,
+		...urUiSettings,
+		...urUiSettingsModelDefaultEffort,
+		...urUiSettingsModel,
+		...urUiSettingsModelProviderCallout,
+		...urUiSettingsNavigation,
+		...urUiSettingsShortcuts,
+		...urUiSettingsSpeech,
+		...urUiSettingsUpdates,
+		...urUiShell,
+		...urUiShellRail,
 	},
 	vi: {
 		...viUiAgentMessages,
