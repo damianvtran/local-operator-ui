@@ -135,7 +135,11 @@ export function TagPickerCombobox({
 							move(event.key === "ArrowDown" ? 1 : -1, false);
 						} else if (event.key === "Enter") {
 							event.preventDefault();
-							if (listOpen && safeActive >= 0) choose(matches[safeActive].id);
+							if (!listOpen) {
+								// Reopening is navigation, never a toggle or implicit Create.
+								setListOpen(true);
+								setActive(matches.length ? 0 : -1);
+							} else if (safeActive >= 0) choose(matches[safeActive].id);
 						} else if (event.key === "Backspace" && !query && selected.length) {
 							event.preventDefault();
 							choose(selected[selected.length - 1]);

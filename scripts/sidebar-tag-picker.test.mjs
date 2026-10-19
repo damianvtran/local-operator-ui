@@ -74,10 +74,12 @@ const categories = Array.from({ length: 12 }, (_, index) => ({
 }));
 let creates = 0;
 let toggles = [];
+let closeList;
 function Harness({ initial = [], unready = false }) {
 	const [selected, setSelected] = React.useState(initial);
 	const [query, setQuery] = React.useState("");
 	const [listOpen, setListOpen] = React.useState(true);
+	closeList = () => setListOpen(false);
 	const input = React.useRef(null);
 	return React.createElement(TagPickerCombobox, {
 		categories,
@@ -202,6 +204,24 @@ test("active descendant exists, arrows clamp, Enter toggles once and resets", as
 	assert.equal(input.hasAttribute("aria-activedescendant"), false);
 	assert.equal(options().filter((option) => option.tabIndex === 0).length, 1);
 	assert.equal(options()[0].getAttribute("aria-selected"), "true");
+});
+test("closed-list Enter reopens first option without selection or Create", async () => {
+	const input = await mount();
+	await act(() => input.focus());
+	await key(input, "ArrowDown");
+	await key(input, "ArrowDown");
+	await act(() => closeList());
+	assert.equal(input.getAttribute("aria-expanded"), "false");
+	assert.equal(document.querySelector('[role="listbox"]').hidden, true);
+	await key(input, "Enter");
+	assert.equal(input.getAttribute("aria-expanded"), "true");
+	assert.equal(document.activeElement, input);
+	assert.equal(
+		document.getElementById(input.getAttribute("aria-activedescendant")),
+		options()[0],
+	);
+	assert.deepEqual(toggles, []);
+	assert.equal(creates, 0);
 });
 test("one roving option stop, option Home/End and Space, input mode cleared", async () => {
 	const input = await mount();

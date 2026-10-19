@@ -276,7 +276,7 @@ export function ManageTagsDialog({
 										<li
 											key={tagKey(tag)}
 											data-tag-id={tagKey(tag)}
-											className="flex min-h-9 min-w-0 flex-col gap-1 border-hairline border-b py-2"
+											className="@container flex min-h-9 min-w-0 flex-col gap-1 border-hairline border-b py-2"
 										>
 											{renaming === tagKey(tag) ? (
 												<form
@@ -345,7 +345,10 @@ export function ManageTagsDialog({
 													>
 														{tag.name}
 													</span>
-													<div className="flex w-full flex-wrap items-center gap-1">
+													{/* Metadata must keep an intrinsic line at narrow dialog widths;
+													 * the action cluster moves together below it, never squeezing
+													 * a usage label into a one-word/number sliver. */}
+													<div className="grid w-full min-w-0 grid-cols-1 items-center gap-1 @min-[300px]:grid-cols-[minmax(0,1fr)_auto]">
 														<p className="min-w-0 flex-1 text-meta text-ink-muted">
 															{t("ui.chat.tags.tag_usage", {
 																count:
@@ -353,52 +356,54 @@ export function ManageTagsDialog({
 																		?.conversations ?? 0,
 															})}
 														</p>
-														<Button
-															variant="ghost"
-															size="icon-sm"
-															aria-label={t("ui.chat.tags.move_up", {
-																name: tag.name,
-															})}
-															disabled={
-																pending || !!query.trim() || index === 0
-															}
-															onClick={() => move(index, -1)}
-														>
-															<ChevronUp aria-hidden="true" />
-														</Button>
-														<Button
-															variant="ghost"
-															size="icon-sm"
-															aria-label={t("ui.chat.tags.move_down", {
-																name: tag.name,
-															})}
-															disabled={
-																pending ||
-																!!query.trim() ||
-																index === draft.length - 1
-															}
-															onClick={() => move(index, 1)}
-														>
-															<ChevronDown aria-hidden="true" />
-														</Button>
-														<Button
-															variant="ghost"
-															disabled={pending}
-															onClick={() => {
-																setError(null);
-																setRenaming(tagKey(tag));
-																setRename(tag.name);
-															}}
-														>
-															{t("ui.chat.tags.rename")}
-														</Button>
-														<Button
-															variant="ghost"
-															disabled={pending}
-															onClick={() => void beginDelete(tag)}
-														>
-															{t("ui.chat.tags.delete")}
-														</Button>
+														<div className="flex min-w-0 flex-wrap items-center gap-1">
+															<Button
+																variant="ghost"
+																size="icon-sm"
+																aria-label={t("ui.chat.tags.move_up", {
+																	name: tag.name,
+																})}
+																disabled={
+																	pending || !!query.trim() || index === 0
+																}
+																onClick={() => move(index, -1)}
+															>
+																<ChevronUp aria-hidden="true" />
+															</Button>
+															<Button
+																variant="ghost"
+																size="icon-sm"
+																aria-label={t("ui.chat.tags.move_down", {
+																	name: tag.name,
+																})}
+																disabled={
+																	pending ||
+																	!!query.trim() ||
+																	index === draft.length - 1
+																}
+																onClick={() => move(index, 1)}
+															>
+																<ChevronDown aria-hidden="true" />
+															</Button>
+															<Button
+																variant="ghost"
+																disabled={pending}
+																onClick={() => {
+																	setError(null);
+																	setRenaming(tagKey(tag));
+																	setRename(tag.name);
+																}}
+															>
+																{t("ui.chat.tags.rename")}
+															</Button>
+															<Button
+																variant="ghost"
+																disabled={pending}
+																onClick={() => void beginDelete(tag)}
+															>
+																{t("ui.chat.tags.delete")}
+															</Button>
+														</div>
 													</div>
 												</>
 											)}
