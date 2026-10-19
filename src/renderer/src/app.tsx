@@ -94,6 +94,17 @@ const ProjectsPage = lazy(() =>
 		default: m.ProjectsPage,
 	})),
 );
+/*
+ * The Library page. Lazy like every other route, and mounted only when the
+ * backend advertises `features.library` (see the gate below): the nav row hides
+ * on the same predicate, so a hand-typed `/library` on an older backend falls
+ * to the catch-all rather than rendering a page whose first read 404s.
+ */
+const LibraryPage = lazy(() =>
+	import("@features/library/components/library-page").then((m) => ({
+		default: m.LibraryPage,
+	})),
+);
 const BrowserPage = lazy(() =>
 	import("@features/browser/components/browser-page").then((m) => ({
 		default: m.BrowserPage,
@@ -260,6 +271,7 @@ const App: FC = () => {
 	 * most needs to be able to say.
 	 */
 	const meshState = desktopFeatureState(capabilities.data, "peers");
+	const libraryState = desktopFeatureState(capabilities.data, "library");
 
 	const handleAgentCreated = (agent: { id: string; name: string }) => {
 		/*
@@ -866,6 +878,17 @@ const App: FC = () => {
 											element={<ProjectsPage />}
 										/>
 										<Route path="/browser" element={<BrowserPage />} />
+										{/* Mounted only with `features.library`: without it `/library`
+										    falls through to the catch-all, like any unknown path. */}
+										{libraryState === "enabled" && (
+											<>
+												<Route path="/library" element={<LibraryPage />} />
+												<Route
+													path="/library/assets/:assetId"
+													element={<LibraryPage />}
+												/>
+											</>
+										)}
 										{/* Mounted only with `features.peers`: without it `/mesh` falls through
 										    to the catch-all like any unknown path, rather than rendering a tab
 										    for a feature this backend does not have. */}

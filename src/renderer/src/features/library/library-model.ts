@@ -1,0 +1,385 @@
+/**
+ * The Library's pure model: categories, filters, sort, search and formatting.
+ *
+ * EVERYTHING HERE IS A FUNCTION OF THE ROWS the backend admitted, never a
+ * second source of truth. The listing route already filters server-side, and
+ * this module exists for the three jobs the page cannot delegate:
+ *
+ * - the filter rail's COUNTS, which are the server's own `counts` answer and
+ *   never re-derived from the current page (a cursor page is not the catalog);
+ * - the stories' fixture filtering, so a story exercises the real predicate
+ *   rather than a hand-written approximation of it;
+ * - the ordering and grouping the header offers, which the server also sorts -
+ *   the client copy is applied only to rows a caller already holds (optimistic
+ *   insertion, a story fixture) and must agree with the server's rule.
+ *
+ * The category vocabulary is EXTENSIBLE BY DESIGN: the known rows below draw in
+ * a fixed order, and a category the backend adds later (music, for example)
+ * lands at the END under its raw key rather than disappearing. That is why the
+ * type is `string`, not a closed union: the operator's Suno/music follow-up will
+ * add a category without a renderer release.
+ */
+
+import type { WithoutParams } from "@shared/i18n";
+import type {
+	DesktopLibraryAsset,
+	DesktopLibraryCategory,
+	DesktopLibraryKind,
+	DesktopLibrarySort,
+	DesktopLibraryTag,
+} from "../../../../shared/desktop-control-contract";
+
+/** Sort directions the route accepts. */
+export type LibraryOrder = "asc" | "desc";
+
+/** The three user-facing origin groups, in the order the rail lists them. */
+export const ORIGIN_GROUPS = ["generated", "created", "mentioned"] as const;
+
+export type OriginGroup = (typeof ORIGIN_GROUPS)[number];
+
+/** Status filters, as the rail names them. */
+export type LibraryStatusFilter = "highlighted" | "unorganized" | "favorite";
+
+/**
+ * The rail's category rows, in reading order.
+ *
+ * `labelKey` is an i18n key; `kind` is the category's preview family, used for
+ * the row's glyph. A category absent from this table still renders (last, raw
+ * key, neutral glyph) - the extensibility rule in the module docstring.
+ */
+export const LIBRARY_CATEGORIES: ReadonlyArray<{
+	key: DesktopLibraryCategory;
+	labelKey: WithoutParams;
+	iconKind: DesktopLibraryKind;
+}> = [
+	{ key: "image", labelKey: "ui.library.category.images", iconKind: "image" },
+	{ key: "sound", labelKey: "ui.library.category.sounds", iconKind: "audio" },
+	{
+		key: "document",
+		labelKey: "ui.library.category.documents",
+		iconKind: "markdown",
+	},
+	{
+		key: "presentation",
+		labelKey: "ui.library.category.presentations",
+		iconKind: "pptx",
+	},
+	{ key: "video", labelKey: "ui.library.category.video", iconKind: "video" },
+	{
+		key: "spreadsheet",
+		labelKey: "ui.library.category.spreadsheets",
+		iconKind: "spreadsheet",
+	},
+	{ key: "code", labelKey: "ui.library.category.code", iconKind: "code" },
+	{ key: "other", labelKey: "ui.library.category.other", iconKind: "other" },
+];
+
+/** The sort menu's rows, in the order the menu offers them. */
+export const LIBRARY_SORTS: ReadonlyArray<{
+	key: DesktopLibrarySort;
+	labelKey: WithoutParams;
+}> = [
+	{ key: "recent", labelKey: "ui.library.sort.recent" },
+	{ key: "name", labelKey: "ui.library.sort.name" },
+	{ key: "kind", labelKey: "ui.library.sort.kind" },
+	{ key: "size", labelKey: "ui.library.sort.size" },
+	{ key: "created", labelKey: "ui.library.sort.created" },
+	{ key: "modified", labelKey: "ui.library.sort.modified" },
+	{ key: "organized", labelKey: "ui.library.sort.organized" },
+];
+
+/** The listing request's filter half, mirroring `library.list` exactly. */
+export type LibraryListFilters = {
+	q: string;
+	category?: string;
+	originGroup?: OriginGroup;
+	/** One tag id/name; the rail's tag rows select one at a time. */
+	tag?: string;
+	/** One source conversation; set by the card menu's "from this conversation". */
+	session?: string;
+	tagMode: "all" | "any";
+	highlighted: boolean;
+	status?: LibraryStatusFilter;
+	sort: DesktopLibrarySort;
+	order: LibraryOrder;
+};
+
+export const NO_LIBRARY_FILTERS: LibraryListFilters = {
+	q: "",
+	tagMode: "all",
+	highlighted: false,
+	sort: "recent",
+	order: "desc",
+};
+
+/**
+ * The default direction for a sort key, matching the route's documented
+ * defaults: name and kind asc; every time/size key desc.
+ */
+export function defaultOrder(sort: DesktopLibrarySort): LibraryOrder {
+	return sort === "name" || sort === "kind" ? "asc" : "desc";
+}
+
+/** Whether a status filter is on. */
+export function isStatusActive(
+	filters: LibraryListFilters,
+	status: LibraryStatusFilter,
+): boolean {
+	return filters.status === status;
+}
+
+/** Toggle a status filter off when it is the one already on. */
+export function toggleStatus(
+	filters: LibraryListFilters,
+	status: LibraryStatusFilter,
+): LibraryListFilters {
+	return {
+		...filters,
+		status: filters.status === status ? undefined : status,
+	};
+}
+
+/** Whether any narrowing beyond the default listing is on. */
+export function hasActiveFilters(filters: LibraryListFilters): boolean {
+	return Boolean(
+		filters.q.trim() ||
+			filters.category ||
+			filters.originGroup ||
+			filters.tag ||
+			filters.session ||
+			filters.highlighted ||
+			filters.status,
+	);
+}
+
+/**
+ * The link's value for the `unorganized`/`organized` query parameter.
+ *
+ * The route's `organized=0|1` is a tri-state expressed as presence: absent
+ * means "either". The status filter is the only producer of this value, so it
+ * lives here rather than at the hook's call site.
+ */
+export function organizedParam(
+	status: LibraryStatusFilter | undefined,
+): boolean | undefined {
+	if (status === "unorganized") return false;
+	if (status === "highlighted" || status === "favorite") return undefined;
+	return undefined;
+}
+
+/** The asset's effective display name: the user's name, else the derived one. */
+export function assetDisplayName(asset: DesktopLibraryAsset): string {
+	return asset.name.trim() || asset.derived_name.trim() || asset.id;
+}
+
+/** The second card line: the derived filename, unless it duplicates the name. */
+export function assetSubtitle(asset: DesktopLibraryAsset): string {
+	const derived = asset.derived_name.trim();
+	if (!derived) return asset.ref.display_path;
+	return derived === asset.name.trim() ? asset.ref.display_path : derived;
+}
+
+/**
+ * Search the fields the route searches, case-insensitively, in the same order:
+ * name, description, tag names, derived name, display path and source
+ * conversation titles. Used by fixtures and by the tests that pin the two
+ * engines' agreement; the live page sends `q` to the server and does not
+ * re-filter the answer.
+ */
+export function assetMatchesQuery(
+	asset: DesktopLibraryAsset,
+	query: string,
+): boolean {
+	const needle = query.trim().toLowerCase();
+	if (!needle) return true;
+	const haystack = [
+		asset.name,
+		asset.description,
+		...asset.tags.map((tag) => tag.name),
+		asset.derived_name,
+		asset.ref.display_path,
+		...asset.occurrences.map((occurrence) => occurrence.session_title),
+	]
+		.join("\n")
+		.toLowerCase();
+	return haystack.includes(needle);
+}
+
+/**
+ * The client-side filter, byte-for-byte the route's documented rules.
+ *
+ * DELIBERATELY ONE FUNCTION, used by stories and tests: a fixture that filters
+ * with a second implementation would prove the UI against a ruleset the
+ * backend does not run.
+ */
+export function filterAssets(
+	assets: DesktopLibraryAsset[],
+	filters: LibraryListFilters,
+): DesktopLibraryAsset[] {
+	return assets.filter((asset) => {
+		if (!assetMatchesQuery(asset, filters.q)) return false;
+		if (filters.category && asset.category !== filters.category) return false;
+		if (filters.originGroup && asset.origin_group !== filters.originGroup)
+			return false;
+		if (filters.tag) {
+			const names = asset.tags.map((tag) => tag.id);
+			const namesToo = asset.tags.map((tag) => tag.name);
+			if (!names.includes(filters.tag) && !namesToo.includes(filters.tag))
+				return false;
+		}
+		if (filters.highlighted && !asset.highlighted) return false;
+		switch (filters.status) {
+			case "favorite":
+				if (!asset.favorite) return false;
+				break;
+			case "unorganized":
+				if (asset.organized !== null) return false;
+				break;
+			case "highlighted":
+				if (!asset.highlighted) return false;
+				break;
+			default:
+				break;
+		}
+		return true;
+	});
+}
+
+/** The sort comparator, matching the route's seven keys. */
+export function sortAssets(
+	assets: DesktopLibraryAsset[],
+	sort: DesktopLibrarySort,
+	order: LibraryOrder,
+): DesktopLibraryAsset[] {
+	const direction = order === "asc" ? 1 : -1;
+	const value = (asset: DesktopLibraryAsset): string | number => {
+		switch (sort) {
+			case "name":
+				return assetDisplayName(asset).toLowerCase();
+			case "kind":
+				return asset.kind;
+			case "size":
+				return asset.size_bytes;
+			case "created":
+				return asset.created_at;
+			case "modified":
+				return asset.modified_at;
+			case "organized":
+				return asset.organized?.at ?? 0;
+			default:
+				return asset.last_seen_at;
+		}
+	};
+	return [...assets].sort((a, b) => {
+		const left = value(a);
+		const right = value(b);
+		if (typeof left === "number" && typeof right === "number")
+			return (left - right) * direction;
+		return String(left).localeCompare(String(right)) * direction;
+	});
+}
+
+/**
+ * Group the listing's tag answer by category, with the known tag categories
+ * first and unknown categories LAST - the same rule the asset categories
+ * follow. Within a group, tags keep the server's order (count desc).
+ */
+export function groupTagsByCategory(
+	tags: DesktopLibraryTag[],
+): Array<{ category: string; tags: DesktopLibraryTag[] }> {
+	const groups = new Map<string, DesktopLibraryTag[]>();
+	for (const tag of tags) {
+		const key = tag.category || "custom";
+		const rows = groups.get(key);
+		if (rows) rows.push(tag);
+		else groups.set(key, [tag]);
+	}
+	const known = ["topic", "project", "type", "source", "custom"];
+	const rank = (category: string) => {
+		const index = known.indexOf(category);
+		return index === -1 ? known.length : index;
+	};
+	return [...groups.entries()]
+		.sort(([left], [right]) => rank(left) - rank(right))
+		.map(([category, rows]) => ({ category, tags: rows }));
+}
+
+/** A byte count in the app's compact register. */
+export function formatBytes(bytes: number): string {
+	if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+	const units = ["B", "KB", "MB", "GB", "TB"];
+	const exponent = Math.min(
+		units.length - 1,
+		Math.floor(Math.log(bytes) / Math.log(1024)),
+	);
+	const value = bytes / 1024 ** exponent;
+	const rounded =
+		value >= 10 || exponent === 0 ? Math.round(value) : value.toFixed(1);
+	return `${rounded} ${units[exponent]}`;
+}
+
+/**
+ * A compact age label, pinned to an injected clock so a rendered frame does not
+ * churn (`nowMs` is a page prop, the schedules/projects rule).
+ */
+export function relativeTime(
+	seconds: number | null | undefined,
+	nowMs: number,
+): string {
+	if (!seconds) return "";
+	const deltaMs = nowMs - seconds * 1000;
+	if (deltaMs < 60_000) return "just now";
+	const minutes = Math.floor(deltaMs / 60_000);
+	if (minutes < 60) return `${minutes}m ago`;
+	const hours = Math.floor(minutes / 60);
+	if (hours < 24) return `${hours}h ago`;
+	const days = Math.floor(hours / 24);
+	if (days < 30) return `${days}d ago`;
+	const months = Math.floor(days / 30);
+	if (months < 12) return `${months}mo ago`;
+	return `${Math.floor(months / 12)}y ago`;
+}
+
+/** An absolute timestamp for the preview's metadata line. */
+export function absoluteDate(seconds: number | null | undefined): string {
+	if (!seconds) return "";
+	return new Date(seconds * 1000).toLocaleDateString(undefined, {
+		year: "numeric",
+		month: "short",
+		day: "numeric",
+	});
+}
+
+/** Duration in m:ss, for audio/video cards. */
+export function formatDuration(seconds: number | null | undefined): string {
+	if (!seconds || seconds < 0) return "";
+	const whole = Math.round(seconds);
+	const minutes = Math.floor(whole / 60);
+	const rest = whole % 60;
+	return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
+/** The origin group's i18n key. */
+export function originGroupLabelKey(originGroup: string): WithoutParams {
+	switch (originGroup) {
+		case "generated":
+			return "ui.library.origin.generated";
+		case "created":
+			return "ui.library.origin.created";
+		case "mentioned":
+			return "ui.library.origin.mentioned";
+		default:
+			return "ui.library.origin.other";
+	}
+}
+
+/**
+ * Whether the current filter set can be rendered by the server at all.
+ *
+ * `library.list` carries one `tag` value, so the rail selects one tag; this
+ * predicate is what the rail uses to keep its "any/all" control honest rather
+ * than offering a mode with nothing to apply it to.
+ */
+export function tagModeApplies(filters: LibraryListFilters): boolean {
+	return Boolean(filters.tag);
+}

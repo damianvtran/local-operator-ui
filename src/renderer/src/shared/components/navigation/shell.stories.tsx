@@ -293,6 +293,13 @@ const DESKTOP_CAPABILITIES = {
 		settings: 1,
 		agents_config: 1,
 		session_interrupt: 1,
+		/*
+		 * The operator's IA asks for Library and Projects in the primary rows;
+		 * the shell fixture advertises both so the evidence frames show the real
+		 * order rather than a column that silently omitted two destinations.
+		 */
+		library: 1,
+		projects: 1,
 	},
 };
 
@@ -739,6 +746,53 @@ export const AgentsEmpty: Story = {
  */
 export const RailCollapsed: Story = {
 	render: () => <AgentsShell agentId={AGENTS[0].id} collapsed />,
+};
+
+/**
+ * The More group, collapsed and expanded.
+ *
+ * It renders the REAL rail inside `ChatLayout` - the composition `app.tsx`
+ * draws - so the frames show the bottom group, its ellipsis, the chevron and
+ * the revealed Agent Hub/Mesh rows exactly as the app arranges them. The
+ * preference is persisted in the app's store; these stories state both values
+ * explicitly and restore the default afterwards so one frame cannot leak into
+ * the next.
+ */
+const NavOverflowState: FC<{
+	open: boolean;
+	collapsed?: boolean;
+}> = ({ open, collapsed = false }) => {
+	const setOverflow = useUiPreferencesStore(
+		(state) => state.setSidebarOverflowExpanded,
+	);
+	const setCollapsed = useUiPreferencesStore(
+		(state) => state.setSidebarCollapsed,
+	);
+	useLayoutEffect(() => {
+		setOverflow(open);
+		setCollapsed(collapsed);
+		return () => {
+			setOverflow(false);
+			setCollapsed(false);
+		};
+	}, [open, collapsed, setOverflow, setCollapsed]);
+	return (
+		<ShellFrame>
+			<AgentsPage />
+		</ShellFrame>
+	);
+};
+
+export const NavMoreCollapsed: Story = {
+	render: () => <NavOverflowState open={false} />,
+};
+
+export const NavMoreExpanded: Story = {
+	render: () => <NavOverflowState open />,
+};
+
+export const NavMoreStripExpanded: Story = {
+	render: () => <NavOverflowState open collapsed />,
 };
 
 /* ------------------------------------------------------------------ *

@@ -52,11 +52,14 @@ import type { LucideIcon } from "lucide-react";
 import {
 	Bot,
 	CalendarDays,
+	ChevronDown,
 	ChevronLeft,
 	ChevronRight,
 	ChevronsUp,
+	Ellipsis,
 	FolderKanban,
 	Globe,
+	LibraryBig,
 	LoaderCircle,
 	MessageSquarePlus,
 	Network,
@@ -376,6 +379,24 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		1,
 	);
 	/*
+	 * The Library destination, gated on its own capability. A backend that
+	 * predates the catalog must render the column that never heard of it: the
+	 * routes 404, and a row landing on an error page is the dead control the
+	 * fail-closed rule omits. The route repeats this gate for a hand-typed URL.
+	 */
+	const libraryEnabled = desktopFeatureEnabled(capabilities.data, "library", 1);
+	/*
+	 * THE OVERFLOW GROUP'S STATE, persisted beside the collapsed width: a
+	 * low-frequency destination's visibility is a preference about the column,
+	 * not about the route in front of it.
+	 */
+	const overflowExpanded = useUiPreferencesStore(
+		(state) => state.sidebarOverflowExpanded,
+	);
+	const setOverflowExpanded = useUiPreferencesStore(
+		(state) => state.setSidebarOverflowExpanded,
+	);
+	/*
 	 * AIDA'S ROW, and its TWO gates, which are two different facts.
 	 *
 	 * `features.aida` is the CAPABILITY: below it the backend predates the
@@ -483,13 +504,22 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					},
 				]
 			: []),
-		{
-			icon: Bot,
-			label: t("ui.shell.sidebar_navigation.agents"),
-			path: "/agents",
-			isActive: currentView === "agents",
-			tourTag: "nav-item-agents",
-		},
+		/*
+		 * The Library sits directly under Aida: it is the cross-conversation
+		 * catalog the operator reaches for after a conversation, and the operator's
+		 * IA put it above the things they own. Gated on `features.library`.
+		 */
+		...(libraryEnabled
+			? [
+					{
+						icon: LibraryBig,
+						label: t("ui.library.page.title"),
+						path: "/library",
+						isActive: currentView === "library",
+						tourTag: "nav-item-library",
+					},
+				]
+			: []),
 		/*
 		 * Projects sits beside Agents — the two are the "things I own" pair — but
 		 * only on a backend that carries the surface; see `projectsEnabled` above.
@@ -505,6 +535,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					},
 				]
 			: []),
+		{
+			icon: Bot,
+			label: t("ui.shell.sidebar_navigation.agents"),
+			path: "/agents",
+			isActive: currentView === "agents",
+			tourTag: "nav-item-agents",
+		},
 		{
 			icon: CalendarDays,
 			label: t("ui.shell.sidebar_navigation.schedules"),
@@ -534,6 +571,16 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					countText: String(count),
 				}),
 		},
+	];
+
+	/*
+	 * THE OVERFLOW GROUP (operator IA, 2026-10-18). Agent Hub and Mesh are
+	 * low-frequency destinations: they keep their rows, badges and gates, but sit
+	 * behind one collapsed "More" row rather than in the primary list. Future
+	 * low-frequency destinations join this array; the primary list stays the six
+	 * destinations the operator reads most.
+	 */
+	const overflowNavItems: NavItem[] = [
 		{
 			icon: Store,
 			label: t("ui.shell.sidebar_navigation.agent_hub"),
@@ -575,6 +622,15 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				]
 			: []),
 	];
+
+	/*
+	 * A DIRECT ROUTE TO A HIDDEN DESTINATION REVEALS ITS GROUP for that visit,
+	 * without overwriting the saved preference: a reader who lands on Agent Hub
+	 * through the palette must be able to see where they are. The preference is
+	 * written only by the More press itself.
+	 */
+	const overflowRevealed =
+		overflowExpanded || overflowNavItems.some((item) => item.isActive);
 
 	/*
 	 * THE BODY. The list brings its own actions - its `New chat` row stages an
@@ -1039,6 +1095,78 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * `navigate-settings` step attaches to this button, which is why it carries
 	 * the tag rather than the menu item.
 	 */
+	/*
+	 * THE "MORE" ROW AND ITS INLINE GROUP.
+	 *
+	 * One disclosure, drawn in both widths: expanded it is a destination row
+	 * with an ellipsis and a chevron; collapsed it is the strip's icon button.
+	 * `aria-expanded` states the state and `aria-controls` names the list, which
+	 * is why the group is a nested list rather than a sibling whose relation a
+	 * reader would have to infer. The rows inside keep their own tooltips,
+	 * badges and keyboard order - expanding reveals them in place, so Tab order
+	 * follows document order in both states.
+	 */
+	const renderOverflowGroup = () => {
+		if (overflowNavItems.length === 0) return null;
+		return (
+			<li
+				key="nav-overflow"
+				className={cn(
+					"flex flex-col",
+					expanded ? "gap-0.5" : "items-center gap-1",
+				)}
+			>
+				{expanded ? (
+					<button
+						type="button"
+						data-tour-tag="nav-item-more"
+						aria-expanded={overflowRevealed}
+						aria-controls="sidebar-more-destinations"
+						aria-label={t("ui.library.page.more_destinations")}
+						onClick={() => setOverflowExpanded(!overflowRevealed)}
+						className={cn(
+							DESTINATION_ROW,
+							"text-ink-muted hover:bg-row-hover hover:text-ink",
+						)}
+					>
+						<Ellipsis size={16} aria-hidden="true" className="shrink-0" />
+						<span className="min-w-0 flex-1 truncate text-left">
+							{t("ui.library.page.more")}
+						</span>
+						<ChevronDown
+							size={14}
+							aria-hidden="true"
+							className={cn(
+								"shrink-0 transition-transform duration-fast",
+								overflowRevealed && "rotate-180",
+							)}
+						/>
+					</button>
+				) : (
+					stripButton(Ellipsis, t("ui.library.page.more_destinations"), {
+						onClick: () => setOverflowExpanded(!overflowRevealed),
+						attrs: {
+							"aria-expanded": overflowRevealed,
+							"aria-controls": "sidebar-more-destinations",
+							"data-tour-tag": "nav-item-more",
+						},
+					})
+				)}
+				{overflowRevealed && (
+					<ul
+						id="sidebar-more-destinations"
+						className={cn(
+							"flex flex-col gap-0.5",
+							!expanded && "items-center gap-1",
+						)}
+					>
+						{overflowNavItems.map(renderNavRow)}
+					</ul>
+				)}
+			</li>
+		);
+	};
+
 	const settingsGear = (
 		<Tooltip content={t("ui.shell.sidebar_navigation.settings")} side="top">
 			<button
@@ -1109,6 +1237,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					{navItems.map(renderNavRow)}
 				</ul>
 				<div className="mt-auto flex flex-col items-center gap-1 pb-2">
+					{renderOverflowGroup()}
 					{/*
 					 * THE STANDING UPDATE NOTICE SITS IN THIS COLUMN ABOVE THE GEAR
 					 * (design consult §3.1): the icon, the gear, the avatar - the strip's
@@ -1216,6 +1345,16 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			 * 48, so the row is not squeezed (a fixed `h-10` with `pb-2` would
 			 * leave a 32px content box and a 40px row overflowing it).
 			 */}
+			{/*
+			 * THE BOTTOM MORE GROUP (design spec §1): the low-frequency
+			 * destinations live directly above the account/settings foot, in the
+			 * footer region rather than in the primary list. Collapsed, the group
+			 * adds no height and takes no space from the chat body; expanded, its
+			 * children follow it in DOM order, so Tab order is visual order.
+			 */}
+			<div className="shrink-0 px-2 pb-1">
+				<ul className="flex flex-col gap-0.5">{renderOverflowGroup()}</ul>
+			</div>
 			<div className="flex min-h-10 shrink-0 items-center justify-between gap-1 px-2 pb-2">
 				<UserProfileSidebar expanded />
 				{/*
