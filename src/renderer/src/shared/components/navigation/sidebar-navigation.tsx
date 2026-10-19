@@ -25,6 +25,7 @@ import {
 	waitingApprovalCount,
 } from "@features/mesh/mesh-approvals";
 import { useMeshMembership } from "@features/mesh/mesh-store";
+import { useTeamBridgeNavItem } from "@features/team-bridge/team-bridge-nav";
 import {
 	desktopFeatureEnabled,
 	desktopFeatureState,
@@ -308,6 +309,15 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 */
 	const capabilities = useDesktopCapabilities();
 	/*
+	 * THE TEAM BRIDGE ROW. The hook owns the capability gate and the one
+	 * account-wide unread read; this list only spreads the descriptor. It is
+	 * called unconditionally because hooks cannot be conditional - the gate is
+	 * inside and returns null when the backend does not publish the surface.
+	 */
+	const teamBridgeNav = useTeamBridgeNavItem(
+		desktopFeatureEnabled(capabilities.data, "team_bridge_conversations"),
+	);
+	/*
 	 * The open conversation, SUBSCRIBED rather than read once: the list marks the
 	 * row the user is in, and a `getState()` read during render would freeze that
 	 * mark at whatever was open when this component last re-rendered.
@@ -581,6 +591,10 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * destinations the operator reads most.
 	 */
 	const overflowNavItems: NavItem[] = [
+		/* The inbox is the most frequent reason to open this group, so it leads. */
+		...(teamBridgeNav
+			? [{ ...teamBridgeNav, isActive: currentView === "team-bridge" }]
+			: []),
 		{
 			icon: Store,
 			label: t("ui.shell.sidebar_navigation.agent_hub"),
@@ -1022,6 +1036,10 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			onClick: () => void;
 			disabled?: boolean;
 			attrs?: Record<string, string | boolean>;
+			/* A count the group carries while it is closed: the corner mark the
+			   destination rows use, so a collapsed More can say something waits. */
+			attention?: number;
+			attentionTag?: string;
 		},
 	) => {
 		const Icon = icon;
@@ -1040,7 +1058,22 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						"disabled:text-ink-disabled disabled:hover:bg-transparent",
 					)}
 				>
-					<Icon size={16} aria-hidden="true" />
+					<span className="relative flex size-7 items-center justify-center">
+						<Icon size={16} aria-hidden="true" />
+						{(props.attention ?? 0) > 0 && (
+							<span className="pointer-events-none absolute -top-0.5 -right-0.5 flex">
+								<Badge
+									variant="attentionQuiet"
+									shape="pill"
+									size="count"
+									className="h-3.5 min-w-3.5 px-0.75 leading-none"
+									data-tour-tag={props.attentionTag}
+								>
+									{props.attention}
+								</Badge>
+							</span>
+						)}
+					</span>
 				</button>
 			</Tooltip>
 		);
@@ -1108,6 +1141,19 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 */
 	const renderOverflowGroup = () => {
 		if (overflowNavItems.length === 0) return null;
+		/* The count the group carries on its own row, in both widths. Team Bridge
+		   is the only waiting-style badge in this group today; the Mesh row's
+		   approval count is already the header's, and summing them would double a
+		   number the user sees twice. */
+		const overflowAttention = teamBridgeNav?.attention ?? 0;
+		/* The mark is visual; the disclosure's name carries the same fact for a
+		   reader who gets no badge (design round 4, D3). */
+		const moreName =
+			overflowAttention > 0
+				? t("ui.teamBridge.group.more_unread", {
+						count: overflowAttention,
+					})
+				: t("ui.library.page.more_destinations");
 		return (
 			<li
 				key="nav-overflow"
@@ -1122,7 +1168,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						data-tour-tag="nav-item-more"
 						aria-expanded={overflowRevealed}
 						aria-controls="sidebar-more-destinations"
-						aria-label={t("ui.library.page.more_destinations")}
+						aria-label={moreName}
 						onClick={() => setOverflowExpanded(!overflowRevealed)}
 						className={cn(
 							DESTINATION_ROW,
@@ -1133,6 +1179,18 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						<span className="min-w-0 flex-1 truncate text-left">
 							{t("ui.library.page.more")}
 						</span>
+						{overflowAttention > 0 && (
+							<span className="inline-flex shrink-0">
+								<Badge
+									variant="attentionQuiet"
+									shape="pill"
+									size="count"
+									data-tour-tag="nav-more-badge"
+								>
+									{overflowAttention}
+								</Badge>
+							</span>
+						)}
 						<ChevronDown
 							size={14}
 							aria-hidden="true"
@@ -1143,8 +1201,10 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						/>
 					</button>
 				) : (
-					stripButton(Ellipsis, t("ui.library.page.more_destinations"), {
+					stripButton(Ellipsis, moreName, {
 						onClick: () => setOverflowExpanded(!overflowRevealed),
+						attention: overflowAttention,
+						attentionTag: "nav-more-badge",
 						attrs: {
 							"aria-expanded": overflowRevealed,
 							"aria-controls": "sidebar-more-destinations",

@@ -35,21 +35,50 @@ import type {
 	TeamBridgeReadState,
 	TeamBridgeUnread,
 } from "../../../../shared/team-bridge-contract";
+import {
+	TEAM_BRIDGE_ALL_SCOPE,
+	type TeamBridgeScope,
+} from "./team-bridge-model";
+
+/**
+ * Query keys are SCOPE-KEYED, deliberately.
+ *
+ * `scope` is a tenant id or the `"all"` sentinel, and it is part of every read
+ * key below. A person switching organizations must never see the previous
+ * organization's cached rows under the new title: the rail refetches into a
+ * different key, and the old one stays warm without being rendered. Messages
+ * are keyed by the CONVERSATION'S tenant rather than the rail scope, because a
+ * conversation opened from the merged view still belongs to exactly one
+ * organization.
+ *
+ * The two prefix keys exist for invalidation only: a write refreshes every
+ * scope that could have shown the row (the merged list and the org list), and
+ * the badge aggregate is one cache shared by the sidebar and the page.
+ */
+const ROOT = ["team-bridge"] as const;
 
 export const teamBridgeKeys = {
-	all: ["team-bridge"] as const,
-	conversations: (tenantId?: string) =>
-		[...teamBridgeKeys.all, "conversations", tenantId ?? "default"] as const,
+	all: ROOT,
+	conversations: (scope: TeamBridgeScope) =>
+		[...ROOT, "conversations", scope] as const,
+	conversationsPrefix: [...ROOT, "conversations"] as const,
 	messages: (conversationId: string, tenantId?: string) =>
 		[
-			...teamBridgeKeys.all,
+			...ROOT,
 			"messages",
-			tenantId ?? "default",
+			tenantId ?? "unknown-tenant",
 			conversationId,
 		] as const,
-	unread: (tenantId?: string) =>
-		[...teamBridgeKeys.all, "unread", tenantId ?? "default"] as const,
+	unread: (scope: TeamBridgeScope) => [...ROOT, "unread", scope] as const,
+	unreadPrefix: [...ROOT, "unread"] as const,
 };
+
+/** Map the UI scope onto the wire's read scope (the only place the sentinel is translated). */
+function readScope(scope: TeamBridgeScope) {
+	return scope === TEAM_BRIDGE_ALL_SCOPE
+		? ("account" as const)
+		: { tenantId: scope };
+}
 
 /** How long the badge may be stale in each window state. */
 export const TEAM_BRIDGE_BADGE_POLL_VISIBLE_MS = 180_000;
@@ -63,11 +92,11 @@ function badgeInterval(): number {
 }
 
 export function useTeamBridgeConversations(
-	tenantId?: string,
+	scope: TeamBridgeScope,
 ): UseQueryResult<TeamBridgeConversationList> {
 	return useQuery({
-		queryKey: teamBridgeKeys.conversations(tenantId),
-		queryFn: () => TeamBridgeApi.listConversations(tenantId),
+		queryKey: teamBridgeKeys.conversations(scope),
+		queryFn: () => TeamBridgeApi.listConversations(readScope(scope)),
 		staleTime: 15_000,
 		refetchOnWindowFocus: true,
 	});
@@ -104,16 +133,24 @@ export function useTeamBridgeIdentity(): UseQueryResult<string | null> {
 }
 
 /**
- * The one badge read. `enabled` is the capability gate: a backend without the
- * conversation surface must not be polled for a route it does not have.
+ * The one unread read, shared by the sidebar badge and the page's per-org
+ * counts.
+ *
+ * The BADGE is always the ACCOUNT aggregate: `scope` defaults to `"all"`, which
+ * the client maps to the server's single `scope=account` read. The page passes
+ * the same default, so its switcher counts come from the payload already in
+ * cache instead of one read per organization.
+ *
+ * `enabled` is the capability gate: a backend without the conversation surface
+ * must not be polled for a route it does not have.
  */
 export function useTeamBridgeUnread(
 	enabled: boolean,
-	tenantId?: string,
+	scope: TeamBridgeScope = TEAM_BRIDGE_ALL_SCOPE,
 ): UseQueryResult<TeamBridgeUnread> {
 	return useQuery({
-		queryKey: teamBridgeKeys.unread(tenantId),
-		queryFn: () => TeamBridgeApi.unread(tenantId),
+		queryKey: teamBridgeKeys.unread(scope),
+		queryFn: () => TeamBridgeApi.unread(readScope(scope)),
 		enabled,
 		staleTime: 30_000,
 		refetchInterval: badgeInterval(),
@@ -136,11 +173,13 @@ export function useSendTeamBridgeMessage(
 			await client.invalidateQueries({
 				queryKey: teamBridgeKeys.messages(conversationId, tenantId),
 			});
+			// Prefix invalidation: the row may be in the merged list and in its
+			// org's list, and both caches must stop claiming stale unread state.
 			await client.invalidateQueries({
-				queryKey: teamBridgeKeys.conversations(tenantId),
+				queryKey: teamBridgeKeys.conversationsPrefix,
 			});
 			await client.invalidateQueries({
-				queryKey: teamBridgeKeys.unread(tenantId),
+				queryKey: teamBridgeKeys.unreadPrefix,
 			});
 		},
 	});
@@ -156,10 +195,10 @@ export function useMarkTeamBridgeRead(
 			TeamBridgeApi.markRead(conversationId, { seq, tenantId }),
 		onSuccess: async () => {
 			await client.invalidateQueries({
-				queryKey: teamBridgeKeys.conversations(tenantId),
+				queryKey: teamBridgeKeys.conversationsPrefix,
 			});
 			await client.invalidateQueries({
-				queryKey: teamBridgeKeys.unread(tenantId),
+				queryKey: teamBridgeKeys.unreadPrefix,
 			});
 		},
 	});
@@ -178,7 +217,7 @@ export function useCreateTeamBridgeConversation(
 			TeamBridgeApi.startConversation({ ...input, tenantId }),
 		onSuccess: async () => {
 			await client.invalidateQueries({
-				queryKey: teamBridgeKeys.conversations(tenantId),
+				queryKey: teamBridgeKeys.conversationsPrefix,
 			});
 		},
 	});
