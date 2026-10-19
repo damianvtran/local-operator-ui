@@ -1,3 +1,4 @@
+import { conversationCountLabel, conversationsLinkDown } from "./mesh-sessions";
 /**
  * The list presentation of the same mesh the canvas draws: which device holds what,
  * sortable, one row per device per network.
@@ -343,7 +344,13 @@ export const MeshList: FC<MeshListProps> = ({
 												: t("ui.mesh.mesh_list.member")}
 										</span>
 									</div>
-									{rows.length > 0 ? (
+									{conversationsLinkDown(device, nowSeconds) ? (
+										<span className="text-meta text-warning">
+											{t("ui.mesh.mesh_card.conversations")} (
+											{conversationCountLabel(null)}) ·{" "}
+											{conversationsLinkDown(device, nowSeconds)}
+										</span>
+									) : rows.length > 0 ? (
 										<>
 											<Separator className="my-1" />
 											<ul className="m-0 flex list-none flex-col gap-0.5 p-0">

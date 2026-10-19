@@ -547,3 +547,41 @@ test("the row's own field answers when the caller has no read, and the caller wi
 	assert.match(asksMark({ row: asksRow(5), open: 2 }), />2</);
 	assert.doesNotMatch(asksMark({ row: asksRow(5), open: 2 }), />5</);
 });
+
+test("waiting uses a static accent hourglass and the backend accessible name", () => {
+	const label = "Waiting on 2 jobs · 1 subagent running";
+	const html = render("waiting", false, label);
+	assert.match(html, /lucide-hourglass/);
+	assert.match(html, /text-accent/);
+	assert.doesNotMatch(html, /animate-spin/);
+	assert.match(html, /sr-only">Waiting on 2 jobs · 1 subagent running</);
+});
+
+test("a link-down remote row cannot draw or announce its last-known idle state", () => {
+	const html = renderToStaticMarkup(
+		createElement(ChatSessionStatus, {
+			row: {
+				session_id: "offline-fixture",
+				locality: "remote",
+				link_down: true,
+				last_seen_at: null,
+				status: { code: "idle", label: "Idle" },
+			},
+		}),
+	);
+	assert.match(html, /lucide-wifi-off/);
+	assert.match(html, /link down · last seen unknown/);
+	assert.doesNotMatch(html, /lucide-circle |Idle|animate-spin/);
+	const recovered = renderToStaticMarkup(
+		createElement(ChatSessionStatus, {
+			row: {
+				session_id: "offline-fixture",
+				locality: "remote",
+				link_down: false,
+				status: { code: "idle", label: "Idle" },
+			},
+		}),
+	);
+	assert.match(recovered, /lucide-circle /);
+	assert.doesNotMatch(recovered, /lucide-wifi-off|link down/);
+});

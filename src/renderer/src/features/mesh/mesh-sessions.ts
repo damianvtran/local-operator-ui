@@ -1,3 +1,5 @@
+import { t } from "../../../../i18n";
+import { lastSeenAge } from "./peer-presence";
 /**
  * Which conversations each drawn device holds, and how many a node may show.
  *
@@ -199,4 +201,24 @@ export function deviceSessionTotal(
 	// no catalogue row shows the rows in hand rather than claiming it holds none.
 	if (catalogueCount === null) return held.rows.length;
 	return Math.max(catalogueCount, held.rows.length);
+}
+
+/** A missing device answer cannot turn an empty page into a census of zero. */
+export function conversationCountLabel(count: number | null): string {
+	return count === null ? t("ui.presence.unknown") : String(count);
+}
+
+export function conversationsLinkDown(
+	device: {
+		state: string;
+		reason: string;
+		lastSeenAt: number | null;
+	},
+	nowSeconds: number,
+): string | null {
+	if (device.state !== "unreachable") return null;
+	return t("ui.presence.device_link_down", {
+		reason: device.reason || t("ui.presence.device_unreachable"),
+		age: lastSeenAge(device.lastSeenAt, nowSeconds),
+	});
 }

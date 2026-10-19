@@ -1,0 +1,29 @@
+{
+	"ui.presence.unknown": {
+		"description": "Peer-link presence in the sidebar and Mesh conversations section. A disconnected peer has unknown conversations, never zero; age is time since last contact."
+	},
+	"ui.presence.link_down_last_seen": {
+		"description": "Peer-link presence in the sidebar and Mesh conversations section. A disconnected peer has unknown conversations, never zero; age is time since last contact."
+	},
+	"ui.presence.device_link_down": {
+		"description": "Peer-link presence in the sidebar and Mesh conversations section. A disconnected peer has unknown conversations, never zero; age is time since last contact."
+	},
+	"ui.presence.device_unreachable": {
+		"description": "Peer-link presence in the sidebar and Mesh conversations section. A disconnected peer has unknown conversations, never zero; age is time since last contact."
+	},
+	"ui.presence.just_now": {
+		"description": "Peer-link presence in the sidebar and Mesh conversations section. A disconnected peer has unknown conversations, never zero; age is time since last contact."
+	},
+	"ui.presence.minutes_ago": {
+		"description": "Peer-link presence in the sidebar and Mesh conversations section. A disconnected peer has unknown conversations, never zero; age is time since last contact."
+	},
+	"ui.presence.hours_ago": {
+		"description": "Peer-link presence in the sidebar and Mesh conversations section. A disconnected peer has unknown conversations, never zero; age is time since last contact."
+	},
+	"ui.presence.days_ago": {
+		"description": "Peer-link presence in the sidebar and Mesh conversations section. A disconnected peer has unknown conversations, never zero; age is time since last contact."
+	},
+	"ui.presence.link_down_compact": {
+		"description": "Compact visible sidebar trailing fact. Age is elapsed time since peer contact; full last-seen phrase is in the row accessibility name and tooltip."
+	}
+}

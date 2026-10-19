@@ -143,6 +143,10 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import { AGENT_ROSTER_SEED } from "../../command-palette/palette-search";
+import {
+	peerLinkDownLabel,
+	peerLinkDownVisibleLabel,
+} from "../../mesh/peer-presence";
 import { focusRowAfterRemoval } from "../archive-confirm";
 import { ARCHIVE_FAILURE_TOAST_MS } from "../archive-undo";
 import {
@@ -4559,10 +4563,12 @@ export function ChatSidebar({
 					{bindingClause(row)}
 				</span>
 				<span className="block">
-					{row.status?.label ??
-						(synthesized.has(row.session_id)
-							? "found by search, beyond the chats listed here"
-							: "Recent")}
+					{row.link_down === true
+						? peerLinkDownLabel(row, listNow / 1000)
+						: (row.status?.label ??
+							(synthesized.has(row.session_id)
+								? "found by search, beyond the chats listed here"
+								: "Recent"))}
 					{silent ? ` · ${SILENT_REMEDY}` : ""}
 					{openedByNote(row)}
 					{unstarted.has(row.session_id) ? ", not sent yet" : ""}
@@ -4730,7 +4736,9 @@ export function ChatSidebar({
 					className="flex size-3.5 shrink-0 items-center justify-center"
 				>
 					{row.locality === "remote" && (
-						<ChatRemoteMark unreachable={row.reachable === false} />
+						<ChatRemoteMark
+							unreachable={row.link_down === true || row.reachable === false}
+						/>
 					)}
 				</span>
 				<ChatSessionStatus row={row} />
@@ -4992,19 +5000,29 @@ export function ChatSidebar({
 				 * read after the title, so the row's name stays `state — title` with the
 				 * time as its tail (U21).
 				 */}
-				{!isRunningRow(row) && relativeTime(row, listNow, view.basis) && (
-					<>
-						<span
-							aria-hidden="true"
-							data-session-time
-							className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-has-[:focus-visible]:hidden group-data-[session-hover-intent]:hidden"
-						>
-							{relativeTime(row, listNow, view.basis)}
-						</span>
-						<span className="sr-only">
-							, {relativeTimeSentence(row, listNow, view.basis)}
-						</span>
-					</>
+				{row.link_down === true ? (
+					<span
+						className="shrink-0 text-meta text-warning"
+						title={peerLinkDownLabel(row, listNow / 1000)}
+					>
+						{peerLinkDownVisibleLabel(row, listNow / 1000)}
+					</span>
+				) : (
+					!isRunningRow(row) &&
+					relativeTime(row, listNow, view.basis) && (
+						<>
+							<span
+								aria-hidden="true"
+								data-session-time
+								className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-has-[:focus-visible]:hidden group-data-[session-hover-intent]:hidden"
+							>
+								{relativeTime(row, listNow, view.basis)}
+							</span>
+							<span className="sr-only">
+								, {relativeTimeSentence(row, listNow, view.basis)}
+							</span>
+						</>
+					)
 				)}
 			</button>
 		);

@@ -3302,3 +3302,86 @@ export const DelegatingRowMinimum: Story = {
 		await sleep(300);
 	},
 };
+
+/** A parked wait is still Running; its hourglass must not borrow busy's motion. */
+export const WaitingRow: Story = {
+	render: () => {
+		fixtures();
+		roster = [
+			wireRow(
+				"b4c5d6e7f809",
+				"Wait for the validation jobs",
+				1_760_003_600,
+				{ code: "waiting", label: "Waiting on 2 jobs · 1 subagent running" },
+				1,
+			),
+		];
+		return <Page sidebarWidth={360} />;
+	},
+	play: async () => {
+		await catalogueSettled(1);
+		const row = screen.getByRole("button", {
+			name: /Waiting on 2 jobs · 1 subagent running.*Wait for the validation jobs/,
+		});
+		if (
+			row.closest("[data-chat-section]")?.getAttribute("data-chat-section") !==
+			"running"
+		)
+			throw new Error("Waiting row must remain under Running");
+		if (
+			!row.querySelector(".lucide-hourglass") ||
+			row.querySelector(".animate-spin")
+		)
+			throw new Error("Waiting row must draw a static hourglass");
+	},
+};
+
+/** Exercise the same settlement seam as the ambient peer read, including a stale reachable row. */
+export const RemoteLinkDown: Story = {
+	render: () => {
+		fixtures();
+		roster = [
+			wireRow("c5d6e7f8091a", "Local comparison", 1_760_003_600, OPEN, 1),
+		];
+		return <Page sidebarWidth={360} />;
+	},
+	play: async () => {
+		await catalogueSettled(1);
+		const store = useCanonicalSessionsStore.getState();
+		const at = store.beginAnswer();
+		store.settlePeerCatalogue(
+			[
+				{
+					session_id: "d6e7f8091a2b",
+					title: "Remote validation",
+					locality: "remote",
+					owner_device: "synthetic-peer",
+					owner_device_name: "Test peer",
+					reachable: true,
+					updated_at: Date.now() / 1000,
+					status: { code: "idle", label: "Idle" },
+				},
+			],
+			at,
+			{
+				"synthetic-peer": {
+					reachable: false,
+					last_seen_at: Date.now() / 1000 - 240,
+					reason: "relay timeout",
+					at,
+				},
+			},
+		);
+		await sleep(100);
+		const row = screen.getByRole("button", {
+			name: /link down · last seen 4m ago.*Remote validation/,
+		});
+		if (
+			!row.querySelector(".lucide-wifi-off") ||
+			!row.textContent?.includes("last seen 4m ago")
+		)
+			throw new Error(
+				"Remote row must expose link loss and last contact visibly and accessibly",
+			);
+	},
+};

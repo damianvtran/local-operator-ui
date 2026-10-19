@@ -40,11 +40,18 @@
  */
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { type FC, useEffect } from "react";
-import { useMeshMembership, useMeshSessions } from "./mesh-store";
+import {
+	useMeshMembership,
+	useMeshSessions,
+	useMeshPeers as usePeers,
+} from "./mesh-store";
 import { toCatalogueRow } from "./mesh-types";
 
 export const PeersCatalogueSync: FC<{ enabled: boolean }> = ({ enabled }) => {
 	const membership = useMeshMembership(enabled);
+	const peers = usePeers(enabled && membership === "member", {
+		stamp: () => useCanonicalSessionsStore.getState().beginAnswer(),
+	});
 	const read = useMeshSessions(enabled && membership === "member", {
 		poll: true,
 		stamp: () => useCanonicalSessionsStore.getState().beginAnswer(),
@@ -53,8 +60,24 @@ export const PeersCatalogueSync: FC<{ enabled: boolean }> = ({ enabled }) => {
 		(state) => state.settlePeerCatalogue,
 	);
 	useEffect(() => {
-		if (!read.data) return;
-		settle(read.data.rows.map(toCatalogueRow), read.data.requestedAt);
-	}, [read.data, settle]);
+		if (!read.data && !peers.data) return;
+		const deviceFacts = Object.fromEntries(
+			(peers.data?.peers ?? []).map((peer) => [
+				peer.device_id,
+				{
+					reachable: peer.reachable,
+					last_seen_at: peer.last_seen_at,
+					reason: peer.unreachable_reason,
+					at: peers.data?.requestedAt ?? 0,
+				},
+			]),
+		);
+		// A failed sessions fan-out must still land the peer-link answer.
+		settle(
+			read.data?.rows.map(toCatalogueRow) ?? [],
+			read.data?.requestedAt ?? 0,
+			deviceFacts,
+		);
+	}, [read.data, peers.data, settle]);
 	return null;
 };
