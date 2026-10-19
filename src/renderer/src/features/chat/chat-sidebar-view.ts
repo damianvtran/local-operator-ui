@@ -434,6 +434,8 @@ export type SidebarView = {
 	 */
 	pins: string[];
 	groupBy: SidebarGroupBy;
+	/** Display-only: disabling grouping never removes durable assignments. */
+	tagsEnabled: boolean;
 	/**
 	 * Which clock the time sections and the row labels read.
 	 *
@@ -463,6 +465,7 @@ export const DEFAULT_SIDEBAR_VIEW: SidebarView = {
 	order: [...SIDEBAR_SECTIONS],
 	pins: [],
 	groupBy: "section",
+	tagsEnabled: false,
 	basis: "active",
 	orderBy: "active-first",
 	loads: 0,
@@ -1333,5 +1336,15 @@ export function parseSidebarView(value: unknown): SidebarView {
 			pins.push(entry);
 		}
 	}
-	return { hidden, order, groupBy, basis, orderBy, loads, pins, pinnedAgents };
+	return {
+		hidden,
+		order,
+		groupBy,
+		tagsEnabled: typeof raw.tagsEnabled === "boolean" ? raw.tagsEnabled : false,
+		basis,
+		orderBy,
+		loads,
+		pins,
+		pinnedAgents,
+	};
 }

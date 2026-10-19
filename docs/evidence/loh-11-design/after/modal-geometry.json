@@ -1,0 +1,230 @@
+{
+  "picker-220-light": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:e02dbdc0c0fe4773b27e988c21a349cb",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 picker 220 light \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-220-light.html\n\n{\n \"sidebar\": 220,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-220-light.html",
+      "title": "PROPOSED LOH-11 picker 220 light",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.015724290977232158,
+    "is_error": false,
+    "useless": false
+  },
+  "picker-260-light": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:02466c445b0b447db07b25f1f0c511ed",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 picker 260 light \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-260-light.html\n\n{\n \"sidebar\": 260,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-260-light.html",
+      "title": "PROPOSED LOH-11 picker 260 light",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.015330874943174422,
+    "is_error": false,
+    "useless": false
+  },
+  "picker-320-light": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:a0b31f732dbb4eb7b1884b5dfc19c569",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 picker 320 light \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-320-light.html\n\n{\n \"sidebar\": 320,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-320-light.html",
+      "title": "PROPOSED LOH-11 picker 320 light",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.013632874935865402,
+    "is_error": false,
+    "useless": false
+  },
+  "manage-220-light": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:d355abec2e5a4494babb4ff00cfd4c47",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 manage 220 light \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-220-light.html\n\n{\n \"sidebar\": 220,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-220-light.html",
+      "title": "PROPOSED LOH-11 manage 220 light",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.029619582928717136,
+    "is_error": false,
+    "useless": false
+  },
+  "manage-260-light": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:9d320aaf94914c45ac7868173ba4e75e",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 manage 260 light \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-260-light.html\n\n{\n \"sidebar\": 260,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-260-light.html",
+      "title": "PROPOSED LOH-11 manage 260 light",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.020925916964188218,
+    "is_error": false,
+    "useless": false
+  },
+  "manage-320-light": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:71f9448da17e41b497785eb564c1ffea",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 manage 320 light \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-320-light.html\n\n{\n \"sidebar\": 320,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-320-light.html",
+      "title": "PROPOSED LOH-11 manage 320 light",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.017424540943466127,
+    "is_error": false,
+    "useless": false
+  },
+  "picker-220-dark": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:c4b5fdc35a424e48bbb0ab383aebf71c",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 picker 220 dark \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-220-dark.html\n\n{\n \"sidebar\": 220,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-220-dark.html",
+      "title": "PROPOSED LOH-11 picker 220 dark",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.01931583392433822,
+    "is_error": false,
+    "useless": false
+  },
+  "picker-260-dark": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:7979789c73014421bbaa58cb53f2a929",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 picker 260 dark \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-260-dark.html\n\n{\n \"sidebar\": 260,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-260-dark.html",
+      "title": "PROPOSED LOH-11 picker 260 dark",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.019737916998565197,
+    "is_error": false,
+    "useless": false
+  },
+  "picker-320-dark": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:4f9f57b194c041f38f5f9f96cc196444",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 picker 320 dark \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-320-dark.html\n\n{\n \"sidebar\": 320,\n \"dialog\": {\n \"width\": 420,\n \"height\": 436,\n \"x\": 400,\n \"y\": 149.5,\n \"scroll\": 434,\n \"client\": 434\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-320-dark.html",
+      "title": "PROPOSED LOH-11 picker 320 dark",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.016032875049859285,
+    "is_error": false,
+    "useless": false
+  },
+  "manage-220-dark": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:7393053e3df34a63aca9a8ea444661ea",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 manage 220 dark \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-220-dark.html\n\n{\n \"sidebar\": 220,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-220-dark.html",
+      "title": "PROPOSED LOH-11 manage 220 dark",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.015302667045034468,
+    "is_error": false,
+    "useless": false
+  },
+  "manage-260-dark": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:f691e7d1249c44668a4ec93a89a97347",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 manage 260 dark \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-260-dark.html\n\n{\n \"sidebar\": 260,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-260-dark.html",
+      "title": "PROPOSED LOH-11 manage 260 dark",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.013325124979019165,
+    "is_error": false,
+    "useless": false
+  },
+  "manage-320-dark": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:140d48c595ce4d0985d64a6cbc8fada4",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 manage 320 dark \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-320-dark.html\n\n{\n \"sidebar\": 320,\n \"dialog\": {\n \"width\": 420,\n \"height\": 420,\n \"x\": 400,\n \"y\": 157.5,\n \"scroll\": 418,\n \"client\": 418\n },\n \"viewport\": [\n 1280,\n 720\n ]\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-320-dark.html",
+      "title": "PROPOSED LOH-11 manage 320 dark",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.01607154100202024,
+    "is_error": false,
+    "useless": false
+  }
+}

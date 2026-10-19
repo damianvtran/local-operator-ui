@@ -216,6 +216,7 @@ test("Fork is the menu's third row: its order, copy, withheld condition and wiri
 	const forkAt = MENU.indexOf('"session.fork"');
 	const copyAt = MENU.indexOf("copySessionId(row.session_id)");
 	const renameAt = MENU.indexOf('"session.rename"');
+	const tagsAt = MENU.indexOf('t("ui.chat.tags.menu")');
 	const moveUpAt = MENU.indexOf("movePinnedRow(row.session_id, -1, true)");
 	const moveDownAt = MENU.indexOf("movePinnedRow(row.session_id, 1, true)");
 	assert.ok(
@@ -224,14 +225,15 @@ test("Fork is the menu's third row: its order, copy, withheld condition and wiri
 			pinAt < forkAt &&
 			forkAt < copyAt &&
 			copyAt < renameAt &&
-			renameAt < moveUpAt &&
+			renameAt < tagsAt &&
+			tagsAt < moveUpAt &&
 			moveUpAt < moveDownAt,
 		"the menu no longer reads Archive, Pin, Fork, Copy session ID, Rename conversation, Move up, Move down (D2, #893, #920) - the mirrored pair, the unconditional run, then the conditional block",
 	);
 	assert.equal(
 		MENU.split("<ContextMenuItem").length - 1,
-		7,
-		"the menu's row count moved without this file: the seven-row budget (design \u00a77) is #743's four plus #739's Fork plus #893's Copy session ID plus #920's Rename conversation, and each addition passed the rule an eighth would have to pass - the act must be one on THIS row with no other door (the row-scoped id has none: the header's overflow names the PANE's session; so does the row-scoped name: the header's inline editor and /rename write the PANE's conversation), so the number moved rather than a row being replaced",
+		8,
+		"LOH-11 intentionally adds one capability-gated Tags item before Move: the former seven-row budget (design \u00a77) is #743's four plus #739's Fork plus #893's Copy session ID plus #920's Rename conversation, and each addition passed the rule an eighth would have to pass - the act must be one on THIS row with no other door (the row-scoped id has none: the header's overflow names the PANE's session; so does the row-scoped name: the header's inline editor and /rename write the PANE's conversation), so the number moved rather than a row being replaced",
 	);
 	/*
 	 * COPY: verb + object, the pair's register, with the icon `aria-hidden` like
@@ -583,7 +585,7 @@ test("the withdrawn panel carries no trigger, and the menu exists only where a c
 	 */
 	const withdrawn = between(
 		SIDEBAR_CODE,
-		"if (!pinsEnabled && !archiveEnabled) {",
+		"if (!menuEnabled) {",
 		"const bothControls =",
 	);
 	assert.equal(

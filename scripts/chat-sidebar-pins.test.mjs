@@ -313,7 +313,7 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 	 * which is what keeps the archive branch's withdrawn pair byte-identical to this
 	 * one's panel.
 	 */
-	const withdrawnAt = source.indexOf("if (!pinsEnabled && !archiveEnabled) {");
+	const withdrawnAt = source.indexOf("if (!menuEnabled) {");
 	assert.ok(
 		withdrawnAt > 0,
 		"the session row has a fail-closed branch on the pair of per-row capabilities",

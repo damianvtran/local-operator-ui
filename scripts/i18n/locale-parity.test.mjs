@@ -109,6 +109,471 @@ const IDENTICAL_OK = new Map([
 		"ui.settings.speech.speech_settings_model.radient_pass",
 		"Product name, preserved verbatim by the programme glossary.",
 	],
+	[
+		"ui.shell.collapsible_app_logo.local_operator",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.shell.sidebar_navigation.mesh",
+		// The lop Mesh feature is a named product destination in the audited
+		// Spanish copy: ui.mesh prose says «no hay ningún Mesh» and the store error
+		// names it the same way. «Malla» here would make the sidebar contradict the
+		// page it opens, so the name is kept and this entry records that decision.
+		"Named product destination: the audited es copy keeps the lop Mesh feature name throughout ui.mesh",
+	],
+	[
+		"ui.command_palette.use_palette_sources.mesh",
+		"Named product destination: same lop Mesh feature name as the sidebar row, kept for consistency with the audited ui.mesh copy.",
+	],
+	[
+		"ui.shell.rail.canvas.aria",
+		// Canvas is a named product destination; the only translatable content is
+		// the {chord} placeholder, so the Spanish accessible name is identical.
+		"Named product destination plus a placeholder: Canvas is kept, only {chord} is appended.",
+	],
+	[
+		"ui.command_palette.palette_search.chats",
+		"Spanish loanword, not untranslated English: «chats» is the plural used by the audited es house voice.",
+	],
+	[
+		"ui.command_palette.use_palette_sources.chat",
+		"Spanish loanword, not untranslated English: «chat» is the established noun in the audited es house voice.",
+	],
+	[
+		"ui.agents.navigation.legacy.chat",
+		"Spanish loanword, not untranslated English: «chat» is the established noun in the audited es house voice.",
+	],
+	[
+		"ui.shell.rail.console.aria",
+		"French common noun: « Console » has the same spelling.",
+	],
+	[
+		"ui.command_palette.palette_search.actions",
+		"French cognate: « actions » has the same spelling.",
+	],
+	[
+		"ui.command_palette.palette_search.agents",
+		"French cognate: « agents » has the same spelling.",
+	],
+	[
+		"ui.command_palette.use_palette_sources.session",
+		"French cognate: « session » has the same spelling.",
+	],
+	[
+		"ui.shell.sidebar_navigation.agents",
+		"French cognate: « agents » has the same spelling.",
+	],
+	[
+		"ui.chat.sidebar_view.sections",
+		"French cognate: « sections » has the same spelling.",
+	],
+	[
+		"ui.chat.sidebar_view.section.agents",
+		"French cognate: « agents » has the same spelling.",
+	],
+	[
+		"ui.chat.composer.message",
+		"French cognate: « message » has the same spelling.",
+	],
+	[
+		"ui.agents.navigation.sidebar.title",
+		"French cognate: « agents » has the same spelling.",
+	],
+	[
+		"ui.agentMessages.dialog.validation_detail",
+		"Placeholders and punctuation only ({field}: {rule}); no words to translate.",
+	],
+	[
+		"ui.agents.models.reading.effort_clamped",
+		"Language-neutral: placeholders and an arrow only.",
+	],
+	[
+		"ui.agents.starters.summary.sentence",
+		"Placeholder and final punctuation only ({parts}.); the sentence body is translated.",
+	],
+	[
+		"ui.agents.starters.summary.separator",
+		"Language-neutral list separator (comma and space), identical across shipped locales.",
+	],
+	[
+		"ui.agents.settings.chat.top_k",
+		"Model sampling parameter name kept English by the fr, ru and es style guides.",
+	],
+	[
+		"ui.agents.settings.chat.top_p",
+		"Model sampling parameter name kept English by the fr, ru and es style guides.",
+	],
+	[
+		"ui.agents.settings.general.id",
+		"Standard technical abbreviation, unchanged across shipped locales.",
+	],
+	[
+		"ui.common.account.low_credits_dialog.detail",
+		"Language-neutral currency amount: placeholder plus the USD token.",
+	],
+	[
+		"ui.mesh.mesh_approvals.approval_title",
+		"Language-neutral: only {head} and a full stop.",
+	],
+	[
+		"ui.mesh.mesh_approvals.approval_title_with_clauses",
+		"Language-neutral: placeholders and punctuation only.",
+	],
+	[
+		"ui.mesh.mesh_approvals.join_clauses",
+		"Language-neutral: placeholders and punctuation only.",
+	],
+	[
+		"ui.projects.project_model.clause",
+		"Language-neutral: a parenthesised {clause} placeholder.",
+	],
+	[
+		"ui.projects.project_model.completed_total",
+		"Language-neutral counter: placeholders and a slash.",
+	],
+	[
+		"ui.projects.project_model.count_live",
+		"Language-neutral counter: placeholders and a middle dot.",
+	],
+	[
+		"ui.projects.project_model.value_d",
+		"Language-neutral unit: {value} plus the day suffix d.",
+	],
+	[
+		"ui.projects.project_model.value_pt",
+		"Language-neutral unit: {value} plus the points abbreviation pt.",
+	],
+	[
+		"ui.projects.projects_toolbar.facet_labels_facet_first",
+		"Language-neutral: placeholders and a middle dot.",
+	],
+	[
+		"ui.projects.projects_toolbar.facet_labels_facet_first_length_1",
+		"Language-neutral: placeholders and punctuation only.",
+	],
+	[
+		"ui.providers.provider_grid.row_action",
+		"Language-neutral: {action} and {brand} with a colon.",
+	],
+	[
+		"ui.schedules.scheduled_task_dialog.value1_message",
+		"Language-neutral: {value1} and {message} with a colon.",
+	],
+	[
+		"ui.settings.updates.update_following.surface_choice",
+		"Language-neutral: {surface} and {choice} with a colon.",
+	],
+	[
+		"ui.browser.browser_new_tab.wordmark",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.installer.installer_panel.local_operator",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.common.account.low_credits_dialog.radient_pass",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.browser.browser_new_tab.address_placeholder",
+		"Literal sample host (example.com); context requires it byte-identical.",
+	],
+	[
+		"ui.projects.examples.owner",
+		"Literal example owner handle (atlas), not prose to translate.",
+	],
+	[
+		"ui.mesh.mesh_page.canvas",
+		"Named product destination Canvas, kept as the feature name.",
+	],
+	[
+		"ui.mesh.mesh_page.mesh",
+		"Named product destination: the lop Mesh feature, consistent with the audited ui.mesh copy.",
+	],
+	[
+		"ui.projects.project_model.qa",
+		"Standard QA abbreviation, unchanged across shipped locales.",
+	],
+	[
+		"ui.schedules.schedule_form_dialog.prompt",
+		"Technical term kept English by the fr and es style guides; trailing space is part of the fragment.",
+	],
+	[
+		"ui.schedules.scheduled_task_dialog.prompt",
+		"Technical term kept English by the fr and es style guides; trailing space is part of the fragment.",
+	],
+	[
+		"ui.agents.models.reading.effort_auto",
+		"Wire vocabulary token (auto) deliberately printed untranslated, per the en sidecar.",
+	],
+	[
+		"ui.code_review.lane.state.terminal",
+		"Cognate: « terminal » has the same spelling in fr and es.",
+	],
+	[
+		"ui.common.models.model_select.general",
+		"Spanish cognate: «General» has the same spelling.",
+	],
+	[
+		"ui.hub.taxonomy.category.legal",
+		"Spanish cognate: «Legal» has the same spelling.",
+	],
+	[
+		"ui.hub.taxonomy.category.software",
+		"Loanword Software, settled in Spanish UI usage.",
+	],
+	[
+		"ui.hub.taxonomy.category.marketing",
+		"Loanword Marketing, settled in fr and es UI usage.",
+	],
+	[
+		"ui.providers.provider_labels.local",
+		"Cognate: « local » has the same spelling in fr and es.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_label",
+		"Spanish cognate: «Material» has the same spelling.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_popover",
+		"Apple material name (Popover), kept verbatim per the en sidecar.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_mica",
+		"Microsoft product name (Mica), kept verbatim per the en sidecar.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_acrylic",
+		"Microsoft product name (Acrylic), kept verbatim per the en sidecar.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_tabbed",
+		"Microsoft material name (Tabbed Mica), kept verbatim per the en sidecar.",
+	],
+	[
+		"ui.settings.navigation.settings_sidebar.general",
+		"Spanish cognate: «General» has the same spelling.",
+	],
+	[
+		"ui.settings.navigation.settings_sidebar.backend",
+		"Established es loanword: the audited house voice uses «backend» throughout.",
+	],
+	[
+		"ui.projects.project_editors.description",
+		"French cognate: « description » has the same spelling.",
+	],
+	[
+		"ui.projects.project_form_dialog.description",
+		"French cognate: « description » has the same spelling.",
+	],
+	[
+		"ui.projects.project_editors.points",
+		"French cognate: « points » has the same spelling.",
+	],
+	[
+		"ui.projects.project_filters.points",
+		"French cognate: « points » has the same spelling.",
+	],
+	[
+		"ui.projects.project_form_dialog.points",
+		"French cognate: « points » has the same spelling.",
+	],
+	[
+		"ui.projects.project_links.session",
+		"French cognate: « session » has the same spelling.",
+	],
+	[
+		"ui.projects.project_model.agent_name",
+		"French cognate plus placeholder: « agent » is unchanged and {name} is preserved.",
+	],
+	[
+		"ui.projects.project_model.session_reportedby",
+		"French cognate plus placeholder: « session » is unchanged and {reportedBy} is preserved.",
+	],
+	[
+		"ui.projects.project_model.validation",
+		"French cognate: « validation » has the same spelling.",
+	],
+	[
+		"ui.projects.project_start_session.agents",
+		"French cognate: « agents » has the same spelling.",
+	],
+	[
+		"ui.schedules.schedule_form_dialog.agent",
+		"French cognate: « agent » has the same spelling; trailing space is layout.",
+	],
+	[
+		"ui.schedules.schedule_form_dialog.minutes",
+		"French cognate: « minutes » has the same spelling.",
+	],
+	[
+		"ui.schedules.scheduled_task_dialog.conversation",
+		"French cognate: « conversation » has the same spelling.",
+	],
+	[
+		"ui.schedules.scheduled_task_dialog.minutes",
+		"French cognate: « minutes » has the same spelling.",
+	],
+	[
+		"ui.hub.links.source_public",
+		"French cognate: « public » has the same spelling.",
+	],
+	[
+		"ui.hub.links.scope_public",
+		"French cognate: « public » has the same spelling.",
+	],
+	[
+		"ui.browser.browser_hand_over_dialog.session",
+		"French cognate: « session » has the same spelling.",
+	],
+	[
+		"ui.mesh.mesh_approvals.via_transport",
+		"French preposition « via » has the same spelling; {transport} is preserved.",
+	],
+	[
+		"ui.mesh.mesh_approvals.session_suffix",
+		"French cognate plus placeholder: « session » is unchanged.",
+	],
+	[
+		"ui.mesh.mesh_card.conversations",
+		"French cognate: « conversations » has the same spelling.",
+	],
+	[
+		"ui.mesh.mesh_list.sort_conversations",
+		"French cognate: « conversations » has the same spelling.",
+	],
+	[
+		"ui.canvas.files.images",
+		"French cognate: « images » has the same spelling.",
+	],
+	[
+		"ui.canvas.files.documents",
+		"French cognate: « documents » has the same spelling.",
+	],
+	[
+		"ui.canvas.files.archives",
+		"French cognate: « archives » has the same spelling.",
+	],
+	[
+		"ui.code_review.code_review_model.code",
+		"French cognate: « code » has the same spelling.",
+	],
+	[
+		"ui.common.updates.update_notification.version",
+		"French cognate: « Version » has the same spelling; trailing space is layout.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_menu",
+		"French cognate: « Menu » has the same spelling.",
+	],
+	[
+		"ui.settings.imports.source_heading",
+		"French cognate: « Sources » has the same spelling.",
+	],
+	[
+		"ui.agents.models.reading.effort_col",
+		"French cognate: « Effort » has the same spelling.",
+	],
+	[
+		"ui.agents.settings.general.description",
+		"French cognate: « Description » has the same spelling.",
+	],
+	[
+		"ui.agents.settings.general.version",
+		"French cognate: « Version » has the same spelling.",
+	],
+	[
+		"ui.projects.examples.owner",
+		"Sample owner handle in a placeholder; an example identifier, not prose.",
+	],
+	[
+		"ui.projects.examples.team",
+		"Sample team handle in a placeholder; an example identifier, not prose.",
+	],
+	[
+		"ui.projects.project_model.clause",
+		"Parentheses and a placeholder only ({clause}); no words to translate.",
+	],
+	[
+		"ui.projects.project_model.completed_total",
+		"Placeholders and a slash only ({completed}/{total}); no words to translate.",
+	],
+	[
+		"ui.projects.project_model.count_live",
+		"Placeholders and a middle dot only ({count} · {live}); no words to translate.",
+	],
+	[
+		"ui.projects.project_model.qa",
+		"Standard QA abbreviation, unchanged in Russian.",
+	],
+	[
+		"ui.projects.projects_toolbar.facet_labels_facet_first",
+		"Placeholders and a middle dot only ({FACET_LABELS_facet} · {first}); no words to translate.",
+	],
+	[
+		"ui.projects.projects_toolbar.facet_labels_facet_first_length_1",
+		"Placeholders and separators only; no words to translate.",
+	],
+
+	[
+		"ui.schedules.scheduled_task_dialog.value1_message",
+		"Placeholders and a colon only ({value1}: {message}); no words to translate.",
+	],
+
+	[
+		"ui.browser.browser_new_tab.address_placeholder",
+		"Sample domain in an address placeholder; an example, not prose.",
+	],
+	[
+		"ui.browser.browser_new_tab.wordmark",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+
+	[
+		"ui.mesh.mesh_approvals.approval_title",
+		"Placeholder and final punctuation only ({head}.); no words to translate.",
+	],
+	[
+		"ui.mesh.mesh_approvals.approval_title_with_clauses",
+		"Placeholders, colon and final punctuation only; no words to translate.",
+	],
+	[
+		"ui.mesh.mesh_approvals.join_clauses",
+		"Placeholders and punctuation only ({clauses}; {last}); no words to translate.",
+	],
+
+	[
+		"ui.providers.provider_grid.row_action",
+		"Placeholders and a colon only ({action}: {brand}); no words to translate.",
+	],
+
+	[
+		"ui.common.account.low_credits_dialog.detail",
+		"Currency placeholder and ISO code only (${detail} USD); no words to translate.",
+	],
+	[
+		"ui.common.account.low_credits_dialog.radient_pass",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+
+	[
+		"ui.installer.installer_panel.local_operator",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_acrylic",
+		"System material name kept English: Acrylic is the Windows compositor material.",
+	],
+	[
+		"ui.settings.appearance.window_glass.material_mica",
+		"System material name kept English: Mica is the Windows compositor material.",
+	],
+	[
+		"ui.settings.updates.update_following.surface_choice",
+		"Placeholders and a colon only ({surface}: {choice}); no words to translate.",
+	],
+	["ui.canvas.files.code", "French cognate: « code » has the same spelling."],
 ]);
 
 function localeDirs() {

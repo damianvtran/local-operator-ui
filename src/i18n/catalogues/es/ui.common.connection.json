@@ -1,0 +1,12 @@
+{
+	"ui.common.connection.backend_compatibility_banner.the_backend_update_could_not_start_retry_or_update_from_settings_": "No se pudo iniciar la actualización del backend. Reinténtalo o actualiza desde Ajustes, en Actualizaciones de la aplicación.",
+	"ui.common.connection.backend_compatibility_banner.update_backend": "Actualizar backend",
+	"ui.common.connection.backend_compatibility_banner.updating": "Actualizando",
+	"ui.common.connection.connectivity_banner.a_connectivity_issue_has_been_detected": "Se ha detectado un problema de conectividad.",
+	"ui.common.connection.connectivity_banner.dismiss": "descartar",
+	"ui.common.connection.connectivity_banner.dismiss_inline": "Descartar",
+	"ui.common.connection.connectivity_banner.this_app_s_updates_require": "Las actualizaciones de esta aplicación necesitan",
+	"ui.common.connection.connectivity_banner.you_are_offline": "Estás sin conexión. {detail} una conexión a internet.",
+	"ui.common.connection.floating_alert.dismiss": "Descartar",
+	"ui.common.connection.provider.requires": "Tu proveedor de alojamiento configurado ({provider}) necesita"
+}

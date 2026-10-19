@@ -1,0 +1,21 @@
+{
+	"ui.settings.model.default_effort.busy": "Сохранение глубины рассуждений",
+	"ui.settings.model.default_effort.clamped": "{level} недоступен для {model}. Используется {resolved}.",
+	"ui.settings.model.default_effort.clamped_unset": "{level} недоступен для {model}. Используется значение модели по умолчанию.",
+	"ui.settings.model.default_effort.empty": "Глубина рассуждений этой модели не настраивается.",
+	"ui.settings.model.default_effort.error": "Не удалось прочитать доступные уровни рассуждений этой модели.",
+	"ui.settings.model.default_effort.helper_ready": "Применяется к новым разговорам. «По умолчанию у модели» позволяет модели выбрать уровень рассуждений самой.",
+	"ui.settings.model.default_effort.label": "Глубина рассуждений по умолчанию",
+	"ui.settings.model.default_effort.loading": "Проверка доступных уровней рассуждений…",
+	"ui.settings.model.default_effort.model_default": "По умолчанию у модели",
+	"ui.settings.model.default_effort.model_default_resolves": "Для этой модели выполняется на уровне {level}.",
+	"ui.settings.model.default_effort.no_home": "Домашняя папка ещё недоступна, поэтому уровни рассуждений прочитать нельзя.",
+	"ui.settings.model.default_effort.no_model": "Выберите модель, чтобы задать её глубину рассуждений.",
+	"ui.settings.model.default_effort.one_level": "Эта модель предлагает один уровень рассуждений: {level}.",
+	"ui.settings.model.default_effort.one_level_sentinel": "У этой модели нет выбора глубины рассуждений: она всегда работает на своём значении по умолчанию.",
+	"ui.settings.model.default_effort.placeholder": "Выберите глубину рассуждений",
+	"ui.settings.model.default_effort.save_failed": "Глубина рассуждений по умолчанию не сохранена.",
+	"ui.settings.model.default_effort.settings_error": "Не удалось прочитать сохранённую глубину рассуждений.",
+	"ui.settings.model.default_effort.settings_loading": "Проверка сохранённой глубины рассуждений…",
+	"ui.settings.model.default_effort.unresolved": "Эта модель ещё не сообщила свои уровни рассуждений."
+}

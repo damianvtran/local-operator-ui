@@ -1,0 +1,10 @@
+{
+	"ui.chat.highlights.file_resolution_failed": "Не удалось найти этот файл в рабочем каталоге сессии. Скопируйте путь к файлу и сверьте его с рабочим пространством этой сессии, затем повторите попытку.",
+	"ui.chat.skill_invocation.instructions_label": "Инструкции навыка, отправленные с этим сообщением",
+	"ui.chat.skill_invocation.trigger_label": "Инструкции навыка {token}",
+	"ui.chat.usage.blocked": "Расход недоступен",
+	"ui.chat.usage.continue": "Включённая квота исчерпана; дальше будут списываться кредиты.",
+	"ui.chat.usage.eligibility_unknown": "Право на расход неизвестно",
+	"ui.chat.usage.family_caps": "Ограничения семейства моделей по-прежнему действуют.",
+	"ui.chat.usage.unlimited": "Неограниченный оплаченный лимит"
+}

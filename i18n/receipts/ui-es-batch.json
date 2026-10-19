@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "locale": "es",
+  "date": "2026-10-18",
+  "namespaces": {
+    "ui.shell": {
+      "status": "translated",
+      "keys": 29,
+      "source_sha256": "a36a75e15ce94632bad00e774e7f6211ca58d95a2b6f6f50a85e687d64a5b1ea",
+      "target_sha256": "d382f3b8eadf8ec15be0c0380bf4c50a3c991ae039604630139ee8262fbbff2f",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.shell.rail": {
+      "status": "translated",
+      "keys": 20,
+      "source_sha256": "82f946fe2d2944d03100d85263ff5e9e595dc34f953a0d57aa9794ea0879f3eb",
+      "target_sha256": "974bb40e7b8d816a56a19b327ab63febbd1a0ec0161176c8940241d4ed749772",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.chat.sidebar_view": {
+      "status": "translated",
+      "keys": 22,
+      "source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+      "target_sha256": "dda0f249fd8adce165e4509310011101e632d16398993911444b4c118fedf8d3",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.chat": {
+      "status": "translated",
+      "keys": 8,
+      "source_sha256": "29169c4c0801689781d503f724d457757275416c49e975bfb6ae4872d90c2c46",
+      "target_sha256": "28cea94bdffacfcc6db78b9b0e9dc1830cab277e74705acd643f545815bf46b6",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.chat.composer": {
+      "status": "translated",
+      "keys": 34,
+      "source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+      "target_sha256": "a5c64a6dad8d7c0519ba4c8e81a4dc65c4fd92f65b93d1aeca245ffcedb340c1",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.chat.header": {
+      "status": "translated",
+      "keys": 10,
+      "source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+      "target_sha256": "dcb7d933e979b0e9f643e3a16f3760f2c5b963323edc0c30620b750ce905752b",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.agents.navigation": {
+      "status": "translated",
+      "keys": 32,
+      "source_sha256": "23f591cd7c2d52c2563e0b5cbb4cbb2164f7cd01c2568b050738b3be976a5729",
+      "target_sha256": "3009aa8a42f9e603d1900558b2415d2a01f93555141390860b2892542e923b0c",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.common.actions": {
+      "status": "translated",
+      "keys": 6,
+      "source_sha256": "bf151da8ad56c3b32b05be1d505764d3f4cfb72e9792f9ec68b8a570239f6976",
+      "target_sha256": "69553e413b8d96e71c40887ddcfad91451b04cf1edde2881d55eb3c580edc64a",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.common.errors": {
+      "status": "translated",
+      "keys": 4,
+      "source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+      "target_sha256": "d51b9ed14d6df005e74b3586a23244c63b7cb5dac23335be06c01f4779e48db3",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.command_palette": {
+      "status": "translated",
+      "keys": 75,
+      "source_sha256": "c48797d973f81dea023e5c89c40c83d8ae0a9cdfaeb2509f6cbc4e9fb8abd7c6",
+      "target_sha256": "853d877c8fcfe494e9b34208da9313112bf24c00a8a89f443ee5a7b12865d255",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    }
+  }
+}

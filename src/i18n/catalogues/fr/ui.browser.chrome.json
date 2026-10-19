@@ -1,0 +1,16 @@
+{
+	"ui.browser.chrome.approvals": "Approbations et accès aux sites",
+	"ui.browser.chrome.error_title": "Échec du chargement de la page",
+	"ui.browser.chrome.move_left": "Déplacer l’onglet vers la gauche",
+	"ui.browser.chrome.move_right": "Déplacer l’onglet vers la droite",
+	"ui.browser.chrome.duplicate": "Dupliquer l’onglet",
+	"ui.browser.chrome.reload": "Recharger l’onglet",
+	"ui.browser.chrome.scroll_left": "Faire défiler les onglets vers la gauche",
+	"ui.browser.chrome.scroll_right": "Faire défiler les onglets vers la droite",
+	"ui.browser.chrome.accessible_tab": "{title}{loading, select, yes{, chargement} other{}}{failed, select, yes{, échec du chargement} other{}}{owner, select, agent{, appartient à l’agent} shared{, partagé avec un agent} other{}}{waiting, select, none{} other{, demande {waiting} en attente}}{restored, select, yes{, restauré} other{}}",
+	"ui.browser.chrome.invalid_order": "Ordre des onglets du navigateur invalide.",
+	"ui.browser.chrome.duplicate_refused": "Seules les pages web peuvent être dupliquées.",
+	"ui.browser.chrome.invalid_action": "Action d’onglet de navigateur invalide.",
+	"ui.browser.chrome.tab_gone": "Cet onglet de navigateur n’est plus ouvert.",
+	"ui.browser.chrome.operation_failed": "{action, select, duplicate{L’onglet n’a pas pu être dupliqué. Vous pouvez réessayer depuis son menu.} other{L’onglet n’a pas pu être rechargé. Vous pouvez réessayer depuis son menu.}}"
+}
