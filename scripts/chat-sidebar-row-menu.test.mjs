@@ -226,14 +226,17 @@ test("Fork is the menu's third row: its order, copy, withheld condition and wiri
 			forkAt < copyAt &&
 			copyAt < renameAt &&
 			renameAt < tagsAt &&
-			tagsAt < moveUpAt &&
+			tagsAt < MENU.indexOf('t("ui.chat.tags.remove_all"') &&
+			MENU.indexOf('t("ui.chat.tags.remove_all"') <
+				MENU.indexOf('t("ui.chat.tags.move_menu"') &&
+			MENU.indexOf('t("ui.chat.tags.move_menu"') < moveUpAt &&
 			moveUpAt < moveDownAt,
 		"the menu no longer reads Archive, Pin, Fork, Copy session ID, Rename conversation, Move up, Move down (D2, #893, #920) - the mirrored pair, the unconditional run, then the conditional block",
 	);
 	assert.equal(
 		MENU.split("<ContextMenuItem").length - 1,
-		8,
-		"LOH-11 intentionally adds one capability-gated Tags item before Move: the former seven-row budget (design \u00a77) is #743's four plus #739's Fork plus #893's Copy session ID plus #920's Rename conversation, and each addition passed the rule an eighth would have to pass - the act must be one on THIS row with no other door (the row-scoped id has none: the header's overflow names the PANE's session; so does the row-scoped name: the header's inline editor and /rename write the PANE's conversation), so the number moved rather than a row being replaced",
+		10,
+		"V2-1 adds Remove all tags and Move to tag before the existing Move pair; the widest pinned/tagged menu has ten rows",
 	);
 	/*
 	 * COPY: verb + object, the pair's register, with the icon `aria-hidden` like

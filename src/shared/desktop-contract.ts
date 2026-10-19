@@ -2,6 +2,7 @@
 export type TagRef = { id: string; name: string };
 export type TagCategory = TagRef & { order: number; conversations: number };
 export type SessionTags = {
+	tags_revision?: string;
 	session_id: string;
 	tags: TagRef[];
 	primary: string | null;
@@ -2079,6 +2080,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("sessions.tags"),
+			expected_revision: z.string().optional(),
 			sessionId,
 			// Whole desired assignment, not a toggle; identity survives a display rename.
 			tags: z.array(z.string()),
@@ -3700,6 +3702,12 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("library.list"),
+			/**
+			 * `final` (the desktop UI's default) keeps only highlighted or
+			 * generated artifacts; `all` is the whole catalog. Optional on the
+			 * wire so a backend that predates the parameter still answers.
+			 */
+			scope: z.enum(["final", "all"]).optional(),
 			q: z.string().max(512).optional(),
 			category: z.string().min(1).max(64).optional(),
 			kind: z.string().min(1).max(64).optional(),
@@ -7432,7 +7440,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/tags`,
 				method: "PUT",
-				body: { tags: request.tags, primary: request.primary },
+				body: {
+					tags: request.tags,
+					primary: request.primary,
+					...(request.expected_revision === undefined
+						? {}
+						: { expected_revision: request.expected_revision }),
+				},
 			};
 		case "sessions.pin":
 			return {
@@ -8242,6 +8256,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 		 */
 		case "library.list": {
 			const query = new URLSearchParams();
+			if (request.scope) query.set("scope", request.scope);
 			if (request.q) query.set("q", request.q);
 			if (request.category) query.set("category", request.category);
 			if (request.kind) query.set("kind", request.kind);

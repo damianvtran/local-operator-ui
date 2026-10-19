@@ -24,6 +24,7 @@ import "../../../styles/index.css";
 import "../../chat/components/story-electron-shim";
 import samplePptxUrl from "../../../../../../scripts/fixtures/library/sample.pptx?url";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
+import { NO_LIBRARY_FILTERS, filterAssets } from "../library-model";
 import { LibraryPage } from "./library-page";
 
 const NOW = new Date(2026, 9, 18, 12, 0, 0).getTime();
@@ -133,6 +134,7 @@ const ROWS: DesktopLibraryAsset[] = [
 	asset("la_0000000000000023", {
 		name: "March invoices",
 		derived_name: "march-invoices.md",
+		highlighted: true,
 		description: "Reconciliation notes for the March invoice run.",
 		tags: [tag("t1", "finance"), tag("t4", "notes")],
 		favorite: true,
@@ -157,6 +159,7 @@ const ROWS: DesktopLibraryAsset[] = [
 	asset("la_0000000000000025", {
 		name: "Forecast",
 		derived_name: "forecast.xlsx",
+		highlighted: true,
 		kind: "spreadsheet",
 		category: "spreadsheet",
 		size_bytes: 96_000,
@@ -205,8 +208,16 @@ const PptxBytes = (() => {
 	};
 })();
 
-const listing = () => {
-	const rows = stub.rows;
+const listing = (request: { scope?: string } = {}) => {
+	/*
+	 * The route's default is `all`; the desktop sends `final`. The story stub
+	 * runs the same predicate the route does so the default view a reader sees
+	 * here is the one the app paints.
+	 */
+	const rows = filterAssets(stub.rows, {
+		...NO_LIBRARY_FILTERS,
+		scope: request.scope === "final" ? "final" : "all",
+	});
 	const counts = {
 		category: rows.reduce<Record<string, number>>((acc, row) => {
 			acc[row.category] = (acc[row.category] ?? 0) + 1;
@@ -248,6 +259,7 @@ const listing = () => {
 			last_run_at: Math.floor(NOW / 1000) - 7200,
 			last_summary: "Named 12 assets and tagged 9.",
 			unorganized: 3,
+			library: { total: stub.rows.length, unorganized: 3 },
 		},
 	};
 };
@@ -280,7 +292,12 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 			if (stub.hang) return new Promise(() => {});
 			if (stub.failList)
 				return { status: 500, body: { detail: stub.failList } };
-			return { status: 200, body: { result: listing() } };
+			return {
+				status: 200,
+				body: {
+					result: listing(request as { scope?: string }),
+				},
+			};
 		case "library.get": {
 			const row =
 				stub.detail ??
@@ -453,7 +470,10 @@ const ShellLibrary: FC<{ nowMs: number; route?: string }> = ({
 		<ChatLayout
 			sidebar={<SidebarNavigation />}
 			content={
-				<main className="flex min-w-0 grow flex-col overflow-hidden">
+				<main
+					data-glass-region="canvas-backing"
+					className="flex min-w-0 grow flex-col overflow-hidden"
+				>
 					<RouteTo path={route}>
 						<LibraryPage nowMs={nowMs} />
 					</RouteTo>
@@ -549,10 +569,59 @@ export const Loading: Story = { render: () => page({ hang: true }) };
 export const Building: Story = {
 	render: () => page({ rows: ROWS.slice(0, 2), building: true }),
 };
+/*
+ * The building line inside the real shell, which is the state the header's
+ * fixed-height defect painted over the grid. Kept as a story rather than a
+ * one-off rig so the geometry can be re-measured from the shipped component.
+ */
+export const InShellBuilding: Story = {
+	render: () => page({ shell: true, building: true }),
+};
+/* The same state under both glass coverages; design round 2 measures the
+ * header and results grounds against the titlebar lane from these. */
+export const InShellBuildingGlass: Story = {
+	parameters: { glass: true },
+	render: () => page({ shell: true, building: true }),
+};
+export const InShellBuildingGlassSidebars: Story = {
+	parameters: { glass: "sidebars" },
+	render: () => page({ shell: true, building: true }),
+};
 export const LoadError: Story = {
 	render: () => page({ rows: [], failList: "The backend did not answer." }),
 };
 export const Populated: Story = { render: () => page({}) };
+/*
+ * The two scopes side by side in the fixture: generated and highlighted rows
+ * survive `final`, mentioned and plainly-created scratch rows appear only in
+ * `all`. Toggling the rail's Scope section switches between the two.
+ */
+export const Scope: Story = {
+	render: () =>
+		page({
+			rows: [
+				asset("la_0000000000000031", {
+					name: "Generated report",
+					origin: "generated",
+					origin_group: "generated",
+				}),
+				asset("la_0000000000000032", {
+					name: "Kept note",
+					highlighted: true,
+				}),
+				asset("la_0000000000000033", {
+					name: "Mentioned file",
+					origin: "mentioned",
+					origin_group: "mentioned",
+				}),
+				asset("la_0000000000000034", {
+					name: "Created scratch",
+					origin: "written",
+					origin_group: "created",
+				}),
+			],
+		}),
+};
 export const ListView: Story = { render: () => page({ view: "list" }) };
 export const Preview: Story = {
 	render: () =>

@@ -247,6 +247,9 @@ export class AgentMessagesModel {
 	}
 
 	canEnable(identity: AgentMessagesConsentIdentity | null): boolean {
+		// A previous write refusal is feedback, not a permanent retry lock. The
+		// current status/identity guards still fail closed; confirmed local setup
+		// failures must finish in Settings rather than submitting consent again.
 		const current = this.consentIdentity();
 		return Boolean(
 			identity &&
@@ -256,8 +259,6 @@ export class AgentMessagesModel {
 				identity.consentVersion === current.consentVersion &&
 				this.snapshot.status?.consent_account_guard === true &&
 				this.snapshot.status.error === null &&
-				(!this.snapshot.refusal ||
-					this.snapshot.refusal.code === "consent_version_unknown") &&
 				!this.snapshot.checking &&
 				!this.snapshot.pending &&
 				!this.snapshot.confirmed,
@@ -265,7 +266,8 @@ export class AgentMessagesModel {
 	}
 
 	dismiss(accountId: string, tenantId: string) {
-		if (this.snapshot.pending || this.accountId !== accountId) return;
+		// Dismissal is presentation-only, even when the upstream write hangs.
+		if (this.accountId !== accountId) return;
 		this.ports.markSeen(accountId, tenantId);
 	}
 

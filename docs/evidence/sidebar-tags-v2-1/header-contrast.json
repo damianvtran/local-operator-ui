@@ -1,0 +1,43 @@
+{
+  "method": "WCAG relative luminance from actual harness browser computed background/color/outline-color on active 28px tag header; two themes only, not a 59-theme sweep",
+  "measurements": {
+    "localOperatorDark": {
+      "background": [
+        55,
+        47,
+        36
+      ],
+      "foreground": [
+        241,
+        238,
+        230
+      ],
+      "outline": [
+        56,
+        201,
+        106
+      ],
+      "text_ratio": 11.359239345571305,
+      "outline_ratio": 6.102709867089889
+    },
+    "localOperatorLight": {
+      "background": [
+        235,
+        231,
+        216
+      ],
+      "foreground": [
+        33,
+        30,
+        24
+      ],
+      "outline": [
+        19,
+        119,
+        66
+      ],
+      "text_ratio": 13.417882141736634,
+      "outline_ratio": 4.5270944261721615
+    }
+  }
+}
