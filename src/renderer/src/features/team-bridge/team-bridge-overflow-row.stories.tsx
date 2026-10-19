@@ -97,6 +97,13 @@ const GroupBoard = ({
 								<span className="min-w-0 flex-1 truncate text-[13px]">
 									{t("ui.teamBridge.group.more")}
 								</span>
+								{unread > 0 && (
+									<span className="inline-flex shrink-0">
+										<Badge variant="attentionQuiet" shape="pill" size="count">
+											{countLabel(unread, 99)}
+										</Badge>
+									</span>
+								)}
 								<MoreHorizontal size={16} aria-hidden="true" />
 							</li>
 							<Row

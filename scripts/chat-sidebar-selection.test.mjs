@@ -1739,6 +1739,8 @@ test("the settings rail's group lists carry no ground of their own", () => {
  */
 const ACCOUNT_ROW =
 	"src/renderer/src/shared/components/navigation/user-profile-sidebar.tsx";
+const TEAM_BRIDGE_PAGE =
+	"src/renderer/src/features/team-bridge/team-bridge-page.tsx";
 const TEAM_BUBBLE =
 	"src/renderer/src/features/chat/components/team-avatar-bubble.tsx";
 
@@ -2249,6 +2251,19 @@ const PLATES_INSIDE_ROW_STATES = [
 		ground: "bg-elevated",
 		edge: false,
 		fact: "-bottom-px",
+	},
+	{
+		/*
+		 * The merged Team Bridge list's organization chip. `elevated` against
+		 * `rowHover` measures ΔE00 0.00 on `arcade`, so the fill alone is no
+		 * boundary on that palette; `border-control` is what keeps the chip
+		 * readable when the row under it is hovered or selected.
+		 */
+		what: "the merged list's organization chip",
+		file: TEAM_BRIDGE_PAGE,
+		element: "span",
+		ground: "bg-elevated",
+		edge: true,
 	},
 	{
 		/*

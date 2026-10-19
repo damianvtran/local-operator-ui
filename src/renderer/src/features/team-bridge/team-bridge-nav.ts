@@ -1,6 +1,6 @@
 import { t } from "@shared/i18n";
 import { MessagesSquare } from "lucide-react";
-import { badgeTotal } from "./team-bridge-model";
+import { TEAM_BRIDGE_ALL_SCOPE, badgeTotal } from "./team-bridge-model";
 import { useTeamBridgeUnread } from "./use-team-bridge";
 
 /**
@@ -43,7 +43,11 @@ export type TeamBridgeNavItem = {
 export function useTeamBridgeNavItem(
 	enabled: boolean,
 ): TeamBridgeNavItem | null {
-	const unread = useTeamBridgeUnread(enabled);
+	// The badge is the ACCOUNT aggregate, never one org's count: the sidebar
+	// asks for "is anything waiting anywhere", which is exactly the single
+	// `scope=account` read. The page reads the same cache for its per-org
+	// counts, so mounting both costs one request.
+	const unread = useTeamBridgeUnread(enabled, TEAM_BRIDGE_ALL_SCOPE);
 	if (!enabled) return null;
 	const attention = unread.data ? badgeTotal(unread.data) : 0;
 	return {
