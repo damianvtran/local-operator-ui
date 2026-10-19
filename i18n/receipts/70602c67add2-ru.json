@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "locale": "ru",
+  "namespace": "ui.agentMessages",
+  "date": "2026-10-19",
+  "status": "passed",
+  "audit_kind": "single-key-delta",
+  "key": "ui.agentMessages.dialog.consent_changed",
+  "english": "Read the current consent text, then choose Enable again.",
+  "target": "Прочитайте актуальный текст согласия и снова выберите «Включить».",
+  "scope": "Independent delta audit of the only changed key in ru/ui.agentMessages.json (direction-word removal). The rest of the namespace is unchanged from the previously audited bytes; this receipt binds the ENGLISH and ru file hashes it was derived from.",
+  "head": "59ae07343175672667bf781c86fbfdccb9c59b06",
+  "branch": "fix/agent-messages-dialog",
+  "worktree": ".worktrees/agent-messages-dialog",
+  "instance": "70602c67add2-ru",
+  "auditor": "reviewer (i18n consent_changed delta, ru)",
+  "model": "deepseek/deepseek-flash",
+  "sha256": {
+    "en": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+    "ru": "0eef4e751346c64024b42f67d9b8c334a1de7f301e335d8913a88d2425b92c23"
+  },
+  "findings": [],
+  "audit": {
+    "back_translation": "“Read the current consent text and choose “Enable” again.”",
+    "semantic_equivalence": "Pass: same object (the current consent text), same required action (choose Enable again), no added or lost instruction. The English was made direction-neutral; the target carries the same neutral scope.",
+    "register": "Formal вы (“Прочитайте”, “выберите”), matching this dialog’s corpus (“Обновите”, “Повторите попытку”, “вашей организации”); one terminal period as in English.",
+    "delta_proof": "Old value was “Прочитайте актуальный текст согласия ниже и снова выберите «Включить».” The change removes exactly “ниже ” and changes no other word. The previous ru catalogue row was audited clean at the old bytes.",
+    "terminology": "«Включить» is byte-identical to ui.agentMessages.dialog.enable («Включить»); guillemets match the catalogue’s convention for quoted UI paths and labels (e.g. «Настройки → Сообщения агентов»). “снова выберите” is the natural rendering of “choose … again”.",
+    "direction_scan": "Scanned for ниже / здесь / внизу: none present. Value is direction-neutral.",
+    "style": "“актуальный текст согласия” is the established formal wording for the current consent text; no comma before “и” is required because it joins two homogeneous predicates with one imperative subject.",
+    "mechanical": {
+      "key_present": true,
+      "key_set_equals_english": "16/16, no missing or extra keys",
+      "placeholders": "none in English or target; no braces in the value",
+      "punctuation": "one sentence; no comma before “и” (correct for homogeneous predicates); one terminal period; no added exclamation or question marks",
+      "bytes": "UTF-8; NFC; no NBSP, U+202F, zero-width or BOM characters; no leading/trailing whitespace; no double spaces"
+    }
+  },
+  "note": "No blocker, major, minor or nit finding."
+}

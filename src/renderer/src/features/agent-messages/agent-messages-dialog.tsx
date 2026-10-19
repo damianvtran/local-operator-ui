@@ -40,8 +40,8 @@ export function AgentMessagesDialog({
 	const consentId = useId();
 	const notNow = useRef<HTMLButtonElement>(null);
 	const error = useRef<HTMLDivElement>(null);
-	// A long served consent can push feedback below the viewport. Bring the
-	// outcome beside the action into view without depending on enable settling.
+	// Keep feedback before the actions so initial autofocus cannot hide it below
+	// them. Scrolled dialogs still need the outcome brought back into view.
 	useEffect(() => {
 		if (refusal) error.current?.scrollIntoView?.({ block: "nearest" });
 	}, [refusal]);
@@ -117,23 +117,6 @@ export function AgentMessagesDialog({
 				>
 					{consent?.text ?? t("ui.agentMessages.dialog.consent_unavailable")}
 				</p>
-				<div className={cn("flex flex-wrap gap-2")}>
-					<Button
-						variant="primary"
-						onClick={onEnable}
-						disabled={!canEnable || pending}
-						aria-busy={pending}
-					>
-						{t(
-							pending
-								? "ui.agentMessages.dialog.enabling"
-								: "ui.agentMessages.dialog.enable",
-						)}
-					</Button>
-					<Button ref={notNow} variant="secondary" onClick={close}>
-						{t("ui.agentMessages.dialog.not_now")}
-					</Button>
-				</div>
 				{refusal && (
 					<div
 						ref={error}
@@ -167,6 +150,23 @@ export function AgentMessagesDialog({
 						)}
 					</div>
 				)}
+				<div className={cn("flex flex-wrap gap-2")}>
+					<Button
+						variant="primary"
+						onClick={onEnable}
+						disabled={!canEnable || pending}
+						aria-busy={pending}
+					>
+						{t(
+							pending
+								? "ui.agentMessages.dialog.enabling"
+								: "ui.agentMessages.dialog.enable",
+						)}
+					</Button>
+					<Button ref={notNow} variant="secondary" onClick={close}>
+						{t("ui.agentMessages.dialog.not_now")}
+					</Button>
+				</div>
 				<p className={cn("text-meta text-ink-dim")}>
 					{t("ui.agentMessages.dialog.later")}
 				</p>

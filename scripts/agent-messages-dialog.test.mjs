@@ -14,6 +14,8 @@ const REACT_MODULE = /^(react|react-dom)(\/.*)?$/;
 const ACCOUNT_GUARD_SENTENCE =
 	/cannot safely enable agent messages for your account/;
 const DIALOG_TITLE = /Agent messages on Radient/;
+const HARDCODED_HEX = /#[0-9a-fA-F]{3,8}\b/;
+const THEME_ROLE_COLOR = /^var\(--lo-[a-z-]+\)$/;
 const FAILURE_COPY = /Agent messages could not be enabled/;
 const SPECIFIC_REFUSAL = /Stable refusal sentence\./;
 const LOCAL_FAILURE_COPY =
@@ -101,6 +103,7 @@ async function mount(
 		blockedAtCheck = false,
 		pending = false,
 		consent = undefined,
+		refusal = null,
 		skipInitialCheck = false,
 		statusImpl = null,
 		enableImpl = null,
@@ -109,6 +112,7 @@ async function mount(
 ) {
 	api.useAgentMessagesOnboardingStore.setState({ seen: {} });
 	const writes = [];
+	const localWrites = [];
 	const model = new api.AgentMessagesModel({
 		status: statusImpl ?? (async () => structuredClone(status)),
 		enable: async (body) => {
@@ -122,7 +126,10 @@ async function mount(
 				},
 			};
 		},
-		localSetting: localSettingImpl,
+		localSetting: async (...args) => {
+			localWrites.push(args);
+			return localSettingImpl(...args);
+		},
 		markSeen: (account, tenant) =>
 			api.useAgentMessagesOnboardingStore.getState().markSeen(account, tenant),
 		describe: () => ({ code: "refused", message: "Stable refusal sentence." }),
@@ -170,7 +177,7 @@ async function mount(
 							canEnable: true,
 							pending: false,
 							confirmed: false,
-							refusal: null,
+							refusal,
 							onDismiss: () => model.dismiss(accountId, "tenant-home"),
 							onEnable: () => {},
 						}
@@ -178,7 +185,7 @@ async function mount(
 			),
 		),
 	);
-	return { root, container, model, writes };
+	return { root, container, model, writes, localWrites };
 }
 const press = async (target, type = "click", options = {}) => {
 	await act(async () =>
@@ -436,6 +443,16 @@ function assertInertConsentAndHero() {
 	assert.equal(hero.getAttribute("aria-hidden"), "true");
 	assert.equal(hero.querySelectorAll("text,image").length, 0);
 	assert.ok(hero.querySelector('circle[fill="var(--lo-warning)"]'));
+	assert.doesNotMatch(hero.outerHTML, HARDCODED_HEX);
+	for (const node of hero.querySelectorAll("[fill], [stroke], [stop-color]")) {
+		for (const attribute of ["fill", "stroke", "stop-color"]) {
+			const value = node.getAttribute(attribute);
+			// `none` is unpainted geometry; the glow's URL references a gradient
+			// whose stops are checked here too, not an independent colour.
+			if (!value || value === "none" || value.startsWith("url(#")) continue;
+			assert.match(value, THEME_ROLE_COLOR);
+		}
+	}
 
 	assert.equal(document.querySelector("[data-agent-messages-graphic]"), null);
 }
@@ -476,7 +493,14 @@ test("rejected Enable shows failure beside the buttons, scrolls into view and al
 	assert.equal(error.getAttribute("role"), "alert");
 	assert.match(error.textContent, FAILURE_COPY);
 	assert.match(error.textContent, SPECIFIC_REFUSAL);
-	assert.ok(error.previousElementSibling.querySelector("button"));
+	assert.equal(
+		error.previousElementSibling,
+		document.querySelector("[data-agent-messages-consent-version]"),
+	);
+	assert.equal(
+		error.nextElementSibling.querySelector("button").textContent,
+		"Enable",
+	);
 	assert.equal(
 		[...document.querySelectorAll("button")].find(
 			(button) => button.textContent === "Enable",
@@ -512,3 +536,79 @@ test("confirmed enable stays open until local setup completes and shows local fa
 	);
 	assert.deepEqual(api.useAgentMessagesOnboardingStore.getState().seen, {});
 });
+
+test("initial refusal sits immediately between the served consent and action row", async (t) => {
+	await mount(t, {
+		consent: fixture.consent,
+		refusal: { code: "refused", message: "Stable refusal sentence." },
+	});
+	const consent = document.querySelector(
+		"[data-agent-messages-consent-version]",
+	);
+	const error = document.querySelector("[data-agent-messages-error]");
+	assert.equal(consent.nextElementSibling, error);
+	assert.equal(error.previousElementSibling, consent);
+	assert.equal(
+		error.nextElementSibling.querySelector("button").textContent,
+		"Enable",
+	);
+});
+
+for (const outcome of ["resolve", "reject"])
+	test(`an in-flight enable can be dismissed and later ${outcome} without reopening`, async (t) => {
+		let resolve;
+		let reject;
+		// This promise stays unsettled through the click and dismissal. Unlike
+		// the presentation-only pending matrix, the real model owns pending.
+		const request = new Promise((yes, no) => {
+			resolve = yes;
+			reject = no;
+		});
+		const mounted = await mount(t, { enableImpl: () => request });
+		await press(
+			[...document.querySelectorAll("button")].find(
+				(button) => button.textContent === "Enable",
+			),
+		);
+		assert.equal(mounted.model.getSnapshot().pending, true);
+		assert.equal(mounted.writes.length, 1);
+		await press(
+			[...document.querySelectorAll("button")].find(
+				(button) => button.textContent === "Not now",
+			),
+		);
+		const key = api.agentMessagesOnboardingKey("account-a", "tenant-home");
+		assert.equal(document.querySelector('[role="dialog"]'), null);
+		assert.equal(
+			api.useAgentMessagesOnboardingStore.getState().seen[key],
+			true,
+		);
+		assert.equal(mounted.model.getSnapshot().pending, true);
+		await act(async () => {
+			if (outcome === "resolve")
+				resolve({
+					endpoint: {
+						id: "bep-example",
+						state: "active",
+						tenant_id: "tenant-home",
+					},
+				});
+			else reject(new Error("request failed after dismissal"));
+			// Drain the same model continuation that the onboarding's void
+			// enable handler owns, including local setup and finally.
+			await new Promise((done) => setTimeout(done, 0));
+		});
+		assert.equal(mounted.model.getSnapshot().pending, false);
+		assert.equal(document.querySelector('[role="dialog"]'), null);
+		assert.equal(
+			api.useAgentMessagesOnboardingStore.getState().seen[key],
+			true,
+		);
+		assert.equal(mounted.writes.length, 1);
+		if (outcome === "reject") assert.deepEqual(mounted.localWrites, []);
+		else
+			assert.deepEqual(mounted.localWrites, [
+				["team_bridge.session", ""],
+				["team_bridge.enabled", true],
+			]);
+	});
