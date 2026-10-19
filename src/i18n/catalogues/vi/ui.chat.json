@@ -1,0 +1,10 @@
+{
+	"ui.chat.usage.continue": "Đã dùng hết hạn mức kèm theo; sẽ tiếp tục dùng tín dụng.",
+	"ui.chat.usage.family_caps": "Giới hạn theo dòng mô hình vẫn áp dụng.",
+	"ui.chat.usage.blocked": "Không thể dùng tín dụng",
+	"ui.chat.usage.eligibility_unknown": "Chưa rõ có thể dùng tín dụng hay không",
+	"ui.chat.usage.unlimited": "Hạn mức trả phí không giới hạn",
+	"ui.chat.skill_invocation.instructions_label": "Hướng dẫn kỹ năng được gửi cùng tin nhắn này",
+	"ui.chat.skill_invocation.trigger_label": "Hướng dẫn kỹ năng {token}",
+	"ui.chat.highlights.file_resolution_failed": "Không xác định được tệp này trong thư mục làm việc của phiên. Dùng Sao chép đường dẫn tệp để kiểm tra vị trí của tệp trong không gian làm việc của phiên này trước khi thử lại."
+}

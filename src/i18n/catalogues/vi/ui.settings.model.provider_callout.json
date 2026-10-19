@@ -1,0 +1,4 @@
+{
+	"ui.settings.model.provider_callout.sentence": "Đăng nhập với nhà cung cấp để dùng thêm mô hình. Bạn có thể dùng gói Claude, ChatGPT hoặc Radient hiện có mà không cần khóa API. Kết nối tại ",
+	"ui.settings.model.provider_callout.providers_link": "Nhà cung cấp"
+}
