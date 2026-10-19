@@ -11240,6 +11240,12 @@ export const STORIES = [
 		900,
 		{ expectSentence: "Wait for the turn to finish" },
 	],
+	[
+		"mesh-tab--refusal-notice",
+		1380,
+		900,
+		{ expectSentence: "relay not running" },
+	],
 	["mesh-tab--move-copy-with-undo", 1380, 900],
 	/*
 	 * THE REMEDY, EXECUTED, AND ITS CLAIM IS THE OUTCOME (agent review round 2, F2).

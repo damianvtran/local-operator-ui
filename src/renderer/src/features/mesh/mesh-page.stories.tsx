@@ -34,6 +34,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import type { DesktopResponse } from "../../../../shared/desktop-contract";
+import { MoveNotice } from "./mesh-actions";
 import { MeshPage } from "./mesh-page";
 import type { PeerLinkState, PeerRelayState } from "./mesh-types";
 
@@ -1563,6 +1564,40 @@ export const DragRefusedOverNetwork: Story = {
 	play: async () => {
 		await screen.findByText(/networks? · /i);
 	},
+};
+
+/**
+ * THE REFUSAL NOTICE WITH A REACH WORD, photographed on its own: the drag/recall
+ * the client refuses pre-flight because the peer's relay is not running.
+ *
+ * Before this pass the notice printed the machine code `unreachable`; the fix
+ * forwards `reach`, and this frame is the rendered proof of the longer label
+ * (design review, refusal-notice check: the drag-hover frame shows the tooltip,
+ * not this output). The sentence is the real `reach_refusal` shape.
+ */
+export const RefusalNotice: Story = {
+	render: () => (
+		<section className="flex min-h-40 flex-col gap-3 bg-surface p-6">
+			<h2 className="m-0 text-body-sm text-ink-dim">
+				Refusal notice — drag or recall refused before the request
+			</h2>
+			<MoveNotice
+				receipt={null}
+				canWait={false}
+				refusal={{
+					code: "unreachable",
+					sentence: "cloud-node-1: relay not running, so nothing was moved.",
+					reach: "relay not running",
+					status: null,
+					unconfirmed: false,
+				}}
+				onWait={() => {}}
+				onRecheck={() => {}}
+				onUndo={() => {}}
+				pending={false}
+			/>
+		</section>
+	),
 };
 
 /** The drop's question: the operation named, the loss stated, the copy offered. */
