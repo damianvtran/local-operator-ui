@@ -156,7 +156,7 @@
 	"ui.settings.integrations.integration_sign_in_dialog.your_browser_didn_t_open_open_this_link_to_approve_access": "आपका ब्राउज़र नहीं खुला। पहुँच की स्वीकृति देने के लिए यह लिंक खोलें:",
 	"ui.settings.integrations.integration_sign_in_dialog.your_browser_didn_t_open_and_no_link_was_provided_cancel_and_try_": "आपका ब्राउज़र नहीं खुला और कोई लिंक भी नहीं दिया गया। रद्द करें और फिर कोशिश करें।",
 	"ui.settings.integrations.integration_sign_in_dialog.sign_in_cancelled": "साइन इन रद्द हुआ।",
-	"ui.settings.integrations.integration_sign_in_dialog.press_try_again_when_you_are_ready": "तैयार होने पर फिर कोशिश करें दबाएँ।",
+	"ui.settings.integrations.integration_sign_in_dialog.press_try_again_when_you_are_ready": "तैयार होने पर “फिर कोशिश करें” दबाएँ।",
 	"ui.settings.integrations.integration_sign_in_dialog.sign_in_didn_t_finish": "साइन इन पूरा नहीं हुआ।",
 	"ui.settings.integrations.integration_sign_in_dialog.the_server_didn_t_say_why": "सर्वर ने कारण नहीं बताया।",
 	"ui.settings.integrations.integration_sign_in_dialog.this_server_may_not_accept_sign_ins_from_local_operator_check_the": "हो सकता है यह सर्वर Local Operator से साइन इन स्वीकार न करे। सर्वर की सेटिंग्स जाँचें, या इसकी जगह कुंजी जोड़ें।",

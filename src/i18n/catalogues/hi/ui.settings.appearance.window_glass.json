@@ -7,7 +7,7 @@
 	"ui.settings.appearance.window_glass.unsupported_linux": "Linux पर पारभासी विंडो उपलब्ध नहीं है: ऐप सिस्टम से विंडो धुंधली करने के लिए नहीं कह सकता। वहाँ डेस्कटॉप की पारभासिता कंपोज़िटर (X11 या Wayland) पर निर्भर करती है और सॉफ़्टवेयर से धुंधला करने का सहारा ले सकती है, जिससे डेस्कटॉप का टेक्स्ट ऐप के टेक्स्ट के पीछे दिखेगा।",
 	"ui.settings.appearance.window_glass.unsupported_other": "इस प्लेटफ़ॉर्म पर पारभासी विंडो उपलब्ध नहीं है: सिर्फ़ macOS पर धुंधली विंडो बनाकर दिखाने की पुष्टि हुई है, और Windows 11 के मटीरियल को अभी असली मशीन पर नहीं परखा गया है।",
 	"ui.settings.appearance.window_glass.coverage_label": "ग्लास कहाँ लागू हो",
-	"ui.settings.appearance.window_glass.coverage_description": "विंडो के कौन-से हिस्से पारभासी हों। सिर्फ़ साइडबार में बातचीत और पेज अपारदर्शी रहते हैं। पूरा ऐप में वे और साइड पैनल भी शामिल हैं; अंदर दिखाए गए वेब पेज, दस्तावेज़ और चित्र अपारदर्शी रहते हैं।",
+	"ui.settings.appearance.window_glass.coverage_description": "विंडो के कौन-से हिस्से पारभासी हों। सिर्फ़ साइडबार में बातचीत और पेज अपारदर्शी रहते हैं। पूरा ऐप उन्हें और साइड पैनलों को भी शामिल करता है; अंदर दिखाए गए वेब पेज, दस्तावेज़ और चित्र अपारदर्शी रहते हैं।",
 	"ui.settings.appearance.window_glass.coverage_sidebars": "सिर्फ़ साइडबार",
 	"ui.settings.appearance.window_glass.coverage_full": "पूरा ऐप",
 	"ui.settings.appearance.window_glass.intensity_label": "धुंधले से पारदर्शी तक",
