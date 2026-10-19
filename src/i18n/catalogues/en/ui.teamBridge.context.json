@@ -291,5 +291,70 @@
 		"length": "One sentence.",
 		"placeholders": {},
 		"note": "Conversation creation failed. The dialog stays open with the form intact so the user can retry."
+	},
+	"ui.teamBridge.scope.label": {
+		"role": "dropdown menu section label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Names what the dropdown chooses. It is a visible section label inside the menu and also the trigger's accessible-name prefix."
+	},
+	"ui.teamBridge.scope.all": {
+		"role": "scope option / trigger label",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "The account-wide scope. It must read as every organization the person belongs to, never as a single organization."
+	},
+	"ui.teamBridge.scope.trigger": {
+		"role": "organization switcher accessible name",
+		"tone": "neutral, names the current scope",
+		"length": "One short clause.",
+		"placeholders": {
+			"name": "the current organization name or the all-organizations label"
+		},
+		"note": "The trigger already shows `name` visually; this template is its accessible name, so screen-reader and visual state cannot disagree."
+	},
+	"ui.teamBridge.scope.loading": {
+		"role": "menu status line",
+		"tone": "neutral",
+		"length": "2-3 words.",
+		"placeholders": {},
+		"note": "The memberships read's first paint, shown inside the open menu rather than replacing the list."
+	},
+	"ui.teamBridge.scope.error": {
+		"role": "menu status line",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The membership read failed. The switcher still shows the current scope; this line says why the other organizations are missing."
+	},
+	"ui.teamBridge.scope.empty": {
+		"role": "menu status line",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The account holds no active memberships. Keep it distinct from the error copy."
+	},
+	"ui.teamBridge.scope.unknown": {
+		"role": "fallback organization label",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "A scope or row whose organization is not in the memberships read. A rare race, not a user error."
+	},
+	"ui.teamBridge.scope.thread_unknown": {
+		"role": "thread state",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "A conversation from the merged list whose organization could not be resolved. The thread is withheld rather than shown under the wrong organization."
+	},
+	"ui.teamBridge.scope.create_needs_org": {
+		"role": "disabled-control reason",
+		"tone": "neutral, instructional",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Explains why New conversation is disabled while the account-wide scope is selected: a conversation must belong to exactly one organization."
 	}
 }

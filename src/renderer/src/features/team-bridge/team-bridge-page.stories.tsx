@@ -3,6 +3,10 @@ import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import {
+	TEAM_BRIDGE_ALL_SCOPE,
+	type TeamBridgeOrganization,
+} from "./team-bridge-model";
 import { TeamBridgePageView } from "./team-bridge-page";
 
 /**
@@ -177,6 +181,32 @@ const messages: TeamBridgeMessage[] = [
 	},
 ];
 
+const minervaOrganization: TeamBridgeOrganization = {
+	tenantId: "tnt_1",
+	name: "Minerva",
+	role: "owner",
+	unread: 5,
+};
+
+const northwindOrganization: TeamBridgeOrganization = {
+	tenantId: "tnt_2",
+	name: "Northwind Collective",
+	role: "member",
+	unread: 4,
+};
+
+/** A row from the second organization, so the merged board has two chips. */
+const northwindChannel: TeamBridgeConversation = {
+	...channel,
+	id: "bcv_ch_2",
+	tenant_id: northwindOrganization.tenantId,
+	name: "field-notes",
+	latest_seq: 6,
+	last_read_seq: 2,
+	unread_count: 4,
+	last_message_at: new Date(Date.now() - 2 * 60 * 60_000).toISOString(),
+};
+
 const meta = {
 	title: "Team Bridge/Page",
 	component: TeamBridgePageView,
@@ -196,12 +226,16 @@ const meta = {
 		conversations: [dm, channel, group],
 		selected: dm,
 		messages,
+		organizations: [minervaOrganization, northwindOrganization],
+		scope: minervaOrganization.tenantId,
+		totalUnread: minervaOrganization.unread + northwindOrganization.unread,
 		listState: "ready",
 		messageState: "ready",
 		onSelect: () => {},
 		onSend: () => {},
 		onNewConversation: () => {},
 		onRetry: () => {},
+		onScopeChange: () => {},
 	},
 } satisfies Meta<typeof TeamBridgePageView>;
 
@@ -262,4 +296,51 @@ export const ThreadError: Story = {
 
 export const SendingDisabledComposer: Story = {
 	args: { sending: true },
+};
+
+/** One organization: the trigger names it, and no row carries a chip. */
+export const SingleOrganization: Story = {
+	args: {
+		organizations: [minervaOrganization],
+		totalUnread: minervaOrganization.unread,
+	},
+};
+
+/** Several organizations, one selected: the menu holds the others. */
+export const MultipleOrganizations: Story = {};
+
+/** The account-wide view: merged, newest first, every row labelled with its org. */
+export const AllOrganizations: Story = {
+	args: {
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: [dm, channel, group, northwindChannel],
+		selected: dm,
+		messageState: "ready",
+	},
+};
+
+/** An organization that has no conversations: the switcher still names it. */
+export const EmptyOrganization: Story = {
+	args: {
+		organizations: [minervaOrganization, northwindOrganization],
+		scope: northwindOrganization.tenantId,
+		conversations: [],
+		selected: null,
+		messages: [],
+		messageState: "idle",
+	},
+};
+
+/** The memberships read failed: rows cannot be labelled, so the rail says so. */
+export const OrganizationsUnavailable: Story = {
+	args: {
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		organizations: [],
+		organizationsFailed: true,
+		listState: "error",
+		conversations: [],
+		selected: null,
+		messages: [],
+		messageState: "idle",
+	},
 };
