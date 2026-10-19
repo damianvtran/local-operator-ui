@@ -1,0 +1,142 @@
+{
+  "before": {
+    "collapsed": {
+      "strip": true,
+      "sound": false,
+      "nested": false,
+      "images": false,
+      "file": false
+    },
+    "expanded": {
+      "strip": true,
+      "sound": true,
+      "nested": false,
+      "images": false,
+      "file": false
+    }
+  },
+  "fixedMissingSidecar": {
+    "collapsed": {
+      "strip": true,
+      "sound": true,
+      "nested": false,
+      "waveform": [
+        {
+          "width": 1336,
+          "height": 88,
+          "paintedRows": 8
+        },
+        {
+          "width": 1336,
+          "height": 88,
+          "paintedRows": 8
+        }
+      ],
+      "images": false,
+      "file": false
+    },
+    "expanded": {
+      "strip": true,
+      "sound": true,
+      "nested": false,
+      "waveform": [
+        {
+          "width": 1336,
+          "height": 88,
+          "paintedRows": 8
+        },
+        {
+          "width": 1336,
+          "height": 88,
+          "paintedRows": 8
+        }
+      ],
+      "images": false,
+      "file": false
+    }
+  },
+  "allThreeWithRealPeaks": {
+    "collapsed": {
+      "strip": true,
+      "sound": true,
+      "nested": false,
+      "waveform": [
+        {
+          "width": 1336,
+          "height": 88,
+          "paintedRows": 14
+        },
+        {
+          "width": 1336,
+          "height": 88,
+          "paintedRows": 14
+        }
+      ],
+      "imageReady": true,
+      "images": true,
+      "file": true
+    },
+    "expanded": {
+      "strip": true,
+      "sound": true,
+      "nested": false,
+      "waveform": [
+        {
+          "width": 1336,
+          "height": 88,
+          "paintedRows": 14
+        },
+        {
+          "width": 1336,
+          "height": 88,
+          "paintedRows": 14
+        }
+      ],
+      "imageReady": true,
+      "images": true,
+      "file": true
+    }
+  },
+  "soundOnlyWithRealPeaks": {
+    "collapsed": {
+      "strip": true,
+      "sound": true,
+      "nested": false,
+      "waveform": [
+        {
+          "width": 1336,
+          "height": 88,
+          "paintedRows": 14
+        },
+        {
+          "width": 1336,
+          "height": 88,
+          "paintedRows": 14
+        }
+      ],
+      "imageReady": false,
+      "images": false,
+      "file": false
+    },
+    "expanded": {
+      "strip": true,
+      "sound": true,
+      "nested": false,
+      "waveform": [
+        {
+          "width": 1336,
+          "height": 88,
+          "paintedRows": 14
+        },
+        {
+          "width": 1336,
+          "height": 88,
+          "paintedRows": 14
+        }
+      ],
+      "imageReady": false,
+      "images": false,
+      "file": false
+    }
+  }
+}
