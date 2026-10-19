@@ -196,6 +196,12 @@ export class QwenVoice {
 	};
 	private slot: string | null = null;
 	/**
+	 * THE PERSON'S SWITCH (default OFF; `qwen-voice-setting.ts`). While false NOTHING
+	 * here has a side effect: no start, no page, no timer, no Gateway or s2s
+	 * message. Every entry point checks it first.
+	 */
+	private enabled = false;
+	/**
 	 * The two controls of the strip that main owns, mirrored into `status` so the
 	 * renderer never holds a second copy that can disagree (see `QwenVoiceStatus`).
 	 */
@@ -250,6 +256,33 @@ export class QwenVoice {
 		return { ...this.status };
 	}
 
+	isEnabled(): boolean {
+		return this.enabled;
+	}
+
+	/**
+	 * Apply the switch. Turning it ON only lifts the guards (the wave button then
+	 * drives an enable through the usual path). Turning it OFF is immediate and
+	 * total: the page closes (microphone released), the Gateway and s2s stop, every
+	 * timer is disarmed and the slot copy is forgotten - it does NOT wait for the
+	 * idle window.
+	 */
+	async setEnabled(on: boolean): Promise<QwenVoiceStatus> {
+		if (on === this.enabled) return this.getStatus();
+		this.enabled = on;
+		if (on) {
+			this.log("qwen-voice: switched on");
+			return this.getStatus();
+		}
+		this.log("qwen-voice: switched off; stopping everything");
+		this.slot = null;
+		this.relayed = [];
+		this.awaitingMic = false;
+		this.starting = null;
+		await this.stop();
+		return this.getStatus();
+	}
+
 	private setStatus(next: QwenVoiceStatus): void {
 		/*
 		 * THE TWO CONTROLS SURVIVE EVERY STATUS THAT DOES NOT NAME THEM (a start's
@@ -278,6 +311,7 @@ export class QwenVoice {
 	 * Only a READY rig can be paused; before that there is no page to close.
 	 */
 	pause(): QwenVoiceStatus {
+		if (!this.enabled) return this.getStatus();
 		if (this.status.rig !== "ready" || this.paused) return this.getStatus();
 		this.paused = true;
 		this.playing = false;
@@ -296,6 +330,7 @@ export class QwenVoice {
 	 * open), which re-applies the mute the page remembers.
 	 */
 	resume(): QwenVoiceStatus {
+		if (!this.enabled) return this.getStatus();
 		if (!this.paused) return this.getStatus();
 		this.paused = false;
 		const webuiUrl = this.status.webui_url;
@@ -317,6 +352,7 @@ export class QwenVoice {
 	 * main cannot disagree.
 	 */
 	setMuted(muted: boolean): QwenVoiceStatus {
+		if (!this.enabled) return this.getStatus();
 		this.muted = muted;
 		this.deps.page.setMuted(muted);
 		this.setStatus({ ...this.status, muted });
@@ -325,6 +361,7 @@ export class QwenVoice {
 
 	/** One frame off the machine feed (main's own subscription). */
 	observeFrame(frame: { type?: string; payload?: unknown }): void {
+		if (!this.enabled) return;
 		if (frame?.type !== "voice") return;
 		this.applySlot(slotOf(frame.payload), { start: true });
 	}
@@ -405,6 +442,7 @@ export class QwenVoice {
 	 * LLM). Idempotent; concurrent calls share one start.
 	 */
 	start(reason: "enable" | "renderer"): Promise<QwenVoiceStatus> {
+		if (!this.enabled) return Promise.resolve(this.getStatus());
 		if (this.rigUp()) return this.readyAgain(reason);
 		/*
 		 * A MACHINE THAT CANNOT HOLD THE RIG IS TOLD SO, FIRST (review R1): the
@@ -453,8 +491,16 @@ export class QwenVoice {
 					this.setStatus({ rig: "stopped", webui_url: null, mic });
 					return this.getStatus();
 				}
+				// Switched off while the microphone dialog was up: spawn nothing.
+				if (!this.enabled) return this.getStatus();
 				const webuiUrl = await this.deps.gateway.start();
 				await this.deps.speech.start();
+				// Switched off mid-start: `setEnabled(false)` already stopped what it
+				// could see; stop what finished since.
+				if (!this.enabled) {
+					await this.stopProcesses();
+					return this.getStatus();
+				}
 				/*
 				 * The Gateway can die while s2s loads (the 8-minute leg). Reporting
 				 * "ready" over a dead launcher would say Listening with nothing to
@@ -739,6 +785,7 @@ export class QwenVoice {
 
 	/** One message up from the Gateway launcher. */
 	onGatewayMessage(message: GatewayUpMessage): void {
+		if (!this.enabled) return;
 		if (message?.type === "event") {
 			/* Nothing is hearing or playing while the page is closed; a late frame
 			   from before the pause would put "Hearing you" up over a closed page. */
@@ -819,6 +866,7 @@ export class QwenVoice {
 
 	/** `voice.qwen.result {taskId, ok | code}` from the renderer. */
 	result(input: unknown): boolean {
+		if (!this.enabled) return false;
 		const value = input as { taskId?: unknown; ok?: unknown; code?: unknown };
 		if (typeof value?.taskId !== "string" || value.taskId.length > 128)
 			return false;
@@ -848,6 +896,7 @@ export class QwenVoice {
 		input: unknown,
 		response: { status: number; body: unknown },
 	): void {
+		if (!this.enabled) return;
 		const request = input as {
 			op?: unknown;
 			action?: unknown;
@@ -879,6 +928,7 @@ export class QwenVoice {
 	 * main relayed itself, within the window, with the same kind; consumed once.
 	 */
 	speak(input: unknown): { spoken: boolean; reason?: string } {
+		if (!this.enabled) return { spoken: false, reason: "voice_disabled" };
 		const value = input as { text?: unknown; kind?: unknown };
 		if (value?.kind !== "reply" && value?.kind !== "gate")
 			return { spoken: false, reason: "invalid_kind" };

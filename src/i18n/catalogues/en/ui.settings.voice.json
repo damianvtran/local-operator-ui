@@ -1,0 +1,4 @@
+{
+	"ui.settings.voice.label": "Session voice",
+	"ui.settings.voice.description": "Lets you talk to a conversation hands-free. Off by default. While it is off, nothing for voice runs: no microphone, no speech models and no background checks. Turning it on adds a voice button to the composer; turning it off stops voice at once and releases the microphone."
+}

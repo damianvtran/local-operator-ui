@@ -75,6 +75,7 @@ import enUiSettingsNavigation from "./catalogues/en/ui.settings.navigation.json"
 import enUiSettingsShortcuts from "./catalogues/en/ui.settings.shortcuts.json";
 import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
 import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
+import enUiSettingsVoice from "./catalogues/en/ui.settings.voice.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
@@ -306,6 +307,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsShortcuts,
 	...enUiSettingsSpeech,
 	...enUiSettingsUpdates,
+	...enUiSettingsVoice,
 	...enUiShell,
 	...enUiShellRail,
 };
@@ -3990,6 +3992,8 @@ export type MessageParams = {
 		choice: string;
 	};
 	"ui.settings.updates.update_following.update_notifications": undefined;
+	"ui.settings.voice.description": undefined;
+	"ui.settings.voice.label": undefined;
 	"ui.shell.collapsible_app_logo.local_operator": undefined;
 	"ui.shell.panel_rail.panels": undefined;
 	"ui.shell.sidebar_navigation.agent_hub": undefined;

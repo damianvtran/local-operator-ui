@@ -154,6 +154,10 @@ import {
 	noQwenVoicePage,
 	voicePageAllowed,
 } from "./voice/qwen-voice-page";
+import {
+	readQwenVoiceEnabled,
+	writeQwenVoiceEnabled,
+} from "./voice/qwen-voice-setting";
 import { resolveLaunchWindowChrome } from "./window-chrome";
 import {
 	type ResolvedLaunchGlass,
@@ -1659,6 +1663,12 @@ const qwenVoice: QwenVoice = new QwenVoice({
 	log: (message) => logger.info(message, LogFileType.BACKEND),
 });
 
+/*
+ * THE VOICE SWITCH, read synchronously before anything voice runs. Default OFF:
+ * a fresh profile has no file, so nothing below is ever started for it.
+ */
+void qwenVoice.setEnabled(readQwenVoiceEnabled(app.getPath("userData")));
+
 /**
  * A TERMINATING SIGNAL STOPS THE RIG FIRST (QA round 1, Q-3). Measured: `kill
  * -TERM` took the whole Electron group down in under 2 s, but the s2s group
@@ -3081,6 +3091,16 @@ app
 			supplementMounts,
 		);
 		registerQwenVoiceIPC(() => mainWindow, rendererUrl, {
+			getEnabled: () => qwenVoice.isEnabled(),
+			setEnabled: async (on) => {
+				if (!writeQwenVoiceEnabled(app.getPath("userData"), on))
+					throw new Error("Could not save the voice setting.");
+				await qwenVoice.setEnabled(on);
+				for (const window of BrowserWindow.getAllWindows())
+					if (!window.isDestroyed())
+						window.webContents.send("voice.qwen.enabled", on);
+				return on;
+			},
 			result: (input) => qwenVoice.result(input),
 			speak: (input) => qwenVoice.speak(input),
 			start: (reason) => qwenVoice.start(reason),

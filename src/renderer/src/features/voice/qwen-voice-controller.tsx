@@ -57,6 +57,7 @@ import type {
 } from "../../../../shared/desktop-contract";
 import type { DesktopVoiceText } from "../../../../shared/desktop-control-contract";
 import { applyVoiceActive, useVoiceStatus } from "./use-voice-status";
+import { useVoiceSwitchSync } from "./use-voice-switch";
 import { playReplyEndTone } from "./voice-earcons";
 import { activityOfEvent, useVoiceStore } from "./voice-store";
 import { type VoiceStreamHandle, subscribeVoiceStream } from "./voice-stream";
@@ -858,6 +859,7 @@ export async function setQwenMuted(muted: boolean): Promise<void> {
 /* -------------------------------------------------------------------------- */
 
 export const QwenVoiceController: FC = () => {
+	useVoiceSwitchSync();
 	const status = useVoiceStatus();
 	const activeSessionId = status.activeSessionId;
 	const feed = useDesktopFeed();
@@ -873,9 +875,9 @@ export const QwenVoiceController: FC = () => {
 	// 1. The slot mirror: the feed's level frame goes into the one cache entry.
 	const client = useQueryClient();
 	useEffect(() => {
-		if (feed.voiceActive !== undefined)
+		if (status.enabled && feed.voiceActive !== undefined)
 			applyVoiceActive(feed.voiceActive, client);
-	}, [feed.voiceActive, client]);
+	}, [feed.voiceActive, client, status.enabled]);
 
 	// 2. The rig mirror, and the takes main relays from the rig.
 	const segmentClock = useRef<SpeechSegmentClock>({ startedAt: null });
