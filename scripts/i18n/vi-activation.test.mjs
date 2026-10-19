@@ -97,7 +97,7 @@ test("counts render ungrouped (the #1131 fidelity rule); uncarried namespaces us
 		restoreLocale();
 	}
 });
-test("shipped Vietnamese carries every UI namespace, not an English stub", () => {
+test("every namespace vi ships is wired and carries translated copy", () => {
 	locale.setLocale("vi");
 	const viDir = new URL("../../src/i18n/catalogues/vi/", import.meta.url);
 	const files = readdirSync(viDir)
