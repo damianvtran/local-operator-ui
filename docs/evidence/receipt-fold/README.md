@@ -25,6 +25,8 @@ openai/gpt-6.1-sol` and one `failed: Provider connection failed. Retry the job.`
 | 640px column, opened | (same base fold as standard) | [after-narrow-expanded.png](after-narrow-expanded.png) |
 | Receipt-only turn (the turn bar owns the first press) | — | [after-receipt-only.png](after-receipt-only.png) |
 | One call + a trailing receipt pair (nested fold) | — | [after-short-mixed.png](after-short-mixed.png) |
+| Long mixed-kind inventory (`and N other actions` + receipts), 640px | — | [after-long-inventory-narrow.png](after-long-inventory-narrow.png) |
+| Long mixed-kind inventory, standard column | — | [after-long-inventory-wide.png](after-long-inventory-wide.png) |
 
 ## What the frames show
 
@@ -41,6 +43,11 @@ openai/gpt-6.1-sol` and one `failed: Provider connection failed. Retry the job.`
 - The 640px frames show the same line at the narrow column; it fits on one line in this
   page. A longer page (real session `8c2ff1914f44`, 63 shell + 11 other action kinds)
   adds `and 11 other actions` before the receipt units; its exact wrap was not captured.
+- The long-inventory stories exercise the capped line:
+  `3 files · 1 web search · 2 shell · 1 edit · 1 task · and 2 other actions · 3 job results`
+  at 640px and the standard column. Measured `[data-fold-summary]` rect in both:
+  **x=75, width=479.88px, height=19.5px** (one line, right edge 554.88px), with
+  `overflow: visible` and `white-space: normal`; no clipping and no wrap at this length.
 - `after-receipt-only.png` shows the quiet-turn bar (`Job results · 2`) that owns the
   first press for a settled receipt-only turn; `after-short-mixed.png` shows the inner
   `1 shell · 2 job results` fold after that bar is opened (UX round 1, U2, accepted
