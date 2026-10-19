@@ -35,6 +35,7 @@ import {
 import { ApprovalStore } from "./approvals";
 import {
 	browserChromeOwnsChord,
+	browserPageOwnsChord,
 	createBrowserChordRouter,
 } from "./browser-chord";
 import { CdpPool } from "./cdp";
@@ -880,11 +881,17 @@ async function initializeBrowserHost(
 			ownsChrome,
 			ownsPage: () => {
 				const record = registry.activeTab;
-				return Boolean(
-					record?.presented &&
-						webContents.getFocusedWebContents()?.id ===
-							record.view.webContents.id,
-				);
+				return browserPageOwnsChord({
+					activeTab: record
+						? {
+								tabId: record.tabId,
+								webContentsId: record.view.webContents.id,
+								presented: record.presented,
+							}
+						: null,
+					focusedContentsId: webContents.getFocusedWebContents()?.id ?? null,
+					focusedViewTabId: host.focusedPageTabId,
+				});
 			},
 			reload: (hard) => {
 				host.reloadActive(hard);
@@ -924,6 +931,9 @@ async function initializeBrowserHost(
 		const resetChordFocus = (): void => {
 			host.setChordFocus(false);
 		};
+		const resetPageFocus = (): void => {
+			host.clearPageFocus();
+		};
 		const resetMenuShortcutSuppression = () => {
 			if (!options.window.webContents.isDestroyed())
 				options.window.webContents.setIgnoreMenuShortcuts(false);
@@ -932,6 +942,10 @@ async function initializeBrowserHost(
 			if (!focused) resetMenuShortcutSuppression();
 		};
 		options.window.webContents.on("before-input-event", onChromeInput);
+		// The window's own renderer taking focus means the user is in chrome or chat,
+		// not a driven page. A view's own `blur` covers the same move; this is the
+		// belt for a focus change that never emits one (destroyed/restored views).
+		options.window.webContents.on("focus", resetPageFocus);
 		// OS blur is not departure from the browser's DOM owner. Native guards
 		// above refuse inactive windows; retaining the logical owner removes the
 		// reactivation/menu race against an asynchronous renderer focus report.
@@ -957,6 +971,7 @@ async function initializeBrowserHost(
 				"before-input-event",
 				onChromeInput,
 			);
+			options.window.webContents.removeListener("focus", resetPageFocus);
 			options.window.removeListener("blur", resetMenuShortcutSuppression);
 			options.window.removeListener("closed", resetChordFocus);
 			options.window.webContents.removeListener(
@@ -1255,6 +1270,12 @@ async function initializeBrowserHost(
 		 * above; these are per view because that is where Electron puts them. */
 		function wireView(view: WebContentsView, tabId: number): void {
 			const contents = view.webContents;
+			// The view's own focus is the native fact the menu/accelerator route needs:
+			// `getFocusedWebContents()` can stay null while a WebContentsView holds focus
+			// (measured on Electron 44.3.0), and a menu click may arrive with no callback
+			// window. `ownsPage` combines this with the active/presented check.
+			contents.on("focus", () => host.setPageFocused(tabId, true));
+			contents.on("blur", () => host.setPageFocused(tabId, false));
 
 			// Popups: `about:blank` and http(s) open as real child windows, everything
 			// else is refused with a log line (docs/design/browser-oauth-popups.md 1.1).
@@ -1506,6 +1527,8 @@ async function initializeBrowserHost(
 					if (token) approvals.forgetDocument(token);
 					registry.forget(tabId);
 				}
+				// A focus fact must not outlive the view whose focus it recorded.
+				host.setPageFocused(tabId, false);
 				// A failure recorded against a tab whose view died describes nothing.
 				host.clearLoadFailure(tabId);
 				// The same release the registry's own close performs. A view that is

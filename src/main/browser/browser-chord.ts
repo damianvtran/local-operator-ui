@@ -28,28 +28,82 @@ export function browserChromeOwnsChord(facts: {
 	);
 }
 
+/** Whether the presented browser page is the native input owner.
+ *
+ * TWO NATIVE FACTS, ORed rather than one assumed: Electron's
+ * `webContents.getFocusedWebContents()` is the documented answer, but a
+ * `WebContentsView` can hold focus while that getter answers null (measured on
+ * Electron 44.3.0: `page.focus()` emits the view's own `focus` event while
+ * `getFocusedWebContents()` stays null in a window that is not itself
+ * activated). The view's own `focus` event is therefore tracked by the host and
+ * accepted as the second fact. Both are refused unless the ACTIVE tab is the
+ * one presented, so a stale focus on a hidden/background view cannot route an
+ * accelerator into a page the user cannot see. */
+export function browserPageOwnsChord(facts: {
+	activeTab: {
+		tabId: number;
+		webContentsId: number;
+		presented: boolean;
+	} | null;
+	focusedContentsId: number | null;
+	focusedViewTabId: number | null;
+}): boolean {
+	const active = facts.activeTab;
+	return Boolean(
+		active?.presented &&
+			(facts.focusedContentsId === active.webContentsId ||
+				facts.focusedViewTabId === active.tabId),
+	);
+}
+
 /** Dependency-injected because listener logic must be falsifiable without a
  * focused OS window. Emitting before-input-event tests this router, NOT physical
  * key delivery. The event source must already have passed the ownership check. */
 /** A menu's target is Electron's callback window, not the app's global main
  * window. OAuth/mini windows must retain their own reload/close even if chrome
- * has a stale focus report. No target means no action, as with Electron roles. */
+ * has a stale focus report. A missing target is NOT automatically "no action":
+ * a focused WebContentsView can reach an accelerator without one, so the
+ * browser's native owner predicate is asked first. Only when that declines does
+ * a missing target mean nothing happens. */
 export function runBrowserMenuAction<
 	T extends {
 		webContents?: { reload(): void; reloadIgnoringCache(): void };
 		close(): void;
 	},
 >(
-	intent: "reload" | "hard-reload" | "close-tab",
+	intent: "reload" | "hard-reload" | "close-tab" | "new-tab",
 	target: T | null | undefined,
 	owner: T | null,
 	route: (intent: BrowserChord) => boolean,
 ): void {
+	/*
+	 * A MENU'S TARGET IS ELECTRON'S CALLBACK WINDOW, BUT IT IS NOT THE ONLY
+	 * NATIVE FACT THAT NAMES THE OWNER. A focused `WebContentsView` can reach a
+	 * menu accelerator with NO callback window at all, or with the window whose
+	 * view is focused; the renderer-side focus report is not involved. So the
+	 * browser route is asked FIRST when the callback window is the owner or
+	 * absent, and its `ownsPage`/`ownsChrome` native facts decide. Outside the
+	 * browser it returns false and the app fallback runs exactly as before.
+	 *
+	 * A DIFFERENT window (an OAuth/mini popup) still wins outright: its own
+	 * reload/close belongs to it even if the main chrome's report is stale, and
+	 * the popup is never the browser's owner.
+	 */
+	if (target && target !== owner) {
+		if (intent === "reload") target.webContents?.reload();
+		else if (intent === "hard-reload")
+			target.webContents?.reloadIgnoringCache();
+		else if (intent === "close-tab") target.close();
+		// New tab has no other-window meaning; no window owns a browser tab.
+		return;
+	}
+	if (route(intent)) return;
 	if (!target) return;
-	if (target === owner && route(intent)) return;
 	if (intent === "reload") target.webContents?.reload();
 	else if (intent === "hard-reload") target.webContents?.reloadIgnoringCache();
-	else target.close();
+	// New tab has no app fallback: outside the browser it is a deliberate no-op
+	// (never a window close, which is what the old fallback would have done).
+	else if (intent === "close-tab") target.close();
 }
 
 export function createBrowserChordRouter(options: {
