@@ -490,6 +490,31 @@ test("(c) a close whose write was refused keeps the words, and opening the path 
 	);
 });
 
+test("(c1) a clean close leaves no retained draft, so a reopened file's newer bytes win", async () => {
+	const path = "/tmp/close-clean-draft.md";
+	const bridge = openCase(path, "one\n");
+	const document = openedDocument(path, "one\n", 100);
+	useCanvasStore.getState().addFileAndSelect(CONVERSATION, document);
+	mountEditor(document);
+	proposeBuffer(document.id, "the reader's words");
+
+	closeTab(document.id);
+	const outcome = await settleAfter(document.id);
+
+	assert.deepEqual(
+		bridge.writes.map((write) => write.text),
+		["the reader's words"],
+		"the flush reaches the file",
+	);
+	assert.equal(outcome.keptWords, false, "nothing was kept");
+	assert.equal(bufferIsDirty(document.id), false, "the buffer is clean");
+	assert.equal(
+		bufferText(document.id),
+		null,
+		"a clean closed buffer is not a retained draft: a reopen must read the file's bytes, not the version this tab was closed on",
+	);
+});
+
 test("(c2) the projection resurrects nothing and passes an untouched document straight through", async () => {
 	const path = "/tmp/close-passthrough.md";
 	openCase(path, "one\n");

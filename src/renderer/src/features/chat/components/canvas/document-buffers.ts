@@ -353,7 +353,22 @@ export function bufferGeneration(documentId: string): number {
 
 export function bufferText(documentId: string): string | null {
 	const entry = buffers.get(documentId);
-	if (!entry || entry.closed) return null;
+	if (!entry) return null;
+	/*
+	 * A CLOSED entry is only readable while it holds un-written words.
+	 *
+	 * The held-close contract (I5) is about words that did NOT reach the file: they
+	 * stay here, dirty and held, and `documentsForCanvas` puts them back on the next
+	 * open of this path. Reading them through this accessor is what the close test
+	 * pins (`(c)`), and what an editor remount hydrates from.
+	 *
+	 * A CLEAN closed entry is a different thing: its token is the file version it
+	 * was closed on, which may already be older than the file a reopen just read.
+	 * Handing that back would hydrate the editor with stale bytes before
+	 * `adoptBuffer` can adopt the newer version (the Library dock/full-view remount
+	 * that first needed this distinction). Only dirty words win over a file version.
+	 */
+	if (entry.closed && !dirtyOf(entry)) return null;
 	return entry.serialize ? entry.serialize().text : entry.token;
 }
 
