@@ -397,6 +397,28 @@ export function fleetAskSessionFor(
  */
 export type FleetAsksCapability = "live" | "absent" | "unknown";
 
+/**
+ * THE ROUTE-EXISTENCE VERDICT, as a pure function so both directions are driven
+ * by a test rather than by the hook's closure (review R1-4).
+ *
+ * The split is the whole capability contract: only a 404 - the server saying
+ * there is no such route - may let a surface call this runtime unsupported.
+ * A 503 while the backend restarts, a 504 deadline, or a transport failure that
+ * never produced a response are all reads that may still answer, and reading
+ * them as absence would park the drawer's permanent "doesn't support queued
+ * asks" over a runtime that does. An answer in hand outranks a later failed
+ * refetch: `rows` non-null is `live` even while an error is set.
+ */
+export function fleetAsksCapability(
+	rows: readonly PendingAsk[] | null,
+	error: unknown,
+): FleetAsksCapability {
+	if (rows !== null) return "live";
+	return error instanceof DesktopControlError && error.status === 404
+		? "absent"
+		: "unknown";
+}
+
 /** What `useFleetAsks` answers: the rows, the badge count, and whether the route exists. */
 export type FleetAsks = {
 	/**
@@ -472,18 +494,17 @@ export function useFleetAsks(): FleetAsks {
 	);
 	const rows = query.data ?? null;
 	/*
-	 * ONLY 404 IS ABSENCE. `retryDesktopQuery` has already spent its budget by the
-	 * time `query.error` is set, so a transport failure or a 5xx reaching this
-	 * line is a read that may still answer - `unknown`, which keeps every
-	 * dependent surface in its loading state.
+	 * `retryDesktopQuery` has already spent its budget by the time
+	 * `query.error` is set, so a failure reaching here is settled enough to
+	 * classify - but the classification itself lives in `fleetAsksCapability`,
+	 * where a test can drive the 404 and non-404 directions without a hook.
 	 */
-	const routeMissing =
-		query.error instanceof DesktopControlError && query.error.status === 404;
+	const capability = fleetAsksCapability(rows, query.error);
 	return {
 		rows,
 		outstanding: rows === null ? 0 : fleetAsksOutstanding(rows),
-		capability: rows !== null ? "live" : routeMissing ? "absent" : "unknown",
-		frontend: fleetAskFrontendFor(rows, routeMissing),
+		capability,
+		frontend: fleetAskFrontendFor(rows, capability === "absent"),
 		rowFor: (askId) =>
 			rows === null ? null : (rows.find((row) => row.ask_id === askId) ?? null),
 	};
