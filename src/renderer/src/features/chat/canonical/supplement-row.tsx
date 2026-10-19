@@ -32,8 +32,8 @@
  * re-derived here — the block shows THE SAME FILES SECTION as its expanded
  * self (the image grid, the rows, the `N more files` disclosure).
  * The explicit 2026-10-19 amendment adds an answer-local Show/Hide disclosure
- * for graphics-only finishes. Closed means ZERO slots, iframes or document
- * fetches; opening permits only the existing viewport-gated, budgeted head
+ * for graphics-only and mixed file/graphics finishes, after the files section.
+ * Closed means ZERO slots, iframes or document fetches; opening permits only the existing viewport-gated, budgeted head
  * and its explicit overflow tail. It never expands or re-derives the work run.
  * A local open survives collapsing work again: that explicit request belongs
  * to this supplement identity, not to the work bar. A new identity resets it.
@@ -834,21 +834,28 @@ export const SupplementRow = memo(function SupplementRow({
 			{disposition === "block" &&
 				components.length > 0 &&
 				(condensed ? (
-					filesSection === null ? (
-						<Disclosure
-							open={localGraphicsOpen}
-							onOpenChange={(open) => setLocalGraphics({ identity, open })}
-							chevronClassName="text-ink-dim"
-							rowClassName="min-h-0 py-0"
-							summary={
-								<span data-supplement-graphics-reveal="">
-									{graphicRevealText(components.length, localGraphicsOpen)}
-								</span>
-							}
-						>
-							{graphicsBody}
-						</Disclosure>
-					) : null
+					<Disclosure
+						open={localGraphicsOpen}
+						onOpenChange={(open) => {
+							// Closing revokes both grants: reopening must start at the
+							// budgeted head, not resurrect an earlier overflow request.
+							if (!open) setShowAll(false);
+							setLocalGraphics({ identity, open });
+						}}
+						chevronClassName="text-ink-dim"
+						rowClassName="min-h-0 py-0"
+						summary={
+							<span data-supplement-graphics-reveal="">
+								{graphicRevealText(
+									components.length,
+									localGraphicsOpen,
+									head.length,
+								)}
+							</span>
+						}
+					>
+						{graphicsBody}
+					</Disclosure>
 				) : (
 					graphicsBody
 				))}
