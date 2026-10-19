@@ -142,8 +142,11 @@ test("search covers the fields the route searches", () => {
 });
 
 test("category, origin, status, tag and session filters compose", () => {
+	/* This case is about the other filters; `all` keeps every fixture visible
+	 * regardless of the population scope. */
+	const ALL = { ...NO_LIBRARY_FILTERS, scope: "all" };
 	const byCategory = filterAssets(ROWS, {
-		...NO_LIBRARY_FILTERS,
+		...ALL,
 		category: "presentation",
 	});
 	assert.deepEqual(
@@ -151,34 +154,39 @@ test("category, origin, status, tag and session filters compose", () => {
 		["la_0000000000000002"],
 	);
 	assert.equal(
-		filterAssets(ROWS, { ...NO_LIBRARY_FILTERS, originGroup: "mentioned" })
-			.length,
+		filterAssets(ROWS, { ...ALL, originGroup: "mentioned" }).length,
 		1,
 	);
+	assert.equal(filterAssets(ROWS, { ...ALL, status: "favorite" }).length, 1);
 	assert.equal(
-		filterAssets(ROWS, { ...NO_LIBRARY_FILTERS, status: "favorite" }).length,
-		1,
-	);
-	assert.equal(
-		filterAssets(ROWS, { ...NO_LIBRARY_FILTERS, status: "unorganized" }).length,
+		filterAssets(ROWS, { ...ALL, status: "unorganized" }).length,
 		2,
 		"the two rows with no organized receipt are unorganized",
 	);
-	assert.equal(
-		filterAssets(ROWS, { ...NO_LIBRARY_FILTERS, status: "highlighted" }).length,
-		1,
-	);
-	assert.equal(
-		filterAssets(ROWS, { ...NO_LIBRARY_FILTERS, tag: "t2" }).length,
-		1,
-	);
+	assert.equal(filterAssets(ROWS, { ...ALL, status: "highlighted" }).length, 1);
+	assert.equal(filterAssets(ROWS, { ...ALL, tag: "t2" }).length, 1);
 	assert.equal(
 		filterAssets(ROWS, {
-			...NO_LIBRARY_FILTERS,
+			...ALL,
 			session: "abcdef123456",
 		}).length,
 		3,
 		"every fixture row carries the same occurrence",
+	);
+});
+
+test("the default scope keeps final artifacts and all restores inclusions", () => {
+	assert.deepEqual(
+		filterAssets(ROWS, NO_LIBRARY_FILTERS).map((row) => row.id),
+		["la_0000000000000001"],
+		"final keeps the highlighted row and drops created/mentioned rows",
+	);
+	assert.deepEqual(
+		filterAssets(ROWS, { ...NO_LIBRARY_FILTERS, scope: "all" }).map(
+			(row) => row.id,
+		),
+		["la_0000000000000001", "la_0000000000000002", "la_0000000000000003"],
+		"all restores the created and mentioned rows",
 	);
 });
 

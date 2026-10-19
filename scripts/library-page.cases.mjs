@@ -123,6 +123,7 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { LibraryPage } from "./src/renderer/src/features/library/components/library-page";
+export { filterAssets, NO_LIBRARY_FILTERS } from "./src/renderer/src/features/library/library-model";
 
 function Jump() {
 	const navigate = useNavigate();
@@ -194,7 +195,9 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { mountLibrary } = await import(bundlePath.href);
+const { mountLibrary, filterAssets, NO_LIBRARY_FILTERS } = await import(
+	bundlePath.href
+);
 await unlink(bundlePath);
 
 const NOW = new Date(2026, 9, 18, 12, 0, 0).getTime();
@@ -332,12 +335,10 @@ const desktopRequest = async (request) => {
 		 * highlighted or generated assets and reports totals/counts over that
 		 * population. `all` is the whole fixture set.
 		 */
-		const scoped =
-			request.scope === "final"
-				? ANSWER.rows.filter(
-						(row) => row.highlighted || row.origin_group === "generated",
-					)
-				: ANSWER.rows;
+		const scoped = filterAssets(ANSWER.rows, {
+			...NO_LIBRARY_FILTERS,
+			scope: request.scope === "final" ? "final" : "all",
+		});
 		const tally = (key) =>
 			scoped.reduce((acc, row) => {
 				acc[row[key]] = (acc[row[key]] ?? 0) + 1;
@@ -924,10 +925,17 @@ test("the default listing is final artifacts and the rail switches to all inclus
 		assert.ok(text(container).includes("Kept note"));
 		assert.equal(text(container).includes("Mentioned file"), false);
 		assert.equal(text(container).includes("Created scratch"), false);
-
-		const scopeAll = [...container.querySelectorAll("button")].find((button) =>
-			button.textContent?.trim().startsWith("All inclusions"),
+		const railButton = (label) =>
+			[...container.querySelectorAll("[data-library-rail] button")].find(
+				(button) => button.textContent?.trim().startsWith(label),
+			);
+		assert.equal(
+			railButton("Mentioned"),
+			undefined,
+			"a zero-count source is hidden under final",
 		);
+
+		const scopeAll = railButton("All inclusions");
 		assert.ok(scopeAll, "the rail offers the all-inclusions scope");
 		assert.ok(
 			scopeAll.textContent?.includes("4"),
@@ -941,7 +949,32 @@ test("the default listing is final artifacts and the rail switches to all inclus
 		assert.equal(lastList?.scope, "all");
 		assert.ok(text(container).includes("Mentioned file"));
 		assert.ok(text(container).includes("Created scratch"));
-		assert.ok(text(container).includes("Mentioned"));
+		const mentioned = railButton("Mentioned");
+		assert.ok(mentioned, "the all scope shows every source row");
+
+		/* m-3: the active source must survive the scope switch. An All ->
+		 * Final move preserves originGroup; hiding its zero-count row would
+		 * leave an empty grid with no visible cause. */
+		await act(async () => mentioned.click());
+		await flush(4);
+		const scopedList = [...ANSWER.ops]
+			.filter((op) => op.op === "library.list")
+			.at(-1);
+		assert.equal(scopedList?.origin_group, "mentioned");
+		await act(async () => railButton("Final artifacts").click());
+		await flush(4);
+		const activeMentioned = railButton("Mentioned");
+		assert.ok(
+			activeMentioned,
+			"the active source row stays visible when the scope empties it",
+		);
+		assert.equal(activeMentioned.getAttribute("aria-pressed"), "true");
+		const finalScopedList = [...ANSWER.ops]
+			.filter((op) => op.op === "library.list")
+			.at(-1);
+		assert.equal(finalScopedList?.scope, "final");
+		assert.equal(finalScopedList?.origin_group, "mentioned");
+		assert.equal(text(container).includes("Mentioned file"), false);
 		await act(async () => root.unmount());
 	} finally {
 		dom.window.Element.prototype.getBoundingClientRect = original;

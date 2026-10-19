@@ -255,11 +255,16 @@ export const LibraryFilterRail: FC<LibraryFilterRailProps> = ({
 				 * A zero-count origin row is noise under the final scope: the
 				 * mentioned population is empty by definition, and printing
 				 * "Mentioned 0" beside a 3,293-catalog row invites the reader to
-				 * think the filter is broken. The all scope still shows every row.
+				 * think the filter is broken. The all scope still shows every row,
+				 * and an ACTIVE origin always stays: switching scope preserves the
+				 * filter, so hiding its row would leave the empty grid with no
+				 * visible cause.
 				 */}
 				{ORIGIN_GROUPS.filter(
 					(group) =>
-						filters.scope === "all" || (counts?.origin_group?.[group] ?? 0) > 0,
+						filters.originGroup === group ||
+						filters.scope === "all" ||
+						(counts?.origin_group?.[group] ?? 0) > 0,
 				).map((group) => (
 					<RailRow
 						key={group}

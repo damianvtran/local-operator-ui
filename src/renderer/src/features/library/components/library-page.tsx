@@ -781,7 +781,16 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 												variant="secondary"
 												size="sm"
 												onClick={() => {
-													setFilters(NO_LIBRARY_FILTERS);
+													/*
+													 * Scope is a population, not a filter: the rail's
+													 * Clear filters preserves it, and this control must
+													 * agree. The old full reset silently switched an
+													 * All-scope reader back to Final.
+													 */
+													setFilters({
+														...NO_LIBRARY_FILTERS,
+														scope: filters.scope,
+													});
 													setSearch("");
 												}}
 											>
