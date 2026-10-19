@@ -32,13 +32,22 @@ import { test } from "node:test";
  * - the NAME carries `truncate`: the ellipsis is how a name says "this does
  *   not fit", and without it the name is cut with no sign (dead code beside
  *   `shrink-0` is what the round-1 change left behind);
- * - the NUMBER is `shrink-0`: the number never truncates, never overlaps the
- *   state pill and never leaves the visible pane (design D3 / UX U8);
- * - the MARKER is `shrink-0` and does NOT carry `truncate`: the marker is
- *   context, but it must never vanish - a row whose relation is `unknown`
- *   must not read as a plainly opened row (QA round 2, Q-3);
+ * - the NUMBER is `shrink-0` and does NOT carry `truncate`: the number never
+ *   truncates, never overlaps the state pill and never leaves the visible
+ *   pane (design D3 / UX U8);
+ * - the MARKER is `shrink-0`, does NOT carry `truncate` and IS capped at
+ *   the row's column (`max-w-full`): the marker is context, but it must
+ *   never vanish - a row whose relation is `unknown` must not read as a
+ *   plainly opened row (QA round 2, Q-3) - and it must never overflow the
+ *   pane either (QA round 3, Q-5);
  * - the identity line carries NO marker: the marker's place is the
- *   annotations line, where the row has room to give it whole.
+ *   annotations line, where the row has room to give it whole;
+ * - `data-row-marker` occurs EXACTLY ONCE in the file: it is how this guard
+ *   finds the marker, so a second marker - or a marker back on the identity
+ *   line under a different attribute - would slip past it;
+ * - the identity wrapper carries `min-w-0`: without it the wrapper's
+ *   automatic minimum size is its content, and the name cannot shrink at
+ *   all (the round-1 defect, one step further down).
  */
 
 const ROW = join(
@@ -63,6 +72,8 @@ const SHRINK_0 = /\bshrink-0\b/;
 const TRUNCATE = /\btruncate\b/;
 const MIN_W_0 = /\bmin-w-0\b/;
 const MARKER_ANCHOR = /data-row-marker/;
+const MARKER_ATTRIBUTE = /data-row-marker/;
+const MAX_W_FULL = /\bmax-w-full\b/;
 
 /**
  * The class list of the element nearest an anchor: the last one BEFORE it
@@ -103,6 +114,11 @@ test("the name is shrinkable, the number is not, and the marker yields first (R2
 		SHRINK_0,
 		"the number must never yield: it never truncates, never overlaps the pill and never leaves the pane (design D3 / UX U8)",
 	);
+	assert.doesNotMatch(
+		number,
+		TRUNCATE,
+		"the number must never be ellipsised: a truncated number reads as a different number",
+	);
 
 	const marker = classListOf('data-row-marker=""', false);
 	assert.match(
@@ -114,6 +130,46 @@ test("the name is shrinkable, the number is not, and the marker yields first (R2
 		marker,
 		TRUNCATE,
 		"the marker must never be ellipsised: a marker that vanishes makes a row read as a plainly opened row",
+	);
+	assert.match(
+		marker,
+		MAX_W_FULL,
+		"the marker must be capped at the row's column: uncapped it overflows the pane's scroller instead of ellipsising (QA round 3, Q-5)",
+	);
+});
+
+/**
+ * The class list of the className block an anchor sits INSIDE, so the
+ * element is found by what it is rather than by what precedes it.
+ */
+const classListAround = (anchor) => {
+	const at = source.indexOf(anchor);
+	assert.notEqual(at, -1, `the anchor must be in the row's source: ${anchor}`);
+	const open = source.lastIndexOf("className={cn(", at);
+	const close = source.indexOf(")}", at);
+	assert.ok(
+		open !== -1 && close !== -1 && open < close,
+		`the anchor must sit inside a className block: ${anchor}`,
+	);
+	return [...source.slice(open, close).matchAll(CLASS_STRING)]
+		.map((m) => m[1])
+		.join(" ");
+};
+
+test("the marker is found once, and the identity wrapper can shrink (R2-4, R3-3)", () => {
+	assert.equal(
+		(source.match(MARKER_ATTRIBUTE) ?? []).length,
+		1,
+		"`data-row-marker` must occur exactly once: it is how the marker is found, and a second marker would slip past this guard",
+	);
+	// The anchor is the identity wrapper's own two classes: the column
+	// wrapper above it also reads `flex min-w-0 flex-1`, so the anchor has to
+	// name the identity line and not the column.
+	const wrapper = classListAround("flex-1 items-baseline");
+	assert.match(
+		wrapper,
+		MIN_W_0,
+		"the identity wrapper must carry min-w-0: without it the wrapper's automatic minimum size is its content and the name cannot shrink at all",
 	);
 });
 

@@ -359,11 +359,23 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({
 								 * UX U8) and the state pill.
 								 *
 								 * `shrink-0` so the marker is never the thing that
-								 * gives way here either.
+								 * gives way here either, and `max-w-full
+								 * break-words` so it can never be the thing that
+								 * OVERFLOWS: a marker wider than the row's text
+								 * column used to spill past the pane's scroller
+								 * (QA round 3, Q-5 - 377px of marker in a 272px
+								 * column, and a scroller reading 413px against a
+								 * 320px client) and its tail was cut mid-word with
+								 * no ellipsis to say so. Capped at the column and
+								 * broken at the word, the whole sentence is
+								 * readable over two lines and the scroller
+								 * stays at 320.
 								 */
 								<span
 									data-row-marker=""
-									className={cn("shrink-0 text-meta text-ink-dim")}
+									className={cn(
+										"shrink-0 max-w-full break-words text-meta text-ink-dim",
+									)}
 									title={
 										row.relation === "unknown"
 											? t(

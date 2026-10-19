@@ -591,6 +591,12 @@ test("the accessible name carries the relation marker the row draws", () => {
 		UNKNOWN_MARKER,
 		"the accessible name must carry the relation a screen reader would otherwise never hear",
 	);
+	// The relation in the label is the marker the row DRAWS, not a second
+	// statement of it: the one derivation, carried.
+	assert.ok(
+		rowAriaLabel(unknown).includes(rowTag(unknown)),
+		"the accessible name must carry the marker line the row draws, whole",
+	);
 
 	// The propagation path is a marker too, and is carried the same way.
 	const via = row({
@@ -600,6 +606,10 @@ test("the accessible name carries the relation marker the row draws", () => {
 	});
 	assert.equal(rowTag(via), "via subagent coder › reviewer");
 	assert.match(rowAriaLabel(via), VIA_MARKER);
+	assert.ok(
+		rowAriaLabel(via).includes(rowTag(via)),
+		"the accessible name must carry the marker line the row draws, whole",
+	);
 
 	// A row with no marker carries none: the name is not padded with a
 	// relation that does not exist.
