@@ -575,6 +575,10 @@ test("plain text separates blocks and keeps ordered/nested list structure", () =
 			"1. Outer\n   - inner a\n   - inner b\n2. Second",
 			"1. Outer\n  - inner a\n  - inner b\n2. Second",
 		],
+		[
+			"1. first\n\n   - n1\n   - n2\n\n   after nested\n\n2. next",
+			"1. first\n  - n1\n  - n2\n  after nested\n2. next",
+		],
 		["- one\n- two", "- one\n- two"],
 	];
 	for (const [source, expected] of cases) {
