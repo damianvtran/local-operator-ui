@@ -24,9 +24,9 @@ on:
       # request, so every push to any of them ran this whole job set to gate
       # nothing at all. A `dev-*` branch with NO open PR now gets no CI until
       # the PR is opened. That is the intended trade: CI exists to gate review
-      # and merge, and an un-PR'd branch is gating nothing -- and
-      # `workflow_dispatch` above is the manual escape hatch for exactly that
-      # case.
+      # and merge, and an un-PR'd branch is gating nothing -- and the manual
+      # dispatch trigger further down this block is the escape hatch for
+      # exactly that case.
       - main
   # Pull requests run this workflow so the runtime-dependency guard below fires
   # before the merge: GitHub cannot run a single job from a workflow whose

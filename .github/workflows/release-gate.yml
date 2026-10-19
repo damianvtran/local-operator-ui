@@ -15,9 +15,10 @@
 #
 # The durable argument for this file is the SLOT COUNT, and it is worth stating
 # first because it does not depend on any property of GitHub's scheduler: a
-# push to `main` asks this repository's `ci.yml` for nine jobs, and this
-# workflow asks for ONE. Under even a strict FIFO queue the gate takes the
-# first slot that frees while the matrix drains nine, so the gate's answer
+# push to `main` asks this repository's `ci.yml` for TEN runner slots (nine
+# job definitions, one of which -- `npx-sanity-check` -- fans out to two
+# `matrix.os` legs), and this workflow asks for ONE. Under even a strict FIFO queue the gate takes the
+# first slot that frees while the matrix drains ten, so the gate's answer
 # arrives long before the matrix's. (The queue was also measured NOT to be
 # strict FIFO -- 118 jobs started in a 45-minute window that had been created
 # after the oldest job still waiting -- which helps, but is an observation
@@ -170,7 +171,9 @@ jobs:
           }
           console.log(
             cmp === 0
-              ? `declared version ${version} matches the published ${highest} (no bump yet)`
-              : `declared version ${version} is ahead of the published ${highest}`,
+              // The tag is printed WITH its `v`, because that is how a tag is
+              // written and how the repository's own guard prints it.
+              ? `declared version ${version} matches the published v${highest} (no bump yet)`
+              : `declared version ${version} is ahead of the published v${highest}`,
           );
           NODE
