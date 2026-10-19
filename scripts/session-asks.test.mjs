@@ -7,7 +7,7 @@ import { build } from "esbuild";
  * THE SESSION ASK FRAME, pinned.
  *
  * Why this file exists: the operator's screenshot - "This conversation · Asks
- * unavailable" over a conversation with two asks in the index - was not a drawer
+ * unavailable" over a conversation with asks in the index - was not a drawer
  * bug. The durable checkpoint of a resumed conversation deliberately carries no
  * ask claim, and the UI read that claimless frame as a capability answer. The
  * fix merges the canonical frame with the aggregate index in one pure function
