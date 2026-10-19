@@ -4628,11 +4628,12 @@ export const BoardColumnDropCommits: Story = {
 
 /**
  * The board's sticky frame, BANDED (the teams rework), held to the mechanics
- * the sticky rounds measured: the column header row pins at 44 (`h-11`), the
- * band headers pin at `top-11` beneath it as a constant `h-8`, the incoming
- * band header PUSHES the outgoing one out (no stacked pair, no dead slot),
- * and every cell of the pinned band is stretched to that band's tallest —
- * numbers asserted before the shutter rather than described.
+ * the sticky rounds measured: the column header row is 44 (`h-11`) and sits
+ * ABOVE the vertical scrollport (its bottom edge is the clip boundary), the
+ * band headers pin at `top-0` as a constant `h-8`, the incoming band header
+ * PUSHES the outgoing one out (no stacked pair, no dead slot), and every cell
+ * of the pinned band is stretched to that band's tallest — numbers asserted
+ * before the shutter rather than described.
  */
 export const BoardSticky: Story = {
 	render: () =>
@@ -4667,7 +4668,7 @@ export const BoardSticky: Story = {
 				`the strip, the active header or two band headers are missing (bands ${bands.length})`,
 			);
 		}
-		/* The two offsets the sticky layers are written against: h-11 = 44, top-11 = 44. */
+		/* The two heights the frame is written against: h-11 = 44, h-8 = 32. */
 		const headerHeight = handle.getBoundingClientRect().height;
 		if (Math.abs(headerHeight - 44) > 0.6) {
 			throw new Error(`the column header is ${headerHeight}px tall, not 44`);
@@ -4676,9 +4677,9 @@ export const BoardSticky: Story = {
 		if (Math.abs(bandHeaderHeight - 32) > 0.6) {
 			throw new Error(`the band header is ${bandHeaderHeight}px tall, not 32`);
 		}
-		if (getComputedStyle(bands[0]).top !== "44px") {
+		if (getComputedStyle(bands[0]).top !== "0px") {
 			throw new Error(
-				`the band header's sticky offset is ${getComputedStyle(bands[0]).top}, not 44px`,
+				`the band header's sticky offset is ${getComputedStyle(bands[0]).top}, not 0px`,
 			);
 		}
 		const rel = (node: HTMLElement) =>
@@ -4688,11 +4689,11 @@ export const BoardSticky: Story = {
 		 * where a static element would also happen to sit at the offset (the
 		 * identity the list's round-1 probe called out).
 		 */
-		strip.scrollTop += rel(bands[1]) - 44;
+		strip.scrollTop += rel(bands[1]);
 		strip.scrollTop += 20;
 		await poll(
-			() => Math.abs(rel(bands[1]) - 44) <= 2,
-			"the second band header to pin under the row",
+			() => Math.abs(rel(bands[1])) <= 2,
+			"the second band header to pin at the scrollport's top edge",
 		);
 		/*
 		 * THE PUSH-OUT: the outgoing band header is fully displaced — its
@@ -4729,7 +4730,16 @@ export const BoardSticky: Story = {
 				`the band's cells are not equal height: shortest ${shortest.toFixed(2)}, tallest ${tallest.toFixed(2)}`,
 			);
 		}
-		const cap = strip.clientHeight - 92 + 1;
+		/*
+		 * `100cqh` is the board ROOT's height (the size container), so measure the
+		 * cap there rather than on the strip: a classic horizontal scrollbar on the
+		 * outer x-scroller takes its own height out of the strip, and the cell cap
+		 * is written against the container, not against what is left below the bar.
+		 */
+		const board = document.querySelector<HTMLElement>(
+			'[data-testid="project-board"]',
+		);
+		const cap = (board?.clientHeight ?? strip.clientHeight + 44) - 92 + 1;
 		if (tallest > cap) {
 			throw new Error(
 				`the band is ${tallest.toFixed(2)} tall, past the one-screen cap ${cap.toFixed(2)}`,
@@ -4759,13 +4769,14 @@ export const BoardSticky: Story = {
 			() => strip.scrollTop >= strip.scrollHeight - strip.clientHeight - 1,
 			"the strip at its scroll end",
 		);
-		const headerTop = document
+		const row = document
 			.querySelector<HTMLElement>('[data-board-column="active"]')
-			?.getBoundingClientRect().top;
+			?.closest<HTMLElement>("[data-board-column-row]");
+		const rowRect = row?.getBoundingClientRect();
 		const stripTop = strip.getBoundingClientRect().top;
-		if (headerTop === undefined || Math.abs(headerTop - stripTop) > 0.5) {
+		if (!rowRect || rowRect.bottom > stripTop + 0.5) {
 			throw new Error(
-				`the column row lost its pin at the scroll end: offset ${((headerTop ?? 0) - stripTop).toFixed(1)}`,
+				`the header row crosses the scrollport's top edge: bottom ${rowRect?.bottom.toFixed(1)}, strip top ${stripTop.toFixed(1)}`,
 			);
 		}
 		/*
@@ -4787,6 +4798,111 @@ export const BoardSticky: Story = {
 				"the titled card does not render title + key (the title display regressed)",
 			);
 		}
+	}),
+};
+
+/**
+ * HORIZONTAL SCROLL MOVES THE HEADER WITH ITS COLUMNS (the structure the fix
+ * introduced): the column row and the band viewport are siblings inside ONE
+ * x-scroller, so a horizontal move must shift both by the same amount. The
+ * play drives `scrollLeft` and asserts the header cell and its band cell keep
+ * the same horizontal offset - the claim the old single scroller made for free.
+ */
+export const BoardHorizontalScroll: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_LONG,
+			details: detailsFor(BOARD_LONG),
+		}),
+	play: playOnce("board-horizontal-scroll", async () => {
+		await poll(
+			() =>
+				document.querySelector("[data-board-xstrip]") !== null &&
+				document.querySelector("[data-board-column-row]") !== null &&
+				document.querySelector('[data-board-cell="active"]') !== null,
+			"the x-scroller, the column row and the active cell",
+		);
+		const xstrip = document.querySelector<HTMLElement>("[data-board-xstrip]");
+		const row = document.querySelector<HTMLElement>("[data-board-column-row]");
+		const header = document.querySelector<HTMLElement>(
+			'[data-board-column-handle="active"]',
+		);
+		const cell = document.querySelector<HTMLElement>(
+			'[data-board-cell="active"]',
+		);
+		if (!xstrip || !row || !header || !cell) {
+			throw new Error("the horizontal-scroll fixture is incomplete");
+		}
+		const beforeRow = row.getBoundingClientRect().left;
+		const beforeHeader = header.getBoundingClientRect().left;
+		const beforeCell = cell.getBoundingClientRect().left;
+		const target = Math.min(120, xstrip.scrollWidth - xstrip.clientWidth);
+		if (target <= 0) throw new Error("the board has no horizontal overflow");
+		xstrip.scrollLeft = target;
+		await poll(
+			() => Math.abs(xstrip.scrollLeft - target) <= 1,
+			"the x-scroller to reach its target",
+		);
+		const moved = xstrip.scrollLeft;
+		const rowShift = beforeRow - row.getBoundingClientRect().left;
+		const headerShift = beforeHeader - header.getBoundingClientRect().left;
+		const cellShift = beforeCell - cell.getBoundingClientRect().left;
+		if (
+			Math.abs(rowShift - moved) > 0.5 ||
+			Math.abs(headerShift - moved) > 0.5 ||
+			Math.abs(cellShift - moved) > 0.5
+		) {
+			throw new Error(
+				`the header did not track the columns: scrolled ${moved.toFixed(1)}, row ${rowShift.toFixed(1)}, header ${headerShift.toFixed(1)}, cell ${cellShift.toFixed(1)}`,
+			);
+		}
+	}),
+};
+
+/**
+ * THE OPERATOR'S BOUNDARY, at a fixed scroll position: a card's top edge is
+ * 8px ABOVE the strip's scrollport, so its title line (12px into the card)
+ * sits just below the header boundary. The play does the scroll rather than
+ * the rig, so a re-capture lands on the same boundary; the frame is the
+ * evidence for the clip (the card is cut at the viewport's top edge, not
+ * painted through the header).
+ */
+export const BoardHeaderBoundary: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_LONG,
+			details: detailsFor(BOARD_LONG),
+		}),
+	play: playOnce("board-header-boundary", async () => {
+		await poll(
+			() =>
+				document.querySelector("[data-board-strip]") !== null &&
+				document.querySelector('[data-project-name="load-shed-2"]') !== null,
+			"the strip and the first band's titled card",
+		);
+		const strip = document.querySelector<HTMLElement>("[data-board-strip]");
+		const card = document.querySelector<HTMLElement>(
+			'[data-project-name="load-shed-2"]',
+		);
+		if (!strip || !card) throw new Error("the boundary fixture is incomplete");
+		/*
+		 * The card starts at the strip's top edge minus 8: its title, which
+		 * sits `p-3` (12px) below the card's top, begins 4px below the
+		 * boundary - inside the header's band before the fix.
+		 *
+		 * The cell is reset first: a cell is its own scroller, and a capture
+		 * that inherits a previous run's wheel would measure a different card.
+		 */
+		strip.scrollTop = 0;
+		(card.closest("[data-board-cell]") as HTMLElement | null)?.scrollTo(0, 0);
+		const stripTop = strip.getBoundingClientRect().top;
+		strip.scrollTop += card.getBoundingClientRect().top - stripTop + 8;
+		await poll(
+			() => Math.abs(card.getBoundingClientRect().top - (stripTop - 8)) <= 1,
+			"the card title at the header boundary",
+		);
 	}),
 };
 
