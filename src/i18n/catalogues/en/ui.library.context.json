@@ -234,6 +234,24 @@
 		"note": "English source: One conversation. Dynamic values are bindings; do not translate their names.",
 		"length": "English is 16 source characters. Keep the same shape and a comparable width."
 	},
+	"ui.library.filter.scope": {
+		"role": "Library filter rail: scope section label (not a filter)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "Names the population the other filter rows count over, not a filter itself. Final artifacts is the desktop default; All inclusions is the whole catalog, including files merely mentioned or created in a conversation.",
+		"length": "English is 5 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.filter.scope_all": {
+		"role": "Library filter rail: scope option, all inclusions",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "Selects the whole catalog, including files merely mentioned or created in a conversation, not only final artifacts. A count renders beside the label.",
+		"length": "English is 14 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.filter.scope_final": {
+		"role": "Library filter rail: scope option, final artifacts",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "The desktop default: only final artifacts, excluding files merely mentioned or created in a conversation.",
+		"length": "English is 15 source characters. Keep the same shape and a comparable width."
+	},
 	"ui.library.filter.source": {
 		"role": "Library surface: source",
 		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
