@@ -1,6 +1,6 @@
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import {
 	Navigate,
 	Route,
@@ -35,6 +35,7 @@ import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
 import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
 import { LanguageDialog } from "@features/settings/components/language-dialog";
+import { useTeamBridgeNotifications } from "@features/team-bridge/use-team-bridge-notifications";
 import {
 	desktopFeatureEnabled,
 	desktopFeatureState,
@@ -48,6 +49,10 @@ import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
 import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
 import { t } from "../../i18n/messages";
+import {
+	type TeamBridgeOpenTarget,
+	teamBridgeOpenPath,
+} from "../../shared/team-bridge-notify";
 
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
@@ -284,6 +289,15 @@ const App: FC = () => {
 		capabilities.data,
 		"team_bridge_conversations",
 	);
+	/*
+	 * Team Bridge banners, watched in the SHELL because the page is the one place
+	 * a banner is not needed. The capability gate is the same one the route and
+	 * the rail row read; a backend without the conversation surface is never
+	 * polled for a route it does not have.
+	 */
+	useTeamBridgeNotifications(
+		desktopFeatureEnabled(capabilities.data, "team_bridge_conversations"),
+	);
 
 	const handleAgentCreated = (agent: { id: string; name: string }) => {
 		/*
@@ -451,6 +465,38 @@ const App: FC = () => {
 		);
 		return () => unsubscribe?.();
 	}, [navigate, setActiveSession, setConsolePaneOpen, setConsoleActiveSurface]);
+
+	/*
+	 * A Team Bridge banner's click names an ORGANIZATION and a CONVERSATION. The
+	 * target is HELD until the capability gate has answered: the route is mounted
+	 * only for `team_bridge_conversations`, so navigating during the first
+	 * capability read would fall through the catch-all and lose the click. Once
+	 * the gate is open the route is the app's existing navigation path; the page
+	 * consumes the two parameters once and clears them.
+	 *
+	 * `pendingOpen` is the windowless half: a banner clicked after every window
+	 * closed asks main to recreate one, and the target waits for this mount.
+	 * Reading it is one-shot, so a normal launch pays one cheap IPC call and
+	 * nothing else.
+	 */
+	const [teamBridgeTarget, setTeamBridgeTarget] =
+		useState<TeamBridgeOpenTarget | null>(null);
+	useEffect(() => {
+		const bridge = window.api?.desktop?.teamBridge;
+		const unsubscribe = bridge?.onOpen?.(setTeamBridgeTarget);
+		void bridge
+			?.pendingOpen?.()
+			.then((target) => {
+				if (target) setTeamBridgeTarget(target);
+			})
+			.catch(() => undefined);
+		return () => unsubscribe?.();
+	}, []);
+	useEffect(() => {
+		if (!teamBridgeTarget || bridgeState !== "enabled") return;
+		navigate(teamBridgeOpenPath(teamBridgeTarget));
+		setTeamBridgeTarget(null);
+	}, [teamBridgeTarget, bridgeState, navigate]);
 
 	/*
 	 * AN AGENT'S `reveal`, handled in the shell because the shell is what knows

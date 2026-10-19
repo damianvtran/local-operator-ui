@@ -125,6 +125,8 @@ import {
 	installSupplementProtocol,
 	registerSupplementScheme,
 } from "./supplement-protocol";
+import { TeamBridgeNotifier } from "./team-bridge-notifier";
+import { TeamBridgeNotifyStore } from "./team-bridge-notify-store";
 import {
 	describeTelemetryLaunch,
 	resolveTelemetryLaunch,
@@ -2430,6 +2432,43 @@ app
 			// line is what tells that trigger apart from the other four.
 			reportRaise,
 		);
+		/*
+		 * Team Bridge message banners. A SEPARATE owner from the notifier above: its
+		 * vocabulary is the renderer's (a conversation and a sender label), not the
+		 * backend's composition, and its dedupe cursor is per conversation rather
+		 * than per backend dedupe key.
+		 *
+		 * The store is a small file in `userData`: only conversation ids and the
+		 * newest seq a banner was raised for. The window and the raise policy are
+		 * the same ones every other banner click uses, so a click lands where the
+		 * app already brings itself forward. `reopen` asks the app for a window the
+		 * only way it knows how (the Dock-click path); the target stays pending for
+		 * the new renderer to pull on mount.
+		 */
+		const teamBridgeNotifier = new TeamBridgeNotifier({
+			window: () => mainWindow,
+			show: windowLaunch.show,
+			icon: image,
+			store: new TeamBridgeNotifyStore(
+				join(app.getPath("userData"), "team-bridge-notifications.json"),
+				(message, error) =>
+					logger.warn(`${message}: ${String(error)}`, LogFileType.BACKEND),
+			),
+			host: {
+				sendOpen: (target) => {
+					const window = mainWindow;
+					if (window && !window.isDestroyed()) {
+						window.webContents.send("team-bridge:open", target);
+					}
+				},
+				reopen: () => app.emit("activate"),
+			},
+			present: (window) =>
+				raiseWindow(window, windowLaunch.show, {
+					trigger: "banner-click",
+					report: reportRaise,
+				}),
+		});
 		// Read `features.notification_contract` whenever the backend becomes
 		// reachable, NOT here: the desktop token is minted inside
 		// `backendService.start()` below, so a capability request issued now
@@ -2884,6 +2923,7 @@ app
 			 * and the guard are two halves of one decision and must share one list.
 			 */
 			supplementMounts,
+			teamBridgeNotifier,
 		);
 
 		/*

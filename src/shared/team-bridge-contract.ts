@@ -40,7 +40,6 @@ export type TeamBridgeParticipant = z.infer<typeof teamBridgeParticipantSchema>;
  */
 export const teamBridgeNotifySchema = z.enum(["all", "mention", "mute"]);
 export type TeamBridgeNotify = z.infer<typeof teamBridgeNotifySchema>;
-
 export const teamBridgeConversationSchema = z
 	.object({
 		id,
@@ -69,6 +68,12 @@ export const teamBridgeConversationSchema = z
 		member: z.boolean().optional(),
 		member_count: z.number().int().nonnegative().optional(),
 		notify: teamBridgeNotifySchema.optional(),
+		/*
+		 * The sender label the list row already shows, for a notification body.
+		 * Metadata only: no message body is read or stored for a banner, and a
+		 * server that does not publish this label falls back to "New message".
+		 */
+		last_sender_label: z.string().min(1).max(64).optional(),
 	})
 	.passthrough();
 export type TeamBridgeConversation = z.infer<

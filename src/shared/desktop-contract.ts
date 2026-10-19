@@ -16,6 +16,10 @@ import { agentMessagesBoundarySchema } from "./agent-messages-contract";
 // drift into disagreeing about the envelope they deliberately share.
 import type { DesktopFeedFrame } from "./desktop-session-contract";
 import { appendJournalOrderIds } from "./journal-order-query";
+import type {
+	TeamBridgeNotifyRequest,
+	TeamBridgeOpenTarget,
+} from "./team-bridge-notify";
 
 const id = z
 	.string()
@@ -6268,6 +6272,20 @@ export type DesktopAPI = {
 	releaseWatchHeartbeat?: (args: {
 		sessionId: string;
 	}) => Promise<DesktopResponse>;
+	/**
+	 * Team Bridge banners. Optional like every Electron-only member: browser
+	 * development and Storybook mount the same renderer without a preload, and
+	 * the watcher must simply not exist there.
+	 *
+	 * `notify` is the renderer's composed display strings + the seq they belong
+	 * to; main validates and dedupes. `onOpen` is the click; `pendingOpen` is
+	 * the one-shot read a freshly created window uses after a windowless click.
+	 */
+	teamBridge?: {
+		notify: (input: TeamBridgeNotifyRequest) => Promise<{ shown: boolean }>;
+		onOpen: (callback: (target: TeamBridgeOpenTarget) => void) => () => void;
+		pendingOpen: () => Promise<TeamBridgeOpenTarget | null>;
+	};
 	/** Notification click -> open this conversation. Never answers a gate. */
 	/**
 	 * A notification click, with the conversation it names and - when the banner was
