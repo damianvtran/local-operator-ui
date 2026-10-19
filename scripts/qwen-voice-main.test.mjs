@@ -2505,9 +2505,83 @@ test("SWITCH: off tells the renderer the slot is empty (no stale holder)", async
 	assert.equal(r.voice.getStatus().rig, "stopped");
 });
 
-test("SWITCH: a process exit after off does not flip stopped to error", async () => {
+test("SWITCH: a process exit while the rig is ready but voice is off is ignored", async () => {
+	// `ready` with `enabled` false is reachable only by a status that outlived
+	// the switch; the guard in processExited is what keeps it from flipping.
 	const r = rig();
-	await r.voice.setEnabled(false);
+	await r.voice.setEnabled(true);
+	r.voice.setStatus({ rig: "ready", webui_url: "http://x/" });
+	r.voice.enabled = false;
 	r.voice.processExited("speech", "code 1");
-	assert.equal(r.voice.getStatus().rig, "stopped");
+	assert.equal(r.voice.getStatus().rig, "ready", "no flip to error");
+	assert.equal(r.calls.speechStop, 0, "no stop issued for a switched-off rig");
+});
+
+/** A speech process whose probe parks until released, to model the await window. */
+function parkedSpeech() {
+	const rigDir = fakeRigDir();
+	const state = join(rigDir, "state");
+	mkdirSync(state);
+	const spawns = [];
+	const kills = [];
+	const gates = [];
+	const alive = new Set();
+	const proc = new m.QwenSpeechProcess(
+		launcherPathFor(rigDir),
+		rigDir,
+		m.DEFAULT_QWEN_PORTS,
+		state,
+		{
+			probe: (port) =>
+				spawns.length && alive.size
+					? Promise.resolve(true)
+					: new Promise((resolve) => gates.push(() => resolve(false))),
+			sleep: async () => {},
+			kill: (pid, signal) => {
+				kills.push([pid, signal]);
+				if (signal === "SIGTERM") alive.delete(Math.abs(pid));
+				if (signal === 0 && !alive.has(Math.abs(pid))) throw new Error("ESRCH");
+			},
+			spawnImpl: () => {
+				const pid = 9000 + spawns.length;
+				spawns.push(pid);
+				alive.add(pid);
+				return { pid, exitCode: null, once() {} };
+			},
+		},
+	);
+	const flush = () => new Promise((resolve) => setImmediate(resolve));
+	return { proc, spawns, kills, gates, alive, flush };
+}
+
+test("SWITCH: off while start awaits reap/probe spawns no s2s", async () => {
+	const t = parkedSpeech();
+	const started = t.proc.start().catch((e) => e);
+	await t.flush();
+	assert.equal(t.gates.length, 1, "start is parked in the probe");
+	await t.proc.stop(); // nothing to kill yet: child is null
+	t.gates.shift()();
+	const result = await started;
+	assert.ok(result instanceof Error, "the cancelled start rejects");
+	assert.equal(t.spawns.length, 0, "no spawn after the stop");
+	assert.equal(t.alive.size, 0, "no s2s left running");
+});
+
+test("SWITCH: off then on during that window leaves exactly one s2s", async () => {
+	const t = parkedSpeech();
+	const first = t.proc.start().catch((e) => e);
+	await t.flush();
+	await t.proc.stop();
+	const second = t.proc.start();
+	t.gates.shift()(); // release the stale start's probe
+	await t.flush();
+	while (t.gates.length) t.gates.shift()();
+	await t.flush();
+	while (t.gates.length) t.gates.shift()();
+	assert.ok((await first) instanceof Error);
+	await second;
+	assert.equal(t.spawns.length, 1, "only the new run spawned");
+	assert.equal(t.alive.size, 1, "exactly one s2s owned");
+	await t.proc.stop();
+	assert.equal(t.alive.size, 0);
 });

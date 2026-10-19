@@ -357,6 +357,13 @@ export class QwenSpeechProcess {
 	private child: ChildProcess | null = null;
 	private pgid: number | null = null;
 	private starting: Promise<void> | null = null;
+	/**
+	 * Bumped by every stop(). A start that began under an older value was
+	 * cancelled: it may be parked in reapOwnOrphan()/probe() with no child yet,
+	 * where stop() has nothing to kill, so it must not spawn when it wakes.
+	 */
+	private generation = 0;
+	private startGeneration = 0;
 	private watchdog: ReturnType<typeof setInterval> | null = null;
 	/** Consecutive failed footprint reads; 0 while the guard can see. */
 	private footprintFailures = 0;
@@ -417,22 +424,40 @@ export class QwenSpeechProcess {
 	/** Start s2s, resolving once it listens. Idempotent; concurrent calls share. */
 	start(): Promise<void> {
 		if (this.running && !this.starting) return Promise.resolve();
-		if (this.starting) return this.starting;
-		this.starting = this.startOnce().finally(() => {
-			this.starting = null;
+		if (this.starting && this.startGeneration === this.generation)
+			return this.starting;
+		// A cancelled start is still unwinding: queue behind it so the new run
+		// owns exactly one s2s and the old one can never spawn after it.
+		const previous = this.starting;
+		const generation = this.generation;
+		this.startGeneration = generation;
+		const run: Promise<void> = (async () => {
+			if (previous) await previous.catch(() => {});
+			return this.startOnce(generation);
+		})().finally(() => {
+			if (this.starting === run) this.starting = null;
 		});
-		return this.starting;
+		this.starting = run;
+		return run;
 	}
 
-	private async startOnce(): Promise<void> {
+	private async startOnce(generation: number): Promise<void> {
+		const cancelled = () => {
+			if (this.generation !== generation)
+				throw new Error("Speech process start was cancelled");
+		};
 		const missing = rigMissing(this.rigDir);
 		// The reason is shown verbatim in the header (design round 2, D10).
 		if (missing)
 			throw new Error(
 				`Voice rig not found at ${this.rigDir} (missing ${missing})`,
 			);
+		cancelled();
 		await this.reapOwnOrphan();
-		if (await this.probe(this.ports.s2s)) {
+		cancelled();
+		const inUse = await this.probe(this.ports.s2s);
+		cancelled();
+		if (inUse) {
 			// Someone else's s2s (Ben's manual rig): never adopt or kill it.
 			throw new Error(
 				`Port ${this.ports.s2s} is in use; stop the other voice rig first`,
@@ -480,6 +505,7 @@ export class QwenSpeechProcess {
 
 	/** Stop by the recorded process group. Idempotent. */
 	async stop(): Promise<void> {
+		this.generation += 1;
 		this.stopWatchdog();
 		const pgid = this.pgid;
 		const child = this.child;
