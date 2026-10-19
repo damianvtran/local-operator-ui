@@ -120,6 +120,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { formatTurnTimestamp, formatRelativeStamp } from "./src/renderer/src/shared/utils/date-utils";',
+			'export { useMinuteNow } from "./src/renderer/src/shared/hooks/use-minute-tick";',
 			'export * as stampRules from "./src/renderer/src/features/chat/canonical/message-timestamps";',
 			'export { DISPLAY_SEEDED_KEYS } from "./src/renderer/src/features/chat/canonical/display-settings";',
 			'export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
@@ -180,6 +181,7 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	formatTurnTimestamp,
 	formatRelativeStamp,
+	useMinuteNow,
 	stampRules,
 	DISPLAY_SEEDED_KEYS,
 	desktopKeys,
@@ -1715,6 +1717,10 @@ test("the user stamp is a sibling of the toolbar, outside the faded strip", () =
 	assert.ok(!stamp.className.includes("opacity-0"));
 	assert.ok(stamp.className.includes("whitespace-nowrap"));
 	assert.match(stamp.getAttribute("aria-label"), /^Sent /);
+	assert.ok(
+		stamp.className.includes("leading-none"),
+		"caption has no extra leading",
+	);
 	// Not inside the bubble (`data-glass-block`), whose words a quote sweeps.
 	assert.equal(stamp.closest("[data-glass-block]"), null);
 	// Its parent is the items-end column that carries the bubble's right edge.
@@ -1736,6 +1742,10 @@ test("by-response: the answer stamp is a visible in-flow line, apart from the gu
 	assert.equal(mid.closest("[data-lo-gutter-actions]"), null);
 	assert.ok(!gutter.contains(mid));
 	assert.ok(!mid.parentElement.className.includes("absolute"));
+	assert.ok(
+		mid.className.includes("leading-none"),
+		"caption has no extra leading",
+	);
 	const row = mid.closest("[data-record-id]");
 	for (let el = mid; el && el !== row; el = el.parentElement) {
 		assert.ok(!el.className.includes("opacity-0"), "never faded at rest");
@@ -1826,5 +1836,142 @@ test("relative stamps never render as a bare signed number in any shipped locale
 		}
 	} finally {
 		setLocale(before);
+	}
+});
+
+// ------------------------------------------------ remediation round 1 tests
+
+const SEED_KEY = "display-settings";
+const withSeed = (seed, fn) => {
+	window.localStorage.setItem(SEED_KEY, JSON.stringify(seed));
+	try {
+		return fn();
+	} finally {
+		window.localStorage.removeItem(SEED_KEY);
+	}
+};
+
+test("a resolved answer without the key reads OFF even when the seed says ON (older backend)", () => {
+	withSeed({ "display.message_timestamps": true }, () => {
+		const { container, unmount } = mount([userRecord("user:1")], {
+			settings: [{ key: "display.turn_answer_rail", value: false }],
+		});
+		assert.equal(allStamps(container).length, 0);
+		unmount();
+	});
+});
+
+test("a seeded relative style paints relative while the capability answer is still pending", () => {
+	withSeed(
+		{
+			"display.message_timestamps": true,
+			"display.message_timestamp_style": "relative",
+		},
+		() => {
+			// No `settings` override: the cache is empty, so the plane is `unknown`.
+			const { container, unmount } = mount(
+				[userRecord("user:1", { ts: Date.now() - 5 * 60_000 })],
+				{},
+			);
+			const stamp = stamps(container, "turn")[0];
+			assert.ok(stamp, "the seeded ON paints a stamp before any answer");
+			assert.match(plain(stamp.textContent), /^5m ago$/);
+			unmount();
+		},
+	);
+});
+
+test("OFF is discriminated from ON by exactly the stamps, not by shared new markup", () => {
+	// Compared against the structure ON adds, so a regression that left an empty
+	// caption wrapper in OFF (which the OFF-vs-absent test cannot see, both run
+	// through this code) fails here.
+	const off = mount(turn(), { settings: OFF, mode: "by-response" });
+	assert.equal(
+		allStamps(off.container).length > 0,
+		true,
+		"the closing stamp is today's",
+	);
+	assert.equal(stamps(off.container, "turn").length, 0);
+	assert.equal(
+		off.container.querySelectorAll("div.mt-1.flex.justify-end").length,
+		0,
+		"no caption wrapper exists in OFF",
+	);
+	const userColumn = off.container
+		.querySelector("[data-glass-block]")
+		.closest("div.items-end");
+	const offKids = userColumn.children.length;
+	off.unmount();
+	const on = mount(turn(), { settings: ON, mode: "by-response" });
+	const onColumn = on.container
+		.querySelector("[data-glass-block]")
+		.closest("div.items-end");
+	assert.equal(
+		onColumn.children.length,
+		offKids + 1,
+		"ON adds exactly the one stamp",
+	);
+	assert.equal(
+		on.container.querySelectorAll("div.mt-1.flex.justify-end").length,
+		1,
+		"and one caption wrapper for the one non-closing response",
+	);
+	on.unmount();
+});
+
+test("the minute store: no timer idle, one timer for N subscribers, cleared at 0, minute-aligned", async (t) => {
+	const start = new Date(2026, 3, 15, 9, 0, 20, 0).getTime();
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: start });
+	const scheduled = [];
+	const real = globalThis.setTimeout;
+	globalThis.setTimeout = (fn, ms, ...rest) => {
+		scheduled.push(ms ?? 0);
+		return real(fn, ms, ...rest);
+	};
+	try {
+		const Probe = ({ active }) => {
+			useMinuteNow(active);
+			return null;
+		};
+		const container = document.createElement("div");
+		const root = createRoot(container);
+		act(() => root.render(h(Probe, { active: false })));
+		assert.equal(scheduled.length, 0, "an inactive stamp arms nothing");
+		act(() =>
+			root.render(
+				h(
+					"div",
+					null,
+					h(Probe, { active: true }),
+					h(Probe, { active: true }),
+					h(Probe, { active: true }),
+				),
+			),
+		);
+		assert.equal(scheduled.length, 1, "three subscribers share one timer");
+		assert.equal(
+			scheduled[0],
+			40_000,
+			"aimed at the next minute boundary (20s past)",
+		);
+		t.mock.timers.tick(50_000);
+		await act(async () => {});
+		const afterTick = scheduled.length;
+		assert.ok(afterTick >= 2, "it re-arms after firing");
+		assert.equal(
+			scheduled[afterTick - 1],
+			60_000 - ((start + 50_000) % 60_000),
+		);
+		act(() => root.unmount());
+		const before = scheduled.length;
+		t.mock.timers.tick(180_000);
+		assert.equal(
+			scheduled.length,
+			before,
+			"no timer survives the last unsubscribe",
+		);
+	} finally {
+		globalThis.setTimeout = real;
+		t.mock.timers.reset();
 	}
 });

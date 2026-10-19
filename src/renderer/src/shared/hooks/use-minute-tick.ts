@@ -32,9 +32,13 @@ const arm = (): void => {
 };
 
 const subscribe = (listener: () => void): (() => void) => {
+	// Only the FIRST subscriber starts the clock. A later one must not move the
+	// shared snapshot (it would re-render every mounted relative stamp off-cycle).
+	if (listeners.size === 0) {
+		snapshot = Date.now();
+		arm();
+	}
 	listeners.add(listener);
-	snapshot = Date.now();
-	arm();
 	return () => {
 		listeners.delete(listener);
 		if (listeners.size === 0 && timer !== null) {

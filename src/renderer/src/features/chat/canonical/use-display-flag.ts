@@ -80,6 +80,11 @@ export type DisplayFlagView = {
 	 * "unknown" is its own state rather than part of "denied".
 	 */
 	plane: DisplayPlane;
+	/**
+	 * The registry read has ANSWERED (success) and the payload does NOT carry
+	 * this key: an older backend. A seed must not stand in for that answer.
+	 */
+	absent: boolean;
 };
 
 /**
@@ -169,6 +174,7 @@ export function useDisplayFlag(key: string): DisplayFlagView {
 		reading: displayFlagReading({ answer, seed, plane, owed, holdSpent }),
 		seed,
 		plane,
+		absent: settingsQuery.isSuccess && answer === undefined,
 	};
 }
 
@@ -187,6 +193,9 @@ export function useDisplayChoice(key: string): string | undefined {
 		enabled: advertised,
 	});
 	const seed = useMemo(() => seededChoice(readDisplaySeed(), key), [key]);
-	if (!advertised) return undefined;
+	// Only a plane that ANSWERED no (or cannot be asked) forfeits the seed; while
+	// the capability answer is still pending the seed paints, as the flag's does.
+	if (capabilities.data !== undefined ? !advertised : capabilities.isError)
+		return undefined;
 	return readChoiceValue(settingsQuery.data?.settings, key) ?? seed;
 }

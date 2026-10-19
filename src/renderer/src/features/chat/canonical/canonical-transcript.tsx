@@ -1421,7 +1421,13 @@ const UserRow = memo(function UserRow({
 				 * `role="toolbar"` (which is `opacity-0` at rest). OFF renders nothing
 				 * here, so the DOM is exactly the overlay-only layout.
 				 */}
-				{stamps.enabled && <TurnTimestamp timestamp={record.ts} scope="turn" />}
+				{stamps.enabled && (
+					<TurnTimestamp
+						timestamp={record.ts}
+						scope="turn"
+						className="leading-none"
+					/>
+				)}
 				{/*
 				 * §F3's LINE, ONE ROW UNDER THE BLOCK IT IS ABOUT.
 				 *
@@ -1790,7 +1796,11 @@ const AssistantRow = memo(function AssistantRow({
 			 */}
 			{!closesTurn && quotable && timestamps.enabled && (
 				<div className="mt-1 flex justify-end">
-					<TurnTimestamp timestamp={record.ts} scope="answer" />
+					<TurnTimestamp
+						timestamp={record.ts}
+						scope="answer"
+						className="leading-none"
+					/>
 				</div>
 			)}
 			{closesTurn && (

@@ -19,7 +19,9 @@ export function useMessageTimestamps(): MessageTimestamps {
 	const flag = useDisplayFlag(MESSAGE_TIMESTAMPS_KEY);
 	const style = useDisplayChoice(MESSAGE_TIMESTAMP_STYLE_KEY);
 	const denied = flag.plane === "denied" || flag.plane === "failed";
-	const enabled = !denied && flag.reading !== "off";
+	// A resolved answer without the key is an older backend: it reads OFF even
+	// when the persisted seed says ON.
+	const enabled = !denied && !flag.absent && flag.reading !== "off";
 	return useMemo(
 		() =>
 			enabled

@@ -173,6 +173,13 @@ export const formatTurnTimestamp = (
 	}
 };
 
+/*
+ * `narrow` is only the compact "5m ago" shape in English; in fr/ru it is a bare
+ * "-5 min" with no "ago" word, so every other language takes `short`.
+ */
+const relativeStyle = (): "narrow" | "short" =>
+	currentLocale().split("-")[0] === "en" ? "narrow" : "short";
+
 /**
  * The relative alternative to `formatTurnTimestamp` ("just now", "2m ago",
  * "3h ago"), for `display.message_timestamp_style = relative`.
@@ -183,13 +190,6 @@ export const formatTurnTimestamp = (
  * falls back to the absolute stamp - and that is why `now` is a Date, not an
  * age. Pure: the caller owns the clock (`use-minute-tick.ts`).
  */
-/*
- * `narrow` is only the compact "5m ago" shape in English; in fr/ru it is a bare
- * "-5 min" with no "ago" word, so every other language takes `short`.
- */
-const relativeStyle = (): "narrow" | "short" =>
-	currentLocale().split("-")[0] === "en" ? "narrow" : "short";
-
 export const formatRelativeStamp = (
 	dateTimeString: string | Date | number | undefined,
 	now: Date = new Date(),
