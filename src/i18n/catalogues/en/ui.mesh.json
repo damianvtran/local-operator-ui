@@ -242,5 +242,6 @@
 	"ui.mesh.approval.approved_pending_apply": "Approved; waiting to apply",
 	"ui.mesh.approval.approved_apply_hint": "Approval is recorded. Open Details for the server-provided apply step.",
 	"ui.mesh.approval.approved_details_missing": "Approval is recorded. The apply step is unavailable in this app.",
-	"ui.mesh.approval.request_window": "Request window: {remaining}"
+	"ui.mesh.approval.request_window": "Request window: {remaining}",
+	"ui.mesh.mesh_reach.handshake_refused_hint": "Check that this device is still a member of the network and that the epoch matches; a removed device or a changed epoch refuses the handshake."
 }

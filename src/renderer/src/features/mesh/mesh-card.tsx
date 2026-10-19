@@ -694,6 +694,11 @@ export const DevicePanel: FC<{
 						{headline && (
 							<p className="m-0 text-meta text-warning">{headline}</p>
 						)}
+						{device.linkState === "handshake_refused" && (
+							<p className="m-0 text-meta text-ink-dim">
+								{t("ui.mesh.mesh_reach.handshake_refused_hint")}
+							</p>
+						)}
 						{attempts.length > 0 && (
 							<>
 								<span

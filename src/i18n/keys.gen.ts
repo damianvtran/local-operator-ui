@@ -2878,6 +2878,7 @@ export type MessageParams = {
 	"ui.mesh.mesh_reach.attempt_not_tried": undefined;
 	"ui.mesh.mesh_reach.attempt_nothing_listening": undefined;
 	"ui.mesh.mesh_reach.handshake_refused": undefined;
+	"ui.mesh.mesh_reach.handshake_refused_hint": undefined;
 	"ui.mesh.mesh_reach.no_answer": undefined;
 	"ui.mesh.mesh_reach.no_endpoint": undefined;
 	"ui.mesh.mesh_reach.not_a_member": undefined;
