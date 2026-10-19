@@ -122,6 +122,7 @@ import type {
 } from "../draft-selection";
 import { useFleetAsks } from "../fleet-asks";
 import { codeReviewPaneNotice, runPaneNotice } from "../right-slot-notices";
+import type { SessionAskFrame } from "../session-asks";
 import type { Message } from "../types/message";
 import { useAskOpenPolicy } from "../use-ask-open-policy";
 import { AskDrawer } from "./asks/ask-drawer";
@@ -301,6 +302,11 @@ type ChatContentProps = {
 	 */
 	sessionStatus?: {
 		frontend: CanonicalFrontendState | null;
+		/**
+		 * The ask lane's resolved frame (see `canonical.asks`); forwarded to the
+		 * composer so its chip reads the same queue as the drawer beside it.
+		 */
+		asks?: SessionAskFrame | null;
 		/** Catalogue source locality; absence is not proof of local serving. */
 		servingLocality?: "local" | "remote";
 		onCommand?: (invocation: SlashCommandInvocation) => void;
@@ -390,6 +396,23 @@ type ChatContentProps = {
 	 */
 	canonical: {
 		view: CanonicalSessionHandle;
+		/**
+		 * THE SESSION'S ASK FRAME, resolved ONCE by the page from the two reads that
+		 * can answer for it (`session-asks.ts`): the canonical snapshot when it
+		 * carries a claim, and the index-backed aggregate while a resumed
+		 * conversation's checkpoint is still claimless.
+		 *
+		 * `null` means the read is still in flight, which the drawer words as
+		 * "Reading the asks…" - never as the unsupported-runtime sentence. All four
+		 * ask surfaces in this pane read this field (and no longer re-derive the
+		 * queue from `view.frontend`), so they cannot disagree about whether the
+		 * queue is readable.
+		 *
+		 * Undefined only for a caller that owns no page (a story/rig); the pane then
+		 * falls back to `view.frontend`, which is the pre-fix reading and is why the
+		 * field is optional rather than a break for every mount.
+		 */
+		asks?: SessionAskFrame | null;
 		/**
 		 * Whether the owner's turn is still ALIVE - read through the hold:
 		 * `(frontend ?? heldFrontend)?.streaming`, defined once in the page that
@@ -1530,10 +1553,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * Reading this lane's own field here, rather than re-deriving the rule, is what
 		 * makes `askQueuePublished` the ONE vocabulary point it claims to be.
 		 */
-		const sessionAsksView = useMemo(
-			() => askQueueView(canonical?.view.frontend ?? null),
-			[canonical?.view.frontend],
-		);
+		/*
+		 * THE SESSION'S ASK FRAME, RESOLVED ONCE BY THE PAGE (`session-asks.ts`).
+		 * The fallback is only for a caller with no page (a story/rig): in the app
+		 * this field is always supplied, and it is what keeps a claimless resumed
+		 * snapshot from reading as a runtime that cannot queue asks.
+		 */
+		const askFrame =
+			canonical.asks === undefined
+				? (canonical?.view.frontend ?? null)
+				: canonical.asks;
+		const sessionAsksView = useMemo(() => askQueueView(askFrame), [askFrame]);
 		/*
 		 * THE QUEUED SECRET ASK'S COMPOSER HOOKUP (the operator's ask, `a-9e0c`).
 		 *
@@ -3155,7 +3185,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							data-ask-mode={canvasDocked ? "docked" : "overlay"}
 						>
 							<AskDrawer
-								frontend={canonical?.view.frontend ?? null}
+								frontend={askFrame}
 								/*
 								 * SESSION-SCOPED, because this mount is the conversation's own: its rows
 								 * arrive on this session's frame and its answers go to this session.

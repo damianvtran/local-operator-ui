@@ -353,7 +353,12 @@ export function bufferGeneration(documentId: string): number {
 
 export function bufferText(documentId: string): string | null {
 	const entry = buffers.get(documentId);
-	if (!entry || entry.closed) return null;
+	if (!entry) return null;
+	/* A CLOSED BUFFER CAN STILL BE THE READER'S ONLY COPY. `closeBuffer` leaves a
+	 * refused write's words in place, dirty, so reopening the same path can recover
+	 * them (the canvas close contract). Only a closed-and-CLEAN entry has nothing
+	 * left to hand back; nulling every closed entry broke that contract. */
+	if (entry.closed && !dirtyOf(entry)) return null;
 	return entry.serialize ? entry.serialize().text : entry.token;
 }
 
