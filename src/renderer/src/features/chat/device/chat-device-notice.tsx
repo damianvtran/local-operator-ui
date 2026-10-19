@@ -59,7 +59,10 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 	 * Mesh tab fetched, so `Check again` costs one read rather than creating a
 	 * second poller (see `chat-device-slot.tsx`'s note on the pair).
 	 */
-	const peers = useMeshPeers(true, { poll: false });
+	const peers = useMeshPeers(true, {
+		poll: false,
+		stamp: () => useCanonicalSessionsStore.getState().beginAnswer(),
+	});
 	const networks = useMeshNetworks(true, { poll: false });
 	if (!sessionId || !move) return null;
 

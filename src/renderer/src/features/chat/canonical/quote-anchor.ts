@@ -131,6 +131,15 @@ export type QuoteAnchorInput = {
 	 * rule does not need a magic number: see `MID_ROW_LINES`.
 	 */
 	belowWhenOffFirstLine?: boolean;
+	/**
+	 * Whether the control may take a free seat in the row's trailing gutter.
+	 *
+	 * The transcript's content measure is narrower than the pane at wide sizes;
+	 * that outer slack is the only place a selection strip can sit without
+	 * covering prose. The quote control asks for it (design round 2, D1); the
+	 * link toolbar keeps its historical placement.
+	 */
+	preferGutter?: boolean;
 };
 
 /**
@@ -187,6 +196,7 @@ export function placeQuoteControl({
 	gap = QUOTE_CONTROL_GAP,
 	row,
 	belowWhenOffFirstLine = false,
+	preferGutter = false,
 }: QuoteAnchorInput): QuotePlacement | null {
 	if (lines.length === 0) return null;
 	const limits = overlap(container, viewport);
@@ -205,6 +215,40 @@ export function placeQuoteControl({
 		row !== undefined && first.top - row.top > lineHeight * MID_ROW_LINES;
 	const roomAbove = first.top - gap - size.height >= limits.top;
 	const roomBelow = last.bottom + gap + size.height <= limits.bottom;
+	/*
+	 * THE OUTER GUTTER WINS WHEN IT FITS. A strip painted above a highlight in a
+	 * dense transcript always covers the line before it; the content measure
+	 * leaves a real gutter at wide sizes, so use it first and keep the overlay
+	 * above/below for the narrow case where no such seat exists.
+	 */
+	if (preferGutter) {
+		const above = roomAbove;
+		const gutterLeft = (row?.right ?? first.right) + 2;
+		if (gutterLeft + size.width <= limits.right) {
+			return {
+				top: clamp(first.top, limits.top, limits.bottom - size.height),
+				left: gutterLeft,
+				placement: "above",
+			};
+		}
+		/*
+		 * NO OUTER GUTTER (the 480px pane floor, and any pane where the scroller
+		 * itself is the measure). Fall back to the original flip: above the first
+		 * line when it fits, otherwise below the last. This stays outside the
+		 * selected line's boxes whenever either side has room; a selection taller
+		 * than the pane has no free seat, and the final clamp may then overlap it -
+		 * the trade the module header already documents.
+		 */
+		return {
+			top: clamp(
+				above ? first.top - gap - size.height : last.bottom + gap,
+				limits.top,
+				limits.bottom - size.height,
+			),
+			left: clamp(first.left, limits.left, limits.right - size.width),
+			placement: above ? "above" : "below",
+		};
+	}
 	/*
 	 * The mid-row rule asks for BELOW, and only when below is actually inside the
 	 * pane. A link near the pane's floor has no room under it, and taking the rule

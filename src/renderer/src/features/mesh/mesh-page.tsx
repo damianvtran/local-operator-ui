@@ -786,7 +786,9 @@ export const MeshPage: FC = () => {
 	const enabled = desktopFeatureState(capabilities.data, "peers") === "enabled";
 	const canMove =
 		desktopFeatureState(capabilities.data, "session_transfer") === "enabled";
-	const peers = useMeshPeers(enabled);
+	const peers = useMeshPeers(enabled, {
+		stamp: () => useCanonicalSessionsStore.getState().beginAnswer(),
+	});
 	const networks = useMeshNetworks(enabled);
 	/*
 	 * THE TAB RIDES THE AMBIENT OBSERVER (`peers-catalogue.tsx`, mounted in the

@@ -50,7 +50,7 @@ All thirteen `r1-*.png` files were newly captured through one owned browser-tool
 | New frame(s) | What changed / how to reach it |
 | --- | --- |
 | `r1-dark-closed.png`, `r1-light-closed.png` | `local-graphics-closed`: precise **Show 1 of 2 graphics** names the budgeted head, not the whole set. |
-| `r1-dark-open.png`, `r1-dark-open-settled.png`, `r1-light-open.png` | Press local reveal: **Hide 2 graphics**, one head frame, unchanged nested overflow. Consecutive dark frames are byte-identical (SHA-256 `aa300e939f6bcdb84a06815de64a09914407789294f6da71b6dde88f3b07a2d5`); no settling reflow observed between them. |
+| `r1-dark-open.png`, `r1-dark-open-settled.png`, `r1-light-open.png` | Press local reveal: **Hide 2 graphics**, one head frame, unchanged nested overflow. Consecutive dark frames are byte-identical (SHA-256 `7739f2c7c34d4a420172004b4f246363eb0b691b4ad9a6b770f24fe593aeae19`); no settling reflow observed between them. |
 | `r1-dark-mixed-closed.png`, `r1-light-mixed-closed.png` | New `local-graphics-mixed`: actionable existing file rows, followed by the same budget-aware local control; work remains folded. |
 | `r1-dark-mixed-open.png`, `r1-light-mixed-open.png` | Press mixed local control: chart mounts below the files. Wide screenshots emphasize the file/control seam; the lower chart extends below the capture viewport. |
 | `r1-dark-narrow-closed.png`, `r1-light-narrow-closed.png` | `local-graphics-narrow`, then Hide: longer closed wording fits a 360px story container; measured label width 134.02px inside the 280px block. |
@@ -74,3 +74,8 @@ Gallery preflight found the shared dependency tree missing `baseline-browser-map
 - No driver verb/fixture emits a graphics supplement through the app's own daemon driver. This is production transcript/row/frame behavior in Storybook plus mounted media-boundary tests, **not** a live native daemon-generated graphics turn.
 - The browser tool cannot dispatch physical Enter/Space. Native button semantics, focus and aria-expanded were measured; physical keyboard activation and actual screen-reader speech remain unverified.
 - Zero-fetch evidence is **zero slots, zero iframes, zero media-boundary requests**, not a network waterfall (the browser tool exposes no network log).
+
+
+## Current-base convergence
+
+The thirteen r1 frames were re-captured after merging main `787f8c6e7e` into author head `ae39cfe48d`: upstream moved the user copy row out of flow, lifting the surrounding block by32px. Authored product source remained byte-identical. See [CONVERGENCE.md](CONVERGENCE.md) for conflict unions, exact byte checks, upstream semantic-neighbor review, fresh execution, capture lifecycle and the optional inherited neighbor-test timeout. The updated consecutive-pair hash above describes these re-captures, not the superseded pre-merge PNG bytes.
