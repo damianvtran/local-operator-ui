@@ -40,5 +40,17 @@
 	"ui.chat.tags.updated_untagged": "Etiquetas actualizadas. Se muestran en Sin etiqueta.",
 	"ui.chat.tags.none_yet": "Aún no hay etiquetas",
 	"ui.chat.tags.manage_title": "Gestionar etiquetas",
-	"ui.chat.tags.apply_deletion_first": "Aplica primero la eliminación y luego vuelve a añadir “{name}”."
+	"ui.chat.tags.apply_deletion_first": "Aplica primero la eliminación y luego vuelve a añadir “{name}”.",
+	"ui.chat.tags.moved_to": "Movido a «{name}»",
+	"ui.chat.tags.removed_all": "Se han eliminado todas las etiquetas",
+	"ui.chat.tags.remove_all": "{count, plural, one {Eliminar etiqueta (#)} other {Eliminar todas las etiquetas (#)}}",
+	"ui.chat.tags.move_menu": "Mover a una etiqueta…",
+	"ui.chat.tags.changed_elsewhere": "Las etiquetas han cambiado en otro lugar",
+	"ui.chat.tags.move_armed": "Mover «{name}»",
+	"ui.chat.tags.move_cancelled": "Movimiento cancelado",
+	"ui.chat.tags.undo": "Deshacer",
+	"ui.chat.tags.move_undone": "Movimiento de etiquetas deshecho",
+	"ui.chat.tags.move_title": "Mover «{title}»",
+	"ui.chat.tags.move_description": "Elige una etiqueta para hacerla principal, o Sin etiqueta para eliminar todas las etiquetas.",
+	"ui.chat.tags.move_failed": "No se han movido las etiquetas. Inténtalo de nuevo."
 }

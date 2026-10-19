@@ -1,4 +1,5 @@
 import type { TagCategory, TagRef } from "../../../../shared/desktop-contract";
+import { chatTagBucket } from "./chat-tag-drag";
 
 export type TagGroup<T> = { id: string; name: string; rows: T[] };
 
@@ -15,16 +16,10 @@ export function groupChatsByTag<
 ): TagGroup<T>[] | null {
 	if (!enabled || categories.length === 0) return null;
 	const ordered = [...categories].sort((a, b) => a.order - b.order);
-	const known = new Set(ordered.map((tag) => tag.id));
 	const buckets = new Map<string, T[]>();
 	let tagged = false;
 	for (const row of rows) {
-		const id =
-			row.primary &&
-			known.has(row.primary) &&
-			row.tags?.some((tag) => tag.id === row.primary)
-				? row.primary
-				: "untagged";
+		const id = chatTagBucket(row, categories);
 		if (id !== "untagged") tagged = true;
 		const bucket = buckets.get(id) ?? [];
 		bucket.push(row);
@@ -48,4 +43,21 @@ export function draftPrimary(
 	primary: string | null,
 ): string | null {
 	return primary !== null && ids.includes(primary) ? primary : (ids[0] ?? null);
+}
+
+/** Reorder only within the visual bucket. The flat fallback is intentional:
+ * tags disabled, no occupied tags, and search must retain the shipped order. */
+export function tagBucketRowIds<
+	T extends { session_id: string; tags?: TagRef[]; primary?: string | null },
+>(
+	rows: readonly T[],
+	categories: readonly TagCategory[],
+	enabled: boolean,
+	id: string,
+): string[] {
+	const groups = groupChatsByTag(rows, categories, enabled);
+	return (
+		groups?.find((group) => group.rows.some((row) => row.session_id === id))
+			?.rows ?? rows
+	).map((row) => row.session_id);
 }

@@ -16,7 +16,10 @@ import {
 	type CanonicalSessionRow,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
-import { useSessionTagsStore } from "@shared/store/session-tags-store";
+import {
+	isTagsConflict,
+	useSessionTagsStore,
+} from "@shared/store/session-tags-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useEffect, useRef, useState } from "react";
 import { ManageTagsDialog } from "./manage-tags-dialog";
@@ -28,10 +31,12 @@ export function ChatSessionTagsDialog({
 	row,
 	onClose,
 	returnFocus,
+	onMove,
 }: {
 	row: CanonicalSessionRow;
 	onClose: () => void;
 	returnFocus: () => void;
+	onMove?: (target: string) => Promise<void>;
 }) {
 	useI18nLocale();
 	const {
@@ -105,8 +110,14 @@ export function ChatSessionTagsDialog({
 					: t("ui.chat.tags.updated_untagged"),
 			);
 			onClose();
-		} catch {
-			setError(t("ui.chat.tags.save_failed"));
+		} catch (error) {
+			setError(
+				t(
+					isTagsConflict(error)
+						? "ui.chat.tags.changed_elsewhere"
+						: "ui.chat.tags.save_failed",
+				),
+			);
 		} finally {
 			setPending(false);
 		}
@@ -138,6 +149,94 @@ export function ChatSessionTagsDialog({
 			setPending(false);
 		}
 	};
+	if (onMove)
+		return (
+			<Dialog
+				open
+				onOpenChange={(open) => {
+					if (!open && !pending) onClose();
+				}}
+			>
+				<DialogContent
+					className="flex max-h-[calc(100dvh-32px)] w-[min(420px,calc(100vw-32px))] flex-col"
+					closeDisabled={pending}
+					onCloseAutoFocus={(event) => {
+						event.preventDefault();
+						returnFocus();
+					}}
+					onInteractOutside={(event) => {
+						if (pending) event.preventDefault();
+					}}
+					onEscapeKeyDown={(event) => {
+						if (pending) event.preventDefault();
+					}}
+				>
+					<DialogHeader>
+						<DialogTitle>
+							{t("ui.chat.tags.move_title", {
+								title: row.title || row.session_id,
+							})}
+						</DialogTitle>
+						<DialogDescription>
+							{t("ui.chat.tags.move_description")}
+						</DialogDescription>
+					</DialogHeader>
+					{/* Focus outlines need their own gutter inside this clip, like the row menu. */}
+					<div className="min-h-0 overflow-y-auto p-1">
+						{loading ? (
+							<output>{t("ui.chat.tags.loading")}</output>
+						) : loadError ? (
+							<div role="alert">
+								<p>{t("ui.chat.tags.load_failed")}</p>
+								<Button onClick={() => void fetchCategories()}>
+									{t("ui.chat.tags.retry")}
+								</Button>
+							</div>
+						) : (
+							[
+								...categories.map((tag) => ({ id: tag.id, name: tag.name })),
+								{ id: "untagged", name: t("ui.chat.tags.untagged") },
+							].map((tag) => (
+								<Button
+									key={tag.id}
+									variant="ghost"
+									className="min-h-8 w-full justify-start whitespace-normal break-words text-left"
+									disabled={pending}
+									onClick={() => {
+										setPending(true);
+										setError(null);
+										void onMove(tag.id)
+											.then(onClose)
+											.catch((error: unknown) => {
+												setError(
+													t(
+														isTagsConflict(error)
+															? "ui.chat.tags.changed_elsewhere"
+															: "ui.chat.tags.move_failed",
+													),
+												);
+											})
+											.finally(() => setPending(false));
+									}}
+								>
+									{tag.name}
+								</Button>
+							))
+						)}
+					</div>
+					{error && (
+						<p role="alert" className="text-danger">
+							{error}
+						</p>
+					)}
+					<DialogFooter>
+						<Button variant="ghost" disabled={pending} onClick={onClose}>
+							{t("ui.chat.tags.cancel")}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+		);
 	return (
 		<>
 			<Dialog

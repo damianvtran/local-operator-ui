@@ -2,6 +2,7 @@
 export type TagRef = { id: string; name: string };
 export type TagCategory = TagRef & { order: number; conversations: number };
 export type SessionTags = {
+	tags_revision?: string;
 	session_id: string;
 	tags: TagRef[];
 	primary: string | null;
@@ -2079,6 +2080,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("sessions.tags"),
+			expected_revision: z.string().optional(),
 			sessionId,
 			// Whole desired assignment, not a toggle; identity survives a display rename.
 			tags: z.array(z.string()),
@@ -7432,7 +7434,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/tags`,
 				method: "PUT",
-				body: { tags: request.tags, primary: request.primary },
+				body: {
+					tags: request.tags,
+					primary: request.primary,
+					...(request.expected_revision === undefined
+						? {}
+						: { expected_revision: request.expected_revision }),
+				},
 			};
 		case "sessions.pin":
 			return {

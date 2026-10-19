@@ -1,0 +1,75 @@
+{
+  "auditor": "i18n-auditor-fr",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "8d2f6a4c91e7",
+  "date": "2026-10-18",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "namespace": "ui.chat.tags",
+  "locale": "fr",
+  "sha256": {
+    "en": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+    "fr": "24d8654dd7bf6b6da1746e7c9d1640b7bf8da3437fd7e0368be8d6307f15729e"
+  },
+  "provenance": "Independent audit performed by openai/gpt-6.1-sol after quota-triggered fallback from anthropic/claude-sonnet-5-5; original model did not perform the audit.",
+  "scope": "All 54 EN/FR pairs, including all 12 V2-1 keys; meaning, register, grammar, plurals, ICU arguments, typography, move/remove/undo/Untagged/conflict semantics, and static copy length risk.",
+  "findings": [
+    {
+      "id": "FR-1",
+      "severity": "MINOR",
+      "key": "ui.chat.tags.delete_description",
+      "file": "src/i18n/catalogues/fr/ui.chat.tags.json",
+      "line": 30,
+      "description": "The French many branch inserts de before conversations even though the count is rendered as digits, not the noun million. At count=1000000, actual IntlMessageFormat output starts: Retirez cette étiquette de 1000000 de conversations. Numeric French uses 1000000 conversations here; de conversations belongs after a spelled-out nominal million. Rare large-count grammatical defect; meaning remains clear.",
+      "recommendation": "For digit-formatted counts, use the same conversations suffix in many as in other; retain de only if formatting a spelled-out million."
+    },
+    {
+      "id": "FR-2",
+      "severity": "NIT",
+      "key": "ui.chat.tags.moved_to",
+      "related_keys": [
+        "ui.chat.tags.move_armed",
+        "ui.chat.tags.move_title"
+      ],
+      "file": "src/i18n/catalogues/fr/ui.chat.tags.json",
+      "lines": [
+        44,
+        49,
+        53
+      ],
+      "description": "New move strings use ordinary U+0020 spaces inside French guillemets, unlike the existing U+202F narrow nonbreaking spaces in picker_title and delete_title. This allows a guillemet to separate from its quoted value at wrapping and is typographically inconsistent.",
+      "recommendation": "Use U+202F inside these guillemets, consistent with the existing French catalogue."
+    }
+  ],
+  "evidence": {
+    "freshness": "SHA-256 recomputed before audit and immediately before receipt write; both match the supplied expected hashes.",
+    "key_coverage": "54 English keys and 54 French keys; exact key-set equality; all pairs individually read.",
+    "icu_execution": "Existing node dependencies IntlMessageFormat and @formatjs/icu-messageformat-parser: parsed both catalogues, compared argument sets for every key, formatted all 54 French messages at counts 0,1,2,5,1000000,2000000 with synthetic name/title/tag/query. PASS 54/54; no missing arguments or parse failures.",
+    "plural_execution": "remove_all: 1 => Retirer l’étiquette (1); 2 => Retirer toutes les étiquettes (2); 1000000 => Retirer toutes les étiquettes (1 000 000). French zero uses CLDR one; no ICU defect.",
+    "semantics": "Étiquettes/Sans étiquette terminology consistent; Retirer distinguishes unassignment from Supprimer global tag deletion; primary-tag move, removal of all tags, move cancellation, undo, external modification, and retry messages preserve English intent. No untranslated English fallback accepted.",
+    "static_length_risk": {
+      "move_menu": {
+        "en_codepoints": 12,
+        "fr_codepoints": 28
+      },
+      "changed_elsewhere": {
+        "en_codepoints": 22,
+        "fr_codepoints": 41
+      },
+      "move_undone": {
+        "en_codepoints": 15,
+        "fr_codepoints": 33
+      },
+      "move_description": {
+        "en_codepoints": 64,
+        "fr_codepoints": 90
+      }
+    },
+    "length_interpretation": "French expansion warrants existing rendered locale coverage; character counts alone do not establish clipping. No actual clipping finding claimed."
+  },
+  "limitations": [
+    "Source-copy and actual ICU-format audit only; no rendered layout certification. Browser tool is unavailable to this delegated role.",
+    "No application edits, commits, pushes, ledger assembly, reviewer requests, merges, or releases."
+  ],
+  "verdict": "clean; TERMINAL. Zero BLOCKER/MAJOR. One MINOR and one NIT are non-gating follow-ups; receipt result is clean-with-findings."
+}
