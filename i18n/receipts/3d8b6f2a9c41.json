@@ -1,0 +1,35 @@
+{
+  "auditor": "i18n-auditor-hi",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "3d8b6f2a9c41",
+  "date": "2026-10-19",
+  "locale": "hi",
+  "namespace": "ui.chat.tags",
+  "status": "clean-with-findings",
+  "sha256": {
+    "en": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+    "hi": "477486a95c363cbed702063a91b06b79d3af07b25d47753da1a69ef8098eb415"
+  },
+  "independence": "Independent auditor; did not implement or translate this catalogue.",
+  "model_provenance": "Substantive audit performed with openai/gpt-6.1-sol after an explicit anthropic quota fallback. Prior model only read repository guidance.",
+  "scope": "All 54 English/Hindi pairs, especially the 12-key drag/move/remove/undo delta.",
+  "checks": {
+    "frozen_hashes": "Both SHA-256 hashes recomputed and matched before audit and again before receipt creation.",
+    "preservation": "All 42 pre-existing values preserved verbatim against origin/main (ced26862f13d95795702a2a927f9a9f64887e34b); 12 additions; identical 54-key English/Hindi sets.",
+    "language": "Reviewed all 54 pairs for Hindi meaning, register, grammar, gender/number, punctuation/quotes, and primary/Untagged/drag/move/remove/undo semantics. Delta imperatives use consistent polite forms; move_failed and move_undone broaden move to tag change without misleading the user in this context.",
+    "icu": "Parsed all 54 English/Hindi pairs using @formatjs/icu-messageformat-parser: identical argument sets. Formatted all Hindi messages with intl-messageformat at counts 0,1,2,12,101 (270 cases), without errors. remove_all exact =1 correctly gives singular only at 1 and all-tags wording at 0,2,12,101.",
+    "context": "Inspected move dialog heading/description, Untagged choice, error handling and move_armed drag announcement call site.",
+    "length_risk": "Static review: compact menu/toast wording; no obvious blocker/major length risk. Rendered menu/toast fit NOT verified: this reviewer has no browser tool; no screenshot or measured-layout claim."
+  },
+  "findings": [
+    {
+      "id": "HI-M1",
+      "severity": "minor",
+      "key": "ui.chat.tags.mode_hint",
+      "description": "Preserved baseline wording “टैग के समूह समय के खंड वाले समूह इस्तेमाल करते हैं।” repeats समूह and leaves the relationship to the named Time section unnecessarily awkward. The grouping meaning is recoverable; this is not a delta regression.",
+      "recommendation": "At a later copy-polish opportunity, clarify the named section, for example: “टैग समूह “समय” खंड की समूहबंदी का उपयोग करते हैं।”",
+      "disposition": "Non-gating; baseline must remain verbatim for this delta."
+    }
+  ],
+  "verdict": "TERMINAL: no blocker or major; clean-with-findings. Minor baseline copy polish does not require another round."
+}
