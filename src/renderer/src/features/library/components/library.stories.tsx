@@ -453,7 +453,10 @@ const ShellLibrary: FC<{ nowMs: number; route?: string }> = ({
 		<ChatLayout
 			sidebar={<SidebarNavigation />}
 			content={
-				<main className="flex min-w-0 grow flex-col overflow-hidden">
+				<main
+					data-glass-region="canvas-backing"
+					className="flex min-w-0 grow flex-col overflow-hidden"
+				>
 					<RouteTo path={route}>
 						<LibraryPage nowMs={nowMs} />
 					</RouteTo>
@@ -555,6 +558,16 @@ export const Building: Story = {
  * one-off rig so the geometry can be re-measured from the shipped component.
  */
 export const InShellBuilding: Story = {
+	render: () => page({ shell: true, building: true }),
+};
+/* The same state under both glass coverages; design round 2 measures the
+ * header and results grounds against the titlebar lane from these. */
+export const InShellBuildingGlass: Story = {
+	parameters: { glass: true },
+	render: () => page({ shell: true, building: true }),
+};
+export const InShellBuildingGlassSidebars: Story = {
+	parameters: { glass: "sidebars" },
 	render: () => page({ shell: true, building: true }),
 };
 export const LoadError: Story = {
