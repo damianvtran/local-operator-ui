@@ -16,6 +16,7 @@ const UNKNOWN_NAMESPACE = /no such namespace/;
 const SOURCE_LOCALE_ROW = /not a gated target language/;
 const DUPLICATE_PAIR = /duplicates/;
 const MISSING_REASON = /needs a reason/;
+const INVALID_JSON = /JSON/;
 
 /*
  * EXECUTABLE CONTRACT FOR THE COVERAGE GATE.
@@ -274,6 +275,12 @@ test("an unknown status fails", () => {
 	const result = checkCoverage(tree);
 	assert.ok(result.problems.some((problem) => problem.includes("not one of")));
 	assert.equal(failureCount(result), 1);
+});
+
+test("a corrupt target catalogue fails loudly instead of reading as a gap", () => {
+	const tree = build();
+	writeFileSync(join(tree.cataloguesDir, "fr", "ui.demo.json"), "{");
+	assert.throws(() => checkCoverage(tree), INVALID_JSON);
 });
 
 test("a language row with an unknown field fails", () => {
