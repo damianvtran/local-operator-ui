@@ -226,9 +226,76 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 	const bands = groupByTeam(projects, projectTeamName);
 	const [drag, setDrag] = useState<DragState | null>(null);
 	const [announcement, setAnnouncement] = useState("");
-	const xstripRef = useRef<HTMLDivElement | null>(null);
+	const headerViewportRef = useRef<HTMLDivElement | null>(null);
 	const stripRef = useRef<HTMLDivElement | null>(null);
 	const indicatorRef = useRef<HTMLDivElement | null>(null);
+	/*
+	 * THE HEADER WINDOW FOLLOWS THE BODY'S X SCROLL, and takes the body's
+	 * scrollbar gutter so the two content widths stay in step.
+	 *
+	 * The body (`data-board-strip`) is the one two-axis scroller, so its vertical
+	 * scrollbar is on the view's right edge (the round-1 affordance rule) and the
+	 * team straps' `sticky left-3` resolves against a port that really scrolls on
+	 * x. The header row cannot live inside that port without putting content
+	 * behind it, so it is a separate hidden-overflow window above it; setting its
+	 * `scrollLeft` from the body's scroll event is what keeps the headers over
+	 * their columns. The padding-right copy of the body's scrollbar width makes
+	 * the two max scroll offsets equal: a classic vertical bar would otherwise
+	 * let the body scroll 15px further than the header.
+	 *
+	 * The wheel forwarder is here too. The header band is 44px of surface that
+	 * used to be inside the scroller; outside it, a wheel over it would have no
+	 * y-scroller to land on. A native non-passive listener forwards the dominant
+	 * delta to the body, so the band is not a dead strip.
+	 */
+	useEffect(() => {
+		const header = headerViewportRef.current;
+		const strip = stripRef.current;
+		if (!header || !strip) return;
+		const inner = strip.firstElementChild as HTMLElement | null;
+		let gutter = -1;
+		const applyGutter = () => {
+			const next = strip.offsetWidth - strip.clientWidth;
+			if (next !== gutter) {
+				gutter = next;
+				header.style.paddingRight = next > 0 ? `${next}px` : "";
+			}
+		};
+		const sync = () => {
+			header.scrollLeft = strip.scrollLeft;
+		};
+		const onWheel = (event: WheelEvent) => {
+			const unit =
+				event.deltaMode === 1
+					? 16
+					: event.deltaMode === 2
+						? strip.clientHeight
+						: 1;
+			if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+				strip.scrollLeft += event.deltaX * unit;
+			} else {
+				strip.scrollTop += event.deltaY * unit;
+			}
+			event.preventDefault();
+		};
+		applyGutter();
+		sync();
+		header.addEventListener("wheel", onWheel, { passive: false });
+		strip.addEventListener("scroll", sync, { passive: true });
+		const observer = new ResizeObserver(() => {
+			applyGutter();
+			sync();
+		});
+		observer.observe(strip);
+		if (inner) observer.observe(inner);
+		window.addEventListener("resize", applyGutter);
+		return () => {
+			header.removeEventListener("wheel", onWheel);
+			strip.removeEventListener("scroll", sync);
+			observer.disconnect();
+			window.removeEventListener("resize", applyGutter);
+		};
+	}, []);
 	/** The pointer's last client x, read by the auto-scroll loop off-event. */
 	const pointerXRef = useRef<number | null>(null);
 	/** The auto-scroll loop's frame handle, null when it is not running. */
@@ -275,12 +342,11 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 	 * than cached layout, because the strip scrolls horizontally.
 	 */
 	const dropIndexAt = (clientX: number, dragged: string): number => {
-		/* The column headers live in the header row above the vertical strip, so
-		 * their live rects are read from the shared x-scroller that contains both. */
-		const scroller = xstripRef.current;
-		if (!scroller) return 0;
+		/* The column headers live in the header row above the body scroller. */
+		const header = headerViewportRef.current;
+		if (!header) return 0;
 		let index = 0;
-		const sections = scroller.querySelectorAll<HTMLElement>(
+		const sections = header.querySelectorAll<HTMLElement>(
 			"[data-board-column]",
 		);
 		for (const section of sections) {
@@ -363,27 +429,19 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 	const runAutoScroll = () => {
 		autoScrollRef.current = null;
 		const live = gesture.current;
-		/*
-		 * THE X SCROLLER, not the strip: horizontal scrolling moved to the outer
-		 * element when the header row left the vertical scrollport, and the edge
-		 * zones are measured against the viewport the user sees.
-		 */
-		const scroller = xstripRef.current;
+		const strip = stripRef.current;
 		const x = pointerXRef.current;
-		if (!live?.armed || !scroller || x === null) return;
-		const rect = scroller.getBoundingClientRect();
-		const maxScroll = scroller.scrollWidth - scroller.clientWidth;
+		if (!live?.armed || !strip || x === null) return;
+		const rect = strip.getBoundingClientRect();
+		const maxScroll = strip.scrollWidth - strip.clientWidth;
 		let dir = 0;
-		if (x - rect.left < AUTO_SCROLL_ZONE && scroller.scrollLeft > 0) dir = -1;
-		else if (
-			rect.right - x < AUTO_SCROLL_ZONE &&
-			scroller.scrollLeft < maxScroll
-		)
+		if (x - rect.left < AUTO_SCROLL_ZONE && strip.scrollLeft > 0) dir = -1;
+		else if (rect.right - x < AUTO_SCROLL_ZONE && strip.scrollLeft < maxScroll)
 			dir = 1;
 		if (dir !== 0) {
-			const before = scroller.scrollLeft;
-			scroller.scrollLeft = before + dir * AUTO_SCROLL_STEP;
-			if (scroller.scrollLeft !== before) applyOver(x, live);
+			const before = strip.scrollLeft;
+			strip.scrollLeft = before + dir * AUTO_SCROLL_STEP;
+			if (strip.scrollLeft !== before) applyOver(x, live);
 		} else {
 			/* No scroll this frame; the content can still have moved (wheel). */
 			applyOver(x, live);
@@ -531,13 +589,13 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 	 * the line ended 109px left of the gap after the auto-scroll ran its course).
 	 */
 	const placeIndicator = useCallback((status: string, over: number) => {
-		const scroller = xstripRef.current;
+		const header = headerViewportRef.current;
 		const strip = stripRef.current;
 		const line = indicatorRef.current;
-		if (!scroller || !strip || !line) return;
+		if (!header || !strip || !line) return;
 		const stripRect = strip.getBoundingClientRect();
 		const others: DOMRect[] = [];
-		for (const section of scroller.querySelectorAll<HTMLElement>(
+		for (const section of header.querySelectorAll<HTMLElement>(
 			"[data-board-column]",
 		)) {
 			if (section.dataset.boardColumn !== status) {
@@ -550,18 +608,21 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 				? (others[others.length - 1]?.right ?? stripRect.left) + HALF_GAP
 				: (others[over]?.left ?? stripRect.right) - HALF_GAP;
 		/*
-		 * CLAMPED TO THE VISIBLE STRIP. The line is a child of the vertical
-		 * scrollport, which now MOVES with the horizontal scroller (both are
-		 * inside the same x content), so the strip's own rect already carries the
-		 * horizontal offset - no `scrollLeft` term. The clamp keeps a legal
-		 * landing visible when its gap lies outside the strip - the narrow-window
-		 * case design round 1 (D2) measured, where an unclamped line renders past
-		 * the clip and paints nothing at the moment the preview matters most.
+		 * SCROLL-AWARE, AND CLAMPED TO THE VISIBLE STRIP. The line is a child of
+		 * the scroll container (the strip is the one two-axis scroller again), so
+		 * its `left` is in CONTENT coordinates while `edge` is measured in client
+		 * ones: without the scroll term the line sits exactly `scrollLeft` px left
+		 * of the gap it names (UX round 1, U2 - the offset was subtracted twice).
+		 * The clamp keeps a legal landing visible when its gap lies outside the
+		 * strip - the narrow-window case design round 1 (D2) measured, where an
+		 * unclamped line renders past the clip and paints nothing at the moment
+		 * the preview matters most.
 		 */
+		const scroll = strip.scrollLeft;
 		const LINE_WIDTH = 2; /* `w-0.5` */
-		const raw = edge - stripRect.left;
-		const minX = 1;
-		const maxX = stripRect.width - LINE_WIDTH - 1;
+		const raw = edge - stripRect.left + scroll;
+		const minX = scroll + 1;
+		const maxX = scroll + stripRect.width - LINE_WIDTH - 1;
 		const clamped = Math.round(
 			Math.min(Math.max(raw, minX), Math.max(minX, maxX)),
 		);
@@ -650,265 +711,248 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 			{/*
 			 * THE HEADER ROW IS NOT IN THE VERTICAL SCROLLPORT (operator report,
 			 * 2026-10-18). It used to be a `sticky top-0` child of the board's one
-			 * two-axis scroller, which meant card content scrolled UNDER it and was
-			 * hidden only by the header's own background. On glass that background is
-			 * a lane wash at `--lo-glass-a-lane` (0.48 dark / 0.49 light at the
-			 * default 80), so titles read straight through the header - the operator
-			 * could read a card's title inside the header band, and card text painted
-			 * over the header line.
+			 * two-axis scroller, so cards scrolled UNDER it and were hidden only by
+			 * the header's own background. On glass that background was the lane wash
+			 * at `--lo-glass-a-lane` (0.48 dark / 0.49 light at the default 80), and
+			 * titles read straight through the header.
 			 *
 			 * SO THE VERTICAL SCROLLPORT'S TOP EDGE STARTS BELOW THE HEADER: the
-			 * column row is a static sibling above `data-board-strip`, and the strip's
-			 * `overflow-y-auto` clips every card at that edge. Nothing can paint
-			 * above the boundary, at any glass intensity, because nothing is behind
-			 * the header to paint through. The row's background is the flat `sunken`
-			 * role (opaque, alpha 1), so its own text also has a solid ground.
+			 * column row is a static sibling above `data-board-strip`, and the body's
+			 * `overflow-auto` clips every card at that edge. Nothing can paint above
+			 * the boundary, at any glass intensity, because nothing is behind the
+			 * header to paint through. The row's own cells keep the flat `sunken`
+			 * role (opaque, alpha 1), so their text also has a solid ground.
 			 *
-			 * HORIZONTAL SCROLL STILL MOVES BOTH TOGETHER: the header row and the
-			 * vertical strip share ONE outer `overflow-x-auto` scroller here. That
-			 * keeps the header cells over their columns when the board is narrower
-			 * than its columns, without putting the header back in the path of
-			 * vertical content. The strip itself no longer scrolls on x, so the drag
-			 * code measures columns and scroll from this outer element.
+			 * THE BODY IS STILL THE ONE TWO-AXIS SCROLLER, and its scrollbars sit on
+			 * the view's own edges (the round-1 scroll-affordance rule). The header
+			 * viewport above it is a hidden-overflow window whose `scrollLeft` is
+			 * synced from the body's scroll event: horizontal scrolling moves the
+			 * header cells with their columns while the body remains the only
+			 * vertical scrollport, so its scrollbar stays at the window's right edge
+			 * and the team straps' `sticky left-3` still resolves against it.
+			 *
+			 * WHEEL OVER THE HEADER ROW IS FORWARDED to the body (a native listener
+			 * with `passive: false`), because the 44px band is not a scroll target of
+			 * its own; without the forwarder it would be a dead strip at the top of
+			 * the surface.
 			 *
 			 * THE PAGE GUTTER stays on both: `px-6` is the 24px line the title
-			 * block and tab row begin on (operator, 2026-09-30), and the scrollbars
-			 * ride the view's own edges. `pb-9` keeps the tail below the last row.
+			 * block and tab row begin on (operator, 2026-09-30), and `pb-9` keeps the
+			 * tail below the last row.
 			 */}
 			<div
-				ref={xstripRef}
-				data-board-xstrip=""
-				className={cn(
-					"min-h-0 flex-1 overflow-x-auto",
-					drag && "cursor-grabbing select-none",
-				)}
+				ref={headerViewportRef}
+				data-board-header-viewport=""
+				className="h-11 shrink-0 overflow-hidden"
 			>
-				<div className="flex h-full w-max flex-col">
-					<div
-						data-board-column-row=""
-						className="flex h-11 shrink-0 gap-3 px-6"
-					>
-						{columns.map((column) => {
-							const meta = projectStatusMeta(column.status);
-							return (
-								<header
-									key={column.status}
-									data-board-column={column.status}
-									/*
-									 * OPAQUE, DELIBERATELY: the row is the boundary cards are clipped
-									 * at, so it must not be a low-alpha fill. Off glass `sunken` was
-									 * already opaque; on glass the row keeps that flat role instead
-									 * of the lane wash it used to carry. The lane BELOW it still
-									 * takes the wash (`data-glass-lane` on the band well), which is
-									 * where the glass belongs.
-									 *
-									 * The cell is the row's height unit: 44 (`h-11`), the constant
-									 * the band headers' `top-0` offset is written against. The radius
-									 * matches the well's so the corners do not square off.
-									 */
-									data-board-column-handle={column.status}
-									onPointerDown={(event) =>
-										onHeaderPointerDown(event, column.status)
-									}
-									onPointerMove={onHeaderPointerMove}
-									onPointerUp={onHeaderPointerUp}
-									onPointerCancel={onHeaderPointerCancel}
-									className={cn(
-										"flex h-11 w-64 shrink-0 cursor-grab items-center justify-between gap-2 rounded-t-md bg-sunken px-3 active:cursor-grabbing",
-										drag?.status === column.status && "opacity-85",
-									)}
-								>
-									<span className="flex min-w-0 flex-1 items-center gap-1.5">
-										<Button
-											type="button"
-											variant="ghost"
-											size="icon-sm"
-											data-board-column-grip={column.status}
-											aria-label={t(
-												"ui.projects.project_board.move_label_column",
-												{ label: String(meta.label) },
-											)}
-											aria-describedby={BOARD_MOVE_HINT_ID}
-											title={t(
-												"ui.projects.project_board.drag_the_header_or_press_the_arrow_keys_to_move_this_column",
-											)}
-											className="-ml-1.5 cursor-grab text-ink-muted active:cursor-grabbing"
-											onKeyDown={(event) => onGripKeyDown(event, column.status)}
-										>
-											<GripVertical aria-hidden="true" />
-										</Button>
-										<span className="flex min-w-0 items-baseline gap-2">
-											<span className="truncate text-body-sm font-medium text-ink">
-												{meta.label}
-											</span>
-											{COLUMN_NOTE[column.status] && (
-												<span className="truncate text-meta text-ink-muted">
-													{COLUMN_NOTE[column.status]}
-												</span>
-											)}
+				<div data-board-column-row="" className="flex h-11 w-max gap-3 px-6">
+					{columns.map((column) => {
+						const meta = projectStatusMeta(column.status);
+						return (
+							<header
+								key={column.status}
+								data-board-column={column.status}
+								/*
+								 * OPAQUE, DELIBERATELY: the row is the boundary cards are clipped
+								 * at, so it must not be a low-alpha fill. Off glass `sunken` was
+								 * already opaque; on glass the row keeps that flat role instead
+								 * of the lane wash it used to carry. The lane BELOW it still
+								 * takes the wash (`data-glass-lane` on the band well), which is
+								 * where the glass belongs.
+								 *
+								 * The cell is the row's height unit: 44 (`h-11`), the constant
+								 * the band headers' `top-0` offset is written against. The radius
+								 * matches the well's so the corners do not square off.
+								 */
+								data-board-column-handle={column.status}
+								onPointerDown={(event) =>
+									onHeaderPointerDown(event, column.status)
+								}
+								onPointerMove={onHeaderPointerMove}
+								onPointerUp={onHeaderPointerUp}
+								onPointerCancel={onHeaderPointerCancel}
+								className={cn(
+									"flex h-11 w-64 shrink-0 cursor-grab items-center justify-between gap-2 rounded-t-md bg-sunken px-3 active:cursor-grabbing",
+									drag?.status === column.status && "opacity-85",
+								)}
+							>
+								<span className="flex min-w-0 flex-1 items-center gap-1.5">
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon-sm"
+										data-board-column-grip={column.status}
+										aria-label={t(
+											"ui.projects.project_board.move_label_column",
+											{ label: String(meta.label) },
+										)}
+										aria-describedby={BOARD_MOVE_HINT_ID}
+										title={t(
+											"ui.projects.project_board.drag_the_header_or_press_the_arrow_keys_to_move_this_column",
+										)}
+										className="-ml-1.5 cursor-grab text-ink-muted active:cursor-grabbing"
+										onKeyDown={(event) => onGripKeyDown(event, column.status)}
+									>
+										<GripVertical aria-hidden="true" />
+									</Button>
+									<span className="flex min-w-0 items-baseline gap-2">
+										<span className="truncate text-body-sm font-medium text-ink">
+											{meta.label}
 										</span>
+										{COLUMN_NOTE[column.status] && (
+											<span className="truncate text-meta text-ink-muted">
+												{COLUMN_NOTE[column.status]}
+											</span>
+										)}
 									</span>
-									<span className="text-meta text-ink-muted">
-										{column.projects.length}
-									</span>
-								</header>
-							);
-						})}
-					</div>
-					{/*
-					 * ONE VERTICAL SCROLLER FOR THE BANDS: this is the scrollport whose top
-					 * edge sits below the header row, and `overflow-y-auto` is the clip that
-					 * keeps card content from ever painting above that edge. The columns
-					 * inside a band keep their own bounded vertical scrollers under the
-					 * operator's section cap, not the board's.
-					 *
-					 * NO TOP PADDING: the band headers pin at `top-0` of this scrollport, so
-					 * there must be no padding band above them for a card to slide through
-					 * (the round-1 Q2/U2 lesson, kept). The horizontal gutter is the page's
-					 * `px-6`, shared with the header row above so the columns line up; `pb-9`
-					 * is the tail below the last row.
-					 */}
+								</span>
+								<span className="text-meta text-ink-muted">
+									{column.projects.length}
+								</span>
+							</header>
+						);
+					})}
+				</div>
+			</div>
+			<div
+				ref={stripRef}
+				data-board-strip=""
+				className="relative min-h-0 flex-1 overflow-auto px-6 pb-9"
+			>
+				{drag && (
 					<div
-						ref={stripRef}
-						data-board-strip=""
-						className="relative min-h-0 flex-1 overflow-y-auto px-6 pb-9"
-					>
-						{drag && (
+						ref={indicatorRef}
+						aria-hidden="true"
+						data-board-drop-indicator=""
+						className="pointer-events-none absolute top-3 bottom-3 w-0.5 rounded-full bg-accent"
+					/>
+				)}
+				<div className="flex w-max flex-col">
+					{bands.map((band) => (
+						<section key={band.team ?? ""} className="flex flex-col">
+							{/*
+							 * THE BAND HEADER = the list's section header, fixed at 32 (`h-8`)
+							 * so the offset below the column row stays a single constant. It is
+							 * sticky WITHIN ITS OWN BAND's box, which is what makes the handoff
+							 * continuous: bands are stacked flush, so the outgoing header
+							 * leaves exactly as the incoming one docks.
+							 *
+							 * NAME AND COUNT ARE ONE STICKY UNIT (design round 1, D1): the count
+							 * rides INSIDE the stuck span so h-scrolling cannot strand it
+							 * off-viewport, and with a clamped long name the clamp's right edge
+							 * falls after the count instead of on top of the name's glyphs.
+							 * The span sticks LEFT while the band is h-scrolled (the board root
+							 * is a SIZE container — `cqw`/`cqh` are the scrollport's own
+							 * dimensions): the team stays readable without clipping at the
+							 * window edge.
+							 */}
 							<div
-								ref={indicatorRef}
-								aria-hidden="true"
-								data-board-drop-indicator=""
-								className="pointer-events-none absolute top-3 bottom-3 w-0.5 rounded-full bg-accent"
-							/>
-						)}
-						<div className="flex w-max flex-col">
-							{bands.map((band) => (
-								<section key={band.team ?? ""} className="flex flex-col">
-									{/*
-									 * THE BAND HEADER = the list's section header, fixed at 32 (`h-8`)
-									 * so the offset below the column row stays a single constant. It is
-									 * sticky WITHIN ITS OWN BAND's box, which is what makes the handoff
-									 * continuous: bands are stacked flush, so the outgoing header
-									 * leaves exactly as the incoming one docks.
-									 *
-									 * NAME AND COUNT ARE ONE STICKY UNIT (design round 1, D1): the count
-									 * rides INSIDE the stuck span so h-scrolling cannot strand it
-									 * off-viewport, and with a clamped long name the clamp's right edge
-									 * falls after the count instead of on top of the name's glyphs.
-									 * The span sticks LEFT while the band is h-scrolled (the board root
-									 * is a SIZE container — `cqw`/`cqh` are the scrollport's own
-									 * dimensions): the team stays readable without clipping at the
-									 * window edge.
-									 */}
-									<div
-										data-board-team={band.team ?? ""}
-										className="sticky top-0 z-20 flex h-8 items-center bg-canvas px-3 text-meta"
-									>
-										<span className="sticky left-3 flex min-w-0 max-w-[calc(100cqw-2.25rem)] items-center gap-2">
-											<span className="truncate text-ink">
-												{band.team == null
-													? t("ui.projects.project_model.no_team")
-													: teamLabelFor(band.team)}
-											</span>
-											<span className="shrink-0 text-ink-muted">
-												{band.items.length}
-											</span>
-										</span>
-									</div>
-									{/*
-									 * NO EMPTY-BAND SHAPE SHIPS HERE (design round 2, D4): an earlier draft
-									 * drew a flat line for a team with no tickets, but `groupByTeam`
-									 * omits empty groups by its own rule, so no team without tickets ever
-									 * reaches this map and the state is unrenderable - a branch nothing
-									 * can exercise is dead code, not a guard. The operator's "no empty
-									 * column space for a team with no tickets" is satisfied by the
-									 * omission itself: a zero-ticket team is not a section at all.
-									 *
-									 * THE WELL IS CAPPED AT ONE SCREEN (operator refinement): the section
-									 * never grows past the board viewport - every CELL is its own
-									 * bounded vertical scroller (`max-h` = one screen minus the pinned
-									 * row and this band's header, `100cqh - 92`), so a long queue
-									 * scrolls inside its column while a short one shrinks to content (a
-									 * max, not a height). Cells still cross-stretch to the well's
-									 * tallest, so the band stays one rectangle. NOTHING TRAPS THE
-									 * WHEEL: no `overscroll-behavior` anywhere on this path and no
-									 * `overflow: hidden` between the cells and the strip - a wheel over
-									 * a column that cannot scroll (or has hit its edge) chains to the
-									 * board's own scroller, which is how the next team comes into view.
-									 */}
-									{/*
-									 * THE LANE IS A SURFACE WASH ON GLASS, not a clear well.
-									 *
-									 * Round 2 cleared this well because the card above it carries the
-									 * block veil, and a SECOND INK under a veil breaks AA: ink 5% under
-									 * the veil measured `inkMuted` 4.03:1 on synthwave. The operator's
-									 * report is the other half of that trade: with the well clear the
-									 * board lost its lane structure and read as headers floating on
-									 * the page. The resolution is a token that is NOT ink - a derived
-									 * palette role at `pageAlpha * scale`
-									 * (`--lo-glass-a-lane`: `sunken` x 0.73 dark, `surface` x 0.72
-									 * light). It TRACKS the slider rather than sitting at a fixed alpha:
-									 * round 1 measured the fixed version vanishing at the opaque end
-									 * (ΔE00 0.59 dark at 25, 0.99 light at 0), because the page's own
-									 * alpha moves 0.66 -> 0.96 while a constant does not. The card
-									 * keeps its veil as the only ink layer under its text. Measured over
-									 * all 59 palettes at 80: the lane steps ΔE00 1.82-5.73 off the page
-									 * (floor 1.5), the card steps 4.39-6.37 off the lane (floor 4.0), and
-									 * `inkMuted` on the card holds 5.27:1. The contract asserts all 101
-									 * slider positions; the tightest is 1.53.
-									 *
-									 * THE WELL IS CAPPED AT ONE SCREEN (operator refinement): the
-									 * section never grows past the board viewport - every CELL is its
-									 * own bounded vertical scroller (`max-h` = one screen minus the
-									 * pinned row and this band's header, `100cqh - 92`), so a long
-									 * queue scrolls inside its column while a short one shrinks to
-									 * content (a max, not a height). Cells still cross-stretch to the
-									 * well's tallest, so the band stays one rectangle. NOTHING TRAPS
-									 * THE WHEEL: no `overscroll-behavior` anywhere on this path and no
-									 * `overflow: hidden` between the cells and the strip - a wheel
-									 * over a column that cannot scroll (or has hit its edge) chains to
-									 * the board's own scroller, which is how the next team comes into
-									 * view.
-									 */}
-									<div
-										data-glass-lane=""
-										className="flex gap-3 rounded-md bg-sunken py-2"
-									>
-										{columns.map((column) => {
-											const cards = band.items.filter(
-												(project) => project.status === column.status,
-											);
-											return (
-												<div
-													key={column.status}
-													data-board-cell={column.status}
-													className="flex max-h-[calc(100cqh-92px)] w-64 shrink-0 flex-col gap-2 overflow-y-auto px-2"
-												>
-													{cards.length > 0 && (
-														<ul className="flex flex-col gap-2">
-															{cards.map((project) => (
-																<li key={project.id}>
-																	<BoardCard
-																		project={project}
-																		nowMs={nowMs}
-																		busy={moving.has(project.id)}
-																		onOpen={() => onOpen(project)}
-																		onEdit={() => onEdit(project)}
-																		onDelete={() => onDelete(project)}
-																		onMove={(status) => onMove(project, status)}
-																	/>
-																</li>
-															))}
-														</ul>
-													)}
-												</div>
-											);
-										})}
-									</div>
-								</section>
-							))}
-						</div>
-					</div>
+								data-board-team={band.team ?? ""}
+								className="sticky top-0 z-20 flex h-8 items-center bg-canvas px-3 text-meta"
+							>
+								<span className="sticky left-3 flex min-w-0 max-w-[calc(100cqw-2.25rem)] items-center gap-2">
+									<span className="truncate text-ink">
+										{band.team == null
+											? t("ui.projects.project_model.no_team")
+											: teamLabelFor(band.team)}
+									</span>
+									<span className="shrink-0 text-ink-muted">
+										{band.items.length}
+									</span>
+								</span>
+							</div>
+							{/*
+							 * NO EMPTY-BAND SHAPE SHIPS HERE (design round 2, D4): an earlier draft
+							 * drew a flat line for a team with no tickets, but `groupByTeam`
+							 * omits empty groups by its own rule, so no team without tickets ever
+							 * reaches this map and the state is unrenderable - a branch nothing
+							 * can exercise is dead code, not a guard. The operator's "no empty
+							 * column space for a team with no tickets" is satisfied by the
+							 * omission itself: a zero-ticket team is not a section at all.
+							 *
+							 * THE WELL IS CAPPED AT ONE SCREEN (operator refinement): the section
+							 * never grows past the board viewport - every CELL is its own
+							 * bounded vertical scroller (`max-h` = one screen minus the pinned
+							 * row and this band's header, `100cqh - 92`), so a long queue
+							 * scrolls inside its column while a short one shrinks to content (a
+							 * max, not a height). Cells still cross-stretch to the well's
+							 * tallest, so the band stays one rectangle. NOTHING TRAPS THE
+							 * WHEEL: no `overscroll-behavior` anywhere on this path and no
+							 * `overflow: hidden` between the cells and the strip - a wheel over
+							 * a column that cannot scroll (or has hit its edge) chains to the
+							 * board's own scroller, which is how the next team comes into view.
+							 */}
+							{/*
+							 * THE LANE IS A SURFACE WASH ON GLASS, not a clear well.
+							 *
+							 * Round 2 cleared this well because the card above it carries the
+							 * block veil, and a SECOND INK under a veil breaks AA: ink 5% under
+							 * the veil measured `inkMuted` 4.03:1 on synthwave. The operator's
+							 * report is the other half of that trade: with the well clear the
+							 * board lost its lane structure and read as headers floating on
+							 * the page. The resolution is a token that is NOT ink - a derived
+							 * palette role at `pageAlpha * scale`
+							 * (`--lo-glass-a-lane`: `sunken` x 0.73 dark, `surface` x 0.72
+							 * light). It TRACKS the slider rather than sitting at a fixed alpha:
+							 * round 1 measured the fixed version vanishing at the opaque end
+							 * (ΔE00 0.59 dark at 25, 0.99 light at 0), because the page's own
+							 * alpha moves 0.66 -> 0.96 while a constant does not. The card
+							 * keeps its veil as the only ink layer under its text. Measured over
+							 * all 59 palettes at 80: the lane steps ΔE00 1.82-5.73 off the page
+							 * (floor 1.5), the card steps 4.39-6.37 off the lane (floor 4.0), and
+							 * `inkMuted` on the card holds 5.27:1. The contract asserts all 101
+							 * slider positions; the tightest is 1.53.
+							 *
+							 * THE WELL IS CAPPED AT ONE SCREEN (operator refinement): the
+							 * section never grows past the board viewport - every CELL is its
+							 * own bounded vertical scroller (`max-h` = one screen minus the
+							 * pinned row and this band's header, `100cqh - 92`), so a long
+							 * queue scrolls inside its column while a short one shrinks to
+							 * content (a max, not a height). Cells still cross-stretch to the
+							 * well's tallest, so the band stays one rectangle. NOTHING TRAPS
+							 * THE WHEEL: no `overscroll-behavior` anywhere on this path and no
+							 * `overflow: hidden` between the cells and the strip - a wheel
+							 * over a column that cannot scroll (or has hit its edge) chains to
+							 * the board's own scroller, which is how the next team comes into
+							 * view.
+							 */}
+							<div
+								data-glass-lane=""
+								className="flex gap-3 rounded-md bg-sunken py-2"
+							>
+								{columns.map((column) => {
+									const cards = band.items.filter(
+										(project) => project.status === column.status,
+									);
+									return (
+										<div
+											key={column.status}
+											data-board-cell={column.status}
+											className="flex max-h-[calc(100cqh-92px)] w-64 shrink-0 flex-col gap-2 overflow-y-auto px-2"
+										>
+											{cards.length > 0 && (
+												<ul className="flex flex-col gap-2">
+													{cards.map((project) => (
+														<li key={project.id}>
+															<BoardCard
+																project={project}
+																nowMs={nowMs}
+																busy={moving.has(project.id)}
+																onOpen={() => onOpen(project)}
+																onEdit={() => onEdit(project)}
+																onDelete={() => onDelete(project)}
+																onMove={(status) => onMove(project, status)}
+															/>
+														</li>
+													))}
+												</ul>
+											)}
+										</div>
+									);
+								})}
+							</div>
+						</section>
+					))}
 				</div>
 			</div>
 		</div>
