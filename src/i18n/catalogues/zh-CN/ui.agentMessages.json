@@ -11,7 +11,7 @@
 	"ui.agentMessages.dialog.consent_unavailable": "暂时无法获取同意声明，智能体消息尚未启用。",
 	"ui.agentMessages.dialog.account_guard_unavailable": "此版本无法为您的账户安全启用智能体消息。请更新Local Operator后重试。",
 	"ui.agentMessages.dialog.failure": "无法启用智能体消息。请重试，或稍后前往“设置”→“智能体消息”启用。",
-	"ui.agentMessages.dialog.consent_changed": "请阅读下方最新的同意声明，然后再次点击“启用”。",
+	"ui.agentMessages.dialog.consent_changed": "请阅读最新的同意声明，然后再次点击“启用”。",
 	"ui.agentMessages.dialog.local_failure": "您的同意已保存，但本机设置尚未完成。请打开“设置”→“智能体消息”完成设置。",
 	"ui.agentMessages.dialog.validation_detail": "{field}：{rule}",
 	"ui.agentMessages.dialog.validation_failure": "此设置请求未被接受。请更新Local Operator后重试。"

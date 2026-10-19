@@ -8,9 +8,11 @@ import {
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Bot, MessageSquare, X } from "lucide-react";
-import { useId, useRef } from "react";
+import { X } from "lucide-react";
+import { useEffect, useId, useRef } from "react";
 import type { AgentMessagesRefusal } from "../../../../shared/agent-messages-contract";
+
+import { AgentMessagesHero } from "./agent-messages-hero";
 
 export type AgentMessagesDialogProps = {
 	consent: { version: string; text: string } | null;
@@ -37,9 +39,13 @@ export function AgentMessagesDialog({
 	const leadId = useId();
 	const consentId = useId();
 	const notNow = useRef<HTMLButtonElement>(null);
-	const close = () => {
-		if (!pending) onDismiss();
-	};
+	const error = useRef<HTMLDivElement>(null);
+	// Keep feedback before the actions so initial autofocus cannot hide it below
+	// them. Scrolled dialogs still need the outcome brought back into view.
+	useEffect(() => {
+		if (refusal) error.current?.scrollIntoView?.({ block: "nearest" });
+	}, [refusal]);
+	const close = () => onDismiss();
 	const detail = refusal?.details;
 	const field = typeof detail?.field === "string" ? detail.field : null;
 	const rule = typeof detail?.rule === "string" ? detail.rule : null;
@@ -61,50 +67,71 @@ export function AgentMessagesDialog({
 					event.preventDefault();
 					notNow.current?.focus();
 				}}
-				onEscapeKeyDown={(event) => {
-					if (pending) event.preventDefault();
-				}}
-				onPointerDownOutside={(event) => {
-					if (pending) event.preventDefault();
-				}}
 			>
+				{/* Theme-native geometry is decorative; the served consent stays inert text. */}
+				<div
+					data-agent-messages-hero=""
+					className={cn(
+						"relative -mx-6 -mt-6 h-[clamp(160px,40dvh,295px)] shrink-0 overflow-hidden rounded-t-lg border-b border-hairline",
+					)}
+				>
+					<AgentMessagesHero />
+					<div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-b from-transparent to-elevated" />
+				</div>
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					className={cn("absolute top-4 right-4")}
+					className={cn(
+						"absolute top-4 right-4 size-8 border border-control bg-elevated text-ink shadow-sm hover:bg-accent-wash",
+					)}
 					aria-label={t("ui.agentMessages.dialog.close")}
-					disabled={pending}
 					onClick={close}
 				>
 					<X aria-hidden="true" />
 				</Button>
-				{/* Decorative, static in every motion preference. The graphic gives up
-				    ALL its height before consent or buttons can leave the fit region. */}
-				<div
-					aria-hidden="true"
-					data-agent-messages-graphic=""
-					className={cn(
-						"flex h-[clamp(0px,calc(100dvh-740px),64px)] shrink-0 items-center justify-center gap-5 overflow-hidden text-ink-dim",
-					)}
-				>
-					<Bot size={40} />
-					<MessageSquare size={24} />
-					<Bot size={40} />
-				</div>
-				<DialogTitle className={cn("pr-8")}>
+				<DialogTitle className={cn("mt-3 pr-8 text-title text-ink")}>
 					{t("ui.agentMessages.dialog.title")}
 				</DialogTitle>
-				<DialogDescription id={leadId}>
+				<DialogDescription id={leadId} className={cn("text-body text-ink")}>
 					{t("ui.agentMessages.dialog.lead")}
 				</DialogDescription>
-				<div className={cn("space-y-2 text-body-sm text-ink-muted")}>
-					<p>{t("ui.agentMessages.dialog.activities")}</p>
-					<p>{t("ui.agentMessages.dialog.reach")}</p>
+				<div className={cn("space-y-2")}>
+					<p className={cn("text-body text-ink-muted")}>
+						{t("ui.agentMessages.dialog.activities")}
+					</p>
+					<p className={cn("text-body-sm text-ink-muted")}>
+						{t("ui.agentMessages.dialog.reach")}
+					</p>
 				</div>
+				{!accountGuard && (
+					<output className={cn("block text-body-sm text-ink-muted")}>
+						{t("ui.agentMessages.dialog.account_guard_unavailable")}
+					</output>
+				)}
+				{/* Inert plain text, byte-for-byte served: no markdown, auto-link,
+				    read-more, clipping or embedded-copy substitution at this seam. */}
+				<p
+					id={consentId}
+					data-agent-messages-consent-version={consent?.version}
+					className={cn("whitespace-pre-wrap text-meta text-ink-muted")}
+				>
+					{consent?.text ?? t("ui.agentMessages.dialog.consent_unavailable")}
+				</p>
 				{refusal && (
-					<div role="alert" className={cn("text-body-sm text-ink")}>
-						<p>{refusal.message}</p>
-						{confirmed && <p>{t("ui.agentMessages.dialog.local_failure")}</p>}
+					<div
+						ref={error}
+						role="alert"
+						data-agent-messages-error=""
+						className={cn("space-y-1 text-body-sm text-ink")}
+					>
+						<p>
+							{t(
+								confirmed
+									? "ui.agentMessages.dialog.local_failure"
+									: "ui.agentMessages.dialog.failure",
+							)}
+						</p>
+						<p className={cn("text-meta text-ink-muted")}>{refusal.message}</p>
 						{refusal.code === "consent_version_unknown" && consent && (
 							<p>{t("ui.agentMessages.dialog.consent_changed")}</p>
 						)}
@@ -123,20 +150,6 @@ export function AgentMessagesDialog({
 						)}
 					</div>
 				)}
-				{!accountGuard && (
-					<output className={cn("block text-body-sm text-ink-muted")}>
-						{t("ui.agentMessages.dialog.account_guard_unavailable")}
-					</output>
-				)}
-				{/* Inert plain text, byte-for-byte served: no markdown, auto-link,
-				    read-more, clipping or embedded-copy substitution at this seam. */}
-				<p
-					id={consentId}
-					data-agent-messages-consent-version={consent?.version}
-					className={cn("whitespace-pre-wrap text-body-sm text-ink")}
-				>
-					{consent?.text ?? t("ui.agentMessages.dialog.consent_unavailable")}
-				</p>
 				<div className={cn("flex flex-wrap gap-2")}>
 					<Button
 						variant="primary"
@@ -150,12 +163,7 @@ export function AgentMessagesDialog({
 								: "ui.agentMessages.dialog.enable",
 						)}
 					</Button>
-					<Button
-						ref={notNow}
-						variant="secondary"
-						onClick={close}
-						disabled={pending}
-					>
+					<Button ref={notNow} variant="secondary" onClick={close}>
 						{t("ui.agentMessages.dialog.not_now")}
 					</Button>
 				</div>

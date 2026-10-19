@@ -11,7 +11,7 @@
 	"ui.agentMessages.dialog.consent_unavailable": "Consent is unavailable. Agent messages have not been enabled.",
 	"ui.agentMessages.dialog.account_guard_unavailable": "This version cannot safely enable agent messages for your account. Update Local Operator, then try again.",
 	"ui.agentMessages.dialog.failure": "Agent messages could not be enabled. Try again, or enable this later in Settings → Agent messages.",
-	"ui.agentMessages.dialog.consent_changed": "Read the current consent text below, then choose Enable again.",
+	"ui.agentMessages.dialog.consent_changed": "Read the current consent text, then choose Enable again.",
 	"ui.agentMessages.dialog.local_failure": "Your consent was saved, but setup on this machine did not finish. Open Settings → Agent messages to finish setup.",
 	"ui.agentMessages.dialog.validation_detail": "{field}: {rule}",
 	"ui.agentMessages.dialog.validation_failure": "This setup request was not accepted. Update Local Operator, then try again."
