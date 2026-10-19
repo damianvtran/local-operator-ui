@@ -678,7 +678,6 @@ export type MessageParams = {
 	"ui.agentMessages.settings.dark.title": undefined;
 	"ui.agentMessages.settings.description": undefined;
 	"ui.agentMessages.settings.error.no_changes": undefined;
-	"ui.agentMessages.settings.error.refresh": undefined;
 	"ui.agentMessages.settings.error.retry": undefined;
 	"ui.agentMessages.settings.error.title": undefined;
 	"ui.agentMessages.settings.error.unreadable": undefined;

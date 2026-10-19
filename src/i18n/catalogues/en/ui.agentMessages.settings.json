@@ -70,7 +70,6 @@
 	"ui.agentMessages.settings.dark.nothing_enabled": "Nothing is enabled on this machine.",
 	"ui.agentMessages.settings.error.title": "Could not load agent messages",
 	"ui.agentMessages.settings.error.retry": "Retry",
-	"ui.agentMessages.settings.error.refresh": "Refresh",
 	"ui.agentMessages.settings.error.unreadable": "This machine returned a settings response the app could not read.",
 	"ui.agentMessages.settings.refusal.sign_in": "Sign in to Radient to manage agent messages.",
 	"ui.agentMessages.settings.refusal.not_available": "Agent messages are not available for this account.",

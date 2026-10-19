@@ -496,13 +496,6 @@
 		"placeholders": {},
 		"note": "Error surface copy."
 	},
-	"ui.agentMessages.settings.error.refresh": {
-		"role": "error surface label/sentence",
-		"tone": "sentence case, plain, second person",
-		"length": "One short line.",
-		"placeholders": {},
-		"note": "Error surface copy."
-	},
 	"ui.agentMessages.settings.error.unreadable": {
 		"role": "error surface label/sentence",
 		"tone": "sentence case, plain, second person",
