@@ -65,9 +65,14 @@ export function sessionSnapshot(id, ask, sequence = 1, claimless = false) {
 	 * THE WIRE SHAPE, NOT THE STORED ONE (review R1-5). The checkpoint stores
 	 * None, but the serializer POPS the null ask fields
 	 * (`frontend_state.py:3548-3558`), so a claimless snapshot OMITS all three
-	 * keys; a present-null frame is not a frame the app ever receives. The
-	 * live-empty case keeps its list: an empty array plus a zero tally is how the
-	 * wire publishes a live-but-empty queue.
+	 * keys; a present-null frame is not a frame the app ever receives.
+	 *
+	 * THE ASKLESS CASE IS THE FIXTURE'S OWN SPELLING, not the wire's: it carries
+	 * `asks: []` + `asks_open: 0` because that is the value this fixture has
+	 * always modelled, and every reader treats it like the live-but-empty frame.
+	 * The WIRE's live-but-empty shape is `asks` ABSENT with `asks_open: 0`
+	 * (`ask-queue.ts`'s WIRE FIX note); changing this value is not necessary for
+	 * the cases here and is deliberately left alone (review R2-1).
 	 */
 	const askClaim = askless
 		? { asks: [], asks_open: 0, asks_truncated: false }

@@ -56,7 +56,13 @@ const { ASK_AGGREGATE_SESSION_CAP, resolveSessionAskFrame, askQueueView } = mod;
  * in a test body is rebuilt per call - `ask-open-render.test.mjs` states the same
  * rule).
  */
-const PAGE_RESOLVES_FRAME = /const sessionAskFrame = useMemo\(/;
+/*
+ * BOTH HALVES: the memo AND the callee it runs. A declaration-only pattern
+ * passes if the body is swapped for `canonical.frontend`, which would silently
+ * restore the claimless reading the whole PR removes (review R2-2).
+ */
+const PAGE_RESOLVES_FRAME =
+	/const sessionAskFrame = useMemo\(\s*\(\)\s*=>\s*resolveSessionAskFrame\(/;
 const CONTENT_FORWARDS_STATUS = /sessionStatus=\{sessionStatus\}/;
 const COMPOSER_HANDS_FRAME = /askFrontend=\{sessionStatus\?\.asks\}/;
 
