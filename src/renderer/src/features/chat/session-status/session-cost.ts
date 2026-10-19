@@ -617,7 +617,7 @@ export function childBasisLine(reading: SpendChannelsReading): string | null {
 	const words = bases?.map(({ basis }) =>
 		basis === "not_tracked_micro" || basis === "not_tracked"
 			? "without a tracked basis yet"
-			: `${capitalise(channelBasisLabel(basis, reading.vocabulary))}${basis === "subscription_api_equivalent" ? " (API-equivalent)" : ""}`,
+			: `${capitalise(channelBasisLabel(basis, reading.vocabulary))}${basis === "subscription_api_equivalent" && !/api-equivalent/i.test(channelBasisLabel(basis, reading.vocabulary)) ? " (API-equivalent)" : ""}`,
 	);
 	return `Subagents ${isFloorKnowledge(reading.childrenKnowledge) ? FLOOR_MARK : ""}${microUsdText(reading.childrenMicro)} · ${words?.length ? words.join(" · ") : bases === null ? "without a tracked basis yet" : "basis unavailable"}`;
 }
@@ -998,8 +998,8 @@ function remainderIsFloor(reading: SpendChannelsReading): boolean {
 }
 
 /**
- * The plan-funded gloss: `Includes $0.053 API-equivalent (covered by a plan,
- * not charged).`, or null.
+ * The fallback plan-funded gloss: `Includes $0.053 plan-covered
+ * (API-equivalent, not charged).`, or null.
  *
  * `API-equivalent` is jargon the total's reader cannot be assumed to know, and
  * the number beside it is money that was never charged — the one thing the
@@ -1014,7 +1014,7 @@ export function channelPlanClause(
 		(bucket) => bucket.basis === "subscription_api_equivalent",
 	);
 	if (!plan) return null;
-	return `Includes ${money(plan.micro)} included in your plan (API-equivalent).`;
+	return `Includes ${money(plan.micro)} plan-covered (API-equivalent, not charged).`;
 }
 
 /** The strip-ladder breakdown the tooltip renders. */

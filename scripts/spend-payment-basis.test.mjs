@@ -35,6 +35,7 @@ const {
 	mixedSpend,
 	paygoSpend,
 	legacySpend,
+	estimatedSpend,
 	modelRows,
 	spendBasisLegend,
 	spendBasisTitle,
@@ -55,7 +56,7 @@ test("published total and split lead all channel summaries without row arithmeti
 		);
 		assert.match(
 			channelPlanClause(reading, (micro) => `$${micro / 1e6}`),
-			/included in your plan \(API-equivalent\)/,
+			/plan-covered \(API-equivalent, not charged\)/,
 		);
 	}
 	// A deliberately inconsistent row is not permission to repair the backend's total.
@@ -139,6 +140,10 @@ test("paygo has no plan note and old vocabulary is authoritative without a repea
 	);
 	const old = structuredClone(subscriptionSpend);
 	old.vocabulary.bases.subscription_api_equivalent.label = "API-equivalent";
+	assert.equal(
+		childBasisLine(channelsReading(old)),
+		"Subagents $11.62 · API-equivalent",
+	);
 	assert.match(
 		channelBreakdown(channelsReading(old)).summary,
 		/API-equivalent \$11.62/,
@@ -232,4 +237,29 @@ test("session basis amounts preserve partial and unpriced aggregate knowledge", 
 	];
 	data.descendants_by_basis = [];
 	assert.equal(spendBasisLegend(data), "Billed —");
+});
+
+test("estimated payment remains distinct from billed and included on every channel reading", () => {
+	const reading = channelsReading(estimatedSpend);
+	assert.equal(
+		channelBreakdown(reading).summary,
+		"Total $12.41 · Estimated $12.41",
+	);
+	assert.equal(channelsView(estimatedSpend).rows[0].basis, "Estimated");
+	assert.equal(childBasisLine(reading), "Subagents $11.62 · Estimated");
+	assert.equal(channelBreakdown(reading).planClause, null);
+	assert.deepEqual(reading.notes, []);
+	const data = report();
+	data.by_model_basis = [
+		{
+			...model,
+			billing_basis: "estimated",
+			aggregate: aggregate(1_790_000, 3),
+		},
+	];
+	data.descendants_by_basis = [
+		{ billing_basis: "estimated", aggregate: aggregate(10_620_000) },
+	];
+	assert.equal(modelRows(data, "cost")[0].basis, "Estimated");
+	assert.equal(spendBasisLegend(data), "Estimated $12.41");
 });

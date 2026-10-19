@@ -108,3 +108,21 @@ export const legacySpend: CanonicalSpendChannels = {
 	children: { total_micro: 11_620_000, knowledge: "exact" },
 	vocabulary: undefined,
 };
+
+/** Estimated paygo is not a confirmed invoice or a subscription entitlement. */
+export const estimatedSpend: CanonicalSpendChannels = {
+	...paygoSpend,
+	by_basis: {
+		billed: 0,
+		subscription_api_equivalent: 0,
+		estimated: 12_410_000,
+		not_tracked_calls: 0,
+		not_tracked_micro: 0,
+	},
+	rows: paygoSpend.rows.map((row) => ({ ...row, basis: ["estimated"] })),
+	children: {
+		total_micro: 11_620_000,
+		knowledge: "exact",
+		by_basis: { estimated: 11_620_000 },
+	},
+};

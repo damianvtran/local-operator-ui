@@ -547,7 +547,7 @@ test("an object without the sections keeps the plan gloss and today's body", () 
 	const breakdown = channelBreakdown(cost.channels);
 	assert.equal(
 		breakdown.planClause,
-		"Includes $0.053 included in your plan (API-equivalent).",
+		"Includes $0.053 plan-covered (API-equivalent, not charged).",
 	);
 	assert.deepEqual(breakdown.byAgent, []);
 	assert.deepEqual(breakdown.bySource, []);
