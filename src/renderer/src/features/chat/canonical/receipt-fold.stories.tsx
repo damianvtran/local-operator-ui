@@ -195,8 +195,9 @@ function receiptOnlyPage(): Entry[] {
  *
  * The header is not written into the fixture: it is what the shipped
  * `foldCounts` + `receiptFoldUnits` produce from these rows, and the reason the
- * frame exists is to see that production line WRAP at the 640px column without
- * breaking inside a unit - the defect design round 1 (D1) measured.
+ * frame exists is to see that the production line holds together on ONE line at
+ * the 640px column without breaking inside a unit - and that a longer unit count
+ * wraps at the ` · ` separators rather than inside a phrase (design round 1, D1).
  *
  * The arguments are the rows' own words (`summaryFromArgs`), realistic per
  * kind, so a future renderer that starts reading one of them cannot crash on
@@ -441,7 +442,7 @@ export const LongInventory: Story = {
 	),
 };
 
-/** The same header in the shipped 760px sheet, so the pair shows the wrap. */
+/** The same header in the shipped 760px sheet, so the pair shows both column widths. */
 export const LongInventoryWide: Story = {
 	name: "Long inventory — standard column",
 	render: () => <Frame entries={longInventoryPage()} openTurn={true} />,
