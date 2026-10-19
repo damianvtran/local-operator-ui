@@ -1,0 +1,386 @@
+{
+	"schema": 1,
+	"note": "Known language-coverage gaps, temporarily allowed. Each pair is a (locale, namespace) combination missing at least one English key; a gap not listed fails scripts/i18n/check-coverage.mjs. The list is SHRINK-ONLY: a pair that has become complete must be removed with `--update`, and the check fails while it remains. Every entry needs a reason; do not add a pair to silence new copy. The manifest is i18n/languages.json.",
+	"pairs": [
+		{
+			"locale": "fr",
+			"namespace": "ui.agentMessages.settings",
+			"reason": "Added after the locale waves; no translated catalogue has landed yet."
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.library",
+			"reason": "Feature namespace added after the locale waves; no translated catalogue has landed yet."
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.teamBridge",
+			"reason": "Newest feature namespace; not yet through translation and audit."
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.agentMessages.settings",
+			"reason": "Added after the locale waves; no translated catalogue has landed yet."
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.library",
+			"reason": "Feature namespace added after the locale waves; no translated catalogue has landed yet."
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.teamBridge",
+			"reason": "Newest feature namespace; not yet through translation and audit."
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agentMessages.settings",
+			"reason": "Added after the locale waves; no translated catalogue has landed yet."
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.library",
+			"reason": "Feature namespace added after the locale waves; no translated catalogue has landed yet."
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.teamBridge",
+			"reason": "Newest feature namespace; not yet through translation and audit."
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.agentMessages.settings",
+			"reason": "Added after the locale waves; no translated catalogue has landed yet."
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.library",
+			"reason": "Feature namespace added after the locale waves; no translated catalogue has landed yet."
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.teamBridge",
+			"reason": "Newest feature namespace; not yet through translation and audit."
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.agentMessages.settings",
+			"reason": "Added after the locale waves; no translated catalogue has landed yet."
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.library",
+			"reason": "Feature namespace added after the locale waves; no translated catalogue has landed yet."
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.providers",
+			"reason": "Landing gap in the Vietnamese wave; no translated catalogue yet."
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.teamBridge",
+			"reason": "Newest feature namespace; not yet through translation and audit."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agentMessages",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agentMessages.settings",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agents.dialogs",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agents.models",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agents.navigation",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agents.refusals",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agents.settings",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agents.starters",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.browser",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.browser.chrome",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.canvas",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.composer",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.composer_media",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.dialogs",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.header",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.response_actions",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.sidebar_view",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.tags",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.code_review",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.command_palette",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.common.account",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.common.actions",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.common.connection",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.common.editing",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.common.errors",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.common.forms",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.common.loading",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.common.models",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.common.updates",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.console",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.hub",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.hub.comments",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.hub.taxonomy",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.installer",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.library",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.mesh",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.onboarding",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.projects",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.providers",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.schedules",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.settings",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.settings.account",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.settings.appearance",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.settings.appearance.window_glass",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.settings.configuration",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.settings.imports",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.settings.integrations",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.settings.model",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.settings.model.default_effort",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.settings.model.provider_callout",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.settings.navigation",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.settings.shortcuts",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.settings.speech",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.settings.updates",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.shell",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.shell.rail",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.teamBridge",
+			"reason": "No audited Urdu catalogue yet; the RTL surface pass is not delivered."
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.account",
+			"reason": "Landing gap in the Hindi wave; no translated catalogue yet."
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.teamBridge",
+			"reason": "Newest feature namespace; not yet through translation and audit."
+		}
+	]
+}
