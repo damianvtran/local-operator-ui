@@ -26,7 +26,7 @@
 	"ui.projects.project_board.loading_linked_sessions": "जुड़े सत्र लोड हो रहे हैं…",
 	"ui.projects.project_board.move_cancelled": "खिसकाना रद्द किया गया।",
 	"ui.projects.project_board.move_label_column": "{label} कॉलम खिसकाएँ",
-	"ui.projects.project_board.moved_label_column_to_position_indexof_status_1_of_length": "{label} कॉलम को स्थान {indexOf_status____1} पर ले जाया गया कुल {length} में से।",
+	"ui.projects.project_board.moved_label_column_to_position_indexof_status_1_of_length": "{label} कॉलम को कुल {length} में से स्थान {indexOf_status____1} पर ले जाया गया।",
 	"ui.projects.project_board.moving_label_column": "{label} कॉलम खिसक रहा है।",
 	"ui.projects.project_board.moving_label_column_it_will_drop_status_over": "{label} कॉलम खिसक रहा है; यह {status__over} रखा जाएगा।",
 	"ui.projects.project_board.no_sessions_linked_yet": "अभी कोई सत्र नहीं जुड़ा है।",

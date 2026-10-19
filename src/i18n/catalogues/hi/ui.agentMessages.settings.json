@@ -32,7 +32,7 @@
 	"ui.agentMessages.settings.consent.no_record": "इस endpoint पर सहमति का कोई रिकॉर्ड नहीं है।",
 	"ui.agentMessages.settings.consent.renew": "सहमति दोबारा देनी होगी। मौजूदा पाठ पढ़ें और फिर चालू करें।",
 	"ui.agentMessages.settings.consent.unavailable": "सहमति उपलब्ध नहीं है। एजेंट संदेश चालू नहीं किए गए हैं।",
-	"ui.agentMessages.settings.consent.changed": "नीचे सहमति का मौजूदा पाठ पढ़ें, फिर चालू करें चुनें।",
+	"ui.agentMessages.settings.consent.changed": "नीचे सहमति का मौजूदा पाठ पढ़ें, फिर चालू करने वाला बटन दोबारा दबाएँ।",
 	"ui.agentMessages.settings.allowlist.title": "संपर्क का दायरा",
 	"ui.agentMessages.settings.allowlist.description": "चुनें कि कौन आपको संदेश भेज सकता है और आप किसे संदेश भेज सकते हैं।",
 	"ui.agentMessages.settings.allowlist.level": "कौन संदेश भेज सकता है",
