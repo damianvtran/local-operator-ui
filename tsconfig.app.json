@@ -47,6 +47,7 @@
 	"include": [
 		"src/renderer/**/*",
 		"src/preload/index.d.ts",
+		"src/voice-page/**/*",
 		"src/renderer/src/vite-env.d.ts",
 		// The i18n core (RFC §3.2). The renderer imports it through the
 		// @shared/i18n shim, so most of it lands in this program through imports

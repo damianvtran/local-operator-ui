@@ -28,6 +28,7 @@
 
 import {
 	type PermissionQuery,
+	appVoicePagePermissionVerdict,
 	voicePagePermissionVerdict,
 } from "../window-guards";
 
@@ -119,6 +120,58 @@ export function voicePageAllowed(
 	env: NodeJS.ProcessEnv,
 ): boolean {
 	return mode === "normal" && env.LOP_QWEN_NO_WEBUI !== "1";
+}
+
+/*
+ * THE APP-OWNED PAGE (Groq plan D2/U1). Pure parts only: nothing here creates a
+ * view, and nothing calls it yet - U2 swaps the coordinator onto it. The rig
+ * path above is untouched.
+ */
+
+/** The bundled page's file name; the build emits it beside `index.html`. */
+export const APP_VOICE_PAGE_DOCUMENT = "voice-page.html";
+
+const INDEX_DOCUMENT_SUFFIX = /\/?index\.html(\?.*)?$/;
+const TRAILING_SLASH = /\/$/;
+
+/**
+ * The app's own voice page, derived from the main renderer's URL the way the
+ * mini view's is: a built run hands over a `file:` URL ending in `index.html`
+ * (the page is its sibling), a dev run hands over the dev server's origin (the
+ * document is appended). No query: the page takes nothing from its URL.
+ */
+export function appVoicePageUrl(rendererUrl: string): string {
+	const base = INDEX_DOCUMENT_SUFFIX.test(rendererUrl)
+		? rendererUrl.replace(INDEX_DOCUMENT_SUFFIX, `/${APP_VOICE_PAGE_DOCUMENT}`)
+		: `${rendererUrl.replace(TRAILING_SLASH, "")}/${APP_VOICE_PAGE_DOCUMENT}`;
+	const url = new URL(base);
+	url.search = "";
+	url.hash = "";
+	return url.toString();
+}
+
+/**
+ * Whether a navigation target is the app's voice page. The page navigates
+ * nowhere, so the navigation lock admits only a reload of itself.
+ */
+export function isAppVoicePageUrl(candidate: string, pageUrl: string): boolean {
+	try {
+		const a = new URL(candidate);
+		const b = new URL(pageUrl);
+		return a.protocol === b.protocol && a.pathname === b.pathname
+			? b.protocol === "file:" || a.origin === b.origin
+			: false;
+	} catch {
+		return false;
+	}
+}
+
+/** The permission verdict for the app-owned page: audio, main frame, its own URL. */
+export function appVoicePageVerdict(
+	query: PermissionQuery,
+	pageUrl: string,
+): boolean {
+	return appVoicePagePermissionVerdict(query, pageUrl);
 }
 
 /** The URL main loads: the WebUI in desktop-orb mode, with no idle sleep. */
