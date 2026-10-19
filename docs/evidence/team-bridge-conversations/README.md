@@ -23,6 +23,13 @@ split survives light, dark and glass without a line. The only borders left are
 on controls (the composer field, the dialog's inputs), which is the one place a
 boundary is information rather than decoration.
 
+**Composer.** One borderless `elevated` box, the field and the bottom row
+inside it, and a circular Send in the box's bottom-right corner — the same
+shape as the agent composer (`shared/components/composer/message-input.tsx`),
+with the focus ring promoted to the whole box via `:has`. Radius is 12px
+rather than that composer's 16px because this box is shorter and 16 read as a
+pill at rest.
+
 The badge is the `attentionQuiet` register: borderless, `ink-dim` numeral, no
 accent wash. Measured contrast from the design round: 5.25:1 dark, 6.14:1
 light — above the 3:1 floor for a meaningful UI mark.
