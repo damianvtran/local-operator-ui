@@ -564,6 +564,13 @@ test("a tab menu leaves a running turn readable and interruptible in one press (
 		 * ONE PRESS, BOTH HALVES: the press the person makes on Stop must dismiss
 		 * the menu AND reach the control. A modal layer dropped the first half on the
 		 * overlay and never delivered the second.
+		 *
+		 * jsdom has no layout or hit-testing, so this direct dispatch proves the
+		 * menu/handler invariant, not Chromium's pointer delivery. The discriminating
+		 * hit-test reading is the built-app probe: a real CDP pointer press on an
+		 * outside Stop stand-in reports `{presses:1, menuOpen:false}`. The mechanism
+		 * assertions above (no body `pointer-events: none`, no `aria-hidden` ancestor)
+		 * are what the jsdom negative control fails on against `modal={true}`.
 		 */
 		await act(() => {
 			stop.dispatchEvent(

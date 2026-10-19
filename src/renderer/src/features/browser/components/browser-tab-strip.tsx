@@ -542,11 +542,12 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	 * not leave an action row pointing at nothing"); it moves here with the menu. Review
 	 * round 1, M-1 — reproduced with the probe the reviewer attached.
 	 *
-	 * THE CARET: while the menu is open, focus is inside it (Radix's layer is modal, so
-	 * the only place the caret can be), and an unmount would drop it to `<body>`. Parking
-	 * on the scroller is the same move a batch close makes, for the same reason — the
-	 * strip is where the caret came from — and it cannot steal a caret that was
-	 * elsewhere, because while this menu is open there is nowhere else it could be.
+	 * THE CARET: while the menu is open, Radix has moved the caret into it, and an
+	 * unmount would drop it to `<body>`. Parking on the scroller is the same move a
+	 * batch close makes, for the same reason — the strip is where the caret came
+	 * from. Since this menu is non-modal, a caret that genuinely moved elsewhere
+	 * also dismissed the menu (outside press or focus departure), so this effect runs
+	 * only while the menu still owns the caret.
 	 */
 	useEffect(() => {
 		if (actionsTabId === null) return;

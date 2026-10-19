@@ -891,6 +891,7 @@ async function initializeBrowserHost(
 						: null,
 					focusedContentsId: webContents.getFocusedWebContents()?.id ?? null,
 					focusedViewTabId: host.focusedPageTabId,
+					window: options.window,
 				});
 			},
 			reload: (hard) => {

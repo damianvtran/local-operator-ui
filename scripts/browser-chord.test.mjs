@@ -510,11 +510,18 @@ test("router menu fallback ownership and rapid genuine presses have no debounce"
 });
 test("page ownership accepts the view's own focus fact when getFocusedWebContents answers null", () => {
 	const activeTab = { tabId: 7, webContentsId: 21, presented: true };
+	const foreground = (overrides = {}) => ({
+		isDestroyed: () => false,
+		isVisible: () => true,
+		isFocused: () => true,
+		...overrides,
+	});
 	assert.equal(
 		browserPageOwnsChord({
 			activeTab,
 			focusedContentsId: 21,
 			focusedViewTabId: null,
+			window: foreground(),
 		}),
 		true,
 		"the documented focused-contents fact still owns the page",
@@ -526,6 +533,7 @@ test("page ownership accepts the view's own focus fact when getFocusedWebContent
 			activeTab,
 			focusedContentsId: null,
 			focusedViewTabId: 7,
+			window: foreground(),
 		}),
 		true,
 		"a view's tracked focus owns the page when the getter is null",
@@ -535,6 +543,7 @@ test("page ownership accepts the view's own focus fact when getFocusedWebContent
 			activeTab,
 			focusedContentsId: null,
 			focusedViewTabId: 8,
+			window: foreground(),
 		}),
 		false,
 		"a stale focus fact for another tab never routes into the active page",
@@ -544,6 +553,7 @@ test("page ownership accepts the view's own focus fact when getFocusedWebContent
 			activeTab: { ...activeTab, presented: false },
 			focusedContentsId: 21,
 			focusedViewTabId: 7,
+			window: foreground(),
 		}),
 		false,
 		"a hidden/suppressed page is never the accelerator owner",
@@ -553,10 +563,29 @@ test("page ownership accepts the view's own focus fact when getFocusedWebContent
 			activeTab: null,
 			focusedContentsId: 21,
 			focusedViewTabId: 7,
+			window: foreground(),
 		}),
 		false,
 		"no active tab is no page owner",
 	);
+	// THE SAME WINDOW FLOOR AS CHROME OWNERSHIP (review M1): a stale focus fact is
+	// never authorization for a destroyed, hidden or unfocused window.
+	for (const [label, windowFacts] of [
+		["destroyed", foreground({ isDestroyed: () => true })],
+		["hidden", foreground({ isVisible: () => false })],
+		["unfocused", foreground({ isFocused: () => false })],
+	]) {
+		assert.equal(
+			browserPageOwnsChord({
+				activeTab,
+				focusedContentsId: 21,
+				focusedViewTabId: 7,
+				window: windowFacts,
+			}),
+			false,
+			`a ${label} window never routes a page accelerator`,
+		);
+	}
 });
 
 test("menu fallback respects actual popup/mini target even with stale main chrome focus", () => {

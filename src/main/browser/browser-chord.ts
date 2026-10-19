@@ -5,6 +5,17 @@ import {
 	browserChordIntent,
 } from "../../shared/browser-chord";
 
+/** The one native window floor both ownership predicates share: a destroyed,
+ * hidden or unfocused window authorizes nothing. Kept in one function so the
+ * chrome and page doors cannot drift into two opinions about the same facts. */
+export function browserWindowForeground(window: {
+	isDestroyed(): boolean;
+	isVisible(): boolean;
+	isFocused(): boolean;
+}): boolean {
+	return !window.isDestroyed() && window.isVisible() && window.isFocused();
+}
+
 /** Logical DOM ownership survives OS deactivation; it must never itself authorize
  * an inactive/hidden window or a browser covered by a real overlay. Keeping these
  * native facts separate avoids losing the owner before a menu accelerator can
@@ -22,9 +33,7 @@ export function browserChromeOwnsChord(facts: {
 	return (
 		facts.logicalFocus &&
 		facts.chromeVisible &&
-		!facts.window.isDestroyed() &&
-		facts.window.isVisible() &&
-		facts.window.isFocused()
+		browserWindowForeground(facts.window)
 	);
 }
 
@@ -38,7 +47,9 @@ export function browserChromeOwnsChord(facts: {
  * activated). The view's own `focus` event is therefore tracked by the host and
  * accepted as the second fact. Both are refused unless the ACTIVE tab is the
  * one presented, so a stale focus on a hidden/background view cannot route an
- * accelerator into a page the user cannot see. */
+ * accelerator into a page the user cannot see; and the shared window floor
+ * refuses a destroyed, hidden or unfocused window even when the focus facts are
+ * stale. */
 export function browserPageOwnsChord(facts: {
 	activeTab: {
 		tabId: number;
@@ -47,10 +58,16 @@ export function browserPageOwnsChord(facts: {
 	} | null;
 	focusedContentsId: number | null;
 	focusedViewTabId: number | null;
+	window: {
+		isDestroyed(): boolean;
+		isVisible(): boolean;
+		isFocused(): boolean;
+	};
 }): boolean {
 	const active = facts.activeTab;
 	return Boolean(
-		active?.presented &&
+		browserWindowForeground(facts.window) &&
+			active?.presented &&
 			(facts.focusedContentsId === active.webContentsId ||
 				facts.focusedViewTabId === active.tabId),
 	);
