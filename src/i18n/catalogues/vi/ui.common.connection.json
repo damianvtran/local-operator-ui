@@ -8,5 +8,5 @@
 	"ui.common.connection.connectivity_banner.this_app_s_updates_require": "Cập nhật ứng dụng này cần",
 	"ui.common.connection.connectivity_banner.you_are_offline": "Bạn đang ngoại tuyến. {detail} kết nối internet.",
 	"ui.common.connection.floating_alert.dismiss": "Ẩn",
-	"ui.common.connection.provider.requires": "Nhà cung cấp lưu trữ bạn đã cấu hình ({provider}) cần"
+	"ui.common.connection.provider.requires": "Nhà cung cấp dịch vụ mô hình bạn đã cấu hình ({provider}) cần"
 }
