@@ -476,6 +476,39 @@ an empty box, while the transcript sat at `canvas` with nothing pointing at it.
 The accent is spent on what the user acts on (the send control's fill) and on
 focus, not on the frame of an empty field.
 
+### Panels: borderless, edge-to-edge, fading at the top
+
+A panel is a region that owns a ground beside the canvas — the app sidebar, a
+route's leading rail, a roster, a detail/dock pane. It is not a card, an input,
+a menu or a popover.
+
+- **No panel carries a border.** Separation is the ground ladder
+  (`canvas` → `surface` → `elevated`, or `sunken` for a well) plus spacing. A
+  1px rule over a tone step is a second, redundant mark; it also cannot reach
+  the top through the shell's clipped columns. `border-control` remains the
+  boundary of an input, select, checkbox or outlined button, never a panel edge.
+- **A panel runs edge-to-edge to the top of the content area**, under the
+  title-bar lane. A route-owned leading column hands itself to the shell
+  (`useLaneLeadingColumn("surface")`) so the lane carries the same ground above
+  it; the panel content must not begin below a header that spans the rail.
+- **Chrome controls are borderless too.** Search, sort and filter chrome takes the `elevated` ground on a `surface` panel and the shared accent focus ring; no resting stroke. Reserve `border-control` for a form field or an actual boundary a ground cannot express, never as decoration on a toolbar control.
+- **A scrolling panel fades at its top edge.** `data-lo-sidebar-edge-cues` on
+  the scroller uses the shared scroll-driven mask: content dissolves under the
+  top spacing rather than being cut by a hard boundary, and the fade is zero at
+  rest so the first row is not dimmed for no reason.
+- **A panel footer/composer sits outside the scroller.** The scroll container
+  ends above it; content never paints underneath it.
+- **Narrow windows replace, they do not overlay.** A detail rail that cannot
+  fit beside the content at its minimum width becomes the full-width route view;
+  the content and filter rail step aside. The filter rail collapses into its
+  sheet below 1200px. A panel never floats over another panel's content.
+
+The Library filter rail is the reference: a full-height `bg-surface` column
+with `data-lo-sidebar-edge-cues`, no right rule, and a preview dock separated
+by the `surface` ground. `scripts/lane-leading.test.mjs` enforces the leading
+column hand-over and the absence of route-column right rules; agent-facing
+detail is in `docs/AGENTS.md`.
+
 ### Accent
 
 One accent is spent about **three times per screen**. Primary action, active

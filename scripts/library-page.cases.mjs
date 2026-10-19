@@ -186,6 +186,7 @@ const bundle = await build({
 		"@shared": `${process.cwd()}/src/renderer/src/shared`,
 		"@features": `${process.cwd()}/src/renderer/src/features`,
 		"@features/chat/components/chat-sidebar": `${process.cwd()}/scripts/library-test-stubs/chat-sidebar.ts`,
+		"@shared/components/common/chat-layout": `${process.cwd()}/scripts/library-test-stubs/chat-layout.ts`,
 	},
 	loader: { ".css": "empty" },
 	write: false,
