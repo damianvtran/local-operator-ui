@@ -12,7 +12,7 @@ export * from "./src/renderer/src/features/chat/chat-tag-drag";
 export * from "./src/renderer/src/features/chat/chat-tag-groups";
 export * from "./src/renderer/src/features/chat/chat-pin-order";
 export {CHAT_ROW_MENU_SCROLL_CLASS} from "./src/renderer/src/features/chat/chat-row-menu";
-export {tagHeaderAt} from "./src/renderer/src/features/chat/use-chat-tag-drag";
+export {tagDropTargetAt} from "./src/renderer/src/features/chat/use-chat-tag-drag";
 `,
 		resolveDir: process.cwd(),
 	},
@@ -31,7 +31,7 @@ const {
 	tagBucketRowIds,
 	movePinnedOrderTo,
 	pinDragSlot,
-	tagHeaderAt,
+	tagDropTargetAt,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -167,15 +167,35 @@ test("header hit testing clips targets to owning list and ignores empty/offscree
 		}),
 		querySelectorAll: () => [header, hidden],
 	};
-	assert.equal(tagHeaderAt(owner, 100, 55, section), header);
+	assert.equal(tagDropTargetAt(owner, 100, 55, section), header);
 	assert.equal(
-		tagHeaderAt(owner, 100, 55, {}),
+		tagDropTargetAt(owner, 100, 55, {}),
 		null,
 		"occupied header in another section is ineligible",
 	);
-	assert.equal(tagHeaderAt(owner, 100, 45, section), null);
-	assert.equal(tagHeaderAt(owner, 201, 55, section), null);
-	assert.equal(tagHeaderAt(owner, 100, 90, section), null);
+	assert.equal(tagDropTargetAt(owner, 100, 45, section), null);
+	assert.equal(tagDropTargetAt(owner, 201, 55, section), null);
+	assert.equal(tagDropTargetAt(owner, 100, 90, section), null);
+});
+test("group body accepts Untagged across sections but keeps tagged sources section-local", () => {
+	const source = {};
+	const other = {};
+	const body = {
+		closest: () => other,
+		dataset: { tagDropTarget: "work" },
+		getBoundingClientRect: () => ({ left: 0, right: 200, top: 30, bottom: 100, height: 70 }),
+	};
+	const owner = {
+		getBoundingClientRect: () => ({ left: 0, right: 200, top: 0, bottom: 200 }),
+		querySelectorAll: () => [body],
+	};
+	assert.equal(tagDropTargetAt(owner, 100, 80, source, "untagged"), body);
+	assert.equal(tagDropTargetAt(owner, 100, 80, source, "personal"), null);
+	assert.equal(tagDropTargetAt(owner, 100, 80, other, "personal"), body);
+	assert.equal(tagDropTargetAt(owner, 100, 150, source, "untagged"), null);
+	const sidebar = readFileSync("src/renderer/src/features/chat/components/chat-sidebar.tsx", "utf8");
+	assert.match(sidebar, /cursor-grab/);
+	assert.match(sidebar, /cursor-grabbing/);
 });
 test("copy has singular/plural count, named move/cancel/undo/conflict announcements", () => {
 	const en = JSON.parse(
