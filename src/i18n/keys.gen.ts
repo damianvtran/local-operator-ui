@@ -4635,6 +4635,15 @@ export type MessageParams = {
 	"ui.teamBridge.page.new_conversation": undefined;
 	"ui.teamBridge.page.subtitle": undefined;
 	"ui.teamBridge.page.title": undefined;
+	"ui.teamBridge.scope.all": undefined;
+	"ui.teamBridge.scope.create_needs_org": undefined;
+	"ui.teamBridge.scope.empty": undefined;
+	"ui.teamBridge.scope.error": undefined;
+	"ui.teamBridge.scope.label": undefined;
+	"ui.teamBridge.scope.loading": undefined;
+	"ui.teamBridge.scope.thread_unknown": undefined;
+	"ui.teamBridge.scope.trigger": { name: string };
+	"ui.teamBridge.scope.unknown": undefined;
 	"ui.teamBridge.thread.empty": undefined;
 	"ui.teamBridge.thread.error": undefined;
 	"ui.teamBridge.thread.loading": undefined;

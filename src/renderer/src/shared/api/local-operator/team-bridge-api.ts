@@ -17,6 +17,7 @@ import {
 	type TeamBridgeConversationList,
 	type TeamBridgeMemberInput,
 	type TeamBridgeMessagePage,
+	type TeamBridgeReadScope,
 	type TeamBridgeReadState,
 	type TeamBridgeUnread,
 	teamBridgeConversationListSchema,
@@ -29,12 +30,22 @@ import {
 import { desktopResult } from "./desktop-api";
 
 export const TeamBridgeApi = {
+	/**
+	 * The conversation page for one read scope.
+	 *
+	 * `"account"` is the server's merged read (`scope=account`): active
+	 * memberships are derived server-side and every row carries its own
+	 * `tenant_id`. A tenant scope names exactly one organization and never sends
+	 * a tenant list — no route accepts one.
+	 */
 	async listConversations(
-		tenantId?: string,
+		scope: TeamBridgeReadScope,
 	): Promise<TeamBridgeConversationList> {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.conversations.list",
-			...(tenantId ? { tenant_id: tenantId } : {}),
+			...(scope === "account"
+				? { scope: "account" }
+				: { tenant_id: scope.tenantId }),
 		});
 		return teamBridgeConversationListSchema.parse(answer);
 	},
@@ -133,10 +144,17 @@ export const TeamBridgeApi = {
 		return parsed.account_id ?? null;
 	},
 
-	async unread(tenantId?: string): Promise<TeamBridgeUnread> {
+	/**
+	 * The unread read. `"account"` returns the one aggregate the badge spends
+	 * (total plus per-org rows); a tenant scope returns that org's rows. The
+	 * desktop route forwards `scope=account` and never invents a client list.
+	 */
+	async unread(scope: TeamBridgeReadScope): Promise<TeamBridgeUnread> {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.unread",
-			...(tenantId ? { tenant_id: tenantId } : {}),
+			...(scope === "account"
+				? { scope: "account" }
+				: { tenant_id: scope.tenantId }),
 		});
 		return teamBridgeUnreadSchema.parse(answer);
 	},
