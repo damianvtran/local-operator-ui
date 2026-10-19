@@ -30,11 +30,12 @@ const fixture = JSON.parse(
 	readFileSync("scripts/fixtures/agent-messages-status.json", "utf8"),
 );
 const status = (patch = {}) => structuredClone({ ...fixture, ...patch });
-const response = (account = "account-a", tenant = "tenant-home") => ({
+// The upstream endpoint carries no account id; the account receipt is the
+// request's own guard. So a "wrong response identity" is a wrong ORG or STATE.
+const response = (tenant = "tenant-home", state = "active") => ({
 	endpoint: {
 		id: "bep-example",
-		state: "active",
-		account_id: account,
+		state,
 		tenant_id: tenant,
 	},
 });
@@ -214,8 +215,10 @@ test("enable is exactly one explicit click with account/tenant/rendered version;
 	assert.equal(model.getSnapshot().confirmed, false);
 	assert.deepEqual(calls.local, []);
 	await model.enable(identity, "abcdef123456");
-	model.dismiss("account-a", "tenant-home");
+	model.dismiss("account-b", "tenant-home");
 	assert.deepEqual(calls.seen, []);
+	model.dismiss("account-a", "tenant-home");
+	assert.deepEqual(calls.seen, [["account-a", "tenant-home"]]);
 	assert.deepEqual(calls.enable, [
 		{
 			expected_account_id: "account-a",
@@ -231,7 +234,10 @@ test("enable is exactly one explicit click with account/tenant/rendered version;
 		["team_bridge.session", "abcdef123456"],
 		["team_bridge.enabled", true],
 	]);
-	assert.deepEqual(calls.seen, [["account-a", "tenant-home"]]);
+	assert.deepEqual(calls.seen, [
+		["account-a", "tenant-home"],
+		["account-a", "tenant-home"],
+	]);
 });
 
 test("off-chat or draft completion explicitly clears designation before machine enable", async () => {
@@ -289,8 +295,8 @@ test("failed consent, wrong response identity, and failed local designation neve
 		async () => {
 			throw { code: "messaging_unavailable" };
 		},
-		async () => response("account-b"),
-		async () => response("account-a", "other"),
+		async () => response("tenant-home", "paused"),
+		async () => response("other"),
 	]) {
 		const { model, calls } = rig({ enable: write });
 		model.setAccount("account-a");

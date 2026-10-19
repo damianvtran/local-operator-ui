@@ -1,0 +1,87 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "bcc9be599370",
+  "date": "2026-10-18",
+  "locale": "zh-CN",
+  "status": "passed",
+  "scope": "full independent pass, every key, at HEAD 1844a072210c29a34ea1462d0ee31333d4407575",
+  "namespaces": {
+    "ui.projects": {
+      "namespace": "ui.projects",
+      "status": "passed",
+      "sha256": {
+        "source": "6b12f695845c3d01500291f5bc4eb50ea9b35e60c68bc69f21ee219c5f9d7f52",
+        "target": "b8beed49135a230161ab3c2367c5594249aea7c257e69880a883291593dcc596"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.projects.project_list.project_columns",
+          "issue": "Redundant 列表列 makes the accessible table name read unnaturally.",
+          "current": "项目列表列",
+          "suggested": "项目列表",
+          "reason": "The actual use is the projects table aria-label in project-list.tsx:337; 项目列表 naturally names that table without a repeated 列."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.projects.project_model.live_live",
+          "issue": "The counted status reads as a sentence fragment with a dangling classifier: 1个运行中.",
+          "current": "{live, plural, other {{live, number, ::group-off}个运行中}}",
+          "suggested": "{live, plural, other {运行中：{live, number, ::group-off}}}",
+          "reason": "The context explicitly permits a noun-less compact live-session count. ICU execution for 0/1/2 produced 0个运行中 / 1个运行中 / 2个运行中; a status followed by its count is more natural and compact."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.projects.project_detail.with_value1",
+          "issue": "The optional concatenated target clause drops its required leading boundary space.",
+          "current": "，使用{value1}",
+          "suggested": " 并使用{value1}",
+          "reason": "The context sidecar explicitly requires a leading space, and project-detail.tsx:367-376 inserts this clause into the parent success message. Preserve the boundary while keeping Chinese clause order."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.projects.request_update.delivery_to_value1_could_not_be_confirmed",
+          "issue": "The appended delivery-status sentence drops its required leading boundary space.",
+          "current": "无法确认请求是否已送达{value1}。",
+          "suggested": " 无法确认请求是否已送达{value1}。",
+          "reason": "The sidecar identifies a concatenated clause and requires its leading/trailing space exactly. Its source starts with one ASCII space; the target starts with none."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.projects.request_update.value1_could_not_be_reached",
+          "issue": "The appended unreachable-recipient sentence drops its required leading boundary space.",
+          "current": "无法联系{value1}。",
+          "suggested": " 无法联系{value1}。",
+          "reason": "The sidecar identifies a concatenated clause and requires its leading/trailing space exactly. Its source starts with one ASCII space; the target starts with none."
+        }
+      ]
+    },
+    "ui.schedules": {
+      "namespace": "ui.schedules",
+      "status": "passed",
+      "sha256": {
+        "source": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
+        "target": "0326f7e38941588160fcb662a9389f5da3f37f23c9902cc20cdb15e5ce99c08b"
+      },
+      "findings": [
+        {
+          "severity": "NIT",
+          "key": "ui.schedules.scheduled_task_dialog.as_a_turn_in_that_conversation",
+          "issue": "The suffix removes the required space after the comma at the external directory-span boundary.",
+          "current": "，作为该对话中的一个轮次执行。",
+          "suggested": "， 作为该对话中的一个轮次执行。",
+          "reason": "The sidecar explicitly says to keep the leading comma and space after the directory span. Full-width Chinese comma is appropriate, but the structural ASCII space must survive."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.schedules.scheduled_task_dialog.with_your_default_model",
+          "issue": "The workspace explanation suffix removes its leading fragment-boundary space.",
+          "current": "，使用您的默认模型。",
+          "suggested": " 并使用您的默认模型。",
+          "reason": "This suffix follows an emphasized workspace span and the starts_in prefix. The style contract requires English fragment-boundary spaces to survive; the source starts with a space and the target does not."
+        }
+      ]
+    }
+  }
+}

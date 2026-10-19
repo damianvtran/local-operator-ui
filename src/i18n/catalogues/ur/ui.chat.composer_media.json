@@ -1,0 +1,9 @@
+{
+	"ui.chat.composer_media.recording": "ریکارڈنگ جاری ہے",
+	"ui.chat.composer_media.confirms": "تصدیق کرے",
+	"ui.chat.composer_media.cancels": "منسوخ کرے",
+	"ui.chat.composer_media.pasted_type": "چسپاں کردہ {mimeType}",
+	"ui.chat.composer_media.pasted_file": "چسپاں کردہ فائل",
+	"ui.chat.composer_media.preview_failed": "پیش منظر نہیں دکھایا جا سکا",
+	"ui.chat.composer_media.remove_attachment": "منسلکہ ہٹائیں"
+}

@@ -1,0 +1,21 @@
+{
+  "initial_frozen_install_seconds": 19.82,
+  "initial_store_was_worktree_local": true,
+  "initial_packages_downloaded": 1256,
+  "apfs_clone_delta_install_seconds": 7.21,
+  "delta_packages_downloaded": 135,
+  "dependency_locations": [
+    "worktree/node_modules",
+    "worktree/.pnpm-store/v11"
+  ],
+  "method": "Read-only cp -Rc of primary dependency/cache trees; only cloned modules storeDir rewritten; frozen private-store install with scripts ignored. No primary install/move/prune, no global store prune. Approved newly-created backup trees deleted after 116 targeted passes, both tscs, i18n224 and evidence52/1skip passed.",
+  "df_before_cleanup_available_kib": 16722380,
+  "df_after_cleanup_available_kib": 15313652,
+  "observed_available_increase_mib": -1375.71,
+  "disk_attribution_note": "Concurrent shared-volume activity dominates df: first cleanup interval showed less free space despite verified backup deletion; follow-up is recorded separately. No positive reclaimed-byte claim is inferred from these samples, and no du sums are used.",
+  "primary_package_and_lock_hashes_unchanged": true,
+  "primary_git_status_fingerprint_unchanged": true,
+  "only_approved_created_backups_deleted": true,
+  "df_followup_available_kib": 15786748,
+  "followup_change_vs_before_cleanup_mib": -913.7
+}

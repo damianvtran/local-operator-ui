@@ -60,7 +60,11 @@ import {
 	opensOnArrival,
 	tierFor,
 } from "../backend-settings-tiers";
-import { MODEL_EFFORT_SETTING_KEY } from "../promoted-setting-sections";
+import {
+	MODEL_EFFORT_SETTING_KEY,
+	TEAM_BRIDGE_ENABLED_SETTING_KEY,
+	TEAM_BRIDGE_SESSION_SETTING_KEY,
+} from "../promoted-setting-sections";
 import { DELEGATED_SECTION } from "../retention-duration";
 import { BackendSettingRow, type SettingGate } from "./backend-setting-row";
 import {
@@ -114,6 +118,12 @@ type BackendSettingsSectionProps = {
 	 * second control for it, with the global ladder as a second vocabulary.
 	 */
 	hideModelEffort?: boolean;
+	/**
+	 * Settings -> Agent messages owns both machine-local team-bridge rows (the
+	 * enabled switch and the CoS designation); the registry editor would be a
+	 * second control writing the same key.
+	 */
+	hideAgentMessages?: boolean;
 	/** Initial search filter, e.g. "web-search" from /search. */
 	initialFilter?: string;
 };
@@ -148,6 +158,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	focusKey,
 	hideInterfaceLanguage = false,
 	hideModelEffort = false,
+	hideAgentMessages = false,
 	initialFilter = "",
 }) => {
 	useI18nLocale();
@@ -296,8 +307,11 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	const isHidden = useCallback(
 		(setting: BackendSetting) =>
 			(hideInterfaceLanguage && setting.key === LANGUAGE_SETTING_KEY) ||
-			(hideModelEffort && setting.key === MODEL_EFFORT_SETTING_KEY),
-		[hideInterfaceLanguage, hideModelEffort],
+			(hideModelEffort && setting.key === MODEL_EFFORT_SETTING_KEY) ||
+			(hideAgentMessages &&
+				(setting.key === TEAM_BRIDGE_ENABLED_SETTING_KEY ||
+					setting.key === TEAM_BRIDGE_SESSION_SETTING_KEY)),
+		[hideInterfaceLanguage, hideModelEffort, hideAgentMessages],
 	);
 
 	/** Every registry row this host renders, for the counters below. */

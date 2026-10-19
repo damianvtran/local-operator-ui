@@ -3,6 +3,14 @@ import {
 	builtinOfferSignature,
 } from "@features/agents/builtin-offer";
 import { InstallBuiltinAgents } from "@features/agents/components/install-builtin-agents";
+import { CHAT_ROW_MENU_SCROLL_CLASS } from "@features/chat/chat-row-menu";
+import { TAG_DROP_PREVIEW_CLASSES } from "@features/chat/chat-tag-drag";
+import {
+	groupChatsByTag,
+	tagBucketRowIds,
+} from "@features/chat/chat-tag-groups";
+import { moveChatToTag } from "@features/chat/chat-tag-move";
+import { tagHeaderAt, useChatTagDrag } from "@features/chat/use-chat-tag-drag";
 /*
  * THE NETWORKS READ, for the remote rows' hover sentence: ONE observer, `poll:
  * false`, riding whatever the rail or the Mesh tab already fetched (one read per
@@ -64,6 +72,8 @@ import {
 import { Tooltip, TooltipProvider } from "@shared/components/ui/tooltip";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	CATALOGUE_HEAD_PAGE,
@@ -74,12 +84,14 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
+import { useSessionTagsStore } from "@shared/store/session-tags-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
 	dismissToast,
 	showSuccessToast,
 	showWarningToast,
 } from "@shared/utils/toast-manager";
+import { Tag } from "lucide-react";
 import {
 	Archive,
 	ArchiveRestore,
@@ -131,6 +143,11 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import { AGENT_ROSTER_SEED } from "../../command-palette/palette-search";
+import {
+	peerLinkDownLabel,
+	peerLinkDownVisibleLabel,
+	peerUncertainLabel,
+} from "../../mesh/peer-presence";
 import { focusRowAfterRemoval } from "../archive-confirm";
 import { ARCHIVE_FAILURE_TOAST_MS } from "../archive-undo";
 import {
@@ -154,6 +171,7 @@ import {
 } from "../chat-list-sections";
 import {
 	type PinMoveStep,
+	appendPinnedOrder,
 	canMovePinnedRow,
 	chatPinMoveCapJoined,
 	chatPinMoveChord,
@@ -267,6 +285,7 @@ import {
 import { ChatRemoteMark } from "./chat-remote-mark";
 import { ChatRowHoverIntent } from "./chat-row-hover-intent";
 import { ChatRowTitle } from "./chat-row-title";
+import { ChatSessionTagsDialog } from "./chat-session-tags-dialog";
 import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
 import {
 	HubLinkAggregateMark,
@@ -280,6 +299,7 @@ import {
 	HubSectionLines,
 	HubUpdateMark,
 } from "./hub-update-mark";
+import { ManageTagsDialog } from "./manage-tags-dialog";
 import { TeamAvatarBubble } from "./team-avatar-bubble";
 
 /*
@@ -978,6 +998,7 @@ export function ChatSidebar({
 	onSelectConversation,
 	onStageDraft,
 }: Props) {
+	useI18nLocale();
 	const navigate = useNavigate();
 	const location = useLocation();
 	const requestPanel = usePanelPresentationStore((state) => state.requestPanel);
@@ -1353,6 +1374,40 @@ export function ChatSidebar({
 	 * they are additive, each with its own `useMemo`/hook, and neither depends
 	 * on the other's order).
 	 */
+	// Capability absence is the entire old-backend path: no fetch, menu or dialog.
+	const tagsAvailable = desktopFeatureEnabled(
+		capabilities.data,
+		"session_tags",
+	);
+	const tagCategories = useSessionTagsStore((state) => state.categories);
+	const tagCategoriesLoading = useSessionTagsStore((state) => state.loading);
+	const tagCategoriesError = useSessionTagsStore((state) => state.error);
+	const fetchTagCategories = useSessionTagsStore(
+		(state) => state.fetchCategories,
+	);
+	const [tagMoveMode, setTagMoveMode] = useState(false);
+	const [tagRow, setTagRow] = useState<CanonicalSessionRow | null>(null);
+	const [manageTagsOpen, setManageTagsOpen] = useState(false);
+	const tagsInvoker = useRef<HTMLElement | null>(null);
+	const tagsOriginId = useRef<string | null>(null);
+	useEffect(() => {
+		if (ready && tagsAvailable) void fetchTagCategories();
+	}, [ready, tagsAvailable, fetchTagCategories]);
+	const returnTagsFocus = () => {
+		// Applying can move the row into another bucket and remount its button.
+		// Resolve the stable identity after the modal's focus trap has torn down,
+		// rather than focusing the detached element the context menu opened from.
+		requestAnimationFrame(() => {
+			const id = tagsOriginId.current;
+			const target = id
+				? document.querySelector<HTMLElement>(
+						`[data-session-row="${CSS.escape(id)}"] [data-chat-row]`,
+					)
+				: tagsInvoker.current;
+			target?.focus();
+			target?.scrollIntoView({ block: "nearest" });
+		});
+	};
 	const teamLabels = useMemo(
 		() =>
 			new Map(
@@ -3014,6 +3069,22 @@ export function ChatSidebar({
 	 */
 	const view = parseSidebarView(chatSidebarView);
 	/*
+	 * A pin pressed in this panel is written at the BOTTOM of the stored order (issue
+	 * #1067, rule 3; the WHY is on `appendPinnedOrder`). Kept out of the pin control's
+	 * handler so that handler stays short beside the row markup it sits in.
+	 */
+	const appendPin = (id: string) =>
+		setChatSidebarView({
+			...view,
+			pins: appendPinnedOrder(
+				pinnedRows([...listed, ...heldRows], pinsEnabled).map(
+					(entry) => entry.session_id,
+				),
+				view.pins,
+				id,
+			),
+		});
+	/*
 	 * THE PINNED SECTION'S OWN ORDER (issue #693), and the lists it is taken from -
 	 * each one because a different rule needs a different list.
 	 *
@@ -3167,10 +3238,9 @@ export function ChatSidebar({
 	 * `setPointerCapture` keeps every move aimed at the grip, keeps the drop a
 	 * number this module computes (`pinDragSlot`), and photographs.
 	 *
-	 * WHY THE GRIP AND NOT THE ROW: the row's box is its open-act button, and a
-	 * drag started anywhere inside it would have to guess whether the press meant
-	 * "open this chat" or "move it". A 24px handle states the intent, which is what
-	 * `project-board.tsx`'s grip does for its columns (the precedent this follows).
+	 * WHY THE GRIP STAYS: it states immediate reorder intent. V2-1 also lets the
+	 * row body enter this SAME model after a 180ms hold; its separate pending
+	 * phase preserves quick-open and pre-hold touch scrolling.
 	 *
 	 * THE POSITION IS THE ONLY STATE THE GESTURE CARRIES: no node is ever cloned,
 	 * re-parented or translated - the rows stay exactly where React put them and the
@@ -3229,19 +3299,59 @@ export function ChatSidebar({
 	 * section does not own), and a slot computed from an array would then count a
 	 * row the pointer cannot cross.
 	 */
+	const pinBucketIds = (id: string) =>
+		tagBucketRowIds(
+			orderedPinned,
+			tagCategories,
+			tagsAvailable &&
+				view.tagsEnabled &&
+				view.groupBy === "section" &&
+				!query.trim(),
+			id,
+		);
+
+	const pinDropTargetRef = useRef<string | null>(null);
+	const [pinHeaderTarget, setPinHeaderTarget] = useState(false);
+	const pinDropAllowedRef = useRef(true);
+	const pinDragXRef = useRef(0);
+	const pinHeaderRef = useRef<HTMLElement | null>(null);
+	const previewPinTarget = (x: number, y: number) => {
+		const live = pinDragRef.current;
+		if (!live) return;
+		const owner = listPanelRef.current;
+		const section = pinnedSectionRef.current;
+		const header = owner && section ? tagHeaderAt(owner, x, y, section) : null;
+		setPinHeaderTarget(header !== null);
+		pinHeaderRef.current?.classList.remove(...TAG_DROP_PREVIEW_CLASSES);
+		pinHeaderRef.current = header;
+		header?.classList.add(...TAG_DROP_PREVIEW_CLASSES);
+		pinDropTargetRef.current = header?.dataset.tagDropTarget ?? null;
+		const hit = document
+			.elementFromPoint(x, y)
+			?.closest<HTMLElement>("[data-session-row]");
+		pinDropAllowedRef.current =
+			!!hit &&
+			hit.closest("[data-chat-section]") === pinnedSectionRef.current &&
+			pinBucketIds(live.id).includes(hit.dataset.sessionRow ?? "");
+	};
 	const pinDragRowBoxes = () => {
 		const section = pinnedSectionRef.current;
 		if (section === null) return [];
+		const allowed = pinDragRef.current
+			? new Set(pinBucketIds(pinDragRef.current.id))
+			: null;
 		return Array.from(
 			section.querySelectorAll<HTMLElement>("[data-session-row]"),
-		).map((node) => {
-			const rect = node.getBoundingClientRect();
-			return {
-				id: node.getAttribute("data-session-row") ?? "",
-				top: rect.top,
-				bottom: rect.bottom,
-			};
-		});
+		)
+			.filter((node) => !allowed || allowed.has(node.dataset.sessionRow ?? ""))
+			.map((node) => {
+				const rect = node.getBoundingClientRect();
+				return {
+					id: node.getAttribute("data-session-row") ?? "",
+					top: rect.top,
+					bottom: rect.bottom,
+				};
+			});
 	};
 	/** The slot under a pointer y, and one state write only when it changes. */
 	const applyPinDragOver = (y: number) => {
@@ -3315,6 +3425,7 @@ export function ChatSidebar({
 		 * rides the section (R2), so this is the landing following the content rather
 		 * than the indicator being re-measured.
 		 */
+		previewPinTarget(pinDragXRef.current, y);
 		applyPinDragOver(y);
 		pinDragAutoScrollRef.current = requestAnimationFrame(runPinDragAutoScroll);
 	};
@@ -3360,17 +3471,21 @@ export function ChatSidebar({
 			slot: -1,
 		};
 		pinDragYRef.current = event.clientY;
+		pinDragXRef.current = event.clientX;
+		previewPinTarget(event.clientX, event.clientY);
 	};
 	const movePinDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
 		const live = pinDragRef.current;
 		if (live === null || event.pointerId !== live.pointerId) return;
 		pinDragYRef.current = event.clientY;
+		pinDragXRef.current = event.clientX;
+		previewPinTarget(event.clientX, event.clientY);
 		if (!live.armed) {
 			live.armed = true;
 			setPinDrag({ id: live.id, slot: live.slot });
 			/* The same family the pair and the chords announce in: the reader is told
 			   the gesture began, so a cancelled drop is a change rather than a silence. */
-			announcePinMove(`Moving “${live.label}”.`);
+			announcePinMove(t("ui.chat.tags.move_armed", { name: live.label }));
 			if (pinDragAutoScrollRef.current === null)
 				pinDragAutoScrollRef.current =
 					requestAnimationFrame(runPinDragAutoScroll);
@@ -3393,7 +3508,7 @@ export function ChatSidebar({
 				(row) => row.session_id,
 			),
 			view.pins,
-			pinnedDrawnIds,
+			pinBucketIds(sessionId),
 			sessionId,
 			slot,
 		);
@@ -3424,16 +3539,30 @@ export function ChatSidebar({
 		const drawn = pinnedOrder(pinnedCatalogueIds, next);
 		announcePinMove(pinMoveNote(label, drawn.indexOf(sessionId), drawn.length));
 	};
-	const settlePinDrag = (commit: boolean) => {
+	const settlePinDrag = (commit: boolean, point?: { x: number; y: number }) => {
+		if (point) previewPinTarget(point.x, point.y);
 		const live = pinDragRef.current;
 		pinDragRef.current = null;
 		stopPinDragAutoScroll();
+		pinHeaderRef.current?.classList.remove(...TAG_DROP_PREVIEW_CLASSES);
+		pinHeaderRef.current = null;
 		setPinDrag(null);
+		setPinHeaderTarget(false);
 		if (live === null || !live.armed) return;
-		if (!commit) {
+		const tagTarget = pinDropTargetRef.current;
+		pinDropTargetRef.current = null;
+		if (commit && tagTarget) {
+			const row = [...listed, ...heldRows].find(
+				(entry) => entry.session_id === live.id,
+			);
+			if (row)
+				void moveChatToTag(row, tagTarget, announcePinMove).catch(() => {});
+			return;
+		}
+		if (!commit || !pinDropAllowedRef.current) {
 			/* The board's sentence: a cancelled gesture says so rather than leaving
 			   "Moving …" standing in the region as the last thing the reader heard. */
-			announcePinMove("Move cancelled.");
+			announcePinMove(t("ui.chat.tags.move_cancelled"));
 			return;
 		}
 		/*
@@ -3468,6 +3597,49 @@ export function ChatSidebar({
 	 */
 	const settlePinDragRef = useRef(settlePinDrag);
 	settlePinDragRef.current = settlePinDrag;
+	const rowTagDrag = useChatTagDrag({
+		enabled:
+			tagsAvailable &&
+			view.tagsEnabled &&
+			view.groupBy === "section" &&
+			!query.trim(),
+		arm: (id) => {
+			announcePinMove(t("ui.chat.tags.move_armed", { name: rowLabel(id) }));
+			if (pinnedDrawnIds.includes(id)) {
+				pinDragRef.current = {
+					id,
+					label: rowLabel(id),
+					pointerId: -1,
+					armed: true,
+					slot: -1,
+				};
+				setPinDrag({ id, slot: -1 });
+			}
+		},
+		move: (id, y, over, target) => {
+			if (!pinDragRef.current || pinDragRef.current.id !== id) return;
+			pinDropTargetRef.current = target;
+			setPinHeaderTarget(target !== null);
+			const hit = over?.closest<HTMLElement>("[data-session-row]");
+			pinDropAllowedRef.current =
+				!!hit &&
+				hit.closest("[data-chat-section]") === pinnedSectionRef.current &&
+				pinBucketIds(id).includes(hit.dataset.sessionRow ?? "");
+			if (!target && pinDropAllowedRef.current) applyPinDragOver(y);
+		},
+		settle: (id, target, commit) => {
+			if (pinDragRef.current?.id === id) {
+				settlePinDragRef.current(commit);
+				return;
+			}
+			const row = [...listed, ...heldRows].find(
+				(entry) => entry.session_id === id,
+			);
+			if (commit && target && row)
+				void moveChatToTag(row, target, announcePinMove).catch(() => {});
+			else announcePinMove(t("ui.chat.tags.move_cancelled"));
+		},
+	});
 	/* Escape cancels, the one drag state with no pointer of its own (the board's rule). */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: gated on the drag state, not on the per-render closures it calls.
 	useEffect(() => {
@@ -3511,13 +3683,18 @@ export function ChatSidebar({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: gated on the drag state, not on the per-render closures it calls.
 	useEffect(() => {
 		if (pinDrag === null) return;
-		const end = () => settlePinDragRef.current(true);
+		const end = (event: PointerEvent) => {
+			if (pinDragRef.current?.pointerId !== event.pointerId) return;
+			settlePinDragRef.current(true, { x: event.clientX, y: event.clientY });
+		};
 		const cancel = () => settlePinDragRef.current(false);
 		window.addEventListener("pointerup", end);
 		window.addEventListener("pointercancel", cancel);
+		window.addEventListener("blur", cancel);
 		return () => {
 			window.removeEventListener("pointerup", end);
 			window.removeEventListener("pointercancel", cancel);
+			window.removeEventListener("blur", cancel);
 		};
 	}, [pinDrag !== null]);
 	/* The auto-scroll loop follows the gesture, not the render (the board's rule). */
@@ -4048,7 +4225,44 @@ export function ChatSidebar({
 	 * banners are suppressed there), so that is a record of what the code does rather than
 	 * a measurement.
 	 */
-	const sessionRow = (row: CanonicalSessionRow, nested = false) => {
+	const taggedRows = (rows: CanonicalSessionRow[]) => {
+		const groups = groupChatsByTag(
+			rows,
+			tagCategories,
+			tagsAvailable &&
+				view.tagsEnabled &&
+				view.groupBy === "section" &&
+				!query.trim(),
+		);
+		if (!groups) return rows.map((row) => sessionRow(row));
+		return groups.map((bucket) => (
+			<div
+				key={bucket.id}
+				data-chat-tag-group={bucket.id}
+				className="[&[data-tag-drop-preview]_[data-chat-row]]:bg-row-selected [&[data-tag-drop-preview]_[data-session-row]]:bg-row-selected"
+			>
+				<div
+					data-tag-drop-target={bucket.id}
+					className="flex h-7 items-center gap-2 px-2 text-meta text-ink-dim"
+				>
+					<span className="min-w-0 flex-1 truncate" title={bucket.name}>
+						{bucket.id === "untagged"
+							? t("ui.chat.tags.untagged")
+							: bucket.name}
+					</span>
+					<span>{bucket.rows.length}</span>
+				</div>
+				<div data-tag-drop-target={bucket.id} data-tag-drop-body>
+					{bucket.rows.map((row) => sessionRow(row, false, true))}
+				</div>
+			</div>
+		));
+	};
+	const sessionRow = (
+		row: CanonicalSessionRow,
+		nested = false,
+		tagDraggable = false,
+	) => {
 		const trailing = rowTrailingStatement({
 			marked: conversationMatches.has(row.session_id),
 			unstarted: unstarted.has(row.session_id),
@@ -4190,7 +4404,7 @@ export function ChatSidebar({
 		 * With neither capability the menu does not exist (the withdrawn path
 		 * returns before it), and this is what keeps its clause off that row.
 		 */
-		const menuEnabled = pinsEnabled || archiveEnabled;
+		const menuEnabled = pinsEnabled || archiveEnabled || tagsAvailable;
 		/*
 		 * WHETHER THE MENU OFFERS FORK ON THIS ROW - the one named predicate, read
 		 * once, for the item below. A fork copies a conversation's TRANSCRIPT, and the
@@ -4258,7 +4472,8 @@ export function ChatSidebar({
 		 * two copies of the predicate are two chances for the row to be marked and
 		 * unmarked at once.
 		 */
-		const dragging = pinDrag?.id === row.session_id;
+		const dragging =
+			pinDrag?.id === row.session_id || rowTagDrag.armedId === row.session_id;
 		/**
 		 * WHETHER THIS ROW OFFERS THE REMEDY, read once for the same reason `current` is —
 		 * it decides three things now (the tooltip's tail, the `aria-describedby` and the
@@ -4359,10 +4574,13 @@ export function ChatSidebar({
 					{bindingClause(row)}
 				</span>
 				<span className="block">
-					{row.status?.label ??
-						(synthesized.has(row.session_id)
-							? "found by search, beyond the chats listed here"
-							: "Recent")}
+					{row.link_down === true
+						? peerLinkDownLabel(row, listNow / 1000)
+						: (peerUncertainLabel(row) ??
+							row.status?.label ??
+							(synthesized.has(row.session_id)
+								? "found by search, beyond the chats listed here"
+								: "Recent"))}
 					{silent ? ` · ${SILENT_REMEDY}` : ""}
 					{openedByNote(row)}
 					{unstarted.has(row.session_id) ? ", not sent yet" : ""}
@@ -4429,6 +4647,11 @@ export function ChatSidebar({
 					// the row's box with whatever the wrapper carries beside it, and a full-width
 					// button inside a flex wrapper with a sibling is a row that overflows.
 					"min-w-0 grow text-left",
+					// Only grouped rows participate; keep held feedback through pointer capture.
+					tagDraggable &&
+						(rowTagDrag.armedId === row.session_id
+							? "cursor-grabbing"
+							: "cursor-grab active:cursor-grabbing"),
 					nested && "pl-7",
 					current && rowCurrent,
 					// m4: the unread mark is NOT here. `font-semibold` on this
@@ -4493,7 +4716,12 @@ export function ChatSidebar({
 								.join(" "),
 						}
 					: {})}
+				onPointerDown={(event) => rowTagDrag.start(row.session_id, event)}
 				onClick={(event) => {
+					if (rowTagDrag.consumeClick(row.session_id, event.detail)) {
+						event.preventDefault();
+						return;
+					}
 					/*
 					 * The same guard as the pin's (see `dropRepeatPress`): a press that repeats the
 					 * previous one without the pointer having gone anywhere belongs to the row the
@@ -4525,10 +4753,12 @@ export function ChatSidebar({
 					className="flex size-3.5 shrink-0 items-center justify-center"
 				>
 					{row.locality === "remote" && (
-						<ChatRemoteMark unreachable={row.reachable === false} />
+						<ChatRemoteMark
+							unreachable={row.link_down === true || row.reachable === false}
+						/>
 					)}
 				</span>
-				<ChatSessionStatus row={row} />
+				<ChatSessionStatus row={row} nowSeconds={listNow / 1000} />
 				{/*
 				 * THE OUTSTANDING-ASKS MARK, beside the status mark and BEFORE the title.
 				 * A leading fact rather than a trailing one, for the reason the archived
@@ -4787,19 +5017,33 @@ export function ChatSidebar({
 				 * read after the title, so the row's name stays `state — title` with the
 				 * time as its tail (U21).
 				 */}
-				{!isRunningRow(row) && relativeTime(row, listNow, view.basis) && (
-					<>
-						<span
-							aria-hidden="true"
-							data-session-time
-							className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-has-[:focus-visible]:hidden group-data-[session-hover-intent]:hidden"
-						>
-							{relativeTime(row, listNow, view.basis)}
-						</span>
-						<span className="sr-only">
-							, {relativeTimeSentence(row, listNow, view.basis)}
-						</span>
-					</>
+				{peerUncertainLabel(row) ? (
+					<span className="shrink-0 text-meta text-ink-dim">
+						{peerUncertainLabel(row)}
+					</span>
+				) : row.link_down === true ? (
+					<span
+						className="shrink-0 text-meta text-warning"
+						title={peerLinkDownLabel(row, listNow / 1000)}
+					>
+						{peerLinkDownVisibleLabel(row, listNow / 1000)}
+					</span>
+				) : (
+					!isRunningRow(row) &&
+					relativeTime(row, listNow, view.basis) && (
+						<>
+							<span
+								aria-hidden="true"
+								data-session-time
+								className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-has-[:focus-visible]:hidden group-data-[session-hover-intent]:hidden"
+							>
+								{relativeTime(row, listNow, view.basis)}
+							</span>
+							<span className="sr-only">
+								, {relativeTimeSentence(row, listNow, view.basis)}
+							</span>
+						</>
+					)
 				)}
 			</button>
 		);
@@ -5007,8 +5251,11 @@ export function ChatSidebar({
 				 * keeps its card, and the card returns the moment the pointer AND the focus
 				 * have both left the mark.
 				 */
-				disabled={pinDrag !== null}
 				suppressed={
+					pinDrag !== null ||
+					rowTagDrag.armedId !== null ||
+					// The modal owns the overlay plane, including pending/error states.
+					tagRow !== null ||
 					teamBubbleHovered === row.session_id ||
 					teamBubbleFocused === row.session_id
 				}
@@ -5016,7 +5263,7 @@ export function ChatSidebar({
 				{box}
 			</Tooltip>
 		);
-		if (!pinsEnabled && !archiveEnabled) {
+		if (!menuEnabled) {
 			return withFlyout(
 				<div
 					onBlur={keepFlyoutWhileFocusStaysInRow}
@@ -5173,7 +5420,9 @@ export function ChatSidebar({
 									startPinDrag(row.session_id, label, event)
 								}
 								onPointerMove={movePinDrag}
-								onPointerUp={() => settlePinDrag(true)}
+								onPointerUp={(event) =>
+									settlePinDrag(true, { x: event.clientX, y: event.clientY })
+								}
 								onPointerCancel={() => settlePinDrag(false)}
 								className={cn(
 									"hidden size-6 shrink-0 cursor-grab items-center justify-center rounded-md active:cursor-grabbing",
@@ -5310,10 +5559,11 @@ export function ChatSidebar({
 								title: row.title ?? undefined,
 								updated_at: row.updated_at ?? undefined,
 							});
+							if (!pinned) appendPin(row.session_id); // rule 3, see `appendPin`
 							/*
 							 * AN UNPIN FORGETS ITS SLOT (issue #693 rule 4, `chat-pin-order.ts`): the id
 							 * leaves the stored manual order with it, so re-pinning is a NEW pin at the
-							 * top rather than the resurrection of a position the reader unwound - and the
+							 * bottom rather than the resurrection of a position the reader unwound - and the
 							 * stored list cannot grow entries for conversations that are no longer in
 							 * the section it orders. Guarded on membership, so the common unpin (of a
 							 * row nobody has moved) writes no preference at all.
@@ -5833,6 +6083,7 @@ export function ChatSidebar({
 				key={row.session_id}
 				open={menuOpen}
 				onOpenChange={(open) => {
+					if (open && (pinDrag !== null || rowTagDrag.armedId !== null)) return;
 					/*
 					 * THE POINTER CLOSE'S RETURN TARGET WHEN NO PRESS RAN (U8; the
 					 * restore lives in `onCloseAutoFocus`). The press records it
@@ -5902,7 +6153,7 @@ export function ChatSidebar({
 				 * chord would be a hint for a gesture that does nothing. It is drawn from the
 				 * sidebar's own `unstarted` statement (`forkable`, above).
 				 *
-				 * THE MENU'S CAP IS SEVEN ROWS, and the rule - not a number - is what the design
+				 * THE MENU'S CAP IS EIGHT ROWS, and the rule - not a number - is what the design
 				 * record now concludes with: a row earns its place by being an act on THIS row
 				 * that has NO OTHER DOOR THE USER CAN FIND. Archive and Pin qualify (the strip's
 				 * pair is `tabIndex={-1}` and reachable only through chords the row prints
@@ -5918,9 +6169,9 @@ export function ChatSidebar({
 				 * inline editor is threaded the page's own `sessionId` (`chat-page.tsx`), and
 				 * `/rename` from the composer or the palette is the pane's too, so for a row the
 				 * user has NOT opened NEITHER door reaches it - which is the whole asymmetry the
-				 * row menu exists for. Each raise moved the number rather than replacing a row,
+				 * row menu exists for. Tags is the eighth, one row-scoped picker rather than one item per category. Each raise moved the number rather than replacing a row,
 				 * and the cap's widest state is a pinned row, where the Move rows draw their full
-				 * chords - it now draws SEVEN rows, so the pinned-row frame and its measurement
+				 * chords - it now draws EIGHT rows, so the pinned-row frame and its measurement
 				 * are re-derived in the evidence pass
 				 * (`docs/evidence/chat-sidebar-row-context-menu/README.md`); the five-row panel this
 				 * note used to carry (296 × 184 at a 280px sidebar) no longer describes it, and no
@@ -5932,6 +6183,9 @@ export function ChatSidebar({
 				 * failing assertion rather than a quiet addition.
 				 */}
 				<ContextMenuContent
+					/* At the app’s 600px floor, half the viewport is 300px: the ten-row
+					 * menu genuinely scrolls while keeping every 32px target keyboard-reachable. */
+					className={CHAT_ROW_MENU_SCROLL_CLASS}
 					onFocus={(event) => {
 						/*
 						 * THE KEYBOARD PATH LANDS IN THE FIRST ITEM (U-D4's minimum; the
@@ -5973,6 +6227,7 @@ export function ChatSidebar({
 						 * composed after this one and checks `defaultPrevented`.
 						 */
 						event.preventDefault();
+						if (tagRow) return;
 						const remembered = menuFocusReturnRef.current;
 						menuFocusReturnRef.current = null;
 						if (!menuOpenedByKeyboard.current) {
@@ -6155,6 +6410,51 @@ export function ChatSidebar({
 						<Pencil aria-hidden="true" />
 						<span>Rename conversation</span>
 					</ContextMenuItem>
+					{tagsAvailable && (
+						<ContextMenuItem
+							onSelect={() => {
+								tagsInvoker.current = document.querySelector<HTMLElement>(
+									`[data-session-row="${CSS.escape(row.session_id)}"] [data-chat-row]`,
+								);
+								tagsOriginId.current = row.session_id;
+								setTagMoveMode(false);
+								setTagRow(row);
+							}}
+						>
+							<Tag aria-hidden="true" className="size-3.5" />
+							{t("ui.chat.tags.menu")}
+						</ContextMenuItem>
+					)}
+
+					{tagsAvailable && (
+						<>
+							{(row.tags?.length ?? 0) > 0 && (
+								<ContextMenuItem
+									onSelect={() => {
+										void moveChatToTag(row, "untagged", announcePinMove).catch(
+											() => {},
+										);
+									}}
+								>
+									<X aria-hidden="true" />
+									{t("ui.chat.tags.remove_all", {
+										count: new Set(row.tags?.map((tag) => tag.id)).size,
+									})}
+								</ContextMenuItem>
+							)}
+							<ContextMenuItem
+								onSelect={() => {
+									tagsOriginId.current = row.session_id;
+									setTagMoveMode(true);
+									setTagRow(row);
+								}}
+							>
+								<Tag aria-hidden="true" />
+								{t("ui.chat.tags.move_menu")}
+							</ContextMenuItem>
+						</>
+					)}
+
 					{offersMove && (
 						<>
 							{/*
@@ -9117,7 +9417,7 @@ export function ChatSidebar({
 					className="relative"
 				>
 					{sectionLabel("Pinned")}
-					{orderedPinned.map((row) => sessionRow(row))}
+					{taggedRows(orderedPinned)}
 					{/*
 					 * THE INSERTION INDICATOR, and it exists ONLY while a drag does: a 2px line in
 					 * the gap the row would land in, `bg-accent`'s colour step and nothing else -
@@ -9128,7 +9428,7 @@ export function ChatSidebar({
 					 * region speaks in words: an assistive reader is told where the row moved to,
 					 * and a decorative element with no text would be one more thing to skip.
 					 */}
-					{pinDrag !== null && (
+					{pinDrag !== null && !pinHeaderTarget && (
 						<div
 							ref={pinIndicatorRef}
 							aria-hidden="true"
@@ -9173,7 +9473,7 @@ export function ChatSidebar({
 								 */
 								key === firstSection ? markAllReadControl : undefined,
 							)}
-							{rows.map((row) => sessionRow(row))}
+							{taggedRows(rows)}
 						</section>
 					);
 				})}
@@ -9404,6 +9704,26 @@ export function ChatSidebar({
 			 * `skipDelayDuration`, so sweeping from one row to the next would re-wait on
 			 * every one. Sharing it is what makes the panel's hover read as one surface.
 			 */}
+			{tagsAvailable && tagRow && (
+				<ChatSessionTagsDialog
+					key={tagRow.session_id}
+					row={tagRow}
+					onMove={
+						tagMoveMode
+							? (target) => moveChatToTag(tagRow, target, announcePinMove)
+							: undefined
+					}
+					onClose={() => setTagRow(null)}
+					returnFocus={returnTagsFocus}
+				/>
+			)}
+			{tagsAvailable && manageTagsOpen && (
+				<ManageTagsDialog
+					onClose={() => setManageTagsOpen(false)}
+					returnFocus={returnTagsFocus}
+				/>
+			)}
+
 			<TooltipProvider>
 				{/*
 				 * THE BAND: the segment that divides the destinations above from the
@@ -9533,6 +9853,20 @@ export function ChatSidebar({
 								<ChatSidebarViewMenu
 									view={view}
 									counts={viewCounts}
+									tagsAvailable={tagsAvailable}
+									tagsEmpty={
+										!tagCategoriesLoading &&
+										tagCategoriesError === null &&
+										tagCategories.length === 0
+									}
+									onManageTags={() => {
+										tagsInvoker.current = document.querySelector<HTMLElement>(
+											"[data-sidebar-view-options]",
+										);
+										tagsOriginId.current = null;
+										setViewOpen(false);
+										setManageTagsOpen(true);
+									}}
 									onView={setChatSidebarView}
 								/>
 							</PopoverContent>
@@ -9842,6 +10176,7 @@ export function ChatSidebar({
 					id={CHAT_REGION_ID}
 					tabIndex={-1}
 					data-sidebar-region="scroller"
+					data-tag-drag-list=""
 					/* The edge cues (issue #845): `index.css` masks on this hook. */
 					data-lo-sidebar-edge-cues
 					onScroll={() => {

@@ -66,7 +66,7 @@
  *     the design round ruled the SETTLED failure's copy, not this live arm's,
  *     so it is recorded in the PR body rather than treated as ruled.
  *   - the error sentence renders VERBATIM (a stable platform sentence that is
- *     safe to read as-is; `error_type` is carried for structure, not display).
+ *     safe to read as-is; `error_type` labels the refusal above that text).
  *
  * AND ONE CODE IS A RECEIPT RATHER THAN AN ERROR: a cancel against an
  * already-finished job comes back as a conflict with `error_type:
@@ -78,6 +78,16 @@
  * result's own content either way.
  */
 
+import { soundCostCaption } from "./sound-cost-caption";
+export { soundCostCaption } from "./sound-cost-caption";
+import {
+	type SoundBatchItem,
+	soundBatchCostCaption,
+	soundBatchItems,
+	soundBatchNote,
+	soundBatchProgress,
+	soundBatchSummary,
+} from "./sound-batch-model";
 import type { TranscriptImage, TranscriptRecord } from "./transcript-reducer";
 
 /** The tool-record variant of the transcript union, named for this module. */
@@ -142,6 +152,21 @@ export function isImageGenTool(toolName: string): boolean {
 /** Whether a tool call is the video lane's generating call. */
 export function isVideoGenTool(toolName: string): boolean {
 	return toolName === VIDEO_GEN_TOOL_NAME;
+}
+
+/**
+ * Whether a tool call is one of the two AUDIO calls, whose settlement can
+ * arrive later on its own journal row (`audio_settle_v1`).
+ *
+ * A separate predicate from `isImageGenTool` because the settlement link is
+ * a fact about the audio lifecycle only: images and videos have no
+ * bounded-poll settlement row, so nothing there can retire a clause.
+ */
+export function isSoundGenTool(toolName: string): boolean {
+	return (
+		toolName === VOICEOVER_GEN_TOOL_NAME ||
+		toolName === SOUND_EFFECT_GEN_TOOL_NAME
+	);
 }
 
 /**
@@ -364,6 +389,7 @@ export type ImageGenCardView =
 	  }
 	| {
 			state: "running";
+			batchProgress?: { total: number; note: string | null };
 			/**
 			 * Which artifact this call produces — the one fact the state line's noun
 			 * branches on ("Generating image…" / "Generating video…"). The failure
@@ -398,6 +424,12 @@ export type ImageGenCardView =
 	  }
 	| {
 			state: "done";
+			/** A result-backed receipt, never a quote relabelled as a charge. */
+			costCaption?: string | null;
+			/** Additive batch receipts; null retains the approved single-player body. */
+			batch?: SoundBatchItem[] | null;
+			batchSummary?: string;
+			batchNote?: string | null;
 			images: readonly TranscriptImage[];
 			/** The material noun this receipt names ("Generated image" / "Generated video"). */
 			material: ImageGenMaterial;
@@ -413,6 +445,10 @@ export type ImageGenCardView =
 	  }
 	| {
 			state: "failed";
+			batch?: SoundBatchItem[] | null;
+			batchSummary?: string;
+			batchNote?: string | null;
+			costCaption?: string | null;
 			/** The material noun the absence sentence names when no text was stated. */
 			material: ImageGenMaterial;
 			/**
@@ -425,16 +461,32 @@ export type ImageGenCardView =
 			 */
 			message: string | null;
 			/**
-			 * The frozen `error_type` (FAL's structured code or a `media_*` platform
-			 * code), carried for structure rather than display; `null` when no frame
-			 * states one. The field is wired (harness PR #2089; `canonicalProgress`
-			 * reads it): `media_already_completed` and a plain cancel's absent type
-			 * are what decide the state above.
+			 * Human-readable sound/planning failure class, or null for other media
+			 * and when the unchanged error sentence already opens with that class.
+			 * The raw wire discriminator stays in `canonicalProgress` for state
+			 * selection; identifiers must not leak into the reader-facing label.
 			 */
 			errorType: string | null;
 	  }
 	| {
 			state: "cancelled";
+			material?: ImageGenMaterial;
+			batch?: SoundBatchItem[] | null;
+			batchSummary?: string;
+			batchNote?: string | null;
+			costCaption?: string | null;
+			settlementCaption?: string | null;
+			/**
+			 * Whether a TERMINAL settlement for this call exists somewhere else in
+			 * the transcript - the `audio_settle_v1` journal row that arrives after
+			 * the cancelled call and renders as its own receipt.
+			 *
+			 * Distinct from `settlementCaption`, which is the same fact carried on
+			 * the call's own details. Both retire the cancelled line's
+			 * "Checking for settlement." clause (design D7, UX U9); only the
+			 * caption also paints the amount under the call.
+			 */
+			settled?: boolean;
 			/**
 			 * Whether the call had started executing when it was stopped. The
 			 * settled receipt's sentence follows the same queued/running split the
@@ -465,7 +517,18 @@ export type ImageGenCardState = ImageGenCardView["state"];
  */
 export function imageGenCardView(
 	record: ImageGenToolRecord,
-	{ stopping = false }: { stopping?: boolean } = {},
+	{
+		stopping = false,
+		settled = false,
+	}: {
+		stopping?: boolean;
+		/**
+		 * A terminal settlement row for this call exists later in the transcript.
+		 * Read by the cancelled arms only, and only to retire the pending clause -
+		 * the receipt itself is that row's to paint.
+		 */
+		settled?: boolean;
+	} = {},
 ): ImageGenCardView {
 	/* The canonical payload, read once for every arm below that branches on it. */
 	const canonical = canonicalProgress(record.details);
@@ -476,6 +539,24 @@ export function imageGenCardView(
 	 * the tool name again.
 	 */
 	const material = imageGenMaterial(record.toolName);
+	const sound = material === "voiceover" || material === "sound-effect";
+	const batch =
+		sound && record.phase === "done"
+			? soundBatchItems(record.details, record.images ?? [])
+			: null;
+	const batchProgress = sound
+		? soundBatchProgress(record.args, record.details)
+		: null;
+	const batchFields = batch
+		? {
+				batch,
+				batchSummary: soundBatchSummary(record.details, batch),
+				batchNote: soundBatchNote(record.details, record.output),
+			}
+		: {};
+	const settlementCaption = sound
+		? soundSettlementCaption(record.details)
+		: null;
 	/*
 	 * ARM 1, the interrupts. `stopped` is the call that was running when the
 	 * turn was aborted; `skipped`/`aborted` are the harness's verdicts that the
@@ -488,6 +569,15 @@ export function imageGenCardView(
 			state: "cancelled",
 			generating: record.startedAt !== null,
 			message: canonical.error ?? record.output,
+			...(batch
+				? {
+						...batchFields,
+						material,
+						costCaption: soundBatchCostCaption(record.details),
+					}
+				: {}),
+			...(settlementCaption ? { settlementCaption } : {}),
+			...(settlementCaption || settled ? { settled: true } : {}),
 		};
 	if (record.notRunKind === "skipped" || record.notRunKind === "aborted")
 		return { state: "cancelled", generating: false, message: record.output };
@@ -506,7 +596,9 @@ export function imageGenCardView(
 			state: "failed",
 			material,
 			message: record.notRunReason,
-			errorType: null,
+			errorType: sound
+				? humanErrorClass(record.notRunKind, record.notRunReason)
+				: null,
 		};
 	/*
 	 * ARM 3, the turn that died while the call was still being dictated: the
@@ -516,6 +608,20 @@ export function imageGenCardView(
 	 */
 	if (record.neverSent === true)
 		return { state: "cancelled", generating: false, message: record.output };
+	// An all-failed batch is one failed call, but its individual server errors
+	// are still the product. Keep them instead of collapsing to one text blob.
+	if (batch && record.isError)
+		return {
+			state: "failed",
+			material,
+			message: canonical.error ?? record.output,
+			errorType: humanErrorClass(
+				canonical.errorType,
+				canonical.error ?? record.output,
+			),
+			...batchFields,
+			costCaption: soundBatchCostCaption(record.details),
+		};
 	/*
 	 * ARM 4, the tool's own error result — three readings, in this order:
 	 *
@@ -552,6 +658,8 @@ export function imageGenCardView(
 				 */
 				generating: record.startedAt !== null,
 				message: canonical.error ?? record.output,
+				...(settlementCaption ? { settlementCaption } : {}),
+				...(settlementCaption || settled ? { settled: true } : {}),
 			};
 		return {
 			state: "failed",
@@ -569,7 +677,9 @@ export function imageGenCardView(
 				(canonical.errorType === "audio_rate_limited"
 					? AUDIO_RATE_LIMITED_COPY
 					: null),
-			errorType: canonical.errorType,
+			errorType: sound
+				? humanErrorClass(canonical.errorType, canonical.error ?? record.output)
+				: null,
 		};
 	}
 	/*
@@ -630,9 +740,13 @@ export function imageGenCardView(
 				startedAtMs,
 				progress: progressFrom(canonical),
 				note: canonical.error,
+				...(batchProgress ? { batchProgress } : {}),
 			};
 		}
-		case "done":
+		case "done": {
+			const cost = sound
+				? soundCostCaption(record.details, record.output)
+				: null;
 			/*
 			 * THE SETTLED SUCCESS. `images` is what the row's own media block renders
 			 * from — the card mounts each entry by its KIND (a picture through
@@ -646,8 +760,53 @@ export function imageGenCardView(
 				material,
 				durationS: record.durationS ?? null,
 				receipt: "generated",
+				batch,
+				...batchFields,
+				costCaption: batch ? soundBatchCostCaption(record.details) : cost,
 			};
+		}
 	}
+}
+
+/** The clause `withoutSettlementClause` retires; top-level so it compiles once. */
+const SETTLEMENT_PENDING_CLAUSE = /\s*Checking for settlement\.?\s*$/;
+
+/**
+ * The cancelled line minus the clause a settlement row answers.
+ *
+ * ONE FACT, ONE ROW (design D7, UX U8/U9). "Checking for settlement." is a
+ * present-tense claim about work still outstanding; once a pending row or a
+ * billed receipt exists it IS the answer, so keeping the clause above it
+ * either repeats it (pending) or contradicts it (settled). Only the trailing
+ * clause is retired - the sentence's own stop facts stay as the wire wrote
+ * them, and a row with no settlement row is untouched.
+ */
+export function withoutSettlementClause(sentence: string): string {
+	return sentence.replace(SETTLEMENT_PENDING_CLAUSE, "").trimEnd();
+}
+
+/** A cancelled request can still be billed: retain the server's unknowns. */
+function soundSettlementCaption(details: unknown): string | null {
+	if (!details || typeof details !== "object") return null;
+	const result = details as Record<string, unknown>;
+	const cost = result.cost as Record<string, unknown> | null;
+	if (result.settled === true) return soundCostCaption(details);
+	return result.settled === null &&
+		result.cost_usd === null &&
+		cost?.basis === "quote"
+		? "Settlement pending — the final charge will appear once the provider reports it."
+		: null;
+}
+
+/** Labels are for sound/planning failures only; never repeat the opening sentence. */
+function humanErrorClass(
+	kind: string | null | undefined,
+	message?: string | null,
+): string | null {
+	if (!kind) return null;
+	const words = kind.replace(/_/g, " ");
+	if (message?.toLowerCase().startsWith(words.toLowerCase())) return null;
+	return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 /** Which affordance a control is. */

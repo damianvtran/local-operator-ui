@@ -1,0 +1,35 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "e75117eb3561",
+  "date": "2026-10-19",
+  "locale": "ur",
+  "round": 2,
+  "section": 3,
+  "status": "passed",
+  "scope": "Remediation delta audit of the changed namespaces in Section 3: changed keys plus direct composition neighbours; unchanged namespaces remained certified from round 1.",
+  "fallback": "Pinned anthropic/claude-sonnet-5-5 was unavailable (provider quota); this run executed on openai/gpt-6.1-sol.",
+  "notes": "All round-1 findings verified FIXED.",
+  "namespaces": {
+    "ui.settings.integrations": {
+      "namespace": "ui.settings.integrations",
+      "keys_read": 218,
+      "status": "passed",
+      "sha256": {
+        "en": "36b3507993a0466100ca099c3c1c2b2852d66a81b14f3685031f0a35dfa0f5b3",
+        "ur": "2d529e10019aa2ec20ac50dbc182a188c545be59660ac56f680b94c4e40705d3"
+      },
+      "findings": []
+    },
+    "ui.providers": {
+      "namespace": "ui.providers",
+      "keys_read": 189,
+      "status": "passed",
+      "sha256": {
+        "en": "9981637a98afbcbc166d889b461795bae7685e42274f4d607b711f4b0f9085f2",
+        "ur": "a32ca00d38ef49fe61622a7ee1996a9377e9adf6b750ee706bcafd5dd3737312"
+      },
+      "findings": []
+    }
+  }
+}

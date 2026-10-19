@@ -1,0 +1,22 @@
+{
+	"endpoint": {
+		"id": "bep_db80cde6e82a478abe45da549dc03c72",
+		"tenant_id": "tnt_bridge_e2e",
+		"label": "Beta Member",
+		"state": "active",
+		"consent": {
+			"version": "bridge_consent_v1",
+			"consented_at": "2026-10-18T22:54:53.644474Z",
+			"consented_via": "settings",
+			"current": true
+		},
+		"created_at": "2026-10-18T22:54:53.644474Z",
+		"updated_at": "2026-10-18T22:54:53.644474Z"
+	},
+	"settings": {
+		"tenant_id": "tnt_bridge_e2e",
+		"eligible": true,
+		"consent_version": "bridge_consent_v1",
+		"consent_required": false
+	}
+}

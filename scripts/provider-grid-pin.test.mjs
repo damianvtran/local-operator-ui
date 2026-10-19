@@ -25,6 +25,8 @@ import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+import { withAbsentLocale } from "./i18n/absent-locale.mjs";
+
 const bundle = await build({
 	stdin: {
 		contents: `
@@ -45,7 +47,7 @@ const bundle = await build({
 			export { recommendedProvider, showsRecommendedCue, visibleProviders };
 			export { moreProvidersSummary } from "./src/renderer/src/features/providers/provider-catalog";
 			export { PROVIDER_DIALOG_GROUP_ORDER, methodName, GROUP_HEADINGS } from "./src/renderer/src/features/providers/provider-catalog";
-			export { t, setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";
+			export { t, setLocale, registerCatalogue, clearRegisteredCatalogues, currentLocale } from "./src/i18n";
 
 			export const renderProviderGrid = (client) =>
 				renderToStaticMarkup(
@@ -155,6 +157,7 @@ const {
 	setLocale,
 	registerCatalogue,
 	clearRegisteredCatalogues,
+	currentLocale,
 	methodName,
 	GROUP_HEADINGS,
 } = await import(bundlePath.href);
@@ -814,18 +817,28 @@ test("connected provider menu keeps the localized trigger name and a decorative 
 
 // Runtime proof, not source-only: static provider rows must not freeze the startup locale.
 test("provider labels refresh and missing namespaces keep English counts", () => {
+	let restoreLocale = () => {};
 	try {
 		setLocale("en");
 		assert.equal(
 			methodName({ method_id: "anthropic", kind: "browser" }),
 			"Claude subscription",
 		);
-		registerCatalogue("fr", {
-			"ui.providers.provider_catalog.claude_subscription":
-				"Fixture subscription",
-			"ui.providers.provider_catalog.use_a_subscription": "Fixture group",
-		});
-		setLocale("fr");
+		/*
+		 * Synthetic locale: this arm proves per-key English fallback for ABSENT
+		 * messages. Using `fr` coupled the assertion to what fr happened to ship;
+		 * tranche 2 legitimately added these keys and expired that premise.
+		 * `withAbsentLocale` is the shared form of that probe, so a future
+		 * tranche cannot expire it again.
+		 */
+		restoreLocale = withAbsentLocale(
+			{ currentLocale, setLocale, registerCatalogue },
+			{
+				"ui.providers.provider_catalog.claude_subscription":
+					"Fixture subscription",
+				"ui.providers.provider_catalog.use_a_subscription": "Fixture group",
+			},
+		);
 		assert.equal(
 			methodName({ method_id: "anthropic", kind: "browser" }),
 			"Fixture subscription",
@@ -843,6 +856,6 @@ test("provider labels refresh and missing namespaces keep English counts", () =>
 		}
 	} finally {
 		clearRegisteredCatalogues();
-		setLocale("en");
+		restoreLocale();
 	}
 });

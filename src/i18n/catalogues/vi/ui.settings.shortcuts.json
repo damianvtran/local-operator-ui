@@ -1,0 +1,11 @@
+{
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear": "Xóa",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset": "Đặt lại",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels": "Nhấn tổ hợp phím bạn muốn; Esc để hủy.",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.keyboard_shortcuts": "Phím tắt",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you": "Phím tắt cho thanh chọn bảng. Chọn một ô rồi nhấn tổ hợp phím bạn muốn; Esc để hủy, Đặt lại để khôi phục phím mặc định, Xóa để bỏ gán phím.",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.no_shortcut": "Chưa gán phím",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.label_press_the_keys_you_want": "{label}: nhấn tổ hợp phím bạn muốn",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut": "Xóa phím tắt của {label}",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset_label_to_its_default": "Khôi phục mặc định cho {label}"
+}

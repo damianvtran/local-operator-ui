@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { unlink, writeFile } from "node:fs/promises";
+import { readFile, unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
@@ -167,6 +167,7 @@ after(() => {
 const bundle = await build({
 	stdin: {
 		contents: [
+			'export { applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { __resetTurnCollapseOpen, writeRunExpanded, expandedRunsOf, forgetTurnCollapseOpen, __turnCollapseOpenStats } from "./src/renderer/src/shared/store/turn-collapse-open";',
 			/* The settle latch's store: the per-test reset the latch cases below owe, exactly as the expansions' is owed. */
@@ -227,6 +228,8 @@ const bundlePath = new URL(
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
+	applyHistoryPage,
+	EMPTY_TRANSCRIPT,
 	CanonicalTranscript,
 	__resetTurnCollapseOpen,
 	writeRunExpanded,
@@ -402,6 +405,7 @@ const mount = async (t, records, over = {}) => {
 					{ client },
 					h(CanonicalTranscript, {
 						frontend: nextOver.frontend ?? null,
+						attachmentScope: nextOver.attachmentScope,
 						transcript: {
 							...transcriptOf(next),
 							hasMore: nextOver.hasMore ?? false,
@@ -3902,5 +3906,164 @@ test("R3: actionable lone peer before a genuine final is a visible negative cont
 	assert.ok(
 		bar(mounted) === null,
 		"no preceding loaded answer or second receipt licenses an internal episode",
+	);
+});
+
+/** Real operator journal: the answer promises an MP3, and the supplement that
+ * follows it must never become the trace disclosure's child. Image/file peers
+ * augment this same record to pin the shared mechanism, not an audio exception. */
+test("8d652185377c highlights remain answer siblings with the trace closed and open", async (t) => {
+	__resetTurnCollapseOpen();
+	const fixture = JSON.parse(
+		await readFile(
+			new URL("./fixtures/turn-highlights-8d652185377c.json", import.meta.url),
+			"utf8",
+		),
+	);
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: fixture.entries,
+		has_more: false,
+		cursor_missing: false,
+	});
+	const supplement = state.records.find(
+		(record) => record.kind === "supplement",
+	);
+	assert.ok(
+		supplement,
+		"actual journal resolves through the production reducer",
+	);
+	const records = state.records.map((record) =>
+		record === supplement
+			? {
+					...record,
+					files: [
+						{
+							path: "bird.png",
+							name: "bird.png",
+							kind: "image",
+							sizeBytes: 120,
+							mtime: 0,
+							why: "regression neighbor",
+						},
+						{
+							path: "bird-notes.txt",
+							name: "bird-notes.txt",
+							kind: "text",
+							sizeBytes: 40,
+							mtime: 0,
+							why: "regression neighbor",
+						},
+					],
+				}
+			: record,
+	);
+	const mounted = await mount(t, state.records);
+	const assertDurable = (neighbors = false) => {
+		const strip = rowBox(mounted, supplement.id);
+		assert.ok(
+			strip,
+			"here it is must have visible highlights, not just promised prose",
+		);
+		assert.equal(
+			strip.closest("[data-turn-summary]"),
+			null,
+			"highlight strip is never a descendant of the collapsible trace",
+		);
+		assert.ok(
+			strip.querySelector("[data-supplement-sound-title]"),
+			"real MP3 callout",
+		);
+		if (neighbors) {
+			assert.ok(
+				strip.querySelector("[data-supplement-images]"),
+				"image grid shares durable placement",
+			);
+			assert.ok(
+				strip.querySelector("[data-supplement-file]"),
+				"ordinary file shares durable placement",
+			);
+		}
+		return strip;
+	};
+	assert.ok(bar(mounted), "real session's action group starts closed");
+	const strip = assertDurable();
+	await click(barTrigger(mounted));
+	assert.equal(
+		assertDurable(),
+		strip,
+		"expanding the trace preserves the strip's DOM identity",
+	);
+	await click(barTrigger(mounted));
+	assert.equal(
+		assertDurable(),
+		strip,
+		"collapsing the trace preserves the strip's DOM identity",
+	);
+	await mounted.render(records);
+	assertDurable(true);
+	await click(barTrigger(mounted));
+	assertDurable(true);
+});
+
+// R1-1: an open steering draft must not outlive the job it could still steer.
+// Keep a file on the done row so this tests the form guard, not row removal.
+test("a condensed Highlights adjustment closes when preparation settles", async (t) => {
+	__resetTurnCollapseOpen();
+	const supplement = {
+		kind: "supplement",
+		id: "supplement:answer:adjust",
+		ts: TS + 4000,
+		anchor: "answer:adjust",
+		job: "0123456789ab",
+		version: 1,
+		state: "running",
+		live: true,
+		dismissed: false,
+		error: "",
+		files: [
+			{
+				path: "notes.txt",
+				name: "notes.txt",
+				kind: "text",
+				sizeBytes: 40,
+				mtime: 0,
+				why: "regression",
+			},
+		],
+		filesMore: 0,
+		more: [],
+		components: [],
+	};
+	const rows = [
+		userRecord("user:adjust"),
+		toolRecord("tool:adjust"),
+		answerRecord("answer:adjust"),
+		supplement,
+	];
+	const options = {
+		attachmentScope: { sessionId: "faced00d0001", childId: null },
+	};
+	const mounted = await mount(t, rows, options);
+	await click(mounted.container.querySelector("[data-supplement-adjust]"));
+	assert.ok(
+		mounted.container.querySelector("[data-supplement-adjust-form]"),
+		"preparing job accepts an adjustment",
+	);
+	await mounted.render(
+		rows.map((row) =>
+			row === supplement ? { ...row, state: "done", live: false } : row,
+		),
+		options,
+	);
+	assert.ok(
+		mounted.container.querySelector(
+			"[data-supplement-condensed] [data-supplement-file]",
+		),
+		"the done Highlights row remains present and condensed",
+	);
+	assert.equal(
+		Boolean(mounted.container.querySelector("[data-supplement-adjust-form]")),
+		false,
+		"a settled job exposes no live steer input",
 	);
 });

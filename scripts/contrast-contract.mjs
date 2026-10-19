@@ -65,8 +65,10 @@ import {
 	GLASS_EDGE_FLOOR,
 	GLASS_INKS,
 	GLASS_INK_FLOOR,
+	GLASS_LANE_STEP,
 	GLASS_ROLES,
 	GLASS_STATE_DIM_FLOOR,
+	LANE_ALPHA_CEILING,
 	derive as deriveGlassFloors,
 	composite as glassComposite,
 	glassEdge,
@@ -395,6 +397,23 @@ const KEYCAP_DELTA_E = 2.0;
  * against the ground behind it.
  */
 const CONTROLS = [
+	// Source confirmation paints its remedy and diagnostic on warningWash;
+	// ground-only button/text checks do not cover either of these pairings.
+	{
+		name: "hub source confirmation remedy",
+		on: ["warningWash"],
+		fill: "accent",
+		border: "accent",
+		ink: "onAccent",
+	},
+	{
+		name: "hub source confirmation diagnostic",
+		on: ["canvas"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "inkMuted",
+	},
+
 	// Find is a chrome-band row, never a DOM panel over WebContentsView. Its
 	// standard Input uses the existing input-control contract; this pins the
 	// row's elevated ground, control rule and politely announced count.
@@ -1796,6 +1815,57 @@ const CONTROLS = [
 		fill: "sunken",
 		border: "hairline",
 		ink: "inkMuted",
+		edge: false,
+	},
+	/*
+	 * THE LIBRARY SURFACE (desktop UI, 2026-10-18). Four triples the feature
+	 * actually paints, registered because role reuse alone is not proof: the
+	 * card's metadata sits on `surface` over the page's `canvas`, the thumbnail
+	 * well is `sunken` with a kind glyph, the origin badge is an opaque
+	 * `elevated` mark on the card, and the composer is an `elevated` field on
+	 * the preview's `canvas`. The card and composer have no edge at rest (the
+	 * hairline is decorative); the badge's edge is declared away for the same
+	 * reason the team avatar's is - its fill merges with a card ground on some
+	 * palettes, so the letters' own floor is the boundary that matters.
+	 */
+	{
+		name: "library card",
+		on: GROUNDS,
+		fill: "surface",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
+	{
+		name: "library card secondary",
+		on: ["surface"],
+		fill: "surface",
+		border: null,
+		ink: "inkDim",
+		edge: false,
+	},
+	{
+		name: "library thumbnail well",
+		on: ["surface", "canvas"],
+		fill: "sunken",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		name: "library origin badge",
+		on: ["surface", "sunken"],
+		fill: "elevated",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		name: "library composer field",
+		on: ["canvas", "surface"],
+		fill: "elevated",
+		border: null,
+		ink: "ink",
 		edge: false,
 	},
 ];
@@ -3301,13 +3371,12 @@ const STRUCTURAL_CALL_SITES = [
 		what: "transcript quote toolkit floating shell",
 		file: "src/renderer/src/features/chat/canonical/quote-toolkit.tsx",
 		/*
-		 * Verbatim, so it tracks the shell as written: the speak-aloud round added
-		 * the second control (Speak beside Quote) and with it the pair's `gap-0.5`
-		 * - the anatomy the link toolbar's own multi-button strip already carries.
-		 * The boundary this row protects is the `border border-hairline
-		 * bg-elevated` ground, which is unchanged.
+		 * Verbatim, so it tracks the shell as written: the selection round added
+		 * Copy beside Quote and Speak, and the three-control strip needs the tighter
+		 * `gap-0 px-0.5` to fit the outer gutter. The boundary this row protects is
+		 * the `border border-hairline bg-elevated` ground, which is unchanged.
 		 */
-		must: "z-10 flex h-8 items-center gap-0.5 rounded-md border border-hairline bg-elevated px-1",
+		must: "z-20 flex h-8 items-center gap-0 rounded-md border border-hairline bg-elevated px-0.5",
 		why: "the toolkit floats over prose and over a user bubble, so `elevated` plus a hairline is the whole of what makes it read as an object rather than as text that drifted; repainting it on the transcript's own canvas leaves it invisible against the reading column with every palette row still green",
 	},
 	{
@@ -7586,6 +7655,131 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 	console.log(
 		`Window glass round 2: tightest block veil ΔE00 off canvas glass - dark ${r2(veilMin.dark)}, light ${r2(veilMin.light)}; work row step ${r2(workMin.step)}; chrome inks ${r2(chromeMin.ink)}/${r2(chromeMin.inkMuted)}/${r2(chromeMin.inkDim)}, tab step ${r2(chromeMin.tabStep)}.`,
 	);
+}
+
+/*
+ * ---- 5c. the window glass lane wash (round 3, re-derived round 1) ----
+ *
+ * A LANE is the Projects board's well and its column strip: a well that must read
+ * on a translucent page while the cards above it already carry the block veil.
+ * It cannot be an ink overlay (ink 5% under the veil measured `inkMuted` 4.03:1
+ * on synthwave), so it is a palette role at an alpha that TRACKS the page.
+ *
+ * THE ROUND-1 FAILURE this asserts against: a FIXED alpha was derived at the
+ * default (80) on the claim that 80 was the binding position, "because the page is
+ * most opaque there". The page is most opaque at 0, not 80 - its alpha runs
+ * 0.66 -> 0.96 as intensity falls - so the lane's step collapsed exactly where the
+ * window was most frosted (measured ΔE00 0.59 dark at 25, 0.99 light at 0).
+ *
+ * THE SHIPPED MODEL: `laneAlpha = round2(pageAlpha * scale)`, with the role and
+ * scale derived by `derive-glass-floors.mjs` at EVERY slider position and every
+ * material tier. The role is scheme-dependent because a role's distance from
+ * `canvas` bounds the step at the opaque end: dark `surface` cannot clear at any
+ * alpha, light `sunken` cannot. Every position is asserted here rather than the
+ * five the review sampled, because 8-bit compositing is not monotone.
+ *
+ * What each position asserts, over every palette and material tier:
+ *
+ *   - "glass lane wash": the lane steps ΔE00 `GLASS_LANE_STEP` off the page. This
+ *     is the field/well floor: below it the lane is not structure.
+ *   - "glass lane inks": ink and inkMuted on the lane keep AA, inkDim keeps the
+ *     stated 3.5 relaxation - the board's column header and count are read there.
+ *   - "glass card on lane": the card's veil still steps ΔE00 4.0 off the LANE
+ *     (the block's own boundary) and its inks keep the same floors. This is the
+ *     row that would have caught the easy wrong answer - raising the lane until
+ *     the card's text lost AA.
+ */
+{
+	const committed = JSON.parse(
+		readFileSync(join(ROOT, "src/shared/window-glass-floors.json"), "utf8"),
+	);
+	const at = (floor, intensity) =>
+		Math.round(
+			(LANE_ALPHA_CEILING - (intensity / 100) * (LANE_ALPHA_CEILING - floor)) *
+				100,
+		) / 100;
+	const minStep = {
+		lane: Number.POSITIVE_INFINITY,
+		card: Number.POSITIVE_INFINITY,
+	};
+	let worstLane = null;
+	let worstCard = null;
+	let worstInk = Number.POSITIVE_INFINITY;
+	/* The 5x2 matrix the round-1 review asked for: minima over palettes/tiers. */
+	const matrix = {};
+	for (const intensity of Array.from({ length: 101 }, (_, i) => i)) {
+		const row = {
+			dark: Number.POSITIVE_INFINITY,
+			light: Number.POSITIVE_INFINITY,
+		};
+		for (const { palette } of palettes) {
+			const scheme = glassSchemeOf(palette);
+			const wash = committed.laneWash[scheme];
+			for (const [tier, byScheme] of Object.entries(BACKDROP_GRAY)) {
+				const floors = committed.alphaFloor[tier][scheme];
+				const pageAlpha = at(floors.canvas, intensity);
+				const page = glassComposite(
+					palette.canvas,
+					pageAlpha,
+					glassGray(byScheme[scheme]),
+				);
+				const lane = glassComposite(
+					palette[wash.role],
+					Math.round(pageAlpha * wash.scale * 100) / 100,
+					page,
+				);
+				const card = glassComposite(
+					palette.ink,
+					committed.blockVeil[scheme],
+					lane,
+				);
+				assertions += 2;
+				const laneStep = deltaE(lane, page);
+				const cardStep = deltaE(card, lane);
+				row[scheme] = Math.min(row[scheme], laneStep);
+				if (laneStep < GLASS_LANE_STEP)
+					fail(
+						`glass lane wash (${tier}/${scheme} at ${intensity}): ΔE00 ${r2(laneStep)} off the page, floor ${GLASS_LANE_STEP} - the lane is not structure`,
+					);
+				if (cardStep < GLASS_BLOCK_VEIL_STEP)
+					fail(
+						`glass card on lane (${tier}/${scheme} at ${intensity}): ΔE00 ${r2(cardStep)} off the lane, floor ${GLASS_BLOCK_VEIL_STEP} - the card would vanish`,
+					);
+				if (laneStep < minStep.lane) {
+					minStep.lane = laneStep;
+					worstLane = `${tier}/${scheme}@${intensity}`;
+				}
+				if (cardStep < minStep.card) {
+					minStep.card = cardStep;
+					worstCard = `${tier}/${scheme}@${intensity}`;
+				}
+				for (const [ground, label] of [
+					[lane, "glass lane inks"],
+					[card, "glass card on lane"],
+				]) {
+					for (const ink of GLASS_INKS) {
+						assertions++;
+						const floor =
+							ink === "inkDim" ? GLASS_STATE_DIM_FLOOR : GLASS_INK_FLOOR;
+						const r = glassRatio(palette[ink], ground);
+						if (r < floor)
+							fail(
+								`${label} (${tier}/${scheme} at ${intensity}) ${ink} is ${r2(r)}:1, floor ${floor}`,
+							);
+						if (ink !== "inkDim") worstInk = Math.min(worstInk, r);
+					}
+				}
+			}
+		}
+		if ([0, 25, 50, 70, 80, 100].includes(intensity)) matrix[intensity] = row;
+	}
+	console.log(
+		`Window glass round 3: lane roles ${committed.laneWash.dark.role}/${committed.laneWash.light.role} at scales ${committed.laneWash.dark.scale}/${committed.laneWash.light.scale}; tightest lane step ΔE00 ${r2(minStep.lane)} (${worstLane}), card off lane ${r2(minStep.card)} (${worstCard}), tightest ink ${r2(worstInk)}:1.`,
+	);
+	for (const [intensity, row] of Object.entries(matrix))
+		console.log(
+			`  lane ΔE00 at ${intensity}: dark ${r2(row.dark)} / light ${r2(row.light)}`,
+		);
 }
 
 /* ---- 6. report ---------------------------------------------------------- */

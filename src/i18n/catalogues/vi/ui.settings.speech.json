@@ -1,0 +1,21 @@
+{
+	"ui.settings.speech.speech_section.try_again": "Thử lại",
+	"ui.settings.speech.speech_section.retry": "Thử lại",
+	"ui.settings.speech.speech_section.speaks_through": "Đọc qua",
+	"ui.settings.speech.speech_section.availability": "Khả dụng",
+	"ui.settings.speech.speech_section.the_setting_could_not_be_saved": "Không lưu được cài đặt.",
+	"ui.settings.speech.speech_section.the_setting_could_not_be_reset": "Không đặt lại được cài đặt.",
+	"ui.settings.speech.speech_section.speech_voicing": "Giọng đọc",
+	"ui.settings.speech.speech_section.how_the_assistant_sounds_when_it_speaks_aloud": "Giọng của trợ lý khi đọc thành tiếng.",
+	"ui.settings.speech.speech_section.speech_settings_could_not_be_loaded": "Không tải được cài đặt giọng đọc.",
+	"ui.settings.speech.speech_section.nothing_yet": "Chưa có",
+	"ui.settings.speech.speech_section.no_provider": "Chưa có nhà cung cấp",
+	"ui.settings.speech.speech_section.available": "(khả dụng)",
+	"ui.settings.speech.speech_section.not_available": "(không khả dụng)",
+	"ui.settings.speech.speech_settings_model.radient_pass": "Radient Pass",
+	"ui.settings.speech.speech_settings_model.no_provider": "Chưa có nhà cung cấp",
+	"ui.settings.speech.speech_section.copy_backend_older_sentence": "Máy chủ này chưa hỗ trợ cài đặt giọng đọc. Cập nhật máy chủ để điều chỉnh giọng của trợ lý.",
+	"ui.settings.speech.speech_section.copy_unavailable_sentence": "Không đọc được trạng thái khả dụng của giọng đọc.",
+	"ui.settings.speech.speech_section.ready": "Sẵn sàng",
+	"ui.settings.speech.speech_section.missing_voice_rows": "{count, plural, other {Máy chủ này chưa đăng ký {rows} nên không hiển thị mục tương ứng.}}"
+}

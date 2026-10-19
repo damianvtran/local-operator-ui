@@ -1,0 +1,21 @@
+{
+	"ui.settings.speech.speech_section.availability": "Доступность",
+	"ui.settings.speech.speech_section.available": "(доступно)",
+	"ui.settings.speech.speech_section.copy_backend_older_sentence": "Этот бэкенд не предоставляет интерфейс озвучивания. Обновите бэкенд, чтобы настроить звучание помощника.",
+	"ui.settings.speech.speech_section.copy_unavailable_sentence": "Не удалось прочитать доступность озвучивания.",
+	"ui.settings.speech.speech_section.how_the_assistant_sounds_when_it_speaks_aloud": "Как звучит помощник при озвучивании.",
+	"ui.settings.speech.speech_section.missing_voice_rows": "{count, plural, one {Этот бэкенд пока не регистрирует {rows}, поэтому строка не показана.} few {Этот бэкенд пока не регистрирует {rows}, поэтому строки не показаны.} many {Этот бэкенд пока не регистрирует {rows}, поэтому строки не показаны.} other {Этот бэкенд пока не регистрирует {rows}, поэтому строки не показаны.}}",
+	"ui.settings.speech.speech_section.no_provider": "Без провайдера",
+	"ui.settings.speech.speech_section.not_available": "(недоступно)",
+	"ui.settings.speech.speech_section.nothing_yet": "Пока ничего",
+	"ui.settings.speech.speech_section.ready": "Готово",
+	"ui.settings.speech.speech_section.retry": "Повторить",
+	"ui.settings.speech.speech_section.speaks_through": "Озвучивает через",
+	"ui.settings.speech.speech_section.speech_settings_could_not_be_loaded": "Не удалось загрузить настройки озвучивания.",
+	"ui.settings.speech.speech_section.speech_voicing": "Озвучивание",
+	"ui.settings.speech.speech_section.the_setting_could_not_be_reset": "Не удалось сбросить настройку.",
+	"ui.settings.speech.speech_section.the_setting_could_not_be_saved": "Не удалось сохранить настройку.",
+	"ui.settings.speech.speech_section.try_again": "Повторить",
+	"ui.settings.speech.speech_settings_model.no_provider": "Без провайдера",
+	"ui.settings.speech.speech_settings_model.radient_pass": "Radient Pass"
+}

@@ -247,6 +247,9 @@ export class AgentMessagesModel {
 	}
 
 	canEnable(identity: AgentMessagesConsentIdentity | null): boolean {
+		// A previous write refusal is feedback, not a permanent retry lock. The
+		// current status/identity guards still fail closed; confirmed local setup
+		// failures must finish in Settings rather than submitting consent again.
 		const current = this.consentIdentity();
 		return Boolean(
 			identity &&
@@ -256,8 +259,6 @@ export class AgentMessagesModel {
 				identity.consentVersion === current.consentVersion &&
 				this.snapshot.status?.consent_account_guard === true &&
 				this.snapshot.status.error === null &&
-				(!this.snapshot.refusal ||
-					this.snapshot.refusal.code === "consent_version_unknown") &&
 				!this.snapshot.checking &&
 				!this.snapshot.pending &&
 				!this.snapshot.confirmed,
@@ -265,7 +266,8 @@ export class AgentMessagesModel {
 	}
 
 	dismiss(accountId: string, tenantId: string) {
-		if (this.snapshot.pending || this.accountId !== accountId) return;
+		// Dismissal is presentation-only, even when the upstream write hangs.
+		if (this.accountId !== accountId) return;
 		this.ports.markSeen(accountId, tenantId);
 	}
 
@@ -290,8 +292,16 @@ export class AgentMessagesModel {
 			// A boundary read can change organization or consent while the PUT is
 			// in flight. Discard its local effects just like an account switch.
 			if (!this.isConsentCurrent(identity, generation)) return;
+			if (!result.endpoint) {
+				// The enable response is the receipt for a write that just created
+				// one; a null endpoint is a shape this client cannot trust.
+				throw new Error("Consent response carries no endpoint");
+			}
+			// The upstream endpoint carries no account id; the account receipt is
+			// the pre-write guard above plus `isConsentCurrent` (which compares the
+			// status's account). This check is about the ORGANIZATION and state
+			// the response reports, not a second account comparison.
 			if (
-				result.endpoint.account_id !== accountId ||
 				result.endpoint.tenant_id !== tenantId ||
 				result.endpoint.state !== "active"
 			) {

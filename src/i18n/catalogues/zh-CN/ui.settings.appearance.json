@@ -1,0 +1,12 @@
+{
+	"ui.settings.appearance.settings_page.appearance": "外观",
+	"ui.settings.appearance.settings_page.customize_the_look_and_feel_of_local_operator": "自定义Local Operator的外观与显示方式",
+	"ui.settings.appearance.settings_page.show_agent_reasoning": "显示智能体推理",
+	"ui.settings.appearance.settings_page.adds_the_agent_s_reasoning_and_thinking_rows_to_conversations_the": "在对话中显示智能体的“推理”和“思考”条目，默认折叠，点击后展开。此开关仅控制推理内容：智能体在任务执行过程中写下的叙述属于对话记录，并非推理内容，两种显示方式都不会移除。“按轮次”会将其折叠在轮次栏内，“按回复”则会直接显示。",
+	"ui.settings.appearance.theme_selector.dark": "深色",
+	"ui.settings.appearance.theme_selector.light": "浅色",
+	"ui.settings.appearance.transcript_display_mode_setting.transcript_display": "对话记录显示方式",
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every": "“按轮次”将每轮内容精简为最终答案。“按回复”保留每条已完成的回复，同时仍会标出该轮的最终答案。",
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn": "按轮次",
+	"ui.settings.appearance.transcript_display_mode_setting.by_response": "按回复"
+}

@@ -1,0 +1,12 @@
+{
+	"ui.settings.appearance.settings_page.appearance": "Apariencia",
+	"ui.settings.appearance.settings_page.customize_the_look_and_feel_of_local_operator": "Personaliza el aspecto de Local Operator",
+	"ui.settings.appearance.settings_page.show_agent_reasoning": "Mostrar el razonamiento del agente",
+	"ui.settings.appearance.settings_page.adds_the_agent_s_reasoning_and_thinking_rows_to_conversations_the": "Añade a las conversaciones las filas Razonamiento y Pensamiento del agente. Permanecen cerradas hasta que abras una. Solo se aplica al razonamiento: la narración que el agente escribe en prosa a mitad de turno es contenido de la transcripción, no razonamiento, y ningún modo de visualización la elimina (por turno la pliega tras las barras del turno; por respuesta la mantiene en pantalla).",
+	"ui.settings.appearance.theme_selector.dark": "Oscuro",
+	"ui.settings.appearance.theme_selector.light": "Claro",
+	"ui.settings.appearance.transcript_display_mode_setting.transcript_display": "Visualización de la transcripción",
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every": "Por turno condensa cada turno en su respuesta. Por respuesta mantiene en pantalla cada respuesta finalizada, con la respuesta final del turno aún marcada.",
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn": "Por turno",
+	"ui.settings.appearance.transcript_display_mode_setting.by_response": "Por respuesta"
+}

@@ -1,0 +1,22 @@
+{
+	"ui.shell.rail.ask.aria": "सवाल{chord}, {subject}",
+	"ui.shell.rail.ask.aria_count": "सवाल{chord}, {subject}, {count, plural, one {{countText} इंतज़ार में} other {{countText} इंतज़ार में}}",
+	"ui.shell.rail.browser.aria": "ब्राउज़र{chord}",
+	"ui.shell.rail.browser.aria_count": "ब्राउज़र{chord}, {count, plural, one {{countText} इंतज़ार में} other {{countText} इंतज़ार में}}",
+	"ui.shell.rail.browser.tooltip": "{state, select, open {ब्राउज़र बंद करें{chord}} other {ब्राउज़र खोलें{chord}}}",
+	"ui.shell.rail.browser.tooltip_count": "{state, select, open {ब्राउज़र बंद करें{chord}} other {ब्राउज़र खोलें{chord}}} — {count, plural, one {{countText} स्वीकृति} other {{countText} स्वीकृतियाँ}} इंतज़ार में",
+	"ui.shell.rail.canvas.aria": "कैनवस{chord}",
+	"ui.shell.rail.canvas.aria_count": "कैनवस{chord}, {count, plural, one {{countText} फ़ाइल} other {{countText} फ़ाइलें}}",
+	"ui.shell.rail.canvas.tooltip": "{state, select, open {कैनवस बंद करें{chord}} other {कैनवस खोलें{chord}}}",
+	"ui.shell.rail.canvas.tooltip_count": "{state, select, open {कैनवस बंद करें{chord}} other {कैनवस खोलें{chord}}} — {count, plural, one {{countText} फ़ाइल} other {{countText} फ़ाइलें}}",
+	"ui.shell.rail.code.aria": "कोड समीक्षा{chord}{mark}",
+	"ui.shell.rail.code.aria_details": "कोड समीक्षा{chord}, {details}{mark}",
+	"ui.shell.rail.code.mentioned": "{count, plural, one {{countText} का ज़िक्र किया गया} other {{countText} का ज़िक्र किया गया}}",
+	"ui.shell.rail.code.opened": "{count, plural, one {{countText} खोला गया} other {{countText} खोले गए}}",
+	"ui.shell.rail.code.tooltip": "{state, select, open {कोड समीक्षा बंद करें{chord}} other {कोड समीक्षा खोलें{chord}}}{mark}",
+	"ui.shell.rail.code.tooltip_details": "{state, select, open {कोड समीक्षा बंद करें{chord}} other {कोड समीक्षा खोलें{chord}}} — {details}{mark}",
+	"ui.shell.rail.console.aria": "कंसोल{chord}",
+	"ui.shell.rail.console.aria_count": "कंसोल{chord}, {count, plural, one {आपके पिछली बार देखने के बाद {countText} पूरा हुआ} other {आपके पिछली बार देखने के बाद {countText} पूरे हुए}}",
+	"ui.shell.rail.console.tooltip": "{state, select, open {कंसोल बंद करें{chord}} other {कंसोल खोलें{chord}}}",
+	"ui.shell.rail.console.tooltip_count": "{state, select, open {कंसोल बंद करें{chord}} other {कंसोल खोलें{chord}}} — {count, plural, one {आपके पिछली बार देखने के बाद {countText} पूरा हुआ} other {आपके पिछली बार देखने के बाद {countText} पूरे हुए}}"
+}

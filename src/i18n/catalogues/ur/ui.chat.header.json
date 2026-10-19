@@ -1,0 +1,12 @@
+{
+	"ui.chat.header.conversation_name": "گفتگو کا نام",
+	"ui.chat.header.archived_hint": "یہ گفتگو آرکائیو میں ہے۔ بحال کرنے تک یہ آپ کی چیٹس سے پوشیدہ رہے گی۔",
+	"ui.chat.header.archived": "آرکائیو میں ہے",
+	"ui.chat.header.actions": "گفتگو کے اعمال",
+	"ui.chat.header.copy_id": "سیشن ID نقل کریں",
+	"ui.chat.header.move_device": "دوسری ڈیوائس پر منتقل کریں…",
+	"ui.chat.header.transcript_display": "ٹرانسکرپٹ کی نمائش",
+	"ui.chat.header.delete": "گفتگو حذف کریں…",
+	"ui.chat.header.close_run_details": "تفصیلات بند کریں",
+	"ui.chat.header.open_run_details": "تفصیلات کھولیں"
+}

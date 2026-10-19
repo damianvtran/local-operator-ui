@@ -52,12 +52,44 @@
  * (`4 files · 3 agents`), which is the same fallback an unknown name takes.
  */
 
+import {
+	type InternalReceiptFamily,
+	receiptFamilyOf,
+} from "../components/trace/receipt-row-model";
 import { displayName, toolRowLabel } from "../components/trace/tool-row-model";
 import { type TranscriptImage, isPictureRef } from "./transcript-reducer";
 import type { Row } from "./transcript-rows";
 
 /** §E2: a run of three or more consecutive actions folds. */
 export const FOLD_MIN_ACTIONS = 3;
+
+/**
+ * The trailing-receipt threshold: a run whose TRAILING stretch of adjacent
+ * receipts is at least this long folds under one header, whatever its action
+ * count.
+ *
+ * WHY A SECOND THRESHOLD RATHER THAN COUNTING RECEIPTS AS ACTIONS. A receipt is
+ * not work the turn DID - it is the turn being told something - so it must
+ * never reach the action threshold, the action count, failures, duration or the
+ * live clause (see `foldRuns`). But the operator's wall of `job result` rows
+ * proved the converse too: a stretch of receipts with no calls between them is
+ * a wall of identical standalone rows with one chevron each, and folding it is
+ * the whole point of this tier. TWO is the smallest run that has something to
+ * summarise; a LONE receipt stays an ordinary row, which is the existing
+ * "a lone receipt is content" policy (`scripts/canonical-notice.test.mjs`).
+ *
+ * WHY THE STRETCH MUST BE THE RUN'S TRAILING ONE, never a count of adjacent
+ * receipt pairs anywhere in the run. The 129-owner shape in
+ * `scripts/turn-collapse-behaviour.test.mjs` is the failure: after its prepend
+ * the one-action run is `[peer, peer, tool]`, so two receipts at its HEAD
+ * licensed a fold that hid the call the reader's opened turn bar is pinned to
+ * mount. A receipt at the tail is what the reader is being told AFTER the work;
+ * folding that is what the wall needs, and a head receipt rides along only when
+ * the run already folds on §E2's action threshold (which is why
+ * `[peer, tool, wake]` and `[peer, tool, peer]` stay ordinary rows too: their
+ * trailing stretch is one).
+ */
+export const FOLD_MIN_RECEIPTS = 2;
 
 export type FoldableAction = {
 	/** The ledger's own name for the call (`ledgerName`), already case-folded. */
@@ -142,6 +174,74 @@ export type FoldGroup =
 			/** The in-flight call, when one is inside this run (see `foldLive`). */
 			live: FoldLive | null;
 	  };
+
+/**
+ * The receipt families' units for one run's header, in a stable order.
+ *
+ * WHY THE HEADER COUNTS BY FAMILY AND NOT ONE `incoming messages` TOTAL. The
+ * old line called every internal receipt an incoming message, which was true
+ * while `isInternalReceipt` covered only peer/hub traffic. It is FALSE the
+ * moment a job result folds: a `job result` is not a message from anyone, and a
+ * reader told `4 incoming messages` cannot know which of the rows behind the
+ * fold will be a conversation and which a finished call. Each family therefore
+ * states its own noun, and the order is fixed (incoming, job results, wakes,
+ * monitor prompts) so the same group does not reword itself as rows arrive.
+ *
+ * A FAMILY WITH ZERO ROWS CONTRIBUTES NO UNIT - never `0 job results`. The two
+ * markers are historical intent (`Reply requested`, `Steered`) and ride the
+ * existing grammar; they are not counts and are omitted when absent.
+ *
+ * INVARIANT (asserted): every receipt row in `rows` is counted exactly once
+ * across the family units, so the header's numbers are the expanded group's
+ * contents. Arbitrary custom notices never reach here: `isReceipt` decides the
+ * membership structurally (see `receiptFamilyOf`). A family the table does not
+ * know is counted under `other receipts` rather than dropped.
+ */
+export function receiptFoldUnits(rows: readonly Row[]): string[] {
+	/*
+	 * A RECORD KEYED BY FAMILY, and a fallback for anything the family table does
+	 * not know yet: a future receipt kind that `receiptFamilyOf` learns must not
+	 * silently vanish from the header (the counts would stop summing to the rows
+	 * behind the fold). Known families bump their own bucket; whatever is left
+	 * over is a receipt no family claims, stated as `N other receipts`.
+	 */
+	const counts: Record<InternalReceiptFamily, number> = {
+		incoming: 0,
+		job_result: 0,
+		wake: 0,
+		monitor_prompt: 0,
+	};
+	let replyRequested = false;
+	let steered = false;
+	for (const { record } of rows) {
+		const family = receiptFamilyOf(record);
+		if (family) counts[family] += 1;
+		if (record.kind === "custom") {
+			if (record.receipt?.expectsReply === true) replyRequested = true;
+			if (record.receipt?.steer === true) steered = true;
+		}
+	}
+	const units: string[] = [];
+	const count = (n: number, one: string, many: string) => {
+		if (n > 0) units.push(`${n} ${n === 1 ? one : many}`);
+	};
+	count(counts.incoming, "incoming message", "incoming messages");
+	count(counts.job_result, "job result", "job results");
+	count(counts.wake, "wake receipt", "wake receipts");
+	count(counts.monitor_prompt, "monitor prompt", "monitor prompts");
+	count(
+		rows.length -
+			counts.incoming -
+			counts.job_result -
+			counts.wake -
+			counts.monitor_prompt,
+		"other receipt",
+		"other receipts",
+	);
+	if (replyRequested) units.push("Reply requested");
+	if (steered) units.push("Steered");
+	return units;
+}
 
 /**
  * The run's wall-clock span: FIRST start to LAST completion.
@@ -369,7 +469,7 @@ const KIND_NOUNS: Record<string, { noun: string; plural: string }> = {
 	project: { noun: "project", plural: "projects" },
 	project_delete: { noun: "project deletion", plural: "project deletions" },
 	wake: { noun: "wake", plural: "wakes" },
-	jobs: { noun: "job", plural: "jobs" },
+	jobs: { noun: "job check", plural: "job checks" },
 	console: { noun: "console", plural: "consoles" },
 	network: { noun: "network call", plural: "network calls" },
 	browser: { noun: "browser action", plural: "browser actions" },
@@ -499,6 +599,19 @@ const foldCountSegments = (
 			if ((action.op ?? "").toLowerCase() === "view")
 				bump("kind:todo:view", { noun: "todo read", plural: "todo reads" });
 			else bump("kind:todo", KIND_NOUNS.todo);
+		} else if (n === "jobs") {
+			/*
+			 * A `jobs cancel` is a CANCELLATION, not a check (review round 1,
+			 * R1-1): the receipt family prints `N job results`, and `1 job check`
+			 * for a call that stopped a job claims the run looked at one. `list`,
+			 * `peek` and an op-less call keep the check noun.
+			 */
+			if ((action.op ?? "").toLowerCase() === "cancel")
+				bump("kind:jobs:cancel", {
+					noun: "job cancellation",
+					plural: "job cancellations",
+				});
+			else bump("kind:jobs", KIND_NOUNS.jobs);
 		} else {
 			const noun = KIND_NOUNS[n];
 			if (noun) bump(`kind:${n}`, noun);
@@ -678,15 +791,39 @@ export function foldLive(actions: FoldableAction[]): FoldLive | null {
 }
 
 /**
+ * How many receipts the run ENDS with, counting back from the last row.
+ *
+ * This is the licensing stretch for `FOLD_MIN_RECEIPTS`, and it is deliberately
+ * TRAILING-only: the constant's comment records the 129-owner failure a
+ * whole-run adjacency count caused. Any non-receipt row stops the count, so a
+ * receipt at the HEAD of a run licenses nothing by itself.
+ */
+export function trailingReceiptStretch(
+	rows: readonly Row[],
+	isReceipt: (row: Row) => boolean,
+): number {
+	let stretch = 0;
+	for (let index = rows.length - 1; index >= 0; index -= 1) {
+		if (!isReceipt(rows[index])) break;
+		stretch += 1;
+	}
+	return stretch;
+}
+
+/**
  * The rows, split into single rows and folds.
  *
  * A run is consecutive SAME-TURN actions: a row whose `gap` is `"turn"` opens a
  * new turn and therefore a new run, which is how the boundary between two turns
  * is respected without this model knowing anything about turns. Rows the
  * transcript does not treat as trace-like (prose and notices) break a run.
- * Positively classified incoming receipts may bridge calls, but are excluded
+ * Positively classified internal receipts may bridge calls, but are excluded
  * from the action threshold, work duration, failures and live execution. This
  * preserves chronology without claiming that a received message was an action.
+ * A run that ENDS with two or more adjacent receipts folds on its own (see
+ * `FOLD_MIN_RECEIPTS` and `trailingReceiptStretch`), which is what stops a wall
+ * of job results from painting one row per receipt without folding the call a
+ * reader's opened turn bar is pinned to mount.
  */
 export function foldRuns(
 	rows: Row[],
@@ -742,7 +879,57 @@ export function foldRuns(
 				if (options.executingOf) action.executing = options.executingOf(row);
 				return action;
 			});
-		if (actions.length >= FOLD_MIN_ACTIONS) {
+		/*
+		 * THE HEADER'S RECEIPT UNITS. The option owns the family grammar
+		 * (`receiptFoldUnits` at the call site); the fallback keeps a caller that
+		 * classifies receipts but supplies no summary from painting an EMPTY header,
+		 * which would be a fold with nothing to say.
+		 */
+		const suppliedReceiptUnits = receiptRows.length
+			? (options.receiptSummaryOf?.(receiptRows) ?? [])
+			: [];
+		const receiptUnits =
+			suppliedReceiptUnits.length > 0
+				? suppliedReceiptUnits
+				: receiptRows.length > 0
+					? [
+							`${receiptRows.length} receipt${receiptRows.length === 1 ? "" : "s"}`,
+						]
+					: [];
+		/*
+		 * A run folds on EITHER threshold: §E2's three actions, or a TRAILING
+		 * stretch of two adjacent receipts (see `FOLD_MIN_RECEIPTS` and
+		 * `trailingReceiptStretch`). Receipts still contribute nothing to
+		 * `actions`, `failedCount`, `span` or `live` - they only license the fold
+		 * and add their own units to the header. A receipt at the run's HEAD rides
+		 * along only when the action threshold already folded the run.
+		 */
+		const trailingReceipts = options.isReceipt
+			? trailingReceiptStretch(run, options.isReceipt)
+			: 0;
+		if (
+			actions.length >= FOLD_MIN_ACTIONS ||
+			trailingReceipts >= FOLD_MIN_RECEIPTS
+		) {
+			/*
+			 * THE ACTION SIDE OF A MIXED LINE IS A COUNT, NOT A SENTENCE.
+			 * `foldSummarySpec`'s sentence form ("Ran 3 commands") is right when it
+			 * is the whole line, but ``Ran 3 commands · 3 job results`` glues prose
+			 * to a noun inventory with the ledger's own separator. Once receipts
+			 * join the line, the action side takes the count vocabulary the same
+			 * module already uses for multi-class runs (`3 shell`), so every unit
+			 * is the same shape and the ` · ` boundaries are the only grammar.
+			 * A receipt-only run has no action units at all - never `0 actions`.
+			 */
+			const actionSpec: FoldSummarySpec =
+				actions.length === 0
+					? { units: [], prose: false }
+					: receiptUnits.length > 0
+						? {
+								units: foldCountUnits(foldCountSegments(actions)),
+								prose: false,
+							}
+						: foldSummarySpec(actions);
 			groups.push({
 				kind: "run",
 				id: run[0].record.id,
@@ -750,11 +937,8 @@ export function foldRuns(
 				rows: run,
 				actions,
 				summary: {
-					...foldSummarySpec(actions),
-					units: [
-						...foldSummarySpec(actions).units,
-						...(options.receiptSummaryOf?.(receiptRows) ?? []),
-					],
+					units: [...actionSpec.units, ...receiptUnits],
+					prose: actionSpec.prose,
 				},
 				failedCount: actions.filter((action) => action.failed).length,
 				span: foldSpan(actions),

@@ -70,9 +70,17 @@ function sectionRefKeys() {
 	const body = source.slice(start);
 	const end = body.indexOf("}).current;");
 	assert.notEqual(end, -1, "sectionRefs seed has no closing `}).current;`");
+	/*
+	 * A section id may be a bare identifier or a quoted key: the settings
+	 * section this branch added is "agent-messages", which is not a valid
+	 * identifier. Accept both so the scanner compares every ref the seed
+	 * declares, not only the ones that happen to be identifier-safe.
+	 */
 	const keys = [
-		...body.slice(0, end).matchAll(/^\t\t([a-zA-Z][\w]*):\s*useRef</gm),
-	].map((match) => match[1]);
+		...body
+			.slice(0, end)
+			.matchAll(/^\t\t(?:"([^"]+)"|([a-zA-Z][\w]*)):\s*useRef</gm),
+	].map((match) => match[1] ?? match[2]);
 	assert.ok(keys.length > 0, "the sectionRefs seed parsed to no keys");
 	return new Set(keys);
 }

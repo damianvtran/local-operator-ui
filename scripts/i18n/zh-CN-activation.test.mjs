@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+import { withAbsentLocale } from "./absent-locale.mjs";
+
 // A fixture-only pass misses a forgotten generated import. Exercise the actual
 // bundled catalogues so locale publication cannot silently remain English.
 const bundle = await build({
@@ -38,7 +40,7 @@ test("shipped Simplified Chinese covers all three surfaces and switches back to 
 	console.log("en: Settings | Console");
 });
 
-test("counts render ungrouped (the #1131 fidelity rule); uncarried namespaces use the English source", () => {
+test("counts render ungrouped (the #1131 fidelity rule) in Chinese and on the English fallback", () => {
 	locale.setLocale("zh-CN");
 	// The count sinks carry ::group-off exactly as the English source has since
 	// #1131: 1 / >1 / >=1000 all render the raw number, matching what the
@@ -70,17 +72,38 @@ test("counts render ungrouped (the #1131 fidelity rule); uncarried namespaces us
 		}),
 		"第1234567步，共2000000步",
 	);
-	// Canvas is not carried: the English source applies, including its own
-	// group-off rule.
-	const fallback = messages.t("ui.canvas.files.count", { count: 1234567 });
-	assert.equal(fallback, "1234567 files");
-	assert.equal(
-		fallback,
+	// Canvas is carried too now: its count sink keeps the same ::group-off
+	// rule, so the Chinese message must render the raw number, not a grouped one.
+	const canvas = messages.t("ui.canvas.files.count", { count: 1234567 });
+	assert.equal(canvas, "1234567个文件");
+	assert.notEqual(
+		canvas,
 		messages.translate("ui.canvas.files.count", { count: 1234567 }, "en"),
+		"the zh-CN catalogue answers instead of the English fallback",
 	);
-	console.log(
-		`zh-CN counts ungrouped: ${formatted}; English fallback ui.canvas.files.count: ${fallback}`,
-	);
+	// A locale that does not carry the key still falls back to English,
+	// including its own group-off rule. Assert that on the shared synthetic tag,
+	// never on `zh-CN` - a real locale expires the assertion the day its tranche
+	// ships ui.canvas. restoreLocale() switches the locale back; the empty
+	// fixture stays registered under the tag and carries no keys.
+	const restoreLocale = withAbsentLocale({
+		currentLocale: locale.currentLocale,
+		setLocale: locale.setLocale,
+		registerCatalogue: messages.registerCatalogue,
+	});
+	try {
+		const fallback = messages.t("ui.canvas.files.count", { count: 1234567 });
+		assert.equal(fallback, "1234567 files");
+		assert.equal(
+			fallback,
+			messages.translate("ui.canvas.files.count", { count: 1234567 }, "en"),
+		);
+		console.log(
+			`zh-CN counts ungrouped: ${formatted}; ui.canvas.files.count: ${canvas}; English fallback: ${fallback}`,
+		);
+	} finally {
+		restoreLocale();
+	}
 });
 const DOUBLED_SPACE = / {2,}/;
 const UNRENDERED_PLACEHOLDER = /\{/;

@@ -1,0 +1,18 @@
+{
+	"ui.agentMessages.dialog.title": "Radient智能体消息",
+	"ui.agentMessages.dialog.lead": "你的智能体可以与组织内其他成员的智能体互发消息。",
+	"ui.agentMessages.dialog.reach": "默认仅允许组织内成员的智能体联系你；可前往“设置”→“智能体消息”更改。",
+	"ui.agentMessages.dialog.later": "稍后可前往“设置”→“智能体消息”启用。",
+	"ui.agentMessages.dialog.activities": "交换笔记、提问、发送审批请求。",
+	"ui.agentMessages.dialog.enable": "启用",
+	"ui.agentMessages.dialog.enabling": "正在启用……",
+	"ui.agentMessages.dialog.not_now": "暂不启用",
+	"ui.agentMessages.dialog.close": "关闭",
+	"ui.agentMessages.dialog.consent_unavailable": "暂时无法获取同意声明，智能体消息尚未启用。",
+	"ui.agentMessages.dialog.account_guard_unavailable": "此版本无法为你的账户安全启用智能体消息。请更新Local Operator后重试。",
+	"ui.agentMessages.dialog.failure": "无法启用智能体消息。请重试，或稍后前往“设置”→“智能体消息”启用。",
+	"ui.agentMessages.dialog.consent_changed": "请阅读最新的同意声明，然后再次点击“启用”。",
+	"ui.agentMessages.dialog.local_failure": "同意已保存，但本机设置尚未完成。请打开“设置”→“智能体消息”完成设置。",
+	"ui.agentMessages.dialog.validation_detail": "{field}：{rule}",
+	"ui.agentMessages.dialog.validation_failure": "此设置请求未被接受。请更新Local Operator后重试。"
+}

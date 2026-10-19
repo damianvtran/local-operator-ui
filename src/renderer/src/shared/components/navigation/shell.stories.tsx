@@ -293,6 +293,17 @@ const DESKTOP_CAPABILITIES = {
 		settings: 1,
 		agents_config: 1,
 		session_interrupt: 1,
+		/*
+		 * The operator's IA asks for Library and Projects in the primary rows;
+		 * the shell fixture advertises both so the evidence frames show the real
+		 * order rather than a column that silently omitted two destinations.
+		 */
+		library: 1,
+		projects: 1,
+		/* The Team Bridge row joins the More group only when the backend
+		   publishes the conversation surface; the shell fixture advertises it so
+		   the nav evidence frames show the real group. */
+		team_bridge_conversations: 1,
 	},
 };
 
@@ -342,6 +353,19 @@ const desktopRoute = async (
 			return desktopOk(DESKTOP_CAPABILITIES);
 		case "config.get":
 			return desktopOk(CONFIG);
+		case "team_bridge.unread":
+			/* One account-wide read; the count the row carries in these frames. */
+			return desktopOk({
+				total: 3,
+				organizations: [
+					{
+						tenant_id: "tnt_story",
+						tenant_name: "Story org",
+						unread: 3,
+						eligible: true,
+					},
+				],
+			});
 		case "instructions.get":
 			return desktopOk({
 				content: SYSTEM_PROMPT_CONTENT,
@@ -739,6 +763,57 @@ export const AgentsEmpty: Story = {
  */
 export const RailCollapsed: Story = {
 	render: () => <AgentsShell agentId={AGENTS[0].id} collapsed />,
+};
+
+/**
+ * The More group, collapsed and expanded.
+ *
+ * It renders the REAL rail inside `ChatLayout` - the composition `app.tsx`
+ * draws - so the frames show the bottom group, its ellipsis, the chevron and
+ * the revealed Agent Hub/Mesh rows exactly as the app arranges them. The
+ * preference is persisted in the app's store; these stories state both values
+ * explicitly and restore the default afterwards so one frame cannot leak into
+ * the next.
+ */
+const NavOverflowState: FC<{
+	open: boolean;
+	collapsed?: boolean;
+}> = ({ open, collapsed = false }) => {
+	const setOverflow = useUiPreferencesStore(
+		(state) => state.setSidebarOverflowExpanded,
+	);
+	const setCollapsed = useUiPreferencesStore(
+		(state) => state.setSidebarCollapsed,
+	);
+	useLayoutEffect(() => {
+		setOverflow(open);
+		setCollapsed(collapsed);
+		return () => {
+			setOverflow(false);
+			setCollapsed(false);
+		};
+	}, [open, collapsed, setOverflow, setCollapsed]);
+	return (
+		<ShellFrame>
+			<AgentsPage />
+		</ShellFrame>
+	);
+};
+
+export const NavMoreCollapsed: Story = {
+	render: () => <NavOverflowState open={false} />,
+};
+
+export const NavMoreExpanded: Story = {
+	render: () => <NavOverflowState open />,
+};
+
+export const NavMoreStripExpanded: Story = {
+	render: () => <NavOverflowState open collapsed />,
+};
+
+export const NavMoreStripCollapsed: Story = {
+	render: () => <NavOverflowState open={false} collapsed />,
 };
 
 /* ------------------------------------------------------------------ *

@@ -42,8 +42,9 @@ const execute = promisify(execFile);
  * (`CONTROL_REUSE_PARTS`, proved by the property test) the byte-identity assertion
  * holds and main/preload are reused. When it DOES touch main, preload or the vite
  * config, the control builds its own main/preload from its own source instead
- * (`controlReusePlan`); only a differing lockfile stays a hard stop. The identical
- * case is not weakened - the rebuild is the branch for a change that has to differ.
+ * (`controlReusePlan`); a differing lockfile installs the control's own dependencies
+ * from its own lockfile. The identical case is not weakened - the rebuild is the
+ * branch for a change that has to differ.
  *
  * WHAT IS LOST, STATED PLAINLY. A pinned commit let the control be any historical
  * revision at all, including one whose renderer predates this line of work. The
@@ -231,11 +232,10 @@ function files(root) {
  * photographs it. Now it takes the other branch: the control's main and preload are
  * BUILT from the control's own source, so the pair still differs by the change only.
  *
- * TWO PARTS STAY HARD STOPS, and they are not part of "reuse":
- *  - `pnpm-lock.yaml`: the control boots against the candidate's `node_modules`
- *    (symlinked, never duplicated), so a differing lockfile means the control would
- *    run on dependencies it was not built for. That is a different experiment, and
- *    it stops dispatch rather than producing frames that look comparable.
+ * TWO PARTS ARE NOT PART OF "REUSE":
+ *  - `pnpm-lock.yaml`: a differing lockfile means the control cannot share the
+ *    candidate's `node_modules`; it installs its own from its own lockfile, so the
+ *    comparison stays "base tree with base dependencies".
  *  - a missing tree: a revision whose source cannot be read stops dispatch.
  * The byte-identical case keeps its original assertion; only the mismatch of the
  * three build INPUTS (`src/main`, `src/preload`, `electron.vite.config.js`) is
@@ -259,9 +259,11 @@ export function controlReusePlan(revParse, control, head) {
 }
 /** The provenance line for a plan: the manifest's `mainPreloadReuse`. */
 export function describeMainPreloadReuse(plan) {
-	return plan.reuse
-		? "byte-identical source/config/lock"
-		: `rebuilt from control source (main/preload differ: ${plan.differing.join(", ")})`;
+	if (plan.reuse) return "byte-identical source/config/lock";
+	if (plan.lockDiffers) {
+		return "rebuilt from control source (lockfile differs; control dependencies installed from its own lockfile)";
+	}
+	return `rebuilt from control source (main/preload differ: ${plan.differing.join(", ")})`;
 }
 async function prepareControl(root, output) {
 	// Real historical source, not a callback mutation. Main/preload are reused
@@ -271,11 +273,6 @@ async function prepareControl(root, output) {
 		(spec) => git("rev-parse", spec),
 		ASKS_CONTROL,
 		"HEAD",
-	);
-	assert.equal(
-		plan.lockDiffers,
-		false,
-		"control reuse mismatch pnpm-lock.yaml: the control shares the candidate's node_modules, so a differing lockfile is a different experiment, not a rebuild",
 	);
 	const tar = join(output, "control-source.tar");
 	execFileSync("git", [
@@ -299,7 +296,29 @@ async function prepareControl(root, output) {
 	]);
 	mkdirSync(root);
 	execFileSync("tar", ["-xf", tar, "-C", root]);
-	symlinkSync(resolve("node_modules"), join(root, "node_modules"), "dir");
+	/*
+	 * A DEPENDENCY-ADDING PR IS STILL A VALID EXPERIMENT. The control normally
+	 * shares the candidate's node_modules, which is only honest when the lockfile
+	 * is byte-identical. When the lockfile differs, sharing would boot the control
+	 * on dependencies it was not built for, so the control gets its OWN install
+	 * from its own lockfile instead. That preserves the comparison (the control is
+	 * the base tree with base dependencies) and lets a reviewed dependency addition
+	 * run through the same gate rather than being forced to bypass it.
+	 */
+	if (plan.lockDiffers) {
+		await execute(
+			"pnpm",
+			["install", "--frozen-lockfile", "--ignore-scripts"],
+			{
+				cwd: root,
+				env: { ...process.env, CI: "true" },
+				timeout: 300000,
+				maxBuffer: 8 * 1024 * 1024,
+			},
+		);
+	} else {
+		symlinkSync(resolve("node_modules"), join(root, "node_modules"), "dir");
+	}
 	if (plan.reuse) {
 		for (const part of ["main", "preload"])
 			cpSync(join("out", part), join(root, "out", part), { recursive: true });

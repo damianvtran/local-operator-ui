@@ -79,6 +79,13 @@ export const agentMessagesStatusSchema = z
 			})
 			.nullable(),
 		error: agentMessagesRefusalSchema.nullable(),
+		// Present only on a killed/lapsed organization (surface F); the section
+		// renders it when the server chose to explain the state.
+		state_note: z.string().nullable().optional(),
+		// F's posture: the server admits only safety-increasing edits. The
+		// section gates the reach editor's controls rather than letting a reader
+		// press a Save the server will refuse.
+		read_only: z.boolean().optional(),
 	})
 	.passthrough();
 export type AgentMessagesStatus = z.infer<typeof agentMessagesStatusSchema>;
@@ -91,16 +98,160 @@ export type AgentMessagesConsentPut = {
 	consented_via: "dialog";
 };
 
+/**
+ * The full settings write this section needs (RFC §5.2). `state` is present on
+ * EVERY request - the server reads the body as a state assertion, never as a
+ * patch - and the consent echo rides only where the server requires one.
+ */
+export type AgentMessagesSettingsPut = {
+	expected_account_id: string;
+	tenant_id?: string;
+	state: "active" | "paused" | "disabled";
+	consent_version?: string;
+	consented_via?: "dialog" | "settings";
+	label?: string;
+};
+
+const consentRecordSchema = z
+	.object({
+		version: z.string().min(1),
+		consented_at: z.string().min(1),
+		consented_via: z.enum(["dialog", "settings"]),
+		// False means the served text moved on since this record was written; the
+		// surface must route the reader back through the enable action.
+		current: z.boolean(),
+	})
+	.passthrough();
+
+/**
+ * GET/PUT /v1/desktop/team-bridge/settings.
+ *
+ * `endpoint` is null until the account opts in. Unknown additive fields survive
+ * on every block; a missing required field fails the whole read, because a
+ * half-read endpoint would render controls whose writes the server refuses.
+ */
 export const agentMessagesSettingsResultSchema = z
 	.object({
-		endpoint: endpointSchema.extend({
-			account_id: z.string().min(1),
-			tenant_id: z.string().min(1),
-		}),
+		endpoint: endpointSchema
+			.extend({
+				// NO account_id: the upstream BridgeEndpointResponse does not carry
+				// one. The write's captured-account receipt (expected_account_id) is
+				// the account guard, and the caller's endpoint is already its own.
+				tenant_id: z.string().min(1),
+				label: z.string().optional(),
+				consent: consentRecordSchema.nullable().optional(),
+				created_at: z.string().optional(),
+				updated_at: z.string().optional(),
+			})
+			.nullable(),
+		settings: z
+			.object({
+				tenant_id: z.string().min(1),
+				eligible: z.boolean(),
+				consent_version: z.string().optional(),
+				consent_required: z.boolean(),
+			})
+			.passthrough(),
 	})
 	.passthrough();
 export type AgentMessagesSettingsResult = z.infer<
 	typeof agentMessagesSettingsResultSchema
+>;
+
+/*
+ * The READ target names its kind (`endpoint`/`account`) beside the id; the
+ * WRITE's `AllowlistTargetIn` accepts exactly one id and no `kind` (the id
+ * prefix states it). One schema here tolerates both spellings, while the PUT
+ * body's type below stays the write's exact shape.
+ */
+const allowlistTargetSchema = z
+	.object({
+		kind: z.enum(["endpoint", "account"]).optional(),
+		endpoint_id: z.string().min(1).optional(),
+		account_id: z.string().min(1).optional(),
+	})
+	.passthrough()
+	.refine(
+		(target) => Boolean(target.endpoint_id) !== Boolean(target.account_id),
+		"An allowlist target names exactly one of endpoint_id or account_id",
+	)
+	.refine(
+		(target) =>
+			target.kind === undefined ||
+			(target.kind === "endpoint"
+				? target.endpoint_id !== undefined
+				: target.account_id !== undefined),
+		"An allowlist target's kind must agree with the id it carries",
+	);
+
+const allowlistEntrySchema = z
+	.object({
+		direction: z.enum(["send", "receive"]),
+		effect: z.enum(["allow", "deny"]),
+		target: allowlistTargetSchema,
+		id: z.string().optional(),
+	})
+	.passthrough();
+export type AgentMessagesAllowlistEntry = z.infer<typeof allowlistEntrySchema>;
+
+/**
+ * The bounded replace-set (§6.1/§9): the write sends the whole policy, so an
+ * entry the surface failed to read is an entry the write would delete.
+ */
+export type AgentMessagesAllowlistPut = {
+	expected_account_id: string;
+	tenant_id?: string;
+	entries: {
+		direction: "send" | "receive";
+		effect: "allow" | "deny";
+		target: { endpoint_id: string } | { account_id: string };
+	}[];
+};
+
+const directionViewSchema = z
+	.object({
+		mode: z.enum(["class_default", "listed_only"]),
+		allow: z.number(),
+		deny: z.number(),
+	})
+	.passthrough();
+
+/**
+ * GET/PUT /v1/desktop/team-bridge/allowlist. `view` is the server's S-7
+ * reading (mode per direction, counts, cues): the surface renders it rather
+ * than re-deriving the RFC's rules from the entries.
+ */
+export const agentMessagesAllowlistResultSchema = z
+	.object({
+		allowlist: z
+			.object({
+				tenant_id: z.string().min(1),
+				entries: z.array(allowlistEntrySchema),
+			})
+			.passthrough(),
+		view: z
+			.object({
+				tenant_id: z.string().nullable(),
+				entries: z.array(allowlistEntrySchema),
+				directions: z.object({
+					send: directionViewSchema,
+					receive: directionViewSchema,
+				}),
+				class_default: z.literal("cos_cos"),
+				cues: z
+					.object({
+						allow_entry_switches_direction_to_listed_only: z.boolean(),
+						listed_only_affects: z.string(),
+						removing_allow_does_not_stop_open_thread: z.boolean(),
+						deny_stops_pair_both_directions: z.boolean(),
+					})
+					.passthrough(),
+			})
+			.passthrough(),
+	})
+	.passthrough();
+export type AgentMessagesAllowlistResult = z.infer<
+	typeof agentMessagesAllowlistResultSchema
 >;
 
 /**

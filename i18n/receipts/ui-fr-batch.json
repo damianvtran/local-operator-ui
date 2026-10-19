@@ -1,0 +1,504 @@
+{
+	"schema": 1,
+	"locale": "fr",
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "deepseek/deepseek-flash",
+		"date": "2026-10-18"
+	},
+	"note": "French UI batches translated by i18n-translator; awaits independent audit. Root consolidates into i18n/ledger.json.",
+	"entries": [
+		{
+			"locale": "fr",
+			"namespace": "ui.shell",
+			"source_sha256": "a36a75e15ce94632bad00e774e7f6211ca58d95a2b6f6f50a85e687d64a5b1ea",
+			"target_sha256": "a44110980baaf25ddd2dacd602bb9c2151b0003167ff8564ddfbff4b8e250c02",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.shell.rail",
+			"source_sha256": "82f946fe2d2944d03100d85263ff5e9e595dc34f953a0d57aa9794ea0879f3eb",
+			"target_sha256": "a0682fd26944cc4033a02fa673c691c7923d0593659fe7f8c8550ca4f74b41ea",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat",
+			"source_sha256": "29169c4c0801689781d503f724d457757275416c49e975bfb6ae4872d90c2c46",
+			"target_sha256": "3cd942b2ff623a18d68995c148d5edf1d5a4028033932b71f6ed161f7ba03722",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.sidebar_view",
+			"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+			"target_sha256": "f75ada877778f12898c37870f31e51e800fa102495a18fcf31c9307fcd0979cc",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.composer",
+			"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+			"target_sha256": "c52bea44cef9c409b6ccc1ac16eaa685500bc25bc8a27aa9740977c369b7dda0",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.header",
+			"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+			"target_sha256": "636be1bdb3ea9c04d89e187285b0122f7026b56401dbf596ec753f1572fbb9dd",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agents.navigation",
+			"source_sha256": "23f591cd7c2d52c2563e0b5cbb4cbb2164f7cd01c2568b050738b3be976a5729",
+			"target_sha256": "179d48ca93cee5a0e76707bb1a2210b19cebe125eceb8d6be21e622e06181091",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.common.actions",
+			"source_sha256": "bf151da8ad56c3b32b05be1d505764d3f4cfb72e9792f9ec68b8a570239f6976",
+			"target_sha256": "a617a61d0eeb98928c3425a9af778a841c7787acf2c11158253f34d7d16c2e0a",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.common.errors",
+			"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+			"target_sha256": "0870c5d466c9e7f2153c47f7a77370b9711f15d0464689b44fe489aaea97e6ef",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.command_palette",
+			"source_sha256": "c48797d973f81dea023e5c89c40c83d8ae0a9cdfaeb2509f6cbc4e9fb8abd7c6",
+			"target_sha256": "9badf404c82ce83c940005ecb4a4993fe98275f0fe7583072b0f56aeae2e7f9f",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.projects",
+			"source_sha256": "6b12f695845c3d01500291f5bc4eb50ea9b35e60c68bc69f21ee219c5f9d7f52",
+			"target_sha256": "64cc3e529f94feb252da0fe27eb070b5aa79395676bab6a40c6f2bd2754688fe",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.schedules",
+			"source_sha256": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
+			"target_sha256": "46e6ffa433b4b1481ff83938812b6475046c04d3688921503b925eb38fee6d4c",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.hub",
+			"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+			"target_sha256": "7fec3dc3011e8e78867767c0cb61b203ce351ceba64b0ed2b47634903c0ae2ea",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.hub.comments",
+			"source_sha256": "5c20d0e9a7f66f753561ded1d104aa5cf0e1fd0d5a73f7f0a7e3349a28c6f2c4",
+			"target_sha256": "805efe0fff569ed11e51f511e9a0ceb10f1e0e91863b62290d1c2cc6629e0fce",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.hub.taxonomy",
+			"source_sha256": "4614e6b5eb2c56f0f48ccbee9bf26266193701a79994da4d9cf533386f1d3717",
+			"target_sha256": "85a685dddc54f22d72f81b4cf59c1a904ccb847d6bc5c80e2a9893e884436556",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.browser",
+			"source_sha256": "4bdd6666a1c4358ea12dcc82229823659f33e96f225dcca57e0630a94e3e0641",
+			"target_sha256": "5d5b6edc412918897ac0643c14bc2aafbe616a570b530541f87d182968d59795",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.browser.chrome",
+			"source_sha256": "73793572e5e36b8bbc8df6c1f27fb98083634b3b9e3cbd05ede27da4813c656c",
+			"target_sha256": "bfe5db5900dd28dac60993c23e71c4bcbfd3bbd21e81cf3fe8158d931f0d6d43",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.mesh",
+			"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+			"target_sha256": "ee294ca42484fa4aebe7f50abdbf31676153a49f981ddd3c36f50b711f0f2740",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.canvas",
+			"source_sha256": "6fa13501b59a260373bcb26f212fc6244a3d1219ef1811d2b0c1de05b541f1f5",
+			"target_sha256": "5f7f7de240978be3ce955c5d51c5dd82400bc603d7797ba99de3ee64ec0f2592",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.code_review",
+			"source_sha256": "7344c8694a23662bfe3ae12205685cfa14851209d0685abbe463b9f513565085",
+			"target_sha256": "b2074b091f9e3855e8985bc313394c727ac3536224592014a80707fd14b90270",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.providers",
+			"source_sha256": "9981637a98afbcbc166d889b461795bae7685e42274f4d607b711f4b0f9085f2",
+			"target_sha256": "6326ad0c5fbeda685fe01a2f51641480685f53f601ddaf345d63551de9e428ee",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.common.account",
+			"source_sha256": "72e2a848a2aa4b46ecdc0ede34ed5f59b280b73e3fc544d5e563ce22ab2743e0",
+			"target_sha256": "aad4f1b400ca0a8a8691ba293701435aab9c9ef4886ad6c91a1b87494f6e7c9c",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.common.connection",
+			"source_sha256": "d1acb6a1fae70e3f85255d880a91d9e35ed49a8bf7d04ef14722ce115d7c69bb",
+			"target_sha256": "8f48360aa233f40c0ad28f7f6fe06581394dd6543115b474add041ca07e6240e",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.common.editing",
+			"source_sha256": "e7ddf3b75f3e46d6900aacab976f1180eb10fdb121b5f46d2dc231fd6b4f5bb5",
+			"target_sha256": "df1bc843012aa9c8f31f48d491c1519e19115e46b938ca84c63a71b0febe524c",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.common.forms",
+			"source_sha256": "28a63a53e5b6c3c4fccb9995eb07637c8521ce9d5019e304f3fedb0ddbc053d9",
+			"target_sha256": "a252e82289404e129f8195b9a67c4be85654dd7f2ec7ad32848b1b47656cf399",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.common.loading",
+			"source_sha256": "e629186e32cd51d7eb98dcd3e8f6587765447bd1da9bdba5c5d327ad2bdcd87e",
+			"target_sha256": "5ace7267fe6b515c463460bf5a206095b71ea199fcc49e77b7dbc3815a569205",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.common.models",
+			"source_sha256": "561e39a0105425d66cac7d7497306d740d79f7b2e3921424b1993f3405e08d77",
+			"target_sha256": "067787fe8c90a3f245fa494e1b2b0466c88c39854b83c599ec3896022053ada0",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.common.updates",
+			"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
+			"target_sha256": "d14a0c077c6ebf70f8b734b25a3e07481c44d026bc658456d4fe6a60383d430b",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.appearance.window_glass",
+			"source_sha256": "d3c6e272273baab454200c41a25b21c451689ae9bf03329aa776dc1cb9f1b33a",
+			"target_sha256": "3213527f2d1e5047201aff7751d7bc9f527797b47ba0c01b098a1669cb3c38d1",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.imports",
+			"source_sha256": "1f8b1941bd65b91c84b1b4c41bfb1406f0e4790936c8690b04bfd788b4a1b082",
+			"target_sha256": "52e9e1f6fa01119c548726c50ac606815fe4dfb4b8ce1e457e3b410691f212fc",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.model.default_effort",
+			"source_sha256": "5a4a01952b8a4242730e336cf082dc926085ac126a147d8b44197e9f04fc3b29",
+			"target_sha256": "7a13c421654265cd667f60e17fb847e0c9bfa8abcb2ca0e74203152541b02404",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.model.provider_callout",
+			"source_sha256": "8d1871aa2d087f99694b77e9f946b33b549a9541525023347b78124f42bbf82f",
+			"target_sha256": "b69f1e11b7e01f81f9327f5b84aaab4fac18690b3b967f034b4a60d16541c717",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.installer",
+			"source_sha256": "35b34093f3d065acf26e96a4e9601cb2906bd9439230a7fa7f9fc9a43784f7a3",
+			"target_sha256": "e12dc3618bf3c71d41b8e25ae5e2957c7b4fafdd55fdef48428ea56bb0094c8c",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agentMessages",
+			"source_sha256": "065cbea39ca4df33aa114fc027e5f75bcc6e74e9cb21d4f14e42628d3795cbcb",
+			"target_sha256": "3157c822b9ba071078a6544e09a748c92b943af995299f620752d5db49773f9b",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agents.starters",
+			"source_sha256": "7d7170328807a0ae0018bb69c4cd5fe49f6d5e47f7ca34484cf71b2a74612cec",
+			"target_sha256": "0f37a1670554381d9207aa12e9bfe1a9eb63bfc6a5694e23c9425c527d49592e",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agents.refusals",
+			"source_sha256": "457cb86efa40d800d2adf711ec2b4289d22b4b9013fd48189082c4b8808d3f20",
+			"target_sha256": "5cd4f443265352382baf997a0f48ccdc9101b9c53290dda5dde445cb266a1ed6",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agents.models",
+			"source_sha256": "0775863598346b25001f9131bdf4bf207aba0d036858ce08b7cc49b00f44a540",
+			"target_sha256": "0a78af103388ac25e5899e021cde72a817563cf14dcec2a1b78fcc32ee5b58aa",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agents.dialogs",
+			"source_sha256": "99fc8672fbb4139aa2721542a8fb994506301b0c678d86c21439e939f5dd2bf4",
+			"target_sha256": "4de75ec272d148e88c763551a9ac9538f1f15072541ad2fed2651678330958d9",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agents.settings",
+			"source_sha256": "2e2a8a28891db681fd72396a3b8323e8705e4ea9c0397e49237e3ed3f7e1a897",
+			"target_sha256": "9fcff9fdb9859da271e108afb80fc334a09c3da99dabac09ebb5675fca08eb9b",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.composer_media",
+			"source_sha256": "47ec03f574b6665bafaf900f15067ef522fbf8b7fe665402b0bb4be03d0aa0ff",
+			"target_sha256": "37f695ad48568e6f7c17e6a86ae54c4f1b320ed7fbf6c6b9d8edbdde2ee6b26f",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.dialogs",
+			"source_sha256": "783d72141bae3491cc1ecfbdfc983339e327406cd4385e7ce8f9dfa1360997fc",
+			"target_sha256": "98d4bbfe63094ec7397250b2dce65506c18a45f2cc38afb9f372dd4ed7932491",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-18"
+			},
+			"status": "translated"
+		}
+	]
+}

@@ -1,0 +1,305 @@
+{
+	"schema": 1,
+	"locale": "es",
+	"date": "2026-10-18",
+	"instance": "bf867ef95b69",
+	"agent": "i18n-auditor",
+	"model": "openai/gpt-6.1-sol",
+	"status": "passed",
+	"verdict": "PASS-WITH-NOTES",
+	"scope": "76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..0b52d734f7220a58861d98855f2685f9074110d8",
+	"pr": "https://github.com/damianvtran/local-operator-ui/pull/1174",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"instance": "bf867ef95b69",
+		"model": "openai/gpt-6.1-sol"
+	},
+	"fallback_disclosure": "Session began pinned to anthropic/claude-sonnet-5-5; automatic provider fallback to openai/gpt-6.1-sol occurred before reading or auditing translations. All substantive audit work used openai/gpt-6.1-sol.",
+	"independence": "Different instance and role from receipt translator i18n-translator/deepseek/deepseek-flash; no translation edits, commits or pushes.",
+	"translator_receipt": {
+		"path": "i18n/receipts/ui-es-batch.json",
+		"sha256": "05a4bc045aaa755575d2b06f9d8a106ffbdf253aa844e777010864bab1400d6d"
+	},
+	"references": {
+		"ui_howto": {
+			"path": "docs/I18N.md",
+			"sha256": "f6699c1015a16cbf782bbd008a28c50edd63ade3e98f84be2d41dec6b14b95db"
+		},
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style": {
+			"path": "~/local-operator/i18n/style-guides/es.md",
+			"sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+		},
+		"house_voice": [
+			"src/i18n/catalogues/es/ui.onboarding.json",
+			"src/i18n/catalogues/es/ui.settings.json",
+			"src/i18n/catalogues/es/ui.console.json"
+		]
+	},
+	"checks": {
+		"derived_keys": 240,
+		"duplicate_key_checked_files": 20,
+		"all_key_sets_equal": true,
+		"all_targets_canonical_tab_json": true,
+		"receipt_hashes_match_actual_bytes": true,
+		"english_unchanged_from_pinned_base": true,
+		"icu_parser": "existing @formatjs/icu-messageformat-parser",
+		"icu_comparison": "Per-key recursive argument/type/style/select/branch comparison, allowing only locale-required many alongside en one/other; added many argument structure equals other. No unexpected structural drift.",
+		"plural_messages": 15,
+		"spanish_cldr_categories": [
+			"one",
+			"many",
+			"other"
+		],
+		"runtime_formatter": "existing intl-messageformat",
+		"formatted_samples": 315,
+		"runtime_failures": 0,
+		"plural_counts": [
+			0,
+			1,
+			2,
+			1000000,
+			1500000
+		],
+		"typography_code_span_failures": [],
+		"line_by_line_semantics": "All 240 source/target pairs read, including all 22 sidebar_view and all 75 command_palette values.",
+		"width_method": "Static codepoint/cell comparison on Spanish text (all applicable literal characters single-cell); ICU source-length overages are not rendered lengths."
+	},
+	"terminology": {
+		"register": "Consistent tú in instructions, infinitive action labels; matches existing audited es house voice.",
+		"glossary": "sesión, agente, habilidad, ajustes, equipo, dispositivo, transcripción, traza, espacio de trabajo are correct; identifiers/product/brand names preserved.",
+		"kept_english": "Local Operator, Radient and ZIP retained as product/technology names; ID standard technical abbreviation. Hub/hub, Mesh and Canvas/canvas treated as named product destinations, not translations of generic hub/mesh/canvas. App and backend accepted technical UI register (app is established in audited settings/onboarding); no identifier translation. fusiona in hub version reconciliation is ordinary prose, not a Git merge command.",
+		"typography": "Spanish inverted question marks, curly double quotes, ellipsis and sentence case conform; no broken markup or altered code spans found."
+	},
+	"limitations": [
+		"No browser, build, installs, heavy suite, repo edits or generated writes performed, as requested.",
+		"One independent source audit only. High-visibility second-independent-audit requirement must be satisfied separately and its provenance appended, never fabricated.",
+		"No rendered fit, pseudo-localization, RTL or native UI evidence is claimed; this audit is not activation/merge/release authorization.",
+		"Before applying ledger rows, translator must copy this immutable receipt into its declared repository i18n/receipts path without altering bytes; current source/target hashes must still match."
+	],
+	"width_observations": [
+		"All 18 numeric sidebar_view budgets fit; longest 24-cell option is Fecha de creación at 17 cells.",
+		"Command-palette sidecars provide qualitative one-row/wrapping guidance, no numeric or pixel budgets. Longer destinations Conectar un proveedor de modelos (32 cells), Diagnóstico de esta conversación (32), Uso a lo largo del tiempo (25) need narrow-palette rendered QA; clipping is not established.",
+		"Composer secret_confirm_put is 25/24 cells and secret_fill_locked 121/120; consider Poner en campo secreto / shorten the status, or verify wrapping. Header conversation_name is 25/24 but an accessible input name, not a visible menu-label clipping defect.",
+		"secret_confirm_chars ICU source length is not output width: do not flag its 77-character ICU expression as rendered overflow."
+	],
+	"artifacts": {
+		"audit-mechanics.mjs": {
+			"path": "/Users/damian/.local-operator/sessions/bf867ef95b69/scratchpad/audit-mechanics.mjs",
+			"sha256": "3133492c98441857e863eac5b6d24b9bed909fd65d0da4465b83c08e00fb4da0"
+		},
+		"audit-runtime.mjs": {
+			"path": "/Users/damian/.local-operator/sessions/bf867ef95b69/scratchpad/audit-runtime.mjs",
+			"sha256": "a8305ffe073a7df956c171f16e928d661fd1940b8bfe15f7cc6fa10cb2d5b9b3"
+		},
+		"mechanical-results.json": {
+			"path": "/Users/damian/.local-operator/sessions/bf867ef95b69/scratchpad/mechanical-results.json",
+			"sha256": "f6e59abea77968bbcab820ea78c7cd41574ca2f94975bec497158775035ad3d6"
+		},
+		"runtime-results.json": {
+			"path": "/Users/damian/.local-operator/sessions/bf867ef95b69/scratchpad/runtime-results.json",
+			"sha256": "ceb63ac73ff5f079118bae4aac6094c4154456a88372d8b93fe9b84c3841810e"
+		}
+	},
+	"namespaces": {
+		"ui.shell": {
+			"status": "passed",
+			"keys": 29,
+			"source_sha256": "a36a75e15ce94632bad00e774e7f6211ca58d95a2b6f6f50a85e687d64a5b1ea",
+			"target_sha256": "d382f3b8eadf8ec15be0c0380bf4c50a3c991ae039604630139ee8262fbbff2f",
+			"context_sha256": "28fe5abc38f1f94e62f4f2f5201513cf1688e0ad26e0d1d0a739846fb43cebab",
+			"source_path": "src/i18n/catalogues/en/ui.shell.json",
+			"target_path": "src/i18n/catalogues/es/ui.shell.json",
+			"context_path": "src/i18n/catalogues/en/ui.shell.context.json",
+			"findings": [],
+			"mechanical_errors": [],
+			"result": "clean"
+		},
+		"ui.shell.rail": {
+			"status": "passed",
+			"keys": 20,
+			"source_sha256": "82f946fe2d2944d03100d85263ff5e9e595dc34f953a0d57aa9794ea0879f3eb",
+			"target_sha256": "974bb40e7b8d816a56a19b327ab63febbd1a0ec0161176c8940241d4ed749772",
+			"context_sha256": "a6956835b7178e62982d4b95763390fe7b67decabe83c3d82e0e911101062d72",
+			"source_path": "src/i18n/catalogues/en/ui.shell.rail.json",
+			"target_path": "src/i18n/catalogues/es/ui.shell.rail.json",
+			"context_path": "src/i18n/catalogues/en/ui.shell.rail.context.json",
+			"findings": [
+				{
+					"id": "ES-T1-01",
+					"severity": "minor",
+					"namespace": "ui.shell.rail",
+					"key": "ui.shell.rail.code.mentioned",
+					"keys": [
+						"ui.shell.rail.code.mentioned",
+						"ui.shell.rail.code.opened",
+						"ui.shell.rail.console.aria_count",
+						"ui.shell.rail.console.tooltip_count"
+					],
+					"lines": [
+						14,
+						15,
+						19,
+						21
+					],
+					"summary": "The Spanish many branches apply de directly to an adjective/participle without its counted noun.",
+					"evidence": [
+						"1000000 de mencionados",
+						"1000000 de abiertos",
+						"ConsolaX, 1000000 de finalizadas desde tu última visita",
+						"Cerrar consolaX — 1000000 de finalizadas desde tu última visita"
+					],
+					"recommendation": "Name the counted noun before the adjective in many, or use a noun-led formulation. Preserve all ICU arguments. Rare million-count wording; no functional loss.",
+					"disposition": "open non-blocking note"
+				}
+			],
+			"mechanical_errors": [],
+			"result": "clean-with-findings"
+		},
+		"ui.chat.sidebar_view": {
+			"status": "passed",
+			"keys": 22,
+			"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+			"target_sha256": "dda0f249fd8adce165e4509310011101e632d16398993911444b4c118fedf8d3",
+			"context_sha256": "7d51739eca1dc19b6896c13df0fab73a1b09f0a6190d609bffb75e6b712d4d75",
+			"source_path": "src/i18n/catalogues/en/ui.chat.sidebar_view.json",
+			"target_path": "src/i18n/catalogues/es/ui.chat.sidebar_view.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.sidebar_view.context.json",
+			"findings": [],
+			"mechanical_errors": [],
+			"result": "clean"
+		},
+		"ui.chat": {
+			"status": "passed",
+			"keys": 8,
+			"source_sha256": "29169c4c0801689781d503f724d457757275416c49e975bfb6ae4872d90c2c46",
+			"target_sha256": "28cea94bdffacfcc6db78b9b0e9dc1830cab277e74705acd643f545815bf46b6",
+			"context_sha256": "2561c8f369eb55a351ec95d0c6d9443e0cfcac43a500cc826bfaf7c744d71e2e",
+			"source_path": "src/i18n/catalogues/en/ui.chat.json",
+			"target_path": "src/i18n/catalogues/es/ui.chat.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.context.json",
+			"findings": [],
+			"mechanical_errors": [],
+			"result": "clean"
+		},
+		"ui.chat.composer": {
+			"status": "passed",
+			"keys": 34,
+			"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+			"target_sha256": "a5c64a6dad8d7c0519ba4c8e81a4dc65c4fd92f65b93d1aeca245ffcedb340c1",
+			"context_sha256": "4e1b44b439206055e3b1b470a1a90c131c209a463ed4cc7f4cdf4bc5a5366c3a",
+			"source_path": "src/i18n/catalogues/en/ui.chat.composer.json",
+			"target_path": "src/i18n/catalogues/es/ui.chat.composer.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+			"findings": [],
+			"mechanical_errors": [],
+			"result": "clean"
+		},
+		"ui.chat.header": {
+			"status": "passed",
+			"keys": 10,
+			"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+			"target_sha256": "dcb7d933e979b0e9f643e3a16f3760f2c5b963323edc0c30620b750ce905752b",
+			"context_sha256": "ce8be48bf86c92bd7631d2b22f54b59f84b2eb700d746ba5dfaccb19bbbb1acb",
+			"source_path": "src/i18n/catalogues/en/ui.chat.header.json",
+			"target_path": "src/i18n/catalogues/es/ui.chat.header.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.header.context.json",
+			"findings": [
+				{
+					"id": "ES-T1-02",
+					"severity": "minor",
+					"namespace": "ui.chat.header",
+					"key": "ui.chat.header.close_run_details",
+					"keys": [
+						"ui.chat.header.close_run_details",
+						"ui.chat.header.open_run_details"
+					],
+					"lines": [
+						10,
+						11
+					],
+					"summary": "Run-details overflow-menu labels exceed their advisory 20-cell budgets: 28 and 27 cells.",
+					"evidence": [
+						"Cerrar detalles de ejecución: 28/20",
+						"Abrir detalles de ejecución: 27/20"
+					],
+					"recommendation": "Consider Cerrar detalles / Abrir detalles when the run context is clear, or prove menu fit in the separate rendered QA pass. This is a source-level clipping risk, not observed clipping.",
+					"disposition": "open non-blocking note"
+				}
+			],
+			"mechanical_errors": [],
+			"result": "clean-with-findings"
+		},
+		"ui.agents.navigation": {
+			"status": "passed",
+			"keys": 32,
+			"source_sha256": "23f591cd7c2d52c2563e0b5cbb4cbb2164f7cd01c2568b050738b3be976a5729",
+			"target_sha256": "3009aa8a42f9e603d1900558b2415d2a01f93555141390860b2892542e923b0c",
+			"context_sha256": "3d3e8121a15256ffaac2df6e35e2bb1151959bc4fdc0575352fb7d3b4ae1bbca",
+			"source_path": "src/i18n/catalogues/en/ui.agents.navigation.json",
+			"target_path": "src/i18n/catalogues/es/ui.agents.navigation.json",
+			"context_path": "src/i18n/catalogues/en/ui.agents.navigation.context.json",
+			"findings": [],
+			"mechanical_errors": [],
+			"result": "clean"
+		},
+		"ui.common.actions": {
+			"status": "passed",
+			"keys": 6,
+			"source_sha256": "bf151da8ad56c3b32b05be1d505764d3f4cfb72e9792f9ec68b8a570239f6976",
+			"target_sha256": "69553e413b8d96e71c40887ddcfad91451b04cf1edde2881d55eb3c580edc64a",
+			"context_sha256": "a7d020e5552dd770cb5c263e63d07775f8d309d4ae211e727b3bde1a2733b0da",
+			"source_path": "src/i18n/catalogues/en/ui.common.actions.json",
+			"target_path": "src/i18n/catalogues/es/ui.common.actions.json",
+			"context_path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+			"findings": [],
+			"mechanical_errors": [],
+			"result": "clean"
+		},
+		"ui.common.errors": {
+			"status": "passed",
+			"keys": 4,
+			"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+			"target_sha256": "d51b9ed14d6df005e74b3586a23244c63b7cb5dac23335be06c01f4779e48db3",
+			"context_sha256": "6f93d0bc40db09d195bbe6a57534f9c474b45de072f100e900cc286886a2e44b",
+			"source_path": "src/i18n/catalogues/en/ui.common.errors.json",
+			"target_path": "src/i18n/catalogues/es/ui.common.errors.json",
+			"context_path": "src/i18n/catalogues/en/ui.common.errors.context.json",
+			"findings": [],
+			"mechanical_errors": [],
+			"result": "clean"
+		},
+		"ui.command_palette": {
+			"status": "passed",
+			"keys": 75,
+			"source_sha256": "c48797d973f81dea023e5c89c40c83d8ae0a9cdfaeb2509f6cbc4e9fb8abd7c6",
+			"target_sha256": "853d877c8fcfe494e9b34208da9313112bf24c00a8a89f443ee5a7b12865d255",
+			"context_sha256": "45608d545283180177fed89e463c65fad45760ddccf6fded5717eda2fd5b1cc9",
+			"source_path": "src/i18n/catalogues/en/ui.command_palette.json",
+			"target_path": "src/i18n/catalogues/es/ui.command_palette.json",
+			"context_path": "src/i18n/catalogues/en/ui.command_palette.context.json",
+			"findings": [
+				{
+					"id": "ES-T1-03",
+					"severity": "nit",
+					"namespace": "ui.command_palette",
+					"key": "ui.command_palette.palette_search.try_another_word_or_narrow_the_search_with_a_prefix_below",
+					"keys": [
+						"ui.command_palette.palette_search.try_another_word_or_narrow_the_search_with_a_prefix_below"
+					],
+					"lines": [
+						41
+					],
+					"summary": "con un prefijo de abajo is understandable but less idiomatic than con uno de los prefijos siguientes.",
+					"recommendation": "Prueba otra palabra o acota la búsqueda con uno de los prefijos siguientes. Keep tú.",
+					"disposition": "open non-blocking note"
+				}
+			],
+			"mechanical_errors": [],
+			"result": "clean-with-findings"
+		}
+	}
+}

@@ -92,6 +92,12 @@ const ROOT = process.cwd();
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 const SETTINGS_RAIL =
 	"src/renderer/src/features/settings/components/settings-sidebar.tsx";
+const LIBRARY_CARD =
+	"src/renderer/src/features/library/components/library-card.tsx";
+const LIBRARY_FILTER_RAIL =
+	"src/renderer/src/features/library/components/library-filter-rail.tsx";
+const LIBRARY_PAGE =
+	"src/renderer/src/features/library/components/library-page.tsx";
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 
 /*
@@ -396,6 +402,10 @@ const CURRENT = [
 			rowCurrent,
 			nested: false,
 			current: true,
+			// Grouped, current, but not held: cursor opt-in must coexist with selection.
+			tagDraggable: true,
+			rowTagDrag: { armedId: null },
+			row: { session_id: "synthetic-current-row" },
 		},
 		ground: true,
 	},
@@ -777,6 +787,25 @@ test("the mark is colour plus weight, and neither one can move the row", () => {
 	assert.ok(
 		!rowCurrent.includes("outline-control"),
 		`the current row is drawn with a \`border-control\`-role boundary again; that role is § 2's *sole boundary of an input, select, checkbox or outlined button*, and the ring rendered as the search field one row below the list (design round 1, D3):\n${rowCurrent}`,
+	);
+});
+
+test("the grouped current conversation keeps selection while its cursor is held", () => {
+	const site = CURRENT.find(
+		(entry) => entry.what === "the selected conversation",
+	);
+	assert.ok(site, "the selected conversation must remain in CURRENT");
+	const idle = merged(site.file, site.expression(), site.stubs).split(/\s+/);
+	assert.ok(idle.includes("cursor-grab"));
+	const held = merged(site.file, site.expression(), {
+		...site.stubs,
+		rowTagDrag: { armedId: "synthetic-current-row" },
+	}).split(/\s+/);
+	assert.ok(held.includes("cursor-grabbing"));
+	assert.ok(!held.includes("cursor-grab"));
+	assert.ok(
+		carriesGround(held),
+		"the held cursor must not replace the current-row ground",
 	);
 });
 
@@ -1381,7 +1410,15 @@ const ROW_STATE_GROUNDS = [
 		what: "the chat sidebar's list panel",
 		rowFile: SIDEBAR,
 		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-left"'),
-		stubs: { rowStyle, rowCurrent, nested: false, current: true },
+		stubs: {
+			rowStyle,
+			rowCurrent,
+			nested: false,
+			current: true,
+			tagDraggable: true,
+			rowTagDrag: { armedId: null },
+			row: { session_id: "synthetic-current-row" },
+		},
 		ground: () => literalClassAt(SIDEBAR, 'aria-label="Chats"', "after"),
 		groundFile: SIDEBAR,
 	},
@@ -1488,6 +1525,68 @@ const ROW_STATE_GROUNDS = [
 				{},
 			),
 		groundFile: FINDER_FILES_VIEW,
+	},
+	/* card: its own ground; tailwind-merge drops the resting bg-surface once
+	 * bg-row-selected follows it, so read the ground with the role stubbed out */
+	{
+		what: "the Library asset card",
+		rowFile: LIBRARY_CARD,
+		expression: () => expressionAfter(LIBRARY_CARD, "export const LibraryCard"),
+		stubs: { selected: true, rowCurrent },
+		ground: () =>
+			merged(
+				LIBRARY_CARD,
+				expressionAfter(LIBRARY_CARD, "export const LibraryCard"),
+				{ selected: true, rowCurrent: "" },
+			),
+		groundFile: LIBRARY_CARD,
+	},
+	/* list row: same file, second call site */
+	{
+		what: "the Library asset list row",
+		rowFile: LIBRARY_CARD,
+		expression: () =>
+			expressionAfterWithin(
+				LIBRARY_CARD,
+				"export const LibraryRow",
+				"data-library-card-id",
+			),
+		stubs: { selected: true, rowCurrent },
+		ground: () =>
+			merged(
+				LIBRARY_CARD,
+				expressionAfterWithin(
+					LIBRARY_CARD,
+					"export const LibraryRow",
+					"data-library-card-id",
+				),
+				{ selected: true, rowCurrent: "" },
+			),
+		groundFile: LIBRARY_CARD,
+	},
+	/* rail: rows are painted on the page-sidebar aside, which owns bg-surface */
+	{
+		what: "the Library filter rail",
+		rowFile: LIBRARY_FILTER_RAIL,
+		expression: () => expressionAfter(LIBRARY_FILTER_RAIL, "const RailRow"),
+		stubs: { active: true, indent: false, rowCurrent },
+		ground: () =>
+			literalClassAt(LIBRARY_PAGE, 'data-glass-region="page-sidebar"', "after"),
+		groundFile: LIBRARY_PAGE,
+	},
+	{
+		/* THE SECOND MOUNT. The same rail is rendered inside the mobile filter
+		 * Sheet, whose shared shell is `bg-elevated`; rows must not be painted on
+		 * it. The content wrapper inside that shell owns `bg-surface`, so the
+		 * mobile mount gets its own ground assertion rather than inheriting the
+		 * desktop aside's. */
+		what: "the Library filter rail inside the mobile sheet",
+		rowFile: LIBRARY_FILTER_RAIL,
+		expression: () => expressionAfter(LIBRARY_FILTER_RAIL, "const RailRow"),
+		stubs: { active: true, indent: false, rowCurrent },
+		ground: () =>
+			literalClassAt(LIBRARY_PAGE, 'data-library-filter-sheet=""', "after"),
+		groundFile: LIBRARY_PAGE,
 	},
 ];
 
@@ -1671,6 +1770,8 @@ test("the settings rail's group lists carry no ground of their own", () => {
  */
 const ACCOUNT_ROW =
 	"src/renderer/src/shared/components/navigation/user-profile-sidebar.tsx";
+const TEAM_BRIDGE_PAGE =
+	"src/renderer/src/features/team-bridge/team-bridge-page.tsx";
 const TEAM_BUBBLE =
 	"src/renderer/src/features/chat/components/team-avatar-bubble.tsx";
 
@@ -2181,6 +2282,19 @@ const PLATES_INSIDE_ROW_STATES = [
 		ground: "bg-elevated",
 		edge: false,
 		fact: "-bottom-px",
+	},
+	{
+		/*
+		 * The merged Team Bridge list's organization chip. `elevated` against
+		 * `rowHover` measures ΔE00 0.00 on `arcade`, so the fill alone is no
+		 * boundary on that palette; `border-control` is what keeps the chip
+		 * readable when the row under it is hovered or selected.
+		 */
+		what: "the merged list's organization chip",
+		file: TEAM_BRIDGE_PAGE,
+		element: "span",
+		ground: "bg-elevated",
+		edge: true,
 	},
 	{
 		/*

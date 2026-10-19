@@ -1,0 +1,18 @@
+{
+	"ui.agents.starters.server_unanswered": "سرور نے جواب نہیں دیا۔",
+	"ui.agents.starters.summary.installed": "{count, plural, one {{count} انسٹال ہوا} other {{count} انسٹال ہوئے}}",
+	"ui.agents.starters.summary.already_present": "{count, plural, one {{count} پہلے سے موجود ہے} other {{count} پہلے سے موجود ہیں}}",
+	"ui.agents.starters.summary.skipped": "{count, plural, one {{count} چھوڑا گیا} other {{count} چھوڑے گئے}}",
+	"ui.agents.starters.summary.failed": "{count, plural, one {{count} ناکام ہوا} other {{count} ناکام ہوئے}}",
+	"ui.agents.starters.summary.empty": "انسٹال کرنے کو کچھ نہیں",
+	"ui.agents.starters.summary.sentence": "{parts}۔",
+	"ui.agents.starters.summary.separator": "، ",
+	"ui.agents.starters.summary.collisions": "{count, plural, one {{count} چھوڑا گیا؛ آپ کے پاس {names} نام کا ایجنٹ پہلے سے ہے۔} other {{count} چھوڑے گئے؛ آپ کے پاس {names} نام کے ایجنٹ پہلے سے ہیں۔}}",
+	"ui.agents.starters.action.all_builtins": "تمام شامل ایجنٹ انسٹال کریں",
+	"ui.agents.starters.available": "{count, plural, one {{count} شامل ایجنٹ دستیاب ہے} other {{count} شامل ایجنٹ دستیاب ہیں}}",
+	"ui.agents.starters.action.all_count": "{count, plural, one {تمام {count} انسٹال کریں} other {تمام {count} انسٹال کریں}}",
+	"ui.agents.starters.progress.accessible": "شامل ایجنٹ انسٹال ہو رہے ہیں، {total} میں سے {step}",
+	"ui.agents.starters.progress.named": "{total} میں سے {step} انسٹال ہو رہا ہے — {name}…",
+	"ui.agents.starters.progress.count": "{total} میں سے {done} انسٹال ہو رہے ہیں…",
+	"ui.agents.starters.action.done": "ہو گیا"
+}

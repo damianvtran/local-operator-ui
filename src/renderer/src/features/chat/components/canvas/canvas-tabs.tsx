@@ -248,6 +248,15 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 				role="tablist"
 				aria-label="Open documents"
 				aria-orientation="horizontal"
+				/*
+				 * A TAB STRIP IS CHROME, NOT A TRACK. `bg-sunken` is the flat
+				 * segmented-control track, but this strip is a row of document tabs and
+				 * the pane already owns the ground on glass - a second fill here would be
+				 * a slab. The selected tab keeps the selected ink overlay (the tablist
+				 * rule in styles/index.css); the strip itself is clear. The hairline
+				 * below still carries the boundary.
+				 */
+				data-glass-plane="clear"
 				className={cn(
 					"flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto bg-sunken px-1 py-1",
 					// Native scrollbars steal 15px from a 32px strip and appear only

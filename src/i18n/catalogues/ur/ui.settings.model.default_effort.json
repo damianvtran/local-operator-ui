@@ -1,0 +1,21 @@
+{
+	"ui.settings.model.default_effort.label": "ڈیفالٹ کوشش",
+	"ui.settings.model.default_effort.placeholder": "کوشش کی سطح منتخب کریں",
+	"ui.settings.model.default_effort.busy": "ڈیفالٹ کوشش محفوظ ہو رہی ہے",
+	"ui.settings.model.default_effort.model_default": "ماڈل کا ڈیفالٹ",
+	"ui.settings.model.default_effort.model_default_resolves": "اس ماڈل کے لیے {level} پر چلتا ہے۔",
+	"ui.settings.model.default_effort.helper_ready": "نئی گفتگو پر لاگو ہوتا ہے۔ ماڈل کا ڈیفالٹ اس ماڈل کو اپنی سطح منتخب کرنے دیتا ہے۔",
+	"ui.settings.model.default_effort.loading": "اس ماڈل کی کوشش کی سطحیں جانچی جا رہی ہیں…",
+	"ui.settings.model.default_effort.error": "اس ماڈل کی کوشش کی سطحیں پڑھی نہیں جا سکیں۔",
+	"ui.settings.model.default_effort.no_model": "کوشش کی سطحیں منتخب کرنے کے لیے ماڈل منتخب کریں۔",
+	"ui.settings.model.default_effort.no_home": "آپ کا ہوم فولڈر ابھی دستیاب نہیں، اس لیے کوشش کی سطحیں پڑھی نہیں جا سکتیں۔",
+	"ui.settings.model.default_effort.settings_loading": "آپ کی محفوظ ڈیفالٹ کوشش جانچی جا رہی ہے…",
+	"ui.settings.model.default_effort.settings_error": "آپ کی محفوظ ڈیفالٹ کوشش پڑھی نہیں جا سکی۔",
+	"ui.settings.model.default_effort.unresolved": "اس ماڈل نے ابھی کوشش کی سطحیں نہیں بتائیں۔",
+	"ui.settings.model.default_effort.empty": "اس ماڈل کی کوشش بدلی نہیں جا سکتی۔",
+	"ui.settings.model.default_effort.one_level": "اس ماڈل میں کوشش کی ایک سطح ہے؛ {level}۔",
+	"ui.settings.model.default_effort.one_level_sentinel": "اس ماڈل میں کوشش کی سطح کا انتخاب نہیں؛ یہ ہمیشہ اپنے ڈیفالٹ پر چلتا ہے۔",
+	"ui.settings.model.default_effort.clamped": "{model} پر {level} دستیاب نہیں۔ {resolved} استعمال ہو رہا ہے۔",
+	"ui.settings.model.default_effort.clamped_unset": "{model} پر {level} دستیاب نہیں۔ ماڈل کا ڈیفالٹ استعمال ہو رہا ہے۔",
+	"ui.settings.model.default_effort.save_failed": "آپ کی ڈیفالٹ کوشش محفوظ نہیں ہوئی۔"
+}

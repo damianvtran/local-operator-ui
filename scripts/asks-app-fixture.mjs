@@ -9,6 +9,31 @@ import { createServer } from "node:http";
 import { join } from "node:path";
 
 export const ASK_SESSION_IDS = ["fa1107000001", "fa1107000002"];
+/*
+ * THE FIXTURE'S MODES.
+ *
+ * `claimless` and `slow` model the RESUMED-conversation startup the operator's
+ * "Asks unavailable" screenshot came from: the durable checkpoint carries no ask
+ * claim (the backend strips `asks`/`asks_open` from the saved copy and the resumed
+ * session republishes them from the ask log on its first refresh), while the
+ * index-backed aggregate can answer immediately. `slow` adds a 1.5 s delay to the
+ * aggregate so an app rig can hold the loading state and photograph it.
+ *
+ * `unsupported` is the OTHER resolved reading: the aggregate route answers 404 (a
+ * backend that predates it), so the drawer must say the runtime does not support
+ * queued asks. `error` stays the transient 503 the connection-error case uses;
+ * the two must not be conflated (`fleet-asks.ts`'s capability split).
+ */
+const MODES = [
+	"populated",
+	"empty",
+	"loading",
+	"error",
+	"claimless",
+	"slow",
+	"unsupported",
+];
+const CLAIMLESS_MODES = new Set(["claimless", "slow", "unsupported"]);
 export function askFixture(now = Date.now()) {
 	return {
 		ask_id: "ci-ask",
@@ -33,8 +58,27 @@ export function askFixture(now = Date.now()) {
 		],
 	};
 }
-export function sessionSnapshot(id, ask, sequence = 1) {
+export function sessionSnapshot(id, ask, sequence = 1, claimless = false) {
 	const index = ASK_SESSION_IDS.indexOf(id);
+	const askless = index !== 0 || !ask;
+	/*
+	 * THE WIRE SHAPE, NOT THE STORED ONE (review R1-5). The checkpoint stores
+	 * None, but the serializer POPS the null ask fields
+	 * (`frontend_state.py:3548-3558`), so a claimless snapshot OMITS all three
+	 * keys; a present-null frame is not a frame the app ever receives.
+	 *
+	 * THE ASKLESS CASE IS THE FIXTURE'S OWN SPELLING, not the wire's: it carries
+	 * `asks: []` + `asks_open: 0` because that is the value this fixture has
+	 * always modelled, and every reader treats it like the live-but-empty frame.
+	 * The WIRE's live-but-empty shape is `asks` ABSENT with `asks_open: 0`
+	 * (`ask-queue.ts`'s WIRE FIX note); changing this value is not necessary for
+	 * the cases here and is deliberately left alone (review R2-1).
+	 */
+	const askClaim = askless
+		? { asks: [], asks_open: 0, asks_truncated: false }
+		: claimless
+			? {}
+			: { asks: [ask], asks_open: 1, asks_truncated: false };
 	const frontend = {
 		state_version: 1,
 		session_id: id,
@@ -52,9 +96,7 @@ export function sessionSnapshot(id, ask, sequence = 1) {
 		streaming: false,
 		generation: 0,
 		pending_gate: null,
-		asks: index === 0 && ask ? [ask] : [],
-		asks_open: index === 0 && ask ? 1 : 0,
-		asks_truncated: false,
+		...askClaim,
 		history_cursor: null,
 		live_events: [],
 		queued_steering: [],
@@ -158,8 +200,9 @@ export async function startAsksAppFixture({ root, port = 8080, token }) {
 		result,
 	});
 	function sendSnapshot(res, id) {
+		const claimless = CLAIMLESS_MODES.has(mode);
 		res.write(
-			`data: ${JSON.stringify(sessionSnapshot(id, mode === "empty" ? null : ask, sequence))}\n\n`,
+			`data: ${JSON.stringify(sessionSnapshot(id, mode === "empty" ? null : ask, sequence, claimless))}\n\n`,
 		);
 	}
 	const server = createServer(async (req, res) => {
@@ -198,7 +241,7 @@ export async function startAsksAppFixture({ root, port = 8080, token }) {
 			const chunks = [];
 			for await (const chunk of req) chunks.push(chunk);
 			const next = JSON.parse(Buffer.concat(chunks).toString()).mode;
-			if (!["populated", "empty", "loading", "error"].includes(next))
+			if (!MODES.includes(next))
 				return json({ detail: "Bad fixture mode" }, 422);
 			mode = next;
 			sequence++;
@@ -255,6 +298,20 @@ export async function startAsksAppFixture({ root, port = 8080, token }) {
 		if (path === "/v1/desktop/asks") {
 			if (mode === "error")
 				return json({ detail: "Synthetic queue read failure" }, 503);
+			/*
+			 * 404, not 503: the RESOLVED unsupported reading. The route does not exist on
+			 * this runtime, which is the only failure that may draw the drawer's
+			 * permanent "doesn't support queued asks" sentence.
+			 */
+			if (mode === "unsupported")
+				return json({ detail: "Synthetic: no asks aggregate route" }, 404);
+			/*
+			 * `slow` holds this answer for ~1.5 s so an app rig can photograph the
+			 * session drawer BEFORE the aggregate lands: the frame is claimless, so the
+			 * merged reading is `null` ("Reading the asks…") for exactly that window.
+			 */
+			if (mode === "slow")
+				await new Promise((resumed) => setTimeout(resumed, 1500));
 			return json(envelope({ asks: mode === "empty" ? [] : [ask] }));
 		}
 		if (path === "/v1/desktop/sessions")
@@ -296,7 +353,12 @@ export async function startAsksAppFixture({ root, port = 8080, token }) {
 			if (match[2] === "children") return json(envelope({ children: [] }));
 			return json(
 				envelope(
-					sessionSnapshot(match[1], mode === "empty" ? null : ask, sequence),
+					sessionSnapshot(
+						match[1],
+						mode === "empty" ? null : ask,
+						sequence,
+						CLAIMLESS_MODES.has(mode),
+					),
 				),
 			);
 		}
@@ -341,8 +403,7 @@ export async function startAsksAppFixture({ root, port = 8080, token }) {
 		requests,
 		ask,
 		setMode(next) {
-			if (!["populated", "empty", "loading", "error"].includes(next))
-				throw new Error("Unknown fixture state");
+			if (!MODES.includes(next)) throw new Error("Unknown fixture state");
 			mode = next;
 			sequence++;
 			for (const stream of streams) sendSnapshot(stream.res, stream.id);

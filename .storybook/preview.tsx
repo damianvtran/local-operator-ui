@@ -14,6 +14,8 @@ import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 // @ts-ignore Path aliases don't work for Storybook root
 import { config } from "@renderer/shared/config";
 // @ts-ignore Path aliases don't work for Storybook root
+import { applyGlassFacts } from "@renderer/shared/hooks/use-window-glass";
+// @ts-ignore Path aliases don't work for Storybook root
 import { AuthProviders } from "@renderer/shared/providers/auth";
 // @ts-ignore Path aliases don't work for Storybook root
 import { FeatureFlagProvider } from "@renderer/shared/providers/feature-flags";
@@ -193,6 +195,61 @@ const ThemeFrame = ({
 };
 
 /**
+ * THE GLASS FRAME, applied to every story.
+ *
+ * The window glass is an Electron capability: MAIN resolves it before a window
+ * exists, and the renderer paints its answer as `data-glass` plus the
+ * `--lo-glass-*` alphas. Storybook has neither process, so before this frame a
+ * surface that only reveals its defects under glass - the Projects board's
+ * lane and column strip are the case that found this - could not be captured
+ * at all. The frame writes the SAME paint the shipped hook writes
+ * (`applyGlassFacts`), with the scheme read from the theme `ThemeFrame` has
+ * just applied, so the alphas are the shipped derivation rather than a
+ * hand-picked alpha.
+ *
+ * OFF BY DEFAULT, like `applyGlassFacts(null)`: every existing story keeps the
+ * flat frame it has always painted. An evidence run asks for glass through the
+ * preview's own `glass` arg (`?args=glass:on`), the same URL seam the theme
+ * and locale pins use. It sits OUTSIDE `ThemeFrame` on purpose: React runs a
+ * child's layout effect first, so the outer frame reads `classlist` and the
+ * palette AFTER the theme commit rather than one frame late.
+ */
+const GlassFrame = ({
+	glass,
+	ownsGlass,
+	theme,
+	children,
+}: {
+	glass: boolean;
+	/** The story's own meta decorator paints the document (Library's harness). */
+	ownsGlass: boolean;
+	theme: ThemeName;
+	children: ReactNode;
+}) => {
+	useLayoutEffect(() => {
+		/* Do not clear a paint a child decorator made on purpose. Storybook's
+		 * global decorator is OUTERMOST and React runs layout effects child-first,
+		 * so the off path would otherwise erase the Library harness's glass one
+		 * effect after it painted. */
+		if (!glass && ownsGlass) return;
+		const scheme =
+			getTheme(theme).theme.palette.mode === "dark" ? "dark" : "light";
+		applyGlassFacts(
+			glass
+				? {
+						mechanism: "vibrancy",
+						coverage: "full",
+						intensity: 80,
+						material: "window",
+						scheme,
+					}
+				: null,
+		);
+	}, [glass, ownsGlass, theme]);
+	return <>{children}</>;
+};
+
+/**
  * The locales an evidence run may pin.
  *
  * WHY THIS EXISTS. A locale change is user-visible and its risk is width (some
@@ -304,14 +361,17 @@ const preview: Preview = {
 	argTypes: {
 		theme: { control: { type: "select" }, options: THEME_IDS },
 		locale: { control: { type: "select" }, options: LOCALE_IDS },
+		glass: { control: { type: "select" }, options: ["off", "on"] },
 	},
-	args: { theme: DEFAULT_THEME, locale: DEFAULT_LOCALE },
+	args: { theme: DEFAULT_THEME, locale: DEFAULT_LOCALE, glass: "off" },
 	decorators: [
 		(Story, context) => {
 			const queryClient = queryClientFor(context.id);
 			const theme = (context.args.theme as ThemeName) ?? DEFAULT_THEME;
 			const locale =
 				(context.args.locale as string | undefined) ?? DEFAULT_LOCALE;
+			const glass = context.args.glass === "on";
+			const storyOwnsGlass = Boolean(context.parameters?.glass) && !glass;
 			const muiTheme = getTheme(theme).theme;
 
 			return (
@@ -333,11 +393,17 @@ const preview: Preview = {
 								>
 									<MuiThemeProvider theme={muiTheme}>
 										<CssBaseline />
-										<ThemeFrame theme={theme}>
-											<LocaleFrame locale={locale}>
-												<Story />
-											</LocaleFrame>
-										</ThemeFrame>
+										<GlassFrame
+											glass={glass}
+											ownsGlass={storyOwnsGlass}
+											theme={theme}
+										>
+											<ThemeFrame theme={theme}>
+												<LocaleFrame locale={locale}>
+													<Story />
+												</LocaleFrame>
+											</ThemeFrame>
+										</GlassFrame>
 										<ThemedToastContainer
 											duration={context.parameters.toastDuration}
 										/>

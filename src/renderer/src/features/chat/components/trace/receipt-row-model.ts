@@ -165,15 +165,57 @@ export function hubIdentity(receipt: HubReceipt): string {
 		.join(" · ");
 }
 
+/**
+ * The kinds of internal traffic the transcript may fold beside the actions that
+ * caused it, as ONE classification rather than a set of type strings repeated
+ * at each consumer.
+ *
+ * WHY THESE FIVE (and only these): each is a receipt for work the same turn
+ * already owns, not a new instruction from the operator. A job result closes a
+ * call the turn started, a monitor prompt is the harness telling the running
+ * turn that its monitor fired, a wake delivery names the alarm that opened the
+ * turn, and a peer/hub message is a sibling session's note arriving while the
+ * work continues. They are the same five kinds `turn-segments.ts` treats as
+ * CONTINUATION triggers (`CONTINUATION_CUSTOMS` plus `peer`/`wake`), so the
+ * two tiers finally agree on what continues a turn rather than disagreeing by
+ * omission on `job_result` and `monitor_prompt`.
+ *
+ * ARBITRARY CUSTOM NOTICES STAY BOUNDARIES. A `session_incident` or a
+ * `session_mcp_unavailable` is a statement the agent must react to; folding it
+ * under a count would hide the sentence that changed the plan. The test is
+ * STRUCTURAL (kind + producer type), never the message text.
+ */
+export type InternalReceiptFamily =
+	| "incoming"
+	| "job_result"
+	| "wake"
+	| "monitor_prompt";
+
+export function receiptFamilyOf(record: {
+	kind: string;
+	customType?: string;
+}): InternalReceiptFamily | null {
+	if (record.kind === "peer") return "incoming";
+	if (record.kind === "wake") return "wake";
+	if (record.kind !== "custom") return null;
+	switch (record.customType) {
+		case "hub_message":
+			return "incoming";
+		case "job_result":
+			return "job_result";
+		case "monitor_prompt":
+			return "monitor_prompt";
+		default:
+			return null;
+	}
+}
+
 /** Positive structural classification; arbitrary custom notices remain boundaries. */
 export function isInternalReceipt(record: {
 	kind: string;
 	customType?: string;
 }): boolean {
-	return (
-		record.kind === "peer" ||
-		(record.kind === "custom" && record.customType === "hub_message")
-	);
+	return receiptFamilyOf(record) !== null;
 }
 
 const WHITESPACE_RUN = /\s+/;
