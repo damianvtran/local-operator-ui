@@ -739,7 +739,7 @@ test("the count line names the kinds in the app's own vocabulary", () => {
 		"list and peek are checks on a job",
 	);
 	// `jobs cancel` stopped a job; the row verb is a cancellation and the fold
-	// says so (review round 1, R1-2), rather than claiming the run looked at it.
+	// says so (review round 1, R1-1), rather than claiming the run looked at it.
 	assert.equal(
 		foldCounts([{ name: "jobs", op: "cancel", failed: false }]),
 		"1 job cancellation",
