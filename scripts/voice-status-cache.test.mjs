@@ -24,6 +24,7 @@ const mountBundle = await build({
 		contents: `
 			export { useVoiceStatus, controlVoice, applyVoiceActive, voiceKeys } from "./src/renderer/src/features/voice/use-voice-status";
 			export { useVoiceStore } from "./src/renderer/src/features/voice/voice-store";
+			export { useVoiceSwitchStore } from "./src/renderer/src/features/voice/use-voice-switch";
 			export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 		`,
@@ -65,7 +66,7 @@ const statusBody = (sessionId) => ({
 	settings: { max_spoken_chars: 800 },
 });
 
-async function rig() {
+async function rig({ switchOn = true } = {}) {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		pretendToBeVisual: true,
 		url: "http://localhost/",
@@ -99,6 +100,9 @@ async function rig() {
 		},
 	};
 	const mod = await import(`${mountPath.href}?${Math.random()}`);
+	// The switch is OFF by default (89804f3b1) and gates the status query; these
+	// cases are about voice ON. Each rig imports a fresh module, so no leakage.
+	mod.useVoiceSwitchStore.setState({ enabled: switchOn });
 	const { createRoot } = await import("react-dom/client");
 	/*
 	 * `gcTime: Infinity` because an unmounted query otherwise arms a 5-minute
@@ -225,5 +229,14 @@ test("Q2: a GET already in flight when the slot moves cannot land the old holder
 		B,
 		"the stale answer was cancelled, not applied",
 	);
+	await unmount();
+});
+
+test("SWITCH: with the switch off no GET /voice is made and the holder stays null", async () => {
+	const { mod, server, seen, mount, unmount } = await rig({ switchOn: false });
+	await mount();
+	assert.equal(server.gets, 0, "no voice.status request while off");
+	assert.equal(mod.useVoiceStore.getState().active, undefined, "never applied");
+	assert.equal(seen.current.activeSessionId, null);
 	await unmount();
 });
