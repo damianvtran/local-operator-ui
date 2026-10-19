@@ -3546,8 +3546,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.mesh",
-			"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
-			"target_sha256": "bc3114ceba75c97c55e9920802374c484b04b9bf299836c960634fb1da61a72d",
+			"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+			"target_sha256": "da149ad69d8facc150638a24213c0e3adeb2cbf40024e8a4214365c16094b73c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3556,22 +3556,46 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"instance": "ea3629c2a645",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-19",
 					"result": "clean",
+					"instance": "04112bb1ce33",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ea3629c2a645.json",
-					"receipt_sha256": "1adcf5201c953c8581cc9ebb888ae927bb4547d324f2ae550e1b8ca27f25874d",
-					"scope": "Deterministic semantic sample 106/223; exhaustive mechanical checks; exact keys in receipt."
+					"receipt": "i18n/receipts/04112bb1ce33.json",
+					"receipt_sha256": "e34b98dcadf107710c6c9d4b149b115cdc22250daade32eb72c9b9c2472e1b8f"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+					"target_sha256": "bc3114ceba75c97c55e9920802374c484b04b9bf299836c960634fb1da61a72d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"instance": "ea3629c2a645",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ea3629c2a645.json",
+							"receipt_sha256": "1adcf5201c953c8581cc9ebb888ae927bb4547d324f2ae550e1b8ca27f25874d",
+							"scope": "Deterministic semantic sample 106/223; exhaustive mechanical checks; exact keys in receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
@@ -5344,8 +5368,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.mesh",
-			"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
-			"target_sha256": "ee294ca42484fa4aebe7f50abdbf31676153a49f981ddd3c36f50b711f0f2740",
+			"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+			"target_sha256": "f7e8a7f1d214ce8e5025fac7c80547ab8d6da4b782f23fbf5dc2036bd448b740",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -5354,22 +5378,46 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
-					"result": "clean",
-					"instance": "a438d9213a68",
-					"receipt": "i18n/receipts/a438d9213a68.json",
-					"receipt_sha256": "361f6b446d8eb86193adfd36542001c87e205d51f6adc354658a815f6234e068",
-					"scope": "Full native read at 1516984ec99ae09e635b0cb58c4f2e747de1483c, retained for byte-identical values; all five mesh remediation keys delta-read at f82e9ccffea997f040cab6874aaea45019d11219; same independent auditor, not a second independent pass",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-19",
+					"result": "clean-with-findings",
+					"instance": "ca2e127f4069",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
-					}
+					},
+					"receipt": "i18n/receipts/ca2e127f4069.json",
+					"receipt_sha256": "8ff69154b561c9e07366990ad591f3f418a8ff7c04f8da36544c518e5c85e1a0"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+					"target_sha256": "ee294ca42484fa4aebe7f50abdbf31676153a49f981ddd3c36f50b711f0f2740",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "a438d9213a68",
+							"receipt": "i18n/receipts/a438d9213a68.json",
+							"receipt_sha256": "361f6b446d8eb86193adfd36542001c87e205d51f6adc354658a815f6234e068",
+							"scope": "Full native read at 1516984ec99ae09e635b0cb58c4f2e747de1483c, retained for byte-identical values; all five mesh remediation keys delta-read at f82e9ccffea997f040cab6874aaea45019d11219; same independent auditor, not a second independent pass",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							}
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -5710,8 +5758,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.mesh",
-			"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
-			"target_sha256": "8441cca80fca72e582b1884473692559cc9d84328c11f04750f314aa2b4b761f",
+			"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+			"target_sha256": "a0751c98be25425317f5d02e8d2b185f8fd7741d712bc5bae97fb4126649c681",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -5720,22 +5768,46 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"instance": "607e9ab065c8",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
-					"result": "clean",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-19",
+					"result": "clean-with-findings",
+					"instance": "b258b0452d8b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/607e9ab065c8-ru-chunk-b-delta.json",
-					"receipt_sha256": "6107ff4c70340c12a022eddbcdd07145db5aa509398f1de2fc7795a523352761",
-					"scope": "Initial full native read at 65ad12e7 plus remediation delta to 2ee9bcd2; unchanged values proved identical. No rendered-fit certification."
+					"receipt": "i18n/receipts/b258b0452d8b.json",
+					"receipt_sha256": "3685a3ac31bd201a800e15aed0397f2789b798260716d776aac7ca15c341e724"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+					"target_sha256": "8441cca80fca72e582b1884473692559cc9d84328c11f04750f314aa2b4b761f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"instance": "607e9ab065c8",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/607e9ab065c8-ru-chunk-b-delta.json",
+							"receipt_sha256": "6107ff4c70340c12a022eddbcdd07145db5aa509398f1de2fc7795a523352761",
+							"scope": "Initial full native read at 65ad12e7 plus remediation delta to 2ee9bcd2; unchanged values proved identical. No rendered-fit certification."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
@@ -7333,8 +7405,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.mesh",
-			"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
-			"target_sha256": "69a4bf8618cc9395760ee8432153257afefb761c2e8f062ee8c0b6851d6e7c1e",
+			"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+			"target_sha256": "cebfaf04346c840b0830389323f2041e27717edab7b7cbe4d2a10657fb74707e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -7343,21 +7415,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-18",
-					"result": "clean",
-					"instance": "4c6c213dd0d8",
+					"date": "2026-10-19",
+					"result": "clean-with-findings",
+					"instance": "d4205b08276b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4c6c213dd0d8.json",
-					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
-					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks; audited bytes are 46420b7eb2's, replayed byte-identically as 30566d8100.",
-					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+					"receipt": "i18n/receipts/d4205b08276b.json",
+					"receipt_sha256": "0fe6106cba78ffc22ec696769d9acbfc8ad5346a5d2619d826c976e8350509a4"
 				}
 			],
 			"status": "audited",
@@ -7382,6 +7452,30 @@
 							"receipt_sha256": "d4f3719cf6b590959abcaabbead2543ab6c5fc61d42a0ddfbca3ba6e1ddf9a5d",
 							"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
 							"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+					"target_sha256": "69a4bf8618cc9395760ee8432153257afefb761c2e8f062ee8c0b6851d6e7c1e",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "4c6c213dd0d8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4c6c213dd0d8.json",
+							"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+							"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks; audited bytes are 46420b7eb2's, replayed byte-identically as 30566d8100.",
+							"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
 						}
 					],
 					"status": "audited"
@@ -11139,8 +11233,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.mesh",
-			"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
-			"target_sha256": "0d55018b996a5ddf1e61256e473a9dc3441863702022487ab8b829052020c452",
+			"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+			"target_sha256": "db1a9eadeb724933bc12f0fed387188f57906179ec1da9b16fee621ab1d4ceaf",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -11149,20 +11243,18 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "9d4e059e6be8",
+					"instance": "5bb0b059e0c8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/9d4e059e6be8.json",
-					"receipt_sha256": "7669edd35b9616c1d0b81d73a9cb2c7d8843468980710f3a5169f6552425f727",
-					"scope": "hi ui.mesh vs en source — round 3 review-remediation audit on final bytes",
-					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+					"receipt": "i18n/receipts/5bb0b059e0c8.json",
+					"receipt_sha256": "f0a856b992c2a970f31e4162b70023ca66a39780c5947fcfbdcb89b37e802dcf"
 				}
 			],
 			"status": "audited",
@@ -11186,6 +11278,30 @@
 							"receipt": "i18n/receipts/d77aef7c18eb.json",
 							"receipt_sha256": "6a5bf0f5d488f0f8bc33ba9e1019f393c88a4695e8b51ff02c21fff8103be2d6",
 							"scope": "hi ui.mesh vs en source — round 2 remediation-diff audit on final bytes",
+							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+					"target_sha256": "0d55018b996a5ddf1e61256e473a9dc3441863702022487ab8b829052020c452",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "9d4e059e6be8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9d4e059e6be8.json",
+							"receipt_sha256": "7669edd35b9616c1d0b81d73a9cb2c7d8843468980710f3a5169f6552425f727",
+							"scope": "hi ui.mesh vs en source — round 3 review-remediation audit on final bytes",
 							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
 						}
 					],
@@ -12058,8 +12174,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.mesh",
-			"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
-			"target_sha256": "f5fe1c5254444b35376dcf4d17d074bcd7dba2df01d30d94c61a1971ddf2b0d6",
+			"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+			"target_sha256": "16ea2f87e30f53a77b6a5c46282502e0589cb21c1b062ef7bb5f41e710810723",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -12068,20 +12184,18 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "2e6f8b4d9c71",
+					"instance": "07ffa6b6bc78",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2e6f8b4d9c71.json",
-					"receipt_sha256": "819784856d07b1483d7d63ba23086812a8b88aeed3f50e9effc533a95d2cfb73",
-					"scope": "review round 3: mesh UI approval/signing prompt sense",
-					"note": "Independent audit of the four UI-dialog prompt values; English AI prompt stays prompt, UI approval/signing dialogs use lời nhắc. Harness-reported served model openai/gpt-6.1-sol."
+					"receipt": "i18n/receipts/07ffa6b6bc78.json",
+					"receipt_sha256": "d96d0386bf66343aca46c2879e94bbae24261c5f2784b440e8500cae532be196"
 				}
 			],
 			"status": "audited",
@@ -12130,6 +12244,30 @@
 							"receipt_sha256": "0195e0f7cf6af38beb5ca24867f329e1daca5d2963bcd3e9a11f37cec7a32afe",
 							"scope": "review round 2: R2-1 hosting-term split, plus the prompt glossary correction",
 							"note": "Independent audit of the changed bytes. English 'hosting provider' = nhà cung cấp dịch vụ mô hình; 'model provider' = nhà cung cấp mô hình; English 'prompt' stays 'prompt' per the programme glossary. All roles ran on the harness-reported fallback model openai/gpt-6.1-sol."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+					"target_sha256": "f5fe1c5254444b35376dcf4d17d074bcd7dba2df01d30d94c61a1971ddf2b0d6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "2e6f8b4d9c71",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2e6f8b4d9c71.json",
+							"receipt_sha256": "819784856d07b1483d7d63ba23086812a8b88aeed3f50e9effc533a95d2cfb73",
+							"scope": "review round 3: mesh UI approval/signing prompt sense",
+							"note": "Independent audit of the four UI-dialog prompt values; English AI prompt stays prompt, UI approval/signing dialogs use lời nhắc. Harness-reported served model openai/gpt-6.1-sol."
 						}
 					],
 					"status": "audited"
@@ -15945,8 +16083,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.mesh",
-			"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
-			"target_sha256": "ffc5fd24225fc971a9176413f93601c5b7c0c348171d0b04a7951024cf959d86",
+			"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+			"target_sha256": "2c14d7f4ded458aeee1eb8dccca2a91ed7f2535872dd3cfbcd390788a36d3e33",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -15955,23 +16093,47 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-19",
-					"result": "clean",
-					"instance": "ba27c081a71b",
+					"result": "clean-with-findings",
+					"instance": "332e346e02ff",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 3,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ba27c081a71b.json",
-					"receipt_sha256": "bd005beafbc42058c1481fc1c7111721d17a446b9f980183d49e08844d4f697f",
-					"scope": "Round-3 single-key audit after the final mesh label fix; zero findings at the final bytes.",
-					"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+					"receipt": "i18n/receipts/332e346e02ff.json",
+					"receipt_sha256": "6667fc93fd4e89197a00d035d6f686d26fe979581d73926b043424fa55f468ce"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+					"target_sha256": "ffc5fd24225fc971a9176413f93601c5b7c0c348171d0b04a7951024cf959d86",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "ba27c081a71b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ba27c081a71b.json",
+							"receipt_sha256": "bd005beafbc42058c1481fc1c7111721d17a446b9f980183d49e08844d4f697f",
+							"scope": "Round-3 single-key audit after the final mesh label fix; zero findings at the final bytes.",
+							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
