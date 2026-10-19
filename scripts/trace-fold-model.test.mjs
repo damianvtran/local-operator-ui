@@ -298,6 +298,62 @@ test("receipt families fold alone, and boundaries still split", () => {
 	}
 });
 
+test("a run folds on its TRAILING receipt stretch, never a head pair", () => {
+	/*
+	 * The operator's wall leaves `[call, receipt, receipt…]`: the work first,
+	 * then what it was told. Two adjacent receipts at the TAIL license the fold
+	 * below §E2's action threshold, while a receipt at the HEAD licenses
+	 * nothing - the 129-owner shape in `turn-collapse-behaviour.test.mjs` is
+	 * exactly `[peer, peer, tool]`, and folding that would hide the call the
+	 * reader's opened turn bar is pinned to mount.
+	 */
+	const tools = (n, prefix = "t") =>
+		Array.from({ length: n }, (_, index) => row(`${prefix}${index}`));
+	const jobs = (n, prefix = "j") =>
+		Array.from({ length: n }, (_, index) =>
+			custom(`${prefix}${index}`, "job_result"),
+		);
+
+	// The action threshold is already met here; the receipts join the same run.
+	const wall = foldRuns([...tools(2), ...jobs(5)], receiptOptions);
+	assert.equal(wall.length, 1, "two tools and five job results are one group");
+	assert.equal(wall[0].actions.length, 2, "five receipts are never actions");
+	assert.deepEqual(wall[0].summary.units, ["2 shell", "5 job results"]);
+
+	// Below the action threshold, the trailing stretch alone licenses the fold.
+	const tail = foldRuns([...tools(1), ...jobs(2)], receiptOptions);
+	assert.equal(tail.length, 1, "one call followed by two receipts folds");
+	assert.deepEqual(tail[0].summary.units, ["1 shell", "2 job results"]);
+	assert.deepEqual(
+		foldRuns(jobs(2), receiptOptions)[0].summary.units,
+		["2 job results"],
+		"a whole-run receipt wall is the same rule with no action side",
+	);
+
+	// Negatives: only the RUN'S TAIL licenses the fold.
+	for (const [label, rows] of [
+		["peer, tool, wake", [peerReceipt("p1"), row("a"), wakeReceipt("w1")]],
+		["peer, peer, tool", [peerReceipt("p1"), peerReceipt("p2"), row("a")]],
+		["peer, tool, peer", [peerReceipt("p1"), row("a"), peerReceipt("p2")]],
+	]) {
+		assert.deepEqual(
+			foldRuns(rows, receiptOptions).map((group) => group.kind),
+			rows.map(() => "row"),
+			`${label} stays ordinary rows: only a trailing stretch licenses the fold`,
+		);
+	}
+
+	const lone = foldRuns(
+		[...tools(2), custom("j1", "job_result")],
+		receiptOptions,
+	);
+	assert.deepEqual(
+		lone.map((group) => group.kind),
+		["row", "row", "row"],
+		"one trailing receipt beside two actions is still three ordinary rows",
+	);
+});
+
 test("every receipt in a mixed run is counted exactly once", () => {
 	const rows = [
 		peerReceipt("p1"),
@@ -331,6 +387,34 @@ test("every receipt in a mixed run is counted exactly once", () => {
 		"1 wake receipt",
 		"1 monitor prompt",
 	]);
+});
+
+test("an unknown receipt family is counted as `other receipts`, never dropped", () => {
+	/*
+	 * `receiptFoldUnits` and `receiptFamilyOf` are separate tables: a future
+	 * receipt kind classified but not yet given a unit would make the header's
+	 * numbers stop summing to the rows behind the fold. The fallback is the
+	 * count of rows no known family claimed, placed before the intent markers.
+	 */
+	assert.deepEqual(receiptFoldUnits([custom("f1", "future_receipt")]), [
+		"1 other receipt",
+	]);
+	assert.deepEqual(
+		receiptFoldUnits([
+			custom("f1", "future_receipt"),
+			custom("f2", "future_receipt"),
+			custom("j1", "job_result"),
+		]),
+		["1 job result", "2 other receipts"],
+		"known families keep their units and the remainder is stated",
+	);
+	assert.deepEqual(
+		receiptFoldUnits([
+			custom("f1", "future_receipt", { receipt: { expectsReply: true } }),
+		]),
+		["1 other receipt", "Reply requested"],
+		"the fallback sits with the family units, before the intent markers",
+	);
 });
 
 test("internal receipt classification is structural, and stays narrow", () => {
@@ -646,6 +730,28 @@ test("the count line names the kinds in the app's own vocabulary", () => {
 		"2 job checks",
 	);
 	assert.equal(foldCounts([{ name: "jobs", failed: false }]), "1 job check");
+	assert.equal(
+		foldCounts([
+			{ name: "jobs", op: "list", failed: false },
+			{ name: "jobs", op: "peek", failed: false },
+		]),
+		"2 job checks",
+		"list and peek are checks on a job",
+	);
+	// `jobs cancel` stopped a job; the row verb is a cancellation and the fold
+	// says so (review round 1, R1-2), rather than claiming the run looked at it.
+	assert.equal(
+		foldCounts([{ name: "jobs", op: "cancel", failed: false }]),
+		"1 job cancellation",
+	);
+	assert.equal(
+		foldCounts([
+			{ name: "jobs", op: "CANCEL", failed: false },
+			{ name: "jobs", op: "cancel", failed: false },
+		]),
+		"2 job cancellations",
+		"the op is case-folded like every other wire token",
+	);
 	// `todo view` is a READ; counting it as an update was the false claim
 	// review round 1 closed (R1-6), so the family splits by op.
 	assert.equal(
