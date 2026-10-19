@@ -1,0 +1,10 @@
+{
+	"ui.chat.usage.continue": "شامل کوٹہ استعمال ہو گیا؛ کریڈٹس سے استعمال جاری رہے گا۔",
+	"ui.chat.usage.family_caps": "ماڈل فیملی کی حدیں اب بھی لاگو ہیں۔",
+	"ui.chat.usage.blocked": "خرچ کی سہولت دستیاب نہیں",
+	"ui.chat.usage.eligibility_unknown": "خرچ کی اہلیت نامعلوم ہے",
+	"ui.chat.usage.unlimited": "لامحدود بامعاوضہ گنجائش",
+	"ui.chat.skill_invocation.instructions_label": "اس پیغام کے ساتھ بھیجی گئی مہارت کی ہدایات",
+	"ui.chat.skill_invocation.trigger_label": "{token} کی مہارت کی ہدایات",
+	"ui.chat.highlights.file_resolution_failed": "سیشن کی ورکنگ ڈائریکٹری میں یہ فائل نہیں مل سکی۔ دوبارہ کوشش کرنے سے پہلے فائل کا پاتھ نقل کریں کا استعمال کر کے اس سیشن کی ورک اسپیس میں اس کا مقام جانچیں۔"
+}
