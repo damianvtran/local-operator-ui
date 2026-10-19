@@ -63,6 +63,16 @@ export function ManageTagsDialog({
 	> | null>(null);
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [editError, setEditError] = useState(false);
+	const body = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		if (!error) return;
+		if (!editError && body.current) body.current.scrollTop = 0;
+		else if (editError)
+			document.activeElement
+				?.closest("form")
+				?.scrollIntoView({ block: "nearest" });
+	}, [error, editError]);
 	const [retry, setRetry] = useState(false);
 	const root = useRef<HTMLDivElement>(null);
 	const addInput = useRef<HTMLInputElement>(null);
@@ -79,6 +89,7 @@ export function ManageTagsDialog({
 	const tagKey = (tag: DesiredTag) => tag.id ?? `new:${tag.name}`;
 	const uniqueName = (value: string, except?: string) => {
 		const issue = tagNameIssue(value);
+		setEditError(true);
 		if (issue) {
 			if (issue !== "blank")
 				setError(
@@ -105,6 +116,7 @@ export function ManageTagsDialog({
 		return true;
 	};
 	const beginDelete = async (tag: DesiredTag) => {
+		setEditError(false);
 		// Counts are authoritative only after a fresh read. This does not merge
 		// external catalogue edits into our draft or perform a deletion.
 		if (tag.id) {
@@ -131,6 +143,7 @@ export function ManageTagsDialog({
 	};
 	const apply = async () => {
 		if (pending) return;
+		setEditError(false);
 		const reused = deletedTagNameReused(categories, draft);
 		if (reused !== null) {
 			setError(t("ui.chat.tags.apply_deletion_first", { name: reused }));
@@ -175,7 +188,8 @@ export function ManageTagsDialog({
 					if (pending) event.preventDefault();
 				}}
 				onEscapeKeyDown={(event) => {
-					if (pending || event.isComposing) event.preventDefault();
+					if (pending || event.isComposing || event.keyCode === 229)
+						event.preventDefault();
 					else if (deleting) {
 						event.preventDefault();
 						const id = deleting.id;
@@ -184,6 +198,7 @@ export function ManageTagsDialog({
 					} else if (renaming) {
 						event.preventDefault();
 						const id = renaming;
+						setError(null);
 						setRenaming(null);
 						focusRow(id);
 					}
@@ -196,9 +211,20 @@ export function ManageTagsDialog({
 					</DialogDescription>
 				</DialogHeader>
 				<div
+					ref={body}
 					data-tag-dialog-body
 					className="min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto p-1"
 				>
+					{error && !editError && (
+						<div role="alert" className="text-body-sm text-danger">
+							<p>{error}</p>
+							{retry && (
+								<Button disabled={pending} onClick={() => void apply()}>
+									{t("ui.chat.tags.retry")}
+								</Button>
+							)}
+						</div>
+					)}
 					<div className="sticky top-0 z-10 space-y-2 bg-elevated pb-2">
 						<Input
 							type="search"
@@ -264,6 +290,7 @@ export function ManageTagsDialog({
 																at === index ? next : item,
 															),
 														);
+														setError(null);
 														setRenaming(null);
 														setQuery("");
 														setNotice(
@@ -294,12 +321,21 @@ export function ManageTagsDialog({
 														variant="ghost"
 														disabled={pending}
 														onClick={() => {
+															setError(null);
 															setRenaming(null);
 															focusRow(tagKey(tag));
 														}}
 													>
 														{t("ui.chat.tags.cancel")}
 													</Button>
+													{editError && error && (
+														<p
+															role="alert"
+															className="basis-full text-body-sm text-danger"
+														>
+															{error}
+														</p>
+													)}
 												</form>
 											) : (
 												<>
@@ -349,6 +385,7 @@ export function ManageTagsDialog({
 															variant="ghost"
 															disabled={pending}
 															onClick={() => {
+																setError(null);
 																setRenaming(tagKey(tag));
 																setRename(tag.name);
 															}}
@@ -420,7 +457,7 @@ export function ManageTagsDialog({
 						</section>
 					)}
 					<form
-						className="flex gap-2"
+						className="flex min-w-0 flex-wrap gap-2"
 						onSubmit={(event) => {
 							event.preventDefault();
 							if (draft.length >= TAG_REGISTRY_LIMIT || !uniqueName(name))
@@ -433,7 +470,7 @@ export function ManageTagsDialog({
 					>
 						<Input
 							ref={addInput}
-							className="min-w-0 flex-1"
+							className="min-w-0 flex-1 basis-0"
 							aria-label={t("ui.chat.tags.new_name")}
 							placeholder={t("ui.chat.tags.new_name")}
 							disabled={pending || loading || !!loadError}
@@ -452,6 +489,11 @@ export function ManageTagsDialog({
 						>
 							{t("ui.chat.tags.add")}
 						</Button>
+						{editError && error && renaming === null && (
+							<p role="alert" className="basis-full text-body-sm text-danger">
+								{error}
+							</p>
+						)}
 					</form>
 					{draft.length >= TAG_REGISTRY_LIMIT && (
 						<p className="text-meta text-ink-muted">
@@ -468,18 +510,11 @@ export function ManageTagsDialog({
 							{t("ui.chat.tags.name_reserved")}
 						</p>
 					)}
-					{error && (
-						<div role="alert" className="text-body-sm text-danger">
-							<p>{error}</p>
-							{retry && (
-								<Button disabled={pending} onClick={() => void apply()}>
-									{t("ui.chat.tags.retry")}
-								</Button>
-							)}
-						</div>
-					)}
 				</div>
-				<DialogFooter data-tag-dialog-footer className="shrink-0">
+				<DialogFooter
+					data-tag-dialog-footer
+					className="shrink-0 flex-row justify-end max-[359px]:flex-col-reverse"
+				>
 					<Button variant="ghost" disabled={pending} onClick={onClose}>
 						{t("ui.chat.tags.cancel")}
 					</Button>

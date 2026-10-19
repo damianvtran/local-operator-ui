@@ -5,9 +5,13 @@ import {
 } from "@features/chat/chat-tag-picker";
 import { Button, Input } from "@shared/components/ui";
 import { t } from "@shared/i18n";
+import { cn } from "@shared/lib/utils";
 import { Check, X } from "lucide-react";
 import { type RefObject, useEffect, useId, useRef, useState } from "react";
-import type { TagCategory } from "../../../../../shared/desktop-contract";
+import type {
+	TagCategory,
+	TagRef,
+} from "../../../../../shared/desktop-contract";
 
 /** A multi-select extension, not a claim of single-select APG conformance.
  * Input editing keys remain native. The list has ONE roving Tab destination;
@@ -16,6 +20,7 @@ import type { TagCategory } from "../../../../../shared/desktop-contract";
  */
 export function TagPickerCombobox({
 	categories,
+	fallbackNames = [],
 	selected,
 	primary,
 	query,
@@ -30,6 +35,7 @@ export function TagPickerCombobox({
 	createIssue,
 }: {
 	categories: TagCategory[];
+	fallbackNames?: TagRef[];
 	selected: string[];
 	primary: string | null;
 	query: string;
@@ -54,11 +60,21 @@ export function TagPickerCombobox({
 		setActive(query.trim() ? 0 : -1);
 	}, [query]);
 	useEffect(() => {
-		if (listOpen && safeActive >= 0)
-			list.current?.children[safeActive]?.scrollIntoView?.({
-				block: "nearest",
-			});
-	}, [safeActive, listOpen]);
+		const reveal = () => {
+			if (
+				listOpen &&
+				safeActive >= 0 &&
+				(inputFocused || list.current?.contains(document.activeElement))
+			)
+				list.current?.children[safeActive]?.scrollIntoView?.({
+					block: "nearest",
+				});
+		};
+		reveal();
+		window.addEventListener("resize", reveal);
+		return () => window.removeEventListener("resize", reveal);
+	}, [safeActive, listOpen, inputFocused]);
+
 	const choose = (id: string) => {
 		if (
 			disabled ||
@@ -97,17 +113,23 @@ export function TagPickerCombobox({
 					placeholder={t("ui.chat.tags.search")}
 					value={query}
 					disabled={disabled}
+					onClick={() => setListOpen(true)}
 					onFocus={() => {
 						setInputFocused(true);
 						setListOpen(true);
 					}}
 					onBlur={() => setInputFocused(false)}
 					onChange={(event) => {
+						setActive(-1);
 						setQuery(event.target.value);
 						setListOpen(true);
 					}}
 					onKeyDown={(event) => {
-						if (event.nativeEvent.isComposing) return;
+						if (
+							event.nativeEvent.isComposing ||
+							event.nativeEvent.keyCode === 229
+						)
+							return;
 						if (event.key === "ArrowDown" || event.key === "ArrowUp") {
 							event.preventDefault();
 							move(event.key === "ArrowDown" ? 1 : -1, false);
@@ -126,7 +148,9 @@ export function TagPickerCombobox({
 				aria-label={t("ui.chat.tags.label")}
 			>
 				{selected.map((id) => {
-					const tag = categories.find((tag) => tag.id === id);
+					const tag =
+						categories.find((tag) => tag.id === id) ??
+						fallbackNames.find((tag) => tag.id === id);
 					return (
 						<span
 							key={id}
@@ -141,7 +165,7 @@ export function TagPickerCombobox({
 								variant="ghost"
 								size="icon-sm"
 								className="shrink-0"
-								disabled={disabled}
+								disabled={disabled || unready}
 								aria-label={t("ui.chat.tags.remove_named", {
 									name: tag?.name ?? id,
 								})}
@@ -149,7 +173,8 @@ export function TagPickerCombobox({
 								onKeyDown={(event) => {
 									if (
 										event.key === "Delete" &&
-										!event.nativeEvent.isComposing
+										!event.nativeEvent.isComposing &&
+										event.nativeEvent.keyCode !== 229
 									) {
 										event.preventDefault();
 										choose(id);
@@ -178,11 +203,12 @@ export function TagPickerCombobox({
 				role="listbox"
 				aria-label={t("ui.chat.tags.label")}
 				aria-multiselectable="true"
-				hidden={!listOpen}
+				hidden={!listOpen || unready || !matches.length}
 				className="rounded-md bg-surface p-1"
 			>
 				{matches.map((tag, index) => {
 					const chosen = selected.includes(tag.id);
+					const pointed = inputFocused && safeActive === index;
 					const blocked =
 						disabled || (!chosen && selected.length >= TAG_SELECTION_LIMIT);
 					return (
@@ -198,14 +224,24 @@ export function TagPickerCombobox({
 									? 0
 									: -1
 							}
-							className={`flex min-h-9 cursor-default items-center gap-2 rounded-md px-2 py-2 text-body-sm outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent ${chosen ? "bg-row-selected text-ink" : "text-ink hover:bg-row-hover"}`}
+							className={cn(
+								"flex min-h-9 scroll-mt-12 scroll-mb-1 cursor-default items-center gap-2 rounded-md px-2 py-2 text-body-sm outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent",
+								chosen && "bg-row-selected",
+								blocked ? "text-ink-dim" : "text-ink",
+								!chosen && !blocked && "hover:bg-row-hover",
+								pointed && "outline outline-1 outline-accent",
+							)}
 							onFocus={() => {
 								setActive(index);
 								setInputFocused(false);
 							}}
 							onClick={() => choose(tag.id)}
 							onKeyDown={(event) => {
-								if (event.nativeEvent.isComposing) return;
+								if (
+									event.nativeEvent.isComposing ||
+									event.nativeEvent.keyCode === 229
+								)
+									return;
 								if (
 									["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)
 								) {
@@ -247,9 +283,9 @@ export function TagPickerCombobox({
 						disabled={disabled || unready}
 						onClick={create}
 					>
-						<span className="break-words">
+						<bdi className="break-words">
 							{t("ui.chat.tags.create_name", { name: query.trim() })}
-						</span>
+						</bdi>
 						<span className="text-meta text-ink-muted">
 							{t("ui.chat.tags.create_helper")}
 						</span>

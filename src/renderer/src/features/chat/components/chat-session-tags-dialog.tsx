@@ -87,13 +87,23 @@ export function ChatSessionTagsDialog({
 		}
 	}, [pending]);
 	const [error, setError] = useState<string | null>(null);
+	useEffect(() => {
+		if (error && pickerBody.current) pickerBody.current.scrollTop = 0;
+	}, [error]);
 	const [retry, setRetry] = useState<"apply" | "create" | null>(null);
+	useEffect(() => {
+		if (pending && retry === "create" && pickerBody.current)
+			pickerBody.current.scrollTop = 0;
+	}, [pending, retry]);
 	// Deleted categories cannot be resubmitted from a stale draft. Preserve the
 	// original assignment order so removing the primary previews server fallback.
-	const selected = ids.filter((id) => categories.some((tag) => tag.id === id));
+	const selected =
+		loading || loadError !== null
+			? ids
+			: ids.filter((id) => categories.some((tag) => tag.id === id));
 	const effectivePrimary = draftPrimary(selected, primary);
 	useEffect(() => {
-		if (loading || loadError) return;
+		if (onMove || loading || loadError) return;
 		const surviving = ids.filter((id) =>
 			categories.some((tag) => tag.id === id),
 		);
@@ -104,7 +114,7 @@ export function ChatSessionTagsDialog({
 		setPrimary((held) => draftPrimary(surviving, held));
 		setError(t("ui.chat.tags.registry_changed"));
 		setRetry(null);
-	}, [categories, ids, loading, loadError]);
+	}, [categories, ids, loading, loadError, onMove]);
 	const apply = async () => {
 		if (pending || conflicted) return;
 		setPending(true);
@@ -173,10 +183,10 @@ export function ChatSessionTagsDialog({
 	};
 	const issue = tagNameIssue(query);
 	const createIssue =
-		selected.length >= TAG_SELECTION_LIMIT
-			? t("ui.chat.tags.selection_limit")
-			: categories.length >= TAG_REGISTRY_LIMIT
-				? t("ui.chat.tags.registry_limit")
+		categories.length >= TAG_REGISTRY_LIMIT
+			? t("ui.chat.tags.registry_limit")
+			: selected.length >= TAG_SELECTION_LIMIT
+				? t("ui.chat.tags.selection_limit")
 				: issue === "reserved"
 					? t("ui.chat.tags.name_reserved")
 					: issue === "long"
@@ -184,6 +194,7 @@ export function ChatSessionTagsDialog({
 						: hasTagName(categories, query)
 							? t("ui.chat.tags.duplicate_name", { name: query.trim() })
 							: null;
+
 	const create = async () => {
 		if (pending || createIssue || issue || loading || loadError) return;
 		const name = query.trim();
@@ -222,7 +233,17 @@ export function ChatSessionTagsDialog({
 			setQuery("");
 			input.current?.focus();
 		} catch {
-			setError(t("ui.chat.tags.create_failed"));
+			// A response can be lost after commit. Re-read before claiming that
+			// nothing was created, and never silently select a concurrent duplicate.
+			await fetchCategories();
+			const fresh = useSessionTagsStore.getState();
+			if (fresh.error) {
+				setError(null);
+				setRetry(null);
+			} else if (hasTagName(fresh.categories, name)) {
+				setError(t("ui.chat.tags.duplicate_name", { name }));
+				setRetry(null);
+			} else setError(t("ui.chat.tags.create_failed"));
 		} finally {
 			restoreInput.current = true;
 			setPending(false);
@@ -340,7 +361,7 @@ export function ChatSessionTagsDialog({
 						if (pending) event.preventDefault();
 					}}
 					onEscapeKeyDown={(event) => {
-						if (event.isComposing) {
+						if (event.isComposing || event.keyCode === 229) {
 							event.preventDefault();
 							return;
 						}
@@ -366,11 +387,30 @@ export function ChatSessionTagsDialog({
 						className="min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto p-1"
 						aria-busy={loading || pending}
 					>
+						{pending && retry === "create" && (
+							<output>{t("ui.chat.tags.create_pending")}</output>
+						)}
+						{error && (
+							<div role="alert" className="text-body-sm text-danger">
+								<p>{error}</p>
+								{retry && (
+									<Button
+										disabled={pending}
+										onClick={() =>
+											void (retry === "create" ? create() : apply())
+										}
+									>
+										{t("ui.chat.tags.retry")}
+									</Button>
+								)}
+							</div>
+						)}
 						<p className="text-body-sm text-ink-muted">
 							{t("ui.chat.tags.picker_description")}
 						</p>
 						<TagPickerCombobox
 							categories={categories}
+							fallbackNames={row.tags ?? []}
 							selected={selected}
 							primary={effectivePrimary}
 							query={query}
@@ -393,59 +433,61 @@ export function ChatSessionTagsDialog({
 								</Button>
 							</div>
 						)}
-						{selected.length >= 2 ? (
-							<fieldset className="min-w-0 space-y-1 border-t border-hairline pt-2">
-								<legend className="text-meta text-ink-muted">
-									{t("ui.chat.tags.group_under")}
-								</legend>
-								{selected.map((id) => (
-									<label
-										key={id}
-										className="flex min-h-8 items-center gap-2 text-body-sm"
-									>
-										<input
-											type="radio"
-											className="accent-accent"
-											name="primary-tag"
-											disabled={pending || loading || !!loadError}
-											checked={effectivePrimary === id}
-											onChange={() => {
-												setPrimary(id);
-												setNotice(
-													t("ui.chat.tags.selection_status", {
-														count: String(selected.length),
-														name:
-															categories.find((tag) => tag.id === id)?.name ??
-															"",
-													}),
-												);
-											}}
-										/>
-										<bdi className="min-w-0 break-words">
-											{categories.find((tag) => tag.id === id)?.name}
-										</bdi>
-									</label>
-								))}
-							</fieldset>
-						) : (
-							<p className="text-meta text-ink-muted">
-								{selected.length ? (
-									<>
-										{t("ui.chat.tags.primary")}:{" "}
-										{
-											categories.find((tag) => tag.id === effectivePrimary)
-												?.name
-										}
-									</>
-								) : (
-									t("ui.chat.tags.untagged")
-								)}
-							</p>
-						)}
+						{!loading &&
+							!loadError &&
+							(selected.length >= 2 ? (
+								<fieldset className="min-w-0 space-y-1 border-t border-hairline pt-2">
+									<legend className="text-meta text-ink-muted">
+										{t("ui.chat.tags.group_under")}
+									</legend>
+									{selected.map((id) => (
+										<label
+											key={id}
+											className="flex min-h-8 items-center gap-2 text-body-sm"
+										>
+											<input
+												type="radio"
+												className="accent-accent"
+												name="primary-tag"
+												disabled={pending || loading || !!loadError}
+												checked={effectivePrimary === id}
+												onChange={() => {
+													setPrimary(id);
+													setNotice(
+														t("ui.chat.tags.selection_status", {
+															count: String(selected.length),
+															name:
+																categories.find((tag) => tag.id === id)?.name ??
+																"",
+														}),
+													);
+												}}
+											/>
+											<bdi className="min-w-0 break-words">
+												{categories.find((tag) => tag.id === id)?.name}
+											</bdi>
+										</label>
+									))}
+								</fieldset>
+							) : (
+								<p className="text-meta text-ink-muted">
+									{selected.length ? (
+										<>
+											{t("ui.chat.tags.primary")}:{" "}
+											{
+												categories.find((tag) => tag.id === effectivePrimary)
+													?.name
+											}
+										</>
+									) : (
+										t("ui.chat.tags.untagged")
+									)}
+								</p>
+							))}
 						<div className="flex flex-wrap gap-2">
 							<Button
 								variant="ghost"
-								disabled={pending || !selected.length}
+								disabled={pending || loading || !!loadError || !selected.length}
 								onClick={() => {
 									setIds([]);
 									setPrimary(null);
@@ -467,29 +509,14 @@ export function ChatSessionTagsDialog({
 								{t("ui.chat.tags.manage")}
 							</Button>
 						</div>
-						{pending && retry === "create" && (
-							<output>{t("ui.chat.tags.create_pending")}</output>
-						)}
-						{error && (
-							<div role="alert" className="text-body-sm text-danger">
-								<p>{error}</p>
-								{retry && (
-									<Button
-										disabled={pending}
-										onClick={() =>
-											void (retry === "create" ? create() : apply())
-										}
-									>
-										{t("ui.chat.tags.retry")}
-									</Button>
-								)}
-							</div>
-						)}
 						<output aria-live="polite" className="sr-only">
 							{notice}
 						</output>
 					</div>
-					<DialogFooter data-tag-dialog-footer className="shrink-0">
+					<DialogFooter
+						data-tag-dialog-footer
+						className="shrink-0 flex-row justify-end max-[359px]:flex-col-reverse"
+					>
 						<Button variant="ghost" disabled={pending} onClick={onClose}>
 							{t("ui.chat.tags.cancel")}
 						</Button>

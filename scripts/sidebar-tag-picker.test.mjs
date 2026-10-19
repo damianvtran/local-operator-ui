@@ -137,7 +137,7 @@ test("name rules count code points, preserve Unicode and reserve Untagged", () =
 	assert.equal(tagNameIssue(" UnTaGgEd "), "reserved");
 	assert.equal(tagNameIssue("界".repeat(24)), null);
 	assert.equal(tagNameIssue("界".repeat(25)), "long");
-	assert.equal(tagNameIssue("😀".repeat(24)), null);
+	assert.equal(tagNameIssue(String.fromCodePoint(0x1f600).repeat(24)), null);
 	assert.equal(tagNameIssue("e\u0301".repeat(13)), "long");
 	assert.equal(tagNameIssue("مشروع 東京"), null);
 });
