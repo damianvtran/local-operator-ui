@@ -302,9 +302,61 @@ import ruUiSettingsSpeech from "./catalogues/ru/ui.settings.speech.json";
 import ruUiSettingsUpdates from "./catalogues/ru/ui.settings.updates.json";
 import ruUiShell from "./catalogues/ru/ui.shell.json";
 import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
+import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
+import viUiAgentsDialogs from "./catalogues/vi/ui.agents.dialogs.json";
+import viUiAgents from "./catalogues/vi/ui.agents.json";
+import viUiAgentsModels from "./catalogues/vi/ui.agents.models.json";
+import viUiAgentsNavigation from "./catalogues/vi/ui.agents.navigation.json";
+import viUiAgentsRefusals from "./catalogues/vi/ui.agents.refusals.json";
+import viUiAgentsSettings from "./catalogues/vi/ui.agents.settings.json";
+import viUiAgentsStarters from "./catalogues/vi/ui.agents.starters.json";
+import viUiBrowserChrome from "./catalogues/vi/ui.browser.chrome.json";
+import viUiBrowser from "./catalogues/vi/ui.browser.json";
+import viUiCanvas from "./catalogues/vi/ui.canvas.json";
+import viUiChatComposer from "./catalogues/vi/ui.chat.composer.json";
+import viUiChatComposerMedia from "./catalogues/vi/ui.chat.composer_media.json";
+import viUiChatDialogs from "./catalogues/vi/ui.chat.dialogs.json";
+import viUiChatHeader from "./catalogues/vi/ui.chat.header.json";
+import viUiChat from "./catalogues/vi/ui.chat.json";
+import viUiChatResponseActions from "./catalogues/vi/ui.chat.response_actions.json";
+import viUiChatSidebarView from "./catalogues/vi/ui.chat.sidebar_view.json";
+import viUiChatTags from "./catalogues/vi/ui.chat.tags.json";
+import viUiCodeReview from "./catalogues/vi/ui.code_review.json";
+import viUiCommandPalette from "./catalogues/vi/ui.command_palette.json";
+import viUiCommonAccount from "./catalogues/vi/ui.common.account.json";
+import viUiCommonActions from "./catalogues/vi/ui.common.actions.json";
+import viUiCommonConnection from "./catalogues/vi/ui.common.connection.json";
+import viUiCommonEditing from "./catalogues/vi/ui.common.editing.json";
+import viUiCommonErrors from "./catalogues/vi/ui.common.errors.json";
+import viUiCommonForms from "./catalogues/vi/ui.common.forms.json";
+import viUiCommonLoading from "./catalogues/vi/ui.common.loading.json";
+import viUiCommonModels from "./catalogues/vi/ui.common.models.json";
+import viUiCommonUpdates from "./catalogues/vi/ui.common.updates.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
+import viUiHubComments from "./catalogues/vi/ui.hub.comments.json";
+import viUiHub from "./catalogues/vi/ui.hub.json";
+import viUiHubTaxonomy from "./catalogues/vi/ui.hub.taxonomy.json";
+import viUiInstaller from "./catalogues/vi/ui.installer.json";
+import viUiMesh from "./catalogues/vi/ui.mesh.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
+import viUiProjects from "./catalogues/vi/ui.projects.json";
+import viUiSchedules from "./catalogues/vi/ui.schedules.json";
+import viUiSettingsAccount from "./catalogues/vi/ui.settings.account.json";
+import viUiSettingsAppearance from "./catalogues/vi/ui.settings.appearance.json";
+import viUiSettingsAppearanceWindowGlass from "./catalogues/vi/ui.settings.appearance.window_glass.json";
+import viUiSettingsConfiguration from "./catalogues/vi/ui.settings.configuration.json";
+import viUiSettingsImports from "./catalogues/vi/ui.settings.imports.json";
+import viUiSettingsIntegrations from "./catalogues/vi/ui.settings.integrations.json";
 import viUiSettings from "./catalogues/vi/ui.settings.json";
+import viUiSettingsModelDefaultEffort from "./catalogues/vi/ui.settings.model.default_effort.json";
+import viUiSettingsModel from "./catalogues/vi/ui.settings.model.json";
+import viUiSettingsModelProviderCallout from "./catalogues/vi/ui.settings.model.provider_callout.json";
+import viUiSettingsNavigation from "./catalogues/vi/ui.settings.navigation.json";
+import viUiSettingsShortcuts from "./catalogues/vi/ui.settings.shortcuts.json";
+import viUiSettingsSpeech from "./catalogues/vi/ui.settings.speech.json";
+import viUiSettingsUpdates from "./catalogues/vi/ui.settings.updates.json";
+import viUiShell from "./catalogues/vi/ui.shell.json";
+import viUiShellRail from "./catalogues/vi/ui.shell.rail.json";
 import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
 import zhCNUiAgentsDialogs from "./catalogues/zh-CN/ui.agents.dialogs.json";
 import zhCNUiAgents from "./catalogues/zh-CN/ui.agents.json";
@@ -661,9 +713,61 @@ export const bundledCatalogues: Readonly<
 		...ruUiShellRail,
 	},
 	vi: {
+		...viUiAgentMessages,
+		...viUiAgentsDialogs,
+		...viUiAgents,
+		...viUiAgentsModels,
+		...viUiAgentsNavigation,
+		...viUiAgentsRefusals,
+		...viUiAgentsSettings,
+		...viUiAgentsStarters,
+		...viUiBrowserChrome,
+		...viUiBrowser,
+		...viUiCanvas,
+		...viUiChatComposer,
+		...viUiChatComposerMedia,
+		...viUiChatDialogs,
+		...viUiChatHeader,
+		...viUiChat,
+		...viUiChatResponseActions,
+		...viUiChatSidebarView,
+		...viUiChatTags,
+		...viUiCodeReview,
+		...viUiCommandPalette,
+		...viUiCommonAccount,
+		...viUiCommonActions,
+		...viUiCommonConnection,
+		...viUiCommonEditing,
+		...viUiCommonErrors,
+		...viUiCommonForms,
+		...viUiCommonLoading,
+		...viUiCommonModels,
+		...viUiCommonUpdates,
 		...viUiConsole,
+		...viUiHubComments,
+		...viUiHub,
+		...viUiHubTaxonomy,
+		...viUiInstaller,
+		...viUiMesh,
 		...viUiOnboarding,
+		...viUiProjects,
+		...viUiSchedules,
+		...viUiSettingsAccount,
+		...viUiSettingsAppearance,
+		...viUiSettingsAppearanceWindowGlass,
+		...viUiSettingsConfiguration,
+		...viUiSettingsImports,
+		...viUiSettingsIntegrations,
 		...viUiSettings,
+		...viUiSettingsModelDefaultEffort,
+		...viUiSettingsModel,
+		...viUiSettingsModelProviderCallout,
+		...viUiSettingsNavigation,
+		...viUiSettingsShortcuts,
+		...viUiSettingsSpeech,
+		...viUiSettingsUpdates,
+		...viUiShell,
+		...viUiShellRail,
 	},
 	"zh-CN": {
 		...zhCNUiAgentMessages,

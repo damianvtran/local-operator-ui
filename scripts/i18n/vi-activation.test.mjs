@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -72,11 +73,11 @@ test("counts render ungrouped (the #1131 fidelity rule); uncarried namespaces us
 		}),
 		"Bước 1234567 trên 2000000",
 	);
-	// Canvas is not carried: the English source applies, including its own
-	// group-off rule. Assert that on the shared synthetic tag, never on `vi` -
-	// a real locale expires the assertion the day its tranche ships ui.canvas.
-	// restoreLocale() switches the locale back; the empty fixture stays
-	// registered under the tag and carries no keys.
+	// The fallback is exercised on the shared synthetic tag, never on a real
+	// locale: `vi` now carries ui.canvas, so asserting its English value on the
+	// real locale would describe the opposite of the shipped state. The empty
+	// fixture stays registered under the tag and carries no keys; restoreLocale()
+	// switches the locale back.
 	const restoreLocale = withAbsentLocale({
 		currentLocale: locale.currentLocale,
 		setLocale: locale.setLocale,
@@ -96,6 +97,54 @@ test("counts render ungrouped (the #1131 fidelity rule); uncarried namespaces us
 		restoreLocale();
 	}
 });
+test("every namespace vi ships is wired and carries translated copy", () => {
+	locale.setLocale("vi");
+	const viDir = new URL("../../src/i18n/catalogues/vi/", import.meta.url);
+	const files = readdirSync(viDir)
+		.filter((name) => name.endsWith(".json"))
+		.sort();
+	assert.ok(files.length >= 55, `vi carries ${files.length} namespace files`);
+
+	let proved = 0;
+	for (const file of files) {
+		const catalogue = JSON.parse(readFileSync(new URL(file, viDir), "utf8"));
+		const source = JSON.parse(
+			readFileSync(
+				new URL(`../../src/i18n/catalogues/en/${file}`, import.meta.url),
+				"utf8",
+			),
+		);
+		/*
+		 * One argument-free, actually-translated key per namespace proves the
+		 * bundled catalogue answered: `t()` returned the vi value, not the English
+		 * one. Placeholder-bearing messages are skipped because formatting them
+		 * needs the caller's arguments; this probe is about bundle wiring, not ICU.
+		 */
+		const key = Object.entries(catalogue).find(
+			([id, value]) =>
+				typeof value === "string" &&
+				value !== "" &&
+				!value.includes("{") &&
+				value !== source[id],
+		)?.[0];
+		if (!key) continue;
+		assert.equal(messages.t(key), catalogue[key], `${file}: ${key}`);
+		proved += 1;
+	}
+	/*
+	 * ui.shell.rail is accessible-name copy: EVERY value embeds {chord}, so it has
+	 * no argument-free key. Prove its bundle with the one argument shape it uses.
+	 */
+	assert.equal(
+		messages.t("ui.shell.rail.canvas.aria", { chord: "" }),
+		"Khung vẽ",
+	);
+	proved += 1;
+	assert.ok(proved >= 54, `only ${proved} namespaces proved carried`);
+	console.log(`vi carried ${proved} namespaces`);
+	locale.setLocale("en");
+});
+
 const DOUBLED_SPACE = / {2,}/;
 const UNRENDERED_PLACEHOLDER = /\{/;
 
