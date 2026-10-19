@@ -46705,9 +46705,16 @@ async function sceneHubLinks(cdp, app) {
 	const collapsed = await waitForCondition(
 		cdp,
 		`(() => {
-			const pane = document.querySelector('[data-agents-pane]');
-			if (!pane) return null;
-			const trigger = pane.querySelector('button[aria-expanded]');
+			/*
+			 * THE PANEL'S OWN TRIGGER, not the pane's first expander. The panel
+			 * used to be drawn ABOVE the record's title, so its disclosure was the
+			 * first expander in the pane; it now sits BELOW the title, inside the
+			 * record, and the record's own disclosures come first. The panel
+			 * carries its own marker for exactly this.
+			 */
+			const panel = document.querySelector('[data-hub-links-panel]');
+			if (!panel) return null;
+			const trigger = panel.querySelector('button[aria-expanded]');
 			return trigger ? { expanded: trigger.getAttribute('aria-expanded') } : null;
 		})()`,
 		30_000,
@@ -46731,11 +46738,11 @@ async function sceneHubLinks(cdp, app) {
 	 * origin 2 (Minerva · Private) Subscribe Off - so the pair must read "Mixed".
 	 */
 	const collapsedSummary = await cdp.evaluate(`(() => {
-		// The same trigger the collapsed check above found: the pane-scoped
-		// hub-panel disclosure. The hub-panel marker attribute is not forwarded by
-		// Disclosure, so the pane-scoped selector is the proof.
-		const pane = document.querySelector('[data-agents-pane]');
-		const trigger = pane && pane.querySelector('button[aria-expanded]');
+		// The same trigger the collapsed check above found: the hub panel's own
+		// disclosure, reached through the marker the PANE wrapper carries (the
+		// marker is not forwarded by Disclosure, so it sits on the wrapper).
+		const panel = document.querySelector('[data-hub-links-panel]');
+		const trigger = panel && panel.querySelector('button[aria-expanded]');
 		return trigger ? trigger.textContent : null;
 	})()`);
 	check(
@@ -46780,7 +46787,11 @@ async function sceneHubLinks(cdp, app) {
 			JSON.stringify({ label: unresolvedNamed }),
 		);
 	}
-	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
+	await verb(
+		cdp,
+		"press",
+		'[data-hub-links-panel] button[aria-expanded="false"]',
+	);
 	const ready = await waitForCondition(
 		cdp,
 		`(() => {
@@ -47173,7 +47184,10 @@ async function sceneHubLinks(cdp, app) {
 			hubLinksText: (pane.textContent || '').includes('Hub links'),
 		};
 	})()`);
-	note("no-link record", JSON.stringify({ ready: noLinkReady.last, read: noLink }));
+	note(
+		"no-link record",
+		JSON.stringify({ ready: noLinkReady.last, read: noLink }),
+	);
 	check(
 		"a record with no hub link draws NO hub panel at all",
 		noLink !== null &&
@@ -47273,7 +47287,11 @@ async function sceneHubLinks(cdp, app) {
 		detailOpened.ok,
 		`after ${detailOpened.waitedMs ?? "?"}ms: ${JSON.stringify(detailOpened.last)}`,
 	);
-	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
+	await verb(
+		cdp,
+		"press",
+		'[data-hub-links-panel] button[aria-expanded="false"]',
+	);
 	const origins = await waitForCondition(
 		cdp,
 		`(() => {
@@ -48292,14 +48310,18 @@ async function sceneHubCoreGuard(cdp, app) {
 	await verb(cdp, "navigate", "/agents?name=reviewer");
 	const collapsed = await waitForCondition(
 		cdp,
-		`!!document.querySelector('[data-agents-pane] button[aria-expanded="false"]')`,
+		`!!document.querySelector('[data-hub-links-panel] button[aria-expanded="false"]')`,
 		30_000,
 	);
 	check(
 		"linked profile remains browsable before opening controls",
 		collapsed.ok,
 	);
-	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
+	await verb(
+		cdp,
+		"press",
+		'[data-hub-links-panel] button[aria-expanded="false"]',
+	);
 	const row = '[data-hub-link="link-public-agent"]';
 	const ready = await waitForCondition(
 		cdp,
