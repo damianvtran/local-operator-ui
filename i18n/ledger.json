@@ -6799,8 +6799,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "6b12f695845c3d01500291f5bc4eb50ea9b35e60c68bc69f21ee219c5f9d7f52",
@@ -6838,8 +6856,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
@@ -6901,8 +6937,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
@@ -6940,8 +6994,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "73793572e5e36b8bbc8df6c1f27fb98083634b3b9e3cbd05ede27da4813c656c",
@@ -6979,8 +7051,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
@@ -7018,8 +7108,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "9981637a98afbcbc166d889b461795bae7685e42274f4d607b711f4b0f9085f2",
@@ -7057,8 +7165,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
@@ -7127,8 +7253,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "5c20d0e9a7f66f753561ded1d104aa5cf0e1fd0d5a73f7f0a7e3349a28c6f2c4",
@@ -7197,8 +7341,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "36b3507993a0466100ca099c3c1c2b2852d66a81b14f3685031f0a35dfa0f5b3",
@@ -7236,8 +7398,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "d11a5170a0336449668b91a2b2aa1013ae36ee38c4b70fc69f90541aea3e5050",
@@ -7306,8 +7486,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "90960d5e885e5b617af91b7249b64828a049c0b9631bf5da4562a8f8c2f5c066",
@@ -7345,8 +7543,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "5a09b6ed49e8501d14a6f8052a70ce15ce5104ec8da3756c6b576e6e4d150cf1",
@@ -7384,8 +7600,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "5a4a01952b8a4242730e336cf082dc926085ac126a147d8b44197e9f04fc3b29",
@@ -7447,8 +7681,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "8d1871aa2d087f99694b77e9f946b33b549a9541525023347b78124f42bbf82f",
@@ -7517,8 +7769,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "6597aeea3a3a0495f1ba0d9a7ce8078f455d970b53647dbc8350e00fbc9099b2",
@@ -7556,8 +7826,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "b0db379acf4e4c13bed8f4fb3f7e551c0b1ebc3dd52ef4508a9797c5fdcf3dbc",
@@ -7688,8 +7976,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
@@ -7758,8 +8064,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "561e39a0105425d66cac7d7497306d740d79f7b2e3921424b1993f3405e08d77",
@@ -7797,8 +8121,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "72e2a848a2aa4b46ecdc0ede34ed5f59b280b73e3fc544d5e563ce22ab2743e0",
@@ -7836,8 +8178,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "d1acb6a1fae70e3f85255d880a91d9e35ed49a8bf7d04ef14722ce115d7c69bb",
@@ -7963,8 +8323,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "e7ddf3b75f3e46d6900aacab976f1180eb10fdb121b5f46d2dc231fd6b4f5bb5",
@@ -8090,8 +8468,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
@@ -8346,8 +8742,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "35b34093f3d065acf26e96a4e9601cb2906bd9439230a7fa7f9fc9a43784f7a3",
@@ -8448,8 +8862,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "2e2a8a28891db681fd72396a3b8323e8705e4ea9c0397e49237e3ed3f7e1a897",
@@ -8518,8 +8950,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "99fc8672fbb4139aa2721542a8fb994506301b0c678d86c21439e939f5dd2bf4",
@@ -8557,8 +9007,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "23f591cd7c2d52c2563e0b5cbb4cbb2164f7cd01c2568b050738b3be976a5729",
@@ -8596,8 +9064,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "457cb86efa40d800d2adf711ec2b4289d22b4b9013fd48189082c4b8808d3f20",
@@ -8635,8 +9121,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "7d7170328807a0ae0018bb69c4cd5fe49f6d5e47f7ca34484cf71b2a74612cec",
@@ -8674,8 +9178,26 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-18",
+					"result": "clean",
+					"instance": "4c6c213dd0d8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4c6c213dd0d8.json",
+					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks",
+					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "7344c8694a23662bfe3ae12205685cfa14851209d0685abbe463b9f513565085",
