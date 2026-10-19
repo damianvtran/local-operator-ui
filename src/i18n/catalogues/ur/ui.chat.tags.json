@@ -40,5 +40,17 @@
 	"ui.chat.tags.updated_untagged": "ٹیگز اپ ڈیٹ ہو گئے۔ بغیر ٹیگ میں دکھایا گیا ہے۔",
 	"ui.chat.tags.none_yet": "ابھی کوئی ٹیگ نہیں",
 	"ui.chat.tags.manage_title": "ٹیگز کا انتظام",
-	"ui.chat.tags.apply_deletion_first": "پہلے حذف کرنے کی تبدیلی لاگو کریں، پھر “{name}” دوبارہ شامل کریں۔"
+	"ui.chat.tags.apply_deletion_first": "پہلے حذف کرنے کی تبدیلی لاگو کریں، پھر “{name}” دوبارہ شامل کریں۔",
+	"ui.chat.tags.moved_to": "“{name}” میں منتقل کر دیا گیا",
+	"ui.chat.tags.removed_all": "تمام ٹیگز ہٹا دیے گئے",
+	"ui.chat.tags.remove_all": "{count, plural, one {ٹیگ ہٹائیں (#)} other {تمام ٹیگز ہٹائیں (#)}}",
+	"ui.chat.tags.move_menu": "ٹیگ میں منتقل کریں…",
+	"ui.chat.tags.changed_elsewhere": "ٹیگز کہیں اور تبدیل ہو گئے",
+	"ui.chat.tags.move_armed": "“{name}” منتقل کریں",
+	"ui.chat.tags.move_cancelled": "منتقلی منسوخ کر دی گئی",
+	"ui.chat.tags.undo": "واپس کریں",
+	"ui.chat.tags.move_undone": "ٹیگ کی منتقلی واپس کر دی گئی",
+	"ui.chat.tags.move_title": "“{title}” منتقل کریں",
+	"ui.chat.tags.move_description": "کسی ٹیگ کو بنیادی بنانے کے لیے اسے منتخب کریں، یا تمام ٹیگز ہٹانے کے لیے “بغیر ٹیگ” منتخب کریں۔",
+	"ui.chat.tags.move_failed": "ٹیگز منتقل نہیں ہوئے۔ دوبارہ کوشش کریں۔"
 }

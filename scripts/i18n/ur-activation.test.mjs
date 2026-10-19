@@ -51,6 +51,10 @@ test("shipped Urdu covers settings, console, onboarding and the wider UI, then s
 	// imported, not just the onboarding tranche.
 	assert.equal(messages.t("ui.common.actions.retry"), "دوبارہ کوشش کریں");
 	assert.equal(messages.t("ui.chat.tags.label"), "ٹیگز");
+	// Keys that landed on main after the tranche: prove the rebased bundle
+	// carries the drift rather than falling back to English for them.
+	assert.equal(messages.t("ui.chat.tags.move_menu"), "ٹیگ میں منتقل کریں…");
+	assert.equal(messages.t("ui.library.filter.scope_final"), "حتمی فائلیں");
 	console.log(
 		`ur: ${messages.t("ui.settings.page.title")} | ${messages.t("ui.console.pane.label")} | ${messages.t("ui.onboarding.modal.step_of", { current: 2, total: 5 })}`,
 	);
