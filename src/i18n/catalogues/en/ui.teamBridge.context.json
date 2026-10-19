@@ -356,5 +356,14 @@
 		"length": "One sentence.",
 		"placeholders": {},
 		"note": "Explains why New conversation is disabled while the account-wide scope is selected: a conversation must belong to exactly one organization."
+	},
+	"ui.teamBridge.group.more_unread": {
+		"role": "sidebar overflow disclosure, accessible name",
+		"tone": "concise, factual",
+		"length": "One short phrase.",
+		"placeholders": {
+			"count": "the unread total carried by the group"
+		},
+		"note": "States the count when the More row carries a badge, so a screen-reader user hears the same fact the badge shows. Do not name a single destination."
 	}
 }
