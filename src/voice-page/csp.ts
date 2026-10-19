@@ -12,6 +12,13 @@
  * no media-src check covers, and no <audio>/<video> element or blob: media URL
  * is created. Add it back only if playback ever moves to a media element.
  *
+ * `'wasm-unsafe-eval'` in `script-src` is the one addition the real detector
+ * needs and nothing more: onnxruntime-web compiles its `.wasm` runtime with
+ * WebAssembly.instantiate, which Chromium blocks under a CSP without it. It is
+ * NOT `'unsafe-eval'` - JS `eval`/`new Function` stay blocked. The model,
+ * worklet and WASM all load from `'self'` (`voice-page-vad/`), so connect-src
+ * and script-src need no other origin.
+ *
  * `html` carries the same string in a <meta>; a test pins that the two agree,
  * because a policy that exists in one place only is a policy the page does not
  * have.

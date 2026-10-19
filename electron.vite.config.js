@@ -8,6 +8,7 @@ import {
 } from "electron-vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { desktopProxyPlugin } from "./scripts/vite-plugins/desktop-proxy";
+import { voicePageVadPlugin } from "./scripts/vite-plugins/voice-page-vad";
 import { replaceBackendConfigPlugin } from "./scripts/vite-plugins/replace-backend-config";
 
 // V8 bytecode is tied to the exact Electron (V8) version that produced it, so a
@@ -93,7 +94,13 @@ export default defineConfig({
 		// tailwindcss() must run for BOTH renderer html entries (index.html and
 		// installer.html); it is a renderer-level plugin, so registering it here
 		// covers both inputs declared below.
-		plugins: [react(), tailwindcss(), tsconfigPaths(), desktopProxyPlugin()],
+		plugins: [
+			react(),
+			tailwindcss(),
+			tsconfigPaths(),
+			desktopProxyPlugin(),
+			voicePageVadPlugin(),
+		],
 		input: {
 			index: resolve(__dirname, "src/renderer/index.html"),
 			installer: resolve(__dirname, "src/renderer/installer.html"),
@@ -109,7 +116,7 @@ export default defineConfig({
 			mini: resolve(__dirname, "src/renderer/mini.html"),
 			// The app-owned voice page (plan D2/U1): in BOTH lists, for the mini
 			// view's reason above.
-			"voice-page": resolve(__dirname, "src/voice-page/voice-page.html"),
+			"voice-page": resolve(__dirname, "src/renderer/voice-page.html"),
 		},
 		build: {
 			// electron-vite defaults the renderer to minify:false on the assumption
@@ -150,7 +157,7 @@ export default defineConfig({
 					 * serves it — both halves are load-bearing and a test pins them.
 					 */
 					mini: resolve(__dirname, "src/renderer/mini.html"),
-					"voice-page": resolve(__dirname, "src/voice-page/voice-page.html"),
+					"voice-page": resolve(__dirname, "src/renderer/voice-page.html"),
 				},
 			},
 		},

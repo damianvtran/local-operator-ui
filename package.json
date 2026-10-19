@@ -133,6 +133,8 @@
     "electron": "44.3.0"
   },
   "devDependencies": {
+    "@ricky0123/vad-web": "0.0.31",
+    "onnxruntime-web": "1.30.0",
     "@babel/helpers": "^7.26.10",
     "@babel/runtime": "^7.26.10",
     "@biomejs/biome": "^1.9.4",
