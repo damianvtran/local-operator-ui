@@ -392,7 +392,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					</Button>
 				</header>
 				{mergedView && (listRows.length > 0 || listState !== "ready") && (
-					<p id={createHintId} className="px-3 pb-2 text-meta-sm text-ink-dim">
+					<p id={createHintId} className="px-3 pb-2 text-[12px] text-ink-dim">
 						{t("ui.teamBridge.scope.create_needs_org")}
 					</p>
 				)}
