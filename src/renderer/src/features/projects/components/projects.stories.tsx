@@ -4923,6 +4923,29 @@ export const BoardHorizontalScroll: Story = {
 				`the header did not track the columns: scrolled ${moved.toFixed(1)}, window ${window_.scrollLeft.toFixed(1)}, row ${rowShift.toFixed(1)}, header ${headerShift.toFixed(1)}, cell ${cellShift.toFixed(1)}`,
 			);
 		}
+		/*
+		 * THE SYNC MUST RUN BOTH WAYS. A UA scrolls the header window by itself
+		 * when a clipped grip takes focus, and a strip→header-only listener would
+		 * leave the headers 111px off their columns while the body stayed put.
+		 * Focus Planning at this h-scroll and let the mirror settle both windows;
+		 * the active header must end over its own band cell.
+		 */
+		const planningGrip = document.querySelector<HTMLElement>(
+			'[data-board-column-grip="planning"]',
+		);
+		if (!planningGrip) throw new Error("the planning grip is missing");
+		planningGrip.focus();
+		await poll(
+			() => Math.abs(strip.scrollLeft - window_.scrollLeft) <= 1,
+			"the header window and the body to settle on one offset",
+		);
+		const alignedHeader = header.getBoundingClientRect().left;
+		const alignedCell = cell.getBoundingClientRect().left;
+		if (Math.abs(alignedHeader - alignedCell) > 0.5) {
+			throw new Error(
+				`the header and its cell did not re-align after a focus scroll: header ${alignedHeader.toFixed(1)}, cell ${alignedCell.toFixed(1)}`,
+			);
+		}
 	}),
 };
 

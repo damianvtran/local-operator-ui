@@ -262,25 +262,49 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 			}
 		};
 		const sync = () => {
-			header.scrollLeft = strip.scrollLeft;
+			if (Math.abs(header.scrollLeft - strip.scrollLeft) > 0.5) {
+				header.scrollLeft = strip.scrollLeft;
+			}
+		};
+		/*
+		 * MIRROR THE HEADER'S OWN SCROLL BACK. A UA can scroll the header window
+		 * on its own - focusing a grip that is clipped at the window's edge is the
+		 * case the reviewer measured - and a one-way sync would leave the headers
+		 * 111px off their columns while the body stayed put. Mirroring both ways
+		 * makes the focus scroll move the real scroller, and the equal-offset
+		 * guard stops the two listeners from ping-ponging.
+		 */
+		const syncFromHeader = () => {
+			if (Math.abs(strip.scrollLeft - header.scrollLeft) > 0.5) {
+				strip.scrollLeft = header.scrollLeft;
+			}
 		};
 		const onWheel = (event: WheelEvent) => {
-			const unit =
+			/* Page-mode deltas are one viewport PER AXIS: width for x, height for
+			 * y (the reviewer caught the height being used for both). */
+			const xUnit =
+				event.deltaMode === 1
+					? 16
+					: event.deltaMode === 2
+						? strip.clientWidth
+						: 1;
+			const yUnit =
 				event.deltaMode === 1
 					? 16
 					: event.deltaMode === 2
 						? strip.clientHeight
 						: 1;
 			if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
-				strip.scrollLeft += event.deltaX * unit;
+				strip.scrollLeft += event.deltaX * xUnit;
 			} else {
-				strip.scrollTop += event.deltaY * unit;
+				strip.scrollTop += event.deltaY * yUnit;
 			}
 			event.preventDefault();
 		};
 		applyGutter();
 		sync();
 		header.addEventListener("wheel", onWheel, { passive: false });
+		header.addEventListener("scroll", syncFromHeader, { passive: true });
 		strip.addEventListener("scroll", sync, { passive: true });
 		const observer = new ResizeObserver(() => {
 			applyGutter();
@@ -291,6 +315,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 		window.addEventListener("resize", applyGutter);
 		return () => {
 			header.removeEventListener("wheel", onWheel);
+			header.removeEventListener("scroll", syncFromHeader);
 			strip.removeEventListener("scroll", sync);
 			observer.disconnect();
 			window.removeEventListener("resize", applyGutter);
@@ -441,7 +466,15 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 		if (dir !== 0) {
 			const before = strip.scrollLeft;
 			strip.scrollLeft = before + dir * AUTO_SCROLL_STEP;
-			if (strip.scrollLeft !== before) applyOver(x, live);
+			if (strip.scrollLeft !== before) {
+				/* The scroll event is one task behind; the landing preview must read
+				 * the header rects at the offset the body is ALREADY at, or it
+				 * measures the pre-write positions for a frame (and settleDrag can
+				 * read that stale value). */
+				const header = headerViewportRef.current;
+				if (header) header.scrollLeft = strip.scrollLeft;
+				applyOver(x, live);
+			}
 		} else {
 			/* No scroll this frame; the content can still have moved (wheel). */
 			applyOver(x, live);
@@ -622,7 +655,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 		const LINE_WIDTH = 2; /* `w-0.5` */
 		const raw = edge - stripRect.left + scroll;
 		const minX = scroll + 1;
-		const maxX = scroll + stripRect.width - LINE_WIDTH - 1;
+		const maxX = scroll + strip.clientWidth - LINE_WIDTH - 1;
 		const clamped = Math.round(
 			Math.min(Math.max(raw, minX), Math.max(minX, maxX)),
 		);
@@ -682,7 +715,10 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 			 * the operator's re-skin retires. The columns keep the canvas behind
 			 * them, so the well→card step is the ground ladder a board needs.
 			 */
-			className="[container-type:size] flex min-h-0 flex-1 flex-col"
+			className={cn(
+				"[container-type:size] flex min-h-0 flex-1 flex-col",
+				drag && "cursor-grabbing select-none",
+			)}
 			data-testid="project-board"
 		>
 			{/*
