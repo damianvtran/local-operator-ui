@@ -46,6 +46,8 @@ type PptxViewerProps = {
 	asset: DesktopLibraryAsset;
 	bytes: Uint8Array;
 	onOpenExternal?: () => void;
+	/** The preview's short layout: the slide wins over the thumbnail rail. */
+	dense?: boolean;
 };
 
 type PptxState =
@@ -57,6 +59,7 @@ export const PptxViewer: FC<PptxViewerProps> = ({
 	asset,
 	bytes,
 	onOpenExternal,
+	dense = false,
 }) => {
 	const rendererRef = useRef<PptxRenderer | null>(null);
 	const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -253,7 +256,7 @@ export const PptxViewer: FC<PptxViewerProps> = ({
 						/>
 					)}
 				</div>
-				{state.phase === "ready" && !short && (
+				{state.phase === "ready" && !short && !dense && (
 					<div className="flex h-[72px] shrink-0 flex-row gap-1 overflow-x-auto overflow-y-hidden">
 						{state.thumbnails.map((thumbnail, index) => (
 							<button
