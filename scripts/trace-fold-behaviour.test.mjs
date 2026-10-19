@@ -723,6 +723,16 @@ test("the painted count line is the capped one, and it may wrap", async (t) => {
 		capped,
 		"and the header paints exactly that string",
 	);
+	/*
+	 * THE TOOLTIP IS THE SAME LINE. It used to compose `${actionCount} actions`
+	 * from a separate prop, which a receipt-only group made a false `0 actions`;
+	 * it now reads the units the header paints, so the two cannot disagree.
+	 */
+	assert.equal(
+		summary.getAttribute("title"),
+		capped,
+		"the header's own tooltip states the units it paints",
+	);
 	const classes = String(summary.className);
 	assert.ok(
 		!classes.includes("truncate"),
