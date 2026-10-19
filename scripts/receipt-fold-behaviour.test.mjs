@@ -381,6 +381,11 @@ test("the operator's wall folds through the reducer into one receipt-aware group
 		!text.includes("job result:"),
 		`the standalone receipt label is gone, got: ${text}`,
 	);
+	assert.equal(
+		summary.getAttribute("title"),
+		text,
+		"the tooltip states the same units the count line paints",
+	);
 	for (const jobId of page.jobIds) {
 		assert.equal(
 			mounted.container.querySelector(`[data-record-id="${jobId}"]`),
