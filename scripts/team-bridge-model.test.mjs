@@ -310,6 +310,7 @@ test("a preview header counts member_count when it has no member rows", () => {
 	assert.equal(
 		model.conversationMemberCount(
 			conversation({
+				member_count: 3,
 				members: [
 					member("Ada", "human", "active"),
 					member("Bea", "human", "active"),
@@ -317,6 +318,8 @@ test("a preview header counts member_count when it has no member rows", () => {
 				],
 			}),
 		),
+		// member_count counts active + invited; an insider's header counts the
+		// active rows it also draws avatars for, so the two cannot disagree.
 		2,
 	);
 });

@@ -61,5 +61,6 @@
 	"ui.teamBridge.notify.all": "All messages",
 	"ui.teamBridge.notify.mention": "Mentions",
 	"ui.teamBridge.notify.mute": "Mute",
-	"ui.teamBridge.notify.muted": "Muted"
+	"ui.teamBridge.notify.muted": "Muted",
+	"ui.teamBridge.notify.error": "Your notification preference was not saved. Try again."
 }

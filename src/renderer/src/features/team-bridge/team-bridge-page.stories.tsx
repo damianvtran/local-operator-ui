@@ -96,6 +96,10 @@ const channel: TeamBridgeConversation = {
 	last_read_seq: 9,
 	unread_count: 3,
 	muted: false,
+	// What agent-server sends on every row: active + invited (Damian, Bea, Cy).
+	// The header must still read 2 active members, not 3, so this fixture is the
+	// insider branch of `conversationMemberCount` rather than a decorative field.
+	member_count: 3,
 };
 
 const group: TeamBridgeConversation = {
@@ -240,7 +244,6 @@ const mutedChannel: TeamBridgeConversation = {
 	name: "alerts",
 	discoverable: true,
 	member: true,
-	member_count: 12,
 	notify: "mute",
 	muted: true,
 	latest_seq: 12,

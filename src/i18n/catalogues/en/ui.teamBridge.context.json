@@ -449,5 +449,12 @@
 		"length": "1 word.",
 		"placeholders": {},
 		"note": "States why a muted conversation's unread count does not raise the sidebar badge. Past participle; not an action."
+	},
+	"ui.teamBridge.notify.error": {
+		"role": "inline error under the thread header",
+		"tone": "factual, no blame",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "A refused notification-preference write. The menu has closed and the previous value is restored; this line explains why. Mirrors the composer's send-failure sentence."
 	}
 }
