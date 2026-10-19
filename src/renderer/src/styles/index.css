@@ -41,6 +41,19 @@
 }
 
 /*
+ * THE SELECTION STRIP OWNS THE TURN'S TRAILING SEAT. The response and user
+ * gutter overlays share that seat and are later in the DOM with pointer-events
+ * enabled on hover/focus, so without this a Quote press can land on the
+ * response Copy. `visibility` keeps the zero-layout promise; `pointer-events`
+ * takes the controls out of the hit test for both mouse and keyboard paths.
+ */
+[data-lo-selection-active] [data-lo-gutter-actions],
+[data-lo-selection-active] [data-lo-user-actions] {
+	visibility: hidden;
+	pointer-events: none;
+}
+
+/*
  * ============================================================================
  * WINDOW CHROME
  * ============================================================================

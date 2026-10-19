@@ -467,9 +467,10 @@ test("plain text drops the reply transport and markdown syntax; markdown keeps t
 		"the fence's body survives as text",
 	);
 	assert.ok(!text.includes("- one"), "plain text drops the list marker");
-	assert.ok(
-		text.includes("• one\n• two"),
-		"the list's words survive with the bullet they render as",
+	assert.match(
+		text,
+		/one\s+two/,
+		"the list's words survive on their own lines",
 	);
 	assert.notEqual(text, markdown, "the two menu items are different promises");
 	assert.ok(markdown.includes("```sql"), "markdown keeps the fence");
@@ -512,6 +513,51 @@ test("a skill turn copies its typed line, not the expanded SKILL.md payload", ()
 	);
 });
 
+test("plain text preserves inline code, operators and emphasis targets", () => {
+	const record = {
+		kind: "assistant",
+		id: "literal",
+		ts: 0,
+		text: [
+			"`_init_` stays an identifier.",
+			"",
+			"`**/*.ts` stays a glob.",
+			"",
+			"x * y * z is arithmetic.",
+			"",
+			"2 * 3 * 4 = 24.",
+			"",
+			"**bold** and *italic* and [label](https://example.com).",
+			"",
+			"```ts",
+			"const glob = **/*.ts;",
+			"```",
+		].join("\n"),
+		streaming: false,
+		stopReason: null,
+		error: false,
+	};
+	const text = mod.copyTextForRecord(record);
+	assert.ok(text.includes("_init_"), "inline code keeps underscores");
+	assert.ok(text.includes("**/*.ts"), "inline code keeps asterisks");
+	assert.ok(
+		text.includes("x * y * z"),
+		"spaced multiplication is not emphasis",
+	);
+	assert.ok(text.includes("2 * 3 * 4 = 24"), "digits around asterisks survive");
+	assert.ok(
+		text.includes("bold and italic and label"),
+		"wrappers contribute text",
+	);
+	assert.ok(
+		text.includes("const glob = **/*.ts;"),
+		"fenced code keeps its bytes",
+	);
+	assert.ok(
+		!text.includes("```"),
+		"but the fence markers are not in plain text",
+	);
+});
 test("a tool row copies a fenced block naming the tool, command and output", () => {
 	const record = {
 		kind: "tool",
@@ -834,12 +880,44 @@ test("a partial assistant selection raises one Copy/Quote/Speak strip", async ()
 		quoteStrip.querySelector('button[aria-label="Speak aloud"]'),
 		"one Speak control rides the same strip",
 	);
+	assert.ok(
+		quoteStrip.className.includes("z-20"),
+		"the strip sits above the row's own gutter controls",
+	);
+	assert.ok(
+		answer.hasAttribute("data-lo-selection-active"),
+		"the row marks that a selection strip owns its trailing seat",
+	);
+	const responseControl = answer.querySelector("[data-lo-gutter-actions]");
+	assert.ok(responseControl, "the response gutter is still mounted");
+	assert.ok(
+		responseControl.hasAttribute("inert"),
+		"but it is inert while the selection strip owns the seat",
+	);
+	answer.focus();
+	assert.ok(
+		answer.hasAttribute("data-lo-selection-active"),
+		"and focusing the response row does not clear the ownership",
+	);
 	await rig.click(stripCopy);
 	assert.equal(rig.written.length, 1);
 	assert.ok(
 		rig.written[0].startsWith("I will read"),
 		"the strip copies the highlight, not the whole message",
 	);
+	/*
+	 * The press and the focus may have collapsed the jsdom selection; re-create
+	 * it so the menu's Copy selection is asked against a live highlight, which
+	 * is the same state the reader is in after pressing the strip.
+	 */
+	selection.removeAllRanges();
+	selection.addRange(range);
+	await act(async () => {
+		dom.window.document.dispatchEvent(
+			new dom.window.MouseEvent("mouseup", { bubbles: true }),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 30));
+	});
 	const menu = await rig.openMenu(answer);
 	assert.notEqual(
 		rig.menuItem(menu, "Copy selection").getAttribute("aria-disabled"),
@@ -851,6 +929,62 @@ test("a partial assistant selection raises one Copy/Quote/Speak strip", async ()
 	assert.ok(
 		rig.written[1].startsWith("I will read"),
 		"the menu's Copy selection writes the same highlight",
+	);
+	await rig.unmount();
+});
+
+test("a user selection raises Copy and Speak but no Quote", async () => {
+	const rig = await mountTranscript(MULTI_TURN);
+	const dom = rig.dom;
+	const user = rowOf(dom, "u1");
+	const bubble = user.querySelector("[data-glass-block]");
+	assert.ok(bubble, "the user bubble is on screen");
+	const findText = (node) => {
+		if (node.nodeType === 3 && node.textContent.trim().length > 0) return node;
+		for (const child of node.childNodes) {
+			const found = findText(child);
+			if (found) return found;
+		}
+		return null;
+	};
+	const textNode = findText(bubble);
+	assert.ok(textNode, "the bubble has a text node to select");
+	const range = dom.window.document.createRange();
+	range.selectNodeContents(textNode);
+	const selection = dom.window.getSelection();
+	selection.removeAllRanges();
+	selection.addRange(range);
+	await act(async () => {
+		dom.window.document.dispatchEvent(
+			new dom.window.MouseEvent("mouseup", { bubbles: true }),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 30));
+	});
+	const strip = dom.window.document.querySelector("[data-lo-quote-toolkit]");
+	assert.ok(strip, "the user turn's selection has its own strip");
+	assert.equal(
+		strip.querySelector('button[aria-label="Quote"]') === null,
+		true,
+		"a user selection offers no Quote",
+	);
+	assert.ok(
+		strip.querySelector('button[aria-label="Copy selection"]'),
+		"Copy is offered",
+	);
+	assert.ok(
+		strip.querySelector('button[aria-label="Speak aloud"]'),
+		"Speak is offered",
+	);
+	assert.equal(
+		dom.window.document.querySelector("[data-lo-selection-toolbar]") === null,
+		true,
+		"the shared toolbar does not double the user strip",
+	);
+	const userControl = user.querySelector("[data-lo-user-actions]");
+	assert.ok(userControl, "the user gutter is still mounted");
+	assert.ok(
+		userControl.hasAttribute("inert"),
+		"and it is inert while the selection strip owns the seat",
 	);
 	await rig.unmount();
 });

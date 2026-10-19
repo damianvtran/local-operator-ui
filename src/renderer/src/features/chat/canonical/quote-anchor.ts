@@ -213,6 +213,8 @@ export function placeQuoteControl({
 	const lineHeight = Math.max(first.bottom - first.top, 1);
 	const offFirstLine =
 		row !== undefined && first.top - row.top > lineHeight * MID_ROW_LINES;
+	const roomAbove = first.top - gap - size.height >= limits.top;
+	const roomBelow = last.bottom + gap + size.height <= limits.bottom;
 	/*
 	 * THE OUTER GUTTER WINS WHEN IT FITS. A strip painted above a highlight in a
 	 * dense transcript always covers the line before it; the content measure
@@ -220,6 +222,7 @@ export function placeQuoteControl({
 	 * above/below for the narrow case where no such seat exists.
 	 */
 	if (preferGutter) {
+		const above = roomAbove;
 		const gutterLeft = (row?.right ?? first.right) + 2;
 		if (gutterLeft + size.width <= limits.right) {
 			return {
@@ -229,21 +232,21 @@ export function placeQuoteControl({
 			};
 		}
 		/*
-		 * NO OUTER GUTTER (the 480px pane floor, and the 1024px frame where the
-		 * scroller itself IS the 810px measure). A compact strip over the
-		 * highlight's own trailing edge is the honest fallback: it covers the
-		 * reader's selected line rather than the unselected line above it. The
-		 * alternative the design rule names - a broad panel over a neighbour - is
-		 * what this replaces.
+		 * NO OUTER GUTTER (the 480px pane floor, and any pane where the scroller
+		 * itself is the measure). Fall back to the original flip: above the first
+		 * line when it fits, otherwise below the last. Never inside the selected
+		 * line's boxes - the reader is still reading or copying that line.
 		 */
 		return {
-			top: clamp(first.top, limits.top, limits.bottom - size.height),
-			left: Math.max(limits.left, limits.right - size.width),
-			placement: "above",
+			top: clamp(
+				above ? first.top - gap - size.height : last.bottom + gap,
+				limits.top,
+				limits.bottom - size.height,
+			),
+			left: clamp(first.left, limits.left, limits.right - size.width),
+			placement: above ? "above" : "below",
 		};
 	}
-	const roomAbove = first.top - gap - size.height >= limits.top;
-	const roomBelow = last.bottom + gap + size.height <= limits.bottom;
 	/*
 	 * The mid-row rule asks for BELOW, and only when below is actually inside the
 	 * pane. A link near the pane's floor has no room under it, and taking the rule

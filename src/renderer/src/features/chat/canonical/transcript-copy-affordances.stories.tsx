@@ -130,13 +130,16 @@ const foldedTurn = (): TranscriptState => {
 	});
 };
 
-const Frame = ({ state }: { state: TranscriptState }) => {
+const Frame = ({
+	state,
+	width = 1024,
+}: {
+	state: TranscriptState;
+	width?: number;
+}) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
-		<div
-			className="flex flex-col bg-canvas"
-			style={{ width: 1024, height: 620 }}
-		>
+		<div className="flex flex-col bg-canvas" style={{ width, height: 620 }}>
 			<div className="flex min-h-0 grow flex-col px-4 pt-4">
 				<CanonicalTranscript
 					transcript={state}
@@ -166,6 +169,27 @@ const row = (canvasElement: HTMLElement, id: string) => {
 	);
 	if (node === null) throw new Error(`row ${id} is not on screen`);
 	return node;
+};
+
+/** Select the first text node inside `root` and dispatch the real mouseup. */
+const selectText = async (root: HTMLElement) => {
+	const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+	const text = walker.nextNode();
+	if (text === null) throw new Error("the fixture has no text node");
+	const range = document.createRange();
+	range.selectNodeContents(text);
+	const selection = window.getSelection();
+	if (selection === null) throw new Error("the browser exposes no selection");
+	selection.removeAllRanges();
+	selection.addRange(range);
+	document.dispatchEvent(
+		new MouseEvent("mouseup", { bubbles: true, cancelable: true }),
+	);
+	await waitFor(() => {
+		if (document.querySelector("[data-lo-quote-toolkit]") === null) {
+			throw new Error("the selection strip did not mount");
+		}
+	});
 };
 
 const meta: Meta = {
@@ -266,5 +290,28 @@ export const SelectionToolbar: Story = {
 				throw new Error("a second selection strip is painted");
 			}
 		});
+	},
+};
+
+/** A narrow pane: no outer gutter, so the strip flips above the selection. */
+export const SelectionToolbarNarrow: Story = {
+	render: () => <Frame state={MULTI_ANSWER} width={480} />,
+	play: async ({ canvasElement }) => {
+		const prose = row(canvasElement, "a2").querySelector(".lo-markdown");
+		if (prose === null) throw new Error("the closing answer has no prose");
+		await selectText(prose as HTMLElement);
+	},
+};
+
+/** A user selection: Copy and Speak, with no Quote action. */
+export const SelectionToolbarUser: Story = {
+	render: () => <Frame state={MULTI_ANSWER} />,
+	play: async ({ canvasElement }) => {
+		const bubble = row(canvasElement, "u1").querySelector("[data-glass-block]");
+		if (bubble === null) throw new Error("the user bubble is not on screen");
+		await selectText(bubble as HTMLElement);
+		if (document.querySelector('button[aria-label="Quote"]') !== null) {
+			throw new Error("a user selection offered Quote");
+		}
 	},
 };

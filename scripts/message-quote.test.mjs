@@ -702,6 +702,42 @@ test("the first row of a scrolled transcript flips the control below it", () => 
 	});
 });
 
+test("preferGutter takes the outer seat when the row leaves one", () => {
+	const placed = place([box(300, 200, 500, 320)], {
+		row: box(280, 100, 700, 340),
+		preferGutter: true,
+	});
+	assert.deepEqual(placed, {
+		top: 300,
+		left: 702,
+		placement: "above",
+	});
+});
+
+test("preferGutter falls back above the first line when no gutter fits", () => {
+	const placed = place([box(300, 200, 500, 320)], {
+		row: box(280, 100, 970, 340),
+		preferGutter: true,
+	});
+	assert.deepEqual(placed, {
+		top: 300 - QUOTE_CONTROL_GAP - CONTROL.height,
+		left: 200,
+		placement: "above",
+	});
+});
+
+test("preferGutter falls back below the last line at the pane top", () => {
+	const placed = place([box(100, 200, 500, 120)], {
+		row: box(100, 100, 970, 140),
+		preferGutter: true,
+	});
+	assert.deepEqual(placed, {
+		top: 120 + QUOTE_CONTROL_GAP,
+		left: 200,
+		placement: "below",
+	});
+});
+
 test("a flip clears the highlight's LAST line, so it never lands on the text", () => {
 	const placed = place([box(100, 200, 500, 120), box(120, 40, 900, 140)]);
 	assert.equal(placed.placement, "below");
