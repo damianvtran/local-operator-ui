@@ -495,6 +495,22 @@ export function updatedClause(updatedAtSec: number, nowMs: number): string {
 }
 
 /**
+ * The row's MARKER LINE: the relation tag, then what this session did to the
+ * ref, `·`-seamed - one string, derived once (the model file's own rule: one
+ * derived string per fact).
+ *
+ * WHY IT IS A DERIVATION AND NOT A JOIN IN THE COMPONENT. The row draws it
+ * and the row's ACCESSIBLE NAME says it (see `rowAriaLabel`), and two
+ * separate joins would be two chances to state the same fact two ways.
+ */
+export function rowTag(row: CodeRequestRow): string | null {
+	const parts = [relationTag(row), actedTag(row)].filter(
+		(tag): tag is string => tag !== null,
+	);
+	return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+/**
  * The line-A relation tag, only where a row needs disambiguating (§5).
  *
  * `opened` is the plain case and returns null; `mentioned` likewise (its
@@ -968,6 +984,16 @@ export function rowAriaLabel(row: CodeRequestRow): string {
 	const parts = [`${identityLabel(row)}: ${title}`];
 	const pill = statePill(row);
 	if (pill) parts.push(pill.label.toLowerCase());
+	/*
+	 * THE RELATION IS PART OF THE ROW'S NAME (QA round 2, Q-3). The marker
+	 * line is a VISUAL line - it yields where the row is tight - so a screen
+	 * reader that only had the identity, the state and the title could not
+	 * hear the one word that keeps a row from claiming to be opened when the
+	 * backend never said so (`unknown`). The marker is carried here, in the
+	 * same words the row draws, so the two can never disagree.
+	 */
+	const tag = rowTag(row);
+	if (tag) parts.push(tag);
 	const clauses = laneLines(row).map((line) => line.clause);
 	if (clauses.length > 0) {
 		parts.push(clauses.join("; "));
