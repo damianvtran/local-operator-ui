@@ -226,6 +226,23 @@ export type TeamBridgeNotifyMutationContext = {
 };
 
 /**
+ * What one notify write names: the conversation it belongs to is part of the
+ * variables, not only the closure.
+ *
+ * A refusal can settle AFTER the reader has moved to another conversation. The
+ * in-flight mutation keeps the options it started with, but the mounted hook
+ * keeps its latest mutation's variables — so the page can compare the failing
+ * write's `conversationId` with the current selection and refuse to show A's
+ * error under B. Without this, a stale settlement re-arms `notifyFailed` under
+ * whatever conversation is on screen.
+ */
+export type TeamBridgeNotifyMutationVariables = {
+	conversationId: string;
+	tenantId?: string;
+	notify: TeamBridgeNotify;
+};
+
+/**
  * The notify mutation's options, separated from the hook.
  *
  * `useSetTeamBridgeNotify` is a one-line wrapper: these options are the object
@@ -236,18 +253,16 @@ export type TeamBridgeNotifyMutationContext = {
  */
 export function notifyMutationOptions(
 	client: QueryClient,
-	conversationId: string,
-	tenantId?: string,
 ): UseMutationOptions<
 	TeamBridgeReadState,
 	Error,
-	TeamBridgeNotify,
+	TeamBridgeNotifyMutationVariables,
 	TeamBridgeNotifyMutationContext
 > {
 	return {
-		mutationFn: (notify: TeamBridgeNotify) =>
+		mutationFn: ({ conversationId, notify, tenantId }) =>
 			TeamBridgeApi.setNotify(conversationId, notify, tenantId),
-		onMutate: async (notify: TeamBridgeNotify) => {
+		onMutate: async ({ conversationId, notify }) => {
 			await client.cancelQueries({
 				queryKey: teamBridgeKeys.conversationsPrefix,
 			});
@@ -263,7 +278,7 @@ export function notifyMutationOptions(
 			);
 			return { snapshots };
 		},
-		onError: (_error, _notify, context) => {
+		onError: (_error, _variables, context) => {
 			for (const [key, data] of context?.snapshots ?? []) {
 				client.setQueryData(key, data);
 			}
@@ -289,12 +304,13 @@ export function notifyMutationOptions(
  * patch. `onSettled` then re-reads the truth, so a server that canonicalises a
  * value cannot leave the optimistic guess in place.
  */
-export function useSetTeamBridgeNotify(
-	conversationId: string,
-	tenantId?: string,
-): UseMutationResult<TeamBridgeReadState, Error, TeamBridgeNotify> {
+export function useSetTeamBridgeNotify(): UseMutationResult<
+	TeamBridgeReadState,
+	Error,
+	TeamBridgeNotifyMutationVariables
+> {
 	const client = useQueryClient();
-	return useMutation(notifyMutationOptions(client, conversationId, tenantId));
+	return useMutation(notifyMutationOptions(client));
 }
 
 export function useMarkTeamBridgeRead(

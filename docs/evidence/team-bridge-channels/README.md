@@ -9,8 +9,8 @@ reader has not joined, the muted-row register, and the conversation menu.
   --config-dir .storybook`, the shipped `.storybook` config, theme provider and
   i18n catalogue).
 - Driven in the operator's own browser (the `browser` tool) at a 1280×720 CSS
-  viewport, 2× device pixels (2560×1440 source). The tool saves each frame as a
-  1024×576 PNG — a 2.5× downscale from the source, 0.8× the CSS viewport.
+  viewport, 2× device pixels. The committed PNGs are 2560×1440 — the source
+  frame, with no downscale.
 - Themes: `localOperatorDark` and `localOperatorLight`, through Storybook's
   `theme` arg (`?args=theme:<id>`).
 - Each state was loaded fresh; no previous palette's variables survive.

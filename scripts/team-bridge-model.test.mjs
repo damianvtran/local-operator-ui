@@ -300,6 +300,21 @@ test("the preference menu lists loud, mentions, mute in that order", () => {
 	assert.equal(model.asTeamBridgeNotify("nonsense"), "all");
 });
 
+test("a late notify refusal only shows under the conversation it belongs to", () => {
+	const failure = {
+		isError: true,
+		variables: { conversationId: "bcv_2" },
+	};
+	assert.equal(model.notifyFailureIsVisible(failure, "bcv_2"), true);
+	// The reader moved to B while A's write was in flight: A's settlement must
+	// not re-arm the line under B.
+	assert.equal(model.notifyFailureIsVisible(failure, "bcv_3"), false);
+	assert.equal(
+		model.notifyFailureIsVisible({ isError: false }, "bcv_2"),
+		false,
+	);
+});
+
 test("a preview header counts member_count when it has no member rows", () => {
 	assert.equal(
 		model.conversationMemberCount(
@@ -318,8 +333,8 @@ test("a preview header counts member_count when it has no member rows", () => {
 				],
 			}),
 		),
-		// member_count counts active + invited; an insider's header counts the
-		// active rows it also draws avatars for, so the two cannot disagree.
+		// member_count counts active + invited; the insider header counts the
+		// active rows only (the avatar strip filters the same state).
 		2,
 	);
 });

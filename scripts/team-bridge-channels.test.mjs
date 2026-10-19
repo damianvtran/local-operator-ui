@@ -244,14 +244,19 @@ test("the notify options restore both cached pages when the write is refused", a
 	// The claim under test is the snapshot restore, not the settle-time re-read.
 	client.invalidateQueries = async () => {};
 
-	const options = ui.notifyMutationOptions(client, "bcv_2", "tnt_1");
-	const context = await options.onMutate("mute");
+	const options = ui.notifyMutationOptions(client);
+	const variables = {
+		conversationId: "bcv_2",
+		tenantId: "tnt_1",
+		notify: "mute",
+	};
+	const context = await options.onMutate(variables);
 	assert.equal(client.getQueryData(orgKey).conversations[0].notify, "mute");
 	assert.equal(client.getQueryData(orgKey).conversations[0].muted, true);
 	assert.equal(client.getQueryData(allKey).conversations[0].notify, "mute");
 	assert.equal(client.getQueryData(orgKey).conversations[1].notify, undefined);
 
-	options.onError(new Error("refused"), "mute", context);
+	options.onError(new Error("refused"), variables, context);
 	// Both scope-keyed pages must be back exactly as they were: the snapshot is
 	// per page, and a rollback that restores only the visible one leaves the
 	// merged view claiming a preference the server refused.
