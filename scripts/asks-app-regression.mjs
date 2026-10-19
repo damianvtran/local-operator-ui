@@ -42,8 +42,9 @@ const execute = promisify(execFile);
  * (`CONTROL_REUSE_PARTS`, proved by the property test) the byte-identity assertion
  * holds and main/preload are reused. When it DOES touch main, preload or the vite
  * config, the control builds its own main/preload from its own source instead
- * (`controlReusePlan`); only a differing lockfile stays a hard stop. The identical
- * case is not weakened - the rebuild is the branch for a change that has to differ.
+ * (`controlReusePlan`); a differing lockfile installs the control's own dependencies
+ * from its own lockfile. The identical case is not weakened - the rebuild is the
+ * branch for a change that has to differ.
  *
  * WHAT IS LOST, STATED PLAINLY. A pinned commit let the control be any historical
  * revision at all, including one whose renderer predates this line of work. The
@@ -231,11 +232,10 @@ function files(root) {
  * photographs it. Now it takes the other branch: the control's main and preload are
  * BUILT from the control's own source, so the pair still differs by the change only.
  *
- * TWO PARTS STAY HARD STOPS, and they are not part of "reuse":
- *  - `pnpm-lock.yaml`: the control boots against the candidate's `node_modules`
- *    (symlinked, never duplicated), so a differing lockfile means the control would
- *    run on dependencies it was not built for. That is a different experiment, and
- *    it stops dispatch rather than producing frames that look comparable.
+ * TWO PARTS ARE NOT PART OF "REUSE":
+ *  - `pnpm-lock.yaml`: a differing lockfile means the control cannot share the
+ *    candidate's `node_modules`; it installs its own from its own lockfile, so the
+ *    comparison stays "base tree with base dependencies".
  *  - a missing tree: a revision whose source cannot be read stops dispatch.
  * The byte-identical case keeps its original assertion; only the mismatch of the
  * three build INPUTS (`src/main`, `src/preload`, `electron.vite.config.js`) is
