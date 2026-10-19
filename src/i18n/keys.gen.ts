@@ -92,6 +92,7 @@ import esUiChatComposerMedia from "./catalogues/es/ui.chat.composer_media.json";
 import esUiChatDialogs from "./catalogues/es/ui.chat.dialogs.json";
 import esUiChatHeader from "./catalogues/es/ui.chat.header.json";
 import esUiChat from "./catalogues/es/ui.chat.json";
+import esUiChatResponseActions from "./catalogues/es/ui.chat.response_actions.json";
 import esUiChatSidebarView from "./catalogues/es/ui.chat.sidebar_view.json";
 import esUiChatTags from "./catalogues/es/ui.chat.tags.json";
 import esUiCodeReview from "./catalogues/es/ui.code_review.json";
@@ -146,6 +147,7 @@ import frUiChatComposerMedia from "./catalogues/fr/ui.chat.composer_media.json";
 import frUiChatDialogs from "./catalogues/fr/ui.chat.dialogs.json";
 import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
 import frUiChat from "./catalogues/fr/ui.chat.json";
+import frUiChatResponseActions from "./catalogues/fr/ui.chat.response_actions.json";
 import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
 import frUiChatTags from "./catalogues/fr/ui.chat.tags.json";
 import frUiCodeReview from "./catalogues/fr/ui.code_review.json";
@@ -204,6 +206,7 @@ import ruUiChatComposerMedia from "./catalogues/ru/ui.chat.composer_media.json";
 import ruUiChatDialogs from "./catalogues/ru/ui.chat.dialogs.json";
 import ruUiChatHeader from "./catalogues/ru/ui.chat.header.json";
 import ruUiChat from "./catalogues/ru/ui.chat.json";
+import ruUiChatResponseActions from "./catalogues/ru/ui.chat.response_actions.json";
 import ruUiChatSidebarView from "./catalogues/ru/ui.chat.sidebar_view.json";
 import ruUiChatTags from "./catalogues/ru/ui.chat.tags.json";
 import ruUiCodeReview from "./catalogues/ru/ui.code_review.json";
@@ -262,6 +265,7 @@ import zhCNUiChatComposerMedia from "./catalogues/zh-CN/ui.chat.composer_media.j
 import zhCNUiChatDialogs from "./catalogues/zh-CN/ui.chat.dialogs.json";
 import zhCNUiChatHeader from "./catalogues/zh-CN/ui.chat.header.json";
 import zhCNUiChat from "./catalogues/zh-CN/ui.chat.json";
+import zhCNUiChatResponseActions from "./catalogues/zh-CN/ui.chat.response_actions.json";
 import zhCNUiChatSidebarView from "./catalogues/zh-CN/ui.chat.sidebar_view.json";
 import zhCNUiChatTags from "./catalogues/zh-CN/ui.chat.tags.json";
 import zhCNUiCodeReview from "./catalogues/zh-CN/ui.code_review.json";
@@ -383,6 +387,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatDialogs,
 		...esUiChatHeader,
 		...esUiChat,
+		...esUiChatResponseActions,
 		...esUiChatSidebarView,
 		...esUiChatTags,
 		...esUiCodeReview,
@@ -439,6 +444,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatDialogs,
 		...frUiChatHeader,
 		...frUiChat,
+		...frUiChatResponseActions,
 		...frUiChatSidebarView,
 		...frUiChatTags,
 		...frUiCodeReview,
@@ -501,6 +507,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatDialogs,
 		...ruUiChatHeader,
 		...ruUiChat,
+		...ruUiChatResponseActions,
 		...ruUiChatSidebarView,
 		...ruUiChatTags,
 		...ruUiCodeReview,
@@ -563,6 +570,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatDialogs,
 		...zhCNUiChatHeader,
 		...zhCNUiChat,
+		...zhCNUiChatResponseActions,
 		...zhCNUiChatSidebarView,
 		...zhCNUiChatTags,
 		...zhCNUiCodeReview,
