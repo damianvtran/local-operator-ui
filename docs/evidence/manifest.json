@@ -10209,6 +10209,18 @@
         "Round-1 remediation: precise head/total copy, mixed-file control, repaired folded fixture, and nonvisual loading status; all 13 additional descriptive-name PNGs were opened before commit.",
         "Round2 removes r1-dark-folded-fixture.png because it duplicates r1-dark-closed.png exactly. Twelve r1/23 total descriptive-name PNGs remain; existing story was not removed."
       ]
+    },
+    {
+      "path": "team-bridge-channels",
+      "frames": 0,
+      "capturedAt": "2026-10-19T21:34:00.000Z",
+      "source": "Harness browser-tool screenshots of the Team Bridge discoverable-channel Storybook stories at desktop width, dark (localOperatorDark) and light (localOperatorLight): the preview channel (rail chip, header metadata, join banner), the muted member channel (row bell), and the open conversation menu.",
+      "why": [
+        "Shows the two rail registers this slice adds: a quiet Preview chip on a discoverable non-member row, and a muted bell beside a joined row's unread count.",
+        "The preview frame is the whole non-member pane: header metadata (24 members) and the join banner, with no message bodies and no composer.",
+        "The menu frame shows the Slack-style controls in one open panel: Mute conversation, then the Notification preferences radio group with All messages checked.",
+        "These are browser-tool PNGs, not sweep frames: check-evidence counts only palette-named frames in a declared set, so the declared count is zero."
+      ]
     }
   ],
   "remediationRecord": {

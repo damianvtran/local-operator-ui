@@ -1,6 +1,8 @@
 import type {
 	TeamBridgeConversation,
+	TeamBridgeConversationList,
 	TeamBridgeMessage,
+	TeamBridgeNotify,
 	TeamBridgeParticipant,
 	TeamBridgeTenantId,
 } from "../../../../shared/team-bridge-contract";
@@ -93,6 +95,123 @@ export function conversationGlyph(
 	if (conversation.kind === "channel") return "hash";
 	if (conversation.kind === "group") return "users";
 	return "at";
+}
+
+/**
+ * Whether the caller is looking at a discoverable channel they have not joined.
+ *
+ * An EXPLICIT pair is required: `discoverable: true` beside `member: false`.
+ * A server older than the discoverable slice omits both, and a page that read
+ * an absent `member` as false would turn every row into a preview and stop
+ * fetching its history. Absence therefore means "cannot say", never "not a
+ * member".
+ *
+ * A preview row is readable metadata only: the rail may show its name and
+ * count, but the thread must not request or render bodies — the server answers
+ * `not_a_member` for exactly that read.
+ */
+export function isPreviewConversation(
+	conversation: Pick<TeamBridgeConversation, "discoverable" | "member">,
+): boolean {
+	return conversation.discoverable === true && conversation.member === false;
+}
+
+/**
+ * The notification register a conversation row carries.
+ *
+ * `notify` is the newer field; `muted` predates it and every page still carries
+ * it. Reading the pair here — one place — is what keeps the row's bell glyph,
+ * the menu's checked row and the optimistic write from disagreeing about what
+ * "muted" means while servers roll forward at different speeds.
+ */
+export function notificationPreference(
+	conversation: Pick<TeamBridgeConversation, "notify" | "muted">,
+): TeamBridgeNotify {
+	return conversation.notify ?? (conversation.muted ? "mute" : "all");
+}
+
+/** True exactly when the row's quiet bell should be drawn. */
+export function showsMutedGlyph(
+	conversation: Pick<TeamBridgeConversation, "notify" | "muted">,
+): boolean {
+	return notificationPreference(conversation) === "mute";
+}
+
+/**
+ * The immediate Mute/Unmute item's next value.
+ *
+ * Unmute returns to `all`, Slack's behaviour: the item is a toggle, not a
+ * restore of whatever level preceded the mute. A reader who wants `mention`
+ * back picks it from the radio rows, which are the explicit statement of the
+ * preference.
+ */
+export function toggledMuteNotify(notify: TeamBridgeNotify): TeamBridgeNotify {
+	return notify === "mute" ? "all" : "mute";
+}
+
+/** The three notification values, in the menu's order (loudest first). */
+export const TEAM_BRIDGE_NOTIFY_OPTIONS: ReadonlyArray<{
+	value: TeamBridgeNotify;
+	labelKey:
+		| "ui.teamBridge.notify.all"
+		| "ui.teamBridge.notify.mention"
+		| "ui.teamBridge.notify.mute";
+}> = [
+	{ value: "all", labelKey: "ui.teamBridge.notify.all" },
+	{ value: "mention", labelKey: "ui.teamBridge.notify.mention" },
+	{ value: "mute", labelKey: "ui.teamBridge.notify.mute" },
+];
+
+/**
+ * A radio value back into the notify union.
+ *
+ * Radix hands `onValueChange` a plain string built from our own radio values;
+ * this is the one boundary that needs the narrowing, and an unknown value
+ * falls back to the loudest register rather than muting by accident.
+ */
+export function asTeamBridgeNotify(value: string): TeamBridgeNotify {
+	return value === "mention" || value === "mute" ? value : "all";
+}
+
+/**
+ * The optimistic patch for one conversation's notification preference.
+ *
+ * A conversation list page is scope-keyed, and the same row can live in the
+ * merged page and its organization's page; the caller patches every cached
+ * page with this function. The pair moves together (`notify` and the legacy
+ * `muted`) so no render can read one without the other, and every other row
+ * and the page's own paging fields are preserved — an optimistic write must
+ * not drop `has_more`/`next_before` and strand the rail's paging.
+ */
+export function withNotificationPreference(
+	page: TeamBridgeConversationList,
+	conversationId: string,
+	notify: TeamBridgeNotify,
+): TeamBridgeConversationList {
+	return {
+		...page,
+		conversations: page.conversations.map((row) =>
+			row.id === conversationId
+				? { ...row, notify, muted: notify === "mute" }
+				: row,
+		),
+	};
+}
+
+/**
+ * The count the thread header states.
+ *
+ * A discoverable non-member has no `members` rows to count — membership is the
+ * fact the preview withholds — so the server's `member_count` is the only
+ * truthful number there. Insiders keep the live member array, which is the
+ * fresher answer for a page that has just added someone.
+ */
+export function conversationMemberCount(
+	conversation: Pick<TeamBridgeConversation, "member_count" | "members">,
+): number {
+	if (conversation.member_count !== undefined) return conversation.member_count;
+	return conversation.members.filter((member) => member.state === "active")
+		.length;
 }
 
 /** True when at least one ACTIVE member is an agent. Badges read this. */
