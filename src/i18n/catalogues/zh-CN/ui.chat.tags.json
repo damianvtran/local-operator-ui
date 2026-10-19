@@ -40,5 +40,17 @@
 	"ui.chat.tags.updated_untagged": "标签已更新，已归入“无标签”。",
 	"ui.chat.tags.none_yet": "暂无标签",
 	"ui.chat.tags.manage_title": "管理标签",
-	"ui.chat.tags.apply_deletion_first": "请先应用删除操作，再重新添加“{name}”。"
+	"ui.chat.tags.apply_deletion_first": "请先应用删除操作，再重新添加“{name}”。",
+	"ui.chat.tags.moved_to": "已移至“{name}”",
+	"ui.chat.tags.removed_all": "已移除所有标签",
+	"ui.chat.tags.remove_all": "{count, plural, =1 {移除标签（#）} other {移除所有标签（#）}}",
+	"ui.chat.tags.move_menu": "移至标签…",
+	"ui.chat.tags.changed_elsewhere": "标签已在其他位置更改",
+	"ui.chat.tags.move_armed": "移动“{name}”",
+	"ui.chat.tags.move_cancelled": "已取消移动",
+	"ui.chat.tags.undo": "撤销",
+	"ui.chat.tags.move_undone": "已撤销标签移动",
+	"ui.chat.tags.move_title": "移动“{title}”",
+	"ui.chat.tags.move_description": "选择一个标签将其设为主标签，或选择“无标签”以移除所有标签。",
+	"ui.chat.tags.move_failed": "标签未移动。请重试。"
 }

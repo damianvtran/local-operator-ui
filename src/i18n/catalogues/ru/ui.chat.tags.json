@@ -40,5 +40,17 @@
 	"ui.chat.tags.untagged": "Без тега",
 	"ui.chat.tags.updated_grouped": "Теги обновлены. Основной тег: {tag}.",
 	"ui.chat.tags.updated_untagged": "Теги обновлены. Показано в «Без тега».",
-	"ui.chat.tags.use_time": "Перейти к разделам по времени"
+	"ui.chat.tags.use_time": "Перейти к разделам по времени",
+	"ui.chat.tags.moved_to": "Перемещено в «{name}»",
+	"ui.chat.tags.removed_all": "Все теги удалены",
+	"ui.chat.tags.remove_all": "{count, plural, =1 {Удалить тег (#)} other {Удалить все теги (#)}}",
+	"ui.chat.tags.move_menu": "Переместить в тег…",
+	"ui.chat.tags.changed_elsewhere": "Теги изменены в другом месте",
+	"ui.chat.tags.move_armed": "Перемещение «{name}»",
+	"ui.chat.tags.move_cancelled": "Перемещение отменено",
+	"ui.chat.tags.undo": "Отменить",
+	"ui.chat.tags.move_undone": "Перемещение тега отменено",
+	"ui.chat.tags.move_title": "Переместить «{title}»",
+	"ui.chat.tags.move_description": "Выберите основной тег или «Без тега», чтобы удалить все теги.",
+	"ui.chat.tags.move_failed": "Не удалось переместить теги. Попробуйте ещё раз."
 }

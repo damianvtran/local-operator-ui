@@ -204,5 +204,41 @@
 		"role": "registry draft validation error",
 		"tone": "actionable",
 		"note": "name is a category deleted and recreated in one draft. Two Apply operations are needed so the backend does not reuse its ID and keep assignments."
+	},
+	"ui.chat.tags.moved_to": {
+		"note": "Success toast after a row tag move; name is the destination category. Includes Undo."
+	},
+	"ui.chat.tags.removed_all": {
+		"note": "Success toast after clearing every tag and the primary in one write."
+	},
+	"ui.chat.tags.remove_all": {
+		"note": "Row-menu action. Count is DISTINCT assigned tags: singular removes one tag; plural removes all assignments."
+	},
+	"ui.chat.tags.move_menu": {
+		"note": "Row-menu keyboard/single-pointer alternative to drag; opens the compact move picker."
+	},
+	"ui.chat.tags.changed_elsewhere": {
+		"note": "409 revision conflict; authoritative tags are refreshed, never silently retried."
+	},
+	"ui.chat.tags.move_armed": {
+		"note": "Live announcement when a conversation row arms after a hold. Name is the conversation title."
+	},
+	"ui.chat.tags.move_cancelled": {
+		"note": "Live announcement after Escape, blur, pointer cancellation, or an ineligible drop. No write."
+	},
+	"ui.chat.tags.undo": {
+		"note": "Toast action restoring assignments with the revision returned by the original write."
+	},
+	"ui.chat.tags.move_undone": {
+		"note": "Live announcement only after Undo succeeds."
+	},
+	"ui.chat.tags.move_title": {
+		"note": "Compact dialog heading; title is the conversation name, not a category."
+	},
+	"ui.chat.tags.move_description": {
+		"note": "Compact move dialog: promote a category while preserving other assignments; Untagged clears all."
+	},
+	"ui.chat.tags.move_failed": {
+		"note": "Move-specific failure and retry guidance; never substitutes for the revision-conflict message."
 	}
 }

@@ -147,6 +147,8 @@ export type CanonicalSessionRow = {
 	pinned?: boolean;
 	/** Durable assignments; absence supports backends predating session_tags. */
 	tags?: TagRef[];
+	/** Absent on older cores; only send revision guards when the core supplied one. */
+	tags_revision?: string;
 	/** Explicit primary ID (a member of tags), or null for Untagged. */
 	primary?: string | null;
 	/**
