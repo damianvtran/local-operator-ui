@@ -12,5 +12,5 @@
 	"ui.browser.chrome.duplicate_refused": "只能复制网页标签页。",
 	"ui.browser.chrome.invalid_action": "浏览器标签页操作无效。",
 	"ui.browser.chrome.tab_gone": "此浏览器标签页已关闭。",
-	"ui.browser.chrome.operation_failed": "{action, select, duplicate{无法复制标签页。您可以从标签页菜单中重试。} other{无法重新加载标签页。您可以从标签页菜单中重试。}}"
+	"ui.browser.chrome.operation_failed": "{action, select, duplicate{无法复制标签页。可以从标签页菜单中重试。} other{无法重新加载标签页。可以从标签页菜单中重试。}}"
 }

@@ -1,6 +1,6 @@
 {
 	"ui.settings.updates.app_updates_section.application_updates_and_info": "应用更新与信息",
-	"ui.settings.updates.app_updates_section.check_for_updates_and_view_information_about_your_local_operator_": "检查更新，查看您的Local Operator安装信息。",
+	"ui.settings.updates.app_updates_section.check_for_updates_and_view_information_about_your_local_operator_": "检查更新，查看Local Operator安装信息。",
 	"ui.settings.updates.app_updates_section.application_version": "应用版本",
 	"ui.settings.updates.app_updates_section.the_version_of_the_local_operator_user_interface_application": "Local Operator桌面界面应用的版本。",
 	"ui.settings.updates.app_updates_section.server_version": "服务器版本",

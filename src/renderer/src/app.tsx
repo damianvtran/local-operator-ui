@@ -105,6 +105,11 @@ const LibraryPage = lazy(() =>
 		default: m.LibraryPage,
 	})),
 );
+const TeamBridgePage = lazy(() =>
+	import("@features/team-bridge/team-bridge-page").then((m) => ({
+		default: m.TeamBridgePage,
+	})),
+);
 const BrowserPage = lazy(() =>
 	import("@features/browser/components/browser-page").then((m) => ({
 		default: m.BrowserPage,
@@ -272,6 +277,13 @@ const App: FC = () => {
 	 */
 	const meshState = desktopFeatureState(capabilities.data, "peers");
 	const libraryState = desktopFeatureState(capabilities.data, "library");
+	/* The conversation surface rides the bridge capability: with the backend
+	   dark or older, `/team-bridge` falls through to the catch-all like any
+	   unknown path instead of rendering a page whose every read would 503. */
+	const bridgeState = desktopFeatureState(
+		capabilities.data,
+		"team_bridge_conversations",
+	);
 
 	const handleAgentCreated = (agent: { id: string; name: string }) => {
 		/*
@@ -888,6 +900,15 @@ const App: FC = () => {
 													element={<LibraryPage />}
 												/>
 											</>
+										)}
+										{/* The Team Bridge page. The SIDEBAR row is the Library lane's
+										    overflow group (one nav file, one owner); this route makes the
+										    page reachable by URL and by that row the moment it lands.
+										    Mounted only with `features.team_bridge_conversations`:
+										    `team_bridge` alone is the pair lane, whose backends do
+										    not have these routes. */}
+										{bridgeState === "enabled" && (
+											<Route path="/team-bridge" element={<TeamBridgePage />} />
 										)}
 										{/* Mounted only with `features.peers`: without it `/mesh` falls through
 										    to the catch-all like any unknown path, rather than rendering a tab
