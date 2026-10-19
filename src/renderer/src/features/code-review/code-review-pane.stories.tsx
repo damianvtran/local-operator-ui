@@ -5,6 +5,7 @@ import type { FC, ReactNode } from "react";
 import {
 	FIXTURE_NOW_MS,
 	couldNotRefreshList,
+	deepPathRows,
 	emptyList,
 	linkOnlyList,
 	list,
@@ -93,13 +94,24 @@ export const Scanning: Story = {
  * The merged rows and the worst-case `via subagent coder › reviewer` tag - the
  * two shapes that rendered as `damianvtran/local-operator #2…` and `d.` before
  * the identity split - so the frame proves the `#N` survives truncation.
+ *
+ * THE DEEP PATH LEADS (the operator's own row): at the floor the identity
+ * line carried the whole project path, so it truncated to `minervai/services/cor…`
+ * and the repo NAME - the thing that says which repository this is - was cut
+ * off exactly where the identity began. The name is on the identity line now
+ * and the path sits under it, so this frame has to show both: the name fully
+ * readable, the path complete on its own line.
  */
 export const Narrow: Story = {
 	render: () => (
-		<Frame height={460} width={320}>
+		<Frame height={560} width={320}>
 			<CodeReviewPaneBody
 				phase="ready"
-				data={list([...viaRows(), ...populatedRows().slice(0, 2)])}
+				data={list([
+					...deepPathRows(),
+					...viaRows(),
+					...populatedRows().slice(0, 2),
+				])}
 				refreshing={false}
 				onRefresh={() => undefined}
 				onClose={() => undefined}
@@ -133,13 +145,20 @@ export const RefreshFailed: Story = {
 	),
 };
 
-/** The populated ledger: mixed lanes and states (§6's "every rung once"). */
+/**
+ * The populated ledger: mixed lanes and states (§6's "every rung once").
+ *
+ * THE DEEP PATH LEADS: the operator's own row - a GitLab subgroup project,
+ * `minervaai/services/core` - is the first row here, so the frame says what
+ * the default slot width does with a path too long for the identity line:
+ * the NAME on the identity line, the full path under it.
+ */
 export const Populated: Story = {
 	render: () => (
-		<Frame height={960}>
+		<Frame height={1040}>
 			<CodeReviewPaneBody
 				phase="ready"
-				data={list(populatedRows())}
+				data={list([...deepPathRows(), ...populatedRows()])}
 				refreshing={false}
 				onRefresh={() => undefined}
 				onClose={() => undefined}

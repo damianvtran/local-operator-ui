@@ -888,6 +888,45 @@ export function identityLabel(
 }
 
 /**
+ * The trailing separators of a project path, stripped before the last segment
+ * is taken: a path that ends in `/` names nothing after it.
+ */
+const TRAILING_SEPARATORS = /\/+$/;
+
+/**
+ * The REPO NAME: the last path segment of the forge's project path.
+ *
+ * WHY THE NAME IS DERIVED AND NOT STORED. The wire row carries one field,
+ * `project`, and its shape is the FORGE's, not the app's: `owner/repo` on
+ * GitHub and Gitea, `group/subgroup/project` on GitLab, `org/project/_git/repo`
+ * on Azure DevOps, a bare name on Gerrit. The operator reads a row by the
+ * repository it belongs to, and the PATH alone does not say it - a path
+ * truncated to `minervai/services/cor` reads as a directory, not as a repo,
+ * so the name was cut off exactly where the identity began.
+ *
+ * WHY THE LAST SEGMENT. A name is the shortest thing that identifies the
+ * repository to a human, and every one of those shapes ends in it: the GitHub
+ * repo, the GitLab project, the Azure repo, the Gerrit project. Splitting on
+ * the final `/` rather than assuming a fixed depth is what makes ONE rule
+ * cover four forges, and it is why a trailing separator is trimmed first
+ * (a path that ends in `/` names nothing after it).
+ *
+ * WHAT THIS IS NOT. The name is a DISPLAY derivation, never a substitute for
+ * the path: the accessible name and the identity's `title` keep the full
+ * `project`, because "which repository" and "which full path" are different
+ * questions and a screen reader is owed the whole of the second.
+ */
+export function repoName(project: string): string {
+	const trimmed = project.trim();
+	if (trimmed === "") return "";
+	const withoutTrailingSlash = trimmed.replace(TRAILING_SEPARATORS, "");
+	const lastSlash = withoutTrailingSlash.lastIndexOf("/");
+	return lastSlash === -1
+		? withoutTrailingSlash
+		: withoutTrailingSlash.slice(lastSlash + 1);
+}
+
+/**
  * The row's ACCESSIBLE NAME (agent review round 1, N4 / UX U4):
  * `<project> <#N>: <title>, <state>, <lane clauses>, opens in your browser`.
  *
