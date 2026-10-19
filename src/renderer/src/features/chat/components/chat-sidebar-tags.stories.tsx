@@ -17,6 +17,7 @@ import { ChatSidebar } from "./chat-sidebar";
 let calls: DesktopRequest[] = [];
 let finishRegistry: (() => void) | null = null;
 type Scenario =
+	| "menu-wide"
 	| "tags-off"
 	| "tags-on"
 	| "no-categories"
@@ -33,6 +34,7 @@ function installBridge(scenario: Scenario) {
 	calls = [];
 	finishRegistry = null;
 	document.body.dataset.tagsProof = "";
+	document.body.dataset.tagsOpened = "";
 	let categories: TagCategory[] =
 		scenario === "no-categories"
 			? []
@@ -110,6 +112,7 @@ function installBridge(scenario: Scenario) {
 					features: {
 						session_catalogue: 2,
 						session_pins: 1,
+						...(scenario === "menu-wide" ? { session_archive: 1 } : {}),
 						session_search: 1,
 						...(scenario === "old-backend" ? {} : { session_tags: 1 }),
 					},
@@ -226,7 +229,9 @@ function Page({ scenario, width }: { scenario: Scenario; width: number }) {
 			<div className="shrink-0 border-hairline border-r" style={{ width }}>
 				<ChatSidebar
 					selectedConversation={undefined}
-					onSelectConversation={() => undefined}
+					onSelectConversation={(id) => {
+						document.body.dataset.tagsOpened = id;
+					}}
 					onStageDraft={() => undefined}
 				/>
 			</div>
@@ -816,5 +821,198 @@ export const PickerLoadingFocus: Story = {
 			within(document.body).getByRole("button", { name: "Cancel" }),
 		);
 		document.body.dataset.tagsProof = `PASS: initial focus heading; loaded focus first checkbox; ${measurements}`;
+	},
+};
+
+/** Real sidebar DOM/optimistic bridge proof. Synthetic pointer events exercise
+ * the component lifecycle, not native capture/touch; independent native QA owns
+ * those browser delivery guarantees. The node lane separately tests revisions. */
+export const DragAssignRoundTrip: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await ready();
+		const row = () =>
+			document.querySelector<HTMLButtonElement>(
+				'[data-session-row="222222222222"] [data-chat-row]',
+			);
+		const button = row();
+		if (!button) throw new Error("Missing drag source");
+		const box = button.getBoundingClientRect();
+		const pointer = {
+			pointerId: 41,
+			isPrimary: true,
+			button: 0,
+			clientX: box.left + 60,
+			clientY: box.top + 16,
+		};
+		fireEvent.pointerDown(button, pointer);
+		fireEvent.pointerUp(window, pointer);
+		fireEvent.click(button, { detail: 1 });
+		expect(document.body.dataset.tagsOpened).toBe("222222222222");
+		document.body.dataset.tagsOpened = "";
+		fireEvent.pointerDown(button, pointer);
+		fireEvent.pointerMove(window, { ...pointer, clientY: pointer.clientY + 6 });
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		fireEvent.pointerUp(window, { ...pointer, clientY: pointer.clientY + 6 });
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
+		fireEvent.click(button, { detail: 1 });
+		expect(document.body.dataset.tagsOpened).toBe("");
+		fireEvent.pointerDown(button, pointer);
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		const header = document.querySelector<HTMLElement>(
+			'[data-tag-drop-target="review"]',
+		);
+		if (!header) throw new Error("Missing occupied header");
+		const target = header.getBoundingClientRect();
+		fireEvent.pointerMove(window, {
+			...pointer,
+			clientX: target.left + 60,
+			clientY: target.top + 14,
+		});
+		await waitFor(() => expect(header).toHaveClass("bg-accent-wash"));
+		fireEvent.pointerUp(window, {
+			...pointer,
+			clientX: target.left + 60,
+			clientY: target.top + 14,
+		});
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				1,
+			),
+		);
+		expect(calls.find((call) => call.op === "sessions.tags")).toMatchObject({
+			tags: ["project", "review"],
+			primary: "review",
+		});
+		await waitFor(() =>
+			expect(row()?.closest("[data-chat-tag-group]")).toHaveAttribute(
+				"data-chat-tag-group",
+				"review",
+			),
+		);
+		await userEvent.click(
+			within(document.body).getByRole("button", { name: "Undo" }),
+		);
+		await waitFor(() =>
+			expect(row()?.closest("[data-chat-tag-group]")).toHaveAttribute(
+				"data-chat-tag-group",
+				"project",
+			),
+		);
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(2);
+		document.body.dataset.tagsProof =
+			"PASS: >5px pending movement wrote nothing; 180ms hold painted occupied header; cross-section header assigned/preserved tags without pinning; Undo restored bucket (synthetic DOM pointers, not native capture proof)";
+	},
+};
+export const MoveMenuRoundTrip: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await ready();
+		const body = within(document.body);
+		const button = () =>
+			document.querySelector<HTMLElement>(
+				'[data-session-row="111111111111"] [data-chat-row]',
+			);
+		const source = button();
+		if (!source) throw new Error("Missing move source");
+		fireEvent.contextMenu(source);
+		await userEvent.click(
+			await body.findByRole("menuitem", { name: "Move to tag…" }),
+		);
+		await body.findByRole("heading", {
+			name: "Move “Review the migration safety checks”",
+		});
+		await userEvent.click(body.getByRole("button", { name: "Concept" }));
+		await waitFor(() =>
+			expect(document.querySelector("[role=dialog]")).toBeNull(),
+		);
+		await waitFor(() => expect(document.activeElement).toBe(button()));
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1);
+		expect(calls.find((call) => call.op === "sessions.tags")).toMatchObject({
+			tags: ["review", "project", "concept"],
+			primary: "concept",
+		});
+		const moved = button();
+		if (!moved) throw new Error("Moved row missing");
+		fireEvent.contextMenu(moved);
+		await userEvent.click(
+			await body.findByRole("menuitem", { name: "Remove all tags (3)" }),
+		);
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				2,
+			),
+		);
+		expect(
+			calls.filter((call) => call.op === "sessions.tags")[1],
+		).toMatchObject({ tags: [], primary: null });
+		document.body.dataset.tagsProof =
+			"PASS: Move menu opens compact picker; apply preserves assignments and returns row focus; Remove all tags (3) clears in one write";
+	},
+};
+
+export const DragPreview: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await ready();
+		const row = document.querySelector<HTMLButtonElement>(
+			'[data-session-row="222222222222"] [data-chat-row]',
+		);
+		const header = document.querySelector<HTMLElement>(
+			'[data-tag-drop-target="review"]',
+		);
+		if (!row || !header) throw new Error("Missing preview geometry");
+		const box = row.getBoundingClientRect();
+		const pointer = {
+			pointerId: 42,
+			isPrimary: true,
+			button: 0,
+			clientX: box.left + 60,
+			clientY: box.top + 16,
+		};
+		fireEvent.pointerDown(row, pointer);
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		const target = header.getBoundingClientRect();
+		fireEvent.pointerMove(window, {
+			...pointer,
+			clientX: target.left + 60,
+			clientY: target.top + 14,
+		});
+		await waitFor(() => expect(header).toHaveClass("bg-accent-wash"));
+		document.body.dataset.tagsProof =
+			"PASS: armed row + header accent wash/outline preview; no assignment before drop";
+	},
+};
+export const TagActionsMenu: Story = {
+	...story("menu-wide"),
+	play: async () => {
+		await ready();
+		const row = document.querySelector<HTMLElement>(
+			'[data-session-row="111111111111"] [data-chat-row]',
+		);
+		if (!row) throw new Error("Missing menu source");
+		fireEvent.contextMenu(row);
+		await within(document.body).findByRole("menuitem", {
+			name: "Move to tag…",
+		});
+	},
+};
+export const MovePicker: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await ready();
+		const row = document.querySelector<HTMLElement>(
+			'[data-session-row="111111111111"] [data-chat-row]',
+		);
+		if (!row) throw new Error("Missing move source");
+		fireEvent.contextMenu(row);
+		await userEvent.click(
+			await within(document.body).findByRole("menuitem", {
+				name: "Move to tag…",
+			}),
+		);
+		await within(document.body).findByRole("heading", {
+			name: "Move “Review the migration safety checks”",
+		});
 	},
 };

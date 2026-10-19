@@ -204,5 +204,60 @@
 		"role": "registry draft validation error",
 		"tone": "actionable",
 		"note": "name is a category deleted and recreated in one draft. Two Apply operations are needed so the backend does not reuse its ID and keep assignments."
+	},
+	"ui.chat.tags.moved_to": {
+		"role": "sidebar tag move action or announcement",
+		"tone": "concise, neutral sentence case",
+		"note": "Move preserves other tags; Untagged removes assignments. Undo uses the returned opaque revision."
+	},
+	"ui.chat.tags.removed_all": {
+		"role": "sidebar tag move action or announcement",
+		"tone": "concise, neutral sentence case",
+		"note": "Move preserves other tags; Untagged removes assignments. Undo uses the returned opaque revision."
+	},
+	"ui.chat.tags.remove_all": {
+		"role": "sidebar tag move action or announcement",
+		"tone": "concise, neutral sentence case",
+		"note": "Move preserves other tags; Untagged removes assignments. Undo uses the returned opaque revision."
+	},
+	"ui.chat.tags.move_menu": {
+		"role": "sidebar tag move action or announcement",
+		"tone": "concise, neutral sentence case",
+		"note": "Move preserves other tags; Untagged removes assignments. Undo uses the returned opaque revision."
+	},
+	"ui.chat.tags.changed_elsewhere": {
+		"role": "sidebar tag move action or announcement",
+		"tone": "concise, neutral sentence case",
+		"note": "Move preserves other tags; Untagged removes assignments. Undo uses the returned opaque revision."
+	},
+	"ui.chat.tags.move_armed": {
+		"role": "sidebar tag move action or announcement",
+		"tone": "concise, neutral sentence case",
+		"note": "Move preserves other tags; Untagged removes assignments. Undo uses the returned opaque revision."
+	},
+	"ui.chat.tags.move_cancelled": {
+		"role": "sidebar tag move action or announcement",
+		"tone": "concise, neutral sentence case",
+		"note": "Move preserves other tags; Untagged removes assignments. Undo uses the returned opaque revision."
+	},
+	"ui.chat.tags.undo": {
+		"role": "sidebar tag move action or announcement",
+		"tone": "concise, neutral sentence case",
+		"note": "Move preserves other tags; Untagged removes assignments. Undo uses the returned opaque revision."
+	},
+	"ui.chat.tags.move_undone": {
+		"role": "sidebar tag move action or announcement",
+		"tone": "concise, neutral sentence case",
+		"note": "Move preserves other tags; Untagged removes assignments. Undo uses the returned opaque revision."
+	},
+	"ui.chat.tags.move_title": {
+		"role": "sidebar tag move action or announcement",
+		"tone": "concise, neutral sentence case",
+		"note": "Move preserves other tags; Untagged removes assignments. Undo uses the returned opaque revision."
+	},
+	"ui.chat.tags.move_description": {
+		"role": "sidebar tag move action or announcement",
+		"tone": "concise, neutral sentence case",
+		"note": "Move preserves other tags; Untagged removes assignments. Undo uses the returned opaque revision."
 	}
 }

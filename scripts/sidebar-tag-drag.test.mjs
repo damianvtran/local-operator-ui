@@ -1,0 +1,212 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { test } from "node:test";
+import { build } from "esbuild";
+
+// Execute the same pure decisions as the sidebar, not a second gesture model.
+const bundle = await build({
+	stdin: {
+		contents: `
+export * from "./src/renderer/src/features/chat/chat-tag-drag";
+export * from "./src/renderer/src/features/chat/chat-tag-groups";
+export * from "./src/renderer/src/features/chat/chat-pin-order";
+export {tagHeaderAt} from "./src/renderer/src/features/chat/use-chat-tag-drag";
+`,
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const {
+	tagDragPhase,
+	chatTagBucket,
+	movedTagAssignment,
+	groupChatsByTag,
+	tagBucketRowIds,
+	movePinnedOrderTo,
+	pinDragSlot,
+	tagHeaderAt,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
+const categories = [
+	{ id: "a", name: "Review", order: 0, conversations: 2 },
+	{ id: "b", name: "Project", order: 1, conversations: 2 },
+	{ id: "empty", name: "Empty", order: 2, conversations: 0 },
+];
+const row = (session_id, primary, tags = primary ? [primary] : []) => ({
+	session_id,
+	primary,
+	tags: tags.map((id) => ({ id, name: id })),
+});
+
+test("hold boundary is 180 ms with inclusive 5px slop; scroll never arms", () => {
+	assert.equal(tagDragPhase(0, 0), "pending");
+	assert.equal(tagDragPhase(179, 5), "pending");
+	assert.equal(tagDragPhase(180, 5), "armed");
+	assert.equal(tagDragPhase(179, 5.001), "cancelled");
+	assert.equal(tagDragPhase(180, 5.001), "cancelled");
+});
+test("bucket membership is exactly primary + registry + assignment, never a secondary", () => {
+	for (const item of [
+		row("1", "a"),
+		row("2", null, ["a"]),
+		row("3", "deleted"),
+		row("4", "a", ["b"]),
+	]) {
+		const groups = groupChatsByTag(
+			[row("control", "b"), item],
+			categories,
+			true,
+		);
+		const group = groups.find((bucket) => bucket.rows.includes(item));
+		assert.equal(chatTagBucket(item, categories), group.id);
+	}
+	assert.equal(chatTagBucket(row("x", null), categories), "untagged");
+});
+test("move promotes without removing others, repeated primary is no-op, Untagged clears once", () => {
+	assert.deepEqual(movedTagAssignment(row("x", "a", ["a", "b"]), "b"), {
+		ids: ["a", "b"],
+		primary: "b",
+	});
+	assert.deepEqual(movedTagAssignment(row("x", "a"), "b"), {
+		ids: ["a", "b"],
+		primary: "b",
+	});
+	assert.equal(movedTagAssignment(row("x", "a"), "a"), null);
+	assert.deepEqual(movedTagAssignment(row("x", "a", ["a", "b"]), "untagged"), {
+		ids: [],
+		primary: null,
+	});
+	assert.equal(movedTagAssignment(row("x", null), "untagged"), null);
+});
+test("two occupied buckets: visual no-op writes nothing; both directions preserve other bucket positions", () => {
+	const rows = [row("a1", "a"), row("b1", "b"), row("a2", "a"), row("b2", "b")];
+	const catalogue = rows.map((item) => item.session_id);
+	for (const [id, own] of [
+		["a1", ["a1", "a2"]],
+		["a2", ["a1", "a2"]],
+		["b1", ["b1", "b2"]],
+		["b2", ["b1", "b2"]],
+	]) {
+		const shown = tagBucketRowIds(rows, categories, true, id);
+		assert.deepEqual(shown, own);
+		const start = shown.indexOf(id);
+		assert.equal(movePinnedOrderTo(catalogue, [], shown, id, start), null);
+		const next = movePinnedOrderTo(
+			catalogue,
+			[],
+			shown,
+			id,
+			start === 0 ? 1 : 0,
+		);
+		assert.deepEqual(
+			next,
+			own[0].startsWith("a")
+				? ["a2", "b1", "a1", "b2"]
+				: ["a1", "b2", "a2", "b1"],
+		);
+	}
+	assert.deepEqual(tagBucketRowIds(rows, categories, false, "a1"), catalogue);
+	assert.deepEqual(
+		tagBucketRowIds([row("u1", null), row("u2", null)], categories, true, "u1"),
+		["u1", "u2"],
+	);
+});
+test("cross-bucket header creates an assignment, while cross-bucket row is not a reorder target", () => {
+	const rows = [row("a1", "a"), row("b1", "b")];
+	assert.equal(
+		tagBucketRowIds(rows, categories, true, "a1").includes("b1"),
+		false,
+	);
+	assert.deepEqual(movedTagAssignment(rows[0], "b"), {
+		ids: ["a", "b"],
+		primary: "b",
+	});
+	assert.deepEqual(
+		rows.map((item) => item.session_id),
+		["a1", "b1"],
+	);
+});
+test("header hit testing clips targets to owning list and ignores empty/offscreen headers", () => {
+	const header = {
+		dataset: { tagDropTarget: "a" },
+		getBoundingClientRect: () => ({
+			left: 0,
+			right: 200,
+			top: 40,
+			bottom: 68,
+			height: 28,
+		}),
+	};
+	const hidden = {
+		dataset: { tagDropTarget: "empty" },
+		getBoundingClientRect: () => ({
+			left: 0,
+			right: 200,
+			top: 90,
+			bottom: 90,
+			height: 0,
+		}),
+	};
+	const owner = {
+		getBoundingClientRect: () => ({
+			left: 0,
+			right: 200,
+			top: 50,
+			bottom: 100,
+		}),
+		querySelectorAll: () => [header, hidden],
+	};
+	assert.equal(tagHeaderAt(owner, 100, 55), header);
+	assert.equal(tagHeaderAt(owner, 100, 45), null);
+	assert.equal(tagHeaderAt(owner, 201, 55), null);
+	assert.equal(tagHeaderAt(owner, 100, 90), null);
+});
+test("copy has singular/plural count, named move/cancel/undo/conflict announcements", () => {
+	const en = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.tags.json", "utf8"),
+	);
+	assert.equal(en["ui.chat.tags.moved_to"], "Moved to “{name}”");
+	assert.equal(en["ui.chat.tags.removed_all"], "Removed all tags");
+	assert.equal(en["ui.chat.tags.changed_elsewhere"], "Tags changed elsewhere");
+	assert.ok(en["ui.chat.tags.remove_all"].includes("one {tag} other {tags}"));
+	for (const key of [
+		"move_armed",
+		"move_cancelled",
+		"move_undone",
+		"move_menu",
+		"undo",
+	])
+		assert.ok(en[`ui.chat.tags.${key}`]);
+});
+
+test("reproduces the old grouped-DOM/flat-order visual no-op defect", () => {
+	const rows = [row("a1", "a"), row("b1", "b"), row("a2", "a"), row("b2", "b")];
+	const catalogue = rows.map((item) => item.session_id);
+	const boxes = ["a1", "a2", "b1", "b2"].map((id, index) => ({
+		id,
+		top: index * 32,
+		bottom: (index + 1) * 32,
+	}));
+	const oldSlot = pinDragSlot(boxes, "b1", 80);
+	assert.equal(oldSlot, 2);
+	assert.deepEqual(
+		movePinnedOrderTo(catalogue, [], catalogue, "b1", oldSlot),
+		["a1", "a2", "b1", "b2"],
+		"old visual no-op rewrote the stored order",
+	);
+	const shown = tagBucketRowIds(rows, categories, true, "b1");
+	const fixedSlot = pinDragSlot(
+		boxes.filter((box) => shown.includes(box.id)),
+		"b1",
+		80,
+	);
+	assert.equal(
+		movePinnedOrderTo(catalogue, [], shown, "b1", fixedSlot),
+		null,
+		"same visual no-op now writes nothing",
+	);
+});

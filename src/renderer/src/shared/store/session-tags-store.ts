@@ -1,4 +1,5 @@
 import {
+	DesktopControlError,
 	desktopResult,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
@@ -25,7 +26,8 @@ type State = {
 		sessionId: string,
 		tagIds: string[],
 		primary: string | null,
-	) => Promise<void>;
+		expectedRevision?: string | null,
+	) => Promise<SessionTags | undefined>;
 };
 
 export const useSessionTagsStore = create<State>((set, get) => ({
@@ -56,11 +58,15 @@ export const useSessionTagsStore = create<State>((set, get) => ({
 		// Only the catalogue knows assignment age and primary deletion fallback.
 		void useCanonicalSessionsStore.getState().fetchSessions();
 	},
-	assignSessionTags: async (sessionId, tags, primary) => {
+	assignSessionTags: async (sessionId, tags, primary, expectedRevision) => {
 		const canonical = useCanonicalSessionsStore;
 		const before = canonical
 			.getState()
 			.sessions.find((row) => row.session_id === sessionId);
+		// Undefined uses the canonical snapshot. Explicit null keeps old-core
+		// moves/undo unconditional rather than fabricating a revision after refresh.
+		const revision =
+			expectedRevision === undefined ? before?.tags_revision : expectedRevision;
 		const stamp = Symbol(sessionId);
 		writes.set(sessionId, stamp);
 		const refs = tags.flatMap((id) => {
@@ -78,17 +84,28 @@ export const useSessionTagsStore = create<State>((set, get) => ({
 				sessionId,
 				tags,
 				primary,
+				...(typeof revision === "string"
+					? { expected_revision: revision }
+					: {}),
 			});
 			if (writes.get(sessionId) !== stamp) return;
 			canonical.setState((state) => ({
 				sessions: state.sessions.map((row) =>
 					row.session_id === sessionId
-						? { ...row, tags: answer.tags, primary: answer.primary }
+						? {
+								...row,
+								tags: answer.tags,
+								primary: answer.primary,
+								...(answer.tags_revision === undefined
+									? {}
+									: { tags_revision: answer.tags_revision }),
+							}
 						: row,
 				),
 			}));
 			void canonical.getState().fetchSessions();
 			void get().fetchCategories();
+			return answer;
 		} catch (error) {
 			if (writes.get(sessionId) === stamp && before) {
 				canonical.setState((state) => ({
@@ -99,9 +116,19 @@ export const useSessionTagsStore = create<State>((set, get) => ({
 					),
 				}));
 			}
+			if (isTagsConflict(error)) await canonical.getState().fetchSessions();
 			throw error;
 		} finally {
 			if (writes.get(sessionId) === stamp) writes.delete(sessionId);
 		}
 	},
 }));
+
+/** A conflict is not a retry: reload authoritative assignments before another edit. */
+export function isTagsConflict(error: unknown): boolean {
+	return (
+		error instanceof DesktopControlError &&
+		error.status === 409 &&
+		error.code === "tags_conflict"
+	);
+}

@@ -663,7 +663,7 @@ test("the move is a row control: a menu, a chord, and a live region", () => {
 		menuStart,
 		code.indexOf("</ContextMenuContent>", menuStart),
 	);
-	assert.equal(menu.split("<ContextMenuItem").length - 1, 8);
+	assert.equal(menu.split("<ContextMenuItem").length - 1, 10);
 	assert.equal(menu.split('t("ui.chat.tags.menu")').length - 1, 1);
 	const tagsGate = menu.indexOf("{tagsAvailable && (");
 	const tagsLabel = menu.indexOf('t("ui.chat.tags.menu")');
@@ -720,7 +720,10 @@ test("the grip is a drag handle: pointer-only, hover-revealed, and one write per
 	assert.match(grip, /onPointerDown=\{\(event\) =>/);
 	assert.match(grip, /startPinDrag\(row\.session_id, label, event\)/);
 	assert.match(grip, /onPointerMove=\{movePinDrag\}/);
-	assert.match(grip, /onPointerUp=\{\(\) => settlePinDrag\(true\)\}/);
+	assert.match(
+		grip,
+		/onPointerUp=\{\(event\) =>\s*settlePinDrag\(true, \{ x: event.clientX, y: event.clientY \}\)/,
+	);
 	assert.match(grip, /onPointerCancel=\{\(\) => settlePinDrag\(false\)\}/);
 	// The press refuses a non-primary button and stops the row's own plumbing.
 	assert.match(
@@ -748,13 +751,16 @@ test("the grip is a drag handle: pointer-only, hover-revealed, and one write per
 	// A cancel writes nothing and says so; Escape is the cancel with no pointer.
 	assert.match(
 		source,
-		/if \(!commit\) \{[\s\S]{0,200}?announcePinMove\("Move cancelled\."\)/,
+		/if \(!commit \|\| !pinDropAllowedRef.current\) \{[\s\S]{0,260}?announcePinMove\(t\("ui.chat.tags.move_cancelled"\)\)/,
 	);
 	assert.match(source, /event\.key !== "Escape"/);
 	// The dragged row is marked on its own box, and the mark is a colour step. The
 	// predicate is read ONCE (`dragging`), so the attribute and the ground cannot
 	// disagree about which row is being moved.
-	assert.match(source, /const dragging = pinDrag\?\.id === row\.session_id;/);
+	assert.match(
+		source,
+		/const dragging =[\s\S]{0,120}?pinDrag\?\.id === row\.session_id \|\|[\s\S]{0,80}?rowTagDrag.armedId === row.session_id;/,
+	);
 	assert.match(source, /data-dragging=\{dragging \? "" : undefined\}/);
 	// The held row's ground is merged LAST, after `rowCurrent`, and it is ONE ground for
 	// both row states (round 2, D7 + U6): a current held row keeps its own selected fill,
@@ -825,7 +831,7 @@ test("round 1's fixes are where they are written", () => {
 	assert.match(source, /settlePinDragRef\.current = settlePinDrag;/);
 	assert.match(
 		source,
-		/const end = \(\) => settlePinDragRef\.current\(true\);/,
+		/const end = \(event: PointerEvent\) => \{[\s\S]{0,100}?settlePinDragRef\.current\(true, \{[\s\S]{0,90}?event.clientY/,
 	);
 	assert.match(
 		source,
@@ -866,7 +872,10 @@ test("round 1's fixes are where they are written", () => {
 	);
 
 	// D4: the row's flyout is suppressed while the drag is armed.
-	assert.match(source, /disabled=\{pinDrag !== null\}/);
+	assert.match(
+		source,
+		/suppressed=\{[\s\S]{0,90}?pinDrag !== null \|\|[\s\S]{0,90}?rowTagDrag.armedId !== null/,
+	);
 
 	// D3, R5 and D6: the grip's COUNT, its a11y shape and its tooltip. The SHED this
 	// block used to assert (`@max-[263px]/chatsidebar:hidden!` and the panel root's
