@@ -666,6 +666,23 @@ export const InShell: Story = {
 export const InShellGlass: Story = {
 	parameters: { glass: true },
 	render: () => page({ shell: true }),
+	/*
+	 * THE GLOBAL GLASS FRAME MUST NOT CLEAR THIS STORY'S OWN PAINT. The preview's
+	 * `GlassFrame` decorator is outermost and its off path used to call
+	 * `applyGlassFacts(null)` after this meta decorator had painted, which made
+	 * every Library glass story render flat with no assertion to catch it. The
+	 * preview frame now yields when `parameters.glass` is set; this play is the
+	 * pin that keeps the yield honest.
+	 */
+	play: async () => {
+		for (let attempt = 0; attempt < 40; attempt += 1) {
+			if (document.documentElement.dataset.glass?.includes("canvas")) return;
+			await new Promise((resolve) => setTimeout(resolve, 25));
+		}
+		throw new Error(
+			"the Library glass harness was cleared by the global frame",
+		);
+	},
 };
 export const InShellLightGlass: Story = {
 	args: { theme: "localOperatorLight" },
