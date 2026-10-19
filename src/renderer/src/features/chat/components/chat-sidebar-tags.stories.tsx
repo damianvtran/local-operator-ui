@@ -887,7 +887,7 @@ export const PickerLoadingFocus: Story = {
 /** Real sidebar DOM/optimistic bridge proof. Synthetic pointer events exercise
  * the component lifecycle, not native capture/touch; independent native QA owns
  * those browser delivery guarantees. The node lane separately tests revisions. */
-const dragRoundTrip = async (crossSection: boolean) => {
+const dragRoundTrip = async (crossSection: boolean, targetBody = false) => {
 	await ready();
 	const row = () =>
 		document.querySelector<HTMLButtonElement>(
@@ -921,7 +921,7 @@ const dragRoundTrip = async (crossSection: boolean) => {
 	const sourceSection = button.closest<HTMLElement>("[data-chat-section]");
 	const header = crossSection
 		? document.querySelector<HTMLElement>(
-				'[data-chat-section="pinned"] [data-tag-drop-target="review"]',
+				`[data-chat-section="pinned"] [data-tag-drop-target="review"]${targetBody ? "[data-tag-drop-body]" : ":not([data-tag-drop-body])"}`,
 			)
 		: sourceSection?.querySelector<HTMLElement>(
 				'[data-tag-drop-target="review"]',
@@ -989,6 +989,7 @@ export const DragAssignRoundTrip: Story = {
 	...story("drop-ux"),
 	play: async () => {
 		await dragRoundTrip(true);
+		await dragRoundTrip(true, true);
 		await untaggedBodyDrop(false);
 	},
 };

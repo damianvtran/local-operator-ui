@@ -12,7 +12,7 @@ export * from "./src/renderer/src/features/chat/chat-tag-drag";
 export * from "./src/renderer/src/features/chat/chat-tag-groups";
 export * from "./src/renderer/src/features/chat/chat-pin-order";
 export {CHAT_ROW_MENU_SCROLL_CLASS} from "./src/renderer/src/features/chat/chat-row-menu";
-export {tagDropTargetAt} from "./src/renderer/src/features/chat/use-chat-tag-drag";
+export {tagDropTargetAt, tagHeaderAt} from "./src/renderer/src/features/chat/use-chat-tag-drag";
 `,
 		resolveDir: process.cwd(),
 	},
@@ -32,6 +32,7 @@ const {
 	movePinnedOrderTo,
 	pinDragSlot,
 	tagDropTargetAt,
+	tagHeaderAt,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -199,16 +200,35 @@ test("group body accepts Untagged across sections but keeps tagged sources secti
 	assert.equal(tagDropTargetAt(owner, 100, 80, source, "personal"), null);
 	assert.equal(tagDropTargetAt(owner, 100, 80, other, "personal"), body);
 	assert.equal(tagDropTargetAt(owner, 100, 150, source, "untagged"), null);
-	body.hasAttribute = () => true;
-	assert.equal(tagDropTargetAt(owner, 100, 80, other, "work"), null, "own-bucket body remains reorder space");
+	body.dataset.tagDropBody = "";
+	assert.equal(
+		tagDropTargetAt(owner, 100, 80, other, "work"),
+		null,
+		"own-bucket body remains reorder space",
+	);
 	body.dataset.tagDropTarget = "untagged";
-	assert.equal(tagDropTargetAt(owner, 100, 80, source, "untagged"), null, "own Untagged body is not an assignment");
+	assert.equal(
+		tagDropTargetAt(owner, 100, 80, source, "untagged"),
+		null,
+		"own Untagged body is not an assignment",
+	);
 	const sidebar = readFileSync(
 		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
 		"utf8",
 	);
 	assert.ok(sidebar.includes("cursor-grab"));
 	assert.ok(sidebar.includes("cursor-grabbing"));
+	let selector;
+	owner.querySelectorAll = (value) => {
+		selector = value;
+		return [];
+	};
+	assert.equal(tagHeaderAt(owner, 100, 80, other), null);
+	assert.equal(
+		selector,
+		"[data-tag-drop-target]:not([data-tag-drop-body])",
+		"pinned reorder stays header-only",
+	);
 });
 test("copy has singular/plural count, named move/cancel/undo/conflict announcements", () => {
 	const en = JSON.parse(

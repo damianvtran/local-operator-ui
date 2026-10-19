@@ -70,7 +70,7 @@ export function tagDropTargetAt(
 					(sourceBucket === "untagged" &&
 						header.dataset.tagDropTarget !== "untagged")) &&
 				!(
-					header.hasAttribute?.("data-tag-drop-body") &&
+					header.dataset.tagDropBody !== undefined &&
 					header.dataset.tagDropTarget === sourceBucket
 				) &&
 				box.height > 0 &&
