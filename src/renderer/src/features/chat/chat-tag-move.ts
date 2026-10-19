@@ -59,7 +59,7 @@ export async function moveChatToTag(
 						.catch((error: unknown) => {
 							const note = isTagsConflict(error)
 								? t("ui.chat.tags.changed_elsewhere")
-								: t("ui.chat.tags.save_failed");
+								: t("ui.chat.tags.move_failed");
 							announce(note);
 							showWarningToast(note);
 						});
@@ -69,7 +69,7 @@ export async function moveChatToTag(
 	} catch (error) {
 		const message = isTagsConflict(error)
 			? t("ui.chat.tags.changed_elsewhere")
-			: t("ui.chat.tags.save_failed");
+			: t("ui.chat.tags.move_failed");
 		announce(message);
 		showWarningToast(message);
 		throw error;

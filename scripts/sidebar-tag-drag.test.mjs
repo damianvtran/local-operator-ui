@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { IntlMessageFormat } from "intl-messageformat";
 
 // Execute the same pure decisions as the sidebar, not a second gesture model.
 const bundle = await build({
@@ -131,7 +132,9 @@ test("cross-bucket header creates an assignment, while cross-bucket row is not a
 	);
 });
 test("header hit testing clips targets to owning list and ignores empty/offscreen headers", () => {
+	const section = {};
 	const header = {
+		closest: () => section,
 		dataset: { tagDropTarget: "a" },
 		getBoundingClientRect: () => ({
 			left: 0,
@@ -142,6 +145,7 @@ test("header hit testing clips targets to owning list and ignores empty/offscree
 		}),
 	};
 	const hidden = {
+		closest: () => section,
 		dataset: { tagDropTarget: "empty" },
 		getBoundingClientRect: () => ({
 			left: 0,
@@ -160,10 +164,15 @@ test("header hit testing clips targets to owning list and ignores empty/offscree
 		}),
 		querySelectorAll: () => [header, hidden],
 	};
-	assert.equal(tagHeaderAt(owner, 100, 55), header);
-	assert.equal(tagHeaderAt(owner, 100, 45), null);
-	assert.equal(tagHeaderAt(owner, 201, 55), null);
-	assert.equal(tagHeaderAt(owner, 100, 90), null);
+	assert.equal(tagHeaderAt(owner, 100, 55, section), header);
+	assert.equal(
+		tagHeaderAt(owner, 100, 55, {}),
+		null,
+		"occupied header in another section is ineligible",
+	);
+	assert.equal(tagHeaderAt(owner, 100, 45, section), null);
+	assert.equal(tagHeaderAt(owner, 201, 55, section), null);
+	assert.equal(tagHeaderAt(owner, 100, 90, section), null);
 });
 test("copy has singular/plural count, named move/cancel/undo/conflict announcements", () => {
 	const en = JSON.parse(
@@ -172,7 +181,14 @@ test("copy has singular/plural count, named move/cancel/undo/conflict announceme
 	assert.equal(en["ui.chat.tags.moved_to"], "Moved to “{name}”");
 	assert.equal(en["ui.chat.tags.removed_all"], "Removed all tags");
 	assert.equal(en["ui.chat.tags.changed_elsewhere"], "Tags changed elsewhere");
-	assert.ok(en["ui.chat.tags.remove_all"].includes("one {tag} other {tags}"));
+	assert.equal(
+		en["ui.chat.tags.remove_all"],
+		"{count, plural, one {Remove tag (#)} other {Remove all tags (#)}}",
+	);
+	assert.equal(
+		en["ui.chat.tags.move_failed"],
+		"Tags were not moved. Try again.",
+	);
 	for (const key of [
 		"move_armed",
 		"move_cancelled",
@@ -209,4 +225,26 @@ test("reproduces the old grouped-DOM/flat-order visual no-op defect", () => {
 		null,
 		"same visual no-op now writes nothing",
 	);
+});
+
+test("remove action formatting is exact singular only at one, including Russian 21/101", () => {
+	const ru = JSON.parse(
+		readFileSync("src/i18n/catalogues/ru/ui.chat.tags.json", "utf8"),
+	);
+	const format = new IntlMessageFormat(ru["ui.chat.tags.remove_all"], "ru");
+	assert.equal(format.format({ count: 1 }), "Удалить тег (1)");
+	for (const count of [2, 21, 101])
+		assert.equal(format.format({ count }), `Удалить все теги (${count})`);
+	for (const locale of ["en", "es", "fr", "ru"]) {
+		const catalogue = JSON.parse(
+			readFileSync(`src/i18n/catalogues/${locale}/ui.chat.tags.json`, "utf8"),
+		);
+		assert.equal(Object.keys(catalogue).length, 54);
+		const message = new IntlMessageFormat(
+			catalogue["ui.chat.tags.remove_all"],
+			locale,
+		);
+		for (const count of [1, 2, 21, 101])
+			assert.ok(String(message.format({ count })).includes(`(${count})`));
+	}
 });

@@ -3287,6 +3287,7 @@ export function ChatSidebar({
 		);
 
 	const pinDropTargetRef = useRef<string | null>(null);
+	const [pinHeaderTarget, setPinHeaderTarget] = useState(false);
 	const pinDropAllowedRef = useRef(true);
 	const pinDragXRef = useRef(0);
 	const pinHeaderRef = useRef<HTMLElement | null>(null);
@@ -3294,7 +3295,9 @@ export function ChatSidebar({
 		const live = pinDragRef.current;
 		if (!live) return;
 		const owner = listPanelRef.current;
-		const header = owner ? tagHeaderAt(owner, x, y) : null;
+		const section = pinnedSectionRef.current;
+		const header = owner && section ? tagHeaderAt(owner, x, y, section) : null;
+		setPinHeaderTarget(header !== null);
 		pinHeaderRef.current?.classList.remove(
 			"bg-accent-wash",
 			"outline",
@@ -3313,7 +3316,9 @@ export function ChatSidebar({
 			.elementFromPoint(x, y)
 			?.closest<HTMLElement>("[data-session-row]");
 		pinDropAllowedRef.current =
-			!!hit && pinBucketIds(live.id).includes(hit.dataset.sessionRow ?? "");
+			!!hit &&
+			hit.closest("[data-chat-section]") === pinnedSectionRef.current &&
+			pinBucketIds(live.id).includes(hit.dataset.sessionRow ?? "");
 	};
 	const pinDragRowBoxes = () => {
 		const section = pinnedSectionRef.current;
@@ -3533,11 +3538,14 @@ export function ChatSidebar({
 		);
 		pinHeaderRef.current = null;
 		setPinDrag(null);
+		setPinHeaderTarget(false);
 		if (live === null || !live.armed) return;
 		const tagTarget = pinDropTargetRef.current;
 		pinDropTargetRef.current = null;
 		if (commit && tagTarget) {
-			const row = listed.find((entry) => entry.session_id === live.id);
+			const row = [...listed, ...heldRows].find(
+				(entry) => entry.session_id === live.id,
+			);
 			if (row)
 				void moveChatToTag(row, tagTarget, announcePinMove).catch(() => {});
 			return;
@@ -3602,9 +3610,12 @@ export function ChatSidebar({
 		move: (id, y, over, target) => {
 			if (!pinDragRef.current || pinDragRef.current.id !== id) return;
 			pinDropTargetRef.current = target;
+			setPinHeaderTarget(target !== null);
 			const hit = over?.closest<HTMLElement>("[data-session-row]");
 			pinDropAllowedRef.current =
-				!!hit && pinBucketIds(id).includes(hit.dataset.sessionRow ?? "");
+				!!hit &&
+				hit.closest("[data-chat-section]") === pinnedSectionRef.current &&
+				pinBucketIds(id).includes(hit.dataset.sessionRow ?? "");
 			if (!target && pinDropAllowedRef.current) applyPinDragOver(y);
 		},
 		settle: (id, target, commit) => {
@@ -3612,7 +3623,9 @@ export function ChatSidebar({
 				settlePinDragRef.current(commit);
 				return;
 			}
-			const row = listed.find((entry) => entry.session_id === id);
+			const row = [...listed, ...heldRows].find(
+				(entry) => entry.session_id === id,
+			);
 			if (commit && target && row)
 				void moveChatToTag(row, target, announcePinMove).catch(() => {});
 			else announcePinMove(t("ui.chat.tags.move_cancelled"));
@@ -5198,6 +5211,8 @@ export function ChatSidebar({
 				suppressed={
 					pinDrag !== null ||
 					rowTagDrag.armedId !== null ||
+					// The modal owns the overlay plane, including pending/error states.
+					tagRow !== null ||
 					teamBubbleHovered === row.session_id ||
 					teamBubbleFocused === row.session_id
 				}
@@ -6124,7 +6139,9 @@ export function ChatSidebar({
 				 * failing assertion rather than a quiet addition.
 				 */}
 				<ContextMenuContent
-					className="max-h-[var(--radix-context-menu-content-available-height)] overflow-y-auto [&_[role=menuitem]]:min-h-8"
+					/* At the app’s 600px floor, half the viewport is 300px: the ten-row
+					 * menu genuinely scrolls while keeping every 32px target keyboard-reachable. */
+					className="max-h-[min(var(--radix-context-menu-content-available-height),50dvh)] overflow-y-auto [&_[role=menuitem]]:min-h-8"
 					onFocus={(event) => {
 						/*
 						 * THE KEYBOARD PATH LANDS IN THE FIRST ITEM (U-D4's minimum; the
@@ -9367,7 +9384,7 @@ export function ChatSidebar({
 					 * region speaks in words: an assistive reader is told where the row moved to,
 					 * and a decorative element with no text would be one more thing to skip.
 					 */}
-					{pinDrag !== null && (
+					{pinDrag !== null && !pinHeaderTarget && (
 						<div
 							ref={pinIndicatorRef}
 							aria-hidden="true"

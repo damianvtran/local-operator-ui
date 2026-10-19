@@ -802,7 +802,7 @@ test("the grip is a drag handle: pointer-only, hover-revealed, and one write per
 	);
 	// The indicator exists only during the drag, is inert, and lives in the section
 	// the rows are drawn in (so it scrolls with them).
-	assert.match(source, /pinDrag !== null && \(/);
+	assert.match(source, /pinDrag !== null && !pinHeaderTarget && \(/);
 	assert.match(source, /data-session-pin-indicator=""/);
 	assert.match(source, /ref=\{pinnedSectionRef\}/);
 	assert.match(

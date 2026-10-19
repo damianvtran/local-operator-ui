@@ -43,7 +43,7 @@
 	"ui.chat.tags.apply_deletion_first": "Apply the deletion first, then add “{name}” again.",
 	"ui.chat.tags.moved_to": "Moved to “{name}”",
 	"ui.chat.tags.removed_all": "Removed all tags",
-	"ui.chat.tags.remove_all": "Remove all {count, plural, one {tag} other {tags}} ({count})",
+	"ui.chat.tags.remove_all": "{count, plural, one {Remove tag (#)} other {Remove all tags (#)}}",
 	"ui.chat.tags.move_menu": "Move to tag…",
 	"ui.chat.tags.changed_elsewhere": "Tags changed elsewhere",
 	"ui.chat.tags.move_armed": "Move “{name}”",
@@ -51,5 +51,6 @@
 	"ui.chat.tags.undo": "Undo",
 	"ui.chat.tags.move_undone": "Tag move undone",
 	"ui.chat.tags.move_title": "Move “{title}”",
-	"ui.chat.tags.move_description": "Choose a tag to make it primary, or Untagged to remove all tags."
+	"ui.chat.tags.move_description": "Choose a tag to make it primary, or Untagged to remove all tags.",
+	"ui.chat.tags.move_failed": "Tags were not moved. Try again."
 }

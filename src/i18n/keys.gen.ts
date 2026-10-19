@@ -1158,6 +1158,7 @@ export type MessageParams = {
 	"ui.chat.tags.move_cancelled": undefined;
 	"ui.chat.tags.move_description": undefined;
 	"ui.chat.tags.move_down": { name: string };
+	"ui.chat.tags.move_failed": undefined;
 	"ui.chat.tags.move_menu": undefined;
 	"ui.chat.tags.move_title": { title: string };
 	"ui.chat.tags.move_undone": undefined;

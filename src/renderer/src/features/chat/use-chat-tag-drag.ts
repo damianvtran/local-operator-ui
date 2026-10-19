@@ -22,6 +22,7 @@ type Gesture = {
 	started: number;
 	armed: boolean;
 	owner: HTMLElement;
+	section: HTMLElement;
 	capture: HTMLElement;
 	timer: ReturnType<typeof setTimeout> | null;
 };
@@ -39,11 +40,13 @@ type Options = {
 
 /** Pointer capture owns delivery, not hit testing. Resolve the underlying header
  * from viewport geometry, clipped to the owning scroll list, so hidden/offscreen
- * buckets never become drop targets during auto-scroll. */
+ * buckets never become drop targets during auto-scroll. Section membership is
+ * authoritative: a header in another section is never an assignment target. */
 export function tagHeaderAt(
 	owner: HTMLElement,
 	x: number,
 	y: number,
+	section: Element,
 ): HTMLElement | null {
 	const rect = owner.getBoundingClientRect();
 	if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom)
@@ -54,6 +57,7 @@ export function tagHeaderAt(
 		).find((header) => {
 			const box = header.getBoundingClientRect();
 			return (
+				header.closest("[data-chat-section]") === section &&
 				box.height > 0 &&
 				x >= box.left &&
 				x <= box.right &&
@@ -78,7 +82,12 @@ export function useChatTagDrag(options: Options) {
 	const refresh = useCallback(() => {
 		const gesture = live.current;
 		if (!gesture?.armed) return;
-		const header = tagHeaderAt(gesture.owner, gesture.lastX, gesture.lastY);
+		const header = tagHeaderAt(
+			gesture.owner,
+			gesture.lastX,
+			gesture.lastY,
+			gesture.section,
+		);
 		setTarget(header);
 		latest.current.move(
 			gesture.id,
@@ -132,7 +141,12 @@ export function useChatTagDrag(options: Options) {
 		frame.current = null;
 		const header =
 			commit && gesture.armed
-				? tagHeaderAt(gesture.owner, gesture.lastX, gesture.lastY)
+				? tagHeaderAt(
+						gesture.owner,
+						gesture.lastX,
+						gesture.lastY,
+						gesture.section,
+					)
 				: null;
 		if (gesture.capture.hasPointerCapture(gesture.pointer))
 			gesture.capture.releasePointerCapture(gesture.pointer);
@@ -276,7 +290,14 @@ export function useChatTagDrag(options: Options) {
 			const owner = event.currentTarget.closest<HTMLElement>(
 				"[data-tag-drag-list]",
 			);
-			if (!owner || !event.currentTarget.closest("[data-chat-tag-group]"))
+			const section = event.currentTarget.closest<HTMLElement>(
+				"[data-chat-section]",
+			);
+			if (
+				!owner ||
+				!section ||
+				!event.currentTarget.closest("[data-chat-tag-group]")
+			)
 				return;
 			finish.current(false);
 			suppress.current = null;
@@ -290,6 +311,7 @@ export function useChatTagDrag(options: Options) {
 				started: performance.now(),
 				armed: false,
 				owner,
+				section,
 				capture: event.currentTarget,
 				timer: null,
 			};

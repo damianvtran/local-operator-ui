@@ -212,7 +212,7 @@ export function ChatSessionTagsDialog({
 													t(
 														isTagsConflict(error)
 															? "ui.chat.tags.changed_elsewhere"
-															: "ui.chat.tags.save_failed",
+															: "ui.chat.tags.move_failed",
 													),
 												);
 											})

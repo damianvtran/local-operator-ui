@@ -14,9 +14,13 @@ import type {
 } from "../../../../../shared/desktop-contract";
 import { ChatSidebar } from "./chat-sidebar";
 
+const REMOVE_TAG_MENU_ITEM = /Remove (all tags|tag)/;
 let calls: DesktopRequest[] = [];
 let finishRegistry: (() => void) | null = null;
 type Scenario =
+	| "held-pin"
+	| "pinned-tags"
+	| "move-conflict"
 	| "menu-wide"
 	| "tags-off"
 	| "tags-on"
@@ -48,6 +52,7 @@ function installBridge(scenario: Scenario) {
 		categories
 			.filter((tag) => ids.includes(tag.id))
 			.map(({ id, name }) => ({ id, name }));
+	let revealHeld = false;
 	const rows = [
 		{
 			id: "111111111111",
@@ -86,6 +91,11 @@ function installBridge(scenario: Scenario) {
 		},
 	].map((row, index) => ({
 		...row,
+		pinned:
+			["held-pin", "pinned-tags"].includes(scenario) &&
+			row.id === "222222222222"
+				? true
+				: row.pinned,
 		mtime: now - index * 60,
 		created_at: now - index * 60,
 		preview: "",
@@ -96,6 +106,7 @@ function installBridge(scenario: Scenario) {
 		status: { code: "idle", label: "Recent" },
 		status_revision: 1,
 		status_epoch: "tag-fixture-epoch",
+		tags_revision: "0",
 	}));
 	const ok = (result: unknown): DesktopResponse => ({
 		status: 200,
@@ -118,7 +129,13 @@ function installBridge(scenario: Scenario) {
 					},
 				});
 			case "sessions.list":
-				return ok({ sessions: rows, truncated: false });
+				return ok({
+					sessions:
+						scenario === "held-pin" && !revealHeld
+							? rows.filter((row) => row.id !== "222222222222")
+							: rows,
+					truncated: false,
+				});
 			case "profiles.list":
 				return ok({ profiles: [] });
 			case "teams.list":
@@ -168,12 +185,39 @@ function installBridge(scenario: Scenario) {
 					};
 				const row = rows.find((entry) => entry.id === request.sessionId);
 				if (!row) throw new Error("Unknown fixture conversation");
+				if (scenario === "move-conflict") {
+					// Simulate another client changing assignments after this dialog opened.
+					row.tags = tags("project");
+					row.primary = "project";
+					row.tags_revision = "2";
+					return {
+						status: 409,
+						body: {
+							detail: {
+								code: "tags_conflict",
+								text: "Tags changed elsewhere",
+								result: {
+									session_id: row.id,
+									tags: row.tags,
+									primary: row.primary,
+									tags_revision: row.tags_revision,
+								},
+							},
+						},
+					};
+				}
+				revealHeld = true;
 				row.tags = request.tags.flatMap((id) => {
 					const tag = categories.find((entry) => entry.id === id);
 					return tag ? [{ id, name: tag.name }] : [];
 				});
 				row.primary = request.primary;
-				return ok({ session_id: row.id, tags: row.tags, primary: row.primary });
+				return ok({
+					session_id: row.id,
+					tags: row.tags,
+					primary: row.primary,
+					tags_revision: row.tags_revision,
+				});
 			}
 			default:
 				throw new Error(`Unexpected tag fixture operation: ${request.op}`);
@@ -183,7 +227,20 @@ function installBridge(scenario: Scenario) {
 		api?: { desktop?: { request: typeof handler } };
 	};
 	page.api = { ...page.api, desktop: { request: handler } };
-	useCanonicalSessionsStore.setState({ sessions: [] });
+	useCanonicalSessionsStore.setState({
+		sessions: [],
+		pinFacts:
+			scenario === "held-pin"
+				? {
+						"222222222222": {
+							pinned: true,
+							at: 10000,
+							title: "Held pinned conversation",
+							updated_at: now,
+						},
+					}
+				: {},
+	});
 	useSessionTagsStore.setState({ categories: [], loading: false, error: null });
 	useUiPreferencesStore.setState({
 		chatSidebarView: {
@@ -827,83 +884,111 @@ export const PickerLoadingFocus: Story = {
 /** Real sidebar DOM/optimistic bridge proof. Synthetic pointer events exercise
  * the component lifecycle, not native capture/touch; independent native QA owns
  * those browser delivery guarantees. The node lane separately tests revisions. */
+const dragRoundTrip = async (crossSection: boolean) => {
+	await ready();
+	const row = () =>
+		document.querySelector<HTMLButtonElement>(
+			'[data-session-row="222222222222"] [data-chat-row]',
+		);
+	const button = row();
+	if (!button) throw new Error("Missing drag source");
+	const box = button.getBoundingClientRect();
+	const pointer = {
+		pointerId: 41,
+		pointerType: "mouse",
+		isPrimary: true,
+		button: 0,
+		clientX: box.left + 60,
+		clientY: box.top + 16,
+	};
+	fireEvent.pointerDown(button, pointer);
+	fireEvent.pointerUp(window, pointer);
+	fireEvent.click(button, { detail: 1 });
+	expect(document.body.dataset.tagsOpened).toBe("222222222222");
+	document.body.dataset.tagsOpened = "";
+	fireEvent.pointerDown(button, pointer);
+	fireEvent.pointerMove(window, { ...pointer, clientY: pointer.clientY + 6 });
+	await new Promise((resolve) => setTimeout(resolve, 200));
+	fireEvent.pointerUp(window, { ...pointer, clientY: pointer.clientY + 6 });
+	expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
+	fireEvent.click(button, { detail: 1 });
+	expect(document.body.dataset.tagsOpened).toBe("");
+	fireEvent.pointerDown(button, pointer);
+	await new Promise((resolve) => setTimeout(resolve, 200));
+	const sourceSection = button.closest<HTMLElement>("[data-chat-section]");
+	const header = crossSection
+		? document.querySelector<HTMLElement>(
+				'[data-chat-section="pinned"] [data-tag-drop-target="review"]',
+			)
+		: sourceSection?.querySelector<HTMLElement>(
+				'[data-tag-drop-target="review"]',
+			);
+	if (!header) throw new Error("Missing occupied header");
+	const target = header.getBoundingClientRect();
+	fireEvent.pointerMove(window, {
+		...pointer,
+		clientX: target.left + 60,
+		clientY: target.top + 14,
+	});
+	if (crossSection) expect(header).not.toHaveClass("bg-accent-wash");
+	else await waitFor(() => expect(header).toHaveClass("bg-accent-wash"));
+	fireEvent.pointerUp(window, {
+		...pointer,
+		clientX: target.left + 60,
+		clientY: target.top + 14,
+	});
+	if (crossSection) {
+		await waitFor(() =>
+			expect(document.querySelector("[data-dragging]")).toBeNull(),
+		);
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
+		expect(
+			within(document.body).queryByRole("button", { name: "Undo" }),
+		).toBeNull();
+		expect(row()?.closest("[data-chat-tag-group]")).toHaveAttribute(
+			"data-chat-tag-group",
+			"project",
+		);
+		expect(document.querySelector('[role="menu"]')).toBeNull();
+		document.body.dataset.tagsProof =
+			"PASS: cross-section occupied header never highlighted; release cancelled with 0 writes, no Undo toast, and unchanged Project bucket";
+		return;
+	}
+	await waitFor(() =>
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1),
+	);
+	expect(calls.find((call) => call.op === "sessions.tags")).toMatchObject({
+		tags: ["project", "review"],
+		primary: "review",
+	});
+	await waitFor(() =>
+		expect(row()?.closest("[data-chat-tag-group]")).toHaveAttribute(
+			"data-chat-tag-group",
+			"review",
+		),
+	);
+	await userEvent.click(
+		within(document.body).getByRole("button", { name: "Undo" }),
+	);
+	await waitFor(() =>
+		expect(row()?.closest("[data-chat-tag-group]")).toHaveAttribute(
+			"data-chat-tag-group",
+			"project",
+		),
+	);
+	expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(2);
+	document.body.dataset.tagsProof =
+		"PASS: >5px pending movement wrote nothing; 180ms hold painted occupied header; same-section header assigned/preserved tags without pinning; Undo restored bucket (synthetic DOM pointers, not native capture proof)";
+};
 export const DragAssignRoundTrip: Story = {
 	...story("tags-on"),
-	play: async () => {
-		await ready();
-		const row = () =>
-			document.querySelector<HTMLButtonElement>(
-				'[data-session-row="222222222222"] [data-chat-row]',
-			);
-		const button = row();
-		if (!button) throw new Error("Missing drag source");
-		const box = button.getBoundingClientRect();
-		const pointer = {
-			pointerId: 41,
-			isPrimary: true,
-			button: 0,
-			clientX: box.left + 60,
-			clientY: box.top + 16,
-		};
-		fireEvent.pointerDown(button, pointer);
-		fireEvent.pointerUp(window, pointer);
-		fireEvent.click(button, { detail: 1 });
-		expect(document.body.dataset.tagsOpened).toBe("222222222222");
-		document.body.dataset.tagsOpened = "";
-		fireEvent.pointerDown(button, pointer);
-		fireEvent.pointerMove(window, { ...pointer, clientY: pointer.clientY + 6 });
-		await new Promise((resolve) => setTimeout(resolve, 200));
-		fireEvent.pointerUp(window, { ...pointer, clientY: pointer.clientY + 6 });
-		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
-		fireEvent.click(button, { detail: 1 });
-		expect(document.body.dataset.tagsOpened).toBe("");
-		fireEvent.pointerDown(button, pointer);
-		await new Promise((resolve) => setTimeout(resolve, 200));
-		const header = document.querySelector<HTMLElement>(
-			'[data-tag-drop-target="review"]',
-		);
-		if (!header) throw new Error("Missing occupied header");
-		const target = header.getBoundingClientRect();
-		fireEvent.pointerMove(window, {
-			...pointer,
-			clientX: target.left + 60,
-			clientY: target.top + 14,
-		});
-		await waitFor(() => expect(header).toHaveClass("bg-accent-wash"));
-		fireEvent.pointerUp(window, {
-			...pointer,
-			clientX: target.left + 60,
-			clientY: target.top + 14,
-		});
-		await waitFor(() =>
-			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
-				1,
-			),
-		);
-		expect(calls.find((call) => call.op === "sessions.tags")).toMatchObject({
-			tags: ["project", "review"],
-			primary: "review",
-		});
-		await waitFor(() =>
-			expect(row()?.closest("[data-chat-tag-group]")).toHaveAttribute(
-				"data-chat-tag-group",
-				"review",
-			),
-		);
-		await userEvent.click(
-			within(document.body).getByRole("button", { name: "Undo" }),
-		);
-		await waitFor(() =>
-			expect(row()?.closest("[data-chat-tag-group]")).toHaveAttribute(
-				"data-chat-tag-group",
-				"project",
-			),
-		);
-		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(2);
-		document.body.dataset.tagsProof =
-			"PASS: >5px pending movement wrote nothing; 180ms hold painted occupied header; cross-section header assigned/preserved tags without pinning; Undo restored bucket (synthetic DOM pointers, not native capture proof)";
-	},
+	play: async () => dragRoundTrip(true),
 };
+export const SameSectionDragRoundTrip: Story = {
+	...story("tags-on"),
+	play: async () => dragRoundTrip(false),
+};
+
 export const MoveMenuRoundTrip: Story = {
 	...story("tags-on"),
 	play: async () => {
@@ -916,6 +1001,8 @@ export const MoveMenuRoundTrip: Story = {
 		const source = button();
 		if (!source) throw new Error("Missing move source");
 		fireEvent.contextMenu(source);
+		await body.findByRole("menuitem", { name: "Move to tag…" });
+		expect(body.getAllByRole("menuitem")).toHaveLength(9);
 		await userEvent.click(
 			await body.findByRole("menuitem", { name: "Move to tag…" }),
 		);
@@ -946,8 +1033,19 @@ export const MoveMenuRoundTrip: Story = {
 		expect(
 			calls.filter((call) => call.op === "sessions.tags")[1],
 		).toMatchObject({ tags: [], primary: null });
+		const cleared = button();
+		if (!cleared) throw new Error("Cleared source missing");
+		fireEvent.contextMenu(cleared);
+		await body.findByRole("menuitem", { name: "Move to tag…" });
+		expect(body.getAllByRole("menuitem")).toHaveLength(8);
+		expect(
+			body.queryByRole("menuitem", { name: REMOVE_TAG_MENU_ITEM }),
+		).toBeNull();
+		fireEvent.keyDown(document.activeElement ?? document.body, {
+			key: "Escape",
+		});
 		document.body.dataset.tagsProof =
-			"PASS: Move menu opens compact picker; apply preserves assignments and returns row focus; Remove all tags (3) clears in one write";
+			"PASS: Move picker preserves assignments and returns row focus; tagged Remove all tags (3) clears once; untagged menu omits Remove and retains Move to tag";
 	},
 };
 
@@ -958,13 +1056,14 @@ export const DragPreview: Story = {
 		const row = document.querySelector<HTMLButtonElement>(
 			'[data-session-row="222222222222"] [data-chat-row]',
 		);
-		const header = document.querySelector<HTMLElement>(
-			'[data-tag-drop-target="review"]',
-		);
+		const header = row
+			?.closest("[data-chat-section]")
+			?.querySelector<HTMLElement>('[data-tag-drop-target="review"]');
 		if (!row || !header) throw new Error("Missing preview geometry");
 		const box = row.getBoundingClientRect();
 		const pointer = {
 			pointerId: 42,
+			pointerType: "mouse",
 			isPrimary: true,
 			button: 0,
 			clientX: box.left + 60,
@@ -1014,5 +1113,276 @@ export const MovePicker: Story = {
 		await within(document.body).findByRole("heading", {
 			name: "Move “Review the migration safety checks”",
 		});
+	},
+};
+
+export const MoveConflict: Story = {
+	...story("move-conflict"),
+	play: async () => {
+		await ready();
+		const body = within(document.body);
+		const row = document.querySelector<HTMLElement>(
+			'[data-session-row="111111111111"] [data-chat-row]',
+		);
+		if (!row) throw new Error("Missing conflict source");
+		const reads = calls.filter((call) => call.op === "sessions.list").length;
+		fireEvent.contextMenu(row);
+		await userEvent.click(
+			await body.findByRole("menuitem", { name: "Move to tag…" }),
+		);
+		await userEvent.click(await body.findByRole("button", { name: "Concept" }));
+		await body.findByRole("alert");
+		await waitFor(() =>
+			expect(
+				body.getAllByText("Tags changed elsewhere").length,
+			).toBeGreaterThan(0),
+		);
+		await waitFor(() =>
+			expect(
+				calls.filter((call) => call.op === "sessions.list").length,
+			).toBeGreaterThan(reads),
+		);
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1);
+		expect(calls.find((call) => call.op === "sessions.tags")).toMatchObject({
+			expected_revision: "0",
+		});
+		const current = useCanonicalSessionsStore
+			.getState()
+			.sessions.find((entry) => entry.session_id === "111111111111");
+		expect(current).toMatchObject({
+			primary: "project",
+			tags_revision: "2",
+			tags: [{ id: "project", name: "Project" }],
+		});
+		expect(body.queryByRole("button", { name: "Undo" })).toBeNull();
+		document.body.dataset.tagsProof =
+			"PASS: core-shaped detail.code/detail.result 409 refreshed Project revision 2, showed Tags changed elsewhere, one write attempt, no retry/overwrite/Undo (fixture, not real-core QA)";
+	},
+};
+
+/** The application floor is 600px. An actual nested browsing context supplies
+ * that viewport, so 50dvh measures 300px rather than borrowing the host's 720px. */
+export const TagActionsMenu600: Story = {
+	...story("menu-wide", 220),
+	render: () => (
+		<>
+			<iframe
+				title="Sidebar menu at the 600px application floor"
+				src="./iframe.html?id=chat-sidebar-tags--tag-actions-menu&viewMode=story&args=width:220"
+				style={{ width: 1000, height: 600, border: 0 }}
+			/>
+			<output data-floor-proof>Waiting for 600px menu assertions</output>
+		</>
+	),
+	play: async ({ canvasElement }) => {
+		const frame = canvasElement.querySelector("iframe");
+		if (!frame) throw new Error("Missing 600px viewport");
+		await waitFor(
+			() =>
+				expect(
+					frame.contentDocument?.querySelectorAll('[role="menuitem"]').length,
+				).toBe(10),
+			{ timeout: 15000 },
+		);
+		const doc = frame.contentDocument;
+		const win = frame.contentWindow;
+		if (!doc || !win) throw new Error("Missing frame document");
+		const menu = doc.querySelector<HTMLElement>('[role="menu"]');
+		if (!menu) throw new Error("Missing menu");
+		expect(win.innerHeight).toBe(600);
+		const items = Array.from(
+			doc.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+		);
+		expect(win.getComputedStyle(menu).overflowY).toBe("auto");
+		expect(menu.scrollHeight).toBeGreaterThan(menu.clientHeight);
+		for (const item of items)
+			expect(item.getBoundingClientRect().height).toBeGreaterThanOrEqual(32);
+		menu.focus();
+		fireEvent.keyDown(menu, { key: "End" });
+		await waitFor(() => expect(doc.activeElement).toBe(items.at(-1)));
+		expect(menu.scrollTop).toBeGreaterThan(0);
+		fireEvent.keyDown(doc.activeElement ?? menu, { key: "Home" });
+		await waitFor(() => expect(doc.activeElement).toBe(items[0]));
+		fireEvent.keyDown(items[0], { key: "End" });
+		await waitFor(() => expect(doc.activeElement).toBe(items.at(-1)));
+		document.body.dataset.tagsProof = `PASS: 220px sidebar, 600px viewport floor, 10 rows, max-height ${win.getComputedStyle(menu).maxHeight}, scroll ${menu.clientHeight}/${menu.scrollHeight}, >=32px targets, End/Home reach all items`;
+		const proof = canvasElement.querySelector("[data-floor-proof]");
+		if (proof) proof.textContent = document.body.dataset.tagsProof;
+	},
+};
+
+export const MoveFailure: Story = {
+	...story("picker-error"),
+	play: async () => {
+		await ready();
+		const body = within(document.body);
+		const row = document.querySelector<HTMLElement>(
+			'[data-session-row="111111111111"] [data-chat-row]',
+		);
+		if (!row) throw new Error("Missing failure source");
+		fireEvent.contextMenu(row);
+		await userEvent.click(
+			await body.findByRole("menuitem", { name: "Move to tag…" }),
+		);
+		await userEvent.click(await body.findByRole("button", { name: "Concept" }));
+		await waitFor(() =>
+			expect(
+				body.getAllByText("Tags were not moved. Try again.").length,
+			).toBeGreaterThan(0),
+		);
+		expect(
+			useCanonicalSessionsStore
+				.getState()
+				.sessions.find((entry) => entry.session_id === "111111111111")?.primary,
+		).toBe("review");
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1);
+		document.body.dataset.tagsProof =
+			"PASS: move 503 rolled back Review, showed Tags were not moved. Try again., no retry/Undo";
+	},
+};
+
+export const HeldPinnedTagDrop: Story = {
+	...story("held-pin"),
+	play: async () => {
+		await ready();
+		const button = document.querySelector<HTMLButtonElement>(
+			'[data-session-row="222222222222"] [data-chat-row]',
+		);
+		const target = document.querySelector<HTMLElement>(
+			'[data-chat-section="pinned"] [data-tag-drop-target="review"]',
+		);
+		if (!button || !target)
+			throw new Error("Missing held row or its eligible header");
+		expect(
+			useCanonicalSessionsStore
+				.getState()
+				.sessions.some((row) => row.session_id === "222222222222"),
+		).toBe(false);
+		const box = button.getBoundingClientRect();
+		const pointer = {
+			pointerId: 77,
+			pointerType: "mouse",
+			isPrimary: true,
+			button: 0,
+			clientX: box.left + 60,
+			clientY: box.top + 16,
+		};
+		fireEvent.pointerDown(button, pointer);
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		const rect = target.getBoundingClientRect();
+		const over = {
+			...pointer,
+			clientX: rect.left + 60,
+			clientY: rect.top + 14,
+		};
+		fireEvent.pointerMove(window, over);
+		await waitFor(() => expect(target).toHaveClass("bg-accent-wash"));
+		expect(document.querySelector("[data-session-pin-indicator]")).toBeNull();
+		fireEvent.pointerUp(window, over);
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				1,
+			),
+		);
+		expect(calls.find((call) => call.op === "sessions.tags")).toMatchObject({
+			sessionId: "222222222222",
+			tags: ["review"],
+			primary: "review",
+		});
+		document.body.dataset.tagsProof =
+			"PASS: held pin absent from catalogue assigned to same-section Review; header preview had no insertion line; one assignment write";
+	},
+};
+export const PinnedHeaderPreview: Story = {
+	...story("pinned-tags"),
+	play: async () => {
+		await ready();
+		const button = document.querySelector<HTMLButtonElement>(
+			'[data-session-row="111111111111"] [data-chat-row]',
+		);
+		const target = document.querySelector<HTMLElement>(
+			'[data-chat-section="pinned"] [data-tag-drop-target="project"]',
+		);
+		if (!button || !target) throw new Error("Missing pinned preview geometry");
+		const box = button.getBoundingClientRect();
+		const pointer = {
+			pointerId: 78,
+			pointerType: "mouse",
+			isPrimary: true,
+			button: 0,
+			clientX: box.left + 60,
+			clientY: box.top + 16,
+		};
+		fireEvent.pointerDown(button, pointer);
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		const rect = target.getBoundingClientRect();
+		fireEvent.pointerMove(window, {
+			...pointer,
+			clientX: rect.left + 60,
+			clientY: rect.top + 14,
+		});
+		await waitFor(() => expect(target).toHaveClass("bg-accent-wash"));
+		expect(document.querySelector("[data-session-pin-indicator]")).toBeNull();
+		document.body.dataset.tagsProof =
+			"PASS: same-section Pinned header accent preview, armed row, no pinned insertion line, no write before release";
+	},
+};
+
+export const SameSectionUntaggedDrop: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await ready();
+		const button = document.querySelector<HTMLButtonElement>(
+			'[data-session-row="222222222222"] [data-chat-row]',
+		);
+		const section = button?.closest("[data-chat-section]");
+		const target = section?.querySelector<HTMLElement>(
+			'[data-tag-drop-target="untagged"]',
+		);
+		if (!button || !section || !target)
+			throw new Error("Missing same-section Untagged geometry");
+		const box = button.getBoundingClientRect();
+		const pointer = {
+			pointerId: 79,
+			pointerType: "mouse",
+			isPrimary: true,
+			button: 0,
+			clientX: box.left + 60,
+			clientY: box.top + 16,
+		};
+		fireEvent.pointerDown(button, pointer);
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		const rect = target.getBoundingClientRect();
+		const over = {
+			...pointer,
+			clientX: rect.left + 60,
+			clientY: rect.top + 14,
+		};
+		fireEvent.pointerMove(window, over);
+		await waitFor(() => expect(target).toHaveClass("bg-accent-wash"));
+		fireEvent.pointerUp(window, over);
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				1,
+			),
+		);
+		expect(calls.find((call) => call.op === "sessions.tags")).toMatchObject({
+			tags: [],
+			primary: null,
+		});
+		await waitFor(() =>
+			expect(
+				document
+					.querySelector('[data-session-row="222222222222"]')
+					?.closest("[data-chat-tag-group]"),
+			).toHaveAttribute("data-chat-tag-group", "untagged"),
+		);
+		expect(
+			document
+				.querySelector('[data-session-row="222222222222"]')
+				?.closest("[data-chat-section]"),
+		).toBe(section);
+		document.body.dataset.tagsProof =
+			"PASS: eligible same-section Untagged highlighted and cleared all tags/primary in one write without changing section";
 	},
 };

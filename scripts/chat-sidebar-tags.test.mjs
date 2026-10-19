@@ -606,3 +606,33 @@ test("move helper guards edited snapshot and Undo uses the produced revision, sh
 		"conflicting Undo must not retry",
 	);
 });
+
+test("failed move restores the source tags and reports move-specific retry guidance", async () => {
+	const original = { ...row("aaaaaaaaaaaa", "a"), tags_revision: "4" };
+	canonical.setState({ sessions: [original] });
+	tags.setState({ categories });
+	globalThis.tagMoveToasts = [];
+	const requests = [];
+	const announcements = [];
+	window.api.desktop.request = async (request) => {
+		requests.push(request);
+		return {
+			status: 503,
+			body: { detail: { code: "store_busy", text: "Fixture write refused" } },
+		};
+	};
+	await assert.rejects(
+		moveChatToTag(original, "b", (message) => announcements.push(message)),
+	);
+	assert.equal(canonical.getState().sessions[0].primary, "a");
+	assert.deepEqual(canonical.getState().sessions[0].tags, original.tags);
+	assert.equal(
+		globalThis.tagMoveToasts.at(-1).message,
+		"Tags were not moved. Try again.",
+	);
+	assert.equal(announcements.at(-1), "Tags were not moved. Try again.");
+	assert.equal(
+		requests.filter((request) => request.op === "sessions.tags").length,
+		1,
+	);
+});

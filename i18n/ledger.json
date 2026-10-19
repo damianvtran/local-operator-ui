@@ -6402,8 +6402,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "5e248d96f215a0754ba201a6f4df9801350532d3259506fa6ac995c455450427",
-			"target_sha256": "a0d325ec2a9835044b901da0ae66ee5f9a0ead72f239a734fb502a87adbbbc8a",
+			"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+			"target_sha256": "4141b03647493eea8e4b760dd6a921bb6d0e678b517d4122dc7aa88aa4ba5129",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6411,20 +6411,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "i18n-auditor-ru",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-18",
 					"result": "clean",
-					"instance": "9f4c2a71b3d8",
+					"instance": "b6e2d9f04c17",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/9f4c2a71b3d8.json",
-					"receipt_sha256": "ab49a0f93f020efe0f57dd7ee748a11db777bf528d7be19251b601313d3e5ff3",
-					"scope": "V2-1 11-key drag/move/remove delta; unchanged 42-key baseline retained"
+					"receipt": "i18n/receipts/b6e2d9f04c17.json",
+					"receipt_sha256": "431f6bb624bca81eaeb862acb285babb37ee2678e7bfcffcddaa68d1e6bcd41b",
+					"scope": "V2-1 12-key delta; exact =1 singular fixes RU-V2-1-01; unchanged 42-key baseline retained",
+					"note": "Baseline translator retained mechanically; delta translator coder/openai/gpt-6.1-sol. Re-audited after exact =1 fix; 21/101 use plural action."
 				}
 			],
 			"status": "audited",
@@ -6448,6 +6449,29 @@
 								"minor": 0,
 								"nit": 0
 							}
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5e248d96f215a0754ba201a6f4df9801350532d3259506fa6ac995c455450427",
+					"target_sha256": "a0d325ec2a9835044b901da0ae66ee5f9a0ead72f239a734fb502a87adbbbc8a",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "9f4c2a71b3d8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9f4c2a71b3d8.json",
+							"receipt_sha256": "ab49a0f93f020efe0f57dd7ee748a11db777bf528d7be19251b601313d3e5ff3",
+							"scope": "V2-1 11-key drag/move/remove delta; unchanged 42-key baseline retained"
 						}
 					],
 					"status": "audited"
@@ -6547,8 +6571,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "ffb1c6b985fd1ab521a2a5fc49955978d76cabc5671437dc2bc6b31cfa1ada74",
-			"target_sha256": "309da946c7c4c2ccc44b4166e4a6950666b9b5f03cc4b752c23b752f47035b3f",
+			"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+			"target_sha256": "68ec44a83e066bf7e303ba7699edcafd7e97062e8e0e6e7606076fa6adaea943",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6556,29 +6580,55 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
+					"agent": "i18n-auditor-es",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-18",
-					"result": "clean",
-					"instance": "264b5f1fe4f0",
+					"result": "clean-with-findings",
+					"instance": "c3e8a1f72b95",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 2,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/264b5f1fe4f0.json",
-					"receipt_sha256": "d6878de69a422f3cafb8f963fa78f0010059bc7d3706214a875702487b14b484",
-					"scope": "Round-2 re-audit: four-line remediation delta; 40 unchanged keys byte-identical"
+					"receipt": "i18n/receipts/c3e8a1f72b95.json",
+					"receipt_sha256": "7608bff695af415552245687883feaa4d3a8f137f31207c19f96cee477e7f54b",
+					"scope": "V2-1 12-key delta; unchanged 42-key baseline retained",
+					"note": "Baseline translator retained mechanically; delta translator coder/openai/gpt-6.1-sol. ES-1/2/3 accepted: million-count wording, Eliminar vs Quitar, quote-style consistency; no blocker/major."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ffb1c6b985fd1ab521a2a5fc49955978d76cabc5671437dc2bc6b31cfa1ada74",
+					"target_sha256": "309da946c7c4c2ccc44b4166e4a6950666b9b5f03cc4b752c23b752f47035b3f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "264b5f1fe4f0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/264b5f1fe4f0.json",
+							"receipt_sha256": "d6878de69a422f3cafb8f963fa78f0010059bc7d3706214a875702487b14b484",
+							"scope": "Round-2 re-audit: four-line remediation delta; 40 unchanged keys byte-identical"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "ffb1c6b985fd1ab521a2a5fc49955978d76cabc5671437dc2bc6b31cfa1ada74",
-			"target_sha256": "245a545aab6b75c89f6308f062dd44736ec8c969bf18e895bb773ef16f754d80",
+			"source_sha256": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+			"target_sha256": "24d8654dd7bf6b6da1746e7c9d1640b7bf8da3437fd7e0368be8d6307f15729e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6586,23 +6636,49 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
+					"agent": "i18n-auditor-fr",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-18",
-					"result": "clean",
-					"instance": "264b5f1fe4f0",
+					"result": "clean-with-findings",
+					"instance": "8d2f6a4c91e7",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/264b5f1fe4f0.json",
-					"receipt_sha256": "d6878de69a422f3cafb8f963fa78f0010059bc7d3706214a875702487b14b484",
-					"scope": "Round-2 re-audit: four-line remediation delta; 40 unchanged keys byte-identical"
+					"receipt": "i18n/receipts/8d2f6a4c91e7.json",
+					"receipt_sha256": "b871098f30cd26f50dc92d5a7a0db1480890f988462fe8bf061952e104a47b4e",
+					"scope": "V2-1 12-key delta; unchanged 42-key baseline retained",
+					"note": "Baseline translator retained mechanically; delta translator coder/openai/gpt-6.1-sol. FR-1/2 accepted: million-count wording and guillemet spacing; no blocker/major."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ffb1c6b985fd1ab521a2a5fc49955978d76cabc5671437dc2bc6b31cfa1ada74",
+					"target_sha256": "245a545aab6b75c89f6308f062dd44736ec8c969bf18e895bb773ef16f754d80",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "264b5f1fe4f0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/264b5f1fe4f0.json",
+							"receipt_sha256": "d6878de69a422f3cafb8f963fa78f0010059bc7d3706214a875702487b14b484",
+							"scope": "Round-2 re-audit: four-line remediation delta; 40 unchanged keys byte-identical"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }

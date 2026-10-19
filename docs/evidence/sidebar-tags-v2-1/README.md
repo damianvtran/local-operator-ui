@@ -1,48 +1,62 @@
 # Sidebar tags V2-1 — UI implementation evidence
 
-Captured 2026-10-18 from this branch's source-backed Storybook, using the harness browser tool. The fixture renders the real `ChatSidebar`, session-tags store, assignment path, and contract-shaped isolated desktop bridge; it never connects to an operator backend. No native Electron build or native touch/capture claim is made here.
+Captured 2026-10-18 from this branch's source-backed Storybook, using the harness browser tool. A unified remediation replaced the invalid cross-section acceptance/preview with a negative case and eligible same-section captures. The fixture renders the real `ChatSidebar`, session-tags store, assignment path, and contract-shaped isolated desktop bridge; it never connects to an operator backend. No native Electron build or native touch/capture claim is made here.
 
 ## Executed paths
 
 Start from the worktree with the shared dependency tree (no dependency install):
 
 ```sh
-node node_modules/storybook/bin/index.cjs dev -p 6019 --ci --no-open
+node node_modules/storybook/bin/index.cjs dev -p 6020 --ci --no-open --exact-port
 ```
 
-The actual run isolated HOME and disabled telemetry/notifications. The initial `pnpm exec` launcher bootstrapped Corepack's package-manager binary under that scratch HOME before running the already-installed Storybook dependencies; use the direct Node command above to avoid that unnecessary bootstrap.
+The remediation run isolated HOME, capped the Node heap at 1024MB, and disabled telemetry/notifications. Port 6019 belonged to another lane; the owned preview used 6020. An initial 2GB process-group cap terminated dependency optimization; the heap-bounded retry succeeded without installing dependencies. The initial `pnpm exec` launcher bootstrapped Corepack's package-manager binary under that scratch HOME before running the already-installed Storybook dependencies; use the direct Node command above to avoid that unnecessary bootstrap.
 
-Open `http://localhost:6019/iframe.html?id=chat-sidebar-tags--<story>&viewMode=story` with the harness browser. The two round trips assert behavior in their Storybook play functions, then publish the result in `[data-tags-geometry]`.
+Open `http://localhost:6020/iframe.html?id=chat-sidebar-tags--<story>&viewMode=story` with the harness browser. The interaction stories assert behavior in their Storybook play functions, then publish the result in `[data-tags-geometry]`.
 
 | Story | Actual result |
 |---|---|
-| `drag-assign-round-trip` | PASS: quick click opens the conversation; movement >5px before the hold consumes the click and writes nothing; 180ms hold paints the occupied header; dropping on a header in another section adds/promotes while retaining previous tags and section membership; Undo restores the original bucket. Assignment writes: 2 total (move + Undo). |
-| `move-menu-round-trip` | PASS: Move to tag opens the compact picker; choosing Concept preserves Review/Project and makes Concept primary; focus returns to the remounted source row; Remove all tags (3) clears tags/primary in one write. Assignment writes: 2 total. |
-| `drag-preview` | PASS: armed row mark plus accent-wash/outline header preview; no assignment before drop. |
-| `tag-actions-menu` | All ten actions rendered in order: Archive, Pin, Fork, Copy, Rename, Tags, Remove all tags, Move to tag, Move up, Move down. |
-| `move-picker` | Category list plus Untagged, Cancel, focus outline fully inside the scroll gutter. |
+| `drag-assign-round-trip` | PASS: quick click opens; pre-hold >5px motion consumes its click. An occupied header in Pinned is NOT eligible for a Today source: no highlight, 0 assignment writes, no Undo toast, unchanged Project bucket. |
+| `same-section-drag-round-trip` | PASS: 180ms hold highlights Today → Review, promotes while retaining Project, and Undo restores Project. Two writes total, section membership unchanged. |
+| `same-section-untagged-drop` | PASS: eligible own-section Untagged highlights and clears tags/primary in one write without moving the conversation between sections. |
+| `held-pinned-tag-drop` | PASS: a rendered held pin absent from the canonical catalogue assigns to its own Pinned → Review in one write; no insertion line while the header is targeted. |
+| `pinned-header-preview` | PASS: same-section Pinned header highlights; the held row remains marked; pinned insertion line absent; zero writes before release. |
+| `move-menu-round-trip` | PASS: compact picker preserves assignments, returns focus to the remounted row; Remove all tags (3) clears once; tagged pinned menu has 9 rows, untagged has 8 (archive capability absent), Remove is conditional and Move to tag remains present. |
+| `tag-actions-menu` | All ten actions render in order with archive capability present. |
+| `tag-actions-menu-600` | PASS in an actual nested 600px browsing context, 220px sidebar: 10 rows, max-height 300px, clientHeight 298/scrollHeight 340, all targets ≥32px, End/Home/End focus and scroll through the entire menu. 600px is the app floor, not an unsupported 500px test viewport. |
+| `move-conflict` | PASS: core-shaped `detail.code/detail.result` 409 refreshes Project/revision 2, displays Tags changed elsewhere, one attempted write, no retry/overwrite/Undo. Fixture evidence only, not a real-core 409 claim. |
+| `move-failure` | PASS: a 503 restores Review and displays Tags were not moved. Try again.; one attempted write, no automatic retry. |
+| `drag-preview` / `move-picker` | Eligible same-section header preview and compact category/Untagged picker; no write during preview; focus gutter remains intact. |
 
-**Pointer limitation:** play functions dispatch synthetic DOM pointer events. They prove the component state/optimistic path, not native pointer capture, touchscreen pan arbitration, or OS-delivered blur/cancel. Independent native QA remains required. Core revision support lands separately; the node store/helper tests exercise revision-bearing responses and 409 refusals with the shipped `detail.code` envelope.
+**Pointer limitation:** play functions dispatch synthetic DOM mouse pointer events (`pointerType: mouse`, avoiding Radix’s separate synthetic touch-hold menu timer). They prove the component state/optimistic path, not native pointer capture, touchscreen pan arbitration, or OS-delivered blur/cancel. Independent native QA remains required. Core revision support lands separately; the node store/helper tests exercise revision-bearing responses and 409 refusals with the shipped `detail.code` envelope.
 
 ## Measured geometry and viewed frames
 
-The browser readout measured five 32px rows and five 28px occupied tag subheaders at a 260px sidebar. The move dialog measured 420px wide. Browser computed styles measured the ten-action menu at 296.22 × 342 CSS px, `overflow-y:auto`, `max-height:720px`; sampled menu targets were 32–35px high with `min-height:32px`.
+The browser readout measured five 32px rows and five 28px occupied tag subheaders at a 260px sidebar. The move dialog measured 420px wide. Browser computed styles measured the ten-action menu at 296.22 × 342 CSS px, `overflow-y:auto`, `max-height:360px` at the 720px host viewport (responsive half-viewport cap); sampled menu targets were 32–35px high with `min-height:32px`.
 
-- `before.png`: current-source resting list before interaction, not a historical pre-implementation capture.
-- `armed-preview.png`: held row and occupied header preview.
-- `drag-undo-after.png`: settled move/Undo state and successful round-trip readout.
-- `ten-row-menu.png`: final aligned ten-action menu.
+- `before.png`: initial-head resting list before interaction; retained as the pre-remediation baseline, not a historical pre-implementation capture.
+- `armed-preview.png`: recaptured held Today row and eligible Today → Review header (the former cross-section preview is replaced).
+- `drag-undo-after.png`: recaptured successful same-section move/Undo readout.
+- `ten-row-menu.png`: aligned ten-action menu at the host viewport.
+- `cross-section-cancelled.png`: occupied foreign-section header rejected; zero writes and no re-bucket.
+- `menu-220-floor600.png`: real 600px viewport cap/scroll/keyboard proof, with the last menu row reached.
+- `pinned-header-preview.png`: eligible pinned assignment header without the reorder insertion line.
+- `move-conflict.png` / `move-failure.png`: visible conflict refresh and action-specific rollback guidance. After viewing the first error frames, competing background row flyouts were suppressed while the tag modal owns the overlay plane, then both frames were recaptured.
 - `move-picker.png`: compact picker after fixing an observed clipped focus outline by adding a scroll gutter; recaptured and viewed.
 
 ## Automated checks
 
-- `node --test scripts/sidebar-tag-drag.test.mjs scripts/chat-sidebar-tags.test.mjs scripts/chat-sidebar-row-menu.test.mjs scripts/sidebar-pin-order.test.mjs`: 54 passed, 0 failed, including the old grouped-DOM/flat-order no-op reproduction and fixed bucket-scoped result.
+- `node --test scripts/sidebar-tag-drag.test.mjs scripts/chat-sidebar-tags.test.mjs scripts/chat-sidebar-row-menu.test.mjs scripts/sidebar-pin-order.test.mjs scripts/chat-sidebar-pins.test.mjs`: 80 passed, 0 failed, including the old grouped-DOM/flat-order no-op reproduction and fixed bucket-scoped result.
 - Earlier unchanged-neighbor run also included `scripts/chat-sidebar-pins.test.mjs scripts/desktop-contract.test.mjs`: 122 passed, 0 failed before two additional focused regressions were added. Those neighboring lanes were not duplicated after changes confined to new helpers/stories.
 - `pnpm check-types:main` and `pnpm check-types:renderer`: exit 0.
 - Changed-source Biome check: exit 0 (three pre-existing regex performance warnings in desktop-contract).
 - `pnpm lint:scripts`: four changed script files lint-clean.
-- `pnpm check-i18n`: exit 0; 170 ledger entries fresh and independently audited. Independent Russian delta receipt: `i18n/receipts/9f4c2a71b3d8.json`, actual auditor model `openai/gpt-6.1-sol`.
+- `pnpm check-i18n`: exit 0; 172 ledger entries fresh and independently audited. Fresh Russian delta receipt: `i18n/receipts/b6e2d9f04c17.json` (anthropic/claude-sonnet-5-5), zero findings. ES/FR independent receipts `c3e8a1f72b95.json` / `8d2f6a4c91e7.json` are clean-with-findings; minor million-count wording, terminology, quote/spacing consistency accepted rather than churning translations. Baseline translator metadata is retained by the assembler; receipt/ledger audit notes identify coder/openai/gpt-6.1-sol as this delta’s translator. RU exact `=1` singular was fixed after the changes-requested `5b7d1c9e2a46.json` audit, then independently re-audited; 21/101 use the plural action. The unreferenced duplicate of the original Russian receipt was removed.
 - `git diff --check`: exit 0.
-- `node scripts/evidence-fold.mjs --no-amend` mechanically re-derived outside-set frame count 1061 → 1066 for these five screenshots; `node --test scripts/evidence-manifest.test.mjs`: 52 passed, 0 failed, 1 skipped (citation ancestry unavailable in the shallow clone).
+- `node scripts/evidence-fold.mjs --no-amend` mechanically re-derived outside-set frame counts for the ten retained/recaptured/new screenshots; `node --test scripts/evidence-manifest.test.mjs`: 52 passed, 0 failed, 1 skipped (citation ancestry unavailable in the shallow clone).
 
 Full desktop automated coverage is left to CI rather than duplicating the full suite locally. No version, release, mobile, core, or frozen design-plan changes are included.
+
+## Rebase/convergence provenance
+
+`rebase-provenance.json` records the original head, current-base replay, `git range-diff` equality (excluding the mechanically rederived manifest), and byte-identical +/- line multisets. Eighteen source/script blobs were byte-identical before remediation; generated keys retained exactly the upstream-only delta. The only rebase conflict was `unjudgedFrames`, resolved by preserving upstream evidence and mechanically recounting actual files. This is compatibility evidence for the replay, not a substitute for convergence review of the remediation/new base.
