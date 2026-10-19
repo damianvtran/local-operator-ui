@@ -1,0 +1,98 @@
+scanned 30 files; 69 colours, 6 font sizes, 15 spacings, 4 radii
+
+## Colours (69)
+  #86b3f2        x30   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+  #2368a8        x30   docs/evidence/loh-11-design/after/chips-acts-light.html:1, docs/evidence/loh-11-design/after/chips-acts-light.html:1
+  #16281d        x30   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+  #fefdfa        x15   docs/evidence/loh-11-design/after/chips-acts-light.html:1, docs/evidence/loh-11-design/after/chips-light.html:1
+  #fcfbf7        x15   docs/evidence/loh-11-design/after/chips-acts-light.html:1, docs/evidence/loh-11-design/after/chips-light.html:1
+  #f7f5ee        x15   docs/evidence/loh-11-design/after/chips-acts-light.html:1, docs/evidence/loh-11-design/after/chips-light.html:1
+  #f7e7e4        x15   docs/evidence/loh-11-design/after/chips-acts-light.html:1, docs/evidence/loh-11-design/after/chips-light.html:1
+  #f6faf8        x15   docs/evidence/loh-11-design/after/chips-acts-light.html:1, docs/evidence/loh-11-design/after/chips-light.html:1
+  #f5ecd9        x15   docs/evidence/loh-11-design/after/chips-acts-light.html:1, docs/evidence/loh-11-design/after/chips-light.html:1
+  #f2ede3        x15   docs/evidence/loh-11-design/after/chips-acts-light.html:1, docs/evidence/loh-11-design/after/chips-light.html:1
+  #f1eee6        x15   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-dark.html:1
+  #f0edf8        x15   docs/evidence/loh-11-design/after/chips-acts-light.html:1, docs/evidence/loh-11-design/after/chips-light.html:1
+  #ef8078        x15   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-dark.html:1
+  #edece7        x15   docs/evidence/loh-11-design/after/chips-acts-light.html:1, docs/evidence/loh-11-design/after/chips-light.html:1
+  #ece6d8        x15   docs/evidence/loh-11-design/after/chips-acts-light.html:1, docs/evidence/loh-11-design/after/chips-light.html:1
+  … 54 more
+
+## Font sizes (6)
+  14px           x2    docs/evidence/loh-11-design/after/view-dark.html:1, docs/evidence/loh-11-design/after/view-light.html:1
+  16px           x30   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-light.html:1
+  10px           x44   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+  18px           x46   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-light.html:1
+  13px           x198  docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+  12px           x338  docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+
+## Spacings (15)
+  26px           x2    docs/evidence/loh-11-design/after/view-dark.html:1, docs/evidence/loh-11-design/after/view-light.html:1
+  40px           x8    docs/evidence/loh-11-design/after/view-dark.html:1, docs/evidence/loh-11-design/after/view-dark.html:1
+  10px           x30   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-light.html:1
+  128px          x30   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-light.html:1
+  1px            x30   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-light.html:1
+  2px            x30   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-light.html:1
+  3px            x30   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-light.html:1
+  64px           x30   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-light.html:1
+  16px           x38   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-light.html:1
+  20px           x46   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-light.html:1
+  24px           x46   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-light.html:1
+  6px            x150  docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+  12px           x174  docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+  4px            x182  docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+  8px            x184  docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+
+## Radii (4)
+  6px            x180  docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+  14px           x46   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-light.html:1
+  10px           x36   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-light.html:1
+  16px           x30   docs/evidence/loh-11-design/after/chips-acts-dark.html:1, docs/evidence/loh-11-design/after/chips-acts-light.html:1
+
+## Findings (19)
+  [advisory] #22201c (x15) and #211e18 (x15) are ΔE 1.8 apart — likely accidental duplicates
+       docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+       docs/evidence/loh-11-design/after/chips-dark.html:1
+  [advisory] #322d22 (x15) and #2e2a21 (x15) are ΔE 2.0 apart — likely accidental duplicates
+       docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+       docs/evidence/loh-11-design/after/chips-dark.html:1
+  [advisory] #322d22 (x15) and #372f24 (x15) are ΔE 2.0 apart — likely accidental duplicates
+       docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+       docs/evidence/loh-11-design/after/chips-dark.html:1
+  [advisory] #403b2c (x15) and #454031 (x15) are ΔE 2.2 apart — likely accidental duplicates
+       docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+       docs/evidence/loh-11-design/after/chips-dark.html:1
+  [advisory] #837c6d (x15) and #857f70 (x15) are ΔE 1.2 apart — likely accidental duplicates
+       docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+       docs/evidence/loh-11-design/after/chips-dark.html:1
+  [advisory] #c2bcaf (x15) and #bdb8ae (x15) are ΔE 2.2 apart — likely accidental duplicates
+       docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+       docs/evidence/loh-11-design/after/chips-dark.html:1
+  [advisory] #e7f1e8 (x15) and #e6f1ea (x15) are ΔE 1.1 apart — likely accidental duplicates
+       docs/evidence/loh-11-design/after/chips-acts-light.html:1
+       docs/evidence/loh-11-design/after/chips-light.html:1
+  [advisory] #ece6d8 (x15) and #ebe7d8 (x15) are ΔE 0.9 apart — likely accidental duplicates
+       docs/evidence/loh-11-design/after/chips-acts-light.html:1
+       docs/evidence/loh-11-design/after/chips-light.html:1
+  [advisory] #f1eee6 (x15) and #f2ede3 (x15) are ΔE 1.3 apart — likely accidental duplicates
+       docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+       docs/evidence/loh-11-design/after/chips-dark.html:1
+  [advisory] #f1eee6 (x15) and #edece7 (x15) are ΔE 1.9 apart — likely accidental duplicates
+       docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+       docs/evidence/loh-11-design/after/chips-dark.html:1
+  [advisory] #fcfbf7 (x15) and #f6faf8 (x15) are ΔE 2.1 apart — likely accidental duplicates
+       docs/evidence/loh-11-design/after/chips-acts-light.html:1
+       docs/evidence/loh-11-design/after/chips-light.html:1
+  [advisory] #fefdfa (x15) and #fcfbf7 (x15) are ΔE 0.9 apart — likely accidental duplicates
+       docs/evidence/loh-11-design/after/chips-acts-light.html:1
+       docs/evidence/loh-11-design/after/chips-light.html:1
+  [advisory] #fefdfa (x15) and #f6faf8 (x15) are ΔE 2.3 apart — likely accidental duplicates
+       docs/evidence/loh-11-design/after/chips-acts-light.html:1
+       docs/evidence/loh-11-design/after/chips-light.html:1
+  [advisory] 10px (x30) is not a multiple of the 4px grid
+       docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+       docs/evidence/loh-11-design/after/chips-acts-light.html:1
+  [advisory] 1px (x30) is not a multiple of the 4px grid
+       docs/evidence/loh-11-design/after/chips-acts-dark.html:1
+       docs/evidence/loh-11-design/after/chips-acts-light.html:1
+  … 4 more

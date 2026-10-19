@@ -815,6 +815,32 @@ export function glassPaintFor(input: {
 		 * alternative: `scripts/derive-glass-floors.mjs`.
 		 */
 		"--lo-glass-a-block-veil": String(GLASS_FLOORS.blockVeil[input.scheme]),
+		/*
+		 * The LANE wash: a well behind veiled blocks cannot be an ink overlay (the
+		 * veil is already the one ink layer under the card's text), so it is a
+		 * palette role at an alpha that TRACKS the slider. The page's own alpha is
+		 * the tracker: as the page approaches its opaque end the lane converges on
+		 * its flat role fill, and as the page clears the lane keeps the same share
+		 * of the ground's translucency. A FIXED lane alpha is what failed review
+		 * round 1 (F2): the page moved `0.66 -> 0.96` with intensity while the wash
+		 * stayed put, and the step fell to ΔE00 0.59 at the opaque end.
+		 *
+		 * The ROLE is derived with the scale (`laneWash[scheme].role`): on dark
+		 * palettes the lift (`surface`) is too close to `canvas` to step at all at
+		 * the opaque end, so the recess (`sunken`) carries it; on light palettes the
+		 * reverse. The contract asserts the pair at every slider position.
+		 */
+		"--lo-glass-a-lane": String(
+			Math.round(raw.canvas * GLASS_FLOORS.laneWash[input.scheme].scale * 100) /
+				100,
+		),
+		/* The palette role that lane alpha is painted in, as a CSS reference: the
+		 * role is scheme-dependent and the stylesheet must not carry a second copy
+		 * of that decision. */
+		"--lo-glass-lane-tone":
+			GLASS_FLOORS.laneWash[input.scheme].role === "sunken"
+				? "var(--lo-sunken)"
+				: "var(--lo-surface)",
 		"--lo-glass-control-mix": String(
 			glassControlMix(input.mechanism, input.material, input.scheme),
 		),

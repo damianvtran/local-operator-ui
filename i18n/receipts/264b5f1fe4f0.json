@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "264b5f1fe4f0",
+  "date": "2026-10-18",
+  "status": "passed",
+  "scope": "Round-2 re-audit of the four-line remediation delta in es/fr ui.chat.tags; the 40 unchanged keys are retained byte-identical to the round-1 bytes (reconstruction-proved), not re-audited.",
+  "head": "53cef1c17824f9ee964f73206f10754326e3c8bd",
+  "previous_head": "470078418a29a6740f8984ef47baede084f8a91c",
+  "namespaces": {
+    "ui.chat.tags": {
+      "status": "passed",
+      "sha256": {
+        "en": "ffb1c6b985fd1ab521a2a5fc49955978d76cabc5671437dc2bc6b31cfa1ada74",
+        "es": "309da946c7c4c2ccc44b4166e4a6950666b9b5f03cc4b752c23b752f47035b3f",
+        "fr": "245a545aab6b75c89f6308f062dd44736ec8c969bf18e895bb773ef16f754d80"
+      },
+      "keys": 42
+    }
+  },
+  "remediation": [
+    {
+      "id": "R1-ES-1",
+      "key": "ui.chat.tags.manage",
+      "from": "Gestionar etiquetas…",
+      "to": "Gestionar…",
+      "status": "FIXED",
+      "commit": "53cef1c17824f9ee964f73206f10754326e3c8bd"
+    },
+    {
+      "id": "R1-FR-1",
+      "key": "ui.chat.tags.manage",
+      "from": "Gérer les étiquettes…",
+      "to": "Gérer…",
+      "status": "FIXED",
+      "commit": "53cef1c17824f9ee964f73206f10754326e3c8bd"
+    },
+    {
+      "id": "R1-ES-2",
+      "key": "ui.chat.tags.mode_hint",
+      "from": "Los grupos de etiquetas usan la agrupación por sección temporal.",
+      "to": "Los grupos de etiquetas usan la sección temporal.",
+      "status": "FIXED",
+      "commit": "53cef1c17824f9ee964f73206f10754326e3c8bd"
+    },
+    {
+      "id": "R1-FR-2",
+      "key": "ui.chat.tags.mode_hint",
+      "from": "Les groupes d’étiquettes utilisent le regroupement par section temporelle.",
+      "to": "Les groupes d’étiquettes utilisent la section temporelle.",
+      "status": "FIXED",
+      "commit": "53cef1c17824f9ee964f73206f10754326e3c8bd"
+    }
+  ],
+  "findings": [],
+  "keys_audited": 42,
+  "locales": [
+    "es",
+    "fr"
+  ],
+  "observations": [
+    {
+      "severity": "INFO",
+      "key": "ui.chat.tags.mode_hint",
+      "note": "Both hints compress EN 'Time section grouping' to 'the time section'. Accepted: the adjacent action is 'Usar la sección temporal' / 'Utiliser la section temporelle', and ui.chat.sidebar_view.time_section establishes exactly those terms. Reads naturally, no calque."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.chat.tags.manage",
+      "note": "Both locales are shorter than EN 'Manage tags…' because the key is shared with the 214 px sidebar row; in that row the adjacent label is Etiquetas/Étiquettes, and in the dialog footer the context is unambiguous. Deliberate, accepted."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.chat.tags.mode_hint",
+      "note": "The fr elision is d’étiquettes with U+2019 (not the straight apostrophe in the task text); it matches the file's other elisions and French typography."
+    }
+  ],
+  "evidence": {
+    "delta": "Reconstruction proof: applying exactly the four recorded replacements to the round-1 bytes yields byte-identical HEAD files. es f8cdb00047f294bf44eddbadd31dba906a41a1300901e2f85ee4a5b83eda09c1 -> 309da946…; fr 816f6cdb3faed36b1b03a40e0e7c59c9d66a8f565efd4ee1fdfe6e64ee7f25e4 -> 245a545a…; 40/40 untouched keys byte-identical; no key added or removed.",
+    "icu": "126/126 messages parse (@formatjs/icu-messageformat-parser); argument sets (AST, type 1) identical to EN for all 42 keys in both locales.",
+    "plural": "delete_description plural unchanged (count, one/many/other, offset 0); es/fr Intl.PluralRules = one,many,other vs en one,other, so the many arm is valid.",
+    "placeholders": "No placeholder set differs from English; delete_title/move_up/move_down/updated_grouped/apply_deletion_first checked by AST.",
+    "fit_es": "214 px row (240 - 2 border - 16 p-2 - 8 px-1): natural width 176.44 px, was 233.19 px; 37.56 px slack. Label Etiquetas 52.90 px + manage Gestionar… 63.54 px + switch 36 px + gaps 16 px + button padding 8 px.",
+    "fit_fr": "214 px row: natural width 157.94 px, was 238.74 px; 56.06 px slack. Label Étiquettes 57.41 px + manage Gérer… 40.53 px + switch 36 px + gaps 16 px + button padding 8 px. Measured with SF Pro at 12 px (CoreText advance == NSString.size to 0.000 px).",
+    "validators": "generate.mjs --check byte-identical; check-strings ok; context-parity ok; locale-parity 37/37; typed-keys 6/6; ledger-check FAILS on HEAD pending assembly (expected pre-assembly; proved green after assembly in a scratch copy: 172 entries, 0 failures)."
+  },
+  "gate": {
+    "check_i18n": "ledger-check exits 1 on HEAD: es/ui.chat.tags and fr/ui.chat.tags ship without ledger entries. This receipt is the input that closes it; do not merge until ledger-assemble has written both rows and pnpm check-i18n exits 0.",
+    "assemble": "node scripts/i18n/ledger-assemble.mjs --locale <es|fr> --file src/i18n/catalogues/<es|fr>/ui.chat.tags.json --auditor-instance 264b5f1fe4f0 --auditor-model deepseek/deepseek-flash --result clean --receipt <path to this receipt> --translator-agent i18n-translator --translator-model <translator model> --scope \"Round-2 re-audit: four-line remediation delta; 40 unchanged keys byte-identical\" --date 2026-10-18"
+  }
+}

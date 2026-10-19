@@ -1,0 +1,16 @@
+{
+	"ui.browser.chrome.approvals": "Aprobaciones y acceso a sitios",
+	"ui.browser.chrome.error_title": "No se pudo cargar la página",
+	"ui.browser.chrome.move_left": "Mover pestaña a la izquierda",
+	"ui.browser.chrome.move_right": "Mover pestaña a la derecha",
+	"ui.browser.chrome.duplicate": "Duplicar pestaña",
+	"ui.browser.chrome.reload": "Recargar pestaña",
+	"ui.browser.chrome.scroll_left": "Desplazar pestañas a la izquierda",
+	"ui.browser.chrome.scroll_right": "Desplazar pestañas a la derecha",
+	"ui.browser.chrome.accessible_tab": "{title}{loading, select, yes{, cargando} other{}}{failed, select, yes{, no se pudo cargar} other{}}{owner, select, agent{, del agente} shared{, compartida con un agente} other{}}{waiting, select, none{} other{, solicitud {waiting} en espera}}{restored, select, yes{, restaurada} other{}}",
+	"ui.browser.chrome.invalid_order": "Orden de pestañas del navegador no válido.",
+	"ui.browser.chrome.duplicate_refused": "Solo se pueden duplicar páginas web.",
+	"ui.browser.chrome.invalid_action": "Acción de pestaña del navegador no válida.",
+	"ui.browser.chrome.tab_gone": "Esa pestaña del navegador ya no está abierta.",
+	"ui.browser.chrome.operation_failed": "{action, select, duplicate{No se pudo duplicar la pestaña. Puedes reintentarlo desde su menú.} other{No se pudo recargar la pestaña. Puedes reintentarlo desde su menú.}}"
+}

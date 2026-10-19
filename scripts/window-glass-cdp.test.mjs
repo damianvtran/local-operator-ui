@@ -124,6 +124,10 @@ const AUDIT = `(() => {
       if (y < 34 || y >= innerHeight || x >= innerWidth) continue;
       let keep = 1;
       for (const e of document.elementsFromPoint(x, y)) {
+        // A LANE is a declared second layer (a surface wash) inside the canvas
+        // ground, measured by the board test below; counting it here would read the
+        // well as the page compounding, which is the model it replaces.
+        if (e.matches?.('[data-glass-lane]')) continue;
         // Only grounds that span the region in BOTH directions are layers of ITS
         // ground (a column's list pane is half its height, a banner or a composer
         // is a fraction of it); narrower or shorter boxes are content, judged by the
@@ -142,15 +146,17 @@ const AUDIT = `(() => {
       const b = e.getBoundingClientRect();
       if (b.width * b.height < ${MAX_DELIBERATE_OPAQUE_AREA}) continue;
       if (b.bottom < 0 || b.top > innerHeight) continue;
-      /* STICKY HEADERS STAY SOLID BY DECISION (docs/branding.md): a translucent
-       * sticky shows rows through it, which is text over text. The flag is
-       * recorded so the wide-slab filter can exempt exactly those, not every
-       * sunken band. */
+      /* STICKY HEADERS ARE BANDS ON GLASS (docs/branding.md, round 3): the field
+       * overlay, because a solid plate in a translucent column is the seam the
+       * operator reported. The board's TEAM band header is the one opaque sticky
+       * left, and it is a deliberate scroll mask; the flag records exactly that,
+       * not every sunken band. Alert washes are the other documented opaque
+       * marks ("banners, unchanged" in the branding table). */
       /* The board's column and band headers are the DOCUMENTED solid grounds on
        * the Projects route (scroll-under rule; they are also the drag handles).
        * Their position is carried by the row they pin in, so position:sticky
        * alone cannot recognize them - the data attributes identify them. */
-      slabs.push({ tag: e.tagName.toLowerCase(), w: Math.round(b.width), h: Math.round(b.height), sticky: getComputedStyle(e).position === "sticky", deliberate: e.matches("[data-board-column], [data-board-team]"), cls: String(e.className).split(/\\s+/).filter((c) => /^bg-/.test(c)).join(" ") });
+      slabs.push({ tag: e.tagName.toLowerCase(), w: Math.round(b.width), h: Math.round(b.height), sticky: getComputedStyle(e).position === "sticky", deliberate: e.matches("[data-board-column], [data-board-team], [class~='bg-warning-wash'], [class~='bg-danger-wash'], [class~='bg-success-wash'], [class~='bg-info-wash']"), cls: String(e.className).split(/\\s+/).filter((c) => /^bg-/.test(c)).join(" ") });
     }
     const own = alphaOf(getComputedStyle(el).backgroundColor);
     const bg = getComputedStyle(el).backgroundColor;
@@ -903,7 +909,7 @@ for (const [themeName, label] of [
 	);
 
 	test(
-		`${label}: a project card is veiled and the board's well is clear`,
+		`${label}: a project card is veiled and the board's lane is a surface wash`,
 		{ skip, timeout: 180_000 },
 		async () => {
 			await loadTheme(themeName);
@@ -967,14 +973,16 @@ for (const [themeName, label] of [
 			const read = await cdp.ev(`(() => {
         const alpha = (c) => { if (!c || c === "transparent") return 0; const m = c.match(/^rgba?\\(([^)]+)\\)$/); if (m) { const p = m[1].split(/[,\\/]\\s*|\\s+/).filter(Boolean); return p.length > 3 ? Number(p[3]) : 1; } const s = c.match(/^color\\(srgb ([^)]+)\\)$/); if (s) { const p = s[1].split("/"); return p.length > 1 ? Number(p[1]) : 1; } return 1; };
         const card = document.querySelector("main [data-glass-block]");
-        const well = document.querySelector('main [data-glass-well="clear"]');
+        const lane = document.querySelector("main [data-glass-lane]");
         const cell = document.querySelector("[data-board-cell]");
         const veil = getComputedStyle(document.documentElement).getPropertyValue("--lo-glass-a-block-veil").trim();
+        const wash = getComputedStyle(document.documentElement).getPropertyValue("--lo-glass-a-lane").trim();
         return {
           hasBoard: !!cell,
           card: card ? alpha(getComputedStyle(card).backgroundColor) : null,
-          well: well ? alpha(getComputedStyle(well).backgroundColor) : null,
+          lane: lane ? alpha(getComputedStyle(lane).backgroundColor) : null,
           veil: Number(veil),
+          wash: Number(wash),
         };
       })()`);
 			/*
@@ -988,7 +996,7 @@ for (const [themeName, label] of [
 			 */
 			if (!read.hasBoard) {
 				console.log(
-					`[glass-cdp] ${label}/#/projects: no project data on this profile - cards and the clear well were not measured`,
+					`[glass-cdp] ${label}/#/projects: no project data on this profile - cards and the lane were not measured`,
 				);
 				return;
 			}
@@ -1001,12 +1009,12 @@ for (const [themeName, label] of [
 				`${label}: the project card paints ${read.card}, not the block veil ${read.veil}`,
 			);
 			assert.ok(
-				read.well !== null,
-				`${label}: a rendered board has no clear well marker`,
+				read.lane !== null,
+				`${label}: a rendered board has no lane marker`,
 			);
 			assert.ok(
-				read.well <= 0.006,
-				`${label}: the board well paints ${read.well} over the canvas glass - a well never sits under a veiled card`,
+				Math.abs(read.lane - read.wash) <= 0.006,
+				`${label}: the board lane paints ${read.lane}, not the derived surface wash ${read.wash} (an ink well under a veil broke AA at 4.03:1)`,
 			);
 		},
 	);

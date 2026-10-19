@@ -2507,8 +2507,8 @@ async function main() {
 	);
 	await rpcOk(state, "close", { tab: moreTab.tab });
 
-	// #851's top-document refusal, byte-stable (QA round 1, Q-2): a top-level
-	// element that holds no text still gets the original sentence, with the hop
+	// The top-document refusal, byte-stable: a top-level element that holds no
+	// text gets the shipped sentence (the one `input.ts` composes), with the hop
 	// grammar appended as an extra clause rather than replacing it.
 	const plainTab = await rpcOk(state, "open", {
 		url: `${siteOrigin}/iframe-type`,
@@ -2520,11 +2520,11 @@ async function main() {
 		text: "nope",
 	});
 	check(
-		"type at a non-editable top-level element keeps #851's sentence, with the >>> hint appended",
+		"type at a non-editable top-level element names the cause, with the >>> hint appended",
 		headingTyped.json?.ok === false &&
 			headingTyped.json.error?.code === "element_not_found" &&
 			headingTyped.json.error?.message?.startsWith(
-				"h1 is not an editable field (no value setter, not contenteditable), so nothing was typed; if the field lives inside an iframe, it cannot be targeted from the top document",
+				"h1 is not an editable field, so nothing was typed; if the field lives inside an iframe, it cannot be targeted from the top document",
 			) &&
 			/>>>/.test(headingTyped.json.error?.message ?? ""),
 		`type {selector: "h1"} -> ${headingTyped.text}`,

@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+import { ABSENT_LOCALE, withAbsentLocale } from "./absent-locale.mjs";
+
 // Fixture-only activation misses a forgotten locale import. Bundle the actual
 // generated module so these assertions fail if Spanish ships as English again.
 const bundle = await build({
@@ -68,17 +70,40 @@ test("counts render ungrouped (the #1131 fidelity rule); uncarried namespaces us
 		}),
 		"Paso 1234567 de 2000000",
 	);
-	// Canvas is intentionally uncarried: source selection must still select the
-	// English source, including its own group-off rule.
-	const fallback = messages.t("ui.canvas.files.count", { count: 1234567 });
-	assert.equal(fallback, "1234567 files");
-	assert.equal(
-		fallback,
-		messages.translate("ui.canvas.files.count", { count: 1234567 }, "en"),
-	);
-	console.log(
-		`es counts ungrouped: ${formatted}; English fallback ui.canvas.files.count: ${fallback}`,
-	);
+	// Canvas fallback must still select the English source, including its own
+	// group-off rule. Probe it on the shared synthetic tag: `es` now carries
+	// ui.canvas, so pinning the fallback arm to the shipped locale would silently
+	// stop testing fallback at all (and assert the Spanish word instead of the
+	// English one).
+	// restoreLocale() leaves the (empty) fixture registered under the probe tag:
+	// the runtime has no per-tag unregister, and it carries no keys, so it cannot
+	// answer a lookup.
+	const restoreLocale = withAbsentLocale({
+		currentLocale: locale.currentLocale,
+		setLocale: locale.setLocale,
+		registerCatalogue: messages.registerCatalogue,
+	});
+	try {
+		const fallback = messages.t("ui.canvas.files.count", { count: 1234567 });
+		assert.equal(fallback, "1234567 files");
+		assert.equal(
+			fallback,
+			messages.translate(
+				"ui.canvas.files.count",
+				{ count: 1234567 },
+				ABSENT_LOCALE,
+			),
+		);
+		assert.equal(
+			fallback,
+			messages.translate("ui.canvas.files.count", { count: 1234567 }, "en"),
+		);
+		console.log(
+			`es counts ungrouped: ${formatted}; English fallback ui.canvas.files.count: ${fallback}`,
+		);
+	} finally {
+		restoreLocale();
+	}
 });
 const DOUBLED_SPACE = / {2,}/;
 const UNRENDERED_PLACEHOLDER = /\{/;

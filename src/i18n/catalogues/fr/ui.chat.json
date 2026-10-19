@@ -1,0 +1,10 @@
+{
+	"ui.chat.usage.continue": "Quota inclus utilisé ; les crédits prennent le relais.",
+	"ui.chat.usage.family_caps": "Les plafonds de la famille de modèles restent applicables.",
+	"ui.chat.usage.blocked": "Dépenses indisponibles",
+	"ui.chat.usage.eligibility_unknown": "Éligibilité aux dépenses inconnue",
+	"ui.chat.usage.unlimited": "Allocation payante illimitée",
+	"ui.chat.skill_invocation.instructions_label": "Instructions de compétence envoyées avec ce message",
+	"ui.chat.skill_invocation.trigger_label": "Instructions de la compétence {token}",
+	"ui.chat.highlights.file_resolution_failed": "Impossible de résoudre ce fichier dans le dossier de travail de la session. Utilisez Copier le chemin du fichier pour comparer son emplacement avec l’espace de travail de cette session, puis réessayez."
+}

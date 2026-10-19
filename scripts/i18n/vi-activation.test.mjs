@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+import { withAbsentLocale } from "./absent-locale.mjs";
+
 // A fixture-only pass misses a forgotten generated import. Exercise the actual
 // bundled catalogues so locale publication cannot silently remain English.
 const bundle = await build({
@@ -71,16 +73,28 @@ test("counts render ungrouped (the #1131 fidelity rule); uncarried namespaces us
 		"Bước 1234567 trên 2000000",
 	);
 	// Canvas is not carried: the English source applies, including its own
-	// group-off rule.
-	const fallback = messages.t("ui.canvas.files.count", { count: 1234567 });
-	assert.equal(fallback, "1234567 files");
-	assert.equal(
-		fallback,
-		messages.translate("ui.canvas.files.count", { count: 1234567 }, "en"),
-	);
-	console.log(
-		`vi counts ungrouped: ${formatted}; English fallback ui.canvas.files.count: ${fallback}`,
-	);
+	// group-off rule. Assert that on the shared synthetic tag, never on `vi` -
+	// a real locale expires the assertion the day its tranche ships ui.canvas.
+	// restoreLocale() switches the locale back; the empty fixture stays
+	// registered under the tag and carries no keys.
+	const restoreLocale = withAbsentLocale({
+		currentLocale: locale.currentLocale,
+		setLocale: locale.setLocale,
+		registerCatalogue: messages.registerCatalogue,
+	});
+	try {
+		const fallback = messages.t("ui.canvas.files.count", { count: 1234567 });
+		assert.equal(fallback, "1234567 files");
+		assert.equal(
+			fallback,
+			messages.translate("ui.canvas.files.count", { count: 1234567 }, "en"),
+		);
+		console.log(
+			`vi counts ungrouped: ${formatted}; English fallback ui.canvas.files.count: ${fallback}`,
+		);
+	} finally {
+		restoreLocale();
+	}
 });
 const DOUBLED_SPACE = / {2,}/;
 const UNRENDERED_PLACEHOLDER = /\{/;

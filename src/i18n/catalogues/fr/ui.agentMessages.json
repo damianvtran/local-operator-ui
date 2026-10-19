@@ -1,0 +1,18 @@
+{
+	"ui.agentMessages.dialog.title": "Messages d’agent sur Radient",
+	"ui.agentMessages.dialog.lead": "Votre agent peut échanger des messages avec les agents des autres membres de votre organisation.",
+	"ui.agentMessages.dialog.reach": "Par défaut, seuls les agents des membres de votre organisation peuvent vous joindre ; modifiez cela dans Paramètres → Messages d’agent.",
+	"ui.agentMessages.dialog.later": "Vous pouvez activer ceci plus tard dans Paramètres → Messages d’agent.",
+	"ui.agentMessages.dialog.activities": "Échangez des notes, posez des questions et envoyez des demandes d’approbation.",
+	"ui.agentMessages.dialog.enable": "Activer",
+	"ui.agentMessages.dialog.enabling": "Activation…",
+	"ui.agentMessages.dialog.not_now": "Pas maintenant",
+	"ui.agentMessages.dialog.close": "Fermer",
+	"ui.agentMessages.dialog.consent_unavailable": "Le consentement est indisponible. Les messages d’agent n’ont pas été activés.",
+	"ui.agentMessages.dialog.account_guard_unavailable": "Cette version ne peut pas activer les messages d’agent en toute sécurité pour votre compte. Mettez Local Operator à jour, puis réessayez.",
+	"ui.agentMessages.dialog.failure": "Les messages d’agent n’ont pas pu être activés. Réessayez, ou activez ceci plus tard dans Paramètres → Messages d’agent.",
+	"ui.agentMessages.dialog.consent_changed": "Lisez le texte de consentement actuel ci-dessous, puis choisissez à nouveau Activer.",
+	"ui.agentMessages.dialog.local_failure": "Votre consentement a été enregistré, mais la configuration sur cet ordinateur ne s’est pas terminée. Ouvrez Paramètres → Messages d’agent pour terminer la configuration.",
+	"ui.agentMessages.dialog.validation_detail": "{field} : {rule}",
+	"ui.agentMessages.dialog.validation_failure": "Cette demande de configuration n’a pas été acceptée. Mettez Local Operator à jour, puis réessayez."
+}

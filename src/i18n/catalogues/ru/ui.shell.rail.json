@@ -1,0 +1,22 @@
+{
+	"ui.shell.rail.ask.aria": "Запросы{chord}, {subject}",
+	"ui.shell.rail.ask.aria_count": "Запросы{chord}, {subject}, {count, plural, one {ожидает {countText}} few {ожидают {countText}} many {ожидают {countText}} other {ожидают {countText}}}",
+	"ui.shell.rail.browser.aria": "Браузер{chord}",
+	"ui.shell.rail.browser.aria_count": "Браузер{chord}, {count, plural, one {ожидает {countText}} few {ожидают {countText}} many {ожидают {countText}} other {ожидают {countText}}}",
+	"ui.shell.rail.browser.tooltip": "{state, select, open {Закрыть браузер{chord}} other {Открыть браузер{chord}}}",
+	"ui.shell.rail.browser.tooltip_count": "{state, select, open {Закрыть браузер{chord}} other {Открыть браузер{chord}}} — {count, plural, one {ожидает {countText} одобрение} few {ожидают {countText} одобрения} many {ожидают {countText} одобрений} other {ожидают {countText} одобрения}}",
+	"ui.shell.rail.canvas.aria": "Холст{chord}",
+	"ui.shell.rail.canvas.aria_count": "Холст{chord}, {count, plural, one {{countText} файл} few {{countText} файла} many {{countText} файлов} other {{countText} файла}}",
+	"ui.shell.rail.canvas.tooltip": "{state, select, open {Закрыть холст{chord}} other {Открыть холст{chord}}}",
+	"ui.shell.rail.canvas.tooltip_count": "{state, select, open {Закрыть холст{chord}} other {Открыть холст{chord}}} — {count, plural, one {{countText} файл} few {{countText} файла} many {{countText} файлов} other {{countText} файла}}",
+	"ui.shell.rail.code.aria": "Ревью кода{chord}{mark}",
+	"ui.shell.rail.code.aria_details": "Ревью кода{chord}, {details}{mark}",
+	"ui.shell.rail.code.mentioned": "{count, plural, one {{countText} упоминание} few {{countText} упоминания} many {{countText} упоминаний} other {{countText} упоминания}}",
+	"ui.shell.rail.code.opened": "{count, plural, one {{countText} открыт} few {{countText} открыто} many {{countText} открыто} other {{countText} открыто}}",
+	"ui.shell.rail.code.tooltip": "{state, select, open {Закрыть ревью кода{chord}} other {Открыть ревью кода{chord}}}{mark}",
+	"ui.shell.rail.code.tooltip_details": "{state, select, open {Закрыть ревью кода{chord}} other {Открыть ревью кода{chord}}} — {details}{mark}",
+	"ui.shell.rail.console.aria": "Консоль{chord}",
+	"ui.shell.rail.console.aria_count": "Консоль{chord}, {count, plural, one {завершено с прошлого просмотра: {countText}} few {завершено с прошлого просмотра: {countText}} many {завершено с прошлого просмотра: {countText}} other {завершено с прошлого просмотра: {countText}}}",
+	"ui.shell.rail.console.tooltip": "{state, select, open {Закрыть консоль{chord}} other {Открыть консоль{chord}}}",
+	"ui.shell.rail.console.tooltip_count": "{state, select, open {Закрыть консоль{chord}} other {Открыть консоль{chord}}} — {count, plural, one {завершено с прошлого просмотра: {countText}} few {завершено с прошлого просмотра: {countText}} many {завершено с прошлого просмотра: {countText}} other {завершено с прошлого просмотра: {countText}}}"
+}

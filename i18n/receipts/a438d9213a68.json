@@ -1,0 +1,193 @@
+{
+	"schema": 1,
+	"instance": "a438d9213a68",
+	"session": "570717654f4a",
+	"agent": "i18n-auditor",
+	"model": "openai/gpt-6.1-sol",
+	"date": "2026-10-18",
+	"created_at": "2026-10-18T18:48:56.461379+00:00",
+	"fallback": "Actual running model independently confirmed through sessions.info: openai/gpt-6.1-sol. Original pass fell back from Anthropic on quota; this is the same auditor, not a second independent auditor.",
+	"pr": "https://github.com/damianvtran/local-operator-ui/pull/1180",
+	"head": "f82e9ccffea997f040cab6874aaea45019d11219",
+	"base_audit_head": "1516984ec99ae09e635b0cb58c4f2e747de1483c",
+	"scope": [
+		"ui.browser",
+		"ui.browser.chrome",
+		"ui.mesh"
+	],
+	"audit_mode": "Delta read of all five changed mesh keys; retained full line-by-line 461-key native audit for byte-identical remainder.",
+	"previous_receipt": {
+		"path": "i18n/receipts/0f4de21a21ab.json",
+		"sha256": "aa7d8e16f869abd03ff34e868fc491e83a68cb0c591441cf623a2c9582a478fe"
+	},
+	"verdict": "PASS with non-blocking findings",
+	"remediation": {
+		"B-F1": "fixed at f82e9ccffea997f040cab6874aaea45019d11219",
+		"B-F2": "fixed at f82e9ccffea997f040cab6874aaea45019d11219",
+		"B-F3": "fixed at f82e9ccffea997f040cab6874aaea45019d11219",
+		"B-F4": "fixed at f82e9ccffea997f040cab6874aaea45019d11219",
+		"B-N2": "fixed at f82e9ccffea997f040cab6874aaea45019d11219"
+	},
+	"checks": {
+		"native": "All five changed French mesh messages read completely against English. Security rekeying now idiomatic; retry deadline correctly a time period; show-all word order fixed; revoked many adjective fixed; leading NNBSP correct. Intentional trailing et and space retained.",
+		"byte_compatibility": "GitHub contents API at exact new head: both browser/chrome EN+FR byte-identical to prior audit; mesh EN and all three context sidecars byte-identical; exactly five mesh FR value changes, no added/deleted keys.",
+		"icu": "461 valid messages, 40 complete French plural nodes, zero branch/global/type/select/offset/style drift; both specific repairs still correct in one/many/other.",
+		"formatting": "Both repaired messages formatted at counts 0,1,2,1234,1000000; no lost counts/grouping. Retirement concatenation now PC le détient désormais U+202F ; ...; confirmed preceding codepoint 202f.",
+		"visual_limits": "No browser/rendered-frame validation. Retained static width-risk notes are not measured overflow failures or live layout certification.",
+		"repository_writes": "None"
+	},
+	"findings": [
+		{
+			"id": "B-F5",
+			"severity": "MINOR",
+			"gating": false,
+			"namespace": "ui.browser",
+			"keys": [
+				"ui.browser.webauthn_chooser.passkey_anonymous_many"
+			],
+			"actual": "Votre Mac en détient {count, plural, ... clés d’accès ...} pour ce site",
+			"expected": "Votre Mac détient {count, plural, ... clés d’accès ...} pour ce site",
+			"reason": "Redundant « en » plus a fully stated quantified noun. Remove « en » while retaining all ICU arms and the rest of the account-selection explanation."
+		},
+		{
+			"id": "B-N1",
+			"severity": "NIT",
+			"gating": false,
+			"namespace": "ui.browser",
+			"keys": [
+				"ui.browser.browser_tab_strip.all_tabs_unshown",
+				"ui.browser.browser_tab_strip.all_tabs_unshown_accessible"
+			],
+			"actual": "many {{count, number, ::group-off} de non affichés}",
+			"expected": "many {{count, number, ::group-off} non affichés}",
+			"reason": "No « de » before this adjective-only ellipsis. Rare many-category catalogue output, not an alleged reachable million-tab UI state."
+		},
+		{
+			"id": "B-N3",
+			"severity": "NIT",
+			"gating": false,
+			"namespace": "ui.browser",
+			"keys": [
+				"ui.browser.browser_tab_strip.actions_for",
+				"ui.browser.browser_tab_strip.watch",
+				"ui.browser.browser_tab_strip.let_an_agent_use",
+				"ui.browser.browser_tab_strip.stop_letting_the_agent_use",
+				"ui.browser.browser_tab_strip.close"
+			],
+			"actual": "ASCII opening quote in each action fragment",
+			"expected": "Paired « … » if the enclosing composed accessible label is localized as a whole",
+			"reason": "Source-shaped inline fragments currently preserve straight quotes. Do not change only the opener: coordinate the matching closer at the consumer. Not broken markup."
+		},
+		{
+			"id": "B-N4",
+			"severity": "NIT",
+			"gating": false,
+			"namespace": "ui.browser.chrome",
+			"keys": [
+				"ui.browser.chrome.move_left",
+				"ui.browser.chrome.move_right",
+				"ui.browser.chrome.scroll_left",
+				"ui.browser.chrome.scroll_right"
+			],
+			"actual": "32/32/40/40 Unicode characters",
+			"expected": "Aim for the sidecar’s 28-character menu-label target; e.g. « Déplacer l’onglet à gauche » / « Déplacer l’onglet à droite ». Scroll controls are accessible/tooltip labels, so do not infer clipping from text length.",
+			"reason": "Static overflow risk only. No rendered frame/geometry captured; not a demonstrated overflow failure."
+		}
+	],
+	"translator_receipt": {
+		"path": "i18n/receipts/ui-fr-batch.json",
+		"sha256": "542c8ce1c2f302860cc4adfffbe9e38742cec945287779b23b9efe6f51df66ed"
+	},
+	"evidence_files": [
+		"chunk-b-delta-input.json",
+		"chunk-b-delta-probe-output.txt"
+	],
+	"locale": "fr",
+	"base": "1516984ec99ae09e635b0cb58c4f2e747de1483c",
+	"schema_addendum": {
+		"kind": "receipt shape only; no catalogue/native-audit change",
+		"supersedes_receipt_instance": "48b2cc302f77",
+		"supersedes_receipt_sha256": "2151e396558169514972077945ba8248d27ed538b3b87c916fce80bc9edf76d7"
+	},
+	"namespaces": {
+		"ui.browser": {
+			"keys": 224,
+			"en_sha256": "4bdd6666a1c4358ea12dcc82229823659f33e96f225dcca57e0630a94e3e0641",
+			"fr_sha256": "5d5b6edc412918897ac0643c14bc2aafbe616a570b530541f87d182968d59795",
+			"status": "passed",
+			"findings": [
+				{
+					"id": "B-F5",
+					"severity": "MINOR",
+					"gating": false,
+					"namespace": "ui.browser",
+					"keys": [
+						"ui.browser.webauthn_chooser.passkey_anonymous_many"
+					],
+					"actual": "Votre Mac en détient {count, plural, ... clés d’accès ...} pour ce site",
+					"expected": "Votre Mac détient {count, plural, ... clés d’accès ...} pour ce site",
+					"reason": "Redundant « en » plus a fully stated quantified noun. Remove « en » while retaining all ICU arms and the rest of the account-selection explanation."
+				},
+				{
+					"id": "B-N1",
+					"severity": "NIT",
+					"gating": false,
+					"namespace": "ui.browser",
+					"keys": [
+						"ui.browser.browser_tab_strip.all_tabs_unshown",
+						"ui.browser.browser_tab_strip.all_tabs_unshown_accessible"
+					],
+					"actual": "many {{count, number, ::group-off} de non affichés}",
+					"expected": "many {{count, number, ::group-off} non affichés}",
+					"reason": "No « de » before this adjective-only ellipsis. Rare many-category catalogue output, not an alleged reachable million-tab UI state."
+				},
+				{
+					"id": "B-N3",
+					"severity": "NIT",
+					"gating": false,
+					"namespace": "ui.browser",
+					"keys": [
+						"ui.browser.browser_tab_strip.actions_for",
+						"ui.browser.browser_tab_strip.watch",
+						"ui.browser.browser_tab_strip.let_an_agent_use",
+						"ui.browser.browser_tab_strip.stop_letting_the_agent_use",
+						"ui.browser.browser_tab_strip.close"
+					],
+					"actual": "ASCII opening quote in each action fragment",
+					"expected": "Paired « … » if the enclosing composed accessible label is localized as a whole",
+					"reason": "Source-shaped inline fragments currently preserve straight quotes. Do not change only the opener: coordinate the matching closer at the consumer. Not broken markup."
+				}
+			]
+		},
+		"ui.browser.chrome": {
+			"keys": 14,
+			"en_sha256": "73793572e5e36b8bbc8df6c1f27fb98083634b3b9e3cbd05ede27da4813c656c",
+			"fr_sha256": "bfe5db5900dd28dac60993c23e71c4bcbfd3bbd21e81cf3fe8158d931f0d6d43",
+			"status": "passed",
+			"findings": [
+				{
+					"id": "B-N4",
+					"severity": "NIT",
+					"gating": false,
+					"namespace": "ui.browser.chrome",
+					"keys": [
+						"ui.browser.chrome.move_left",
+						"ui.browser.chrome.move_right",
+						"ui.browser.chrome.scroll_left",
+						"ui.browser.chrome.scroll_right"
+					],
+					"actual": "32/32/40/40 Unicode characters",
+					"expected": "Aim for the sidecar’s 28-character menu-label target; e.g. « Déplacer l’onglet à gauche » / « Déplacer l’onglet à droite ». Scroll controls are accessible/tooltip labels, so do not infer clipping from text length.",
+					"reason": "Static overflow risk only. No rendered frame/geometry captured; not a demonstrated overflow failure."
+				}
+			]
+		},
+		"ui.mesh": {
+			"keys": 223,
+			"en_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+			"fr_sha256": "ee294ca42484fa4aebe7f50abdbf31676153a49f981ddd3c36f50b711f0f2740",
+			"status": "passed",
+			"findings": []
+		}
+	}
+}

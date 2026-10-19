@@ -1,0 +1,492 @@
+{
+	"schema": 1,
+	"locale": "ru",
+	"date": "2026-10-18",
+	"status": "passed",
+	"verdict": "PASS-WITH-NOTES",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"instance": "4c5ca9d6810d",
+		"model": "openai/gpt-6.1-sol",
+		"date": "2026-10-18"
+	},
+	"model_provenance": {
+		"initial_model": "anthropic/claude-sonnet-5-5",
+		"actual_audit_model": "openai/gpt-6.1-sol",
+		"automatic_fallback": "Anthropic quota exhausted before substantive catalogue audit; all semantic audit and checks performed using openai/gpt-6.1-sol. No further fallback observed."
+	},
+	"independence": "Independent auditor; did not translate, edit any repository file, push, merge or release. Translator receipt names i18n-translator/deepseek/deepseek-flash.",
+	"scope": {
+		"repository": "damianvtran/local-operator-ui",
+		"pr": 1175,
+		"base": "76dda0304bfa4b54ebd42cccd32bbd05841ca4a3",
+		"head": "97d767a326c56a3fe386a35edeb39bd73a6568fe",
+		"keys": 343,
+		"namespaces": 16
+	},
+	"translator_receipt": {
+		"path": "i18n/receipts/ui-ru-batch.json",
+		"held_absolute_path": "/Users/damian/local-operator-ui/.worktrees/i18n-ui-ru/i18n/receipts/ui-ru-batch.json",
+		"sha256": "bfb725f6f76dbccc8ecdb5b585ccc43f60b6cdf6415099a0ed80291d0e94fc2f",
+		"agent": "i18n-translator",
+		"model": "deepseek/deepseek-flash",
+		"date": "2026-10-18"
+	},
+	"required_sources": {
+		"ui_howto": {
+			"path": "docs/I18N.md",
+			"revision": "97d767a326c56a3fe386a35edeb39bd73a6568fe",
+			"sha256": "f6699c1015a16cbf782bbd008a28c50edd63ade3e98f84be2d41dec6b14b95db"
+		},
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+		},
+		"house_voice": {
+			"revision": "76dda0304bfa4b54ebd42cccd32bbd05841ca4a3",
+			"namespaces": [
+				"ui.console",
+				"ui.onboarding",
+				"ui.settings"
+			]
+		}
+	},
+	"checks": {
+		"unique_keys_all_32_blobs": true,
+		"key_sets_all_equal": true,
+		"canonical_tab_json_all_targets": true,
+		"source_unchanged_since_base": true,
+		"translator_hashes_match_all_32_blobs": true,
+		"icu_parse_and_argument_type_and_occurrence_checks": "343 English + 343 Russian messages; zero errors",
+		"plural_keys": 22,
+		"select_keys": 8,
+		"required_russian_cardinal_categories": [
+			"one",
+			"few",
+			"many",
+			"other"
+		],
+		"formatter_samples": 374,
+		"sample_counts": [
+			0,
+			1,
+			2,
+			3,
+			4,
+			5,
+			11,
+			12,
+			14,
+			20,
+			21,
+			22,
+			24,
+			25,
+			101,
+			102,
+			1.5
+		],
+		"negative_controls": "Missing countText in few arm and removed many arm were both detected in scratch-only fixtures.",
+		"width": "70 explicit maxCells sidecars: 68 parameterless strings and 1 plural key fit in static/tested ICU samples; 1 recording hint fits with placeholder spelling only, not a dynamic-value bound. Other sidecar widths are qualitative. No pixel fit measured.",
+		"typography": "Russian guillemets, spaced em dashes and ellipses reviewed; no markup-bearing strings in this tranche, no broken markup or dropped machine literals found."
+	},
+	"terminology_adjudication": "Glossary terms session/agent/tool/project/model/prompt/skill/team/approvals/workspace use established Russian forms. Local Operator, Radient, ZIP, agent.yml, Top P, Top K, API/model IDs, keyboard/MIME tokens are correctly kept unchanged where present. Хаб агентов and Меш-сеть are intelligible destination nouns, not protected-English product names. No glossary violation found. Reasoning-effort calque is recorded separately as RU-M1.",
+	"coverage": "All 343 values read against English, including every high-visibility shell/rail/sidebar and agents-group value; ui.agents is an intentionally empty 0-key namespace.",
+	"limitations": [
+		"No browser, install, build or heavy runs performed, as requested.",
+		"This is one independent copy audit, not the required second high-visibility audit or rendered/design/UX sign-off.",
+		"No repository writes. To apply ledger block, Root must retain this receipt unchanged under i18n/receipts/4c5ca9d6810d.json (or update all receipt pointers/hashes deliberately). Scratch storage is the requested handoff, not a claim that tracked programme retention is already complete."
+	],
+	"overflow_advisories": [
+		{
+			"key": "ui.shell.user_profile_sidebar.privacy_and_security",
+			"text": "33 cells versus English 20; context says short menu row. Highest static menu-row overflow risk; no pixel clipping measured."
+		},
+		{
+			"key": "ui.agents.navigation.updates.action.use_remote",
+			"text": "34 cells versus English 31; context says small ghost action button, about 30 English characters. Narrow conflict palette should be checked when rendered."
+		},
+		{
+			"key": "ui.agents.models.override.inherit_effort",
+			"text": "27 cells versus English 24 in the effort-select option; check narrow team-model rows/palette."
+		},
+		{
+			"key": "ui.chat.composer_media.pasted_type",
+			"text": "100px attachment caption per sidecar; MIME identifiers may be long in both languages. Russian prefix is short, but exact MIME must remain intact. Truncation is an existing layout behavior, not a copy blocker."
+		}
+	],
+	"findings_summary": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 5,
+		"nit": 0
+	},
+	"namespaces": {
+		"ui.shell": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 29,
+			"source_path": "src/i18n/catalogues/en/ui.shell.json",
+			"target_path": "src/i18n/catalogues/ru/ui.shell.json",
+			"sha256": {
+				"en": "a36a75e15ce94632bad00e774e7f6211ca58d95a2b6f6f50a85e687d64a5b1ea",
+				"ru": "3804093f5f621357e3653df597c9dd6a30219d2d60bf0ba92d0c6ddeb5085c9b"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.shell.context.json",
+				"sha256": "28fe5abc38f1f94e62f4f2f5201513cf1688e0ad26e0d1d0a739846fb43cebab"
+			},
+			"findings": []
+		},
+		"ui.shell.rail": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 20,
+			"source_path": "src/i18n/catalogues/en/ui.shell.rail.json",
+			"target_path": "src/i18n/catalogues/ru/ui.shell.rail.json",
+			"sha256": {
+				"en": "82f946fe2d2944d03100d85263ff5e9e595dc34f953a0d57aa9794ea0879f3eb",
+				"ru": "57708776f27a23fa1df7b822bfcd3b4f6a6afc13cc1423d3a97ae690140ae48a"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.shell.rail.context.json",
+				"sha256": "a6956835b7178e62982d4b95763390fe7b67decabe83c3d82e0e911101062d72"
+			},
+			"findings": []
+		},
+		"ui.chat": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 8,
+			"source_path": "src/i18n/catalogues/en/ui.chat.json",
+			"target_path": "src/i18n/catalogues/ru/ui.chat.json",
+			"sha256": {
+				"en": "29169c4c0801689781d503f724d457757275416c49e975bfb6ae4872d90c2c46",
+				"ru": "71ef6c5a4f2c76f4a9973a5f64d49ffcaff531b73a8510a01682fd572fcb4675"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.chat.context.json",
+				"sha256": "2561c8f369eb55a351ec95d0c6d9443e0cfcac43a500cc826bfaf7c744d71e2e"
+			},
+			"findings": []
+		},
+		"ui.chat.dialogs": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 4,
+			"source_path": "src/i18n/catalogues/en/ui.chat.dialogs.json",
+			"target_path": "src/i18n/catalogues/ru/ui.chat.dialogs.json",
+			"sha256": {
+				"en": "783d72141bae3491cc1ecfbdfc983339e327406cd4385e7ce8f9dfa1360997fc",
+				"ru": "e140ab374f69cd5f7afa92219a20d1a31b162a2150863f14bfd5be9f5e858404"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.chat.dialogs.context.json",
+				"sha256": "affc7ef0070adaf55dc9d36c6baa5b9702ebaf87872d3f7985cd71842c059aa4"
+			},
+			"findings": []
+		},
+		"ui.chat.header": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 10,
+			"source_path": "src/i18n/catalogues/en/ui.chat.header.json",
+			"target_path": "src/i18n/catalogues/ru/ui.chat.header.json",
+			"sha256": {
+				"en": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+				"ru": "8b7f67e19f7cb17ee637f2ca5fee08226b41ffd7c443389f32be7b7f179c0511"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.chat.header.context.json",
+				"sha256": "ce8be48bf86c92bd7631d2b22f54b59f84b2eb700d746ba5dfaccb19bbbb1acb"
+			},
+			"findings": []
+		},
+		"ui.chat.sidebar_view": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 22,
+			"source_path": "src/i18n/catalogues/en/ui.chat.sidebar_view.json",
+			"target_path": "src/i18n/catalogues/ru/ui.chat.sidebar_view.json",
+			"sha256": {
+				"en": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+				"ru": "fd1cccb4defbb3d791b91be7392cbc6666b979b19ff21f5327ba3607fb1721b3"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.chat.sidebar_view.context.json",
+				"sha256": "7d51739eca1dc19b6896c13df0fab73a1b09f0a6190d609bffb75e6b712d4d75"
+			},
+			"findings": []
+		},
+		"ui.chat.composer": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 34,
+			"source_path": "src/i18n/catalogues/en/ui.chat.composer.json",
+			"target_path": "src/i18n/catalogues/ru/ui.chat.composer.json",
+			"sha256": {
+				"en": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+				"ru": "3cfc2c160b8ff30cd7e0a46a6fadf3b4573377f922dbaa887861974b90511956"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+				"sha256": "4e1b44b439206055e3b1b470a1a90c131c209a463ed4cc7f4cdf4bc5a5366c3a"
+			},
+			"findings": []
+		},
+		"ui.chat.composer_media": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 7,
+			"source_path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+			"target_path": "src/i18n/catalogues/ru/ui.chat.composer_media.json",
+			"sha256": {
+				"en": "47ec03f574b6665bafaf900f15067ef522fbf8b7fe665402b0bb4be03d0aa0ff",
+				"ru": "c62a97d0ab3ecb358a8fc305e9791c9fb1352c2b56040b93fa3018600a2b9480"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+				"sha256": "7048f63ae717708d05a282480da8baff670c739ed069578f05a139d95b38952f"
+			},
+			"findings": []
+		},
+		"ui.agents": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 0,
+			"source_path": "src/i18n/catalogues/en/ui.agents.json",
+			"target_path": "src/i18n/catalogues/ru/ui.agents.json",
+			"sha256": {
+				"en": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+				"ru": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+			},
+			"context": null,
+			"findings": []
+		},
+		"ui.agents.dialogs": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 33,
+			"source_path": "src/i18n/catalogues/en/ui.agents.dialogs.json",
+			"target_path": "src/i18n/catalogues/ru/ui.agents.dialogs.json",
+			"sha256": {
+				"en": "99fc8672fbb4139aa2721542a8fb994506301b0c678d86c21439e939f5dd2bf4",
+				"ru": "8f62d0775e28d5e9affe1ce5336ff1ce01928ca45f378a84de546066acfb0e28"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.agents.dialogs.context.json",
+				"sha256": "c30ccb0f48521740a36234b83035157663f4b01d9f24236c33dc801b57db1dc7"
+			},
+			"findings": []
+		},
+		"ui.agents.models": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 38,
+			"source_path": "src/i18n/catalogues/en/ui.agents.models.json",
+			"target_path": "src/i18n/catalogues/ru/ui.agents.models.json",
+			"sha256": {
+				"en": "0775863598346b25001f9131bdf4bf207aba0d036858ce08b7cc49b00f44a540",
+				"ru": "6c9f49426145134bc19f461fbd5c836cc3cb7921b8c4827919909d50e31184ab"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.agents.models.context.json",
+				"sha256": "d7e13ca61daaa76a3389279de9665134229191882300858db99a555ea50ef22f"
+			},
+			"findings": [
+				{
+					"id": "RU-M1",
+					"severity": "minor",
+					"key": "ui.agents.models.override.effort_label",
+					"related_keys": [
+						"ui.agents.models.override.effort_field"
+					],
+					"file": "src/i18n/catalogues/ru/ui.agents.models.json",
+					"lines": [
+						4,
+						3
+					],
+					"text": "«Усилия рассуждения» is an unnatural noun calque for reasoning effort.",
+					"recommendation": "Use «Глубина рассуждений» / «Глубина рассуждений для {member}», keeping this control distinct from the model-selection tier.",
+					"disposition": "open, non-blocking"
+				},
+				{
+					"id": "RU-M2",
+					"severity": "minor",
+					"key": "ui.agents.models.pin_reach",
+					"file": "src/i18n/catalogues/ru/ui.agents.models.json",
+					"lines": [
+						10
+					],
+					"text": "Plural verb sits outside the plural: count=1 renders «Этот уровень усилий используют 1 команда», likewise 21. Singular команда needs использует.",
+					"recommendation": "Put the agreeing verb inside each plural arm, or use an impersonal construction that agrees for 1/2/5/21. Keep the number skeleton and {teams}.",
+					"disposition": "open, non-blocking"
+				}
+			]
+		},
+		"ui.agents.navigation": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 32,
+			"source_path": "src/i18n/catalogues/en/ui.agents.navigation.json",
+			"target_path": "src/i18n/catalogues/ru/ui.agents.navigation.json",
+			"sha256": {
+				"en": "23f591cd7c2d52c2563e0b5cbb4cbb2164f7cd01c2568b050738b3be976a5729",
+				"ru": "7d617ee40e1068c1cd2022af72843f42266dee350c8b147373cd26012d38f544"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.agents.navigation.context.json",
+				"sha256": "3d3e8121a15256ffaac2df6e35e2bb1151959bc4fdc0575352fb7d3b4ae1bbca"
+			},
+			"findings": [
+				{
+					"id": "RU-M3",
+					"severity": "minor",
+					"key": "ui.agents.navigation.legacy.subtitle",
+					"file": "src/i18n/catalogues/ru/ui.agents.navigation.json",
+					"lines": [
+						6
+					],
+					"text": "«Просматривайте, настраивайте и управляйте агентами» shares an instrumental object across verbs requiring different cases: просматривать/настраивать агентов, управлять агентами.",
+					"recommendation": "For example: «Просматривайте и настраивайте агентов, управляйте ими».",
+					"disposition": "open, non-blocking"
+				}
+			]
+		},
+		"ui.agents.refusals": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 16,
+			"source_path": "src/i18n/catalogues/en/ui.agents.refusals.json",
+			"target_path": "src/i18n/catalogues/ru/ui.agents.refusals.json",
+			"sha256": {
+				"en": "457cb86efa40d800d2adf711ec2b4289d22b4b9013fd48189082c4b8808d3f20",
+				"ru": "a47a767b1ccbb0d6107526164bb9457b92a0cba01a00f921f4b75ad0504f64a7"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.agents.refusals.context.json",
+				"sha256": "d7672e33492ea279620ab21d0d6e8131057ddd9d8bc83002f84e8dc3149a2311"
+			},
+			"findings": []
+		},
+		"ui.agents.settings": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 58,
+			"source_path": "src/i18n/catalogues/en/ui.agents.settings.json",
+			"target_path": "src/i18n/catalogues/ru/ui.agents.settings.json",
+			"sha256": {
+				"en": "2e2a8a28891db681fd72396a3b8323e8705e4ea9c0397e49237e3ed3f7e1a897",
+				"ru": "3cddab2670b016412b8df8709e327d9eddd48b195ebce2bebae036ae1ac531fb"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.agents.settings.context.json",
+				"sha256": "6083296ec9377039f51dfda7485d2d0080f7fa4522176341cd14553438e0fa36"
+			},
+			"findings": []
+		},
+		"ui.agents.starters": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 16,
+			"source_path": "src/i18n/catalogues/en/ui.agents.starters.json",
+			"target_path": "src/i18n/catalogues/ru/ui.agents.starters.json",
+			"sha256": {
+				"en": "7d7170328807a0ae0018bb69c4cd5fe49f6d5e47f7ca34484cf71b2a74612cec",
+				"ru": "ddec4d0db52e0dd7a2330dc3642132cdcec74e15b8b3fbd587bb9263fc316cf0"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.agents.starters.context.json",
+				"sha256": "bce2f21153851cff6d7c8e41e2bfbd4655df8d68ab15b2ec63747b4096a2b989"
+			},
+			"findings": [
+				{
+					"id": "RU-M4",
+					"severity": "minor",
+					"key": "ui.agents.starters.action.all_count",
+					"file": "src/i18n/catalogues/ru/ui.agents.starters.json",
+					"lines": [
+						3
+					],
+					"text": "All four arms render «Установить все {count}», treating agents as inanimate and inconsistent with action.all_builtins («всех встроенных агентов»). Reproduced at 1/2/5/21.",
+					"recommendation": "Use «Установить всех {count}» consistently with the adjacent full agent label, or a count-neutral button with the count in parentheses.",
+					"disposition": "open, non-blocking"
+				},
+				{
+					"id": "RU-M5",
+					"severity": "minor",
+					"key": "ui.agents.starters.summary.collisions",
+					"file": "src/i18n/catalogues/ru/ui.agents.starters.json",
+					"lines": [
+						11
+					],
+					"text": "Russian one also matches 21/101, not only 1. At 21 the current arm says «у вас уже есть агент с именем {names}» although multiple agents/names collided. The skipped count and all placeholders remain visible; this is non-blocking grammar, not a lost-count defect.",
+					"recommendation": "Use an =1 arm for the truly singular explanation and a plural/count-neutral explanation for counts such as 21, retaining {count} and {names} in every arm.",
+					"disposition": "open, non-blocking"
+				}
+			]
+		},
+		"ui.agentMessages": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 16,
+			"source_path": "src/i18n/catalogues/en/ui.agentMessages.json",
+			"target_path": "src/i18n/catalogues/ru/ui.agentMessages.json",
+			"sha256": {
+				"en": "065cbea39ca4df33aa114fc027e5f75bcc6e74e9cb21d4f14e42628d3795cbcb",
+				"ru": "a0859eb3bfa17e05f47538a4736d6e0c18c402b00a0ee3fd73427a01db6fffeb"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.agentMessages.context.json",
+				"sha256": "24707590755f8546d1624939a94f7c719eb2d172b4ad54f5ba5af6b710057adc"
+			},
+			"findings": []
+		}
+	},
+	"artifacts": {
+		"audit-ru.mjs": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/audit-ru.mjs",
+			"sha256": "3b8addb603079ae752e9a28d4e6b44cc20789064070d4dd7688f41b25fff1a2a"
+		},
+		"ru-audit-input.json": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/ru-audit-input.json",
+			"sha256": "b46f1dffc69a3ce7a01ea7bfe421a77d5cc52df55f3e7fed58b38c7465a51ce0"
+		},
+		"ru-icu-results.json": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/ru-icu-results.json",
+			"sha256": "19fb616cc3aef4a81d123a33bc46371813c0d42e304285a21f540a4c62ebc666"
+		},
+		"ru-icu-run.log": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/ru-icu-run.log",
+			"sha256": "e255fc9fda30c8c7b1f7cca296c6641915d76f58ccabef51ed06a6f7cac6294d"
+		},
+		"ru-mechanical-checks.json": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/ru-mechanical-checks.json",
+			"sha256": "9324a75412e52ac038f3d2db7986fc9e32fae6c92502d3c7f1f28d7d99583ece"
+		},
+		"ru-width-checks.json": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/ru-width-checks.json",
+			"sha256": "5e6c1cc652ffd80041eace33dcfd5d0cb50815d3cd4ebee4ab78bacc702dd08d"
+		},
+		"ru-negative-input.json": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/ru-negative-input.json",
+			"sha256": "8e0f4338483bbac38f154811d92ee6978b75986b6c9e6b736b3d2369341c3ea4"
+		},
+		"ru-negative-results.json": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/ru-negative-results.json",
+			"sha256": "87128cdfe1f6816a38aaaecba74e7f759dd7ff945af13a6df03ee5bc72adda67"
+		},
+		"ru-negative-run.log": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/ru-negative-run.log",
+			"sha256": "8ad258675b8d77fe343f3649854c0951734596dda9838bd24fad615a0a877d0d"
+		},
+		"ledger-rules.mjs": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/ledger-rules.mjs",
+			"sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+		}
+	}
+}

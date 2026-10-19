@@ -718,91 +718,67 @@ export const SupplementRow = memo(function SupplementRow({
 		) : null;
 
 	/*
-	 * THE CONDENSED FORM (round-1 D1/U3/R2, reworked by the 2026-10-16 operator
-	 * decision). The files section above is drawn IDENTICALLY here — actionable
-	 * rows and the image grid, and the sounds section with them (a generated
-	 * sound is the same class of thing: media the reader can act on while the
-	 * run is folded, and the player is not a document fetch). No
-	 * `[data-supplement-slot]`/iframe (absent, not hidden, so no document fetch
-	 * either) and no graphics, whose route is the turn's own bar. A
-	 * graphics-only settle keeps the design's plain count clause; the
-	 * not-settled arms keep the state line and their actions exactly as the
-	 * expanded form wires them, now under the media a reader can act on while
-	 * the run is still folded.
+	 * Keep the answer's media in ONE durable strip, outside the graphics-only
+	 * condensation below. Separate expanded/condensed returns previously used
+	 * a files/components emptiness check that discarded a sound-only finish
+	 * before reaching its player. The transcript already positions this row as
+	 * a sibling of the trace; collapsing work must change only frame mounting,
+	 * never the audio, image, or file callouts that make the answer actionable.
 	 */
-	if (condensed) {
-		if (disposition === "block") {
-			if (filesSection === null && components.length === 0) return null;
-			return (
-				<div
-					className="flex flex-col gap-2"
-					data-supplement-record={record.anchor}
-					data-supplement-condensed=""
-				>
-					{filesSection}
-					{soundsSection}
-					{filesSection === null && components.length > 0 && (
-						<div className="text-ink-muted text-meta">
-							{countClause(components.length, "graphic")}
-						</div>
-					)}
-				</div>
-			);
-		}
-		return (
-			<div
-				className="flex flex-col gap-2"
-				data-supplement-record={record.anchor}
-				data-supplement-condensed=""
-			>
-				{filesSection}
-				{soundsSection}
-				{stateLine()}
-				{adjustLine}
-			</div>
-		);
-	}
-
 	return (
-		<div className="flex flex-col gap-2" data-supplement-record={record.anchor}>
+		<div
+			className="flex flex-col gap-2"
+			data-supplement-record={record.anchor}
+			data-supplement-condensed={condensed ? "" : undefined}
+		>
 			{filesSection}
 			{soundsSection}
 			{stateLine()}
-			{record.detail?.includes("prepared:unsupported") && (
+			{condensed &&
+				disposition === "block" &&
+				filesSection === null &&
+				components.length > 0 && (
+					<div className="text-ink-muted text-meta">
+						{countClause(components.length, "graphic")}
+					</div>
+				)}
+			{!condensed && record.detail?.includes("prepared:unsupported") && (
 				<p className="text-meta text-ink-muted" data-supplement-refusal="">
 					Inline preview unavailable. This HTML needs unsupported resources or
 					document content. Open the file to view it.
 				</p>
 			)}
-			{(disposition === "failed_retry" ||
-				disposition === "files_failed_retry") && (
-				<div
-					className="flex flex-col gap-1 text-meta text-ink-muted"
-					data-supplement-diagnostic=""
-				>
-					<p>{failureExplanation(record)}</p>
-					{((record.attempts?.length ?? 0) > 0 ||
-						(record.detail?.length ?? 0) > 0) && (
-						<Disclosure
-							open={detailsOpen}
-							onOpenChange={setDetailsOpen}
-							rowClassName="min-h-6 py-0"
-							chevronClassName="text-ink-dim"
-							summary="Details"
-						>
-							<div className="max-h-[min(320px,40vh)] overflow-auto break-words font-mono text-ink-dim">
-								{record.model && <p>Model: {record.model}</p>}
-								<p>Attempts: {record.attempts?.length ?? 0}</p>
-								{record.detail?.map((line) => (
-									<p key={line}>{diagnosticDisplay(line)}</p>
-								))}
-							</div>
-						</Disclosure>
-					)}
-				</div>
-			)}
-			{adjustLine}
-			{disposition === "block" && components.length > 0 && (
+			{!condensed &&
+				(disposition === "failed_retry" ||
+					disposition === "files_failed_retry") && (
+					<div
+						className="flex flex-col gap-1 text-meta text-ink-muted"
+						data-supplement-diagnostic=""
+					>
+						<p>{failureExplanation(record)}</p>
+						{((record.attempts?.length ?? 0) > 0 ||
+							(record.detail?.length ?? 0) > 0) && (
+							<Disclosure
+								open={detailsOpen}
+								onOpenChange={setDetailsOpen}
+								rowClassName="min-h-6 py-0"
+								chevronClassName="text-ink-dim"
+								summary="Details"
+							>
+								<div className="max-h-[min(320px,40vh)] overflow-auto break-words font-mono text-ink-dim">
+									{record.model && <p>Model: {record.model}</p>}
+									<p>Attempts: {record.attempts?.length ?? 0}</p>
+									{record.detail?.map((line) => (
+										<p key={line}>{diagnosticDisplay(line)}</p>
+									))}
+								</div>
+							</Disclosure>
+						)}
+					</div>
+				)}
+			{(disposition === "preparing" || disposition === "files_preparing") &&
+				adjustLine}
+			{!condensed && disposition === "block" && components.length > 0 && (
 				<div className="flex flex-col gap-2" data-supplement-components="">
 					{head.map((component) => (
 						<SupplementFrameSlot

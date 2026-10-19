@@ -122,6 +122,10 @@ export const DocumentFreshnessBar: FC<{
 
 	return (
 		<div
+			/* A BAND: the document's freshness strip masks nothing, but it is a
+			 * chrome row inside the pane, so it takes the field overlay rather
+			 * than a second ground (styles/index.css, window glass round 3). */
+			data-glass-plane="band"
 			className={cn(
 				"flex h-8 shrink-0 items-center gap-2 border-hairline border-b bg-sunken px-2",
 			)}

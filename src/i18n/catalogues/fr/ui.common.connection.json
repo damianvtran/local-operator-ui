@@ -1,0 +1,12 @@
+{
+	"ui.common.connection.backend_compatibility_banner.the_backend_update_could_not_start_retry_or_update_from_settings_": "La mise à jour du backend n’a pas pu démarrer. Réessayez, ou mettez à jour depuis les paramètres, sous Mises à jour de l’application.",
+	"ui.common.connection.backend_compatibility_banner.update_backend": "Mettre à jour le backend",
+	"ui.common.connection.backend_compatibility_banner.updating": "Mise à jour",
+	"ui.common.connection.connectivity_banner.a_connectivity_issue_has_been_detected": "Un problème de connectivité a été détecté.",
+	"ui.common.connection.connectivity_banner.dismiss": "masquer",
+	"ui.common.connection.connectivity_banner.dismiss_inline": "Masquer",
+	"ui.common.connection.connectivity_banner.this_app_s_updates_require": "Les mises à jour de cette application nécessitent",
+	"ui.common.connection.connectivity_banner.you_are_offline": "Vous êtes hors ligne. {detail} une connexion Internet.",
+	"ui.common.connection.floating_alert.dismiss": "Masquer",
+	"ui.common.connection.provider.requires": "Votre fournisseur d’hébergement configuré ({provider}) nécessite"
+}

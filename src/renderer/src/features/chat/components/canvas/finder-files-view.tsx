@@ -600,6 +600,15 @@ export function FinderFilesView({
 				ref={scroller}
 				aria-label={t("ui.canvas.files.region")}
 				data-tour-tag="files-scroller"
+				/*
+				 * A PLANE, NOT A GROUND. `surface` was this list's authored plane on the
+				 * flat system (its rows' `row-hover`/`row-selected` steps are authored
+				 * against it), but on glass a second role fill inside the pane is the
+				 * opaque island the operator reported. The pane owns the alpha; the
+				 * rows' state overlays are rebound to ink inside a covered pane, so the
+				 * list needs no fill of its own (styles/index.css, window glass round 3).
+				 */
+				data-glass-plane="clear"
 				className={cn("min-h-0 flex-1 overflow-auto bg-surface px-2 pb-2")}
 				onScroll={readScroll}
 				onKeyDown={(event) => {
@@ -681,7 +690,14 @@ export function FinderFilesView({
 							lastBand.top + lastBand.height - firstBand.top - 32;
 						return (
 							<section key={section.id} style={{ height: bodyHeight + 32 }}>
-								<h3 className={cn("sticky top-0 z-10 h-8 bg-surface")}>
+								<h3
+									/* A BAND, not a solid plate: it masks what scrolls under it with
+									 * the derived field overlay, the same treatment the list view's team
+									 * bands have shipped since round 2. A solid sticky header under a
+									 * glass body is the seam the operator photographed. */
+									data-glass-plane="band"
+									className={cn("sticky top-0 z-10 h-8 bg-surface")}
+								>
 									<button
 										type="button"
 										ref={(node) => {

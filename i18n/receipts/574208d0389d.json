@@ -1,0 +1,274 @@
+{
+	"schema": 1,
+	"locale": "ru",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"model": "openai/gpt-6.1-sol",
+		"instance": "574208d0389d",
+		"session": "4c5ca9d6810d",
+		"instance_kind": "Fresh delta-audit run ID, not a different enclosing session.",
+		"model_provenance": "Actual model confirmed this turn by sessions info; continuing previously disclosed automatic fallback from Sonnet."
+	},
+	"date": "2026-10-18",
+	"status": "passed",
+	"verdict": "PASS",
+	"scope": {
+		"repository": "damianvtran/local-operator-ui",
+		"pr": 1181,
+		"from": "65ad12e7675a132e4a677ecf7aef95f227379525",
+		"to": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29",
+		"chunk": "D",
+		"kind": "Delta only: 23 changed values across six namespaces, original eight findings and immediate neighbors. Unchanged keys not re-audited."
+	},
+	"prior_audit": {
+		"instance": "69efd21a56e0",
+		"receipt": "i18n/receipts/69efd21a56e0.json",
+		"receipt_sha256": "8542404943d1e679b2f4d5ff9cd60e29dd499aacae63fdea990be0e608845330",
+		"local_record": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/69efd21a56e0.json",
+		"comment": "https://github.com/damianvtran/local-operator-ui/pull/1181#issuecomment-6254407019",
+		"unchanged_evidence": "Full English+context bytes equal prior audit for all 13 chunk-D namespaces; seven previously clean target files are byte-identical. In changed namespaces, exactly the 23 listed value replacements and no key additions/deletions; unmodified values retain prior semantic audit."
+	},
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "deepseek/deepseek-flash",
+		"date": "2026-10-18",
+		"receipt": "i18n/receipts/ui-ru-batch-2.json",
+		"receipt_sha256": "2993d20528aba86aaf73b54ccb9a8e204127bdda086f9ebeb226ceacf49769c5"
+	},
+	"resolutions": [
+		{
+			"id": "RU-D-M5",
+			"original_severity": "minor",
+			"key": "ui.settings.integrations.credential_manifest.oauth_2_0_access_token_for_google_apis_used_by_local_operator_for",
+			"disposition": "fixed",
+			"commit": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29",
+			"evidence": "Gmail, Calendar, Drive are unchanged Latin product names, with no Cyrillic case endings."
+		},
+		{
+			"id": "RU-D-A1",
+			"original_severity": "major",
+			"key": "ui.settings.configuration.setting_combobox.use_text",
+			"disposition": "fixed",
+			"commit": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29",
+			"evidence": "Existing formatter now outputs Использовать «custom-model» and Использовать 2 дня. No literal [redacted] remains in the configuration target; verbs are actual action-label copy, not placeholders."
+		},
+		{
+			"id": "RU-D-A2",
+			"original_severity": "major",
+			"key": "ui.settings.configuration.setting_control.one_hop_per_line_as_provider_model_effort_an_empty_chain_moves_to",
+			"disposition": "fixed",
+			"commit": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29",
+			"evidence": "Protected provider/model (effort) is present byte-for-byte in the pushed format help; surrounding prose remains Russian."
+		},
+		{
+			"id": "RU-D-M3",
+			"original_severity": "minor",
+			"key": "ui.settings.configuration.settings_filter_bar.advanced_shown",
+			"disposition": "fixed",
+			"commit": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29",
+			"evidence": "At 21 the action now ends чтобы увидеть все, not singular её. At 2/3/4 the text uses показаны … расширенные настройки. The reproduced integer-count defects are fixed; all four ICU arms and numeric skeleton retained."
+		},
+		{
+			"id": "RU-D-M2",
+			"original_severity": "minor",
+			"key": "ui.settings.imports.preview_memory",
+			"disposition": "fixed",
+			"commit": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29",
+			"evidence": "Actual formatter: 1 запись памяти · токенов: ~1; 2 записи памяти · токенов: ~2; 5 записей памяти · токенов: ~5. Count-neutral label eliminates the noun-after-number agreement defect."
+		},
+		{
+			"id": "RU-D-N1",
+			"original_severity": "nit",
+			"key": "ui.settings.appearance.window_glass.intensity_description",
+			"disposition": "fixed",
+			"commit": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29",
+			"evidence": "Message blocks/cards now получают оттенок стекла, describing tinted surfaces, not surfaces becoming hues. Solid code/documents/images exception remains intact."
+		},
+		{
+			"id": "RU-D-M1",
+			"original_severity": "minor",
+			"key": "ui.settings.model.default_effort.label",
+			"disposition": "fixed",
+			"commit": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29",
+			"evidence": "All 15 changed default_effort values read; setting consistently described as глубина рассуждений / уровни рассуждений. Four unchanged values retained without re-audit; placeholders unchanged."
+		},
+		{
+			"id": "RU-D-M4",
+			"original_severity": "minor",
+			"key": "ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you",
+			"disposition": "fixed",
+			"commit": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29",
+			"evidence": "Reset now explicitly returns сочетание по умолчанию для этого действия; adjacent Сбросить / Очистить labels unchanged and match the prose."
+		}
+	],
+	"checks": {
+		"changed_values": 23,
+		"changed_namespaces": 6,
+		"retained_namespaces": 7,
+		"icu_plural_keys": 2,
+		"icu_text_samples": 34,
+		"icu_errors": [],
+		"icu_scope": "Changed keys only; argument occurrences/types, selectors, number skeletons, # and all four plural categories. Formatting samples are structural text evidence, not rendered native UI.",
+		"source_and_context_unchanged": true,
+		"terminology_reference_hashes_unchanged": true,
+		"updated_translator_receipt_hash_verified": true,
+		"no_literal_redaction_artifacts_in_configuration": true
+	},
+	"namespaces": {
+		"ui.settings.integrations": {
+			"status": "passed",
+			"keys_audited": 1,
+			"namespace_total_keys": 218,
+			"changed_keys": [
+				"ui.settings.integrations.credential_manifest.oauth_2_0_access_token_for_google_apis_used_by_local_operator_for"
+			],
+			"sha256": {
+				"en": "36b3507993a0466100ca099c3c1c2b2852d66a81b14f3685031f0a35dfa0f5b3",
+				"ru": "98d673eb1d3116c9a5eeba4d863b767f919fdafea4c9daabe6e76e8f9229847b"
+			},
+			"context_sha256": "07ec84d1cb9026d17c1813fc22ff577792781f305afca43f7c8debccabf4584f",
+			"findings": [],
+			"scope": "Prior full namespace audit plus delta: only listed changed keys re-read; unchanged source/context and other values byte-proven compatible.",
+			"resolved_ids": [
+				"RU-D-M5"
+			]
+		},
+		"ui.settings.configuration": {
+			"status": "passed",
+			"keys_audited": 4,
+			"namespace_total_keys": 92,
+			"changed_keys": [
+				"ui.settings.configuration.retention_duration_control.use_duration",
+				"ui.settings.configuration.setting_combobox.use_text",
+				"ui.settings.configuration.setting_control.one_hop_per_line_as_provider_model_effort_an_empty_chain_moves_to",
+				"ui.settings.configuration.settings_filter_bar.advanced_shown"
+			],
+			"sha256": {
+				"en": "d11a5170a0336449668b91a2b2aa1013ae36ee38c4b70fc69f90541aea3e5050",
+				"ru": "70ae96b058832d23870d49b5c236b3705303d9d57ff2f84f05230f609c19ec4a"
+			},
+			"context_sha256": "62bf11e84f366c4145883f534017e582ecce64e841c9d69707e0ad40b93de45c",
+			"findings": [],
+			"scope": "Prior full namespace audit plus delta: only listed changed keys re-read; unchanged source/context and other values byte-proven compatible.",
+			"resolved_ids": [
+				"RU-D-A1",
+				"RU-D-A2",
+				"RU-D-M3"
+			]
+		},
+		"ui.settings.imports": {
+			"status": "passed",
+			"keys_audited": 1,
+			"namespace_total_keys": 74,
+			"changed_keys": [
+				"ui.settings.imports.preview_memory"
+			],
+			"sha256": {
+				"en": "1f8b1941bd65b91c84b1b4c41bfb1406f0e4790936c8690b04bfd788b4a1b082",
+				"ru": "1c226bda871e4f2e68629b0c807d423a90068178789873cb290545ad5bda06f6"
+			},
+			"context_sha256": "29733af08f4986ec9bb365871c5968581e281e58ac0bec8c0b099b265043bfd7",
+			"findings": [],
+			"scope": "Prior full namespace audit plus delta: only listed changed keys re-read; unchanged source/context and other values byte-proven compatible.",
+			"resolved_ids": [
+				"RU-D-M2"
+			]
+		},
+		"ui.settings.appearance.window_glass": {
+			"status": "passed",
+			"keys_audited": 1,
+			"namespace_total_keys": 28,
+			"changed_keys": [
+				"ui.settings.appearance.window_glass.intensity_description"
+			],
+			"sha256": {
+				"en": "d3c6e272273baab454200c41a25b21c451689ae9bf03329aa776dc1cb9f1b33a",
+				"ru": "936759f572a1d2d4d0012df21d4ed59c0a4804c1a7660de422fceffa7efe60e9"
+			},
+			"context_sha256": "91fc7249578953f8532df9db875dea4bfb7ff952dd17a9d8db418909ac6046e1",
+			"findings": [],
+			"scope": "Prior full namespace audit plus delta: only listed changed keys re-read; unchanged source/context and other values byte-proven compatible.",
+			"resolved_ids": [
+				"RU-D-N1"
+			]
+		},
+		"ui.settings.model.default_effort": {
+			"status": "passed",
+			"keys_audited": 15,
+			"namespace_total_keys": 19,
+			"changed_keys": [
+				"ui.settings.model.default_effort.busy",
+				"ui.settings.model.default_effort.empty",
+				"ui.settings.model.default_effort.error",
+				"ui.settings.model.default_effort.helper_ready",
+				"ui.settings.model.default_effort.label",
+				"ui.settings.model.default_effort.loading",
+				"ui.settings.model.default_effort.no_home",
+				"ui.settings.model.default_effort.no_model",
+				"ui.settings.model.default_effort.one_level",
+				"ui.settings.model.default_effort.one_level_sentinel",
+				"ui.settings.model.default_effort.placeholder",
+				"ui.settings.model.default_effort.save_failed",
+				"ui.settings.model.default_effort.settings_error",
+				"ui.settings.model.default_effort.settings_loading",
+				"ui.settings.model.default_effort.unresolved"
+			],
+			"sha256": {
+				"en": "5a4a01952b8a4242730e336cf082dc926085ac126a147d8b44197e9f04fc3b29",
+				"ru": "e0e230680155e58ee23f8ffaf89fd7fc553be6f5f862bd55ee0d74de9b66dfe6"
+			},
+			"context_sha256": "ec2cf07e6b7d273b33a6fc8644453796245291ab68b050d714779b5aafdec109",
+			"findings": [],
+			"scope": "Prior full namespace audit plus delta: only listed changed keys re-read; unchanged source/context and other values byte-proven compatible.",
+			"resolved_ids": [
+				"RU-D-M1"
+			]
+		},
+		"ui.settings.shortcuts": {
+			"status": "passed",
+			"keys_audited": 1,
+			"namespace_total_keys": 9,
+			"changed_keys": [
+				"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you"
+			],
+			"sha256": {
+				"en": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
+				"ru": "9349f25564b3161913f1da7b2eddd4af1234c221c1cde8f8d211e72e6cc8b912"
+			},
+			"context_sha256": "57bc76797ae375d624cf5cf8e2bc347daad5eab09ea07080fa2aeb98410867af",
+			"findings": [],
+			"scope": "Prior full namespace audit plus delta: only listed changed keys re-read; unchanged source/context and other values byte-proven compatible.",
+			"resolved_ids": [
+				"RU-D-M4"
+			]
+		}
+	},
+	"artifacts": {
+		"icu-run.log": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/delta/icu-run.log",
+			"sha256": "00b4c7d64cd5c7693494e47f863e4d631007ff4918404a7124c8acd0ae373a0c"
+		},
+		"input.json": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/delta/input.json",
+			"sha256": "8ff748f5966a82027ee3baf576eec882167e2e803a0e57ecb07f01a03c03b371"
+		},
+		"icu-results.json": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/delta/icu-results.json",
+			"sha256": "8790c411e10284f271c8dfd472a2c42b7478eba66f18110ec79cc47793cf3064"
+		},
+		"hash-checks.json": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/delta/hash-checks.json",
+			"sha256": "6eec18a5fa5a630f6e52b0d7e603f238ad5a8cdc9e6674e1f792dd08134956e4"
+		},
+		"semantic-samples.log": {
+			"path": "/Users/damian/.local-operator/sessions/4c5ca9d6810d/scratchpad/tranche2-d/delta/semantic-samples.log",
+			"sha256": "79682b55b4fe937fe0af2389d2ba2da1037692d678060714089c36a4f111892a"
+		}
+	},
+	"limitations": [
+		"Read-only, bounded; no browser, builds, installs or rendered-fit evidence.",
+		"No audit of other chunks or browser code. No new out-of-scope issues raised.",
+		"Original failed receipt is preserved; these fixes do not rewrite its historical findings.",
+		"Retain exact new receipt under i18n/receipts/574208d0389d.json before applying new rows."
+	]
+}

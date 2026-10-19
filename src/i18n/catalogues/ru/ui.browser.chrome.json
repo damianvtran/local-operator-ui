@@ -1,0 +1,16 @@
+{
+	"ui.browser.chrome.accessible_tab": "{title}{loading, select, yes{, загрузка} other{}}{failed, select, yes{, ошибка загрузки} other{}}{owner, select, agent{, вкладка агента} shared{, доступна агенту} other{}}{waiting, select, none{} other{, ожидает запрос {waiting}}}{restored, select, yes{, восстановлена} other{}}",
+	"ui.browser.chrome.approvals": "Одобрения и доступ к сайтам",
+	"ui.browser.chrome.duplicate": "Дублировать вкладку",
+	"ui.browser.chrome.duplicate_refused": "Дублировать можно только веб-страницы.",
+	"ui.browser.chrome.error_title": "Не удалось загрузить страницу",
+	"ui.browser.chrome.invalid_action": "Неверное действие с вкладкой браузера.",
+	"ui.browser.chrome.invalid_order": "Неверный порядок вкладок браузера.",
+	"ui.browser.chrome.move_left": "Переместить вкладку влево",
+	"ui.browser.chrome.move_right": "Переместить вкладку вправо",
+	"ui.browser.chrome.operation_failed": "{action, select, duplicate{Не удалось дублировать вкладку. Повторите из её меню.} other{Не удалось перезагрузить вкладку. Повторите из её меню.}}",
+	"ui.browser.chrome.reload": "Перезагрузить вкладку",
+	"ui.browser.chrome.scroll_left": "Прокрутить вкладки влево",
+	"ui.browser.chrome.scroll_right": "Прокрутить вкладки вправо",
+	"ui.browser.chrome.tab_gone": "Эта вкладка браузера больше не открыта."
+}

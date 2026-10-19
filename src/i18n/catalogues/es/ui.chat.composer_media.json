@@ -1,0 +1,9 @@
+{
+	"ui.chat.composer_media.recording": "Grabando",
+	"ui.chat.composer_media.confirms": "confirma",
+	"ui.chat.composer_media.cancels": "cancela",
+	"ui.chat.composer_media.pasted_type": "Pegado {mimeType}",
+	"ui.chat.composer_media.pasted_file": "Archivo pegado",
+	"ui.chat.composer_media.preview_failed": "No se pudo previsualizar",
+	"ui.chat.composer_media.remove_attachment": "Quitar adjunto"
+}

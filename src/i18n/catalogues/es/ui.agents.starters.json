@@ -1,0 +1,18 @@
+{
+	"ui.agents.starters.server_unanswered": "El servidor no respondió.",
+	"ui.agents.starters.summary.installed": "{count, plural, one {{count} agente instalado} many {{count} de agentes instalados} other {{count} agentes instalados}}",
+	"ui.agents.starters.summary.already_present": "{count, plural, one {{count} agente ya presente} many {{count} de agentes ya presentes} other {{count} agentes ya presentes}}",
+	"ui.agents.starters.summary.skipped": "{count, plural, one {{count} agente omitido} many {{count} de agentes omitidos} other {{count} agentes omitidos}}",
+	"ui.agents.starters.summary.failed": "{count, plural, one {{count} agente fallido} many {{count} de agentes fallidos} other {{count} agentes fallidos}}",
+	"ui.agents.starters.summary.empty": "No hay nada que instalar",
+	"ui.agents.starters.summary.sentence": "{parts}.",
+	"ui.agents.starters.summary.separator": ", ",
+	"ui.agents.starters.summary.collisions": "{count, plural, one {Se omitió {count}: ya tienes un agente llamado {names}.} many {Se omitieron {count}: ya tienes agentes llamados {names}.} other {Se omitieron {count}: ya tienes agentes llamados {names}.}}",
+	"ui.agents.starters.action.all_builtins": "Instalar todos los agentes integrados",
+	"ui.agents.starters.available": "{count, plural, one {{count} agente integrado disponible} many {{count} de agentes integrados disponibles} other {{count} agentes integrados disponibles}}",
+	"ui.agents.starters.action.all_count": "{count, plural, one {Instalar {count}} many {Instalar los {count}} other {Instalar los {count}}}",
+	"ui.agents.starters.progress.accessible": "Instalando agentes integrados, {step} de {total}",
+	"ui.agents.starters.progress.named": "Instalando {step} de {total} — {name}…",
+	"ui.agents.starters.progress.count": "Instalando {done} de {total}…",
+	"ui.agents.starters.action.done": "Listo"
+}

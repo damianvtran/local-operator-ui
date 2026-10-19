@@ -1,0 +1,141 @@
+{
+	"schema": 1,
+	"auditor": "i18n-auditor",
+	"model": "openai/gpt-6.1-sol",
+	"instance": "72b9b9eb39f3",
+	"session": "7c40d1c357cf",
+	"locale": "fr",
+	"date": "2026-10-18",
+	"status": "passed",
+	"verdict": "PASS-WITH-NOTES",
+	"audit_kind": "two-namespace delta; no renewed semantic audit of unchanged keys",
+	"scope": {
+		"previous_head": "718219be27f3b17e605f2c2af35a20c0c19af88e",
+		"head": "1346a7755ae170935be57a7bd74c09c74857af7d",
+		"pr": "https://github.com/damianvtran/local-operator-ui/pull/1173",
+		"namespaces": [
+			"ui.shell",
+			"ui.command_palette"
+		]
+	},
+	"provenance": {
+		"agent": "i18n-auditor",
+		"actual_model": "openai/gpt-6.1-sol",
+		"model_evidence": "sessions info for 7c40d1c357cf: live openai/gpt-6.1-sol",
+		"fallback": "Original Anthropic quota fallback persists; current run verified as openai/gpt-6.1-sol. Not a Sonnet audit.",
+		"instance_semantics": "Fresh UUID-derived audit-run ID, same resumed auditor session; not a second independent auditor.",
+		"independent_of_translator": true
+	},
+	"previous_record": {
+		"path": "/Users/damian/.local-operator/sessions/7c40d1c357cf/scratchpad/7c40d1c357cf-round2.json",
+		"sha256": "bb0dd9cf343d3c859d940a5b6be5274972456cd386589af0535486a598dbec9e"
+	},
+	"terminology": {
+		"ruling_source": "Operator delta request explicitly records house ruling mesh → maillage. Current core glossary/style-guide contain no explicit mesh/maillage row; no such row is invented.",
+		"decision": "Maillage is idiomatic French for this linked-device/peer network destination, a concise sentence-case noun; both labels and their surrounding key contexts remain natural. No machine route/identifier changes.",
+		"glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+		"style_sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+	},
+	"translator_receipt": {
+		"path": "i18n/receipts/ui-fr-batch.json",
+		"sha256": "8a6c0c0ebd6b1c0d00148d72133a1f832db620d59b84259a3558084fb9ccdd2f"
+	},
+	"checks": {
+		"changed_values": "Exactly Mesh → Maillage on the one declared key in each of the two namespaces.",
+		"source_and_context": "Both English files and both context sidecars byte-identical to prior head.",
+		"target_hashes": "Re-derived from pinned Git blobs after gh confirmed pushed head; both match Root prefixes.",
+		"icu": "Existing installed parser reports zero drift/no parse errors; complete nonliteral ICU ASTs exactly match prior certified ASTs for these two files.",
+		"formatting": "Exact en/fr key-set equality and tab-indented target JSON preserved.",
+		"review_boundary": "Only the two changed values and immediate context were semantically reviewed; test allowlist, other namespaces and unchanged keys were not re-audited.",
+		"unverified": "No browser/rendered fit, general QA, CI, release eligibility or second independent audit claimed."
+	},
+	"findings": [
+		{
+			"id": "F3",
+			"severity": "minor",
+			"namespaces": [
+				"ui.command_palette"
+			],
+			"summary": "The search fallback repeatedly uses the cumbersome calque « mises en correspondance par nom ».",
+			"locations": [
+				{
+					"path": "src/i18n/catalogues/fr/ui.command_palette.json",
+					"line": 2,
+					"key": "ui.command_palette.command_palette.characters_so_chats_are_matched_by_name"
+				},
+				{
+					"path": "src/i18n/catalogues/fr/ui.command_palette.json",
+					"line": 3,
+					"key": "ui.command_palette.command_palette.chats_are_matched_by_name_update_local_operator_to_search_inside_"
+				},
+				{
+					"path": "src/i18n/catalogues/fr/ui.command_palette.json",
+					"line": 8,
+					"key": "ui.command_palette.command_palette.conversation_search_is_unavailable_while_the_backend_is_unreachab"
+				}
+			],
+			"details": "Prefer « la recherche porte sur le nom des conversations » or « les conversations sont recherchées par nom », retaining any leading fragment spacing. Meaning is understandable; this is idiom/compactness, not mistranslation.",
+			"disposition": "nonblocking wording note"
+		}
+	],
+	"namespaces": {
+		"ui.shell": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "a36a75e15ce94632bad00e774e7f6211ca58d95a2b6f6f50a85e687d64a5b1ea",
+				"fr": "a44110980baaf25ddd2dacd602bb9c2151b0003167ff8564ddfbff4b8e250c02",
+				"context": "28fe5abc38f1f94e62f4f2f5201513cf1688e0ad26e0d1d0a739846fb43cebab"
+			},
+			"changed_key": "ui.shell.sidebar_navigation.mesh",
+			"before": "Mesh",
+			"after": "Maillage",
+			"new_findings": [],
+			"findings": [],
+			"coverage": "Delta and immediate context reviewed; unchanged key coverage retained from round 2."
+		},
+		"ui.command_palette": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"sha256": {
+				"en": "c48797d973f81dea023e5c89c40c83d8ae0a9cdfaeb2509f6cbc4e9fb8abd7c6",
+				"fr": "9badf404c82ce83c940005ecb4a4993fe98275f0fe7583072b0f56aeae2e7f9f",
+				"context": "45608d545283180177fed89e463c65fad45760ddccf6fded5717eda2fd5b1cc9"
+			},
+			"changed_key": "ui.command_palette.use_palette_sources.mesh",
+			"before": "Mesh",
+			"after": "Maillage",
+			"new_findings": [],
+			"findings": [
+				{
+					"id": "F3",
+					"severity": "minor",
+					"namespaces": [
+						"ui.command_palette"
+					],
+					"summary": "The search fallback repeatedly uses the cumbersome calque « mises en correspondance par nom ».",
+					"locations": [
+						{
+							"path": "src/i18n/catalogues/fr/ui.command_palette.json",
+							"line": 2,
+							"key": "ui.command_palette.command_palette.characters_so_chats_are_matched_by_name"
+						},
+						{
+							"path": "src/i18n/catalogues/fr/ui.command_palette.json",
+							"line": 3,
+							"key": "ui.command_palette.command_palette.chats_are_matched_by_name_update_local_operator_to_search_inside_"
+						},
+						{
+							"path": "src/i18n/catalogues/fr/ui.command_palette.json",
+							"line": 8,
+							"key": "ui.command_palette.command_palette.conversation_search_is_unavailable_while_the_backend_is_unreachab"
+						}
+					],
+					"details": "Prefer « la recherche porte sur le nom des conversations » or « les conversations sont recherchées par nom », retaining any leading fragment spacing. Meaning is understandable; this is idiom/compactness, not mistranslation.",
+					"disposition": "nonblocking wording note"
+				}
+			],
+			"coverage": "Delta and immediate context reviewed; unchanged key coverage retained from round 2."
+		}
+	}
+}

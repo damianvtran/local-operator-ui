@@ -1,0 +1,12 @@
+{
+	"ui.common.connection.backend_compatibility_banner.the_backend_update_could_not_start_retry_or_update_from_settings_": "Не удалось запустить обновление бэкенда. Повторите или обновите из настроек в разделе «Обновления приложения».",
+	"ui.common.connection.backend_compatibility_banner.update_backend": "Обновить бэкенд",
+	"ui.common.connection.backend_compatibility_banner.updating": "Обновление",
+	"ui.common.connection.connectivity_banner.a_connectivity_issue_has_been_detected": "Обнаружена проблема с подключением.",
+	"ui.common.connection.connectivity_banner.dismiss": "скрыть",
+	"ui.common.connection.connectivity_banner.dismiss_inline": "Скрыть",
+	"ui.common.connection.connectivity_banner.this_app_s_updates_require": "Для обновлений приложения требуется",
+	"ui.common.connection.connectivity_banner.you_are_offline": "Вы не в сети. {detail} подключение к интернету.",
+	"ui.common.connection.floating_alert.dismiss": "Скрыть",
+	"ui.common.connection.provider.requires": "Настроенному провайдеру ({provider}) требуется"
+}

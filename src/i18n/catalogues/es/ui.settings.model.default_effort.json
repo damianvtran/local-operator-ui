@@ -1,0 +1,21 @@
+{
+	"ui.settings.model.default_effort.label": "Esfuerzo predeterminado",
+	"ui.settings.model.default_effort.placeholder": "Selecciona un nivel de esfuerzo",
+	"ui.settings.model.default_effort.busy": "Guardando el esfuerzo predeterminado",
+	"ui.settings.model.default_effort.model_default": "Predeterminado del modelo",
+	"ui.settings.model.default_effort.model_default_resolves": "Se ejecuta con {level} en este modelo.",
+	"ui.settings.model.default_effort.helper_ready": "Se aplica a las conversaciones nuevas. El predeterminado del modelo deja que este modelo elija su propio nivel.",
+	"ui.settings.model.default_effort.loading": "Comprobando los niveles de esfuerzo de este modelo…",
+	"ui.settings.model.default_effort.error": "No se pudieron leer los niveles de esfuerzo de este modelo.",
+	"ui.settings.model.default_effort.no_model": "Selecciona un modelo para elegir sus niveles de esfuerzo.",
+	"ui.settings.model.default_effort.no_home": "Tu carpeta de inicio aún no está disponible, así que no se pueden leer los niveles de esfuerzo.",
+	"ui.settings.model.default_effort.settings_loading": "Comprobando tu esfuerzo predeterminado guardado…",
+	"ui.settings.model.default_effort.settings_error": "No se pudo leer tu esfuerzo predeterminado guardado.",
+	"ui.settings.model.default_effort.unresolved": "Este modelo aún no ha indicado sus niveles de esfuerzo.",
+	"ui.settings.model.default_effort.empty": "El esfuerzo no se puede ajustar en este modelo.",
+	"ui.settings.model.default_effort.one_level": "Este modelo ofrece un único nivel de esfuerzo: {level}.",
+	"ui.settings.model.default_effort.one_level_sentinel": "Este modelo no tiene ningún nivel de esfuerzo que elegir: siempre se ejecuta con su propio valor predeterminado.",
+	"ui.settings.model.default_effort.clamped": "{level} no está disponible en {model}. Se usará {resolved}.",
+	"ui.settings.model.default_effort.clamped_unset": "{level} no está disponible en {model}. Se usará el predeterminado del modelo.",
+	"ui.settings.model.default_effort.save_failed": "No se guardó tu esfuerzo predeterminado."
+}

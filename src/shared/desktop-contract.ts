@@ -1,3 +1,14 @@
+/** Stable tag IDs keep display renames independent of conversation assignments. */
+export type TagRef = { id: string; name: string };
+export type TagCategory = TagRef & { order: number; conversations: number };
+export type SessionTags = {
+	session_id: string;
+	tags: TagRef[];
+	primary: string | null;
+};
+export type TagRegistry = { tags: TagCategory[] };
+export type DesiredTag = { id?: string; name: string };
+
 import { z } from "zod";
 import { agentMessagesBoundarySchema } from "./agent-messages-contract";
 // The feed's frame family lives beside the session stream's, so the two cannot
@@ -2041,6 +2052,28 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			op: z.literal("sessions.notified"),
 			sessionId,
 			completionToken: z.string().uuid(),
+		})
+		.strict(),
+	// Registry writes and assignments carry desired state, making retries idempotent.
+	z
+		.object({ op: z.literal("tags.list") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("tags.replace"),
+			tags: z.array(
+				z.object({ id: z.string().optional(), name: z.string() }).strict(),
+			),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.tags"),
+			sessionId,
+			// Whole desired assignment, not a toggle; identity survives a display rename.
+			tags: z.array(z.string()),
+			// Explicit grouping choice: one assigned tag ID, or null when untagged.
+			primary: z.string().nullable(),
 		})
 		.strict(),
 	/*
@@ -7360,6 +7393,20 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/sessions/${request.sessionId}/notified`,
 				method: "POST",
 				body: { completion_token: request.completionToken },
+			};
+		case "tags.list":
+			return { path: "/v1/desktop/tags", method: "GET" };
+		case "tags.replace":
+			return {
+				path: "/v1/desktop/tags",
+				method: "PUT",
+				body: { tags: request.tags },
+			};
+		case "sessions.tags":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/tags`,
+				method: "PUT",
+				body: { tags: request.tags, primary: request.primary },
 			};
 		case "sessions.pin":
 			return {

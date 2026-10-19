@@ -973,14 +973,18 @@ keeps no hover fill on glass: there is no AA room for a step above the veil
 rides the cursor and the block's own controls. Off glass the flat hover is
 untouched.
 
-A WELL behind blocks (the Projects board's `bg-sunken` band, Mesh's graph frame)
-**paints nothing** on glass: a well never sits under a veiled block - two stacked
-inks break AA, and the alpha-owning law forbids it. A well that is a TRACK (a
-segmented control, the Settings usage and filter tracks) keeps the field overlay;
-`data-glass-well="clear"` is the painted-nothing kind, and the two are never
-confused. Sticky headers (scroll-under) stay **solid** - a translucent sticky
-shows rows through it, which is text over text - and so do the chips, badges and
-avatars inside a block.
+A WELL behind blocks (Mesh's graph frame) **paints nothing** on glass: a well
+never sits under a veiled block as an INK layer - two stacked inks break AA, and
+the alpha-owning law forbids it. A well that is a TRACK (a segmented control, the
+Settings usage and filter tracks) keeps the field overlay;
+`data-glass-well="clear"` is the painted-nothing kind. A well that must READ as
+structure on a translucent page is a LANE (below), which is a surface wash, not an
+ink. Sticky headers (scroll-under) inside a covered region are **bands**, not
+solid plates: the field overlay, the same treatment the list view's team bands
+have shipped since round 2. A solid header in a translucent column is the hard
+seam the operator photographed; a translucent one is a field step whose text
+contrast the contract asserts (ink and inkMuted AA, inkDim 3.5 on the band). The
+chips, badges and avatars inside a block stay solid, as before.
 
 The **composer is a field**, not a pane: ink 5% over the canvas glass - and **no
 edge at rest**, the same no-edge geometry the flat build has. v0.34.55 briefly drew
@@ -1006,33 +1010,97 @@ error and empty states. Under *Sidebars only* the whole route stays flat.
 
 **What stays solid under *Full app*, by design** (the Settings copy says so in one
 sentence): web pages in the browser view (the page paints itself), document and
-media viewers (PDF, image, video, audio), code and diff grounds, a message's reply
-quote and attachment tiles, leave-flow surfaces (menus, dialogs, popovers, the
-palette, toasts, drag previews), sticky scroll-under headers, theme preview tiles,
-and small deliberate marks. A panel's own *frame* (the Schedules list, the Agent hub
-category rail) is a surface and goes glass; the cards inside it are blocks (tints).
-Console, code-review and canvas panes are text-bearing panes and stay near-opaque
-on dark palettes by design, not by omission.
+media viewers' own grounds (PDF, image, video, audio), code and diff grounds, a
+message's reply quote and attachment tiles, leave-flow surfaces (menus, dialogs,
+popovers, the palette, toasts, drag previews), theme preview tiles, and small
+deliberate marks. A panel's own *frame* (the Schedules list, the Agent hub category
+rail) is a surface and goes glass; the cards inside it are blocks (tints). The
+canvas, ask, run-detail, console and code-review panes are text-bearing panes: on
+glass their ROOT is the pane ground and every plane inside them is clear or a
+band (round 3 below), so the column reads as one translucent surface instead of an
+opaque root behind opaque descendants.
 
 **Per element, on glass:**
 
 | Element | On glass | Why |
 |---|---|---|
 | Column grounds (sidebar, rail, status band, canvas) | role at its derived alpha | AA ink over the worst backdrop, floors per material and scheme |
-| Text-bearing panes (ask drawer, run panel, console, code review, browser) | `pane` region: `elevated` at its floor, near-opaque on dark palettes | text must stay legible over any desktop |
+| Text-bearing panes (canvas, ask drawer, run panel, console, code review, browser) | `pane` region: `elevated` at its floor; its visible planes are clear or bands (round 3) | text must stay legible over any desktop, and one opaque plane behind the root is glass in the one place nobody looks |
 | Text-bearing blocks (message bubbles, project/hub/node cards, detail blocks) | `data-glass-block`: `ink` at `blockVeil` over the canvas glass | the fill is the block's only boundary; a relative ink step never vanishes |
 | Composer | `data-glass-region="composer"`: ink 5% (a field), no edge at rest | the composer's own contract wins: no border at rest on or off glass, the ring is its only boundary (v0.34.55's glass-only edge was reverted; operator report 2026-10-17) |
 | Chrome band (Browser tab strip and URL row) | `data-glass-region="chrome"`: `surface` at its floor, raw over the desktop | it is the sidebar's rung, so the two read as one edge |
 | Running tool row | `data-glass-state="running"`: ink at the selected step | an in-flight row is the subject; an opaque rung was a slab |
-| Well behind blocks | `data-glass-well="clear"` paints nothing | a well never sits under a veil |
+| Chosen row inside a veiled block (ask options, `Other`) | stays `bg-sunken` (one role fill) | a chosen row is a selected SURFACE: the selected ink (0.08) over a veil (0.09-0.12) is the forbidden stack, so the fill is the only layer and the mark is the selection channel |
+| Well behind blocks | `data-glass-well="clear"` paints nothing | a well-as-ink never sits under a veil |
+| Lane (the Projects board's well and column strip) | `data-glass-lane`: the derived scheme role (`sunken` dark / `surface` light) at a scale of the page alpha, over the page glass | the card's veil is the only ink under its text; a wash that tracks the slider keeps its step at every frosted/clear position instead of one |
 | Segmented-control tracks, bands | ink overlay at 0.05 (`data-glass-well` or `role=tablist`) | a track is a well, not a block |
 | Row hover / selected (nav, list rows, rail, tabs, the active browser tab) | palette `ink` at 0.05 / 0.08 over the glass | an opaque pill is a hole; a faint tint vanishes over a bright desktop. An ink overlay is a step relative to whatever the ground is |
 | Text fields, outlined controls, segmented-control tracks | ink overlay at 0.05; `border-control` mixed toward `ink` by `controlMix` | the BORDER carries the 3:1 edge, the fill only lifts it |
 | Focus | `outline`, never a fill; `accent` held 3:1 against the glass ground | unchanged from section 6 |
 | Pressed (`active:bg-sunken`) | stays opaque `sunken` | a sub-200 ms state of the control, not a surface |
 | Primary buttons, avatars, brand mark, banners | unchanged, opaque | small deliberate marks, not grounds |
-| Sticky headers (scroll-under) | stay solid | a translucent sticky is text over text |
+| Sticky headers (scroll-under) | `data-glass-plane="band"`: the field overlay | a solid plate in a translucent column is the seam the operator reported; the band's own inks are contract rows |
 | Popout (quick send) | card ground `surface` at its floor raw; input a field; picker sheet solid | a single floating HUD on the window's material |
+
+**Planes, bands and lanes (round 3).** The operator's report: the left sidebar
+read as glass while the right-hand canvas panels did not. The pane ROOT was
+already `pane`; the visible surfaces inside it were the problem, and every one of
+them painted an opaque role fill. The model names the three things a surface can
+be on glass:
+
+| Class | Marker | Paint |
+|---|---|---|
+| Ground (a column: the pane root, the page canvas) | `data-glass-region` | the role alpha, one alpha-owning layer per region (unchanged) |
+| Plane (a scroll container, list body, viewer body, tab strip) | `data-glass-plane="clear"` | nothing: the region owns the alpha, and a second role fill is the opaque island the report is about |
+| Band (a sticky section header, a toolbar that masks what scrolls under it) | `data-glass-plane="band"` | the field overlay (ink 5%), the same step a track or a field wears |
+| Block (a text-bearing card whose fill is its boundary) | `data-glass-block` | the derived veil (unchanged) |
+| Lane (a well that must read under veiled cards) | `data-glass-lane` | the derived scheme role at `pageAlpha * scale` (tracks the slider) |
+
+**The selected tab is an overlay, not a pill.** A tab's opaque `bg-surface` /
+`bg-elevated` fill is a hole in a translucent strip; inside a covered pane the
+selected pill takes the selected ink step (8%), the same as a selected row. The
+tab strip itself is a plane (`clear`), because 8% over a strip's own 5% field
+would stack to 12.7% and put `inkMuted` at 4.18:1 on dracula. Measured at 8% over
+the pane: `inkMuted` 4.76:1, `inkDim` 3.92:1, `ink` 6.16:1 - the worst palette,
+all three material tiers. A row HOVER inside a covered pane is the row-hover ink
+overlay; the rail's `hover:bg-surface` / `hover:bg-sunken` utilities are translated
+by one rule rather than rewritten call site by call site. THAT TRANSLATION STOPS AT
+A VEILED BLOCK: ink 5% over the veil measured `inkMuted` 4.30:1 on synthwave
+(round 1, F1), so a hovered option row or footer button inside one paints no fill,
+and the affordance rides the cursor, the mark, and - where the label is still muted
+- a `hover:text-ink` step (a TEXT step, which does not move the ink ground; a label
+already at `ink` has no brighter step and is cursor-only there). The suppression is
+gated on the VEIL's own condition (`canvas`), not on the pane rule's structure: the
+fleet asks drawer's pane is a sibling of `<main>`, and round 1's main-scoped rule
+never matched it (round 2). The ask card's own worst, recomposed over all 59
+palettes x 3 tiers x 101 positions on its net `elevated` pane: `inkMuted` 4.64:1
+(dracula/popover; 4.67 at 80), `inkDim` 3.70:1 (the 3.5 state floor), card ΔE00 4.16
+off the pane (the 4.0 veil floor) - every floor holds, the `inkMuted` margin over AA
+is 0.14 at the worst point. Independent QA reproduced the same sweep (4.64 worst).
+
+**The lane wash is derived, not chosen - and it tracks the slider.** `laneWash` is
+a `{role, scale}` pair per scheme: the lane paints `role` at `pageAlpha * scale`
+(`sunken` at 0.73 on dark, `surface` at 0.72 on light), so the step is held at
+every slider position rather than at one claimed "binding" point. Round 1 measured
+the fixed-alpha version: the page's alpha runs `0.66 -> 0.96` as intensity FALLS
+while the old wash stayed at `0.76 / 0.41`, and the lane fell to ΔE00 0.59 on dark
+at 25 and 0.99 on light at 0 - "80 is binding" was inverted. The role is derived
+with the scale because a role's distance from `canvas` bounds the step at the
+opaque end: dark `surface` is only ΔE00 1.3-1.6 off `canvas` on several palettes and
+cannot clear at any alpha, while dark `sunken` can; light is the reverse. The lane
+cannot be an ink overlay: the card above it already spends the ink budget on its
+veil, and ink 5% under the veil measured `inkMuted` 4.03:1 on synthwave. Measured
+over all 59 palettes at 80: lane ΔE00 1.82-5.73 off the page, card ΔE00 4.39-6.37
+off the lane, `inkMuted` on the card 5.27:1 minimum, `inkDim` 4.14:1. The contract
+asserts every slider position; the tightest shipped step is ΔE00 1.53 at
+intensity 2. The lane's flat form is the opaque `sunken` well, unchanged.
+
+**The sounds surfaces are covered by the block and field rows.** The sound
+player's waveform and clock are `ink-dim` / `ink-muted` on the message block's
+veil, which the "glass block veil" row asserts at AA / 3.5 over every palette; the
+audio attachment is a bordered tile on `surface`, a control ground covered by the
+flat contract. No separate numbers are needed, and the sounds lane's own
+capture-gate fixes are not duplicated here.
 
 **The one relaxation:** `inkDim` (captions, placeholders) is held to 3.5:1, not 4.5:1,
 on a hovered or selected row, on a field's fill over glass, and on the block veil (a

@@ -1,0 +1,602 @@
+{
+	"schema": 1,
+	"auditor": "i18n-auditor",
+	"model": "openai/gpt-6.1-sol",
+	"instance": "7c40d1c357cf",
+	"locale": "fr",
+	"date": "2026-10-18",
+	"status": "passed",
+	"verdict": "PASS-WITH-NOTES",
+	"round": 2,
+	"scope": {
+		"base": "76dda0304bfa4b54ebd42cccd32bbd05841ca4a3",
+		"head": "718219be27f3b17e605f2c2af35a20c0c19af88e",
+		"delta_base": "6f04ff634be8863dbb3b7f13fe3352e666143d33",
+		"pr": "https://github.com/damianvtran/local-operator-ui/pull/1173"
+	},
+	"provenance": {
+		"agent": "i18n-auditor",
+		"model": "openai/gpt-6.1-sol",
+		"date": "2026-10-18",
+		"instance": "7c40d1c357cf",
+		"independent_of_translator": true,
+		"fallback": "Automatic fallback from anthropic/claude-sonnet-5-5 before substantive audit, because Anthropic quota exhausted; all substantive checks and French review performed as openai/gpt-6.1-sol."
+	},
+	"translator_receipt": {
+		"path": "i18n/receipts/ui-fr-batch.json",
+		"sha256": "990997c64bc800dfc05186c6315085d99d17215bf5199e7ad655aca9b0e146b6",
+		"verified": true
+	},
+	"guidance": {
+		"local-operator/i18n/glossary.md": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+		"local-operator/i18n/style-guides/fr.md": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+	},
+	"method": {
+		"read_only_git_objects": true,
+		"keys_audited": 240,
+		"all_keys_read_semantically": true,
+		"high_visibility_line_by_line": [
+			"ui.chat.sidebar_view",
+			"ui.command_palette"
+		],
+		"parser": "existing @formatjs/icu-messageformat-parser 3.5.21; no install",
+		"icu_normalization": "French many addition compared to English other; one/other compared branchwise, literals ignored; all argument types/styles, selectors, offsets and nesting retained",
+		"rendering": "NOT RUN: explicit no-browser/no-heavy-runs constraint; width risks are advisory source counts, not clipping proof",
+		"limitations": [
+			"This is one independent audit; not the second independent high-visibility audit required by docs/I18N.md.",
+			"No full CI, generation, browser, pseudo-localization, or runtime locale activation tested."
+		],
+		"retained_coverage": "Round 1 full 240-key audit plus round 2 remediation diff and direct neighbours; six target catalogues and every English/context file proven byte-identical, no reset of unchanged semantic review."
+	},
+	"cldr": {
+		"categories": [
+			"one",
+			"many",
+			"other"
+		],
+		"samples": {
+			"0": "one",
+			"1": "one",
+			"2": "other",
+			"1000000": "many",
+			"1500000": "other"
+		}
+	},
+	"findings": [
+		{
+			"id": "F3",
+			"severity": "minor",
+			"namespaces": [
+				"ui.command_palette"
+			],
+			"summary": "The search fallback repeatedly uses the cumbersome calque « mises en correspondance par nom ».",
+			"locations": [
+				{
+					"path": "src/i18n/catalogues/fr/ui.command_palette.json",
+					"line": 2,
+					"key": "ui.command_palette.command_palette.characters_so_chats_are_matched_by_name"
+				},
+				{
+					"path": "src/i18n/catalogues/fr/ui.command_palette.json",
+					"line": 3,
+					"key": "ui.command_palette.command_palette.chats_are_matched_by_name_update_local_operator_to_search_inside_"
+				},
+				{
+					"path": "src/i18n/catalogues/fr/ui.command_palette.json",
+					"line": 8,
+					"key": "ui.command_palette.command_palette.conversation_search_is_unavailable_while_the_backend_is_unreachab"
+				}
+			],
+			"details": "Prefer « la recherche porte sur le nom des conversations » or « les conversations sont recherchées par nom », retaining any leading fragment spacing. Meaning is understandable; this is idiom/compactness, not mistranslation.",
+			"disposition": "nonblocking wording note"
+		},
+		{
+			"id": "F4",
+			"severity": "minor",
+			"namespaces": [
+				"ui.chat.composer",
+				"ui.chat.header"
+			],
+			"summary": "10 literal strings exceed their advisory maxCells budgets.",
+			"locations": [
+				{
+					"key": "ui.chat.composer.start_recording",
+					"length": 25,
+					"maxCells": 24,
+					"over": true,
+					"value": "Démarrer l’enregistrement",
+					"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+					"line": 5
+				},
+				{
+					"key": "ui.chat.composer.confirm_recording",
+					"length": 26,
+					"maxCells": 24,
+					"over": true,
+					"value": "Confirmer l’enregistrement",
+					"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+					"line": 6
+				},
+				{
+					"key": "ui.chat.composer.starting_recording",
+					"length": 29,
+					"maxCells": 24,
+					"over": true,
+					"value": "Démarrage de l’enregistrement",
+					"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+					"line": 16
+				},
+				{
+					"key": "ui.chat.composer.secret_ask_open",
+					"length": 19,
+					"maxCells": 16,
+					"over": true,
+					"value": "Ouvrir les demandes",
+					"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+					"line": 22
+				},
+				{
+					"key": "ui.chat.composer.secret_confirm_put",
+					"length": 27,
+					"maxCells": 24,
+					"over": true,
+					"value": "Mettre dans le champ secret",
+					"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+					"line": 26
+				},
+				{
+					"key": "ui.chat.composer.secret_confirm_put_multi",
+					"length": 30,
+					"maxCells": 24,
+					"over": true,
+					"value": "Ouvrir le panneau des demandes",
+					"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+					"line": 27
+				},
+				{
+					"key": "ui.chat.composer.secret_fill_locked",
+					"length": 135,
+					"maxCells": 120,
+					"over": true,
+					"value": "Non placé dans le champ secret : un message est encore en cours d’envoi. Votre texte est conservé — réessayez une fois l’envoi terminé.",
+					"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+					"line": 30
+				},
+				{
+					"key": "ui.chat.header.transcript_display",
+					"length": 29,
+					"maxCells": 28,
+					"over": true,
+					"value": "Affichage de la transcription",
+					"path": "src/i18n/catalogues/fr/ui.chat.header.json",
+					"line": 8
+				},
+				{
+					"key": "ui.chat.header.close_run_details",
+					"length": 33,
+					"maxCells": 20,
+					"over": true,
+					"value": "Fermer les détails de l’exécution",
+					"path": "src/i18n/catalogues/fr/ui.chat.header.json",
+					"line": 10
+				},
+				{
+					"key": "ui.chat.header.open_run_details",
+					"length": 33,
+					"maxCells": 20,
+					"over": true,
+					"value": "Ouvrir les détails de l’exécution",
+					"path": "src/i18n/catalogues/fr/ui.chat.header.json",
+					"line": 11
+				}
+			],
+			"details": "Code-point counts equal display-cell counts for these precomposed Latin strings; this is source-level overflow risk, NOT observed clipping. ICU source syntax was excluded from length comparisons. All 11 sidebar_view labels with numeric budgets fit; palette sidecars specify one-row prose rather than numeric widths. No browser or rendered-fit validation was performed, per task constraints.",
+			"disposition": "nonblocking fit follow-up; shorten or independently render before asserting fit"
+		}
+	],
+	"namespaces": {
+		"ui.shell": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 29,
+			"sha256": {
+				"en": "a36a75e15ce94632bad00e774e7f6211ca58d95a2b6f6f50a85e687d64a5b1ea",
+				"fr": "eca30b5e982ebaaf7e36ecff26487ae2f07b3dcd017a4eb7f7fb19586e918571",
+				"context": "28fe5abc38f1f94e62f4f2f5201513cf1688e0ad26e0d1d0a739846fb43cebab"
+			},
+			"findings": [],
+			"coverage": "round 1 full review retained; English/context/French bytes unchanged"
+		},
+		"ui.shell.rail": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 20,
+			"sha256": {
+				"en": "82f946fe2d2944d03100d85263ff5e9e595dc34f953a0d57aa9794ea0879f3eb",
+				"fr": "a0682fd26944cc4033a02fa673c691c7923d0593659fe7f8c8550ca4f74b41ea",
+				"context": "a6956835b7178e62982d4b95763390fe7b67decabe83c3d82e0e911101062d72"
+			},
+			"findings": [],
+			"coverage": "round 1 full review retained; English/context/French bytes unchanged"
+		},
+		"ui.chat": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 8,
+			"sha256": {
+				"en": "29169c4c0801689781d503f724d457757275416c49e975bfb6ae4872d90c2c46",
+				"fr": "3cd942b2ff623a18d68995c148d5edf1d5a4028033932b71f6ed161f7ba03722",
+				"context": "2561c8f369eb55a351ec95d0c6d9443e0cfcac43a500cc826bfaf7c744d71e2e"
+			},
+			"findings": [],
+			"coverage": "remediation and direct neighbours, full review retained from round 1"
+		},
+		"ui.chat.sidebar_view": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 22,
+			"sha256": {
+				"en": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+				"fr": "f75ada877778f12898c37870f31e51e800fa102495a18fcf31c9307fcd0979cc",
+				"context": "7d51739eca1dc19b6896c13df0fab73a1b09f0a6190d609bffb75e6b712d4d75"
+			},
+			"findings": [],
+			"coverage": "round 1 full review retained; English/context/French bytes unchanged"
+		},
+		"ui.chat.composer": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 34,
+			"sha256": {
+				"en": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+				"fr": "c52bea44cef9c409b6ccc1ac16eaa685500bc25bc8a27aa9740977c369b7dda0",
+				"context": "4e1b44b439206055e3b1b470a1a90c131c209a463ed4cc7f4cdf4bc5a5366c3a"
+			},
+			"findings": [
+				{
+					"id": "F4",
+					"severity": "minor",
+					"namespaces": [
+						"ui.chat.composer",
+						"ui.chat.header"
+					],
+					"summary": "10 literal strings exceed their advisory maxCells budgets.",
+					"locations": [
+						{
+							"key": "ui.chat.composer.start_recording",
+							"length": 25,
+							"maxCells": 24,
+							"over": true,
+							"value": "Démarrer l’enregistrement",
+							"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+							"line": 5
+						},
+						{
+							"key": "ui.chat.composer.confirm_recording",
+							"length": 26,
+							"maxCells": 24,
+							"over": true,
+							"value": "Confirmer l’enregistrement",
+							"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+							"line": 6
+						},
+						{
+							"key": "ui.chat.composer.starting_recording",
+							"length": 29,
+							"maxCells": 24,
+							"over": true,
+							"value": "Démarrage de l’enregistrement",
+							"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+							"line": 16
+						},
+						{
+							"key": "ui.chat.composer.secret_ask_open",
+							"length": 19,
+							"maxCells": 16,
+							"over": true,
+							"value": "Ouvrir les demandes",
+							"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+							"line": 22
+						},
+						{
+							"key": "ui.chat.composer.secret_confirm_put",
+							"length": 27,
+							"maxCells": 24,
+							"over": true,
+							"value": "Mettre dans le champ secret",
+							"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+							"line": 26
+						},
+						{
+							"key": "ui.chat.composer.secret_confirm_put_multi",
+							"length": 30,
+							"maxCells": 24,
+							"over": true,
+							"value": "Ouvrir le panneau des demandes",
+							"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+							"line": 27
+						},
+						{
+							"key": "ui.chat.composer.secret_fill_locked",
+							"length": 135,
+							"maxCells": 120,
+							"over": true,
+							"value": "Non placé dans le champ secret : un message est encore en cours d’envoi. Votre texte est conservé — réessayez une fois l’envoi terminé.",
+							"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+							"line": 30
+						},
+						{
+							"key": "ui.chat.header.transcript_display",
+							"length": 29,
+							"maxCells": 28,
+							"over": true,
+							"value": "Affichage de la transcription",
+							"path": "src/i18n/catalogues/fr/ui.chat.header.json",
+							"line": 8
+						},
+						{
+							"key": "ui.chat.header.close_run_details",
+							"length": 33,
+							"maxCells": 20,
+							"over": true,
+							"value": "Fermer les détails de l’exécution",
+							"path": "src/i18n/catalogues/fr/ui.chat.header.json",
+							"line": 10
+						},
+						{
+							"key": "ui.chat.header.open_run_details",
+							"length": 33,
+							"maxCells": 20,
+							"over": true,
+							"value": "Ouvrir les détails de l’exécution",
+							"path": "src/i18n/catalogues/fr/ui.chat.header.json",
+							"line": 11
+						}
+					],
+					"details": "Code-point counts equal display-cell counts for these precomposed Latin strings; this is source-level overflow risk, NOT observed clipping. ICU source syntax was excluded from length comparisons. All 11 sidebar_view labels with numeric budgets fit; palette sidecars specify one-row prose rather than numeric widths. No browser or rendered-fit validation was performed, per task constraints.",
+					"disposition": "nonblocking fit follow-up; shorten or independently render before asserting fit"
+				}
+			],
+			"coverage": "remediation and direct neighbours, full review retained from round 1"
+		},
+		"ui.chat.header": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 10,
+			"sha256": {
+				"en": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+				"fr": "636be1bdb3ea9c04d89e187285b0122f7026b56401dbf596ec753f1572fbb9dd",
+				"context": "ce8be48bf86c92bd7631d2b22f54b59f84b2eb700d746ba5dfaccb19bbbb1acb"
+			},
+			"findings": [
+				{
+					"id": "F4",
+					"severity": "minor",
+					"namespaces": [
+						"ui.chat.composer",
+						"ui.chat.header"
+					],
+					"summary": "10 literal strings exceed their advisory maxCells budgets.",
+					"locations": [
+						{
+							"key": "ui.chat.composer.start_recording",
+							"length": 25,
+							"maxCells": 24,
+							"over": true,
+							"value": "Démarrer l’enregistrement",
+							"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+							"line": 5
+						},
+						{
+							"key": "ui.chat.composer.confirm_recording",
+							"length": 26,
+							"maxCells": 24,
+							"over": true,
+							"value": "Confirmer l’enregistrement",
+							"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+							"line": 6
+						},
+						{
+							"key": "ui.chat.composer.starting_recording",
+							"length": 29,
+							"maxCells": 24,
+							"over": true,
+							"value": "Démarrage de l’enregistrement",
+							"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+							"line": 16
+						},
+						{
+							"key": "ui.chat.composer.secret_ask_open",
+							"length": 19,
+							"maxCells": 16,
+							"over": true,
+							"value": "Ouvrir les demandes",
+							"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+							"line": 22
+						},
+						{
+							"key": "ui.chat.composer.secret_confirm_put",
+							"length": 27,
+							"maxCells": 24,
+							"over": true,
+							"value": "Mettre dans le champ secret",
+							"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+							"line": 26
+						},
+						{
+							"key": "ui.chat.composer.secret_confirm_put_multi",
+							"length": 30,
+							"maxCells": 24,
+							"over": true,
+							"value": "Ouvrir le panneau des demandes",
+							"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+							"line": 27
+						},
+						{
+							"key": "ui.chat.composer.secret_fill_locked",
+							"length": 135,
+							"maxCells": 120,
+							"over": true,
+							"value": "Non placé dans le champ secret : un message est encore en cours d’envoi. Votre texte est conservé — réessayez une fois l’envoi terminé.",
+							"path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+							"line": 30
+						},
+						{
+							"key": "ui.chat.header.transcript_display",
+							"length": 29,
+							"maxCells": 28,
+							"over": true,
+							"value": "Affichage de la transcription",
+							"path": "src/i18n/catalogues/fr/ui.chat.header.json",
+							"line": 8
+						},
+						{
+							"key": "ui.chat.header.close_run_details",
+							"length": 33,
+							"maxCells": 20,
+							"over": true,
+							"value": "Fermer les détails de l’exécution",
+							"path": "src/i18n/catalogues/fr/ui.chat.header.json",
+							"line": 10
+						},
+						{
+							"key": "ui.chat.header.open_run_details",
+							"length": 33,
+							"maxCells": 20,
+							"over": true,
+							"value": "Ouvrir les détails de l’exécution",
+							"path": "src/i18n/catalogues/fr/ui.chat.header.json",
+							"line": 11
+						}
+					],
+					"details": "Code-point counts equal display-cell counts for these precomposed Latin strings; this is source-level overflow risk, NOT observed clipping. ICU source syntax was excluded from length comparisons. All 11 sidebar_view labels with numeric budgets fit; palette sidecars specify one-row prose rather than numeric widths. No browser or rendered-fit validation was performed, per task constraints.",
+					"disposition": "nonblocking fit follow-up; shorten or independently render before asserting fit"
+				}
+			],
+			"coverage": "round 1 full review retained; English/context/French bytes unchanged"
+		},
+		"ui.agents.navigation": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 32,
+			"sha256": {
+				"en": "23f591cd7c2d52c2563e0b5cbb4cbb2164f7cd01c2568b050738b3be976a5729",
+				"fr": "179d48ca93cee5a0e76707bb1a2210b19cebe125eceb8d6be21e622e06181091",
+				"context": "3d3e8121a15256ffaac2df6e35e2bb1151959bc4fdc0575352fb7d3b4ae1bbca"
+			},
+			"findings": [],
+			"coverage": "remediation and direct neighbours, full review retained from round 1"
+		},
+		"ui.common.actions": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 6,
+			"sha256": {
+				"en": "bf151da8ad56c3b32b05be1d505764d3f4cfb72e9792f9ec68b8a570239f6976",
+				"fr": "a617a61d0eeb98928c3425a9af778a841c7787acf2c11158253f34d7d16c2e0a",
+				"context": "a7d020e5552dd770cb5c263e63d07775f8d309d4ae211e727b3bde1a2733b0da"
+			},
+			"findings": [],
+			"coverage": "round 1 full review retained; English/context/French bytes unchanged"
+		},
+		"ui.common.errors": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 4,
+			"sha256": {
+				"en": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+				"fr": "0870c5d466c9e7f2153c47f7a77370b9711f15d0464689b44fe489aaea97e6ef",
+				"context": "6f93d0bc40db09d195bbe6a57534f9c474b45de072f100e900cc286886a2e44b"
+			},
+			"findings": [],
+			"coverage": "round 1 full review retained; English/context/French bytes unchanged"
+		},
+		"ui.command_palette": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 75,
+			"sha256": {
+				"en": "c48797d973f81dea023e5c89c40c83d8ae0a9cdfaeb2509f6cbc4e9fb8abd7c6",
+				"fr": "21dfa0ea5a7e963362fb45a01dca9c965ff2344b11114fb66d579f1c9d10b522",
+				"context": "45608d545283180177fed89e463c65fad45760ddccf6fded5717eda2fd5b1cc9"
+			},
+			"findings": [
+				{
+					"id": "F3",
+					"severity": "minor",
+					"namespaces": [
+						"ui.command_palette"
+					],
+					"summary": "The search fallback repeatedly uses the cumbersome calque « mises en correspondance par nom ».",
+					"locations": [
+						{
+							"path": "src/i18n/catalogues/fr/ui.command_palette.json",
+							"line": 2,
+							"key": "ui.command_palette.command_palette.characters_so_chats_are_matched_by_name"
+						},
+						{
+							"path": "src/i18n/catalogues/fr/ui.command_palette.json",
+							"line": 3,
+							"key": "ui.command_palette.command_palette.chats_are_matched_by_name_update_local_operator_to_search_inside_"
+						},
+						{
+							"path": "src/i18n/catalogues/fr/ui.command_palette.json",
+							"line": 8,
+							"key": "ui.command_palette.command_palette.conversation_search_is_unavailable_while_the_backend_is_unreachab"
+						}
+					],
+					"details": "Prefer « la recherche porte sur le nom des conversations » or « les conversations sont recherchées par nom », retaining any leading fragment spacing. Meaning is understandable; this is idiom/compactness, not mistranslation.",
+					"disposition": "nonblocking wording note"
+				}
+			],
+			"coverage": "remediation and direct neighbours, full review retained from round 1"
+		}
+	},
+	"previous_audit": {
+		"record": "/Users/damian/.local-operator/sessions/7c40d1c357cf/scratchpad/7c40d1c357cf.json",
+		"sha256": "e9dbe72bc1d3367f04d995c0748e283de82502291e13030b831e819c11e7011f",
+		"comment": "https://github.com/damianvtran/local-operator-ui/pull/1173#issuecomment-6250736473",
+		"verdict": "FAIL"
+	},
+	"remediation": {
+		"commit": "718219be27f3b17e605f2c2af35a20c0c19af88e",
+		"changed_keys": {
+			"ui.chat": [
+				"ui.chat.usage.continue"
+			],
+			"ui.chat.composer": [
+				"ui.chat.composer.welcome",
+				"ui.chat.composer.delivery_remedies_hint",
+				"ui.chat.composer.secret_confirm_message",
+				"ui.chat.composer.secret_fill_locked",
+				"ui.chat.composer.secret_fill_changed",
+				"ui.chat.composer.secret_fill_gone"
+			],
+			"ui.agents.navigation": [
+				"ui.agents.navigation.updates.preview.empty",
+				"ui.agents.navigation.updates.baseline_unknown"
+			],
+			"ui.command_palette": [
+				"ui.command_palette.command_palette.clear_this_conversation",
+				"ui.command_palette.command_palette.conversation_search_is_unavailable_while_the_backend_is_unreachab",
+				"ui.command_palette.matches.best"
+			]
+		},
+		"unchanged_target_namespaces": [
+			"ui.shell",
+			"ui.shell.rail",
+			"ui.chat.sidebar_view",
+			"ui.chat.header",
+			"ui.common.actions",
+			"ui.common.errors"
+		],
+		"resolved": [
+			"F1: countText restored in total/one; zero normalized structural drift across all 240 keys by delta + retained evidence.",
+			"F2: all 11 U+0020 punctuation sites now U+202F; zero invalid prose punctuation in all four touched namespaces."
+		],
+		"retained_notes": [
+			"F3: understandable search fallback calque; nonblocking.",
+			"F4: 10 advisory literal maxCells overruns remain; no clipping claimed."
+		]
+	}
+}

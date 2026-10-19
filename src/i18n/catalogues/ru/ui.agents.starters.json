@@ -1,0 +1,18 @@
+{
+	"ui.agents.starters.action.all_builtins": "Установить всех встроенных агентов",
+	"ui.agents.starters.action.all_count": "{count, plural, one {Установить все {count}} few {Установить все {count}} many {Установить все {count}} other {Установить все {count}}}",
+	"ui.agents.starters.action.done": "Готово",
+	"ui.agents.starters.available": "{count, plural, one {доступен {count} встроенный агент} few {доступно {count} встроенных агента} many {доступно {count} встроенных агентов} other {доступно {count} встроенных агента}}",
+	"ui.agents.starters.progress.accessible": "Установка встроенных агентов, {step} из {total}",
+	"ui.agents.starters.progress.count": "Установка {done} из {total}…",
+	"ui.agents.starters.progress.named": "Установка {step} из {total} — {name}…",
+	"ui.agents.starters.server_unanswered": "Сервер не ответил.",
+	"ui.agents.starters.summary.already_present": "{count, plural, one {{count} уже есть} few {{count} уже есть} many {{count} уже есть} other {{count} уже есть}}",
+	"ui.agents.starters.summary.collisions": "{count, plural, one {Пропущен {count}: у вас уже есть агент с именем {names}.} few {Пропущено {count}: у вас уже есть агенты с именами {names}.} many {Пропущено {count}: у вас уже есть агенты с именами {names}.} other {Пропущено {count}: у вас уже есть агенты с именами {names}.}}",
+	"ui.agents.starters.summary.empty": "Нечего устанавливать",
+	"ui.agents.starters.summary.failed": "{count, plural, one {{count} с ошибкой} few {{count} с ошибкой} many {{count} с ошибкой} other {{count} с ошибкой}}",
+	"ui.agents.starters.summary.installed": "{count, plural, one {{count} установлен} few {{count} установлено} many {{count} установлено} other {{count} установлено}}",
+	"ui.agents.starters.summary.sentence": "{parts}.",
+	"ui.agents.starters.summary.separator": ", ",
+	"ui.agents.starters.summary.skipped": "{count, plural, one {{count} пропущен} few {{count} пропущено} many {{count} пропущено} other {{count} пропущено}}"
+}

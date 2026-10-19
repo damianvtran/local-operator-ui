@@ -1,0 +1,5 @@
+{
+	"ui.common.editing.conflict": "Ce contenu a changé pendant votre modification",
+	"ui.common.editing.keep_mine": "Conserver la mienne",
+	"ui.common.editing.use_theirs": "Utiliser la leur"
+}

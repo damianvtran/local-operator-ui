@@ -1,0 +1,188 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "f38d43f583e5",
+  "session": "f38d43f583e5",
+  "date": "2026-10-18",
+  "locale": "fr",
+  "status": "passed",
+  "head": "f82e9ccffea997f040cab6874aaea45019d11219",
+  "initial_full_native_read_head": "1516984ec99ae09e635b0cb58c4f2e747de1483c",
+  "fallback_disclosure": "Actual model openai/gpt-6.1-sol; Anthropic quota fallback. Live sessions info confirms model. Not an actual-Sonnet audit.",
+  "independence": "Independent of i18n-translator/deepseek/deepseek-flash; no catalogue, ledger, repository edits or merges performed.",
+  "scope": "Full line-by-line native read of 416 Projects and 164 Schedules keys at initial head, then complete changed-value read and raw-byte compatibility verification at final head.",
+  "namespaces": {
+    "ui.projects": {
+      "status": "passed",
+      "keys_audited": 416,
+      "sha256": {
+        "en": "6b12f695845c3d01500291f5bc4eb50ea9b35e60c68bc69f21ee219c5f9d7f52",
+        "fr": "64cc3e529f94feb252da0fe27eb070b5aa79395676bab6a40c6f2bd2754688fe"
+      },
+      "context_sha256": "2b84fd26bdcdb090363eb4b2d87737607535637e1f92d01937000bbd2cb717aa",
+      "findings": []
+    },
+    "ui.schedules": {
+      "status": "passed",
+      "keys_audited": 164,
+      "sha256": {
+        "en": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
+        "fr": "46e6ffa433b4b1481ff83938812b6475046c04d3688921503b925eb38fee6d4c"
+      },
+      "context_sha256": "86c6afb4fc140a8b420ab0e6d2707603bbaea30f07875ed2cfc8aebd93284d2f",
+      "findings": [
+        {
+          "id": "A-S1",
+          "severity": "MINOR",
+          "namespace": "ui.schedules",
+          "keys": [
+            "ui.schedules.scheduled_task_dialog.every",
+            "ui.schedules.scheduled_task_model.every_needs_a_positive_whole_number_how_many_minutes_hours_days_o"
+          ],
+          "actual": [
+            "Toutes les",
+            "« Toutes les » exige un nombre entier positif — combien de minutes, heures, jours ou semaines entre les exécutions."
+          ],
+          "expected": "Use a gender-neutral repetition label and quote the same label in validation; current label combined with masculine jours gives Toutes les 2 jours.",
+          "evidence": "scheduled-task-dialog.tsx829-871 renders repetition mode followed by interval and selectable minutes/hours/days/weeks",
+          "disposition": "deferred by Root as nonblocking copy grammar; no change to interaction required",
+          "key": "ui.schedules.scheduled_task_dialog.every"
+        },
+        {
+          "id": "A-S2",
+          "severity": "MINOR",
+          "namespace": "ui.schedules",
+          "keys": [
+            "ui.schedules.scheduled_task_model.keep_as_once"
+          ],
+          "actual": "Conserver en une fois",
+          "expected": "Conserver l’exécution unique",
+          "disposition": "deferred by Root; current action remains understandable, refine on next touch",
+          "key": "ui.schedules.scheduled_task_model.keep_as_once"
+        }
+      ]
+    }
+  },
+  "resolved_findings": [
+    {
+      "id": "A-P1",
+      "severity": "MINOR",
+      "namespace": "ui.projects",
+      "keys": [
+        "ui.projects.project_delete_dialog.delete_this_project",
+        "ui.projects.project_done_anyway_dialog.mark_done_with_open_milestones"
+      ],
+      "actual_at_1516984": [
+        "Supprimer ce projet  ",
+        "Marquer comme terminé avec des jalons ouverts  "
+      ],
+      "expected": [
+        "Supprimer ce projet ?",
+        "Marquer comme terminé avec des jalons ouverts ?"
+      ],
+      "disposition": "fixed; exact final pushed bytes and associated formatter outputs verified at f82e9ccffea997f040cab6874aaea45019d11219"
+    },
+    {
+      "id": "A-P2",
+      "severity": "MINOR",
+      "namespace": "ui.projects",
+      "keys": [
+        "ui.projects.project_edit_model.estimates_are_greater_than_0_and_at_most_1000"
+      ],
+      "actual": "Les estimations vont de 1 à 1000.",
+      "expected": "Les estimations doivent être supérieures à 0 et inférieures ou égales à 1000.",
+      "evidence": "project-edit-model.ts144-152 accepts values in (0,1000], including 0.5",
+      "disposition": "fixed; exact final pushed bytes and associated formatter outputs verified at f82e9ccffea997f040cab6874aaea45019d11219"
+    },
+    {
+      "id": "A-P3",
+      "severity": "MINOR",
+      "namespace": "ui.projects",
+      "keys": [
+        "ui.projects.project_model.this_can_t_be_marked_done_yet_milestonesare_count_still_incomplet",
+        "ui.projects.project_model.count_still_open_clause_clause",
+        "ui.projects.project_edit_model.teams_are_at_most_value2_characters"
+      ],
+      "actual": [
+        "1 jalon est encore incomplets (bêta)",
+        "1 jalon est encore ouverts (bêta).",
+        "Équipes sont limités à 80 caractères."
+      ],
+      "expected": [
+        "Gender/number-neutral incomplete-state construction preserving {milestonesAre_count} and {clause}",
+        "Gender/number-neutral open-state construction preserving {count} and {clause________clause}",
+        "Gender-neutral attribution ceiling preserving {teams} and every {value2, number, ::group-off} plural arm"
+      ],
+      "evidence": [
+        "project-model.ts1494-1505 plus ICU formatter probe",
+        "project-model.ts1597-1606",
+        "project-edit-model.ts91-105"
+      ],
+      "disposition": "fixed; exact final pushed bytes and associated formatter outputs verified at f82e9ccffea997f040cab6874aaea45019d11219"
+    }
+  ],
+  "compatibility_proof": {
+    "projects_changed_values_since_initial": [
+      "ui.projects.project_delete_dialog.delete_this_project",
+      "ui.projects.project_done_anyway_dialog.mark_done_with_open_milestones",
+      "ui.projects.project_edit_model.estimates_are_greater_than_0_and_at_most_1000",
+      "ui.projects.project_edit_model.teams_are_at_most_value2_characters",
+      "ui.projects.project_model.count_still_open_clause_clause",
+      "ui.projects.project_model.this_can_t_be_marked_done_yet_count_still_incomplete_names_comple",
+      "ui.projects.project_model.this_can_t_be_marked_done_yet_milestonesare_count_still_incomplet"
+    ],
+    "projects_unchanged_lines": 409,
+    "english_sources": "byte-identical to initial pushed bytes",
+    "schedules": "English AND French raw catalogue bytes identical to initial audited head"
+  },
+  "verification": {
+    "icu_structure": {
+      "totals": {
+        "ui.projects": {
+          "parsed": 416,
+          "plurals": 22
+        },
+        "ui.schedules": {
+          "parsed": 164,
+          "plurals": 8
+        }
+      },
+      "errors": [],
+      "disclosure": [
+        [
+          0,
+          "Afficher 0 jalon ouvert"
+        ],
+        [
+          1,
+          "Afficher 1 jalon ouvert"
+        ],
+        [
+          2,
+          "Afficher les 2 jalons ouverts"
+        ],
+        [
+          1000000,
+          "Afficher 1000000 de jalons ouverts"
+        ]
+      ],
+      "singularRefusal": "Impossible de le marquer comme terminé pour l’instant : 1 jalon est encore à terminer (bêta). Terminez ou supprimez les jalons incomplets, puis marquez-le comme terminé."
+    },
+    "formatter": {
+      "counts": {
+        "ui.projects:en": 1664,
+        "ui.projects:fr": 1664,
+        "ui.schedules:en": 656,
+        "ui.schedules:fr": 656
+      },
+      "errors": []
+    },
+    "negative_control": "Deliberately dropping length number node from French one disclosure arm produced exactly one branchwise node-signature error.",
+    "json": "Unique keys, exact key sets, valid JSON, tab indentation; passed",
+    "typography": "All prose : ; ! ? have U+202F. The two confirmation headings now end exact U+202F?.",
+    "glossary": "Core glossary and fr style guide read; vouvoiement in user-address prose; imperative user-to-agent example prompts may address agent in singular. Session/réveil/agent terminology retained; no scope-local mesh/tool-trace violations.",
+    "width": "All English sidecars inspected; compact-label/wrapping-feedback guidance, no numeric maxCells/maxWidth/pixel budgets in these namespaces. Fraction message unchanged. Static overflow-risk read only; NO live rendered/geometry/overflow claim."
+  },
+  "staging": "Receipt staged outside repository for Root to copy verbatim to i18n/receipts/f38d43f583e5-final.json; this audit does not edit repository files."
+}

@@ -1,0 +1,12 @@
+{
+	"ui.settings.appearance.settings_page.adds_the_agent_s_reasoning_and_thinking_rows_to_conversations_the": "Добавляет в разговоры строки «Рассуждения» и «Размышления» агента. Они остаются свёрнутыми, пока вы их не откроете. Только рассуждения: текст, который агент пишет как обычное пояснение по ходу работы, относится к транскрипту, а не к рассуждениям, и не скрывается ни одним режимом отображения (режим «По ходам» сворачивает его вместе с ходом, «По ответам» оставляет на экране).",
+	"ui.settings.appearance.settings_page.appearance": "Внешний вид",
+	"ui.settings.appearance.settings_page.customize_the_look_and_feel_of_local_operator": "Настройте внешний вид Local Operator",
+	"ui.settings.appearance.settings_page.show_agent_reasoning": "Показывать рассуждения агента",
+	"ui.settings.appearance.theme_selector.dark": "Тёмная",
+	"ui.settings.appearance.theme_selector.light": "Светлая",
+	"ui.settings.appearance.transcript_display_mode_setting.by_response": "По ответам",
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn": "По ходам",
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every": "«По ходам» сжимает каждый ход до ответа. «По ответам» оставляет на экране все завершённые ответы, отмечая финальный ответ хода.",
+	"ui.settings.appearance.transcript_display_mode_setting.transcript_display": "Отображение транскрипта"
+}

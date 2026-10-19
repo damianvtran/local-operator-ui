@@ -1044,6 +1044,9 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 			 * every sheet, so there is no per-sheet panel for `role="tab"` to own.
 			 */}
 			<div
+				/* A BAND: the sheet's foot bar takes the field overlay, not a second
+				 * ground inside the pane. The grid above paints its own. */
+				data-glass-plane="band"
 				className={cn(
 					"flex h-10 shrink-0 items-center overflow-x-auto border-hairline border-t bg-surface px-2",
 				)}

@@ -1,0 +1,4 @@
+{
+	"ui.settings.model.provider_callout.sentence": "Inicia sesión con un proveedor para llegar a más modelos. Tu suscripción actual de Claude, ChatGPT o Radient funciona aquí, así que no necesitas una clave de API. Conecta uno en ",
+	"ui.settings.model.provider_callout.providers_link": "Proveedores"
+}

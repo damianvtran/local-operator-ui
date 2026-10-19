@@ -2246,3 +2246,165 @@ html[data-glass]
 		transparent
 	);
 }
+
+/*
+ * ----------------------------------------------------------------------------
+ * WINDOW GLASS, ROUND 3: the right rail's planes, the selected tab and lanes
+ * ----------------------------------------------------------------------------
+ *
+ * THE OPERATOR'S REPORT. The left sidebar read as glass while the right-hand
+ * canvas panels did not: every rail pane is marked `pane` and its ROOT paints the
+ * net elevated alpha, but every visible surface inside it - the Files scroller and
+ * its sticky section bands, the document editor's body and toolbar, the tab
+ * strips, the viewers - still painted an OPAQUE role fill. A marked root behind
+ * opaque descendants is glass in the one place nobody looks.
+ *
+ * THE MODEL, in three classes (the same classification `docs/branding.md` uses):
+ *
+ *   - a GROUND is a column (the pane root, the page canvas): a role alpha, one
+ *     alpha-owning layer per region. Unchanged.
+ *   - a PLANE is a surface inside a ground: a scroll container, a list body, a
+ *     viewer body, a tab strip. It is NOT a second ground - it paints nothing on
+ *     glass (`data-glass-plane="clear"`), because the region already owns the
+ *     alpha and a second role fill is the opaque island the operator photographed.
+ *     A PLANE that must mask what scrolls under it (a sticky section header) is a
+ *     BAND (`data-glass-plane="band"`): the derived field overlay, the same ink
+ *     step a track or a text field wears. It is intentionally translucent: a solid
+ *     band in a translucent column is the hard seam the report is about, and the
+ *     list view's own team bands have shipped the field treatment since round 2.
+ *   - a BLOCK is a text-bearing card whose fill is its only boundary
+ *     (`data-glass-block`, round 2): the derived veil. A card inside a plane is
+ *     still a block; the plane adds no ink under it.
+ *
+ * THE SELECTED TAB. A tab pill is a control, not a plane. On glass the opaque
+ * `bg-surface` / `bg-elevated` pill is a hole in the strip, and the selected step
+ * is the ink overlay every other selected thing wears (`--lo-glass-a-row-selected`,
+ * the same 8% as a selected row and a running row). 8% over the PANE - not over
+ * the strip's field, which would stack to 12.7% and put `inkMuted` at 4.18:1 on
+ * dracula - is why the strip itself is `clear`: the selected pill is the only
+ * layer. Measured over all 59 palettes and the three material tiers at the
+ * default intensity: `inkMuted` 4.76:1, `inkDim` 3.92:1.
+ *
+ * A HOVER INSIDE A PANE is the row-hover ink overlay, not an opaque role fill.
+ * The rail's rows were authored as `hover:bg-surface` / `hover:bg-sunken` (a
+ * colour step DOWN on an opaque elevated pane); on glass the same utilities paint
+ * a solid slab and the pointer appears to punch a hole. One rule translates them
+ * inside a covered pane; the ink overlay is a step relative to whatever ground is
+ * there, which is what the state model says a hover is. Off glass nothing changes.
+ */
+html[data-glass~="pane"]
+	main[data-glass-region="canvas-backing"]
+	[data-glass-region="pane"]
+	[data-glass-plane="clear"] {
+	background-color: transparent;
+}
+html[data-glass~="pane"]
+	main[data-glass-region="canvas-backing"]
+	[data-glass-region="pane"]
+	[data-glass-plane="band"] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-field) * 100%),
+		transparent
+	);
+}
+html[data-glass~="pane"]
+	main[data-glass-region="canvas-backing"]
+	[data-glass-region="pane"]
+	[role="tablist"]
+	:is([class~="bg-surface"], [class~="bg-sunken"], [class~="bg-elevated"]) {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-row-selected) * 100%),
+		transparent
+	);
+}
+html[data-glass~="pane"]
+	main[data-glass-region="canvas-backing"]
+	[data-glass-region="pane"]
+	:is(
+		[class~="hover:bg-surface"],
+		[class~="hover:bg-sunken"],
+		[class~="hover:bg-elevated"]
+	):hover {
+	background-color: var(--color-row-hover);
+}
+/*
+ * ...BUT NOT INSIDE A VEILED BLOCK (review round 1, F1; round 2, MAJOR). The rule
+ * above translates ANY hover utility in a covered pane into `row-hover` (ink 5%),
+ * and the ask card is a block whose veil is already ink 9-12% - so hovering an
+ * option row or a footer button inside it stacked the two and measured `inkMuted`
+ * 4.30:1 on synthwave against the 4.5 floor. The earlier suppression only named
+ * `hover:bg-row-hover`, which is the PROJECT-LINKS row token; every utility the
+ * pane rule translates needs the same answer.
+ *
+ * GATED ON THE VEIL, NOT ON THE PANE. Round 1 repeated the pane rule's structural
+ * keys (`main[data-glass-region="canvas-backing"]`), and that scope was wrong: the
+ * veil is canvas-gated and NOT main-scoped, while the FLEET asks drawer's pane is a
+ * SIBLING of `<main>` (the raw-alpha pane rule above names it). In that mount the
+ * card was veiled - `hover:bg-sunken` painted an opaque slab over it - and this
+ * suppression could never match. The first selector below is the veil's own gate,
+ * which is the only condition the veil exists under, so it reaches both mounts.
+ *
+ * THE SECOND SELECTOR IS FOR SPECIFICITY, NOT REACH. Where the pane rule DOES
+ * apply (a route pane under `<main>`), it out-ranks the block-only selector: the
+ * translation measures (0,5,2) and `html[data-glass~="canvas"] [data-glass-block]
+ * :is(...):hover` measures (0,4,1), so the translation would win and the hover
+ * would stack again. Repeating the translation's own path and adding the block
+ * attribute wins at (0,6,2) without `!important` and without relying on
+ * declaration order. (Round 1's comment said "equal specificity"; it was never
+ * equal - measured with the jsdom probe over both mounts, see G-11.)
+ *
+ * The fill goes and the pointer affordance rides the cursor and the control's own
+ * ink. WHERE THE LABEL ALREADY SITS AT `ink` there is no brighter step to take, so
+ * those controls' hover is cursor-only and the mark carries the state; the muted
+ * footer controls (`Decline`, `Cancel`) take `hover:text-ink`, which is a TEXT
+ * step and composes on the veil without moving the ground. Off glass nothing is
+ * suppressed.
+ */
+html[data-glass~="canvas"]
+	[data-glass-block]
+	:is(
+		[class~="hover:bg-surface"],
+		[class~="hover:bg-sunken"],
+		[class~="hover:bg-elevated"]
+	):hover,
+html[data-glass~="canvas"]
+	main[data-glass-region="canvas-backing"]
+	[data-glass-region="pane"]
+	[data-glass-block]
+	:is(
+		[class~="hover:bg-surface"],
+		[class~="hover:bg-sunken"],
+		[class~="hover:bg-elevated"]
+	):hover {
+	background-color: transparent;
+}
+
+/*
+ * A LANE is the board's well and its column strip: a well that sits UNDER veiled
+ * cards, so it cannot be an ink overlay (the card's veil is the one ink layer the
+ * text can afford - ink 5% under a veil measured `inkMuted` 4.03:1 on synthwave).
+ * It is a palette ROLE at an alpha that TRACKS the slider: `--lo-glass-a-lane` is
+ * a derived SCALE of the page's own alpha (published by `glassPaintFor`), so the
+ * lane converges on its flat role at the opaque end and keeps its share of the
+ * ground's translucency at the clear end. A FIXED alpha was the round-1 failure
+ * (F2): the page moved 0.66 -> 0.96 with intensity, the wash did not, and the
+ * lane fell to ΔE00 0.59 on dark at 25 / 0.99 on light at 0.
+ *
+ * THE TONE IS SCHEME-DEPENDENT AND DERIVED, not a second hand decision here: at
+ * the opaque end the page is nearly the canvas colour, and dark `surface` is too
+ * close to it to step at any alpha while light `sunken` is equally close. The
+ * derivation picks the recess on dark palettes and the lift on light ones (the
+ * direction away from the material tone the page composites toward), and
+ * publishes the role as `--lo-glass-lane-tone`. The card above the lane keeps its
+ * veil as its only ink. On the flat system the element keeps its opaque
+ * `bg-sunken`; this rule only matches on glass.
+ */
+html[data-glass~="canvas"] [data-glass-lane] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-glass-lane-tone) calc(var(--lo-glass-a-lane) * 100%),
+		transparent
+	);
+}

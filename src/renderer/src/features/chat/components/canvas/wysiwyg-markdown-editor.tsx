@@ -1773,6 +1773,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 	return (
 		<div
+			/* A PLANE, NOT A GROUND: the pane owns the alpha; see the Files scroller's
+			 * note and styles/index.css (window glass round 3). */
+			data-glass-plane="clear"
 			className={cn(
 				// A query container, so the toolbar can respond to how wide the
 				// canvas panel has been dragged rather than to the window. A
@@ -1816,6 +1819,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			 * 520px and everything left fits inside 400.
 			 */}
 			<div
+				/* A BAND: the document's toolbar masks nothing, so it takes the field
+				 * overlay rather than a second ground. */
+				data-glass-plane="band"
 				className={cn(
 					// Groups are 8px apart and members 4px apart — both tier-one
 					// values from the 4px ramp, so the rhythm alone carries the
@@ -2041,6 +2047,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 			<div
 				ref={editorContentRef}
+				/* The document body is the pane's content plane: clear on glass, so the
+				 * pane's single ground shows through (styles/index.css, round 3). */
+				data-glass-plane="clear"
 				className={cn(
 					// 24px at the panel's narrowest, 32px once there is room. The old
 					// flat 32px took 64px of a 400px panel.

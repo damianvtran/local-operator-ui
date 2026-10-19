@@ -1,0 +1,6 @@
+{
+	"ui.chat.dialogs.delete_title": "Supprimer cette conversation ?",
+	"ui.chat.dialogs.delete_action": "Supprimer",
+	"ui.chat.dialogs.archive_action": "Archiver",
+	"ui.chat.dialogs.cancel": "Annuler"
+}

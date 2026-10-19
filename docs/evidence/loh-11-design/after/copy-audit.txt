@@ -1,0 +1,32 @@
+scanned 33 files, 6678 candidate strings; 42 findings
+  [emoji-in-copy] emoji in a UI string: '>☑ Pinned</div><div class='
+       docs/evidence/loh-11-design/after/view-dark.html:1
+  [emoji-in-copy] emoji in a UI string: '>☑ Running</div><div class='
+       docs/evidence/loh-11-design/after/view-dark.html:1
+  [emoji-in-copy] emoji in a UI string: '>☑ Today</div><div class='
+       docs/evidence/loh-11-design/after/view-dark.html:1
+  [emoji-in-copy] emoji in a UI string: '>☑ This week</div><div class='
+       docs/evidence/loh-11-design/after/view-dark.html:1
+  [emoji-in-copy] emoji in a UI string: '>☑ Older</div><div class='
+       docs/evidence/loh-11-design/after/view-dark.html:1
+  [emoji-in-copy] emoji in a UI string: '>☑ Agents</div><div class='
+       docs/evidence/loh-11-design/after/view-dark.html:1
+  [emoji-in-copy] emoji in a UI string: '>☑ Teams</div></div></div></section><section class='
+       docs/evidence/loh-11-design/after/view-dark.html:1
+  [emoji-in-copy] emoji in a UI string: '>☑ Pinned</div><div class='
+       docs/evidence/loh-11-design/after/view-dark.html:1
+  [emoji-in-copy] emoji in a UI string: '>☑ Running</div><div class='
+       docs/evidence/loh-11-design/after/view-dark.html:1
+  [emoji-in-copy] emoji in a UI string: '>☑ Today</div><div class='
+       docs/evidence/loh-11-design/after/view-dark.html:1
+  [emoji-in-copy] emoji in a UI string: '>☑ This week</div><div class='
+       docs/evidence/loh-11-design/after/view-dark.html:1
+  [emoji-in-copy] emoji in a UI string: '>☑ Older</div><div class='
+       docs/evidence/loh-11-design/after/view-dark.html:1
+  [emoji-in-copy] emoji in a UI string: '>☑ Agents</div><div class='
+       docs/evidence/loh-11-design/after/view-dark.html:1
+  [emoji-in-copy] emoji in a UI string: '>☑ Teams</div></div></div></section><section class='
+       docs/evidence/loh-11-design/after/view-dark.html:1
+  [emoji-in-copy] emoji in a UI string: '>☑ Pinned</div><div class='
+       docs/evidence/loh-11-design/after/view-dark.html:1
+  … 27 more (see --json)

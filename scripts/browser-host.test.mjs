@@ -3127,6 +3127,13 @@ function installHeldValue(cdp) {
 		if (method === "Input.insertText") held = params.text;
 		if (
 			method === "Runtime.callFunctionOn" &&
+			params.functionDeclaration.includes("return 'not_editable'")
+		) {
+			cdp.calls.push({ method, params });
+			return { result: { value: "ready" } };
+		}
+		if (
+			method === "Runtime.callFunctionOn" &&
 			String(params?.functionDeclaration ?? "").includes("'value' in this")
 		) {
 			cdp.calls.push({ method, params });
@@ -7666,11 +7673,14 @@ test("the §2.4 effective-show table: disposition picks presentation only under 
  */
 function executingCdp(cdp, node) {
 	cdp.send = async (_contents, method, params) => {
+		cdp.calls.push({ method, params });
 		if (method === "DOM.getDocument") return { root: { nodeId: 1 } };
 		if (method === "DOM.querySelector") return { nodeId: 42 };
 		if (method === "DOM.resolveNode") return { object: { objectId: "obj-1" } };
 		if (method === "Runtime.callFunctionOn") {
-			const fn = new Function(`return (${params.functionDeclaration})`)();
+			const FunctionCtor =
+				node.ownerDocument?.defaultView?.Function ?? Function;
+			const fn = new FunctionCtor(`return (${params.functionDeclaration})`)();
 			const args = (params.arguments ?? []).map((arg) => arg.value);
 			return { result: { value: fn.apply(node, args) } };
 		}
@@ -7678,8 +7688,21 @@ function executingCdp(cdp, node) {
 	};
 }
 
-/** An `<iframe>`-shaped element: focusable, dispatches events, has NO `value`. */
+/** An `<iframe>`-shaped element: focusable, dispatches events, has NO `value`.
+ * `matches` models only the contenteditable policy the typing guards ask: an
+ * element carrying the attribute IS the editing host; an interactive or void
+ * descendant that merely inherits `isContentEditable` is not. */
 class FakeFrameElement extends EventTarget {
+	ownerDocument = {};
+	matches(selector) {
+		return (
+			selector.includes("[contenteditable]") &&
+			this.isContentEditable === true &&
+			!["BUTTON", "A", "INPUT", "SELECT", "TEXTAREA", "IFRAME", "IMG"].includes(
+				this.tagName,
+			)
+		);
+	}
 	tagName = "IFRAME";
 	isContentEditable = false;
 	textContent = "";
@@ -7688,6 +7711,31 @@ class FakeFrameElement extends EventTarget {
 
 /** An `<input>`-shaped element whose `value` lives on the prototype, like the real one. */
 class FakeInputElement extends EventTarget {
+	// Model the DOM contracts the injected guards inspect. Per-session input
+	// delivery is separate below, so a focused field may still ignore insertText.
+	matches(selector) {
+		if (selector === "input, textarea")
+			return ["INPUT", "TEXTAREA"].includes(this.tagName);
+		return (
+			!this.disabled &&
+			!this.readOnly &&
+			![
+				"button",
+				"submit",
+				"reset",
+				"checkbox",
+				"radio",
+				"file",
+				"image",
+				"range",
+				"color",
+				"hidden",
+			].includes(this.type)
+		);
+	}
+	getRootNode() {
+		return this.root ?? { activeElement: this };
+	}
 	tagName = "INPUT";
 	isContentEditable = false;
 	#value = "";
@@ -7723,6 +7771,214 @@ test("type aimed at an iframe fails instead of reporting its own expando as type
 		false,
 		"type must not plant a `value` expando on a non-editable element",
 	);
+});
+
+test("the top-document refusal is the sentence the browser-host proof asserts", async () => {
+	const { host, cdp } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const heading = new FakeFrameElement();
+	heading.tagName = "H1";
+	executingCdp(cdp, heading);
+
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"type",
+				{ ...owner, tab, selector: "h1", text: "nope" },
+				"type",
+			),
+		(error) =>
+			error.code === "element_not_found" &&
+			error.message ===
+				"h1 is not an editable field, so nothing was typed; if the field lives inside an iframe, it cannot be targeted from the top document; address it as <iframe-selector> >>> <selector>",
+	);
+});
+
+test("type refuses an interactive descendant of a contenteditable host without rewriting its text", async () => {
+	const { host, cdp } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	// A button inside `<div contenteditable>`: `isContentEditable` is true
+	// because it inherits from the editing host, but the host itself is the only
+	// node typing may target. Before the host requirement, the setter rewrote
+	// this button's textContent and dispatched `input` on it.
+	const target = new FakeFrameElement();
+	target.tagName = "BUTTON";
+	target.isContentEditable = true;
+	target.textContent = "Pay now";
+	// The old (reverted) guard would reach focus and the setter on this fake, so
+	// give it the root contract those paths ask for — the test must fail on the
+	// rewrite it observes, not on a missing fixture method.
+	target.getRootNode = FakeInputElement.prototype.getRootNode;
+	let events = 0;
+	for (const name of ["input", "change"])
+		target.addEventListener(name, () => events++);
+	executingCdp(cdp, target);
+
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"type",
+				{ ...owner, tab, selector: "#pay", text: "private text" },
+				"type",
+			),
+		(error) =>
+			error.code === "element_not_found" &&
+			/not an editable field/.test(error.message),
+	);
+	assert.equal(target.textContent, "Pay now");
+	assert.equal(events, 0);
+	assert.equal(
+		cdp.calls.some((call) => call.method === "Input.insertText"),
+		false,
+	);
+});
+
+// A button has a real prototype value setter, unlike the old iframe-only
+// regression. Without the editability guards it can falsely pass read-back.
+for (const tagName of ["BUTTON", "A", "BODY"]) {
+	test(`type refuses ${tagName} without inserting, mutating or emitting events`, async () => {
+		const { host, cdp } = makeHost();
+		const { owner, tab } = await openApprovedTab(host);
+		const target = new FakeInputElement();
+		target.tagName = tagName;
+		target.value = "untouched";
+		target.textContent = "label";
+		let events = 0;
+		for (const name of ["input", "change"])
+			target.addEventListener(name, () => events++);
+		executingCdp(cdp, target);
+		await assert.rejects(
+			() =>
+				host.dispatch(
+					"type",
+					{ ...owner, tab, selector: "#target", text: "private text" },
+					"type",
+				),
+			(error) =>
+				error.code === "element_not_found" &&
+				/not an editable field/.test(error.message),
+		);
+		assert.equal(target.value, "untouched");
+		assert.equal(target.textContent, "label");
+		assert.equal(events, 0);
+		assert.equal(
+			cdp.calls.some((call) => call.method === "Input.insertText"),
+			false,
+		);
+	});
+}
+
+test("type refuses redirected focus before a targetless insert", async () => {
+	const { host, cdp } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const target = new FakeInputElement();
+	const other = new FakeInputElement();
+	other.value = "untouched";
+	target.root = { activeElement: other };
+	executingCdp(cdp, target);
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"type",
+				{ ...owner, tab, selector: "input", text: "private text" },
+				"type",
+			),
+		(error) =>
+			error.code === "element_not_found" &&
+			/could not retain focus/.test(error.message),
+	);
+	assert.equal(other.value, "untouched");
+	assert.equal(target.value, "");
+	assert.equal(
+		cdp.calls.some((call) => call.method === "Input.insertText"),
+		false,
+	);
+});
+
+for (const kind of ["textarea", "contenteditable"]) {
+	test(`type preserves the ${kind} setter fallback`, async () => {
+		const { host, cdp } = makeHost();
+		const { owner, tab } = await openApprovedTab(host);
+		const target =
+			kind === "textarea" ? new FakeInputElement() : new FakeFrameElement();
+		target.tagName = kind === "textarea" ? "TEXTAREA" : "DIV";
+		target.isContentEditable = kind === "contenteditable";
+		target.getRootNode = FakeInputElement.prototype.getRootNode;
+		executingCdp(cdp, target);
+		const result = await host.dispatch(
+			"type",
+			{ ...owner, tab, selector: "#target", text: "hello" },
+			"type",
+		);
+		assert.equal(result.value, "hello");
+		assert.equal(result.via, "value_setter");
+	});
+}
+
+test("type DOM guards refuse non-editors and recheck before the setter", async () => {
+	const { JSDOM } = await import("jsdom");
+	const dom = new JSDOM(
+		`<input id="previous" value="unchanged"><button id="button" value="original">label</button><a id="link" href="#">link</a><input id="checkbox" type="checkbox"><input id="readonly" readonly><textarea id="disabled" disabled></textarea><input id="changing">`,
+		{ runScripts: "outside-only" },
+	);
+	try {
+		const doc = dom.window.document;
+		const previous = doc.querySelector("#previous");
+		previous.focus();
+		for (const selector of [
+			"#button",
+			"#link",
+			"body",
+			"#checkbox",
+			"#readonly",
+			"#disabled",
+			"#changing",
+		]) {
+			const { host, cdp } = makeHost();
+			const { owner, tab } = await openApprovedTab(host);
+			const target = doc.querySelector(selector);
+			const original = target.outerHTML;
+			let events = 0;
+			for (const name of ["input", "change"])
+				target.addEventListener(name, () => events++);
+			executingCdp(cdp, target);
+			if (selector === "#changing") {
+				// The editor is valid at focus time but page code changes it before
+				// fallback. Only the setter's own guard can prevent this write.
+				const send = cdp.send;
+				cdp.send = async (contents, method, params) => {
+					if (params?.functionDeclaration?.includes("setter.call"))
+						target.readOnly = true;
+					return send(contents, method, params);
+				};
+			}
+			await assert.rejects(
+				() =>
+					host.dispatch(
+						"type",
+						{ ...owner, tab, selector, text: "private text" },
+						"type",
+					),
+				(error) =>
+					error.code === "element_not_found" &&
+					/not an editable field/.test(error.message),
+			);
+			assert.equal(previous.value, "unchanged");
+			assert.equal(events, 0, selector);
+			if (selector === "#changing") {
+				assert.equal(target.value, "");
+			} else {
+				assert.equal(target.outerHTML, original, selector);
+				assert.equal(
+					cdp.calls.some((call) => call.method === "Input.insertText"),
+					false,
+					selector,
+				);
+			}
+		}
+	} finally {
+		dom.window.close();
+	}
 });
 
 test("type still lands through the value setter on a real form field", async () => {

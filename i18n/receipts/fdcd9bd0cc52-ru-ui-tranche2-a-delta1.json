@@ -1,0 +1,85 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "fdcd9bd0cc52",
+  "locale": "ru",
+  "status": "passed",
+  "date": "2026-10-18",
+  "head": "2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29",
+  "previous_head": "65ad12e7675a132e4a677ecf7aef95f227379525",
+  "scope": "Remediation only: nine changed keys plus direct composition/terminology neighbors; retained full 580-key baseline, not a second whole-chunk native reread.",
+  "model_provenance": "Current resumed delta audit runtime identifies anthropic/claude-sonnet-5-5; no fallback used in this delta turn. Historical baseline reported openai/gpt-6.1-sol; preserve its provenance separately, do not relabel it.",
+  "baseline": {
+    "path": "/Users/damian/.local-operator/sessions/fdcd9bd0cc52/scratchpad/ru-ui-tranche2-chunk-a-audit-receipt.json",
+    "sha256": "78e1eb4691d62182b1df808d814397bce0a8e6ae2510bde7594e0e227d27f825",
+    "full_read_keys": 580,
+    "historical_comment": "https://github.com/damianvtran/local-operator-ui/pull/1181#issuecomment-6254378215"
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "deepseek/deepseek-flash",
+    "date": "2026-10-18"
+  },
+  "translator_receipt": {
+    "path": "i18n/receipts/ui-ru-batch-2.json",
+    "sha256": "2993d20528aba86aaf73b54ccb9a8e204127bdda086f9ebeb226ceacf49769c5"
+  },
+  "resolutions": {
+    "A-RU-1": "FIXED: location/destination в; exact unchanged consuming caller supplies workspaceDirectory or selectedConversation.name, not a duration. All three full compositions exercised.",
+    "A-RU-2": "FIXED: invariant б. tested with 1/2/5/21/1,5.",
+    "A-RU-3": "FIXED: both consequences name Готово, matches status label.",
+    "A-RU-4": "FIXED: all three messages explicitly name selected time period."
+  },
+  "namespaces": {
+    "ui.projects": {
+      "status": "passed",
+      "keys_audited": 416,
+      "audit_method": "baseline full read plus byte-proven scoped remediation",
+      "delta_keys_read": [
+        "ui.projects.board_window_select.shows_projects_last_updated_within_this_window_older_ones_are_hid",
+        "ui.projects.project_done_anyway_dialog.projectlabel_moves_to_done_and_its_milestones_stay_open",
+        "ui.projects.project_done_anyway_dialog.the_project_moves_to_done_and_its_milestones_stay_open",
+        "ui.projects.project_model.value_pt",
+        "ui.projects.projects_page.length_of_length_2_in_window",
+        "ui.projects.projects_page.older_projects_are_hidden_by_the_window"
+      ],
+      "unchanged_keys_carried": 410,
+      "sha256": {
+        "en": "6b12f695845c3d01500291f5bc4eb50ea9b35e60c68bc69f21ee219c5f9d7f52",
+        "ru": "b1929975c8c08ee8a988821e9dc5cddcc8901b8269d0324643692836f3320aa5"
+      },
+      "context_sha256": "2b84fd26bdcdb090363eb4b2d87737607535637e1f92d01937000bbd2cb717aa",
+      "findings": [],
+      "checks": {
+        "changed_icu_signatures_preserved": true,
+        "source_and_context_byte_identical_to_baseline": true,
+        "consuming_callers_byte_identical_to_baseline": true,
+        "all_other_target_values_unchanged": true
+      }
+    },
+    "ui.schedules": {
+      "status": "passed",
+      "keys_audited": 164,
+      "audit_method": "baseline full read plus byte-proven scoped remediation",
+      "delta_keys_read": [
+        "ui.schedules.scheduled_task_dialog.run_in",
+        "ui.schedules.scheduled_task_dialog.runs_in",
+        "ui.schedules.scheduled_task_dialog.starts_in"
+      ],
+      "unchanged_keys_carried": 161,
+      "sha256": {
+        "en": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
+        "ru": "739fc966099f7b089bb61230b6d7d6a25af79a26cc2dbf421aea00a2b277152a"
+      },
+      "context_sha256": "86c6afb4fc140a8b420ab0e6d2707603bbaea30f07875ed2cfc8aebd93284d2f",
+      "findings": [],
+      "checks": {
+        "changed_icu_signatures_preserved": true,
+        "source_and_context_byte_identical_to_baseline": true,
+        "consuming_callers_byte_identical_to_baseline": true,
+        "all_other_target_values_unchanged": true
+      }
+    }
+  },
+  "limitations": "Translation-source audit only. No rendered overflow, pseudo/RTL, activation or release certification. No repository writes. Owner must retain receipt at indicated repo-relative path before using ledger block."
+}

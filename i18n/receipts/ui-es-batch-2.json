@@ -1,0 +1,447 @@
+{
+  "schema": 1,
+  "locale": "es",
+  "date": "2026-10-18",
+  "namespaces": {
+    "ui.projects": {
+      "status": "translated",
+      "keys": 416,
+      "source_sha256": "6b12f695845c3d01500291f5bc4eb50ea9b35e60c68bc69f21ee219c5f9d7f52",
+      "target_sha256": "ff2f3ad96920a6330bf8b8dd0a152f12b111ce64ce0340cdc93d36673c887e96",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.schedules": {
+      "status": "translated",
+      "keys": 164,
+      "source_sha256": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
+      "target_sha256": "049635e2795c4cc9cacdb35204bedaceb9f4048d92c1a73d964a62202a06a304",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.hub": {
+      "status": "translated",
+      "keys": 150,
+      "source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+      "target_sha256": "22586fb6cc54e7f299a0aabe14267906ef28d105a35dee5e03b00661b50275e5",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.hub.comments": {
+      "status": "translated",
+      "keys": 29,
+      "source_sha256": "5c20d0e9a7f66f753561ded1d104aa5cf0e1fd0d5a73f7f0a7e3349a28c6f2c4",
+      "target_sha256": "06de049597de5b21eee51968af3149ca80826da815e76b4d7186677d5c7cbbdb",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.hub.taxonomy": {
+      "status": "translated",
+      "keys": 21,
+      "source_sha256": "4614e6b5eb2c56f0f48ccbee9bf26266193701a79994da4d9cf533386f1d3717",
+      "target_sha256": "55d215c07bb3d1ff66ba0da16999e379e790b4c14f4fc642318f534d6964552c",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.browser": {
+      "status": "translated",
+      "keys": 224,
+      "source_sha256": "4bdd6666a1c4358ea12dcc82229823659f33e96f225dcca57e0630a94e3e0641",
+      "target_sha256": "4e351b25be606fd2675038da9d217fa3517767e8c3de85920c58b23f753a37a0",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.browser.chrome": {
+      "status": "translated",
+      "keys": 14,
+      "source_sha256": "73793572e5e36b8bbc8df6c1f27fb98083634b3b9e3cbd05ede27da4813c656c",
+      "target_sha256": "70b79bf9cea645e3279c8c93271864a4ffcddb7a516dd81622e713a837c5820a",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.mesh": {
+      "status": "translated",
+      "keys": 223,
+      "source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+      "target_sha256": "bc3114ceba75c97c55e9920802374c484b04b9bf299836c960634fb1da61a72d",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.canvas": {
+      "status": "translated",
+      "keys": 57,
+      "source_sha256": "6fa13501b59a260373bcb26f212fc6244a3d1219ef1811d2b0c1de05b541f1f5",
+      "target_sha256": "8b8e60fcdb8e9094fb07571d4e1476cf63f02ade1e93a327b7ee6dc58e261055",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.providers": {
+      "status": "translated",
+      "keys": 189,
+      "source_sha256": "9981637a98afbcbc166d889b461795bae7685e42274f4d607b711f4b0f9085f2",
+      "target_sha256": "99ae4f16259c7075dbf7735e8b2fbe1343b09edaa287e0bcac8789addd9f190c",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.code_review": {
+      "status": "translated",
+      "keys": 75,
+      "source_sha256": "7344c8694a23662bfe3ae12205685cfa14851209d0685abbe463b9f513565085",
+      "target_sha256": "c05e0b388822fee8abef9d9e3d8f60ce291d8c5d275e11c2cf4e09d85f354e0b",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.common.updates": {
+      "status": "translated",
+      "keys": 127,
+      "source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
+      "target_sha256": "e0fcb89f584ebe014deda908aef2bf575b6e1f8a3adab1d27c24bb71504be14f",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.installer": {
+      "status": "translated",
+      "keys": 18,
+      "source_sha256": "35b34093f3d065acf26e96a4e9601cb2906bd9439230a7fa7f9fc9a43784f7a3",
+      "target_sha256": "8fd03fe26881a7c78957ea2daff5e4299a38736ab466b2123089daed040fa3b8",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.agentMessages": {
+      "status": "translated",
+      "keys": 16,
+      "source_sha256": "065cbea39ca4df33aa114fc027e5f75bcc6e74e9cb21d4f14e42628d3795cbcb",
+      "target_sha256": "c8af1821c4bdcaaa4e60b913cc454c98f4e52f157b293f45e28741122fb6b21c",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.agents.settings": {
+      "status": "translated",
+      "keys": 58,
+      "source_sha256": "2e2a8a28891db681fd72396a3b8323e8705e4ea9c0397e49237e3ed3f7e1a897",
+      "target_sha256": "0651affd973831b4ef4333692037c7d7767b547f4d19439605305527dc86f772",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.agents.models": {
+      "status": "translated",
+      "keys": 38,
+      "source_sha256": "0775863598346b25001f9131bdf4bf207aba0d036858ce08b7cc49b00f44a540",
+      "target_sha256": "18bf677851ccd58f1d4b6f79c95e17cb7475b7ff661bbbe02951e7183643dc5f",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.agents.dialogs": {
+      "status": "translated",
+      "keys": 33,
+      "source_sha256": "99fc8672fbb4139aa2721542a8fb994506301b0c678d86c21439e939f5dd2bf4",
+      "target_sha256": "24832b5c3aee2554df74bee9561efc54c90282338a3cc15e4b349a7ec13ce6b9",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.agents.starters": {
+      "status": "translated",
+      "keys": 16,
+      "source_sha256": "7d7170328807a0ae0018bb69c4cd5fe49f6d5e47f7ca34484cf71b2a74612cec",
+      "target_sha256": "ff70750dec1b723baa7de75d2f938c1ebac8b9d8a82f62c3d16fc20a816c27d4",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.agents.refusals": {
+      "status": "translated",
+      "keys": 16,
+      "source_sha256": "457cb86efa40d800d2adf711ec2b4289d22b4b9013fd48189082c4b8808d3f20",
+      "target_sha256": "9e9284396a9c60c975464be17065bce5186da4c9c003bb31b7d863de3ddb5dbc",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.chat.composer_media": {
+      "status": "translated",
+      "keys": 7,
+      "source_sha256": "47ec03f574b6665bafaf900f15067ef522fbf8b7fe665402b0bb4be03d0aa0ff",
+      "target_sha256": "2d2cc5892590021a36b3a25c18bbc262184a7ad7588e3683f5c89141458a826d",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.chat.dialogs": {
+      "status": "translated",
+      "keys": 4,
+      "source_sha256": "783d72141bae3491cc1ecfbdfc983339e327406cd4385e7ce8f9dfa1360997fc",
+      "target_sha256": "47861ab8ffecce43fd92709f6be5e0e7630ff6a984dd8d8a7ec33bb6ab8f9830",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.common.account": {
+      "status": "translated",
+      "keys": 18,
+      "source_sha256": "72e2a848a2aa4b46ecdc0ede34ed5f59b280b73e3fc544d5e563ce22ab2743e0",
+      "target_sha256": "ccef32f2a0cb452a57590003048d7fff28b1de2baa06320314931a92421252e7",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.common.connection": {
+      "status": "translated",
+      "keys": 10,
+      "source_sha256": "d1acb6a1fae70e3f85255d880a91d9e35ed49a8bf7d04ef14722ce115d7c69bb",
+      "target_sha256": "6a3c055f766e38ffa268fff50b43a36ad0508af1b8af3ba3548bfc475f86e120",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.common.editing": {
+      "status": "translated",
+      "keys": 3,
+      "source_sha256": "e7ddf3b75f3e46d6900aacab976f1180eb10fdb121b5f46d2dc231fd6b4f5bb5",
+      "target_sha256": "dadc2babbb8643db826c7433ff9898cf3c1e0648ab17ff415fbaffb25776a67c",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.common.forms": {
+      "status": "translated",
+      "keys": 27,
+      "source_sha256": "28a63a53e5b6c3c4fccb9995eb07637c8521ce9d5019e304f3fedb0ddbc053d9",
+      "target_sha256": "ebcb9570288e03c5d853b4ea2934a8f62b6ed56ee5fb133c029d0f7fa8e1d69e",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.common.loading": {
+      "status": "translated",
+      "keys": 1,
+      "source_sha256": "e629186e32cd51d7eb98dcd3e8f6587765447bd1da9bdba5c5d327ad2bdcd87e",
+      "target_sha256": "9a4c15f7868adbd4e02cfcd530aba35b658850eec612d918f7c5c83ba2c2894b",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.common.models": {
+      "status": "translated",
+      "keys": 24,
+      "source_sha256": "561e39a0105425d66cac7d7497306d740d79f7b2e3921424b1993f3405e08d77",
+      "target_sha256": "67b6da219df1813c3962917a61458bbcf2de54578f4e1290fd5c2c8ac2c98e5f",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.settings.account": {
+      "status": "translated",
+      "keys": 34,
+      "source_sha256": "90960d5e885e5b617af91b7249b64828a049c0b9631bf5da4562a8f8c2f5c066",
+      "target_sha256": "b9e4d8de72bb162f62961b64668653cb1a4fbc7d5846e85d0633a3fa3805b3d2",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.settings.appearance": {
+      "status": "translated",
+      "keys": 10,
+      "source_sha256": "f5db8989cc542fededba171769b0fbaa940cec562de6eccc07347c0f41c784d1",
+      "target_sha256": "16c281ea53c71e92c1c9589251231da360ee075ee6b8d839589b60b9dc696160",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.settings.appearance.window_glass": {
+      "status": "translated",
+      "keys": 28,
+      "source_sha256": "d3c6e272273baab454200c41a25b21c451689ae9bf03329aa776dc1cb9f1b33a",
+      "target_sha256": "ff1a19528685776b7761043d3fd9fb454a302cc6d44838a1f7468009c4b3dda8",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.settings.configuration": {
+      "status": "translated",
+      "keys": 92,
+      "source_sha256": "d11a5170a0336449668b91a2b2aa1013ae36ee38c4b70fc69f90541aea3e5050",
+      "target_sha256": "b14925a114eb70ac2d03a2e3493cd9f8b624e8d9f0ab2961ad4c87e4c5dbc3af",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.settings.imports": {
+      "status": "translated",
+      "keys": 74,
+      "source_sha256": "1f8b1941bd65b91c84b1b4c41bfb1406f0e4790936c8690b04bfd788b4a1b082",
+      "target_sha256": "ce7d73189831afa843ed7bb8b8ce702a6123588c3190365d5c98441fef90eb57",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.settings.integrations": {
+      "status": "translated",
+      "keys": 218,
+      "source_sha256": "36b3507993a0466100ca099c3c1c2b2852d66a81b14f3685031f0a35dfa0f5b3",
+      "target_sha256": "99aa489b7b6ad4fcb1d460a3a118e47c9d585ac20c302bc98f136827dd4230fc",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.settings.model": {
+      "status": "translated",
+      "keys": 32,
+      "source_sha256": "5a09b6ed49e8501d14a6f8052a70ce15ce5104ec8da3756c6b576e6e4d150cf1",
+      "target_sha256": "a12dc4b40777c6ed6c3b6c46de6686ad05450a354075f587ca7cd6cafdd257fd",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.settings.model.default_effort": {
+      "status": "translated",
+      "keys": 19,
+      "source_sha256": "5a4a01952b8a4242730e336cf082dc926085ac126a147d8b44197e9f04fc3b29",
+      "target_sha256": "2197ab037eb1fe84df1cddc95dd8ab732a5b1e1807ae6ea8e259afd5f973a30d",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.settings.model.provider_callout": {
+      "status": "translated",
+      "keys": 2,
+      "source_sha256": "8d1871aa2d087f99694b77e9f946b33b549a9541525023347b78124f42bbf82f",
+      "target_sha256": "403306e0eeccd30a0508ec0d560495abaead17c98ea4c75ec170f6546243def1",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.settings.navigation": {
+      "status": "translated",
+      "keys": 22,
+      "source_sha256": "b0db379acf4e4c13bed8f4fb3f7e551c0b1ebc3dd52ef4508a9797c5fdcf3dbc",
+      "target_sha256": "a356d3dbb5da58b404a14827a3f7a55e5f431cca30c5ed8fce05a52b8f814813",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.settings.shortcuts": {
+      "status": "translated",
+      "keys": 9,
+      "source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
+      "target_sha256": "cf7b73d314e32cab509f3e6d03235af5cb8073af3792c9449cc226d2d85e58f4",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.settings.speech": {
+      "status": "translated",
+      "keys": 19,
+      "source_sha256": "36b1321c4660c345b6c40dfa753e0e233228a66868cfe78218c4ce573609574d",
+      "target_sha256": "bb1b43799395cee32f93d5093c72afb4960d1b4ff802d90f14571fa710be20d1",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    },
+    "ui.settings.updates": {
+      "status": "translated",
+      "keys": 29,
+      "source_sha256": "6597aeea3a3a0495f1ba0d9a7ce8078f455d970b53647dbc8350e00fbc9099b2",
+      "target_sha256": "abd3b27153195e4aead0c9f16692aabeca12b7a7b0cf03ad7556431b65af2606",
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "deepseek/deepseek-flash",
+        "date": "2026-10-18"
+      }
+    }
+  }
+}

@@ -50,6 +50,7 @@ import {
 } from "@shared/store/conversation-input-store";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { TagRef } from "../../../../shared/desktop-contract";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	DESKTOP_LOST_SIGHT_CODE,
@@ -144,6 +145,10 @@ export type CanonicalSessionRow = {
 	 * terminal, or another window.
 	 */
 	pinned?: boolean;
+	/** Durable assignments; absence supports backends predating session_tags. */
+	tags?: TagRef[];
+	/** Explicit primary ID (a member of tags), or null for Untagged. */
+	primary?: string | null;
 	/**
 	 * The backend's ARCHIVE state for this conversation, as the catalogue row
 	 * carried it. Declared explicitly beside `active`/`status` because this row

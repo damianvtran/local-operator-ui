@@ -1,5 +1,15 @@
 # Sidebar row space, and where the archive offer lives
 
+> **SUPERSEDED GEOMETRY (2026-10-18).** The widths and title numbers below
+> are a **measurement ladder (240/280/320) on an earlier basis**, not the current
+> clamp, and are **not the current app**. The shipped range is **220–320, default
+> 260** (the document's own §1 now states this); live measurements at
+> `origin/main` `76dda0304` are in `sidebar-tags.md` §5 and its evidence
+> (`docs/evidence/loh-11-design/before/`). Read this document for the row-space
+> reasoning and interaction decisions only — do not use its geometry as current,
+> and do not cite its 180px title figure at a 280px panel against today's
+> default-260 tree.
+
 The sidebar row pays for two per-row controls on **every** row, at rest, whether
 or not the pointer is anywhere near it: a pinned row spends 24px on a glyph and
 28px more painting nothing, and an unpinned row paints nothing in all 56px. The

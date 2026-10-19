@@ -524,6 +524,24 @@ const AskQuestionField = ({
 									// Rows, not controls with edges of their own: this list sits
 									// inside the panel's card, so its boundary is its selection
 									// ground and its focus outline (the same idiom as `AskOptions`).
+									/*
+									 * A CHOSEN ROW KEEPS ITS ROLE FILL ON GLASS (review round 2, minor 3).
+									 * It is a selected SURFACE, and the model's answer for a selected
+									 * surface is already an exemption: the veil rule skips a block that
+									 * wears `bg-row-selected` rather than stacking. Adding the selected ink
+									 * (8%) on top of this card's veil (9-12%) is the forbidden stack - the
+									 * same arithmetic as the 5% hover that measured 4.30:1 on synthwave -
+									 * so the row paints ONE layer, the flat system's chosen ground. The
+									 * mark (`AskMark`) is the selection channel that survives any ground.
+									 * On glass this is opaque over a translucent card: a stated trade, not
+									 * an oversight - a mark-only row is a design decision, and the ask
+									 * card cannot be captured by the rig (no queued asks).
+									 *
+									 * NO HOVER INK IS ADDED HERE either: the label already sits at `ink`,
+									 * so a hover step has nowhere brighter to go; the unhovered rows'
+									 * fill is suppressed on glass (styles/index.css), so their hover is
+									 * cursor-only.
+									 */
 									chosen ? "bg-sunken" : "hover:bg-sunken",
 									disabled ? "text-ink-dim" : "text-ink",
 								)}
@@ -631,6 +649,9 @@ const AskQuestionField = ({
 						}}
 						className={cn(
 							"flex w-full items-baseline gap-2 rounded-sm px-2 py-1 text-left",
+							// Same selected-surface exemption as `AskOptions` above: one role
+							// fill, no selected ink on top of the veil. The label is at `ink`,
+							// so this row's hover is cursor-only on glass.
 							other.open ? "bg-sunken" : "hover:bg-sunken",
 							disabled ? "text-ink-dim" : "text-ink",
 						)}
@@ -989,6 +1010,10 @@ const AskRow = ({
 			 * the transcript's own turn rule takes the hairline for the same reason
 			 * (design round 1, D9).
 			 */
+			/* A text-bearing card whose fill is its boundary: a block on glass
+			 * (the veil), so the ask does not read as an opaque island in the
+			 * glass drawer. The hairline stays; the fill is the veil. */
+			data-glass-block=""
 			className="flex flex-col gap-2 rounded-md border border-hairline bg-surface p-3"
 		>
 			{conversation === null ? null : (
@@ -1202,7 +1227,7 @@ const AskRow = ({
 							type="button"
 							disabled={busy}
 							onClick={() => onDecline(ask)}
-							className="rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken"
+							className="rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink"
 						>
 							Decline
 						</button>
@@ -1272,7 +1297,7 @@ const AskRow = ({
 									 * first-answer row does — see the `Decline`'s own note (design
 									 * round 1, D4: both rows or neither).
 									 */
-									className="rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken"
+									className="rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink"
 								>
 									Cancel
 								</button>

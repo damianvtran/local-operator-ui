@@ -29,7 +29,10 @@
  * THE PLAYER IDENTITY IS THE DIGEST. `sound:<digest>` is the engine's key, so
  * the transcript's player, the Files band's and a highlight row's all address
  * ONE playback slot for one sound — press play in one seat and the others show
- * it playing, which is the point of the digest-identity rule.
+ * it playing, which is the point of the digest-identity rule. Named batch rows
+ * alone pass an owner override: their request identity must not alias another
+ * row's controls when two requests happen to return identical bytes. The byte
+ * resolver and waveform cache remain digest-keyed.
  */
 
 import { cn } from "@shared/lib/utils";
@@ -53,6 +56,8 @@ export type CanonicalAudioProps = {
 	scope: AttachmentScope | null;
 	/** What to call this sound ("Generated voiceover"). */
 	label: string;
+	/** Batch requests may share bytes, but their controls address separate rows. */
+	ownerId?: string;
 };
 
 /** The engine key one sound owns — the digest is the identity (see the header). */
@@ -66,6 +71,7 @@ export const CanonicalAudio = ({
 	audio,
 	scope,
 	label,
+	ownerId,
 }: CanonicalAudioProps) => {
 	const source = useAttachmentSource(audio, scope);
 	// Peaks need the digest; an inline sound has none and stays flat.
@@ -93,7 +99,7 @@ export const CanonicalAudio = ({
 	return (
 		<div className={cn("w-full max-w-[560px] self-start")}>
 			<SoundPlayer
-				ownerId={soundOwnerId(audio)}
+				ownerId={ownerId ?? soundOwnerId(audio)}
 				src={source.url}
 				label={label}
 				peaks={peaks}

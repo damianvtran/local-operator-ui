@@ -1,0 +1,20 @@
+{
+	"ui.common.account.low_credits_dialog.could_not_load_bonus_credit_information": "Не удалось загрузить сведения о бонусных кредитах.",
+	"ui.common.account.low_credits_dialog.detail": "${detail} USD",
+	"ui.common.account.low_credits_dialog.get_more_credits": "Получить больше кредитов",
+	"ui.common.account.low_credits_dialog.in_bonus_credits_with_your_first_purchase": "бонусных кредитов при первой покупке.",
+	"ui.common.account.low_credits_dialog.it_s_pay_as_you_go_with_no_commitments_load_up_what_you_need_star": "Оплата по факту использования, без обязательств. Пополняйте на нужную сумму, начиная с небольшой для максимальной гибкости.",
+	"ui.common.account.low_credits_dialog.maybe_later": "Может быть, позже",
+	"ui.common.account.low_credits_dialog.plus_get": "А также получите",
+	"ui.common.account.low_credits_dialog.radient_automatic_is_often_cheaper_than_bringing_your_own_key_its": "Radient Automatic часто дешевле собственного ключа: умная маршрутизация выбирает самую экономичную модель для каждого шага агентных сценариев.",
+	"ui.common.account.low_credits_dialog.radient_icon": "Значок Radient",
+	"ui.common.account.low_credits_dialog.radient_pass": "Radient Pass",
+	"ui.common.account.low_credits_dialog.running_low_on_radient_credits": "Заканчиваются кредиты Radient?",
+	"ui.common.account.low_credits_dialog.unlock_the_full_power_of_local_operator_with": "Раскройте все возможности Local Operator с",
+	"ui.common.account.low_credits_dialog.you_can_also_reach_the_radient_console_from_settings_at_any_time": "Консоль Radient также доступна из настроек в любое время.",
+	"ui.common.account.radient_auth_buttons.connect_your_radient_account_to_use_radient_services": "Подключите учётную запись Radient, чтобы пользоваться сервисами Radient.",
+	"ui.common.account.radient_auth_buttons.loading_sign_in_options": "Загрузка способов входа",
+	"ui.common.account.radient_auth_buttons.radient_is_not_available_from_this_backend_s_provider_registry": "Radient недоступен в реестре провайдеров этого бэкенда.",
+	"ui.common.account.radient_auth_buttons.sign_in_to_radient": "Войти в Radient",
+	"ui.common.account.radient_auth_buttons.signing_in_needs_a_newer_local_operator_backend_update_the_backen": "Для входа нужен более новый бэкенд Local Operator. Обновите бэкенд и перезапустите приложение."
+}

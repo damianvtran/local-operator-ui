@@ -1,0 +1,18 @@
+{
+	"ui.agents.refusals.name_taken": "Ya existe un agente llamado “{name}”. Elige otro nombre o abre el existente para cambiarlo.",
+	"ui.agents.refusals.name_grammar": "Los nombres no pueden contener espacios ni barras.",
+	"ui.agents.refusals.effort_unavailable": "“{tier}” no es un nivel de esfuerzo configurado. Usa inherit o añade el nivel en Ajustes.",
+	"ui.agents.refusals.team_name_bound": "El nombre de un equipo debe tener entre 1 y 64 caracteres.",
+	"ui.agents.refusals.missing_manager": "“{name}” no es un agente ni un equipo de esta máquina.",
+	"ui.agents.refusals.missing_member": "“{name}” no es un agente ni un equipo de esta máquina.",
+	"ui.agents.refusals.team_nesting": "Ese equipo se anidaría demasiado o se contendría a sí mismo. Revisa sus miembros.",
+	"ui.agents.refusals.class.label.proactive": "Proactivo",
+	"ui.agents.refusals.class.label.reactive": "Reactivo",
+	"ui.agents.refusals.class.meaning.proactive": "Puede escribirte por su cuenta: tras enviarte algo, espera unos minutos a que respondas, vuelve a insistir con intervalos cada vez mayores hasta un número fijo de intentos y después espera a que respondas; además, puede despertarse según su propia programación.",
+	"ui.agents.refusals.class.meaning.reactive": "Responde cuando le escribes. No insiste ni se despierta según su propia programación.",
+	"ui.agents.refusals.class.effect.proactive": "Si lo desactivas, deja de insistir y de despertarse según su programación. Seguirá respondiendo cuando le escribas.",
+	"ui.agents.refusals.class.effect.reactive": "Si lo activas, podrá escribirte primero: esperará unos minutos a que respondas, volverá a insistir hasta un número fijo de intentos y podrá despertarse según su propia programación. Seguirá respondiendo cuando le escribas.",
+	"ui.agents.refusals.class.install_disclosure": "Este agente viene con la aplicación y aún no tiene una copia propia, así que al cambiar la clase se instala primero — el mismo agente y las mismas instrucciones, ahora editables — y después se define su clase.",
+	"ui.agents.refusals.class.error.no_reason": "El backend no envió ningún motivo. Vuelve a intentar el cambio.",
+	"ui.agents.refusals.class.error.install_landed": "{reason} La instalación sí se completó, así que el agente ya es editable."
+}

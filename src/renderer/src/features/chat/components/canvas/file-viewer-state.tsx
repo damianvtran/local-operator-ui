@@ -125,6 +125,13 @@ export const ViewerChrome: FC<{
 		typeof path === "string" && path.length > 0 && !path.startsWith("data:");
 	return (
 		<div
+			/* A BAND, not an opaque bar (review round 1, F3 / QA Q2): this is the top
+			 * chrome of the image, video, audio and PDF viewers, and an opaque
+			 * `bg-surface` here was the remaining opaque island the surface pass set
+			 * out to remove - live reading `rgb(43,39,33)` with no alpha. The band
+			 * treatment is the same one the document freshness bar and sticky headers
+			 * wear: the field overlay on glass, the flat role off it. */
+			data-glass-plane="band"
 			className={cn(
 				"flex min-h-8 shrink-0 items-center justify-end gap-2",
 				"border-hairline border-b bg-surface px-6 py-1.5",

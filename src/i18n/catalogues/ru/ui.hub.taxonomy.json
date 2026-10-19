@@ -1,0 +1,23 @@
+{
+	"ui.hub.taxonomy.all": "Все категории",
+	"ui.hub.taxonomy.category.accounting": "Бухгалтерия",
+	"ui.hub.taxonomy.category.analysis": "Аналитика",
+	"ui.hub.taxonomy.category.education": "Образование",
+	"ui.hub.taxonomy.category.healthcare": "Здравоохранение",
+	"ui.hub.taxonomy.category.investment": "Инвестиции",
+	"ui.hub.taxonomy.category.legal": "Право",
+	"ui.hub.taxonomy.category.management": "Управление",
+	"ui.hub.taxonomy.category.marketing": "Маркетинг",
+	"ui.hub.taxonomy.category.other": "Другое",
+	"ui.hub.taxonomy.category.personal_assistance": "Личная помощь",
+	"ui.hub.taxonomy.category.research": "Исследования",
+	"ui.hub.taxonomy.category.role_play": "Ролевые игры",
+	"ui.hub.taxonomy.category.sales": "Продажи",
+	"ui.hub.taxonomy.category.security": "Безопасность",
+	"ui.hub.taxonomy.category.social_media": "Соцсети",
+	"ui.hub.taxonomy.category.software": "Программирование",
+	"ui.hub.taxonomy.heading": "Категории",
+	"ui.hub.taxonomy.origin.named": "Доступно {name}, но не публичному хабу",
+	"ui.hub.taxonomy.origin.organization": "Организация",
+	"ui.hub.taxonomy.origin.unnamed": "Доступно организации, но не публичному хабу"
+}

@@ -1,0 +1,122 @@
+{
+  "locale": "ru",
+  "translator": "i18n-translator",
+  "model": "deepseek/deepseek-flash",
+  "date": "2026-10-18",
+  "status": "translated",
+  "awaiting": "independent i18n-auditor pass; ledger rows are added after the audit",
+  "namespaces": {
+    "ui.shell": {
+      "keys": 29,
+      "sha256": {
+        "en": "a36a75e15ce94632bad00e774e7f6211ca58d95a2b6f6f50a85e687d64a5b1ea",
+        "ru": "3804093f5f621357e3653df597c9dd6a30219d2d60bf0ba92d0c6ddeb5085c9b"
+      }
+    },
+    "ui.shell.rail": {
+      "keys": 20,
+      "sha256": {
+        "en": "82f946fe2d2944d03100d85263ff5e9e595dc34f953a0d57aa9794ea0879f3eb",
+        "ru": "57708776f27a23fa1df7b822bfcd3b4f6a6afc13cc1423d3a97ae690140ae48a"
+      }
+    },
+    "ui.chat": {
+      "keys": 8,
+      "sha256": {
+        "en": "29169c4c0801689781d503f724d457757275416c49e975bfb6ae4872d90c2c46",
+        "ru": "71ef6c5a4f2c76f4a9973a5f64d49ffcaff531b73a8510a01682fd572fcb4675"
+      }
+    },
+    "ui.chat.dialogs": {
+      "keys": 4,
+      "sha256": {
+        "en": "783d72141bae3491cc1ecfbdfc983339e327406cd4385e7ce8f9dfa1360997fc",
+        "ru": "e140ab374f69cd5f7afa92219a20d1a31b162a2150863f14bfd5be9f5e858404"
+      }
+    },
+    "ui.chat.header": {
+      "keys": 10,
+      "sha256": {
+        "en": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+        "ru": "8b7f67e19f7cb17ee637f2ca5fee08226b41ffd7c443389f32be7b7f179c0511"
+      }
+    },
+    "ui.chat.sidebar_view": {
+      "keys": 22,
+      "sha256": {
+        "en": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+        "ru": "fd1cccb4defbb3d791b91be7392cbc6666b979b19ff21f5327ba3607fb1721b3"
+      }
+    },
+    "ui.chat.composer": {
+      "keys": 34,
+      "sha256": {
+        "en": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+        "ru": "3cfc2c160b8ff30cd7e0a46a6fadf3b4573377f922dbaa887861974b90511956"
+      }
+    },
+    "ui.chat.composer_media": {
+      "keys": 7,
+      "sha256": {
+        "en": "47ec03f574b6665bafaf900f15067ef522fbf8b7fe665402b0bb4be03d0aa0ff",
+        "ru": "c62a97d0ab3ecb358a8fc305e9791c9fb1352c2b56040b93fa3018600a2b9480"
+      }
+    },
+    "ui.agents": {
+      "keys": 0,
+      "sha256": {
+        "en": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "ru": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+      }
+    },
+    "ui.agents.dialogs": {
+      "keys": 33,
+      "sha256": {
+        "en": "99fc8672fbb4139aa2721542a8fb994506301b0c678d86c21439e939f5dd2bf4",
+        "ru": "8f62d0775e28d5e9affe1ce5336ff1ce01928ca45f378a84de546066acfb0e28"
+      }
+    },
+    "ui.agents.models": {
+      "keys": 38,
+      "sha256": {
+        "en": "0775863598346b25001f9131bdf4bf207aba0d036858ce08b7cc49b00f44a540",
+        "ru": "6c9f49426145134bc19f461fbd5c836cc3cb7921b8c4827919909d50e31184ab"
+      }
+    },
+    "ui.agents.navigation": {
+      "keys": 32,
+      "sha256": {
+        "en": "23f591cd7c2d52c2563e0b5cbb4cbb2164f7cd01c2568b050738b3be976a5729",
+        "ru": "7d617ee40e1068c1cd2022af72843f42266dee350c8b147373cd26012d38f544"
+      }
+    },
+    "ui.agents.refusals": {
+      "keys": 16,
+      "sha256": {
+        "en": "457cb86efa40d800d2adf711ec2b4289d22b4b9013fd48189082c4b8808d3f20",
+        "ru": "a47a767b1ccbb0d6107526164bb9457b92a0cba01a00f921f4b75ad0504f64a7"
+      }
+    },
+    "ui.agents.settings": {
+      "keys": 58,
+      "sha256": {
+        "en": "2e2a8a28891db681fd72396a3b8323e8705e4ea9c0397e49237e3ed3f7e1a897",
+        "ru": "3cddab2670b016412b8df8709e327d9eddd48b195ebce2bebae036ae1ac531fb"
+      }
+    },
+    "ui.agents.starters": {
+      "keys": 16,
+      "sha256": {
+        "en": "7d7170328807a0ae0018bb69c4cd5fe49f6d5e47f7ca34484cf71b2a74612cec",
+        "ru": "ddec4d0db52e0dd7a2330dc3642132cdcec74e15b8b3fbd587bb9263fc316cf0"
+      }
+    },
+    "ui.agentMessages": {
+      "keys": 16,
+      "sha256": {
+        "en": "065cbea39ca4df33aa114fc027e5f75bcc6e74e9cb21d4f14e42628d3795cbcb",
+        "ru": "a0859eb3bfa17e05f47538a4736d6e0c18c402b00a0ee3fd73427a01db6fffeb"
+      }
+    }
+  }
+}

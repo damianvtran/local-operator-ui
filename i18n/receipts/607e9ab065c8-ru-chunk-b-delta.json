@@ -1,0 +1,96 @@
+{
+  "locale": "ru",
+  "agent": "i18n-auditor",
+  "instance": "607e9ab065c8",
+  "model": "openai/gpt-6.1-sol",
+  "date": "2026-10-18",
+  "scope": "65ad12e7675a132e4a677ecf7aef95f227379525..2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29",
+  "audit_type": "remediation_delta_with_retained_full_read",
+  "previous_receipt_sha256": "2d005774a4ffc9640d3774f05f8b0d32cee4a5b1d6b579bf6797c5285323dd14",
+  "independent": true,
+  "namespaces": {
+    "ui.browser": {
+      "status": "passed",
+      "sha256": {
+        "en": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
+        "ru": "25e26fba4f41f02e29ea05dd07736f90b3909e6eab71ea162b17594aee661725"
+      },
+      "context_sha256": "10352ba32ef4ded15c52209d0e8b3574b2a053cef038fab1c8d613f2d29e0962",
+      "findings": [],
+      "changed_keys_reviewed": [
+        "ui.browser.browser_approvals_dock.clearing_cookies_signs_this_app_out_of",
+        "ui.browser.browser_consent_request.one_navigation_for_that_conversation_up_to",
+        "ui.browser.browser_tab_strip.actions_for",
+        "ui.browser.browser_tab_strip.close",
+        "ui.browser.browser_tab_strip.close_conversation_tabs",
+        "ui.browser.browser_tab_strip.close_failed_tabs",
+        "ui.browser.browser_tab_strip.close_other_tabs",
+        "ui.browser.browser_tab_strip.let_an_agent_use",
+        "ui.browser.browser_tab_strip.stop_letting_the_agent_use",
+        "ui.browser.browser_tab_strip.watch",
+        "ui.browser.webauthn_chooser.passkeys_waiting"
+      ],
+      "retained_unchanged_ru_values": 213
+    },
+    "ui.mesh": {
+      "status": "passed",
+      "sha256": {
+        "en": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+        "ru": "8441cca80fca72e582b1884473692559cc9d84328c11f04750f314aa2b4b761f"
+      },
+      "context_sha256": "666c9e1c0299b6dbb49a678e14338711c63993e20f639dedda89e03b88a768f8",
+      "findings": [],
+      "changed_keys_reviewed": [
+        "ui.mesh.mesh_actions.copy_notice",
+        "ui.mesh.mesh_actions.the_other_device_keeps",
+        "ui.mesh.mesh_actions.this_device_keeps",
+        "ui.mesh.mesh_approvals.borrow_logins_there",
+        "ui.mesh.mesh_approvals.borrow_the_logins_stored_there",
+        "ui.mesh.mesh_approvals.that_device_can_check_approvals_signed_on",
+        "ui.mesh.mesh_approvals.your_sessions_may_use_the_logins_stored",
+        "ui.mesh.mesh_list.answered_the_peer_read_but_is_in",
+        "ui.mesh.mesh_list.show_all_panel",
+        "ui.mesh.mesh_node.show_all_conversations",
+        "ui.mesh.mesh_store.the_move_answered_and_this_app_could"
+      ],
+      "retained_unchanged_ru_values": 212
+    }
+  },
+  "resolved_findings": [
+    {
+      "id": "RU-B1",
+      "status": "fixed"
+    },
+    {
+      "id": "RU-B3",
+      "status": "fixed"
+    },
+    {
+      "id": "RU-B7",
+      "status": "fixed"
+    },
+    {
+      "id": "RU-B2",
+      "status": "fixed"
+    },
+    {
+      "id": "RU-B4",
+      "status": "fixed"
+    },
+    {
+      "id": "RU-B6",
+      "status": "fixed"
+    },
+    {
+      "id": "RU-B5",
+      "status": "fixed"
+    }
+  ],
+  "verification": {
+    "ICU": "22 changed values parsed; exact en/ru argument-type signatures, no duplicates, exact namespace key parity; six changed plurals preserve one/few/many/other; real IntlMessageFormat at 1/2/5/1.5/21/22/25.",
+    "source_change": "Five English title messages re-read; five caller sites pass title inside ICU; trailing ASCII closers removed, intentional hand-over ellipsis preserved. Generated types require title:string.",
+    "composition": "Executed five Russian title messages and both keeper interpolations; all produce grammatical text and matched quotes.",
+    "retention": "English: browser 219 unchanged semantic values, mesh all 223 unchanged. Russian: browser 213 unchanged values, mesh 212 unchanged values. Chrome en/ru and all three context files byte-identical. Earlier full read retained, no unchanged-key re-audit.",
+    "limitations": "No UI rendering, screenshots or overflow measurement; chrome earlier static-width result retained, no rendered-fit claim. One auditor instance, not a second independent audit."
+  }
+}

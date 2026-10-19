@@ -78,6 +78,16 @@
  * result's own content either way.
  */
 
+import { soundCostCaption } from "./sound-cost-caption";
+export { soundCostCaption } from "./sound-cost-caption";
+import {
+	type SoundBatchItem,
+	soundBatchCostCaption,
+	soundBatchItems,
+	soundBatchNote,
+	soundBatchProgress,
+	soundBatchSummary,
+} from "./sound-batch-model";
 import type { TranscriptImage, TranscriptRecord } from "./transcript-reducer";
 
 /** The tool-record variant of the transcript union, named for this module. */
@@ -379,6 +389,7 @@ export type ImageGenCardView =
 	  }
 	| {
 			state: "running";
+			batchProgress?: { total: number; note: string | null };
 			/**
 			 * Which artifact this call produces — the one fact the state line's noun
 			 * branches on ("Generating image…" / "Generating video…"). The failure
@@ -415,6 +426,10 @@ export type ImageGenCardView =
 			state: "done";
 			/** A result-backed receipt, never a quote relabelled as a charge. */
 			costCaption?: string | null;
+			/** Additive batch receipts; null retains the approved single-player body. */
+			batch?: SoundBatchItem[] | null;
+			batchSummary?: string;
+			batchNote?: string | null;
 			images: readonly TranscriptImage[];
 			/** The material noun this receipt names ("Generated image" / "Generated video"). */
 			material: ImageGenMaterial;
@@ -430,6 +445,10 @@ export type ImageGenCardView =
 	  }
 	| {
 			state: "failed";
+			batch?: SoundBatchItem[] | null;
+			batchSummary?: string;
+			batchNote?: string | null;
+			costCaption?: string | null;
 			/** The material noun the absence sentence names when no text was stated. */
 			material: ImageGenMaterial;
 			/**
@@ -451,6 +470,11 @@ export type ImageGenCardView =
 	  }
 	| {
 			state: "cancelled";
+			material?: ImageGenMaterial;
+			batch?: SoundBatchItem[] | null;
+			batchSummary?: string;
+			batchNote?: string | null;
+			costCaption?: string | null;
 			settlementCaption?: string | null;
 			/**
 			 * Whether a TERMINAL settlement for this call exists somewhere else in
@@ -516,6 +540,20 @@ export function imageGenCardView(
 	 */
 	const material = imageGenMaterial(record.toolName);
 	const sound = material === "voiceover" || material === "sound-effect";
+	const batch =
+		sound && record.phase === "done"
+			? soundBatchItems(record.details, record.images ?? [])
+			: null;
+	const batchProgress = sound
+		? soundBatchProgress(record.args, record.details)
+		: null;
+	const batchFields = batch
+		? {
+				batch,
+				batchSummary: soundBatchSummary(record.details, batch),
+				batchNote: soundBatchNote(record.details, record.output),
+			}
+		: {};
 	const settlementCaption = sound
 		? soundSettlementCaption(record.details)
 		: null;
@@ -531,6 +569,13 @@ export function imageGenCardView(
 			state: "cancelled",
 			generating: record.startedAt !== null,
 			message: canonical.error ?? record.output,
+			...(batch
+				? {
+						...batchFields,
+						material,
+						costCaption: soundBatchCostCaption(record.details),
+					}
+				: {}),
 			...(settlementCaption ? { settlementCaption } : {}),
 			...(settlementCaption || settled ? { settled: true } : {}),
 		};
@@ -563,6 +608,20 @@ export function imageGenCardView(
 	 */
 	if (record.neverSent === true)
 		return { state: "cancelled", generating: false, message: record.output };
+	// An all-failed batch is one failed call, but its individual server errors
+	// are still the product. Keep them instead of collapsing to one text blob.
+	if (batch && record.isError)
+		return {
+			state: "failed",
+			material,
+			message: canonical.error ?? record.output,
+			errorType: humanErrorClass(
+				canonical.errorType,
+				canonical.error ?? record.output,
+			),
+			...batchFields,
+			costCaption: soundBatchCostCaption(record.details),
+		};
 	/*
 	 * ARM 4, the tool's own error result — three readings, in this order:
 	 *
@@ -681,9 +740,13 @@ export function imageGenCardView(
 				startedAtMs,
 				progress: progressFrom(canonical),
 				note: canonical.error,
+				...(batchProgress ? { batchProgress } : {}),
 			};
 		}
-		case "done":
+		case "done": {
+			const cost = sound
+				? soundCostCaption(record.details, record.output)
+				: null;
 			/*
 			 * THE SETTLED SUCCESS. `images` is what the row's own media block renders
 			 * from — the card mounts each entry by its KIND (a picture through
@@ -697,10 +760,11 @@ export function imageGenCardView(
 				material,
 				durationS: record.durationS ?? null,
 				receipt: "generated",
-				costCaption: sound
-					? soundCostCaption(record.details, record.output)
-					: null,
+				batch,
+				...batchFields,
+				costCaption: batch ? soundBatchCostCaption(record.details) : cost,
 			};
+		}
 	}
 }
 
@@ -743,37 +807,6 @@ function humanErrorClass(
 	const words = kind.replace(/_/g, " ");
 	if (message?.toLowerCase().startsWith(words.toLowerCase())) return null;
 	return words.charAt(0).toUpperCase() + words.slice(1);
-}
-
-const LEGACY_COST_CAPTION =
-	/Cost \$[0-9]+(?:\.[0-9]+)? \((?:billed|estimated[^)]*)\)\.?/;
-
-/** Keep settlement provenance: a quote or an absent amount is not a charge. */
-export function soundCostCaption(
-	details: unknown,
-	output?: string | null,
-): string | null {
-	// Older durable rows retained only text. Preserve the tool's own labelled
-	// cost sentence verbatim rather than guessing its billing basis or amount.
-	const legacy = output?.match(LEGACY_COST_CAPTION)?.[0] ?? null;
-	if (!details || typeof details !== "object") return legacy;
-	const result = details as Record<string, unknown>;
-	const amount = result.cost_usd;
-	const basis = result.billing_basis;
-	if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0)
-		return legacy;
-	if (basis !== "billed" && basis !== "estimated") return null;
-	/*
-	 * A CHARGED CALL MUST NOT PRINT AS $0. Four decimals is the receipt's
-	 * precision, and trimming them is what keeps `$0.002` from reading as
-	 * `$0.0020` (design D5) - but amounts below the half-unit of that precision
-	 * (`(0, 0.00005)`) trim to "0" and would render a real charge
-	 * indistinguishably from an uncharged call. The bound is stated instead of
-	 * rounded up, because rounding would overstate what was taken.
-	 */
-	const rounded = Number(amount.toFixed(4));
-	const printed = rounded === 0 && amount > 0 ? "<$0.0001" : `$${rounded}`;
-	return `Cost ${printed} (${basis}).`;
 }
 
 /** Which affordance a control is. */

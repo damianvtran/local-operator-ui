@@ -1,0 +1,938 @@
+{
+	"schema": 1,
+	"auditor": "i18n-auditor",
+	"model": "openai/gpt-6.1-sol",
+	"instance": "c30073d4167f",
+	"session": "7c40d1c357cf",
+	"locale": "fr",
+	"date": "2026-10-18",
+	"status": "passed",
+	"verdict": "PASS-WITH-NOTES",
+	"scope": {
+		"base": "aacdb080568b8f16daabf51d74fbf451dd44c765",
+		"head": "1516984ec99ae09e635b0cb58c4f2e747de1483c",
+		"previous_head": "ce8e65e73291bbf51b516c07567d5dc271d83589",
+		"pr": "https://github.com/damianvtran/local-operator-ui/pull/1180",
+		"namespaces": [
+			"ui.agentMessages",
+			"ui.agents.dialogs",
+			"ui.agents.models",
+			"ui.agents.refusals",
+			"ui.agents.settings",
+			"ui.agents.starters",
+			"ui.chat.composer_media",
+			"ui.chat.dialogs",
+			"ui.code_review",
+			"ui.common.account",
+			"ui.common.connection",
+			"ui.common.editing",
+			"ui.common.forms",
+			"ui.common.loading",
+			"ui.common.models",
+			"ui.common.updates",
+			"ui.installer",
+			"ui.settings.appearance.window_glass",
+			"ui.settings.imports",
+			"ui.settings.model.default_effort",
+			"ui.settings.model.provider_callout"
+		],
+		"chunk": "D"
+	},
+	"provenance": {
+		"agent": "i18n-auditor",
+		"actual_model": "openai/gpt-6.1-sol",
+		"evidence": "sessions info confirmed live openai/gpt-6.1-sol",
+		"fallback": "Original automatic Anthropic-quota fallback persists; not a Sonnet audit.",
+		"independent_of_translator": true,
+		"instance_semantics": "Fresh audit-run identifier in the same resumed auditor session; not a second independent auditor."
+	},
+	"previous_record": {
+		"path": "/Users/damian/.local-operator/sessions/7c40d1c357cf/scratchpad/0169e79b0b13.json",
+		"sha256": "58b3f9d56c1cb8682cdc2d4f90a9483073fe975c130ab44266a728e4c2e564dc",
+		"verdict": "FAIL / INCOMPLETE, preserved"
+	},
+	"translator_receipt": {
+		"path": "i18n/receipts/ui-fr-batch.json",
+		"sha256": "f20fbac4e553858e2ea16548921a249df6058461a0c9db90878d445bc59d44ec",
+		"verified": true
+	},
+	"guidance": {
+		"local-operator/i18n/glossary.md": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+		"local-operator/i18n/style-guides/fr.md": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+	},
+	"coverage": {
+		"namespaces": 21,
+		"keys": 614,
+		"retained_full_namespaces": [
+			"ui.code_review",
+			"ui.common.account",
+			"ui.common.connection",
+			"ui.common.editing",
+			"ui.common.forms",
+			"ui.common.loading",
+			"ui.common.models",
+			"ui.common.updates",
+			"ui.settings.appearance.window_glass",
+			"ui.settings.imports",
+			"ui.settings.model.default_effort",
+			"ui.settings.model.provider_callout"
+		],
+		"retained_full_keys": 408,
+		"new_full_read_namespaces": [
+			"ui.agents.settings",
+			"ui.agents.models",
+			"ui.agents.dialogs",
+			"ui.installer",
+			"ui.agentMessages",
+			"ui.agents.refusals",
+			"ui.agents.starters",
+			"ui.chat.composer_media",
+			"ui.chat.dialogs"
+		],
+		"new_full_read_keys": 206,
+		"new_full_read_record": "/Users/damian/.local-operator/sessions/7c40d1c357cf/scratchpad/chunk-d-full-native.txt",
+		"new_full_read_record_sha256": "ba4d7b79518a07cc63de7ebedf07b95316b37dee4243cb5149615953cd11a145",
+		"retained_changed_keys": 30,
+		"all_chunk_changed_keys": 39,
+		"full_read_claim": "Every source/French pair in all nine newly covered namespaces was read line by line. Prior twelve complete reads retained, with typography-only delta review; no sampled namespace is promoted to full coverage.",
+		"exclusions": "ui.canvas belongs to chunk C; A/B/C ownership and other namespaces outside this certificate.",
+		"scope_resolution": "Root confirmed A580+B461+C446+D614=2101; no allocation gap."
+	},
+	"checks": {
+		"key_sets_tab_json_unique": true,
+		"source_and_context_unchanged": true,
+		"zero_icu_structural_drift": true,
+		"zero_icu_parse_errors": true,
+		"zero_invalid_prose_punctuation": true,
+		"zero_invalid_inner_guillemet_spaces": true,
+		"ten_numeric_width_budgets": [
+			{
+				"namespace": "ui.chat.composer_media",
+				"key": "ui.chat.composer_media.recording",
+				"length": 14,
+				"maxCells": 18,
+				"over": false
+			},
+			{
+				"namespace": "ui.chat.composer_media",
+				"key": "ui.chat.composer_media.confirms",
+				"length": 8,
+				"maxCells": 12,
+				"over": false
+			},
+			{
+				"namespace": "ui.chat.composer_media",
+				"key": "ui.chat.composer_media.cancels",
+				"length": 6,
+				"maxCells": 12,
+				"over": false
+			},
+			{
+				"namespace": "ui.chat.composer_media",
+				"key": "ui.chat.composer_media.pasted_file",
+				"length": 13,
+				"maxCells": 20,
+				"over": false
+			},
+			{
+				"namespace": "ui.chat.composer_media",
+				"key": "ui.chat.composer_media.preview_failed",
+				"length": 17,
+				"maxCells": 32,
+				"over": false
+			},
+			{
+				"namespace": "ui.chat.composer_media",
+				"key": "ui.chat.composer_media.remove_attachment",
+				"length": 23,
+				"maxCells": 24,
+				"over": false
+			},
+			{
+				"namespace": "ui.chat.dialogs",
+				"key": "ui.chat.dialogs.delete_title",
+				"length": 30,
+				"maxCells": 40,
+				"over": false
+			},
+			{
+				"namespace": "ui.chat.dialogs",
+				"key": "ui.chat.dialogs.delete_action",
+				"length": 9,
+				"maxCells": 16,
+				"over": false
+			},
+			{
+				"namespace": "ui.chat.dialogs",
+				"key": "ui.chat.dialogs.archive_action",
+				"length": 8,
+				"maxCells": 16,
+				"over": false
+			},
+			{
+				"namespace": "ui.chat.dialogs",
+				"key": "ui.chat.dialogs.cancel",
+				"length": 7,
+				"maxCells": 16,
+				"over": false
+			}
+		],
+		"retained_delta": "Every one of 30 changed values in the prior12 namespaces proved exactly the requested typography transformation; all other values byte-identical.",
+		"exemptions": "All58 reasons reviewed in prior pass; locale-parity.test.mjs byte-identical, no new exemption invented. In-scope identical values are unchanged.",
+		"unverified": "No browser/rendered-fit, full CI, runtime activation, release eligibility, or second independent high-visibility audit claimed."
+	},
+	"findings": [
+		{
+			"id": "T2-F3",
+			"severity": "minor",
+			"namespaces": [
+				"ui.code_review"
+			],
+			"summary": "Git merge translated contrary to binding kept-English glossary/style rule.",
+			"locations": [
+				{
+					"namespace": "ui.code_review",
+					"key": "ui.code_review.activity.merge",
+					"path": "src/i18n/catalogues/fr/ui.code_review.json",
+					"line": 5
+				},
+				{
+					"namespace": "ui.code_review",
+					"key": "ui.code_review.code_review_model.merged",
+					"path": "src/i18n/catalogues/fr/ui.code_review.json",
+					"line": 33
+				}
+			],
+			"details": "« avez fusionné » / « Fusionnée » name Git operations/status. Glossary §2 wave-2 kept-English set and fr product-name policy keep merge. Unlike combining ordinary configuration text, these are directly forge/Git operations.",
+			"disposition": "deferred — nonblocking MINOR, retained in PR comments/receipt; Root explicitly requested no extra round solely for this finding."
+		},
+		{
+			"id": "T2-F4",
+			"severity": "minor",
+			"namespaces": [
+				"ui.common.updates",
+				"ui.code_review"
+			],
+			"summary": "Literal calques in update/cooldown copy.",
+			"locations": [
+				{
+					"namespace": "ui.common.updates",
+					"key": "ui.common.updates.check_for_updates_button.still_checking_a_slow_or_stalled_connection_can_hold_this_for_abo",
+					"path": "src/i18n/catalogues/fr/ui.common.updates.json",
+					"line": 8
+				},
+				{
+					"namespace": "ui.common.updates",
+					"key": "ui.common.updates.update_notification.still_checking_a_slow_or_stalled_connection_can_hold_this_for_abo",
+					"path": "src/i18n/catalogues/fr/ui.common.updates.json",
+					"line": 69
+				},
+				{
+					"namespace": "ui.common.updates",
+					"key": "ui.common.updates.update_notification.still_installing_a_slow_connection_or_a_cold_cache_can_hold_this_",
+					"path": "src/i18n/catalogues/fr/ui.common.updates.json",
+					"line": 71
+				},
+				{
+					"namespace": "ui.code_review",
+					"key": "ui.code_review.code_review_model.cooling_this_host_is_rate_limited_nothing_was_fetched_yet",
+					"path": "src/i18n/catalogues/fr/ui.code_review.json",
+					"line": 28
+				}
+			],
+			"details": "« peut retenir cela » is a calque of hold this; « peut prolonger cette étape » is idiomatic. « Refroidissement » misleadingly suggests thermal cooling rather than rate-limit cooldown; use « Temporisation » or « En attente ». Safety/timing meaning remains understandable.",
+			"disposition": "deferred — nonblocking MINOR, retained in PR comments/receipt; Root explicitly requested no extra round solely for this finding."
+		},
+		{
+			"id": "D-F1",
+			"severity": "minor",
+			"namespaces": [
+				"ui.agents.settings"
+			],
+			"summary": "Default-setting action uses a completed-status phrase rather than an action verb.",
+			"locations": [
+				{
+					"namespace": "ui.agents.settings",
+					"key": "ui.agents.settings.chat.set_to_default",
+					"path": "src/i18n/catalogues/fr/ui.agents.settings.json",
+					"line": 3
+				}
+			],
+			"en": "Set to default ({value})",
+			"fr": "Défini à la valeur par défaut ({value})",
+			"evidence": "English context: Button that writes a default parameter override; action verb. chat-settings.tsx: UnsetSetting shows Not set yet alongside this Button with onClick={onSet}.",
+			"suggestion": "Use an infinitive action such as « Définir la valeur par défaut ({value}) ».",
+			"disposition": "deferred — nonblocking native-clarity note; no additional audit round solely for this MINOR."
+		},
+		{
+			"id": "D-F2",
+			"severity": "minor",
+			"namespaces": [
+				"ui.agents.settings"
+			],
+			"summary": "Top-K help should name the candidate-token pool rather than imply the number of tokens actually sampled.",
+			"locations": [
+				{
+					"namespace": "ui.agents.settings",
+					"key": "ui.agents.settings.chat.limits_tokens_to_sample_from_at_each",
+					"path": "src/i18n/catalogues/fr/ui.agents.settings.json",
+					"line": 14
+				}
+			],
+			"en": "Limits tokens to sample from at each step.",
+			"fr": "Limite le nombre de tokens échantillonnés à chaque étape.",
+			"evidence": "Context explicitly says restricts candidate tokens at every generation step; chat-settings.tsx binds it to Top K (1–100), not max_tokens.",
+			"suggestion": "« Limite le nombre de tokens candidats à chaque étape. »",
+			"disposition": "deferred — nonblocking technical-clarity note; no additional audit round solely for this MINOR."
+		}
+	],
+	"namespaces": {
+		"ui.agentMessages": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 16,
+			"sha256": {
+				"en": "065cbea39ca4df33aa114fc027e5f75bcc6e74e9cb21d4f14e42628d3795cbcb",
+				"fr": "3157c822b9ba071078a6544e09a748c92b943af995299f620752d5db49773f9b",
+				"context": "24707590755f8546d1624939a94f7c719eb2d172b4ad54f5ba5af6b710057adc"
+			},
+			"findings": [],
+			"coverage": "full line-by-line at current head",
+			"mechanical": {
+				"en_keys": 16,
+				"fr_keys": 16,
+				"source_sha256": "065cbea39ca4df33aa114fc027e5f75bcc6e74e9cb21d4f14e42628d3795cbcb",
+				"target_sha256": "3157c822b9ba071078a6544e09a748c92b943af995299f620752d5db49773f9b",
+				"context_sha256": "24707590755f8546d1624939a94f7c719eb2d172b4ad54f5ba5af6b710057adc",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": false
+			}
+		},
+		"ui.agents.dialogs": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 33,
+			"sha256": {
+				"en": "99fc8672fbb4139aa2721542a8fb994506301b0c678d86c21439e939f5dd2bf4",
+				"fr": "4de75ec272d148e88c763551a9ac9538f1f15072541ad2fed2651678330958d9",
+				"context": "c30ccb0f48521740a36234b83035157663f4b01d9f24236c33dc801b57db1dc7"
+			},
+			"findings": [],
+			"coverage": "full line-by-line at current head",
+			"mechanical": {
+				"en_keys": 33,
+				"fr_keys": 33,
+				"source_sha256": "99fc8672fbb4139aa2721542a8fb994506301b0c678d86c21439e939f5dd2bf4",
+				"target_sha256": "4de75ec272d148e88c763551a9ac9538f1f15072541ad2fed2651678330958d9",
+				"context_sha256": "c30ccb0f48521740a36234b83035157663f4b01d9f24236c33dc801b57db1dc7",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": true
+			}
+		},
+		"ui.agents.models": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 38,
+			"sha256": {
+				"en": "0775863598346b25001f9131bdf4bf207aba0d036858ce08b7cc49b00f44a540",
+				"fr": "0a78af103388ac25e5899e021cde72a817563cf14dcec2a1b78fcc32ee5b58aa",
+				"context": "d7e13ca61daaa76a3389279de9665134229191882300858db99a555ea50ef22f"
+			},
+			"findings": [],
+			"coverage": "full line-by-line at current head",
+			"mechanical": {
+				"en_keys": 38,
+				"fr_keys": 38,
+				"source_sha256": "0775863598346b25001f9131bdf4bf207aba0d036858ce08b7cc49b00f44a540",
+				"target_sha256": "0a78af103388ac25e5899e021cde72a817563cf14dcec2a1b78fcc32ee5b58aa",
+				"context_sha256": "d7e13ca61daaa76a3389279de9665134229191882300858db99a555ea50ef22f",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": false
+			}
+		},
+		"ui.agents.refusals": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 16,
+			"sha256": {
+				"en": "457cb86efa40d800d2adf711ec2b4289d22b4b9013fd48189082c4b8808d3f20",
+				"fr": "5cd4f443265352382baf997a0f48ccdc9101b9c53290dda5dde445cb266a1ed6",
+				"context": "d7672e33492ea279620ab21d0d6e8131057ddd9d8bc83002f84e8dc3149a2311"
+			},
+			"findings": [],
+			"coverage": "full line-by-line at current head",
+			"mechanical": {
+				"en_keys": 16,
+				"fr_keys": 16,
+				"source_sha256": "457cb86efa40d800d2adf711ec2b4289d22b4b9013fd48189082c4b8808d3f20",
+				"target_sha256": "5cd4f443265352382baf997a0f48ccdc9101b9c53290dda5dde445cb266a1ed6",
+				"context_sha256": "d7672e33492ea279620ab21d0d6e8131057ddd9d8bc83002f84e8dc3149a2311",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": false
+			}
+		},
+		"ui.agents.settings": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 58,
+			"sha256": {
+				"en": "2e2a8a28891db681fd72396a3b8323e8705e4ea9c0397e49237e3ed3f7e1a897",
+				"fr": "9fcff9fdb9859da271e108afb80fc334a09c3da99dabac09ebb5675fca08eb9b",
+				"context": "6083296ec9377039f51dfda7485d2d0080f7fa4522176341cd14553438e0fa36"
+			},
+			"findings": [
+				{
+					"id": "D-F1",
+					"severity": "minor",
+					"namespaces": [
+						"ui.agents.settings"
+					],
+					"summary": "Default-setting action uses a completed-status phrase rather than an action verb.",
+					"locations": [
+						{
+							"namespace": "ui.agents.settings",
+							"key": "ui.agents.settings.chat.set_to_default",
+							"path": "src/i18n/catalogues/fr/ui.agents.settings.json",
+							"line": 3
+						}
+					],
+					"en": "Set to default ({value})",
+					"fr": "Défini à la valeur par défaut ({value})",
+					"evidence": "English context: Button that writes a default parameter override; action verb. chat-settings.tsx: UnsetSetting shows Not set yet alongside this Button with onClick={onSet}.",
+					"suggestion": "Use an infinitive action such as « Définir la valeur par défaut ({value}) ».",
+					"disposition": "deferred — nonblocking native-clarity note; no additional audit round solely for this MINOR."
+				},
+				{
+					"id": "D-F2",
+					"severity": "minor",
+					"namespaces": [
+						"ui.agents.settings"
+					],
+					"summary": "Top-K help should name the candidate-token pool rather than imply the number of tokens actually sampled.",
+					"locations": [
+						{
+							"namespace": "ui.agents.settings",
+							"key": "ui.agents.settings.chat.limits_tokens_to_sample_from_at_each",
+							"path": "src/i18n/catalogues/fr/ui.agents.settings.json",
+							"line": 14
+						}
+					],
+					"en": "Limits tokens to sample from at each step.",
+					"fr": "Limite le nombre de tokens échantillonnés à chaque étape.",
+					"evidence": "Context explicitly says restricts candidate tokens at every generation step; chat-settings.tsx binds it to Top K (1–100), not max_tokens.",
+					"suggestion": "« Limite le nombre de tokens candidats à chaque étape. »",
+					"disposition": "deferred — nonblocking technical-clarity note; no additional audit round solely for this MINOR."
+				}
+			],
+			"coverage": "full line-by-line at current head",
+			"mechanical": {
+				"en_keys": 58,
+				"fr_keys": 58,
+				"source_sha256": "2e2a8a28891db681fd72396a3b8323e8705e4ea9c0397e49237e3ed3f7e1a897",
+				"target_sha256": "9fcff9fdb9859da271e108afb80fc334a09c3da99dabac09ebb5675fca08eb9b",
+				"context_sha256": "6083296ec9377039f51dfda7485d2d0080f7fa4522176341cd14553438e0fa36",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": false
+			}
+		},
+		"ui.agents.starters": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 16,
+			"sha256": {
+				"en": "7d7170328807a0ae0018bb69c4cd5fe49f6d5e47f7ca34484cf71b2a74612cec",
+				"fr": "0f37a1670554381d9207aa12e9bfe1a9eb63bfc6a5694e23c9425c527d49592e",
+				"context": "bce2f21153851cff6d7c8e41e2bfbd4655df8d68ab15b2ec63747b4096a2b989"
+			},
+			"findings": [],
+			"coverage": "full line-by-line at current head",
+			"mechanical": {
+				"en_keys": 16,
+				"fr_keys": 16,
+				"source_sha256": "7d7170328807a0ae0018bb69c4cd5fe49f6d5e47f7ca34484cf71b2a74612cec",
+				"target_sha256": "0f37a1670554381d9207aa12e9bfe1a9eb63bfc6a5694e23c9425c527d49592e",
+				"context_sha256": "bce2f21153851cff6d7c8e41e2bfbd4655df8d68ab15b2ec63747b4096a2b989",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": true
+			}
+		},
+		"ui.chat.composer_media": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 7,
+			"sha256": {
+				"en": "47ec03f574b6665bafaf900f15067ef522fbf8b7fe665402b0bb4be03d0aa0ff",
+				"fr": "37f695ad48568e6f7c17e6a86ae54c4f1b320ed7fbf6c6b9d8edbdde2ee6b26f",
+				"context": "7048f63ae717708d05a282480da8baff670c739ed069578f05a139d95b38952f"
+			},
+			"findings": [],
+			"coverage": "full line-by-line at current head",
+			"mechanical": {
+				"en_keys": 7,
+				"fr_keys": 7,
+				"source_sha256": "47ec03f574b6665bafaf900f15067ef522fbf8b7fe665402b0bb4be03d0aa0ff",
+				"target_sha256": "37f695ad48568e6f7c17e6a86ae54c4f1b320ed7fbf6c6b9d8edbdde2ee6b26f",
+				"context_sha256": "7048f63ae717708d05a282480da8baff670c739ed069578f05a139d95b38952f",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": true
+			}
+		},
+		"ui.chat.dialogs": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 4,
+			"sha256": {
+				"en": "783d72141bae3491cc1ecfbdfc983339e327406cd4385e7ce8f9dfa1360997fc",
+				"fr": "98d4bbfe63094ec7397250b2dce65506c18a45f2cc38afb9f372dd4ed7932491",
+				"context": "affc7ef0070adaf55dc9d36c6baa5b9702ebaf87872d3f7985cd71842c059aa4"
+			},
+			"findings": [],
+			"coverage": "full line-by-line at current head",
+			"mechanical": {
+				"en_keys": 4,
+				"fr_keys": 4,
+				"source_sha256": "783d72141bae3491cc1ecfbdfc983339e327406cd4385e7ce8f9dfa1360997fc",
+				"target_sha256": "98d4bbfe63094ec7397250b2dce65506c18a45f2cc38afb9f372dd4ed7932491",
+				"context_sha256": "affc7ef0070adaf55dc9d36c6baa5b9702ebaf87872d3f7985cd71842c059aa4",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": true
+			}
+		},
+		"ui.code_review": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 75,
+			"sha256": {
+				"en": "7344c8694a23662bfe3ae12205685cfa14851209d0685abbe463b9f513565085",
+				"fr": "b2074b091f9e3855e8985bc313394c727ac3536224592014a80707fd14b90270",
+				"context": "f1b608debc5f65a6848c6cb499b2bc096e36fbbab791d481ce2e445938dc4801"
+			},
+			"findings": [
+				{
+					"id": "T2-F3",
+					"severity": "minor",
+					"namespaces": [
+						"ui.code_review"
+					],
+					"summary": "Git merge translated contrary to binding kept-English glossary/style rule.",
+					"locations": [
+						{
+							"namespace": "ui.code_review",
+							"key": "ui.code_review.activity.merge",
+							"path": "src/i18n/catalogues/fr/ui.code_review.json",
+							"line": 5
+						},
+						{
+							"namespace": "ui.code_review",
+							"key": "ui.code_review.code_review_model.merged",
+							"path": "src/i18n/catalogues/fr/ui.code_review.json",
+							"line": 33
+						}
+					],
+					"details": "« avez fusionné » / « Fusionnée » name Git operations/status. Glossary §2 wave-2 kept-English set and fr product-name policy keep merge. Unlike combining ordinary configuration text, these are directly forge/Git operations.",
+					"disposition": "deferred — nonblocking MINOR, retained in PR comments/receipt; Root explicitly requested no extra round solely for this finding."
+				},
+				{
+					"id": "T2-F4",
+					"severity": "minor",
+					"namespaces": [
+						"ui.common.updates",
+						"ui.code_review"
+					],
+					"summary": "Literal calques in update/cooldown copy.",
+					"locations": [
+						{
+							"namespace": "ui.common.updates",
+							"key": "ui.common.updates.check_for_updates_button.still_checking_a_slow_or_stalled_connection_can_hold_this_for_abo",
+							"path": "src/i18n/catalogues/fr/ui.common.updates.json",
+							"line": 8
+						},
+						{
+							"namespace": "ui.common.updates",
+							"key": "ui.common.updates.update_notification.still_checking_a_slow_or_stalled_connection_can_hold_this_for_abo",
+							"path": "src/i18n/catalogues/fr/ui.common.updates.json",
+							"line": 69
+						},
+						{
+							"namespace": "ui.common.updates",
+							"key": "ui.common.updates.update_notification.still_installing_a_slow_connection_or_a_cold_cache_can_hold_this_",
+							"path": "src/i18n/catalogues/fr/ui.common.updates.json",
+							"line": 71
+						},
+						{
+							"namespace": "ui.code_review",
+							"key": "ui.code_review.code_review_model.cooling_this_host_is_rate_limited_nothing_was_fetched_yet",
+							"path": "src/i18n/catalogues/fr/ui.code_review.json",
+							"line": 28
+						}
+					],
+					"details": "« peut retenir cela » is a calque of hold this; « peut prolonger cette étape » is idiomatic. « Refroidissement » misleadingly suggests thermal cooling rather than rate-limit cooldown; use « Temporisation » or « En attente ». Safety/timing meaning remains understandable.",
+					"disposition": "deferred — nonblocking MINOR, retained in PR comments/receipt; Root explicitly requested no extra round solely for this finding."
+				}
+			],
+			"coverage": "prior full native audit retained, typography-only delta reviewed at current head",
+			"mechanical": {
+				"en_keys": 75,
+				"fr_keys": 75,
+				"source_sha256": "7344c8694a23662bfe3ae12205685cfa14851209d0685abbe463b9f513565085",
+				"target_sha256": "b2074b091f9e3855e8985bc313394c727ac3536224592014a80707fd14b90270",
+				"context_sha256": "f1b608debc5f65a6848c6cb499b2bc096e36fbbab791d481ce2e445938dc4801",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": false
+			}
+		},
+		"ui.common.account": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 18,
+			"sha256": {
+				"en": "72e2a848a2aa4b46ecdc0ede34ed5f59b280b73e3fc544d5e563ce22ab2743e0",
+				"fr": "aad4f1b400ca0a8a8691ba293701435aab9c9ef4886ad6c91a1b87494f6e7c9c",
+				"context": "d3576fe1e83a51325e07df3b999a0e9c029c63b19aefad771edeb54be4dd3bcf"
+			},
+			"findings": [],
+			"coverage": "prior full native audit retained, typography-only delta reviewed at current head",
+			"mechanical": {
+				"en_keys": 18,
+				"fr_keys": 18,
+				"source_sha256": "72e2a848a2aa4b46ecdc0ede34ed5f59b280b73e3fc544d5e563ce22ab2743e0",
+				"target_sha256": "aad4f1b400ca0a8a8691ba293701435aab9c9ef4886ad6c91a1b87494f6e7c9c",
+				"context_sha256": "d3576fe1e83a51325e07df3b999a0e9c029c63b19aefad771edeb54be4dd3bcf",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": false
+			}
+		},
+		"ui.common.connection": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 10,
+			"sha256": {
+				"en": "d1acb6a1fae70e3f85255d880a91d9e35ed49a8bf7d04ef14722ce115d7c69bb",
+				"fr": "8f48360aa233f40c0ad28f7f6fe06581394dd6543115b474add041ca07e6240e",
+				"context": "d61ff975e483d728f56f4911cd1ffdf5e511955dfdff993b4786e71e00ee263a"
+			},
+			"findings": [],
+			"coverage": "prior full native audit retained, typography-only delta reviewed at current head",
+			"mechanical": {
+				"en_keys": 10,
+				"fr_keys": 10,
+				"source_sha256": "d1acb6a1fae70e3f85255d880a91d9e35ed49a8bf7d04ef14722ce115d7c69bb",
+				"target_sha256": "8f48360aa233f40c0ad28f7f6fe06581394dd6543115b474add041ca07e6240e",
+				"context_sha256": "d61ff975e483d728f56f4911cd1ffdf5e511955dfdff993b4786e71e00ee263a",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": true
+			}
+		},
+		"ui.common.editing": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 3,
+			"sha256": {
+				"en": "e7ddf3b75f3e46d6900aacab976f1180eb10fdb121b5f46d2dc231fd6b4f5bb5",
+				"fr": "df1bc843012aa9c8f31f48d491c1519e19115e46b938ca84c63a71b0febe524c",
+				"context": "cb9097a08cfca2b3edc9cb9a90bda78b29d9b2de14335e779fa18ee39adb1fb4"
+			},
+			"findings": [],
+			"coverage": "prior full native audit retained, typography-only delta reviewed at current head",
+			"mechanical": {
+				"en_keys": 3,
+				"fr_keys": 3,
+				"source_sha256": "e7ddf3b75f3e46d6900aacab976f1180eb10fdb121b5f46d2dc231fd6b4f5bb5",
+				"target_sha256": "df1bc843012aa9c8f31f48d491c1519e19115e46b938ca84c63a71b0febe524c",
+				"context_sha256": "cb9097a08cfca2b3edc9cb9a90bda78b29d9b2de14335e779fa18ee39adb1fb4",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": true
+			}
+		},
+		"ui.common.forms": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 27,
+			"sha256": {
+				"en": "28a63a53e5b6c3c4fccb9995eb07637c8521ce9d5019e304f3fedb0ddbc053d9",
+				"fr": "a252e82289404e129f8195b9a67c4be85654dd7f2ec7ad32848b1b47656cf399",
+				"context": "3a0d8d06c2a85585efe01bc41a8cbf353201d9f5939e195ef500b55b85c3320b"
+			},
+			"findings": [],
+			"coverage": "prior full native audit retained, typography-only delta reviewed at current head",
+			"mechanical": {
+				"en_keys": 27,
+				"fr_keys": 27,
+				"source_sha256": "28a63a53e5b6c3c4fccb9995eb07637c8521ce9d5019e304f3fedb0ddbc053d9",
+				"target_sha256": "a252e82289404e129f8195b9a67c4be85654dd7f2ec7ad32848b1b47656cf399",
+				"context_sha256": "3a0d8d06c2a85585efe01bc41a8cbf353201d9f5939e195ef500b55b85c3320b",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": false
+			}
+		},
+		"ui.common.loading": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 1,
+			"sha256": {
+				"en": "e629186e32cd51d7eb98dcd3e8f6587765447bd1da9bdba5c5d327ad2bdcd87e",
+				"fr": "5ace7267fe6b515c463460bf5a206095b71ea199fcc49e77b7dbc3815a569205",
+				"context": "0e84a17a1ab6d6db14a18dce0d0fdcfefde3e937c7e12bb44ca69c671712ec3b"
+			},
+			"findings": [],
+			"coverage": "prior full native audit retained, typography-only delta reviewed at current head",
+			"mechanical": {
+				"en_keys": 1,
+				"fr_keys": 1,
+				"source_sha256": "e629186e32cd51d7eb98dcd3e8f6587765447bd1da9bdba5c5d327ad2bdcd87e",
+				"target_sha256": "5ace7267fe6b515c463460bf5a206095b71ea199fcc49e77b7dbc3815a569205",
+				"context_sha256": "0e84a17a1ab6d6db14a18dce0d0fdcfefde3e937c7e12bb44ca69c671712ec3b",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": true
+			}
+		},
+		"ui.common.models": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 24,
+			"sha256": {
+				"en": "561e39a0105425d66cac7d7497306d740d79f7b2e3921424b1993f3405e08d77",
+				"fr": "067787fe8c90a3f245fa494e1b2b0466c88c39854b83c599ec3896022053ada0",
+				"context": "5349e9243795ada224712e0ebbc0ebeabd8f6067cb3ea02384eb9b56c05dc33e"
+			},
+			"findings": [],
+			"coverage": "prior full native audit retained, typography-only delta reviewed at current head",
+			"mechanical": {
+				"en_keys": 24,
+				"fr_keys": 24,
+				"source_sha256": "561e39a0105425d66cac7d7497306d740d79f7b2e3921424b1993f3405e08d77",
+				"target_sha256": "067787fe8c90a3f245fa494e1b2b0466c88c39854b83c599ec3896022053ada0",
+				"context_sha256": "5349e9243795ada224712e0ebbc0ebeabd8f6067cb3ea02384eb9b56c05dc33e",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": true
+			}
+		},
+		"ui.common.updates": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 127,
+			"sha256": {
+				"en": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
+				"fr": "d14a0c077c6ebf70f8b734b25a3e07481c44d026bc658456d4fe6a60383d430b",
+				"context": "8fb717bd5951caab0e7989b9e1a9c008e45d8f3c41aee1d4c5f92fcf37b27676"
+			},
+			"findings": [
+				{
+					"id": "T2-F4",
+					"severity": "minor",
+					"namespaces": [
+						"ui.common.updates",
+						"ui.code_review"
+					],
+					"summary": "Literal calques in update/cooldown copy.",
+					"locations": [
+						{
+							"namespace": "ui.common.updates",
+							"key": "ui.common.updates.check_for_updates_button.still_checking_a_slow_or_stalled_connection_can_hold_this_for_abo",
+							"path": "src/i18n/catalogues/fr/ui.common.updates.json",
+							"line": 8
+						},
+						{
+							"namespace": "ui.common.updates",
+							"key": "ui.common.updates.update_notification.still_checking_a_slow_or_stalled_connection_can_hold_this_for_abo",
+							"path": "src/i18n/catalogues/fr/ui.common.updates.json",
+							"line": 69
+						},
+						{
+							"namespace": "ui.common.updates",
+							"key": "ui.common.updates.update_notification.still_installing_a_slow_connection_or_a_cold_cache_can_hold_this_",
+							"path": "src/i18n/catalogues/fr/ui.common.updates.json",
+							"line": 71
+						},
+						{
+							"namespace": "ui.code_review",
+							"key": "ui.code_review.code_review_model.cooling_this_host_is_rate_limited_nothing_was_fetched_yet",
+							"path": "src/i18n/catalogues/fr/ui.code_review.json",
+							"line": 28
+						}
+					],
+					"details": "« peut retenir cela » is a calque of hold this; « peut prolonger cette étape » is idiomatic. « Refroidissement » misleadingly suggests thermal cooling rather than rate-limit cooldown; use « Temporisation » or « En attente ». Safety/timing meaning remains understandable.",
+					"disposition": "deferred — nonblocking MINOR, retained in PR comments/receipt; Root explicitly requested no extra round solely for this finding."
+				}
+			],
+			"coverage": "prior full native audit retained, typography-only delta reviewed at current head",
+			"mechanical": {
+				"en_keys": 127,
+				"fr_keys": 127,
+				"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
+				"target_sha256": "d14a0c077c6ebf70f8b734b25a3e07481c44d026bc658456d4fe6a60383d430b",
+				"context_sha256": "8fb717bd5951caab0e7989b9e1a9c008e45d8f3c41aee1d4c5f92fcf37b27676",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": false
+			}
+		},
+		"ui.installer": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 18,
+			"sha256": {
+				"en": "35b34093f3d065acf26e96a4e9601cb2906bd9439230a7fa7f9fc9a43784f7a3",
+				"fr": "e12dc3618bf3c71d41b8e25ae5e2957c7b4fafdd55fdef48428ea56bb0094c8c",
+				"context": "4a94ec93943fc2a8ef34d0beeb847af7c1e363dd3a2830990ee5ffa68f72982d"
+			},
+			"findings": [],
+			"coverage": "full line-by-line at current head",
+			"mechanical": {
+				"en_keys": 18,
+				"fr_keys": 18,
+				"source_sha256": "35b34093f3d065acf26e96a4e9601cb2906bd9439230a7fa7f9fc9a43784f7a3",
+				"target_sha256": "e12dc3618bf3c71d41b8e25ae5e2957c7b4fafdd55fdef48428ea56bb0094c8c",
+				"context_sha256": "4a94ec93943fc2a8ef34d0beeb847af7c1e363dd3a2830990ee5ffa68f72982d",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": false
+			}
+		},
+		"ui.settings.appearance.window_glass": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 28,
+			"sha256": {
+				"en": "d3c6e272273baab454200c41a25b21c451689ae9bf03329aa776dc1cb9f1b33a",
+				"fr": "3213527f2d1e5047201aff7751d7bc9f527797b47ba0c01b098a1669cb3c38d1",
+				"context": "91fc7249578953f8532df9db875dea4bfb7ff952dd17a9d8db418909ac6046e1"
+			},
+			"findings": [],
+			"coverage": "prior full native audit retained, typography-only delta reviewed at current head",
+			"mechanical": {
+				"en_keys": 28,
+				"fr_keys": 28,
+				"source_sha256": "d3c6e272273baab454200c41a25b21c451689ae9bf03329aa776dc1cb9f1b33a",
+				"target_sha256": "3213527f2d1e5047201aff7751d7bc9f527797b47ba0c01b098a1669cb3c38d1",
+				"context_sha256": "91fc7249578953f8532df9db875dea4bfb7ff952dd17a9d8db418909ac6046e1",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": false
+			}
+		},
+		"ui.settings.imports": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 74,
+			"sha256": {
+				"en": "1f8b1941bd65b91c84b1b4c41bfb1406f0e4790936c8690b04bfd788b4a1b082",
+				"fr": "52e9e1f6fa01119c548726c50ac606815fe4dfb4b8ce1e457e3b410691f212fc",
+				"context": "29733af08f4986ec9bb365871c5968581e281e58ac0bec8c0b099b265043bfd7"
+			},
+			"findings": [],
+			"coverage": "prior full native audit retained, typography-only delta reviewed at current head",
+			"mechanical": {
+				"en_keys": 74,
+				"fr_keys": 74,
+				"source_sha256": "1f8b1941bd65b91c84b1b4c41bfb1406f0e4790936c8690b04bfd788b4a1b082",
+				"target_sha256": "52e9e1f6fa01119c548726c50ac606815fe4dfb4b8ce1e457e3b410691f212fc",
+				"context_sha256": "29733af08f4986ec9bb365871c5968581e281e58ac0bec8c0b099b265043bfd7",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": false
+			}
+		},
+		"ui.settings.model.default_effort": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 19,
+			"sha256": {
+				"en": "5a4a01952b8a4242730e336cf082dc926085ac126a147d8b44197e9f04fc3b29",
+				"fr": "7a13c421654265cd667f60e17fb847e0c9bfa8abcb2ca0e74203152541b02404",
+				"context": "ec2cf07e6b7d273b33a6fc8644453796245291ab68b050d714779b5aafdec109"
+			},
+			"findings": [],
+			"coverage": "prior full native audit retained, typography-only delta reviewed at current head",
+			"mechanical": {
+				"en_keys": 19,
+				"fr_keys": 19,
+				"source_sha256": "5a4a01952b8a4242730e336cf082dc926085ac126a147d8b44197e9f04fc3b29",
+				"target_sha256": "7a13c421654265cd667f60e17fb847e0c9bfa8abcb2ca0e74203152541b02404",
+				"context_sha256": "ec2cf07e6b7d273b33a6fc8644453796245291ab68b050d714779b5aafdec109",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": false
+			}
+		},
+		"ui.settings.model.provider_callout": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 2,
+			"sha256": {
+				"en": "8d1871aa2d087f99694b77e9f946b33b549a9541525023347b78124f42bbf82f",
+				"fr": "b69f1e11b7e01f81f9327f5b84aaab4fac18690b3b967f034b4a60d16541c717",
+				"context": "62fe3c6d8bcceca7f2c7dddb7f413a6a3f44659ccb64626b6d4333ea751ccf35"
+			},
+			"findings": [],
+			"coverage": "prior full native audit retained, typography-only delta reviewed at current head",
+			"mechanical": {
+				"en_keys": 2,
+				"fr_keys": 2,
+				"source_sha256": "8d1871aa2d087f99694b77e9f946b33b549a9541525023347b78124f42bbf82f",
+				"target_sha256": "b69f1e11b7e01f81f9327f5b84aaab4fac18690b3b967f034b4a60d16541c717",
+				"context_sha256": "62fe3c6d8bcceca7f2c7dddb7f413a6a3f44659ccb64626b6d4333ea751ccf35",
+				"exact_key_sets": true,
+				"unique_keys": true,
+				"tab_json": true,
+				"en_context_unchanged": true,
+				"target_byte_identical_to_prior": false
+			}
+		}
+	}
+}

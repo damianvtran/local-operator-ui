@@ -1,0 +1,274 @@
+{
+  "off-dark": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:5ddaa327d8e648fe9444c68288a17d3e",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "Screenshot of PROPOSED LOH-11 Tags off \u2014 unchanged before reference \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/off-dark.html saved to <repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/off-dark.png (161729 bytes)."
+      }
+    ],
+    "details": {
+      "path": "<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/off-dark.png",
+      "bytes": 161729
+    },
+    "duration_s": 0.07180966704618186,
+    "is_error": false,
+    "useless": false
+  },
+  "groups-dark": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:8cdb6d7f0b37484dafebdcac75634359",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "Screenshot of PROPOSED LOH-11 Tags on \u2014 groups only \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/groups-dark.html saved to <repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/groups-dark.png (157133 bytes)."
+      }
+    ],
+    "details": {
+      "path": "<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/groups-dark.png",
+      "bytes": 157133
+    },
+    "duration_s": 0.1064863750943914,
+    "is_error": false,
+    "useless": false
+  },
+  "chips-dark": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:6d11449fb00740fa9ead7607cca88c5b",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "Screenshot of PROPOSED LOH-11 Optional chips \u2014 fit gate \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/chips-dark.html saved to <repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/chips-dark.png (159024 bytes)."
+      }
+    ],
+    "details": {
+      "path": "<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/chips-dark.png",
+      "bytes": 159024
+    },
+    "duration_s": 0.060074749984778464,
+    "is_error": false,
+    "useless": false
+  },
+  "context-dark": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:623c3f017f2f438bac40c957cd8be8a9",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "Screenshot of PROPOSED LOH-11 Row context menu \u2014 one Tags\u2026 entry \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/context-dark.html saved to <repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/context-dark.png (157084 bytes)."
+      }
+    ],
+    "details": {
+      "path": "<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/context-dark.png",
+      "bytes": 157084
+    },
+    "duration_s": 0.061788166989572346,
+    "is_error": false,
+    "useless": false
+  },
+  "picker-dark": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:c6d575489b5b4deb9a594c39e5c4a7b5",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "Screenshot of PROPOSED LOH-11 Multi-select picker \u2014 buffered checks \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-dark.html saved to <repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-dark.png (207037 bytes)."
+      }
+    ],
+    "details": {
+      "path": "<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-dark.png",
+      "bytes": 207037
+    },
+    "duration_s": 0.0652854589279741,
+    "is_error": false,
+    "useless": false
+  },
+  "manage-dark": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:635efddc482143b58c09938b5d123e28",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "Screenshot of PROPOSED LOH-11 Manage tags \u2014 neutral names and order \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-dark.html saved to <repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-dark.png (222060 bytes)."
+      }
+    ],
+    "details": {
+      "path": "<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-dark.png",
+      "bytes": 222060
+    },
+    "duration_s": 0.0768838330404833,
+    "is_error": false,
+    "useless": false
+  },
+  "drag-dark": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:fb044b1083ee43a38210eae87dde2891",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "Screenshot of PROPOSED LOH-11 Drag target \u2014 primary assignment \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/drag-dark.html saved to <repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/drag-dark.png (161027 bytes)."
+      }
+    ],
+    "details": {
+      "path": "<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/drag-dark.png",
+      "bytes": 161027
+    },
+    "duration_s": 0.05966579099185765,
+    "is_error": false,
+    "useless": false
+  },
+  "view-dark": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:24c9ad3c78c0400d9f5a7c12ba7d64c7",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "Screenshot of PROPOSED LOH-11 View options \u2014 compact Tags insertion \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/view-dark.html saved to <repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/view-dark.png (141930 bytes)."
+      }
+    ],
+    "details": {
+      "path": "<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/view-dark.png",
+      "bytes": 141930
+    },
+    "duration_s": 0.06299329199828207,
+    "is_error": false,
+    "useless": false
+  },
+  "off-light": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:5338cc1105f74a9496398360843f8aa7",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "Screenshot of PROPOSED LOH-11 Tags off \u2014 unchanged before reference \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/off-light.html saved to <repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/off-light.png (158620 bytes)."
+      }
+    ],
+    "details": {
+      "path": "<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/off-light.png",
+      "bytes": 158620
+    },
+    "duration_s": 0.061215916997753084,
+    "is_error": false,
+    "useless": false
+  },
+  "groups-light": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:43cb3bc9db4a425cb7499c4bfaddc28e",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "Screenshot of PROPOSED LOH-11 Tags on \u2014 groups only \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/groups-light.html saved to <repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/groups-light.png (153482 bytes)."
+      }
+    ],
+    "details": {
+      "path": "<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/groups-light.png",
+      "bytes": 153482
+    },
+    "duration_s": 0.0654550000326708,
+    "is_error": false,
+    "useless": false
+  },
+  "chips-light": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:cfec9e5c1334440399da05613b467b26",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "Screenshot of PROPOSED LOH-11 Optional chips \u2014 fit gate \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/chips-light.html saved to <repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/chips-light.png (155304 bytes)."
+      }
+    ],
+    "details": {
+      "path": "<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/chips-light.png",
+      "bytes": 155304
+    },
+    "duration_s": 0.07478866702876985,
+    "is_error": false,
+    "useless": false
+  },
+  "context-light": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:2f7ff9f793f94d38815d0b91f4593abd",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "Screenshot of PROPOSED LOH-11 Row context menu \u2014 one Tags\u2026 entry \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/context-light.html saved to <repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/context-light.png (154713 bytes)."
+      }
+    ],
+    "details": {
+      "path": "<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/context-light.png",
+      "bytes": 154713
+    },
+    "duration_s": 0.07552245794795454,
+    "is_error": false,
+    "useless": false
+  },
+  "picker-light": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:38c0c35f82924dd3864b6ebd0a8b3c33",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "Screenshot of PROPOSED LOH-11 Multi-select picker \u2014 buffered checks \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-light.html saved to <repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-light.png (202952 bytes)."
+      }
+    ],
+    "details": {
+      "path": "<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/picker-light.png",
+      "bytes": 202952
+    },
+    "duration_s": 0.06564033403992653,
+    "is_error": false,
+    "useless": false
+  },
+  "manage-light": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:c7769074f2be4d43a304752d3b9769ac",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "Screenshot of PROPOSED LOH-11 Manage tags \u2014 neutral names and order \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-light.html saved to <repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-light.png (218227 bytes)."
+      }
+    ],
+    "details": {
+      "path": "<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/manage-light.png",
+      "bytes": 218227
+    },
+    "duration_s": 0.06990416592452675,
+    "is_error": false,
+    "useless": false
+  },
+  "drag-light": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:6376acaeb5bd47af8f1d1a236343ff20",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "Screenshot of PROPOSED LOH-11 Drag target \u2014 primary assignment \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/drag-light.html saved to <repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/drag-light.png (157413 bytes)."
+      }
+    ],
+    "details": {
+      "path": "<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/drag-light.png",
+      "bytes": 157413
+    },
+    "duration_s": 0.06294608302414417,
+    "is_error": false,
+    "useless": false
+  },
+  "view-light": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:b2e7eb3b77d04d1fb4583f6f74cfa82e",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "Screenshot of PROPOSED LOH-11 View options \u2014 compact Tags insertion \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/view-light.html saved to <repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/view-light.png (142774 bytes)."
+      }
+    ],
+    "details": {
+      "path": "<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/view-light.png",
+      "bytes": 142774
+    },
+    "duration_s": 0.06727762497030199,
+    "is_error": false,
+    "useless": false
+  }
+}
