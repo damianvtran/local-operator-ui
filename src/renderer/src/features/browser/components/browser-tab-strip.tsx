@@ -1361,6 +1361,23 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										    replaces and why. */}
 										<DropdownMenu
 											open={actionsTabId === tab.tabId}
+											/*
+											 * NON-MODAL ON PURPOSE (operator report: a running turn
+											 * must stay readable and stoppable while a tab menu is
+											 * open). Radix's modal menu is a full-window layer: it
+											 * `aria-hidden`s every sibling, sets `pointer-events:
+											 * none` on body, and traps focus. With a turn streaming,
+											 * that hid the transcript from assistive tech and made
+											 * the Stop control unreachable until the menu was
+											 * dismissed - one gesture could neither surface the turn
+											 * nor interrupt it. This menu is a tab's own actions, not
+											 * a modal decision; the page view is already hidden by
+											 * the overlay policy below, and Escape/outside-press
+											 * still dismiss it. A non-modal dismissal lets the
+											 * outside press itself land, so one press on Stop both
+											 * closes the menu and stops the turn.
+											 */
+											modal={false}
 											onOpenChange={(open) => {
 												setActionsTabId(open ? tab.tabId : null);
 											}}
