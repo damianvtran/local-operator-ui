@@ -350,6 +350,18 @@ export const OrganizationsUnavailable: Story = {
 	},
 };
 
+/** Account-wide scope while the merged list loads: the reason stays on screen. */
+export const LoadingAllOrganizations: Story = {
+	args: {
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		listState: "loading",
+		conversations: [],
+		selected: null,
+		messages: [],
+		messageState: "idle",
+	},
+};
+
 /** Account-wide scope with nothing in it: the disabled create states its remedy. */
 export const EmptyAllOrganizations: Story = {
 	args: {

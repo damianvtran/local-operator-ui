@@ -26,6 +26,8 @@ conversation list, per-org counts).
 | `empty-organization-{dark,light}.png` | `team-bridge-page--empty-organization` | Northwind selected, no conversations |
 | `loading-{dark,light}.png` | `team-bridge-page--loading` | list loading, switcher already painted |
 | `error-{dark,light}.png` | `team-bridge-page--error-state` | list error and retry |
+| `loading-all-organizations-{dark,light}.png` | `team-bridge-page--loading-all-organizations` | merged list loading; the disabled-create reason stays visible |
+| `organizations-unavailable-{dark,light}.png` | `team-bridge-page--organizations-unavailable` | merged list error and retry; the disabled-create reason stays visible |
 
 `team-bridge-overflow-row--*` is unchanged by this slice; its existing frames
 remain the evidence for the collapsed/expanded sidebar row.

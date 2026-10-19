@@ -301,15 +301,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		mergedView && selected !== null && selectedOrganizationName === null;
 
 	/*
-	 * ONE description id for the disabled New conversation affordance. The hint
-	 * lives in the rail while the list has rows, and in the empty pane when it
-	 * does not — the two states are mutually exclusive, so one id cannot collide
-	 * and the button never points at a missing node.
+	 * ONE description id for the disabled New conversation affordance. Exactly
+	 * one node owns it in every merged-view state: the rail hint while the list
+	 * is loading or errored, or while it has rows; the empty pane's body when the
+	 * list is ready and empty. The states are mutually exclusive, so the button's
+	 * `aria-describedby` never dangles — including the transient states where the
+	 * pane is not rendered at all.
 	 */
 	const createHintId = "team-bridge-create-hint";
-	const createHintVisible =
-		mergedView &&
-		(listRows.length > 0 || (selected === null && listState === "ready"));
+	const createHintVisible = mergedView;
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: scroll only when the conversation or message count changes; `ordered` is a fresh array each render and must not retrigger a scroll on every keystroke.
 	useEffect(() => {
@@ -391,7 +391,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						<Plus size={16} />
 					</Button>
 				</header>
-				{mergedView && listRows.length > 0 && (
+				{mergedView && (listRows.length > 0 || listState !== "ready") && (
 					<p id={createHintId} className="px-3 pb-2 text-meta-sm text-ink-dim">
 						{t("ui.teamBridge.scope.create_needs_org")}
 					</p>
@@ -456,13 +456,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								</p>
 								<p
 									id={
-										mergedView && listRows.length === 0
+										mergedView && listState === "ready" && listRows.length === 0
 											? createHintId
 											: undefined
 									}
 									className="mt-1 text-[13px] text-ink-muted"
 								>
-									{mergedView && listRows.length === 0
+									{mergedView && listState === "ready" && listRows.length === 0
 										? t("ui.teamBridge.scope.create_needs_org")
 										: t("ui.teamBridge.list.empty.body")}
 								</p>
