@@ -259,9 +259,11 @@ export function controlReusePlan(revParse, control, head) {
 }
 /** The provenance line for a plan: the manifest's `mainPreloadReuse`. */
 export function describeMainPreloadReuse(plan) {
-	return plan.reuse
-		? "byte-identical source/config/lock"
-		: `rebuilt from control source (main/preload differ: ${plan.differing.join(", ")})`;
+	if (plan.reuse) return "byte-identical source/config/lock";
+	if (plan.lockDiffers) {
+		return "rebuilt from control source (lockfile differs; control dependencies installed from its own lockfile)";
+	}
+	return `rebuilt from control source (main/preload differ: ${plan.differing.join(", ")})`;
 }
 async function prepareControl(root, output) {
 	// Real historical source, not a callback mutation. Main/preload are reused
@@ -271,11 +273,6 @@ async function prepareControl(root, output) {
 		(spec) => git("rev-parse", spec),
 		ASKS_CONTROL,
 		"HEAD",
-	);
-	assert.equal(
-		plan.lockDiffers,
-		false,
-		"control reuse mismatch pnpm-lock.yaml: the control shares the candidate's node_modules, so a differing lockfile is a different experiment, not a rebuild",
 	);
 	const tar = join(output, "control-source.tar");
 	execFileSync("git", [
@@ -299,7 +296,29 @@ async function prepareControl(root, output) {
 	]);
 	mkdirSync(root);
 	execFileSync("tar", ["-xf", tar, "-C", root]);
-	symlinkSync(resolve("node_modules"), join(root, "node_modules"), "dir");
+	/*
+	 * A DEPENDENCY-ADDING PR IS STILL A VALID EXPERIMENT. The control normally
+	 * shares the candidate's node_modules, which is only honest when the lockfile
+	 * is byte-identical. When the lockfile differs, sharing would boot the control
+	 * on dependencies it was not built for, so the control gets its OWN install
+	 * from its own lockfile instead. That preserves the comparison (the control is
+	 * the base tree with base dependencies) and lets a reviewed dependency addition
+	 * run through the same gate rather than being forced to bypass it.
+	 */
+	if (plan.lockDiffers) {
+		await execute(
+			"pnpm",
+			["install", "--frozen-lockfile", "--ignore-scripts"],
+			{
+				cwd: root,
+				env: { ...process.env, CI: "true" },
+				timeout: 300000,
+				maxBuffer: 8 * 1024 * 1024,
+			},
+		);
+	} else {
+		symlinkSync(resolve("node_modules"), join(root, "node_modules"), "dir");
+	}
 	if (plan.reuse) {
 		for (const part of ["main", "preload"])
 			cpSync(join("out", part), join(root, "out", part), { recursive: true });
