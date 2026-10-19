@@ -50,6 +50,10 @@ import {
 	isMiniViewSummonedPayload,
 } from "../shared/mini-view";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
+import type {
+	TeamBridgeNotifyRequest,
+	TeamBridgeOpenTarget,
+} from "../shared/team-bridge-notify";
 import {
 	type WebauthnRequestPayload,
 	type WebauthnSettledOutcome,
@@ -124,6 +128,26 @@ const api = {
 		releaseWatchHeartbeat: (args: { sessionId: string }) =>
 			ipcRenderer.invoke("desktop-watch-release", args),
 		closeWindow: () => ipcRenderer.invoke("desktop-close-window"),
+		/**
+		 * Team Bridge banners: the renderer composes the two display strings from
+		 * conversation metadata; main validates, dedupes and delivers them. A click
+		 * comes back through `onOpen`, and `pendingOpen` is the one-shot read for a
+		 * click that found no window and recreated one.
+		 */
+		teamBridge: {
+			notify: (input: TeamBridgeNotifyRequest): Promise<{ shown: boolean }> =>
+				ipcRenderer.invoke("team-bridge:notify", input),
+			onOpen: (callback: (target: TeamBridgeOpenTarget) => void) => {
+				const handler = (_event: unknown, payload: TeamBridgeOpenTarget) =>
+					callback(payload);
+				ipcRenderer.on("team-bridge:open", handler);
+				return () => {
+					ipcRenderer.removeListener("team-bridge:open", handler);
+				};
+			},
+			pendingOpen: (): Promise<TeamBridgeOpenTarget | null> =>
+				ipcRenderer.invoke("team-bridge:pending-open"),
+		},
 		/**
 		 * The conversation main launched this window to show, read from THIS
 		 * process's argv (`webPreferences.additionalArguments`, set only when the

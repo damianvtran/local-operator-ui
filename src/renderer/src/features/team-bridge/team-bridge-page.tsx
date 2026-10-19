@@ -10,6 +10,7 @@ import { cn } from "@shared/lib/utils";
 import { AtSign, BellOff, Bot, Hash, Plus, Send, Users } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
@@ -21,6 +22,7 @@ import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
 	type TeamBridgeScope,
+	asTeamBridgeTenantId,
 	chronological,
 	conversationGlyph,
 	conversationMemberCount,
@@ -796,12 +798,27 @@ export const TeamBridgePreviewBanner: FC<{
  * re-render cannot move the cursor backwards.
  */
 export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
-	const [scope, setScope] = useState<TeamBridgeScope>(TEAM_BRIDGE_ALL_SCOPE);
+	/*
+	 * A banner click lands here with `?tenant=…&conversation=…` (the route is the
+	 * app's existing navigation path). The parameters seed the FIRST render, not
+	 * only an effect: the landing effect below selects the first visible row when
+	 * `selectedId` is null, and a state update from an effect in the same commit
+	 * would still be racing that closure. Seeding the state is what makes the
+	 * clicked conversation win every time.
+	 */
+	const [searchParams, setSearchParams] = useSearchParams();
+	const requestedConversation = searchParams.get("conversation");
+	const requestedTenant = searchParams.get("tenant");
+	const [scope, setScope] = useState<TeamBridgeScope>(() =>
+		requestedTenant
+			? asTeamBridgeTenantId(requestedTenant)
+			: TEAM_BRIDGE_ALL_SCOPE,
+	);
 	// Whether the reader has chosen a scope themselves. Until they do, a
 	// single-membership account lands in its only organization instead of the
 	// account-wide view: "All organizations" is a multi-org affordance, and the
 	// sole-org account should not need to pick its one org to create anything.
-	const scopeChosen = useRef(false);
+	const scopeChosen = useRef(Boolean(requestedTenant));
 	// The memberships are the switcher's ONE source, and the account aggregate
 	// is the ONE unread read — the same cache entry the sidebar badge spends.
 	// Per-org counts are joined from that payload, never fetched per org.
@@ -817,10 +834,31 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	// the bridge status read, which is the one place the hub account is published.
 	const identity = useTeamBridgeIdentity();
 	const selfAccountId = identity.data ?? undefined;
-	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [selectedId, setSelectedId] = useState<string | null>(
+		() => requestedConversation,
+	);
 	const [createOpen, setCreateOpen] = useState(false);
 	const conversations = list.data?.conversations ?? [];
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
+
+	/*
+	 * Apply a click that arrives while the page is ALREADY mounted, and clear the
+	 * parameters either way. The page owns its selection as local state, and a
+	 * parameter left in the URL would re-select the old conversation after the
+	 * reader moved on or a background refetch re-rendered this container.
+	 *
+	 * The scope is the target's own organization, set before the list read has
+	 * answered: waiting for the memberships would paint the merged list first and
+	 * then jump organizations in front of the reader.
+	 */
+	useEffect(() => {
+		if (!requestedConversation || !requestedTenant) return;
+		scopeChosen.current = true;
+		setScope(asTeamBridgeTenantId(requestedTenant));
+		setSelectedId(requestedConversation);
+		setCreateOpen(false);
+		setSearchParams({}, { replace: true });
+	}, [requestedConversation, requestedTenant, setSearchParams]);
 
 	// A conversation id belongs to exactly one organization. Clearing the
 	// selection on a scope change — including "All organizations" — is what
