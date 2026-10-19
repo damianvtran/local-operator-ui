@@ -10159,13 +10159,14 @@
     },
     {
       "path": "team-bridge-conversations",
-      "frames": 6,
+      "frames": 0,
       "source": "Harness browser-tool screenshots of the Team Bridge Storybook stories at desktop width, dark (default palette) and light (alucard). Frames are the conversation page's populated DM (including a held agent message), the empty account, the list error, the overflow group collapsed and expanded, and a refused send with the draft retained.",
       "why": [
         "The set is the visual evidence for the conversation surface: no rail/header/composer rules, a rail/content split carried by the two grounds, own messages on the accent wash, and a short history anchored to the bottom.",
         "Badge frames show the collapsed overflow group spending ONE More row that carries the count, and the expanded group carrying it on the Team Bridge row.",
         "These are browser-tool PNGs, not sweep frames, so the declared count is the six committed captures and no sweep re-derives them."
-      ]
+      ],
+      "capturedAt": "2026-10-18T20:50:00.000Z"
     }
   ],
   "remediationRecord": {
