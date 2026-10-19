@@ -309,8 +309,9 @@ export const pickActiveSurface = (
  *     lands instead.
  *   - `hasSurface` — the conversation already has one, so the open FOCUSES it
  *     rather than making a second: `pickActiveSurface` has already chosen which
- *     one the pane is showing (`focus`), and a second surface would take the lens
- *     away from the one the user was reading.
+ *     one the pane is showing (`focus`). Opening the pane is not asking for a new
+ *     terminal; the explicit `+` is, and a surface it makes does take the lens
+ *     (#1084), which is exactly why the open must not make one.
  */
 export type ConsoleOpenAction = "none" | "create" | "focus";
 
