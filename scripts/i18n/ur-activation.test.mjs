@@ -28,10 +28,13 @@ const FORBIDDEN_SCRIPT = /[\u0964\u0900-\u097f\u0643\u064a\u0629\u0649]/;
 /*
  * URDU IS THE RTL LOCALE. Two properties matter beyond ordinary activation:
  *
- * 1. The stored string is LOGICAL ORDER. The render layer wraps each value in
- *    FSI/PDI isolation, so a catalogue value must carry no bidi control of its
- *    own - a second set would be applied twice. The hygiene test below scans the
- *    real bundled Urdu bundle, not a fixture, so a stray RLM cannot ship.
+ * 1. The stored string is LOGICAL ORDER and carries no bidi controls of its
+ *    own. This UI has no client-side FSI/PDI wrapper: `messages.ts` passes the
+ *    catalogue value straight to the DOM. The no-manual-controls rule therefore
+ *    keeps storage clean; a surface that does isolate (the TUI's documented
+ *    contract) adds its own wrapping, so a second set here would be the bug.
+ *    The hygiene test below scans the real bundled Urdu bundle, not a fixture,
+ *    so a stray RLM cannot ship.
  * 2. Urdu punctuation and script are part of the copy, not presentation: no
  *    Hindi danda, no Devanagari, and no Arabic-only yeh/kaf/teh-marbuta. The
  *    mechanical checker covers source files; this pins the generated bundle.

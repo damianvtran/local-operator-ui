@@ -16,7 +16,7 @@
 	"ui.chat.composer.starting_recording": "ریکارڈنگ شروع ہو رہی ہے",
 	"ui.chat.composer.start_recording_hint": "ریکارڈنگ شروع کریں ({shortcut} یا {pushToTalk} دبائے رکھیں)",
 	"ui.chat.composer.processing_audio": "آڈیو پر کارروائی جاری ہے",
-	"ui.chat.composer.welcome": "آج میں آپ کی کیا مدد کر سکتا ہوں؟",
+	"ui.chat.composer.welcome": "آج میں آپ کی کیا مدد کروں؟",
 	"ui.chat.composer.delivery_remedies_hint": "جو پیغام نہیں پہنچ سکا اس کے دوبارہ بھیجیں اور ترمیم کریں کے کنٹرول اس خانے کے اوپر گفتگو میں ہیں؛ ان تک پہنچنے کے لیے Shift+Tab دبائیں۔",
 	"ui.chat.composer.secret_ask_notice": "ایجنٹ ایک راز مانگ رہا ہے۔ اسے سوالات کے پینل میں درج کریں — اس دوران آپ چیٹ جاری رکھ سکتے ہیں۔",
 	"ui.chat.composer.secret_ask_open": "سوالات کھولیں",

@@ -1,0 +1,77 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "e97b3d2b7977",
+  "date": "2026-10-19",
+  "locale": "ur",
+  "status": "passed",
+  "scope": "Post-review remediation delta on PR #1214: 13 changed keys in six namespaces plus direct composition neighbours, verifying agent-review round-1 findings M1, N1, N2 and N5; unchanged namespaces stay covered by their prior audits.",
+  "namespaces": {
+    "ui.chat.composer": {
+      "namespace": "ui.chat.composer",
+      "keys_read": 34,
+      "keys_audited_in_delta": 1,
+      "status": "passed",
+      "sha256": {
+        "en": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+        "ur": "e43d7b11e77f3bd14f62d419d40b9b7621ceebdc35816a550a6ccc8326eabf7e"
+      },
+      "findings": []
+    },
+    "ui.schedules": {
+      "namespace": "ui.schedules",
+      "keys_read": 164,
+      "keys_audited_in_delta": 5,
+      "status": "passed",
+      "sha256": {
+        "en": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
+        "ur": "7e1f8988ca7e685ef4118f0b6ac767a60f94b04a4e7e7f601f3ea65a80b3ea0c"
+      },
+      "findings": []
+    },
+    "ui.common.forms": {
+      "namespace": "ui.common.forms",
+      "keys_read": 27,
+      "keys_audited_in_delta": 1,
+      "status": "passed",
+      "sha256": {
+        "en": "28a63a53e5b6c3c4fccb9995eb07637c8521ce9d5019e304f3fedb0ddbc053d9",
+        "ur": "365312ff56f9726e509a0c7a81d44e25e4d024db90add80fe4a5cb2968e6310c"
+      },
+      "findings": []
+    },
+    "ui.installer": {
+      "namespace": "ui.installer",
+      "keys_read": 18,
+      "keys_audited_in_delta": 1,
+      "status": "passed",
+      "sha256": {
+        "en": "35b34093f3d065acf26e96a4e9601cb2906bd9439230a7fa7f9fc9a43784f7a3",
+        "ur": "e446aab1691e4394cdac72699c0b7f423732a0b7efddca0292e156bb2fb6b2a3"
+      },
+      "findings": []
+    },
+    "ui.common.updates": {
+      "namespace": "ui.common.updates",
+      "keys_read": 127,
+      "keys_audited_in_delta": 1,
+      "status": "passed",
+      "sha256": {
+        "en": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
+        "ur": "81d591abe1e38e60965d0de4938be63718791b4db140c036273dbda05729622b"
+      },
+      "findings": []
+    },
+    "ui.common.connection": {
+      "namespace": "ui.common.connection",
+      "keys_read": 10,
+      "keys_audited_in_delta": 3,
+      "status": "passed",
+      "sha256": {
+        "en": "d1acb6a1fae70e3f85255d880a91d9e35ed49a8bf7d04ef14722ce115d7c69bb",
+        "ur": "c84f8b2a47b2612c456b66b6b9983422a6e7edb4fbfe8685c39a530873ed95f3"
+      },
+      "findings": []
+    }
+  }
+}
