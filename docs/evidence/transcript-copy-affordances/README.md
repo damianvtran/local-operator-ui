@@ -31,15 +31,17 @@ are overlays.
 | Intermediate answer row height | **22.4px** — its prose height, no toolbar | `AnswerActionRow overlay` (`absolute`), zero flow height |
 | Prose-to-next-block gap | **12px** (`GAP.item`) | no reserved line between the prose and the next record |
 | Saved vertical space | **32px** per settled response | 4px margin + 28px row no longer in flow |
-| User row control | **0px layout**, in the gutter beside the bubble | `overlay` + `-right-8`, revealed by the turn's `group` |
+| User row control | **0px layout**, in the 32px turn boundary above the bubble | `overlay` + `-top-8`, revealed by the focusable row's `group` |
 | Selection toolbar | **0px layout** | shared `TextSelectionControls`, absolute |
 | Context menu | **0px layout** | Radix portal; mounted only while open |
+| Focus indicator | ring around the **message block** | row wrapper draws no ring (`focus-visible:outline-none`); the bubble/answer box draws the 2px accent ring |
 
-The after frames are captured by the manager from the stories added in
-`transcript-copy-affordances.stories.tsx` (`ContextMenuOnProse`,
-`ContextMenuOnToolRow`, `FocusedGutter`, `SelectionToolbar`). The numbers above
-are the structural arithmetic of the implementation; the pixel pair is the
-manager's capture, not a claim from this file.
+The after frame for the focus state is `after-focused-gutter.png`, captured
+from `chat-canonical-transcript-copy--focused-gutter` in the running Storybook
+(after the remediation round: the gutter is opaque, the row wrapper draws no
+ring, and the bubble carries the ring). The other after frames are the
+manager's captures from `transcript-copy-affordances.stories.tsx`. The numbers
+above are the structural arithmetic of the implementation.
 
 ## What the automated tests cover
 

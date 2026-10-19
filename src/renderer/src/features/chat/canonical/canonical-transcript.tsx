@@ -1071,6 +1071,14 @@ const UserRow = memo(function UserRow({
 							// 10px step, unchanged.
 							"relative rounded-frame bg-message-surface text-ink break-words",
 							/*
+							 * THE MESSAGE'S OWN FOCUS RING. The focusable row wrapper suppresses
+							 * its full-width outline; this box draws the same 2px accent ring the
+							 * app's focus grammar uses, around the bubble the reader focused
+							 * (operator report on the first after-frame: the ring was a
+							 * full-width green rectangle over empty gutter).
+							 */
+							"group-focus-visible:outline-2 group-focus-visible:outline-accent group-focus-visible:outline-offset-2",
+							/*
 							 * The ONE border a bubble takes, and only while it is the message §F3's
 							 * line is about: `a danger 1px leading edge` on the block. D10 removed the
 							 * resting border because the fill is the boundary; this is not a resting
@@ -1357,16 +1365,21 @@ const UserRow = memo(function UserRow({
 					 * of the column below, so every user turn reserved a 28px action row
 					 * plus `mt-1` for a control that is invisible at rest - the same
 					 * invisible-height defect the intermediate response row had. The
-					 * `overlay` variant takes it out of the flow entirely; `-right-8`
-					 * places it in the gutter the right-aligned bubble leaves, instead of
-					 * over the reader's own words. The reveal is still the shared one
+					 * `overlay` variant takes it out of the flow entirely. The placement
+					 * is ABOVE the bubble (`-top-8`, right-aligned) rather than beside it:
+					 * a right-aligned bubble ends at the row's trailing edge, so a
+					 * side-anchored control overlaps the reader's own words, and the
+					 * manager's first after-frame showed exactly that. A user turn always
+					 * takes the 32px `GAP.turn` above it, which is exactly the control's
+					 * height, so the overlay floats in that gap and covers no text. The
+					 * reveal is still the shared one
 					 * (`ACTION_ROW_REVEAL_CLASSES`), and this element's `group` is the
 					 * turn itself, so hovering or focusing the message raises it.
 					 */}
 					{isQuotable(record, remainingContent) && (
 						<AnswerActionRow
 							overlay
-							overlayClassName="-right-8"
+							overlayClassName="-top-8"
 							kind="user"
 							bodyText={remainingContent}
 							revealId={record.id}
@@ -1553,6 +1566,13 @@ const AssistantRow = memo(function AssistantRow({
 				ref={turnRef}
 				className={cn(
 					"relative break-words text-ink",
+					/*
+					 * THE ANSWER'S FOCUS RING, moved off the full-width row wrapper for the
+					 * user bubble's reason: focus is drawn around the content the reader
+					 * focused, not around the row's empty trailing edge. `rounded-sm` keeps
+					 * the corners on the same ramp as the row's other marks.
+					 */
+					"group-focus-visible:rounded-sm group-focus-visible:outline-2 group-focus-visible:outline-accent group-focus-visible:outline-offset-2",
 					/*
 					 * THE ANSWER'S OWN MARK (issue #665), now an OPT-IN: the backend key
 					 * `display.turn_answer_rail`, default off (operator report, 2026-09-30:
@@ -3207,6 +3227,25 @@ const TranscriptRow = memo(function TranscriptRow({
 				}
 				className={cn(
 					GAP[row.gap][isSmallView ? 1 : 0],
+					/*
+					 * THE FOCUSABLE WRAPPER IS THE GROUP, because focus lands HERE and
+					 * not on the inner message box. Without this class the gutter
+					 * overlay's `group-focus-within` had no ancestor that ever matched:
+					 * the row took focus, the inner `MessageContainer`/turn `group` did
+					 * not, and the control stayed at opacity 0 in the real frame (the
+					 * manager's `focused-gutter` capture). `group` on the focusable
+					 * element is what makes "focus the message" reveal the message's
+					 * control.
+					 *
+					 * The wrapper's own ring is REMOVED and drawn by the message block
+					 * instead (`group-focus-visible:outline-*` on the user bubble and
+					 * the answer's content box): a 2px ring around the full-width row
+					 * read as a green rectangle across empty gutter, not as focus on
+					 * this message. The indicator still exists - it moved to the box
+					 * that is the message - which is the condition the stylesheet sets
+					 * for an `outline-none` in a component (styles/index.css).
+					 */
+					messageRow && "group focus-visible:outline-none",
 					entered.current && "lo-transcript-arrival",
 				)}
 			>
