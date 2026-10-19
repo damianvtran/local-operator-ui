@@ -4,7 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { applyUpdate, checkCoverage, main } from "./check-coverage.mjs";
+import {
+	applyUpdate,
+	checkCoverage,
+	failureCount,
+	main,
+} from "./check-coverage.mjs";
 
 const UNKNOWN_LOCALE = /not in the manifest/;
 const UNKNOWN_NAMESPACE = /no such namespace/;
@@ -94,22 +99,10 @@ function build({
 	return { cataloguesDir, manifestPath, allowancePath };
 }
 
-function failures(result) {
-	return (
-		result.problems.length +
-		result.allowanceProblems.length +
-		result.extraNamespaces.length +
-		result.unlistedLocales.length +
-		result.newGaps.length +
-		result.stale.length +
-		result.phantoms.length
-	);
-}
-
 test("a complete tree passes", () => {
 	const tree = build();
 	const result = checkCoverage(tree);
-	assert.equal(failures(result), 0);
+	assert.equal(failureCount(result), 0);
 	assert.equal(result.newGaps.length, 0);
 });
 
@@ -148,7 +141,7 @@ test("an allowance pair covers the gap it names", () => {
 		allowance: [{ locale: "fr", namespace: "ui.demo" }],
 	});
 	const result = checkCoverage(tree);
-	assert.equal(failures(result), 0);
+	assert.equal(failureCount(result), 0);
 	assert.equal(result.stale.length, 0);
 });
 
@@ -160,7 +153,7 @@ test("an allowance pair that is now complete fails, and --update drops it", () =
 
 	assert.equal(applyUpdate(tree), 0);
 	const after = checkCoverage(tree);
-	assert.equal(failures(after), 0);
+	assert.equal(failureCount(after), 0);
 	assert.deepEqual(
 		JSON.parse(readFileSync(tree.allowancePath, "utf8")).pairs,
 		[],
@@ -191,7 +184,7 @@ test("a supported locale with no directory passes when its gaps are allowed", ()
 		allowance: [{ locale: "ur", namespace: "ui.demo" }],
 	});
 	const result = checkCoverage(tree);
-	assert.equal(failures(result), 0);
+	assert.equal(failureCount(result), 0);
 });
 
 test("a supported locale with no directory fails an unlisted gap", () => {
@@ -217,7 +210,7 @@ test("an unlisted locale directory fails", () => {
 	});
 	const result = checkCoverage(tree);
 	assert.deepEqual(result.unlistedLocales, ["de"]);
-	assert.equal(failures(result), 1);
+	assert.equal(failureCount(result), 1);
 });
 
 test("an allowance row naming an unknown locale is a phantom", () => {
@@ -280,7 +273,7 @@ test("an unknown status fails", () => {
 	const tree = build({ languages: [row("en", "source"), row("fr", "beta")] });
 	const result = checkCoverage(tree);
 	assert.ok(result.problems.some((problem) => problem.includes("not one of")));
-	assert.equal(failures(result), 1);
+	assert.equal(failureCount(result), 1);
 });
 
 test("a language row with an unknown field fails", () => {

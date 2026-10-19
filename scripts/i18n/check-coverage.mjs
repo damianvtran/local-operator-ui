@@ -322,6 +322,19 @@ function formatPair(pair) {
 	return `${pair.locale}/${pair.namespace} (${pair.keys.length} key(s) missing)`;
 }
 
+/** How many independent failure classes the check reported. */
+export function failureCount(result) {
+	return (
+		result.problems.length +
+		result.allowanceProblems.length +
+		result.extraNamespaces.length +
+		result.unlistedLocales.length +
+		result.newGaps.length +
+		result.stale.length +
+		result.phantoms.length
+	);
+}
+
 export function main(argv, options = {}) {
 	let mode = "check";
 	for (const arg of argv) {
@@ -351,14 +364,7 @@ export function main(argv, options = {}) {
 	const result = checkCoverage(options);
 	const totalGaps = result.missing.size;
 	const gatedCount = result.gated.length;
-	const failures =
-		result.problems.length +
-		result.allowanceProblems.length +
-		result.extraNamespaces.length +
-		result.unlistedLocales.length +
-		result.newGaps.length +
-		result.stale.length +
-		result.phantoms.length;
+	const failures = failureCount(result);
 
 	if (failures === 0) {
 		process.stdout.write(
