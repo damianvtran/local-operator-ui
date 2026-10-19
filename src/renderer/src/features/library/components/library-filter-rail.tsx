@@ -119,6 +119,7 @@ export const LibraryFilterRail: FC<LibraryFilterRailProps> = ({
 
 	return (
 		<div
+			data-lo-sidebar-edge-cues
 			className="flex h-full flex-col gap-5 overflow-y-auto px-2 py-4"
 			data-library-filter-rail=""
 		>

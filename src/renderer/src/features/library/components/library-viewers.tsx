@@ -130,11 +130,11 @@ const MediaViewer: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
 	switch (asset.kind) {
 		case "image":
 			return (
-				<div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-canvas p-3">
+				<div className="flex h-full min-h-0 w-full min-w-0 flex-1 items-center justify-center overflow-hidden bg-canvas p-3">
 					<img
 						src={source}
 						alt={asset.name || asset.derived_name}
-						className="max-h-full max-w-full object-contain"
+						className="block h-auto max-h-full w-auto max-w-full object-contain"
 					/>
 				</div>
 			);
@@ -149,7 +149,7 @@ const MediaViewer: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
 			);
 		default:
 			return (
-				<div className="flex min-h-0 flex-1 items-center justify-center bg-canvas p-3">
+				<div className="flex h-full min-h-0 w-full min-w-0 flex-1 items-center justify-center overflow-hidden bg-canvas p-3">
 					<video
 						src={source}
 						controls
@@ -235,7 +235,10 @@ const MarkdownAssetView: FC<{
 	}
 	if (document) {
 		return (
-			<div className="min-h-0 flex-1 overflow-y-auto bg-canvas">
+			<div
+				data-lo-pane-edge-cues
+				className="min-h-0 flex-1 overflow-y-auto bg-canvas"
+			>
 				{/* The centered reading column is Library chrome; the shared editor
 				    inside it is untouched, so Canvas keeps the same component and
 				    save semantics. */}
@@ -255,7 +258,7 @@ const MarkdownAssetView: FC<{
 		);
 	}
 	return (
-		<div className="min-h-0 flex-1 overflow-y-auto p-5">
+		<div data-lo-pane-edge-cues className="min-h-0 flex-1 overflow-y-auto p-5">
 			<div className="mx-auto max-w-[720px]">
 				<p className="mb-4 text-meta text-ink-muted">
 					{t("ui.library.preview.read_only_markdown")}
@@ -279,7 +282,10 @@ const TextViewer: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
 		return <MarkdownAssetView asset={asset} text={text} />;
 	}
 	return (
-		<pre className="min-h-0 flex-1 overflow-auto p-4 font-mono text-mono-sm whitespace-pre-wrap break-words text-ink">
+		<pre
+			data-lo-pane-edge-cues
+			className="min-h-0 flex-1 overflow-auto p-4 font-mono text-mono-sm whitespace-pre-wrap break-words text-ink"
+		>
 			{text}
 		</pre>
 	);
@@ -328,7 +334,7 @@ const SpreadsheetTable: FC<{
 	const rows = sheets.rows.slice(0, MAX_ROWS);
 	const truncated = sheets.rows.length > MAX_ROWS;
 	return (
-		<div className="min-h-0 flex-1 overflow-auto p-2">
+		<div data-lo-pane-edge-cues className="min-h-0 flex-1 overflow-auto p-2">
 			<table className="w-full border-collapse text-meta">
 				<thead>
 					<tr>
