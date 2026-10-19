@@ -234,8 +234,10 @@ export function placeQuoteControl({
 		/*
 		 * NO OUTER GUTTER (the 480px pane floor, and any pane where the scroller
 		 * itself is the measure). Fall back to the original flip: above the first
-		 * line when it fits, otherwise below the last. Never inside the selected
-		 * line's boxes - the reader is still reading or copying that line.
+		 * line when it fits, otherwise below the last. This stays outside the
+		 * selected line's boxes whenever either side has room; a selection taller
+		 * than the pane has no free seat, and the final clamp may then overlap it -
+		 * the trade the module header already documents.
 		 */
 		return {
 			top: clamp(

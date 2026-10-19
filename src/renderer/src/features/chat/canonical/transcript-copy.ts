@@ -89,64 +89,117 @@ type MdNode = {
 	type: string;
 	value?: string;
 	alt?: string | null;
+	ordered?: boolean;
+	start?: number | null;
 	children?: MdNode[];
 };
 
 const markdown = unified().use(remarkParse).use(remarkGfm);
 
-function walkMdast(node: MdNode, out: string[]): void {
+/** Inline content: text, code and inline HTML keep their bytes; wrappers add nothing. */
+function inlineText(node: MdNode): string {
 	switch (node.type) {
 		case "text":
 		case "inlineCode":
-		case "code":
 		case "html":
-			out.push(node.value ?? "");
-			return;
+			return node.value ?? "";
 		case "image":
-			out.push(node.alt ?? "");
-			return;
+			return node.alt ?? "";
 		case "break":
-			out.push("\n");
-			return;
-		case "paragraph":
-		case "heading":
-		case "blockquote":
-			for (const child of node.children ?? []) walkMdast(child, out);
-			out.push("\n\n");
-			return;
-		case "list":
-		case "listItem":
-			for (const child of node.children ?? []) walkMdast(child, out);
-			out.push("\n");
-			return;
-		case "table":
-			for (const child of node.children ?? []) walkMdast(child, out);
-			out.push("\n");
-			return;
-		case "tableRow": {
-			const cells = node.children ?? [];
-			cells.forEach((cell, index) => {
-				if (index > 0) out.push(" | ");
-				walkMdast(cell, out);
-			});
-			out.push("\n");
-			return;
-		}
-		case "thematicBreak":
-			out.push("\n");
-			return;
+			return "\n";
 		default:
-			for (const child of node.children ?? []) walkMdast(child, out);
+			return (node.children ?? []).map(inlineText).join("");
 	}
 }
 
+/** A table as one line per row, cells separated by the same pipe a reader sees. */
+function tableText(node: MdNode): string {
+	return (node.children ?? [])
+		.map((row) =>
+			(row.children ?? []).map((cell) => inlineText(cell)).join(" | "),
+		)
+		.join("\n");
+}
+
+/** Indent every line of `text` for a list item's continuation. */
+function indentLines(text: string, indent: string): string {
+	return text
+		.split("\n")
+		.map((line) => (line.length > 0 ? indent + line : line))
+		.join("\n");
+}
+
+/**
+ * A list, with markers and depth.
+ *
+ * Numbers are CONTENT, not a delimiter: the reader sees `1.`, `2.` and a nested
+ * level indented under its parent. Unordered items keep `- ` for the same
+ * reason. A nested list is a child of its item, so it is emitted at depth + 1
+ * without being re-indented twice.
+ */
+function listText(node: MdNode, depth: number): string {
+	const ordered = node.ordered === true;
+	const start = typeof node.start === "number" ? node.start : 1;
+	const indent = "  ".repeat(depth);
+	const lines: string[] = [];
+	(node.children ?? []).forEach((item, index) => {
+		const marker = ordered ? `${start + index}. ` : "- ";
+		const content: string[] = [];
+		const nested: string[] = [];
+		for (const child of item.children ?? []) {
+			if (child.type === "list") nested.push(listText(child, depth + 1));
+			else content.push(blockText(child, depth));
+		}
+		const first = content[0] ?? "";
+		const firstLines = first.split("\n");
+		lines.push(`${indent}${marker}${firstLines[0] ?? ""}`);
+		for (const line of firstLines.slice(1)) {
+			lines.push(line.length > 0 ? `${indent}  ${line}` : line);
+		}
+		for (const block of content.slice(1)) {
+			lines.push(indentLines(block, `${indent}  `));
+		}
+		for (const block of nested) lines.push(block);
+	});
+	return lines.join("\n");
+}
+
+/** One block-level node as plain text, without its own trailing separator. */
+function blockText(node: MdNode, depth: number): string {
+	switch (node.type) {
+		case "paragraph":
+		case "heading":
+			return inlineText(node);
+		case "code":
+		case "html":
+			return node.value ?? "";
+		case "blockquote":
+			return blocksText(node.children ?? [], depth);
+		case "list":
+			return listText(node, depth);
+		case "table":
+			return tableText(node);
+		case "thematicBreak":
+			return "";
+		default:
+			if (node.children) return blocksText(node.children, depth);
+			return node.value ?? "";
+	}
+}
+
+/** Block children separated by a blank line, empty blocks dropped. */
+function blocksText(nodes: MdNode[], depth: number): string {
+	return nodes
+		.map((node) => blockText(node, depth))
+		.filter((text) => text.trim().length > 0)
+		.join("\n\n");
+}
+
 function markdownToText(source: string): string {
-	const out: string[] = [];
-	walkMdast(markdown.parse(source) as unknown as MdNode, out);
-	return out
-		.join("")
-		.replace(/\n{3,}/g, "\n\n")
-		.trim();
+	return blocksText(
+		(markdown.parse(source) as unknown as MdNode).children ?? [],
+		0,
+	).trim();
 }
 
 /** The row's name and command, in the ledger's own vocabulary. */

@@ -89,9 +89,12 @@ answer's Copy-only control moves to the outer 40px gutter at
 `@min-[900px]/chatcol` (where the measure leaves that slack) and falls back to
 the row's trailing edge below that. Both remain absolute and cost zero flow
 height. The selection strip follows the same rule: the outer gutter when it
-fits, otherwise the original above/below flip, never inside the selected line's
-boxes. While a selection strip owns a turn, `data-lo-selection-active` hides the
-user/response gutter overlays so their shared seat cannot swallow a Quote press.
+fits, otherwise the original above/below flip. That keeps it outside the
+selected line's boxes whenever either side has room; a selection taller than
+the pane has no free seat, so the final clamp may overlap it - the accepted
+trade `quote-anchor.ts` documents. While a selection strip owns a turn,
+`data-lo-selection-active` hides the user/response gutter overlays so their
+shared seat cannot swallow a Quote press.
 
 ## What the automated tests cover
 
@@ -114,14 +117,16 @@ user/response gutter overlays so their shared seat cannot swallow a Quote press.
   Speak but no Quote; a selection outside a quotable turn gets the shared
   Copy/Speak strip; both Copy presses write exactly the highlight.
 - `Copy text` preserves inline code, fenced code and spaced operators while
-  dropping only the markdown delimiters; the reproduced literal cases are pinned.
+  dropping only the markdown delimiters; exact-equality cases pin fence→paragraph,
+  fence→fence, code→heading, block/inline HTML, ordered lists and nested lists.
 - `placeQuoteControl` is covered directly for outer-gutter, narrow-above and
   narrow-below seats.
 
-The narrow and user-selection Storybook states (`SelectionToolbarNarrow`,
-`SelectionToolbarUser`) are registered; their PNG captures were not produced
-under the build stop, so the committed frame set still carries the 1024px
-selection/response pair only.
+The narrow, user and response-focused Storybook states are captured in
+`after-selection-narrow.png`, `after-selection-user.png` and
+`after-selection-response-focused.png`. The narrow frame is the ordinary
+above-flip; the viewport-sized case where no free seat exists is the documented
+clamp trade, not an ordinary placement promise.
 
 `scripts/message-actions.test.mjs` pins the pure rule:
 `transcriptRowActions` is true only for `user` and `assistant` rows.

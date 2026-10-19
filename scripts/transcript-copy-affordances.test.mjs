@@ -457,24 +457,16 @@ test("plain text drops the reply transport and markdown syntax; markdown keeps t
 	};
 	const text = mod.copyTextForRecord(record);
 	const markdown = mod.copyMarkdownForRecord(record);
-	assert.ok(
-		!text.includes("<reply-to>"),
-		"the visible copy has no transport markup",
-	);
-	assert.ok(!text.includes("```"), "plain text drops the fence markers");
-	assert.ok(
-		text.includes("select count(*) from invoices;"),
-		"the fence's body survives as text",
-	);
-	assert.ok(!text.includes("- one"), "plain text drops the list marker");
-	assert.match(
+	assert.equal(
 		text,
-		/one\s+two/,
-		"the list's words survive on their own lines",
+		"select count(*) from invoices;\n\n- one\n- two",
+		"plain text separates the code block and keeps the list markers",
 	);
-	assert.notEqual(text, markdown, "the two menu items are different promises");
-	assert.ok(markdown.includes("```sql"), "markdown keeps the fence");
-	assert.ok(markdown.includes("- one\n- two"), "markdown keeps the list");
+	assert.equal(
+		markdown,
+		"```sql\nselect count(*) from invoices;\n```\n\n- one\n- two",
+		"markdown keeps the source fence and list",
+	);
 });
 
 test("a skill turn copies its typed line, not the expanded SKILL.md payload", () => {
@@ -537,26 +529,57 @@ test("plain text preserves inline code, operators and emphasis targets", () => {
 		stopReason: null,
 		error: false,
 	};
-	const text = mod.copyTextForRecord(record);
-	assert.ok(text.includes("_init_"), "inline code keeps underscores");
-	assert.ok(text.includes("**/*.ts"), "inline code keeps asterisks");
-	assert.ok(
-		text.includes("x * y * z"),
-		"spaced multiplication is not emphasis",
+	assert.equal(
+		mod.copyTextForRecord(record),
+		[
+			"_init_ stays an identifier.",
+			"",
+			"**/*.ts stays a glob.",
+			"",
+			"x * y * z is arithmetic.",
+			"",
+			"2 * 3 * 4 = 24.",
+			"",
+			"bold and italic and label.",
+			"",
+			"const glob = **/*.ts;",
+		].join("\n"),
+		"inline/fenced code and spaced operators survive exactly",
 	);
-	assert.ok(text.includes("2 * 3 * 4 = 24"), "digits around asterisks survive");
-	assert.ok(
-		text.includes("bold and italic and label"),
-		"wrappers contribute text",
-	);
-	assert.ok(
-		text.includes("const glob = **/*.ts;"),
-		"fenced code keeps its bytes",
-	);
-	assert.ok(
-		!text.includes("```"),
-		"but the fence markers are not in plain text",
-	);
+});
+test("plain text separates blocks and keeps ordered/nested list structure", () => {
+	const plain = (text) =>
+		mod.copyTextForRecord({
+			kind: "assistant",
+			id: "blocks",
+			ts: 0,
+			text,
+			streaming: false,
+			stopReason: null,
+			error: false,
+		});
+	const cases = [
+		[
+			"```ts\nconst a = 1;\n```\n\nAfter the block.",
+			"const a = 1;\n\nAfter the block.",
+		],
+		["```\nfirst\n```\n\n```\nsecond\n```", "first\n\nsecond"],
+		["```\nx\n```\n\n## Title", "x\n\nTitle"],
+		["<div>block</div>\n\nAfter it.", "<div>block</div>\n\nAfter it."],
+		["Before <span>inline</span> after.", "Before <span>inline</span> after."],
+		[
+			"1. Run the migration.\n2. Restart the worker.\n3. Check the queue.",
+			"1. Run the migration.\n2. Restart the worker.\n3. Check the queue.",
+		],
+		[
+			"1. Outer\n   - inner a\n   - inner b\n2. Second",
+			"1. Outer\n  - inner a\n  - inner b\n2. Second",
+		],
+		["- one\n- two", "- one\n- two"],
+	];
+	for (const [source, expected] of cases) {
+		assert.equal(plain(source), expected, source);
+	}
 });
 test("a tool row copies a fenced block naming the tool, command and output", () => {
 	const record = {
@@ -929,6 +952,30 @@ test("a partial assistant selection raises one Copy/Quote/Speak strip", async ()
 	assert.ok(
 		rig.written[1].startsWith("I will read"),
 		"the menu's Copy selection writes the same highlight",
+	);
+	/*
+	 * Clearing the highlight restores the row's own controls: the marker and the
+	 * inert/aria-hidden suppression must not survive the selection they were for.
+	 */
+	selection.removeAllRanges();
+	await act(async () => {
+		dom.window.document.dispatchEvent(new dom.window.Event("selectionchange"));
+		await new Promise((resolve) => setTimeout(resolve, 30));
+	});
+	assert.equal(
+		answer.hasAttribute("data-lo-selection-active"),
+		false,
+		"clearing removes the ownership marker",
+	);
+	assert.equal(
+		responseControl.hasAttribute("inert"),
+		false,
+		"and restores the response gutter to the hit test",
+	);
+	assert.equal(
+		responseControl.hasAttribute("aria-hidden"),
+		false,
+		"and removes its hidden accessibility state",
 	);
 	await rig.unmount();
 });
