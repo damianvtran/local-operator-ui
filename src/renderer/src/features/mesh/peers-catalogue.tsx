@@ -39,7 +39,7 @@
  * sharing) and the store writes no session row for them.
  */
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { type FC, useEffect } from "react";
+import { type FC, useEffect, useRef } from "react";
 import {
 	useMeshMembership,
 	useMeshSessions,
@@ -59,25 +59,31 @@ export const PeersCatalogueSync: FC<{ enabled: boolean }> = ({ enabled }) => {
 	const settle = useCanonicalSessionsStore(
 		(state) => state.settlePeerCatalogue,
 	);
+	const consumedSessions = useRef(0);
+	const consumedPeers = useRef(0);
 	useEffect(() => {
-		if (!read.data && !peers.data) return;
+		if (!read.data || read.data.requestedAt <= consumedSessions.current) return;
+		consumedSessions.current = read.data.requestedAt;
+		settle(read.data.rows.map(toCatalogueRow), read.data.requestedAt);
+	}, [read.data, settle]);
+	useEffect(() => {
+		if (!peers.data || peers.data.requestedAt <= consumedPeers.current) return;
+		consumedPeers.current = peers.data.requestedAt;
 		const deviceFacts = Object.fromEntries(
-			(peers.data?.peers ?? []).map((peer) => [
+			peers.data.peers.map((peer) => [
 				peer.device_id,
 				{
 					reachable: peer.reachable,
 					last_seen_at: peer.last_seen_at,
 					reason: peer.unreachable_reason,
-					at: peers.data?.requestedAt ?? 0,
+					session_count: peer.session_count,
+					at: peers.data.requestedAt,
 				},
 			]),
 		);
-		// A failed sessions fan-out must still land the peer-link answer.
-		settle(
-			read.data?.rows.map(toCatalogueRow) ?? [],
-			read.data?.requestedAt ?? 0,
-			deviceFacts,
-		);
-	}, [read.data, peers.data, settle]);
+		// A peer snapshot has its own lifetime. Never replay a cached sessions page
+		// just because device reachability changed after a delete or a move.
+		settle([], 0, deviceFacts, peers.data.requestedAt);
+	}, [peers.data, settle]);
 	return null;
 };

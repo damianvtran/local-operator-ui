@@ -4474,3 +4474,31 @@ test("nullable counts preserve unknown versus zero and reject timestamp-shaped i
 	assert.equal(row.waiting_on, 2);
 	assert.equal(row.jobs_running, 0);
 });
+
+test("reach-state story neighbors distinguish suspect unanswered from not-attempted", () => {
+	const oldLaptop = {
+		state: "suspect",
+		suspect: true,
+		reachable: false,
+		reason: "no route to it",
+		sessionCount: null,
+		lastSeenAt: 100,
+	};
+	assert.equal(mesh.deviceReach(oldLaptop), "unanswered");
+	assert.equal(
+		mesh.conversationsLinkDown(oldLaptop, 340),
+		"Link down · no route to it · last seen 4m ago",
+	);
+	const buildBox = {
+		...oldLaptop,
+		state: "unreachable",
+		suspect: false,
+		reason: mesh.NOT_ATTEMPTED_SENTENCES[0],
+	};
+	assert.equal(mesh.deviceReach(buildBox), "not-attempted");
+	assert.match(mesh.conversationsLinkDown(buildBox, 340), /^not asked/);
+	assert.doesNotMatch(mesh.conversationsLinkDown(buildBox, 340), /Link down/);
+	const unknown = { ...buildBox, reason: "" };
+	assert.equal(mesh.deviceReach(unknown), "unknown");
+	assert.equal(mesh.conversationsLinkDown(unknown, 340), "unknown");
+});

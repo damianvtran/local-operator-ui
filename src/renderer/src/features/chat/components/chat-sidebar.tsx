@@ -146,6 +146,7 @@ import { AGENT_ROSTER_SEED } from "../../command-palette/palette-search";
 import {
 	peerLinkDownLabel,
 	peerLinkDownVisibleLabel,
+	peerUncertainLabel,
 } from "../../mesh/peer-presence";
 import { focusRowAfterRemoval } from "../archive-confirm";
 import { ARCHIVE_FAILURE_TOAST_MS } from "../archive-undo";
@@ -4565,7 +4566,8 @@ export function ChatSidebar({
 				<span className="block">
 					{row.link_down === true
 						? peerLinkDownLabel(row, listNow / 1000)
-						: (row.status?.label ??
+						: (peerUncertainLabel(row) ??
+							row.status?.label ??
 							(synthesized.has(row.session_id)
 								? "found by search, beyond the chats listed here"
 								: "Recent"))}
@@ -4741,7 +4743,7 @@ export function ChatSidebar({
 						/>
 					)}
 				</span>
-				<ChatSessionStatus row={row} />
+				<ChatSessionStatus row={row} nowSeconds={listNow / 1000} />
 				{/*
 				 * THE OUTSTANDING-ASKS MARK, beside the status mark and BEFORE the title.
 				 * A leading fact rather than a trailing one, for the reason the archived
@@ -5000,7 +5002,11 @@ export function ChatSidebar({
 				 * read after the title, so the row's name stays `state — title` with the
 				 * time as its tail (U21).
 				 */}
-				{row.link_down === true ? (
+				{peerUncertainLabel(row) ? (
+					<span className="shrink-0 text-meta text-ink-dim">
+						{peerUncertainLabel(row)}
+					</span>
+				) : row.link_down === true ? (
 					<span
 						className="shrink-0 text-meta text-warning"
 						title={peerLinkDownLabel(row, listNow / 1000)}

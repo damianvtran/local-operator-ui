@@ -516,7 +516,7 @@ export const DevicePanel: FC<{
 					{t("ui.mesh.mesh_card.conversations")}
 					<span className="text-ink-disabled">
 						(
-						{device.state === "unreachable"
+						{deviceReach(device) !== "self" && deviceReach(device) !== "reached"
 							? conversationCountLabel(null)
 							: shownOf}
 						)

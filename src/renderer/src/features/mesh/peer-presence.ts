@@ -1,10 +1,12 @@
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import { t } from "../../../../i18n";
+import { deviceReach, reachWords } from "./mesh-reach";
 
 /** Request-stamped device facts outlive a failed sessions read without inventing idle. */
 export type PeerDeviceFact = {
 	reachable: boolean;
 	last_seen_at: number | null;
+	session_count?: number | null;
 	reason: string | null;
 	at: number;
 };
@@ -27,9 +29,29 @@ export function applyPeerDeviceFact(
 	if (row.locality !== "remote" || typeof row.owner_device !== "string")
 		return row;
 	const fact = facts[row.owner_device];
-	if (!fact) return row;
-	const linkDown = !fact.reachable;
+	if (!fact) {
+		// Removal lapses the old projection even when a newer placement protects the
+		// row from pruning. Unknown is not an assertion that the owner became idle.
+		return row.peer_reach || row.link_down
+			? {
+					...row,
+					peer_reach: "unknown",
+					link_down: false,
+					reachable: false,
+					link_down_reason: null,
+					last_seen_at: null,
+				}
+			: row;
+	}
+	const reach = deviceReach({
+		state: "unreachable",
+		reachable: fact.reachable,
+		reason: fact.reason ?? "",
+		sessionCount: fact.session_count ?? null,
+	});
+	const linkDown = reach === "unanswered";
 	if (
+		row.peer_reach === reach &&
 		row.link_down === linkDown &&
 		row.reachable === fact.reachable &&
 		row.last_seen_at === fact.last_seen_at &&
@@ -42,6 +64,7 @@ export function applyPeerDeviceFact(
 		...row,
 		reachable: fact.reachable,
 		link_down: linkDown,
+		peer_reach: reach,
 		last_seen_at: fact.last_seen_at,
 		link_down_reason: fact.reason,
 	};
@@ -81,4 +104,37 @@ export function peerLinkDownVisibleLabel(
 	return t("ui.presence.link_down_compact", {
 		age: lastSeenAge(seen, nowSeconds),
 	});
+}
+
+/** A complete snapshot can remove facts, so its watermark also orders absent IDs.
+ * Without it, a delayed pre-removal answer could resurrect a device we no longer share.
+ */
+export function reconcilePeerDeviceSnapshot(
+	held: Record<string, PeerDeviceFact>,
+	incoming: Record<string, PeerDeviceFact>,
+	watermark: number,
+	requestedAt: number,
+): {
+	facts: Record<string, PeerDeviceFact>;
+	watermark: number;
+	removed: string[];
+} {
+	if (requestedAt <= watermark) return { facts: held, watermark, removed: [] };
+	const facts = Object.fromEntries(
+		Object.entries(held).filter(([, fact]) => fact.at > requestedAt),
+	);
+	for (const [id, fact] of Object.entries(incoming)) {
+		if (!facts[id] || fact.at >= facts[id].at) facts[id] = fact;
+	}
+	return {
+		facts,
+		watermark: requestedAt,
+		removed: Object.keys(held).filter((id) => !facts[id]),
+	};
+}
+
+export function peerUncertainLabel(row: CanonicalSessionRow): string | null {
+	return row.peer_reach === "not-attempted" || row.peer_reach === "unknown"
+		? reachWords(row.peer_reach)
+		: null;
 }

@@ -3374,14 +3374,61 @@ export const RemoteLinkDown: Story = {
 		);
 		await sleep(100);
 		const row = screen.getByRole("button", {
-			name: /link down · last seen 4m ago.*Remote validation/,
+			name: /link down · last seen .*ago.*Remote validation/,
 		});
 		if (
 			!row.querySelector(".lucide-wifi-off") ||
-			!row.textContent?.includes("last seen 4m ago")
+			!row.textContent?.includes("last seen")
 		)
 			throw new Error(
 				"Remote row must expose link loss and last contact visibly and accessibly",
+			);
+	},
+};
+
+/** The backend's remote delegating row uses the same three-bead state as a local row. */
+export const RemoteDelegating: Story = {
+	render: () => {
+		fixtures();
+		roster = [
+			wireRow("e7f8091a2b3c", "Local comparison", 1_760_003_600, OPEN, 1),
+		];
+		return <Page sidebarWidth={360} />;
+	},
+	play: async () => {
+		await catalogueSettled(1);
+		const store = useCanonicalSessionsStore.getState();
+		store.settlePeerCatalogue(
+			[
+				{
+					session_id: "f8091a2b3c4d",
+					title: "Remote delegated validation",
+					locality: "remote",
+					owner_device: "synthetic-delegating-peer",
+					owner_device_name: "Test peer",
+					reachable: true,
+					updated_at: Date.now() / 1000,
+					status: { code: "delegating", label: "1 subagent running" },
+					subagents_running: 1,
+					subagents_queued: 0,
+				},
+			],
+			store.beginAnswer(),
+		);
+		await sleep(100);
+		const row = screen.getByRole("button", {
+			name: /1 subagent running.*Remote delegated validation/,
+		});
+		if (
+			row.closest("[data-chat-section]")?.getAttribute("data-chat-section") !==
+			"running"
+		)
+			throw new Error("Remote delegating row must remain under Running");
+		if (
+			!row.querySelector('svg[viewBox="0 0 24 24"] circle[cx="12"][cy="6.8"]')
+		)
+			throw new Error(
+				"Remote delegating row must render the three-bead SubagentRunningMark",
 			);
 	},
 };

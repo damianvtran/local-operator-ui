@@ -77,6 +77,7 @@ import {
 	type PeerDeviceFact,
 	applyPeerDeviceFact,
 	mergePeerDeviceFacts,
+	reconcilePeerDeviceSnapshot,
 } from "../../features/mesh/peer-presence";
 
 export type CanonicalSessionRow = {
@@ -119,6 +120,7 @@ export type CanonicalSessionRow = {
 	attention?: CompletionAttention;
 	live_state?: string;
 	link_down?: boolean;
+	peer_reach?: import("../../features/mesh/mesh-reach").DeviceReach;
 	last_seen_at?: number | null;
 	link_down_reason?: string | null;
 	waiting_on?: number | null;
@@ -3835,6 +3837,7 @@ type CanonicalSessionsState = {
 	 */
 	placementFacts: Record<string, PlacementFact>;
 	peerDeviceFacts: Record<string, PeerDeviceFact>;
+	peerDeviceSnapshotAt: number;
 	/**
 	 * The answer counter every fact and every request is stamped against.
 	 *
@@ -4666,6 +4669,7 @@ type CanonicalSessionsState = {
 		/** The sequence the answer's own REQUEST took (`beginAnswer`). */
 		requestedAt: number,
 		deviceFacts?: Record<string, PeerDeviceFact>,
+		peerSnapshotAt?: number,
 	) => void;
 };
 
@@ -5385,6 +5389,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			archiveFacts: {},
 			placementFacts: {},
 			peerDeviceFacts: {},
+			peerDeviceSnapshotAt: 0,
 			forgotten: {},
 			stoppedTurns: {},
 			archiveFailure: null,
@@ -8001,7 +8006,12 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			 * The peers-inclusive read's own landing (see the type's docstring for the
 			 * rules and why it is not folded into `fetchSessions`).
 			 */
-			settlePeerCatalogue: (rows, requestedAt, deviceFacts = {}) => {
+			settlePeerCatalogue: (
+				incomingRows,
+				requestedAt,
+				deviceFacts = {},
+				peerSnapshotAt = undefined,
+			) => {
 				set((state) => {
 					/*
 					 * 1. SETTLEMENT, mirroring `fetchSessions`' own loop: a fact older
@@ -8009,6 +8019,25 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 * written after it started is left alone. All settlements of one
 					 * answer share ONE fresh sequence, exactly as that loop's do.
 					 */
+					// Match the plain-page tombstone guard: only a genuinely newer
+					// sessions answer can revive an ID. Device-only answers carry no rows.
+					const forgotten = { ...state.forgotten };
+					for (const row of incomingRows) {
+						if (forgotten[row.session_id]?.at < requestedAt)
+							delete forgotten[row.session_id];
+					}
+					const rows = incomingRows.filter((row) => {
+						if (forgotten[row.session_id]) return false;
+						if (
+							row.locality === "remote" &&
+							state.peerDeviceSnapshotAt > requestedAt &&
+							typeof row.owner_device === "string" &&
+							!state.peerDeviceFacts[row.owner_device]
+						)
+							return false;
+						const placement = state.placementFacts[row.session_id];
+						return !placement || placement.at < requestedAt;
+					});
 					const facts = { ...state.placementFacts };
 					/* The ids THIS call settled, so the two write halves below can read
 					 * exactly what the answer spoke about rather than re-deriving it. */
@@ -8051,10 +8080,26 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 * its page owns them and this one only ever settles facts for them -
 					 * so nothing about a local row is written from here.
 					 */
-					const peerDeviceFacts = mergePeerDeviceFacts(
-						state.peerDeviceFacts,
-						deviceFacts,
-					);
+					const snapshot =
+						peerSnapshotAt === undefined
+							? null
+							: reconcilePeerDeviceSnapshot(
+									state.peerDeviceFacts,
+									deviceFacts,
+									state.peerDeviceSnapshotAt,
+									peerSnapshotAt,
+								);
+					const peerDeviceFacts =
+						snapshot?.facts ??
+						mergePeerDeviceFacts(
+							state.peerDeviceFacts,
+							Object.fromEntries(
+								Object.entries(deviceFacts).filter(
+									([, fact]) => fact.at > state.peerDeviceSnapshotAt,
+								),
+							),
+						);
+
 					const remote = rows.filter((row) => row.locality === "remote");
 					let sessions = state.sessions;
 					let replaced = false;
@@ -8117,6 +8162,18 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							spoke.add(row.owner_device);
 					}
 					const pruned = new Set<string>();
+					for (const row of sessions) {
+						if (
+							row.locality !== "remote" ||
+							typeof row.owner_device !== "string" ||
+							!snapshot?.removed.includes(row.owner_device)
+						)
+							continue;
+						const placement = state.placementFacts[row.session_id];
+						if (placement && placement.at >= (peerSnapshotAt ?? 0)) continue;
+						pruned.add(row.session_id);
+						delete facts[row.session_id];
+					}
 					for (const [id, fact] of Object.entries(state.placementFacts)) {
 						if (fact.locality !== "remote") continue;
 						if (answered.has(id)) continue;
@@ -8142,13 +8199,17 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						additions.length === 0 &&
 						!replaced &&
 						pruned.size === 0 &&
-						Object.keys(deviceFacts).length === 0
+						Object.keys(deviceFacts).length === 0 &&
+						peerSnapshotAt === undefined
 					)
 						return {};
 					return {
 						sessions,
 						placementFacts: facts,
 						peerDeviceFacts,
+						peerDeviceSnapshotAt:
+							snapshot?.watermark ?? state.peerDeviceSnapshotAt,
+						forgotten,
 						...(settled ? { answerSeq: state.answerSeq + 1 } : {}),
 					};
 				});
