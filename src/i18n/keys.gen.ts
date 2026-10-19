@@ -22,6 +22,7 @@
  */
 
 import enUiAgentMessages from "./catalogues/en/ui.agentMessages.json";
+import enUiAgentMessagesSettings from "./catalogues/en/ui.agentMessages.settings.json";
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
 import enUiAgentsModels from "./catalogues/en/ui.agents.models.json";
@@ -306,6 +307,7 @@ import zhCNUiShellRail from "./catalogues/zh-CN/ui.shell.rail.json";
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentMessages,
+	...enUiAgentMessagesSettings,
 	...enUiAgentsDialogs,
 	...enUiAgents,
 	...enUiAgentsModels,
@@ -625,6 +627,90 @@ export type MessageParams = {
 	"ui.agentMessages.dialog.title": undefined;
 	"ui.agentMessages.dialog.validation_detail": { field: string; rule: string };
 	"ui.agentMessages.dialog.validation_failure": undefined;
+	"ui.agentMessages.settings.action.enable": undefined;
+	"ui.agentMessages.settings.action.enable_again": undefined;
+	"ui.agentMessages.settings.action.pause": undefined;
+	"ui.agentMessages.settings.action.resume": undefined;
+	"ui.agentMessages.settings.action.turn_off": undefined;
+	"ui.agentMessages.settings.allowlist.add": undefined;
+	"ui.agentMessages.settings.allowlist.add_allowed": undefined;
+	"ui.agentMessages.settings.allowlist.add_blocked": undefined;
+	"ui.agentMessages.settings.allowlist.agent_id": undefined;
+	"ui.agentMessages.settings.allowlist.allowed_empty": undefined;
+	"ui.agentMessages.settings.allowlist.allowed_heading": undefined;
+	"ui.agentMessages.settings.allowlist.anyone": undefined;
+	"ui.agentMessages.settings.allowlist.blocked_empty": undefined;
+	"ui.agentMessages.settings.allowlist.blocked_heading": undefined;
+	"ui.agentMessages.settings.allowlist.cue_deny": undefined;
+	"ui.agentMessages.settings.allowlist.cue_listed_only": undefined;
+	"ui.agentMessages.settings.allowlist.cue_remove": undefined;
+	"ui.agentMessages.settings.allowlist.description": undefined;
+	"ui.agentMessages.settings.allowlist.identifier": undefined;
+	"ui.agentMessages.settings.allowlist.identifier_empty": undefined;
+	"ui.agentMessages.settings.allowlist.identifier_help_agent": undefined;
+	"ui.agentMessages.settings.allowlist.identifier_help_person": undefined;
+	"ui.agentMessages.settings.allowlist.identifier_invalid": undefined;
+	"ui.agentMessages.settings.allowlist.identifier_long": undefined;
+	"ui.agentMessages.settings.allowlist.kind": undefined;
+	"ui.agentMessages.settings.allowlist.kind_agent": undefined;
+	"ui.agentMessages.settings.allowlist.kind_person": undefined;
+	"ui.agentMessages.settings.allowlist.level": undefined;
+	"ui.agentMessages.settings.allowlist.listed_only": undefined;
+	"ui.agentMessages.settings.allowlist.needs_entry": undefined;
+	"ui.agentMessages.settings.allowlist.person_id": undefined;
+	"ui.agentMessages.settings.allowlist.read_only": undefined;
+	"ui.agentMessages.settings.allowlist.receive": undefined;
+	"ui.agentMessages.settings.allowlist.remove": undefined;
+	"ui.agentMessages.settings.allowlist.save": undefined;
+	"ui.agentMessages.settings.allowlist.send": undefined;
+	"ui.agentMessages.settings.allowlist.title": undefined;
+	"ui.agentMessages.settings.allowlist.unchanged": undefined;
+	"ui.agentMessages.settings.consent.at": undefined;
+	"ui.agentMessages.settings.consent.changed": undefined;
+	"ui.agentMessages.settings.consent.no_record": undefined;
+	"ui.agentMessages.settings.consent.renew": undefined;
+	"ui.agentMessages.settings.consent.show": undefined;
+	"ui.agentMessages.settings.consent.unavailable": undefined;
+	"ui.agentMessages.settings.consent.version": undefined;
+	"ui.agentMessages.settings.consent.via": undefined;
+	"ui.agentMessages.settings.consent.via_dialog": undefined;
+	"ui.agentMessages.settings.consent.via_settings": undefined;
+	"ui.agentMessages.settings.dark.body": undefined;
+	"ui.agentMessages.settings.dark.nothing_enabled": undefined;
+	"ui.agentMessages.settings.dark.title": undefined;
+	"ui.agentMessages.settings.description": undefined;
+	"ui.agentMessages.settings.error.no_changes": undefined;
+	"ui.agentMessages.settings.error.retry": undefined;
+	"ui.agentMessages.settings.error.title": undefined;
+	"ui.agentMessages.settings.error.unreadable": undefined;
+	"ui.agentMessages.settings.local.label": undefined;
+	"ui.agentMessages.settings.local.stays_enrolled": undefined;
+	"ui.agentMessages.settings.off_by_default": undefined;
+	"ui.agentMessages.settings.refusal.disabled": undefined;
+	"ui.agentMessages.settings.refusal.generic": undefined;
+	"ui.agentMessages.settings.refusal.invalid_request": undefined;
+	"ui.agentMessages.settings.refusal.not_available": undefined;
+	"ui.agentMessages.settings.refusal.rate_limited": undefined;
+	"ui.agentMessages.settings.refusal.sign_in": undefined;
+	"ui.agentMessages.settings.saving": undefined;
+	"ui.agentMessages.settings.section": undefined;
+	"ui.agentMessages.settings.session.help": undefined;
+	"ui.agentMessages.settings.session.none": undefined;
+	"ui.agentMessages.settings.session.title": undefined;
+	"ui.agentMessages.settings.session.unavailable": undefined;
+	"ui.agentMessages.settings.state.b_body": undefined;
+	"ui.agentMessages.settings.state.b_title": undefined;
+	"ui.agentMessages.settings.state.c_body": undefined;
+	"ui.agentMessages.settings.state.c_title": undefined;
+	"ui.agentMessages.settings.state.d_body": undefined;
+	"ui.agentMessages.settings.state.d_title": undefined;
+	"ui.agentMessages.settings.state.e_body": undefined;
+	"ui.agentMessages.settings.state.e_title": undefined;
+	"ui.agentMessages.settings.state.f_body": undefined;
+	"ui.agentMessages.settings.state.f_title": undefined;
+	"ui.agentMessages.settings.state.read_only": undefined;
+	"ui.agentMessages.settings.state.turned_off_org": undefined;
+	"ui.agentMessages.settings.state.turned_off_title": undefined;
 	"ui.agents.dialogs.clear.cancel": undefined;
 	"ui.agents.dialogs.clear.confirm": undefined;
 	"ui.agents.dialogs.clear.title": undefined;
