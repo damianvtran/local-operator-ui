@@ -4235,15 +4235,19 @@ function SessionPanel({
 						 * the transcript paints its Reconnecting line.
 						 */
 						frontend: canonical.frontend ?? canonical.heldFrontend,
+						servingLocality,
 						/*
 						 * The ask reading this page resolved from the canonical frame and the
 						 * aggregate index (`session-asks.ts`). The strip reads the model, cost
 						 * and goal from the same snapshot as before; only the ask lane uses
 						 * this merged frame, so a claimless resumed snapshot cannot turn into
 						 * "this runtime doesn't support queued asks".
+						 *
+						 * AFTER `servingLocality` deliberately: `session-status.test.mjs` pins
+						 * the frontend/locality PAIR as one contiguous reading, and an unrelated
+						 * field between them broke that pin (CI round, Desktop Tests).
 						 */
 						asks: sessionAskFrame,
-						servingLocality,
 						/*
 						 * Whether those readings are the HELD ones, which is a
 						 * different question from whether a frontend is present:
