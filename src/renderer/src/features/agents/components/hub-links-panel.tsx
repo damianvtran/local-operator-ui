@@ -890,7 +890,15 @@ export function HubLinksPanel({
 	};
 	const groupOnOff = (value: (link: HubLink) => boolean) =>
 		agreeOn(value) ? onOff(value(rows[0])) : t("ui.hub.links.mixed");
+	/*
+	 * THE SUMMARY IS COMPOSED FROM THE ROWS, so it needs a row. A record whose
+	 * ONLY hub state is an unresolved diagnostic has no link row at all, and
+	 * reading `rows[0]` there is a crash, not an empty string - the summary is
+	 * only ever drawn inside the disclosure, which is only drawn when there ARE
+	 * rows, so the guard is what keeps the two in step.
+	 */
 	const summaryState = (() => {
+		if (rows.length === 0) return "";
 		const first = rows[0];
 		const origins =
 			rows.length > 1
