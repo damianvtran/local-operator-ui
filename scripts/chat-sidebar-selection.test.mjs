@@ -1320,12 +1320,6 @@ const FILE_ROW =
  * CANVAS_SECTION still stands at the lane's last stop, not the rows' surface. */
 const FINDER_FILES_VIEW =
 	"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx";
-const LIBRARY_CARD =
-	"src/renderer/src/features/library/components/library-card.tsx";
-const LIBRARY_FILTER_RAIL =
-	"src/renderer/src/features/library/components/library-filter-rail.tsx";
-const LIBRARY_PAGE =
-	"src/renderer/src/features/library/components/library-page.tsx";
 const SCHEDULE_ROW =
 	"src/renderer/src/features/schedules/components/schedule-list-item.tsx";
 const BROWSER_TABS =
@@ -1482,35 +1476,6 @@ const ROW_STATE_GROUNDS = [
 				{},
 			),
 		groundFile: FINDER_FILES_VIEW,
-	},
-	{
-		/*
-		 * #1195's card paints `rowCurrent` on an `article` that already carries
-		 * `bg-surface`: the selected wash REPLACES that fill, so the resting class
-		 * list is the ground. The filter rail's rows sit in the page's `bg-surface`
-		 * aside, which is the ground read here.
-		 */
-		what: "the Library asset card",
-		rowFile: LIBRARY_CARD,
-		expression: () => expressionBefore(LIBRARY_CARD, "selected && rowCurrent"),
-		stubs: { selected: true, rowCurrent },
-		ground: () =>
-			merged(
-				LIBRARY_CARD,
-				expressionBefore(LIBRARY_CARD, "selected && rowCurrent"),
-				{ selected: false },
-			),
-		groundFile: LIBRARY_CARD,
-	},
-	{
-		what: "the Library filter rail",
-		rowFile: LIBRARY_FILTER_RAIL,
-		expression: () =>
-			expressionAfter(LIBRARY_FILTER_RAIL, "aria-pressed={active}"),
-		stubs: { active: true, indent: false, rowCurrent },
-		ground: () =>
-			literalClassAt(LIBRARY_PAGE, 'data-glass-region="page-sidebar"', "after"),
-		groundFile: LIBRARY_PAGE,
 	},
 	{
 		/* Finder has its own rowCurrent caller, separate from the fallback's
