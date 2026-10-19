@@ -411,8 +411,25 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							</div>
 						</ScrollArea>
 
-						<div className="shrink-0 px-3 pt-1 pb-2">
-							<div className="flex items-end gap-2">
+						{/* THE AGENT COMPOSER'S SHAPE (operator review, 2026-10-18): one
+						    borderless box on `elevated`, the field and the tools inside it,
+						    and Send in the bottom-right corner of the box rather than a
+						    button floating beside a bordered field. The box uses the same
+						    focus contract as `shared/components/composer/message-input.tsx`
+						    — the ring is promoted from the textarea to the box via `:has`,
+						    so previews and tools read as one control and there is no second
+						    ring inside. Radius is 12 rather than the agent composer's 16:
+						    this box is shorter, so 16 read as a pill at rest. The ground
+						    (`elevated` over `surface`) does the separating, never an edge. */}
+						<div className="shrink-0 px-3 pb-3">
+							<div
+								className={cn(
+									"rounded-xl bg-elevated",
+									"transition-colors duration-fast ease-out-quart",
+									"has-[textarea:focus-visible]:outline-solid has-[textarea:focus-visible]:outline-2",
+									"has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2",
+								)}
+							>
 								<textarea
 									value={draft}
 									onChange={(event) => setDraft(event.target.value)}
@@ -426,24 +443,30 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									placeholder={t("ui.teamBridge.composer.placeholder")}
 									aria-label={t("ui.teamBridge.composer.placeholder")}
 									className={cn(
-										"max-h-40 min-h-8 flex-1 resize-none rounded-lg border border-hairline bg-surface px-2.5 py-1.5",
+										"block max-h-40 min-h-9 w-full resize-none bg-transparent px-3 pt-2.5 pb-1",
 										"text-[13px] text-ink placeholder:text-ink-dim",
-										"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent",
+										"outline-none",
 									)}
 								/>
-								<Button
-									size="icon-sm"
-									variant="primary"
-									disabled={!draft.trim() || sending}
-									aria-label={t("ui.teamBridge.composer.send")}
-									onClick={submit}
-								>
-									<Send size={16} />
-								</Button>
+								<div className="flex items-center gap-2 px-2 pb-2">
+									{/* The hint takes the tools' slot until the bridge has a tool
+									    worth putting here (no attachment route exists yet, and a
+									    disabled paperclip would be fake chrome). */}
+									<span className="min-w-0 flex-1 truncate pl-1 text-meta-sm text-ink-dim">
+										{t("ui.teamBridge.composer.hint")}
+									</span>
+									<Button
+										size="icon-sm"
+										variant="primary"
+										className="rounded-full"
+										disabled={!draft.trim() || sending}
+										aria-label={t("ui.teamBridge.composer.send")}
+										onClick={submit}
+									>
+										<Send size={16} />
+									</Button>
+								</div>
 							</div>
-							<p className="mt-1 text-meta-sm text-ink-dim">
-								{t("ui.teamBridge.composer.hint")}
-							</p>
 						</div>
 					</>
 				)}
