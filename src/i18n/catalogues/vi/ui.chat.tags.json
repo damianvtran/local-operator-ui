@@ -40,5 +40,17 @@
 	"ui.chat.tags.updated_untagged": "Đã cập nhật nhãn. Hiển thị trong Chưa gắn nhãn.",
 	"ui.chat.tags.none_yet": "Chưa có nhãn",
 	"ui.chat.tags.manage_title": "Quản lý nhãn",
-	"ui.chat.tags.apply_deletion_first": "Áp dụng thao tác xóa trước, rồi thêm lại “{name}”."
+	"ui.chat.tags.apply_deletion_first": "Áp dụng thao tác xóa trước, rồi thêm lại “{name}”.",
+	"ui.chat.tags.moved_to": "Đã chuyển sang “{name}”",
+	"ui.chat.tags.removed_all": "Đã gỡ hết nhãn",
+	"ui.chat.tags.remove_all": "{count, plural, other {Gỡ hết nhãn (#)}}",
+	"ui.chat.tags.move_menu": "Chuyển sang nhãn…",
+	"ui.chat.tags.changed_elsewhere": "Nhãn đã được thay đổi ở nơi khác",
+	"ui.chat.tags.move_armed": "Chuyển “{name}”",
+	"ui.chat.tags.move_cancelled": "Đã hủy thao tác chuyển",
+	"ui.chat.tags.undo": "Hoàn tác",
+	"ui.chat.tags.move_undone": "Đã hoàn tác thao tác chuyển nhãn",
+	"ui.chat.tags.move_title": "Chuyển “{title}”",
+	"ui.chat.tags.move_description": "Chọn một nhãn làm nhãn chính, hoặc chọn Chưa gắn nhãn để gỡ hết nhãn.",
+	"ui.chat.tags.move_failed": "Chưa chuyển được nhãn. Hãy thử lại."
 }

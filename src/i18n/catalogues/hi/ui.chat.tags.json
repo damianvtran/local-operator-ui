@@ -40,5 +40,17 @@
 	"ui.chat.tags.updated_untagged": "टैग अपडेट हुए। बिना टैग में दिखाए गए।",
 	"ui.chat.tags.none_yet": "अभी कोई टैग नहीं",
 	"ui.chat.tags.manage_title": "टैग सँभालें",
-	"ui.chat.tags.apply_deletion_first": "पहले हटाने का बदलाव लागू करें, फिर “{name}” दोबारा जोड़ें।"
+	"ui.chat.tags.apply_deletion_first": "पहले हटाने का बदलाव लागू करें, फिर “{name}” दोबारा जोड़ें।",
+	"ui.chat.tags.moved_to": "“{name}” में ले जाया गया",
+	"ui.chat.tags.removed_all": "सभी टैग हटा दिए गए",
+	"ui.chat.tags.remove_all": "{count, plural, one {टैग हटाएँ (#)} other {सभी टैग हटाएँ (#)}}",
+	"ui.chat.tags.move_menu": "टैग में ले जाएँ…",
+	"ui.chat.tags.changed_elsewhere": "टैग कहीं और बदले गए",
+	"ui.chat.tags.move_armed": "“{name}” ले जाएँ",
+	"ui.chat.tags.move_cancelled": "ले जाना रद्द हुआ",
+	"ui.chat.tags.undo": "पूर्ववत करें",
+	"ui.chat.tags.move_undone": "टैग का ले जाना पूर्ववत किया गया",
+	"ui.chat.tags.move_title": "“{title}” ले जाएँ",
+	"ui.chat.tags.move_description": "किसी टैग को प्राथमिक बनाने के लिए उसे चुनें, या सभी टैग हटाने के लिए “बिना टैग” चुनें।",
+	"ui.chat.tags.move_failed": "टैग नहीं ले जाए गए। फिर कोशिश करें।"
 }
