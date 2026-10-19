@@ -1,9 +1,9 @@
 /**
- * The Quote control on a canonical transcript turn: one affordance, raised by a
- * highlight, floating above the highlighted frame.
+ * The selection strip on a canonical transcript turn: Quote, Copy and Speak,
+ * raised by a highlight and floating over the highlighted frame.
  *
- * WHAT IT IS, AND WHAT IT DELIBERATELY IS NOT. One control, the same visual
- * object as `message-controls.tsx`'s strip on the legacy transcript, because two
+ * WHAT IT IS, AND WHAT IT DELIBERATELY IS NOT. One strip, the same visual object
+ * as `message-controls.tsx`'s strip on the legacy transcript, because two
  * floating toolbars that look different is a defect rather than a style choice.
  *
  * SPEAK NOW RIDES ALONG (the speak-aloud round), and the reason the old ruling
@@ -17,11 +17,12 @@
  * and the store keys it `sel:<conversationId>:<fnv1a(text)>`, so two different
  * highlights cannot claim each other's busy or playing state.
  *
- * COPY STILL DOES NOT. The message strip's copy is per-message and this
- * control's subject is a Range, not a record; the selection's own copy gesture
- * is the platform's (Cmd/Ctrl+C), and inlining a second semantics here - which
- * of html/text/flavors the write carries - is the second implementation the
- * same § 9 refuses. The operator's ask for this surface was speech.
+ * COPY RIDES ALONG NOW. The selection round needed Copy beside Quote and one
+ * Speak, and splitting it into a second strip is the duplication this component
+ * exists to prevent. The press re-reads the same Range as Quote (`copyTarget`
+ * on the highlighted text), so the strip's subject stays the highlight rather
+ * than the row; the message's own Copy is still the per-record control in
+ * `AnswerActionRow`, and `Copy as Markdown` remains the record menu's job.
  *
  * THE TRIGGER IS THE HIGHLIGHT, AND NOTHING ELSE (the operator's first ask:
  * "The quote button should only show up when highlighting a section, not just
@@ -143,6 +144,37 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 	const { text: highlight, clear: clearHighlight } = useHighlightText(turnRef);
 	const owns = highlight !== null;
 	const handleQuote = useQuotePress(conversationId, turnRef);
+	/*
+	 * THE TURN'S OWN CONTROLS STAND DOWN WHILE THIS STRIP OWNS THE HIGHLIGHT.
+	 * The response and user gutter overlays sit in the same seat the strip now
+	 * uses (the outer gutter / the trailing edge), and they are later in the
+	 * DOM with pointer-events-auto on hover - so a Quote press could land on the
+	 * response Copy instead. The marker is on the row the transcript test and the
+	 * stylesheet both read; visibility (not display) preserves zero layout and
+	 * pointer-events:none takes the controls out of the hit test.
+	 */
+	useEffect(() => {
+		const turn = turnRef.current;
+		if (!turn || !owns) return;
+		const row = turn.closest("[data-record-id]") ?? turn;
+		const controls = [
+			...row.querySelectorAll(
+				"[data-lo-gutter-actions], [data-lo-user-actions]",
+			),
+		];
+		row.setAttribute("data-lo-selection-active", "");
+		for (const control of controls) {
+			control.setAttribute("inert", "");
+			control.setAttribute("aria-hidden", "true");
+		}
+		return () => {
+			row.removeAttribute("data-lo-selection-active");
+			for (const control of controls) {
+				control.removeAttribute("inert");
+				control.removeAttribute("aria-hidden");
+			}
+		};
+	}, [owns, turnRef]);
 	/*
 	 * Copy is the third press that acts on the same highlight. It is deliberately
 	 * here rather than in the shared selection toolbar: one highlight gets one
@@ -270,7 +302,7 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 				// whether or not the control is up. The `elevated` ground plus a
 				// hairline is what makes it read as floating over the prose - § 2
 				// keeps the one shadow for objects that genuinely leave the flow.
-				"absolute z-10 flex h-8 items-center gap-0 rounded-md border border-hairline bg-elevated px-0.5",
+				"absolute z-20 flex h-8 items-center gap-0 rounded-md border border-hairline bg-elevated px-0.5",
 				!placement && "invisible",
 			)}
 			style={

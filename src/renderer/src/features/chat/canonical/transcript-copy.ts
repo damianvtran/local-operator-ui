@@ -31,6 +31,9 @@
  * loose paragraph.
  */
 
+import remarkGfm from "remark-gfm";
+import remarkParse from "remark-parse";
+import { unified } from "unified";
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import { summaryFromArgs } from "../components/trace/tool-row-model";
 import { parseReplies } from "../utils/reply-utils";
@@ -68,56 +71,80 @@ function visibleSourceFor(record: TranscriptRecord): string {
 /**
  * Markdown source reduced to the words a reader sees.
  *
- * WHY A LOCAL DERIVATION. The two menu items are different promises: `Copy
- * text` is for pasting into prose, `Copy as Markdown` is for pasting into a
- * document that understands fences and lists. Returning the source for both
- * made the labels lie. The transform is deliberately small and line-oriented -
- * it handles the constructs the transcript renders most (fences, headings,
- * lists, tables, emphasis, links) and leaves anything it does not recognise as
- * written rather than guessing at a second markdown parser.
+ * WHY A PARSER RATHER THAN REGEX STRIPPING. The first version unwrapped inline
+ * code before running emphasis passes, so identifiers such as `_init_` lost
+ * their underscores and inline globs lost their asterisks; a spaced `*` in
+ * prose (`2 * 3 * 4`) was read as emphasis. A markdown reader must preserve
+ * every byte inside code, so the
+ * plain-text form is derived from the same mdast the renderer sees: text nodes
+ * are taken verbatim, inline/fenced code keeps its value, and emphasis/link
+ * wrappers contribute only their children. The two menu items are different
+ * promises; `Copy text` is prose, `Copy as Markdown` is the source.
+ *
+ * The walk is deliberately small and only names the block separators the
+ * transcript's own markdown produces; an unknown node falls through to its
+ * children rather than losing them.
  */
-function markdownToText(markdown: string): string {
-	const lines = markdown.split("\n");
-	const out: string[] = [];
-	let inFence = false;
-	for (const line of lines) {
-		if (/^\s*(```|~~~)/.test(line)) {
-			inFence = !inFence;
-			continue;
+type MdNode = {
+	type: string;
+	value?: string;
+	alt?: string | null;
+	children?: MdNode[];
+};
+
+const markdown = unified().use(remarkParse).use(remarkGfm);
+
+function walkMdast(node: MdNode, out: string[]): void {
+	switch (node.type) {
+		case "text":
+		case "inlineCode":
+		case "code":
+		case "html":
+			out.push(node.value ?? "");
+			return;
+		case "image":
+			out.push(node.alt ?? "");
+			return;
+		case "break":
+			out.push("\n");
+			return;
+		case "paragraph":
+		case "heading":
+		case "blockquote":
+			for (const child of node.children ?? []) walkMdast(child, out);
+			out.push("\n\n");
+			return;
+		case "list":
+		case "listItem":
+			for (const child of node.children ?? []) walkMdast(child, out);
+			out.push("\n");
+			return;
+		case "table":
+			for (const child of node.children ?? []) walkMdast(child, out);
+			out.push("\n");
+			return;
+		case "tableRow": {
+			const cells = node.children ?? [];
+			cells.forEach((cell, index) => {
+				if (index > 0) out.push(" | ");
+				walkMdast(cell, out);
+			});
+			out.push("\n");
+			return;
 		}
-		if (inFence) {
-			out.push(line);
-			continue;
-		}
-		const tableRule = /^\s*\|?[\s:-]+\|[\s:|-]*$/.test(line);
-		if (tableRule) continue;
-		const heading = line.replace(/^\s{0,3}#{1,6}\s+/, "");
-		const quoted = heading.replace(/^\s{0,3}>\s?/, "");
-		const bullet = quoted.replace(/^\s{0,3}[-*+]\s+/, "• ");
-		const ordered = bullet.replace(/^\s{0,3}(\d+)[.)]\s+/, "$1. ");
-		const task = ordered.replace(/^\s{0,3}\[[ xX]\]\s+/, "");
-		const table = task.includes("|")
-			? task
-					.replace(/^\s*\|/, "")
-					.replace(/\|\s*$/, "")
-					.split("|")
-					.map((cell) => cell.trim())
-					.join(" | ")
-			: task;
-		out.push(
-			table
-				.replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
-				.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-				.replace(/`([^`]+)`/g, "$1")
-				.replace(/\*\*([^*]+)\*\*/g, "$1")
-				.replace(/__([^_]+)__/g, "$1")
-				.replace(/~~([^~]+)~~/g, "$1")
-				.replace(/(^|[^\w])\*([^*\n]+)\*(?=[^\w]|$)/g, "$1$2")
-				.replace(/(^|[^\w])_([^_\n]+)_(?=[^\w]|$)/g, "$1$2"),
-		);
+		case "thematicBreak":
+			out.push("\n");
+			return;
+		default:
+			for (const child of node.children ?? []) walkMdast(child, out);
 	}
+}
+
+function markdownToText(source: string): string {
+	const out: string[] = [];
+	walkMdast(markdown.parse(source) as unknown as MdNode, out);
 	return out
-		.join("\n")
+		.join("")
 		.replace(/\n{3,}/g, "\n\n")
 		.trim();
 }
