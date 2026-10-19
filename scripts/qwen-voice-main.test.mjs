@@ -2379,3 +2379,135 @@ test("SWITCH: off while running stops everything now, not after the idle window"
 	await settle();
 	assert.equal(r.voice.getStatus().rig, "ready");
 });
+
+/* A start held open by the test: the port promise settles when we say so. */
+function deferred() {
+	let resolve;
+	let reject;
+	const promise = new Promise((res, rej) => {
+		resolve = res;
+		reject = rej;
+	});
+	return { promise, resolve, reject };
+}
+
+test("SWITCH: off during the speech warm-up ends stopped, not error, with nothing left", async () => {
+	const r = rig();
+	const warm = deferred();
+	r.speech.start = async function () {
+		r.calls.speechStart += 1;
+		this.running = true;
+		await warm.promise;
+	};
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	assert.equal(r.voice.getStatus().rig, "starting");
+	await r.voice.setEnabled(false);
+	// The rig's real start rejects once stop() let go of the child.
+	warm.reject(new Error("Speech process exited during start"));
+	await settle();
+	await settle();
+	assert.equal(r.voice.getStatus().rig, "stopped");
+	assert.equal(r.speech.running, false);
+	assert.equal(r.gateway.running, false);
+	assert.equal(r.calls.gatewayStop, 1, "stopped once, by the switch");
+	assert.equal(r.calls.speechStop, 1);
+});
+
+test("SWITCH: off then on during the speech warm-up - the old rejection cannot stop the new run", async () => {
+	const r = rig();
+	const warms = [];
+	r.speech.start = async function () {
+		r.calls.speechStart += 1;
+		const d = deferred();
+		warms.push(d);
+		await d.promise;
+		this.running = true;
+	};
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	await r.voice.setEnabled(false);
+	await r.voice.setEnabled(true);
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	assert.equal(warms.length, 2, "a second start began");
+	const stops = { g: r.calls.gatewayStop, s: r.calls.speechStop };
+	warms[0].reject(new Error("Speech process exited during start"));
+	await settle();
+	await settle();
+	assert.equal(r.calls.gatewayStop, stops.g, "old rejection stops nothing");
+	assert.equal(r.calls.speechStop, stops.s);
+	assert.equal(r.voice.getStatus().rig, "starting", "and sets no error");
+	warms[1].resolve();
+	await settle();
+	await settle();
+	assert.equal(r.voice.getStatus().rig, "ready");
+	assert.equal(r.gateway.running, true);
+	assert.equal(r.speech.running, true);
+});
+
+test("SWITCH: off during the Gateway start ends stopped; off then on reaches ready", async () => {
+	const r = rig();
+	const gates = [];
+	r.gateway.start = async function () {
+		r.calls.gatewayStart += 1;
+		const d = deferred();
+		gates.push(d);
+		await d.promise;
+		this.running = true;
+		return "http://127.0.0.1:3101/";
+	};
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	await r.voice.setEnabled(false);
+	gates[0].reject(new Error("The voice Gateway exited (null)"));
+	await settle();
+	await settle();
+	assert.equal(r.voice.getStatus().rig, "stopped");
+	assert.equal(r.calls.speechStart, 0, "no s2s after a cancelled Gateway");
+	// Off then on while a new Gateway start is pending.
+	await r.voice.setEnabled(true);
+	r.voice.observeFrame(voiceFrame("bbbbbbbbbbbb"));
+	await settle();
+	await settle();
+	await r.voice.setEnabled(false);
+	await r.voice.setEnabled(true);
+	r.voice.observeFrame(voiceFrame("bbbbbbbbbbbb"));
+	await settle();
+	await settle();
+	assert.equal(gates.length, 3);
+	const gs = r.calls.gatewayStop;
+	gates[1].reject(new Error("The voice Gateway exited (null)"));
+	await settle();
+	await settle();
+	assert.equal(r.calls.gatewayStop, gs, "stale rejection stops nothing");
+	gates[2].resolve();
+	await settle();
+	await settle();
+	assert.equal(r.voice.getStatus().rig, "ready");
+});
+
+test("SWITCH: off tells the renderer the slot is empty (no stale holder)", async () => {
+	const r = rig();
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	r.sent.length = 0;
+	await r.voice.setEnabled(false);
+	assert.ok(
+		r.sent.some((x) => x.type === "slot" && x.active === null),
+		"the empty slot is pushed through applySlot",
+	);
+	assert.equal(r.voice.getStatus().rig, "stopped");
+});
+
+test("SWITCH: a process exit after off does not flip stopped to error", async () => {
+	const r = rig();
+	await r.voice.setEnabled(false);
+	r.voice.processExited("speech", "code 1");
+	assert.equal(r.voice.getStatus().rig, "stopped");
+});

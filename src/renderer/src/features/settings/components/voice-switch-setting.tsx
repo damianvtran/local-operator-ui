@@ -9,6 +9,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
 import {
+	bridge,
 	setVoiceSwitch,
 	useVoiceSwitch,
 	useVoiceSwitchSync,
@@ -18,13 +19,7 @@ export const VoiceSwitchSetting: FC = () => {
 	useI18nLocale();
 	useVoiceSwitchSync();
 	const enabled = useVoiceSwitch();
-	const hasBridge =
-		typeof window !== "undefined" &&
-		Boolean(
-			(window as { api?: { desktop?: { qwenVoice?: unknown } } }).api?.desktop
-				?.qwenVoice,
-		);
-	if (!hasBridge) return null;
+	if (!bridge()) return null;
 	return (
 		<ToggleSetting
 			value={enabled}
