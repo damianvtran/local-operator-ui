@@ -273,6 +273,13 @@
     "mac": {
       "extraResources": [
         {
+          "from": "resources/qwen-voice",
+          "to": "qwen-voice",
+          "filter": [
+            "**/*"
+          ]
+        },
+        {
           "from": "resources/python",
           "to": "python-runtime-seed/x64",
           "filter": [
