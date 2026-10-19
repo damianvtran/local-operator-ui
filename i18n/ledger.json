@@ -14794,8 +14794,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.hub",
-			"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
-			"target_sha256": "2fd183ee68ed4fd09ffc240bfe89742192f30a83cda1889028bd0c8a17fce0c3",
+			"source_sha256": "1bc091755e451fb19f186c68367e243762ab6135c04e024e82b96e90776bae7b",
+			"target_sha256": "7c4bfee8f10d93558677150efb0b75e49b13dc329405367d2b35b319e97243c7",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -14807,20 +14807,45 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "35e5db603a13",
+					"instance": "c1a2cd6946cc",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/35e5db603a13.json",
-					"receipt_sha256": "ace633137c65dd99aacecb37c02832e3fc304fa445c5bf0af649dc0c9ab32514",
-					"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
-					"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+					"receipt": "i18n/receipts/c1a2cd6946cc.json",
+					"receipt_sha256": "1e9518b0418923402326333cf285e6cf13390d4d78cfce0cba4ee4aac44386b3",
+					"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+					"target_sha256": "2fd183ee68ed4fd09ffc240bfe89742192f30a83cda1889028bd0c8a17fce0c3",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "35e5db603a13",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/35e5db603a13.json",
+							"receipt_sha256": "ace633137c65dd99aacecb37c02832e3fc304fa445c5bf0af649dc0c9ab32514",
+							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
+							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
