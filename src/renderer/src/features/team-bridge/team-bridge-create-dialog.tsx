@@ -39,7 +39,8 @@ export const TeamBridgeCreateDialog: FC<{
 		members: TeamBridgeMemberInput[];
 	}) => void;
 	pending?: boolean;
-}> = ({ open, onClose, onCreate, pending = false }) => {
+	error?: string;
+}> = ({ open, onClose, onCreate, pending = false, error }) => {
 	useI18nLocale();
 	const [kind, setKind] = useState<"dm" | "group" | "channel">("dm");
 	const [name, setName] = useState("");
@@ -184,6 +185,12 @@ export const TeamBridgeCreateDialog: FC<{
 						{t("ui.teamBridge.create.add_member")}
 					</Button>
 				</div>
+
+				{error && (
+					<p role="alert" className="text-[13px] text-danger">
+						{error}
+					</p>
+				)}
 
 				<div className="flex justify-end gap-2">
 					<Button type="button" variant="ghost" onClick={onClose}>

@@ -4,13 +4,16 @@ Captured from the REAL Storybook build of the branch (stylesheet, fonts, theme
 provider and i18n catalogue all loaded), not from a bare test host.
 
 - `populated-dm.png` — a human↔agent DM in the default dark palette: agent badge,
-  own messages on the accent wash, short history anchored to the bottom, and the
-  rail/content split carried by the two grounds (no rules).
+  own messages on the accent wash, short history anchored to the bottom, the
+  rail/content split carried by the two grounds (no rules), and a held agent
+  message rendered as the "waiting to admit" line rather than an empty bubble.
 - `populated-dm-light.png` — the same state in a light palette (`alucard`).
 - `empty.png` — an account with no conversations, one statement and one action.
 - `error.png` — the list read failed; the pane keeps its own empty state.
 - `overflow-expanded.png` — the Team Bridge row inside the sidebar's More group,
   unread badge at the row's trailing edge.
+- `send-failed.png` — a refused send: the draft stays and the line above the
+  composer says so, rather than the text vanishing.
 - `overflow-collapsed.png` — the same count while the group is collapsed: ONE
   More row, badge and ellipsis on it, no extra Team Bridge row.
 

@@ -36,5 +36,8 @@
 	"ui.teamBridge.create.remove_member": "Remove member",
 	"ui.teamBridge.create.add_member": "Add member",
 	"ui.teamBridge.create.account_placeholder": "acct_…",
-	"ui.teamBridge.group.more": "More"
+	"ui.teamBridge.group.more": "More",
+	"ui.teamBridge.thread.withheld": "Waiting for the agent to admit this message.",
+	"ui.teamBridge.composer.error": "Your message was not sent. Try again.",
+	"ui.teamBridge.create.error": "The conversation could not be created. Try again."
 }

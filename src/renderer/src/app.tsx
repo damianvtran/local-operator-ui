@@ -277,6 +277,10 @@ const App: FC = () => {
 	 */
 	const meshState = desktopFeatureState(capabilities.data, "peers");
 	const libraryState = desktopFeatureState(capabilities.data, "library");
+	/* The conversation surface rides the bridge capability: with the backend
+	   dark or older, `/team-bridge` falls through to the catch-all like any
+	   unknown path instead of rendering a page whose every read would 503. */
+	const bridgeState = desktopFeatureState(capabilities.data, "team_bridge");
 
 	const handleAgentCreated = (agent: { id: string; name: string }) => {
 		/*
@@ -896,8 +900,11 @@ const App: FC = () => {
 										)}
 										{/* The Team Bridge page. The SIDEBAR row is the Library lane's
 										    overflow group (one nav file, one owner); this route makes the
-										    page reachable by URL and by that row the moment it lands. */}
-										<Route path="/team-bridge" element={<TeamBridgePage />} />
+										    page reachable by URL and by that row the moment it lands.
+										    Mounted only with `features.team_bridge`. */}
+										{bridgeState === "enabled" && (
+											<Route path="/team-bridge" element={<TeamBridgePage />} />
+										)}
 										{/* Mounted only with `features.peers`: without it `/mesh` falls through
 										    to the catch-all like any unknown path, rather than rendering a tab
 										    for a feature this backend does not have. */}

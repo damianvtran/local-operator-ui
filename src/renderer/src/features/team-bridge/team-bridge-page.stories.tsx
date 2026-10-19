@@ -160,6 +160,21 @@ const messages: TeamBridgeMessage[] = [
 		origin: "agent",
 		created_at: new Date(Date.now() - 6 * 60_000).toISOString(),
 	},
+	{
+		id: "bcmsg_5",
+		conversation_id: dm.id,
+		seq: 5,
+		sender: {
+			account_id: "acct_agent",
+			kind: "agent",
+			display_label: "Ada's agent",
+		},
+		// A held message: the agent's own history carries `null` until admitted.
+		body: null,
+		body_hash: "hash-5",
+		origin: "agent",
+		created_at: new Date(Date.now() - 4 * 60_000).toISOString(),
+	},
 ];
 
 const meta = {
@@ -222,6 +237,10 @@ export const Loading: Story = {
 		messages: [],
 		messageState: "idle",
 	},
+};
+
+export const SendFailed: Story = {
+	args: { sendFailed: true },
 };
 
 export const ErrorState: Story = {
