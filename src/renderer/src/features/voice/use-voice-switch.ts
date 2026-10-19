@@ -10,7 +10,7 @@ import { useEffect } from "react";
 import { create } from "zustand";
 import type { QwenVoiceBridge } from "../../../../shared/desktop-contract";
 
-const bridge = (): QwenVoiceBridge | undefined =>
+export const bridge = (): QwenVoiceBridge | undefined =>
 	(window as { api?: { desktop?: { qwenVoice?: QwenVoiceBridge } } }).api
 		?.desktop?.qwenVoice;
 

@@ -230,6 +230,12 @@ export class QwenVoice {
 	 */
 	private awaitingMic = false;
 	private starting: Promise<QwenVoiceStatus> | null = null;
+	/**
+	 * Start generation. Bumped by every start and every stop/switch-off: a start
+	 * that finds its number stale was cancelled, and must neither stop processes
+	 * nor set a status, because both now belong to whoever bumped it.
+	 */
+	private generation = 0;
 	private readonly log: (message: string) => void;
 	private readonly now: () => number;
 	private readonly machineBytes: () => number;
@@ -275,7 +281,8 @@ export class QwenVoice {
 			return this.getStatus();
 		}
 		this.log("qwen-voice: switched off; stopping everything");
-		this.slot = null;
+		// Through applySlot so the renderer's holder is told, not left stale.
+		this.applySlot(null, { start: false });
 		this.relayed = [];
 		this.awaitingMic = false;
 		this.starting = null;
@@ -476,7 +483,9 @@ export class QwenVoice {
 		this.disarmIdleStop();
 		this.budgetReason = null;
 		this.setStatus({ rig: "starting", webui_url: null });
-		this.starting = (async () => {
+		const generation = ++this.generation;
+		const stale = () => generation !== this.generation;
+		const run: Promise<QwenVoiceStatus> = (async () => {
 			try {
 				/*
 				 * THE MICROPHONE BEFORE THE MODELS (review M3): a first-run prompt
@@ -486,21 +495,20 @@ export class QwenVoice {
 				 * `micSettled` when the OS answers.
 				 */
 				const mic = await this.preflightMic();
+				if (stale()) return this.getStatus();
 				if (mic === "denied" || mic === "prompting") {
 					this.awaitingMic = mic === "prompting";
 					this.setStatus({ rig: "stopped", webui_url: null, mic });
 					return this.getStatus();
 				}
 				// Switched off while the microphone dialog was up: spawn nothing.
-				if (!this.enabled) return this.getStatus();
+				if (stale()) return this.getStatus();
 				const webuiUrl = await this.deps.gateway.start();
+				if (stale()) return this.getStatus();
 				await this.deps.speech.start();
-				// Switched off mid-start: `setEnabled(false)` already stopped what it
-				// could see; stop what finished since.
-				if (!this.enabled) {
-					await this.stopProcesses();
-					return this.getStatus();
-				}
+				// Cancelled mid-start: the stop that cancelled it already took the
+				// processes down, and a newer start may own new ones.
+				if (stale()) return this.getStatus();
 				/*
 				 * The Gateway can die while s2s loads (the 8-minute leg). Reporting
 				 * "ready" over a dead launcher would say Listening with nothing to
@@ -523,6 +531,7 @@ export class QwenVoice {
 				if (this.slot === null) this.armIdleStop();
 				this.openPage(webuiUrl);
 			} catch (error) {
+				if (stale()) return this.getStatus();
 				const message =
 					this.budgetReason ??
 					(error instanceof Error ? error.message : String(error));
@@ -533,9 +542,10 @@ export class QwenVoice {
 			}
 			return this.getStatus();
 		})().finally(() => {
-			this.starting = null;
+			if (this.starting === run) this.starting = null;
 		});
-		return this.starting;
+		this.starting = run;
+		return run;
 	}
 
 	/**
@@ -647,7 +657,7 @@ export class QwenVoice {
 	 * it was asked for.
 	 */
 	processExited(which: "gateway" | "speech", detail: string): void {
-		if (this.status.rig !== "ready") return;
+		if (!this.enabled || this.status.rig !== "ready") return;
 		this.log(`qwen-voice: ${which} exited unexpectedly (${detail})`);
 		this.paused = false;
 		this.disarmIdleStop();
@@ -707,6 +717,7 @@ export class QwenVoice {
 
 	/** Stop both processes. Idempotent. */
 	async stop(): Promise<void> {
+		this.generation += 1;
 		this.paused = false;
 		this.disarmIdleStop();
 		await this.stopProcesses();
