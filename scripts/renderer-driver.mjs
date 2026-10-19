@@ -47110,6 +47110,81 @@ async function sceneHubLinks(cdp, app) {
 	await captureSettled(cdp, `hub-links-${size}-${theme}-org-source`);
 
 	/*
+	 * THE UNRESOLVED ROW ON A TEAM'S PAGE. The panel is the same component for a
+	 * team and the resolve arm's domain is `agent|team`, so the source
+	 * confirmation is photographed on a team pane too - there the record it
+	 * describes is a TEAM, and the block has to read as being about that team.
+	 */
+	await verb(cdp, "navigate", "/agents?kind=team&name=legacy-team");
+	const teamUnresolved = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			const card = pane && pane.querySelector('[data-hub-source-unresolved]');
+			if (!card) return null;
+			const heading = card.querySelector('h3, h4');
+			return {
+				card: card.getAttribute('data-hub-source-unresolved'),
+				heading: heading ? heading.textContent : null,
+			};
+		})()`,
+		30_000,
+	);
+	check(
+		"a legacy unknown-origin TEAM renders its own source-confirmation block",
+		teamUnresolved.ok && teamUnresolved.last.card === "team-legacy",
+		`after ${teamUnresolved.waitedMs ?? "?"}ms: ${JSON.stringify(teamUnresolved.last)}`,
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-team-unresolved`);
+
+	/*
+	 * A RECORD WITH NO HUB LINK DRAWS NOTHING. The panel used to render a "Hub
+	 * links - Not linked to the hub" disclosure on every record, above the
+	 * record's title; a record with no hub presence has nothing to say, and most
+	 * records on a roster have no hub presence.
+	 *
+	 * The assertion is the TEXT, not a marker: "Hub links" appearing anywhere in
+	 * the pane is the old disclosure's own summary, so a record that still drew
+	 * it fails here whether the block is a disclosure or something else.
+	 */
+	await verb(cdp, "navigate", "/agents?name=loner");
+	const noLinkReady = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			if (!pane) return null;
+			const heading = pane.querySelector('h2');
+			return heading ? { title: heading.textContent } : null;
+		})()`,
+		30_000,
+	);
+	/*
+	 * Give the inventory read time to ANSWER before the assertion: the point is
+	 * that the panel says nothing once it knows there is nothing to say, not
+	 * that it says nothing before it has looked.
+	 */
+	await wait(2_000);
+	const noLink = await cdp.evaluate(`(() => {
+		const pane = document.querySelector('[data-agents-pane]');
+		if (!pane) return null;
+		return {
+			rows: pane.querySelectorAll('[data-hub-link]').length,
+			unresolved: pane.querySelectorAll('[data-hub-source-unresolved]').length,
+			hubLinksText: (pane.textContent || '').includes('Hub links'),
+		};
+	})()`);
+	note("no-link record", JSON.stringify({ ready: noLinkReady.last, read: noLink }));
+	check(
+		"a record with no hub link draws NO hub panel at all",
+		noLink !== null &&
+			noLink.rows === 0 &&
+			noLink.unresolved === 0 &&
+			noLink.hubLinksText === false,
+		JSON.stringify(noLink),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-no-link`);
+
+	/*
 	 * THE SIDEBAR MARK (design §Sidebar line 48, CODE MAJOR-2). The chat sidebar
 	 * draws one mark per linked row and the AGGREGATE mark for a multi-origin item.
 	 * The stub gives `reviewer` two origins (aggregate) and `coder` one (quiet).
