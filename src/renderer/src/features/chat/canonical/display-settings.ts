@@ -56,6 +56,10 @@
  * the plane's own answers, rather than keyed.
  */
 
+import {
+	MESSAGE_TIMESTAMPS_KEY,
+	MESSAGE_TIMESTAMP_STYLE_KEY,
+} from "./message-timestamps";
 import { TURN_ANSWER_RAIL_KEY } from "./turn-answer-rail";
 
 /**
@@ -84,6 +88,8 @@ export const HIDE_CROSS_SESSION_KEY = "display.hide_cross_session";
 export const DISPLAY_SEEDED_KEYS: readonly string[] = [
 	HIDE_CROSS_SESSION_KEY,
 	TURN_ANSWER_RAIL_KEY,
+	MESSAGE_TIMESTAMPS_KEY,
+	MESSAGE_TIMESTAMP_STYLE_KEY,
 ];
 
 /** The persisted flags: registry key -> the value last seen for it. */
@@ -222,6 +228,28 @@ export function readFlagValue(
 	const row = settings?.find((entry) => entry.key === key);
 	if (!row) return undefined;
 	return row.value === true;
+}
+
+/**
+ * An enum row's value in a `settings.list` payload, or undefined when the
+ * payload does not carry the key. Strings only: any other type is a backend
+ * this app does not understand and reads as "no answer" (the caller's default).
+ */
+export function readChoiceValue(
+	settings: ReadonlyArray<SettingRow> | null | undefined,
+	key: string,
+): string | undefined {
+	const row = settings?.find((entry) => entry.key === key);
+	return typeof row?.value === "string" ? row.value : undefined;
+}
+
+/** The seed's enum answer, or undefined when it is silent. */
+export function seededChoice(
+	seed: DisplaySeed,
+	key: string,
+): string | undefined {
+	if (!Object.prototype.hasOwnProperty.call(seed, key)) return undefined;
+	return typeof seed[key] === "string" ? (seed[key] as string) : undefined;
 }
 
 /** The seed's own answer to the same question, or undefined when it is silent. */

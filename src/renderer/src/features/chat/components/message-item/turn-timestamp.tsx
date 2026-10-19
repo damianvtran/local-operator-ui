@@ -100,12 +100,15 @@
 
 import { Tooltip } from "@shared/components/ui";
 import { useStampNow } from "@shared/hooks/use-calendar-day";
+import { useMinuteNow } from "@shared/hooks/use-minute-tick";
 import { cn } from "@shared/lib/utils";
 import {
 	formatCalendarDateTime,
+	formatRelativeStamp,
 	formatTurnTimestamp,
 } from "@shared/utils/date-utils";
 import type { FC } from "react";
+import { useMessageTimestampsContext } from "../../canonical/message-timestamps-context";
 
 export type TurnTimestampProps = {
 	/** The moment itself: epoch ms from a record, or a `Date`. */
@@ -129,6 +132,13 @@ export type TurnTimestampProps = {
 	 * than inheriting whichever value happened to be the default.
 	 */
 	scope: "turn" | "answer" | "tool";
+	/**
+	 * `absolute` ("3:42 PM") or `relative` ("2m ago"). Omitted, it follows the
+	 * transcript's `display.message_timestamp_style` (context; `absolute` outside
+	 * a transcript), so every stamp in one view shares one format. The tooltip and
+	 * the accessible name are the full absolute date in both.
+	 */
+	style?: "absolute" | "relative";
 	className?: string;
 };
 
@@ -149,8 +159,14 @@ const STAMP_VERB: Record<TurnTimestampProps["scope"], string> = {
 export const TurnTimestamp: FC<TurnTimestampProps> = ({
 	timestamp,
 	scope,
+	style,
 	className,
 }) => {
+	const contextStyle = useMessageTimestampsContext().style;
+	const relative = (style ?? contextStyle) === "relative";
+	// Subscribes to the shared minute clock ONLY for a relative stamp, so an
+	// absolute transcript carries no timer.
+	const minuteNow = useMinuteNow(relative);
 	const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
 	/*
 	 * ONE `now` FOR THE WHOLE TRANSCRIPT, recomputed at local midnight rather
@@ -207,10 +223,15 @@ export const TurnTimestamp: FC<TurnTimestampProps> = ({
 				 */
 				className={cn(
 					"shrink-0 select-none whitespace-nowrap text-ink-dim text-meta",
+					// Digits change width as the minutes count up; tabular figures
+					// keep "9m ago" -> "10m ago" from jittering the line.
+					relative && "tabular-nums",
 					className,
 				)}
 			>
-				{formatTurnTimestamp(date, now)}
+				{relative
+					? formatRelativeStamp(date, new Date(minuteNow))
+					: formatTurnTimestamp(date, now)}
 			</time>
 		</Tooltip>
 	);

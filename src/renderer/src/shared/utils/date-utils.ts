@@ -1,6 +1,13 @@
 import { format } from "date-fns";
 
-import { formatDate, formatDateTime, formatTime } from "@shared/i18n";
+import {
+	currentLocale,
+	formatDate,
+	formatDateTime,
+	formatRelativeTime,
+	formatTime,
+	t,
+} from "@shared/i18n";
 
 /**
  * Formats a date/time string based on when it occurred
@@ -164,6 +171,47 @@ export const formatTurnTimestamp = (
 		console.error("Error formatting turn timestamp:", error);
 		return "";
 	}
+};
+
+/**
+ * The relative alternative to `formatTurnTimestamp` ("just now", "2m ago",
+ * "3h ago"), for `display.message_timestamp_style = relative`.
+ *
+ * Under a minute reads "just now", which also absorbs a clock that runs ahead
+ * of the record's (a negative age): a stamp must never claim "in 2m". From 24
+ * hours the relative form stops carrying information a reader can place, so it
+ * falls back to the absolute stamp - and that is why `now` is a Date, not an
+ * age. Pure: the caller owns the clock (`use-minute-tick.ts`).
+ */
+/*
+ * `narrow` is only the compact "5m ago" shape in English; in fr/ru it is a bare
+ * "-5 min" with no "ago" word, so every other language takes `short`.
+ */
+const relativeStyle = (): "narrow" | "short" =>
+	currentLocale().split("-")[0] === "en" ? "narrow" : "short";
+
+export const formatRelativeStamp = (
+	dateTimeString: string | Date | number | undefined,
+	now: Date = new Date(),
+): string => {
+	if (dateTimeString === undefined || dateTimeString === null) return "";
+	const date =
+		dateTimeString instanceof Date ? dateTimeString : new Date(dateTimeString);
+	if (Number.isNaN(date.getTime())) return "";
+
+	const ageMs = now.getTime() - date.getTime();
+	if (ageMs < 60_000) return t("ui.projects.project_model.just_now");
+	if (ageMs < 3_600_000) {
+		return formatRelativeTime(-Math.floor(ageMs / 60_000), "minute", {
+			style: relativeStyle(),
+		});
+	}
+	if (ageMs < 86_400_000) {
+		return formatRelativeTime(-Math.floor(ageMs / 3_600_000), "hour", {
+			style: relativeStyle(),
+		});
+	}
+	return formatTurnTimestamp(date, now);
 };
 
 /**

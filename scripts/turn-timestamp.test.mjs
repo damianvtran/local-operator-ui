@@ -119,7 +119,11 @@ after(() => {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { formatTurnTimestamp } from "./src/renderer/src/shared/utils/date-utils";',
+			'export { formatTurnTimestamp, formatRelativeStamp } from "./src/renderer/src/shared/utils/date-utils";',
+			'export * as stampRules from "./src/renderer/src/features/chat/canonical/message-timestamps";',
+			'export { DISPLAY_SEEDED_KEYS } from "./src/renderer/src/features/chat/canonical/display-settings";',
+			'export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
+			'export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { TurnTimestamp } from "./src/renderer/src/features/chat/components/message-item/turn-timestamp";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { ToolRow } from "./src/renderer/src/features/chat/components/trace/tool-row";',
@@ -175,6 +179,11 @@ const bundlePath = new URL(
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	formatTurnTimestamp,
+	formatRelativeStamp,
+	stampRules,
+	DISPLAY_SEEDED_KEYS,
+	desktopKeys,
+	useUiPreferencesStore,
 	TurnTimestamp,
 	CanonicalTranscript,
 	ToolRow,
@@ -581,6 +590,22 @@ const mount = (records, over = {}) => {
 	const queryClient = new QueryClient({
 		defaultOptions: { queries: { retry: false } },
 	});
+	/*
+	 * `over.settings` seeds the registry read the transcript's timestamp hook
+	 * joins (capabilities + `settings.list`, both fresh in the cache so nothing
+	 * is fetched). Omitted, the cache is empty: the fail-closed path.
+	 */
+	if (over.settings !== undefined) {
+		queryClient.setQueryData(desktopKeys.capabilities, {
+			desktop_available: true,
+			features: { settings: 1 },
+		});
+		queryClient.setQueryData(desktopKeys.settings, {
+			settings: over.settings,
+		});
+	}
+	if (over.mode)
+		useUiPreferencesStore.setState({ transcriptDisplayMode: over.mode });
 	const render = (next) => {
 		act(() => {
 			root.render(
@@ -1539,5 +1564,243 @@ test("the day store arms one timer to the next midnight, not a tick", async (t) 
 	} finally {
 		globalThis.setTimeout = mockedSetTimeout;
 		t.mock.timers.reset();
+	}
+});
+
+// ------------------------------------------------- opt-in message timestamps
+
+const at = (ageMs) => [new Date(NOW.getTime() - ageMs), NOW];
+
+test("formatRelativeStamp: boundaries at 0s, 59s, 59m, 23h, 24h and a future clock", () => {
+	const rel = (ms) => plain(formatRelativeStamp(...at(ms)));
+	assert.equal(rel(0), "just now");
+	assert.equal(rel(59_000), "just now");
+	assert.equal(rel(60_000), "1m ago");
+	assert.equal(rel(59 * 60_000), "59m ago");
+	assert.equal(rel(60 * 60_000), "1h ago");
+	assert.equal(rel(23 * 3_600_000), "23h ago");
+	// 24h and beyond is the absolute stamp, not "24h ago".
+	const old = new Date(NOW.getTime() - 24 * 3_600_000);
+	assert.equal(formatRelativeStamp(old, NOW), formatTurnTimestamp(old, NOW));
+	// A record stamped ahead of this clock must not claim "in 5m".
+	assert.equal(rel(-5 * 60_000), "just now");
+	assert.equal(formatRelativeStamp("not a date", NOW), "");
+});
+
+test("the settings reader is fail-closed and the style defaults to absolute", () => {
+	const {
+		messageTimestampsEnabled,
+		messageTimestampStyle,
+		MESSAGE_TIMESTAMPS_KEY,
+		MESSAGE_TIMESTAMP_STYLE_KEY,
+	} = stampRules;
+	assert.equal(MESSAGE_TIMESTAMPS_KEY, "display.message_timestamps");
+	assert.equal(MESSAGE_TIMESTAMP_STYLE_KEY, "display.message_timestamp_style");
+	for (const bad of [
+		undefined,
+		null,
+		[],
+		[{ key: "other", value: true }],
+		[{ key: MESSAGE_TIMESTAMPS_KEY, value: "true" }],
+		[{ key: MESSAGE_TIMESTAMPS_KEY, value: 1 }],
+	]) {
+		assert.equal(messageTimestampsEnabled(bad), false);
+	}
+	assert.equal(
+		messageTimestampsEnabled([{ key: MESSAGE_TIMESTAMPS_KEY, value: true }]),
+		true,
+	);
+	assert.equal(messageTimestampStyle(undefined), "absolute");
+	assert.equal(
+		messageTimestampStyle([
+			{ key: MESSAGE_TIMESTAMP_STYLE_KEY, value: "weird" },
+		]),
+		"absolute",
+	);
+	assert.equal(
+		messageTimestampStyle([
+			{ key: MESSAGE_TIMESTAMP_STYLE_KEY, value: "relative" },
+		]),
+		"relative",
+	);
+});
+
+test("both keys are in the persisted first-paint seed", () => {
+	assert.ok(DISPLAY_SEEDED_KEYS.includes("display.message_timestamps"));
+	assert.ok(DISPLAY_SEEDED_KEYS.includes("display.message_timestamp_style"));
+});
+
+const ON = [
+	{ key: "display.message_timestamps", value: true },
+	{ key: "display.message_timestamp_style", value: "absolute" },
+];
+const ON_RELATIVE = [
+	ON[0],
+	{ key: "display.message_timestamp_style", value: "relative" },
+];
+const OFF = [{ key: "display.message_timestamps", value: false }];
+
+// One finished turn with a mid-turn response and a closing answer.
+const turn = () => [
+	userRecord("user:1"),
+	answerRecord("a:1", { text: "Checking the invoices first." }),
+	toolRecord("tool:1"),
+	answerRecord("a:2"),
+];
+
+const counts = (container) => ({
+	turn: stamps(container, "turn").length,
+	answer: stamps(container, "answer").length,
+	tool: stamps(container, "tool").length,
+});
+
+for (const mode of ["by-turn", "by-response"]) {
+	test(`${mode}: setting OFF paints today's stamps; ON adds the user and mid-turn ones`, () => {
+		const off = mount(turn(), { settings: OFF, mode });
+		const offCounts = counts(off.container);
+		// Two things drift between mounts in one process regardless of the
+		// setting: the learned row-height estimate in `data-lo-entry-signature`
+		// and React's `useId` values. The speak button's probe sentence is timing too. Everything else must match byte for byte.
+		const norm = (html) =>
+			html
+				.replace(/ data-lo-entry-signature="[^"]*"/g, "")
+				.replace(/:r[0-9a-z]+:/g, ":r:")
+				// The speak button's credential probe settles asynchronously, so its
+				// sr-only sentence depends on timing, not on the setting.
+				.replace(/(<span id=":r:" class="sr-only">)[^<]*/g, "$1");
+		const offHtml = norm(off.container.innerHTML);
+		off.unmount();
+		const absent = mount(turn(), { mode });
+		assert.deepEqual(
+			counts(absent.container),
+			offCounts,
+			"an absent key reads as OFF",
+		);
+		assert.equal(
+			norm(absent.container.innerHTML),
+			offHtml,
+			"OFF DOM is identical to the unseeded (today's) DOM",
+		);
+		absent.unmount();
+
+		const on = mount(turn(), { settings: ON, mode });
+		const onCounts = counts(on.container);
+		assert.equal(onCounts.turn, 1, "the user message gains a Sent stamp");
+		assert.equal(onCounts.tool, 0);
+		// by-turn hides the mid-turn response inside the bar; by-response shows it.
+		const extra = mode === "by-response" ? 1 : 0;
+		assert.equal(onCounts.answer, offCounts.answer + extra);
+		for (const stamp of on.container.querySelectorAll("time")) {
+			assert.equal(
+				stamp.closest('[role="toolbar"]'),
+				null,
+				"a stamp is never inside the toolbar",
+			);
+		}
+		on.unmount();
+	});
+}
+
+test("the user stamp is a sibling of the toolbar, outside the faded strip", () => {
+	const { container, unmount } = mount([userRecord("user:1")], {
+		settings: ON,
+	});
+	const stamp = stamps(container, "turn")[0];
+	const toolbar = container.querySelector("[data-lo-user-actions]");
+	assert.ok(stamp && toolbar);
+	assert.equal(
+		stamp.parentElement,
+		toolbar.parentElement,
+		"siblings on one line",
+	);
+	assert.ok(!stamp.className.includes("opacity-0"));
+	assert.ok(stamp.className.includes("whitespace-nowrap"));
+	assert.match(stamp.getAttribute("aria-label"), /^Sent /);
+	unmount();
+});
+
+test("an image-only user turn gains a caption line when ON, and nothing when OFF", () => {
+	const rec = userRecord("user:1", { text: "" });
+	const off = mount([rec], { settings: OFF });
+	assert.equal(allStamps(off.container).length, 0);
+	off.unmount();
+	const on = mount([rec], { settings: ON });
+	assert.equal(counts(on.container).turn, 1);
+	assert.equal(
+		on.container.querySelector("[data-lo-user-actions]"),
+		null,
+		"still no toolbar",
+	);
+	on.unmount();
+});
+
+test("relative style: text is relative, label stays the full date, digits are tabular", () => {
+	const recent = Date.now() - 5 * 60_000;
+	const { container, unmount } = mount([userRecord("user:1", { ts: recent })], {
+		settings: ON_RELATIVE,
+	});
+	const stamp = stamps(container, "turn")[0];
+	assert.match(plain(stamp.textContent), /^5m ago$/);
+	assert.match(stamp.getAttribute("aria-label"), /^Sent .*20\d\d/);
+	assert.ok(stamp.className.includes("tabular-nums"));
+	unmount();
+});
+
+test("a plane that denies settings reads OFF even with a cached ON payload", () => {
+	const m = mount([userRecord("user:1")], { settings: ON });
+	// Re-seed capabilities as withdrawn: the cached payload must not stand.
+	m.unmount();
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	queryClient.setQueryData(desktopKeys.capabilities, {
+		desktop_available: true,
+		features: {},
+	});
+	queryClient.setQueryData(desktopKeys.settings, { settings: ON });
+	act(() => {
+		root.render(
+			h(
+				QueryClientProvider,
+				{ client: queryClient },
+				h(CanonicalTranscript, {
+					transcript: transcriptOf([userRecord("user:1")]),
+					gate: null,
+					waiting: false,
+					loadingOlder: false,
+					onLoadOlder: async () => true,
+					containerRef: { current: container },
+					isSmallView: false,
+					status: "live",
+					failure: null,
+					awaitingHydration: false,
+					onReconnect: () => {},
+				}),
+			),
+		);
+	});
+	assert.equal(allStamps(container).length, 0);
+	act(() => root.unmount());
+	container.remove();
+});
+
+test("relative stamps never render as a bare signed number in any shipped locale", () => {
+	const before = currentLocale();
+	try {
+		for (const locale of ["en", "es", "fr", "ru", "vi", "hi"]) {
+			setLocale(locale);
+			for (const ms of [5 * 60_000, 3 * 3_600_000]) {
+				const text = plain(formatRelativeStamp(...at(ms)));
+				assert.ok(
+					text.length > 0 && !/^[-+\u2212]/.test(text),
+					`${locale}: ${text}`,
+				);
+			}
+		}
+	} finally {
+		setLocale(before);
 	}
 });

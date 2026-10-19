@@ -86,6 +86,7 @@ import { GeneralLanguageSetting } from "./language-dialog";
 
 import { KeyboardShortcutsSection } from "./keyboard-shortcuts-section";
 import { McpManagementSection } from "./mcp-management-section";
+import { MessageTimestampSettings } from "./message-timestamp-settings";
 import { RadientAccountSection } from "./radient-account-section";
 import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
@@ -1528,6 +1529,12 @@ export const SettingsPage: FC = () => {
 									value={parseTranscriptDisplayMode(transcriptDisplayMode)}
 									onChange={(next) => setTranscriptDisplayMode(next)}
 								/>
+								{/*
+								 * MESSAGE TIMESTAMPS: two backend-registry rows (a switch and
+								 * its gated style) rendered by key, so they save and reset like
+								 * every registry row. Absent on a backend that predates them.
+								 */}
+								<MessageTimestampSettings />
 								{/*
 								 * OPTIONAL WINDOW TRANSLUCENCY, default off. Owned by the main process
 								 * (it must know before the window exists), so this row reads and

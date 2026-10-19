@@ -2244,6 +2244,74 @@
 			"unit": ""
 		},
 		{
+			"key": "display.message_timestamps",
+			"section": "appearance",
+			"label": "Message timestamps",
+			"kind": "bool",
+			"help": "Show a timestamp beside each message in the transcript (desktop app).",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "a timestamp on each message"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "no timestamps"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "display.message_timestamp_style",
+			"section": "appearance",
+			"label": "Timestamp style",
+			"kind": "enum",
+			"help": "Choose absolute clock times or relative ages for message timestamps (desktop app).",
+			"value": "absolute",
+			"default": "absolute",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "absolute",
+					"label": "Absolute",
+					"description": "e.g. 7:52 PM"
+				},
+				{
+					"value": "relative",
+					"label": "Relative",
+					"description": "e.g. 5m ago"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "display.message_timestamps",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
 			"key": "display.composer.band",
 			"section": "appearance",
 			"label": "Status band",

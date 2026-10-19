@@ -165,6 +165,10 @@ import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
 import { forkEntryId } from "./message-actions";
 import { AnswerActionRow } from "./message-actions-row";
+import {
+	MessageTimestampsContext,
+	useMessageTimestampsContext,
+} from "./message-timestamps-context";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import type { OpenFrameFacts } from "./open-frame";
 import {
@@ -263,6 +267,7 @@ import type { AttachmentScope } from "./use-attachment-url";
 import { useCheckpoints } from "./use-checkpoints";
 import { useCrossSessionVisibility } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
+import { useMessageTimestamps } from "./use-message-timestamps";
 import { useScrollPaging } from "./use-scroll-paging";
 import {
 	type TranscriptMountAdapter,
@@ -992,6 +997,30 @@ const UserRow = memo(function UserRow({
 		const el = bodyRef.current;
 		if (el) setClamped(el.scrollHeight > el.clientHeight + 1);
 	}, [expanded, remainingContent]);
+	const stamps = useMessageTimestampsContext();
+	const userActions = isQuotable(record, remainingContent) ? (
+		<AnswerActionRow
+			kind="user"
+			bodyText={remainingContent}
+			revealId={record.id}
+			revealAt={record.ts}
+			/*
+			 * FORK IS OFFERED FROM THE MESSAGE, not only from the sidebar row
+			 * (#739): "fork the conversation from this message on". The entry id
+			 * is `forkEntryId`'s answer for THIS record - the journal entry a
+			 * cut can land at, which is what makes the picker a cut rather than
+			 * a whole-conversation copy. `conversationId` is the picker's
+			 * subject and is deliberately explicit: this transcript can be
+			 * rendered for a conversation that is not the pane's own, and a
+			 * request must never be answered with a substituted conversation.
+			 *
+			 * A transcript mounted with no conversation (the run-details child
+			 * reader) passes neither, so the row offers no Fork there.
+			 */
+			conversationId={conversationId}
+			entryId={forkEntryId(record) ?? undefined}
+		/>
+	) : null;
 	return (
 		<MessageContainer isUser isSmallView={isSmallView}>
 			{/*
@@ -1357,28 +1386,24 @@ const UserRow = memo(function UserRow({
 				 * turn has words to offer" gate the quote control reads - a turn with
 				 * no words has nothing to copy.
 				 */}
-				{isQuotable(record, remainingContent) && (
-					<AnswerActionRow
-						kind="user"
-						bodyText={remainingContent}
-						revealId={record.id}
-						revealAt={record.ts}
-						/*
-						 * FORK IS OFFERED FROM THE MESSAGE, not only from the sidebar row
-						 * (#739): "fork the conversation from this message on". The entry id
-						 * is `forkEntryId`'s answer for THIS record - the journal entry a
-						 * cut can land at, which is what makes the picker a cut rather than
-						 * a whole-conversation copy. `conversationId` is the picker's
-						 * subject and is deliberately explicit: this transcript can be
-						 * rendered for a conversation that is not the pane's own, and a
-						 * request must never be answered with a substituted conversation.
-						 *
-						 * A transcript mounted with no conversation (the run-details child
-						 * reader) passes neither, so the row offers no Fork there.
-						 */
-						conversationId={conversationId}
-						entryId={forkEntryId(record) ?? undefined}
-					/>
+				{stamps.enabled ? (
+					/*
+					 * MESSAGE TIMESTAMPS ON (`display.message_timestamps`): the "Sent"
+					 * stamp is an always-visible SIBLING of the toolbar, never inside it.
+					 * The toolbar is `opacity-0 pointer-events-none` at rest and
+					 * `role="toolbar"`, so a stamp in it would be invisible to a sighted
+					 * keyboard user and would sit in the toolbar's semantics. The wrapper
+					 * exists only in this branch: OFF renders exactly the DOM it always
+					 * did. The line is the toolbar's own 28px (`h-7` buttons), so the
+					 * stamp (`whitespace-nowrap`, one `text-meta` line) adds no height; a
+					 * turn with no words has no toolbar and gains the caption line alone.
+					 */
+					<div className={cn("flex items-center justify-end gap-2")}>
+						<TurnTimestamp timestamp={record.ts} scope="turn" />
+						{userActions}
+					</div>
+				) : (
+					userActions
 				)}
 				{/*
 				 * §F3's LINE, ONE ROW UNDER THE BLOCK IT IS ABOUT.
@@ -1533,6 +1558,7 @@ const AssistantRow = memo(function AssistantRow({
 	 * call but a second place for the two to drift apart).
 	 */
 	const quotable = isQuotable(record, remainingContent);
+	const timestamps = useMessageTimestampsContext();
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			{/*
@@ -1718,7 +1744,18 @@ const AssistantRow = memo(function AssistantRow({
 			 * paragraph a live turn settles - the per-paragraph churn #698 removed.
 			 */}
 			{!closesTurn && quotable && (
-				<div className={cn("mt-1 flex justify-end")}>
+				<div
+					className={cn(
+						"mt-1 flex justify-end",
+						// ON: the "Answered" stamp sits before Copy as a sibling of the
+						// toolbar, on the line's reserved height (same rule as the user
+						// row). OFF adds no class and no child.
+						timestamps.enabled && "items-center gap-2",
+					)}
+				>
+					{timestamps.enabled && (
+						<TurnTimestamp timestamp={record.ts} scope="answer" />
+					)}
 					<AnswerActionRow kind="response" bodyText={remainingContent} />
 				</div>
 			)}
@@ -3322,6 +3359,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * for one fact (agent review round 1, R4).
 	 */
 	const answerRail = useTurnAnswerRail();
+	const messageTimestamps = useMessageTimestamps();
 	const shownRecords = useMemo(
 		() => visibleRecords(painted.records, hide),
 		[painted.records, hide],
@@ -6527,132 +6565,134 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								key={`${foldSession.current}:${transcript.viewEpoch}`}
 								value={viewState.current.store}
 							>
-								<CanvasPaneProvider conversationId={conversationId}>
-									{/*
-									 * THE ROWS, WITH §E2's AGGREGATION TIER APPLIED.
-									 *
-									 * `foldRuns` decides which consecutive actions become one summary
-									 * line, and it never reorders them: the fold is keyed by its FIRST
-									 * row, so it cannot claim a place ahead of the action that opens it,
-									 * and the rows inside it are the same `TranscriptRow`s with the same
-									 * ids in the same DOM - which is what keeps every `data-record-id`
-									 * lookup (the failure jump among them) working the same whether a
-									 * run happens to be folded or not.
-									 *
-									 * ONE THING THE FOLD NEEDS FROM MAIN THAT THE ROWS DO NOT CARRY THEMSELVES:
-									 * `labelPending` is a Set on this component and a BOOLEAN on the row,
-									 * resolved here for #490's reason (see `TranscriptRow`'s props). The
-									 * fold onto `origin/main` that brought #490 under this redesign removed
-									 * the `visible.map` this replaced, so the resolution is re-expressed at
-									 * the two call sites rather than kept as main's single one - and the
-									 * SAME treatment applies to #520's `labelHoldLate`/`labelMarked` pair:
-									 * the Set resolves against the row's own `toolCallId` at each call site,
-									 * so a held or mark-ended row states its column inside a fold exactly
-									 * as it would standing alone.
-									 */}
-									<div
-										ref={entriesRef}
-										data-lo-transcript-entries
-										className="flex shrink-0 flex-col"
-									>
-										{domWindow.pieces.map((piece) => {
-											if (piece.kind === "spacer")
-												return (
-													<div
-														key={`spacer:${piece.start}:${piece.end}`}
-														aria-hidden="true"
-														data-lo-transcript-spacer
-														className="shrink-0"
-														style={{
-															height: piece.height,
-															overflowAnchor: "none",
-														}}
-													/>
+								<MessageTimestampsContext.Provider value={messageTimestamps}>
+									<CanvasPaneProvider conversationId={conversationId}>
+										{/*
+										 * THE ROWS, WITH §E2's AGGREGATION TIER APPLIED.
+										 *
+										 * `foldRuns` decides which consecutive actions become one summary
+										 * line, and it never reorders them: the fold is keyed by its FIRST
+										 * row, so it cannot claim a place ahead of the action that opens it,
+										 * and the rows inside it are the same `TranscriptRow`s with the same
+										 * ids in the same DOM - which is what keeps every `data-record-id`
+										 * lookup (the failure jump among them) working the same whether a
+										 * run happens to be folded or not.
+										 *
+										 * ONE THING THE FOLD NEEDS FROM MAIN THAT THE ROWS DO NOT CARRY THEMSELVES:
+										 * `labelPending` is a Set on this component and a BOOLEAN on the row,
+										 * resolved here for #490's reason (see `TranscriptRow`'s props). The
+										 * fold onto `origin/main` that brought #490 under this redesign removed
+										 * the `visible.map` this replaced, so the resolution is re-expressed at
+										 * the two call sites rather than kept as main's single one - and the
+										 * SAME treatment applies to #520's `labelHoldLate`/`labelMarked` pair:
+										 * the Set resolves against the row's own `toolCallId` at each call site,
+										 * so a held or mark-ended row states its column inside a fold exactly
+										 * as it would standing alone.
+										 */}
+										<div
+											ref={entriesRef}
+											data-lo-transcript-entries
+											className="flex shrink-0 flex-col"
+										>
+											{domWindow.pieces.map((piece) => {
+												if (piece.kind === "spacer")
+													return (
+														<div
+															key={`spacer:${piece.start}:${piece.end}`}
+															aria-hidden="true"
+															data-lo-transcript-spacer
+															className="shrink-0"
+															style={{
+																height: piece.height,
+																overflowAnchor: "none",
+															}}
+														/>
+													);
+												const slot = slots[piece.index];
+												const descriptor = descriptors[piece.index];
+												const facts = slot.indices.map(
+													(index) => entryFacts[index],
 												);
-											const slot = slots[piece.index];
-											const descriptor = descriptors[piece.index];
-											const facts = slot.indices.map(
-												(index) => entryFacts[index],
-											);
-											const gap = { first: 0, trace: 2, item: 12, turn: 32 }[
-												facts[0].gap
-											];
-											if (facts.every((fact) => fact.omitted)) return null;
-											const oldPlan = previousSlotPlan.current;
-											const structural =
-												oldPlan.representations.get(slot.key) !==
-												facts[0].representation;
-											const oldPieces = structural
-												? oldPlan.entries.filter((entry) =>
-														entry.recordIds.every((id) =>
-															descriptor.recordIds.includes(id),
-														),
-													)
-												: [];
-											// Read only the changing span's OLD mounted boxes. Omitted pieces
-											// already have exact scalar spacer contributions in the old prefix.
-											const oldHeights = oldPieces.map(
-												(entry) =>
-													Array.from(
-														containerRef.current?.querySelectorAll<HTMLElement>(
-															"[data-lo-entry-key]",
-														) ?? [],
-													)
-														.find(
-															(element) =>
-																element.dataset.loEntryKey === entry.key,
+												const gap = { first: 0, trace: 2, item: 12, turn: 32 }[
+													facts[0].gap
+												];
+												if (facts.every((fact) => fact.omitted)) return null;
+												const oldPlan = previousSlotPlan.current;
+												const structural =
+													oldPlan.representations.get(slot.key) !==
+													facts[0].representation;
+												const oldPieces = structural
+													? oldPlan.entries.filter((entry) =>
+															entry.recordIds.every((id) =>
+																descriptor.recordIds.includes(id),
+															),
 														)
-														?.getBoundingClientRect().height ??
-													oldPlan.heights.get(entry.key),
-											);
-											const fromHeight =
-												oldHeights.length &&
-												oldHeights.every((height) => height !== undefined)
-													? oldHeights.reduce<number>(
-															(sum, height) => sum + (height ?? 0),
-															0,
-														) - gap
-													: null;
-											const firstOldGap =
-												slotExtents.current.get(slot.key)?.gap ?? gap;
-											const fromFirstHeight =
-												oldHeights[0] === undefined
-													? null
-													: oldHeights[0] - firstOldGap;
-											return (
-												<TranscriptEntrySlot
-													key={slot.key}
-													entryKey={slot.key}
-													signature={descriptor.signature}
-													sessionKey={`${foldSession.current}:${transcript.viewEpoch}`}
-													expanded={facts[0].open}
-													anchorHeader={
-														facts[0].candidate ||
-														facts[0].representation !== "inline"
-													}
-													recordIds={descriptor.recordIds}
-													representation={facts[0].representation}
-													gap={gap}
-													media={facts.some((fact) => fact.media)}
-													live={paneIsLive}
-													arrival={
-														descriptor.recordIds.some((id) =>
-															arriving.has(id),
-														) && facts[0].representation !== "inline"
-													}
-													fromHeight={fromHeight}
-													fromFirstHeight={fromFirstHeight}
-													layout={scrollLayout}
-													extents={slotExtents.current}
-												>
-													{slot.indices.flatMap((index) =>
-														renderEntry(chatEntries[index]),
-													)}
-												</TranscriptEntrySlot>
-											);
-										})}
-									</div>
-								</CanvasPaneProvider>
+													: [];
+												// Read only the changing span's OLD mounted boxes. Omitted pieces
+												// already have exact scalar spacer contributions in the old prefix.
+												const oldHeights = oldPieces.map(
+													(entry) =>
+														Array.from(
+															containerRef.current?.querySelectorAll<HTMLElement>(
+																"[data-lo-entry-key]",
+															) ?? [],
+														)
+															.find(
+																(element) =>
+																	element.dataset.loEntryKey === entry.key,
+															)
+															?.getBoundingClientRect().height ??
+														oldPlan.heights.get(entry.key),
+												);
+												const fromHeight =
+													oldHeights.length &&
+													oldHeights.every((height) => height !== undefined)
+														? oldHeights.reduce<number>(
+																(sum, height) => sum + (height ?? 0),
+																0,
+															) - gap
+														: null;
+												const firstOldGap =
+													slotExtents.current.get(slot.key)?.gap ?? gap;
+												const fromFirstHeight =
+													oldHeights[0] === undefined
+														? null
+														: oldHeights[0] - firstOldGap;
+												return (
+													<TranscriptEntrySlot
+														key={slot.key}
+														entryKey={slot.key}
+														signature={descriptor.signature}
+														sessionKey={`${foldSession.current}:${transcript.viewEpoch}`}
+														expanded={facts[0].open}
+														anchorHeader={
+															facts[0].candidate ||
+															facts[0].representation !== "inline"
+														}
+														recordIds={descriptor.recordIds}
+														representation={facts[0].representation}
+														gap={gap}
+														media={facts.some((fact) => fact.media)}
+														live={paneIsLive}
+														arrival={
+															descriptor.recordIds.some((id) =>
+																arriving.has(id),
+															) && facts[0].representation !== "inline"
+														}
+														fromHeight={fromHeight}
+														fromFirstHeight={fromFirstHeight}
+														layout={scrollLayout}
+														extents={slotExtents.current}
+													>
+														{slot.indices.flatMap((index) =>
+															renderEntry(chatEntries[index]),
+														)}
+													</TranscriptEntrySlot>
+												);
+											})}
+										</div>
+									</CanvasPaneProvider>
+								</MessageTimestampsContext.Provider>
 							</TranscriptViewStateContext.Provider>
 						)}
 

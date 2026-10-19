@@ -127,6 +127,9 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	"display.dock": "advanced",
 	"display.hide_cross_session": "advanced",
 	"display.turn_answer_rail": "advanced",
+	// Core: the label states the choice on its own; the style is its refinement.
+	"display.message_timestamps": "core",
+	"display.message_timestamp_style": "advanced",
 	"tui.sidebar_visible": "advanced",
 	"tui.sidebar_position": "advanced",
 	// keymap (3)

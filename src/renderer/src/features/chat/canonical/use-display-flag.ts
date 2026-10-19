@@ -34,8 +34,10 @@ import {
 	type DisplayFlagReading,
 	type DisplayPlane,
 	displayFlagReading,
+	readChoiceValue,
 	readDisplaySeed,
 	readFlagValue,
+	seededChoice,
 	seededFlag,
 	writeDisplaySeed,
 } from "./display-settings";
@@ -168,4 +170,23 @@ export function useDisplayFlag(key: string): DisplayFlagView {
 		seed,
 		plane,
 	};
+}
+
+/**
+ * Read one ENUM display key (a string row such as
+ * `display.message_timestamp_style`): the payload's answer, else the persisted
+ * seed, else undefined. Joins the same registry query as `useDisplayFlag`, so it
+ * is not a second fetch. A denied/failed plane has no answer to give, so the
+ * caller's default applies; the seed never stands in for it.
+ */
+export function useDisplayChoice(key: string): string | undefined {
+	const capabilities = useDesktopCapabilities();
+	const advertised = desktopFeatureEnabled(capabilities.data, "settings");
+	const settingsQuery = useQuery({
+		...backendSettingsQueryOptions(),
+		enabled: advertised,
+	});
+	const seed = useMemo(() => seededChoice(readDisplaySeed(), key), [key]);
+	if (!advertised) return undefined;
+	return readChoiceValue(settingsQuery.data?.settings, key) ?? seed;
 }
