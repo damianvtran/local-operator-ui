@@ -107,7 +107,17 @@ function readFilters(): LibraryListFilters {
 		const raw = sessionStorage.getItem(FILTER_STORAGE_KEY);
 		if (!raw) return NO_LIBRARY_FILTERS;
 		const parsed = JSON.parse(raw) as Partial<LibraryListFilters>;
-		return { ...NO_LIBRARY_FILTERS, ...parsed, q: "" };
+		/*
+		 * A session written before the scope existed has no `scope` key; the
+		 * migration is the default itself (`final`), not a one-time rewrite, so
+		 * an unknown value also falls back rather than reaching the request.
+		 */
+		return {
+			...NO_LIBRARY_FILTERS,
+			...parsed,
+			scope: parsed.scope === "all" ? "all" : "final",
+			q: "",
+		};
 	} catch {
 		return NO_LIBRARY_FILTERS;
 	}
@@ -280,6 +290,13 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 	const params = useParams<{ assetId?: string }>();
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "library", 1);
+	/*
+	 * Read the Librarian status at the page level for the scope section's
+	 * catalog-wide total. It is the same query key the Librarian row uses, so
+	 * React Query shares one request; the call sits above every early return
+	 * because a hook may not appear on only some renders.
+	 */
+	const librarianStatus = useLibrarianStatus(enabled);
 	const clock = nowMs ?? Date.now();
 	const { ref: workspaceRef, width: workspaceWidth } = useWorkspaceWidth();
 	const viewportWidth = useViewportWidth();
@@ -507,6 +524,13 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 		);
 	}
 
+	/*
+	 * The scope section's "All inclusions" count is catalog-wide, and a final
+	 * listing answers per-scope totals only. The Librarian status route carries
+	 * the catalog-wide total independently of the page, so read it here; the
+	 * row's own query is shared by key, not repeated on the wire.
+	 */
+	const allScopeTotal = librarianStatus.data?.library?.total ?? null;
 	const rail = (
 		<LibraryFilterRail
 			filters={filters}
@@ -517,6 +541,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			counts={lastPage?.counts}
 			tags={lastPage?.tags ?? []}
 			total={total}
+			scopeTotal={allScopeTotal}
 		/>
 	);
 

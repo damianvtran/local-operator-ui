@@ -2151,6 +2151,9 @@ export type MessageParams = {
 	"ui.library.filter.clear_conversation": undefined;
 	"ui.library.filter.clear_filters": undefined;
 	"ui.library.filter.one_conversation": undefined;
+	"ui.library.filter.scope": undefined;
+	"ui.library.filter.scope_all": undefined;
+	"ui.library.filter.scope_final": undefined;
 	"ui.library.filter.source": undefined;
 	"ui.library.filter.status": undefined;
 	"ui.library.filter.tag_mode": { mode: string };
