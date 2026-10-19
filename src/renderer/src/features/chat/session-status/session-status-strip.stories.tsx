@@ -1,3 +1,9 @@
+import {
+	legacySpend,
+	mixedSpend,
+	paygoSpend,
+	subscriptionSpend,
+} from "./spend-basis-fixtures";
 /**
  * The session status strip in every state it can honestly be in.
  *
@@ -2219,6 +2225,44 @@ export const ChannelsZeroStates: Story = {
 					onCommand={() => undefined}
 					costChannels={true}
 				/>
+			</Frame>
+		</div>
+	),
+};
+
+// All spend surfaces use the same four additive-wire compatibility cases.
+export const PaymentSubscription: Story = {
+	render: () => (
+		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend override={{ spend_channels: subscriptionSpend }} />
+			</Frame>
+		</div>
+	),
+};
+export const PaymentMixedSameTurn: Story = {
+	render: () => (
+		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend override={{ spend_channels: mixedSpend }} />
+			</Frame>
+		</div>
+	),
+};
+export const PaymentPaygo: Story = {
+	render: () => (
+		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend override={{ spend_channels: paygoSpend }} />
+			</Frame>
+		</div>
+	),
+};
+export const PaymentLegacyUntracked: Story = {
+	render: () => (
+		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend override={{ spend_channels: legacySpend }} />
 			</Frame>
 		</div>
 	),

@@ -474,7 +474,7 @@ test("the fixture's breakdown is composed, row for row", () => {
 	// (D1/D2).
 	assert.equal(
 		breakdown.summary,
-		"Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $1.42 without a tracked basis yet ($0.520 subagent sessions) · 1 record without a price",
+		"Total ≥$1.54 · Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $1.42 without a tracked basis yet ($0.520 subagent sessions) · 1 record without a price",
 	);
 	assert.deepEqual(
 		breakdown.rows.map((row) => [row.name, row.amount, row.basis]),
@@ -547,14 +547,14 @@ test("an object without the sections keeps the plan gloss and today's body", () 
 	const breakdown = channelBreakdown(cost.channels);
 	assert.equal(
 		breakdown.planClause,
-		"Includes $0.053 API-equivalent (covered by a plan, not charged).",
+		"Includes $0.053 included in your plan (API-equivalent).",
 	);
 	assert.deepEqual(breakdown.byAgent, []);
 	assert.deepEqual(breakdown.bySource, []);
 	assert.deepEqual(breakdown.notes, []);
 	assert.equal(
 		breakdown.summary,
-		"Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $1.42 without a tracked basis yet ($0.520 subagent sessions) · 1 record without a price",
+		"Total ≥$1.54 · Billed $0.053 · Included $0.053 (API-equivalent) · Estimated $0.010 · $1.42 without a tracked basis yet ($0.520 subagent sessions) · 1 record without a price",
 	);
 	assert.equal(breakdown.rows.length, 5);
 });
@@ -783,11 +783,14 @@ test("a channel row with no sizeable amount is a fact with its own words", () =>
 		breakdown.rows.map((row) => [row.name, row.amount, row.basis]),
 		[
 			["TTS · radient", PRICE_UNKNOWN_TEXT, ""],
-			["Image · openai-sub/gpt-image-2", "$0.053", "API-equivalent"],
+			["Image · openai-sub/gpt-image-2", "$0.053", "Included"],
 		],
 	);
 	// The count carries the noun; the row carries the amount's own words.
-	assert.equal(breakdown.summary, "Billed $0.053 · 1 record without a price");
+	assert.equal(
+		breakdown.summary,
+		"Total ≥$0.053 · Billed $0.053 · 1 record without a price",
+	);
 });
 
 test("subscription money never joins billed, and the words keep them apart", () => {
@@ -841,12 +844,15 @@ test("subscription money never joins billed, and the words keep them apart", () 
 	);
 	assert.equal(cost.text, "$1.50");
 	const breakdown = channelBreakdown(cost.channels);
-	assert.equal(breakdown.summary, "Billed $1.00 · API-equivalent $0.500");
+	assert.equal(
+		breakdown.summary,
+		"Total $1.50 · Billed $1.00 · Included $0.500 (API-equivalent)",
+	);
 	assert.deepEqual(
 		breakdown.rows.map((row) => [row.name, row.amount, row.basis]),
 		[
 			["Image · radient", "$1.00", "Billed"],
-			["Image · openai-sub", "$0.500", "API-equivalent"],
+			["Image · openai-sub", "$0.500", "Included"],
 		],
 	);
 });

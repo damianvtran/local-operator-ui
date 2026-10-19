@@ -20,6 +20,7 @@ import {
 	type SessionCostInput,
 	type SpendChannelsReading,
 	channelBreakdown,
+	childBasisLine,
 	costTooltip,
 	sessionCost,
 } from "./session-cost";
@@ -519,6 +520,10 @@ const ChannelTooltipBody: FC<{
 		<span className="flex flex-col gap-1">
 			<span className="font-mono text-mono-sm text-ink">{cost.text}</span>
 			<span className="text-ink-muted">{costTooltip(cost)}</span>
+			{!breakdown.byAgent.some((entry) => entry.channel === "subagents") &&
+				childBasisLine(reading) && (
+					<span className="text-ink-muted">{childBasisLine(reading)}</span>
+				)}
 			{breakdown.planClause && (
 				<span className="text-ink-muted">{breakdown.planClause}</span>
 			)}
@@ -535,7 +540,10 @@ const ChannelTooltipBody: FC<{
 						>
 							<span className="min-w-0">{entry.name}</span>
 							<span className="shrink-0 font-mono text-mono-sm">
-								{entry.amount}
+								{entry.channel === "subagents"
+									? (childBasisLine(reading)?.replace(/^Subagents /, "") ??
+										entry.amount)
+									: entry.amount}
 							</span>
 						</span>
 					))}
