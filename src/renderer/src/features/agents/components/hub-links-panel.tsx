@@ -971,7 +971,14 @@ export function HubLinksPanel({
 	}
 	if (rows.length === 0 && unresolved.length === 0) return null;
 	return (
-		<div className="flex min-w-0 flex-col gap-3">
+		/*
+		 * THE PANE-SCOPED MARKER. `Disclosure` does not forward unknown props to
+		 * its root, so the marker lives on this wrapper - it is what lets the
+		 * evidence scene find THIS panel's own trigger instead of the first
+		 * expander in the pane, which is now some other control (the panel sits
+		 * below the record's title, so the record's own disclosures come first).
+		 */
+		<div className="flex min-w-0 flex-col gap-3" data-hub-links-panel>
 			{/*
 			 * THE UNRESOLVED ROW IS A CARD, NOT A LINE IN THE DISCLOSURE. It is
 			 * the one thing on this surface that asks the reader to ACT, and an
@@ -999,7 +1006,6 @@ export function HubLinksPanel({
 					onOpenChange={setOpen}
 					summary={`${t("ui.hub.links.title")} · ${summaryState}`}
 					className="min-w-0"
-					data-hub-links-panel
 				>
 					<div className="divide-y divide-hairline">
 						{rows.map((link) => (
