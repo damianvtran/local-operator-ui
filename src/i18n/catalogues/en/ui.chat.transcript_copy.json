@@ -1,0 +1,10 @@
+{
+	"ui.chat.transcript_copy.menu.copy_text": "Copy text",
+	"ui.chat.transcript_copy.menu.copy_markdown": "Copy as Markdown",
+	"ui.chat.transcript_copy.menu.copy_selection": "Copy selection",
+	"ui.chat.transcript_copy.toast.copied_markdown": "Copied as Markdown",
+	"ui.chat.transcript_copy.toast.copied_selection": "Copied selection",
+	"ui.chat.transcript_copy.row.your_message": "Your message",
+	"ui.chat.transcript_copy.row.agent_message": "Agent message",
+	"ui.chat.transcript_copy.selection.copy": "Copy selection"
+}
