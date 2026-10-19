@@ -586,9 +586,20 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	/*
 	 * THE OVERFLOW GROUP (operator IA, 2026-10-18). Agent Hub and Mesh are
 	 * low-frequency destinations: they keep their rows, badges and gates, but sit
-	 * behind one collapsed "More" row rather than in the primary list. Future
+	 * behind one collapsed "More" row rather than as rows of their own. Future
 	 * low-frequency destinations join this array; the primary list stays the six
 	 * destinations the operator reads most.
+	 *
+	 * WHERE THE GROUP IS DRAWN (operator IA, 2026-10-19): it left the footer
+	 * region - the strip of column immediately above the account row, where it
+	 * used to sit - and became the LAST ROW of the destinations list, directly
+	 * under Browser. The operator's report was that a disclosure pinned to the
+	 * column's bottom, a screen away from the destinations it opens, was not
+	 * discoverable; the same reasoning applies to the collapsed strip, where the
+	 * ellipsis now reads under the destinations' own glyphs instead of above the
+	 * foot. The group is still ONE collapsed disclosure with its own persisted
+	 * preference: the move changed where the row is drawn, not what it is or
+	 * what it opens.
 	 */
 	const overflowNavItems: NavItem[] = [
 		/* The inbox is the most frequent reason to open this group, so it leads. */
@@ -1293,11 +1304,19 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						})}
 					</li>
 				</ul>
+				{/*
+				 * THE MORE GROUP IS THE LAST ITEM OF THIS LIST (operator IA,
+				 * 2026-10-19): the ellipsis used to be drawn in the `mt-auto`
+				 * foot above the update icon, the gear and the avatar, where the
+				 * column's bottom pinned it away from the destinations it opens.
+				 * It now reads under the Browser glyph, beside the rows it
+				 * belongs with.
+				 */}
 				<ul className="mt-4 flex flex-col items-center gap-1">
 					{navItems.map(renderNavRow)}
+					{renderOverflowGroup()}
 				</ul>
 				<div className="mt-auto flex flex-col items-center gap-1 pb-2">
-					{renderOverflowGroup()}
 					{/*
 					 * THE STANDING UPDATE NOTICE SITS IN THIS COLUMN ABOVE THE GEAR
 					 * (design consult §3.1): the icon, the gear, the avatar - the strip's
@@ -1369,8 +1388,26 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				 * THE DESTINATIONS GROUP, four 30px rows: the same routes in the same
 				 * order the old rail carried, minus Chat (which is the list itself) and
 				 * minus Settings (which the foot owns).
+				 *
+				 * THE MORE GROUP IS THE LAST ROW OF THIS LIST (operator IA,
+				 * 2026-10-19), directly under Browser. It used to be drawn in its
+				 * own footer block immediately above the account row: a
+				 * low-frequency disclosure pinned to the column's bottom was far
+				 * from the destinations it opens, and the operator's report was
+				 * that it was not discoverable. It shares this list's own row gap
+				 * (`gap-0.5`), so it reads as a destination row rather than as
+				 * chrome.
+				 *
+				 * WHAT DID NOT MOVE WITH IT: the group is still ONE collapsed
+				 * disclosure with its own persisted preference
+				 * (`sidebarOverflowExpanded`), still reveals in place when a
+				 * hidden destination is the current view, and still carries the
+				 * count badge. Only the row's position in the column changed.
 				 */}
-				<ul className="flex flex-col gap-0.5">{navItems.map(renderNavRow)}</ul>
+				<ul className="flex flex-col gap-0.5">
+					{navItems.map(renderNavRow)}
+					{renderOverflowGroup()}
+				</ul>
 			</div>
 
 			{/*
@@ -1405,16 +1442,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			 * 48, so the row is not squeezed (a fixed `h-10` with `pb-2` would
 			 * leave a 32px content box and a 40px row overflowing it).
 			 */}
-			{/*
-			 * THE BOTTOM MORE GROUP (design spec §1): the low-frequency
-			 * destinations live directly above the account/settings foot, in the
-			 * footer region rather than in the primary list. Collapsed, the group
-			 * adds no height and takes no space from the chat body; expanded, its
-			 * children follow it in DOM order, so Tab order is visual order.
-			 */}
-			<div className="shrink-0 px-2 pb-1">
-				<ul className="flex flex-col gap-0.5">{renderOverflowGroup()}</ul>
-			</div>
 			<div className="flex min-h-10 shrink-0 items-center justify-between gap-1 px-2 pb-2">
 				<UserProfileSidebar expanded />
 				{/*

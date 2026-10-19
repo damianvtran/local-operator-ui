@@ -237,11 +237,11 @@ export function meshGraph(input: {
 			const anyMemberReachable = list.some((entry) => entry.member.reachable);
 			const peerSaysReachable = peer ? peer.reachable : null;
 			/*
-			 * The JOIN, stated once: unreachable only when nothing said otherwise.
-			 * Every membership is consulted, and the peer row - which is the
-			 * collapsed, per-device answer - can only ever confirm reachability.
+			 * A per-device peer answer overrides cached membership reachability.
+			 * Otherwise a network read from before link loss would keep both
+			 * conversation surfaces claiming a disconnected device is reachable.
 			 */
-			const reachable = anyMemberReachable || peerSaysReachable === true;
+			const reachable = peerSaysReachable ?? anyMemberReachable;
 			const suspect = list.some((entry) => entry.member.suspect);
 			const named = list.find((entry) => text(entry.member.name));
 			return {

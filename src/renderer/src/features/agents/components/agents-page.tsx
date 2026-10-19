@@ -370,7 +370,17 @@ export function AgentsPage() {
 	 * logical record mounted. Save concurrency belongs to the captured edit-base
 	 * precondition, not to a remount or a notice after the text was lost.
 	 */
-	/** Source/policy state is independent of the editor's unsaved draft. */
+	/**
+	 * THE HUB PANE IS A SLOT IN THE RECORD, NOT A BANNER OVER IT.
+	 *
+	 * It used to be drawn here, ABOVE the record's title, which read as a
+	 * notice about the page rather than about the record - and it carried its
+	 * own measure, so its edges were not the record's. It is now passed INTO
+	 * the detail pane as its `belowHeader` slot, so it sits under the title in
+	 * the record's own column and inherits that column's measure.
+	 *
+	 * Source/policy state is independent of the editor's unsaved draft.
+	 */
 	const hubPane = (
 		kind: "agent" | "team",
 		itemName: string,
@@ -1017,78 +1027,78 @@ export function AgentsPage() {
 										onCancel={() => go({ name: null })}
 									/>
 								) : teamMode && teamDetail.data ? (
-									<>
-										{hubPane("team", teamDetail.data.name, teamDetail.data.id)}
-										<TeamDetail
-											key={teamEditorIdentity(teamDetail.data)}
-											team={teamDetail.data}
-											agents={profiles.data}
-											teams={teams.data}
-											askEnabled={run.enabled}
-											onDirtyChange={reportDirty}
-											onSaved={(savedName) => {
-												void refreshAll();
-												go({ name: savedName });
-											}}
-											onOpenAgent={(agentName) =>
-												requestGo({ kind: "agent", name: agentName })
-											}
-											onAskAgent={(prompt) => {
-												askForChange(
-													run,
-													{ kind: "team", name: teamDetail.data?.name ?? "" },
-													prompt,
-												);
-											}}
-										/>
-									</>
+									<TeamDetail
+										key={teamEditorIdentity(teamDetail.data)}
+										team={teamDetail.data}
+										agents={profiles.data}
+										teams={teams.data}
+										askEnabled={run.enabled}
+										onDirtyChange={reportDirty}
+										belowHeader={hubPane(
+											"team",
+											teamDetail.data.name,
+											teamDetail.data.id,
+										)}
+										onSaved={(savedName) => {
+											void refreshAll();
+											go({ name: savedName });
+										}}
+										onOpenAgent={(agentName) =>
+											requestGo({ kind: "agent", name: agentName })
+										}
+										onAskAgent={(prompt) => {
+											askForChange(
+												run,
+												{ kind: "team", name: teamDetail.data?.name ?? "" },
+												prompt,
+											);
+										}}
+									/>
 								) : !teamMode && profileDetail.data ? (
-									<>
-										{hubPane(
+									<AgentDetail
+										key={profileEditorIdentity(profileDetail.data)}
+										profile={profileDetail.data}
+										displayedName={printName(profileDetail.data.name)}
+										classNotice={
+											classNotice?.name === profileDetail.data.name
+												? classNotice.copy
+												: null
+										}
+										onClassNotice={(copy) =>
+											setClassNotice(
+												copy ? { name: profileDetail.data.name, copy } : null,
+											)
+										}
+										teams={teams.data}
+										effortTiers={effortTiers}
+										askEnabled={run.enabled}
+										onDirtyChange={reportDirty}
+										belowHeader={hubPane(
 											"agent",
 											profileDetail.data.name,
 											profileDetail.data.agent_id ?? undefined,
 										)}
-										<AgentDetail
-											key={profileEditorIdentity(profileDetail.data)}
-											profile={profileDetail.data}
-											displayedName={printName(profileDetail.data.name)}
-											classNotice={
-												classNotice?.name === profileDetail.data.name
-													? classNotice.copy
-													: null
-											}
-											onClassNotice={(copy) =>
-												setClassNotice(
-													copy ? { name: profileDetail.data.name, copy } : null,
-												)
-											}
-											teams={teams.data}
-											effortTiers={effortTiers}
-											askEnabled={run.enabled}
-											onDirtyChange={reportDirty}
-											onSaved={(savedName) => {
-												void refreshAll();
-												go({ name: savedName });
-											}}
-											onDuplicate={(profile) =>
-												requestGo({ create: "agent", duplicate: profile.name })
-											}
-											onOpenTeam={(teamName) =>
-												requestGo({ kind: "team", name: teamName })
-											}
-											onAskAgent={(prompt) => {
-												askForChange(
-													run,
-													{
-														kind: "agent",
-														name: profileDetail.data?.name ?? "",
-													},
-													prompt,
-												);
-											}}
-										/>
-									</>
+										onSaved={(savedName) => {
+											void refreshAll();
+											go({ name: savedName });
+										}}
+										onDuplicate={(profile) =>
+											requestGo({ create: "agent", duplicate: profile.name })
+										}
+										onOpenTeam={(teamName) =>
+											requestGo({ kind: "team", name: teamName })
+										}
+										onAskAgent={(prompt) => {
+											askForChange(
+												run,
+												{
+													kind: "agent",
+													name: profileDetail.data?.name ?? "",
+												},
+												prompt,
+											);
+										}}
+									/>
 								) : selected ? (
 									<Skeleton className="h-6 w-40" />
 								) : null}
