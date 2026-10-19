@@ -29,8 +29,18 @@ conversation list, per-org counts).
 | `loading-all-organizations-{dark,light}.png` | `team-bridge-page--loading-all-organizations` | merged list loading; the disabled-create reason stays visible |
 | `organizations-unavailable-{dark,light}.png` | `team-bridge-page--organizations-unavailable` | merged list error and retry; the disabled-create reason stays visible |
 
-`team-bridge-overflow-row--*` is unchanged by this slice; its existing frames
-remain the evidence for the collapsed/expanded sidebar row.
+The sidebar integration is captured from the **production** component, not the
+stand-in board:
+
+| file | story | state |
+| --- | --- | --- |
+| `nav-more-collapsed.png` | `shell-app-shell--nav-more-collapsed` | expanded rail, group closed: the More row carries the count |
+| `nav-more-expanded.png` | `shell-app-shell--nav-more-expanded` | group open: the Team Bridge row carries the same count |
+| `nav-more-strip.png` | `shell-app-shell--nav-more-strip-expanded` | 56px strip, group open |
+| `nav-more-strip-collapsed.png` | `shell-app-shell--nav-more-strip-collapsed` | 56px strip, group closed: the More glyph alone carries the corner badge |
+
+`team-bridge-overflow-row--*` is a design board for the row's own states, not
+the sidebar's evidence; the shell stories above are the sidebar.
 
 ## Round-1 remediation
 
