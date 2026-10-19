@@ -42,13 +42,13 @@ import { CanonicalTranscript } from "./canonical-transcript";
 import { EMPTY_TRANSCRIPT, applyHistoryPage } from "./transcript-reducer";
 
 /** One instant for every frame; the per-row minute offsets live in `at`. */
-const TS = 1_792_000_000_000;
+const TS = 1_792_000_000;
 
 type Entry = DesktopHistoryPage["entries"][number];
 
 let sequence = 0;
 const id = (prefix: string) => `${prefix}-${sequence++}`;
-const at = () => TS + sequence * 1000;
+const at = () => TS + sequence;
 
 const entry = (payload: Record<string, unknown>): Entry => {
 	const next = id("entry");
