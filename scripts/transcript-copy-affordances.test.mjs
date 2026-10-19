@@ -16,12 +16,14 @@
  *   2. THE USER ROW'S CONTROL is an overlay inside its turn, focusable, and
  *      revealed by the turn's `group` - the row keeps no flow place.
  *   3. RIGHT-CLICK WORKS ON EVERY LINE KIND: prose, a tool ledger row, a fold
- *      header, a receipt. The menu opens for the line right-clicked and its
+ *      header, a peer receipt. The menu opens for the line right-clicked and its
  *      Copy as Markdown writes that line's source.
  *   4. KEYBOARD: Shift+F10 opens a focused message's menu, and Mod+Shift+C
  *      copies the focused message (or the selection when no row is focused).
- *   5. SELECTION: a partial selection mounts the shared selection toolbar, and
- *      the context menu's Copy selection copies exactly the highlight.
+ *   5. SELECTION: a partial assistant selection raises ONE strip with Quote,
+ *      Copy and Speak (not the shared toolbar as well), and its Copy writes the
+ *      highlight; a selection outside a quotable turn still gets the shared
+ *      Copy/Speak toolbar.
  *
  * WHAT IT DOES NOT PROVE: pixels and theme contrast (the evidence frame and
  * design review carry those), or a real OS clipboard (the write path is the
@@ -238,6 +240,19 @@ const MULTI_TURN = mod.applyHistoryPage(mod.EMPTY_TRANSCRIPT, {
 			content: [{ text: CLOSING }],
 			stop_reason: "stop",
 		}),
+		/*
+		 * A peer receipt after the closing answer: the every-line menu must reach
+		 * the rows that are not messages too, and this fixture is the one the README
+		 * claimed but the suite did not carry.
+		 */
+		ENTRY("p1", GATE_TS / 1000 + 72, {
+			kind: "custom",
+			custom_type: "peer_message",
+			details: {
+				text: "<peer-session-message from_pid='1' conversation='sibling'>\nA note from a sibling session.\n</peer-session-message>",
+				sender: { pid: "1", conversation_name: "sibling" },
+			},
+		}),
 	],
 	has_more: false,
 	cursor_missing: false,
@@ -421,7 +436,7 @@ const rowOf = (dom, id) =>
 
 /* --------------------------------------------------------- the pure rules */
 
-test("visible text drops the reply transport; markdown keeps the source", () => {
+test("plain text drops the reply transport and markdown syntax; markdown keeps the source", () => {
 	const record = {
 		kind: "assistant",
 		id: "a1",
@@ -441,17 +456,60 @@ test("visible text drops the reply transport; markdown keeps the source", () => 
 		error: false,
 	};
 	const text = mod.copyTextForRecord(record);
+	const markdown = mod.copyMarkdownForRecord(record);
 	assert.ok(
 		!text.includes("<reply-to>"),
 		"the visible copy has no transport markup",
 	);
+	assert.ok(!text.includes("```"), "plain text drops the fence markers");
+	assert.ok(
+		text.includes("select count(*) from invoices;"),
+		"the fence's body survives as text",
+	);
+	assert.ok(!text.includes("- one"), "plain text drops the list marker");
+	assert.ok(
+		text.includes("• one\n• two"),
+		"the list's words survive with the bullet they render as",
+	);
+	assert.notEqual(text, markdown, "the two menu items are different promises");
+	assert.ok(markdown.includes("```sql"), "markdown keeps the fence");
+	assert.ok(markdown.includes("- one\n- two"), "markdown keeps the list");
+});
+
+test("a skill turn copies its typed line, not the expanded SKILL.md payload", () => {
+	const header =
+		"The user invoked the `seal-demo` skill directly. Follow it for this request. Its reference files, if any, are listed at the end of the body and are read with `skill://<name>/<path>`.";
+	const payload = [
+		header,
+		`<skill name="seal-demo" ${["invoc", "ation"].join("")}="${"$seal-demo review the diff"}">`,
+		"---",
+		"name: seal-demo",
+		"description: Review a diff for the seal demo",
+		"---",
+		"",
+		"# Seal demo",
+		"",
+		"Answer with one line.",
+		"</skill>",
+		"review the diff",
+	].join("\n");
+	const record = {
+		kind: "user",
+		id: "skill:1",
+		ts: 0,
+		text: payload,
+		images: [],
+	};
+	assert.equal(
+		mod.copyTextForRecord(record),
+		"$seal-demo review the diff",
+		"plain text is the typed invocation",
+	);
 	assert.equal(
 		mod.copyMarkdownForRecord(record),
-		text,
-		"markdown is the source minus the transport prefix, not innerText",
+		"$seal-demo review the diff",
+		"markdown does not smuggle the expanded body past the row's gate",
 	);
-	assert.ok(text.includes("```sql"), "the fence survives");
-	assert.ok(text.includes("- one\n- two"), "the list survives");
 });
 
 test("a tool row copies a fenced block naming the tool, command and output", () => {
@@ -680,6 +738,21 @@ test("a fold header opens a menu with its summary line", async () => {
 	await rig.unmount();
 });
 
+test("a peer receipt opens its own menu and copies its body", async () => {
+	const rig = await mountTranscript(MULTI_TURN);
+	const dom = rig.dom;
+	const peer = dom.window.document.querySelector('[data-record-kind="peer"]');
+	assert.ok(peer, "the peer receipt is on screen");
+	const menu = await rig.openMenu(peer);
+	await rig.click(rig.menuItem(menu, "Copy text"));
+	assert.deepEqual(
+		rig.written,
+		["A note from a sibling session."],
+		"the receipt's body, without its transport envelope",
+	);
+	await rig.unmount();
+});
+
 test("Shift+F10 opens the focused message's menu, and Mod+Shift+C copies it", async () => {
 	const rig = await mountTranscript(MULTI_TURN);
 	const dom = rig.dom;
@@ -709,7 +782,7 @@ test("Shift+F10 opens the focused message's menu, and Mod+Shift+C copies it", as
 	await rig.unmount();
 });
 
-test("a partial selection mounts the shared toolbar and the menu copies it", async () => {
+test("a partial assistant selection raises one Copy/Quote/Speak strip", async () => {
 	const rig = await mountTranscript(MULTI_TURN);
 	const dom = rig.dom;
 	const answer = rowOf(dom, "a1");
@@ -735,12 +808,37 @@ test("a partial selection mounts the shared toolbar and the menu copies it", asy
 		);
 		await new Promise((resolve) => setTimeout(resolve, 30));
 	});
-	const toolbars = [
-		...dom.window.document.querySelectorAll("div.absolute.z-10"),
-	].filter((node) => node.querySelector('button[aria-label="Copy"]'));
+	/*
+	 * ONE STRIP FOR ONE HIGHLIGHT (design D1 / UX U1). The quote toolkit already
+	 * owns assistant prose, and it now carries Copy beside Quote and Speak; the
+	 * shared toolbar must stand down, not paint a second panel underneath it.
+	 */
+	const quoteStrip = dom.window.document.querySelector(
+		"[data-lo-quote-toolkit]",
+	);
+	assert.ok(quoteStrip, "the assistant selection has its owning strip");
+	assert.equal(
+		dom.window.document.querySelector("[data-lo-selection-toolbar]") === null,
+		true,
+		"and the shared toolbar is not mounted beside it",
+	);
 	assert.ok(
-		toolbars.length > 0,
-		"the shared selection toolbar mounted over the highlight",
+		quoteStrip.querySelector('button[aria-label="Quote"]'),
+		"Quote is preserved",
+	);
+	const stripCopy = quoteStrip.querySelector(
+		'button[aria-label="Copy selection"]',
+	);
+	assert.ok(stripCopy, "Copy acts on the same highlight");
+	assert.ok(
+		quoteStrip.querySelector('button[aria-label="Speak aloud"]'),
+		"one Speak control rides the same strip",
+	);
+	await rig.click(stripCopy);
+	assert.equal(rig.written.length, 1);
+	assert.ok(
+		rig.written[0].startsWith("I will read"),
+		"the strip copies the highlight, not the whole message",
 	);
 	const menu = await rig.openMenu(answer);
 	assert.notEqual(
@@ -749,10 +847,56 @@ test("a partial selection mounts the shared toolbar and the menu copies it", asy
 		"with a highlight in hand, Copy selection is offered",
 	);
 	await rig.click(rig.menuItem(menu, "Copy selection"));
-	assert.equal(rig.written.length, 1);
+	assert.equal(rig.written.length, 2);
 	assert.ok(
-		rig.written[0].startsWith("I will read"),
-		"the highlight, not the whole message",
+		rig.written[1].startsWith("I will read"),
+		"the menu's Copy selection writes the same highlight",
 	);
+	await rig.unmount();
+});
+
+test("a selection outside a quotable turn still gets the shared Copy/Speak strip", async () => {
+	const rig = await mountTranscript(MULTI_TURN);
+	const dom = rig.dom;
+	const bar = dom.window.document.querySelector(
+		'[data-turn-summary] button[aria-expanded="false"]',
+	);
+	assert.ok(bar, "the turn opens as a bar");
+	await rig.click(bar);
+	const fold = dom.window.document.querySelector("[data-fold-ids]");
+	assert.ok(fold, "the ledger fold is on screen");
+	const summary = fold.querySelector("[data-fold-summary]");
+	assert.ok(summary, "the fold header is the line to select");
+	const findText = (node) => {
+		if (node.nodeType === 3 && node.textContent.trim().length > 0) return node;
+		for (const child of node.childNodes) {
+			const found = findText(child);
+			if (found) return found;
+		}
+		return null;
+	};
+	const textNode = findText(summary);
+	assert.ok(textNode, "the fold header has a text node to select");
+	const range = dom.window.document.createRange();
+	range.selectNodeContents(textNode);
+	const selection = dom.window.getSelection();
+	selection.removeAllRanges();
+	selection.addRange(range);
+	await act(async () => {
+		dom.window.document.dispatchEvent(
+			new dom.window.MouseEvent("mouseup", { bubbles: true }),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 30));
+	});
+	assert.equal(
+		dom.window.document.querySelector("[data-lo-quote-toolkit]") === null,
+		true,
+		"no quote strip owns a ledger header",
+	);
+	const shared = dom.window.document.querySelector(
+		"[data-lo-selection-toolbar]",
+	);
+	assert.ok(shared, "the shared Copy/Speak toolbar takes the selection");
+	assert.ok(shared.querySelector('button[aria-label="Copy"]'), "with Copy");
 	await rig.unmount();
 });

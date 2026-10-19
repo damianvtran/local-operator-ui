@@ -28,6 +28,8 @@ import {
 	ContextMenuItem,
 	ContextMenuTrigger,
 } from "@shared/components/ui/context-menu";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { showInfoToast } from "@shared/utils/toast-manager";
 import type { ReactNode } from "react";
@@ -56,6 +58,7 @@ export const TranscriptCopyMenu = ({
 	children,
 	className,
 }: TranscriptCopyMenuProps) => {
+	useI18nLocale();
 	/*
 	 * Captured on OPEN rather than compared at render time: Radix mounts the
 	 * content while the same pointer gesture is still settling, and a selection
@@ -76,26 +79,32 @@ export const TranscriptCopyMenu = ({
 				<ContextMenuItem
 					disabled={!hasText}
 					onSelect={() => {
-						void write(text, "Copied");
+						void write(text, t("ui.common.actions.copied"));
 					}}
 				>
-					Copy text
+					{t("ui.chat.transcript_copy.menu.copy_text")}
 				</ContextMenuItem>
 				<ContextMenuItem
 					disabled={!hasText}
 					onSelect={() => {
-						void write(markdown, "Copied as Markdown");
+						void write(
+							markdown,
+							t("ui.chat.transcript_copy.toast.copied_markdown"),
+						);
 					}}
 				>
-					Copy as Markdown
+					{t("ui.chat.transcript_copy.menu.copy_markdown")}
 				</ContextMenuItem>
 				<ContextMenuItem
 					disabled={selection.length === 0}
 					onSelect={() => {
-						void write(selection, "Copied selection");
+						void write(
+							selection,
+							t("ui.chat.transcript_copy.toast.copied_selection"),
+						);
 					}}
 				>
-					Copy selection
+					{t("ui.chat.transcript_copy.menu.copy_selection")}
 				</ContextMenuItem>
 			</ContextMenuContent>
 		</ContextMenu>

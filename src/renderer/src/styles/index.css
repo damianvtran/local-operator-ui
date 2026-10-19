@@ -25,6 +25,22 @@
 }
 
 /*
+ * ONE HIGHLIGHT, ONE STRIP (design round 2, D1). The quote and link toolbars
+ * already own a highlight that begins in their turn; the shared selection
+ * toolbar is the fallback for every other selection. The component also stands
+ * down when it observes one of them, but that state arrives a tick after the
+ * highlight; this rule closes the frame between the two so a reader never sees
+ * two panels stacked. `:has()` is available in the Electron Chromium this app
+ * ships, and the attribute is the same marker the component test reads.
+ */
+[data-lo-transcript-content]:has([data-lo-quote-toolkit])
+	[data-lo-selection-toolbar],
+[data-lo-transcript-content]:has([data-lo-link-toolbar])
+	[data-lo-selection-toolbar] {
+	display: none;
+}
+
+/*
  * ============================================================================
  * WINDOW CHROME
  * ============================================================================

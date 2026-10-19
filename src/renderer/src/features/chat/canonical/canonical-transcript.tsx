@@ -1348,7 +1348,11 @@ const UserRow = memo(function UserRow({
 					{conversationId &&
 						isQuotable(record, remainingContent) &&
 						!link.quoteAvailable && (
-							<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
+							<QuoteToolkit
+								conversationId={conversationId}
+								turnRef={turnRef}
+								allowQuote={false}
+							/>
 						)}
 					{conversationId && link.subject && (
 						<LinkToolkit
@@ -1753,7 +1757,12 @@ const AssistantRow = memo(function AssistantRow({
 			 * paragraph a live turn settles - the per-paragraph churn #698 removed.
 			 */}
 			{!closesTurn && quotable && (
-				<AnswerActionRow overlay kind="response" bodyText={remainingContent} />
+				<AnswerActionRow
+					overlay
+					overlayClassName="@min-[900px]/chatcol:-right-10"
+					kind="response"
+					bodyText={remainingContent}
+				/>
 			)}
 			{closesTurn && (
 				/*
@@ -3073,8 +3082,8 @@ const TranscriptRow = memo(function TranscriptRow({
 			new view.MouseEvent("contextmenu", {
 				bubbles: true,
 				cancelable: true,
-				clientX: box.left + 8,
-				clientY: box.top + 8,
+				clientX: box.left + box.width / 2,
+				clientY: box.top + box.height / 2,
 			}),
 		);
 	};
@@ -3208,8 +3217,8 @@ const TranscriptRow = memo(function TranscriptRow({
 				aria-label={
 					messageRow
 						? record.kind === "user"
-							? "Your message"
-							: "Agent message"
+							? t("ui.chat.transcript_copy.row.your_message")
+							: t("ui.chat.transcript_copy.row.agent_message")
 						: undefined
 				}
 				tabIndex={messageRow ? 0 : undefined}
@@ -6188,7 +6197,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		if (text.length === 0) return;
 		event.preventDefault();
 		void copyTarget(text).then((ok) => {
-			if (ok) showInfoToast("Copied");
+			if (ok) showInfoToast(t("ui.common.actions.copied"));
 		});
 	};
 

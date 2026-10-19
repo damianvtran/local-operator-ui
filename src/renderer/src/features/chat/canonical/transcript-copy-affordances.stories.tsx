@@ -238,7 +238,7 @@ export const FocusedGutter: Story = {
 	},
 };
 
-/** A partial selection: the shared Copy/Speak toolbar floats over it. */
+/** A partial selection: ONE strip carries Quote, Copy and Speak over it. */
 export const SelectionToolbar: Story = {
 	render: () => <Frame state={MULTI_ANSWER} />,
 	play: async ({ canvasElement }) => {
@@ -257,8 +257,13 @@ export const SelectionToolbar: Story = {
 			new MouseEvent("mouseup", { bubbles: true, cancelable: true }),
 		);
 		await waitFor(() => {
-			if (document.querySelector("div.absolute.z-10") === null) {
-				throw new Error("the selection toolbar did not mount");
+			if (document.querySelector("[data-lo-quote-toolkit]") === null) {
+				throw new Error("the selection strip did not mount");
+			}
+		});
+		await waitFor(() => {
+			if (document.querySelector("[data-lo-selection-toolbar]") !== null) {
+				throw new Error("a second selection strip is painted");
 			}
 		});
 	},

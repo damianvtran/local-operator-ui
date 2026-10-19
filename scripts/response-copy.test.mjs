@@ -15,7 +15,10 @@
  *   3. the closing answer keeps its full `data-lo-answer-actions` row, and only
  *      that one - no per-paragraph Speak/Fork (the PR #698 clutter rule);
  *   4. a press copies THAT response's own text;
- *   5. a response still streaming offers no Copy.
+ *   5. a response still streaming offers no GUTTER Copy. Its line context menu
+ *      still copies the partial text on screen: a right-click asks for what is
+ *      there, and refusing a live row's words would be a different product rule
+ *      from the one that keeps the hover control off a moving line.
  *
  * WHAT IT DOES NOT PROVE: pixels - the frames are the PR's evidence.
  */
@@ -193,6 +196,7 @@ const mountTranscript = async (records, { waiting = false } = {}) => {
 		value: dom.window.navigator,
 	});
 	globalThis.getComputedStyle = dom.window.getComputedStyle.bind(dom.window);
+	globalThis.DOMRect = dom.window.DOMRect;
 	/* The transcript's own effects schedule through a bare rAF (the paging and
 	 * reveal loops), which the jsdom window has and the process global does not. */
 	globalThis.requestAnimationFrame = (callback) =>
@@ -215,6 +219,7 @@ const mountTranscript = async (records, { waiting = false } = {}) => {
 		unobserve() {}
 		disconnect() {}
 	};
+	globalThis.MutationObserver = dom.window.MutationObserver;
 	for (const name of [
 		"Event",
 		"CustomEvent",
@@ -356,13 +361,15 @@ test("an earlier settled response carries an absolute gutter Copy; the closing a
 	await unmount();
 });
 
-test("a response still streaming offers no Copy", async () => {
+test("a response still streaming offers no gutter Copy", async () => {
 	/*
 	 * `waiting: true` is the live turn: without it the streaming record folds
-	 * into the turn's summary bar and its prose never renders, so "no Copy under
-	 * it" would hold whether or not the gate exists.
+	 * into the turn's summary bar and its prose never renders, so "no gutter
+	 * Copy under it" would hold whether or not the gate exists. The line's
+	 * context menu is a separate surface and is allowed to copy the partial
+	 * text (see the header).
 	 */
-	const { dom, unmount } = await mountTranscript(
+	const { dom, press, written, unmount } = await mountTranscript(
 		[
 			gateUser("u1", "Is the March import finished?"),
 			gateAnswer("a1", "It finished with four invoices outstanding."),
@@ -399,6 +406,37 @@ test("a response still streaming offers no Copy", async () => {
 		).length,
 		1,
 		"the settled response before it keeps its Copy",
+	);
+	/*
+	 * THE LINE'S CONTEXT MENU IS A DIFFERENT SURFACE and deliberately still
+	 * copies the text on screen. A right-click on a live row is a request for
+	 * what is there, not for a settled answer that does not exist yet; the
+	 * hover-revealed gutter stays off the moving line, and the menu is the way
+	 * to take the partial paragraph.
+	 */
+	await act(async () => {
+		streaming.dispatchEvent(
+			new dom.window.MouseEvent("contextmenu", {
+				bubbles: true,
+				cancelable: true,
+				button: 2,
+				clientX: 24,
+				clientY: 24,
+			}),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 15));
+	});
+	const menu = dom.window.document.querySelector("[data-lo-copy-menu]");
+	assert.ok(menu, "the streaming row still opens its line menu");
+	const copyText = [...menu.querySelectorAll('[role="menuitem"]')].find(
+		(node) => node.textContent?.includes("Copy text"),
+	);
+	assert.ok(copyText, "the menu offers Copy text");
+	await press(copyText);
+	assert.deepEqual(
+		written,
+		["Update: the fourth"],
+		"the menu copies the partial words on screen",
 	);
 	await unmount();
 });

@@ -71,6 +71,8 @@ import {
 	useSpeakDismissal,
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { clipForSpeech } from "@shared/lib/speech-clip";
 import { useSpeechBindingFor } from "@shared/lib/speech-target";
 import { cn } from "@shared/lib/utils";
@@ -79,9 +81,11 @@ import {
 	selectionSpeechKey,
 	useSpeechStore,
 } from "@shared/store/speech-store";
-import { Quote } from "lucide-react";
+import { Check, Copy, Quote } from "lucide-react";
 import type { FC } from "react";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { copyTarget } from "../utils/link-open";
+import { COPY_FEEDBACK_MS } from "./message-actions";
 import { QUOTE_TOOLKIT_ATTR, quoteSelectionIn } from "./quote-model";
 import { useFloatingControl } from "./use-floating-control";
 import { useHighlightText } from "./use-highlight-text";
@@ -113,12 +117,20 @@ type QuoteToolkitProps = {
 	 * "this row has words to offer" belongs.
 	 */
 	turnRef: { readonly current: HTMLElement | null };
+	/**
+	 * Whether Quote may be offered for this turn's highlight. Assistant prose is
+	 * the only quotable surface in the transcript; the user's own bubble gets the
+	 * same strip for Copy and Speak but no Quote (design round 2, D1).
+	 */
+	allowQuote?: boolean;
 };
 
 export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 	conversationId,
 	turnRef,
+	allowQuote = true,
 }) => {
+	useI18nLocale();
 	/*
 	 * The reader's highlight of this turn, through the shared gate
 	 * (`use-highlight-text.ts`): TEXT rather than the boolean this used to store,
@@ -131,9 +143,36 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 	const { text: highlight, clear: clearHighlight } = useHighlightText(turnRef);
 	const owns = highlight !== null;
 	const handleQuote = useQuotePress(conversationId, turnRef);
+	/*
+	 * Copy is the third press that acts on the same highlight. It is deliberately
+	 * here rather than in the shared selection toolbar: one highlight gets one
+	 * strip (design round 2, D1), and the strip that already owns Quote and Speak
+	 * is this one. The press re-reads the range at press time for the same reason
+	 * Quote does - the strip can outlive the drag that raised it.
+	 */
+	const [copied, setCopied] = useState(false);
+	const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	useEffect(
+		() => () => {
+			if (resetTimer.current !== null) clearTimeout(resetTimer.current);
+		},
+		[],
+	);
+	const handleCopy = useCallback(async () => {
+		const text = quoteSelectionIn(turnRef.current)?.text ?? highlight;
+		if (!text) return;
+		if (!(await copyTarget(text))) return;
+		setCopied(true);
+		if (resetTimer.current !== null) clearTimeout(resetTimer.current);
+		resetTimer.current = setTimeout(() => {
+			resetTimer.current = null;
+			setCopied(false);
+		}, COPY_FEEDBACK_MS);
+	}, [highlight, turnRef]);
 	const { controlRef, placement } = useFloatingControl({
 		turnRef,
 		visible: owns,
+		preferGutter: true,
 		// The WHOLE highlight's boxes, with no mounted control's own box among
 		// them - `quoteSelectionIn` promises both, and `quote-anchor.ts` says why
 		// the first line anchors the control and the last one decides the flip.
@@ -231,7 +270,7 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 				// whether or not the control is up. The `elevated` ground plus a
 				// hairline is what makes it read as floating over the prose - § 2
 				// keeps the one shadow for objects that genuinely leave the flow.
-				"absolute z-10 flex h-8 items-center gap-0.5 rounded-md border border-hairline bg-elevated px-1",
+				"absolute z-10 flex h-8 items-center gap-0 rounded-md border border-hairline bg-elevated px-0.5",
 				!placement && "invisible",
 			)}
 			style={
@@ -239,24 +278,50 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 			}
 			onMouseDown={(event) => event.preventDefault()}
 		>
+			{allowQuote && (
+				<Tooltip
+					content="Quote"
+					/*
+					 * The tooltip takes the opposite side to the control, because the
+					 * control sits BELOW the highlight when there was no room above it -
+					 * and a tooltip that always opened upwards would cover the very text
+					 * the reader just highlighted.
+					 */
+					side={placement?.placement === "below" ? "bottom" : "top"}
+				>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Quote"
+						className="text-ink-dim hover:bg-accent-wash hover:text-accent"
+						onClick={handleQuote}
+					>
+						<Quote />
+					</Button>
+				</Tooltip>
+			)}
 			<Tooltip
-				content="Quote"
-				/*
-				 * The tooltip takes the opposite side to the control, because the
-				 * control sits BELOW the highlight when there was no room above it -
-				 * and a tooltip that always opened upwards would cover the very text
-				 * the reader just highlighted.
-				 */
+				content={
+					copied
+						? t("ui.chat.transcript_copy.toast.copied_selection")
+						: t("ui.chat.transcript_copy.selection.copy")
+				}
 				side={placement?.placement === "below" ? "bottom" : "top"}
 			>
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					aria-label="Quote"
+					aria-label={
+						copied
+							? t("ui.chat.transcript_copy.toast.copied_selection")
+							: t("ui.chat.transcript_copy.selection.copy")
+					}
 					className="text-ink-dim hover:bg-accent-wash hover:text-accent"
-					onClick={handleQuote}
+					onClick={() => {
+						void handleCopy();
+					}}
 				>
-					<Quote />
+					{copied ? <Check /> : <Copy />}
 				</Button>
 			</Tooltip>
 			{/*
