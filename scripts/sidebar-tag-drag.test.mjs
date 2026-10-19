@@ -183,7 +183,13 @@ test("group body accepts Untagged across sections but keeps tagged sources secti
 	const body = {
 		closest: () => other,
 		dataset: { tagDropTarget: "work" },
-		getBoundingClientRect: () => ({ left: 0, right: 200, top: 30, bottom: 100, height: 70 }),
+		getBoundingClientRect: () => ({
+			left: 0,
+			right: 200,
+			top: 30,
+			bottom: 100,
+			height: 70,
+		}),
 	};
 	const owner = {
 		getBoundingClientRect: () => ({ left: 0, right: 200, top: 0, bottom: 200 }),
@@ -193,9 +199,16 @@ test("group body accepts Untagged across sections but keeps tagged sources secti
 	assert.equal(tagDropTargetAt(owner, 100, 80, source, "personal"), null);
 	assert.equal(tagDropTargetAt(owner, 100, 80, other, "personal"), body);
 	assert.equal(tagDropTargetAt(owner, 100, 150, source, "untagged"), null);
-	const sidebar = readFileSync("src/renderer/src/features/chat/components/chat-sidebar.tsx", "utf8");
-	assert.match(sidebar, /cursor-grab/);
-	assert.match(sidebar, /cursor-grabbing/);
+	body.hasAttribute = () => true;
+	assert.equal(tagDropTargetAt(owner, 100, 80, other, "work"), null, "own-bucket body remains reorder space");
+	body.dataset.tagDropTarget = "untagged";
+	assert.equal(tagDropTargetAt(owner, 100, 80, source, "untagged"), null, "own Untagged body is not an assignment");
+	const sidebar = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.ok(sidebar.includes("cursor-grab"));
+	assert.ok(sidebar.includes("cursor-grabbing"));
 });
 test("copy has singular/plural count, named move/cancel/undo/conflict announcements", () => {
 	const en = JSON.parse(

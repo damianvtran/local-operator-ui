@@ -51,19 +51,28 @@ export function tagDropTargetAt(
 	y: number,
 	section: Element,
 	sourceBucket?: string,
+	includeBodies = true,
 ): HTMLElement | null {
 	const rect = owner.getBoundingClientRect();
 	if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom)
 		return null;
 	return (
 		Array.from(
-			owner.querySelectorAll<HTMLElement>("[data-tag-drop-target]"),
+			owner.querySelectorAll<HTMLElement>(
+				includeBodies
+					? "[data-tag-drop-target]"
+					: "[data-tag-drop-target]:not([data-tag-drop-body])",
+			),
 		).find((header) => {
 			const box = header.getBoundingClientRect();
 			return (
 				(header.closest("[data-chat-section]") === section ||
-					(sourceBucket === "untagged" && header.dataset.tagDropTarget !== "untagged")) &&
-				!(header.hasAttribute?.("data-tag-drop-body") && header.dataset.tagDropTarget === sourceBucket) &&
+					(sourceBucket === "untagged" &&
+						header.dataset.tagDropTarget !== "untagged")) &&
+				!(
+					header.hasAttribute?.("data-tag-drop-body") &&
+					header.dataset.tagDropTarget === sourceBucket
+				) &&
 				box.height > 0 &&
 				x >= box.left &&
 				x <= box.right &&
@@ -72,6 +81,16 @@ export function tagDropTargetAt(
 			);
 		}) ?? null
 	);
+}
+
+/** Pinned reorder retains its original header-only, section-local hit test. */
+export function tagHeaderAt(
+	owner: HTMLElement,
+	x: number,
+	y: number,
+	section: Element,
+): HTMLElement | null {
+	return tagDropTargetAt(owner, x, y, section, undefined, false);
 }
 
 /** A rejected pending gesture still consumes its completing click. Keyboard
@@ -263,16 +282,17 @@ export function useChatTagDrag(options: Options) {
 	}, [options.enabled]);
 	useEffect(() => {
 		if (!target) return;
-		const group = target.closest<HTMLElement>("[data-chat-tag-group]") ?? target;
+		const group =
+			target.closest<HTMLElement>("[data-chat-tag-group]") ?? target;
 		// A single group marker paints opaque row grounds too, without replacing
 		// their selection classes. Keep the hit element marked for existing headers.
 		group.dataset.tagDropPreview = "true";
 		group.classList.add(...TAG_DROP_PREVIEW_CLASSES);
-		target.classList.add(...TAG_DROP_PREVIEW_CLASSES);
+		target.classList.add("bg-row-selected");
 		return () => {
 			delete group.dataset.tagDropPreview;
 			group.classList.remove(...TAG_DROP_PREVIEW_CLASSES);
-			target.classList.remove(...TAG_DROP_PREVIEW_CLASSES);
+			target.classList.remove("bg-row-selected");
 		};
 	}, [target]);
 	return {
@@ -318,7 +338,9 @@ export function useChatTagDrag(options: Options) {
 				armed: false,
 				owner,
 				section,
-				bucket: event.currentTarget.closest<HTMLElement>("[data-chat-tag-group]")!.dataset.chatTagGroup!,
+				bucket:
+					event.currentTarget.closest<HTMLElement>("[data-chat-tag-group]")
+						?.dataset.chatTagGroup ?? "",
 				capture: event.currentTarget,
 				timer: null,
 			};

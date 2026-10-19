@@ -4253,7 +4253,11 @@ export function ChatSidebar({
 			</div>
 		));
 	};
-	const sessionRow = (row: CanonicalSessionRow, nested = false, tagDraggable = false) => {
+	const sessionRow = (
+		row: CanonicalSessionRow,
+		nested = false,
+		tagDraggable = false,
+	) => {
 		const trailing = rowTrailingStatement({
 			marked: conversationMatches.has(row.session_id),
 			unstarted: unstarted.has(row.session_id),
@@ -4636,9 +4640,10 @@ export function ChatSidebar({
 					// button inside a flex wrapper with a sibling is a row that overflows.
 					"min-w-0 grow text-left",
 					// Only grouped rows participate; keep held feedback through pointer capture.
-					tagDraggable && (rowTagDrag.armedId === row.session_id
-						? "cursor-grabbing"
-						: "cursor-grab active:cursor-grabbing"),
+					tagDraggable &&
+						(rowTagDrag.armedId === row.session_id
+							? "cursor-grabbing"
+							: "cursor-grab active:cursor-grabbing"),
 					nested && "pl-7",
 					current && rowCurrent,
 					// m4: the unread mark is NOT here. `font-semibold` on this

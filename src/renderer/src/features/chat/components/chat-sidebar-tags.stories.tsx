@@ -93,11 +93,12 @@ function installBridge(scenario: Scenario) {
 	].map((row, index) => ({
 		...row,
 		pinned:
-			scenario === "drop-ux" && row.id === "555555555555" ? true :
-			["held-pin", "pinned-tags"].includes(scenario) &&
-			row.id === "222222222222"
+			scenario === "drop-ux" && row.id === "555555555555"
 				? true
-				: row.pinned,
+				: ["held-pin", "pinned-tags"].includes(scenario) &&
+						row.id === "222222222222"
+					? true
+					: row.pinned,
 		mtime: now - index * 60,
 		created_at: now - index * 60,
 		preview: "",
@@ -994,33 +995,80 @@ export const DragAssignRoundTrip: Story = {
 
 const untaggedBodyDrop = async (previewOnly: boolean) => {
 	await ready();
-	const source = document.querySelector<HTMLElement>('[data-session-row="555555555555"] [data-chat-row]');
-	const target = document.querySelector<HTMLElement>('[data-chat-section="today"] [data-tag-drop-body][data-tag-drop-target="review"]');
+	const source = document.querySelector<HTMLElement>(
+		'[data-session-row="555555555555"] [data-chat-row]',
+	);
+	const target = document.querySelector<HTMLElement>(
+		'[data-chat-section="today"] [data-tag-drop-body][data-tag-drop-target="review"]',
+	);
 	if (!source || !target) throw new Error("Missing Untagged/body fixture");
 	expect(getComputedStyle(source).cursor).toBe("grab");
 	const box = source.getBoundingClientRect();
-	const pointer = { pointerId: 81, pointerType: "mouse", isPrimary: true, button: 0, clientX: box.left + 60, clientY: box.top + 16 };
+	const pointer = {
+		pointerId: 81,
+		pointerType: "mouse",
+		isPrimary: true,
+		button: 0,
+		clientX: box.left + 60,
+		clientY: box.top + 16,
+	};
 	fireEvent.pointerDown(source, pointer);
 	await new Promise((resolve) => setTimeout(resolve, 200));
 	await waitFor(() => expect(getComputedStyle(source).cursor).toBe("grabbing"));
 	const rect = target.getBoundingClientRect();
-	const over = { ...pointer, clientX: rect.left + 60, clientY: rect.top + rect.height / 2 };
+	const over = {
+		...pointer,
+		clientX: rect.left + 60,
+		clientY: rect.top + rect.height / 2,
+	};
 	fireEvent.pointerMove(window, over);
-	await waitFor(() => expect(target.closest('[data-chat-tag-group]')).toHaveAttribute('data-tag-drop-preview', 'true'));
-	const group = target.closest('[data-chat-tag-group]')!;
-	const header = group.querySelector<HTMLElement>('[data-tag-drop-target]:not([data-tag-drop-body])')!;
+	await waitFor(() =>
+		expect(target.closest("[data-chat-tag-group]")).toHaveAttribute(
+			"data-tag-drop-preview",
+			"true",
+		),
+	);
+	const group = target.closest("[data-chat-tag-group]");
+	const header = group?.querySelector<HTMLElement>(
+		"[data-tag-drop-target]:not([data-tag-drop-body])",
+	);
+	if (!header) throw new Error("Missing matching group header");
 	expect(header.dataset.tagDropTarget).toBe(target.dataset.tagDropTarget);
-	expect(document.elementFromPoint(over.clientX, over.clientY)?.closest('[data-tag-drop-body]')).toBe(target);
+	expect(
+		document
+			.elementFromPoint(over.clientX, over.clientY)
+			?.closest("[data-tag-drop-body]"),
+	).toBe(target);
 	document.body.dataset.tagsProof = `PASS: cursor grab → grabbing; header/body ID ${header.dataset.tagDropTarget}; body ${rect.width}×${rect.height}px; tagged cross-section 0 writes; synthetic pointer preview (not native delivery proof)`;
 	if (previewOnly) return;
 	fireEvent.pointerUp(window, over);
-	await waitFor(() => expect(calls.filter(call => call.op === "sessions.tags")).toHaveLength(1));
-	expect(calls.find(call => call.op === "sessions.tags")).toMatchObject({ primary: "review", tags: ["review"] });
-	await waitFor(() => expect(document.querySelector('[data-session-row="555555555555"]')?.closest('[data-chat-tag-group]')).toHaveAttribute('data-chat-tag-group', 'review'));
-	await userEvent.click(within(document.body).getByRole('button', {name: 'Undo'}));
-	await waitFor(() => expect(document.querySelector('[data-session-row="555555555555"]')?.closest('[data-chat-tag-group]')).toHaveAttribute('data-chat-tag-group', 'untagged'));
-	expect(calls.filter(call => call.op === "sessions.tags")).toHaveLength(2);
-	document.body.dataset.tagsProof += '; Untagged→tagged body 1 write; Undo restored Untagged (2 total)';
+	await waitFor(() =>
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1),
+	);
+	expect(calls.find((call) => call.op === "sessions.tags")).toMatchObject({
+		primary: "review",
+		tags: ["review"],
+	});
+	await waitFor(() =>
+		expect(
+			document
+				.querySelector('[data-session-row="555555555555"]')
+				?.closest("[data-chat-tag-group]"),
+		).toHaveAttribute("data-chat-tag-group", "review"),
+	);
+	await userEvent.click(
+		within(document.body).getByRole("button", { name: "Undo" }),
+	);
+	await waitFor(() =>
+		expect(
+			document
+				.querySelector('[data-session-row="555555555555"]')
+				?.closest("[data-chat-tag-group]"),
+		).toHaveAttribute("data-chat-tag-group", "untagged"),
+	);
+	expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(2);
+	document.body.dataset.tagsProof +=
+		"; Untagged→tagged body 1 write; Undo restored Untagged (2 total)";
 };
 export const CursorAndBodyTarget: Story = {
 	...story("drop-ux", 220),
