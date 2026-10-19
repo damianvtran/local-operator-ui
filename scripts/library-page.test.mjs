@@ -22,6 +22,7 @@ test("Library page integration suite", () => {
 		[
 			"--test",
 			"--test-force-exit",
+			`--import=${new URL("./no-hardlink-write-preload.mjs", import.meta.url).href}`,
 			new URL("./library-page.cases.mjs", import.meta.url).pathname,
 		],
 		{
