@@ -231,7 +231,7 @@ const asset = (id, patch = {}) => ({
 	modified_at: 1_700_000_100,
 	last_seen_at: 1_700_000_200,
 	exists: true,
-	highlighted: false,
+	highlighted: true,
 	highlight_why: null,
 	occurrences: [
 		{
@@ -278,6 +278,7 @@ const ANSWER = {
 	detail: null,
 	state: "ready",
 	nextCursor: null,
+	allTotal: null,
 	librarianHang: false,
 	librarianGate: null,
 	releaseLibrarian: null,
@@ -326,20 +327,36 @@ const desktopRequest = async (request) => {
 		if (ANSWER.failList)
 			if (ANSWER.failList)
 				return { status: 500, body: { detail: ANSWER.failList } };
+		/*
+		 * The route scopes BEFORE counting: a `final` answer keeps only
+		 * highlighted or generated assets and reports totals/counts over that
+		 * population. `all` is the whole fixture set.
+		 */
+		const scoped =
+			request.scope === "final"
+				? ANSWER.rows.filter(
+						(row) => row.highlighted || row.origin_group === "generated",
+					)
+				: ANSWER.rows;
+		const tally = (key) =>
+			scoped.reduce((acc, row) => {
+				acc[row[key]] = (acc[row[key]] ?? 0) + 1;
+				return acc;
+			}, {});
 		return {
 			status: 200,
 			body: {
 				result: {
 					state: ANSWER.state,
 					revision: 1,
-					total: ANSWER.rows.length,
+					total: scoped.length,
 					counts: {
-						category: { document: ANSWER.rows.length },
-						origin_group: { created: ANSWER.rows.length },
-						kind: { markdown: ANSWER.rows.length },
+						category: tally("category"),
+						origin_group: tally("origin_group"),
+						kind: tally("kind"),
 					},
 					tags: [tag("t1", "finance")],
-					rows: ANSWER.rows,
+					rows: scoped,
 					next_cursor: ANSWER.nextCursor,
 					cursor_reset: false,
 					scan: { sessions_total: 1, sessions_scanned: 1 },
@@ -381,6 +398,10 @@ const desktopRequest = async (request) => {
 					last_run_at: 1_700_000_000,
 					last_summary: null,
 					unorganized: 2,
+					library: {
+						total: ANSWER.allTotal ?? ANSWER.rows.length,
+						unorganized: 2,
+					},
 				},
 			},
 		};
@@ -843,6 +864,90 @@ test("the rail renders as the page row's first column at 1380px", async () => {
 	} finally {
 		dom.window.Element.prototype.getBoundingClientRect = original;
 	}
+});
+
+test("the default listing is final artifacts and the rail switches to all inclusions", async () => {
+	ANSWER.rows = [
+		asset("la_0000000000000041", {
+			name: "Generated report",
+			origin: "generated",
+			origin_group: "generated",
+		}),
+		asset("la_0000000000000042", { name: "Kept note", highlighted: true }),
+		asset("la_0000000000000043", {
+			name: "Mentioned file",
+			origin: "mentioned",
+			origin_group: "mentioned",
+			highlighted: false,
+		}),
+		asset("la_0000000000000044", {
+			name: "Created scratch",
+			origin: "written",
+			origin_group: "created",
+			highlighted: false,
+		}),
+	];
+	ANSWER.allTotal = 4;
+	ANSWER.ops = [];
+	Object.defineProperty(dom.window, "innerWidth", {
+		configurable: true,
+		value: 1380,
+	});
+	const original = dom.window.Element.prototype.getBoundingClientRect;
+	/* Same scoped width shim as the rail case: the rail must render so its
+	 * Scope rows are clickable. No observer is involved. */
+	dom.window.Element.prototype.getBoundingClientRect = function () {
+		if (this.hasAttribute?.("data-glass-split")) {
+			return {
+				width: 1380,
+				height: 900,
+				top: 0,
+				left: 0,
+				right: 1380,
+				bottom: 900,
+				x: 0,
+				y: 0,
+				toJSON: () => ({}),
+			};
+		}
+		return original.call(this);
+	};
+	try {
+		const { container, root } = await mount();
+		const firstList = ANSWER.ops.find((op) => op.op === "library.list");
+		assert.equal(
+			firstList?.scope,
+			"final",
+			"the default listing asks the route for final artifacts",
+		);
+		assert.ok(text(container).includes("Generated report"));
+		assert.ok(text(container).includes("Kept note"));
+		assert.equal(text(container).includes("Mentioned file"), false);
+		assert.equal(text(container).includes("Created scratch"), false);
+
+		const scopeAll = [...container.querySelectorAll("button")].find((button) =>
+			button.textContent?.trim().startsWith("All inclusions"),
+		);
+		assert.ok(scopeAll, "the rail offers the all-inclusions scope");
+		assert.ok(
+			scopeAll.textContent?.includes("4"),
+			"the all scope carries the catalog-wide total",
+		);
+		await act(async () => scopeAll.click());
+		await flush(6);
+		const lastList = [...ANSWER.ops]
+			.filter((op) => op.op === "library.list")
+			.at(-1);
+		assert.equal(lastList?.scope, "all");
+		assert.ok(text(container).includes("Mentioned file"));
+		assert.ok(text(container).includes("Created scratch"));
+		assert.ok(text(container).includes("Mentioned"));
+		await act(async () => root.unmount());
+	} finally {
+		dom.window.Element.prototype.getBoundingClientRect = original;
+	}
+	ANSWER.allTotal = null;
+	ANSWER.rows = ROWS;
 });
 
 test("a card selects its asset route and the preview renders there", async () => {

@@ -133,6 +133,7 @@ const ROWS: DesktopLibraryAsset[] = [
 	asset("la_0000000000000023", {
 		name: "March invoices",
 		derived_name: "march-invoices.md",
+		highlighted: true,
 		description: "Reconciliation notes for the March invoice run.",
 		tags: [tag("t1", "finance"), tag("t4", "notes")],
 		favorite: true,
@@ -157,6 +158,7 @@ const ROWS: DesktopLibraryAsset[] = [
 	asset("la_0000000000000025", {
 		name: "Forecast",
 		derived_name: "forecast.xlsx",
+		highlighted: true,
 		kind: "spreadsheet",
 		category: "spreadsheet",
 		size_bytes: 96_000,
@@ -205,8 +207,18 @@ const PptxBytes = (() => {
 	};
 })();
 
-const listing = () => {
-	const rows = stub.rows;
+const listing = (request: { scope?: string } = {}) => {
+	/*
+	 * The route's default is `all`; the desktop sends `final`. The story stub
+	 * runs the same predicate the route does so the default view a reader sees
+	 * here is the one the app paints.
+	 */
+	const rows =
+		request.scope === "final"
+			? stub.rows.filter(
+					(row) => row.highlighted || row.origin_group === "generated",
+				)
+			: stub.rows;
 	const counts = {
 		category: rows.reduce<Record<string, number>>((acc, row) => {
 			acc[row.category] = (acc[row.category] ?? 0) + 1;
@@ -248,6 +260,7 @@ const listing = () => {
 			last_run_at: Math.floor(NOW / 1000) - 7200,
 			last_summary: "Named 12 assets and tagged 9.",
 			unorganized: 3,
+			library: { total: stub.rows.length, unorganized: 3 },
 		},
 	};
 };
@@ -280,7 +293,12 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 			if (stub.hang) return new Promise(() => {});
 			if (stub.failList)
 				return { status: 500, body: { detail: stub.failList } };
-			return { status: 200, body: { result: listing() } };
+			return {
+				status: 200,
+				body: {
+					result: listing(request as { scope?: string }),
+				},
+			};
 		case "library.get": {
 			const row =
 				stub.detail ??
@@ -574,6 +592,37 @@ export const LoadError: Story = {
 	render: () => page({ rows: [], failList: "The backend did not answer." }),
 };
 export const Populated: Story = { render: () => page({}) };
+/*
+ * The two scopes side by side in the fixture: generated and highlighted rows
+ * survive `final`, mentioned and plainly-created scratch rows appear only in
+ * `all`. Toggling the rail's Scope section switches between the two.
+ */
+export const Scope: Story = {
+	render: () =>
+		page({
+			rows: [
+				asset("la_0000000000000031", {
+					name: "Generated report",
+					origin: "generated",
+					origin_group: "generated",
+				}),
+				asset("la_0000000000000032", {
+					name: "Kept note",
+					highlighted: true,
+				}),
+				asset("la_0000000000000033", {
+					name: "Mentioned file",
+					origin: "mentioned",
+					origin_group: "mentioned",
+				}),
+				asset("la_0000000000000034", {
+					name: "Created scratch",
+					origin: "written",
+					origin_group: "created",
+				}),
+			],
+		}),
+};
 export const ListView: Story = { render: () => page({ view: "list" }) };
 export const Preview: Story = {
 	render: () =>
