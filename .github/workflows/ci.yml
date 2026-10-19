@@ -3,8 +3,30 @@ name: Pre-Release CI Testing
 on:
   push:
     branches:
+      # ONLY `main` here, deliberately, and for the same reason the backend
+      # repository dropped `dev-*` from its own push list in 6f8cae2e35bc
+      # ("ci: stop the queue eating itself on a 20-job concurrency cap").
+      #
+      # `dev-*` used to be in this list as well, which double-billed every
+      # feature branch: a `dev-*` branch with an open PR fired a `push` run AND
+      # a `pull_request` run for the SAME commit, two identical sets of jobs
+      # whose results nobody read twice. The `pull_request` trigger below
+      # already covers feature branches, so dropping `dev-*` here halves the
+      # per-commit cost without reducing what is actually tested.
+      #
+      # Measured on 2026-10-19, the account-wide runner pool was saturated:
+      # 26-28 runs in flight across three repositories, 53-118 jobs queued, a
+      # median pending-job age of 25.8 minutes, and a four-minute sample in
+      # which zero jobs started. Every job that gates nothing is a job that
+      # makes a release gate wait.
+      #
+      # FIVE `dev-*` branches exist here and NOT ONE of them has an open pull
+      # request, so every push to any of them ran this whole job set to gate
+      # nothing at all. A `dev-*` branch with NO open PR now gets no CI until
+      # the PR is opened. That is the intended trade: CI exists to gate review
+      # and merge, and an un-PR'd branch is gating nothing. Use
+      # `workflow_dispatch` to run it by hand if you need a pre-PR signal.
       - main
-      - 'dev-*'
   # Pull requests run this workflow so the runtime-dependency guard below fires
   # before the merge: GitHub cannot run a single job from a workflow whose
   # trigger excludes the event, and a guard that only fires on `push` fires

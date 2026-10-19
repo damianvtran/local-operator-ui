@@ -1,0 +1,128 @@
+# The release gate: a small, dedicated lane for "is this commit releasable?".
+#
+# WHY THIS FILE EXISTS, in the numbers that produced it.
+#
+# The account runs 40 concurrent standard jobs (GitHub Pro; the standard-runner
+# table is Free 20 / Pro 40 / Team 60) with a SEPARATE cap of 5 concurrent
+# macOS jobs, and the cap is account-wide across every repository the account
+# owns. On 2026-10-19 that pool was saturated: 26-28 workflow runs in flight
+# across three repositories, 53-118 jobs queued, a median pending-job AGE of
+# 25.8 minutes (p90 35.0, max 48.8), and a four-minute sample in which ZERO
+# jobs started. The `Desktop Tests` job in this repository's own matrix waited
+# more than 40 minutes for a runner, which is the shape of the whole problem:
+# a job that is one of the account's 40 slots, queued behind work whose
+# results nobody is waiting on.
+#
+# This workflow is the release owner's own lane. It runs on the same commits
+# as `ci.yml`, it is NEW at the moment the push lands, and it asks for ONE
+# runner slot instead of the matrix's ten, so it is served while the big
+# matrix is still queued. The queue is not strict FIFO -- measured on the same
+# day, 118 jobs started in a 45-minute window that had been created AFTER the
+# oldest job still waiting -- so a small, freshly created run is served ahead
+# of the backlog rather than behind it.
+#
+# It does NOT replace `ci.yml`. The desktop suite, the lint and type gates and
+# the runtime-dependency guard stay exactly where they are, and a release
+# still needs both. Duplicating them here would ADD to the very queue
+# pressure this file exists to relieve, which is the opposite of the point.
+# What this file adds is the fast answer to the question the release owner
+# asks first, answered in about a minute instead of an hour.
+#
+# WHAT IS IN IT: the version invariants. `package.json` is this repository's
+# version source (tags are `vX.Y.Z`), so a release is coherent only if the
+# declared version is well-formed and is not a REPLAY of a version that was
+# already published -- a published version cannot be reused, and a window
+# that has to skip a number because it was burned is a release that shipped
+# the wrong version. `scripts/version-bump-guard.mjs` already resolves the
+# published tags this way, and the same resolution is used here.
+name: Release Gate
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One group per (ref, commit), and NEVER cancelled. A release gate that can
+# be cancelled is not a gate, and a group keyed by SHA cannot be evicted by a
+# later run the way a per-ref group can: the later run simply gets its own
+# group and both complete.
+concurrency:
+  group: release-gate-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  release-invariants:
+    name: Release invariants
+    runs-on: ubuntu-latest
+    # Generous against the ~30 s this takes. It exists so a wedged step cannot
+    # hold a runner for the 360-minute default -- the same reasoning as the
+    # `version-bump-guard` job in this repository.
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # No `pnpm install`: the check is node builtins only, so this job is a
+      # checkout and one node process. A gate that needs a dependency install
+      # is a gate that goes red for reasons unrelated to versions.
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify the declared version is coherent
+        env:
+          # The commit under test IS the commit that was pushed, so nothing can
+          # move underneath the verdict.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node - <<'NODE'
+          import { readFileSync } from "node:fs";
+          import { execFileSync } from "node:child_process";
+
+          const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+          const version = pkg.version;
+          // Well-formed semver, and the three numbers the release procedure
+          // treats as meaningful (major.minor.patch).
+          const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+          if (!m) {
+            console.error(`::error::package.json declares an unusable version: ${JSON.stringify(version)}`);
+            process.exit(1);
+          }
+          const declared = m.slice(1).map(Number);
+
+          // The published tags, resolved the way this repository's own
+          // version-bump-guard resolves them: from the REMOTE, not from the
+          // local tag list, because a shallow checkout cannot see the tags it
+          // is being compared against.
+          const out = execFileSync("git", ["ls-remote", "--tags", "origin"], { encoding: "utf8" });
+          const published = [...out.matchAll(/refs\/tags\/v(\d+)\.(\d+)\.(\d+)$/gm)].map((t) =>
+            t.slice(1).map(Number),
+          );
+          if (published.length === 0) {
+            console.log("no published vX.Y.Z tags found; nothing to compare against");
+            process.exit(0);
+          }
+          const cmp = (x, y) => x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
+          const latest = published.reduce((a, b) => (cmp(a, b) < 0 ? b : a));
+          const delta = cmp(declared, latest);
+          if (delta < 0) {
+            console.error(
+              `::error::package.json declares ${version}, which is LOWER than the published v${latest.join(".")}. ` +
+                "A release cannot carry a version that has already been published, and it cannot carry a version " +
+                "that has already been burned.",
+            );
+            process.exit(1);
+          }
+          if (delta === 0) {
+            console.log(`declared version ${version} matches the published v${latest.join(".")} (no bump yet)`);
+          } else {
+            console.log(`declared version ${version} is ahead of the published v${latest.join(".")}`);
+          }
+          NODE
