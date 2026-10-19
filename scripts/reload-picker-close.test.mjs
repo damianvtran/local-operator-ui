@@ -26,9 +26,9 @@
  * round 2, MAJOR-1) is the same subject one panel over - what a picker tells the
  * reader when the backend says no - and it is asserted on the same exported
  * functions this file already imports from `destination-pickers`; and the
- * RENAME picker's unchanged-submit guard (`renameSubmission`, #920, agent
- * review round 1, MINOR-2) is a pure decision with no dialog to mount at all,
- * so it rides the same bundle too. Said here so a reader does not have to
+ * RENAME picker's unchanged-submit guard (`renameSubmission`, #920) and its
+ * success/failure dismissal contract (core issue #2390) ride the same bundle
+ * too. Said here so a reader does not have to
  * wonder why a fork and a rename case sit in the reload file.
  */
 
@@ -211,7 +211,7 @@ const stubs = {
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { ReloadPicker, reloadReceipt, renameSubmission } from "./src/renderer/src/features/chat/pickers/destination-pickers";
+			export { ReloadPicker, RenamePicker, reloadReceipt, renameSubmission } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 			export { FORK_CUT_NOTE } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 			export { operationFailureText } from "./src/renderer/src/features/chat/pickers/use-picker-backend";
 		`,
@@ -273,6 +273,7 @@ globalThis.__errorToast = (message) => {
 
 const {
 	ReloadPicker,
+	RenamePicker,
 	reloadReceipt,
 	renameSubmission,
 	FORK_CUT_NOTE,
@@ -618,6 +619,173 @@ test("an in-flight failure after the dialog is gone is raised as a toast", async
  * retired the naming errand (`chat-title.ts`'s constraint). Pure comparisons,
  * so they run without a DOM at all.
  */
+/** Mount the real rename picker; its owner unmounts it when it closes. */
+const mountRename = async (context, answer, name = "New name") => {
+	document.body.innerHTML = "";
+	toasts.length = 0;
+	errors.length = 0;
+	const requests = [];
+	let closed = 0;
+	nextAnswer = (request) => {
+		requests.push(request);
+		assert.equal(request.op, "sessions.command");
+		assert.equal(request.sessionId, "session-1");
+		assert.equal(request.command, "rename");
+		assert.equal(request.args, name.trim());
+		return answer(request);
+	};
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	context.after(async () => {
+		await act(async () => root.unmount());
+	});
+	const Host = () => {
+		const [open, setOpen] = React.useState(true);
+		return open
+			? React.createElement(RenamePicker, {
+					sessionId: "session-1",
+					action: { args: "", data: {} },
+					canonical: {
+						frontend: { conversation_title: "Old name" },
+					},
+					onClose: () => {
+						closed += 1;
+						setOpen(false);
+					},
+				})
+			: null;
+	};
+	await act(async () => root.render(React.createElement(Host)));
+	const input = document.querySelector('input:not([aria-hidden="true"])');
+	assert.ok(input);
+	assert.equal(
+		input.value,
+		"Old name",
+		"edit the rename field, not the host search",
+	);
+	const setter = Object.getOwnPropertyDescriptor(
+		DOM.window.HTMLInputElement.prototype,
+		"value",
+	).set;
+	await act(async () => {
+		setter.call(input, name);
+		input.dispatchEvent(new DOM.window.Event("input", { bubbles: true }));
+	});
+	return {
+		requests,
+		closed: () => closed,
+		submit: async (enter = false) => {
+			await act(async () => {
+				if (enter) {
+					// jsdom does not implement Enter's implicit form submission.
+					input.closest("form").dispatchEvent(
+						new DOM.window.Event("submit", {
+							bubbles: true,
+							cancelable: true,
+						}),
+					);
+				} else {
+					buttonByText("Rename").click();
+				}
+			});
+		},
+	};
+};
+
+for (const enter of [false, true]) {
+	test(`a successful rename closes on ${enter ? "form submission" : "click"} and keeps the owner's receipt`, async (context) => {
+		const run = await mountRename(
+			context,
+			async () => ({
+				result: { kind: "notice", style: "info", text: "renamed to New name" },
+			}),
+			"  New name  ",
+		);
+		await run.submit(enter);
+		assert.equal(run.requests.length, 1);
+		assert.equal(run.closed(), 1);
+		assert.equal(document.querySelector('[role="dialog"]') === null, true);
+		assert.deepEqual(toasts, ["renamed to New name"]);
+	});
+}
+
+for (const outcome of [
+	{ kind: "error", style: "error", text: "rename refused" },
+	{ kind: "notice", style: "error", text: "rename refused" },
+	{ kind: "native_action", destination: "session.rename" },
+]) {
+	test(`a rename ${outcome.kind}/${outcome.style ?? "input"} response keeps the dialog open`, async (context) => {
+		const run = await mountRename(context, async () => ({ result: outcome }));
+		await run.submit();
+		assert.equal(run.requests.length, 1);
+		assert.equal(run.closed(), 0);
+		assert.ok(document.querySelector('[role="dialog"]'));
+		assert.ok(
+			document.body.textContent.includes(
+				outcome.text ?? "The backend needs more input",
+			),
+		);
+		assert.deepEqual(toasts, []);
+	});
+}
+
+test("a failed rename keeps its inline error and can be retried", async (context) => {
+	let attempts = 0;
+	const run = await mountRename(context, async () => {
+		if (++attempts === 1) throw new Error("owner unavailable");
+		return {
+			result: { kind: "notice", style: "info", text: "renamed to New name" },
+		};
+	});
+	await run.submit();
+	assert.equal(run.closed(), 0);
+	assert.ok(
+		document.body.textContent.includes(
+			"/rename did not run: owner unavailable",
+		),
+	);
+	assert.deepEqual(toasts, []);
+	await run.submit();
+	assert.equal(run.requests.length, 2);
+	assert.equal(run.closed(), 1);
+	assert.deepEqual(toasts, ["renamed to New name"]);
+});
+
+test("rename waits for the owner's response before closing", async (context) => {
+	let finish;
+	const response = new Promise((resolve) => {
+		finish = resolve;
+	});
+	const run = await mountRename(context, () => response);
+	await run.submit();
+	assert.equal(run.requests.length, 1, "the command has reached the transport");
+	assert.equal(run.closed(), 0);
+	assert.ok(document.querySelector('[role="dialog"]'));
+	assert.deepEqual(toasts, []);
+	await act(async () => {
+		finish({
+			result: { kind: "notice", style: "info", text: "renamed to New name" },
+		});
+	});
+	assert.equal(run.closed(), 1);
+	assert.deepEqual(toasts, ["renamed to New name"]);
+});
+
+test("an unchanged rename closes without a request or a success toast", async (context) => {
+	const run = await mountRename(
+		context,
+		async () => {
+			throw new Error("an unchanged name must not be written");
+		},
+		"Old name",
+	);
+	await run.submit();
+	assert.equal(run.requests.length, 0);
+	assert.equal(run.closed(), 1);
+	assert.deepEqual(toasts, []);
+});
+
 test("an unchanged rename submit writes nothing, so the placeholder cannot become a title", () => {
 	assert.equal(
 		renameSubmission({ name: "Untitled chat", openedWith: "Untitled chat" }),
