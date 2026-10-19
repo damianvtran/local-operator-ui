@@ -617,8 +617,8 @@ test("a device nobody dialled is `not asked`, and never `unreachable` (D2)", () 
 	assert.equal(
 		[...Object.entries(REACH_INK)].filter(([, ink]) => ink === "text-warning")
 			.length,
-		3,
-		"the three OBSERVED transport failures spend the warning hue (unanswered, relay down, handshake refused); their distinction is carried in words and glyphs, and the neutral not-attempted/unknown states still take no hue",
+		4,
+		"the four OBSERVED transport failures spend the warning hue (unanswered, relay down, handshake refused, address unreachable); their distinction is carried in words and glyphs, and no-endpoint/not-a-member/not-attempted/unknown take no hue",
 	);
 });
 
@@ -679,6 +679,13 @@ test("refused TCP, a timeout and a closed handshake are three states, not one", 
 		"the exception class never reaches the screen",
 	);
 	assert.equal(attemptWords("connect_failed:TimeoutError"), "no answer");
+	assert.equal(attemptWords("ok"), "answered");
+	assert.equal(attemptWords("bad_endpoint"), "bad address");
+	assert.equal(
+		attemptWords("connect_failed:gaierror"),
+		"could not connect",
+		"an open exception family is never printed as a class name",
+	);
 	assert.equal(attemptWords("some_future_detail"), "some_future_detail");
 
 	const refusedHandshake = peerList({
@@ -692,7 +699,7 @@ test("refused TCP, a timeout and a closed handshake are three states, not one", 
 					{
 						endpoint: "99.79.190.164:4097",
 						connected: true,
-						detail: "no_answer",
+						detail: "ok",
 						latency_ms: 41,
 					},
 				],
@@ -711,6 +718,21 @@ test("refused TCP, a timeout and a closed handshake are three states, not one", 
 	assert.equal(
 		deviceStatLine(handshakeDevice, 1_700_000_100),
 		"handshake refused",
+	);
+	assert.equal(
+		refusedHandshake.peers[0].attempts[0].connected,
+		true,
+		"the attempt connected; the HANDSHAKE is what closed",
+	);
+	assert.equal(
+		attemptWords(refusedHandshake.peers[0].attempts[0].detail),
+		"answered",
+		"so the row says `answered`, never `no answer`, under the handshake headline",
+	);
+	assert.equal(
+		attemptWords(relayDown.peers[0].attempts[1].detail),
+		"no answer",
+		"and an attempt that never connected keeps the opposite word",
 	);
 
 	/*
@@ -744,6 +766,44 @@ test("refused TCP, a timeout and a closed handshake are three states, not one", 
 	);
 });
 
+test("address, no-endpoint and membership verdicts keep their own words", () => {
+	/*
+	 * THE OTHER THREE VERDICTS the wire can send. `address_unreachable` is a dialled
+	 * address that never answered; `no_endpoint` means nothing was dialled; and
+	 * `not_a_member` is a membership/access fact. Folding any of them into `no answer`
+	 * is the same conflation the relay-down fix exists to remove.
+	 */
+	for (const [id, linkState, reach, words] of [
+		[
+			DEVICE_D,
+			"address_unreachable",
+			"address-unreachable",
+			"address unreachable",
+		],
+		[DEVICE_E, "no_endpoint", "no-endpoint", "no address to dial"],
+		[`d_${"f".repeat(32)}`, "not_a_member", "not-a-member", "not a member"],
+	]) {
+		const graph = meshGraph({
+			topology: networkTopology({
+				networks: [network(NET_ONE, [member(id, { reachable: false })])],
+			}),
+			peers: peerList({
+				peers: [
+					peer(id, {
+						reachable: false,
+						link_state: linkState,
+						unreachable_reason: "",
+					}),
+				],
+			}),
+		});
+		const device = graph.devices[0];
+		assert.equal(deviceReach(device), reach);
+		assert.equal(deviceStatLine(device, 1_700_000_100), words);
+		assert.equal(reachWords(deviceReach(device)), words);
+	}
+});
+
 test("the summary names each observed failure class, never one `unreachable`", () => {
 	const graph = meshGraph({
 		topology: networkTopology({
@@ -751,6 +811,9 @@ test("the summary names each observed failure class, never one `unreachable`", (
 				network(NET_ONE, [
 					member(DEVICE_B, { reachable: false }),
 					member(DEVICE_C, { reachable: false }),
+					member(DEVICE_D, { reachable: false }),
+					member(DEVICE_E, { reachable: false }),
+					member(`d_${"f".repeat(32)}`, { reachable: false }),
 				]),
 			],
 		}),
@@ -766,13 +829,28 @@ test("the summary names each observed failure class, never one `unreachable`", (
 					reachable: false,
 					unreachable_reason: "no route to it",
 				}),
+				peer(DEVICE_D, {
+					reachable: false,
+					link_state: "address_unreachable",
+					unreachable_reason: "",
+				}),
+				peer(DEVICE_E, {
+					reachable: false,
+					link_state: "no_endpoint",
+					unreachable_reason: "",
+				}),
+				peer(`d_${"f".repeat(32)}`, {
+					reachable: false,
+					link_state: "not_a_member",
+					unreachable_reason: "",
+				}),
 			],
 		}),
 	});
 	assert.equal(
 		meshSummary(graph),
-		"1 network · 2 devices · 1 relay down · 1 no answer",
-		"a mixed failure census names the relay verdict and keeps the generic class generic",
+		"1 network · 5 devices · 1 relay down · 1 address unreachable · 1 no address to dial · 1 not a member · 1 no answer",
+		"a mixed failure census names every verdict; none is folded into one `unreachable`",
 	);
 });
 
@@ -3827,8 +3905,8 @@ test("a refusal is rendered from the receipt rather than paraphrased", () => {
 	);
 	assert.match(
 		actions,
-		/\{refusal\?\.code\}/,
-		"with its code beside it, so a support conversation and a log agree",
+		/\{refusal\?\.reach \?\? refusal\?\.code\}/,
+		"with the client's reach word when it has one (the pre-flight refusal has the device in hand), and the route's code otherwise - so a log still agrees with the machine vocabulary",
 	);
 	assert.match(actions, /ui\.mesh\.mesh_actions\.wait_for_the_turn_to_finish/);
 	/*

@@ -677,6 +677,15 @@ export type MeshRefusal = {
 	code: string;
 	/** The route's OWN sentence. Never paraphrased, never composed over. */
 	sentence: string;
+	/**
+	 * The reach word of the device the refusal is about, when this client synthesised
+	 * the refusal with that device in hand (`mesh-drop.ts`'s pre-flight refusals).
+	 * Absent on a refusal from the route: there the sentence is the route's own, and
+	 * this client has no reach reading to add. The notice shows this in place of the
+	 * machine `code` when present, so `relay not running` and `address unreachable`
+	 * do not both arrive as the single word `unreachable`.
+	 */
+	reach?: string;
 	status: number | null;
 	/** True when the outcome is unknown and the request must not be repeated. */
 	unconfirmed: boolean;

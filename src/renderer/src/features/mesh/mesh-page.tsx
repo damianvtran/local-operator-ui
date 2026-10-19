@@ -199,6 +199,8 @@ export const MeshSurface: FC<{
 	onDropRefused: (refusal: {
 		code: string;
 		sentence: string;
+		/** The client's reach word, present when the drag had the device in hand. */
+		reach?: string;
 		remedy: Remedy | null;
 		plan: MovePlan | null;
 	}) => void;
@@ -1082,6 +1084,7 @@ export const MeshPage: FC = () => {
 					refusal: {
 						code: refusal.code,
 						sentence: refusal.sentence,
+						reach: refusal.reach,
 						status: null,
 						unconfirmed: false,
 					},

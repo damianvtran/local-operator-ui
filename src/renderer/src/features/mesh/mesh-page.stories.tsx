@@ -35,6 +35,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import type { DesktopResponse } from "../../../../shared/desktop-contract";
 import { MeshPage } from "./mesh-page";
+import type { PeerLinkState, PeerRelayState } from "./mesh-types";
 
 type BridgeRequest = { op: string; approvalId?: string };
 
@@ -97,8 +98,8 @@ const peer = (
 		unreachable_reason: string;
 		last_seen_at: number | null;
 		session_count: number;
-		link_state: string;
-		remote_relay: string;
+		link_state: PeerLinkState;
+		remote_relay: PeerRelayState;
 		attempts: Array<{
 			endpoint: string;
 			connected: boolean;
@@ -664,58 +665,91 @@ export const Misconfigured: Story = {
  * not running and show each address's own transport result. `session_count: 0`
  * keeps the empty-conversation sentence on the device.
  */
+/**
+ * THE RELAY-DOWN WORLD, shared by the canvas/panel frame and the list frame.
+ *
+ * The attempts satisfy the contract's rule for `not_listening`: no endpoint
+ * connected AND at least one refused TCP. The timeout beside the refusal is what
+ * makes the evidence honest - a reader sees that not every address failed the
+ * same way.
+ */
+function relayDownFixture() {
+	return {
+		networks: {
+			self_device_id: DEVICE_SELF,
+			networks: [
+				network(NET_HOME, "damian-mesh", [
+					member(DEVICE_SELF, { name: "damians-MacBook-Pro", role: "admin" }),
+					member(DEVICE_PEER, {
+						name: "cloud-node-1",
+						endpoints: ["99.79.190.164:4097", "172.31.22.23:4097"],
+						reachable: false,
+						reason:
+							"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError; 172.31.22.23:4097 connect_failed:TimeoutError",
+					}),
+				]),
+			],
+		},
+		peers: {
+			self_device_id: DEVICE_SELF,
+			peers: [
+				peer(DEVICE_PEER, {
+					name: "cloud-node-1",
+					reachable: false,
+					link_state: "relay_down",
+					remote_relay: "not_listening",
+					attempts: [
+						{
+							endpoint: "99.79.190.164:4097",
+							connected: false,
+							detail: "connect_failed:ConnectionRefusedError",
+							latency_ms: null,
+						},
+						{
+							endpoint: "172.31.22.23:4097",
+							connected: false,
+							detail: "connect_failed:TimeoutError",
+							latency_ms: null,
+						},
+					],
+					unreachable_reason:
+						"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError; 172.31.22.23:4097 connect_failed:TimeoutError",
+					session_count: 0,
+				}),
+			],
+			degraded: [],
+		},
+	};
+}
+
 export const RelayDown: Story = {
 	render: () => {
-		installBridge({
-			networks: {
-				self_device_id: DEVICE_SELF,
-				networks: [
-					network(NET_HOME, "damian-mesh", [
-						member(DEVICE_SELF, { name: "damians-MacBook-Pro", role: "admin" }),
-						member(DEVICE_PEER, {
-							name: "cloud-node-1",
-							endpoints: ["99.79.190.164:4097", "172.31.22.23:4097"],
-							reachable: false,
-							reason:
-								"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError; 172.31.22.23:4097 connect_failed:TimeoutError",
-						}),
-					]),
-				],
-			},
-			peers: {
-				self_device_id: DEVICE_SELF,
-				peers: [
-					peer(DEVICE_PEER, {
-						name: "cloud-node-1",
-						reachable: false,
-						link_state: "relay_down",
-						remote_relay: "not_listening",
-						attempts: [
-							{
-								endpoint: "99.79.190.164:4097",
-								connected: false,
-								detail: "connect_failed:ConnectionRefusedError",
-								latency_ms: null,
-							},
-							{
-								endpoint: "172.31.22.23:4097",
-								connected: false,
-								detail: "connect_failed:TimeoutError",
-								latency_ms: null,
-							},
-						],
-						unreachable_reason:
-							"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError; 172.31.22.23:4097 connect_failed:TimeoutError",
-						session_count: 0,
-					}),
-				],
-				degraded: [],
-			},
-		});
+		installBridge(relayDownFixture());
 		return <MeshPage />;
 	},
 	play: async () => {
 		await openPanel(DEVICE_PEER);
+	},
+};
+
+/**
+ * THE SAME RELAY-DOWN WORLD IN THE LIST: the half of the evidence the panel frame
+ * cannot photograph.
+ *
+ * The list prints one `<endpoint> — <words>` line per address and the headline
+ * above them; this play presses the real List toggle and waits for the refusal's
+ * own word, so a regression that only dropped the list block fails the frame.
+ */
+export const RelayDownList: Story = {
+	render: () => {
+		installBridge(relayDownFixture());
+		return <MeshPage />;
+	},
+	play: async () => {
+		(await screen.findByRole("button", { name: "List" })).click();
+		await screen.findByText("Sort devices by");
+		await screen.findByText("the peer's relay is not running");
+		await screen.findByText("99.79.190.164:4097 — nothing listening");
 	},
 };
 
@@ -777,6 +811,11 @@ export const AddressUnreachable: Story = {
 	},
 	play: async () => {
 		await openPanel(DEVICE_PEER);
+		// THE THIRD STATE THE INCIDENT NAMED: address unreachable is its own word, not
+		// the generic "no answer". It appears on the node state line and in the panel.
+		expect(
+			(await screen.findAllByText("address unreachable")).length,
+		).toBeGreaterThan(0);
 	},
 };
 
@@ -819,7 +858,9 @@ export const HandshakeRefused: Story = {
 							{
 								endpoint: "99.79.190.164:4097",
 								connected: true,
-								detail: "no_answer",
+								// TCP connected AND the attempt itself succeeded; the HANDSHAKE is
+								// what closed, which is why the row must read `answered`, not `no answer`.
+								detail: "ok",
 								latency_ms: 41,
 							},
 						],

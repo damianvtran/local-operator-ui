@@ -136,7 +136,9 @@ export type MeshDevice = {
 	/**
 	 * The per-address evidence behind `linkState`, or `null` when the backend sent
 	 * no attempts vocabulary. An empty array is evidence of nothing dialled; `null`
-	 * is evidence of nothing REPORTED, and the renderer must not draw the two alike.
+	 * is evidence of nothing REPORTED. The renderer treats both as "no evidence"
+	 * and falls back to the older single sentence, but the distinction is preserved
+	 * so a future surface can tell the two apart.
 	 */
 	attempts: PeerAttempt[] | null;
 };
@@ -561,6 +563,11 @@ export function meshSummary(graph: MeshGraph): string {
 	const handshakeRefused = reaches.filter(
 		(reach) => reach === "handshake-refused",
 	).length;
+	const addressUnreachable = reaches.filter(
+		(reach) => reach === "address-unreachable",
+	).length;
+	const noEndpoint = reaches.filter((reach) => reach === "no-endpoint").length;
+	const notAMember = reaches.filter((reach) => reach === "not-a-member").length;
 	const unanswered = reaches.filter((reach) => reach === "unanswered").length;
 	const notAsked = reaches.filter((reach) => reach === "not-attempted").length;
 	const unknown = reaches.filter((reach) => reach === "unknown").length;
@@ -569,11 +576,13 @@ export function meshSummary(graph: MeshGraph): string {
 	if (reached)
 		parts.push(t("ui.mesh.mesh_graph.reached_count", { count: reached }));
 	/*
-	 * THE THREE OBSERVED FAILURES ARE NAMED APART (mesh link resilience). They all
-	 * count as "not reached", but folding them into one `unreachable` would put the
-	 * tab's own summary back to the conflation the panel now separates - a relay that
-	 * is not running is an action on the peer, a closed handshake is an action on the
-	 * membership. Each class is counted once, so the census still adds up.
+	 * EVERY OBSERVED FAILURE IS NAMED APART (mesh link resilience). They all count as
+	 * "not reached", but folding them into one `unreachable` would put the tab's own
+	 * summary back to the conflation the panel now separates - a relay that is not
+	 * running is an action on the peer, a closed handshake is an action on the
+	 * membership, an unanswered address is an action on the route, and `no_endpoint` /
+	 * `not_a_member` are not transport failures at all. Each class is counted once, so
+	 * the census still adds up.
 	 */
 	if (relayDown)
 		parts.push(t("ui.mesh.mesh_graph.relay_down_count", { count: relayDown }));
@@ -582,6 +591,20 @@ export function meshSummary(graph: MeshGraph): string {
 			t("ui.mesh.mesh_graph.handshake_refused_count", {
 				count: handshakeRefused,
 			}),
+		);
+	if (addressUnreachable)
+		parts.push(
+			t("ui.mesh.mesh_graph.address_unreachable_count", {
+				count: addressUnreachable,
+			}),
+		);
+	if (noEndpoint)
+		parts.push(
+			t("ui.mesh.mesh_graph.no_endpoint_count", { count: noEndpoint }),
+		);
+	if (notAMember)
+		parts.push(
+			t("ui.mesh.mesh_graph.not_a_member_count", { count: notAMember }),
 		);
 	if (unanswered)
 		parts.push(t("ui.mesh.mesh_graph.no_answer_count", { count: unanswered }));

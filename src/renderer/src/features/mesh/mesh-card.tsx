@@ -696,10 +696,21 @@ export const DevicePanel: FC<{
 						)}
 						{attempts.length > 0 && (
 							<>
-								<span className="text-meta text-ink-dim">
+								<span
+									id={`mesh-attempts-label-${device.id}`}
+									className="text-meta text-ink-dim"
+								>
 									{t("ui.mesh.mesh_reach.addresses_tried")}
 								</span>
-								<ul className="m-0 flex list-none flex-col gap-0.5 p-0">
+								{/*
+								 * NO EXPLICIT `role="list"`: the native `<ul>` already has it, and Biome
+								 * refuses the redundant role. The accessible NAME is the thing this list
+								 * was missing - each address row is announced under the label above it.
+								 */}
+								<ul
+									aria-labelledby={`mesh-attempts-label-${device.id}`}
+									className="m-0 flex list-none flex-col gap-0.5 p-0"
+								>
 									{attempts.map((attempt, index) => {
 										const words = attemptWords(attempt.detail);
 										return (

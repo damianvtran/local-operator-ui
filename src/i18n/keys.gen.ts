@@ -2789,6 +2789,16 @@ export type MessageParams = {
 	"ui.mesh.mesh_drop.on_owner": { owner: string };
 	"ui.mesh.mesh_drop.on_this_device": undefined;
 	"ui.mesh.mesh_drop.owner_no_answer": { device: string; reason: string };
+	"ui.mesh.mesh_drop.owner_reach_refusal": {
+		device: string;
+		reach: string;
+		reason: string;
+	};
+	"ui.mesh.mesh_drop.reach_refusal": {
+		device: string;
+		reach: string;
+		reason: string;
+	};
 	"ui.mesh.mesh_drop.recall_first": { owner: string };
 	"ui.mesh.mesh_drop.recall_it": undefined;
 	"ui.mesh.mesh_drop.running_now": { conversation: string; where: string };
@@ -2797,6 +2807,7 @@ export type MessageParams = {
 	"ui.mesh.mesh_drop.this_conversation": undefined;
 	"ui.mesh.mesh_drop.this_device": undefined;
 	"ui.mesh.mesh_drop.turn_in_flight": { conversation: string };
+	"ui.mesh.mesh_graph.address_unreachable_count": { count: number };
 	"ui.mesh.mesh_graph.conversation_unit": { count: number };
 	"ui.mesh.mesh_graph.conversations_not_reported": undefined;
 	"ui.mesh.mesh_graph.device_count": { count: number };
@@ -2806,7 +2817,9 @@ export type MessageParams = {
 	"ui.mesh.mesh_graph.last_status_frame": { age: string };
 	"ui.mesh.mesh_graph.network_count": { count: number };
 	"ui.mesh.mesh_graph.no_answer_count": { count: number };
+	"ui.mesh.mesh_graph.no_endpoint_count": { count: number };
 	"ui.mesh.mesh_graph.no_sessions_reported": undefined;
+	"ui.mesh.mesh_graph.not_a_member_count": { count: number };
 	"ui.mesh.mesh_graph.not_asked_count": { count: number };
 	"ui.mesh.mesh_graph.reached_count": { count: number };
 	"ui.mesh.mesh_graph.relay_down_count": { count: number };
@@ -2856,13 +2869,18 @@ export type MessageParams = {
 	"ui.mesh.mesh_page.the_copy_here_is_gone": undefined;
 	"ui.mesh.mesh_page.the_move_could_not_be_sent_nothing": undefined;
 	"ui.mesh.mesh_page.this_device_is_not_in_any_network": undefined;
+	"ui.mesh.mesh_reach.address_unreachable": undefined;
 	"ui.mesh.mesh_reach.addresses_tried": undefined;
 	"ui.mesh.mesh_reach.attempt_answered": undefined;
+	"ui.mesh.mesh_reach.attempt_bad_address": undefined;
+	"ui.mesh.mesh_reach.attempt_could_not_connect": undefined;
 	"ui.mesh.mesh_reach.attempt_no_answer": undefined;
 	"ui.mesh.mesh_reach.attempt_not_tried": undefined;
 	"ui.mesh.mesh_reach.attempt_nothing_listening": undefined;
 	"ui.mesh.mesh_reach.handshake_refused": undefined;
 	"ui.mesh.mesh_reach.no_answer": undefined;
+	"ui.mesh.mesh_reach.no_endpoint": undefined;
+	"ui.mesh.mesh_reach.not_a_member": undefined;
 	"ui.mesh.mesh_reach.not_asked": undefined;
 	"ui.mesh.mesh_reach.peer_closed_handshake": undefined;
 	"ui.mesh.mesh_reach.peer_relay_not_running": undefined;

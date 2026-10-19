@@ -250,6 +250,9 @@ export type PeerAttempt = {
 /** Optional link facts on a peer row; absent means the backend did not answer. */
 export type PeerLinkFacts = {
 	link_state?: PeerLinkState;
+	/**
+	 * The backend's derived reading of the peer's relay: not_listening when no endpoint connected AND at least one refused TCP (the host was up and nothing listened); unknown otherwise.
+	 */
 	remote_relay?: PeerRelayState;
 	attempts?: PeerAttempt[];
 };
