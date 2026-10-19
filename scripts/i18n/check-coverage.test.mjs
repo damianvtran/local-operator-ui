@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 import {
+	allowanceGrowth,
 	applyUpdate,
 	checkCoverage,
 	failureCount,
@@ -15,29 +16,35 @@ const UNKNOWN_LOCALE = /not in the manifest/;
 const UNKNOWN_NAMESPACE = /no such namespace/;
 const SOURCE_LOCALE_ROW = /not a gated target language/;
 const DUPLICATE_PAIR = /duplicates/;
-const MISSING_REASON = /needs a reason/;
 const INVALID_JSON = /JSON/;
+const NO_MISSING_KEYS = /no missing keys/;
+const UNSORTED_KEYS = /not sorted/;
+const DUPLICATE_KEYS = /duplicate keys/;
+const OUTSIDE_NAMESPACE = /outside ui\.demo/;
 
 /*
  * EXECUTABLE CONTRACT FOR THE COVERAGE GATE.
  *
- * The gate exists because a locale can be missing a whole namespace while the
- * runtime silently falls back to English, and no existing check reasons from
- * the manifest's list of promised languages. A guard that cannot be falsified
- * is worse than none, so these tests build a tiny catalogue tree and pin the
- * behaviours that make the promise real:
+ * The gate exists because a locale can be missing a whole namespace or a single
+ * key while the runtime silently falls back to English, and no existing check
+ * reasons from the manifest's list of promised languages. A guard that cannot
+ * be falsified is worse than none, so these tests build a tiny catalogue tree
+ * and pin the behaviours that make the promise real:
  *
  *  1. a complete tree passes;
- *  2. a missing namespace and a missing key both FAIL;
- *  3. a listed allowance pair passes, and a pair that has become complete FAILS
- *     (the allowance must shrink, never rot);
- *  4. `--update` removes now-complete pairs and cannot add one;
- *  5. a supported locale with no catalogue directory passes only when every
- *     populated English namespace is listed in the allowance (Urdu's state);
- *  6. an unlisted locale directory fails, so a new locale cannot escape the
+ *  2. a missing namespace and a missing key both FAIL — including a new key
+ *     added inside an already-incomplete namespace, which is the case a
+ *     pair-level allowance would let through;
+ *  3. a listed key that has become present FAILS (the allowance must shrink,
+ *     never rot);
+ *  4. `--update` removes now-present keys and empty pairs, and cannot add;
+ *  5. every entry must be attributed (reason, owner, payoff) and its key list
+ *     sorted, duplicate-free, non-empty and scoped to its namespace;
+ *  6. a supported locale with no catalogue directory passes only when every
+ *     populated English key is listed (Urdu's state);
+ *  7. an unlisted locale directory fails, so a new locale cannot escape the
  *     gate by simply existing;
- *  7. an allowance row naming an unknown locale, an unknown namespace, the
- *     source locale or a duplicate fails rather than allowing nothing quietly.
+ *  8. growth over a base allowance is reported key by key.
  *
  * The fixture is deliberately tiny and built per test, so these assertions
  * still mean the same thing when the real allowance reaches zero.
@@ -50,8 +57,10 @@ function row(code, status = "supported", dir = "ltr") {
 function build({
 	languages = [row("en", "source"), row("fr")],
 	locales = {
-		en: { "ui.demo": { hello: "Hello", bye: "Bye" } },
-		fr: { "ui.demo": { hello: "Bonjour", bye: "Au revoir" } },
+		en: { "ui.demo": { "ui.demo.hello": "Hello", "ui.demo.bye": "Bye" } },
+		fr: {
+			"ui.demo": { "ui.demo.hello": "Bonjour", "ui.demo.bye": "Au revoir" },
+		},
 	},
 	allowance = [],
 	manifestOverride,
@@ -88,9 +97,11 @@ function build({
 			{
 				schema: 1,
 				note: "fixture",
-				pairs: allowance.map((pair) => ({
+				pairs: allowance.map((entry) => ({
 					reason: "fixture gap",
-					...pair,
+					owner: "fixture-owner",
+					payoff: "2026-12-31",
+					...entry,
 				})),
 			},
 			null,
@@ -104,108 +115,162 @@ test("a complete tree passes", () => {
 	const tree = build();
 	const result = checkCoverage(tree);
 	assert.equal(failureCount(result), 0);
-	assert.equal(result.newGaps.length, 0);
+	assert.equal(result.newKeys.length, 0);
 });
 
-test("a missing namespace fails", () => {
+test("a missing namespace fails on every missing key", () => {
 	const tree = build({
 		locales: {
-			en: { "ui.demo": { hello: "Hello", bye: "Bye" } },
+			en: { "ui.demo": { "ui.demo.hello": "Hello", "ui.demo.bye": "Bye" } },
 			fr: {},
 		},
 	});
 	const result = checkCoverage(tree);
-	assert.equal(result.newGaps.length, 1);
-	assert.equal(result.newGaps[0].locale, "fr");
-	assert.equal(result.newGaps[0].namespace, "ui.demo");
-	assert.equal(result.newGaps[0].keys.length, 2);
+	assert.equal(result.newKeys.length, 2);
+	assert.deepEqual(
+		result.newKeys.map((finding) => finding.key),
+		["ui.demo.bye", "ui.demo.hello"],
+	);
+	assert.equal(result.newKeys[0].locale, "fr");
 });
 
 test("a missing key inside an existing namespace fails", () => {
 	const tree = build({
 		locales: {
-			en: { "ui.demo": { hello: "Hello", bye: "Bye" } },
-			fr: { "ui.demo": { hello: "Bonjour" } },
+			en: { "ui.demo": { "ui.demo.hello": "Hello", "ui.demo.bye": "Bye" } },
+			fr: { "ui.demo": { "ui.demo.hello": "Bonjour" } },
 		},
 	});
 	const result = checkCoverage(tree);
-	assert.equal(result.newGaps.length, 1);
-	assert.deepEqual(result.newGaps[0].keys, ["bye"]);
+	assert.equal(result.newKeys.length, 1);
+	assert.deepEqual(result.newKeys[0].key, "ui.demo.bye");
 });
 
-test("an allowance pair covers the gap it names", () => {
+test("a new key inside an already-allowlisted namespace fails", () => {
 	const tree = build({
 		locales: {
-			en: { "ui.demo": { hello: "Hello", bye: "Bye" } },
+			en: {
+				"ui.demo": {
+					"ui.demo.hello": "Hello",
+					"ui.demo.bye": "Bye",
+					"ui.demo.later": "Later",
+				},
+			},
+			fr: { "ui.demo": { "ui.demo.hello": "Bonjour" } },
+		},
+		allowance: [
+			{ locale: "fr", namespace: "ui.demo", missing: ["ui.demo.bye"] },
+		],
+	});
+	const result = checkCoverage(tree);
+	assert.equal(result.newKeys.length, 1);
+	assert.equal(result.newKeys[0].key, "ui.demo.later");
+	assert.equal(result.newKeys[0].locale, "fr");
+});
+
+test("an exact allowance covers the gap it names", () => {
+	const tree = build({
+		locales: {
+			en: { "ui.demo": { "ui.demo.hello": "Hello", "ui.demo.bye": "Bye" } },
 			fr: {},
 		},
-		allowance: [{ locale: "fr", namespace: "ui.demo" }],
+		allowance: [
+			{
+				locale: "fr",
+				namespace: "ui.demo",
+				missing: ["ui.demo.bye", "ui.demo.hello"],
+			},
+		],
 	});
 	const result = checkCoverage(tree);
 	assert.equal(failureCount(result), 0);
-	assert.equal(result.stale.length, 0);
+	assert.equal(result.staleKeys.length, 0);
 });
 
-test("an allowance pair that is now complete fails, and --update drops it", () => {
-	const tree = build({ allowance: [{ locale: "fr", namespace: "ui.demo" }] });
+test("a listed key that is no longer missing fails, and --update drops it", () => {
+	const tree = build({
+		locales: {
+			en: { "ui.demo": { "ui.demo.hello": "Hello", "ui.demo.bye": "Bye" } },
+			fr: { "ui.demo": { "ui.demo.bye": "Au revoir" } },
+		},
+		allowance: [
+			{
+				locale: "fr",
+				namespace: "ui.demo",
+				missing: ["ui.demo.bye", "ui.demo.hello"],
+			},
+		],
+	});
 	const before = checkCoverage(tree);
-	assert.equal(before.stale.length, 1);
+	assert.equal(before.staleKeys.length, 1);
+	assert.equal(before.staleKeys[0].key, "ui.demo.bye");
 	assert.equal(main([], tree), 1);
 
 	assert.equal(applyUpdate(tree), 0);
 	const after = checkCoverage(tree);
 	assert.equal(failureCount(after), 0);
-	assert.deepEqual(
-		JSON.parse(readFileSync(tree.allowancePath, "utf8")).pairs,
-		[],
-	);
+	const saved = JSON.parse(readFileSync(tree.allowancePath, "utf8"));
+	assert.deepEqual(saved.pairs[0].missing, ["ui.demo.hello"]);
 });
 
-test("--update cannot add a pair for a new gap", () => {
+test("--update removes an entry whose keys are all present", () => {
+	const tree = build({
+		allowance: [
+			{ locale: "fr", namespace: "ui.demo", missing: ["ui.demo.hello"] },
+		],
+	});
+	assert.equal(applyUpdate(tree), 0);
+	const saved = JSON.parse(readFileSync(tree.allowancePath, "utf8"));
+	assert.deepEqual(saved.pairs, []);
+});
+
+test("--update cannot add a key for a new gap", () => {
 	const tree = build({
 		locales: {
-			en: { "ui.demo": { hello: "Hello" } },
+			en: { "ui.demo": { "ui.demo.hello": "Hello" } },
 			fr: {},
 		},
 	});
 	assert.equal(applyUpdate(tree), 0);
 	const result = checkCoverage(tree);
-	assert.equal(result.newGaps.length, 1);
+	assert.equal(result.newKeys.length, 1);
 	assert.equal(result.allowance.pairs.length, 0);
 	assert.equal(main([], tree), 1);
 });
 
-test("a supported locale with no directory passes when its gaps are allowed", () => {
+test("a supported locale with no directory passes when its keys are allowed", () => {
 	const tree = build({
 		languages: [row("en", "source"), row("fr"), row("ur", "supported", "rtl")],
 		locales: {
-			en: { "ui.demo": { hello: "Hello" } },
-			fr: { "ui.demo": { hello: "Bonjour" } },
+			en: { "ui.demo": { "ui.demo.hello": "Hello" } },
+			fr: { "ui.demo": { "ui.demo.hello": "Bonjour" } },
 		},
-		allowance: [{ locale: "ur", namespace: "ui.demo" }],
+		allowance: [
+			{ locale: "ur", namespace: "ui.demo", missing: ["ui.demo.hello"] },
+		],
 	});
 	const result = checkCoverage(tree);
 	assert.equal(failureCount(result), 0);
 });
 
-test("a supported locale with no directory fails an unlisted gap", () => {
+test("a supported locale with no directory fails an unlisted key", () => {
 	const tree = build({
 		languages: [row("en", "source"), row("fr"), row("ur", "supported", "rtl")],
 		locales: {
-			en: { "ui.demo": { hello: "Hello" } },
-			fr: { "ui.demo": { hello: "Bonjour" } },
+			en: { "ui.demo": { "ui.demo.hello": "Hello" } },
+			fr: { "ui.demo": { "ui.demo.hello": "Bonjour" } },
 		},
 	});
 	const result = checkCoverage(tree);
-	assert.equal(result.newGaps.length, 1);
-	assert.equal(result.newGaps[0].locale, "ur");
+	assert.equal(result.newKeys.length, 1);
+	assert.equal(result.newKeys[0].locale, "ur");
 });
 
 test("an unlisted locale directory fails", () => {
 	const tree = build({
 		locales: {
-			en: { "ui.demo": { hello: "Hello" } },
-			fr: { "ui.demo": { hello: "Bonjour" } },
+			en: { "ui.demo": { "ui.demo.hello": "Hello" } },
+			fr: { "ui.demo": { "ui.demo.hello": "Bonjour" } },
 			de: { "ui.demo": { hello: "Hallo" } },
 		},
 	});
@@ -216,7 +281,9 @@ test("an unlisted locale directory fails", () => {
 
 test("an allowance row naming an unknown locale is a phantom", () => {
 	const tree = build({
-		allowance: [{ locale: "de", namespace: "ui.demo" }],
+		allowance: [
+			{ locale: "de", namespace: "ui.demo", missing: ["ui.demo.hello"] },
+		],
 	});
 	const result = checkCoverage(tree);
 	assert.equal(result.phantoms.length, 1);
@@ -225,7 +292,9 @@ test("an allowance row naming an unknown locale is a phantom", () => {
 
 test("an allowance row naming an unknown namespace is a phantom", () => {
 	const tree = build({
-		allowance: [{ locale: "fr", namespace: "ui.ghost" }],
+		allowance: [
+			{ locale: "fr", namespace: "ui.ghost", missing: ["ui.ghost.x"] },
+		],
 	});
 	const result = checkCoverage(tree);
 	assert.equal(result.phantoms.length, 1);
@@ -234,22 +303,24 @@ test("an allowance row naming an unknown namespace is a phantom", () => {
 
 test("an allowance row naming the source locale is a phantom", () => {
 	const tree = build({
-		allowance: [{ locale: "en", namespace: "ui.demo" }],
+		allowance: [
+			{ locale: "en", namespace: "ui.demo", missing: ["ui.demo.hello"] },
+		],
 	});
 	const result = checkCoverage(tree);
 	assert.equal(result.phantoms.length, 1);
 	assert.match(result.phantoms[0], SOURCE_LOCALE_ROW);
 });
 
-test("a duplicate allowance row fails", () => {
+test("a duplicate allowance pair fails", () => {
 	const tree = build({
 		locales: {
-			en: { "ui.demo": { hello: "Hello" } },
+			en: { "ui.demo": { "ui.demo.hello": "Hello" } },
 			fr: {},
 		},
 		allowance: [
-			{ locale: "fr", namespace: "ui.demo" },
-			{ locale: "fr", namespace: "ui.demo" },
+			{ locale: "fr", namespace: "ui.demo", missing: ["ui.demo.hello"] },
+			{ locale: "fr", namespace: "ui.demo", missing: ["ui.demo.hello"] },
 		],
 	});
 	const result = checkCoverage(tree);
@@ -257,30 +328,51 @@ test("a duplicate allowance row fails", () => {
 	assert.match(result.allowanceProblems[0], DUPLICATE_PAIR);
 });
 
-test("an allowance row needs a non-empty reason", () => {
-	const tree = build({
-		locales: {
-			en: { "ui.demo": { hello: "Hello" } },
-			fr: {},
-		},
-		allowance: [{ locale: "fr", namespace: "ui.demo", reason: "  " }],
-	});
-	const result = checkCoverage(tree);
-	assert.equal(result.allowanceProblems.length, 1);
-	assert.match(result.allowanceProblems[0], MISSING_REASON);
+test("an allowance row needs a reason, an owner and a payoff", () => {
+	for (const field of ["reason", "owner", "payoff"]) {
+		const tree = build({
+			locales: {
+				en: { "ui.demo": { "ui.demo.hello": "Hello" } },
+				fr: {},
+			},
+			allowance: [
+				{ locale: "fr", namespace: "ui.demo", missing: ["ui.demo.hello"] },
+			],
+		});
+		const saved = JSON.parse(readFileSync(tree.allowancePath, "utf8"));
+		saved.pairs[0][field] = "  ";
+		writeFileSync(tree.allowancePath, `${JSON.stringify(saved, null, "\t")}\n`);
+		const result = checkCoverage(tree);
+		assert.ok(
+			result.allowanceProblems.some((problem) =>
+				problem.includes(`.${field} must be a non-empty string`),
+			),
+			`${field} should be required`,
+		);
+	}
 });
 
-test("an unknown status fails", () => {
-	const tree = build({ languages: [row("en", "source"), row("fr", "beta")] });
-	const result = checkCoverage(tree);
-	assert.ok(result.problems.some((problem) => problem.includes("not one of")));
-	assert.equal(failureCount(result), 1);
-});
-
-test("a corrupt target catalogue fails loudly instead of reading as a gap", () => {
-	const tree = build();
-	writeFileSync(join(tree.cataloguesDir, "fr", "ui.demo.json"), "{");
-	assert.throws(() => checkCoverage(tree), INVALID_JSON);
+test("an empty, unsorted, duplicate or out-of-namespace key list fails", () => {
+	const cases = [
+		{ missing: [], expected: NO_MISSING_KEYS },
+		{ missing: ["ui.demo.hello", "ui.demo.bye"], expected: UNSORTED_KEYS },
+		{ missing: ["ui.demo.bye", "ui.demo.bye"], expected: DUPLICATE_KEYS },
+		{ missing: ["ui.other.key"], expected: OUTSIDE_NAMESPACE },
+	];
+	for (const { missing, expected } of cases) {
+		const tree = build({
+			locales: {
+				en: { "ui.demo": { "ui.demo.hello": "Hello", "ui.demo.bye": "Bye" } },
+				fr: {},
+			},
+			allowance: [{ locale: "fr", namespace: "ui.demo", missing }],
+		});
+		const result = checkCoverage(tree);
+		assert.ok(
+			result.allowanceProblems.some((problem) => expected.test(problem)),
+			`${JSON.stringify(missing)} should fail with ${expected}`,
+		);
+	}
 });
 
 test("a language row with an unknown field fails", () => {
@@ -293,10 +385,63 @@ test("a language row with an unknown field fails", () => {
 	);
 });
 
+test("a corrupt target catalogue fails loudly instead of reading as a gap", () => {
+	const tree = build();
+	writeFileSync(join(tree.cataloguesDir, "fr", "ui.demo.json"), "{");
+	assert.throws(() => checkCoverage(tree), INVALID_JSON);
+});
+
+test("an unknown status fails", () => {
+	const tree = build({ languages: [row("en", "source"), row("fr", "beta")] });
+	const result = checkCoverage(tree);
+	assert.ok(result.problems.some((problem) => problem.includes("not one of")));
+	assert.equal(failureCount(result), 1);
+});
+
 test("a manifest without exactly one source fails", () => {
 	const tree = build({
 		languages: [row("en", "supported"), row("fr")],
 	});
 	const result = checkCoverage(tree);
 	assert.ok(result.problems.some((problem) => problem.includes("exactly one")));
+});
+
+test("allowance growth names every added pair and key", () => {
+	const base = {
+		schema: 1,
+		pairs: [{ locale: "fr", namespace: "ui.demo", missing: ["ui.demo.bye"] }],
+	};
+	const head = {
+		schema: 1,
+		pairs: [
+			{
+				locale: "fr",
+				namespace: "ui.demo",
+				missing: ["ui.demo.bye", "ui.demo.hello"],
+			},
+			{ locale: "ur", namespace: "ui.demo", missing: ["ui.demo.bye"] },
+		],
+	};
+	assert.deepEqual(allowanceGrowth(base, head), [
+		{ locale: "fr", namespace: "ui.demo", key: "ui.demo.hello" },
+		{ locale: "ur", namespace: "ui.demo", key: "ui.demo.bye" },
+	]);
+});
+
+test("allowance shrinkage is not growth", () => {
+	const base = {
+		schema: 1,
+		pairs: [
+			{
+				locale: "fr",
+				namespace: "ui.demo",
+				missing: ["ui.demo.bye", "ui.demo.hello"],
+			},
+		],
+	};
+	const head = {
+		schema: 1,
+		pairs: [{ locale: "fr", namespace: "ui.demo", missing: ["ui.demo.hello"] }],
+	};
+	assert.deepEqual(allowanceGrowth(base, head), []);
 });
