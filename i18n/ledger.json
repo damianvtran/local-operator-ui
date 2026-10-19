@@ -13437,7 +13437,7 @@
 			"locale": "ur",
 			"namespace": "ui.chat.composer",
 			"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
-			"target_sha256": "0676c38c35abe51cd25ad9b2ed239d25beaca11ec781368440e8919efa41d4fb",
+			"target_sha256": "e43d7b11e77f3bd14f62d419d40b9b7621ceebdc35816a550a6ccc8326eabf7e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -13449,20 +13449,46 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "102ffa6d185d",
+					"instance": "e97b3d2b7977",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/102ffa6d185d.json",
-					"receipt_sha256": "9cf5311d3e87ee9ff90304782aae6ea3a5535cb78213ad107f9f48c737df1d63",
-					"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
-					"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+					"receipt": "i18n/receipts/e97b3d2b7977.json",
+					"receipt_sha256": "bafa5c6568734126b6f2b871bd7ec4dfc0c4e1c8486e39007ecee7c83aab8e60",
+					"scope": "Post-review remediation delta: welcome gender-neutral fix (M1) at the final bytes.",
+					"note": "Agent-review round 1 M1 fixed; independent post-review audit zero findings."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+					"target_sha256": "0676c38c35abe51cd25ad9b2ed239d25beaca11ec781368440e8919efa41d4fb",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "102ffa6d185d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/102ffa6d185d.json",
+							"receipt_sha256": "9cf5311d3e87ee9ff90304782aae6ea3a5535cb78213ad107f9f48c737df1d63",
+							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
+							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
@@ -14088,7 +14114,7 @@
 			"locale": "ur",
 			"namespace": "ui.installer",
 			"source_sha256": "35b34093f3d065acf26e96a4e9601cb2906bd9439230a7fa7f9fc9a43784f7a3",
-			"target_sha256": "56f4592e19087d9ed520d574a935cd7c2911f06718225ec628b4e76eef89f4d1",
+			"target_sha256": "e446aab1691e4394cdac72699c0b7f423732a0b7efddca0292e156bb2fb6b2a3",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -14100,20 +14126,46 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "2a41a79633ed",
+					"instance": "e97b3d2b7977",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2a41a79633ed.json",
-					"receipt_sha256": "7be92f4a2a4f9b5aff5a834d859d39e06e341caf831df08db9f9a64a75c306bf",
-					"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
-					"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+					"receipt": "i18n/receipts/e97b3d2b7977.json",
+					"receipt_sha256": "bafa5c6568734126b6f2b871bd7ec4dfc0c4e1c8486e39007ecee7c83aab8e60",
+					"scope": "Post-review remediation delta: review round-1 findings M1/N1/N2/N5 at the final bytes.",
+					"note": "Agent-review round 1 findings fixed; independent post-review audit zero findings."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "35b34093f3d065acf26e96a4e9601cb2906bd9439230a7fa7f9fc9a43784f7a3",
+					"target_sha256": "56f4592e19087d9ed520d574a935cd7c2911f06718225ec628b4e76eef89f4d1",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "2a41a79633ed",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2a41a79633ed.json",
+							"receipt_sha256": "7be92f4a2a4f9b5aff5a834d859d39e06e341caf831df08db9f9a64a75c306bf",
+							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
+							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
@@ -14181,7 +14233,7 @@
 			"locale": "ur",
 			"namespace": "ui.common.connection",
 			"source_sha256": "d1acb6a1fae70e3f85255d880a91d9e35ed49a8bf7d04ef14722ce115d7c69bb",
-			"target_sha256": "4155a465f78f7e45fdcf20433ab81fe615fe075f313ffa7fa7d4d1034e2b5cff",
+			"target_sha256": "c84f8b2a47b2612c456b66b6b9983422a6e7edb4fbfe8685c39a530873ed95f3",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -14193,20 +14245,46 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "2a41a79633ed",
+					"instance": "e97b3d2b7977",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2a41a79633ed.json",
-					"receipt_sha256": "7be92f4a2a4f9b5aff5a834d859d39e06e341caf831df08db9f9a64a75c306bf",
-					"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
-					"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+					"receipt": "i18n/receipts/e97b3d2b7977.json",
+					"receipt_sha256": "bafa5c6568734126b6f2b871bd7ec4dfc0c4e1c8486e39007ecee7c83aab8e60",
+					"scope": "Post-review remediation delta: review round-1 findings M1/N1/N2/N5 at the final bytes.",
+					"note": "Agent-review round 1 findings fixed; independent post-review audit zero findings."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "d1acb6a1fae70e3f85255d880a91d9e35ed49a8bf7d04ef14722ce115d7c69bb",
+					"target_sha256": "4155a465f78f7e45fdcf20433ab81fe615fe075f313ffa7fa7d4d1034e2b5cff",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "2a41a79633ed",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2a41a79633ed.json",
+							"receipt_sha256": "7be92f4a2a4f9b5aff5a834d859d39e06e341caf831df08db9f9a64a75c306bf",
+							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
+							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
@@ -14832,7 +14910,7 @@
 			"locale": "ur",
 			"namespace": "ui.common.forms",
 			"source_sha256": "28a63a53e5b6c3c4fccb9995eb07637c8521ce9d5019e304f3fedb0ddbc053d9",
-			"target_sha256": "64024546b6e9252f5b8e101f10034ac960a21b36b15500539e4ebd6af9cb92ed",
+			"target_sha256": "365312ff56f9726e509a0c7a81d44e25e4d024db90add80fe4a5cb2968e6310c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -14844,26 +14922,52 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "4fef4415bb3f",
+					"instance": "e97b3d2b7977",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4fef4415bb3f.json",
-					"receipt_sha256": "c0d9e6dfc0abb5d4ff312c2a37b75449529b55e7252eea0eb0739dd005608e3c",
-					"scope": "Remediation delta audit: changed keys and direct composition neighbours; zero findings at the final bytes.",
-					"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+					"receipt": "i18n/receipts/e97b3d2b7977.json",
+					"receipt_sha256": "bafa5c6568734126b6f2b871bd7ec4dfc0c4e1c8486e39007ecee7c83aab8e60",
+					"scope": "Post-review remediation delta: review round-1 findings M1/N1/N2/N5 at the final bytes.",
+					"note": "Agent-review round 1 findings fixed; independent post-review audit zero findings."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "28a63a53e5b6c3c4fccb9995eb07637c8521ce9d5019e304f3fedb0ddbc053d9",
+					"target_sha256": "64024546b6e9252f5b8e101f10034ac960a21b36b15500539e4ebd6af9cb92ed",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "4fef4415bb3f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4fef4415bb3f.json",
+							"receipt_sha256": "c0d9e6dfc0abb5d4ff312c2a37b75449529b55e7252eea0eb0739dd005608e3c",
+							"scope": "Remediation delta audit: changed keys and direct composition neighbours; zero findings at the final bytes.",
+							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.common.updates",
 			"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
-			"target_sha256": "bad95428f43e47035de7985ca5b4d3e67093ac57c53d5b676c8c81a4867ded45",
+			"target_sha256": "81d591abe1e38e60965d0de4938be63718791b4db140c036273dbda05729622b",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -14875,20 +14979,46 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "4fef4415bb3f",
+					"instance": "e97b3d2b7977",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4fef4415bb3f.json",
-					"receipt_sha256": "c0d9e6dfc0abb5d4ff312c2a37b75449529b55e7252eea0eb0739dd005608e3c",
-					"scope": "Remediation delta audit: changed keys and direct composition neighbours; zero findings at the final bytes.",
-					"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+					"receipt": "i18n/receipts/e97b3d2b7977.json",
+					"receipt_sha256": "bafa5c6568734126b6f2b871bd7ec4dfc0c4e1c8486e39007ecee7c83aab8e60",
+					"scope": "Post-review remediation delta: review round-1 findings M1/N1/N2/N5 at the final bytes.",
+					"note": "Agent-review round 1 findings fixed; independent post-review audit zero findings."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
+					"target_sha256": "bad95428f43e47035de7985ca5b4d3e67093ac57c53d5b676c8c81a4867ded45",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "4fef4415bb3f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4fef4415bb3f.json",
+							"receipt_sha256": "c0d9e6dfc0abb5d4ff312c2a37b75449529b55e7252eea0eb0739dd005608e3c",
+							"scope": "Remediation delta audit: changed keys and direct composition neighbours; zero findings at the final bytes.",
+							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
@@ -14987,7 +15117,7 @@
 			"locale": "ur",
 			"namespace": "ui.schedules",
 			"source_sha256": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
-			"target_sha256": "da7fc6d6de5e02e3dc1f393222e923edee124cb96c1d3536d7cfcf87b48b0471",
+			"target_sha256": "7e1f8988ca7e685ef4118f0b6ac767a60f94b04a4e7e7f601f3ea65a80b3ea0c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -14999,20 +15129,46 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "63b568bd7776",
+					"instance": "e97b3d2b7977",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/63b568bd7776.json",
-					"receipt_sha256": "60aa754eca5369a54e1b496f98887266ee08fbcf867149830387799341f784e9",
-					"scope": "Remediation delta audit: truncated-list count clause; zero findings at the final bytes.",
-					"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+					"receipt": "i18n/receipts/e97b3d2b7977.json",
+					"receipt_sha256": "bafa5c6568734126b6f2b871bd7ec4dfc0c4e1c8486e39007ecee7c83aab8e60",
+					"scope": "Post-review remediation delta: review round-1 findings M1/N1/N2/N5 at the final bytes.",
+					"note": "Agent-review round 1 findings fixed; independent post-review audit zero findings."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
+					"target_sha256": "da7fc6d6de5e02e3dc1f393222e923edee124cb96c1d3536d7cfcf87b48b0471",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "63b568bd7776",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/63b568bd7776.json",
+							"receipt_sha256": "60aa754eca5369a54e1b496f98887266ee08fbcf867149830387799341f784e9",
+							"scope": "Remediation delta audit: truncated-list count clause; zero findings at the final bytes.",
+							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",

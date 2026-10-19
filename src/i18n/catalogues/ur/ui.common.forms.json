@@ -17,7 +17,7 @@
 	"ui.common.forms.editable_field.save_changes_enter": "تبدیلیاں محفوظ کریں “Enter”",
 	"ui.common.forms.editable_field.saving": "محفوظ ہو رہا ہے…",
 	"ui.common.forms.field.click_to_edit": " ترمیم کے لیے کلک کریں۔",
-	"ui.common.forms.pagination.position": "صفحہ {page} از {count}",
+	"ui.common.forms.pagination.position": "صفحہ {page} / {count}",
 	"ui.common.forms.panel_details.copied": "نقل ہو گیا",
 	"ui.common.forms.panel_details.copy_details": "تفصیلات نقل کریں",
 	"ui.common.forms.panel_details.details": "تفصیلات:",

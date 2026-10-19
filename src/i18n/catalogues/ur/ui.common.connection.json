@@ -3,10 +3,10 @@
 	"ui.common.connection.backend_compatibility_banner.update_backend": "بیک اینڈ اپ ڈیٹ کریں",
 	"ui.common.connection.backend_compatibility_banner.updating": "اپ ڈیٹ ہو رہا ہے",
 	"ui.common.connection.connectivity_banner.a_connectivity_issue_has_been_detected": "رابطے میں مسئلہ ملا ہے۔",
-	"ui.common.connection.connectivity_banner.dismiss": "ہٹائیں",
-	"ui.common.connection.connectivity_banner.dismiss_inline": "ہٹائیں",
+	"ui.common.connection.connectivity_banner.dismiss": "نظر انداز کریں",
+	"ui.common.connection.connectivity_banner.dismiss_inline": "نظر انداز کریں",
 	"ui.common.connection.connectivity_banner.this_app_s_updates_require": "اس ایپ کی اپ ڈیٹس کے لیے",
 	"ui.common.connection.connectivity_banner.you_are_offline": "آپ آف لائن ہیں۔ {detail} انٹرنیٹ کنکشن درکار ہے۔",
-	"ui.common.connection.floating_alert.dismiss": "ہٹائیں",
+	"ui.common.connection.floating_alert.dismiss": "نظر انداز کریں",
 	"ui.common.connection.provider.requires": "آپ کے مقرر کردہ ہوسٹنگ فراہم کنندہ “{provider}” کے لیے"
 }

@@ -16,5 +16,5 @@
 	"ui.installer.phase.label.python": "تیاری ہو رہی ہے",
 	"ui.installer.phase.label.verify": "شروع کیا جا رہا ہے",
 	"ui.installer.status.elapsed": "{step} · {elapsed} گزر گیا · {eta}",
-	"ui.installer.status.step": "مرحلہ {step} از {total}"
+	"ui.installer.status.step": "مرحلہ {step} / {total}"
 }
