@@ -1,0 +1,169 @@
+{
+  "method": "Built app (pnpm build:npm), launched by scripts/renderer-driver.mjs's launchApp in --window-mode=headless with a scratch HOME/config/profile and a stub backend whose /v1/capabilities names the locale; frames are webContents.capturePage() in main (window kept hidden); geometry is getBoundingClientRect() in the live renderer at devicePixelRatio 2.",
+  "measuredAt": "2026-10-19",
+  "captures": {
+    "en": {
+      "chat": {
+        "dir": "ltr",
+        "lang": "en",
+        "computedDirection": "ltr",
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        },
+        "rail": {
+          "x": 0,
+          "y": 32,
+          "width": 260,
+          "height": 868
+        },
+        "main": {
+          "x": 260,
+          "y": 32,
+          "width": 1120,
+          "height": 868
+        },
+        "settingsSubnav": null,
+        "settingsContent": null,
+        "capture": {
+          "path": "rtl-en-chat.png",
+          "pixels": {
+            "width": 2760,
+            "height": 1800
+          },
+          "bytes": 89274
+        }
+      },
+      "settings": {
+        "dir": "ltr",
+        "lang": "en",
+        "computedDirection": "ltr",
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        },
+        "rail": {
+          "x": 0,
+          "y": 32,
+          "width": 260,
+          "height": 868
+        },
+        "main": {
+          "x": 260,
+          "y": 32,
+          "width": 1120,
+          "height": 868
+        },
+        "settingsSubnav": {
+          "x": 260,
+          "y": 32,
+          "width": 220,
+          "height": 868
+        },
+        "settingsContent": {
+          "x": 480,
+          "y": 32,
+          "width": 900,
+          "height": 868
+        },
+        "capture": {
+          "path": "rtl-en-settings.png",
+          "pixels": {
+            "width": 2760,
+            "height": 1800
+          },
+          "bytes": 352430
+        }
+      }
+    },
+    "ur": {
+      "chat": {
+        "dir": "rtl",
+        "lang": "ur",
+        "computedDirection": "rtl",
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        },
+        "rail": {
+          "x": 1120,
+          "y": 32,
+          "width": 260,
+          "height": 868
+        },
+        "main": {
+          "x": 0,
+          "y": 32,
+          "width": 1120,
+          "height": 868
+        },
+        "settingsSubnav": null,
+        "settingsContent": null,
+        "capture": {
+          "path": "rtl-ur-chat.png",
+          "pixels": {
+            "width": 2760,
+            "height": 1800
+          },
+          "bytes": 83349
+        }
+      },
+      "settings": {
+        "dir": "rtl",
+        "lang": "ur",
+        "computedDirection": "rtl",
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        },
+        "rail": {
+          "x": 1120,
+          "y": 32,
+          "width": 260,
+          "height": 868
+        },
+        "main": {
+          "x": 0,
+          "y": 32,
+          "width": 1120,
+          "height": 868
+        },
+        "settingsSubnav": {
+          "x": 900,
+          "y": 32,
+          "width": 220,
+          "height": 868
+        },
+        "settingsContent": {
+          "x": 0,
+          "y": 32,
+          "width": 900,
+          "height": 868
+        },
+        "capture": {
+          "path": "rtl-ur-settings.png",
+          "pixels": {
+            "width": 2760,
+            "height": 1800
+          },
+          "bytes": 337735
+        }
+      }
+    }
+  },
+  "mirror": {
+    "rail": "en x=0 w=260 -> ur x=1120 w=260 (1380 - 260)",
+    "main": "en x=260 w=1120 -> ur x=0 w=1120",
+    "settingsSubnav": "en x=260 w=220 -> ur x=900 w=220 (1380 - 220 - 260)",
+    "settingsContent": "en x=480 w=900 -> ur x=0 w=900"
+  },
+  "control": {
+    "base": "787f8c6e7e (origin/main at rebase)",
+    "method": "Rebuilt the base tree without this slice in a separate worktree and captured English through the same rig.",
+    "result": "en-chat.png and en-settings.png are pixel-identical to the base captures: 0 differing pixels across 2760x1800 (ImageChops difference bbox is null)."
+  }
+}

@@ -22,6 +22,7 @@ import { FleetAskDrawer } from "@features/chat/components/asks/fleet-ask-drawer"
 import { pressLandsOnOverlay } from "@features/chat/keyboard-scopes";
 import { UpdateQuietIndicator } from "@shared/components/common/update-quiet-indicator";
 import { Sheet, SheetContent, SheetTitle } from "@shared/components/ui/sheet";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { cn } from "@shared/lib/utils";
 import {
 	resolveRightSlotWidth,
@@ -54,11 +55,15 @@ import { ResizableDivider } from "./resizable-divider";
  * that frame rather than render from it (`resolveRightSlotWidth` returns the
  * pane's preference there, and the lane's last stop collapses).
  */
-function useMeasuredBox(ref: RefObject<HTMLElement | null>): {
+function useMeasuredBox(
+	ref: RefObject<HTMLElement | null>,
+	direction: "ltr" | "rtl",
+): {
 	width: number;
 	left: number;
 } {
 	const [box, setBox] = useState({ width: 0, left: 0 });
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `direction` is a re-measure TRIGGER, not a value the body reads. Flipping the document moves this column to the other side of the window without changing its width, which a ResizeObserver cannot see: the lane's stops kept the previous side's `left` and painted a surface band on the wrong edge (measured on a live en->ur switch, 2026-10-19).
 	useLayoutEffect(() => {
 		const element = ref.current;
 		if (!element) return;
@@ -70,7 +75,7 @@ function useMeasuredBox(ref: RefObject<HTMLElement | null>): {
 		const observer = new ResizeObserver(measure);
 		observer.observe(element);
 		return () => observer.disconnect();
-	}, [ref]);
+	}, [direction, ref]);
 	return box;
 }
 
@@ -235,6 +240,7 @@ function useLaneLeadingEdge(
 	lane: RefObject<HTMLDivElement | null>,
 	column: HTMLElement | null,
 	sidebarWidth: number,
+	direction: "ltr" | "rtl",
 ): { edge: number; ground: LaneLeadingGround } | null {
 	const [leading, setLeading] = useState<{
 		edge: number;
@@ -250,13 +256,21 @@ function useLaneLeadingEdge(
 		const measure = () => {
 			/* One rounding, so a fractional box does not re-render the shell on its own
 			   noise: the value becomes a background stop, and a stop is a length. */
+			const columnRect = column.getBoundingClientRect();
+			const laneRect = laneElement.getBoundingClientRect();
+			/*
+			 * A STOP IS MEASURED FROM THE LANE'S INLINE-START EDGE, not from the
+			 * physical left: in RTL the leading column stands at the right and the
+			 * band is painted with `to left`, so the same number must be the distance
+			 * from the right edge. The two branches are the same quantity read from
+			 * opposite sides; neither flips the layout.
+			 */
+			const edgeFromInlineStart =
+				direction === "rtl"
+					? laneRect.right - columnRect.left
+					: columnRect.right - laneRect.left;
 			const next = {
-				edge:
-					Math.round(
-						(column.getBoundingClientRect().right -
-							laneElement.getBoundingClientRect().left) *
-							100,
-					) / 100,
+				edge: Math.round(edgeFromInlineStart * 100) / 100,
 				ground: laneGroundOf(column),
 			};
 			setLeading((previous) =>
@@ -271,7 +285,7 @@ function useLaneLeadingEdge(
 		observer.observe(column);
 		measure();
 		return () => observer.disconnect();
-	}, [column, lane, sidebarWidth]);
+	}, [column, direction, lane, sidebarWidth]);
 	return leading;
 }
 
@@ -319,6 +333,14 @@ export const useSidebarFrame = (): SidebarFrame => {
 };
 
 export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
+	/*
+	 * The sidebar's sheet edge is LOGICAL: it is the sidebar, so it enters from
+	 * the inline-start edge — left in LTR, right in RTL. Radix names the edge
+	 * physically, hence the one translation here rather than a flipped class.
+	 * The docked column needs none: it is a flex child, and the row follows
+	 * `dir` by itself.
+	 */
+	const direction = useTextDirection();
 	// Clamp pre-redesign saved widths through the module rather than rewriting
 	// persisted sessions or discarding the rest of the user preferences.
 	const savedWidth = useUiPreferencesStore((s) => s.chatSidebarWidth);
@@ -556,7 +578,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	 * the whole argument, including the canvas's overlay mode).
 	 */
 	const contentColumnRef = useRef<HTMLDivElement | null>(null);
-	const contentBox = useMeasuredBox(contentColumnRef);
+	const contentBox = useMeasuredBox(contentColumnRef, direction);
 	const slotWidth = useUiPreferencesStore((state) =>
 		resolveRightSlotWidth(contentBox.width, state),
 	);
@@ -588,7 +610,11 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	 * flushes before the frame.
 	 */
 	const slotEdge =
-		contentBox.width > 0 ? contentBox.left + contentBox.width - slotWidth : 0;
+		contentBox.width > 0
+			? (direction === "rtl"
+					? viewportWidth - contentBox.left
+					: contentBox.left + contentBox.width) - slotWidth
+			: 0;
 	/*
 	 * THE RAIL'S LEADING EDGE, which is the content column's trailing edge (#872).
 	 * The rail is a sibling AFTER the measured column, so it begins exactly where
@@ -598,7 +624,11 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	 * reaches the window's end and the band is zero-width.
 	 */
 	const railEdge =
-		contentBox.width > 0 ? contentBox.left + contentBox.width : 0;
+		contentBox.width > 0
+			? direction === "rtl"
+				? viewportWidth - contentBox.left
+				: contentBox.left + contentBox.width
+			: 0;
 	/*
 	 * THE BAND'S OWN WIDTH, which is the sidebar's UNLESS the route beside it draws a
 	 * leading column of its own: settings has its rail, agents its list pane, and the
@@ -624,7 +654,12 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	 * gradient is the one the drawer's-rung pass shipped. The sheet, the divider and
 	 * the drag handling are untouched by any of this.
 	 */
-	const leading = useLaneLeadingEdge(laneRef, leadingColumn, columnWidth);
+	const leading = useLaneLeadingEdge(
+		laneRef,
+		leadingColumn,
+		columnWidth,
+		direction,
+	);
 	const laneEdge = Math.max(columnWidth, leading?.edge ?? 0);
 	const laneGround = leading?.ground ?? "surface";
 	return (
@@ -677,8 +712,8 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				style={{
 					background:
 						laneGround === "surface"
-							? `linear-gradient(to right, var(--lo-surface) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px, var(--lo-elevated) ${railEdge}px, var(--lo-surface) ${railEdge}px)`
-							: `linear-gradient(to right, var(--lo-surface) ${columnWidth}px, var(--lo-${laneGround}) ${columnWidth}px, var(--lo-${laneGround}) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px, var(--lo-elevated) ${railEdge}px, var(--lo-surface) ${railEdge}px)`,
+							? `linear-gradient(to ${direction === "rtl" ? "left" : "right"}, var(--lo-surface) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px, var(--lo-elevated) ${railEdge}px, var(--lo-surface) ${railEdge}px)`
+							: `linear-gradient(to ${direction === "rtl" ? "left" : "right"}, var(--lo-surface) ${columnWidth}px, var(--lo-${laneGround}) ${columnWidth}px, var(--lo-${laneGround}) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px, var(--lo-elevated) ${railEdge}px, var(--lo-surface) ${railEdge}px)`,
 				}}
 			/>
 			<div className="flex min-h-0 flex-1 overflow-hidden">
@@ -846,7 +881,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				}}
 			>
 				<SheetContent
-					side="left"
+					side={direction === "rtl" ? "right" : "left"}
 					data-sidebar-sheet=""
 					/*
 					 * The sidebar draws its own `×` (the one control that closes it, D3), so

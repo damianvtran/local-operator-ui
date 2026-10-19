@@ -204,6 +204,18 @@ export type ResizableDividerAxis =
 	  };
 
 /**
+ * Swap the two inline-axis arrow names for an RTL vertical handle.
+ *
+ * A handle's LEFT and RIGHT are physical key names; "grow" and "shrink" are
+ * what the key map means, and in RTL those sit on the opposite keys.
+ */
+function swapHorizontalKey(key: string): string {
+	if (key === "ArrowLeft") return "ArrowRight";
+	if (key === "ArrowRight") return "ArrowLeft";
+	return key;
+}
+
+/**
  * Resizable divider between panels.
  * Anchored to one edge of the panel it sizes, on either axis, with the correct
  * drag direction and a key map matched to that axis.
@@ -248,7 +260,21 @@ export const ResizableDivider = ({
 	 * divider moves left.
 	 */
 	const onKeyDown = (event: React.KeyboardEvent) => {
-		const target = keyboardTarget(event.key, {
+		/*
+		 * A VERTICAL HANDLE'S LEFT/RIGHT KEYS FOLLOW THE WRITING DIRECTION. In RTL
+		 * the panel on the handle's other side grows as the divider moves the
+		 * opposite way, so ArrowLeft and ArrowRight are swapped before the shared
+		 * geometry maps them. Home/End are writing-direction independent.
+		 *
+		 * Read from the DOM at the event, not passed as a prop: every caller here
+		 * sits inside the document root whose `dir` the locale writes, and a prop
+		 * would be a second copy of the direction that a new call site can forget
+		 * (with a handle that then resizes backwards only in RTL).
+		 */
+		const rtl =
+			!horizontal && getComputedStyle(event.currentTarget).direction === "rtl";
+		const key = rtl ? swapHorizontalKey(event.key) : event.key;
+		const target = keyboardTarget(key, {
 			shiftKey: event.shiftKey,
 			value: sidebarWidth,
 			min: minWidth,
@@ -281,6 +307,14 @@ export const ResizableDivider = ({
 		const startX = e.clientX;
 		const startY = e.clientY;
 		const startWidth = sidebarWidth;
+		/*
+		 * Same rule as the key map: a vertical handle's pointer travel is measured
+		 * along the inline axis, so in RTL the physical delta is negated before the
+		 * shared geometry applies it. Horizontal handles size a height and are
+		 * writing-direction independent.
+		 */
+		const rtl =
+			!horizontal && getComputedStyle(e.currentTarget).direction === "rtl";
 
 		// Disable text selection and show global resize cursor overlay
 		document.body.style.userSelect = "none";
@@ -291,7 +325,9 @@ export const ResizableDivider = ({
 			/* The pointer's travel ALONG THE SEPARATOR'S AXIS. */
 			const delta = horizontal
 				? moveEvent.clientY - startY
-				: moveEvent.clientX - startX;
+				: rtl
+					? startX - moveEvent.clientX
+					: moveEvent.clientX - startX;
 			onSidebarWidthChange(
 				dragTarget(startWidth, delta, side, minWidth, maxWidth),
 			);

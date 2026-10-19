@@ -190,7 +190,7 @@ export const SettingsGroupHeader = ({
 								</span>
 							)}
 						</span>
-						{modified && <ChangedDot className="ml-auto" />}
+						{modified && <ChangedDot className="ms-auto" />}
 					</span>
 				}
 			/>

@@ -208,7 +208,7 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 					</AvatarFallback>
 				</Avatar>
 				{expanded && userName && (
-					<span className="min-w-0 text-left">
+					<span className="min-w-0 text-start">
 						{/*
 						 * 13px, one step under the nav labels' weight rather than one
 						 * above: the account is the quietest thing on the rail, not the
