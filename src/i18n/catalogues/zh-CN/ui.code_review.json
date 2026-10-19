@@ -6,7 +6,7 @@
 	"ui.code_review.activity.push": "已推送",
 	"ui.code_review.activity.ready": "已标记为可供审查",
 	"ui.code_review.activity.review": "已审查",
-	"ui.code_review.activity.you": "您{acts}",
+	"ui.code_review.activity.you": "你{acts}",
 	"ui.code_review.age.days": "{amount, plural, other {{amountText}天前更新}}",
 	"ui.code_review.age.hours": "{amount, plural, other {{amountText}小时前更新}}",
 	"ui.code_review.age.just_now": "刚刚更新",
