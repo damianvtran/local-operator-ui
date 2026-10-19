@@ -8,17 +8,16 @@ import { openUrlTarget } from "../../chat/utils/link-open";
 import {
 	type CodeRequestRow as CodeRequestRowData,
 	PENDING_REVEAL_MS,
-	actedTag,
 	ciClause,
 	commentClause,
 	fetchStateOf,
 	forgeSigil,
 	pathLineFor,
-	relationTag,
 	repoName,
 	rowAriaLabel,
 	rowIsLoading,
 	rowNotice,
+	rowTag,
 	statePill,
 	updatedClause,
 } from "../code-review-model";
@@ -76,15 +75,34 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({
 }) => {
 	useI18nLocale();
 	const pill = statePill(row);
-	const relation = [relationTag(row), actedTag(row)]
-		.filter((tag): tag is string => tag !== null)
-		.join(" · ");
+	/*
+	 * THE MARKER LINE, from the model (QA round 2, Q-3): one derivation, so
+	 * the row and its accessible name can never state the relation two ways.
+	 */
+	const relation = rowTag(row);
 	const ci = row.summary ? ciClause(row.summary.ci) : null;
 	const comments = row.summary ? commentClause(row.summary.comments) : null;
 	const updated = row.summary
 		? updatedClause(row.summary.updated_at, nowMs)
 		: null;
 	const canShowMeta = !row.link_only && Boolean(row.summary);
+	/*
+	 * THE ANNOTATIONS LINE (the meta figures, `·`-seamed) and the relation
+	 * marker that now shares it (QA round 2, Q-3). `canShowMeta` is the
+	 * link-only rule - a link-only row shows its remedy, not its figures - so
+	 * the figures and the marker are decided apart: the marker belongs to
+	 * every row that carries one, the figures to the rows the rule allows.
+	 */
+	const figures = canShowMeta ? (
+		<>
+			{ci && <span className={cn(CI_TONE_CLASS[ci.tone])}>{ci.text}</span>}
+			{ci && comments && <MetaSeam />}
+			{comments && <span>{comments}</span>}
+			{(ci || comments) && updated && <MetaSeam />}
+			{updated && <span>{updated}</span>}
+		</>
+	) : null;
+	const hasFigures = canShowMeta && Boolean(ci || comments || updated);
 	/*
 	 * THE REPO NAME AND THE FULL PATH (the operator's ask, design round 3).
 	 *
@@ -171,15 +189,20 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({
 				</span>
 				<span className={cn("flex min-w-0 flex-1 flex-col gap-0.5")}>
 					{/*
-					 * LINE A - identity, the disambiguating tag, the state pill.
+					 * LINE A - identity, the state pill.
 					 *
 					 * THE NUMBER NEVER TRUNCATES (design D3 / UX U8): at the 320px floor
 					 * the merged rows all read `damianvtran/local-operator #2…` and were
 					 * indistinguishable. The budget order on this line is NUMBER >
-					 * NAME > RELATION TAG: the `#N` (`!N` on GitLab, D6) is `shrink-0`
-					 * and never yields; the name is readable whenever the line has
-					 * room for it; the relation tag - context, not identity - is what
-					 * gives way.
+					 * NAME: the `#N` (`!N` on GitLab, D6) is `shrink-0` and never
+					 * yields; the name is readable whenever the line has room for it.
+					 *
+					 * THE MARKER IS NOT ON THIS LINE (QA round 2, Q-3). It was, and
+					 * it could not stay: a marker that must never vanish cannot live
+					 * in a line that must never truncate, because the floor it
+					 * needed came out of the NAME's budget. It is on the
+					 * annotations line below, whole, where the row has room to
+					 * give (see there).
 					 *
 					 * THE NAME, NOT THE PATH (the operator's ask): the line carries
 					 * the repo NAME - the last segment of the forge's project path -
@@ -190,14 +213,14 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({
 					<span className={cn("flex w-full min-w-0 items-center gap-2")}>
 						{/*
 						 * THE WRAPPER OWNS THE WHOLE SQUEEZE (design round 2, D9): the
-						 * relation tag sits INSIDE it, after the number, so one flex
-						 * container distributes the shrink - the name and the tag give
-						 * way, the `shrink-0` number never yields. The round-1 shape
-						 * kept the tag outside the wrapper, whose basis was 0 while the
-						 * tag kept its full text width; at the 320px floor nothing then
-						 * shrank, the wrapper got only the remainder, and the
-						 * `shrink-0` number spilled out of it OVER the tag (measured:
-						 * a 29.2px wrapper under a 33.4px number on the Open variant).
+						 * name and the number sit INSIDE it, so one flex container
+						 * distributes the shrink - the name gives way, the `shrink-0`
+						 * number never yields. The round-1 shape kept the marker
+						 * outside the wrapper, whose basis was 0 while the marker kept
+						 * its full text width; at the 320px floor nothing then shrank,
+						 * the wrapper got only the remainder, and the `shrink-0`
+						 * number spilled out of it OVER the marker (measured: a
+						 * 29.2px wrapper under a 33.4px number on the Open variant).
 						 */}
 						<span className={cn("flex min-w-0 flex-1 items-baseline gap-1")}>
 							{/*
@@ -209,19 +232,20 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({
 							 * Both hold because the name is a NORMAL flex item
 							 * (`min-w-0`, shrink 1): flexbox clamps a shrinkable item
 							 * to the space the line has left, so the name can never
-							 * push the `shrink-0` number past the state pill. The tag
-							 * is what gives way first (below), so the name is not
-							 * squeezed by the tag's sentence either.
+							 * push the `shrink-0` number past the state pill. Nothing
+							 * else competes for the line now (the marker moved to the
+							 * annotations line below), so the name's budget is the
+							 * line's budget.
 							 *
 							 * THE MEASURED DEFECT THIS REPLACES, because it was in
 							 * this change's first round: with the name at `shrink-0` it
 							 * kept its full width, and at the 320px floor a 28-character
-							 * name put the number's right edge at 241.5px against a
-							 * state pill whose left edge is at 239.8px - the number
-							 * UNDER the pill - while at 40 characters it left the pane
-							 * altogether (317.0px against the 308px content edge). The
-							 * same markup with the name shrinkable keeps the number
-							 * inside the clip and clear of the pill at every length.
+							 * name put the number's right edge (241.5px) PAST the state
+							 * pill's left edge - the number UNDER the pill - while at 40
+							 * characters it left the pane altogether (317.0px against
+							 * the 308px content edge). The same markup with the name
+							 * shrinkable keeps the number inside the clip and clear of
+							 * the pill at every length.
 							 */}
 							<span
 								className={cn(
@@ -237,49 +261,10 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({
 								{forgeSigil(row)}
 								{row.number}
 							</span>
-							{relation && (
-								/*
-								 * THE RELATION TAG IS THE YIELDER (design D3 / UX U8,
-								 * measured).
-								 *
-								 * `basis-0 grow` is the whole mechanism. The tag's FLEX
-								 * BASIS is zero, so it asks for no width of its own and
-								 * takes only the slack the line has left: a short name is
-								 * never squeezed by the tag's sentence (`via subagent
-								 * coder › reviewer`), and a name too long for the line is
-								 * the thing that ellipsises, not the number. The tag's
-								 * old `shrink-[2]` measured the squeeze by BASE SIZE,
-								 * which handed the tag almost all of it and took the
-								 * name's box down to 22.6px of a 193.1px wrapper at the
-								 * 320px floor - a four-character name (`core`) rendered as
-								 * `c…`.
-								 *
-								 * THE BUDGET ORDER ON THIS LINE IS NUMBER > NAME > TAG
-								 * (design D3 / UX U8): the number never yields, the name
-								 * yields only when the line is full, and the tag - which
-								 * is context, not identity - yields FIRST. So the tag
-								 * has no floor of its own: a floor comes straight out of
-								 * the name's budget, and the measurement says the name
-								 * needs every pixel of it (at the 320px floor a floor of
-								 * 2ch cost the name 15.1px, which is exactly what a
-								 * 20-character repository name needs to stay whole
-								 * beside the widest state pill).
-								 */
-								<span
-									className={cn(
-										"min-w-0 basis-0 grow truncate text-meta text-ink-dim",
-									)}
-									title={
-										row.relation === "unknown"
-											? t(
-													"ui.code_review.code_review_row.possibly_opened_by_this_session_the_evidence_did_not_prove_it_was",
-												)
-											: undefined
-									}
-								>
-									{relation}
-								</span>
-							)}
+							{/* THE RELATION TAG IS NOT HERE - it is on the annotations line
+							 * below (see there): the identity line's budget is the
+							 * identity's, and a marker that must never vanish does
+							 * not belong in a line that must never truncate. */}
 						</span>
 						{pill && (
 							<Badge
@@ -320,7 +305,7 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({
 					 *
 					 * IT IS DRAWN ONLY WHEN IT SAYS SOMETHING: a project with no
 					 * separator is its own name, and a line that repeats the name
-					 * above it says nothing (see `showsPath`).
+					 * above it says nothing (see `pathLineFor`).
 					 */}
 					{projectPath !== null && (
 						<span
@@ -339,20 +324,59 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({
 					</span>
 					{/* LINE D - the lane strip, while it has anything to say. */}
 					{!row.link_only && <CodeReviewRounds row={row} />}
-					{/* LINE E - the meta figures, `·`-seamed. */}
-					{canShowMeta && (ci || comments || updated) && (
+					{/* LINE E - the annotations: the relation marker, then the meta
+					 * figures, `·`-seamed. */}
+					{(hasFigures || relation) && (
 						<span
 							className={cn(
 								"flex flex-wrap items-baseline gap-1 text-meta text-ink-muted",
 							)}
 						>
-							{ci && (
-								<span className={cn(CI_TONE_CLASS[ci.tone])}>{ci.text}</span>
+							{relation && (
+								/*
+								 * THE MARKER IS WHOLE, AND IT IS HERE (QA round 2, Q-3).
+								 *
+								 * WHY IT MOVED OFF THE IDENTITY LINE. A row that carries
+								 * a relation marker must show that a marker is there at
+								 * EVERY width: the `unknown` relation is the backend's
+								 * own word and the pane never re-derives it, so a
+								 * marker that vanishes at the floor makes the row read
+								 * as a plainly opened row - a truthfulness loss, not a
+								 * density win. On the identity line the marker's floor
+								 * came out of the NAME's budget, and the measurement
+								 * says the name needs every pixel of it: a 1.5ch
+								 * floor cost the name 11.33px, which took the
+								 * 20-character repository name out of the whole at
+								 * the 320px floor and made a 64-character name
+								 * ellipsise at 640px.
+								 *
+								 * WHY HERE. This line has room to give: it is the
+								 * row's quietest line and it WRAPS, so the marker and
+								 * the figures share a line when they fit and stack
+								 * when they do not - nothing is ever lost. The
+								 * identity line is left with what identity means:
+								 * the name, the number that never yields (design D3 /
+								 * UX U8) and the state pill.
+								 *
+								 * `shrink-0` so the marker is never the thing that
+								 * gives way here either.
+								 */
+								<span
+									data-row-marker=""
+									className={cn("shrink-0 text-meta text-ink-dim")}
+									title={
+										row.relation === "unknown"
+											? t(
+													"ui.code_review.code_review_row.possibly_opened_by_this_session_the_evidence_did_not_prove_it_was",
+												)
+											: undefined
+									}
+								>
+									{relation}
+								</span>
 							)}
-							{ci && comments && <MetaSeam />}
-							{comments && <span>{comments}</span>}
-							{(ci || comments) && updated && <MetaSeam />}
-							{updated && <span>{updated}</span>}
+							{relation && hasFigures && <MetaSeam />}
+							{figures}
 						</span>
 					)}
 					{/*

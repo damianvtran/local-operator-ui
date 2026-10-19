@@ -111,7 +111,7 @@ export const Scanning: Story = {
  */
 export const Narrow: Story = {
 	render: () => (
-		<Frame height={1110} width={320}>
+		<Frame height={1230} width={320}>
 			<CodeReviewPaneBody
 				phase="ready"
 				data={list([
@@ -136,7 +136,7 @@ export const Narrow: Story = {
  */
 export const RefreshFailed: Story = {
 	render: () => (
-		<Frame height={1230}>
+		<Frame height={1241}>
 			<CodeReviewPaneBody
 				phase="ready"
 				data={list(populatedRows())}
@@ -166,7 +166,7 @@ export const RefreshFailed: Story = {
  */
 export const Populated: Story = {
 	render: () => (
-		<Frame height={1660}>
+		<Frame height={1665}>
 			<CodeReviewPaneBody
 				phase="ready"
 				data={list([...deepPathRows(), ...longNameRows(), ...populatedRows()])}

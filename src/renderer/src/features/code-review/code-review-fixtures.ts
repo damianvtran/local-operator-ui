@@ -422,11 +422,12 @@ const longName = (length: number): string =>
  * floor a 28-character name put the `!N` under the state pill, and a
  * 40-character one pushed it out of the pane altogether.
  *
- * These rows are the long end of the same axis, on a GitLab-style path so
+ * These rows are the long end of the same axis, on a two-segment path so
  * both lines of the new anatomy are exercised at once: the long name on the
  * identity line, the full path under it. They carry the worst-case relation
- * tag (`via subagent coder › reviewer`), because the tag is what shares the
- * line with the name and the number.
+ * marker (`via subagent coder › reviewer`), because the marker is the longest
+ * thing the row can have to say about its relation, and the annotations line
+ * has to carry it whole at the 320px floor.
  */
 export const longNameRows = (): DesktopCodeRequestRow[] =>
 	[

@@ -12163,7 +12163,7 @@ export const STORIES = [
 	 * the name is readable and the path is on the line below, in the frame
 	 * where the path used to be cut off mid-segment.
 	 */
-	["code-review-pane--populated", 640, 1660],
+	["code-review-pane--populated", 640, 1665],
 	["code-review-pane--empty", 640, 300],
 	["code-review-pane--loading", 640, 300],
 	["code-review-pane--scanning", 640, 300],
@@ -12178,9 +12178,9 @@ export const STORIES = [
 	 * the reveal delay itself is a mechanism no still can show.
 	 */
 	["code-review-pane--pending", 640, 360],
-	["code-review-pane--refresh-failed", 640, 1230],
+	["code-review-pane--refresh-failed", 640, 1241],
 	["code-review-pane--refreshing", 640, 390],
-	["code-review-pane--narrow", 320, 1110],
+	["code-review-pane--narrow", 320, 1230],
 	["code-review-pane--narrow-refresh-failed", 320, 450],
 	/*
 	 * The two states round 1's remediation changed, at the same 320px floor

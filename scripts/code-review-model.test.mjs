@@ -30,7 +30,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { ciClause, laneStateClause, roundSegments, laneLines, commentClause, linkOnlyRemedy, toolOutputNote, forgeSigil, identityLabel, repoName, pathLineFor, rowAriaLabel, attentionCause, needsAttention, rowHasPendingCi, chipClause, coolingClauses, groupRows, laneSegmentTone, refreshCaption, rowNotice, fetchStateOf, rowIsLoading, PENDING_REVEAL_MS } from "./src/renderer/src/features/code-review/code-review-model";',
+			'export { ciClause, laneStateClause, roundSegments, laneLines, commentClause, linkOnlyRemedy, toolOutputNote, forgeSigil, identityLabel, repoName, pathLineFor, rowAriaLabel, rowTag, attentionCause, needsAttention, rowHasPendingCi, chipClause, coolingClauses, groupRows, laneSegmentTone, refreshCaption, rowNotice, fetchStateOf, rowIsLoading, PENDING_REVEAL_MS } from "./src/renderer/src/features/code-review/code-review-model";',
 			'export { intervalFor, SCAN_POLL_MS, codeRequestsEnabled, appliedAfterFrame, chipState } from "./src/renderer/src/features/code-review/hooks/use-code-requests";',
 			'export { populatedRows, linkOnlyList, couldNotRefreshList, pendingList, staleList, rateLimitedList, viaRows } from "./src/renderer/src/features/code-review/code-review-fixtures";',
 		].join("\n"),
@@ -66,6 +66,7 @@ const {
 	repoName,
 	pathLineFor,
 	rowAriaLabel,
+	rowTag,
 	attentionCause,
 	needsAttention,
 	rowHasPendingCi,
@@ -561,6 +562,50 @@ test("the row's accessible name keeps the FULL project path, not the repo name",
 		!label.startsWith("core "),
 		"the accessible name must not carry the bare repo name in place of the path",
 	);
+});
+
+/*
+ * THE RELATION IS IN THE ROW'S NAME (QA round 2, Q-3).
+ *
+ * The marker line is a VISUAL line: it yields where the row is tight, and a
+ * screen reader that only had the identity, the state and the title could
+ * not hear the one word that keeps a row from claiming to be opened when the
+ * backend never said so. The marker is therefore carried in the accessible
+ * name, in the same words the row draws - and the two come from ONE
+ * derivation (`rowTag`), so the row and its name can never state the
+ * relation two ways.
+ */
+/* The regexes live at the top level of the file (biome's `useTopLevelRegex`),
+ * and this file already keeps its own above the cases. */
+const UNKNOWN_MARKER = /unknown — possibly opened/;
+const VIA_MARKER = /via subagent coder › reviewer/;
+const NO_VIA = /via subagent/;
+
+test("the accessible name carries the relation marker the row draws", () => {
+	// The truth case: `unknown` is the backend's word, and the pane never
+	// re-derives it into `opened`.
+	const unknown = row({ key: "gh:1999", relation: "unknown", via: null });
+	assert.equal(rowTag(unknown), "unknown — possibly opened");
+	assert.match(
+		rowAriaLabel(unknown),
+		UNKNOWN_MARKER,
+		"the accessible name must carry the relation a screen reader would otherwise never hear",
+	);
+
+	// The propagation path is a marker too, and is carried the same way.
+	const via = row({
+		key: "gh:2201",
+		relation: "opened",
+		via: { agent_role: "coder", path: ["coder", "reviewer"] },
+	});
+	assert.equal(rowTag(via), "via subagent coder › reviewer");
+	assert.match(rowAriaLabel(via), VIA_MARKER);
+
+	// A row with no marker carries none: the name is not padded with a
+	// relation that does not exist.
+	const plain = row({ key: "gh:1904", relation: "opened", via: null });
+	assert.equal(rowTag(plain), null);
+	assert.doesNotMatch(rowAriaLabel(plain), NO_VIA);
 });
 
 test("groupRows survives a null mention.last_at (the F2 NaN class)", () => {
