@@ -100,7 +100,7 @@ import {
 import type { MeshRefusal, MeshSessionRow } from "./mesh-types";
 
 const PRESENTATIONS = ["canvas", "list"] as const;
-type Presentation = (typeof PRESENTATIONS)[number];
+export type Presentation = (typeof PRESENTATIONS)[number];
 
 const PRESENTATION_LABEL: Record<Presentation, string> = {
 	get canvas() {
@@ -151,6 +151,16 @@ type MoveReport =
 export const MeshSurface: FC<{
 	state: MeshViewState;
 	graph: MeshGraph | null;
+	/**
+	 * WHICH PRESENTATION THE TAB OPENS ON, and the one caller that sets it is a
+	 * STORY. The tab's own `Canvas | List` control owns this state from mount
+	 * onward, so the route never passes it; a story needs the List frame to be a
+	 * property of the render rather than of a click that the evidence rig may
+	 * photograph before it lands (the relay-down-list capture proved that: the
+	 * play clicked List, the frame showed Canvas). Defaulting to `canvas` keeps
+	 * every existing call byte-identical.
+	 */
+	initialPresentation?: Presentation;
 	nowSeconds: number;
 	/** A read is in flight over drawn data: the quiet header affordance. */
 	checking: boolean;
@@ -251,6 +261,7 @@ export const MeshSurface: FC<{
 	removed: { removed: string; epoch: number } | null;
 }> = ({
 	state,
+	initialPresentation = "canvas",
 	graph,
 	nowSeconds,
 	checking,
@@ -288,7 +299,8 @@ export const MeshSurface: FC<{
 	removed,
 }) => {
 	useI18nLocale();
-	const [presentation, setPresentation] = useState<Presentation>("canvas");
+	const [presentation, setPresentation] =
+		useState<Presentation>(initialPresentation);
 	const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
 
 	const summary = graph ? meshSummary(graph) : "";
@@ -782,7 +794,9 @@ const emptyPlan: MovePlan = {
  * the same destination the catch-all gives - rather than drawing a tab for a feature
  * the backend no longer advertises.
  */
-export const MeshPage: FC = () => {
+export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
+	initialPresentation,
+}) => {
 	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureState(capabilities.data, "peers") === "enabled";
@@ -1046,6 +1060,7 @@ export const MeshPage: FC = () => {
 
 	return (
 		<MeshSurface
+			initialPresentation={initialPresentation}
 			state={state}
 			graph={graph}
 			nowSeconds={nowSeconds}

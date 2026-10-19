@@ -743,10 +743,15 @@ export const RelayDown: Story = {
 export const RelayDownList: Story = {
 	render: () => {
 		installBridge(relayDownFixture());
-		return <MeshPage />;
+		/*
+		 * THE LIST IS THE RENDER, NOT A CLICK. The first attempt drove the toggle
+		 * in `play`; the evidence rig photographed the frame before the click
+		 * landed and committed a Canvas picture under the list's name (design
+		 * review round 1, D1). The tab's control still owns the state after mount.
+		 */
+		return <MeshPage initialPresentation="list" />;
 	},
 	play: async () => {
-		(await screen.findByRole("button", { name: "List" })).click();
 		await screen.findByText("Sort devices by");
 		await screen.findByText("the peer's relay is not running");
 		await screen.findByText("99.79.190.164:4097 — nothing listening");
