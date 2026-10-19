@@ -1040,7 +1040,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			   destination rows use, so a collapsed More can say something waits. */
 			attention?: number;
 			attentionTag?: string;
-			attentionLabel?: string;
 		},
 	) => {
 		const Icon = icon;
@@ -1142,10 +1141,10 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 */
 	const renderOverflowGroup = () => {
 		if (overflowNavItems.length === 0) return null;
-		/* The count the group carries while closed. Team Bridge is the only
-		   waiting-style badge in this group today; the Mesh row's approval count is
-		   already the header's, and summing them would double a number the user
-		   sees twice. */
+		/* The count the group carries on its own row, in both widths. Team Bridge
+		   is the only waiting-style badge in this group today; the Mesh row's
+		   approval count is already the header's, and summing them would double a
+		   number the user sees twice. */
 		const overflowAttention = teamBridgeNav?.attention ?? 0;
 		/* The mark is visual; the disclosure's name carries the same fact for a
 		   reader who gets no badge (design round 4, D3). */

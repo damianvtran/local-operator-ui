@@ -812,6 +812,10 @@ export const NavMoreStripExpanded: Story = {
 	render: () => <NavOverflowState open collapsed />,
 };
 
+export const NavMoreStripCollapsed: Story = {
+	render: () => <NavOverflowState open={false} collapsed />,
+};
+
 /* ------------------------------------------------------------------ *
  * The dock, in the shell that decides its top edge
  * ------------------------------------------------------------------ */
