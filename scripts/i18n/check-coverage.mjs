@@ -121,6 +121,9 @@ export function manifestProblems(manifest) {
 			if (typeof row[field] !== "string" || row[field].length === 0)
 				problems.push(`${where}.${field} must be a non-empty string`);
 		}
+		const extra = Object.keys(row).filter((field) => !FIELDS.includes(field));
+		if (extra.length > 0)
+			problems.push(`${where} has unknown field(s): ${extra.join(", ")}`);
 		if (typeof row.code === "string") {
 			if (seen.has(row.code))
 				problems.push(`${where}.code ${row.code} is duplicated`);
@@ -258,7 +261,7 @@ export function checkCoverage({
 			);
 		} else if (!GATED_STATUSES.has(byCode.get(pair.locale)?.status)) {
 			phantoms.push(
-				`${pair.locale}/${pair.namespace} — ${pair.locale} is the source locale and is not gated`,
+				`${pair.locale}/${pair.namespace} — ${pair.locale} is not a gated target language`,
 			);
 		} else if (!namespaces.includes(pair.namespace)) {
 			phantoms.push(

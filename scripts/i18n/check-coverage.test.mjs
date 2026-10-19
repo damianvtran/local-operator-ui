@@ -8,7 +8,7 @@ import { applyUpdate, checkCoverage, main } from "./check-coverage.mjs";
 
 const UNKNOWN_LOCALE = /not in the manifest/;
 const UNKNOWN_NAMESPACE = /no such namespace/;
-const SOURCE_LOCALE_ROW = /source locale and is not gated/;
+const SOURCE_LOCALE_ROW = /not a gated target language/;
 const DUPLICATE_PAIR = /duplicates/;
 const MISSING_REASON = /needs a reason/;
 
@@ -281,6 +281,16 @@ test("an unknown status fails", () => {
 	const result = checkCoverage(tree);
 	assert.ok(result.problems.some((problem) => problem.includes("not one of")));
 	assert.equal(failures(result), 1);
+});
+
+test("a language row with an unknown field fails", () => {
+	const tree = build({
+		languages: [row("en", "source"), { ...row("fr"), region: "FR" }],
+	});
+	const result = checkCoverage(tree);
+	assert.ok(
+		result.problems.some((problem) => problem.includes("unknown field")),
+	);
 });
 
 test("a manifest without exactly one source fails", () => {
