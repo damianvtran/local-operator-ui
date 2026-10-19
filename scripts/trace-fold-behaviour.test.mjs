@@ -160,7 +160,6 @@ const LIVE_SPAN_SECONDS = /^4[45]s$/;
 const element = (props) =>
 	createElement(ControlledFold, {
 		summary: { units: ["3 shell", "1 python"], prose: false },
-		actionCount: 4,
 		recordIds: ["t0"],
 		...props,
 	});
@@ -713,7 +712,6 @@ test("the painted count line is the capped one, and it may wrap", async (t) => {
 	);
 	const mounted = await mount(t, {
 		summary: foldSummarySpec(MANY_TYPES_ACTIONS),
-		actionCount: MANY_TYPES_ACTIONS.length,
 		span: null,
 		live: null,
 		sectionLive: false,
@@ -827,7 +825,6 @@ test("a sentence summary is painted to wrap, not held whole", async (t) => {
 	const sentence = "Explored 4 files, delegated 3 tasks";
 	const mounted = await mount(t, {
 		summary: { units: [sentence], prose: true },
-		actionCount: 7,
 		span: null,
 		live: null,
 		sectionLive: false,
