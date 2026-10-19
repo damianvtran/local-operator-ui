@@ -25,6 +25,7 @@ import {
 	conversationTitle,
 	orderedMembers,
 	organizationOptions,
+	preferredScope,
 	visibleConversationRows,
 } from "./team-bridge-model";
 import { TeamBridgeOrgSwitcher } from "./team-bridge-org-switcher";
@@ -257,6 +258,8 @@ export type TeamBridgePageViewProps = {
 	onNewConversation: () => void;
 	onRetry?: () => void;
 	onScopeChange: (scope: TeamBridgeScope) => void;
+	/** Retry the memberships read behind the switcher (its own recovery action). */
+	onRetryMemberships?: () => void;
 };
 
 export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
@@ -279,6 +282,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onNewConversation,
 	onRetry,
 	onScopeChange,
+	onRetryMemberships,
 }) => {
 	useI18nLocale();
 	const [draft, setDraft] = useState(initialDraft);
@@ -295,6 +299,17 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		: null;
 	const selectedOrganizationUnknown =
 		mergedView && selected !== null && selectedOrganizationName === null;
+
+	/*
+	 * ONE description id for the disabled New conversation affordance. The hint
+	 * lives in the rail while the list has rows, and in the empty pane when it
+	 * does not — the two states are mutually exclusive, so one id cannot collide
+	 * and the button never points at a missing node.
+	 */
+	const createHintId = "team-bridge-create-hint";
+	const createHintVisible =
+		mergedView &&
+		(listRows.length > 0 || (selected === null && listState === "ready"));
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: scroll only when the conversation or message count changes; `ordered` is a fresh array each render and must not retrigger a scroll on every keystroke.
 	useEffect(() => {
@@ -344,6 +359,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				   solid line is the one thing a translucent surface cannot hide. */
 				className="flex w-72 shrink-0 flex-col"
 			>
+				{/* The page's heading for heading navigation. The rail's visible title is
+				    the scope, which is a control rather than a document heading. */}
+				<h1 className="sr-only">{t("ui.teamBridge.page.title")}</h1>
 				<header className="flex h-11 shrink-0 items-center gap-2 px-3">
 					{/* The scope IS the rail title: every row below belongs to the
 					    organization named here, and the switcher is the rail's first
@@ -355,20 +373,29 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						totalUnread={totalUnread}
 						membershipsLoading={membershipsLoading}
 						organizationsFailed={organizationsFailed}
+						onRetry={onRetryMemberships}
 					/>
 					<Button
 						size="icon-sm"
 						variant="ghost"
 						aria-label={t("ui.teamBridge.page.new_conversation")}
-						title={
-							mergedView ? t("ui.teamBridge.scope.create_needs_org") : undefined
+						aria-disabled={mergedView || undefined}
+						aria-describedby={createHintVisible ? createHintId : undefined}
+						className={
+							mergedView ? "text-ink-disabled hover:bg-transparent" : undefined
 						}
-						disabled={mergedView}
-						onClick={onNewConversation}
+						onClick={() => {
+							if (!mergedView) onNewConversation();
+						}}
 					>
 						<Plus size={16} />
 					</Button>
 				</header>
+				{mergedView && listRows.length > 0 && (
+					<p id={createHintId} className="px-3 pb-2 text-meta-sm text-ink-dim">
+						{t("ui.teamBridge.scope.create_needs_org")}
+					</p>
+				)}
 				<ScrollArea className="min-h-0 flex-1">
 					{listState === "loading" && (
 						<div className="flex items-center justify-center py-8">
@@ -427,20 +454,29 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								<p className="font-medium text-[13px] text-ink">
 									{t("ui.teamBridge.list.empty.title")}
 								</p>
-								<p className="mt-1 text-[13px] text-ink-muted">
-									{t("ui.teamBridge.list.empty.body")}
+								<p
+									id={
+										mergedView && listRows.length === 0
+											? createHintId
+											: undefined
+									}
+									className="mt-1 text-[13px] text-ink-muted"
+								>
+									{mergedView && listRows.length === 0
+										? t("ui.teamBridge.scope.create_needs_org")
+										: t("ui.teamBridge.list.empty.body")}
 								</p>
 								<Button
 									size="sm"
 									variant="primary"
-									className="mt-3"
-									title={
-										mergedView
-											? t("ui.teamBridge.scope.create_needs_org")
-											: undefined
+									className={mergedView ? "mt-3 opacity-60" : "mt-3"}
+									aria-disabled={mergedView || undefined}
+									aria-describedby={
+										createHintVisible ? createHintId : undefined
 									}
-									disabled={mergedView}
-									onClick={onNewConversation}
+									onClick={() => {
+										if (!mergedView) onNewConversation();
+									}}
 								>
 									<Plus size={14} />
 									{t("ui.teamBridge.page.new_conversation")}
@@ -637,6 +673,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
  */
 export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	const [scope, setScope] = useState<TeamBridgeScope>(TEAM_BRIDGE_ALL_SCOPE);
+	// Whether the reader has chosen a scope themselves. Until they do, a
+	// single-membership account lands in its only organization instead of the
+	// account-wide view: "All organizations" is a multi-org affordance, and the
+	// sole-org account should not need to pick its one org to create anything.
+	const scopeChosen = useRef(false);
 	// The memberships are the switcher's ONE source, and the account aggregate
 	// is the ONE unread read — the same cache entry the sidebar badge spends.
 	// Per-org counts are joined from that payload, never fetched per org.
@@ -662,10 +703,20 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	// keeps the thread from looking a cached message page up under the new
 	// scope's title while the new list is still loading.
 	const changeScope = (next: TeamBridgeScope) => {
+		scopeChosen.current = true;
 		setScope(next);
 		setSelectedId(null);
 		setCreateOpen(false);
 	};
+
+	// The memberships resolve after the first paint; adopt the only one unless
+	// the reader has already picked a scope. A later unread poll re-renders the
+	// options array, so the equality check keeps this to the one transition.
+	useEffect(() => {
+		setScope((current) =>
+			preferredScope(organizations, current, scopeChosen.current),
+		);
+	}, [organizations]);
 
 	// The selection may only name a row the rail actually renders. The merged
 	// view withholds rows whose org is unknown, and the same filter decides the
@@ -771,6 +822,9 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 					if (memberships.isError) void memberships.refetch();
 				}}
 				onScopeChange={changeScope}
+				onRetryMemberships={() => {
+					void memberships.refetch();
+				}}
 			/>
 			<TeamBridgeCreateDialog
 				open={createOpen}

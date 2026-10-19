@@ -155,8 +155,22 @@ export const teamBridgeReadStateSchema = z
 	.passthrough();
 export type TeamBridgeReadState = z.infer<typeof teamBridgeReadStateSchema>;
 
+declare const teamBridgeTenantIdBrand: unique symbol;
+
+/**
+ * A tenant id that came from a membership row.
+ *
+ * The brand is what keeps `"all"` out of a tenant slot: `TeamBridgeScope` is
+ * `"all" | TeamBridgeTenantId`, so a branch that checks the sentinel narrows to
+ * a real tenant id, and `{ tenantId: "all" }` no longer type-checks. It is a
+ * compile-time distinction only; the wire still carries the string.
+ */
+export type TeamBridgeTenantId = string & {
+	readonly [teamBridgeTenantIdBrand]: true;
+};
+
 /** The two read scopes the desktop route forwards. Writes never accept this. */
-export type TeamBridgeReadScope = { tenantId: string } | "account";
+export type TeamBridgeReadScope = { tenantId: TeamBridgeTenantId } | "account";
 
 /** One member as the create/add request states it (the wire is snake_case). */
 export type TeamBridgeMemberInput = {

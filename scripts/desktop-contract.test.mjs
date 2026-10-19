@@ -3402,3 +3402,74 @@ test("team_bridge.conversations.members.add matches the desktop route's body sha
 		{ account_id: "acc_b", kind: "human", display_label: "Bea" },
 	]);
 });
+
+test("team_bridge account-scoped reads map scope=account and keep the paging cursor", () => {
+	/*
+	 * The renderer's All organizations view sends `scope: "account"` through the
+	 * desktop op. Before the op schema accepted it, the strict member answered 422
+	 * `Invalid desktop operation.` before any HTTP, so the default view and the
+	 * sidebar badge could never load. These pin the wire shape the route reads,
+	 * including the opaque `before` cursor the merged list pages with.
+	 */
+	// The op schema admits the account scope before the endpoint sees it; a
+	// strict member that omits it is the 422 this test exists to prevent.
+	assert.equal(
+		jobsCancelSchema.parse({ op: "team_bridge.unread", scope: "account" })
+			.scope,
+		"account",
+	);
+	assert.equal(
+		jobsCancelSchema.parse({
+			op: "team_bridge.conversations.list",
+			scope: "account",
+		}).scope,
+		"account",
+	);
+
+	const list = jobsCancelEndpoint({
+		op: "team_bridge.conversations.list",
+		scope: "account",
+		limit: 20,
+		before: "cursor_1",
+	});
+	assert.equal(list.method, "GET");
+	assert.equal(
+		list.path,
+		"/v1/desktop/team-bridge/conversations?scope=account&limit=20&before=cursor_1",
+	);
+
+	const unread = jobsCancelEndpoint({
+		op: "team_bridge.unread",
+		scope: "account",
+	});
+	assert.equal(unread.method, "GET");
+	assert.equal(unread.path, "/v1/desktop/team-bridge/unread?scope=account");
+
+	// The tenant read keeps its existing shape; the two forms are alternatives.
+	const tenant = jobsCancelEndpoint({
+		op: "team_bridge.unread",
+		tenant_id: "tnt_1",
+	});
+	assert.equal(tenant.path, "/v1/desktop/team-bridge/unread?tenant_id=tnt_1");
+
+	// The account scope is never a tenant selector: both together are refused
+	// at the same boundary, as the route refuses them.
+	assert.throws(
+		() =>
+			jobsCancelSchema.parse({
+				op: "team_bridge.unread",
+				scope: "account",
+				tenant_id: "tnt_1",
+			}),
+		"An account-scoped read cannot name a tenant",
+	);
+	assert.throws(
+		() =>
+			jobsCancelSchema.parse({
+				op: "team_bridge.conversations.list",
+				scope: "account",
+				tenant_id: "tnt_1",
+			}),
+		"An account-scoped read cannot name a tenant",
+	);
+});

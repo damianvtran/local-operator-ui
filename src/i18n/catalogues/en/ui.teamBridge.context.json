@@ -327,7 +327,7 @@
 		"tone": "factual",
 		"length": "One sentence.",
 		"placeholders": {},
-		"note": "The membership read failed. The switcher still shows the current scope; this line says why the other organizations are missing."
+		"note": "The membership read failed. The switcher still shows the current scope; this line says why the other organizations are missing, and the menu row below it retries the read."
 	},
 	"ui.teamBridge.scope.empty": {
 		"role": "menu status line",

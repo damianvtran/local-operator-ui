@@ -17,16 +17,27 @@ conversation list, per-org counts).
 
 | file | story | state |
 | --- | --- | --- |
-| `single-organization-{dark,light}.png` | `team-bridge-page--single-organization` | one active membership; trigger names it |
+| `single-organization-{dark,light}.png` | `team-bridge-page--single-organization` | the container's first paint for one active membership: its only org, not All |
 | `multiple-organizations-{dark,light}.png` | `team-bridge-page--multiple-organizations` | two memberships, Minerva selected |
-| `all-organizations-{dark,light}.png` | `team-bridge-page--all-organizations` | merged list; every row carries its org chip |
+| `all-organizations-{dark,light}.png` | `team-bridge-page--all-organizations` | merged list; every row carries its org chip; create is disabled with its visible reason |
+| `empty-all-organizations-{dark,light}.png` | `team-bridge-page--empty-all-organizations` | account-wide scope with nothing in it; create disabled and the reason is the pane copy |
 | `org-menu-{dark,light}.png` | `team-bridge-organization-switcher--menu-open` | menu open: All organizations first, then name / role / unread |
+| `org-menu-error-{dark,light}.png` | `team-bridge-organization-switcher--memberships-failed` | memberships read failed; the menu carries `Try again` |
 | `empty-organization-{dark,light}.png` | `team-bridge-page--empty-organization` | Northwind selected, no conversations |
 | `loading-{dark,light}.png` | `team-bridge-page--loading` | list loading, switcher already painted |
 | `error-{dark,light}.png` | `team-bridge-page--error-state` | list error and retry |
 
 `team-bridge-overflow-row--*` is unchanged by this slice; its existing frames
 remain the evidence for the collapsed/expanded sidebar row.
+
+## Round-1 remediation
+
+The account-scoped reads now carry `scope=account` through the desktop op
+contract (they were refused as 422 before HTTP), so the default All view and
+the account badge can load. The create action in All is `aria-disabled` with a
+visible, `aria-describedby`-linked reason; the page keeps an `sr-only` `h1`; a
+single-membership account adopts its only organization; and the memberships
+failure menu offers `Try again`.
 
 ## What the frames do not prove
 
