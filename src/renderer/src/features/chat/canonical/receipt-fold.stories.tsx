@@ -61,32 +61,41 @@ const userEntry = (): Entry =>
 		role: "user",
 		content: [{ text: "Fix the transcript fold tier." }],
 	});
-const callEntry = (callId: string): Entry =>
+/**
+ * One call, with the arguments on the ASSISTANT row - the only place
+ * `applyHistoryPage` carries them from (`argsByCall`); a fixture that put them
+ * on the tool row would paint a transcript the backend cannot produce.
+ *
+ * The name and arguments are parameters rather than pinned to `bash` because
+ * `LongInventory` needs eight distinct kinds on ONE run, which is the whole
+ * point of that frame: the count line's cap only exists for a run this wide.
+ */
+const callEntry = (
+	callId: string,
+	name = "bash",
+	args: Record<string, unknown> = { command: "pnpm test" },
+	intent = "Running the tests",
+): Entry =>
 	entry({
 		kind: "message",
 		role: "assistant",
-		tool_calls: [
-			{
-				id: callId,
-				name: "bash",
-				arguments: { command: "pnpm test", i: "Running the tests" },
-			},
-		],
+		tool_calls: [{ id: callId, name, arguments: { ...args, i: intent } }],
 		stop_reason: "toolUse",
 	});
-const resultEntry = (callId: string, error = false): Entry =>
+const resultEntry = (
+	callId: string,
+	error = false,
+	toolName = "bash",
+	text = error
+		? "exit code: 1\n--- stdout ---\nfailed"
+		: "exit code: 0\n--- stdout ---\nok",
+): Entry =>
 	entry({
 		kind: "message",
 		role: "tool",
 		tool_call_id: callId,
-		tool_name: "bash",
-		content: [
-			{
-				text: error
-					? "exit code: 1\n--- stdout ---\nfailed"
-					: "exit code: 0\n--- stdout ---\nok",
-			},
-		],
+		tool_name: toolName,
+		content: [{ text }],
 		is_error: error,
 	});
 /**
@@ -170,6 +179,115 @@ function receiptOnlyPage(): Entry[] {
 	sequence = 0;
 	__resetTurnCollapseOpen();
 	return [userEntry(), jobEntry(0), jobEntry(1)];
+}
+
+/**
+ * THE CAPPED COUNT LINE, on one run wide enough to force it.
+ *
+ * Eight action kinds over ten calls (`bash` x2, `read` x2, `grep`,
+ * `search_the_web`, `edit`, `task`, `hub`, `wait`) so `foldCountUnits` has more
+ * than its five units to keep: the first five by the line's own order survive
+ * (`3 files` - the two `read`s plus `grep`, which the class table files under
+ * `files`, not `searches`; `1 web search`; `2 shell`; `1 edit`; `1 task`) and
+ * the two remaining calls (`hub` as `subagent`, `wait`) become ONE
+ * `and 2 other actions` unit. Three adjacent `job_result` rows then close the
+ * run, so the receipt family's `3 job results` has to share the same line.
+ *
+ * The header is not written into the fixture: it is what the shipped
+ * `foldCounts` + `receiptFoldUnits` produce from these rows, and the reason the
+ * frame exists is to see that production line WRAP at the 640px column without
+ * breaking inside a unit - the defect design round 1 (D1) measured.
+ *
+ * The arguments are the rows' own words (`summaryFromArgs`), realistic per
+ * kind, so a future renderer that starts reading one of them cannot crash on
+ * an argument set no real call has.
+ */
+function longInventoryPage(): Entry[] {
+	sequence = 0;
+	__resetTurnCollapseOpen();
+	const entries: Entry[] = [userEntry()];
+	const call = (
+		callId: string,
+		name: string,
+		args: Record<string, unknown>,
+		intent: string,
+		text: string,
+	) => {
+		entries.push(callEntry(callId, name, args, intent));
+		entries.push(resultEntry(callId, false, name, text));
+	};
+	call(
+		"call-bash-compile",
+		"bash",
+		{ command: "pnpm build" },
+		"Building the app",
+		"exit code: 0\n--- stdout ---\nbuilt",
+	);
+	call(
+		"call-bash-test",
+		"bash",
+		{ command: "pnpm test:desktop" },
+		"Running the desktop tests",
+		"exit code: 0\n--- stdout ---\nok",
+	);
+	call(
+		"call-read-transport",
+		"read",
+		{ path: "src/main/desktop-transport.ts" },
+		"Reading the transport",
+		"…the reconnect handling…",
+	);
+	call(
+		"call-read-session",
+		"read",
+		{ path: "src/main/desktop-session.ts" },
+		"Reading the session",
+		"…the snapshot contract…",
+	);
+	call(
+		"call-grep",
+		"grep",
+		{ pattern: "after_seq", path: "src/main" },
+		"Searching the cursor",
+		"desktop-transport.ts:412",
+	);
+	call(
+		"call-web",
+		"search_the_web",
+		{ query: "electron background throttling" },
+		"Searching the web",
+		"…one result…",
+	);
+	call(
+		"call-edit",
+		"edit",
+		{ path: "src/main/desktop-transport.ts", old_string: "a", new_string: "b" },
+		"Editing the transport",
+		"Updated 1 file",
+	);
+	call(
+		"call-task",
+		"task",
+		{ agent: "reviewer", prompt: "Review the fold change" },
+		"Delegating the review",
+		"Review started.",
+	);
+	call(
+		"call-hub",
+		"hub",
+		{ op: "list" },
+		"Checking subagents",
+		"No subagents running.",
+	);
+	call(
+		"call-wait",
+		"wait",
+		{ job_id: "job-0" },
+		"Waiting for the job",
+		"job-0 completed.",
+	);
+	entries.push(jobEntry(0), jobEntry(1), jobEntry(2));
+	return entries;
 }
 
 /** The trailing pair: one bash call, then two adjacent `job_result` rows. */
@@ -301,6 +419,32 @@ export const NarrowExpanded: Story = {
 	render: () => (
 		<Frame entries={syntheticPage()} width="window" openFold={true} />
 	),
+};
+
+/**
+ * The capped line at the 640px column: eight kinds and three receipts on one
+ * header, which is the frame design D1's residual asks for.
+ *
+ * THE TURN BAR IS PRESSED FIRST, for the reason `ShortMixed` states: a settled
+ * turn is presented behind its own summary bar before the fold is reachable,
+ * and an unopened bar would photograph the bar instead of the count line this
+ * story exists to show. The header the frame lands on is production's, not the
+ * fixture's: with `grep` filed under `files` (its action class) the line reads
+ * `3 files · 1 web search · 2 shell · 1 edit · 1 task · and 2 other actions ·
+ * 3 job results`, and the last two clauses are the cap and the receipt family
+ * sharing one line.
+ */
+export const LongInventory: Story = {
+	name: "Long inventory — 640px window, capped count line over receipts",
+	render: () => (
+		<Frame entries={longInventoryPage()} width="window" openTurn={true} />
+	),
+};
+
+/** The same header in the shipped 760px sheet, so the pair shows the wrap. */
+export const LongInventoryWide: Story = {
+	name: "Long inventory — standard column",
+	render: () => <Frame entries={longInventoryPage()} openTurn={true} />,
 };
 
 /** A run of receipts and nothing else: the receipt-only fold. */
