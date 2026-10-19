@@ -522,6 +522,14 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 
 	const empty = rows.length === 0 && !listing.isLoading;
 	const matching = hasActiveFilters(filters);
+	/*
+	 * The listing error text is shared by the blocking first-load state and the
+	 * inline partial-data warning, so one failure reads the same in both.
+	 */
+	const listingErrorText =
+		listing.error instanceof Error && listing.error.message
+			? listing.error.message
+			: t("ui.library.page.load_failed");
 
 	return (
 		<div
@@ -530,7 +538,20 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			data-glass-split=""
 			className="flex h-full min-h-0 flex-col overflow-hidden bg-canvas"
 		>
-			<header className="flex shrink-0 flex-col gap-1 px-6 pt-4 pb-2 min-[800px]:h-[136px]">
+			{/*
+			 * THE HEADER SIZES TO ITS CONTENT, with the design's 136px as a FLOOR.
+			 * A fixed `h-[136px]` held two 48px rows plus the 40px Librarian track
+			 * only by ignoring the 4px row gaps and the 24px vertical padding; when
+			 * the building line rendered, the remaining tracks overflowed the box and
+			 * painted over the results (the flex parent had already given the header
+			 * its fixed share). `min-h` keeps the reserved track from shrinking
+			 * below the spec's height while every rendered row - including the
+			 * building line - stays in flow and pushes the results down.
+			 */}
+			<header
+				data-library-header=""
+				className="flex shrink-0 flex-col gap-1 px-6 pt-4 pb-2 min-[800px]:min-h-[136px]"
+			>
 				<div className="flex h-12 min-w-0 items-center gap-2">
 					<LibraryBig size={20} aria-hidden="true" className="text-ink-muted" />
 					<h1 className="text-title text-ink">{t("ui.library.page.title")}</h1>
@@ -641,6 +662,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 				<LibrarianRow enabled={enabled} nowMs={clock} />
 				{lastPage?.state === "building" && (
 					<div
+						data-library-building=""
 						className="flex h-4 items-center gap-2 text-meta text-ink-muted"
 						aria-live="polite"
 					>
@@ -666,6 +688,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 				<div className="flex min-w-0 flex-1">
 					{!standalone && (
 						<section
+							data-library-results=""
 							data-glass-region="canvas-content"
 							aria-label={t("ui.library.page.results")}
 							aria-busy={listing.isLoading || listing.isFetching}
@@ -673,13 +696,9 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 						>
 							{listing.isLoading ? (
 								<LibraryGridSkeleton view={view} />
-							) : listing.isError ? (
+							) : listing.isError && rows.length === 0 ? (
 								<div className="flex flex-col items-start gap-3 py-10">
-									<Alert variant="warning">
-										{listing.error instanceof Error && listing.error.message
-											? listing.error.message
-											: t("ui.library.page.load_failed")}
-									</Alert>
+									<Alert variant="warning">{listingErrorText}</Alert>
 									<Button
 										variant="secondary"
 										size="sm"
@@ -721,6 +740,31 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 								</div>
 							) : (
 								<>
+									{/*
+									 * ERROR WITH DATA KEEPS THE PAINTED ROWS. A failed refetch (the
+									 * desktop's own 20s deadline is one such failure) leaves the last
+									 * good pages in `listing.data`; replacing them with the full-page
+									 * error block erased content the reader was already using. The
+									 * warning is a compact in-flow row above the grid, so it announces
+									 * the failure without taking the page away.
+									 */}
+									{listing.isError && (
+										<Alert
+											variant="warning"
+											data-library-partial-error=""
+											className="mb-3 items-center gap-2 py-2"
+										>
+											<span className="min-w-0 flex-1">{listingErrorText}</span>
+											<Button
+												variant="secondary"
+												size="sm"
+												onClick={() => void listing.refetch()}
+											>
+												<RefreshCw aria-hidden="true" />
+												{t("ui.library.page.retry")}
+											</Button>
+										</Alert>
+									)}
 									<LibraryGrid
 										assets={rows}
 										selectedId={selectedId}

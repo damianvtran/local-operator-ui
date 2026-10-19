@@ -12,6 +12,12 @@ import { JSDOM } from "jsdom";
  * WHAT IS PINNED:
  * - the four catalogue states (loading skeleton, empty, error with Retry,
  *   populated);
+ * - the header's layout contract: it sizes to its content while keeping the
+ *   design's 136px floor, and the building line is one of its flow rows above
+ *   the results (the fixed-height defect painted it over the grid);
+ * - a failed refetch with last-good pages keeps the rows and adds an inline
+ *   warning rather than replacing the painted grid with the blocking error;
+ * - an image card's thumbnail read waits for the card to be near the viewport;
  * - selection entering `/library/assets/:id` and the preview rendering there
  *   (the standalone branch in this harness, because a JSDOM page reports no
  *   workspace width - the dock branch is a rendered-frame concern);
@@ -44,11 +50,35 @@ globalThis.ResizeObserver = class {
 	unobserve() {}
 	disconnect() {}
 };
-globalThis.IntersectionObserver = class {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-};
+/*
+ * A CONTROLLABLE IntersectionObserver. jsdom has no layout and implements no
+ * observer; the previous no-op stub could never answer, which would make a
+ * thumbnail-gating case pass for the wrong reason (nothing "near" because
+ * nothing observes). Every instance records the elements it watches, so a case
+ * can deliver an intersection the way a real observer would and prove the read
+ * happens only after that delivery.
+ */
+const OBSERVERS = [];
+class TestIntersectionObserver {
+	constructor(callback) {
+		this.callback = callback;
+		this.targets = new Set();
+		OBSERVERS.push(this);
+	}
+
+	observe(target) {
+		this.targets.add(target);
+	}
+
+	unobserve(target) {
+		this.targets.delete(target);
+	}
+
+	disconnect() {
+		this.targets.clear();
+	}
+}
+globalThis.IntersectionObserver = TestIntersectionObserver;
 dom.window.matchMedia = () => ({
 	matches: false,
 	media: "",
@@ -66,6 +96,19 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { after } = await import("node:test");
 const { build } = await import("esbuild");
 const { act } = await import("react");
+
+/** Deliver one intersection to the observer watching a matching element. */
+const intersect = async (predicate) => {
+	for (const observer of OBSERVERS) {
+		const target = [...observer.targets].find(predicate);
+		if (!target) continue;
+		await act(async () =>
+			observer.callback([{ isIntersecting: true, target }], observer),
+		);
+		return target;
+	}
+	return null;
+};
 
 /*
  * THE HARNESS IS BUNDLED THE WAY `projects-card-click.test.mjs` bundles its
@@ -156,6 +199,10 @@ await unlink(bundlePath);
 
 const NOW = new Date(2026, 9, 18, 12, 0, 0).getTime();
 
+/* Class-token readers, hoisted so the layout case allocates no regex per row. */
+const CLASS_TOKENS = /\s+/;
+const OUT_OF_FLOW = /(^|\s)(absolute|fixed)(\s|$)/;
+
 const tag = (id, name) => ({ id, name, category: "topic" });
 const asset = (id, patch = {}) => ({
 	id,
@@ -228,7 +275,9 @@ const ANSWER = {
 	failList: null,
 	hang: false,
 	detail: null,
+	state: "ready",
 	ops: [],
+	mediaOps: [],
 	gate: null,
 	releaseHang: null,
 };
@@ -269,7 +318,7 @@ const desktopRequest = async (request) => {
 			status: 200,
 			body: {
 				result: {
-					state: "ready",
+					state: ANSWER.state,
 					revision: 1,
 					total: ANSWER.rows.length,
 					counts: {
@@ -370,12 +419,15 @@ const desktopRequest = async (request) => {
 const api = dom.window.api ?? {};
 api.desktop = {
 	request: desktopRequest,
-	media: async () => ({
-		status: 200,
-		kind: "bytes",
-		mimeType: "text/markdown",
-		data: new TextEncoder().encode("# Notes\n\nA document."),
-	}),
+	media: async (request) => {
+		ANSWER.mediaOps.push(request);
+		return {
+			status: 200,
+			kind: "bytes",
+			mimeType: "text/markdown",
+			data: new TextEncoder().encode("# Notes\n\nA document."),
+		};
+	},
 };
 api.openFile = async () => {};
 api.showItemInFolder = async () => {};
@@ -387,6 +439,15 @@ const flush = async (rounds = 8) => {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 		});
 	}
+};
+
+/** Poll a rendered condition without guessing how many 100ms rounds it needs. */
+const waitFor = async (predicate, rounds = 24) => {
+	for (let index = 0; index < rounds; index += 1) {
+		if (predicate()) return;
+		await flush(1);
+	}
+	assert.fail("the rendered condition did not appear within the wait budget");
 };
 
 const MOUNTED = [];
@@ -439,6 +500,158 @@ test("a failed listing draws the error and its Retry control", async () => {
 	await flush(12);
 	assert.ok(text(container).includes("The backend did not answer."));
 	assert.ok(text(container).includes("Retry"));
+	await act(async () => root.unmount());
+	ANSWER.failList = null;
+});
+
+/*
+ * THE HEADER'S LAYOUT CONTRACT, at both widths the fix is required at.
+ *
+ * WHAT THIS LANE CAN AND CANNOT SEE, stated rather than implied: jsdom performs
+ * no layout, so every `getBoundingClientRect` is 0x0 and an intersection
+ * assertion here would pass whether or not the defect exists. This case pins
+ * the CAUSE instead: the header no longer declares a fixed height at >=800px
+ * (the box the overflowing tracks escaped), its minimum is the design's 136px,
+ * every track it renders is a direct child in normal flow, and the results
+ * container follows the header rather than sitting under an absolutely
+ * positioned overlay. The pixels were measured separately from the rendered
+ * Storybook stories (Library/Tab/Building and InShellBuilding) at
+ * 1380x900 and 900x800; those readings are in the pull request description.
+ */
+test("the header sizes to its tracks and the building row stays above the results at both widths", async () => {
+	ANSWER.rows = ROWS;
+	ANSWER.state = "building";
+	for (const [width, height] of [
+		[1380, 900],
+		[900, 800],
+	]) {
+		Object.defineProperty(dom.window, "innerWidth", {
+			configurable: true,
+			value: width,
+		});
+		Object.defineProperty(dom.window, "innerHeight", {
+			configurable: true,
+			value: height,
+		});
+		const { container, root } = await mount();
+		const header = container.querySelector("[data-library-header]");
+		const building = container.querySelector("[data-library-building]");
+		const results = container.querySelector("[data-library-results]");
+		assert.ok(header, `the header renders at ${width}x${height}`);
+		assert.ok(building, `the building line renders at ${width}x${height}`);
+		assert.ok(results, `the results container renders at ${width}x${height}`);
+
+		assert.equal(
+			building.parentElement,
+			header,
+			"the building line is a header row, not a floating element",
+		);
+		assert.ok(
+			header.nextElementSibling?.contains(results),
+			"the results container follows the header in the page flow",
+		);
+
+		const headerClasses = header.className.split(CLASS_TOKENS);
+		assert.ok(
+			headerClasses.includes("min-[800px]:min-h-[136px]"),
+			"the design's 136px remains a floor at >=800px",
+		);
+		assert.equal(
+			headerClasses.includes("min-[800px]:h-[136px]"),
+			false,
+			"a fixed 136px height is exactly what let 188px of tracks overflow",
+		);
+
+		/* The four rendered tracks the old fixed box under-counted. */
+		const tracks = [...header.children].map((child) =>
+			child.className.split(CLASS_TOKENS),
+		);
+		assert.equal(
+			tracks.filter((classes) => classes.includes("h-12")).length,
+			2,
+		);
+		assert.equal(
+			tracks.filter((classes) => classes.includes("h-10")).length,
+			1,
+		);
+		assert.equal(tracks.filter((classes) => classes.includes("h-4")).length, 1);
+		for (const child of header.children) {
+			assert.equal(
+				OUT_OF_FLOW.test(child.className),
+				false,
+				"no header track leaves normal flow",
+			);
+		}
+		await act(async () => root.unmount());
+	}
+	ANSWER.state = "ready";
+});
+
+test("an offscreen image card does not read its thumbnail until it is near", async () => {
+	ANSWER.rows = [
+		asset("la_0000000000000016", {
+			name: "A photo",
+			kind: "image",
+			category: "image",
+			width: 1600,
+			height: 900,
+		}),
+	];
+	ANSWER.mediaOps = [];
+	const { container, root } = await mount();
+	assert.ok(
+		container.querySelector('[data-library-card-id="la_0000000000000016"]'),
+		"the image card is mounted",
+	);
+	assert.equal(
+		ANSWER.mediaOps.filter((op) => op.op === "library.thumbnail").length,
+		0,
+		"a card nobody has scrolled near must not read bytes over IPC",
+	);
+	const target = await intersect(
+		(element) =>
+			element.closest('[data-library-card-id="la_0000000000000016"]') !== null,
+	);
+	assert.ok(target, "the card's picture slot is observed");
+	await waitFor(
+		() =>
+			ANSWER.mediaOps.filter((op) => op.op === "library.thumbnail").length ===
+			1,
+	);
+	assert.equal(
+		ANSWER.mediaOps.find((op) => op.op === "library.thumbnail").assetId,
+		"la_0000000000000016",
+	);
+	await act(async () => root.unmount());
+});
+
+test("a failed refetch keeps the painted rows and warns inline", async () => {
+	ANSWER.rows = ROWS;
+	const { container, root, client } = await mount();
+	const cardId = "la_0000000000000011";
+	assert.ok(container.querySelector(`[data-library-card-id="${cardId}"]`));
+
+	ANSWER.failList = "The library did not answer in time.";
+	await act(async () => {
+		await client.invalidateQueries({
+			queryKey: ["desktop", "library", "list"],
+		});
+	});
+	await flush(6);
+
+	assert.ok(
+		container.querySelector(`[data-library-card-id="${cardId}"]`),
+		"the last good rows stay painted after the refetch fails",
+	);
+	assert.ok(
+		container.querySelector("[data-library-partial-error]"),
+		"the failure is reported inline instead of replacing the grid",
+	);
+	assert.ok(text(container).includes("The library did not answer in time."));
+	assert.ok(
+		container.querySelector("[data-library-partial-error] button"),
+		"the inline warning carries its own Retry control",
+	);
 	await act(async () => root.unmount());
 	ANSWER.failList = null;
 });
