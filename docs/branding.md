@@ -491,7 +491,7 @@ a menu or a popover.
   title-bar lane. A route-owned leading column hands itself to the shell
   (`useLaneLeadingColumn("surface")`) so the lane carries the same ground above
   it; the panel content must not begin below a header that spans the rail.
-- **Chrome controls are borderless too.** Search, sort and filter chrome takes the `elevated` ground on a `surface` panel and the shared accent focus ring; no resting stroke. Reserve `border-control` for a form field or an actual boundary a ground cannot express, never as decoration on a toolbar control.
+- **Chrome controls are borderless too.** A grouped segmented control (for example the Library grid/list toggle) may keep one shared `border-control` boundary around the group; the edge belongs to the group affordance, not to each button. Search, sort and filter chrome takes the `elevated` ground on a `surface` panel and the shared accent focus ring; no resting stroke. Reserve `border-control` for a form field or an actual boundary a ground cannot express, never as decoration on a toolbar control.
 - **A scrolling panel fades at its top edge.** `data-lo-sidebar-edge-cues` on
   the scroller uses the shared scroll-driven mask: content dissolves under the
   top spacing rather than being cut by a hard boundary, and the fade is zero at
