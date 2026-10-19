@@ -2,6 +2,7 @@ import { Badge, countLabel } from "@shared/components/ui/badge";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
@@ -18,6 +19,7 @@ import {
 	type TeamBridgeOrganization,
 	type TeamBridgeScope,
 	organizationForScope,
+	teamBridgeScopeFromValue,
 } from "./team-bridge-model";
 
 /**
@@ -52,6 +54,8 @@ export const TeamBridgeOrgSwitcher: FC<{
 	organizationsFailed?: boolean;
 	/** Story/capture seed only: opens the menu so its rows are visible. */
 	defaultOpen?: boolean;
+	/** Refetch the memberships after a failed read; shown as a menu action. */
+	onRetry?: () => void;
 }> = ({
 	organizations,
 	scope,
@@ -60,6 +64,7 @@ export const TeamBridgeOrgSwitcher: FC<{
 	membershipsLoading = false,
 	organizationsFailed = false,
 	defaultOpen = false,
+	onRetry,
 }) => {
 	useI18nLocale();
 	const current = organizationForScope(organizations, scope);
@@ -98,7 +103,9 @@ export const TeamBridgeOrgSwitcher: FC<{
 				<DropdownMenuLabel>{t("ui.teamBridge.scope.label")}</DropdownMenuLabel>
 				<DropdownMenuRadioGroup
 					value={scope}
-					onValueChange={(next) => onScopeChange(next)}
+					onValueChange={(next) =>
+						onScopeChange(teamBridgeScopeFromValue(next))
+					}
 				>
 					<DropdownMenuRadioItem value={TEAM_BRIDGE_ALL_SCOPE}>
 						<span className="min-w-0 flex-1 truncate">
@@ -154,9 +161,16 @@ export const TeamBridgeOrgSwitcher: FC<{
 					</DropdownMenuLabel>
 				)}
 				{!membershipsLoading && organizationsFailed && (
-					<DropdownMenuLabel>
-						{t("ui.teamBridge.scope.error")}
-					</DropdownMenuLabel>
+					<>
+						<DropdownMenuLabel>
+							{t("ui.teamBridge.scope.error")}
+						</DropdownMenuLabel>
+						{onRetry && (
+							<DropdownMenuItem onSelect={() => onRetry()}>
+								{t("ui.teamBridge.list.retry")}
+							</DropdownMenuItem>
+						)}
+					</>
 				)}
 				{!membershipsLoading &&
 					!organizationsFailed &&

@@ -6,6 +6,7 @@ import type {
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
+	asTeamBridgeTenantId,
 } from "./team-bridge-model";
 import { TeamBridgePageView } from "./team-bridge-page";
 
@@ -182,14 +183,14 @@ const messages: TeamBridgeMessage[] = [
 ];
 
 const minervaOrganization: TeamBridgeOrganization = {
-	tenantId: "tnt_1",
+	tenantId: asTeamBridgeTenantId("tnt_1"),
 	name: "Minerva",
 	role: "owner",
 	unread: 5,
 };
 
 const northwindOrganization: TeamBridgeOrganization = {
-	tenantId: "tnt_2",
+	tenantId: asTeamBridgeTenantId("tnt_2"),
 	name: "Northwind Collective",
 	role: "member",
 	unread: 4,
@@ -298,7 +299,11 @@ export const SendingDisabledComposer: Story = {
 	args: { sending: true },
 };
 
-/** One organization: the trigger names it, and no row carries a chip. */
+/**
+ * The container's real first paint for a single-membership account: scope
+ * defaults to the only organization (not All), no row carries a chip, and
+ * create is available.
+ */
 export const SingleOrganization: Story = {
 	args: {
 		organizations: [minervaOrganization],
@@ -338,6 +343,17 @@ export const OrganizationsUnavailable: Story = {
 		organizations: [],
 		organizationsFailed: true,
 		listState: "error",
+		conversations: [],
+		selected: null,
+		messages: [],
+		messageState: "idle",
+	},
+};
+
+/** Account-wide scope with nothing in it: the disabled create states its remedy. */
+export const EmptyAllOrganizations: Story = {
+	args: {
+		scope: TEAM_BRIDGE_ALL_SCOPE,
 		conversations: [],
 		selected: null,
 		messages: [],

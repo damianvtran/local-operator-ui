@@ -2,6 +2,7 @@ import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
 	TeamBridgeParticipant,
+	TeamBridgeTenantId,
 } from "../../../../shared/team-bridge-contract";
 
 /**
@@ -12,11 +13,28 @@ import type {
  * only place the merged view comes from, and no write ever accepts it.
  */
 export const TEAM_BRIDGE_ALL_SCOPE = "all";
-export type TeamBridgeScope = typeof TEAM_BRIDGE_ALL_SCOPE | string;
+export type TeamBridgeScope = typeof TEAM_BRIDGE_ALL_SCOPE | TeamBridgeTenantId;
+
+/**
+ * Brand a tenant id read from a membership row.
+ *
+ * The one caller that needs this at an untyped boundary is the menu: Radix
+ * hands `onValueChange` a plain string built from our own radio values.
+ */
+export function asTeamBridgeTenantId(value: string): TeamBridgeTenantId {
+	return value as TeamBridgeTenantId;
+}
+
+/** A menu/radio value back into the scope union, sentinel first. */
+export function teamBridgeScopeFromValue(value: string): TeamBridgeScope {
+	return value === TEAM_BRIDGE_ALL_SCOPE
+		? TEAM_BRIDGE_ALL_SCOPE
+		: asTeamBridgeTenantId(value);
+}
 
 /** One row of the organization switcher, after memberships and counts are joined. */
 export type TeamBridgeOrganization = {
-	tenantId: string;
+	tenantId: TeamBridgeTenantId;
 	name: string;
 	role: string;
 	unread: number;
@@ -188,11 +206,29 @@ export function organizationOptions(
 	return memberships
 		.filter((membership) => membership.status === "active")
 		.map((membership) => ({
-			tenantId: membership.tenant_id,
+			tenantId: asTeamBridgeTenantId(membership.tenant_id),
 			name: membership.tenant_name,
 			role: membership.role,
 			unread: counts.get(membership.tenant_id) ?? 0,
 		}));
+}
+
+/**
+ * The scope a fresh page should use once memberships are known.
+ *
+ * A single-membership account starts in its only organization: All
+ * organizations is a multi-org affordance, and starting there would disable
+ * create until the reader picked the one org they belong to. `chosen` is true
+ * once the reader has used the switcher, so their explicit All is never
+ * overridden by a later refresh.
+ */
+export function preferredScope(
+	organizations: readonly TeamBridgeOrganization[],
+	current: TeamBridgeScope,
+	chosen: boolean,
+): TeamBridgeScope {
+	if (chosen || organizations.length !== 1) return current;
+	return organizations[0].tenantId;
 }
 
 /** The organization a scope names, or null for the account-wide scope. */

@@ -79,6 +79,26 @@ test("the trigger names the scoped organization, or nothing for all", () => {
 	);
 });
 
+test("a single-membership account starts in its only organization", () => {
+	assert.equal(
+		model.preferredScope(
+			[organizations[0]],
+			model.TEAM_BRIDGE_ALL_SCOPE,
+			false,
+		),
+		"tnt_1",
+	);
+	// Several organizations, or a reader who chose All themselves, keep All.
+	assert.equal(
+		model.preferredScope(organizations, model.TEAM_BRIDGE_ALL_SCOPE, false),
+		model.TEAM_BRIDGE_ALL_SCOPE,
+	);
+	assert.equal(
+		model.preferredScope([organizations[0]], model.TEAM_BRIDGE_ALL_SCOPE, true),
+		model.TEAM_BRIDGE_ALL_SCOPE,
+	);
+});
+
 test("only active memberships become switcher rows", () => {
 	assert.deepEqual(
 		organizations.map((row) => row.tenantId),

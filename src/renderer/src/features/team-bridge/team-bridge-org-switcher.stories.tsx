@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
+	asTeamBridgeTenantId,
 } from "./team-bridge-model";
 import { TeamBridgeOrgSwitcher } from "./team-bridge-org-switcher";
 
@@ -15,14 +16,14 @@ import { TeamBridgeOrgSwitcher } from "./team-bridge-org-switcher";
  * uses and the capture sees the panel where a user would.
  */
 const minerva: TeamBridgeOrganization = {
-	tenantId: "tnt_1",
+	tenantId: asTeamBridgeTenantId("tnt_1"),
 	name: "Minerva",
 	role: "owner",
 	unread: 5,
 };
 
 const northwind: TeamBridgeOrganization = {
-	tenantId: "tnt_2",
+	tenantId: asTeamBridgeTenantId("tnt_2"),
 	name: "Northwind Collective",
 	role: "member",
 	unread: 4,
@@ -46,6 +47,9 @@ const meta = {
 		scope: minerva.tenantId,
 		totalUnread: minerva.unread + northwind.unread,
 		onScopeChange: () => {},
+		// The failed read's recovery action is a menu row; a fixture no-op keeps
+		// that row visible in the state the design review judges.
+		onRetry: () => {},
 	},
 } satisfies Meta<typeof TeamBridgeOrgSwitcher>;
 
