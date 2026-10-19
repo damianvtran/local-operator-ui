@@ -213,11 +213,13 @@ async function main() {
 		return true;
 	};
 
+	let slotActive = null;
 	const backend = new LopSlotBackend({
 		post,
 		onOutcome: (_taskId, outcome) => {
 			const phrase = phraseForOutcome(outcome);
-			if (phrase) speak(PHRASES[phrase], "phrase");
+			// Defence in depth: with no slot holder nothing is ever spoken.
+			if (phrase && slotActive !== null) speak(PHRASES[phrase], "phrase");
 		},
 	});
 
@@ -260,7 +262,6 @@ async function main() {
 		server.once("error", reject);
 	});
 
-	let slotActive = null;
 	parent?.on((message) => {
 		switch (message?.type) {
 			case "outcome":
