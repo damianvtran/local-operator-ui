@@ -1,0 +1,18 @@
+{
+	"ui.agents.refusals.name_taken": "“{name}” नाम का एजेंट पहले से मौजूद है। दूसरा नाम चुनें या मौजूदा एजेंट खोलकर उसका नाम बदलें।",
+	"ui.agents.refusals.name_grammar": "नामों में स्पेस या स्लैश नहीं हो सकते।",
+	"ui.agents.refusals.effort_unavailable": "“{tier}” कोई कॉन्फ़िगर की गई प्रयास श्रेणी नहीं है। inherit इस्तेमाल करें या सेटिंग्स में श्रेणी जोड़ें।",
+	"ui.agents.refusals.team_name_bound": "टीम का नाम 1-64 अक्षरों का होना चाहिए।",
+	"ui.agents.refusals.missing_manager": "इस मशीन पर “{name}” नाम का कोई एजेंट या टीम नहीं है।",
+	"ui.agents.refusals.missing_member": "इस मशीन पर “{name}” नाम का कोई एजेंट या टीम नहीं है।",
+	"ui.agents.refusals.team_nesting": "उस टीम के अंदर बहुत ज़्यादा स्तर बनेंगे या वह ख़ुद को शामिल करेगी। उसके सदस्य जाँचें।",
+	"ui.agents.refusals.class.label.proactive": "पहल करने वाला",
+	"ui.agents.refusals.class.label.reactive": "जवाब देने वाला",
+	"ui.agents.refusals.class.meaning.proactive": "यह अपनी ओर से आपको संदेश भेज सकता है: कुछ भेजने के बाद जवाब के लिए कुछ मिनट रुकता है, तय संख्या में बढ़ते अंतराल पर फिर याद दिलाता है, फिर आपका इंतज़ार करता है — और अपने शेड्यूल पर भी जाग सकता है।",
+	"ui.agents.refusals.class.meaning.reactive": "यह आपके लिखने पर जवाब देता है। यह आपको याद नहीं दिलाता और अपने शेड्यूल पर नहीं जागता।",
+	"ui.agents.refusals.class.effect.proactive": "इसे बंद करने से याद दिलाना और शेड्यूल की गई जागृतियाँ बंद हो जाती हैं। आपके लिखने पर यह अब भी जवाब देता है।",
+	"ui.agents.refusals.class.effect.reactive": "इसे चालू करने से यह पहले लिख सकता है: आपके जवाब के लिए कुछ मिनट रुकेगा, तय संख्या तक फिर याद दिलाएगा और अपने शेड्यूल पर जाग सकता है। आपके लिखने पर यह अब भी जवाब देता है।",
+	"ui.agents.refusals.class.install_disclosure": "यह ऐप के साथ आता है और अभी इसकी अपनी कॉपी नहीं है, इसलिए स्विच बदलने से पहले यह इंस्टॉल होता है — वही एजेंट और वही निर्देश, जिन्हें अब बदला जा सकता है — और फिर इसकी श्रेणी तय होती है।",
+	"ui.agents.refusals.class.error.no_reason": "बैकएंड ने इसकी कोई वजह नहीं भेजी। स्विच फिर बदलकर देखें।",
+	"ui.agents.refusals.class.error.install_landed": "{reason} इंस्टॉल हो गया था, इसलिए अब एजेंट में बदलाव कर सकते हैं।"
+}
