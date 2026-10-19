@@ -140,7 +140,7 @@ export const TeamBridgeCreateDialog: FC<{
 									})
 								}
 								aria-label={t("ui.teamBridge.create.member_kind")}
-								className="h-8 rounded-md border border-border bg-surface px-1 text-[13px]"
+								className="h-8 rounded-md border border-hairline bg-surface px-1 text-[13px]"
 							>
 								<option value="human">
 									{t("ui.teamBridge.create.member_person")}
