@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { electronApp, is, optimizer } from "@electron-toolkit/utils";
+import { electronApp, is } from "@electron-toolkit/utils";
 import {
 	BrowserWindow,
 	type BrowserWindowConstructorOptions,
@@ -93,6 +93,7 @@ import {
 	resolveDevDriverArming,
 } from "./dev-driver";
 import { registerDevDriverIPC } from "./dev-driver-ipc";
+import { shouldToggleDevTools } from "./dev-shortcuts";
 import {
 	listDirectory,
 	probeFiles,
@@ -2338,11 +2339,18 @@ app
 			process.on("SIGTERM", onSigtermDuringQuit);
 		}
 
-		// Default open or close DevTools by F12 in development
-		// and ignore CommandOrControl + R in production.
-		// see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+		// F12 toggles DevTools in development only. Not the toolkit's
+		// `optimizer.watchWindowShortcuts`: it also cancels Ctrl+R in packaged
+		// builds and Cmd/Ctrl+minus by default, so the Console never saw reverse
+		// search and Zoom Out never fired (#1085).
 		app.on("browser-window-created", (_, window) => {
-			optimizer.watchWindowShortcuts(window);
+			window.webContents.on("before-input-event", (event, input) => {
+				if (!shouldToggleDevTools(input, is.dev)) return;
+				event.preventDefault();
+				const { webContents } = window;
+				if (webContents.isDevToolsOpened()) webContents.closeDevTools();
+				else webContents.openDevTools({ mode: "undocked" });
+			});
 		});
 
 		// One guarded sender for every main-process caller, so a read receipt
