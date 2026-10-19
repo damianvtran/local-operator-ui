@@ -40,5 +40,17 @@
 	"ui.chat.tags.updated_untagged": "Étiquettes mises à jour. Affichées sous Sans étiquette.",
 	"ui.chat.tags.none_yet": "Aucune étiquette pour l’instant",
 	"ui.chat.tags.manage_title": "Gérer les étiquettes",
-	"ui.chat.tags.apply_deletion_first": "Appliquez d’abord la suppression, puis ajoutez à nouveau « {name} »."
+	"ui.chat.tags.apply_deletion_first": "Appliquez d’abord la suppression, puis ajoutez à nouveau « {name} ».",
+	"ui.chat.tags.moved_to": "Déplacé vers « {name} »",
+	"ui.chat.tags.removed_all": "Toutes les étiquettes ont été retirées",
+	"ui.chat.tags.remove_all": "{count, plural, one {Retirer l’étiquette (#)} other {Retirer toutes les étiquettes (#)}}",
+	"ui.chat.tags.move_menu": "Déplacer vers une étiquette…",
+	"ui.chat.tags.changed_elsewhere": "Les étiquettes ont été modifiées ailleurs",
+	"ui.chat.tags.move_armed": "Déplacer « {name} »",
+	"ui.chat.tags.move_cancelled": "Déplacement annulé",
+	"ui.chat.tags.undo": "Annuler",
+	"ui.chat.tags.move_undone": "Déplacement des étiquettes annulé",
+	"ui.chat.tags.move_title": "Déplacer « {title} »",
+	"ui.chat.tags.move_description": "Choisissez une étiquette principale, ou Sans étiquette pour retirer toutes les étiquettes.",
+	"ui.chat.tags.move_failed": "Les étiquettes n’ont pas été déplacées. Réessayez."
 }

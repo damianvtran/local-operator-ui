@@ -1,0 +1,32 @@
+{
+  "auditor": "i18n-auditor-ru",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "b6e2d9f04c17",
+  "locale": "ru",
+  "namespace": "ui.chat.tags",
+  "status": "passed",
+  "keys_audited": 54,
+  "sha256": {
+    "en": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+    "ru": "4141b03647493eea8e4b760dd6a921bb6d0e678b517d4122dc7aa88aa4ba5129"
+  },
+  "findings": [],
+  "independent_of_implementer": true,
+  "fallback_used_this_round": false,
+  "coverage": [
+    "Compared all 54 English/Russian pairs for meaning, register, grammar, typography, interpolation and drag/move/remove/undo/Untagged/conflict/failure semantics.",
+    "All 54 ICU messages parsed/formatted with installed intl-messageformat; EN/RU ICU AST placeholder sets equal.",
+    "remove_all and delete_description exercised at 0, 1, 2, 5, 11, 21, 22, 25, 101; exact =1 action branch confirmed.",
+    "Sidebar/menu/toast length risk assessed textually only; no rendered clipping or visual-layout claim."
+  ],
+  "remediation": {
+    "finding": "RU-V2-1-01",
+    "status": "fixed",
+    "evidence": [
+      "count=1 -> Удалить тег (1)",
+      "count=21 -> Удалить все теги (21)",
+      "count=101 -> Удалить все теги (101)"
+    ]
+  },
+  "verdict": "clean; TERMINAL"
+}

@@ -1543,6 +1543,20 @@ const ROW_STATE_GROUNDS = [
 			literalClassAt(LIBRARY_PAGE, 'data-glass-region="page-sidebar"', "after"),
 		groundFile: LIBRARY_PAGE,
 	},
+	{
+		/* THE SECOND MOUNT. The same rail is rendered inside the mobile filter
+		 * Sheet, whose shared shell is `bg-elevated`; rows must not be painted on
+		 * it. The content wrapper inside that shell owns `bg-surface`, so the
+		 * mobile mount gets its own ground assertion rather than inheriting the
+		 * desktop aside's. */
+		what: "the Library filter rail inside the mobile sheet",
+		rowFile: LIBRARY_FILTER_RAIL,
+		expression: () => expressionAfter(LIBRARY_FILTER_RAIL, "const RailRow"),
+		stubs: { active: true, indent: false, rowCurrent },
+		ground: () =>
+			literalClassAt(LIBRARY_PAGE, 'data-library-filter-sheet=""', "after"),
+		groundFile: LIBRARY_PAGE,
+	},
 ];
 
 /* Every grounding class a row state may NOT be painted on. `elevated` is in the

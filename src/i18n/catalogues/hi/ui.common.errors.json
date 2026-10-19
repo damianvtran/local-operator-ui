@@ -1,0 +1,6 @@
+{
+	"ui.common.errors.error_boundary.error_details": "त्रुटि का विवरण",
+	"ui.common.errors.error_boundary.something_went_wrong": "कुछ गड़बड़ हुई",
+	"ui.common.errors.error_boundary.stack_trace": "स्टैक ट्रेस",
+	"ui.common.errors.error_boundary.the_application_encountered_an_error_try_again_or_contact_support": "ऐप में कोई त्रुटि हुई। फिर कोशिश करें, या समस्या बनी रहे तो सहायता से संपर्क करें।"
+}

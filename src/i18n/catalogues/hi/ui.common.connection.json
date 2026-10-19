@@ -1,0 +1,12 @@
+{
+	"ui.common.connection.backend_compatibility_banner.the_backend_update_could_not_start_retry_or_update_from_settings_": "बैकएंड अपडेट शुरू नहीं हो सका। फिर कोशिश करें, या सेटिंग्स में ऐप अपडेट से अपडेट करें।",
+	"ui.common.connection.backend_compatibility_banner.update_backend": "बैकएंड अपडेट करें",
+	"ui.common.connection.backend_compatibility_banner.updating": "अपडेट हो रहा है",
+	"ui.common.connection.connectivity_banner.a_connectivity_issue_has_been_detected": "कनेक्शन में समस्या मिली है।",
+	"ui.common.connection.connectivity_banner.dismiss": "हटाएँ",
+	"ui.common.connection.connectivity_banner.dismiss_inline": "हटाएँ",
+	"ui.common.connection.connectivity_banner.this_app_s_updates_require": "इस ऐप के अपडेट के लिए",
+	"ui.common.connection.connectivity_banner.you_are_offline": "आप ऑफ़लाइन हैं। {detail} इंटरनेट कनेक्शन ज़रूरी है।",
+	"ui.common.connection.floating_alert.dismiss": "हटाएँ",
+	"ui.common.connection.provider.requires": "आपके चुने हुए होस्टिंग प्रोवाइडर ({provider}) के लिए"
+}

@@ -97,6 +97,8 @@ export type SessionCatalogueRow = {
 	pinned: boolean;
 	/** Durable assignments; absence supports backends predating session_tags. */
 	tags?: TagRef[];
+	/** Opaque assignment revision; older cores omit it. Compare only by equality. */
+	tags_revision?: string;
 	/** Explicit primary ID (a member of tags), or null for Untagged. */
 	primary?: string | null;
 	/**

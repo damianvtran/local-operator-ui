@@ -215,8 +215,10 @@ test("enable is exactly one explicit click with account/tenant/rendered version;
 	assert.equal(model.getSnapshot().confirmed, false);
 	assert.deepEqual(calls.local, []);
 	await model.enable(identity, "abcdef123456");
-	model.dismiss("account-a", "tenant-home");
+	model.dismiss("account-b", "tenant-home");
 	assert.deepEqual(calls.seen, []);
+	model.dismiss("account-a", "tenant-home");
+	assert.deepEqual(calls.seen, [["account-a", "tenant-home"]]);
 	assert.deepEqual(calls.enable, [
 		{
 			expected_account_id: "account-a",
@@ -232,7 +234,10 @@ test("enable is exactly one explicit click with account/tenant/rendered version;
 		["team_bridge.session", "abcdef123456"],
 		["team_bridge.enabled", true],
 	]);
-	assert.deepEqual(calls.seen, [["account-a", "tenant-home"]]);
+	assert.deepEqual(calls.seen, [
+		["account-a", "tenant-home"],
+		["account-a", "tenant-home"],
+	]);
 });
 
 test("off-chat or draft completion explicitly clears designation before machine enable", async () => {
