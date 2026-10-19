@@ -1,0 +1,9 @@
+{
+	"ui.chat.composer_media.recording": "录音中",
+	"ui.chat.composer_media.confirms": "确认",
+	"ui.chat.composer_media.cancels": "取消",
+	"ui.chat.composer_media.pasted_type": "粘贴的{mimeType}",
+	"ui.chat.composer_media.pasted_file": "粘贴的文件",
+	"ui.chat.composer_media.preview_failed": "无法预览",
+	"ui.chat.composer_media.remove_attachment": "移除附件"
+}

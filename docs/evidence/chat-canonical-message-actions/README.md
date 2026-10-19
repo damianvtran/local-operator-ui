@@ -66,8 +66,8 @@ the idle and hovered boxes being identical — are in *The measured rail* below.
 | `short-answer/` | a one-line answer | **hover-less** | the row must not read as a second sentence |
 | `refused/` | a refusal | **hover-less** | the row is present; the danger ink stays on the prose |
 | `truncated/` | a partly-received answer | **hover-less** | the caption above, the row below |
-| `streaming/` | a settled turn beside an in-flight one | **hover-less** | the row on the settled answer, and NONE on the in-flight turn's rows |
-| `multi-answer/` | two settled answers in one turn | **hover-less** | exactly one row, on the closing answer |
+| `streaming/` | a settled turn beside an in-flight one | **hover-less** | the full row on the settled turn's closing answer; a Copy-only row on the in-flight turn's settled response ("Reading the April ledger first.", #1043); NONE on the response still streaming |
+| `multi-answer/` | two settled answers in one turn | **hover-less** | one full row (Copy, Speak, Fork, stamp) on the closing answer, and a Copy-only row on the earlier settled response (#1043) - still one full row per turn |
 | `bar-suppressed/` | a turn folded into its bar | **hover-less** | the actions still on the line, the bar keeping its numbers and stamp |
 | `one-call-turn/` | the minimum action count: one call, settled | **hover-less** | one call is one hidden span, so the turn folds into a single bar and the bar above states `1 action`; the closing line keeps the row with no caption beside it |
 | `compacted-run/` | a turn split by a mid-run compaction | host | the caption at the content's rail — `Worked for 12s · 2 actions` — with the row's box at rest inside the rig's hover-capable renderer; the REVEAL is the sibling below, and the caption/actions/stamp boxes are identical between the two |
