@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "locale": "zh-CN",
+  "namespace": "ui.agentMessages",
+  "date": "2026-10-19",
+  "status": "passed",
+  "audit_kind": "single-key-delta",
+  "key": "ui.agentMessages.dialog.consent_changed",
+  "english": "Read the current consent text, then choose Enable again.",
+  "target": "请阅读最新的同意声明，然后再次点击“启用”。",
+  "scope": "Independent delta audit of the only changed key in zh-CN/ui.agentMessages.json (direction-word removal). The rest of the namespace is unchanged from the previously audited bytes; this receipt binds the ENGLISH and zh-CN file hashes it was derived from.",
+  "head": "59ae07343175672667bf781c86fbfdccb9c59b06",
+  "branch": "fix/agent-messages-dialog",
+  "worktree": ".worktrees/agent-messages-dialog",
+  "instance": "70602c67add2-zh-cn",
+  "auditor": "reviewer (i18n consent_changed delta, zh-CN)",
+  "model": "deepseek/deepseek-flash",
+  "sha256": {
+    "en": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+    "zh-CN": "47815752ff2d6071e22de184740fad4223ab08658373122051b639f1bd09ff06"
+  },
+  "findings": [],
+  "audit": {
+    "back_translation": "“Please read the latest consent statement, then click “Enable” again.”",
+    "semantic_equivalence": "Pass: same object (the current consent text), same required action (choose Enable again), no added or lost instruction. The English was made direction-neutral; the target carries the same neutral scope.",
+    "register": "Polite 您 register, matching this dialog’s corpus (“您可以”, “请更新”, “您的账户”); full-width comma and 。 as in the rest of the namespace.",
+    "delta_proof": "Old value was “请阅读下方最新的同意声明，然后再次点击“启用”。” The change removes exactly “下方” and changes no other character. The previous zh-CN catalogue row was audited clean at the old bytes.",
+    "terminology": "“启用” is byte-identical to ui.agentMessages.dialog.enable (“启用”) and uses the same curly double quotes as the rest of the catalogue. “点击” (click) is the catalogue’s established verb for operating a button; it is unchanged by this delta and is the concrete way the user chooses the Enable action.",
+    "direction_scan": "Scanned for 下方 / 下面 / 此处 / 这里: none present. Value is direction-neutral.",
+    "style": "“最新的同意声明” reads as the current/latest served statement, which is exactly the stale-consent 409 recovery this notice explains. No inter-character spaces; no stray ASCII punctuation.",
+    "mechanical": {
+      "key_present": true,
+      "key_set_equals_english": "16/16, no missing or extra keys",
+      "placeholders": "none in English or target; no braces in the value",
+      "punctuation": "one sentence; full-width comma ，between clauses; full-width terminal 。; no added exclamation or question marks",
+      "bytes": "UTF-8; NFC; no NBSP, U+202F, zero-width or BOM characters; no leading/trailing whitespace; no double spaces"
+    }
+  },
+  "note": "No blocker, major, minor or nit finding."
+}
