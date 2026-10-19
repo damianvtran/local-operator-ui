@@ -46904,6 +46904,8 @@ async function sceneHubLinks(cdp, app) {
 		`after ${unresolvedReady.waitedMs ?? "?"}ms: ${JSON.stringify(unresolvedReady.last)}`,
 	);
 
+	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-card`);
+
 	/*
 	 * THE EXPLICIT SOURCE CONFIRMATION. The unresolved row's only honest origin is
 	 * an act that names BOTH the approved source and the scope; the confirm
@@ -47001,6 +47003,25 @@ async function sceneHubLinks(cdp, app) {
 		JSON.stringify(chooser.last),
 	);
 	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-open`);
+	// Close through the real control. The opener must exist again before focus
+	// returns, on both record kinds; synchronous focus in the handler is too early.
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	const canceled = await waitForCondition(
+		cdp,
+		`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		const opener = row && row.querySelector('button');
+		return opener && !row.querySelector('select') && document.activeElement === opener;
+	})()`,
+		5_000,
+	);
+	check(
+		"Cancel restores focus to the remounted source opener",
+		canceled.ok,
+		JSON.stringify(canceled.last),
+	);
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+
 	/*
 	 * The confirm button is DISABLED while nothing is chosen - the guard that
 	 * makes the empty default safe. Assert that before choosing.
@@ -47046,6 +47067,16 @@ async function sceneHubLinks(cdp, app) {
 		chosen.ok,
 		`after ${chosen.waitedMs ?? "?"}ms: ${JSON.stringify(chosen.last)}`,
 	);
+
+	await cdp.evaluate(`(() => {
+		window.__hubSuccessToasts = [];
+		window.__hubToastObserver = new MutationObserver(() => {
+			for (const toast of document.querySelectorAll('[data-sonner-toast]')) {
+				window.__hubSuccessToasts.push(toast.textContent);
+			}
+		});
+		window.__hubToastObserver.observe(document.body, {childList:true, subtree:true, characterData:true});
+	})()`);
 	const confirmed = await verb(
 		cdp,
 		"press",
@@ -47069,6 +47100,23 @@ async function sceneHubLinks(cdp, app) {
 		resolvedRow.ok,
 		`after ${resolvedRow.waitedMs ?? "?"}ms: ${JSON.stringify(resolvedRow.last)}`,
 	);
+	const completed = await waitForCondition(
+		cdp,
+		`(() => {
+		const trigger = document.querySelector('[data-hub-links-panel] button[aria-expanded]');
+		return trigger && document.activeElement === trigger &&
+			window.__hubSuccessToasts.some(text => text.includes('Source confirmed'))
+			? {focus: trigger.textContent, toasts: window.__hubSuccessToasts} : null;
+	})()`,
+		5_000,
+	);
+	check(
+		"confirmation announces success and focuses the surviving link disclosure",
+		completed.ok,
+		JSON.stringify(completed.last),
+		JSON.stringify(completed.last),
+	);
+	await cdp.evaluate("window.__hubToastObserver.disconnect()");
 	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-done`);
 
 	/*
@@ -47076,6 +47124,13 @@ async function sceneHubLinks(cdp, app) {
 	 * filter; the daemon's inventory carries one skill link, so the skill surface
 	 * is exercised by the SAME inventory read rather than a second route.
 	 */
+	// A successful confirmation now leaves focus on its collapsed link control.
+	// Inspect the actual link rows only after opening that surviving disclosure.
+	await verb(
+		cdp,
+		"press",
+		'[data-hub-links-panel] button[aria-expanded="false"]',
+	);
 	const kinds = await cdp.evaluate(`(() => {
 		const pane = document.querySelector('[data-agents-pane]');
 		if (!pane) return null;
@@ -47147,6 +47202,70 @@ async function sceneHubLinks(cdp, app) {
 		`after ${teamUnresolved.waitedMs ?? "?"}ms: ${JSON.stringify(teamUnresolved.last)}`,
 	);
 	await captureSettled(cdp, `hub-links-${size}-${theme}-team-unresolved`);
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	const teamCanceled = await waitForCondition(
+		cdp,
+		`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		const opener = row && row.querySelector('button');
+		return opener && !row.querySelector('select') && document.activeElement === opener;
+	})()`,
+		5_000,
+	);
+	check(
+		"team Cancel restores focus to its remounted source opener",
+		teamCanceled.ok,
+		JSON.stringify(teamCanceled.last),
+	);
+
+	await verb(cdp, "navigate", "/agents?name=legacy-solo");
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	await cdp.evaluate(`(() => {
+		const select = document.querySelector('[data-hub-source-unresolved] select');
+		Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, 'public');
+		select.dispatchEvent(new Event('change', {bubbles:true}));
+	})()`);
+	await verb(cdp, "press", "[data-hub-source-unresolved] button:last-of-type");
+	const conflict = await waitForCondition(
+		cdp,
+		`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		const alert = row && row.querySelector('[role="alert"]');
+		return alert && !row.querySelector('button').disabled ? {text:alert.textContent} : null;
+	})()`,
+		10_000,
+	);
+	check(
+		"conflicting scope keeps the unresolved card and settled recovery controls",
+		conflict.ok,
+		JSON.stringify(conflict.last),
+		JSON.stringify(conflict.last),
+	);
+	check(
+		"conflict names source/scope, unchanged state and a safe next step",
+		conflict.ok &&
+			/source or publish scope/.test(conflict.last.text) &&
+			/Nothing was changed/.test(conflict.last.text) &&
+			/Cancel and check/.test(conflict.last.text) &&
+			/separate local copy/.test(conflict.last.text),
+		JSON.stringify(conflict.last),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-conflict`);
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	const conflictCanceled = await waitForCondition(
+		cdp,
+		`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		return row && !row.querySelector('select') && document.activeElement === row.querySelector('button');
+	})()`,
+		5_000,
+	);
+	check(
+		"Cancel after conflict restores focus to its source opener",
+		conflictCanceled.ok,
+		JSON.stringify(conflictCanceled.last),
+	);
 
 	/*
 	 * A RECORD WITH NO HUB LINK DRAWS NOTHING. The panel used to render a "Hub

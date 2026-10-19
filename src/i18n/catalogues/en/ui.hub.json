@@ -121,7 +121,7 @@
 	"ui.hub.links.resolve_title": "Confirm this link’s source",
 	"ui.hub.links.resolve_description": "Only confirm if you know {item} came from here.",
 	"ui.hub.links.resolve_action": "Confirm source",
-	"ui.hub.links.resolve_conflict": "That source conflicts with the stored origin. Nothing was changed.",
+	"ui.hub.links.resolve_conflict": "This source or publish scope conflicts with the confirmed link. Nothing was changed. Cancel and check the source and scope. For a different source, use a separate local copy.",
 	"ui.hub.links.scope_label": "Publish scope",
 	"ui.hub.links.scope_public": "Public",
 	"ui.hub.links.scope_private": "{organization} · Private",

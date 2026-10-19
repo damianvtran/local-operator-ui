@@ -121,7 +121,7 @@
 	"ui.hub.links.resolve_title": "Confirmer la source de ce lien",
 	"ui.hub.links.resolve_description": "Ne confirmez que si vous savez que {item} vient d’ici.",
 	"ui.hub.links.resolve_action": "Confirmer la source",
-	"ui.hub.links.resolve_conflict": "Cette source entre en conflit avec l’origine enregistrée. Rien n’a été modifié.",
+	"ui.hub.links.resolve_conflict": "Cette source ou cette portée de publication entre en conflit avec le lien confirmé. Rien n’a été modifié. Annulez et vérifiez la source et la portée. Pour une autre source, utilisez une copie locale distincte.",
 	"ui.hub.links.scope_label": "Portée de publication",
 	"ui.hub.links.scope_public": "Public",
 	"ui.hub.links.scope_private": "{organization} · Privé",

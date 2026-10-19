@@ -121,7 +121,7 @@
 	"ui.hub.links.resolve_title": "इस लिंक के स्रोत की पुष्टि करें",
 	"ui.hub.links.resolve_description": "पुष्टि तभी करें जब आप जानते हों कि {item} यहीं से आया है।",
 	"ui.hub.links.resolve_action": "स्रोत की पुष्टि करें",
-	"ui.hub.links.resolve_conflict": "वह स्रोत सहेजे गए मूल स्रोत से मेल नहीं खाता। कुछ नहीं बदला गया।",
+	"ui.hub.links.resolve_conflict": "यह स्रोत या प्रकाशन का दायरा पुष्टि किए गए लिंक से मेल नहीं खाता। कुछ नहीं बदला गया। रद्द करें और स्रोत और दायरा जाँचें। किसी दूसरे स्रोत के लिए अलग स्थानीय कॉपी इस्तेमाल करें।",
 	"ui.hub.links.scope_label": "प्रकाशन का दायरा",
 	"ui.hub.links.scope_public": "सार्वजनिक",
 	"ui.hub.links.scope_private": "{organization} · निजी",

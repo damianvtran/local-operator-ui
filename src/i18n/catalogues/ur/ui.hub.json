@@ -121,7 +121,7 @@
 	"ui.hub.links.resolve_title": "اس ربط کے ماخذ کی تصدیق کریں",
 	"ui.hub.links.resolve_description": "صرف تب تصدیق کریں جب آپ جانتے ہوں کہ {item} یہیں سے آیا ہے۔",
 	"ui.hub.links.resolve_action": "ماخذ کی تصدیق کریں",
-	"ui.hub.links.resolve_conflict": "وہ ماخذ محفوظ اصل ماخذ سے متصادم ہے۔ کچھ نہیں بدلا۔",
+	"ui.hub.links.resolve_conflict": "یہ ماخذ یا اشاعت کا دائرہ تصدیق شدہ ربط سے متصادم ہے۔ کچھ بھی تبدیل نہیں کیا گیا۔ منسوخ کریں اور ماخذ اور دائرہ جانچیں۔ کسی دوسرے ماخذ کے لیے الگ مقامی نقل استعمال کریں۔",
 	"ui.hub.links.scope_label": "اشاعت کا دائرہ",
 	"ui.hub.links.scope_public": "عوامی",
 	"ui.hub.links.scope_private": "{organization} · نجی",
