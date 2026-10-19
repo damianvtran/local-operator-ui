@@ -1,7 +1,7 @@
 {
-	"ui.settings.navigation.settings_page.the_local_operator_server_is_taking_longer_than_usual_to_answer_i": "Local Operator服务器的响应时间比平时更长。如果仍无响应，您可以在此重试。",
-	"ui.settings.navigation.settings_page.your_settings_could_not_be_loaded": "无法加载您的设置。",
-	"ui.settings.navigation.settings_page.sign_in_to_the_services_your_agents_think_with_new_chats_use_your": "登录为智能体提供模型的服务。新对话使用您的默认模型。",
+	"ui.settings.navigation.settings_page.the_local_operator_server_is_taking_longer_than_usual_to_answer_i": "Local Operator服务器的响应时间比平时更长。如果仍无响应，可以在此重试。",
+	"ui.settings.navigation.settings_page.your_settings_could_not_be_loaded": "无法加载设置。",
+	"ui.settings.navigation.settings_page.sign_in_to_the_services_your_agents_think_with_new_chats_use_your": "登录为智能体提供模型的服务。新对话使用默认模型。",
 	"ui.settings.navigation.settings_page.backend_settings": "后端设置",
 	"ui.settings.navigation.settings_page.every_setting_the_backend_registry_owns_searchable_with_typed_edi": "查看后端注册的全部设置，支持搜索，按值类型提供编辑控件，并标明各项设置的生效时机。",
 	"ui.settings.navigation.settings_page.retry": "重试",
