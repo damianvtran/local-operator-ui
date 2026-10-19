@@ -3275,8 +3275,17 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("team_bridge.conversations.list"),
+			/*
+			 * The account-wide read. `scope=account` is the ONE authorized read that
+			 * derives the caller's active memberships server-side; it is mutually
+			 * exclusive with `tenant_id` (refused in the union's `superRefine`), so
+			 * this client can never turn it into a caller-supplied tenant list.
+			 */
+			scope: z.literal("account").optional(),
 			tenant_id: id.optional(),
 			limit: z.number().int().min(1).max(100).optional(),
+			/* The account page's opaque cursor; the tenant page uses `before`. */
+			cursor: z.string().min(1).max(64).optional(),
 			before: z.string().min(1).max(64).optional(),
 		})
 		.strict(),
@@ -3386,6 +3395,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("team_bridge.unread"),
+			/* The account aggregate: one read across every active membership. */
+			scope: z.literal("account").optional(),
 			tenant_id: id.optional(),
 		})
 		.strict(),
@@ -4083,6 +4094,42 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 				code: z.ZodIssueCode.custom,
 				message: "A hub policy change must name subscribe or autoPush",
 				path: ["subscribe"],
+			});
+			return;
+		}
+		/*
+		 * An account-scoped read names EITHER the account or one tenant, never both.
+		 * The route enforces the same rule; refusing it here means a malformed pair
+		 * never opens a socket, and it keeps `scope=account` from ever being read as
+		 * a caller-supplied tenant selector.
+		 */
+		if (
+			(request.op === "team_bridge.conversations.list" ||
+				request.op === "team_bridge.unread") &&
+			request.scope === "account" &&
+			request.tenant_id !== undefined
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "An account-scoped read cannot name a tenant",
+				path: ["scope"],
+			});
+			return;
+		}
+		/*
+		 * The account page pages on `cursor`; `before` is the tenant page's
+		 * parameter and the route refuses it beside `scope=account`. Refusing it
+		 * here keeps the renderer from composing a request the route rejects.
+		 */
+		if (
+			request.op === "team_bridge.conversations.list" &&
+			request.scope === "account" &&
+			request.before !== undefined
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "An account-scoped page uses cursor, not before",
+				path: ["before"],
 			});
 			return;
 		}
@@ -8332,9 +8379,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "team_bridge.conversations.list": {
 			const query = new URLSearchParams();
+			if (request.scope === "account") query.set("scope", "account");
 			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
 			if (request.limit !== undefined)
 				query.set("limit", String(request.limit));
+			if (request.cursor) query.set("cursor", request.cursor);
 			if (request.before) query.set("before", request.before);
 			const suffix = query.size > 0 ? `?${query.toString()}` : "";
 			return {
@@ -8431,11 +8480,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.muted === undefined ? {} : { muted: request.muted }),
 				},
 			};
-		case "team_bridge.unread":
+		case "team_bridge.unread": {
+			const query = new URLSearchParams();
+			if (request.scope === "account") query.set("scope", "account");
+			else if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			const suffix = query.size > 0 ? `?${query.toString()}` : "";
 			return {
-				path: `/v1/desktop/team-bridge/unread${tenantQuery(request.tenant_id)}`,
+				path: `/v1/desktop/team-bridge/unread${suffix}`,
 				method: "GET",
 			};
+		}
 		case "settings.list":
 			return { path: "/v1/settings", method: "GET" };
 		case "settings.edit":
