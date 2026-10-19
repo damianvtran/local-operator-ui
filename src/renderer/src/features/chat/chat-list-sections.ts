@@ -95,7 +95,8 @@ export const CHAT_LIST_SECTION_LABEL: Record<ChatListSection, string> = {
  * AFTER frames it held ten rows with completion ticks - "active" there means
  * "recently in play", not "running".
  */
-const RUNNING_CODES = new Set([
+export const RUNNING_CODES = new Set([
+	"waiting",
 	"busy",
 	"delegating",
 	"approval",

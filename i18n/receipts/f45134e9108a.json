@@ -1,0 +1,15 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "f45134e9108a",
+  "status": "passed",
+  "namespace": "ui.hub",
+  "sha256": {
+    "ur": "3dfff4be9ac6cb020fe943ff3d4f1c42bfcb75c89f0c324616339dc0040d5085",
+    "en": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011"
+  },
+  "findings": [],
+  "scope": "ui.hub.links.resolve_conflict rewritten conflict copy only; full catalogue read for terminology context",
+  "context_sha256": "3c4059a98a41987fd900d06d4a7f726a9c97471374877096f3e8019d011055d4",
+  "review_notes": "All four clauses preserved: source OR publish scope conflict with confirmed link; nothing changed; cancel and check source/scope; separate local copy for a different source. Terminology and register match surrounding catalogue. No retry/overwrite/in-place identity promise, English residue, or placeholders introduced. Independent agent from i18n-translator; actual fallback model disclosed."
+}
