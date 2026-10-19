@@ -1133,6 +1133,8 @@ export type CanonicalSpendChannelRow = {
 
 /** The subagent/forked-children contribution already inside the grand total. */
 export type CanonicalSpendChildren = {
+	/** Additive payment split; absence means the child basis was not recorded. */
+	by_basis?: Record<string, number>;
 	/** Integer micro-USD; always a stated number (0 = stated zero). */
 	total_micro: number;
 	knowledge: "unknown" | "exact" | "partial" | "floor";
