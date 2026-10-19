@@ -211,8 +211,10 @@ export type SessionCatalogueRow = {
  * omits them, and every reader must render the older single sentence instead of
  * inventing a verdict. `attempts` is the per-address evidence (one row per
  * endpoint actually dialled); `remote_relay` is the backend's DERIVED reading of
- * the peer's relay (`not_listening` when every dialable endpoint refused TCP),
- * not a probe this client performs; and `link_state` is the aggregate verdict.
+ * the peer's relay (`not_listening` when no endpoint connected AND at least one
+ * refused TCP — the host answered and nothing listened; the property's own doc
+ * carries the measured rule), not a probe this client performs; and `link_state`
+ * is the aggregate verdict.
  */
 export type PeerLinkState =
 	| "reachable"

@@ -55,11 +55,12 @@ rows are photographed where they are read, `address-unreachable` is two timeouts
 no refusal, and `handshake-refused` is a connected attempt the peer then closed. Each
 frame shows the node word, the summary count and the panel/list's per-address evidence;
 the three are deliberately distinct, because the operator's next action differs. That
-brings the set to the **fifty** below; the run is
-`node scripts/capture-evidence.mjs http://localhost:6006
---only=mesh-tab--relay-down|mesh-tab--address-unreachable|mesh-tab--handshake-refused
---themes=localOperatorLight,localOperatorDark --allow-backend` (one `--only=` per state
-in practice, because the flag is a substring match).
+brings the set to the **fifty** below; the run is one `--only=` per state (the flag
+is a substring match, so a pipe would be a shell pipe and a combined value fails):
+`node scripts/capture-evidence.mjs http://localhost:6006 --only=mesh-tab--relay-down
+--themes=localOperatorLight,localOperatorDark --allow-backend`, then the same line
+with `--only=mesh-tab--address-unreachable` and with
+`--only=mesh-tab--handshake-refused`.
 
 **The approvals pair is `approvals-before/` inside this set** (design round 1, D5). Its
 three states - `approvals-waiting`, `approvals-decision-writes` and `approval-refused` -

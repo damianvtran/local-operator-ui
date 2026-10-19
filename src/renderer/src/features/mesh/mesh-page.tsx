@@ -375,6 +375,7 @@ export const MeshSurface: FC<{
 				onDropRefused({
 					code: verdict.code,
 					sentence: verdict.sentence,
+					reach: verdict.reach,
 					remedy: verdict.remedy,
 					plan: verdict.plan ?? null,
 				});

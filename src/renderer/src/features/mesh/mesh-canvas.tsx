@@ -117,6 +117,8 @@ type MeshCanvasProps = {
 	onDropRefused: (refusal: {
 		code: string;
 		sentence: string;
+		/** The client's reach word, present when the drag had the device in hand. */
+		reach?: string;
 		remedy: Remedy | null;
 		/** The move the refusal was about, for the `wait` remedy - see `DropVerdict`. */
 		plan: MovePlan | null;
@@ -418,6 +420,7 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 			onDropRefused({
 				code: decided.code,
 				sentence: decided.sentence,
+				reach: decided.reach,
 				remedy: decided.remedy,
 				plan: decided.plan ?? null,
 			});

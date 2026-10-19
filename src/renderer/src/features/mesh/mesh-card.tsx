@@ -708,11 +708,16 @@ export const DevicePanel: FC<{
 									{t("ui.mesh.mesh_reach.addresses_tried")}
 								</span>
 								{/*
-								 * NO EXPLICIT `role="list"`: the native `<ul>` already has it, and Biome
-								 * refuses the redundant role. The accessible NAME is the thing this list
-								 * was missing - each address row is announced under the label above it.
+								 * `list-none` IS WHY THE ROLE IS EXPLICIT: Safari/VoiceOver drops
+								 * list semantics for a list with no marker, and `aria-labelledby`
+								 * names a list without restoring the role. The native `<ul>` is
+								 * still the element (no `role` on a div); this only states what the
+								 * stylesheet took away.
 								 */}
 								<ul
+									/* biome-ignore lint/a11y/noRedundantRoles: WebKit drops the implicit list role when `list-style: none` is set, so the explicit one is what carries these rows to VoiceOver. */
+									/* biome-ignore lint/a11y/useSemanticElements: the element already IS the one the rule suggests - the explicit role is the WebKit fix above, not a substitute for `ul`. */
+									role="list"
 									aria-labelledby={`mesh-attempts-label-${device.id}`}
 									className="m-0 flex list-none flex-col gap-0.5 p-0"
 								>

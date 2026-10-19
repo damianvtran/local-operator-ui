@@ -3896,6 +3896,49 @@ test("the one gesture the protocol refuses is not a drag, and every drag has a m
 	);
 });
 
+test("the client's reach word survives both forwarding layers", () => {
+	/*
+	 * ROUND-2 MAJOR: `resolveDrop` computed `reach`, the notice rendered
+	 * `refusal.reach ?? refusal.code`, and both layers in between dropped it - so
+	 * a relay-down drag still printed the machine code `unreachable` under a
+	 * sentence saying "relay not running". The leaf expression was pinned; the
+	 * forwarding was not. Pin both halves: the verdict carries the word, and the
+	 * two call sites pass it.
+	 */
+	const { context } = dropFixture();
+	const peer = context.devices.get(PEER);
+	context.devices.set(PEER, {
+		...peer,
+		state: "relay_down",
+		reachable: false,
+		linkState: "relay_down",
+		remoteRelay: "not_listening",
+		reason:
+			"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError",
+	});
+	const verdict = resolveDrop(
+		drag(session(), SELF, SELF_LABEL),
+		{ kind: "device", deviceId: PEER },
+		context,
+	);
+	assert.equal(verdict.kind, "refused");
+	assert.equal(
+		verdict.reach,
+		"relay not running",
+		"the refusal carries the device's own reach word, not the code",
+	);
+	assert.match(
+		source("src/renderer/src/features/mesh/mesh-canvas.tsx"),
+		/reach: decided\.reach,/,
+		"the canvas forwards it",
+	);
+	assert.match(
+		source("src/renderer/src/features/mesh/mesh-page.tsx"),
+		/reach: verdict\.reach,/,
+		"the page's own drop path forwards it",
+	);
+});
+
 test("a refusal is rendered from the receipt rather than paraphrased", () => {
 	const actions = source("src/renderer/src/features/mesh/mesh-actions.tsx");
 	assert.match(
