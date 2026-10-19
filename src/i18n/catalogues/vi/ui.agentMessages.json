@@ -1,0 +1,18 @@
+{
+	"ui.agentMessages.dialog.title": "Tin nhắn tác nhân trên Radient",
+	"ui.agentMessages.dialog.lead": "Tác nhân của bạn có thể trao đổi tin nhắn với tác nhân của các thành viên khác trong tổ chức.",
+	"ui.agentMessages.dialog.reach": "Theo mặc định, chỉ tác nhân của các thành viên trong tổ chức có thể liên hệ với bạn; thay đổi tại Cài đặt → Tin nhắn tác nhân.",
+	"ui.agentMessages.dialog.later": "Bạn có thể bật tính năng này sau trong Cài đặt → Tin nhắn tác nhân.",
+	"ui.agentMessages.dialog.activities": "Trao đổi ghi chú, đặt câu hỏi và gửi yêu cầu phê duyệt.",
+	"ui.agentMessages.dialog.enable": "Bật",
+	"ui.agentMessages.dialog.enabling": "Đang bật…",
+	"ui.agentMessages.dialog.not_now": "Để sau",
+	"ui.agentMessages.dialog.close": "Đóng",
+	"ui.agentMessages.dialog.consent_unavailable": "Chưa có nội dung chấp thuận. Tin nhắn tác nhân chưa được bật.",
+	"ui.agentMessages.dialog.account_guard_unavailable": "Phiên bản này chưa thể bật tin nhắn tác nhân an toàn cho tài khoản của bạn. Hãy cập nhật Local Operator rồi thử lại.",
+	"ui.agentMessages.dialog.failure": "Không bật được tin nhắn tác nhân. Hãy thử lại, hoặc bật sau trong Cài đặt → Tin nhắn tác nhân.",
+	"ui.agentMessages.dialog.consent_changed": "Đọc nội dung chấp thuận hiện tại, rồi chọn Bật lần nữa.",
+	"ui.agentMessages.dialog.local_failure": "Đã lưu sự chấp thuận của bạn, nhưng thiết lập trên máy này chưa hoàn tất. Mở Cài đặt → Tin nhắn tác nhân để hoàn tất thiết lập.",
+	"ui.agentMessages.dialog.validation_detail": "{field}: {rule}",
+	"ui.agentMessages.dialog.validation_failure": "Yêu cầu thiết lập này không được chấp nhận. Hãy cập nhật Local Operator rồi thử lại."
+}

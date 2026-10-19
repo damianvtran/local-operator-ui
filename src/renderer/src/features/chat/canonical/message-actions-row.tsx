@@ -39,10 +39,12 @@
  * (`ARRIVED`), and its resting state is where it ends: nothing here can leave
  * the row permanently visible.
  *
- * ONE COMPONENT, TWO KINDS. `kind` decides what the row offers
+ * ONE COMPONENT, THREE KINDS. `kind` decides what the row offers
  * (`answerActionsFor`), which marker it carries and what its accessible name
  * is; an answer row offers Copy + Speak + Fork, a user row Copy + Fork - Speak
- * is the one action the answer arm owns alone. The
+ * is the one action the answer arm owns alone - and a `response` row (any
+ * settled assistant response that does not close its turn, #1043) Copy alone,
+ * so every response is copyable while the full row stays one per turn. The
  * user arm exists because the operator asked for a copy affordance on their
  * own messages, and it is this component rather than a second one because
  * everything here - the copy press, the reveal, the toolbar semantics - is the
@@ -75,6 +77,8 @@ import {
 	useSpeakControl,
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useSpeechBindingFor } from "@shared/lib/speech-target";
 import { cn } from "@shared/lib/utils";
 import { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
@@ -145,6 +149,27 @@ export type AnswerActionRowProps = {
 	 * surface with no transcript behind it), and the row offers no Fork for it.
 	 */
 	entryId?: string;
+	/**
+	 * Draw the row as a FLOATING control rather than a line in the flow.
+	 *
+	 * WHY THE VARIANT EXISTS. The operator's report was that a transcript with
+	 * several settled responses grew a 28px action row under every one of them:
+	 * the row is opacity-only hidden at rest (by design, so revealing it moves
+	 * nothing), so each response paid an invisible toolbar's height plus
+	 * `mt-1`. The fix is not a second component - the copy press, the reveal and
+	 * the toolbar semantics are the same - but a placement: `overlay` takes the
+	 * row out of the flow entirely (`absolute`), so it costs zero layout at rest
+	 * AND when shown. The chrome follows `MessageControls`' proven floating
+	 * strip (`message-controls.tsx`): an elevated ground and a hairline, because
+	 * an ungrounded control over prose has no readable edge on every theme.
+	 *
+	 * `overlayClassName` exists for the one placement the caller owns: a user
+	 * turn's bubble ends at the column's trailing edge, so its control sits in
+	 * the gutter beside the bubble (`-right-8`) rather than over it.
+	 */
+	overlay?: boolean;
+	/** Placement for the `overlay` variant; merged after the default inset. */
+	overlayClassName?: string;
 };
 
 /**
@@ -200,6 +225,8 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 	revealAt,
 	conversationId,
 	entryId,
+	overlay = false,
+	overlayClassName,
 }: AnswerActionRowProps) {
 	const [copied, setCopied] = useState(false);
 	const [arriving, setArriving] = useState(false);
@@ -245,6 +272,8 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 	 * bound to an agent or not).
 	 */
 	const forkable = Boolean(conversationId && entryId);
+	/* `t()` reads the locale at call time; subscribing repaints the row's name on a switch. */
+	useI18nLocale();
 	const actions = answerActionsFor({ role: kind, forkable });
 
 	/*
@@ -441,7 +470,18 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 	return (
 		<div
 			role="toolbar"
-			aria-label={kind === "user" ? USER_ACTIONS_LABEL : ANSWER_ACTIONS_LABEL}
+			/*
+			 * The name follows the role, as the marker below does: a turn with
+			 * several responses must not announce several "Answer actions"
+			 * toolbars when only one of them is the answer.
+			 */
+			aria-label={
+				kind === "user"
+					? USER_ACTIONS_LABEL
+					: kind === "response"
+						? t("ui.chat.response_actions.label")
+						: ANSWER_ACTIONS_LABEL
+			}
 			ref={revealRef}
 			onAnimationEnd={(event) => {
 				/*
@@ -463,15 +503,35 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 			 */
 			{...(kind === "user"
 				? { "data-lo-user-actions": "" }
-				: { "data-lo-answer-actions": "" })}
+				: kind === "response"
+					? /*
+						 * THE RESPONSE MARKER NAMES THE IN-FLOW ROW THE TRANSCRIPT NO
+						 * LONGER DRAWS (#1043's under-every-response row, removed by the
+						 * operator's excess-space report). The overlay is a GUTTER
+						 * control and wears its own marker, so a test counting response
+						 * rows keeps measuring the defect's absence rather than
+						 * re-reading the new control as the old one.
+						 */
+						{
+							...(overlay
+								? { "data-lo-gutter-actions": "" }
+								: { "data-lo-response-actions": "" }),
+						}
+					: { "data-lo-answer-actions": "" })}
 			/*
 			 * `shrink-0` and one line at every width (memo (c)): the buttons are the
 			 * row's fixed part and the caption beside them is the part that truncates,
 			 * so the toolbar must never be the thing a narrow column squeezes.
 			 */
 			className={cn(
-				"flex shrink-0 items-center gap-1",
-				actionRowVisibility(pinned),
+				overlay
+					? cn(
+							"absolute z-10 flex h-8 items-center gap-1 rounded-md border border-hairline bg-elevated px-1",
+							"-top-2 right-0",
+							actionRowVisibility(pinned),
+							overlayClassName,
+						)
+					: cn("flex shrink-0 items-center gap-1", actionRowVisibility(pinned)),
 			)}
 		>
 			{actions.map((action) => (

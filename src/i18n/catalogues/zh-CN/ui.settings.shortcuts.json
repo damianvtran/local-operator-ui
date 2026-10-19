@@ -1,0 +1,11 @@
+{
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear": "清除",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset": "重置",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels": "按下要设置的按键；按Esc取消。",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.keyboard_shortcuts": "键盘快捷键",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you": "设置面板栏的快捷键。选中输入框后，按下要设置的按键；按Esc取消，点击“重置”恢复默认快捷键，点击“清除”取消绑定。",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.no_shortcut": "无快捷键",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.label_press_the_keys_you_want": "{label}：按下要设置的按键",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut": "清除{label}的快捷键",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset_label_to_its_default": "将{label}恢复为默认快捷键"
+}

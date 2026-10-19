@@ -1,0 +1,25 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "ba27c081a71b",
+  "date": "2026-10-19",
+  "locale": "ur",
+  "round": 3,
+  "section": 5,
+  "status": "passed",
+  "scope": "Single-key remediation delta for ui.mesh.mesh_card.remove_from at both real call sites.",
+  "fallback": "Pinned anthropic/claude-sonnet-5-5 was unavailable (provider quota); this run executed on openai/gpt-6.1-sol.",
+  "notes": "S5-6 FIXED; composed label is اس نیٹ ورک سے ہٹائیں: Home Lab…; zero findings.",
+  "namespaces": {
+    "ui.mesh": {
+      "namespace": "ui.mesh",
+      "keys_read": 223,
+      "status": "passed",
+      "sha256": {
+        "en": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+        "ur": "ffc5fd24225fc971a9176413f93601c5b7c0c348171d0b04a7951024cf959d86"
+      },
+      "findings": []
+    }
+  }
+}

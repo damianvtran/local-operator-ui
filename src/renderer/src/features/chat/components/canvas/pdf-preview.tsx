@@ -84,7 +84,10 @@ const PdfPreviewComponent: FC<{ document: CanvasDocument }> = ({
 	   conversation's `canvas`, which would leave the pane's tone under a changed
 	   bar. */
 	return (
-		<div className={cn("flex h-full w-full flex-col bg-elevated")}>
+		<div
+			data-glass-plane="clear"
+			className={cn("flex h-full w-full flex-col bg-elevated")}
+		>
 			{/* Our chrome, and the only name on this surface: see the note above. */}
 			<ViewerChrome path={document.path} />
 

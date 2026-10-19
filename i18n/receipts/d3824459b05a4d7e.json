@@ -1,0 +1,537 @@
+{
+	"schema": 1,
+	"locale": "fr",
+	"agent": "i18n-auditor",
+	"model": "openai/gpt-6.1-sol",
+	"instance": "d3824459b05a4d7e",
+	"session": "c6de0a9a017b",
+	"date": "2026-10-18",
+	"fallback": "Actual model verified with sessions.info. Earlier automatic Anthropic quota fallback disclosed in original full audit; no further model fallback used for this delta.",
+	"head": "f82e9ccffea997f040cab6874aaea45019d11219",
+	"base": "1516984ec99ae09e635b0cb58c4f2e747de1483c",
+	"status": "passed",
+	"result": "clean",
+	"method": "Native delta-read of all 25 changed keys plus direct composed-string surfaces, retaining original full 446-key native audit only where byte/source compatible. Not a second full 446-key native pass. Mechanical sweep of all keys is fresh.",
+	"prior_audit": {
+		"comment": "https://github.com/damianvtran/local-operator-ui/pull/1180#issuecomment-6253703648",
+		"instance": "89550f0af5b44457",
+		"path": "/Users/damian/.local-operator/sessions/c6de0a9a017b/scratchpad/fr-chunk-c-89550f0af5b44457/89550f0af5b44457.json",
+		"sha256": "f6d28d7051e9147d1c8a756e020458f4668d09baf73ac87c7c144587b3252f05"
+	},
+	"namespaces": {
+		"ui.providers": {
+			"keys": 189,
+			"en_sha256": "9981637a98afbcbc166d889b461795bae7685e42274f4d607b711f4b0f9085f2",
+			"fr_sha256": "6326ad0c5fbeda685fe01a2f51641480685f53f601ddaf345d63551de9e428ee",
+			"status": "passed",
+			"findings": [],
+			"changed_keys": [
+				"ui.providers.phone.action.set_up",
+				"ui.providers.phone.address_label",
+				"ui.providers.phone.consent",
+				"ui.providers.phone.failure.check",
+				"ui.providers.phone.failure.run",
+				"ui.providers.phone.heading",
+				"ui.providers.phone.outcome.reservation_existing",
+				"ui.providers.phone.outcome.reservation_saved",
+				"ui.providers.phone.outcome.reservation_unconfirmed",
+				"ui.providers.phone.outcome.stage_reservation",
+				"ui.providers.provider_detail.paste_the_code",
+				"ui.providers.provider_detail.shows_after_you_approve"
+			]
+		},
+		"ui.hub": {
+			"keys": 150,
+			"en_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+			"fr_sha256": "7fec3dc3011e8e78867767c0cb61b203ce351ceba64b0ed2b47634903c0ae2ea",
+			"status": "passed",
+			"findings": [],
+			"changed_keys": [
+				"ui.hub.skills.file_count",
+				"ui.hub.status.attempts",
+				"ui.hub.links.sources_count",
+				"ui.hub.links.links_count",
+				"ui.hub.links.aggregate_mark"
+			]
+		},
+		"ui.hub.comments": {
+			"keys": 29,
+			"en_sha256": "5c20d0e9a7f66f753561ded1d104aa5cf0e1fd0d5a73f7f0a7e3349a28c6f2c4",
+			"fr_sha256": "805efe0fff569ed11e51f511e9a0ceb10f1e0e91863b62290d1c2cc6629e0fce",
+			"status": "passed",
+			"findings": [],
+			"changed_keys": [
+				"ui.hub.comments.age.seconds",
+				"ui.hub.comments.age.minutes",
+				"ui.hub.comments.age.hours",
+				"ui.hub.comments.age.days",
+				"ui.hub.comments.age.months",
+				"ui.hub.comments.age.years"
+			]
+		},
+		"ui.hub.taxonomy": {
+			"keys": 21,
+			"en_sha256": "4614e6b5eb2c56f0f48ccbee9bf26266193701a79994da4d9cf533386f1d3717",
+			"fr_sha256": "85a685dddc54f22d72f81b4cf59c1a904ccb847d6bc5c80e2a9893e884436556",
+			"status": "passed",
+			"findings": [],
+			"changed_keys": []
+		},
+		"ui.canvas": {
+			"keys": 57,
+			"en_sha256": "6fa13501b59a260373bcb26f212fc6244a3d1219ef1811d2b0c1de05b541f1f5",
+			"fr_sha256": "5f7f7de240978be3ce955c5d51c5dd82400bc603d7797ba99de3ee64ec0f2592",
+			"status": "passed",
+			"findings": [],
+			"changed_keys": [
+				"ui.canvas.files.highlights",
+				"ui.canvas.files.count"
+			]
+		}
+	},
+	"mechanical_output": "{\n  \"rows\": [\n    {\n      \"ns\": \"ui.providers\",\n      \"keys\": 189,\n      \"plurals\": 3\n    },\n    {\n      \"ns\": \"ui.hub\",\n      \"keys\": 150,\n      \"plurals\": 5\n    },\n    {\n      \"ns\": \"ui.hub.comments\",\n      \"keys\": 29,\n      \"plurals\": 6\n    },\n    {\n      \"ns\": \"ui.hub.taxonomy\",\n      \"keys\": 21,\n      \"plurals\": 0\n    },\n    {\n      \"ns\": \"ui.canvas\",\n      \"keys\": 57,\n      \"plurals\": 1\n    }\n  ],\n  \"issues\": [],\n  \"probes\": [\n    {\n      \"key\": \"ui.hub.skills.file_count\",\n      \"value\": 1000000,\n      \"category\": \"many\",\n      \"output\": \"1000000 fichiers inclus\"\n    },\n    {\n      \"key\": \"ui.hub.comments.age.seconds\",\n      \"value\": 1000000,\n      \"category\": \"many\",\n      \"output\": \"il y a 1000000 secondes\"\n    },\n    {\n      \"key\": \"ui.canvas.files.count\",\n      \"value\": 1000000,\n      \"category\": \"many\",\n      \"output\": \"1000000 fichiers\"\n    }\n  ]\n}\n{\"typography\":[],\"categoryErrors\":[],\"punctuationCount\":{\"ui.providers\":25,\"ui.hub\":16,\"ui.hub.comments\":5,\"ui.hub.taxonomy\":0,\"ui.canvas\":0}}\n{\"placeholderNegativeControl\":true}\n",
+	"formatted_plural_probes": [
+		{
+			"key": "ui.hub.skills.file_count",
+			"outputs": [
+				{
+					"count": 0,
+					"category": "one",
+					"output": "0 fichier inclus"
+				},
+				{
+					"count": 1,
+					"category": "one",
+					"output": "1 fichier inclus"
+				},
+				{
+					"count": 2,
+					"category": "other",
+					"output": "2 fichiers inclus"
+				},
+				{
+					"count": 1000000,
+					"category": "many",
+					"output": "1000000 fichiers inclus"
+				},
+				{
+					"count": 2000000,
+					"category": "many",
+					"output": "2000000 fichiers inclus"
+				},
+				{
+					"count": 1500000,
+					"category": "other",
+					"output": "1500000 fichiers inclus"
+				}
+			]
+		},
+		{
+			"key": "ui.hub.status.attempts",
+			"outputs": [
+				{
+					"count": 0,
+					"category": "one",
+					"output": "0 tentative"
+				},
+				{
+					"count": 1,
+					"category": "one",
+					"output": "1 tentative"
+				},
+				{
+					"count": 2,
+					"category": "other",
+					"output": "2 tentatives"
+				},
+				{
+					"count": 1000000,
+					"category": "many",
+					"output": "1000000 tentatives"
+				},
+				{
+					"count": 2000000,
+					"category": "many",
+					"output": "2000000 tentatives"
+				},
+				{
+					"count": 1500000,
+					"category": "other",
+					"output": "1500000 tentatives"
+				}
+			]
+		},
+		{
+			"key": "ui.hub.links.sources_count",
+			"outputs": [
+				{
+					"count": 0,
+					"category": "one",
+					"output": "0 source"
+				},
+				{
+					"count": 1,
+					"category": "one",
+					"output": "1 source"
+				},
+				{
+					"count": 2,
+					"category": "other",
+					"output": "2 sources"
+				},
+				{
+					"count": 1000000,
+					"category": "many",
+					"output": "1000000 sources"
+				},
+				{
+					"count": 2000000,
+					"category": "many",
+					"output": "2000000 sources"
+				},
+				{
+					"count": 1500000,
+					"category": "other",
+					"output": "1500000 sources"
+				}
+			]
+		},
+		{
+			"key": "ui.hub.links.links_count",
+			"outputs": [
+				{
+					"count": 0,
+					"category": "one",
+					"output": "0 lien"
+				},
+				{
+					"count": 1,
+					"category": "one",
+					"output": "1 lien"
+				},
+				{
+					"count": 2,
+					"category": "other",
+					"output": "2 liens"
+				},
+				{
+					"count": 1000000,
+					"category": "many",
+					"output": "1000000 liens"
+				},
+				{
+					"count": 2000000,
+					"category": "many",
+					"output": "2000000 liens"
+				},
+				{
+					"count": 1500000,
+					"category": "other",
+					"output": "1500000 liens"
+				}
+			]
+		},
+		{
+			"key": "ui.hub.links.aggregate_mark",
+			"outputs": [
+				{
+					"count": 0,
+					"category": "one",
+					"output": "0 lien ; à jour"
+				},
+				{
+					"count": 1,
+					"category": "one",
+					"output": "1 lien ; à jour"
+				},
+				{
+					"count": 2,
+					"category": "other",
+					"output": "2 liens ; à jour"
+				},
+				{
+					"count": 1000000,
+					"category": "many",
+					"output": "1000000 liens ; à jour"
+				},
+				{
+					"count": 2000000,
+					"category": "many",
+					"output": "2000000 liens ; à jour"
+				},
+				{
+					"count": 1500000,
+					"category": "other",
+					"output": "1500000 liens ; à jour"
+				}
+			]
+		},
+		{
+			"key": "ui.hub.comments.age.seconds",
+			"outputs": [
+				{
+					"count": 0,
+					"category": "one",
+					"output": "il y a 0 seconde"
+				},
+				{
+					"count": 1,
+					"category": "one",
+					"output": "il y a 1 seconde"
+				},
+				{
+					"count": 2,
+					"category": "other",
+					"output": "il y a 2 secondes"
+				},
+				{
+					"count": 1000000,
+					"category": "many",
+					"output": "il y a 1000000 secondes"
+				},
+				{
+					"count": 2000000,
+					"category": "many",
+					"output": "il y a 2000000 secondes"
+				},
+				{
+					"count": 1500000,
+					"category": "other",
+					"output": "il y a 1500000 secondes"
+				}
+			]
+		},
+		{
+			"key": "ui.hub.comments.age.minutes",
+			"outputs": [
+				{
+					"count": 0,
+					"category": "one",
+					"output": "il y a 0 minute"
+				},
+				{
+					"count": 1,
+					"category": "one",
+					"output": "il y a 1 minute"
+				},
+				{
+					"count": 2,
+					"category": "other",
+					"output": "il y a 2 minutes"
+				},
+				{
+					"count": 1000000,
+					"category": "many",
+					"output": "il y a 1000000 minutes"
+				},
+				{
+					"count": 2000000,
+					"category": "many",
+					"output": "il y a 2000000 minutes"
+				},
+				{
+					"count": 1500000,
+					"category": "other",
+					"output": "il y a 1500000 minutes"
+				}
+			]
+		},
+		{
+			"key": "ui.hub.comments.age.hours",
+			"outputs": [
+				{
+					"count": 0,
+					"category": "one",
+					"output": "il y a 0 heure"
+				},
+				{
+					"count": 1,
+					"category": "one",
+					"output": "il y a 1 heure"
+				},
+				{
+					"count": 2,
+					"category": "other",
+					"output": "il y a 2 heures"
+				},
+				{
+					"count": 1000000,
+					"category": "many",
+					"output": "il y a 1000000 heures"
+				},
+				{
+					"count": 2000000,
+					"category": "many",
+					"output": "il y a 2000000 heures"
+				},
+				{
+					"count": 1500000,
+					"category": "other",
+					"output": "il y a 1500000 heures"
+				}
+			]
+		},
+		{
+			"key": "ui.hub.comments.age.days",
+			"outputs": [
+				{
+					"count": 0,
+					"category": "one",
+					"output": "il y a 0 jour"
+				},
+				{
+					"count": 1,
+					"category": "one",
+					"output": "il y a 1 jour"
+				},
+				{
+					"count": 2,
+					"category": "other",
+					"output": "il y a 2 jours"
+				},
+				{
+					"count": 1000000,
+					"category": "many",
+					"output": "il y a 1000000 jours"
+				},
+				{
+					"count": 2000000,
+					"category": "many",
+					"output": "il y a 2000000 jours"
+				},
+				{
+					"count": 1500000,
+					"category": "other",
+					"output": "il y a 1500000 jours"
+				}
+			]
+		},
+		{
+			"key": "ui.hub.comments.age.months",
+			"outputs": [
+				{
+					"count": 0,
+					"category": "one",
+					"output": "il y a 0 mois"
+				},
+				{
+					"count": 1,
+					"category": "one",
+					"output": "il y a 1 mois"
+				},
+				{
+					"count": 2,
+					"category": "other",
+					"output": "il y a 2 mois"
+				},
+				{
+					"count": 1000000,
+					"category": "many",
+					"output": "il y a 1000000 mois"
+				},
+				{
+					"count": 2000000,
+					"category": "many",
+					"output": "il y a 2000000 mois"
+				},
+				{
+					"count": 1500000,
+					"category": "other",
+					"output": "il y a 1500000 mois"
+				}
+			]
+		},
+		{
+			"key": "ui.hub.comments.age.years",
+			"outputs": [
+				{
+					"count": 0,
+					"category": "one",
+					"output": "il y a 0 an"
+				},
+				{
+					"count": 1,
+					"category": "one",
+					"output": "il y a 1 an"
+				},
+				{
+					"count": 2,
+					"category": "other",
+					"output": "il y a 2 ans"
+				},
+				{
+					"count": 1000000,
+					"category": "many",
+					"output": "il y a 1000000 ans"
+				},
+				{
+					"count": 2000000,
+					"category": "many",
+					"output": "il y a 2000000 ans"
+				},
+				{
+					"count": 1500000,
+					"category": "other",
+					"output": "il y a 1500000 ans"
+				}
+			]
+		},
+		{
+			"key": "ui.canvas.files.count",
+			"outputs": [
+				{
+					"count": 0,
+					"category": "one",
+					"output": "0 fichier"
+				},
+				{
+					"count": 1,
+					"category": "one",
+					"output": "1 fichier"
+				},
+				{
+					"count": 2,
+					"category": "other",
+					"output": "2 fichiers"
+				},
+				{
+					"count": 1000000,
+					"category": "many",
+					"output": "1000000 fichiers"
+				},
+				{
+					"count": 2000000,
+					"category": "many",
+					"output": "2000000 fichiers"
+				},
+				{
+					"count": 1500000,
+					"category": "other",
+					"output": "1500000 fichiers"
+				}
+			]
+		}
+	],
+	"remediation": {
+		"C-F1": "fixed: all 10 exact tunnel keys natively reread; zero téléphonique remains; URL, account, exact price and no-credit caution retained",
+		"C-F2": "fixed: all 12 many arms reviewed and formatted at six counts; numeric formatting, placeholders and CLDR categories retained",
+		"C-F3": "fixed: À la une is idiomatic and compact",
+		"C-F4": "fixed: prefix + provider + suffix now Collez le code que le fournisseur affiche après votre approbation; host branch also assembled and inspected"
+	},
+	"compatibility": {
+		"english": "all five source catalogue files byte-identical to original audit",
+		"unchanged_french": "every other French key byte-identical; taxonomy full file unchanged",
+		"callsites_and_context": "git diff --name-only original..head -- provider feature, canvas feature, all English catalogues returns empty",
+		"pushed_bytes": "all ten EN/FR blob IDs match GitHub tree at exact pushed head"
+	},
+	"translator_receipt": {
+		"path": "i18n/receipts/ui-fr-batch.json",
+		"sha256": "542c8ce1c2f302860cc4adfffbe9e38742cec945287779b23b9efe6f51df66ed"
+	},
+	"overflow": {
+		"context": "No numeric maxCells/maxWidth/maxLength caps in the four existing context sidecars. Comments/taxonomy carry qualitative length hints, taxonomy compact labels reviewed.",
+		"canvas": "No English context sidecar exists. Derived from finder-files-view.tsx:421 search min-w-0 flex-1; 483-530 kind labels in dropdown; 744 section flex h-8 w-full with icon and count, 970-991 file rows use min-w-0 flex-1 truncate. Feuilles de calcul 18 characters vs Spreadsheets 12 is a narrow-panel risk; no rendered overflow claimed.",
+		"unverified": "No browser or rendered measurement; no layout/pixel sign-off. Static copy and callsite review only."
+	},
+	"findings": []
+}

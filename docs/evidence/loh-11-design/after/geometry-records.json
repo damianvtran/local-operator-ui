@@ -1,0 +1,268 @@
+{
+  "off-dark": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:b52602de586c4bea8bfa20d47ddc810b",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 Tags off \u2014 unchanged before reference \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/off-dark.html\n\n{\n \"viewport\": [\n 1280,\n 720\n ],\n \"dpr\": 2,\n \"theme\": \"#2b2721\",\n \"columns\": [\n {\n \"panel\": 220,\n \"rows\": [],\n \"groupHeaders\": [],\n \"overlays\": []\n },\n {\n \"panel\": 260,\n \"rows\": [],\n \"groupHeaders\": [],\n \"overlays\": []\n },\n {\n \"panel\": 320,\n \"rows\": [],\n \"groupHeaders\": [],\n \"overlays\": []\n }\n ],\n \"labels\": {\n \"1234567890\": 72.6328125,\n \"Fix\": 16.125,\n \"Review\": 40.0234375,\n \"Project\": 40.1171875,\n \"Concept\": 47.9375\n }\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/off-dark.html",
+      "title": "PROPOSED LOH-11 Tags off \u2014 unchanged before reference",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.015534209087491035,
+    "is_error": false,
+    "useless": false
+  },
+  "groups-dark": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:42d977e136ce47939b5d22e1a974ffb0",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 Tags on \u2014 groups only \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/groups-dark.html\n\n{\n \"viewport\": [\n 1280,\n 720\n ],\n \"dpr\": 2,\n \"theme\": \"#2b2721\",\n \"columns\": [\n {\n \"panel\": 220,\n \"rows\": [\n {\n \"row\": 180,\n \"title\": 46.984375,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n }\n ],\n \"overlays\": []\n },\n {\n \"panel\": 260,\n \"rows\": [\n {\n \"row\": 220,\n \"title\": 86.984375,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n }\n ],\n \"overlays\": []\n },\n {\n \"panel\": 320,\n \"rows\": [\n {\n \"row\": 280,\n \"title\": 146.984375,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n }\n ],\n \"overlays\": []\n }\n ],\n \"labels\": {\n \"1234567890\": 72.6328125,\n \"Fix\": 16.125,\n \"Review\": 40.0234375,\n \"Project\": 40.1171875,\n \"Concept\": 47.9375\n }\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/groups-dark.html",
+      "title": "PROPOSED LOH-11 Tags on \u2014 groups only",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.01335354195907712,
+    "is_error": false,
+    "useless": false
+  },
+  "chips-dark": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:4fb19bfcff874cb7a34a2af59de67446",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 Optional chips \u2014 fit gate \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/chips-dark.html\n\n{\n \"viewport\": [\n 1280,\n 720\n ],\n \"dpr\": 2,\n \"theme\": \"#2b2721\",\n \"columns\": [\n {\n \"panel\": 220,\n \"rows\": [\n {\n \"row\": 180,\n \"title\": 46.984375,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n }\n ],\n \"overlays\": []\n },\n {\n \"panel\": 260,\n \"rows\": [\n {\n \"row\": 220,\n \"title\": 86.984375,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n }\n ],\n \"overlays\": []\n },\n {\n \"panel\": 320,\n \"rows\": [\n {\n \"row\": 280,\n \"title\": 146.984375,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 143.3671875,\n \"chip\": 54.0234375\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n }\n ],\n \"overlays\": []\n }\n ],\n \"labels\": {\n \"1234567890\": 72.6328125,\n \"Fix\": 16.125,\n \"Review\": 40.0234375,\n \"Project\": 40.1171875,\n \"Concept\": 47.9375\n }\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/chips-dark.html",
+      "title": "PROPOSED LOH-11 Optional chips \u2014 fit gate",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.013822374981828034,
+    "is_error": false,
+    "useless": false
+  },
+  "context-dark": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:46d58436cd38479d9665d67e25ef880a",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 Row context menu \u2014 one Tags\u2026 entry \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/context-dark.html\n\n{\n \"viewport\": [\n 1280,\n 720\n ],\n \"dpr\": 2,\n \"theme\": \"#2b2721\",\n \"columns\": [\n {\n \"panel\": 220,\n \"rows\": [\n {\n \"row\": 180,\n \"title\": 46.984375,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n }\n ],\n \"overlays\": [\n {\n \"w\": 224,\n \"h\": 202,\n \"scroll\": 200,\n \"client\": 200\n }\n ]\n },\n {\n \"panel\": 260,\n \"rows\": [\n {\n \"row\": 220,\n \"title\": 86.984375,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n }\n ],\n \"overlays\": [\n {\n \"w\": 224,\n \"h\": 202,\n \"scroll\": 200,\n \"client\": 200\n }\n ]\n },\n {\n \"panel\": 320,\n \"rows\": [\n {\n \"row\": 280,\n \"title\": 146.984375,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n }\n ],\n \"overlays\": [\n {\n \"w\": 224,\n \"h\": 202,\n \"scroll\": 200,\n \"client\": 200\n }\n ]\n }\n ],\n \"labels\": {\n \"1234567890\": 72.6328125,\n \"Fix\": 16.125,\n \"Review\": 40.0234375,\n \"Project\": 40.1171875,\n \"Concept\": 47.9375\n }\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/context-dark.html",
+      "title": "PROPOSED LOH-11 Row context menu \u2014 one Tags\u2026 entry",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.015887999907135963,
+    "is_error": false,
+    "useless": false
+  },
+  "drag-dark": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:f085ea4678254c89bb1e911bfadd2fa6",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 Drag target \u2014 primary assignment \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/drag-dark.html\n\n{\n \"viewport\": [\n 1280,\n 720\n ],\n \"dpr\": 2,\n \"theme\": \"#2b2721\",\n \"columns\": [\n {\n \"panel\": 220,\n \"rows\": [\n {\n \"row\": 180,\n \"title\": 46.984375,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n }\n ],\n \"overlays\": []\n },\n {\n \"panel\": 260,\n \"rows\": [\n {\n \"row\": 220,\n \"title\": 86.984375,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n }\n ],\n \"overlays\": []\n },\n {\n \"panel\": 320,\n \"rows\": [\n {\n \"row\": 280,\n \"title\": 146.984375,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n }\n ],\n \"overlays\": []\n }\n ],\n \"labels\": {\n \"1234567890\": 72.6328125,\n \"Fix\": 16.125,\n \"Review\": 40.0234375,\n \"Project\": 40.1171875,\n \"Concept\": 47.9375\n }\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/drag-dark.html",
+      "title": "PROPOSED LOH-11 Drag target \u2014 primary assignment",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.015402583056129515,
+    "is_error": false,
+    "useless": false
+  },
+  "view-dark": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:4e085b31f73a41a3a0b6075bb60da20d",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 View options \u2014 compact Tags insertion \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/view-dark.html\n\n{\n \"viewport\": [\n 1280,\n 720\n ],\n \"dpr\": 2,\n \"theme\": \"#2b2721\",\n \"columns\": [\n {\n \"panel\": 220,\n \"rows\": [],\n \"groupHeaders\": [],\n \"overlays\": [\n {\n \"w\": 240,\n \"h\": 640,\n \"scroll\": 678,\n \"client\": 638\n }\n ]\n },\n {\n \"panel\": 260,\n \"rows\": [],\n \"groupHeaders\": [],\n \"overlays\": [\n {\n \"w\": 240,\n \"h\": 640,\n \"scroll\": 678,\n \"client\": 638\n }\n ]\n },\n {\n \"panel\": 320,\n \"rows\": [],\n \"groupHeaders\": [],\n \"overlays\": [\n {\n \"w\": 240,\n \"h\": 640,\n \"scroll\": 678,\n \"client\": 638\n }\n ]\n }\n ],\n \"labels\": {\n \"1234567890\": 72.6328125,\n \"Fix\": 16.125,\n \"Review\": 40.0234375,\n \"Project\": 40.1171875,\n \"Concept\": 47.9375\n }\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/view-dark.html",
+      "title": "PROPOSED LOH-11 View options \u2014 compact Tags insertion",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.014291584026068449,
+    "is_error": false,
+    "useless": false
+  },
+  "off-light": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:ce7b8a40d7334ecca570cb2859b42cfc",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 Tags off \u2014 unchanged before reference \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/off-light.html\n\n{\n \"viewport\": [\n 1280,\n 720\n ],\n \"dpr\": 2,\n \"theme\": \"#f7f5ee\",\n \"columns\": [\n {\n \"panel\": 220,\n \"rows\": [],\n \"groupHeaders\": [],\n \"overlays\": []\n },\n {\n \"panel\": 260,\n \"rows\": [],\n \"groupHeaders\": [],\n \"overlays\": []\n },\n {\n \"panel\": 320,\n \"rows\": [],\n \"groupHeaders\": [],\n \"overlays\": []\n }\n ],\n \"labels\": {\n \"1234567890\": 72.6328125,\n \"Fix\": 16.125,\n \"Review\": 40.0234375,\n \"Project\": 40.1171875,\n \"Concept\": 47.9375\n }\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/off-light.html",
+      "title": "PROPOSED LOH-11 Tags off \u2014 unchanged before reference",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.0138606249820441,
+    "is_error": false,
+    "useless": false
+  },
+  "groups-light": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:c3c26b0198bc429cb3cbc18fd3692258",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 Tags on \u2014 groups only \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/groups-light.html\n\n{\n \"viewport\": [\n 1280,\n 720\n ],\n \"dpr\": 2,\n \"theme\": \"#f7f5ee\",\n \"columns\": [\n {\n \"panel\": 220,\n \"rows\": [\n {\n \"row\": 180,\n \"title\": 46.984375,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n }\n ],\n \"overlays\": []\n },\n {\n \"panel\": 260,\n \"rows\": [\n {\n \"row\": 220,\n \"title\": 86.984375,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n }\n ],\n \"overlays\": []\n },\n {\n \"panel\": 320,\n \"rows\": [\n {\n \"row\": 280,\n \"title\": 146.984375,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n }\n ],\n \"overlays\": []\n }\n ],\n \"labels\": {\n \"1234567890\": 72.6328125,\n \"Fix\": 16.125,\n \"Review\": 40.0234375,\n \"Project\": 40.1171875,\n \"Concept\": 47.9375\n }\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/groups-light.html",
+      "title": "PROPOSED LOH-11 Tags on \u2014 groups only",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.027434500050731003,
+    "is_error": false,
+    "useless": false
+  },
+  "chips-light": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:17afcfca63ba462a8f958abc958a58bb",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 Optional chips \u2014 fit gate \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/chips-light.html\n\n{\n \"viewport\": [\n 1280,\n 720\n ],\n \"dpr\": 2,\n \"theme\": \"#f7f5ee\",\n \"columns\": [\n {\n \"panel\": 220,\n \"rows\": [\n {\n \"row\": 180,\n \"title\": 46.984375,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n }\n ],\n \"overlays\": []\n },\n {\n \"panel\": 260,\n \"rows\": [\n {\n \"row\": 220,\n \"title\": 86.984375,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n }\n ],\n \"overlays\": []\n },\n {\n \"panel\": 320,\n \"rows\": [\n {\n \"row\": 280,\n \"title\": 146.984375,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 143.3671875,\n \"chip\": 54.0234375\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n }\n ],\n \"overlays\": []\n }\n ],\n \"labels\": {\n \"1234567890\": 72.6328125,\n \"Fix\": 16.125,\n \"Review\": 40.0234375,\n \"Project\": 40.1171875,\n \"Concept\": 47.9375\n }\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/chips-light.html",
+      "title": "PROPOSED LOH-11 Optional chips \u2014 fit gate",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.01843699999153614,
+    "is_error": false,
+    "useless": false
+  },
+  "context-light": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:171d89e61a0545d8ad89ae0385915fa9",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 Row context menu \u2014 one Tags\u2026 entry \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/context-light.html\n\n{\n \"viewport\": [\n 1280,\n 720\n ],\n \"dpr\": 2,\n \"theme\": \"#f7f5ee\",\n \"columns\": [\n {\n \"panel\": 220,\n \"rows\": [\n {\n \"row\": 180,\n \"title\": 46.984375,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n }\n ],\n \"overlays\": [\n {\n \"w\": 224,\n \"h\": 202,\n \"scroll\": 200,\n \"client\": 200\n }\n ]\n },\n {\n \"panel\": 260,\n \"rows\": [\n {\n \"row\": 220,\n \"title\": 86.984375,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n }\n ],\n \"overlays\": [\n {\n \"w\": 224,\n \"h\": 202,\n \"scroll\": 200,\n \"client\": 200\n }\n ]\n },\n {\n \"panel\": 320,\n \"rows\": [\n {\n \"row\": 280,\n \"title\": 146.984375,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n }\n ],\n \"overlays\": [\n {\n \"w\": 224,\n \"h\": 202,\n \"scroll\": 200,\n \"client\": 200\n }\n ]\n }\n ],\n \"labels\": {\n \"1234567890\": 72.6328125,\n \"Fix\": 16.125,\n \"Review\": 40.0234375,\n \"Project\": 40.1171875,\n \"Concept\": 47.9375\n }\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/context-light.html",
+      "title": "PROPOSED LOH-11 Row context menu \u2014 one Tags\u2026 entry",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.017072208924219012,
+    "is_error": false,
+    "useless": false
+  },
+  "drag-light": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:57a4a54aa44246b5b2909321879d1ea4",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 Drag target \u2014 primary assignment \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/drag-light.html\n\n{\n \"viewport\": [\n 1280,\n 720\n ],\n \"dpr\": 2,\n \"theme\": \"#f7f5ee\",\n \"columns\": [\n {\n \"panel\": 220,\n \"rows\": [\n {\n \"row\": 180,\n \"title\": 46.984375,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n }\n ],\n \"overlays\": []\n },\n {\n \"panel\": 260,\n \"rows\": [\n {\n \"row\": 220,\n \"title\": 86.984375,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n }\n ],\n \"overlays\": []\n },\n {\n \"panel\": 320,\n \"rows\": [\n {\n \"row\": 280,\n \"title\": 146.984375,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n }\n ],\n \"overlays\": []\n }\n ],\n \"labels\": {\n \"1234567890\": 72.6328125,\n \"Fix\": 16.125,\n \"Review\": 40.0234375,\n \"Project\": 40.1171875,\n \"Concept\": 47.9375\n }\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/drag-light.html",
+      "title": "PROPOSED LOH-11 Drag target \u2014 primary assignment",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.01848358300048858,
+    "is_error": false,
+    "useless": false
+  },
+  "view-light": {
+    "tool_call_id": "call_0b122c547cc047aa8e98080bb908dba0:b26e25cade9841b89f8221fef85117f9",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 View options \u2014 compact Tags insertion \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/view-light.html\n\n{\n \"viewport\": [\n 1280,\n 720\n ],\n \"dpr\": 2,\n \"theme\": \"#f7f5ee\",\n \"columns\": [\n {\n \"panel\": 220,\n \"rows\": [],\n \"groupHeaders\": [],\n \"overlays\": [\n {\n \"w\": 240,\n \"h\": 640,\n \"scroll\": 678,\n \"client\": 638\n }\n ]\n },\n {\n \"panel\": 260,\n \"rows\": [],\n \"groupHeaders\": [],\n \"overlays\": [\n {\n \"w\": 240,\n \"h\": 640,\n \"scroll\": 678,\n \"client\": 638\n }\n ]\n },\n {\n \"panel\": 320,\n \"rows\": [],\n \"groupHeaders\": [],\n \"overlays\": [\n {\n \"w\": 240,\n \"h\": 640,\n \"scroll\": 678,\n \"client\": 638\n }\n ]\n }\n ],\n \"labels\": {\n \"1234567890\": 72.6328125,\n \"Fix\": 16.125,\n \"Review\": 40.0234375,\n \"Project\": 40.1171875,\n \"Concept\": 47.9375\n }\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/view-light.html",
+      "title": "PROPOSED LOH-11 View options \u2014 compact Tags insertion",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.014048041892237961,
+    "is_error": false,
+    "useless": false
+  },
+  "chips-acts-light": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:c04ede130c8a49768f4b8a8d7b633a5a",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 Chip yields to actions \u2014 same title floor \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/chips-acts-light.html\n\n{\n \"viewport\": [\n 1280,\n 720\n ],\n \"dpr\": 2,\n \"theme\": \"#f7f5ee\",\n \"columns\": [\n {\n \"panel\": 220,\n \"rows\": [\n {\n \"row\": 180,\n \"title\": 46.984375,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n }\n ],\n \"overlays\": []\n },\n {\n \"panel\": 260,\n \"rows\": [\n {\n \"row\": 220,\n \"title\": 86.984375,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n }\n ],\n \"overlays\": []\n },\n {\n \"panel\": 320,\n \"rows\": [\n {\n \"row\": 280,\n \"title\": 146.984375,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 145.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n }\n ],\n \"overlays\": []\n }\n ],\n \"labels\": {\n \"1234567890\": 72.6328125,\n \"Fix\": 16.125,\n \"Review\": 40.0234375,\n \"Project\": 40.1171875,\n \"Concept\": 47.9375\n }\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/chips-acts-light.html",
+      "title": "PROPOSED LOH-11 Chip yields to actions \u2014 same title floor",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.01499470800627023,
+    "is_error": false,
+    "useless": false
+  },
+  "chips-acts-dark": {
+    "tool_call_id": "call_a31de7fb136047e7be2d4597b458674a:b8114f8fbaa5411ea923ee589e1ff2ff",
+    "tool_name": "browser",
+    "content": [
+      {
+        "type": "text",
+        "text": "PROPOSED LOH-11 Chip yields to actions \u2014 same title floor \u2014 http://localhost:[redacted]@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/chips-acts-dark.html\n\n{\n \"viewport\": [\n 1280,\n 720\n ],\n \"dpr\": 2,\n \"theme\": \"#2b2721\",\n \"columns\": [\n {\n \"panel\": 220,\n \"rows\": [\n {\n \"row\": 180,\n \"title\": 46.984375,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n },\n {\n \"row\": 180,\n \"title\": 101.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n },\n {\n \"w\": 180,\n \"h\": 28\n }\n ],\n \"overlays\": []\n },\n {\n \"panel\": 260,\n \"rows\": [\n {\n \"row\": 220,\n \"title\": 86.984375,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n },\n {\n \"row\": 220,\n \"title\": 141.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n },\n {\n \"w\": 220,\n \"h\": 28\n }\n ],\n \"overlays\": []\n },\n {\n \"panel\": 320,\n \"rows\": [\n {\n \"row\": 280,\n \"title\": 146.984375,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 145.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n },\n {\n \"row\": 280,\n \"title\": 201.390625,\n \"chip\": 0\n }\n ],\n \"groupHeaders\": [\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n },\n {\n \"w\": 280,\n \"h\": 28\n }\n ],\n \"overlays\": []\n }\n ],\n \"labels\": {\n \"1234567890\": 72.6328125,\n \"Fix\": 16.125,\n \"Review\": 40.0234375,\n \"Project\": 40.1171875,\n \"Concept\": 47.9375\n }\n}"
+      }
+    ],
+    "details": {
+      "surface_id": "ui:8:47d18965c8e2b23ea16686b9e94137bb",
+      "url": "http://localhost:6006/@fs<repo>/.worktrees/sidebar-tags/docs/evidence/loh-11-design/after/chips-acts-dark.html",
+      "title": "PROPOSED LOH-11 Chip yields to actions \u2014 same title floor",
+      "selector": "#metrics"
+    },
+    "duration_s": 0.013243166962638497,
+    "is_error": false,
+    "useless": false
+  }
+}

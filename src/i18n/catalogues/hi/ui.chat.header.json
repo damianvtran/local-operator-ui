@@ -1,0 +1,12 @@
+{
+	"ui.chat.header.conversation_name": "बातचीत का नाम",
+	"ui.chat.header.archived_hint": "यह बातचीत संग्रहित है। बहाल करने तक यह आपकी चैट से छिपी रहेगी।",
+	"ui.chat.header.archived": "संग्रहित",
+	"ui.chat.header.actions": "बातचीत की कार्रवाइयाँ",
+	"ui.chat.header.copy_id": "सत्र ID कॉपी करें",
+	"ui.chat.header.move_device": "दूसरे डिवाइस पर ले जाएँ…",
+	"ui.chat.header.transcript_display": "ट्रांसक्रिप्ट प्रदर्शन",
+	"ui.chat.header.delete": "बातचीत हटाएँ…",
+	"ui.chat.header.close_run_details": "रन का विवरण बंद करें",
+	"ui.chat.header.open_run_details": "रन का विवरण खोलें"
+}

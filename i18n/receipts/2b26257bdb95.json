@@ -1,0 +1,106 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "2b26257bdb95",
+  "date": "2026-10-19",
+  "locale": "ur",
+  "round": 1,
+  "section": 5,
+  "status": "changes_requested",
+  "scope": "Full independent copy audit of all six Section 5 namespaces.",
+  "fallback": "Pinned anthropic/claude-sonnet-5-5 was unavailable (provider quota); this run executed on openai/gpt-6.1-sol.",
+  "notes": "Four namespaces passed; ui.mesh and ui.onboarding were remediated and re-audited in round 2.",
+  "namespaces": {
+    "ui.mesh": {
+      "namespace": "ui.mesh",
+      "keys_read": 223,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.mesh.mesh_actions.remove",
+          "problem": "remove/from fragments compose as ہٹائیں laptop سے home",
+          "expected": "natural composed confirmation",
+          "evidence": "call-site composition"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.mesh.mesh_node.shown_conversations",
+          "problem": "one arm uses plural oblique and plural verb",
+          "expected": "singular grammar in total=1",
+          "evidence": "total=1 produced 1 گفتگوؤں..."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.mesh.mesh_node.show_all_conversations",
+          "problem": "one arm uses plural گفتگوئیں and سبھی",
+          "expected": "singular construction",
+          "evidence": "count=1 produced سبھی 1 گفتگوئیں"
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.mesh.approval.request_window",
+          "problem": "semicolon instead of required colon",
+          "expected": "colon",
+          "evidence": "sidecar requires colon"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    },
+    "ui.library": {
+      "namespace": "ui.library",
+      "keys_read": 149,
+      "status": "passed",
+      "sha256": {
+        "en": "c442f7a9dde6d005d2b5246d29849910f2e504fa7175a6f4a4cdc5e6373e9bd1",
+        "ur": "6361c2dbb2cf53d57a23e1789249f29168d888f5488b457e1fc8f215acfd50a7"
+      },
+      "findings": []
+    },
+    "ui.canvas": {
+      "namespace": "ui.canvas",
+      "keys_read": 57,
+      "status": "passed",
+      "sha256": {
+        "en": "6fa13501b59a260373bcb26f212fc6244a3d1219ef1811d2b0c1de05b541f1f5",
+        "ur": "442aca6d48bf27adade51806588dee76e6f3651cb913281a4baa0553d88a6ab8"
+      },
+      "findings": []
+    },
+    "ui.shell": {
+      "namespace": "ui.shell",
+      "keys_read": 29,
+      "status": "passed",
+      "sha256": {
+        "en": "a36a75e15ce94632bad00e774e7f6211ca58d95a2b6f6f50a85e687d64a5b1ea",
+        "ur": "17899b071bee6239c719d09f1ab1af512d297d8516094522bf63b2bfe87f0d97"
+      },
+      "findings": []
+    },
+    "ui.shell.rail": {
+      "namespace": "ui.shell.rail",
+      "keys_read": 20,
+      "status": "passed",
+      "sha256": {
+        "en": "82f946fe2d2944d03100d85263ff5e9e595dc34f953a0d57aa9794ea0879f3eb",
+        "ur": "26012391cfa12141c4ac5febde4837659b017b8806d1e750841dce7987048096"
+      },
+      "findings": []
+    },
+    "ui.onboarding": {
+      "namespace": "ui.onboarding",
+      "keys_read": 47,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.onboarding.default_model.provider_fallback",
+          "problem": "possessive کا duplicates receiving کے",
+          "expected": "bare اس فراہم کنندہ",
+          "evidence": "produced اس فراہم کنندہ کا کے ماڈلز"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    }
+  }
+}

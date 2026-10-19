@@ -1,0 +1,18 @@
+{
+	"ui.agents.starters.server_unanswered": "服务器未响应。",
+	"ui.agents.starters.summary.installed": "{count, plural, other {已安装{count}个}}",
+	"ui.agents.starters.summary.already_present": "{count, plural, other {{count}个已存在}}",
+	"ui.agents.starters.summary.skipped": "{count, plural, other {已跳过{count}个}}",
+	"ui.agents.starters.summary.failed": "{count, plural, other {{count}个失败}}",
+	"ui.agents.starters.summary.empty": "没有需要安装的内容",
+	"ui.agents.starters.summary.sentence": "{parts}。",
+	"ui.agents.starters.summary.separator": "，",
+	"ui.agents.starters.summary.collisions": "{count, plural, other {已跳过{count}个：已有以下同名智能体：{names}。}}",
+	"ui.agents.starters.action.all_builtins": "安装所有内置智能体",
+	"ui.agents.starters.available": "{count, plural, other {有{count}个内置智能体可用}}",
+	"ui.agents.starters.action.all_count": "{count, plural, other {全部安装（{count}个）}}",
+	"ui.agents.starters.progress.accessible": "正在安装内置智能体，第{step}个，共{total}个",
+	"ui.agents.starters.progress.named": "正在安装第{step}个，共{total}个：{name}……",
+	"ui.agents.starters.progress.count": "正在安装，已处理{done}个，共{total}个……",
+	"ui.agents.starters.action.done": "完成"
+}

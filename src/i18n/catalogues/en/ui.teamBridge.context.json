@@ -1,0 +1,369 @@
+{
+	"ui.teamBridge.page.title": {
+		"role": "page heading",
+		"tone": "sentence case, product name kept as-is",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "The page's name. \"Team Bridge\" is the product surface name — never translate the words separately, they name one feature."
+	},
+	"ui.teamBridge.page.subtitle": {
+		"role": "page subheading",
+		"tone": "plain, factual",
+		"length": "One sentence; may wrap.",
+		"placeholders": {},
+		"note": "Says who the user talks to here: teammates and their agents. \"Agent\" is the product noun."
+	},
+	"ui.teamBridge.page.new_conversation": {
+		"role": "primary action button",
+		"tone": "imperative, short",
+		"length": "2-3 words.",
+		"placeholders": {},
+		"note": "Opens the create dialog. Used for DMs, groups and channels alike, so it must not say \"channel\"."
+	},
+	"ui.teamBridge.list.empty.title": {
+		"role": "empty-state heading",
+		"tone": "neutral",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Shown when the account has no conversations at all. States the fact, does not apologise."
+	},
+	"ui.teamBridge.list.empty.body": {
+		"role": "empty-state body",
+		"tone": "helpful, one sentence",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Names the three things the user can start. Keep the three nouns parallel."
+	},
+	"ui.teamBridge.list.loading": {
+		"role": "loading state",
+		"tone": "neutral",
+		"length": "2-4 words.",
+		"placeholders": {},
+		"note": "Announced while the conversation list loads; also the accessible label of the loading spinner."
+	},
+	"ui.teamBridge.list.error": {
+		"role": "error state",
+		"tone": "factual, no blame",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown when the list read fails (backend down, signed out or an upstream refusal). Do not name a cause the client cannot prove."
+	},
+	"ui.teamBridge.list.retry": {
+		"role": "error-state action",
+		"tone": "imperative",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "Retries the failed read."
+	},
+	"ui.teamBridge.list.untitled": {
+		"role": "conversation list row fallback title",
+		"tone": "neutral",
+		"length": "2-3 words.",
+		"placeholders": {},
+		"note": "Used when a group or channel has no name. A DM always has a derived title, so this is never shown for one."
+	},
+	"ui.teamBridge.kind.dm": {
+		"role": "conversation kind label",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "One-to-one conversation. The abbreviation is standard but spell it out for translation."
+	},
+	"ui.teamBridge.kind.group": {
+		"role": "conversation kind label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "A named conversation with a few members."
+	},
+	"ui.teamBridge.kind.channel": {
+		"role": "conversation kind label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "An organization-visible or private room. Keep distinct from \"group\"."
+	},
+	"ui.teamBridge.thread.loading": {
+		"role": "thread loading state",
+		"tone": "neutral",
+		"length": "2-3 words.",
+		"placeholders": {},
+		"note": "Announced while one conversation's messages load."
+	},
+	"ui.teamBridge.thread.error": {
+		"role": "thread error state",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown when the message history read fails. The list beside it stays usable."
+	},
+	"ui.teamBridge.thread.empty": {
+		"role": "thread empty state",
+		"tone": "warm but plain",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "A conversation with no messages. Invites the first message without exclamation."
+	},
+	"ui.teamBridge.composer.placeholder": {
+		"role": "message composer placeholder",
+		"tone": "neutral",
+		"length": "3-5 words.",
+		"placeholders": {},
+		"note": "The composer sits at the bottom of the thread; the placeholder names the act, not the conversation."
+	},
+	"ui.teamBridge.composer.send": {
+		"role": "send button (icon button accessible name)",
+		"tone": "imperative",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Accessible name of the send control. It must work as a button name on its own."
+	},
+	"ui.teamBridge.composer.hint": {
+		"role": "keyboard hint under the composer",
+		"tone": "neutral, instructional",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "Names both key gestures. Key names stay untranslated; only \"to send\" and \"for a new line\" are copy."
+	},
+	"ui.teamBridge.member.agent": {
+		"role": "participant badge",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Marks a participant whose messages come from an agent rather than a person. Product noun."
+	},
+	"ui.teamBridge.member.invited": {
+		"role": "participant state badge",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "A human invited to the conversation who has not joined yet. An invited agent is never shown to other members, so this is human-only in practice."
+	},
+	"ui.teamBridge.nav.label": {
+		"role": "sidebar navigation row label",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "The row inside the sidebar's More group. Same name as the page heading; never abbreviate in the row."
+	},
+	"ui.teamBridge.nav.unread": {
+		"role": "sidebar row accessible name with unread count",
+		"tone": "neutral, states the number",
+		"length": "One short clause.",
+		"placeholders": {
+			"count": "unread message count; a positive integer"
+		},
+		"note": "The name carries the number because a badge is only a visual convenience. Plural forms matter. The collapsed row uses this same name through its tooltip."
+	},
+	"ui.teamBridge.create.title": {
+		"role": "create dialog heading",
+		"tone": "neutral",
+		"length": "2-3 words.",
+		"placeholders": {},
+		"note": "Heading of the dialog that starts a DM, group or channel."
+	},
+	"ui.teamBridge.create.name": {
+		"role": "form field label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Optional name for a group or channel. DMs are not named."
+	},
+	"ui.teamBridge.create.members": {
+		"role": "form field label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "The list of people (or their agents) to include."
+	},
+	"ui.teamBridge.create.cancel": {
+		"role": "dialog action",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Closes the dialog without creating anything."
+	},
+	"ui.teamBridge.create.confirm": {
+		"role": "dialog primary action",
+		"tone": "imperative",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Creates the conversation. Disabled until the form is valid."
+	},
+	"ui.teamBridge.unread.count": {
+		"role": "unread badge count label",
+		"tone": "neutral",
+		"length": "2-3 words.",
+		"placeholders": {
+			"count": "unread message count; a positive integer"
+		},
+		"note": "Short badge text beside a conversation row. Plural forms matter; keep it short so the row does not wrap."
+	},
+	"ui.teamBridge.member.count": {
+		"role": "participant count in the thread header",
+		"tone": "neutral",
+		"length": "2-4 words.",
+		"placeholders": {
+			"count": "number of participants; a positive integer"
+		},
+		"note": "Sits beside the conversation title. Plural forms matter."
+	},
+	"ui.teamBridge.create.member_account": {
+		"role": "form field label",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "The organization account id of the person or agent to include. Shown because the app has no directory picker yet; the label is technical on purpose."
+	},
+	"ui.teamBridge.create.member_name": {
+		"role": "form field label",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "The name other members will see. This is the only name that crosses the wire, so it is required rather than derived."
+	},
+	"ui.teamBridge.create.member_kind": {
+		"role": "form field label",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "Chooses whether the row names a person or an agent."
+	},
+	"ui.teamBridge.create.member_person": {
+		"role": "select option",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "A human member. Keep distinct from the product noun 'Agent'."
+	},
+	"ui.teamBridge.create.member_agent": {
+		"role": "select option",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "An agent member. Product noun, same capitalization as elsewhere."
+	},
+	"ui.teamBridge.create.remove_member": {
+		"role": "icon button accessible name",
+		"tone": "imperative",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "Removes one row from the create form. Must work as a button name on its own."
+	},
+	"ui.teamBridge.create.add_member": {
+		"role": "row-adding button",
+		"tone": "imperative",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "Appends one empty member row to the form."
+	},
+	"ui.teamBridge.create.account_placeholder": {
+		"role": "input placeholder",
+		"tone": "technical",
+		"length": "One short token.",
+		"placeholders": {},
+		"note": "An example account id prefix. The ellipsis is part of the example; keep the 'acct_' prefix untranslated."
+	},
+	"ui.teamBridge.group.more": {
+		"role": "sidebar overflow group label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "The collapsed group that holds low-frequency destinations. The Team Bridge row lives inside it, and its unread badge rides the group row while collapsed."
+	},
+	"ui.teamBridge.thread.withheld": {
+		"role": "message state line",
+		"tone": "neutral, factual",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "An agent member's message the agent has not admitted yet. It is a state, not an error; never imply the sender did something wrong."
+	},
+	"ui.teamBridge.composer.error": {
+		"role": "inline error alert",
+		"tone": "direct, actionable",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "A send that failed. Keep the draft on screen; this line explains why nothing was posted and invites a retry."
+	},
+	"ui.teamBridge.create.error": {
+		"role": "dialog error alert",
+		"tone": "direct, actionable",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Conversation creation failed. The dialog stays open with the form intact so the user can retry."
+	},
+	"ui.teamBridge.scope.label": {
+		"role": "dropdown menu section label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Names what the dropdown chooses. It is a visible section label inside the menu and also the trigger's accessible-name prefix."
+	},
+	"ui.teamBridge.scope.all": {
+		"role": "scope option / trigger label",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "The account-wide scope. It must read as every organization the person belongs to, never as a single organization."
+	},
+	"ui.teamBridge.scope.trigger": {
+		"role": "organization switcher accessible name",
+		"tone": "neutral, names the current scope",
+		"length": "One short clause.",
+		"placeholders": {
+			"name": "the current organization name or the all-organizations label"
+		},
+		"note": "The trigger already shows `name` visually; this template is its accessible name, so screen-reader and visual state cannot disagree."
+	},
+	"ui.teamBridge.scope.loading": {
+		"role": "menu status line",
+		"tone": "neutral",
+		"length": "2-3 words.",
+		"placeholders": {},
+		"note": "The memberships read's first paint, shown inside the open menu rather than replacing the list."
+	},
+	"ui.teamBridge.scope.error": {
+		"role": "menu status line",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The membership read failed. The switcher still shows the current scope; this line says why the other organizations are missing, and the menu row below it retries the read."
+	},
+	"ui.teamBridge.scope.empty": {
+		"role": "menu status line",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The account holds no active memberships. Keep it distinct from the error copy."
+	},
+	"ui.teamBridge.scope.unknown": {
+		"role": "fallback organization label",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "A scope or row whose organization is not in the memberships read. A rare race, not a user error."
+	},
+	"ui.teamBridge.scope.thread_unknown": {
+		"role": "thread state",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "A conversation from the merged list whose organization could not be resolved. The thread is withheld rather than shown under the wrong organization."
+	},
+	"ui.teamBridge.scope.create_needs_org": {
+		"role": "disabled-control reason",
+		"tone": "neutral, instructional",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Explains why New conversation is disabled while the account-wide scope is selected: a conversation must belong to exactly one organization."
+	},
+	"ui.teamBridge.group.more_unread": {
+		"role": "sidebar overflow disclosure, accessible name",
+		"tone": "concise, factual",
+		"length": "One short phrase.",
+		"placeholders": {
+			"count": "the unread total carried by the group"
+		},
+		"note": "States the count when the More row carries a badge, so a screen-reader user hears the same fact the badge shows. Do not name a single destination."
+	}
+}

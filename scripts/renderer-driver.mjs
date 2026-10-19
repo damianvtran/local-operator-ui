@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -188,6 +188,13 @@
  *                          LOCAL_OPERATOR_DESKTOP_TOKEN; the run asserts both
  *   --backend-records <dir> the serve record that backend wrote for itself, which
  *                          `discovery.ts` needs before it admits the daemon
+ *   --allowlist-id <id>    (with --scene agent-messages) the endpoint or account
+ *                          identifier the reach editor adds, then removes
+ *   --allowlist-kind <endpoint|account>  (with --scene agent-messages) which
+ *                          kind that identifier is (default: endpoint)
+ *   --expect-start <b|c>   (with --scene agent-messages) the state the rig is
+ *                          expected to start in: B enables through the consent
+ *                          on-ramp first, C assumes an enabled endpoint
  *   --backend-revive <cmd> (with --scene connection-drop) the command that starts
  *                          a fresh daemon on the --backend address, run with this
  *                          process's environment when the scene needs the backend
@@ -241,6 +248,7 @@ import { basename, join, resolve, sep } from "node:path";
  * below for the rest of the import contract.
  */
 import sharp from "sharp";
+import { sceneAgentMessages } from "./agent-messages-scene.mjs";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 import { EVIDENCE_TZ } from "./evidence-tz.mjs";
@@ -272,6 +280,7 @@ import { pythonChildEnv } from "./python-child-env.mjs";
 import { SEAL_AUDIT_PURPOSE } from "./skill-seal-fixture.mjs";
 import { sceneSounds } from "./sounds-scene.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
+import { sceneTurnHighlights } from "./turn-highlights-scene.mjs";
 
 const ROOT = process.cwd();
 
@@ -46696,9 +46705,16 @@ async function sceneHubLinks(cdp, app) {
 	const collapsed = await waitForCondition(
 		cdp,
 		`(() => {
-			const pane = document.querySelector('[data-agents-pane]');
-			if (!pane) return null;
-			const trigger = pane.querySelector('button[aria-expanded]');
+			/*
+			 * THE PANEL'S OWN TRIGGER, not the pane's first expander. The panel
+			 * used to be drawn ABOVE the record's title, so its disclosure was the
+			 * first expander in the pane; it now sits BELOW the title, inside the
+			 * record, and the record's own disclosures come first. The panel
+			 * carries its own marker for exactly this.
+			 */
+			const panel = document.querySelector('[data-hub-links-panel]');
+			if (!panel) return null;
+			const trigger = panel.querySelector('button[aria-expanded]');
 			return trigger ? { expanded: trigger.getAttribute('aria-expanded') } : null;
 		})()`,
 		30_000,
@@ -46722,11 +46738,11 @@ async function sceneHubLinks(cdp, app) {
 	 * origin 2 (Minerva · Private) Subscribe Off - so the pair must read "Mixed".
 	 */
 	const collapsedSummary = await cdp.evaluate(`(() => {
-		// The same trigger the collapsed check above found: the pane-scoped
-		// hub-panel disclosure. The hub-panel marker attribute is not forwarded by
-		// Disclosure, so the pane-scoped selector is the proof.
-		const pane = document.querySelector('[data-agents-pane]');
-		const trigger = pane && pane.querySelector('button[aria-expanded]');
+		// The same trigger the collapsed check above found: the hub panel's own
+		// disclosure, reached through the marker the PANE wrapper carries (the
+		// marker is not forwarded by Disclosure, so it sits on the wrapper).
+		const panel = document.querySelector('[data-hub-links-panel]');
+		const trigger = panel && panel.querySelector('button[aria-expanded]');
 		return trigger ? trigger.textContent : null;
 	})()`);
 	check(
@@ -46771,7 +46787,11 @@ async function sceneHubLinks(cdp, app) {
 			JSON.stringify({ label: unresolvedNamed }),
 		);
 	}
-	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
+	await verb(
+		cdp,
+		"press",
+		'[data-hub-links-panel] button[aria-expanded="false"]',
+	);
 	const ready = await waitForCondition(
 		cdp,
 		`(() => {
@@ -46884,6 +46904,8 @@ async function sceneHubLinks(cdp, app) {
 		`after ${unresolvedReady.waitedMs ?? "?"}ms: ${JSON.stringify(unresolvedReady.last)}`,
 	);
 
+	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-card`);
+
 	/*
 	 * THE EXPLICIT SOURCE CONFIRMATION. The unresolved row's only honest origin is
 	 * an act that names BOTH the approved source and the scope; the confirm
@@ -46981,6 +47003,25 @@ async function sceneHubLinks(cdp, app) {
 		JSON.stringify(chooser.last),
 	);
 	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-open`);
+	// Close through the real control. The opener must exist again before focus
+	// returns, on both record kinds; synchronous focus in the handler is too early.
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	const canceled = await waitForCondition(
+		cdp,
+		`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		const opener = row && row.querySelector('button');
+		return opener && !row.querySelector('select') && document.activeElement === opener;
+	})()`,
+		5_000,
+	);
+	check(
+		"Cancel restores focus to the remounted source opener",
+		canceled.ok,
+		JSON.stringify(canceled.last),
+	);
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+
 	/*
 	 * The confirm button is DISABLED while nothing is chosen - the guard that
 	 * makes the empty default safe. Assert that before choosing.
@@ -47026,6 +47067,16 @@ async function sceneHubLinks(cdp, app) {
 		chosen.ok,
 		`after ${chosen.waitedMs ?? "?"}ms: ${JSON.stringify(chosen.last)}`,
 	);
+
+	await cdp.evaluate(`(() => {
+		window.__hubSuccessToasts = [];
+		window.__hubToastObserver = new MutationObserver(() => {
+			for (const toast of document.querySelectorAll('[data-sonner-toast]')) {
+				window.__hubSuccessToasts.push(toast.textContent);
+			}
+		});
+		window.__hubToastObserver.observe(document.body, {childList:true, subtree:true, characterData:true});
+	})()`);
 	const confirmed = await verb(
 		cdp,
 		"press",
@@ -47049,6 +47100,23 @@ async function sceneHubLinks(cdp, app) {
 		resolvedRow.ok,
 		`after ${resolvedRow.waitedMs ?? "?"}ms: ${JSON.stringify(resolvedRow.last)}`,
 	);
+	const completed = await waitForCondition(
+		cdp,
+		`(() => {
+		const trigger = document.querySelector('[data-hub-links-panel] button[aria-expanded]');
+		return trigger && document.activeElement === trigger &&
+			window.__hubSuccessToasts.some(text => text.includes('Source confirmed'))
+			? {focus: trigger.textContent, toasts: window.__hubSuccessToasts} : null;
+	})()`,
+		5_000,
+	);
+	check(
+		"confirmation announces success and focuses the surviving link disclosure",
+		completed.ok,
+		JSON.stringify(completed.last),
+		JSON.stringify(completed.last),
+	);
+	await cdp.evaluate("window.__hubToastObserver.disconnect()");
 	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-done`);
 
 	/*
@@ -47056,6 +47124,13 @@ async function sceneHubLinks(cdp, app) {
 	 * filter; the daemon's inventory carries one skill link, so the skill surface
 	 * is exercised by the SAME inventory read rather than a second route.
 	 */
+	// A successful confirmation now leaves focus on its collapsed link control.
+	// Inspect the actual link rows only after opening that surviving disclosure.
+	await verb(
+		cdp,
+		"press",
+		'[data-hub-links-panel] button[aria-expanded="false"]',
+	);
 	const kinds = await cdp.evaluate(`(() => {
 		const pane = document.querySelector('[data-agents-pane]');
 		if (!pane) return null;
@@ -47099,6 +47174,148 @@ async function sceneHubLinks(cdp, app) {
 		JSON.stringify(orgRow.last),
 	);
 	await captureSettled(cdp, `hub-links-${size}-${theme}-org-source`);
+
+	/*
+	 * THE UNRESOLVED ROW ON A TEAM'S PAGE. The panel is the same component for a
+	 * team and the resolve arm's domain is `agent|team`, so the source
+	 * confirmation is photographed on a team pane too - there the record it
+	 * describes is a TEAM, and the block has to read as being about that team.
+	 */
+	await verb(cdp, "navigate", "/agents?kind=team&name=legacy-team");
+	const teamUnresolved = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			const card = pane && pane.querySelector('[data-hub-source-unresolved]');
+			if (!card) return null;
+			const heading = card.querySelector('h3, h4');
+			return {
+				card: card.getAttribute('data-hub-source-unresolved'),
+				heading: heading ? heading.textContent : null,
+			};
+		})()`,
+		30_000,
+	);
+	check(
+		"a legacy unknown-origin TEAM renders its own source-confirmation block",
+		teamUnresolved.ok && teamUnresolved.last.card === "team-legacy",
+		`after ${teamUnresolved.waitedMs ?? "?"}ms: ${JSON.stringify(teamUnresolved.last)}`,
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-team-unresolved`);
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	const teamCanceled = await waitForCondition(
+		cdp,
+		`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		const opener = row && row.querySelector('button');
+		return opener && !row.querySelector('select') && document.activeElement === opener;
+	})()`,
+		5_000,
+	);
+	check(
+		"team Cancel restores focus to its remounted source opener",
+		teamCanceled.ok,
+		JSON.stringify(teamCanceled.last),
+	);
+
+	await verb(cdp, "navigate", "/agents?name=legacy-solo");
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	await cdp.evaluate(`(() => {
+		const select = document.querySelector('[data-hub-source-unresolved] select');
+		Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, 'public');
+		select.dispatchEvent(new Event('change', {bubbles:true}));
+	})()`);
+	await verb(cdp, "press", "[data-hub-source-unresolved] button:last-of-type");
+	const conflict = await waitForCondition(
+		cdp,
+		`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		const alert = row && row.querySelector('[role="alert"]');
+		return alert && !row.querySelector('button').disabled ? {text:alert.textContent} : null;
+	})()`,
+		10_000,
+	);
+	check(
+		"conflicting scope keeps the unresolved card and settled recovery controls",
+		conflict.ok,
+		JSON.stringify(conflict.last),
+		JSON.stringify(conflict.last),
+	);
+	check(
+		"conflict names source/scope, unchanged state and a safe next step",
+		conflict.ok &&
+			/source or publish scope/.test(conflict.last.text) &&
+			/Nothing was changed/.test(conflict.last.text) &&
+			/Cancel and check/.test(conflict.last.text) &&
+			/separate local copy/.test(conflict.last.text),
+		JSON.stringify(conflict.last),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-conflict`);
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	const conflictCanceled = await waitForCondition(
+		cdp,
+		`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		return row && !row.querySelector('select') && document.activeElement === row.querySelector('button');
+	})()`,
+		5_000,
+	);
+	check(
+		"Cancel after conflict restores focus to its source opener",
+		conflictCanceled.ok,
+		JSON.stringify(conflictCanceled.last),
+	);
+
+	/*
+	 * A RECORD WITH NO HUB LINK DRAWS NOTHING. The panel used to render a "Hub
+	 * links - Not linked to the hub" disclosure on every record, above the
+	 * record's title; a record with no hub presence has nothing to say, and most
+	 * records on a roster have no hub presence.
+	 *
+	 * The assertion is the TEXT, not a marker: "Hub links" appearing anywhere in
+	 * the pane is the old disclosure's own summary, so a record that still drew
+	 * it fails here whether the block is a disclosure or something else.
+	 */
+	await verb(cdp, "navigate", "/agents?name=loner");
+	const noLinkReady = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			if (!pane) return null;
+			const heading = pane.querySelector('h2');
+			return heading ? { title: heading.textContent } : null;
+		})()`,
+		30_000,
+	);
+	/*
+	 * Give the inventory read time to ANSWER before the assertion: the point is
+	 * that the panel says nothing once it knows there is nothing to say, not
+	 * that it says nothing before it has looked.
+	 */
+	await wait(2_000);
+	const noLink = await cdp.evaluate(`(() => {
+		const pane = document.querySelector('[data-agents-pane]');
+		if (!pane) return null;
+		return {
+			rows: pane.querySelectorAll('[data-hub-link]').length,
+			unresolved: pane.querySelectorAll('[data-hub-source-unresolved]').length,
+			hubLinksText: (pane.textContent || '').includes('Hub links'),
+		};
+	})()`);
+	note(
+		"no-link record",
+		JSON.stringify({ ready: noLinkReady.last, read: noLink }),
+	);
+	check(
+		"a record with no hub link draws NO hub panel at all",
+		noLink !== null &&
+			noLink.rows === 0 &&
+			noLink.unresolved === 0 &&
+			noLink.hubLinksText === false,
+		JSON.stringify(noLink),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-no-link`);
 
 	/*
 	 * THE SIDEBAR MARK (design §Sidebar line 48, CODE MAJOR-2). The chat sidebar
@@ -47189,7 +47406,11 @@ async function sceneHubLinks(cdp, app) {
 		detailOpened.ok,
 		`after ${detailOpened.waitedMs ?? "?"}ms: ${JSON.stringify(detailOpened.last)}`,
 	);
-	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
+	await verb(
+		cdp,
+		"press",
+		'[data-hub-links-panel] button[aria-expanded="false"]',
+	);
 	const origins = await waitForCondition(
 		cdp,
 		`(() => {
@@ -48208,14 +48429,18 @@ async function sceneHubCoreGuard(cdp, app) {
 	await verb(cdp, "navigate", "/agents?name=reviewer");
 	const collapsed = await waitForCondition(
 		cdp,
-		`!!document.querySelector('[data-agents-pane] button[aria-expanded="false"]')`,
+		`!!document.querySelector('[data-hub-links-panel] button[aria-expanded="false"]')`,
 		30_000,
 	);
 	check(
 		"linked profile remains browsable before opening controls",
 		collapsed.ok,
 	);
-	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
+	await verb(
+		cdp,
+		"press",
+		'[data-hub-links-panel] button[aria-expanded="false"]',
+	);
 	const row = '[data-hub-link="link-public-agent"]';
 	const ready = await waitForCondition(
 		cdp,
@@ -48926,6 +49151,27 @@ async function main() {
 			else if (SCENE === "drafts") await sceneDrafts(cdp);
 			else if (SCENE === "undo-toasts-stacked")
 				await sceneUndoToastsStacked(cdp);
+			/*
+			 * Settings -> Agent messages over a live daemon: the section's own
+			 * state letter, both palettes, pause/resume, the local switch, and
+			 * the reach editor's two saves. Needs `--backend`,
+			 * `--backend-records` and `--allowlist-id`.
+			 */ else if (SCENE === "agent-messages")
+				await sceneAgentMessages({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					wait,
+					waitForCondition,
+					factsOf,
+					argValue,
+					backend: BACKEND,
+					backendRecords: BACKEND_RECORDS,
+					framesDir: FRAMES,
+					electronUserAgent: ELECTRON_USER_AGENT,
+				});
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
 			/*
@@ -48983,6 +49229,15 @@ async function main() {
 			else if (SCENE === "mentions") await sceneMentions(cdp);
 			else if (SCENE === "shell-evidence") await sceneShellEvidence(cdp);
 			else if (SCENE === "transcript-rail") await sceneTranscriptRail(cdp);
+			else if (SCENE === "turn-highlights")
+				await sceneTurnHighlights({
+					cdp,
+					verb,
+					capture,
+					check,
+					waitForCondition,
+					factsOf,
+				});
 			else if (SCENE === "sounds")
 				await sceneSounds({
 					cdp,

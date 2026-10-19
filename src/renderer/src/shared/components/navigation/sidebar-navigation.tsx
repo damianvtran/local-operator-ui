@@ -25,6 +25,7 @@ import {
 	waitingApprovalCount,
 } from "@features/mesh/mesh-approvals";
 import { useMeshMembership } from "@features/mesh/mesh-store";
+import { useTeamBridgeNavItem } from "@features/team-bridge/team-bridge-nav";
 import {
 	desktopFeatureEnabled,
 	desktopFeatureState,
@@ -52,11 +53,14 @@ import type { LucideIcon } from "lucide-react";
 import {
 	Bot,
 	CalendarDays,
+	ChevronDown,
 	ChevronLeft,
 	ChevronRight,
 	ChevronsUp,
+	Ellipsis,
 	FolderKanban,
 	Globe,
+	LibraryBig,
 	LoaderCircle,
 	MessageSquarePlus,
 	Network,
@@ -305,6 +309,15 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 */
 	const capabilities = useDesktopCapabilities();
 	/*
+	 * THE TEAM BRIDGE ROW. The hook owns the capability gate and the one
+	 * account-wide unread read; this list only spreads the descriptor. It is
+	 * called unconditionally because hooks cannot be conditional - the gate is
+	 * inside and returns null when the backend does not publish the surface.
+	 */
+	const teamBridgeNav = useTeamBridgeNavItem(
+		desktopFeatureEnabled(capabilities.data, "team_bridge_conversations"),
+	);
+	/*
 	 * The open conversation, SUBSCRIBED rather than read once: the list marks the
 	 * row the user is in, and a `getState()` read during render would freeze that
 	 * mark at whatever was open when this component last re-rendered.
@@ -374,6 +387,24 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		capabilities.data,
 		"projects",
 		1,
+	);
+	/*
+	 * The Library destination, gated on its own capability. A backend that
+	 * predates the catalog must render the column that never heard of it: the
+	 * routes 404, and a row landing on an error page is the dead control the
+	 * fail-closed rule omits. The route repeats this gate for a hand-typed URL.
+	 */
+	const libraryEnabled = desktopFeatureEnabled(capabilities.data, "library", 1);
+	/*
+	 * THE OVERFLOW GROUP'S STATE, persisted beside the collapsed width: a
+	 * low-frequency destination's visibility is a preference about the column,
+	 * not about the route in front of it.
+	 */
+	const overflowExpanded = useUiPreferencesStore(
+		(state) => state.sidebarOverflowExpanded,
+	);
+	const setOverflowExpanded = useUiPreferencesStore(
+		(state) => state.setSidebarOverflowExpanded,
 	);
 	/*
 	 * AIDA'S ROW, and its TWO gates, which are two different facts.
@@ -483,13 +514,22 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					},
 				]
 			: []),
-		{
-			icon: Bot,
-			label: t("ui.shell.sidebar_navigation.agents"),
-			path: "/agents",
-			isActive: currentView === "agents",
-			tourTag: "nav-item-agents",
-		},
+		/*
+		 * The Library sits directly under Aida: it is the cross-conversation
+		 * catalog the operator reaches for after a conversation, and the operator's
+		 * IA put it above the things they own. Gated on `features.library`.
+		 */
+		...(libraryEnabled
+			? [
+					{
+						icon: LibraryBig,
+						label: t("ui.library.page.title"),
+						path: "/library",
+						isActive: currentView === "library",
+						tourTag: "nav-item-library",
+					},
+				]
+			: []),
 		/*
 		 * Projects sits beside Agents — the two are the "things I own" pair — but
 		 * only on a backend that carries the surface; see `projectsEnabled` above.
@@ -505,6 +545,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					},
 				]
 			: []),
+		{
+			icon: Bot,
+			label: t("ui.shell.sidebar_navigation.agents"),
+			path: "/agents",
+			isActive: currentView === "agents",
+			tourTag: "nav-item-agents",
+		},
 		{
 			icon: CalendarDays,
 			label: t("ui.shell.sidebar_navigation.schedules"),
@@ -534,6 +581,31 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					countText: String(count),
 				}),
 		},
+	];
+
+	/*
+	 * THE OVERFLOW GROUP (operator IA, 2026-10-18). Agent Hub and Mesh are
+	 * low-frequency destinations: they keep their rows, badges and gates, but sit
+	 * behind one collapsed "More" row rather than as rows of their own. Future
+	 * low-frequency destinations join this array; the primary list stays the six
+	 * destinations the operator reads most.
+	 *
+	 * WHERE THE GROUP IS DRAWN (operator IA, 2026-10-19): it left the footer
+	 * region - the strip of column immediately above the account row, where it
+	 * used to sit - and became the LAST ROW of the destinations list, directly
+	 * under Browser. The operator's report was that a disclosure pinned to the
+	 * column's bottom, a screen away from the destinations it opens, was not
+	 * discoverable; the same reasoning applies to the collapsed strip, where the
+	 * ellipsis now reads under the destinations' own glyphs instead of above the
+	 * foot. The group is still ONE collapsed disclosure with its own persisted
+	 * preference: the move changed where the row is drawn, not what it is or
+	 * what it opens.
+	 */
+	const overflowNavItems: NavItem[] = [
+		/* The inbox is the most frequent reason to open this group, so it leads. */
+		...(teamBridgeNav
+			? [{ ...teamBridgeNav, isActive: currentView === "team-bridge" }]
+			: []),
 		{
 			icon: Store,
 			label: t("ui.shell.sidebar_navigation.agent_hub"),
@@ -575,6 +647,15 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				]
 			: []),
 	];
+
+	/*
+	 * A DIRECT ROUTE TO A HIDDEN DESTINATION REVEALS ITS GROUP for that visit,
+	 * without overwriting the saved preference: a reader who lands on Agent Hub
+	 * through the palette must be able to see where they are. The preference is
+	 * written only by the More press itself.
+	 */
+	const overflowRevealed =
+		overflowExpanded || overflowNavItems.some((item) => item.isActive);
 
 	/*
 	 * THE BODY. The list brings its own actions - its `New chat` row stages an
@@ -966,6 +1047,10 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			onClick: () => void;
 			disabled?: boolean;
 			attrs?: Record<string, string | boolean>;
+			/* A count the group carries while it is closed: the corner mark the
+			   destination rows use, so a collapsed More can say something waits. */
+			attention?: number;
+			attentionTag?: string;
 		},
 	) => {
 		const Icon = icon;
@@ -984,7 +1069,22 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						"disabled:text-ink-disabled disabled:hover:bg-transparent",
 					)}
 				>
-					<Icon size={16} aria-hidden="true" />
+					<span className="relative flex size-7 items-center justify-center">
+						<Icon size={16} aria-hidden="true" />
+						{(props.attention ?? 0) > 0 && (
+							<span className="pointer-events-none absolute -top-0.5 -right-0.5 flex">
+								<Badge
+									variant="attentionQuiet"
+									shape="pill"
+									size="count"
+									className="h-3.5 min-w-3.5 px-0.75 leading-none"
+									data-tour-tag={props.attentionTag}
+								>
+									{props.attention}
+								</Badge>
+							</span>
+						)}
+					</span>
 				</button>
 			</Tooltip>
 		);
@@ -1039,6 +1139,105 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * `navigate-settings` step attaches to this button, which is why it carries
 	 * the tag rather than the menu item.
 	 */
+	/*
+	 * THE "MORE" ROW AND ITS INLINE GROUP.
+	 *
+	 * One disclosure, drawn in both widths: expanded it is a destination row
+	 * with an ellipsis and a chevron; collapsed it is the strip's icon button.
+	 * `aria-expanded` states the state and `aria-controls` names the list, which
+	 * is why the group is a nested list rather than a sibling whose relation a
+	 * reader would have to infer. The rows inside keep their own tooltips,
+	 * badges and keyboard order - expanding reveals them in place, so Tab order
+	 * follows document order in both states.
+	 */
+	const renderOverflowGroup = () => {
+		if (overflowNavItems.length === 0) return null;
+		/* The count the group carries on its own row, in both widths. Team Bridge
+		   is the only waiting-style badge in this group today; the Mesh row's
+		   approval count is already the header's, and summing them would double a
+		   number the user sees twice. */
+		const overflowAttention = teamBridgeNav?.attention ?? 0;
+		/* The mark is visual; the disclosure's name carries the same fact for a
+		   reader who gets no badge (design round 4, D3). */
+		const moreName =
+			overflowAttention > 0
+				? t("ui.teamBridge.group.more_unread", {
+						count: overflowAttention,
+					})
+				: t("ui.library.page.more_destinations");
+		return (
+			<li
+				key="nav-overflow"
+				className={cn(
+					"flex flex-col",
+					expanded ? "gap-0.5" : "items-center gap-1",
+				)}
+			>
+				{expanded ? (
+					<button
+						type="button"
+						data-tour-tag="nav-item-more"
+						aria-expanded={overflowRevealed}
+						aria-controls="sidebar-more-destinations"
+						aria-label={moreName}
+						onClick={() => setOverflowExpanded(!overflowRevealed)}
+						className={cn(
+							DESTINATION_ROW,
+							"text-ink-muted hover:bg-row-hover hover:text-ink",
+						)}
+					>
+						<Ellipsis size={16} aria-hidden="true" className="shrink-0" />
+						<span className="min-w-0 flex-1 truncate text-left">
+							{t("ui.library.page.more")}
+						</span>
+						{overflowAttention > 0 && (
+							<span className="inline-flex shrink-0">
+								<Badge
+									variant="attentionQuiet"
+									shape="pill"
+									size="count"
+									data-tour-tag="nav-more-badge"
+								>
+									{overflowAttention}
+								</Badge>
+							</span>
+						)}
+						<ChevronDown
+							size={14}
+							aria-hidden="true"
+							className={cn(
+								"shrink-0 transition-transform duration-fast",
+								overflowRevealed && "rotate-180",
+							)}
+						/>
+					</button>
+				) : (
+					stripButton(Ellipsis, moreName, {
+						onClick: () => setOverflowExpanded(!overflowRevealed),
+						attention: overflowAttention,
+						attentionTag: "nav-more-badge",
+						attrs: {
+							"aria-expanded": overflowRevealed,
+							"aria-controls": "sidebar-more-destinations",
+							"data-tour-tag": "nav-item-more",
+						},
+					})
+				)}
+				{overflowRevealed && (
+					<ul
+						id="sidebar-more-destinations"
+						className={cn(
+							"flex flex-col gap-0.5",
+							!expanded && "items-center gap-1",
+						)}
+					>
+						{overflowNavItems.map(renderNavRow)}
+					</ul>
+				)}
+			</li>
+		);
+	};
+
 	const settingsGear = (
 		<Tooltip content={t("ui.shell.sidebar_navigation.settings")} side="top">
 			<button
@@ -1105,8 +1304,17 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						})}
 					</li>
 				</ul>
+				{/*
+				 * THE MORE GROUP IS THE LAST ITEM OF THIS LIST (operator IA,
+				 * 2026-10-19): the ellipsis used to be drawn in the `mt-auto`
+				 * foot above the update icon, the gear and the avatar, where the
+				 * column's bottom pinned it away from the destinations it opens.
+				 * It now reads under the Browser glyph, beside the rows it
+				 * belongs with.
+				 */}
 				<ul className="mt-4 flex flex-col items-center gap-1">
 					{navItems.map(renderNavRow)}
+					{renderOverflowGroup()}
 				</ul>
 				<div className="mt-auto flex flex-col items-center gap-1 pb-2">
 					{/*
@@ -1180,8 +1388,26 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				 * THE DESTINATIONS GROUP, four 30px rows: the same routes in the same
 				 * order the old rail carried, minus Chat (which is the list itself) and
 				 * minus Settings (which the foot owns).
+				 *
+				 * THE MORE GROUP IS THE LAST ROW OF THIS LIST (operator IA,
+				 * 2026-10-19), directly under Browser. It used to be drawn in its
+				 * own footer block immediately above the account row: a
+				 * low-frequency disclosure pinned to the column's bottom was far
+				 * from the destinations it opens, and the operator's report was
+				 * that it was not discoverable. It shares this list's own row gap
+				 * (`gap-0.5`), so it reads as a destination row rather than as
+				 * chrome.
+				 *
+				 * WHAT DID NOT MOVE WITH IT: the group is still ONE collapsed
+				 * disclosure with its own persisted preference
+				 * (`sidebarOverflowExpanded`), still reveals in place when a
+				 * hidden destination is the current view, and still carries the
+				 * count badge. Only the row's position in the column changed.
 				 */}
-				<ul className="flex flex-col gap-0.5">{navItems.map(renderNavRow)}</ul>
+				<ul className="flex flex-col gap-0.5">
+					{navItems.map(renderNavRow)}
+					{renderOverflowGroup()}
+				</ul>
 			</div>
 
 			{/*

@@ -1,0 +1,22 @@
+{
+	"ui.shell.rail.ask.aria": "Câu hỏi{chord}, {subject}",
+	"ui.shell.rail.ask.aria_count": "Câu hỏi{chord}, {subject}, {count, plural, other {{countText} đang chờ}}",
+	"ui.shell.rail.browser.aria": "Trình duyệt{chord}",
+	"ui.shell.rail.browser.aria_count": "Trình duyệt{chord}, {count, plural, other {{countText} đang chờ}}",
+	"ui.shell.rail.browser.tooltip": "{state, select, open {Đóng trình duyệt{chord}} other {Mở trình duyệt{chord}}}",
+	"ui.shell.rail.browser.tooltip_count": "{state, select, open {Đóng trình duyệt{chord}} other {Mở trình duyệt{chord}}} — {count, plural, other {{countText} yêu cầu phê duyệt}} đang chờ",
+	"ui.shell.rail.canvas.aria": "Khung vẽ{chord}",
+	"ui.shell.rail.canvas.aria_count": "Khung vẽ{chord}, {count, plural, other {{countText} tệp}}",
+	"ui.shell.rail.canvas.tooltip": "{state, select, open {Đóng khung vẽ{chord}} other {Mở khung vẽ{chord}}}",
+	"ui.shell.rail.canvas.tooltip_count": "{state, select, open {Đóng khung vẽ{chord}} other {Mở khung vẽ{chord}}} — {count, plural, other {{countText} tệp}}",
+	"ui.shell.rail.code.aria": "Rà soát mã{chord}{mark}",
+	"ui.shell.rail.code.aria_details": "Rà soát mã{chord}, {details}{mark}",
+	"ui.shell.rail.code.mentioned": "{count, plural, other {{countText} được nhắc đến}}",
+	"ui.shell.rail.code.opened": "{count, plural, other {{countText} đã mở}}",
+	"ui.shell.rail.code.tooltip": "{state, select, open {Đóng rà soát mã{chord}} other {Mở rà soát mã{chord}}}{mark}",
+	"ui.shell.rail.code.tooltip_details": "{state, select, open {Đóng rà soát mã{chord}} other {Mở rà soát mã{chord}}} — {details}{mark}",
+	"ui.shell.rail.console.aria": "Bảng điều khiển{chord}",
+	"ui.shell.rail.console.aria_count": "Bảng điều khiển{chord}, {count, plural, other {{countText} đã xong từ lần bạn xem trước}}",
+	"ui.shell.rail.console.tooltip": "{state, select, open {Đóng bảng điều khiển{chord}} other {Mở bảng điều khiển{chord}}}",
+	"ui.shell.rail.console.tooltip_count": "{state, select, open {Đóng bảng điều khiển{chord}} other {Mở bảng điều khiển{chord}}} — {count, plural, other {{countText} đã xong từ lần bạn xem trước}}"
+}

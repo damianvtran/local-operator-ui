@@ -35,6 +35,8 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/chat/canonical/image-gen-card-model";',
+			'export * from "./src/renderer/src/features/chat/canonical/sound-batch-model";',
+			'export { preferProgressDetails } from "./src/renderer/src/features/chat/components/trace/tool-row-model";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -52,6 +54,8 @@ const {
 	imageGenMaterialNoun,
 	isImageGenTool,
 	isVideoGenTool,
+	preferProgressDetails,
+	soundBatchItems,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -265,7 +269,7 @@ test("the failure pair reads verbatim, the conflict is a receipt, and a plain ca
 		state: "failed",
 		material: "image",
 		message: "out of credits",
-		errorType: "insufficient_credits",
+		errorType: null,
 	});
 	// The mid-walk frame (`stage: null`, the pair present, the call unsettled):
 	// the LIVE presentation with the sentence as its interim note (design round
@@ -525,7 +529,10 @@ test("controls render only where wired and where the state can act", () => {
  */
 const componentBundle = await build({
 	stdin: {
-		contents: `export { ImageGenCard } from "./src/renderer/src/features/chat/canonical/image-gen-card";`,
+		contents: `export { ImageGenCard } from "./src/renderer/src/features/chat/canonical/image-gen-card";
+ export { useSoundStopGate } from "./src/renderer/src/features/chat/canonical/sound-stop-confirmation";
+ export { useAudioEngineStore } from "./src/renderer/src/shared/store/audio-engine-store";
+ export { useInterruptOnEscape } from "./src/renderer/src/features/chat/hooks/use-interrupt-on-escape";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -568,9 +575,17 @@ const componentBundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(componentBundlePath, componentBundle.outputFiles[0].text);
+let useAudioEngineStore;
 let ImageGenCard;
+let useSoundStopGate;
+let useInterruptOnEscape;
 try {
-	({ ImageGenCard } = await import(componentBundlePath.href));
+	({
+		ImageGenCard,
+		useSoundStopGate,
+		useInterruptOnEscape,
+		useAudioEngineStore,
+	} = await import(componentBundlePath.href));
 } finally {
 	await unlink(componentBundlePath);
 }
@@ -1260,7 +1275,7 @@ test("a rate-limited call states the server's sentence, preferring the result's 
 		}),
 	);
 	assert.equal(onlyType.state, "failed");
-	assert.equal(onlyType.errorType, "audio_rate_limited");
+	assert.equal(onlyType.errorType, "Audio rate limited");
 	assert.equal(
 		onlyType.message,
 		"Audio generation is busy right now. Wait a moment and try again.",
@@ -1288,4 +1303,987 @@ test("a rate-limited call states the server's sentence, preferring the result's 
 	// and no promise about the next call.
 	assert.equal(markup.includes(">Stop<"), false);
 	assert.equal(markup.includes(">Retry<"), false);
+});
+
+test("sound receipts retain billed/estimated provenance and never turn quotes into charges", () => {
+	for (const [amount, basis] of [
+		[0.002, "billed"],
+		[0.001, "estimated"],
+		[0.0216, "billed"],
+	]) {
+		const view = imageGenCardView(
+			tool({
+				toolName: "generate_sound_effect",
+				details: { cost_usd: amount, billing_basis: basis },
+			}),
+		);
+		assert.equal(
+			view.costCaption,
+			`Cost $${Number(amount.toFixed(4))} (${basis}).`,
+		);
+	}
+	for (const details of [
+		{ cost_usd: null, billing_basis: "billed" },
+		{ cost_usd: 0.0216, billing_basis: "quote" },
+		{ cost_usd: 0.002 },
+	]) {
+		assert.equal(imageGenCardView(tool({ details })).costCaption, null);
+	}
+	const pending = imageGenCardView(
+		tool({
+			stopped: true,
+			toolName: "generate_voiceover",
+			details: { settled: null, cost_usd: null, cost: { basis: "quote" } },
+		}),
+	);
+	assert.equal(
+		pending.settlementCaption,
+		"Settlement pending — the final charge will appear once the provider reports it.",
+	);
+	/*
+	 * SUB-CENT CHARGES (review round 2, MINOR): four decimals is the receipt's
+	 * precision, and trimming it is what keeps `$0.002` from reading as
+	 * `$0.0020`. An amount below half a unit of that precision must therefore
+	 * state the BOUND instead of rounding to `$0`: a charged call printing as an
+	 * uncharged one is the one thing this receipt line exists to prevent.
+	 */
+	const subCent = (cost_usd) =>
+		imageGenCardView(
+			tool({
+				toolName: "generate_voiceover",
+				details: { cost_usd, billing_basis: "billed" },
+			}),
+		).costCaption;
+	assert.equal(subCent(0.00004), "Cost <$0.0001 (billed).");
+	assert.equal(subCent(0.000049), "Cost <$0.0001 (billed).");
+	assert.equal(subCent(0.00005), "Cost $0.0001 (billed).");
+	assert.equal(subCent(0), "Cost $0 (billed).");
+});
+
+test("audio result details survive reducer retention and settlement revisions", () => {
+	const billed = { cost_usd: 0.002, billing_basis: "billed" };
+	assert.equal(preferProgressDetails(billed, null), billed);
+	assert.equal(preferProgressDetails({ ...billed }, billed), billed);
+	const estimated = { ...billed, billing_basis: "estimated" };
+	assert.equal(preferProgressDetails(estimated, billed), estimated);
+	const revised = { ...billed, cost_usd: 0.0216 };
+	assert.equal(preferProgressDetails(revised, billed), revised);
+	const pending = { settled: null, cost_usd: null, cost: { basis: "quote" } };
+	assert.equal(preferProgressDetails(pending, billed), pending);
+	assert.equal(
+		preferProgressDetails(structuredClone(pending), pending),
+		pending,
+	);
+	assert.equal(preferProgressDetails(null, pending), pending);
+	const settled = {
+		...pending,
+		settled: true,
+		cost_usd: 0.0216,
+		billing_basis: "billed",
+		cost: { basis: "billed" },
+	};
+	assert.equal(preferProgressDetails(settled, pending), settled);
+});
+
+test("the sound card shows result costs and the agent's refusal class above its exact body", () => {
+	const billed = imageGenCardView(
+		tool({
+			toolName: "generate_voiceover",
+			details: { cost_usd: 0.002, billing_basis: "billed" },
+		}),
+	);
+	assert.ok(markupOf(billed).includes("Cost $0.002 (billed)."));
+	const old = imageGenCardView(
+		tool({
+			toolName: "generate_voiceover",
+			output: "Generated audio. Cost $0.002 (billed).",
+		}),
+	);
+	assert.equal(old.costCaption, "Cost $0.002 (billed).");
+	const body =
+		'{"code":"audio_rejected","error":"This audio request could not be accepted."}';
+	const refusal = imageGenCardView(
+		tool({
+			toolName: "generate_voiceover",
+			notRunKind: "invalid_arguments",
+			notRunReason: body,
+		}),
+	);
+	const html = markupOf(refusal);
+	assert.ok(html.indexOf("Invalid arguments") < html.indexOf("audio_rejected"));
+	assert.equal(refusal.message, body);
+});
+
+test("a running sound stop warns before invoking the real action handler", async () => {
+	const { JSDOM } = await import("jsdom");
+	const { createRoot } = await import("react-dom/client");
+	const { act } = await import("react");
+	const dom = new JSDOM('<div id="root"></div>', { url: "http://localhost" });
+	const previous = {
+		window: globalThis.window,
+		document: globalThis.document,
+		HTMLElement: globalThis.HTMLElement,
+	};
+	Object.assign(globalThis, {
+		window: dom.window,
+		document: dom.window.document,
+		HTMLElement: dom.window.HTMLElement,
+		IS_REACT_ACT_ENVIRONMENT: true,
+	});
+	const root = createRoot(dom.window.document.getElementById("root"));
+	let calls = 0;
+	const view = imageGenCardView(
+		tool({
+			toolName: "generate_voiceover",
+			phase: "running",
+			startedAt: Date.now(),
+		}),
+	);
+	try {
+		await act(async () =>
+			root.render(
+				h(ImageGenCard, {
+					view,
+					scope: null,
+					actions: { onCancel: () => calls++ },
+				}),
+			),
+		);
+		const press = async (label) => {
+			const button = [...dom.window.document.querySelectorAll("button")].find(
+				(b) => b.textContent === label,
+			);
+			assert.ok(button, `button ${label} exists`);
+			await act(async () => button.click());
+		};
+		await press("Stop");
+		assert.equal(calls, 0);
+		assert.equal(dom.window.document.activeElement.textContent, "Keep waiting");
+		assert.equal(
+			dom.window.document.querySelector("[aria-live=polite]").textContent,
+			"Stop this generation?",
+		);
+		assert.ok(
+			dom.window.document.body.textContent.includes(
+				"The provider has no cancellation endpoint. The generation continues and will be charged if it produces audio.",
+			),
+		);
+		await act(async () =>
+			dom.window.document.dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: "Escape",
+					bubbles: true,
+					cancelable: true,
+				}),
+			),
+		);
+		assert.equal(calls, 0);
+		assert.equal(dom.window.document.activeElement.textContent, "Stop");
+		await press("Stop");
+		await press("Keep waiting");
+		assert.equal(dom.window.document.activeElement.textContent, "Stop");
+		assert.equal(calls, 0);
+		await press("Stop");
+		await press("Request stop");
+		assert.equal(calls, 1);
+	} finally {
+		await act(async () => root.unmount());
+		dom.window.close();
+		Object.assign(globalThis, previous);
+		globalThis.IS_REACT_ACT_ENVIRONMENT = undefined;
+	}
+});
+
+test("sound failure labels are human, scoped, and do not repeat a sentence opening", () => {
+	for (const toolName of ["generate_image", "generate_video"]) {
+		const view = imageGenCardView(
+			tool({
+				toolName,
+				isError: true,
+				details: {
+					error_type: "insufficient_credits",
+					error: "out of credits",
+				},
+			}),
+		);
+		assert.equal(view.errorType, null);
+		assert.equal(
+			markupOf({ ...view, errorType: "insufficient_credits" }).includes(
+				"insufficient_credits",
+			),
+			false,
+		);
+		const done = imageGenCardView(
+			tool({
+				toolName,
+				output: "Cost $0.002 (billed).",
+				details: { cost_usd: 0.002, billing_basis: "billed" },
+			}),
+		);
+		assert.equal(done.costCaption, null);
+	}
+	const view = imageGenCardView(
+		tool({
+			toolName: "generate_voiceover",
+			isError: true,
+			details: {
+				error_type: "invalid_arguments",
+				error: "Invalid arguments: duration is required.",
+			},
+		}),
+	);
+	assert.equal(view.errorType, null);
+	assert.equal(view.message, "Invalid arguments: duration is required.");
+});
+
+test("cancelled sound receipts retain explicit pending and completed billing facts", () => {
+	// Canonical #2588 cancel fields and the completed observer's billed fields:
+	// these are contract fixtures, not a claim that a provider was called here.
+	const cancelled = {
+		settled: null,
+		cost_usd: null,
+		cost: {
+			v: 1,
+			amount_usd: 0.0216,
+			basis: "quote",
+			units: 540,
+			unit: "char",
+			unit_price_usd: 4e-5,
+			provider: "radient",
+			model: "radient/voiceover-flash",
+			tool_type: "speech_generation",
+			usage_record_id: "fixture-audio-usage",
+			price_version: "audio-rates@2026-10-17",
+		},
+		cancellation: {
+			requested: true,
+			vendor_stopped: false,
+			reason: "provider_has_no_cancel_api",
+			detail:
+				"The provider has no cancellation endpoint. The generation continues and will be charged if it produces audio.",
+		},
+		note: "Cancellation is best-effort: the request settles at its terminal outcome. A completed generation is charged normally.",
+	};
+	const record = tool({
+		toolName: "generate_voiceover",
+		stopped: true,
+		details: cancelled,
+	});
+	assert.ok(
+		imageGenCardView(record).settlementCaption.startsWith("Settlement pending"),
+	);
+	const settled = imageGenCardView({
+		...record,
+		details: { settled: true, cost_usd: 0.0021, billing_basis: "billed" },
+	});
+	assert.equal(settled.settlementCaption, "Cost $0.0021 (billed).");
+	assert.ok(markupOf(settled).includes("Cost $0.0021 (billed)."));
+	/*
+	 * ONE FACT, ONE ROW (design D7, UX U8/U9). The settlement row below the line
+	 * IS the answer to "Checking for settlement", so keeping the clause above it
+	 * repeats the fact in the pending state and contradicts it once billed. Both
+	 * arms retire the clause; the rest of the sentence is untouched.
+	 */
+	assert.equal(
+		markupOf(imageGenCardView(record)).includes("Checking for settlement"),
+		false,
+	);
+	assert.ok(markupOf(imageGenCardView(record)).includes("Settlement pending"));
+	assert.equal(markupOf(settled).includes("Checking for settlement"), false);
+	/*
+	 * THE SAME RETIREMENT WHEN THE SETTLEMENT IS ITS OWN ROW: a terminal
+	 * `audio_settle_v1` journal row follows the call instead of amending its
+	 * details, which is how the harness actually delivers this state. The
+	 * transcript links the row to the call by order and passes `settled`; the
+	 * call's line must then stop asking, without printing a second receipt.
+	 */
+	const settledElsewhere = imageGenCardView(
+		tool({
+			toolName: "generate_voiceover",
+			stopped: true,
+			startedAt: 1_760_000_000_000,
+			output: "Stop requested. Checking for settlement.",
+		}),
+		{ settled: true },
+	);
+	assert.equal(settledElsewhere.settled, true);
+	const settledElsewhereMarkup = markupOf(settledElsewhere);
+	assert.ok(settledElsewhereMarkup.includes("Stop requested."));
+	assert.equal(
+		settledElsewhereMarkup.includes("Checking for settlement"),
+		false,
+	);
+	assert.equal(settledElsewhereMarkup.includes("Cost $"), false);
+	for (const details of [
+		{ settled: true, cost_usd: null, billing_basis: "billed" },
+		{ settled: null, cost_usd: null },
+		{ settled: null, cost_usd: 0.2, cost: { basis: "quote" } },
+	])
+		assert.equal(
+			imageGenCardView({ ...record, details }).settlementCaption,
+			undefined,
+		);
+});
+
+test("pane Stop and the production Escape accelerator share sound charge admission", async () => {
+	const { JSDOM } = await import("jsdom");
+	const { createRoot } = await import("react-dom/client");
+	const { act } = await import("react");
+	const dom = new JSDOM('<div id="root"></div>', { url: "http://localhost" });
+	const previous = {
+		window: globalThis.window,
+		document: globalThis.document,
+		HTMLElement: globalThis.HTMLElement,
+		IS_REACT_ACT_ENVIRONMENT: globalThis.IS_REACT_ACT_ENVIRONMENT,
+	};
+	Object.assign(globalThis, {
+		window: dom.window,
+		document: dom.window.document,
+		HTMLElement: dom.window.HTMLElement,
+		IS_REACT_ACT_ENVIRONMENT: true,
+	});
+	const root = createRoot(document.getElementById("root"));
+	let calls = 0;
+	const dispatch = () => calls++;
+	const restore = () => document.querySelector("textarea").focus();
+	const Pane = ({
+		sound = true,
+		available = true,
+		sessionId = "[redacted]-sound-pane",
+	}) => {
+		const { paneRef, stop, confirmation } = useSoundStopGate({
+			sessionId,
+			runningSound: sound,
+			available,
+			onInterrupt: dispatch,
+			onRestoreFocus: restore,
+		});
+		useInterruptOnEscape({
+			sessionId,
+			turnAlive: true,
+			available,
+			onInterrupt: stop,
+		});
+		return h(
+			"div",
+			{ ref: paneRef, "data-chat-pane": "" },
+			sound
+				? h(ImageGenCard, {
+						scope: null,
+						view: imageGenCardView(
+							tool({
+								toolName: "generate_voiceover",
+								phase: "running",
+								startedAt: Date.now(),
+							}),
+						),
+						actions: { onCancel: dispatch },
+					})
+				: null,
+			confirmation,
+			h("textarea"),
+			h("button", { type: "button", onClick: stop }, "Pane stop"),
+		);
+	};
+	const press = async (label) => {
+		const button = [...document.querySelectorAll("button")].find(
+			(b) => b.textContent === label,
+		);
+		assert.ok(button);
+		await act(async () => button.click());
+	};
+	const pressEscape = async () => {
+		await act(async () =>
+			document.dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: "Escape",
+					bubbles: true,
+					cancelable: true,
+				}),
+			),
+		);
+	};
+	try {
+		await act(async () => root.render(h(Pane)));
+		await press("Stop");
+		await press("Pane stop");
+		assert.equal(document.querySelectorAll("fieldset").length, 1);
+		assert.equal(calls, 0);
+		await pressEscape();
+		assert.equal(document.activeElement.textContent, "Stop");
+		await press("Pane stop");
+		await press("Stop");
+		assert.equal(document.querySelectorAll("fieldset").length, 1);
+		assert.equal(calls, 0);
+		await pressEscape();
+		await press("Pane stop");
+		assert.equal(calls, 0);
+		assert.equal(document.activeElement.textContent, "Keep waiting");
+		await press("Pane stop");
+		assert.equal(document.querySelectorAll("fieldset").length, 1);
+		assert.equal(calls, 0);
+		await pressEscape();
+		assert.equal(calls, 0);
+		assert.equal(document.activeElement.tagName, "TEXTAREA");
+		assert.equal(document.querySelector("fieldset"), null);
+		await pressEscape();
+		assert.equal(calls, 0);
+		assert.ok(document.querySelector("fieldset"));
+		await pressEscape();
+		assert.equal(calls, 0);
+		assert.equal(document.querySelector("fieldset"), null);
+		await press("Pane stop");
+		await press("Keep waiting");
+		assert.equal(calls, 0);
+		await press("Pane stop");
+		await press("Request stop");
+		assert.equal(calls, 1);
+		/*
+		 * THE QUESTION'S SUBJECT SETTLED UNDER IT (review round 2, NIT): the safe
+		 * choice that holds focus unmounts with the open question, so the gate must
+		 * restore the composer rather than leave the keyboard on `<body>`.
+		 */
+		await press("Pane stop");
+		assert.ok(document.querySelector("fieldset"));
+		await act(async () => root.render(h(Pane, { sound: false })));
+		assert.equal(document.querySelector("fieldset"), null);
+		assert.equal(
+			document.activeElement.tagName,
+			"TEXTAREA",
+			"a sound call settling mid-question restores the pane composer",
+		);
+		assert.equal(calls, 1);
+		await act(async () => root.render(h(Pane)));
+		await press("Stop");
+		await act(async () => root.render(h(Pane, { sound: false })));
+		assert.equal(
+			document.activeElement.tagName,
+			"TEXTAREA",
+			"removing a confirming card restores its own pane composer",
+		);
+		await press("Pane stop");
+		assert.equal(calls, 2, "ordinary turn interrupt remains immediate");
+		await pressEscape();
+		assert.equal(calls, 3);
+		await act(async () =>
+			root.render(h(Pane, { sound: true, available: false })),
+		);
+		await press("Pane stop");
+		await pressEscape();
+		assert.equal(calls, 3, "capability denial remains authoritative");
+	} finally {
+		await act(async () => root.unmount());
+		dom.window.close();
+		Object.assign(globalThis, previous);
+	}
+});
+
+/** Same attachment refs as the canonical reducer, deliberately reverse ordered. */
+const batchFixture = (count, failed = -1) => {
+	const artifacts = Array.from({ length: count }, (_, index) => ({
+		name: index < 2 ? "Rain on glass" : `Sound ${index + 1}`,
+		digest: index === failed ? null : `batch-${index}`,
+		path: index === failed ? null : `/fixture/sound-${index}.wav`,
+		duration_s: 2 + index,
+		format: "wav",
+		cost_usd: index === failed ? 0 : (index + 1) / 1000,
+		cost: {
+			amount_usd: index === failed ? 0 : (index + 1) / 1000,
+			basis: index % 2 ? "estimated" : "billed",
+		},
+		status: index === failed ? "failed" : "completed",
+		request_id: `fixture-${index}`,
+		error:
+			index === failed
+				? "audio_rejected: server returned 400 — invalid duration"
+				: null,
+	}));
+	const images = artifacts
+		.flatMap((item) =>
+			item.error
+				? []
+				: [
+						{
+							id: item.digest,
+							attachment: item.digest,
+							kind: "audio",
+							data: "AAAA",
+							mimeType: "audio/wav",
+							durationS: item.duration_s,
+							name: item.name,
+						},
+					],
+		)
+		.reverse();
+	return { artifacts, images };
+};
+
+test("batch receipts preserve duplicate names, attachment identity and billing basis", () => {
+	const { artifacts, images } = batchFixture(4, 1);
+	const items = soundBatchItems({ artifacts, cost_complete: true }, images);
+	assert.equal(items.length, 4);
+	assert.deepEqual(
+		items.map((item) => item.label),
+		["Rain on glass", "Rain on glass (2)", "Sound 3", "Sound 4"],
+	);
+	assert.equal(
+		items[1].name,
+		"Rain on glass",
+		"backend identity remains verbatim",
+	);
+	assert.equal(items[0].audio, images[2], "match digest, not completion order");
+	assert.equal(items[1].audio, null);
+	assert.ok(
+		items[1].error.includes("audio_rejected") && items[1].error.includes("400"),
+	);
+	assert.equal(items[0].costCaption, "Cost $0.001 (billed).");
+	assert.equal(items[3].costCaption, "Cost $0.004 (estimated).");
+});
+
+test("batch adapter leaves absent, malformed and single-result receipts on the approved path", () => {
+	const { artifacts, images } = batchFixture(1);
+	for (const details of [null, {}, { artifacts }, { artifacts: [null, {}] }]) {
+		assert.equal(soundBatchItems(details, images), null);
+	}
+});
+
+test("4, 5 and 10 item batches render the existing players and honest partial failures", () => {
+	for (const count of [4, 5, 10]) {
+		const { artifacts, images } = batchFixture(count, count === 4 ? 1 : -1);
+		const view = imageGenCardView(
+			tool({
+				toolName: "generate_sound_effect",
+				details: {
+					artifacts,
+					cost_usd: 0.008,
+					cost: { basis: "billed" },
+					cost_complete: true,
+				},
+				images,
+			}),
+		);
+		const html = markupOf(view);
+		assert.equal(html.split("data-sound-batch-item=").length - 1, count);
+		assert.equal(html.split("data-sound-player=").length - 1, images.length);
+		assert.ok(html.includes("Rain on glass (2)"));
+		assert.ok(html.includes("Total cost $0.008 (billed)"));
+		assert.ok(html.includes("Cost $0.003 (billed)"));
+		if (count === 4) {
+			assert.ok(html.includes("3 completed · 1 failed"));
+			assert.ok(html.includes("audio_rejected: server returned 400"));
+		}
+	}
+});
+
+test("batch detail carrier accepts receipts and preserves equal replay identity without hiding edits", () => {
+	const details = { artifacts: batchFixture(4, 1).artifacts };
+	assert.equal(preferProgressDetails(details, null), details);
+	assert.equal(
+		preferProgressDetails(structuredClone(details), details),
+		details,
+	);
+	for (const [field, changed] of [
+		["name", "New name"],
+		["error", "audio_rejected: new server reason"],
+		["cost_usd", 0.25],
+		["digest", "another-digest"],
+	]) {
+		const next = structuredClone(details);
+		next.artifacts[0][field] = changed;
+		assert.equal(
+			preferProgressDetails(next, details),
+			next,
+			`${field} must invalidate the receipt`,
+		);
+	}
+});
+
+test("byte-identical named requests retain separate rows, players and costs", () => {
+	const { artifacts, images } = batchFixture(2);
+	artifacts[1].name = "Different request, identical bytes";
+	artifacts[1].digest = artifacts[0].digest;
+	artifacts[1].request_id = artifacts[0].request_id;
+	const items = soundBatchItems({ artifacts, cost_complete: true }, [
+		images[1],
+	]);
+	assert.equal(items.length, 2);
+	assert.equal(items[0].audio, items[1].audio);
+	assert.notEqual(items[0].id, items[1].id);
+	assert.equal(items[1].name, "Different request, identical bytes");
+	const html = markupOf(
+		imageGenCardView(
+			tool({
+				toolName: "generate_sound_effect",
+				details: { artifacts, cost_complete: true },
+				images: [images[1]],
+			}),
+		),
+	);
+	assert.equal(html.split("data-sound-player=").length - 1, 2);
+	assert.ok(html.includes("Cost $0.001 (billed)."));
+	assert.ok(html.includes("Cost $0.002 (estimated)."));
+});
+
+test("all-failed batch retains its failed state and every server reason", () => {
+	const { artifacts } = batchFixture(4);
+	for (const item of artifacts) {
+		item.error = "audio_rejected: server 400";
+		item.status = "failed";
+		item.cost_usd = null;
+		item.cost = { amount_usd: null, basis: "quote" };
+	}
+	const view = imageGenCardView(
+		tool({
+			toolName: "generate_sound_effect",
+			isError: true,
+			details: {
+				artifacts,
+				cost_usd: null,
+				cost_complete: false,
+				cost: { basis: "estimated" },
+			},
+		}),
+	);
+	assert.equal(view.state, "failed");
+	const html = markupOf(view);
+	assert.equal(html.split("data-sound-batch-item=").length - 1, 4);
+	assert.equal(html.split("data-sound-player=").length - 1, 0);
+	assert.ok(html.includes("0 completed · 4 failed"));
+	assert.ok(html.includes("Total cost not yet known."));
+});
+
+test("incomplete cost is labelled a known subtotal and never a final charge", () => {
+	const { artifacts, images } = batchFixture(4, 1);
+	const view = imageGenCardView(
+		tool({
+			toolName: "generate_sound_effect",
+			details: {
+				artifacts,
+				cost_usd: 0.008,
+				cost: { basis: "estimated" },
+				cost_complete: false,
+			},
+			images,
+		}),
+	);
+	assert.equal(
+		view.costCaption,
+		"Known total cost $0.008 (estimated). Unknown or late charges are not included.",
+	);
+	const updated = structuredClone({ artifacts });
+	updated.artifacts[0].cost.basis = "estimated";
+	const previous = { artifacts };
+	assert.equal(preferProgressDetails(updated, previous), updated);
+	assert.equal(
+		preferProgressDetails(structuredClone(previous), previous),
+		previous,
+	);
+});
+
+test("stopped batches retain successes, cancelled items and known subtotal warnings", () => {
+	const { artifacts, images } = batchFixture(4, 1);
+	artifacts[1].status = "cancelled";
+	artifacts[1].error = "Stop requested; provider outcome unknown";
+	artifacts[1].cost_usd = null;
+	artifacts[1].cost = { basis: "quote" };
+	const view = imageGenCardView(
+		tool({
+			toolName: "generate_sound_effect",
+			stopped: true,
+			details: {
+				artifacts,
+				cost_usd: 0.008,
+				cost: { basis: "estimated" },
+				cost_complete: false,
+			},
+			images,
+		}),
+	);
+	assert.equal(view.state, "cancelled");
+	const html = markupOf(view);
+	assert.equal(html.split("data-sound-player=").length - 1, 3);
+	assert.ok(html.includes("1 cancelled/stopped"));
+	assert.ok(html.includes("Unknown or late charges are not included."));
+});
+
+test("duplicate display suffixes never steal a literal backend name", () => {
+	const { artifacts, images } = batchFixture(4);
+	artifacts[0].name = "Rain";
+	artifacts[1].name = "Rain";
+	artifacts[2].name = "Rain (2)";
+	const items = soundBatchItems({ artifacts, cost_complete: true }, images);
+	assert.equal(new Set(items.map((item) => item.label)).size, 4);
+	assert.equal(items[2].label, "Rain (2)");
+});
+
+test("one-item batch keeps its name and nested cost without changing legacy singles", () => {
+	const { artifacts, images } = batchFixture(1);
+	const batch = imageGenCardView(
+		tool({
+			toolName: "generate_sound_effect",
+			details: {
+				artifacts,
+				completed: 1,
+				failed: 0,
+				cancelled: 0,
+				cost_complete: true,
+				cost_usd: 0.001,
+				cost: { basis: "billed" },
+			},
+			images,
+		}),
+	);
+	assert.equal(batch.batch.length, 1);
+	const html = markupOf(batch);
+	assert.ok(html.includes("Rain on glass"));
+	assert.ok(html.includes("Total cost $0.001 (billed)."));
+	assert.ok(html.includes("Cost $0.001 (billed)."));
+	assert.equal(html.split("data-sound-player=").length - 1, 1);
+	const legacy = imageGenCardView(
+		tool({
+			toolName: "generate_sound_effect",
+			details: { artifacts, cost_usd: 0.001, billing_basis: "billed" },
+			images,
+		}),
+	);
+	assert.equal(legacy.batch, null);
+	assert.equal(legacy.costCaption, "Cost $0.001 (billed).");
+});
+
+test("batch summary uses server counters and attention names, never fabricates completion", () => {
+	const { artifacts, images } = batchFixture(4, 1);
+	artifacts[2].status = "future_status";
+	const view = imageGenCardView(
+		tool({
+			toolName: "generate_sound_effect",
+			details: {
+				artifacts,
+				completed: 2,
+				failed: 1,
+				cancelled: 0,
+				cost_complete: false,
+			},
+			images,
+		}),
+	);
+	assert.equal(view.batch[2].status, "unknown");
+	assert.equal(
+		view.batchSummary,
+		"2 completed · 1 failed · 1 status unknown. Needs attention: Rain on glass (2); Sound 3",
+	);
+	const html = markupOf(view);
+	assert.ok(html.includes("Rain on glass (2) · Failed"));
+	assert.ok(html.includes("Status unknown"));
+	assert.ok(
+		!view.batchSummary.includes("Sound 4"),
+		"completed names stay in their rows, not the index",
+	);
+	const next = {
+		artifacts,
+		completed: 3,
+		failed: 1,
+		cancelled: 0,
+		cost_complete: false,
+	};
+	const previous = { ...next, completed: 2 };
+	assert.equal(preferProgressDetails(next, previous), next);
+});
+
+test("batch cause and class survive failed and stopped receipt presentation", () => {
+	const { artifacts } = batchFixture(2, 0);
+	const view = imageGenCardView(
+		tool({
+			toolName: "generate_sound_effect",
+			isError: true,
+			output:
+				"Sound effects: 0 completed. Batch time budget reached. In-flight stop is best-effort.\n1/2 Rain: failed",
+			details: {
+				artifacts,
+				cost_complete: false,
+				error_type: "audio_rejected",
+			},
+		}),
+	);
+	assert.equal(view.errorType, "Audio rejected");
+	assert.ok(view.message.includes("Batch time budget reached"));
+	assert.equal(
+		view.batchNote,
+		"Batch time budget reached. In-flight stop is best-effort.",
+	);
+	const html = markupOf(view);
+	assert.ok(html.includes("Audio rejected"));
+	assert.ok(html.includes("Batch time budget reached"));
+});
+
+test("batch failure zero is not presented as an estimated charge", () => {
+	const { artifacts } = batchFixture(2, 0);
+	artifacts[0].cost.basis = "estimated";
+	let items = soundBatchItems({ artifacts, cost_complete: true }, []);
+	assert.equal(
+		items[0].costCaption,
+		"Estimated cost $0; final charge not confirmed.",
+	);
+	artifacts[0].cost.basis = "billed";
+	items = soundBatchItems({ artifacts, cost_complete: true }, []);
+	assert.equal(items[0].costCaption, "No charge.");
+});
+
+test("running batch states request count and latest item without inventing completion", () => {
+	const details = { item: 3, total: 10, name: "Rain" };
+	assert.equal(preferProgressDetails(details, null), details);
+	const view = imageGenCardView(
+		tool({ toolName: "generate_sound_effect", phase: "running", details }),
+	);
+	const html = markupOf(view);
+	assert.ok(html.includes("Generating 10 sound effects…"));
+	assert.ok(html.includes("Latest update: Rain (item 3 of 10)."));
+	assert.ok(!html.includes("3 of 10 done"));
+	const requested = imageGenCardView(
+		tool({
+			toolName: "generate_sound_effect",
+			phase: "running",
+			args: { sounds: [{ name: "Rain" }] },
+		}),
+	);
+	assert.ok(markupOf(requested).includes("Generating 1 sound effect…"));
+});
+
+test("shared digest rows own separate transport controls and keyboard state", async () => {
+	const { JSDOM } = await import("jsdom");
+	const { createRoot } = await import("react-dom/client");
+	const { act } = await import("react");
+	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
+		url: "http://localhost/",
+		pretendToBeVisual: true,
+	});
+	const keys = [
+		"window",
+		"document",
+		"HTMLElement",
+		"HTMLCanvasElement",
+		"ResizeObserver",
+		"Audio",
+		"IS_REACT_ACT_ENVIRONMENT",
+		"requestAnimationFrame",
+		"cancelAnimationFrame",
+	];
+	const previous = Object.fromEntries(
+		keys.map((key) => [key, globalThis[key]]),
+	);
+	class SilentAudio {
+		currentTime = 0;
+		duration = 3;
+		src = "";
+		volume = 1;
+		playbackRate = 1;
+		play() {
+			return Promise.resolve();
+		}
+		pause() {}
+		load() {}
+		removeAttribute() {}
+	}
+	const frames = new Map();
+	let nextFrame = 0;
+	// JSDOM has no geometry; keep observation inert, as the player suite does.
+	class SilentResizeObserver {
+		observe() {}
+		unobserve() {}
+		disconnect() {}
+	}
+	globalThis.Audio = SilentAudio;
+	Object.assign(globalThis, {
+		window: dom.window,
+		document: dom.window.document,
+		HTMLElement: dom.window.HTMLElement,
+		HTMLCanvasElement: dom.window.HTMLCanvasElement,
+		ResizeObserver: SilentResizeObserver,
+		IS_REACT_ACT_ENVIRONMENT: true,
+		requestAnimationFrame: (callback) => {
+			const id = ++nextFrame;
+			frames.set(id, callback);
+			return id;
+		},
+		cancelAnimationFrame: (id) => frames.delete(id),
+	});
+	dom.window.HTMLCanvasElement.prototype.getContext = () => null;
+	const root = createRoot(dom.window.document.querySelector("#root"));
+	try {
+		const { artifacts, images } = batchFixture(2);
+		artifacts[1].digest = artifacts[0].digest;
+		const view = imageGenCardView(
+			tool({
+				toolName: "generate_sound_effect",
+				details: { artifacts, cost_complete: true },
+				images: [images[1]],
+			}),
+		);
+		await act(async () => root.render(h(ImageGenCard, { view, scope: null })));
+		const rows = [
+			...dom.window.document.querySelectorAll("[data-sound-batch-item]"),
+		];
+		const statuses = () =>
+			rows.map((row) =>
+				row
+					.querySelector("[data-sound-player]")
+					.getAttribute("data-sound-status"),
+			);
+		await act(async () => rows[0].querySelector("button").click());
+		assert.deepEqual(statuses(), ["playing", "idle"]);
+		await act(async () => {
+			useAudioEngineStore.getState().element.currentTime = 2;
+			const pending = [...frames.values()];
+			frames.clear();
+			for (const callback of pending) callback(0);
+		});
+		assert.equal(
+			rows[0].querySelector("[role=slider]").getAttribute("aria-valuenow"),
+			"2",
+		);
+		assert.equal(
+			rows[1].querySelector("[role=slider]").getAttribute("aria-valuenow"),
+			"0",
+		);
+		await act(async () => rows[1].querySelector("button").click());
+		assert.deepEqual(
+			statuses(),
+			["idle", "playing"],
+			"second press starts its own row, not pause the sibling",
+		);
+		await act(async () =>
+			rows[1]
+				.querySelector("[role=slider]")
+				.dispatchEvent(
+					new dom.window.KeyboardEvent("keydown", { key: " ", bubbles: true }),
+				),
+		);
+		assert.deepEqual(statuses(), ["idle", "paused"]);
+		assert.equal(
+			dom.window.document.querySelectorAll("ul > li[data-sound-batch-item]")
+				.length,
+			2,
+		);
+	} finally {
+		await act(async () => {
+			useAudioEngineStore.getState().stop();
+			root.unmount();
+		});
+		useAudioEngineStore.setState({ element: null });
+		dom.window.close();
+		Object.assign(globalThis, previous);
+	}
+});
+
+test("batch title follows its material rather than assuming sound effects", () => {
+	const { artifacts, images } = batchFixture(2);
+	const view = imageGenCardView(
+		tool({
+			toolName: "generate_voiceover",
+			details: { artifacts, cost_complete: true },
+			images,
+		}),
+	);
+	const html = markupOf(view);
+	assert.ok(html.includes("Voiceover batch"));
+	assert.ok(!html.includes("Sound effect batch"));
 });

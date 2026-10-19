@@ -15,7 +15,14 @@ import {
 	Plus,
 	X,
 } from "lucide-react";
-import { type FC, useEffect, useMemo, useRef, useState } from "react";
+import {
+	type FC,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useConsoleBlipPulse } from "../hooks/use-console-attention";
 import { useConsoleSession } from "../hooks/use-console-session";
 import {
@@ -148,7 +155,22 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	 * would be an answer to a question nobody is asking, with a second press in it
 	 * making a second surface.
 	 */
-	const [creating, setCreating] = useState(false);
+	/*
+	 * A COUNT, NOT A FLAG (agent review round 2, m-1): the `+` press and the
+	 * open-from-outside path can both have a create in flight, and with one boolean
+	 * whichever answered first re-enabled the `+` while the other was still running.
+	 * `creating` is true while ANY create runs.
+	 */
+	const [createsInFlight, setCreatesInFlight] = useState(0);
+	const creating = createsInFlight > 0;
+	const beginCreate = useCallback(
+		() => setCreatesInFlight((count) => count + 1),
+		[],
+	);
+	const endCreate = useCallback(
+		() => setCreatesInFlight((count) => Math.max(0, count - 1)),
+		[],
+	);
 	/* One answer for the whole list: whether a completion is still fresh enough to
 	   pulse (§12.2's two states), asked once rather than per row. */
 	const blipPulsing = useConsoleBlipPulse(unseen);
@@ -441,6 +463,70 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	}, [surfaces, surface, pendingClose, pendingDismiss]);
 
 	/*
+	 * THE USER'S OWN CREATE SHOWS WHAT IT MADE (#1084). An explicit `+` (or the empty
+	 * state's create, or its retry) is a request for a new terminal to work in, so the
+	 * lens moves to the created surface and the caret is armed for it. Without this the
+	 * stored lens won `pickActiveSurface` and the pane kept showing the old surface,
+	 * with the new one only a list row. Armed by the ANSWER, as the open-from-outside
+	 * path is (agent review round 3, M1): a refused or empty create arms nothing.
+	 *
+	 * THE LENS IS MOVED BY AN EFFECT, NOT IN THE `.then`. The store update is sync-lane
+	 * and the listing that holds the new surface is React state queued in the same tick,
+	 * so writing the lens directly rendered once with the new id and the OLD listing:
+	 * `pickActiveSurface` fell back to the old surface and the lens-sync effect below
+	 * wrote it straight back. Held as state, the id commits together with the listing.
+	 * The lens is set before the caret is armed because the token is consumed by the
+	 * mirror that mounts with it, and that has to be the new surface's mirror.
+	 */
+	const [showCreated, setShowCreated] = useState<{
+		id: string;
+		from: string | null;
+	} | null>(null);
+	/*
+	 * ONE CREATE PER PRESS IN FLIGHT (agent review round 1, F-2). The press holds
+	 * `creating` for the round trip, exactly as the open-from-outside path does, so the
+	 * header `+` is disabled while it runs. The ref is the guard and the state is the
+	 * render: two clicks dispatched before React commits the disabled button would
+	 * both read `creating` as false.
+	 */
+	const pressInFlight = useRef(false);
+	const createFromPress = useCallback(() => {
+		if (pressInFlight.current) return;
+		pressInFlight.current = true;
+		beginCreate();
+		// The lens at press time: a row the user picks while the create is in flight is
+		// a later, explicit choice, and the landing create must not override it (F-3).
+		const from = stored;
+		void session
+			.createSurface()
+			.then((created) => {
+				if (created !== null) setShowCreated({ id: created, from });
+			})
+			.finally(() => {
+				pressInFlight.current = false;
+				endCreate();
+			});
+	}, [session.createSurface, stored, beginCreate, endCreate]);
+	useEffect(() => {
+		if (showCreated === null) return;
+		/*
+		 * `stored === showCreated.id` is not a later pick (agent review round 2, M-1):
+		 * main broadcasts the state change BEFORE the create's reply, so the hook's
+		 * re-read can commit the new listing first and the lens-sync effect below
+		 * already moved the lens to the created surface (an empty-state create or retry,
+		 * where `from` is null). Dropping here lost the caret.
+		 */
+		if (stored !== showCreated.from && stored !== showCreated.id) {
+			setShowCreated(null);
+			return;
+		}
+		if (!surfaces.some((row) => row.surface === showCreated.id)) return;
+		setShowCreated(null);
+		setStored(showCreated.id);
+		setFocusRequest((value) => value + 1);
+	}, [showCreated, surfaces, stored, setStored]);
+
+	/*
 	 * The lens follows what is actually shown, and that write is what makes the
 	 * recall survive a switch: the pane is unmounted while the user is in another
 	 * conversation, so the only thing that can remember "this session was reading
@@ -541,11 +627,11 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		 * choose.
 		 */
 		if (action === "create") {
-			setCreating(true);
+			beginCreate();
 			/*
 			 * THE REQUEST IS CLEARED WHEN THE CREATE ANSWERS, not when it is made — the same
 			 * rule the comment above states, applied one step further than the first cut did.
-			 * Clearing it here, beside `setCreating(true)`, still painted the empty state for
+			 * Clearing it here, beside `beginCreate()`, still painted the empty state for
 			 * one commit, and the reason is the instrument's: a write to the preferences store
 			 * inside this effect flushes a render of its own (the store is read through
 			 * `useSyncExternalStore`, whose update is sync-lane) BEFORE the `creating` update
@@ -555,7 +641,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			 * a state sampled after the round trip never could.
 			 *
 			 * THE CARET IS ARMED BY THE ANSWER, NOT BY THE PRESS (agent review round 3, M1).
-			 * It used to be armed on the way IN, beside `setCreating(true)`, and the created
+			 * It used to be armed on the way IN, beside `beginCreate()`, and the created
 			 * surface's own mirror then spent it on mount — which works for a create that
 			 * succeeds and leaves the request armed for a create that FAILS, with nothing
 			 * that will ever spend it: the next surface to appear in this conversation by ANY
@@ -563,18 +649,18 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			 * `console_create` fires) mounted a mirror that inherited the armed token and
 			 * pulled the caret out of the composer, which is the case UX's U1 named. So the
 			 * invariant is now "the caret is armed by the ANSWER, and only when there is a
-			 * surface to put it in": `createSurface` resolves whether the listing after the
-			 * create holds one, and a refused or empty answer arms nothing.
+			 * surface to put it in": `createSurface` resolves the created id when the listing
+			 * after the create holds it, or `null`, and a `null` answer arms nothing.
 			 */
 			void session
 				.createSurface()
 				.then((created) => {
-					if (!created) return;
+					if (created === null) return;
 					setAwaitingSurface(true);
 					setFocusRequest((value) => value + 1);
 				})
 				.finally(() => {
-					setCreating(false);
+					endCreate();
 					clearOpenIntent(sessionId);
 				});
 		} else {
@@ -591,6 +677,8 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		available,
 		surface,
 		clearOpenIntent,
+		beginCreate,
+		endCreate,
 	]);
 
 	if (sessionId === null) {
@@ -718,13 +806,13 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				return (
 					<ConsoleCreateFailed
 						message={session.createError}
-						onRetry={session.createSurface}
+						onRetry={createFromPress}
 					/>
 				);
 			}
 			return (
 				<ConsoleEmpty
-					onCreate={session.createSurface}
+					onCreate={createFromPress}
 					disabled={sessionId === null}
 				/>
 			);
@@ -1076,7 +1164,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 							variant="ghost"
 							size="icon-sm"
 							aria-label={t("ui.console.new")}
-							onClick={session.createSurface}
+							onClick={createFromPress}
 							/* DISABLED WHEN THERE IS NOTHING TO ACT ON, which is the pane's
 							   own stated principle ("a control with nothing to act on lies"):
 							   in the unavailable state the `+` rendered identically to the
@@ -1195,6 +1283,10 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				   sibling of the tab button (a button inside a button is not HTML), and the
 				   two states it serves are named on the row itself. */
 				<div
+					/* A tab strip is chrome, not a track: clear on glass, with the
+					 * selected surface's pill taking the selected ink overlay
+					 * (styles/index.css, window glass round 3). */
+					data-glass-plane="clear"
 					className={cn(
 						"flex shrink-0 items-center gap-1 overflow-x-auto border-hairline border-b bg-surface px-2 py-1",
 					)}

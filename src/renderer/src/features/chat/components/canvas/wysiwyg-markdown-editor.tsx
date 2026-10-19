@@ -42,6 +42,7 @@ import type { CanvasDocument } from "../../types/canvas";
 import { closeDocumentBuffer } from "./close-report";
 import {
 	adoptBuffer,
+	bufferText,
 	commitCanvasDocument,
 	proposeBuffer,
 	saveBuffer,
@@ -399,7 +400,16 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	agentId,
 	initialFormatMenuOpen = false,
 }) => {
-	const [content, setContent] = useState(document.content);
+	/*
+	 * A REMOUNT MUST SHOW THE RETAINED DRAFT, not the file's bytes. The buffer
+	 * owner outlives this component (dock/route switches unmount it), so the
+	 * editor's first paint and its document-id effect below both hydrate from
+	 * `bufferText` when a buffer exists; `document.content` is only the fallback
+	 * for a document the owner has never seen.
+	 */
+	const [content, setContent] = useState(
+		() => bufferText(document.id) ?? document.content,
+	);
 	const [hasUserChanges, setHasUserChanges] = useState(false);
 	const [currentTextType, setCurrentTextType] = useState<TextType>("paragraph");
 	const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
@@ -827,15 +837,17 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: We need to run this effect only when the document is changed by the user
 	useEffect(() => {
 		if (editorRef.current && document.id) {
-			// Set editor content
-			const htmlContent = markdownToHtml(document.content);
+			// A retained draft wins over the file body; see the state initializer.
+			const retained = bufferText(document.id);
+			const shown = retained ?? document.content;
+			const htmlContent = markdownToHtml(shown);
 
 			if (editorRef.current.innerHTML !== htmlContent) {
 				editorRef.current.innerHTML = htmlContent;
 			}
 
-			setContent(document.content);
-			setHasUserChanges(false);
+			setContent(shown);
+			setHasUserChanges(retained !== null && retained !== document.content);
 			originalContentRef.current = document.content;
 			isInitialLoadRef.current = true;
 		}
@@ -1773,6 +1785,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 	return (
 		<div
+			/* A PLANE, NOT A GROUND: the pane owns the alpha; see the Files scroller's
+			 * note and styles/index.css (window glass round 3). */
+			data-glass-plane="clear"
 			className={cn(
 				// A query container, so the toolbar can respond to how wide the
 				// canvas panel has been dragged rather than to the window. A
@@ -1816,6 +1831,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			 * 520px and everything left fits inside 400.
 			 */}
 			<div
+				/* A BAND: the document's toolbar masks nothing, so it takes the field
+				 * overlay rather than a second ground. */
+				data-glass-plane="band"
 				className={cn(
 					// Groups are 8px apart and members 4px apart — both tier-one
 					// values from the 4px ramp, so the rhythm alone carries the
@@ -2041,6 +2059,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 			<div
 				ref={editorContentRef}
+				/* The document body is the pane's content plane: clear on glass, so the
+				 * pane's single ground shows through (styles/index.css, round 3). */
+				data-glass-plane="clear"
 				className={cn(
 					// 24px at the panel's narrowest, 32px once there is room. The old
 					// flat 32px took 64px of a 400px panel.

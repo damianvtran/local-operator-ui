@@ -1,0 +1,18 @@
+{
+	"ui.agents.refusals.name_taken": "Un agent nommé « {name} » existe déjà. Choisissez un autre nom, ou ouvrez l’existant pour le modifier.",
+	"ui.agents.refusals.name_grammar": "Les noms ne peuvent pas contenir d’espaces ni de barres obliques.",
+	"ui.agents.refusals.effort_unavailable": "« {tier} » n’est pas un niveau d’effort configuré. Utilisez inherit, ou ajoutez le niveau dans les paramètres.",
+	"ui.agents.refusals.team_name_bound": "Un nom d’équipe compte de 1 à 64 caractères.",
+	"ui.agents.refusals.missing_manager": "« {name} » n’est ni un agent ni une équipe sur cet ordinateur.",
+	"ui.agents.refusals.missing_member": "« {name} » n’est ni un agent ni une équipe sur cet ordinateur.",
+	"ui.agents.refusals.team_nesting": "Cette équipe serait imbriquée trop profondément, ou se contiendrait elle-même. Vérifiez ses membres.",
+	"ui.agents.refusals.class.label.proactive": "Proactif",
+	"ui.agents.refusals.class.label.reactive": "Réactif",
+	"ui.agents.refusals.class.meaning.proactive": "Il peut vous écrire de lui-même : après vous avoir envoyé quelque chose, il attend quelques minutes une réponse, relance avec des intervalles croissants un nombre fixe de fois, puis attend votre réponse — et il peut aussi se réveiller selon sa propre planification.",
+	"ui.agents.refusals.class.meaning.reactive": "Il répond quand vous lui écrivez. Il ne vous relance pas et ne se réveille pas selon sa propre planification.",
+	"ui.agents.refusals.class.effect.proactive": "Désactiver ceci arrête les relances et les réveils planifiés. Il répond toujours quand vous lui écrivez.",
+	"ui.agents.refusals.class.effect.reactive": "Activer ceci lui permet d’écrire en premier : il attendra quelques minutes votre réponse, vous relancera jusqu’à un nombre fixe de tentatives, et pourra se réveiller selon sa propre planification. Il répond toujours quand vous lui écrivez.",
+	"ui.agents.refusals.class.install_disclosure": "Celui-ci est livré avec l’application et n’a pas encore sa propre copie ; le changement l’installe donc d’abord — le même agent et les mêmes instructions, désormais modifiables — puis définit sa classe.",
+	"ui.agents.refusals.class.error.no_reason": "Le backend n’a donné aucune raison. Réessayez le changement.",
+	"ui.agents.refusals.class.error.install_landed": "{reason} L’installation a bien eu lieu ; l’agent est donc désormais modifiable."
+}

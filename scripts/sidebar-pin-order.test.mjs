@@ -89,6 +89,7 @@ const {
 	chatPinMoveCapJoined,
 	chatPinMoveChord,
 	chatPinMoveRowId,
+	appendPinnedOrder,
 	forgetPinnedOrder,
 	movePinnedOrder,
 	movePinnedOrderTo,
@@ -241,23 +242,60 @@ test("rule 1: with no stored order the catalogue's own order is passed through",
 });
 
 /*
- * RULE 3. An id the stored order does not know is drawn ABOVE every id it does -
- * the just-pinned conversation, or one pinned in the terminal between two
- * renders. Both orders matter: the unknowns keep the CATALOGUE's order among
- * themselves (which is the recency the backend sent), and the known ids keep the
- * READER's.
+ * RULE 3. An id the stored order does not know is drawn BELOW every id it does
+ * (issue #1067) - one pinned in the terminal between two renders, or any pin the
+ * order has not recorded yet. The pins already in the section keep their
+ * positions, so the list grows in the order chats were pinned. Both orders
+ * matter: the known ids keep the READER's order, and the unknowns keep the
+ * CATALOGUE's order among themselves.
  */
-test("rule 3: a pinned row the order has never seen arrives at the top", () => {
+test("rule 3: a pinned row the order has never seen arrives at the bottom", () => {
 	assert.deepEqual(pinnedOrder(["new", "b", "c"], ["c", "b"]), [
-		"new",
 		"c",
 		"b",
+		"new",
 	]);
-	// Two unknowns keep the catalogue's order among themselves.
+	// Two unknowns keep the catalogue's order among themselves, below the known.
 	assert.deepEqual(pinnedOrder(["new1", "new2", "b"], ["b"]), [
+		"b",
 		"new1",
 		"new2",
+	]);
+});
+
+/*
+ * ISSUE #1067's REPRO. Without a stored order the section is the catalogue's
+ * activity order, so a pin just made on a just-used chat would draw on top. The
+ * pin press therefore materializes the drawn order and appends the new id
+ * (`appendPinnedOrder`). The catalogue here gives the newest-activity id first
+ * every time, which is exactly the order that put each new pin on top.
+ */
+test("issue #1067: pinning A, then B, then C draws A, B, C", () => {
+	let order = [];
+	order = appendPinnedOrder(["A"], order, "A");
+	order = appendPinnedOrder(["B", "A"], order, "B");
+	order = appendPinnedOrder(["C", "B", "A"], order, "C");
+	assert.deepEqual(pinnedOrder(["C", "B", "A"], order), ["A", "B", "C"]);
+});
+
+test("appendPinnedOrder: a stale entry moves to the end, no duplicates", () => {
+	// `a` is still in the stored order (an unpin made elsewhere): it moves last.
+	assert.deepEqual(appendPinnedOrder(["b", "a", "c"], ["a", "b"], "a"), [
 		"b",
+		"c",
+		"a",
+	]);
+	// An entry for a conversation no longer pinned is dropped, and `id` is added
+	// even when the caller's list has not caught up with the pin yet.
+	assert.deepEqual(appendPinnedOrder(["b"], ["gone", "b"], "x"), ["b", "x"]);
+});
+
+test("rule 4: re-pinning after an unpin lands at the bottom", () => {
+	const unpinned = forgetPinnedOrder(["a", "b", "c"], "a");
+	assert.deepEqual(appendPinnedOrder(["a", "b", "c"], unpinned, "a"), [
+		"b",
+		"c",
+		"a",
 	]);
 });
 
@@ -304,6 +342,21 @@ test("the first move records the arrangement the reader was looking at", () => {
 	assert.deepEqual(
 		movePinnedOrder(["a", "b"], [], ["new", "a", "b"], "a", -1),
 		["a", "new", "b"],
+	);
+	// An unranked id is materialized at the BOTTOM, where rule 3 draws it, so the
+	// first move over a partly ranked set swaps the two rows the reader saw.
+	const known = ["new", "a", "b"];
+	const drawn = pinnedOrder(known, ["b", "a"]);
+	assert.deepEqual(drawn, ["b", "a", "new"]);
+	assert.deepEqual(movePinnedOrder(known, ["b", "a"], drawn, "new", -1), [
+		"b",
+		"new",
+		"a",
+	]);
+	// The same holds for a drawn id the known list has not heard of.
+	assert.deepEqual(
+		movePinnedOrder(["a", "b"], ["b", "a"], ["b", "a", "hit"], "a", 1),
+		["b", "hit", "a"],
 	);
 });
 
@@ -385,7 +438,7 @@ test("a landed move says where the row went", () => {
 });
 
 /*
- * RULE 4. Unpinning forgets the slot, so re-pinning is a NEW pin at the top
+ * RULE 4. Unpinning forgets the slot, so re-pinning is a NEW pin at the bottom
  * rather than the resurrection of a position the reader unwound - and the stored
  * list cannot accumulate ids for conversations that are no longer in the section
  * it orders. The no-op case is asserted because the caller SKIPS its store write
@@ -641,12 +694,39 @@ test("the move is a row control: a menu, a chord, and a live region", () => {
 		source,
 		/const offersPinnedMove = \(sessionId: string, nested = false\) =>\s*pinsEnabled &&\s*view\.groupBy === "section" &&\s*!nested &&\s*pinnedIndex\.has\(sessionId\)/,
 	);
-	// The row it renders is the ordered one: the section draws the permutation,
-	// not the catalogue list it was computed from.
-	assert.match(
-		source,
-		/\{orderedPinned\.map\(\(row\) => sessionRow\(row\)\)\}/,
+	// Tags subdivide the ranked input, never replace it with catalogue order.
+	// The flat path and every occupied bucket still use the same row renderer;
+	// the tag grouping lane separately pins stable order within each bucket.
+	assert.ok(source.includes("{taggedRows(orderedPinned)}"));
+	const grouping = source.slice(
+		source.indexOf("const taggedRows = ("),
+		source.indexOf("const sessionRow = ("),
 	);
+	assert.ok(
+		grouping.includes(
+			"if (!groups) return rows.map((row) => sessionRow(row));",
+		),
+	);
+	// Grouped rows are non-nested and opt into the tag-drag cursor; ungrouped
+	// rows above retain the default renderer without advertising tag dragging.
+	assert.ok(
+		grouping.includes("bucket.rows.map((row) => sessionRow(row, false, true))"),
+	);
+	// LOH-11 deliberately spends one metadata slot before the unchanged Move pair.
+	// Read only shipped menu markup so a comment cannot satisfy the item budget.
+	const code = source.replace(/\/\*[\s\S]*?\*\//g, "");
+	const menuStart = code.indexOf("<ContextMenuContent");
+	const menu = code.slice(
+		menuStart,
+		code.indexOf("</ContextMenuContent>", menuStart),
+	);
+	assert.equal(menu.split("<ContextMenuItem").length - 1, 10);
+	assert.equal(menu.split('t("ui.chat.tags.menu")').length - 1, 1);
+	const tagsGate = menu.indexOf("{tagsAvailable && (");
+	const tagsLabel = menu.indexOf('t("ui.chat.tags.menu")');
+	assert.ok(tagsGate >= 0 && tagsGate < tagsLabel);
+	assert.ok(tagsLabel < menu.indexOf("</ContextMenuItem>", tagsGate));
+	assert.ok(tagsLabel < menu.indexOf("{offersMove && ("));
 });
 
 /*
@@ -697,7 +777,10 @@ test("the grip is a drag handle: pointer-only, hover-revealed, and one write per
 	assert.match(grip, /onPointerDown=\{\(event\) =>/);
 	assert.match(grip, /startPinDrag\(row\.session_id, label, event\)/);
 	assert.match(grip, /onPointerMove=\{movePinDrag\}/);
-	assert.match(grip, /onPointerUp=\{\(\) => settlePinDrag\(true\)\}/);
+	assert.match(
+		grip,
+		/onPointerUp=\{\(event\) =>\s*settlePinDrag\(true, \{ x: event.clientX, y: event.clientY \}\)/,
+	);
 	assert.match(grip, /onPointerCancel=\{\(\) => settlePinDrag\(false\)\}/);
 	// The press refuses a non-primary button and stops the row's own plumbing.
 	assert.match(
@@ -725,13 +808,16 @@ test("the grip is a drag handle: pointer-only, hover-revealed, and one write per
 	// A cancel writes nothing and says so; Escape is the cancel with no pointer.
 	assert.match(
 		source,
-		/if \(!commit\) \{[\s\S]{0,200}?announcePinMove\("Move cancelled\."\)/,
+		/if \(!commit \|\| !pinDropAllowedRef.current\) \{[\s\S]{0,260}?announcePinMove\(t\("ui.chat.tags.move_cancelled"\)\)/,
 	);
 	assert.match(source, /event\.key !== "Escape"/);
 	// The dragged row is marked on its own box, and the mark is a colour step. The
 	// predicate is read ONCE (`dragging`), so the attribute and the ground cannot
 	// disagree about which row is being moved.
-	assert.match(source, /const dragging = pinDrag\?\.id === row\.session_id;/);
+	assert.match(
+		source,
+		/const dragging =[\s\S]{0,120}?pinDrag\?\.id === row\.session_id \|\|[\s\S]{0,80}?rowTagDrag.armedId === row.session_id;/,
+	);
 	assert.match(source, /data-dragging=\{dragging \? "" : undefined\}/);
 	// The held row's ground is merged LAST, after `rowCurrent`, and it is ONE ground for
 	// both row states (round 2, D7 + U6): a current held row keeps its own selected fill,
@@ -773,7 +859,7 @@ test("the grip is a drag handle: pointer-only, hover-revealed, and one write per
 	);
 	// The indicator exists only during the drag, is inert, and lives in the section
 	// the rows are drawn in (so it scrolls with them).
-	assert.match(source, /pinDrag !== null && \(/);
+	assert.match(source, /pinDrag !== null && !pinHeaderTarget && \(/);
 	assert.match(source, /data-session-pin-indicator=""/);
 	assert.match(source, /ref=\{pinnedSectionRef\}/);
 	assert.match(
@@ -802,7 +888,7 @@ test("round 1's fixes are where they are written", () => {
 	assert.match(source, /settlePinDragRef\.current = settlePinDrag;/);
 	assert.match(
 		source,
-		/const end = \(\) => settlePinDragRef\.current\(true\);/,
+		/const end = \(event: PointerEvent\) => \{[\s\S]{0,100}?settlePinDragRef\.current\(true, \{[\s\S]{0,90}?event.clientY/,
 	);
 	assert.match(
 		source,
@@ -843,7 +929,10 @@ test("round 1's fixes are where they are written", () => {
 	);
 
 	// D4: the row's flyout is suppressed while the drag is armed.
-	assert.match(source, /disabled=\{pinDrag !== null\}/);
+	assert.match(
+		source,
+		/suppressed=\{[\s\S]{0,90}?pinDrag !== null \|\|[\s\S]{0,90}?rowTagDrag.armedId !== null/,
+	);
 
 	// D3, R5 and D6: the grip's COUNT, its a11y shape and its tooltip. The SHED this
 	// block used to assert (`@max-[263px]/chatsidebar:hidden!` and the panel root's

@@ -93,6 +93,7 @@ const bundle = await build({
 			export { AskDrawer } from "./src/renderer/src/features/chat/components/asks/ask-drawer";
 			export { useAskOpenPolicy } from "./src/renderer/src/features/chat/use-ask-open-policy";
 			export { askDismissals } from "./src/renderer/src/features/chat/ask-open-policy";
+			export { resolveSessionAskFrame } from "./src/renderer/src/features/chat/session-asks";
 			export { askQueueView } from "./src/renderer/src/features/chat/ask-queue";
 			export { askClaimsEscape } from "./src/renderer/src/features/chat/ask-queue";
 			export { registerComposerFocus } from "./src/renderer/src/features/chat/composer-field";
@@ -156,6 +157,7 @@ const {
 	useAskOpenPolicy,
 	askDismissals,
 	askQueueView,
+	resolveSessionAskFrame,
 	askClaimsEscape,
 	registerComposerFocus,
 	useUiPreferencesStore,
@@ -1372,4 +1374,99 @@ test("the wiring leaves the composer's routing alone", async () => {
 			`the open policy must not touch the composer's routing (${forbidden})`,
 		);
 	}
+});
+
+/* ==================================== the resumed conversation's first frame ==== */
+
+/*
+ * THE OPERATOR'S SCREENSHOT, AS A REGRESSION (the resumed-ask fix).
+ *
+ * The durable checkpoint of a resumed conversation carries no ask claim, and
+ * the aggregate index answers for it a few milliseconds later. The failure was
+ * a copy claim, not a layout one: the session drawer rendered "This runtime
+ * doesn't support queued asks." while the read was merely unfinished. So this
+ * mounts the REAL drawer over the REAL resolver's answer for the claimless
+ * frame - first with the aggregate in flight, then with its rows - and asserts
+ * the two bodies and the absent unsupported copy.
+ */
+const mountDrawerFor = async (t, frontend) => {
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	await act(async () => {
+		root.render(
+			h(AskDrawer, {
+				frontend,
+				scope: "session",
+				onClose: () => {},
+			}),
+		);
+	});
+	t.after(async () => {
+		await act(async () => root.unmount());
+		container.remove();
+	});
+	return container;
+};
+
+test("a claimless frame whose aggregate is still in flight reads 'Reading the asks…', never 'doesn't support queued asks'", async (t) => {
+	/* The exact frame a resumed checkpoint produces: present, no claim. */
+	const claimless = { asks: null, asks_open: null, asks_truncated: null };
+	const frame = resolveSessionAskFrame("fa1107000001", claimless, {
+		rows: null,
+		capability: "unknown",
+	});
+	assert.equal(
+		frame,
+		null,
+		"the resolver's pending answer is the drawer's unread frame",
+	);
+
+	const container = await mountDrawerFor(t, frame);
+	assert.match(
+		container.textContent,
+		/Reading the asks…/,
+		"the in-flight read must say it is reading",
+	);
+	assert.doesNotMatch(
+		container.textContent,
+		/don't support queued asks|doesn't support queued asks/,
+		"no read may be worded as an unsupported runtime while it is pending",
+	);
+	assert.doesNotMatch(container.textContent, /Asks unavailable/);
+});
+
+test("the same claimless frame resolves to the aggregate's rows and renders the question", async (t) => {
+	const claimless = { asks: null, asks_open: null, asks_truncated: null };
+	const entry = {
+		ask_id: "a-1",
+		session_id: "fa1107000001",
+		created_at: Date.now() - 60_000,
+		expires_at: Date.now() + 3_600_000,
+		timeout_s: 3600,
+		urgent: false,
+		status: "open",
+		delivered: false,
+		questions: [
+			{
+				id: "environment",
+				question: "Which environment?",
+				options: [{ label: "staging" }],
+			},
+		],
+	};
+	const frame = resolveSessionAskFrame("fa1107000001", claimless, {
+		rows: [entry],
+		capability: "live",
+	});
+	assert.notEqual(frame, null);
+
+	const container = await mountDrawerFor(t, frame);
+	assert.match(
+		container.textContent,
+		/Which environment\?/,
+		"the aggregate's row must render as a card",
+	);
+	assert.doesNotMatch(container.textContent, /Reading the asks…/);
+	assert.doesNotMatch(container.textContent, /doesn't support queued asks/);
 });

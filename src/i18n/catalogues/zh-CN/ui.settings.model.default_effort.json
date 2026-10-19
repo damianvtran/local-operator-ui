@@ -1,0 +1,21 @@
+{
+	"ui.settings.model.default_effort.label": "默认推理强度",
+	"ui.settings.model.default_effort.placeholder": "选择推理强度",
+	"ui.settings.model.default_effort.busy": "正在保存默认推理强度",
+	"ui.settings.model.default_effort.model_default": "模型默认值",
+	"ui.settings.model.default_effort.model_default_resolves": "此模型将以{level}运行。",
+	"ui.settings.model.default_effort.helper_ready": "对新对话生效。选择“模型默认值”时，由模型自行决定推理强度。",
+	"ui.settings.model.default_effort.loading": "正在查询此模型支持的推理强度……",
+	"ui.settings.model.default_effort.error": "无法读取此模型支持的推理强度。",
+	"ui.settings.model.default_effort.no_model": "请先选择模型，再设置推理强度。",
+	"ui.settings.model.default_effort.no_home": "你的主目录尚不可用，因此无法读取推理强度。",
+	"ui.settings.model.default_effort.settings_loading": "正在读取保存的默认推理强度……",
+	"ui.settings.model.default_effort.settings_error": "无法读取保存的默认推理强度。",
+	"ui.settings.model.default_effort.unresolved": "此模型尚未返回其支持的推理强度。",
+	"ui.settings.model.default_effort.empty": "此模型不支持调整推理强度。",
+	"ui.settings.model.default_effort.one_level": "此模型仅支持一种推理强度：{level}。",
+	"ui.settings.model.default_effort.one_level_sentinel": "此模型没有可选的推理强度，始终使用自身默认值。",
+	"ui.settings.model.default_effort.clamped": "{model}不支持{level}，已改用{resolved}。",
+	"ui.settings.model.default_effort.clamped_unset": "{model}不支持{level}，已改用“模型默认值”。",
+	"ui.settings.model.default_effort.save_failed": "默认推理强度未保存。"
+}

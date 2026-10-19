@@ -1,0 +1,11 @@
+{
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear": "साफ़ करें",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset": "रीसेट करें",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels": "मनचाही कुंजियाँ दबाएँ; Esc रद्द करता है।",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.keyboard_shortcuts": "कीबोर्ड शॉर्टकट",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you": "पैनल रेल के शॉर्टकट। किसी फ़ील्ड पर फ़ोकस करें और मनचाही कुंजियाँ दबाएँ; Esc रद्द करता है, रीसेट करें से कार्रवाई का डिफ़ॉल्ट लौटता है, और साफ़ करें से उसका शॉर्टकट हटता है।",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.no_shortcut": "कोई शॉर्टकट नहीं",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.label_press_the_keys_you_want": "{label}: मनचाही कुंजियाँ दबाएँ",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut": "{label} का शॉर्टकट साफ़ करें",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset_label_to_its_default": "{label} को उसके डिफ़ॉल्ट पर रीसेट करें"
+}

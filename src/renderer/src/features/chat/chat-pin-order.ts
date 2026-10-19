@@ -41,14 +41,18 @@ import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store
  *      they can see - and the stored order stays a permutation of the FULL list,
  *      because the move swaps two positions in it and never rebuilds it from the
  *      visible subset (`moveSection`'s own rule and its comment, one axis over).
- *   3. **A new pin arrives at the TOP.** An id the stored order does not know is
- *      drawn above every id it does: a pin made here a second ago, or one made in
- *      the terminal between two renders, is the most recent statement of intent
- *      the reader has made about this section, and burying it under an order
- *      written before it existed would be the panel overruling them.
+ *   3. **A new pin arrives at the BOTTOM** (issue #1067). An id the stored order
+ *      does not know is drawn below every id it does, so the pins already in the
+ *      section keep their positions (the pins the panel has loaded: a pin off the
+ *      loaded catalogue page with no stored slot is not in the list the order is
+ *      written from, so it is drawn below the new one once it loads, as after a
+ *      move) and the list grows in the order chats were pinned. A pin pressed
+ *      in this panel is appended to the stored order at the press
+ *      (`appendPinnedOrder`); one made in the terminal arrives unknown and lands
+ *      at the bottom through this rule.
  *   4. **Unpinning forgets.** An id leaves the stored order when it leaves the
  *      pinned set (`forgetPinnedOrder`), so re-pinning is a NEW pin and arrives at
- *      the top: the alternative is a slot the reader freed by unpinning, which
+ *      the bottom: the alternative is a slot the reader freed by unpinning, which
  *      would be invisible state they never asked to keep.
  *   5. **A boundary is a sentence, not a silence.** The row menu's two Move
  *      items are drawn inapplicable at the ends (`canMovePinnedRow` is the one
@@ -70,12 +74,14 @@ import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store
  *      `scripts/sidebar-pin-order.test.mjs` drives that round trip through the
  *      shipped store rather than asserting it from the shape of the field.
  *
- * WHY THE ORDER IS MATERIALIZED ON THE FIRST MOVE rather than seeded when a pin
- * appears: the panel cannot know the order of pins it has not drawn yet (a pin
- * made in the terminal arrives with the next catalogue read, in whatever slot the
- * catalogue gives it), so seeding early would record an arrangement the reader
- * never made. Materializing at the press records exactly what they were looking
- * at, with their move applied.
+ * WHEN THE ORDER IS MATERIALIZED: at a pin press in this panel and at the first
+ * move, never in the background. Both presses record exactly what the reader was
+ * looking at - the pin with the new id appended, the move with the move applied.
+ * The pin press has to write: with nothing stored the section is the catalogue's
+ * activity order, so a just-used chat pinned a second ago would otherwise draw on
+ * top (issue #1067). A pin made in the terminal is not seen until the next
+ * catalogue read, so it is not recorded until one of those presses; until then
+ * rule 3 draws it at the bottom.
  */
 
 /** One step of a move: up (towards the top of the section) or down. */
@@ -86,9 +92,9 @@ export type PinMoveStep = -1 | 1;
  *
  * `ids` is the pinned set in the order the CALLER has it - the catalogue's own,
  * which is the order the section draws today - and the return value is that list
- * permuted by the stored order: the ids the order does not know first, each
- * unknown keeping the catalogue's position relative to the other unknowns, then
- * the ids it does know in the stored order.
+ * permuted by the stored order: the ids it does know first, in the stored order,
+ * then the ids the order does not know (rule 3), each unknown keeping the
+ * catalogue's position relative to the other unknowns.
  *
  * AN EMPTY OR ABSENT ORDER IS THE IDENTITY, not a special case bolted on: with
  * nothing stored every id is unknown, so the loop below returns the input
@@ -116,17 +122,45 @@ export function pinnedOrder(
 	const ranked = new Set(order);
 	const placed = new Set<string>();
 	const out: string[] = [];
-	for (const id of ids) {
-		if (ranked.has(id) || placed.has(id)) continue;
-		out.push(id);
-		placed.add(id);
-	}
 	for (const id of order) {
 		if (!known.has(id) || placed.has(id)) continue;
 		out.push(id);
 		placed.add(id);
 	}
+	for (const id of ids) {
+		if (ranked.has(id) || placed.has(id)) continue;
+		out.push(id);
+		placed.add(id);
+	}
 	return out;
+}
+
+/**
+ * The stored order after a pin press in this panel: the arrangement the reader
+ * was looking at, with `id` appended at the end (rule 3, issue #1067).
+ *
+ * `ids` is the full pinned list the caller can address, in catalogue order; it may
+ * or may not hold `id` yet, because the pin write and the catalogue read race.
+ * The drawn order is materialized WITHOUT `id` so an entry the stored order still
+ * holds for it (an unpin made in the terminal, which never reached
+ * `forgetPinnedOrder`) cannot keep an old slot: the id always ends up last. The
+ * result holds no duplicates and no id outside `ids` and `id`.
+ *
+ * WHY THE PANEL WRITES IT: without the write a fresh profile draws the catalogue's
+ * activity order, and the chat just used would land on top; with it, the pins the
+ * panel has loaded keep their places. The panel writes it at the press rather than
+ * after the pin write resolves, like the unpin: if the pin write fails, the stray
+ * id is left out of the DRAWN list by `pinnedOrder`, but it stays in the stored
+ * order until the next materialization rewrites it, so a later terminal pin of that
+ * id lands in that slot rather than at the bottom.
+ */
+export function appendPinnedOrder(
+	ids: readonly string[],
+	order: readonly string[],
+	id: string,
+): string[] {
+	const others = ids.filter((entry) => entry !== id);
+	return [...pinnedOrder(others, order), id];
 }
 
 /**
@@ -180,14 +214,16 @@ export function canMovePinnedRow(
  * panel is drawing but `knownIds` has never heard of must still be addressable -
  * otherwise the first move under a search would drop the row being moved.
  *
- * THE EXTRAS GO FIRST IN THAT UNION, and that is the drawn order rather than a
- * convention: an id `knownIds` does not hold is an id the stored `order` does not
- * hold either, and rule 3 draws those at the TOP of the section. So the union
- * reads `[...extras, ...knownIds]`, the extras keeping the order the caller drew
- * them in - seeding them last would put the row the reader is looking at at the
- * BOTTOM of the first materialized arrangement, and the first move would then
- * splice the arrangement with itself (measured: `a` moved up by one and landed
- * last).
+ * EACH EXTRA IS SEEDED JUST BEFORE THE ID IT IS DRAWN ABOVE, and that is the drawn
+ * order rather than a convention: an id `knownIds` does not hold is an id the
+ * stored `order` does not hold either, so it is unranked, and rule 3 draws the
+ * unranked ids at the bottom in the caller's order. Placing each extra where
+ * `shownIds` drew it among the other unknowns (or last when nothing drawn follows
+ * it) makes the materialized base agree with the screen, while every hidden
+ * known id keeps its catalogue slot. Seeding extras anywhere else would make the
+ * base disagree with what the reader saw, and the first move would swap two rows
+ * that were not neighbours on screen (historically, under the old top-arrival
+ * rule, `a` moved up by one and landed last).
  *
  * THE MOVE IS A SWAP OF TWO POSITIONS in that materialized permutation, never a
  * splice: everything the move did not name keeps the array index it had, which is
@@ -210,10 +246,21 @@ export function movePinnedOrder(
 	// A set for the same reason `pinnedOrder`'s own membership test is one (R7): the
 	// drawn ids are few but the store's are unbounded, and this runs per move.
 	const rankable = new Set(knownIds);
-	const addressable = [
-		...shownIds.filter((entry) => !rankable.has(entry)),
-		...knownIds,
-	];
+	const before = new Map<string, string[]>();
+	let pending: string[] = [];
+	for (const entry of shownIds) {
+		if (!rankable.has(entry)) {
+			pending.push(entry);
+		} else if (pending.length > 0) {
+			before.set(entry, pending);
+			pending = [];
+		}
+	}
+	const addressable: string[] = [];
+	for (const entry of knownIds) {
+		addressable.push(...(before.get(entry) ?? []), entry);
+	}
+	addressable.push(...pending);
 	const base = pinnedOrder(addressable, order);
 	const from = base.indexOf(id);
 	const to = base.indexOf(target);

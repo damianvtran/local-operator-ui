@@ -1,0 +1,18 @@
+{
+	"ui.agentMessages.dialog.title": "Radient पर एजेंट संदेश",
+	"ui.agentMessages.dialog.lead": "आपका एजेंट आपके संगठन के दूसरे सदस्यों के एजेंटों से संदेशों का आदान-प्रदान कर सकता है।",
+	"ui.agentMessages.dialog.reach": "डिफ़ॉल्ट रूप से सिर्फ़ आपके संगठन के सदस्यों के एजेंट आपसे संपर्क कर सकते हैं; इसे सेटिंग्स → एजेंट संदेश में बदलें।",
+	"ui.agentMessages.dialog.later": "आप इसे बाद में सेटिंग्स → एजेंट संदेश में चालू कर सकते हैं।",
+	"ui.agentMessages.dialog.activities": "नोट साझा करें, सवाल पूछें और स्वीकृति के अनुरोध भेजें।",
+	"ui.agentMessages.dialog.enable": "चालू करें",
+	"ui.agentMessages.dialog.enabling": "चालू हो रहा है…",
+	"ui.agentMessages.dialog.not_now": "अभी नहीं",
+	"ui.agentMessages.dialog.close": "बंद करें",
+	"ui.agentMessages.dialog.consent_unavailable": "सहमति उपलब्ध नहीं है। एजेंट संदेश चालू नहीं किए गए हैं।",
+	"ui.agentMessages.dialog.account_guard_unavailable": "यह संस्करण आपके खाते के लिए एजेंट संदेश सुरक्षित रूप से चालू नहीं कर सकता। Local Operator अपडेट करें, फिर कोशिश करें।",
+	"ui.agentMessages.dialog.failure": "एजेंट संदेश चालू नहीं किए जा सके। फिर कोशिश करें, या इसे बाद में सेटिंग्स → एजेंट संदेश में चालू करें।",
+	"ui.agentMessages.dialog.consent_changed": "सहमति का मौजूदा पाठ पढ़ें, फिर “चालू करें” दोबारा चुनें।",
+	"ui.agentMessages.dialog.local_failure": "आपकी सहमति सहेजी गई, लेकिन इस मशीन पर सेटअप पूरा नहीं हुआ। सेटअप पूरा करने के लिए सेटिंग्स → एजेंट संदेश खोलें।",
+	"ui.agentMessages.dialog.validation_detail": "{field}: {rule}",
+	"ui.agentMessages.dialog.validation_failure": "सेटअप का यह अनुरोध स्वीकार नहीं हुआ। Local Operator अपडेट करें, फिर कोशिश करें।"
+}

@@ -103,11 +103,12 @@ export type TraceFoldProps = {
 	 * so its wraps fall at a ` · ` and never inside a phrase (design round 1, D1);
 	 * a SENTENCE is painted to wrap at its own spaces, exactly as it did before
 	 * this branch (round 2, R2-1: painting it nowrap made prose unbreakable and
-	 * left the summary's `break-words` inert). The collapsed bar's `title`, which
-	 * has no DOM to paint, reads `foldSummary` - the units joined.
+	 * left the summary's `break-words` inert). The header's `title`, which has no
+	 * DOM to paint, reads these SAME units joined, so the tooltip cannot claim a
+	 * count the visible line does not state (a receipt-only group once read
+	 * `0 actions` there).
 	 */
 	summary: FoldSummarySpec;
-	actionCount: number;
 	/**
 	 * The run's wall-clock span (`foldSpan`), or null when it cannot date itself -
 	 * an older row restored from history carries durations but no stamps, and the
@@ -203,7 +204,6 @@ function useNowMs(active: boolean): number {
 
 export const TraceFold = ({
 	summary,
-	actionCount,
 	span,
 	live,
 	open,
@@ -415,7 +415,7 @@ export const TraceFold = ({
 							 * units, which is exactly the claim this round had to correct.
 							 */
 							className={cn("min-w-0 break-words text-body-sm text-ink-muted")}
-							title={`${actionCount} actions`}
+							title={summary.units.join(" · ")}
 							data-fold-summary=""
 						>
 							{/*

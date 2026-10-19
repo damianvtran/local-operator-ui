@@ -1,0 +1,12 @@
+{
+	"ui.common.connection.backend_compatibility_banner.the_backend_update_could_not_start_retry_or_update_from_settings_": "无法启动后端更新。请重试，或前往“设置”中的“应用更新”进行更新。",
+	"ui.common.connection.backend_compatibility_banner.update_backend": "更新后端",
+	"ui.common.connection.backend_compatibility_banner.updating": "正在更新",
+	"ui.common.connection.connectivity_banner.a_connectivity_issue_has_been_detected": "检测到连接问题。",
+	"ui.common.connection.connectivity_banner.dismiss": "关闭",
+	"ui.common.connection.connectivity_banner.dismiss_inline": "关闭",
+	"ui.common.connection.connectivity_banner.this_app_s_updates_require": "此应用的更新需要",
+	"ui.common.connection.connectivity_banner.you_are_offline": "已离线。{detail}互联网连接。",
+	"ui.common.connection.floating_alert.dismiss": "关闭",
+	"ui.common.connection.provider.requires": "你配置的模型提供商（{provider}）需要"
+}

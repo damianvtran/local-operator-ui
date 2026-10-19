@@ -1,0 +1,21 @@
+{
+	"ui.settings.model.default_effort.label": "Mức suy luận mặc định",
+	"ui.settings.model.default_effort.placeholder": "Chọn mức suy luận",
+	"ui.settings.model.default_effort.busy": "Đang lưu mức suy luận mặc định",
+	"ui.settings.model.default_effort.model_default": "Mặc định của mô hình",
+	"ui.settings.model.default_effort.model_default_resolves": "Chạy ở mức {level} với mô hình này.",
+	"ui.settings.model.default_effort.helper_ready": "Áp dụng cho cuộc trò chuyện mới. Chọn “Mặc định của mô hình” để mô hình tự chọn mức suy luận.",
+	"ui.settings.model.default_effort.loading": "Đang kiểm tra các mức suy luận của mô hình này…",
+	"ui.settings.model.default_effort.error": "Không đọc được các mức suy luận của mô hình này.",
+	"ui.settings.model.default_effort.no_model": "Chọn mô hình để chọn mức suy luận.",
+	"ui.settings.model.default_effort.no_home": "Chưa truy cập được thư mục cá nhân của bạn nên không thể đọc các mức suy luận.",
+	"ui.settings.model.default_effort.settings_loading": "Đang kiểm tra mức suy luận mặc định đã lưu…",
+	"ui.settings.model.default_effort.settings_error": "Không đọc được mức suy luận mặc định đã lưu.",
+	"ui.settings.model.default_effort.unresolved": "Mô hình này chưa cung cấp thông tin về các mức suy luận.",
+	"ui.settings.model.default_effort.empty": "Không thể điều chỉnh mức suy luận của mô hình này.",
+	"ui.settings.model.default_effort.one_level": "Mô hình này chỉ có một mức suy luận: {level}.",
+	"ui.settings.model.default_effort.one_level_sentinel": "Mô hình này không có mức suy luận để chọn: luôn chạy theo mặc định riêng.",
+	"ui.settings.model.default_effort.clamped": "{model} không hỗ trợ mức {level}. Đang dùng {resolved}.",
+	"ui.settings.model.default_effort.clamped_unset": "{model} không hỗ trợ mức {level}. Đang dùng Mặc định của mô hình.",
+	"ui.settings.model.default_effort.save_failed": "Chưa lưu được mức suy luận mặc định của bạn."
+}

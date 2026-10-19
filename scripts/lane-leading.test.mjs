@@ -84,6 +84,11 @@ const LEADING_COLUMN_ROUTES = [
 		ground: "surface",
 		paintedBy: AGENTS_SIDEBAR,
 	},
+	{
+		path: "src/renderer/src/features/library/components/library-page.tsx",
+		ground: "surface",
+		paintedBy: "src/renderer/src/features/library/components/library-page.tsx",
+	},
 ];
 
 test("every route that draws a leading column hands it to the shell", () => {
@@ -201,6 +206,45 @@ test("the lane paints the column's own rung, and a surface column keeps the old 
 		layout,
 		/\$\{columnWidth\}px, var\(--lo-canvas\) \$\{columnWidth\}px/,
 		"the lane must not go back to stopping at the app sidebar's edge",
+	);
+});
+
+/**
+ * The panel surfaces the operator asked us to audit, rather than only the two
+ * screenshots: the app sidebar, the canvas rail, the settings and agents rails,
+ * the legacy roster and the Library route. Their roots own a ground; none may
+ * draw a side rule. The preview dock counts because it is the Library's other
+ * panel and its former `border-l` is the same redundant second mark.
+ */
+const PANEL_SURFACES = [
+	"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+	"src/renderer/src/shared/components/navigation/panel-rail.tsx",
+	"src/renderer/src/features/settings/components/settings-sidebar.tsx",
+	AGENTS_SIDEBAR,
+	"src/renderer/src/features/agents/components/legacy-agents-page.tsx",
+	"src/renderer/src/features/library/components/library-page.tsx",
+];
+
+test("panel surfaces are borderless and the Library rail fades at the top", () => {
+	for (const path of PANEL_SURFACES) {
+		assert.doesNotMatch(
+			readSource(path),
+			/className="[^"]*\bborder-[lr]\b/,
+			`${path} draws a side rule on a panel: panels separate by ground and spacing, never by a stroke`,
+		);
+	}
+	const rail = readSource(
+		"src/renderer/src/features/library/components/library-filter-rail.tsx",
+	);
+	assert.match(
+		rail,
+		/data-lo-sidebar-edge-cues/,
+		"the Library rail must take the shared scroll-edge fade: a panel scrolls under its top spacing instead of clipping against a hard boundary",
+	);
+	assert.match(
+		rail,
+		/overflow-y-auto/,
+		"the Library rail must remain the scroller the fade is measured on",
 	);
 });
 

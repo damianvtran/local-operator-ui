@@ -1,0 +1,45 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "20419be1457f",
+  "date": "2026-10-19",
+  "locale": "ur",
+  "round": 1,
+  "section": 4,
+  "status": "changes_requested",
+  "scope": "Full independent copy audit of both Section 4 namespaces.",
+  "fallback": "Pinned anthropic/claude-sonnet-5-5 was unavailable (provider quota); this run executed on openai/gpt-6.1-sol.",
+  "notes": "ui.projects had one MAJOR composition defect and ui.schedules one MINOR; both remediated and re-audited in round 2.",
+  "namespaces": {
+    "ui.projects": {
+      "namespace": "ui.projects",
+      "keys_read": 416,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MAJOR",
+          "key": "ui.projects.count.milestones_are",
+          "problem": "malformed composed milestone count; duplicate verbs, plural verb on singular",
+          "expected": "1 سنگ میل ابھی نامکمل ہے / 2 سنگ میل ابھی نامکمل ہیں",
+          "evidence": "IntlMessageFormat produced duplicate verbs"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    },
+    "ui.schedules": {
+      "namespace": "ui.schedules",
+      "keys_read": 164,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.schedules.count.list_truncated",
+          "problem": "shown=1 still uses plural verb",
+          "expected": "count-neutral or shown-agreeing clause",
+          "evidence": "shown=1 produced ...دکھائی جا رہی ہیں"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    }
+  }
+}

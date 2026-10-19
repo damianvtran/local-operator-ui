@@ -112,6 +112,7 @@ import {
 	effectiveGate,
 } from "../ask-queue";
 import { editDraftOf } from "../canonical/skill-row";
+import { useSoundStopGate } from "../canonical/sound-stop-confirmation";
 import { canonicalTranscriptTerminal } from "../canonical/transcript-pane";
 import { useOpenPrefetch } from "../canonical/use-open-prefetch";
 import {
@@ -135,6 +136,7 @@ import {
 	type DraftSelectionTarget,
 	draftPreviewQuery,
 } from "../draft-selection";
+import { FLEET_ASKS_QUERY_KEY, useFleetAsks } from "../fleet-asks";
 import { useInterruptOnEscape } from "../hooks/use-interrupt-on-escape";
 import {
 	interruptNotice,
@@ -150,6 +152,7 @@ import {
 } from "../move-session";
 import { openConversation } from "../open-conversation";
 import { PickerOutlet } from "../pickers/picker-registry";
+import { resolveSessionAskFrame } from "../session-asks";
 import {
 	effortQueryModel,
 	modelAccessLocality,
@@ -314,6 +317,36 @@ function SessionPanel({
 		},
 	);
 	useDesktopWatchLease(streamId, canonical.subscriptionId);
+	/*
+	 * THE SESSION'S ASK FRAME, RESOLVED ONCE HERE (the resumed-ask fix).
+	 *
+	 * The canonical snapshot of a resumed conversation is deliberately CLAIMLESS
+	 * (`session-asks.ts`'s module note carries the measured 1,465 ms frame and the
+	 * backend's reason), while the index-backed aggregate answers in single-digit
+	 * milliseconds. So the two reads are merged once, at the page that owns the
+	 * stream and already has the fleet read mounted below it (React Query dedupes
+	 * the key), and the ONE resolved frame is handed to the transcript surfaces
+	 * and to the composer's status row.
+	 *
+	 * WHY THE PAGE AND NOT EACH SURFACE: the drawer, the header/rail count, the
+	 * composer chip and the open policy all read this queue, and the bug being
+	 * fixed was two of them reading one source while the frame said nothing. A
+	 * second resolution is how they would disagree again.
+	 *
+	 * `canonical.frontend` and not the held frame: a reconnect gap has no claim to
+	 * preserve, and the aggregate can answer for it - which is strictly better
+	 * than the unread state the gap used to produce. The readings strip keeps its
+	 * own hold for the model/cost numbers.
+	 */
+	const fleetAsks = useFleetAsks();
+	const sessionAskFrame = useMemo(
+		() =>
+			resolveSessionAskFrame(sessionId, canonical.frontend, {
+				rows: fleetAsks.rows,
+				capability: fleetAsks.capability,
+			}),
+		[sessionId, canonical.frontend, fleetAsks.rows, fleetAsks.capability],
+	);
 	// Fired from the composer's first keystroke, never from this mount - see
 	// `useWarmSession` for why browsing must not spawn runtimes.
 	const warm = useWarmSession(sessionId, panelCapabilities.data);
@@ -2782,6 +2815,18 @@ function SessionPanel({
 				...(changed ? { changed: true } : {}),
 			},
 		}));
+		/*
+		 * THE AGGREGATE IS A SESSION DRAWER'S SEED AS WELL (the resumed-ask fix), so
+		 * a settled answer has to move it rather than wait out the poll: while the
+		 * canonical frame is claimless, the aggregate is what the drawer painted,
+		 * and the row the user just answered would otherwise sit "open" for up to
+		 * `FLEET_ASKS_POLL_MS`. The fleet pane already invalidates this key after
+		 * its own settles (`fleet-ask-drawer.tsx`); this is the session scope's
+		 * half, through the one key both reads share. Both remaining statuses reach
+		 * here (`sent` and `refused` - a refusal is the ask changing under us); the
+		 * transport-failure arm returned above because nothing reached the owner.
+		 */
+		void queryClient.invalidateQueries({ queryKey: FLEET_ASKS_QUERY_KEY });
 	};
 	const answerAsk = async (
 		taskId: string,
@@ -2987,7 +3032,7 @@ function SessionPanel({
 	 * reason. Both orders were measured safe, which is why this is churn rather
 	 * than a defect: the predicate is unchanged, and the setter pair is stable.
 	 */
-	const stop = useCallback(() => {
+	const dispatchStop = useCallback(() => {
 		if (!sessionId || !interruptAvailable) return;
 		/*
 		 * A PRESS IS COALESCED WHILE ITS PREDECESSOR IS STILL IN FLIGHT (design
@@ -3208,6 +3253,31 @@ function SessionPanel({
 		clearStopAlert,
 		canonical.retry,
 	]);
+	const runningSound = canonical.transcript.records.some(
+		(record) =>
+			record.kind === "tool" &&
+			record.phase === "running" &&
+			!record.stopped &&
+			(record.toolName === "generate_voiceover" ||
+				record.toolName === "generate_sound_effect"),
+	);
+	const restoreSoundStopFocus = useCallback(
+		() => input.current?.focusInput(),
+		[],
+	);
+	// The card invokes dispatchStop only after its own identical warning;
+	// all other entrances go through this gate before issuing an interrupt.
+	const {
+		paneRef,
+		stop,
+		confirmation: soundStopConfirmation,
+	} = useSoundStopGate({
+		sessionId,
+		runningSound,
+		available: interruptAvailable,
+		onInterrupt: dispatchStop,
+		onRestoreFocus: restoreSoundStopFocus,
+	});
 	/*
 	 * THE ONE EDGE THAT RETIRES A TURN'S LATCHES, and why it is not `busy`
 	 * (operator incident 2026-10-07; round 1's D1 and R1-1).
@@ -4167,6 +4237,18 @@ function SessionPanel({
 						frontend: canonical.frontend ?? canonical.heldFrontend,
 						servingLocality,
 						/*
+						 * The ask reading this page resolved from the canonical frame and the
+						 * aggregate index (`session-asks.ts`). The strip reads the model, cost
+						 * and goal from the same snapshot as before; only the ask lane uses
+						 * this merged frame, so a claimless resumed snapshot cannot turn into
+						 * "this runtime doesn't support queued asks".
+						 *
+						 * AFTER `servingLocality` deliberately: `session-status.test.mjs` pins
+						 * the frontend/locality PAIR as one contiguous reading, and an unrelated
+						 * field between them broke that pin (CI round, Desktop Tests).
+						 */
+						asks: sessionAskFrame,
+						/*
 						 * Whether those readings are the HELD ones, which is a
 						 * different question from whether a frontend is present:
 						 * a pane that has never had a snapshot and a pane drawing
@@ -4237,6 +4319,7 @@ function SessionPanel({
 			stableDispatchFromControl,
 			effortEntities.data,
 			capabilities.data,
+			sessionAskFrame,
 		],
 	);
 
@@ -4256,7 +4339,21 @@ function SessionPanel({
 	);
 
 	return (
-		<div className="flex h-full min-h-0 flex-col">
+		<div
+			ref={paneRef}
+			data-chat-pane=""
+			className="flex h-full min-h-0 flex-col"
+		>
+			{/*
+			 * THE STOP QUESTION IS NOT MOUNTED HERE. A question about the
+			 * composer's own Stop used to be this column's first child, so the
+			 * answer appeared ~120px at the TOP of a full-height pane while the
+			 * control that raised it sat at the bottom: the whole conversation
+			 * shifted and focus jumped away from the press (design D6, UX U7) -
+			 * the same placement this file's send-error note rejects at 4296.
+			 * `soundStopConfirmation` now travels with the composer's other
+			 * press outcomes, into the band directly above the box.
+			 */}
 			{/*
 			 * The working directory is edited on the composer's chip, not on a bar
 			 * above the conversation. A full-width labelled input spanning the top
@@ -4510,6 +4607,7 @@ function SessionPanel({
 					 */
 					paneHasSession={paneHasSession}
 					sendError={composerSendError}
+					soundStopConfirmation={soundStopConfirmation}
 					undelivered={undeliveredTurn}
 					/*
 					 * The session's readings, straight off the canonical stream, and
@@ -4622,6 +4720,13 @@ function SessionPanel({
 					canonical={{
 						view,
 						/*
+						 * THE SAME RESOLVED FRAME the composer's status row reads (below, as
+						 * `sessionStatus.asks`): the drawer, the header/rail count and the
+						 * open policy all paint from this one value, so the two surfaces can
+						 * never disagree about whether the queue is readable.
+						 */
+						asks: sessionAskFrame,
+						/*
 						 * The claim surfaces AND the controls that act on the turn read THROUGH
 						 * THE HOLD (round 1's D2: one predicate, so the line, the hint, the
 						 * Stop control, its Escape accelerator and the send mode cannot
@@ -4657,6 +4762,7 @@ function SessionPanel({
 							admitted.current?.submittedAt ??
 							null,
 						onStop: stop,
+						onConfirmedStop: dispatchStop,
 						stopAvailable: interruptAvailable,
 						/*
 						 * The band carries ONE sentence, and which one is a fact about

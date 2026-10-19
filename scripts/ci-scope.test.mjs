@@ -1152,6 +1152,7 @@ function runDesktopStep(body, scenario) {
 		[
 			"#!/usr/bin/env bash",
 			'cat "$CI_SCOPE_STUB_LOG"',
+			'printf "%s" "$CI_SCOPE_STUB_STDERR" >&2',
 			'exit "$CI_SCOPE_STUB_RC"',
 			"",
 		].join("\n"),
@@ -1173,6 +1174,7 @@ function runDesktopStep(body, scenario) {
 			// reassigned, so a stub reading `SUITE_RC` would have read the step's
 			// own `SUITE_RC=0` and exited green for every case.
 			CI_SCOPE_STUB_LOG: synthetic,
+			CI_SCOPE_STUB_STDERR: scenario.stderr ?? "",
 			CI_SCOPE_STUB_RC: String(scenario.suiteRc),
 		},
 	});
@@ -1415,6 +1417,52 @@ test("A17b: the desktop step is red, and names the red test, on every red shape"
 		}
 	} finally {
 		for (const dir of scratch) rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/**
+ * The log reader can omit the middle of a large job while retaining cleanup.
+ * A failing suite therefore needs its COMPLETE tee file as a separate artifact,
+ * not a tail that can drop the assertion or a second execution for diagnostics.
+ */
+test("A17d: a failed desktop run retains its full log as a failure artifact", () => {
+	const suite = jobs.test.steps.find((step) => step.id === "desktop_suite");
+	assert.ok(
+		suite,
+		"the artifact condition needs the actual suite step outcome",
+	);
+	const artifact = jobs.test.steps.find(
+		(step) => step.name === "Upload failed desktop suite log",
+	);
+	assert.ok(artifact, "a failed suite has no full-log artifact");
+	assert.equal(
+		artifact.if,
+		"${{ always() && (steps.desktop_suite.outcome == 'failure' || steps.desktop_suite.outcome == 'cancelled') }}",
+	);
+	assert.equal(artifact.uses, "actions/upload-artifact@v4");
+	assert.equal(artifact.with.path, "/tmp/desktop-tests.log");
+	assert.equal(artifact.with["retention-days"], 7);
+	assert.equal(artifact.with["if-no-files-found"], "error");
+	assert.ok(jobs.test.steps.indexOf(artifact) > jobs.test.steps.indexOf(suite));
+	assert.match(artifact.with.name, /github\.run_id/);
+	assert.match(artifact.with.name, /github\.run_attempt/);
+	// Exercise the unchanged REAL shell body with an intentionally failed
+	// synthetic suite. Byte equality catches a tail-only or dropped stderr log.
+	const scenario = {
+		log: `${RED_LOG}\n${"diagnostic body\n".repeat(200)}last stdout evidence\n`,
+		stderr: "last stderr evidence\n",
+		suiteRc: 23,
+	};
+	const run = runDesktopStep(suite.run, scenario);
+	try {
+		assert.equal(run.status, 1);
+		assert.equal(
+			readFileSync(join(run.dir, "desktop-tests.log"), "utf8"),
+			scenario.log + scenario.stderr,
+		);
+		assert.match(run.stdout, /desktop suite: rc=23 pass=4547 fail=2/);
+	} finally {
+		rmSync(run.dir, { recursive: true, force: true });
 	}
 });
 
@@ -1687,6 +1735,70 @@ test("A24: a command that DEFERS (rc 75) is named, and is not a failure", (t) =>
 		1,
 		"and a REAL failure still fails the run, or this test would pass on a runner that reports nothing at all",
 	);
+});
+
+// ---------------------------------------------------------------------------
+// A25 - the bytecode build check follows the MAIN bundle, not the whole repo
+// ---------------------------------------------------------------------------
+
+/*
+ * Defect: the bytecode job is gated by a predicate that can go wrong in two
+ * directions, and both look like an ordinary green run. Too narrow, and the
+ * check skips the diffs that can reach the chunk `vite:bytecode` transforms -
+ * which is the v0.35.0 failure repeating. Too wide, and every renderer-only
+ * pull request pays a full build for a chunk it cannot touch, which is the cost
+ * this classifier exists to remove.
+ * Mutation: drop `src/main/` or `src/shared/` from `MAIN_BUNDLE_PREFIXES`; or
+ * gate the job on `live` instead of on `bytecode`.
+ */
+test("A25: the bytecode check follows the main bundle's inputs", () => {
+	for (const path of [
+		"src/main/browser/host.ts",
+		"src/shared/mini-view.ts",
+		// `src/main` imports `src/i18n`, and `messages.ts` pulls the generated keys
+		// and every locale catalogue into the main chunk - the reason this prefix
+		// is here and not left to fail-open (a `src/` path is a KNOWN live path, so
+		// an unrecognised-path fallback never sees it).
+		"src/i18n/messages.ts",
+		"src/i18n/catalogues/en/ui.agentMessages.json",
+		"scripts/vite-plugins/replace-backend-config.ts",
+		"electron.vite.config.js",
+		"tsconfig.json",
+		"tsconfig.node.json",
+		"package.json",
+		"pnpm-lock.yaml",
+	]) {
+		assert.equal(
+			classify([path]).bytecode,
+			true,
+			`'${path}' can change the main bundle and did not select the bytecode check`,
+		);
+	}
+	// D14: the workflow that decides this gate must run it, or this PR could
+	// disarm the job it adds.
+	assert.equal(classify([".github/workflows/ci.yml"]).bytecode, true);
+	// A path the table does not name must fail OPEN, like every other live flag.
+	assert.equal(classify(["newdir/x"]).bytecode, true);
+
+	for (const path of [
+		"src/renderer/src/App.tsx",
+		"src/preload/index.ts",
+		// Renderer-only TypeScript projects: they typecheck the window, and the
+		// main bundle is not compiled through them.
+		"tsconfig.app.json",
+		"tsconfig.web.json",
+		"scripts/ci-scope.mjs",
+		"bin/local-operator-ui.js",
+		"docs/BUILD.md",
+		"docs/evidence/mini.png",
+		"README.md",
+	]) {
+		assert.equal(
+			classify([path]).bytecode,
+			false,
+			`'${path}' cannot change the bytecode-compiled main chunk and must not pay a full build`,
+		);
+	}
 });
 
 // ---------------------------------------------------------------------------

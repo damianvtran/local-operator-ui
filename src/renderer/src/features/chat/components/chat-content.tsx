@@ -122,6 +122,7 @@ import type {
 } from "../draft-selection";
 import { useFleetAsks } from "../fleet-asks";
 import { codeReviewPaneNotice, runPaneNotice } from "../right-slot-notices";
+import type { SessionAskFrame } from "../session-asks";
 import type { Message } from "../types/message";
 import { useAskOpenPolicy } from "../use-ask-open-policy";
 import { AskDrawer } from "./asks/ask-drawer";
@@ -279,11 +280,33 @@ type ChatContentProps = {
 	/** A failed send, rendered against the composer; see `ComposerSendError`. */
 	sendError?: ComposerSendError;
 	/**
+	 * The pane's stop question, rendered in the composer's band beside the
+	 * control that raises it.
+	 *
+	 * It used to be the pane column's FIRST child - above the header, the
+	 * transcript and the composer - so pressing Stop (or Escape) inserted a
+	 * ~120px block at the opposite end of a full-height pane, shifting the
+	 * conversation down and moving focus hundreds of pixels from the press
+	 * (design D6, UX U7). A question about the composer's own Stop belongs
+	 * where a failed send already renders: in the band directly above the box.
+	 *
+	 * An element rather than a boolean because the owner of the gate
+	 * (`useSoundStopGate` in `chat-page.tsx`) already builds it; this pane only
+	 * forwards it. Memoised at the source, so the composer's memo boundary sees
+	 * one identity across stream flushes.
+	 */
+	soundStopConfirmation?: React.ReactNode;
+	/**
 	 * The session's readings and the dispatcher that opens their pickers.
 	 * Forwarded verbatim to the composer; see `MessageInputProps`.
 	 */
 	sessionStatus?: {
 		frontend: CanonicalFrontendState | null;
+		/**
+		 * The ask lane's resolved frame (see `canonical.asks`); forwarded to the
+		 * composer so its chip reads the same queue as the drawer beside it.
+		 */
+		asks?: SessionAskFrame | null;
 		/** Catalogue source locality; absence is not proof of local serving. */
 		servingLocality?: "local" | "remote";
 		onCommand?: (invocation: SlashCommandInvocation) => void;
@@ -374,6 +397,23 @@ type ChatContentProps = {
 	canonical: {
 		view: CanonicalSessionHandle;
 		/**
+		 * THE SESSION'S ASK FRAME, resolved ONCE by the page from the two reads that
+		 * can answer for it (`session-asks.ts`): the canonical snapshot when it
+		 * carries a claim, and the index-backed aggregate while a resumed
+		 * conversation's checkpoint is still claimless.
+		 *
+		 * `null` means the read is still in flight, which the drawer words as
+		 * "Reading the asks…" - never as the unsupported-runtime sentence. All four
+		 * ask surfaces in this pane read this field (and no longer re-derive the
+		 * queue from `view.frontend`), so they cannot disagree about whether the
+		 * queue is readable.
+		 *
+		 * Undefined only for a caller that owns no page (a story/rig); the pane then
+		 * falls back to `view.frontend`, which is the pre-fix reading and is why the
+		 * field is optional rather than a break for every mount.
+		 */
+		asks?: SessionAskFrame | null;
+		/**
 		 * Whether the owner's turn is still ALIVE - read through the hold:
 		 * `(frontend ?? heldFrontend)?.streaming`, defined once in the page that
 		 * owns the prop (`chat-page.tsx`).
@@ -450,6 +490,8 @@ type ChatContentProps = {
 		startingSession?: boolean;
 		startingSince?: number | null;
 		onStop: () => void;
+		/** Only the media card, after its charge warning was accepted. */
+		onConfirmedStop?: () => void;
 		/**
 		 * Whether this backend can interrupt a turn (`session_interrupt`), as
 		 * opposed to ending the session.
@@ -846,6 +888,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		cwdPendingAccepted,
 		cwdReadOnlyReason,
 		sendError,
+		soundStopConfirmation,
 		sessionStatus,
 		onSlashCommand,
 		onSlashNote,
@@ -1125,6 +1168,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							active: canonical.turnAlive,
 							stopping: stoppingShown,
 							onStop: canonical.onStop,
+							onConfirmedStop: canonical.onConfirmedStop,
 						}
 					: undefined,
 			[
@@ -1133,6 +1177,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				canonical?.turnAlive,
 				stoppingShown,
 				canonical?.onStop,
+				canonical?.onConfirmedStop,
 			],
 		);
 		const setSessionArchived = useCanonicalSessionsStore(
@@ -1508,10 +1553,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * Reading this lane's own field here, rather than re-deriving the rule, is what
 		 * makes `askQueuePublished` the ONE vocabulary point it claims to be.
 		 */
-		const sessionAsksView = useMemo(
-			() => askQueueView(canonical?.view.frontend ?? null),
-			[canonical?.view.frontend],
-		);
+		/*
+		 * THE SESSION'S ASK FRAME, RESOLVED ONCE BY THE PAGE (`session-asks.ts`).
+		 * The fallback is only for a caller with no page (a story/rig): in the app
+		 * this field is always supplied, and it is what keeps a claimless resumed
+		 * snapshot from reading as a runtime that cannot queue asks.
+		 */
+		const askFrame =
+			canonical.asks === undefined
+				? (canonical?.view.frontend ?? null)
+				: canonical.asks;
+		const sessionAsksView = useMemo(() => askQueueView(askFrame), [askFrame]);
 		/*
 		 * THE QUEUED SECRET ASK'S COMPOSER HOOKUP (the operator's ask, `a-9e0c`).
 		 *
@@ -2473,7 +2525,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 * memoised rows compare one reference and a press
 										 * takes the same write path as the composer's.
 										 */
-										onInterruptTurn={canonicalStop?.onStop}
+										/*
+										 * `onConfirmedStop` ALONE, never a fallback to `onStop`.
+										 * The card asks its own identical question before
+										 * dispatching, so handing it the pane's gated `onStop`
+										 * would ask twice (card, then gate) for an embedder
+										 * that supplied only that prop. Absent
+										 * `onConfirmedStop` therefore draws no cancel control,
+										 * which is the fail-closed reading: a card that cannot
+										 * skip the ask does not offer the press.
+										 */
+										onInterruptTurn={canonicalStop?.onConfirmedStop}
 										/*
 										 * The disputed idle withholds the rung's clock (U9): the
 										 * label stands - the work may be real - but the ticking
@@ -2935,6 +2997,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								cwdPendingAccepted={cwdPendingAccepted}
 								cwdReadOnlyReason={cwdReadOnlyReason}
 								sendError={sendError}
+								stopConfirmation={soundStopConfirmation}
 								sessionStatus={sessionStatus}
 								onSlashCommand={onSlashCommand}
 								onSlashNote={onSlashNote}
@@ -3122,7 +3185,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							data-ask-mode={canvasDocked ? "docked" : "overlay"}
 						>
 							<AskDrawer
-								frontend={canonical?.view.frontend ?? null}
+								frontend={askFrame}
 								/*
 								 * SESSION-SCOPED, because this mount is the conversation's own: its rows
 								 * arrive on this session's frame and its answers go to this session.

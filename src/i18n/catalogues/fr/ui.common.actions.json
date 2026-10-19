@@ -1,0 +1,8 @@
+{
+	"ui.common.actions.cancel": "Annuler",
+	"ui.common.actions.close": "Fermer",
+	"ui.common.actions.copied": "Copié",
+	"ui.common.actions.copy_failed": "Copie impossible. Sélectionnez le texte et copiez-le manuellement.",
+	"ui.common.actions.retry": "Réessayer",
+	"ui.common.actions.retry_again": "Réessayer"
+}

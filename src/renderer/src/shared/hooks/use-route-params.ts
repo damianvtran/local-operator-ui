@@ -68,7 +68,9 @@ export const useCurrentView = ():
 	| "schedules"
 	| "projects"
 	| "mesh"
-	| "browser" => {
+	| "browser"
+	| "library"
+	| "team-bridge" => {
 	const currentPath = getCurrentPath();
 
 	if (pathIncludes(currentPath, "/chat")) {
@@ -97,6 +99,14 @@ export const useCurrentView = ():
 
 	if (pathIncludes(currentPath, "/browser")) {
 		return "browser";
+	}
+
+	if (pathIncludes(currentPath, "/team-bridge")) {
+		return "team-bridge";
+	}
+
+	if (pathIncludes(currentPath, "/library")) {
+		return "library";
 	}
 
 	if (pathIncludes(currentPath, "/mesh")) {
