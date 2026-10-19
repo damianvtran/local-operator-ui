@@ -326,6 +326,35 @@ export const SelectionToolbarResponseFocused: Story = {
 	},
 };
 
+/**
+ * A selection at the TOP edge: no room above it, so the strip must flip BELOW.
+ *
+ * A LONG transcript is needed to make the edge real: the pane is scrolled so
+ * the selected line sits at the scroller's top, under the 16px padding, where
+ * the 32px strip plus its gap cannot fit above. The short fixture always has
+ * room above (and would prove only the other direction).
+ */
+const LONG_TOP_EDGE = transcriptOf(
+	Array.from({ length: 8 }, (_, index) => [
+		user(`u${index}`, `Question ${index + 1}`),
+		answer(
+			`a${index}`,
+			`Answer ${index + 1}: ${NARRATION}`,
+			TS + index * 2_000 + 1_000,
+		),
+	]).flat(),
+);
+
+export const SelectionToolbarTopEdge: Story = {
+	render: () => <Frame state={LONG_TOP_EDGE} />,
+	play: async ({ canvasElement }) => {
+		const prose = row(canvasElement, "a0").querySelector(".lo-markdown");
+		if (prose === null) throw new Error("the opening answer has no prose");
+		prose.scrollIntoView({ block: "start" });
+		await selectText(prose as HTMLElement);
+	},
+};
+
 /** A narrow pane: no outer gutter, so the strip flips above the selection. */
 export const SelectionToolbarNarrow: Story = {
 	render: () => <Frame state={MULTI_ANSWER} width={480} />,

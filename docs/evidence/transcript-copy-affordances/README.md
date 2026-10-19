@@ -54,6 +54,7 @@ menu, selection and focus states are driven by the stories' own play steps
 | [`after-selection-toolbar.png`](./after-selection-toolbar.png) | `chat-canonical-transcript-copy--selection-toolbar` | A partial assistant selection raises ONE strip: Quote, Copy and one Speak |
 | [`after-selection-response-focused.png`](./after-selection-response-focused.png) | `chat-canonical-transcript-copy--selection-toolbar-response-focused` | The intermediate response is focused AND selected: one strip; its own Copy gutter is `visibility: hidden`, `pointer-events: none`, inert/aria-hidden |
 | [`after-selection-narrow.png`](./after-selection-narrow.png) | `chat-canonical-transcript-copy--selection-toolbar-narrow` (480px) | A two-line selection: the 90x32 strip sits above the selected paragraph (bottom 201.7 vs selected top 207.2), not over it |
+| [`after-selection-forced-below.png`](./after-selection-forced-below.png) / [`after-selection-forced-below-settled.png`](./after-selection-forced-below-settled.png) | `chat-canonical-transcript-copy--selection-toolbar-top-edge` (long transcript, scrolled to the top) | The top-edge case: the selected line is at y=13 and the strip is BELOW it at y=35-52; two consecutive captures are byte-identical (SHA-256 prefix `921951ed`), so the placement does not reflow after paint |
 | [`after-selection-user.png`](./after-selection-user.png) | `chat-canonical-transcript-copy--selection-toolbar-user` | A user-message selection: a 62x32 Copy+Speak strip at x=919, no Quote, and no duplicate gutter |
 
 ### Measured in the browser (same run that produced the frames)
@@ -70,6 +71,7 @@ menu, selection and focus states are driven by the stories' own play steps
 | Collision state | Strip 90x32 at (107,112.9); response gutter 38x32 at (919,142.4) is `visibility: hidden`, `pointer-events: none`, `inert` |
 | Narrow selection (480px) | Strip 90x32 at (32,169.7); selected paragraph top 207.2 — the strip is above the two-line selection, covering only the preceding line |
 | User selection | Strip 62x32 at (919,88.5) — Copy + Speak, no Quote; the user gutter is suppressed |
+| Forced-below (top edge) | Selected line at y=13; strip at y=35-52, below it. Two captures byte-identical (`921951ed`) — no first-frame jump |
 
 The pixel readings are from this Storybook run; jsdom has no layout engine. The
 native app was not driven for these frames; the stories mount the production
