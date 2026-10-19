@@ -3702,6 +3702,12 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("library.list"),
+			/**
+			 * `final` (the desktop UI's default) keeps only highlighted or
+			 * generated artifacts; `all` is the whole catalog. Optional on the
+			 * wire so a backend that predates the parameter still answers.
+			 */
+			scope: z.enum(["final", "all"]).optional(),
 			q: z.string().max(512).optional(),
 			category: z.string().min(1).max(64).optional(),
 			kind: z.string().min(1).max(64).optional(),
@@ -8250,6 +8256,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 		 */
 		case "library.list": {
 			const query = new URLSearchParams();
+			if (request.scope) query.set("scope", request.scope);
 			if (request.q) query.set("q", request.q);
 			if (request.category) query.set("category", request.category);
 			if (request.kind) query.set("kind", request.kind);

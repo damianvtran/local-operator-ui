@@ -39,8 +39,14 @@ export type LibraryFilterRailProps = {
 	onChange: (filters: LibraryListFilters) => void;
 	counts: DesktopLibraryList["counts"] | undefined;
 	tags: DesktopLibraryList["tags"];
-	/** The catalog total, for the All row. */
+	/** The catalog total, for the category All row. */
 	total: number;
+	/**
+	 * The catalog-wide total from the Librarian status route, for the scope
+	 * section's "All inclusions" row. The listing's own `total` is scoped, so
+	 * a final answer cannot supply the all-scope number.
+	 */
+	scopeTotal: number | null;
 };
 
 const STATUS_ROWS: Array<{
@@ -96,6 +102,7 @@ export const LibraryFilterRail: FC<LibraryFilterRailProps> = ({
 	counts,
 	tags,
 	total,
+	scopeTotal,
 }) => {
 	const tagGroups = groupTagsByCategory(tags);
 	const categoryCounts = counts?.category ?? {};
@@ -151,6 +158,25 @@ export const LibraryFilterRail: FC<LibraryFilterRailProps> = ({
 					</Button>
 				</div>
 			)}
+
+			{/*
+			 * SCOPE IS NOT A FILTER: it is the population the other rows count
+			 * over. `final` is the desktop default; `all` is the whole catalog,
+			 * including files merely mentioned or created in a conversation.
+			 */}
+			<Section label={t("ui.library.filter.scope")}>
+				<RailRow
+					label={t("ui.library.filter.scope_final")}
+					active={filters.scope === "final"}
+					onPress={() => patch({ scope: "final" })}
+				/>
+				<RailRow
+					label={t("ui.library.filter.scope_all")}
+					count={scopeTotal ?? undefined}
+					active={filters.scope === "all"}
+					onPress={() => patch({ scope: "all" })}
+				/>
+			</Section>
 
 			<Section label={t("ui.library.filter.categories")}>
 				<RailRow
@@ -225,7 +251,21 @@ export const LibraryFilterRail: FC<LibraryFilterRailProps> = ({
 			</Section>
 
 			<Section label={t("ui.library.filter.source")}>
-				{ORIGIN_GROUPS.map((group) => (
+				{/*
+				 * A zero-count origin row is noise under the final scope: the
+				 * mentioned population is empty by definition, and printing
+				 * "Mentioned 0" beside a 3,293-catalog row invites the reader to
+				 * think the filter is broken. The all scope still shows every row,
+				 * and an ACTIVE origin always stays: switching scope preserves the
+				 * filter, so hiding its row would leave the empty grid with no
+				 * visible cause.
+				 */}
+				{ORIGIN_GROUPS.filter(
+					(group) =>
+						filters.originGroup === group ||
+						filters.scope === "all" ||
+						(counts?.origin_group?.[group] ?? 0) > 0,
+				).map((group) => (
 					<RailRow
 						key={group}
 						label={t(originGroupLabelKey(group))}
