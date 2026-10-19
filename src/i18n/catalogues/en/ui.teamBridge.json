@@ -48,5 +48,6 @@
 	"ui.teamBridge.scope.empty": "No organizations available.",
 	"ui.teamBridge.scope.unknown": "Unknown organization",
 	"ui.teamBridge.scope.thread_unknown": "This conversation's organization is not available.",
-	"ui.teamBridge.scope.create_needs_org": "Choose an organization to start a conversation."
+	"ui.teamBridge.scope.create_needs_org": "Choose an organization to start a conversation.",
+	"ui.teamBridge.group.more_unread": "{count, plural, one {More destinations, # unread message} other {More destinations, # unread messages}}"
 }

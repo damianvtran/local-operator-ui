@@ -4618,6 +4618,7 @@ export type MessageParams = {
 	"ui.teamBridge.create.remove_member": undefined;
 	"ui.teamBridge.create.title": undefined;
 	"ui.teamBridge.group.more": undefined;
+	"ui.teamBridge.group.more_unread": { count: number };
 	"ui.teamBridge.kind.channel": undefined;
 	"ui.teamBridge.kind.dm": undefined;
 	"ui.teamBridge.kind.group": undefined;

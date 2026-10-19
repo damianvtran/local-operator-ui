@@ -1147,6 +1147,14 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		   already the header's, and summing them would double a number the user
 		   sees twice. */
 		const overflowAttention = teamBridgeNav?.attention ?? 0;
+		/* The mark is visual; the disclosure's name carries the same fact for a
+		   reader who gets no badge (design round 4, D3). */
+		const moreName =
+			overflowAttention > 0
+				? t("ui.teamBridge.group.more_unread", {
+						count: overflowAttention,
+					})
+				: t("ui.library.page.more_destinations");
 		return (
 			<li
 				key="nav-overflow"
@@ -1161,7 +1169,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						data-tour-tag="nav-item-more"
 						aria-expanded={overflowRevealed}
 						aria-controls="sidebar-more-destinations"
-						aria-label={t("ui.library.page.more_destinations")}
+						aria-label={moreName}
 						onClick={() => setOverflowExpanded(!overflowRevealed)}
 						className={cn(
 							DESTINATION_ROW,
@@ -1194,7 +1202,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						/>
 					</button>
 				) : (
-					stripButton(Ellipsis, t("ui.library.page.more_destinations"), {
+					stripButton(Ellipsis, moreName, {
 						onClick: () => setOverflowExpanded(!overflowRevealed),
 						attention: overflowAttention,
 						attentionTag: "nav-more-badge",
