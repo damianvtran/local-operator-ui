@@ -814,7 +814,12 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 								<X aria-hidden="true" />
 							</Button>
 						</div>
-						<div className="min-h-0 flex-1 overflow-y-auto">{rail}</div>
+						<div
+							data-library-filter-sheet=""
+							className="min-h-0 flex-1 overflow-y-auto bg-surface"
+						>
+							{rail}
+						</div>
 					</div>
 				</SheetContent>
 			</Sheet>
