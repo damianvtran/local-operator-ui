@@ -10,8 +10,8 @@
  *
  * WHAT A NODE MAY SAY is the plan's §5 node contract: a title, ONE stat line, and -
  * for the states that mean something - the state in words. Colour is never the only
- * channel (WCAG 1.4.1): the three states that are not the ordinary case take a hue
- * AND a word, exactly as `chat-session-status.tsx` already does for sessions.
+ * channel (WCAG 1.4.1): a state that is not the ordinary case takes a hue AND a
+ * word, exactly as `chat-session-status.tsx` already does for sessions.
  *
  * ## Slice 2: the node became a CONTAINER, and the chips are why
  *
@@ -89,6 +89,10 @@ const REACH_STRIPE: Record<DeviceReach, string> = {
 	// `border-control` is already the node's edge, so the resting stripe takes the
 	// decorative hairline rather than a second, louder line.
 	reached: "border-l-hairline",
+	// The three OBSERVED transport failures take amber; the word on the state line
+	// tells them apart, so colour is never the only channel and no extra hue is spent.
+	"relay-down": "border-l-warning",
+	"handshake-refused": "border-l-warning",
 	unanswered: "border-l-warning",
 	"not-attempted": "border-l-hairline",
 	unknown: "border-l-hairline",
@@ -116,6 +120,8 @@ function nodeStripe(device: MeshDevice): string {
 const STATE_RING: Record<DeviceState, string | null> = {
 	self: "ring-2 ring-accent",
 	reachable: null,
+	relay_down: null,
+	handshake_refused: null,
 	unreachable: null,
 	suspect: null,
 };

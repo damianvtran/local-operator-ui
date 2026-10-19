@@ -191,6 +191,69 @@ export type SessionCatalogueRow = {
 	/** One sentence when `reachable` is false, in the backend's own words. */
 	unreachable_reason?: string;
 };
+
+/*
+ * `GET /v1/desktop/peers`'s LINK VERDICT, and the evidence behind it.
+ *
+ * WHY THIS LIVES IN THE SHARED CONTRACT rather than only beside the mesh
+ * normaliser (`features/mesh/mesh-types.ts` reads it): these are additive wire
+ * fields on a route every mesh surface consumes, and the distinction they carry
+ * is a transport fact rather than a presentation choice. A refused TCP connection,
+ * a timeout, and a TCP connection whose handshake closes with no reason are three
+ * different observations, and they call for three different operator actions: the
+ * first two mean the peer's relay is not listening or the address is unreachable
+ * (fix the peer's process, or its address), while the third means the peer's
+ * process answered and then refused THIS device (a membership/epoch problem).
+ * Collapsing them into `reachable: false` and one sentence is what made the Mesh
+ * tab tell all three stories with the same words.
+ *
+ * ABSENCE IS "NOT KNOWN", NEVER A DEFAULT. A backend older than these fields
+ * omits them, and every reader must render the older single sentence instead of
+ * inventing a verdict. `attempts` is the per-address evidence (one row per
+ * endpoint actually dialled); `remote_relay` is the backend's DERIVED reading of
+ * the peer's relay (`not_listening` when every dialable endpoint refused TCP),
+ * not a probe this client performs; and `link_state` is the aggregate verdict.
+ */
+export type PeerLinkState =
+	| "reachable"
+	| "relay_down"
+	| "address_unreachable"
+	| "handshake_refused"
+	| "not_attempted"
+	| "no_endpoint"
+	| "not_a_member"
+	/**
+	 * CLIENT-ONLY, never sent by a conforming backend: the fallback a reader derives
+	 * from the old `reachable` boolean when `link_state` is absent. It deliberately
+	 * says only what the old wire could support, so no surface can present a refused
+	 * connection or a closed handshake as an observed fact this client never saw.
+	 */
+	| "unreachable_legacy";
+
+/** The peer relay's derived state, as the backend saw it on this read. */
+export type PeerRelayState = "running" | "not_listening" | "unknown";
+
+/** One address the relay dialled, and what that attempt observed. */
+export type PeerAttempt = {
+	endpoint: string;
+	/** True only when the wire said the TCP connection was established. */
+	connected: boolean;
+	/**
+	 * The backend's detail token: `ok`, `connect_failed:<Exception>`, `no_answer`,
+	 * `bad_endpoint`, `not_attempted`. An unrecognised token is shown verbatim rather
+	 * than guessed at.
+	 */
+	detail: string;
+	latency_ms: number | null;
+};
+
+/** Optional link facts on a peer row; absent means the backend did not answer. */
+export type PeerLinkFacts = {
+	link_state?: PeerLinkState;
+	remote_relay?: PeerRelayState;
+	attempts?: PeerAttempt[];
+};
+
 /**
  * One hit from `sessions.search`, returned by the `session_search` capability
  * version 1.

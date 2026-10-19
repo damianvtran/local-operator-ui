@@ -141,6 +141,7 @@ const {
 	deviceReach,
 	reachWords,
 	reachSentence,
+	attemptWords,
 	deviceActivity,
 	REACH_INK,
 	NOT_ATTEMPTED_SENTENCES,
@@ -616,8 +617,165 @@ test("a device nobody dialled is `not asked`, and never `unreachable` (D2)", () 
 	assert.equal(
 		[...Object.entries(REACH_INK)].filter(([, ink]) => ink === "text-warning")
 			.length,
-		1,
-		"exactly one reach state spends the warning hue, and it is the one the relay answered",
+		3,
+		"the three OBSERVED transport failures spend the warning hue (unanswered, relay down, handshake refused); their distinction is carried in words and glyphs, and the neutral not-attempted/unknown states still take no hue",
+	);
+});
+
+test("refused TCP, a timeout and a closed handshake are three states, not one", () => {
+	/*
+	 * THE INCIDENT'S THREE CASES (mesh link resilience). The backend now publishes
+	 * `link_state` plus the per-address `attempts`; before it did, every one of these
+	 * arrived as `reachable: false` and one sentence, so the tab told the operator to
+	 * look for one problem when there were three. This executes the wire shapes the
+	 * three stories photograph.
+	 */
+	const relayDown = peerList({
+		peers: [
+			peer(DEVICE_B, {
+				reachable: false,
+				link_state: "relay_down",
+				remote_relay: "not_listening",
+				unreachable_reason:
+					"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError",
+				attempts: [
+					{
+						endpoint: "99.79.190.164:4097",
+						connected: false,
+						detail: "connect_failed:ConnectionRefusedError",
+						latency_ms: null,
+					},
+					{
+						endpoint: "172.31.22.23:4097",
+						connected: false,
+						detail: "connect_failed:TimeoutError",
+						latency_ms: null,
+					},
+				],
+			}),
+		],
+	});
+	assert.equal(relayDown.peers[0].link_state, "relay_down");
+	assert.equal(relayDown.peers[0].remote_relay, "not_listening");
+	assert.deepEqual(
+		relayDown.peers[0].attempts.map((attempt) => attempt.detail),
+		[
+			"connect_failed:ConnectionRefusedError",
+			"connect_failed:TimeoutError",
+		],
+		"the per-address evidence survives the normaliser in wire order",
+	);
+	const relayGraph = meshGraph({
+		topology: networkTopology({
+			networks: [network(NET_ONE, [member(DEVICE_B, { reachable: false })])],
+		}),
+		peers: relayDown,
+	});
+	const relayDevice = relayGraph.devices[0];
+	assert.equal(relayDevice.state, "relay_down");
+	assert.equal(deviceReach(relayDevice), "relay-down");
+	assert.equal(deviceStatLine(relayDevice, 1_700_000_100), "relay not running");
+	assert.equal(reachWords(deviceReach(relayDevice)), "relay not running");
+	assert.equal(
+		attemptWords("connect_failed:ConnectionRefusedError"),
+		"nothing listening",
+		"the exception class never reaches the screen",
+	);
+	assert.equal(attemptWords("connect_failed:TimeoutError"), "no answer");
+	assert.equal(attemptWords("some_future_detail"), "some_future_detail");
+
+	const refusedHandshake = peerList({
+		peers: [
+			peer(DEVICE_C, {
+				reachable: false,
+				link_state: "handshake_refused",
+				remote_relay: "running",
+				unreachable_reason: "handshake closed with no reason",
+				attempts: [
+					{
+						endpoint: "99.79.190.164:4097",
+						connected: true,
+						detail: "no_answer",
+						latency_ms: 41,
+					},
+				],
+			}),
+		],
+	});
+	const handshakeGraph = meshGraph({
+		topology: networkTopology({
+			networks: [network(NET_ONE, [member(DEVICE_C, { reachable: false })])],
+		}),
+		peers: refusedHandshake,
+	});
+	const handshakeDevice = handshakeGraph.devices[0];
+	assert.equal(handshakeDevice.state, "handshake_refused");
+	assert.equal(deviceReach(handshakeDevice), "handshake-refused");
+	assert.equal(
+		deviceStatLine(handshakeDevice, 1_700_000_100),
+		"handshake refused",
+	);
+
+	/*
+	 * AN OLDER BACKEND HAS NO LINK VOCABULARY, and the client must derive only what
+	 * the old boolean supported: `unreachable_legacy`, which maps to the generic
+	 * `unreachable` state and the old `no answer` words. It must never guess one of
+	 * the new verdicts from the aggregate sentence.
+	 */
+	const legacy = peerList({
+		peers: [
+			peer(DEVICE_D, {
+				reachable: false,
+				unreachable_reason:
+					"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError",
+			}),
+		],
+	});
+	assert.equal(legacy.peers[0].link_state, "unreachable_legacy");
+	assert.equal(legacy.peers[0].attempts, undefined);
+	const legacyGraph = meshGraph({
+		topology: networkTopology({
+			networks: [network(NET_ONE, [member(DEVICE_D, { reachable: false })])],
+		}),
+		peers: legacy,
+	});
+	assert.equal(legacyGraph.devices[0].state, "unreachable");
+	assert.equal(
+		deviceStatLine(legacyGraph.devices[0], 1_700_000_100),
+		"no answer",
+		"a legacy row is never presented as a refused connection it did not observe",
+	);
+});
+
+test("the summary names each observed failure class, never one `unreachable`", () => {
+	const graph = meshGraph({
+		topology: networkTopology({
+			networks: [
+				network(NET_ONE, [
+					member(DEVICE_B, { reachable: false }),
+					member(DEVICE_C, { reachable: false }),
+				]),
+			],
+		}),
+		peers: peerList({
+			peers: [
+				peer(DEVICE_B, {
+					reachable: false,
+					link_state: "relay_down",
+					remote_relay: "not_listening",
+					unreachable_reason: "no answer",
+				}),
+				peer(DEVICE_C, {
+					reachable: false,
+					unreachable_reason: "no route to it",
+				}),
+			],
+		}),
+	});
+	assert.equal(
+		meshSummary(graph),
+		"1 network · 2 devices · 1 relay down · 1 no answer",
+		"a mixed failure census names the relay verdict and keeps the generic class generic",
 	);
 });
 

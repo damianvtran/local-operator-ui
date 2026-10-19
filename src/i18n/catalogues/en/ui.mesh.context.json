@@ -779,10 +779,20 @@
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Mesh device/census summary: names/explains device count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	},
+	"ui.mesh.mesh_graph.handshake_refused_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains how many devices answered TCP and then closed the handshake. Placeholders: count = count of devices; ICU controls grammar. Keep every failure class named separately from relay down and no answer."
+	},
 	"ui.mesh.mesh_graph.suspected_count": {
 		"role": "device/census status phrase — mesh device/census summary",
 		"tone": "Factual and restrained",
 		"note": "Mesh device/census summary: names/explains suspected count. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.mesh.mesh_graph.relay_down_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains how many devices have a relay that is not listening (every dialable address refused or timed out). Placeholders: count = count of devices; ICU controls grammar. Keep this class separate from handshake refused and no answer."
 	},
 	"ui.mesh.mesh_graph.reached_count": {
 		"role": "device/census status phrase — mesh device/census summary",
@@ -983,6 +993,51 @@
 		"role": "device/census status phrase — device reach classification",
 		"tone": "Factual and restrained",
 		"note": "Device reach classification: names/explains reached. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_reach.relay_not_running": {
+		"role": "device/census status phrase — device reach classification",
+		"tone": "Factual and restrained",
+		"note": "The peer's relay process is not listening: every dialable address refused the TCP connection or timed out. This is a named transport verdict, not a generic unreachable state; keep the distinction from timeout and handshake refusal."
+	},
+	"ui.mesh.mesh_reach.handshake_refused": {
+		"role": "device/census status phrase — device reach classification",
+		"tone": "Factual and restrained",
+		"note": "TCP connected but the peer closed the handshake with no reason (unknown device or epoch mismatch). Distinct from no answer and from relay not running; keep the word compact."
+	},
+	"ui.mesh.mesh_reach.addresses_tried": {
+		"role": "section label — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "Heading above the list of dialled addresses and their transport results in the device panel."
+	},
+	"ui.mesh.mesh_reach.attempt_answered": {
+		"role": "device/census status phrase — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "The dialled address answered successfully (detail token `ok`). Short label beside the endpoint."
+	},
+	"ui.mesh.mesh_reach.attempt_nothing_listening": {
+		"role": "device/census status phrase — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "The address answered TCP with a connection refusal: the host is up and nothing is listening on that port."
+	},
+	"ui.mesh.mesh_reach.attempt_no_answer": {
+		"role": "device/census status phrase — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "The address timed out or the handshake produced no answer. Distinct from a refusal: nothing spoke on that address."
+	},
+	"ui.mesh.mesh_reach.attempt_not_tried": {
+		"role": "device/census status phrase — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "The address was never dialled, so no transport fact exists for it. Never present this as a failure of the device."
+	},
+	"ui.mesh.mesh_reach.peer_relay_not_running": {
+		"role": "status or explanatory text — device panel link evidence",
+		"tone": "Factual and restrained",
+		"note": "Headline above the per-address evidence: the peer's relay is not running. Report the observation; do not blame the reader's relay or the network."
+	},
+	"ui.mesh.mesh_reach.peer_closed_handshake": {
+		"role": "status or explanatory text — device panel link evidence",
+		"tone": "Factual and restrained",
+		"note": "Headline above the per-address evidence: the peer answered TCP but closed the handshake. Names the observed close rather than a generic silence."
 	},
 	"ui.mesh.mesh_reach.no_answer": {
 		"role": "device/census status phrase — device reach classification",

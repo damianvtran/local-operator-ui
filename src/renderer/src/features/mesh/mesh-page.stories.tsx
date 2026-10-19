@@ -97,6 +97,14 @@ const peer = (
 		unreachable_reason: string;
 		last_seen_at: number | null;
 		session_count: number;
+		link_state: string;
+		remote_relay: string;
+		attempts: Array<{
+			endpoint: string;
+			connected: boolean;
+			detail: string;
+			latency_ms: number | null;
+		}>;
 	}> = {},
 ) => ({
 	device_id,
@@ -643,6 +651,189 @@ export const Misconfigured: Story = {
 			},
 		});
 		return <MeshPage />;
+	},
+};
+
+/**
+ * THE PEER'S RELAY IS NOT RUNNING: every dialable address answers TCP with a
+ * refusal (host up, nothing listening), and the second address times out.
+ *
+ * REAL INCIDENT VALUES, 0.82.3: `99.79.190.164:4097` refused and
+ * `172.31.22.23:4097` timed out, while the tab said `unreachable` and `no answer`
+ * for every other kind of silence too. The panel must now say the peer's relay is
+ * not running and show each address's own transport result. `session_count: 0`
+ * keeps the empty-conversation sentence on the device.
+ */
+export const RelayDown: Story = {
+	render: () => {
+		installBridge({
+			networks: {
+				self_device_id: DEVICE_SELF,
+				networks: [
+					network(NET_HOME, "damian-mesh", [
+						member(DEVICE_SELF, { name: "damians-MacBook-Pro", role: "admin" }),
+						member(DEVICE_PEER, {
+							name: "cloud-node-1",
+							endpoints: ["99.79.190.164:4097", "172.31.22.23:4097"],
+							reachable: false,
+							reason:
+								"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError; 172.31.22.23:4097 connect_failed:TimeoutError",
+						}),
+					]),
+				],
+			},
+			peers: {
+				self_device_id: DEVICE_SELF,
+				peers: [
+					peer(DEVICE_PEER, {
+						name: "cloud-node-1",
+						reachable: false,
+						link_state: "relay_down",
+						remote_relay: "not_listening",
+						attempts: [
+							{
+								endpoint: "99.79.190.164:4097",
+								connected: false,
+								detail: "connect_failed:ConnectionRefusedError",
+								latency_ms: null,
+							},
+							{
+								endpoint: "172.31.22.23:4097",
+								connected: false,
+								detail: "connect_failed:TimeoutError",
+								latency_ms: null,
+							},
+						],
+						unreachable_reason:
+							"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError; 172.31.22.23:4097 connect_failed:TimeoutError",
+						session_count: 0,
+					}),
+				],
+				degraded: [],
+			},
+		});
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_PEER);
+	},
+};
+
+/**
+ * THE ADDRESS IS UNREACHABLE: no address answers, and the peer itself may be
+ * fine. Two timeouts are the evidence - no refusal, so the host never spoke.
+ *
+ * The point of the frame: this is not `relay not running` (nothing listened) and
+ * not `handshake refused` (something answered and then closed). The operator's
+ * next action is the address/route, not the peer's relay process.
+ */
+export const AddressUnreachable: Story = {
+	render: () => {
+		installBridge({
+			networks: {
+				self_device_id: DEVICE_SELF,
+				networks: [
+					network(NET_HOME, "damian-mesh", [
+						member(DEVICE_SELF, { name: "damians-MacBook-Pro", role: "admin" }),
+						member(DEVICE_PEER, {
+							name: "cloud-node-1",
+							endpoints: ["99.79.190.164:4097", "172.31.22.23:4097"],
+							reachable: false,
+							reason: "no answer",
+						}),
+					]),
+				],
+			},
+			peers: {
+				self_device_id: DEVICE_SELF,
+				peers: [
+					peer(DEVICE_PEER, {
+						name: "cloud-node-1",
+						reachable: false,
+						link_state: "address_unreachable",
+						remote_relay: "unknown",
+						attempts: [
+							{
+								endpoint: "99.79.190.164:4097",
+								connected: false,
+								detail: "connect_failed:TimeoutError",
+								latency_ms: null,
+							},
+							{
+								endpoint: "172.31.22.23:4097",
+								connected: false,
+								detail: "connect_failed:TimeoutError",
+								latency_ms: null,
+							},
+						],
+						unreachable_reason: "no answer",
+						session_count: 0,
+					}),
+				],
+				degraded: [],
+			},
+		});
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_PEER);
+	},
+};
+
+/**
+ * THE HANDSHAKE IS REFUSED: TCP connects, then the peer closes the handshake with
+ * no reason (it does not know this device, or the epoch disagrees).
+ *
+ * THE INCIDENT'S THIRD STATE, and the one the old tab could not distinguish from
+ * the other two: the address answered, so the relay is running, but the peer will
+ * not admit this device - an action on membership/epoch, not on the address or
+ * the relay process. The attempt is `connected: true`; the headline names the
+ * close rather than printing the raw detail token.
+ */
+export const HandshakeRefused: Story = {
+	render: () => {
+		installBridge({
+			networks: {
+				self_device_id: DEVICE_SELF,
+				networks: [
+					network(NET_HOME, "damian-mesh", [
+						member(DEVICE_SELF, { name: "damians-MacBook-Pro", role: "admin" }),
+						member(DEVICE_PEER, {
+							name: "cloud-node-1",
+							endpoints: ["99.79.190.164:4097"],
+							reachable: false,
+							reason: "handshake closed with no reason",
+						}),
+					]),
+				],
+			},
+			peers: {
+				self_device_id: DEVICE_SELF,
+				peers: [
+					peer(DEVICE_PEER, {
+						name: "cloud-node-1",
+						reachable: false,
+						link_state: "handshake_refused",
+						remote_relay: "running",
+						attempts: [
+							{
+								endpoint: "99.79.190.164:4097",
+								connected: true,
+								detail: "no_answer",
+								latency_ms: 41,
+							},
+						],
+						unreachable_reason: "handshake closed with no reason",
+						session_count: 0,
+					}),
+				],
+				degraded: [],
+			},
+		});
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_PEER);
 	},
 };
 

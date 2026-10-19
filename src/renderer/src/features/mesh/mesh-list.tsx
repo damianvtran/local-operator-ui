@@ -29,7 +29,14 @@ import {
 } from "./mesh-card";
 import type { MeshDevice, MeshGraph } from "./mesh-graph";
 import { deviceStatLine } from "./mesh-graph";
-import { REACH_INK, deviceReach, reachWords, suspectWords } from "./mesh-reach";
+import {
+	REACH_INK,
+	attemptWords,
+	deviceReach,
+	linkHeadline,
+	reachWords,
+	suspectWords,
+} from "./mesh-reach";
 import type { DeviceSessions } from "./mesh-sessions";
 import { deviceSessionTotal } from "./mesh-sessions";
 import type { MeshSessionRow } from "./mesh-types";
@@ -57,15 +64,19 @@ const SORT_LABEL: Record<MeshSort, string> = {
  * The order a reader may choose, by device.
  *
  * `state` ranks by how much the state deserves attention rather than
- * alphabetically - a suspected identity, then an unreachable device, then this
- * device, then the ordinary case - because "which one is the odd one out" is the
- * question this sort exists to answer.
+ * alphabetically - a suspected identity, then the two named transport failures
+ * (relay down, then handshake refused), then an unclassified unreachable device,
+ * then this device, then the ordinary case - because "which one is the odd one
+ * out" is the question this sort exists to answer, and the two named failures are
+ * the ones with a concrete operator action.
  */
 const STATE_RANK: Record<MeshDevice["state"], number> = {
 	suspect: 0,
-	unreachable: 1,
-	self: 2,
-	reachable: 3,
+	relay_down: 1,
+	handshake_refused: 2,
+	unreachable: 3,
+	self: 4,
+	reachable: 5,
 };
 
 export function sortDevices(
@@ -257,6 +268,10 @@ export const MeshList: FC<MeshListProps> = ({
 								? deviceSessionTotal(held, device.sessionCount)
 								: (device.sessionCount ?? 0);
 							const reach = deviceReach(device);
+							const headline = linkHeadline(device);
+							// No address evidence on a reachable device; and `null` (older backend) is
+							// not an empty list, so both fall back to the single reason sentence.
+							const attempts = device.reachable ? [] : (device.attempts ?? []);
 							return (
 								<li
 									key={device.id}
@@ -344,6 +359,35 @@ export const MeshList: FC<MeshListProps> = ({
 												: t("ui.mesh.mesh_list.member")}
 										</span>
 									</div>
+									{/*
+									 * THE EVIDENCE BEHIND THE VERDICT (mesh link resilience). A refused TCP
+									 * connection, a timeout and a closed handshake used to arrive as one amber
+									 * `unreachable` and one sentence, so the reader could not tell which action to
+									 * take. The wire now publishes the attempts; this line prints them, one address
+									 * at a time, in the backend's own order. It appears only when there is evidence,
+									 * and an older backend (no `attempts`) keeps the unchanged sentence below.
+									 */}
+									{(headline !== "" || attempts.length > 0) && !device.reachable && (
+										<div className="flex flex-col gap-0.5">
+											{headline && (
+												<span className="text-meta text-warning">{headline}</span>
+											)}
+											{attempts.map((attempt, index) => {
+												const words = attemptWords(attempt.detail);
+												return (
+													<span
+														key={`${attempt.endpoint}:${index}`}
+														data-mesh-attempt={attempt.endpoint}
+														className="text-meta text-ink-dim"
+													>
+														{words
+															? `${attempt.endpoint} — ${words}`
+															: attempt.endpoint}
+													</span>
+												);
+											})}
+										</div>
+									)}
 									{conversationsLinkDown(device, nowSeconds) ? (
 										<span className="text-meta text-warning">
 											{t("ui.mesh.mesh_card.conversations")} (
