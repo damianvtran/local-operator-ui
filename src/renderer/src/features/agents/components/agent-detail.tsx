@@ -60,6 +60,7 @@ import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { LogIn, MoreHorizontal } from "lucide-react";
 import {
 	type FormEvent,
+	type ReactNode,
 	type Ref,
 	useEffect,
 	useId,
@@ -533,6 +534,7 @@ export function AgentDetail({
 	onOpenTeam,
 	onAskAgent,
 	onDirtyChange,
+	belowHeader,
 }: {
 	profile: ReusableProfile;
 	/**
@@ -554,6 +556,16 @@ export function AgentDetail({
 	onDuplicate: (profile: ReusableProfile) => void;
 	onOpenTeam: (name: string) => void;
 	onAskAgent: (prompt: string) => void;
+	/**
+	 * THE SLOT BELOW THE RECORD'S TITLE, for a notice that is ABOUT this record.
+	 *
+	 * It renders here, inside the pane, rather than in the page above it: a
+	 * banner drawn before the title describes a record from outside it, and a
+	 * second one would have had a measure of its own. The slot inherits the
+	 * pane's measure and the pane's ground, so whatever the page passes keeps
+	 * the record's left and right edges.
+	 */
+	belowHeader?: ReactNode;
 }) {
 	const [editing, setEditing] = useState(false);
 	const [base, setBase] = useState<Draft>(() => draftOf(profile));
@@ -1000,6 +1012,14 @@ export function AgentDetail({
 					</Alert>
 				) : null}
 			</header>
+
+			{/*
+			 * THE RECORD'S OWN NOTICE, directly under its title and above the
+			 * form. It is a child of the pane, so it is measured exactly like the
+			 * form is: one column, one pair of edges, no second measure of its
+			 * own.
+			 */}
+			{belowHeader}
 
 			{/* noValidate — the edit form validates in `save()` (D14). */}
 			<form

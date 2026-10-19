@@ -2291,6 +2291,7 @@ export type MessageParams = {
 		subscribe: string;
 		autoPush: string;
 	};
+	"ui.hub.links.hub_id": { address: string };
 	"ui.hub.links.last_success": { time: string };
 	"ui.hub.links.links_count": { count: number };
 	"ui.hub.links.load_failed": undefined;
@@ -2336,6 +2337,9 @@ export type MessageParams = {
 	"ui.hub.links.title": undefined;
 	"ui.hub.links.unknown_baseline": undefined;
 	"ui.hub.links.unresolved_mark": { item: string };
+	"ui.hub.links.unresolved_next": undefined;
+	"ui.hub.links.unresolved_what": { item: string };
+	"ui.hub.links.unresolved_why": { item: string };
 	"ui.hub.links.updated": { item: string; source: string };
 	"ui.hub.skills.catalogue_failed": { source: string };
 	"ui.hub.skills.empty": undefined;
