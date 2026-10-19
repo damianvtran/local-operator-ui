@@ -5,8 +5,12 @@
  * header counts, and that a receipt never enters the action arithmetic. This
  * file asserts what only a mount can: that a journal page with the operator's
  * wall of `job result` rows replays through `applyHistoryPage` into ONE fold
- * whose header's numbers match the rows it reveals, that the receipts are really
- * unmounted while condensed, and that the agent's answer is outside the fold.
+ * whose header's numbers match the rows it reveals, and that the receipts are
+ * really unmounted while condensed.
+ *
+ * THE ANSWER-OUTSIDE PROPERTY IS THE SYNTHETIC PAGE'S, not the real-journal
+ * slice's: that fixture carries no painted assistant answer to assert it
+ * against, so #1190's rule is checked on the synthetic page, which does.
  *
  * WHY THE FIXTURE IS THE REAL SESSION. `scripts/fixtures/receipt-fold-8c2ff1914f44.json`
  * is journal lines 600-830 of the operator's reported session with ids, paths,
@@ -407,6 +411,52 @@ test("the operator's wall folds through the reducer into one receipt-aware group
 		"the answer is not inside the fold",
 	);
 	assert.match(answer.textContent ?? "", /counts internal receipts honestly/);
+});
+
+test("a run ending in two adjacent job results folds with one call", async (t) => {
+	/*
+	 * The trailing-stretch rule, through the shipped reducer and transcript: one
+	 * call followed by two receipts is BELOW §E2's action threshold, and the fold
+	 * must still be one group whose counts are the two things it holds. This is
+	 * the mixed case a pure-receipt fixture cannot prove.
+	 *
+	 * The small settled turn may arrive behind its OWN turn-tier bar - a separate
+	 * view, existing behaviour, not the fold's - so the case opens that bar if it
+	 * is there and asserts the fold the reader then sees. The fold is the
+	 * guarantee under test; the turn tier is not re-pinned here.
+	 */
+	__resetTurnCollapseOpen();
+	sequence = 0;
+	const entries = [userEntry()];
+	const callId = "call-tail";
+	entries.push(callEntry(callId), resultEntry(callId));
+	const jobIds = [];
+	for (let index = 0; index < 2; index++) {
+		entries.push(jobEntry(index));
+		jobIds.push(entries.at(-1).id);
+	}
+	entries.push(answerEntry());
+	const mounted = await mount(t, replay(entries).records);
+	const turnBar = mounted.container.querySelector(
+		"[data-turn-summary] button[aria-expanded='false']",
+	);
+	if (turnBar) await click(turnBar);
+	const summaries = foldSummaries(mounted);
+	assert.equal(
+		summaries.length,
+		1,
+		"one call + two tail receipts is one group",
+	);
+	const text = summaries[0].textContent ?? "";
+	assert.match(text, /1 shell/);
+	assert.match(text, /2 job results/);
+	for (const id of jobIds) {
+		assert.equal(
+			mounted.container.querySelector(`[data-record-id="${id}"]`),
+			null,
+			"both trailing receipts are inside the condensed fold",
+		);
+	}
 });
 
 test("expanding a receipt-aware fold reveals exactly the rows its header counted", async (t) => {
