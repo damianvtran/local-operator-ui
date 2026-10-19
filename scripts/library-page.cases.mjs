@@ -273,9 +273,14 @@ const ROWS = [
 const ANSWER = {
 	rows: [],
 	failList: null,
+	failNextPage: false,
 	hang: false,
 	detail: null,
 	state: "ready",
+	nextCursor: null,
+	librarianHang: false,
+	librarianGate: null,
+	releaseLibrarian: null,
 	ops: [],
 	mediaOps: [],
 	gate: null,
@@ -298,6 +303,13 @@ const desktopRequest = async (request) => {
 		};
 	}
 	if (request.op === "library.list") {
+		/*
+		 * A next-page read is the one failure that must NOT surface as the
+		 * top-of-grid warning: the page renders its own load-more block. This
+		 * answers the cursor page with 500 while the first page stays good.
+		 */
+		if (request.cursor && ANSWER.failNextPage)
+			return { status: 500, body: { detail: "The next page did not answer." } };
 		if (ANSWER.hang) {
 			/*
 			 * ONE GATE, NOT ONE RESOLVER PER REQUEST. The page can issue a second
@@ -328,7 +340,7 @@ const desktopRequest = async (request) => {
 					},
 					tags: [tag("t1", "finance")],
 					rows: ANSWER.rows,
-					next_cursor: null,
+					next_cursor: ANSWER.nextCursor,
 					cursor_reset: false,
 					scan: { sessions_total: 1, sessions_scanned: 1 },
 					librarian: {
@@ -349,6 +361,16 @@ const desktopRequest = async (request) => {
 		return { status: 200, body: { result: row } };
 	}
 	if (request.op === "library.librarian") {
+		/*
+		 * The status read can hang so a case can prove the header reserves the
+		 * 40px Librarian track while the row has no content yet.
+		 */
+		if (ANSWER.librarianHang) {
+			ANSWER.librarianGate ??= new Promise((resolve) => {
+				ANSWER.releaseLibrarian = resolve;
+			});
+			await ANSWER.librarianGate;
+		}
 		return {
 			status: 200,
 			body: {
@@ -550,6 +572,28 @@ test("the header sizes to its tracks and the building row stays above the result
 			header.nextElementSibling?.contains(results),
 			"the results container follows the header in the page flow",
 		);
+		/*
+		 * THE PAGE IS A HORIZONTAL ROW and the header lives in the vertical
+		 * column to the right of the rail. jsdom reports every width as 0, so the
+		 * rail itself is absent in this lane; its geometry is measured from the
+		 * Storybook story. This pins the structure that makes rail-top ==
+		 * header-top possible: both columns start at the page's top edge.
+		 */
+		const rightColumn = header.parentElement;
+		const pageRoot = rightColumn?.parentElement;
+		assert.ok(
+			rightColumn && pageRoot,
+			"the header has the page column above it",
+		);
+		assert.ok(
+			rightColumn.className.split(CLASS_TOKENS).includes("flex-col"),
+			"the header's column is vertical",
+		);
+		assert.equal(
+			pageRoot.className.split(CLASS_TOKENS).includes("flex-col"),
+			false,
+			"the page root is a horizontal row, not a vertical stack",
+		);
 
 		const headerClasses = header.className.split(CLASS_TOKENS);
 		assert.ok(
@@ -571,8 +615,12 @@ test("the header sizes to its tracks and the building row stays above the result
 			2,
 		);
 		assert.equal(
-			tracks.filter((classes) => classes.includes("h-10")).length,
+			tracks.filter((classes) => classes.includes("min-h-10")).length,
 			1,
+		);
+		assert.ok(
+			header.querySelector("[data-library-librarian-track]"),
+			"the 40px Librarian track is reserved even while its row is empty",
 		);
 		assert.equal(tracks.filter((classes) => classes.includes("h-4")).length, 1);
 		for (const child of header.children) {
@@ -643,17 +691,158 @@ test("a failed refetch keeps the painted rows and warns inline", async () => {
 		container.querySelector(`[data-library-card-id="${cardId}"]`),
 		"the last good rows stay painted after the refetch fails",
 	);
+	const warning = container.querySelector("[data-library-partial-error]");
 	assert.ok(
-		container.querySelector("[data-library-partial-error]"),
+		warning,
 		"the failure is reported inline instead of replacing the grid",
 	);
+	assert.equal(warning.getAttribute("role"), "alert");
 	assert.ok(text(container).includes("The library did not answer in time."));
+	/*
+	 * Alert's body is a flex COLUMN; the message and Retry must be one row inside
+	 * it, or the button stacks under the sentence and stretches full width.
+	 */
+	const warningRow = warning.querySelector("[data-library-partial-row]");
+	assert.ok(warningRow, "the warning body is one explicit row");
+	const rowClasses = warningRow.className.split(CLASS_TOKENS);
+	for (const required of ["flex", "w-full", "items-center"])
+		assert.ok(rowClasses.includes(required), `the warning row is ${required}`);
+	const retry = warning.querySelector("button");
+	assert.ok(retry, "the inline warning carries its own Retry control");
 	assert.ok(
-		container.querySelector("[data-library-partial-error] button"),
-		"the inline warning carries its own Retry control",
+		retry.className.split(CLASS_TOKENS).includes("shrink-0"),
+		"the Retry control does not stretch or shrink in the warning row",
+	);
+	assert.equal(
+		warning.querySelectorAll("button").length,
+		1,
+		"the warning has one action, not one per child",
 	);
 	await act(async () => root.unmount());
 	ANSWER.failList = null;
+});
+
+test("the header shares the results' single canvas-content glass region", async () => {
+	ANSWER.rows = ROWS;
+	const { container, root } = await mount();
+	const header = container.querySelector("[data-library-header]");
+	const results = container.querySelector("[data-library-results]");
+	const region = header.closest('[data-glass-region="canvas-content"]');
+	assert.ok(region, "the header is inside a canvas-content region");
+	assert.equal(
+		results.closest('[data-glass-region="canvas-content"]'),
+		region,
+		"the header and the results paint from the same region",
+	);
+	assert.equal(
+		results.hasAttribute("data-glass-region"),
+		false,
+		"the results section does not nest a second region",
+	);
+	await act(async () => root.unmount());
+});
+
+test("the Librarian track is reserved while its status loads", async () => {
+	ANSWER.rows = ROWS;
+	ANSWER.librarianHang = true;
+	const { container, root } = await mount();
+	const track = container.querySelector("[data-library-librarian-track]");
+	assert.ok(track, "the reserved track renders before the status answers");
+	assert.ok(track.className.split(CLASS_TOKENS).includes("min-h-10"));
+	assert.equal(
+		container.querySelector("[data-library-librarian]"),
+		null,
+		"the row itself still waits for the status",
+	);
+	ANSWER.librarianHang = false;
+	ANSWER.releaseLibrarian?.();
+	await waitFor(
+		() => container.querySelector("[data-library-librarian]") !== null,
+	);
+	await act(async () => root.unmount());
+	ANSWER.librarianGate = null;
+	ANSWER.releaseLibrarian = null;
+});
+
+test("a failed next page stays on the load-more surface, not the top warning", async () => {
+	ANSWER.rows = ROWS;
+	ANSWER.nextCursor = "cursor-2";
+	const { container, root } = await mount();
+	assert.ok(
+		container.querySelector('[data-library-card-id="la_0000000000000011"]'),
+		"the first page is painted",
+	);
+	const loadMore = [...container.querySelectorAll("button")].find(
+		(button) => button.textContent?.trim() === "Load more",
+	);
+	assert.ok(loadMore, "the load-more control renders when a cursor exists");
+	ANSWER.failNextPage = true;
+	await act(async () => loadMore.click());
+	await waitFor(() => text(container).includes("Couldn't load more assets."));
+	assert.equal(
+		container.querySelectorAll("[data-library-partial-error]").length,
+		0,
+		"a next-page failure does not add the refetch warning",
+	);
+	assert.equal(
+		[...container.querySelectorAll("button")].filter(
+			(button) => button.textContent?.trim() === "Retry",
+		).length,
+		1,
+		"exactly one Retry: the load-more one",
+	);
+	await act(async () => root.unmount());
+	ANSWER.nextCursor = null;
+	ANSWER.failNextPage = false;
+});
+
+test("the rail renders as the page row's first column at 1380px", async () => {
+	ANSWER.rows = ROWS;
+	Object.defineProperty(dom.window, "innerWidth", {
+		configurable: true,
+		value: 1380,
+	});
+	const original = dom.window.Element.prototype.getBoundingClientRect;
+	/*
+	 * A scoped width shim, not a layout engine. `useWorkspaceWidth` reads the
+	 * page root's rect and jsdom reports 0 for every element; returning a width
+	 * for the one node that carries `data-glass-split` makes the real
+	 * `railVisible` conditional render. No observer is involved, and the
+	 * assertions below stay boolean so a failure never serialises a DOM node.
+	 * The rail's top/bottom geometry is measured from Storybook frames.
+	 */
+	dom.window.Element.prototype.getBoundingClientRect = function () {
+		if (this.hasAttribute?.("data-glass-split")) {
+			return {
+				width: 1380,
+				height: 900,
+				top: 0,
+				left: 0,
+				right: 1380,
+				bottom: 900,
+				x: 0,
+				y: 0,
+				toJSON: () => ({}),
+			};
+		}
+		return original.call(this);
+	};
+	try {
+		const { container, root } = await mount();
+		const rail = container.querySelector("[data-library-rail]");
+		assert.ok(rail, "the rail renders at 1380px");
+		assert.ok(
+			rail.parentElement?.hasAttribute("data-glass-split"),
+			"the rail is a child of the page row",
+		);
+		assert.ok(
+			rail.nextElementSibling?.querySelector("[data-library-header]") !== null,
+			"the header is in the column right of the rail",
+		);
+		await act(async () => root.unmount());
+	} finally {
+		dom.window.Element.prototype.getBoundingClientRect = original;
+	}
 });
 
 test("a card selects its asset route and the preview renders there", async () => {

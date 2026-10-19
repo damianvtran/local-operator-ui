@@ -536,283 +536,299 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			ref={workspaceRef}
 			data-glass-region="canvas"
 			data-glass-split=""
-			className="flex h-full min-h-0 flex-col overflow-hidden bg-canvas"
+			className="flex h-full min-h-0 overflow-hidden bg-canvas"
 		>
 			{/*
-			 * THE HEADER SIZES TO ITS CONTENT, with the design's 136px as a FLOOR.
-			 * A fixed `h-[136px]` held two 48px rows plus the 40px Librarian track
-			 * only by ignoring the 4px row gaps and the 24px vertical padding; when
-			 * the building line rendered, the remaining tracks overflowed the box and
-			 * painted over the results (the flex parent had already given the header
-			 * its fixed share). `min-h` keeps the reserved track from shrinking
-			 * below the spec's height while every rendered row - including the
-			 * building line - stays in flow and pushes the results down.
+			 * THE RAIL RUNS THE FULL PAGE HEIGHT, as the first column of a
+			 * horizontal page root. It used to sit inside the results row, so the
+			 * header above it was full-width and the rail began under the search
+			 * bar. The right column now owns the header and the results, which
+			 * makes the rail's top line the page's top line (matching the app
+			 * sidebar/canvas split) and the search bar start to its right.
 			 */}
-			<header
-				data-library-header=""
-				className="flex shrink-0 flex-col gap-1 px-6 pt-4 pb-2 min-[800px]:min-h-[136px]"
+			{railVisible && !standalone && (
+				<aside
+					data-library-rail=""
+					data-glass-region="page-sidebar"
+					aria-label={t("ui.library.page.filters")}
+					className="flex w-48 shrink-0 flex-col overflow-hidden border-r border-hairline bg-surface"
+				>
+					{rail}
+				</aside>
+			)}
+			<div
+				data-glass-region="canvas-content"
+				className="flex min-w-0 flex-1 flex-col"
 			>
-				<div className="flex h-12 min-w-0 items-center gap-2">
-					<LibraryBig size={20} aria-hidden="true" className="text-ink-muted" />
-					<h1 className="text-title text-ink">{t("ui.library.page.title")}</h1>
-					<span className="ml-2 text-meta tabular-nums text-ink-dim">
-						{t("ui.library.page.loaded_count", {
-							loaded: String(rows.length),
-							total: String(total),
-						})}
-					</span>
-					<div className="ml-auto flex items-center rounded-sm border border-control">
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-pressed={view === "grid"}
-							aria-label={t("ui.library.page.grid_view")}
-							onClick={() => setView("grid")}
-						>
-							<LayoutGrid aria-hidden="true" />
-						</Button>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-pressed={view === "list"}
-							aria-label={t("ui.library.page.list_view")}
-							onClick={() => setView("list")}
-						>
-							<List aria-hidden="true" />
-						</Button>
-					</div>
-				</div>
-				<div className="flex h-12 min-w-0 items-center gap-2">
-					<div className="relative min-w-60 flex-1">
-						<Search
-							size={14}
+				{/*
+				 * THE HEADER SIZES TO ITS CONTENT, with the design's 136px as a FLOOR.
+				 * A fixed `h-[136px]` held two 48px rows plus the 40px Librarian track
+				 * only by ignoring the 4px row gaps and the 24px vertical padding; when
+				 * the building line rendered, the remaining tracks overflowed the box and
+				 * painted over the results (the flex parent had already given the header
+				 * its fixed share). `min-h` keeps the reserved track from shrinking
+				 * below the spec's height while every rendered row - including the
+				 * building line - stays in flow and pushes the results down.
+				 */}
+				<header
+					data-library-header=""
+					className="flex shrink-0 flex-col gap-1 px-6 pt-4 pb-2 min-[800px]:min-h-[136px]"
+				>
+					<div className="flex h-12 min-w-0 items-center gap-2">
+						<LibraryBig
+							size={20}
 							aria-hidden="true"
-							className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-dim"
+							className="text-ink-muted"
 						/>
-						<Input
-							ref={searchRef}
-							value={search}
-							onChange={(event) => setSearch(event.target.value)}
-							onKeyDown={(event) => {
-								if (event.key === "Enter") event.preventDefault();
-							}}
-							placeholder={t("ui.library.page.search")}
-							aria-label={t("ui.library.page.search")}
-							data-library-search=""
-							className="pl-8"
-						/>
-					</div>
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="secondary" size="sm">
-								<ArrowDownWideNarrow aria-hidden="true" />
-								{t("ui.library.page.sort")}
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="min-w-45">
-							{LIBRARY_SORTS.map((sort) => (
-								<DropdownMenuItem
-									key={sort.key}
-									onSelect={() =>
-										setFilters((current) => ({
-											...current,
-											sort: sort.key,
-											order: defaultOrder(sort.key),
-										}))
-									}
-								>
-									{filters.sort === sort.key ? (
-										<Check aria-hidden="true" />
-									) : (
-										<span className="size-4" />
-									)}
-									<span>{t(sort.labelKey)}</span>
-								</DropdownMenuItem>
-							))}
-						</DropdownMenuContent>
-					</DropdownMenu>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label={t("ui.library.page.reverse_order")}
-						onClick={() =>
-							setFilters((current) => ({
-								...current,
-								order: current.order === "asc" ? "desc" : "asc",
-							}))
-						}
-					>
-						{filters.order === "asc" ? (
-							<ArrowUpNarrowWide aria-hidden="true" />
-						) : (
-							<ArrowDownWideNarrow aria-hidden="true" />
-						)}
-					</Button>
-					{!railVisible && !standalone && (
-						<Button
-							variant="secondary"
-							size="sm"
-							onClick={() => setFilterSheetOpen(true)}
-						>
-							<SlidersHorizontal aria-hidden="true" />
-							{t("ui.library.page.filters")}
-						</Button>
-					)}
-				</div>
-				<LibrarianRow enabled={enabled} nowMs={clock} />
-				{lastPage?.state === "building" && (
-					<div
-						data-library-building=""
-						className="flex h-4 items-center gap-2 text-meta text-ink-muted"
-						aria-live="polite"
-					>
-						<span>
-							{t("ui.library.page.building", {
-								scanned: String(lastPage.scan.sessions_scanned),
-								total: String(lastPage.scan.sessions_total),
+						<h1 className="text-title text-ink">
+							{t("ui.library.page.title")}
+						</h1>
+						<span className="ml-2 text-meta tabular-nums text-ink-dim">
+							{t("ui.library.page.loaded_count", {
+								loaded: String(rows.length),
+								total: String(total),
 							})}
 						</span>
+						<div className="ml-auto flex items-center rounded-sm border border-control">
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-pressed={view === "grid"}
+								aria-label={t("ui.library.page.grid_view")}
+								onClick={() => setView("grid")}
+							>
+								<LayoutGrid aria-hidden="true" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-pressed={view === "list"}
+								aria-label={t("ui.library.page.list_view")}
+								onClick={() => setView("list")}
+							>
+								<List aria-hidden="true" />
+							</Button>
+						</div>
 					</div>
-				)}
-			</header>
-			<div className="flex min-h-0 flex-1">
-				{railVisible && !standalone && (
-					<aside
-						data-glass-region="page-sidebar"
-						aria-label={t("ui.library.page.filters")}
-						className="w-48 shrink-0 overflow-hidden border-r border-hairline bg-surface"
-					>
-						{rail}
-					</aside>
-				)}
-				<div className="flex min-w-0 flex-1">
-					{!standalone && (
-						<section
-							data-library-results=""
-							data-glass-region="canvas-content"
-							aria-label={t("ui.library.page.results")}
-							aria-busy={listing.isLoading || listing.isFetching}
-							className="min-w-0 flex-1 overflow-y-auto px-4 py-4 [scrollbar-gutter:stable]"
-						>
-							{listing.isLoading ? (
-								<LibraryGridSkeleton view={view} />
-							) : listing.isError && rows.length === 0 ? (
-								<div className="flex flex-col items-start gap-3 py-10">
-									<Alert variant="warning">{listingErrorText}</Alert>
-									<Button
-										variant="secondary"
-										size="sm"
-										onClick={() => void listing.refetch()}
+					<div className="flex h-12 min-w-0 items-center gap-2">
+						<div className="relative min-w-60 flex-1">
+							<Search
+								size={14}
+								aria-hidden="true"
+								className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-dim"
+							/>
+							<Input
+								ref={searchRef}
+								value={search}
+								onChange={(event) => setSearch(event.target.value)}
+								onKeyDown={(event) => {
+									if (event.key === "Enter") event.preventDefault();
+								}}
+								placeholder={t("ui.library.page.search")}
+								aria-label={t("ui.library.page.search")}
+								data-library-search=""
+								className="pl-8"
+							/>
+						</div>
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button variant="secondary" size="sm">
+									<ArrowDownWideNarrow aria-hidden="true" />
+									{t("ui.library.page.sort")}
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" className="min-w-45">
+								{LIBRARY_SORTS.map((sort) => (
+									<DropdownMenuItem
+										key={sort.key}
+										onSelect={() =>
+											setFilters((current) => ({
+												...current,
+												sort: sort.key,
+												order: defaultOrder(sort.key),
+											}))
+										}
 									>
-										<RefreshCw aria-hidden="true" />
-										{t("ui.library.page.retry")}
-									</Button>
-								</div>
-							) : empty ? (
-								<div className="flex flex-col items-center gap-3 py-16 text-center">
-									<LibraryBig
-										size={28}
-										aria-hidden="true"
-										className="text-ink-dim"
-									/>
-									<p className="text-body text-ink">
-										{matching
-											? t("ui.library.page.no_matches")
-											: t("ui.library.page.empty_title")}
-									</p>
-									<p className="max-w-90 text-body-sm text-ink-muted">
-										{matching
-											? t("ui.library.page.no_matches_detail")
-											: t("ui.library.page.empty_detail")}
-									</p>
-									{matching && (
+										{filters.sort === sort.key ? (
+											<Check aria-hidden="true" />
+										) : (
+											<span className="size-4" />
+										)}
+										<span>{t(sort.labelKey)}</span>
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuContent>
+						</DropdownMenu>
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label={t("ui.library.page.reverse_order")}
+							onClick={() =>
+								setFilters((current) => ({
+									...current,
+									order: current.order === "asc" ? "desc" : "asc",
+								}))
+							}
+						>
+							{filters.order === "asc" ? (
+								<ArrowUpNarrowWide aria-hidden="true" />
+							) : (
+								<ArrowDownWideNarrow aria-hidden="true" />
+							)}
+						</Button>
+						{!railVisible && !standalone && (
+							<Button
+								variant="secondary"
+								size="sm"
+								onClick={() => setFilterSheetOpen(true)}
+							>
+								<SlidersHorizontal aria-hidden="true" />
+								{t("ui.library.page.filters")}
+							</Button>
+						)}
+					</div>
+					{/*
+					 * THE LIBRARIAN TRACK IS RESERVED WHILE ITS STATUS LOADS. The row itself
+					 * renders null until the status answers, so without this wrapper the
+					 * header grew by 40px when it arrived and pushed the results down. The
+					 * wrapper keeps the design's track whether or not the row has content.
+					 */}
+					<div data-library-librarian-track="" className="min-h-10 shrink-0">
+						<LibrarianRow enabled={enabled} nowMs={clock} />
+					</div>
+					{lastPage?.state === "building" && (
+						<div
+							data-library-building=""
+							className="flex h-4 items-center gap-2 text-meta text-ink-muted"
+							aria-live="polite"
+						>
+							<span>
+								{t("ui.library.page.building", {
+									scanned: String(lastPage.scan.sessions_scanned),
+									total: String(lastPage.scan.sessions_total),
+								})}
+							</span>
+						</div>
+					)}
+				</header>
+				<div className="flex min-h-0 flex-1">
+					<div className="flex min-w-0 flex-1">
+						{!standalone && (
+							<section
+								data-library-results=""
+								aria-label={t("ui.library.page.results")}
+								aria-busy={listing.isLoading || listing.isFetching}
+								className="min-w-0 flex-1 overflow-y-auto px-4 py-4 [scrollbar-gutter:stable]"
+							>
+								{listing.isLoading ? (
+									<LibraryGridSkeleton view={view} />
+								) : listing.isError && rows.length === 0 ? (
+									<div className="flex flex-col items-start gap-3 py-10">
+										<Alert variant="warning">{listingErrorText}</Alert>
 										<Button
 											variant="secondary"
 											size="sm"
-											onClick={() => {
-												setFilters(NO_LIBRARY_FILTERS);
-												setSearch("");
-											}}
+											onClick={() => void listing.refetch()}
 										>
-											{t("ui.library.page.clear_all")}
+											<RefreshCw aria-hidden="true" />
+											{t("ui.library.page.retry")}
 										</Button>
-									)}
-								</div>
-							) : (
-								<>
-									{/*
-									 * ERROR WITH DATA KEEPS THE PAINTED ROWS. A failed refetch (the
-									 * desktop's own 20s deadline is one such failure) leaves the last
-									 * good pages in `listing.data`; replacing them with the full-page
-									 * error block erased content the reader was already using. The
-									 * warning is a compact in-flow row above the grid, so it announces
-									 * the failure without taking the page away.
-									 */}
-									{listing.isError && (
-										<Alert
-											variant="warning"
-											data-library-partial-error=""
-											className="mb-3 items-center gap-2 py-2"
-										>
-											<span className="min-w-0 flex-1">{listingErrorText}</span>
+									</div>
+								) : empty ? (
+									<div className="flex flex-col items-center gap-3 py-16 text-center">
+										<LibraryBig
+											size={28}
+											aria-hidden="true"
+											className="text-ink-dim"
+										/>
+										<p className="text-body text-ink">
+											{matching
+												? t("ui.library.page.no_matches")
+												: t("ui.library.page.empty_title")}
+										</p>
+										<p className="max-w-90 text-body-sm text-ink-muted">
+											{matching
+												? t("ui.library.page.no_matches_detail")
+												: t("ui.library.page.empty_detail")}
+										</p>
+										{matching && (
 											<Button
 												variant="secondary"
 												size="sm"
-												onClick={() => void listing.refetch()}
+												onClick={() => {
+													setFilters(NO_LIBRARY_FILTERS);
+													setSearch("");
+												}}
 											>
-												<RefreshCw aria-hidden="true" />
-												{t("ui.library.page.retry")}
+												{t("ui.library.page.clear_all")}
 											</Button>
-										</Alert>
-									)}
-									<LibraryGrid
-										assets={rows}
-										selectedId={selectedId}
-										view={view}
-										hasMore={Boolean(listing.hasNextPage)}
-										loadingMore={listing.isFetchingNextPage}
-										onLoadMore={loadMore}
-										{...actions}
-									/>
-									{listing.isFetchNextPageError && (
-										<div className="flex items-center gap-2 py-3 text-meta text-ink-muted">
-											<span>{t("ui.library.page.load_more_failed")}</span>
-											<Button variant="ghost" size="sm" onClick={loadMore}>
-												{t("ui.library.page.retry")}
-											</Button>
-										</div>
-									)}
-								</>
-							)}
-						</section>
-					)}
-					{dockEligible && selected && (
-						<aside
-							className="flex w-[448px] shrink-0 border-l border-hairline"
-							aria-label={t("ui.library.page.preview")}
-						>
-							<LibraryPreview
-								asset={selected}
-								nowMs={clock}
-								onClose={goBack}
-								onOpenConversation={openConversationFor}
-								onFilterSession={filterSession}
-								onAsk={() => setComposerFocusSignal((value) => value + 1)}
-								onToggleFavorite={() => toggleFavorite(selected)}
-								composerFocusSignal={composerFocusSignal}
-								focusRequest={focusRequest}
-								onExpand={openFullView}
-							/>
-						</aside>
-					)}
-					{standalone && (
-						<div
-							className="min-w-0 flex-1"
-							aria-label={t("ui.library.page.preview")}
-						>
-							{selectedMissing ? (
-								<UnavailableAsset onBack={goBack} />
-							) : selected ? (
+										)}
+									</div>
+								) : (
+									<>
+										{/*
+										 * ERROR WITH DATA KEEPS THE PAINTED ROWS. A failed REFETCH (the
+										 * desktop's own 20s deadline is one such failure) leaves the last
+										 * good pages in `listing.data`; replacing them with the full-page
+										 * error block erased content the reader was already using. The
+										 * warning is a compact in-flow row above the grid, so it announces
+										 * the failure without taking the page away. `isRefetchError`
+										 * excludes a failed `fetchNextPage`; that failure has its own
+										 * surface beside the load-more control, and showing both would
+										 * stack two warnings and two Retry buttons.
+										 */}
+										{listing.isRefetchError && (
+											<Alert
+												variant="warning"
+												role="alert"
+												data-library-partial-error=""
+												className="mb-3 items-center gap-2 py-2"
+											>
+												<div
+													data-library-partial-row=""
+													className="flex w-full min-w-0 items-center gap-2"
+												>
+													<span className="min-w-0 flex-1">
+														{listingErrorText}
+													</span>
+													<Button
+														variant="secondary"
+														size="sm"
+														className="shrink-0"
+														onClick={() => void listing.refetch()}
+													>
+														<RefreshCw aria-hidden="true" />
+														{t("ui.library.page.retry")}
+													</Button>
+												</div>
+											</Alert>
+										)}
+										<LibraryGrid
+											assets={rows}
+											selectedId={selectedId}
+											view={view}
+											hasMore={Boolean(listing.hasNextPage)}
+											loadingMore={listing.isFetchingNextPage}
+											onLoadMore={loadMore}
+											{...actions}
+										/>
+										{listing.isFetchNextPageError && (
+											<div className="flex items-center gap-2 py-3 text-meta text-ink-muted">
+												<span>{t("ui.library.page.load_more_failed")}</span>
+												<Button variant="ghost" size="sm" onClick={loadMore}>
+													{t("ui.library.page.retry")}
+												</Button>
+											</div>
+										)}
+									</>
+								)}
+							</section>
+						)}
+						{dockEligible && selected && (
+							<aside
+								className="flex w-[448px] shrink-0 border-l border-hairline"
+								aria-label={t("ui.library.page.preview")}
+							>
 								<LibraryPreview
 									asset={selected}
 									nowMs={clock}
@@ -823,22 +839,45 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 									onToggleFavorite={() => toggleFavorite(selected)}
 									composerFocusSignal={composerFocusSignal}
 									focusRequest={focusRequest}
-									standalone
+									onExpand={openFullView}
 								/>
-							) : (
-								<div className="flex h-full items-center justify-center">
-									<Spinner label={t("ui.library.preview.loading")} />
-								</div>
-							)}
-						</div>
-					)}
-					{!standalone && !selected && dockEligible && (
-						<div className="hidden w-[448px] shrink-0 items-start justify-center border-l border-hairline p-8 lg:flex">
-							<p className="max-w-60 text-center text-body-sm text-ink-dim">
-								{t("ui.library.page.select_asset")}
-							</p>
-						</div>
-					)}
+							</aside>
+						)}
+						{standalone && (
+							<div
+								className="min-w-0 flex-1"
+								aria-label={t("ui.library.page.preview")}
+							>
+								{selectedMissing ? (
+									<UnavailableAsset onBack={goBack} />
+								) : selected ? (
+									<LibraryPreview
+										asset={selected}
+										nowMs={clock}
+										onClose={goBack}
+										onOpenConversation={openConversationFor}
+										onFilterSession={filterSession}
+										onAsk={() => setComposerFocusSignal((value) => value + 1)}
+										onToggleFavorite={() => toggleFavorite(selected)}
+										composerFocusSignal={composerFocusSignal}
+										focusRequest={focusRequest}
+										standalone
+									/>
+								) : (
+									<div className="flex h-full items-center justify-center">
+										<Spinner label={t("ui.library.preview.loading")} />
+									</div>
+								)}
+							</div>
+						)}
+						{!standalone && !selected && dockEligible && (
+							<div className="hidden w-[448px] shrink-0 items-start justify-center border-l border-hairline p-8 lg:flex">
+								<p className="max-w-60 text-center text-body-sm text-ink-dim">
+									{t("ui.library.page.select_asset")}
+								</p>
+							</div>
+						)}
+					</div>
 				</div>
 			</div>
 
