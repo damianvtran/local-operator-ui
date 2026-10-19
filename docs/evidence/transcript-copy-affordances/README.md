@@ -52,6 +52,9 @@ menu, selection and focus states are driven by the stories' own play steps
 | [`after-context-menu-prose.png`](./after-context-menu-prose.png) | `chat-canonical-transcript-copy--context-menu-on-prose` | Right-click on prose: Copy text / Copy as Markdown / Copy selection (disabled) |
 | [`after-context-menu-tool.png`](./after-context-menu-tool.png) | `chat-canonical-transcript-copy--context-menu-on-tool-row` | Right-click on an expanded ledger row |
 | [`after-selection-toolbar.png`](./after-selection-toolbar.png) | `chat-canonical-transcript-copy--selection-toolbar` | A partial assistant selection raises ONE strip: Quote, Copy and one Speak |
+| [`after-selection-response-focused.png`](./after-selection-response-focused.png) | `chat-canonical-transcript-copy--selection-toolbar-response-focused` | The intermediate response is focused AND selected: one strip; its own Copy gutter is `visibility: hidden`, `pointer-events: none`, inert/aria-hidden |
+| [`after-selection-narrow.png`](./after-selection-narrow.png) | `chat-canonical-transcript-copy--selection-toolbar-narrow` (480px) | A two-line selection: the 90x32 strip sits above the selected paragraph (bottom 201.7 vs selected top 207.2), not over it |
+| [`after-selection-user.png`](./after-selection-user.png) | `chat-canonical-transcript-copy--selection-toolbar-user` | A user-message selection: a 62x32 Copy+Speak strip at x=919, no Quote, and no duplicate gutter |
 
 ### Measured in the browser (same run that produced the frames)
 
@@ -64,6 +67,9 @@ menu, selection and focus states are driven by the stories' own play steps
 | Selection strip (`[data-lo-quote-toolkit]`) | **90x32px**, at x=918 while the prose box ends at x=917 (no overlap), with Quote, Copy selection and one Speak; while it owns the highlight the row marks `data-lo-selection-active` and its gutter overlays are hidden |
 | Context menu | 224x104.5px portal, opened on the pointed line |
 | Focus ring | `outline: none` on the row; 2px accent ring on the bubble/answer box |
+| Collision state | Strip 90x32 at (107,112.9); response gutter 38x32 at (919,142.4) is `visibility: hidden`, `pointer-events: none`, `inert` |
+| Narrow selection (480px) | Strip 90x32 at (32,169.7); selected paragraph top 207.2 — the strip is above the two-line selection, covering only the preceding line |
+| User selection | Strip 62x32 at (919,88.5) — Copy + Speak, no Quote; the user gutter is suppressed |
 
 The pixel readings are from this Storybook run; jsdom has no layout engine. The
 native app was not driven for these frames; the stories mount the production
