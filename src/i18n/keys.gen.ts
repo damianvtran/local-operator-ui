@@ -92,6 +92,7 @@ import esUiChatDialogs from "./catalogues/es/ui.chat.dialogs.json";
 import esUiChatHeader from "./catalogues/es/ui.chat.header.json";
 import esUiChat from "./catalogues/es/ui.chat.json";
 import esUiChatSidebarView from "./catalogues/es/ui.chat.sidebar_view.json";
+import esUiChatTags from "./catalogues/es/ui.chat.tags.json";
 import esUiCodeReview from "./catalogues/es/ui.code_review.json";
 import esUiCommandPalette from "./catalogues/es/ui.command_palette.json";
 import esUiCommonAccount from "./catalogues/es/ui.common.account.json";
@@ -145,6 +146,7 @@ import frUiChatDialogs from "./catalogues/fr/ui.chat.dialogs.json";
 import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
 import frUiChat from "./catalogues/fr/ui.chat.json";
 import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
+import frUiChatTags from "./catalogues/fr/ui.chat.tags.json";
 import frUiCodeReview from "./catalogues/fr/ui.code_review.json";
 import frUiCommandPalette from "./catalogues/fr/ui.command_palette.json";
 import frUiCommonAccount from "./catalogues/fr/ui.common.account.json";
@@ -328,6 +330,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatHeader,
 		...esUiChat,
 		...esUiChatSidebarView,
+		...esUiChatTags,
 		...esUiCodeReview,
 		...esUiCommandPalette,
 		...esUiCommonAccount,
@@ -383,6 +386,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatHeader,
 		...frUiChat,
 		...frUiChatSidebarView,
+		...frUiChatTags,
 		...frUiCodeReview,
 		...frUiCommandPalette,
 		...frUiCommonAccount,
