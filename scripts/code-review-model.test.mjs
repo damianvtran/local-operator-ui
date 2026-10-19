@@ -30,7 +30,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { ciClause, laneStateClause, roundSegments, laneLines, commentClause, linkOnlyRemedy, toolOutputNote, forgeSigil, identityLabel, rowAriaLabel, attentionCause, needsAttention, rowHasPendingCi, chipClause, coolingClauses, groupRows, laneSegmentTone, refreshCaption, rowNotice, fetchStateOf, rowIsLoading, PENDING_REVEAL_MS } from "./src/renderer/src/features/code-review/code-review-model";',
+			'export { ciClause, laneStateClause, roundSegments, laneLines, commentClause, linkOnlyRemedy, toolOutputNote, forgeSigil, identityLabel, repoName, rowAriaLabel, attentionCause, needsAttention, rowHasPendingCi, chipClause, coolingClauses, groupRows, laneSegmentTone, refreshCaption, rowNotice, fetchStateOf, rowIsLoading, PENDING_REVEAL_MS } from "./src/renderer/src/features/code-review/code-review-model";',
 			'export { intervalFor, SCAN_POLL_MS, codeRequestsEnabled, appliedAfterFrame, chipState } from "./src/renderer/src/features/code-review/hooks/use-code-requests";',
 			'export { populatedRows, linkOnlyList, couldNotRefreshList, pendingList, staleList, rateLimitedList, viaRows } from "./src/renderer/src/features/code-review/code-review-fixtures";',
 		].join("\n"),
@@ -63,6 +63,7 @@ const {
 	toolOutputNote,
 	forgeSigil,
 	identityLabel,
+	repoName,
 	rowAriaLabel,
 	attentionCause,
 	needsAttention,
@@ -96,6 +97,7 @@ const {
  */
 const ROW_ARIA_FULL =
 	/^damianvtran\/local-operator #1904: feat: a thing, open, Round 2 · remediation posted · awaiting re-review, opens in your browser$/;
+const ROW_ARIA_DEEP_PATH = /^minervaai\/services\/core !276: /;
 const COOLING_GITHUB_LINE = /^GitHub rate-limited until /;
 
 /* ------------------------------------------------------------------ shapes */
@@ -467,6 +469,68 @@ test("GitLab identities use !N and the aria name says where the press goes", () 
 		}),
 	);
 	assert.match(label, ROW_ARIA_FULL);
+});
+
+/*
+ * THE REPO NAME (the operator's ask): the identity line shows the NAME - the
+ * last segment of the forge's project path - because the path truncated at the
+ * slot's width cut the name off exactly where the identity began.
+ *
+ * The path shapes below are the FORGE's, not the app's: GitHub and Gitea carry
+ * `owner/repo`, GitLab carries a subgroup path, Azure DevOps carries
+ * `org/project/_git/repo`, and Gerrit carries a bare project name. ONE rule -
+ * the last segment - has to cover all four, or the pane's own identity means
+ * something different on each forge.
+ */
+test("the repo NAME is the last segment of the forge's project path", () => {
+	// GitHub / Gitea: `owner/repo`.
+	assert.equal(repoName("owner/repo"), "repo");
+	// GitLab with a subgroup: `group/subgroup/project`.
+	assert.equal(repoName("group/subgroup/project"), "project");
+	// Azure DevOps: `org/project/_git/repo` - `_git` is a segment, not a marker.
+	assert.equal(repoName("org/project/_git/repo"), "repo");
+	// Gerrit: a bare project name, with no separator at all.
+	assert.equal(repoName("platform-core"), "platform-core");
+	// A trailing separator names nothing after it.
+	assert.equal(repoName("owner/repo/"), "repo");
+	// Nothing is nothing - a row with no project has no name to show.
+	assert.equal(repoName(""), "");
+	assert.equal(repoName("   "), "");
+});
+
+/*
+ * THE FULL PATH IS NEVER LOST (the pin beside the name derivation).
+ *
+ * The NAME is a DISPLAY derivation: the accessible name and the identity's
+ * `title` still carry the whole project path, because "which repository" and
+ * "which full path" are different questions and a screen reader is owed the
+ * whole of the second. This test is what stops the name from quietly
+ * REPLACING the path in the accessible name - the failure a display-only
+ * change invites.
+ */
+test("the row's accessible name keeps the FULL project path, not the repo name", () => {
+	const deep = row({
+		key: "gl:276",
+		forge: "gitlab",
+		project: "minervaai/services/core",
+		number: 276,
+		summary: {
+			state: "open",
+			draft: false,
+			title: "feat(core): a thing",
+			head_sha: "a",
+			updated_at: 1,
+			ci: gitlabCi("success"),
+		},
+	});
+	assert.equal(repoName(deep.project), "core");
+	assert.equal(identityLabel(deep), "minervaai/services/core !276");
+	const label = rowAriaLabel(deep);
+	assert.match(label, ROW_ARIA_DEEP_PATH);
+	assert.ok(
+		!label.startsWith("core "),
+		"the accessible name must not carry the bare repo name in place of the path",
+	);
 });
 
 test("groupRows survives a null mention.last_at (the F2 NaN class)", () => {

@@ -12151,7 +12151,19 @@ export const STORIES = [
 	 * against the others' 184: five items do not fit in 184, and a clipped fifth
 	 * door would be a frame of a layout the app does not have.
 	 */
-	["code-review-pane--populated", 640, 960],
+	/*
+	 * THE TWO HEIGHTS THAT FOLLOW THE ROW'S ANATOMY (the operator's ask).
+	 *
+	 * The row grew a LINE: the identity line carries the repo NAME and the full
+	 * project path sits under it, so every row is one `text-meta` line taller
+	 * than it was. `populated` grew by that line across its ten rows and now
+	 * leads with the operator's own deep-path row, and `narrow` grew by it
+	 * across its five - which is why both are taller than the 960 and 460 they
+	 * were, and why the 320px floor is the frame that has to carry the proof:
+	 * the name is readable and the path is on the line below, in the frame
+	 * where the path used to be cut off mid-segment.
+	 */
+	["code-review-pane--populated", 640, 1040],
 	["code-review-pane--empty", 640, 300],
 	["code-review-pane--loading", 640, 300],
 	["code-review-pane--scanning", 640, 300],
@@ -12168,7 +12180,7 @@ export const STORIES = [
 	["code-review-pane--pending", 640, 340],
 	["code-review-pane--refresh-failed", 640, 420],
 	["code-review-pane--refreshing", 640, 340],
-	["code-review-pane--narrow", 320, 460],
+	["code-review-pane--narrow", 320, 560],
 	["code-review-pane--narrow-refresh-failed", 320, 420],
 	/*
 	 * The two states round 1's remediation changed, at the same 320px floor
