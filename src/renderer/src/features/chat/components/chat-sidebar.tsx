@@ -4231,7 +4231,11 @@ export function ChatSidebar({
 		);
 		if (!groups) return rows.map((row) => sessionRow(row));
 		return groups.map((bucket) => (
-			<div key={bucket.id} data-chat-tag-group={bucket.id}>
+			<div
+				key={bucket.id}
+				data-chat-tag-group={bucket.id}
+				className="[&[data-tag-drop-preview]_[data-chat-row]]:bg-row-selected [&[data-tag-drop-preview]_[data-session-row]]:bg-row-selected"
+			>
 				<div
 					data-tag-drop-target={bucket.id}
 					className="flex h-7 items-center gap-2 px-2 text-meta text-ink-dim"
@@ -4243,11 +4247,17 @@ export function ChatSidebar({
 					</span>
 					<span>{bucket.rows.length}</span>
 				</div>
-				{bucket.rows.map((row) => sessionRow(row))}
+				<div data-tag-drop-target={bucket.id} data-tag-drop-body>
+					{bucket.rows.map((row) => sessionRow(row, false, true))}
+				</div>
 			</div>
 		));
 	};
-	const sessionRow = (row: CanonicalSessionRow, nested = false) => {
+	const sessionRow = (
+		row: CanonicalSessionRow,
+		nested = false,
+		tagDraggable = false,
+	) => {
 		const trailing = rowTrailingStatement({
 			marked: conversationMatches.has(row.session_id),
 			unstarted: unstarted.has(row.session_id),
@@ -4629,6 +4639,11 @@ export function ChatSidebar({
 					// the row's box with whatever the wrapper carries beside it, and a full-width
 					// button inside a flex wrapper with a sibling is a row that overflows.
 					"min-w-0 grow text-left",
+					// Only grouped rows participate; keep held feedback through pointer capture.
+					tagDraggable &&
+						(rowTagDrag.armedId === row.session_id
+							? "cursor-grabbing"
+							: "cursor-grab active:cursor-grabbing"),
 					nested && "pl-7",
 					current && rowCurrent,
 					// m4: the unread mark is NOT here. `font-semibold` on this
