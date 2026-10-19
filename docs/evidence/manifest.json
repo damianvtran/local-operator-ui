@@ -10167,7 +10167,7 @@
         "frames is 0 because these eleven browser-tool PNGs are not the .webp frames the global sweep counts. They add eleven insideDeclaredSets unjudged frames, not swept passes. Storybook presentational proof is not packaged native desktop proof; native app, themes, keyboard and screen-reader coverage remain blocked by the resource hold."
       ],
       "capturedAt": "2026-10-18",
-      "capturedAtHead": "1e434b03763bdb3353c41c2d144c9487f78494d4"
+      "capturedAtHead": "6a0e809eea95734f8a0f9be4d7a19b00ffc405f5"
     }
   ],
   "remediationRecord": {
