@@ -2,8 +2,10 @@
 
 Operator report, 2026-10-18: mid-scroll on the board, card text was readable
 **through** the sticky column header band, and one card's text painted over the
-header line. The team straps showed the same bleed. The worse case was window
-glass on, where the header's own background is a lane wash.
+header line. The operator also named the team straps; the measured bleed in
+these captures is the column header row (the straps are `bg-canvas`, opaque,
+and no glass rule overrides them). The worse case was window glass on, where
+the header's own background is a lane wash.
 
 ## Root cause
 
@@ -19,18 +21,24 @@ background" shape the fix had to remove.
 ## The fix
 
 - **The column header row is now static, above the vertical scrollport.** The
-  board is an outer `overflow-x-auto` scroller containing (a) the 44px header
-  row and (b) `[data-board-strip]`, an `overflow-y-auto` viewport. The strip's
-  top edge is the header row's bottom edge, so card content is clipped there by
-  `overflow`, not covered by a fill.
+  board is a 44px header viewport (a hidden-overflow window) above
+  `[data-board-strip]`, the one two-axis scroller. The body's top edge is the
+  header viewport's bottom edge, so card content is clipped there by
+  `overflow`, not covered by a fill. The body stays full-view width, so its
+  vertical scrollbar sits on the view's right edge (the round-1 affordance
+  rule) and the straps' `sticky left-3` still resolves against a port that
+  really scrolls on x.
 - **The header row is opaque.** Its cells keep the flat `sunken` role on glass
   as well as off (computed `alpha: 1`, `backdrop-filter: none`). The band well
   below still carries the glass lane wash; the header is the clip boundary and
   does not rely on alpha for legibility.
-- **Horizontal scrolling still moves headers with columns.** Both live inside
-  the one outer x-scroller; the drag measurement/auto-scroll code now reads
-  columns and `scrollLeft` from that element. The pointer reorder story still
-  commits `planning,qa,validation,active,done,paused`.
+- **Horizontal scrolling still moves headers with columns.** The header
+  window's `scrollLeft` is synced from the body's scroll event (with a
+  padding-right copy of the body's scrollbar gutter, so both max offsets
+  match); wheel over the 44px header is forwarded to the body. The drag
+  measurement, auto-scroll and indicator read the body and the header row. The
+  pointer reorder story still commits and persists
+  `planning,qa,validation,active,done,paused`.
 - **The team straps, per-column scrollers and board scroll are unchanged in
   behaviour**: straps pin at `top-0` of the strip (the strip now starts below
   the column row), each cell keeps `max-h-[calc(100cqh-92px)] overflow-y-auto`,
@@ -55,10 +63,12 @@ to 8px above the strip's top edge, so its title line sits at the boundary.
 | `after-glass-off-light.png` | off | light |
 | `after-top-of-column-dark-glass-on.png` | on | dark — no scroll, header flush with the columns |
 
-The before glass-on frames show the title (`Slice 2 of the load shed` and the
-card's `load-shed-2` key) legible inside the `Active / In flight / 20` header
-band. The after frames show that band clean and the card cut at the scrollport's
-top edge; the glass-off pair shows the structural change without translucency.
+The before glass-on frames show the card's key line (`load-shed-2`, its title
+fallback) legible inside the `Active / In flight / 20` header band; the
+description (`Slice 2 of the load shed`) is the line below it. The after frames
+show that band clean and the card cut at the scrollport's top edge; the
+description is the first line visible below the team strap. The glass-off pair
+shows the structural change without translucency.
 
 ## Numbers
 
@@ -70,12 +80,16 @@ top edge; the glass-off pair shows the structural change without translucency.
 | header computed background | `alpha 0.48` dark / `0.49` light (glass on) | `alpha 1` |
 | header `backdrop-filter` | `none` | `none` |
 | card top − scrollport top | `-8px` | `-8px` (clipped at the port) |
+| vertical scrollbar | at the view's right edge | at the view's right edge (`clientWidth 1265` of `1280`) |
+| strap label at body `scrollLeft 111` | — | pinned at x 36 while the band header is at x −87 |
 
 Confirmed by the story plays as well as the frames: `BoardSticky` asserts the
-header row ends at the scrollport's top edge, the band straps pin at `0px`, and
-the cell cap resolves to `100cqh - 92px`; `BoardColumnDropCommits` commits and
-persists the pointer drop; `BoardHorizontalScroll` asserts the header row and
-the band cells move by the same `scrollLeft`.
+header row's bottom edge IS the body's top edge, the band straps pin at `0px`,
+and the cell cap resolves to `100cqh - 92px`; `BoardColumnDropCommits` commits
+and persists the pointer drop; `BoardHorizontalScroll` asserts the header
+window, the header row and the band cells all move by the same `scrollLeft`;
+`library-tab--in-shell-glass` asserts the new global glass frame does not clear
+the Library harness's own paint.
 
 ## Reproduce
 

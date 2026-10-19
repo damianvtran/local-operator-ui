@@ -4732,9 +4732,10 @@ export const BoardSticky: Story = {
 		}
 		/*
 		 * `100cqh` is the board ROOT's height (the size container), so measure the
-		 * cap there rather than on the strip: a classic horizontal scrollbar on the
-		 * outer x-scroller takes its own height out of the strip, and the cell cap
-		 * is written against the container, not against what is left below the bar.
+		 * cap there rather than on the strip: the body's classic horizontal
+		 * scrollbar takes its own height out of the strip's client box, and the
+		 * cell cap is written against the container, not against what is left below
+		 * the bar.
 		 */
 		const board = document.querySelector<HTMLElement>(
 			'[data-testid="project-board"]',
@@ -4757,12 +4758,12 @@ export const BoardSticky: Story = {
 			);
 		}
 		/*
-		 * THE PIN HOLDS TO THE END OF THE SCROLL (design round 2, D2 = QA round
-		 * 1, Q2): the strip's child must stay content-height (`items-start`), or
-		 * the column row's sticky containing block ends after one screen and the
-		 * row drifts off — measured at −94.3px on the 6289px board. Scroll to
-		 * the very end and read the offset back; the row must still be pinned at
-		 * the scrollport's own top edge.
+		 * THE CLIP BOUNDARY IS AN IDENTITY, held at the scroll end: the header
+		 * window's bottom edge IS the body's top edge, and the body clips at it.
+		 * The old `items-start`/sticky-row invariant is gone with the row's
+		 * sticky position, so assert the new geometry directly (a drift here is
+		 * exactly the gap the operator reported). Scroll to the end first: the
+		 * boundary must not depend on how far the bands have travelled.
 		 */
 		strip.scrollTop = strip.scrollHeight;
 		await poll(
@@ -4774,9 +4775,14 @@ export const BoardSticky: Story = {
 			?.closest<HTMLElement>("[data-board-column-row]");
 		const rowRect = row?.getBoundingClientRect();
 		const stripTop = strip.getBoundingClientRect().top;
-		if (!rowRect || rowRect.bottom > stripTop + 0.5) {
+		if (!rowRect || Math.abs(rowRect.bottom - stripTop) > 0.5) {
 			throw new Error(
-				`the header row crosses the scrollport's top edge: bottom ${rowRect?.bottom.toFixed(1)}, strip top ${stripTop.toFixed(1)}`,
+				`the header row does not end at the scrollport's top edge: bottom ${rowRect?.bottom.toFixed(1)}, strip top ${stripTop.toFixed(1)}`,
+			);
+		}
+		if (getComputedStyle(strip).overflowY !== "auto") {
+			throw new Error(
+				`the body does not clip on y: overflow-y ${getComputedStyle(strip).overflowY}`,
 			);
 		}
 		/*
@@ -4802,11 +4808,64 @@ export const BoardSticky: Story = {
 };
 
 /**
+ * THE PER-COLUMN SCROLLER STILL OWNS ITS OWN CONTENT: each band cell is its own
+ * bounded `overflow-y-auto` port under the one-screen cap. The wheel driver is
+ * a capture-rig input, not something the harness browser can synthesize, so
+ * this play proves the scroller with a direct `scrollTop` write and reads the
+ * card's rect before and after: the card moves by exactly the scroll distance
+ * inside its cell while the strip's own `scrollTop` is untouched.
+ */
+export const BoardCellScroll: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_LONG,
+			details: detailsFor(BOARD_LONG),
+		}),
+	play: playOnce("board-cell-scroll", async () => {
+		await poll(
+			() => document.querySelector('[data-board-cell="active"]') !== null,
+			"the active cell",
+		);
+		const cell = document.querySelector<HTMLElement>(
+			'[data-board-cell="active"]',
+		);
+		const strip = document.querySelector<HTMLElement>("[data-board-strip]");
+		const card = cell?.querySelector<HTMLElement>("[data-project-name]");
+		if (!cell || !strip || !card) {
+			throw new Error("the cell-scroll fixture is incomplete");
+		}
+		if (cell.scrollHeight <= cell.clientHeight + 1) {
+			throw new Error("the active cell has nothing to scroll");
+		}
+		const stripBefore = strip.scrollTop;
+		const cardBefore = card.getBoundingClientRect().top;
+		cell.scrollTop = 40;
+		await poll(
+			() => Math.abs(cell.scrollTop - 40) <= 1,
+			"the cell to scroll by 40px",
+		);
+		const moved = cardBefore - card.getBoundingClientRect().top;
+		if (Math.abs(moved - 40) > 1) {
+			throw new Error(
+				`the cell's content moved ${moved.toFixed(1)}px, not 40px`,
+			);
+		}
+		if (strip.scrollTop !== stripBefore) {
+			throw new Error(
+				`the cell scroll moved the board's own scrollTop (${stripBefore} -> ${strip.scrollTop})`,
+			);
+		}
+	}),
+};
+
+/**
  * HORIZONTAL SCROLL MOVES THE HEADER WITH ITS COLUMNS (the structure the fix
- * introduced): the column row and the band viewport are siblings inside ONE
- * x-scroller, so a horizontal move must shift both by the same amount. The
- * play drives `scrollLeft` and asserts the header cell and its band cell keep
- * the same horizontal offset - the claim the old single scroller made for free.
+ * introduced): the body is the one two-axis scroller and the header row is a
+ * hidden-overflow window above it whose `scrollLeft` is synced from the body's
+ * scroll event. The play drives the body's `scrollLeft` and asserts the header
+ * cell and its band cell keep the same horizontal offset - the claim the old
+ * single scroller made for free.
  */
 export const BoardHorizontalScroll: Story = {
 	render: () =>
@@ -4818,12 +4877,16 @@ export const BoardHorizontalScroll: Story = {
 	play: playOnce("board-horizontal-scroll", async () => {
 		await poll(
 			() =>
-				document.querySelector("[data-board-xstrip]") !== null &&
+				document.querySelector("[data-board-strip]") !== null &&
+				document.querySelector("[data-board-header-viewport]") !== null &&
 				document.querySelector("[data-board-column-row]") !== null &&
 				document.querySelector('[data-board-cell="active"]') !== null,
-			"the x-scroller, the column row and the active cell",
+			"the body scroller, the header window, the column row and the active cell",
 		);
-		const xstrip = document.querySelector<HTMLElement>("[data-board-xstrip]");
+		const strip = document.querySelector<HTMLElement>("[data-board-strip]");
+		const window_ = document.querySelector<HTMLElement>(
+			"[data-board-header-viewport]",
+		);
 		const row = document.querySelector<HTMLElement>("[data-board-column-row]");
 		const header = document.querySelector<HTMLElement>(
 			'[data-board-column-handle="active"]',
@@ -4831,30 +4894,33 @@ export const BoardHorizontalScroll: Story = {
 		const cell = document.querySelector<HTMLElement>(
 			'[data-board-cell="active"]',
 		);
-		if (!xstrip || !row || !header || !cell) {
+		if (!strip || !window_ || !row || !header || !cell) {
 			throw new Error("the horizontal-scroll fixture is incomplete");
 		}
 		const beforeRow = row.getBoundingClientRect().left;
 		const beforeHeader = header.getBoundingClientRect().left;
 		const beforeCell = cell.getBoundingClientRect().left;
-		const target = Math.min(120, xstrip.scrollWidth - xstrip.clientWidth);
+		const target = Math.min(120, strip.scrollWidth - strip.clientWidth);
 		if (target <= 0) throw new Error("the board has no horizontal overflow");
-		xstrip.scrollLeft = target;
+		strip.scrollLeft = target;
 		await poll(
-			() => Math.abs(xstrip.scrollLeft - target) <= 1,
-			"the x-scroller to reach its target",
+			() =>
+				Math.abs(strip.scrollLeft - target) <= 1 &&
+				Math.abs(window_.scrollLeft - target) <= 1,
+			"the body and the header window to reach the target",
 		);
-		const moved = xstrip.scrollLeft;
+		const moved = strip.scrollLeft;
 		const rowShift = beforeRow - row.getBoundingClientRect().left;
 		const headerShift = beforeHeader - header.getBoundingClientRect().left;
 		const cellShift = beforeCell - cell.getBoundingClientRect().left;
 		if (
+			Math.abs(window_.scrollLeft - moved) > 0.5 ||
 			Math.abs(rowShift - moved) > 0.5 ||
 			Math.abs(headerShift - moved) > 0.5 ||
 			Math.abs(cellShift - moved) > 0.5
 		) {
 			throw new Error(
-				`the header did not track the columns: scrolled ${moved.toFixed(1)}, row ${rowShift.toFixed(1)}, header ${headerShift.toFixed(1)}, cell ${cellShift.toFixed(1)}`,
+				`the header did not track the columns: scrolled ${moved.toFixed(1)}, window ${window_.scrollLeft.toFixed(1)}, row ${rowShift.toFixed(1)}, header ${headerShift.toFixed(1)}, cell ${cellShift.toFixed(1)}`,
 			);
 		}
 	}),

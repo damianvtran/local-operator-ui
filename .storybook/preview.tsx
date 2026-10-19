@@ -216,14 +216,22 @@ const ThemeFrame = ({
  */
 const GlassFrame = ({
 	glass,
+	ownsGlass,
 	theme,
 	children,
 }: {
 	glass: boolean;
+	/** The story's own meta decorator paints the document (Library's harness). */
+	ownsGlass: boolean;
 	theme: ThemeName;
 	children: ReactNode;
 }) => {
 	useLayoutEffect(() => {
+		/* Do not clear a paint a child decorator made on purpose. Storybook's
+		 * global decorator is OUTERMOST and React runs layout effects child-first,
+		 * so the off path would otherwise erase the Library harness's glass one
+		 * effect after it painted. */
+		if (!glass && ownsGlass) return;
 		const scheme =
 			getTheme(theme).theme.palette.mode === "dark" ? "dark" : "light";
 		applyGlassFacts(
@@ -237,7 +245,7 @@ const GlassFrame = ({
 					}
 				: null,
 		);
-	}, [glass, theme]);
+	}, [glass, ownsGlass, theme]);
 	return <>{children}</>;
 };
 
@@ -363,6 +371,7 @@ const preview: Preview = {
 			const locale =
 				(context.args.locale as string | undefined) ?? DEFAULT_LOCALE;
 			const glass = context.args.glass === "on";
+			const storyOwnsGlass = Boolean(context.parameters?.glass) && !glass;
 			const muiTheme = getTheme(theme).theme;
 
 			return (
@@ -384,7 +393,11 @@ const preview: Preview = {
 								>
 									<MuiThemeProvider theme={muiTheme}>
 										<CssBaseline />
-										<GlassFrame glass={glass} theme={theme}>
+										<GlassFrame
+											glass={glass}
+											ownsGlass={storyOwnsGlass}
+											theme={theme}
+										>
 											<ThemeFrame theme={theme}>
 												<LocaleFrame locale={locale}>
 													<Story />
