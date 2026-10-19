@@ -883,6 +883,19 @@ type UiPreferencesState = {
 	isSidebarCollapsed: boolean;
 
 	/**
+	 * Whether the sidebar's low-frequency "More" group is expanded.
+	 *
+	 * Persisted like the collapsed width: the operator's ChatGPT-style overflow
+	 * is a preference about how much chrome the column carries, not about the
+	 * route in front of it. Agent Hub and Mesh live here; future low-frequency
+	 * destinations join them rather than growing the primary list.
+	 */
+	sidebarOverflowExpanded: boolean;
+
+	/** Set the overflow group's expanded state. */
+	setSidebarOverflowExpanded: (expanded: boolean) => void;
+
+	/**
 	 * Whether agent reasoning (thinking, plan and reflection turns) is shown.
 	 *
 	 * Default false per docs/branding.md § 7: reasoning is the agent talking to
@@ -1970,6 +1983,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			isCommandPaletteOpen: false,
 			commandPaletteQuery: "",
 			isSidebarCollapsed: false,
+			sidebarOverflowExpanded: false,
 			showAgentReasoning: false,
 			transcriptDisplayMode: DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 			themeName: DEFAULT_THEME,
@@ -2060,6 +2074,9 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				}));
 			},
 
+			setSidebarOverflowExpanded: (expanded: boolean) => {
+				set({ sidebarOverflowExpanded: expanded });
+			},
 			setSidebarCollapsed: (collapsed: boolean) => {
 				set({
 					isSidebarCollapsed: collapsed,

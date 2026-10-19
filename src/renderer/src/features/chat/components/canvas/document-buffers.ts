@@ -353,7 +353,7 @@ export function bufferGeneration(documentId: string): number {
 
 export function bufferText(documentId: string): string | null {
 	const entry = buffers.get(documentId);
-	if (!entry) return null;
+	if (!entry || entry.closed) return null;
 	return entry.serialize ? entry.serialize().text : entry.token;
 }
 
