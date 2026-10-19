@@ -79,6 +79,7 @@ import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
 import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
+import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
 import esUiAgentsDialogs from "./catalogues/es/ui.agents.dialogs.json";
 import esUiAgentsModels from "./catalogues/es/ui.agents.models.json";
@@ -474,6 +475,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsUpdates,
 	...enUiShell,
 	...enUiShellRail,
+	...enUiTeamBridge,
 };
 
 /** The client's own messages per locale; `en` is `bundledEnglish` itself. */
@@ -4597,6 +4599,44 @@ export type MessageParams = {
 		count: number;
 		countText: string;
 	};
+	"ui.teamBridge.composer.hint": undefined;
+	"ui.teamBridge.composer.placeholder": undefined;
+	"ui.teamBridge.composer.send": undefined;
+	"ui.teamBridge.create.account_placeholder": undefined;
+	"ui.teamBridge.create.add_member": undefined;
+	"ui.teamBridge.create.cancel": undefined;
+	"ui.teamBridge.create.confirm": undefined;
+	"ui.teamBridge.create.member_account": undefined;
+	"ui.teamBridge.create.member_agent": undefined;
+	"ui.teamBridge.create.member_kind": undefined;
+	"ui.teamBridge.create.member_name": undefined;
+	"ui.teamBridge.create.member_person": undefined;
+	"ui.teamBridge.create.members": undefined;
+	"ui.teamBridge.create.name": undefined;
+	"ui.teamBridge.create.remove_member": undefined;
+	"ui.teamBridge.create.title": undefined;
+	"ui.teamBridge.group.more": undefined;
+	"ui.teamBridge.kind.channel": undefined;
+	"ui.teamBridge.kind.dm": undefined;
+	"ui.teamBridge.kind.group": undefined;
+	"ui.teamBridge.list.empty.body": undefined;
+	"ui.teamBridge.list.empty.title": undefined;
+	"ui.teamBridge.list.error": undefined;
+	"ui.teamBridge.list.loading": undefined;
+	"ui.teamBridge.list.retry": undefined;
+	"ui.teamBridge.list.untitled": undefined;
+	"ui.teamBridge.member.agent": undefined;
+	"ui.teamBridge.member.count": { count: number };
+	"ui.teamBridge.member.invited": undefined;
+	"ui.teamBridge.nav.label": undefined;
+	"ui.teamBridge.nav.unread": { count: number };
+	"ui.teamBridge.page.new_conversation": undefined;
+	"ui.teamBridge.page.subtitle": undefined;
+	"ui.teamBridge.page.title": undefined;
+	"ui.teamBridge.thread.empty": undefined;
+	"ui.teamBridge.thread.error": undefined;
+	"ui.teamBridge.thread.loading": undefined;
+	"ui.teamBridge.unread.count": { count: number };
 };
 
 export type MessageKey = keyof MessageParams;

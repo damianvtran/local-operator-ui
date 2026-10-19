@@ -105,6 +105,11 @@ const LibraryPage = lazy(() =>
 		default: m.LibraryPage,
 	})),
 );
+const TeamBridgePage = lazy(() =>
+	import("@features/team-bridge/team-bridge-page").then((m) => ({
+		default: m.TeamBridgePage,
+	})),
+);
 const BrowserPage = lazy(() =>
 	import("@features/browser/components/browser-page").then((m) => ({
 		default: m.BrowserPage,
@@ -889,6 +894,10 @@ const App: FC = () => {
 												/>
 											</>
 										)}
+										{/* The Team Bridge page. The SIDEBAR row is the Library lane's
+										    overflow group (one nav file, one owner); this route makes the
+										    page reachable by URL and by that row the moment it lands. */}
+										<Route path="/team-bridge" element={<TeamBridgePage />} />
 										{/* Mounted only with `features.peers`: without it `/mesh` falls through
 										    to the catch-all like any unknown path, rather than rendering a tab
 										    for a feature this backend does not have. */}
