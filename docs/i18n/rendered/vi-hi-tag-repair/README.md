@@ -11,7 +11,7 @@ components were written for this evidence.
 
 - Storybook 8.6.12 (react-vite), preview iframe measured at **1280×720 CSS**
   (the move dialog centres at x=640 and the rail is 720 tall), devicePixelRatio
-  2, so the PNGs are 2560×1440.
+  2, so the captures are 2560×1440 PNGs, committed as WebP.
 - Frames were taken in the operator's own browser through the `browser` tool —
   no second browser engine, no Playwright/Puppeteer.
 - Locale is the preview's own `locale` arg (`?args=locale:hi` / `locale:vi`),
@@ -40,7 +40,7 @@ components were written for this evidence.
 | Surface | Rect (CSS px) | Notes |
 |---|---|---|
 | Tag context menu, 220 sidebar | **296.22 × 342** at x=2 | Portalled overlay, `overflow-x: hidden`, `overflow-y: auto`; it is wider than the 220 sidebar by design and is not clipped by it. |
-| Tag context menu, 600 viewport | ~**236 × 342** | Fully inside the 600×720 viewport; right edge ≤ 236. |
+| Tag context menu, 600 viewport | **296.22 × 342** | Fully inside the 600×720 viewport; right edge ≈ 298. The menu is content-width, so it does not shrink with the viewport. |
 | Move picker dialog | **420 × 317.4**, `max-width: 512` | Centred at 1280; at 600 it centres at 300 with 90px each side. |
 | Clear-all toast | **356 × 50**, 12px type | Right-aligned with 24px inset; fits 600 with 244px to spare. |
 | Library filter rail | **191 × 720** (`w-48` = 192 incl. 1px border) | `overflow-y: auto`; the Scope section shows `दायरा`, `अंतिम एसेट`, `सभी शामिल एसेट` with the count, no ellipsis. |
