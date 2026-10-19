@@ -46,7 +46,13 @@
  *   node scripts/i18n/check-coverage.mjs --list     # print the current allowance
  */
 
-import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	readFileSync,
+	readdirSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -76,7 +82,7 @@ export function catalogueNamespaces(cataloguesDir = CATALOGUES) {
 		.sort();
 }
 
-/** Directory names under the catalogue root — a directory is bundled bytes. */
+/** Directory names under the catalogue root — every bundled locale must be listed. */
 function catalogueLocales(cataloguesDir = CATALOGUES) {
 	return readdirSync(cataloguesDir)
 		.filter((name) => statSync(join(cataloguesDir, name)).isDirectory())
@@ -155,13 +161,11 @@ export function missingKeys(locale, namespace, cataloguesDir = CATALOGUES) {
 	const source = readJson(
 		join(cataloguesDir, SOURCE_LOCALE, `${namespace}.json`),
 	);
-	let target = {};
-	try {
-		target = readJson(join(cataloguesDir, locale, `${namespace}.json`));
-	} catch {
-		// An absent file is every key missing, not an error: the pair is the
-		// allowance unit, and the message below reports the count.
-	}
+	const targetPath = join(cataloguesDir, locale, `${namespace}.json`);
+	// An absent file is every key missing, but a PRESENT file that does not parse
+	// must throw: silently treating corruption as a coverage gap would let an
+	// allowed pair hide a broken catalogue.
+	const target = existsSync(targetPath) ? readJson(targetPath) : {};
 	const targetKeys = new Set(Object.keys(target));
 	return Object.keys(source).filter((key) => !targetKeys.has(key));
 }
