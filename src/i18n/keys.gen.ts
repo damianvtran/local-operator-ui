@@ -245,9 +245,61 @@ import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
 import viUiSettings from "./catalogues/vi/ui.settings.json";
+import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
+import zhCNUiAgentsDialogs from "./catalogues/zh-CN/ui.agents.dialogs.json";
+import zhCNUiAgents from "./catalogues/zh-CN/ui.agents.json";
+import zhCNUiAgentsModels from "./catalogues/zh-CN/ui.agents.models.json";
+import zhCNUiAgentsNavigation from "./catalogues/zh-CN/ui.agents.navigation.json";
+import zhCNUiAgentsRefusals from "./catalogues/zh-CN/ui.agents.refusals.json";
+import zhCNUiAgentsSettings from "./catalogues/zh-CN/ui.agents.settings.json";
+import zhCNUiAgentsStarters from "./catalogues/zh-CN/ui.agents.starters.json";
+import zhCNUiBrowserChrome from "./catalogues/zh-CN/ui.browser.chrome.json";
+import zhCNUiBrowser from "./catalogues/zh-CN/ui.browser.json";
+import zhCNUiCanvas from "./catalogues/zh-CN/ui.canvas.json";
+import zhCNUiChatComposer from "./catalogues/zh-CN/ui.chat.composer.json";
+import zhCNUiChatComposerMedia from "./catalogues/zh-CN/ui.chat.composer_media.json";
+import zhCNUiChatDialogs from "./catalogues/zh-CN/ui.chat.dialogs.json";
+import zhCNUiChatHeader from "./catalogues/zh-CN/ui.chat.header.json";
+import zhCNUiChat from "./catalogues/zh-CN/ui.chat.json";
+import zhCNUiChatSidebarView from "./catalogues/zh-CN/ui.chat.sidebar_view.json";
+import zhCNUiChatTags from "./catalogues/zh-CN/ui.chat.tags.json";
+import zhCNUiCodeReview from "./catalogues/zh-CN/ui.code_review.json";
+import zhCNUiCommandPalette from "./catalogues/zh-CN/ui.command_palette.json";
+import zhCNUiCommonAccount from "./catalogues/zh-CN/ui.common.account.json";
+import zhCNUiCommonActions from "./catalogues/zh-CN/ui.common.actions.json";
+import zhCNUiCommonConnection from "./catalogues/zh-CN/ui.common.connection.json";
+import zhCNUiCommonEditing from "./catalogues/zh-CN/ui.common.editing.json";
+import zhCNUiCommonErrors from "./catalogues/zh-CN/ui.common.errors.json";
+import zhCNUiCommonForms from "./catalogues/zh-CN/ui.common.forms.json";
+import zhCNUiCommonLoading from "./catalogues/zh-CN/ui.common.loading.json";
+import zhCNUiCommonModels from "./catalogues/zh-CN/ui.common.models.json";
+import zhCNUiCommonUpdates from "./catalogues/zh-CN/ui.common.updates.json";
 import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
+import zhCNUiHubComments from "./catalogues/zh-CN/ui.hub.comments.json";
+import zhCNUiHub from "./catalogues/zh-CN/ui.hub.json";
+import zhCNUiHubTaxonomy from "./catalogues/zh-CN/ui.hub.taxonomy.json";
+import zhCNUiInstaller from "./catalogues/zh-CN/ui.installer.json";
+import zhCNUiMesh from "./catalogues/zh-CN/ui.mesh.json";
 import zhCNUiOnboarding from "./catalogues/zh-CN/ui.onboarding.json";
+import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
+import zhCNUiProviders from "./catalogues/zh-CN/ui.providers.json";
+import zhCNUiSchedules from "./catalogues/zh-CN/ui.schedules.json";
+import zhCNUiSettingsAccount from "./catalogues/zh-CN/ui.settings.account.json";
+import zhCNUiSettingsAppearance from "./catalogues/zh-CN/ui.settings.appearance.json";
+import zhCNUiSettingsAppearanceWindowGlass from "./catalogues/zh-CN/ui.settings.appearance.window_glass.json";
+import zhCNUiSettingsConfiguration from "./catalogues/zh-CN/ui.settings.configuration.json";
+import zhCNUiSettingsImports from "./catalogues/zh-CN/ui.settings.imports.json";
+import zhCNUiSettingsIntegrations from "./catalogues/zh-CN/ui.settings.integrations.json";
 import zhCNUiSettings from "./catalogues/zh-CN/ui.settings.json";
+import zhCNUiSettingsModelDefaultEffort from "./catalogues/zh-CN/ui.settings.model.default_effort.json";
+import zhCNUiSettingsModel from "./catalogues/zh-CN/ui.settings.model.json";
+import zhCNUiSettingsModelProviderCallout from "./catalogues/zh-CN/ui.settings.model.provider_callout.json";
+import zhCNUiSettingsNavigation from "./catalogues/zh-CN/ui.settings.navigation.json";
+import zhCNUiSettingsShortcuts from "./catalogues/zh-CN/ui.settings.shortcuts.json";
+import zhCNUiSettingsSpeech from "./catalogues/zh-CN/ui.settings.speech.json";
+import zhCNUiSettingsUpdates from "./catalogues/zh-CN/ui.settings.updates.json";
+import zhCNUiShell from "./catalogues/zh-CN/ui.shell.json";
+import zhCNUiShellRail from "./catalogues/zh-CN/ui.shell.rail.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
@@ -493,9 +545,61 @@ export const bundledCatalogues: Readonly<
 		...viUiSettings,
 	},
 	"zh-CN": {
+		...zhCNUiAgentMessages,
+		...zhCNUiAgentsDialogs,
+		...zhCNUiAgents,
+		...zhCNUiAgentsModels,
+		...zhCNUiAgentsNavigation,
+		...zhCNUiAgentsRefusals,
+		...zhCNUiAgentsSettings,
+		...zhCNUiAgentsStarters,
+		...zhCNUiBrowserChrome,
+		...zhCNUiBrowser,
+		...zhCNUiCanvas,
+		...zhCNUiChatComposer,
+		...zhCNUiChatComposerMedia,
+		...zhCNUiChatDialogs,
+		...zhCNUiChatHeader,
+		...zhCNUiChat,
+		...zhCNUiChatSidebarView,
+		...zhCNUiChatTags,
+		...zhCNUiCodeReview,
+		...zhCNUiCommandPalette,
+		...zhCNUiCommonAccount,
+		...zhCNUiCommonActions,
+		...zhCNUiCommonConnection,
+		...zhCNUiCommonEditing,
+		...zhCNUiCommonErrors,
+		...zhCNUiCommonForms,
+		...zhCNUiCommonLoading,
+		...zhCNUiCommonModels,
+		...zhCNUiCommonUpdates,
 		...zhCNUiConsole,
+		...zhCNUiHubComments,
+		...zhCNUiHub,
+		...zhCNUiHubTaxonomy,
+		...zhCNUiInstaller,
+		...zhCNUiMesh,
 		...zhCNUiOnboarding,
+		...zhCNUiProjects,
+		...zhCNUiProviders,
+		...zhCNUiSchedules,
+		...zhCNUiSettingsAccount,
+		...zhCNUiSettingsAppearance,
+		...zhCNUiSettingsAppearanceWindowGlass,
+		...zhCNUiSettingsConfiguration,
+		...zhCNUiSettingsImports,
+		...zhCNUiSettingsIntegrations,
 		...zhCNUiSettings,
+		...zhCNUiSettingsModelDefaultEffort,
+		...zhCNUiSettingsModel,
+		...zhCNUiSettingsModelProviderCallout,
+		...zhCNUiSettingsNavigation,
+		...zhCNUiSettingsShortcuts,
+		...zhCNUiSettingsSpeech,
+		...zhCNUiSettingsUpdates,
+		...zhCNUiShell,
+		...zhCNUiShellRail,
 	},
 };
 
