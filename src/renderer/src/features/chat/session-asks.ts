@@ -13,10 +13,11 @@
  * The UI used to read that frame as a capability answer (`ask-queue.ts`'s
  * `askQueuePublished` is false), and a false `published` is the one shape the
  * drawer words as "This runtime doesn't support queued asks." The operator's
- * screenshot is exactly that: "Asks unavailable" on a conversation whose two
- * asks were sitting in the index the whole time. Measured on a copied real
- * session (2 open asks, real `asks.jsonl`): core emits `open` at 1,457 ms and
- * the snapshot at 1,465 ms with both ask fields absent, and no ask-bearing
+ * screenshot is exactly that: "Asks unavailable" on a conversation whose asks
+ * were sitting in the index the whole time. Measured on a copied real session
+ * with 20 ask rows in the index (no currently-open row at copy time; QA seeds
+ * open rows through the store's own append+fold for the visual leg): core emits
+ * `open` at 1,457 ms and the snapshot at 1,465 ms with both ask fields absent, and no ask-bearing
  * update follows within 15 s - while `GET /v1/desktop/asks` answers in 6 ms
  * from the derived index, with no session opened and no runtime dialled.
  *
