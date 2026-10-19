@@ -34,6 +34,14 @@ export function useAgentMessages() {
 	const snapshot = useSyncExternalStore(
 		agentMessagesModel.subscribe,
 		agentMessagesModel.getSnapshot,
+		/*
+		 * React requires a server snapshot when SettingsPage is rendered with
+		 * react-dom/server (the settings account-gate suite). The model starts
+		 * from its stable empty snapshot and no effect runs on the server, so
+		 * the current snapshot is the only state the server can observe; the
+		 * browser path is unchanged.
+		 */
+		agentMessagesModel.getSnapshot,
 	);
 
 	useEffect(() => {
