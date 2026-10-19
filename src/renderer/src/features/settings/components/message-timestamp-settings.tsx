@@ -127,7 +127,9 @@ export const MessageTimestampSettings: FC = () => {
 						>
 							{on
 								? withoutScopeTag(style.help)
-								: `Turn on ${master.label} to choose a style.`}
+								: t("ui.settings.configuration.backend_setting_row.gate_note", {
+										gate: String(master.label),
+									})}
 						</p>
 					</div>
 					<div className="flex h-6 shrink-0 items-center">

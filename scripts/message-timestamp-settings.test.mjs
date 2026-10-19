@@ -231,10 +231,7 @@ test("the style control is inert and explained while the switch is off", async (
 		'[data-setting-key="display.message_timestamp_style"]',
 	);
 	assert.equal(styleRow.getAttribute("aria-disabled"), "true");
-	assert.match(
-		styleRow.textContent,
-		/Turn on Message timestamps to choose a style\./,
-	);
+	assert.match(styleRow.textContent, /Needs Message timestamps on\./);
 	const relative = [...styleRow.querySelectorAll("button, [role=tab]")].find(
 		(b) => /Relative/.test(b.textContent),
 	);
