@@ -32,12 +32,14 @@ import {
 import type {
 	TeamBridgeConversationList,
 	TeamBridgeMessagePage,
+	TeamBridgeNotify,
 	TeamBridgeReadState,
 	TeamBridgeUnread,
 } from "../../../../shared/team-bridge-contract";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeScope,
+	withNotificationPreference,
 } from "./team-bridge-model";
 
 /**
@@ -175,6 +177,86 @@ export function useSendTeamBridgeMessage(
 			});
 			// Prefix invalidation: the row may be in the merged list and in its
 			// org's list, and both caches must stop claiming stale unread state.
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.unreadPrefix,
+			});
+		},
+	});
+}
+
+/**
+ * Join a discoverable channel (or accept an invitation).
+ *
+ * The conversation stays SELECTED across the refetch: the container's
+ * `selectedId` is the selection, and this mutation only invalidates the data
+ * behind it. The list (the row's `member` flag and count), the history (now
+ * readable) and the badge are all refetched — a join changes all three, and a
+ * cache left claiming "preview" would keep the banner over a readable thread.
+ */
+export function useJoinTeamBridgeConversation(
+	conversationId: string,
+	tenantId?: string,
+): UseMutationResult<unknown, Error, void> {
+	const client = useQueryClient();
+	return useMutation({
+		mutationFn: () => TeamBridgeApi.join(conversationId, tenantId),
+		onSuccess: async () => {
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.messages(conversationId, tenantId),
+			});
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.unreadPrefix,
+			});
+		},
+	});
+}
+
+/**
+ * Set one conversation's notification preference, optimistically.
+ *
+ * The menu is a control a reader uses repeatedly; waiting for a round trip to
+ * paint the checkmark would make every choice feel ignored. The update patches
+ * every cached conversation page that holds the row (the merged list and its
+ * org's list), and a refusal restores the exact snapshots taken before the
+ * patch. `onSettled` then re-reads the truth, so a server that canonicalises a
+ * value cannot leave the optimistic guess in place.
+ */
+export function useSetTeamBridgeNotify(
+	conversationId: string,
+	tenantId?: string,
+): UseMutationResult<TeamBridgeReadState, Error, TeamBridgeNotify> {
+	const client = useQueryClient();
+	return useMutation({
+		mutationFn: (notify) =>
+			TeamBridgeApi.setNotify(conversationId, notify, tenantId),
+		onMutate: async (notify) => {
+			await client.cancelQueries({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+			const snapshots = client.getQueriesData<TeamBridgeConversationList>({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+			client.setQueriesData<TeamBridgeConversationList>(
+				{ queryKey: teamBridgeKeys.conversationsPrefix },
+				(current) =>
+					current === undefined
+						? current
+						: withNotificationPreference(current, conversationId, notify),
+			);
+			return { snapshots };
+		},
+		onError: (_error, _notify, context) => {
+			for (const [key, data] of context?.snapshots ?? []) {
+				client.setQueryData(key, data);
+			}
+		},
+		onSettled: async () => {
 			await client.invalidateQueries({
 				queryKey: teamBridgeKeys.conversationsPrefix,
 			});
