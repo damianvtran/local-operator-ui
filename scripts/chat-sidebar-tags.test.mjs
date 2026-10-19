@@ -5,6 +5,7 @@ import { build } from "esbuild";
 
 const root = process.cwd();
 const values = new Map();
+globalThis.tagMoveToasts = [];
 globalThis.localStorage = {
 	getItem: (key) => values.get(key) ?? null,
 	setItem: (key, value) => values.set(key, value),
@@ -24,7 +25,9 @@ const bundle = await build({
 		contents: `
 export * from "./src/renderer/src/features/chat/chat-tag-groups";
 export * from "./src/renderer/src/features/chat/chat-tag-draft";
+export {moveChatToTag} from "./src/renderer/src/features/chat/chat-tag-move";
 export {parseSidebarView, DEFAULT_SIDEBAR_VIEW} from "./src/renderer/src/features/chat/chat-sidebar-view";
+export {DesktopControlError} from "./src/renderer/src/shared/api/local-operator/desktop-api";
 export {desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract";
 export {useUiPreferencesStore} from "./src/renderer/src/shared/store/ui-preferences-store";
 export {useSessionTagsStore} from "./src/renderer/src/shared/store/session-tags-store";
@@ -41,6 +44,22 @@ export {useCanonicalSessionsStore} from "./src/renderer/src/shared/store/canonic
 	platform: "node",
 	write: false,
 	plugins: [
+		{
+			name: "tag-toast-capture",
+			setup(builder) {
+				builder.onResolve({ filter: /@shared\/utils\/toast-manager/ }, () => ({
+					path: "toast",
+					namespace: "tag-toast",
+				}));
+				builder.onLoad({ filter: /.*/, namespace: "tag-toast" }, () => ({
+					contents: `
+export const showSuccessToast = (message,options) => globalThis.tagMoveToasts.push({message,options});
+export const showWarningToast = (message,options) => globalThis.tagMoveToasts.push({message,options});
+`,
+					loader: "js",
+				}));
+			},
+		},
 		{
 			name: "transcript-echo-fixture",
 			setup(builder) {
@@ -68,6 +87,7 @@ export const discardPendingSends = () => undefined;
 	],
 });
 const {
+	moveChatToTag,
 	groupChatsByTag,
 	deletedTagNameReused,
 	draftPrimary,
@@ -390,4 +410,199 @@ test("save failures are tag-specific, loading errors are not empty registries, a
 	);
 	assert.equal(copy["ui.chat.tags.manage_title"], "Manage tags");
 	assert.equal(copy["ui.chat.tags.done"], undefined);
+});
+
+test("opaque revision is sent only when supplied and the response revision is returned", async () => {
+	canonical.setState({
+		sessions: [{ ...row("aaaaaaaaaaaa", "a"), tags_revision: "0009" }],
+	});
+	tags.setState({ categories });
+	const requests = [];
+	window.api.desktop.request = async (request) => {
+		requests.push(request);
+		if (request.op === "sessions.tags")
+			return {
+				status: 200,
+				body: {
+					result: {
+						session_id: request.sessionId,
+						tags: [{ id: "b", name: "Project" }],
+						primary: "b",
+						tags_revision: "0010",
+					},
+				},
+			};
+		if (request.op === "tags.list")
+			return { status: 200, body: { result: { tags: categories } } };
+		return {
+			status: 200,
+			body: { result: { sessions: [], truncated: false } },
+		};
+	};
+	const result = await tags
+		.getState()
+		.assignSessionTags("aaaaaaaaaaaa", ["b"], "b");
+	assert.equal(result.tags_revision, "0010");
+	assert.equal(
+		requests.find((request) => request.op === "sessions.tags")
+			.expected_revision,
+		"0009",
+	);
+	assert.deepEqual(desktopEndpoint(requests[0]).body, {
+		tags: ["b"],
+		primary: "b",
+		expected_revision: "0009",
+	});
+	canonical.setState({
+		sessions: [{ ...row("aaaaaaaaaaaa", "b"), tags_revision: "0011" }],
+	});
+	requests.length = 0;
+	await tags
+		.getState()
+		.assignSessionTags("aaaaaaaaaaaa", ["a"], "a", result.tags_revision);
+	assert.equal(
+		requests[0].expected_revision,
+		"0010",
+		"Undo captures the write response, not the newer catalogue",
+	);
+	canonical.setState({ sessions: [row("aaaaaaaaaaaa", "a")] });
+	requests.length = 0;
+	await tags.getState().assignSessionTags("aaaaaaaaaaaa", ["b"], "b");
+	assert.equal(Object.hasOwn(requests[0], "expected_revision"), false);
+});
+
+test("409 tags_conflict reloads authoritative state and never retries the write", async () => {
+	canonical.setState({
+		sessions: [{ ...row("aaaaaaaaaaaa", "a"), tags_revision: "4" }],
+	});
+	tags.setState({ categories });
+	const requests = [];
+	window.api.desktop.request = async (request) => {
+		requests.push(request);
+		if (request.op === "sessions.tags")
+			return {
+				status: 409,
+				body: {
+					detail: {
+						code: "tags_conflict",
+						text: "Tags changed elsewhere",
+						result: { ...row("aaaaaaaaaaaa", "b"), tags_revision: "5" },
+					},
+				},
+			};
+		return {
+			status: 200,
+			body: {
+				result: {
+					sessions: [
+						{
+							id: "aaaaaaaaaaaa",
+							name: "Other edit",
+							mtime: 1,
+							tags: [{ id: "b", name: "Project" }],
+							primary: "b",
+							tags_revision: "5",
+						},
+					],
+					truncated: false,
+				},
+			},
+		};
+	};
+	await assert.rejects(
+		tags.getState().assignSessionTags("aaaaaaaaaaaa", [], null, "4"),
+		(error) => error.status === 409 && error.code === "tags_conflict",
+	);
+	assert.equal(
+		requests.filter((request) => request.op === "sessions.tags").length,
+		1,
+	);
+	assert.equal(canonical.getState().sessions[0].tags_revision, "5");
+	assert.equal(canonical.getState().sessions[0].primary, "b");
+});
+
+test("move helper guards edited snapshot and Undo uses the produced revision, showing conflicts visibly", async () => {
+	const original = { ...row("aaaaaaaaaaaa", "a"), tags_revision: "8" };
+	canonical.setState({ sessions: [{ ...original, tags_revision: "9" }] });
+	tags.setState({ categories });
+	globalThis.tagMoveToasts = [];
+	const requests = [];
+	const announcements = [];
+	let conflict = false;
+	window.api.desktop.request = async (request) => {
+		requests.push(request);
+		if (request.op === "sessions.tags") {
+			if (conflict)
+				return {
+					status: 409,
+					body: {
+						detail: {
+							code: "tags_conflict",
+							text: "Tags changed elsewhere",
+							result: { ...row("aaaaaaaaaaaa", "b"), tags_revision: "11" },
+						},
+					},
+				};
+			return {
+				status: 200,
+				body: {
+					result: {
+						...row("aaaaaaaaaaaa", "b", ["a", "b"]),
+						tags_revision: "10",
+					},
+				},
+			};
+		}
+		if (request.op === "tags.list")
+			return { status: 200, body: { result: { tags: categories } } };
+		return {
+			status: 200,
+			body: {
+				result: {
+					sessions: [
+						{
+							id: "aaaaaaaaaaaa",
+							name: "Refreshed later",
+							mtime: 1,
+							tags: [{ id: "b", name: "Project" }],
+							primary: "b",
+							tags_revision: "11",
+						},
+					],
+					truncated: false,
+				},
+			},
+		};
+	};
+	await moveChatToTag(original, "b", (message) => announcements.push(message));
+	assert.equal(
+		requests[0].expected_revision,
+		"8",
+		"a newer canonical revision must not authorize a stale menu snapshot",
+	);
+	assert.equal(globalThis.tagMoveToasts[0].message, "Moved to “Project”");
+	conflict = true;
+	globalThis.tagMoveToasts[0].options.action.onClick();
+	for (
+		let attempt = 0;
+		attempt < 20 && globalThis.tagMoveToasts.length < 2;
+		attempt++
+	)
+		await new Promise((resolve) => setTimeout(resolve, 1));
+	assert.equal(
+		requests.filter((request) => request.op === "sessions.tags")[1]
+			.expected_revision,
+		"10",
+	);
+	assert.equal(
+		globalThis.tagMoveToasts.at(-1).message,
+		"Tags changed elsewhere",
+	);
+	assert.equal(announcements.at(-1), "Tags changed elsewhere");
+	assert.equal(canonical.getState().sessions[0].tags_revision, "11");
+	assert.equal(
+		requests.filter((request) => request.op === "sessions.tags").length,
+		2,
+		"conflicting Undo must not retry",
+	);
 });
