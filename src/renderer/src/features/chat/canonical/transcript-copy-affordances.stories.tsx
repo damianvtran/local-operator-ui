@@ -293,6 +293,39 @@ export const SelectionToolbar: Story = {
 	},
 };
 
+/**
+ * A selection on the intermediate response WHILE its own gutter is up.
+ *
+ * This is the collision state round-2 review named: the response row's Copy
+ * overlay and the selection strip both want the same outer-gutter seat. The
+ * row is focused first so its gutter would be interactive, then the highlight
+ * is made; the frame must show one strip and an inert/aria-hidden gutter.
+ */
+export const SelectionToolbarResponseFocused: Story = {
+	render: () => <Frame state={MULTI_ANSWER} />,
+	play: async ({ canvasElement }) => {
+		const response = row(canvasElement, "a1");
+		response.focus();
+		const prose = response.querySelector(".lo-markdown") ?? response;
+		await selectText(prose as HTMLElement);
+		await waitFor(() => {
+			if (document.querySelector("[data-lo-quote-toolkit]") === null) {
+				throw new Error("the selection strip did not mount");
+			}
+		});
+		await waitFor(() => {
+			const gutter = response.querySelector("[data-lo-gutter-actions]");
+			if (gutter === null) return;
+			if (
+				!gutter.hasAttribute("inert") ||
+				gutter.getAttribute("aria-hidden") !== "true"
+			) {
+				throw new Error("the response gutter is still interactive");
+			}
+		});
+	},
+};
+
 /** A narrow pane: no outer gutter, so the strip flips above the selection. */
 export const SelectionToolbarNarrow: Story = {
 	render: () => <Frame state={MULTI_ANSWER} width={480} />,
