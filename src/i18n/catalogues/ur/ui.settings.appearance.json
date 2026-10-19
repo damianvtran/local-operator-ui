@@ -1,0 +1,12 @@
+{
+	"ui.settings.appearance.settings_page.appearance": "ظاہری شکل",
+	"ui.settings.appearance.settings_page.customize_the_look_and_feel_of_local_operator": "Local Operator کی ظاہری شکل اپنے مطابق بنائیں",
+	"ui.settings.appearance.settings_page.show_agent_reasoning": "ایجنٹ کا استدلال دکھائیں",
+	"ui.settings.appearance.settings_page.adds_the_agent_s_reasoning_and_thinking_rows_to_conversations_the": "گفتگو میں ایجنٹ کے استدلال اور سوچ کی قطاریں شامل کرتا ہے۔ جب تک آپ انہیں نہ کھولیں، یہ بند رہتی ہیں۔ صرف استدلال کے لیے ہے؛ ایجنٹ باری کے دوران جو نثری بیان لکھتا ہے وہ ٹرانسکرپٹ کا حصہ ہے، استدلال نہیں — کوئی بھی ڈسپلے موڈ اسے نہیں ہٹاتا؛ فی باری اسے باری کی پٹیوں کے پیچھے سمیٹتا ہے، فی جواب اسے اسکرین پر رکھتا ہے۔",
+	"ui.settings.appearance.theme_selector.dark": "تاریک",
+	"ui.settings.appearance.theme_selector.light": "روشن",
+	"ui.settings.appearance.transcript_display_mode_setting.transcript_display": "ٹرانسکرپٹ کا ڈسپلے",
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every": "فی باری ہر باری کو اس کے جواب تک سمیٹتا ہے۔ فی جواب ہر مکمل جواب کو اسکرین پر رکھتا ہے اور باری کا آخری جواب الگ نشان زد رہتا ہے۔",
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn": "فی باری",
+	"ui.settings.appearance.transcript_display_mode_setting.by_response": "فی جواب"
+}
