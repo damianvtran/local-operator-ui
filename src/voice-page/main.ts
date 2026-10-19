@@ -1,4 +1,5 @@
 import type { VoicePageBridge } from "./bridge";
+import { ReplyInbox } from "./reply-inbox";
 import { SegmentScheduler } from "./scheduler";
 import { VadController } from "./vad";
 import { createVad } from "./vad-factory";
@@ -13,10 +14,7 @@ const context = new AudioContext();
 const gain = context.createGain();
 gain.connect(context.destination);
 
-/** Segments the bridge has delivered, keyed by id order of arrival. */
-const inbox: Uint8Array[] = [];
-let waiter: ((bytes: Uint8Array | null) => void) | null = null;
-let ended = false;
+const inbox = new ReplyInbox();
 
 const scheduler = new SegmentScheduler({
 	audio: {
@@ -47,31 +45,18 @@ const scheduler = new SegmentScheduler({
 		},
 	},
 	// Main pushes segments as it fetches them (one ahead); the scheduler pulls.
-	onDrained: () => {
-		ended = false;
-	},
-	fetchSegment: (_index, signal) =>
-		new Promise((resolve) => {
-			const next = inbox.shift();
-			if (next) return resolve(next);
-			if (ended) return resolve(null);
-			waiter = resolve;
-			signal.addEventListener("abort", () => resolve(null));
-		}),
+	onDrained: () => inbox.drained(),
+	fetchSegment: (index, signal) => inbox.pull(index, signal),
 });
 
-bridge.onPlay(({ bytes, last }) => {
-	if (last) ended = true;
-	if (waiter) {
-		const resolve = waiter;
-		waiter = null;
-		resolve(bytes);
-	} else inbox.push(bytes);
-	if (!scheduler.playing) void scheduler.play();
+bridge.onPlay((message) => {
+	const { accepted, fresh } = inbox.push(message);
+	if (!accepted) return;
+	// A new reply restarts the scheduler (play() stops the old one first).
+	if (fresh || !scheduler.playing) void scheduler.play();
 });
 bridge.onStop(() => {
-	inbox.length = 0;
-	ended = false;
+	inbox.stop();
 	scheduler.stop();
 });
 bridge.onMute((muted) => {
@@ -84,9 +69,14 @@ const vad = new VadController({
 	sendVad: (kind) => bridge.sendVad(kind),
 	isPlaying: () => scheduler.playing,
 	stopPlayback: () => {
-		inbox.length = 0;
+		inbox.stop();
 		scheduler.stop();
 	},
 });
-void vad.start();
+// A failed start (no detector yet, or the microphone refused) must not be an
+// unhandled rejection; the page has no error channel up yet, so it reports
+// "no speech" by staying silent and logs for the app's console capture.
+vad.start().catch((error: unknown) => {
+	console.error("voice page: listening did not start", error);
+});
 window.addEventListener("pagehide", () => void vad.close());

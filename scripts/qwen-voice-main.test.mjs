@@ -2346,6 +2346,7 @@ test("SWITCH: off means no start, no spawn, no page, no timer, no message, whate
 	assert.deepEqual(r.toRenderer, [], "no status or take pushed");
 });
 
+// TODO(U2): this must also assert that the app page URL is never loaded.
 test("SWITCH (U1): off means the REAL page adapter never creates a view, and the app page URL is only computed, never loaded", async () => {
 	const c = pageCase();
 	const r = rig({ enabled: false, page: c.page });
