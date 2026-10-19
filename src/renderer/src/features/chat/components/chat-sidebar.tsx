@@ -3,6 +3,8 @@ import {
 	builtinOfferSignature,
 } from "@features/agents/builtin-offer";
 import { InstallBuiltinAgents } from "@features/agents/components/install-builtin-agents";
+import { CHAT_ROW_MENU_SCROLL_CLASS } from "@features/chat/chat-row-menu";
+import { TAG_DROP_PREVIEW_CLASSES } from "@features/chat/chat-tag-drag";
 import {
 	groupChatsByTag,
 	tagBucketRowIds,
@@ -3298,19 +3300,9 @@ export function ChatSidebar({
 		const section = pinnedSectionRef.current;
 		const header = owner && section ? tagHeaderAt(owner, x, y, section) : null;
 		setPinHeaderTarget(header !== null);
-		pinHeaderRef.current?.classList.remove(
-			"bg-accent-wash",
-			"outline",
-			"outline-1",
-			"outline-accent",
-		);
+		pinHeaderRef.current?.classList.remove(...TAG_DROP_PREVIEW_CLASSES);
 		pinHeaderRef.current = header;
-		header?.classList.add(
-			"bg-accent-wash",
-			"outline",
-			"outline-1",
-			"outline-accent",
-		);
+		header?.classList.add(...TAG_DROP_PREVIEW_CLASSES);
 		pinDropTargetRef.current = header?.dataset.tagDropTarget ?? null;
 		const hit = document
 			.elementFromPoint(x, y)
@@ -3530,12 +3522,7 @@ export function ChatSidebar({
 		const live = pinDragRef.current;
 		pinDragRef.current = null;
 		stopPinDragAutoScroll();
-		pinHeaderRef.current?.classList.remove(
-			"bg-accent-wash",
-			"outline",
-			"outline-1",
-			"outline-accent",
-		);
+		pinHeaderRef.current?.classList.remove(...TAG_DROP_PREVIEW_CLASSES);
 		pinHeaderRef.current = null;
 		setPinDrag(null);
 		setPinHeaderTarget(false);
@@ -6141,7 +6128,7 @@ export function ChatSidebar({
 				<ContextMenuContent
 					/* At the app’s 600px floor, half the viewport is 300px: the ten-row
 					 * menu genuinely scrolls while keeping every 32px target keyboard-reachable. */
-					className="max-h-[min(var(--radix-context-menu-content-available-height),50dvh)] overflow-y-auto [&_[role=menuitem]]:min-h-8"
+					className={CHAT_ROW_MENU_SCROLL_CLASS}
 					onFocus={(event) => {
 						/*
 						 * THE KEYBOARD PATH LANDS IN THE FIRST ITEM (U-D4's minimum; the

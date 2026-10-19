@@ -46,17 +46,25 @@ The browser readout measured five 32px rows and five 28px occupied tag subheader
 
 ## Automated checks
 
-- `node --test scripts/sidebar-tag-drag.test.mjs scripts/chat-sidebar-tags.test.mjs scripts/chat-sidebar-row-menu.test.mjs scripts/sidebar-pin-order.test.mjs scripts/chat-sidebar-pins.test.mjs`: 80 passed, 0 failed, including the old grouped-DOM/flat-order no-op reproduction and fixed bucket-scoped result.
+- `node --test scripts/sidebar-tag-drag.test.mjs scripts/chat-sidebar-tags.test.mjs scripts/chat-sidebar-row-menu.test.mjs scripts/sidebar-pin-order.test.mjs scripts/chat-sidebar-pins.test.mjs scripts/chat-sidebar-selection.test.mjs scripts/chat-sidebar-sections.test.mjs`: 111 passed, 0 failed, including the old grouped-DOM/flat-order no-op reproduction and fixed bucket-scoped result.
 - Earlier unchanged-neighbor run also included `scripts/chat-sidebar-pins.test.mjs scripts/desktop-contract.test.mjs`: 122 passed, 0 failed before two additional focused regressions were added. Those neighboring lanes were not duplicated after changes confined to new helpers/stories.
 - `pnpm check-types:main` and `pnpm check-types:renderer`: exit 0.
 - Changed-source Biome check: exit 0 (three pre-existing regex performance warnings in desktop-contract).
 - `pnpm lint:scripts`: four changed script files lint-clean.
 - `pnpm check-i18n`: exit 0; 172 ledger entries fresh and independently audited. Fresh Russian delta receipt: `i18n/receipts/b6e2d9f04c17.json` (anthropic/claude-sonnet-5-5), zero findings. ES/FR independent receipts `c3e8a1f72b95.json` / `8d2f6a4c91e7.json` are clean-with-findings; minor million-count wording, terminology, quote/spacing consistency accepted rather than churning translations. Baseline translator metadata is retained by the assembler; receipt/ledger audit notes identify coder/openai/gpt-6.1-sol as this delta’s translator. RU exact `=1` singular was fixed after the changes-requested `5b7d1c9e2a46.json` audit, then independently re-audited; 21/101 use the plural action. The unreferenced duplicate of the original Russian receipt was removed.
 - `git diff --check`: exit 0.
-- `node scripts/evidence-fold.mjs --no-amend` mechanically re-derived outside-set frame counts for the ten retained/recaptured/new screenshots; `node --test scripts/evidence-manifest.test.mjs`: 52 passed, 0 failed, 1 skipped (citation ancestry unavailable in the shallow clone).
+- `node scripts/evidence-fold.mjs --no-amend` mechanically re-derived outside-set frame counts for the twelve retained/recaptured/new screenshots; `node --test scripts/evidence-manifest.test.mjs`: 52 passed, 0 failed, 1 skipped (citation ancestry unavailable in the shallow clone).
 
 Full desktop automated coverage is left to CI rather than duplicating the full suite locally. No version, release, mobile, core, or frozen design-plan changes are included.
 
 ## Rebase/convergence provenance
 
 `rebase-provenance.json` records the original head, current-base replay, `git range-diff` equality (excluding the mechanically rederived manifest), and byte-identical +/- line multisets. Eighteen source/script blobs were byte-identical before remediation; generated keys retained exactly the upstream-only delta. The only rebase conflict was `unjudgedFrames`, resolved by preserving upstream evidence and mechanically recounting actual files. This is compatibility evidence for the replay, not a substitute for convergence review of the remediation/new base.
+
+## CI follow-up: palette contract and detached overlay chrome
+
+The first replacement head `b54da3c98e` completed CI with ten passing checks and two failures inside Desktop Tests: the existing selection guard rejects any `bg-accent-wash` literal in the sidebar, and the existing region guard’s earlier selector-to-region slice included the new detached menu’s overflow literal. Both failures were reproduced directly before the source fix; neither guard was weakened or edited.
+
+The detached menu’s identical responsive/scroll/target classes now live in `chat-row-menu.ts`. The active header now shares `TAG_DROP_PREVIEW_CLASSES` between grip/body paths: contracted `bg-row-selected`, strong `text-ink!`, and accent outline. The plan’s faint wash wording is superseded by the repo’s palette floor, not implemented as a bypass. Eligible and pinned previews were recaptured/viewed in both localOperatorDark and localOperatorLight; `armed-preview-light.png` and `pinned-header-preview-light.png` are the two added frames.
+
+Actual harness-browser computed colors are recorded in `header-contrast.json`. WCAG relative-luminance ratios from those measurements: dark foreground/header **11.36:1**, accent outline/header **6.10:1**; light foreground/header **13.42:1**, outline/header **4.53:1**. These are two measured themes, not a claimed 59-theme sweep. Independent design was asked to re-check D1 on the corrected role/frames. The original full-suite failure is not presented as green; CI must rerun on the fast-forward source-fix head.

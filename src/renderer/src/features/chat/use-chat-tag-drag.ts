@@ -9,6 +9,7 @@ import {
 	TAG_DRAG_EDGE_PX,
 	TAG_DRAG_HOLD_MS,
 	TAG_DRAG_SCROLL_PX,
+	TAG_DROP_PREVIEW_CLASSES,
 	tagDragPhase,
 } from "./chat-tag-drag";
 
@@ -255,19 +256,8 @@ export function useChatTagDrag(options: Options) {
 	}, [options.enabled]);
 	useEffect(() => {
 		if (!target) return;
-		target.classList.add(
-			"bg-accent-wash",
-			"outline",
-			"outline-1",
-			"outline-accent",
-		);
-		return () =>
-			target.classList.remove(
-				"bg-accent-wash",
-				"outline",
-				"outline-1",
-				"outline-accent",
-			);
+		target.classList.add(...TAG_DROP_PREVIEW_CLASSES);
+		return () => target.classList.remove(...TAG_DROP_PREVIEW_CLASSES);
 	}, [target]);
 	return {
 		armedId,

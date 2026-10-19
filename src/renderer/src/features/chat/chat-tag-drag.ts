@@ -42,3 +42,14 @@ export function movedTagAssignment(
 		primary: target,
 	};
 }
+
+/** The brand wash falls below the panel field floor in several palettes. Reuse
+ * the already-contracted selected-row ground and ink for both drag entry paths;
+ * the accent outline states the transient drop intent without a faint wash. */
+export const TAG_DROP_PREVIEW_CLASSES = [
+	"bg-row-selected",
+	"text-ink!",
+	"outline",
+	"outline-1",
+	"outline-accent",
+] as const;

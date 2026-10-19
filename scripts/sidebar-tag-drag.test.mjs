@@ -11,6 +11,7 @@ const bundle = await build({
 export * from "./src/renderer/src/features/chat/chat-tag-drag";
 export * from "./src/renderer/src/features/chat/chat-tag-groups";
 export * from "./src/renderer/src/features/chat/chat-pin-order";
+export {CHAT_ROW_MENU_SCROLL_CLASS} from "./src/renderer/src/features/chat/chat-row-menu";
 export {tagHeaderAt} from "./src/renderer/src/features/chat/use-chat-tag-drag";
 `,
 		resolveDir: process.cwd(),
@@ -21,6 +22,8 @@ export {tagHeaderAt} from "./src/renderer/src/features/chat/use-chat-tag-drag";
 	write: false,
 });
 const {
+	TAG_DROP_PREVIEW_CLASSES,
+	CHAT_ROW_MENU_SCROLL_CLASS,
 	tagDragPhase,
 	chatTagBucket,
 	movedTagAssignment,
@@ -247,4 +250,17 @@ test("remove action formatting is exact singular only at one, including Russian 
 		for (const count of [1, 2, 21, 101])
 			assert.ok(String(message.format({ count })).includes(`(${count})`));
 	}
+});
+
+test("drop preview uses the contracted row ground, while only the detached menu scrolls", () => {
+	assert.deepEqual(TAG_DROP_PREVIEW_CLASSES, [
+		"bg-row-selected",
+		"text-ink!",
+		"outline",
+		"outline-1",
+		"outline-accent",
+	]);
+	assert.ok(CHAT_ROW_MENU_SCROLL_CLASS.includes("overflow-y-auto"));
+	assert.ok(CHAT_ROW_MENU_SCROLL_CLASS.includes("50dvh"));
+	assert.ok(CHAT_ROW_MENU_SCROLL_CLASS.includes("min-h-8"));
 });

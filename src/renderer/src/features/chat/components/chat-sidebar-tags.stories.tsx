@@ -930,8 +930,8 @@ const dragRoundTrip = async (crossSection: boolean) => {
 		clientX: target.left + 60,
 		clientY: target.top + 14,
 	});
-	if (crossSection) expect(header).not.toHaveClass("bg-accent-wash");
-	else await waitFor(() => expect(header).toHaveClass("bg-accent-wash"));
+	if (crossSection) expect(header).not.toHaveClass("bg-row-selected");
+	else await waitFor(() => expect(header).toHaveClass("bg-row-selected"));
 	fireEvent.pointerUp(window, {
 		...pointer,
 		clientX: target.left + 60,
@@ -1077,9 +1077,9 @@ export const DragPreview: Story = {
 			clientX: target.left + 60,
 			clientY: target.top + 14,
 		});
-		await waitFor(() => expect(header).toHaveClass("bg-accent-wash"));
+		await waitFor(() => expect(header).toHaveClass("bg-row-selected"));
 		document.body.dataset.tagsProof =
-			"PASS: armed row + header accent wash/outline preview; no assignment before drop";
+			"PASS: armed row + header selected-ground/accent-outline preview; no assignment before drop";
 	},
 };
 export const TagActionsMenu: Story = {
@@ -1276,7 +1276,7 @@ export const HeldPinnedTagDrop: Story = {
 			clientY: rect.top + 14,
 		};
 		fireEvent.pointerMove(window, over);
-		await waitFor(() => expect(target).toHaveClass("bg-accent-wash"));
+		await waitFor(() => expect(target).toHaveClass("bg-row-selected"));
 		expect(document.querySelector("[data-session-pin-indicator]")).toBeNull();
 		fireEvent.pointerUp(window, over);
 		await waitFor(() =>
@@ -1321,7 +1321,7 @@ export const PinnedHeaderPreview: Story = {
 			clientX: rect.left + 60,
 			clientY: rect.top + 14,
 		});
-		await waitFor(() => expect(target).toHaveClass("bg-accent-wash"));
+		await waitFor(() => expect(target).toHaveClass("bg-row-selected"));
 		expect(document.querySelector("[data-session-pin-indicator]")).toBeNull();
 		document.body.dataset.tagsProof =
 			"PASS: same-section Pinned header accent preview, armed row, no pinned insertion line, no write before release";
@@ -1359,7 +1359,7 @@ export const SameSectionUntaggedDrop: Story = {
 			clientY: rect.top + 14,
 		};
 		fireEvent.pointerMove(window, over);
-		await waitFor(() => expect(target).toHaveClass("bg-accent-wash"));
+		await waitFor(() => expect(target).toHaveClass("bg-row-selected"));
 		fireEvent.pointerUp(window, over);
 		await waitFor(() =>
 			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
@@ -1385,4 +1385,13 @@ export const SameSectionUntaggedDrop: Story = {
 		document.body.dataset.tagsProof =
 			"PASS: eligible same-section Untagged highlighted and cleared all tags/primary in one write without changing section";
 	},
+};
+
+export const DragPreviewLight: Story = {
+	...story("tags-on", 260, "localOperatorLight"),
+	play: DragPreview.play,
+};
+export const PinnedHeaderPreviewLight: Story = {
+	...story("pinned-tags", 260, "localOperatorLight"),
+	play: PinnedHeaderPreview.play,
 };
