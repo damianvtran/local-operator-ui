@@ -247,13 +247,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			pendingSend.current?.body === body
 				? pendingSend.current.clientRef
 				: crypto.randomUUID();
-		pendingSend.current = { body, clientRef };
+		const entry = { body, clientRef };
+		pendingSend.current = entry;
 		// Keep the draft until the send resolves: a refused send must not erase
 		// what the person wrote. Clear only if the field still holds what was
 		// sent — text typed while it was in flight is not the send's to discard.
 		const result = onSend(body, clientRef);
 		const settle = () => {
-			pendingSend.current = null;
+			// Only the entry this send created may be cleared: a second send in
+			// another conversation settling late must not drop the first one's key.
+			if (pendingSend.current === entry) pendingSend.current = null;
 			setDraft((current) => (current.trim() === body ? "" : current));
 		};
 		if (result instanceof Promise) {
