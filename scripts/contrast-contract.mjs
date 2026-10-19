@@ -1800,6 +1800,57 @@ const CONTROLS = [
 		ink: "inkMuted",
 		edge: false,
 	},
+	/*
+	 * THE LIBRARY SURFACE (desktop UI, 2026-10-18). Four triples the feature
+	 * actually paints, registered because role reuse alone is not proof: the
+	 * card's metadata sits on `surface` over the page's `canvas`, the thumbnail
+	 * well is `sunken` with a kind glyph, the origin badge is an opaque
+	 * `elevated` mark on the card, and the composer is an `elevated` field on
+	 * the preview's `canvas`. The card and composer have no edge at rest (the
+	 * hairline is decorative); the badge's edge is declared away for the same
+	 * reason the team avatar's is - its fill merges with a card ground on some
+	 * palettes, so the letters' own floor is the boundary that matters.
+	 */
+	{
+		name: "library card",
+		on: GROUNDS,
+		fill: "surface",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
+	{
+		name: "library card secondary",
+		on: ["surface"],
+		fill: "surface",
+		border: null,
+		ink: "inkDim",
+		edge: false,
+	},
+	{
+		name: "library thumbnail well",
+		on: ["surface", "canvas"],
+		fill: "sunken",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		name: "library origin badge",
+		on: ["surface", "sunken"],
+		fill: "elevated",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		name: "library composer field",
+		on: ["canvas", "surface"],
+		fill: "elevated",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
 ];
 
 /**

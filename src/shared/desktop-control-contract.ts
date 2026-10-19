@@ -710,3 +710,219 @@ export type DesktopAidaState = {
  * (`aidaControlFailureCopy`).
  */
 export type DesktopAidaControlResult = Omit<DesktopAidaState, "enabled">;
+
+/*
+ * THE LIBRARY SURFACE'S WIRE DTOs (`/v1/desktop/library*` and
+ * `/v1/desktop/librarian`), mirrored from the frozen design contract
+ * (`docs/design/library.md` § 4 in the local-operator repository).
+ *
+ * SHAPES ARE COPIED FROM THE CONTRACT, NOT RE-DERIVED: `kind` and `category`
+ * are classified server-side by one pure module, and the desktop renderer must
+ * never grow a second opinion about which extension is a presentation. The
+ * same applies to `organized`, whose presence says the asset has been through
+ * the Librarian (or a user edit) and whose `by` names the actor.
+ *
+ * A `null` field means UNKNOWN/ABSENT and never a placeholder: `chat: null`
+ * says this asset has no linked conversation, `preview.pages: null` says the
+ * preview has no pagination (or is unsupported), and `organized: null` says
+ * nothing has organized this row yet. Rendering an empty string where one of
+ * these is null would make the composer or the tag editor claim a state the
+ * catalog never answered.
+ */
+export type DesktopLibraryKind =
+	| "image"
+	| "audio"
+	| "video"
+	| "pdf"
+	| "pptx"
+	| "docx"
+	| "markdown"
+	| "html"
+	| "spreadsheet"
+	| "text"
+	| "code"
+	| "other";
+
+export type DesktopLibraryCategory =
+	| "image"
+	| "sound"
+	| "document"
+	| "presentation"
+	| "video"
+	| "spreadsheet"
+	| "code"
+	| "other";
+
+export type DesktopLibraryOriginGroup = "generated" | "created" | "mentioned";
+
+export type DesktopLibrarySort =
+	| "recent"
+	| "name"
+	| "kind"
+	| "size"
+	| "created"
+	| "modified"
+	| "organized";
+
+/** One tag row, on the catalog listing and on an asset. `count` rides only listings. */
+export type DesktopLibraryTag = {
+	id: string;
+	name: string;
+	category: string;
+	count?: number;
+};
+
+/**
+ * Where an asset's bytes live.
+ *
+ * `path` is present only on this desktop plane (the relay projects
+ * `display_path` with `display=True` and drops the absolute path). `digest`
+ * names a content-addressed attachment. Callers on this plane must treat `path`
+ * as display-only: content and thumbnail bytes are fetched by asset id, never by
+ * a caller-supplied path.
+ */
+export type DesktopLibraryRef = {
+	type: "path" | "artifact";
+	path: string | null;
+	display_path: string;
+	digest: string | null;
+	content_type: string;
+};
+
+export type DesktopLibraryOccurrence = {
+	session_id: string;
+	session_title: string;
+	origin: string;
+	tool: string | null;
+	at: number;
+	intent: string | null;
+	/**
+	 * The transcript sequence range the occurrence covers, and the subagent run
+	 * it came from when it is one. The desktop chat route does not yet accept a
+	 * message anchor, so this release links to the conversation while carrying
+	 * the range for the surface that will.
+	 */
+	first_seq: number;
+	last_seq: number;
+	child_id: string | null;
+	/** A display override the backend may add for a peer/child occurrence. */
+	label: string | null;
+};
+
+/** One catalog row, as `library.list` and `library.get` answer it. */
+export type DesktopLibraryAsset = {
+	id: string;
+	ref: DesktopLibraryRef;
+	name: string;
+	/**
+	 * The server-derived fallback name (a de-slugged filename). Editable `name`
+	 * wins for display; the card's second line is deliberately THIS field so a
+	 * row the user has not named still reads as its file rather than as an empty
+	 * line.
+	 */
+	derived_name: string;
+	description: string;
+	kind: DesktopLibraryKind;
+	category: DesktopLibraryCategory;
+	origin: string;
+	origin_group: DesktopLibraryOriginGroup;
+	origins: string[];
+	tags: DesktopLibraryTag[];
+	primary_tag: string | null;
+	size_bytes: number;
+	width: number | null;
+	height: number | null;
+	duration_s: number | null;
+	created_at: number;
+	modified_at: number;
+	last_seen_at: number;
+	exists: boolean;
+	highlighted: boolean;
+	highlight_why: string | null;
+	occurrences: DesktopLibraryOccurrence[];
+	session_count: number;
+	chat: { session_id: string; title: string; updated_at: number } | null;
+	preview: {
+		state: "ready" | "unsupported";
+		mime_type: string | null;
+		pages: number | null;
+	};
+	organized: {
+		at: number;
+		by: string | null;
+		confidence: number | null;
+	} | null;
+	locked: boolean;
+	favorite: boolean;
+	archived: boolean;
+};
+
+/** The `library.list` answer. */
+export type DesktopLibraryList = {
+	state: "ready" | "building";
+	revision: number;
+	total: number;
+	counts: {
+		category: Record<string, number>;
+		origin_group: Record<string, number>;
+		kind: Record<string, number>;
+	};
+	tags: DesktopLibraryTag[];
+	rows: DesktopLibraryAsset[];
+	next_cursor: string | null;
+	cursor_reset: boolean;
+	scan: { sessions_total: number; sessions_scanned: number };
+	/**
+	 * Present once the Librarian package ships; before that the key is absent
+	 * or null (`LibraryListing` in the backend models), and the header draws no
+	 * status row rather than inventing "never run".
+	 */
+	librarian: DesktopLibrarianStatus | null;
+};
+
+/** The chat routes' answer: the asset id, the link it now holds (or null). */
+export type DesktopLibraryChatReceipt = {
+	asset_id: string;
+	chat: { session_id: string; title: string; updated_at: number } | null;
+	cleared: boolean;
+};
+
+/** The Librarian's status row, embedded in the listing and read by its own route. */
+export type DesktopLibrarianStatus = {
+	enabled: boolean;
+	session_id: string | null;
+	paused: boolean;
+	/** The display name the backend pins (defaults to "Librarian"). */
+	name?: string;
+	/** The structured last-run receipt; null before the first run. */
+	last_run?: {
+		at: number;
+		named: number;
+		tagged: number;
+		failed: number;
+	} | null;
+	/** Catalog-wide counts the status route knows; never derived from a page. */
+	library?: { total: number; unorganized: number };
+	/** Flat aliases the route also carries; read first, structured second. */
+	last_run_at: number | null;
+	last_summary: string | null;
+	unorganized?: number;
+};
+
+/**
+ * The fields `library.update` may write. Omitted keys leave their field alone.
+ *
+ * The bounds mirror `LibraryAssetPatch`: name 200 characters, description 2000.
+ * The editor enforces them before the write so an over-long paste is refused
+ * with copy in the field rather than as an opaque 422.
+ */
+export type DesktopLibraryUpdateFields = {
+	name?: string;
+	description?: string;
+	favorite?: boolean;
+	locked?: boolean;
+	archived?: boolean;
+};
+
+/** `library.list`'s `session_id`: one session id or a comma list. */
+export type DesktopLibrarySessionFilter = string;

@@ -195,6 +195,15 @@ export function useDesktopCapabilities() {
 export type DesktopFeature =
 	| "session_tags"
 	| "session_files"
+	/**
+	 * The global Library surface (`/v1/desktop/library*` and the Librarian
+	 * routes). Its own key because the destination must disappear entirely on a
+	 * backend that predates the catalog: the routes 404, and a nav row that
+	 * lands on an error page is the dead end the fail-closed rule forbids.
+	 * Absent therefore means no row, no route and no read - not a degraded
+	 * Library with an empty grid.
+	 */
+	| "library"
 	/** Route presence only; dynamic organization eligibility is backend-owned. */
 	| "team_bridge"
 	| "auth"
