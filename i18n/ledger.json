@@ -6402,8 +6402,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.tags",
-			"source_sha256": "ffb1c6b985fd1ab521a2a5fc49955978d76cabc5671437dc2bc6b31cfa1ada74",
-			"target_sha256": "eeaa3a1db34d79397086be7555824fd551efbdb4a298c09ae69de9936c174e39",
+			"source_sha256": "5e248d96f215a0754ba201a6f4df9801350532d3259506fa6ac995c455450427",
+			"target_sha256": "a0d325ec2a9835044b901da0ae66ee5f9a0ead72f239a734fb502a87adbbbc8a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6411,23 +6411,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"instance": "628fb828ffe1-ru-ui2-e-delta-530398b4bd",
-					"model": "anthropic/claude-sonnet-5-5",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-18",
 					"result": "clean",
-					"receipt": "i18n/receipts/628fb828ffe1-ru-ui2-e-delta-530398b4bd.json",
-					"receipt_sha256": "4fcadbe4d9087bd2ae4be47678f9e45c2bfab5741484a08bee45d3672fbc47d4",
-					"scope": "Delta 65ad12e7..2ee9bcd2 plus explicitly retained full-audit baseline; no full re-audit",
+					"instance": "9f4c2a71b3d8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
-					}
+					},
+					"receipt": "i18n/receipts/9f4c2a71b3d8.json",
+					"receipt_sha256": "ab49a0f93f020efe0f57dd7ee748a11db777bf528d7be19251b601313d3e5ff3",
+					"scope": "V2-1 11-key drag/move/remove delta; unchanged 42-key baseline retained"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ffb1c6b985fd1ab521a2a5fc49955978d76cabc5671437dc2bc6b31cfa1ada74",
+					"target_sha256": "eeaa3a1db34d79397086be7555824fd551efbdb4a298c09ae69de9936c174e39",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"instance": "628fb828ffe1-ru-ui2-e-delta-530398b4bd",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-18",
+							"result": "clean",
+							"receipt": "i18n/receipts/628fb828ffe1-ru-ui2-e-delta-530398b4bd.json",
+							"receipt_sha256": "4fcadbe4d9087bd2ae4be47678f9e45c2bfab5741484a08bee45d3672fbc47d4",
+							"scope": "Delta 65ad12e7..2ee9bcd2 plus explicitly retained full-audit baseline; no full re-audit",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							}
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
