@@ -1,0 +1,10 @@
+{
+	"ui.chat.usage.continue": "शामिल कोटा इस्तेमाल हो गया; आगे क्रेडिट इस्तेमाल होंगे।",
+	"ui.chat.usage.family_caps": "मॉडल-परिवार की सीमाएँ अब भी लागू हैं।",
+	"ui.chat.usage.blocked": "खर्च उपलब्ध नहीं",
+	"ui.chat.usage.eligibility_unknown": "खर्च की पात्रता अज्ञात",
+	"ui.chat.usage.unlimited": "भुगतान वाला असीमित कोटा",
+	"ui.chat.skill_invocation.instructions_label": "इस संदेश के साथ भेजे गए कौशल के निर्देश",
+	"ui.chat.skill_invocation.trigger_label": "{token} कौशल के निर्देश",
+	"ui.chat.highlights.file_resolution_failed": "इस सत्र के कार्य फ़ोल्डर में यह फ़ाइल नहीं मिली। दोबारा कोशिश करने से पहले फ़ाइल का पाथ कॉपी करके इस सत्र के कार्यक्षेत्र में उसकी जगह जाँचें।"
+}

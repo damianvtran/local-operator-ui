@@ -1,0 +1,9 @@
+{
+	"ui.chat.composer_media.recording": "रिकॉर्डिंग",
+	"ui.chat.composer_media.confirms": "पुष्टि करता है",
+	"ui.chat.composer_media.cancels": "रद्द करता है",
+	"ui.chat.composer_media.pasted_type": "पेस्ट किया गया {mimeType}",
+	"ui.chat.composer_media.pasted_file": "पेस्ट की गई फ़ाइल",
+	"ui.chat.composer_media.preview_failed": "प्रीव्यू नहीं दिखाया जा सका",
+	"ui.chat.composer_media.remove_attachment": "अटैचमेंट हटाएँ"
+}

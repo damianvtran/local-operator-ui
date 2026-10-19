@@ -189,9 +189,63 @@ import frUiSettingsSpeech from "./catalogues/fr/ui.settings.speech.json";
 import frUiSettingsUpdates from "./catalogues/fr/ui.settings.updates.json";
 import frUiShell from "./catalogues/fr/ui.shell.json";
 import frUiShellRail from "./catalogues/fr/ui.shell.rail.json";
+import hiUiAgentMessages from "./catalogues/hi/ui.agentMessages.json";
+import hiUiAgentMessagesSettings from "./catalogues/hi/ui.agentMessages.settings.json";
+import hiUiAgentsDialogs from "./catalogues/hi/ui.agents.dialogs.json";
+import hiUiAgents from "./catalogues/hi/ui.agents.json";
+import hiUiAgentsModels from "./catalogues/hi/ui.agents.models.json";
+import hiUiAgentsNavigation from "./catalogues/hi/ui.agents.navigation.json";
+import hiUiAgentsRefusals from "./catalogues/hi/ui.agents.refusals.json";
+import hiUiAgentsSettings from "./catalogues/hi/ui.agents.settings.json";
+import hiUiAgentsStarters from "./catalogues/hi/ui.agents.starters.json";
+import hiUiBrowserChrome from "./catalogues/hi/ui.browser.chrome.json";
+import hiUiBrowser from "./catalogues/hi/ui.browser.json";
+import hiUiCanvas from "./catalogues/hi/ui.canvas.json";
+import hiUiChatComposer from "./catalogues/hi/ui.chat.composer.json";
+import hiUiChatComposerMedia from "./catalogues/hi/ui.chat.composer_media.json";
+import hiUiChatDialogs from "./catalogues/hi/ui.chat.dialogs.json";
+import hiUiChatHeader from "./catalogues/hi/ui.chat.header.json";
+import hiUiChat from "./catalogues/hi/ui.chat.json";
+import hiUiChatResponseActions from "./catalogues/hi/ui.chat.response_actions.json";
+import hiUiChatSidebarView from "./catalogues/hi/ui.chat.sidebar_view.json";
+import hiUiChatTags from "./catalogues/hi/ui.chat.tags.json";
+import hiUiCodeReview from "./catalogues/hi/ui.code_review.json";
+import hiUiCommandPalette from "./catalogues/hi/ui.command_palette.json";
+import hiUiCommonActions from "./catalogues/hi/ui.common.actions.json";
+import hiUiCommonConnection from "./catalogues/hi/ui.common.connection.json";
+import hiUiCommonEditing from "./catalogues/hi/ui.common.editing.json";
+import hiUiCommonErrors from "./catalogues/hi/ui.common.errors.json";
+import hiUiCommonForms from "./catalogues/hi/ui.common.forms.json";
+import hiUiCommonLoading from "./catalogues/hi/ui.common.loading.json";
+import hiUiCommonModels from "./catalogues/hi/ui.common.models.json";
+import hiUiCommonUpdates from "./catalogues/hi/ui.common.updates.json";
 import hiUiConsole from "./catalogues/hi/ui.console.json";
+import hiUiHubComments from "./catalogues/hi/ui.hub.comments.json";
+import hiUiHub from "./catalogues/hi/ui.hub.json";
+import hiUiHubTaxonomy from "./catalogues/hi/ui.hub.taxonomy.json";
+import hiUiInstaller from "./catalogues/hi/ui.installer.json";
+import hiUiLibrary from "./catalogues/hi/ui.library.json";
+import hiUiMesh from "./catalogues/hi/ui.mesh.json";
 import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
+import hiUiProjects from "./catalogues/hi/ui.projects.json";
+import hiUiProviders from "./catalogues/hi/ui.providers.json";
+import hiUiSchedules from "./catalogues/hi/ui.schedules.json";
+import hiUiSettingsAccount from "./catalogues/hi/ui.settings.account.json";
+import hiUiSettingsAppearance from "./catalogues/hi/ui.settings.appearance.json";
+import hiUiSettingsAppearanceWindowGlass from "./catalogues/hi/ui.settings.appearance.window_glass.json";
+import hiUiSettingsConfiguration from "./catalogues/hi/ui.settings.configuration.json";
+import hiUiSettingsImports from "./catalogues/hi/ui.settings.imports.json";
+import hiUiSettingsIntegrations from "./catalogues/hi/ui.settings.integrations.json";
 import hiUiSettings from "./catalogues/hi/ui.settings.json";
+import hiUiSettingsModelDefaultEffort from "./catalogues/hi/ui.settings.model.default_effort.json";
+import hiUiSettingsModel from "./catalogues/hi/ui.settings.model.json";
+import hiUiSettingsModelProviderCallout from "./catalogues/hi/ui.settings.model.provider_callout.json";
+import hiUiSettingsNavigation from "./catalogues/hi/ui.settings.navigation.json";
+import hiUiSettingsShortcuts from "./catalogues/hi/ui.settings.shortcuts.json";
+import hiUiSettingsSpeech from "./catalogues/hi/ui.settings.speech.json";
+import hiUiSettingsUpdates from "./catalogues/hi/ui.settings.updates.json";
+import hiUiShell from "./catalogues/hi/ui.shell.json";
+import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
 import ruUiAgentsDialogs from "./catalogues/ru/ui.agents.dialogs.json";
 import ruUiAgents from "./catalogues/ru/ui.agents.json";
@@ -490,9 +544,63 @@ export const bundledCatalogues: Readonly<
 		...frUiShellRail,
 	},
 	hi: {
+		...hiUiAgentMessages,
+		...hiUiAgentMessagesSettings,
+		...hiUiAgentsDialogs,
+		...hiUiAgents,
+		...hiUiAgentsModels,
+		...hiUiAgentsNavigation,
+		...hiUiAgentsRefusals,
+		...hiUiAgentsSettings,
+		...hiUiAgentsStarters,
+		...hiUiBrowserChrome,
+		...hiUiBrowser,
+		...hiUiCanvas,
+		...hiUiChatComposer,
+		...hiUiChatComposerMedia,
+		...hiUiChatDialogs,
+		...hiUiChatHeader,
+		...hiUiChat,
+		...hiUiChatResponseActions,
+		...hiUiChatSidebarView,
+		...hiUiChatTags,
+		...hiUiCodeReview,
+		...hiUiCommandPalette,
+		...hiUiCommonActions,
+		...hiUiCommonConnection,
+		...hiUiCommonEditing,
+		...hiUiCommonErrors,
+		...hiUiCommonForms,
+		...hiUiCommonLoading,
+		...hiUiCommonModels,
+		...hiUiCommonUpdates,
 		...hiUiConsole,
+		...hiUiHubComments,
+		...hiUiHub,
+		...hiUiHubTaxonomy,
+		...hiUiInstaller,
+		...hiUiLibrary,
+		...hiUiMesh,
 		...hiUiOnboarding,
+		...hiUiProjects,
+		...hiUiProviders,
+		...hiUiSchedules,
+		...hiUiSettingsAccount,
+		...hiUiSettingsAppearance,
+		...hiUiSettingsAppearanceWindowGlass,
+		...hiUiSettingsConfiguration,
+		...hiUiSettingsImports,
+		...hiUiSettingsIntegrations,
 		...hiUiSettings,
+		...hiUiSettingsModelDefaultEffort,
+		...hiUiSettingsModel,
+		...hiUiSettingsModelProviderCallout,
+		...hiUiSettingsNavigation,
+		...hiUiSettingsShortcuts,
+		...hiUiSettingsSpeech,
+		...hiUiSettingsUpdates,
+		...hiUiShell,
+		...hiUiShellRail,
 	},
 	ru: {
 		...ruUiAgentMessages,
