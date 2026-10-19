@@ -36,6 +36,11 @@ for (const key of [
 	});
 }
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+window.matchMedia = () => ({
+	matches: true,
+	addEventListener() {},
+	removeEventListener() {},
+});
 globalThis.ResizeObserver = class {
 	observe() {}
 	unobserve() {}
@@ -46,7 +51,7 @@ const ROOT = process.cwd();
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { SupplementRow } from "./src/renderer/src/features/chat/canonical/supplement-row";',
+			'export { SupplementRow } from "./src/renderer/src/features/chat/canonical/supplement-row"; export { Disclosure } from "./src/renderer/src/shared/components/ui/disclosure";',
 		].join("\n"),
 		resolveDir: ROOT,
 	},
@@ -86,7 +91,7 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(async () => {
 	await unlink(bundlePath);
 });
-const { SupplementRow } = await import(bundlePath.href);
+const { SupplementRow, Disclosure } = await import(bundlePath.href);
 
 const TS = 1_791_000_060;
 const digest = (seed) =>
@@ -163,11 +168,11 @@ test("local permission is closed/fetch-free, persists across work folds, resets 
 		assert.equal(count("iframe"), 0);
 		assert.equal(requests.length, 0);
 		const reveal = [...host.querySelectorAll("button")].find(
-			(button) => button.textContent.trim() === "Show 2 graphics",
+			(button) => button.textContent.trim() === "Show 1 of 2 graphics",
 		);
 		reveal.focus();
 		assert.equal(reveal.getAttribute("aria-expanded"), "false");
-		await click("Show 2 graphics");
+		await click("Show 1 of 2 graphics");
 		assert.equal(
 			document.activeElement,
 			reveal,
@@ -200,11 +205,16 @@ test("local permission is closed/fetch-free, persists across work folds, resets 
 			2,
 			"explicit overflow still mounts tail once",
 		);
+		await click("Hide 2 graphics");
+		assert.equal(count("iframe"), 0);
+		await click("Show 1 of 2 graphics");
+		assert.equal(count("iframe"), 1, "local Hide revokes the overflow grant");
+		await click("Show all 1 graphic");
 		await click("Show fewer");
 		assert.equal(count("iframe"), 1);
 		await click("Hide 2 graphics");
 		assert.equal(count("[data-supplement-slot]"), 0);
-		await click("Show 2 graphics");
+		await click("Show 1 of 2 graphics");
 		const beforeReset = requests.length;
 		await render(
 			{
@@ -288,5 +298,114 @@ test("local reveal retains the viewport gate and shows document refusal in place
 		await act(async () => root.unmount());
 		host.remove();
 		globalThis.IntersectionObserver = undefined;
+	}
+});
+
+test("mixed files and graphics expose the same closed local reveal", async () => {
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	try {
+		const record = supplement({
+			files: [
+				{
+					path: "report.csv",
+					name: "report.csv",
+					kind: "csv",
+					sizeBytes: 32,
+					mtime: TS,
+				},
+			],
+			components: [component("mixed", "Chart", 320)],
+		});
+		await act(async () =>
+			root.render(
+				h(SupplementRow, {
+					record,
+					condensed: true,
+					sessionId: "synthetic-mixed",
+				}),
+			),
+		);
+		assert.ok(host.querySelector("[data-supplement-file]"));
+		assert.ok(host.textContent.includes("Show 1 graphic"));
+		assert.equal(host.querySelectorAll("[data-supplement-slot]").length, 0);
+	} finally {
+		await act(async () => root.unmount());
+		host.remove();
+	}
+});
+
+test("shared Disclosure controls only an existing open body, animated and ordinary", async () => {
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	try {
+		for (const animate of [false, true]) {
+			for (const open of [false, true, false]) {
+				await act(async () =>
+					root.render(
+						h(
+							Disclosure,
+							{ summary: "Shared body", open, animate },
+							h("p", null, "Content"),
+						),
+					),
+				);
+				const button = host.querySelector("button");
+				const controls = button.getAttribute("aria-controls");
+				assert.equal(button.getAttribute("aria-expanded"), String(open));
+				if (open)
+					assert.ok(
+						document.getElementById(controls),
+						"open controls resolves",
+					);
+				else assert.equal(controls, null, "closed controls never dangles");
+			}
+		}
+		await act(async () =>
+			root.render(h(Disclosure, { summary: "Section", open: true })),
+		);
+		assert.equal(
+			host.querySelector("button").getAttribute("aria-controls"),
+			null,
+			"contentless section has no target",
+		);
+	} finally {
+		await act(async () => root.unmount());
+		host.remove();
+	}
+});
+
+test("pending graphic has a nonvisual accessible loading status", async () => {
+	window.api = { desktop: { media: async () => await new Promise(() => {}) } };
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	try {
+		await act(async () =>
+			root.render(
+				h(SupplementRow, {
+					record: supplement({
+						components: [component("pending-status", "Waiting chart", 320)],
+					}),
+					sessionId: "synthetic-pending",
+					condensed: false,
+				}),
+			),
+		);
+		const status = host.querySelector("output");
+		assert.ok(
+			status,
+			"document wait is announced, not only an aria-hidden shimmer",
+		);
+		assert.equal(status.textContent, "Loading graphic…");
+		assert.ok(
+			status.classList.contains("sr-only"),
+			"visible treatment unchanged",
+		);
+	} finally {
+		await act(async () => root.unmount());
+		host.remove();
 	}
 });

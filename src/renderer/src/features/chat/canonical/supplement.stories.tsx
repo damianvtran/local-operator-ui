@@ -35,8 +35,9 @@
  * - the FOLDED states (`folded-condensed-*`): while the block's own turn
  *   renders condensed it shows the SAME files section as its expanded self —
  *   the actionable rows and the image grid — with no slots and no frames; a
- *   graphics-only finish offers a local Show/Hide disclosure (2026-10-19 amendment), and the not-settled
- *   arms keep their state line under the files;
+ *   settled graphics-only or mixed finish offers a local Show/Hide disclosure
+ *   (2026-10-19 amendment), and the not-settled arms keep their state line
+ *   under the files;
  * - a supplement-free turn and the `superseded`/`empty` arms render NOTHING
  *   under the answer — the before/after pair for the fold lane.
  */
@@ -946,7 +947,7 @@ export const FoldedCondensedComponents: StoryObj = {
 			records={[
 				prompt("u0", "Chart the bench results."),
 				turnCall("c1"),
-				answer("m1", "Both views are drawn from the same bench."),
+				answer(ANCHOR, "Both views are drawn from the same bench."),
 				supplement({
 					id: "s1",
 					components: [
@@ -1148,12 +1149,16 @@ export const FoldedCondensedPreparingFiles: StoryObj = {
  * and shared Disclosure, not a visual imitation or an initial-open prop.
  * Open fixtures activate the same button the reader does after mount.
  */
-const localGraphicsRecords = (seeds: string[]): TranscriptRecord[] => [
+const localGraphicsRecords = (
+	seeds: string[],
+	files: SupplementRecord["files"] = [],
+): TranscriptRecord[] => [
 	prompt("u0", "Chart the bench results."),
 	turnCall("c1"),
 	answer(ANCHOR, "Both views are drawn from the same bench."),
 	supplement({
 		id: "s1",
+		files,
 		components: seeds.map((seed, index) =>
 			component(
 				seed,
@@ -1220,6 +1225,16 @@ export const LocalGraphicLoading: StoryObj = {
 			height={720}
 			click={localReveal}
 			records={localGraphicsRecords(["hold-forever"])}
+		/>
+	),
+};
+
+/** Files remain actionable above the same budget-aware graphics disclosure. */
+export const LocalGraphicsMixed: StoryObj = {
+	render: () => (
+		<Frame
+			height={720}
+			records={localGraphicsRecords(["chart-a", "chart-b"], FILES)}
 		/>
 	),
 };
