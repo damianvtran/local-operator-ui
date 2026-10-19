@@ -199,6 +199,24 @@ export function withNotificationPreference(
 }
 
 /**
+ * Whether a refused notification write belongs to the visible conversation.
+ *
+ * A write settles against the hook instance that started it, and the reader may
+ * have selected another conversation while it was in flight. The mutation's
+ * variables name the conversation the write belonged to, so comparing them
+ * with the current selection keeps A's late refusal from appearing under B.
+ */
+export function notifyFailureIsVisible(
+	failure: {
+		isError: boolean;
+		variables?: { conversationId: string };
+	},
+	selectedId: string | null,
+): boolean {
+	return failure.isError && failure.variables?.conversationId === selectedId;
+}
+
+/**
  * The count the thread header states.
  *
  * Insiders keep the live member array and count its ACTIVE rows: the server's

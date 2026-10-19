@@ -27,6 +27,7 @@ import {
 	conversationOrganizationName,
 	conversationTitle,
 	isPreviewConversation,
+	notifyFailureIsVisible,
 	orderedMembers,
 	organizationOptions,
 	preferredScope,
@@ -560,7 +561,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								})}
 							</span>
 							<div className="ml-auto flex items-center gap-1">
+								{/*
+								 * The strip draws exactly what the count states: ACTIVE members. The
+								 * server's member_count includes invitees, so an unfiltered strip would
+								 * show three initials beside "2 members".
+								 */}
 								{orderedMembers(selected)
+									.filter((member) => member.state === "active")
 									.slice(0, 6)
 									.map((member) => (
 										<span
@@ -571,11 +578,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 													? "bg-accent-wash text-accent"
 													: "bg-sunken text-ink-muted",
 											)}
-											title={
-												member.state === "invited"
-													? `${member.display_label} — ${t("ui.teamBridge.member.invited")}`
-													: member.display_label
-											}
+											title={member.display_label}
 										>
 											{member.kind === "agent" ? (
 												<Bot size={12} aria-hidden="true" />
@@ -886,10 +889,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		selected?.id ?? "",
 		selected?.tenant_id,
 	);
-	const notify = useSetTeamBridgeNotify(
-		selected?.id ?? "",
-		selected?.tenant_id,
-	);
+	const notify = useSetTeamBridgeNotify();
 
 	// Mark read at the newest seq actually rendered. A visible page has shown
 	// these messages; leaving the cursor behind would keep the badge counting a
@@ -951,9 +951,16 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				sendFailed={send.isError}
 				joining={join.isPending}
 				joinFailed={join.isError}
-				notifyFailed={notify.isError}
+				notifyFailed={notifyFailureIsVisible(notify, selected?.id ?? null)}
 				onJoin={() => join.mutate()}
-				onNotifyChange={(next) => notify.mutate(next)}
+				onNotifyChange={(next) => {
+					if (selected === null) return;
+					notify.mutate({
+						conversationId: selected.id,
+						tenantId: selected.tenant_id,
+						notify: next,
+					});
+				}}
 				onSelect={setSelectedId}
 				onSend={(body, clientRef) => {
 					if (selected === null) return;
