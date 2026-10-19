@@ -218,7 +218,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 	return (
 		<div
 			ref={rootRef}
-			className="flex h-full min-h-0 flex-col bg-canvas"
+			className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-surface"
 			data-library-preview={asset.id}
 			data-library-compact={compact ? "" : undefined}
 			data-glass-region="pane"
@@ -397,15 +397,23 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 						<Button
 							variant="link"
 							size="sm"
+							className="h-auto max-w-full min-w-0 justify-start whitespace-normal text-left"
+							title={`${t("ui.library.preview.from_conversation", {
+								title:
+									asset.occurrences[0].session_title ||
+									asset.occurrences[0].session_id,
+							})}`}
 							onClick={() =>
 								onOpenConversation(asset.occurrences[0].session_id)
 							}
 						>
-							{t("ui.library.preview.from_conversation", {
-								title:
-									asset.occurrences[0].session_title ||
-									asset.occurrences[0].session_id,
-							})}
+							<span className="line-clamp-2 break-words">
+								{t("ui.library.preview.from_conversation", {
+									title:
+										asset.occurrences[0].session_title ||
+										asset.occurrences[0].session_id,
+								})}
+							</span>
 						</Button>
 					) : null}
 				</div>
@@ -461,7 +469,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 					</>
 				)}
 			</header>
-			<div className="flex min-h-0 flex-1 flex-col bg-sunken">
+			<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-sunken">
 				<LibraryViewer asset={asset} dense={compact} />
 			</div>
 			<div className="shrink-0">

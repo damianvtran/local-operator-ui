@@ -6,7 +6,7 @@
 	"ui.common.connection.connectivity_banner.dismiss": "关闭",
 	"ui.common.connection.connectivity_banner.dismiss_inline": "关闭",
 	"ui.common.connection.connectivity_banner.this_app_s_updates_require": "此应用的更新需要",
-	"ui.common.connection.connectivity_banner.you_are_offline": "您已离线。{detail}互联网连接。",
+	"ui.common.connection.connectivity_banner.you_are_offline": "已离线。{detail}互联网连接。",
 	"ui.common.connection.floating_alert.dismiss": "关闭",
-	"ui.common.connection.provider.requires": "您配置的模型提供商（{provider}）需要"
+	"ui.common.connection.provider.requires": "你配置的模型提供商（{provider}）需要"
 }

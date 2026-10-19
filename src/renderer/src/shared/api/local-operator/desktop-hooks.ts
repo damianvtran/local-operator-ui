@@ -206,6 +206,7 @@ export type DesktopFeature =
 	| "library"
 	/** Route presence only; dynamic organization eligibility is backend-owned. */
 	| "team_bridge"
+	| "team_bridge_conversations"
 	| "auth"
 	| "settings"
 	| "commands"
