@@ -1,0 +1,19 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "5b8d2f7a1c94",
+  "date": "2026-10-18",
+  "locale": "vi",
+  "status": "passed",
+  "namespaces": {
+    "ui.projects": {
+      "namespace": "ui.projects",
+      "status": "passed",
+      "sha256": {
+        "source": "6b12f695845c3d01500291f5bc4eb50ea9b35e60c68bc69f21ee219c5f9d7f52",
+        "target": "a7876a734a01e88a81aca38c517e4ac7653d405e3ce46626c37bc2218bcf131c"
+      },
+      "findings": []
+    }
+  }
+}

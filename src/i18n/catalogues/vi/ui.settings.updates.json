@@ -14,7 +14,7 @@
 	"ui.settings.updates.app_updates_section.the_framework_version_enabling_this_desktop_application": "Phiên bản nền tảng tạo nên ứng dụng máy tính này.",
 	"ui.settings.updates.app_updates_section.state_loading": "Đang tải...",
 	"ui.settings.updates.app_updates_section.state_not_connected": "Chưa kết nối",
-	"ui.settings.updates.app_updates_section.state_not_attached": "Chưa gắn kết",
+	"ui.settings.updates.app_updates_section.state_not_attached": "Chưa gắn",
 	"ui.settings.updates.app_updates_section.state_version_unknown": "Chưa rõ phiên bản",
 	"ui.settings.updates.app_updates_section.state_unavailable": "Không khả dụng",
 	"ui.settings.updates.update_following.update_notifications": "Thông báo cập nhật",
