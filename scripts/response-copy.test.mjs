@@ -7,12 +7,15 @@
  * control, so the earlier response could only be copied by hand-selecting it.
  * The DOM is asked:
  *
- *   1. the earlier response carries a Copy-only `data-lo-response-actions`
- *      row, hover-revealed by its own record's `group` (no always-on chrome);
- *   2. the closing answer keeps its full `data-lo-answer-actions` row, and only
+ *   1. the earlier response carries a Copy-only GUTTER control
+ *      (`data-lo-gutter-actions`), absolutely positioned and hover-revealed by
+ *      its own record's `group`, so it reserves no line;
+ *   2. there is NO in-flow `data-lo-response-actions` row left to reserve one -
+ *      the operator's excess-space report, and the reason the marker moved;
+ *   3. the closing answer keeps its full `data-lo-answer-actions` row, and only
  *      that one - no per-paragraph Speak/Fork (the PR #698 clutter rule);
- *   3. a press copies THAT response's own text;
- *   4. a response still streaming offers no Copy.
+ *   4. a press copies THAT response's own text;
+ *   5. a response still streaming offers no Copy.
  *
  * WHAT IT DOES NOT PROVE: pixels - the frames are the PR's evidence.
  */
@@ -294,11 +297,17 @@ const mountTranscript = async (records, { waiting = false } = {}) => {
 	return { dom, userRow, answerRow, press, written, unmount };
 };
 
+/*
+ * The response copy control is now the GUTTER OVERLAY (`data-lo-gutter-actions`),
+ * not the in-flow `data-lo-response-actions` row #1043 added. The assertion the
+ * operator's excess-space report needs is that the flow row is GONE, so this
+ * helper names the replacement and the first test counts both.
+ */
 const responseRows = (dom) => [
-	...dom.window.document.querySelectorAll("[data-lo-response-actions]"),
+	...dom.window.document.querySelectorAll("[data-lo-gutter-actions]"),
 ];
 
-test("an earlier settled response carries a hover-revealed Copy; the closing answer keeps the full row", async () => {
+test("an earlier settled response carries an absolute gutter Copy; the closing answer keeps the full row", async () => {
 	const { dom, press, written, unmount } = await mountTranscript([
 		gateUser("u1", "Is the March import finished?"),
 		gateAnswer("a1", "It finished with four invoices outstanding."),
@@ -308,7 +317,12 @@ test("an earlier settled response carries a hover-revealed Copy; the closing ans
 		},
 	]);
 	const rows = responseRows(dom);
-	assert.equal(rows.length, 1, "the non-closing response has its own row");
+	assert.equal(rows.length, 1, "the non-closing response has its own control");
+	assert.equal(
+		dom.window.document.querySelectorAll("[data-lo-response-actions]").length,
+		0,
+		"and no in-flow response row remains to reserve a line",
+	);
 	const labels = [...rows[0].querySelectorAll("button")].map((button) =>
 		button.getAttribute("aria-label"),
 	);
@@ -322,6 +336,7 @@ test("an earlier settled response carries a hover-revealed Copy; the closing ans
 		"Response actions",
 		'its own accessible name, not a second "Answer actions" toolbar',
 	);
+	assert.ok(rows[0].classList.contains("absolute"), "out of the flow");
 	assert.ok(rows[0].classList.contains("opacity-0"), "fades at rest");
 	assert.ok(
 		rows[0].classList.contains("group-hover:opacity-100"),
@@ -374,13 +389,13 @@ test("a response still streaming offers no Copy", async () => {
 	 * reporter walk the jsdom element, which ran this process out of memory.
 	 */
 	assert.equal(
-		streaming.querySelector("[data-lo-response-actions]") === null,
+		streaming.querySelector("[data-lo-gutter-actions]") === null,
 		true,
 		"the streaming response carries no Copy",
 	);
 	assert.equal(
 		dom.window.document.querySelectorAll(
-			'[data-record-id="a1"] [data-lo-response-actions]',
+			'[data-record-id="a1"] [data-lo-gutter-actions]',
 		).length,
 		1,
 		"the settled response before it keeps its Copy",
@@ -407,7 +422,11 @@ test("a response row plays no arrival flash, even on a fresh record (#698)", asy
 		},
 	]);
 	const rows = responseRows(dom);
-	assert.equal(rows.length, 1, "the fresh non-closing response has its row");
+	assert.equal(
+		rows.length,
+		1,
+		"the fresh non-closing response has its control",
+	);
 	assert.equal(
 		rows[0].hasAttribute("data-lo-arrive"),
 		false,
