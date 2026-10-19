@@ -602,7 +602,7 @@ const foldCountSegments = (
 		} else if (n === "jobs") {
 			/*
 			 * A `jobs cancel` is a CANCELLATION, not a check (review round 1,
-			 * R1-2): the receipt family prints `N job results`, and `1 job check`
+			 * R1-1): the receipt family prints `N job results`, and `1 job check`
 			 * for a call that stopped a job claims the run looked at one. `list`,
 			 * `peek` and an op-less call keep the check noun.
 			 */
