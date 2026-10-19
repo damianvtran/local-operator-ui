@@ -41,7 +41,7 @@ import type { DesktopHistoryPage } from "../../../../../shared/desktop-session-c
 import { CanonicalTranscript } from "./canonical-transcript";
 import { EMPTY_TRANSCRIPT, applyHistoryPage } from "./transcript-reducer";
 
-/** One instant for every frame; the per-row minute offsets live in `at`. */
+/** One instant for every frame; the per-row second offsets live in `at`. */
 const TS = 1_792_000_000;
 
 type Entry = DesktopHistoryPage["entries"][number];
