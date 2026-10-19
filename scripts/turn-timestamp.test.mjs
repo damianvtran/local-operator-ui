@@ -1708,11 +1708,10 @@ test("the user stamp is a sibling of the toolbar, outside the faded strip", () =
 	const stamp = stamps(container, "turn")[0];
 	const toolbar = container.querySelector("[data-lo-user-actions]");
 	assert.ok(stamp && toolbar);
-	assert.equal(
-		stamp.parentElement,
-		toolbar.parentElement,
-		"siblings on one line",
-	);
+	// Copy/Fork are a hover overlay since upstream's overlay change: the stamp
+	// is its own line under the bubble, never inside the overlay's toolbar.
+	assert.equal(stamp.closest("[data-lo-user-actions]"), null);
+	assert.ok(!toolbar.contains(stamp) && !stamp.contains(toolbar));
 	assert.ok(!stamp.className.includes("opacity-0"));
 	assert.ok(stamp.className.includes("whitespace-nowrap"));
 	assert.match(stamp.getAttribute("aria-label"), /^Sent /);

@@ -1,8 +1,8 @@
 {
-	"ui.hub.comments.delete.confirm": "您确定要删除这条评论吗？",
+	"ui.hub.comments.delete.confirm": "确定要删除这条评论吗？",
 	"ui.hub.comments.heading": "评论",
 	"ui.hub.comments.form.label": "发表评论",
-	"ui.hub.comments.form.placeholder": "说说您的看法……",
+	"ui.hub.comments.form.placeholder": "说说你的看法……",
 	"ui.hub.comments.form.posting": "正在发布评论",
 	"ui.hub.comments.form.submit": "发布评论",
 	"ui.hub.comments.form.sign_in": "登录后即可发表评论。",

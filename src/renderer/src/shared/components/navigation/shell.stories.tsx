@@ -300,6 +300,10 @@ const DESKTOP_CAPABILITIES = {
 		 */
 		library: 1,
 		projects: 1,
+		/* The Team Bridge row joins the More group only when the backend
+		   publishes the conversation surface; the shell fixture advertises it so
+		   the nav evidence frames show the real group. */
+		team_bridge_conversations: 1,
 	},
 };
 
@@ -349,6 +353,19 @@ const desktopRoute = async (
 			return desktopOk(DESKTOP_CAPABILITIES);
 		case "config.get":
 			return desktopOk(CONFIG);
+		case "team_bridge.unread":
+			/* One account-wide read; the count the row carries in these frames. */
+			return desktopOk({
+				total: 3,
+				organizations: [
+					{
+						tenant_id: "tnt_story",
+						tenant_name: "Story org",
+						unread: 3,
+						eligible: true,
+					},
+				],
+			});
 		case "instructions.get":
 			return desktopOk({
 				content: SYSTEM_PROMPT_CONTENT,
@@ -793,6 +810,10 @@ export const NavMoreExpanded: Story = {
 
 export const NavMoreStripExpanded: Story = {
 	render: () => <NavOverflowState open collapsed />,
+};
+
+export const NavMoreStripCollapsed: Story = {
+	render: () => <NavOverflowState open={false} collapsed />,
 };
 
 /* ------------------------------------------------------------------ *

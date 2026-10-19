@@ -41,6 +41,7 @@ import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
 import enUiChatTags from "./catalogues/en/ui.chat.tags.json";
+import enUiChatTranscriptCopy from "./catalogues/en/ui.chat.transcript_copy.json";
 import enUiCodeReview from "./catalogues/en/ui.code_review.json";
 import enUiCommandPalette from "./catalogues/en/ui.command_palette.json";
 import enUiCommonAccount from "./catalogues/en/ui.common.account.json";
@@ -60,6 +61,7 @@ import enUiInstaller from "./catalogues/en/ui.installer.json";
 import enUiLibrary from "./catalogues/en/ui.library.json";
 import enUiMesh from "./catalogues/en/ui.mesh.json";
 import enUiOnboarding from "./catalogues/en/ui.onboarding.json";
+import enUiPresence from "./catalogues/en/ui.presence.json";
 import enUiProjects from "./catalogues/en/ui.projects.json";
 import enUiProviders from "./catalogues/en/ui.providers.json";
 import enUiSchedules from "./catalogues/en/ui.schedules.json";
@@ -79,6 +81,7 @@ import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
 import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
+import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
 import esUiAgentsDialogs from "./catalogues/es/ui.agents.dialogs.json";
 import esUiAgentsModels from "./catalogues/es/ui.agents.models.json";
@@ -302,6 +305,64 @@ import ruUiSettingsSpeech from "./catalogues/ru/ui.settings.speech.json";
 import ruUiSettingsUpdates from "./catalogues/ru/ui.settings.updates.json";
 import ruUiShell from "./catalogues/ru/ui.shell.json";
 import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
+import urUiAgentMessages from "./catalogues/ur/ui.agentMessages.json";
+import urUiAgentMessagesSettings from "./catalogues/ur/ui.agentMessages.settings.json";
+import urUiAgentsDialogs from "./catalogues/ur/ui.agents.dialogs.json";
+import urUiAgents from "./catalogues/ur/ui.agents.json";
+import urUiAgentsModels from "./catalogues/ur/ui.agents.models.json";
+import urUiAgentsNavigation from "./catalogues/ur/ui.agents.navigation.json";
+import urUiAgentsRefusals from "./catalogues/ur/ui.agents.refusals.json";
+import urUiAgentsSettings from "./catalogues/ur/ui.agents.settings.json";
+import urUiAgentsStarters from "./catalogues/ur/ui.agents.starters.json";
+import urUiBrowserChrome from "./catalogues/ur/ui.browser.chrome.json";
+import urUiBrowser from "./catalogues/ur/ui.browser.json";
+import urUiCanvas from "./catalogues/ur/ui.canvas.json";
+import urUiChatComposer from "./catalogues/ur/ui.chat.composer.json";
+import urUiChatComposerMedia from "./catalogues/ur/ui.chat.composer_media.json";
+import urUiChatDialogs from "./catalogues/ur/ui.chat.dialogs.json";
+import urUiChatHeader from "./catalogues/ur/ui.chat.header.json";
+import urUiChat from "./catalogues/ur/ui.chat.json";
+import urUiChatResponseActions from "./catalogues/ur/ui.chat.response_actions.json";
+import urUiChatSidebarView from "./catalogues/ur/ui.chat.sidebar_view.json";
+import urUiChatTags from "./catalogues/ur/ui.chat.tags.json";
+import urUiCodeReview from "./catalogues/ur/ui.code_review.json";
+import urUiCommandPalette from "./catalogues/ur/ui.command_palette.json";
+import urUiCommonAccount from "./catalogues/ur/ui.common.account.json";
+import urUiCommonActions from "./catalogues/ur/ui.common.actions.json";
+import urUiCommonConnection from "./catalogues/ur/ui.common.connection.json";
+import urUiCommonEditing from "./catalogues/ur/ui.common.editing.json";
+import urUiCommonErrors from "./catalogues/ur/ui.common.errors.json";
+import urUiCommonForms from "./catalogues/ur/ui.common.forms.json";
+import urUiCommonLoading from "./catalogues/ur/ui.common.loading.json";
+import urUiCommonModels from "./catalogues/ur/ui.common.models.json";
+import urUiCommonUpdates from "./catalogues/ur/ui.common.updates.json";
+import urUiConsole from "./catalogues/ur/ui.console.json";
+import urUiHubComments from "./catalogues/ur/ui.hub.comments.json";
+import urUiHub from "./catalogues/ur/ui.hub.json";
+import urUiHubTaxonomy from "./catalogues/ur/ui.hub.taxonomy.json";
+import urUiInstaller from "./catalogues/ur/ui.installer.json";
+import urUiLibrary from "./catalogues/ur/ui.library.json";
+import urUiMesh from "./catalogues/ur/ui.mesh.json";
+import urUiOnboarding from "./catalogues/ur/ui.onboarding.json";
+import urUiProjects from "./catalogues/ur/ui.projects.json";
+import urUiProviders from "./catalogues/ur/ui.providers.json";
+import urUiSchedules from "./catalogues/ur/ui.schedules.json";
+import urUiSettingsAccount from "./catalogues/ur/ui.settings.account.json";
+import urUiSettingsAppearance from "./catalogues/ur/ui.settings.appearance.json";
+import urUiSettingsAppearanceWindowGlass from "./catalogues/ur/ui.settings.appearance.window_glass.json";
+import urUiSettingsConfiguration from "./catalogues/ur/ui.settings.configuration.json";
+import urUiSettingsImports from "./catalogues/ur/ui.settings.imports.json";
+import urUiSettingsIntegrations from "./catalogues/ur/ui.settings.integrations.json";
+import urUiSettings from "./catalogues/ur/ui.settings.json";
+import urUiSettingsModelDefaultEffort from "./catalogues/ur/ui.settings.model.default_effort.json";
+import urUiSettingsModel from "./catalogues/ur/ui.settings.model.json";
+import urUiSettingsModelProviderCallout from "./catalogues/ur/ui.settings.model.provider_callout.json";
+import urUiSettingsNavigation from "./catalogues/ur/ui.settings.navigation.json";
+import urUiSettingsShortcuts from "./catalogues/ur/ui.settings.shortcuts.json";
+import urUiSettingsSpeech from "./catalogues/ur/ui.settings.speech.json";
+import urUiSettingsUpdates from "./catalogues/ur/ui.settings.updates.json";
+import urUiShell from "./catalogues/ur/ui.shell.json";
+import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
 import viUiAgentsDialogs from "./catalogues/vi/ui.agents.dialogs.json";
 import viUiAgents from "./catalogues/vi/ui.agents.json";
@@ -436,6 +497,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatResponseActions,
 	...enUiChatSidebarView,
 	...enUiChatTags,
+	...enUiChatTranscriptCopy,
 	...enUiCodeReview,
 	...enUiCommandPalette,
 	...enUiCommonAccount,
@@ -455,6 +517,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiLibrary,
 	...enUiMesh,
 	...enUiOnboarding,
+	...enUiPresence,
 	...enUiProjects,
 	...enUiProviders,
 	...enUiSchedules,
@@ -474,6 +537,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsUpdates,
 	...enUiShell,
 	...enUiShellRail,
+	...enUiTeamBridge,
 };
 
 /** The client's own messages per locale; `en` is `bundledEnglish` itself. */
@@ -711,6 +775,66 @@ export const bundledCatalogues: Readonly<
 		...ruUiSettingsUpdates,
 		...ruUiShell,
 		...ruUiShellRail,
+	},
+	ur: {
+		...urUiAgentMessages,
+		...urUiAgentMessagesSettings,
+		...urUiAgentsDialogs,
+		...urUiAgents,
+		...urUiAgentsModels,
+		...urUiAgentsNavigation,
+		...urUiAgentsRefusals,
+		...urUiAgentsSettings,
+		...urUiAgentsStarters,
+		...urUiBrowserChrome,
+		...urUiBrowser,
+		...urUiCanvas,
+		...urUiChatComposer,
+		...urUiChatComposerMedia,
+		...urUiChatDialogs,
+		...urUiChatHeader,
+		...urUiChat,
+		...urUiChatResponseActions,
+		...urUiChatSidebarView,
+		...urUiChatTags,
+		...urUiCodeReview,
+		...urUiCommandPalette,
+		...urUiCommonAccount,
+		...urUiCommonActions,
+		...urUiCommonConnection,
+		...urUiCommonEditing,
+		...urUiCommonErrors,
+		...urUiCommonForms,
+		...urUiCommonLoading,
+		...urUiCommonModels,
+		...urUiCommonUpdates,
+		...urUiConsole,
+		...urUiHubComments,
+		...urUiHub,
+		...urUiHubTaxonomy,
+		...urUiInstaller,
+		...urUiLibrary,
+		...urUiMesh,
+		...urUiOnboarding,
+		...urUiProjects,
+		...urUiProviders,
+		...urUiSchedules,
+		...urUiSettingsAccount,
+		...urUiSettingsAppearance,
+		...urUiSettingsAppearanceWindowGlass,
+		...urUiSettingsConfiguration,
+		...urUiSettingsImports,
+		...urUiSettingsIntegrations,
+		...urUiSettings,
+		...urUiSettingsModelDefaultEffort,
+		...urUiSettingsModel,
+		...urUiSettingsModelProviderCallout,
+		...urUiSettingsNavigation,
+		...urUiSettingsShortcuts,
+		...urUiSettingsSpeech,
+		...urUiSettingsUpdates,
+		...urUiShell,
+		...urUiShellRail,
 	},
 	vi: {
 		...viUiAgentMessages,
@@ -1599,6 +1723,14 @@ export type MessageParams = {
 	"ui.chat.tags.updated_grouped": { tag: string };
 	"ui.chat.tags.updated_untagged": undefined;
 	"ui.chat.tags.use_time": undefined;
+	"ui.chat.transcript_copy.menu.copy_markdown": undefined;
+	"ui.chat.transcript_copy.menu.copy_selection": undefined;
+	"ui.chat.transcript_copy.menu.copy_text": undefined;
+	"ui.chat.transcript_copy.row.agent_message": undefined;
+	"ui.chat.transcript_copy.row.your_message": undefined;
+	"ui.chat.transcript_copy.selection.copy": undefined;
+	"ui.chat.transcript_copy.toast.copied_markdown": undefined;
+	"ui.chat.transcript_copy.toast.copied_selection": undefined;
 	"ui.code_review.activity.close": undefined;
 	"ui.code_review.activity.comment": undefined;
 	"ui.code_review.activity.edit": undefined;
@@ -2171,6 +2303,7 @@ export type MessageParams = {
 		subscribe: string;
 		autoPush: string;
 	};
+	"ui.hub.links.hub_id": { address: string };
 	"ui.hub.links.last_success": { time: string };
 	"ui.hub.links.links_count": { count: number };
 	"ui.hub.links.load_failed": undefined;
@@ -2216,6 +2349,9 @@ export type MessageParams = {
 	"ui.hub.links.title": undefined;
 	"ui.hub.links.unknown_baseline": undefined;
 	"ui.hub.links.unresolved_mark": { item: string };
+	"ui.hub.links.unresolved_next": undefined;
+	"ui.hub.links.unresolved_what": { item: string };
+	"ui.hub.links.unresolved_why": { item: string };
 	"ui.hub.links.updated": { item: string; source: string };
 	"ui.hub.skills.catalogue_failed": { source: string };
 	"ui.hub.skills.empty": undefined;
@@ -2776,6 +2912,15 @@ export type MessageParams = {
 	"ui.onboarding.search.row.save_failed": undefined;
 	"ui.onboarding.search.row.saved": undefined;
 	"ui.onboarding.search.row.saving": { name: string };
+	"ui.presence.days_ago": { count: number };
+	"ui.presence.device_link_down": { reason: string; age: string };
+	"ui.presence.device_unreachable": undefined;
+	"ui.presence.hours_ago": { count: number };
+	"ui.presence.just_now": undefined;
+	"ui.presence.link_down_compact": { age: string };
+	"ui.presence.link_down_last_seen": { age: string };
+	"ui.presence.minutes_ago": { count: number };
+	"ui.presence.unknown": undefined;
 	"ui.projects.board_window_select.projects_updated_within": undefined;
 	"ui.projects.board_window_select.shows_projects_last_updated_within_this_window_older_ones_are_hid": undefined;
 	"ui.projects.count.milestones_are": { count: number };
@@ -4597,6 +4742,57 @@ export type MessageParams = {
 		count: number;
 		countText: string;
 	};
+	"ui.teamBridge.composer.error": undefined;
+	"ui.teamBridge.composer.hint": undefined;
+	"ui.teamBridge.composer.placeholder": undefined;
+	"ui.teamBridge.composer.send": undefined;
+	"ui.teamBridge.create.account_placeholder": undefined;
+	"ui.teamBridge.create.add_member": undefined;
+	"ui.teamBridge.create.cancel": undefined;
+	"ui.teamBridge.create.confirm": undefined;
+	"ui.teamBridge.create.error": undefined;
+	"ui.teamBridge.create.member_account": undefined;
+	"ui.teamBridge.create.member_agent": undefined;
+	"ui.teamBridge.create.member_kind": undefined;
+	"ui.teamBridge.create.member_name": undefined;
+	"ui.teamBridge.create.member_person": undefined;
+	"ui.teamBridge.create.members": undefined;
+	"ui.teamBridge.create.name": undefined;
+	"ui.teamBridge.create.remove_member": undefined;
+	"ui.teamBridge.create.title": undefined;
+	"ui.teamBridge.group.more": undefined;
+	"ui.teamBridge.group.more_unread": { count: number };
+	"ui.teamBridge.kind.channel": undefined;
+	"ui.teamBridge.kind.dm": undefined;
+	"ui.teamBridge.kind.group": undefined;
+	"ui.teamBridge.list.empty.body": undefined;
+	"ui.teamBridge.list.empty.title": undefined;
+	"ui.teamBridge.list.error": undefined;
+	"ui.teamBridge.list.loading": undefined;
+	"ui.teamBridge.list.retry": undefined;
+	"ui.teamBridge.list.untitled": undefined;
+	"ui.teamBridge.member.agent": undefined;
+	"ui.teamBridge.member.count": { count: number };
+	"ui.teamBridge.member.invited": undefined;
+	"ui.teamBridge.nav.label": undefined;
+	"ui.teamBridge.nav.unread": { count: number };
+	"ui.teamBridge.page.new_conversation": undefined;
+	"ui.teamBridge.page.subtitle": undefined;
+	"ui.teamBridge.page.title": undefined;
+	"ui.teamBridge.scope.all": undefined;
+	"ui.teamBridge.scope.create_needs_org": undefined;
+	"ui.teamBridge.scope.empty": undefined;
+	"ui.teamBridge.scope.error": undefined;
+	"ui.teamBridge.scope.label": undefined;
+	"ui.teamBridge.scope.loading": undefined;
+	"ui.teamBridge.scope.thread_unknown": undefined;
+	"ui.teamBridge.scope.trigger": { name: string };
+	"ui.teamBridge.scope.unknown": undefined;
+	"ui.teamBridge.thread.empty": undefined;
+	"ui.teamBridge.thread.error": undefined;
+	"ui.teamBridge.thread.loading": undefined;
+	"ui.teamBridge.thread.withheld": undefined;
+	"ui.teamBridge.unread.count": { count: number };
 };
 
 export type MessageKey = keyof MessageParams;

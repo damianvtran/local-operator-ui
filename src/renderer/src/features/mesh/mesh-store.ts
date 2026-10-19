@@ -114,13 +114,18 @@ export const MESH_POLL_MS = 30_000;
  */
 export function useMeshPeers(
 	enabled: boolean,
-	{ poll = true }: { poll?: boolean } = {},
+	{ poll = true, stamp }: { poll?: boolean; stamp?: () => number } = {},
 ) {
 	return useQuery({
 		queryKey: meshKeys.peers,
 		enabled,
-		queryFn: async () =>
-			peerList(await desktopResult<unknown>({ op: "peers.list" })),
+		queryFn: async () => {
+			const requestedAt = stamp?.() ?? 0;
+			const result = peerList(
+				await desktopResult<unknown>({ op: "peers.list" }),
+			);
+			return { ...result, requestedAt };
+		},
 		retry: false,
 		staleTime: poll ? 10_000 : Number.POSITIVE_INFINITY,
 		refetchInterval: enabled && poll ? MESH_POLL_MS : false,

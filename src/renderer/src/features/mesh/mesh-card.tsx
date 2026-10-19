@@ -1,3 +1,4 @@
+import { conversationCountLabel, conversationsLinkDown } from "./mesh-sessions";
 /**
  * The detail surface: what a device is, what it holds, and what may be done to it.
  *
@@ -513,9 +514,19 @@ export const DevicePanel: FC<{
 			<section className="flex shrink-0 flex-col gap-2">
 				<h3 className="text-meta text-ink-dim">
 					{t("ui.mesh.mesh_card.conversations")}
-					<span className="text-ink-disabled">({shownOf})</span>
+					<span className="text-ink-disabled">
+						(
+						{deviceReach(device) !== "self" && deviceReach(device) !== "reached"
+							? conversationCountLabel(null)
+							: shownOf}
+						)
+					</span>
 				</h3>
-				{sessions.rows.length === 0 ? (
+				{conversationsLinkDown(device, nowSeconds) ? (
+					<p className="text-meta text-warning">
+						{conversationsLinkDown(device, nowSeconds)}
+					</p>
+				) : sessions.rows.length === 0 ? (
 					<p className="text-meta text-ink-dim">
 						{device.sessionCount === null
 							? t(

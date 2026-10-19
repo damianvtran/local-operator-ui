@@ -59,7 +59,14 @@ import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-stor
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import { Minus, Plus } from "lucide-react";
-import { type FormEvent, Fragment, useEffect, useRef, useState } from "react";
+import {
+	type FormEvent,
+	Fragment,
+	type ReactNode,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { type FieldTarget, refusalCopy } from "../utils/backend-copy";
 import {
@@ -384,6 +391,7 @@ export function TeamDetail({
 	onOpenAgent,
 	onAskAgent,
 	onDirtyChange,
+	belowHeader,
 }: {
 	/** Absent = creating a new team. */
 	team?: ReusableTeam;
@@ -396,6 +404,16 @@ export function TeamDetail({
 	onAskAgent: (prompt: string) => void;
 	/** Reports an open edit with unsaved typing, so the page can hold the composer. */
 	onDirtyChange?: (dirty: boolean) => void;
+	/**
+	 * THE SLOT BELOW THE RECORD'S TITLE, for a notice that is ABOUT this record.
+	 *
+	 * It renders here, inside the pane, rather than in the page above it: a
+	 * banner drawn before the title describes a record from outside it, and a
+	 * second one would have had a measure of its own. The slot inherits the
+	 * pane's measure and the pane's ground, so whatever the page passes keeps
+	 * the record's left and right edges.
+	 */
+	belowHeader?: ReactNode;
 }) {
 	const creating = !team;
 	const [editing, setEditing] = useState(creating);
@@ -823,6 +841,14 @@ export function TeamDetail({
 					</Alert>
 				) : null}
 			</header>
+
+			{/*
+			 * THE RECORD'S OWN NOTICE, directly under its title and above the
+			 * form. It is a child of the pane, so it is measured exactly like the
+			 * form is: one column, one pair of edges, no second measure of its
+			 * own.
+			 */}
+			{belowHeader}
 
 			{/*
 			 * THE CONFLICT BANNER, the team half of the agent pane's.

@@ -402,6 +402,10 @@ const CURRENT = [
 			rowCurrent,
 			nested: false,
 			current: true,
+			// Grouped, current, but not held: cursor opt-in must coexist with selection.
+			tagDraggable: true,
+			rowTagDrag: { armedId: null },
+			row: { session_id: "synthetic-current-row" },
 		},
 		ground: true,
 	},
@@ -783,6 +787,25 @@ test("the mark is colour plus weight, and neither one can move the row", () => {
 	assert.ok(
 		!rowCurrent.includes("outline-control"),
 		`the current row is drawn with a \`border-control\`-role boundary again; that role is § 2's *sole boundary of an input, select, checkbox or outlined button*, and the ring rendered as the search field one row below the list (design round 1, D3):\n${rowCurrent}`,
+	);
+});
+
+test("the grouped current conversation keeps selection while its cursor is held", () => {
+	const site = CURRENT.find(
+		(entry) => entry.what === "the selected conversation",
+	);
+	assert.ok(site, "the selected conversation must remain in CURRENT");
+	const idle = merged(site.file, site.expression(), site.stubs).split(/\s+/);
+	assert.ok(idle.includes("cursor-grab"));
+	const held = merged(site.file, site.expression(), {
+		...site.stubs,
+		rowTagDrag: { armedId: "synthetic-current-row" },
+	}).split(/\s+/);
+	assert.ok(held.includes("cursor-grabbing"));
+	assert.ok(!held.includes("cursor-grab"));
+	assert.ok(
+		carriesGround(held),
+		"the held cursor must not replace the current-row ground",
 	);
 });
 
@@ -1387,7 +1410,15 @@ const ROW_STATE_GROUNDS = [
 		what: "the chat sidebar's list panel",
 		rowFile: SIDEBAR,
 		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-left"'),
-		stubs: { rowStyle, rowCurrent, nested: false, current: true },
+		stubs: {
+			rowStyle,
+			rowCurrent,
+			nested: false,
+			current: true,
+			tagDraggable: true,
+			rowTagDrag: { armedId: null },
+			row: { session_id: "synthetic-current-row" },
+		},
 		ground: () => literalClassAt(SIDEBAR, 'aria-label="Chats"', "after"),
 		groundFile: SIDEBAR,
 	},
@@ -1739,6 +1770,8 @@ test("the settings rail's group lists carry no ground of their own", () => {
  */
 const ACCOUNT_ROW =
 	"src/renderer/src/shared/components/navigation/user-profile-sidebar.tsx";
+const TEAM_BRIDGE_PAGE =
+	"src/renderer/src/features/team-bridge/team-bridge-page.tsx";
 const TEAM_BUBBLE =
 	"src/renderer/src/features/chat/components/team-avatar-bubble.tsx";
 
@@ -2249,6 +2282,19 @@ const PLATES_INSIDE_ROW_STATES = [
 		ground: "bg-elevated",
 		edge: false,
 		fact: "-bottom-px",
+	},
+	{
+		/*
+		 * The merged Team Bridge list's organization chip. `elevated` against
+		 * `rowHover` measures ΔE00 0.00 on `arcade`, so the fill alone is no
+		 * boundary on that palette; `border-control` is what keeps the chip
+		 * readable when the row under it is hovered or selected.
+		 */
+		what: "the merged list's organization chip",
+		file: TEAM_BRIDGE_PAGE,
+		element: "span",
+		ground: "bg-elevated",
+		edge: true,
 	},
 	{
 		/*
