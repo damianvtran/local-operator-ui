@@ -10475,7 +10475,7 @@
 			"locale": "vi",
 			"namespace": "ui.mesh",
 			"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
-			"target_sha256": "1682767424211506f2008672c702bf67d9eadd5484be37aca44dea607963d93e",
+			"target_sha256": "f5fe1c5254444b35376dcf4d17d074bcd7dba2df01d30d94c61a1971ddf2b0d6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -10487,17 +10487,17 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "7f2d9c4b1e65",
+					"instance": "2e6f8b4d9c71",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7f2d9c4b1e65.json",
-					"receipt_sha256": "0195e0f7cf6af38beb5ca24867f329e1daca5d2963bcd3e9a11f37cec7a32afe",
-					"scope": "review round 2: R2-1 hosting-term split, plus the prompt glossary correction",
-					"note": "Independent audit of the changed bytes. English 'hosting provider' = nhà cung cấp dịch vụ mô hình; 'model provider' = nhà cung cấp mô hình; English 'prompt' stays 'prompt' per the programme glossary. All roles ran on the harness-reported fallback model openai/gpt-6.1-sol."
+					"receipt": "i18n/receipts/2e6f8b4d9c71.json",
+					"receipt_sha256": "819784856d07b1483d7d63ba23086812a8b88aeed3f50e9effc533a95d2cfb73",
+					"scope": "review round 3: mesh UI approval/signing prompt sense",
+					"note": "Independent audit of the four UI-dialog prompt values; English AI prompt stays prompt, UI approval/signing dialogs use lời nhắc. Harness-reported served model openai/gpt-6.1-sol."
 				}
 			],
 			"status": "audited",
@@ -10522,6 +10522,30 @@
 							"receipt_sha256": "bc9eb32b672efdffa32e72a9a27fc1a35407523a63412b901d4d7b30c31840eb",
 							"scope": "full namespace; post-remediation verification of round-1 native audit findings",
 							"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+					"target_sha256": "1682767424211506f2008672c702bf67d9eadd5484be37aca44dea607963d93e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "7f2d9c4b1e65",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7f2d9c4b1e65.json",
+							"receipt_sha256": "0195e0f7cf6af38beb5ca24867f329e1daca5d2963bcd3e9a11f37cec7a32afe",
+							"scope": "review round 2: R2-1 hosting-term split, plus the prompt glossary correction",
+							"note": "Independent audit of the changed bytes. English 'hosting provider' = nhà cung cấp dịch vụ mô hình; 'model provider' = nhà cung cấp mô hình; English 'prompt' stays 'prompt' per the programme glossary. All roles ran on the harness-reported fallback model openai/gpt-6.1-sol."
 						}
 					],
 					"status": "audited"
