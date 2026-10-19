@@ -489,6 +489,11 @@ export function countClause(count: number, noun: "file" | "graphic"): string {
  * (`Show all 1 graphic`), matching `moreText`'s own singular arm; the memo's
  * plural-only spelling was a defect against its sibling (UX round 1, U7).
  */
+/** Local reveal is permission for the budgeted head, not the overflow tail. */
+export function graphicRevealText(count: number, open: boolean): string {
+	return `${open ? "Hide" : "Show"} ${countClause(count, "graphic")}`;
+}
+
 export function showAllText(count: number): string {
 	const bounded = Math.max(0, Math.floor(count));
 	return bounded === 1 ? "Show all 1 graphic" : `Show all ${bounded} graphics`;

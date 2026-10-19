@@ -30,16 +30,15 @@
  * 2026-10-16): while the block's own turn renders condensed — one closed bar
  * over its run; the flag arrives from the transcript's collapse plan, never
  * re-derived here — the block shows THE SAME FILES SECTION as its expanded
- * self (the image grid, the rows, the `N more files` disclosure) and nothing
- * else. No `[data-supplement-slot]`/iframe: absent, not hidden, so no document
- * fetch either — and no graphics, whose route is the turn's own bar. The
- * operator's ruling is the small-set principle above extended to this form:
- * the passive count clause (`1 file: X`, `2 files: a, b`, `N files · M
- * graphics`) was the ONLY route to a file the reader may want to open while
- * the run is still folded, so it is replaced by the actionable rows themselves.
- * A graphics-ONLY finish keeps its plain count clause (`1 graphic`, `N
- * graphics`): there is no file to act on and the bar is the expansion frames
- * render in. The not-settled arms keep the state line and their actions exactly
+ * self (the image grid, the rows, the `N more files` disclosure).
+ * The explicit 2026-10-19 amendment adds an answer-local Show/Hide disclosure
+ * for graphics-only finishes. Closed means ZERO slots, iframes or document
+ * fetches; opening permits only the existing viewport-gated, budgeted head
+ * and its explicit overflow tail. It never expands or re-derives the work run.
+ * A local open survives collapsing work again: that explicit request belongs
+ * to this supplement identity, not to the work bar. A new identity resets it.
+ * Expanded work and local reveal share ONE body, never duplicate attachments.
+ * The not-settled arms keep the state line and their actions exactly
  * as the expanded form wires them, with the files section ABOVE the line once
  * files are known — which is why the old counts prefix (`2 files · Preparing
  * highlights…`) has no job left and is gone: the rows say it.
@@ -87,12 +86,12 @@ import {
 	type SupplementRecord,
 	type SupplementSound,
 	causePhrase,
-	countClause,
 	diagnosticDisplay,
 	displayText,
 	failureExplanation,
 	fileRowParts,
 	frameBudgetPx,
+	graphicRevealText,
 	moreText,
 	planComponentMounts,
 	showAllText,
@@ -327,6 +326,23 @@ export const SupplementRow = memo(function SupplementRow({
 	const [expandedMore, setExpandedMore] = useState(false);
 	const [detailsOpen, setDetailsOpen] = useState(false);
 	const [showAll, setShowAll] = useState(false);
+	// Store the permission WITH its identity: a replacement must render closed
+	// immediately, before effects, or it could fetch the new document once.
+	const identity = JSON.stringify([
+		sessionId,
+		record.anchor,
+		record.job,
+		record.version,
+	]);
+	const [localGraphics, setLocalGraphics] = useState({ identity, open: false });
+	const localGraphicsOpen =
+		localGraphics.identity === identity && localGraphics.open;
+	if (localGraphics.identity !== identity) {
+		// Reset before commit, not in an effect: no replacement-document fetch
+		// and no resurrected permission when returning to an earlier identity.
+		setLocalGraphics({ identity, open: false });
+		setShowAll(false);
+	}
 	const [adjusting, setAdjusting] = useState(false);
 	const [draft, setDraft] = useState("");
 	const [busy, setBusy] = useState(false);
@@ -725,6 +741,50 @@ export const SupplementRow = memo(function SupplementRow({
 	 * a sibling of the trace; collapsing work must change only frame mounting,
 	 * never the audio, image, or file callouts that make the answer actionable.
 	 */
+	const graphicsBody = (
+		<div className="flex flex-col gap-2" data-supplement-components="">
+			{head.map((component) => (
+				<SupplementFrameSlot
+					key={component.attachment}
+					component={component}
+					sessionId={sessionId}
+					onRetry={sessionId ? retry : undefined}
+					onHeight={noteHeight}
+				/>
+			))}
+			{tail.length > 0 && (
+				/*
+				 * The graphics sibling of the same disclosure grammar: a
+				 * toggle (`Show all N graphics` ⇄ `Show fewer`), the hidden
+				 * frames mounted only while it is open — an explicit
+				 * action, which is the memo's own condition for mounting
+				 * beyond the budget (§2.8).
+				 */
+				<Disclosure
+					chevronClassName="text-ink-dim"
+					open={showAll}
+					onOpenChange={setShowAll}
+					rowClassName="min-h-0 py-0"
+					summary={
+						<span data-supplement-show-all="">
+							{showAll ? "Show fewer" : showAllText(tail.length)}
+						</span>
+					}
+				>
+					{tail.map((component) => (
+						<SupplementFrameSlot
+							key={component.attachment}
+							component={component}
+							sessionId={sessionId}
+							onRetry={sessionId ? retry : undefined}
+							onHeight={noteHeight}
+						/>
+					))}
+				</Disclosure>
+			)}
+		</div>
+	);
+
 	return (
 		<div
 			className="flex flex-col gap-2"
@@ -734,14 +794,7 @@ export const SupplementRow = memo(function SupplementRow({
 			{filesSection}
 			{soundsSection}
 			{stateLine()}
-			{condensed &&
-				disposition === "block" &&
-				filesSection === null &&
-				components.length > 0 && (
-					<div className="text-ink-muted text-meta">
-						{countClause(components.length, "graphic")}
-					</div>
-				)}
+
 			{!condensed && record.detail?.includes("prepared:unsupported") && (
 				<p className="text-meta text-ink-muted" data-supplement-refusal="">
 					Inline preview unavailable. This HTML needs unsupported resources or
@@ -778,49 +831,27 @@ export const SupplementRow = memo(function SupplementRow({
 				)}
 			{(disposition === "preparing" || disposition === "files_preparing") &&
 				adjustLine}
-			{!condensed && disposition === "block" && components.length > 0 && (
-				<div className="flex flex-col gap-2" data-supplement-components="">
-					{head.map((component) => (
-						<SupplementFrameSlot
-							key={component.attachment}
-							component={component}
-							sessionId={sessionId}
-							onRetry={sessionId ? retry : undefined}
-							onHeight={noteHeight}
-						/>
-					))}
-					{tail.length > 0 && (
-						/*
-						 * The graphics sibling of the same disclosure grammar: a
-						 * toggle (`Show all N graphics` ⇄ `Show fewer`), the hidden
-						 * frames mounted only while it is open — an explicit
-						 * action, which is the memo's own condition for mounting
-						 * beyond the budget (§2.8).
-						 */
+			{disposition === "block" &&
+				components.length > 0 &&
+				(condensed ? (
+					filesSection === null ? (
 						<Disclosure
+							open={localGraphicsOpen}
+							onOpenChange={(open) => setLocalGraphics({ identity, open })}
 							chevronClassName="text-ink-dim"
-							open={showAll}
-							onOpenChange={setShowAll}
 							rowClassName="min-h-0 py-0"
 							summary={
-								<span data-supplement-show-all="">
-									{showAll ? "Show fewer" : showAllText(tail.length)}
+								<span data-supplement-graphics-reveal="">
+									{graphicRevealText(components.length, localGraphicsOpen)}
 								</span>
 							}
 						>
-							{tail.map((component) => (
-								<SupplementFrameSlot
-									key={component.attachment}
-									component={component}
-									sessionId={sessionId}
-									onRetry={sessionId ? retry : undefined}
-									onHeight={noteHeight}
-								/>
-							))}
+							{graphicsBody}
 						</Disclosure>
-					)}
-				</div>
-			)}
+					) : null
+				) : (
+					graphicsBody
+				))}
 		</div>
 	);
 });
