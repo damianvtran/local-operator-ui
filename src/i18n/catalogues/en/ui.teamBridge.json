@@ -39,5 +39,15 @@
 	"ui.teamBridge.group.more": "More",
 	"ui.teamBridge.thread.withheld": "Waiting for the agent to admit this message.",
 	"ui.teamBridge.composer.error": "Your message was not sent. Try again.",
-	"ui.teamBridge.create.error": "The conversation could not be created. Try again."
+	"ui.teamBridge.create.error": "The conversation could not be created. Try again.",
+	"ui.teamBridge.scope.label": "Organization",
+	"ui.teamBridge.scope.all": "All organizations",
+	"ui.teamBridge.scope.trigger": "Organization: {name}",
+	"ui.teamBridge.scope.loading": "Loading organizations",
+	"ui.teamBridge.scope.error": "Organizations could not be loaded.",
+	"ui.teamBridge.scope.empty": "No organizations available.",
+	"ui.teamBridge.scope.unknown": "Unknown organization",
+	"ui.teamBridge.scope.thread_unknown": "This conversation's organization is not available.",
+	"ui.teamBridge.scope.create_needs_org": "Choose an organization to start a conversation.",
+	"ui.teamBridge.group.more_unread": "{count, plural, one {More destinations, # unread message} other {More destinations, # unread messages}}"
 }

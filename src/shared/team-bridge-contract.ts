@@ -94,20 +94,47 @@ export const teamBridgeMessagePageSchema = z
 	.passthrough();
 export type TeamBridgeMessagePage = z.infer<typeof teamBridgeMessagePageSchema>;
 
+export const teamBridgeUnreadOrganizationSchema = z
+	.object({
+		tenant_id: id,
+		tenant_name: z.string(),
+		unread: z.number().int().nonnegative(),
+		eligible: z.boolean(),
+	})
+	.passthrough();
+export type TeamBridgeUnreadOrganization = z.infer<
+	typeof teamBridgeUnreadOrganizationSchema
+>;
+
+/**
+ * The unread answer, in either of its two scopes.
+ *
+ * A TENANT read carries `conversations` and no `organizations`; an ACCOUNT read
+ * (`scope=account`) carries `organizations` and no `conversations` — the server
+ * deliberately never sends both, because the account aggregate is one authorized
+ * read rather than a client-side sum of per-conversation rows. Both list fields
+ * are optional here for exactly that reason: requiring `conversations` would
+ * make every account read fail to parse, which is the opposite of the additive
+ * rule this contract follows. `total` stays required in both scopes and is the
+ * badge's number; the UI never derives the account badge from the per-org rows.
+ */
 export const teamBridgeUnreadSchema = z
 	.object({
 		total: z.number().int().nonnegative(),
-		conversations: z.array(
-			z
-				.object({
-					conversation_id: id,
-					unread_count: z.number().int().nonnegative(),
-					last_read_seq: z.number().int().nonnegative(),
-					latest_seq: z.number().int().nonnegative(),
-					muted: z.boolean(),
-				})
-				.passthrough(),
-		),
+		conversations: z
+			.array(
+				z
+					.object({
+						conversation_id: id,
+						unread_count: z.number().int().nonnegative(),
+						last_read_seq: z.number().int().nonnegative(),
+						latest_seq: z.number().int().nonnegative(),
+						muted: z.boolean(),
+					})
+					.passthrough(),
+			)
+			.optional(),
+		organizations: z.array(teamBridgeUnreadOrganizationSchema).optional(),
 	})
 	.passthrough();
 export type TeamBridgeUnread = z.infer<typeof teamBridgeUnreadSchema>;
@@ -127,6 +154,23 @@ export const teamBridgeReadStateSchema = z
 	})
 	.passthrough();
 export type TeamBridgeReadState = z.infer<typeof teamBridgeReadStateSchema>;
+
+declare const teamBridgeTenantIdBrand: unique symbol;
+
+/**
+ * A tenant id that came from a membership row.
+ *
+ * The brand is what keeps `"all"` out of a tenant slot: `TeamBridgeScope` is
+ * `"all" | TeamBridgeTenantId`, so a branch that checks the sentinel narrows to
+ * a real tenant id, and `{ tenantId: "all" }` no longer type-checks. It is a
+ * compile-time distinction only; the wire still carries the string.
+ */
+export type TeamBridgeTenantId = string & {
+	readonly [teamBridgeTenantIdBrand]: true;
+};
+
+/** The two read scopes the desktop route forwards. Writes never accept this. */
+export type TeamBridgeReadScope = { tenantId: TeamBridgeTenantId } | "account";
 
 /** One member as the create/add request states it (the wire is snake_case). */
 export type TeamBridgeMemberInput = {
