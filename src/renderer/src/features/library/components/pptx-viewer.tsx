@@ -242,7 +242,7 @@ export const PptxViewer: FC<PptxViewerProps> = ({
 					</div>
 				)}
 			</div>
-			<div className="flex h-10 shrink-0 items-center justify-between gap-2 px-1">
+			<div className="flex min-h-10 shrink-0 flex-wrap items-center justify-between gap-1 px-1 py-1">
 				<div className="flex items-center gap-1">
 					<Button
 						variant="ghost"

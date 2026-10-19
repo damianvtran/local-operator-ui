@@ -138,5 +138,6 @@
 	"ui.library.preview.read_only_markdown": "This file is not on a writable local path, so the preview is read-only.",
 	"ui.library.preview.expand": "Open full view",
 	"ui.library.page.more": "More",
-	"ui.library.page.more_destinations": "More destinations"
+	"ui.library.page.more_destinations": "More destinations",
+	"ui.library.preview.breadcrumb": "Library / {name}"
 }

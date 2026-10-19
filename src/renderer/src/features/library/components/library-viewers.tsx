@@ -219,7 +219,15 @@ const MarkdownAssetView: FC<{
 				    inside it is untouched, so Canvas keeps the same component and
 				    save semantics. */}
 				<div className="mx-auto flex w-full max-w-[760px] flex-col gap-4 px-6 py-8">
-					<h2 className="text-title text-ink">{document.title}</h2>
+					{/*
+					 * THE BODY OWNS THE TITLE. A markdown document's first block is
+					 * usually its H1, so a second heading here would repeat it. This
+					 * line says where the file lives; the editor below renders the
+					 * document's own title in its own rhythm.
+					 */}
+					<p className="text-meta text-ink-dim">
+						{t("ui.library.preview.breadcrumb", { name: document.title })}
+					</p>
 					<WysiwygMarkdownEditor document={document} />
 				</div>
 			</div>

@@ -29,9 +29,6 @@ importers:
       posthog-node:
         specifier: ^4.11.3
         version: 4.11.3(debug@4.4.0(supports-color@8.1.1))
-      pptx-browser:
-        specifier: 4.1.5
-        version: 4.1.5
       zod:
         specifier: ^3.24.2
         version: 3.24.2
@@ -213,6 +210,9 @@ importers:
       posthog-js:
         specifier: ^1.235.0
         version: 1.235.6
+      pptx-browser:
+        specifier: 4.1.5
+        version: 4.1.5
       radix-ui:
         specifier: 1.6.7
         version: 1.6.7(@types/react-dom@18.3.5(@types/react@18.3.18))(@types/react@18.3.18)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)

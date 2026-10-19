@@ -9,7 +9,7 @@
  * and `aria-pressed` states the same fact to a reader.
  *
  * FIXED GEOMETRY IS THE NO-LAYOUT-JUMP RULE: every thumbnail well is the same
- * aspect (4/3) in both the skeleton and the populated card, so the first page
+ * aspect (16/10) in both the skeleton and the populated card, so the first page
  * arriving does not move the controls above it. The name and subtitle each get
  * a fixed line count, for the same reason - a long filename must not make its
  * card taller than its neighbours.
@@ -19,7 +19,7 @@ import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { Badge, Button } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
-import { LoaderCircle, Star } from "lucide-react";
+import { LoaderCircle, MessagesSquare, Star } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useRef } from "react";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
@@ -156,6 +156,14 @@ export const LibraryCard: FC<
 					) : null}
 				</div>
 				<TagStrip asset={asset} />
+				{asset.occurrences[0]?.session_title && (
+					<span className="flex min-w-0 items-center gap-1 text-meta text-ink-dim">
+						<MessagesSquare size={12} aria-hidden="true" />
+						<span className="truncate">
+							{asset.occurrences[0].session_title}
+						</span>
+					</span>
+				)}
 				<div className="flex items-center justify-between gap-2 pt-1">
 					<OriginBadge group={asset.origin_group} />
 					{asset.session_count > 1 && (

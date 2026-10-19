@@ -619,7 +619,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 							<ArrowDownWideNarrow aria-hidden="true" />
 						)}
 					</Button>
-					{!railVisible && (
+					{!railVisible && !standalone && (
 						<Button
 							variant="secondary"
 							size="sm"
@@ -646,7 +646,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 				)}
 			</header>
 			<div className="flex min-h-0 flex-1">
-				{railVisible && (
+				{railVisible && !standalone && (
 					<aside
 						data-glass-region="page-sidebar"
 						aria-label={t("ui.library.page.filters")}

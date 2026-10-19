@@ -888,5 +888,14 @@
 		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
 		"note": "English source: More destinations. Dynamic values are bindings; do not translate their names.",
 		"length": "English is 17 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.breadcrumb": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Library / {name}. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 16 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"name": "Runtime value passed by the Library page or preview."
+		}
 	}
 }

@@ -2013,6 +2013,7 @@ export type MessageParams = {
 	"ui.library.page.unavailable": undefined;
 	"ui.library.preview.add_description": undefined;
 	"ui.library.preview.add_tag": undefined;
+	"ui.library.preview.breadcrumb": { name: string };
 	"ui.library.preview.close": undefined;
 	"ui.library.preview.could_not_load": undefined;
 	"ui.library.preview.description": undefined;
