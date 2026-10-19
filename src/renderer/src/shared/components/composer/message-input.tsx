@@ -90,6 +90,7 @@ import {
 	destinationNeedsSession,
 	draftStageForSource,
 } from "@features/chat/pickers/picker-registry";
+import type { SessionAskFrame } from "@features/chat/session-asks";
 import {
 	bandYieldsToRadientIssue,
 	composerModelAccessReading,
@@ -1106,6 +1107,17 @@ export type MessageInputProps = {
 	 */
 	sessionStatus?: {
 		frontend: CanonicalFrontendState | null;
+		/**
+		 * The ask lane's frame, resolved by the page from the canonical snapshot and
+		 * the aggregate index (`session-asks.ts`).
+		 *
+		 * PASSED SEPARATELY FROM `frontend` on purpose: the status row's other
+		 * readings (goal, loop, model) still come from the raw canonical snapshot,
+		 * and only the ask item needs the merged frame. A caller that does not
+		 * supply it (a story, a host with no ask lane) leaves the row on
+		 * `frontend`, which is the pre-fix reading.
+		 */
+		asks?: SessionAskFrame | null;
 		/** Trusted catalogue source, not credential-owner metadata or mesh membership. */
 		servingLocality?: "local" | "remote";
 		onCommand?: (invocation: SlashCommandInvocation) => void;
@@ -7978,6 +7990,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					<ComposerStatusRow
 						key={conversationId}
 						frontend={sessionStatus?.frontend}
+						/*
+						 * THE MERGED ASK FRAME, never `undefined` on the app's path: `null` means
+						 * the read is still in flight, and the row must paint that state rather
+						 * than fall back to a claimless snapshot. `undefined` (no page supplied
+						 * one) keeps the row reading `frontend`.
+						 */
+						askFrontend={sessionStatus?.asks}
 						runDetails={runDetails}
 						isSmallView={isSmallView}
 						askExpanded={askExpanded}
