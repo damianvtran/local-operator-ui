@@ -1264,6 +1264,20 @@ export type ComposerStatusRowProps = {
 	 */
 	frontend: CanonicalFrontendState | null | undefined;
 	/**
+	 * The ask lane's own frame, when the page resolved one from the canonical
+	 * snapshot and the aggregate index (`session-asks.ts`).
+	 *
+	 * SEPARATE FROM `frontend`, and `undefined` IS NOT `null`: `undefined` means
+	 * this host supplies no ask lane, so the row reads `frontend` as it always
+	 * has; `null` means the read is in flight, and the item must paint nothing
+	 * rather than fall back to a snapshot that may be claimless. Only the ask item
+	 * reads it - the goal, loop and plan chips keep their raw-snapshot source.
+	 */
+	askFrontend?: Pick<
+		CanonicalFrontendState,
+		"asks" | "asks_open" | "asks_truncated"
+	> | null;
+	/**
 	 * The run's derived model, or `null` where the session has none.
 	 *
 	 * Threaded in rather than derived here, deliberately: a second
@@ -1351,6 +1365,7 @@ export type ComposerStatusRowProps = {
 
 export const ComposerStatusRow = ({
 	frontend,
+	askFrontend,
 	runDetails,
 	isSmallView = false,
 	askExpanded: askExpandedProp,
@@ -1609,7 +1624,10 @@ export const ComposerStatusRow = ({
 	 * for", and the zero rule is untouched - at zero rows and a zero tally the item is still
 	 * absent, which is the designed state and the one `composer-tabs.test.mjs` pins.
 	 */
-	const askView = askQueueView(frontend, askOutcomes);
+	const askView = askQueueView(
+		askFrontend === undefined ? frontend : askFrontend,
+		askOutcomes,
+	);
 	const askNow = useAskClock(askView.waiting > 0, nowMs);
 	const showAsks =
 		onAskToggle !== undefined && (askView.rows.length > 0 || askView.open > 0);
