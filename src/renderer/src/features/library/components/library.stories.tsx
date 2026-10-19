@@ -24,6 +24,7 @@ import "../../../styles/index.css";
 import "../../chat/components/story-electron-shim";
 import samplePptxUrl from "../../../../../../scripts/fixtures/library/sample.pptx?url";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
+import { NO_LIBRARY_FILTERS, filterAssets } from "../library-model";
 import { LibraryPage } from "./library-page";
 
 const NOW = new Date(2026, 9, 18, 12, 0, 0).getTime();
@@ -213,12 +214,10 @@ const listing = (request: { scope?: string } = {}) => {
 	 * runs the same predicate the route does so the default view a reader sees
 	 * here is the one the app paints.
 	 */
-	const rows =
-		request.scope === "final"
-			? stub.rows.filter(
-					(row) => row.highlighted || row.origin_group === "generated",
-				)
-			: stub.rows;
+	const rows = filterAssets(stub.rows, {
+		...NO_LIBRARY_FILTERS,
+		scope: request.scope === "final" ? "final" : "all",
+	});
 	const counts = {
 		category: rows.reduce<Record<string, number>>((acc, row) => {
 			acc[row.category] = (acc[row.category] ?? 0) + 1;

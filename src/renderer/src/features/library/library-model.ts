@@ -97,6 +97,16 @@ export const LIBRARY_SORTS: ReadonlyArray<{
  */
 export type LibraryScope = "final" | "all";
 
+/**
+ * Whether an asset survives the `final` scope: the operator kept it (a
+ * highlight) or an agent generated it. This is the ONE implementation of the
+ * rule - `filterAssets`, the stories and the page-case stub all call it, so the
+ * UI cannot drift from the route's `_is_final` predicate.
+ */
+export function isFinalAsset(asset: DesktopLibraryAsset): boolean {
+	return asset.highlighted || asset.origin_group === "generated";
+}
+
 /** The listing request's filter half, mirroring `library.list` exactly. */
 export type LibraryListFilters = {
 	q: string;
@@ -228,11 +238,7 @@ export function filterAssets(
 	filters: LibraryListFilters,
 ): DesktopLibraryAsset[] {
 	return assets.filter((asset) => {
-		if (
-			filters.scope === "final" &&
-			!(asset.highlighted || asset.origin_group === "generated")
-		)
-			return false;
+		if (filters.scope === "final" && !isFinalAsset(asset)) return false;
 		if (!assetMatchesQuery(asset, filters.q)) return false;
 		if (filters.category && asset.category !== filters.category) return false;
 		if (filters.originGroup && asset.origin_group !== filters.originGroup)
