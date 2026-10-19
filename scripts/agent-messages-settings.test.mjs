@@ -1020,6 +1020,22 @@ test("a failed settings read renders the mapped refusal sentence, not the except
 	assert.doesNotMatch(mapped.message, /secret detail/);
 });
 
+test("an unreadable settings response keeps its own sentence beside the reassurance", async (t) => {
+	// R3-1: a parse failure is NOT the transport fallback. The invalid_response
+	// sentence stays; only the client-unavailable/dialog copy is suppressed.
+	await mount(t, { overrides: { settings: async () => null } });
+	assert.match(
+		document.body.textContent,
+		/This machine returned a settings response the app could not read\./,
+	);
+	assert.match(
+		document.body.textContent,
+		/No settings were changed\. Try again to check the current status\./,
+	);
+	assert.doesNotMatch(document.body.textContent, /could not be enabled/);
+	assert.ok(button("Retry"));
+});
+
 test("a failed write renders the refusal sentence, never the raw exception", async (t) => {
 	await mount(t, {
 		overrides: {

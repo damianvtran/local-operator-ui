@@ -273,12 +273,11 @@ export function AgentMessagesSettings({
 				<Alert variant="warning">
 					<AlertTitle>{t("ui.agentMessages.settings.error.title")}</AlertTitle>
 					<AlertDescription>
-						{load.refusal.code !== "invalid_response" &&
-							load.refusal.code !== "client_unavailable" && (
-								<span className="block">
-									{settingsRefusalSentence(load.refusal)}
-								</span>
-							)}
+						{load.refusal.code !== "client_unavailable" && (
+							<span className="block">
+								{settingsRefusalSentence(load.refusal)}
+							</span>
+						)}
 						<span className="block">
 							{t("ui.agentMessages.settings.error.no_changes")}
 						</span>
@@ -1187,6 +1186,7 @@ const AddEntryForm: FC<{
 	const [value, setValue] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const fieldId = useId();
+	const helpId = `${fieldId}-help`;
 
 	const submit = () => {
 		const problem = allowlistIdentifierError(value.trim());
@@ -1222,6 +1222,7 @@ const AddEntryForm: FC<{
 				</Select>
 				<Input
 					id={fieldId}
+					aria-describedby={helpId}
 					className="max-w-xs"
 					value={value}
 					disabled={disabled}
@@ -1243,7 +1244,7 @@ const AddEntryForm: FC<{
 					{t("ui.agentMessages.settings.allowlist.add")}
 				</Button>
 			</div>
-			<p className="text-meta text-ink-dim">
+			<p id={helpId} className="text-meta text-ink-dim">
 				{kind === "endpoint"
 					? t("ui.agentMessages.settings.allowlist.identifier_help_agent")
 					: t("ui.agentMessages.settings.allowlist.identifier_help_person")}

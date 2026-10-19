@@ -1668,9 +1668,14 @@ export const SettingsPage: FC = () => {
 											{t("ui.agentMessages.settings.error.title")}
 										</AlertTitle>
 										<AlertDescription>
-											<span className="block">
-												{settingsRefusalSentence(agentMessagesSnapshot.refusal)}
-											</span>
+											{agentMessagesSnapshot.refusal.code !==
+												"client_unavailable" && (
+												<span className="block">
+													{settingsRefusalSentence(
+														agentMessagesSnapshot.refusal,
+													)}
+												</span>
+											)}
 											<span className="block">
 												{t("ui.agentMessages.settings.error.no_changes")}
 											</span>
