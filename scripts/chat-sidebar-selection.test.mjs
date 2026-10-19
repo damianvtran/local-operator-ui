@@ -90,14 +90,14 @@ import { build, transform } from "esbuild";
 
 const ROOT = process.cwd();
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
+const SETTINGS_RAIL =
+	"src/renderer/src/features/settings/components/settings-sidebar.tsx";
 const LIBRARY_CARD =
 	"src/renderer/src/features/library/components/library-card.tsx";
 const LIBRARY_FILTER_RAIL =
 	"src/renderer/src/features/library/components/library-filter-rail.tsx";
 const LIBRARY_PAGE =
 	"src/renderer/src/features/library/components/library-page.tsx";
-const SETTINGS_RAIL =
-	"src/renderer/src/features/settings/components/settings-sidebar.tsx";
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 
 /*
@@ -1383,35 +1383,6 @@ const literalClassAt = (file, anchor, where) => {
 };
 
 const ROW_STATE_GROUNDS = [
-	// Upstream Library introduced these two painters without registering their
-	// grounds. Keep the tree-wide completeness check strict: inspect the actual
-	// card's base plane and the page's filter-rail parent, not the canvas thumbnail.
-	{
-		what: "the Library selected grid card",
-		rowFile: LIBRARY_CARD,
-		expression: () => expressionAfter(LIBRARY_CARD, "data-library-card-id"),
-		stubs: { selected: true, rowCurrent },
-		ground: () =>
-			merged(
-				LIBRARY_CARD,
-				expressionAfter(LIBRARY_CARD, "data-library-card-id"),
-				{ selected: false, rowCurrent },
-			),
-		groundFile: LIBRARY_CARD,
-	},
-	{
-		what: "the Library active filter row",
-		rowFile: LIBRARY_FILTER_RAIL,
-		expression: () => expressionBefore(LIBRARY_FILTER_RAIL, 'indent && "pl-6"'),
-		stubs: { active: true, indent: false, rowCurrent },
-		ground: () =>
-			literalClassAt(
-				LIBRARY_PAGE,
-				'aria-label={t("ui.library.page.filters")}',
-				"after",
-			),
-		groundFile: LIBRARY_PAGE,
-	},
 	{
 		what: "the chat sidebar's list panel",
 		rowFile: SIDEBAR,
@@ -1523,6 +1494,54 @@ const ROW_STATE_GROUNDS = [
 				{},
 			),
 		groundFile: FINDER_FILES_VIEW,
+	},
+	/* card: its own ground; tailwind-merge drops the resting bg-surface once
+	 * bg-row-selected follows it, so read the ground with the role stubbed out */
+	{
+		what: "the Library asset card",
+		rowFile: LIBRARY_CARD,
+		expression: () => expressionAfter(LIBRARY_CARD, "export const LibraryCard"),
+		stubs: { selected: true, rowCurrent },
+		ground: () =>
+			merged(
+				LIBRARY_CARD,
+				expressionAfter(LIBRARY_CARD, "export const LibraryCard"),
+				{ selected: true, rowCurrent: "" },
+			),
+		groundFile: LIBRARY_CARD,
+	},
+	/* list row: same file, second call site */
+	{
+		what: "the Library asset list row",
+		rowFile: LIBRARY_CARD,
+		expression: () =>
+			expressionAfterWithin(
+				LIBRARY_CARD,
+				"export const LibraryRow",
+				"data-library-card-id",
+			),
+		stubs: { selected: true, rowCurrent },
+		ground: () =>
+			merged(
+				LIBRARY_CARD,
+				expressionAfterWithin(
+					LIBRARY_CARD,
+					"export const LibraryRow",
+					"data-library-card-id",
+				),
+				{ selected: true, rowCurrent: "" },
+			),
+		groundFile: LIBRARY_CARD,
+	},
+	/* rail: rows are painted on the page-sidebar aside, which owns bg-surface */
+	{
+		what: "the Library filter rail",
+		rowFile: LIBRARY_FILTER_RAIL,
+		expression: () => expressionAfter(LIBRARY_FILTER_RAIL, "const RailRow"),
+		stubs: { active: true, indent: false, rowCurrent },
+		ground: () =>
+			literalClassAt(LIBRARY_PAGE, 'data-glass-region="page-sidebar"', "after"),
+		groundFile: LIBRARY_PAGE,
 	},
 ];
 
@@ -2444,23 +2463,4 @@ test("the hover-only row sites that ride a rung are recorded, and the record is 
 			`${entry.what}: the record has to carry its measurement, not just the fact`,
 		);
 	}
-});
-
-test("Library list rows retain the same explicit surface ground as grid cards", () => {
-	const expression = expressionAfterWithin(
-		LIBRARY_CARD,
-		"export const LibraryRow",
-		"data-library-card-id",
-	);
-	const selected = merged(LIBRARY_CARD, expression, {
-		selected: true,
-		rowCurrent,
-	}).split(/\s+/);
-	assert.ok(carriesGround(selected));
-	const ground = merged(LIBRARY_CARD, expression, {
-		selected: false,
-		rowCurrent,
-	}).split(/\s+/);
-	assert.ok(ground.includes("bg-surface"));
-	for (const rung of RUNGS) assert.equal(ground.includes(rung), false);
 });
