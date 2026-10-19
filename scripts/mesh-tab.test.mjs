@@ -228,9 +228,7 @@ const overlapping = () => ({
 					name: "workshop-mini",
 					// The wire's own agreement: a device that is not reachable is not reachable on
 					// any membership either (the relay answers both reads from one peer table).
-					// The MISMATCHED pair is pinned in its own test below, where the rule - a
-					// membership or a peer row can only ever CONFIRM reachability - is the
-					// subject rather than an accident of a fixture.
+					// A stale membership disagreeing with a fresh peer answer is covered below.
 					reachable: false,
 					reason: "no route to it",
 					last_seen_at: 1_700_000_000,
@@ -456,22 +454,46 @@ test("state precedence: self, then a suspected identity, then unreachable", () =
 	assert.ok(base, "fixture sanity");
 });
 
-test("the peer catalogue can only ever CONFIRM reachability, never withdraw it", () => {
-	const members = [member(DEVICE_B)];
-	const graph = meshGraph({
-		topology: networkTopology({ networks: [network(NET_ONE, members)] }),
-		peers: peerList({ peers: [peer(DEVICE_B, { reachable: false })] }),
+test("a peer-link answer overrides stale membership reachability and clears on recovery", () => {
+	const topology = networkTopology({
+		networks: [network(NET_ONE, [member(DEVICE_B)])],
 	});
+	const down = meshGraph({
+		topology,
+		peers: peerList({
+			peers: [
+				peer(DEVICE_B, {
+					reachable: false,
+					session_count: null,
+					unreachable_reason: "relay timeout",
+					last_seen_at: 100,
+				}),
+			],
+		}),
+	}).devices[0];
+	assert.equal(down.reachable, false);
+	assert.equal(down.state, "unreachable");
+	assert.equal(down.sessionCount, null);
+	assert.equal(mesh.conversationCountLabel(down.sessionCount), "unknown");
 	assert.equal(
-		graph.devices[0].reachable,
-		true,
-		"the relay dials a device: one membership answering is a fact about the device",
+		mesh.conversationsLinkDown(down, 340),
+		"Link down · relay timeout · last seen 4m ago",
 	);
-	assert.equal(
-		graph.devices[0].reason,
-		"",
-		"a reachable device carries no reason",
-	);
+	const up = meshGraph({
+		topology,
+		peers: peerList({
+			peers: [
+				peer(DEVICE_B, {
+					reachable: true,
+					session_count: 0,
+					last_seen_at: 340,
+				}),
+			],
+		}),
+	}).devices[0];
+	assert.equal(up.reachable, true);
+	assert.equal(mesh.conversationCountLabel(up.sessionCount), "0");
+	assert.equal(mesh.conversationsLinkDown(up, 340), null);
 });
 
 test("an unreachable device carries the backend's own reason", () => {
@@ -4418,4 +4440,65 @@ test("mesh extraction keeps pinned labels and source-language plural fallback", 
 		mesh.clearRegisteredCatalogues();
 		restoreLocale();
 	}
+});
+
+test("nullable counts preserve unknown versus zero and reject timestamp-shaped invalid counts", () => {
+	for (const value of [
+		null,
+		undefined,
+		-1,
+		1.5,
+		Number.NaN,
+		Number.POSITIVE_INFINITY,
+		"2",
+	]) {
+		assert.equal(mesh.nullableCount(value), null);
+	}
+	assert.equal(mesh.nullableCount(0), 0);
+	assert.equal(mesh.nullableCount(2), 2);
+	const [row] = mesh.sessionRows({
+		sessions: [
+			{
+				id: "count-fixture",
+				locality: "remote",
+				owner_device: DEVICE_B,
+				subagents_running: -2,
+				subagents_queued: 1.5,
+				waiting_on: 2,
+				jobs_running: 0,
+			},
+		],
+	});
+	assert.equal(row.subagents_running, null);
+	assert.equal(row.subagents_queued, null);
+	assert.equal(row.waiting_on, 2);
+	assert.equal(row.jobs_running, 0);
+});
+
+test("reach-state story neighbors distinguish suspect unanswered from not-attempted", () => {
+	const oldLaptop = {
+		state: "suspect",
+		suspect: true,
+		reachable: false,
+		reason: "no route to it",
+		sessionCount: null,
+		lastSeenAt: 100,
+	};
+	assert.equal(mesh.deviceReach(oldLaptop), "unanswered");
+	assert.equal(
+		mesh.conversationsLinkDown(oldLaptop, 340),
+		"Link down · no route to it · last seen 4m ago",
+	);
+	const buildBox = {
+		...oldLaptop,
+		state: "unreachable",
+		suspect: false,
+		reason: mesh.NOT_ATTEMPTED_SENTENCES[0],
+	};
+	assert.equal(mesh.deviceReach(buildBox), "not-attempted");
+	assert.match(mesh.conversationsLinkDown(buildBox, 340), /^not asked/);
+	assert.doesNotMatch(mesh.conversationsLinkDown(buildBox, 340), /Link down/);
+	const unknown = { ...buildBox, reason: "" };
+	assert.equal(mesh.deviceReach(unknown), "unknown");
+	assert.equal(mesh.conversationsLinkDown(unknown, 340), "unknown");
 });

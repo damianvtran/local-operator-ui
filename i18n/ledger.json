@@ -3347,8 +3347,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.hub",
-			"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
-			"target_sha256": "22586fb6cc54e7f299a0aabe14267906ef28d105a35dee5e03b00661b50275e5",
+			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+			"target_sha256": "b0fc7a9d3a3878c6a7e549fa649fef29ee1be3680d77edf2546dda5ce733ca72",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3357,22 +3357,70 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"instance": "ea3629c2a645",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
-					"result": "clean-with-findings",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "048b49f6c8ad",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ea3629c2a645.json",
-					"receipt_sha256": "1adcf5201c953c8581cc9ebb888ae927bb4547d324f2ae550e1b8ca27f25874d",
-					"scope": "Deterministic semantic sample 35/150; exhaustive mechanical checks; exact keys in receipt."
+					"receipt": "i18n/receipts/048b49f6c8ad.json",
+					"receipt_sha256": "de4e810e4e9fa507fabacfefd94448406d17773fdec9d5fc69fdf6723a1611ab",
+					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+					"target_sha256": "22586fb6cc54e7f299a0aabe14267906ef28d105a35dee5e03b00661b50275e5",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"instance": "ea3629c2a645",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean-with-findings",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ea3629c2a645.json",
+							"receipt_sha256": "1adcf5201c953c8581cc9ebb888ae927bb4547d324f2ae550e1b8ca27f25874d",
+							"scope": "Deterministic semantic sample 35/150; exhaustive mechanical checks; exact keys in receipt."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1bc091755e451fb19f186c68367e243762ab6135c04e024e82b96e90776bae7b",
+					"target_sha256": "c3a3a948906943c8a51fdb3d088e789d28307d86ee4587406fd7a41c5decaa98",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "5668e1dafff2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5668e1dafff2.json",
+							"receipt_sha256": "7c36d2ff50cba3a3045633f49a61ed431077b5c2f2f1d2ccf88c4bc5124def6a",
+							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
@@ -5127,8 +5175,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.hub",
-			"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
-			"target_sha256": "7fec3dc3011e8e78867767c0cb61b203ce351ceba64b0ed2b47634903c0ae2ea",
+			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+			"target_sha256": "f5d2569d23ca15f1dafa19123cd9428fb0b7eacd94eb32cb337bc6dce38f8015",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -5139,18 +5187,66 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
-					"instance": "d3824459b05a4d7e",
+					"date": "2026-10-19",
 					"result": "clean",
-					"receipt": "i18n/receipts/d3824459b05a4d7e.json",
-					"receipt_sha256": "f4ab6390cfb14a8509058324f90c7c36d6f99783f5fc59eaeea236166e72b57f",
-					"scope": "1516984ec99ae09e635b0cb58c4f2e747de1483c..f82e9ccffea997f040cab6874aaea45019d11219, prior full native audit retained on byte-identical keys",
+					"instance": "a072264badf6",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
-					}
+					},
+					"receipt": "i18n/receipts/a072264badf6.json",
+					"receipt_sha256": "31fedf9efc7fef5c28ede3fe8ede23e678aeadab316a116fdae7a72d4a690805",
+					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+				}
+			],
+			"superseded": [
+				{
+					"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+					"target_sha256": "7fec3dc3011e8e78867767c0cb61b203ce351ceba64b0ed2b47634903c0ae2ea",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"instance": "d3824459b05a4d7e",
+							"result": "clean",
+							"receipt": "i18n/receipts/d3824459b05a4d7e.json",
+							"receipt_sha256": "f4ab6390cfb14a8509058324f90c7c36d6f99783f5fc59eaeea236166e72b57f",
+							"scope": "1516984ec99ae09e635b0cb58c4f2e747de1483c..f82e9ccffea997f040cab6874aaea45019d11219, prior full native audit retained on byte-identical keys",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							}
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1bc091755e451fb19f186c68367e243762ab6135c04e024e82b96e90776bae7b",
+					"target_sha256": "388e1c44a535e0852c16ca52f98923e2ed67839e69efb7bb8de1cfadab9ede68",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "868dc5da7584",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/868dc5da7584.json",
+							"receipt_sha256": "3bb0c8095756736c9447b5548331ee930f16aac58ddba49c8889aa806f5c08b7",
+							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -5674,8 +5770,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.hub",
-			"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
-			"target_sha256": "0cd898c494ad2cefcdb902c1806049c11943090dafee8c2e70c4222c6c767d6d",
+			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+			"target_sha256": "42d2d6e93f61786c53069e2786cb0b1e7b46905f1de2e715cab2633f856720a2",
 			"translator": {
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18",
@@ -5685,21 +5781,69 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
+					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "51938ccfdcee",
-					"receipt": "i18n/receipts/51938ccfdcee-ui-ru-tranche2-chunk-c-round2.json",
-					"receipt_sha256": "d9f534f00ce0cbc82f0dcde51269f153b6cfb013cfe93d200b21098915d6c865",
-					"scope": "Full round-1 baseline at 65ad12e7 plus bounded remediation delta to 2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29; ui.hub clean. No rendered claim.",
+					"instance": "05f4e8989082",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
-					}
+					},
+					"receipt": "i18n/receipts/05f4e8989082.json",
+					"receipt_sha256": "ef2fc2e2b4cf218fd2dde424101d8cfc2a300d7addf0528e3ba23b1586d4df3a",
+					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+					"target_sha256": "0cd898c494ad2cefcdb902c1806049c11943090dafee8c2e70c4222c6c767d6d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "51938ccfdcee",
+							"receipt": "i18n/receipts/51938ccfdcee-ui-ru-tranche2-chunk-c-round2.json",
+							"receipt_sha256": "d9f534f00ce0cbc82f0dcde51269f153b6cfb013cfe93d200b21098915d6c865",
+							"scope": "Full round-1 baseline at 65ad12e7 plus bounded remediation delta to 2ee9bcd2f931bfce22e5f2e80afec0ce44d82b29; ui.hub clean. No rendered claim.",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							}
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1bc091755e451fb19f186c68367e243762ab6135c04e024e82b96e90776bae7b",
+					"target_sha256": "5784397cb8239d6dc38d4668f8d3eba581bdb87eebf9f1612fdd9dad4c6fc0d8",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "ae49f006197e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ae49f006197e.json",
+							"receipt_sha256": "50f158be3ca00d3ddf6b54da9c4ce4246f72eef52be730d865c2b0178316eab2",
+							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
@@ -7305,8 +7449,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.hub",
-			"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
-			"target_sha256": "e0b99d1e701e9831e6a2089ce6b6e1739e36fac29064904723cc856b0a2bf32c",
+			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+			"target_sha256": "7f61ec3dd428b9e4392f19e0e4402fb8c9af12979d99a35ca064598d49960c9c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -7315,21 +7459,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-18",
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "4c6c213dd0d8",
+					"instance": "b0d60c766ddc",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4c6c213dd0d8.json",
-					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
-					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks; audited bytes are 46420b7eb2's, replayed byte-identically as 30566d8100.",
-					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+					"receipt": "i18n/receipts/b0d60c766ddc.json",
+					"receipt_sha256": "0150a192f5fee48a453b1678e976d91b4ed46eaeb9bceb9e719a1a9106e44aec",
+					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
 				}
 			],
 			"status": "audited",
@@ -7354,6 +7497,53 @@
 							"receipt_sha256": "a460f43b0f13504a0e99df5c63c4083a632af09b1c492ea6e5aa849ebe2df42e",
 							"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
 							"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+					"target_sha256": "e0b99d1e701e9831e6a2089ce6b6e1739e36fac29064904723cc856b0a2bf32c",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "4c6c213dd0d8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4c6c213dd0d8.json",
+							"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+							"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks; audited bytes are 46420b7eb2's, replayed byte-identically as 30566d8100.",
+							"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1bc091755e451fb19f186c68367e243762ab6135c04e024e82b96e90776bae7b",
+					"target_sha256": "bab9e07cb9a0992f4cabf295654d0d2a293b1bd11c97a43e310018fc7b7f4f8e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "7be630006bc9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7be630006bc9.json",
+							"receipt_sha256": "ff63303b3e439e05e0730dabb0ff29e982ee8800b24aaad3252a47e667d578c3",
+							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
 						}
 					],
 					"status": "audited"
@@ -10720,8 +10910,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.hub",
-			"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
-			"target_sha256": "49fe87a117529075b464b2e49224cf3357f9b2325f030cecc334dd8a07ee775b",
+			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+			"target_sha256": "49cb5bb823cb0b2af156009c7db0b81dac20603c195273f1615e43430a7b983f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -10733,20 +10923,68 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "d8c851a1b9f8",
+					"instance": "e4e4d13f3eac",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d8c851a1b9f8.json",
-					"receipt_sha256": "599c245251b6571bd534c323d2d6e26ffb21ad8fae78315f7fad847390625419",
-					"scope": "hi ui.hub vs en source — round 1 independent full pass, 150 keys",
-					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+					"receipt": "i18n/receipts/e4e4d13f3eac.json",
+					"receipt_sha256": "4f04ac0f5a25e77f488305b6d0f375eadb3942b186c6c7b4c7995f5e62e09dbb",
+					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+					"target_sha256": "49fe87a117529075b464b2e49224cf3357f9b2325f030cecc334dd8a07ee775b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "d8c851a1b9f8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d8c851a1b9f8.json",
+							"receipt_sha256": "599c245251b6571bd534c323d2d6e26ffb21ad8fae78315f7fad847390625419",
+							"scope": "hi ui.hub vs en source — round 1 independent full pass, 150 keys",
+							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1bc091755e451fb19f186c68367e243762ab6135c04e024e82b96e90776bae7b",
+					"target_sha256": "7ad965aab2c3f8eab1b77683f3ddd3ef17c8c225acb81f7c7978cb70fe113074",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "aa0c67505433",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aa0c67505433.json",
+							"receipt_sha256": "f5af3c987c433569ea8bbd5c1bde60b793eaee9ee74fdf575bc3c228f05fa001",
+							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
@@ -11901,8 +12139,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.hub",
-			"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
-			"target_sha256": "d1024f6fffcecfef14ecdf9a0183629b6aa23e093137a76177a73f673e52879a",
+			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+			"target_sha256": "3d8d51e1306e3288836c4ae05a77bc215a1d591f2665ce98f8d01c447f2a4180",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -11912,22 +12150,70 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
+					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "2b7d4e9c1a65",
+					"instance": "566e7bda787b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2b7d4e9c1a65.json",
-					"receipt_sha256": "b139afe03fd3feb9a31e87e3d9035cd329a70cdd36d58318372f064f9639d156",
-					"scope": "full namespace; post-remediation verification of round-1 native audit findings",
-					"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+					"receipt": "i18n/receipts/566e7bda787b.json",
+					"receipt_sha256": "5519f4b4bf193c84faf142769769f2d590cea0588cd8673485be9f792c1d4b50",
+					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+					"target_sha256": "d1024f6fffcecfef14ecdf9a0183629b6aa23e093137a76177a73f673e52879a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "2b7d4e9c1a65",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2b7d4e9c1a65.json",
+							"receipt_sha256": "b139afe03fd3feb9a31e87e3d9035cd329a70cdd36d58318372f064f9639d156",
+							"scope": "full namespace; post-remediation verification of round-1 native audit findings",
+							"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1bc091755e451fb19f186c68367e243762ab6135c04e024e82b96e90776bae7b",
+					"target_sha256": "542a858d296807af00407ec31cc7542f983e1d47d7b2cb3bc3c26caa3322e247",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "a8c12fa9263d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a8c12fa9263d.json",
+							"receipt_sha256": "fab03a211c04b9a61a46acb414ea01680a8eb70203d868b6b9f79c11858c56ab",
+							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
@@ -14975,8 +15261,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.hub",
-			"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
-			"target_sha256": "2fd183ee68ed4fd09ffc240bfe89742192f30a83cda1889028bd0c8a17fce0c3",
+			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+			"target_sha256": "3dfff4be9ac6cb020fe943ff3d4f1c42bfcb75c89f0c324616339dc0040d5085",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -14988,20 +15274,68 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-19",
 					"result": "clean",
-					"instance": "35e5db603a13",
+					"instance": "f45134e9108a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/35e5db603a13.json",
-					"receipt_sha256": "ace633137c65dd99aacecb37c02832e3fc304fa445c5bf0af649dc0c9ab32514",
-					"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
-					"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+					"receipt": "i18n/receipts/f45134e9108a.json",
+					"receipt_sha256": "9619ce859a0df171b135b835598db940e46a025aec26e28589383db8a2c76e6c",
+					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "3abae06a0eed97e4e9f6ea93d81a8fb0f5552bc41dc02c87c5825f4126640aca",
+					"target_sha256": "2fd183ee68ed4fd09ffc240bfe89742192f30a83cda1889028bd0c8a17fce0c3",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "35e5db603a13",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/35e5db603a13.json",
+							"receipt_sha256": "ace633137c65dd99aacecb37c02832e3fc304fa445c5bf0af649dc0c9ab32514",
+							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
+							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1bc091755e451fb19f186c68367e243762ab6135c04e024e82b96e90776bae7b",
+					"target_sha256": "7c4bfee8f10d93558677150efb0b75e49b13dc329405367d2b35b319e97243c7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "c1a2cd6946cc",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c1a2cd6946cc.json",
+							"receipt_sha256": "1e9518b0418923402326333cf285e6cf13390d4d78cfce0cba4ee4aac44386b3",
+							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
