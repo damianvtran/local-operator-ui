@@ -100,7 +100,7 @@
 	"ui.settings.integrations.integration_model.test_connection": "Kiểm tra kết nối",
 	"ui.settings.integrations.integration_model.update_key": "Cập nhật khóa",
 	"ui.settings.integrations.integration_model.sign_out": "Đăng xuất",
-	"ui.settings.integrations.integration_model.copy_setup_prompt": "Sao chép chỉ dẫn thiết lập",
+	"ui.settings.integrations.integration_model.copy_setup_prompt": "Sao chép prompt thiết lập",
 	"ui.settings.integrations.integration_model.open_config_file": "Mở tệp cấu hình",
 	"ui.settings.integrations.integration_model.remove": "Xóa",
 	"ui.settings.integrations.integration_model.remove_in_its_own_file": "Xóa trong tệp gốc",

@@ -333,7 +333,7 @@
 	"ui.projects.project_start_session.team_manager_manager": "Nhóm · quản lý: {manager}",
 	"ui.projects.project_start_session.teams": "Nhóm",
 	"ui.projects.project_start_session.the_session_could_not_be_started": "Không thể khởi chạy phiên.",
-	"ui.projects.project_start_session.the_session_starts_now_links_itself_to_this_project_and_opens_wit": "Phiên sẽ khởi chạy ngay, tự liên kết với dự án này và mở với lời nhắc mà bạn có thể sửa trước khi gửi.",
+	"ui.projects.project_start_session.the_session_starts_now_links_itself_to_this_project_and_opens_wit": "Phiên sẽ khởi chạy ngay, tự liên kết với dự án này và mở với prompt mà bạn có thể sửa trước khi gửi.",
 	"ui.projects.project_start_session.this_server_does_not_offer_the_team_or_agent_catalogues_yet_so_on": "Máy chủ này chưa cung cấp danh mục nhóm hoặc tác nhân, nên chỉ có thể khởi chạy phiên thông thường.",
 	"ui.projects.project_start_session.work_with": "Làm việc với",
 	"ui.projects.project_timeline.days": "Ngày",
