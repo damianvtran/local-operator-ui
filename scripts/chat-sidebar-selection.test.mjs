@@ -1314,6 +1314,14 @@ const FILE_ROW =
  * CANVAS_SECTION still stands at the lane's last stop, not the rows' surface. */
 const FINDER_FILES_VIEW =
 	"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx";
+/* #1195's Library surfaces paint the shared row role; each entry below resolves
+ * the call site's own shipped expression rather than a replica of its classes. */
+const LIBRARY_CARD =
+	"src/renderer/src/features/library/components/library-card.tsx";
+const LIBRARY_FILTER_RAIL =
+	"src/renderer/src/features/library/components/library-filter-rail.tsx";
+const LIBRARY_PAGE =
+	"src/renderer/src/features/library/components/library-page.tsx";
 const SCHEDULE_ROW =
 	"src/renderer/src/features/schedules/components/schedule-list-item.tsx";
 const BROWSER_TABS =
@@ -1488,6 +1496,68 @@ const ROW_STATE_GROUNDS = [
 				{},
 			),
 		groundFile: FINDER_FILES_VIEW,
+	},
+	{
+		/* The selected asset card paints the role on the element that IS its own
+		 * ground (`bg-surface` sits in the same cn expression), so this entry reads
+		 * the card's shipped expression for both halves. The list variant is a
+		 * second call site on a different element and gets its own entry; the
+		 * census names the FILE, and one variant must not stand in for the other. */
+		what: "the Library asset card",
+		rowFile: LIBRARY_CARD,
+		expression: () => expressionAfter(LIBRARY_CARD, "export const LibraryCard"),
+		stubs: { selected: true, rowCurrent },
+		/* The card is its OWN ground, so the ground is the same shipped expression
+		 * with the row role stubbed out. `merged` runs `cn`, and tailwind-merge
+		 * drops the earlier `bg-surface` when `rowCurrent`'s `bg-row-selected`
+		 * follows it - the state REPLACES the resting fill, so the ground can only
+		 * be read from the expression with the state off. A row painted on an
+		 * ancestor still reads the ancestor's literal below. */
+		ground: () =>
+			merged(
+				LIBRARY_CARD,
+				expressionAfter(LIBRARY_CARD, "export const LibraryCard"),
+				{ selected: true, rowCurrent: "" },
+			),
+		groundFile: LIBRARY_CARD,
+	},
+	{
+		/* The same card as a list row. Anchored after the component's own
+		 * declaration because `data-library-card-id` appears in both variants and
+		 * `expressionAfter` takes the first occurrence in the file. */
+		what: "the Library asset list row",
+		rowFile: LIBRARY_CARD,
+		expression: () =>
+			expressionAfterWithin(
+				LIBRARY_CARD,
+				"export const LibraryRow",
+				"data-library-card-id",
+			),
+		stubs: { selected: true, rowCurrent },
+		ground: () =>
+			merged(
+				LIBRARY_CARD,
+				expressionAfterWithin(
+					LIBRARY_CARD,
+					"export const LibraryRow",
+					"data-library-card-id",
+				),
+				{ selected: true, rowCurrent: "" },
+			),
+		groundFile: LIBRARY_CARD,
+	},
+	{
+		/* The rail's rows are painted on the page's `page-sidebar` aside, which owns
+		 * `bg-surface`; the rail container itself is layout only. Read through the
+		 * aside's literal in library-page.tsx so moving the rail onto a rung fails
+		 * here by name. */
+		what: "the Library filter rail",
+		rowFile: LIBRARY_FILTER_RAIL,
+		expression: () => expressionAfter(LIBRARY_FILTER_RAIL, "const RailRow"),
+		stubs: { active: true, indent: false, rowCurrent },
+		ground: () =>
+			literalClassAt(LIBRARY_PAGE, 'data-glass-region="page-sidebar"', "after"),
+		groundFile: LIBRARY_PAGE,
 	},
 ];
 
