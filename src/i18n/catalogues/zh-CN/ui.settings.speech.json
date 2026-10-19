@@ -1,0 +1,21 @@
+{
+	"ui.settings.speech.speech_section.try_again": "重试",
+	"ui.settings.speech.speech_section.retry": "重试",
+	"ui.settings.speech.speech_section.speaks_through": "语音提供商",
+	"ui.settings.speech.speech_section.availability": "可用状态",
+	"ui.settings.speech.speech_section.the_setting_could_not_be_saved": "无法保存设置。",
+	"ui.settings.speech.speech_section.the_setting_could_not_be_reset": "无法重置设置。",
+	"ui.settings.speech.speech_section.speech_voicing": "语音播报",
+	"ui.settings.speech.speech_section.how_the_assistant_sounds_when_it_speaks_aloud": "设置助手朗读时的声音。",
+	"ui.settings.speech.speech_section.speech_settings_could_not_be_loaded": "无法加载语音设置。",
+	"ui.settings.speech.speech_section.nothing_yet": "暂无",
+	"ui.settings.speech.speech_section.no_provider": "无提供商",
+	"ui.settings.speech.speech_section.available": "（可用）",
+	"ui.settings.speech.speech_section.not_available": "（不可用）",
+	"ui.settings.speech.speech_settings_model.radient_pass": "Radient Pass",
+	"ui.settings.speech.speech_settings_model.no_provider": "无提供商",
+	"ui.settings.speech.speech_section.copy_backend_older_sentence": "此后端不支持语音设置。请更新后端后再调整助手的声音。",
+	"ui.settings.speech.speech_section.copy_unavailable_sentence": "无法读取语音可用状态。",
+	"ui.settings.speech.speech_section.ready": "已就绪",
+	"ui.settings.speech.speech_section.missing_voice_rows": "{count, plural, other {此后端尚未注册{rows}，因此未显示对应设置项。}}"
+}

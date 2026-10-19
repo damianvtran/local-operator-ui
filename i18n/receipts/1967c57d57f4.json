@@ -1,0 +1,39 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "1967c57d57f4",
+  "date": "2026-10-18",
+  "locale": "zh-CN",
+  "status": "passed",
+  "scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+  "previous_audit": "i18n/receipts/a3b9391a0eab.json",
+  "namespaces": {
+    "ui.browser": {
+      "namespace": "ui.browser",
+      "status": "passed",
+      "sha256": {
+        "source": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
+        "target": "bea8f7be4be83b4b37d3bdc43252c4e4071da3ae49afb54a774cc6a372436861"
+      },
+      "findings": []
+    },
+    "ui.mesh": {
+      "namespace": "ui.mesh",
+      "status": "passed",
+      "sha256": {
+        "source": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+        "target": "a6cb2ff40fa18d48215a1d0737984cc07ca36997a089e92cbe91dd9617f19cce"
+      },
+      "findings": []
+    },
+    "ui.browser.chrome": {
+      "namespace": "ui.browser.chrome",
+      "status": "passed",
+      "sha256": {
+        "source": "73793572e5e36b8bbc8df6c1f27fb98083634b3b9e3cbd05ede27da4813c656c",
+        "target": "806233c4963e479eedb06baaac1b3102b5d4a84d4d962c9c5ed4263c6cada455"
+      },
+      "findings": []
+    }
+  }
+}

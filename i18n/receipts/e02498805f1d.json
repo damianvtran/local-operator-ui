@@ -1,0 +1,38 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "e02498805f1d",
+  "date": "2026-10-18",
+  "locale": "zh-CN",
+  "status": "passed",
+  "scope": "round 3: agent-review remediation delta at aead165c5f, three namespaces",
+  "namespaces": {
+    "ui.common.actions": {
+      "namespace": "ui.common.actions",
+      "status": "passed",
+      "sha256": {
+        "source": "bf151da8ad56c3b32b05be1d505764d3f4cfb72e9792f9ec68b8a570239f6976",
+        "target": "8cc3da3dd7430eb13f1f20516f79e274ce2581af9f2f2923f4fe450b27e926a1"
+      },
+      "findings": []
+    },
+    "ui.settings.model.default_effort": {
+      "namespace": "ui.settings.model.default_effort",
+      "status": "passed",
+      "sha256": {
+        "source": "5a4a01952b8a4242730e336cf082dc926085ac126a147d8b44197e9f04fc3b29",
+        "target": "904f9ef4dc2921cf062fa71764364ee1b3a5241c300270a45f6aad8708354d45"
+      },
+      "findings": []
+    },
+    "ui.schedules": {
+      "namespace": "ui.schedules",
+      "status": "passed",
+      "sha256": {
+        "source": "157303c99e3f8aabed9b4d60a00ee9a8ddb21a92df86f962f191aa002533799a",
+        "target": "1d42084e83f0167f11772a9103e0ac847273479c8aa2c59cbdb4a4f125a44d6c"
+      },
+      "findings": []
+    }
+  }
+}
