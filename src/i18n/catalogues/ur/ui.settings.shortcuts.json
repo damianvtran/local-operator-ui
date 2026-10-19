@@ -1,0 +1,11 @@
+{
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear": "صاف کریں",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset": "ری سیٹ کریں",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels": "مطلوبہ کلیدیں دبائیں؛ Esc منسوخ کرتا ہے۔",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.keyboard_shortcuts": "کی بورڈ شارٹ کٹس",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you": "پینل ریل کے شارٹ کٹس۔ کسی خانے پر فوکس کریں اور مطلوبہ کلیدیں دبائیں؛ Esc منسوخ کرتا ہے، ری سیٹ کسی عمل کا ڈیفالٹ بحال کرتا ہے، اور صاف کرنے سے کوئی شارٹ کٹ مقرر نہیں رہتا۔",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.no_shortcut": "کوئی شارٹ کٹ نہیں",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.label_press_the_keys_you_want": "{label} کے لیے مطلوبہ کلیدیں دبائیں",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut": "{label} کا شارٹ کٹ صاف کریں",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset_label_to_its_default": "{label} کو اس کے ڈیفالٹ پر ری سیٹ کریں"
+}

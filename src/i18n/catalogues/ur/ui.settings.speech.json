@@ -1,0 +1,21 @@
+{
+	"ui.settings.speech.speech_section.try_again": "دوبارہ کوشش کریں",
+	"ui.settings.speech.speech_section.retry": "دوبارہ کوشش کریں",
+	"ui.settings.speech.speech_section.speaks_through": "آواز کا ذریعہ",
+	"ui.settings.speech.speech_section.availability": "دستیابی",
+	"ui.settings.speech.speech_section.the_setting_could_not_be_saved": "ترتیب محفوظ نہیں ہو سکی۔",
+	"ui.settings.speech.speech_section.the_setting_could_not_be_reset": "ترتیب ری سیٹ نہیں ہو سکی۔",
+	"ui.settings.speech.speech_section.speech_voicing": "تقریر کی آواز",
+	"ui.settings.speech.speech_section.how_the_assistant_sounds_when_it_speaks_aloud": "معاون بولتے وقت کیسا سنائی دے۔",
+	"ui.settings.speech.speech_section.speech_settings_could_not_be_loaded": "تقریر کی ترتیبات لوڈ نہیں ہو سکیں۔",
+	"ui.settings.speech.speech_section.nothing_yet": "ابھی کچھ نہیں",
+	"ui.settings.speech.speech_section.no_provider": "کوئی فراہم کنندہ نہیں",
+	"ui.settings.speech.speech_section.available": "(دستیاب)",
+	"ui.settings.speech.speech_section.not_available": "(دستیاب نہیں)",
+	"ui.settings.speech.speech_settings_model.radient_pass": "Radient Pass",
+	"ui.settings.speech.speech_settings_model.no_provider": "کوئی فراہم کنندہ نہیں",
+	"ui.settings.speech.speech_section.copy_backend_older_sentence": "یہ بیک اینڈ آواز کی ترتیبات فراہم نہیں کرتا۔ معاون کی آواز بدلنے کے لیے بیک اینڈ اپ ڈیٹ کریں۔",
+	"ui.settings.speech.speech_section.copy_unavailable_sentence": "تقریر کی دستیابی پڑھی نہیں جا سکی۔",
+	"ui.settings.speech.speech_section.ready": "تیار",
+	"ui.settings.speech.speech_section.missing_voice_rows": "{count, plural, one {یہ بیک اینڈ ابھی {rows} درج نہیں کرتا، اس لیے یہ قطار دکھائی نہیں گئی۔} other {یہ بیک اینڈ ابھی {rows} درج نہیں کرتا، اس لیے یہ قطاریں دکھائی نہیں گئیں۔}}"
+}

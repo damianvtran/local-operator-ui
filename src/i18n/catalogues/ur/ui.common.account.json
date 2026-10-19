@@ -1,0 +1,20 @@
+{
+	"ui.common.account.low_credits_dialog.could_not_load_bonus_credit_information": "بونس کریڈٹس کی معلومات لوڈ نہیں ہو سکیں۔",
+	"ui.common.account.low_credits_dialog.detail": "${detail} USD",
+	"ui.common.account.low_credits_dialog.get_more_credits": "مزید کریڈٹس حاصل کریں",
+	"ui.common.account.low_credits_dialog.in_bonus_credits_with_your_first_purchase": "اپنی پہلی خریداری پر بونس کریڈٹس کی صورت میں۔",
+	"ui.common.account.low_credits_dialog.it_s_pay_as_you_go_with_no_commitments_load_up_what_you_need_star": "جتنا استعمال اتنی ادائیگی، کسی پابندی کے بغیر۔ ضرورت کے مطابق کریڈٹس شامل کریں، مکمل آزادی کے لیے کم مقدار سے شروع کریں۔",
+	"ui.common.account.low_credits_dialog.maybe_later": "شاید بعد میں",
+	"ui.common.account.low_credits_dialog.plus_get": "ساتھ ہی حاصل کریں",
+	"ui.common.account.low_credits_dialog.radient_automatic_is_often_cheaper_than_bringing_your_own_key_its": "Radient Automatic اکثر اپنی کلید استعمال کرنے سے سستا پڑتا ہے؛ اس کی ذہین ماڈل راؤٹنگ آپ کے ایجنٹ ورک فلوز کے ہر مرحلے کے لیے سب سے کم لاگت والا ماڈل منتخب کرتی ہے۔",
+	"ui.common.account.low_credits_dialog.radient_icon": "Radient کا آئیکن",
+	"ui.common.account.low_credits_dialog.radient_pass": "Radient Pass",
+	"ui.common.account.low_credits_dialog.running_low_on_radient_credits": "Radient کریڈٹس کم ہو رہے ہیں؟",
+	"ui.common.account.low_credits_dialog.unlock_the_full_power_of_local_operator_with": "Local Operator کی مکمل صلاحیت حاصل کرنے کا ذریعہ",
+	"ui.common.account.low_credits_dialog.you_can_also_reach_the_radient_console_from_settings_at_any_time": "آپ کسی بھی وقت ترتیبات سے Radient Console تک بھی پہنچ سکتے ہیں۔",
+	"ui.common.account.radient_auth_buttons.connect_your_radient_account_to_use_radient_services": "Radient سروسز استعمال کرنے کے لیے اپنا Radient اکاؤنٹ منسلک کریں۔",
+	"ui.common.account.radient_auth_buttons.loading_sign_in_options": "سائن ان کے اختیارات لوڈ ہو رہے ہیں",
+	"ui.common.account.radient_auth_buttons.radient_is_not_available_from_this_backend_s_provider_registry": "اس بیک اینڈ کی فراہم کنندہ رجسٹری سے Radient دستیاب نہیں۔",
+	"ui.common.account.radient_auth_buttons.sign_in_to_radient": "Radient میں سائن ان کریں",
+	"ui.common.account.radient_auth_buttons.signing_in_needs_a_newer_local_operator_backend_update_the_backen": "سائن ان کے لیے Local Operator کا نیا بیک اینڈ درکار ہے۔ بیک اینڈ اپ ڈیٹ کریں اور ایپ دوبارہ شروع کریں۔"
+}
