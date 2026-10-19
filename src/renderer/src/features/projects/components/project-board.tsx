@@ -261,10 +261,19 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 				header.style.paddingRight = next > 0 ? `${next}px` : "";
 			}
 		};
+		/* The last offset `sync` wrote to the header. A header scroll event at
+		 * this value is our OWN echo, not a UA scroll: the event is dispatched a
+		 * frame after the write, and if the body has advanced by then, mirroring
+		 * it back would revert a frame of continuous (trackpad) scrolling. The
+		 * guard is provenance, not equality - equality alone cannot tell the two
+		 * directions apart (round-3 review). */
+		let lastSync = -1;
 		const sync = () => {
-			if (Math.abs(header.scrollLeft - strip.scrollLeft) > 0.5) {
-				header.scrollLeft = strip.scrollLeft;
+			const target = strip.scrollLeft;
+			if (Math.abs(header.scrollLeft - target) > 0.5) {
+				header.scrollLeft = target;
 			}
+			lastSync = target;
 		};
 		/*
 		 * MIRROR THE HEADER'S OWN SCROLL BACK. A UA can scroll the header window
@@ -275,9 +284,11 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 		 * guard stops the two listeners from ping-ponging.
 		 */
 		const syncFromHeader = () => {
+			if (Math.abs(header.scrollLeft - lastSync) <= 0.5) return;
 			if (Math.abs(strip.scrollLeft - header.scrollLeft) > 0.5) {
 				strip.scrollLeft = header.scrollLeft;
 			}
+			lastSync = header.scrollLeft;
 		};
 		const onWheel = (event: WheelEvent) => {
 			/* Page-mode deltas are one viewport PER AXIS: width for x, height for

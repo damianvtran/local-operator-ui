@@ -4808,6 +4808,46 @@ export const BoardSticky: Story = {
 };
 
 /**
+ * A CONTINUOUS HORIZONTAL SCROLL MUST NOT GO BACKWARDS. The header mirror runs
+ * on scroll events, which are dispatched after the frame that moved the body;
+ * a mirror without provenance suppression can write an old header offset back
+ * over a newer body offset. This play advances the body one small step per
+ * frame and fails on any backwards sample, which is the echo's signature
+ * (half-speed, ~30Hz stutter) without needing a trackpad driver.
+ */
+export const BoardContinuousScroll: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_LONG,
+			details: detailsFor(BOARD_LONG),
+		}),
+	play: playOnce("board-continuous-scroll", async () => {
+		await poll(
+			() => document.querySelector("[data-board-strip]") !== null,
+			"the board body",
+		);
+		const strip = document.querySelector<HTMLElement>("[data-board-strip]");
+		if (!strip) throw new Error("the board body is missing");
+		strip.scrollLeft = 0;
+		await new Promise((resolve) => requestAnimationFrame(resolve));
+		const samples: number[] = [];
+		for (let frame = 0; frame < 24; frame += 1) {
+			strip.scrollLeft += 4;
+			await new Promise((resolve) => requestAnimationFrame(resolve));
+			samples.push(strip.scrollLeft);
+		}
+		for (let index = 1; index < samples.length; index += 1) {
+			if (samples[index] < samples[index - 1] - 0.5) {
+				throw new Error(
+					`the board's horizontal scroll went backwards at frame ${index}: ${samples[index - 1].toFixed(1)} -> ${samples[index].toFixed(1)}`,
+				);
+			}
+		}
+	}),
+};
+
+/**
  * THE PER-COLUMN SCROLLER STILL OWNS ITS OWN CONTENT: each band cell is its own
  * bounded `overflow-y-auto` port under the one-screen cap. The wheel driver is
  * a capture-rig input, not something the harness browser can synthesize, so
@@ -4935,6 +4975,16 @@ export const BoardHorizontalScroll: Story = {
 		);
 		if (!planningGrip) throw new Error("the planning grip is missing");
 		planningGrip.focus();
+		/*
+		 * REQUIRE THE FOCUS SCROLL FIRST. Equality and alignment are already true
+		 * before the focus lands, so a check that starts there cannot tell "the
+		 * mirror moved the body" from "the UA never scrolled the header" (round-3
+		 * review, R3-2). The body must MOVE, then the two windows must agree.
+		 */
+		await poll(
+			() => Math.abs(strip.scrollLeft - moved) > 1,
+			"the focus scroll to move the board",
+		);
 		await poll(
 			() => Math.abs(strip.scrollLeft - window_.scrollLeft) <= 1,
 			"the header window and the body to settle on one offset",
