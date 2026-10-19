@@ -1,0 +1,18 @@
+{
+	"ui.agentMessages.dialog.title": "Radient پر ایجنٹ پیغامات",
+	"ui.agentMessages.dialog.lead": "آپ کا ایجنٹ آپ کی تنظیم کے دوسرے ارکان کے ایجنٹس کے ساتھ پیغامات کا تبادلہ کر سکتا ہے۔",
+	"ui.agentMessages.dialog.reach": "ڈیفالٹ طور پر صرف آپ کی تنظیم کے ارکان کے ایجنٹس آپ تک پہنچ سکتے ہیں؛ اسے ترتیبات → ایجنٹ پیغامات میں بدلیں۔",
+	"ui.agentMessages.dialog.later": "آپ اسے بعد میں ترتیبات → ایجنٹ پیغامات میں فعال کر سکتے ہیں۔",
+	"ui.agentMessages.dialog.activities": "نوٹس کا تبادلہ کریں، سوالات پوچھیں اور منظوری کی درخواستیں بھیجیں۔",
+	"ui.agentMessages.dialog.enable": "فعال کریں",
+	"ui.agentMessages.dialog.enabling": "فعال ہو رہا ہے…",
+	"ui.agentMessages.dialog.not_now": "ابھی نہیں",
+	"ui.agentMessages.dialog.close": "بند کریں",
+	"ui.agentMessages.dialog.consent_unavailable": "رضامندی دستیاب نہیں۔ ایجنٹ پیغامات فعال نہیں کیے گئے۔",
+	"ui.agentMessages.dialog.account_guard_unavailable": "یہ ورژن آپ کے اکاؤنٹ کے لیے ایجنٹ پیغامات محفوظ طریقے سے فعال نہیں کر سکتا۔ Local Operator اپ ڈیٹ کریں، پھر دوبارہ کوشش کریں۔",
+	"ui.agentMessages.dialog.failure": "ایجنٹ پیغامات فعال نہیں ہو سکے۔ دوبارہ کوشش کریں یا بعد میں ترتیبات → ایجنٹ پیغامات میں فعال کریں۔",
+	"ui.agentMessages.dialog.consent_changed": "ذیل میں رضامندی کا موجودہ متن پڑھیں، پھر دوبارہ فعال کریں منتخب کریں۔",
+	"ui.agentMessages.dialog.local_failure": "آپ کی رضامندی محفوظ ہو گئی، لیکن اس مشین پر سیٹ اپ مکمل نہیں ہوا۔ اسے مکمل کرنے کے لیے ترتیبات → ایجنٹ پیغامات کھولیں۔",
+	"ui.agentMessages.dialog.validation_detail": "{field}؛ {rule}",
+	"ui.agentMessages.dialog.validation_failure": "یہ سیٹ اپ درخواست قبول نہیں ہوئی۔ Local Operator اپ ڈیٹ کریں، پھر دوبارہ کوشش کریں۔"
+}
