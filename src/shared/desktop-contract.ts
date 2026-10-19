@@ -3201,6 +3201,68 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			consented_via: z.literal("dialog"),
 		})
 		.strict(),
+	/*
+	 * The settings section's four ops (RFC §5.2/§6.1). The enable op above is
+	 * the one-time dialog's narrower receipt; these carry the same
+	 * captured-account guard plus the states a returning user manages.
+	 *
+	 * `consented_via` is asserted by the client, not verified by the server: it
+	 * names the surface that showed the text, so the section must say
+	 * "settings" rather than borrow the dialog's value.
+	 */
+	z
+		.object({
+			op: z.literal("agent_messages.settings"),
+			tenant_id: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("agent_messages.settings.put"),
+			expected_account_id: id,
+			tenant_id: id.optional(),
+			consent_version: z.string().min(1).max(128).optional(),
+			consented_via: z.enum(["dialog", "settings"]).optional(),
+			label: z.string().min(1).max(128).optional(),
+			state: z.enum(["active", "paused", "disabled"]),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("agent_messages.allowlist.get"),
+			tenant_id: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("agent_messages.allowlist.put"),
+			expected_account_id: id,
+			tenant_id: id.optional(),
+			// The server's own target model takes exactly one id and no `kind`;
+			// the read adds `kind`, which this client never sends back.
+			entries: z
+				.array(
+					z
+						.object({
+							direction: z.enum(["send", "receive"]),
+							effect: z.enum(["allow", "deny"]),
+							target: z
+								.object({
+									endpoint_id: id.optional(),
+									account_id: id.optional(),
+								})
+								.strict()
+								.refine(
+									(target) =>
+										Boolean(target.endpoint_id) !== Boolean(target.account_id),
+									"An allowlist target names exactly one of endpoint_id or account_id",
+								),
+						})
+						.strict(),
+				)
+				.max(200),
+		})
+		.strict(),
 	z.object({ op: z.literal("settings.list") }).strict(),
 	z
 		.object({
@@ -5507,6 +5569,8 @@ export const DESKTOP_FOREGROUND_REQUIRED_MESSAGE =
 const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"capabilities",
 	"agent_messages.status",
+	"agent_messages.settings",
+	"agent_messages.allowlist.get",
 	"accounts.list",
 	"analytics.get",
 	"analytics.models",
@@ -6580,6 +6644,13 @@ function harnessImportBody(
 			? {}
 			: { max_sessions: request.maxSessions }),
 	};
+}
+
+/** A query suffix that is empty when no tenant was selected, never `?tenant_id=`. */
+function tenantQuery(tenantId: string | undefined): string {
+	return tenantId === undefined
+		? ""
+		: `?tenant_id=${encodeURIComponent(tenantId)}`;
 }
 
 export function desktopEndpoint(request: DesktopRequest): {
@@ -8074,6 +8145,47 @@ export function desktopEndpoint(request: DesktopRequest): {
 					state: request.state,
 					consent_version: request.consent_version,
 					consented_via: request.consented_via,
+				},
+			};
+		case "agent_messages.settings":
+			return {
+				path: `/v1/desktop/team-bridge/settings${tenantQuery(request.tenant_id)}`,
+				method: "GET",
+			};
+		case "agent_messages.settings.put":
+			return {
+				path: "/v1/desktop/team-bridge/settings",
+				method: "PUT",
+				body: {
+					expected_account_id: request.expected_account_id,
+					...(request.tenant_id === undefined
+						? {}
+						: { tenant_id: request.tenant_id }),
+					...(request.consent_version === undefined
+						? {}
+						: { consent_version: request.consent_version }),
+					...(request.consented_via === undefined
+						? {}
+						: { consented_via: request.consented_via }),
+					...(request.label === undefined ? {} : { label: request.label }),
+					state: request.state,
+				},
+			};
+		case "agent_messages.allowlist.get":
+			return {
+				path: `/v1/desktop/team-bridge/allowlist${tenantQuery(request.tenant_id)}`,
+				method: "GET",
+			};
+		case "agent_messages.allowlist.put":
+			return {
+				path: "/v1/desktop/team-bridge/allowlist",
+				method: "PUT",
+				body: {
+					expected_account_id: request.expected_account_id,
+					...(request.tenant_id === undefined
+						? {}
+						: { tenant_id: request.tenant_id }),
+					entries: request.entries,
 				},
 			};
 		case "settings.list":

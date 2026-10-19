@@ -290,8 +290,16 @@ export class AgentMessagesModel {
 			// A boundary read can change organization or consent while the PUT is
 			// in flight. Discard its local effects just like an account switch.
 			if (!this.isConsentCurrent(identity, generation)) return;
+			if (!result.endpoint) {
+				// The enable response is the receipt for a write that just created
+				// one; a null endpoint is a shape this client cannot trust.
+				throw new Error("Consent response carries no endpoint");
+			}
+			// The upstream endpoint carries no account id; the account receipt is
+			// the pre-write guard above plus `isConsentCurrent` (which compares the
+			// status's account). This check is about the ORGANIZATION and state
+			// the response reports, not a second account comparison.
 			if (
-				result.endpoint.account_id !== accountId ||
 				result.endpoint.tenant_id !== tenantId ||
 				result.endpoint.state !== "active"
 			) {

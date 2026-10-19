@@ -1,6 +1,11 @@
 import {
+	type AgentMessagesAllowlistPut,
+	type AgentMessagesAllowlistResult,
 	type AgentMessagesBoundary,
 	type AgentMessagesConsentPut,
+	type AgentMessagesSettingsPut,
+	type AgentMessagesSettingsResult,
+	agentMessagesAllowlistResultSchema,
 	agentMessagesSettingsResultSchema,
 	agentMessagesStatusSchema,
 } from "../../../../../shared/agent-messages-contract";
@@ -23,6 +28,44 @@ export const agentMessagesApi = {
 			...body,
 		});
 		return agentMessagesSettingsResultSchema.parse(result);
+	},
+	/**
+	 * The settings read. A shape this client cannot fully read is null rather
+	 * than a partial render: every control below the read writes against it.
+	 */
+	async settings(
+		tenantId?: string,
+	): Promise<AgentMessagesSettingsResult | null> {
+		const result = await desktopResult<unknown>({
+			op: "agent_messages.settings",
+			...(tenantId === undefined ? {} : { tenant_id: tenantId }),
+		});
+		const parsed = agentMessagesSettingsResultSchema.safeParse(result);
+		return parsed.success ? parsed.data : null;
+	},
+	async updateSettings(body: AgentMessagesSettingsPut) {
+		const result = await desktopResult<unknown>({
+			op: "agent_messages.settings.put",
+			...body,
+		});
+		return agentMessagesSettingsResultSchema.parse(result);
+	},
+	async allowlist(
+		tenantId?: string,
+	): Promise<AgentMessagesAllowlistResult | null> {
+		const result = await desktopResult<unknown>({
+			op: "agent_messages.allowlist.get",
+			...(tenantId === undefined ? {} : { tenant_id: tenantId }),
+		});
+		const parsed = agentMessagesAllowlistResultSchema.safeParse(result);
+		return parsed.success ? parsed.data : null;
+	},
+	async updateAllowlist(body: AgentMessagesAllowlistPut) {
+		const result = await desktopResult<unknown>({
+			op: "agent_messages.allowlist.put",
+			...body,
+		});
+		return agentMessagesAllowlistResultSchema.parse(result);
 	},
 	async localSetting(
 		key: "team_bridge.enabled" | "team_bridge.session",
