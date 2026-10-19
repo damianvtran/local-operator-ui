@@ -8821,10 +8821,28 @@
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18",
-				"note": "Reworded by the implementing coder (deepseek/deepseek-flash), 2026-10-18, for the 您→你 register correction (PR #1205): 5 strings, 5 您. #1208 later changed the consent copy; receipt 4c6c213dd0d8 predates the merge, so the merged bytes await a register audit; row pending."
+				"note": "Reworded by the implementing coder (deepseek/deepseek-flash), 2026-10-18, for the 您→你 register correction (PR #1205): 5 strings, 5 您. #1208 moved the consent copy; receipt 5b6764cda3f8 audits the merged bytes, with 70602c67add2-zh-cn and 6b6868c6f100 kept in superseded."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-19",
+					"result": "clean",
+					"instance": "5b6764cda3f8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5b6764cda3f8.json",
+					"receipt_sha256": "170ff5c6c048447289a05eeed2e8c7917b01b56b44c69501b333deeeed06e6b7",
+					"scope": "Delta audit of the merged zh-CN namespace: five register rewrites on main's #1208 consent copy, 16 keys, zero 您",
+					"note": "Receipt 5b6764cda3f8. Prior audits 6b6868c6f100 and 70602c67add2-zh-cn remain under superseded."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "065cbea39ca4df33aa114fc027e5f75bcc6e74e9cb21d4f14e42628d3795cbcb",
