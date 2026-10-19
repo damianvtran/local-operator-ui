@@ -726,6 +726,18 @@ test("preferGutter falls back above the first line when no gutter fits", () => {
 	});
 });
 
+test("a selection taller than the pane clamps inside it, the documented trade", () => {
+	const placed = place([box(120, 200, 500, 690)], {
+		row: box(120, 100, 970, 690),
+		preferGutter: true,
+	});
+	assert.deepEqual(placed, {
+		top: PANE.bottom - CONTROL.height,
+		left: 200,
+		placement: "below",
+	});
+});
+
 test("preferGutter falls back below the last line at the pane top", () => {
 	const placed = place([box(100, 200, 500, 120)], {
 		row: box(100, 100, 970, 140),
