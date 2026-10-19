@@ -405,6 +405,63 @@ export const deepPathRows = (): DesktopCodeRequestRow[] => [
 	}),
 ];
 
+/**
+ * A repository name of EXACTLY `length` characters, built by padding a real
+ * name with the word `suite`: the fixture has to be a NAME (one path
+ * segment), because the identity line's budget is spent on the name.
+ */
+const longName = (length: number): string =>
+	"operator-console-web".padEnd(length, "-suite");
+
+/**
+ * THE LONG NAMES (the shape that broke the identity line, agent review round
+ * 1, R1-1).
+ *
+ * The operator's own row is short, and every other fixture name was short
+ * too - which is why NO shipped frame could show the defect: at the 320px
+ * floor a 28-character name put the `!N` under the state pill, and a
+ * 40-character one pushed it out of the pane altogether.
+ *
+ * These rows are the long end of the same axis, on a GitLab-style path so
+ * both lines of the new anatomy are exercised at once: the long name on the
+ * identity line, the full path under it. They carry the worst-case relation
+ * tag (`via subagent coder › reviewer`), because the tag is what shares the
+ * line with the name and the number.
+ */
+export const longNameRows = (): DesktopCodeRequestRow[] =>
+	[
+		{ length: 20, key: "gh:2201", number: 2201, state: "open" },
+		{ length: 30, key: "gh:2202", number: 2202, state: "open" },
+		{ length: 40, key: "gh:2203", number: 2203, state: "merged" },
+	].map(({ length, key, number, state }) => {
+		const name = longName(length);
+		return row({
+			key,
+			number,
+			relation: "opened",
+			project: `minervaai/${name}`,
+			url: `https://github.com/minervaai/${name}/pull/${number}`,
+			via: { agent_role: "coder", path: ["coder", "reviewer"] },
+			summary: {
+				state,
+				draft: false,
+				title: `feat(${name.slice(0, 24)}): a repository whose name is long`,
+				head_sha: "5b2f77e0c4",
+				ci: {
+					status: "success",
+					passed: null,
+					failed: null,
+					pending: null,
+					total: null,
+					url: null,
+				},
+				updated_at: at(6),
+				comments: 1,
+			},
+			lanes: [],
+		});
+	});
+
 /** The store's own list envelope, minus the rows the caller overrides. */
 export const list = (
 	rows: DesktopCodeRequestRow[],

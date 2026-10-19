@@ -9,6 +9,7 @@ import {
 	emptyList,
 	linkOnlyList,
 	list,
+	longNameRows,
 	pendingList,
 	populatedRows,
 	rateLimitedList,
@@ -101,14 +102,21 @@ export const Scanning: Story = {
  * off exactly where the identity began. The name is on the identity line now
  * and the path sits under it, so this frame has to show both: the name fully
  * readable, the path complete on its own line.
+ *
+ * THE LONG NAMES CLOSE IT (agent review round 1, R1-1): the three rows whose
+ * repository NAME is 20, 30 and 40 characters are the other end of the same
+ * axis, and they are the case that broke the identity line - a 28-character
+ * name put the `!N` under the state pill and a 40-character one pushed it
+ * out of the pane. This frame has to show the number surviving all three.
  */
 export const Narrow: Story = {
 	render: () => (
-		<Frame height={560} width={320}>
+		<Frame height={1110} width={320}>
 			<CodeReviewPaneBody
 				phase="ready"
 				data={list([
 					...deepPathRows(),
+					...longNameRows(),
 					...viaRows(),
 					...populatedRows().slice(0, 2),
 				])}
@@ -128,7 +136,7 @@ export const Narrow: Story = {
  */
 export const RefreshFailed: Story = {
 	render: () => (
-		<Frame height={420}>
+		<Frame height={1230}>
 			<CodeReviewPaneBody
 				phase="ready"
 				data={list(populatedRows())}
@@ -152,13 +160,16 @@ export const RefreshFailed: Story = {
  * `minervaai/services/core` - is the first row here, so the frame says what
  * the default slot width does with a path too long for the identity line:
  * the NAME on the identity line, the full path under it.
+ *
+ * THE LONG NAMES CLOSE IT: the same three 20/30/40-character names are here
+ * too, because the default width is where they must NOT truncate at all.
  */
 export const Populated: Story = {
 	render: () => (
-		<Frame height={1040}>
+		<Frame height={1660}>
 			<CodeReviewPaneBody
 				phase="ready"
-				data={list([...deepPathRows(), ...populatedRows()])}
+				data={list([...deepPathRows(), ...longNameRows(), ...populatedRows()])}
 				refreshing={false}
 				onRefresh={() => undefined}
 				onClose={() => undefined}
@@ -219,7 +230,7 @@ export const ErrorState: Story = {
 /** Link-only: two lines and a caption, no pill and no strip. */
 export const LinkOnly: Story = {
 	render: () => (
-		<Frame height={340}>
+		<Frame height={360}>
 			<CodeReviewPaneBody
 				phase="ready"
 				data={linkOnlyList()}
@@ -270,7 +281,7 @@ export const Stale: Story = {
  */
 export const CouldNotRefresh: Story = {
 	render: () => (
-		<Frame height={520}>
+		<Frame height={560}>
 			<CodeReviewPaneBody
 				phase="ready"
 				data={couldNotRefreshList()}
@@ -290,7 +301,7 @@ export const CouldNotRefresh: Story = {
  */
 export const Pending: Story = {
 	render: () => (
-		<Frame height={340}>
+		<Frame height={360}>
 			<CodeReviewPaneBody
 				phase="ready"
 				data={pendingList()}
@@ -307,7 +318,7 @@ export const Pending: Story = {
 /** Refreshing: the bar's control disabled while the POST is in flight. */
 export const Refreshing: Story = {
 	render: () => (
-		<Frame height={340}>
+		<Frame height={390}>
 			<CodeReviewPaneBody
 				phase="ready"
 				data={list(populatedRows().slice(0, 2))}
@@ -327,7 +338,7 @@ export const Refreshing: Story = {
  */
 export const NarrowRefreshFailed: Story = {
 	render: () => (
-		<Frame height={420} width={320}>
+		<Frame height={450} width={320}>
 			<CodeReviewPaneBody
 				phase="ready"
 				data={list(populatedRows().slice(0, 2))}
@@ -372,7 +383,7 @@ export const NarrowPending: Story = {
  */
 export const NarrowCouldNotRefresh: Story = {
 	render: () => (
-		<Frame height={560} width={320}>
+		<Frame height={600} width={320}>
 			<CodeReviewPaneBody
 				phase="ready"
 				data={couldNotRefreshList()}
@@ -405,7 +416,7 @@ const ForceRowHover: FC<{ rowKey: string }> = ({ rowKey }) => {
 
 export const RowHover: Story = {
 	render: () => (
-		<Frame height={260}>
+		<Frame height={390}>
 			<CodeReviewPaneBody
 				phase="ready"
 				data={list(populatedRows().slice(0, 2))}
@@ -436,7 +447,7 @@ const FocusRow: FC<{ rowKey: string }> = ({ rowKey }) => {
 
 export const RowFocus: Story = {
 	render: () => (
-		<Frame height={260}>
+		<Frame height={390}>
 			<CodeReviewPaneBody
 				phase="ready"
 				data={list(populatedRows().slice(0, 2))}
