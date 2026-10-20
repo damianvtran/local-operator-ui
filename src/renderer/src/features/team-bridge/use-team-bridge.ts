@@ -6,7 +6,11 @@
  * - the conversation LIST re-reads on window focus and after every write, but
  *   does not poll: a person looking at the page can pull to refresh through the
  *   focus event, and a constant list poll would be a second, redundant traffic
- *   source beside the badge.
+ *   source beside the badge. The ONE exception is the notification watcher,
+ *   which mounts its own observer on the same cache entry with a 30 s cadence
+ *   (`use-team-bridge-notifications.ts`): a banner needs the membership and
+ *   notify fields the list carries, and it has to run while the page is not
+ *   mounted. The page's own observer still asks for no interval.
  * - the BADGE (`unread`) polls, because nothing pushes it: the hub has an
  *   events feed for the pair lane, and this surface deliberately reads one
  *   cheap aggregate instead of subscribing per conversation.
@@ -128,10 +132,13 @@ export function useTeamBridgeMessages(
 }
 
 /** The signed-in hub account id (own-message alignment, DM titles). */
-export function useTeamBridgeIdentity(): UseQueryResult<string | null> {
+export function useTeamBridgeIdentity(
+	enabled = true,
+): UseQueryResult<string | null> {
 	return useQuery({
 		queryKey: [...teamBridgeKeys.all, "identity"] as const,
 		queryFn: () => TeamBridgeApi.identity(),
+		enabled,
 		staleTime: 5 * 60_000,
 		retry: 1,
 	});
@@ -152,13 +159,28 @@ export function useTeamBridgeIdentity(): UseQueryResult<string | null> {
 export function useTeamBridgeUnread(
 	enabled: boolean,
 	scope: TeamBridgeScope = TEAM_BRIDGE_ALL_SCOPE,
+	options: {
+		/**
+		 * Override the badge's own cadence. The notification watcher asks for 30 s
+		 * so a banner arrives on the order of a message rather than a badge
+		 * refresh; the sidebar and page pass nothing and keep the quiet cadence.
+		 */
+		refetchInterval?: number;
+		/**
+		 * Keep the interval running while the window is hidden. The notification
+		 * watcher sets this: a minimised or occluded window is exactly when a
+		 * banner is useful, and main owns the quiet decision.
+		 */
+		refetchIntervalInBackground?: boolean;
+	} = {},
 ): UseQueryResult<TeamBridgeUnread> {
 	return useQuery({
 		queryKey: teamBridgeKeys.unread(scope),
 		queryFn: () => TeamBridgeApi.unread(readScope(scope)),
 		enabled,
 		staleTime: 30_000,
-		refetchInterval: badgeInterval(),
+		refetchInterval: options.refetchInterval ?? badgeInterval(),
+		refetchIntervalInBackground: options.refetchIntervalInBackground,
 		refetchOnWindowFocus: true,
 		// A failed badge read is not an error the user can act on; the next poll
 		// is the retry. The page shows its own error state for the list.

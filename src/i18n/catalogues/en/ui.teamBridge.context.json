@@ -456,5 +456,31 @@
 		"length": "One short sentence.",
 		"placeholders": {},
 		"note": "A refused notification-preference write. The menu has closed and the previous value is restored; this line explains why. Mirrors the composer's send-failure sentence."
+	},
+	"ui.teamBridge.notify.title": {
+		"role": "OS notification title",
+		"tone": "plain, factual",
+		"length": "One short line; the OS may truncate.",
+		"placeholders": {
+			"conversation": "the conversation name as the list row shows it",
+			"organization": "the organization the conversation belongs to"
+		},
+		"note": "Names where the message is. Keep the two nouns in the given order and keep both, because two same-named conversations in different organizations are the case this line disambiguates."
+	},
+	"ui.teamBridge.notify.body": {
+		"role": "OS notification body",
+		"tone": "neutral, one sentence",
+		"length": "One short sentence.",
+		"placeholders": {
+			"sender": "the display label the server already shows for the sender"
+		},
+		"note": "States who sent a message. No message text is available to this surface by design, so do not imply the body is quoted."
+	},
+	"ui.teamBridge.notify.body_fallback": {
+		"role": "OS notification body when no sender label is published",
+		"tone": "neutral",
+		"length": "2-4 words.",
+		"placeholders": {},
+		"note": "The honest sentence when the server does not expose a sender label. Do not invent a sender name."
 	}
 }

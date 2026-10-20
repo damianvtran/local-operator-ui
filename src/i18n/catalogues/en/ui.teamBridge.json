@@ -62,5 +62,8 @@
 	"ui.teamBridge.notify.mention": "Mentions",
 	"ui.teamBridge.notify.mute": "Mute",
 	"ui.teamBridge.notify.muted": "Muted",
-	"ui.teamBridge.notify.error": "Your notification preference was not saved. Try again."
+	"ui.teamBridge.notify.error": "Your notification preference was not saved. Try again.",
+	"ui.teamBridge.notify.title": "{conversation} ({organization})",
+	"ui.teamBridge.notify.body": "{sender} sent a message",
+	"ui.teamBridge.notify.body_fallback": "New message"
 }

@@ -4829,11 +4829,14 @@ export type MessageParams = {
 	"ui.teamBridge.nav.label": undefined;
 	"ui.teamBridge.nav.unread": { count: number };
 	"ui.teamBridge.notify.all": undefined;
+	"ui.teamBridge.notify.body": { sender: string };
+	"ui.teamBridge.notify.body_fallback": undefined;
 	"ui.teamBridge.notify.error": undefined;
 	"ui.teamBridge.notify.label": undefined;
 	"ui.teamBridge.notify.mention": undefined;
 	"ui.teamBridge.notify.mute": undefined;
 	"ui.teamBridge.notify.muted": undefined;
+	"ui.teamBridge.notify.title": { conversation: string; organization: string };
 	"ui.teamBridge.page.new_conversation": undefined;
 	"ui.teamBridge.page.subtitle": undefined;
 	"ui.teamBridge.page.title": undefined;
