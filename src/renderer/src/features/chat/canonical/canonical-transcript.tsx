@@ -6516,7 +6516,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						 * toolbar in the transcript reads that same event, but each used to
 						 * act on its own reading, and the row's own cluster acted on none of
 						 * them: a drag therefore painted the selection strip AND the answer's
-						 * Copy/Speak/Fork row at once (measured: 77 of 78 drag frames). The
+						 * Copy/Speak/Fork row at once (measured: 84 of 87 drag frames on the base tree). The
 						 * marker publishes the one answer to the stylesheet, which hides every
 						 * row cluster while it is set - synchronous with this commit, because
 						 * the attribute and the hidden cluster are in the same paint.

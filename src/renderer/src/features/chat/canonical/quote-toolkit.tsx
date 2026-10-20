@@ -167,7 +167,7 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 				 * out was this defect: a response row's overlay and a user row's overlay
 				 * stood down while the answer's Copy/Speak/Fork row kept painting at the
 				 * far right, so a drag showed the selection strip AND a row toolbar at
-				 * once (measured: 77 of 78 drag frames). The row's OWN toolbar is a
+				 * once (measured: 84 of 87 drag frames on the base tree). The row's OWN toolbar is a
 				 * fallback for "no selection"; a selection strip is the toolbar for
 				 * "selection", and only one of the two may be on screen.
 				 */
