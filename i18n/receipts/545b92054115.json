@@ -1,0 +1,183 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"actual_model_source": "harness session model (system prompt: deepseek/deepseek-flash); no fallback used",
+	"instance": "545b92054115",
+	"instance_source": "Local Operator session id 545b92054115; this audit ran as the delegated i18n-auditor instance and did not author or edit the catalogue",
+	"independent_from_translator_session": true,
+	"independence_basis": "The task states a different agent translated the 22-key delta. This auditor is a distinct i18n-auditor instance and did not author or edit any catalogue value; the catalogue was only read.",
+	"date": "2026-10-19",
+	"locale": "vi",
+	"namespace": "ui.mesh",
+	"round": 1,
+	"audit_kind": "namespace-delta",
+	"key_count": 245,
+	"new_key_count": 22,
+	"worktree": "~/local-operator-ui/.worktrees/mesh-link-states (branch fix/mesh-link-states, HEAD 4406017d5ffd931fa3f6e4c99cd8de3c5d014dfd + uncommitted working-tree translation as audited)",
+	"scope": "ui.mesh vi: the 22 new keys (mesh_drop.reach_refusal, mesh_drop.owner_reach_refusal, the five mesh_graph.*_count keys, the 14 mesh_reach.* keys and mesh_reach.handshake_refused_hint) audited in depth; all 245 values read for whole-file consistency. The catalogue was not edited.",
+	"style_guide": {
+		"path": "~/local-operator/i18n/style-guides/vi.md",
+		"sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+		"glossary_path": "~/local-operator/i18n/glossary.md",
+		"glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+		"note": "The UI checkout has no local i18n/glossary.md or i18n/style-guides/; docs/I18N.md points to the core repository's binding glossary and per-locale guide, which were used. The UI ledger/receipt contract is followed."
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.mesh.json",
+			"sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.mesh.context.json",
+			"sha256": "4ceb0a871d50757e49e8079b0446a91fe7fc4ad571f54479a056632cd1f1d533"
+		},
+		"vi": {
+			"path": "src/i18n/catalogues/vi/ui.mesh.json",
+			"sha256": "4d23360dd0fb6c169aa94b550823239b39750128b134ad5ea8120a8d1eec7b07"
+		}
+	},
+	"artifacts": [
+		{
+			"path": "i18n/receipts/545b92054115.json",
+			"role": "immutable audit receipt; the ledger row records its sha256"
+		}
+	],
+	"namespaces": {
+		"ui.mesh": {
+			"status": "changes_requested",
+			"keys_audited": 245,
+			"new_keys_audited": 22,
+			"sha256": {
+				"en": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+				"vi": "4d23360dd0fb6c169aa94b550823239b39750128b134ad5ea8120a8d1eec7b07"
+			},
+			"context_sha256": "4ceb0a871d50757e49e8079b0446a91fe7fc4ad571f54479a056632cd1f1d533",
+			"findings": [
+				{
+					"id": "VI-MESH-1",
+					"severity": "MAJOR",
+					"key": "ui.mesh.mesh_reach.relay_not_running; ui.mesh.mesh_graph.relay_down_count; ui.mesh.mesh_reach.peer_relay_not_running",
+					"current": "relay không chạy / {count, plural, other {{count, number, ::group-off} relay không chạy}} / Relay của thiết bị ngang hàng không chạy",
+					"problem": "Glossary §2 binds relay → chuyển tiếp in vi. The style guide's kept-English technical list does not include relay, and every other locale translates the term (relais/relé/ретранслятор/रिले/中继). Leaving it Latin is a glossary violation and reads as a code identifier inside Vietnamese status copy.",
+					"suggested": "dịch vụ chuyển tiếp không chạy / {count, plural, other {{count, number, ::group-off} chuyển tiếp không chạy}} / Dịch vụ chuyển tiếp của thiết bị ngang hàng không chạy",
+					"reason": "Apply the binding term to the reach word, the census chip and the panel headline. If the census is meant to count devices (the context says count = devices), the clearer chip is {count} thiết bị có chuyển tiếp không chạy; the minimal term fix is shown."
+				},
+				{
+					"id": "VI-MESH-2",
+					"severity": "MAJOR",
+					"key": "ui.mesh.mesh_reach.handshake_refused_hint",
+					"current": "Hãy kiểm tra xem thiết bị này còn là thành viên của mạng không và phiên bản có khớp không; thiết bị đã bị xóa hoặc phiên bản đã thay đổi sẽ khiến bước bắt tay bị từ chối.",
+					"problem": "'phiên bản' is the established vi term for software version across ui.common.updates, ui.settings.updates and other vi catalogues. The source's epoch is the membership epoch (context: an integer, not a date), so 'phiên bản có khớp không' / 'phiên bản đã thay đổi' points the reader at an app or server version check instead of the network's membership epoch. 'thiết bị đã bị xóa' can also read as a deleted device rather than one removed from the network.",
+					"suggested": "Hãy kiểm tra xem thiết bị này còn là thành viên của mạng không và phiên bản thành viên có khớp không; thiết bị đã bị gỡ khỏi mạng hoặc phiên bản thành viên đã thay đổi sẽ khiến bắt tay bị từ chối.",
+					"reason": "Uses the catalogue's existing disambiguated rendering 'phiên bản thành viên' (ui.mesh.mesh_actions.removed_the_membership_epoch_is_now) and the precise removal wording. Keeping 'epoch' Latin is an acceptable alternative if the team prefers the protocol term; bare 'phiên bản' is not."
+				}
+			],
+			"dimensions": {
+				"mechanical": "PASS. Valid JSON, 245 unique keys, 245/245 key parity with en, no added or dropped keys, no duplicate members. @formatjs parsed every value; the 22 new keys' argument names/types and plural selectors are identical to the English source ({device}/{reach}/{reason} strings, {count} number). All five vi plural messages use `other` only — the complete CLDR category set for vi — with the `::group-off` number skeleton byte-identical. No markup, backticks, commands, flags, paths or identifiers. Zero bidi/Cf controls; all values NFC; no leading/trailing/double spaces or NBSP/NNBSP.",
+				"accuracy": "FAIL — two MAJOR findings. The other 20 new keys preserve the English meaning with no omission, addition, negation or polarity change; the refusal sentences keep the reach word, the backend {reason} and the same consequence. VI-MESH-2 misnames the membership epoch as a software version and can send the reader to the wrong check. VI-MESH-1 is a terminology violation rather than meaning loss.",
+				"idiom_and_register": "PASS. Reads as native Vietnamese product copy rather than a calque. No 'bạn' and no gendered pronoun appear in the delta; 'Hãy kiểm tra' is an impersonal imperative, matching the guide's drop-pronoun rule. Sentence case, terse labels, no '!', no 'Vui lòng'/'Quý khách'. The refusal shape '{device}: {reach}{reason}, nên ...' deliberately mirrors the existing unchanged mesh_drop.no_answer / owner_no_answer sentences. The hint stays one sentence as the context requires.",
+				"terminology": "FAIL — VI-MESH-1 (relay left English) and VI-MESH-2 (epoch rendered as generic software 'phiên bản'). device=thiết bị, network=mạng, member=thành viên, peer=thiết bị ngang hàng, handshake=bắt tay, address=địa chỉ and conversation=cuộc trò chuyện are consistent with the existing 223 values.",
+				"fit": "PASS by source inspection. ui.mesh.context.json defines no maxCells or maxChars for these keys. The longest new per-address label is 'không có dịch vụ nào lắng nghe' (30 chars) in a 320px card (w-80, p-4, about 288px content) whose endpoint cell is min-w-0 truncate and whose label is shrink-0; the label fits and the endpoint truncates. The two headlines and the hint are full-width paragraphs that wrap; the census chips are in a wrapping paragraph. No button/tab/status-line candidate overflows. The hint is 170 chars vs 142 en (+20%).",
+				"rtl": "N/A for vi (LTR). Scanned every new value for U+200E/U+200F/U+202A-U+202E/U+2066-U+2069/U+061C and other Unicode Cf controls: zero.",
+				"nfc": "PASS. Every new value is NFC-normalised (unicodedata.normalize check); no combining-mark surprises, no NBSP, U+202F, zero-width or BOM characters."
+			},
+			"new_keys": [
+				"ui.mesh.mesh_drop.reach_refusal",
+				"ui.mesh.mesh_drop.owner_reach_refusal",
+				"ui.mesh.mesh_graph.handshake_refused_count",
+				"ui.mesh.mesh_graph.relay_down_count",
+				"ui.mesh.mesh_graph.address_unreachable_count",
+				"ui.mesh.mesh_graph.no_endpoint_count",
+				"ui.mesh.mesh_graph.not_a_member_count",
+				"ui.mesh.mesh_reach.relay_not_running",
+				"ui.mesh.mesh_reach.handshake_refused",
+				"ui.mesh.mesh_reach.address_unreachable",
+				"ui.mesh.mesh_reach.no_endpoint",
+				"ui.mesh.mesh_reach.not_a_member",
+				"ui.mesh.mesh_reach.attempt_bad_address",
+				"ui.mesh.mesh_reach.attempt_could_not_connect",
+				"ui.mesh.mesh_reach.addresses_tried",
+				"ui.mesh.mesh_reach.attempt_answered",
+				"ui.mesh.mesh_reach.attempt_nothing_listening",
+				"ui.mesh.mesh_reach.attempt_no_answer",
+				"ui.mesh.mesh_reach.attempt_not_tried",
+				"ui.mesh.mesh_reach.peer_relay_not_running",
+				"ui.mesh.mesh_reach.peer_closed_handshake",
+				"ui.mesh.mesh_reach.handshake_refused_hint"
+			],
+			"decisions_scrutinised": {
+				"refusal_sentences": "PASS. The two new refusal sentences mirror the established mesh_drop.no_answer / owner_no_answer shape and read naturally. The reach word is a lowercase classification label after the colon, and {reason} already carries its own space/parentheses from the caller; no double punctuation.",
+				"ban_register": "PASS. No 'bạn' in the delta (the guide allows it at first contact/blocking decisions but prefers dropping it). No gendered pronoun, no 'anh/chị', no 'Quý khách'. 'Hãy kiểm tra' is an instruction, not a formality spike.",
+				"count_chips": "PASS. All five new count messages use `other` only, per the vi guide's 'never add one/other branches'; the `::group-off` skeleton is byte-identical to en. Formatting 1/2/1000000 changes no agreement because Vietnamese has none.",
+				"epoch_terminology": "FAIL, see VI-MESH-2. The existing catalogue has both the ambiguous bare 'phiên bản' (mesh_list.epoch) and the disambiguated 'phiên bản thành viên' (removed_the_membership_epoch_is_now); the hint should use the latter."
+			}
+		}
+	},
+	"mechanical": {
+		"json": "valid JSON; 245 unique keys; no duplicate members",
+		"parity": "245/245 English keys present; no added or dropped keys",
+		"placeholders": "all 22 new keys checked with @formatjs/icu-messageformat-parser: argument names and types identical to en, no reordering/renaming; {device}, {reach}, {reason} strings; {count} number",
+		"icu": "all new plurals parse; every vi plural uses `other` only (correct CLDR set for vi); the `::group-off` number style is byte-identical to en",
+		"markup": "no markup, backtick code, commands, flags, paths or identifiers in the new copy",
+		"unicode": "all new values NFC; zero Cf/bidi control characters; no leading/trailing/double spaces, NBSP or NNBSP",
+		"execution": [
+			{
+				"command": "node --test scripts/i18n/locale-parity.test.mjs",
+				"exit": 0,
+				"result": "43/43 tests passed (all locales, including vi and the untracked ur), covering key parity, placeholder integrity and non-stub values."
+			},
+			{
+				"command": "node scripts/i18n/context-parity.mjs",
+				"exit": 0,
+				"result": "ok — every English key is covered, apart from 196 allowed gaps in 6 namespaces; 8 allowance keys are now covered (ui.mesh approval keys) and can be dropped with --update. Not a vi defect."
+			},
+			{
+				"command": "node scripts/i18n/check-strings.mjs",
+				"exit": 0,
+				"result": "ok — 1260 files scanned, 762 literals at or below baseline, 16 advisory findings (none in ui.mesh)."
+			},
+			{
+				"command": "node scripts/i18n/generate.mjs --check",
+				"exit": 1,
+				"result": "keys.gen.ts is stale globally; regenerating to scratch with --out and diffing shows the only drift is the untracked ur/ui.mesh.json import and bundle entry, not vi/ui.mesh. A branch-state issue that must be regenerated before merge, not a vi translation defect."
+			},
+			{
+				"command": "node scripts/i18n/ledger-check.mjs",
+				"exit": 1,
+				"result": "pre-audit state: vi/ui.mesh has stale source/target hashes, and other locales/ur also fail; this is the expected ledger-assembly gap for the delta. The ledger writer records this receipt after the audit."
+			}
+		]
+	},
+	"out_of_delta_observations": [
+		{
+			"key": "ui.mesh.mesh_list.epoch",
+			"observation": "Pre-existing (byte-identical to HEAD, not part of this delta): the hover tooltip renders the membership epoch as 'phiên bản {epoch}', the same software-version ambiguity as VI-MESH-2. If VI-MESH-2 is fixed, align this to 'phiên bản thành viên {epoch}' or 'epoch {epoch}'.",
+			"severity": "major",
+			"counted_in_findings": false
+		},
+		{
+			"key": "ui.mesh.mesh_page.mesh",
+			"observation": "Pre-existing (not part of this delta): 'Mạng lưới' translates the feature name Mesh, while the vi style guide's wave-2 recorded call says keep English 'mesh' for the feature (settings 'Mạng mesh'). The same choice appears in ui.shell.sidebar_navigation.mesh and ui.command_palette.use_palette_sources.mesh, so changing it is cross-namespace and needs a manager decision.",
+			"severity": "minor",
+			"counted_in_findings": false
+		}
+	],
+	"second_pass": {
+		"performed": false,
+		"reason": "ui.mesh is not one of the named high-visibility groups (onboarding, errors, settings). This is a single independent pass. The refusal/count copy was read twice (new-key pass plus whole-file consistency read) by the same instance, which is not a substitute for a second independent auditor. If the manager classifies mesh refusal copy as high-visibility, commission a second instance."
+	},
+	"limits": [
+		"Source-only translation audit; no rendered-frame or pseudo-localization fit proof. Fit conclusions are geometry/length reasoning from the sidecar and the 320px card, not a screenshot.",
+		"Out-of-delta pre-existing observations are recorded for the manager but are NOT counted in this delta verdict; they do not change the two counted MAJOR findings.",
+		"The generated keys.gen.ts staleness is caused by the untracked ur locale, not by vi/ui.mesh; it still must be regenerated before merge."
+	],
+	"current_report_verdict": {
+		"status": "changes_requested",
+		"unresolved_blocker_major_count": 2,
+		"finding_ids": [
+			"VI-MESH-1",
+			"VI-MESH-2"
+		]
+	},
+	"note": "22-key vi ui.mesh delta: 2 MAJOR (relay left English vs glossary; handshake hint renders membership epoch as software 'phiên bản'), 0 BLOCKER/MINOR/NIT. All 245 values read; mechanical checks pass. Receipt i18n/receipts/545b92054115.json."
+}

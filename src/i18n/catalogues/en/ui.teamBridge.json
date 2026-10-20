@@ -49,5 +49,21 @@
 	"ui.teamBridge.scope.unknown": "Unknown organization",
 	"ui.teamBridge.scope.thread_unknown": "This conversation's organization is not available.",
 	"ui.teamBridge.scope.create_needs_org": "Choose an organization to start a conversation.",
-	"ui.teamBridge.group.more_unread": "{count, plural, one {More destinations, # unread message} other {More destinations, # unread messages}}"
+	"ui.teamBridge.group.more_unread": "{count, plural, one {More destinations, # unread message} other {More destinations, # unread messages}}",
+	"ui.teamBridge.preview.chip": "Preview",
+	"ui.teamBridge.preview.banner": "You’re previewing this channel. Join to see its history and get notifications.",
+	"ui.teamBridge.preview.join": "Join",
+	"ui.teamBridge.preview.join_error": "You could not join this channel. Try again.",
+	"ui.teamBridge.menu.label": "Conversation options",
+	"ui.teamBridge.menu.mute": "Mute conversation",
+	"ui.teamBridge.menu.unmute": "Unmute conversation",
+	"ui.teamBridge.notify.label": "Notification preferences",
+	"ui.teamBridge.notify.all": "All messages",
+	"ui.teamBridge.notify.mention": "Mentions",
+	"ui.teamBridge.notify.mute": "Mute",
+	"ui.teamBridge.notify.muted": "Muted",
+	"ui.teamBridge.notify.error": "Your notification preference was not saved. Try again.",
+	"ui.teamBridge.notify.title": "{conversation} ({organization})",
+	"ui.teamBridge.notify.body": "{sender} sent a message",
+	"ui.teamBridge.notify.body_fallback": "New message"
 }

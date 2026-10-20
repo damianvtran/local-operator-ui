@@ -14,6 +14,7 @@ import type { DesktopNotifier } from "./desktop-notifier";
 import type { DesktopStreamRelay } from "./desktop-stream";
 import { trustedDesktopFrame } from "./desktop-transport";
 import type { SupplementFrameMounts } from "./supplement-mounts";
+import type { TeamBridgeNotifier } from "./team-bridge-notifier";
 
 const OPERATION_ID = /^[a-zA-Z0-9_-]{1,128}$/;
 
@@ -230,6 +231,17 @@ export function registerDesktopIPC(
 	 * tests pass none).
 	 */
 	supplementMounts?: SupplementFrameMounts,
+	/**
+	 * Team Bridge message banners. A SEPARATE owner from `notifier` because the
+	 * two have different vocabularies and different dedupe stores; both ride the
+	 * same sender gate below, which is the only place a renderer-supplied
+	 * payload can enter main.
+	 *
+	 * LAST ON PURPOSE: every existing caller passes the earlier parameters
+	 * positionally, and inserting this above one of them would silently turn a
+	 * `noteLeftSession` callback into a notifier argument in the JS harnesses.
+	 */
+	teamBridgeNotifier?: TeamBridgeNotifier,
 ): void {
 	const opened = new Map<string, string>();
 	function authorize(event: IpcMainInvokeEvent): void {
@@ -367,6 +379,26 @@ export function registerDesktopIPC(
 			 * pane's report survives this cleanup.
 			 */
 			noteLeftSession?.(args.sessionId);
+		});
+	}
+	/*
+	 * Team Bridge message banners: the one renderer -> main channel that may
+	 * raise an OS notification this app did not compose from a backend frame.
+	 *
+	 * The payload is validated in `TeamBridgeNotifier` before anything is
+	 * constructed, so an oversized string, an HTML-shaped one or a malformed id
+	 * rejects here rather than reaching the OS. The pending-open read is the
+	 * rare no-window half: a banner clicked after every window closed leaves its
+	 * target for the next renderer, which asks for it exactly once.
+	 */
+	if (teamBridgeNotifier) {
+		ipcMain.handle("team-bridge:notify", (event, input: unknown) => {
+			authorize(event);
+			return teamBridgeNotifier.notify(input);
+		});
+		ipcMain.handle("team-bridge:pending-open", (event) => {
+			authorize(event);
+			return teamBridgeNotifier.takePendingOpen();
 		});
 	}
 	// Binary/multipart media relay. Bytes arrive as a structured-clone

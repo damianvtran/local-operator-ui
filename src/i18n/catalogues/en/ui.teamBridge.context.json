@@ -365,5 +365,122 @@
 			"count": "the unread total carried by the group"
 		},
 		"note": "States the count when the More row carries a badge, so a screen-reader user hears the same fact the badge shows. Do not name a single destination."
+	},
+	"ui.teamBridge.preview.chip": {
+		"role": "conversation row chip",
+		"tone": "neutral, quiet",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Marks a discoverable channel the reader has not joined. It is a state, not an action; keep it short and do not translate it as a verb."
+	},
+	"ui.teamBridge.preview.banner": {
+		"role": "preview thread call to action",
+		"tone": "plain, inviting",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "The reader can see the channel's metadata but not its history because they are not a member. States both consequences of joining: history and notifications."
+	},
+	"ui.teamBridge.preview.join": {
+		"role": "primary action in the preview banner",
+		"tone": "imperative",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Joins the channel. Same word the invitation flow uses; do not add \"channel\" because the banner already names it."
+	},
+	"ui.teamBridge.preview.join_error": {
+		"role": "inline error beside the Join action",
+		"tone": "factual, no blame",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "A refused join (server or transport). The action stays available, so the sentence must not imply the channel is unreachable."
+	},
+	"ui.teamBridge.menu.label": {
+		"role": "icon button accessible name",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "Opens the conversation's own menu (mute, notification level). It must work as a button name on its own and not name a specific action."
+	},
+	"ui.teamBridge.menu.mute": {
+		"role": "conversation menu action",
+		"tone": "imperative",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "Silences the conversation immediately. Keep the object explicit (conversation) because the same menu also has a Mute radio row."
+	},
+	"ui.teamBridge.menu.unmute": {
+		"role": "conversation menu action",
+		"tone": "imperative",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "The inverse of Mute conversation, shown while the conversation is muted. Restores all messages."
+	},
+	"ui.teamBridge.notify.label": {
+		"role": "menu section heading / radio group label",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "Names the three-level notification choice below it. \"Preferences\" is the product's word for a remembered setting."
+	},
+	"ui.teamBridge.notify.all": {
+		"role": "notification level",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "Every message may notify. Parallel with Mentions and Mute; do not say \"everything\"."
+	},
+	"ui.teamBridge.notify.mention": {
+		"role": "notification level",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Only a mention notifies. Plural describes the class of messages, not a count."
+	},
+	"ui.teamBridge.notify.mute": {
+		"role": "notification level",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "The silent level. Same word as the immediate action's verb, but here it names the state the radio selects."
+	},
+	"ui.teamBridge.notify.muted": {
+		"role": "row glyph accessible name",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "States why a muted conversation's unread count does not raise the sidebar badge. Past participle; not an action."
+	},
+	"ui.teamBridge.notify.error": {
+		"role": "inline error under the thread header",
+		"tone": "factual, no blame",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "A refused notification-preference write. The menu has closed and the previous value is restored; this line explains why. Mirrors the composer's send-failure sentence."
+	},
+	"ui.teamBridge.notify.title": {
+		"role": "OS notification title",
+		"tone": "plain, factual",
+		"length": "One short line; the OS may truncate.",
+		"placeholders": {
+			"conversation": "the conversation name as the list row shows it",
+			"organization": "the organization the conversation belongs to"
+		},
+		"note": "Names where the message is. Keep the two nouns in the given order and keep both, because two same-named conversations in different organizations are the case this line disambiguates."
+	},
+	"ui.teamBridge.notify.body": {
+		"role": "OS notification body",
+		"tone": "neutral, one sentence",
+		"length": "One short sentence.",
+		"placeholders": {
+			"sender": "the display label the server already shows for the sender"
+		},
+		"note": "States who sent a message. No message text is available to this surface by design, so do not imply the body is quoted."
+	},
+	"ui.teamBridge.notify.body_fallback": {
+		"role": "OS notification body when no sender label is published",
+		"tone": "neutral",
+		"length": "2-4 words.",
+		"placeholders": {},
+		"note": "The honest sentence when the server does not expose a sender label. Do not invent a sender name."
 	}
 }

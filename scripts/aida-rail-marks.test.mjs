@@ -639,8 +639,13 @@ test("expanded: the count keeps its in-flow trailing slot (the #1083 fix is the 
 		const { button, slot } = badgePlacement(markup);
 		assert.equal(slot?.parentElement, button, "a direct child of the row");
 		assert.ok(
-			classesOf(slot).includes("ml-auto"),
-			"pushed to the trailing edge",
+			classesOf(slot).includes("ms-auto"),
+			"pushed to the inline end (`ms-auto`: trailing edge in LTR and RTL alike)",
+		);
+		assert.ok(
+			!classesOf(slot).includes("ml-auto") &&
+				!classesOf(slot).includes("mr-auto"),
+			"and not to a physical side, which would strand the count on the wrong edge in RTL",
 		);
 		assert.ok(!classesOf(slot).includes("absolute"), "and in flow");
 	} finally {

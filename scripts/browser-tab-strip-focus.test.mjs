@@ -35,7 +35,7 @@ const WATCH_ROW = /Watch "Tab 2"/;
 // React DOM feature-detects input events at import time, so the document has to
 // exist before it is loaded. A real origin, not jsdom's opaque default.
 const dom = new JSDOM(
-	'<!doctype html><html><body><input id="outside"><div id="root"></div></body></html>',
+	'<!doctype html><html><body><input id="outside"><div id="turn-progress">streaming</div><button id="turn-stop">Stop</button><div id="root"></div></body></html>',
 	{ pretendToBeVisual: true, url: "http://localhost/" },
 );
 globalThis.window = dom.window;
@@ -521,7 +521,88 @@ test("the popout opens from an INACTIVE tab and offers `Watch` for it, leaving t
 	await view.unmount();
 });
 
-test("an outside press dismisses the popout and returns focus to its ⋯ trigger (UX round 1, U4)", async () => {
+test("a tab menu leaves a running turn readable and interruptible in one press (operator report: context-menu session stall)", async () => {
+	const view = await open("landed");
+	let stopPresses = 0;
+	const stop = document.getElementById("turn-stop");
+	const onStop = () => {
+		stopPresses += 1;
+	};
+	stop.addEventListener("click", onStop);
+	try {
+		await view.openMenu(2);
+		assert.ok(
+			document.querySelector('[data-tour-tag="browser-tab-actions"]'),
+			"the menu is up",
+		);
+		/*
+		 * WHAT A MODAL MENU DID TO A RUNNING TURN. Radix's modal layer sets
+		 * `pointer-events: none` on the body and `aria-hidden` on everything outside
+		 * its portal, so the transcript's progress was hidden from assistive tech and
+		 * the Stop control could not be pressed at all: the outside press was
+		 * swallowed by the layer, and not even the dismissal happened in the app (the
+		 * menu stayed open on a real pointer press). A non-modal menu is the same
+		 * dismissal contract with neither of those consequences.
+		 */
+		assert.notEqual(
+			document.body.style.pointerEvents,
+			"none",
+			"the menu does not disable pointer events outside itself",
+		);
+		assert.equal(
+			document.getElementById("turn-progress")?.closest('[aria-hidden="true"]'),
+			null,
+			"the streaming progress is not hidden from assistive tech",
+		);
+		assert.equal(
+			stop.closest('[aria-hidden="true"]'),
+			null,
+			"the Stop control is not hidden from assistive tech",
+		);
+
+		/*
+		 * ONE PRESS, BOTH HALVES: the press the person makes on Stop must dismiss
+		 * the menu AND reach the control. A modal layer dropped the first half on the
+		 * overlay and never delivered the second.
+		 *
+		 * jsdom has no layout or hit-testing, so this direct dispatch proves the
+		 * menu/handler invariant, not Chromium's pointer delivery. The discriminating
+		 * hit-test reading is the built-app probe: a real CDP pointer press on an
+		 * outside Stop stand-in reports `{presses:1, menuOpen:false}`. The mechanism
+		 * assertions above (no body `pointer-events: none`, no `aria-hidden` ancestor)
+		 * are what the jsdom negative control fails on against `modal={true}`.
+		 */
+		await act(() => {
+			stop.dispatchEvent(
+				new dom.window.MouseEvent("pointerdown", {
+					bubbles: true,
+					cancelable: true,
+					button: 0,
+				}),
+			);
+			stop.dispatchEvent(
+				new dom.window.MouseEvent("click", {
+					bubbles: true,
+					cancelable: true,
+					button: 0,
+				}),
+			);
+		});
+		await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+		assert.equal(stopPresses, 1, "the press reached the Stop control");
+		assert.equal(
+			document.querySelector('[data-tour-tag="browser-tab-actions"]'),
+			null,
+			"the same press dismissed the menu",
+		);
+	} finally {
+		stop.removeEventListener("click", onStop);
+		await view.unmount();
+	}
+});
+
+test("an outside press dismisses the popout without pulling the caret back to its trigger", async () => {
 	const view = await open("landed");
 	await view.openMenu(2);
 	assert.ok(
@@ -530,11 +611,13 @@ test("an outside press dismisses the popout and returns focus to its ⋯ trigger
 	);
 
 	/*
-	 * THE OUTSIDE PRESS. Radix dismisses on a `pointerdown` outside its layer; in the
-	 * browser the modal layer sets `pointer-events: none` on the body so the click a
-	 * person makes lands on the layer and dismisses without reaching the control
-	 * underneath, and a jsdom dispatch to the element directly exercises the same
-	 * dismissal path (`onPointerDownOutside` -> `onDismiss` -> `onOpenChange(false)`).
+	 * THE OUTSIDE PRESS. Radix dismisses on a `pointerdown` outside its layer, and
+	 * this menu is non-modal on purpose (`browser-tab-strip.tsx` states why): a
+	 * running turn must stay stoppable while it is open. That changes the caret
+	 * half of the old modal contract: the press owns the caret now, and the menu
+	 * must NOT pull it back to the trigger the user did not press. Escape is the
+	 * keyboard dismissal and still returns focus to the trigger - pinned in the
+	 * next test, because that is the path a keyboard user actually takes.
 	 */
 	await act(() => {
 		document.getElementById("outside")?.dispatchEvent(
@@ -542,6 +625,36 @@ test("an outside press dismisses the popout and returns focus to its ⋯ trigger
 				bubbles: true,
 				cancelable: true,
 				button: 0,
+			}),
+		);
+	});
+	// The close-return focus lands one macrotask later (FocusScope's `setTimeout(0)`).
+	await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+	assert.equal(
+		document.querySelector('[data-tour-tag="browser-tab-actions"]'),
+		null,
+		"the menu is gone",
+	);
+	assert.notEqual(
+		document.activeElement,
+		document.querySelector(
+			'[data-tab-id="2"] [data-tour-tag="browser-tab-menu"]',
+		),
+		`the caret is not stolen back from the outside press: ${view.caret()}`,
+	);
+	await view.unmount();
+});
+
+test("Escape dismisses the popout and returns the caret to its ⋯ trigger", async () => {
+	const view = await open("landed");
+	await view.openMenu(2);
+	await act(() => {
+		document.dispatchEvent(
+			new dom.window.KeyboardEvent("keydown", {
+				key: "Escape",
+				bubbles: true,
+				cancelable: true,
 			}),
 		);
 	});

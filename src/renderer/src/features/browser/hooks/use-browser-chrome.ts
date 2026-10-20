@@ -2,6 +2,10 @@ import { t } from "@shared/i18n";
 import { unwrapIpcErrorMessage } from "@shared/utils/ipc-error-message";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type {
+	AddressHistoryRequest,
+	AddressHistoryResponse,
+} from "../../../../../shared/browser-address-history";
 import type { BrowserAvailability } from "../../../../../shared/browser-availability";
 import type { HumanTabActionOutcome } from "../../../../../shared/browser-tab-action";
 import {
@@ -377,7 +381,19 @@ export interface BrowserChrome {
 	 */
 	closeTabs: (intent: CloseTabsIntent) => Promise<boolean>;
 	activateTab: (tabId: number) => Promise<void>;
-	navigate: (url: string) => Promise<void>;
+	/** `expectedTabId` is the tab the address draft belongs to. Main refuses the
+	 * navigation when that is no longer the active tab, so a commit that raced a
+	 * tab switch cannot load the new tab with the old draft. */
+	navigate: (url: string, expectedTabId?: number) => Promise<void>;
+	/** Local address suggestions, derived from this host's live tab history. A
+	 * failure here is not a navigation failure: the field degrades to plain URL
+	 * editing and `use-address-autocomplete` reports its own state. */
+	addressHistory: (
+		request: AddressHistoryRequest,
+	) => Promise<AddressHistoryResponse>;
+	/** Main's projection invalidations, unrefcounted here: the address field is one
+	 * reader and it subscribes only while focused. Returns the unsubscribe. */
+	onStateChanged: (callback: () => void) => () => void;
 	/** Home: return the active tab to the browser's start state. No URL
 	 * travels with it — main owns what the start state is (LOH-13). */
 	home: () => Promise<void>;
@@ -738,11 +754,13 @@ export function useBrowserChrome(): BrowserChrome {
 			closeTab: (tabId) => run(() => api?.closeTab(tabId)),
 			closeTabs: (intent) => run(() => api?.closeTabs(intent)),
 			activateTab: (tabId) => runVoid(() => api?.activateTab(tabId)),
-			navigate: (url) => {
+			navigate: (url, expectedTabId) => {
 				// Recorded before the intent is sent, KEYED TO THE ACTIVE TAB (F3): the reply
 				// may take a while (the tab has to load), the point of the note is to cover
 				// exactly that window, and the tab it is about is the one that is active now.
-				const tabId = state?.activeTabId ?? null;
+				// A caller that names the tab its draft belongs to keeps the note about THAT
+				// tab, which is the same tab main will check before it loads anything.
+				const tabId = expectedTabId ?? state?.activeTabId ?? null;
 				setPending({ tabId, url });
 				setRefused(null);
 				// A REFUSED ATTEMPT ENDS THE NOTE AND REMEMBERS THE ADDRESS (F1, round 2).
@@ -760,7 +778,7 @@ export function useBrowserChrome(): BrowserChrome {
 				// released on a refusal (here) and on a read showing the start state idle
 				// (`refresh`), which is what F1 was missing.
 				return run(async () => {
-					await api?.navigate(url);
+					await api?.navigate(url, expectedTabId);
 				}).then((accepted) => {
 					if (!accepted) {
 						setPending(null);
@@ -789,6 +807,15 @@ export function useBrowserChrome(): BrowserChrome {
 			reload: (hard) => runVoid(() => api?.reload(hard)),
 			pageControl: (tabId, action, query = "", forward = true, next = false) =>
 				runVoid(() => api?.pageControl(tabId, action, query, forward, next)),
+			addressHistory: async (request) => {
+				// NOT `run`: a suggestion read's failure is not an ACTION failure.
+				// Putting it in `actionError` would surface an error band for a field
+				// that still types and navigates perfectly well. The hook owns the
+				// degraded state, which is exactly the proposal's safe fallback.
+				if (!api) throw new Error("The browser is not available.");
+				return api.addressHistory(request);
+			},
+			onStateChanged: (callback) => api?.onStateChanged(callback) ?? (() => {}),
 			reopenTab: (sessionId) =>
 				runVoid(() => api?.reopenTab(sessionId ?? null)),
 			stop: () => {

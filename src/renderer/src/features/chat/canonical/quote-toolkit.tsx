@@ -66,6 +66,7 @@
  * what a press that leaves focus behind costs.
  */
 
+import { FloatingToolbar } from "@shared/components/common/floating-toolbar";
 import {
 	SpeakButton,
 	useSpeakControl,
@@ -149,9 +150,11 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 	 * The response and user gutter overlays sit in the same seat the strip now
 	 * uses (the outer gutter / the trailing edge), and they are later in the
 	 * DOM with pointer-events-auto on hover - so a Quote press could land on the
-	 * response Copy instead. The marker is on the row the transcript test and the
-	 * stylesheet both read; visibility (not display) preserves zero layout and
-	 * pointer-events:none takes the controls out of the hit test.
+	 * response Copy instead. The marker is on the row, and the stylesheet keys
+	 * the same suppression off the COLUMN's `data-lo-selection-live` as well (a
+	 * selection the quote toolkit does not own still owns the seat); visibility
+	 * (not display) preserves zero layout and pointer-events:none takes the
+	 * controls out of the hit test.
 	 */
 	useEffect(() => {
 		const turn = turnRef.current;
@@ -159,7 +162,16 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 		const row = turn.closest("[data-record-id]") ?? turn;
 		const controls = [
 			...row.querySelectorAll(
-				"[data-lo-gutter-actions], [data-lo-user-actions]",
+				/*
+				 * THE CLOSING ANSWER'S IN-FLOW CLUSTER IS THE THIRD SEAT, and leaving it
+				 * out was this defect: a response row's overlay and a user row's overlay
+				 * stood down while the answer's Copy/Speak/Fork row kept painting at the
+				 * far right, so a drag showed the selection strip AND a row toolbar at
+				 * once (measured: 84 of 87 drag frames on the base tree). The row's OWN toolbar is a
+				 * fallback for "no selection"; a selection strip is the toolbar for
+				 * "selection", and only one of the two may be on screen.
+				 */
+				"[data-lo-gutter-actions], [data-lo-user-actions], [data-lo-answer-actions]",
 			),
 		];
 		row.setAttribute("data-lo-selection-active", "");
@@ -204,7 +216,6 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 	const { controlRef, placement } = useFloatingControl({
 		turnRef,
 		visible: owns,
-		preferGutter: true,
 		// The WHOLE highlight's boxes, with no mounted control's own box among
 		// them - `quoteSelectionIn` promises both, and `quote-anchor.ts` says why
 		// the first line anchors the control and the last one decides the flip.
@@ -284,9 +295,10 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 	if (!owns) return null;
 
 	return (
-		<div
+		<FloatingToolbar
 			{...{ [QUOTE_TOOLKIT_ATTR]: "" }}
 			ref={controlRef}
+			label={t("ui.chat.transcript_copy.selection.toolbar")}
 			/*
 			 * `invisible` rather than an unmount, for the frames before the first
 			 * measurement and while the highlight's own first line is off screen:
@@ -295,20 +307,10 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 			 * the layout and still takes the control out of the tab order, so
 			 * there is no orphaned stop in that window either.
 			 */
-			className={cn(
-				// Slack's and Linear's floating selection toolbar: a small group
-				// that covers nothing, rather than a strip reserved beside every
-				// message, so nothing is reserved and the turn rhythm is unchanged
-				// whether or not the control is up. The `elevated` ground plus a
-				// hairline is what makes it read as floating over the prose - § 2
-				// keeps the one shadow for objects that genuinely leave the flow.
-				"absolute z-20 flex h-8 items-center gap-0 rounded-md border border-hairline bg-elevated px-0.5",
-				!placement && "invisible",
-			)}
+			className={cn("absolute z-20", !placement && "invisible")}
 			style={
 				placement ? { top: placement.top, left: placement.left } : undefined
 			}
-			onMouseDown={(event) => event.preventDefault()}
 		>
 			{allowQuote && (
 				<Tooltip
@@ -366,6 +368,6 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 				control={speakControl}
 				side={placement?.placement === "below" ? "bottom" : "top"}
 			/>
-		</div>
+		</FloatingToolbar>
 	);
 };

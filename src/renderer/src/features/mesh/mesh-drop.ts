@@ -54,6 +54,7 @@
 
 import { t } from "../../../../i18n/messages";
 import type { MeshDevice, MeshNetwork } from "./mesh-graph";
+import { deviceReach, reachWords } from "./mesh-reach";
 import { type MeshSessionRow, sessionIsBusy } from "./mesh-types";
 
 /** What the pointer is over. */
@@ -114,6 +115,14 @@ export type DropVerdict =
 			kind: "refused";
 			code: string;
 			sentence: string;
+			/**
+			 * The device's reach word, when this refusal was synthesised HERE with the
+			 * device in hand (`deviceRefusal` / the owner check below). The notice shows
+			 * it in place of the raw `code`, so different transport failures do not
+			 * read as one "unreachable". Absent on refusals
+			 * that came from the route, whose sentence is the route's own.
+			 */
+			reach?: string;
 			remedy: Remedy | null;
 			/**
 			 * The move that was refused, when the refusal is about ONE move rather than about
@@ -267,13 +276,23 @@ function deviceRefusal(
 		};
 	}
 	if (!device.reachable) {
+		/*
+		 * THE REACH WORD, NOT ONE "is not answering" (mesh link resilience). The device is
+		 * in hand here, so `deviceReach` can say whether its relay is not running, an
+		 * address did not answer, the handshake was refused, or no address was published.
+		 * Those are different operator actions, and collapsing them into one sentence is
+		 * the defect the Mesh tab itself is being fixed for.
+		 */
+		const reach = reachWords(deviceReach(device));
 		return {
 			kind: "refused",
 			code: "unreachable",
-			sentence: t("ui.mesh.mesh_drop.no_answer", {
+			sentence: t("ui.mesh.mesh_drop.reach_refusal", {
 				device: device.label,
+				reach,
 				reason: device.reason ? ` (${device.reason})` : "",
 			}),
+			reach,
 			remedy: { kind: "resume", label: t("ui.mesh.mesh_actions.check_again") },
 		};
 	}
@@ -397,13 +416,17 @@ export function resolveDrop(
 	if (!sourceIsLocal) {
 		const owner = devices.get(ownerDeviceId);
 		if (owner && !owner.reachable) {
+			/* The owner is in hand, so the refusal carries the owner's own reach word. */
+			const reach = reachWords(deviceReach(owner));
 			return {
 				kind: "refused",
 				code: "unreachable",
-				sentence: t("ui.mesh.mesh_drop.owner_no_answer", {
+				sentence: t("ui.mesh.mesh_drop.owner_reach_refusal", {
 					device: ownerLabel,
+					reach,
 					reason: owner.reason ? ` (${owner.reason})` : "",
 				}),
+				reach,
 				remedy: {
 					kind: "resume",
 					label: t("ui.mesh.mesh_actions.check_again"),

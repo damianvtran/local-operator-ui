@@ -1,0 +1,191 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session model (system prompt: deepseek/deepseek-flash); no fallback used",
+  "instance": "04112bb1ce33",
+  "instance_source": "generated 12-hex audit-run id; the auditor runs as an in-process subagent without a separate session id (parent team manager session)",
+  "independent_from_translator_session": true,
+  "independence_basis": "The task states a different agent translated the 22-key delta. This auditor is a distinct i18n-auditor instance and did not author or edit any catalogue value; the catalogue was only read.",
+  "date": "2026-10-19",
+  "locale": "es",
+  "namespace": "ui.mesh",
+  "round": 1,
+  "audit_kind": "namespace-delta",
+  "key_count": 245,
+  "new_key_count": 22,
+  "worktree": "~/local-operator-ui/.worktrees/mesh-link-states (branch fix/mesh-link-states, HEAD 4406017d5ffd931fa3f6e4c99cd8de3c5d014dfd + uncommitted working-tree translation as audited)",
+  "scope": "ui.mesh es: the 22 new keys (mesh_drop.reach_refusal, mesh_drop.owner_reach_refusal, mesh_graph.handshake_refused_count, mesh_graph.relay_down_count, mesh_graph.address_unreachable_count, mesh_graph.no_endpoint_count, mesh_graph.not_a_member_count, and the 15 mesh_reach.* keys) audited in depth; all 245 values read for whole-file consistency. The catalogue was not edited.",
+  "style_guide": {
+    "path": "~/local-operator/i18n/style-guides/es.md",
+    "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39",
+    "glossary_path": "~/local-operator/i18n/glossary.md",
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "note": "The UI checkout has no local i18n/glossary.md or i18n/style-guides/; docs/I18N.md points to the core repository's binding glossary and per-locale guide, which were used. The UI ledger/receipt contract is followed."
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.mesh.json",
+      "sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+      "sha256": "4ceb0a871d50757e49e8079b0446a91fe7fc4ad571f54479a056632cd1f1d533"
+    },
+    "es": {
+      "path": "src/i18n/catalogues/es/ui.mesh.json",
+      "sha256": "da149ad69d8facc150638a24213c0e3adeb2cbf40024e8a4214365c16094b73c"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/04112bb1ce33.json",
+      "role": "immutable audit receipt; the ledger row records its sha256"
+    }
+  ],
+  "namespaces": {
+    "ui.mesh": {
+      "status": "passed",
+      "keys_audited": 245,
+      "new_keys_audited": 22,
+      "sha256": {
+        "en": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+        "es": "da149ad69d8facc150638a24213c0e3adeb2cbf40024e8a4214365c16094b73c"
+      },
+      "context_sha256": "4ceb0a871d50757e49e8079b0446a91fe7fc4ad571f54479a056632cd1f1d533",
+      "findings": [],
+      "dimensions": {
+        "mechanical": "PASS. Valid JSON, 245 unique keys, 245/245 key parity with en, no added or dropped keys, no duplicate members. @formatjs parsed every value; argument sets are identical to the English source for all 22 new keys: {device}/{reach}/{reason} (strings) and {count} (number). The two noun-headed countable chips carry one/many/other (all CLDR es categories); the three prepositional/adjectival chips are number-invariant and correctly use other only, matching accepted existing es patterns such as suspected_count/reached_count/no_answer_count. No markup, backticks, commands, flags or identifiers. No manual bidi controls; all values NFC; no leading/trailing or double spaces.",
+        "accuracy": "PASS. Every new key preserves the English meaning. No omissions or additions of instruction, no negation or polarity change. The refusal sentences state the reach word and the backend reason verbatim, then the same consequence as English ('nothing was moved' / 'could not hand this conversation over'). handshake_refused_hint keeps the source's epistemic limit: it says what to check, not an asserted cause. Safe wording for the refusal and membership copy.",
+        "idiom_and_register": "PASS. Reads as native neutral Spanish product copy, not a calque. Tú address in the hint, matching the es guide and the existing catalogue ('Espera a que termine el turno'). Sentence case; lowercase status fragments; heading 'Direcciones probadas' is sentence case, not Title Case. The refusal shape '{device}: {reach}{reason}, así que ...' deliberately mirrors the existing, unchanged mesh_drop.no_answer / owner_no_answer sentences ('{device} no responde{reason}, así que ...'). 'no se movió nada' and 'no pudo entregar esta conversación' are the house renderings; 'el par respondió, pero cerró el handshake' uses the correct comma before pero; 'época' is the established term in this catalogue.",
+        "terminology": "PASS. relay=relé (glossary), handshake kept English (es style guide's kept-English technical list), device=dispositivo, network=red, member=miembro/membresía, address=dirección, epoch=época; all consistent with the existing 223 keys. peer=par is used consistently in the three places it occurs (including the pre-existing mesh_list.answered_the_peer_read_but_is_in: 'la lectura del par'); 'par' is the settled Spanish networking term and the correct translation since the glossary/style guide do not keep 'peer' English. No product names in the new copy.",
+        "fit": "PASS by source inspection. ui.mesh.context.json defines no maxCells or maxChars for these keys. The longest new per-address label is 'ningún servicio escucha' (23 chars) in a 320px card (w-80, p-4, ~288px content) whose endpoint cell is min-w-0 truncate while the label is shrink-0; the label fits and the endpoint truncates, so no overflow. The two headlines and the hint are full-width paragraphs that wrap; the census chips are in a wrapping paragraph. Short labels expand more than the style guide's 15-25% guide (attempt_bad_address 11→18 chars, +64%), but every one is at most 23 chars and fits the 288px row; no button/tab/status-line candidate overflows. The hint is +8% in characters.",
+        "rtl": "N/A for es (LTR). Scanned every new value for U+200E/U+200F/U+202A-U+202E/U+2066-U+2069/U+061C and other Unicode Cf controls: zero.",
+        "nfc": "PASS. Every new value is NFC-normalised (unicodedata.normalize check); no combining-mark surprises, no NBSP, U+202F, zero-width or BOM characters."
+      },
+      "new_keys": [
+        "ui.mesh.mesh_drop.reach_refusal",
+        "ui.mesh.mesh_drop.owner_reach_refusal",
+        "ui.mesh.mesh_graph.handshake_refused_count",
+        "ui.mesh.mesh_graph.relay_down_count",
+        "ui.mesh.mesh_graph.address_unreachable_count",
+        "ui.mesh.mesh_graph.no_endpoint_count",
+        "ui.mesh.mesh_graph.not_a_member_count",
+        "ui.mesh.mesh_reach.relay_not_running",
+        "ui.mesh.mesh_reach.handshake_refused",
+        "ui.mesh.mesh_reach.address_unreachable",
+        "ui.mesh.mesh_reach.no_endpoint",
+        "ui.mesh.mesh_reach.not_a_member",
+        "ui.mesh.mesh_reach.attempt_bad_address",
+        "ui.mesh.mesh_reach.attempt_could_not_connect",
+        "ui.mesh.mesh_reach.addresses_tried",
+        "ui.mesh.mesh_reach.attempt_answered",
+        "ui.mesh.mesh_reach.attempt_nothing_listening",
+        "ui.mesh.mesh_reach.attempt_no_answer",
+        "ui.mesh.mesh_reach.attempt_not_tried",
+        "ui.mesh.mesh_reach.peer_relay_not_running",
+        "ui.mesh.mesh_reach.peer_closed_handshake",
+        "ui.mesh.mesh_reach.handshake_refused_hint"
+      ],
+      "decisions_scrutinised": {
+        "peer_terminology": "PASS. 'par' is the internal convention (3/3 occurrences, including a pre-existing row) and the standard Spanish networking term. Not a glossary term; no style-guide exception needed.",
+        "addresses_tried_heading": "PASS. 'Direcciones probadas' is a sentence-case section label (first word only), matching the es guide's 'never Title Case' rule; 'probadas' is the idiomatic 'tried/tested', not a calque.",
+        "count_chip_word_order": "PASS. Number + noun + modifier ('2 handshakes rechazados', '2 relés caídos') and number + prepositional phrase ('2 con dirección inaccesible', '2 sin dirección de conexión', '2 sin membresía') are natural Spanish. The two inflecting chips now carry one/many/other; the invariant phrases correctly stay other-only.",
+        "refusal_sentences": "PASS. The two new refusal sentences mirror the established mesh_drop.no_answer / owner_no_answer shape and read naturally; the reach word is a lowercase classification label, correctly following the colon, and {reason} already carries its own space/parentheses from the caller."
+      }
+    }
+  },
+  "mechanical": {
+    "json": "valid JSON; 245 unique keys; no duplicate members",
+    "parity": "245/245 English keys present; no added or dropped keys",
+    "placeholders": "all 22 new keys checked with @formatjs/icu-messageformat-parser: argument names and types identical to en, no reordering/renaming; {device}, {reach}, {reason} strings; {count} number",
+    "icu": "all new plurals parse; handshake_refused_count and relay_down_count use one/many/other (complete CLDR es set for a noun phrase); address_unreachable_count, no_endpoint_count and not_a_member_count use other only because their wording is number-invariant and renders grammatically at count=1 (verified by formatting 1/2/1000000)",
+    "markup": "no markup, backtick code, commands, flags, paths or identifiers in the new copy",
+    "unicode": "all new values NFC; zero Cf/bidi control characters; no leading/trailing/double spaces",
+    "execution": [
+      {
+        "command": "node scripts/i18n/generate.mjs --check",
+        "exit": 1,
+        "result": "keys.gen.ts is stale globally; the regenerated diff is only the untracked ur/ui.mesh.json locale import and bundle entry, not es/ui.mesh drift. Verified by generating to scratch with --out and diffing."
+      },
+      {
+        "command": "node --test scripts/i18n/locale-parity.test.mjs",
+        "exit": 0,
+        "result": "43/43 tests passed (all locales, including es and the untracked ur), covering key parity, placeholder integrity and non-stub values."
+      },
+      {
+        "command": "node scripts/i18n/context-parity.mjs",
+        "exit": 0,
+        "result": "ok: every English key covered, apart from 196 allowed gaps in 6 namespaces; note: 8 ui.mesh allowance keys are now covered and can be dropped with --update (not an es delta defect)."
+      },
+      {
+        "command": "node scripts/i18n/check-strings.mjs",
+        "exit": 0,
+        "result": "ok: 1260 files scanned, 762 literals at or below baseline, 16 advisory findings (none in ui.mesh)."
+      },
+      {
+        "command": "node scripts/i18n/ledger-check.mjs",
+        "exit": 1,
+        "result": "pre-audit state: es/ui.mesh (and the other five modified locales) have stale source/target hashes, and ur/ui.mesh has no ledger entry. This is the expected ledger-assembly gap, not an es translation defect; the ledger writer was run with this receipt to record the es row."
+      }
+    ]
+  },
+  "out_of_delta_observations": [
+    {
+      "key": "ui.mesh.mesh_graph.reached_count",
+      "observation": "Pre-existing (byte-identical to HEAD, not part of this delta): other-only plural with an inflected masculine plural adjective renders '1 alcanzados'; should be '1 alcanzado' (add a one arm).",
+      "severity": "major",
+      "counted_in_findings": false
+    },
+    {
+      "key": "ui.mesh.mesh_graph.suspected_count",
+      "observation": "Pre-existing: '1 de ellos sospechosos'; should be '1 de ellos sospechoso' or '1 sospechoso'. Other-only arm.",
+      "severity": "major",
+      "counted_in_findings": false
+    },
+    {
+      "key": "ui.mesh.mesh_graph.unknown_count",
+      "observation": "Pre-existing: '1 desconocidos'; should be '1 desconocido'. Other-only arm.",
+      "severity": "major",
+      "counted_in_findings": false
+    },
+    {
+      "key": "ui.mesh.mesh_approvals_tray.failed_count",
+      "observation": "Pre-existing: '1 fallidas'; should be '1 fallida'. Other-only arm.",
+      "severity": "major",
+      "counted_in_findings": false
+    },
+    {
+      "key": "ui.mesh.mesh_list.revoked_count",
+      "observation": "Pre-existing: ' · 1 revocados'; should be ' · 1 revocado'. Other-only arm.",
+      "severity": "major",
+      "counted_in_findings": false
+    },
+    {
+      "key": "ui.mesh.mesh_list.show_all_panel",
+      "observation": "Pre-existing: 'mostrar los 1 del panel'; the article/number agreement is wrong at count=1 (add a one arm or restructure).",
+      "severity": "major",
+      "counted_in_findings": false
+    },
+    {
+      "key": "ui.mesh.mesh_graph.conversation_unit",
+      "observation": "Pre-existing: missing many arm; at 1,000,000 renders '1000000 conversaciones' instead of '1000000 de conversaciones'. Minor.",
+      "severity": "minor",
+      "counted_in_findings": false
+    }
+  ],
+  "second_pass": {
+    "performed": false,
+    "reason": "ui.mesh is not one of the named high-visibility groups (onboarding, errors, settings). This is a single independent pass. The refusal/count copy was read twice (new-key pass plus whole-file consistency read) by the same instance, which is not a substitute for a second independent auditor. If the manager classifies mesh refusal copy as high-visibility, commission a second instance."
+  },
+  "limits": [
+    "Source-only translation audit; no rendered-frame or pseudo-localization fit proof. Fit conclusions are geometry/length reasoning from the sidecar and the 320px card, not a screenshot.",
+    "Out-of-delta pre-existing plural observations are recorded for the manager but are NOT counted in this delta verdict; they do not block the 22 new keys.",
+    "The generated keys.gen.ts staleness is caused by the untracked ur locale, not by es/ui.mesh; it still must be regenerated before merge."
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "note": "Receipt i18n/receipts/04112bb1ce33.json. 22-key es ui.mesh delta: 0 BLOCKER/MAJOR/MINOR/NIT. Whole file read; pre-existing count-chip plural observations recorded out of delta, not counted."
+}

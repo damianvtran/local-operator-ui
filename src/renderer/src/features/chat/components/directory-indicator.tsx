@@ -945,7 +945,16 @@ export const DirectoryIndicator = forwardRef<
 						className={cn(CHIP_BOX, "cursor-default text-ink-dim")}
 					>
 						<FolderOpen aria-hidden="true" className={cn("size-4 shrink-0")} />
-						<span className={cn(CHIP_LABEL)}>Working directory:</span>
+						<span className={cn(CHIP_LABEL)}>
+							{/*
+							 * The label is a Latin fallback phrase inside a row whose direction
+							 * can be RTL. Isolation with `dir="auto"` gives the run its own
+							 * base direction, so the trailing colon stays attached to the
+							 * phrase instead of moving to the visual left (design review
+							 * round 1, D1).
+							 */}
+							<bdi dir="auto">Working directory:</bdi>
+						</span>
 						<span
 							className={cn("min-w-0 truncate", PATH_TYPE, CHIP_TEXT_AT_FLOOR)}
 						>
@@ -1132,7 +1141,10 @@ export const DirectoryIndicator = forwardRef<
 									 * the tooltip. The escalation is still there, on the surface that has room
 									 * for it: the tooltip and the live region (`pendingText`).
 									 */}
-									{pending ? "Moving session:" : "Working directory:"}
+									{/* Isolated for the same reason as the read-only label above (D1). */}
+									<bdi dir="auto">
+										{pending ? "Moving session:" : "Working directory:"}
+									</bdi>
 								</span>
 								<span
 									ref={pathRef}

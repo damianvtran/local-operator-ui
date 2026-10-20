@@ -9,6 +9,7 @@ import {
 import {
 	ClipboardCopy,
 	Ellipsis,
+	Eye,
 	File as FileIcon,
 	FolderOpen,
 	LayoutGrid,
@@ -39,6 +40,16 @@ export type FileActionsMenuProps = {
 	 * Optional: callback to show the file in the canvas.
 	 */
 	onShowInCanvas?: (() => void) | undefined;
+	/**
+	 * Optional: callback for an in-app preview of a readable file.
+	 *
+	 * The menu is shared, so the item only exists where a surface CAN preview:
+	 * the project feed's markdown/text tiles pass this, and every existing
+	 * caller (which has no in-app reader for the file) omits it and keeps the
+	 * four established entries unchanged. The item is FIRST because it is the
+	 * cheapest door — it reads the stored copy rather than leaving the app.
+	 */
+	onPreview?: (() => void) | undefined;
 };
 
 /**
@@ -51,6 +62,7 @@ export const FileActionsMenu = ({
 	icon,
 	"aria-label": ariaLabel = "File actions",
 	onShowInCanvas,
+	onPreview,
 }: FileActionsMenuProps) => {
 	const handleCopyFilePath = async () => {
 		if (!filePath) return;
@@ -91,6 +103,12 @@ export const FileActionsMenu = ({
 				className="min-w-45"
 				onClick={(e) => e.stopPropagation()}
 			>
+				{onPreview && (
+					<DropdownMenuItem onSelect={onPreview}>
+						<Eye aria-hidden="true" />
+						<span>Preview</span>
+					</DropdownMenuItem>
+				)}
 				{onShowInCanvas && (
 					<DropdownMenuItem onSelect={onShowInCanvas}>
 						<LayoutGrid aria-hidden="true" />

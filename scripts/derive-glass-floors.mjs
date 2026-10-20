@@ -416,6 +416,49 @@ export function derive() {
 	return out;
 }
 
+/**
+ * THE ISOLATING BAND'S OWN ALPHA FLOOR, per scheme.
+ *
+ * A BAND is a strip that masks what scrolls under it, and the ordinary bands
+ * (`data-glass-plane="band"`) sit on a STATIC ground - the pane's own fill -
+ * so the pane's published alpha is right for them. An ISOLATING BAND
+ * (`data-glass-plane="band-backdrop"`) sits over MOVING content, and that
+ * changes the question: its ground is whatever happens to be scrolling under
+ * it, so the alpha that keeps the band readable is not the ground's alpha but
+ * the alpha at which the INK ON IT still clears its floor over the worst
+ * content that can pass beneath.
+ *
+ * THE FLOOR IS DERIVED, NOT CHOSEN. For each palette in the scheme, the
+ * smallest alpha at which the band's own role holds the count's ink over the
+ * worst content colour clears the 4.5 text floor, and the scheme's floor is
+ * the largest of those. The worst content is the extreme the scheme's ink
+ * contrasts against: a WHITE thumbnail under a dark band, a BLACK one under a
+ * light band. A content colour in between is easier, not harder, so the
+ * extremes bound it.
+ *
+ * The floor is per SCHEME and not per tier because the band is a pane's strip
+ * and the pane is under the window; and it is derived against the count's ink
+ * (`inkMuted`, the register the app's own section headers use beside a label)
+ * rather than the strongest ink, because the count is the band's own text and
+ * a band whose count cannot be read is a band that has failed at being one.
+ */
+export function deriveBandFloor() {
+	const palettes = loadPalettes();
+	const out = {};
+	for (const scheme of ["dark", "light"]) {
+		let need = 0;
+		for (const { palette } of palettes) {
+			if (schemeOf(palette) !== scheme) continue;
+			/* The worst content colour: the extreme the ink contrasts against. */
+			const backdrop = scheme === "dark" ? "#ffffff" : "#000000";
+			const a = minAlpha(palette, "elevated", "inkMuted", backdrop);
+			need = Math.max(need, a);
+		}
+		out[scheme] = Math.round(need * 100) / 100;
+	}
+	return out;
+}
+
 /** The smallest border->ink mix (0.05 steps) that holds 3:1 on every ground at its floor. */
 export function deriveControlMix(floors) {
 	const palettes = loadPalettes();
@@ -459,6 +502,7 @@ if (isEntryPoint(import.meta.url)) {
 					blockVeil: deriveBlockVeil(derived),
 					laneWash: deriveLaneWash(derived),
 					controlMix: deriveControlMix(derived),
+					bandFloor: deriveBandFloor(),
 					stateAlpha: GLASS_STATE_ALPHA,
 				},
 				null,
@@ -486,6 +530,14 @@ if (isEntryPoint(import.meta.url)) {
 				bad++;
 				console.error(
 					`block veil ${scheme} is ${file.blockVeil?.[scheme]} but the palettes need ${veil[scheme]} for a ΔE00 ${GLASS_BLOCK_VEIL_STEP} step off the canvas glass - re-derive, never hand-lower it`,
+				);
+			}
+		const band = deriveBandFloor();
+		for (const scheme of ["dark", "light"])
+			if ((file.bandFloor?.[scheme] ?? 0) < band[scheme]) {
+				bad++;
+				console.error(
+					`band floor ${scheme} is ${file.bandFloor?.[scheme]} but the palettes need ${band[scheme]} for the count to clear the ${GLASS_INK_FLOOR} text floor over the worst content - re-derive, never hand-lower it`,
 				);
 			}
 		const lane = deriveLaneWash(committed);

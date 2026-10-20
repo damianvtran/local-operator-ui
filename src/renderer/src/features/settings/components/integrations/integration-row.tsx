@@ -292,7 +292,7 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 			{status.detail ? (
 				<p
 					className={cn(
-						"pl-7 text-body-sm",
+						"ps-7 text-body-sm",
 						status.tone === "danger" ? "text-ink-muted" : "text-ink-dim",
 					)}
 				>
@@ -302,7 +302,7 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 			{failure ? (
 				<p
 					className={cn(
-						"pl-7 text-body-sm",
+						"ps-7 text-body-sm",
 						// Same rule as the status words: `danger` text is under 4.5:1 on
 						// a deep-linked row's ground in six palettes.
 						highlighted ? "text-ink" : "text-danger",
@@ -313,7 +313,7 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 				</p>
 			) : null}
 			{confirm ? (
-				<div className="flex flex-wrap items-center gap-2 pl-7">
+				<div className="flex flex-wrap items-center gap-2 ps-7">
 					<span className="text-body-sm text-ink">
 						{confirm.kind === "remove"
 							? t("ui.settings.integrations.integration_row.remove_name", {

@@ -1600,7 +1600,7 @@ test("the open conversation is kept in membership, and a collapse drops a group'
 
 test("the refusal holds its shape, and the badge announces its meaning (D4, D1, D5)", () => {
 	assert.ok(
-		SIDEBAR_SRC.includes("line-clamp-2 py-1 pl-7 text-meta text-ink-dim"),
+		SIDEBAR_SRC.includes("line-clamp-2 py-1 ps-7 text-meta text-ink-dim"),
 		"the refusal's sentence is clamped, so a long transport string cannot move the control",
 	);
 	assert.match(
@@ -1796,7 +1796,7 @@ test("the round-2 code paths are pinned in source", () => {
 	);
 	// The live region survives the swap (R2-5)
 	assert.ok(
-		SIDEBAR_SRC.includes('? "py-1 pl-7"\n\t\t\t\t\t\t\t\t\t: "sr-only"'),
+		SIDEBAR_SRC.includes('? "py-1 ps-7"\n\t\t\t\t\t\t\t\t\t: "sr-only"'),
 		"the group's sentence region is mounted in every state, so loading -> settled is announced",
 	);
 	// The total sentence reads the drawn count (R2-2)

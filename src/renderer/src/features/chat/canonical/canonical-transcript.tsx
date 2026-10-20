@@ -6509,6 +6509,27 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						ref={contentRef}
 						data-lo-transcript-content
 						/*
+						 * THE COLUMN'S ONE SELECTION FACT (operator report, 2026-10-19).
+						 *
+						 * `selectionActive` is already derived here, on `selectionchange`,
+						 * against this scroller - one listener, one answer. Every selection
+						 * toolbar in the transcript reads that same event, but each used to
+						 * act on its own reading, and the row's own cluster acted on none of
+						 * them: a drag therefore painted the selection strip AND the answer's
+						 * Copy/Speak/Fork row at once (measured: 84 of 87 drag frames on the base tree). The
+						 * marker publishes the one answer to the stylesheet, which hides every
+						 * row cluster while it is set - synchronous with this commit, because
+						 * the attribute and the hidden cluster are in the same paint.
+						 *
+						 * It is NOT the same fact as `data-lo-selection-active` on a row: that
+						 * one says "a strip owns THIS row's seat" and drives the inert/
+						 * aria-hidden writes; this one says "a selection exists in the
+						 * transcript, so the row toolbars are not the toolbar". Both are kept,
+						 * and the stylesheet keys the cluster rule off this one because it is
+						 * true for a selection the quote toolkit does not own as well.
+						 */
+						{...(selectionActive ? { "data-lo-selection-live": "" } : {})}
+						/*
 						 * `mb-auto` IS THE TOP ANCHOR, and it is a mechanism rather than a nudge.
 						 *
 						 * The scroller above is `flex-col-reverse` (its paging hook, its

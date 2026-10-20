@@ -294,12 +294,12 @@ export const EditableField: FC<EditableFieldProps> = ({
 	// them: sized to whichever set is actually rendered rather than to the
 	// widest possible one, which would leave a permanent gutter.
 	const inputPadding = isSaving
-		? "pr-20"
+		? "pe-20"
 		: showClearWhileEditing
-			? "pr-28"
+			? "pe-28"
 			: hasChanged
-				? "pr-18"
-				: "pr-10";
+				? "pe-18"
+				: "pe-10";
 
 	// Reveal-on-hover overlay controls. Focus is included so they are reachable
 	// without a pointer; they stay out of the tab order because the display
@@ -353,7 +353,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 					<div
 						ref={actionButtonsRef}
 						className={cn(
-							"absolute right-1.5 z-10 flex items-center gap-1",
+							"absolute end-1.5 z-10 flex items-center gap-1",
 							multiline ? "top-1.5" : "top-1/2 -translate-y-1/2",
 						)}
 					>
@@ -431,7 +431,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 						onKeyDown={handleDisplayContainerKeyDown}
 						disabled={readOnly}
 						className={cn(
-							"flex w-full rounded-sm border border-control bg-surface px-3 text-left text-body-sm text-ink",
+							"flex w-full rounded-sm border border-control bg-surface px-3 text-start text-body-sm text-ink",
 							"transition-colors duration-fast ease-out-quart",
 							"disabled:cursor-default disabled:border-hairline disabled:bg-sunken disabled:text-ink-disabled",
 							multiline ? "min-h-8 items-start py-2" : "h-8 items-center",
@@ -441,14 +441,14 @@ export const EditableField: FC<EditableFieldProps> = ({
 						{displayValue ? (
 							<span
 								className={cn(
-									"min-w-0 flex-1 pr-8",
+									"min-w-0 flex-1 pe-8",
 									multiline ? "whitespace-pre-wrap break-words" : "truncate",
 								)}
 							>
 								{displayValue}
 							</span>
 						) : (
-							<span className="min-w-0 flex-1 truncate pr-8 text-ink-dim">
+							<span className="min-w-0 flex-1 truncate pe-8 text-ink-dim">
 								{placeholder}
 							</span>
 						)}
@@ -464,7 +464,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 							})}
 							tabIndex={-1}
 							className={cn(
-								"absolute top-1/2 right-1.5 -translate-y-1/2",
+								"absolute top-1/2 end-1.5 -translate-y-1/2",
 								overlayReveal,
 							)}
 						>
@@ -482,7 +482,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 							})}
 							tabIndex={-1}
 							className={cn(
-								"absolute top-1/2 right-9 -translate-y-1/2",
+								"absolute top-1/2 end-9 -translate-y-1/2",
 								overlayReveal,
 							)}
 						>

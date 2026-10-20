@@ -864,7 +864,7 @@ test("the grip is a drag handle: pointer-only, hover-revealed, and one write per
 	assert.match(source, /ref=\{pinnedSectionRef\}/);
 	assert.match(
 		source,
-		/className="pointer-events-none absolute right-1 left-1 h-0\.5 rounded-full bg-accent"/,
+		/className="pointer-events-none absolute start-1 end-1 h-0\.5 rounded-full bg-accent"/,
 	);
 	// The auto-scroll loop is armed with the drag and reaped with it.
 	assert.match(source, /requestAnimationFrame\(/);

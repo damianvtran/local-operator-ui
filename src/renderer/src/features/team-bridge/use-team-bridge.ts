@@ -6,7 +6,11 @@
  * - the conversation LIST re-reads on window focus and after every write, but
  *   does not poll: a person looking at the page can pull to refresh through the
  *   focus event, and a constant list poll would be a second, redundant traffic
- *   source beside the badge.
+ *   source beside the badge. The ONE exception is the notification watcher,
+ *   which mounts its own observer on the same cache entry with a 30 s cadence
+ *   (`use-team-bridge-notifications.ts`): a banner needs the membership and
+ *   notify fields the list carries, and it has to run while the page is not
+ *   mounted. The page's own observer still asks for no interval.
  * - the BADGE (`unread`) polls, because nothing pushes it: the hub has an
  *   events feed for the pair lane, and this surface deliberately reads one
  *   cheap aggregate instead of subscribing per conversation.
@@ -23,6 +27,9 @@
  */
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 import {
+	type QueryClient,
+	type QueryKey,
+	type UseMutationOptions,
 	type UseMutationResult,
 	type UseQueryResult,
 	useMutation,
@@ -32,12 +39,14 @@ import {
 import type {
 	TeamBridgeConversationList,
 	TeamBridgeMessagePage,
+	TeamBridgeNotify,
 	TeamBridgeReadState,
 	TeamBridgeUnread,
 } from "../../../../shared/team-bridge-contract";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeScope,
+	withNotificationPreference,
 } from "./team-bridge-model";
 
 /**
@@ -123,10 +132,13 @@ export function useTeamBridgeMessages(
 }
 
 /** The signed-in hub account id (own-message alignment, DM titles). */
-export function useTeamBridgeIdentity(): UseQueryResult<string | null> {
+export function useTeamBridgeIdentity(
+	enabled = true,
+): UseQueryResult<string | null> {
 	return useQuery({
 		queryKey: [...teamBridgeKeys.all, "identity"] as const,
 		queryFn: () => TeamBridgeApi.identity(),
+		enabled,
 		staleTime: 5 * 60_000,
 		retry: 1,
 	});
@@ -147,13 +159,28 @@ export function useTeamBridgeIdentity(): UseQueryResult<string | null> {
 export function useTeamBridgeUnread(
 	enabled: boolean,
 	scope: TeamBridgeScope = TEAM_BRIDGE_ALL_SCOPE,
+	options: {
+		/**
+		 * Override the badge's own cadence. The notification watcher asks for 30 s
+		 * so a banner arrives on the order of a message rather than a badge
+		 * refresh; the sidebar and page pass nothing and keep the quiet cadence.
+		 */
+		refetchInterval?: number;
+		/**
+		 * Keep the interval running while the window is hidden. The notification
+		 * watcher sets this: a minimised or occluded window is exactly when a
+		 * banner is useful, and main owns the quiet decision.
+		 */
+		refetchIntervalInBackground?: boolean;
+	} = {},
 ): UseQueryResult<TeamBridgeUnread> {
 	return useQuery({
 		queryKey: teamBridgeKeys.unread(scope),
 		queryFn: () => TeamBridgeApi.unread(readScope(scope)),
 		enabled,
 		staleTime: 30_000,
-		refetchInterval: badgeInterval(),
+		refetchInterval: options.refetchInterval ?? badgeInterval(),
+		refetchIntervalInBackground: options.refetchIntervalInBackground,
 		refetchOnWindowFocus: true,
 		// A failed badge read is not an error the user can act on; the next poll
 		// is the retry. The page shows its own error state for the list.
@@ -183,6 +210,129 @@ export function useSendTeamBridgeMessage(
 			});
 		},
 	});
+}
+
+/**
+ * Join a discoverable channel (or accept an invitation).
+ *
+ * The conversation stays SELECTED across the refetch: the container's
+ * `selectedId` is the selection, and this mutation only invalidates the data
+ * behind it. The list (the row's `member` flag and count), the history (now
+ * readable) and the badge are all refetched — a join changes all three, and a
+ * cache left claiming "preview" would keep the banner over a readable thread.
+ */
+export function useJoinTeamBridgeConversation(
+	conversationId: string,
+	tenantId?: string,
+): UseMutationResult<unknown, Error, void> {
+	const client = useQueryClient();
+	return useMutation({
+		mutationFn: () => TeamBridgeApi.join(conversationId, tenantId),
+		onSuccess: async () => {
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.messages(conversationId, tenantId),
+			});
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.unreadPrefix,
+			});
+		},
+	});
+}
+
+/** The rollback snapshot carried from `onMutate` to `onError`. */
+export type TeamBridgeNotifyMutationContext = {
+	snapshots: Array<[QueryKey, TeamBridgeConversationList | undefined]>;
+};
+
+/**
+ * What one notify write names: the conversation it belongs to is part of the
+ * variables, not only the closure.
+ *
+ * A refusal can settle AFTER the reader has moved to another conversation. The
+ * in-flight mutation keeps the options it started with, but the mounted hook
+ * keeps its latest mutation's variables — so the page can compare the failing
+ * write's `conversationId` with the current selection and refuse to show A's
+ * error under B. Without this, a stale settlement re-arms `notifyFailed` under
+ * whatever conversation is on screen.
+ */
+export type TeamBridgeNotifyMutationVariables = {
+	conversationId: string;
+	tenantId?: string;
+	notify: TeamBridgeNotify;
+};
+
+/**
+ * The notify mutation's options, separated from the hook.
+ *
+ * `useSetTeamBridgeNotify` is a one-line wrapper: these options are the object
+ * React Query actually runs, and keeping them callable lets the test that owns
+ * the rollback claim drive `onMutate`/`onError` against a real cache without a
+ * DOM. The hook passes its query client, so the cache the options read is the
+ * one the page renders from.
+ */
+export function notifyMutationOptions(
+	client: QueryClient,
+): UseMutationOptions<
+	TeamBridgeReadState,
+	Error,
+	TeamBridgeNotifyMutationVariables,
+	TeamBridgeNotifyMutationContext
+> {
+	return {
+		mutationFn: ({ conversationId, notify, tenantId }) =>
+			TeamBridgeApi.setNotify(conversationId, notify, tenantId),
+		onMutate: async ({ conversationId, notify }) => {
+			await client.cancelQueries({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+			const snapshots = client.getQueriesData<TeamBridgeConversationList>({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+			client.setQueriesData<TeamBridgeConversationList>(
+				{ queryKey: teamBridgeKeys.conversationsPrefix },
+				(current) =>
+					current === undefined
+						? current
+						: withNotificationPreference(current, conversationId, notify),
+			);
+			return { snapshots };
+		},
+		onError: (_error, _variables, context) => {
+			for (const [key, data] of context?.snapshots ?? []) {
+				client.setQueryData(key, data);
+			}
+		},
+		onSettled: async () => {
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.unreadPrefix,
+			});
+		},
+	};
+}
+
+/**
+ * Set one conversation's notification preference, optimistically.
+ *
+ * The menu is a control a reader uses repeatedly; waiting for a round trip to
+ * paint the checkmark would make every choice feel ignored. The update patches
+ * every cached conversation page that holds the row (the merged list and its
+ * org's list), and a refusal restores the exact snapshots taken before the
+ * patch. `onSettled` then re-reads the truth, so a server that canonicalises a
+ * value cannot leave the optimistic guess in place.
+ */
+export function useSetTeamBridgeNotify(): UseMutationResult<
+	TeamBridgeReadState,
+	Error,
+	TeamBridgeNotifyMutationVariables
+> {
+	const client = useQueryClient();
+	return useMutation(notifyMutationOptions(client));
 }
 
 export function useMarkTeamBridgeRead(

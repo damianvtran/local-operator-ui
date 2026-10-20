@@ -424,6 +424,18 @@ const CONTROLS = [
 		border: "borderControl",
 		ink: "inkMuted",
 	},
+	// The address suggestion list is the second in-flow chrome band: it shares
+	// the bar's elevated ground and control rule, and its label/empty notice is
+	// muted ink. The rows themselves are already covered by the elevated-ground
+	// ink loop and the accent-wash state ground; this pins the container so a
+	// future fill/border edit cannot ship an unmeasured combination.
+	{
+		name: "browser address suggestions",
+		on: ["elevated"],
+		fill: "elevated",
+		border: "borderControl",
+		ink: "inkMuted",
+	},
 	{
 		name: "primary button",
 		on: GROUNDS,
@@ -3242,7 +3254,7 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "chat session row current-row ground",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: '"min-w-0 grow text-left",',
+		must: '"min-w-0 grow text-start",',
 		why: "the button shares the wrapper with the mark and has to carry the ground as well, or the current conversation loses its mark on the element the pointer and the caret land on",
 	},
 	{
@@ -3259,7 +3271,7 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "entity row current-row ground",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: 'className={cn(rowStyle, "flex-1 text-left", staged && rowCurrent)}',
+		must: 'className={cn(rowStyle, "flex-1 text-start", staged && rowCurrent)}',
 		why: "the element the pointer lands on has to carry the ground as well as the wrapper: a child's background paints over its parent's, so without this the current entity row is repainted `elevated` by the pointer and is indistinguishable from a hovered one",
 	},
 	{
@@ -3301,7 +3313,7 @@ const STRUCTURAL_CALL_SITES = [
 	{
 		what: "settings rail continuous resting surface",
 		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
-		must: '"relative flex h-8 w-full items-center rounded-sm bg-transparent text-left text-body-sm hover:bg-row-hover hover:text-ink"',
+		must: '"relative flex h-8 w-full items-center rounded-sm bg-transparent text-start text-body-sm hover:bg-row-hover hover:text-ink"',
 		why: "Current and inactive Settings destinations intentionally reveal the same surface; persistent selected fill belongs to chat, not this local navigation exception.",
 	},
 	{
@@ -3319,7 +3331,7 @@ const STRUCTURAL_CALL_SITES = [
 	{
 		what: "settings rail decorative gutter marker",
 		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
-		must: '"absolute left-1 top-1/2 size-1 -translate-y-1/2 rounded-full bg-accent"',
+		must: '"absolute start-1 top-1/2 size-1 -translate-y-1/2 rounded-full bg-accent"',
 		why: "The absolute dot is a shape cue when collapsed labels disappear, not a new boundary or a flex item that moves its neighbours.",
 	},
 	{
@@ -3368,15 +3380,20 @@ const STRUCTURAL_CALL_SITES = [
 		 * that component's own comment rather than by a row here, which is the
 		 * gap this entry closes for the canonical transcript.
 		 */
-		what: "transcript quote toolkit floating shell",
-		file: "src/renderer/src/features/chat/canonical/quote-toolkit.tsx",
+		what: "floating toolbar shell (quote, link, selection and row clusters)",
+		file: "src/renderer/src/shared/components/common/floating-toolbar.tsx",
 		/*
-		 * Verbatim, so it tracks the shell as written: the selection round added
-		 * Copy beside Quote and Speak, and the three-control strip needs the tighter
-		 * `gap-0 px-0.5` to fit the outer gutter. The boundary this row protects is
-		 * the `border border-hairline bg-elevated` ground, which is unchanged.
+		 * Verbatim, so it tracks the shell as written. The shell used to live
+		 * inline in `quote-toolkit.tsx` and this row pinned that copy; the
+		 * operator's "they seem to be slightly different styles" report moved
+		 * it here so the quote strip, the link strip, the shared selection
+		 * strip and the row's own clusters cannot drift apart again. The
+		 * boundary this row protects is the `border border-hairline
+		 * bg-elevated` ground, and it is unchanged - only its address is. A
+		 * future edit that repaints the shell on the transcript's canvas now
+		 * fails here even though it would leave every palette row green.
 		 */
-		must: "z-20 flex h-8 items-center gap-0 rounded-md border border-hairline bg-elevated px-0.5",
+		must: "flex h-8 items-center gap-1 rounded-md border border-hairline bg-elevated px-1",
 		why: "the toolkit floats over prose and over a user bubble, so `elevated` plus a hairline is the whole of what makes it read as an object rather than as text that drifted; repainting it on the transcript's own canvas leaves it invisible against the reading column with every palette row still green",
 	},
 	{
@@ -7650,6 +7667,41 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 						`${id}: glass chrome tab (${tier}/${scheme}) is ΔE00 ${r2(step)} off the band, floor 2.5`,
 					);
 			}
+		}
+	}
+	/*
+	 * THE ISOLATING BAND, which is the one band whose ground is MOVING.
+	 *
+	 * Every other band in the glass model sits on a STATIC ground - the pane's
+	 * own fill - so the published alpha is right for them and the rows above
+	 * cover it. A band that rows scroll UNDER has a ground that is whatever is
+	 * passing beneath it, and its alpha is therefore a CONTRACT: the count
+	 * beside the section label has to clear the 4.5 text floor against it,
+	 * whatever that content is.
+	 *
+	 * The contract asserts the floor's own claim, over EVERY palette and at
+	 * the WORST content colour (the extreme the scheme's ink contrasts
+	 * against: a white thumbnail under a dark band, a black one under a light
+	 * band), and it asserts the floor is not BELOW what the palettes need -
+	 * the same "re-derive, never hand-lower it" rule the alpha floors carry.
+	 */
+	for (const { id, palette } of palettes) {
+		const scheme = glassSchemeOf(palette);
+		const floor = committed.bandFloor?.[scheme];
+		if (floor === undefined) {
+			fail(`${id}: the isolating band's alpha floor is missing for ${scheme}`);
+			continue;
+		}
+		const backdrop = scheme === "dark" ? "#ffffff" : "#000000";
+		const band = glassComposite(palette.elevated, floor, backdrop);
+		for (const ink of GLASS_INKS) {
+			assertions++;
+			const needed = ink === "inkDim" ? GLASS_STATE_DIM_FLOOR : GLASS_INK_FLOOR;
+			const r = glassRatio(palette[ink], band);
+			if (r < needed)
+				fail(
+					`${id}: the isolating band (${scheme}) ${ink} on the band is ${r2(r)}:1, floor ${needed}`,
+				);
 		}
 	}
 	console.log(
