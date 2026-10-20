@@ -568,13 +568,13 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 							 * chrome's: `absolute` needs a box to position against, the 32px
 							 * height is the reserved line the foot line also takes, and
 							 * without `flex` the `gap-1` between the icons would not apply.
-								 */
-								"absolute z-10 flex h-8 items-center gap-1",
-							 "-top-2 right-0",
-							 actionRowVisibility(pinned),
-							 overlayClassName,
-							 )
-							: cn(
+							 */
+							"absolute z-10 flex h-8 items-center gap-1",
+							"-top-2 right-0",
+							actionRowVisibility(pinned),
+							overlayClassName,
+						)
+					: cn(
 							/*
 							 * `gap-1` is the only spacing these bare icons get: each keeps its
 							 * own hit target (`icon-sm`'s box) and 4px separates them, which is

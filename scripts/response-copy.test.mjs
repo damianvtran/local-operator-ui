@@ -331,7 +331,11 @@ test("an earlier final response carries the full in-flow row; the closing answer
 		},
 	]);
 	const rows = responseRows(dom);
-	assert.equal(rows.length, 1, "the non-closing final response has its own row");
+	assert.equal(
+		rows.length,
+		1,
+		"the non-closing final response has its own row",
+	);
 	assert.deepEqual(
 		labelsOf(rows[0]),
 		["Copy", "Speak aloud", "Fork from this message"],
