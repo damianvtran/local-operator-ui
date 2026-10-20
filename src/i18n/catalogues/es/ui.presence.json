@@ -7,5 +7,5 @@
 	"ui.presence.minutes_ago": "hace {count, number} min",
 	"ui.presence.hours_ago": "hace {count, number} h",
 	"ui.presence.days_ago": "hace {count, number} d",
-	"ui.presence.link_down_compact": "Sin conexión · {age}"
+	"ui.presence.link_down_compact": "{age}"
 }

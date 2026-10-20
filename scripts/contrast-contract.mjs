@@ -424,6 +424,18 @@ const CONTROLS = [
 		border: "borderControl",
 		ink: "inkMuted",
 	},
+	// The address suggestion list is the second in-flow chrome band: it shares
+	// the bar's elevated ground and control rule, and its label/empty notice is
+	// muted ink. The rows themselves are already covered by the elevated-ground
+	// ink loop and the accent-wash state ground; this pins the container so a
+	// future fill/border edit cannot ship an unmeasured combination.
+	{
+		name: "browser address suggestions",
+		on: ["elevated"],
+		fill: "elevated",
+		border: "borderControl",
+		ink: "inkMuted",
+	},
 	{
 		name: "primary button",
 		on: GROUNDS,
@@ -3242,7 +3254,7 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "chat session row current-row ground",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: '"min-w-0 grow text-left",',
+		must: '"min-w-0 grow text-start",',
 		why: "the button shares the wrapper with the mark and has to carry the ground as well, or the current conversation loses its mark on the element the pointer and the caret land on",
 	},
 	{
@@ -3259,7 +3271,7 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "entity row current-row ground",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: 'className={cn(rowStyle, "flex-1 text-left", staged && rowCurrent)}',
+		must: 'className={cn(rowStyle, "flex-1 text-start", staged && rowCurrent)}',
 		why: "the element the pointer lands on has to carry the ground as well as the wrapper: a child's background paints over its parent's, so without this the current entity row is repainted `elevated` by the pointer and is indistinguishable from a hovered one",
 	},
 	{
@@ -3301,7 +3313,7 @@ const STRUCTURAL_CALL_SITES = [
 	{
 		what: "settings rail continuous resting surface",
 		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
-		must: '"relative flex h-8 w-full items-center rounded-sm bg-transparent text-left text-body-sm hover:bg-row-hover hover:text-ink"',
+		must: '"relative flex h-8 w-full items-center rounded-sm bg-transparent text-start text-body-sm hover:bg-row-hover hover:text-ink"',
 		why: "Current and inactive Settings destinations intentionally reveal the same surface; persistent selected fill belongs to chat, not this local navigation exception.",
 	},
 	{
@@ -3319,7 +3331,7 @@ const STRUCTURAL_CALL_SITES = [
 	{
 		what: "settings rail decorative gutter marker",
 		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
-		must: '"absolute left-1 top-1/2 size-1 -translate-y-1/2 rounded-full bg-accent"',
+		must: '"absolute start-1 top-1/2 size-1 -translate-y-1/2 rounded-full bg-accent"',
 		why: "The absolute dot is a shape cue when collapsed labels disappear, not a new boundary or a flex item that moves its neighbours.",
 	},
 	{

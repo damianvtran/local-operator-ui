@@ -695,7 +695,9 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				canGoBack={Boolean(state?.canGoBack)}
 				canGoForward={Boolean(state?.canGoForward)}
 				disabled={tabs.length === 0}
-				onNavigate={(url) => void chrome.navigate(url)}
+				onNavigate={(url, expectedTabId) =>
+					void chrome.navigate(url, expectedTabId)
+				}
 				onBack={() => void chrome.history("back")}
 				onForward={() => void chrome.history("forward")}
 				onHome={() => void chrome.home()}
@@ -726,6 +728,14 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						void chrome.pageControl(state.activeTabId, "reset");
 				}}
 				onOpenDownloads={() => void chrome.revealDownloads()}
+				// The address suggestions follow the SAME display scope as the strip: the
+				// route offers every tab, a conversation pane offers its own. The scope is
+				// passed with its primitive key because the pane builds `{ sessionId }`
+				// fresh each render.
+				addressScope={tabScope}
+				addressScopeKey={scopeField}
+				addressHistory={(request) => chrome.addressHistory(request)}
+				onStateChanged={chrome.onStateChanged}
 			/>
 			<BrowserFindRow chrome={chrome} returnToPage={findReturnToPage} />
 			{state?.pageControls?.notice && (

@@ -19,6 +19,10 @@ import {
 	type DaemonStatusSnapshot,
 } from "../shared/backend-status";
 import type {
+	AddressHistoryRequest,
+	AddressHistoryResponse,
+} from "../shared/browser-address-history";
+import type {
 	HumanTabAction,
 	HumanTabActionOutcome,
 } from "../shared/browser-tab-action";
@@ -923,8 +927,12 @@ const api = {
 			ipcRenderer.invoke("browser-close-tabs", intent),
 		activateTab: (tabId: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-activate-tab", tabId),
-		navigate: (url: string): Promise<unknown> =>
-			ipcRenderer.invoke("browser-navigate", url),
+		addressHistory: (
+			request: AddressHistoryRequest,
+		): Promise<AddressHistoryResponse> =>
+			ipcRenderer.invoke("browser-address-history", request),
+		navigate: (url: string, expectedTabId?: number): Promise<unknown> =>
+			ipcRenderer.invoke("browser-navigate", url, expectedTabId),
 		home: (): Promise<unknown> => ipcRenderer.invoke("browser-home"),
 		reload: (hard = false): Promise<unknown> =>
 			ipcRenderer.invoke("browser-reload", hard),

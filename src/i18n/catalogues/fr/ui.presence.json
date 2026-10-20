@@ -7,5 +7,5 @@
 	"ui.presence.minutes_ago": "il y a {count, number} min",
 	"ui.presence.hours_ago": "il y a {count, number} h",
 	"ui.presence.days_ago": "il y a {count, number} j",
-	"ui.presence.link_down_compact": "Lien coupé · {age}"
+	"ui.presence.link_down_compact": "{age}"
 }

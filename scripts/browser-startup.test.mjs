@@ -40,8 +40,10 @@ export class WebContentsView {
    close: () => { if (!wc.destroyed) { wc.destroyed = true; wc.emit('destroyed'); f().views.delete(wc.id); } },
    debugger: { isAttached: () => false },
    navigationHistory: { canGoBack: () => false, canGoForward: () => false,
+     length: () => 1, getActiveIndex: () => 0,
+     getEntryAtIndex: () => ({ url: wc.url || 'about:blank' }),
      restore: async ({ entries }) => { wc.url = entries[0]?.url; },
-     getAllEntries: () => [{ url: wc.url || 'about:blank' }], getActiveIndex: () => 0 }
+     getAllEntries: () => [{ url: wc.url || 'about:blank' }] }
   });
   this.webContents = wc; this.setBounds = () => {}; this.setVisible = () => {};
   f().views.add(wc.id); f().peak = Math.max(f().peak, f().views.size);
