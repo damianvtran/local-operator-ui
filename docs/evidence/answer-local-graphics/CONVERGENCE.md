@@ -52,3 +52,6 @@ Serial requested behavior/shared/collapse/manifest command: **183 tests, 182 pas
 An additional optional four-file upstream-neighbor run reached 77 passing assertions but hit its 120s process bound after response-copy.test.mjs's three assertions, without a terminal summary. An exact-main source control reproduced the same non-termination (three assertions pass, still alive at 18s); its exact process group was reaped, all five authored source files restored byte-for-byte. No `--test-force-exit` or suppression was used. This optional run is **not a passing suite claim**; CI owns full-tree coverage.
 
 The original coverage limits remain: no daemon driver graphics verb, no physical Enter/Space dispatch, no actual screen-reader speech, and media-boundary zero requests rather than a network waterfall. No CI workflow was manually rerun. No reviewer, handle tag, version bump or PR merge.
+
+
+Round-2 evidence maintenance: the redundant r1-dark-folded-fixture.png was subsequently removed because it equalled r1-dark-closed.png byte-for-byte. The 13/24 capture counts above are historical; the set now retains 12 r1 /23 total PNGs. No product source or surviving image changed in that remediation.
