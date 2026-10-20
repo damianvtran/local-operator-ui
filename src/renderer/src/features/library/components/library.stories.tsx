@@ -18,7 +18,7 @@ import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor } from "@storybook/test";
 import type { FC, ReactNode } from "react";
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
 import { glassPaintFor } from "../../../../../shared/window-glass";
 import "../../../styles/index.css";
@@ -33,7 +33,8 @@ import {
 	filterAssets,
 } from "../library-model";
 import { LibraryPage } from "./library-page";
-import { LibraryPreview } from "./library-preview";
+import { LibraryPreview, type LibraryPreviewFocus } from "./library-preview";
+import { VIDEO_CONTROL_BAND_PX } from "./library-viewers";
 
 const NOW = new Date(2026, 9, 18, 12, 0, 0).getTime();
 const THEME_IDS = ["localOperatorDark", "localOperatorLight"];
@@ -1065,7 +1066,13 @@ export const MediaLightboxDismiss: Story = {
 		 * The page did not navigate and the preview is still the same asset: the
 		 * shared marker rather than `location.pathname`, which is `/iframe.html` in
 		 * every Storybook state and therefore cannot fail (QA round 1, Q2).
+		 *
+		 * THE ID IS NAMED BEFORE IT IS COMPARED (QA round 2, Q6): the comparison
+		 * alone was satisfied by `null === null`, so it caught a marker that MOVED
+		 * and not one that was removed. The absolute assertion is what makes the
+		 * pair evidence that the marker exists at all.
 		 */
+		expect(previewBefore).toBe(MEDIA_ROWS[0].id);
 		expect(previewOf()).toBe(previewBefore);
 		expect(document.querySelector('[data-library-media-trigger="image"]')).toBe(
 			trigger,
@@ -1107,12 +1114,14 @@ export const MediaLightboxSolo: Story = {
 
 /*
  * The clip's path, both ways in. The picture area is a click target sized to the
- * clip and stops above the native control band; the band's presses belong to the
- * player (`elementFromPoint` is the assertion: the target over the picture, the
- * `<video>` over the band). The corner expand control stays as the keyboard
- * affordance and opens the same lightbox. `data-lightbox-video` is the shared
- * lightbox's own hook on the video element, so the assertion covers a decoded
- * clip rather than the fallback.
+ * clip and stops above the native control panel — the measured band, not just
+ * the scrubber row (QA round 2, Q5): the play/pause glyph's centre and the
+ * scrubber both hit-test to the `<video>` (the assertion here), and a trusted
+ * press there starts the clip (the play function cannot prove that half: an
+ * untrusted click is ignored by the UA's controls, measured). The corner expand
+ * control stays as the keyboard affordance and opens the same lightbox.
+ * `data-lightbox-video` is the shared lightbox's own hook on the video element,
+ * so the open assertion covers a decoded clip rather than the fallback.
  */
 export const MediaLightboxVideo: Story = {
 	render: () =>
@@ -1149,14 +1158,25 @@ export const MediaLightboxVideo: Story = {
 		);
 		if (!expand) throw new Error("the preview's expand control is not mounted");
 		/*
-		 * The target covers the picture and NOT the control band: the band's own
-		 * presses must reach the player, or play/pause and the scrubber are dead.
+		 * The target covers the picture and NOT the native control panel: the
+		 * panel's own presses must reach the player, or play/pause and the scrubber
+		 * are dead. THE POINT IS THE VISIBLE PLAY GLYPH'S CENTRE, not a generic
+		 * point near the bottom (QA round 2, Q5): the earlier `bottom - 10` check
+		 * passed on the scrubber row while the play button itself sat under the
+		 * target, so pressing it opened the viewer instead of playing.
 		 */
 		const box = video.getBoundingClientRect();
 		const surfaceBox = surface.getBoundingClientRect();
 		const centreX = box.left + box.width / 2;
 		expect(document.elementFromPoint(centreX, box.top + box.height / 2)).toBe(
 			surface,
+		);
+		expect(Math.round(box.bottom - surfaceBox.bottom)).toBe(
+			VIDEO_CONTROL_BAND_PX,
+		);
+		/* The two measured native rows: the play/pause glyph centre and the scrubber. */
+		expect(document.elementFromPoint(box.left + 24, box.bottom - 48)).toBe(
+			video,
 		);
 		expect(document.elementFromPoint(centreX, box.bottom - 10)).toBe(video);
 		expect(surfaceBox.height).toBeLessThan(box.height);
@@ -1483,5 +1503,232 @@ export const PreviewInlineEmptyTags: Story = {
 			return found;
 		});
 		expect(row.textContent).toContain("Add a tag");
+	},
+};
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE SWITCH HARNESS.
+ * ---------------------------------------------------------------------------
+ * THE PAGE'S ROUTE CANNOT DRIVE THIS STATE. Its `RouteTo` effect re-pins the
+ * selected asset on every navigation, so pressing another listing row while an
+ * editor is open blurs the editor and saves rather than switching the preview
+ * (measured, QA round 1's M2 row and QA round 2's Q7). The preview owns the
+ * behaviour under test — an asset prop changes underneath live editors — so this
+ * harness hands the REAL `LibraryPreview` a state-controlled `asset` and a
+ * switch that changes it programmatically, exactly the prop change a route
+ * can deliver without a pointer crossing the editor.
+ */
+const PreviewSwitchHarness: FC<{
+	rows: readonly [DesktopLibraryAsset, DesktopLibraryAsset];
+}> = ({ rows }) => {
+	const [selected, setSelected] = useState(0);
+	const [focusRequest, setFocusRequest] = useState<{
+		field: LibraryPreviewFocus;
+		signal: number;
+	} | null>(null);
+	return (
+		<div className="flex h-screen flex-col gap-2 bg-canvas p-2">
+			<div className="flex shrink-0 gap-2">
+				<button
+					type="button"
+					data-preview-harness-command="metadata"
+					className="rounded-xs bg-control px-2 py-1 text-body-sm text-ink"
+					onClick={() =>
+						setFocusRequest((request) => ({
+							field: "metadata",
+							signal: (request?.signal ?? 0) + 1,
+						}))
+					}
+				>
+					Edit metadata
+				</button>
+				<button
+					type="button"
+					data-preview-harness-switch=""
+					className="rounded-xs bg-control px-2 py-1 text-body-sm text-ink"
+					onClick={() => setSelected((current) => (current + 1) % rows.length)}
+				>
+					Select the next asset
+				</button>
+				{/*
+				 * The card menu's `onEditMetadata` does BOTH in one commit: it navigates to
+				 * that card and bumps the page's focus request. This button models that
+				 * pair, which is the reset's hardest case — a reset that ran in an effect
+				 * after the commit would swallow the command the switch carried.
+				 */}
+				<button
+					type="button"
+					data-preview-harness-command-next="metadata"
+					className="rounded-xs bg-control px-2 py-1 text-body-sm text-ink"
+					onClick={() => {
+						setSelected((current) => (current + 1) % rows.length);
+						setFocusRequest((request) => ({
+							field: "metadata",
+							signal: (request?.signal ?? 0) + 1,
+						}));
+					}}
+				>
+					Edit metadata on the next asset
+				</button>
+			</div>
+			<div className="flex min-h-0 flex-1 justify-end">
+				<div className="flex h-full w-[440px] min-w-0 flex-col">
+					<LibraryPreview
+						asset={rows[selected]}
+						nowMs={NOW}
+						onClose={() => undefined}
+						onOpenConversation={() => undefined}
+						onFilterSession={() => undefined}
+						onAsk={() => undefined}
+						onToggleFavorite={() => undefined}
+						composerFocusSignal={0}
+						focusRequest={focusRequest}
+					/>
+				</div>
+			</div>
+		</div>
+	);
+};
+
+const switchRows = () => [ROWS[2], ROWS[3]] as const;
+
+const previewSwitchPane = () => {
+	stub = {
+		rows: [
+			...switchRows(),
+			...ROWS.filter((row) => row.id !== ROWS[2].id && row.id !== ROWS[3].id),
+		],
+		detail: ROWS[2],
+		hang: false,
+		building: false,
+		failList: null,
+		media: "text",
+		linkedChat: false,
+	};
+	extraTags = [];
+	install();
+	return <PreviewSwitchHarness rows={switchRows()} />;
+};
+
+/**
+ * AN EDIT COMMAND BELONGS TO THE ASSET IT WAS ISSUED ON.
+ *
+ * Two regressions meet here, and this play is the executable pin for both:
+ * the per-asset editor keys (`${asset.id}:name`), which stop a typed draft
+ * crossing a switch, and the start-signal reset, which stops a command's
+ * counter from re-opening the editor on the next asset (agent review round 2,
+ * M2 — reproduced by hand there, not driveable through the page route: QA
+ * round 2, Q7).
+ */
+export const PreviewInlineSwitchAfterCommand: Story = {
+	render: () => previewSwitchPane(),
+	play: async () => {
+		const user = userEvent.setup();
+		const [first, second] = switchRows();
+		const previewId = () =>
+			document
+				.querySelector("[data-library-preview]")
+				?.getAttribute("data-library-preview") ?? null;
+		const command = () => {
+			const node = document.querySelector<HTMLButtonElement>(
+				'[data-preview-harness-command="metadata"]',
+			);
+			if (!node) throw new Error("the harness command is not mounted");
+			return node;
+		};
+		const switchTo = () => {
+			const node = document.querySelector<HTMLButtonElement>(
+				"[data-preview-harness-switch]",
+			);
+			if (!node) throw new Error("the harness switch is not mounted");
+			return node;
+		};
+		const namesBefore = stub.rows.map((row) => `${row.id}:${row.name}`);
+
+		/* A: the command still opens the editor, and a draft is typed into it. */
+		await user.click(await waitFor(() => command()));
+		await waitFor(() => expect(inlineInput("name")).toBeTruthy());
+		const draft = await waitFor(() => {
+			const input = inlineInput("name");
+			if (!input) throw new Error("the name editor did not open");
+			return input as HTMLInputElement;
+		});
+		/* Cleared first: typing appends at the caret, so the draft has to start
+		 * from empty to be a value the switch could carry. */
+		await user.clear(draft);
+		await user.type(draft, "DRAFT FROM ASSET A");
+		expect(inlineInput("name")?.value).toBe("DRAFT FROM ASSET A");
+
+		/*
+		 * THE SWITCH IS PROGRAMMATIC ON PURPOSE: a pointer press on the button
+		 * would blur the editor first and blur SAVES (the documented gesture), so
+		 * the draft would land on A before the prop ever changed. This models the
+		 * route change the keys exist for.
+		 */
+		switchTo().click();
+		await waitFor(() => expect(previewId()).toBe(second.id));
+		expect(inlineInput("name")).toBeNull();
+		expect(
+			document.querySelector('[data-inline-edit="name"]')?.textContent,
+		).toContain(assetDisplayName(second));
+		/* The unmount wrote nothing: the draft stayed on the unmounted editor. */
+		expect(stub.rows.map((row) => `${row.id}:${row.name}`)).toEqual(
+			namesBefore,
+		);
+
+		/* B's own pencil still opens it, with B's value. */
+		await user.click(await waitFor(() => inlineControl("name")));
+		await waitFor(() => expect(inlineInput("name")).toBeTruthy());
+		expect(inlineInput("name")?.value).toBe(assetDisplayName(second));
+		await user.keyboard("{Escape}");
+		await waitFor(() => expect(inlineInput("name")).toBeNull());
+
+		/* And a fresh command aimed at B opens B, not A. */
+		await user.click(command());
+		await waitFor(() => expect(inlineInput("name")).toBeTruthy());
+		expect(inlineInput("name")?.value).toBe(assetDisplayName(second));
+		await user.keyboard("{Escape}");
+		await waitFor(() => expect(inlineInput("name")).toBeNull());
+
+		/* The reverse direction: B's command must not follow the switch to A. */
+		switchTo().click();
+		await waitFor(() => expect(previewId()).toBe(first.id));
+		expect(inlineInput("name")).toBeNull();
+		await user.click(await waitFor(() => inlineControl("name")));
+		await waitFor(() => expect(inlineInput("name")).toBeTruthy());
+		expect(inlineInput("name")?.value).toBe(assetDisplayName(first));
+	},
+};
+
+/**
+ * THE CARD MENU'S COMMAND SURVIVES THE SWITCH IT ARRIVES WITH. `onEditMetadata`
+ * on a card navigates to that card and bumps the page's command in one commit;
+ * this play pins that the editor opens for the asset the command named, which a
+ * counter reset placed in an effect (rather than during the render) would
+ * swallow.
+ */
+export const PreviewInlineCommandForAnotherAsset: Story = {
+	render: () => previewSwitchPane(),
+	play: async () => {
+		const user = userEvent.setup();
+		const [, second] = switchRows();
+		const command = await waitFor(() => {
+			const node = document.querySelector<HTMLButtonElement>(
+				'[data-preview-harness-command-next="metadata"]',
+			);
+			if (!node) throw new Error("the harness's paired command is not mounted");
+			return node;
+		});
+		await user.click(command);
+		await waitFor(() =>
+			expect(
+				document
+					.querySelector("[data-library-preview]")
+					?.getAttribute("data-library-preview"),
+			).toBe(second.id),
+		);
+		await waitFor(() => expect(inlineInput("name")).toBeTruthy());
+		expect(inlineInput("name")?.value).toBe(assetDisplayName(second));
 	},
 };

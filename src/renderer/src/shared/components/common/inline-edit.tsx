@@ -71,7 +71,11 @@ type InlineEditTextProps = {
 	textClassName?: string;
 	/** A value the field accepts as valid when emptied. Names do not. */
 	allowEmpty?: boolean;
-	/** Bumped by a menu command to open the editor without a pointer. */
+	/**
+	 * A counter a menu command bumps to open the editor without a pointer. It is
+	 * read as a CHANGE, never as a mount value: the value present at mount may
+	 * belong to whatever was on screen before (see the effect below).
+	 */
 	startSignal?: number;
 	/** Stable rig hook naming the field (`name`, `description`). */
 	field?: string;
@@ -202,9 +206,25 @@ export const InlineEditText: FC<InlineEditTextProps> = ({
 		if (phaseRef.current === "closed") setDraft(value);
 	}, [value]);
 
+	/*
+	 * A SIGNAL IS A CHANGE, NOT A MOUNT VALUE (agent review round 2, M2). The
+	 * caller keys this editor by asset id, so a switch remounts it, and a command
+	 * leaves its counter non-zero for the life of the preview. Firing on mount
+	 * therefore opened the new asset's editor with nobody having asked - and the
+	 * next keystroke would have renamed the wrong row. The counter present at
+	 * mount is the baseline; only a later value can open the editor.
+	 *
+	 * A drop back to zero is a reset, not a command: the caller clears the
+	 * counters when the asset changes, so this branch records the new baseline
+	 * and does nothing else. Without it the reset itself would read as a change
+	 * and open the editor on the asset the reader just switched to.
+	 */
+	const startSignalRef = useRef(startSignal);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the signal is a trigger, not a read.
 	useEffect(() => {
-		if (!startSignal) return;
+		const previous = startSignalRef.current;
+		startSignalRef.current = startSignal;
+		if (startSignal === previous || !startSignal) return;
 		startEditing();
 	}, [startSignal]);
 
@@ -424,7 +444,11 @@ type InlineTagEditorProps = {
 	addLabel: string;
 	/** A write is in flight: the row's controls are inert and the spinner takes the add slot. */
 	saving?: boolean;
-	/** Bumped by a menu command to open the add input without a pointer. */
+	/**
+	 * A counter a menu command bumps to open the add input without a pointer,
+	 * read as a CHANGE rather than as a mount value for the reason
+	 * `InlineEditText`'s prop records.
+	 */
 	startSignal?: number;
 };
 
@@ -455,6 +479,7 @@ export const InlineTagEditor: FC<InlineTagEditorProps> = ({
 	const [adding, setAdding] = useState(false);
 	const [draft, setDraft] = useState("");
 	const inputRef = useRef<HTMLInputElement | null>(null);
+	const rowRef = useRef<HTMLDivElement | null>(null);
 
 	const startAdding = () => {
 		if (saving || adding) return;
@@ -481,27 +506,67 @@ export const InlineTagEditor: FC<InlineTagEditorProps> = ({
 		}
 	};
 
+	/*
+	 * THE OPENING FOCUS AND THE RESUMING ONE ARE NOT THE SAME GESTURE. The
+	 * effect runs twice for one tag: once when the reader opens the input, and
+	 * once when a write settles and the input returns.
+	 *
+	 * `saving` IS A DEPENDENCY BECAUSE THE COMMIT UNMOUNTS THIS INPUT (agent
+	 * review round 1, N3): `commit(true)` focuses synchronously, but the
+	 * caller's save flips `saving` on the same tick and the add slot becomes a
+	 * `Spinner`, so the focus had no node to land on. When the write settles and
+	 * the input returns, this effect runs again and puts the caret back where the
+	 * next tag can be typed.
+	 *
+	 * THE RESUME MUST NOT STEAL FOCUS (agent review round 2, N3 residual). If
+	 * the reader clicked the name - or anything else outside this row - while
+	 * the write was in flight, they have chosen a new place to be; pulling them
+	 * back into the tag input would swallow their next keystroke. `BODY` is where
+	 * a removed focused node leaves the caret, so body and anything still inside
+	 * the row count as "nobody moved"; anywhere else does not. The opening run
+	 * has no such test: the gesture that opened the row owns focus, and the menu
+	 * path's restored trigger is outside the row by design.
+	 *
+	 * Deferred for the same dropdown-focus reason `InlineEditText` records:
+	 * `Edit tags` opens this input while the menu is closing, and Radix's
+	 * focus restoration would otherwise blur it and close it a tick later.
+	 */
+	const resumingRef = useRef(false);
 	useEffect(() => {
-		if (!adding || saving) return;
-		/*
-		 * Deferred for the same dropdown-focus reason `InlineEditText` records:
-		 * `Edit tags` opens this input while the menu is closing, and Radix's
-		 * focus restoration would otherwise blur it and close it a tick later.
-		 *
-		 * `saving` IS A DEPENDENCY BECAUSE THE COMMIT UNMOUNTS THIS INPUT (agent
-		 * review round 1, N3): `commit(true)` focuses synchronously, but the
-		 * caller's save flips `saving` on the same tick and the add slot becomes
-		 * a `Spinner`, so the focus had no node to land on. When the write
-		 * settles and the input returns, this effect runs again and puts the
-		 * caret back where the next tag can be typed.
-		 */
-		const timer = setTimeout(() => inputRef.current?.focus(), 0);
+		if (saving) {
+			resumingRef.current = true;
+			return;
+		}
+		if (!adding) {
+			resumingRef.current = false;
+			return;
+		}
+		const resuming = resumingRef.current;
+		resumingRef.current = false;
+		const timer = setTimeout(() => {
+			if (resuming) {
+				const active = document.activeElement;
+				const row = rowRef.current;
+				const stayed =
+					!active || active === document.body || !!row?.contains(active);
+				if (!stayed) return;
+			}
+			inputRef.current?.focus();
+		}, 0);
 		return () => clearTimeout(timer);
 	}, [adding, saving]);
 
+	/*
+	 * The signal is read as a change for the reason `InlineEditText`'s effect
+	 * records (agent review round 2, M2): a mount carrying the previous asset's
+	 * counter must not open this row on the asset now selected.
+	 */
+	const startSignalRef = useRef(startSignal);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the signal is a trigger, not a read.
 	useEffect(() => {
-		if (!startSignal) return;
+		const previous = startSignalRef.current;
+		startSignalRef.current = startSignal;
+		if (startSignal === previous || !startSignal) return;
 		startAdding();
 	}, [startSignal]);
 
@@ -549,6 +614,7 @@ export const InlineTagEditor: FC<InlineTagEditorProps> = ({
 
 	return (
 		<div
+			ref={rowRef}
 			data-inline-tags=""
 			className="flex min-w-0 flex-wrap items-center gap-2"
 		>

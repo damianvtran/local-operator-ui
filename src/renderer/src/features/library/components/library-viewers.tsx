@@ -121,14 +121,26 @@ const Unsupported: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => (
 /**
  * How much of the clip's bottom edge the click target must leave to the player.
  *
- * Chromium draws the media control bar inside the element, 32 CSS pixels tall at
- * this app's scale — measured on the story fixture's 320x180 clip: the bar's top
- * edge sits 32px above the element's bottom, and a press inside that band reaches
- * the native play/scrubber controls while a press above it reaches the preview.
- * The number is stated once here rather than recomputed per render because it is
- * a property of the player, not of the asset.
+ * Chromium draws the media control panel INSIDE the element, and at this app's
+ * preview size (the story fixture's 320x180 clip) it is two rows: the scrubber
+ * sits ~21 CSS pixels above the element's bottom edge and the play/pause row's
+ * glyph centre ~48px above it, inside a panel that reaches ~64px up. A press at
+ * the visible play icon's centre must reach the player - a 32px band left the
+ * icon under the target, so pressing it opened the viewer instead of playing
+ * (QA round 2, Q5). The band is the panel's full height plus the few pixels of
+ * its own padding, so every native control row belongs to the player and the
+ * picture above the band still opens the viewer.
+ *
+ * The number is stated once here rather than recomputed per render because it
+ * is a property of the player, not of the asset. Measured at the fixture's
+ * 320x180 and re-measured with the element stretched to 800x450, the panel
+ * stays around 64px tall; it shrinks only for very small elements (200x112 put
+ * the play row about 30px up), where this band is conservative rather than
+ * short — the picture above it still takes the press. Re-measure it if Chromium
+ * changes its media controls; the story's play asserts a point in the panel's
+ * middle and a point in the picture.
  */
-const VIDEO_CONTROL_BAND_PX = 32;
+export const VIDEO_CONTROL_BAND_PX = 72;
 
 /**
  * Image, audio and video share one byte fetch and one media element.
@@ -145,15 +157,16 @@ const VIDEO_CONTROL_BAND_PX = 32;
  *
  * THE VIDEO'S CONTROL BAND IS THE ONE LANE THE TARGET LEAVES ALONE, and that is
  * a measurement, not a preference: play/pause, the scrubber and volume live
- * INSIDE the element, so a target that covered its whole box would take those
- * presses before the player saw them. The target is sized from the CLIP's own box
- * (not the pane's, which is larger whenever the clip letterboxes) and stops
- * `VIDEO_CONTROL_BAND_PX` above its bottom edge; `ResizeObserver` keeps those
- * numbers true across a pane resize or the clip's aspect settling after
- * metadata. Measured on the story fixture: the band's presses hit-test to the
- * `<video>`, its native play button starts the clip, and a press above the band
- * opens the viewer. The expand control in the corner stays as the keyboard and
- * first-run affordance, painted above the target.
+ * INSIDE the element, so a target that covered their rows would take those
+ * presses before the player saw them. The target is sized from the CLIP's own
+ * box (not the pane's, which is larger whenever the clip letterboxes) and stops
+ * `VIDEO_CONTROL_BAND_PX` above its bottom edge - the measured full height of
+ * the native panel, not just the scrubber row (QA round 2, Q5); `ResizeObserver`
+ * keeps those numbers true across a pane resize or the clip's aspect settling
+ * after metadata. Measured on the story fixture: a press on the visible play
+ * icon's centre starts the clip, a press on the scrubber seeks, and a press on
+ * the picture above the band opens the viewer. The expand control in the corner
+ * stays as the keyboard and first-run affordance, painted above the target.
  */
 const MediaViewer: FC<{
 	asset: DesktopLibraryAsset;

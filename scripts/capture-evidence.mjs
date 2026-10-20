@@ -12414,7 +12414,9 @@ export const STORIES = [
 			expectAttribute: {
 				selector: VIEWER_CONTROLS,
 				name: "class",
-				includes: "opacity-45",
+				/* The resting opacity is the shared chrome's measured floor, now
+				 * 0.85 (design round 2, D1); the frame is re-captured with it. */
+				includes: "opacity-85",
 			},
 		},
 	],

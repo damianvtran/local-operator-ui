@@ -159,6 +159,28 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 	const [nameEditSignal, setNameEditSignal] = useState(0);
 	const [tagEditSignal, setTagEditSignal] = useState(0);
 	/*
+	 * A COMMAND BELONGS TO THE ASSET IT WAS ISSUED ON (agent review round 2,
+	 * M2). The editors are keyed by asset id, so a switch remounts them; a
+	 * counter left at its last value would travel into the new mount, and the
+	 * primitive had no way to tell that stale number from a command meant for
+	 * the asset now selected - it opened the new asset's editor with nobody
+	 * having asked, and the next keystroke would have renamed the wrong row.
+	 *
+	 * THE RESET HAPPENS DURING RENDER, NOT IN AN EFFECT, and the difference is
+	 * load-bearing: a card's menu runs `onEditMetadata`/`onEditTags`, which
+	 * navigate to that card AND bump the page's focus request in the SAME
+	 * commit. An effect would clear the counters after that commit and swallow
+	 * the command it carried; adjusting the state here restarts the render
+	 * before anything mounts, so the new asset's editors see a zero baseline and
+	 * the command effect below is free to bump it for the asset it named.
+	 */
+	const [signalAssetId, setSignalAssetId] = useState(asset.id);
+	if (signalAssetId !== asset.id) {
+		setSignalAssetId(asset.id);
+		setNameEditSignal(0);
+		setTagEditSignal(0);
+	}
+	/*
 	 * SHORT PREVIEWS COMPACT THE METADATA (design spec §2): below 700px of
 	 * preview height the description and tag editor collapse behind Details, so
 	 * the viewer keeps a usable slide/document area instead of being squeezed
