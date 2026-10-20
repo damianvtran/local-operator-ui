@@ -946,17 +946,28 @@ test("A13: the copied module classifies from the invocation directory, not its o
  * desktop suite on a change to that suite's own input - `evidence-manifest.
  * test.mjs` reads `docs/evidence/manifest.json`, `clear-search.test.mjs`,
  * `new-chat-row-evidence.test.mjs` and `evidence-run-guard.test.mjs` read their
- * captured frames, and `chrome-keychain.test.mjs` walks the tree. A green PR
+ * proof artefacts, and `chrome-keychain.test.mjs` walks the tree. A green PR
  * that tested nothing.
  *
  * It keeps TWO jobs now, and `evidence` was added with the frame sweep for the
- * same reason: `docs/evidence/**` is exactly what `pnpm check-evidence` asserts
- * over, and the flags that stay false are the ones that would compile, build or
- * pack a frame. A21 pins what selects that second job.
+ * same reason: `docs/evidence/**` is exactly what the TRACKED half of evidence
+ * asserts over - the manifest and the proof artefacts - and the flags that stay
+ * false are the ones that would compile, build or pack a frame. A21 pins what
+ * selects that second job.
  *
- * Mutation: return `docs` for `docs/evidence/**`.
+ * THE THIRD CATEGORY, added with the frames split: `docs/evidence-frames/**` is
+ * the rig's IGNORED output. It is not committed evidence (there is nothing
+ * under it for a job to read) and it is not prose an inert skip is safe for
+ * (the only way it appears in a diff is a force-add, which re-materialises the
+ * ~570 MB this change removes from every worktree). So it is `other`: every
+ * code flag true, the unknown-path annotation raised, and `evidence` FALSE -
+ * selecting the frame sweep for a tree the sweep cannot see would let a
+ * force-added frame ride under a green job.
+ *
+ * Mutation: return `docs` for `docs/evidence/**`; or return `docs` for the
+ * frames tree; or fold the frames tree into `CAT_EVIDENCE`.
  */
-test("A16: docs/evidence/** keeps the suite and the frame sweep, and nothing else", () => {
+test("A16: docs/evidence/** keeps the suite and the evidence job, and nothing else", () => {
 	const flags = classify(["docs/evidence/manifest.json"]);
 	assert.equal(
 		flags.unit,
@@ -966,7 +977,7 @@ test("A16: docs/evidence/** keeps the suite and the frame sweep, and nothing els
 	assert.equal(
 		flags.evidence,
 		true,
-		"a change to committed evidence must run the sweep that asserts over it",
+		"a change to committed evidence must run the evidence job that asserts over it",
 	);
 	assert.equal(flags.pack, false, "committed evidence is not built or packed");
 	assert.equal(flags.lint, false);
@@ -978,6 +989,39 @@ test("A16: docs/evidence/** keeps the suite and the frame sweep, and nothing els
 	assert.equal(classify(["docs/evidence/usage/01-loaded.png"]).unit, true);
 	assert.equal(classify(["docs/evidence/README.md"]).unit, true);
 	assert.equal(classify(["docs/evidence"]).unit, true);
+
+	/*
+	 * The ignored frames tree is neither of the two above. It is `other`, so the
+	 * suite still runs (a force-add is a real change to the repository) and the
+	 * unknown-path annotation fires, but the frame sweep is NOT selected: there
+	 * are no committed frames there for it to read.
+	 */
+	for (const path of [
+		"docs/evidence-frames",
+		"docs/evidence-frames/live/one/dracula.webp",
+	]) {
+		assert.equal(
+			categoryOf(path),
+			"other",
+			`${path} must be named as unrecognised rather than committed evidence or inert prose`,
+		);
+		assert.equal(
+			isNamedLivePath(path),
+			false,
+			`${path} is not a live source path, so the unknown-path annotation must fire`,
+		);
+		const flags = classify([path]);
+		assert.equal(
+			flags.evidence,
+			false,
+			`${path} selected the frame sweep: nothing under the ignored tree is committed for it to read, so a green job there would be green by absence`,
+		);
+		assert.equal(flags.unit, true, `${path} skipped the suite`);
+		assert.equal(flags.pack, true, `${path} skipped the pack`);
+		// `docs/evidence` must not swallow the sibling by prefix: the two trees
+		// differ by a suffix only, which is exactly how a prefix rule gets it wrong.
+		assert.notEqual(categoryOf(path), "evidence");
+	}
 });
 
 // ---------------------------------------------------------------------------
@@ -1590,19 +1634,25 @@ test("A20: --all writes every flag true", () => {
 // ---------------------------------------------------------------------------
 
 /*
- * Defect: `pnpm check-evidence` ran in NO workflow, so 20 findings sat on `main`
+ * Defect: the evidence gate ran in NO workflow, so 20 findings sat on `main`
  * - 19 frames whose filename named no palette, and one `supplementary` entry
  * with no `why` - under a green CI. The job exists now; this pins what SELECTS
  * it, because a gate nothing sets is the same absence one level up, and a gate
- * set too widely is a whole-tree decode paid on every unrelated diff.
+ * set too widely runs evidence work on every unrelated diff.
  *
- * Mutation: gate the job on `unit` (the sweep then pays its decode on every
- * `src/**` change); or drop `CAT_EVIDENCE` from the predicate (the sweep then
- * never runs on the diff that moves frames, which is the shipped defect); or
- * drop the palette prefix (`palette-source.mjs` reads the grounds out of those
- * files, so moving a ground must re-judge every frame).
+ * WHAT THE JOB CHECKS MOVED (2026-10-20): it asserts the tracked STRUCTURE, and
+ * the pixel sweep it used to run is the release path's step. What selects it is
+ * unchanged, and that is deliberate: a diff that moves the manifest, the rigs,
+ * a palette or the install is still the diff that can invalidate the structure
+ * or the grounds a release-time sweep judges against.
+ *
+ * Mutation: gate the job on `unit` (then every `src/**` change pays for the
+ * structure walk); or drop `CAT_EVIDENCE` from the predicate (the job then never
+ * runs on the diff that moves evidence, which is the shipped defect); or drop
+ * the palette prefix (`palette-source.mjs` reads the grounds out of those
+ * files, so moving a ground must re-judge every frame at the next release).
  */
-test("A21: the frame sweep runs on a frame change and on the inputs it judges", () => {
+test("A21: the evidence job runs on an evidence change and on the inputs it judges", () => {
 	assert.equal(
 		classify([
 			"docs/evidence/chat-older-history-slot/retry-recovery/head/in-transcript-idle/in-transcript-idle--03-t2381ms-idle/localOperatorDark.webp",
@@ -1655,16 +1705,33 @@ test("A21: the frame sweep runs on a frame change and on the inputs it judges", 
  * Mutation: add an import to `check-evidence.mjs` - or to anything it loads -
  * and leave the set alone; or drop an entry from the set.
  */
-test("A22: the sweep's selected sources ARE its derived load path", () => {
+test("A22: the gate's selected sources ARE its derived load path", () => {
+	/*
+	 * TWO entry points since the split: the structural gate CI runs
+	 * (`check-evidence-structure.mjs`, which loads `check-evidence.mjs` for
+	 * `stampFailures`) and the pixel sweep itself, whose closure also carries the
+	 * Python admission guard behind a spawn the import walk cannot see. The union
+	 * is the set: a module either entry point loads can move the job's verdict.
+	 */
+	const entries = [
+		"scripts/check-evidence.mjs",
+		"scripts/check-evidence-structure.mjs",
+	];
 	assert.deepEqual(
 		[...EVIDENCE_SOURCES].sort(),
 		[
 			...new Set([
-				...relativeImportClosure("scripts/check-evidence.mjs"),
-				...spawnedClosure("scripts/check-evidence.mjs"),
+				// The entry points themselves: the walk returns what they LOAD, and
+				// `check-evidence-structure.mjs` is imported by nothing (only the
+				// workflow and this table name it), so it would otherwise drop out.
+				...entries,
+				...entries.flatMap((entry) => [
+					...relativeImportClosure(entry),
+					...spawnedClosure(entry),
+				]),
 			]),
 		].sort(),
-		"EVIDENCE_SOURCES has to be the closure of what `scripts/check-evidence.mjs` LOADS and SPAWNS: a hand-kept list of the modules that produce the verdict lost `capture-evidence.mjs` once already, and an import walk alone cannot see the Python admission guard the sweep forks before it reads a frame",
+		"EVIDENCE_SOURCES has to be the closure of what the gate LOADS and SPAWNS: a hand-kept list of the modules that produce the verdict lost `capture-evidence.mjs` once already, and an import walk alone cannot see the Python admission guard the sweep forks before it reads a frame",
 	);
 });
 
@@ -1680,19 +1747,52 @@ test("A22: the sweep's selected sources ARE its derived load path", () => {
  * to every evidence-touching local run); or delete the exclusion outright (A11
  * refuses that - a gated job needs a local command OR a recorded reason).
  */
-test("A23: the whole-tree sweep is off the local path, with its reason recorded", () => {
-	assert.ok(
-		!Object.hasOwn(JOB_COMMANDS, "evidence"),
-		"`evidence` must not be on the local path: `pnpm check-evidence` is a whole-tree decode (~5 minutes) guarded by a machine-wide lease, so a local `check-changed` would pay it on every evidence-touching diff or be locked out",
+test("A23: local runs the STRUCTURAL gate, and the pixel sweep is the release path's", () => {
+	/*
+	 * Defect: the evidence job's local spelling being the pixel sweep. It decodes
+	 * the whole captured tree (~5 minutes) behind a machine-wide lease, so a local
+	 * `check-changed` would pay it on every evidence-touching diff or be locked
+	 * out of its own gate - and once the frames became rig output in an ignored
+	 * tree, a fresh CI checkout has none, so that spelling cannot be CI's either.
+	 *
+	 * What replaces it is two halves with two homes: the structural gate locally
+	 * and in CI (cheap, no pixels), and the pixel sweep at release on a captured
+	 * checkout. This pins both - the local command IS the structural one, and the
+	 * sweep is not reachable from `check-changed` at all.
+	 */
+	assert.deepEqual(
+		JOB_COMMANDS.evidence,
+		["node scripts/check-evidence-structure.mjs"],
+		"the evidence job's local spelling drifted from the structural gate CI runs (A11 reads the workflow side of this)",
 	);
 	assert.ok(
-		Object.hasOwn(LOCAL_EXCLUSIONS, "evidence"),
-		"and it is excluded WITH a reason rather than silently dropped",
+		!Object.values(JOB_COMMANDS)
+			.flat()
+			.some((command) => /\bcheck-evidence\.mjs\b/.test(command)),
+		"a local command invokes the PIXEL sweep: it is a whole-tree decode behind a machine-wide lease, and it needs a captured checkout - it belongs to the release path, not `check-changed`",
+	);
+	assert.ok(
+		!Object.hasOwn(LOCAL_EXCLUSIONS, "evidence"),
+		"`evidence` is excluded locally, so the cheap structural half never runs where a developer can see it",
+	);
+	/*
+	 * And the release path is DOCUMENTED, not merely intended: the owner's
+	 * procedure names the sweep and its verdict, which is the only record that it
+	 * ran. A code comment cannot be the home for a coverage move.
+	 */
+	const agents = readFileSync(new URL("../AGENTS.md", import.meta.url), "utf8");
+	const release = agents.slice(
+		agents.indexOf("## Releasing: one owner per window"),
 	);
 	assert.match(
-		LOCAL_EXCLUSIONS.evidence,
-		/75/,
-		"the reason names the DEFERRED code, because that is the outcome a reader of a local evidence diff will otherwise read as a failure",
+		release,
+		/node scripts\/check-evidence\.mjs/,
+		"the release-owner procedure does not name the pixel sweep: the check moved from every PR to release-time and must say where it went",
+	);
+	assert.match(
+		release,
+		/regenerated frames|regenerat/i,
+		"the release step does not say the sweep needs a CAPTURED checkout, which is the whole reason it could not stay in CI",
 	);
 });
 
