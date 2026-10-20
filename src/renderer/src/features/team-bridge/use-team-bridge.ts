@@ -36,8 +36,10 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
+import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
 import type {
 	TeamBridgeConversationList,
+	TeamBridgeDirectory,
 	TeamBridgeMessagePage,
 	TeamBridgeNotify,
 	TeamBridgeReadState,
@@ -80,6 +82,15 @@ export const teamBridgeKeys = {
 		] as const,
 	unread: (scope: TeamBridgeScope) => [...ROOT, "unread", scope] as const,
 	unreadPrefix: [...ROOT, "unread"] as const,
+	/*
+	 * The People section's two reads. The directory is keyed by TENANT (the
+	 * section only exists for one organization), so switching scope refetches
+	 * into a different key and a previous organization's roster is never shown
+	 * under the new title. The status read is one key: the platform state does
+	 * not vary by scope.
+	 */
+	directory: (tenantId: string) => [...ROOT, "directory", tenantId] as const,
+	status: [...ROOT, "status"] as const,
 };
 
 /** Map the UI scope onto the wire's read scope (the only place the sentinel is translated). */
@@ -140,6 +151,48 @@ export function useTeamBridgeIdentity(
 		queryFn: () => TeamBridgeApi.identity(),
 		enabled,
 		staleTime: 5 * 60_000,
+		retry: 1,
+	});
+}
+
+/**
+ * The rail's People section: one organization's active human members.
+ *
+ * `tenantId` is null in the merged scope, and the query is DISABLED there —
+ * the account-wide view has no single roster to show, and the section states
+ * that rather than spending a read on an answer it cannot render. A directory
+ * failure is this section's own error state: it is a separate query from the
+ * conversation list, so a refused directory never blanks the list.
+ */
+export function useTeamBridgeDirectory(
+	tenantId: string | null,
+): UseQueryResult<TeamBridgeDirectory> {
+	return useQuery({
+		queryKey: teamBridgeKeys.directory(tenantId ?? "none"),
+		queryFn: () => TeamBridgeApi.directory(tenantId as string),
+		enabled: Boolean(tenantId),
+		staleTime: 30_000,
+		refetchOnWindowFocus: true,
+		retry: 1,
+	});
+}
+
+/**
+ * The bridge's platform state, for the page's plan/sign-in cue.
+ *
+ * Read once per page open (`surface_open`) and kept fresh for a minute. The
+ * page keeps rendering its normal state while this is pending: the status
+ * answer is a gate, and a gate that blocks the first paint would make every
+ * signed-in visit wait on a second read. A failure is not surfaced by itself —
+ * the conversation list already has its own error state, and a status read
+ * that cannot answer must not invent an ineligible verdict.
+ */
+export function useTeamBridgeStatus(): UseQueryResult<AgentMessagesStatus> {
+	return useQuery({
+		queryKey: teamBridgeKeys.status,
+		queryFn: () => TeamBridgeApi.status("surface_open"),
+		staleTime: 60_000,
+		refetchOnWindowFocus: true,
 		retry: 1,
 	});
 }

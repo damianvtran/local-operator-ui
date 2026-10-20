@@ -3498,6 +3498,47 @@ test("team_bridge account-scoped reads map scope=account and page on cursor", ()
 	);
 });
 
+test("team_bridge directory is tenant-scoped and status is the shared status route", () => {
+	/*
+	 * The directory slice's two reads. `directory` names its tenant in the QUERY
+	 * and refuses an op without one: there is no account-wide directory in this
+	 * client, so a missing tenant must be a 422 at this boundary rather than a
+	 * server-default organization the reader never chose. `status` is the
+	 * existing status payload under the bridge namespace; an absent boundary is
+	 * no query at all, not the literal "undefined" the sibling settings op
+	 * emits when its boundary is missing.
+	 */
+	assert.throws(() => jobsCancelSchema.parse({ op: "team_bridge.directory" }));
+	const directory = jobsCancelEndpoint({
+		op: "team_bridge.directory",
+		tenant_id: "tnt_1",
+	});
+	assert.equal(directory.method, "GET");
+	assert.equal(directory.path, "/v1/messaging/directory?tenant_id=tnt_1");
+	// The tenant is an encoded query VALUE: a crafted id cannot add a second
+	// parameter or a path segment.
+	const crafted = jobsCancelEndpoint({
+		op: "team_bridge.directory",
+		tenant_id: "tnt_1&scope=account",
+	});
+	assert.equal(
+		crafted.path,
+		"/v1/messaging/directory?tenant_id=tnt_1%26scope%3Daccount",
+	);
+
+	const status = jobsCancelEndpoint({
+		op: "team_bridge.status",
+		boundary: "surface_open",
+	});
+	assert.equal(status.method, "GET");
+	assert.equal(
+		status.path,
+		"/v1/desktop/team-bridge/status?boundary=surface_open",
+	);
+	const bareStatus = jobsCancelEndpoint({ op: "team_bridge.status" });
+	assert.equal(bareStatus.path, "/v1/desktop/team-bridge/status");
+});
+
 test("team_bridge join adds the caller and notify rides the read route", () => {
 	/*
 	 * The discoverable-channel slice (agent-server #148) has two writes this

@@ -10279,6 +10279,19 @@
         "The comparison frame shows the old reserving lane shape.",
         "Browser-tool PNGs, not sweep frames; declared sweep count is zero."
       ]
+    },
+    {
+      "path": "team-bridge-directory",
+      "frames": 0,
+      "capturedAt": "2026-10-20T16:42:00.000Z",
+      "source": "scripts/capture-evidence.mjs against a Storybook dev server started from this worktree (--only=team-bridge-page-- --themes=localOperatorLight,localOperatorDark), 1280x900 CSS px per frame. The eight stories are the pure TeamBridgePageView fixtures: the populated directory (self, active, paused, none, disabled), loading, error, disabled-only, the merged-scope explanation, and the plan/sign-in/update panels. The rig's WebP output was converted to PNG and written to the ignored frames tree at `docs/evidence-frames/team-bridge-directory/` (sixteen 1280x900 PNGs), with this README as the set's tracked provenance. Captured from this branch's worktree on the tree these frames ship in (no backend; the stories are pure props).",
+      "why": [
+        "Shows the rail's People section at its 30px rhythm under a populated conversation list: self as You (not a control), an openable person, a paused admin whose note stays quiet, and two bridge-off rows in muted ink.",
+        "The directory failure and loading frames sit below an unaffected conversation list, which is the separation the round requires: a refused directory never blanks conversations.",
+        "The merged-scope frame states why it has no roster instead of guessing which organization each person belongs to.",
+        "The three gate frames are the whole page for an ineligible account: title, one-sentence value, and the server's honest reason, with no controls that would be refused.",
+        "These PNGs have descriptive names rather than palette filenames, so check-evidence counts zero swept frames in this set; nothing here is re-derived by a later sweep."
+      ]
     }
   ],
   "remediationRecord": {
