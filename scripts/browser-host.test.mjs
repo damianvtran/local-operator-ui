@@ -2870,6 +2870,36 @@ function makeHost(overrides = {}) {
 	};
 }
 
+test("address history refuses a stale expected tab and reads the live snapshot", async () => {
+	const { host } = makeHost();
+	await host.newTab(null);
+	const first = host.chromeState().activeTabId;
+	await host.navigateActive("https://example.test/history");
+	await host.newTab(null);
+	const second = host.chromeState().activeTabId;
+	assert.notEqual(second, first, "a second tab became active");
+	assert.throws(
+		() =>
+			host.addressHistory({ requestId: 1, expectedTabId: first, scope: "all" }),
+		/active tab changed before suggestions were read/,
+		"a request naming the previous tab is refused rather than answered",
+	);
+	const response = host.addressHistory({
+		requestId: 2,
+		expectedTabId: second,
+		scope: "all",
+	});
+	assert.equal(response.requestId, 2);
+	assert.equal(response.activeTabId, second);
+	assert.ok(
+		response.entries.some((entry) =>
+			entry.url.includes("example.test/history"),
+		),
+		"the other tab's live history is in the snapshot",
+	);
+	assert.ok(response.entries.length <= 256, "the DTO cap holds");
+});
+
 test("closed-tab stack is user-only, scoped, bounded and erased with host UI lifetime", async () => {
 	const { host, registry } = makeHost();
 	for (let i = 0; i < 12; i++) {
