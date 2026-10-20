@@ -162,7 +162,10 @@ Read `docs/I18N.md` for the contributor HOWTO and audit-evidence contract.
   resolves a MERGE and nothing else - a rebase, cherry-pick or stash-pop still stops
   on the manifest, by design (see the evidence section below).
 
-`pnpm check-evidence` admits **one sweep per machine**, across worktrees and
+`pnpm check-evidence` is the PIXEL sweep, and it runs where the frames are: it is
+not in CI (a fresh checkout has no frames tree) and its CI half is
+`node scripts/check-evidence-structure.mjs`; on this fleet it is the release
+path's step 2b. It admits **one sweep per machine**, across worktrees and
 isolated `HOME`/`TMPDIR` runs. It requires Python 3 with POSIX `flock` (macOS/Linux)
 and uses the permanent `/tmp/local-operator-ui-check-evidence.lock` file. A busy
 lease exits **75** with `DEFERRED` and checks no frames; retry after the owner
@@ -398,15 +401,7 @@ answered against EVERY local ref, of which this machine carries around a thousan
 branch passes locally and dies in a fresh clone. Five citation failures shipped
 behind a local green for exactly that reason (design review round 2, D2b).
 
-**The sweep's citation half is checked NOWHERE on this fleet today, and the wired job says so.** `ci.yml`'s
-`evidence` job runs on `actions/checkout`'s depth-1 clone, where every citation in
-the manifest reads as missing at once - which says the CLONE is truncated, not that
-the commits are gone. `pnpm check-evidence` therefore judges only the citations
-that clone can answer and prints NOTHING about the rest: a stand-down notice on
-100% of runs is a standing excuse that reads as a covered check, the same
-green-by-absence the job's wiring was added to remove, one level up. The scope is
-declared where a reader meets the gate - the step's own name (`Sweep the committed
-frames (citations unchecked on shallow clones)`) and `citationWalk`'s paragraph.
+**The sweep's citation half is checked NOWHERE on this fleet today, and that is stated where the sweep runs.** `ci.yml`'s `Evidence Structure` job does not run the sweep at all any more (the pixel half moved to the release path, step 2b). When a release owner runs `pnpm check-evidence` on this machine the checkout is SHALLOW - every checkout here is - so every citation in the manifest reads as missing at once, which says the CLONE is truncated, not that the commits are gone. `pnpm check-evidence` therefore judges only the citations that clone can answer and prints NOTHING about the rest: a stand-down notice on 100% of runs is a standing excuse that reads as a covered check, the same green-by-absence the job's wiring was added to remove, one level up. The scope is declared where a reader meets the gate - the release step's own paragraph and `citationWalk`'s - and `git fetch --unshallow` is what answers it.
 
 **"Local-only" would UNDERSTATE that, and this is the trap to hold on to: every
 checkout on this fleet is shallow, not just CI's.** `git rev-parse
@@ -420,9 +415,13 @@ fetch --unshallow` before the run, and the synthetic manifests in
 the citations.
 
 Do not put the whole-tree sweep on the local `check-changed` path either: it is a
-whole-tree decode of every committed frame behind a machine-wide lease, so it is in
-`LOCAL_EXCLUSIONS` with the fast half of the same gate still running under `test`,
-and its lease's exit 75 is a DEFERRAL the runner names rather than a failure.
+whole-tree decode of the captured frame set behind a machine-wide lease, and its
+lease's exit 75 is a DEFERRAL the runner names rather than a failure. What IS on
+that path is the cheap half: `node scripts/check-evidence-structure.mjs` (the
+`evidence` job's own command, so local and CI cannot drift), which asserts the
+tracked structure and never decodes. The pixel sweep lives on the release path -
+step 2b of *The window, and the release owner's procedure* - because that is
+where a checkout with frames exists.
 
 **A frame is judged by its NAME, not by its container - and the rest are COUNTED.**
 `check-evidence.mjs`'s `frames()` judges any frame whose filename names a theme
@@ -2298,6 +2297,28 @@ git -C "$WT" push --force-with-lease origin release-next
 gh pr edit <claim-pr-number> --title 'chore(release): bump version to X.Y.Z'
 gh pr ready <claim-pr-number>
 MERGE_SHA=$(gh pr view <claim-pr-number> --json mergeCommit --jq .mergeCommit.oid)
+
+# 2b. THE PIXEL SWEEP, before the tag - the check CI cannot run any more.
+#     Frames are rig output in the ignored `docs/evidence-frames/` and are not
+#     committed, so a fresh CI checkout has none: `ci.yml`'s `Evidence Structure`
+#     job checks the tracked structure (no committed frames, the manifest and its
+#     declarations, the proof artefacts) and CANNOT judge a pixel. The pixels are
+#     checked HERE, on a checkout that has them - this is a MOVE, not a coverage
+#     claim, and the release notes must not describe the release as pixel-checked
+#     if this step was skipped.
+#     Use a checkout with REGENERATED frames matching the images the manifest
+#     describes (re-run `node scripts/capture-evidence.mjs` if it is empty or
+#     stale; it needs Storybook and a browser, ~40 minutes). Clone the tree into
+#     the release worktree (APFS `cp -Rc`: no new bytes) so the verdict is about
+#     the tagged tree, and record the two lines it prints.
+cp -Rc ~/local-operator-ui/docs/evidence-frames "$WT/docs/evidence-frames"
+cd "$WT" && node scripts/check-evidence.mjs
+#    Paste `tree under review: src=... scripts=...` and
+#    `Evidence holds: <n> frames are pictures of their own theme (worst ...)`
+#    into the release PR body and the Release notes' evidence section.
+#    A missing frames tree is a REFUSAL, not a pass (`No frames at <dir>` exit 1);
+#    the sweep takes the machine-wide lease and exits 75 when another holds it -
+#    retry rather than reading 75 as a verdict.
 
 # 3. RE-DERIVE the window here, then tag and Release in ONE step on that SHA, notes
 #    hand-written from the template. Anything merged since step 1 rides this tag —
