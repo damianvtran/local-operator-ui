@@ -152,5 +152,18 @@
 	"ui.hub.links.mark_failed": "fallido",
 	"ui.hub.links.mark_available": "actualización disponible",
 	"ui.hub.links.mark_busy": "trabajando",
-	"ui.hub.links.mark_applied": "aplicado"
+	"ui.hub.links.mark_applied": "aplicado",
+	"ui.hub.skills.download": "Descargar una vez",
+	"ui.hub.skills.unpull": "Quitar la copia local",
+	"ui.hub.skills.unpull_title": "¿Quitar la copia local de {item}?",
+	"ui.hub.skills.unpull_body": "Los archivos salen de tu carpeta de habilidades. El vínculo y su suscripción se mantienen, así que volver a descargar trae la revisión actual.",
+	"ui.hub.skills.unpull_failed": "No se confirmó que la copia local se haya quitado. Vuelve a intentarlo y luego revisa el estado del vínculo.",
+	"ui.hub.skills.subscribe_failed": "No se confirmó la suscripción. Vuelve a intentarlo.",
+	"ui.hub.skills.local_path": "Instalada en {path}",
+	"ui.hub.skills.published_by": "Publicada por {publisher}",
+	"ui.hub.skills.not_downloaded": "No descargada",
+	"ui.hub.skills.subscribed_absent": "Suscrita — no instalada",
+	"ui.hub.skills.pulled": "Descargada — suscrita",
+	"ui.hub.skills.manual": "Descargada — sin suscripción",
+	"ui.hub.skills.detached": "Vinculada — sin copia"
 }

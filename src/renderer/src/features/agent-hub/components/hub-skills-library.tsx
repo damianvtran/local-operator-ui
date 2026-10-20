@@ -2,27 +2,149 @@ import {
 	HubInitialPolicyFields,
 	newHubPolicy,
 } from "@features/agents/components/hub-initial-policy-fields";
-import { hubLinkSourceName } from "@features/agents/components/hub-link-policy-controls";
-import { hubSkillsSupported } from "@shared/api/radient/skills-api";
+import {
+	HubLinkPolicyControls,
+	hubLinkSourceName,
+} from "@features/agents/components/hub-link-policy-controls";
+import { HubUpdatePanel } from "@features/agents/components/hub-update-panel";
+import { HubStateIcon } from "@features/chat/components/hub-update-mark";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
+import { useHubUpdates } from "@shared/api/local-operator/hub-hooks";
+import { useHubLinks } from "@shared/api/local-operator/hub-link-hooks";
+import type { HubLink } from "@shared/api/local-operator/hub-links";
+import {
+	type HubMark,
+	hubItemIndex,
+	hubItemKey,
+	hubMarkFor,
+} from "@shared/api/local-operator/hub-updates";
+import {
+	type HubSkillRow,
+	hubSkillsSupported,
+} from "@shared/api/radient/skills-api";
 import { Button } from "@shared/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@shared/components/ui/dialog";
 import { Input } from "@shared/components/ui/input";
 import { Textarea } from "@shared/components/ui/textarea";
-import { t } from "@shared/i18n";
+import { apiConfig } from "@shared/config";
+import { type WithoutParams, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { useId, useRef, useState } from "react";
+import { cn } from "@shared/lib/utils";
+import { useId, useMemo, useRef, useState } from "react";
 import {
 	type HubSkillScope,
 	usePullHubSkill,
 	useRemoteSkill,
 	useRemoteSkills,
+	useSubscribeHubSkill,
+	useUnpullHubSkill,
 } from "../hooks/use-hub-skills";
+import {
+	type HubSkillState,
+	hubSkillKey,
+	hubSkillLinkIndex,
+	hubSkillState,
+	skillRowInScope,
+} from "../hub-skill-state";
 import { HubPager } from "./hub-pager";
 import { HubSkillPublication } from "./hub-skill-publication";
+
+/**
+ * The chip's ink follows the SAME mark vocabulary as the sidebar and the update
+ * panel: a waiting update is accent (an action to take), an applied one is
+ * success (a finished fact). They must not look alike — the whole point of the
+ * per-skill state line is telling "an update is waiting" from "one was applied".
+ */
+const MARK_INK: Record<HubMark["kind"], string> = {
+	available: "text-accent",
+	applied: "text-success",
+	failed: "text-danger",
+	review: "text-warning",
+	updating: "text-ink-muted",
+};
+
+/** The mark vocabulary's own labels, reused rather than re-worded per surface. */
+const MARK_KEY: Record<HubMark["kind"], WithoutParams> = {
+	available: "ui.hub.links.mark_available",
+	applied: "ui.hub.links.mark_applied",
+	failed: "ui.hub.links.mark_failed",
+	review: "ui.hub.links.mark_review",
+	updating: "ui.hub.links.mark_busy",
+};
+
+/**
+ * The state sentence for a skill with no mark to draw. `update` has its own
+ * mark below (and never reaches this table), and `not-present` is the honest
+ * "this machine has no link to it" — not an error.
+ */
+const STATE_KEY: Record<
+	Exclude<HubSkillState["kind"], "update">,
+	WithoutParams
+> = {
+	"not-present": "ui.hub.skills.not_downloaded",
+	subscribed: "ui.hub.skills.subscribed_absent",
+	pulled: "ui.hub.skills.pulled",
+	manual: "ui.hub.skills.manual",
+	detached: "ui.hub.skills.detached",
+};
+
+function SkillMarkChip({ mark }: { mark: HubMark | null }) {
+	useI18nLocale();
+	if (!mark) return null;
+	return (
+		<span
+			data-hub-mark-state={mark.kind}
+			className={cn(
+				"flex shrink-0 items-center gap-1 text-meta",
+				MARK_INK[mark.kind],
+			)}
+		>
+			<HubStateIcon mark={mark} />
+			<span>{t(MARK_KEY[mark.kind])}</span>
+		</span>
+	);
+}
+
+/**
+ * The publisher/maintainer line, from the row's OWN facts only.
+ *
+ * The public skill row carries no publisher today (unlike an agent's
+ * `account_metadata`), so this never invents one: it renders `publisher` when a
+ * hub sends it and otherwise states the source the row actually came from —
+ * the organization for an org skill, the public-hub label otherwise. An empty
+ * "Published by" sentence would be worse than the honest scope line.
+ */
+function skillPublisherLine(
+	row: HubSkillRow,
+	organization: string | null,
+): string {
+	const publisher = row.publisher?.trim();
+	if (publisher) return t("ui.hub.skills.published_by", { publisher });
+	if (row.visibility === "org")
+		return organization
+			? t("ui.hub.links.source_private", { organization })
+			: t("ui.hub.links.source_unavailable");
+	return t("ui.hub.links.source_public");
+}
 
 /**
  * A sibling inside the existing hub panel, not a new navigation tree. Scope
  * is explicit and keys the child mount, so private data cannot survive a public
  * scope switch. Inventory refetches do not re-key the publication draft/editor.
+ *
+ * The card is the click target: the whole row is one real button, keyboard
+ * reachable, because a button inside a non-interactive div reads as a card and
+ * behaves as a form control — the wrong promise for a grid a person scans.
  */
 export function HubSkillsLibrary({
 	scope,
@@ -36,6 +158,7 @@ export function HubSkillsLibrary({
 	const [selected, setSelected] = useState<string | null>(null);
 	const [alias, setAlias] = useState("");
 	const [policy, setPolicy] = useState(newHubPolicy);
+	const [confirmUnpull, setConfirmUnpull] = useState(false);
 	const request = useRef<{ tuple: string; id: string } | null>(null);
 	const source =
 		scope.visibility === "public"
@@ -43,6 +166,9 @@ export function HubSkillsLibrary({
 			: scope.organization
 				? t("ui.hub.links.source_private", { organization: scope.organization })
 				: t("ui.hub.links.source_unavailable");
+	const capabilities = useDesktopCapabilities();
+	const updatesEnabled =
+		accessible && desktopFeatureEnabled(capabilities.data, "hub_updates");
 	const catalogue = useRemoteSkills(
 		scope,
 		page,
@@ -51,6 +177,22 @@ export function HubSkillsLibrary({
 	const supported = hubSkillsSupported(catalogue.data?.contract);
 	const detail = useRemoteSkill(scope, selected, supported && accessible);
 	const pull = usePullHubSkill();
+	const subscribe = useSubscribeHubSkill();
+	const unpull = useUnpullHubSkill();
+	// The local inventory is a desktop read, not a hub read: it answers for the
+	// public scope without a credential, and a signed-out person still sees which
+	// skills this machine already holds.
+	const links = useHubLinks(
+		accessible && desktopFeatureEnabled(capabilities.data, "hub_links"),
+	);
+	// One updates read for the whole grid: the store is already the hub's single
+	// status channel, and a per-card query would be a second one in disguise.
+	const updates = useHubUpdates(updatesEnabled);
+	const linkIndex = useMemo(
+		() => hubSkillLinkIndex(links.data?.links, apiConfig.radientBaseUrl),
+		[links.data],
+	);
+	const updateIndex = useMemo(() => hubItemIndex(updates.data), [updates.data]);
 	const pulledLinkId = pull.data?.link?.link_id;
 	const scopeMatches =
 		detail.data?.visibility === scope.visibility &&
@@ -64,18 +206,98 @@ export function HubSkillsLibrary({
 		scopeMatches &&
 		hubSkillsSupported(detail.data?.sync_contract) &&
 		!!detail.data?.revision;
-	const rows = (catalogue.data?.rows ?? []).filter((row) =>
-		`${row.name} ${row.description}`
-			.toLocaleLowerCase()
-			.includes(filter.toLocaleLowerCase()),
-	);
-	const install = () => {
-		if (!selected || !ready || !alias || pull.isPending || !signedIn) return;
-		const tuple = JSON.stringify({ selected, scope, alias, policy });
+	/*
+	 * Defence in depth, not the admission rule: the server already refuses to
+	 * serve a private row outside its tenant. A cached page, a retained callback
+	 * or a future proxy bug must not draw one here, so the renderer re-checks the
+	 * row's own scope before it renders anything.
+	 */
+	const rows = (catalogue.data?.rows ?? [])
+		.filter((row) => skillRowInScope(row, scope))
+		.filter((row) =>
+			`${row.name} ${row.description}`
+				.toLocaleLowerCase()
+				.includes(filter.toLocaleLowerCase()),
+		);
+	const selectedRow = rows.find((row) => row.id === selected);
+	const selectedLink = selectedRow
+		? linkIndex.get(
+				hubSkillKey({
+					id: selectedRow.id,
+					visibility: selectedRow.visibility,
+					tenantId: selectedRow.tenant_id ?? null,
+				}),
+			)
+		: undefined;
+	const selectedUpdate = selectedLink
+		? updateIndex.get(hubItemKey("skill", selectedLink.name))
+		: undefined;
+	const selectedState = hubSkillState(selectedLink, selectedUpdate);
+	const linkStateFor = (row: HubSkillRow) => {
+		const link = linkIndex.get(
+			hubSkillKey({
+				id: row.id,
+				visibility: row.visibility,
+				tenantId: row.tenant_id ?? null,
+			}),
+		);
+		const update = link
+			? updateIndex.get(hubItemKey("skill", link.name))
+			: undefined;
+		return { link, update, state: hubSkillState(link, update) };
+	};
+	/** One request id per (op, inputs) tuple, so a retry after a lost answer replays. */
+	const requestIdFor = (tuple: string) => {
 		if (request.current?.tuple !== tuple)
 			request.current = { tuple, id: crypto.randomUUID() };
+		return request.current.id;
+	};
+	const runPull = (forLink?: HubLink) => {
+		if (!selected || !ready || !signedIn) return;
+		const localAlias = forLink?.name ?? alias;
+		if (!localAlias) return;
 		pull.mutate({
-			requestId: request.current.id,
+			requestId: requestIdFor(
+				JSON.stringify({ op: "pull", selected, scope, localAlias }),
+			),
+			remoteId: selected,
+			scope,
+			alias: localAlias,
+			// A plain download does NOT subscribe; an existing link keeps the
+			// subscription it already has, because a download is not a policy edit.
+			subscribe: forLink ? forLink.policy.subscribe : false,
+			autoPush: forLink?.policy.auto_push ?? false,
+			consent: forLink ? forLink.policy.auto_push : false,
+		});
+	};
+	const runSubscribe = () => {
+		if (!selected || !ready || !signedIn) return;
+		const localAlias = selectedLink?.name ?? alias;
+		if (!localAlias) return;
+		subscribe.mutate({
+			requestId: requestIdFor(
+				JSON.stringify({ op: "subscribe", selected, scope, localAlias }),
+			),
+			remoteId: selected,
+			scope,
+			alias: localAlias,
+		});
+	};
+	const runUnpull = () => {
+		if (!selectedLink) return;
+		unpull.mutate({
+			requestId: requestIdFor(
+				JSON.stringify({ op: "unpull", link: selectedLink.link_id }),
+			),
+			linkId: selectedLink.link_id,
+		});
+	};
+	const install = () => {
+		if (!selected || !ready || !alias || pull.isPending || !signedIn) return;
+		pull.mutate({
+			requestId: requestIdFor(
+				JSON.stringify({ op: "install", selected, scope, alias, policy }),
+			),
 			remoteId: selected,
 			scope,
 			alias,
@@ -150,35 +372,68 @@ export function HubSkillsLibrary({
 									)}
 								</p>
 							)}
-							<div className="grid min-w-0 gap-3 sm:grid-cols-2">
-								{rows.map((row) => (
-									<div
-										key={row.id}
-										className="flex min-w-0 flex-col gap-3 rounded-md border border-hairline p-4"
-									>
-										<h3 className="break-words text-body-sm font-medium text-ink">
-											{row.name}
-										</h3>
-										<p className="break-words text-meta text-ink-muted">
-											{row.description}
-										</p>
-										<Button
-											variant="outline"
-											aria-pressed={selected === row.id}
-											data-testid="hub-skill-open"
-											disabled={pull.isPending}
-											onClick={() => {
-												setSelected(row.id);
-												setAlias(row.name);
-												setPolicy(newHubPolicy());
-												pull.reset();
-											}}
-										>
-											{t("ui.hub.skills.open_detail", { item: row.name })}
-										</Button>
-									</div>
-								))}
-							</div>
+							<ul className="grid min-w-0 list-none gap-3 p-0 sm:grid-cols-2">
+								{rows.map((row) => {
+									const joined = linkStateFor(row);
+									const mark = joined.update
+										? hubMarkFor(joined.update)
+										: joined.state.kind === "update"
+											? {
+													kind: "available" as const,
+													auto: joined.state.automatic,
+												}
+											: null;
+									return (
+										<li key={row.id} className="min-w-0">
+											<button
+												type="button"
+												aria-pressed={selected === row.id}
+												data-testid="hub-skill-open"
+												data-skill-id={row.id}
+												data-skill-state={joined.state.kind}
+												disabled={pull.isPending}
+												onClick={() => {
+													setSelected(row.id);
+													setAlias(row.name);
+													setPolicy(newHubPolicy());
+													pull.reset();
+													subscribe.reset();
+													unpull.reset();
+												}}
+												/*
+												 * The Agents/Teams card shape: a surface-filled block with a
+												 * name, a clamped description and one meta line. Full-bleed inside
+												 * the cell so the whole card is the target, and `text-left`
+												 * because a button centres its text by default.
+												 */
+												className="flex h-full w-full min-w-0 flex-col gap-2 rounded-md bg-surface p-4 text-left hover:bg-row-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-1 disabled:text-ink-dim"
+											>
+												<span className="flex items-start justify-between gap-3">
+													<span className="break-words font-medium text-body-sm text-ink">
+														{row.name}
+													</span>
+													<SkillMarkChip mark={mark} />
+												</span>
+												{row.description ? (
+													<span className="line-clamp-3 max-w-3xl break-words text-meta text-ink-muted">
+														{row.description}
+													</span>
+												) : null}
+												<span className="flex flex-wrap items-baseline gap-x-2 text-meta">
+													<span className="text-ink-muted">
+														{skillPublisherLine(row, scope.organization)}
+													</span>
+													{joined.state.kind !== "update" && !joined.update ? (
+														<span className="text-ink-dim">
+															{t(STATE_KEY[joined.state.kind])}
+														</span>
+													) : null}
+												</span>
+											</button>
+										</li>
+									);
+								})}
+							</ul>
 							<HubPager
 								page={page}
 								count={catalogue.data?.pages ?? 1}
@@ -206,9 +461,65 @@ export function HubSkillsLibrary({
 					)}
 					{detail.data && scopeMatches && (
 						<>
-							<h3 className="break-words text-heading text-ink">
-								{detail.data.name}
-							</h3>
+							<div className="flex flex-wrap items-start justify-between gap-3">
+								<div className="min-w-0">
+									<h3 className="break-words text-heading text-ink">
+										{detail.data.name}
+									</h3>
+									<p className="text-meta text-ink-muted">
+										{skillPublisherLine(
+											selectedRow ?? detail.data,
+											scope.organization,
+										)}
+									</p>
+								</div>
+								<SkillMarkChip
+									mark={
+										selectedUpdate
+											? hubMarkFor(selectedUpdate)
+											: selectedState.kind === "update"
+												? {
+														kind: "available",
+														auto: selectedState.automatic,
+													}
+												: null
+									}
+								/>
+							</div>
+							<p
+								className="max-w-3xl select-text whitespace-pre-wrap break-words text-body-sm text-ink-muted"
+								data-testid="hub-skill-description"
+							>
+								{detail.data.description}
+							</p>
+							<p className="text-meta text-ink-muted">
+								{t(
+									STATE_KEY[
+										selectedState.kind === "update"
+											? "pulled"
+											: selectedState.kind
+									],
+								)}{" "}
+								·{" "}
+								{t("ui.hub.skills.revision", {
+									revision: `${detail.data.content_revision} · ${detail.data.revision}`,
+								})}
+							</p>
+							{selectedLink?.local_path &&
+								selectedState.kind !== "subscribed" &&
+								selectedState.kind !== "detached" && (
+									<p
+										className="break-all font-mono text-meta text-ink-dim"
+										data-testid="hub-skill-local-path"
+									>
+										{t("ui.hub.skills.local_path", {
+											path: selectedLink.local_path,
+										})}
+									</p>
+								)}
+							<h4 className="text-body-sm text-ink">
+								{t("ui.hub.skills.files")}
+							</h4>
 							<p className="text-meta text-ink-muted">
 								{t("ui.hub.skills.file_count", {
 									count: detail.data.files.length,
@@ -228,14 +539,36 @@ export function HubSkillsLibrary({
 									/>
 								</details>
 							))}
+							{/*
+							 * Subscribe is the INBOUND switch and the same control the
+							 * sidebar uses, so a policy edited here and one edited there
+							 * cannot disagree. Unsubscribing never deletes the copy.
+							 */}
+							{selectedLink && (
+								<div className="border-t border-hairline pt-3">
+									<HubLinkPolicyControls link={selectedLink} />
+								</div>
+							)}
+							{/*
+							 * The updates channel, not a parallel status story: the same
+							 * panel the Agents and Teams detail mounts, which carries the
+							 * per-row state, the merge preview and Retry.
+							 */}
+							{selectedLink && (
+								<HubUpdatePanel
+									kind="skill"
+									name={selectedLink.name}
+									enabled={updatesEnabled}
+								/>
+							)}
 							<label htmlFor={`${id}-alias`} className="text-body-sm text-ink">
 								{t("ui.hub.subscriptions.alias")}
 							</label>
 							<Input
 								id={`${id}-alias`}
 								data-testid="hub-skill-alias"
-								value={alias}
-								disabled={pull.isPending}
+								value={selectedLink?.name ?? alias}
+								disabled={pull.isPending || !!selectedLink}
 								onChange={(event) => {
 									setAlias(event.target.value);
 									setPolicy((value) => ({
@@ -248,24 +581,140 @@ export function HubSkillsLibrary({
 							<p className="text-meta text-ink-muted">
 								{t("ui.hub.skills.pull_help")}
 							</p>
-							<HubInitialPolicyFields
-								value={policy}
-								onChange={setPolicy}
-								source={source}
-								item={alias}
-								visibility={scope.visibility}
-								organization={scope.organization}
-								destinationKey={`${scope.visibility}:${scope.tenantId ?? ""}:${selected}`}
-								canEnableAutoPush={!!ready}
-								disabled={pull.isPending}
-							/>
-							<Button
-								data-testid="hub-skill-create"
-								disabled={!signedIn || !ready || !alias || pull.isPending}
-								onClick={install}
+							{/*
+							 * TWO ACTS, NOT ONE WITH A FLAG.
+							 *
+							 * Download writes the copy once and leaves the subscription
+							 * alone; Subscribe records the destination and future revisions
+							 * and writes no files. Both are offered for an unlinked skill,
+							 * and an already-linked one keeps whichever state it has.
+							 */}
+							<div className="flex flex-wrap gap-2">
+								{(!selectedLink || selectedState.kind === "update") && (
+									<Button
+										data-testid="hub-skill-download"
+										variant={selectedLink ? "primary" : "outline"}
+										disabled={!signedIn || !ready || pull.isPending}
+										aria-label={t("ui.hub.skills.pull_title", {
+											item: detail.data.name,
+											source,
+										})}
+										onClick={() => runPull(selectedLink)}
+									>
+										{t("ui.hub.skills.download")}
+									</Button>
+								)}
+								{(!selectedLink || !selectedLink.policy.subscribe) && (
+									<Button
+										data-testid="hub-skill-subscribe"
+										variant="outline"
+										disabled={
+											!signedIn ||
+											!ready ||
+											subscribe.isPending ||
+											(!selectedLink && !alias)
+										}
+										onClick={runSubscribe}
+									>
+										{t("ui.hub.subscriptions.subscribe")}
+									</Button>
+								)}
+								{/* The SUBSCRIBE switch in the policy block above is the unsubscribe act:
+								 * one control, so a second button cannot disagree with it, and turning it
+								 * off never deletes the local copy (core keeps the files). */}
+								{selectedLink &&
+									selectedState.kind !== "subscribed" &&
+									selectedState.kind !== "detached" && (
+										<Button
+											data-testid="hub-skill-unpull"
+											variant="outline"
+											disabled={unpull.isPending}
+											onClick={() => {
+												unpull.reset();
+												setConfirmUnpull(true);
+											}}
+										>
+											{t("ui.hub.skills.unpull")}
+										</Button>
+									)}
+							</div>
+							<Dialog
+								open={confirmUnpull}
+								onOpenChange={(open) => {
+									if (!open) setConfirmUnpull(false);
+								}}
 							>
-								{t("ui.hub.subscriptions.create_copy")}
-							</Button>
+								<DialogContent>
+									<DialogHeader>
+										<DialogTitle>
+											{t("ui.hub.skills.unpull_title", {
+												item: detail.data.name,
+											})}
+										</DialogTitle>
+										<DialogDescription>
+											{t("ui.hub.skills.unpull_body")}
+										</DialogDescription>
+									</DialogHeader>
+									<DialogFooter>
+										<Button
+											variant="outline"
+											onClick={() => setConfirmUnpull(false)}
+										>
+											{t("ui.hub.subscriptions.cancel")}
+										</Button>
+										<Button
+											data-testid="hub-skill-unpull-confirm"
+											disabled={unpull.isPending}
+											onClick={() => {
+												runUnpull();
+												setConfirmUnpull(false);
+											}}
+										>
+											{t("ui.hub.skills.unpull")}
+										</Button>
+									</DialogFooter>
+								</DialogContent>
+							</Dialog>
+							{!selectedLink && (
+								<HubInitialPolicyFields
+									value={policy}
+									onChange={setPolicy}
+									source={source}
+									item={alias}
+									visibility={scope.visibility}
+									organization={scope.organization}
+									destinationKey={`${scope.visibility}:${scope.tenantId ?? ""}:${selected}`}
+									canEnableAutoPush={!!ready}
+									disabled={pull.isPending}
+								/>
+							)}
+							{!selectedLink && (
+								<Button
+									data-testid="hub-skill-create"
+									disabled={!signedIn || !ready || !alias || pull.isPending}
+									onClick={install}
+								>
+									{t("ui.hub.subscriptions.create_copy")}
+								</Button>
+							)}
+							{unpull.error && (
+								<p
+									role="alert"
+									className="text-body-sm text-danger"
+									data-testid="hub-skill-unpull-failed"
+								>
+									{t("ui.hub.skills.unpull_failed")}
+								</p>
+							)}
+							{subscribe.error && (
+								<p
+									role="alert"
+									className="text-body-sm text-danger"
+									data-testid="hub-skill-subscribe-failed"
+								>
+									{t("ui.hub.skills.subscribe_failed")}
+								</p>
+							)}
 						</>
 					)}
 					{!signedIn && (

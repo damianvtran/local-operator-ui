@@ -152,5 +152,18 @@
 	"ui.hub.links.mark_failed": "thất bại",
 	"ui.hub.links.mark_available": "có bản cập nhật",
 	"ui.hub.links.mark_busy": "đang xử lý",
-	"ui.hub.links.mark_applied": "đã áp dụng"
+	"ui.hub.links.mark_applied": "đã áp dụng",
+	"ui.hub.skills.download": "Tải một lần",
+	"ui.hub.skills.unpull": "Xóa bản sao cục bộ",
+	"ui.hub.skills.unpull_title": "Xóa bản sao cục bộ của {item}?",
+	"ui.hub.skills.unpull_body": "Các tệp sẽ rời khỏi thư mục kỹ năng của bạn. Liên kết và đăng ký theo dõi vẫn được giữ, nên tải lại sẽ khôi phục phiên bản hiện tại.",
+	"ui.hub.skills.unpull_failed": "Chưa xác nhận được việc xóa bản sao cục bộ. Hãy thử lại, rồi kiểm tra trạng thái liên kết.",
+	"ui.hub.skills.subscribe_failed": "Chưa xác nhận được đăng ký theo dõi. Hãy thử lại.",
+	"ui.hub.skills.local_path": "Đã cài tại {path}",
+	"ui.hub.skills.published_by": "Xuất bản bởi {publisher}",
+	"ui.hub.skills.not_downloaded": "Chưa tải",
+	"ui.hub.skills.subscribed_absent": "Đã theo dõi — chưa cài",
+	"ui.hub.skills.pulled": "Đã tải — đã theo dõi",
+	"ui.hub.skills.manual": "Đã tải — chưa theo dõi",
+	"ui.hub.skills.detached": "Đã liên kết — không có bản sao"
 }

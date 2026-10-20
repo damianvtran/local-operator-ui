@@ -137,6 +137,8 @@ test("real mounted Skills hooks gate absence, explicit enablement, and retained 
 			pubDetail: hooks.useRemoteSkill(pub, "skill-release-notes", true),
 			orgDetail: hooks.useRemoteSkill(org, "skill-minerva-deploy", true),
 			pull: hooks.usePullHubSkill(),
+			subscribe: hooks.useSubscribeHubSkill(),
+			unpull: hooks.useUnpullHubSkill(),
 			publish: hooks.useInitialSkillPublication(),
 		};
 		return null;
@@ -256,6 +258,62 @@ test("real mounted Skills hooks gate absence, explicit enablement, and retained 
 		});
 		assert(state.requests.some((x) => x.op === "hub.skillPull"));
 		assert(state.requests.some((x) => x.op === "hub.skillPublish" && x.dryRun));
+		/*
+		 * The two membership acts are separate ops with separate bodies: a
+		 * subscribe names the remote identity and an alias and carries no policy,
+		 * and an unpull names the LOCAL link and nothing else. Both seed the
+		 * inventory from their own answer, so a card can change state without
+		 * waiting for the next poll.
+		 */
+		await act(async () => {
+			await exposed.subscribe.mutateAsync({
+				requestId: "12345678-1234-4123-8123-123456789abd",
+				remoteId: "skill-release-notes",
+				scope: { visibility: "public", tenantId: null, organization: null },
+				alias: "release-notes",
+			});
+			await exposed.unpull.mutateAsync({
+				requestId: "12345678-1234-4123-8123-123456789abe",
+				linkId: "synthetic-link",
+			});
+			await pause();
+		});
+		const subscribeWrite = state.requests.find(
+			(x) => x.op === "hub.skillSubscribe",
+		);
+		assert.deepEqual(
+			{
+				hubId: subscribeWrite.hubId,
+				localAlias: subscribeWrite.localAlias,
+				visibility: subscribeWrite.visibility,
+				tenantId: subscribeWrite.tenantId,
+			},
+			{
+				hubId: "skill-release-notes",
+				localAlias: "release-notes",
+				visibility: "public",
+				tenantId: null,
+			},
+		);
+		assert(
+			!("subscribe" in subscribeWrite),
+			"a subscribe carries no install policy",
+		);
+		const unpullWrite = state.requests.find((x) => x.op === "hub.skillUnpull");
+		assert.equal(unpullWrite.linkId, "synthetic-link");
+		assert(
+			!("hubId" in unpullWrite),
+			"unpull addresses the local link, never re-resolves the remote",
+		);
+		/*
+		 * The cache-seeding half is deliberately NOT asserted through the query
+		 * cache: this client runs `gcTime: 0`, so the inactive inventory query is
+		 * collected the moment `onSettled` invalidates it and a read here would
+		 * report `undefined` whether or not the write seeded it. What is observable
+		 * is the wire: each act is its own op with its own body, which is what the
+		 * assertions above read. All three skill writes share one seeding helper
+		 * (`seedSkillLinkWrite`) so they cannot drift.
+		 */
 		const failedRemoteCount = state.remote.length;
 		await act(async () => {
 			client
@@ -321,6 +379,22 @@ test("real mounted Skills hooks gate absence, explicit enablement, and retained 
 		);
 		await assert.rejects(
 			retained.publish.mutateAsync(publication),
+			/complete Hub Skills adapter/,
+		);
+		await assert.rejects(
+			retained.subscribe.mutateAsync({
+				requestId: "12345678-1234-4123-8123-123456789abf",
+				remoteId: "skill-release-notes",
+				scope: { visibility: "public", tenantId: null, organization: null },
+				alias: "release-notes",
+			}),
+			/complete Hub Skills adapter/,
+		);
+		await assert.rejects(
+			retained.unpull.mutateAsync({
+				requestId: "12345678-1234-4123-8123-123456789ac0",
+				linkId: "synthetic-link",
+			}),
 			/complete Hub Skills adapter/,
 		);
 		console.log(
