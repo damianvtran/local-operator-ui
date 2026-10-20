@@ -23,7 +23,7 @@ harness derived their 240 waveform bars. No signed URL is used or retained.
 
 Run from the UI worktree after applying the extension. `SOUNDS_RELEASE_ASSETS`
 is a local JSON array containing request_id/path/duration_s/sha256/title/tool/
-peaks/cost_usd for the two verified MP3s. `SOUNDS_RELEASE_BYOK` is the actual
+peaks/cost_usd (and `bytes`, unused by the fixture) for the two verified MP3s. `SOUNDS_RELEASE_BYOK` is the actual
 BYOK result JSON; `SOUNDS_RELEASE_BYOK_STORE` points at its isolated attachment
 store. The exact executed scene command was:
 
@@ -32,8 +32,12 @@ LOCAL_OPERATOR_UI_NO_BYTECODE=true \
 SOUNDS_RELEASE_ASSETS="$LOCAL_OPERATOR_SCRATCHPAD/release-assets.json" \
 SOUNDS_RELEASE_BYOK="$LOCAL_OPERATOR_SCRATCHPAD/byok-live/result.json" \
 SOUNDS_RELEASE_BYOK_STORE="$LOCAL_OPERATOR_SCRATCHPAD/byok-live/config/attachments" \
-LOP_SOUNDS_HARNESS="$HOME/local-operator/.worktrees/sound-gen-fixed" \  # harness ab58506e
+LOP_SOUNDS_HARNESS="$HOME/local-operator/.worktrees/sound-gen-fixed" \
 node scripts/run-sounds-scene.mjs
+
+# That worktree is the merged harness ab58506e; the annotation is a comment on
+# its own line because a trailing `#` after a `\` is not a continuation (it is
+# an escaped space, and the command then runs with no env at all).
 ```
 
 Final run: **`sounds-native-Rqp1qi`** (2026-10-20), whose stdout is committed as
@@ -41,8 +45,8 @@ Final run: **`sounds-native-Rqp1qi`** (2026-10-20), whose stdout is committed as
 history preflight HTTP **200**; expired-URL control HTTP **403**, exactly **1**
 control request in total (`requests=1`); **`PASS 7 frames, 7 distinct SHA-256`**;
 **`PASS expired URL remains unused by the app: requests=1`**. The rig's own `finally`
-reaps every process group it started, and the committed stdout is exactly what
-the run printed. The
+reaps every process group it started; the committed stdout is that run's output,
+captured by the rig as it ran. The
 real app was headless, invisible, and unfocused.
 The existing zero-gain graph is armed before any audio element and rejects a
 second arm. Nonzero pre-gain audio with zero post-gain RMS is measured. No host
