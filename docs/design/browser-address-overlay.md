@@ -71,7 +71,7 @@ also pins 44.3.0. Local `electron.d.ts` confirms the ordering API exists.
 
 | Option | Native page / layout | Cost and principal trade-off | Disposition |
 | --- | --- | --- | --- |
-| **(a) Child `WebContentsView`** attached above page, bounded to address editor/list | Page remains presented at unchanged rect; native child paints over covered area | High: another renderer, narrow IPC, native hit testing, focus/IME and separate accessibility tree; fits parent window clipping and lifetime | Preferred candidate **only if true overlay is accepted and spike passes** |
+| **(a) Child `WebContentsView`** attached above page, bounded to address editor/list | Page remains presented at unchanged rect; native child paints over covered area | High: another renderer plus re-homing the renderer address editor (ranking, undo, IME, suffix acceptance, Escape/Tab), narrow IPC, native hit testing and accessible-tree work; fits parent window clipping and lifetime | Preferred candidate **only if true overlay is accepted and spike passes** |
 | **(a2) Owned `BrowserWindow`** for the list | Independent native window can cover parent content | Higher: activation, parent-relative screen coordinates, monitor scaling, Spaces/fullscreen, minimize and task switching; non-focusable window is not automatically an accessible combobox | Reject unless child-view limits are demonstrated and this alternative is separately accepted |
 | **(b) Suppress page; use existing renderer popup** | Native page hidden, DOM list can paint over its former area; page bounds need not change | Low/medium: keeps input/options together and reuses visibility policy, but page disappears on routine typing; not Chrome-style live overlay | Mechanically viable, unacceptable default for address editing |
 | **(c) In-flow list with bounded width/inset correction** | List consumes chrome height; active page moves/shrinks and can reflow | Lowest: same DOM semantics, existing bounds pipeline; retains visible page but cannot promise no shift | **Recommend current product; width/inset work stays separate** |
@@ -111,6 +111,22 @@ Other paths do not remove the fundamental trade-off:
 
 These are requirements for a future accepted spike, **not new code to land now**.
 
+### Creation and first paint
+
+Lazy-create at the first address-focus intent in a window, not at app startup or
+per keystroke. Keep at most one hidden child reusable for that window; no eager
+fleet-wide pre-warm. Until its local document, theme, fonts, measured bounds and
+initial editor state acknowledge readiness, keep the existing renderer editor
+and in-flow results usable. Switch only at a safe edit boundary, never during
+composition; a slow or failed child stays on (c) for that edit. This policy
+requires proof of draft, undo and selection continuity, not just copied text.
+
+**No blank first-paint frame is acceptable.** Show only after readiness; capture
+both the first shown and settled native-composite frames. A blank/unthemed child,
+missing first key, reset undo stack or moved IME candidate anchor fails the spike.
+If a hidden ready child cannot satisfy that gate on a platform, keep (c); do not
+solve it by leaving a visible pre-warm window or raising the app.
+
 ### Ownership, bounds and lifetime
 
 One coordinator per owning desktop window, at most one active address overlay;
@@ -124,7 +140,7 @@ multiple independently presented native pages is a separate architecture change.
 Measure address anchor in the same parent-relative DIP coordinate system as the
 page. Main validates finite bounded geometry and clamps to the owning pane and
 window; do not trust arbitrary renderer-supplied screen rectangles. Cap list
-height and scroll inside it. Page bounds must be byte-for-byte unchanged while
+height and scroll inside it. Page bounds must remain identical while
 opening/navigating/dismissing suggestions. Recompute on pane/window resize,
 zoom/monitor scale changes and movement; dismiss if no valid space/owner exists.
 Set bounds before show; ensure the overlay is topmost even after another page
@@ -233,7 +249,7 @@ probe setup corrections, not runtime failures or native evidence.
 
 This session has **no browser or console tool**. No app/native window was
 launched, no rendered frame inspected, no physical key/IME/screen reader tested.
-The host is macOS arm64; Windows behavior is unproved. Source and API support
+The host is macOS arm64; Windows and Linux behavior are unproved. Source and API support
 are not a successful native overlay prototype. This docs-only PR changes no
 behavior and requires scope/document validation, not a fake runtime PASS.
 
@@ -243,10 +259,34 @@ behavior and requires scope/document validation, not a fake runtime PASS.
    `CMUX_*`, use synthetic IDs, no live session or browser profile. Reuse repo
    dependencies and documented window-mode/capture teardown. No extra browser
    stack, global hooks or background visible app.
-2. First test one child against one synthetic local page: before/open/settled/
-   dismiss captures and numeric page/overlay bounds, child order and native hit
-   target receipts. Include a control using a DOM portal that fails to cover the
-   page. Headless assertions alone cannot prove visible compositor ordering.
+2. **Native-composite capture preflight, before overlay dispatch:** use Electron
+   `desktopCapturer.getSources({ types: ["window"], thumbnailSize: ... })` for the
+   owning app window, matching its source ID to `BrowserWindow.getMediaSourceId()`;
+   never select by title or capture the whole desktop. This is the proposed
+   capture channel, not `webContents.capturePage()` or CDP screenshots: those
+   photograph a renderer document and are **non-proof for sibling native
+   WebContentsView ordering/occlusion** (`docs/agent-driver.md:249–252`).
+   On macOS first query `systemPreferences.getMediaAccessStatus("screen")`:
+   require an already-granted Screen Recording/TCC result before enumerating
+   capture sources. Denied/not-determined/restricted means BLOCKED; do not provoke
+   a permission prompt or substitute a DOM screenshot. This proposal requests no
+   permission and has not run that preflight.
+
+   A future accepted spike must run one self-contained command: launch the real
+   app `inactive` with an isolated profile; identify its exact source; capture
+   before/open/first-shown/settled/dismiss thumbnails at sufficient resolution;
+   record source ID, dimensions, runtime revision and native bounds; reap its
+   exact process group before returning. This follows `AGENTS.md:1418–1427`'s
+   native-compositor exception while retaining `:1402–1404`'s ban on ad-hoc macOS
+   `screencapture`; no focus stealing or persistent visible window is authorized.
+   Preflight must distinguish a uniquely marked synthetic page child from its
+   parent DOM, then a differently marked native overlay above that child in the
+   same captured image. Decode and inspect the frames: missing child markers,
+   zero/blank thumbnails, wrong-source or occluded-window results fail admission.
+   Save native hit-target receipts too; pixels alone do not prove click delivery.
+   Include a DOM-portal negative control which fails to cover the page. Only
+   after this channel proves both native planes may it supply overlay evidence;
+   unsupported/blocked capture stops the spike rather than weakening its gate.
 3. Prove the **input+list accessibility/focus choice** before generalizing IPC:
    type, arrow/Enter, mouse commit, Escape, Tab, outside click/scrollbar, blur,
    IME composition/cancel/commit. Record native focus owner, event count and
@@ -256,6 +296,12 @@ behavior and requires scope/document validation, not a fake runtime PASS.
    switch/close, nested dialog suppression, themes, RTL, scale/monitor changes,
    fullscreen, minimize/restore. On macOS include Spaces and menu accelerator
    delivery; on Windows include DPI changes, task switching and high contrast.
+   Linux is outside this initial macOS/Windows feasibility spike: X11 versus
+   Wayland/portal capture, focus and compositor behavior cannot be established on
+   this macOS host. Linux retains (c), with no overlay rollout there. Before Linux
+   enablement require separate X11 and Wayland cells for native-composite capture
+   admission/portal permission, keyboard/IME, Orca, scaling, outside-click delivery
+   and teardown; absence of a cell is BLOCKED, not platform parity.
 5. Inject child crash, late IPC, stale tab/edit, invalid geometry and denied
    origin/permission requests. Repeat open/close and shutdown: verify no remaining
    child webContents/listeners and no growth in retained surface count.
@@ -266,13 +312,14 @@ never through to the page; outside dismissal never commits; keyboard, IME and
 screen readers preserve edit intent; focus never raises another window; stale
 or foreign requests fail closed; all lifetime/failure cases clean up. Require
 real rendered evidence plus independent code, QA, design and UX rounds on the
-implementation. macOS-only proof cannot satisfy the Windows cells.
+implementation. macOS-only proof cannot satisfy Windows or future Linux cells.
 
 Failure/rollback: hide and close a failed child, invalidate its edit generation,
 restore ordinary in-flow suggestions without losing typed text or navigating.
 A future implementation must retain that existing path as a reversible fallback;
 do not hide the page as an automatic substitute. Watch rollout for page-rect
 drift, dropped/duplicate keys, inaccessible results, eaten clicks, window
-activation and renderer leaks. Missing Windows/AX proof means hold overlay
-rollout, not claim cross-platform success. No implementation, feature flag,
-release, new permission or compositor rewrite is included in this proposal.
+activation and renderer leaks. Missing platform/AX/native-composite proof means
+hold overlay rollout on that platform, not claim cross-platform success. No
+implementation, feature flag, release, new permission or compositor rewrite is
+included in this proposal.
