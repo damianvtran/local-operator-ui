@@ -269,6 +269,22 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 		onOpenChange(true);
 	};
 
+	/*
+	 * BACKSTOP: a bar with nothing to say is a bare check and chevron over an
+	 * expansion that shows nothing (a peer turn that ended on `no_reply`). The
+	 * plan declines to build one; this keeps any other path from painting it.
+	 */
+	if (
+		label === null &&
+		durationS === null &&
+		actionCount === 0 &&
+		group === null &&
+		episode === null &&
+		mediaCount === 0
+	) {
+		return null;
+	}
+
 	return (
 		<div
 			ref={rootRef}
