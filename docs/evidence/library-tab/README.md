@@ -86,7 +86,16 @@ in the pair rather than named beside it.
 
 These are DOM reads from a private headless Chrome driven over CDP against the
 same Storybook, one browser for the run, reaped by exact pid. They are separate
-from the frames and are what makes the geometry claims falsifiable.
+from the frames and are what makes the geometry claims falsifiable. The harness
+is committed beside this README:
+
+```
+node docs/evidence/library-tab/harness/measure-claims.mjs http://localhost:6017
+```
+
+It is a rig, not a test: the frames are the evidence and the capture tuples are
+what a sweep can fail on; this script is how a reviewer re-reads the computed
+values the design round is asked to judge.
 
 | claim | measurement (actual values) | verdict |
 | --- | --- | --- |
