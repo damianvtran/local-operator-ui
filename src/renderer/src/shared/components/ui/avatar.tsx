@@ -21,6 +21,7 @@ export const Avatar = forwardRef<
 >(({ className, ...props }, ref) => (
 	<AvatarPrimitive.Root
 		ref={ref}
+		aria-label="Negative control"
 		className={cn(
 			"relative flex size-8 shrink-0 overflow-hidden rounded-full",
 			className,
