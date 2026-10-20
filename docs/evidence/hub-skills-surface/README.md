@@ -503,7 +503,7 @@ account exists on this machine. Those states are covered by
 `scripts/hub-skill-state.test.mjs` (state derivation and mark precedence) and by
 the design round's own fixture; the QA HTTP receipts cover the core boundary.
 
-## Scene re-run after code-review round 1 (`9206baaf9b`; replays `b3ed64c2c0` content-identically)
+## Scene re-run after code-review round 2 (`bf0a44a269`)
 
 The `hub-skills` driver scene reads the shipped dialogs again after the
 remediation restored its hooks. It runs the app's own real `hub.skillPull` and
@@ -517,10 +517,8 @@ $ node scripts/renderer-driver.mjs --scene hub-skills \
     --backend http://127.0.0.1:8131 --backend-records <scratch>/serve-record
 ```
 
-Result, at `9206baaf9b` (full transcript in
-`receipts/hub-skills-scene-9206baaf9b.txt`; the rebase onto `45f816f` replayed
-the series content-identically, `git range-diff` reports `=` on every non-conflict
-commit): **28 PASS, 0 FAIL, `ALL CHECKS
+Result, at `bf0a44a269` (full transcript in
+`receipts/hub-skills-scene-bf0a44a269.txt`): **28 PASS, 0 FAIL, `ALL CHECKS
 PASSED`, exit 0.** The checks now cover the shipped surface: the source line
 ("2 skills shared with Minerva"), the card press opening the dialog, the detail's
 files, the real pull succeeding ("Downloaded minerva-deploy from Minerva ·

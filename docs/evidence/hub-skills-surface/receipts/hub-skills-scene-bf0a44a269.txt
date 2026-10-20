@@ -1,15 +1,15 @@
 renderer-driver: frame timezone pinned to America/New_York (ambient TZ=America/Toronto)
-[build] current: assets 2026-10-20T22:44:40.832Z >= sources 2026-10-20T22:36:41.476Z
+[build] current: assets 2026-10-20T23:05:07.991Z >= sources 2026-10-20T23:04:29.568Z
 [note] abandoned scratch trees
-        1 seen, 0 owned by a live pid (kept), 1 younger than 30m (kept), 0 removed
+        8 seen, 0 owned by a live pid (kept), 8 younger than 30m (kept), 0 removed
 [note] csp for this run's backend
         out/renderer/index.html: http://127.0.0.1:8131 added to frame-src, media-src, img-src (build output only; src/ untouched)
   serve records 0 linked from /Users/damian/.local-operator/sessions/19da05fed70c/scratchpad/serve-record   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
 local-operator-ui renderer driver
   repo          /Users/damian/local-operator-ui/.worktrees/hub-skills-state
-  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-81081
-  frames        /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-81081/frames
-  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-81081/cwd   (scratch: the repo's .env is not read)
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-94688
+  frames        /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-94688/frames
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-94688/cwd   (scratch: the repo's .env is not read)
   backend url   http://127.0.0.1:8131   (--backend: a live isolated backend this run owns)
   electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0_supports-color@8.1.1/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
   electron pin  44.3.0   (package.json optionalDependencies)
@@ -22,7 +22,7 @@ local-operator-ui renderer driver
 [PASS] the armed launch said so on stdout
 [PASS] the app's logs went to this run's scratch tree, not the operator's
 [note] renderer's api base URL at hello, against --backend
-        {"apiBaseUrl":"http://127.0.0.1:8131","backend":"http://127.0.0.1:8131"}
+        {"apiBaseUrl":"http://127.0.0.1:8127","backend":"http://127.0.0.1:8131"}
 [PASS] the app holds a connection to this run's backend (http://127.0.0.1:8131)
 [PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
 [PASS] window mode is headless and the window is never shown or focused
@@ -60,29 +60,29 @@ local-operator-ui renderer driver
 [note] egress: distinct renderer request origins
         ["null"]
 [PASS] egress: every renderer request went to the stub origin or an app-local scheme
-        24 requests, origins ["null"]
+        14 requests, origins ["null"]
 [PASS] egress: no renderer request names api.radienthq.com
 [note] egress: app process tree sockets (one instant)
-        pids 81099,81149,81150,81164,81167,81170,81175
+        pids 94690,94737,94738,94740,94742,94743,94746
         COMMAND    PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
-        Electron 81099 damian   18u  IPv4 0x5f6da43c68d9eead      0t0  TCP 127.0.0.1:64986 (LISTEN)
-        Electron 81099 damian   22u  IPv4 0xd1cf300dcda89162      0t0  TCP 127.0.0.1:65095->127.0.0.1:8131 (ESTABLISHED)
-        Electron 81099 damian   37u  IPv4 0x700c81c1fb3b59cb      0t0  TCP 127.0.0.1:65097->127.0.0.1:8131 (ESTABLISHED)
-        Electron 81099 damian   40u  IPv4 0x74fe08cbf62244e3      0t0  TCP 127.0.0.1:64984 (LISTEN)
-        Electron 81099 damian   61u  IPv4 0xb4239aa635a4a8f9      0t0  TCP 127.0.0.1:65098->127.0.0.1:8131 (ESTABLISHED)
-        Electron 81099 damian   69u  IPv4 0xa16b6f73dfbdb9e7      0t0  TCP 127.0.0.1:64984->127.0.0.1:65008 (ESTABLISHED)
-        Electron 81099 damian   92u  IPv4 0x31edbaa5563c4209      0t0  TCP 127.0.0.1:65019 (LISTEN)
+        Electron 94690 damian   18u  IPv4 0xa703a61e1c064c76      0t0  TCP 127.0.0.1:54779 (LISTEN)
+        Electron 94690 damian   22u  IPv4 0x3ad15841d926a1c7      0t0  TCP 127.0.0.1:54777->127.0.0.1:54789 (ESTABLISHED)
+        Electron 94690 damian   38u  IPv4 0x9bee6eeec776097e      0t0  TCP 127.0.0.1:54884->127.0.0.1:8131 (ESTABLISHED)
+        Electron 94690 damian   39u  IPv4 0x3c5d1b9380c196de      0t0  TCP 127.0.0.1:54777 (LISTEN)
+        Electron 94690 damian   62u  IPv4 0x47ba521c02153d67      0t0  TCP 127.0.0.1:54887->127.0.0.1:8131 (ESTABLISHED)
+        Electron 94690 damian   66u  IPv4 0x74fe08cbf62244e3      0t0  TCP 127.0.0.1:54888->127.0.0.1:8131 (ESTABLISHED)
+        Electron 94690 damian   93u  IPv4 0x8db3e36e38b4ca89      0t0  TCP 127.0.0.1:54793 (LISTEN)
 [PASS] egress: no non-loopback ESTABLISHED/SYN_SENT socket in the app's process tree (instantaneous probe, not a continuous audit)
   [renderer] Failed to fetch Radient credits: DesktopControlError: the stub has no answer for radient op credits
-    at Re (file:///Users/damian/local-operator-ui/.worktrees/hub-skills-state/out/renderer/assets/conversation-input-sync-Dk6SYn90.js:2:4863)
-    at async XJe (file:///Users/damian/local-operator-ui/.worktrees/hub-skills-state/out/renderer/assets/conversation-input-sync-Dk6SYn90.js:525:48640)
-    at async UZ (file:///Users/damian/local-operator-ui/.worktrees/hub-skills-state/out/renderer/assets/conversation-input-sync-Dk6SYn90.js:525:48723)
-    at async file:///Users/damian/local-operator-ui/.worktrees/hub-skills-state/out/renderer/assets/index-Di75diel.js:703:66361
+    at Re (file:///Users/damian/local-operator-ui/.worktrees/hub-skills-state/out/renderer/assets/conversation-input-sync-DPcA9mX8.js:2:4863)
+    at async XJe (file:///Users/damian/local-operator-ui/.worktrees/hub-skills-state/out/renderer/assets/conversation-input-sync-DPcA9mX8.js:525:48640)
+    at async UZ (file:///Users/damian/local-operator-ui/.worktrees/hub-skills-state/out/renderer/assets/conversation-input-sync-DPcA9mX8.js:525:48723)
+    at async file:///Users/damian/local-operator-ui/.worktrees/hub-skills-state/out/renderer/assets/index-CeM6ahwn.js:703:67961
 [PASS] no process from this run outlived its boot
 
 frames: hub-skills-1380x900-local-operator-dark-detail.png, hub-skills-1380x900-local-operator-dark-policy.png, hub-skills-1380x900-local-operator-dark-populated.png, hub-skills-1380x900-local-operator-dark-publish-complete.png, hub-skills-1380x900-local-operator-dark-publish-preview.png, hub-skills-1380x900-local-operator-dark-pull-success.png, hub-skills-1380x900-local-operator-dark-search-empty.png
-frames directory: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-81081/frames
-app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-81081/app-scene.log
-scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-81081
+frames directory: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-94688/frames
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-94688/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-94688
 
 ALL CHECKS PASSED
