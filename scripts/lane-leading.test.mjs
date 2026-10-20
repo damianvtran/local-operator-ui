@@ -194,7 +194,7 @@ test("the lane is an overlay and panels paint from y0", () => {
 	);
 	assert.match(
 		layout,
-		/:\s*"h-8 shrink-0"/,
+		/className=\{\s*flushTop\s*\?\s*"absolute inset-x-0 top-0 z-30 h-\[var\(--chrome-strip-h\)\]"\s*:\s*"h-8 shrink-0"\s*\}/,
 		"the absolute overlay must be the flushTop arm and the painted h-8 row the other arm: routes that have not opted into full-bleed panels keep the painted lane row and their previous first-row position",
 	);
 	assert.match(
