@@ -184,7 +184,26 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 		// read from refs so a fresh array cannot trigger a re-plan by identity.
 		if (lastPlanKey.current === planKey) return;
 		lastPlanKey.current = planKey;
-		if (!accountUnread.data || !conversations.data) return;
+		if (!accountUnread.data) return;
+
+		/*
+		 * ZERO-TOTAL SEEDING RUNS BEFORE THE CONVERSATION-LIST GUARD, and that
+		 * ordering is the fix for the race: a zero-total org is seeded from the
+		 * account answer ALONE. If this sat below `!conversations.data`, a first
+		 * message that arrived before the list resolved would make the org enter
+		 * the read set unseeded; the tenant row would then be consumed as that
+		 * org's first observation and the message would be silent.
+		 */
+		for (const organization of accountUnread.data.organizations ?? []) {
+			if (
+				organization.unread === 0 &&
+				!seededOrganizations.current.has(organization.tenant_id)
+			) {
+				seededOrganizations.current.add(organization.tenant_id);
+			}
+		}
+
+		if (!conversations.data) return;
 
 		const reads = tenantUnreadRef.current;
 		const organizationsForRead = notificationOrganizationsRef.current;
@@ -255,21 +274,6 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 						body,
 					})
 					.catch(() => undefined);
-			}
-		}
-
-		/*
-		 * A zero-total organization is seeded WITHOUT a read: there are no rows
-		 * to advance, and its first future message must be an event rather than
-		 * first-observation silence. An org that later enters the read set has
-		 * its own first-answer seed above.
-		 */
-		for (const organization of accountUnread.data.organizations ?? []) {
-			if (
-				organization.unread === 0 &&
-				!seededOrganizations.current.has(organization.tenant_id)
-			) {
-				seededOrganizations.current.add(organization.tenant_id);
 			}
 		}
 

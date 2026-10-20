@@ -213,8 +213,9 @@ export type TeamBridgeNotifyPlanInput = {
  *
  * `conversations` is the account-scoped list, so every row carries its own
  * tenant and the membership facts. An unread row whose conversation is not in
- * that list is advanced without notifying: without metadata this module
- * cannot prove membership, and a banner is not worth guessing about.
+ * that list is deliberately NOT advanced: without metadata this module cannot
+ * prove membership, and advancing would swallow a new conversation's first
+ * message while the two reads race. The next poll asks again with metadata.
  */
 export function planTeamBridgeNotifications(
 	input: TeamBridgeNotifyPlanInput,
