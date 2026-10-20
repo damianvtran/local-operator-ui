@@ -9240,7 +9240,32 @@ export type DesktopToolCallStats = {
  * `/session` reads this and not a second `analytics.get` — a differing query
  * path would give a second aggregate.
  */
+/** Channel ledger rows are separate from the inference-only Cost stat. */
+export type DesktopSessionChannelRow = {
+	channel: string;
+	provider: string;
+	billing_basis: string;
+	cost_source: string;
+	units: number;
+	amount_micro: number | null;
+	calls: number;
+	known_calls: number;
+};
+
 export type DesktopSessionReport = {
+	/** Additive payment provenance; absent on older producers. */
+	channels?: DesktopSessionChannelRow[];
+	/** Subtree-only payment provenance, matching descendants_aggregate. */
+	descendants_by_basis?: Array<{
+		billing_basis: string;
+		aggregate: DesktopUsageAggregate;
+	}>;
+	by_model_basis?: Array<{
+		provider: string;
+		model_id: string;
+		billing_basis: string;
+		aggregate: DesktopUsageAggregate;
+	}>;
 	session_id: string;
 	/** `false` = the ledger could not be read. Nothing on the panel is then trustworthy. */
 	available: boolean;

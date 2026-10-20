@@ -83,6 +83,37 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	const { speak } = useSpeechStore();
 
 	const { addReply, addAttachment } = useConversationInputStore();
+	/*
+	 * ONE HIGHLIGHT, ONE STRIP (design round 2, D1). The quote/link toolkits are
+	 * also selection strips, and they already own the highlight that begins in
+	 * their turn. This toolbar stays mounted for every other selection (tool rows,
+	 * receipts, a drag that starts outside a quotable turn), but it must not paint
+	 * a second panel under the one that owns the press. The observer is on the
+	 * content root rather than a shared store because the toolkits mount and
+	 * unmount with their own selection; the DOM is the only place both facts meet.
+	 */
+	const [peerOwnsSelection, setPeerOwnsSelection] = useState(false);
+	useEffect(() => {
+		const root = targetRef.current;
+		if (!root) return;
+		const check = () => {
+			setPeerOwnsSelection(
+				root.querySelector(
+					"[data-lo-quote-toolkit], [data-lo-link-toolbar]",
+				) !== null,
+			);
+		};
+		check();
+		/*
+		 * A jsdom harness that never installed MutationObserver still mounts the
+		 * transcript; the only consequence is that the cross-toolbar guard cannot
+		 * observe a late mount there. The browser always has it.
+		 */
+		if (typeof MutationObserver === "undefined") return;
+		const observer = new MutationObserver(check);
+		observer.observe(root, { childList: true, subtree: true });
+		return () => observer.disconnect();
+	}, [targetRef]);
 
 	/*
 	 * The selection's Speak, through the ONE control every speech surface renders
@@ -293,7 +324,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 		}
 	};
 
-	if (!selection.rect || !selection.text || isUser) {
+	if (!selection.rect || !selection.text || isUser || peerOwnsSelection) {
 		return null;
 	}
 
@@ -313,6 +344,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 		 * the toolbar exists to act on.
 		 */
 		<div
+			{...{ "data-lo-selection-toolbar": "" }}
 			className={CONTROLS_WRAPPER_CLASSES}
 			style={style}
 			onMouseDown={(e) => e.preventDefault()}

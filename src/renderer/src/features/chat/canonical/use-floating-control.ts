@@ -140,8 +140,17 @@ export function useFloatingControl(input: {
 	 * `QuoteAnchorInput.belowWhenOffFirstLine`. The quote control leaves it off.
 	 */
 	belowWhenOffFirstLine?: boolean;
+	/** Ask for a free seat in the row's trailing gutter first; see `placeQuoteControl`. */
+	preferGutter?: boolean;
 }): FloatingControl {
-	const { turnRef, visible, lines, measureKey, belowWhenOffFirstLine } = input;
+	const {
+		turnRef,
+		visible,
+		lines,
+		measureKey,
+		belowWhenOffFirstLine,
+		preferGutter,
+	} = input;
 	const controlRef = useRef<HTMLDivElement>(null);
 	const [placement, setPlacement] = useState<QuotePlacement | null>(null);
 
@@ -185,6 +194,7 @@ export function useFloatingControl(input: {
 			 */
 			row: boxOf(turn.getBoundingClientRect()),
 			belowWhenOffFirstLine,
+			preferGutter,
 		});
 		const row = turn.getBoundingClientRect();
 		const next = placed
@@ -204,7 +214,7 @@ export function useFloatingControl(input: {
 				? previous
 				: next,
 		);
-	}, [turnRef, belowWhenOffFirstLine]);
+	}, [turnRef, belowWhenOffFirstLine, preferGutter]);
 
 	/*
 	 * `useLayoutEffect` because the position is measured from the control's own

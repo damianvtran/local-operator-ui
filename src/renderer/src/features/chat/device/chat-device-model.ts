@@ -681,7 +681,7 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 				 */
 				const facts = [
 					member.role,
-					peer ? conversations(peer.session_count) : "",
+					peer?.session_count != null ? conversations(peer.session_count) : "",
 				].filter(Boolean);
 				if (!member.reachable && !moving) facts.push("unreachable");
 				const eligible =

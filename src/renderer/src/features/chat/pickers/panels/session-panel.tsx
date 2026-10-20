@@ -39,6 +39,8 @@ import {
 	reportShapeProblem,
 	requestRows,
 	scopeSpan,
+	spendBasisLegend,
+	spendBasisTitle,
 	timingRows,
 	toolRates,
 	totalTokens,
@@ -107,6 +109,13 @@ const BarTable: FC<{
 			header: "Calls",
 			numeric: true,
 			cell: (row) => formatCount(row.calls),
+		});
+	}
+	if (metric === "cost" && rows.some((row) => row.basis !== undefined)) {
+		columns.push({
+			key: "basis",
+			header: "Basis",
+			cell: (row) => row.basis ?? "—",
 		});
 	}
 	columns.push({
@@ -343,6 +352,11 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 										fraction={cacheHitRate(aggregate)}
 									/>
 								</StatGrid>
+								{spendBasisLegend(report) && (
+									<p className="mt-2 text-meta text-ink-muted">
+										{spendBasisTitle(report)}: {spendBasisLegend(report)}
+									</p>
+								)}
 							</PanelSection>
 						) : (
 							<PanelNotice

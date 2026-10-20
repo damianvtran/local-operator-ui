@@ -1,0 +1,11 @@
+{
+	"ui.presence.unknown": "unknown",
+	"ui.presence.link_down_last_seen": "link down · last seen {age}",
+	"ui.presence.device_link_down": "Link down · {reason} · last seen {age}",
+	"ui.presence.device_unreachable": "device unreachable",
+	"ui.presence.just_now": "just now",
+	"ui.presence.minutes_ago": "{count, number}m ago",
+	"ui.presence.hours_ago": "{count, number}h ago",
+	"ui.presence.days_ago": "{count, number}d ago",
+	"ui.presence.link_down_compact": "Link down · {age}"
+}
