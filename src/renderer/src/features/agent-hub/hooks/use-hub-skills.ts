@@ -18,6 +18,7 @@ import type {
 import {
 	getOrgSkill,
 	getPublicSkill,
+	hubSourceAddress,
 	listOrgSkills,
 	listPublicSkills,
 } from "@shared/api/radient/skills-api";
@@ -166,7 +167,7 @@ export function usePullHubSkill() {
 				op: "hub.skillPull",
 				requestId: input.requestId,
 				hubId: input.remoteId,
-				hubSource: apiConfig.radientBaseUrl,
+				hubSource: hubSourceAddress(apiConfig.radientBaseUrl),
 				visibility: input.scope.visibility,
 				tenantId: input.scope.tenantId,
 				localAlias: input.alias,
@@ -206,7 +207,7 @@ export function useSubscribeHubSkill() {
 				op: "hub.skillSubscribe",
 				requestId: input.requestId,
 				hubId: input.remoteId,
-				hubSource: apiConfig.radientBaseUrl,
+				hubSource: hubSourceAddress(apiConfig.radientBaseUrl),
 				visibility: input.scope.visibility,
 				tenantId: input.scope.tenantId,
 				localAlias: input.alias,

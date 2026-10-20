@@ -46,7 +46,7 @@ const state = {
 };
 globalThis.__hubSkillGateTest = state;
 const transport = `export { DesktopControlError, isDeadlineExceeded } from "${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts"; export async function desktopResult(input) { const s=globalThis.__hubSkillGateTest; s.requests.push(input); if(input.op==='capabilities')return s.capabilities; return {links:{links:[],unresolved:[]},reports:[],link:null,local_link_receipt:null}; }`;
-const catalogue = `const call=(kind,args)=>{const s=globalThis.__hubSkillGateTest;s.remote.push({kind,args});const result={result:{skills:[],records:[],total_pages:1,sync_contract:{revision_cas:1,skills:1}}};return s.hold?new Promise(resolve=>s.pending.push(()=>resolve(result))):Promise.resolve(result);};export const listPublicSkills=(...a)=>call('public-list',a);export const getPublicSkill=(...a)=>call('public-detail',a);export const listOrgSkills=(...a)=>call('org-list',a);export const getOrgSkill=(...a)=>call('org-detail',a);`;
+const catalogue = `export const hubSourceAddress=(origin)=>origin.replace(/\\/+$/,'')+'/v1';const call=(kind,args)=>{const s=globalThis.__hubSkillGateTest;s.remote.push({kind,args});const result={result:{skills:[],records:[],total_pages:1,sync_contract:{revision_cas:1,skills:1}}};return s.hold?new Promise(resolve=>s.pending.push(()=>resolve(result))):Promise.resolve(result);};export const listPublicSkills=(...a)=>call('public-list',a);export const getPublicSkill=(...a)=>call('public-detail',a);export const listOrgSkills=(...a)=>call('org-list',a);export const getOrgSkill=(...a)=>call('org-detail',a);`;
 const built = await build({
 	stdin: {
 		contents:
@@ -298,6 +298,20 @@ test("real mounted Skills hooks gate absence, explicit enablement, and retained 
 		assert(
 			!("subscribe" in subscribeWrite),
 			"a subscribe carries no install policy",
+		);
+		/*
+		 * THE SEAM QA FOUND (F1, PR #1269): core approves the base its config
+		 * normalises to, which carries `/v1`; the bare origin is refused
+		 * `origin-conflict`. Both writes and the link join name the same address.
+		 */
+		assert.equal(
+			subscribeWrite.hubSource,
+			"http://127.0.0.1:8127/v1",
+			"a skill write names the approved (versioned) hub source",
+		);
+		assert.equal(
+			state.requests.find((x) => x.op === "hub.skillPull").hubSource,
+			"http://127.0.0.1:8127/v1",
 		);
 		const unpullWrite = state.requests.find((x) => x.op === "hub.skillUnpull");
 		assert.equal(unpullWrite.linkId, "synthetic-link");
