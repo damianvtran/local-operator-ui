@@ -95,7 +95,7 @@
  *                          the issue #789 pair this run records: the head tree,
  *                          where a dropped file attaches, or the base tree, where
  *                          the same gesture leaves nothing behind
- *   --project <key>        (with --scene project-detail, project-inline-edit or
+ *   --project <key>        (with --scene project-detail, project-update-assets, project-inline-edit or
  *                          project-open) the seeded project the scene drives;
  *                          the seed decides the name and a default would
  *                          photograph whatever it happened to use
@@ -43168,7 +43168,7 @@ async function sceneProjectUpdateAssets(cdp) {
 	);
 	const counts = gridWaited.last;
 	check(
-		"the update renders its asset grid: two pictures, a sound and a note",
+		"the update renders an asset grid of pictures, a sound and a note",
 		gridWaited.ok &&
 			counts?.images === 2 &&
 			counts.sounds >= 1 &&
@@ -43236,7 +43236,7 @@ async function sceneProjectUpdateAssets(cdp) {
 		`document.querySelectorAll("[data-project-asset-filmstrip] button").length`,
 	);
 	check(
-		"the filmstrip lists the update's media set",
+		"the filmstrip lists media tiles",
 		Number(stripCaptured) >= 2,
 		`tiles=${stripCaptured}`,
 	);

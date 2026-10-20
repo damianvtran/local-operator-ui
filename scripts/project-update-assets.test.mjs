@@ -768,6 +768,59 @@ test("the preview X returns focus to the pressed note tile", async () => {
 	});
 });
 
+test("Preview from the tile menu returns focus to the tile button", async () => {
+	const update = fixture();
+	await mount(null, async (api) => {
+		await api.render(
+			React.createElement(ProjectUpdateAssets, {
+				attachments: update.attachments,
+			}),
+		);
+		const tile = previewButton(api.document, `notes-${fixtureId}.md`);
+		const trigger = api.document.querySelector(
+			`button[aria-label="File actions for notes-${fixtureId}.md"]`,
+		);
+		assert.ok(tile, "the file tile button");
+		assert.ok(trigger, "the tile's ellipsis trigger");
+		/*
+		 * The projects board's own menu driver: Radix opens on the down edge, and
+		 * its items answer a completed press. The pointer pair is a MouseEvent
+		 * because jsdom ships no PointerEvent.
+		 */
+		act(() => {
+			for (const type of ["pointerdown", "pointerup"]) {
+				trigger.dispatchEvent(
+					new api.window.MouseEvent(type, { bubbles: true, button: 0 }),
+				);
+			}
+			trigger.click();
+		});
+		const menuItem = () =>
+			[...api.document.querySelectorAll('[role="menuitem"]')].find(
+				(item) => item.textContent?.trim() === "Preview",
+			);
+		await api.settle(() => menuItem() !== undefined);
+		const item = menuItem();
+		assert.ok(item, "the Preview item");
+		act(() => {
+			for (const type of ["pointerdown", "pointerup"]) {
+				item.dispatchEvent(
+					new api.window.MouseEvent(type, { bubbles: true, button: 0 }),
+				);
+			}
+			item.click();
+		});
+		await api.settle(() => dialog(api.document) !== null);
+		assert.ok(dialog(api.document), "the menu opened the preview");
+		await api.pressEscape(() => dialog(api.document) === null);
+		assert.equal(
+			api.document.activeElement,
+			tile,
+			"the menu door still hands focus back to the file tile",
+		);
+	});
+});
+
 test("a failed read shows reader copy, never the path or the syscall", async () => {
 	const update = fixture();
 	const failed = {

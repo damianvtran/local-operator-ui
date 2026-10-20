@@ -15,20 +15,21 @@
  * wiring: path-backed bytes (`useFileBlobUrl`), the per-update set, and the
  * legacy `data` classification.
  *
- * WHAT COUNTS AS WHICH KIND. New rows from the backend carry `image`, `audio`
- * or `video`; rows written before those kinds existed carry `data` for
- * everything that was not an image. The extension is the honest second
- * question (`fileKind`, the one classifier), so a legacy `data` row for a
- * `.wav` is still a player and one for a `.mp4` is still a clip. An explicit
- * kind wins over the extension: the writer said what it was.
+ * WHAT COUNTS AS WHICH KIND. An explicit kind from the backend (`image`,
+ * `audio` or `video`) is used as written. Every other row is classified by
+ * extension (`fileKind`, the one classifier) — which covers both the legacy
+ * `data` rows written before those kinds existed and today's markdown/PDF
+ * rows, so a `.wav` is still a player and a `.mp4` is still a clip.
  *
  * LAZINESS IS THE FEED'S CONTRACT. A project with forty updates of three
  * attachments opens without reading a hundred and twenty files. Every tile
  * reserves its exact slot on first render and mounts its byte reader only when
  * `useEverInView` has seen it near the viewport (latched, so scrolling back
  * does not re-read). `loading="lazy"`/`decoding="async"` are on the pictures
- * `ImageAttachment` draws; the video thumb asks the browser for metadata only
- * (`preload="metadata"`), never the whole clip.
+ * `ImageAttachment` draws. The video thumb still costs one whole-file read when
+ * its tile is admitted (`useFileBlobUrl` reads the stored bytes; `preload` is
+ * about the element's fetch, not the bridge), and `preload="metadata"` only
+ * keeps the element from starting a second fetch afterwards.
  *
  * SOUNDS HAVE NO PEAKS HERE. Peaks are a generated-media artefact (the speech
  * store's waveform); a project attachment is a file on disk with no stored
@@ -142,7 +143,7 @@ const ReservedTile: FC<{ kind: "image" | "video" | "file" | "audio" }> = ({
 	kind,
 }) =>
 	kind === "audio" ? (
-		<div className="h-11 w-[242px] max-w-full rounded-sm border border-hairline bg-sunken sm:col-span-2" />
+		<div className="h-11 w-[242px] max-w-full rounded-sm border border-hairline bg-sunken" />
 	) : (
 		<AttachmentFrame boundary="control" className={MEDIA_BOX} />
 	);
@@ -376,11 +377,16 @@ const previewsInApp = (attachment: DesktopProjectAttachment): boolean => {
 
 const ProjectFileTile: FC<{
 	attachment: DesktopProjectAttachment;
-	onPreview: () => void;
+	/**
+	 * The door the reader used, so the preview can hand focus back to the tile
+	 * even when the press came from the ellipsis menu (whose content unmounts).
+	 */
+	onPreview: (trigger: HTMLElement | null) => void;
 }> = ({ attachment, onPreview }) => {
 	useI18nLocale();
 	const name = attachmentName(attachment);
 	const size = attachmentSizeText(attachment.bytes);
+	const buttonRef = useRef<HTMLButtonElement>(null);
 	const previewable = previewsInApp(attachment);
 	const label = previewable
 		? t("ui.projects.project_updates.preview_name", { name: String(name) })
@@ -388,13 +394,14 @@ const ProjectFileTile: FC<{
 	return (
 		<div className="group relative inline-block" data-project-asset-tile="file">
 			<button
+				ref={buttonRef}
 				type="button"
 				className="group/tile block cursor-pointer rounded-sm"
 				aria-label={label}
 				title={name}
 				onClick={() => {
 					if (previewable) {
-						onPreview();
+						onPreview(buttonRef.current);
 						return;
 					}
 					// PDFs, spreadsheets and binary documents have no reader on this
@@ -422,7 +429,9 @@ const ProjectFileTile: FC<{
 					aria-label={t("ui.projects.project_updates.file_actions_for_name", {
 						name: String(name),
 					})}
-					onPreview={previewable ? onPreview : undefined}
+					onPreview={
+						previewable ? () => onPreview(buttonRef.current) : undefined
+					}
 				/>
 			</div>
 		</div>
@@ -727,9 +736,13 @@ export const ProjectUpdateAssets: FC<ProjectUpdateAssetsProps> = ({
 		galleryFocusRef.current = active instanceof HTMLElement ? active : null;
 		setOpenKey(assetKey(attachment));
 	};
-	const openPreview = (attachment: DesktopProjectAttachment) => {
+	const openPreview = (
+		attachment: DesktopProjectAttachment,
+		trigger: HTMLElement | null = null,
+	) => {
 		const active = document.activeElement;
-		previewFocusRef.current = active instanceof HTMLElement ? active : null;
+		previewFocusRef.current =
+			trigger ?? (active instanceof HTMLElement ? active : null);
 		setPreviewing(attachment);
 	};
 
@@ -777,7 +790,7 @@ export const ProjectUpdateAssets: FC<ProjectUpdateAssetsProps> = ({
 						<ProjectFileTile
 							key={assetKey(attachment)}
 							attachment={attachment}
-							onPreview={() => openPreview(attachment)}
+							onPreview={(trigger) => openPreview(attachment, trigger)}
 						/>
 					);
 				})}
