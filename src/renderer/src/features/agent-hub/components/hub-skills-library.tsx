@@ -15,9 +15,13 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { useHubUpdates } from "@shared/api/local-operator/hub-hooks";
 import { useHubLinks } from "@shared/api/local-operator/hub-link-hooks";
-import type { HubLink } from "@shared/api/local-operator/hub-links";
+import {
+	type HubLink,
+	hubLinkContentState,
+} from "@shared/api/local-operator/hub-links";
 import {
 	type HubMark,
+	type HubUpdateItem,
 	hubItemIndex,
 	hubItemKey,
 	hubMarkFor,
@@ -108,6 +112,33 @@ const STATE_KEY: Record<
  */
 function refusalCode(error: unknown): string | undefined {
 	return error instanceof DesktopControlError ? error.code : undefined;
+}
+
+/**
+ * The mark a skill row draws, from the state that already decided what is true.
+ *
+ * An `available` updates row exists for a skill with NO copy too (core reports
+ * the remote revision with `local: null`), so the mark cannot be drawn straight
+ * from the updates store: that would label a skill that is not installed
+ * "update available" and hide the Download that is actually next. Only an
+ * `update` state earns that mark. A FAILURE is different and is drawn in every
+ * state: it is the reason a check did not land, and it rides the same channel as
+ * agents and teams.
+ */
+function skillMark(
+	state: HubSkillState,
+	update: HubUpdateItem | undefined,
+): HubMark | null {
+	if (state.kind === "update")
+		return (
+			(update ? hubMarkFor(update) : null) ?? {
+				kind: "available",
+				auto: state.automatic,
+			}
+		);
+	if (update && (update.state === "failed" || update.error_class))
+		return hubMarkFor(update);
+	return null;
 }
 
 function SkillMarkChip({ mark }: { mark: HubMark | null }) {
@@ -389,14 +420,7 @@ export function HubSkillsLibrary({
 							<ul className="grid min-w-0 list-none gap-3 p-0 sm:grid-cols-2">
 								{rows.map((row) => {
 									const joined = linkStateFor(row);
-									const mark = joined.update
-										? hubMarkFor(joined.update)
-										: joined.state.kind === "update"
-											? {
-													kind: "available" as const,
-													auto: joined.state.automatic,
-												}
-											: null;
+									const mark = skillMark(joined.state, joined.update);
 									return (
 										<li key={row.id} className="min-w-0">
 											<button
@@ -437,7 +461,7 @@ export function HubSkillsLibrary({
 													<span className="text-ink-muted">
 														{skillPublisherLine(row, scope.organization)}
 													</span>
-													{joined.state.kind !== "update" && !joined.update ? (
+													{joined.state.kind !== "update" ? (
 														<span className="text-ink-dim">
 															{t(STATE_KEY[joined.state.kind])}
 														</span>
@@ -488,16 +512,7 @@ export function HubSkillsLibrary({
 									</p>
 								</div>
 								<SkillMarkChip
-									mark={
-										selectedUpdate
-											? hubMarkFor(selectedUpdate)
-											: selectedState.kind === "update"
-												? {
-														kind: "available",
-														auto: selectedState.automatic,
-													}
-												: null
-									}
+									mark={skillMark(selectedState, selectedUpdate)}
 								/>
 							</div>
 							<p
@@ -604,7 +619,15 @@ export function HubSkillsLibrary({
 							 * and an already-linked one keeps whichever state it has.
 							 */}
 							<div className="flex flex-wrap gap-2">
-								{(!selectedLink || selectedState.kind === "update") && (
+								{/*
+								 * Download is offered whenever there is no copy to read: an
+								 * unlinked skill, a subscribed-but-absent one (its PRIMARY act), and
+								 * a waiting update (where it is a manual pull, so it takes the
+								 * existing pull vocabulary rather than the download label).
+								 */}
+								{(!selectedLink ||
+									hubLinkContentState(selectedLink) === "absent" ||
+									selectedState.kind === "update") && (
 									<Button
 										data-testid="hub-skill-download"
 										variant={selectedLink ? "primary" : "outline"}
@@ -615,7 +638,9 @@ export function HubSkillsLibrary({
 										})}
 										onClick={() => runPull(selectedLink)}
 									>
-										{t("ui.hub.skills.download")}
+										{selectedState.kind === "update"
+											? t("ui.hub.subscriptions.pull")
+											: t("ui.hub.skills.download")}
 									</Button>
 								)}
 								{/*
