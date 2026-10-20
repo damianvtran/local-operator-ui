@@ -72,6 +72,35 @@ over component triples (ground + fill + border + ink) rather than token pairs.
 `CONTROLS` in `scripts/contrast-contract.mjs`** — green output about a
 component nobody listed is not evidence about that component.
 
+### Panels run to the window edge
+
+These are rules with their reason, not a checklist. A surface that understands
+why will get the next case right where a checklist would not name it.
+
+- **A panel is full-height and starts at y0, including under the invisible
+  titlebar.** A route whose panels own their top padding takes the shell's
+  `flushTop` mode; the lane is then an absolute drag overlay, and the route
+  must not also receive the shell's reserved row. Never inset a panel or give
+  it a top margin to clear the traffic lights. The clearance is **padding inside the panel**, so the panel's own
+  ground reaches the window edge while its content starts below the controls.
+  The difference is visible in one direction only: padding is invisible, an
+  offset panel is a band. This was reported three times (the Library sidebar,
+  the canvas right bar, and Team Bridge) and each time the bug was the same
+  relocation — the space existed, but outside the surface that should own it.
+- **Separate panels by ground value, never by a line.** A rule between two
+  panels is a second mark over a tone step; the tone step already tells the
+  eye where one ends. The operator has asked for the border's removal three
+  times, so a new `border-l`/`border-r` on a panel is a regression by
+  construction.
+- **A translucent panel must still occlude what scrolls beneath it.** A sticky
+  header whose ground lets rows bleed through is not "glass"; it is a
+  readability failure. Use the panel's ground (and its blur, where the theme
+  asks) so the content behind is hidden, not merely dimmed.
+- **Scrollbars sit outside the content constraint.** Size the content column
+  so its scrollbar occupies the gutter rather than narrowing the measure; a
+  scrollbar inside the padding makes text reflow when it appears, which reads
+  as a jump.
+
 ### One trap worth knowing
 
 Always route `className` through `cn` from `@shared/lib/utils`. It registers
