@@ -56,3 +56,6 @@ not eligible.
 - Hover, disabled-hover absence and the native tooltip are interaction states;
   the `aria-disabled` and `title`/`aria-describedby` markup is asserted in the
   test suite.
+- The round-1 remediation's gate-pending hold and surface F read-only state are
+  not in this set; both are rendered-state assertions in
+  `scripts/team-bridge-directory.test.mjs` rather than stored frames.

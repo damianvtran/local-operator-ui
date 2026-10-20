@@ -84,5 +84,12 @@
 	"ui.teamBridge.plan.update_title": "更新后使用 Team Bridge",
 	"ui.teamBridge.plan.update_reason": "Team Bridge 需要更新版本的 Radient。",
 	"ui.teamBridge.plan.unavailable_title": "Team Bridge 暂不可用",
-	"ui.teamBridge.plan.unavailable_reason": "服务当前不可用。请稍后再试。"
+	"ui.teamBridge.plan.unavailable_reason": "服务当前不可用。请稍后再试。",
+	"ui.teamBridge.people.list_loading": "正在加载对话。",
+	"ui.teamBridge.people.list_error": "无法加载对话，因此暂时无法从这里给成员发消息。",
+	"ui.teamBridge.people.identity_loading": "正在查找你的账户…",
+	"ui.teamBridge.read_only.note": "此组织为只读。",
+	"ui.teamBridge.read_only.composer": "此组织目前为只读，无法发送消息。",
+	"ui.teamBridge.read_only.person": "只读：目前无法发起新对话。",
+	"ui.teamBridge.plan.checking": "正在检查 Team Bridge…"
 }

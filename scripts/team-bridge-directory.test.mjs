@@ -394,6 +394,145 @@ test("people render with self, paused and inert states at the rail's rhythm", ()
 	assert.match(html, /Message Cy, paused/);
 });
 
+test("a person row waits for the conversation list before it can start a DM", () => {
+	/*
+	 * ROUND-1 U-2. An unresolved list cannot say whether a DM already exists, so
+	 * a click must not fall through to the create flow and duplicate it. The row
+	 * is a labelled, inert statement until the list answers; a ready list beside
+	 * the same fixtures gives the row its action back.
+	 */
+	const bea = person({ display_label: "Bea" });
+	const dm = conversation();
+	const ready = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				people: [bea],
+				conversations: [dm],
+				listState: "ready",
+			}),
+		),
+	);
+	assert.match(ready, /aria-label="Message Bea"/);
+
+	for (const listState of ["loading", "error"]) {
+		const html = renderToStaticMarkup(
+			createElement(
+				TeamBridgePageView,
+				viewProps({
+					people: [bea],
+					conversations: [dm],
+					listState,
+				}),
+			),
+		);
+		assert.doesNotMatch(
+			html,
+			/Message Bea/,
+			`a ${listState} list must not offer a compose that could duplicate a DM`,
+		);
+		assert.match(html, /aria-disabled="true"/);
+		assert.match(
+			html,
+			listState === "loading"
+				? /Conversations are still loading\./
+				: /Conversations could not be loaded/,
+		);
+	}
+});
+
+test("the viewer's own row is never offered as a message before identity answers", () => {
+	// ROUND-1 U-4: without the account id the rail cannot tell self from a
+	// colleague, so no row is a control and nothing says "Message Damian".
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				selfAccountId: undefined,
+				people: [
+					person({
+						account_id: "acct_self",
+						display_label: "Damian",
+						role: "owner",
+					}),
+				],
+			}),
+		),
+	);
+	assert.doesNotMatch(html, /Message Damian/);
+	assert.doesNotMatch(html, />You</);
+	assert.match(html, /Finding your account/);
+});
+
+test("surface F withholds writes but still opens an existing DM", () => {
+	// ROUND-1 U-5: read_only disables New conversation and the composer; a
+	// person with an existing DM stays openable because opening is a read.
+	const bea = person({ display_label: "Bea" });
+	const dm = conversation();
+	const noDm = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({ readOnly: true, people: [bea] }),
+		),
+	);
+	assert.match(noDm, /This organization is read-only\./);
+	assert.doesNotMatch(noDm, /Message Bea/);
+	assert.match(
+		noDm,
+		/Read-only: a new conversation can’t be started right now\./,
+	);
+	assert.match(
+		noDm,
+		/aria-label="New conversation"[^>]*aria-disabled="true"|aria-disabled="true"[^>]*aria-label="New conversation"/,
+	);
+
+	const withDm = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				readOnly: true,
+				selected: dm,
+				conversations: [dm],
+				messageState: "ready",
+				people: [bea],
+			}),
+		),
+	);
+	assert.doesNotMatch(withDm, /Message this conversation/);
+	assert.match(
+		withDm,
+		/This organization is read-only right now, so messages can’t be sent\./,
+	);
+	assert.match(withDm, /aria-label="Message Bea"/);
+});
+
+test("an unanswered gate holds the page and draws no conversation chrome", () => {
+	// ROUND-1 U-6: the first paint is held until the status answers, and the
+	// container disables the read set in the same state.
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				gatePending: true,
+				conversations: [conversation()],
+				people: [person()],
+			}),
+		),
+	);
+	assert.match(html, /Checking Team Bridge/);
+	assert.doesNotMatch(html, /data-conversation-id/);
+	assert.doesNotMatch(html, /People<\/h2>/);
+});
+
+test("the People heading is an h2 under the page's h1", () => {
+	// ROUND-1 U-7: the sr-only page h1 had no h2 before the section's h3.
+	const html = renderToStaticMarkup(
+		createElement(TeamBridgePageView, viewProps({ people: [person()] })),
+	);
+	assert.match(html, /<h2 id="team-bridge-people-heading"/);
+	assert.doesNotMatch(html, /<h3[^>]*team-bridge-people-heading/);
+});
+
 test("a directory failure is stated in the rail and does not blank the list", () => {
 	const dm = conversation({ name: "" });
 	const html = renderToStaticMarkup(
@@ -479,7 +618,7 @@ test("a plan gate names the plan and the value, and draws no conversation chrome
 	assert.doesNotMatch(html, /data-conversation-id/);
 	assert.doesNotMatch(html, /New conversation/);
 	assert.doesNotMatch(html, /Message Bea/);
-	assert.doesNotMatch(html, /People<\/h3>/);
+	assert.doesNotMatch(html, /People<\/h2>/);
 });
 
 test("signed out says sign in; update and unavailable name their own reasons", () => {

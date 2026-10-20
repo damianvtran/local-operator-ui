@@ -619,5 +619,54 @@
 		"length": "Two short sentences.",
 		"placeholders": {},
 		"note": "Says the service, not the organization, is the cause. 'Try again later' is the only honest action this panel offers."
+	},
+	"ui.teamBridge.people.list_loading": {
+		"role": "explanation for an inert person row while conversations load",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The row cannot know whether a DM already exists until the list answers, so it does not act. Do not imply the person is unavailable."
+	},
+	"ui.teamBridge.people.list_error": {
+		"role": "explanation for an inert person row after a list failure",
+		"tone": "factual, no blame",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The conversation list failed, so a DM cannot be resolved and a duplicate must not be started. This is about the read, not the person."
+	},
+	"ui.teamBridge.people.identity_loading": {
+		"role": "explanation for an inert person row before the account is known",
+		"tone": "neutral",
+		"length": "3-4 words.",
+		"placeholders": {},
+		"note": "Without the signed-in account the rail cannot tell the viewer's own row from a colleague's, so every row waits. Do not name the person."
+	},
+	"ui.teamBridge.read_only.note": {
+		"role": "note beside the disabled New conversation action in surface F",
+		"tone": "factual",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "The organization's Team Bridge is read-only. A state, not the reader's mistake; the server would refuse any write."
+	},
+	"ui.teamBridge.read_only.composer": {
+		"role": "replacement for the composer in a read-only organization",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Says the history is readable but sending is not. Do not offer a disabled composer."
+	},
+	"ui.teamBridge.read_only.person": {
+		"role": "explanation for an inert person row with no existing DM in surface F",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Opening an existing DM is a read and stays available; starting one is a write and is not. Inline the reason so the row is not a silent no-op."
+	},
+	"ui.teamBridge.plan.checking": {
+		"role": "first-paint loading state while the eligibility read answers",
+		"tone": "neutral",
+		"length": "2-4 words.",
+		"placeholders": {},
+		"note": "Also the spinner's accessible label. Names the product, not a generic loading."
 	}
 }

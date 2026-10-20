@@ -4918,6 +4918,9 @@ export type MessageParams = {
 	"ui.teamBridge.people.bridge_off": undefined;
 	"ui.teamBridge.people.empty": undefined;
 	"ui.teamBridge.people.error": undefined;
+	"ui.teamBridge.people.identity_loading": undefined;
+	"ui.teamBridge.people.list_error": undefined;
+	"ui.teamBridge.people.list_loading": undefined;
 	"ui.teamBridge.people.loading": undefined;
 	"ui.teamBridge.people.message": { name: string };
 	"ui.teamBridge.people.message_paused": { name: string };
@@ -4925,6 +4928,7 @@ export type MessageParams = {
 	"ui.teamBridge.people.self": undefined;
 	"ui.teamBridge.people.title": undefined;
 	"ui.teamBridge.plan.body": undefined;
+	"ui.teamBridge.plan.checking": undefined;
 	"ui.teamBridge.plan.reason": undefined;
 	"ui.teamBridge.plan.sign_in_reason": undefined;
 	"ui.teamBridge.plan.sign_in_title": undefined;
@@ -4937,6 +4941,9 @@ export type MessageParams = {
 	"ui.teamBridge.preview.chip": undefined;
 	"ui.teamBridge.preview.join": undefined;
 	"ui.teamBridge.preview.join_error": undefined;
+	"ui.teamBridge.read_only.composer": undefined;
+	"ui.teamBridge.read_only.note": undefined;
+	"ui.teamBridge.read_only.person": undefined;
 	"ui.teamBridge.scope.all": undefined;
 	"ui.teamBridge.scope.create_needs_org": undefined;
 	"ui.teamBridge.scope.empty": undefined;
