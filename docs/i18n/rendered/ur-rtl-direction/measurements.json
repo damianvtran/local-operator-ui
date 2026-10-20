@@ -1,5 +1,5 @@
 {
-  "method": "Built the app at head 229883c2df; launched through scripts/renderer-driver.mjs in inactive window mode with a scratch HOME/config/profile and --window-size=1380x900. Backend: a real isolated `lop serve` 0.82.3 on 127.0.0.1:8125 with hosting/model test/mock-model, fronted by an in-process proxy on :8123 that rewrites only `result.language` in GET /v1/capabilities (en <-> ur). One real canonical session 'RTL QA' was created with POST /v1/desktop/sessions and renamed by its own command. Theme set to localOperatorLight for both locales. Pixels are webContents.capturePage(); geometry is getBoundingClientRect() from the live renderer.",
+  "method": "Two captures, both from the shipped branch and both using a scratch HOME/config/profile, inactive window mode at --window-size=1380x900, a real isolated `lop serve` 0.82.3 behind an in-process proxy that rewrites only `result.language` in GET /v1/capabilities, one real canonical session 'RTL QA' created with POST /v1/desktop/sessions and renamed by its own command, and localOperatorLight set through the app's own setTheme verb. The chat frames and their DOM readings were built at head 3061b57cf9 (the D1 commit, content-identical to the rebased 4bd490b07a; proxy port 8124). The settings frames and their DOM readings are inherited from the earlier capture at 49331f09cb (proxy port 8123), where the code is identical apart from the composer-only D1 fix, which does not touch the settings surface; they are not claimed as a fresh reading. Pixels are webContents.capturePage(); geometry is getBoundingClientRect() from the live renderer.",
   "captures": {
     "en": {
       "dir": "ltr",
@@ -192,7 +192,7 @@
   "composerLabel": {
     "text": "Working directory:",
     "fix": "The fallback phrase is wrapped in <bdi dir=\"auto\">; the Latin run gets its own LTR base direction inside the RTL row, so the trailing colon stays with the phrase.",
-    "urFrameChange": "Compared with the pre-fix Urdu chat frame, the only differing pixels are the composer label region, bbox (1573,1694)-(1802,1719); English is unchanged and still byte-identical to the control.",
+    "urFrameChange": "Compared with the pre-fix Urdu chat frame at 49331f09cb, the only differing pixels are the composer label region, bbox (1573,1694)-(1802,1719); English chat is byte-identical to the origin/main control.",
     "frames": [
       "en-chat.png",
       "ur-chat.png"
