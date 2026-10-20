@@ -245,6 +245,15 @@ export function HubSkillsLibrary({
 	const [filter, setFilter] = useState("");
 	const [selected, setSelected] = useState<string | null>(null);
 	const [confirmUnpull, setConfirmUnpull] = useState(false);
+	/*
+	 * Which policy act the pending/error line is about. One `policy` mutation
+	 * serves both directions, so the sentence needs the attempt carried beside it
+	 * (review round 2, N1) — a failed Subscribe must not read as a failed
+	 * Unsubscribe.
+	 */
+	const [policyAct, setPolicyAct] = useState<"subscribe" | "unsubscribe">(
+		"unsubscribe",
+	);
 	const [publishOpen, setPublishOpen] = useState(false);
 	const request = useRef<{ tuple: string; id: string } | null>(null);
 	const source =
@@ -413,6 +422,7 @@ export function HubSkillsLibrary({
 		 */
 		if (skillSubscribeAct(selectedLink) === "policy" && selectedLink) {
 			if (selectedLink.policy.subscribe || policy.isPending) return;
+			setPolicyAct("subscribe");
 			policy.mutate({ link: selectedLink, patch: { subscribe: true } });
 			return;
 		}
@@ -458,6 +468,7 @@ export function HubSkillsLibrary({
 		 * failure over a successful unsubscribe (review round 1, minor 9).
 		 */
 		if (policy.isPending || !policy.canWrite) return;
+		setPolicyAct("unsubscribe");
 		policy.mutate({
 			link: selectedLink,
 			patch: { subscribe: false },
@@ -800,7 +811,10 @@ export function HubSkillsLibrary({
 									{policy.error && (
 										<p role="alert" className="text-meta text-danger">
 											{t("ui.hub.subscriptions.save_failed", {
-												setting: t("ui.hub.skills.unsubscribe"),
+												setting:
+													policyAct === "subscribe"
+														? t("ui.hub.subscriptions.subscribe")
+														: t("ui.hub.skills.unsubscribe"),
 												source,
 											})}
 										</p>
@@ -931,7 +945,10 @@ export function HubSkillsLibrary({
 												!ready ||
 												!inventoryReady ||
 												subscribe.isPending ||
-												policy.isPending
+												policy.isPending ||
+												// A link makes this a policy write, so it needs the
+												// core's policy-write minimum; creation does not.
+												(selectedLink ? !policy.canWrite : false)
 											}
 											onClick={runSubscribe}
 										>
