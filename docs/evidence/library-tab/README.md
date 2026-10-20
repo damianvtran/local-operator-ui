@@ -20,6 +20,15 @@ the lightbox opens over the page's 440px dock, which the page only lays out at
 `workspaceWidth >= 1152` (`library-page.tsx`); at 640 the same route falls back
 to the full-view preview, which is a different surface.
 
+**Where the frames live.** Frames are rig output and are NOT committed (the
+split in #1256: `.gitignore` ignores `docs/evidence-frames/` and every frame
+container under `docs/evidence/`). The capture below writes them to the ignored
+`docs/evidence-frames/` tree, preserving each set's own path:
+`docs/evidence-frames/library-tab/<state>/<theme>.webp` (and
+`../library-tab-before/`, `../library-tab-live/` for the sibling sets). This
+README, the manifest and `harness/` stay tracked; a fresh checkout has no
+frames until the rig is run.
+
 ## The capture
 
 **After arm** (this branch's remediation head `46042530e`, Storybook 8.6.12 on
@@ -59,7 +68,7 @@ timing-dependent, which is Q3's documented gap), plus
 `preview-inline-long-name-editing` (both themes), where the Q1 fix opens the
 editor at the start of the value.
 `media-lightbox-dismiss` is unchanged because the overlay is closed and no
-chrome is drawn. Each old frame was replaced in place — the committed tree holds
+chrome is drawn. Each old frame was replaced in place — the frames tree holds
 one frame per state, not the old beside the new.
 
 The round-2 remediation of PR #1259 re-took both runs at `22d00362de`, because
@@ -219,7 +228,8 @@ as the slide indicator's colour.
 ## Frame inventory
 
 All frames are 640x900 except the four `media-lightbox*` states and
-`preview-media-inert-page`, which are 1280x900. Sizes are the committed bytes.
+`preview-media-inert-page`, which are 1280x900. Sizes are the bytes in the
+ignored `docs/evidence-frames/library-tab/` tree.
 
 ### After (`library-tab/`)
 

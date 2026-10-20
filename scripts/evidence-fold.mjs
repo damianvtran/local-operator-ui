@@ -904,7 +904,16 @@ export const deriveFields = async ({
 		UNJUDGED_FRAMES_WHY,
 	} = await import("./check-evidence.mjs");
 
-	const evidenceDir = join(root, "docs", "evidence");
+	/*
+	 * The FRAMES tree, not the proof tree: frames are rig output in the ignored
+	 * `docs/evidence-frames/`, and the counts this fold re-derives are counts of
+	 * PIXELS - `frames`, `refreshedFrames` and the `unjudgedFrames` pair. A walk
+	 * of `docs/evidence/` finds no frames on a captured checkout and derives
+	 * zeroes the guard beside it then refuses (measured 2026-10-20, the fold's
+	 * own two-sided case). The manifest this tool resolves stays in
+	 * `docs/evidence/` (`MANIFEST_PATH`).
+	 */
+	const evidenceDir = join(root, "docs", "evidence-frames");
 	const capture = read(["show", `${target}:scripts/capture-evidence.mjs`]);
 	if (capture === null)
 		throw new Error(
@@ -1019,7 +1028,8 @@ export const runGuards = async ({
 			),
 		);
 	const failures = [
-		...stampFailures(manifest, at, join(root, "docs", "evidence")),
+		// The frame walk is the frames tree; the manifest is staged separately.
+		...stampFailures(manifest, at, join(root, "docs", "evidence-frames")),
 		...citationFailures(manifest, read),
 	];
 	const notes = [];

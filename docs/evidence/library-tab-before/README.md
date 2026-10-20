@@ -13,6 +13,12 @@ as two patches.
 | `preview-inline-*/` | the 440px docked preview at 640x900, `localOperatorDark` and `localOperatorLight` |
 | `preview-media-inert-page/` | the page's 440px dock with the inert picture, 1280x900 |
 
+The frames are NOT committed: they live under the ignored
+`docs/evidence-frames/library-tab-before/` tree, in the same `<state>/<theme>`
+shape as `../library-tab/`, and the capture command in
+[`../library-tab/README.md`](../library-tab/README.md) writes there. The two
+patches and this README are the tracked part of the set.
+
 The full capture procedure, the panel measurements and the findings are in
 [`../library-tab/README.md`](../library-tab/README.md). What this set is for, in
 one line: the labelled/bordered `EditableField` and `TagsInputChips` surface and
