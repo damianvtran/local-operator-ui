@@ -43,7 +43,7 @@ Every frame is a real capture at the app's own pixel size (DPR 2); nothing was r
 | condensed | rest / hover | 1380×900 | light, dark | the folded turn with the final response and its bar still visible |
 | user, commentary | rest / hover | 800×900 | light, dark | the app's minimum width: the 40px band keeps prose clear of the overlay |
 | d3: copy-hover, copied, fork, speak | — | 1380×900 | light, dark | per-button states: ink step with no ground, `Copied` pinned, the Fork dialog, and Speak's disabled sentence |
-| selection | — | 1380×900 | light | a drag over the mid-turn final response: one toolbar, the row stood down |
+| selection | — | 1380×900 | dark | a drag over the mid-turn final response: one toolbar, the row stood down |
 
 `before/` is the base tree (`ceed42e2`) with the hover-only-overlay regression; `after/` is the fixed tree (`9e8fe58` for user/commentary, `ceed42e2` for closing/mid/condensed where the remediation changed no visual code). `after-min-800/` is the same split at 800px.
 
