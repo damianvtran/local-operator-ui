@@ -65,6 +65,10 @@ text ends at the row's inline-end edge (1326 of row edge 1368 in RTL).
 - `ur-chat.png`, `ur-settings.png` - mirrored shell, translated copy,
   right-to-left text alignment, the `RTL QA` session row, settings gutter dot
   on the inline-start edge. Same light theme as the baseline.
+- The composer's English fallback label (`Working directory:`) is wrapped in
+  `<bdi dir="auto">`: the Latin run keeps its own LTR base direction inside the
+  RTL row, so the colon stays attached to the phrase in both locales. In the
+  Urdu frame it reads `~ Working directory:`; in English, `Working directory: ~`.
 - `en-chat-control.png`, `en-settings-control.png` - the `origin/main`
   `491047154e` control pair.
 

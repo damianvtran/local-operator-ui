@@ -159,8 +159,8 @@
           "height": 1800
         },
         "devicePixelRatio": 2,
-        "bytes": 248807,
-        "sha256": "bbb539a55ca030a46d73dd24cce5df349aa873d0b7724ec2a4205d0939ac7599"
+        "bytes": 248799,
+        "sha256": "4953551d0be81aef9626a41c13072cfdb0628e624d33f10d43b98039d23bf49f"
       },
       "settings": {
         "path": "ur-settings.png",
@@ -188,5 +188,14 @@
       "en-chat-control.png": "76c7c98347e79fcfef0174b24d5c70d1c8cc5afcaeeb0e7c053ec623069eedcb",
       "en-settings-control.png": "1c1b8cf4416c26d74991d5de3ef8d5b165fb468cf7d6c105faea039d2b75ae40"
     }
+  },
+  "composerLabel": {
+    "text": "Working directory:",
+    "fix": "The fallback phrase is wrapped in <bdi dir=\"auto\">; the Latin run gets its own LTR base direction inside the RTL row, so the trailing colon stays with the phrase.",
+    "urFrameChange": "Compared with the pre-fix Urdu chat frame, the only differing pixels are the composer label region, bbox (1573,1694)-(1802,1719); English is unchanged and still byte-identical to the control.",
+    "frames": [
+      "en-chat.png",
+      "ur-chat.png"
+    ]
   }
 }
