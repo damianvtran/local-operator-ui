@@ -77,6 +77,12 @@ type LibraryPreviewProps = {
 	standalone?: boolean;
 	/** Open the same preview as a full-workspace document view. */
 	onExpand?: () => void;
+	/**
+	 * The listing's image and video rows, in display order, so the media viewer's
+	 * full-screen lightbox can offer its siblings. The page owns the listing; the
+	 * preview only passes it through.
+	 */
+	mediaSiblings?: readonly DesktopLibraryAsset[];
 };
 
 /** The ordered tags an asset's names map to, creating unknown names first. */
@@ -134,6 +140,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 	focusRequest,
 	standalone = false,
 	onExpand,
+	mediaSiblings,
 }) => {
 	useI18nLocale();
 	const update = useUpdateLibraryAsset();
@@ -481,7 +488,11 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 				)}
 			</header>
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-sunken">
-				<LibraryViewer asset={asset} dense={compact} />
+				<LibraryViewer
+					asset={asset}
+					dense={compact}
+					mediaSiblings={mediaSiblings}
+				/>
 			</div>
 			<div className="shrink-0">
 				<LibraryComposer
