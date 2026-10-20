@@ -70,6 +70,18 @@ const { clearSearch } = await import(
 
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 const sidebar = readFileSync(join(ROOT, SIDEBAR), "utf8");
+/**
+ * The accessible name now comes from the sidebar's English catalogue, so the
+ * control's source anchor is the key and the copy is read from the message the
+ * user actually hears.
+ */
+const COPY = JSON.parse(
+	readFileSync(
+		join(ROOT, "src/i18n/catalogues/en/ui.chat.sidebar.json"),
+		"utf8",
+	),
+);
+const CLEAR_LABEL = 'aria-label={t("ui.chat.sidebar.search.clear")}';
 
 /** A field double that records what it was asked to do, in order. */
 const fieldDouble = () => {
@@ -111,7 +123,12 @@ test("the clear control is rendered only while a filter is applied", () => {
 });
 
 test("the clear control is the settings-search idiom, not a new one", () => {
-	const at = sidebar.indexOf('aria-label="Clear search"');
+	assert.equal(
+		COPY["ui.chat.sidebar.search.clear"],
+		"Clear search",
+		"the control must carry the accessible name `Clear search`",
+	);
+	const at = sidebar.indexOf(CLEAR_LABEL);
 	assert.ok(
 		at > 0,
 		"the control must carry the accessible name `Clear search`",
@@ -147,7 +164,7 @@ test("the icon is decorative and the query never runs under the control", () => 
 	);
 	// The X is a glyph inside a named button; announced separately it would be
 	// read as text with no meaning.
-	const at = sidebar.indexOf('aria-label="Clear search"');
+	const at = sidebar.indexOf(CLEAR_LABEL);
 	assert.match(
 		sidebar.slice(at, at + 200),
 		/<X aria-hidden="true" \/>/,

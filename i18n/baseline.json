@@ -43,7 +43,6 @@
 		"src/renderer/src/features/chat/components/chat-header-identity-menu.tsx": 2,
 		"src/renderer/src/features/chat/components/chat-options-sidebar.tsx": 5,
 		"src/renderer/src/features/chat/components/chat-page.tsx": 2,
-		"src/renderer/src/features/chat/components/chat-sidebar.tsx": 53,
 		"src/renderer/src/features/chat/components/chat-status-strip.tsx": 1,
 		"src/renderer/src/features/chat/components/chat-tabs.tsx": 2,
 		"src/renderer/src/features/chat/components/composer-status-row.tsx": 1,
