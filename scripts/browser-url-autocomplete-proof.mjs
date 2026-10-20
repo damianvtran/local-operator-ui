@@ -79,6 +79,29 @@ const check = (label, ok, detail) => {
 	if (!ok) failures += 1;
 	record(label, { ok, detail });
 };
+/**
+ * THE INSET CLAIM, asked of every cell that shows the list.
+ *
+ * The row must sit on the address FIELD's horizontal bounds - not the pane's -
+ * and be narrower than the toolbar it hangs from. It is asked cell by cell
+ * because the field's edges come from the controls around it (the downloads
+ * folder, the zoom reset, the Approvals label), so a fix that only holds at
+ * one viewport with one set of controls has not fixed it. 1px is the tolerance
+ * for the list's border and the reported sub-pixel boxes.
+ */
+const checkInset = (label, state) => {
+	const listBox = state?.list?.rect ?? null;
+	const fieldBox = state?.inputRect ?? null;
+	const barBox = state?.bar ?? null;
+	if (!listBox || !fieldBox || !barBox) return;
+	const left = Math.abs(listBox.left - fieldBox.left);
+	const right = Math.abs(listBox.right - fieldBox.right);
+	check(
+		`${label}: the list is inset to the field's bounds, narrower than the bar`,
+		left <= 1 && right <= 1 && listBox.width < barBox.width - 1,
+		`list=${listBox.left.toFixed(1)}..${listBox.right.toFixed(1)} w=${listBox.width.toFixed(1)} field=${fieldBox.left.toFixed(1)}..${fieldBox.right.toFixed(1)} bar=${barBox.left.toFixed(1)}..${barBox.right.toFixed(1)} w=${barBox.width.toFixed(1)} dLeft=${left.toFixed(1)} dRight=${right.toFixed(1)}`,
+	);
+};
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 /** A URL's trailing slash is not a different destination for this comparison. */
@@ -362,6 +385,7 @@ const readInput = () =>
 		const input = document.querySelector('[data-tour-tag="browser-address"]');
 		if (!input) return { error: 'missing input' };
 		const list = document.querySelector('[data-tour-tag="browser-address-suggestions"]');
+		const bar = document.querySelector('[data-tour-tag="browser-url-bar"]');
 		const content = document.querySelector('[data-tour-tag="browser-content"]');
 		const options = [...document.querySelectorAll('[data-address-suggestion]')];
 		const rect = (element) => {
@@ -388,6 +412,7 @@ const readInput = () =>
 				rect: rect(list),
 			} : null,
 			content: rect(content),
+			bar: rect(bar),
 			options: options.map((option) => ({
 				text: option.innerText.replace(/\\s+/g, ' ').trim(),
 				selected: option.getAttribute('aria-selected'),
@@ -565,6 +590,7 @@ try {
 		);
 	}
 	record("focused empty field", emptyFocus);
+	checkInset("empty field", emptyFocus);
 	check(
 		"focus with an empty query shows the session's own entries",
 		Boolean(emptyFocus.list) && emptyFocus.options.length > 0,
@@ -584,6 +610,7 @@ try {
 	await sleep(250);
 	const inline = await readInput();
 	record("inline completion", inline);
+	checkInset("inline completion", inline);
 	check(
 		"the real input shows the raw prefix plus a generated suffix",
 		inline.value === originPath("/account/profile") &&
@@ -622,6 +649,7 @@ try {
 	await sleep(150);
 	const accepted = await readInput();
 	record("right accepts", accepted);
+	checkInset("right accepts", accepted);
 	check(
 		"Right accepts the suffix, collapses the caret and does not navigate",
 		accepted.value === originPath("/account/profile") &&
@@ -639,6 +667,7 @@ try {
 	await sleep(500);
 	const rightEnter = await readInput();
 	record("right then enter", rightEnter);
+	checkInset("right then enter", rightEnter);
 	check(
 		"Right then Enter navigates exactly once",
 		navigations.length === beforeRightEnter + 1,
@@ -677,6 +706,7 @@ try {
 	await sleep(100);
 	const down = await readInput();
 	record("arrow down", down);
+	checkInset("arrow down", down);
 	check(
 		"Down moves the active option without taking focus from the input",
 		down.active &&
@@ -757,6 +787,7 @@ try {
 	await sleep(200);
 	const searchAfter = await readInput();
 	record("search intent", searchAfter);
+	checkInset("search intent", searchAfter);
 	check(
 		"natural language shows the localized address hint and does not navigate",
 		searchAfter.list?.text.includes("Enter a web address") &&
@@ -838,6 +869,7 @@ try {
 		await sleep(400);
 		const fresh = await readInput();
 		record("fresh tab", fresh);
+		checkInset("fresh tab", fresh);
 		check(
 			"a tab with no HTTP(S) history says so quietly",
 			fresh.list?.text.includes("No links from these tabs yet"),
@@ -876,6 +908,7 @@ try {
 		await sleep(500);
 		const errored = await readInput();
 		record("unavailable state", errored);
+		checkInset("unavailable state", errored);
 		check(
 			"a failed history read says suggestions are unavailable while the field still types",
 			errored.list?.text.includes("Address suggestions are unavailable"),
@@ -887,6 +920,7 @@ try {
 
 	// ---- geometry: the list ends above the native page -------------------
 	const geometry = await readInput();
+	checkInset("final read", geometry);
 	if (geometry.list && geometry.content) {
 		check(
 			"the in-flow list ends at or above the native page's top",
