@@ -296,6 +296,7 @@ import ruUiHubComments from "./catalogues/ru/ui.hub.comments.json";
 import ruUiHub from "./catalogues/ru/ui.hub.json";
 import ruUiHubTaxonomy from "./catalogues/ru/ui.hub.taxonomy.json";
 import ruUiInstaller from "./catalogues/ru/ui.installer.json";
+import ruUiLibrary from "./catalogues/ru/ui.library.json";
 import ruUiMesh from "./catalogues/ru/ui.mesh.json";
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
@@ -410,6 +411,7 @@ import viUiHubComments from "./catalogues/vi/ui.hub.comments.json";
 import viUiHub from "./catalogues/vi/ui.hub.json";
 import viUiHubTaxonomy from "./catalogues/vi/ui.hub.taxonomy.json";
 import viUiInstaller from "./catalogues/vi/ui.installer.json";
+import viUiLibrary from "./catalogues/vi/ui.library.json";
 import viUiMesh from "./catalogues/vi/ui.mesh.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
 import viUiProjects from "./catalogues/vi/ui.projects.json";
@@ -783,6 +785,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiHub,
 		...ruUiHubTaxonomy,
 		...ruUiInstaller,
+		...ruUiLibrary,
 		...ruUiMesh,
 		...ruUiOnboarding,
 		...ruUiProjects,
@@ -901,6 +904,7 @@ export const bundledCatalogues: Readonly<
 		...viUiHub,
 		...viUiHubTaxonomy,
 		...viUiInstaller,
+		...viUiLibrary,
 		...viUiMesh,
 		...viUiOnboarding,
 		...viUiProjects,
