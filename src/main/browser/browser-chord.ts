@@ -42,9 +42,9 @@ export function browserChromeOwnsChord(facts: {
  * TWO NATIVE FACTS, ORed rather than one assumed: Electron's
  * `webContents.getFocusedWebContents()` is the documented answer, but a
  * `WebContentsView` can hold focus while that getter answers null (measured on
- * Electron 44.3.0: `page.focus()` emits the view's own `focus` event while
+ * Electron 44.3.0: the view emits its own `focus` event while
  * `getFocusedWebContents()` stays null in a window that is not itself
- * activated). The view's own `focus` event is therefore tracked by the host and
+ * activated). That event is therefore tracked by the host and
  * accepted as the second fact. Both are refused unless the ACTIVE tab is the
  * one presented, so a stale focus on a hidden/background view cannot route an
  * accelerator into a page the user cannot see; and the shared window floor
@@ -56,7 +56,9 @@ export function browserPageOwnsChord(facts: {
 		webContentsId: number;
 		presented: boolean;
 	} | null;
-	focusedContentsId: number | null;
+	/** Read lazily: the getter is asked only after the window floor and the
+	 * presented-tab check pass, so a startup/test host without it never throws. */
+	focusedContents: () => number | null;
 	focusedViewTabId: number | null;
 	window: {
 		isDestroyed(): boolean;
@@ -66,9 +68,9 @@ export function browserPageOwnsChord(facts: {
 }): boolean {
 	const active = facts.activeTab;
 	return Boolean(
-		browserWindowForeground(facts.window) &&
-			active?.presented &&
-			(facts.focusedContentsId === active.webContentsId ||
+		active?.presented &&
+			browserWindowForeground(facts.window) &&
+			(facts.focusedContents() === active.webContentsId ||
 				facts.focusedViewTabId === active.tabId),
 	);
 }

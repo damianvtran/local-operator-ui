@@ -519,7 +519,7 @@ test("page ownership accepts the view's own focus fact when getFocusedWebContent
 	assert.equal(
 		browserPageOwnsChord({
 			activeTab,
-			focusedContentsId: 21,
+			focusedContents: () => 21,
 			focusedViewTabId: null,
 			window: foreground(),
 		}),
@@ -531,7 +531,7 @@ test("page ownership accepts the view's own focus fact when getFocusedWebContent
 	assert.equal(
 		browserPageOwnsChord({
 			activeTab,
-			focusedContentsId: null,
+			focusedContents: () => null,
 			focusedViewTabId: 7,
 			window: foreground(),
 		}),
@@ -541,7 +541,7 @@ test("page ownership accepts the view's own focus fact when getFocusedWebContent
 	assert.equal(
 		browserPageOwnsChord({
 			activeTab,
-			focusedContentsId: null,
+			focusedContents: () => null,
 			focusedViewTabId: 8,
 			window: foreground(),
 		}),
@@ -551,7 +551,7 @@ test("page ownership accepts the view's own focus fact when getFocusedWebContent
 	assert.equal(
 		browserPageOwnsChord({
 			activeTab: { ...activeTab, presented: false },
-			focusedContentsId: 21,
+			focusedContents: () => 21,
 			focusedViewTabId: 7,
 			window: foreground(),
 		}),
@@ -561,7 +561,7 @@ test("page ownership accepts the view's own focus fact when getFocusedWebContent
 	assert.equal(
 		browserPageOwnsChord({
 			activeTab: null,
-			focusedContentsId: 21,
+			focusedContents: () => 21,
 			focusedViewTabId: 7,
 			window: foreground(),
 		}),
@@ -578,7 +578,7 @@ test("page ownership accepts the view's own focus fact when getFocusedWebContent
 		assert.equal(
 			browserPageOwnsChord({
 				activeTab,
-				focusedContentsId: 21,
+				focusedContents: () => 21,
 				focusedViewTabId: 7,
 				window: windowFacts,
 			}),

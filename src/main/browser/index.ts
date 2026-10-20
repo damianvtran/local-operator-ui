@@ -889,7 +889,10 @@ async function initializeBrowserHost(
 								presented: record.presented,
 							}
 						: null,
-					focusedContentsId: webContents.getFocusedWebContents()?.id ?? null,
+					// Read lazily after the window/presented floor: a startup or test host
+					// may carry a webContents slice without the getter.
+					focusedContents: () =>
+						webContents.getFocusedWebContents()?.id ?? null,
 					focusedViewTabId: host.focusedPageTabId,
 					window: options.window,
 				});
