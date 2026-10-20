@@ -111,6 +111,13 @@ const ENTRIES = [
 const FROM_THIS_BROWSER_SESSION = /From this browser session/;
 const ENTER_A_WEB_ADDRESS = /Enter a web address/;
 const ADDRESS_SUGGESTIONS_UNAVAILABLE = /Address suggestions are unavailable/;
+const FIXED_DOCK_HEIGHT = /h-\[104px\]/;
+const BOTTOM_RULE = /border-b/;
+const HEADER_ZONE_HEIGHT = /h-\[28px\]/;
+const OPTIONS_VIEWPORT_HEIGHT = /h-\[75px\]/;
+const SCROLLABLE_VIEWPORT = /overflow-y-auto/;
+const FIXED_ROW_HEIGHT = /h-\[35\.5px\]/;
+const NO_LINKS_YET = /No links/;
 
 const flush = async () => {
 	await act(async () => {
@@ -223,6 +230,8 @@ const list = (bundle) =>
 	bundle.container.querySelector(
 		'[data-tour-tag="browser-address-suggestions"]',
 	);
+const listbox = (bundle) =>
+	bundle.container.querySelector("[data-address-suggestions-list]");
 const options = (bundle) => [
 	...bundle.container.querySelectorAll("[data-address-suggestion]"),
 ];
@@ -245,10 +254,6 @@ test("the list is inset to the address field's bounds, not the pane's", async ()
 	// 260px icon rail leaves a 1120px pane, the field inset by the bar's left
 	// controls (200px) and the Approvals control (40px). What this owns is the
 	// arithmetic; the measured claim is `browser-url-autocomplete-proof.mjs`.
-	const bundle = await renderBar();
-	const bar = bundle.container.querySelector(
-		'[data-tour-tag="browser-url-bar"]',
-	);
 	const box = (left, right) => ({
 		left,
 		right,
@@ -260,23 +265,164 @@ test("the list is inset to the address field's bounds, not the pane's", async ()
 		y: 0,
 		toJSON: () => ({}),
 	});
-	bar.getBoundingClientRect = () => box(260, 1380);
-	bundle.input.getBoundingClientRect = () => box(460, 1340);
+	// The dock's margins are placed once, at mount, so the boxes the real app
+	// measures have to exist BEFORE the component first lays out.
+	const original = dom.window.Element.prototype.getBoundingClientRect;
+	dom.window.Element.prototype.getBoundingClientRect = function () {
+		const tag = this.getAttribute?.("data-tour-tag");
+		if (tag === "browser-url-bar") return box(260, 1380);
+		if (tag === "browser-address") return box(460, 1340);
+		return original.call(this);
+	};
+	const bundle = await renderBar();
+	try {
+		await act(async () => bundle.input.focus());
+		await flush();
+		const listEl = list(bundle);
+		assert.ok(listEl, "the suggestion list mounted");
+		assert.equal(listEl.style.marginLeft, "200px");
+		assert.equal(listEl.style.marginRight, "40px");
+		const barWidth = 1380 - 260;
+		const listLeft = 260 + Number.parseFloat(listEl.style.marginLeft);
+		const listRight = 1380 - Number.parseFloat(listEl.style.marginRight);
+		assert.ok(Math.abs(listLeft - 460) <= 1, `list.left=${listLeft}`);
+		assert.ok(Math.abs(listRight - 1340) <= 1, `list.right=${listRight}`);
+		assert.ok(
+			listRight - listLeft < barWidth,
+			`list.width=${listRight - listLeft} bar.width=${barWidth}`,
+		);
+	} finally {
+		dom.window.Element.prototype.getBoundingClientRect = original;
+		await bundle.cleanup();
+	}
+});
+
+test("the dock is a permanent 104px band: 28px header, 75px viewport, one rule", async () => {
+	const bundle = await renderBar();
+	const dock = list(bundle);
+	assert.ok(dock, "the dock is mounted before the field is ever focused");
+	assert.equal(dock.getAttribute("data-address-dock-height"), "104");
+	assert.match(dock.className, FIXED_DOCK_HEIGHT);
+	assert.match(dock.className, BOTTOM_RULE);
+	const header = dock.querySelector("[data-address-suggestions-header]");
+	const viewport = dock.querySelector("[data-address-suggestions-viewport]");
+	assert.match(header.className, HEADER_ZONE_HEIGHT);
+	assert.match(viewport.className, OPTIONS_VIEWPORT_HEIGHT);
+	assert.match(viewport.className, SCROLLABLE_VIEWPORT);
+	// Closed: blank chrome. No copy, no rows, no hint, nothing in the Tab order.
+	assert.equal(dock.getAttribute("data-address-dock-open"), "false");
+	assert.equal(dock.textContent.trim(), "");
+	assert.equal(options(bundle).length, 0);
+	for (const node of dock.querySelectorAll("*")) {
+		assert.ok(
+			node.tabIndex < 0,
+			`the closed dock has no tab stop: ${node.outerHTML}`,
+		);
+	}
+	await bundle.cleanup();
+});
+
+test("opening keeps the zones and puts the rows inside the 75px viewport", async () => {
+	const bundle = await renderBar();
+	await type(bundle, "example.com/acc");
+	const dock = list(bundle);
+	assert.equal(dock.getAttribute("data-address-dock-open"), "true");
+	assert.equal(dock.getAttribute("data-address-dock-height"), "104");
+	assert.match(dock.className, FIXED_DOCK_HEIGHT);
+	const viewport = dock.querySelector("[data-address-suggestions-viewport]");
+	assert.ok(
+		viewport.contains(listbox(bundle)),
+		"the listbox lives inside the scroll viewport",
+	);
+	assert.equal(options(bundle).length, 1);
+	for (const row of options(bundle)) {
+		assert.match(row.className, FIXED_ROW_HEIGHT);
+	}
+	assert.match(dock.textContent, FROM_THIS_BROWSER_SESSION);
+	await bundle.cleanup();
+});
+
+test("the status notice takes the header zone, not the options viewport", async () => {
+	const bundle = await renderBar({
+		url: "about:blank",
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries: [],
+		}),
+	});
 	await act(async () => bundle.input.focus());
 	await flush();
-	const listEl = list(bundle);
-	assert.ok(listEl, "the suggestion list mounted");
-	assert.equal(listEl.style.marginLeft, "200px");
-	assert.equal(listEl.style.marginRight, "40px");
-	const barWidth = 1380 - 260;
-	const listLeft = 260 + Number.parseFloat(listEl.style.marginLeft);
-	const listRight = 1380 - Number.parseFloat(listEl.style.marginRight);
-	assert.ok(Math.abs(listLeft - 460) <= 1, `list.left=${listLeft}`);
-	assert.ok(Math.abs(listRight - 1340) <= 1, `list.right=${listRight}`);
-	assert.ok(
-		listRight - listLeft < barWidth,
-		`list.width=${listRight - listLeft} bar.width=${barWidth}`,
+	const dock = list(bundle);
+	const header = dock.querySelector("[data-address-suggestions-header]");
+	assert.match(header.textContent, NO_LINKS_YET);
+	assert.equal(header.querySelectorAll("[data-address-suggestion]").length, 0);
+	assert.equal(
+		dock
+			.querySelector("[data-address-suggestions-viewport]")
+			.textContent.trim(),
+		"",
 	);
+	await bundle.cleanup();
+});
+
+test("a fifth active row scrolls inside the viewport, never the page", async () => {
+	const six = [
+		"/account",
+		"/account/a",
+		"/account/b",
+		"/account/c",
+		"/account/d",
+		"/account/e",
+	].map((path, sourceIndex) => ({
+		url: `https://example.com${path}`,
+		title: `Page ${sourceIndex}`,
+		sourceTabId: 1,
+		sourceIndex,
+		activeTab: true,
+		distanceFromCurrent: 6 - sourceIndex,
+	}));
+	const bundle = await renderBar({
+		url: "about:blank",
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries: six,
+		}),
+	});
+	await type(bundle, "example.com/acc");
+	const viewport = bundle.container.querySelector(
+		"[data-address-suggestions-viewport]",
+	);
+	Object.defineProperty(viewport, "clientHeight", {
+		configurable: true,
+		value: 75,
+	});
+	const rows = options(bundle);
+	assert.equal(rows.length, 5);
+	// jsdom has no layout; hand the effect the geometry the 75px viewport has:
+	// 2px padding, then five 35.5px rows.
+	rows.forEach((row, index) => {
+		Object.defineProperty(row, "offsetTop", {
+			configurable: true,
+			value: 2 + index * 35.5,
+		});
+		Object.defineProperty(row, "offsetHeight", {
+			configurable: true,
+			value: 35.5,
+		});
+	});
+	for (let step = 0; step < 5; step += 1) await key(bundle, "ArrowDown");
+	assert.equal(bundle.input.getAttribute("aria-activedescendant"), rows[4].id);
+	assert.equal(
+		viewport.scrollTop,
+		2 + 5 * 35.5 - 75,
+		"the fifth row is brought fully into the viewport",
+	);
+	await key(bundle, "ArrowUp");
+	await key(bundle, "ArrowUp");
+	assert.equal(viewport.scrollTop, 2 + 2 * 35.5, "rows 3 and 4 are shown");
+	assert.equal(document.activeElement, bundle.input);
 	await bundle.cleanup();
 });
 
@@ -341,7 +487,8 @@ test("Escape dismisses, then abandons", async () => {
 	await type(bundle, "example.com/acc");
 	await key(bundle, "Escape");
 	assert.equal(bundle.input.value, "example.com/acc");
-	assert.equal(list(bundle), null);
+	assert.equal(listbox(bundle), null);
+	assert.equal(list(bundle).textContent.trim(), "");
 	await key(bundle, "Escape");
 	assert.equal(bundle.input.value, "https://example.com/account");
 	assert.equal(bundle.navigations.length, 0);
@@ -353,7 +500,8 @@ test("Backspace removes the suggestion before it edits the draft", async () => {
 	await type(bundle, "example.com/acc");
 	await key(bundle, "Backspace");
 	assert.equal(bundle.input.value, "example.com/acc");
-	assert.equal(list(bundle), null);
+	assert.equal(listbox(bundle), null);
+	assert.equal(list(bundle).textContent.trim(), "");
 	assert.equal(bundle.navigations.length, 0);
 	await bundle.cleanup();
 });

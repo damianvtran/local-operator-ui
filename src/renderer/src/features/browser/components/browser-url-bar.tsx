@@ -259,7 +259,10 @@ const AddressSuggestionRow: FC<{
 			onMouseDown={(event) => event.preventDefault()}
 			onClick={onActivate}
 			className={cn(
-				"relative flex items-baseline gap-3 px-3 py-2",
+				// A FIXED 35.5px row: the dock's 75px viewport is sized for exactly
+				// two of them, so the number lives here and nowhere else. `items-center`
+				// (not baseline) keeps the host and title optically centred in it.
+				"relative flex h-[35.5px] shrink-0 items-center gap-3 px-3",
 				active
 					? cn(
 							"bg-accent-wash",
@@ -360,6 +363,8 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 * between these two, never computed from the controls' widths. */
 	const barEl = useRef<HTMLDivElement | null>(null);
 	const listEl = useRef<HTMLDivElement | null>(null);
+	/** The dock's scroll viewport: taller lists scroll here and nowhere else. */
+	const viewportEl = useRef<HTMLDivElement | null>(null);
 	const setInputEl = (node: HTMLInputElement | null): void => {
 		inputEl.current = node;
 		if (typeof inputRef === "function") inputRef(node);
@@ -536,9 +541,13 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 *
 	 * Sub-pixel values are kept: an inset rounded to integers can leave a 1px
 	 * gutter on one side at a fractional pane width.
+	 *
+	 * THE DOCK IS ALWAYS MOUNTED, so this runs on mount and the margins are in
+	 * place in the CLOSED state too. Measuring only while open would be enough
+	 * for the rows but not for the dock's own box: the closed blank band would
+	 * span the pane and then snap to the field's bounds on the first keystroke.
 	 */
 	useLayoutEffect(() => {
-		if (!listVisible) return;
 		const bar = barEl.current;
 		const list = listEl.current;
 		const field = inputEl.current;
@@ -554,7 +563,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		observer.observe(bar);
 		observer.observe(field);
 		return () => observer.disconnect();
-	}, [listVisible]);
+	}, []);
 
 	/** Record USER-AUTHORED text only. Accepting a suffix is not an edit, so it
 	 * never enters this stack: undo must return what the user typed. */
@@ -878,6 +887,26 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			index >= suggestions.candidates.length ? -1 : index,
 		);
 	}, [suggestions.candidates.length]);
+
+	// The active row must be REACHABLE inside a viewport that is deliberately
+	// shorter than the list (75px holds exactly two 35.5px rows). Scroll the
+	// viewport itself, never `scrollIntoView`: the latter also scrolls every
+	// scrollable ancestor, which here would move the pane under the dock.
+	useLayoutEffect(() => {
+		if (!listVisible || activeIndex < 0) return;
+		const viewport = viewportEl.current;
+		const row = viewport?.querySelectorAll<HTMLElement>(
+			"[data-address-suggestion]",
+		)[activeIndex];
+		if (!viewport || !row) return;
+		// `offsetTop` is relative to the viewport because it is the nearest
+		// positioned ancestor (`relative`), and it ignores the current scroll.
+		const top = row.offsetTop;
+		const bottom = top + row.offsetHeight;
+		if (top < viewport.scrollTop) viewport.scrollTop = top;
+		else if (bottom > viewport.scrollTop + viewport.clientHeight)
+			viewport.scrollTop = bottom - viewport.clientHeight;
+	}, [activeIndex, listVisible]);
 
 	// The completion is REAL SELECTED TEXT, set here rather than overlaid: the
 	// user's next keystroke replaces the selection, and Right accepts it.
@@ -1307,28 +1336,77 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				</div>
 			</div>
 			{/*
-			 * THE ALTERNATIVES ARE IN FLOW, not a dropdown. The page is a native
-			 * `WebContentsView`, so a `position: fixed`/portal list would paint UNDER it;
-			 * this sibling is measured into the surface's content rectangle by the same
-			 * ResizeObserver as every other chrome row, and the page starts below it.
+			 * THE SUGGESTIONS HAVE A PERMANENT, FIXED-HEIGHT DOCK.
 			 *
-			 * NO TAB STOP, NO FOCUS TRAP: DOM focus stays in the input, the active row
-			 * is exposed through `aria-activedescendant`, and rows commit on click with
-			 * `onMouseDown` preventing the blur that would otherwise dismiss the list.
+			 * WHY IT IS ALWAYS MOUNTED (LOH-19 / LOH-13, accepted "cap the shift"
+			 * mechanism): the page is a native `WebContentsView` whose rectangle is
+			 * measured from the content element below this one, so an in-flow list
+			 * that appears only while typing moves the page down by its own height.
+			 * The dock is therefore reserved at a constant 104 CSS px - 28px
+			 * header/status zone, 75px options viewport, 1px bottom rule - and the
+			 * content rectangle is identical closed and open. The permanent cost is
+			 * the accepted trade: a browser that never reflows its page under the
+			 * user's pointer. Closed it is quiet chrome: no text, no rows, no hint
+			 * copy and nothing focusable.
+			 *
+			 * WHY THE VIEWPORT IS 75px AND NOT "CONTENT-SIZED": two complete 35.5px
+			 * rows fit (2 + 35.5 + 35.5 + 2), so a list that is already open never
+			 * changes the dock's height as candidates arrive; the rest scroll INSIDE
+			 * this viewport and the active row is scrolled into view by the effect
+			 * above. `tabIndex={-1}` keeps Chrome's scroll-container focusability
+			 * out of the Tab order: DOM focus stays in the input, the active row is
+			 * exposed through `aria-activedescendant`, and rows commit on click with
+			 * `onMouseDown` preventing the blur that would otherwise dismiss them.
+			 *
+			 * The horizontal margins are applied to this element by the effect below
+			 * (the field's bounds, per #1258) and are PRESENT in both states, so
+			 * opening cannot shift the dock sideways either.
 			 */}
-			{listVisible && (
+			<div
+				ref={listEl}
+				className="flex h-[104px] shrink-0 flex-col border-control border-b bg-elevated"
+				data-tour-tag="browser-address-suggestions"
+				data-address-dock-open={listVisible ? "true" : "false"}
+				data-address-dock-height="104"
+			>
 				<div
-					ref={listEl}
-					className="border-control border-b bg-elevated"
-					data-tour-tag="browser-address-suggestions"
+					className={cn(
+						"flex h-[28px] shrink-0 items-center gap-3 px-3",
+						// The zone is always 28px; its rule only exists while there is
+						// something above it, so the closed dock is one uninterrupted blank
+						// band. `border-box` keeps the rule inside the 28.
+						listVisible && "border-hairline border-b",
+					)}
+					data-address-suggestions-header
 				>
-					<div
-						id={listLabelId}
-						className="truncate border-hairline border-b px-3 py-1 text-meta text-ink-muted"
-					>
-						{t("ui.browser.browser_url_bar.address_suggestions_label")}
-					</div>
-					{suggestions.candidates.length > 0 ? (
+					{listVisible &&
+						(suggestions.candidates.length > 0 ? (
+							<span
+								id={listLabelId}
+								className="min-w-0 truncate text-meta text-ink-muted"
+							>
+								{t("ui.browser.browser_url_bar.address_suggestions_label")}
+							</span>
+						) : (
+							/* Without rows the zone states the FACT instead of the label: the
+							   label names a list that is not there, and the notice is the
+							   thing a user needs. It stays in the 28px zone so empty, no-match
+							   and unavailable never consume the options viewport. */
+							<span
+								id={noticeId}
+								className="min-w-0 truncate text-meta text-ink-muted"
+							>
+								{listNotice}
+							</span>
+						))}
+				</div>
+				<div
+					ref={viewportEl}
+					tabIndex={-1}
+					className="relative h-[75px] shrink-0 overflow-y-auto overscroll-contain"
+					data-address-suggestions-viewport
+				>
+					{listVisible && suggestions.candidates.length > 0 && (
 						<>
 							{/* biome-ignore lint/a11y/useFocusableInteractive: DOM focus stays in the input; the listbox is reached through aria-activedescendant. */}
 							{/* biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a listbox cannot be a native <select> and must stay a list of options. */}
@@ -1339,6 +1417,9 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 								role="listbox"
 								aria-labelledby={listLabelId}
 								data-address-suggestions-list
+								// 2px top/bottom so two 35.5px rows fill the 75px viewport exactly and
+								// no third row peeks through as a sliver.
+								className="py-0.5"
 							>
 								{suggestions.candidates.map((candidate, index) => (
 									<AddressSuggestionRow
@@ -1351,16 +1432,9 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 								))}
 							</div>
 						</>
-					) : (
-						<div
-							id={noticeId}
-							className="px-3 py-2 text-body-sm text-ink-muted"
-						>
-							{listNotice}
-						</div>
 					)}
 				</div>
-			)}
+			</div>
 			{/* Polite and announcement-only: the list itself is described by its own
 			    label, and a count per keystroke is the spam the proposal forbids. */}
 			{/* biome-ignore lint/a11y/useSemanticElements: a politer live region is a role=status span; <output> is a form-result element with different semantics. */}
