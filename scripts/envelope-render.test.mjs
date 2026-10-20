@@ -9,6 +9,37 @@ const read = (path) => readFileSync(path, "utf8");
 void read;
 
 /*
+ * Count ICU parses without touching production code. `intl-messageformat`
+ * assigns `getAst` per INSTANCE (not on the prototype), so a prototype spy
+ * cannot see it; wrapping the constructor does. Every `new IntlMessageFormat`
+ * is one parse-plus-argument-walk, which is exactly what the cache test counts.
+ */
+const countingIntlMessageFormat = {
+	name: "counting-intl-messageformat",
+	setup(build) {
+		build.onResolve({ filter: /^intl-messageformat$/ }, () => ({
+			path: "counting-intl-messageformat",
+			namespace: "counting-intl",
+		}));
+		build.onLoad({ filter: /.*/, namespace: "counting-intl" }, () => ({
+			contents: `
+				import { createRequire } from "node:module";
+				const require = createRequire(import.meta.url);
+				const real = require("intl-messageformat");
+				export const IntlMessageFormat = class extends real.IntlMessageFormat {
+					constructor(...args) {
+						super(...args);
+						globalThis.__imfParses = (globalThis.__imfParses ?? 0) + 1;
+					}
+				};
+				export default real.default;
+			`,
+			loader: "js",
+		}));
+	},
+};
+
+/*
  * CAUSE 3: the render path for backend-originated `{code, params, text}`.
  *
  * WHAT THESE TESTS ARE FOR. The defect is not "the sentence is in English" — it
@@ -52,6 +83,7 @@ const bundle = await build({
 	platform: "node",
 	mainFields: ["module", "main"],
 	conditions: ["import"],
+	plugins: [countingIntlMessageFormat],
 	alias: {
 		"@shared": "./src/renderer/src/shared",
 		"@features": "./src/renderer/src/features",
@@ -326,6 +358,56 @@ test("an empty catalogue entry is malformed, never a blank refusal", () => {
 	);
 	assert.notEqual(prose, "");
 	assert.notEqual(prose, RUNTIME_EN);
+});
+
+test("a plural and a bare use of the same argument keep the numeric check", () => {
+	// One name, two AST nodes: the plural (number) comes first and the bare
+	// interpolation (scalar) after it. A last-wins map let the scalar downgrade
+	// the check, so "abc" rendered "NaN éléments (valeur : abc)" instead of the
+	// malformed branch. Rank is scalar < date < number and never downgrades.
+	registerCatalogue("fr", {
+		"wire.test.plural_and_bare":
+			"{count, plural, one {# élément} other {# éléments}} (valeur : {count})",
+	});
+	const generic = t("ui.common.errors.error_boundary.something_went_wrong");
+	for (const value of ["abc", null, true]) {
+		assert.equal(
+			publicationProse({
+				detail: {
+					code: "wire.test.plural_and_bare",
+					params: { count: value },
+					text: "English wire",
+				},
+			}),
+			generic,
+			`count=${String(value)} must stay malformed after the bare use`,
+		);
+	}
+	assert.equal(
+		publicationProse({
+			detail: {
+				code: "wire.test.plural_and_bare",
+				params: { count: 2 },
+				text: "English wire",
+			},
+		}),
+		"2 éléments (valeur : 2)",
+	);
+});
+
+test("the ICU argument walk is cached with the formatter, not repeated per t()", () => {
+	// The AST Map used to be rebuilt on every lookup (262 -> 702 ns, 2.7x). The
+	// cache key is (locale, message), so two renders of one message must parse and
+	// walk it ONCE; `getAst` is the only reader of the parsed AST.
+	registerCatalogue("fr", { "wire.test.cache_probe": "Sonde {n, number}" });
+	globalThis.__imfParses = 0;
+	assert.equal(t("wire.test.cache_probe", { n: 1 }), "Sonde 1");
+	assert.equal(t("wire.test.cache_probe", { n: 2 }), "Sonde 2");
+	assert.equal(
+		globalThis.__imfParses,
+		1,
+		"one parse/argument walk for one message",
+	);
 });
 
 test("a plural argument that is not a finite number is malformed, not 'NaN'", () => {

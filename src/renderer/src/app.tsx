@@ -47,6 +47,7 @@ import {
 	noteConsentAttention,
 } from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
+import { useI18nCatalogueSync } from "@shared/i18n/catalogue-sync";
 import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
 import { useDocumentDirection } from "@shared/i18n/use-document-direction";
 import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
@@ -172,6 +173,13 @@ const App: FC = () => {
 	 * one-value reason; it renders nothing.
 	 */
 	useI18nLocaleSync();
+	/*
+	 * The served `wire.*` catalogues for the active locale. Mounted after the
+	 * locale writer because it reads that store: the first capabilities answer
+	 * resolves the locale, then this fetches its bundle; a language switch
+	 * re-fetches and re-registers through the same effect. It renders nothing.
+	 */
+	useI18nCatalogueSync();
 	/*
 	 * The document root's `dir`/`lang`, derived from the locale manifest and
 	 * re-written whenever the store moves. Mounted here, once, for the same

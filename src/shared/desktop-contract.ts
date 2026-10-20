@@ -4048,6 +4048,27 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			action: z.enum(["status", "open", "pause", "resume", "run"]).optional(),
 		})
 		.strict(),
+	/*
+	 * THE SERVED WIRE CATALOGUES (per-locale eager bundle).
+	 *
+	 * The route is public, but the renderer never learns the backend URL: main
+	 * owns it, and every renderer request rides this op vocabulary. This is
+	 * therefore the EXISTING transport, not a second one. The locale grammar
+	 * mirrors the backend's own component rule (`[A-Za-z0-9][A-Za-z0-9._-]*`),
+	 * so a traversal-shaped value dies here as well as at the route.
+	 *
+	 * Deliberately NOT a `MESSAGE_OPS` member (see `desktopRequestByteBudget`):
+	 * the request carries one tag, not prose, so it costs the control budget.
+	 */
+	z
+		.object({
+			op: z.literal("i18n.catalogues"),
+			locale: z
+				.string()
+				.max(64)
+				.regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/),
+		})
+		.strict(),
 ]);
 
 /**
@@ -8694,6 +8715,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 		}
 		case "settings.list":
 			return { path: "/v1/settings", method: "GET" };
+		case "i18n.catalogues":
+			return {
+				path: `/v1/i18n/catalogues/${encodeURIComponent(request.locale)}`,
+				method: "GET",
+			};
 		case "settings.edit":
 			return {
 				path: `/v1/settings/${request.key}`,
