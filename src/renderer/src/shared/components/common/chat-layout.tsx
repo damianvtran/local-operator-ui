@@ -723,32 +723,30 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 			 * `styles/index.css`, keyed on the chrome attributes), so a platform whose
 			 * OS is not drawing over the app loses nothing to it.
 			 */}
-			{flushTop ? (
-				<div
-					ref={laneRef}
-					data-titlebar-lane=""
-					data-titlebar-drag=""
-					data-slot-edge={slotEdge}
-					className="absolute inset-x-0 top-0 z-30 h-[var(--chrome-strip-h)]"
-				/>
-			) : (
-				<div
-					ref={laneRef}
-					data-titlebar-lane=""
-					data-titlebar-drag=""
-					/* The stop as a fact on the element, the same reason the canvas's mode is one,
-					   so a probe reads where the lane changes ground rather than reverse-engineering
-					   it from a gradient string. */
-					data-slot-edge={slotEdge}
-					className="h-8 shrink-0"
-					style={{
-						background:
-							laneGround === "surface"
-								? `linear-gradient(to ${direction === "rtl" ? "left" : "right"}, var(--lo-surface) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px, var(--lo-elevated) ${railEdge}px, var(--lo-surface) ${railEdge}px)`
-								: `linear-gradient(to ${direction === "rtl" ? "left" : "right"}, var(--lo-surface) ${columnWidth}px, var(--lo-${laneGround}) ${columnWidth}px, var(--lo-${laneGround}) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px, var(--lo-elevated) ${railEdge}px, var(--lo-surface) ${railEdge}px)`,
-					}}
-				/>
-			)}
+			<div
+				ref={laneRef}
+				data-titlebar-lane=""
+				data-titlebar-drag=""
+				/* The stop as a fact on the element, the same reason the canvas's mode is one,
+				   so a probe reads where the lane changes ground rather than reverse-engineering
+				   it from a gradient string. */
+				data-slot-edge={slotEdge}
+				className={
+					flushTop
+						? "absolute inset-x-0 top-0 z-30 h-[var(--chrome-strip-h)]"
+						: "h-8 shrink-0"
+				}
+				style={
+					flushTop
+						? undefined
+						: {
+								background:
+									laneGround === "surface"
+										? `linear-gradient(to ${direction === "rtl" ? "left" : "right"}, var(--lo-surface) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px, var(--lo-elevated) ${railEdge}px, var(--lo-surface) ${railEdge}px)`
+										: `linear-gradient(to ${direction === "rtl" ? "left" : "right"}, var(--lo-surface) ${columnWidth}px, var(--lo-${laneGround}) ${columnWidth}px, var(--lo-${laneGround}) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px, var(--lo-elevated) ${railEdge}px, var(--lo-surface) ${railEdge}px)`,
+							}
+				}
+			/>
 			<div className="flex min-h-0 flex-1 overflow-hidden">
 				<div className={cn("h-full shrink-0")} style={{ width: columnWidth }}>
 					<SidebarFrameContext.Provider
