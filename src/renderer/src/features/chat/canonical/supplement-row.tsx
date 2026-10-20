@@ -31,13 +31,22 @@
  * over its run; the flag arrives from the transcript's collapse plan, never
  * re-derived here — the block shows THE SAME FILES SECTION as its expanded
  * self (the image grid, the rows, the `N more files` disclosure).
- * The explicit 2026-10-19 amendment adds an answer-local Show/Hide disclosure
- * for graphics-only and mixed file/graphics finishes, after the files section.
- * Closed means ZERO slots, iframes or document fetches; opening permits only the existing viewport-gated, budgeted head
- * and its explicit overflow tail. It never expands or re-derives the work run.
- * A local open survives collapsing work again: that explicit request belongs
- * to this supplement identity, not to the work bar. A new identity resets it.
- * Expanded work and local reveal share ONE body, never duplicate attachments.
+ * The explicit 2026-10-19 amendment (operator request from his own screenshot)
+ * supersedes the 2026-10-16 ruling that a graphics-only condensed finish keeps
+ * its plain count clause: the answer-local Show/Hide disclosure for graphics-only
+ * and mixed file/graphics finishes now DEFAULTS TO OPEN, after the files section,
+ * and its Hide control still folds it. Visible does not mean eager — the slot
+ * still starts under the EXISTING viewport gate (`SupplementFrameSlot`'s `near`),
+ * which gates the document fetch: an off-screen or far-away condensed turn
+ * renders only the reserved slot box, mounts no iframe and issues no document
+ * request until it is near (the gate is sticky once near, and an already-cached
+ * document may paint there without a request). The old "ZERO fetches while condensed" claim is therefore retired,
+ * not extended: a visible condensed frame is gated exactly like an expanded one.
+ * A local Hide survives collapsing work again: that explicit request belongs to
+ * this supplement identity, not to the work bar. A new identity resets to the
+ * default (open), so a Hide set on one supplement is never resurrected for
+ * another. Expanded work and local reveal share ONE body, never duplicate
+ * attachments.
  * The not-settled arms keep the state line and their actions exactly
  * as the expanded form wires them, with the files section ABOVE the line once
  * files are known — which is why the old counts prefix (`2 files · Preparing
@@ -326,21 +335,29 @@ export const SupplementRow = memo(function SupplementRow({
 	const [expandedMore, setExpandedMore] = useState(false);
 	const [detailsOpen, setDetailsOpen] = useState(false);
 	const [showAll, setShowAll] = useState(false);
-	// Store the permission WITH its identity: a replacement must render closed
-	// immediately, before effects, or it could fetch the new document once.
+	/*
+	 * Store the permission WITH its identity. The default is OPEN (operator
+	 * request, 2026-10-19): the graphic is part of the answer, so a condensed
+	 * turn shows it without a press. A replacement is reset before commit, not
+	 * in an effect, so it starts at that default immediately and can never
+	 * inherit a Hide set on the supplement it replaced; returning to an earlier
+	 * identity starts open again rather than resurrecting its old Hide.
+	 *
+	 * Starting open is not eager fetching: the slot still mounts only behind
+	 * `SupplementFrameSlot`'s viewport gate, so an off-screen replacement fetches
+	 * nothing until it is near.
+	 */
 	const identity = JSON.stringify([
 		sessionId,
 		record.anchor,
 		record.job,
 		record.version,
 	]);
-	const [localGraphics, setLocalGraphics] = useState({ identity, open: false });
+	const [localGraphics, setLocalGraphics] = useState({ identity, open: true });
 	const localGraphicsOpen =
 		localGraphics.identity === identity && localGraphics.open;
 	if (localGraphics.identity !== identity) {
-		// Reset before commit, not in an effect: no replacement-document fetch
-		// and no resurrected permission when returning to an earlier identity.
-		setLocalGraphics({ identity, open: false });
+		setLocalGraphics({ identity, open: true });
 		setShowAll(false);
 	}
 	const [adjusting, setAdjusting] = useState(false);
