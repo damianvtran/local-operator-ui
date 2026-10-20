@@ -10271,7 +10271,7 @@
     {
       "path": "team-bridge-shell",
       "frames": 0,
-      "capturedAt": "2026-10-20T16:05:00.000Z",
+      "capturedAt": "2026-10-20T15:39:35.000Z",
       "source": "Harness browser-tool screenshots of the Team Bridge flush-to-window-top Storybook story (dark), plus the lane-reserved comparison frame.",
       "why": [
         "Shows the operator-visible fix: both panels start at y=0 and the 32px chrome clearance is padding inside them.",
