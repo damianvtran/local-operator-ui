@@ -45,7 +45,7 @@ import { withMockKeychain } from "./chrome-keychain.mjs";
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const ORIGIN = process.argv[2] ?? "http://127.0.0.1:5204";
-const OUT = process.argv[3] ?? "docs/evidence/draft-pick-live";
+const OUT = process.argv[3] ?? "docs/evidence-frames/draft-pick-live";
 const MODE = process.argv[4] ?? "actionable";
 const ISOLATED = process.env.DRAFT_PICK_ISOLATED_DIR;
 
