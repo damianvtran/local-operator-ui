@@ -13,11 +13,14 @@
  * duplicating an editor here. Everything else renders in the host.
  */
 
+import { autoTagSupported, forkAutoTag } from "@features/chat/chat-auto-tag";
+import { parseSidebarView } from "@features/chat/chat-sidebar-view";
 import { useConnectProviderStore } from "@features/providers/connect-provider-store";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type { DesktopProvider } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopKeys,
+	useDesktopCapabilities,
 	useDesktopProviders,
 } from "@shared/api/local-operator/desktop-hooks";
 import {
@@ -2806,6 +2809,17 @@ export const ForkPicker: FC<PickerContext> = ({
 	const cutEntryId = readForkEntryId(action.data);
 	const cutExcerpt = readForkEntryExcerpt(action.data);
 	const [message, setMessage] = useState(action.args ?? "");
+	/*
+	 * THE FORK-TIME INTENT, read from the persisted view rather than from a prop:
+	 * every door that raises this picker (typed `/fork`, a row's menu, the
+	 * palette) already shares the sidebar's `SidebarView`, and passing the pair
+	 * through `action.data` would be three places to keep in step with the View
+	 * options row. `getState()` inside the submit is deliberate - the value is
+	 * captured when the request is SENT, which is the moment the design calls
+	 * fork time; changing the setting later never reaches an existing fork
+	 * because the backend records the sidecar then.
+	 */
+	const capabilities = useDesktopCapabilities();
 	const op = useOperation();
 	const submit = useCallback(async () => {
 		// Weighed before the request for the same reason a message is: `message` is
@@ -2820,6 +2834,15 @@ export const ForkPicker: FC<PickerContext> = ({
 			op.setResult({ tone: "error", text: refusal });
 			return;
 		}
+		/*
+		 * The field travels only when the backend advertises the version that
+		 * reads it; on an older core this is `undefined`, `JSON.stringify` drops
+		 * the key, and the body is the released one key for key.
+		 */
+		const autoTag = forkAutoTag(
+			parseSidebarView(useUiPreferencesStore.getState().chatSidebarView),
+			autoTagSupported(capabilities.data),
+		);
 		const value = await op.perform(
 			() =>
 				desktopResult<{
@@ -2851,6 +2874,12 @@ export const ForkPicker: FC<PickerContext> = ({
 					...(cutEntryId
 						? { boundary: "at_entry" as const, entryId: cutEntryId }
 						: { boundary: "next_safe" as const }),
+					/*
+					 * ABSENT, not `undefined`: on a backend without the capability the
+					 * request object itself keeps the released shape, which is the property
+					 * the call-site test reads (the transport would drop it either way).
+					 */
+					...(autoTag === undefined ? {} : { autoTag }),
 				}),
 			/*
 			 * THE SUCCESS SENTENCE NAMES NO SESSION ID (UX round 1, U5). The child's id
@@ -2886,7 +2915,7 @@ export const ForkPicker: FC<PickerContext> = ({
 			cutEntryId ? FORK_CUT_NOTE : undefined,
 		);
 		if (value) rebind(value.data.session_id);
-	}, [op, sessionId, message, rebind, cutEntryId]);
+	}, [op, sessionId, message, rebind, cutEntryId, capabilities.data]);
 	return (
 		<PickerHost
 			open

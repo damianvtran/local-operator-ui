@@ -118,6 +118,13 @@ type Props = {
 	counts?: ViewMenuCounts;
 	tagsAvailable?: boolean;
 	tagsEmpty?: boolean;
+	/**
+	 * Whether this backend's fork route understands `auto_tag`
+	 * (`chat-auto-tag.ts` owns the version). The row is ABSENT rather than
+	 * disabled when it cannot work: a switch that writes an intent no backend
+	 * reads is the dead control this repo's fail-closed rule forbids.
+	 */
+	autoTagAvailable?: boolean;
 	onManageTags?: () => void;
 	/** Called with the WHOLE next view - the model returns complete values. */
 	onView: (view: SidebarView) => void;
@@ -186,6 +193,7 @@ export function ChatSidebarViewMenu({
 	onView,
 	tagsAvailable = false,
 	tagsEmpty = false,
+	autoTagAvailable = false,
 	onManageTags,
 }: Props) {
 	// Refresh all option/section labels when the backend-owned locale changes.
@@ -363,6 +371,41 @@ export function ChatSidebarViewMenu({
 							{t("ui.chat.tags.manage")}
 						</Button>
 					</div>
+					{/*
+					 * THE AUTO-TAG INTENT, inside the Tags group rather than beside it
+					 * (§5.4): it is a consequence of tagging, is only meaningful while the
+					 * group is on, and shares the panel's ONE scroller with the Sections
+					 * controls below. The row is absent - not disabled - when the backend
+					 * cannot read the fork field; see `autoTagAvailable`'s own comment.
+					 *
+					 * The helper is a real description, wired with `aria-describedby`, not
+					 * a caption: it says WHICH tags (the reader's own) and WHEN (naming a
+					 * fork), the two facts the label alone leaves open.
+					 */}
+					{view.tagsEnabled && autoTagAvailable && (
+						<>
+							<div className="flex min-h-7 items-center gap-2 px-1 py-0.5">
+								<span className="min-w-0 flex-1 text-meta text-ink-dim">
+									{t("ui.chat.tags.auto_tag")}
+								</span>
+								<Switch
+									data-sidebar-auto-tag
+									aria-label={t("ui.chat.tags.auto_tag")}
+									aria-describedby="sidebar-auto-tag-help"
+									checked={view.autoTagForks}
+									onCheckedChange={(autoTagForks) =>
+										onView({ ...view, autoTagForks })
+									}
+								/>
+							</div>
+							<p
+								id="sidebar-auto-tag-help"
+								className="px-1 pb-1 text-meta text-ink-dim"
+							>
+								{t("ui.chat.tags.auto_tag_help")}
+							</p>
+						</>
+					)}
 					{view.tagsEnabled && tagsEmpty && (
 						<p className="px-1 pb-1 text-meta text-ink-muted">
 							{t("ui.chat.tags.none_yet")}

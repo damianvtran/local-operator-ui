@@ -1726,6 +1726,8 @@ export type MessageParams = {
 	"ui.chat.tags.apply": undefined;
 	"ui.chat.tags.apply_deletion_first": { name: string };
 	"ui.chat.tags.applying": undefined;
+	"ui.chat.tags.auto_tag": undefined;
+	"ui.chat.tags.auto_tag_help": undefined;
 	"ui.chat.tags.cancel": undefined;
 	"ui.chat.tags.changed_elsewhere": undefined;
 	"ui.chat.tags.clear": undefined;
