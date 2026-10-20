@@ -565,6 +565,20 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		return () => observer.disconnect();
 	}, []);
 
+	/**
+	 * WHY THE OPTIONS VIEWPORT IS RESET ON EVERY QUERY CHANGE (review A-1/Q-1):
+	 * the 75px viewport is smaller than the list, so a `scrollTop` left over from
+	 * the previous query would open the next result set part-way down - top rows
+	 * hidden, no active row, and nothing on screen explaining the offset. The
+	 * reset is unconditional (a caret moved to the start leaves no active row,
+	 * and a background refresh can replace the set without any keystroke), which
+	 * is why it does not ride on the active-row scroll effect.
+	 */
+	const resetOptionsScroll = (): void => {
+		const viewport = viewportEl.current;
+		if (viewport) viewport.scrollTop = 0;
+	};
+
 	/** Record USER-AUTHORED text only. Accepting a suffix is not an edit, so it
 	 * never enters this stack: undo must return what the user typed. */
 	const recordEdit = (next: string): void => {
@@ -651,6 +665,10 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 */
 	const change = (event: ChangeEvent<HTMLInputElement>): void => {
 		setAcceptedTarget(null);
+		// A new query invalidates the previous result set's scroll position even
+		// when this path returns early (delete, paste, composition): the rows a
+		// user sees next must start at the top.
+		resetOptionsScroll();
 		const next = event.target.value;
 		const input = event.currentTarget;
 		const inputType = (event.nativeEvent as InputEvent).inputType ?? "";
@@ -880,13 +898,19 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	};
 
 	// A background refresh can shrink the alternatives under a row the keyboard
-	// has already selected. Reset rather than leave an active descendant naming
-	// an option that no longer exists.
+	// has already selected, or swap a same-length set for different URLs. Reset
+	// the active row and the viewport's offset together: an active descendant
+	// naming a vanished row and a scroll offset belonging to the previous set are
+	// the same stale state, and the URL KEY catches swaps the count cannot.
+	const candidateCount = suggestions.candidates.length;
+	const candidateKey = suggestions.candidates
+		.map((candidate) => candidate.url)
+		.join("\n");
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `candidateKey` is the trigger, not a value the body reads - the URL SET changing is what must reset the scroll, and a same-length swap changes no count.
 	useEffect(() => {
-		setActiveIndex((index) =>
-			index >= suggestions.candidates.length ? -1 : index,
-		);
-	}, [suggestions.candidates.length]);
+		setActiveIndex((index) => (index >= candidateCount ? -1 : index));
+		if (viewportEl.current) viewportEl.current.scrollTop = 0;
+	}, [candidateKey, candidateCount]);
 
 	// The active row must be REACHABLE inside a viewport that is deliberately
 	// shorter than the list (75px holds exactly two 35.5px rows). Scroll the
@@ -1379,62 +1403,82 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					)}
 					data-address-suggestions-header
 				>
-					{listVisible &&
-						(suggestions.candidates.length > 0 ? (
-							<span
-								id={listLabelId}
-								className="min-w-0 truncate text-meta text-ink-muted"
-							>
-								{t("ui.browser.browser_url_bar.address_suggestions_label")}
-							</span>
-						) : (
-							/* Without rows the zone states the FACT instead of the label: the
-							   label names a list that is not there, and the notice is the
-							   thing a user needs. It stays in the 28px zone so empty, no-match
-							   and unavailable never consume the options viewport. */
-							<span
-								id={noticeId}
-								className="min-w-0 truncate text-meta text-ink-muted"
-							>
-								{listNotice}
-							</span>
-						))}
-				</div>
-				<div
-					ref={viewportEl}
-					tabIndex={-1}
-					className="relative h-[75px] shrink-0 overflow-y-auto overscroll-contain"
-					data-address-suggestions-viewport
-				>
-					{listVisible && suggestions.candidates.length > 0 && (
-						<>
-							{/* biome-ignore lint/a11y/useFocusableInteractive: DOM focus stays in the input; the listbox is reached through aria-activedescendant. */}
-							{/* biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a listbox cannot be a native <select> and must stay a list of options. */}
-							{/* biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>. */}
-							<div
-								id={listId}
-								// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>.
-								role="listbox"
-								aria-labelledby={listLabelId}
-								data-address-suggestions-list
-								// 2px top/bottom so two 35.5px rows fill the 75px viewport exactly and
-								// no third row peeks through as a sliver.
-								className="py-0.5"
-							>
-								{suggestions.candidates.map((candidate, index) => (
-									<AddressSuggestionRow
-										key={candidate.url}
-										candidate={candidate}
-										active={index === activeIndex}
-										optionId={optionId(index)}
-										onActivate={() => commit(candidate.url)}
-									/>
-								))}
-							</div>
-						</>
+					{listVisible && (
+						<span
+							id={listLabelId}
+							className="min-w-0 truncate text-meta text-ink-muted"
+						>
+							{t("ui.browser.browser_url_bar.address_suggestions_label")}
+						</span>
 					)}
 				</div>
+				{/*
+				 * THE SCROLL CONTAINER EXISTS ONLY WHILE OPEN. Chrome makes a
+				 * scrollable element keyboard-focusable and click-focusable; a closed
+				 * dock that still mounted the viewport therefore took focus from a
+				 * click on blank chrome, which is not a control the user can see.
+				 * Closed is a plain 75px div: no overflow, no tabIndex, no handler.
+				 *
+				 * The empty / no-match / unavailable notice lives HERE rather than in
+				 * the 28px header: at 480px the header truncated it mid-sentence, and
+				 * this zone wraps and scrolls like any other content. The header keeps
+				 * the list's label; the 28 + 75 + 1 geometry is unchanged.
+				 */}
+				{listVisible ? (
+					<div
+						ref={viewportEl}
+						tabIndex={-1}
+						className="relative h-[75px] shrink-0 overflow-y-auto overscroll-contain"
+						data-address-suggestions-viewport
+					>
+						{suggestions.candidates.length > 0 ? (
+							<>
+								{/* biome-ignore lint/a11y/useFocusableInteractive: DOM focus stays in the input; the listbox is reached through aria-activedescendant. */}
+								{/* biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a listbox cannot be a native <select> and must stay a list of options. */}
+								{/* biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>. */}
+								<div
+									id={listId}
+									// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>.
+									role="listbox"
+									aria-labelledby={listLabelId}
+									data-address-suggestions-list
+									// 2px top/bottom: two complete 35.5px rows start 2px under the
+									// header rule (2 + 71 of the 75px scrollport); the remaining 2px
+									// at rest is the next row's top edge, the honest boundary of a
+									// scroll viewport rather than a painted fake row.
+									className="py-0.5"
+								>
+									{suggestions.candidates.map((candidate, index) => (
+										<AddressSuggestionRow
+											key={candidate.url}
+											candidate={candidate}
+											active={index === activeIndex}
+											optionId={optionId(index)}
+											onActivate={() => commit(candidate.url)}
+										/>
+									))}
+								</div>
+							</>
+						) : (
+							<div
+								id={noticeId}
+								className="px-3 py-2 text-body-sm text-ink-muted"
+								data-address-suggestions-notice
+							>
+								{listNotice}
+							</div>
+						)}
+					</div>
+				) : (
+					<div
+						className="h-[75px] shrink-0"
+						data-address-suggestions-blank
+						aria-hidden="true"
+						onMouseDown={(event) => event.preventDefault()}
+					/>
+				)}
 			</div>
+
 			{/* Polite and announcement-only: the list itself is described by its own
 			    label, and a count per keystroke is the spam the proposal forbids. */}
 			{/* biome-ignore lint/a11y/useSemanticElements: a politer live region is a role=status span; <output> is a form-result element with different semantics. */}

@@ -108,6 +108,22 @@ const ENTRIES = [
 	},
 ];
 
+const SIX_ENTRIES = [
+	"/account",
+	"/account/a",
+	"/account/b",
+	"/account/c",
+	"/account/d",
+	"/account/e",
+].map((path, sourceIndex) => ({
+	url: `https://example.com${path}`,
+	title: `Page ${sourceIndex}`,
+	sourceTabId: 1,
+	sourceIndex,
+	activeTab: true,
+	distanceFromCurrent: 6 - sourceIndex,
+}));
+
 const FROM_THIS_BROWSER_SESSION = /From this browser session/;
 const ENTER_A_WEB_ADDRESS = /Enter a web address/;
 const ADDRESS_SUGGESTIONS_UNAVAILABLE = /Address suggestions are unavailable/;
@@ -115,7 +131,6 @@ const FIXED_DOCK_HEIGHT = /h-\[104px\]/;
 const BOTTOM_RULE = /border-b/;
 const HEADER_ZONE_HEIGHT = /h-\[28px\]/;
 const OPTIONS_VIEWPORT_HEIGHT = /h-\[75px\]/;
-const SCROLLABLE_VIEWPORT = /overflow-y-auto/;
 const FIXED_ROW_HEIGHT = /h-\[35\.5px\]/;
 const NO_LINKS_YET = /No links/;
 
@@ -305,10 +320,18 @@ test("the dock is a permanent 104px band: 28px header, 75px viewport, one rule",
 	assert.match(dock.className, FIXED_DOCK_HEIGHT);
 	assert.match(dock.className, BOTTOM_RULE);
 	const header = dock.querySelector("[data-address-suggestions-header]");
-	const viewport = dock.querySelector("[data-address-suggestions-viewport]");
+	const blank = dock.querySelector("[data-address-suggestions-blank]");
 	assert.match(header.className, HEADER_ZONE_HEIGHT);
-	assert.match(viewport.className, OPTIONS_VIEWPORT_HEIGHT);
-	assert.match(viewport.className, SCROLLABLE_VIEWPORT);
+	// The scroll container exists only while open: a closed dock must not mount
+	// anything Chrome can make keyboard- or click-focusable.
+	assert.equal(
+		dock.querySelector("[data-address-suggestions-viewport]"),
+		null,
+		"the closed dock has no scroll viewport",
+	);
+	assert.ok(blank, "the closed dock still reserves the 75px zone");
+	assert.match(blank.className, OPTIONS_VIEWPORT_HEIGHT);
+	assert.equal(blank.getAttribute("aria-hidden"), "true");
 	// Closed: blank chrome. No copy, no rows, no hint, nothing in the Tab order.
 	assert.equal(dock.getAttribute("data-address-dock-open"), "false");
 	assert.equal(dock.textContent.trim(), "");
@@ -319,6 +342,17 @@ test("the dock is a permanent 104px band: 28px header, 75px viewport, one rule",
 			`the closed dock has no tab stop: ${node.outerHTML}`,
 		);
 	}
+	// A click on the blank band cannot move focus into the dock.
+	await act(async () => {
+		blank.dispatchEvent(
+			new dom.window.MouseEvent("mousedown", { bubbles: true }),
+		);
+		blank.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+	});
+	assert.ok(
+		!dock.contains(document.activeElement),
+		`focus stayed outside the dock: ${document.activeElement?.outerHTML}`,
+	);
 	await bundle.cleanup();
 });
 
@@ -342,7 +376,7 @@ test("opening keeps the zones and puts the rows inside the 75px viewport", async
 	await bundle.cleanup();
 });
 
-test("the status notice takes the header zone, not the options viewport", async () => {
+test("the status notice lives in the options viewport, under the header label", async () => {
 	const bundle = await renderBar({
 		url: "about:blank",
 		addressHistory: async (request) => ({
@@ -355,39 +389,30 @@ test("the status notice takes the header zone, not the options viewport", async 
 	await flush();
 	const dock = list(bundle);
 	const header = dock.querySelector("[data-address-suggestions-header]");
-	assert.match(header.textContent, NO_LINKS_YET);
-	assert.equal(header.querySelectorAll("[data-address-suggestion]").length, 0);
-	assert.equal(
-		dock
-			.querySelector("[data-address-suggestions-viewport]")
-			.textContent.trim(),
-		"",
+	const viewport = dock.querySelector("[data-address-suggestions-viewport]");
+	const notice = viewport.querySelector("[data-address-suggestions-notice]");
+	assert.match(header.textContent, FROM_THIS_BROWSER_SESSION);
+	assert.ok(notice, "the notice is inside the 75px zone");
+	assert.match(notice.textContent, NO_LINKS_YET);
+	assert.ok(
+		!notice.className.includes("truncate"),
+		"the notice wraps and scrolls instead of truncating at 480px",
 	);
+	assert.equal(
+		header.querySelectorAll("[data-address-suggestions-notice]").length,
+		0,
+	);
+	assert.equal(options(bundle).length, 0);
 	await bundle.cleanup();
 });
 
 test("a fifth active row scrolls inside the viewport, never the page", async () => {
-	const six = [
-		"/account",
-		"/account/a",
-		"/account/b",
-		"/account/c",
-		"/account/d",
-		"/account/e",
-	].map((path, sourceIndex) => ({
-		url: `https://example.com${path}`,
-		title: `Page ${sourceIndex}`,
-		sourceTabId: 1,
-		sourceIndex,
-		activeTab: true,
-		distanceFromCurrent: 6 - sourceIndex,
-	}));
 	const bundle = await renderBar({
 		url: "about:blank",
 		addressHistory: async (request) => ({
 			requestId: request.requestId,
 			activeTabId: 1,
-			entries: six,
+			entries: SIX_ENTRIES,
 		}),
 	});
 	await type(bundle, "example.com/acc");
@@ -423,6 +448,56 @@ test("a fifth active row scrolls inside the viewport, never the page", async () 
 	await key(bundle, "ArrowUp");
 	assert.equal(viewport.scrollTop, 2 + 2 * 35.5, "rows 3 and 4 are shown");
 	assert.equal(document.activeElement, bundle.input);
+	await bundle.cleanup();
+});
+
+test("a new query resets the options scroll, even with the same candidate count", async () => {
+	const bundle = await renderBar({
+		url: "about:blank",
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries: SIX_ENTRIES,
+		}),
+	});
+	await type(bundle, "example.com/acc");
+	const viewport = bundle.container.querySelector(
+		"[data-address-suggestions-viewport]",
+	);
+	assert.equal(options(bundle).length, 5);
+	// jsdom has no layout: the 75px scrollport and the row geometry the effect
+	// reads are handed to it explicitly (2px padding, then 35.5px rows).
+	Object.defineProperty(viewport, "clientHeight", {
+		configurable: true,
+		value: 75,
+	});
+	options(bundle).forEach((row, index) => {
+		Object.defineProperty(row, "offsetTop", {
+			configurable: true,
+			value: 2 + index * 35.5,
+		});
+		Object.defineProperty(row, "offsetHeight", {
+			configurable: true,
+			value: 35.5,
+		});
+	});
+	const scrolledToFifth = 2 + 5 * 35.5 - 75;
+	for (let step = 0; step < 5; step += 1) await key(bundle, "ArrowDown");
+	assert.equal(viewport.scrollTop, scrolledToFifth, "the fifth row is in view");
+
+	// Keyboard path: appending one character keeps all six entries matching, so
+	// the candidate count is unchanged and only the query differs.
+	await type(bundle, "example.com/acco");
+	assert.equal(options(bundle).length, 5, "the candidate count is unchanged");
+	assert.equal(viewport.scrollTop, 0, "the new result set starts at the top");
+	assert.equal(bundle.input.getAttribute("aria-activedescendant"), null);
+
+	// Wheel path: the pointer leaves the same offset behind; the next query change
+	// must clear it just the same.
+	viewport.scrollTop = scrolledToFifth;
+	await type(bundle, "example.com/accou");
+	assert.equal(options(bundle).length, 5);
+	assert.equal(viewport.scrollTop, 0);
 	await bundle.cleanup();
 });
 
