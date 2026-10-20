@@ -1021,13 +1021,16 @@ test("F4: an absent `stopReason` keeps today's behaviour exactly (the compat rul
 	}
 });
 
-test("F5: no declared-finished row and no reader row ever leaves the visible set as rows arrive", () => {
+test("F5: no declared-finished row, reader row or response-cycle handover ever leaves the visible set as rows arrive", () => {
 	/*
-	 * Monotonicity, asserted over every prefix of each fixture: the two clauses that
-	 * protect a row are index-local, so a row that is visible at one prefix cannot
-	 * disappear when the next row lands. The only class that may leave `visible` is a
-	 * non-final COMMENTARY close (`cyclesOf` reclassifies it when a later close
-	 * arrives), which is the shipped intent, so the guard covers V3 and V4 rows.
+	 * Monotonicity, asserted over every prefix of each fixture. V3 and V4 are
+	 * index-local, so a row they protect cannot disappear when the next row lands.
+	 * V5 IS NOT INDEX-LOCAL - it pins a final response only inside a RESPONSE cycle
+	 * (review round 3, then round 4's C1: this assertion claimed every
+	 * `isFinalResponse` row, which is broader than the code) - so its membership is
+	 * read once from the FULL fixture's cycles. The only class that may leave
+	 * `visible` is a non-final COMMENTARY close (`cyclesOf` reclassifies it when a
+	 * later close arrives), which is the shipped intent.
 	 */
 	const specs = [
 		"U T A T T T A",
@@ -1040,6 +1043,13 @@ test("F5: no declared-finished row and no reader row ever leaves the visible set
 	];
 	for (const spec of specs) {
 		const records = seq(spec);
+		const responseCycleRows = new Set();
+		for (const cycle of cyclesOf(records, paintsSomething)) {
+			if (cycle.class !== "response") continue;
+			for (let i = cycle.start; i <= cycle.closeIndex; i += 1) {
+				responseCycleRows.add(i);
+			}
+		}
 		for (let n = 1; n <= records.length; n += 1) {
 			const slice = records.slice(0, n);
 			const result = partitionRun(slice, { ...OPTS, from: 1, pinned: PINNED });
@@ -1048,11 +1058,11 @@ test("F5: no declared-finished row and no reader row ever leaves the visible set
 				const mustStay =
 					record.kind === "user" ||
 					reportsCompletedThought(record) ||
-					isFinalResponse(record);
+					(isFinalResponse(record) && responseCycleRows.has(index));
 				if (!mustStay) return;
 				assert.ok(
 					result.visible.has(index),
-					`${spec} @${index}: a reader row or a handover left the visible set`,
+					`${spec} @${index}: a reader row or a response-cycle handover left the visible set`,
 				);
 			});
 		}
@@ -1132,6 +1142,14 @@ test("F7: a final response stays visible above the next tool run, and keeps the 
 		"one foot and one stamp: `closesTurn` is untouched",
 	);
 	sound(p);
+	/*
+	 * THE HEAD-CUT RUN has no opening user row, so `from: 0` and the run's first
+	 * row is the handover itself. It must keep its bar - the open-tail clause
+	 * used to start at 1 and skipped exactly this row (round 4, C2).
+	 */
+	const headCut = seq("F T");
+	const cut = partitionRun(headCut, { ...OPTS, from: 0, pinned: PINNED });
+	assert.ok(cut.visible.has(0), "the head-cut handover keeps its bar");
 });
 
 test("F8: a final response's row survives collapse; a commentary row still folds", () => {
