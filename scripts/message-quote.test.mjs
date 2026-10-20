@@ -702,34 +702,33 @@ test("the first row of a scrolled transcript flips the control below it", () => 
 	});
 });
 
-test("preferGutter takes the outer seat when the row leaves one", () => {
+/*
+ * THE STRIP NEVER TAKES THE ROW'S TRAILING SEAT (operator report, 2026-10-19).
+ *
+ * The removed `preferGutter` rule did exactly that - it parked the selection
+ * strip at the row's right edge whenever the pane left slack - and the reader
+ * read the move as "the selection toolbar flashed, vanished, and a toolbar on
+ * the right took over". The operator's rule is selection => near the
+ * selection, so the placement is the flip above/below the highlight even when
+ * a wide gutter is available. This case pins the absence of the old branch by
+ * giving it the exact row box that used to select it: the placed box must stay
+ * on the highlight's left edge, not at `row.right + 2`.
+ */
+test("a wide row's free gutter does not move the strip off the highlight", () => {
 	const placed = place([box(300, 200, 500, 320)], {
 		row: box(280, 100, 700, 340),
-		preferGutter: true,
-	});
-	assert.deepEqual(placed, {
-		top: 300,
-		left: 702,
-		placement: "above",
-	});
-});
-
-test("preferGutter falls back above the first line when no gutter fits", () => {
-	const placed = place([box(300, 200, 500, 320)], {
-		row: box(280, 100, 970, 340),
-		preferGutter: true,
 	});
 	assert.deepEqual(placed, {
 		top: 300 - QUOTE_CONTROL_GAP - CONTROL.height,
 		left: 200,
 		placement: "above",
 	});
+	assert.notEqual(placed.left, 702, "the old gutter seat");
 });
 
 test("a selection taller than the pane clamps inside it, the documented trade", () => {
 	const placed = place([box(120, 200, 500, 690)], {
 		row: box(120, 100, 970, 690),
-		preferGutter: true,
 	});
 	assert.deepEqual(placed, {
 		top: PANE.bottom - CONTROL.height,
@@ -738,10 +737,9 @@ test("a selection taller than the pane clamps inside it, the documented trade", 
 	});
 });
 
-test("preferGutter falls back below the last line at the pane top", () => {
+test("a pane-top highlight with a wide gutter still flips below", () => {
 	const placed = place([box(100, 200, 500, 120)], {
 		row: box(100, 100, 970, 140),
-		preferGutter: true,
 	});
 	assert.deepEqual(placed, {
 		top: 120 + QUOTE_CONTROL_GAP,

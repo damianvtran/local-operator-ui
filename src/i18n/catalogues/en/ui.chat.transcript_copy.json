@@ -6,5 +6,6 @@
 	"ui.chat.transcript_copy.toast.copied_selection": "Copied selection",
 	"ui.chat.transcript_copy.row.your_message": "Your message",
 	"ui.chat.transcript_copy.row.agent_message": "Agent message",
-	"ui.chat.transcript_copy.selection.copy": "Copy selection"
+	"ui.chat.transcript_copy.selection.copy": "Copy selection",
+	"ui.chat.transcript_copy.selection.toolbar": "Selection actions"
 }

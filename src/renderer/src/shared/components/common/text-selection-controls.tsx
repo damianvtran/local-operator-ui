@@ -1,8 +1,10 @@
+import { FloatingToolbar } from "@shared/components/common/floating-toolbar";
 import {
 	SpeakButton,
 	useSpeakControl,
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import { clipForSpeech } from "@shared/lib/speech-clip";
 import { useSpeechBindingFor } from "@shared/lib/speech-target";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
@@ -20,7 +22,7 @@ import {
 	Sparkles,
 } from "lucide-react";
 import type { FC } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 
 const URL_REGEX = /https?:\/\/[^\s]+/i;
@@ -57,9 +59,6 @@ type TextSelectionControlsProps = {
  * the positioning is recomputed from the range's own rect on scroll and
  * resize.
  */
-const CONTROLS_WRAPPER_CLASSES =
-	"absolute z-10 flex items-center gap-1 rounded-sm border border-hairline bg-elevated p-1 shadow-overlay";
-
 export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	targetRef,
 	scrollableContainerRef,
@@ -92,12 +91,12 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	 * content root rather than a shared store because the toolkits mount and
 	 * unmount with their own selection; the DOM is the only place both facts meet.
 	 */
-	const [peerOwnsSelection, setPeerOwnsSelection] = useState(false);
+	const [peerObserved, setPeerObserved] = useState(false);
 	useEffect(() => {
 		const root = targetRef.current;
 		if (!root) return;
 		const check = () => {
-			setPeerOwnsSelection(
+			setPeerObserved(
 				root.querySelector(
 					"[data-lo-quote-toolkit], [data-lo-link-toolbar]",
 				) !== null,
@@ -156,48 +155,66 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 		},
 		available: Boolean(selection.text && speechScope),
 	});
-	const handleMouseUp = useCallback(() => {
-		if (!targetRef.current) {
+	/*
+	 * THE SELECTION IS READ ON `selectionchange`, NOT ON `mouseup` + A TIMER
+	 * (operator report, 2026-10-19). The old gate waited for `mouseup` and then
+	 * deferred one task (`setTimeout(..., 0)`) "to allow the selection to
+	 * finalize". A deferred read is a frame in which this toolbar has not yet
+	 * heard about a selection the quote toolkit has ALREADY painted - so the
+	 * reader could see this panel appear near the selection and then stand down
+	 * as the owning strip took over. `selectionchange` is the selection's own
+	 * event, it fires before paint during a drag, and it is the same event the
+	 * quote toolkit's gate reads - so both toolbars now derive from ONE
+	 * notification rather than from two clocks.
+	 *
+	 * `mouseup`, `keyup` and `mouseup`-less programmatic selections are covered
+	 * by the mount-time read and by `selectionchange` firing on them; the
+	 * explicit `mouseup` listener is kept for engines that collapse a selection
+	 * without a `selectionchange` (jsdom among them), and is read SYNCHRONOUSLY -
+	 * there is no timer left in this component.
+	 */
+	const readSelection = useCallback(() => {
+		const target = targetRef.current;
+		if (!target) {
 			setSelection({ text: "", html: "", rect: null, range: null });
 			return;
 		}
 
-		const sel = window.getSelection();
+		const sel = typeof window === "undefined" ? null : window.getSelection();
 		if (
 			sel &&
 			sel.rangeCount > 0 &&
 			!sel.isCollapsed &&
 			sel.anchorNode &&
-			targetRef.current.contains(sel.anchorNode)
+			target.contains(sel.anchorNode)
 		) {
 			const range = sel.getRangeAt(0);
 			const rect = range.getBoundingClientRect();
 			const text = sel.toString().trim();
+			if (!text) {
+				setSelection({ text: "", html: "", rect: null, range: null });
+				return;
+			}
 			const container = document.createElement("div");
 			container.appendChild(range.cloneContents());
-			const html = container.innerHTML;
-
-			if (text) {
-				setSelection({ text, html, rect, range });
-			} else {
-				setSelection({ text: "", html: "", rect: null, range: null });
-			}
-		} else {
-			setSelection({ text: "", html: "", rect: null, range: null });
+			setSelection({ text, html: container.innerHTML, rect, range });
+			return;
 		}
+		setSelection({ text: "", html: "", rect: null, range: null });
 	}, [targetRef]);
 
 	useEffect(() => {
-		const handleMouseUpEvent = () => {
-			// Use a timeout to allow the selection to finalize before checking it
-			setTimeout(handleMouseUp, 0);
-		};
-
-		document.addEventListener("mouseup", handleMouseUpEvent);
+		const handler = () => readSelection();
+		document.addEventListener("selectionchange", handler);
+		document.addEventListener("mouseup", handler);
+		document.addEventListener("keyup", handler);
+		readSelection();
 		return () => {
-			document.removeEventListener("mouseup", handleMouseUpEvent);
+			document.removeEventListener("selectionchange", handler);
+			document.removeEventListener("mouseup", handler);
+			document.removeEventListener("keyup", handler);
 		};
-	}, [handleMouseUp]);
+	}, [readSelection]);
 
 	useEffect(() => {
 		const handleScrollAndResize = () => {
@@ -324,30 +341,125 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 		}
 	};
 
-	if (!selection.rect || !selection.text || isUser || peerOwnsSelection) {
+	/*
+	 * THE SYNCHRONOUS HALF OF "ONE HIGHLIGHT, ONE STRIP". The observer above
+	 * answers a tick later, which was the frame this component could paint in
+	 * beside an already-mounted quote strip. The DOM query in the render path
+	 * cannot be a tick late: if an owning strip is in the document at the moment
+	 * this component renders, this component renders NOTHING. The observer keeps
+	 * the value current for a later unmount; the query closes the mount frame.
+	 */
+	const peerOwnsNow =
+		peerObserved ||
+		Boolean(
+			targetRef.current?.querySelector(
+				"[data-lo-quote-toolkit], [data-lo-link-toolbar]",
+			),
+		);
+	/*
+	 * THE PRE-PAINT HALF, and the reason a state read in render is not enough.
+	 * The render that first shows this component runs BEFORE the rows commit
+	 * their own quote strips, so the query above answers "nobody owns it" and
+	 * this panel would be painted for one frame beside the owning strip - the
+	 * flash, exactly. A layout effect runs after that commit and before the
+	 * browser paints, so the query there sees the strip the rows just mounted
+	 * and the state update it triggers re-renders this component to `null`
+	 * inside the same frame. That is the difference between "the observer will
+	 * catch up" and "no frame exists in which both are painted".
+	 */
+	useLayoutEffect(() => {
+		/*
+		 * Only a live selection can raise a competing strip; reading the text here
+		 * is also what makes it a genuine dependency rather than a trigger the
+		 * linter would have to be told about.
+		 */
+		if (!selection.text) return;
+		const root = targetRef.current;
+		if (!root) return;
+		setPeerObserved(
+			root.querySelector("[data-lo-quote-toolkit], [data-lo-link-toolbar]") !==
+				null,
+		);
+	}, [targetRef, selection.text]);
+
+	/*
+	 * THE ROW'S OWN CLUSTERS STAND DOWN WHILE THIS STRIP IS THE SELECTION'S
+	 * TOOLBAR. `data-lo-selection-live` in the stylesheet already hides them for
+	 * the paint; this effect is the accessibility half - the same `inert` +
+	 * `aria-hidden` pair the quote toolkit writes for its own row, applied to
+	 * every cluster under the reader's selection because this toolbar's subject
+	 * is not one turn. Without it the row's Copy stays in the tab order while a
+	 * selection strip is the visible toolbar, which is the "both are up" state
+	 * expressed for a keyboard reader.
+	 */
+	const ownsSelection = Boolean(selection.text) && !isUser && !peerOwnsNow;
+	useEffect(() => {
+		const root = targetRef.current;
+		if (!root || !ownsSelection) return;
+		const clusters = [
+			...root.querySelectorAll(
+				"[data-lo-answer-actions], [data-lo-gutter-actions], [data-lo-user-actions]",
+			),
+		];
+		for (const cluster of clusters) {
+			cluster.setAttribute("inert", "");
+			cluster.setAttribute("aria-hidden", "true");
+		}
+		return () => {
+			/*
+			 * A PEER'S SUPPRESSION IS NOT OURS TO REMOVE. The quote toolkit sets the
+			 * same two attributes on the row it owns, and this component's effect
+			 * can run first (its selection state commits in the same render) and
+			 * then clean up when the peer check flips `ownsSelection` off. Blindly
+			 * removing here wiped the owning strip's `inert`/`aria-hidden` one
+			 * commit after it wrote them, which is exactly the "row cluster is
+			 * interactive under a selection strip" defect the attributes exist to
+			 * prevent. If a peer is in the document at cleanup, the attributes
+			 * belong to it.
+			 */
+			if (
+				root.querySelector(
+					"[data-lo-quote-toolkit], [data-lo-link-toolbar]",
+				) !== null
+			) {
+				return;
+			}
+			for (const cluster of clusters) {
+				cluster.removeAttribute("inert");
+				cluster.removeAttribute("aria-hidden");
+			}
+		};
+	}, [ownsSelection, targetRef]);
+
+	if (!selection.rect || !selection.text || isUser || peerOwnsNow) {
 		return null;
 	}
 
 	const containerRect = targetRef.current?.getBoundingClientRect();
 	if (!containerRect) return null;
 
+	/*
+	 * `transform` rather than a hard-coded `-46`, which was "the 38px toolbar
+	 * plus the 8px clearance" written as one number. The shell is the shared
+	 * 32px one now, so the number would silently over-clear by 6px; the
+	 * transform derives the offset from the element's own height and cannot
+	 * drift when the chrome does. The flip is the same rule the quote strip
+	 * holds: above the selection, below it when there is no room above.
+	 */
+	const above = selection.rect.top - containerRect.top >= 40;
 	const style = {
-		// The toolbar is 38px tall (28px control + 4px padding + 1px border, both
-		// sides), so this clears the selection by 8px.
-		top: selection.rect.top - containerRect.top - 46,
+		top:
+			(above ? selection.rect.top : selection.rect.bottom) - containerRect.top,
 		left: selection.rect.left - containerRect.left,
+		transform: above ? "translateY(calc(-100% - 8px))" : "translateY(8px)",
 	};
 
 	return (
-		/*
-		 * Preventing mousedown keeps the browser from collapsing the selection
-		 * the toolbar exists to act on.
-		 */
-		<div
+		<FloatingToolbar
 			{...{ "data-lo-selection-toolbar": "" }}
-			className={CONTROLS_WRAPPER_CLASSES}
+			label={t("ui.chat.transcript_copy.selection.toolbar")}
+			className="absolute z-20"
 			style={style}
-			onMouseDown={(e) => e.preventDefault()}
 		>
 			{showEdit && (
 				<Tooltip content="Ask for an edit">
@@ -422,6 +534,6 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 					</Button>
 				</Tooltip>
 			)}
-		</div>
+		</FloatingToolbar>
 	);
 };
