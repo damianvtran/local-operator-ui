@@ -176,5 +176,6 @@
 	"ui.hub.skills.unsubscribe_help": "Arrête les futures mises à jour. Les fichiers téléchargés sont conservés.",
 	"ui.hub.skills.public_hub": "Hub public",
 	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} compétence} many {{count, number, ::group-off} de compétences} other {{count, number, ::group-off} compétences}}",
-	"ui.hub.skills.count_shared": "{count, plural, one {{count, number, ::group-off} compétence partagée avec {organization}} many {{count, number, ::group-off} de compétences partagées avec {organization}} other {{count, number, ::group-off} compétences partagées avec {organization}}}"
+	"ui.hub.skills.count_shared": "{count, plural, one {{count, number, ::group-off} compétence partagée avec {organization}} many {{count, number, ::group-off} de compétences partagées avec {organization}} other {{count, number, ::group-off} compétences partagées avec {organization}}}",
+	"ui.hub.skills.inventory_unknown": "État du lien indisponible."
 }

@@ -15,7 +15,7 @@ import { build } from "esbuild";
 const bundled = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/agent-hub/hub-skill-state"; export {hubLinkContentState} from "./src/renderer/src/shared/api/local-operator/hub-links";',
+			'export * from "./src/renderer/src/features/agent-hub/hub-skill-state"; export {hubLinkContentState} from "./src/renderer/src/shared/api/local-operator/hub-links"; export {hubSourceAddress} from "./src/renderer/src/shared/api/radient/hub-source";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -33,7 +33,10 @@ const {
 	hubSkillLinkIndex,
 	hubSkillState,
 	hubLinkContentState,
+	hubSourceAddress,
+	skillPullRequestKey,
 	skillRowInScope,
+	skillSubscribeAct,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString("base64")}`
 );
@@ -262,5 +265,105 @@ test("an update outranks the presence states, and only for a copy that exists", 
 		}).kind,
 		"pulled",
 		"an applied update is a finished fact, not a waiting one",
+	);
+});
+
+test("an unanswered inventory is unknown, never not-present", () => {
+	/*
+	 * Review round 1, minor 5: while the links read is loading or has refused,
+	 * "no link" is not a fact, so an installed skill must not read "Not
+	 * downloaded" and offer a Download the server would refuse.
+	 */
+	assert.deepEqual(hubSkillState(undefined, undefined, false), {
+		kind: "unknown",
+	});
+	assert.deepEqual(hubSkillState(link(), undefined, false), { kind: "unknown" });
+	assert.deepEqual(hubSkillState(undefined, undefined, true), {
+		kind: "not-present",
+	});
+});
+
+test("the hub source mirrors core's normalisation", () => {
+	/*
+	 * Review round 1, minor 6: the real export, not a test-local copy. Core
+	 * completes a BARE origin with /v1 and leaves a path-bearing base alone.
+	 */
+	assert.equal(hubSourceAddress("http://127.0.0.1:8127"), "http://127.0.0.1:8127/v1");
+	assert.equal(hubSourceAddress("http://127.0.0.1:8127/"), "http://127.0.0.1:8127/v1");
+	assert.equal(
+		hubSourceAddress("https://api.radienthq.com/v1"),
+		"https://api.radienthq.com/v1",
+	);
+	assert.equal(
+		hubSourceAddress("https://api.radienthq.com/v1/"),
+		"https://api.radienthq.com/v1",
+	);
+	assert.equal(
+		hubSourceAddress("https://gateway.example/hub/radient"),
+		"https://gateway.example/hub/radient",
+	);
+});
+
+test("subscribe takes the policy form when a link exists", () => {
+	/* Review round 1, major 1: the create route leaves an existing policy alone. */
+	assert.equal(skillSubscribeAct(undefined), "create");
+	assert.equal(skillSubscribeAct(link()), "policy");
+});
+
+test("the pull request key covers every body-changing field", () => {
+	/* Review round 1, major 3: a body change must mint a new id. */
+	const base = {
+		selected: "skill-1",
+		scope: { visibility: "public", tenantId: null },
+		localAlias: "release-notes",
+		subscribe: false,
+		autoPush: false,
+		consent: false,
+	};
+	const key = skillPullRequestKey(base);
+	assert.equal(key, skillPullRequestKey({ ...base }));
+	assert.notEqual(key, skillPullRequestKey({ ...base, subscribe: true }));
+	assert.notEqual(key, skillPullRequestKey({ ...base, autoPush: true }));
+	assert.notEqual(key, skillPullRequestKey({ ...base, consent: true }));
+	assert.notEqual(key, skillPullRequestKey({ ...base, localAlias: "other" }));
+});
+
+test("the scope filter is fail-closed on the public row shape", () => {
+	const publicScope = { visibility: "public", tenantId: null };
+	assert.equal(
+		skillRowInScope(
+			{ id: "a", visibility: "public", tenant_id: null },
+			publicScope,
+		),
+		true,
+	);
+	// The sibling-list convention (publisher tenant, no visibility) is OUT of the
+	// public scope: rendering it would be the cross-tenant leak the filter exists
+	// to stop, and the server stays authoritative for admission.
+	assert.equal(
+		skillRowInScope(
+			{ id: "b", visibility: "public", tenant_id: "org-1" },
+			publicScope,
+		),
+		false,
+	);
+	assert.equal(
+		skillRowInScope({ id: "c", visibility: undefined, tenant_id: null }, publicScope),
+		false,
+	);
+	const orgScope = { visibility: "org", tenantId: "org-1" };
+	assert.equal(
+		skillRowInScope(
+			{ id: "d", visibility: "org", tenant_id: "org-1" },
+			orgScope,
+		),
+		true,
+	);
+	assert.equal(
+		skillRowInScope(
+			{ id: "e", visibility: "org", tenant_id: "org-2" },
+			orgScope,
+		),
+		false,
 	);
 });

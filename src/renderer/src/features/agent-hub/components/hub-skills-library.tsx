@@ -58,7 +58,9 @@ import {
 	hubSkillKey,
 	hubSkillLinkIndex,
 	hubSkillState,
+	skillPullRequestKey,
 	skillRowInScope,
+	skillSubscribeAct,
 } from "../hub-skill-state";
 import { HubPager } from "./hub-pager";
 import { HubSkillPublication } from "./hub-skill-publication";
@@ -92,7 +94,7 @@ const MARK_KEY: Record<HubMark["kind"], WithoutParams> = {
 };
 
 const STATE_KEY: Record<
-	Exclude<HubSkillState["kind"], "update">,
+	Exclude<HubSkillState["kind"], "update" | "unknown">,
 	WithoutParams
 > = {
 	"not-present": "ui.hub.skills.not_downloaded",
@@ -117,14 +119,23 @@ const STATE_KEY: Record<
 function skillMark(
 	state: HubSkillState,
 	update: HubUpdateItem | undefined,
+	hasCopy: boolean,
 ): HubMark | null {
 	const mark = update ? hubMarkFor(update) : null;
+	/*
+	 * An OUTCOME mark (applied/failed) needs bytes to be about: the detail mounts
+	 * no update panel for a link with no copy, so "Update failed — open to retry"
+	 * on a subscribed-but-absent skill pointed at a Retry that is not there
+	 * (review round 1, minor 8). Without a copy the next act is Download, which
+	 * the card's own state sentence already names.
+	 */
 	if (
 		mark &&
 		(state.kind === "update" ||
-			update?.state === "applied" ||
-			update?.state === "failed" ||
-			update?.error_class)
+			(hasCopy &&
+				(update?.state === "applied" ||
+					update?.state === "failed" ||
+					update?.error_class)))
 	)
 		return mark;
 	if (state.kind === "update")
@@ -133,7 +144,12 @@ function skillMark(
 }
 
 /** The fact a row states in words. An update keeps the copy/subscription fact. */
-function stateSentence(state: HubSkillState): string {
+function stateSentence(
+	state: HubSkillState,
+	/** What to say while the inventory has not answered (loading or refused). */
+	unknown: string,
+): string {
+	if (state.kind === "unknown") return unknown;
 	if (state.kind !== "update") return t(STATE_KEY[state.kind]);
 	return t(
 		state.link.policy.subscribe
@@ -166,8 +182,18 @@ function SkillMarkChip({ mark }: { mark: HubMark | null }) {
  * `origin-conflict` code, and that is the one failure with a remedy the generic
  * sentences cannot name: choose another local alias.
  */
-function refusalCode(error: unknown): string | undefined {
-	return error instanceof DesktopControlError ? error.code : undefined;
+/**
+ * `origin-conflict` covers TWO refusals: an alias collision (with a rename
+ * remedy) and a source/scope mismatch (QA F1's class, where renaming is the
+ * wrong advice — review round 1, minor 7). The code alone cannot tell them
+ * apart, so the alias sentence is shown only when the answer names the alias.
+ */
+function aliasConflict(error: unknown): boolean {
+	return (
+		error instanceof DesktopControlError &&
+		error.code === "origin-conflict" &&
+		/alias/i.test(error.message)
+	);
 }
 
 /**
@@ -260,6 +286,14 @@ export function HubSkillsLibrary({
 	);
 	const updateIndex = useMemo(() => hubItemIndex(updates.data), [updates.data]);
 	const pulledLinkId = pull.data?.link?.link_id;
+	/*
+	 * The inventory is a fact of its own: while it loads or after its own
+	 * refusal, "no link row" is NOT "no link" (review round 1, minor 5).
+	 */
+	const inventoryReady = !links.isLoading && !links.error;
+	const inventoryUnknown = links.error
+		? t("ui.hub.skills.inventory_unknown")
+		: t("ui.hub.links.loading");
 	const scopeMatches =
 		detail.data?.visibility === scope.visibility &&
 		(scope.visibility === "public"
@@ -286,7 +320,7 @@ export function HubSkillsLibrary({
 			.toLocaleLowerCase()
 			.includes(filter.toLocaleLowerCase()),
 	);
-	const selectedRow = rows.find((row) => row.id === selected);
+	const selectedRow = scopedRows.find((row) => row.id === selected);
 	const selectedLink = selectedRow
 		? linkIndex.get(
 				hubSkillKey({
@@ -299,7 +333,11 @@ export function HubSkillsLibrary({
 	const selectedUpdate = selectedLink
 		? updateIndex.get(hubItemKey("skill", selectedLink.name))
 		: undefined;
-	const selectedState = hubSkillState(selectedLink, selectedUpdate);
+	const selectedState = hubSkillState(
+		selectedLink,
+		selectedUpdate,
+		inventoryReady,
+	);
 	const hasCopy = selectedLink
 		? hubLinkContentState(selectedLink) === "present"
 		: false;
@@ -314,7 +352,11 @@ export function HubSkillsLibrary({
 		const update = link
 			? updateIndex.get(hubItemKey("skill", link.name))
 			: undefined;
-		return { link, update, state: hubSkillState(link, update) };
+		return {
+			link,
+			update,
+			state: hubSkillState(link, update, inventoryReady),
+		};
 	};
 	/*
 	 * One request id per (op, inputs) tuple, so a retry after a lost answer
@@ -329,24 +371,52 @@ export function HubSkillsLibrary({
 		if (!selected || !ready || !signedIn) return;
 		const localAlias = forLink?.name ?? selectedRow?.name ?? "";
 		if (!localAlias) return;
+		// Download does NOT subscribe, and never edits the subscription an
+		// existing link already has: content and membership are separate facts.
+		const subscribe = forLink ? forLink.policy.subscribe : false;
+		const autoPush = forLink?.policy.auto_push ?? false;
+		// Consent is an affirmative act, never re-asserted by a download.
+		const consent = false;
 		pull.mutate({
 			requestId: requestIdFor(
-				JSON.stringify({ op: "pull", selected, scope, localAlias }),
+				/*
+				 * Every BODY-CHANGING field is in the tuple: core fingerprints the
+				 * receipt's body and refuses a mismatch with 409, so an id reused
+				 * with a different body blocked every retry until remount (review
+				 * round 1, major 3).
+				 */
+				skillPullRequestKey({
+					selected,
+					scope,
+					localAlias,
+					subscribe,
+					autoPush,
+					consent,
+				}),
 			),
 			remoteId: selected,
 			scope,
 			alias: localAlias,
-			// Download does NOT subscribe, and never edits the subscription an
-			// existing link already has: content and membership are separate facts.
-			subscribe: forLink ? forLink.policy.subscribe : false,
-			autoPush: forLink?.policy.auto_push ?? false,
-			// Consent is an affirmative act, never re-asserted by a download.
-			consent: false,
+			subscribe,
+			autoPush,
+			consent,
 		});
 	};
 	const runSubscribe = () => {
 		if (!selected || !ready || !signedIn) return;
-		const localAlias = selectedLink?.name ?? selectedRow?.name ?? "";
+		/*
+		 * Subscribe has TWO wire forms, and the wrong one is a silent no-op:
+		 * core's `hub.skillSubscribe` leaves an EXISTING link's policy untouched
+		 * by design (review round 1, major 1), so a link created by Download,
+		 * then Unpulled, stayed "Not installed — no updates" after a 200. A link
+		 * is a policy patch; only the no-link case creates one.
+		 */
+		if (skillSubscribeAct(selectedLink) === "policy" && selectedLink) {
+			if (selectedLink.policy.subscribe || policy.isPending) return;
+			policy.mutate({ link: selectedLink, patch: { subscribe: true } });
+			return;
+		}
+		const localAlias = selectedRow?.name ?? "";
 		if (!localAlias) return;
 		subscribe.mutate({
 			requestId: requestIdFor(
@@ -359,15 +429,35 @@ export function HubSkillsLibrary({
 	};
 	const runUnpull = () => {
 		if (!selectedLink) return;
-		unpull.mutate({
-			requestId: requestIdFor(
-				JSON.stringify({ op: "unpull", link: selectedLink.link_id }),
-			),
-			linkId: selectedLink.link_id,
-		});
+		unpull.mutate(
+			{
+				requestId: requestIdFor(
+					JSON.stringify({ op: "unpull", link: selectedLink.link_id }),
+				),
+				linkId: selectedLink.link_id,
+			},
+			{
+				/*
+				 * A completed unpull makes the previous Download's success sentence a
+				 * lie about the current state (review round 1, major 2): its mutation
+				 * data outlives the cache invalidation, so reset it rather than let
+				 * "Downloaded …" sit under "Subscribed — not installed".
+				 */
+				onSuccess: () => {
+					pull.reset();
+					subscribe.reset();
+				},
+			},
+		);
 	};
 	const runUnsubscribe = () => {
 		if (!selectedLink || selectedLink.policy.subscribe === false) return;
+		/*
+		 * The switch guards itself; the named button must too, or a double press
+		 * sends two PATCHes at the same policy revision and the loser paints a
+		 * failure over a successful unsubscribe (review round 1, minor 9).
+		 */
+		if (policy.isPending || !policy.canWrite) return;
 		policy.mutate({
 			link: selectedLink,
 			patch: { subscribe: false },
@@ -502,7 +592,13 @@ export function HubSkillsLibrary({
 							<ul className="grid list-none grid-cols-[repeat(auto-fill,minmax(17.5rem,1fr))] gap-6 p-0">
 								{rows.map((row) => {
 									const joined = linkStateFor(row);
-									const mark = skillMark(joined.state, joined.update);
+									const mark = skillMark(
+										joined.state,
+										joined.update,
+										joined.link
+											? hubLinkContentState(joined.link) === "present"
+											: false,
+									);
 									return (
 										<li key={row.id} className="min-w-0">
 											<button
@@ -550,7 +646,7 @@ export function HubSkillsLibrary({
 												 */}
 												<span className="flex items-center justify-between gap-2 border-t border-hairline px-4 py-2 text-meta">
 													<span className="truncate text-ink-muted">
-														{stateSentence(joined.state)}
+														{stateSentence(joined.state, inventoryUnknown)}
 													</span>
 													<SkillMarkChip mark={mark} />
 												</span>
@@ -615,7 +711,7 @@ export function HubSkillsLibrary({
 						<>
 							<div className="flex flex-wrap items-center justify-between gap-2">
 								<p className="text-body-sm text-ink-muted">
-									{stateSentence(selectedState)}
+									{stateSentence(selectedState, inventoryUnknown)}
 									<span aria-hidden="true" className="mx-1.5">
 										·
 									</span>
@@ -624,7 +720,7 @@ export function HubSkillsLibrary({
 									})}
 								</p>
 								<SkillMarkChip
-									mark={skillMark(selectedState, selectedUpdate)}
+									mark={skillMark(selectedState, selectedUpdate, hasCopy)}
 								/>
 							</div>
 							<p
@@ -691,7 +787,7 @@ export function HubSkillsLibrary({
 												variant="outline"
 												size="sm"
 												data-testid="hub-skill-unsubscribe"
-												aria-disabled={policy.isPending || undefined}
+												disabled={policy.isPending || !policy.canWrite}
 												onClick={runUnsubscribe}
 											>
 												{t("ui.hub.skills.unsubscribe")}
@@ -726,31 +822,31 @@ export function HubSkillsLibrary({
 									enabled={updatesEnabled}
 								/>
 							)}
-							{selectedLink && !hasCopy && (
-								<p className="text-meta text-ink-muted">
-									{t("ui.hub.skills.download_help")}
-								</p>
-							)}
-							{pull.error &&
-								(refusalCode(pull.error) === "origin-conflict" ? (
-									<p role="alert" className="text-body-sm text-danger">
-										{t("ui.hub.skills.local_exists")}
-									</p>
-								) : null)}
-							{((pull.error && refusalCode(pull.error) !== "origin-conflict") ||
-								(pull.data &&
-									!pull.data.reports?.some(
-										(report) =>
-											report.applied || report.outcome === "unchanged",
-									))) && (
+							{pull.error && (
 								<p
 									role="alert"
 									className="text-body-sm text-danger"
 									data-testid="hub-skill-pull-failed"
 								>
-									{t("ui.hub.skills.pull_failed")}
+									{t(
+										aliasConflict(pull.error)
+											? "ui.hub.skills.local_exists"
+											: "ui.hub.skills.pull_failed",
+									)}
 								</p>
 							)}
+							{pull.data &&
+								!pull.data.reports?.some(
+									(report) => report.applied || report.outcome === "unchanged",
+								) && (
+									<p
+										role="alert"
+										className="text-body-sm text-danger"
+										data-testid="hub-skill-pull-failed"
+									>
+										{t("ui.hub.skills.pull_failed")}
+									</p>
+								)}
 							{pull.data?.link &&
 								pull.data.reports?.some(
 									(report) =>
@@ -784,7 +880,7 @@ export function HubSkillsLibrary({
 									data-testid="hub-skill-subscribe-failed"
 								>
 									{t(
-										refusalCode(subscribe.error) === "origin-conflict"
+										aliasConflict(subscribe.error)
 											? "ui.hub.skills.local_exists"
 											: "ui.hub.skills.subscribe_failed",
 									)}
@@ -815,7 +911,9 @@ export function HubSkillsLibrary({
 								<DialogFooter className="flex-row flex-wrap justify-start gap-2">
 									<Button
 										data-testid="hub-skill-download"
-										disabled={!signedIn || !ready || pull.isPending}
+										disabled={
+											!signedIn || !ready || pull.isPending || !inventoryReady
+										}
 										aria-label={t("ui.hub.skills.pull_title", {
 											item: detail.data.name,
 											source,
@@ -828,23 +926,16 @@ export function HubSkillsLibrary({
 										<Button
 											variant="outline"
 											data-testid="hub-skill-subscribe"
-											disabled={!signedIn || !ready || subscribe.isPending}
+											disabled={
+												!signedIn ||
+												!ready ||
+												!inventoryReady ||
+												subscribe.isPending ||
+												policy.isPending
+											}
 											onClick={runSubscribe}
 										>
 											{t("ui.hub.subscriptions.subscribe")}
-										</Button>
-									)}
-									{hasCopy && (
-										<Button
-											variant="outline"
-											data-testid="hub-skill-unpull"
-											disabled={unpull.isPending}
-											onClick={() => {
-												unpull.reset();
-												setConfirmUnpull(true);
-											}}
-										>
-											{t("ui.hub.skills.unpull")}
 										</Button>
 									)}
 								</DialogFooter>

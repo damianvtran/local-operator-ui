@@ -176,5 +176,6 @@
 	"ui.hub.skills.unsubscribe_help": "भविष्य के अपडेट रोकता है। डाउनलोड की गई फ़ाइलें बनी रहती हैं।",
 	"ui.hub.skills.public_hub": "सार्वजनिक हब",
 	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} कौशल} other {{count, number, ::group-off} कौशल}}",
-	"ui.hub.skills.count_shared": "{count, plural, one {{organization} के साथ साझा {count, number, ::group-off} कौशल} other {{organization} के साथ साझा {count, number, ::group-off} कौशल}}"
+	"ui.hub.skills.count_shared": "{count, plural, one {{organization} के साथ साझा {count, number, ::group-off} कौशल} other {{organization} के साथ साझा {count, number, ::group-off} कौशल}}",
+	"ui.hub.skills.inventory_unknown": "लिंक स्थिति उपलब्ध नहीं है।"
 }

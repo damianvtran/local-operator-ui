@@ -48,6 +48,14 @@ function normalizeOrigin(origin: string): string {
  * NO tenant; org means exactly the active tenant. A row carrying a tenant in the
  * public scope (or another tenant in an org scope) is out of scope, never
  * relabelled.
+ *
+ * FAIL-CLOSED ON THE PUBLIC SHAPE (review round 1, minor 10). The live sibling
+ * public lists carry the publisher's `tenant_id` and omit `visibility`; if
+ * `/v1/skills` follows that serializer, this filter drops rows rather than
+ * drawing another tenant's. The server is authoritative for admission, and the
+ * failure mode of the strict rule is a visibly empty public grid — never a leak.
+ * Whichever convention the real serializer uses is pinned where it is written,
+ * not implied here.
  */
 export function skillRowInScope(
 	row: SkillRowIdentity,
@@ -114,6 +122,12 @@ export function hubSkillLinkIndex(
  */
 export type HubSkillState =
 	| { kind: "not-present" }
+	/**
+	 * The local inventory has not answered yet (loading, or its own refusal), so
+	 * "no link" is not a fact: an installed skill must not read "Not downloaded"
+	 * and offer a Download the server would refuse (review round 1, minor 5).
+	 */
+	| { kind: "unknown" }
 	/** Linked, no copy, subscription on: "subscribed, not installed". */
 	| { kind: "subscribed"; link: HubLink }
 	/** Copy present and subscribed. */
@@ -136,7 +150,10 @@ export type HubSkillState =
 export function hubSkillState(
 	link: HubLink | undefined,
 	update: HubUpdateItem | undefined,
+	/** False while the links inventory is loading or has failed. */
+	inventoryReady = true,
 ): HubSkillState {
+	if (!inventoryReady) return { kind: "unknown" };
 	if (!link) return { kind: "not-present" };
 	const content = hubLinkContentState(link);
 	const waiting =
@@ -156,4 +173,46 @@ export function hubSkillState(
 	return link.policy.subscribe
 		? { kind: "pulled", link }
 		: { kind: "manual", link };
+}
+
+/**
+ * Which wire form Subscribe takes, decided by ONE fact: does a link exist?
+ *
+ * Core's `hub.skillSubscribe` creates a link-without-install and, by design,
+ * leaves an EXISTING link's policy untouched (`subscribe_skill` writes only when
+ * no policy row exists). Sending it for a linked-but-unsubscribed skill returned
+ * 200 and changed nothing (review round 1, major 1), so the policy PATCH owns
+ * that case and creation owns the other.
+ */
+export function skillSubscribeAct(
+	link: HubLink | undefined,
+): "policy" | "create" {
+	return link ? "policy" : "create";
+}
+
+/**
+ * The identity of a pull REQUEST, over every field its body carries.
+ *
+ * Core fingerprints a receipt's body and refuses a mismatch with 409
+ * (`ReceiptConflict`), so an id reused after the policy moved blocked every
+ * retry until the component remounted (review round 1, major 3). A pure key
+ * keeps the "same request" rule testable without React.
+ */
+export function skillPullRequestKey(input: {
+	selected: string;
+	scope: unknown;
+	localAlias: string;
+	subscribe: boolean;
+	autoPush: boolean;
+	consent: boolean;
+}): string {
+	return JSON.stringify({
+		op: "pull",
+		selected: input.selected,
+		scope: input.scope,
+		localAlias: input.localAlias,
+		subscribe: input.subscribe,
+		autoPush: input.autoPush,
+		consent: input.consent,
+	});
 }

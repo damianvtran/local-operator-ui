@@ -176,5 +176,6 @@
 	"ui.hub.skills.unsubscribe_help": "Detiene las actualizaciones futuras. Los archivos descargados se conservan.",
 	"ui.hub.skills.public_hub": "Hub público",
 	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} habilidad} many {{count, number, ::group-off} de habilidades} other {{count, number, ::group-off} habilidades}}",
-	"ui.hub.skills.count_shared": "{count, plural, one {{count, number, ::group-off} habilidad compartida con {organization}} many {{count, number, ::group-off} de habilidades compartidas con {organization}} other {{count, number, ::group-off} habilidades compartidas con {organization}}}"
+	"ui.hub.skills.count_shared": "{count, plural, one {{count, number, ::group-off} habilidad compartida con {organization}} many {{count, number, ::group-off} de habilidades compartidas con {organization}} other {{count, number, ::group-off} habilidades compartidas con {organization}}}",
+	"ui.hub.skills.inventory_unknown": "Estado del enlace no disponible."
 }
