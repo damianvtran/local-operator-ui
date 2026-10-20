@@ -37,44 +37,89 @@ if (!globalThis.CSS)
 globalThis.toasts = [];
 
 const require = createRequire(import.meta.url);
-const bundled = await build({
-	stdin: {
-		contents:
-			'export {ManageTagsDialog} from "./src/renderer/src/features/chat/components/manage-tags-dialog"; export {ChatSessionTagsDialog} from "./src/renderer/src/features/chat/components/chat-session-tags-dialog"; export {useSessionTagsStore} from "./src/renderer/src/shared/store/session-tags-store"; export {useCanonicalSessionsStore} from "./src/renderer/src/shared/store/canonical-sessions-store";',
-		resolveDir: process.cwd(),
-	},
-	bundle: true,
-	format: "esm",
-	platform: "node",
-	write: false,
-	jsx: "automatic",
-	mainFields: ["module", "main"],
-	alias: {
-		"@features": resolve("src/renderer/src/features"),
-		"@shared": resolve("src/renderer/src/shared"),
-	},
-	plugins: [
-		{
-			name: "tag-dialog-fixtures",
-			setup(builder) {
-				// One React instance: the component tree is rendered by this file.
-				builder.onResolve({ filter: /^(react|react-dom)(\/.*)?$/ }, (args) => ({
-					path: pathToFileURL(require.resolve(args.path)).href,
-					external: true,
-				}));
-				const fixture = (name, contents) => {
-					builder.onResolve({ filter: new RegExp(`${name}$`) }, () => ({
-						path: name,
-						namespace: "tag-fixture",
-					}));
-					builder.onLoad(
-						{ filter: new RegExp(`^${name}$`), namespace: "tag-fixture" },
-						() => ({ contents, loader: "js" }),
-					);
-				};
-				fixture(
-					"canonical-sessions-store",
-					`
+
+/**
+ * A stand-in for `@shared/components/ui`, used by ONE case: the picker's
+ * Escape test.
+ *
+ * WHY IT EXISTS: driving two Escapes through the real Radix dialog in jsdom
+ * allocates without bound on CI. The desktop runner killed the process group at
+ * 10.1 GB against its 7.8 GB budget, twenty-two seconds after the other
+ * fourteen cases had passed; the same case did it locally before that. The
+ * runaway is in Radix's focus scope being torn down mid-dismissal, not in the
+ * picker, so this stub keeps the ONE contract the picker depends on and drops
+ * the focus machinery. The contract is read from the installed
+ * `@radix-ui/react-dismissable-layer` source: `onEscapeKeyDown` runs first, and
+ * the layer dismisses only when that handler leaves the event unprevented. The
+ * real primitive's dismissal is still exercised elsewhere in this file by
+ * `manage Escape closes without writing or reverting`.
+ */
+const UI_STUB = `
+import React from "react";
+const Ctx = React.createContext(() => {});
+export const Dialog = ({ open = true, onOpenChange = () => {}, children }) =>
+	open ? React.createElement(Ctx.Provider, { value: onOpenChange }, children) : null;
+export const DialogContent = React.forwardRef((props, ref) => {
+	const onOpenChange = React.useContext(Ctx);
+	const {
+		onEscapeKeyDown,
+		onCloseAutoFocus,
+		onOpenAutoFocus,
+		onInteractOutside,
+		closeDisabled,
+		className,
+		children,
+		...rest
+	} = props;
+	React.useEffect(() => {
+		const onKeyDown = (event) => {
+			if (event.key !== "Escape") return;
+			onEscapeKeyDown?.(event);
+			if (!event.defaultPrevented) {
+				event.preventDefault();
+				onOpenChange(false);
+			}
+		};
+		document.addEventListener("keydown", onKeyDown, { capture: true });
+		return () => document.removeEventListener("keydown", onKeyDown, { capture: true });
+	}, [onEscapeKeyDown, onOpenChange]);
+	return React.createElement("div", { ...rest, ref, role: "dialog" }, children);
+});
+export const DialogHeader = ({ children }) => React.createElement("div", null, children);
+export const DialogFooter = ({ children }) => React.createElement("footer", null, children);
+export const DialogTitle = React.forwardRef(({ children }, ref) =>
+	React.createElement("h2", { ref }, children));
+export const DialogDescription = ({ children }) => React.createElement("p", null, children);
+export const Button = React.forwardRef(({ variant, size, type, children, ...rest }, ref) =>
+	React.createElement("button", { ...rest, ref, type: type ?? "button" }, children));
+export const Input = React.forwardRef((props, ref) => React.createElement("input", { ...props, ref }));
+`;
+
+/**
+ * Fixtures both bundles share: one React instance, the canonical store, the
+ * toast sink and the locale hook. Registered per build because an esbuild
+ * plugin instance cannot be reused across builds.
+ */
+function tagDialogFixtures({ uiStub }) {
+	return (builder) => {
+		// One React instance: the component tree is rendered by this file.
+		builder.onResolve({ filter: /^(react|react-dom)(\/.*)?$/ }, (args) => ({
+			path: pathToFileURL(require.resolve(args.path)).href,
+			external: true,
+		}));
+		const fixture = (name, contents) => {
+			builder.onResolve({ filter: new RegExp(`${name}$`) }, () => ({
+				path: name,
+				namespace: "tag-fixture",
+			}));
+			builder.onLoad(
+				{ filter: new RegExp(`^${name}$`), namespace: "tag-fixture" },
+				() => ({ contents, loader: "js" }),
+			);
+		};
+		fixture(
+			"canonical-sessions-store",
+			`
 const state = { sessions: [], fetchSessions: async () => {} };
 export const useCanonicalSessionsStore = Object.assign(() => state, {
   getState: () => state,
@@ -82,19 +127,65 @@ export const useCanonicalSessionsStore = Object.assign(() => state, {
 });
 export const setCanonicalSessions = (sessions) => { state.sessions = sessions; };
 `,
-				);
-				fixture(
-					"toast-manager",
-					"export const showSuccessToast = (message) => globalThis.toasts.push(message); export const showWarningToast = (message) => globalThis.toasts.push(message);",
-				);
-				fixture("use-locale", 'export const useI18nLocale = () => "en";');
-			},
+		);
+		fixture(
+			"toast-manager",
+			"export const showSuccessToast = (message) => globalThis.toasts.push(message); export const showWarningToast = (message) => globalThis.toasts.push(message);",
+		);
+		fixture("use-locale", 'export const useI18nLocale = () => "en";');
+		if (uiStub) {
+			builder.onResolve({ filter: /^@shared\/components\/ui$/ }, () => ({
+				path: "ui-stub",
+				namespace: "tag-fixture",
+			}));
+			builder.onLoad({ filter: /^ui-stub$/, namespace: "tag-fixture" }, () => ({
+				contents: UI_STUB,
+				loader: "js",
+			}));
+		}
+	};
+}
+
+const tagBundle = (contents, { uiStub = false } = {}) =>
+	build({
+		stdin: { contents, resolveDir: process.cwd() },
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+		jsx: "automatic",
+		mainFields: ["module", "main"],
+		alias: {
+			"@features": resolve("src/renderer/src/features"),
+			"@shared": resolve("src/renderer/src/shared"),
 		},
-	],
-});
-const api = await import(
-	`data:text/javascript;base64,${Buffer.from(`${bundled.outputFiles[0].text}\n//# sourceURL=chat-tag-dialogs-fixture.mjs`).toString("base64")}`
+		plugins: [
+			{ name: "tag-dialog-fixtures", setup: tagDialogFixtures({ uiStub }) },
+		],
+	});
+
+const loadBundle = (result, name) =>
+	import(
+		`data:text/javascript;base64,${Buffer.from(`${result.outputFiles[0].text}\n//# sourceURL=${name}`).toString("base64")}`
+	);
+
+const api = await loadBundle(
+	await tagBundle(
+		'export {ManageTagsDialog} from "./src/renderer/src/features/chat/components/manage-tags-dialog"; export {ChatSessionTagsDialog} from "./src/renderer/src/features/chat/components/chat-session-tags-dialog"; export {useSessionTagsStore} from "./src/renderer/src/shared/store/session-tags-store"; export {useCanonicalSessionsStore} from "./src/renderer/src/shared/store/canonical-sessions-store";',
+	),
+	"chat-tag-dialogs-fixture.mjs",
 );
+
+// The same component tree against the stubbed dialog shell: its own module
+// instances, so this bundle carries its own store and exports it for the case.
+const stub = await loadBundle(
+	await tagBundle(
+		'export {ChatSessionTagsDialog} from "./src/renderer/src/features/chat/components/chat-session-tags-dialog"; export {useSessionTagsStore} from "./src/renderer/src/shared/store/session-tags-store";',
+		{ uiStub: true },
+	),
+	"chat-tag-dialogs-stub.mjs",
+);
+
 const { createRoot } = await import("react-dom/client");
 const root = createRoot(document.getElementById("root"));
 
@@ -690,18 +781,24 @@ test("Escape collapses the picker list, then closes the dialog, without writing"
 		primary: "a",
 		tags_revision: "revision-1",
 	};
+	// This case runs against the stubbed dialog shell, so it configures THAT
+	// bundle's store instance - the real bundle's store is a separate module.
+	stub.useSessionTagsStore.setState({
+		categories: registry,
+		loading: false,
+		error: null,
+	});
 	const seen = [];
 	/*
-	 * THE SIDEBAR'S OWN SHAPE, and it is load-bearing: `tagRow` becomes null when
-	 * the dialog asks to close, so a dismissed dialog unmounts instead of lingering
-	 * mounted with `open` still true. That is also what ends Radix's focus scope;
-	 * a dialog that asked to close but stays mounted keeps re-trapping focus, and
-	 * driving that state twice was the case that ran away in an earlier harness.
+	 * THE SIDEBAR'S OWN SHAPE: `tagRow` becomes null when the dialog asks to
+	 * close, so the dismissed dialog unmounts. The stub makes that the only
+	 * teardown path, which is why this case is bounded where the same two
+	 * presses against Radix's focus scope were not.
 	 */
 	const Picker = () => {
 		const [open, setOpen] = React.useState(true);
 		if (!open) return null;
-		return React.createElement(api.ChatSessionTagsDialog, {
+		return React.createElement(stub.ChatSessionTagsDialog, {
 			row,
 			onClose: () => {
 				seen.push("closed");
