@@ -3,10 +3,12 @@
  * QA measurement harness for PR #1259's Library preview evidence.
  *
  * This is the run behind the "Measurements" table in the set's README: one
- * private headless Chrome for the whole run, each case navigating the real
- * Storybook story, waiting for the hook it is about, driving the gesture
- * through CDP input (real pointer and key events), and printing the values the
- * browser resolved. The process group is reaped by exact pid at the end.
+ * private headless Chrome for the whole run (the repository's `chrome-keychain`
+ * switch applied, so it never reaches Keychain Services under a scratch
+ * profile), each case navigating the real Storybook story, waiting for the hook
+ * it is about, driving the gesture through CDP input (real pointer and key
+ * events), and printing the values the browser resolved. The process group is
+ * reaped by exact pid at the end.
  *
  * It is a RIG, not a test: the committed frames are the evidence and the
  * capture tuples' claims are what a sweep can fail on. This script exists so a
@@ -19,22 +21,22 @@ import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { withMockKeychain } from "../../../../scripts/chrome-keychain.mjs";
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const ORIGIN = process.argv[2] ?? "http://localhost:6017";
 const profile = mkdtempSync(join(tmpdir(), "lo-qa-claims-"));
 const chrome = spawn(
 	CHROME,
-	[
+	withMockKeychain([
 		"--headless=new",
 		"--no-sandbox",
 		"--disable-gpu",
 		"--hide-scrollbars",
 		`--user-data-dir=${profile}`,
 		"--remote-debugging-port=0",
-		"--use-mock-keychain",
 		"about:blank",
-	],
+	]),
 	{ env: { ...process.env, TZ: "America/New_York" }, detached: true },
 );
 /*
