@@ -506,6 +506,41 @@ test("surface F withholds writes but still opens an existing DM", () => {
 	assert.match(withDm, /aria-label="Message Bea"/);
 });
 
+test("surface F withholds Join and the conversation menu", () => {
+	/*
+	 * ROUND-2 MINOR-1. The composer is not the only write beside a thread: Join
+	 * posts a membership and the overflow menu writes a notification preference.
+	 * Both are gated on the same read_only fact; the preview keeps its reason,
+	 * and a writable conversation keeps its menu so the gate is not a blanket
+	 * removal.
+	 */
+	const preview = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				readOnly: true,
+				selected: conversation({ discoverable: true, member: false }),
+			}),
+		),
+	);
+	assert.match(preview, /You’re previewing this channel\./);
+	assert.doesNotMatch(preview, />Join</);
+	assert.match(preview, /This organization is read-only\./);
+
+	const member = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({ readOnly: true, selected: conversation() }),
+		),
+	);
+	assert.doesNotMatch(member, /Conversation options/);
+
+	const writable = renderToStaticMarkup(
+		createElement(TeamBridgePageView, viewProps({ selected: conversation() })),
+	);
+	assert.match(writable, /Conversation options/);
+});
+
 test("an unanswered gate holds the page and draws no conversation chrome", () => {
 	// ROUND-1 U-6: the first paint is held until the status answers, and the
 	// container disables the read set in the same state.

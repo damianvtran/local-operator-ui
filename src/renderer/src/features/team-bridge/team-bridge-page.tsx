@@ -1017,7 +1017,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											)}
 										</span>
 									))}
-								{!previewSelected && onNotifyChange && (
+								{!previewSelected && !readOnly && onNotifyChange && (
 									<TeamBridgeConversationMenu
 										conversation={selected}
 										onNotifyChange={onNotifyChange}
@@ -1042,6 +1042,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									<TeamBridgePreviewBanner
 										joining={joining}
 										joinFailed={joinFailed}
+										readOnly={readOnly}
 										onJoin={onJoin}
 									/>
 								) : (
@@ -1198,8 +1199,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 export const TeamBridgePreviewBanner: FC<{
 	joining?: boolean;
 	joinFailed?: boolean;
+	/**
+	 * Surface F: the server refuses every write, so Join is not offered. The
+	 * reader still needs the reason beside the preview copy rather than a
+	 * disabled button that would be fake chrome (round-2 MINOR-1).
+	 */
+	readOnly?: boolean;
 	onJoin?: () => void;
-}> = ({ joining = false, joinFailed = false, onJoin }) => {
+}> = ({ joining = false, joinFailed = false, readOnly = false, onJoin }) => {
 	useI18nLocale();
 	return (
 		<div className="flex flex-1 items-center justify-center px-6 py-10">
@@ -1212,15 +1219,21 @@ export const TeamBridgePreviewBanner: FC<{
 						{t("ui.teamBridge.preview.join_error")}
 					</p>
 				)}
-				<Button
-					type="button"
-					size="sm"
-					variant="primary"
-					disabled={joining}
-					onClick={onJoin}
-				>
-					{t("ui.teamBridge.preview.join")}
-				</Button>
+				{readOnly ? (
+					<p className="text-[12px] leading-snug text-ink-dim">
+						{t("ui.teamBridge.read_only.note")}
+					</p>
+				) : (
+					<Button
+						type="button"
+						size="sm"
+						variant="primary"
+						disabled={joining}
+						onClick={onJoin}
+					>
+						{t("ui.teamBridge.preview.join")}
+					</Button>
+				)}
 			</div>
 		</div>
 	);
