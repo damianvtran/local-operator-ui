@@ -102,3 +102,52 @@ Merged main bbea8a3db9 (including #1235's authoritative generated files) after t
 Only the five HTML-backed current open frames changed and were re-captured/opened: r1-dark-open.png, r1-dark-open-settled.png, r1-light-open.png, r1-dark-mixed-open.png, r1-light-mixed-open.png. The closed dark control was independently captured to scratch and proved byte-identical; the other18 retained PNGs were left unchanged. The current settled frame is790×364px (previous prelude370px), top297.19px; visible chart bars and the prelude's right-edge scrollbar track are retained as main renders them. The two dark open captures remain byte-identical; the hash above is updated to this generation. One too-early light capture still showed the loading reserve, so it was rejected/replaced only after the accessible loading status disappeared and the iframe measured its settled364px. No rejected still is committed.
 
 Owned browser tabs closed; server groups88835 and14681 reaped; local docgen-only fallback restored; isolated HOME removed. No unaffected frame was re-shot. The prior coverage limits remain unchanged.
+
+## Round-1 remediation of the default-open follow-up — alignment (head `956a24b7b1`)
+
+The reviewer measured the disclosed body indented by the shared Disclosure's one
+chevron column: frame 790px at x=247.5 against the paragraph's 810px at x=227.5,
+so the chart sat 20px right of the answer text and reflowed 20px left when the
+work bar expanded. `SupplementRow` now opts its own graphics body back out of
+that indent with the SAME spacing token (`-ml-5 w-[calc(100%+1.25rem)]`), local
+to this call site; every other disclosure consumer keeps the shared indent.
+
+Measured in the browser on the shipped `folded-condensed-components` /
+`local-graphics-mixed` / `local-graphics-narrow` stories (CSS px):
+
+| State | Paragraph | Frame | Delta |
+| --- | --- | --- | --- |
+| condensed default, 900px story | 810 at x=227.5 | 810 at x=227.5 | 0px |
+| work bar expanded | 810 at x=227.5 | 810 at x=227.5 | 0px |
+| condensed mixed | 810 at x=227.5 | 810 at x=227.5 | 0px |
+| condensed narrow, 360px container | 250 at x=55 | 250 at x=55 | 0px |
+
+The frame's height (390.4px) is the chart document's own; only the horizontal
+alignment changed. This supersedes the "790x364px at top 297.19px" note above,
+which described the pre-alignment indent.
+
+### New frames (browser tool, 1280x720 CSS / 2560x1440 PNG, opened before commit)
+
+| Frame | State |
+| --- | --- |
+| `after-dark-default-open.png` | Condensed default, dark: `Hide 2 graphics` and the chart, aligned to the answer column; work bar still folded. |
+| `after-light-default-open.png` | Light counterpart. |
+| `after-dark-work-expanded-top.png` | Work bar expanded: the trace appears and the chart keeps the same left edge and width (the focus ring on the bar is the synthetic click). |
+| `after-dark-local-mixed-default-open.png` | Condensed mixed finish: actionable file rows then the aligned chart. |
+| `after-dark-narrow-default-open.png` | 360px story container: frame and paragraph both 250px at x=55, no horizontal escape. |
+
+`after-dark-hidden.png` is deliberately NOT committed: with the body hidden the
+frame draws nothing, so it is byte-identical to the retained `r1-dark-closed.png`
+(SHA-256 `faecc64f...`). The `before-*` frames referenced in the PR body are
+those same retained `r1-*-closed.png` files; copying them under new names would
+be a duplicate still.
+
+### Sweep recapture
+
+`docs/evidence/chat-turn-supplements/folded-condensed-components/{localOperatorDark,localOperatorLight}.webp`
+were re-captured at `956a24b7b1` through the repository rig
+(`--only=chat-turn-supplements--folded-condensed-components --themes=localOperatorDark,localOperatorLight --allow-backend`)
+at 900x760, replacing the stale 900x400 frames of the old closed default. The
+`folded-condensed-mixed` and `folded-condensed-narrow` sweeps remain stale: that
+story has a pre-existing answer/supplement anchor mismatch (it renders the
+expanded form) and this change does not touch it.
