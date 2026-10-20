@@ -171,11 +171,13 @@ try {
 			observations.detail = {
 				description: await text('[data-testid="hub-skill-description"]'),
 				localPath: await text('[data-testid="hub-skill-local-path"]'),
-				alias: await cdp.evaluate(
-					`(() => { const el = document.querySelector('[data-testid="hub-skill-alias"]'); return el ? el.value : null; })()`,
-				),
+				/*
+				 * The alias is the skill's own name now: the separate alias field
+				 * belonged to the three-acts form that the design round removed.
+				 */
+				alias: await text('[data-testid="hub-skill-detail-name"]'),
 				fileSummaries: await cdp.evaluate(`(() =>
-					Array.from(document.querySelectorAll('[data-hub-skills-library] details summary')).map(
+					Array.from(document.querySelectorAll('[data-hub-skill-detail] details summary')).map(
 						(el) => el.textContent.trim(),
 					)
 				)()`),
