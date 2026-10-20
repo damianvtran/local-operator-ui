@@ -1,0 +1,8 @@
+{
+	"ui.chat.tag_dialogs.picker_description": "Changes save immediately. Select a tag to add it, or deselect it to remove it.",
+	"ui.chat.tag_dialogs.manage_description": "Create, rename and order tags. Changes save immediately.",
+	"ui.chat.tag_dialogs.close": "Close",
+	"ui.chat.tag_dialogs.deleted_name": "Deleted “{name}”",
+	"ui.chat.tag_dialogs.created_assigned": "Created “{name}” and added it to this conversation",
+	"ui.chat.tag_dialogs.assign_created_failed": "“{name}” was created, but it could not be added to this conversation. Select it from the list to add it."
+}

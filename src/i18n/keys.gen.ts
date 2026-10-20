@@ -40,6 +40,7 @@ import enUiChatHeader from "./catalogues/en/ui.chat.header.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
+import enUiChatTagDialogs from "./catalogues/en/ui.chat.tag_dialogs.json";
 import enUiChatTags from "./catalogues/en/ui.chat.tags.json";
 import enUiChatTranscriptCopy from "./catalogues/en/ui.chat.transcript_copy.json";
 import enUiCodeReview from "./catalogues/en/ui.code_review.json";
@@ -513,6 +514,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChat,
 	...enUiChatResponseActions,
 	...enUiChatSidebarView,
+	...enUiChatTagDialogs,
 	...enUiChatTags,
 	...enUiChatTranscriptCopy,
 	...enUiCodeReview,
@@ -1709,6 +1711,12 @@ export type MessageParams = {
 	"ui.chat.sidebar_view.sections": undefined;
 	"ui.chat.sidebar_view.time_basis": undefined;
 	"ui.chat.sidebar_view.time_section": undefined;
+	"ui.chat.tag_dialogs.assign_created_failed": { name: string };
+	"ui.chat.tag_dialogs.close": undefined;
+	"ui.chat.tag_dialogs.created_assigned": { name: string };
+	"ui.chat.tag_dialogs.deleted_name": { name: string };
+	"ui.chat.tag_dialogs.manage_description": undefined;
+	"ui.chat.tag_dialogs.picker_description": undefined;
 	"ui.chat.tags.add": undefined;
 	"ui.chat.tags.apply": undefined;
 	"ui.chat.tags.apply_deletion_first": { name: string };

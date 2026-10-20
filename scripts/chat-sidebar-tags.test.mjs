@@ -319,17 +319,33 @@ test("clear uses one assignment and settles the canonical row on the response", 
 	assert.equal(canonical.getState().sessions[0].primary, null);
 });
 
-test("management has one explicit desired-state write and buffered local operations", () => {
+test("management writes every create, rename, reorder and delete immediately with no Apply transaction", () => {
 	const source = readFileSync(
 		"src/renderer/src/features/chat/components/manage-tags-dialog.tsx",
 		"utf8",
 	);
-	assert.equal(source.split("await replaceCategories(").length - 1, 1);
-	assert.ok(source.includes("await replaceCategories(draft)"));
-	assert.ok(source.includes("setDraft(next)"));
-	assert.ok(source.includes('t("ui.chat.tags.cancel")'));
-	assert.ok(source.includes('t("ui.chat.tags.apply")'));
-	assert.ok(!source.includes('t("ui.chat.tags.done")'));
+	assert.ok(!source.includes("setDraft"), "no staged draft remains");
+	assert.ok(!source.includes('t("ui.chat.tags.apply")'), "no Apply action");
+	assert.ok(!source.includes('t("ui.chat.tags.done")'), "no relabelled Apply");
+	assert.ok(
+		source.split("await write(").length - 1 >= 4,
+		"create, rename, reorder and delete each commit",
+	);
+	assert.ok(source.includes('t("ui.chat.tag_dialogs.close")'));
+	// The destructive path keeps a per-action confirmation, not a dialog-wide one.
+	assert.ok(source.includes('t("ui.chat.tags.delete_description"'));
+	assert.ok(source.includes('t("ui.chat.tags.delete_tag")'));
+	const copy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.tag_dialogs.json", "utf8"),
+	);
+	assert.equal(
+		copy["ui.chat.tag_dialogs.manage_description"],
+		"Create, rename and order tags. Changes save immediately.",
+	);
+	assert.equal(
+		copy["ui.chat.tag_dialogs.picker_description"],
+		"Changes save immediately. Select a tag to add it, or deselect it to remove it.",
+	);
 });
 test("assignment confirms the exact grouped or Untagged success copy after the write", () => {
 	const copy = JSON.parse(
@@ -353,10 +369,16 @@ test("assignment confirms the exact grouped or Untagged success copy after the w
 	);
 	assert.ok(
 		source.includes(
-			't("ui.chat.tags.updated_grouped", { tag: primaryTag.name })',
+			't("ui.chat.tags.updated_grouped", { tag: tag.name })',
 		),
 	);
 	assert.ok(source.includes('t("ui.chat.tags.updated_untagged")'));
+	// Create resolves the new tag from the registry the write returned, then
+	// assigns it in the same interaction; it never waits for Apply.
+	assert.ok(source.includes("const registry = await replaceCategories("));
+	assert.ok(source.includes("registry.find((tag) => tag.name === name)"));
+	assert.ok(source.includes("await writeAssignment(next, fallback"));
+	assert.ok(!source.includes('t("ui.chat.tags.apply")'));
 });
 
 test("delete plus name-only recreation is blocked without blocking normal add/delete", () => {
