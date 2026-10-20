@@ -337,6 +337,22 @@ async function mount(bridge, body) {
 		 * observer already disconnected is skipped rather than handed a second
 		 * entry.
 		 */
+		revealSome: async (count) => {
+			let revealed = 0;
+			act(() => {
+				for (const observer of [...observers]) {
+					if (revealed >= count) break;
+					if (observer.disconnected || observer.target === null) continue;
+					observer.callback(
+						[{ isIntersecting: true, target: observer.target }],
+						observer,
+					);
+					revealed += 1;
+				}
+			});
+			await api.settle();
+			return revealed;
+		},
 		revealAll: async () => {
 			act(() => {
 				for (const observer of [...observers]) {
@@ -465,15 +481,11 @@ test("Next and Previous walk that update's media, wrapping at both ends", async 
 
 		const next = () =>
 			api.click(
-				api.document.querySelector(
-					'[role="dialog"] button[aria-label="Next image"]',
-				),
+				api.document.querySelector('[role="dialog"] [data-image-viewer-next]'),
 			);
 		const previous = () =>
 			api.click(
-				api.document.querySelector(
-					'[role="dialog"] button[aria-label="Previous image"]',
-				),
+				api.document.querySelector('[role="dialog"] [data-image-viewer-prev]'),
 			);
 
 		await next();
@@ -644,6 +656,233 @@ test("a spreadsheet still falls back to the OS app", async () => {
 			`/tmp/project-update-assets/table-${fixtureId}.csv`,
 		]);
 		assert.equal(dialog(api.document), null, "no in-app preview for a sheet");
+	});
+});
+
+/* -------------------------------------------------------------- focus return */
+
+/**
+ * Radix's modal path restores focus to a `DialogTrigger` this composition does
+ * not have; without an explicit target every exit lands on `<body>`, and the
+ * reader's next Tab starts from the top of the app. These cases press the
+ * tile, close by each door, and read `document.activeElement`.
+ */
+const imageButton = (document) =>
+	document.querySelector('[data-project-asset-tile="image"] button');
+const previewButton = (document, name) =>
+	document.querySelector(`button[aria-label="Preview ${name}"]`);
+
+test("Escape returns focus to the pressed picture tile", async () => {
+	const update = fixture();
+	await mount(null, async (api) => {
+		await api.render(
+			React.createElement(ProjectUpdateAssets, {
+				attachments: update.attachments,
+			}),
+		);
+		await api.revealAll();
+		const tile = imageButton(api.document);
+		assert.ok(tile, "the picture tile");
+		tile.focus();
+		await api.click(tile);
+		assert.ok(dialog(api.document));
+		await api.pressEscape(() => dialog(api.document) === null);
+		assert.equal(
+			api.document.activeElement,
+			tile,
+			"Escape hands focus back to the tile",
+		);
+	});
+});
+
+test("the X returns focus to the pressed picture tile", async () => {
+	const update = fixture();
+	await mount(null, async (api) => {
+		await api.render(
+			React.createElement(ProjectUpdateAssets, {
+				attachments: update.attachments,
+			}),
+		);
+		await api.revealAll();
+		const tile = imageButton(api.document);
+		assert.ok(tile, "the picture tile");
+		tile.focus();
+		await api.click(tile);
+		assert.ok(dialog(api.document));
+		await api.click(
+			api.document.querySelector('button[aria-label="Close asset"]'),
+		);
+		await api.settle(() => dialog(api.document) === null);
+		assert.equal(
+			api.document.activeElement,
+			tile,
+			"the close control hands focus back to the tile",
+		);
+	});
+});
+
+test("Escape returns focus to the pressed note tile", async () => {
+	const update = fixture();
+	await mount(null, async (api) => {
+		await api.render(
+			React.createElement(ProjectUpdateAssets, {
+				attachments: update.attachments,
+			}),
+		);
+		const tile = previewButton(api.document, `notes-${fixtureId}.md`);
+		assert.ok(tile, "the markdown tile");
+		tile.focus();
+		await api.click(tile);
+		await api.settle(() => dialog(api.document) !== null);
+		await api.pressEscape(() => dialog(api.document) === null);
+		assert.equal(
+			api.document.activeElement,
+			tile,
+			"Escape hands focus back to the file tile",
+		);
+	});
+});
+
+test("the preview X returns focus to the pressed note tile", async () => {
+	const update = fixture();
+	await mount(null, async (api) => {
+		await api.render(
+			React.createElement(ProjectUpdateAssets, {
+				attachments: update.attachments,
+			}),
+		);
+		const tile = previewButton(api.document, `notes-${fixtureId}.md`);
+		assert.ok(tile, "the markdown tile");
+		tile.focus();
+		await api.click(tile);
+		await api.settle(() => dialog(api.document) !== null);
+		await api.click(
+			api.document.querySelector('[role="dialog"] button[aria-label="Close"]'),
+		);
+		await api.settle(() => dialog(api.document) === null);
+		assert.equal(
+			api.document.activeElement,
+			tile,
+			"the close control hands focus back to the file tile",
+		);
+	});
+});
+
+test("a failed read shows reader copy, never the path or the syscall", async () => {
+	const update = fixture();
+	const failed = {
+		readFile: async () => ({
+			success: false,
+			error: new Error(
+				"ENOENT: no such file or directory, open '/Users/dana/private/notes.md'",
+			),
+		}),
+	};
+	await mount(failed, async (api) => {
+		await api.render(
+			React.createElement(ProjectUpdateAssets, {
+				attachments: update.attachments,
+			}),
+		);
+		const tile = previewButton(api.document, `notes-${fixtureId}.md`);
+		assert.ok(tile, "the markdown tile");
+		await api.click(tile);
+		await api.settle(() =>
+			dialog(api.document)?.textContent?.includes("could not be opened"),
+		);
+		const text = dialog(api.document)?.textContent ?? "";
+		assert.match(text, /This file could not be opened\./);
+		assert.match(text, /stored copy may have moved or was deleted/);
+		assert.doesNotMatch(text, /ENOENT/);
+		assert.doesNotMatch(text, /\/Users\//);
+	});
+});
+
+test("the gallery shares one read per path across tile, filmstrip and layer", async () => {
+	fixture();
+	const attachments = [
+		attachment(`shot-a-${fixtureId}.png`, "image"),
+		attachment(`shot-b-${fixtureId}.png`, "image"),
+	];
+	await mount(null, async (api) => {
+		await api.render(React.createElement(ProjectUpdateAssets, { attachments }));
+		await api.revealAll();
+		assert.equal(
+			api.readings.bytes.length,
+			2,
+			"one read per picture for the two tiles",
+		);
+
+		await api.click(
+			api.document.querySelector(
+				`button[aria-label="Open shot-a-${fixtureId}.png"]`,
+			),
+		);
+		await api.settle(() => viewerImage(api.document) !== null);
+		assert.equal(
+			api.readings.bytes.length,
+			2,
+			"the lightbox reuses the tile's cached bytes",
+		);
+
+		await api.click(api.document.querySelector("[data-image-viewer-next]"));
+		await api.settle(() => viewerImage(api.document) !== null);
+		assert.equal(
+			api.readings.bytes.length,
+			2,
+			"the second slide reuses the second tile's bytes",
+		);
+
+		const tiles = filmstripButtons(api.document);
+		assert.ok(tiles.length >= 2, "the strip has both pictures");
+		await api.click(tiles[0]);
+		await api.settle();
+		assert.equal(
+			api.readings.bytes.length,
+			2,
+			"a filmstrip jump reuses the same cache entry",
+		);
+	});
+});
+
+test("a 40-update feed admits only the slots it has seen", async () => {
+	fixture();
+	const updates = Array.from({ length: 40 }, (_, index) => [
+		attachment(`perf-shot-${fixtureId}-${index}.png`, "image"),
+		attachment(`perf-sound-${fixtureId}-${index}.mp3`, "audio"),
+		attachment(`perf-note-${fixtureId}-${index}.md`, "data"),
+	]);
+	await mount(null, async (api) => {
+		await api.render(
+			React.createElement(
+				React.Fragment,
+				null,
+				updates.map((attachments, index) =>
+					React.createElement(ProjectUpdateAssets, {
+						key: index,
+						attachments,
+					}),
+				),
+			),
+		);
+		await api.settle();
+		assert.equal(
+			api.document.querySelectorAll('[data-project-asset-tile="image"]').length,
+			40,
+			"every slot is reserved up front",
+		);
+		assert.deepEqual(
+			api.readings.bytes,
+			[],
+			"a 120-file feed opens without reading one",
+		);
+		const admitted = await api.revealSome(4);
+		assert.equal(admitted, 4, "four observers were near the viewport");
+		assert.equal(
+			api.readings.bytes.length,
+			4,
+			"four admissions, not 120 reads",
+		);
 	});
 });
 

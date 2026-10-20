@@ -29,7 +29,9 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import struct
+import subprocess
 import sys
 import wave
 import zlib
@@ -72,6 +74,33 @@ def write_png(path: Path, width: int, height: int, top: tuple, bottom: tuple) ->
         + _png_chunk(b"IEND", b"")
     )
     path.write_bytes(data)
+
+
+def _usable_ffmpeg() -> str | None:
+    """The first candidate that is a real encoder, not a launcher stub.
+
+    The app's bin directory carries a nine-byte `ffmpeg` placeholder on this
+    machine, and it sits ahead of Homebrew on PATH, so `shutil.which` alone
+    finds a file that cannot encode anything. `-version` is the check that
+    tells the two apart.
+    """
+    candidates = [
+        shutil.which("ffmpeg"),
+        "/opt/homebrew/bin/ffmpeg",
+        str(Path.home() / "Library/Application Support/Local Operator/bin/ffmpeg"),
+    ]
+    for candidate in candidates:
+        if not candidate:
+            continue
+        try:
+            probe = subprocess.run(
+                [candidate, "-version"], capture_output=True, timeout=10, check=False
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if probe.returncode == 0 and b"ffmpeg version" in probe.stdout:
+            return candidate
+    return None
 
 
 def write_wav(path: Path, seconds: float = 0.4, rate: int = 22050) -> None:
@@ -121,11 +150,37 @@ def main() -> int:
     first = assets / "dashboard-cutover.png"
     second = assets / "parity.png"
     sound = assets / "standup.wav"
+    clip = assets / "standup.mp4"
     note = assets / "release-notes.md"
 
     write_png(first, 240, 150, (31, 111, 235), (126, 231, 135))
     write_png(second, 180, 180, (219, 109, 40), (245, 222, 179))
     write_wav(sound)
+    # A real short clip for the video tile. ffmpeg is present in the app's own
+    # runtime bundle; when it is not, the seed still succeeds and the grid
+    # simply has no clip (the scene does not assert one).
+    ffmpeg = _usable_ffmpeg()
+    if ffmpeg is not None:
+        try:
+            subprocess.run(
+                [
+                    ffmpeg,
+                    "-y",
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    "color=c=#1f6feb:s=320x180:d=1",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-movflags",
+                    "+faststart",
+                    str(clip),
+                ],
+                check=True,
+                capture_output=True,
+            )
+        except (OSError, subprocess.CalledProcessError):
+            clip.unlink(missing_ok=True)
     note.write_text(
         f"# {NOTE_HEADING}\n\n"
         "The asset grid is reading the seeded files, not a fixture.\n\n"
@@ -163,7 +218,9 @@ def main() -> int:
             )
         ),
         reporter="operator",
-        attachments=[first, second, sound, note],
+        attachments=[first, second, sound, note, clip]
+        if clip.exists()
+        else [first, second, sound, note],
     )
 
     print(f"project: {args.name} ({created.id})")

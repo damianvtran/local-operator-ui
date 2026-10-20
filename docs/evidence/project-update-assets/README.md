@@ -31,10 +31,14 @@ same path the `project` tool and the desktop routes use. It generates:
 - `parity.png` — a 180x180 gradient with a different structure;
 - `standup.wav` — 0.4 s of a 440 Hz tone;
 - `release-notes.md` — the note whose heading (`Rig evidence note`) the driver
-  asserts in the in-app reader.
+  asserts in the in-app reader;
+- `standup.mp4` — a one-second 320x180 clip when a real `ffmpeg` is reachable
+  (Homebrew's, or a bundled one that answers `-version`). The seed still
+  succeeds without it; the grid then has no video tile, and the scene does not
+  assert one.
 
-The project receives TWO updates: the first text-only, the second carrying all
-four files. That is what puts the grid under the newest entry.
+The project receives TWO updates: the first text-only, the second carrying the
+generated files. That is what puts the grid under the newest entry.
 
 ## The run, exactly
 
@@ -85,7 +89,7 @@ node scripts/renderer-driver.mjs --scene project-update-assets \
 
 | Frame (`dark/`, `light/`) | State |
 | --- | --- |
-| `grid.png` | the newest update's grid at rest: two 117x78 picture tiles, the compact sound player spanning two columns, and the markdown note's file tile, with the update's text above them |
+| `grid.png` | the newest update's grid at rest: four 117px columns — two picture tiles and the compact sound player (two columns) on the first row, the clip and the markdown note's file tile on the second — with the update's text above them |
 | `lightbox.png` | the shared `ImageLightbox` over the update's media set, opened from the first picture, filmstrip along the bottom |
 | `next.png` | after Next: the gallery is on the second picture, the filmstrip mark moved with it |
 | `filmstrip.png` | after a filmstrip jump back to the first slot |

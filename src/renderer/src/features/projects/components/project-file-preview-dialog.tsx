@@ -25,10 +25,11 @@
  */
 
 import { isMarkdownFile } from "@features/chat/utils/is-markdown-file";
+import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { Dialog, DialogContent, DialogTitle } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import type { FC } from "react";
+import type { FC, RefObject } from "react";
 import { useEffect, useState } from "react";
 import type { DesktopProjectAttachment } from "../../../../../shared/desktop-control-contract";
 import { ProjectMarkdown } from "../project-markdown";
@@ -36,12 +37,19 @@ import { ProjectMarkdown } from "../project-markdown";
 type PreviewState =
 	| { status: "loading" }
 	| { status: "ready"; text: string }
-	| { status: "error"; message: string };
+	| { status: "unavailable" }
+	| { status: "error" };
 
 export type ProjectFilePreviewDialogProps = {
 	open: boolean;
 	attachment: DesktopProjectAttachment | null;
 	onClose: () => void;
+	/**
+	 * The tile that opened this reader. Radix's close path focuses a
+	 * `DialogTrigger` this composition does not have, so the caller hands over
+	 * the pressed button and the dialog focuses it on the way out.
+	 */
+	restoreFocusTo?: RefObject<HTMLElement | null>;
 };
 
 /** The filename a header falls back to when the writer named nothing. */
@@ -66,8 +74,15 @@ export const ProjectFilePreviewDialog: FC<ProjectFilePreviewDialogProps> = ({
 	open,
 	attachment,
 	onClose,
+	restoreFocusTo,
 }) => {
 	useI18nLocale();
+	/*
+	 * A native `WebContentsView` paints above all DOM, so an overlay opened
+	 * over a page with a browser pane mounted must stand the view down - the
+	 * same call the shared lightbox makes.
+	 */
+	useSuppressBrowserView(open, "project-file-preview");
 	const [state, setState] = useState<PreviewState>({ status: "loading" });
 	const path = attachment?.path ?? null;
 	const markdown = attachment
@@ -81,10 +96,7 @@ export const ProjectFilePreviewDialog: FC<ProjectFilePreviewDialogProps> = ({
 
 		const readFile = window.api?.readFile;
 		if (typeof readFile !== "function") {
-			setState({
-				status: "error",
-				message: t("ui.projects.project_updates.preview_unavailable"),
-			});
+			setState({ status: "unavailable" });
 			return;
 		}
 
@@ -93,22 +105,22 @@ export const ProjectFilePreviewDialog: FC<ProjectFilePreviewDialogProps> = ({
 				const result = await readFile(path);
 				if (!live) return;
 				if (!result.success) {
-					setState({
-						status: "error",
-						message:
-							result.error instanceof Error
-								? result.error.message
-								: String(result.error),
-					});
+					/*
+					 * THE READER'S SENTENCE, NOT THE FILESYSTEM'S. `readFile` answers
+					 * with main's raw error, which names the internal stored path and
+					 * a syscall (`ENOENT`); neither belongs on a project page. The
+					 * stored copy moving is the honest reader-facing reading, and the
+					 * path stays in the log/transport where a developer can find it.
+					 */
+					console.error("Project file preview failed", result.error);
+					setState({ status: "error" });
 					return;
 				}
 				setState({ status: "ready", text: result.data });
 			} catch (error) {
 				if (!live) return;
-				setState({
-					status: "error",
-					message: error instanceof Error ? error.message : String(error),
-				});
+				console.error("Project file preview failed", error);
+				setState({ status: "error" });
 			}
 		})();
 
@@ -121,7 +133,15 @@ export const ProjectFilePreviewDialog: FC<ProjectFilePreviewDialogProps> = ({
 
 	return (
 		<Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-			<DialogContent className={DIALOG_BOX}>
+			<DialogContent
+				className={DIALOG_BOX}
+				onCloseAutoFocus={(event) => {
+					const target = restoreFocusTo?.current;
+					if (!target) return;
+					event.preventDefault();
+					target.focus();
+				}}
+			>
 				<div className="shrink-0 border-hairline border-b px-4 py-3 pr-12">
 					<DialogTitle className="truncate text-title" title={path ?? ""}>
 						{name}
@@ -135,13 +155,15 @@ export const ProjectFilePreviewDialog: FC<ProjectFilePreviewDialogProps> = ({
 						<p className="text-body-sm text-ink-muted">
 							{t("ui.projects.project_updates.preview_loading")}
 						</p>
-					) : state.status === "error" ? (
+					) : state.status === "unavailable" ? (
 						<p className="text-body-sm text-ink-muted">
-							{t("ui.projects.project_updates.preview_failed", {
-								name: String(name),
-								detail: state.message,
-							})}
+							{t("ui.projects.project_updates.preview_unavailable")}
 						</p>
+					) : state.status === "error" ? (
+						<div className="flex flex-col gap-1 text-body-sm text-ink-muted">
+							<p>{t("ui.projects.project_updates.preview_failed")}</p>
+							<p>{t("ui.projects.project_updates.preview_moved")}</p>
+						</div>
 					) : markdown ? (
 						<ProjectMarkdown>{state.text}</ProjectMarkdown>
 					) : (

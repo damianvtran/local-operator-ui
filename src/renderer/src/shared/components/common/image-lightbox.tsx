@@ -327,6 +327,15 @@ export type ImageLightboxProps = {
 	 * and the carousel chrome but not the zoom cluster.
 	 */
 	mediaKind?: "image" | "video";
+	/**
+	 * What the carousel calls its slides.
+	 *
+	 * `image` is the transcript's vocabulary and the default, so existing
+	 * callers are unchanged. `asset` is for a mixed gallery (the project feed's
+	 * update set): "Previous asset"/"Asset 2 of 3" stays true whether the slide
+	 * is a picture or a clip, while "Previous image" would misname half of them.
+	 */
+	mediaLabel?: "image" | "asset";
 };
 
 /**
@@ -366,8 +375,13 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	group,
 	layerRef,
 	mediaKind = "image",
+	mediaLabel = "image",
 }) => {
 	const isVideo = mediaKind === "video";
+	const positionLabel = (index: number, count: number) =>
+		mediaLabel === "asset"
+			? `Asset ${index + 1} of ${count}`
+			: groupPositionLabel(index, count);
 	/*
 	 * WHICH PICTURE FAILED, rather than a boolean this component resets. The
 	 * transcript's picture failed once and the store is content-addressed, so a
@@ -800,7 +814,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 					 * visually.
 					 */
 					<div aria-live="polite" className="sr-only">
-						{groupPositionLabel(group.index, group.count)}
+						{positionLabel(group.index, group.count)}
 					</div>
 				) : null}
 				{picture}
@@ -849,8 +863,8 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Previous image"
-								title="Previous image"
+								aria-label={`Previous ${mediaLabel}`}
+								title={`Previous ${mediaLabel}`}
 								onClick={group?.onPrev}
 								className="pointer-events-auto fixed top-0 bottom-0 left-4 my-auto"
 								data-image-viewer-prev=""
@@ -860,8 +874,8 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Next image"
-								title="Next image"
+								aria-label={`Next ${mediaLabel}`}
+								title={`Next ${mediaLabel}`}
 								onClick={group?.onNext}
 								className="pointer-events-auto fixed top-0 right-4 bottom-0 my-auto"
 								data-image-viewer-next=""
@@ -917,8 +931,8 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							variant="ghost"
 							size="icon-sm"
 							className={cn("pointer-events-auto fixed top-4 right-4")}
-							aria-label="Close image"
-							title="Close image"
+							aria-label={`Close ${mediaLabel}`}
+							title={`Close ${mediaLabel}`}
 						>
 							<X aria-hidden="true" />
 						</Button>

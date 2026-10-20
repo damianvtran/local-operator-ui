@@ -43214,7 +43214,7 @@ async function sceneProjectUpdateAssets(cdp) {
 	);
 	await captureSettled(cdp, `pua-${size}-${theme}-lightbox`);
 
-	await clickAt(cdp, '[role="dialog"] button[aria-label="Next image"]');
+	await clickAt(cdp, '[role="dialog"] [data-image-viewer-next]');
 	const moved = await waitForCondition(
 		cdp,
 		`(() => {
