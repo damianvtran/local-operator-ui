@@ -52,6 +52,10 @@
 			"scale": 0.72
 		}
 	},
+	"bandFloor": {
+		"dark": 0.91,
+		"light": 0.78
+	},
 	"controlMix": {
 		"under-window": {
 			"dark": 0.15,

@@ -53,6 +53,26 @@ const SESSION = arg("--session");
 const OUT = arg("--out");
 const ROUNDS = Number(arg("--rounds", "5"));
 const SAMPLES = Number(arg("--samples", "60"));
+/*
+ * FINE MODE, and why the round mode is not enough on a shared machine.
+ *
+ * A round measures one variant, then the other, seconds apart. When the host
+ * is drifting - this one went from a 229ms median to a 21ms median across
+ * seven rounds, a tenfold change - a round's two halves are already two
+ * different machines, and the median of the per-round deltas moves with the
+ * drift rather than with the filter (the same rig returned -20ms in one run
+ * and +19ms in the next, with the sign of every late round flipped).
+ *
+ * Fine mode alternates the variant EVERY SEGMENT, so a paired delta is
+ * between two measurements a fraction of a second apart: whatever the host
+ * is doing, it is doing it to both halves of the pair. The cost of that is
+ * fewer samples per segment, and the product is a distribution of adjacent
+ * paired deltas whose median is the filter's cost and whose spread is the
+ * host's noise.
+ */
+const FINE = process.argv.includes("--fine");
+const SEGMENTS = Number(arg("--segments", "24"));
+const SEG_SAMPLES = Number(arg("--seg-samples", "24"));
 
 if (!BACKEND || !SESSION || !OUT) {
 	console.error("needs --backend --session --out");
@@ -153,7 +173,7 @@ try {
 		await sleep(400);
 	};
 
-	const measure = async () => {
+	const measure = async (n = SAMPLES) => {
 		await cdp.evaluate(`(() => {
 			const scroller = document.querySelector('[data-tour-tag="files-scroller"]');
 			if (!scroller) { window.__abProbe = { error: "no scroller" }; return true; }
@@ -172,7 +192,7 @@ try {
 			const drive = () => {
 				scroller.scrollTop += 7;
 				step += 1;
-				if (step < ${SAMPLES}) {
+				if (step < ${n}) {
 					setTimeout(drive, 16);
 				} else {
 					stop = true;
@@ -205,6 +225,52 @@ try {
 		};
 	};
 
+	if (FINE) {
+		const segments = [];
+		for (let s = 0; s < SEGMENTS; s += 1) {
+			const variant = s % 2 === 0 ? "on" : "off";
+			await setFilter(variant === "on");
+			const st = stats(await measure(SEG_SAMPLES));
+			if (!st) continue;
+			segments.push({ segment: s, variant, ...st });
+			console.log(`[perf/seg${s}/${variant}] median=${st.median}ms p25=${st.p25}ms p95=${st.p95}ms n=${st.count}`);
+		}
+		/*
+		 * PAIR ADJACENT SEGMENTS. Each pair is one `on` and one `off` measured
+		 * back to back, in whichever order the alternation gave; the delta is
+		 * always on-minus-off so its sign means the same thing every time.
+		 */
+		const pairs = [];
+		for (let i = 1; i < segments.length; i += 1) {
+			const a = segments[i - 1];
+			const b = segments[i];
+			if (a.variant === b.variant) continue;
+			const on = a.variant === "on" ? a : b;
+			const off = a.variant === "on" ? b : a;
+			pairs.push({
+				onMedian: on.median,
+				offMedian: off.median,
+				delta: Math.round((on.median - off.median) * 10) / 10,
+				p25Delta: Math.round((on.p25 - off.p25) * 10) / 10,
+			});
+		}
+		const med = (list) => {
+			const x = [...list].sort((m, n) => m - n);
+			return x.length ? Math.round(x[Math.floor(x.length / 2)] * 10) / 10 : null;
+		};
+		report.segments = segments;
+		report.pairs = pairs;
+		report.fineSummary = {
+			pairs: pairs.length,
+			medianDelta: med(pairs.map((p) => p.delta)),
+			p25Delta: med(pairs.map((p) => p.p25Delta)),
+			deltas: pairs.map((p) => p.delta),
+		};
+		console.log(`[perf/fine] ${pairs.length} adjacent pairs; median delta ${report.fineSummary.medianDelta}ms, median p25 delta ${report.fineSummary.p25Delta}ms`);
+		console.log(`[perf/fine] deltas: ${report.fineSummary.deltas.join(", ")}`);
+		writeFileSync(join(OUT, "perf-ab.json"), JSON.stringify(report, null, "\t"));
+		process.exit(0);
+	}
 	for (let round = 1; round <= ROUNDS; round += 1) {
 		// The order alternates so a drifting machine cannot bias a variant.
 		const order = round % 2 === 1 ? ["on", "off"] : ["off", "on"];

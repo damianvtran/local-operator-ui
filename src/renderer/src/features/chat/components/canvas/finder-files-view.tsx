@@ -55,6 +55,7 @@ import { AudioDocumentPlayer } from "./audio-document-player";
 import { FILE_KIND_GROUPS, filterAndSearchRows } from "./file-rows";
 import {
 	FINDER_HEADER_BAND,
+	FOCUS_RING_GAP,
 	type FinderBand,
 	type FinderItem,
 	finderNeighbor,
@@ -303,9 +304,11 @@ export function FinderFilesView({
 			 * revealed below the header, because there is no room above it,
 			 * and a negative scrollTop is a value no box can hold.
 			 */
-			const HEADER = FINDER_HEADER_BAND;
 			if (band.top < node.scrollTop)
-				node.scrollTop = Math.max(0, band.top - HEADER);
+				node.scrollTop = Math.max(
+					0,
+					band.top - FINDER_HEADER_BAND - FOCUS_RING_GAP,
+				);
 			else if (band.top + band.height > node.scrollTop + node.clientHeight)
 				node.scrollTop = band.top + band.height - node.clientHeight;
 			setFocused(id);
@@ -813,7 +816,34 @@ export function FinderFilesView({
 											<ChevronRight size={14} aria-hidden="true" />
 										)}
 										{sectionLabels[section.id]?.() ?? section.label}
-										<span className={cn("text-meta text-ink-dim")}>
+										<span
+											/*
+											 * THE COUNT'S INK, and why it is a step STRONGER
+											 * than it was.
+											 *
+											 * The count is `text-ink-muted` and not `text-ink-dim`
+											 * because its ground is the section band, and the band
+											 * is a ground whose colour is the content passing under
+											 * it. Measured on the running app at the default 80% in
+											 * the light theme, `inkDim` measured 3.57:1 against that
+											 * band - below the app's 4.5 text floor
+											 * (`scripts/contrast-contract.mjs`) - and 2.50:1 at the
+											 * most transparent end (design round 1's D1, measured
+											 * off the captured PNGs' glyph interiors).
+											 *
+											 * `inkMuted` is the register the app's own section
+											 * headers already use for a count beside a label
+											 * (`features/projects/components/team-section-header.tsx`:
+											 * the label in `text-ink`, the count in the quieter
+											 * `text-ink-muted` beside it), so this is the same
+											 * grammar the rest of the app speaks - and it clears the
+											 * floor on the band at every intensity: 6.56:1 in the
+											 * light theme over the worst backdrop, 4.81:1 in the
+											 * dark theme over a white thumbnail, against 6.29:1 and
+											 * 5.26:1 on the pane's own ground.
+											 */
+											className={cn("text-meta text-ink-muted")}
+										>
 											{formatNumber(
 												section.items.length ||
 													(section.id === "Working files"

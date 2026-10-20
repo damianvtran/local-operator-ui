@@ -69,6 +69,20 @@ The frames were taken on a machine carrying other sessions, so the wall-clock
 frame times in the capture log are NOT a measurement of this change; the
 interleaved A/B below is.
 
+`states/` covers the states a band has to survive, which the design round asked
+for explicitly: a row HOVERED under the band, a row SELECTED (current) under the
+band, and the Library's own header. Pointer states were produced through
+Chromium's real input pipeline, and the rig asserts `:hover` before the shutter.
+
+| frame | what it shows |
+| --- | --- |
+| `states/states-states-dark-hover.png` | a row hovered on its visible part below the band, the band's lower edge meeting the hover ground |
+| `states/states-states-light-hover.png` | the same, light theme |
+| `states/states-states-dark-selected.png` | the CURRENT row crossing the band (`bg-row-selected`), the band painting over its top |
+| `states/states-states-light-selected.png` | the same, light theme |
+| `states/states-states-library-dark.png` | the Library's spreadsheet header — opaque, no blur, the rows hidden behind it |
+| `states/states-states-library-light.png` | the same, light theme |
+
 ## The numbers
 
 ### The header's own paint, read from the running app
@@ -78,10 +92,10 @@ intensity, in each theme:
 
 | glass | theme | computed background | `backdrop-filter` | height | band inside the scroller | clip offset below the header |
 | --- | --- | --- | --- | --- | --- | --- |
-| 80% (default) | dark | `color(srgb 0.168627 0.152941 0.129412 / 0.73)` | `blur(12px)` | 32px | 32px | −32px |
-| 80% (default) | light | `color(srgb 0.168627 0.152941 0.129412 / 0.59)` | `blur(12px)` | 32px | 32px | −32px |
-| 100% | dark | `… / 0.67` | `blur(12px)` | 32px | 32px | −32px |
-| 100% | light | `… / 0.50` | `blur(12px)` | 32px | 32px | −32px |
+| 80% (default) | dark | `color(srgb 0.196078 0.176471 0.133333 / 0.91)` | `blur(12px)` | 32px | 32px | −32px |
+| 80% (default) | light | `color(srgb 0.996078 0.992157 0.972549 / 0.78)` | `blur(12px)` | 32px | 32px | −32px |
+| 100% | dark | `… / 0.91` | `blur(12px)` | 32px | 32px | −32px |
+| 100% | light | `… / 0.78` | `blur(12px)` | 32px | 32px | −32px |
 | 0% (opaque end) | dark | `… / 0.96` | `blur(12px)` | 32px | 32px | −32px |
 | 0% (opaque end) | light | `… / 0.96` | `blur(12px)` | 32px | 32px | −32px |
 | glass off | dark | `… / 1` | none | 32px | 32px | −32px |
@@ -92,33 +106,78 @@ that scrolls up passes through those 32 pixels. That is the geometry defect #1
 is about, and it is why the band has to isolate rather than tint: there is no
 clip to hide behind.
 
-The alpha tracks the user's setting in the right direction — the band thickens as
-the translucency is turned down (0.96 at the opaque end) and thins as it is
-turned up (0.50 at 100%) — so it reads as the panel's own material at every
-setting rather than as a hole punched in it.
+The alpha is the pane's own **`elevated`** role, floored at
+`--lo-glass-a-band-floor` — the one alpha in the model derived for a band over
+MOVING content. It thickens as the translucency is turned down (0.96 at the
+opaque end) and thins as it is turned up, but never below the floor (0.91 dark,
+0.78 light). The floor is the point: above it the band tracks the pane, and at
+it the band still holds its ink against whatever scrolls underneath.
 
-### The Library's header, and why one rule reaches both families
+### The count's ink: the design round's D1, and its remediation
+
+The section count (`86` beside `Images`) is text on the band, and the band's
+ground is the content passing under it. At the first paint this change shipped,
+the count's `text-ink-dim` measured **3.57:1** at the default 80% in the light
+theme and **2.50:1** at the most transparent end — below the app's 4.5 text
+floor (`scripts/contrast-contract.mjs`). The design round measured the same
+numbers independently off the captured PNGs' glyph interiors (D1, MAJOR).
+
+Two things fixed it, and both are structural rather than a nudge:
+
+1. **The band's alpha got its own floor**, derived per scheme from every palette
+   (`deriveBandFloor()` in `scripts/derive-glass-floors.mjs`): 0.91 dark, 0.78
+   light. It is asserted by `scripts/contrast-contract.mjs`, so a hand-lowered
+   floor fails the contract.
+2. **The count moved to `text-ink-muted`**, the register the app's own section
+   headers already use beside a label
+   (`features/projects/components/team-section-header.tsx`).
+
+Measured off the new frames, in the count's own 167–195 column run:
+
+| frame | count ink | band ground | contrast |
+| --- | --- | --- | --- |
+| dark, 80% | `(193,188,177)` | `(50,49,34)` | **6.94:1** |
+| dark, 100% | `(193,188,177)` | `(57,49,35)` | **6.78:1** |
+| dark, 0% | `(193,188,177)` | `(49,46,35)` | **7.18:1** |
+| dark, off | `(193,188,177)` | `(42,39,34)` | **7.86:1** |
+| light, 80% | `(77,73,65)` | `(230,230,218)` | **7.12:1** |
+| light, 100% | `(77,73,65)` | `(215,218,200)` | **6.29:1** |
+| light, 0% | `(77,73,65)` | `(246,246,241)` | **8.26:1** |
+| light, off | `(33,30,25)` | `(247,245,239)` | **15.23:1** |
+
+Every frame clears 4.5:1. The light theme at 100% — the worst case the design
+round found — went from 2.50:1 to 6.29:1.
+
+### The Library's header: measured, and deliberately NOT a band
 
 `measure-library-header.mjs` opens a real spreadsheet asset in the Library and
-reads the same facts on the Library's sticky table header:
+reads its sticky table header:
 
 ```
-matchesRule: true
-plane: "band-backdrop"
-background: "color(srgb 0.168627 0.152941 0.129412 / 0.73)"
-backdropFilter: "blur(12px)"
+plane: null
+background: "rgb(29, 27, 25)"
+backdropFilter: "none"
 position: "sticky"  top: "0px"  height: 26
 scroller: { overflowY: "auto",
             maskImage: "linear-gradient(rgba(0,0,0,0) 0px, rgb(0,0,0) 0px, rgb(0,0,0) 100%, rgba(0,0,0,0) 100%)" }
 regionChain: ["pane", "canvas", "canvas-backing"]
 ```
 
-`matchesRule: true` is the load-bearing line: the rule is a glass-region chain,
-and the Library's chain (`pane` → `canvas` → `canvas-backing`) is not the Files
-tab's. The rule reaches both because it is written against the plane, not
-against one screen. The scroller's `maskImage` is the Library's own **top fade**,
-and it is unchanged — the request asks that the panel's top fade keep behaving
-as it does elsewhere in the app, and it does.
+**This is the corrected answer, and the correction is the point.** An earlier
+revision of this change put the shared `band-backdrop` plane on this header too,
+reasoning that both families were "sticky headers that rows scroll under". They
+are not the same case. The Files section header was a 5% ink wash with no
+isolation at all; the Library's column strip carries `bg-sunken`, an **opaque**
+role fill with no glass opt-in, so the sheet's rows are hidden behind it
+outright. Turning it translucent made it strictly worse: QA measured
+`row-008` legible under the `A` column label, where the pre-change paint hid it
+completely (Q1, MAJOR).
+
+The revert is what the numbers above show: `plane: null`, the opaque sunken
+value, no blur. The shared plane is for the bands that actually need isolating,
+and the Library keeps the answer it already had. The scroller's `maskImage` is
+the Library's own **top fade**, and it is unchanged — the request asks that the
+panel's top fade keep behaving as it does elsewhere in the app, and it does.
 
 ### The pixels: is anything still readable through the band?
 
@@ -140,20 +199,20 @@ content's edge energy that survives into the band.
 | before, light, 80% | 0.0948 | 0.1012 | **0.936** | 0.1006 | 0.0757 |
 | before, dark, 0% | 0.0231 | 0.0514 | **0.450** | 0.1071 | 0.2581 |
 | before, light, 0% | 0.0646 | 0.0730 | **0.885** | 0.1143 | 0.1221 |
-| after, dark, 80% | 0.0021 | 0.0608 | **0.034** | 0.0182 | 0.2034 |
-| after, light, 80% | 0.0115 | 0.0865 | **0.133** | 0.0156 | 0.1015 |
-| after, dark, 100% | 0.0040 | 0.0768 | **0.052** | 0.0265 | 0.2450 |
-| after, light, 100% | 0.0179 | 0.2191 | **0.082** | 0.0027 | 0.1570 |
-| after, dark, 0% | 0.0006 | 0.0291 | **0.021** | 0.0077 | 0.1306 |
-| after, light, 0% | 0.0017 | 0.0782 | **0.021** | 0.0107 | 0.0819 |
+| after, dark, 80% | 0.0008 | 0.0935 | **0.013** | 0.0000 | 0.2034 |
+| after, light, 80% | 0.0147 | 0.1012 | **0.145** | 0.0431 | 0.0757 |
+| after, dark, 100% | 0.0011 | 0.0969 | **0.014** | 0.0080 | 0.2450 |
+| after, light, 100% | 0.0081 | 0.2191 | **0.037** | 0.0067 | 0.1570 |
+| after, dark, 0% | 0.0006 | 0.0291 | **0.021** | 0.0071 | 0.1306 |
+| after, light, 0% | 0.0017 | 0.0782 | **0.021** | 0.0271 | 0.0819 |
 | after, dark, off | 0.0000 | 0.1217 | **0.000** | 0.0000 | 0.2670 |
 | after, light, off | 0.0000 | 0.0253 | **0.000** | 0.0000 | 0.0278 |
 
 The light theme is the operator's worst case and the sharpest result: **0.936 of
-the content's edge energy survived into the band before, and 0.133 after** — a
-7× reduction. The band's saturation against the control's shows the same thing
-about the green specifically: 0.1006 before, 0.0156 after, against a control of
-0.1015.
+the content's edge energy survived into the band before, and 0.145 after** — a
+6.5× reduction. The dark theme is sharper still at 80%: 0.409 before, **0.013**
+after. The band's saturation against the control's shows the same thing about
+the green specifically: 0.1006 before, 0.0431 after, against a control of 0.0757.
 
 ### The reveal: the scroll clips below the header
 
@@ -170,16 +229,20 @@ Before (`reveal-before.json`):
 After (`reveal-after.json`):
 
 ```
-0 of 12 UPWARD keyboard landings ended up UNDER the header (worst 0px)
-[reveal/up 0] "image-0276.png0 KB" focusedTop=184 headerBottom=184 hiddenBy=0px
-[reveal/up 1] "image-0264.png0 KB" focusedTop=184 headerBottom=184 hiddenBy=0px
+0 of 12 UPWARD keyboard landings ended up UNDER the header (worst 4px)
+[reveal/up 0] "image-0276.png0 KB" focusedTop=188 headerBottom=184 hiddenBy=4px
+[reveal/up 1] "image-0264.png0 KB" focusedTop=188 headerBottom=184 hiddenBy=4px
 ...
 0 of 14 DOWNWARD keyboard landings ended up UNDER the header (worst 0px)
 ```
 
-Every landing is now exactly at the header's bottom edge, which is the contract:
-the row is fully visible, and it is visible immediately below the header. The
-downward case was already correct and is unchanged.
+Every landing is now 4px BELOW the header's bottom edge. The 4px is the focus
+ring: it is drawn 2px outside the row with a 2px offset, so a landing flush at
+184 would paint the ring's top 4px under the header — the user would be told
+they are on a row whose ring they cannot see. The gap is `FOCUS_RING_GAP`, and
+the arithmetic is asserted by `scripts/finder-reveal-scroll.test.mjs`.
+
+The downward case was already correct and is unchanged.
 
 ## Scroll performance: the backdrop-filter's cost
 
@@ -192,39 +255,45 @@ attempt showed the inversion — the variant WITHOUT the filter measured 105ms
 median and the one WITH it measured 27ms, on a load average of 64. The two
 numbers were measuring the machine, not the filter.
 
-`measure-scroll-perf-ab.mjs` therefore measures the two variants **alternately,
-in one app session, with the order alternating each round**, so every sample of
-both variants carries the same contention and the comparison is between the
-variants rather than between two moments. The filter is switched off by
-overriding the one property under test, on the same build.
+`measure-scroll-perf-ab.mjs` measures the two variants on the same build, in one
+app session, switching the filter off by overriding the one property under test.
 
-The headline number is the **median of the per-round paired deltas**, because
-the minimum of a rAF-delta series is near zero on any machine (a frame that was
-already queued reports almost no time between ticks) and is not a comparison.
+**Round mode was not good enough, and the data says so.** A round measures one
+variant, then the other, seconds apart. Across seven rounds this host went from
+a 229ms median to a 21ms median — a tenfold drift — and the median of the
+per-round deltas followed the drift rather than the filter: two runs of the same
+rig gave **−20ms** and **+19.1ms**, with the sign of every late round flipped.
+Reporting either number as "the filter's cost" would have been reporting the
+machine.
 
-| round | with the filter | without | delta |
-| --- | --- | --- | --- |
-| 1 | 215.5ms | 159.6ms | +55.9ms |
-| 2 | 191.2ms | 168.9ms | +22.3ms |
-| 3 | 205.2ms | 268.1ms | −62.9ms |
-| 4 | 164.2ms | 200.6ms | −36.4ms |
-| 5 | 148.5ms | 170.6ms | −22.1ms |
-| 6 | 179.4ms | 199.4ms | −20.0ms |
-| 7 | 163.7ms | 95.0ms | +68.7ms |
+So the headline measurement is **fine mode**: the variant alternates EVERY
+segment, and each paired delta is between two measurements a fraction of a
+second apart. Whatever the host is doing, it is doing it to both halves of the
+pair.
 
-**Median paired delta: −20ms** (p25 +0.6ms, p95 +84.2ms). The medians are
-contention-dominated — the load average was 64 for the whole run, and a paired
-round at 95ms and one at 268ms are the machine, not the filter. The p25, which
-is the least-contended quartile of each round, is the informative statistic: the
-filter's cost there is **+0.6ms**, and a 60Hz frame is 16.7ms.
+23 adjacent pairs, on-minus-off:
 
-**The finding: the filter costs under a frame, and the measurement cannot
-distinguish it from zero.** The per-round deltas straddle zero in both
-directions, which is what a sub-frame cost looks like under this much
-contention. There is no frame-drop finding to report. The honest limit of this
-measurement is stated plainly: it bounds the filter's cost at roughly a
-millisecond on an idle machine, and it cannot resolve anything smaller than
-that on this one.
+```
+−1.6, −16, 3.4, 15.5, 15.5, 61.4, −54.5, −127.1, −123.3, −64.6, 40.1,
+−3.9, 12.2, 1.6, 1.9, 9.7, −13.3, 33.1, −82.4, −105.3, −46.1, −6, 51.1
+```
+
+**Median paired delta: −1.6ms. Median p25 delta: +1.3ms.** A 60Hz frame is
+16.7ms, so both central estimates are an order of magnitude under one frame, and
+the median is slightly in the filter's favour — i.e. indistinguishable from
+zero.
+
+**The finding: no frame-drop attributable to the filter.** The spread of the
+individual deltas (−127ms to +61ms) is the host, not the filter, and it is why
+the round-mode median moved between runs. The honest limit is stated plainly:
+this measurement resolves the filter's cost to within about ±2ms on this
+machine; it cannot prove the cost is exactly zero, and it does not need to — the
+constraint is that the band must not drop frames, and nothing here shows it
+doing so.
+
+(One structural note, since the numbers cannot speak to it: the filter is on a
+32px-tall band, not on the 342-item grid. It samples a strip of the composited
+layer beneath it once per frame; the grid's own painting is unchanged.)
 
 ## What was NOT changed, and why
 
@@ -239,6 +308,9 @@ that on this one.
   `detect-overlay-headers.mjs` measured this on all six surfaces and found no
   header that overlays a scroller from outside it. Giving them the isolating
   band would have been a change to a case that does not exist.
+- **The Library's sticky table header**, after the first revision got it wrong.
+  It was opaque before; a translucent band made it strictly worse. See the
+  measurement above. This is the one place a first attempt was reverted.
 - **Off glass.** `bg-surface` is opaque with the glass off, so the scroller's
   content never reached the header in the first place; the band rule is scoped
   to `html[data-glass~="pane"]` and does nothing there. The captured
@@ -256,7 +328,9 @@ node capture-sticky-header.mjs --backend <url> --session <id> --out <dir> --labe
 # the pixel measurement over the captured frames
 bash analyse-band-pixels.sh <rig-dir>
 
-# the interleaved, load-immune frame-cost A/B
+# the frame-cost A/B: fine mode, the one that survives this host's drift
+node measure-scroll-perf-ab.mjs --backend <url> --session <id> --out <dir> --fine --segments 24 --seg-samples 24
+# the round mode, kept for a quiet machine
 node measure-scroll-perf-ab.mjs --backend <url> --session <id> --out <dir> --rounds 7
 
 # the reveal landings, before and after
@@ -266,6 +340,17 @@ node measure-reveal-landing.mjs --backend <url> --session <id> --out <dir>
 node census-sticky-elements.mjs --backend <url> --session <id> --out <dir>
 node detect-overlay-headers.mjs --backend <url> --session <id> --out <dir>
 
+# the states a band has to survive: hover, selected, and the Library's header
+node capture-band-states.mjs --backend <url> --session <id> --asset <library asset id> --out <dir> --label states
+
 # the Library's own sticky header, on a real spreadsheet asset
 node measure-library-header.mjs --backend <url> --session <id> --asset <library asset id> --out <dir>
+```
+
+The band floor this change relies on is derived, not chosen:
+
+```
+node scripts/derive-glass-floors.mjs --check      # fails if the floor is hand-lowered
+node scripts/contrast-contract.mjs                # asserts the band's inks on it, per palette
+node --test scripts/finder-reveal-scroll.test.mjs # the reveal's arithmetic
 ```
