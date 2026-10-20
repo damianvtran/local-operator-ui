@@ -52,7 +52,7 @@
 	"ui.library.librarian.last_organized": "Упорядочено {at}",
 	"ui.library.librarian.never_run": "Ещё не запускался",
 	"ui.library.librarian.open": "Открыть",
-	"ui.library.librarian.organize_now": "Упорядочить сейчас",
+	"ui.library.librarian.organize_now": "Упорядочить",
 	"ui.library.librarian.paused": "Пауза",
 	"ui.library.librarian.title": "Библиотекарь",
 	"ui.library.librarian.unorganized": "{count, plural, one {{count} не упорядочено} few {{count} не упорядочено} many {{count} не упорядочено} other {{count} не упорядочено}}",
