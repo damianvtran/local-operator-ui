@@ -1729,6 +1729,7 @@ export type MessageParams = {
 	"ui.chat.transcript_copy.row.agent_message": undefined;
 	"ui.chat.transcript_copy.row.your_message": undefined;
 	"ui.chat.transcript_copy.selection.copy": undefined;
+	"ui.chat.transcript_copy.selection.toolbar": undefined;
 	"ui.chat.transcript_copy.toast.copied_markdown": undefined;
 	"ui.chat.transcript_copy.toast.copied_selection": undefined;
 	"ui.code_review.activity.close": undefined;

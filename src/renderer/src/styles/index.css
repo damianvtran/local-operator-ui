@@ -25,13 +25,17 @@
 }
 
 /*
- * ONE HIGHLIGHT, ONE STRIP (design round 2, D1). The quote and link toolbars
- * already own a highlight that begins in their turn; the shared selection
- * toolbar is the fallback for every other selection. The component also stands
- * down when it observes one of them, but that state arrives a tick after the
- * highlight; this rule closes the frame between the two so a reader never sees
- * two panels stacked. `:has()` is available in the Electron Chromium this app
- * ships, and the attribute is the same marker the component test reads.
+ * ONE HIGHLIGHT, ONE STRIP (design round 2, D1; closed properly 2026-10-19).
+ * The quote and link toolbars own a highlight that begins in their turn; the
+ * shared selection toolbar is the fallback for every other selection. This rule
+ * is the PAINT half of that: the moment an owning strip is in the document the
+ * fallback is `display: none`, in the same style recalculation, so no frame can
+ * show both. The component's own pre-paint `useLayoutEffect` closes the same
+ * window for its MOUNTED state (and for the accessibility tree, where CSS
+ * cannot help); the two are deliberately redundant because this is the frame
+ * the operator saw as a flash. `:has()` is available in the Electron Chromium
+ * this app ships. The rule is scoped to the column's content root so the
+ * legacy transcript's strip - which shares this component - is unaffected.
  */
 [data-lo-transcript-content]:has([data-lo-quote-toolkit])
 	[data-lo-selection-toolbar],
@@ -41,14 +45,44 @@
 }
 
 /*
- * THE SELECTION STRIP OWNS THE TURN'S TRAILING SEAT. The response and user
- * gutter overlays share that seat and are later in the DOM with pointer-events
- * enabled on hover/focus, so without this a Quote press can land on the
- * response Copy. `visibility` keeps the zero-layout promise; `pointer-events`
- * takes the controls out of the hit test for both mouse and keyboard paths.
+ * WHILE A SELECTION EXISTS IN THE TRANSCRIPT, THE ROW'S OWN TOOLBAR IS NOT THE
+ * TOOLBAR (operator report, 2026-10-19: "since both are up, the toolbar on
+ * select flashes briefly when you make a selection before disappearing and
+ * yielding to a toolbar on the right").
+ *
+ * THE THREE CLUSTERS ARE ONE RULE NOW. `data-lo-selection-active` is written by
+ * the quote toolkit on the row it owns, and it covered the two gutter overlays
+ * and not the closing answer's in-flow Copy/Speak/Fork row - so a drag painted
+ * the selection strip and that row at once for the WHOLE gesture (measured: 94
+ * of 97 frames on the base tree). The marker below is the column's own fact, published by the
+ * `selectionchange` reader in `canonical-transcript.tsx` before paint, so it is
+ * true for a selection the quote toolkit does not own as well (a drag that
+ * begins in a ledger row, where the shared strip is the owner).
+ *
+ * `visibility` keeps the zero-layout promise; `pointer-events` takes the
+ * controls out of the hit test for both mouse and keyboard paths. The
+ * `:has()` arm is the belt to the marker's braces: it holds even in a frame
+ * where a selection strip has mounted but the column's state has not committed
+ * yet, which is the one frame this rule exists to close.
  */
+[data-lo-selection-live] [data-lo-answer-actions],
+[data-lo-selection-live] [data-lo-gutter-actions],
+[data-lo-selection-live] [data-lo-user-actions],
+[data-lo-selection-active] [data-lo-answer-actions],
 [data-lo-selection-active] [data-lo-gutter-actions],
-[data-lo-selection-active] [data-lo-user-actions] {
+[data-lo-selection-active] [data-lo-user-actions],
+[data-lo-transcript-content]:has([data-lo-quote-toolkit])
+	[data-lo-answer-actions],
+[data-lo-transcript-content]:has([data-lo-quote-toolkit])
+	[data-lo-gutter-actions],
+[data-lo-transcript-content]:has([data-lo-quote-toolkit])
+	[data-lo-user-actions],
+[data-lo-transcript-content]:has([data-lo-link-toolbar])
+	[data-lo-answer-actions],
+[data-lo-transcript-content]:has([data-lo-link-toolbar])
+	[data-lo-gutter-actions],
+[data-lo-transcript-content]:has([data-lo-link-toolbar])
+	[data-lo-user-actions] {
 	visibility: hidden;
 	pointer-events: none;
 }
