@@ -60,7 +60,7 @@ const fileName = (attachment: DesktopProjectAttachment): string => {
  * note is the attachment, not a footnote to one.
  */
 const DIALOG_BOX =
-	"h-[min(85vh,calc(100vh-104px))] w-[min(760px,calc(100vw-104px))] max-w-none gap-0 p-0";
+	"h-[min(90vh,calc(100vh-104px))] w-[min(760px,calc(100vw-104px))] max-w-none gap-0 p-0";
 
 export const ProjectFilePreviewDialog: FC<ProjectFilePreviewDialogProps> = ({
 	open,
