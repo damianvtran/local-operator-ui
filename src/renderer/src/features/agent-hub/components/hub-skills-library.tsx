@@ -379,14 +379,26 @@ export function HubSkillsLibrary({
 	 * sentence is half English (`2 skills in Hub público`) is the defect the
 	 * translation audit named, and ICU owns the plural per locale.
 	 */
-	const statusLine = catalogue.isLoading
-		? t("ui.hub.skills.loading")
-		: scope.organization
-			? t("ui.hub.skills.count_shared", {
-					count: scopedRows.length,
-					organization: scope.organization,
-				})
-			: `${t("ui.hub.skills.count", { count: scopedRows.length })} · ${t("ui.hub.skills.public_hub")}`;
+	/*
+	 * A FAILED catalogue shows its error and Retry only: a count over rows that
+	 * never arrived ("0 skills · Public hub") states a fact the reader cannot
+	 * trust, directly above the sentence saying the read failed (design round 2,
+	 * D11).
+	 *
+	 * The scope is its own element for two reasons: the count string must not
+	 * embed a scope noun a locale would have to decline (translation round 6),
+	 * and the source line keeps the hook the driver scene reads.
+	 */
+	const countLine = catalogue.error
+		? null
+		: catalogue.isLoading
+			? t("ui.hub.skills.loading")
+			: scope.organization
+				? t("ui.hub.skills.count_shared", {
+						count: scopedRows.length,
+						organization: scope.organization,
+					})
+				: t("ui.hub.skills.count", { count: scopedRows.length });
 
 	return (
 		<section className="flex min-w-0 flex-col gap-4" data-hub-skills-library>
@@ -436,13 +448,25 @@ export function HubSkillsLibrary({
 							</Button>
 						)}
 					</div>
-					<p
-						aria-live="polite"
-						className="text-meta text-ink-dim"
-						data-testid="hub-skill-status"
-					>
-						{statusLine}
-					</p>
+					{countLine !== null && (
+						<p
+							aria-live="polite"
+							className="text-meta text-ink-dim"
+							data-testid="hub-skill-status"
+						>
+							{scope.organization || catalogue.isLoading ? (
+								<span data-testid="hub-skill-source">{countLine}</span>
+							) : (
+								<>
+									<span>{countLine}</span>
+									{" · "}
+									<span data-testid="hub-skill-source">
+										{t("ui.hub.skills.public_hub")}
+									</span>
+								</>
+							)}
+						</p>
+					)}
 					{catalogue.error && (
 						<div
 							role="alert"
@@ -561,9 +585,12 @@ export function HubSkillsLibrary({
 					if (!open) setSelected(null);
 				}}
 			>
-				<DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+				<DialogContent
+					data-hub-skill-detail=""
+					className="max-h-[85vh] overflow-y-auto sm:max-w-2xl"
+				>
 					<DialogHeader>
-						<DialogTitle>
+						<DialogTitle data-testid="hub-skill-detail-name">
 							{detail.data?.name ??
 								selectedRow?.name ??
 								t("ui.hub.skills.title")}
@@ -600,11 +627,17 @@ export function HubSkillsLibrary({
 									mark={skillMark(selectedState, selectedUpdate)}
 								/>
 							</div>
-							<p className="max-w-3xl select-text whitespace-pre-wrap break-words text-body-sm text-ink-muted">
+							<p
+								data-testid="hub-skill-description"
+								className="max-w-3xl select-text whitespace-pre-wrap break-words text-body-sm text-ink-muted"
+							>
 								{detail.data.description}
 							</p>
 							{selectedLink && hasCopy && selectedLink.local_path && (
-								<p className="break-all font-mono text-meta text-ink-dim">
+								<p
+									data-testid="hub-skill-local-path"
+									className="break-words font-mono text-meta text-ink-dim"
+								>
 									{t("ui.hub.skills.local_path", {
 										/*
 										 * FSI/PDI AT THE CALL SITE, not in the message: the repo's
@@ -725,7 +758,10 @@ export function HubSkillsLibrary({
 										report.direction === "pull" &&
 										report.applied,
 								) && (
-									<output className="text-body-sm text-ink">
+									<output
+										data-testid="hub-skill-installed"
+										className="text-body-sm text-ink"
+									>
 										{t("ui.hub.skills.installed_alias", {
 											item: pull.data.link.name,
 											source: hubLinkSourceName(pull.data.link),
@@ -767,9 +803,15 @@ export function HubSkillsLibrary({
 							 * no policy checkbox applying to one of two buttons (design D4,
 							 * UX U1).
 							 */}
-							{(!selectedLink ||
-								!hasCopy ||
-								selectedState.kind === "update") && (
+							{/*
+							 * ONE UPDATE ACTION (design round 2, D4). The update panel
+							 * owns "Update from the hub" — it carries the state, the
+							 * retry and the preview — so the footer no longer offers a
+							 * second "Update now" for the same intent. Download appears
+							 * only when there is nothing to update: an unlinked skill or
+							 * one whose copy is absent.
+							 */}
+							{(!selectedLink || !hasCopy) && (
 								<DialogFooter className="flex-row flex-wrap justify-start gap-2">
 									<Button
 										data-testid="hub-skill-download"
@@ -780,9 +822,7 @@ export function HubSkillsLibrary({
 										})}
 										onClick={() => runPull(selectedLink)}
 									>
-										{selectedState.kind === "update"
-											? t("ui.hub.skills.update_now")
-											: t("ui.hub.skills.download")}
+										{t("ui.hub.skills.download")}
 									</Button>
 									{!selectedLink?.policy.subscribe && (
 										<Button
@@ -809,7 +849,7 @@ export function HubSkillsLibrary({
 									)}
 								</DialogFooter>
 							)}
-							{selectedLink && hasCopy && selectedState.kind !== "update" && (
+							{selectedLink && hasCopy && (
 								<DialogFooter className="flex-row flex-wrap justify-start gap-2">
 									<Button
 										variant="outline"
@@ -882,6 +922,7 @@ export function HubSkillsLibrary({
 						source={source}
 						verifiedCas={supported && accessible && signedIn}
 						enabled={supported && accessible && signedIn}
+						heading={false}
 					/>
 				</DialogContent>
 			</Dialog>
