@@ -2172,7 +2172,7 @@ test("by-response widens a commentary close the invariant need not keep, and ele
 	sound(widened);
 });
 
-test("by-turn is the shipped partition, byte-for-byte, whether the field is named or absent", () => {
+test("by-turn is the shipped partition apart from the declared V5 exception, whether the field is named or absent", () => {
 	/*
 	 * THE LOAD-BEARING CLAIM OF THE CHANGE: the default mode is not "the same
 	 * behaviour, roughly", it is the same partition. Every shape the decision table

@@ -616,9 +616,9 @@ export type RunPartition = {
  * meaning and `answer` is elected once, before the mode is consulted. `by-turn`
  * is therefore the partition this function shipped, with ONE declared exception:
  * V5 (`isFinalResponse`) keeps a handover the phase rule could not see visible
- * in both modes. In
- * `by-response` EVERY settled text-bearing row joins the visible set on top of
- * the clauses, so a turn that answered, was continued past and answered again
+ * in both modes. In `by-response` EVERY settled text-bearing row joins the
+ * visible set on top of the clauses, so a turn that answered, was continued past
+ * and answered again
  * shows both answers in place while its tool work still condenses. The widening
  * is one-directional by construction: nothing is ever REMOVED from `visible` for
  * a mode, so a row the invariant keeps stays kept, and the elected answer keeps
