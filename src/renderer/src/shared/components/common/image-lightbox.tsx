@@ -110,10 +110,22 @@ const reservedBox = (box: string) =>
  * operator filed against this very surface ("no controls... discoverable, not
  * hover-only-hidden"). The number is NOT `SCROLLBAR_RESTING_FLOOR` re-used: the
  * thumb's 0.45 is a colour-mix fraction measured against the grounds, and this
- * is an opacity on a cluster of buttons. 0.45 keeps the icons findable while
- * clearly below a full-strength control; a designer round may move it, and the
- * frames in `docs/evidence/image-viewer-controls/` exist to make that call
- * (`resting/` is that state, photographed after the hold).
+ * is an opacity on a cluster of buttons.
+ *
+ * 0.85 IS A MEASURED CONTRAST FLOOR, NOT A TASTE CALL (design round 2, D1).
+ * The fade multiplies BOTH the glyph and its `surface/85` plate, and at the
+ * earlier 0.45 the resting composite measured 1.67-2.25:1 worst-ground across
+ * the twelve captured themes — under the 3:1 non-text floor, for controls that
+ * still work (WCAG 1.4.11 exempts inactive controls, not active ones waiting
+ * for a pointer). The designer composed the diminished glyph against the plate
+ * over every pixel a picture can hold (pure white and pure black bound them)
+ * and swept all 59 selectable palettes: the limiting threshold is ~0.84022,
+ * and 0.80 fails (2.788:1 Nightfox, 2.915:1 Dracula) while 0.85 clears 3:1
+ * everywhere — worst 3.05493:1 (Nightfox over white), worst of the twelve
+ * captured 3.20265:1 (Dracula). The fade stays because a resting state must
+ * still read as a step down from awake; it now stops above the floor instead
+ * of under it. Re-derive the number if the plate stops being `surface/85`:
+ * the two compose, and a different plate moves the threshold.
  *
  * AND IT WAS UNREACHABLE UNTIL DESIGN ROUND 1'S D1-2 SETTLED WHERE FOCUS GOES
  * AT OPEN. Radix's autofocus parked focus on the cluster's first control, the
@@ -129,7 +141,7 @@ const reservedBox = (box: string) =>
  * state — every control works at rest, and the next pointer move or key press
  * brings the cluster back to full inside `duration-fast`.
  */
-const CONTROLS_RESTING_CLASS = "opacity-45";
+const CONTROLS_RESTING_CLASS = "opacity-85";
 
 /**
  * THE CHROME'S GROUND IS A THEME ROLE, NOT THE PICTURE (design round 1, D1).
