@@ -946,15 +946,26 @@ test("A13: the copied module classifies from the invocation directory, not its o
  * desktop suite on a change to that suite's own input - `evidence-manifest.
  * test.mjs` reads `docs/evidence/manifest.json`, `clear-search.test.mjs`,
  * `new-chat-row-evidence.test.mjs` and `evidence-run-guard.test.mjs` read their
- * captured frames, and `chrome-keychain.test.mjs` walks the tree. A green PR
+ * proof artefacts, and `chrome-keychain.test.mjs` walks the tree. A green PR
  * that tested nothing.
  *
  * It keeps TWO jobs now, and `evidence` was added with the frame sweep for the
- * same reason: `docs/evidence/**` is exactly what `pnpm check-evidence` asserts
- * over, and the flags that stay false are the ones that would compile, build or
- * pack a frame. A21 pins what selects that second job.
+ * same reason: `docs/evidence/**` is exactly what the TRACKED half of evidence
+ * asserts over - the manifest and the proof artefacts - and the flags that stay
+ * false are the ones that would compile, build or pack a frame. A21 pins what
+ * selects that second job.
  *
- * Mutation: return `docs` for `docs/evidence/**`.
+ * THE THIRD CATEGORY, added with the frames split: `docs/evidence-frames/**` is
+ * the rig's IGNORED output. It is not committed evidence (there is nothing
+ * under it for a job to read) and it is not prose an inert skip is safe for
+ * (the only way it appears in a diff is a force-add, which re-materialises the
+ * ~570 MB this change removes from every worktree). So it is `other`: every
+ * code flag true, the unknown-path annotation raised, and `evidence` FALSE -
+ * selecting the frame sweep for a tree the sweep cannot see would let a
+ * force-added frame ride under a green job.
+ *
+ * Mutation: return `docs` for `docs/evidence/**`; or return `docs` for the
+ * frames tree; or fold the frames tree into `CAT_EVIDENCE`.
  */
 test("A16: docs/evidence/** keeps the suite and the frame sweep, and nothing else", () => {
 	const flags = classify(["docs/evidence/manifest.json"]);
@@ -978,6 +989,39 @@ test("A16: docs/evidence/** keeps the suite and the frame sweep, and nothing els
 	assert.equal(classify(["docs/evidence/usage/01-loaded.png"]).unit, true);
 	assert.equal(classify(["docs/evidence/README.md"]).unit, true);
 	assert.equal(classify(["docs/evidence"]).unit, true);
+
+	/*
+	 * The ignored frames tree is neither of the two above. It is `other`, so the
+	 * suite still runs (a force-add is a real change to the repository) and the
+	 * unknown-path annotation fires, but the frame sweep is NOT selected: there
+	 * are no committed frames there for it to read.
+	 */
+	for (const path of [
+		"docs/evidence-frames",
+		"docs/evidence-frames/live/one/dracula.webp",
+	]) {
+		assert.equal(
+			categoryOf(path),
+			"other",
+			`${path} must be named as unrecognised rather than committed evidence or inert prose`,
+		);
+		assert.equal(
+			isNamedLivePath(path),
+			false,
+			`${path} is not a live source path, so the unknown-path annotation must fire`,
+		);
+		const flags = classify([path]);
+		assert.equal(
+			flags.evidence,
+			false,
+			`${path} selected the frame sweep: nothing under the ignored tree is committed for it to read, so a green job there would be green by absence`,
+		);
+		assert.equal(flags.unit, true, `${path} skipped the suite`);
+		assert.equal(flags.pack, true, `${path} skipped the pack`);
+		// `docs/evidence` must not swallow the sibling by prefix: the two trees
+		// differ by a suffix only, which is exactly how a prefix rule gets it wrong.
+		assert.notEqual(categoryOf(path), "evidence");
+	}
 });
 
 // ---------------------------------------------------------------------------

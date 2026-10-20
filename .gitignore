@@ -96,3 +96,9 @@ scripts/_*.bundle.cjs
 # (`scripts/capture-docs-library.mjs` writes `docs-library-captures/` beside the
 # repo root). Regenerable from the rig, so it stays out of the repo.
 docs-library-captures
+
+# The evidence capture rigs' frames (`scripts/capture-evidence.mjs` and the
+# live-app rigs beside it write `docs/evidence-frames/`). The manifest, each
+# set's README and the proof JSONs stay tracked in `docs/evidence/`; the pixels
+# do not. Regenerable from the rig, so it stays out of the repo.
+docs/evidence-frames

@@ -51,7 +51,25 @@ import { EVIDENCE_TZ, pinnedEvidenceEnv } from "./evidence-tz.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const OUT = join(ROOT, "docs", "evidence");
+/*
+ * The FRAMES tree and the PROOF tree are two trees, split by whether a
+ * checkout can reproduce the file.
+ *
+ * A frame is rig output: `node scripts/capture-evidence.mjs` regenerates it,
+ * which is why `docs-library-captures/` is ignored for the same reason (see
+ * `.gitignore`). Committing them made every worktree materialise its own copy
+ * of the pixels - 955 MB measured at origin/main on 2026-10-20 - that it will
+ * never read. The manifest, each
+ * set's README and the proof JSONs are the rationale and the assertions the
+ * gate reads - small, and meaningless if nobody has them - so they stay in
+ * `docs/evidence/`.
+ *
+ * The two are declared together because moving one without the other is this
+ * change's failure mode: a manifest that describes a tree no checkout has is
+ * what `check-evidence.mjs` exists to refuse.
+ */
+const OUT = join(ROOT, "docs", "evidence-frames");
+const MANIFEST_DIR = join(ROOT, "docs", "evidence");
 const ARGS = process.argv.slice(2);
 const flag = (name, args = ARGS) => {
 	const hit = args.find((a) => a.startsWith(`--${name}=`));
@@ -12573,8 +12591,15 @@ export const STORIES = [
  * a directory emptied of its frames is removed; a file the sweep did not write
  * is not the sweep's to delete.
  */
-export const clearSweptFrames = (out) => {
-	const manifestPath = join(out, "manifest.json");
+export const clearSweptFrames = (out, manifestDir = MANIFEST_DIR) => {
+	/*
+	 * The manifest lives in the TRACKED tree, not in `out`: the sweep wipes
+	 * `out`, and the declaration of what it must not wipe cannot be one of the
+	 * files it wipes. `manifestDir` is a parameter so the preservation rule
+	 * stays exercisable on a throwaway tree (see `capture-evidence.test.mjs`);
+	 * the rig always uses the default it declares above.
+	 */
+	const manifestPath = join(manifestDir, "manifest.json");
 	const supplementary = existsSync(manifestPath)
 		? (JSON.parse(readFileSync(manifestPath, "utf8")).supplementary ?? [])
 		: [];
@@ -13386,8 +13411,9 @@ const main = async () => {
 		? (() => {
 				try {
 					return (
-						JSON.parse(readFileSync(join(OUT, "manifest.json"), "utf8"))
-							.supplementary ?? []
+						JSON.parse(
+							readFileSync(join(MANIFEST_DIR, "manifest.json"), "utf8"),
+						).supplementary ?? []
 					);
 				} catch {
 					return [];
@@ -16179,7 +16205,7 @@ const main = async () => {
 	 * a citation names carries the frames this record declares. The same rule is
 	 * stated for readers in the manifest's `citationConvention`.
 	 */
-	const manifestPath = join(OUT, "manifest.json");
+	const manifestPath = join(MANIFEST_DIR, "manifest.json");
 	let previous = {};
 	try {
 		previous = JSON.parse(readFileSync(manifestPath, "utf8"));
@@ -16282,6 +16308,12 @@ const main = async () => {
 	 * settles on, this line has to match it, so a capture never re-indents a
 	 * 9k-line file as a side effect of stamping it.
 	 */
+	/*
+	 * The manifest's own directory is created here rather than borrowed from a
+	 * frames-tree `mkdirSync`: on a checkout whose frames tree has never been
+	 * captured, that would be the one write that fails.
+	 */
+	mkdirSync(MANIFEST_DIR, { recursive: true });
 	writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
 	console.log(`Captured ${captured} frames into ${OUT} at ${head.slice(0, 9)}`);

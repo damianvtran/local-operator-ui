@@ -53,7 +53,7 @@ import { withMockKeychain } from "./chrome-keychain.mjs";
 
 const APP = process.argv[2] ?? "http://localhost:5199";
 const SESSION = process.argv[3];
-const OUT = process.argv[4] ?? "docs/evidence/transcript-scroll-paging";
+const OUT = process.argv[4] ?? "docs/evidence-frames/transcript-scroll-paging";
 const MODE = process.argv[5] ?? "after";
 /*
  * The SECOND conversation, for the `switch` arm only: the scrolled A->B->A
