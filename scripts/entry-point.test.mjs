@@ -428,6 +428,20 @@ function cases(root) {
 			stderr: /^$/,
 		},
 		{
+			// The structural evidence gate CI runs: its checkout and its git reads
+			// come from its own module URL, so a run from a plain cwd answers about
+			// THIS tree - the verdict line names the tracked file count, which is
+			// the thing a silent no-op would leave missing.
+			script: "check-evidence-structure.mjs",
+			args: [],
+			cwd: plain,
+			env: {},
+			status: 0,
+			stdout:
+				/Evidence structure holds: \d+ tracked files under docs\/evidence\//,
+			stderr: /^$/,
+		},
+		{
 			// `ci.yml`'s Lint job, on a scratch repository whose `main` is HEAD: the whole
 			// verdict path runs (base resolution, merge base, changed-file scan) and
 			// answers in its own words, with no biome invocation to depend on and nothing

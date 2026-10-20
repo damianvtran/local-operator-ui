@@ -113,6 +113,16 @@ function useMeasuredBox(
 type ChatLayoutProps = {
 	sidebar: ReactNode;
 	content: ReactNode;
+	/**
+	 * The route's own panels paint from y0 and pad their content themselves.
+	 *
+	 * The lane is an OVERLAY for such a route, so the shell must not also reserve
+	 * its height: that reservation is what starts the panels 32px down, the
+	 * "doesn't go all the way to the top" defect reported for the Library
+	 * sidebar, the canvas right bar and Team Bridge. A route that does not opt in
+	 * keeps the painted lane row and its first row below it exactly as before.
+	 */
+	flushTop?: boolean;
 };
 
 /**
@@ -309,6 +319,15 @@ type SidebarFrame = {
 	 */
 	mode: "docked" | "strip" | "overlay";
 	/**
+	 * Whether this shell route pads the sidebar's own panel for the chrome lane.
+	 *
+	 * The padding belongs INSIDE the panel that owns the ground, not on a shell
+	 * wrapper: a wrapper with a background would sit between `#app` and the glass
+	 * regions and make the window opaque (review round 1, S1). Only `flushTop`
+	 * routes ask for it.
+	 */
+	chromePadTop?: boolean;
+	/**
 	 * The one control that changes the sidebar's shape: collapse the dock, close
 	 * the sheet, or - from the strip - expand (the dock at >=1024, the sheet below).
 	 */
@@ -332,7 +351,11 @@ export const useSidebarFrame = (): SidebarFrame => {
 	return frame;
 };
 
-export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
+export const ChatLayout: FC<ChatLayoutProps> = ({
+	sidebar,
+	content,
+	flushTop = false,
+}) => {
 	/*
 	 * The sidebar's sheet edge is LOGICAL: it is the sidebar, so it enters from
 	 * the inline-start edge — left in LTR, right in RTL. Radix names the edge
@@ -700,28 +723,39 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 			 * `styles/index.css`, keyed on the chrome attributes), so a platform whose
 			 * OS is not drawing over the app loses nothing to it.
 			 */}
-			<div
-				ref={laneRef}
-				data-titlebar-lane=""
-				data-titlebar-drag=""
-				/* The stop as a fact on the element, the same reason the canvas's mode is one,
-				   so a probe reads where the lane changes ground rather than reverse-engineering
-				   it from a gradient string. */
-				data-slot-edge={slotEdge}
-				className="h-8 shrink-0"
-				style={{
-					background:
-						laneGround === "surface"
-							? `linear-gradient(to ${direction === "rtl" ? "left" : "right"}, var(--lo-surface) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px, var(--lo-elevated) ${railEdge}px, var(--lo-surface) ${railEdge}px)`
-							: `linear-gradient(to ${direction === "rtl" ? "left" : "right"}, var(--lo-surface) ${columnWidth}px, var(--lo-${laneGround}) ${columnWidth}px, var(--lo-${laneGround}) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px, var(--lo-elevated) ${railEdge}px, var(--lo-surface) ${railEdge}px)`,
-				}}
-			/>
+			{flushTop ? (
+				<div
+					ref={laneRef}
+					data-titlebar-lane=""
+					data-titlebar-drag=""
+					data-slot-edge={slotEdge}
+					className="absolute inset-x-0 top-0 z-30 h-[var(--chrome-strip-h)]"
+				/>
+			) : (
+				<div
+					ref={laneRef}
+					data-titlebar-lane=""
+					data-titlebar-drag=""
+					/* The stop as a fact on the element, the same reason the canvas's mode is one,
+					   so a probe reads where the lane changes ground rather than reverse-engineering
+					   it from a gradient string. */
+					data-slot-edge={slotEdge}
+					className="h-8 shrink-0"
+					style={{
+						background:
+							laneGround === "surface"
+								? `linear-gradient(to ${direction === "rtl" ? "left" : "right"}, var(--lo-surface) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px, var(--lo-elevated) ${railEdge}px, var(--lo-surface) ${railEdge}px)`
+								: `linear-gradient(to ${direction === "rtl" ? "left" : "right"}, var(--lo-surface) ${columnWidth}px, var(--lo-${laneGround}) ${columnWidth}px, var(--lo-${laneGround}) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px, var(--lo-elevated) ${railEdge}px, var(--lo-surface) ${railEdge}px)`,
+					}}
+				/>
+			)}
 			<div className="flex min-h-0 flex-1 overflow-hidden">
-				<div className="h-full shrink-0" style={{ width: columnWidth }}>
+				<div className={cn("h-full shrink-0")} style={{ width: columnWidth }}>
 					<SidebarFrameContext.Provider
 						value={{
 							expanded: layout.mode === "docked",
 							mode: layout.mode === "docked" ? "docked" : "strip",
+							chromePadTop: flushTop,
 							onCollapse:
 								viewportWidth >= SIDEBAR_DOCK_MIN_PX
 									? toggleSidebar
@@ -769,6 +803,11 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				<div
 					ref={contentColumnRef}
 					className="flex h-full min-w-0 grow flex-col overflow-hidden"
+					style={
+						{
+							"--panel-top-pad": flushTop ? "var(--chrome-strip-h)" : "0px",
+						} as CSSProperties
+					}
 				>
 					<LaneLeadingContext.Provider value={setLeadingColumn}>
 						<PanelRailHostContext.Provider value={railHost}>
@@ -927,6 +966,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 						value={{
 							expanded: true,
 							mode: "overlay",
+							chromePadTop: false,
 							onCollapse: () => setSheetRequested(false),
 						}}
 					>
