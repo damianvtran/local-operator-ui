@@ -3,6 +3,8 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { Button, Input } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Search, X } from "lucide-react";
@@ -334,6 +336,7 @@ const SessionTable: FC<{
 	state: SessionTableState;
 	dispatch: Dispatch<SessionTableAction>;
 }> = ({ data, metric, state, dispatch }) => {
+	useI18nLocale();
 	const names = data.session_names;
 	const parents = data.session_parents;
 	const bySession = data.aggregate.by_session;
@@ -556,8 +559,8 @@ const SessionTable: FC<{
 							/>
 							<Input
 								ref={searchRef}
-								aria-label="Search sessions"
-								placeholder="Search sessions"
+								aria-label={t("ui.chat.analytics.search.sessions")}
+								placeholder={t("ui.chat.analytics.search.sessions")}
 								value={state.query}
 								onChange={(event) => onSearch(event.target.value)}
 								className={cn("pl-8", state.query ? "pr-9" : undefined)}
@@ -577,7 +580,7 @@ const SessionTable: FC<{
 								<Button
 									variant="ghost"
 									size="icon-sm"
-									aria-label="Clear search"
+									aria-label={t("ui.chat.analytics.search.clear")}
 									className={cn(
 										"-translate-y-1/2 absolute top-1/2 right-1 focus-visible:outline-offset-[-2px]!",
 									)}
@@ -600,7 +603,7 @@ const SessionTable: FC<{
 							}}
 							tone="muted"
 						>
-							Top-level only
+							{t("ui.chat.analytics.filters.top_level_only")}
 						</PickerCheck>
 					</div>
 					{matchLine && !emptyText ? (
@@ -977,7 +980,7 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 			onClose={onClose}
 			shell="panel"
 			bodyLabel="Analytics region"
-			title="Analytics"
+			title={t("ui.chat.analytics.title")}
 			description="Model calls, tokens and known cost from the backend analytics ledger."
 			toolbar={
 				<div className={cn("flex flex-wrap items-center gap-4")}>
@@ -1006,11 +1009,13 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 							onCheckedChange={onThisSessionChange}
 							tone="muted"
 						>
-							This session only
+							{t("ui.chat.analytics.toolbar.this_session_only")}
 						</PickerCheck>
 					) : null}
 					{refreshing ? (
-						<p className={cn("ml-auto text-ink-dim text-meta")}>Refreshing</p>
+						<p className={cn("ml-auto text-ink-dim text-meta")}>
+							{t("ui.chat.analytics.toolbar.refreshing")}
+						</p>
 					) : null}
 				</div>
 			}
@@ -1039,7 +1044,10 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 					/>
 				) : (
 					<PanelStack>
-						<PanelSection title="Totals" meta={windowMeta(win, scope, readAt)}>
+						<PanelSection
+							title={t("ui.chat.analytics.sections.totals")}
+							meta={windowMeta(win, scope, readAt)}
+						>
 							<StatGrid>
 								<StatCard
 									label="Requests"
@@ -1121,7 +1129,7 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 								</BarChart>
 							</ChartFrame>
 						)}
-						<PanelSection title="By provider">
+						<PanelSection title={t("ui.chat.analytics.sections.by_provider")}>
 							<ProviderTable data={data} metric={metric} />
 						</PanelSection>
 						{/*
@@ -1136,7 +1144,7 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 						 * tables, and this table has no price column to follow it with.
 						 */}
 						<PanelSection
-							title="By model"
+							title={t("ui.chat.analytics.sections.by_model")}
 							meta={`${windowTitle(windowDays)} · from the ledger · ranked by output tokens`}
 						>
 							<ModelTable
@@ -1146,7 +1154,7 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 							/>
 						</PanelSection>
 						<PanelSection
-							title="By session"
+							title={t("ui.chat.analytics.sections.by_session")}
 							meta="Own figures per session · totals include subagents"
 						>
 							<SessionTable
@@ -1167,7 +1175,7 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 						 */}
 						{channels && (
 							<PanelSection
-								title="By channel"
+								title={t("ui.chat.analytics.sections.by_channel")}
 								meta={`This conversation, all time · total ${channels.total}`}
 							>
 								<ChannelsTable view={channels} />
