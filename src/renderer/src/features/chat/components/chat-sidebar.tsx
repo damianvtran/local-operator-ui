@@ -39,6 +39,7 @@ import {
 	unresolvedForLocalItem,
 } from "@shared/api/local-operator/hub-links";
 import {
+	HUB_SECTION,
 	type HubItemKind,
 	type HubMark,
 	hubAvailableCount,
@@ -6603,7 +6604,7 @@ export function ChatSidebar({
 			if (active && active !== document.body) return;
 			document
 				.querySelector<HTMLElement>(
-					`[data-chat-section="${kind === "agent" ? "agents" : "teams"}"]`,
+					`[data-chat-section="${HUB_SECTION[kind]}"]`,
 				)
 				?.focus();
 		});

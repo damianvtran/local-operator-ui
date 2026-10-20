@@ -152,5 +152,18 @@
 	"ui.hub.links.mark_failed": "ناکام",
 	"ui.hub.links.mark_available": "اپ ڈیٹ دستیاب",
 	"ui.hub.links.mark_busy": "کام جاری",
-	"ui.hub.links.mark_applied": "لاگو شدہ"
+	"ui.hub.links.mark_applied": "لاگو شدہ",
+	"ui.hub.skills.download": "ایک بار ڈاؤن لوڈ کریں",
+	"ui.hub.skills.unpull": "مقامی نقل ہٹائیں",
+	"ui.hub.skills.unpull_title": "{item} کی مقامی نقل ہٹائیں؟",
+	"ui.hub.skills.unpull_body": "فائلیں آپ کے مہارتوں کے فولڈر سے نکل جاتی ہیں۔ ربط اور اس کی سبسکرپشن برقرار رہتی ہے، اس لیے دوبارہ ڈاؤن لوڈ کرنے پر موجودہ ریویژن واپس آ جاتا ہے۔",
+	"ui.hub.skills.unpull_failed": "مقامی نقل ہٹنے کی تصدیق نہیں ہوئی۔ دوبارہ کوشش کریں، پھر ربط کی حالت دیکھیں۔",
+	"ui.hub.skills.subscribe_failed": "سبسکرپشن کی تصدیق نہیں ہوئی۔ دوبارہ کوشش کریں۔",
+	"ui.hub.skills.local_path": "{path} پر انسٹال",
+	"ui.hub.skills.published_by": "{publisher} نے شائع کیا",
+	"ui.hub.skills.not_downloaded": "ڈاؤن لوڈ نہیں ہوا",
+	"ui.hub.skills.subscribed_absent": "سبسکرائب — انسٹال نہیں",
+	"ui.hub.skills.pulled": "ڈاؤن لوڈ — سبسکرائب",
+	"ui.hub.skills.manual": "ڈاؤن لوڈ — سبسکرپشن نہیں",
+	"ui.hub.skills.detached": "ربط ہے — نقل نہیں"
 }

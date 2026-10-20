@@ -152,5 +152,18 @@
 	"ui.hub.links.mark_failed": "échec",
 	"ui.hub.links.mark_available": "mise à jour disponible",
 	"ui.hub.links.mark_busy": "en cours",
-	"ui.hub.links.mark_applied": "appliqué"
+	"ui.hub.links.mark_applied": "appliqué",
+	"ui.hub.skills.download": "Télécharger une fois",
+	"ui.hub.skills.unpull": "Supprimer la copie locale",
+	"ui.hub.skills.unpull_title": "Supprimer la copie locale de {item} ?",
+	"ui.hub.skills.unpull_body": "Les fichiers quittent votre dossier de compétences. Le lien et son abonnement restent, donc un nouveau téléchargement rétablit la révision actuelle.",
+	"ui.hub.skills.unpull_failed": "La suppression de la copie locale n’a pas été confirmée. Réessayez, puis vérifiez l’état du lien.",
+	"ui.hub.skills.subscribe_failed": "L’abonnement n’a pas été confirmé. Réessayez.",
+	"ui.hub.skills.local_path": "Installée dans {path}",
+	"ui.hub.skills.published_by": "Publiée par {publisher}",
+	"ui.hub.skills.not_downloaded": "Non téléchargée",
+	"ui.hub.skills.subscribed_absent": "Abonné — non installée",
+	"ui.hub.skills.pulled": "Téléchargée — abonné",
+	"ui.hub.skills.manual": "Téléchargée — sans abonnement",
+	"ui.hub.skills.detached": "Liée — sans copie"
 }
