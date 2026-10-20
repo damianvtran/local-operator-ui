@@ -3308,8 +3308,8 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/65c9256dc576.json",
-					"receipt_sha256": "6bff0b3c014872418c300964e47a7ef35c8a6580196442437b97c3637e6e64ed",
-					"scope": "QA round 2 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
+					"receipt_sha256": "249b246529c09c7a1e9286a5e38040468d7d4f8b23685d5c2130c34f2e287509",
+					"scope": "QA report — round 3 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
 				}
 			],
 			"status": "audited",
@@ -5468,8 +5468,8 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/65c9256dc576.json",
-					"receipt_sha256": "6bff0b3c014872418c300964e47a7ef35c8a6580196442437b97c3637e6e64ed",
-					"scope": "QA round 2 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
+					"receipt_sha256": "249b246529c09c7a1e9286a5e38040468d7d4f8b23685d5c2130c34f2e287509",
+					"scope": "QA report — round 3 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
 				}
 			],
 			"status": "audited",
@@ -5707,8 +5707,8 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/65c9256dc576.json",
-					"receipt_sha256": "6bff0b3c014872418c300964e47a7ef35c8a6580196442437b97c3637e6e64ed",
-					"scope": "QA round 2 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
+					"receipt_sha256": "249b246529c09c7a1e9286a5e38040468d7d4f8b23685d5c2130c34f2e287509",
+					"scope": "QA report — round 3 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
 				}
 			],
 			"status": "audited",
@@ -7246,8 +7246,8 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/65c9256dc576.json",
-					"receipt_sha256": "6bff0b3c014872418c300964e47a7ef35c8a6580196442437b97c3637e6e64ed",
-					"scope": "QA round 2 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
+					"receipt_sha256": "249b246529c09c7a1e9286a5e38040468d7d4f8b23685d5c2130c34f2e287509",
+					"scope": "QA report — round 3 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
 				}
 			],
 			"status": "audited",
@@ -11431,8 +11431,8 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/65c9256dc576.json",
-					"receipt_sha256": "6bff0b3c014872418c300964e47a7ef35c8a6580196442437b97c3637e6e64ed",
-					"scope": "QA round 2 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
+					"receipt_sha256": "249b246529c09c7a1e9286a5e38040468d7d4f8b23685d5c2130c34f2e287509",
+					"scope": "QA report — round 3 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
 				}
 			],
 			"status": "audited",
@@ -12116,8 +12116,8 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/65c9256dc576.json",
-					"receipt_sha256": "6bff0b3c014872418c300964e47a7ef35c8a6580196442437b97c3637e6e64ed",
-					"scope": "QA round 2 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
+					"receipt_sha256": "249b246529c09c7a1e9286a5e38040468d7d4f8b23685d5c2130c34f2e287509",
+					"scope": "QA report — round 3 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
 				}
 			],
 			"status": "audited",
@@ -16129,8 +16129,8 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/65c9256dc576.json",
-					"receipt_sha256": "6bff0b3c014872418c300964e47a7ef35c8a6580196442437b97c3637e6e64ed",
-					"scope": "QA round 2 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
+					"receipt_sha256": "249b246529c09c7a1e9286a5e38040468d7d4f8b23685d5c2130c34f2e287509",
+					"scope": "QA report — round 3 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
 				}
 			],
 			"status": "audited",

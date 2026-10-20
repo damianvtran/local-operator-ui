@@ -16,6 +16,6 @@
     "zh-CN": "8c7d01fb44394634c1fa3673512baca3f77933b32d2d245a5a5d93a6d945a011"
   },
   "findings": [],
-  "scope": "QA round 2 independent verification of PR #1250 at 84c8954ba3: all eight added ui.projects keys present in every one of the seven locales, ICU placeholders preserved, no English stubs; zero findings.",
-  "note": "Re-audit of the eight keys added by this PR against the new English source c5548caf87fc; the QA matrix is at https://github.com/damianvtran/local-operator-ui/pull/1250#issuecomment-6284702062."
+  "scope": "QA report — round 3 independent verification of PR #1250 at 84c8954ba3, scope 9895f79a24..84c8954ba3: all eight added ui.projects keys present in every one of the seven locales, ICU placeholders preserved, no English stubs; zero findings.",
+  "note": "QA report — round 3, https://github.com/damianvtran/local-operator-ui/pull/1250#issuecomment-6285533685; the earlier label and citation were a provenance error corrected on 2026-10-20."
 }
