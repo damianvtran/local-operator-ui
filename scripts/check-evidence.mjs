@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Assert that every committed frame is a picture of the app.
+ * Assert that every frame the capture rig wrote is a picture of the app.
  *
  * Why this exists: `chat-trace/conversation/localOperatorDark.webp` shipped as
  * a loading spinner on a white page - 2,762 bytes against its siblings' 57KB,
@@ -17,11 +17,14 @@
  * dims the ground under it. 25 sits well clear of that and the failing frame
  * measures 79.41, so the two populations do not overlap.
  *
- * It runs over the COMMITTED set rather than only during capture, which is
- * the difference between a set that was checked once and a set that can be
- * falsified now. `pnpm check-evidence`.
+ * It runs over the FRAMES TREE - `docs/evidence-frames/`, the rig's ignored
+ * output - rather than only during capture, which is the difference between a
+ * set that was checked once and a set that can be falsified now. The frames are
+ * regenerable and no longer committed (see `capture-evidence.mjs`'s constants),
+ * so a checkout with none has nothing to sweep and says so; capture first.
+ * `pnpm check-evidence`.
  *
- * WHAT A COMMITTED FRAME MUST BE CALLED, and why this is the place that says it.
+ * WHAT A FRAME MUST BE CALLED, and why this is the place that says it.
  * A frame's expected ground is derived FROM ITS FILENAME - the stem of
  * `<set>/<stem>.<container>` is looked up in `PALETTES` - so a frame whose stem
  * is not a palette id fails `no palette named <stem>` however its set is
@@ -118,7 +121,20 @@ const gitOut = (args) => {
 		return null;
 	}
 };
-const EVIDENCE = join(ROOT, "docs", "evidence");
+/*
+ * The FRAMES the sweep decodes, and the PROOF tree it reads beside them.
+ *
+ * Frames are regenerable rig output and live in the ignored
+ * `docs/evidence-frames/`; the manifest, the set READMEs and the proof JSONs
+ * are tracked in `docs/evidence/` (see `capture-evidence.mjs`'s constants, and
+ * `.gitignore`). This module reads BOTH: `frames()`/`countsMeanFailures`/
+ * `unjudgedFrameFailures`/`stampFailures` walk the frames tree, while the
+ * manifest is read from the proof tree. A path change here has to keep that
+ * pair straight - a manifest read out of the frames tree finds nothing on a
+ * checkout, and the gate then reports a tree with no declarations.
+ */
+const EVIDENCE = join(ROOT, "docs", "evidence-frames");
+const MANIFEST_DIR = join(ROOT, "docs", "evidence");
 
 /**
  * How far a frame's dominant colour may sit from the nearest ground of its own
@@ -909,6 +925,19 @@ export const partialCaptureFailures = (manifest, git = gitOut) => {
  */
 export const stampFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
 	const out = [];
+	/*
+	 * Whether the FRAMES tree is present at all.
+	 *
+	 * It is rig output and is not committed (`.gitignore`, `docs/evidence-frames`),
+	 * so a checkout that has never run a capture has none. The tree-dependent
+	 * half below - the swept count, the `countsMean` prose and the unjudged-frame
+	 * accounting - cannot be asked there, and asking it would fail every clean
+	 * checkout on a manifest that is in fact correct. The tree-INDEPENDENT half
+	 * (surfaces/themes against `HEAD:scripts/capture-evidence.mjs`, and the pass
+	 * tallies) still runs, and `main()` - which refuses before this point when
+	 * the tree is absent - is where the tree half is enforced.
+	 */
+	const tree = existsSync(dir);
 
 	/*
 	 * The `srcTree`/`scriptsTree` loop stood here and is RETIRED, not moved: a
@@ -980,7 +1009,7 @@ export const stampFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
 	 * Skipped when the manifest carries no count, so a fixture built for the other
 	 * checks is not asked about a tree it does not describe.
 	 */
-	if (typeof manifest.frames === "number") {
+	if (tree && typeof manifest.frames === "number") {
 		const declaredDirs = (manifest.supplementary ?? [])
 			.filter((set) => typeof set.path === "string" && set.path.length > 0)
 			.map((set) => join(dir, set.path));
@@ -1006,15 +1035,15 @@ export const stampFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
 	 * And the PROSE the fields are explained by, which is what a reader checks a
 	 * fold against (round 3, R3-1).
 	 */
-	out.push(...countsMeanFailures(manifest, git, dir));
+	if (tree) out.push(...countsMeanFailures(manifest, git, dir));
 
 	/*
 	 * And the frames the gate ACCOUNTS FOR but does not judge. Asked here, in the
 	 * half `test:desktop` runs, because the whole point of the count is that no
-	 * committed frame is invisible: a walk that reads no image is enough to notice
-	 * one appearing.
+	 * frame is invisible: a walk that reads no image is enough to notice one
+	 * appearing. Gated on the frames tree being present - see `tree` above.
 	 */
-	out.push(...unjudgedFrameFailures(manifest, dir));
+	if (tree) out.push(...unjudgedFrameFailures(manifest, dir));
 
 	return out;
 };
@@ -1647,7 +1676,9 @@ export const storyDriftReadings = (manifest, git = gitOut, root = ROOT) => {
 // sweep frames (capture-evidence imports the single-frame predicates).
 export const main = async () => {
 	if (!existsSync(EVIDENCE)) {
-		console.error(`No evidence at ${EVIDENCE}`);
+		console.error(
+			`No frames at ${EVIDENCE}. Frames are rig output and are not committed, so a checkout that has never run \`node scripts/capture-evidence.mjs\` has none to decode - capture first, then sweep.`,
+		);
 		process.exit(1);
 	}
 
@@ -1684,7 +1715,7 @@ export const main = async () => {
 		}
 	}
 
-	const manifestPath = join(EVIDENCE, "manifest.json");
+	const manifestPath = join(MANIFEST_DIR, "manifest.json");
 	if (existsSync(manifestPath)) {
 		const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 		// A manifest that misdescribes itself is not evidence of anything, so

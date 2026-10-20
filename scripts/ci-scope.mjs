@@ -178,6 +178,20 @@ const LOCK_PATHS = new Set(["pnpm-lock.yaml", "pnpm-workspace.yaml"]);
 const EVIDENCE_PREFIX = "docs/evidence/";
 
 /**
+ * `docs/evidence-frames/**` - the capture rig's IGNORED output tree.
+ *
+ * Frames are regenerable and are not committed (`.gitignore`), so a path here
+ * is never "committed evidence": there is nothing under it for a job to read,
+ * and classifying it as the evidence category would claim the suite had an
+ * input it does not have. It is not prose either. The only way it can appear in
+ * a diff is a force-add - a deliberate act that re-materialises a whole capture
+ * set per worktree (955 MB at origin/main, measured 2026-10-20) - so it is
+ * classified `other`, which runs everything and prints the unknown-path
+ * warning. Fail-closed, and loud rather than inert.
+ */
+const FRAMES_PREFIX = "docs/evidence-frames/";
+
+/**
  * The scripts the `runtime-deps` job's own step runs. Named so that a change to
  * either keeps that job selected: the check is the allowlist (`pnpm
  * check-runtime-deps`) executed through `scripts/require-report.sh` so a silent
@@ -349,6 +363,8 @@ export function categoryOf(path) {
 	const p = normalise(path);
 	if (!p) return CAT_OTHER;
 	if (p === ".github" || p.startsWith(".github/")) return CAT_CI;
+	if (p === "docs/evidence-frames" || p.startsWith(FRAMES_PREFIX))
+		return CAT_OTHER;
 	if (p === "docs/evidence" || p.startsWith(EVIDENCE_PREFIX))
 		return CAT_EVIDENCE;
 	if (p.startsWith("docs/")) return CAT_DOCS;
