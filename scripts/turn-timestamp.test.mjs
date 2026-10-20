@@ -885,7 +885,14 @@ test("a turn paints exactly one stamp, and a collapsed turn's is the bar's", asy
 	 */
 	const { container, unmount } = mount([
 		userRecord("user:1"),
-		answerRecord("answer:1", { text: "Reading the ledger." }),
+		/*
+		 * THE NARRATION CARRIES ITS OWN CALLS: this sentence opened the turn and the
+		 * calls below are the ones it announced (`isFinalResponse` reads the wire
+		 * fact, not the fixture's intent). Without it V5 pins the row on screen and
+		 * the stamp's carrier moves off the bar - the CI failure this fixture caused
+		 * (round 3, finding 1).
+		 */
+		answerRecord("answer:1", { text: "Reading the ledger.", callsTools: true }),
 		toolRecord("tool:1"),
 		toolRecord("tool:2"),
 		answerRecord("answer:2", { text: "Four invoices were late." }),

@@ -35,6 +35,7 @@ import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChatAnalytics from "./catalogues/en/ui.chat.analytics.json";
 import enUiChatCanonical from "./catalogues/en/ui.chat.canonical.json";
+import enUiChatCommentaryActions from "./catalogues/en/ui.chat.commentary_actions.json";
 import enUiChatComposer from "./catalogues/en/ui.chat.composer.json";
 import enUiChatComposerMedia from "./catalogues/en/ui.chat.composer_media.json";
 import enUiChatDialogs from "./catalogues/en/ui.chat.dialogs.json";
@@ -518,6 +519,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiCanvas,
 	...enUiChatAnalytics,
 	...enUiChatCanonical,
+	...enUiChatCommentaryActions,
 	...enUiChatComposer,
 	...enUiChatComposerMedia,
 	...enUiChatDialogs,
@@ -1681,6 +1683,7 @@ export type MessageParams = {
 	"ui.chat.canonical.transcript.stale_caption": undefined;
 	"ui.chat.canonical.transcript.start_new_chat": undefined;
 	"ui.chat.canonical.transcript.stopped_before_finishing": undefined;
+	"ui.chat.commentary_actions.label": undefined;
 	"ui.chat.composer.ask_aside": undefined;
 	"ui.chat.composer.attach_file": undefined;
 	"ui.chat.composer.cancel_recording": undefined;

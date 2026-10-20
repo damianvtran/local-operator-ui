@@ -163,15 +163,20 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 		const controls = [
 			...row.querySelectorAll(
 				/*
-				 * THE CLOSING ANSWER'S IN-FLOW CLUSTER IS THE THIRD SEAT, and leaving it
-				 * out was this defect: a response row's overlay and a user row's overlay
-				 * stood down while the answer's Copy/Speak/Fork row kept painting at the
-				 * far right, so a drag showed the selection strip AND a row toolbar at
-				 * once (measured: 84 of 87 drag frames on the base tree). The row's OWN toolbar is a
-				 * fallback for "no selection"; a selection strip is the toolbar for
+				 * EVERY ROW TOOLBAR IN THE TURN IS A SEAT, and leaving one out is this
+				 * defect: in the original case a response row's overlay and a user row's
+				 * overlay stood down while the answer's Copy/Speak/Fork row kept painting
+				 * at the far right, so a drag showed the selection strip AND a row toolbar
+				 * at once (measured: 84 of 87 drag frames on the base tree). The row's OWN toolbar
+				 * is a fallback for "no selection"; a selection strip is the toolbar for
 				 * "selection", and only one of the two may be on screen.
+				 *
+				 * `[data-lo-response-actions]` is the FOURTH seat (the non-closing final
+				 * response's in-flow row, restored by the operator's 2026-10-20 rule) and
+				 * `[data-lo-gutter-actions]` is the in-between commentary overlay: all
+				 * four markers are listed because all four paint in a turn.
 				 */
-				"[data-lo-gutter-actions], [data-lo-user-actions], [data-lo-answer-actions]",
+				"[data-lo-gutter-actions], [data-lo-user-actions], [data-lo-answer-actions], [data-lo-response-actions]",
 			),
 		];
 		row.setAttribute("data-lo-selection-active", "");

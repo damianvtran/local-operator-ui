@@ -410,7 +410,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 		 */
 		const written: Element[] = [];
 		for (const cluster of root.querySelectorAll(
-			"[data-lo-answer-actions], [data-lo-gutter-actions], [data-lo-user-actions]",
+			"[data-lo-answer-actions], [data-lo-gutter-actions], [data-lo-user-actions], [data-lo-response-actions]",
 		)) {
 			if (cluster.closest("[data-lo-selection-active]")) continue;
 			cluster.setAttribute("inert", "");

@@ -1,24 +1,29 @@
 /**
- * Every settled agent response in a turn can be copied (#1043).
+ * Every final response in a turn carries its own full action row (#1043, and the
+ * operator's 2026-10-20 rule).
  *
  * WHAT THIS FILE IS: `CanonicalTranscript` rendered through a real jsdom root
  * (the `speech-user-copy.test.mjs` rig) with a turn holding TWO settled
  * assistant responses. Before #1043 only the closing one carried a Copy
- * control, so the earlier response could only be copied by hand-selecting it.
+ * control; the operator's rule then split the class in two by the WIRE FACT
+ * (`turn-segments.ts::isFinalResponse`): a response that carries no `tool_calls`
+ * is a handover and gets the full in-flow row, and one that carries its own calls
+ * is in-between status commentary and gets the bare hover-only overlay.
+ *
  * The DOM is asked:
  *
- *   1. the earlier response carries a Copy-only GUTTER control
- *      (`data-lo-gutter-actions`), absolutely positioned and hover-revealed by
- *      its own record's `group`, so it reserves no line;
- *   2. there is NO in-flow `data-lo-response-actions` row left to reserve one -
- *      the operator's excess-space report, and the reason the marker moved;
- *   3. the closing answer keeps its full `data-lo-answer-actions` row, and only
- *      that one - no per-paragraph Speak/Fork (the PR #698 clutter rule);
+ *   1. a non-closing FINAL response carries an IN-FLOW `data-lo-response-actions`
+ *      row - Copy, Speak and Fork - under its prose, and no glyph is boxed;
+ *   2. the closing answer keeps its full `data-lo-answer-actions` row on the foot
+ *      line, and only that one wears the answer marker;
+ *   3. an in-between COMMENTARY row (`callsTools: true`) carries the bare
+ *      hover-only `data-lo-gutter-actions` overlay: absolutely positioned, Copy
+ *      alone, so it reserves no line;
  *   4. a press copies THAT response's own text;
- *   5. a response still streaming offers no GUTTER Copy. Its line context menu
- *      still copies the partial text on screen: a right-click asks for what is
- *      there, and refusing a live row's words would be a different product rule
- *      from the one that keeps the hover control off a moving line.
+ *   5. a response still streaming offers no bar. Its line context menu still
+ *      copies the partial text on screen: a right-click asks for what is there,
+ *      and refusing a live row's words would be a different product rule from
+ *      the one that keeps the action bar off a moving line.
  *
  * WHAT IT DOES NOT PROVE: pixels - the frames are the PR's evidence.
  */
@@ -303,16 +308,20 @@ const mountTranscript = async (records, { waiting = false } = {}) => {
 };
 
 /*
- * The response copy control is now the GUTTER OVERLAY (`data-lo-gutter-actions`),
- * not the in-flow `data-lo-response-actions` row #1043 added. The assertion the
- * operator's excess-space report needs is that the flow row is GONE, so this
- * helper names the replacement and the first test counts both.
+ * A non-closing FINAL response wears the IN-FLOW `data-lo-response-actions` row
+ * (the operator's rule). The in-between status class is asked for separately, by
+ * marker, in its own case below - the two classes must not be counted together.
  */
 const responseRows = (dom) => [
-	...dom.window.document.querySelectorAll("[data-lo-gutter-actions]"),
+	...dom.window.document.querySelectorAll("[data-lo-response-actions]"),
 ];
 
-test("an earlier settled response carries an absolute gutter Copy; the closing answer keeps the full row", async () => {
+const labelsOf = (row) =>
+	[...row.querySelectorAll("button")].map((button) =>
+		button.getAttribute("aria-label"),
+	);
+
+test("an earlier final response carries the full in-flow row; the closing answer keeps its own", async () => {
 	const { dom, press, written, unmount } = await mountTranscript([
 		gateUser("u1", "Is the March import finished?"),
 		gateAnswer("a1", "It finished with four invoices outstanding."),
@@ -322,35 +331,57 @@ test("an earlier settled response carries an absolute gutter Copy; the closing a
 		},
 	]);
 	const rows = responseRows(dom);
-	assert.equal(rows.length, 1, "the non-closing response has its own control");
 	assert.equal(
-		dom.window.document.querySelectorAll("[data-lo-response-actions]").length,
-		0,
-		"and no in-flow response row remains to reserve a line",
-	);
-	const labels = [...rows[0].querySelectorAll("button")].map((button) =>
-		button.getAttribute("aria-label"),
+		rows.length,
+		1,
+		"the non-closing final response has its own row",
 	);
 	assert.deepEqual(
-		labels,
-		["Copy"],
-		"Copy alone - no Speak or Fork per response",
+		labelsOf(rows[0]),
+		["Copy", "Speak aloud", "Fork from this message"],
+		"the full answer set: a handover is a handover wherever it sits",
 	);
 	assert.equal(
 		rows[0].getAttribute("aria-label"),
 		"Response actions",
 		'its own accessible name, not a second "Answer actions" toolbar',
 	);
-	assert.ok(rows[0].classList.contains("absolute"), "out of the flow");
+	assert.equal(rows[0].classList.contains("absolute"), false, "in the flow");
+	assert.equal(
+		rows[0].classList.contains("rounded-md"),
+		false,
+		"and BARE: no container, no edge, no ground (the operator's regression)",
+	);
+	assert.equal(
+		rows[0].classList.contains("border"),
+		false,
+		"no border on the row either",
+	);
 	assert.ok(rows[0].classList.contains("opacity-0"), "fades at rest");
 	assert.ok(
 		rows[0].classList.contains("group-hover:opacity-100"),
 		"revealed by hovering the response",
 	);
+	/*
+	 * The row's reserved meta line: the span that right-aligns it, inside the
+	 * `mt-1 flex items-center gap-2` rhythm the answer's foot line uses.
+	 */
+	const metaRow = rows[0].parentElement?.parentElement;
+	assert.ok(
+		metaRow?.className.includes("mt-1") &&
+			metaRow?.className.includes("flex") &&
+			metaRow?.className.includes("items-center"),
+		"its reserved meta row is the foot line's own rhythm",
+	);
 	assert.equal(
 		dom.window.document.querySelectorAll("[data-lo-answer-actions]").length,
 		1,
-		"exactly one full row, on the closing answer",
+		"exactly one answer-marked row, on the closing answer",
+	);
+	assert.equal(
+		dom.window.document.querySelectorAll("[data-lo-gutter-actions]").length,
+		0,
+		"no commentary overlay: neither response is in-between status text",
 	);
 	await press(rows[0].querySelector('button[aria-label="Copy"]'));
 	assert.deepEqual(
@@ -361,7 +392,47 @@ test("an earlier settled response carries an absolute gutter Copy; the closing a
 	await unmount();
 });
 
-test("a response still streaming offers no gutter Copy", async () => {
+test("in-between commentary keeps the bare hover-only overlay, Copy alone", async () => {
+	const { dom, press, written, unmount } = await mountTranscript([
+		gateUser("u1", "Is the March import finished?"),
+		/*
+		 * `callsTools: true` is the wire fact: this row announced the call that
+		 * follows it, so it is narration rather than a handover.
+		 */
+		{ ...gateAnswer("n1", "Reading the ledger first."), callsTools: true },
+		gateAnswer("a1", "It finished with four invoices outstanding."),
+	]);
+	const gutter = [
+		...dom.window.document.querySelectorAll("[data-lo-gutter-actions]"),
+	];
+	assert.equal(gutter.length, 1, "the commentary row has the overlay");
+	assert.deepEqual(labelsOf(gutter[0]), ["Copy"], "Copy alone");
+	assert.equal(
+		gutter[0].getAttribute("aria-label"),
+		"Commentary actions",
+		"named for its class, distinct from both answer rows",
+	);
+	assert.ok(gutter[0].classList.contains("absolute"), "out of the flow");
+	assert.equal(
+		gutter[0].classList.contains("rounded-md"),
+		false,
+		"the overlay is bare too: no pill, no ground",
+	);
+	assert.equal(
+		dom.window.document.querySelectorAll("[data-lo-response-actions]").length,
+		0,
+		"narration is not a response row",
+	);
+	await press(gutter[0].querySelector('button[aria-label="Copy"]'));
+	assert.deepEqual(
+		written,
+		["Reading the ledger first."],
+		"the overlay copies the commentary's own text",
+	);
+	await unmount();
+});
+
+test("a response still streaming offers no action bar", async () => {
 	/*
 	 * `waiting: true` is the live turn: without it the streaming record folds
 	 * into the turn's summary bar and its prose never renders, so "no gutter
@@ -401,11 +472,16 @@ test("a response still streaming offers no gutter Copy", async () => {
 		"the streaming response carries no Copy",
 	);
 	assert.equal(
+		streaming.querySelector("[data-lo-response-actions]") === null,
+		true,
+		"and no response row either: the bar is settled-only",
+	);
+	assert.equal(
 		dom.window.document.querySelectorAll(
-			'[data-record-id="a1"] [data-lo-gutter-actions]',
+			'[data-record-id="a1"] [data-lo-response-actions]',
 		).length,
 		1,
-		"the settled response before it keeps its Copy",
+		"the settled response before it keeps its bar",
 	);
 	/*
 	 * THE LINE'S CONTEXT MENU IS A DIFFERENT SURFACE and deliberately still

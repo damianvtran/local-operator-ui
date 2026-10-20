@@ -1,31 +1,37 @@
 /**
- * The transcript's copy affordances: no row reserves space, every line can be
- * copied, and the payload is the record's own text rather than the DOM's.
+ * The transcript's copy affordances: which rows reserve space and which are
+ * hover-only, every line can be copied, and the payload is the record's own text
+ * rather than the DOM's.
  *
  * WHAT THIS FILE IS. `CanonicalTranscript` mounted in a real jsdom root over a
  * multi-answer turn (`MULTI_TURN`), plus the pure payload rules from
  * `transcript-copy.ts`. The DOM is asked:
  *
- *   1. NO FLOW ACTION ROW under an intermediate response: zero
+ *   1. NO FLOW ACTION ROW under IN-BETWEEN STATUS TEXT: zero
  *      `[data-lo-response-actions]`, zero `mt-1 flex justify-end` wrappers, and
- *      the response's copy control is an `absolute` overlay
+ *      the commentary's copy control is an `absolute` overlay
  *      (`[data-lo-gutter-actions]`), so it reserves no line. jsdom reports zero
  *      heights for everything, so the pixel half of that claim is the committed
- *      evidence frame (`docs/evidence/transcript-copy-affordances/`); what the
- *      DOM can prove is that no flow child exists to reserve the 28px.
- *   2. THE USER ROW'S CONTROL is an overlay inside its turn, focusable, and
- *      revealed by the turn's `group` - the row keeps no flow place.
- *   3. RIGHT-CLICK WORKS ON EVERY LINE KIND: prose, a tool ledger row, a fold
+ *      evidence frame (`docs/evidence/transcript-action-bars/`); what the DOM
+ *      can prove is that no flow child exists to reserve a line.
+ *   2. A NON-CLOSING FINAL RESPONSE (settled, paints text, carries no
+ *      `tool_calls` of its own) DOES reserve a row: `[data-lo-response-actions]`
+ *      in the flow, under the prose - the operator's 2026-10-20 rule, which
+ *      the ROLE decides rather than the position.
+ *   3. THE USER ROW'S CONTROL is a FLOW CHILD under the bubble that reserves its
+ *      place at rest, revealed by the turn's `group` - not an overlay, so the
+ *      layout does not shift when the pointer arrives.
+ *   4. RIGHT-CLICK WORKS ON EVERY LINE KIND: prose, a tool ledger row, a fold
  *      header, a peer receipt. The menu opens for the line right-clicked and its
  *      Copy as Markdown writes that line's source.
- *   4. KEYBOARD: Shift+F10 opens a focused message's menu, and Mod+Shift+C
+ *   5. KEYBOARD: Shift+F10 opens a focused message's menu, and Mod+Shift+C
  *      copies the focused message (or the selection when no row is focused).
- *   5. SELECTION: a partial assistant selection raises ONE strip with Quote,
+ *   6. SELECTION: a partial assistant selection raises ONE strip with Quote,
  *      Copy and Speak (not the shared toolbar as well), and its Copy writes the
  *      highlight; a selection outside a quotable turn still gets the shared
  *      Copy/Speak toolbar.
  *
- * WHAT IT DOES NOT PROVE: pixels and theme contrast (the evidence frame and
+ * WHAT IT DOES NOT PROVE: pixels and theme contrast (the evidence frames and
  * design review carry those), or a real OS clipboard (the write path is the
  * app's one `copyTarget`, stubbed at `navigator.clipboard`).
  */
@@ -208,7 +214,20 @@ const MULTI_TURN = mod.applyHistoryPage(mod.EMPTY_TRANSCRIPT, {
 			kind: "message",
 			role: "assistant",
 			content: [{ text: INTERMEDIATE }],
-			stop_reason: "stop",
+			/*
+			 * THE WIRE FACT THAT MAKES THIS ROW COMMENTARY: it carried the call it
+			 * announces, which is what `turn-segments.ts::isFinalResponse` reads. A
+			 * settled assistant row with prose and no `tool_calls` is a final response
+			 * (the `FINAL_MIDTURN` fixture below) and now reserves a row of its own.
+			 */
+			stop_reason: "toolUse",
+			tool_calls: [
+				{
+					id: "c1",
+					type: "function",
+					function: { name: "read", arguments: "{}" },
+				},
+			],
 		}),
 		ENTRY("t1", GATE_TS / 1000 + 4, {
 			kind: "message",
@@ -252,6 +271,45 @@ const MULTI_TURN = mod.applyHistoryPage(mod.EMPTY_TRANSCRIPT, {
 				text: "<peer-session-message from_pid='1' conversation='sibling'>\nA note from a sibling session.\n</peer-session-message>",
 				sender: { pid: "1", conversation_name: "sibling" },
 			},
+		}),
+	],
+	has_more: false,
+	cursor_missing: false,
+});
+
+/*
+ * A turn with a FINAL RESPONSE that does not close it: the reader's message, a
+ * settled handover with NO `tool_calls` (`f1`), the call that follows, and the
+ * closing answer. This is the operator's "all final responses to the user even in
+ * between" class - the `isFinalResponse` half of the rule, and the one the
+ * in-between test must not be confused with.
+ */
+const FINAL_MIDTURN = mod.applyHistoryPage(mod.EMPTY_TRANSCRIPT, {
+	entries: [
+		ENTRY("u1", GATE_TS / 1000, {
+			kind: "message",
+			role: "user",
+			content: [{ text: "Is the March import finished?" }],
+		}),
+		ENTRY("f1", GATE_TS / 1000 + 2, {
+			kind: "message",
+			role: "assistant",
+			content: [{ text: INTERMEDIATE }],
+			stop_reason: "stop",
+		}),
+		ENTRY("t1", GATE_TS / 1000 + 4, {
+			kind: "message",
+			role: "tool",
+			tool_call_id: "c1",
+			tool_name: "read",
+			content: [{ type: "text", text: "src/invoices/query.ts\n" }],
+			provider_payload: { duration_s: 0.4, details: {} },
+		}),
+		ENTRY("a2", GATE_TS / 1000 + 70, {
+			kind: "message",
+			role: "assistant",
+			content: [{ text: CLOSING }],
+			stop_reason: "stop",
 		}),
 	],
 	has_more: false,
@@ -388,21 +446,44 @@ const mountTranscript = async (transcript, options = {}) => {
 			await new Promise((resolve) => setTimeout(resolve, 15));
 		});
 	};
-	const openMenu = async (element) => {
-		assert.ok(element, "missing context-menu target");
-		await act(async () => {
-			element.dispatchEvent(
-				new dom.window.MouseEvent("contextmenu", {
-					bubbles: true,
-					cancelable: true,
-					button: 2,
-					clientX: 24,
-					clientY: 24,
-				}),
-			);
-			await new Promise((resolve) => setTimeout(resolve, 15));
-		});
-		const menu = dom.window.document.querySelector("[data-lo-copy-menu]");
+	const openMenu = async (target) => {
+		const resolve = typeof target === "function" ? target : () => target;
+		assert.ok(resolve(), "missing context-menu target");
+		/*
+		 * POLL, RE-RESOLVE AND RE-DISPATCH RATHER THAN ONE FIXED SLEEP (CI,
+		 * 2026-10-20). Three consecutive heads failed `the context menu opened`
+		 * at 34-56 s on a loaded runner while the file passed in 5-7 s locally.
+		 * The fold re-commits the row under the same DOM path, so a node captured
+		 * before the commit can be detached by the time the event is sent; the
+		 * resolver re-queries it every step, the `isConnected` check skips a
+		 * stale node, and the idempotent contextmenu event is re-sent because
+		 * Radix attaches the trigger's listener in a layout effect. The 2 s
+		 * budget still fails if the menu never opens.
+		 */
+		let menu = null;
+		for (let attempt = 0; attempt < 200; attempt += 1) {
+			const element = resolve();
+			if (element === null || !element.isConnected) {
+				await act(async () => {
+					await new Promise((resolve) => setTimeout(resolve, 10));
+				});
+				continue;
+			}
+			await act(async () => {
+				element.dispatchEvent(
+					new dom.window.MouseEvent("contextmenu", {
+						bubbles: true,
+						cancelable: true,
+						button: 2,
+						clientX: 24,
+						clientY: 24,
+					}),
+				);
+				await new Promise((resolve) => setTimeout(resolve, 10));
+			});
+			menu = dom.window.document.querySelector("[data-lo-copy-menu]");
+			if (menu !== null) break;
+		}
 		assert.ok(menu, "the context menu opened");
 		return menu;
 	};
@@ -630,27 +711,56 @@ test("a fold summary copies its summary line", () => {
 
 /* ------------------------------------------------------------ no layout */
 
-test("an intermediate answer has no in-flow action row and no reserved line", async () => {
+test("an in-between status row has no in-flow action row and no reserved line", async () => {
 	const rig = await mountTranscript(MULTI_TURN);
 	const dom = rig.dom;
 	assert.equal(
 		dom.window.document.querySelectorAll("[data-lo-response-actions]").length,
 		0,
-		"the per-response flow row is gone",
+		"no final-response row: this turn has no mid-turn handover",
 	);
 	assert.equal(
 		dom.window.document.querySelectorAll('[class*="mt-1 flex justify-end"]')
 			.length,
 		0,
-		"and its wrapper is gone with it",
+		"and no wrapper reserves a line",
 	);
-	const responseRow = rowOf(dom, "a1");
-	assert.ok(responseRow, "the intermediate answer is on screen");
+	/*
+	 * Narration is part of the folded work (that is the condensation rule, and
+	 * nothing here changes it), so the reader has to open the bar to see the row -
+	 * the ordinary door the other tests in this file use.
+	 */
+	const bar = dom.window.document.querySelector(
+		'[data-turn-summary] button[aria-expanded="false"]',
+	);
+	assert.ok(bar, "the tool span is a bar at rest");
+	await rig.click(bar);
+	/*
+	 * `[data-lo-message-row]` disambiguates the ROW from the bar: the bar carries
+	 * its anchor row's `data-record-id` as well, and `rowOf` alone would return
+	 * the bar container once the span is open.
+	 */
+	const responseRow = dom.window.document.querySelector(
+		'[data-record-id="a1"][data-lo-message-row]',
+	);
+	assert.ok(responseRow, "the commentary row is on screen once the bar opens");
 	const gutter = responseRow.querySelector("[data-lo-gutter-actions]");
 	assert.ok(gutter, "it keeps a copy control, in the gutter");
+	assert.equal(
+		gutter.getAttribute("aria-label"),
+		"Commentary actions",
+		"named for its class",
+	);
 	assert.ok(
 		gutter.classList.contains("absolute"),
 		"absolutely positioned, so it contributes no line to the row's height",
+	);
+	assert.equal(
+		gutter.classList.contains("rounded-md") ||
+			gutter.classList.contains("border") ||
+			gutter.classList.contains("bg-elevated"),
+		false,
+		"and BARE: the screenshot's pill is the regression, and a hover-only pill is still a pill",
 	);
 	/*
 	 * THE REVEAL'S GROUP IS THE FOCUSABLE WRAPPER. The first after-frame showed
@@ -691,7 +801,93 @@ test("an intermediate answer has no in-flow action row and no reserved line", as
 	await rig.unmount();
 });
 
-test("the user row's control is an absolute overlay, focusable with the row", async () => {
+test("a non-closing FINAL response reserves an in-flow row with the full answer set", async () => {
+	const rig = await mountTranscript(FINAL_MIDTURN);
+	const dom = rig.dom;
+	const row = rowOf(dom, "f1");
+	assert.ok(row, "the mid-turn final response is on screen");
+	const control = row.querySelector("[data-lo-response-actions]");
+	assert.ok(control, "it carries the response row");
+	assert.equal(
+		control.getAttribute("aria-label"),
+		"Response actions",
+		"its own name, distinct from the closing answer's",
+	);
+	assert.equal(
+		control.classList.contains("absolute"),
+		false,
+		"IN THE FLOW: a final response takes the row it is handed",
+	);
+	assert.ok(
+		control.className.includes("opacity-0") &&
+			control.className.includes("group-hover:opacity-100"),
+		"revealed on hover, opacity-only",
+	);
+	const labels = [...control.querySelectorAll("button")].map((button) =>
+		button.getAttribute("aria-label"),
+	);
+	assert.deepEqual(
+		labels,
+		["Copy", "Speak aloud", "Fork from this message"],
+		"the full answer set, not Copy alone",
+	);
+	assert.equal(
+		dom.window.document.querySelectorAll("[data-lo-gutter-actions]").length,
+		0,
+		"nothing here is in-between status text",
+	);
+	assert.equal(
+		dom.window.document.querySelectorAll("[data-lo-answer-actions]").length,
+		1,
+		"and the closing answer keeps the one answer-marked row",
+	);
+	assert.equal(
+		dom.window.document.querySelectorAll("[data-lo-response-actions]").length,
+		1,
+		"one response row, for the one non-closing handover",
+	);
+	/*
+	 * THE FOURTH SEAT STANDS DOWN FOR A SELECTION (review round 1, C1). The CSS
+	 * rule and the sweep in `text-selection-controls.tsx` cover this marker; this
+	 * asserts the DOM half on the SAME mount rather than paying a second one.
+	 */
+	const prose = row.querySelector(".lo-markdown");
+	assert.ok(prose, "the response's prose is on screen");
+	const range = dom.window.document.createRange();
+	range.selectNodeContents(prose.firstChild ?? prose);
+	const selection = dom.window.getSelection();
+	assert.ok(selection, "jsdom exposes a selection");
+	selection.removeAllRanges();
+	selection.addRange(range);
+	await act(async () => {
+		dom.window.document.dispatchEvent(
+			new dom.window.MouseEvent("mouseup", { bubbles: true }),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 30));
+	});
+	assert.ok(
+		control.hasAttribute("inert"),
+		"the response row is inert while a selection is live",
+	);
+	assert.equal(
+		control.getAttribute("aria-hidden"),
+		"true",
+		"and out of the accessibility tree",
+	);
+	await act(async () => {
+		selection.removeAllRanges();
+		dom.window.document.dispatchEvent(new dom.window.Event("selectionchange"));
+		await new Promise((resolve) => setTimeout(resolve, 30));
+	});
+	assert.equal(
+		control.hasAttribute("inert"),
+		false,
+		"and restored to the hit test when the selection clears",
+	);
+	await rig.unmount();
+});
+
+test("the user row's control is a reserved flow row under the bubble, revealed by focus", async () => {
 	const rig = await mountTranscript(MULTI_TURN);
 	const dom = rig.dom;
 	const userRow = rowOf(dom, "u1");
@@ -716,10 +912,52 @@ test("the user row's control is an absolute overlay, focusable with the row", as
 	);
 	const control = userRow.querySelector("[data-lo-user-actions]");
 	assert.ok(control, "the reader's own copy control is present");
-	assert.ok(control.classList.contains("absolute"), "outside the flow");
+	assert.equal(
+		control.classList.contains("absolute"),
+		false,
+		"IN THE FLOW: the operator asked for a row under the message that takes up space",
+	);
+	/*
+	 * Its seat: a child of the turn's own flex COLUMN, and the control's previous
+	 * sibling is the horizontal ROW that holds the bubble. Review round 1's B1
+	 * passed the old assertion (`control.parentElement ===
+	 * bubble.parentElement?.parentElement`) while the control was mounted INSIDE
+	 * that row, because the bubble's own wrapper nesting made both sides resolve
+	 * to the row. The assertions below cannot pass in that shape: the parent must
+	 * be the COLUMN (`flex-col`, not `justify-end`), the previous sibling must be
+	 * the bubble's row, and the control must follow the bubble in document order.
+	 */
+	const seat = control.parentElement;
+	assert.ok(seat, "the control has a parent");
+	assert.ok(
+		seat.className.includes("flex-col"),
+		"it is a child of the turn's flex COLUMN, so it stacks under the bubble",
+	);
+	assert.equal(
+		seat.className.includes("justify-end") ||
+			seat.className.includes("flex-row"),
+		false,
+		"it is NOT inside the horizontal bubble row",
+	);
+	const bubbleRow = control.previousElementSibling;
+	assert.ok(
+		bubbleRow?.contains(bubble),
+		"the bubble's own row is its previous sibling - directly under the message",
+	);
+	assert.ok(
+		(bubble.compareDocumentPosition(control) &
+			dom.window.Node.DOCUMENT_POSITION_FOLLOWING) !==
+			0,
+		"and the control follows the bubble in document order",
+	);
 	assert.ok(
 		control.className.includes("group-focus-within:opacity-100"),
 		"revealed when the turn holds focus",
+	);
+	assert.ok(
+		control.className.includes("opacity-0") &&
+			control.className.includes("group-hover:opacity-100"),
+		"and hidden at rest by OPACITY ONLY, so revealing it moves nothing",
 	);
 	const heightBefore = userRow.getBoundingClientRect().height;
 	await act(async () => {
@@ -733,7 +971,7 @@ test("the user row's control is an absolute overlay, focusable with the row", as
 	assert.equal(
 		userRow.getBoundingClientRect().height,
 		heightBefore,
-		"focusing the row reveals the control without changing the row's height",
+		"focusing the row reveals the control without changing the row's height (the real proof is the frame pair: same y/height at rest and on hover)",
 	);
 	await rig.unmount();
 });
@@ -764,30 +1002,37 @@ test("a tool row opens its own menu and copies its fenced result", async () => {
 	const rig = await mountTranscript(MULTI_TURN);
 	const dom = rig.dom;
 	/*
-	 * The settled turn arrives collapsed into its bar; the bar's own press is
-	 * the reader's door to the ledger rows, so the test takes the same door
-	 * rather than mounting a state the product never shows.
+	 * THE PRODUCT PATH, WITH BOTH FOLD DEFAULT STATES HANDLED. The settled turn
+	 * opens as a bar; the ledger rows then live behind a fold. The old body
+	 * TOGGLED that fold unconditionally, which closes it on a head where it was
+	 * already open - and three CI heads then failed `the context menu opened`
+	 * while the file passed locally. Open the bar, then toggle the fold only if
+	 * the tool row is not already there, and poll for the row across the fold's
+	 * commit. The menu itself re-resolves its trigger every step.
 	 */
 	const bar = dom.window.document.querySelector(
 		'[data-turn-summary] button[aria-expanded="false"]',
 	);
 	assert.ok(bar, "the turn opens as a bar");
 	await rig.click(bar);
-	/*
-	 * The ledger calls are inside their own fold, which starts closed. Opening it
-	 * is the reader's second press; the fold header itself is the line the
-	 * context menu is attached to, so this is the ordinary path to a tool row.
-	 */
-	const foldToggle = dom.window.document.querySelector(
-		"[data-fold-ids] button[aria-expanded]",
-	);
-	assert.ok(foldToggle, "the ledger fold is on screen");
-	await rig.click(foldToggle);
-	const toolRow = dom.window.document.querySelector(
-		'[data-record-kind="tool"]',
-	);
+	const findTool = () =>
+		dom.window.document.querySelector('[data-record-kind="tool"]');
+	if (findTool() === null) {
+		const foldToggle = dom.window.document.querySelector(
+			"[data-fold-ids] button[aria-expanded]",
+		);
+		assert.ok(foldToggle, "the ledger fold is on screen");
+		await rig.click(foldToggle);
+	}
+	let toolRow = findTool();
+	for (let attempt = 0; attempt < 200 && toolRow === null; attempt += 1) {
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		});
+		toolRow = findTool();
+	}
 	assert.ok(toolRow, "the ledger row is on screen after the bar opens");
-	const menu = await rig.openMenu(toolRow);
+	const menu = await rig.openMenu(findTool);
 	assert.deepEqual(
 		[...menu.querySelectorAll('[role="menuitem"]')].map(
 			(node) => node.textContent,
@@ -870,7 +1115,23 @@ test("Shift+F10 opens the focused message's menu, and Mod+Shift+C copies it", as
 test("a partial assistant selection raises one Copy/Quote/Speak strip", async () => {
 	const rig = await mountTranscript(MULTI_TURN);
 	const dom = rig.dom;
-	const answer = rowOf(dom, "a1");
+	/*
+	 * `a1` is COMMENTARY now, so it lives inside the turn's collapsed span and
+	 * the bar carries the same `data-record-id` as its anchor row. Open the bar
+	 * (the reader's own door) and address the ROW marker, then select inside the
+	 * row's PROSE box - the old `findText(row)` picked the bar's "Took " line
+	 * when the row's container began with the collapsed span's header (review
+	 * round 1, C2).
+	 */
+	const bar = dom.window.document.querySelector(
+		'[data-turn-summary] button[aria-expanded="false"]',
+	);
+	assert.ok(bar, "the tool span is a bar at rest");
+	await rig.click(bar);
+	const answer = dom.window.document.querySelector(
+		'[data-record-id="a1"][data-lo-message-row]',
+	);
+	assert.ok(answer, "the commentary row is on screen once the bar opens");
 	const findText = (node) => {
 		if (node.nodeType === 3 && node.textContent.trim().length > 0) return node;
 		for (const child of node.childNodes) {
@@ -879,7 +1140,7 @@ test("a partial assistant selection raises one Copy/Quote/Speak strip", async ()
 		}
 		return null;
 	};
-	const textNode = findText(answer);
+	const textNode = findText(answer.querySelector(".lo-markdown") ?? answer);
 	assert.ok(textNode, "the answer has a text node to select");
 	const range = dom.window.document.createRange();
 	range.selectNodeContents(textNode);
