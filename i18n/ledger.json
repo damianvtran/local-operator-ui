@@ -17076,8 +17076,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
-			"target_sha256": "e61bdf636f347e022d65c8641b95e34b1abd7fe637faf5485218265a18520a52",
+			"source_sha256": "e91f2bf2629014cb458bb30d2c92cf5083644d8709317527c50b84909274a22c",
+			"target_sha256": "cf750ae869a97b1c248d89f1e8ff55d74201e25f7bafba583eb00700b5445237",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -17088,18 +17088,18 @@
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-20",
-					"result": "clean",
-					"instance": "7f3a1c9e-r3",
+					"result": "clean-with-findings",
+					"instance": "tbd-r1-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/7f3a1c9e-r3.json",
-					"receipt_sha256": "ae06a655f359f65746057e5080cbe1dc5c82d16b72114dd8ba18d252674c209f",
-					"scope": "fr ui.teamBridge vs en source at 5f335225ab - wave-1 round-3 design-fix pass",
-					"note": "0 BLOCKER/MAJOR; clean pass on the design-fix bytes."
+					"receipt": "i18n/receipts/tbd-r1-fr.json",
+					"receipt_sha256": "adb374b4f34ee1a3fb4997825a2e80075aad37b7dc3af9f55356def0058bf038",
+					"scope": "fr ui.teamBridge vs en source at e91f2bf262 - round-1 remediation (directory + plan cues)",
+					"note": "0 BLOCKER/MAJOR. Covers the 26 new keys and the read-only/gate copy; round-1 U-3 re-audit."
 				}
 			],
 			"status": "audited",
@@ -17124,6 +17124,30 @@
 							"receipt_sha256": "3a791ebfb0bc2598474ca59c54b3398ae2eb9cb15277fc0c657ac100d5fac73e",
 							"scope": "fr ui.teamBridge vs en source at 75428c035e - wave-1 full namespace pass",
 							"note": "0 BLOCKER/MAJOR; clean pass on the audited bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
+					"target_sha256": "e61bdf636f347e022d65c8641b95e34b1abd7fe637faf5485218265a18520a52",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "7f3a1c9e-r3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7f3a1c9e-r3.json",
+							"receipt_sha256": "ae06a655f359f65746057e5080cbe1dc5c82d16b72114dd8ba18d252674c209f",
+							"scope": "fr ui.teamBridge vs en source at 5f335225ab - wave-1 round-3 design-fix pass",
+							"note": "0 BLOCKER/MAJOR; clean pass on the design-fix bytes."
 						}
 					],
 					"status": "audited"
@@ -17457,8 +17481,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
-			"target_sha256": "229610bc2a3079e167424d7dc273922c86c88d28fcb748ee1a56deabaa6e4371",
+			"source_sha256": "e91f2bf2629014cb458bb30d2c92cf5083644d8709317527c50b84909274a22c",
+			"target_sha256": "5b1bb5df0ad84c50b0290317356d9cc3b3583bf0ee08db750b4215e8778157d5",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -17469,27 +17493,53 @@
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-20",
-					"result": "clean",
-					"instance": "b28d4e61",
+					"result": "clean-with-findings",
+					"instance": "tbd-r1-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 5
 					},
-					"receipt": "i18n/receipts/b28d4e61.json",
-					"receipt_sha256": "5a6397a6365d6b20da7919f3fb4fbb16b7a95bd7975ca5ba318614e78bbdb13f",
-					"scope": "es ui.teamBridge vs en source at 75428c035e - wave-1 full namespace pass",
-					"note": "0 BLOCKER/MAJOR; clean pass on the audited bytes."
+					"receipt": "i18n/receipts/tbd-r1-es.json",
+					"receipt_sha256": "89146cfc7b928d0c9841bda9689a0f314b8880e08675e62c515f69ee2073ebb8",
+					"scope": "es ui.teamBridge vs en source at e91f2bf262 - round-1 remediation (directory + plan cues)",
+					"note": "0 BLOCKER/MAJOR. Covers the 26 new keys and the read-only/gate copy; round-1 U-3 re-audit."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
+					"target_sha256": "229610bc2a3079e167424d7dc273922c86c88d28fcb748ee1a56deabaa6e4371",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "b28d4e61",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b28d4e61.json",
+							"receipt_sha256": "5a6397a6365d6b20da7919f3fb4fbb16b7a95bd7975ca5ba318614e78bbdb13f",
+							"scope": "es ui.teamBridge vs en source at 75428c035e - wave-1 full namespace pass",
+							"note": "0 BLOCKER/MAJOR; clean pass on the audited bytes."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
-			"target_sha256": "d330678abdb13c8d6ff4ebbe1008239dabe91c2dddc740a5dc0815bf4153b069",
+			"source_sha256": "e91f2bf2629014cb458bb30d2c92cf5083644d8709317527c50b84909274a22c",
+			"target_sha256": "653c35021ba09ed7629818586a85b70615f87cd718315e5d853f860fb0949c5f",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -17501,20 +17551,46 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-20",
 					"result": "clean",
-					"instance": "c94a2f70-r2",
+					"instance": "tbd-r1-zhcn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c94a2f70-r2.json",
-					"receipt_sha256": "c8cf6749d0198b4652974bb4ddb6762c98d74fc095eefb9c2681310ec724abea",
-					"scope": "zh-CN ui.teamBridge vs en source at 75428c035e - wave-1 full namespace pass",
-					"note": "0 BLOCKER/MAJOR; clean pass on the audited bytes."
+					"receipt": "i18n/receipts/tbd-r1-zhcn.json",
+					"receipt_sha256": "9a49751a108e1f07bad461b6293b50991b45b4f0db264a0cb8d35ba3a43ba4df",
+					"scope": "zh-CN ui.teamBridge vs en source at e91f2bf262 - round-1 remediation (directory + plan cues)",
+					"note": "0 BLOCKER/MAJOR. Covers the 26 new keys and the read-only/gate copy; round-1 U-3 re-audit."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
+					"target_sha256": "d330678abdb13c8d6ff4ebbe1008239dabe91c2dddc740a5dc0815bf4153b069",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "c94a2f70-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c94a2f70-r2.json",
+							"receipt_sha256": "c8cf6749d0198b4652974bb4ddb6762c98d74fc095eefb9c2681310ec724abea",
+							"scope": "zh-CN ui.teamBridge vs en source at 75428c035e - wave-1 full namespace pass",
+							"note": "0 BLOCKER/MAJOR; clean pass on the audited bytes."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",

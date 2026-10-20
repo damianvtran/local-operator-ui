@@ -36,8 +36,10 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
+import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
 import type {
 	TeamBridgeConversationList,
+	TeamBridgeDirectory,
 	TeamBridgeMessagePage,
 	TeamBridgeNotify,
 	TeamBridgeReadState,
@@ -80,6 +82,15 @@ export const teamBridgeKeys = {
 		] as const,
 	unread: (scope: TeamBridgeScope) => [...ROOT, "unread", scope] as const,
 	unreadPrefix: [...ROOT, "unread"] as const,
+	/*
+	 * The People section's two reads. The directory is keyed by TENANT (the
+	 * section only exists for one organization), so switching scope refetches
+	 * into a different key and a previous organization's roster is never shown
+	 * under the new title. The status read is one key: the platform state does
+	 * not vary by scope.
+	 */
+	directory: (tenantId: string) => [...ROOT, "directory", tenantId] as const,
+	status: [...ROOT, "status"] as const,
 };
 
 /** Map the UI scope onto the wire's read scope (the only place the sentinel is translated). */
@@ -102,10 +113,12 @@ function badgeInterval(): number {
 
 export function useTeamBridgeConversations(
 	scope: TeamBridgeScope,
+	enabled = true,
 ): UseQueryResult<TeamBridgeConversationList> {
 	return useQuery({
 		queryKey: teamBridgeKeys.conversations(scope),
 		queryFn: () => TeamBridgeApi.listConversations(readScope(scope)),
+		enabled,
 		staleTime: 15_000,
 		refetchOnWindowFocus: true,
 	});
@@ -114,12 +127,13 @@ export function useTeamBridgeConversations(
 export function useTeamBridgeMessages(
 	conversationId: string | null,
 	tenantId?: string,
+	enabled = true,
 ): UseQueryResult<TeamBridgeMessagePage> {
 	return useQuery({
 		queryKey: teamBridgeKeys.messages(conversationId ?? "none", tenantId),
 		queryFn: () =>
 			TeamBridgeApi.listMessages(conversationId as string, { tenantId }),
-		enabled: Boolean(conversationId),
+		enabled: enabled && Boolean(conversationId),
 		staleTime: 5_000,
 		/* A conversation needs to feel live: without a poll an incoming message
 		   never appears until the reader clicks away. Eight seconds is Slack's
@@ -140,6 +154,50 @@ export function useTeamBridgeIdentity(
 		queryFn: () => TeamBridgeApi.identity(),
 		enabled,
 		staleTime: 5 * 60_000,
+		retry: 1,
+	});
+}
+
+/**
+ * The rail's People section: one organization's active human members.
+ *
+ * `tenantId` is null in the merged scope, and the query is DISABLED there —
+ * the account-wide view has no single roster to show, and the section states
+ * that rather than spending a read on an answer it cannot render. A directory
+ * failure is this section's own error state: it is a separate query from the
+ * conversation list, so a refused directory never blanks the list.
+ */
+export function useTeamBridgeDirectory(
+	tenantId: string | null,
+	enabled = true,
+): UseQueryResult<TeamBridgeDirectory> {
+	return useQuery({
+		queryKey: teamBridgeKeys.directory(tenantId ?? "none"),
+		queryFn: () => TeamBridgeApi.directory(tenantId as string),
+		enabled: enabled && Boolean(tenantId),
+		staleTime: 30_000,
+		refetchOnWindowFocus: true,
+		retry: 1,
+	});
+}
+
+/**
+ * The bridge's platform state, for the page's plan/sign-in cue.
+ *
+ * Read once per page open (`surface_open`) and kept fresh for a minute. The
+ * page HOLDS its first paint on this answer (round-1 U-6): the verdict decides
+ * whether the rest of the read set may fire, so the conversation chrome must
+ * not be drawn — and its requests not spent — before the gate answers. A
+ * failure is not surfaced by itself: the conversation list already has its own
+ * error state, and a status read that cannot answer must not invent an
+ * ineligible verdict.
+ */
+export function useTeamBridgeStatus(): UseQueryResult<AgentMessagesStatus> {
+	return useQuery({
+		queryKey: teamBridgeKeys.status,
+		queryFn: () => TeamBridgeApi.status("surface_open"),
+		staleTime: 60_000,
+		refetchOnWindowFocus: true,
 		retry: 1,
 	});
 }
