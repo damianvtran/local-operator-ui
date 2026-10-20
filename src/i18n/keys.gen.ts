@@ -33,12 +33,14 @@ import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
 import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
+import enUiChatAnalytics from "./catalogues/en/ui.chat.analytics.json";
 import enUiChatCanonical from "./catalogues/en/ui.chat.canonical.json";
 import enUiChatComposer from "./catalogues/en/ui.chat.composer.json";
 import enUiChatComposerMedia from "./catalogues/en/ui.chat.composer_media.json";
 import enUiChatDialogs from "./catalogues/en/ui.chat.dialogs.json";
 import enUiChatHeader from "./catalogues/en/ui.chat.header.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
+import enUiChatPickers from "./catalogues/en/ui.chat.pickers.json";
 import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
 import enUiChatRunDetails from "./catalogues/en/ui.chat.run_details.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
@@ -513,12 +515,14 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiBrowserChrome,
 	...enUiBrowser,
 	...enUiCanvas,
+	...enUiChatAnalytics,
 	...enUiChatCanonical,
 	...enUiChatComposer,
 	...enUiChatComposerMedia,
 	...enUiChatDialogs,
 	...enUiChatHeader,
 	...enUiChat,
+	...enUiChatPickers,
 	...enUiChatResponseActions,
 	...enUiChatRunDetails,
 	...enUiChatSidebarView,
@@ -1634,6 +1638,17 @@ export type MessageParams = {
 	"ui.canvas.files.unreadable": undefined;
 	"ui.canvas.files.videos": undefined;
 	"ui.canvas.files.working": undefined;
+	"ui.chat.analytics.filters.top_level_only": undefined;
+	"ui.chat.analytics.search.clear": undefined;
+	"ui.chat.analytics.search.sessions": undefined;
+	"ui.chat.analytics.sections.by_channel": undefined;
+	"ui.chat.analytics.sections.by_model": undefined;
+	"ui.chat.analytics.sections.by_provider": undefined;
+	"ui.chat.analytics.sections.by_session": undefined;
+	"ui.chat.analytics.sections.totals": undefined;
+	"ui.chat.analytics.title": undefined;
+	"ui.chat.analytics.toolbar.refreshing": undefined;
+	"ui.chat.analytics.toolbar.this_session_only": undefined;
 	"ui.chat.canonical.sound.batch_attachment_unavailable": undefined;
 	"ui.chat.canonical.sound.player_failed": undefined;
 	"ui.chat.canonical.sound.stop.confirm_label": undefined;
@@ -1730,6 +1745,40 @@ export type MessageParams = {
 	"ui.chat.usage.eligibility_unknown": undefined;
 	"ui.chat.usage.family_caps": undefined;
 	"ui.chat.usage.unlimited": undefined;
+	"ui.chat.pickers.approvals.title": undefined;
+	"ui.chat.pickers.commands.title": undefined;
+	"ui.chat.pickers.copy.title": undefined;
+	"ui.chat.pickers.credential.forget": undefined;
+	"ui.chat.pickers.credential.forget_confirmation": { name: string };
+	"ui.chat.pickers.credential.title": undefined;
+	"ui.chat.pickers.effort.title": undefined;
+	"ui.chat.pickers.fast.premium_acknowledgement": undefined;
+	"ui.chat.pickers.fast.title": undefined;
+	"ui.chat.pickers.fork.search_placeholder": undefined;
+	"ui.chat.pickers.goal.clear": undefined;
+	"ui.chat.pickers.goal.mark_done": undefined;
+	"ui.chat.pickers.goal.placeholder": undefined;
+	"ui.chat.pickers.goal.title": undefined;
+	"ui.chat.pickers.login.title": undefined;
+	"ui.chat.pickers.logout.confirm": undefined;
+	"ui.chat.pickers.logout.title": undefined;
+	"ui.chat.pickers.loop.cancel": undefined;
+	"ui.chat.pickers.loop.title": undefined;
+	"ui.chat.pickers.models.connect_provider": undefined;
+	"ui.chat.pickers.models.native_details": { name: string };
+	"ui.chat.pickers.models.set_as_default": undefined;
+	"ui.chat.pickers.models.title": undefined;
+	"ui.chat.pickers.new_session.title": undefined;
+	"ui.chat.pickers.profile.loading_detail": undefined;
+	"ui.chat.pickers.reload.title": undefined;
+	"ui.chat.pickers.rename.title": undefined;
+	"ui.chat.pickers.resume.title": undefined;
+	"ui.chat.pickers.skills.loading": undefined;
+	"ui.chat.pickers.skills.title": undefined;
+	"ui.chat.pickers.stop.all_sessions": { count: number };
+	"ui.chat.pickers.stop.confirm": { count: number };
+	"ui.chat.pickers.stop.title": undefined;
+	"ui.chat.pickers.theme.title": undefined;
 	"ui.chat.response_actions.label": undefined;
 	"ui.chat.run_details.jobs": undefined;
 	"ui.chat.run_details.keep": undefined;

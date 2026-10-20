@@ -1,0 +1,248 @@
+{
+	"ui.chat.pickers.approvals.title": {
+		"role": "dialog title of the tool-approvals picker",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Names the dialog that chooses whether write and command tools ask before running. It is the picker's heading, not the settings field label; the description below it states the consequence.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.commands.title": {
+		"role": "dialog title of the command list picker",
+		"tone": "noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Heads the searchable list of slash commands. It labels the whole list, not one command, so it must stay a plural noun rather than a verb.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.copy.title": {
+		"role": "dialog title of the copy picker",
+		"tone": "verb used as a noun label, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Heads the dialog that picks a message, code block or excerpt to put on the clipboard. It names the action the dialog performs, not the content.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.credential.forget": {
+		"role": "danger button that removes a stored session credential",
+		"tone": "single verb, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Only renders in the dialog's action row after its confirmation checkbox is ticked. It sits beside the picker's submit button, so it must read as the destructive verb on its own.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.credential.forget_confirmation": {
+		"role": "checkbox label confirming the removal of one stored session credential",
+		"tone": "direct statement, sentence case, no trailing punctuation",
+		"length": "One short sentence; the name can be long and the label may wrap.",
+		"note": "Renders in the credential picker only when the typed name matches a stored credential. The name is the user's own environment-variable key and is never translated; the sentence around it must keep the value inside it rather than trailing after a colon.",
+		"placeholders": {
+			"name": "the credential's key as the user typed it; a machine name, never translated"
+		}
+	},
+	"ui.chat.pickers.credential.title": {
+		"role": "dialog title of the credential picker",
+		"tone": "noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Heads the dialog that stores a named secret for this session's tools. The singular noun names the item being stored, not a list.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.effort.title": {
+		"role": "dialog title of the reasoning-effort picker",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Heads the dialog that picks a session's reasoning-effort rung. It must not be confused with a model tier: the two are separate vocabulary in this app.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.fast.premium_acknowledgement": {
+		"role": "checkbox label acknowledging premium pricing before fast mode can be enabled",
+		"tone": "first-person acknowledgement, sentence case, no trailing punctuation",
+		"length": "One clause of about nine words.",
+		"note": "Renders in the fast-mode picker's toolbar only when the backend flags premium pricing; the on option stays disabled until it is ticked. It states a cost, not a promise of savings.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.fast.title": {
+		"role": "dialog title of the fast-mode picker",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Heads the dialog that turns fast mode on or off for this session. The description beneath it already scopes the change to the session.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.fork.search_placeholder": {
+		"role": "placeholder of the fork picker's optional first-message field",
+		"tone": "example instruction, sentence case, ASCII ellipsis as shipped",
+		"length": "Four words plus an ellipsis.",
+		"note": "Shown in the textarea that carries the first message into the new conversation. It is an example of what to type, so it must read as a user instruction rather than a label.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.goal.clear": {
+		"role": "danger button that clears the standing session goal",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Sits in the session-goal picker's action row beside Mark done. It removes the goal rather than marking it achieved, so the verb must stay clear of done/settle wording.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.goal.mark_done": {
+		"role": "secondary button that marks the standing session goal achieved",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Sits beside Clear goal in the session-goal picker. It records the goal as done in the goal history; it does not delete it.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.goal.placeholder": {
+		"role": "placeholder example in the session-goal textarea",
+		"tone": "example goal, sentence case, no trailing punctuation",
+		"length": "Seven words.",
+		"note": "An example of the standing goal a user might type. It is illustrative copy, not a default value, and the field empties once the user types.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.goal.title": {
+		"role": "dialog title of the session-goal picker",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Heads the dialog that sets the standing goal for this session. The description below it changes with the goal's state, so this title must stay neutral about that state.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.login.title": {
+		"role": "dialog title of the provider sign-in picker",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Five words.",
+		"note": "Heads the dialog that lists providers to sign in to. Picking one opens the provider's sign-in methods in Settings; this title names the act, not the provider.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.logout.confirm": {
+		"role": "checkbox label confirming removal of the selected account's stored credential",
+		"tone": "direct statement, sentence case, no trailing punctuation",
+		"length": "One short sentence.",
+		"note": "Renders in the sign-out picker once an account row is selected; the submit button stays disabled until it is ticked. It names one account's stored credential, because environment-variable credentials are untouched.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.logout.title": {
+		"role": "dialog title of the sign-out picker",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Heads the dialog that removes one stored account. It is the heading of the dialog, while the submit button inside it repeats the verb; keep both identical words.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.loop.cancel": {
+		"role": "danger button that stops a running loop",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Renders in the loop picker's action row only while a loop is running. It stops the loop through the command backend and leaves the conversation intact.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.loop.title": {
+		"role": "dialog title of the loop picker",
+		"tone": "noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Heads the dialog that starts a repeat-turns loop. It names the feature itself, so it must stay the noun rather than the verb.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.models.connect_provider": {
+		"role": "empty-state action button in the model picker when no model is signed in",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Replaces the model list when the machine has no usable model; pressing it opens the connect-provider flow. It must read as the action that fixes the empty state.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.models.native_details": {
+		"role": "caption naming the model whose native facts the details block lists",
+		"tone": "label plus model name, sentence case, no trailing punctuation",
+		"length": "Very short; it sits above a key-value block.",
+		"note": "The em dash and the single space on each side are part of the label's shape and must survive translation. The name is a model label or id from the catalogue and is never translated.",
+		"placeholders": {
+			"name": "the selected model's display label, falling back to its model id; never translated"
+		}
+	},
+	"ui.chat.pickers.models.set_as_default": {
+		"role": "ghost button saving the model already in force as the machine default",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Five words.",
+		"note": "Renders beside the model picker's submit controls when a model is in force. It saves the CURRENT model as the default without changing this session's pick, which is why the verb names the current model.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.models.title": {
+		"role": "dialog title of the model picker",
+		"tone": "noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Heads the dialog that picks which model a conversation runs on. It is the dialog's own heading, not the shared model-select field label used in settings.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.new_session.title": {
+		"role": "dialog title of the new-conversation picker",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Heads the dialog that starts a fresh canonical session. The description beneath it says the current conversation keeps running.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.profile.loading_detail": {
+		"role": "status line while the selected profile's detail is loading",
+		"tone": "plain status, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Sits where the selected team or profile's description and instructions will render. It is a loading state, not an error, and disappears once the detail arrives.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.reload.title": {
+		"role": "dialog title of the reload picker",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Heads the confirmation dialog that re-reads this conversation from the backend and re-attaches its stream. It names the conversation so the action's target is unambiguous.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.rename.title": {
+		"role": "dialog title of the rename-conversation picker",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Heads the dialog that sets an explicit conversation name. The description beneath it explains that the name outranks the generated title.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.resume.title": {
+		"role": "dialog title of the resume-session picker",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Heads the dialog that attaches this window to an existing canonical session. The description beneath it says nothing restarts until a message is sent.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.skills.loading": {
+		"role": "status line while the selected skill's detail is loading",
+		"tone": "plain status, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Sits in place of the skill body under the skill's protocol path. It is a loading state only; an error or an empty body uses a different line.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.skills.title": {
+		"role": "dialog title of the skills picker",
+		"tone": "noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Heads the dialog that lists the skills discoverable from this session's working directory. It labels the list, not one skill.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.stop.all_sessions": {
+		"role": "checkbox label selecting every session in the stop picker",
+		"tone": "label plus a parenthesised count, sentence case",
+		"length": "Very short.",
+		"note": "The count is a plain number in parentheses, NOT a plural: the label says how many rows the list holds, and it stays the same wording for any count. Format the number with the locale's digits.",
+		"placeholders": {
+			"count": "number of session rows in the list; plain formatted integer, never a plural"
+		}
+	},
+	"ui.chat.pickers.stop.confirm": {
+		"role": "checkbox label confirming which sessions the stop request ends",
+		"tone": "direct statement, sentence case, no trailing punctuation",
+		"length": "One short clause; the plural branch names the count.",
+		"note": "Renders in the stop picker's form. The one branch says 'this session' because a single target is the session the picker was opened from; the other branch states the chosen count. The verb and the trailing 'now' stay around the branch.",
+		"placeholders": {
+			"count": "how many sessions are selected; drives the plural branch and the number in 'other'"
+		}
+	},
+	"ui.chat.pickers.stop.title": {
+		"role": "dialog title of the stop-sessions picker",
+		"tone": "verb, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Heads the dialog that ends the chosen sessions' current work. The same word appears on its submit button; keep both identical.",
+		"placeholders": {}
+	},
+	"ui.chat.pickers.theme.title": {
+		"role": "dialog title of the desktop-theme picker",
+		"tone": "noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Heads the dialog that picks the desktop theme. The description beneath it notes that the terminal keeps its own tui.theme setting.",
+		"placeholders": {}
+	}
+}
