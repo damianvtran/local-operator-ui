@@ -45,7 +45,10 @@ const ROOT = resolve(process.cwd());
 const OUT = resolve(
 	process.argv[2] ?? join(tmpdir(), `lo-url-autocomplete-proof-${process.pid}`),
 );
-const REQUESTED_WIDTH = Number(process.env.LO_PROOF_WIDTH ?? 1380);
+const WIDTH_ARG = process.env.LO_PROOF_WIDTH
+	? Number(process.env.LO_PROOF_WIDTH)
+	: null;
+const REQUESTED_WIDTH = WIDTH_ARG ?? 1380;
 const PANE_WIDTH = process.env.LO_PROOF_PANE_WIDTH
 	? Number(process.env.LO_PROOF_PANE_WIDTH)
 	: null;
@@ -169,7 +172,7 @@ const app = spawn(
 		ROOT,
 		`--user-data-dir=${USER_DATA}`,
 		`--remote-debugging-port=${CDP_PORT}`,
-		`--window-size=${Math.max(REQUESTED_WIDTH, 800)}x${HEIGHT}`,
+		`--window-size=${PANE_WIDTH !== null ? (WIDTH_ARG ?? 800) : REQUESTED_WIDTH}x${HEIGHT}`,
 		"--window-mode=headless",
 	]),
 	{

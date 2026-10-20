@@ -241,7 +241,7 @@ test("the tab bound is 20 and only the window is read", () => {
 	assert.equal(result.entries.length, 20);
 });
 
-test("dedup is by canonical URL, first occurrence wins, and the duplicate is truncation", () => {
+test("dedup is by canonical URL and first occurrence wins", () => {
 	const first = fakeTab({
 		tabId: 1,
 		active: true,

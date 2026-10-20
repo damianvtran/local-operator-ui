@@ -746,6 +746,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		if (event.key === "Escape") {
 			event.preventDefault();
 			if (current || listVisible) {
+				setAcceptedTarget(null);
 				clearGenerated();
 				setHint(false);
 				setDismissedForText(raw);
@@ -798,6 +799,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			// Tab moves focus; it never commits an unaccepted suffix. Clear the
 			// generated text first so the blurred value is the draft.
 			if (current || listVisible) {
+				setAcceptedTarget(null);
 				clearGenerated();
 				setHint(false);
 				setDismissedForText(raw);

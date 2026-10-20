@@ -471,7 +471,7 @@ test("a response carrying an older request id is discarded", async () => {
 	assert.equal(pending.length, 1);
 	await act(async () => {
 		pending[0].resolve({
-			requestId: pending[0].request.requestId + 100,
+			requestId: pending[0].request.requestId - 1,
 			activeTabId: 1,
 			entries: ENTRIES,
 		});
@@ -611,4 +611,68 @@ test("the unavailable notice is described by the field", async () => {
 		ADDRESS_SUGGESTIONS_UNAVAILABLE,
 	);
 	await bundle.cleanup();
+});
+
+test("an accepted target is not reused after an invalidating action", async () => {
+	const canonical = "http://127.0.0.1:8080/account/profile";
+	const display = "127.0.0.1:8080/account/profile";
+	const arm = async () => {
+		const bundle = await renderBar({
+			url: "http://127.0.0.1:8080/account",
+			addressHistory: async (request) => ({
+				requestId: request.requestId,
+				activeTabId: 1,
+				entries: HTTP_ENTRIES,
+			}),
+		});
+		await type(bundle, "127.0.0.1:8080/a");
+		await type(bundle, "127.0.0.1:8080/acc");
+		await key(bundle, "ArrowRight");
+		assert.equal(bundle.input.value, display);
+		return bundle;
+	};
+	const assertNotCanonical = (bundle) =>
+		assert.ok(
+			!bundle.navigations.some((navigation) => navigation.url === canonical),
+			"the stale accepted target was reused",
+		);
+
+	const edited = await arm();
+	await act(async () => setValue(edited.input, `${display}x`, "insertText"));
+	await flush();
+	await key(edited, "Enter");
+	assertNotCanonical(edited);
+	await edited.cleanup();
+
+	const undone = await arm();
+	await key(undone, "z", { ctrlKey: true });
+	await key(undone, "Enter");
+	assertNotCanonical(undone);
+	await undone.cleanup();
+
+	const redone = await arm();
+	await key(redone, "z", { ctrlKey: true });
+	await key(redone, "z", { ctrlKey: true, shiftKey: true });
+	await key(redone, "Enter");
+	assertNotCanonical(redone);
+	await redone.cleanup();
+
+	const blurred = await arm();
+	await act(async () => blurred.input.blur());
+	await flush();
+	await key(blurred, "Enter");
+	assertNotCanonical(blurred);
+	await blurred.cleanup();
+
+	const escaped = await arm();
+	await key(escaped, "Escape");
+	await key(escaped, "Enter");
+	assertNotCanonical(escaped);
+	await escaped.cleanup();
+
+	const switched = await arm();
+	await switched.rerender({ tabId: 2, url: "about:blank" });
+	await key(switched, "Enter");
+	assertNotCanonical(switched);
+	await switched.cleanup();
 });
