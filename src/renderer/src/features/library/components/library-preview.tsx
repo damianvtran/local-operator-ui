@@ -266,7 +266,19 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 				<div className="flex items-center gap-2">
 					<KindGlyph kind={asset.kind} size={18} className="text-ink-dim" />
 					<div ref={nameRef} className="min-w-0 flex-1">
+						{/*
+						 * KEYED BY ASSET, NOT BY POSITION (agent review round 1, M2). The
+						 * editor owns an open phase and a draft; an asset switch must
+						 * unmount it rather than let asset A's half-typed name render over
+						 * B, where the next Enter or blur would write A's text onto B. The
+						 * three editors below share the rule. The PREVIEW itself is not
+						 * keyed: the composer keeps a pending link per asset and a switch
+						 * back must restore it (`scripts/library-page.cases.mjs`, "an
+						 * accepted send survives a link failure"), which a full remount
+						 * would discard.
+						 */}
 						<InlineEditText
+							key={`${asset.id}:name`}
 							value={assetDisplayName(asset)}
 							onSave={(value) => saveField({ name: value })}
 							label={t("ui.library.preview.name")}
@@ -464,6 +476,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 				{(!compact || detailsOpen) && (
 					<>
 						<InlineEditText
+							key={`${asset.id}:description`}
 							value={asset.description}
 							onSave={(value) => saveField({ description: value })}
 							label={t("ui.library.preview.description")}
@@ -476,6 +489,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 						/>
 						<div ref={tagsRef} className="min-w-0">
 							<InlineTagEditor
+								key={`${asset.id}:tags`}
 								value={names}
 								onChange={(next) => void commit(next)}
 								label={t("ui.library.preview.tags")}

@@ -33,6 +33,7 @@
  */
 
 import { ImageLightbox } from "@shared/components/common/image-lightbox";
+import { useEverInView } from "@shared/hooks/use-ever-in-view";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
@@ -56,17 +57,23 @@ const TILE_BOX = "h-[78px] w-[117px]";
  * thumbnail route and inventing a second path here would be a second source of
  * the same picture. A clip has no `thumbnail` route to read (the card's own
  * gate says so), so its tile is the kind glyph — the same fallback a card with
- * no picture draws.
+ * no picture draws. The card's VIEWPORT GATE comes with it (agent review round
+ * 1, M3): a page is 60 media rows and the strip maps every sibling at mount, so
+ * an ungated read here issued one `library.thumbnail` IPC call per image the
+ * moment the viewer opened. `useEverInView` starts a tile's read one tile ahead
+ * of the strip's visible edge and latches, so scrolling the strip back never
+ * re-reads - the same bound the grid's cards live under.
  */
 const SiblingTile: FC<{
 	asset: DesktopLibraryAsset;
 	active: boolean;
 	onSelect: () => void;
 }> = ({ asset, active, onSelect }) => {
+	const [tileRef, near] = useEverInView("300px");
 	const thumbnail = useLibraryBytes(
 		asset.id,
 		"thumbnail",
-		asset.kind === "image" && asset.exists,
+		asset.kind === "image" && asset.exists && near,
 	);
 	const source = useObjectUrl(thumbnail.bytes, thumbnail.mimeType);
 	/*
@@ -79,6 +86,7 @@ const SiblingTile: FC<{
 	const label = assetDisplayName(asset);
 	return (
 		<li
+			ref={tileRef}
 			className={cn(
 				"flex shrink-0 rounded-sm leading-none",
 				active && "ring-1 ring-ink",
@@ -203,16 +211,37 @@ export const LibraryMediaLightbox: FC<LibraryMediaLightboxProps> = ({
 				if (!next) onClose();
 			}}
 			src={source}
-			pending={!resolvedHere && content.loading}
+			pending={
+				/*
+				 * NOTHING IS REALLY MISSING UNTIL THE READ HAS FAILED (agent review
+				 * round 1, N5). A slide switched to starts at `loading: false`,
+				 * `bytes: null`, so the disabled hook passes `src: undefined` for one
+				 * render and the shared viewer would paint the caller's failure copy
+				 * before the effect turns `loading` on. `src === undefined && !error`
+				 * is the reserved box, not a failure.
+				 */
+				!resolvedHere &&
+				(content.loading || (source === undefined && !content.error))
+			}
 			label={name}
 			mediaKind={asset.kind === "video" ? "video" : "image"}
 			mediaLabel="asset"
 			restoreFocusTo={restoreFocusTo}
 			layerAttributes={{ "data-library-lightbox": "" }}
 			fallback={
-				<p className="max-w-90 text-center text-body-sm text-ink-muted">
-					{t("ui.library.preview.could_not_load")}
-				</p>
+				/*
+				 * THE FALLBACK FOLLOWS A REAL FAILURE, never the unresolved frame (agent
+				 * review round 1, N5). `content.error` is a read that failed; `source`
+				 * being defined is the decode-failure path (`ImageLightbox` calls it
+				 * when the bytes of a present URL will not paint), which must keep its
+				 * copy. A slide that has not been read yet is neither, and is covered by
+				 * `pending` above.
+				 */
+				content.error || source !== undefined ? (
+					<p className="max-w-90 text-center text-body-sm text-ink-muted">
+						{t("ui.library.preview.could_not_load")}
+					</p>
+				) : undefined
 			}
 			group={{
 				index: position,
