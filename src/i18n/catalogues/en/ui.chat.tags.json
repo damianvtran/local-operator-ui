@@ -5,6 +5,8 @@
 	"ui.chat.tags.manage": "Manage tags…",
 	"ui.chat.tags.mode_hint": "Tag groups use Time section grouping.",
 	"ui.chat.tags.use_time": "Use Time section",
+	"ui.chat.tags.auto_tag": "Auto-tag forked sessions",
+	"ui.chat.tags.auto_tag_help": "Uses your existing tags when naming a fork.",
 	"ui.chat.tags.discovery": "Right-click a conversation and choose Tags… (Shift+F10, with Fn on most Mac keyboards).",
 	"ui.chat.tags.picker_title": "Tags for “{title}”",
 	"ui.chat.tags.picker_description": "Choose tags, then Apply. New tags are saved immediately.",

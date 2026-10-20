@@ -5,6 +5,8 @@
 	"ui.chat.tags.manage": "Gestionar…",
 	"ui.chat.tags.mode_hint": "Los grupos de etiquetas usan la sección temporal.",
 	"ui.chat.tags.use_time": "Usar la sección temporal",
+	"ui.chat.tags.auto_tag": "Etiquetar automáticamente las conversaciones bifurcadas",
+	"ui.chat.tags.auto_tag_help": "Usa tus etiquetas existentes al nombrar una bifurcación.",
 	"ui.chat.tags.discovery": "Haz clic derecho en una conversación y elige Etiquetas… (Mayús+F10, con Fn en la mayoría de los teclados Mac).",
 	"ui.chat.tags.picker_title": "Etiquetas de “{title}”",
 	"ui.chat.tags.picker_description": "Elige etiquetas y pulsa Aplicar. Las etiquetas nuevas se guardan al instante.",
