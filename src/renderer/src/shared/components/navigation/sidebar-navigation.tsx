@@ -40,6 +40,7 @@ import { UserProfileSidebar } from "@shared/components/navigation/user-profile-s
 import { Badge, Button, Tooltip } from "@shared/components/ui";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { useCurrentView } from "@shared/hooks/use-route-params";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -296,6 +297,12 @@ const DESTINATION_ROW =
 
 export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	useI18nLocale();
+	/*
+	 * The collapse/expand chevrons point at the INLINE edge the docked column
+	 * will move toward: left in LTR, right in RTL. A chevron is a picture of a
+	 * direction, not a flex child, so `dir` cannot flip it for us.
+	 */
+	const rtl = useTextDirection() === "rtl";
 	const navigate = useNavigate();
 	const currentView = useCurrentView();
 	const { expanded, mode, onCollapse } = useSidebarFrame();
@@ -784,7 +791,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						<span className="relative flex size-7 shrink-0 items-center justify-center">
 							{glyph}
 							{attention > 0 && (
-								<span className="pointer-events-none absolute -top-0.5 -right-0.5 flex">
+								<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
 									<Badge
 										variant="attentionQuiet"
 										shape="pill"
@@ -807,7 +814,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						 * size a badge would use, and a 16px badge inside a 30px row moves
 						 * neither the label's start nor the row's height.
 						 */
-						<span className="ml-auto inline-flex">
+						<span className="ms-auto inline-flex">
 							{/*
 							 * THE QUIET COUNT (operator ask, 2026-09-30): the rail's badge is
 							 * the `attentionQuiet` register rather than the bordered `attention`
@@ -839,7 +846,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						 * row moves neither the label's start nor the row's height); the two
 						 * cannot coexist, because a busy row draws no unread mark.
 						 */
-						<span className={cn(expanded && "ml-auto", "inline-flex")}>
+						<span className={cn(expanded && "ms-auto", "inline-flex")}>
 							<LoaderCircle
 								size={16}
 								aria-hidden="true"
@@ -893,7 +900,15 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				? t("ui.shell.sidebar_navigation.collapse_sidebar")
 				: t("ui.shell.sidebar_navigation.expand_sidebar");
 	const ToggleGlyph =
-		mode === "overlay" ? X : expanded ? ChevronLeft : ChevronRight;
+		mode === "overlay"
+			? X
+			: expanded
+				? rtl
+					? ChevronRight
+					: ChevronLeft
+				: rtl
+					? ChevronLeft
+					: ChevronRight;
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	const catalogueReady = desktopFeatureEnabled(
 		capabilities.data,
@@ -998,7 +1013,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				 * Decorative: the accessible name above already carries the chord, so the
 				 * caps are hidden from a screen reader rather than announced beside it.
 				 */}
-				<span aria-hidden="true" className="ml-auto">
+				<span aria-hidden="true" className="ms-auto">
 					<KeyboardShortcut shortcut={caps} joined />
 				</span>
 			</button>
@@ -1072,7 +1087,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					<span className="relative flex size-7 items-center justify-center">
 						<Icon size={16} aria-hidden="true" />
 						{(props.attention ?? 0) > 0 && (
-							<span className="pointer-events-none absolute -top-0.5 -right-0.5 flex">
+							<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
 								<Badge
 									variant="attentionQuiet"
 									shape="pill"
@@ -1187,7 +1202,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						)}
 					>
 						<Ellipsis size={16} aria-hidden="true" className="shrink-0" />
-						<span className="min-w-0 flex-1 truncate text-left">
+						<span className="min-w-0 flex-1 truncate text-start">
 							{t("ui.library.page.more")}
 						</span>
 						{overflowAttention > 0 && (
@@ -1369,9 +1384,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			 * column's 8px inset plus a row's 8px padding puts every row's mark 16px
 			 * from this column's edge, and the logo starts on that same line.
 			 */}
-			<div className="flex h-10 shrink-0 items-center gap-1 pr-2 pl-4">
+			<div className="flex h-10 shrink-0 items-center gap-1 pe-2 ps-4">
 				<CollapsibleAppLogo expanded />
-				<span className="ml-auto">{collapseToggle}</span>
+				<span className="ms-auto">{collapseToggle}</span>
 			</div>
 
 			{/*

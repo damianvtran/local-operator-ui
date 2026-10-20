@@ -47,6 +47,7 @@ import {
 } from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
+import { useDocumentDirection } from "@shared/i18n/use-document-direction";
 import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
 import { t } from "../../i18n/messages";
 import {
@@ -170,6 +171,13 @@ const App: FC = () => {
 	 * one-value reason; it renders nothing.
 	 */
 	useI18nLocaleSync();
+	/*
+	 * The document root's `dir`/`lang`, derived from the locale manifest and
+	 * re-written whenever the store moves. Mounted here, once, for the same
+	 * reason as the writer above: one document has one direction, and a second
+	 * mount would be a second subscriber competing to write it.
+	 */
+	useDocumentDirection();
 	const { pathname } = useLocation();
 	/*
 	 * The routes that already own a 40px row at the window's top: the chat surface

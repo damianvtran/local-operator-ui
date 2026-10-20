@@ -94,7 +94,7 @@ export const SidebarHeader: FC<SidebarHeaderProps> = ({
 			<Search
 				size={16}
 				aria-hidden="true"
-				className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-dim"
+				className="pointer-events-none absolute top-1/2 start-3 -translate-y-1/2 text-ink-dim"
 			/>
 			<Input
 				type="search"
@@ -103,7 +103,7 @@ export const SidebarHeader: FC<SidebarHeaderProps> = ({
 				value={searchQuery}
 				onChange={(e) => onSearchChange(e.target.value)}
 				aria-label={searchPlaceholder}
-				className="pl-9"
+				className="ps-9"
 			/>
 		</div>
 	</div>

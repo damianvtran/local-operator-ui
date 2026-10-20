@@ -209,7 +209,7 @@ test("all four per-row acts reveal on the dwell, and none on a bare hover", () =
 	 */
 	assert.ok(
 		sidebar.includes(
-			'className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-has-[:focus-visible]:hidden group-data-[session-hover-intent]:hidden"',
+			'className="ms-auto shrink-0 ps-2 font-mono text-ink-dim text-mono-sm tabular-nums group-has-[:focus-visible]:hidden group-data-[session-hover-intent]:hidden"',
 		),
 		"the trailing time leaves on the acts' own clock",
 	);

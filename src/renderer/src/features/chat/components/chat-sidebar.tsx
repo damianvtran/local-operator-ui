@@ -4343,7 +4343,7 @@ export function ChatSidebar({
 		 * `teamBubbleFocused`), which is what lets the flyout stand down while the mark
 		 * is speaking.
 		 *
-		 * `ml-1` sits on the wrapper rather than on the bubble so the gap is the same
+		 * `ms-1` sits on the wrapper rather than on the bubble so the gap is the same
 		 * 4px step the trailing slots before it used, and `inline-flex` keeps the row's
 		 * own flex line untouched. The four handlers are `onPointerEnter`/`Leave` and
 		 * `onFocus`/`onBlur` (the latter two bubble from the mark inside, which is the
@@ -4356,7 +4356,7 @@ export function ChatSidebar({
 		 */
 		const teamMark = (name: string, slug: string) => (
 			<span
-				className="ml-1 inline-flex shrink-0"
+				className="ms-1 inline-flex shrink-0"
 				onPointerEnter={() => setTeamBubbleHovered(row.session_id)}
 				onPointerLeave={() => setTeamBubbleHovered(null)}
 				onFocus={() => setTeamBubbleFocused(row.session_id)}
@@ -4646,13 +4646,13 @@ export function ChatSidebar({
 					// `w-full` became `min-w-0 grow` when the wrapper arrived: the button shares
 					// the row's box with whatever the wrapper carries beside it, and a full-width
 					// button inside a flex wrapper with a sibling is a row that overflows.
-					"min-w-0 grow text-left",
+					"min-w-0 grow text-start",
 					// Only grouped rows participate; keep held feedback through pointer capture.
 					tagDraggable &&
 						(rowTagDrag.armedId === row.session_id
 							? "cursor-grabbing"
 							: "cursor-grab active:cursor-grabbing"),
-					nested && "pl-7",
+					nested && "ps-7",
 					current && rowCurrent,
 					// m4: the unread mark is NOT here. `font-semibold` on this
 					// `flex-1 truncate` title rewrote the visible string when the
@@ -4794,7 +4794,7 @@ export function ChatSidebar({
 					<>
 						<Archive
 							aria-hidden="true"
-							className="ml-1 size-3.5 shrink-0 text-ink-dim"
+							className="ms-1 size-3.5 shrink-0 text-ink-dim"
 						/>
 						<span className="sr-only">, archived</span>
 					</>
@@ -4858,23 +4858,23 @@ export function ChatSidebar({
 				 * evidence rigs address the mark by, following the row's existing
 				 * convention (`data-session-time`, `data-session-archived`).
 				 *
-				 * NOTE FOR THE REVIEWER: the row is `gap-1` (4px), so `ml-1` on top of
+				 * NOTE FOR THE REVIEWER: the row is `gap-1` (4px), so `ms-1` on top of
 				 * it makes the gap before each glyph 8px and one mark cost 22px rather
-				 * than the spec's 18px. `ml-1` is the spec's explicit class list and is
+				 * than the spec's 18px. `ms-1` is the spec's explicit class list and is
 				 * kept; if the 240px frames show the title starved, dropping `ml-1` is
 				 * the one-word fix that restores the spec's own arithmetic.
 				 */}
 				{marks.running && (
 					<SubagentRunningMark
 						mark="running"
-						className="ml-1 size-3.5 text-accent"
+						className="ms-1 size-3.5 text-accent"
 					/>
 				)}
 				{marks.queued && (
 					<Hourglass
 						aria-hidden="true"
 						data-subagent-mark="queued"
-						className="ml-1 size-3.5 shrink-0 text-ink-muted"
+						className="ms-1 size-3.5 shrink-0 text-ink-muted"
 					/>
 				)}
 				{/* In a flat list nothing else names the profile answering, so two
@@ -4927,12 +4927,12 @@ export function ChatSidebar({
 					(row.binding?.team ? (
 						teamMark(teamLabelFor(row.binding.team), row.binding.team)
 					) : (
-						<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
+						<span className="ms-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
 							· {bindingDisplayName(row)}
 						</span>
 					))}
 				{trailing === "not_sent" && (
-					<span className="ml-1 shrink-0 text-meta text-ink-muted">
+					<span className="ms-1 shrink-0 text-meta text-ink-muted">
 						· Not sent yet
 					</span>
 				)}
@@ -4948,7 +4948,7 @@ export function ChatSidebar({
 					<>
 						<span
 							aria-hidden="true"
-							className="ml-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
+							className="ms-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
 						>
 							· in conversation
 						</span>
@@ -5035,7 +5035,7 @@ export function ChatSidebar({
 							<span
 								aria-hidden="true"
 								data-session-time
-								className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-has-[:focus-visible]:hidden group-data-[session-hover-intent]:hidden"
+								className="ms-auto shrink-0 ps-2 font-mono text-ink-dim text-mono-sm tabular-nums group-has-[:focus-visible]:hidden group-data-[session-hover-intent]:hidden"
 							>
 								{relativeTime(row, listNow, view.basis)}
 							</span>
@@ -6260,7 +6260,7 @@ export function ChatSidebar({
 							<span>
 								{archived ? "Unarchive conversation" : "Archive conversation"}
 							</span>
-							<span className="ml-auto pl-6">
+							<span className="ms-auto ps-6">
 								<KeyboardShortcut
 									shortcut={chatRowActCapJoined("archive", isMac)}
 									joined
@@ -6278,7 +6278,7 @@ export function ChatSidebar({
 								<Pin aria-hidden="true" />
 							)}
 							<span>{pinned ? "Unpin conversation" : "Pin conversation"}</span>
-							<span className="ml-auto pl-6">
+							<span className="ms-auto ps-6">
 								<KeyboardShortcut
 									shortcut={chatRowActCapJoined("pin", isMac)}
 									joined
@@ -6510,7 +6510,7 @@ export function ChatSidebar({
 							>
 								<ChevronUp aria-hidden="true" />
 								<span>Move conversation up</span>
-								<span className="ml-auto pl-6">
+								<span className="ms-auto ps-6">
 									<KeyboardShortcut
 										shortcut={chatPinMoveCapJoined(-1, isMac)}
 										joined
@@ -6530,7 +6530,7 @@ export function ChatSidebar({
 							>
 								<ChevronDown aria-hidden="true" />
 								<span>Move conversation down</span>
-								<span className="ml-auto pl-6">
+								<span className="ms-auto ps-6">
 									<KeyboardShortcut
 										shortcut={chatPinMoveCapJoined(1, isMac)}
 										joined
@@ -6896,7 +6896,7 @@ export function ChatSidebar({
 						type="button"
 						data-chat-row
 						data-entity-name
-						className={cn(rowStyle, "flex-1 text-left", staged && rowCurrent)}
+						className={cn(rowStyle, "flex-1 text-start", staged && rowCurrent)}
 						onClick={() => onStageDraft({ kind, name })}
 						// The visible label is the bare name, which says who but not what
 						// pressing it does. The accessible name states the action and still
@@ -6947,7 +6947,7 @@ export function ChatSidebar({
 							 * at all.
 							 */
 							title={badge > 0 ? groupBadgeLabel(badge) : undefined}
-							className="min-w-4 shrink-0 text-right text-meta tabular-nums text-ink-dim"
+							className="min-w-4 shrink-0 text-end text-meta tabular-nums text-ink-dim"
 						>
 							{badge || ""}
 						</span>
@@ -7164,7 +7164,7 @@ export function ChatSidebar({
 							aria-live="polite"
 							className={
 								view.state !== "rows" && view.sentence !== null
-									? "py-1 pl-7"
+									? "py-1 ps-7"
 									: "sr-only"
 							}
 						>
@@ -7216,7 +7216,7 @@ export function ChatSidebar({
 						{view.state === "rows" &&
 							(catalogueScopes[key]?.loading ? (
 								<p
-									className="py-1 pl-7 text-meta text-ink-dim"
+									className="py-1 ps-7 text-meta text-ink-dim"
 									aria-live="polite"
 								>
 									Loading more…
@@ -7232,12 +7232,12 @@ export function ChatSidebar({
 								 */
 								<>
 									<p
-										className="line-clamp-2 py-1 pl-7 text-meta text-ink-dim"
+										className="line-clamp-2 py-1 ps-7 text-meta text-ink-dim"
 										aria-live="polite"
 									>
 										{view.sentence}
 									</p>
-									<p className="py-1 pl-7">
+									<p className="py-1 ps-7">
 										<button
 											type="button"
 											className="text-meta text-ink-dim underline hover:text-ink"
@@ -7289,7 +7289,7 @@ export function ChatSidebar({
 									data-entity-more={key}
 									aria-label={`${foot.aria} in ${displayName}`}
 									title={`${foot.aria} in ${displayName}`}
-									className="block w-full py-1 pl-7 text-left text-meta text-ink-dim underline hover:text-ink"
+									className="block w-full py-1 ps-7 text-start text-meta text-ink-dim underline hover:text-ink"
 									onClick={pressEntityMore}
 								>
 									{/*
@@ -7477,7 +7477,7 @@ export function ChatSidebar({
 								className: "size-3.5 shrink-0 text-ink-dim",
 							})
 						: null}
-					<span className="min-w-0 flex-1 truncate text-left">{label}</span>
+					<span className="min-w-0 flex-1 truncate text-start">{label}</span>
 					{/* A zero badge next to a group that already says it is empty is the
 			    same fact twice; only a non-zero count carries information. */}
 					{count !== undefined && count !== 0 && countBadge(count)}
@@ -7632,7 +7632,7 @@ export function ChatSidebar({
 							sectionFootFocusRef.current = { key, at: cap };
 							setSectionCaps((previous) => raiseSectionCap(previous, key));
 						}}
-						className="flex h-7 w-full items-center rounded-md px-2 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+						className="flex h-7 w-full items-center rounded-md px-2 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 					>
 						{sectionMoreLabel(hidden)}
 					</button>
@@ -8481,7 +8481,7 @@ export function ChatSidebar({
 												data-roster-filter
 												aria-label="Filter agents"
 												placeholder="Filter agents"
-												className="h-8 w-full rounded-md bg-row-hover pr-9 pl-2 text-body-sm"
+												className="h-8 w-full rounded-md bg-row-hover pe-9 ps-2 text-body-sm"
 												value={rosterFilter}
 												onChange={(event) =>
 													setRosterFilter(event.target.value)
@@ -8524,7 +8524,7 @@ export function ChatSidebar({
 												<Button
 													variant="ghost"
 													size="icon-sm"
-													className="absolute top-1/2 right-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
+													className="absolute top-1/2 end-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
 													onClick={() =>
 														clearSearch(
 															rosterFilterRef.current,
@@ -9047,7 +9047,7 @@ export function ChatSidebar({
 									}}
 									className={cn(
 										rowStyle,
-										"min-w-0 flex-1 text-left",
+										"min-w-0 flex-1 text-start",
 										current && rowCurrent,
 									)}
 								>
@@ -9433,7 +9433,7 @@ export function ChatSidebar({
 							ref={pinIndicatorRef}
 							aria-hidden="true"
 							data-session-pin-indicator=""
-							className="pointer-events-none absolute right-1 left-1 h-0.5 rounded-full bg-accent"
+							className="pointer-events-none absolute start-1 end-1 h-0.5 rounded-full bg-accent"
 						/>
 					)}
 				</section>
@@ -9509,7 +9509,7 @@ export function ChatSidebar({
 					type="button"
 					data-sidebar-page-more
 					onClick={pressPageMore}
-					className="flex h-7 w-full items-center rounded-md px-2 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+					className="flex h-7 w-full items-center rounded-md px-2 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 				>
 					{pageMoreLabel(
 						view.loads,
@@ -9906,7 +9906,7 @@ export function ChatSidebar({
 										setCreateOpen(false);
 										navigate("/agents?create=agent");
 									}}
-									className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+									className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 								>
 									<UserPlus aria-hidden="true" className="size-3.5 shrink-0" />
 									<span className="min-w-0 flex-1 truncate">New agent</span>
@@ -9918,7 +9918,7 @@ export function ChatSidebar({
 										setCreateOpen(false);
 										navigate("/agents?create=team");
 									}}
-									className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+									className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 								>
 									<Users aria-hidden="true" className="size-3.5 shrink-0" />
 									<span className="min-w-0 flex-1 truncate">New team</span>
@@ -9994,7 +9994,7 @@ export function ChatSidebar({
 						ref={searchRef}
 						aria-label="Search chats and agents"
 						placeholder="Filter chats and agents"
-						className="h-8 w-full rounded-md bg-row-hover pr-9 pl-2 text-body-sm"
+						className="h-8 w-full rounded-md bg-row-hover pe-9 ps-2 text-body-sm"
 						value={query}
 						onChange={(event) => setQuery(event.target.value)}
 						onBlur={() => {
@@ -10018,7 +10018,7 @@ export function ChatSidebar({
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							className="absolute top-1/2 right-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
+							className="absolute top-1/2 end-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
 							onClick={() => clearSearch(searchRef.current, setQuery)}
 							aria-label="Clear search"
 						>
