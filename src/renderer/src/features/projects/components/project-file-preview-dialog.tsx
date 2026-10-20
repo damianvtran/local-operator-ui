@@ -26,6 +26,7 @@
 
 import { isMarkdownFile } from "@features/chat/utils/is-markdown-file";
 import { Dialog, DialogContent, DialogTitle } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
@@ -82,7 +83,7 @@ export const ProjectFilePreviewDialog: FC<ProjectFilePreviewDialogProps> = ({
 		if (typeof readFile !== "function") {
 			setState({
 				status: "error",
-				message: "Preview is unavailable outside the desktop app.",
+				message: t("ui.projects.project_updates.preview_unavailable"),
 			});
 			return;
 		}
@@ -131,10 +132,15 @@ export const ProjectFilePreviewDialog: FC<ProjectFilePreviewDialogProps> = ({
 					data-project-file-preview=""
 				>
 					{state.status === "loading" ? (
-						<p className="text-body-sm text-ink-muted">Loading preview…</p>
+						<p className="text-body-sm text-ink-muted">
+							{t("ui.projects.project_updates.preview_loading")}
+						</p>
 					) : state.status === "error" ? (
 						<p className="text-body-sm text-ink-muted">
-							Could not read {name}: {state.message}
+							{t("ui.projects.project_updates.preview_failed", {
+								name: String(name),
+								detail: state.message,
+							})}
 						</p>
 					) : markdown ? (
 						<ProjectMarkdown>{state.text}</ProjectMarkdown>
