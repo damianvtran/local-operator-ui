@@ -70,8 +70,26 @@ and three new states (`resting`, from D1-2; `wide-open`/`wide-walk`, from D1-5).
 The group fixture also gained its fourth picture (agent review round 1, R1-5), so
 every carousel frame discriminates the pressed tile from the first.
 
+The round-2 remediation of PR #1259 (2026-10-20) moved the shared chrome's
+resting fade from 0.45 to 0.85 (design round 2's D1) and re-shot **all 120
+frames again** at `22d00362de`, with the command above; the `resting` tuple's
+shutter claim names `opacity-85`. The pass is a re-capture, not a re-stamp: the
+twelve `resting` frames changed, while 104 of the 120 came back BYTE-IDENTICAL
+to the previous pass (`fit`, `zoomed`, `zoomed-panned`, `carousel-open`,
+`carousel-leftwrap`, `wide-open` and `wide-walk` in all twelve themes). The
+remaining four moved only by raster noise: `carousel-next` in
+`localOperatorDark`/`localOperatorLight` (1,917 / 782 pixels, max 6/11 per
+channel) and `reset` in `neon`/`obsidian` (2,231 / 7,028, max 4/6). The same
+pass re-took the Library pair at the same head, two themes each:
+`library-tab--media-lightbox` (8 frames) and `library-tab--preview-inline`
+(18 frames). Six of the lightbox frames are byte-identical; the two
+`media-lightbox-video` frames differ where the clip's decoded frame does (the
+tuple makes no decoded-frame claim). The preview frames are pixel-identical to
+their predecessors - one re-encode changed bytes only - which is the cheap
+confirmation that the panel itself did not move.
+
 The capture run asserted its claims at SHUTTER time, per tuple: `resting`
-fails unless the cluster carries `opacity-45`; `carousel-open` fails unless the
+fails unless the cluster carries `opacity-85`; `carousel-open` fails unless the
 viewer's own `<img>` carries the portrait fixture's base64 signature; the zoom
 frames fail unless the picture's style carries `scale(2)`; `fit`/`reset` fail
 if any `scale(` survives; every carousel frame fails without
@@ -98,12 +116,12 @@ transition columns/rows — not read back off the CSS:
 | the filmstrip | painted content x394..885 (492 wide) inside its 508px box (`px-2 py-1` since D1-6), centred; four 117x78 slots at 8px gaps — three tiles and the receipt box — with tiles at y801..878 |
 | the zoom crop | sampled along the picture's centre row (y=450): `fit` crosses all EIGHT fixture bands; `zoomed` crosses FOUR, the middle ones — the 2x crop is centred, and the box is the same one `fit` measured |
 | the pan's clamp | `panned` crosses four bands with the FIRST band flush at x=64 — the picture's own left edge seated on the frame's, which is the clamp state, arrived at by a real press-drag through CDP input, HELD at the clamp (the rig's `drag` sends no release — agent review round 1, R1-4 — so the tuple's own comment calls it a held gesture). The drag target is the close button's corner: 610px right and ~420px up, both beyond the 2x limits (576, 216), so the frame is a clamp rather than a mid-gesture accident |
-| the reset | `reset/<theme>.webp` is BYTE-IDENTICAL to `fit/<theme>.webp` in **ten of the twelve themes** (`localOperatorDark` sha256 `f6c69371ea9a1e6167a2788f1098a3138bb3ed63b1a8e855c468858b9e36d8ff`). `neon` and `obsidian` differ only sub-perceptually (2,231 / 7,028 pixels, max **4/6** per channel, mean 1.18/1.45) across the picture bands and control antialiasing; the fitted box, the bands and every edge are unchanged, so this is raster noise, not a rendered move. The round-2 claim of twelve-of-twelve did not survive this host's re-capture; ten-of-twelve is the measured fact. |
+| the reset | `reset/<theme>.webp` is BYTE-IDENTICAL to `fit/<theme>.webp` in **all twelve themes** at this pass (`localOperatorDark` sha256 `f6c69371ea9a1e6167a2788f1098a3138bb3ed63b1a8e855c468858b9e36d8ff`, the same bytes the previous pass committed). The previous pass's `neon`/`obsidian` pair differed only sub-perceptually (2,231 / 7,028 pixels, max **4/6** per channel, mean 1.18/1.45) across the picture bands and control antialiasing; this pass re-encoded those two frames onto the identical canvas, so the ten-of-twelve reading was host-side raster noise rather than a rendered move. |
 | the switched picture (after the lane) | `carousel-open`'s portrait measures 230 columns at x525..754, rows 104..794 — the 400x1200 fixture at the box's 692px lane ceiling computes 230.7px wide, top (900-692)/2 = 104. Against the strip's tiles at y801 that leaves a 6px scrim gap: nothing of the picture is under chrome (design round 1's D1-4; the pre-fix number was 266 cols at x507..772 with its bottom 47px unrevealable) |
 | the current RING (slot 2, `carousel-open`) | `ink` painted 1px outside the slot: per theme, `localOperatorLight` (35,29,20) = **6.43:1** vs its scrim (165,160,153), `sage` 6.02:1, `iceberg` **4.70:1**, the nine dark themes 13.08-18.59:1 (`localOperatorDark` 16.72:1). The role is `ink` and not `ink-muted` because the scrim dims whatever is open under it: measured over each of the eight state grounds' composites, `ink-muted` drops to 2.78:1 (kanagawaLotus over `sunken`) while `ink` clears every composite of every palette (worst 3.37:1, everforestLight over `sunken`) — and `scripts/contrast-contract.mjs` now asserts exactly that ("the lightbox's own ground", 59x8 = 472 assertions) |
 | the current ring ON THE RECEIPT (`carousel-next`, slot 3) | the mark follows the walk onto a slot with no control: same role, same numbers — `localOperatorLight` (35,29,22) = 6.43:1, `sage` 6.09:1, `iceberg` 4.89:1, dark 13.42-18.59:1. The receipt's own border remains visible INSIDE the ring; the ring is the only cue that changes |
-| the resting state is REAL, measured, not asserted by class alone | over the cluster's glyph core pixels (58 in `localOperatorDark`, 36 in `localOperatorLight`), the mean deviation from the scrim falls to **0.440x / 0.436x** of the `fit` frame's — the paint is the 0.45 floor, and the tuple separately claimed `opacity-45` at shutter. The D1 plate fades with the cluster: `localOperatorDark`'s plate reads 38,34,29 over its 14,12,11 scrim at awake and 25,21,18 at rest, with the glyph core 198,194,188 -> 100,96,93, so the resting glyph-on-plate reading is **2.91:1** (light **2.56:1**); the enabled awake reading is **8.91:1 / 7.84:1**. The pre-plate stroke-core measurements were **3.41:1 dark enabled**, **1.68:1 light enabled**, disabled dark 1.42–1.48:1 (exempt). Designer's round-2 decision: **KEEP 0.45**. The light resting glyph is knowingly below the non-text floor: accepted as the requested scrollbar quiet-state pattern, with awake-on-open discoverability and activity restoring full strength in 0.12s. Source: [design round 2](https://github.com/damianvtran/local-operator-ui/pull/990#issuecomment-6117828097), not a new measurement claimed here. |
-| the D1 plate's ground | every close/nav/zoom control carries `bg-surface/85` (`CHROME_PLATE`); the enabled glyph is `ink-muted`. Measured from the committed frames: plate **38,34,29** over the **14,12,11** scrim, glyph core **198,194,188** -> **8.91:1 awake / 2.91:1 resting** in `localOperatorDark`; plate **236,233,225** over **165,160,153**, glyph **73,69,64** -> **7.84:1 / 2.56:1** in `localOperatorLight`. Over the WORST ground a picture can put under the plate (the plate blended over pure white and pure black, the D1 method), the enabled glyph reads **4.32-6.51:1 awake** and **1.67-2.25:1 resting** across the twelve themes — per-theme table below. |
+| the resting state is REAL, measured, not asserted by class alone | the cluster's pixels fade by a median per-pixel alpha of **0.838** in `localOperatorDark` and **0.837** in `localOperatorLight` against the `fit` frame (p5..p95 0.730-0.903 / 0.798-0.881, WebP noise around the 0.85 class; the previous 0.45 frames measure 0.441 / 0.430 by the same method), and the tuple separately claimed `opacity-85` at shutter. The D1 plate fades with the cluster: `localOperatorDark`'s plate reads 38,34,29 over its 14,12,11 scrim at awake and **35,31,25** at rest, with the glyph core 198,194,188 -> **167,164,158**, so the resting glyph-on-plate reading is **6.59:1** (light **5.81:1**); the enabled awake reading is **8.91:1 / 7.84:1**. The pre-plate stroke-core measurements were **3.41:1 dark enabled**, **1.68:1 light enabled**, disabled dark 1.42–1.48:1 (exempt). Designer's round 2 (PR #1259) measured 0.85 as the floor that clears 3:1 on all 59 palettes and superseded the earlier KEEP 0.45 decision; the per-theme table below is this pass's measurement. |
+| the D1 plate's ground | every close/nav/zoom control carries `bg-surface/85` (`CHROME_PLATE`); the enabled glyph is `ink-muted`. Measured from the committed frames: plate **38,34,29** over the **14,12,11** scrim, glyph core **198,194,188** -> **8.91:1 awake / 6.59:1 resting** in `localOperatorDark`; plate **236,233,225** over **165,160,153**, glyph **73,69,64** -> **7.84:1 / 5.81:1** in `localOperatorLight`. Over the WORST ground a picture can put under the plate (the plate blended over pure white and pure black, the D1 method), the enabled glyph reads **4.32-6.51:1 awake** and **3.20-5.44:1 resting** across the twelve themes — per-theme table below. |
 | the walk's SCROLL (`wide-*`, round-2 capture at 1280x720) | The port is x128..1152. Previous-wrap reveals slot 10 at x1034..1151 (117px), leaving its 1px ring inside the port: the side strokes paint at **x1033 and x1151**, y650. Next-wrap reveals slot 1 at x129..246, with its left ring at **x128**. Both ends have **1px border-box clearance**, measured in all twelve themes; `round2-wrap-geometry.json` records the browser's actual rects. The earlier x~1130..1151 caption named only a sample near the end, not the whole ring (D2-1). `scroll-mx-px` adds the ring's outset to `scrollIntoView`'s reveal geometry without changing tile layout. |
 | the receipt | `carousel-next`'s card text paints 492x14 at +394,+443, centred — the store's sentence, at the size it is drawn, in the middle where the picture was |
 
@@ -114,32 +132,38 @@ plate composited over the worst ground a picture can put under it (pure white or
 pure black, whichever measures lower — the method in `image-lightbox.tsx`'s D1
 note). "Frame" is the same glyph on the plate in the committed frame, whose
 actual ground is the lightbox scrim. Values are WCAG contrast ratios measured
-2026-10-20 at `46042530e`; the disabled step (`ink-disabled`) is exempt and is
-not what this table measures. The awake figure is the state `fit` photographs;
-the resting figure applies the cluster's `opacity-45` to both the plate and the
-glyph, the state `resting` photographs.
+2026-10-20 at `22d00362de` from this pass's frames; the disabled step
+(`ink-disabled`) is exempt and is not what this table measures. The awake
+figure is the state `fit` photographs (byte-identical to the previous pass, so
+its values are unchanged); the resting figure applies the cluster's
+`opacity-85` to both the plate and the glyph, the state `resting` photographs.
 
 | theme | worst-ground awake | worst-ground resting | frame awake | frame resting |
 | --- | --- | --- | --- | --- |
-| `localOperatorDark` | 4.85:1 (white) | 1.73:1 (white) | 8.91:1 | 2.91:1 |
-| `localOperatorLight` | 5.80:1 (black) | 2.16:1 (white) | 7.84:1 | 2.56:1 |
-| `dracula` | 4.32:1 (white) | 1.67:1 (white) | 7.83:1 | 2.93:1 |
-| `dune` | 4.86:1 (white) | 1.73:1 (white) | 8.79:1 | 2.90:1 |
-| `sage` | 6.20:1 (black) | 2.21:1 (white) | 8.47:1 | 2.54:1 |
-| `monokai` | 4.55:1 (white) | 1.69:1 (white) | 7.87:1 | 3.01:1 |
-| `tokyoNight` | 5.24:1 (white) | 1.80:1 (white) | 9.20:1 | 3.50:1 |
-| `iceberg` | 6.51:1 (black) | 2.25:1 (white) | 8.55:1 | 2.74:1 |
-| `radient` | 5.77:1 (white) | 1.85:1 (white) | 9.91:1 | 3.46:1 |
-| `neon` | 5.03:1 (white) | 1.75:1 (white) | 8.92:1 | 2.99:1 |
-| `obsidian` | 5.16:1 (white) | 1.77:1 (white) | 9.27:1 | 2.93:1 |
-| `synth` | 5.15:1 (white) | 1.77:1 (white) | 8.95:1 | 2.88:1 |
+| `localOperatorDark` | 4.85:1 (white) | 3.52:1 (white) | 8.91:1 | 6.59:1 |
+| `localOperatorLight` | 5.80:1 (black) | 4.95:1 (black) | 7.84:1 | 5.81:1 |
+| `dracula` | 4.32:1 (white) | 3.20:1 (white) | 7.83:1 | 5.86:1 |
+| `dune` | 4.86:1 (white) | 3.52:1 (white) | 8.79:1 | 7.06:1 |
+| `sage` | 6.20:1 (black) | 5.24:1 (black) | 8.47:1 | 6.24:1 |
+| `monokai` | 4.55:1 (white) | 3.34:1 (white) | 7.87:1 | 6.28:1 |
+| `tokyoNight` | 5.24:1 (white) | 3.76:1 (white) | 9.20:1 | 7.42:1 |
+| `iceberg` | 6.51:1 (black) | 5.44:1 (black) | 8.55:1 | 6.52:1 |
+| `radient` | 5.77:1 (white) | 4.06:1 (white) | 9.91:1 | 8.04:1 |
+| `neon` | 5.03:1 (white) | 3.62:1 (white) | 8.92:1 | 6.97:1 |
+| `obsidian` | 5.16:1 (white) | 3.70:1 (white) | 9.27:1 | 6.93:1 |
+| `synth` | 5.15:1 (white) | 3.70:1 (white) | 8.95:1 | 6.85:1 |
 
 The awake numbers clear the 3:1 non-text floor on every theme even at the
-worst-ground bound, which is the D1 fix. The resting numbers are below it by
-design: the cluster is the scrollbar's quiet state and the whole thing fades,
-plate included. The plate is a subtle ground step, not a chip — its own
-contrast against the ground is small by construction; the accessible claim is
-the glyph on it.
+worst-ground bound, which is the D1 fix. The resting numbers now clear it too:
+the worst-ground bound is **3.20:1** (`dracula` over white) and the worst frame
+reading **5.81:1** (`localOperatorLight`), both measured at this pass. 0.85 is
+the measured threshold rather than a taste call - over all 59 selectable
+palettes the worst composite is **3.05493:1** (`nightfox` over white), the
+limiting alpha is **~0.84022**, and 0.80 fails (`nightfox` 2.788:1, `dracula`
+2.915:1, `synthwave` 2.901:1). The fade stays because a resting state must
+still read as a step down from awake; it now stops above the floor instead of
+under it. Re-derive the number if the plate stops being `surface/85` - the two
+compose, and a different plate moves the threshold.
 
 ## What each frame is evidence FOR, and what it cannot carry
 
@@ -150,7 +174,7 @@ the glyph on it.
   `fit`/`reset` fail if any `scale(` survives; every carousel state fails
   without `[data-image-filmstrip]` on screen.
 - **The fade IS in these frames now, and the clock is still jsdom's.**
-  `resting` is the post-hold state, claimed by class at shutter (`opacity-45`
+  `resting` is the post-hold state, claimed by class at shutter (`opacity-85`
   on the cluster), and the jsdom suite pins the cycle with committed cases:
   dim after the hold, wake on a bare `pointermove`, held awake while a control
   has focus. The earlier sentences here said "the jsdom suite mounts it" and

@@ -62,6 +62,14 @@ editor at the start of the value.
 chrome is drawn. Each old frame was replaced in place — the committed tree holds
 one frame per state, not the old beside the new.
 
+The round-2 remediation of PR #1259 re-took both runs at `22d00362de`, because
+the shared lightbox's resting fade moved from 0.45 to 0.85 (design round 2's
+D1). The pass reported `Captured 8 frames` and `Captured 18 frames`: six of the
+eight lightbox frames came back byte-identical, the two
+`media-lightbox-video` frames differ where the clip's decoded frame does (the
+tuple makes no decoded-frame claim), and all 18 preview frames are
+pixel-identical to their predecessors - one re-encode changed bytes only.
+
 **Before arm** (scratch worktree at the base, one uncommitted story and one
 uncommitted tuple block):
 
