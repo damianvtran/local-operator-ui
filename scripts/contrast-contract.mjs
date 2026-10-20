@@ -424,6 +424,18 @@ const CONTROLS = [
 		border: "borderControl",
 		ink: "inkMuted",
 	},
+	// The address suggestion list is the second in-flow chrome band: it shares
+	// the bar's elevated ground and control rule, and its label/empty notice is
+	// muted ink. The rows themselves are already covered by the elevated-ground
+	// ink loop and the accent-wash state ground; this pins the container so a
+	// future fill/border edit cannot ship an unmeasured combination.
+	{
+		name: "browser address suggestions",
+		on: ["elevated"],
+		fill: "elevated",
+		border: "borderControl",
+		ink: "inkMuted",
+	},
 	{
 		name: "primary button",
 		on: GROUNDS,

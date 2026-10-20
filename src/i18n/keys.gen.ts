@@ -1469,6 +1469,12 @@ export type MessageParams = {
 	"ui.browser.browser_tab_strip.unmute_tab": undefined;
 	"ui.browser.browser_tab_strip.watch": { title: string };
 	"ui.browser.browser_url_bar.address": undefined;
+	"ui.browser.browser_url_bar.address_required": undefined;
+	"ui.browser.browser_url_bar.address_suggestions_available": { count: number };
+	"ui.browser.browser_url_bar.address_suggestions_empty": undefined;
+	"ui.browser.browser_url_bar.address_suggestions_label": undefined;
+	"ui.browser.browser_url_bar.address_suggestions_no_match": undefined;
+	"ui.browser.browser_url_bar.address_suggestions_unavailable": undefined;
 	"ui.browser.browser_url_bar.approvals_waiting": { count: number };
 	"ui.browser.browser_url_bar.back": undefined;
 	"ui.browser.browser_url_bar.back_shortcut": { shortcut: string };

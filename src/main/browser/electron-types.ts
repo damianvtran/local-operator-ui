@@ -152,6 +152,12 @@ export interface NavigationHistoryLike {
 	length(): number;
 	getAllEntries?(): NavigationEntryLike[];
 	getActiveIndex?(): number;
+	/** Indexed read, required where the full stack is not. Address suggestions
+	 * read a bounded window around the active index instead of allocating
+	 * `getAllEntries()` for a history that may be arbitrarily deep (the same reason
+	 * Electron exposes it). Test fakes that define `navigationHistory` supply it;
+	 * a view that has none keeps `navigationHistory` absent altogether. */
+	getEntryAtIndex(index: number): NavigationEntryLike | undefined;
 	restore?(options: {
 		entries: NavigationEntryLike[];
 		index?: number;

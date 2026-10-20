@@ -327,6 +327,14 @@ const APP_SPAWN_SITES = [
 		/withNotificationsOff\(env\);/,
 	),
 	guarded(
+		"scripts/browser-url-autocomplete-proof.mjs",
+		"spawn",
+		1,
+		/env,\s*detached:/,
+		"boots the built app headless against local fixture sites to exercise the address bar's local autocomplete with real input and real keys",
+		/const env = withTelemetryOff\(\s*withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-tab-menu-turn-proof.mjs",
 		"spawn",
 		1,
