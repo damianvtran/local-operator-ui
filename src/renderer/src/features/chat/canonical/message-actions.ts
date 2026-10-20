@@ -24,11 +24,15 @@ export type AnswerActionId = "copy" | "speak" | "fork";
  * the reader's own turn, which offers Copy and nothing else (speaking the
  * reader's own message back is not an affordance the operator asked for, and
  * the speech engine synthesises agent-side text). `response` is any OTHER
- * settled assistant response in the turn (#1043): Copy alone, because the full
- * row stays the closing answer's (PR #698's one-row-per-turn rule), but
- * every response the reader can see must be copyable without hand-selecting.
+ * FINAL RESPONSE in the turn - a settled assistant row that carries no
+ * `tool_calls` of its own (`turn-segments.ts::isFinalResponse`) - and it now
+ * offers the full answer set, because the operator's rule is that every final
+ * response gets the real bar wherever it sits in the turn. `commentary` is the
+ * in-between STATUS row (it carries its own `tool_calls`): the hover-only
+ * overlay class, Copy alone, so the visible turn still has exactly one full
+ * bar per handover and the narration does not sprout Speak/Fork on hover.
  */
-export type ActionRowRole = "answer" | "user" | "response";
+export type ActionRowRole = "answer" | "user" | "response" | "commentary";
 
 /**
  * The row's actions, in order, and the cap that keeps it a row.
@@ -123,10 +127,20 @@ export function answerActionsFor({
 	const fork: AnswerActionId[] = forkable ? ["fork"] : [];
 	if (role === "user") return ["copy", ...fork];
 	/*
-	 * A non-closing response offers Copy and nothing else, whatever the caller
-	 * passes: Speak and Fork per paragraph is the repetition #698 removed.
+	 * A STATUS/COMMENTARY row offers Copy and nothing else: it is the in-between
+	 * narration the reader can hover to copy, not a handover, and Speak/Fork on
+	 * every "Reading the ledger first." would be the per-paragraph clutter PR
+	 * #698 removed.
 	 */
-	if (role === "response") return ["copy"];
+	if (role === "commentary") return ["copy"];
+	/*
+	 * SPEAK AND FORK ON EVERY FINAL RESPONSE, closing or not (operator,
+	 * 2026-10-20): "all final responses to the user even in between should have
+	 * the inline action bar from before". The old Copy-only `response` arm was
+	 * #1043's economy - one full row per turn - and the operator's rule replaces
+	 * it: a final response is a handover, so it gets the handover's controls.
+	 */
+	if (role === "response") return ["copy", "speak", ...fork];
 	/*
 	 * SPEAK IS ALWAYS LISTED, and the row carries no agent gate. The gate this
 	 * replaced tested an agent id that in this app is the PANE's identity - not

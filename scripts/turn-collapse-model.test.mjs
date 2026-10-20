@@ -1957,11 +1957,19 @@ const narratedTurns = (turns) => {
 		for (let i = 0; i < 13; i += 1)
 			rows.push(tool(`nt${turn}-${i}`, { ts: at + 1_000 + i }, "trace"));
 		/*
-		 * The narration: settled assistant text with no `stopReason` and a call after
-		 * it, so `cyclesOf` reads it as narration rather than a close - hidden by
-		 * `by-turn`, kept by `by-response`. That difference is the whole fixture.
+		 * The narration: settled assistant text that CARRIES its own calls (the wire
+		 * fact `isFinalResponse` reads) and has a call after it, so `cyclesOf` reads
+		 * it as narration rather than a close - hidden by `by-turn`, kept by
+		 * `by-response`. That difference is the whole fixture; omitting `callsTools`
+		 * let V5 pin the row in by-turn and erase it (review round 3, finding 3).
 		 */
-		rows.push(answer(`nn${turn}`, { ts: at + 50_000, text: "still working" }));
+		rows.push(
+			answer(`nn${turn}`, {
+				ts: at + 50_000,
+				text: "still working",
+				callsTools: true,
+			}),
+		);
 		for (let i = 0; i < 14; i += 1)
 			rows.push(tool(`nb${turn}-${i}`, { ts: at + 60_000 + i }, "trace"));
 		rows.push(answer(`na${turn}`, { ts: at + 90_000 }));

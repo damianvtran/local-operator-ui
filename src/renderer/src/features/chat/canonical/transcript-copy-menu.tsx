@@ -69,7 +69,28 @@ export const TranscriptCopyMenu = ({
 	return (
 		<ContextMenu
 			onOpenChange={(open) => {
-				if (open) setSelection(window.getSelection()?.toString().trim() ?? "");
+				if (!open) return;
+				/*
+				 * THE READER'S HIGHLIGHT, CAPTURED ON OPEN - and guarded because the
+				 * transcript is also rendered in jsdom with no window (the copy
+				 * tests mount the pane and swap the global between cases). In the
+				 * app `window` is always there, so this is a no-op; without it a
+				 * menu open in a windowless mount throws before the content
+				 * mounts, and the test sees "the context menu opened" as false
+				 * (CI, 2026-10-20). The `try` covers a window that exists but is
+				 * CLOSED (jsdom's `window.close()` leaves `_document` undefined),
+				 * which is the same leak in the test runner's teardown.
+				 */
+				let selection = "";
+				try {
+					selection =
+						typeof window === "undefined"
+							? ""
+							: (window.getSelection()?.toString().trim() ?? "");
+				} catch {
+					selection = "";
+				}
+				setSelection(selection);
 			}}
 		>
 			<ContextMenuTrigger asChild className={cn(className)}>
