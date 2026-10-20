@@ -8,6 +8,7 @@ import {
 } from "@features/agents/components/hub-link-policy-controls";
 import { HubUpdatePanel } from "@features/agents/components/hub-update-panel";
 import { HubStateIcon } from "@features/chat/components/hub-update-mark";
+import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -97,6 +98,17 @@ const STATE_KEY: Record<
 	manual: "ui.hub.skills.manual",
 	detached: "ui.hub.skills.detached",
 };
+
+/**
+ * The refusal code behind a failed write, when the failure carried one.
+ *
+ * Core answers an alias collision and a confirmed-origin conflict with the same
+ * `origin-conflict` code, and that is the one failure with a remedy the
+ * generic sentences cannot name: choose another local alias.
+ */
+function refusalCode(error: unknown): string | undefined {
+	return error instanceof DesktopControlError ? error.code : undefined;
+}
 
 function SkillMarkChip({ mark }: { mark: HubMark | null }) {
 	useI18nLocale();
@@ -267,7 +279,9 @@ export function HubSkillsLibrary({
 			// subscription it already has, because a download is not a policy edit.
 			subscribe: forLink ? forLink.policy.subscribe : false,
 			autoPush: forLink?.policy.auto_push ?? false,
-			consent: forLink ? forLink.policy.auto_push : false,
+			// Consent is an affirmative act, never re-asserted by a pull: an existing
+			// link already holds (or deliberately lacks) its egress grant.
+			consent: false,
 		});
 	};
 	const runSubscribe = () => {
@@ -604,15 +618,18 @@ export function HubSkillsLibrary({
 										{t("ui.hub.skills.download")}
 									</Button>
 								)}
-								{(!selectedLink || !selectedLink.policy.subscribe) && (
+								{/*
+								 * ONLY for a skill with no link. Core leaves an existing link's
+								 * subscription untouched by a subscribe (it is not a policy edit),
+								 * so for a linked skill the Subscribe switch above is the one act
+								 * that can turn it back on.
+								 */}
+								{!selectedLink && (
 									<Button
 										data-testid="hub-skill-subscribe"
 										variant="outline"
 										disabled={
-											!signedIn ||
-											!ready ||
-											subscribe.isPending ||
-											(!selectedLink && !alias)
+											!signedIn || !ready || subscribe.isPending || !alias
 										}
 										onClick={runSubscribe}
 									>
@@ -712,7 +729,11 @@ export function HubSkillsLibrary({
 									className="text-body-sm text-danger"
 									data-testid="hub-skill-subscribe-failed"
 								>
-									{t("ui.hub.skills.subscribe_failed")}
+									{t(
+										refusalCode(subscribe.error) === "origin-conflict"
+											? "ui.hub.skills.local_exists"
+											: "ui.hub.skills.subscribe_failed",
+									)}
 								</p>
 							)}
 						</>
@@ -732,7 +753,11 @@ export function HubSkillsLibrary({
 							className="text-body-sm text-danger"
 							data-testid="hub-skill-pull-failed"
 						>
-							{t("ui.hub.skills.pull_failed")}
+							{t(
+								refusalCode(pull.error) === "origin-conflict"
+									? "ui.hub.skills.local_exists"
+									: "ui.hub.skills.pull_failed",
+							)}
 						</p>
 					)}
 					{pull.data?.link &&
