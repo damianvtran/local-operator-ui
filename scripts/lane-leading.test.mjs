@@ -189,13 +189,13 @@ test("the lane is an overlay and panels paint from y0", () => {
 	);
 	assert.match(
 		layout,
-		/className="absolute inset-x-0 top-0 z-30 h-\[var\(--chrome-strip-h\)\]"/,
+		/flushTop\s*\?\s*"absolute inset-x-0 top-0 z-30 h-\[var\(--chrome-strip-h\)\]"/,
 		"the lane must be an OVERLAY at y0, not a row that reserves height: a reserved row is exactly the band that makes the sidebar and view start 32px down (operator report, 2026-10-20, third occurrence)",
 	);
 	assert.match(
 		layout,
-		/\{flushTop \? \(/,
-		"the absolute overlay must be the flushTop branch: routes that have not opted into full-bleed panels keep the painted lane row and their previous first-row position",
+		/:\s*"h-8 shrink-0"/,
+		"the absolute overlay must be the flushTop arm and the painted h-8 row the other arm: routes that have not opted into full-bleed panels keep the painted lane row and their previous first-row position",
 	);
 	assert.match(
 		layout,
