@@ -5,8 +5,8 @@
  * decision of 2026-10-16): while the block's own turn renders condensed the
  * block shows the SAME files section as its expanded self — actionable
  * `[data-supplement-file]` rows and the `[data-supplement-images]` tile grid —
- * with no `[data-supplement-slot]`, no iframe and no graphics beside them; a
- * graphics-ONLY finish keeps the design's plain count clause. It also pins the
+ * with no `[data-supplement-slot]` or iframe while the local reveal is closed.
+ * Graphics-only and mixed finishes offer that shared Show control. It also pins the
  * glyph-fallback slot of an image tile and the graphics disclosure's singular
  * arm (`Show all 1 graphic`, U7).
  *
@@ -161,13 +161,16 @@ test("the failed line names the typed cause, and stays bare without one", () => 
 
 test("a condensed block keeps the design's quiet arms: no slot, no iframe, no graphics", () => {
 	/*
-	 * THE GRAPHICS-ONLY ARM keeps the design's plain count clause (there is no
-	 * file to act on, and the turn's own bar is the expansion frames render in),
+	 * THE GRAPHICS-ONLY ARM has its own explicit Show control, closed without
+	 * slots or frames until requested,
 	 * and it is still pinned on the DOM by `data-supplement-condensed`.
 	 */
 	const arms = [
 		// components only
-		[supplement({ components: [component("one", "Chart", 320)] }), "1 graphic"],
+		[
+			supplement({ components: [component("one", "Chart", 320)] }),
+			"Show 1 graphic",
+		],
 		[
 			supplement({
 				components: [
@@ -175,7 +178,7 @@ test("a condensed block keeps the design's quiet arms: no slot, no iframe, no gr
 					component("two", "Table", 320),
 				],
 			}),
-			"2 graphics",
+			"Show 1 of 2 graphics",
 		],
 	];
 	for (const [record, line] of arms) {
@@ -227,17 +230,20 @@ test("a condensed block's files are the SAME actionable rows as the expanded for
 		assert.ok(!markup.includes("data-supplement-slot"));
 		assert.ok(!markup.includes("<iframe"));
 	}
-	/*
-	 * The mixed set renders the files and NOT a graphics clause beside them:
-	 * the graphics' route is the turn's bar, and a count of frames the reader
-	 * cannot reach from here would be a dead end the design does not draw.
-	 */
+	/* Mixed sets retain their file rows and now offer the same local reveal. */
 	const mixed = render(
 		supplement({ files, components: [component("one", "Chart", 320)] }),
 		true,
 	);
 	assert.equal((mixed.match(/data-supplement-file=""/g) ?? []).length, 2);
-	assert.ok(!mixed.includes("graphic"), "no graphics clause beside rows");
+	assert.ok(
+		textOf(mixed).includes("Show 1 graphic"),
+		"graphics reachable beside files",
+	);
+	assert.ok(
+		!mixed.includes("data-supplement-slot"),
+		"mixed reveal is closed by default",
+	);
 });
 
 test("a not-settled condensed block leads with its rows and keeps its actions", () => {

@@ -594,7 +594,8 @@ test("the goal chip is a disclosure, closed, with the primitive's own wiring", (
 	});
 	// Closed by default, per branding's disclosure rule, and it says so.
 	assert.match(markup, /aria-expanded="false"/);
-	assert.match(markup, /aria-controls="[^"]+"/);
+	// The closed body is absent; an always-present relationship would dangle.
+	assert.doesNotMatch(markup, /aria-controls=/);
 	/*
 	 * The body is mounted only while open, which is what keeps the tab stop this
 	 * row adds (`tabIndex={0}` on the scrollable body) out of the ordinary

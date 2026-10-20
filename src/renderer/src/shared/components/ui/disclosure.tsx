@@ -536,7 +536,9 @@ export const Disclosure = ({
 				type="button"
 				{...triggerData}
 				aria-expanded={isOpen}
-				aria-controls={children != null ? contentId : undefined}
+				// Non-animated bodies unmount closed; never reference an absent
+				// target. Animated bodies likewise expose the relationship only open.
+				aria-controls={isOpen && children != null ? contentId : undefined}
 				aria-label={triggerLabel}
 				ref={buttonRef}
 				onMouseDown={onMouseDown}
