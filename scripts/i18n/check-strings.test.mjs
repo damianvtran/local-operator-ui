@@ -257,6 +257,59 @@ test("baseline files round-trip as schema 2; a schema-1 scope is ignored", () =>
 	}
 });
 
+test("a malformed baseline ceiling is dropped, not coerced, and fails closed", () => {
+	const dir = mkdtempSync(join(tmpdir(), "i18n-baseline-"));
+	try {
+		const path = join(dir, "baseline.json");
+		/*
+		 * The hole this pins: `Number("twelve")` is NaN, and `ratchetFindings`
+		 * fails only when `count > ceiling` — false for NaN — so a coerced
+		 * ceiling would silently exempt the file it was meant to hold to. Each
+		 * malformed shape must become NO entry, and therefore a `null`-ceiling
+		 * failure for a file that still has literals.
+		 */
+		writeFileSync(
+			path,
+			JSON.stringify({
+				schema: 2,
+				note: "",
+				files: {
+					"src/string.tsx": "twelve",
+					"src/negative.tsx": -1,
+					"src/fractional.tsx": 1.5,
+					"src/null.tsx": null,
+					"src/zero.tsx": 0,
+				},
+			}),
+		);
+		const loaded = loadBaseline(path);
+		assert.deepEqual(loaded.files, { "src/zero.tsx": 0 });
+		const literals = 3;
+		const findings = ratchetFindings(
+			{
+				"src/string.tsx": literals,
+				"src/negative.tsx": literals,
+				"src/fractional.tsx": literals,
+				"src/null.tsx": literals,
+				"src/zero.tsx": literals,
+			},
+			loaded.files,
+		);
+		assert.deepEqual(findings, [
+			{ path: "src/fractional.tsx", count: literals, ceiling: null },
+			{ path: "src/negative.tsx", count: literals, ceiling: null },
+			{ path: "src/null.tsx", count: literals, ceiling: null },
+			{ path: "src/string.tsx", count: literals, ceiling: null },
+			// A valid zero ceiling still applies: literals against it are a breach.
+			{ path: "src/zero.tsx", count: literals, ceiling: 0 },
+		]);
+		// A zero-count file passes against its zero ceiling.
+		assert.deepEqual(ratchetFindings({ "src/zero.tsx": 0 }, loaded.files), []);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
 test("countsOf skips allowlisted files before counting", () => {
 	const scanned = new Map([
 		[

@@ -969,6 +969,7 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 	const rows = data ? chartSeries(data.daily, win, metric) : [];
 	const scope = thisSessionOnly ? "this session" : "all sessions";
 	const chartTitle = metric === "spend" ? "Daily spend" : "Daily tokens";
+	useI18nLocale();
 	const [sessionState, sessionDispatch] = useSessionTableState({
 		metric,
 		windowDays,
