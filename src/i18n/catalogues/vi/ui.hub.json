@@ -112,7 +112,7 @@
 	"ui.hub.status.unsafe_publication": "Đích đến này không thể nhận nội dung hiện tại một cách an toàn. Xem lại bản sao dành riêng cho đích đến.",
 	"ui.hub.status.other_error": "Thao tác này đang tạm dừng.",
 	"ui.hub.skills.search": "Tìm kỹ năng",
-	"ui.hub.skills.search_loaded": "Tìm kiếm trong trang đã tải này.",
+	"ui.hub.skills.search_loaded": "Tìm kiếm chỉ áp dụng cho các kỹ năng trên trang này.",
 	"ui.hub.skills.open_detail": "Xem {item}",
 	"ui.hub.skills.catalogue_failed": "Không tải được kỹ năng từ {source}. Hãy thử lại.",
 	"ui.hub.skills.installed_alias": "Đã tải {item} từ {source}",
@@ -175,6 +175,6 @@
 	"ui.hub.skills.unsubscribe": "Hủy theo dõi",
 	"ui.hub.skills.unsubscribe_help": "Dừng các cập nhật sau này. Các tệp đã tải vẫn còn.",
 	"ui.hub.skills.public_hub": "Trung tâm công khai",
-	"ui.hub.skills.count": "{count, plural, other {{count, number, ::group-off} kỹ năng trong {scope}}}",
+	"ui.hub.skills.count": "{count, plural, other {{count, number, ::group-off} kỹ năng}}",
 	"ui.hub.skills.count_shared": "{count, plural, other {{count, number, ::group-off} kỹ năng được chia sẻ với {organization}}}"
 }

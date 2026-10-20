@@ -386,10 +386,7 @@ export function HubSkillsLibrary({
 					count: scopedRows.length,
 					organization: scope.organization,
 				})
-			: t("ui.hub.skills.count", {
-					count: scopedRows.length,
-					scope: t("ui.hub.skills.public_hub"),
-				});
+			: `${t("ui.hub.skills.count", { count: scopedRows.length })} · ${t("ui.hub.skills.public_hub")}`;
 
 	return (
 		<section className="flex min-w-0 flex-col gap-4" data-hub-skills-library>
@@ -610,12 +607,12 @@ export function HubSkillsLibrary({
 								<p className="break-all font-mono text-meta text-ink-dim">
 									{t("ui.hub.skills.local_path", {
 										/*
-										 * FSI/PDI around the path: under `dir="rtl"` a leading
-										 * `/` resolves as RTL punctuation and moves to the far
-										 * end, which the translation audit measured. Isolation
-										 * keeps the path's own LTR order inside a bidi sentence.
+										 * No call-site isolation: the bidi guarantee travels WITH the
+										 * string (the ur copy carries FSI/PDI around {path}), because a
+										 * locale that needs it is the locale that must state it — a wrap
+										 * here would also apply to locales whose sentence does not.
 										 */
-										path: `\u2068${selectedLink.local_path}\u2069`,
+										path: selectedLink.local_path,
 									})}
 								</p>
 							)}

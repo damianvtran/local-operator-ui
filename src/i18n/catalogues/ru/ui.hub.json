@@ -74,7 +74,7 @@
 	"ui.hub.skills.loading": "Загрузка навыков…",
 	"ui.hub.skills.local_exists": "Этот локальный псевдоним уже используется. Выберите другой.",
 	"ui.hub.skills.open_detail": "Открыть {item}",
-	"ui.hub.skills.policy_pending": "Публикация прошла, но этот компьютер не подтвердил политики связи. Согласуйте эту публикацию перед следующей записью.",
+	"ui.hub.skills.policy_pending": "Публикация прошла, но этот компьютер не подтвердил политики связи. Сверьте эту публикацию перед следующей записью.",
 	"ui.hub.skills.publish_title": "Опубликовать навык",
 	"ui.hub.skills.pull_failed": "Загрузка не подтверждена. Проверьте связанные элементы и повторите попытку.",
 	"ui.hub.skills.pull_help": "Создаёт отдельную локальную копию со своим источником и политикой. Существующие копии не перезаписываются.",
@@ -159,7 +159,7 @@
 	"ui.hub.skills.unpull_body": "Файлы будут удалены из вашей папки навыков. Связь и подписка сохранятся, поэтому повторная загрузка вернёт текущую ревизию.",
 	"ui.hub.skills.unpull_failed": "Удаление локальной копии не подтверждено. Повторите попытку и проверьте состояние связи.",
 	"ui.hub.skills.subscribe_failed": "Подписка не подтверждена. Повторите попытку.",
-	"ui.hub.skills.local_path": "Установлено в {path}",
+	"ui.hub.skills.local_path": "Установлено: {path}",
 	"ui.hub.skills.published_by": "Издатель: {publisher}",
 	"ui.hub.skills.not_downloaded": "Не загружено",
 	"ui.hub.skills.subscribed_absent": "Есть подписка — не установлено",
@@ -175,6 +175,6 @@
 	"ui.hub.skills.unsubscribe": "Отписаться",
 	"ui.hub.skills.unsubscribe_help": "Останавливает будущие обновления. Загруженные файлы остаются.",
 	"ui.hub.skills.public_hub": "Публичный хаб",
-	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} навык в {scope}} few {{count, number, ::group-off} навыка в {scope}} many {{count, number, ::group-off} навыков в {scope}} other {{count, number, ::group-off} навыка в {scope}}}",
-	"ui.hub.skills.count_shared": "{count, plural, one {{count, number, ::group-off} навык доступен для {organization}} few {{count, number, ::group-off} навыка доступны для {organization}} many {{count, number, ::group-off} навыков доступны для {organization}} other {{count, number, ::group-off} навыка доступны для {organization}}}"
+	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} навык} few {{count, number, ::group-off} навыка} many {{count, number, ::group-off} навыков} other {{count, number, ::group-off} навыка}}",
+	"ui.hub.skills.count_shared": "{count, plural, one {{count, number, ::group-off} навык, общий с {organization}} few {{count, number, ::group-off} навыка, общих с {organization}} many {{count, number, ::group-off} навыков, общих с {organization}} other {{count, number, ::group-off} навыка, общих с {organization}}}"
 }

@@ -175,6 +175,6 @@
 	"ui.hub.skills.unsubscribe": "Unsubscribe",
 	"ui.hub.skills.unsubscribe_help": "Stops future updates. Downloaded files stay.",
 	"ui.hub.skills.public_hub": "Public hub",
-	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} skill in {scope}} other {{count, number, ::group-off} skills in {scope}}}",
+	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} skill} other {{count, number, ::group-off} skills}}",
 	"ui.hub.skills.count_shared": "{count, plural, one {{count, number, ::group-off} skill shared with {organization}} other {{count, number, ::group-off} skills shared with {organization}}}"
 }
