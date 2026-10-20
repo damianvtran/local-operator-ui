@@ -239,6 +239,47 @@ test("focus fetches once and an empty query shows the session's entries", async 
 	await bundle.cleanup();
 });
 
+test("the list is inset to the address field's bounds, not the pane's", async () => {
+	// jsdom has no layout, so the only way to pin the INSET ARITHMETIC here is to
+	// hand the component the boxes the real app measures: a 1380px window whose
+	// 260px icon rail leaves a 1120px pane, the field inset by the bar's left
+	// controls (200px) and the Approvals control (40px). What this owns is the
+	// arithmetic; the measured claim is `browser-url-autocomplete-proof.mjs`.
+	const bundle = await renderBar();
+	const bar = bundle.container.querySelector(
+		'[data-tour-tag="browser-url-bar"]',
+	);
+	const box = (left, right) => ({
+		left,
+		right,
+		width: right - left,
+		top: 0,
+		bottom: 32,
+		height: 32,
+		x: left,
+		y: 0,
+		toJSON: () => ({}),
+	});
+	bar.getBoundingClientRect = () => box(260, 1380);
+	bundle.input.getBoundingClientRect = () => box(460, 1340);
+	await act(async () => bundle.input.focus());
+	await flush();
+	const listEl = list(bundle);
+	assert.ok(listEl, "the suggestion list mounted");
+	assert.equal(listEl.style.marginLeft, "200px");
+	assert.equal(listEl.style.marginRight, "40px");
+	const barWidth = 1380 - 260;
+	const listLeft = 260 + Number.parseFloat(listEl.style.marginLeft);
+	const listRight = 1380 - Number.parseFloat(listEl.style.marginRight);
+	assert.ok(Math.abs(listLeft - 460) <= 1, `list.left=${listLeft}`);
+	assert.ok(Math.abs(listRight - 1340) <= 1, `list.right=${listRight}`);
+	assert.ok(
+		listRight - listLeft < barWidth,
+		`list.width=${listRight - listLeft} bar.width=${barWidth}`,
+	);
+	await bundle.cleanup();
+});
+
 test("typing types the selected suffix into the real input", async () => {
 	const bundle = await renderBar({ url: "https://example.com/account" });
 	await type(bundle, "example.com/acc");
