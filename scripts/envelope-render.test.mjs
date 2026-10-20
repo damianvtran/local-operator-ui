@@ -294,6 +294,75 @@ test("with NO catalogue registered, supplied params do not turn text into a key"
 	assert.notEqual(error.message, "wire.errors.desktop.runtime_unreachable");
 });
 
+test("an unknown message_code does not fall back to code as a key", () => {
+	// `message_code ?? code` is a SINGLE choice (§3): when the supplied render
+	// identity is unknown, the payload's `text` is the lane — `code` is a machine
+	// category and must not be guessed at as a catalogue key. `code` here is a
+	// key this runtime DOES know, so a `message_code || code` regression would
+	// render its catalogue sentence instead of the wire text.
+	const text = "A newer backend's own sentence.";
+	const prose = publicationProse({
+		detail: {
+			code: "ui.common.errors.error_boundary.something_went_wrong",
+			message_code: "wire.errors.future.not_in_this_build",
+			text,
+		},
+	});
+	assert.equal(prose, text);
+	assert.notEqual(
+		prose,
+		t("ui.common.errors.error_boundary.something_went_wrong"),
+	);
+});
+
+test("an empty catalogue entry is malformed, never a blank refusal", () => {
+	registerCatalogue("fr", { "wire.test.blank": "   " });
+	const prose = publicationProse({
+		detail: { code: "wire.test.blank", text: RUNTIME_EN },
+	});
+	assert.equal(
+		prose,
+		t("ui.common.errors.error_boundary.something_went_wrong"),
+	);
+	assert.notEqual(prose, "");
+	assert.notEqual(prose, RUNTIME_EN);
+});
+
+test("a plural argument that is not a finite number is malformed, not 'NaN'", () => {
+	// `IntlMessageFormat` COERCES: "abc" -> NaN, null -> 0, true -> 1. Accepting
+	// those would paint a fabricated sentence, which is exactly what §6's
+	// malformed branch exists to prevent (review round 1, MAJOR-1).
+	registerCatalogue("fr", {
+		"wire.test.count": "{count, plural, one {# élément} other {# éléments}}",
+		"wire.test.number": "Valeur : {n, number}",
+	});
+	const generic = t("ui.common.errors.error_boundary.something_went_wrong");
+	for (const value of ["abc", null, true, {}, 3]) {
+		const prose = publicationProse({
+			detail: {
+				code: "wire.test.count",
+				params: { count: value },
+				text: "English wire",
+			},
+		});
+		if (value === 3) {
+			assert.equal(prose, "3 éléments", "a valid number still renders");
+		} else {
+			assert.equal(prose, generic, `count=${String(value)} must be malformed`);
+		}
+	}
+	assert.equal(
+		publicationProse({
+			detail: {
+				code: "wire.test.number",
+				params: { n: "abc" },
+				text: "English wire",
+			},
+		}),
+		generic,
+	);
+});
+
 test("teardown", () => {
 	// Locale is process-global; leaving it pinned to fr would affect any test
 	// that imports this bundle afterwards in the same run.

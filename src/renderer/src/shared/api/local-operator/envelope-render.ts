@@ -33,6 +33,19 @@
  * category (`runtime_busy`) instead of a catalogue key. Reading it here is the
  * client half of the contract; PRODUCING it is a separate core change, so no
  * code in this repository adds it.
+ *
+ * FALLBACK CHAIN, stated because the doc and code must not disagree (§6).
+ * `messageFor` answers in this order: the served catalogue for the ACTIVE
+ * locale, the bundled catalogue for that locale, then the BUNDLED English
+ * source. A registered English catalogue is deliberately NOT consulted for a
+ * non-English locale: the served `en` namespace is not a compatibility lane,
+ * and making it one would let the words depend on which catalogues a cache
+ * happened to fetch. For a `wire.*` identity the effective fallback is
+ * therefore the envelope's own `text`, which is the backend's English source
+ * with its params already substituted — the same sentence the bundled English
+ * would carry, from the process that owns it. That is why this path is
+ * equivalent without a second lookup; the alternative (consulting any
+ * registered `en` map) is rejected above.
  */
 
 /*
@@ -96,13 +109,17 @@ function paramsOf(value: unknown): Record<string, unknown> {
 
 /**
  * Render one envelope's human sentence, or `null` when the payload carries
- * neither a usable identity nor any usable text.
+ * neither a renderable identity nor any usable text.
  *
- * `null` is deliberate and means "nothing here to show": the two adapters each
- * own a different, already-established fallback for that state
- * (`DESKTOP_REFUSAL_PLACEHOLDER`, the publication generic, a bare `detail`
- * string), and reproducing those here would give the app two authorities for
- * the same fact (§6's last row: "existing client-owned generic error/status").
+ * `null` is deliberate and means exactly that: the two adapters each own a
+ * different, already-established fallback for the state
+ * (`DESKTOP_REFUSAL_PLACEHOLDER`, `"The agent could not be published."`, a bare
+ * `detail` string), and reproducing those here would give the app two
+ * authorities for the same fact (§6's last row: "existing client-owned generic
+ * error/status"). The generic `via` is returned only for a KNOWN identity that
+ * cannot be formatted, where §6 requires the client's own error rather than
+ * falling through to the wire text — so both branches of this function agree
+ * with this comment.
  *
  * The locale is resolved at CALL time: an envelope is rendered where it is
  * consumed, so a language switch takes effect for the next refusal without the
@@ -133,12 +150,10 @@ export function renderEnvelopeDetail(
 	if (rendered.status === "unknown") {
 		/*
 		 * A newer backend's identity. Its own `text` is the compatibility lane;
-		 * when it supplied none there is nothing to show and the caller's
-		 * existing generic/status fallback takes over.
+		 * when it supplied none there is nothing to show and the CALLER's existing
+		 * generic/status fallback takes over (`null`), not a new sentence from here.
 		 */
-		return wireText
-			? { text: wireText, via: "wire-text", identity }
-			: { text: genericMessage(locale), via: "generic", identity };
+		return wireText ? { text: wireText, via: "wire-text", identity } : null;
 	}
 	/*
 	 * Known identity, unrenderable params. The diagnostic is emitted rather
