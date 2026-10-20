@@ -457,10 +457,15 @@ Focused fix coverage on the same head:
 
 ### Posted to the PRs
 
-The same matrix was posted as `### QA report — round 1` on both core PRs:
+The core matrix was posted as `### QA report — round 1` on both core PRs:
 
 * https://github.com/damianvtran/local-operator/pull/2711#issuecomment-6298595389
 * https://github.com/damianvtran/local-operator/pull/2713#issuecomment-6298595981
+
+The app matrix, with the core-boundary F1/F3 re-verification, was posted on the
+UI PR (same heading; UI head `69f40fee2e`, with the head-drift limit stated):
+
+* https://github.com/damianvtran/local-operator-ui/pull/1269#issuecomment-6302778070
 
 ## Remediation capture (design/UX round 1)
 
@@ -498,7 +503,7 @@ account exists on this machine. Those states are covered by
 `scripts/hub-skill-state.test.mjs` (state derivation and mark precedence) and by
 the design round's own fixture; the QA HTTP receipts cover the core boundary.
 
-## Scene re-run after design round 3 (`f735b2d50f`; replays `cbf4408545` content-identically plus the D12 one-liner)
+## Scene re-run after code-review round 1 (`b3ed64c2c0`)
 
 The `hub-skills` driver scene reads the shipped dialogs again after the
 remediation restored its hooks. It runs the app's own real `hub.skillPull` and
@@ -512,8 +517,8 @@ $ node scripts/renderer-driver.mjs --scene hub-skills \
     --backend http://127.0.0.1:8131 --backend-records <scratch>/serve-record
 ```
 
-Result, at `f735b2d50f` (full transcript in
-`receipts/hub-skills-scene-f735b2d50f.txt`): **28 PASS, 0 FAIL, `ALL CHECKS
+Result, at `b3ed64c2c0` (full transcript in
+`receipts/hub-skills-scene-b3ed64c2c0.txt`): **28 PASS, 0 FAIL, `ALL CHECKS
 PASSED`, exit 0.** The checks now cover the shipped surface: the source line
 ("2 skills shared with Minerva"), the card press opening the dialog, the detail's
 files, the real pull succeeding ("Downloaded minerva-deploy from Minerva ·
@@ -522,7 +527,7 @@ the publication dialog opening from its toolbar action, its preview rendering th
 server-projected payload, the confirm settling ("Published release-notes-copy to
 Minerva · Private"), and zero CSP violations or off-origin renderer requests.
 
-Frames: `docs/evidence-frames/hub-skills-surface/scene-f735b2d50f/` (ignored, not
+Frames: `docs/evidence-frames/hub-skills-surface/scene-b3ed64c2c0/` (ignored, not
 committed), seven screenshots including `-populated`, `-detail`, `-policy`,
 `-pull-success`, `-publish-preview`, `-publish-complete`, `-search-empty`, plus
 the geometry JSON.
