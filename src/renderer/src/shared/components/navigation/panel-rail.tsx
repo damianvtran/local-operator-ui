@@ -437,7 +437,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 						 * match it - if the design round prefers the quiet register, this
 						 * block is where the change lands.
 						 */
-						<span className="pointer-events-none absolute -top-0.5 -right-0.5 flex">
+						<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
 							<Badge
 								variant="attention"
 								shape="pill"
@@ -477,7 +477,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 						 * glyph's own cap ("9+") is unchanged. `ring-surface` because the ring
 						 * names the ground BEHIND the badge, and that is the rail's.
 						 */
-						<span className="pointer-events-none absolute -top-0.5 -right-0.5 flex">
+						<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
 							<Badge
 								variant="attention"
 								shape="pill"
@@ -503,7 +503,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 						<span
 							aria-hidden="true"
 							className={cn(
-								"absolute top-1 right-1 size-1.5 rounded-full",
+								"absolute top-1 end-1 size-1.5 rounded-full",
 								consoleUnseenPulsing
 									? "bg-accent animate-pulse-visible"
 									: "bg-ink-muted",
@@ -524,7 +524,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 					{fileCount > 0 && (
 						<span
 							aria-hidden="true"
-							className="absolute top-1 right-1 size-1.5 rounded-full bg-ink-muted"
+							className="absolute top-1 end-1 size-1.5 rounded-full bg-ink-muted"
 						/>
 					)}
 				</PanelRailItem>
@@ -556,7 +556,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 						<span
 							aria-hidden="true"
 							data-code-review-attention=""
-							className="absolute top-1 right-1 size-1.5 rounded-full bg-ink-muted"
+							className="absolute top-1 end-1 size-1.5 rounded-full bg-ink-muted"
 						/>
 					)}
 				</PanelRailItem>

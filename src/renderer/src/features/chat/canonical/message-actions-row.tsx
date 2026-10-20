@@ -72,6 +72,7 @@
  * converted before it.
  */
 
+import { FLOATING_TOOLBAR_CHROME } from "@shared/components/common/floating-toolbar";
 import {
 	SpeakButton,
 	useSpeakControl,
@@ -524,14 +525,27 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 			 * so the toolbar must never be the thing a narrow column squeezes.
 			 */
 			className={cn(
+				/*
+				 * ONE CHROME WITH THE SELECTION STRIP (operator report, 2026-10-19:
+				 * "they seem to be slightly different styles"). This cluster is the
+				 * toolbar the reader sees on hover / after a plain click - the
+				 * no-selection half of "selection near the text, otherwise on the
+				 * right" - so it wears the same ground, edge, radius, height,
+				 * padding and gap as the strip that replaces it. The reveal is
+				 * still opacity-only, so the chrome appears in place and moves
+				 * nothing; at rest the whole cluster is `opacity-0`, which is what
+				 * keeps a chip from reading as a card around the meta line while
+				 * the reader is not pointing at it.
+				 */
+				FLOATING_TOOLBAR_CHROME,
 				overlay
 					? cn(
-							"absolute z-10 flex h-8 items-center gap-1 rounded-md border border-hairline bg-elevated px-1",
+							"absolute z-10",
 							"-top-2 right-0",
 							actionRowVisibility(pinned),
 							overlayClassName,
 						)
-					: cn("flex shrink-0 items-center gap-1", actionRowVisibility(pinned)),
+					: cn("shrink-0", actionRowVisibility(pinned)),
 			)}
 		>
 			{actions.map((action) => (

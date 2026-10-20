@@ -556,10 +556,14 @@ export function SupplementFrame({
 					 * empty hole again. The fill is the low-intensity placeholder under
 					 * it; both leave with the first rendered resize (round-1 D4).
 					 */
-					<span
-						aria-hidden="true"
-						className="pointer-events-none absolute inset-0 animate-shimmer bg-elevated/40 bg-gradient-to-r from-transparent via-elevated/60 to-transparent bg-[length:200%_100%] bg-[position:-200%_50%] bg-no-repeat"
-					/>
+					<>
+						{/* Announce the wait without repainting the signed-off shimmer. */}
+						<output className="sr-only">Loading graphic…</output>
+						<span
+							aria-hidden="true"
+							className="pointer-events-none absolute inset-0 animate-shimmer bg-elevated/40 bg-gradient-to-r from-transparent via-elevated/60 to-transparent bg-[length:200%_100%] bg-[position:-200%_50%] bg-no-repeat"
+						/>
+					</>
 				)}
 			</div>
 			{/*

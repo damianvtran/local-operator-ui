@@ -366,6 +366,9 @@ class FakeWebContents {
 				this.activeIndex += 1;
 			},
 			length: () => this.historyEntries.length,
+			// The indexed read address suggestions use: bounded access without
+			// allocating the whole stack.
+			getEntryAtIndex: (index) => this.historyEntries[index],
 			getAllEntries: () =>
 				this.historyEntries.map((entry) => ({
 					...entry,

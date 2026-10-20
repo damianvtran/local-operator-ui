@@ -327,6 +327,22 @@ const APP_SPAWN_SITES = [
 		/withNotificationsOff\(env\);/,
 	),
 	guarded(
+		"scripts/browser-url-autocomplete-proof.mjs",
+		"spawn",
+		1,
+		/env,\s*detached:/,
+		"boots the built app headless against local fixture sites to exercise the address bar's local autocomplete with real input and real keys",
+		/const env = withTelemetryOff\(\s*withNotificationsOff\(\{/,
+	),
+	guarded(
+		"scripts/browser-tab-menu-turn-proof.mjs",
+		"spawn",
+		1,
+		/env:\s*spawnEnv,/,
+		"boots the built app headless against an isolated backend to open the tab-actions menu over a REAL running turn - a stopped turn is exactly the state a notification is posted from, so a missing switch here banners the operator about a stop they just made themselves",
+		/const spawnEnv = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/interrupt-esc-proof.mjs",
 		"spawn",
 		1,

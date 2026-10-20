@@ -54,6 +54,8 @@ import { ImageActionsMenu } from "../image-actions-menu";
 import { AudioDocumentPlayer } from "./audio-document-player";
 import { FILE_KIND_GROUPS, filterAndSearchRows } from "./file-rows";
 import {
+	FINDER_HEADER_BAND,
+	FOCUS_RING_GAP,
 	type FinderBand,
 	type FinderItem,
 	finderNeighbor,
@@ -276,7 +278,37 @@ export function FinderFilesView({
 			const node = scroller.current;
 			if (!position || !node) return;
 			const band = layout.bands[position.band];
-			if (band.top < node.scrollTop) node.scrollTop = band.top;
+			/*
+			 * THE REVEAL MUST CLEAR THE STICKY HEADER.
+			 *
+			 * The section header is `position: sticky` INSIDE this scroller, so
+			 * it occupies the scroller's own top 32 pixels while the list is
+			 * scrolled. A reveal that assigns `scrollTop = band.top` lands the
+			 * band at the scroller's TOP EDGE — inside the header's band — and
+			 * the header paints over the first 32 pixels of the row the user
+			 * just navigated to. Measured on the running app before this
+			 * change: 12 of 12 upward keyboard landings put the focused row
+			 * exactly 32px under the header, and the row's own name and
+			 * thumbnail were hidden by it.
+			 *
+			 * The repo's own scroll helper names this case in advance
+			 * ("shared/lib/scroll.ts": "If a sticky header ever appears above
+			 * a section a reveal targets, the offset here gains that padding
+			 * term rather than the call site going back to scrollIntoView"),
+			 * and this list assigns `scrollTop` directly, so the term is added
+			 * here: the band is revealed BELOW the header, not under it.
+			 *
+			 * The DOWNWARD case already landed the row at the scroller's
+			 * bottom edge, which is clear of the header, and is unchanged. The
+			 * low clamp is the scroller's own: a band near the top cannot be
+			 * revealed below the header, because there is no room above it,
+			 * and a negative scrollTop is a value no box can hold.
+			 */
+			if (band.top < node.scrollTop)
+				node.scrollTop = Math.max(
+					0,
+					band.top - FINDER_HEADER_BAND - FOCUS_RING_GAP,
+				);
 			else if (band.top + band.height > node.scrollTop + node.clientHeight)
 				node.scrollTop = band.top + band.height - node.clientHeight;
 			setFocused(id);
@@ -687,15 +719,42 @@ export function FinderFilesView({
 						const firstBand = layout.bands[indices[0]];
 						const lastBand = layout.bands[indices.at(-1) ?? 0];
 						const bodyHeight =
-							lastBand.top + lastBand.height - firstBand.top - 32;
+							lastBand.top +
+							lastBand.height -
+							firstBand.top -
+							FINDER_HEADER_BAND;
 						return (
-							<section key={section.id} style={{ height: bodyHeight + 32 }}>
+							<section
+								key={section.id}
+								style={{ height: bodyHeight + FINDER_HEADER_BAND }}
+							>
 								<h3
-									/* A BAND, not a solid plate: it masks what scrolls under it with
-									 * the derived field overlay, the same treatment the list view's team
-									 * bands have shipped since round 2. A solid sticky header under a
-									 * glass body is the seam the operator photographed. */
-									data-glass-plane="band"
+									/*
+									 * A BAND THAT ISOLATES, not a band that tints.
+									 *
+									 * This header is `position: sticky` INSIDE the scroller, so
+									 * the rows scroll UNDER it: measured on the running app, the
+									 * header's 32px band lies inside the scroller's own clip
+									 * region, so every row that scrolls up passes through those
+									 * 32 pixels. The plain band (`data-glass-plane="band"`) painted
+									 * 5% ink over them, and a 5% wash over MOVING content does not
+									 * hide it - the operator's frame shows a thumbnail's green
+									 * filling the band and a file name colliding with the section
+									 * label.
+									 *
+									 * The band that isolates gives this element its own
+									 * compositing layer and blurs the content passing under it,
+									 * with a tint drawn from the panel's own surface role so the
+									 * header still reads as part of the glass the user chose
+									 * rather than as a hole in it. The rule, and why the tint is
+									 * the surface role and not ink, are in `styles/index.css`
+									 * under `data-glass-plane="band-backdrop"`.
+									 *
+									 * OFF GLASS NOTHING CHANGES: `bg-surface` is opaque there, so
+									 * the scroller's content never reached this header in the first
+									 * place.
+									 */
+									data-glass-plane="band-backdrop"
 									className={cn("sticky top-0 z-10 h-8 bg-surface")}
 								>
 									<button
@@ -757,7 +816,49 @@ export function FinderFilesView({
 											<ChevronRight size={14} aria-hidden="true" />
 										)}
 										{sectionLabels[section.id]?.() ?? section.label}
-										<span className={cn("text-meta text-ink-dim")}>
+										<span
+											/*
+											 * THE COUNT'S INK, and why it is a step STRONGER
+											 * than it was.
+											 *
+											 * The count is `text-ink-muted` and not `text-ink-dim`
+											 * because its ground is the section band, and the band
+											 * is a ground whose colour is the content passing under
+											 * it. Measured on the running app at the default 80% in
+											 * the light theme, `inkDim` measured 3.57:1 against that
+											 * band - below the app's 4.5 text floor
+											 * (`scripts/contrast-contract.mjs`) - and 2.50:1 at the
+											 * most transparent end (design round 1's D1, measured
+											 * off the captured PNGs' glyph interiors).
+											 *
+											 * `inkMuted` is the register the app's own section
+											 * headers already use for a count beside a label
+											 * (`features/projects/components/team-section-header.tsx`:
+											 * the label in `text-ink`, the count in the quieter
+											 * `text-ink-muted` beside it), so this is the same
+											 * grammar the rest of the app speaks.
+											 *
+											 * THE NUMBERS, and which ones are which. Two different
+											 * measurements are easy to conflate here:
+											 *
+											 *   - THE MODEL, over every palette at the committed
+											 *     floor: the tightest is 4.51:1 light and 4.52:1
+											 *     dark, and the two default themes sit at 5.18:1
+											 *     and 5.46:1. That is the guarantee, and it is what
+											 *     `scripts/contrast-contract.mjs` asserts.
+											 *   - THE FRAMES, on the seeded grid with a thumbnail
+											 *     under the band: 6.78-7.86:1 dark and 6.29-8.26:1
+											 *     light, across 80%, 100%, 0% and glass-off. That
+											 *     is what the evidence directory records.
+											 *
+											 * An earlier version of this comment quoted 6.56 and
+											 * 4.81, which reproduce at neither: they are a 0.87
+											 * alpha applied to both schemes, and 4.81 is below
+											 * what the shipped model actually measures. The
+											 * numbers above are the ones to quote.
+											 */
+											className={cn("text-meta text-ink-muted")}
+										>
 											{formatNumber(
 												section.items.length ||
 													(section.id === "Working files"
@@ -785,7 +886,7 @@ export function FinderFilesView({
 													key={band.items[0].row.document.id}
 													style={{
 														position: "absolute",
-														top: band.top - firstBand.top - 32,
+														top: band.top - firstBand.top - FINDER_HEADER_BAND,
 														height: band.height,
 														left: 0,
 														right: 0,

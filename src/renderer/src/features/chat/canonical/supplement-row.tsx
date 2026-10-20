@@ -30,16 +30,27 @@
  * 2026-10-16): while the block's own turn renders condensed — one closed bar
  * over its run; the flag arrives from the transcript's collapse plan, never
  * re-derived here — the block shows THE SAME FILES SECTION as its expanded
- * self (the image grid, the rows, the `N more files` disclosure) and nothing
- * else. No `[data-supplement-slot]`/iframe: absent, not hidden, so no document
- * fetch either — and no graphics, whose route is the turn's own bar. The
- * operator's ruling is the small-set principle above extended to this form:
- * the passive count clause (`1 file: X`, `2 files: a, b`, `N files · M
- * graphics`) was the ONLY route to a file the reader may want to open while
- * the run is still folded, so it is replaced by the actionable rows themselves.
- * A graphics-ONLY finish keeps its plain count clause (`1 graphic`, `N
- * graphics`): there is no file to act on and the bar is the expansion frames
- * render in. The not-settled arms keep the state line and their actions exactly
+ * self (the image grid, the rows, the `N more files` disclosure).
+ * The explicit 2026-10-19 amendment (operator request from his own screenshot)
+ * supersedes the 2026-10-16 ruling that a graphics-only condensed finish keeps
+ * its plain count clause: the answer-local Show/Hide disclosure for graphics-only
+ * and mixed file/graphics finishes now DEFAULTS TO OPEN, after the files section,
+ * and its Hide control still folds it. Visible does not mean eager — the slot
+ * still starts under the EXISTING viewport gate (`SupplementFrameSlot`'s `near`),
+ * which gates the document fetch: an off-screen or far-away condensed turn
+ * renders only the reserved slot box, mounts no iframe and issues no document
+ * request until it is near (the gate is sticky once near, and an already-cached
+ * document may paint there without a request). The old "ZERO fetches while
+ * condensed" claim is therefore retired, not extended: a visible condensed
+ * frame is gated exactly like an expanded one. The identity a Hide belongs to
+ * is `(sessionId, anchor, job)`: a version bump of the same job keeps the Hide
+ * (it is the same graphic to the reader), while a different job starts open.
+ * A local Hide survives collapsing work again: that explicit request belongs to
+ * this supplement identity, not to the work bar. A new identity resets to the
+ * default (open), so a Hide set on one supplement is never resurrected for
+ * another. Expanded work and local reveal share ONE body, never duplicate
+ * attachments.
+ * The not-settled arms keep the state line and their actions exactly
  * as the expanded form wires them, with the files section ABOVE the line once
  * files are known — which is why the old counts prefix (`2 files · Preparing
  * highlights…`) has no job left and is gone: the rows say it.
@@ -87,12 +98,12 @@ import {
 	type SupplementRecord,
 	type SupplementSound,
 	causePhrase,
-	countClause,
 	diagnosticDisplay,
 	displayText,
 	failureExplanation,
 	fileRowParts,
 	frameBudgetPx,
+	graphicRevealText,
 	moreText,
 	planComponentMounts,
 	showAllText,
@@ -327,6 +338,31 @@ export const SupplementRow = memo(function SupplementRow({
 	const [expandedMore, setExpandedMore] = useState(false);
 	const [detailsOpen, setDetailsOpen] = useState(false);
 	const [showAll, setShowAll] = useState(false);
+	/*
+	 * Store the permission WITH its identity. The default is OPEN (operator
+	 * request, 2026-10-19): the graphic is part of the answer, so a condensed
+	 * turn shows it without a press. A replacement is reset before commit, not
+	 * in an effect, so it starts at that default immediately and can never
+	 * inherit a Hide set on the supplement it replaced; returning to an earlier
+	 * identity starts open again rather than resurrecting its old Hide.
+	 *
+	 * The identity is `(sessionId, anchor, job)`, deliberately NOT the record
+	 * version: a version bump of the same job is the same graphic to the reader,
+	 * so a Hide they set must survive it. A different job is a different
+	 * supplement and starts open.
+	 *
+	 * Starting open is not eager fetching: the document fetch still starts only
+	 * behind `SupplementFrameSlot`'s viewport gate (the reserved box mounts, but
+	 * nothing is requested until the slot is near).
+	 */
+	const identity = JSON.stringify([sessionId, record.anchor, record.job]);
+	const [localGraphics, setLocalGraphics] = useState({ identity, open: true });
+	const localGraphicsOpen =
+		localGraphics.identity === identity && localGraphics.open;
+	if (localGraphics.identity !== identity) {
+		setLocalGraphics({ identity, open: true });
+		setShowAll(false);
+	}
 	const [adjusting, setAdjusting] = useState(false);
 	const [draft, setDraft] = useState("");
 	const [busy, setBusy] = useState(false);
@@ -725,6 +761,50 @@ export const SupplementRow = memo(function SupplementRow({
 	 * a sibling of the trace; collapsing work must change only frame mounting,
 	 * never the audio, image, or file callouts that make the answer actionable.
 	 */
+	const graphicsBody = (
+		<div className="flex flex-col gap-2" data-supplement-components="">
+			{head.map((component) => (
+				<SupplementFrameSlot
+					key={component.attachment}
+					component={component}
+					sessionId={sessionId}
+					onRetry={sessionId ? retry : undefined}
+					onHeight={noteHeight}
+				/>
+			))}
+			{tail.length > 0 && (
+				/*
+				 * The graphics sibling of the same disclosure grammar: a
+				 * toggle (`Show all N graphics` ⇄ `Show fewer`), the hidden
+				 * frames mounted only while it is open — an explicit
+				 * action, which is the memo's own condition for mounting
+				 * beyond the budget (§2.8).
+				 */
+				<Disclosure
+					chevronClassName="text-ink-dim"
+					open={showAll}
+					onOpenChange={setShowAll}
+					rowClassName="min-h-0 py-0"
+					summary={
+						<span data-supplement-show-all="">
+							{showAll ? "Show fewer" : showAllText(tail.length)}
+						</span>
+					}
+				>
+					{tail.map((component) => (
+						<SupplementFrameSlot
+							key={component.attachment}
+							component={component}
+							sessionId={sessionId}
+							onRetry={sessionId ? retry : undefined}
+							onHeight={noteHeight}
+						/>
+					))}
+				</Disclosure>
+			)}
+		</div>
+	);
+
 	return (
 		<div
 			className="flex flex-col gap-2"
@@ -734,14 +814,7 @@ export const SupplementRow = memo(function SupplementRow({
 			{filesSection}
 			{soundsSection}
 			{stateLine()}
-			{condensed &&
-				disposition === "block" &&
-				filesSection === null &&
-				components.length > 0 && (
-					<div className="text-ink-muted text-meta">
-						{countClause(components.length, "graphic")}
-					</div>
-				)}
+
 			{!condensed && record.detail?.includes("prepared:unsupported") && (
 				<p className="text-meta text-ink-muted" data-supplement-refusal="">
 					Inline preview unavailable. This HTML needs unsupported resources or
@@ -778,49 +851,44 @@ export const SupplementRow = memo(function SupplementRow({
 				)}
 			{(disposition === "preparing" || disposition === "files_preparing") &&
 				adjustLine}
-			{!condensed && disposition === "block" && components.length > 0 && (
-				<div className="flex flex-col gap-2" data-supplement-components="">
-					{head.map((component) => (
-						<SupplementFrameSlot
-							key={component.attachment}
-							component={component}
-							sessionId={sessionId}
-							onRetry={sessionId ? retry : undefined}
-							onHeight={noteHeight}
-						/>
-					))}
-					{tail.length > 0 && (
-						/*
-						 * The graphics sibling of the same disclosure grammar: a
-						 * toggle (`Show all N graphics` ⇄ `Show fewer`), the hidden
-						 * frames mounted only while it is open — an explicit
-						 * action, which is the memo's own condition for mounting
-						 * beyond the budget (§2.8).
-						 */
-						<Disclosure
-							chevronClassName="text-ink-dim"
-							open={showAll}
-							onOpenChange={setShowAll}
-							rowClassName="min-h-0 py-0"
-							summary={
-								<span data-supplement-show-all="">
-									{showAll ? "Show fewer" : showAllText(tail.length)}
-								</span>
-							}
-						>
-							{tail.map((component) => (
-								<SupplementFrameSlot
-									key={component.attachment}
-									component={component}
-									sessionId={sessionId}
-									onRetry={sessionId ? retry : undefined}
-									onHeight={noteHeight}
-								/>
-							))}
-						</Disclosure>
-					)}
-				</div>
-			)}
+			{disposition === "block" &&
+				components.length > 0 &&
+				(condensed ? (
+					<Disclosure
+						open={localGraphicsOpen}
+						onOpenChange={(open) => {
+							// Closing revokes both grants: reopening must start at the
+							// budgeted head, not resurrect an earlier overflow request.
+							if (!open) setShowAll(false);
+							setLocalGraphics({ identity, open });
+						}}
+						chevronClassName="text-ink-dim"
+						rowClassName="min-h-0 py-0"
+						summary={
+							<span data-supplement-graphics-reveal="">
+								{graphicRevealText(
+									components.length,
+									localGraphicsOpen,
+									head.length,
+								)}
+							</span>
+						}
+					>
+						{/*
+						 * The shared Disclosure indents its disclosed body by one chevron
+						 * column (`ml-5`). The graphic is answer content, not detail
+						 * belonging to the Hide row, so this one body opts back out with
+						 * the SAME spacing token: the frame keeps the answer paragraph's
+						 * left edge and width in both forms, and expanding the work bar
+						 * does not shift it. Local to this call site — the shared
+						 * primitive's contract, and every other disclosure's indent, is
+						 * unchanged.
+						 */}
+						<div className="-ml-5 w-[calc(100%+1.25rem)]">{graphicsBody}</div>
+					</Disclosure>
+				) : (
+					graphicsBody
+				))}
 		</div>
 	);
 });
