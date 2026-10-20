@@ -36,7 +36,7 @@ import {
 	Square,
 } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type {
 	ImportAvailability,
 	ImportOutcome,
@@ -79,7 +79,6 @@ export type ImportSettingsViewProps = {
 	onToggleSession: (sourceId: string) => void;
 	onSelectAll: () => void;
 	onClearSelection: () => void;
-	onPreview: () => void;
 	onConfirmChange: (value: boolean) => void;
 	onImport: () => void;
 	onCancel: () => void;
@@ -319,7 +318,6 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 	onToggleSession,
 	onSelectAll,
 	onClearSelection,
-	onPreview,
 	onConfirmChange,
 	onImport,
 	onCancel,
@@ -330,18 +328,9 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 	onCopyPath,
 }) => {
 	useI18nLocale();
-	const previewRef = useRef<HTMLDivElement>(null);
 	const active = sources.find((source) => source.source === activeSource);
 	const jobActive = progress !== null && !TERMINAL_STATES.has(progress.state);
 	const resultTotal = progress?.total ?? selected.size;
-	useEffect(() => {
-		if (preview && !previewStale && !progress && !result) {
-			// A built preview can land below the fold (measured at 1380x900);
-			// bring the confirmation and its Import control into view rather than
-			// asking the user to discover them by scrolling.
-			previewRef.current?.scrollIntoView({ block: "start", inline: "nearest" });
-		}
-	}, [preview, previewStale, progress, result]);
 	const visibleSessions = useMemo(
 		() => filterSessions(sessions, query),
 		[query, sessions],
@@ -538,7 +527,12 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 								{visibleSessions.map((session) => (
 									<div
 										key={session.sourceId}
-										className="flex items-start gap-3 rounded-md border border-hairline bg-surface p-3 hover:bg-sunken"
+										className={cn(
+											"flex items-start gap-3 rounded-md border p-3",
+											selected.has(session.sourceId)
+												? "border-accent bg-row-selected"
+												: "border-hairline bg-surface hover:bg-sunken",
+										)}
 									>
 										<Checkbox
 											checked={selected.has(session.sourceId)}
@@ -606,36 +600,34 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 				)}
 
 				{active && selectedCount > 0 && !progress && !result && (
-					<div
-						ref={previewRef}
-						className="flex flex-col gap-3 border-t border-hairline pt-5"
-					>
-						<div className="flex flex-wrap items-center justify-between gap-2">
-							<h3 className="text-heading text-ink">
-								{t("ui.settings.imports.preview_heading")}
-							</h3>
-							<Button
-								variant="secondary"
-								size="sm"
-								onClick={onPreview}
-								disabled={busy === "preview" || busy === "start"}
-							>
-								{busy === "preview" ? (
-									<Loader2 size={14} className="animate-spin" />
-								) : (
-									<Download size={14} />
-								)}
-								{busy === "preview"
-									? t("ui.settings.imports.loading_preview")
-									: t("ui.settings.imports.preview_heading")}
-							</Button>
-						</div>
-						{previewStale && (
-							<Alert variant="warning">
-								<AlertDescription>
-									{t("ui.settings.imports.preview_required")}
-								</AlertDescription>
-							</Alert>
+					<div className="flex flex-col gap-3 border-t border-hairline pt-5">
+						<h3 className="text-heading text-ink">
+							{t("ui.settings.imports.preview_heading")}
+						</h3>
+						{/*
+						 * THE PREVIEW IS BUILT AUTOMATICALLY now (the container
+						 * debounces a build per selection change), so this state is
+						 * "a preview for what you just selected is on its way", not
+						 * "go and build one yourself". `preview_required` said the
+						 * latter and is no longer true of this screen.
+						 *
+						 * The third clause is the gap between the selection and the
+						 * first build landing: the debounce means there is a moment
+						 * where a selection exists, no preview does, and neither the
+						 * spinner nor a summary is showing - and the Import button
+						 * below is grey with nothing saying why. "Building the
+						 * preview..." is the honest answer there, and it is the same
+						 * answer the other two clauses give. The error case is
+						 * excluded because the section's own error says what
+						 * happened, and a spinner under a failure would be a lie.
+						 */}
+						{(busy === "preview" ||
+							previewStale ||
+							(preview === null && !error)) && (
+							<p className="flex items-center gap-2 text-meta text-ink-muted">
+								<Loader2 size={14} className="animate-spin" />
+								{t("ui.settings.imports.loading_preview")}
+							</p>
 						)}
 						{preview && !previewStale && (
 							<div className="flex flex-col gap-2 rounded-lg border border-hairline bg-surface p-4">
@@ -672,31 +664,41 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 								</p>
 							</div>
 						)}
-						<div className="flex items-start gap-2 text-body-sm text-ink">
-							<Checkbox
-								checked={confirmed}
-								onCheckedChange={(value) => onConfirmChange(value === true)}
-								disabled={!preview || previewStale}
-								aria-label={t("ui.settings.imports.confirm_label")}
-								className="mt-0.5"
-							/>
-							<span>{t("ui.settings.imports.confirm_label")}</span>
+						{/*
+						 * THE CONFIRMATION AND THE BUTTON IT GATES ARE ONE BLOCK.
+						 * They used to be two controls in two sections, which is why
+						 * the row's tick and this square looked like the same kind of
+						 * control doing the same kind of job. One bordered box, the
+						 * acknowledgement directly above the button it holds shut, and
+						 * `preview_confirm` above them says what is still outstanding.
+						 */}
+						<div className="flex flex-col gap-3 rounded-lg border border-hairline bg-surface p-4">
+							<div className="flex items-start gap-2 text-body-sm text-ink">
+								<Checkbox
+									checked={confirmed}
+									onCheckedChange={(value) => onConfirmChange(value === true)}
+									disabled={!preview || previewStale}
+									aria-label={t("ui.settings.imports.confirm_label")}
+									className="mt-0.5"
+								/>
+								<span>{t("ui.settings.imports.confirm_label")}</span>
+							</div>
+							<Button
+								variant="primary"
+								onClick={onImport}
+								disabled={!canImport}
+								className="self-start"
+							>
+								{busy === "start" ? (
+									<Loader2 size={14} className="animate-spin" />
+								) : (
+									<Download size={14} />
+								)}
+								{t("ui.settings.imports.import_button", {
+									count: selectedCount,
+								})}
+							</Button>
 						</div>
-						<Button
-							variant="primary"
-							onClick={onImport}
-							disabled={!canImport}
-							className="self-start"
-						>
-							{busy === "start" ? (
-								<Loader2 size={14} className="animate-spin" />
-							) : (
-								<Download size={14} />
-							)}
-							{t("ui.settings.imports.import_button", {
-								count: selectedCount,
-							})}
-						</Button>
 					</div>
 				)}
 

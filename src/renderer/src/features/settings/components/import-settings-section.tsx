@@ -8,10 +8,15 @@
  * 1. NO DEFAULT-ALL. The selection starts empty and is only filled by explicit
  *    row presses or the explicit Select all control, which selects the visible
  *    filtered rows and nothing else.
- * 2. PREVIEW IS A GATE. A preview is built for one exact selection; changing the
- *    selection clears it, and `import` refuses unless the preview still matches.
+ * 2. PREVIEW IS A GATE. A preview is built for one exact selection, and `import`
+ *    refuses unless the preview still matches the current selection. The preview
+ *    is BUILT AUTOMATICALLY from the selection (debounced), so it is never
+ *    missing for long; while a rebuild is in flight the old one is marked stale
+ *    rather than thrown away, so the card updates in place.
  * 3. NO SILENT WRITE. Import additionally needs the acknowledgement checkbox, so
- *    one press cannot turn browsing into a copy.
+ *    one press cannot turn browsing into a copy. The acknowledgement is cleared
+ *    whenever the selection changes: a different set of conversations is a
+ *    different copy, and it has to be acknowledged again.
  */
 
 import { t } from "@shared/i18n";
@@ -67,6 +72,17 @@ export const ImportSettingsSection: FC = () => {
 	const [selectionNotice, setSelectionNotice] = useState<string | null>(null);
 	const [pollAttempt, setPollAttempt] = useState(0);
 	const sessionRequest = useRef(0);
+	/*
+	 * The signature of the last preview ATTEMPT, successful or not. It is what
+	 * stops the automatic build from asking again for a selection whose build
+	 * already failed: the error is on screen with its own Retry, and a failing
+	 * endpoint would otherwise be hit every 250ms for as long as the selection
+	 * stood. It is state rather than a ref because the Retry clears it, and
+	 * clearing it is what makes the automatic build run again.
+	 */
+	const [attemptedSignature, setAttemptedSignature] = useState<string | null>(
+		null,
+	);
 	const jobError = useRef<string | null>(null);
 	const jobActive = progress !== null && !TERMINAL.has(progress.state);
 
@@ -135,8 +151,15 @@ export const ImportSettingsSection: FC = () => {
 
 	const resetSelection = useCallback((next: Set<string>) => {
 		setSelected(next);
-		setPreview(null);
-		setPreviewSignature(null);
+		/*
+		 * THE ACKNOWLEDGEMENT IS CLEARED ON EVERY SELECTION CHANGE, and that is
+		 * deliberate. "I understand these conversations will be copied into Local
+		 * Operator" is a statement about a SET of conversations; a different set
+		 * is a different copy, so the acknowledgement has to be re-stated for it.
+		 * The preview is NOT cleared here: it stays on screen and goes stale (its
+		 * signature no longer matches the selection), which is what lets the card
+		 * update in place under the new numbers instead of vanishing.
+		 */
 		setConfirmed(false);
 		setSelectionNotice(null);
 	}, []);
@@ -188,9 +211,18 @@ export const ImportSettingsSection: FC = () => {
 		preview !== null && previewSignature !== currentSignature;
 
 	const onPreview = useCallback(async () => {
+		/*
+		 * The guard is unreachable from the UI now: the preview block only
+		 * renders for a non-empty selection, and the preview is built
+		 * automatically from the selection rather than by a button. It stays as
+		 * the container's own invariant, not as a user-facing gate - a fired
+		 * guard can no longer read as "nothing happened" because there is no
+		 * control left to press.
+		 */
 		if (!activeSource || selected.size === 0) return;
 		setBusy("preview");
 		setError(null);
+		setAttemptedSignature(currentSignature);
 		try {
 			const next = await previewImport({
 				sources: [activeSource],
@@ -209,7 +241,49 @@ export const ImportSettingsSection: FC = () => {
 		}
 	}, [activeSource, currentSignature, selected]);
 
+	/*
+	 * THE PREVIEW IS BUILT AUTOMATICALLY, debounced.
+	 *
+	 * The operator's flow used to be three disconnected interactions: select a
+	 * conversation, scroll to a separate "Preview" section and press a button
+	 * that read "Preview" UNDER A HEADING THAT ALSO READ "Preview", then tick a
+	 * second, identically shaped empty checkbox in a third block before the
+	 * Import button came alive. A preview is a function of the selection, so
+	 * the selection now produces it; the debounce keeps a multi-row selection
+	 * (or Select all over twenty rows) from asking the core once per row.
+	 */
+	useEffect(() => {
+		if (!activeSource || selected.size === 0 || progress || result) return;
+		// A preview for exactly this selection already exists: nothing to build.
+		if (preview && previewSignature === currentSignature) return;
+		// This selection was already built and the build failed: the error is on
+		// screen, and the error's own Retry is what asks for another go.
+		if (attemptedSignature === currentSignature) return;
+		const timer = setTimeout(() => {
+			void onPreview();
+		}, 250);
+		return () => clearTimeout(timer);
+	}, [
+		activeSource,
+		selected,
+		currentSignature,
+		preview,
+		previewSignature,
+		attemptedSignature,
+		progress,
+		result,
+		onPreview,
+	]);
+
 	const onImport = useCallback(async () => {
+		/*
+		 * The gate is the container's invariant, and it is also what the Import
+		 * button's `disabled` state is computed from - so a user cannot reach
+		 * this guard by pressing it. It cannot fire silently at the user, and
+		 * the reason the button is disabled is on screen beside it: the
+		 * acknowledgement is right above it, and the preview's own state is
+		 * stated in the block above that.
+		 */
 		if (
 			!activeSource ||
 			selected.size === 0 ||
@@ -345,6 +419,10 @@ export const ImportSettingsSection: FC = () => {
 			setPollAttempt((value) => value + 1);
 			return;
 		}
+		// A failed preview is rebuilt by asking again: the attempt that failed
+		// is forgotten, and forgetting it is what makes the automatic build
+		// run again.
+		setAttemptedSignature(null);
 		void onRefresh();
 	}, [jobActive, onRefresh]);
 
@@ -368,7 +446,6 @@ export const ImportSettingsSection: FC = () => {
 			onToggleSession={onToggleSession}
 			onSelectAll={onSelectAll}
 			onClearSelection={onClearSelection}
-			onPreview={() => void onPreview()}
 			onConfirmChange={setConfirmed}
 			onImport={() => void onImport()}
 			onCancel={() => void onCancel()}
