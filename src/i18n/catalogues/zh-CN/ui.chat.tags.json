@@ -5,6 +5,8 @@
 	"ui.chat.tags.manage": "管理标签……",
 	"ui.chat.tags.mode_hint": "标签分组需使用“时间分区”分组方式。",
 	"ui.chat.tags.use_time": "使用时间分区",
+	"ui.chat.tags.auto_tag": "自动为分叉的对话添加标签",
+	"ui.chat.tags.auto_tag_help": "为分叉命名时使用你已有的标签。",
 	"ui.chat.tags.discovery": "右键点击对话，选择“标签……”（Shift+F10，大多数Mac键盘需同时按Fn）。",
 	"ui.chat.tags.picker_title": "“{title}”的标签",
 	"ui.chat.tags.picker_description": "选择标签后点击“应用”。新建标签会立即保存。",

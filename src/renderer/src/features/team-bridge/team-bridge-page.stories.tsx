@@ -281,6 +281,75 @@ const mutedChannel: TeamBridgeConversation = {
 	last_message_at: new Date(Date.now() - 8 * 60_000).toISOString(),
 };
 
+/**
+ * The rail's roster, one row per state the directory can answer with.
+ *
+ * The fixtures are deliberately ordered like the server orders them (no
+ * client sort): the signed-in owner first, then a reachable member, a paused
+ * admin, and two people whose bridge is off in each of its two spellings. The
+ * screen capture therefore shows the quiet states beside the live ones, which
+ * is the comparison this section exists to make.
+ */
+const directoryPeople = [
+	{
+		account_id: self,
+		display_label: "Damian",
+		role: "owner",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+	},
+	{
+		account_id: "acct_bea",
+		display_label: "Bea",
+		role: "member",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+	},
+	{
+		account_id: "acct_ada",
+		display_label: "Ada",
+		role: "admin",
+		bridge_enabled: true,
+		bridge_state: "paused" as const,
+	},
+	{
+		account_id: "acct_cy",
+		display_label: "Cy",
+		role: "member",
+		bridge_enabled: false,
+		bridge_state: "none" as const,
+	},
+	{
+		account_id: "acct_dee",
+		display_label: "Dee",
+		role: "member",
+		bridge_enabled: false,
+		bridge_state: "disabled" as const,
+	},
+];
+
+/** A DM with one of the roster's people, so that row's DM already exists. */
+const beaDm: TeamBridgeConversation = {
+	...dm,
+	id: "bcv_dm_bea",
+	members: [
+		{
+			account_id: self,
+			kind: "human",
+			display_label: "Damian",
+			role: "owner",
+			state: "active",
+		},
+		{
+			account_id: "acct_bea",
+			kind: "human",
+			display_label: "Bea",
+			role: "member",
+			state: "active",
+		},
+	],
+};
+
 const meta = {
 	title: "Team Bridge/Page",
 	component: TeamBridgePageView,
@@ -312,6 +381,7 @@ const meta = {
 		onScopeChange: () => {},
 		onJoin: () => {},
 		onNotifyChange: () => {},
+		onRetryPeople: () => {},
 	},
 } satisfies Meta<typeof TeamBridgePageView>;
 
@@ -563,5 +633,89 @@ export const LaneReservedComparison: Story = {
 				/>
 			</div>
 		);
+	},
+};
+
+/**
+ * The People section, fully populated: self, an openable DM, a paused person
+ * and the two "bridge off" spellings. Bea's DM already exists, so her row
+ * opens it; the others resolve through the seeded compose flow.
+ */
+export const People: Story = {
+	args: {
+		conversations: [dm, beaDm, channel, group],
+		selected: dm,
+		people: directoryPeople,
+	},
+};
+
+/** The directory read in flight: one quiet 30px row under the conversation list. */
+export const PeopleLoading: Story = {
+	args: {
+		people: [],
+		peopleState: "loading",
+	},
+};
+
+/** A refused directory: stated in the rail, with the conversations untouched. */
+export const PeopleError: Story = {
+	args: {
+		people: [],
+		peopleState: "error",
+	},
+};
+
+/** Everyone but the reader has their bridge off: the roster is visible, inert. */
+export const PeopleDisabled: Story = {
+	args: {
+		people: directoryPeople.filter(
+			(member) =>
+				member.account_id === self || member.bridge_state === "disabled",
+		),
+	},
+};
+
+/** The merged scope has no single roster, and says so instead of guessing. */
+export const PeopleAllOrganizations: Story = {
+	args: {
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: [dm, beaDm, channel, group, northwindChannel],
+		people: directoryPeople,
+	},
+};
+
+/** The plan gate: signed in and current, but the organization has no Team Bridge. */
+export const PlanRequired: Story = {
+	args: {
+		eligibility: "plan_required",
+		conversations: [],
+		selected: null,
+		messages: [],
+		messageState: "idle",
+		people: [],
+	},
+};
+
+/** Signed out: the panel says so; there is no fake sign-in control to press. */
+export const SignedOut: Story = {
+	args: {
+		eligibility: "signed_out",
+		conversations: [],
+		selected: null,
+		messages: [],
+		messageState: "idle",
+		people: [],
+	},
+};
+
+/** An outdated app is named as such; another panel state on the same surface. */
+export const UpdateRequired: Story = {
+	args: {
+		eligibility: "update_required",
+		conversations: [],
+		selected: null,
+		messages: [],
+		messageState: "idle",
+		people: [],
 	},
 };

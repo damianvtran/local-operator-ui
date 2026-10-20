@@ -57,6 +57,7 @@ const bundle = await build({
 			// whether the open request survives being written to disk.
 			'export { useUiPreferencesStore, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export * from "./src/main/console/completion";',
+			'export { consoleRevealMayNavigate } from "./src/renderer/src/features/chat/composer-field";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 		loader: "ts",
@@ -103,6 +104,7 @@ const {
 	pickActiveSurface,
 	surfaceTitle,
 	consoleCompletionHooks,
+	consoleRevealMayNavigate,
 } = module_;
 
 /**
@@ -1053,5 +1055,42 @@ test("the compact/full summary breakpoints are complementary and sit at 510px", 
 		Number(compactHiddenAt[1]),
 		Number(fullHiddenAt[1]),
 		"a matched pair is the gapless property; see the boundary note above",
+	);
+});
+
+test("a console open reveal from a background session does not switch while the user types", () => {
+	const base = {
+		targetSessionId: "bg",
+		displayedSessionId: "front",
+		activeElement: null,
+		commandPaletteOpen: false,
+	};
+	assert.equal(consoleRevealMayNavigate(base), true);
+	for (const tagName of ["TEXTAREA", "INPUT"]) {
+		assert.equal(
+			consoleRevealMayNavigate({ ...base, activeElement: { tagName } }),
+			false,
+		);
+	}
+	assert.equal(
+		consoleRevealMayNavigate({
+			...base,
+			activeElement: { tagName: "DIV", isContentEditable: true },
+		}),
+		false,
+	);
+	assert.equal(
+		consoleRevealMayNavigate({ ...base, commandPaletteOpen: true }),
+		false,
+	);
+	// The conversation already on screen swaps nothing.
+	assert.equal(
+		consoleRevealMayNavigate({
+			...base,
+			targetSessionId: "front",
+			activeElement: { tagName: "TEXTAREA" },
+			commandPaletteOpen: true,
+		}),
+		true,
 	);
 });

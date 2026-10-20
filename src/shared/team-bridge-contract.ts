@@ -167,6 +167,57 @@ export const teamBridgeUnreadSchema = z
 	.passthrough();
 export type TeamBridgeUnread = z.infer<typeof teamBridgeUnreadSchema>;
 
+/**
+ * One person in an organization's Team Bridge directory.
+ *
+ * WHY `role` IS A STRING, NOT THE PARTICIPANT UNION. A conversation's member
+ * roles are the conversation's own (owner/member); the directory publishes the
+ * ORGANIZATION role, which the hub adds to over time (owner, admin, member,
+ * auditor, …). Parsing it as an enum would fail closed on the first role this
+ * client has not learned, and a directory row is exactly the surface where an
+ * unknown role must still render.
+ *
+ * `bridge_state` is the person's bridge eligibility: `active` and `paused` are
+ * reachable (the row opens their DM; a paused person still has history),
+ * `none`/`disabled` mean no bridge is on for them. `bridge_enabled` is a
+ * separate bit because the server gives it separately; the renderer reads both
+ * so an inconsistent pair fails closed rather than painting a dead row as live.
+ */
+export const teamBridgePersonBridgeStateSchema = z.enum([
+	"active",
+	"paused",
+	"disabled",
+	"none",
+]);
+export type TeamBridgePersonBridgeState = z.infer<
+	typeof teamBridgePersonBridgeStateSchema
+>;
+
+export const teamBridgeDirectoryMemberSchema = z
+	.object({
+		account_id: id,
+		display_label: z.string().min(1).max(64),
+		role: z.string().min(1).max(32),
+		bridge_enabled: z.boolean(),
+		bridge_state: teamBridgePersonBridgeStateSchema,
+	})
+	.passthrough();
+export type TeamBridgeDirectoryMember = z.infer<
+	typeof teamBridgeDirectoryMemberSchema
+>;
+
+/**
+ * The tenant's active human members, ordered server-side.
+ *
+ * NO CLIENT SORT. The order is the server's (it knows activity and role
+ * weight); re-sorting here would make the rail disagree with every other
+ * directory the hub serves. The array is the whole answer this read returns.
+ */
+export const teamBridgeDirectorySchema = z
+	.object({ members: z.array(teamBridgeDirectoryMemberSchema) })
+	.passthrough();
+export type TeamBridgeDirectory = z.infer<typeof teamBridgeDirectorySchema>;
+
 /** The status read's identity slice: the signed-in hub account, or null. */
 export const teamBridgeIdentitySchema = z
 	.object({ account_id: z.string().min(1).nullable().optional() })

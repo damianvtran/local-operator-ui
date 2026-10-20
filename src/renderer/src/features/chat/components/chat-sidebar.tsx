@@ -161,6 +161,12 @@ import {
 	archivedSearchWidened,
 	visibleRows,
 } from "../chat-archived";
+/*
+ * The fork's auto-tag intent is decided in its own module so the View-options
+ * row and the fork body cannot disagree about whether this backend understands
+ * the field (`chat-auto-tag.ts` owns both halves).
+ */
+import { autoTagSupported } from "../chat-auto-tag";
 import {
 	CHAT_LIST_SECTION_LABEL,
 	type ChatListSection,
@@ -1379,6 +1385,15 @@ export function ChatSidebar({
 		capabilities.data,
 		"session_tags",
 	);
+	/*
+	 * A SECOND QUESTION ABOUT THE SAME SUBSYSTEM: `session_tags` gates the tag
+	 * catalogue, `session_tags_auto_tag` gates the fork's `auto_tag` field. The
+	 * row and the request are both gated on the second without narrowing the
+	 * first, so a backend with tags and without auto-tagging keeps its whole tag
+	 * surface and simply never sees the fork intent - never a 422 for a field its
+	 * `Fork` model does not know.
+	 */
+	const autoTagAvailable = autoTagSupported(capabilities.data);
 	const tagCategories = useSessionTagsStore((state) => state.categories);
 	const tagCategoriesLoading = useSessionTagsStore((state) => state.loading);
 	const tagCategoriesError = useSessionTagsStore((state) => state.error);
@@ -9854,6 +9869,7 @@ export function ChatSidebar({
 									view={view}
 									counts={viewCounts}
 									tagsAvailable={tagsAvailable}
+									autoTagAvailable={autoTagAvailable}
 									tagsEmpty={
 										!tagCategoriesLoading &&
 										tagCategoriesError === null &&

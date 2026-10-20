@@ -16,6 +16,7 @@ import { useConsentAttentionLifetime } from "@features/browser/hooks/use-consent
 // imported: lazy-loading it would put a Suspense fallback on first paint.
 import { ArchiveConversationDialog } from "@features/chat/components/archive-conversation-dialog";
 import { ChatPage } from "@features/chat/components/chat-page";
+import { consoleRevealMayNavigate } from "@features/chat/composer-field";
 import { useHeldDraftResolution } from "@features/chat/hooks/use-held-draft-resolution";
 import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
@@ -540,13 +541,27 @@ const App: FC = () => {
 				payload.session_id !== displayedSessionId
 			)
 				return;
-			if (payload.mode === "open") setActiveSession(payload.session_id);
+			if (payload.mode === "open") {
+				// Typing: degrade to the `session` reveal, which does nothing for a
+				// conversation that is not on screen.
+				if (
+					!consoleRevealMayNavigate({
+						targetSessionId: payload.session_id,
+						displayedSessionId,
+						activeElement: document.activeElement,
+						commandPaletteOpen: isCommandPaletteOpen,
+					})
+				)
+					return;
+				setActiveSession(payload.session_id);
+			}
 			setConsoleActiveSurface(payload.surface);
 			setConsolePaneOpen(true);
 		});
 		return () => unsubscribe?.();
 	}, [
 		displayedSessionId,
+		isCommandPaletteOpen,
 		setActiveSession,
 		setConsolePaneOpen,
 		setConsoleActiveSurface,
