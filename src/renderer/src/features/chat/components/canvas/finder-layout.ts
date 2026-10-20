@@ -229,8 +229,26 @@ export function finderSections(
  *     under the header, which paints over it. Measured on the running app,
  *     12 of 12 upward keyboard landings put the focused row exactly this far
  *     under the header, so the user navigated to a row they could not see.
+ *
+ * It is NOT the tile caption's 32 (`finder-layout.ts`'s own band heights),
+ * which is a different 32 that happens to be the same number.
  */
 export const FINDER_HEADER_BAND = 32;
+
+/**
+ * THE GAP A REVEAL LEAVES BELOW THE HEADER, in pixels.
+ *
+ * Landing a row exactly flush with the header's bottom edge is correct for
+ * the ROW and wrong for the FOCUS RING: the ring is drawn 2px outside the
+ * row's box with a 2px offset (`styles/index.css`'s `html :focus-visible`),
+ * so the ring's top 4 pixels are painted UNDER the header and are invisible
+ * - the user is told they are on a row whose ring they cannot see.
+ *
+ * So the reveal lands the row this far below the header's bottom edge: the
+ * ring's whole 4px is clear of it, and the gap is small enough that the row
+ * still reads as the topmost one.
+ */
+export const FOCUS_RING_GAP = 4;
 
 export function layoutFinder(
 	sections: FinderSection[],

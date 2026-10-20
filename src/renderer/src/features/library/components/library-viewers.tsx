@@ -340,16 +340,27 @@ const SpreadsheetTable: FC<{
 					<tr>
 						<th
 							/*
-							 * A STICKY HEADER THAT SCROLLS UNDER ITS OWN ROWS, so it
-							 * gets the isolating band rather than a bare fill: the
-							 * sheet's rows pass under these cells, and on glass a
-							 * `bg-sunken` plate is an opaque island in a translucent
-							 * column. The shared treatment is one rule
-							 * (`data-glass-plane="band-backdrop"` in
-							 * `styles/index.css`); the reason is the same as the
-							 * Files tab's section headers'.
+							 * THE LIBRARY'S COLUMN STRIP IS NOT A BAND, and it must
+							 * not be turned into one.
+							 *
+							 * The Files tab's section headers were a 5% ink wash
+							 * over the rows scrolling beneath them, so a file name
+							 * read through the `Images 86` label. This header was
+							 * never that: it carries `bg-sunken`, an OPAQUE role fill
+							 * with no glass opt-in, so the sheet's rows are hidden
+							 * behind it outright. Measured on the running app, the
+							 * pre-change paint shows no row content through the
+							 * strip at all; a translucent band here would show
+							 * `row-008` under the `A` column label - text over
+							 * text, which is the seam the glass model says a
+							 * translucent sticky header creates.
+							 *
+							 * So the Library keeps its own answer, and the shared
+							 * plane (`data-glass-plane="band-backdrop"`) is for the
+							 * bands that actually need isolating. The two families
+							 * are different cases, and the census measured them
+							 * as such.
 							 */
-							data-glass-plane="band-backdrop"
 							className="sticky top-0 bg-sunken px-2 py-1 text-left text-ink-muted"
 						>
 							#
@@ -358,7 +369,6 @@ const SpreadsheetTable: FC<{
 							<th
 								// biome-ignore lint/suspicious/noArrayIndexKey: a column is its index.
 								key={index}
-								data-glass-plane="band-backdrop"
 								className="sticky top-0 border-b border-hairline bg-sunken px-2 py-1 text-left font-medium text-ink-muted"
 							>
 								{String.fromCharCode(65 + (index % 26))}

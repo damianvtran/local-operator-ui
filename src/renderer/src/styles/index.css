@@ -2351,6 +2351,79 @@ html[data-glass~="pane"]
  *
  * OFF GLASS NOTHING CHANGES: the element's own `bg-surface` is opaque there
  * and the scroller's content never reaches it.
+ *
+ * THE BAND'S OWN ALPHA FLOOR, and why the pane's published alpha is not enough.
+ *
+ * The band above is a band over MOVING content, and that is a different
+ * proposition from every other band in this file. The other bands sit on a
+ * STATIC ground - the pane's own fill - so the pane's published alpha is
+ * exactly the right alpha for them: the ground behind them is the ground the
+ * whole surface model was derived against. This band's ground is whatever
+ * happens to be scrolling under it, so its alpha is not a style choice but a
+ * CONTRACT: the count next to the label has to clear 4.5:1 against it, and a
+ * saturated thumbnail under a 0.5-alpha band pushes the band's own colour far
+ * enough that `inkDim` cannot.
+ *
+ * MEASURED, and the measurement is the reason for the floor. On the running
+ * app at the default 80% in the LIGHT theme, the band's computed background was
+ * a 0.59-alpha light surface and a saturated thumbnail under it made the
+ * band a warm mid-tone: the section count's `inkDim` measured 3.57:1 against
+ * it, below the app's 4.5 text floor, and 2.50:1 at the most transparent end
+ * (design round 1's D1, measured independently off the captured PNGs' glyph
+ * interiors). The same count on the pane's own `elevated` ground - the
+ * canvas pane's real ground - clears the floor at every intensity.
+ *
+ * So the band wears the PANE'S OWN ROLE, `--lo-elevated`, not `--lo-surface`:
+ * the band IS the pane's ground, sampled over the content passing under it,
+ * and one role step of the surface ladder is a visible mismatch against the
+ * pane it sits in (the canvas pane's ground is `bg-elevated`,
+ * `features/chat/components/canvas/index.tsx`).
+ *
+ * And its alpha is the ELEVATED ROLE'S OWN ALPHA, `--lo-glass-a-elevated` -
+ * not the surface role's published alpha. That is the floor, and it is where
+ * the contract comes from: the band is the pane's ground sampled over the
+ * content passing under it, so the count's contrast on the band is the
+ * count's contrast on the pane - a number the surface model already asserts -
+ * rather than a number that depends on what is scrolling underneath.
+ *
+ * IT IS THE RAW ALPHA AND NOT `--lo-glass-in-elevated`, and the difference
+ * is not cosmetic. The `in-` variable is the NET alpha a pane root paints
+ * INSIDE `<main>`, which is derived against the canvas backing already
+ * painted beneath it: at the opaque end it is 0, because the backing is
+ * already opaque and the pane adds nothing to it. The band's backdrop is not
+ * the backing - it is the pane's own content, the rows - and those are
+ * opaque whatever the backing is. A band at a 0 alpha would be a band that
+ * hides nothing, which is the defect this rule exists for. (Measured: the
+ * first attempt at this rule used the `in-` variable and the band's
+ * computed background came back at alpha 0 at the opaque end.)
+ *
+ * MEASURED, and the measurement is why the floor is the elevated role's. At
+ * the default 80% in the light theme the surface alpha left 41% of a
+ * saturated thumbnail showing through, which put the band at 3.57:1 against
+ * the count's `inkDim` (the 4.5 floor is the app's own,
+ * `scripts/contrast-contract.mjs`) and 2.50:1 at the most transparent end
+ * (design round 1's D1, measured independently off the captured PNGs' glyph
+ * interiors).
+ *
+ * AND ITS ALPHA IS FLOORED AT `--lo-glass-a-band-floor`, which is the one
+ * number in the model derived for a band over MOVING content: the smallest
+ * alpha at which the band's own role still holds the count's ink over the
+ * worst content colour that can pass beneath it, derived over every palette
+ * by `scripts/derive-glass-floors.mjs` (0.91 dark, 0.78 light) and asserted
+ * by `scripts/contrast-contract.mjs`. The ordinary bands do not need it -
+ * they sit on the pane's own STATIC ground, where the published alpha is
+ * right - but this band's ground is a thumbnail, so its alpha is a contract
+ * and not a style choice. Above the floor the band's alpha is the pane's
+ * own, so the band thickens and thins with the slider exactly as the pane
+ * around it does; below it, the floor holds and the count stays readable
+ * whatever scrolls under.
+ *
+ * THE BAND IS NOT A LIGHTER OR DARKER STRIP THAN ITS PANE. It is the same
+ * role at the same alpha, so what the eye reads as a band is the BLUR - the
+ * content passing under is washed out and the ground is the pane's own.
+ * That is the "part of that glass, not a hole in it" the operator asked for:
+ * the translucency the user chose is the translucency of the ground the band
+ * is made of, so it tracks the slider exactly as the pane around it does.
  */
 html[data-glass~="pane"]
 	main[data-glass-region="canvas-backing"]
@@ -2358,7 +2431,8 @@ html[data-glass~="pane"]
 	[data-glass-plane="band-backdrop"] {
 	background-color: color-mix(
 		in srgb,
-		var(--lo-surface) calc(var(--lo-glass-a-surface) * 100%),
+		var(--lo-elevated)
+			calc(max(var(--lo-glass-a-elevated), var(--lo-glass-a-band-floor)) * 100%),
 		transparent
 	);
 	backdrop-filter: blur(12px);
