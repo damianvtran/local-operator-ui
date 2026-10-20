@@ -55,7 +55,7 @@
 	"ui.teamBridge.preview.join": "Rejoindre",
 	"ui.teamBridge.preview.join_error": "Vous n’avez pas pu rejoindre ce canal. Réessayez.",
 	"ui.teamBridge.menu.label": "Options de la conversation",
-	"ui.teamBridge.menu.mute": "Mettre la conversation en sourdine",
+	"ui.teamBridge.menu.mute": "Couper les notifications",
 	"ui.teamBridge.menu.unmute": "Réactiver les notifications",
 	"ui.teamBridge.notify.label": "Préférences de notification",
 	"ui.teamBridge.notify.all": "Tous les messages",
