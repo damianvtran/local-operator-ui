@@ -16,4 +16,6 @@ inset below the titlebar by a hard horizontal edge.
 
 Both are Storybook frames of `Team Bridge/Page` taken through the operator's
 browser tool; `--chrome-strip-h` is set to 32px on the frame because Storybook
-has no native window chrome. They are browser-tool PNGs, not sweep frames.
+has no native window chrome. They are browser-tool PNGs, not sweep frames, and
+they live in the ignored frames tree at `docs/evidence-frames/team-bridge-shell/`
+after the 2026-10-20 frames split (they are attached to PR #1264).

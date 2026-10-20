@@ -13,8 +13,14 @@
  * a message body.
  */
 import {
+	type AgentMessagesBoundary,
+	type AgentMessagesStatus,
+	agentMessagesStatusSchema,
+} from "../../../../../shared/agent-messages-contract";
+import {
 	type TeamBridgeConversation,
 	type TeamBridgeConversationList,
+	type TeamBridgeDirectory,
 	type TeamBridgeMemberInput,
 	type TeamBridgeMessagePage,
 	type TeamBridgeNotify,
@@ -23,6 +29,7 @@ import {
 	type TeamBridgeUnread,
 	teamBridgeConversationListSchema,
 	teamBridgeConversationSchema,
+	teamBridgeDirectorySchema,
 	teamBridgeIdentitySchema,
 	teamBridgeMessagePageSchema,
 	teamBridgeReadStateSchema,
@@ -158,6 +165,38 @@ export const TeamBridgeApi = {
 				: { tenant_id: scope.tenantId }),
 		});
 		return teamBridgeUnreadSchema.parse(answer);
+	},
+
+	/**
+	 * One organization's active people, with their bridge eligibility.
+	 *
+	 * The tenant is REQUIRED, not optional: the rail's People section only
+	 * exists under a selected organization, and an absent tenant would make the
+	 * server resolve its own default — the one way this read could show the
+	 * wrong organization's roster. Parsing the answer here means a malformed
+	 * directory is the section's own error state, never a crash in a row.
+	 */
+	async directory(tenantId: string): Promise<TeamBridgeDirectory> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.directory",
+			tenant_id: tenantId,
+		});
+		return teamBridgeDirectorySchema.parse(answer);
+	},
+
+	/**
+	 * The bridge's platform state, parsed with the SAME schema the settings
+	 * surface uses: one status payload, two op spellings. The page reads this
+	 * for the plan/sign-in cue; `identity()` still reads the account id through
+	 * the settings op because the notification watcher depends on that exact
+	 * cache entry.
+	 */
+	async status(boundary?: AgentMessagesBoundary): Promise<AgentMessagesStatus> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.status",
+			...(boundary ? { boundary } : {}),
+		});
+		return agentMessagesStatusSchema.parse(answer);
 	},
 
 	async setArchived(
