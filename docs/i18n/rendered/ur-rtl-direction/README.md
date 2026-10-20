@@ -20,8 +20,9 @@ shipped RTL locale; the document root takes `dir`/`lang` from
   is unobstructed. The chat route is `/chat`; the settings route is `/settings`.
 - **LTR control:** rebuilt `origin/main` at `787f8c6e7e` without this slice in a
   separate worktree and captured English the same way. `en-chat.png` and
-  `en-settings.png` are pixel-identical to that control: 0 differing pixels
-  across 2760x1800 (ImageChops difference bbox null).
+  `en-settings.png` are pixel-identical to the committed controls
+  (`en-chat-control.png`, `en-settings-control.png`): 0 differing pixels across
+  2760x1800 (ImageChops difference bbox null), so the claim is re-runnable.
 
 ## Numbers
 

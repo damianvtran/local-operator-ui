@@ -75,7 +75,12 @@ export const HOVER_INTENT_MS = 200;
 
 import { cn } from "@shared/lib/utils";
 import { useEffect, useRef, useState } from "react";
-import { dragTarget, keyboardTarget } from "./resizable-divider-geometry";
+import {
+	dragTarget,
+	inlineDragDelta,
+	keyboardTarget,
+	swapHorizontalKey,
+} from "./resizable-divider-geometry";
 
 let cursorOverlay: HTMLDivElement | null = null;
 
@@ -204,18 +209,6 @@ export type ResizableDividerAxis =
 	  };
 
 /**
- * Swap the two inline-axis arrow names for an RTL vertical handle.
- *
- * A handle's LEFT and RIGHT are physical key names; "grow" and "shrink" are
- * what the key map means, and in RTL those sit on the opposite keys.
- */
-function swapHorizontalKey(key: string): string {
-	if (key === "ArrowLeft") return "ArrowRight";
-	if (key === "ArrowRight") return "ArrowLeft";
-	return key;
-}
-
-/**
  * Resizable divider between panels.
  * Anchored to one edge of the panel it sizes, on either axis, with the correct
  * drag direction and a key map matched to that axis.
@@ -325,9 +318,7 @@ export const ResizableDivider = ({
 			/* The pointer's travel ALONG THE SEPARATOR'S AXIS. */
 			const delta = horizontal
 				? moveEvent.clientY - startY
-				: rtl
-					? startX - moveEvent.clientX
-					: moveEvent.clientX - startX;
+				: inlineDragDelta(moveEvent.clientX - startX, rtl ? "rtl" : "ltr");
 			onSidebarWidthChange(
 				dragTarget(startWidth, delta, side, minWidth, maxWidth),
 			);

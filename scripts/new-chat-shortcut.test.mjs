@@ -352,8 +352,12 @@ test("the New chat row prints the cap from the same module the binding reads", (
 		"the cap is drawn from the chord string the row passes, in the joined spelling (§C1, N1)",
 	);
 	assert.ok(
-		helper.includes("ml-auto"),
-		"the cap is held in the trailing column by the label's own flex, where the rows beside it hold theirs",
+		helper.includes("ms-auto"),
+		"the cap is held at the inline end by the label's own flex, where the rows beside it hold theirs",
+	);
+	assert.ok(
+		!helper.includes("ml-auto") && !helper.includes("mr-auto"),
+		"the cap must not be pinned to a physical side: `ms-auto` is the trailing edge in both writing directions",
 	);
 	assert.ok(
 		nav.includes('newChatShortcutCap(isMac).replace("+", "")'),

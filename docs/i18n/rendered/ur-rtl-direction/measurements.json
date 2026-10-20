@@ -27,7 +27,7 @@
         "settingsSubnav": null,
         "settingsContent": null,
         "capture": {
-          "path": "rtl-en-chat.png",
+          "path": "en-chat.png",
           "pixels": {
             "width": 2760,
             "height": 1800
@@ -69,7 +69,7 @@
           "height": 868
         },
         "capture": {
-          "path": "rtl-en-settings.png",
+          "path": "en-settings.png",
           "pixels": {
             "width": 2760,
             "height": 1800
@@ -103,7 +103,7 @@
         "settingsSubnav": null,
         "settingsContent": null,
         "capture": {
-          "path": "rtl-ur-chat.png",
+          "path": "ur-chat.png",
           "pixels": {
             "width": 2760,
             "height": 1800
@@ -145,12 +145,12 @@
           "height": 868
         },
         "capture": {
-          "path": "rtl-ur-settings.png",
+          "path": "ur-settings.png",
           "pixels": {
             "width": 2760,
             "height": 1800
           },
-          "bytes": 337735
+          "bytes": 337710
         }
       }
     }
@@ -164,6 +164,11 @@
   "control": {
     "base": "787f8c6e7e (origin/main at rebase)",
     "method": "Rebuilt the base tree without this slice in a separate worktree and captured English through the same rig.",
-    "result": "en-chat.png and en-settings.png are pixel-identical to the base captures: 0 differing pixels across 2760x1800 (ImageChops difference bbox is null)."
+    "result": "en-chat.png and en-settings.png are pixel-identical to the base captures: 0 differing pixels across 2760x1800 (ImageChops difference bbox is null).",
+    "frames": [
+      "en-chat-control.png",
+      "en-settings-control.png"
+    ],
+    "comparison": "en-chat.png vs en-chat-control.png and en-settings.png vs en-settings-control.png: 0 differing pixels each (2760x1800; ImageChops difference bbox null)."
   }
 }

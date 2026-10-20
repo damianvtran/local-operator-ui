@@ -314,7 +314,7 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 								disabled={isSaving}
 								aria-labelledby={labelId}
 								aria-describedby={description ? descriptionId : undefined}
-								className="w-18 text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+								className="w-18 text-end [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
 							/>
 							{unit && (
 								<span className="shrink-0 text-meta text-ink-dim">{unit}</span>

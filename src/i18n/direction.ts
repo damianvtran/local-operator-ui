@@ -11,10 +11,14 @@
  *
  * TAGS ARRIVE UN-NORMALISED. Before a backend answer the locale store keeps the
  * device's own tag verbatim (`en-US`, `ur-PK`, `fr-CA` — see `./locale`), so the
- * lookup is exact match first and then primary-subtag match. Direction is a
- * property of the language, not the region: `ur-PK` and `ar-EG` are RTL, while
- * `zh-CN` must win its exact match over a bare `zh`. An unknown tag falls back to
- * LTR rather than to a guess, which is also the DOM's own default.
+ * lookup is exact match first and then a primary-subtag match used ONLY to pick
+ * the direction. Direction is a property of the language, not the region, so
+ * `ur-PK` is RTL while `zh-TW` is LTR — but `lang` keeps the tag the caller
+ * supplied: rewriting `zh-TW` to `zh-CN` would claim a script the user did not
+ * choose, and a bare `zh` on a Traditional Chinese device is not Simplified.
+ * An unshipped tag falls back to LTR rather than to a guess, which is also the
+ * DOM's own default; an RTL language becomes supported by adding its manifest
+ * entry, never by extending a code list here.
  */
 
 import manifest from "../../i18n/languages.json";
@@ -61,7 +65,12 @@ export function resolveLanguage(tag: string): LanguageResolution {
 		);
 
 	return {
-		lang: matched?.code ?? trimmed,
+		/*
+		 * The exact entry's code is canonical (`zh-CN` stays `zh-CN`). A
+		 * primary-subtag match answers DIRECTION only and leaves the caller's tag
+		 * alone (`ur-PK` stays `ur-PK`, `zh-TW` stays `zh-TW`).
+		 */
+		lang: exact?.code ?? trimmed,
 		dir: matched?.dir === "rtl" ? "rtl" : "ltr",
 	};
 }

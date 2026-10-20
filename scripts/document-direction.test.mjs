@@ -97,14 +97,17 @@ test("the manifest resolves direction by language, not by region", () => {
 	assert.deepEqual(resolveLanguage("ur"), { lang: "ur", dir: "rtl" });
 	assert.deepEqual(resolveLanguage("en"), { lang: "en", dir: "ltr" });
 	assert.deepEqual(resolveLanguage("zh-CN"), { lang: "zh-CN", dir: "ltr" });
-	// Device tags arrive un-normalised before a backend answer.
-	assert.deepEqual(resolveLanguage("ur-PK"), { lang: "ur", dir: "rtl" });
-	assert.deepEqual(resolveLanguage("en-US"), { lang: "en", dir: "ltr" });
-	assert.deepEqual(resolveLanguage("fr-CA"), { lang: "fr", dir: "ltr" });
+	// Device tags arrive un-normalised before a backend answer. Direction follows
+	// the language, but `lang` must NOT be rewritten: `zh-TW` is not `zh-CN`.
+	assert.deepEqual(resolveLanguage("ur-PK"), { lang: "ur-PK", dir: "rtl" });
+	assert.deepEqual(resolveLanguage("en-US"), { lang: "en-US", dir: "ltr" });
+	assert.deepEqual(resolveLanguage("fr-CA"), { lang: "fr-CA", dir: "ltr" });
+	assert.deepEqual(resolveLanguage("zh-TW"), { lang: "zh-TW", dir: "ltr" });
 	// An unshipped tag still carries a usable `lang`, and defaults to LTR.
 	assert.deepEqual(resolveLanguage("xx-YY"), { lang: "xx-YY", dir: "ltr" });
 	assert.equal(textDirectionFor("ur"), "rtl");
 	assert.equal(textDirectionFor("hi"), "ltr");
+	assert.equal(textDirectionFor("zh-TW"), "ltr");
 });
 
 test("the document root follows the locale live, without remounting", async () => {
