@@ -881,6 +881,19 @@ export const PreviewInlineNameHover: Story = {
 	render: () => previewPane(ROWS[2]),
 };
 
+/**
+ * A name wider than the header. The reserved gutter is the point: the value
+ * ends in an ellipsis BEFORE the pencil's slot, so nothing is painted over the
+ * text at rest, on hover, or while the editor is open.
+ */
+export const PreviewInlineLongName: Story = {
+	render: () =>
+		previewPane({
+			...ROWS[2],
+			name: "March invoice reconciliation notes for the fourth quarter close",
+		}),
+};
+
 /** After a real press on the name's pencil: borderless editor, text selected. */
 export const PreviewInlineNameEditing: Story = {
 	render: () => previewPane(ROWS[2]),
