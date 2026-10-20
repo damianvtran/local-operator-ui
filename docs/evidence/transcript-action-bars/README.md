@@ -34,6 +34,8 @@ The desktop reducer records that fact as `callsTools` on the assistant record at
 
 Every frame is a real capture at the app's own pixel size (DPR 2); nothing was resized. Themes are the palette ids.
 
+**The pixels are not tracked.** Frames are rig output and live in the ignored `docs/evidence-frames/transcript-action-bars/` tree (the post-#1256 convention; see `.gitignore`), seeded once from a captured checkout. This README stays tracked as the set's index and measured record. For a reader who does not have the frames tree, the same files are hosted on the `evidence/1260-action-bars` branch under `docs/pr-evidence/1260-action-bars/`, and the PR description embeds the key pairs from there.
+
 | Class | State | Viewport | Theme | Shows |
 | --- | --- | --- | --- | --- |
 | closing | rest / hover | 1380×900 | light, dark | bare icons before the stamp on the `Worked for` line; hover moves nothing and reveals no box |
