@@ -155,7 +155,7 @@
 	"ui.hub.links.mark_applied": "已应用",
 	"ui.hub.skills.download": "下载一次",
 	"ui.hub.skills.unpull": "删除本地副本",
-	"ui.hub.skills.unpull_title": "删除 {item} 的本地副本？",
+	"ui.hub.skills.unpull_title": "删除{item}的本地副本？",
 	"ui.hub.skills.unpull_body": "文件将从你的技能文件夹中移除。链接及其订阅会保留，再次下载即可恢复当前修订版本。",
 	"ui.hub.skills.unpull_failed": "未确认本地副本已删除。请重试，然后检查链接状态。",
 	"ui.hub.skills.subscribe_failed": "未确认订阅。请重试。",

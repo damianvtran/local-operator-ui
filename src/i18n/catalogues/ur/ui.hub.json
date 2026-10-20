@@ -162,8 +162,8 @@
 	"ui.hub.skills.local_path": "{path} پر انسٹال",
 	"ui.hub.skills.published_by": "{publisher} نے شائع کیا",
 	"ui.hub.skills.not_downloaded": "ڈاؤن لوڈ نہیں ہوا",
-	"ui.hub.skills.subscribed_absent": "سبسکرائب — انسٹال نہیں",
-	"ui.hub.skills.pulled": "ڈاؤن لوڈ — سبسکرائب",
-	"ui.hub.skills.manual": "ڈاؤن لوڈ — سبسکرپشن نہیں",
+	"ui.hub.skills.subscribed_absent": "سبسکرپشن ہے — انسٹال نہیں",
+	"ui.hub.skills.pulled": "ڈاؤن لوڈ ہے — سبسکرپشن ہے",
+	"ui.hub.skills.manual": "ڈاؤن لوڈ ہے — سبسکرپشن نہیں",
 	"ui.hub.skills.detached": "ربط ہے — نقل نہیں"
 }

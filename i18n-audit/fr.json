@@ -1,0 +1,59 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "94481c81ce79",
+  "date": "2026-10-20",
+  "locale": "fr",
+  "status": "changes_requested",
+  "namespace": "ui.hub",
+  "sha256": {
+    "fr": "5555b50e349f6eeb93ab482af22400e2e69607c58f0b661313859898a681b678",
+    "en": "96d5e20f3f1efc19efa36210ea7799af8216a863d7b872c71d69e599d5e59a44"
+  },
+  "scope": "ui.hub.skills.*: download, unpull, unpull_title, unpull_body, unpull_failed, subscribe_failed, local_path, published_by, not_downloaded, subscribed_absent, pulled, manual, detached (13 keys) audited against English ui.hub.json",
+  "keys_audited": [
+    "download",
+    "unpull",
+    "unpull_title",
+    "unpull_body",
+    "unpull_failed",
+    "subscribe_failed",
+    "local_path",
+    "published_by",
+    "not_downloaded",
+    "subscribed_absent",
+    "pulled",
+    "manual",
+    "detached"
+  ],
+  "findings": [
+    {
+      "severity": "MAJOR",
+      "key": "ui.hub.skills.subscribed_absent",
+      "current": "Abonné — non installée",
+      "proposed": "Abonnée — non installée",
+      "note": "Gender disagreement inside one label. The noun is \"compétence\" (feminine) and the file agrees feminine everywhere else (\"Non téléchargée\", \"Téléchargée\", \"Installée dans\", \"Publiée par\"); \"Abonné\" is masculine (or the masculine noun \"subscriber\"), so \"Abonné — non installée\" contradicts itself."
+    },
+    {
+      "severity": "MAJOR",
+      "key": "ui.hub.skills.pulled",
+      "current": "Téléchargée — abonné",
+      "proposed": "Téléchargée — abonnée",
+      "note": "Same gender inconsistency: the first half is feminine, the second masculine. \"Abonnée\" agrees with \"compétence\"."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.hub.skills.unpull_title",
+      "current": "Supprimer la copie locale de {item} ?",
+      "proposed": "Supprimer la copie locale de {item} ?",
+      "note": "French typography: 20 strings in the fr catalogues use a narrow no-break space (U+202F) before \"?\"; this one uses a plain space, which is inconsistent and also allows a line break before the question mark."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.hub.skills.unpull_body",
+      "current": "Les fichiers quittent votre dossier de compétences. Le lien et son abonnement restent, donc un nouveau téléchargement rétablit la révision actuelle.",
+      "proposed": "Les fichiers sont retirés de votre dossier de compétences. Le lien et son abonnement restent, donc un nouveau téléchargement rétablit la révision actuelle.",
+      "note": "Word-for-word rendering of \"leave\": \"quitter\" is anthropomorphic for files and reads translated in a confirmation body; \"sont retirés de\" is the idiomatic UI phrasing."
+    }
+  ]
+}
