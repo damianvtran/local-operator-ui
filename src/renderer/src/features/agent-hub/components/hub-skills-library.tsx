@@ -374,12 +374,22 @@ export function HubSkillsLibrary({
 		});
 	};
 	const canPublish = signedIn && supported && accessible && !catalogue.error;
-	const scopePhrase = scope.organization
-		? `shared with ${scope.organization}`
-		: `in ${t("ui.hub.skills.public_hub")}`;
+	/*
+	 * The count line is TRANSLATED copy, not a template: a surface whose first
+	 * sentence is half English (`2 skills in Hub público`) is the defect the
+	 * translation audit named, and ICU owns the plural per locale.
+	 */
 	const statusLine = catalogue.isLoading
 		? t("ui.hub.skills.loading")
-		: `${scopedRows.length} ${scopedRows.length === 1 ? "skill" : "skills"} ${scopePhrase}`;
+		: scope.organization
+			? t("ui.hub.skills.count_shared", {
+					count: scopedRows.length,
+					organization: scope.organization,
+				})
+			: t("ui.hub.skills.count", {
+					count: scopedRows.length,
+					scope: t("ui.hub.skills.public_hub"),
+				});
 
 	return (
 		<section className="flex min-w-0 flex-col gap-4" data-hub-skills-library>
@@ -599,7 +609,13 @@ export function HubSkillsLibrary({
 							{selectedLink && hasCopy && selectedLink.local_path && (
 								<p className="break-all font-mono text-meta text-ink-dim">
 									{t("ui.hub.skills.local_path", {
-										path: selectedLink.local_path,
+										/*
+										 * FSI/PDI around the path: under `dir="rtl"` a leading
+										 * `/` resolves as RTL punctuation and moves to the far
+										 * end, which the translation audit measured. Isolation
+										 * keeps the path's own LTR order inside a bidi sentence.
+										 */
+										path: `\u2068${selectedLink.local_path}\u2069`,
 									})}
 								</p>
 							)}

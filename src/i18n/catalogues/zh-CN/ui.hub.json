@@ -79,7 +79,7 @@
 	"ui.hub.skills.files": "包含的文件",
 	"ui.hub.skills.text_limits": "技能最多支持64个UTF-8文本文件，每个文件不超过200 KiB，总大小不超过1 MiB。发布或拉取时绝不会运行脚本。",
 	"ui.hub.skills.local_exists": "此本地别名已被使用，请换一个。",
-	"ui.hub.skills.initial_policy_description": "新关联默认订阅传入更新。自动推送保持关闭，直到你为此目标开启。",
+	"ui.hub.skills.initial_policy_description": "新关联默认订阅传入更新。自动推送保持关闭，直到你为此目标开启自动推送。",
 	"ui.hub.status.not_checked": "尚未检查",
 	"ui.hub.status.idle": "没有待处理的更改",
 	"ui.hub.status.checking": "正在检查更改……",
@@ -174,5 +174,7 @@
 	"ui.hub.skills.subscribe_help": "跟进后续修订版本。现在不会下载任何内容。",
 	"ui.hub.skills.unsubscribe": "取消订阅",
 	"ui.hub.skills.unsubscribe_help": "停止后续更新。已下载的文件会保留。",
-	"ui.hub.skills.public_hub": "公开中心"
+	"ui.hub.skills.public_hub": "公开中心",
+	"ui.hub.skills.count": "{count, plural, other {{scope}中有{count, number, ::group-off}个技能}}",
+	"ui.hub.skills.count_shared": "{count, plural, other {与{organization}共享的{count, number, ::group-off}个技能}}"
 }
