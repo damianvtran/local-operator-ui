@@ -35,8 +35,9 @@
  * - the FOLDED states (`folded-condensed-*`): while the block's own turn
  *   renders condensed it shows the SAME files section as its expanded self —
  *   the actionable rows and the image grid — with no slots and no frames; a
- *   graphics-only finish keeps its plain count clause, and the not-settled
- *   arms keep their state line under the files;
+ *   settled graphics-only or mixed finish offers a local Show/Hide disclosure
+ *   (2026-10-19 amendment), and the not-settled arms keep their state line
+ *   under the files;
  * - a supplement-free turn and the `superseded`/`empty` arms render NOTHING
  *   under the answer — the before/after pair for the fold lane.
  */
@@ -890,7 +891,7 @@ export const Narrow: StoryObj = {
  * decision of 2026-10-16): while the block's own turn renders condensed — one
  * closed bar over its run — the block shows the SAME files section as its
  * expanded self (the actionable rows and the image grid; no slots, no frames),
- * a graphics-only settle keeps its plain count clause, and the not-settled arms
+ * a graphics-only settle offers a local Show/Hide disclosure (2026-10-19), and the not-settled arms
  * keep their state line under the files. Each state below mounts the SAME
  * shipped component through the SAME transcript walk the app runs (`prompt` +
  * `turnCall` + `answer` + the block, so the plan really collapses the call and
@@ -938,7 +939,7 @@ export const FoldedCondensedCounts: StoryObj = {
 	),
 };
 
-/** Components only: the plain count clause — the bar is the expansion. */
+/** Components only: the local disclosure does not expand the work bar. */
 export const FoldedCondensedComponents: StoryObj = {
 	render: () => (
 		<Frame
@@ -946,7 +947,7 @@ export const FoldedCondensedComponents: StoryObj = {
 			records={[
 				prompt("u0", "Chart the bench results."),
 				turnCall("c1"),
-				answer("m1", "Both views are drawn from the same bench."),
+				answer(ANCHOR, "Both views are drawn from the same bench."),
 				supplement({
 					id: "s1",
 					components: [
@@ -1139,6 +1140,101 @@ export const FoldedCondensedPreparingFiles: StoryObj = {
 					more: ["reports/q1.md", "reports/q2.md", "data/raw.csv"],
 				}),
 			]}
+		/>
+	),
+};
+
+/**
+ * Answer-local graphics (2026-10-19 amendment). Use the real transcript fold
+ * and shared Disclosure, not a visual imitation or an initial-open prop.
+ * Open fixtures activate the same button the reader does after mount.
+ */
+const localGraphicsRecords = (
+	seeds: string[],
+	files: SupplementRecord["files"] = [],
+): TranscriptRecord[] => [
+	prompt("u0", "Chart the bench results."),
+	turnCall("c1"),
+	answer(ANCHOR, "Both views are drawn from the same bench."),
+	supplement({
+		id: "s1",
+		files,
+		components: seeds.map((seed, index) =>
+			component(
+				seed,
+				index === 0 ? "Latency by region (ms)" : "Throughput by region",
+				320,
+			),
+		),
+	}),
+];
+const localReveal = "[data-supplement-graphics-reveal]";
+export const LocalGraphicClosed: StoryObj = {
+	render: () => (
+		<Frame height={720} records={localGraphicsRecords(["chart-a"])} />
+	),
+};
+export const LocalGraphicOpen: StoryObj = {
+	render: () => (
+		<Frame
+			height={720}
+			click={localReveal}
+			records={localGraphicsRecords(["chart-a"])}
+		/>
+	),
+};
+export const LocalGraphicsClosed: StoryObj = {
+	render: () => (
+		<Frame
+			height={720}
+			records={localGraphicsRecords(["chart-a", "chart-b"])}
+		/>
+	),
+};
+export const LocalGraphicsOpen: StoryObj = {
+	render: () => (
+		<Frame
+			height={720}
+			click={localReveal}
+			records={localGraphicsRecords(["chart-a", "chart-b"])}
+		/>
+	),
+};
+export const LocalGraphicsNarrow: StoryObj = {
+	render: () => (
+		<Frame
+			height={720}
+			width="360px"
+			click={localReveal}
+			records={localGraphicsRecords(["chart-a", "chart-b"])}
+		/>
+	),
+};
+export const LocalGraphicRefused: StoryObj = {
+	render: () => (
+		<Frame
+			height={720}
+			click={localReveal}
+			records={localGraphicsRecords(["error-document"])}
+		/>
+	),
+};
+export const LocalGraphicLoading: StoryObj = {
+	render: () => (
+		<Frame
+			height={720}
+			click={localReveal}
+			records={localGraphicsRecords(["hold-forever"])}
+		/>
+	),
+};
+
+/** Files remain actionable above the same budget-aware graphics disclosure. */
+export const LocalGraphicsMixed: StoryObj = {
+	render: () => (
+		<Frame
+			height={720}
+			records={localGraphicsRecords(["chart-a", "chart-b"], FILES)}
 		/>
 	),
 };
