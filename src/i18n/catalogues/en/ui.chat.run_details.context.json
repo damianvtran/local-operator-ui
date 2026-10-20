@@ -1,0 +1,16 @@
+{
+	"ui.chat.run_details.jobs": {
+		"role": "section label of the run panel's background-jobs list",
+		"tone": "noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Labels the panel section that lists running shell and eval jobs. The composer's jobs chip counts the same rows, so this word is the list's only name and must match how that chip speaks of them.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.keep": {
+		"role": "safe-choice button in the background-job cancel confirmation",
+		"tone": "single verb, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Closes the confirmation without cancelling the job, leaving it running. It takes the card's opening focus, so it must read as the safe choice beside Cancel.",
+		"placeholders": {}
+	}
+}

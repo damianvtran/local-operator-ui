@@ -99,6 +99,14 @@ const LIBRARY_FILTER_RAIL =
 const LIBRARY_PAGE =
 	"src/renderer/src/features/library/components/library-page.tsx";
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
+/**
+ * The sidebar nav's accessible name comes from the English catalogue now: the
+ * ground below is found by the key the nav renders AND the message a reader
+ * hears, so a renamed key cannot leave this table reading an unrelated element.
+ */
+const SIDEBAR_COPY = JSON.parse(
+	read("src/i18n/catalogues/en/ui.chat.sidebar.json"),
+);
 
 /*
  * React stays out of this bundle and so does every package: `packages:
@@ -1419,7 +1427,12 @@ const ROW_STATE_GROUNDS = [
 			rowTagDrag: { armedId: null },
 			row: { session_id: "synthetic-current-row" },
 		},
-		ground: () => literalClassAt(SIDEBAR, 'aria-label="Chats"', "after"),
+		ground: () =>
+			literalClassAt(
+				SIDEBAR,
+				'aria-label={t("ui.chat.sidebar.nav.chats")}',
+				"after",
+			),
 		groundFile: SIDEBAR,
 	},
 	{
@@ -1614,6 +1627,12 @@ test("every call site that paints a row state is painted on `surface`", () => {
 		painters,
 		named,
 		`${painters.length} file(s) in the tree paint or name \`rowCurrent\` and ${named.length} are named in ROW_STATE_GROUNDS. A surface that paints the role has to have its ground asserted here; one that only names it in prose belongs in neither list, which is why the read excludes comments: ${JSON.stringify(painters)} vs ${JSON.stringify(named)}`,
+	);
+
+	assert.equal(
+		SIDEBAR_COPY["ui.chat.sidebar.nav.chats"],
+		"Chats",
+		"the sidebar's nav announces something other than `Chats`; the ground below is read from the element that name finds",
 	);
 
 	for (const entry of ROW_STATE_GROUNDS) {

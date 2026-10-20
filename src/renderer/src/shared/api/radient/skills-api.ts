@@ -16,6 +16,16 @@ export type HubSkillRow = {
 	document_version: 1;
 	visibility: "public" | "org";
 	tenant_id?: string;
+	/**
+	 * Who publishes/maintains this skill, when the hub states it.
+	 *
+	 * The public skill row carries no publisher today, unlike an agent row's
+	 * `account_metadata.name`. Optional and never synthesized: the card falls back
+	 * to the honest source line (organization, or the public-hub label) rather
+	 * than inventing a maintainer, and a hub that starts sending the field needs
+	 * no renderer change.
+	 */
+	publisher?: string | null;
 	content_revision: number;
 	/** Opaque INCLUDING quotes; never synthesize/decode into a semantic version. */
 	revision: string;
@@ -34,6 +44,8 @@ export type OrgSkillList = {
 	skills: HubSkillRow[];
 	sync_contract: HubSkillContract;
 };
+
+export { hubSourceAddress } from "./hub-source";
 
 /** Capability is on RESULT even when the catalogue is empty; absence is not v1. */
 export const hubSkillsSupported = (
