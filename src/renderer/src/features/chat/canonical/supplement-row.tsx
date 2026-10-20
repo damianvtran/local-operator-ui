@@ -40,8 +40,9 @@
  * which gates the document fetch: an off-screen or far-away condensed turn
  * renders only the reserved slot box, mounts no iframe and issues no document
  * request until it is near (the gate is sticky once near, and an already-cached
- * document may paint there without a request). The old "ZERO fetches while condensed" claim is therefore retired,
- * not extended: a visible condensed frame is gated exactly like an expanded one.
+ * document may paint there without a request). The old "ZERO fetches while
+ * condensed" claim is therefore retired, not extended: a visible condensed
+ * frame is gated exactly like an expanded one.
  * A local Hide survives collapsing work again: that explicit request belongs to
  * this supplement identity, not to the work bar. A new identity resets to the
  * default (open), so a Hide set on one supplement is never resurrected for
