@@ -1,5 +1,11 @@
 # Answer-local graphics disclosure
 
+> **Default superseded (2026-10-19, PR #1247):** the operator asked for the
+> graphic to be visible by default in a condensed turn. The row now starts open
+> and `Hide` reaches the closed state; the closed frames below remain the
+> pre-change default evidence. The `*Closed` story fixtures now press Hide after
+> mount, and the visible fixtures are the default.
+
 Captured 2026-10-19 through the harness **browser tool**, in one owned background tab on the existing desktop browser host; the tab was closed afterwards. No native app, operator session, standalone browser engine, or scratch dependency installation was used. The isolated Storybook server was reaped by its exact process group (95520). Coder model: `openai/gpt-6.1-sol`, temporary fallback after Anthropic quota exhaustion.
 
 ## Reach the states
