@@ -1115,13 +1115,23 @@ export const MediaLightboxSolo: Story = {
 /*
  * The clip's path, both ways in. The picture area is a click target sized to the
  * clip and stops above the native control panel — the measured band, not just
- * the scrubber row (QA round 2, Q5): the play/pause glyph's centre and the
- * scrubber both hit-test to the `<video>` (the assertion here), and a trusted
- * press there starts the clip (the play function cannot prove that half: an
- * untrusted click is ignored by the UA's controls, measured). The corner expand
- * control stays as the keyboard affordance and opens the same lightbox.
- * `data-lightbox-video` is the shared lightbox's own hook on the video element,
- * so the open assertion covers a decoded clip rather than the fallback.
+ * the scrubber row (QA round 2, Q5). WHAT THIS PLAY PROVES, precisely: the
+ * target's rendered inset (`video.bottom - target.bottom`) is
+ * `VIDEO_CONTROL_BAND_PX`, so the whole native control band lies outside it,
+ * and points in that band resolve to the player rather than the target.
+ *
+ * WHAT IT CANNOT PROVE, so a green run is not read as more than it is:
+ * Chromium retargets every hit inside the `<video>`'s UA shadow tree to the
+ * video host and does not expose that shadow root, so `elementFromPoint` cannot
+ * tell the play glyph from bare picture. The assertions pin the target's INSET,
+ * not the glyph's position (agent review round 3, R3-4). The trusted-press half
+ * — a press on the glyph actually starts the clip — was measured in QA round
+ * 2's comment: an untrusted click is ignored by the UA's controls, so a play
+ * function cannot carry it.
+ *
+ * The corner expand control stays as the keyboard affordance and opens the same
+ * lightbox. `data-lightbox-video` is the shared lightbox's own hook on the video
+ * element, so the open assertion covers a decoded clip rather than the fallback.
  */
 export const MediaLightboxVideo: Story = {
 	render: () =>
@@ -1160,10 +1170,13 @@ export const MediaLightboxVideo: Story = {
 		/*
 		 * The target covers the picture and NOT the native control panel: the
 		 * panel's own presses must reach the player, or play/pause and the scrubber
-		 * are dead. THE POINT IS THE VISIBLE PLAY GLYPH'S CENTRE, not a generic
-		 * point near the bottom (QA round 2, Q5): the earlier `bottom - 10` check
-		 * passed on the scrubber row while the play button itself sat under the
-		 * target, so pressing it opened the viewer instead of playing.
+		 * are dead. The target's bottom edge is pinned to the measured band, so
+		 * every row the band contains is outside it. The POINTS below are the
+		 * glyph row and the scrubber row QA measured (round 2, Q5, where a
+		 * `bottom - 10` target had swallowed the play button); they prove those
+		 * rows are uncovered, not which native control sits under them - the
+		 * browser retargets shadow content to the `<video>` host (see the note
+		 * above).
 		 */
 		const box = video.getBoundingClientRect();
 		const surfaceBox = surface.getBoundingClientRect();
@@ -1174,7 +1187,8 @@ export const MediaLightboxVideo: Story = {
 		expect(Math.round(box.bottom - surfaceBox.bottom)).toBe(
 			VIDEO_CONTROL_BAND_PX,
 		);
-		/* The two measured native rows: the play/pause glyph centre and the scrubber. */
+		/* The two rows QA measured: the glyph row and the scrubber row. Both
+		 * resolve to the player, i.e. the target stops above them. */
 		expect(document.elementFromPoint(box.left + 24, box.bottom - 48)).toBe(
 			video,
 		);
@@ -1356,7 +1370,7 @@ const PreviewFromQuery: FC<{ row: DesktopLibraryAsset }> = ({ row }) => {
 	);
 };
 
-const previewPane = (row: DesktopLibraryAsset) => {
+const installPreviewStub = (row: DesktopLibraryAsset) => {
 	stub = {
 		rows: [row, ...ROWS.filter((item) => item.id !== row.id)],
 		detail: row,
@@ -1368,7 +1382,44 @@ const previewPane = (row: DesktopLibraryAsset) => {
 	};
 	extraTags = [];
 	install();
+};
+
+const previewPane = (row: DesktopLibraryAsset) => {
+	installPreviewStub(row);
 	return <PreviewFromQuery row={row} />;
+};
+
+/*
+ * THE COMPACT PANE. A fixed 620px leaves the preview root under the 700px
+ * threshold the component measures, which is the state a resized dock or a
+ * short window reaches; the page route cannot be driven into it by a press
+ * because `RouteTo` re-pins the route on every navigation (see the
+ * switch-harness note below), so the pane is mounted directly.
+ */
+const CompactPreviewFromQuery: FC<{ row: DesktopLibraryAsset }> = ({ row }) => {
+	const detail = useLibraryAsset(row.id, true);
+	return (
+		<div className="flex h-[620px] justify-end bg-canvas">
+			<div className="flex h-full w-[440px] min-w-0 flex-col">
+				<LibraryPreview
+					asset={detail.data ?? row}
+					nowMs={NOW}
+					onClose={() => undefined}
+					onOpenConversation={() => undefined}
+					onFilterSession={() => undefined}
+					onAsk={() => undefined}
+					onToggleFavorite={() => undefined}
+					composerFocusSignal={0}
+					focusRequest={null}
+				/>
+			</div>
+		</div>
+	);
+};
+
+const compactPreviewPane = (row: DesktopLibraryAsset) => {
+	installPreviewStub(row);
+	return <CompactPreviewFromQuery row={row} />;
 };
 
 const inlineControl = (field: string) => {
@@ -1503,6 +1554,71 @@ export const PreviewInlineEmptyTags: Story = {
 			return found;
 		});
 		expect(row.textContent).toContain("Add a tag");
+	},
+};
+
+/*
+ * A COMPACT PREVIEW'S FIRST TAG COMMAND OPENS THE ROW IT REVEALS (agent review
+ * round 3, R3-1). Below 700px of preview height the tag row is mounted only
+ * while Details is open, so "reveal Details" and "open the add input" must land
+ * in different commits: a single batched update mounts the row with the counter
+ * already bumped, and the primitive reads a value present at mount as its
+ * baseline, so nothing opens.
+ *
+ * THE PRESS IS THE REAL MENU ITEM. `LibraryAssetMenu` is the same component a
+ * card mounts, and its `onEditTags` is the handler the page hands a card's
+ * command to; the page's own route cannot deliver the press here because
+ * `RouteTo` re-pins it (see the switch-harness note below), so the command is
+ * issued at the preview that owns the handler.
+ *
+ * THE COMPACT BRANCH IS ASSERTED, NOT ASSUMED: without it a taller pane would
+ * pass by never entering the state, and the input's FOCUS is the assertion
+ * because a row mounted closed was exactly the regression (its presence alone
+ * would read green on the defect).
+ */
+export const PreviewCompactFirstTagCommand: Story = {
+	render: () => compactPreviewPane(ROWS[2]),
+	play: async () => {
+		const user = userEvent.setup();
+		const preview = await waitFor(() => {
+			const node = document.querySelector<HTMLElement>(
+				"[data-library-preview]",
+			);
+			if (!node) throw new Error("the preview is not mounted");
+			return node;
+		});
+		await waitFor(() =>
+			expect(preview.hasAttribute("data-library-compact")).toBe(true),
+		);
+		expect(document.querySelector("[data-inline-tags]")).toBeNull();
+
+		await user.click(
+			await waitFor(() => {
+				const trigger = document.querySelector<HTMLElement>(
+					"[data-library-asset-menu]",
+				);
+				if (!trigger)
+					throw new Error("the preview's asset menu is not mounted");
+				return trigger;
+			}),
+		);
+		const editTags = await waitFor(() => {
+			const item = Array.from(
+				document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+			).find((node) => node.textContent?.trim() === "Edit tags");
+			if (!item) throw new Error("the menu's Edit tags item is not mounted");
+			return item;
+		});
+		await user.click(editTags);
+
+		const input = await waitFor(() => {
+			const node = document.querySelector<HTMLInputElement>(
+				"[data-inline-tags] input",
+			);
+			if (!node) throw new Error("the tag row did not open its add input");
+			return node;
+		});
+		await waitFor(() => expect(document.activeElement).toBe(input));
 	},
 };
 

@@ -158,6 +158,10 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 	 */
 	const [nameEditSignal, setNameEditSignal] = useState(0);
 	const [tagEditSignal, setTagEditSignal] = useState(0);
+	/* A tag command that must reveal the row before opening it is carried here
+	 * for one commit; `requestTagEdit` below records why the bump cannot batch
+	 * with the reveal. */
+	const [pendingTagEdit, setPendingTagEdit] = useState(false);
 	/*
 	 * A COMMAND BELONGS TO THE ASSET IT WAS ISSUED ON (agent review round 2,
 	 * M2). The editors are keyed by asset id, so a switch remounts them; a
@@ -179,6 +183,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 		setSignalAssetId(asset.id);
 		setNameEditSignal(0);
 		setTagEditSignal(0);
+		setPendingTagEdit(false);
 	}
 	/*
 	 * SHORT PREVIEWS COMPACT THE METADATA (design spec §2): below 700px of
@@ -201,6 +206,42 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 	}, []);
 
 	const names = useMemo(() => asset.tags.map((tag) => tag.name), [asset.tags]);
+	/* The row exists exactly when it is rendered: a compact preview keeps it
+	 * behind Details (see the layout effect above). */
+	const tagRowMounted = !compact || detailsOpen;
+
+	/*
+	 * A TAG COMMAND WAITS FOR THE ROW IT TARGETS (agent review round 3, R3-1).
+	 * A compact preview mounts the tag row only while Details is open. Bumping
+	 * the counter in the same update that reveals Details mounts the row with
+	 * the already-bumped value - and the primitive reads a value present at
+	 * mount as its baseline (a signal is a change, not a mount value: review
+	 * round 2, M2), so `startAdding` never runs. The command therefore only
+	 * records the intent; the effect below performs the bump after the commit
+	 * that mounts the row.
+	 *
+	 * THE PENDING FLAG IS USED EVEN WHEN THE ROW IS MOUNTED, because a preview
+	 * can MOUNT with the command already set (a card's menu navigates to that
+	 * asset and bumps the page's focus request in one commit). On that first
+	 * render the compact measurement has not run: the initial `compact: false`
+	 * paints the row that is about to be hidden, so a "the row exists" test
+	 * there takes the direct path and reproduces the batching bug on the next
+	 * render. Waiting one commit costs a render and holds in every order.
+	 */
+	const requestTagEdit = () => {
+		setPendingTagEdit(true);
+		setDetailsOpen(true);
+	};
+
+	useEffect(() => {
+		if (!pendingTagEdit) return;
+		if (!tagRowMounted) return;
+		const row = tagsRef.current;
+		if (!row) return;
+		setPendingTagEdit(false);
+		row.scrollIntoView({ block: "center" });
+		setTagEditSignal((signal) => signal + 1);
+	}, [pendingTagEdit, tagRowMounted]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the signal is a trigger, not a read.
 	useEffect(() => {
@@ -208,9 +249,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 		if (focusRequest.field === "tags") {
 			/* A short preview keeps the tag row behind Details: an edit command
 			 * must reveal the field it is about, not aim at an unmounted node. */
-			setDetailsOpen(true);
-			tagsRef.current?.scrollIntoView({ block: "center" });
-			setTagEditSignal((signal) => signal + 1);
+			requestTagEdit();
 		} else {
 			nameRef.current?.scrollIntoView({ block: "center" });
 			setNameEditSignal((signal) => signal + 1);
@@ -378,11 +417,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 							asset={asset}
 							onAsk={onAsk}
 							onEditMetadata={() => setNameEditSignal((signal) => signal + 1)}
-							onEditTags={() => {
-								setDetailsOpen(true);
-								tagsRef.current?.scrollIntoView({ block: "center" });
-								setTagEditSignal((signal) => signal + 1);
-							}}
+							onEditTags={requestTagEdit}
 							onToggleFavorite={onToggleFavorite}
 							onOpenConversation={onOpenConversation}
 							onFilterSession={onFilterSession}
