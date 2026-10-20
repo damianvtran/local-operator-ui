@@ -150,5 +150,11 @@
 	"ui.library.composer.message_sent_link_failed": "Message sent. The chat link failed.",
 	"ui.library.composer.retry_link": "Retry link",
 	"ui.library.preview.pptx_text": "Text",
-	"ui.library.preview.pptx_no_text": "This slide has no extractable text."
+	"ui.library.preview.pptx_no_text": "This slide has no extractable text.",
+	"ui.library.time.just_now": "just now",
+	"ui.library.time.minutes_m_ago": "{minutes, plural, one {{minutes, number, ::group-off}m ago} other {{minutes, number, ::group-off}m ago}}",
+	"ui.library.time.hours_h_ago": "{hours, plural, one {{hours, number, ::group-off}h ago} other {{hours, number, ::group-off}h ago}}",
+	"ui.library.time.days_d_ago": "{days, plural, one {{days, number, ::group-off}d ago} other {{days, number, ::group-off}d ago}}",
+	"ui.library.time.months_mo_ago": "{months, plural, one {{months, number, ::group-off}mo ago} other {{months, number, ::group-off}mo ago}}",
+	"ui.library.time.years_y_ago": "{years, plural, one {{years, number, ::group-off}y ago} other {{years, number, ::group-off}y ago}}"
 }

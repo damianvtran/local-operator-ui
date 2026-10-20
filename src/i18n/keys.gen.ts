@@ -83,7 +83,9 @@ import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
 import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
+import esUiAgentMessagesSettings from "./catalogues/es/ui.agentMessages.settings.json";
 import esUiAgentsDialogs from "./catalogues/es/ui.agents.dialogs.json";
+import esUiAgents from "./catalogues/es/ui.agents.json";
 import esUiAgentsModels from "./catalogues/es/ui.agents.models.json";
 import esUiAgentsNavigation from "./catalogues/es/ui.agents.navigation.json";
 import esUiAgentsRefusals from "./catalogues/es/ui.agents.refusals.json";
@@ -100,6 +102,7 @@ import esUiChat from "./catalogues/es/ui.chat.json";
 import esUiChatResponseActions from "./catalogues/es/ui.chat.response_actions.json";
 import esUiChatSidebarView from "./catalogues/es/ui.chat.sidebar_view.json";
 import esUiChatTags from "./catalogues/es/ui.chat.tags.json";
+import esUiChatTranscriptCopy from "./catalogues/es/ui.chat.transcript_copy.json";
 import esUiCodeReview from "./catalogues/es/ui.code_review.json";
 import esUiCommandPalette from "./catalogues/es/ui.command_palette.json";
 import esUiCommonAccount from "./catalogues/es/ui.common.account.json";
@@ -116,8 +119,10 @@ import esUiHubComments from "./catalogues/es/ui.hub.comments.json";
 import esUiHub from "./catalogues/es/ui.hub.json";
 import esUiHubTaxonomy from "./catalogues/es/ui.hub.taxonomy.json";
 import esUiInstaller from "./catalogues/es/ui.installer.json";
+import esUiLibrary from "./catalogues/es/ui.library.json";
 import esUiMesh from "./catalogues/es/ui.mesh.json";
 import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
+import esUiPresence from "./catalogues/es/ui.presence.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
 import esUiProviders from "./catalogues/es/ui.providers.json";
 import esUiSchedules from "./catalogues/es/ui.schedules.json";
@@ -137,8 +142,11 @@ import esUiSettingsSpeech from "./catalogues/es/ui.settings.speech.json";
 import esUiSettingsUpdates from "./catalogues/es/ui.settings.updates.json";
 import esUiShell from "./catalogues/es/ui.shell.json";
 import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
+import esUiTeamBridge from "./catalogues/es/ui.teamBridge.json";
 import frUiAgentMessages from "./catalogues/fr/ui.agentMessages.json";
+import frUiAgentMessagesSettings from "./catalogues/fr/ui.agentMessages.settings.json";
 import frUiAgentsDialogs from "./catalogues/fr/ui.agents.dialogs.json";
+import frUiAgents from "./catalogues/fr/ui.agents.json";
 import frUiAgentsModels from "./catalogues/fr/ui.agents.models.json";
 import frUiAgentsNavigation from "./catalogues/fr/ui.agents.navigation.json";
 import frUiAgentsRefusals from "./catalogues/fr/ui.agents.refusals.json";
@@ -155,6 +163,7 @@ import frUiChat from "./catalogues/fr/ui.chat.json";
 import frUiChatResponseActions from "./catalogues/fr/ui.chat.response_actions.json";
 import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
 import frUiChatTags from "./catalogues/fr/ui.chat.tags.json";
+import frUiChatTranscriptCopy from "./catalogues/fr/ui.chat.transcript_copy.json";
 import frUiCodeReview from "./catalogues/fr/ui.code_review.json";
 import frUiCommandPalette from "./catalogues/fr/ui.command_palette.json";
 import frUiCommonAccount from "./catalogues/fr/ui.common.account.json";
@@ -171,8 +180,10 @@ import frUiHubComments from "./catalogues/fr/ui.hub.comments.json";
 import frUiHub from "./catalogues/fr/ui.hub.json";
 import frUiHubTaxonomy from "./catalogues/fr/ui.hub.taxonomy.json";
 import frUiInstaller from "./catalogues/fr/ui.installer.json";
+import frUiLibrary from "./catalogues/fr/ui.library.json";
 import frUiMesh from "./catalogues/fr/ui.mesh.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
+import frUiPresence from "./catalogues/fr/ui.presence.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
 import frUiProviders from "./catalogues/fr/ui.providers.json";
 import frUiSchedules from "./catalogues/fr/ui.schedules.json";
@@ -192,6 +203,7 @@ import frUiSettingsSpeech from "./catalogues/fr/ui.settings.speech.json";
 import frUiSettingsUpdates from "./catalogues/fr/ui.settings.updates.json";
 import frUiShell from "./catalogues/fr/ui.shell.json";
 import frUiShellRail from "./catalogues/fr/ui.shell.rail.json";
+import frUiTeamBridge from "./catalogues/fr/ui.teamBridge.json";
 import hiUiAgentMessages from "./catalogues/hi/ui.agentMessages.json";
 import hiUiAgentMessagesSettings from "./catalogues/hi/ui.agentMessages.settings.json";
 import hiUiAgentsDialogs from "./catalogues/hi/ui.agents.dialogs.json";
@@ -419,6 +431,7 @@ import viUiSettingsUpdates from "./catalogues/vi/ui.settings.updates.json";
 import viUiShell from "./catalogues/vi/ui.shell.json";
 import viUiShellRail from "./catalogues/vi/ui.shell.rail.json";
 import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
+import zhCNUiAgentMessagesSettings from "./catalogues/zh-CN/ui.agentMessages.settings.json";
 import zhCNUiAgentsDialogs from "./catalogues/zh-CN/ui.agents.dialogs.json";
 import zhCNUiAgents from "./catalogues/zh-CN/ui.agents.json";
 import zhCNUiAgentsModels from "./catalogues/zh-CN/ui.agents.models.json";
@@ -437,6 +450,7 @@ import zhCNUiChat from "./catalogues/zh-CN/ui.chat.json";
 import zhCNUiChatResponseActions from "./catalogues/zh-CN/ui.chat.response_actions.json";
 import zhCNUiChatSidebarView from "./catalogues/zh-CN/ui.chat.sidebar_view.json";
 import zhCNUiChatTags from "./catalogues/zh-CN/ui.chat.tags.json";
+import zhCNUiChatTranscriptCopy from "./catalogues/zh-CN/ui.chat.transcript_copy.json";
 import zhCNUiCodeReview from "./catalogues/zh-CN/ui.code_review.json";
 import zhCNUiCommandPalette from "./catalogues/zh-CN/ui.command_palette.json";
 import zhCNUiCommonAccount from "./catalogues/zh-CN/ui.common.account.json";
@@ -453,8 +467,10 @@ import zhCNUiHubComments from "./catalogues/zh-CN/ui.hub.comments.json";
 import zhCNUiHub from "./catalogues/zh-CN/ui.hub.json";
 import zhCNUiHubTaxonomy from "./catalogues/zh-CN/ui.hub.taxonomy.json";
 import zhCNUiInstaller from "./catalogues/zh-CN/ui.installer.json";
+import zhCNUiLibrary from "./catalogues/zh-CN/ui.library.json";
 import zhCNUiMesh from "./catalogues/zh-CN/ui.mesh.json";
 import zhCNUiOnboarding from "./catalogues/zh-CN/ui.onboarding.json";
+import zhCNUiPresence from "./catalogues/zh-CN/ui.presence.json";
 import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
 import zhCNUiProviders from "./catalogues/zh-CN/ui.providers.json";
 import zhCNUiSchedules from "./catalogues/zh-CN/ui.schedules.json";
@@ -474,6 +490,7 @@ import zhCNUiSettingsSpeech from "./catalogues/zh-CN/ui.settings.speech.json";
 import zhCNUiSettingsUpdates from "./catalogues/zh-CN/ui.settings.updates.json";
 import zhCNUiShell from "./catalogues/zh-CN/ui.shell.json";
 import zhCNUiShellRail from "./catalogues/zh-CN/ui.shell.rail.json";
+import zhCNUiTeamBridge from "./catalogues/zh-CN/ui.teamBridge.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
@@ -547,7 +564,9 @@ export const bundledCatalogues: Readonly<
 	en: bundledEnglish,
 	es: {
 		...esUiAgentMessages,
+		...esUiAgentMessagesSettings,
 		...esUiAgentsDialogs,
+		...esUiAgents,
 		...esUiAgentsModels,
 		...esUiAgentsNavigation,
 		...esUiAgentsRefusals,
@@ -564,6 +583,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatResponseActions,
 		...esUiChatSidebarView,
 		...esUiChatTags,
+		...esUiChatTranscriptCopy,
 		...esUiCodeReview,
 		...esUiCommandPalette,
 		...esUiCommonAccount,
@@ -580,8 +600,10 @@ export const bundledCatalogues: Readonly<
 		...esUiHub,
 		...esUiHubTaxonomy,
 		...esUiInstaller,
+		...esUiLibrary,
 		...esUiMesh,
 		...esUiOnboarding,
+		...esUiPresence,
 		...esUiProjects,
 		...esUiProviders,
 		...esUiSchedules,
@@ -601,10 +623,13 @@ export const bundledCatalogues: Readonly<
 		...esUiSettingsUpdates,
 		...esUiShell,
 		...esUiShellRail,
+		...esUiTeamBridge,
 	},
 	fr: {
 		...frUiAgentMessages,
+		...frUiAgentMessagesSettings,
 		...frUiAgentsDialogs,
+		...frUiAgents,
 		...frUiAgentsModels,
 		...frUiAgentsNavigation,
 		...frUiAgentsRefusals,
@@ -621,6 +646,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatResponseActions,
 		...frUiChatSidebarView,
 		...frUiChatTags,
+		...frUiChatTranscriptCopy,
 		...frUiCodeReview,
 		...frUiCommandPalette,
 		...frUiCommonAccount,
@@ -637,8 +663,10 @@ export const bundledCatalogues: Readonly<
 		...frUiHub,
 		...frUiHubTaxonomy,
 		...frUiInstaller,
+		...frUiLibrary,
 		...frUiMesh,
 		...frUiOnboarding,
+		...frUiPresence,
 		...frUiProjects,
 		...frUiProviders,
 		...frUiSchedules,
@@ -658,6 +686,7 @@ export const bundledCatalogues: Readonly<
 		...frUiSettingsUpdates,
 		...frUiShell,
 		...frUiShellRail,
+		...frUiTeamBridge,
 	},
 	hi: {
 		...hiUiAgentMessages,
@@ -895,6 +924,7 @@ export const bundledCatalogues: Readonly<
 	},
 	"zh-CN": {
 		...zhCNUiAgentMessages,
+		...zhCNUiAgentMessagesSettings,
 		...zhCNUiAgentsDialogs,
 		...zhCNUiAgents,
 		...zhCNUiAgentsModels,
@@ -913,6 +943,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatResponseActions,
 		...zhCNUiChatSidebarView,
 		...zhCNUiChatTags,
+		...zhCNUiChatTranscriptCopy,
 		...zhCNUiCodeReview,
 		...zhCNUiCommandPalette,
 		...zhCNUiCommonAccount,
@@ -929,8 +960,10 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiHub,
 		...zhCNUiHubTaxonomy,
 		...zhCNUiInstaller,
+		...zhCNUiLibrary,
 		...zhCNUiMesh,
 		...zhCNUiOnboarding,
+		...zhCNUiPresence,
 		...zhCNUiProjects,
 		...zhCNUiProviders,
 		...zhCNUiSchedules,
@@ -950,6 +983,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiSettingsUpdates,
 		...zhCNUiShell,
 		...zhCNUiShellRail,
+		...zhCNUiTeamBridge,
 	},
 };
 
@@ -2661,6 +2695,12 @@ export type MessageParams = {
 	"ui.library.status.favorites": undefined;
 	"ui.library.status.highlighted": undefined;
 	"ui.library.status.unorganized": undefined;
+	"ui.library.time.days_d_ago": { days: number };
+	"ui.library.time.hours_h_ago": { hours: number };
+	"ui.library.time.just_now": undefined;
+	"ui.library.time.minutes_m_ago": { minutes: number };
+	"ui.library.time.months_mo_ago": { months: number };
+	"ui.library.time.years_y_ago": { years: number };
 	"ui.mesh.approval.approved_apply_hint": undefined;
 	"ui.mesh.approval.approved_details_missing": undefined;
 	"ui.mesh.approval.approved_pending_apply": undefined;
