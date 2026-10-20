@@ -45,29 +45,43 @@ on:
 #
 # `cancel-in-progress` is here so that a force-push or a follow-up commit does
 # not leave a runner working on a head nobody is waiting for. That is a
-# statement about the COMMIT, so it must key on the events that produce a new
+# statement about the COMMIT, so it is keyed on the events that produce a new
 # commit: `push` (only `main` reaches this workflow's push list) and
 # `pull_request`/`synchronize`. Everything else that can start a run on an
-# already-running ref - `opened`, `reopened`, `workflow_dispatch` - must not
-# cancel a run that is already executing the code under review.
+# already-running ref - `opened`, `reopened`, `workflow_dispatch` - cannot
+# cancel an IN-PROGRESS run. (A newly queued run still evicts a PENDING run in
+# the same group whatever `cancel-in-progress` says; that is a queue slot, not
+# a running suite, and it is a property of grouping rather than of this flag.)
+#
+# CHANGE THESE TWO LINES TOGETHER. The `push` arm below is safe only because
+# `github.sha` in the group gives every `main` commit its own group; with a
+# shared `main` group it would CANCEL the run already building, which is worse
+# than the eviction it replaced. Reverting only `group:` restores eviction;
+# reverting only `cancel-in-progress:` restores cancellation on `opened` and
+# `reopened`. The group fixes eviction, the event condition fixes non-head
+# cancellation, and neither is a substitute for the other.
+#
+# A non-head event that arrives during a run queues a SECOND full run of the
+# same head, which executes after the first finishes. That duplicate is
+# expected, not a bug: do not widen the event condition to suppress it.
 #
 # MEASURED ON 2026-10-20, because this block was blamed for the wrong thing
 # and the wrong fix was nearly landed twice. Three `Desktop Tests` runs on the
 # `feat/i18n-envelope-render` head concluded `cancelled` (39489336612,
 # 39489768296, 39491353371) and were read as "concurrency kills every long
 # run". Two of them were superseded by a genuinely newer head (20:10:53 by
-# 39489768296, 20:22:03 by 39491353371) - that is the designed behaviour. The
-# third never was superseded by anything: its job annotation reads
+# 39489768296, 20:22:03 by 39491353371) - the designed behaviour. The third
+# never was: that run was re-attempted three times and EVERY attempt's job
+# carries the annotation
 #
 #   The job has exceeded the maximum execution time of 50m0s
 #
-# i.e. the JOB TIMEOUT fired after 50 minutes of EXECUTION (started 22:30:32,
-# annotation at +50m, concluded 23:25:33 after the runner's cancellation
-# grace). Queue time does not count toward `timeout-minutes`, so a 55-minute
-# wall clock is not evidence that the ceiling did not fire. Read the closest
-# job annotation before diagnosing a `cancelled` conclusion as a concurrency
-# event: `cancelled` is ALSO how GitHub reports a job that exceeded
-# `timeout-minutes`.
+# (20:38:18->21:33:18, 21:35:07->22:30:07, 22:30:32->23:25:33 - 55:00, 55:00,
+# 55:01 against a 50-minute ceiling). The JOB TIMEOUT fired three times; the
+# extra five minutes each time are the runner's cancellation grace, not queue
+# time. Read the closest job annotation before diagnosing a `cancelled`
+# conclusion as a concurrency event: `cancelled` is ALSO how GitHub reports a
+# job that exceeded `timeout-minutes`.
 #
 # What that means for the next reader: if `Desktop Tests` fails to finish, the
 # question is "does the suite fit its ceiling", not "who cancelled it". Do not
@@ -76,12 +90,24 @@ on:
 #
 # `github.sha` for `main`: a push to `main` is the CI record for that merge
 # commit, and it must never be evicted. A shared per-ref group permits one run
-# in progress and ONE pending one; a third cancels the pending one. Observed
-# here on 2026-10-20: run 39510898400 (`push` to `main`) concluded `cancelled`
-# with every job cancelled before it started - a merged commit with no CI
-# record. Giving every `main` commit its own group removes the eviction
-# entirely. This mirrors the identical fix already carried in the backend
-# repository's `ci.yml`, which records the same failure and the same reasoning.
+# in progress and ONE pending one; a third cancels the pending one. Measured
+# here on 2026-10-20: five `push`-to-`main` runs were cancelled with ZERO jobs
+# ever created (39478148883, 39484455334, 39485359664, 39497368882,
+# 39510898400), each one's cancellation instant equal to the next `main` run's
+# creation instant - five merged commits with no CI record in one afternoon.
+# Giving every `main` commit its own group removes the eviction entirely.
+#
+# THE COST, stated so it is not rediscovered as a latency bug: `main` runs are
+# no longer serialized, so N merges now start N full job sets at once. The
+# trade is deliberate - the alternative is losing a merge's CI record - and the
+# saturation figures at the top of this file (26-28 runs in flight, 53-118 jobs
+# queued, median pending age 25.8 minutes) are the reason to answer a latency
+# complaint with sharding or a queue, never by re-sharing this group.
+#
+# The group key is identical to the one the backend repository carries in its
+# own `ci.yml` (6f8cae2e35). The event narrowing has no backend counterpart:
+# that file still runs `cancel-in-progress: true`, so `opened` and `reopened`
+# do cancel there. "Aligning with the backend" must not erase the second half.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.ref == 'refs/heads/main' && github.sha || 'shared' }}
   cancel-in-progress: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action == 'synchronize') }}
