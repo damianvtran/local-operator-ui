@@ -17,6 +17,8 @@ import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { Tooltip } from "@shared/components/ui";
 import { useEverInView } from "@shared/hooks/use-ever-in-view";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	Archive,
@@ -349,6 +351,7 @@ const FileRowItemComponent = ({
 	onOpen,
 	buttonRef,
 }: FileRowItemProps) => {
+	useI18nLocale();
 	const { document } = row;
 	/*
 	 * The full path, not the name. The name is already on the row, and where two
@@ -475,7 +478,7 @@ const FileRowItemComponent = ({
 					 */}
 					{row.missing ? (
 						<span className={cn("shrink-0 text-meta text-ink-dim")}>
-							No longer on disk
+							{t("ui.canvas.files.missing")}
 						</span>
 					) : row.size ? (
 						<span
@@ -530,14 +533,14 @@ const FileRowItemComponent = ({
 								)
 							}
 							onShowInCanvas={() => onOpen(document)}
-							tooltip="File actions"
-							aria-label="File actions"
+							tooltip={t("ui.canvas.files.fileActions")}
+							aria-label={t("ui.canvas.files.fileActions")}
 						/>
 					) : (
 						<FileActionsMenu
 							filePath={stripFileUrl(document.path)}
-							tooltip="File actions"
-							aria-label="File actions"
+							tooltip={t("ui.canvas.files.fileActions")}
+							aria-label={t("ui.canvas.files.fileActions")}
 							onShowInCanvas={() => onOpen(document)}
 						/>
 					)}
