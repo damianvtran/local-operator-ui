@@ -2458,10 +2458,28 @@ html[data-glass~="pane"]
 	main[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
 	[data-glass-plane="band-backdrop"] {
+	/*
+	 * THE `1` IS A FALLBACK, and it is the OPAQUE end on purpose.
+	 *
+	 * A bare `var(--lo-glass-a-band-floor)` that is missing would make this
+	 * declaration invalid at computed-value time, and `background-color` would
+	 * fall back to its initial `transparent` - the class `bg-surface` does not
+	 * re-enter the cascade once an unlayered rule has claimed the property. The
+	 * band would then be a hole that hides nothing, which is the defect this
+	 * rule exists for, in reverse. With the fallback the worst case is an
+	 * opaque band: the material is lost, the content is still isolated.
+	 *
+	 * (Measured: with the property removed at runtime the band paints
+	 * `rgba(0,0,0,0)` and the content's edge energy into it jumps from 0.098 to
+	 * 0.428. That is the failure this fallback removes.)
+	 */
 	background-color: color-mix(
 		in srgb,
 		var(--lo-elevated)
-			calc(max(var(--lo-glass-a-elevated), var(--lo-glass-a-band-floor)) * 100%),
+			calc(
+				max(var(--lo-glass-a-elevated), var(--lo-glass-a-band-floor, 1)) *
+				100%
+			),
 		transparent
 	);
 	backdrop-filter: blur(12px);

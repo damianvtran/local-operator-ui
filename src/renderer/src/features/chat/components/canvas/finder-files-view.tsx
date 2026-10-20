@@ -836,11 +836,26 @@ export function FinderFilesView({
 											 * (`features/projects/components/team-section-header.tsx`:
 											 * the label in `text-ink`, the count in the quieter
 											 * `text-ink-muted` beside it), so this is the same
-											 * grammar the rest of the app speaks - and it clears the
-											 * floor on the band at every intensity: 6.56:1 in the
-											 * light theme over the worst backdrop, 4.81:1 in the
-											 * dark theme over a white thumbnail, against 6.29:1 and
-											 * 5.26:1 on the pane's own ground.
+											 * grammar the rest of the app speaks.
+											 *
+											 * THE NUMBERS, and which ones are which. Two different
+											 * measurements are easy to conflate here:
+											 *
+											 *   - THE MODEL, over every palette at the committed
+											 *     floor: the tightest is 4.51:1 light and 4.52:1
+											 *     dark, and the two default themes sit at 5.18:1
+											 *     and 5.46:1. That is the guarantee, and it is what
+											 *     `scripts/contrast-contract.mjs` asserts.
+											 *   - THE FRAMES, on the seeded grid with a thumbnail
+											 *     under the band: 6.78-7.86:1 dark and 6.29-8.26:1
+											 *     light, across 80%, 100%, 0% and glass-off. That
+											 *     is what the evidence directory records.
+											 *
+											 * An earlier version of this comment quoted 6.56 and
+											 * 4.81, which reproduce at neither: they are a 0.87
+											 * alpha applied to both schemes, and 4.81 is below
+											 * what the shipped model actually measures. The
+											 * numbers above are the ones to quote.
 											 */
 											className={cn("text-meta text-ink-muted")}
 										>

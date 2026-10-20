@@ -22,9 +22,22 @@
  *   - the header band the arithmetic clears is the SAME band the layout
  *     reserves, which is the one thing that makes the two numbers agree.
  *
- * The arithmetic is exercised through the shipped constants and a
- * re-implementation of the two-line assignment, so the test fails if EITHER
- * the constants or the expression changes without the other following.
+ * WHAT THIS DOES AND DOES NOT BIND, stated narrowly because an earlier
+ * version of this comment claimed more than the code does:
+ *
+ *   - IT LOCKS THE CONSTANTS. `FINDER_HEADER_BAND` and `FOCUS_RING_GAP` are
+ *     imported from the shipped module, and the last two tests pin their
+ *     values, so changing either without revisiting the reveal is caught.
+ *   - IT LOCKS THE ARITHMETIC'S SHAPE - the two properties the component
+ *     must not lose: an upward reveal clears the header by the band plus the
+ *     ring's gap, a downward reveal anchors the band's bottom to the
+ *     scrollport's bottom, and a clamp never goes negative.
+ *   - IT DOES NOT BIND THE COMPONENT'S OWN EXPRESSION. The four lines are
+ *     re-written here rather than imported, so editing
+ *     `finder-files-view.tsx`'s assignment would not fail this file. That
+ *     expression is verified where it actually runs: `measure-reveal-landing.mjs`
+ *     drives the app's own keyboard navigation and reads the landing
+ *     (188 = headerBottom 184 + 4, recorded in reveal-after.json).
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -39,9 +52,9 @@ import {
  *
  * It is duplicated here on purpose: a test that called the component's
  * internal closure would need a DOM, a router, a bridge and a full list
- * layout to observe four lines of arithmetic. The duplication is four lines,
- * and it is the SHAPE that is under test - the two properties the component
- * must not lose - not the syntax.
+ * layout to observe four lines of arithmetic. The duplication is the price
+ * of that, and it is why the header above says plainly that the component's
+ * own expression is not what this file binds.
  */
 const revealScrollTop = ({ bandTop, bandHeight, scrollTop, clientHeight }) => {
 	if (bandTop < scrollTop)
@@ -124,6 +137,34 @@ test("a band already visible is not scrolled at all", () => {
 		landed,
 		scrollTop,
 		"a visible band must not move the reading position",
+	);
+});
+
+test("the first item's band is clear of the header, and the clamp is not a second hiding", () => {
+	/*
+	 * THE EDGE THIS CHANGE CREATES. `layoutFinder` puts the first section's
+	 * header at band 0 and its first ITEM at band 32, so the smallest item
+	 * `band.top` that exists is 32 - the header's own height. Revealing it
+	 * wants `scrollTop = 32 - 32 - 4 = -4`, which the clamp turns into 0.
+	 *
+	 * The result is the first item flush under the header with 4px of its
+	 * ring clipped, and that is UNAVOIDABLE: there is no scroll room above
+	 * the first item, so no reveal can put it lower. What must NOT happen is
+	 * the row itself ending up under the header, and it does not - its top is
+	 * exactly at the header's bottom edge.
+	 */
+	const landed = revealScrollTop({
+		bandTop: FINDER_HEADER_BAND,
+		bandHeight: 158,
+		scrollTop: 900,
+		clientHeight: 748,
+	});
+
+	assert.equal(landed, 0, "the first item's reveal clamps to the top");
+	assert.equal(
+		FINDER_HEADER_BAND - landed,
+		FINDER_HEADER_BAND,
+		"the first item's top sits at the header's bottom edge, never above it",
 	);
 });
 
