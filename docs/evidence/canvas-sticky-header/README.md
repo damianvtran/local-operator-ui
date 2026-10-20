@@ -155,10 +155,16 @@ Measured off the new frames, in the count's own 167–195 column run:
 | light, 80% | `(77,73,65)` | `(230,230,218)` | **7.12:1** |
 | light, 100% | `(77,73,65)` | `(215,218,200)` | **6.29:1** |
 | light, 0% | `(77,73,65)` | `(246,246,241)` | **8.26:1** |
-| light, off | `(33,30,25)` | `(247,245,239)` | **15.23:1** |
+| light, off | `(77,73,65)` | `(247,245,239)` | **8.21:1** |
 
 Every frame clears 4.5:1. The light theme at 100% — the worst case the design
 round found — went from 2.50:1 to 6.29:1.
+
+(The `light, off` row read 15.23:1 in an earlier version of this table. That
+was a sampling error: on the fully opaque ground the window picked the label's
+`ink` rather than the count's `ink-muted`. The design round and QA both
+measured 8.21:1 for that frame independently, and the row above is their
+number. The count is the same ink in every row; only the ground moves.)
 
 ### The Library's header: measured, and deliberately NOT a band
 
