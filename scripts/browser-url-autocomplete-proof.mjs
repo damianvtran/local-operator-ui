@@ -38,6 +38,8 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { withMockKeychain } from "./chrome-keychain.mjs";
+import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const ROOT = resolve(process.cwd());
 const OUT = resolve(
@@ -144,16 +146,16 @@ function freePort() {
 }
 const CDP_PORT = await freePort();
 
-const env = {
-	...process.env,
-	HOME: HOME_DIR,
-	LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
-	LOCAL_OPERATOR_LOG_DIR: LOG_DIR,
-	LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
-	VITE_DISABLE_BACKEND_MANAGER: "true",
-	LOCAL_OPERATOR_UI_TELEMETRY: "off",
-	LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
-};
+const env = withTelemetryOff(
+	withNotificationsOff({
+		...process.env,
+		HOME: HOME_DIR,
+		LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
+		LOCAL_OPERATOR_LOG_DIR: LOG_DIR,
+		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
+		VITE_DISABLE_BACKEND_MANAGER: "true",
+	}),
+);
 for (const key of Object.keys(env)) {
 	if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 }
