@@ -1545,13 +1545,30 @@ test("the component draws the band's controls and the popover's four groups", ()
 			source.includes('navigate("/agents?create=team")'),
 		"the create menu is not wired to the two existing authoring flows",
 	);
-	assert.ok(
-		source.includes('aria-label="Search chats and agents"'),
-		"the band's search control has no accessible name",
+	/*
+	 * Both names are catalogue messages now: the anchor is the key the control
+	 * renders, and the copy beside it is what a screen reader announces.
+	 */
+	const sidebarCopy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.sidebar.json", "utf8"),
 	);
 	assert.ok(
-		source.includes('aria-label="Open agent…"'),
+		source.includes('aria-label={t("ui.chat.sidebar.header.search")}'),
+		"the band's search control has no accessible name",
+	);
+	assert.equal(
+		sidebarCopy["ui.chat.sidebar.header.search"],
+		"Search chats and agents",
+		"the band's search control announces a different message",
+	);
+	assert.ok(
+		source.includes('aria-label={t("ui.chat.sidebar.header.open_agent")}'),
 		"the band's agent jump has no accessible name",
+	);
+	assert.equal(
+		sidebarCopy["ui.chat.sidebar.header.open_agent"],
+		"Open agent…",
+		"the band's agent jump announces a different message",
 	);
 });
 
