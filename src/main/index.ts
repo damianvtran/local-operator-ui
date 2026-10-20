@@ -2455,10 +2455,10 @@ app
 					logger.warn(`${message}: ${String(error)}`, LogFileType.BACKEND),
 			),
 			host: {
-				sendOpen: (target) => {
+				signalOpen: () => {
 					const window = mainWindow;
 					if (window && !window.isDestroyed()) {
-						window.webContents.send("team-bridge:open", target);
+						window.webContents.send("team-bridge:open");
 					}
 				},
 				reopen: () => app.emit("activate"),

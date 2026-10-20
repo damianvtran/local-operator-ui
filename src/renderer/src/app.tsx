@@ -474,22 +474,26 @@ const App: FC = () => {
 	 * the gate is open the route is the app's existing navigation path; the page
 	 * consumes the two parameters once and clears them.
 	 *
-	 * `pendingOpen` is the windowless half: a banner clicked after every window
-	 * closed asks main to recreate one, and the target waits for this mount.
-	 * Reading it is one-shot, so a normal launch pays one cheap IPC call and
-	 * nothing else.
+	 * THE WAKE-UP CARRIES NO PAYLOAD. Main parks the target and sends a signal;
+	 * this effect PULLS the target, on mount and on every signal. That is what
+	 * makes a click into a loading or reloading renderer survive: if the signal is
+	 * dropped, the target is still in main, and the mount pull claims it. The pull
+	 * is one-shot, so a normal launch pays one cheap IPC call and nothing else.
 	 */
 	const [teamBridgeTarget, setTeamBridgeTarget] =
 		useState<TeamBridgeOpenTarget | null>(null);
 	useEffect(() => {
 		const bridge = window.api?.desktop?.teamBridge;
-		const unsubscribe = bridge?.onOpen?.(setTeamBridgeTarget);
-		void bridge
-			?.pendingOpen?.()
-			.then((target) => {
-				if (target) setTeamBridgeTarget(target);
-			})
-			.catch(() => undefined);
+		const pull = () => {
+			void bridge
+				?.pendingOpen?.()
+				.then((target) => {
+					if (target) setTeamBridgeTarget(target);
+				})
+				.catch(() => undefined);
+		};
+		const unsubscribe = bridge?.onOpen?.(pull);
+		pull();
 		return () => unsubscribe?.();
 	}, []);
 	useEffect(() => {

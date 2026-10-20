@@ -166,6 +166,12 @@ export function useTeamBridgeUnread(
 		 * refresh; the sidebar and page pass nothing and keep the quiet cadence.
 		 */
 		refetchInterval?: number;
+		/**
+		 * Keep the interval running while the window is hidden. The notification
+		 * watcher sets this: a minimised or occluded window is exactly when a
+		 * banner is useful, and main owns the quiet decision.
+		 */
+		refetchIntervalInBackground?: boolean;
 	} = {},
 ): UseQueryResult<TeamBridgeUnread> {
 	return useQuery({
@@ -174,6 +180,7 @@ export function useTeamBridgeUnread(
 		enabled,
 		staleTime: 30_000,
 		refetchInterval: options.refetchInterval ?? badgeInterval(),
+		refetchIntervalInBackground: options.refetchIntervalInBackground,
 		refetchOnWindowFocus: true,
 		// A failed badge read is not an error the user can act on; the next poll
 		// is the retry. The page shows its own error state for the list.

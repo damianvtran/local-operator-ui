@@ -131,15 +131,15 @@ const api = {
 		/**
 		 * Team Bridge banners: the renderer composes the two display strings from
 		 * conversation metadata; main validates, dedupes and delivers them. A click
-		 * comes back through `onOpen`, and `pendingOpen` is the one-shot read for a
-		 * click that found no window and recreated one.
+		 * wakes `onOpen`, which carries no payload: the target stays parked in main
+		 * until the renderer pulls it via `pendingOpen`, so a click that lands while
+		 * the renderer is loading is delivered on the next pull rather than dropped.
 		 */
 		teamBridge: {
 			notify: (input: TeamBridgeNotifyRequest): Promise<{ shown: boolean }> =>
 				ipcRenderer.invoke("team-bridge:notify", input),
-			onOpen: (callback: (target: TeamBridgeOpenTarget) => void) => {
-				const handler = (_event: unknown, payload: TeamBridgeOpenTarget) =>
-					callback(payload);
+			onOpen: (callback: () => void) => {
+				const handler = () => callback();
 				ipcRenderer.on("team-bridge:open", handler);
 				return () => {
 					ipcRenderer.removeListener("team-bridge:open", handler);

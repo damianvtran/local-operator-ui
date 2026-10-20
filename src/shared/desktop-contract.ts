@@ -6278,12 +6278,13 @@ export type DesktopAPI = {
 	 * the watcher must simply not exist there.
 	 *
 	 * `notify` is the renderer's composed display strings + the seq they belong
-	 * to; main validates and dedupes. `onOpen` is the click; `pendingOpen` is
-	 * the one-shot read a freshly created window uses after a windowless click.
+	 * to; main validates and dedupes. `onOpen` is a payload-free wake-up: the
+	 * target stays parked in main until `pendingOpen` pulls it, so a click into a
+	 * loading or reloading renderer is not lost.
 	 */
 	teamBridge?: {
 		notify: (input: TeamBridgeNotifyRequest) => Promise<{ shown: boolean }>;
-		onOpen: (callback: (target: TeamBridgeOpenTarget) => void) => () => void;
+		onOpen: (callback: () => void) => () => void;
 		pendingOpen: () => Promise<TeamBridgeOpenTarget | null>;
 	};
 	/** Notification click -> open this conversation. Never answers a gate. */
