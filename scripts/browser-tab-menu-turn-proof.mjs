@@ -23,8 +23,12 @@
  *        node scripts/browser-tab-menu-turn-proof.mjs <out-dir>`
  *
  * `LO_PROOF_SESSION` reuses an existing session; `LO_PROOF_CDP_PORT` pins the
- * devtools port. The app is launched `--window-mode=headless`, never shown, and
- * the whole process group is reaped by its exact pid.
+ * devtools port. `LO_PROOF_WIDTH`/`LO_PROOF_HEIGHT` (CSS px, default 1380x900)
+ * and `LO_PROOF_THEME` (`dark`, `light`, or a theme id, default
+ * `localOperatorDark`) run the same scene for the design matrix; the theme is
+ * seeded into the profile's `ui-preferences-storage` before the boot, not
+ * switched after first paint. The app is launched `--window-mode=headless`,
+ * never shown, and the whole process group is reaped by its exact pid.
  *
  * This is a real turn, not a stand-in: the backend's `streaming` read is the
  * claim, and the turn stops in under a second only because it was interrupted
@@ -40,6 +44,17 @@ const OUT = process.argv[2] ?? join("/tmp", "lo-browser-tab-menu-turn");
 const BACKEND = process.env.LO_PROOF_BACKEND ?? "http://127.0.0.1:1131";
 const TOKEN = process.env.LO_PROOF_TOKEN ?? "";
 const SLEEP_SECONDS = 45;
+/* The design matrix runs this same proof at the app's own width and at the
+ * narrow desktop width, in either theme. Widths are CSS px, as the real window. */
+const WIDTH = Number(process.env.LO_PROOF_WIDTH ?? 1380);
+const HEIGHT = Number(process.env.LO_PROOF_HEIGHT ?? 900);
+const THEME = process.env.LO_PROOF_THEME ?? "localOperatorDark";
+const THEME_ID =
+	THEME === "dark"
+		? "localOperatorDark"
+		: THEME === "light"
+			? "localOperatorLight"
+			: THEME;
 
 if (!TOKEN) {
 	console.error(
@@ -49,7 +64,13 @@ if (!TOKEN) {
 }
 
 mkdirSync(OUT, { recursive: true });
-const report = { backend: BACKEND, out: OUT, steps: [] };
+const report = {
+	backend: BACKEND,
+	out: OUT,
+	viewport: { width: WIDTH, height: HEIGHT },
+	theme: THEME_ID,
+	steps: [],
+};
 const record = (step, value) => {
 	report.steps.push({ step, ...value });
 	console.log(`${step}: ${JSON.stringify(value)}`);
@@ -160,7 +181,7 @@ const app = spawn(
 		".",
 		`--remote-debugging-port=${port}`,
 		`--user-data-dir=${USER_DATA}`,
-		"--window-size=1380x900",
+		`--window-size=${WIDTH}x${HEIGHT}`,
 		"--window-mode=headless",
 	],
 	{
@@ -316,8 +337,19 @@ try {
 		"typeof window.api?.browser?.state === 'function' ? 'ready' : ''",
 		"the preload",
 	);
-	await cdp.evaluate(`localStorage.setItem('onboarding-storage', JSON.stringify({
-		state: { isModalComplete: true, isTourComplete: true, currentStep: null }, version: 0 }))`);
+	await cdp.evaluate(`(() => {
+		localStorage.setItem('onboarding-storage', JSON.stringify({
+			state: { isModalComplete: true, isTourComplete: true, currentStep: null }, version: 0,
+		}));
+		// The store's own persisted key and field; seeding it makes the app BOOT
+		// into the theme rather than switching after the first paint.
+		const key = 'ui-preferences-storage';
+		const raw = localStorage.getItem(key);
+		const parsed = raw === null ? { state: {}, version: 2 } : JSON.parse(raw);
+		parsed.state = { ...(parsed.state ?? {}), themeName: ${JSON.stringify(THEME_ID)} };
+		localStorage.setItem(key, JSON.stringify(parsed));
+		return { theme: ${JSON.stringify(THEME_ID)}, viewport: { w: innerWidth, h: innerHeight } };
+	})()`);
 	await cdp.send("Page.reload", {});
 	await sleep(1500);
 	await waitFor(
@@ -433,8 +465,16 @@ try {
 		const transcript = document.querySelector('[data-tour-tag="chat-column"]');
 		const r = stop ? stop.getBoundingClientRect() : null;
 		const hit = r ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
+		const boxOf = (el) => {
+			if (!el) return null;
+			const r = el.getBoundingClientRect();
+			return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
+		};
 		return {
+			window: { w: innerWidth, h: innerHeight, dpr: devicePixelRatio },
 			menu: !!menu,
+			menuBox: boxOf(menu),
+			stopBox: boxOf(stop),
 			bodyPointerEvents: getComputedStyle(document.body).pointerEvents,
 			stopPresent: !!stop,
 			stopHidden: stop ? !!stop.closest('[aria-hidden="true"]') : null,
