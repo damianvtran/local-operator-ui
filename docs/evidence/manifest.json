@@ -10231,6 +10231,18 @@
         "The menu frame shows the Slack-style controls in one open panel: Mute conversation, then the Notification preferences radio group with All messages checked.",
         "These are browser-tool PNGs, not sweep frames: check-evidence counts only palette-named frames in a declared set, so the declared count is zero."
       ]
+    },
+    {
+      "path": "sidebar-tags-v2-2",
+      "frames": 0,
+      "source": "Harness browser-tool screenshots of actual picker/Manage components with synthetic contract bridge.35 PNG captures; derived contact JPGs and designer-supplied before contact sheet are separate, not additional runs. See README and geometry/flow receipts.",
+      "why": [
+        "Entry widths220/260/320 light/dark;0/1/32 registry;8 selected;Unicode;loading and failure;all7localizedCreate;real narrow/short iframes;final inline name validation.",
+        "No theme-named sweep frames: frames=0 under the manifest judgement contract. All non-theme PNG/JPG files remain in unjudged accounting, not hidden from the inventory.",
+        "Native OS/IME/screen-reader and real-core behavior are not proved by synthetic DOM/userEvent stories. Iterative working-source provenance is explicit; no independent review is repinned.",
+        "Round1 narrow Manage afterframe is the35th raw PNG; actual320x568/dialog288x536, footer visible/noXoverflow, usage intrinsic and actions below. See remediation-r1.md."
+      ],
+      "capturedAt": "2026-10-19T15:02:46.859530+00:00"
     }
   ],
   "remediationRecord": {

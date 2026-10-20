@@ -397,7 +397,11 @@ test("save failures are tag-specific, loading errors are not empty registries, a
 			`src/renderer/src/features/chat/components/${file}.tsx`,
 			"utf8",
 		);
-		assert.ok(source.includes('setError(t("ui.chat.tags.save_failed"))'));
+		assert.ok(source.includes('"ui.chat.tags.save_failed"'));
+		if (file === "chat-session-tags-dialog") {
+			assert.ok(source.includes('"ui.chat.tags.create_failed"'));
+			assert.ok(source.includes("isTagsConflict(error)"));
+		}
 		assert.ok(!source.includes("userFacingMessage"));
 	}
 	const sidebar = readFileSync(
