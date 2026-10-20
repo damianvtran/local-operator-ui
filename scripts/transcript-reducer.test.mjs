@@ -265,7 +265,12 @@ test("the turn end stamps whatever it settles, aborted or not", () => {
 	 * for a live path.
 	 */
 	assert.equal(
-		aborted.records[0].kind === "assistant" && aborted.records[0].callsTools,
+		aborted.records[0].kind,
+		"assistant",
+		"the settled row is the assistant stream",
+	);
+	assert.equal(
+		aborted.records[0].callsTools,
 		false,
 		"an aborted stream settles as a final response",
 	);
@@ -280,7 +285,12 @@ test("the turn end stamps whatever it settles, aborted or not", () => {
 		"a clean end that lost its `message_end` settles the same way",
 	);
 	assert.equal(
-		cleanEnd.records[0].kind === "assistant" && cleanEnd.records[0].callsTools,
+		cleanEnd.records[0].kind,
+		"assistant",
+		"and the row is the assistant stream",
+	);
+	assert.equal(
+		cleanEnd.records[0].callsTools,
 		false,
 		"and states the same fact on a clean end",
 	);

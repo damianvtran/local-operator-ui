@@ -324,7 +324,15 @@ const PROBE = `(() => {
 		 */
 		const userActionsEl = scope.querySelector("[data-lo-user-actions]");
 		const userRow = box(userActionsEl);
-		const userBubble = box(
+		/*
+		 * THE BOX IS THE BUBBLE'S ROW, not the bubble node: the user action row
+		 * is a column child again (review round 1, B1), so its previous sibling is
+		 * the 'justify-end' flex row that holds the bubble. The row's right edge is
+		 * the bubble's own ('justify-end' pins the bubble to it), which is why the
+		 * committed numbers in this set are unchanged; the 'bubble' key below keeps
+		 * its name so a re-capture compares like with like.
+		 */
+		const userBubbleRow = box(
 			userActionsEl ? userActionsEl.previousElementSibling : null,
 		);
 		const userActions =
@@ -340,9 +348,9 @@ const PROBE = `(() => {
 						labels: [...userActionsEl.querySelectorAll("button")].map((b) =>
 							(b.getAttribute("aria-label") ?? b.textContent ?? "").trim(),
 						),
-						bubble: userBubble,
-						bubbleDelta: userBubble
-							? round(userBubble.right - userRow.right)
+						bubble: userBubbleRow,
+						bubbleDelta: userBubbleRow
+							? round(userBubbleRow.right - userRow.right)
 							: null,
 					}
 				: null;

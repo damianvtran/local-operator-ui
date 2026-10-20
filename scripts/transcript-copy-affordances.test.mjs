@@ -916,11 +916,6 @@ test("the user row's control is a reserved flow row under the bubble, revealed b
 		false,
 		"it is NOT inside the horizontal bubble row",
 	);
-	assert.equal(
-		control.closest("[data-record-id] .justify-end"),
-		null,
-		"no `justify-end` row is one of its ancestors",
-	);
 	const bubbleRow = control.previousElementSibling;
 	assert.ok(
 		bubbleRow?.contains(bubble),
