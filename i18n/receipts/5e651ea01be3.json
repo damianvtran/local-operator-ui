@@ -1,0 +1,19 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "5e651ea01be3",
+  "reissued_from": "859a20bd9c70",
+  "date": "2026-10-20",
+  "round": 7,
+  "namespace": "ui.hub",
+  "locale": "ur",
+  "status": "clean",
+  "sha256": {
+    "ur": "d033c28b0d95e4dbe7109f455253b57b705fc11f3b60a59164199df7f3310d5b",
+    "en": "281a4058420d135c4dd8767610f6144ab1597fc2fca50e96253bd5846605905f"
+  },
+  "head": "1c3ecb6d52bb7dd0bc7436ea1493cff594dcd007",
+  "keys_audited": 49,
+  "scope": "ui.hub.skills.* — all 49 keys in ur/ui.hub.json read against en/ui.hub.json (full namespace pass). Every plural message parsed and rendered with the repo's intl-messageformat 12.1.3 for counts 0/1/2/3/5/11/21/100/1.5/1000000, and its declared branches compared with Intl.PluralRules('ur') CLDR categories; every placeholder, plural branch and ::group-off skeleton checked per branch. count/count_shared judged at their only call sites (hub-skills-library.tsx:385-392): count is a bare plural concatenated with public_hub, count_shared carries {organization}. Term consistency cross-checked against ui.hub.taxonomy.origin.named and the sibling subscription keys (auto_push, pull, subscri*). Read at head 1c3ecb6d52 (fix(i18n): keep the scope out of the count sentence). For ur specifically: local_path rendered through intl-messageformat 12.1.3 (the FSI/PDI survive formatting: \"\\u2068/alpha/beta\\u2069 پر انسٹال\") and through GNU FriBidi 1.0.16 at RTL base, with a bare-path control; the status line (count · public_hub) and count_shared with a Latin organization name also rendered through FriBidi. Byte-checked that the only format characters in ur/ui.hub.json are the two isolates in local_path, and that the call site (hub-skills-library.tsx:606-615) no longer wraps the path.",
+  "findings": []
+}

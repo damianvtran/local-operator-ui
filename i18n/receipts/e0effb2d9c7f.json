@@ -1,0 +1,38 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "e0effb2d9c7f",
+  "reissued_from": "859a20bd9c70",
+  "date": "2026-10-20",
+  "round": 7,
+  "namespace": "ui.hub",
+  "locale": "fr",
+  "status": "clean-with-findings",
+  "sha256": {
+    "fr": "7cb3b065014f22615f4f791dee0f06678478b89b7bc2ab825319ad413fbcab59",
+    "en": "281a4058420d135c4dd8767610f6144ab1597fc2fca50e96253bd5846605905f"
+  },
+  "head": "1c3ecb6d52bb7dd0bc7436ea1493cff594dcd007",
+  "keys_audited": 49,
+  "scope": "ui.hub.skills.* — all 49 keys in fr/ui.hub.json read against en/ui.hub.json (full namespace pass). Every plural message parsed and rendered with the repo's intl-messageformat 12.1.3 for counts 0/1/2/3/5/11/21/100/1.5/1000000, and its declared branches compared with Intl.PluralRules('fr') CLDR categories; every placeholder, plural branch and ::group-off skeleton checked per branch. count/count_shared judged at their only call sites (hub-skills-library.tsx:385-392): count is a bare plural concatenated with public_hub, count_shared carries {organization}. Term consistency cross-checked against ui.hub.taxonomy.origin.named and the sibling subscription keys (auto_push, pull, subscri*). Read at head 1c3ecb6d52 (fix(i18n): keep the scope out of the count sentence).",
+  "findings": [
+    {
+      "severity": "nit",
+      "type": "message",
+      "key": "ui.hub.skills.file_count",
+      "location": "many branch only",
+      "current": "{count, plural, one {… fichier inclus} many {{count, number, ::group-off} fichiers inclus} other {… fichiers inclus}}",
+      "proposed": "many {{count, number, ::group-off} de fichiers inclus}",
+      "reason": "CLDR fr selects `many` only for exact multiples of a million, where French requires “de” before the noun (“un million de fichiers”); the sibling count/count_shared many branches do carry “de”. Currently unreachable (text_limits caps a skill at 64 files), so latent."
+    },
+    {
+      "severity": "nit",
+      "type": "overflow",
+      "key": "ui.hub.skills.update_now",
+      "location": "dialog footer button, hub-skills-library.tsx:769-782",
+      "current": "Mettre à jour maintenant — 24 chars vs 10 in English (2.4×, the widest ratio in the namespace)",
+      "proposed": "Mettre à jour",
+      "reason": "The target already says an update is available, so “maintenant” adds nothing; the footer is flex-wrap so nothing clips today, but this is the one label that could push the download/unpull pair onto a second line."
+    }
+  ]
+}
