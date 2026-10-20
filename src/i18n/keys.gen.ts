@@ -2582,6 +2582,7 @@ export type MessageParams = {
 	"ui.hub.skills.files": undefined;
 	"ui.hub.skills.initial_policy_description": undefined;
 	"ui.hub.skills.installed_alias": { item: string; source: string };
+	"ui.hub.skills.inventory_unknown": undefined;
 	"ui.hub.skills.loading": undefined;
 	"ui.hub.skills.local_exists": undefined;
 	"ui.hub.skills.local_path": { path: string };

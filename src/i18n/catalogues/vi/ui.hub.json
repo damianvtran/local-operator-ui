@@ -176,5 +176,6 @@
 	"ui.hub.skills.unsubscribe_help": "Dừng các cập nhật sau này. Các tệp đã tải vẫn còn.",
 	"ui.hub.skills.public_hub": "Trung tâm công khai",
 	"ui.hub.skills.count": "{count, plural, other {{count, number, ::group-off} kỹ năng}}",
-	"ui.hub.skills.count_shared": "{count, plural, other {{count, number, ::group-off} kỹ năng được chia sẻ với {organization}}}"
+	"ui.hub.skills.count_shared": "{count, plural, other {{count, number, ::group-off} kỹ năng được chia sẻ với {organization}}}",
+	"ui.hub.skills.inventory_unknown": "Trạng thái liên kết không khả dụng."
 }

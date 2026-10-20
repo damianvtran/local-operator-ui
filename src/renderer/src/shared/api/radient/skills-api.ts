@@ -45,22 +45,7 @@ export type OrgSkillList = {
 	sync_contract: HubSkillContract;
 };
 
-/**
- * The hub source the DESKTOP writes into a skill link's identity.
- *
- * Core approves exactly the base its own config normalises to, and
- * `normalize_radient_api_base_url` completes that with `/v1`
- * (`local_operator/env.py`); the anonymous catalogue reads beside this module
- * build `.../v1/<collection>` from the same configured origin. Sending the bare
- * origin is refused `origin-conflict` ("hub source is not configured or
- * approved"), which is what QA found between the UI and core in PR #1269 (F1) —
- * nothing in either suite had asserted the two halves agree. One function, used
- * by every skill write AND by the local-link join, so the identity the renderer
- * sends and the identity the links inventory reports cannot drift.
- */
-export function hubSourceAddress(origin: string): string {
-	return `${origin.replace(/\/+$/, "")}/v1`;
-}
+export { hubSourceAddress } from "./hub-source";
 
 /** Capability is on RESULT even when the catalogue is empty; absence is not v1. */
 export const hubSkillsSupported = (
