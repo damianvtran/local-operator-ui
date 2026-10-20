@@ -532,76 +532,93 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 							</p>
 						) : (
 							<div className="flex max-h-80 flex-col gap-1 overflow-y-auto">
-								{visibleSessions.map((session) => (
-									<div
-										key={session.sourceId}
-										className={cn(
-											"flex items-start gap-3 rounded-md border p-3",
-											selected.has(session.sourceId)
-												? "border-accent bg-row-selected"
-												: "border-hairline bg-surface hover:bg-sunken",
-										)}
-									>
-										<Checkbox
-											checked={selected.has(session.sourceId)}
-											onCheckedChange={() => onToggleSession(session.sourceId)}
-											aria-label={sessionLabel(session)}
-											className="mt-0.5"
-										/>
-										<button
-											type="button"
-											onClick={() => onToggleSession(session.sourceId)}
-											className="min-w-0 flex-1 text-left"
+								{visibleSessions.map((session) => {
+									/*
+									 * ONE FOCUS STOP PER ROW. The row text used to be a second
+									 * `<button>` with the same onClick as the checkbox, so a
+									 * screen reader heard two controls for one action, and the
+									 * second one did not expose the checked state. A `<label>`
+									 * associated with the checkbox keeps the large pointer target,
+									 * makes one click toggle exactly once, and leaves the checkbox
+									 * as the only focusable control. The `<label>` is a SIBLING,
+									 * not a wrapper: a checkbox inside its own label fires twice
+									 * for one press.
+									 */
+									const inputId = `import-session-${session.source}-${session.sourceId}`;
+									return (
+										<div
+											key={session.sourceId}
+											className={cn(
+												"flex items-start gap-3 rounded-md border p-3",
+												selected.has(session.sourceId)
+													? "border-accent bg-row-selected"
+													: "border-hairline bg-surface hover:bg-sunken",
+											)}
 										>
-											<span className="flex flex-wrap items-center gap-2">
-												<span className="min-w-0 truncate text-body-sm text-ink">
-													{sessionLabel(session)}
+											<Checkbox
+												id={inputId}
+												checked={selected.has(session.sourceId)}
+												onCheckedChange={() =>
+													onToggleSession(session.sourceId)
+												}
+												aria-label={sessionLabel(session)}
+												className="mt-0.5"
+											/>
+											<label
+												htmlFor={inputId}
+												className="min-w-0 flex-1 cursor-pointer text-left"
+											>
+												<span className="flex flex-wrap items-center gap-2">
+													<span className="min-w-0 truncate text-body-sm text-ink">
+														{sessionLabel(session)}
+													</span>
+													<Badge
+														variant={
+															session.availability === "full"
+																? "neutral"
+																: "warning"
+														}
+													>
+														{t(availabilityKey(session.availability))}
+													</Badge>
 												</span>
-												<Badge
-													variant={
-														session.availability === "full"
-															? "neutral"
-															: "warning"
-													}
-												>
-													{t(availabilityKey(session.availability))}
-												</Badge>
-											</span>
-											<span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-meta text-ink-muted">
-												<span>
-													{t("ui.settings.imports.session_meta", {
-														messages: session.messageCount ?? 0,
-														compactions: session.compactionCount,
-													})}
-												</span>
-												<span>
-													{t("ui.settings.imports.session_updated", {
-														date: formatCalendarDateTime(
-															new Date(
-																(session.updatedTs || session.createdTs) * 1000,
+												<span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-meta text-ink-muted">
+													<span>
+														{t("ui.settings.imports.session_meta", {
+															messages: session.messageCount ?? 0,
+															compactions: session.compactionCount,
+														})}
+													</span>
+													<span>
+														{t("ui.settings.imports.session_updated", {
+															date: formatCalendarDateTime(
+																new Date(
+																	(session.updatedTs || session.createdTs) *
+																		1000,
+																),
 															),
-														),
-													})}
+														})}
+													</span>
 												</span>
-											</span>
-											{session.cwd && (
-												<span className="mt-1 block break-all font-mono text-meta text-ink-dim">
-													{session.cwd}
-												</span>
-											)}
-											{session.availability === "metadata_only" && (
-												<span className="mt-1 block text-meta text-warning">
-													{t("ui.settings.imports.metadata_only_explain")}
-												</span>
-											)}
-											{session.availability === "unsupported" && (
-												<span className="mt-1 block text-meta text-warning">
-													{t("ui.settings.imports.session_index_only")}
-												</span>
-											)}
-										</button>
-									</div>
-								))}
+												{session.cwd && (
+													<span className="mt-1 block break-all font-mono text-meta text-ink-dim">
+														{session.cwd}
+													</span>
+												)}
+												{session.availability === "metadata_only" && (
+													<span className="mt-1 block text-meta text-warning">
+														{t("ui.settings.imports.metadata_only_explain")}
+													</span>
+												)}
+												{session.availability === "unsupported" && (
+													<span className="mt-1 block text-meta text-warning">
+														{t("ui.settings.imports.session_index_only")}
+													</span>
+												)}
+											</label>
+										</div>
+									);
+								})}
 							</div>
 						)}
 					</div>
