@@ -124,6 +124,7 @@ const {
 	quoteSelectionIn,
 	QUOTE_TOOLKIT_ATTR,
 	placeQuoteControl,
+	placeSharedStrip,
 	overlap,
 	QUOTE_CONTROL_GAP,
 	parseReplies,
@@ -1125,4 +1126,48 @@ test("a drag that ends on the LINK toolbar is not a quote of the turn", () => {
 		}),
 	);
 	assert.equal(quoteSelectionIn(turn).text, "~/x/report.xlsx");
+});
+
+/*
+ * THE COLUMN-LEVEL STRIP'S FLIP (code review round 1, C6; design round 2, D1).
+ *
+ * The shared selection strip is mounted once for the whole column, so its
+ * placement is a pure function of three boxes. The rule that matters is the
+ * one the pre-fix code got wrong: "room above" is asked of the SCROLL VIEWPORT,
+ * not the scrolled content column. A highlight within the toolbar's own height
+ * of the pane's top has no room above it and must sit BELOW - otherwise the
+ * strip is painted above the visible pane. A rendered artifact for this state
+ * is not producible in the canonical transcript (every visible non-quotable
+ * line is `user-select: none`, measured), which is why the rule is pinned here
+ * with the numbers instead.
+ */
+test("the shared strip flips below a selection at the scrolled pane's top", () => {
+	const placed = placeSharedStrip({
+		selection: { top: 30, bottom: 50, left: 120 },
+		container: { top: 16, left: 107 },
+		scrollerTop: 16,
+	});
+	assert.deepEqual(placed, { top: 34, left: 13, placement: "below" });
+});
+
+test("the shared strip sits above a selection with room in the pane", () => {
+	const placed = placeSharedStrip({
+		selection: { top: 220, bottom: 240, left: 120 },
+		container: { top: 16, left: 107 },
+		scrollerTop: 16,
+	});
+	assert.deepEqual(placed, { top: 204, left: 13, placement: "above" });
+});
+
+test("the scrolled content column does not fake room above the pane", () => {
+	// The content column's top is far above the viewport once scrolled; the
+	// selection is 20px below the VISIBLE top. The old client-coordinate
+	// comparison answered "above" and painted the strip off-screen.
+	const placed = placeSharedStrip({
+		selection: { top: 700, bottom: 720, left: 120 },
+		container: { top: -1600, left: 107 },
+		scrollerTop: 680,
+	});
+	assert.equal(placed.placement, "below");
+	assert.equal(placed.top, 2320);
 });
