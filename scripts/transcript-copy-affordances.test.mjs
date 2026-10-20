@@ -1002,32 +1002,37 @@ test("a tool row opens its own menu and copies its fenced result", async () => {
 	const rig = await mountTranscript(MULTI_TURN);
 	const dom = rig.dom;
 	/*
-	 * The settled turn arrives collapsed into its bar; the bar's own press is
-	 * the reader's door to the ledger rows, so the test takes the same door
-	 * rather than mounting a state the product never shows.
+	 * THE PRODUCT PATH, WITH BOTH FOLD DEFAULT STATES HANDLED. The settled turn
+	 * opens as a bar; the ledger rows then live behind a fold. The old body
+	 * TOGGLED that fold unconditionally, which closes it on a head where it was
+	 * already open - and three CI heads then failed `the context menu opened`
+	 * while the file passed locally. Open the bar, then toggle the fold only if
+	 * the tool row is not already there, and poll for the row across the fold's
+	 * commit. The menu itself re-resolves its trigger every step.
 	 */
 	const bar = dom.window.document.querySelector(
 		'[data-turn-summary] button[aria-expanded="false"]',
 	);
 	assert.ok(bar, "the turn opens as a bar");
 	await rig.click(bar);
-	/*
-	 * The ledger calls are inside their own fold, which starts closed. Opening it
-	 * is the reader's second press; the fold header itself is the line the
-	 * context menu is attached to, so this is the ordinary path to a tool row.
-	 */
-	const foldToggle = dom.window.document.querySelector(
-		"[data-fold-ids] button[aria-expanded]",
-	);
-	assert.ok(foldToggle, "the ledger fold is on screen");
-	await rig.click(foldToggle);
-	const toolRow = dom.window.document.querySelector(
-		'[data-record-kind="tool"]',
-	);
+	const findTool = () =>
+		dom.window.document.querySelector('[data-record-kind="tool"]');
+	if (findTool() === null) {
+		const foldToggle = dom.window.document.querySelector(
+			"[data-fold-ids] button[aria-expanded]",
+		);
+		assert.ok(foldToggle, "the ledger fold is on screen");
+		await rig.click(foldToggle);
+	}
+	let toolRow = findTool();
+	for (let attempt = 0; attempt < 200 && toolRow === null; attempt += 1) {
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		});
+		toolRow = findTool();
+	}
 	assert.ok(toolRow, "the ledger row is on screen after the bar opens");
-	const menu = await rig.openMenu(() =>
-		dom.window.document.querySelector('[data-record-kind="tool"]'),
-	);
+	const menu = await rig.openMenu(findTool);
 	assert.deepEqual(
 		[...menu.querySelectorAll('[role="menuitem"]')].map(
 			(node) => node.textContent,
