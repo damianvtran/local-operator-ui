@@ -17,6 +17,7 @@ import {
 	type TeamBridgeConversationList,
 	type TeamBridgeMemberInput,
 	type TeamBridgeMessagePage,
+	type TeamBridgeNotify,
 	type TeamBridgeReadScope,
 	type TeamBridgeReadState,
 	type TeamBridgeUnread,
@@ -176,5 +177,48 @@ export const TeamBridgeApi = {
 			conversation_id: conversationId,
 			action: "leave",
 		});
+	},
+
+	/**
+	 * Join a discoverable channel, or accept an invitation.
+	 *
+	 * `tenantId` is the selected row's own organization, not the rail scope: in
+	 * the merged view the scope is "all", and a join without a tenant would be
+	 * resolved by whatever the server treats as default — the one way a row
+	 * could be joined in the wrong organization. The server answer is the
+	 * joined conversation, so the caller can parse it rather than guess.
+	 */
+	async join(
+		conversationId: string,
+		tenantId?: string,
+	): Promise<TeamBridgeConversation> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.conversations.join",
+			conversation_id: conversationId,
+			...(tenantId ? { tenant_id: tenantId } : {}),
+		});
+		return teamBridgeConversationSchema.parse(answer);
+	},
+
+	/**
+	 * Set one conversation's notification register.
+	 *
+	 * The desktop op rides the read route's `notify` field (agent-server #148)
+	 * and deliberately sends no `seq`: choosing a level must not move the read
+	 * cursor. The server's answer is the read post-state, which carries the
+	 * canonical `muted` flag this client derives from the same value.
+	 */
+	async setNotify(
+		conversationId: string,
+		notify: TeamBridgeNotify,
+		tenantId?: string,
+	): Promise<TeamBridgeReadState> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.conversations.notify",
+			conversation_id: conversationId,
+			...(tenantId ? { tenant_id: tenantId } : {}),
+			notify,
+		});
+		return teamBridgeReadStateSchema.parse(answer);
 	},
 };
