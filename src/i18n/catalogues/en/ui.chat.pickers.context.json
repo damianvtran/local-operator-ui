@@ -217,18 +217,18 @@
 		"role": "checkbox label selecting every session in the stop picker",
 		"tone": "label plus a parenthesised count, sentence case",
 		"length": "Very short.",
-		"note": "The count is a plain number in parentheses, NOT a plural: the label says how many rows the list holds, and it stays the same wording for any count. Format the number with the locale's digits.",
+		"note": "The count is a plain number in parentheses, NOT a plural: the label says how many rows the list holds, and it stays the same wording for any count. The count is deliberately ungrouped (ICU number ::group-off): the pre-extraction literal interpolated a raw JS number, which never groups (1234), so a bare {count, number} would change the rendered text to 1,234 — the same rule ui.chat.sidebar_view.hidden applies.",
 		"placeholders": {
-			"count": "number of session rows in the list; plain formatted integer, never a plural"
+			"count": "number of session rows in the list; plain integer rendered ungrouped, never a plural"
 		}
 	},
 	"ui.chat.pickers.stop.confirm": {
 		"role": "checkbox label confirming which sessions the stop request ends",
 		"tone": "direct statement, sentence case, no trailing punctuation",
 		"length": "One short clause; the plural branch names the count.",
-		"note": "Renders in the stop picker's form. The one branch says 'this session' because a single target is the session the picker was opened from; the other branch states the chosen count. The verb and the trailing 'now' stay around the branch.",
+		"note": "Renders in the stop picker's form. The one branch says 'this session' because a single target is the session the picker was opened from; the other branch states the chosen count. The verb and the trailing 'now' stay around the branch. The count is deliberately ungrouped (ICU number ::group-off, not bare #): the pre-extraction literal interpolated a raw JS number, which never groups (1234), so # would change the rendered text to 1,234 — the same rule ui.chat.sidebar_view.hidden applies.",
 		"placeholders": {
-			"count": "how many sessions are selected; drives the plural branch and the number in 'other'"
+			"count": "how many sessions are selected; drives the plural branch and is rendered ungrouped inside 'other'"
 		}
 	},
 	"ui.chat.pickers.stop.title": {

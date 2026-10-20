@@ -518,6 +518,25 @@ function findingLine(finding) {
 }
 
 /**
+ * The remedy sentence printed after a failed check.
+ *
+ * The two failure shapes have different remedies, and naming both at once
+ * misdirects: a ceiling breach means the file gained literals that must be
+ * extracted, while `--init --force` exists for a file with NO recorded entry
+ * (and rewrites the whole baseline, recording the literal the breach just
+ * added). So the capture clause is only printed when a missing entry is
+ * actually among the failures.
+ */
+export function failureSummary(failures) {
+	const missingEntry = failures.some((finding) => finding.ceiling === null);
+	return `check-strings.mjs: FAILED — ${failures.length} finding(s). Extract the string, add \`i18n: ignore <reason>\`, or (for a file-level exemption) record it in i18n/allowlist.json with a reason.${
+		missingEntry
+			? " A file with no recorded ceiling is fixed by a reviewed `--init --force` capture."
+			: ""
+	}`;
+}
+
+/**
  * The review-visible diff between the old ceilings and a capture, as lines.
  *
  * `--init --force` exists for a scanner-coverage change, and a capture that
@@ -688,9 +707,7 @@ export function main(
 		}
 	}
 	if (failures.length > 0) {
-		process.stdout.write(
-			`check-strings.mjs: FAILED — ${failures.length} finding(s). Extract the string, add \`i18n: ignore <reason>\`, or (for a file-level exemption) record it in i18n/allowlist.json with a reason; a file with no recorded ceiling is fixed by a reviewed \`--init --force\` capture.\n`,
-		);
+		process.stdout.write(`${failureSummary(failures)}\n`);
 		return 1;
 	}
 	const total = Object.values(counts).reduce((sum, n) => sum + n, 0);

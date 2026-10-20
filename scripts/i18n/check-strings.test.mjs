@@ -11,10 +11,12 @@ import {
 	BASELINE_NOTE,
 	allowlistReason,
 	countsOf,
+	failureSummary,
 	loadAllowlist,
 	loadBaseline,
 	main,
 	openSnapshot,
+	ratchetFindings,
 	runCheck,
 	saveBaseline,
 	scanSnapshot,
@@ -179,6 +181,33 @@ test("a ceiling breach FAILS; a file at its ceiling passes", () => {
 		baseline: { files: { [FIXTURE]: count }, note: "" },
 	});
 	assert.deepEqual(atCeiling.failures, []);
+});
+
+test("the failure summary names --init --force only when an entry is missing", () => {
+	// Both shapes are built from the fixture's real findings: a missing entry
+	// (no baseline record) and a ceiling breach (recorded, then exceeded).
+	const count = fixtureFindings().length;
+	const missing = ratchetFindings({ [FIXTURE]: count }, {});
+	const breached = ratchetFindings(
+		{ [FIXTURE]: count },
+		{ [FIXTURE]: count - 1 },
+	);
+	assert.equal(missing[0].ceiling, null);
+	assert.equal(breached[0].ceiling, count - 1);
+
+	const missingLine = failureSummary(missing);
+	assert.ok(missingLine.includes("`--init --force` capture"), missingLine);
+
+	// A ceiling breach is fixed by extracting, not by capturing the bigger
+	// number: `--init --force` would record the literal the breach reports.
+	const breachLine = failureSummary(breached);
+	assert.ok(!breachLine.includes("--init"), breachLine);
+	assert.ok(breachLine.includes("Extract the string"), breachLine);
+	assert.ok(breachLine.includes("i18n/allowlist.json"), breachLine);
+
+	// One missing entry among breaches still needs its own remedy named.
+	const mixed = failureSummary([...breached, ...missing]);
+	assert.ok(mixed.includes("`--init --force` capture"), mixed);
 });
 
 test("an allowlisted file passes with no baseline entry", () => {
