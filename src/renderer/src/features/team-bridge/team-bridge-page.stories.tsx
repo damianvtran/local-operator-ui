@@ -96,6 +96,10 @@ const channel: TeamBridgeConversation = {
 	last_read_seq: 9,
 	unread_count: 3,
 	muted: false,
+	// What agent-server sends on every row: active + invited (Damian, Bea, Cy).
+	// The header must still read 2 active members, not 3, so this fixture is the
+	// insider branch of `conversationMemberCount` rather than a decorative field.
+	member_count: 3,
 };
 
 const group: TeamBridgeConversation = {
@@ -208,6 +212,46 @@ const northwindChannel: TeamBridgeConversation = {
 	last_message_at: new Date(Date.now() - 2 * 60 * 60_000).toISOString(),
 };
 
+/**
+ * A discoverable channel the caller has not joined.
+ *
+ * `members` is EMPTY on purpose: the preview's whole point is that membership
+ * is the fact withheld, so the header's count has to come from `member_count`
+ * and the rail has no participant rows to draw. The messages beside it in the
+ * story are a trap for the component test — they must never be rendered.
+ */
+const previewChannel: TeamBridgeConversation = {
+	...channel,
+	id: "bcv_ch_preview",
+	name: "product-design",
+	topic: "Design critiques and reviews",
+	visibility: "tenant",
+	discoverable: true,
+	member: false,
+	member_count: 24,
+	members: [],
+	latest_seq: 41,
+	last_read_seq: 0,
+	unread_count: 0,
+	muted: false,
+	last_message_at: new Date(Date.now() - 30 * 60_000).toISOString(),
+};
+
+/** A joined channel whose notification register is the middle-low `mute`. */
+const mutedChannel: TeamBridgeConversation = {
+	...channel,
+	id: "bcv_ch_muted",
+	name: "alerts",
+	discoverable: true,
+	member: true,
+	notify: "mute",
+	muted: true,
+	latest_seq: 12,
+	last_read_seq: 10,
+	unread_count: 2,
+	last_message_at: new Date(Date.now() - 8 * 60_000).toISOString(),
+};
+
 const meta = {
 	title: "Team Bridge/Page",
 	component: TeamBridgePageView,
@@ -237,6 +281,8 @@ const meta = {
 		onNewConversation: () => {},
 		onRetry: () => {},
 		onScopeChange: () => {},
+		onJoin: () => {},
+		onNotifyChange: () => {},
 	},
 } satisfies Meta<typeof TeamBridgePageView>;
 
@@ -252,6 +298,44 @@ export const ChannelSelected: Story = {
 			...message,
 			conversation_id: channel.id,
 		})),
+	},
+};
+
+/**
+ * The preview state: header metadata and the join banner, never a body.
+ *
+ * The messages are deliberately attached to the preview conversation in this
+ * story. A regression that renders cached history under a non-member banner
+ * would be visible here (and is asserted in the component test).
+ */
+export const PreviewChannel: Story = {
+	args: {
+		selected: previewChannel,
+		conversations: [dm, previewChannel, group],
+		messages: messages.map((message) => ({
+			...message,
+			conversation_id: previewChannel.id,
+		})),
+	},
+};
+
+/** A muted member channel: the rail draws its quiet bell beside the unread count. */
+export const MutedChannel: Story = {
+	args: {
+		selected: mutedChannel,
+		conversations: [dm, mutedChannel, group],
+		messages: messages.map((message) => ({
+			...message,
+			conversation_id: mutedChannel.id,
+		})),
+	},
+};
+
+/** The header menu open on its three-level preference section. */
+export const NotificationMenu: Story = {
+	args: {
+		selected: channel,
+		defaultMenuOpen: true,
 	},
 };
 
