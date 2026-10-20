@@ -745,8 +745,14 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 
 		if (event.key === "Escape") {
 			event.preventDefault();
-			if (current || listVisible) {
-				setAcceptedTarget(null);
+			const acceptedHere =
+				acceptedTarget !== null &&
+				acceptedTarget.tabId === tabId &&
+				acceptedTarget.raw === raw;
+			// Escape dismisses the list; it does not discard an accepted suffix.
+			// If it did, Right+Escape+Enter would fall back to the display text and
+			// lose the canonical HTTP target the suffix carried.
+			if (current || listVisible || acceptedHere) {
 				clearGenerated();
 				setHint(false);
 				setDismissedForText(raw);
@@ -799,7 +805,6 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			// Tab moves focus; it never commits an unaccepted suffix. Clear the
 			// generated text first so the blurred value is the draft.
 			if (current || listVisible) {
-				setAcceptedTarget(null);
 				clearGenerated();
 				setHint(false);
 				setDismissedForText(raw);
@@ -823,14 +828,6 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			redoEdit();
 		}
 	};
-
-	// A tab change invalidates the accepted destination: it names the tab it was
-	// accepted on, and a later Enter in another tab must not use it.
-	useEffect(() => {
-		setAcceptedTarget((target) =>
-			target !== null && target.tabId === tabId ? target : null,
-		);
-	}, [tabId]);
 
 	// A background refresh can shrink the alternatives under a row the keyboard
 	// has already selected. Reset rather than leave an active descendant naming

@@ -631,48 +631,78 @@ test("an accepted target is not reused after an invalidating action", async () =
 		assert.equal(bundle.input.value, display);
 		return bundle;
 	};
-	const assertNotCanonical = (bundle) =>
-		assert.ok(
-			!bundle.navigations.some((navigation) => navigation.url === canonical),
-			"the stale accepted target was reused",
-		);
 
 	const edited = await arm();
 	await act(async () => setValue(edited.input, `${display}x`, "insertText"));
 	await flush();
 	await key(edited, "Enter");
-	assertNotCanonical(edited);
+	assert.deepEqual(edited.navigations, [
+		{ url: `${display}x`, expectedTabId: 1 },
+	]);
 	await edited.cleanup();
 
 	const undone = await arm();
 	await key(undone, "z", { ctrlKey: true });
 	await key(undone, "Enter");
-	assertNotCanonical(undone);
+	assert.deepEqual(undone.navigations, [
+		{ url: "127.0.0.1:8080/a", expectedTabId: 1 },
+	]);
 	await undone.cleanup();
 
 	const redone = await arm();
 	await key(redone, "z", { ctrlKey: true });
 	await key(redone, "z", { ctrlKey: true, shiftKey: true });
 	await key(redone, "Enter");
-	assertNotCanonical(redone);
+	assert.deepEqual(redone.navigations, [
+		{ url: "127.0.0.1:8080/acc", expectedTabId: 1 },
+	]);
 	await redone.cleanup();
 
 	const blurred = await arm();
 	await act(async () => blurred.input.blur());
 	await flush();
 	await key(blurred, "Enter");
-	assertNotCanonical(blurred);
+	assert.deepEqual(blurred.navigations, [], "blur reverts to the live URL");
 	await blurred.cleanup();
+});
 
-	const escaped = await arm();
-	await key(escaped, "Escape");
-	await key(escaped, "Enter");
-	assertNotCanonical(escaped);
-	await escaped.cleanup();
+test("Escape after accepting keeps the canonical target", async () => {
+	const canonical = "http://127.0.0.1:8080/account/profile";
+	const bundle = await renderBar({
+		url: "http://127.0.0.1:8080/account",
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries: HTTP_ENTRIES,
+		}),
+	});
+	await type(bundle, "127.0.0.1:8080/a");
+	await type(bundle, "127.0.0.1:8080/acc");
+	await key(bundle, "ArrowRight");
+	await key(bundle, "Escape");
+	assert.equal(bundle.input.value, "127.0.0.1:8080/account/profile");
+	await key(bundle, "Enter");
+	assert.deepEqual(bundle.navigations, [{ url: canonical, expectedTabId: 1 }]);
+	await bundle.cleanup();
+});
 
-	const switched = await arm();
-	await switched.rerender({ tabId: 2, url: "about:blank" });
-	await key(switched, "Enter");
-	assertNotCanonical(switched);
-	await switched.cleanup();
+test("switching tabs and back keeps the accepted target", async () => {
+	const canonical = "http://127.0.0.1:8080/account/profile";
+	const bundle = await renderBar({
+		url: "http://127.0.0.1:8080/account",
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries: HTTP_ENTRIES,
+		}),
+	});
+	await type(bundle, "127.0.0.1:8080/a");
+	await type(bundle, "127.0.0.1:8080/acc");
+	await key(bundle, "ArrowRight");
+	await bundle.rerender({ tabId: 2, url: "https://other.example/" });
+	await bundle.rerender({ tabId: 1, url: "http://127.0.0.1:8080/account" });
+	assert.equal(bundle.input.value, "127.0.0.1:8080/account/profile");
+	await key(bundle, "Enter");
+	assert.deepEqual(bundle.navigations, [{ url: canonical, expectedTabId: 1 }]);
+	await bundle.cleanup();
 });

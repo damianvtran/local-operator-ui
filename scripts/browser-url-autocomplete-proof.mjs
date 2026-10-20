@@ -650,6 +650,25 @@ try {
 		rightEnter.value,
 	);
 
+	// Escape dismisses the list but must not discard the accepted target; the
+	// next Enter navigates the same canonical HTTP destination.
+	await clearValue();
+	await typeValue(prefix);
+	await sleep(200);
+	await key("ArrowRight");
+	await key("Escape");
+	const beforeEscapedEnter = navigations.length;
+	await key("Enter");
+	await sleep(400);
+	const escapedEnter = await readInput();
+	record("escape then enter", escapedEnter);
+	check(
+		"Escape after accepting keeps the canonical target",
+		navigations.length === beforeEscapedEnter + 1 &&
+			escapedEnter.value === `${ORIGIN}/account/profile`,
+		`requests ${navigations.length} vs ${beforeEscapedEnter + 1}; ${escapedEnter.value}`,
+	);
+
 	// ---- ArrowDown + Enter commits one candidate -------------------------
 	await clearValue();
 	await typeValue(prefix);
