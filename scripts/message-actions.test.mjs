@@ -135,8 +135,15 @@ const RE_CLOSES_TURN_LINE = /\{closesTurn && \(/;
 const RE_ROW_MOUNT_SITES = /<AnswerActionRow\b/g;
 const RE_USER_ROW_MOUNT = /<AnswerActionRow[\s\S]{0,160}kind="user"/;
 const RE_RESPONSE_ROW_MOUNT = /<AnswerActionRow[\s\S]{0,160}kind="response"/;
-const RE_USER_ROW_OVERLAY =
-	/<AnswerActionRow[\s\S]{0,120}overlay[\s\S]{0,160}kind="user"/;
+const RE_COMMENTARY_ROW_MOUNT =
+	/<AnswerActionRow[\s\S]{0,200}kind="commentary"/;
+/*
+ * THE USER ARM IS A FLOW CHILD AGAIN (operator, 2026-10-20): its tag names its
+ * role immediately, with no `overlay` switch in front of it. The old shape put
+ * `overlay` before `overlayClassName` before `kind`, so the negative is stated
+ * as "the tag starts with the role" rather than as a scan for a word.
+ */
+const RE_USER_ROW_FLOW = /<AnswerActionRow\s+kind="user"/;
 
 /**
  * One in-memory build of the shipped row and its model.
@@ -305,6 +312,16 @@ test("copy is always offered, and it is first", () => {
 		["copy"],
 		"the reader's own turn offers Copy alone",
 	);
+	assert.deepEqual(
+		mod.answerActionsFor({ role: "commentary" }),
+		["copy"],
+		"the in-between status row is Copy alone",
+	);
+	assert.deepEqual(
+		mod.answerActionsFor({ role: "response" }),
+		["copy", "speak"],
+		"a non-closing final response is a handover, so it carries the answer's set",
+	);
 });
 
 test("fork is offered LAST, and only for a row with a cut point", () => {
@@ -330,18 +347,27 @@ test("fork is offered LAST, and only for a row with a cut point", () => {
 	);
 	assert.deepEqual(
 		mod.answerActionsFor({ role: "response", forkable: true }),
+		["copy", "speak", "fork"],
+		"a non-closing final response is a handover: it takes the full set, Speak and Fork included (operator, 2026-10-20)",
+	);
+	assert.deepEqual(
+		mod.answerActionsFor({ role: "commentary", forkable: true }),
 		["copy"],
-		"a non-closing response is Copy alone even at a cut point (#1043): the full row stays the closing answer's",
+		"the in-between status row stays Copy alone even at a cut point",
 	);
 });
 
-test("the row is capped at two actions, and Quote is not one of them", () => {
-	for (const role of ["answer", undefined]) {
+test("the row is capped at two unconditional actions, and Quote is not one of them", () => {
+	for (const role of ["answer", "response", undefined]) {
 		assert.ok(
 			mod.answerActionsFor({ role }).length <= 2,
-			"the model caps the row at two",
+			"the model caps the unconditional part of the row at two (Fork is appended, not counted)",
 		);
 	}
+	assert.ok(
+		mod.answerActionsFor({ role: "user", forkable: true }).length <= 2,
+		"and the user arm fits in two with its fork",
+	);
 });
 
 test("which records carry a fork cut point, and which do not", () => {
@@ -754,8 +780,8 @@ test("the row rides the turn-closing line and the user row's column, and nothing
 	);
 	assert.equal(
 		(TRANSCRIPT_SOURCE.match(RE_ROW_MOUNT_SITES) ?? []).length,
-		3,
-		"three mount sites: the closing answer's own line, the user row's copy arm, and every other settled response's Copy (#1043)",
+		4,
+		"four mount sites: the closing answer's line, the user row's reserved line, a non-closing final response's meta row, and the in-between commentary overlay",
 	);
 	/*
 	 * And each site names itself: the answer arm hands over the visible text the
@@ -768,12 +794,16 @@ test("the row rides the turn-closing line and the user row's column, and nothing
 		"the user arm is mounted with its role",
 	);
 	assert.ok(
-		RE_USER_ROW_OVERLAY.test(TRANSCRIPT_SOURCE),
-		"and it is the OVERLAY variant: a flow child under the bubble is the invisible 32px the excess-space report removed",
+		RE_USER_ROW_FLOW.test(TRANSCRIPT_SOURCE),
+		"and IN THE FLOW: the reserved row under the bubble is what the operator asked to restore",
 	);
 	assert.ok(
 		RE_RESPONSE_ROW_MOUNT.test(TRANSCRIPT_SOURCE),
-		"the non-closing response arm is mounted with its role, which limits it to Copy",
+		"the non-closing final response arm is mounted with its role, which gives it the full answer set",
+	);
+	assert.ok(
+		RE_COMMENTARY_ROW_MOUNT.test(TRANSCRIPT_SOURCE),
+		"and the in-between status arm has a role of its own - the only class that gets the hover-only overlay",
 	);
 });
 

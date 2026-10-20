@@ -268,7 +268,7 @@ import {
 	widenTarget,
 	windowTopRun,
 } from "./turn-collapse-model";
-import { isQuietTurnCall } from "./turn-segments";
+import { isFinalResponse, isQuietTurnCall } from "./turn-segments";
 import { useActiveCheckpoint } from "./use-active-checkpoint";
 import type { AttachmentScope } from "./use-attachment-url";
 import { useCheckpoints } from "./use-checkpoints";
@@ -1364,26 +1364,24 @@ const UserRow = memo(function UserRow({
 						/>
 					)}
 					{/*
-					 * THE USER TURN'S COPY CONTROL, OVER THE MESSAGE RATHER THAN UNDER
-					 * IT (the operator's excess-space report). It used to be a flow child
-					 * of the column below, so every user turn reserved a 28px action row
-					 * plus `mt-1` for a control that is invisible at rest - the same
-					 * invisible-height defect the intermediate response row had. The
-					 * `overlay` variant takes it out of the flow entirely. The placement
-					 * is ABOVE the bubble (`-top-8`, right-aligned) rather than beside it:
-					 * a right-aligned bubble ends at the row's trailing edge, so a
-					 * side-anchored control overlaps the reader's own words, and the
-					 * manager's first after-frame showed exactly that. A user turn always
-					 * takes the 32px `GAP.turn` above it, which is exactly the control's
-					 * height, so the overlay floats in that gap and covers no text. The
-					 * reveal is still the shared one
-					 * (`ACTION_ROW_REVEAL_CLASSES`), and this element's `group` is the
-					 * turn itself, so hovering or focusing the message raises it.
+					 * THE USER TURN'S COPY CONTROL, A ROW UNDER THE MESSAGE THAT TAKES
+					 * LAYOUT SPACE (operator, 2026-10-20: "the user message, it should be a
+					 * row under the user's message that takes up space"). It is the pre-
+					 * #1264 shape restored - a flow child of the column (`gap-1`, the same
+					 * 4px rhythm the foot line uses) - not the hover-only overlay the
+					 * regression applied. The operator's reason is the structural one: the
+					 * reader's own message is a handover TO the agent, so its controls own a
+					 * line; only in-between status text is not a handover and must not
+					 * reserve one.
+					 *
+					 * The row reserves its place at rest and reveals on hover
+					 * (`ACTION_ROW_REVEAL_CLASSES`, opacity-only), so the pointer arriving
+					 * moves nothing and no geometry changes between the idle and hovered
+					 * states - the PR's evidence measures the bubble's and the next row's
+					 * boxes in both.
 					 */}
 					{isQuotable(record, remainingContent) && (
 						<AnswerActionRow
-							overlay
-							overlayClassName="-top-8"
 							kind="user"
 							bodyText={remainingContent}
 							revealId={record.id}
@@ -1737,30 +1735,55 @@ const AssistantRow = memo(function AssistantRow({
 			 * `docs/evidence/chat-canonical-message-actions/README.md`.
 			 */}
 			{/*
-			 * EVERY OTHER SETTLED RESPONSE CAN BE COPIED (#1043), WITHOUT THE ROW
-			 * THAT USED TO COST THE TURN ITS RHYTHM. The full row stays on the
-			 * closing answer below - one row per turn, PR #698's rule - and an
-			 * earlier response gets Copy alone, as a GUTTER OVERLAY: the old
-			 * candidate was a flow child (`mt-1` plus an `h-8` toolbar held at
-			 * opacity 0), so every settled paragraph reserved 32px for a control
-			 * nobody could see. Measured on the multi-answer story: the
-			 * intermediate row was 54.4px tall, prose 22.4 + 4 + 28, and the next
-			 * record began 12px under an invisible toolbar. `overlay` takes it out
-			 * of the flow, so the prose-to-next-block gap is the 12px `GAP.item`
-			 * the rhythm asks for at rest and while revealed.
+			 * THE THREE PLACEMENTS, DECIDED BY THE MESSAGE'S ROLE AND NOT ITS
+			 * POSITION (operator, 2026-10-20).
 			 *
-			 * `quotable` is the settled-and-has-words gate: a streaming prefix has
-			 * nothing settled to copy.
+			 * - A FINAL RESPONSE (settled, paints text, carries no `tool_calls` of its
+			 *   own - `turn-segments.ts::isFinalResponse`) gets an IN-FLOW meta row
+			 *   under its prose: the same `mt-1 flex items-center gap-2` rhythm the
+			 *   foot line uses, with the action row at the trailing edge. It reserves
+			 *   its line at rest, exactly as the foot line does, because the reader is
+			 *   being handed something and the control belongs to that handover. No
+			 *   `Worked for` caption and no stamp: those are the TURN's facts (the
+			 *   foot), and a mid-turn handover has none to state - the timestamps an
+			 *   opt-in feature would add are open PR #1236's surface, and this change
+			 *   does not pre-empt it.
 			 *
-			 * NO `revealId`: the one-time arrival flash is the closing answer's
-			 * discoverability cue. Passing it here would flash a Copy under every
-			 * paragraph a live turn settles - the per-paragraph churn #698 removed.
+			 * - AN IN-BETWEEN STATUS ROW (an assistant message that carries its own
+			 *   `tool_calls`) is the ONLY class the hover-only overlay was ever for:
+			 *   narration is not a handover, so it reserves no line, and hovering the
+			 *   paragraph raises a bare Copy control in the gutter. The measured
+			 *   reason the overlay exists is still true - the old flow child cost
+			 *   32px per settled paragraph for a control nobody could see - it was
+			 *   just applied to the wrong population.
+			 *
+			 * `quotable` is the settled-and-has-words gate for both: a streaming
+			 * prefix has nothing settled to offer.
+			 *
+			 * NO `revealId` on either: the one-time arrival flash is the closing
+			 * answer's discoverability cue. Passing it here would flash a control
+			 * under every paragraph a live turn settles - the per-paragraph churn
+			 * #698 removed.
 			 */}
-			{!closesTurn && quotable && (
+			{!closesTurn && quotable && isFinalResponse(record) && (
+				<div className={cn("mt-1 flex items-center gap-2 text-meta")}>
+					<span className={cn("ml-auto flex shrink-0")}>
+						<AnswerActionRow
+							kind="response"
+							bodyText={remainingContent}
+							agentId={conversationId}
+							speechId={record.id}
+							conversationId={conversationId}
+							entryId={forkEntryId(record) ?? undefined}
+						/>
+					</span>
+				</div>
+			)}
+			{!closesTurn && quotable && !isFinalResponse(record) && (
 				<AnswerActionRow
 					overlay
 					overlayClassName="@min-[900px]/chatcol:-right-10"
-					kind="response"
+					kind="commentary"
 					bodyText={remainingContent}
 				/>
 			)}
