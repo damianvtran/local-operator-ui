@@ -42,7 +42,9 @@
  * request until it is near (the gate is sticky once near, and an already-cached
  * document may paint there without a request). The old "ZERO fetches while
  * condensed" claim is therefore retired, not extended: a visible condensed
- * frame is gated exactly like an expanded one.
+ * frame is gated exactly like an expanded one. The identity a Hide belongs to
+ * is `(sessionId, anchor, job)`: a version bump of the same job keeps the Hide
+ * (it is the same graphic to the reader), while a different job starts open.
  * A local Hide survives collapsing work again: that explicit request belongs to
  * this supplement identity, not to the work bar. A new identity resets to the
  * default (open), so a Hide set on one supplement is never resurrected for
@@ -344,16 +346,16 @@ export const SupplementRow = memo(function SupplementRow({
 	 * inherit a Hide set on the supplement it replaced; returning to an earlier
 	 * identity starts open again rather than resurrecting its old Hide.
 	 *
-	 * Starting open is not eager fetching: the slot still mounts only behind
-	 * `SupplementFrameSlot`'s viewport gate, so an off-screen replacement fetches
-	 * nothing until it is near.
+	 * The identity is `(sessionId, anchor, job)`, deliberately NOT the record
+	 * version: a version bump of the same job is the same graphic to the reader,
+	 * so a Hide they set must survive it. A different job is a different
+	 * supplement and starts open.
+	 *
+	 * Starting open is not eager fetching: the document fetch still starts only
+	 * behind `SupplementFrameSlot`'s viewport gate (the reserved box mounts, but
+	 * nothing is requested until the slot is near).
 	 */
-	const identity = JSON.stringify([
-		sessionId,
-		record.anchor,
-		record.job,
-		record.version,
-	]);
+	const identity = JSON.stringify([sessionId, record.anchor, record.job]);
 	const [localGraphics, setLocalGraphics] = useState({ identity, open: true });
 	const localGraphicsOpen =
 		localGraphics.identity === identity && localGraphics.open;
@@ -872,7 +874,17 @@ export const SupplementRow = memo(function SupplementRow({
 							</span>
 						}
 					>
-						{graphicsBody}
+						{/*
+						 * The shared Disclosure indents its disclosed body by one chevron
+						 * column (`ml-5`). The graphic is answer content, not detail
+						 * belonging to the Hide row, so this one body opts back out with
+						 * the SAME spacing token: the frame keeps the answer paragraph's
+						 * left edge and width in both forms, and expanding the work bar
+						 * does not shift it. Local to this call site — the shared
+						 * primitive's contract, and every other disclosure's indent, is
+						 * unchanged.
+						 */}
+						<div className="-ml-5 w-[calc(100%+1.25rem)]">{graphicsBody}</div>
 					</Disclosure>
 				) : (
 					graphicsBody
