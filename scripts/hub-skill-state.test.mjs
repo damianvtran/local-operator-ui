@@ -101,7 +101,11 @@ test("a catalogue row is in scope only under its own visibility and tenant", () 
 });
 
 test("identity is hub id plus source scope, never the id alone", () => {
-	const a = hubSkillKey({ id: "skill-1", visibility: "public", tenantId: null });
+	const a = hubSkillKey({
+		id: "skill-1",
+		visibility: "public",
+		tenantId: null,
+	});
 	const b = hubSkillKey({
 		id: "skill-1",
 		visibility: "org",
@@ -159,7 +163,9 @@ test("a row without content_state reads as present, which is core's own default"
 });
 
 test("the five displayed states derive from link presence, copy presence and subscription", () => {
-	assert.deepEqual(hubSkillState(undefined, undefined), { kind: "not-present" });
+	assert.deepEqual(hubSkillState(undefined, undefined), {
+		kind: "not-present",
+	});
 	assert.deepEqual(hubSkillState(link(), undefined), {
 		kind: "pulled",
 		link: link(),
@@ -214,20 +220,24 @@ test("an update outranks the presence states, and only for a copy that exists", 
 		automatic: false,
 	});
 	assert.equal(
-		hubSkillState(link({ pull: { state: "available" }, auto_will_apply: true }), {
-			kind: "skill",
-			name: "example-skill",
-			state: "available",
-			auto_will_apply: true,
-		}).automatic,
+		hubSkillState(
+			link({ pull: { state: "available" }, auto_will_apply: true }),
+			{
+				kind: "skill",
+				name: "example-skill",
+				state: "available",
+				auto_will_apply: true,
+			},
+		).automatic,
 		true,
 		"the backend's own answer decides whether it applies itself",
 	);
 	assert.equal(
-		hubSkillState(
-			link(),
-			{ kind: "skill", name: "example-skill", state: "available" },
-		).kind,
+		hubSkillState(link(), {
+			kind: "skill",
+			name: "example-skill",
+			state: "available",
+		}).kind,
 		"update",
 		"the updates store can report the waiting revision too",
 	);
