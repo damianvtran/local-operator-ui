@@ -497,3 +497,37 @@ does not join this stub hub's catalogue (`skill-release-notes`, loopback), and n
 account exists on this machine. Those states are covered by
 `scripts/hub-skill-state.test.mjs` (state derivation and mark precedence) and by
 the design round's own fixture; the QA HTTP receipts cover the core boundary.
+
+## Scene re-run after design round 2 (`cbf4408545`)
+
+The `hub-skills` driver scene reads the shipped dialogs again after the
+remediation restored its hooks. It runs the app's own real `hub.skillPull` and
+`hub.skillPublish` writes against the repo's stub desktop daemon and the stub
+hub above, in headless window mode.
+
+```
+$ node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8131 \
+    --records <scratch>/serve-record --skills-adapter --source http://127.0.0.1:8127/v1
+$ node scripts/renderer-driver.mjs --scene hub-skills \
+    --backend http://127.0.0.1:8131 --backend-records <scratch>/serve-record
+```
+
+Result, at `cbf4408545` (full transcript in
+`receipts/hub-skills-scene-cbf4408545.txt`): **28 PASS, 0 FAIL, `ALL CHECKS
+PASSED`, exit 0.** The checks now cover the shipped surface: the source line
+("2 skills shared with Minerva"), the card press opening the dialog, the detail's
+files, the real pull succeeding ("Downloaded minerva-deploy from Minerva ·
+Private"), the link's Subscribe and Auto-push controls mounting after that pull,
+the publication dialog opening from its toolbar action, its preview rendering the
+server-projected payload, the confirm settling ("Published release-notes-copy to
+Minerva · Private"), and zero CSP violations or off-origin renderer requests.
+
+Frames: `docs/evidence-frames/hub-skills-surface/scene-cbf4408545/` (ignored, not
+committed), seven screenshots including `-populated`, `-detail`, `-policy`,
+`-pull-success`, `-publish-preview`, `-publish-complete`, `-search-empty`, plus
+the geometry JSON.
+
+What this scene does not show, as before: no Radient account exists here, so the
+org read goes through the daemon's proxy rather than a real tenant; the auto-push
+switch renders disabled with its reason because the stub destination is not
+verified for automatic publication.
