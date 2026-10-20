@@ -6,6 +6,8 @@ import {
 	DropdownMenuTrigger,
 	Tooltip,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	ClipboardCopy,
 	Ellipsis,
@@ -64,6 +66,7 @@ export const FileActionsMenu = ({
 	onShowInCanvas,
 	onPreview,
 }: FileActionsMenuProps) => {
+	useI18nLocale();
 	const handleCopyFilePath = async () => {
 		if (!filePath) return;
 		try {
@@ -106,28 +109,28 @@ export const FileActionsMenu = ({
 				{onPreview && (
 					<DropdownMenuItem onSelect={onPreview}>
 						<Eye aria-hidden="true" />
-						<span>Preview</span>
+						<span>{t("ui.common.file_actions.preview")}</span>
 					</DropdownMenuItem>
 				)}
 				{onShowInCanvas && (
 					<DropdownMenuItem onSelect={onShowInCanvas}>
 						<LayoutGrid aria-hidden="true" />
-						<span>Show in canvas</span>
+						<span>{t("ui.common.file_actions.show_in_canvas")}</span>
 					</DropdownMenuItem>
 				)}
 				<DropdownMenuItem onSelect={handleOpenFile}>
 					<FileIcon aria-hidden="true" />
-					<span>Open file</span>
+					<span>{t("ui.common.file_actions.open_file")}</span>
 				</DropdownMenuItem>
 				<DropdownMenuItem
 					onSelect={() => window.api.showItemInFolder(filePath)}
 				>
 					<FolderOpen aria-hidden="true" />
-					<span>Open folder</span>
+					<span>{t("ui.common.file_actions.open_folder")}</span>
 				</DropdownMenuItem>
 				<DropdownMenuItem onSelect={handleCopyFilePath}>
 					<ClipboardCopy aria-hidden="true" />
-					<span>Copy file path</span>
+					<span>{t("ui.common.file_actions.copy_file_path")}</span>
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>

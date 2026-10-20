@@ -56,6 +56,19 @@ const THEMES = {
 	},
 };
 
+/*
+ * The picker's translated copy, from the English catalogue: the harness
+ * executes the sliced component, so `t` is a seam like the React hooks beside
+ * it. English only — these tests assert the props the host receives, not
+ * locale negotiation, which `scripts/i18n/` owns.
+ */
+const PICKERS_ENGLISH = JSON.parse(
+	readFileSync(
+		join(ROOT, "src/i18n/catalogues/en/ui.chat.pickers.json"),
+		"utf8",
+	),
+);
+
 /**
  * One mount of the shipped `ThemePicker`.
  *
@@ -93,6 +106,8 @@ function mount(action) {
 		useEffect: (fn) => {
 			effects.push(fn);
 		},
+		useI18nLocale: () => {},
+		t: (key) => PICKERS_ENGLISH[key] ?? key,
 		PickerHost: (props) => props,
 	};
 	const module = { exports: {} };

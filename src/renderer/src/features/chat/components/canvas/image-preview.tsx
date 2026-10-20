@@ -6,6 +6,8 @@ import type { CanvasDocument } from "@features/chat/types/canvas";
 import { artifactFileName } from "@features/chat/utils/artifact-identity";
 import { mimeTypeForPath } from "@features/chat/utils/file-kind";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type FC, memo, useState } from "react";
 import { ImageActionsMenu } from "../image-actions-menu";
@@ -76,6 +78,7 @@ const ImagePreviewComponent: FC<{ document: CanvasDocument }> = ({
 const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
 	document,
 }) => {
+	useI18nLocale();
 	const artifact = document.artifact;
 	const source = useAttachmentSource(
 		{
@@ -127,7 +130,7 @@ const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
 					/>
 				</div>
 			) : source.state === "resolving" ? (
-				<FileViewerState quiet title="Opening…" />
+				<FileViewerState quiet title={t("ui.common.viewer.opening")} />
 			) : (
 				<FileViewerState
 					title={
@@ -143,6 +146,7 @@ const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
 };
 
 const PathImagePreview: FC<{ document: CanvasDocument }> = ({ document }) => {
+	useI18nLocale();
 	const state = useFileBlobUrl(document.path, {
 		mtimeMs: document.lastAgentModified,
 		mimeType: mimeTypeForPath(document.path),
@@ -215,7 +219,7 @@ const PathImagePreview: FC<{ document: CanvasDocument }> = ({ document }) => {
 					/>
 				</div>
 			) : state.status === "loading" ? (
-				<FileViewerState quiet title="Opening…" />
+				<FileViewerState quiet title={t("ui.common.viewer.opening")} />
 			) : (
 				<FileViewerState
 					title={title}

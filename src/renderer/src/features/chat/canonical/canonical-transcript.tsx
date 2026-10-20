@@ -1463,7 +1463,7 @@ const UserRow = memo(function UserRow({
 									undelivered.onSendAgain();
 								}}
 							>
-								Send again
+								{t("ui.chat.canonical.transcript.send_again")}
 							</button>
 						)}
 						<button
@@ -1471,7 +1471,7 @@ const UserRow = memo(function UserRow({
 							className={cn("cursor-pointer underline")}
 							onClick={undelivered.onEdit}
 						>
-							Edit
+							{t("ui.chat.canonical.transcript.edit")}
 						</button>
 					</div>
 				)}
@@ -1520,6 +1520,12 @@ const AssistantRow = memo(function AssistantRow({
 	closingLineSuppressed?: boolean;
 	conversationId?: string;
 }) {
+	/*
+	 * A memo row does not re-render for a locale change by itself: its props have
+	 * not moved, so without this subscription the row would keep the language it
+	 * was first painted in (the same reason `UserRow` above subscribes).
+	 */
+	useI18nLocale();
 	const turnRef = useRef<HTMLDivElement>(null);
 	/*
 	 * Which link on this turn the toolbar is about, if any. One subject per row,
@@ -1684,7 +1690,7 @@ const AssistantRow = memo(function AssistantRow({
 				)}
 				{record.stopReason === "aborted" && (
 					<p className="mt-1 text-ink-dim text-meta">
-						Stopped before finishing
+						{t("ui.chat.canonical.transcript.stopped_before_finishing")}
 					</p>
 				)}
 				{/*
@@ -2334,6 +2340,7 @@ const NoticeRow = memo(function NoticeRow({
 	>;
 	isSmallView: boolean;
 }) {
+	useI18nLocale();
 	// A custom row and a notice are two registers, and the difference is what
 	// the row is FOR.
 	//
@@ -2485,7 +2492,7 @@ const NoticeRow = memo(function NoticeRow({
 						size="sm"
 						onClick={() => useConnectProviderStore.getState().openConnect()}
 					>
-						Connect a provider
+						{t("ui.chat.canonical.transcript.connect_provider")}
 					</Button>
 				</div>
 			) : null}
@@ -2695,6 +2702,7 @@ const AskReceiptRow = memo(function AskReceiptRow({
 	record: Extract<TranscriptRecord, { kind: "ask_response" | "ask_timeout" }>;
 	isSmallView: boolean;
 }) {
+	useI18nLocale();
 	if (record.kind === "ask_timeout")
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
@@ -2739,7 +2747,7 @@ const AskReceiptRow = memo(function AskReceiptRow({
 					<div className={cn("flex flex-col gap-2 px-3")}>
 						{record.secretLost ? (
 							<p className={cn("text-body-sm text-warning")}>
-								The session no longer holds the credential this answer named.
+								{t("ui.chat.canonical.transcript.credential_lost")}
 							</p>
 						) : null}
 						{record.questions.map((question) => (
@@ -3047,6 +3055,12 @@ const TranscriptRow = memo(function TranscriptRow({
 	onInterruptTurn?: () => void;
 }) {
 	rowRenderCount.current += 1;
+	/*
+	 * The row's own subscription: the group labels below are translated, and a
+	 * memoised row whose props have not moved would otherwise keep them in the
+	 * language of its first paint.
+	 */
+	useI18nLocale();
 	const { record } = row;
 	const messageRow = transcriptRowActions(record);
 	/*
@@ -3353,6 +3367,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	labelMarked,
 	onReconnect,
 }) => {
+	// The pane's own subscription: the notices and status lines below are
+	// translated and the pane must repaint when the locale changes.
+	useI18nLocale();
 	// A crash-recovered outcome has no durable row of its own, so it is
 	// synthesized here rather than in the stream reducer: this is the layer that
 	// decides what is renderable, and an anchor with nothing to hit-test is an
@@ -6262,7 +6279,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						CHAT_MEASURE,
 					)}
 				>
-					Showing the last saved view — checking for newer messages.
+					{t("ui.chat.canonical.transcript.stale_caption")}
 				</p>
 			)}
 			{/*
@@ -6295,8 +6312,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						)}
 					>
 						<p className="text-body-sm text-warning">
-							This conversation is readable, but its message order couldn't be
-							confirmed with the source just now.
+							{t("ui.chat.canonical.transcript.source_unavailable")}
 						</p>
 						{/*
 						 * The SAME control the failure notice carries, not a new one: same prop,
@@ -6305,7 +6321,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						 * name. Pressing it clears the flag at once (see `reopen`).
 						 */}
 						<Button variant="outline" size="sm" onClick={onReconnect}>
-							Reconnect
+							{t("ui.chat.canonical.transcript.reconnect")}
 						</Button>
 					</output>
 				)}
@@ -6658,11 +6674,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 									id={MISSING_SESSION_NOTICE_ID}
 									className="text-body-sm text-ink"
 								>
-									This conversation is no longer on this machine.
+									{t("ui.chat.canonical.transcript.missing_session")}
 								</p>
 								<p className="text-ink-dim text-meta">
-									It was deleted, or it belongs to a machine this app is not
-									connected to.
+									{t("ui.chat.canonical.transcript.missing_session_detail")}
 								</p>
 								<Button
 									variant="outline"
@@ -6674,7 +6689,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 										useCanonicalSessionsStore.getState().setActiveSession(null);
 									}}
 								>
-									Start a new chat
+									{t("ui.chat.canonical.transcript.start_new_chat")}
 								</Button>
 							</div>
 						) : null}
@@ -6711,7 +6726,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								<p className="text-body-sm text-danger">{failure.statement}</p>
 								{failure.action === "reconnect" && (
 									<Button variant="outline" size="sm" onClick={onReconnect}>
-										Reconnect
+										{t("ui.chat.canonical.transcript.reconnect")}
 									</Button>
 								)}
 							</div>
@@ -6720,7 +6735,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 							// Reading register, not the caption step: during the retry window
 							// this is the pane's only statement, and it has to be perceivable
 							// (design round 1, D3).
-							<p className="mb-4 text-body-sm text-ink-dim">Reconnecting</p>
+							<p className="mb-4 text-body-sm text-ink-dim">
+								{t("ui.chat.canonical.transcript.reconnecting")}
+							</p>
 						)}
 
 						{/* Rows are suppressed for a conversation that is not there: the pane

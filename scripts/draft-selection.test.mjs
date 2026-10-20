@@ -8,6 +8,14 @@ import { build, transform } from "esbuild";
 
 const ROOT = process.cwd();
 
+/** The picker namespace's English strings, for the `t` seam below. */
+const PICKERS_ENGLISH = JSON.parse(
+	readFileSync(
+		join(ROOT, "src/i18n/catalogues/en/ui.chat.pickers.json"),
+		"utf8",
+	),
+);
+
 /** The shipped picker module, for the call-site facts this file pins as source. */
 const PICKERS =
 	"src/renderer/src/features/chat/pickers/destination-pickers.tsx";
@@ -988,6 +996,14 @@ const pickerCode = await transform(
 );
 let activePicker;
 const pickerDependencies = {
+	/*
+	 * The picker's translated copy, from the English catalogue: the harness
+	 * executes a sliced component, so `t` and the locale subscription are seams
+	 * beside the React hooks. English only — locale negotiation is
+	 * `scripts/i18n/`'s subject, not this file's.
+	 */
+	t: (key) => PICKERS_ENGLISH[key] ?? key,
+	useI18nLocale: () => {},
 	NO_DRAFT_TARGET,
 	draftPreviewQuery,
 	selectionFromModel,

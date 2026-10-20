@@ -3028,7 +3028,7 @@ export function ChatSidebar({
 								void fetchCatalogueTail();
 							}}
 						>
-							Retry
+							{t("ui.common.actions.retry")}
 						</button>
 					</p>
 				)}
@@ -4811,7 +4811,9 @@ export function ChatSidebar({
 							aria-hidden="true"
 							className="ms-1 size-3.5 shrink-0 text-ink-dim"
 						/>
-						<span className="sr-only">, archived</span>
+						<span className="sr-only">
+							{t("ui.chat.sidebar.row.archived_suffix")}
+						</span>
 					</>
 				)}
 				{/* ONE trailing statement per row, decided by `rowTrailingStatement`
@@ -4948,7 +4950,7 @@ export function ChatSidebar({
 					))}
 				{trailing === "not_sent" && (
 					<span className="ms-1 shrink-0 text-meta text-ink-muted">
-						· Not sent yet
+						· {t("ui.chat.sidebar.row.not_sent")}
 					</span>
 				)}
 				{/* Says WHY a row is in a filtered list when its visible text does not
@@ -4965,9 +4967,11 @@ export function ChatSidebar({
 							aria-hidden="true"
 							className="ms-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
 						>
-							· in conversation
+							· {t("ui.chat.sidebar.row.in_conversation")}
 						</span>
-						<span className="sr-only">, matched in conversation</span>
+						<span className="sr-only">
+							{t("ui.chat.sidebar.row.matched_in_conversation")}
+						</span>
 					</>
 				)}
 				{/* THE REMOTE ROW'S OWN SENTENCE, joined to the name here rather than
@@ -5430,7 +5434,7 @@ export function ChatSidebar({
 								data-session-pin-grip
 								tabIndex={-1}
 								aria-hidden="true"
-								title="Drag to reorder · Esc cancels"
+								title={t("ui.chat.sidebar.pins.drag_title")}
 								onPointerDown={(event) =>
 									startPinDrag(row.session_id, label, event)
 								}
@@ -6339,7 +6343,7 @@ export function ChatSidebar({
 							}}
 						>
 							<GitFork aria-hidden="true" />
-							<span>Fork conversation</span>
+							<span>{t("ui.chat.sidebar.row_menu.fork")}</span>
 						</ContextMenuItem>
 					)}
 					{/*
@@ -6369,7 +6373,7 @@ export function ChatSidebar({
 					 */}
 					<ContextMenuItem onSelect={() => void copySessionId(row.session_id)}>
 						<Copy aria-hidden="true" />
-						<span>Copy session ID</span>
+						<span>{t("ui.chat.sidebar.row_menu.copy_id")}</span>
 					</ContextMenuItem>
 					{/*
 					 * RENAME CONVERSATION (#920), SLOT 5, and the seventh row the menu has carried.
@@ -6423,7 +6427,7 @@ export function ChatSidebar({
 						}}
 					>
 						<Pencil aria-hidden="true" />
-						<span>Rename conversation</span>
+						<span>{t("ui.chat.sidebar.row_menu.rename")}</span>
 					</ContextMenuItem>
 					{tagsAvailable && (
 						<ContextMenuItem
@@ -6524,7 +6528,7 @@ export function ChatSidebar({
 								)}
 							>
 								<ChevronUp aria-hidden="true" />
-								<span>Move conversation up</span>
+								<span>{t("ui.chat.sidebar.row_menu.move_up")}</span>
 								<span className="ms-auto ps-6">
 									<KeyboardShortcut
 										shortcut={chatPinMoveCapJoined(-1, isMac)}
@@ -6544,7 +6548,7 @@ export function ChatSidebar({
 								)}
 							>
 								<ChevronDown aria-hidden="true" />
-								<span>Move conversation down</span>
+								<span>{t("ui.chat.sidebar.row_menu.move_down")}</span>
 								<span className="ms-auto ps-6">
 									<KeyboardShortcut
 										shortcut={chatPinMoveCapJoined(1, isMac)}
@@ -7208,7 +7212,7 @@ export function ChatSidebar({
 										className="text-meta text-ink-dim underline hover:text-ink"
 										onClick={() => void fetchScopePage(kind, name, null)}
 									>
-										Retry
+										{t("ui.common.actions.retry")}
 									</button>
 								</p>
 							)}
@@ -7234,7 +7238,7 @@ export function ChatSidebar({
 									className="py-1 ps-7 text-meta text-ink-dim"
 									aria-live="polite"
 								>
-									Loading more…
+									{t("ui.chat.sidebar.list.loading_more")}
 								</p>
 							) : view.retry ? (
 								/*
@@ -7266,7 +7270,7 @@ export function ChatSidebar({
 												)
 											}
 										>
-											Retry
+											{t("ui.common.actions.retry")}
 										</button>
 									</p>
 								</>
@@ -8305,7 +8309,7 @@ export function ChatSidebar({
 		>
 			{capabilities.isLoading && (
 				<p aria-live="polite" className="text-meta text-ink-dim">
-					Connecting to chats…
+					{t("ui.chat.sidebar.list.connecting")}
 				</p>
 			)}
 			{/*
@@ -8350,7 +8354,7 @@ export function ChatSidebar({
 							className="underline"
 							onClick={() => void capabilities.refetch()}
 						>
-							Retry refresh
+							{t("ui.chat.sidebar.list.retry_refresh")}
 						</button>
 					</div>
 				)}
@@ -8378,7 +8382,7 @@ export function ChatSidebar({
 						className="underline"
 						onClick={() => void capabilities.refetch()}
 					>
-						Retry refresh
+						{t("ui.chat.sidebar.list.retry_refresh")}
 					</button>
 				</div>
 			)}
@@ -8436,7 +8440,7 @@ export function ChatSidebar({
 								<>
 									{profiles.isLoading && (
 										<p aria-live="polite" className="text-meta text-ink-dim">
-											Loading agents…
+											{t("ui.chat.sidebar.agents.loading")}
 										</p>
 									)}
 									{hubLines("agent")}
@@ -8494,8 +8498,8 @@ export function ChatSidebar({
 											<input
 												ref={rosterFilterRef}
 												data-roster-filter
-												aria-label="Filter agents"
-												placeholder="Filter agents"
+												aria-label={t("ui.chat.sidebar.agents.filter")}
+												placeholder={t("ui.chat.sidebar.agents.filter")}
 												className="h-8 w-full rounded-md bg-row-hover pe-9 ps-2 text-body-sm"
 												value={rosterFilter}
 												onChange={(event) =>
@@ -8546,7 +8550,7 @@ export function ChatSidebar({
 															setRosterFilter,
 														)
 													}
-													aria-label="Clear agent filter"
+													aria-label={t("ui.chat.sidebar.agents.clear_filter")}
 												>
 													<X aria-hidden="true" />
 												</Button>
@@ -8634,14 +8638,16 @@ export function ChatSidebar({
 														 */}
 														<div className="flex items-center justify-between gap-2">
 															<p className="text-body-sm text-ink">
-																No agents yet
+																{t("ui.chat.sidebar.agents.empty")}
 															</p>
 															{builtinOfferOnScreen && !agentsOfferBusy && (
 																<Button
 																	variant="ghost"
 																	size="icon-sm"
 																	data-testid="agents-offer-dismiss"
-																	aria-label="Dismiss built-in agents suggestion"
+																	aria-label={t(
+																		"ui.chat.sidebar.agents.dismiss_offer",
+																	)}
 																	onClick={() => {
 																		offerDismissedByPressRef.current = true;
 																		dismissBuiltinOffer(offerSignature);
@@ -8705,7 +8711,7 @@ export function ChatSidebar({
 														)
 													) : (
 														<p className="text-meta text-ink-muted">
-															No agents match
+															{t("ui.chat.sidebar.agents.no_match")}
 														</p>
 													)
 												) : (
@@ -8732,7 +8738,7 @@ export function ChatSidebar({
 										onClick={() => navigate("/agents?create=agent")}
 									>
 										<Plus className="size-4" />
-										Create agent
+										{t("ui.chat.sidebar.agents.create")}
 									</button>
 								</>
 							)}
@@ -8785,7 +8791,7 @@ export function ChatSidebar({
 								<>
 									{teams.isLoading && (
 										<p aria-live="polite" className="text-meta text-ink-dim">
-											Loading teams…
+											{t("ui.chat.sidebar.teams.loading")}
 										</p>
 									)}
 									{hubLines("team")}
@@ -8800,7 +8806,7 @@ export function ChatSidebar({
 										onClick={() => navigate("/agents?create=team")}
 									>
 										<Plus className="size-4" />
-										Create team
+										{t("ui.chat.sidebar.teams.create")}
 									</button>
 								</>
 							)}
@@ -8829,7 +8835,10 @@ export function ChatSidebar({
 		 * 1, m-1).
 		 */
 		<p ref={pinRef} className="pb-2 text-meta text-warning">
-			Could not {pinFailure.pinned ? "pin" : "unpin"} “{pinFailure.title}”.
+			{t("ui.chat.sidebar.pins.failure", {
+				action: pinFailure.pinned ? "pin" : "unpin",
+				title: pinFailure.title,
+			})}
 			{pinFailure.detail ? ` ${pinFailure.detail}` : ""}{" "}
 			<button
 				type="button"
@@ -8838,7 +8847,7 @@ export function ChatSidebar({
 					void setSessionPin(pinFailure.sessionId, pinFailure.pinned)
 				}
 			>
-				Retry
+				{t("ui.common.actions.retry")}
 			</button>
 		</p>
 	) : null;
@@ -9273,7 +9282,7 @@ export function ChatSidebar({
 							aria-describedby={
 								clearableDraftRows.length === 0 ? CLEAR_ALL_WHY_ID : undefined
 							}
-							aria-label="Clear all drafts"
+							aria-label={t("ui.chat.sidebar.drafts.clear_all_label")}
 							title={
 								clearableDraftRows.length === 0
 									? CLEAR_ALL_WHY
@@ -9345,7 +9354,7 @@ export function ChatSidebar({
 								"aria-disabled:hover:bg-transparent! aria-disabled:hover:text-ink-disabled!",
 							)}
 						>
-							Clear all
+							{t("ui.chat.sidebar.drafts.clear_all")}
 						</button>
 						{/*
 						 * The why the control points at while inapplicable (D7/U6): the trash's
@@ -9573,7 +9582,7 @@ export function ChatSidebar({
 				// as the group's, one register wider.
 				(catalogueCounts === null || catalogueCounts.total === 0) && (
 					<p className="text-meta text-ink-muted">
-						No chats yet. Choose an agent, team or New chat.
+						{t("ui.chat.sidebar.list.empty")}
 					</p>
 				)}
 			{/*
@@ -9597,7 +9606,7 @@ export function ChatSidebar({
 			)}
 			{truncated && !pageable && (
 				<p className="text-meta text-ink-muted">
-					Showing up to 500 chats. Older chats remain available in the terminal.
+					{t("ui.chat.sidebar.list.truncated_legacy")}
 				</p>
 			)}
 			{/*
@@ -9652,7 +9661,7 @@ export function ChatSidebar({
 								: "text-warning",
 						)}
 					>
-						Not connected to the backend — showing the last known state.
+						{t("ui.chat.sidebar.list.offline")}
 					</p>
 				)}
 		</div>
@@ -9674,7 +9683,7 @@ export function ChatSidebar({
 	return (
 		<nav
 			ref={navRef}
-			aria-label="Chats"
+			aria-label={t("ui.chat.sidebar.nav.chats")}
 			/*
 			 * THE SIDEBAR IS THE FIRST REGION OF THE KEYBOARD WALK (§C4). `tabIndex={-1}`
 			 * is what makes it a DOOR rather than a stop: the panel is entered by `F6`
@@ -9785,7 +9794,7 @@ export function ChatSidebar({
 								variant="ghost"
 								size="icon-sm"
 								data-sidebar-search
-								aria-label="Search chats and agents"
+								aria-label={t("ui.chat.sidebar.header.search")}
 								onClick={() => {
 									/*
 									 * The field is drawn only while filtering (`filterOpen`), so this
@@ -9810,7 +9819,7 @@ export function ChatSidebar({
 										variant="ghost"
 										size="icon-sm"
 										data-sidebar-view-options
-										aria-label="View options"
+										aria-label={t("ui.chat.sidebar.header.view_options")}
 										aria-expanded={viewOpen}
 										/*
 										 * THE FILLED PILL THE REFERENCE DRAWS (dsh's middle button fills
@@ -9894,7 +9903,7 @@ export function ChatSidebar({
 										variant="ghost"
 										size="icon-sm"
 										data-sidebar-create
-										aria-label="New agent or team"
+										aria-label={t("ui.chat.sidebar.header.create")}
 										aria-expanded={createOpen}
 									>
 										<FolderPlus aria-hidden="true" />
@@ -9925,7 +9934,9 @@ export function ChatSidebar({
 									className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 								>
 									<UserPlus aria-hidden="true" className="size-3.5 shrink-0" />
-									<span className="min-w-0 flex-1 truncate">New agent</span>
+									<span className="min-w-0 flex-1 truncate">
+										{t("ui.chat.sidebar.header.create_agent")}
+									</span>
 								</button>
 								<button
 									type="button"
@@ -9937,7 +9948,9 @@ export function ChatSidebar({
 									className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 								>
 									<Users aria-hidden="true" className="size-3.5 shrink-0" />
-									<span className="min-w-0 flex-1 truncate">New team</span>
+									<span className="min-w-0 flex-1 truncate">
+										{t("ui.chat.sidebar.header.create_team")}
+									</span>
 								</button>
 							</PopoverContent>
 						</Popover>
@@ -9980,7 +9993,7 @@ export function ChatSidebar({
 								variant="ghost"
 								size="icon-sm"
 								data-sidebar-open-agent
-								aria-label="Open agent…"
+								aria-label={t("ui.chat.sidebar.header.open_agent")}
 								onClick={() => {
 									openCommandPalette();
 									setCommandPaletteQuery(AGENT_ROSTER_SEED);
@@ -10008,8 +10021,8 @@ export function ChatSidebar({
 				<div className={cn("relative mb-2", !filterShown && "hidden")}>
 					<input
 						ref={searchRef}
-						aria-label="Search chats and agents"
-						placeholder="Filter chats and agents"
+						aria-label={t("ui.chat.sidebar.header.search")}
+						placeholder={t("ui.chat.sidebar.search.placeholder")}
 						className="h-8 w-full rounded-md bg-row-hover pe-9 ps-2 text-body-sm"
 						value={query}
 						onChange={(event) => setQuery(event.target.value)}
@@ -10036,7 +10049,7 @@ export function ChatSidebar({
 							size="icon-sm"
 							className="absolute top-1/2 end-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
 							onClick={() => clearSearch(searchRef.current, setQuery)}
-							aria-label="Clear search"
+							aria-label={t("ui.chat.sidebar.search.clear")}
 						>
 							<X aria-hidden="true" />
 						</Button>
@@ -10077,7 +10090,7 @@ export function ChatSidebar({
 							htmlFor={INCLUDE_ARCHIVED_ID}
 							className="text-meta text-ink-muted"
 						>
-							Include archived
+							{t("ui.chat.sidebar.search.include_archived")}
 						</Label>
 					</div>
 				)}
@@ -10096,26 +10109,26 @@ export function ChatSidebar({
 		    notice returns for the reason it was written for. */}
 				{overLong && ready && (
 					<p className="pb-2 text-meta text-ink-muted">
-						Search terms are limited to {SESSION_SEARCH_MAX_CHARS} characters.
-						This one is longer, so only chat names are being searched.
+						{t("ui.chat.sidebar.search.too_long", {
+							max: SESSION_SEARCH_MAX_CHARS,
+						})}
 					</p>
 				)}
 				{query && ready && !searchSupported && !overLong && (
 					<p className="pb-2 text-meta text-ink-muted">
-						Searching chat names only. Update Local Operator to search inside
-						conversations.
+						{t("ui.chat.sidebar.search.names_only")}
 					</p>
 				)}
 				{query && searchSupported && search.isError && (
 					<p className="pb-2 text-meta text-ink-muted">
-						Conversation search is unavailable, so these are name matches.{" "}
+						{t("ui.chat.sidebar.search.unavailable")}{" "}
 						<Button
 							variant="link"
 							size="sm"
 							type="button"
 							onClick={() => void search.refetch()}
 						>
-							Retry
+							{t("ui.common.actions.retry")}
 						</Button>
 					</p>
 				)}
@@ -10144,7 +10157,9 @@ export function ChatSidebar({
 		    the previous question's hits (review round 2, R10). */}
 				{query.trim() && showList && !matching.length && answered && (
 					<p className="pb-2 text-meta text-ink-muted">
-						Nothing in your chats matches “{query.trim()}”.
+						{t("ui.chat.sidebar.search.no_match", {
+							query: query.trim(),
+						})}
 					</p>
 				)}
 				{awaiting &&
@@ -10153,7 +10168,7 @@ export function ChatSidebar({
 						matching.length,
 					) && (
 						<p className="pb-2 text-meta text-ink-muted">
-							Searching conversations…
+							{t("ui.chat.sidebar.search.searching")}
 						</p>
 					)}
 				{/* Mounted at all times and filled later: a live region added to the
@@ -10251,7 +10266,7 @@ export function ChatSidebar({
 									void teams.refetch();
 								}}
 							>
-								Retry refresh
+								{t("ui.chat.sidebar.list.retry_refresh")}
 							</button>
 						</div>
 					)}
