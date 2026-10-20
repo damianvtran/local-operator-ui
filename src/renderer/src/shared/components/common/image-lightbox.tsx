@@ -6,6 +6,8 @@ import {
 	DialogContent,
 	DialogTitle,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	VIEWER_PAN_ORIGIN,
 	VIEWER_ZOOM_MAX,
@@ -420,6 +422,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	mediaLabel = "image",
 	layerAttributes,
 }) => {
+	useI18nLocale();
 	const isVideo = mediaKind === "video";
 	const positionLabel = (index: number, count: number) =>
 		mediaLabel === "asset"
@@ -947,8 +950,8 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Zoom out"
-								title="Zoom out"
+								aria-label={t("ui.common.viewer.zoom_out")}
+								title={t("ui.common.viewer.zoom_out")}
 								disabled={!canZoom || zoom === VIEWER_ZOOM_MIN}
 								onClick={() => applyZoom(stepZoom(zoom, -1))}
 								className={CHROME_PLATE}
@@ -958,8 +961,8 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Zoom in"
-								title="Zoom in"
+								aria-label={t("ui.common.viewer.zoom_in")}
+								title={t("ui.common.viewer.zoom_in")}
 								disabled={!canZoom || zoom === VIEWER_ZOOM_MAX}
 								onClick={() => applyZoom(stepZoom(zoom, 1))}
 								className={CHROME_PLATE}
@@ -969,8 +972,8 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Reset view"
-								title="Reset view"
+								aria-label={t("ui.common.viewer.reset_view")}
+								title={t("ui.common.viewer.reset_view")}
 								disabled={!canZoom || atFit}
 								onClick={resetView}
 								className={CHROME_PLATE}
