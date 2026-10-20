@@ -2363,15 +2363,15 @@
 		"length": "English is 6 source characters. Keep this as a compact single control/status label; prefer comparable width, do not add an explanatory sentence."
 	},
 	"ui.projects.project_updates.attachment": {
-		"role": "project updates: field, view or status label for “Attachment”",
-		"tone": "Concise neutral label, retaining English sentence case.",
-		"note": "English source: Attachment.  Markup and emphasized user names stay outside this message.",
-		"length": "English is 10 source characters. Keep this as a compact single control/status label; prefer comparable width, do not add an explanatory sentence."
+		"role": "project updates: fallback display name for an attachment that has no name and no usable final path segment",
+		"tone": "Single neutral noun in sentence case; short and generic.",
+		"note": "Read by attachmentName (project-update-assets.tsx:80-83) only when neither attachment.name nor the last segment of attachment.path is available, so this word stands in where a file name would and feeds the attachment tile and filmstrip labels. It is not a field, view or status label. Keep it a short generic noun for the file itself; the chosen word is displayed as the attachment’s name.",
+		"length": "English is 10 source characters. One short noun; prefer comparable width, and do not add punctuation or an explanatory sentence."
 	},
 	"ui.projects.project_updates.attachments": {
 		"role": "project updates: accessible name of the filmstrip that walks one update’s pictures and video clips inside the media lightbox",
 		"tone": "Concise plural noun label; sentence case, no trailing punctuation.",
-		"note": "Screen-reader-only name on the filmstrip list at the bottom of the update’s image lightbox. It names the whole set the strip walks, never one file, and the strip appears only when the update holds more than one image or clip. Distinct from the singular ui.projects.project_updates.attachment, which is the fallback display name for an attachment with neither a name nor a final path segment.",
+		"note": "Screen-reader-only name on the filmstrip list at the bottom of the update’s media lightbox. It names the whole set the strip walks, never one file, and the strip appears only when the update holds more than one image or clip. Distinct from the singular ui.projects.project_updates.attachment, which is the fallback display name for an attachment with neither a name nor a final path segment.",
 		"length": "English is 11 source characters. Keep it one short plural noun; it is a list name, not a sentence, and the strip adds no visible text."
 	},
 	"ui.projects.project_updates.file_actions_for_name": {
@@ -2448,9 +2448,9 @@
 	},
 	"ui.projects.project_updates.show_asset_name": {
 		"role": "project updates: accessible name of one thumbnail button in the media lightbox filmstrip",
-		"tone": "Neutral positional label; name first, position clause after a comma, no trailing punctuation.",
-		"note": "The filmstrip at the bottom of an update’s image lightbox lists that update’s pictures and clips; this names the button for the asset at {index} of {count} so a screen-reader user can tell position in the set. Also used on placeholder tiles whose bytes have not loaded yet, and as the video tile’s tooltip. {index} and {count} are 1-based whole numbers already formatted as strings: keep the order and the comma, and never translate or re-case the numbers.",
-		"length": "English is 37 source characters. Keep the name first and the position clause after the comma; it is a control label, not a sentence.",
+		"tone": "Direct imperative; verb first, then the name, then the position clause after a comma; no trailing punctuation.",
+		"note": "The filmstrip at the bottom of an update’s media lightbox lists that update’s pictures and clips; this names the button for the asset at {index} of {count} so a screen-reader user can tell position in the set. Also used on placeholder tiles whose bytes have not loaded yet, and as the video tile’s tooltip. {index} and {count} are 1-based whole numbers already formatted as strings: keep the order and the comma, and never translate or re-case the numbers.",
+		"length": "English is 37 source characters. Keep the verb first, then the name, then the position clause after the comma; it is a control label, not a sentence.",
 		"placeholders": {
 			"name": "Attachment display name (attachmentName in project-update-assets.tsx); never translated.",
 			"index": "1-based position among the update’s image and video attachments, passed as String(index + 1).",
