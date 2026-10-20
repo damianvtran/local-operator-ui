@@ -5,6 +5,8 @@
 	"ui.chat.tags.manage": "ٹیگز کا انتظام کریں…",
 	"ui.chat.tags.mode_hint": "ٹیگ گروہ وقت کے حصے کی گروہ بندی استعمال کرتے ہیں۔",
 	"ui.chat.tags.use_time": "وقت کا حصہ استعمال کریں",
+	"ui.chat.tags.auto_tag": "فورک شدہ گفتگوؤں کو خودکار ٹیگ کریں",
+	"ui.chat.tags.auto_tag_help": "فورک کا نام رکھتے وقت آپ کے موجودہ ٹیگز استعمال ہوتے ہیں۔",
 	"ui.chat.tags.discovery": "گفتگو پر دایاں کلک کریں اور ٹیگز… منتخب کریں (Shift+F10، اکثر Mac کی بورڈز پر Fn کے ساتھ)۔",
 	"ui.chat.tags.picker_title": "“{title}” کے ٹیگز",
 	"ui.chat.tags.picker_description": "ٹیگز منتخب کریں، پھر لاگو کریں۔ نئے ٹیگز فوراً محفوظ ہو جاتے ہیں۔",

@@ -13,11 +13,14 @@
  * duplicating an editor here. Everything else renders in the host.
  */
 
+import { autoTagSupported, forkAutoTag } from "@features/chat/chat-auto-tag";
+import { parseSidebarView } from "@features/chat/chat-sidebar-view";
 import { useConnectProviderStore } from "@features/providers/connect-provider-store";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type { DesktopProvider } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopKeys,
+	useDesktopCapabilities,
 	useDesktopProviders,
 } from "@shared/api/local-operator/desktop-hooks";
 import {
@@ -32,6 +35,8 @@ import { Input } from "@shared/components/ui/input";
 import { Textarea } from "@shared/components/ui/textarea";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 
 /**
  * The model this session is RUNNING, for a dialog whose job is not to offer the
@@ -724,6 +729,7 @@ export const ModelPicker: FC<PickerContext> = ({
 	note,
 	draft,
 }) => {
+	useI18nLocale();
 	/*
 	 * `false` is the shipped registry's own document; the live listing is a
 	 * SEPARATE key (see the promotion beside the query, and why it is the second
@@ -1582,7 +1588,7 @@ export const ModelPicker: FC<PickerContext> = ({
 			 * told the user that after the fact (design D7). Ticked, the label states
 			 * the consequence for THIS pick rather than describing a general option.
 			 */
-			title="Model"
+			title={t("ui.chat.pickers.models.title")}
 			description={
 				draft
 					? shownSelector
@@ -1626,7 +1632,7 @@ export const ModelPicker: FC<PickerContext> = ({
 						type="button"
 						onClick={() => useConnectProviderStore.getState().openConnect()}
 					>
-						Connect a provider
+						{t("ui.chat.pickers.models.connect_provider")}
 					</Button>
 				) : undefined
 			}
@@ -1642,8 +1648,9 @@ export const ModelPicker: FC<PickerContext> = ({
 						 * D1 / UX round 1 U2). Same label the row shows, so the two
 						 * cannot disagree. */}
 						<p className="text-ink-muted text-meta">
-							Native details —{" "}
-							{selectedDetails.label || selectedDetails.model_id}
+							{t("ui.chat.pickers.models.native_details", {
+								name: selectedDetails.label || selectedDetails.model_id,
+							})}
 						</p>
 						<PickerKeyValue
 							label="Context"
@@ -1828,7 +1835,7 @@ export const ModelPicker: FC<PickerContext> = ({
 									if (modelInForce) void saveModelDefault(modelInForce);
 								}}
 							>
-								Set current model as default
+								{t("ui.chat.pickers.models.set_as_default")}
 							</Button>
 						)}
 						<Button
@@ -1908,6 +1915,7 @@ export const EffortPicker: FC<PickerContext> = ({
 	draft,
 	note,
 }) => {
+	useI18nLocale();
 	/*
 	 * A session's rungs come from the owner (`command-entities?command=effort`),
 	 * which is the list `/effort <rung>` itself validates against. A DRAFT pane has
@@ -2125,7 +2133,7 @@ export const EffortPicker: FC<PickerContext> = ({
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Reasoning effort"
+			title={t("ui.chat.pickers.effort.title")}
 			toolbar={
 				!draft ? (
 					<PickerCheck
@@ -2278,6 +2286,7 @@ export const EffortPicker: FC<PickerContext> = ({
 // ------------------------------------------------------------------ theme
 
 export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
+	useI18nLocale();
 	const themeName = useUiPreferencesStore((state) => state.themeName);
 	const setTheme = useUiPreferencesStore((state) => state.setTheme);
 	const [result, setResult] = useState<PickerResult | null>(null);
@@ -2339,7 +2348,7 @@ export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Theme"
+			title={t("ui.chat.pickers.theme.title")}
 			description="Desktop theme. The terminal keeps its own tui.theme setting."
 			/*
 			 * THE CONFIRMATION SHAPE (issue #676): no `options` at all while the
@@ -2395,6 +2404,7 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 	canonical,
 	action,
 }) => {
+	useI18nLocale();
 	const [selected, setSelected] = useState<string | null>(null);
 	/*
 	 * THE DRAFT BRANCH (issue #780): mounted with no session — the dispatcher's
@@ -2572,7 +2582,9 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 								</p>
 							)}
 							{detail.isLoading && (
-								<p className="text-ink-dim text-meta">Loading detail</p>
+								<p className="text-ink-dim text-meta">
+									{t("ui.chat.pickers.profile.loading_detail")}
+								</p>
 							)}
 							{selectedRow?.instructions && (
 								<pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap font-mono text-ink-muted text-mono-sm">
@@ -2648,6 +2660,7 @@ type SkillsResult = {
 };
 
 export const SkillsPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
+	useI18nLocale();
 	const [selected, setSelected] = useState<string | null>(null);
 	const list = useQuery({
 		queryKey: ["desktop", "skills", sessionId],
@@ -2681,7 +2694,7 @@ export const SkillsPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Skills"
+			title={t("ui.chat.pickers.skills.title")}
 			description={`Skills discoverable from this session's working directory (${
 				list.data?.data.scope ?? "discoverable"
 			} scope). Listed is not the same as selected into the prompt.`}
@@ -2694,10 +2707,13 @@ export const SkillsPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 				selected ? (
 					<div className="rounded-md border border-hairline bg-sunken px-3 py-2">
 						<p className="font-mono text-ink text-mono-sm">
+							{/* i18n: ignore protocol scheme shown to the user, not prose */}
 							skill://{selected}
 						</p>
 						{detail.isLoading ? (
-							<p className="text-ink-dim text-meta">Loading</p>
+							<p className="text-ink-dim text-meta">
+								{t("ui.chat.pickers.skills.loading")}
+							</p>
 						) : (
 							<pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap font-mono text-ink-muted text-mono-sm">
 								{body?.body ?? body?.text ?? "No detail returned."}
@@ -2796,6 +2812,7 @@ export const ForkPicker: FC<PickerContext> = ({
 	rebind,
 	action,
 }) => {
+	useI18nLocale();
 	/*
 	 * The cut point this picker was opened FOR, or null for the whole-conversation
 	 * form. It is read off the REQUEST rather than re-derived here: the row that
@@ -2806,6 +2823,17 @@ export const ForkPicker: FC<PickerContext> = ({
 	const cutEntryId = readForkEntryId(action.data);
 	const cutExcerpt = readForkEntryExcerpt(action.data);
 	const [message, setMessage] = useState(action.args ?? "");
+	/*
+	 * THE FORK-TIME INTENT, read from the persisted view rather than from a prop:
+	 * every door that raises this picker (typed `/fork`, a row's menu, the
+	 * palette) already shares the sidebar's `SidebarView`, and passing the pair
+	 * through `action.data` would be three places to keep in step with the View
+	 * options row. `getState()` inside the submit is deliberate - the value is
+	 * captured when the request is SENT, which is the moment the design calls
+	 * fork time; changing the setting later never reaches an existing fork
+	 * because the backend records the sidecar then.
+	 */
+	const capabilities = useDesktopCapabilities();
 	const op = useOperation();
 	const submit = useCallback(async () => {
 		// Weighed before the request for the same reason a message is: `message` is
@@ -2820,6 +2848,15 @@ export const ForkPicker: FC<PickerContext> = ({
 			op.setResult({ tone: "error", text: refusal });
 			return;
 		}
+		/*
+		 * The field travels only when the backend advertises the version that
+		 * reads it; on an older core this is `undefined`, `JSON.stringify` drops
+		 * the key, and the body is the released one key for key.
+		 */
+		const autoTag = forkAutoTag(
+			parseSidebarView(useUiPreferencesStore.getState().chatSidebarView),
+			autoTagSupported(capabilities.data),
+		);
 		const value = await op.perform(
 			() =>
 				desktopResult<{
@@ -2851,6 +2888,12 @@ export const ForkPicker: FC<PickerContext> = ({
 					...(cutEntryId
 						? { boundary: "at_entry" as const, entryId: cutEntryId }
 						: { boundary: "next_safe" as const }),
+					/*
+					 * ABSENT, not `undefined`: on a backend without the capability the
+					 * request object itself keeps the released shape, which is the property
+					 * the call-site test reads (the transport would drop it either way).
+					 */
+					...(autoTag === undefined ? {} : { autoTag }),
 				}),
 			/*
 			 * THE SUCCESS SENTENCE NAMES NO SESSION ID (UX round 1, U5). The child's id
@@ -2886,7 +2929,7 @@ export const ForkPicker: FC<PickerContext> = ({
 			cutEntryId ? FORK_CUT_NOTE : undefined,
 		);
 		if (value) rebind(value.data.session_id);
-	}, [op, sessionId, message, rebind, cutEntryId]);
+	}, [op, sessionId, message, rebind, cutEntryId, capabilities.data]);
 	return (
 		<PickerHost
 			open
@@ -2910,7 +2953,7 @@ export const ForkPicker: FC<PickerContext> = ({
 						value={message}
 						onChange={(event) => setMessage(event.target.value)}
 						rows={3}
-						placeholder="Try a different approach..."
+						placeholder={t("ui.chat.pickers.fork.search_placeholder")}
 					/>
 				</PickerField>
 			}
@@ -3029,6 +3072,7 @@ export const StopPicker: FC<PickerContext> = ({
 	onClose,
 	action,
 }) => {
+	useI18nLocale();
 	const rows = useSessionRows();
 	const [targets, setTargets] = useState<Set<string>>(
 		() => new Set(action.args.trim() === "all" ? [] : [sessionId]),
@@ -3082,7 +3126,7 @@ export const StopPicker: FC<PickerContext> = ({
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Stop"
+			title={t("ui.chat.pickers.stop.title")}
 			description="Ends the chosen sessions' current work through the runtime's own stop protocol. /resume reopens a stopped conversation."
 			options={options}
 			loading={rows.isLoading}
@@ -3098,7 +3142,9 @@ export const StopPicker: FC<PickerContext> = ({
 			}}
 			toolbar={
 				<PickerCheck checked={all} onCheckedChange={setAll} tone="muted">
-					All sessions ({rows.data?.length ?? 0})
+					{t("ui.chat.pickers.stop.all_sessions", {
+						count: rows.data?.length ?? 0,
+					})}
 				</PickerCheck>
 			}
 			form={
@@ -3107,9 +3153,7 @@ export const StopPicker: FC<PickerContext> = ({
 					onCheckedChange={setConfirmed}
 					tone="ink"
 				>
-					Stop{" "}
-					{chosen.length === 1 ? "this session" : `${chosen.length} sessions`}{" "}
-					now
+					{t("ui.chat.pickers.stop.confirm", { count: chosen.length })}
 				</PickerCheck>
 			}
 			onSubmit={submit}
@@ -3124,6 +3168,7 @@ export const StopPicker: FC<PickerContext> = ({
 // -------------------------------------------------------------------- copy
 
 export const CopyPicker: FC<PickerContext> = ({ canonical, onClose }) => {
+	useI18nLocale();
 	const [result, setResult] = useState<PickerResult | null>(null);
 	const options = useMemo<PickerOption[]>(() => {
 		const rows: PickerOption[] = [];
@@ -3206,7 +3251,7 @@ export const CopyPicker: FC<PickerContext> = ({ canonical, onClose }) => {
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Copy"
+			title={t("ui.chat.pickers.copy.title")}
 			description="Pick a message, a code block, or a quoted excerpt. It goes to the clipboard."
 			options={options}
 			emptyText="Nothing to copy yet."
@@ -3224,6 +3269,7 @@ export const ResumePicker: FC<PickerContext> = ({
 	rebind,
 	action,
 }) => {
+	useI18nLocale();
 	const rows = useSessionRows();
 	const [result, setResult] = useState<PickerResult | null>(null);
 	const options = useMemo<PickerOption[]>(
@@ -3260,7 +3306,7 @@ export const ResumePicker: FC<PickerContext> = ({
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Resume a conversation"
+			title={t("ui.chat.pickers.resume.title")}
 			description="Every canonical session, live or cold. Picking one attaches this window to it; nothing is restarted until you send a message."
 			options={options}
 			loading={rows.isLoading}
@@ -3280,6 +3326,7 @@ export const NewSessionPicker: FC<PickerContext> = ({
 	onClose,
 	rebind,
 }) => {
+	useI18nLocale();
 	const [cwd, setCwd] = useState(canonical.frontend?.cwd ?? "");
 	const op = useOperation();
 	const createSession = useCanonicalSessionsStore(
@@ -3306,7 +3353,7 @@ export const NewSessionPicker: FC<PickerContext> = ({
 		<PickerHost
 			open
 			onClose={onClose}
-			title="New conversation"
+			title={t("ui.chat.pickers.new_session.title")}
 			description="Starts a fresh canonical session. Work in the current one continues."
 			form={
 				<PickerField
@@ -3332,6 +3379,7 @@ export const GoalPicker: FC<PickerContext> = ({
 	canonical,
 	onClose,
 }) => {
+	useI18nLocale();
 	const frontend = canonical.frontend;
 	const current = frontend?.goal ?? "";
 	const [goal, setGoal] = useState(current);
@@ -3382,7 +3430,7 @@ export const GoalPicker: FC<PickerContext> = ({
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Session goal"
+			title={t("ui.chat.pickers.goal.title")}
 			/*
 			 * NEUTRAL ON PURPOSE (design review round 1, D3). `done` has TWO authors — the
 			 * judge's ACHIEVED and the user's own `Done` press / `/goal --done` — and on the
@@ -3436,7 +3484,7 @@ export const GoalPicker: FC<PickerContext> = ({
 							value={goal}
 							onChange={(event) => setGoal(event.target.value)}
 							rows={3}
-							placeholder="Ship the release with green gates"
+							placeholder={t("ui.chat.pickers.goal.placeholder")}
 						/>
 					</PickerField>
 					{/*
@@ -3471,7 +3519,7 @@ export const GoalPicker: FC<PickerContext> = ({
 								}
 								disabled={doneCommand.busy}
 							>
-								Mark done
+								{t("ui.chat.pickers.goal.mark_done")}
 							</Button>
 						)}
 						<Button
@@ -3481,7 +3529,7 @@ export const GoalPicker: FC<PickerContext> = ({
 							onClick={() => void command.run(GOAL_COMMAND, GOAL_CLEAR_ARGS)}
 							disabled={command.busy}
 						>
-							Clear goal
+							{t("ui.chat.pickers.goal.clear")}
 						</Button>
 					</>
 				) : undefined
@@ -3502,6 +3550,7 @@ export const ApprovalsPicker: FC<PickerContext> = ({
 	onClose,
 	action,
 }) => {
+	useI18nLocale();
 	const defaultScope = (action.data as { scope?: string }).scope === "default";
 	const [scope, setScope] = useState<"session" | "default">(
 		defaultScope ? "default" : "session",
@@ -3563,7 +3612,7 @@ export const ApprovalsPicker: FC<PickerContext> = ({
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Tool approvals"
+			title={t("ui.chat.pickers.approvals.title")}
 			description="Whether write and command tools ask before running."
 			options={options}
 			loading={entities.isLoading}
@@ -3591,6 +3640,7 @@ export const FastPicker: FC<PickerContext> = ({
 	onClose,
 	action,
 }) => {
+	useI18nLocale();
 	const command = useSessionCommand(sessionId);
 	const [acknowledged, setAcknowledged] = useState(false);
 	const premium = Boolean(
@@ -3620,7 +3670,7 @@ export const FastPicker: FC<PickerContext> = ({
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Fast mode"
+			title={t("ui.chat.pickers.fast.title")}
 			description="Applies to this session only."
 			options={options}
 			onPick={(value) => void command.run("fast", value)}
@@ -3631,7 +3681,7 @@ export const FastPicker: FC<PickerContext> = ({
 						onCheckedChange={setAcknowledged}
 						tone="ink"
 					>
-						I understand fast mode can cost more per token
+						{t("ui.chat.pickers.fast.premium_acknowledgement")}
 					</PickerCheck>
 				) : undefined
 			}
@@ -3688,6 +3738,7 @@ export const RenamePicker: FC<PickerContext> = ({
 	onClose,
 	action,
 }) => {
+	useI18nLocale();
 	/*
 	 * THE SEED, in precedence order. `action.args` is a rename that came with its
 	 * name in hand; `readSubjectName` is the ROW's own displayed name, carried by
@@ -3716,7 +3767,7 @@ export const RenamePicker: FC<PickerContext> = ({
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Rename conversation"
+			title={t("ui.chat.pickers.rename.title")}
 			description="An explicit name takes precedence over the generated title."
 			form={
 				<PickerField label="Name">
@@ -3753,6 +3804,7 @@ export const LoopPicker: FC<PickerContext> = ({
 	onClose,
 	action,
 }) => {
+	useI18nLocale();
 	const command = useSessionCommand(sessionId);
 	const cancel = useSessionCommand(sessionId);
 	const [mode, setMode] = useState<"count" | "goal">("count");
@@ -3776,7 +3828,7 @@ export const LoopPicker: FC<PickerContext> = ({
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Loop"
+			title={t("ui.chat.pickers.loop.title")}
 			description="Repeats turns toward a goal. Approval and question gates still stop and wait for you; the loop never answers them."
 			body={
 				loop && loop.status !== "idle" ? (
@@ -3850,7 +3902,7 @@ export const LoopPicker: FC<PickerContext> = ({
 						onClick={() => void cancel.run(LOOP_COMMAND, LOOP_STOP_ARGS)}
 						disabled={cancel.busy}
 					>
-						Cancel loop
+						{t("ui.chat.pickers.loop.cancel")}
 					</Button>
 				) : undefined
 			}
@@ -3861,6 +3913,7 @@ export const LoopPicker: FC<PickerContext> = ({
 };
 
 export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
+	useI18nLocale();
 	const [key, setKey] = useState("");
 	const [value, setValue] = useState("");
 	const [confirmForget, setConfirmForget] = useState(false);
@@ -3935,7 +3988,7 @@ export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Credential"
+			title={t("ui.chat.pickers.credential.title")}
 			description="Stores a secret for this session's tools by name. The value never appears in the composer, the transcript, or the command receipt."
 			options={options}
 			loading={list.isLoading}
@@ -3948,6 +4001,7 @@ export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 							value={key}
 							onChange={(event) => setKey(event.target.value)}
 							placeholder="MY_API_KEY"
+							// i18n: ignore sample environment variable name, not prose
 							autoComplete="off"
 						/>
 					</PickerField>
@@ -3965,7 +4019,9 @@ export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 							onCheckedChange={setConfirmForget}
 							tone="ink"
 						>
-							Forget {key.trim()} from this session
+							{t("ui.chat.pickers.credential.forget_confirmation", {
+								name: key.trim(),
+							})}
 						</PickerCheck>
 					)}
 				</div>
@@ -3982,7 +4038,7 @@ export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 						onClick={forget}
 						disabled={op.busy}
 					>
-						Forget
+						{t("ui.chat.pickers.credential.forget")}
 					</Button>
 				) : undefined
 			}
@@ -3995,6 +4051,7 @@ export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 // ------------------------------------------------------------ auth flows
 
 export const LoginPicker: FC<PickerContext> = ({ onClose, action }) => {
+	useI18nLocale();
 	const navigate = useNavigate();
 	const providers = useDesktopProviders(true);
 	const options = useMemo<PickerOption[]>(
@@ -4033,7 +4090,7 @@ export const LoginPicker: FC<PickerContext> = ({ onClose, action }) => {
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Sign in to a provider"
+			title={t("ui.chat.pickers.login.title")}
 			description="Opens the provider's sign-in methods in Settings. Browser and device flows run through the backend; keys are entered in a masked field there."
 			options={options}
 			loading={providers.isLoading}
@@ -4064,6 +4121,7 @@ export type StoredAccount = {
 };
 
 export const LogoutPicker: FC<PickerContext> = ({ onClose, action }) => {
+	useI18nLocale();
 	const queryClient = useQueryClient();
 	const accounts = useQuery({
 		queryKey: desktopKeys.accounts,
@@ -4122,7 +4180,7 @@ export const LogoutPicker: FC<PickerContext> = ({ onClose, action }) => {
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Sign out"
+			title={t("ui.chat.pickers.logout.title")}
 			description="Removes one stored account. Credentials supplied through environment variables cannot be removed here and keep working."
 			options={options}
 			loading={accounts.isLoading}
@@ -4138,7 +4196,7 @@ export const LogoutPicker: FC<PickerContext> = ({ onClose, action }) => {
 						onCheckedChange={setConfirmed}
 						tone="ink"
 					>
-						Remove this account's stored credential
+						{t("ui.chat.pickers.logout.confirm")}
 					</PickerCheck>
 				) : undefined
 			}
@@ -4181,6 +4239,7 @@ export const HelpPalette: FC<PickerContext> = ({
 	onClose,
 	dispatch,
 }) => {
+	useI18nLocale();
 	const options = useMemo<PickerOption[]>(
 		() =>
 			commands.map((command) => ({
@@ -4210,7 +4269,7 @@ export const HelpPalette: FC<PickerContext> = ({
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Commands"
+			title={t("ui.chat.pickers.commands.title")}
 			description={`${commands.length} commands. Pick one to run it; commands that take an argument open their picker.`}
 			options={options}
 			searchPlaceholder="Search commands"
@@ -4267,6 +4326,7 @@ export const ReloadPicker: FC<PickerContext> = ({
 	onClose,
 	rebind,
 }) => {
+	useI18nLocale();
 	/*
 	 * The title the receipt prefers, taken from the pane's own reading of the
 	 * session this picker is about (`frontend`, with the held copy across a
@@ -4379,7 +4439,7 @@ export const ReloadPicker: FC<PickerContext> = ({
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Reload this conversation"
+			title={t("ui.chat.pickers.reload.title")}
 			description="Re-reads the canonical session from the backend and re-attaches the stream. No turn is resubmitted."
 			onSubmit={submit}
 			submitLabel="Reload"

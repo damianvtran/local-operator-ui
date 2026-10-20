@@ -1,0 +1,54 @@
+{
+ "backend": "http://127.0.0.1:18234",
+ "request": "/v1/desktop/library/assets",
+ "status": 200,
+ "asset_id": "la_ff0321d1f742819f",
+ "session_id": "b1a5e7c0d2f4",
+ "listing_occurrence": {
+  "session_id": "b1a5e7c0d2f4",
+  "session_title": "Victor support reply triage",
+  "origin": "generated",
+  "tool": "generate_image",
+  "at": 1761000001.5,
+  "intent": null,
+  "first_seq": 2,
+  "last_seq": 2,
+  "child_id": null,
+  "label": null
+ },
+ "detail_occurrence": {
+  "session_id": "b1a5e7c0d2f4",
+  "session_title": "Victor support reply triage",
+  "origin": "generated",
+  "tool": "generate_image",
+  "at": 1761000001.5,
+  "intent": null,
+  "first_seq": 2,
+  "last_seq": 2,
+  "child_id": null,
+  "label": null
+ },
+ "title_sidecar": {
+  "text": "Victor support reply triage",
+  "user_set": false,
+  "names": [
+   "Victor support reply triage"
+  ]
+ },
+ "opening_message": "Can you review Victor's message in non-urgent-tech-support, and delegate to a minervadev team to draft the reply?",
+ "opening_probe": "Can you review Victor's message in non-urgent-tech-support, ",
+ "dom": [
+  {
+   "theme": "localOperatorDark",
+   "text": "From Victor support reply triage",
+   "title": "From Victor support reply triage",
+   "preview": "Back to Libraryvictor-reply-draft.pngimageGenerated72 B8×6Not organized yetOpenDownloadFrom Victor support reply triageAdd a descriptionAdd a tag"
+  },
+  {
+   "theme": "localOperatorLight",
+   "text": "From Victor support reply triage",
+   "title": "From Victor support reply triage",
+   "preview": "Back to Libraryvictor-reply-draft.pngimageGenerated72 B8×6Not organized yetOpenDownloadFrom Victor support reply triageAdd a descriptionAdd a tag"
+  }
+ ]
+}

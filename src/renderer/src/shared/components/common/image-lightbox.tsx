@@ -6,6 +6,8 @@ import {
 	DialogContent,
 	DialogTitle,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	VIEWER_PAN_ORIGIN,
 	VIEWER_ZOOM_MAX,
@@ -110,10 +112,22 @@ const reservedBox = (box: string) =>
  * operator filed against this very surface ("no controls... discoverable, not
  * hover-only-hidden"). The number is NOT `SCROLLBAR_RESTING_FLOOR` re-used: the
  * thumb's 0.45 is a colour-mix fraction measured against the grounds, and this
- * is an opacity on a cluster of buttons. 0.45 keeps the icons findable while
- * clearly below a full-strength control; a designer round may move it, and the
- * frames in `docs/evidence/image-viewer-controls/` exist to make that call
- * (`resting/` is that state, photographed after the hold).
+ * is an opacity on a cluster of buttons.
+ *
+ * 0.85 IS A MEASURED CONTRAST FLOOR, NOT A TASTE CALL (design round 2, D1).
+ * The fade multiplies BOTH the glyph and its `surface/85` plate, and at the
+ * earlier 0.45 the resting composite measured 1.67-2.25:1 worst-ground across
+ * the twelve captured themes — under the 3:1 non-text floor, for controls that
+ * still work (WCAG 1.4.11 exempts inactive controls, not active ones waiting
+ * for a pointer). The designer composed the diminished glyph against the plate
+ * over every pixel a picture can hold (pure white and pure black bound them)
+ * and swept all 59 selectable palettes: the limiting threshold is ~0.84022,
+ * and 0.80 fails (2.788:1 Nightfox, 2.915:1 Dracula) while 0.85 clears 3:1
+ * everywhere — worst 3.05493:1 (Nightfox over white), worst of the twelve
+ * captured 3.20265:1 (Dracula). The fade stays because a resting state must
+ * still read as a step down from awake; it now stops above the floor instead
+ * of under it. Re-derive the number if the plate stops being `surface/85`:
+ * the two compose, and a different plate moves the threshold.
  *
  * AND IT WAS UNREACHABLE UNTIL DESIGN ROUND 1'S D1-2 SETTLED WHERE FOCUS GOES
  * AT OPEN. Radix's autofocus parked focus on the cluster's first control, the
@@ -129,7 +143,27 @@ const reservedBox = (box: string) =>
  * state — every control works at rest, and the next pointer move or key press
  * brings the cluster back to full inside `duration-fast`.
  */
-const CONTROLS_RESTING_CLASS = "opacity-45";
+export const CONTROLS_RESTING_CLASS = "opacity-85";
+
+/**
+ * THE CHROME'S GROUND IS A THEME ROLE, NOT THE PICTURE (design round 1, D1).
+ *
+ * The controls are ghost buttons, so their glyphs used to be painted straight
+ * onto whatever pixels the page put behind the overlay: the light palette's Next
+ * glyph measured `#4e4940` over `#241a37` = 1.84:1, under the 3:1 non-text
+ * floor. A `surface` plate at 85% keeps the borderless look and makes the glyph's
+ * ground a role rather than the media. Measured against the worst picture for
+ * each palette (the plate blended over pure white and pure black, whose extremes
+ * bound every pixel a picture can hold): dark `#c2bcaf` over `#4b4742` 4.87:1,
+ * light `#4e4940` over `#d2d0ca` 5.79:1. The hover and active steps are the
+ * ghost variant's own opaque `accent-wash`, unchanged; the disabled step keeps
+ * the plate so an unreachable zoom step still reads as a control.
+ *
+ * THIS IS SHARED CHROME. The chat transcript and the project feed mount the same
+ * component, so a review of this change must re-check their frames as well as
+ * the Library's; only the button's ground changed, not its geometry or behaviour.
+ */
+const CHROME_PLATE = "bg-surface/85 disabled:bg-surface/85";
 
 /**
  * One picture, expanded over the app.
@@ -336,6 +370,16 @@ export type ImageLightboxProps = {
 	 * is a picture or a clip, while "Previous image" would misname half of them.
 	 */
 	mediaLabel?: "image" | "asset";
+	/**
+	 * Extra attributes for the dialog's layer element.
+	 *
+	 * Data attributes only, and only for a caller whose capture rig or test has
+	 * to tell THIS overlay from any other lightbox in the document: the
+	 * component's own hooks (`data-image-viewport`, `data-image-viewer-controls`)
+	 * are generic and deliberately say nothing about the surface that mounted it.
+	 * Kept off the props list above because it is not behaviour.
+	 */
+	layerAttributes?: Partial<Record<`data-${string}`, string>>;
 };
 
 /**
@@ -376,7 +420,9 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	layerRef,
 	mediaKind = "image",
 	mediaLabel = "image",
+	layerAttributes,
 }) => {
+	useI18nLocale();
 	const isVideo = mediaKind === "video";
 	const positionLabel = (index: number, count: number) =>
 		mediaLabel === "asset"
@@ -802,6 +848,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 					// COLOUR, which this is the only way to take off.
 					"gap-0 rounded-none border-0 border-transparent bg-transparent p-0 shadow-none",
 				)}
+				{...layerAttributes}
 			>
 				<DialogTitle className="sr-only">{label}</DialogTitle>
 				{showCarousel && group ? (
@@ -866,7 +913,10 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 								aria-label={`Previous ${mediaLabel}`}
 								title={`Previous ${mediaLabel}`}
 								onClick={group?.onPrev}
-								className="pointer-events-auto fixed top-0 bottom-0 left-4 my-auto"
+								className={cn(
+									"pointer-events-auto fixed top-0 bottom-0 left-4 my-auto",
+									CHROME_PLATE,
+								)}
 								data-image-viewer-prev=""
 							>
 								<ChevronLeft aria-hidden="true" />
@@ -877,7 +927,10 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 								aria-label={`Next ${mediaLabel}`}
 								title={`Next ${mediaLabel}`}
 								onClick={group?.onNext}
-								className="pointer-events-auto fixed top-0 right-4 bottom-0 my-auto"
+								className={cn(
+									"pointer-events-auto fixed top-0 right-4 bottom-0 my-auto",
+									CHROME_PLATE,
+								)}
 								data-image-viewer-next=""
 							>
 								<ChevronRight aria-hidden="true" />
@@ -897,30 +950,33 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Zoom out"
-								title="Zoom out"
+								aria-label={t("ui.common.viewer.zoom_out")}
+								title={t("ui.common.viewer.zoom_out")}
 								disabled={!canZoom || zoom === VIEWER_ZOOM_MIN}
 								onClick={() => applyZoom(stepZoom(zoom, -1))}
+								className={CHROME_PLATE}
 							>
 								<ZoomOut aria-hidden="true" />
 							</Button>
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Zoom in"
-								title="Zoom in"
+								aria-label={t("ui.common.viewer.zoom_in")}
+								title={t("ui.common.viewer.zoom_in")}
 								disabled={!canZoom || zoom === VIEWER_ZOOM_MAX}
 								onClick={() => applyZoom(stepZoom(zoom, 1))}
+								className={CHROME_PLATE}
 							>
 								<ZoomIn aria-hidden="true" />
 							</Button>
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Reset view"
-								title="Reset view"
+								aria-label={t("ui.common.viewer.reset_view")}
+								title={t("ui.common.viewer.reset_view")}
 								disabled={!canZoom || atFit}
 								onClick={resetView}
+								className={CHROME_PLATE}
 							>
 								<RotateCcw aria-hidden="true" />
 							</Button>
@@ -930,7 +986,10 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							className={cn("pointer-events-auto fixed top-4 right-4")}
+							className={cn(
+								"pointer-events-auto fixed top-4 right-4",
+								CHROME_PLATE,
+							)}
 							aria-label={`Close ${mediaLabel}`}
 							title={`Close ${mediaLabel}`}
 						>

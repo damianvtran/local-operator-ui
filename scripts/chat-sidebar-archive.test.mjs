@@ -37,6 +37,14 @@ const code = (path) =>
 
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 /**
+ * The search block's accessible name and the Include archived label come from the
+ * sidebar's English catalogue now: the slice is anchored on the key the control
+ * renders, and the copy is read from the message the user actually hears.
+ */
+const SIDEBAR_COPY = JSON.parse(
+	read("src/i18n/catalogues/en/ui.chat.sidebar.json"),
+);
+/**
  * The surface the archive and discard messages are raised by since 2026-09-27: the
  * always-mounted component beside the global container (`main.tsx`), which replaced
  * the panel's own toast lane (operator request; `docs/design/sidebar-row-space.md`
@@ -239,8 +247,13 @@ test("the archived row carries a marker that is not in the contested trailing sl
 test("the Include archived control is inside the search block and only while a query exists", () => {
 	const block = between(
 		SIDEBAR,
-		'aria-label="Search chats and agents"',
+		'aria-label={t("ui.chat.sidebar.header.search")}',
 		"overLong &&",
+	);
+	assert.equal(
+		SIDEBAR_COPY["ui.chat.sidebar.header.search"],
+		"Search chats and agents",
+		"the search control's name moved: it reads `Search chats and agents`",
 	);
 	/*
 	 * The control's own render rule mirrors the clear control's: with an empty box
@@ -252,7 +265,15 @@ test("the Include archived control is inside the search block and only while a q
 	assert.match(block, /<Checkbox/);
 	assert.match(block, /id=\{INCLUDE_ARCHIVED_ID\}/);
 	assert.match(block, /htmlFor=\{INCLUDE_ARCHIVED_ID\}/);
-	assert.match(block, /Include archived/);
+	assert.ok(
+		block.includes('t("ui.chat.sidebar.search.include_archived")'),
+		"the Include archived control no longer renders its message",
+	);
+	assert.equal(
+		SIDEBAR_COPY["ui.chat.sidebar.search.include_archived"],
+		"Include archived",
+		"the control's label moved: it reads `Include archived`",
+	);
 	// The id is a constant used twice rather than two inline strings: a label whose
 	// `for` names no input is an accessible name that silently disappears.
 	assert.match(

@@ -103,6 +103,130 @@ const checkInset = (label, state) => {
 	);
 };
 
+/**
+ * THE DOCK'S FIXED GEOMETRY, asked of every state that shows or hides it.
+ *
+ * The mechanism is a permanently allocated band: 28px header/status zone, 75px
+ * options viewport and a 1px bottom rule, 104px in total. It is checked in the
+ * CLOSED state as well as the open one, because the whole claim is that opening
+ * cannot move the native page: the content rectangle is the thing that must not
+ * change, and a dock that is absent when closed would satisfy "open looks fine"
+ * while failing that claim on the first keystroke.
+ */
+const DOCK_HEIGHT = 104;
+const DOCK_VIEWPORT_HEIGHT = 75;
+const DOCK_ROW_HEIGHT = 35.5;
+const checkDock = (label, state, open) => {
+	const dock = state?.list;
+	const viewport = state?.dockViewport;
+	const content = state?.content;
+	if (!dock?.rect || !viewport?.rect || !content) {
+		check(`${label}: the dock and page rect are present`, false, "missing");
+		return;
+	}
+	check(
+		`${label}: the dock is exactly ${DOCK_HEIGHT}px`,
+		Math.abs(dock.rect.height - DOCK_HEIGHT) <= 0.5,
+		`height=${dock.rect.height}`,
+	);
+	if (open !== undefined)
+		check(
+			`${label}: the dock is ${open ? "open" : "closed"}`,
+			dock.open === (open ? "true" : "false"),
+			`state=${dock.open}`,
+		);
+	if (open === true)
+		check(
+			`${label}: open mounts the scroll viewport`,
+			state.scrollable === true,
+			`scrollable=${state.scrollable}`,
+		);
+	check(
+		`${label}: the dock declares its permanent height`,
+		dock.declaredHeight === String(DOCK_HEIGHT),
+		`declared=${dock.declaredHeight}`,
+	);
+	check(
+		`${label}: the options viewport is exactly ${DOCK_VIEWPORT_HEIGHT}px`,
+		Math.abs(viewport.rect.height - DOCK_VIEWPORT_HEIGHT) <= 0.5,
+		`height=${viewport.rect.height}`,
+	);
+	check(
+		`${label}: the page starts exactly at the dock's bottom rule`,
+		Math.abs(content.top - dock.rect.bottom) <= 1,
+		`content.top=${content.top} dock.bottom=${dock.rect.bottom}`,
+	);
+	if (open === false) {
+		check(
+			`${label}: the closed dock is blank and mounts no scroll container`,
+			!state.scrollable &&
+				!state.listbox &&
+				state.options.length === 0 &&
+				dock.text === "" &&
+				state.activeInDock === false,
+			`scrollable=${state.scrollable} listbox=${state.listbox} options=${state.options.length} text=${JSON.stringify(dock.text)} activeInDock=${state.activeInDock}`,
+		);
+		return;
+	}
+	if (state.options.length === 0) {
+		if (open === true)
+			check(
+				`${label}: the notice sits in the options zone and wraps`,
+				state.notice?.insideViewport === true &&
+					state.notice.wrapping !== "nowrap" &&
+					Boolean(state.header?.text),
+				`noticeInViewport=${state.notice?.insideViewport} whiteSpace=${state.notice?.wrapping} header=${JSON.stringify(state.header?.text)}`,
+			);
+		return;
+	}
+	const rows = state.options;
+	check(
+		`${label}: every row is a ${DOCK_ROW_HEIGHT}px row`,
+		rows.every((row) => Math.abs(row.rect.height - DOCK_ROW_HEIGHT) <= 0.5),
+		rows.map((row) => row.rect.height.toFixed(2)).join(","),
+	);
+	const visible = rows.filter(
+		(row) =>
+			row.rect.top >= viewport.rect.top - 0.5 &&
+			row.rect.bottom <= viewport.rect.bottom + 0.5,
+	).length;
+	check(
+		`${label}: two complete rows are visible at rest (or every row there is)`,
+		state.dockViewport.scrollTop > 0
+			? visible >= 1
+			: visible === Math.min(2, rows.length),
+		`visible=${visible} scrollTop=${state.dockViewport.scrollTop} total=${rows.length}`,
+	);
+};
+
+/** Same box, to the half-pixel the rect is read at. */
+const SAME_RECT_KEYS = ["top", "bottom", "left", "right", "width", "height"];
+const checkContentStable = (label, before, after) => {
+	const a = before?.content;
+	const b = after?.content;
+	const ok =
+		a && b && SAME_RECT_KEYS.every((key) => Math.abs(a[key] - b[key]) <= 0.5);
+	check(
+		`${label}: the page/content rect is identical (delta 0)`,
+		Boolean(ok),
+		`before=${JSON.stringify(a)} after=${JSON.stringify(b)}`,
+	);
+};
+
+/** The first two rows are fully inside the viewport and the zone is at rest. */
+const checkTopRows = (label, state) => {
+	const rows = state?.options ?? [];
+	const box = state?.dockViewport?.rect;
+	check(
+		`${label}: the new result set shows its top rows`,
+		state?.dockViewport?.scrollTop === 0 &&
+			rows.length >= 2 &&
+			rows[0].rect.top >= box.top - 0.5 &&
+			rows[1].rect.bottom <= box.bottom + 0.5,
+		`scrollTop=${state?.dockViewport?.scrollTop} first=${JSON.stringify(rows[0]?.rect)} second=${JSON.stringify(rows[1]?.rect)} viewport=${JSON.stringify(box)}`,
+	);
+};
+
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 /** A URL's trailing slash is not a different destination for this comparison. */
 const TRAILING_SLASH = /\/$/;
@@ -130,6 +254,7 @@ const routes = {
 	"/second": PAGE("Proof page two", "The second document."),
 	"/unicode/道": PAGE("Unicode path", "A path outside ASCII."),
 	"/fragment": PAGE("Fragment page", "A page with a fragment."),
+	"/deep": PAGE("Deep page", "The sixth history entry."),
 };
 
 const navigations = [];
@@ -351,6 +476,28 @@ const typeValue = (value) =>
 		return { value: input.value, start: input.selectionStart, end: input.selectionEnd };
 	})()`);
 
+/** Type ONE character at the current selection, the way a keystroke lands:
+ * over a generated suffix the selection is replaced, exactly as a person's next
+ * character would replace it. */
+const typeAppend = (text) =>
+	evaluate(`(() => {
+		const input = document.querySelector('[data-tour-tag="browser-address"]');
+		if (!input) return { error: 'missing input' };
+		const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+		const start = input.selectionStart;
+		const end = input.selectionEnd;
+		const extra = ${JSON.stringify(text)};
+		const next = input.value.slice(0, start) + extra + input.value.slice(end);
+		setter.call(input, next);
+		input.setSelectionRange(start + extra.length, start + extra.length);
+		input.dispatchEvent(new InputEvent('input', {
+			bubbles: true,
+			inputType: 'insertText',
+			data: extra,
+		}));
+		return { value: input.value, start: input.selectionStart, end: input.selectionEnd };
+	})()`);
+
 const clearValue = () =>
 	evaluate(`(() => {
 		const input = document.querySelector('[data-tour-tag="browser-address"]');
@@ -387,6 +534,13 @@ const readInput = () =>
 		const list = document.querySelector('[data-tour-tag="browser-address-suggestions"]');
 		const bar = document.querySelector('[data-tour-tag="browser-url-bar"]');
 		const content = document.querySelector('[data-tour-tag="browser-content"]');
+		const scrollViewport = document.querySelector('[data-address-suggestions-viewport]');
+		// Closed mounts the plain 75px blank instead of the scroll container (a
+		// scroll container is click-focusable in Chrome); both carry the zone's box.
+		const dockViewport = scrollViewport ?? document.querySelector('[data-address-suggestions-blank]');
+		const header = document.querySelector('[data-address-suggestions-header]');
+		const notice = document.querySelector('[data-address-suggestions-notice]');
+		const listbox = document.querySelector('[data-address-suggestions-list]');
 		const options = [...document.querySelectorAll('[data-address-suggestion]')];
 		const rect = (element) => {
 			if (!element) return null;
@@ -410,7 +564,33 @@ const readInput = () =>
 			list: list ? {
 				text: list.innerText.replace(/\\s+/g, ' ').trim(),
 				rect: rect(list),
+				open: list.getAttribute('data-address-dock-open'),
+				declaredHeight: list.getAttribute('data-address-dock-height'),
 			} : null,
+			listbox: Boolean(listbox),
+			scrollable: Boolean(scrollViewport),
+			dockViewport: dockViewport ? {
+				rect: rect(dockViewport),
+				scrollTop: dockViewport.scrollTop,
+				scrollHeight: dockViewport.scrollHeight,
+				clientHeight: dockViewport.clientHeight,
+			} : null,
+			header: header ? {
+				text: header.innerText.replace(/\\s+/g, ' ').trim(),
+				rect: rect(header),
+			} : null,
+			notice: notice ? {
+				text: notice.innerText.replace(/\\s+/g, ' ').trim(),
+				insideViewport: Boolean(scrollViewport?.contains(notice)),
+				wrapping: getComputedStyle(notice).whiteSpace,
+			} : null,
+			activeTag: document.activeElement?.tagName ?? null,
+			activeId: document.activeElement?.id ?? null,
+			activeClass:
+				typeof document.activeElement?.className === 'string'
+					? document.activeElement.className.slice(0, 120)
+					: null,
+			activeInDock: Boolean(document.activeElement?.closest?.('[data-tour-tag="browser-address-suggestions"]')),
 			content: rect(content),
 			bar: rect(bar),
 			options: options.map((option) => ({
@@ -418,6 +598,7 @@ const readInput = () =>
 				selected: option.getAttribute('aria-selected'),
 				url: option.getAttribute('data-address-suggestion-url'),
 				id: option.id,
+				rect: rect(option),
 			})),
 			inputRect: rect(input),
 			viewport: { width: innerWidth, height: innerHeight },
@@ -527,6 +708,94 @@ try {
 	await waitFor("location.hash.includes('/browser')", "the browser route");
 	record("route", { hash: await evaluate("location.hash") });
 
+	// ---- the CLOSED dock, before the field is ever focused ----------------
+	// The baseline the whole mechanism is judged against: the dock is already
+	// there (blank) and the native page's rectangle starts at its bottom rule.
+	await sleep(600);
+	const closedBefore = await readInput();
+	record("closed dock (baseline)", closedBefore);
+	checkDock("closed baseline", closedBefore, false);
+	await shot("00-dock-closed");
+
+	// ---- a real click on the closed dock must not take focus -------------
+	// Arm the input first, then dismiss the (empty-history) list with Escape so
+	// the dock is closed while the field still owns focus. A click on the blank
+	// band must blur it to the document, never focus a child of the dock.
+	// Activate the window with a harmless click on empty rail chrome first: the
+	// FIRST CDP mouse event also focuses the web contents, which re-dispatches a
+	// focus event to the already-focused field. That window-activation focus is a
+	// harness artifact and must not be mistaken for the dock's own focus.
+	for (const type of ["mousePressed", "mouseReleased"]) {
+		await send("Input.dispatchMouseEvent", {
+			type,
+			x: 100,
+			y: 500,
+			button: "left",
+			clickCount: 1,
+		});
+	}
+	await sleep(150);
+	await evaluate(`(() => {
+		const input = document.querySelector('[data-tour-tag="browser-address"]');
+		input.focus();
+		input.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+	})()`);
+	await sleep(250);
+	await key("Escape");
+	await sleep(200);
+	const clickArmed = await readInput();
+	const clickBox = clickArmed.dockViewport?.rect;
+	const dockFocusable = await evaluate(`(() => {
+		const dock = document.querySelector('[data-tour-tag="browser-address-suggestions"]');
+		if (!dock) return -1;
+		// A scroll container is click-focusable in Chrome even with no tabindex,
+		// so the count must see it: that was the closed-state bug this guards.
+		return [...dock.querySelectorAll('[tabindex], button, input, select, textarea, a[href], [data-address-suggestions-viewport]')]
+			.filter((node) => {
+				if (node.tabIndex >= 0) return true;
+				const overflow = getComputedStyle(node).overflowY;
+				return overflow === 'auto' || overflow === 'scroll';
+			}).length;
+	})()`);
+	if (clickBox) {
+		const clickX = (clickBox.left + clickBox.right) / 2;
+		const clickY = (clickBox.top + clickBox.bottom) / 2;
+		for (const type of ["mousePressed", "mouseReleased"]) {
+			await send("Input.dispatchMouseEvent", {
+				type,
+				x: clickX,
+				y: clickY,
+				button: "left",
+				clickCount: 1,
+			});
+		}
+		await sleep(150);
+	}
+	const afterClosedClick = await readInput();
+	record("closed dock click", {
+		focusable: dockFocusable,
+		armedActive: clickArmed.activeTag,
+		activeTag: afterClosedClick.activeTag,
+		activeId: afterClosedClick.activeId,
+		activeClass: afterClosedClick.activeClass,
+		activeInDock: afterClosedClick.activeInDock,
+		scrollable: afterClosedClick.scrollable,
+	});
+	check(
+		"the closed dock has no focusable descendant",
+		dockFocusable === 0,
+		`${dockFocusable} focusable node(s)`,
+	);
+	check(
+		"a real click on the closed dock leaves focus in the field and opens nothing",
+		clickArmed.list?.open === "false" &&
+			afterClosedClick.activeTag === "INPUT" &&
+			afterClosedClick.expanded === "false" &&
+			afterClosedClick.activeInDock === false &&
+			afterClosedClick.scrollable === false,
+		`armed=${clickArmed.list?.open} active=${afterClosedClick.activeTag} expanded=${afterClosedClick.expanded} inDock=${afterClosedClick.activeInDock} scrollable=${afterClosedClick.scrollable}`,
+	);
+
 	// ---- populate real history -------------------------------------------
 	// The app's own first blank tab is hydrated in the background; a typed
 	// navigation queued behind that load is a harness race, not a feature read.
@@ -591,6 +860,8 @@ try {
 	}
 	record("focused empty field", emptyFocus);
 	checkInset("empty field", emptyFocus);
+	checkDock("empty field (open)", emptyFocus, true);
+	checkContentStable("closed baseline -> open", closedBefore, emptyFocus);
 	check(
 		"focus with an empty query shows the session's own entries",
 		Boolean(emptyFocus.list) && emptyFocus.options.length > 0,
@@ -611,6 +882,13 @@ try {
 	const inline = await readInput();
 	record("inline completion", inline);
 	checkInset("inline completion", inline);
+	checkDock("inline completion (open)", inline, true);
+	checkContentStable("closed baseline -> inline", closedBefore, inline);
+	check(
+		"one alternative is on screen beside the inline candidate",
+		inline.options.length === 1,
+		`${inline.options.length} options`,
+	);
 	check(
 		"the real input shows the raw prefix plus a generated suffix",
 		inline.value === originPath("/account/profile") &&
@@ -650,6 +928,12 @@ try {
 	const accepted = await readInput();
 	record("right accepts", accepted);
 	checkInset("right accepts", accepted);
+	checkDock("right accepts", accepted);
+	checkContentStable(
+		"closed baseline -> right accepts",
+		closedBefore,
+		accepted,
+	);
 	check(
 		"Right accepts the suffix, collapses the caret and does not navigate",
 		accepted.value === originPath("/account/profile") &&
@@ -748,6 +1032,8 @@ try {
 		value: afterBlur.value,
 		requests: navigations.length,
 	});
+	checkDock("after blur", afterBlur, false);
+	checkContentStable("closed baseline -> after blur", closedBefore, afterBlur);
 	check(
 		"blur dismisses the edit and never navigates",
 		navigations.length === beforeBlur,
@@ -768,9 +1054,13 @@ try {
 	record("escape once", escaped);
 	check(
 		"the first Escape dismisses the suggestions and restores the raw draft",
-		escaped.value === prefix && escaped.list === null,
-		`value=${escaped.value} list=${Boolean(escaped.list)}`,
+		escaped.value === prefix &&
+			escaped.list?.open === "false" &&
+			!escaped.listbox,
+		`value=${escaped.value} dock=${escaped.list?.open} listbox=${escaped.listbox}`,
 	);
+	checkDock("after Escape", escaped, false);
+	checkContentStable("closed baseline -> after Escape", closedBefore, escaped);
 	await key("Escape");
 	await sleep(150);
 	const abandoned = await readInput();
@@ -794,6 +1084,26 @@ try {
 			navigations.length === beforeBlur,
 		`${searchAfter.list?.text} requests=${navigations.length}`,
 	);
+	await key("Escape");
+	await sleep(100);
+
+	// ---- a filtered no-match, still exactly 104px ------------------------
+	await typeValue(originPath("/zzz-no-such-route"));
+	await sleep(300);
+	const noMatch = await readInput();
+	record("no-match", noMatch);
+	checkInset("no-match", noMatch);
+	checkDock("no-match", noMatch, true);
+	checkContentStable("closed baseline -> no-match", closedBefore, noMatch);
+	check(
+		"a filtered no-match says so in the options zone, not the header",
+		noMatch.options.length === 0 &&
+			/no matching links/i.test(noMatch.notice?.text ?? "") &&
+			noMatch.notice?.insideViewport === true &&
+			noMatch.header?.text === "From this browser session",
+		`options=${noMatch.options.length} notice=${JSON.stringify(noMatch.notice?.text)} inViewport=${noMatch.notice?.insideViewport} header=${JSON.stringify(noMatch.header?.text)}`,
+	);
+	await shot("05-no-match");
 	await key("Escape");
 	await sleep(100);
 
@@ -870,6 +1180,8 @@ try {
 		const fresh = await readInput();
 		record("fresh tab", fresh);
 		checkInset("fresh tab", fresh);
+		checkDock("fresh tab (empty)", fresh, true);
+		checkContentStable("closed baseline -> fresh tab", closedBefore, fresh);
 		check(
 			"a tab with no HTTP(S) history says so quietly",
 			fresh.list?.text.includes("No links from these tabs yet"),
@@ -909,6 +1221,8 @@ try {
 		const errored = await readInput();
 		record("unavailable state", errored);
 		checkInset("unavailable state", errored);
+		checkDock("unavailable state", errored, true);
+		checkContentStable("closed baseline -> unavailable", closedBefore, errored);
 		check(
 			"a failed history read says suggestions are unavailable while the field still types",
 			errored.list?.text.includes("Address suggestions are unavailable"),
@@ -918,9 +1232,198 @@ try {
 		await evaluate("window.__proofRestoreAddressHistory?.()");
 	}
 
+	// ---- five candidates: two rows visible, the rest scroll in place ------
+	// The viewport is deliberately shorter than the list. Visit enough fixture
+	// routes to fill it, then ask the two input paths the acceptance names: the
+	// keyboard (active row scrolls into view) and a real wheel over the dock.
+	for (const path of [
+		"/",
+		"/account",
+		"/account/profile",
+		"/second",
+		"/fragment",
+		"/deep",
+	]) {
+		record(`five-candidate setup ${path}`, { ok: await nav(path) });
+	}
+	await evaluate(`(() => {
+		const input = document.querySelector('[data-tour-tag="browser-address"]');
+		input.blur();
+		input.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+		input.focus();
+		input.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+	})()`);
+	await sleep(400);
+	await clearValue();
+	// A HOST PREFIX all six entries share, so one appended character keeps the
+	// candidate count at five: the scroll-reset claim is about a CHANGED QUERY
+	// with an unchanged set size, not about the list shrinking.
+	await typeValue("127.0.");
+	await sleep(400);
+	const five = await readInput();
+	record("five candidates", five);
+	checkInset("five candidates", five);
+	checkDock("five candidates", five, true);
+	check(
+		"five alternatives are available",
+		five.options.length === 5,
+		`${five.options.length} options`,
+	);
+	checkContentStable("closed baseline -> five candidates", closedBefore, five);
+	await shot("06-five-candidates-top");
+
+	for (let step = 0; step < 5; step += 1) await key("ArrowDown");
+	await sleep(200);
+	const fiveKeyboard = await readInput();
+	record("five candidates, keyboard to the fifth", fiveKeyboard);
+	checkDock("five candidates (keyboard)", fiveKeyboard, true);
+	const fifth = fiveKeyboard.options[4];
+	check(
+		"the keyboard reaches the fifth row and scrolls it into view",
+		fiveKeyboard.dockViewport.scrollTop > 0 &&
+			fiveKeyboard.activeDescendant === fifth?.id &&
+			fifth.rect.top >= fiveKeyboard.dockViewport.rect.top - 0.5 &&
+			fifth.rect.bottom <= fiveKeyboard.dockViewport.rect.bottom + 0.5,
+		`scrollTop=${fiveKeyboard.dockViewport.scrollTop} active=${fiveKeyboard.activeDescendant} fifth=${JSON.stringify(fifth?.rect)} viewport=${JSON.stringify(fiveKeyboard.dockViewport.rect)}`,
+	);
+	checkContentStable(
+		"closed baseline -> keyboard scroll",
+		closedBefore,
+		fiveKeyboard,
+	);
+	await shot("07-five-candidates-keyboard-fifth");
+
+	// ---- the query changes with five candidates still: offset resets ------
+	// Typing one more character ("127.0." -> "127.0.0") keeps all six entries
+	// matching, so only the query differs. The viewport must start at the top:
+	// a leftover offset hid the first rows and had no active row to explain it.
+	await typeAppend("0");
+	await sleep(350);
+	const afterKeyboardEdit = await readInput();
+	record("query change after keyboard scroll", afterKeyboardEdit);
+	checkDock("query change after keyboard", afterKeyboardEdit, true);
+	check(
+		"a query change keeps the same five candidates",
+		afterKeyboardEdit.options.length === 5,
+		`${afterKeyboardEdit.options.length} options`,
+	);
+	check(
+		"a query change resets the options viewport to the top",
+		afterKeyboardEdit.dockViewport.scrollTop === 0 &&
+			afterKeyboardEdit.activeDescendant === null,
+		`scrollTop=${afterKeyboardEdit.dockViewport.scrollTop} active=${afterKeyboardEdit.activeDescendant}`,
+	);
+	checkTopRows("query change after keyboard", afterKeyboardEdit);
+	checkContentStable(
+		"closed baseline -> query change (keyboard)",
+		closedBefore,
+		afterKeyboardEdit,
+	);
+	await shot("09-query-reset-keyboard");
+
+	// ---- wheel to the fifth, then change the query again ------------------
+	const wheelStart = await readInput();
+	const wheelX =
+		(wheelStart.dockViewport.rect.left + wheelStart.dockViewport.rect.right) /
+		2;
+	const wheelY =
+		(wheelStart.dockViewport.rect.top + wheelStart.dockViewport.rect.bottom) /
+		2;
+	for (let step = 0; step < 3; step += 1) {
+		await send("Input.dispatchMouseEvent", {
+			type: "mouseWheel",
+			x: wheelX,
+			y: wheelY,
+			deltaX: 0,
+			deltaY: 200,
+		});
+		await sleep(150);
+	}
+	const wheeled = await readInput();
+	record("five candidates, wheel", wheeled);
+	checkDock("five candidates (wheel)", wheeled, true);
+	const wheelFifth = wheeled.options[4];
+	check(
+		"the wheel reaches the fifth row inside the viewport",
+		wheeled.dockViewport.scrollTop > 0 &&
+			wheelFifth.rect.top >= wheeled.dockViewport.rect.top - 0.5 &&
+			wheelFifth.rect.bottom <= wheeled.dockViewport.rect.bottom + 0.5,
+		`scrollTop=${wheeled.dockViewport.scrollTop} fifth=${JSON.stringify(wheelFifth?.rect)} viewport=${JSON.stringify(wheeled.dockViewport.rect)}`,
+	);
+	checkContentStable("closed baseline -> wheel scroll", closedBefore, wheeled);
+	await shot("08-five-candidates-wheel");
+
+	// "127.0.0" -> "127.0.0.": still all six entries, still five candidates.
+	await typeAppend(".");
+	await sleep(350);
+	const afterWheelEdit = await readInput();
+	record("query change after wheel scroll", afterWheelEdit);
+	checkDock("query change after wheel", afterWheelEdit, true);
+	check(
+		"the wheel-scrolled set resets on the next query change",
+		afterWheelEdit.options.length === 5 &&
+			afterWheelEdit.dockViewport.scrollTop === 0 &&
+			afterWheelEdit.activeDescendant === null,
+		`options=${afterWheelEdit.options.length} scrollTop=${afterWheelEdit.dockViewport.scrollTop} active=${afterWheelEdit.activeDescendant}`,
+	);
+	checkTopRows("query change after wheel", afterWheelEdit);
+	checkContentStable(
+		"closed baseline -> query change (wheel)",
+		closedBefore,
+		afterWheelEdit,
+	);
+	await shot("10-query-reset-wheel");
+
+	// ---- undo/redo write the draft directly; the reset must follow them ----
+	for (let step = 0; step < 5; step += 1) await key("ArrowDown");
+	await sleep(200);
+	const beforeUndo = await readInput();
+	check(
+		"the list is scrolled before the undo",
+		beforeUndo.dockViewport.scrollTop > 0,
+		`scrollTop=${beforeUndo.dockViewport.scrollTop}`,
+	);
+	await key("z", { ctrl: true });
+	await sleep(300);
+	const afterUndo = await readInput();
+	record("undo", afterUndo);
+	checkDock("after undo", afterUndo, true);
+	check(
+		"undo returns the previous query and resets the viewport",
+		afterUndo.value.startsWith("127.0.0") &&
+			afterUndo.dockViewport.scrollTop === 0 &&
+			afterUndo.activeDescendant === null,
+		`value=${afterUndo.value} scrollTop=${afterUndo.dockViewport.scrollTop} active=${afterUndo.activeDescendant}`,
+	);
+	checkTopRows("after undo", afterUndo);
+	checkContentStable("closed baseline -> after undo", closedBefore, afterUndo);
+	await shot("11-undo-reset");
+
+	for (let step = 0; step < 5; step += 1) await key("ArrowDown");
+	await sleep(200);
+	await key("z", { ctrl: true, shift: true });
+	await sleep(300);
+	const afterRedo = await readInput();
+	record("redo", afterRedo);
+	checkDock("after redo", afterRedo, true);
+	check(
+		"redo restores the query and resets the viewport",
+		afterRedo.value.startsWith("127.0.0") &&
+			afterRedo.dockViewport.scrollTop === 0 &&
+			afterRedo.activeDescendant === null,
+		`value=${afterRedo.value} scrollTop=${afterRedo.dockViewport.scrollTop} active=${afterRedo.activeDescendant}`,
+	);
+	checkTopRows("after redo", afterRedo);
+	checkContentStable("closed baseline -> after redo", closedBefore, afterRedo);
+	await shot("12-redo-reset");
+
+	await key("Escape");
+	await sleep(150);
+
 	// ---- geometry: the list ends above the native page -------------------
 	const geometry = await readInput();
 	checkInset("final read", geometry);
+	checkDock("final read", geometry);
 	if (geometry.list && geometry.content) {
 		check(
 			"the in-flow list ends at or above the native page's top",

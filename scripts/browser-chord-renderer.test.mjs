@@ -354,13 +354,22 @@ test("address draft belongs to its tab: a chord-driven tab change drops it and b
 		"Element",
 		"HTMLElement",
 		"HTMLInputElement",
+		// The URL bar measures its permanent suggestions dock on mount, and the
+		// chrome hover test's own harness already ships this stub: jsdom has no
+		// ResizeObserver, and the component only needs one to exist.
+		"ResizeObserver",
 		"IS_REACT_ACT_ENVIRONMENT",
 	]) {
 		previous[key] = Object.getOwnPropertyDescriptor(globalThis, key);
-		Object.defineProperty(globalThis, key, {
-			configurable: true,
-			value: key === "IS_REACT_ACT_ENVIRONMENT" ? true : dom.window[key],
-		});
+		let value = dom.window[key];
+		if (key === "IS_REACT_ACT_ENVIRONMENT") value = true;
+		else if (key === "ResizeObserver")
+			value = class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			};
+		Object.defineProperty(globalThis, key, { configurable: true, value });
 	}
 	const navigated = [];
 	const props = (tabId, url) => ({

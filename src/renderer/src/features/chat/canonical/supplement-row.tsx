@@ -68,6 +68,8 @@
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -334,6 +336,7 @@ export const SupplementRow = memo(function SupplementRow({
 	cwd,
 	condensed = false,
 }: SupplementRowProps) {
+	useI18nLocale();
 	const pane = useCanvasPane();
 	const [expandedMore, setExpandedMore] = useState(false);
 	const [detailsOpen, setDetailsOpen] = useState(false);
@@ -611,7 +614,7 @@ export const SupplementRow = memo(function SupplementRow({
 				autoFocus={true}
 				className="min-w-0 flex-1 rounded-sm border border-control bg-canvas px-1.5 py-0.5 text-ink text-meta"
 				maxLength={STEER_TEXT_MAX_CHARS}
-				placeholder="Adjust the graphic…"
+				placeholder={t("ui.chat.canonical.supplement.adjust_placeholder")}
 				value={draft}
 				onChange={(event) => setDraft(event.target.value)}
 				onKeyDown={(event) => {
@@ -628,7 +631,7 @@ export const SupplementRow = memo(function SupplementRow({
 				disabled={busy || !draft.trim()}
 				onClick={steer}
 			>
-				Send
+				{t("ui.chat.canonical.supplement.send")}
 			</button>
 		</div>
 	) : null;
@@ -817,8 +820,7 @@ export const SupplementRow = memo(function SupplementRow({
 
 			{!condensed && record.detail?.includes("prepared:unsupported") && (
 				<p className="text-meta text-ink-muted" data-supplement-refusal="">
-					Inline preview unavailable. This HTML needs unsupported resources or
-					document content. Open the file to view it.
+					{t("ui.chat.canonical.supplement.preview_unavailable")}
 				</p>
 			)}
 			{!condensed &&
@@ -839,8 +841,18 @@ export const SupplementRow = memo(function SupplementRow({
 								summary="Details"
 							>
 								<div className="max-h-[min(320px,40vh)] overflow-auto break-words font-mono text-ink-dim">
-									{record.model && <p>Model: {record.model}</p>}
-									<p>Attempts: {record.attempts?.length ?? 0}</p>
+									{record.model && (
+										<p>
+											{t("ui.chat.canonical.supplement.details.model", {
+												name: record.model,
+											})}
+										</p>
+									)}
+									<p>
+										{t("ui.chat.canonical.supplement.details.attempts", {
+											count: record.attempts?.length ?? 0,
+										})}
+									</p>
 									{record.detail?.map((line) => (
 										<p key={line}>{diagnosticDisplay(line)}</p>
 									))}
