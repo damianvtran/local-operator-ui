@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { type CSSProperties, useEffect } from "react";
+import { type CSSProperties, useLayoutEffect } from "react";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
@@ -34,7 +34,7 @@ const self = "acct_self";
  * none`, so nothing is reserved above the page).
  */
 const useMacChromeSimulation = () => {
-	useEffect(() => {
+	useLayoutEffect(() => {
 		const root = document.documentElement;
 		const previous = {
 			mode: root.getAttribute("data-chrome-mode"),

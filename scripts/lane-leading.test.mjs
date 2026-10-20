@@ -331,3 +331,25 @@ test("the non-flush lane still paints the measured grounds", () => {
 		"the non-flush lane must paint its canvas stop from the measured width",
 	);
 });
+
+test("the flush-top app sidebar pads its own surface root", () => {
+	const sidebar = readSource(
+		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
+	);
+	assert.match(
+		sidebar,
+		/data-chrome-pad-top=\{chromePadTop \? "" : undefined\}/,
+		"the sidebar must write the pad marker only when the shell route asked for flush top",
+	);
+	assert.match(
+		sidebar,
+		/className="group\/sidebar flex h-full min-h-0 flex-col overflow-hidden bg-surface"/,
+		"the padded panel must remain the element that paints `surface`; a shell wrapper with a ground would defeat glass (round 1 S1)",
+	);
+	const css = readSource("src/renderer/src/styles/index.css");
+	assert.match(
+		css,
+		/\[data-chrome-pad-top\] \{\s*padding-top: var\(--chrome-strip-h\);\s*\}/,
+		"the pad must be CSS on the marker, so the panel's ground reaches y0 while its content clears the traffic lights",
+	);
+});
