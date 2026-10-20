@@ -612,10 +612,41 @@ test("the shell renders the lane above the columns, and exactly one of it", () =
 		lane < rowAfterLane,
 		"the lane must be the first child of the shell column, above the columns it insets",
 	);
+	/*
+	 * ONE LANE PER SELECTED BRANCH. The shell now chooses between a transparent
+	 * absolute overlay (a route whose own panels reach y0) and the painted row
+	 * every other route keeps; those are two source arms of one `flushTop`
+	 * ternary, and exactly one of them renders. A literal total would fail on
+	 * the conditional while the rendered invariant still holds, which is how
+	 * this guard turned main red after the overlay landed - so the count is
+	 * taken INSIDE each arm and the ternary is asserted to be the only split.
+	 */
+	const split = shell.indexOf(") : (");
+	const ternaryStart = shell.indexOf("{flushTop ? (");
+	assert.notEqual(ternaryStart, -1, "the flushTop ternary is gone");
+	assert.notEqual(split, -1, "the flushTop ternary lost its second arm");
+	assert.ok(
+		ternaryStart < split,
+		"the flushTop test must come before the arm split",
+	);
+	const firstArm = shell.slice(ternaryStart, split);
+	const secondArmStart = shell.indexOf(")}", split);
+	assert.notEqual(secondArmStart, -1, "the flushTop ternary is not closed");
+	const secondArm = shell.slice(split, secondArmStart);
+	assert.equal(
+		firstArm.split('data-titlebar-lane=""').length - 1,
+		1,
+		"the flushTop arm must render exactly one lane (the transparent overlay)",
+	);
+	assert.equal(
+		secondArm.split('data-titlebar-lane=""').length - 1,
+		1,
+		"the reserving arm must render exactly one lane (the painted row)",
+	);
 	assert.equal(
 		shell.split('data-titlebar-lane=""').length - 1,
-		1,
-		"one shell tree, one lane - a second branch is how the overlay once dropped the pane",
+		2,
+		"a third lane occurrence is outside the one conditional that chooses between the two arms",
 	);
 });
 
