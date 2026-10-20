@@ -485,7 +485,7 @@ jobs:
       # A separate step runs it once, releases the memory when the process
       # exits, and keeps it a gate - it is NOT dropped, and a red suite still
       # fails this job before the desktop suite starts.
-      - name: Run the tag-dialogs behaviour suite
+      - name: Run tag dialog tests
         timeout-minutes: 10
         run: pnpm test:tag-dialogs
 
