@@ -2574,6 +2574,7 @@ export type MessageParams = {
 	"ui.hub.skills.catalogue_failed": { source: string };
 	"ui.hub.skills.detached": undefined;
 	"ui.hub.skills.download": undefined;
+	"ui.hub.skills.download_help": undefined;
 	"ui.hub.skills.empty": undefined;
 	"ui.hub.skills.file_count": { count: number };
 	"ui.hub.skills.files": undefined;
@@ -2586,6 +2587,7 @@ export type MessageParams = {
 	"ui.hub.skills.not_downloaded": undefined;
 	"ui.hub.skills.open_detail": { item: string };
 	"ui.hub.skills.policy_pending": undefined;
+	"ui.hub.skills.public_hub": undefined;
 	"ui.hub.skills.publish_title": undefined;
 	"ui.hub.skills.published_by": { publisher: string };
 	"ui.hub.skills.pull_failed": undefined;
@@ -2601,6 +2603,7 @@ export type MessageParams = {
 	"ui.hub.skills.select_authored": undefined;
 	"ui.hub.skills.session_selection": undefined;
 	"ui.hub.skills.subscribe_failed": undefined;
+	"ui.hub.skills.subscribe_help": undefined;
 	"ui.hub.skills.subscribed_absent": undefined;
 	"ui.hub.skills.text_limits": undefined;
 	"ui.hub.skills.title": undefined;
@@ -2609,6 +2612,12 @@ export type MessageParams = {
 	"ui.hub.skills.unpull_body": undefined;
 	"ui.hub.skills.unpull_failed": undefined;
 	"ui.hub.skills.unpull_title": { item: string };
+	"ui.hub.skills.unsubscribe": undefined;
+	"ui.hub.skills.unsubscribe_help": undefined;
+	"ui.hub.skills.update_applied": undefined;
+	"ui.hub.skills.update_available": undefined;
+	"ui.hub.skills.update_failed": undefined;
+	"ui.hub.skills.update_now": undefined;
 	"ui.hub.status.access_lost": undefined;
 	"ui.hub.status.applying": undefined;
 	"ui.hub.status.attempts": { count: number };
