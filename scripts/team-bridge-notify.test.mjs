@@ -133,14 +133,55 @@ const conversation = (patch = {}) => ({
 	...patch,
 });
 
-const unread = (rows) => ({ total: rows.length, conversations: rows });
-const unreadRow = (patch = {}) => ({
+const notifyRow = (patch = {}) => ({
 	conversation_id: "bcv_1",
+	tenant_id: "tnt_1",
 	unread_count: 2,
 	last_read_seq: 0,
 	latest_seq: 2,
-	muted: false,
 	...patch,
+});
+
+/* The exact QA (round 3) payloads: account discovery carries orgs, not rows. */
+const QA_ACCOUNT_UNREAD = {
+	total: 1,
+	organizations: [
+		{
+			tenant_id: "tnt_qa_org",
+			tenant_name: "QA Org",
+			unread: 1,
+			eligible: true,
+		},
+	],
+};
+const QA_TENANT_UNREAD = {
+	total: 1,
+	conversations: [
+		{
+			conversation_id: "bcv_qa1",
+			unread_count: 1,
+			last_read_seq: 0,
+			latest_seq: 1,
+			muted: false,
+		},
+	],
+};
+const QA_CONVERSATION = conversation({
+	id: "bcv_qa1",
+	tenant_id: "tnt_qa_org",
+	kind: "group",
+	name: "QA Notify Group",
+	members: [
+		member("Alice QA", "human", "active", "acct_alice"),
+		member("Bob QA", "human", "active", "acct_bob"),
+	],
+	member: true,
+	notify: "all",
+	muted: false,
+	latest_seq: 1,
+	last_read_seq: 0,
+	// The QA observation: the list row reports zero while unread reports one.
+	unread_count: 0,
 });
 
 const organization = (tenantId, name) => ({
@@ -153,7 +194,7 @@ const organization = (tenantId, name) => ({
 function plan(overrides = {}) {
 	return model.planTeamBridgeNotifications({
 		conversations: [conversation()],
-		unread: unread([unreadRow()]),
+		rows: [notifyRow()],
 		organizations: [organization("tnt_1", "Minerva")],
 		selfAccountId: "acct_a",
 		cursors: new Map(),
@@ -327,11 +368,94 @@ test("a conversation that first appears after the seed is a candidate", () => {
 
 test("a read row advances its cursor instead of notifying", () => {
 	const result = plan({
-		unread: unread([unreadRow({ unread_count: 0, last_read_seq: 2 })]),
+		rows: [notifyRow({ unread_count: 0, last_read_seq: 2 })],
 		cursors: new Map([["bcv_1", 1]]),
 	});
 	assert.equal(result.candidates.length, 0);
 	assert.equal(result.cursors.get("bcv_1"), 2);
+});
+
+test("the QA account + tenant payloads produce one candidate and one banner", () => {
+	const organizations = model.teamBridgeNotifyOrganizations(QA_ACCOUNT_UNREAD);
+	assert.deepEqual(
+		organizations.map((organization) => organization.tenant_id),
+		["tnt_qa_org"],
+	);
+
+	const rows = QA_TENANT_UNREAD.conversations.map((row) => ({
+		...row,
+		tenant_id: organizations[0].tenant_id,
+	}));
+	const result = model.planTeamBridgeNotifications({
+		conversations: [QA_CONVERSATION],
+		rows,
+		organizations: [organization("tnt_qa_org", "QA Org")],
+		selfAccountId: "acct_alice",
+		cursors: new Map(),
+		// The pre-existing unread was seeded on an earlier poll; this is the
+		// first message after that seed.
+		seeded: true,
+		quiet: false,
+	});
+	assert.equal(result.candidates.length, 1);
+	const candidate = result.candidates[0];
+	assert.deepEqual(
+		{
+			conversationId: candidate.conversationId,
+			tenantId: candidate.tenantId,
+			seq: candidate.seq,
+			conversationName: candidate.conversationName,
+			organizationName: candidate.organizationName,
+			senderLabel: candidate.senderLabel,
+		},
+		{
+			conversationId: "bcv_qa1",
+			tenantId: "tnt_qa_org",
+			seq: 1,
+			conversationName: "QA Notify Group",
+			organizationName: "QA Org",
+			senderLabel: null,
+		},
+	);
+
+	const { dir, file } = tempFile();
+	try {
+		const h = harness({ file });
+		const request = {
+			conversationId: candidate.conversationId,
+			tenantId: candidate.tenantId,
+			title: `${candidate.conversationName} (${candidate.organizationName})`,
+			body: "New message",
+			seq: candidate.seq,
+		};
+		assert.deepEqual(h.notifier.notify(request), { shown: true });
+		assert.equal(h.banners.length, 1);
+		assert.equal(h.banners[0].options.title, "QA Notify Group (QA Org)");
+		assert.equal(h.banners[0].options.body, "New message");
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("an organization with a zero total contributes no read and no rows", () => {
+	const account = {
+		total: 1,
+		organizations: [
+			...QA_ACCOUNT_UNREAD.organizations,
+			{
+				tenant_id: "tnt_quiet",
+				tenant_name: "Quiet Org",
+				unread: 0,
+				eligible: true,
+			},
+		],
+	};
+	assert.deepEqual(
+		model
+			.teamBridgeNotifyOrganizations(account)
+			.map((organization) => organization.tenant_id),
+		["tnt_qa_org"],
+	);
 });
 
 test("the sender label is the list row's, trimmed, and absent means fallback", () => {
