@@ -73,16 +73,36 @@ export const ImportSettingsSection: FC = () => {
 	const [pollAttempt, setPollAttempt] = useState(0);
 	const sessionRequest = useRef(0);
 	/*
-	 * The signature of the last preview ATTEMPT, successful or not. It is what
-	 * stops the automatic build from asking again for a selection whose build
-	 * already failed: the error is on screen with its own Retry, and a failing
-	 * endpoint would otherwise be hit every 250ms for as long as the selection
-	 * stood. It is state rather than a ref because the Retry clears it, and
-	 * clearing it is what makes the automatic build run again.
+	 * The generation of the preview build in flight. Same shape as
+	 * `sessionRequest` above, and for the same reason: a selection change can
+	 * start a second preview while the first is still running (the debounce
+	 * delays each build's START, it does not serialize them), and responses can
+	 * land out of order. Without this guard the older response overwrites the
+	 * newer one's preview and signature, and the screen sits at "Building the
+	 * preview..." with no retry and no way back.
 	 */
-	const [attemptedSignature, setAttemptedSignature] = useState<string | null>(
-		null,
-	);
+	const previewRequest = useRef(0);
+	/*
+	 * The signature of the last preview build that FAILED. It is what stops the
+	 * automatic build from asking again for a selection whose build already
+	 * failed, which would hit a failing endpoint every 250ms for as long as the
+	 * selection stood. It is set only in the catch - a SUCCESS never records
+	 * here - and it is cleared wherever the preview it describes is dropped
+	 * (selection change, source change, Import more, Refresh, Retry).
+	 *
+	 * The guard that reads it also requires that no preview exists. A stale
+	 * preview must still rebuild: if this marker alone could satisfy the guard,
+	 * the screen would stay on the spinner forever after an out-of-order
+	 * response, which is exactly the bug this replaces.
+	 */
+	const [failedSignature, setFailedSignature] = useState<string | null>(null);
+	/*
+	 * The preview's own failure, kept separate from `error` because it is
+	 * rendered INSIDE the preview block, beside the acknowledgement it disables.
+	 * `error` stays the section-level banner for source, session and job
+	 * failures, which have no block of their own to live in.
+	 */
+	const [previewError, setPreviewError] = useState<string | null>(null);
 	const jobError = useRef<string | null>(null);
 	const jobActive = progress !== null && !TERMINAL.has(progress.state);
 
@@ -143,6 +163,8 @@ export const ImportSettingsSection: FC = () => {
 		setSelected(new Set());
 		setPreview(null);
 		setPreviewSignature(null);
+		setFailedSignature(null);
+		setPreviewError(null);
 		setConfirmed(false);
 		setResult(null);
 		setProgress(null);
@@ -156,11 +178,23 @@ export const ImportSettingsSection: FC = () => {
 		 * deliberate. "I understand these conversations will be copied into Local
 		 * Operator" is a statement about a SET of conversations; a different set
 		 * is a different copy, so the acknowledgement has to be re-stated for it.
-		 * The preview is NOT cleared here: it stays on screen and goes stale (its
-		 * signature no longer matches the selection), which is what lets the card
-		 * update in place under the new numbers instead of vanishing.
+		 * The automatic preview arriving does not re-arm it either: a preview is
+		 * not a confirmation.
+		 *
+		 * The failure marker is dropped here for a different reason: it describes
+		 * a failure of the OLD selection. Keeping it would latch a selection that
+		 * failed, was changed away from, and then returned to.
+		 *
+		 * The preview is NOT cleared here: it stays in state and goes stale (its
+		 * signature no longer matches the selection). `previewStale` is what makes
+		 * the view drop the old numbers and show the build spinner, so stale
+		 * figures are never painted as if they described the new selection; the
+		 * preview's own value is what the state machine compares signatures
+		 * against.
 		 */
 		setConfirmed(false);
+		setFailedSignature(null);
+		setPreviewError(null);
 		setSelectionNotice(null);
 	}, []);
 
@@ -220,24 +254,41 @@ export const ImportSettingsSection: FC = () => {
 		 * control left to press.
 		 */
 		if (!activeSource || selected.size === 0) return;
+		/*
+		 * THE REQUEST GENERATION IS CAPTURED BEFORE THE AWAIT. Only the latest
+		 * build may write state: a superseded response must not overwrite the
+		 * newer preview, must not clear the newer build's spinner, and must not
+		 * record a failure for a selection that is no longer current.
+		 */
+		const request = ++previewRequest.current;
+		const signature = currentSignature;
 		setBusy("preview");
 		setError(null);
-		setAttemptedSignature(currentSignature);
+		setPreviewError(null);
 		try {
 			const next = await previewImport({
 				sources: [activeSource],
 				sessionIds: { [activeSource]: [...selected].sort() },
 			});
+			if (request !== previewRequest.current) return;
 			setPreview(next);
-			setPreviewSignature(currentSignature);
+			/*
+			 * The signature captured with the request, not the one in this
+			 * closure: the response describes the selection that was asked for,
+			 * and pairing it with a newer signature would paint these counts as
+			 * if they described the new selection.
+			 */
+			setPreviewSignature(signature);
 		} catch (cause) {
+			if (request !== previewRequest.current) return;
 			setPreview(null);
 			setPreviewSignature(null);
-			setError(
+			setFailedSignature(signature);
+			setPreviewError(
 				t("ui.settings.imports.error_preview", { reason: reason(cause) }),
 			);
 		} finally {
-			setBusy(null);
+			if (request === previewRequest.current) setBusy(null);
 		}
 	}, [activeSource, currentSignature, selected]);
 
@@ -256,9 +307,13 @@ export const ImportSettingsSection: FC = () => {
 		if (!activeSource || selected.size === 0 || progress || result) return;
 		// A preview for exactly this selection already exists: nothing to build.
 		if (preview && previewSignature === currentSignature) return;
-		// This selection was already built and the build failed: the error is on
-		// screen, and the error's own Retry is what asks for another go.
-		if (attemptedSignature === currentSignature) return;
+		// This exact selection was already attempted and failed. The failure is
+		// on screen in the preview block with its own Retry, and a failing
+		// endpoint must not be hit every 250ms for as long as the selection
+		// stands. The guard also requires that no preview exists: a STALE
+		// preview must still rebuild, or an out-of-order response would wedge
+		// this effect here forever.
+		if (!preview && failedSignature === currentSignature) return;
 		const timer = setTimeout(() => {
 			void onPreview();
 		}, 250);
@@ -269,7 +324,7 @@ export const ImportSettingsSection: FC = () => {
 		currentSignature,
 		preview,
 		previewSignature,
-		attemptedSignature,
+		failedSignature,
 		progress,
 		result,
 		onPreview,
@@ -387,6 +442,8 @@ export const ImportSettingsSection: FC = () => {
 		setSelected(new Set());
 		setPreview(null);
 		setPreviewSignature(null);
+		setFailedSignature(null);
+		setPreviewError(null);
 		setConfirmed(false);
 		setSelectionNotice(null);
 		setResult(null);
@@ -409,6 +466,13 @@ export const ImportSettingsSection: FC = () => {
 	const onRefresh = useCallback(async () => {
 		if (jobActive) return;
 		setSelectionNotice(null);
+		/*
+		 * Refresh is the user's "try that again" for this screen, so it drops the
+		 * record of a failed preview as well as reloading the data. Without this
+		 * the automatic build would keep refusing the same selection.
+		 */
+		setFailedSignature(null);
+		setPreviewError(null);
 		await loadSources();
 		if (activeSource) await loadSessions(activeSource);
 	}, [activeSource, jobActive, loadSessions, loadSources]);
@@ -419,10 +483,13 @@ export const ImportSettingsSection: FC = () => {
 			setPollAttempt((value) => value + 1);
 			return;
 		}
-		// A failed preview is rebuilt by asking again: the attempt that failed
-		// is forgotten, and forgetting it is what makes the automatic build
-		// run again.
-		setAttemptedSignature(null);
+		/*
+		 * A failed preview is rebuilt by asking again: the failed signature is
+		 * forgotten, which is what lets the automatic build run for this
+		 * selection again.
+		 */
+		setFailedSignature(null);
+		setPreviewError(null);
 		void onRefresh();
 	}, [jobActive, onRefresh]);
 
@@ -435,6 +502,7 @@ export const ImportSettingsSection: FC = () => {
 			selected={selected}
 			preview={preview}
 			previewStale={previewStale}
+			previewError={previewError}
 			confirmed={confirmed}
 			busy={busy}
 			error={error}

@@ -68,6 +68,13 @@ export type ImportSettingsViewProps = {
 	selected: Set<string>;
 	preview: ImportPreview | null;
 	previewStale: boolean;
+	/**
+	 * A preview build's own failure, rendered inside the preview block rather
+	 * than in the section banner. The banner stays for source, session and job
+	 * failures, which have no block of their own to live in; a preview failure
+	 * belongs beside the acknowledgement it disables.
+	 */
+	previewError: string | null;
 	confirmed: boolean;
 	busy: ImportBusy;
 	error: string | null;
@@ -307,6 +314,7 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 	selected,
 	preview,
 	previewStale,
+	previewError,
 	confirmed,
 	busy,
 	error,
@@ -618,12 +626,13 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 						 * below is grey with nothing saying why. "Building the
 						 * preview..." is the honest answer there, and it is the same
 						 * answer the other two clauses give. The error case is
-						 * excluded because the section's own error says what
-						 * happened, and a spinner under a failure would be a lie.
+						 * excluded because the preview block below states the failure
+						 * and offers its Retry, and a spinner under a failure would be
+						 * a lie.
 						 */}
 						{(busy === "preview" ||
 							previewStale ||
-							(preview === null && !error)) && (
+							(preview === null && !previewError)) && (
 							<p className="flex items-center gap-2 text-meta text-ink-muted">
 								<Loader2 size={14} className="animate-spin" />
 								{t("ui.settings.imports.loading_preview")}
@@ -673,6 +682,26 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 						 * `preview_confirm` above them says what is still outstanding.
 						 */}
 						<div className="flex flex-col gap-3 rounded-lg border border-hairline bg-surface p-4">
+							{/*
+							 * THE FAILURE BELONGS WHERE IT HAPPENED, inside the block
+							 * that holds the controls it disables. It used to be reported
+							 * only in the section banner at the top, above the source
+							 * cards and the whole session list - so at this block the
+							 * operator saw a grey Import and no explanation. Same copy
+							 * (`error_preview`), same `retry` control.
+							 */}
+							{previewError && (
+								<Alert variant="warning">
+									<AlertDescription>
+										<span className="flex flex-wrap items-center justify-between gap-3">
+											<span>{previewError}</span>
+											<Button variant="secondary" size="sm" onClick={onRetry}>
+												{t("ui.settings.imports.retry")}
+											</Button>
+										</span>
+									</AlertDescription>
+								</Alert>
+							)}
 							<div className="flex items-start gap-2 text-body-sm text-ink">
 								<Checkbox
 									checked={confirmed}

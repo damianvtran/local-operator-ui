@@ -180,6 +180,7 @@ const render = async (overrides = {}) => {
 		selected: new Set(),
 		preview: null,
 		previewStale: false,
+		previewError: null,
 		confirmed: false,
 		busy: null,
 		error: null,
@@ -397,6 +398,30 @@ test("the selected row is marked at row level, not only by its tick", async () =
 		selected,
 		"a selected row carries the app's selected-row treatment, so it reads as selected even if the tick is missed",
 	);
+	/*
+	 * AND ONLY THE SELECTED ROW. Without this half, an implementation that paints
+	 * every row would pass the assertion above: the test would be pinning "some
+	 * row has the class", not "selection decides which row does".
+	 */
+	const unselected = rows.filter(
+		(node) => !node.className.includes("bg-row-selected"),
+	);
+	assert.equal(unselected.length, rows.length - 1);
+});
+
+test("no row carries the selected treatment when nothing is selected", async () => {
+	const { host } = await render({ selected: new Set(), preview });
+	const rows = [...host.querySelectorAll("div.rounded-md")].filter((node) =>
+		node.querySelector('[role="checkbox"]'),
+	);
+	assert.ok(rows.length > 0, "the fixture renders session rows");
+	for (const row of rows) {
+		assert.equal(
+			row.className.includes("bg-row-selected"),
+			false,
+			"an unselected row must not carry the selected-row treatment",
+		);
+	}
 });
 
 test("progress and result rows carry per-session outcomes and review paths", async () => {
@@ -581,6 +606,40 @@ test("error state exposes the reason and a retry", async () => {
 	assert.ok(retry);
 	await click(retry);
 	assert.deepEqual(calls.at(-1), ["retry"]);
+});
+
+/*
+ * A PREVIEW FAILURE BELONGS WHERE IT HAPPENED. The section banner sits above the
+ * source cards and the session list, so at the preview block it is above the
+ * fold: the operator saw the acknowledgement and Import disabled with nothing
+ * beside them saying why. The failure is now stated in the preview block, with
+ * its Retry, next to the controls it explains.
+ */
+test("a preview failure is stated inside the preview block, beside its Retry", async () => {
+	const { host, click } = await render({
+		selected: new Set(["omp-one"]),
+		preview: null,
+		previewError: "Could not build the preview. backend unavailable",
+	});
+	const message = [...host.querySelectorAll("p, span")].find((node) =>
+		(node.textContent ?? "").includes("Could not build the preview"),
+	);
+	assert.ok(message, "the failure's reason is rendered");
+	const retry = buttonByText(host, "Retry");
+	assert.ok(retry, "the failure offers a retry");
+	const block = buttonByText(host, "Import 1 session")?.closest("div.rounded-lg");
+	assert.ok(block, "the acknowledgement block is rendered");
+	assert.ok(block.contains(message), "the failure sits beside the gate");
+	assert.ok(block.contains(retry), "the retry sits beside the gate");
+	await click(retry);
+	assert.equal(
+		calls.some(([name]) => name === "retry"),
+		true,
+		"Retry reaches the container",
+	);
+	// The spinner must not stand under a stated failure: it would read as work
+	// still in progress while the block says it failed.
+	assert.doesNotMatch(host.textContent ?? "", /Building the preview/);
 });
 
 test("private-use title glyphs are stripped at the display boundary", () => {
