@@ -3372,8 +3372,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.hub",
-			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
-			"target_sha256": "b0fc7a9d3a3878c6a7e549fa649fef29ee1be3680d77edf2546dda5ce733ca72",
+			"source_sha256": "96d5e20f3f1efc19efa36210ea7799af8216a863d7b872c71d69e599d5e59a44",
+			"target_sha256": "2db2bc36d62ffaacff21f0f1b643b93dcd2752ad16ca9797bcbd2069f55f50a1",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3381,20 +3381,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-20",
 					"result": "clean",
-					"instance": "048b49f6c8ad",
+					"instance": "a2c8e0c4f788",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/048b49f6c8ad.json",
-					"receipt_sha256": "de4e810e4e9fa507fabacfefd94448406d17773fdec9d5fc69fdf6723a1611ab",
-					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+					"receipt": "i18n/receipts/a2c8e0c4f788.json",
+					"receipt_sha256": "7ee764cfc438fa5aedb90ab2ec5cd113600c49b0119c74f1b6ece63e58981d3d",
+					"scope": "13 new ui.hub.skills keys at this target hash",
+					"note": "13 new ui.hub.skills keys authored by the implementing coder (PR #1269), audited independently by translation-auditor."
 				}
 			],
 			"status": "audited",
@@ -3441,6 +3442,29 @@
 							"receipt": "i18n/receipts/5668e1dafff2.json",
 							"receipt_sha256": "7c36d2ff50cba3a3045633f49a61ed431077b5c2f2f1d2ccf88c4bc5124def6a",
 							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+					"target_sha256": "b0fc7a9d3a3878c6a7e549fa649fef29ee1be3680d77edf2546dda5ce733ca72",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "048b49f6c8ad",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/048b49f6c8ad.json",
+							"receipt_sha256": "de4e810e4e9fa507fabacfefd94448406d17773fdec9d5fc69fdf6723a1611ab",
+							"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
 						}
 					],
 					"status": "audited"
@@ -5324,8 +5348,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.hub",
-			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
-			"target_sha256": "f5d2569d23ca15f1dafa19123cd9428fb0b7eacd94eb32cb337bc6dce38f8015",
+			"source_sha256": "96d5e20f3f1efc19efa36210ea7799af8216a863d7b872c71d69e599d5e59a44",
+			"target_sha256": "478256fadb24d2e8a8bfe4b17798b132f3560d5d803837edb9216752c968ee1e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -5334,20 +5358,21 @@
 			"status": "audited",
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-20",
 					"result": "clean",
-					"instance": "a072264badf6",
+					"instance": "cce72b13e84e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a072264badf6.json",
-					"receipt_sha256": "31fedf9efc7fef5c28ede3fe8ede23e678aeadab316a116fdae7a72d4a690805",
-					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+					"receipt": "i18n/receipts/cce72b13e84e.json",
+					"receipt_sha256": "6fc7bbf15ff5885f79c28fdde0f0028603cd8533d6142111eaa35018312fc0b3",
+					"scope": "13 new ui.hub.skills keys at this target hash",
+					"note": "13 new ui.hub.skills keys authored by the implementing coder (PR #1269), audited independently by translation-auditor."
 				}
 			],
 			"superseded": [
@@ -5393,6 +5418,29 @@
 							"receipt": "i18n/receipts/868dc5da7584.json",
 							"receipt_sha256": "3bb0c8095756736c9447b5548331ee930f16aac58ddba49c8889aa806f5c08b7",
 							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+					"target_sha256": "f5d2569d23ca15f1dafa19123cd9428fb0b7eacd94eb32cb337bc6dce38f8015",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "a072264badf6",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a072264badf6.json",
+							"receipt_sha256": "31fedf9efc7fef5c28ede3fe8ede23e678aeadab316a116fdae7a72d4a690805",
+							"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
 						}
 					],
 					"status": "audited"
@@ -6067,8 +6115,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.hub",
-			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
-			"target_sha256": "42d2d6e93f61786c53069e2786cb0b1e7b46905f1de2e715cab2633f856720a2",
+			"source_sha256": "96d5e20f3f1efc19efa36210ea7799af8216a863d7b872c71d69e599d5e59a44",
+			"target_sha256": "c6919bb909568e7843038da6bf17864f000a9404e250e15f06fb5b9e26759b85",
 			"translator": {
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18",
@@ -6076,20 +6124,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-20",
 					"result": "clean",
-					"instance": "05f4e8989082",
+					"instance": "a6e594a6363f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/05f4e8989082.json",
-					"receipt_sha256": "ef2fc2e2b4cf218fd2dde424101d8cfc2a300d7addf0528e3ba23b1586d4df3a",
-					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+					"receipt": "i18n/receipts/a6e594a6363f.json",
+					"receipt_sha256": "91bec468ccb9114ea4eaba774d54626e01c00f9c44b2147be1287d9f7622a331",
+					"scope": "13 new ui.hub.skills keys at this target hash",
+					"note": "13 new ui.hub.skills keys authored by the implementing coder (PR #1269), audited independently by translation-auditor."
 				}
 			],
 			"status": "audited",
@@ -6136,6 +6185,29 @@
 							"receipt": "i18n/receipts/ae49f006197e.json",
 							"receipt_sha256": "50f158be3ca00d3ddf6b54da9c4ce4246f72eef52be730d865c2b0178316eab2",
 							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+					"target_sha256": "42d2d6e93f61786c53069e2786cb0b1e7b46905f1de2e715cab2633f856720a2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "05f4e8989082",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/05f4e8989082.json",
+							"receipt_sha256": "ef2fc2e2b4cf218fd2dde424101d8cfc2a300d7addf0528e3ba23b1586d4df3a",
+							"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
 						}
 					],
 					"status": "audited"
@@ -11469,8 +11541,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.hub",
-			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
-			"target_sha256": "49cb5bb823cb0b2af156009c7db0b81dac20603c195273f1615e43430a7b983f",
+			"source_sha256": "96d5e20f3f1efc19efa36210ea7799af8216a863d7b872c71d69e599d5e59a44",
+			"target_sha256": "16944e87c5409827eb9054d67316a36dacde7163027e240b4e5e464b23c0d947",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -11478,20 +11550,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-20",
 					"result": "clean",
-					"instance": "e4e4d13f3eac",
+					"instance": "e579ad4b665c",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/e4e4d13f3eac.json",
-					"receipt_sha256": "4f04ac0f5a25e77f488305b6d0f375eadb3942b186c6c7b4c7995f5e62e09dbb",
-					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+					"receipt": "i18n/receipts/e579ad4b665c.json",
+					"receipt_sha256": "6f9e116ed20d56e46bd37d88f39f361fa603872331417f3bfa20fea5334a15e9",
+					"scope": "13 new ui.hub.skills keys at this target hash",
+					"note": "13 new ui.hub.skills keys authored by the implementing coder (PR #1269), audited independently by translation-auditor."
 				}
 			],
 			"status": "audited",
@@ -11539,6 +11612,29 @@
 							"receipt": "i18n/receipts/aa0c67505433.json",
 							"receipt_sha256": "f5af3c987c433569ea8bbd5c1bde60b793eaee9ee74fdf575bc3c228f05fa001",
 							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+					"target_sha256": "49cb5bb823cb0b2af156009c7db0b81dac20603c195273f1615e43430a7b983f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "e4e4d13f3eac",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e4e4d13f3eac.json",
+							"receipt_sha256": "4f04ac0f5a25e77f488305b6d0f375eadb3942b186c6c7b4c7995f5e62e09dbb",
+							"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
 						}
 					],
 					"status": "audited"
