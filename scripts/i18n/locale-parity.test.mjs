@@ -606,6 +606,73 @@ const IDENTICAL_OK = new Map([
 		"ui.settings.account.radient_account_section.email",
 		"Vietnamese uses the standard loanword «Email» for the address field; every diacritic alternative is unidiomatic.",
 	],
+	// --- ui.library category/filter nouns. The es and fr translations of the
+	// file-kind labels are the same words as English because they are cognates or
+	// settled loanwords, not because a translator left the source in place: the
+	// surrounding ui.library prose in both locales is translated. Each entry is a
+	// claim a reviewer can check against the target language, not a silencer.
+	[
+		"ui.library.category.code",
+		"French cognate: « code » has the same spelling.",
+	],
+	[
+		"ui.library.category.documents",
+		"French cognate: « documents » has the same spelling.",
+	],
+	[
+		"ui.library.category.images",
+		"French cognate: « images » has the same spelling.",
+	],
+	[
+		"ui.library.category.video",
+		// es writes the unaccented « video » (Latin American usage; Spain accents
+		// « vídeo »). The identical value is the es spelling, not an English copy,
+		// and the accent variant is a regional preference rather than a correction.
+		"es spelling of the noun (Latin American usage; Spain writes « vídeo »).",
+	],
+	[
+		"ui.library.filter.source",
+		"French cognate: « source » has the same spelling.",
+	],
+	[
+		"ui.library.preview.description",
+		"French cognate: « description » has the same spelling.",
+	],
+	// --- ui.teamBridge. The feature name is a product name; the placeholder and
+	// the example account id carry no prose. One entry covers every locale that
+	// keeps the value identical.
+	[
+		"ui.teamBridge.page.title",
+		"Product name (Team Bridge), preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.teamBridge.nav.label",
+		"Product name (Team Bridge), preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.teamBridge.create.account_placeholder",
+		"Literal example account id (acct_…) shown in an input placeholder, not prose to translate.",
+	],
+	[
+		"ui.teamBridge.notify.title",
+		"Placeholders and brackets only ({conversation} ({organization})); the notification title is assembled from already-translated parts.",
+	],
+	[
+		"ui.teamBridge.member.agent",
+		"French cognate: « agent » has the same spelling.",
+	],
+	[
+		"ui.teamBridge.create.member_agent",
+		"French cognate: « agent » has the same spelling.",
+	],
+	[
+		"ui.teamBridge.notify.mention",
+		"French cognate: « mentions » has the same spelling.",
+	],
+	[
+		"ui.agentMessages.settings.allowlist.kind_agent",
+		"French cognate: « agent » has the same spelling.",
+	],
 ]);
 
 function localeDirs() {
