@@ -538,3 +538,172 @@ What this scene does not show, as before: no Radient account exists here, so the
 org read goes through the daemon's proxy rather than a real tenant; the auto-push
 switch renders disabled with its reason because the stub destination is not
 verified for automatic publication.
+
+## Round 3 — freshness at UI `85e1115289`
+
+Focused app-only freshness pass after the UI moved from the round-1 head
+`69f40fee2e` to `85e1115289`. No new matrix: the five items below were re-driven
+and re-shot through the real built Electron app (headless window mode), the real
+core at the fix heads, and the stub hub. The write flows remain un-drivable
+without a signed-in account; they are still covered at the core HTTP boundary,
+not through the app.
+
+### Build and environment
+
+| Piece | Identity |
+|---|---|
+| UI | worktree `hub-skills-state` @ `85e1115289` (= #1269 head at run time), `pnpm build`; headless Electron, 1380x900 requested, 2760x1800 PNG at DPR 2 |
+| Build note | `pnpm build` regenerated `out/renderer/index.html`; the source CSP does not name the stub origin, so the documented **gitignored build-output** accommodation was reapplied (`connect-src` + `http://127.0.0.1:8127`). Without it the renderer refuses 8127 and the Skills catalogue reads `"Skills from Public could not be loaded."` — a rig wiring failure, not a product result. `src/` is untouched; the production origin (`https://api.radienthq.com`) is already in the CSP |
+| Core | `qa/hub-skills-integration-r2` @ `f8ae74c561` (= #2711 `b6dccc50d9` + #2713 `d2caf06fc1` + round-1 integration), worktree venv, fresh isolated `HOME`/`LOCAL_OPERATOR_CONFIG_DIR`, `LOCAL_OPERATOR_DESKTOP_TOKEN=rig`, `RADIENT_API_BASE_URL=http://127.0.0.1:8127`; `127.0.0.1:8139`, signed out (`POST /v1/desktop/radient {"operation":"account"}` → `409 radient_no_credential`) |
+| Hub | `docs/evidence/hub-skills-surface/harness/stub-hub.mjs --port 8127`; two public rows |
+| Dark core | installed `lop` 0.84.0 generation `20261020T154014Z-0.84.0`, isolated `HOME`/`LOCAL_OPERATOR_CONFIG_DIR`, `127.0.0.1:8132`; `/v1/capabilities` has `hub_skills: null`, `hub_links: 1` |
+| Inventory failure | a throwaway `127.0.0.1:8140` proxy forwards everything to 8139 except `GET /v1/desktop/hub/links`, which answers `500`; the app is pointed at 8140 |
+
+Commands:
+
+`QAUI` below is this run's scratch root; `frames/`, `frames-dark/`,
+`frames-inventory/`, logs and the two probe scripts live under it, not in the
+repository. The frame names in the sections below are relative to that root.
+```sh
+cd ~/local-operator-ui/.worktrees/hub-skills-state
+pnpm build
+
+# stub hub (foreground/background as convenient)
+node docs/evidence/hub-skills-surface/harness/stub-hub.mjs --port 8127
+
+# real core, fresh isolated store, signed out
+HOME=$QAUI/core-home LOCAL_OPERATOR_CONFIG_DIR=$QAUI/core-home/.local-operator \
+LOCAL_OPERATOR_DESKTOP_TOKEN=rig RADIENT_API_BASE_URL=http://127.0.0.1:8127 \
+~/local-operator/.worktrees/hub-skills-qa-r2/.venv/bin/local-operator serve --host 127.0.0.1 --port 8139
+
+# app against the real core
+LOCAL_OPERATOR_DESKTOP_TOKEN=rig QA_BACKEND=http://127.0.0.1:8139 QA_FRAMES=$QAUI/frames \
+  node scripts/hub-skills-surface.mjs
+
+# dark path against installed 0.84.0
+LOCAL_OPERATOR_DESKTOP_TOKEN=rig node scripts/renderer-driver.mjs --scene hub-skills \
+  --skills-adapter-absent --skills-expect public --backend http://127.0.0.1:8132 \
+  --backend-records $QAUI/dark-home/.lop/run/serve --out $QAUI/frames-dark --theme localOperatorDark
+
+# inventory failure (proxy on 8140 in front of 8139, links → 500)
+LOCAL_OPERATOR_DESKTOP_TOKEN=rig QA_BACKEND=http://127.0.0.1:8140 QA_FRAMES=$QAUI/frames-inventory \
+  node scripts/hub-skills-surface.mjs
+```
+
+### 1. Skills tab, cards and the count line — PASS
+
+```
+tabs: ["Agents", "Teams", "Skills"]
+skillsTabPresent: true
+cards: 2
+libraryText: "2 skills · Public hub
+  release-notes — Draft release notes from a merged PR list. — Public hub — Not downloaded
+  transcript-audit — Audit a transcript for policy contradictions. — Public hub — Not downloaded"
+sourceLine: "Public hub"
+```
+
+Frames: `surface-tabs.png`, `surface-cards.png`.
+
+### 2. Card opens the dialog in view: description, files, version, state — PASS
+
+The detail dialog's own text (it is portaled, so the surface driver's
+section-scoped read misses it; a small probe read `[role="dialog"].innerText`):
+
+```
+release-notes
+Public hub
+Not downloaded · Version 1
+Draft release notes from a merged PR list.
+Files included
+3 files included
+SKILL.md
+references/notes.md
+scripts/run.sh
+Sign in to the hub before trying this action.
+Download
+Subscribe
+Follows future revisions. Downloads nothing now.
+```
+
+`detailOpened: true`; `detail.localPath: null` (no copy); `fileSummaries:
+["SKILL.md","references/notes.md","scripts/run.sh"]`.
+Frame: `surface-detail-version-state.png`.
+
+### 3. Signed-out gate: Download/Subscribe disabled with a reason — PASS
+
+```
+download:  { present: true, disabled: true, label: "Download" }
+subscribe: { present: true, disabled: true, label: "Subscribe" }
+reason:    "Sign in to the hub before trying this action."
+```
+
+Frame: `surface-download-state.png` (the control and the sentence in the same
+view). The write flows are still **not drivable in the app**; the core HTTP
+boundary remains the coverage for pull/subscribe/unpull/publish.
+
+### 4. Dark path against installed 0.84.0 — PASS
+
+```
+capabilities: {"hub_skills": null, "hub_links": 1}
+[PASS] released-core fallback retains selected Agents and hides Skills entry/actions
+[PASS] released-core fallback starts zero remote Skills list/detail queries
+[PASS] window mode is headless and the window is never shown or focused
+[PASS] no process from this run outlived its boot
+16 PASS, 0 FAIL — ALL CHECKS PASSED
+```
+
+Frame: `frames-dark/09-dark-0840-no-skills-tab.png` (Agents + Teams only; the
+Connect-an-AI-account dialog is the isolated signed-out state, not a Skills
+regression).
+
+### 5. Inventory-unknown — PASS
+
+The desktop inventory `GET /v1/desktop/hub/links` was forced to `500` through
+the proxy while the hub catalogue stayed healthy. Cards still render from the
+catalogue, and each footer must state the unknown inventory rather than claim
+"Not downloaded":
+
+```
+libraryText: "2 skills · Public hub
+  release-notes — … — Public hub — Link state unavailable.
+  transcript-audit — … — Public hub — Link state unavailable."
+cardTexts: [same two lines]
+```
+
+The detail dialog's state line carries the same `Link state unavailable.`
+Frame: `frames-inventory/surface-inventory-unknown.png`.
+
+### Round-3 verdict
+
+| # | Item | Verdict |
+|---|---|---|
+| 1 | Skills tab present, cards and count line | **PASS** |
+| 2 | Card opens the dialog with description/files/version/state | **PASS** |
+| 3 | Signed-out Download/Subscribe disabled with a reason | **PASS** (write flows still un-drivable in the app) |
+| 4 | Dark path against installed 0.84.0 (no `hub_skills`) | **PASS** |
+| 5 | Inventory-unknown state under a forced links failure | **PASS** |
+
+### Limits
+
+* **No signed-in account.** Download/Subscribe/Unpull/publish were not pressed in
+  the app; their behavior is covered by the core HTTP boundary, not by this pass.
+* **No real cloud.** The hub is the local stub; the core is the integration
+  worktree; the 0.84.0 dark core is the installed generation. No production data
+  or operator credential was used.
+* **Build-output CSP patch.** The stub origin was admitted by editing the
+  gitignored `out/renderer/index.html`, exactly as round 1 documented. The source
+  tree and the production CSP were not changed.
+
+### Rig hygiene
+
+Hub (`27791`), core (`28084`), dark core (`39671`) and proxy (`40893`) were
+terminated by exact pid; `lsof` shows no listener on 8127, 8139, 8132 or 8140,
+and no Electron process from this worktree remains. No dependency installs, no
+second UI build beyond the requested `pnpm build`, no browser engine, no
+`screencapture`.
+
+### PR comment
+
+Posted as `### QA report — round 2` on UI #1269:
+
+* https://github.com/damianvtran/local-operator-ui/pull/1269#issuecomment-6303613439
