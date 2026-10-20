@@ -1042,6 +1042,15 @@ export class BrowserHost implements BrowserActionContext {
 
 	/** Main owns this short-lived UI focus fact; it conveys no page capability. */
 	chordFocus = false;
+	/**
+	 * The tab whose native view last reported focus. Tracked from each view's own
+	 * `focus`/`blur` events because `webContents.getFocusedWebContents()` can
+	 * answer null while a `WebContentsView` holds focus (measured on Electron
+	 * 44.3.0 in a window that is not itself activated). Like `chordFocus`, this
+	 * is an input-ownership fact and carries no page capability; `ownsPage`
+	 * refuses it unless the tab is the active, presented one.
+	 */
+	focusedPageTabId: number | null = null;
 	onChordFocusChanged?: (focused: boolean) => void;
 	/** An explicit tab id fences queued chrome intents: a switch between key
 	 * delivery and IPC must never search/zoom the newly active tab instead. */
@@ -1075,6 +1084,16 @@ export class BrowserHost implements BrowserActionContext {
 		this.chordFocus = focused;
 		this.onChordFocusChanged?.(focused);
 	}
+	/** One view gained or lost native focus. Only the id that lost it may clear
+	 * the fact: a departing view's blur must not erase a successor's focus. */
+	setPageFocused(tabId: number, focused: boolean): void {
+		if (focused) this.focusedPageTabId = tabId;
+		else if (this.focusedPageTabId === tabId) this.focusedPageTabId = null;
+	}
+	/** The window's own renderer gained focus (the user clicked chrome/chat). */
+	clearPageFocus(): void {
+		this.focusedPageTabId = null;
+	}
 	/** Only user URLs survive a close, never a capability, page state or nonce.
 	 * Conversation attribution is retained only to find the appropriate scope. */
 	private closedUserTabs: Array<{ url: string; sessionId: string | null }> = [];
@@ -1093,6 +1112,7 @@ export class BrowserHost implements BrowserActionContext {
 	clearChordState(): void {
 		this.pageControls.clear();
 		this.setChordFocus(false);
+		this.clearPageFocus();
 		this.closedUserTabs = [];
 	}
 	/**
@@ -1614,6 +1634,9 @@ export class BrowserHost implements BrowserActionContext {
 	 * area and reports it, and main applies it to the active tab only. */
 	setContentRect(rect: ContentRect | null): Record<string, unknown> {
 		this.registry.setContentRect(rect);
+		// A hidden surface is no longer the accelerator's owner; a view can keep a
+		// stale focus fact while it is not presented.
+		if (rect === null) this.clearPageFocus();
 		return this.chromeState();
 	}
 
@@ -1621,6 +1644,8 @@ export class BrowserHost implements BrowserActionContext {
 	 * an overlay is invisible unless the view goes away (design 11.3). */
 	setViewVisible(visible: boolean): Record<string, unknown> {
 		this.registry.setViewVisible(visible);
+		// Suppressed by an overlay: the page must not keep the native key owner.
+		if (!visible) this.clearPageFocus();
 		return this.chromeState();
 	}
 
