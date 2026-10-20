@@ -17663,6 +17663,115 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.library",
+			"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+			"target_sha256": "2e711e04ebd8aa383dd974f086cab03520e2a91df8fee846521fa9914a26d3dd",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-20"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-20",
+					"result": "clean",
+					"instance": "99cb676d1abc-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/99cb676d1abc-r2.json",
+					"receipt_sha256": "786c0e8420bcac10821188e525b05357b405941027f9c6af8821665b1140c24b",
+					"scope": "Round 2: re-audit of the two remediated keys (page.more, page.more_destinations); 156 unchanged keys proved byte-identical to the 12d60b45 audit"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+					"target_sha256": "12d60b45ede30c5ad388c1420d4dac5fb25d668fae15f7fc54d5dff011d265d6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean-with-findings",
+							"instance": "99cb676d1abc",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/99cb676d1abc.json",
+							"receipt_sha256": "186ded4cf39e15f19de6c7be2743b36c4c5642cf848c09a97abca2b8bd339a2e",
+							"scope": "Full 158-key audit of the new vi ui.library catalogue; terminology calls, plurals, placeholders, length and leakage",
+							"note": "Translator provenance follows the 55 existing vi ledger rows (i18n-translator/openai/gpt-6.1-sol); this is the lane's new ui.library namespace."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.library",
+			"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+			"target_sha256": "98dd7b5e814ac2739430839c60a5007d9963bd6c53ae0fed870fe6d8379b2481",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-20"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-20",
+					"result": "clean",
+					"instance": "d4a69b568c33",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d4a69b568c33.json",
+					"receipt_sha256": "f982752140befcc5aac9ba871992fe1eedf06657bf40fd6e9381b759aa96c71f"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+					"target_sha256": "4a004038d1808cc9327668fe1d851f596794ce61cc58997a7829435a605a62e4",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "55ba7a641173",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/55ba7a641173.json",
+							"receipt_sha256": "1b57531fba4352f5a603870ebba0ae180ec57c9888d5c740e17893efa8eb98db"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }

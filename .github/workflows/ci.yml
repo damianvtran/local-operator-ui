@@ -477,6 +477,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # ITS OWN PROCESS, BEFORE THE BIG SUITE, and both halves are the fix.
+      # This suite bundles the shipped renderer with esbuild and drives it in
+      # jsdom; inside `pnpm test:desktop` its peak landed on the files already
+      # resident in the lane's single process group and the group was killed at
+      # 9.7 GB against the 7.8 GB budget, while main's suite passes at 851aea1.
+      # A separate step runs it once, releases the memory when the process
+      # exits, and keeps it a gate - it is NOT dropped, and a red suite still
+      # fails this job before the desktop suite starts.
+      - name: Run tag dialog tests
+        timeout-minutes: 10
+        run: pnpm test:tag-dialogs
+
       # Native QA on the shared development host must not require another local
       # whole-renderer build. Reuse this existing, independently eligible job:
       # unlike pack it does not depend on typecheck succeeding. The artifact is
