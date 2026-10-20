@@ -2711,6 +2711,13 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 */
 			boundary: z.enum(["next_safe", "at_entry"]).optional(),
 			entryId: z.string().max(128).optional(),
+			/*
+			 * WHETHER THE CHILD SHOULD NAME ITSELF WITH A TAG. Optional and absent
+			 * on every released body: a renderer only sends it after the backend
+			 * advertises `session_tags: 2` (`chat-auto-tag.ts`), because `Fork`
+			 * inherits `extra="forbid"` and an older core would answer 422.
+			 */
+			autoTag: z.boolean().optional(),
 		})
 		.strict(),
 	z
@@ -8196,6 +8203,12 @@ export function desktopEndpoint(request: DesktopRequest): {
 					 * `next_safe` fork sends no `entry_id` key at all.
 					 */
 					entry_id: request.entryId,
+					/*
+					 * Absent unless the capability gate admitted it; `undefined` is
+					 * dropped by `JSON.stringify`, so a released client's body stays
+					 * byte-identical and this key is the only difference.
+					 */
+					auto_tag: request.autoTag,
 				},
 			};
 		case "sessions.stop":
