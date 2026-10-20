@@ -607,12 +607,16 @@ export function HubSkillsLibrary({
 								<p className="break-all font-mono text-meta text-ink-dim">
 									{t("ui.hub.skills.local_path", {
 										/*
-										 * No call-site isolation: the bidi guarantee travels WITH the
-										 * string (the ur copy carries FSI/PDI around {path}), because a
-										 * locale that needs it is the locale that must state it — a wrap
-										 * here would also apply to locales whose sentence does not.
+										 * FSI/PDI AT THE CALL SITE, not in the message: the repo's
+										 * Urdu gate refuses a manual bidi control in a catalogue
+										 * value, and `scripts/i18n/ur-activation.test.mjs` failed on
+										 * exactly that when the isolate lived in the string. Under
+										 * `dir="rtl"` a leading `/` otherwise resolves as RTL
+										 * punctuation and moves to the far end of the sentence
+										 * (measured with fribidi); isolation here fixes every locale
+										 * that renders this line without touching translated bytes.
 										 */
-										path: selectedLink.local_path,
+										path: `⁨${selectedLink.local_path}⁩`,
 									})}
 								</p>
 							)}
