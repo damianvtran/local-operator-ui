@@ -23,10 +23,15 @@ import { Route, Routes, useNavigate } from "react-router-dom";
 import { glassPaintFor } from "../../../../../shared/window-glass";
 import "../../../styles/index.css";
 import "../../chat/components/story-electron-shim";
+import sampleMp4Url from "../../../../../../scripts/fixtures/library/sample.mp4?url";
 import samplePptxUrl from "../../../../../../scripts/fixtures/library/sample.pptx?url";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
 import { useLibraryAsset } from "../hooks/use-library-queries";
-import { NO_LIBRARY_FILTERS, filterAssets } from "../library-model";
+import {
+	NO_LIBRARY_FILTERS,
+	assetDisplayName,
+	filterAssets,
+} from "../library-model";
 import { LibraryPage } from "./library-page";
 import { LibraryPreview } from "./library-preview";
 
@@ -181,6 +186,89 @@ const ROWS: DesktopLibraryAsset[] = [
 	}),
 ];
 
+/**
+ * The media set the full-screen viewer's carousel walks: three pictures and a
+ * clip, in display order. Why this shape: the operator's item 7 asks for a
+ * viewer over the asset, with the left/right arrows and the strip live when the
+ * asset HAS siblings — a set of one would exercise the lightbox's no-chrome
+ * branch only, and a set of pictures only would never render a video slide.
+ */
+const MEDIA_ROWS: DesktopLibraryAsset[] = [
+	asset("la_0000000000000051", {
+		name: "Launch still one",
+		derived_name: "launch-01.png",
+		kind: "image",
+		category: "image",
+		origin: "generated",
+		origin_group: "generated",
+		ref: {
+			type: "artifact",
+			path: null,
+			display_path: "attachments/launch-01.png",
+			digest: "11111111111111111111111111111111",
+			content_type: "image/png",
+		},
+		width: 1600,
+		height: 1000,
+		size_bytes: 2_400_000,
+	}),
+	asset("la_0000000000000052", {
+		name: "Launch still two",
+		derived_name: "launch-02.png",
+		kind: "image",
+		category: "image",
+		origin: "generated",
+		origin_group: "generated",
+		ref: {
+			type: "artifact",
+			path: null,
+			display_path: "attachments/launch-02.png",
+			digest: "22222222222222222222222222222222",
+			content_type: "image/png",
+		},
+		width: 1000,
+		height: 1400,
+		size_bytes: 3_100_000,
+	}),
+	asset("la_0000000000000053", {
+		name: "Launch still three",
+		derived_name: "launch-03.png",
+		kind: "image",
+		category: "image",
+		origin: "generated",
+		origin_group: "generated",
+		ref: {
+			type: "artifact",
+			path: null,
+			display_path: "attachments/launch-03.png",
+			digest: "33333333333333333333333333333333",
+			content_type: "image/png",
+		},
+		width: 1600,
+		height: 900,
+		size_bytes: 1_900_000,
+	}),
+	asset("la_0000000000000054", {
+		name: "Launch teaser",
+		derived_name: "launch-teaser.mp4",
+		kind: "video",
+		category: "video",
+		origin: "generated",
+		origin_group: "generated",
+		ref: {
+			type: "artifact",
+			path: null,
+			display_path: "attachments/launch-teaser.mp4",
+			digest: "44444444444444444444444444444444",
+			content_type: "video/mp4",
+		},
+		width: 320,
+		height: 180,
+		duration_s: 2,
+		size_bytes: 2_309,
+	}),
+];
+
 type StubState = {
 	rows: DesktopLibraryAsset[];
 	detail: DesktopLibraryAsset | null;
@@ -209,6 +297,15 @@ let stub: StubState = {
  */
 let extraTags: { id: string; name: string; category: string }[] = [];
 
+/*
+ * HOW MANY CONTENT READS THE PREVIEW HAS ISSUED THIS STORY. `library.content` is
+ * the byte fetch; opening the full-screen viewer must reuse the URL the preview
+ * already resolved rather than reading the asset a second time, and the count is
+ * what makes that claim checkable (the `MediaLightbox` play asserts it does not
+ * move on open). Reset by `page()`, so a story never inherits another's count.
+ */
+let contentReads = 0;
+
 const PptxBytes = (() => {
 	let promise: Promise<Uint8Array> | null = null;
 	return () => {
@@ -218,6 +315,48 @@ const PptxBytes = (() => {
 		return promise;
 	};
 })();
+
+/*
+ * The clip the media story's `<video>` decodes: a real two-second 320x180 mp4
+ * (`scripts/fixtures/library/sample.mp4`, generated with ffmpeg), for the same
+ * reason the PPTX story serves a real deck. A stand-in that does not decode
+ * would reach the lightbox's own `onError` and the video check would assert
+ * the fallback rather than the clip.
+ */
+const Mp4Bytes = (() => {
+	let promise: Promise<Uint8Array> | null = null;
+	return () => {
+		promise ??= fetch(sampleMp4Url).then(
+			async (response) => new Uint8Array(await response.arrayBuffer()),
+		);
+		return promise;
+	};
+})();
+
+/**
+ * One picture's bytes, keyed by the asset so the strip's tiles are distinct.
+ *
+ * A gradient plus the asset's name is enough to tell the slides apart in a
+ * capture, which is what the media stories are for; nothing here is a decoding
+ * stand-in — the lightbox mounts a real `<img>` over these bytes.
+ *
+ * WIDTH AND HEIGHT ARE ON THE `<svg>` ROOT, not implied by the `viewBox`. With
+ * a viewBox alone the document has a ratio but no intrinsic size, and an `<img>`
+ * inside the lightbox's shrink-wrapped (`h-fit w-fit`) frame then measures 0x0 —
+ * the overlay opened over an empty layer. A real asset (a PNG, an MP4) always
+ * carries its dimensions; the fixture must too, or the story photographs a
+ * failure the fixture caused.
+ */
+const pictureSvg = (
+	label: string,
+	seed: number,
+	width: number,
+	height: number,
+) => {
+	const hue = (seed * 47) % 360;
+	const circle = Math.round(height * 0.22);
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${hue} 42% 36%)"/><stop offset="1" stop-color="hsl(${(hue + 40) % 360} 52% 15%)"/></linearGradient></defs><rect width="${width}" height="${height}" fill="url(#g)"/><circle cx="${Math.round(width * 0.74)}" cy="${Math.round(height * 0.3)}" r="${circle}" fill="#e8c56a" opacity=".8"/><path d="M0 ${Math.round(height * 0.76)} L${Math.round(width * 0.29)} ${Math.round(height * 0.42)} L${Math.round(width * 0.55)} ${Math.round(height * 0.8)} L${Math.round(width * 0.78)} ${Math.round(height * 0.56)} L${width} ${Math.round(height * 0.82)} V${height} H0Z" fill="#0a1f24" opacity=".75"/><text x="${Math.round(width * 0.05)}" y="${Math.round(height * 0.14)}" font-family="Helvetica, Arial, sans-serif" font-size="${Math.round(height * 0.052)}" fill="#ffffff" opacity=".9">${label}</text></svg>`;
+};
 
 const listing = (request: { scope?: string } = {}) => {
 	/*
@@ -428,16 +567,25 @@ const install = () => {
 					detail: "The daemon could not read this asset.",
 				};
 			}
+			/*
+			 * CONTENT AND THUMBNAILS FOLLOW THE ROW'S KIND, because the media
+			 * stories need bytes a real `<img>` and a real `<video>` can decode. The
+			 * pictures are generated SVGs keyed by asset id, so slides and strip tiles
+			 * are visibly distinct; the clip is the committed mp4 fixture. A row with
+			 * no thumbnail route (a clip, a document) gets the honest 404 the card
+			 * falls back to its kind glyph for.
+			 */
+			const row =
+				stub.rows.find((item) => item.id === String(request.assetId ?? "")) ??
+				null;
 			if (request.op === "library.thumbnail") {
-				/*
-				 * The artifact's bytes are a fixture, so its thumbnail is one too:
-				 * a 16:10 SVG that exercises the real `<img>` path and reserves the
-				 * card's ratio. A text or document row gets the honest 404 that
-				 * falls back to its kind glyph.
-				 */
-				if (String(request.assetId ?? "").endsWith("21")) {
-					const svg =
-						'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1f6f5f"/><stop offset="1" stop-color="#0b2b33"/></linearGradient></defs><rect width="1600" height="1000" fill="url(#g)"/><circle cx="1180" cy="300" r="220" fill="#e8c56a" opacity=".8"/><path d="M0 760 460 420 880 800 1240 560 1600 820V1000H0Z" fill="#0a1f24" opacity=".75"/></svg>';
+				if (row?.kind === "image" && row.exists) {
+					const svg = pictureSvg(
+						assetDisplayName(row),
+						Number.parseInt(row.id.slice(-2), 10),
+						row.width ?? 1600,
+						row.height ?? 1000,
+					);
 					return {
 						status: 200,
 						kind: "bytes",
@@ -458,6 +606,28 @@ const install = () => {
 					mimeType:
 						"application/vnd.openxmlformats-officedocument.presentationml.presentation",
 					data: await PptxBytes(),
+				};
+			contentReads += 1;
+			if (row?.kind === "image") {
+				const svg = pictureSvg(
+					assetDisplayName(row),
+					Number.parseInt(row.id.slice(-2), 10),
+					row.width ?? 1600,
+					row.height ?? 1000,
+				);
+				return {
+					status: 200,
+					kind: "bytes",
+					mimeType: "image/svg+xml",
+					data: new TextEncoder().encode(svg),
+				};
+			}
+			if (row?.kind === "video")
+				return {
+					status: 200,
+					kind: "bytes",
+					mimeType: "video/mp4",
+					data: await Mp4Bytes(),
 				};
 			return {
 				status: 200,
@@ -563,6 +733,7 @@ const page = (
 		...state,
 	};
 	extraTags = [];
+	contentReads = 0;
 	install();
 	try {
 		if (state.view) localStorage.setItem("library-view", state.view);
@@ -680,6 +851,215 @@ export const PreviewLinkedChat: Story = {
 			route: "/library/assets/la_0000000000000023",
 			linkedChat: true,
 		}),
+};
+
+/*
+ * THE DETAILS VIEW'S MEDIA LIGHTBOX (operator item 7). The fixture is three
+ * pictures and a clip, so the arrows, the wrap and the strip are all live. The
+ * play is the operator's own gesture: click the picture, walk one slide with
+ * the keyboard, close with Escape — and asserts focus comes back to the control
+ * that opened it, because a modal that dumps focus on `<body>` is the failure
+ * the lightbox's `restoreFocusTo` exists to prevent.
+ */
+export const MediaLightbox: Story = {
+	render: () =>
+		page({
+			rows: MEDIA_ROWS,
+			route: `/library/assets/${MEDIA_ROWS[0].id}`,
+			view: "list",
+		}),
+	play: async () => {
+		const user = userEvent.setup();
+		const trigger = await waitFor(() => {
+			const node = document.querySelector<HTMLElement>(
+				'[data-library-media-trigger="image"]',
+			);
+			if (!node) throw new Error("the preview's picture is not mounted");
+			return node;
+		});
+		const readsBefore = contentReads;
+		await user.click(trigger);
+		await waitFor(() =>
+			expect(document.querySelector("[data-library-lightbox]")).toBeTruthy(),
+		);
+		/*
+		 * Opening reuses the preview's own object URL: no second `library.content`
+		 * read for the picture already on screen.
+		 */
+		expect(contentReads).toBe(readsBefore);
+		/*
+		 * The set is the listing's four media rows, in display order, including the
+		 * asset on screen — and the strip marks the slide the reader is on.
+		 */
+		expect(
+			document.querySelectorAll("[data-library-lightbox-tile]").length,
+		).toBe(MEDIA_ROWS.length);
+		const currentTile = () =>
+			document
+				.querySelector('[data-library-lightbox-strip] [aria-current="true"]')
+				?.getAttribute("data-library-lightbox-tile") ?? null;
+		expect(currentTile()).toBe(MEDIA_ROWS[0].id);
+		await user.keyboard("{ArrowRight}");
+		await waitFor(() => expect(currentTile()).toBe(MEDIA_ROWS[1].id));
+		/*
+		 * A strip tile SWITCHES THE SLIDE and does not navigate: the page's route is
+		 * the asset the preview selected, and a viewer for the pixels must not move
+		 * the reader out of it.
+		 */
+		const pathBefore = location.pathname;
+		const third = document.querySelector<HTMLElement>(
+			`[data-library-lightbox-tile="${MEDIA_ROWS[2].id}"]`,
+		);
+		if (!third) throw new Error("the strip is missing its third tile");
+		await user.click(third);
+		await waitFor(() => expect(currentTile()).toBe(MEDIA_ROWS[2].id));
+		expect(location.pathname).toBe(pathBefore);
+		/*
+		 * Ends OPEN on purpose: the open overlay is the state the evidence rig
+		 * photographs, and a play that closed it would leave every frame of this
+		 * story showing the closed preview. The dismissal paths are
+		 * `MediaLightboxDismiss`'s, so one story does not do both and neither
+		 * depends on the other's timing.
+		 */
+	},
+};
+
+/**
+ * Every exit the lightbox owns, and the focus return that goes with them.
+ *
+ * Escape is Radix's; the assertion that matters is where focus lands after the
+ * close, because a composition without a `DialogTrigger` dumps it on `<body>`
+ * unless the caller passes `restoreFocusTo` — the defect the shared lightbox's
+ * prop exists to prevent.
+ */
+export const MediaLightboxDismiss: Story = {
+	render: () =>
+		page({
+			rows: MEDIA_ROWS,
+			route: `/library/assets/${MEDIA_ROWS[0].id}`,
+			view: "list",
+		}),
+	play: async () => {
+		const user = userEvent.setup();
+		const trigger = await waitFor(() => {
+			const node = document.querySelector<HTMLElement>(
+				'[data-library-media-trigger="image"]',
+			);
+			if (!node) throw new Error("the preview's picture is not mounted");
+			return node;
+		});
+		await user.click(trigger);
+		await waitFor(() =>
+			expect(document.querySelector("[data-library-lightbox]")).toBeTruthy(),
+		);
+		await user.keyboard("{Escape}");
+		await waitFor(() =>
+			expect(document.querySelector("[data-library-lightbox]")).toBeNull(),
+		);
+		await waitFor(() => expect(document.activeElement).toBe(trigger));
+		/* The page did not navigate: the preview is still the same asset route. */
+		expect(document.querySelector('[data-library-media-trigger="image"]')).toBe(
+			trigger,
+		);
+	},
+};
+
+/**
+ * A single picture has no siblings, so the lightbox must render WITHOUT
+ * carousel chrome: no strip, no arrows. That is `ImageLightbox`'s own
+ * `count > 1` rule, and this story is what keeps the Library's wiring from
+ * manufacturing a group of one.
+ */
+export const MediaLightboxSolo: Story = {
+	render: () =>
+		page({
+			rows: MEDIA_ROWS.slice(0, 1),
+			route: `/library/assets/${MEDIA_ROWS[0].id}`,
+			view: "list",
+		}),
+	play: async () => {
+		const user = userEvent.setup();
+		const trigger = await waitFor(() => {
+			const node = document.querySelector<HTMLElement>(
+				'[data-library-media-trigger="image"]',
+			);
+			if (!node) throw new Error("the preview's picture is not mounted");
+			return node;
+		});
+		await user.click(trigger);
+		await waitFor(() =>
+			expect(document.querySelector("[data-library-lightbox]")).toBeTruthy(),
+		);
+		expect(document.querySelector("[data-library-lightbox-strip]")).toBeNull();
+		expect(document.querySelector("[data-image-viewer-prev]")).toBeNull();
+		expect(document.querySelector("[data-image-viewer-next]")).toBeNull();
+	},
+};
+
+/*
+ * The clip's path, both ways in. The picture area is a click target sized to the
+ * clip and stops above the native control band; the band's presses belong to the
+ * player (`elementFromPoint` is the assertion: the target over the picture, the
+ * `<video>` over the band). The corner expand control stays as the keyboard
+ * affordance and opens the same lightbox. `data-lightbox-video` is the shared
+ * lightbox's own hook on the video element, so the assertion covers a decoded
+ * clip rather than the fallback.
+ */
+export const MediaLightboxVideo: Story = {
+	render: () =>
+		page({
+			rows: MEDIA_ROWS,
+			route: `/library/assets/${MEDIA_ROWS[3].id}`,
+			view: "list",
+		}),
+	play: async () => {
+		const user = userEvent.setup();
+		const video = await waitFor(() => {
+			const node = document.querySelector<HTMLVideoElement>("video");
+			if (!node) throw new Error("the preview's player is not mounted");
+			return node;
+		});
+		const surface = await waitFor(() => {
+			const node = document.querySelector<HTMLElement>(
+				'[data-library-media-trigger="video-surface"]',
+			);
+			if (!node) throw new Error("the clip's click target is not mounted");
+			return node;
+		});
+		const expand = document.querySelector<HTMLElement>(
+			'[data-library-media-trigger="video"]',
+		);
+		if (!expand) throw new Error("the preview's expand control is not mounted");
+		/*
+		 * The target covers the picture and NOT the control band: the band's own
+		 * presses must reach the player, or play/pause and the scrubber are dead.
+		 */
+		const box = video.getBoundingClientRect();
+		const surfaceBox = surface.getBoundingClientRect();
+		const centreX = box.left + box.width / 2;
+		expect(document.elementFromPoint(centreX, box.top + box.height / 2)).toBe(
+			surface,
+		);
+		expect(document.elementFromPoint(centreX, box.bottom - 10)).toBe(video);
+		expect(surfaceBox.height).toBeLessThan(box.height);
+		await user.click(surface);
+		await waitFor(() =>
+			expect(
+				document.querySelector("[data-library-lightbox] [data-lightbox-video]"),
+			).toBeTruthy(),
+		);
+		await user.keyboard("{Escape}");
+		await waitFor(() =>
+			expect(document.querySelector("[data-library-lightbox]")).toBeNull(),
+		);
+		/* The expand control is the second door, and the keyboard one. */
+		await user.click(expand);
+		await waitFor(() =>
+			expect(
+				document.querySelector("[data-library-lightbox] [data-lightbox-video]"),
+			).toBeTruthy(),
+		);
+	},
 };
 export const Pptx: Story = {
 	render: () =>
