@@ -1763,6 +1763,20 @@ export const main = async () => {
 			}
 			const dir = join(EVIDENCE, set.path);
 			if (!existsSync(dir) || !statSync(dir).isDirectory()) {
+				/*
+				 * A ZERO-FRAME declaration is a declared STATE, not a lost directory.
+				 *
+				 * `submit-latency` is the shipped instance: it declares `frames: 0`
+				 * and says why in its own entry, and its only file is a README,
+				 * which is tracked in the proof tree. The frames tree therefore has
+				 * no directory for it, and demanding one would fail a correct tree
+				 * on the first sweep - measured on 2026-10-20 against the split
+				 * (`supplementary[99] (submit-latency) names a directory that is not
+				 * in the tree`). The moment a frame lands there the directory exists
+				 * and the usual `onDisk !== set.frames` check refuses it, so a
+				 * declaration cannot use this to hide pixels.
+				 */
+				if (set.frames === 0) continue;
 				failures.push(
 					`manifest.json: ${where} names a directory that is not in the tree`,
 				);
