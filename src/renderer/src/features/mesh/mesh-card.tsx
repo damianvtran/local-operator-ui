@@ -1,3 +1,4 @@
+import { conversationCountLabel, conversationsLinkDown } from "./mesh-sessions";
 /**
  * The detail surface: what a device is, what it holds, and what may be done to it.
  *
@@ -44,7 +45,13 @@ import { resolveDrop } from "./mesh-drop";
 import type { MeshDevice, MeshGraph } from "./mesh-graph";
 import { agoSentence, conversationUnit } from "./mesh-graph";
 import { chipFact, chipLabel } from "./mesh-node";
-import { deviceReach, reachWords, suspectWords } from "./mesh-reach";
+import {
+	attemptWords,
+	deviceReach,
+	linkHeadline,
+	reachWords,
+	suspectWords,
+} from "./mesh-reach";
 import type { DeviceSessions } from "./mesh-sessions";
 import type { MeshSessionRow } from "./mesh-types";
 
@@ -313,6 +320,10 @@ export const DevicePanel: FC<{
 }) => {
 	useI18nLocale();
 	const reach = deviceReach(device);
+	const headline = linkHeadline(device);
+	// `null` is "this backend publishes no attempts", not "it dialled nothing": both
+	// fall back to the older single reason sentence, and only evidence is listed.
+	const attempts = device.reachable ? [] : (device.attempts ?? []);
 	/*
 	 * ESCAPE CLOSES THE PANEL, AND RETURNS FOCUS TO THE NODE THAT OPENED IT (UX review
 	 * round 1, U5). The key was bound and free: the panel had no keyboard exit at all -
@@ -513,9 +524,19 @@ export const DevicePanel: FC<{
 			<section className="flex shrink-0 flex-col gap-2">
 				<h3 className="text-meta text-ink-dim">
 					{t("ui.mesh.mesh_card.conversations")}
-					<span className="text-ink-disabled">({shownOf})</span>
+					<span className="text-ink-disabled">
+						(
+						{deviceReach(device) !== "self" && deviceReach(device) !== "reached"
+							? conversationCountLabel(null)
+							: shownOf}
+						)
+					</span>
 				</h3>
-				{sessions.rows.length === 0 ? (
+				{conversationsLinkDown(device, nowSeconds) ? (
+					<p className="text-meta text-warning">
+						{conversationsLinkDown(device, nowSeconds)}
+					</p>
+				) : sessions.rows.length === 0 ? (
 					<p className="text-meta text-ink-dim">
 						{device.sessionCount === null
 							? t(
@@ -659,7 +680,70 @@ export const DevicePanel: FC<{
 						</dd>
 					</div>
 				</dl>
-				{device.reason && (
+				{/*
+				 * THE EVIDENCE BEHIND THE VERDICT (mesh link resilience). The wire publishes one
+				 * attempt per dialled address; a refused connection, a timeout and a closed
+				 * handshake are different observations, and the old single sentence collapsed all
+				 * three into `unreachable`. The headline names the observed cause where the wire
+				 * named one; the rows underneath print the addresses and their transport detail.
+				 * When `attempts` is absent (an older backend), the unchanged reason sentence is
+				 * still the fallback - absence is not a claim that nothing was tried.
+				 */}
+				{!device.reachable && (headline !== "" || attempts.length > 0) && (
+					<div className="flex flex-col gap-1">
+						{headline && (
+							<p className="m-0 text-meta text-warning">{headline}</p>
+						)}
+						{device.linkState === "handshake_refused" && (
+							<p className="m-0 text-meta text-ink-dim">
+								{t("ui.mesh.mesh_reach.handshake_refused_hint")}
+							</p>
+						)}
+						{attempts.length > 0 && (
+							<>
+								<span
+									id={`mesh-attempts-label-${device.id}`}
+									className="text-meta text-ink-dim"
+								>
+									{t("ui.mesh.mesh_reach.addresses_tried")}
+								</span>
+								{/*
+								 * `list-none` IS WHY THE ROLE IS EXPLICIT: Safari/VoiceOver drops
+								 * list semantics for a list with no marker, and `aria-labelledby`
+								 * names a list without restoring the role. The native `<ul>` is
+								 * still the element (no `role` on a div); this only states what the
+								 * stylesheet took away.
+								 */}
+								<ul
+									/* biome-ignore lint/a11y/noRedundantRoles: WebKit drops the implicit list role when `list-style: none` is set, so the explicit one is what carries these rows to VoiceOver. */
+									/* biome-ignore lint/a11y/useSemanticElements: the element already IS the one the rule suggests - the explicit role is the WebKit fix above, not a substitute for `ul`. */
+									role="list"
+									aria-labelledby={`mesh-attempts-label-${device.id}`}
+									className="m-0 flex list-none flex-col gap-0.5 p-0"
+								>
+									{attempts.map((attempt, index) => {
+										const words = attemptWords(attempt.detail);
+										return (
+											<li
+												key={`${attempt.endpoint}:${index}`}
+												data-mesh-attempt={attempt.endpoint}
+												className="flex items-baseline justify-between gap-2"
+											>
+												<span className="min-w-0 truncate font-mono text-meta text-ink">
+													{attempt.endpoint}
+												</span>
+												<span className="shrink-0 text-meta text-ink-dim">
+													{words}
+												</span>
+											</li>
+										);
+									})}
+								</ul>
+							</>
+						)}
+					</div>
+				)}
+				{!headline && attempts.length === 0 && device.reason && (
 					<p className="text-meta text-warning">{device.reason}</p>
 				)}
 			</section>

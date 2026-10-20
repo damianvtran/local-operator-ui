@@ -119,7 +119,10 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	 * device control from becoming a background poller on every conversation - the
 	 * defect the rail's own always-mounted observer caused (review round 2, R2-1).
 	 */
-	const peers = useMeshPeers(peersEnabled, { poll: false });
+	const peers = useMeshPeers(peersEnabled, {
+		poll: false,
+		stamp: () => useCanonicalSessionsStore.getState().beginAnswer(),
+	});
 	const networks = useMeshNetworks(peersEnabled, { poll: false });
 	const transfer = useMeshTransfer();
 	const draft = useCanonicalSessionsStore((state) =>

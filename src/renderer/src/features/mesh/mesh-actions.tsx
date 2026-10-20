@@ -580,7 +580,12 @@ export const MoveNotice: FC<{
 				<span className="text-meta text-ink-dim">{receipt.detail}</span>
 			) : (
 				<span className="font-mono text-meta text-ink-dim">
-					{refusal?.code}
+					{/*
+					 * THE WORD WHEN THE CLIENT HAS ONE, the machine code otherwise. The pre-flight
+					 * refusal carries `reach` because the device is in hand there; a refusal from
+					 * the route does not, and its code is the only vocabulary this end holds.
+					 */}
+					{refusal?.reach ?? refusal?.code}
 				</span>
 			)}
 			{refusal?.code === "busy" && canWait && (

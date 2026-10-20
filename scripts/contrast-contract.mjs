@@ -397,6 +397,23 @@ const KEYCAP_DELTA_E = 2.0;
  * against the ground behind it.
  */
 const CONTROLS = [
+	// Source confirmation paints its remedy and diagnostic on warningWash;
+	// ground-only button/text checks do not cover either of these pairings.
+	{
+		name: "hub source confirmation remedy",
+		on: ["warningWash"],
+		fill: "accent",
+		border: "accent",
+		ink: "onAccent",
+	},
+	{
+		name: "hub source confirmation diagnostic",
+		on: ["canvas"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "inkMuted",
+	},
+
 	// Find is a chrome-band row, never a DOM panel over WebContentsView. Its
 	// standard Input uses the existing input-control contract; this pins the
 	// row's elevated ground, control rule and politely announced count.
@@ -3354,13 +3371,12 @@ const STRUCTURAL_CALL_SITES = [
 		what: "transcript quote toolkit floating shell",
 		file: "src/renderer/src/features/chat/canonical/quote-toolkit.tsx",
 		/*
-		 * Verbatim, so it tracks the shell as written: the speak-aloud round added
-		 * the second control (Speak beside Quote) and with it the pair's `gap-0.5`
-		 * - the anatomy the link toolbar's own multi-button strip already carries.
-		 * The boundary this row protects is the `border border-hairline
-		 * bg-elevated` ground, which is unchanged.
+		 * Verbatim, so it tracks the shell as written: the selection round added
+		 * Copy beside Quote and Speak, and the three-control strip needs the tighter
+		 * `gap-0 px-0.5` to fit the outer gutter. The boundary this row protects is
+		 * the `border border-hairline bg-elevated` ground, which is unchanged.
 		 */
-		must: "z-10 flex h-8 items-center gap-0.5 rounded-md border border-hairline bg-elevated px-1",
+		must: "z-20 flex h-8 items-center gap-0 rounded-md border border-hairline bg-elevated px-0.5",
 		why: "the toolkit floats over prose and over a user bubble, so `elevated` plus a hairline is the whole of what makes it read as an object rather than as text that drifted; repainting it on the transcript's own canvas leaves it invisible against the reading column with every palette row still green",
 	},
 	{
