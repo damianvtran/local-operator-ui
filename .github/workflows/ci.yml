@@ -41,12 +41,50 @@ on:
   # trigger for the same reason.
   workflow_dispatch:
 
-# Pull-request runs supersede each other, so the older one is cancelled rather
-# than queued; pushes to `main` are left alone so a merge is never interrupted
-# mid-flight.
+# Cancellation exists for SUPERSEDED COMMITS, not for "any event".
+#
+# `cancel-in-progress` is here so that a force-push or a follow-up commit does
+# not leave a runner working on a head nobody is waiting for. That is a
+# statement about the COMMIT, so it must key on the events that produce a new
+# commit: `push` (only `main` reaches this workflow's push list) and
+# `pull_request`/`synchronize`. Everything else that can start a run on an
+# already-running ref - `opened`, `reopened`, `workflow_dispatch` - must not
+# cancel a run that is already executing the code under review.
+#
+# MEASURED ON 2026-10-20, because this block was blamed for the wrong thing
+# and the wrong fix was nearly landed twice. Three `Desktop Tests` runs on the
+# `feat/i18n-envelope-render` head concluded `cancelled` (39489336612,
+# 39489768296, 39491353371) and were read as "concurrency kills every long
+# run". Two of them were superseded by a genuinely newer head (20:10:53 by
+# 39489768296, 20:22:03 by 39491353371) - that is the designed behaviour. The
+# third never was superseded by anything: its job annotation reads
+#
+#   The job has exceeded the maximum execution time of 50m0s
+#
+# i.e. the JOB TIMEOUT fired after 50 minutes of EXECUTION (started 22:30:32,
+# annotation at +50m, concluded 23:25:33 after the runner's cancellation
+# grace). Queue time does not count toward `timeout-minutes`, so a 55-minute
+# wall clock is not evidence that the ceiling did not fire. Read the closest
+# job annotation before diagnosing a `cancelled` conclusion as a concurrency
+# event: `cancelled` is ALSO how GitHub reports a job that exceeded
+# `timeout-minutes`.
+#
+# What that means for the next reader: if `Desktop Tests` fails to finish, the
+# question is "does the suite fit its ceiling", not "who cancelled it". Do not
+# raise the ceiling to make a cancellation go away, and do not delete this
+# concurrency block to make a long run survive - neither changes what passes.
+#
+# `github.sha` for `main`: a push to `main` is the CI record for that merge
+# commit, and it must never be evicted. A shared per-ref group permits one run
+# in progress and ONE pending one; a third cancels the pending one. Observed
+# here on 2026-10-20: run 39510898400 (`push` to `main`) concluded `cancelled`
+# with every job cancelled before it started - a merged commit with no CI
+# record. Giving every `main` commit its own group removes the eviction
+# entirely. This mirrors the identical fix already carried in the backend
+# repository's `ci.yml`, which records the same failure and the same reasoning.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.ref == 'refs/heads/main' && github.sha || 'shared' }}
+  cancel-in-progress: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action == 'synchronize') }}
 
 jobs:
   # Classifies this diff and exposes one flag per job, so a pull request that
