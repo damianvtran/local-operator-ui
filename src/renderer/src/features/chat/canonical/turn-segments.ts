@@ -559,7 +559,7 @@ export type RunPartition = {
  * old rule kept exactly one close, so a turn that answered, was continued past, and
  * answered again hid the FIRST answer - the one carrying the substance - inside the
  * bar, and the reader had to expand it to read what the agent had already handed
- * over. The four clauses below are the invariant that replaces it, in row-list
+ * over. The five clauses below are the invariant that replaces it, in row-list
  * terms:
  *
  * - V1, a RESPONSE cycle's close: the agent answered something (the request, a job,
@@ -611,10 +611,12 @@ export type RunPartition = {
  *
  * THE DISPLAY MODE WIDENS, AND ONLY WIDENS (issue #756). `mode` is the reader's
  * `by-turn` / `by-response` choice (`transcript-display-mode.ts`), and it is an
- * OPTIONAL FIELD whose absence means the shipped default: `from` and the four
- * clauses above are computed identically in both modes, so V1-V4 keep their
+ * OPTIONAL FIELD whose absence means the shipped default: `from` and the five
+ * clauses above are computed identically in both modes, so V1-V5 keep their
  * meaning and `answer` is elected once, before the mode is consulted. `by-turn`
- * is therefore byte-for-byte the partition this function always produced; in
+ * is therefore the partition this function shipped, with ONE declared exception:
+ * V5 (`isFinalResponse`) keeps a handover the phase rule could not see visible
+ * in both modes. In
  * `by-response` EVERY settled text-bearing row joins the visible set on top of
  * the clauses, so a turn that answered, was continued past and answered again
  * shows both answers in place while its tool work still condenses. The widening
