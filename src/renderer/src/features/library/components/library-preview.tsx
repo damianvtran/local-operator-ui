@@ -17,8 +17,10 @@
  * keeps a typed tag and the rail's counts in one registry.
  */
 
-import { EditableField } from "@shared/components/common/editable-field";
-import { TagsInputChips } from "@shared/components/common/tags-input-chips";
+import {
+	InlineEditText,
+	InlineTagEditor,
+} from "@shared/components/common/inline-edit";
 import { Badge, Button, Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -30,7 +32,6 @@ import {
 	Download,
 	ExternalLink,
 	FolderOpen,
-	LoaderCircle,
 	Lock,
 	LockOpen,
 	Maximize2,
@@ -141,6 +142,16 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 	const nameRef = useRef<HTMLDivElement>(null);
 	const tagsRef = useRef<HTMLDivElement>(null);
 	/*
+	 * EDIT COMMANDS ARE SIGNALS, not node queries. The card menu and the page's
+	 * focus request used to reach into the metadata field's DOM and click its
+	 * first button; the inline editor has no such button in its read state, and
+	 * a primitive should expose the gesture it supports rather than have callers
+	 * reconstruct it from its markup. Each counter opens the field whose value it
+	 * belongs to.
+	 */
+	const [nameEditSignal, setNameEditSignal] = useState(0);
+	const [tagEditSignal, setTagEditSignal] = useState(0);
+	/*
 	 * SHORT PREVIEWS COMPACT THE METADATA (design spec §2): below 700px of
 	 * preview height the description and tag editor collapse behind Details, so
 	 * the viewer keeps a usable slide/document area instead of being squeezed
@@ -166,11 +177,14 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 	useEffect(() => {
 		if (!focusRequest) return;
 		if (focusRequest.field === "tags") {
+			/* A short preview keeps the tag row behind Details: an edit command
+			 * must reveal the field it is about, not aim at an unmounted node. */
+			setDetailsOpen(true);
 			tagsRef.current?.scrollIntoView({ block: "center" });
-			tagsRef.current?.querySelector("input")?.focus();
+			setTagEditSignal((signal) => signal + 1);
 		} else {
 			nameRef.current?.scrollIntoView({ block: "center" });
-			nameRef.current?.querySelector("button")?.click();
+			setNameEditSignal((signal) => signal + 1);
 		}
 	}, [focusRequest?.signal]);
 
@@ -235,18 +249,24 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 						{t("ui.library.page.back")}
 					</Button>
 				)}
-				<div className="flex items-start gap-2">
-					<KindGlyph
-						kind={asset.kind}
-						size={18}
-						className="mt-1.5 text-ink-dim"
-					/>
+				{/*
+				 * THE HEADER IS ONE LINE: kind glyph, name, actions, vertically
+				 * centred. The glyph used to carry a top margin to sit beside a
+				 * labelled form field; with the label gone there is nothing to align
+				 * it to but the name's own line, so the row centres instead of
+				 * offsetting one child.
+				 */}
+				<div className="flex items-center gap-2">
+					<KindGlyph kind={asset.kind} size={18} className="text-ink-dim" />
 					<div ref={nameRef} className="min-w-0 flex-1">
-						<EditableField
-							label={t("ui.library.preview.name")}
+						<InlineEditText
 							value={assetDisplayName(asset)}
 							onSave={(value) => saveField({ name: value })}
-							isSaving={update.isPending}
+							label={t("ui.library.preview.name")}
+							textClassName="text-heading font-medium"
+							field="name"
+							startSignal={nameEditSignal}
+							className="min-w-0"
 						/>
 					</div>
 					<div className="flex shrink-0 items-center gap-1">
@@ -316,12 +336,11 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 						<LibraryAssetMenu
 							asset={asset}
 							onAsk={onAsk}
-							onEditMetadata={() => {
-								nameRef.current?.querySelector("button")?.click();
-							}}
+							onEditMetadata={() => setNameEditSignal((signal) => signal + 1)}
 							onEditTags={() => {
+								setDetailsOpen(true);
 								tagsRef.current?.scrollIntoView({ block: "center" });
-								tagsRef.current?.querySelector("input")?.focus();
+								setTagEditSignal((signal) => signal + 1);
 							}}
 							onToggleFavorite={onToggleFavorite}
 							onOpenConversation={onOpenConversation}
@@ -437,34 +456,26 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 				)}
 				{(!compact || detailsOpen) && (
 					<>
-						<div className="flex flex-col gap-1">
-							<EditableField
-								label={t("ui.library.preview.description")}
-								value={asset.description}
-								multiline
-								rows={3}
-								placeholder={t("ui.library.preview.add_description")}
-								onSave={(value) => saveField({ description: value })}
-								isSaving={update.isPending}
+						<InlineEditText
+							value={asset.description}
+							onSave={(value) => saveField({ description: value })}
+							label={t("ui.library.preview.description")}
+							placeholder={t("ui.library.preview.add_description")}
+							multiline
+							rows={3}
+							allowEmpty
+							textClassName="text-body-sm"
+							field="description"
+						/>
+						<div ref={tagsRef} className="min-w-0">
+							<InlineTagEditor
+								value={names}
+								onChange={(next) => void commit(next)}
+								label={t("ui.library.preview.tags")}
+								addLabel={t("ui.library.preview.add_tag")}
+								saving={tagsSaving}
+								startSignal={tagEditSignal}
 							/>
-						</div>
-						<div ref={tagsRef} className="flex items-start gap-2">
-							<div className="min-w-0 flex-1">
-								<TagsInputChips
-									label={t("ui.library.preview.tags")}
-									value={names}
-									disabled={tagsSaving}
-									onChange={(next) => void commit(next)}
-									placeholder={t("ui.library.preview.add_tag")}
-								/>
-							</div>
-							{tagsSaving && (
-								<LoaderCircle
-									size={14}
-									aria-hidden="true"
-									className="mt-6 motion-safe:animate-spin text-ink-muted"
-								/>
-							)}
 						</div>
 					</>
 				)}

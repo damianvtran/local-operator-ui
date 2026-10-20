@@ -16,6 +16,7 @@ import { ChatLayout } from "@shared/components/common/chat-layout";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
+import { expect, userEvent, waitFor } from "@storybook/test";
 import type { FC, ReactNode } from "react";
 import { useEffect, useLayoutEffect } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
@@ -24,8 +25,10 @@ import "../../../styles/index.css";
 import "../../chat/components/story-electron-shim";
 import samplePptxUrl from "../../../../../../scripts/fixtures/library/sample.pptx?url";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
+import { useLibraryAsset } from "../hooks/use-library-queries";
 import { NO_LIBRARY_FILTERS, filterAssets } from "../library-model";
 import { LibraryPage } from "./library-page";
+import { LibraryPreview } from "./library-preview";
 
 const NOW = new Date(2026, 9, 18, 12, 0, 0).getTime();
 const THEME_IDS = ["localOperatorDark", "localOperatorLight"];
@@ -198,6 +201,14 @@ let stub: StubState = {
 	linkedChat: false,
 };
 
+/*
+ * Tags created through the preview's add affordance. The desktop stores new
+ * names in the vocabulary before assigning their ids, so the stub does the
+ * same for the life of one story; without it an add would issue an op the
+ * script does not know and the story would fail rather than show the chip.
+ */
+let extraTags: { id: string; name: string; category: string }[] = [];
+
 const PptxBytes = (() => {
 	let promise: Promise<Uint8Array> | null = null;
 	return () => {
@@ -323,24 +334,59 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 				body: { result: listing().librarian },
 			};
 		case "library.tags":
-			return { status: 200, body: { result: listing().tags } };
-		case "library.update":
 			return {
 				status: 200,
 				body: {
-					result: {
-						...(stub.rows.find((item) => item.id === request.id) ?? ROWS[2]),
-						...((request.fields as object) ?? {}),
-					},
+					result: [
+						...listing().tags,
+						...extraTags.map((item) => ({ ...item, count: 0 })),
+					],
 				},
 			};
-		case "library.tags.assign":
-			return {
-				status: 200,
-				body: {
-					result: stub.rows.find((item) => item.id === request.id) ?? ROWS[2],
-				},
+		case "library.tags.create": {
+			const name = String(request.name ?? "")
+				.trim()
+				.toLowerCase();
+			const existing = [...listing().tags, ...extraTags].find(
+				(item) => item.name === name,
+			);
+			if (existing) return { status: 200, body: { result: existing } };
+			const created = {
+				...tag(`t-${extraTags.length + 10}`, name),
+				count: 0,
 			};
+			extraTags = [
+				...extraTags,
+				{ id: created.id, name: created.name, category: created.category },
+			];
+			return { status: 200, body: { result: created } };
+		}
+		case "library.update": {
+			const row = stub.rows.find((item) => item.id === request.id) ?? ROWS[2];
+			const updated = { ...row, ...((request.fields as object) ?? {}) };
+			stub.rows = stub.rows.map((item) =>
+				item.id === updated.id ? updated : item,
+			);
+			if (stub.detail?.id === updated.id) stub.detail = updated;
+			return { status: 200, body: { result: updated } };
+		}
+		case "library.tags.assign": {
+			const row = stub.rows.find((item) => item.id === request.id) ?? ROWS[2];
+			const ids = Array.isArray(request.tags) ? request.tags : [];
+			const vocabulary = [...listing().tags, ...extraTags];
+			const tags = ids.flatMap((id) => {
+				const found = vocabulary.find((item) => item.id === id);
+				return found
+					? [{ id: found.id, name: found.name, category: found.category }]
+					: [];
+			});
+			const updated = { ...row, tags };
+			stub.rows = stub.rows.map((item) =>
+				item.id === updated.id ? updated : item,
+			);
+			if (stub.detail?.id === updated.id) stub.detail = updated;
+			return { status: 200, body: { result: updated } };
+		}
 		case "sessions.message":
 			return { status: 200, body: { result: { accepted: true } } };
 		case "library.chat.link":
@@ -516,6 +562,7 @@ const page = (
 		linkedChat: false,
 		...state,
 	};
+	extraTags = [];
 	install();
 	try {
 		if (state.view) localStorage.setItem("library-view", state.view);
@@ -744,4 +791,154 @@ export const InShellPreviewLinkedChat: Story = {
 			route: "/library/assets/la_0000000000000023",
 			linkedChat: true,
 		}),
+};
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE PREVIEW'S INLINE EDITING, standalone.
+ * ---------------------------------------------------------------------------
+ * The panel is mounted directly rather than reached through the catalogue
+ * route, so a frame is only the metadata surface: the name row, the
+ * description and the tag row. The stub is the same one the page stories use,
+ * so every read the preview makes (`library.tags`, `library.update`) is the
+ * real bridge call with a scripted answer.
+ *
+ * THE DATA HOOKS ARE THE DRIVE SURFACE. `data-inline-edit="name"` /
+ * `"description"` each contain `[data-inline-edit-control]` (the pencil/X) and,
+ * while open, `[data-inline-edit-input]`; `[data-inline-tags]` holds the chip
+ * row and its add affordance. The capture rig's `press`, `hover`, `type` and
+ * `keys` options address those selectors, so a frame is a state a real pointer
+ * or keyboard produced rather than a prop that paints one.
+ */
+const PreviewFromQuery: FC<{ row: DesktopLibraryAsset }> = ({ row }) => {
+	/*
+	 * The panel reads the same detail query the page hands it. It matters for a
+	 * story that WRITES: a save lands in the query cache, the hook re-renders
+	 * with the server's row, and the frame shows what the app would. Rendering
+	 * the fixture directly would paint the old value straight back over every
+	 * successful save and read as a failure.
+	 */
+	const detail = useLibraryAsset(row.id, true);
+	return (
+		<div className="flex h-screen justify-end bg-canvas">
+			<div className="flex h-full w-[440px] min-w-0 flex-col">
+				<LibraryPreview
+					asset={detail.data ?? row}
+					nowMs={NOW}
+					onClose={() => undefined}
+					onOpenConversation={() => undefined}
+					onFilterSession={() => undefined}
+					onAsk={() => undefined}
+					onToggleFavorite={() => undefined}
+					composerFocusSignal={0}
+					focusRequest={null}
+				/>
+			</div>
+		</div>
+	);
+};
+
+const previewPane = (row: DesktopLibraryAsset) => {
+	stub = {
+		rows: [row, ...ROWS.filter((item) => item.id !== row.id)],
+		detail: row,
+		hang: false,
+		building: false,
+		failList: null,
+		media: "text",
+		linkedChat: false,
+	};
+	extraTags = [];
+	install();
+	return <PreviewFromQuery row={row} />;
+};
+
+const inlineControl = (field: string) => {
+	const node = document.querySelector<HTMLButtonElement>(
+		`[data-inline-edit="${field}"] [data-inline-edit-control]`,
+	);
+	if (!node) throw new Error(`the ${field} pencil is not mounted`);
+	return node;
+};
+
+const inlineInput = (field: string) =>
+	document.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+		`[data-inline-edit="${field}"] [data-inline-edit-input]`,
+	);
+
+/** The resting read state: header name row, description text, tag pills. */
+export const PreviewInlinePopulated: Story = {
+	render: () => previewPane(ROWS[2]),
+};
+
+/**
+ * The hover state, produced by a real pointer. No play function can set
+ * `:hover` (synthetic pointer events do not move the browser's hover chain),
+ * so the rig drives this one with its `hover` option on
+ * `[data-inline-edit="name"]` and asserts the pseudo-class before the shutter.
+ */
+export const PreviewInlineNameHover: Story = {
+	render: () => previewPane(ROWS[2]),
+};
+
+/** After a real press on the name's pencil: borderless editor, text selected. */
+export const PreviewInlineNameEditing: Story = {
+	render: () => previewPane(ROWS[2]),
+	play: async () => {
+		const user = userEvent.setup();
+		await user.click(await waitFor(() => inlineControl("name")));
+		await waitFor(() => expect(inlineInput("name")).toBeTruthy());
+	},
+};
+
+/** After typing and Escape: the editor closed, the stored name back in place. */
+export const PreviewInlineNameEscape: Story = {
+	render: () => previewPane(ROWS[2]),
+	play: async () => {
+		const user = userEvent.setup();
+		await user.click(await waitFor(() => inlineControl("name")));
+		const input = await waitFor(() => {
+			const found = inlineInput("name");
+			if (!found) throw new Error("the name editor did not open");
+			return found;
+		});
+		await user.type(input, "changed");
+		await user.keyboard("{Escape}");
+		await waitFor(() => expect(inlineInput("name")).toBeNull());
+		await waitFor(() =>
+			expect(
+				document.querySelector('[data-inline-edit="name"]')?.textContent,
+			).toContain("March invoices"),
+		);
+	},
+};
+
+/** Description editing: the same gesture, multiline, no box. */
+export const PreviewInlineDescriptionEditing: Story = {
+	render: () => previewPane(ROWS[2]),
+	play: async () => {
+		const user = userEvent.setup();
+		await user.click(await waitFor(() => inlineControl("description")));
+		await waitFor(() => expect(inlineInput("description")).toBeTruthy());
+	},
+};
+
+/** The tag row with nothing in it: the add affordance is the empty state. */
+export const PreviewInlineEmptyTags: Story = {
+	render: () =>
+		previewPane(
+			asset("la_0000000000000041", {
+				name: "Untagged note",
+				description: "",
+				tags: [],
+			}),
+		),
+	play: async () => {
+		const row = await waitFor(() => {
+			const found = document.querySelector("[data-inline-tags]");
+			if (!found) throw new Error("the tag row is not mounted");
+			return found;
+		});
+		expect(row.textContent).toContain("Add a tag");
+	},
 };
