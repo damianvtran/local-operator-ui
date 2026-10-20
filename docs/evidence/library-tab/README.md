@@ -209,14 +209,14 @@ All frames are 640x900 except the four `media-lightbox*` states and
 | `preview-inline-name-hover/` | 18,048 | 18,428 |
 | `preview-inline-long-name/` | 19,646 | 19,788 |
 | `preview-inline-long-name-hover/` | 19,710 | 19,862 |
-| `preview-inline-long-name-editing/` | 19,756 | 20,358 |
+| `preview-inline-long-name-editing/` | 19,756 | 20,384 |
 | `preview-inline-name-editing/` | 18,038 | 18,496 |
 | `preview-inline-name-escape/` | 18,322 | 18,672 |
 | `preview-inline-description-editing/` | 18,816 | 19,498 |
 | `preview-inline-empty-tags/` | 15,900 | 16,360 |
 | `media-lightbox/` (1280x900) | 26,914 | 29,844 |
-| `media-lightbox-dismiss/` (1280x900) | 42,006 | 42,890 |
-| `media-lightbox-video/` (1280x900) | 31,278 | 38,670 |
+| `media-lightbox-dismiss/` (1280x900) | 42,124 | 42,890 |
+| `media-lightbox-video/` (1280x900) | 31,166 | 38,628 |
 | `media-lightbox-solo/` (1280x900) | 22,594 | 25,306 |
 
 ### Before (`library-tab-before/`)
