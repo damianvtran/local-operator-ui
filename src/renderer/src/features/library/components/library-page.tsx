@@ -381,6 +381,17 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 
 	const lastPage = listing.data?.pages.at(-1);
 	const total = lastPage?.total ?? 0;
+	/*
+	 * The siblings the media viewer's full-screen lightbox walks: the current
+	 * listing's images and clips, in display order. Display order is the page's,
+	 * not the lightbox's — the strip has to read the way the grid does — and the
+	 * filter drops every kind the lightbox cannot show rather than letting it
+	 * walk onto a document.
+	 */
+	const mediaSiblings = useMemo(
+		() => rows.filter((row) => row.kind === "image" || row.kind === "video"),
+		[rows],
+	);
 	const selectedFromList = rows.find((row) => row.id === selectedId) ?? null;
 	const selected = detail.data ?? selectedFromList;
 	/*
@@ -470,6 +481,15 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
 			const target = event.target as HTMLElement | null;
+			/*
+			 * A MODAL OWNS ITS KEYS. The preview's media lightbox parks focus inside
+			 * its dialog and Radix handles Escape there; this page's Escape would
+			 * otherwise also run `goBack()` and dismiss the preview underneath the
+			 * overlay (measured in the media-lightbox story: Escape closed the
+			 * viewer AND navigated back to the grid). Page shortcuts resume as soon
+			 * as focus is back on the page.
+			 */
+			if (target?.closest('[role="dialog"]')) return;
 			const typing =
 				target?.tagName === "INPUT" ||
 				target?.tagName === "TEXTAREA" ||
@@ -1015,6 +1035,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 						composerFocusSignal={composerFocusSignal}
 						focusRequest={focusRequest}
 						onExpand={openFullView}
+						mediaSiblings={mediaSiblings}
 					/>
 				</aside>
 			)}
@@ -1036,6 +1057,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 							onToggleFavorite={() => toggleFavorite(selected)}
 							composerFocusSignal={composerFocusSignal}
 							focusRequest={focusRequest}
+							mediaSiblings={mediaSiblings}
 							standalone
 						/>
 					) : (

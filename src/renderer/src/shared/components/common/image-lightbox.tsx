@@ -336,6 +336,16 @@ export type ImageLightboxProps = {
 	 * is a picture or a clip, while "Previous image" would misname half of them.
 	 */
 	mediaLabel?: "image" | "asset";
+	/**
+	 * Extra attributes for the dialog's layer element.
+	 *
+	 * Data attributes only, and only for a caller whose capture rig or test has
+	 * to tell THIS overlay from any other lightbox in the document: the
+	 * component's own hooks (`data-image-viewport`, `data-image-viewer-controls`)
+	 * are generic and deliberately say nothing about the surface that mounted it.
+	 * Kept off the props list above because it is not behaviour.
+	 */
+	layerAttributes?: Record<string, string>;
 };
 
 /**
@@ -376,6 +386,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	layerRef,
 	mediaKind = "image",
 	mediaLabel = "image",
+	layerAttributes,
 }) => {
 	const isVideo = mediaKind === "video";
 	const positionLabel = (index: number, count: number) =>
@@ -802,6 +813,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 					// COLOUR, which this is the only way to take off.
 					"gap-0 rounded-none border-0 border-transparent bg-transparent p-0 shadow-none",
 				)}
+				{...layerAttributes}
 			>
 				<DialogTitle className="sr-only">{label}</DialogTitle>
 				{showCarousel && group ? (
