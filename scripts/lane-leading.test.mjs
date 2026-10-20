@@ -218,7 +218,7 @@ test("the lane is an overlay and panels paint from y0", () => {
 	);
 	assert.match(
 		page,
-		/pt-\[var\(--chrome-strip-h\)\]/,
+		/pt-\[var\(--panel-top-pad,0px\)\]/,
 		"Team Bridge's panels must move the traffic-light clearance INSIDE the panel as padding, never as an offset of the panel",
 	);
 });
@@ -296,5 +296,38 @@ test("no route column draws a right rule any more", () => {
 		readSource(AGENTS_SIDEBAR),
 		/(border-hairline border-r|border-r border-hairline)/,
 		`${AGENTS_SIDEBAR} draws the roster's right rule again: the roster's \`surface\` against the \`canvas\` content is a tone step, and the rule would stop at the lane's lower edge - the operator's report verbatim`,
+	);
+});
+
+test("the non-flush lane still paints the measured grounds", () => {
+	/*
+	 * The flushTop branch is an overlay, but the routes that have NOT opted in
+	 * keep the painted lane row exactly as it was: its width is the leading
+	 * column's measured edge with the sidebar as the floor, and the ground the
+	 * hand-over names is the role it paints. Losing these pins would let the
+	 * untouched branch drift while the new one is reviewed.
+	 */
+	const layout = readSource(
+		"src/renderer/src/shared/components/common/chat-layout.tsx",
+	);
+	assert.match(
+		layout,
+		/const laneEdge = Math\.max\(columnWidth, leading\?\.edge \?\? 0\);/,
+		"the lane's width must stay the measured leading edge with the sidebar as its floor",
+	);
+	assert.match(
+		layout,
+		/laneGround === "surface"/,
+		"the non-flush lane must still branch on the ground the marker names",
+	);
+	assert.match(
+		layout,
+		/var\(--lo-\$\{laneGround\}\)/,
+		"the non-surface ground must be a role, not a literal",
+	);
+	assert.match(
+		layout,
+		/var\(--lo-canvas\) \$\{laneEdge\}px/,
+		"the non-flush lane must paint its canvas stop from the measured width",
 	);
 });

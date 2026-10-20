@@ -416,7 +416,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				   rule. A full-height border beside a 30px-row list reads as a hard
 				   frame; the sunken tint does the same job and survives glass, where a
 				   solid line is the one thing a translucent surface cannot hide. */
-				className="flex w-72 shrink-0 flex-col pt-[var(--chrome-strip-h)]"
+				className="flex w-72 shrink-0 flex-col pt-[var(--panel-top-pad,0px)]"
 			>
 				{/* The page's heading for heading navigation. The rail's visible title is
 				    the scope, which is a control rather than a document heading. */}
@@ -505,7 +505,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			    two regons read apart in light and dark without a single rule between
 			    them — which is also what survives the glass settings, where a hard
 			    line is the one thing a translucent ground cannot hide. */}
-			<section className="flex min-w-0 flex-1 flex-col bg-surface pt-[var(--chrome-strip-h)]">
+			<section className="flex min-w-0 flex-1 flex-col bg-surface pt-[var(--panel-top-pad,0px)]">
 				{selected === null ? (
 					listState === "ready" ? (
 						<div className="flex flex-1 items-center justify-center px-6">

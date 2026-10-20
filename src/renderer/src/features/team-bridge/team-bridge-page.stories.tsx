@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import type { CSSProperties } from "react";
+import { type CSSProperties, useEffect } from "react";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
@@ -26,6 +26,33 @@ import { TeamBridgePageView } from "./team-bridge-page";
  */
 
 const self = "acct_self";
+
+/**
+ * Storybook has no native window chrome, so the lane's CSS gates stay off.
+ * Set the same document attributes `main.tsx` writes before render; without
+ * them the comparison story is not the pre-fix shape (the lane is `display:
+ * none`, so nothing is reserved above the page).
+ */
+const useMacChromeSimulation = () => {
+	useEffect(() => {
+		const root = document.documentElement;
+		const previous = {
+			mode: root.getAttribute("data-chrome-mode"),
+			platform: root.getAttribute("data-chrome-platform"),
+			leading: root.getAttribute("data-chrome-leading"),
+		};
+		root.setAttribute("data-chrome-mode", "integrated");
+		root.setAttribute("data-chrome-platform", "mac");
+		root.setAttribute("data-chrome-leading", "false");
+		return () => {
+			for (const [key, value] of Object.entries(previous)) {
+				const name = `data-chrome-${key}`;
+				if (value === null) root.removeAttribute(name);
+				else root.setAttribute(name, value);
+			}
+		};
+	}, []);
+};
 
 const dm: TeamBridgeConversation = {
 	id: "bcv_dm_1",
@@ -468,67 +495,73 @@ export const EmptyAllOrganizations: Story = {
  * native window chrome; the production value comes from the same property.
  */
 export const FlushToTheWindowTop: Story = {
-	render: () => (
-		<div
-			className="relative flex h-screen flex-col overflow-hidden"
-			style={{ "--chrome-strip-h": "32px" } as CSSProperties}
-		>
-			<ChatLayout
-				flushTop
-				sidebar={<div className="h-full bg-surface" />}
-				content={
-					<main className="flex min-w-0 grow flex-col overflow-hidden bg-canvas">
-						<TeamBridgePageView
-							listState="ready"
-							messageState="ready"
-							conversations={[channel, group, dm]}
-							selected={channel}
-							messages={messages}
-							organizations={[minervaOrganization, northwindOrganization]}
-							scope={asTeamBridgeTenantId("tnt_1")}
-							totalUnread={3}
-							selfAccountId={self}
-							onSelect={() => {}}
-							onSend={() => undefined}
-							onNewConversation={() => {}}
-							onScopeChange={() => {}}
-						/>
-					</main>
-				}
-			/>
-		</div>
-	),
+	render: () => {
+		useMacChromeSimulation();
+		return (
+			<div
+				className="relative flex h-screen flex-col overflow-hidden"
+				style={{ "--chrome-strip-h": "32px" } as CSSProperties}
+			>
+				<ChatLayout
+					flushTop
+					sidebar={<div className="h-full bg-surface" />}
+					content={
+						<main className="flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+							<TeamBridgePageView
+								listState="ready"
+								messageState="ready"
+								conversations={[channel, group, dm]}
+								selected={channel}
+								messages={messages}
+								organizations={[minervaOrganization, northwindOrganization]}
+								scope={asTeamBridgeTenantId("tnt_1")}
+								totalUnread={3}
+								selfAccountId={self}
+								onSelect={() => {}}
+								onSend={() => undefined}
+								onNewConversation={() => {}}
+								onScopeChange={() => {}}
+							/>
+						</main>
+					}
+				/>
+			</div>
+		);
+	},
 };
 
 /** The pre-fix shape, kept as the comparison frame: the lane reserves 32px and the page starts below it. */
 export const LaneReservedComparison: Story = {
-	render: () => (
-		<div
-			className="relative flex h-screen flex-col overflow-hidden"
-			style={{ "--chrome-strip-h": "32px" } as CSSProperties}
-		>
-			<ChatLayout
-				sidebar={<div className="h-full bg-surface" />}
-				content={
-					<main className="flex min-w-0 grow flex-col overflow-hidden bg-canvas">
-						<TeamBridgePageView
-							listState="ready"
-							messageState="ready"
-							conversations={[channel, group, dm]}
-							selected={channel}
-							messages={messages}
-							organizations={[minervaOrganization, northwindOrganization]}
-							scope={asTeamBridgeTenantId("tnt_1")}
-							totalUnread={3}
-							selfAccountId={self}
-							onSelect={() => {}}
-							onSend={() => undefined}
-							onNewConversation={() => {}}
-							onScopeChange={() => {}}
-						/>
-					</main>
-				}
-			/>
-		</div>
-	),
+	render: () => {
+		useMacChromeSimulation();
+		return (
+			<div
+				className="relative flex h-screen flex-col overflow-hidden"
+				style={{ "--chrome-strip-h": "32px" } as CSSProperties}
+			>
+				<ChatLayout
+					sidebar={<div className="h-full bg-surface" />}
+					content={
+						<main className="flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+							<TeamBridgePageView
+								listState="ready"
+								messageState="ready"
+								conversations={[channel, group, dm]}
+								selected={channel}
+								messages={messages}
+								organizations={[minervaOrganization, northwindOrganization]}
+								scope={asTeamBridgeTenantId("tnt_1")}
+								totalUnread={3}
+								selfAccountId={self}
+								onSelect={() => {}}
+								onSend={() => undefined}
+								onNewConversation={() => {}}
+								onScopeChange={() => {}}
+							/>
+						</main>
+					}
+				/>
+			</div>
+		);
+	},
 };
