@@ -48,6 +48,10 @@ const EXEMPT = {
 		"`pnpm test:window-glass` - boots the BUILT app headless and reads the glass's effective alpha back over CDP, so it needs `pnpm build` first (it skips with a stated reason when `out/` is absent) and, like the window-guards suite, a display on Linux; the pure decisions are in `window-glass.test.mjs`, which test:desktop does run.",
 	"scripts/session-cookie-electron.test.mjs":
 		"`pnpm test:session-cookies` — it boots the REAL Electron binary twice, which no CI step does today; a pre-existing gap, recorded rather than papered over.",
+	"scripts/chat-tag-dialogs-immediate.test.mjs":
+		"`pnpm test:tag-dialogs` — its own step in the Desktop Tests job (ci.yml), run BEFORE `pnpm test:desktop` so its process exits and releases memory first. It bundles the shipped renderer with esbuild and drives it in jsdom; inside the desktop lane its peak landed on the files already resident there and the process group was killed at 9.7 GB against the 7.8 GB budget (main's suite passes at 851aea1).",
+	"scripts/chat-tag-dialogs-escape.test.mjs":
+		"`pnpm test:tag-dialogs` — the same dedicated step; a plain node:test over the picker's Escape decision helper, with no bundler or DOM. It lives beside the jsdom suite because the rendered case that used to prove this interaction could not be run without exceeding the memory guard.",
 };
 
 test("every scripts/*.test.mjs is run by test:desktop or exempt with a reason", () => {
