@@ -277,7 +277,9 @@ test("an unanswered inventory is unknown, never not-present", () => {
 	assert.deepEqual(hubSkillState(undefined, undefined, false), {
 		kind: "unknown",
 	});
-	assert.deepEqual(hubSkillState(link(), undefined, false), { kind: "unknown" });
+	assert.deepEqual(hubSkillState(link(), undefined, false), {
+		kind: "unknown",
+	});
 	assert.deepEqual(hubSkillState(undefined, undefined, true), {
 		kind: "not-present",
 	});
@@ -288,8 +290,14 @@ test("the hub source mirrors core's normalisation", () => {
 	 * Review round 1, minor 6: the real export, not a test-local copy. Core
 	 * completes a BARE origin with /v1 and leaves a path-bearing base alone.
 	 */
-	assert.equal(hubSourceAddress("http://127.0.0.1:8127"), "http://127.0.0.1:8127/v1");
-	assert.equal(hubSourceAddress("http://127.0.0.1:8127/"), "http://127.0.0.1:8127/v1");
+	assert.equal(
+		hubSourceAddress("http://127.0.0.1:8127"),
+		"http://127.0.0.1:8127/v1",
+	);
+	assert.equal(
+		hubSourceAddress("http://127.0.0.1:8127/"),
+		"http://127.0.0.1:8127/v1",
+	);
 	assert.equal(
 		hubSourceAddress("https://api.radienthq.com/v1"),
 		"https://api.radienthq.com/v1",
@@ -348,7 +356,10 @@ test("the scope filter is fail-closed on the public row shape", () => {
 		false,
 	);
 	assert.equal(
-		skillRowInScope({ id: "c", visibility: undefined, tenant_id: null }, publicScope),
+		skillRowInScope(
+			{ id: "c", visibility: undefined, tenant_id: null },
+			publicScope,
+		),
 		false,
 	);
 	const orgScope = { visibility: "org", tenantId: "org-1" };
