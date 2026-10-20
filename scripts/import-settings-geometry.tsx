@@ -17,10 +17,12 @@
 
 import { SettingsPage } from "@features/settings/components/settings-page";
 import type { BackendSettings } from "@shared/api/local-operator/desktop-api";
+import { applyThemeToDocument } from "@shared/themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
+import { glassPaintFor } from "../src/shared/window-glass";
 import configuredJson from "./fixtures/backend-settings-registry-configured.json";
 import fixtureJson from "./fixtures/backend-settings-registry.json";
 // The rig's stylesheet, not `@renderer/styles/index.css` directly: it imports
@@ -35,8 +37,60 @@ const THEME = params.get("theme") ?? "localOperatorDark";
 const FIXTURE = params.get("fixture") ?? "fresh";
 /** Which interaction was driven before the probe ran, recorded for the report. */
 const STATE = params.get("state") ?? "arrival";
+/**
+ * Evidence states the review asked for. Each is a deliberate fixture rather than
+ * an unreachable accident:
+ *
+ *  - `previewFail=1` refuses `imports.preview`, which is the only way to see the
+ *    inline failure and its Retry - the unmodified bridge always succeeds.
+ *  - `complete=1` answers `imports.status` with a nested `result`, without which
+ *    the container never enters its completion state and the "Import more
+ *    conversations" CTA cannot be reached at all.
+ *  - `glass=1` applies the app's OWN `glassPaintFor` exactly as
+ *    `use-window-glass.ts` does, so the selected row is judged on the translucent
+ *    ground the operator actually runs.
+ */
+const PREVIEW_FAIL = params.get("previewFail") === "1";
+const COMPLETE = params.get("complete") === "1";
+const GLASS = params.get("glass") === "1";
 
-document.documentElement.dataset.theme = THEME;
+/*
+ * THE SAME TWO WRITES THE APP'S THEME PROVIDER MAKES. Setting only
+ * `data-theme` left the document without the `.dark` class, which is what the
+ * `dark:` variants and the glass scheme derive from - so a dark palette was
+ * being measured with the scheme's light half.
+ */
+applyThemeToDocument(THEME as Parameters<typeof applyThemeToDocument>[0]);
+
+if (GLASS) {
+	/*
+	 * EXACTLY `paint()` FROM `use-window-glass.ts`: the same export, the same
+	 * inputs, the same two writes (the attribute and the custom properties).
+	 * Nothing here invents an alpha; if the shipped derivation changes, this rig
+	 * follows it.
+	 */
+	const paint = glassPaintFor({
+		coverage: "full",
+		intensity: 80,
+		mechanism: "vibrancy",
+		material: "window",
+		scheme: document.documentElement.classList.contains("dark")
+			? "dark"
+			: "light",
+	});
+	document.documentElement.dataset.glass = paint.kinds;
+	for (const [name, value] of Object.entries(paint.vars)) {
+		document.documentElement.style.setProperty(name, value);
+	}
+	/**
+	 * Published so the driver can record what was applied rather than assert it:
+	 * the numbers beside the frame say which alphas produced the picture.
+	 */
+	(window as unknown as Record<string, unknown>).__rigGlass = {
+		kinds: paint.kinds,
+		vars: paint.vars,
+	};
+}
 
 const base = fixtureJson as unknown as BackendSettings;
 const configured = configuredJson as unknown as BackendSettings;
@@ -208,6 +262,17 @@ const preload: Record<string, unknown> = {
 					 * and their message counts summed, so the card under test shows
 					 * the same figures the selection actually implies.
 					 */
+					if (PREVIEW_FAIL) {
+						return {
+							status: 500,
+							body: {
+								detail: {
+									code: "source_locked",
+									message: "The source store is locked.",
+								},
+							},
+						};
+					}
 					const requested = Object.values(request.sessionIds ?? {}).flat();
 					const sessions = importSessions.filter((session) =>
 						requested.includes(session.source_id),
@@ -230,6 +295,13 @@ const preload: Record<string, unknown> = {
 				case "imports.start":
 					return ok({ job_id: "job-probe-1" });
 				case "imports.status":
+					/*
+					 * THE NESTED RESULT IS WHAT MAKES THE COMPLETION STATE REACHABLE. The
+					 * container only sets `result` when the status carries one, so a stub
+					 * that answers `done` with no `result` leaves the screen on the
+					 * progress rows forever and the "Import more conversations" CTA
+					 * cannot be captured - or judged.
+					 */
 					return ok({
 						job_id: "job-probe-1",
 						state: "done",
@@ -238,11 +310,53 @@ const preload: Record<string, unknown> = {
 						session_id: "",
 						completed: 1,
 						total: 1,
-						results: [],
+						results: COMPLETE
+							? [
+									{
+										source: "omp",
+										source_id: "herd-install",
+										outcome: "imported",
+										target_session_id: "sess-rig-1",
+										messages: 154,
+										compactions: 0,
+										warnings: [],
+									},
+								]
+							: [],
 						warnings: [],
 						error: "",
 						started_at: 1,
 						updated_at: 2,
+						...(COMPLETE
+							? {
+									result: {
+										job_id: "job-probe-1",
+										state: "done",
+										sessions: [
+											{
+												source: "omp",
+												source_id: "herd-install",
+												outcome: "imported",
+												target_session_id: "sess-rig-1",
+												messages: 154,
+												compactions: 0,
+												redactions: 0,
+												skipped: false,
+												warnings: [],
+											},
+										],
+										messages: 154,
+										compactions: 0,
+										memory_imported: 0,
+										memory_skipped: 0,
+										memory_review_path: "",
+										instruction_review_path: "",
+										redactions: 0,
+										warnings: [],
+										error: "",
+									},
+								}
+							: {}),
 					});
 				case "imports.cancel":
 					return ok(null);
