@@ -1,0 +1,191 @@
+{
+  "auditor": {
+    "agent": "i18n-auditor-zh",
+    "model": "openai/gpt-6.1-sol",
+    "instance": "f6a1b2c3d4e5"
+  },
+  "date": "2026-10-19",
+  "locale": "zh-CN",
+  "namespace": "ui.chat.tags",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "sha256": {
+    "en": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+    "zh-CN": "9ef8a855eb33c1d8cc4a85598f1ccc5343d48079a2498f92414959ba599f3e42"
+  },
+  "findings": [
+    {
+      "id": "ZH-N1",
+      "severity": "nit",
+      "key": "ui.chat.tags.selection_count",
+      "related_keys": [
+        "ui.chat.tags.selection_limit",
+        "ui.chat.tags.registry_limit",
+        "ui.chat.tags.name_long",
+        "ui.chat.tags.selection_status",
+        "ui.chat.tags.tag_usage"
+      ],
+      "detail": "New numeric labels insert spaces between Chinese text and Latin digit/placeholder runs, contrary to the zh-CN typography guide. Meaning and grammar remain clear.",
+      "recommendation": "Use compact Chinese typography, e.g. 已选{count}/8、最多选择8个标签、{count}个对话.",
+      "disposition": "follow-up; non-gating"
+    },
+    {
+      "id": "ZH-N2",
+      "severity": "nit",
+      "key": "ui.chat.tags.create_pending",
+      "detail": "正在保存标签… uses one ellipsis mark; zh-CN style guide specifies two (……), as already used by loading/applying baseline strings.",
+      "recommendation": "Use 正在保存标签…….",
+      "disposition": "follow-up; non-gating"
+    },
+    {
+      "id": "ZH-N3",
+      "severity": "nit",
+      "key": "ui.chat.tags.name_long",
+      "related_keys": [
+        "ui.chat.tags.create_failed",
+        "ui.chat.tags.registry_changed"
+      ],
+      "detail": "New strings introduce 请 although English does not say please; the zh-CN guide restricts this politeness marker. This is a register/style discrepancy, not a semantic defect.",
+      "recommendation": "Omit 请 in the three new messages when applying strict guide conformance.",
+      "disposition": "follow-up; non-gating"
+    }
+  ],
+  "scope": "V2-2: all 73 English/zh-CN pairs reviewed; 54 baseline values unchanged; exactly 19 requested additions.",
+  "independence": {
+    "auditor_did_not_translate": true,
+    "fallback": "Temporary fallback from anthropic/claude-sonnet-5-5 after quota exhaustion. All substantive linguistic audit and receipt work performed with openai/gpt-6.1-sol."
+  },
+  "language_competence": "Simplified Chinese meaning, grammar, classifier usage, neutral product register and punctuation reviewed directly, without an external translation service.",
+  "checked_keys": [
+    "ui.chat.tags.label",
+    "ui.chat.tags.menu",
+    "ui.chat.tags.group",
+    "ui.chat.tags.manage",
+    "ui.chat.tags.mode_hint",
+    "ui.chat.tags.use_time",
+    "ui.chat.tags.discovery",
+    "ui.chat.tags.picker_title",
+    "ui.chat.tags.picker_description",
+    "ui.chat.tags.search",
+    "ui.chat.tags.empty",
+    "ui.chat.tags.loading",
+    "ui.chat.tags.applying",
+    "ui.chat.tags.retry",
+    "ui.chat.tags.cancel",
+    "ui.chat.tags.apply",
+    "ui.chat.tags.clear",
+    "ui.chat.tags.new",
+    "ui.chat.tags.new_name",
+    "ui.chat.tags.add",
+    "ui.chat.tags.primary",
+    "ui.chat.tags.group_under",
+    "ui.chat.tags.untagged",
+    "ui.chat.tags.rename",
+    "ui.chat.tags.save",
+    "ui.chat.tags.delete",
+    "ui.chat.tags.delete_tag",
+    "ui.chat.tags.delete_title",
+    "ui.chat.tags.delete_description",
+    "ui.chat.tags.move_up",
+    "ui.chat.tags.move_down",
+    "ui.chat.tags.manage_description",
+    "ui.chat.tags.rename_label",
+    "ui.chat.tags.no_matches",
+    "ui.chat.tags.save_failed",
+    "ui.chat.tags.load_failed",
+    "ui.chat.tags.duplicate_name",
+    "ui.chat.tags.updated_grouped",
+    "ui.chat.tags.updated_untagged",
+    "ui.chat.tags.none_yet",
+    "ui.chat.tags.manage_title",
+    "ui.chat.tags.apply_deletion_first",
+    "ui.chat.tags.moved_to",
+    "ui.chat.tags.removed_all",
+    "ui.chat.tags.remove_all",
+    "ui.chat.tags.move_menu",
+    "ui.chat.tags.changed_elsewhere",
+    "ui.chat.tags.move_armed",
+    "ui.chat.tags.move_cancelled",
+    "ui.chat.tags.undo",
+    "ui.chat.tags.move_undone",
+    "ui.chat.tags.move_title",
+    "ui.chat.tags.move_description",
+    "ui.chat.tags.move_failed",
+    "ui.chat.tags.selection_count",
+    "ui.chat.tags.registry_count",
+    "ui.chat.tags.create_name",
+    "ui.chat.tags.create_helper",
+    "ui.chat.tags.selection_limit",
+    "ui.chat.tags.registry_limit",
+    "ui.chat.tags.name_long",
+    "ui.chat.tags.name_reserved",
+    "ui.chat.tags.create_failed",
+    "ui.chat.tags.remove_named",
+    "ui.chat.tags.reorder_filtered",
+    "ui.chat.tags.created_name",
+    "ui.chat.tags.selection_status",
+    "ui.chat.tags.tag_usage",
+    "ui.chat.tags.create_pending",
+    "ui.chat.tags.remote",
+    "ui.chat.tags.renamed_name",
+    "ui.chat.tags.staged_added",
+    "ui.chat.tags.registry_changed"
+  ],
+  "new_keys": [
+    "ui.chat.tags.selection_count",
+    "ui.chat.tags.registry_count",
+    "ui.chat.tags.create_name",
+    "ui.chat.tags.create_helper",
+    "ui.chat.tags.selection_limit",
+    "ui.chat.tags.registry_limit",
+    "ui.chat.tags.name_long",
+    "ui.chat.tags.name_reserved",
+    "ui.chat.tags.create_failed",
+    "ui.chat.tags.remove_named",
+    "ui.chat.tags.reorder_filtered",
+    "ui.chat.tags.created_name",
+    "ui.chat.tags.selection_status",
+    "ui.chat.tags.tag_usage",
+    "ui.chat.tags.create_pending",
+    "ui.chat.tags.remote",
+    "ui.chat.tags.renamed_name",
+    "ui.chat.tags.staged_added",
+    "ui.chat.tags.registry_changed"
+  ],
+  "inputs": {
+    "english": {
+      "path": "src/i18n/catalogues/en/ui.chat.tags.json",
+      "sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/zh-CN/ui.chat.tags.json",
+      "sha256": "9ef8a855eb33c1d8cc4a85598f1ccc5343d48079a2498f92414959ba599f3e42"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.tags.context.json",
+      "sha256": "ce20c5a796056d03f7dd17f55974982fd62fe2895ec8d7250679c07bee93f852"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  },
+  "checks": {
+    "hashes": "PASS: English and zh-CN SHA-256 exactly match task pins.",
+    "baseline": "PASS: git show HEAD:<catalogue> proves all 54 pre-existing values unchanged for both English and zh-CN; HEAD bf24fa9e5496af551c60532a87811b4dc550495c.",
+    "key_parity": "PASS: 73 matching keys; additions exactly the 19 task-listed keys.",
+    "icu": "PASS: @formatjs/icu-messageformat-parser parsed all 146 messages; recursive argument sets match all 73 pairs. Chinese other-only delete_description and plain {count} tag_usage are grammatical; exact =1 remove_all branch handles singular action wording without introducing unsupported one category.",
+    "plural_rendering": "PASS: intl-messageformat zh-CN rendering exercised delete_description, remove_all and tag_usage at counts 0, 1, 2, 5, 11, 21 and 1.5; correct numeric substitution and Chinese classifier observed.",
+    "semantics": "PASS: all 73 pairs preserve meaning, with appropriate 标签/对话 terms. Immediate creation versus draft staging, limits 8/32, 1–24 characters, remote prohibition and concurrent changes remain distinct. Literal Untagged is correct: chat-tag-picker.ts tagNameIssue reserves the English identifier, not the translated display label.",
+    "register_punctuation": "PASS with three non-gating NIT findings for numeric spacing, new saving-status ellipsis, and 请 usage. Unchanged baseline strings retained.",
+    "fit_risk": "Text-only review: concise menu/action/status phrases present no obvious avoidable length defect; dynamic name/title can be long in either locale. No pixel-fit claim; settled rendered fit remains later QA."
+  },
+  "limitations": [
+    "No rendered/browser-fit review was requested for this linguistic audit; later independent visual QA owns layout and truncation."
+  ],
+  "verdict": "clean with non-gating nits; TERMINAL: zero BLOCKER/MAJOR."
+}
