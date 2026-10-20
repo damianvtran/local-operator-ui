@@ -116,7 +116,7 @@
 	"ui.hub.skills.open_detail": "Xem {item}",
 	"ui.hub.skills.catalogue_failed": "Không tải được kỹ năng từ {source}. Hãy thử lại.",
 	"ui.hub.skills.installed_alias": "Đã tải {item} từ {source}",
-	"ui.hub.skills.session_selection": "Tệp kỹ năng sẽ có hiệu lực từ lần đọc tiếp theo. Mô tả kỹ năng mới chọn được đưa vào phiên tiếp theo.",
+	"ui.hub.skills.session_selection": "Tệp kỹ năng sẽ có sẵn từ lần đọc tiếp theo. Mô tả kỹ năng mới chọn được đưa vào phiên tiếp theo.",
 	"ui.hub.links.publication_pending": "Chưa xác nhận được kết quả xuất bản. Thử lại chính thao tác này để đối soát.",
 	"ui.hub.links.resolve_title": "Xác nhận nguồn của liên kết này",
 	"ui.hub.links.resolve_description": "Chỉ xác nhận nếu bạn biết {item} đến từ đây.",
@@ -174,5 +174,7 @@
 	"ui.hub.skills.subscribe_help": "Theo dõi các phiên bản sau. Không tải gì ngay bây giờ.",
 	"ui.hub.skills.unsubscribe": "Hủy theo dõi",
 	"ui.hub.skills.unsubscribe_help": "Dừng các cập nhật sau này. Các tệp đã tải vẫn còn.",
-	"ui.hub.skills.public_hub": "Trung tâm công khai"
+	"ui.hub.skills.public_hub": "Trung tâm công khai",
+	"ui.hub.skills.count": "{count, plural, other {{count, number, ::group-off} kỹ năng trong {scope}}}",
+	"ui.hub.skills.count_shared": "{count, plural, other {{count, number, ::group-off} kỹ năng được chia sẻ với {organization}}}"
 }

@@ -169,10 +169,12 @@
 	"ui.hub.skills.update_available": "Mise à jour disponible",
 	"ui.hub.skills.update_applied": "Mise à jour appliquée",
 	"ui.hub.skills.update_failed": "La mise à jour a échoué — ouvrez pour réessayer",
-	"ui.hub.skills.update_now": "Mettre à jour",
+	"ui.hub.skills.update_now": "Mettre à jour maintenant",
 	"ui.hub.skills.download_help": "Télécharge les fichiers. Votre abonnement reste actif.",
 	"ui.hub.skills.subscribe_help": "Suit les prochaines révisions. Ne télécharge rien maintenant.",
 	"ui.hub.skills.unsubscribe": "Se désabonner",
-	"ui.hub.skills.unsubscribe_help": "Arrête les futures mises à jour. Les fichiers téléchargés restent.",
-	"ui.hub.skills.public_hub": "Hub public"
+	"ui.hub.skills.unsubscribe_help": "Arrête les futures mises à jour. Les fichiers téléchargés sont conservés.",
+	"ui.hub.skills.public_hub": "Hub public",
+	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} compétence dans {scope}} many {{count, number, ::group-off} de compétences dans {scope}} other {{count, number, ::group-off} compétences dans {scope}}}",
+	"ui.hub.skills.count_shared": "{count, plural, one {{count, number, ::group-off} compétence partagée avec {organization}} many {{count, number, ::group-off} de compétences partagées avec {organization}} other {{count, number, ::group-off} compétences partagées avec {organization}}}"
 }

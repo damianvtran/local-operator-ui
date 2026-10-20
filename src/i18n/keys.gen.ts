@@ -2572,6 +2572,8 @@ export type MessageParams = {
 	"ui.hub.links.unresolved_why": { item: string };
 	"ui.hub.links.updated": { item: string; source: string };
 	"ui.hub.skills.catalogue_failed": { source: string };
+	"ui.hub.skills.count": { count: number; scope: string };
+	"ui.hub.skills.count_shared": { count: number; organization: string };
 	"ui.hub.skills.detached": undefined;
 	"ui.hub.skills.download": undefined;
 	"ui.hub.skills.download_help": undefined;

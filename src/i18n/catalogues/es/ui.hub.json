@@ -174,5 +174,7 @@
 	"ui.hub.skills.subscribe_help": "Sigue las revisiones futuras. No descarga nada ahora.",
 	"ui.hub.skills.unsubscribe": "Cancelar suscripción",
 	"ui.hub.skills.unsubscribe_help": "Detiene las actualizaciones futuras. Los archivos descargados permanecen.",
-	"ui.hub.skills.public_hub": "Hub público"
+	"ui.hub.skills.public_hub": "Hub público",
+	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} habilidad en {scope}} many {{count, number, ::group-off} de habilidades en {scope}} other {{count, number, ::group-off} habilidades en {scope}}}",
+	"ui.hub.skills.count_shared": "{count, plural, one {{count, number, ::group-off} habilidad compartida con {organization}} many {{count, number, ::group-off} de habilidades compartidas con {organization}} other {{count, number, ::group-off} habilidades compartidas con {organization}}}"
 }

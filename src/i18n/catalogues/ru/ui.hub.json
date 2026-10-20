@@ -174,5 +174,7 @@
 	"ui.hub.skills.subscribe_help": "Следит за новыми ревизиями. Ничего не загружает сейчас.",
 	"ui.hub.skills.unsubscribe": "Отписаться",
 	"ui.hub.skills.unsubscribe_help": "Останавливает будущие обновления. Загруженные файлы остаются.",
-	"ui.hub.skills.public_hub": "Публичный хаб"
+	"ui.hub.skills.public_hub": "Публичный хаб",
+	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} навык в {scope}} few {{count, number, ::group-off} навыка в {scope}} many {{count, number, ::group-off} навыков в {scope}} other {{count, number, ::group-off} навыка в {scope}}}",
+	"ui.hub.skills.count_shared": "{count, plural, one {{count, number, ::group-off} навык доступен для {organization}} few {{count, number, ::group-off} навыка доступны для {organization}} many {{count, number, ::group-off} навыков доступны для {organization}} other {{count, number, ::group-off} навыка доступны для {organization}}}"
 }
