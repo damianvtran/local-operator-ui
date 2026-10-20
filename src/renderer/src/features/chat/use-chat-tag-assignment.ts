@@ -120,6 +120,22 @@ export function useChatTagAssignment({
 		if (switched) {
 			seededSession.current = sessionId;
 			seedPending.current = true;
+			/*
+			 * WHY THE RECEIPT AND THE ERROR LINE ARE RETIRED HERE (review round 2,
+			 * F4 residual): a switch can land while a write is still pending, and the
+			 * reseed below is deliberately deferred until that write settles (the
+			 * rollback owns that window). Clearing only in the reseed pass left the
+			 * previous conversation's "selected, grouped under" sentence over the new
+			 * one for the whole write — and the deferred pass could not repair it, because
+			 * the session ref above had already moved, so it read `switched === false`.
+			 * The SELECTION stays deferred; only the sentence about it does not.
+			 *
+			 * A revision move is deliberately different: our own successful write moves
+			 * the revision and the reseed runs right after it, so clearing then would
+			 * erase the receipt before the user can read it.
+			 */
+			setError(null);
+			setNotice("");
 		}
 		if (pending) return;
 		if (!switched && !moved && !seedPending.current) return;
@@ -129,24 +145,6 @@ export function useChatTagAssignment({
 		setIds(nextIds);
 		setHeld(draftPrimary(nextIds, primary));
 		currentRevision.current = revision ?? null;
-		/*
-		 * Only a conversation SWITCH retires the error line. A revision move is
-		 * also what a 409 reports, and clearing here would erase the conflict
-		 * sentence in the same commit that rendered it; a successful write has
-		 * already cleared its own error in `write`.
-		 */
-		if (switched) {
-			setError(null);
-			/*
-			 * The selection receipt describes the conversation that was on screen when
-			 * it was announced. A SWITCH makes it another conversation's sentence
-			 * (and the popup's header count is already the new one), so it goes with
-			 * the switch. A revision move is deliberately different: our own
-			 * successful write moves the revision, and this effect runs right after
-			 * it — clearing then would erase the receipt before the user can read it.
-			 */
-			setNotice("");
-		}
 	}, [sessionId, revision, pending, tags, primary]);
 
 	const announce = (nextIds: string[], nextPrimary: string | null) =>

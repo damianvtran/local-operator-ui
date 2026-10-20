@@ -63,6 +63,7 @@ import {
 	useCallback,
 	useEffect,
 	useId,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -1029,50 +1030,6 @@ export function useSlashCompletion({
 		revision: canonicalRow?.tags_revision ?? null,
 	});
 	/*
-	 * The applied-first order is captured WHEN THE REGISTRY CONTENT OR THE
-	 * CONVERSATION CHANGES, never on a toggle: re-sorting the list under the
-	 * keystroke that just changed a row's membership would move the active row
-	 * and break the explicit choice the user already made (the TUI's own rule,
-	 * `command_picker.py:1728`). The marker updates in place; reopening the
-	 * composer re-partitions.
-	 *
-	 * The freeze lives in a ref rather than in the memo's dependency list because
-	 * it is a BEHAVIORAL invariant, not a cache: every successful assignment
-	 * refetches the registry and the store installs a fresh array for identical
-	 * content, so keying on that identity would re-partition the list under the
-	 * cursor one round-trip after the user's own Enter (review round 1, F1).
-	 * `freezeTagOrder` compares a content signature instead and is unit-tested.
-	 */
-	const frozenTagOrder = useRef<FrozenTagOrder | null>(null);
-	const tagOrder = useMemo(() => {
-		const next = freezeTagOrder(
-			frozenTagOrder.current,
-			sessionId ?? "",
-			tagAssignment.categories,
-			tagAssignment.selected,
-		);
-		frozenTagOrder.current = next;
-		return next.order;
-	}, [tagAssignment.categories, tagAssignment.selected, sessionId]);
-	const tagList: TagListState = useMemo(
-		() => ({
-			categories: tagAssignment.categories,
-			selected: tagAssignment.selected,
-			primary: tagAssignment.primary,
-			loading: tagAssignment.loading,
-			error: tagAssignment.loadError,
-			order: tagOrder,
-		}),
-		[
-			tagAssignment.categories,
-			tagAssignment.selected,
-			tagAssignment.primary,
-			tagAssignment.loading,
-			tagAssignment.loadError,
-			tagOrder,
-		],
-	);
-	/*
 	 * `argumentWords` lives in completion state because the ARGUMENT spans need a
 	 * list; the planner needs membership in it, and building the Set here rather
 	 * than per keystroke keeps one derivation of "which commands take a value"
@@ -1250,6 +1207,71 @@ export function useSlashCompletion({
 	 */
 	const tagFetchSession = useRef<string | null>(null);
 	const tagListOpen = effectiveInline?.source === "session-tags";
+	/*
+	 * The popup's open latch is declared here because the freeze below and the
+	 * marker remap both read it; every other reader is further down the hook.
+	 */
+	const [state, setState] = useState({ open: false, active: 0 });
+	/*
+	 * The applied-first order is captured WHEN THE REGISTRY CONTENT OR THE
+	 * CONVERSATION CHANGES, never on a toggle: re-sorting the list under the
+	 * keystroke that just changed a row's membership would move the active row
+	 * and break the explicit choice the user already made (the TUI's own rule,
+	 * `command_picker.py:1728`). The marker updates in place; closing the list
+	 * retires the freeze so the reopen re-partitions.
+	 *
+	 * The freeze lives in a ref rather than in the memo's dependency list because
+	 * it is a BEHAVIORAL invariant, not a cache: every successful assignment
+	 * refetches the registry and the store installs a fresh array for identical
+	 * content, so keying on that identity would re-partition the list under the
+	 * cursor one round-trip after the user's own Enter (review round 1, F1).
+	 * `freezeTagOrder` compares a content signature instead and is unit-tested.
+	 *
+	 * WHY A CLOSED LIST HOLDS NO FREEZE (review round 2, F6): the freeze exists
+	 * only to keep the partition still WHILE THE LIST IS UP. A toggle refetches
+	 * the registry without changing its ids, so the signature is identical when
+	 * the same `/tag` list is closed and reopened: carrying the freeze across the
+	 * close kept the PRE-toggle order forever, and applied rows never came first
+	 * again. Dropping it on the closed render means the first frame at open is
+	 * computed fresh from the current selection, before the open-time refetch
+	 * lands, rather than corrected a pass later.
+	 */
+	const frozenTagOrder = useRef<FrozenTagOrder | null>(null);
+	const tagOrder = useMemo(() => {
+		if (!tagListOpen || !state.open) frozenTagOrder.current = null;
+		const next = freezeTagOrder(
+			frozenTagOrder.current,
+			sessionId ?? "",
+			tagAssignment.categories,
+			tagAssignment.selected,
+		);
+		frozenTagOrder.current = next;
+		return next.order;
+	}, [
+		tagListOpen,
+		state.open,
+		tagAssignment.categories,
+		tagAssignment.selected,
+		sessionId,
+	]);
+	const tagList: TagListState = useMemo(
+		() => ({
+			categories: tagAssignment.categories,
+			selected: tagAssignment.selected,
+			primary: tagAssignment.primary,
+			loading: tagAssignment.loading,
+			error: tagAssignment.loadError,
+			order: tagOrder,
+		}),
+		[
+			tagAssignment.categories,
+			tagAssignment.selected,
+			tagAssignment.primary,
+			tagAssignment.loading,
+			tagAssignment.loadError,
+			tagOrder,
+		],
+	);
 	const fetchTagCategories = tagAssignment.fetchCategories;
 	useEffect(() => {
 		if (!tagListOpen) {
@@ -1498,7 +1520,6 @@ export function useSlashCompletion({
 	const visible =
 		eligible && (matches.length > 0 || phaseWithFlagList === "argument");
 
-	const [state, setState] = useState({ open: false, active: 0 });
 	const [chosenByHand, setChosenByHand] = useState(false);
 	/*
 	 * Esc latches PER PHASE AND PER TOKEN.
@@ -1570,10 +1591,48 @@ export function useSlashCompletion({
 		});
 	}, [visible, phaseKey, matches.length, matchKey]);
 
+	/*
+	 * THE ROW THE MARKER WAS ON WHEN THE LIST CLOSED, remembered by identity
+	 * rather than by index. Closing retires the freeze, so the very render that
+	 * closes the list re-partitions it; the index the marker held under the old
+	 * partition can name another tag by the time the list reopens (review round
+	 * 2, F6). The phase key is stored with it so a reopen of the SAME list is the
+	 * only thing that consumes it: typing further is a new list, and its own
+	 * rule moves the marker to the top.
+	 */
+	const closedActiveRow = useRef<{ phase: string | null; row: string } | null>(
+		null,
+	);
 	const close = useCallback(() => {
+		const activeRow = matches[state.active];
+		closedActiveRow.current = activeRow
+			? { phase: phaseKey, row: rowId(activeRow) }
+			: null;
 		dismissedPhase.current = phaseKey;
 		setState((current) => ({ ...current, open: false }));
-	}, [phaseKey]);
+	}, [matches, state.active, phaseKey]);
+	/*
+	 * The rebind that keeps the marker on the row it was on across the reopen's
+	 * re-partition. A layout effect, not an effect: the corrected index has to
+	 * commit before the frame paints, or the user sees the marker land on a
+	 * different tag for one frame. The raw setter is used because remapping an
+	 * index after a reorder is NOT the hand-move the ambiguity gate exists to
+	 * remember (`setActive` would arm it).
+	 */
+	useLayoutEffect(() => {
+		const closed = closedActiveRow.current;
+		if (!state.open || closed === null) return;
+		if (closed.phase !== phaseKey) {
+			closedActiveRow.current = null;
+			return;
+		}
+		closedActiveRow.current = null;
+		const index = matches.findIndex((row) => rowId(row) === closed.row);
+		if (index < 0) return;
+		setState((current) =>
+			current.active === index ? current : { ...current, active: index },
+		);
+	}, [state.open, matches, phaseKey]);
 
 	const setActive = useCallback((index: number) => {
 		setChosenByHand(true);
@@ -1646,6 +1705,13 @@ export function useSlashCompletion({
 	/** Re-open the list a submit dismissed; the draft itself is not rewritten. */
 	const reopen = useCallback(() => {
 		dismissedPhase.current = null;
+		/*
+		 * A REOPEN IS A NEW PARTITION (review round 2, F6). The close render has
+		 * already retired the freeze, so this is the belt: if a reopen ever lands
+		 * while the latch reads open, the next order computation still starts
+		 * fresh instead of inheriting the pre-toggle partition.
+		 */
+		frozenTagOrder.current = null;
 		setState((current) => ({ ...current, open: true }));
 	}, []);
 
