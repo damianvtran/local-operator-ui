@@ -1352,3 +1352,48 @@ test("clearing a selection restores the rows the quote toolkit never owned", asy
 	assert.equal(responseCluster.getAttribute("aria-hidden"), null);
 	await rig.unmount();
 });
+
+/*
+ * THE PRE-PAINT CHECK IS LOAD-BEARING (agent review round 1, C4; closed in
+ * round 2 after the reviewer proved the mount works here).
+ *
+ * The shared strip has two mechanisms for "an owning strip is already here":
+ * a pre-paint `useLayoutEffect` and a `MutationObserver` catch-up. With the
+ * observer present, a test that waits 30ms cannot tell which one removed the
+ * panel - deleting the layout effect still passes, because the observer
+ * arrives inside the same settle. This case mounts with NO observer, so the
+ * only thing that can keep the panel out of the DOM is the pre-paint check.
+ *
+ * The round-1 rejection claimed this mount was impossible; the round-2
+ * reviewer showed `use-transcript-dom-window.ts:405` is not reached because
+ * `containerRef` is null in this harness. The mount works, so the test exists.
+ */
+test("the shared strip never mounts beside an owning strip without an observer", async () => {
+	const rig = await mountTranscript(MULTI_TURN, { mutations: false });
+	const dom = rig.dom;
+	const doc = dom.window.document;
+	const answer = rowOf(dom, "a2");
+	const walker = doc.createTreeWalker(answer, dom.window.NodeFilter.SHOW_TEXT);
+	const textNode = walker.nextNode();
+	assert.ok(textNode, "the closing answer has a text node");
+	const range = doc.createRange();
+	range.selectNodeContents(textNode);
+	const selection = dom.window.getSelection();
+	selection.removeAllRanges();
+	selection.addRange(range);
+	await act(async () => {
+		doc.dispatchEvent(new dom.window.Event("selectionchange"));
+		doc.dispatchEvent(new dom.window.MouseEvent("mouseup", { bubbles: true }));
+		await new Promise((resolve) => setTimeout(resolve, 30));
+	});
+	assert.ok(
+		doc.querySelector("[data-lo-quote-toolkit]"),
+		"the quote strip owns the highlight",
+	);
+	assert.equal(
+		doc.querySelector("[data-lo-selection-toolbar]"),
+		null,
+		"and the shared strip did not mount beside it without an observer to stand it down",
+	);
+	await rig.unmount();
+});
