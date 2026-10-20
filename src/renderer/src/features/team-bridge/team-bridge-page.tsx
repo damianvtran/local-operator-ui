@@ -52,7 +52,6 @@ import {
 	useSetTeamBridgeNotify,
 	useTeamBridgeConversations,
 	useTeamBridgeDirectory,
-	useTeamBridgeIdentity,
 	useTeamBridgeMessages,
 	useTeamBridgeStatus,
 	useTeamBridgeUnread,
@@ -105,6 +104,12 @@ import {
 const PersonRow: FC<{
 	member: TeamBridgeDirectoryMember;
 	selfAccountId?: string;
+	/** Whether the status read published the signed-in account. */
+	identityKnown: boolean;
+	/** The conversation list's state: an unresolved DM is not a compose. */
+	listState: "loading" | "error" | "ready";
+	/** Surface F: the server accepts no writes, so composing is not offered. */
+	readOnly: boolean;
 	/** The conversation this row opens, when one already exists. */
 	existingDm: TeamBridgeConversation | null;
 	onOpenConversation: (conversationId: string) => void;
@@ -112,13 +117,18 @@ const PersonRow: FC<{
 }> = ({
 	member,
 	selfAccountId,
+	identityKnown,
+	listState,
+	readOnly,
 	existingDm,
 	onOpenConversation,
 	onComposeToPerson,
 }) => {
 	useI18nLocale();
 	const cueId = useId();
-	const state = personRowState(member, selfAccountId);
+	const state = identityKnown
+		? personRowState(member, selfAccountId)
+		: "unknown";
 	const base =
 		"flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-left text-[13px]";
 	const avatar = (
@@ -154,21 +164,43 @@ const PersonRow: FC<{
 		);
 	}
 
-	if (state === "unavailable") {
-		/*
-		 * `aria-disabled`, not the `disabled` attribute: a disabled button is
-		 * removed from the tab order, so its explanation would be unreachable to
-		 * exactly the reader who needs it. The described-by cue is the visible
-		 * tooltip too, so sighted and assistive readers get one sentence.
-		 */
+	/*
+	 * THE ROW STAYS INERT UNTIL ITS DESTINATION CAN BE RESOLVED (round-1 U-2,
+	 * U-4, U-5). A click means "open the DM, or start one"; an unresolved list
+	 * cannot answer the first half, an unknown identity cannot tell self from
+	 * another person, and surface F refuses the second half. In those states the
+	 * row is a labelled statement with a reason, not a control that guesses.
+	 *
+	 * `aria-disabled`, not the `disabled` attribute: a disabled button is removed
+	 * from the tab order, so its explanation would be unreachable to exactly the
+	 * reader who needs it. The described-by cue is the visible tooltip too.
+	 */
+	const inertCue =
+		state === "unavailable"
+			? t("ui.teamBridge.people.bridge_off")
+			: !identityKnown
+				? t("ui.teamBridge.people.identity_loading")
+				: listState === "loading"
+					? t("ui.teamBridge.people.list_loading")
+					: listState === "error"
+						? t("ui.teamBridge.people.list_error")
+						: readOnly && !existingDm
+							? t("ui.teamBridge.read_only.person")
+							: null;
+
+	if (inertCue) {
 		return (
 			<li>
 				<button
 					type="button"
 					aria-disabled="true"
 					aria-describedby={cueId}
-					title={t("ui.teamBridge.people.bridge_off")}
-					className={cn(base, "cursor-default text-ink-disabled")}
+					title={inertCue}
+					className={cn(
+						base,
+						"cursor-default",
+						state === "unavailable" ? "text-ink-disabled" : "text-ink-muted",
+					)}
 				>
 					{avatar}
 					<span className="min-w-0 flex-1 truncate">
@@ -176,7 +208,7 @@ const PersonRow: FC<{
 					</span>
 					{role}
 					<span id={cueId} className="sr-only">
-						{t("ui.teamBridge.people.bridge_off")}
+						{inertCue}
 					</span>
 				</button>
 			</li>
@@ -225,6 +257,9 @@ const PeopleSection: FC<{
 	people: readonly TeamBridgeDirectoryMember[];
 	peopleState: "loading" | "error" | "ready";
 	selfAccountId?: string;
+	identityKnown: boolean;
+	listState: "loading" | "error" | "ready";
+	readOnly: boolean;
 	conversations: readonly TeamBridgeConversation[];
 	onSelect: (conversationId: string) => void;
 	onRetry?: () => void;
@@ -234,6 +269,9 @@ const PeopleSection: FC<{
 	people,
 	peopleState,
 	selfAccountId,
+	identityKnown,
+	listState,
+	readOnly,
 	conversations,
 	onSelect,
 	onRetry,
@@ -243,12 +281,17 @@ const PeopleSection: FC<{
 	const merged = scope === TEAM_BRIDGE_ALL_SCOPE;
 	return (
 		<section aria-labelledby="team-bridge-people-heading" className="px-1 pb-3">
-			<h3
+			{/*
+			 * H2, not H3 (round-1 U-7): the page's own heading is the sr-only H1
+			 * and the rail has no H2 above this section, so an H3 skipped a level
+			 * in heading navigation.
+			 */}
+			<h2
 				id="team-bridge-people-heading"
 				className="px-2 pb-1 pt-3 text-meta font-medium tracking-wide text-ink-dim"
 			>
 				{t("ui.teamBridge.people.title")}
-			</h3>
+			</h2>
 			{merged ? (
 				<p className="px-2 py-1 text-[12px] leading-snug text-ink-dim">
 					{t("ui.teamBridge.people.all_scope")}
@@ -279,6 +322,9 @@ const PeopleSection: FC<{
 							key={member.account_id}
 							member={member}
 							selfAccountId={selfAccountId}
+							identityKnown={identityKnown}
+							listState={listState}
+							readOnly={readOnly}
 							existingDm={dmWithPerson(
 								conversations,
 								member.account_id,
@@ -291,6 +337,27 @@ const PeopleSection: FC<{
 				</ul>
 			)}
 		</section>
+	);
+};
+
+/**
+ * The first paint while the eligibility read is in flight.
+ *
+ * WHY A HOLD RATHER THAN THE PAGE. The status answer decides whether this
+ * surface exists for the account at all; mounting the rail and firing the read
+ * set before it lands showed ineligible accounts live chrome and several
+ * requests the server answers with a refusal (round-1 U-6). The read is local
+ * and cheap, so a calm spinner for one round trip is the cheaper mistake.
+ */
+const TeamBridgeGateLoading: FC = () => {
+	useI18nLocale();
+	return (
+		<div
+			data-glass-region="canvas"
+			className="flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-canvas px-6"
+		>
+			<Spinner size="sm" label={t("ui.teamBridge.plan.checking")} />
+		</div>
 	);
 };
 
@@ -613,6 +680,14 @@ export type TeamBridgePageViewProps = {
 	 * member chrome whose every action would be refused.
 	 */
 	eligibility?: TeamBridgeEligibility | null;
+	/** The eligibility read has not answered yet: hold the whole page. */
+	gatePending?: boolean;
+	/**
+	 * Surface F: the server accepts no writes for this organization. New
+	 * conversations and the composer are withheld rather than offered and
+	 * refused.
+	 */
+	readOnly?: boolean;
 	onSelect: (conversationId: string) => void;
 	onSend: (body: string, clientRef: string) => Promise<unknown> | undefined;
 	onNewConversation: () => void;
@@ -648,6 +723,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onRetryPeople,
 	onComposeToPerson,
 	eligibility = null,
+	gatePending = false,
+	readOnly = false,
 	onSelect,
 	onSend,
 	onNewConversation,
@@ -681,7 +758,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * pane is not rendered at all.
 	 */
 	const createHintId = "team-bridge-create-hint";
-	const createHintVisible = mergedView;
+	const createDisabled = mergedView || readOnly;
+	const createHintVisible = createDisabled;
+	const createHint = readOnly
+		? t("ui.teamBridge.read_only.note")
+		: t("ui.teamBridge.scope.create_needs_org");
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: scroll only when the conversation or message count changes; `ordered` is a fresh array each render and must not retrigger a scroll on every keystroke.
 	useEffect(() => {
@@ -722,8 +803,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * THE GATE COMES BEFORE EVERY OTHER PIECE OF CHROME. An ineligible account
 	 * or organization would otherwise see a rail whose every affordance is
 	 * refused; the surface capability is what mounts the page, so this panel is
-	 * the honest content for that mount.
+	 * the honest content for that mount. While the verdict is in flight the page
+	 * is held for the same reason (round-1 U-6): the container also disables the
+	 * read set, so this hold costs one local read and no refused requests.
 	 */
+	if (gatePending) {
+		return <TeamBridgeGateLoading />;
+	}
 	if (eligibility) {
 		return <TeamBridgeEligibilityPanel reason={eligibility} />;
 	}
@@ -761,21 +847,23 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						size="icon-sm"
 						variant="ghost"
 						aria-label={t("ui.teamBridge.page.new_conversation")}
-						aria-disabled={mergedView || undefined}
+						aria-disabled={createDisabled || undefined}
 						aria-describedby={createHintVisible ? createHintId : undefined}
 						className={
-							mergedView ? "text-ink-disabled hover:bg-transparent" : undefined
+							createDisabled
+								? "text-ink-disabled hover:bg-transparent"
+								: undefined
 						}
 						onClick={() => {
-							if (!mergedView) onNewConversation();
+							if (!createDisabled) onNewConversation();
 						}}
 					>
 						<Plus size={16} />
 					</Button>
 				</header>
-				{mergedView && (listRows.length > 0 || listState !== "ready") && (
+				{createDisabled && (listRows.length > 0 || listState !== "ready") && (
 					<p id={createHintId} className="px-3 pb-2 text-[12px] text-ink-dim">
-						{t("ui.teamBridge.scope.create_needs_org")}
+						{createHint}
 					</p>
 				)}
 				<ScrollArea className="min-h-0 flex-1">
@@ -825,6 +913,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						people={people}
 						peopleState={peopleState}
 						selfAccountId={selfAccountId}
+						identityKnown={selfAccountId !== undefined}
+						listState={listState}
+						readOnly={readOnly}
 						conversations={conversations}
 						onSelect={onSelect}
 						onRetry={onRetryPeople}
@@ -848,26 +939,30 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								</p>
 								<p
 									id={
-										mergedView && listState === "ready" && listRows.length === 0
+										createDisabled &&
+										listState === "ready" &&
+										listRows.length === 0
 											? createHintId
 											: undefined
 									}
 									className="mt-1 text-[13px] text-ink-muted"
 								>
-									{mergedView && listState === "ready" && listRows.length === 0
-										? t("ui.teamBridge.scope.create_needs_org")
+									{createDisabled &&
+									listState === "ready" &&
+									listRows.length === 0
+										? createHint
 										: t("ui.teamBridge.list.empty.body")}
 								</p>
 								<Button
 									size="sm"
 									variant="primary"
-									className={mergedView ? "mt-3 opacity-60" : "mt-3"}
-									aria-disabled={mergedView || undefined}
+									className={createDisabled ? "mt-3 opacity-60" : "mt-3"}
+									aria-disabled={createDisabled || undefined}
 									aria-describedby={
 										createHintVisible ? createHintId : undefined
 									}
 									onClick={() => {
-										if (!mergedView) onNewConversation();
+										if (!createDisabled) onNewConversation();
 									}}
 								>
 									<Plus size={14} />
@@ -1011,67 +1106,78 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						    this box is shorter, so 16 read as a pill at rest. The ground
 						    (`elevated` over `surface`) does the separating, never an edge. */}
 						{/* No composer in a preview: a non-member cannot write, and a
-						    disabled box would be fake chrome beside a real Join action. */}
-						{!previewSelected && (
-							<div className="shrink-0 px-3 pb-3">
-								{sendFailed && (
-									<p role="alert" className="px-2 pb-1 text-[12px] text-danger">
-										{t("ui.teamBridge.composer.error")}
-									</p>
-								)}
-								<div
-									className={cn(
-										"rounded-xl bg-elevated",
-										"transition-colors duration-fast ease-out-quart",
-										"has-[textarea:focus-visible]:outline-solid has-[textarea:focus-visible]:outline-2",
-										"has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2",
+						    disabled box would be fake chrome beside a real Join action.
+						    Surface F is the same rule for a member: the server refuses
+						    every write, so the composer is replaced by the reason rather
+						    than drawn disabled (round-1 U-5). */}
+						{!previewSelected &&
+							(readOnly ? (
+								<p className="shrink-0 px-5 pb-4 text-[12px] leading-snug text-ink-dim">
+									{t("ui.teamBridge.read_only.composer")}
+								</p>
+							) : (
+								<div className="shrink-0 px-3 pb-3">
+									{sendFailed && (
+										<p
+											role="alert"
+											className="px-2 pb-1 text-[12px] text-danger"
+										>
+											{t("ui.teamBridge.composer.error")}
+										</p>
 									)}
-								>
-									<textarea
-										value={draft}
-										onChange={(event) => setDraft(event.target.value)}
-										onKeyDown={(event) => {
-											// An IME candidate confirmation is Enter too; sending on it
-											// would post the half-composed text.
-											if (
-												event.key === "Enter" &&
-												!event.shiftKey &&
-												!event.nativeEvent.isComposing
-											) {
-												event.preventDefault();
-												submit();
-											}
-										}}
-										rows={1}
-										placeholder={t("ui.teamBridge.composer.placeholder")}
-										aria-label={t("ui.teamBridge.composer.placeholder")}
+									<div
 										className={cn(
-											"block max-h-40 min-h-9 w-full resize-none bg-transparent px-3 pt-2.5 pb-1",
-											"text-[13px] text-ink placeholder:text-ink-dim",
-											"outline-none",
+											"rounded-xl bg-elevated",
+											"transition-colors duration-fast ease-out-quart",
+											"has-[textarea:focus-visible]:outline-solid has-[textarea:focus-visible]:outline-2",
+											"has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2",
 										)}
-									/>
-									<div className="flex items-center gap-2 px-2 pb-2">
-										{/* The hint takes the tools' slot until the bridge has a tool
+									>
+										<textarea
+											value={draft}
+											onChange={(event) => setDraft(event.target.value)}
+											onKeyDown={(event) => {
+												// An IME candidate confirmation is Enter too; sending on it
+												// would post the half-composed text.
+												if (
+													event.key === "Enter" &&
+													!event.shiftKey &&
+													!event.nativeEvent.isComposing
+												) {
+													event.preventDefault();
+													submit();
+												}
+											}}
+											rows={1}
+											placeholder={t("ui.teamBridge.composer.placeholder")}
+											aria-label={t("ui.teamBridge.composer.placeholder")}
+											className={cn(
+												"block max-h-40 min-h-9 w-full resize-none bg-transparent px-3 pt-2.5 pb-1",
+												"text-[13px] text-ink placeholder:text-ink-dim",
+												"outline-none",
+											)}
+										/>
+										<div className="flex items-center gap-2 px-2 pb-2">
+											{/* The hint takes the tools' slot until the bridge has a tool
 									    worth putting here (no attachment route exists yet, and a
 									    disabled paperclip would be fake chrome). */}
-										<span className="min-w-0 flex-1 truncate pl-1 text-meta-sm text-ink-dim">
-											{t("ui.teamBridge.composer.hint")}
-										</span>
-										<Button
-											size="icon-sm"
-											variant="primary"
-											className="rounded-full"
-											disabled={!draft.trim() || sending}
-											aria-label={t("ui.teamBridge.composer.send")}
-											onClick={submit}
-										>
-											<Send size={16} />
-										</Button>
+											<span className="min-w-0 flex-1 truncate pl-1 text-meta-sm text-ink-dim">
+												{t("ui.teamBridge.composer.hint")}
+											</span>
+											<Button
+												size="icon-sm"
+												variant="primary"
+												className="rounded-full"
+												disabled={!draft.trim() || sending}
+												aria-label={t("ui.teamBridge.composer.send")}
+												onClick={submit}
+											>
+												<Send size={16} />
+											</Button>
+										</div>
 									</div>
 								</div>
-							</div>
-						)}
+							))}
 					</>
 				)}
 			</section>
@@ -1152,31 +1258,39 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	// account-wide view: "All organizations" is a multi-org affordance, and the
 	// sole-org account should not need to pick its one org to create anything.
 	const scopeChosen = useRef(Boolean(requestedTenant));
+	/*
+	 * THE GATE IS THE FIRST READ (round-1 U-6). Until it answers, every other
+	 * read on this page is disabled and the view holds the first paint, so a
+	 * signed-out or plan-ineligible account issues no conversations, unread,
+	 * memberships or directory requests. A status read that FAILED is not a
+	 * verdict: it enables the reads and lets the list's own error state answer.
+	 *
+	 * The same payload carries the signed-in account (the route
+	 * `useTeamBridgeIdentity` reads), so the page parses it once instead of
+	 * spending a second round trip, and surface F's `read_only` arrives with it.
+	 */
+	const status = useTeamBridgeStatus();
+	const eligibility = status.data ? teamBridgeEligibility(status.data) : null;
+	const gatePending = status.isPending;
+	const readsEnabled = !gatePending && eligibility === null;
+	const selfAccountId = status.data?.account_id ?? undefined;
+	const readOnly = status.data?.read_only === true;
 	// The memberships are the switcher's ONE source, and the account aggregate
 	// is the ONE unread read — the same cache entry the sidebar badge spends.
 	// Per-org counts are joined from that payload, never fetched per org.
-	const memberships = useMembershipsQuery();
-	const unread = useTeamBridgeUnread(true, TEAM_BRIDGE_ALL_SCOPE);
+	const memberships = useMembershipsQuery({ enabled: readsEnabled });
+	const unread = useTeamBridgeUnread(readsEnabled, TEAM_BRIDGE_ALL_SCOPE);
 	const organizations = useMemo(
 		() =>
 			organizationOptions(memberships.memberships, unread.data?.organizations),
 		[memberships.memberships, unread.data],
 	);
-	const list = useTeamBridgeConversations(scope);
-	// The page mounted from the route has no prop caller; identity comes from
-	// the bridge status read, which is the one place the hub account is published.
-	const identity = useTeamBridgeIdentity();
-	const selfAccountId = identity.data ?? undefined;
-	/*
-	 * The eligibility gate and the rail's roster. Both are their own reads:
-	 * the status never blocks the first paint (a null verdict is "eligible"),
-	 * and the directory is disabled in the merged scope because there is no
-	 * single tenant whose people that view could show.
-	 */
-	const status = useTeamBridgeStatus();
-	const eligibility = teamBridgeEligibility(status.data);
+	const list = useTeamBridgeConversations(scope, readsEnabled);
+	// The directory is disabled in the merged scope because there is no single
+	// tenant whose people that view could show, and by the gate like the rest.
 	const directory = useTeamBridgeDirectory(
 		scope === TEAM_BRIDGE_ALL_SCOPE ? null : scope,
+		readsEnabled,
 	);
 	/*
 	 * The person a rail click asked to compose to, when no DM exists yet. It
@@ -1265,6 +1379,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	const messages = useTeamBridgeMessages(
 		previewSelected ? null : (selected?.id ?? null),
 		selected?.tenant_id,
+		readsEnabled,
 	);
 	const send = useSendTeamBridgeMessage(
 		selected?.id ?? "",
@@ -1359,6 +1474,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 					return send.mutateAsync({ clientRef, body });
 				}}
 				onNewConversation={() => {
+					if (readOnly) return;
 					setComposeTo(null);
 					setCreateOpen(true);
 				}}
@@ -1381,6 +1497,8 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 					setCreateOpen(true);
 				}}
 				eligibility={eligibility}
+				gatePending={gatePending}
+				readOnly={readOnly}
 				onRetry={() => {
 					void list.refetch();
 					if (memberships.isError) void memberships.refetch();

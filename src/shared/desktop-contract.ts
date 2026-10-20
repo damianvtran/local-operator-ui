@@ -8598,15 +8598,17 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		}
 		/*
-		 * The organization directory lives on the messaging route the companion
-		 * agent-server change adds, not under `/v1/desktop`: it is the hub's own
-		 * read of a tenant's people, and the desktop layer adds nothing to it.
-		 * `tenant_id` is encoded as a query value, so a crafted id can never
+		 * The directory route is the LOCAL daemon's (`GET
+		 * /v1/desktop/team-bridge/directory`, local-operator #2712), which validates
+		 * `tenant_id` and forwards to the hub's `/v1/messaging/directory` itself.
+		 * The desktop transport sends every op to the daemon, so the hub path is not
+		 * reachable from here; addressing it directly made every directory read a
+		 * 404. `tenant_id` is encoded as a query value, so a crafted id can never
 		 * compose a second parameter or a path segment.
 		 */
 		case "team_bridge.directory":
 			return {
-				path: `/v1/messaging/directory?tenant_id=${encodeURIComponent(request.tenant_id)}`,
+				path: `/v1/desktop/team-bridge/directory?tenant_id=${encodeURIComponent(request.tenant_id)}`,
 				method: "GET",
 			};
 		/*

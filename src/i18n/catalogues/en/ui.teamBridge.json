@@ -84,5 +84,12 @@
 	"ui.teamBridge.plan.update_title": "Update to use Team Bridge",
 	"ui.teamBridge.plan.update_reason": "Team Bridge needs a newer version of Radient.",
 	"ui.teamBridge.plan.unavailable_title": "Team Bridge is unavailable",
-	"ui.teamBridge.plan.unavailable_reason": "The service is not available right now. Try again later."
+	"ui.teamBridge.plan.unavailable_reason": "The service is not available right now. Try again later.",
+	"ui.teamBridge.people.list_loading": "Conversations are still loading.",
+	"ui.teamBridge.people.list_error": "Conversations could not be loaded, so people can’t be messaged from here.",
+	"ui.teamBridge.people.identity_loading": "Finding your account…",
+	"ui.teamBridge.read_only.note": "This organization is read-only.",
+	"ui.teamBridge.read_only.composer": "This organization is read-only right now, so messages can’t be sent.",
+	"ui.teamBridge.read_only.person": "Read-only: a new conversation can’t be started right now.",
+	"ui.teamBridge.plan.checking": "Checking Team Bridge…"
 }

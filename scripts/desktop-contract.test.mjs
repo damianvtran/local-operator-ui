@@ -3514,7 +3514,10 @@ test("team_bridge directory is tenant-scoped and status is the shared status rou
 		tenant_id: "tnt_1",
 	});
 	assert.equal(directory.method, "GET");
-	assert.equal(directory.path, "/v1/messaging/directory?tenant_id=tnt_1");
+	assert.equal(
+		directory.path,
+		"/v1/desktop/team-bridge/directory?tenant_id=tnt_1",
+	);
 	// The tenant is an encoded query VALUE: a crafted id cannot add a second
 	// parameter or a path segment.
 	const crafted = jobsCancelEndpoint({
@@ -3523,7 +3526,7 @@ test("team_bridge directory is tenant-scoped and status is the shared status rou
 	});
 	assert.equal(
 		crafted.path,
-		"/v1/messaging/directory?tenant_id=tnt_1%26scope%3Daccount",
+		"/v1/desktop/team-bridge/directory?tenant_id=tnt_1%26scope%3Daccount",
 	);
 
 	const status = jobsCancelEndpoint({

@@ -113,10 +113,12 @@ function badgeInterval(): number {
 
 export function useTeamBridgeConversations(
 	scope: TeamBridgeScope,
+	enabled = true,
 ): UseQueryResult<TeamBridgeConversationList> {
 	return useQuery({
 		queryKey: teamBridgeKeys.conversations(scope),
 		queryFn: () => TeamBridgeApi.listConversations(readScope(scope)),
+		enabled,
 		staleTime: 15_000,
 		refetchOnWindowFocus: true,
 	});
@@ -125,12 +127,13 @@ export function useTeamBridgeConversations(
 export function useTeamBridgeMessages(
 	conversationId: string | null,
 	tenantId?: string,
+	enabled = true,
 ): UseQueryResult<TeamBridgeMessagePage> {
 	return useQuery({
 		queryKey: teamBridgeKeys.messages(conversationId ?? "none", tenantId),
 		queryFn: () =>
 			TeamBridgeApi.listMessages(conversationId as string, { tenantId }),
-		enabled: Boolean(conversationId),
+		enabled: enabled && Boolean(conversationId),
 		staleTime: 5_000,
 		/* A conversation needs to feel live: without a poll an incoming message
 		   never appears until the reader clicks away. Eight seconds is Slack's
@@ -166,11 +169,12 @@ export function useTeamBridgeIdentity(
  */
 export function useTeamBridgeDirectory(
 	tenantId: string | null,
+	enabled = true,
 ): UseQueryResult<TeamBridgeDirectory> {
 	return useQuery({
 		queryKey: teamBridgeKeys.directory(tenantId ?? "none"),
 		queryFn: () => TeamBridgeApi.directory(tenantId as string),
-		enabled: Boolean(tenantId),
+		enabled: enabled && Boolean(tenantId),
 		staleTime: 30_000,
 		refetchOnWindowFocus: true,
 		retry: 1,
