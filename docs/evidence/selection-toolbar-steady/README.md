@@ -65,7 +65,8 @@ app's desktop probe, recorded under `knownPreexisting` rather than dropped.
 1. `before/readings.json` → `drag` → count the frames where both
    `toolbars.row.visible` and `toolbars.selection.visible` are true.
 2. `after/readings.json` → the same count is zero, and `toolbars.row.visible`
-   is false in every drag frame.
+   is false in every frame from the first selection frame onward (the first
+   two frames precede the gesture).
 3. `before/frames/a1-drag-020.png` and `after/frames/a1-drag-020.png` side by
    side: the base frame carries the strip over the selection and the row's own
    icons at the far right; the after frame carries the strip alone.

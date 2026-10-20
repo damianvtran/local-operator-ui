@@ -258,7 +258,7 @@ const MULTI_TURN = mod.applyHistoryPage(mod.EMPTY_TRANSCRIPT, {
 	cursor_missing: false,
 });
 
-const mountTranscript = async (transcript) => {
+const mountTranscript = async (transcript, options = {}) => {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		url: "http://localhost/",
 		pretendToBeVisual: true,
@@ -271,7 +271,19 @@ const mountTranscript = async (transcript) => {
 		value: dom.window.navigator,
 	});
 	globalThis.getComputedStyle = dom.window.getComputedStyle.bind(dom.window);
-	globalThis.MutationObserver = dom.window.MutationObserver;
+	/*
+	 * `mutations: false` removes the DOM observer for the handful of tests that
+	 * must prove a behaviour holds WITHOUT it. The shared selection toolbar
+	 * uses an observer as its catch-up path and a layout effect as its
+	 * pre-paint path; a test with the observer present cannot tell which one
+	 * did the work, because the observer arrives inside the same 30ms settle.
+	 */
+	if (options.mutations === false) {
+		dom.window.MutationObserver = undefined;
+		globalThis.MutationObserver = undefined;
+	} else {
+		globalThis.MutationObserver = dom.window.MutationObserver;
+	}
 	/*
 	 * The disclosure body asks `useMediaQuery` for reduced motion on mount.
 	 * jsdom has no media query engine; "no match" is the honest answer and the
@@ -1273,5 +1285,70 @@ test("a non-quotable selection also publishes the column marker", async () => {
 			?.hasAttribute("data-lo-selection-live"),
 		"and the column knows a selection is live, so row clusters stand down",
 	);
+	await rig.unmount();
+});
+
+/*
+ * CLEARING A SELECTION MUST RESTORE *EVERY* ROW'S CONTROLS (agent review round
+ * 1, C1). The shared strip's effect once wrote `inert`/`aria-hidden` on all
+ * three clusters and then refused to remove any of them while a peer strip was
+ * present - so the rows the quote toolkit never owns (the user row and the
+ * intermediate response) kept both attributes after the selection was gone:
+ * their presses did nothing. The regression is asserted on the rows that
+ * expose it, not on the row the quote toolkit happens to own.
+ */
+test("clearing a selection restores the rows the quote toolkit never owned", async () => {
+	const rig = await mountTranscript(MULTI_TURN);
+	const dom = rig.dom;
+	const doc = dom.window.document;
+	const userCluster = rowOf(dom, "u1").querySelector("[data-lo-user-actions]");
+	const responseCluster = rowOf(dom, "a1").querySelector(
+		"[data-lo-gutter-actions]",
+	);
+	assert.ok(userCluster, "the user row owns a cluster");
+	assert.ok(responseCluster, "the intermediate response owns a cluster");
+
+	const answer = rowOf(dom, "a2");
+	const walker = doc.createTreeWalker(answer, dom.window.NodeFilter.SHOW_TEXT);
+	const textNode = walker.nextNode();
+	assert.ok(textNode, "the closing answer has a text node");
+	const range = doc.createRange();
+	range.selectNodeContents(textNode);
+	const selection = dom.window.getSelection();
+	selection.removeAllRanges();
+	selection.addRange(range);
+	await act(async () => {
+		doc.dispatchEvent(new dom.window.Event("selectionchange"));
+		doc.dispatchEvent(new dom.window.MouseEvent("mouseup", { bubbles: true }));
+		await new Promise((resolve) => setTimeout(resolve, 30));
+	});
+	/*
+	 * The visibility of those two rows WHILE the strip is up is the stylesheet's
+	 * `visibility: hidden` (jsdom applies no CSS), so the assertion that matters
+	 * here is the OUTCOME after the selection is gone: a stale `inert` is what
+	 * killed their presses in the review's reproduction.
+	 */
+
+	await act(async () => {
+		selection.removeAllRanges();
+		doc.dispatchEvent(new dom.window.Event("selectionchange"));
+		await new Promise((resolve) => setTimeout(resolve, 30));
+	});
+	assert.equal(
+		userCluster.hasAttribute("inert"),
+		false,
+		"clearing restores the user row - a stale inert kills its presses",
+	);
+	assert.equal(
+		userCluster.getAttribute("aria-hidden"),
+		null,
+		"and returns it to the accessibility tree",
+	);
+	assert.equal(
+		responseCluster.hasAttribute("inert"),
+		false,
+		"clearing restores the intermediate response as well",
+	);
+	assert.equal(responseCluster.getAttribute("aria-hidden"), null);
 	await rig.unmount();
 });

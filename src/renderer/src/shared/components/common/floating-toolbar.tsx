@@ -72,13 +72,20 @@ export type FloatingToolbarProps = HTMLAttributes<HTMLDivElement> & {
 export const FloatingToolbar = forwardRef<HTMLDivElement, FloatingToolbarProps>(
 	function FloatingToolbar({ label, className, children, ...rest }, ref) {
 		return (
+			/*
+			 * `rest` FIRST, then the contract: a caller may pass data attributes,
+			 * a style or an id, but it may not replace the role, the accessible
+			 * name, the chrome or the press behaviour. The first version spread
+			 * `rest` last, which let any caller silently drop the name a toolbar
+			 * must have (code review round 1, C5).
+			 */
 			<div
+				{...rest}
 				ref={ref}
 				role="toolbar"
 				aria-label={label}
 				className={cn(FLOATING_TOOLBAR_CHROME, className)}
 				onMouseDown={(event) => event.preventDefault()}
-				{...rest}
 			>
 				{children}
 			</div>

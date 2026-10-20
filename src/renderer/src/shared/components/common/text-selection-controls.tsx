@@ -396,35 +396,40 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	useEffect(() => {
 		const root = targetRef.current;
 		if (!root || !ownsSelection) return;
-		const clusters = [
-			...root.querySelectorAll(
-				"[data-lo-answer-actions], [data-lo-gutter-actions], [data-lo-user-actions]",
-			),
-		];
-		for (const cluster of clusters) {
+		/*
+		 * ONLY WHAT THIS EFFECT ACTUALLY WROTE, AND ONLY WHAT STILL BELONGS TO
+		 * IT (code review round 1, C1). The first version wrote every cluster
+		 * and then, on cleanup, refused to remove anything whenever a peer strip
+		 * existed - so the rows this effect had touched and the quote toolkit
+		 * never would (the user row and the intermediate response) kept
+		 * `inert`/`aria-hidden` after the selection was cleared: their Copy and
+		 * Fork presses did nothing and assistive technology lost them. The
+		 * tracked write is the fix: a node is restored only if THIS effect set
+		 * it, and only if no peer row owns it now.
+		 */
+		const written: Element[] = [];
+		for (const cluster of root.querySelectorAll(
+			"[data-lo-answer-actions], [data-lo-gutter-actions], [data-lo-user-actions]",
+		)) {
+			if (cluster.closest("[data-lo-selection-active]")) continue;
 			cluster.setAttribute("inert", "");
 			cluster.setAttribute("aria-hidden", "true");
+			written.push(cluster);
 		}
 		return () => {
-			/*
-			 * A PEER'S SUPPRESSION IS NOT OURS TO REMOVE. The quote toolkit sets the
-			 * same two attributes on the row it owns, and this component's effect
-			 * can run first (its selection state commits in the same render) and
-			 * then clean up when the peer check flips `ownsSelection` off. Blindly
-			 * removing here wiped the owning strip's `inert`/`aria-hidden` one
-			 * commit after it wrote them, which is exactly the "row cluster is
-			 * interactive under a selection strip" defect the attributes exist to
-			 * prevent. If a peer is in the document at cleanup, the attributes
-			 * belong to it.
-			 */
-			if (
-				root.querySelector(
-					"[data-lo-quote-toolkit], [data-lo-link-toolbar]",
-				) !== null
-			) {
-				return;
-			}
-			for (const cluster of clusters) {
+			for (const cluster of written) {
+				/*
+				 * A peer may have taken the row over since this effect wrote it.
+				 * The quote toolkit's cleanup owns that row's attributes; removing
+				 * them here would strip the owning strip's suppression one commit
+				 * after it wrote them.
+				 */
+				if (
+					!cluster.isConnected ||
+					cluster.closest("[data-lo-selection-active]")
+				) {
+					continue;
+				}
 				cluster.removeAttribute("inert");
 				cluster.removeAttribute("aria-hidden");
 			}
@@ -446,7 +451,18 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	 * drift when the chrome does. The flip is the same rule the quote strip
 	 * holds: above the selection, below it when there is no room above.
 	 */
-	const above = selection.rect.top - containerRect.top >= 40;
+	/*
+	 * THE FLIP IS ASKED ABOUT THE SCROLLER, NOT THE CONTENT COLUMN (code review
+	 * round 1, C6). The strip's `top` is expressed against the content column,
+	 * but "is there room above" is a question about what is currently visible:
+	 * once the column is scrolled, its top is far above the pane and the
+	 * comparison is always true. The scroll viewport is the box that answers it;
+	 * the content column is still the coordinate origin for `top`.
+	 */
+	const scrollerTop =
+		scrollableContainerRef?.current?.getBoundingClientRect().top ??
+		containerRect.top;
+	const above = selection.rect.top - scrollerTop >= 40;
 	const style = {
 		top:
 			(above ? selection.rect.top : selection.rect.bottom) - containerRect.top,
