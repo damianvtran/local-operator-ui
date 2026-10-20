@@ -4,7 +4,11 @@ Independent real-path QA of the Hub Skills surface across three surfaces that
 must agree: the **built Electron app** (`damianvtran/local-operator-ui` #1269),
 the **real core** (`local-operator` #2711 + #2713), and a **stub hub** serving
 real HTTP. Every claim in the matrix below was produced by running the command
-shown; the commands' actual answers are in `receipts/`.
+shown; the commands' actual answers are in `receipts/`. The frames are rig
+output: they live in the ignored `docs/evidence-frames/` tree, not here, because
+the repository's structure gate refuses a committed frame (see
+`scripts/check-evidence-structure.mjs`). Their filenames are named in the tables
+below so a captured checkout can be read beside this record.
 
 Run: 2026-10-20, on the operator's machine, one reviewer session.
 
@@ -462,7 +466,7 @@ The same matrix was posted as `### QA report — round 1` on both core PRs:
 
 Re-capture of the remediated build, 2026-10-20, against the same commit series
 as the review (branch `feat/hub-skills-state`, UI head `42e022ab9a` plus this
-evidence commit). Frames in `frames-remediation/`, captured by the same driver
+evidence commit). Frames in `docs/evidence-frames/hub-skills-surface/frames-remediation/` (ignored, not committed), captured by the same driver
 in headless window mode (`capturePage()`, 1380x900 requested).
 
 ```
