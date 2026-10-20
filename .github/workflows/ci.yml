@@ -750,12 +750,19 @@ jobs:
   #
   # WHAT IT ASSERTS: no frame container is committed under `docs/evidence/`, and
   # nothing at all is tracked in the ignored `docs/evidence-frames/` (the split's
-  # invariant, so a rig default that regresses is caught on the diff that does
-  # it); `manifest.json` parses, every `supplementary` set carries its provenance
-  # and names a directory that exists in the TRACKED tree; the proof artefacts the
-  # runbook names are still tracked; and the counts that need no pixels -
-  # `surfaces`/`themes` against `HEAD:scripts/capture-evidence.mjs` and the
-  # `partialCapture` tallies - through `stampFailures` itself.
+  # invariant); `manifest.json` parses, every `supplementary` set carries its
+  # provenance, a repository-relative path, no duplicate and non-negative integer
+  # counts; the proof artefacts the runbook names are still tracked; and the
+  # counts that need no pixels - `surfaces`/`themes` against
+  # `HEAD:scripts/capture-evidence.mjs` and the `partialCapture` tallies -
+  # through `stampFailures` itself.
+  #
+  # WHAT ACTUALLY CATCHES A RIG THAT DEFAULTS BACK: this gate catches a COMMITTED
+  # frame, on the PR that commits it. A regressed rig writes an UNTRACKED file
+  # into an ignored path, and no diff - so no job - ever sees an untracked write;
+  # the net there is the `.gitignore` leftover rules, which keep an unforced
+  # `git add -A` from adding it, plus this assertion refusing the commit if one is
+  # force-added. Do not read this job as watching the working tree.
   #
   # WHAT IT DOES NOT ASSERT: that a frame is a picture of its theme. That is the
   # pixel sweep, `pnpm check-evidence`, and it MOVED to the release path when the

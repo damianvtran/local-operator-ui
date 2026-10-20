@@ -9,7 +9,8 @@
  * /tmp, killed on exit), with no browser-automation dependency in the repo —
  * Node's built-in WebSocket speaks the DevTools protocol directly. One
  * screenshot per theme per story, written to
- * `docs/evidence/<feature>/<story>/<theme>.webp`.
+ * `docs/evidence-frames/<feature>/<story>/<theme>.webp` - the IGNORED frames
+ * tree (see `.gitignore`); the manifest it stamps stays in `docs/evidence/`.
  *
  * Why this file exists. The review process for this app is visual: there is
  * no test runner, and the design contract (docs/branding.md) is judged by

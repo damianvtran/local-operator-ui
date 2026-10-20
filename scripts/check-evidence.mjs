@@ -48,33 +48,48 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 /*
- * The frame decoder, at module scope on purpose.
+ * The frame decoder, loaded ON FIRST DECODE rather than at module scope.
  *
  * `sharp` is a devDependency and is already how other rigs in this tree decode
  * WebP (see `desktop-renderer-transport.test.mjs`), so the histogram costs no
- * new package. Imported eagerly rather than per frame: a 9703-frame sweep must
- * not pay a module load per image, and the loader is synchronous anyway.
- */
-import sharp from "sharp";
-
-/*
- * The decoder's memory, BOUNDED ON PURPOSE.
+ * new package. It is loaded once and reused - not per frame - so a whole-tree
+ * sweep pays one module load.
  *
- * A whole-tree sweep decodes every frame in one process. Measured 2026-10-04 at
- * 200 / 800 / 1600 frames: resident set 500 / 586 / 735 MB with libvips' operation
- * cache on, and 424 / 431 / 599 MB with it off - so the cache is most of what
- * holds across a run, and turning it off is the bound that costs no throughput.
- * (The day's harness memory-guard figure of 177.3 GB for one such sweep is TOTAL
- * allocation, ~11 MB per decoded frame, not residency: it cannot be resident on a
- * 36 GB host, and the numbers above are the high-water marks that can.)
- * `sharp.concurrency(1)` was measured too and is deliberately NOT set: it flattens
- * the curve a little further and trades throughput the CI job needs (7 GB runner,
- * 11m27s measured) for memory it does not.
- *
- * The local path does not pay this at all - `evidence` is in `LOCAL_EXCLUSIONS`
- * (`ci-scope.mjs`), so `pnpm check-changed` never starts a whole-tree decode.
+ * WHY LAZY, and why that is correctness rather than micro-optimisation:
+ * `check-evidence.mjs` is imported for its PURE checks (`stampFailures`, `frames`,
+ * the count guards) by `check-evidence-structure.mjs`, the structural gate CI
+ * runs and a developer runs on a plain clone. An eager import made that gate die
+ * on `ERR_MODULE_NOT_FOUND: Cannot find package 'sharp'` before it printed a
+ * line (QA round 1, Q-2), and a gate that needs `pnpm install` first is one
+ * people stop running. The decoder is reachable only from `frameHistogram`,
+ * which nothing on the structural path calls.
  */
-sharp.cache(false);
+let sharpModule;
+const loadSharp = async () => {
+	if (sharpModule) return sharpModule;
+	const imported = (await import("sharp")).default;
+	/*
+	 * The decoder's memory, BOUNDED ON PURPOSE.
+	 *
+	 * A whole-tree sweep decodes every frame in one process. Measured 2026-10-04
+	 * at 200 / 800 / 1600 frames: resident set 500 / 586 / 735 MB with libvips'
+	 * operation cache on, and 424 / 431 / 599 MB with it off - so the cache is
+	 * most of what holds across a run, and turning it off is the bound that
+	 * costs no throughput. (The day's harness memory-guard figure of 177.3 GB for
+	 * one such sweep is TOTAL allocation, ~11 MB per decoded frame, not
+	 * residency: it cannot be resident on a 36 GB host, and the numbers above
+	 * are the high-water marks that can.) `sharp.concurrency(1)` was measured too
+	 * and is deliberately NOT set: it flattens the curve a little further and
+	 * trades throughput the CI job needs (7 GB runner, 11m27s measured) for
+	 * memory it does not.
+	 *
+	 * The local path does not pay this at all: the pixel sweep is the release
+	 * path's step, never `pnpm check-changed` (see `ci-scope.mjs`).
+	 */
+	imported.cache(false);
+	sharpModule = imported;
+	return imported;
+};
 /*
  * The capturer's own `dir` table, for `claimedStory` below - not to run it.
  *
@@ -355,6 +370,7 @@ export const unjudgedFrames = (dir, declared = [], palettes = PALETTES) => {
  * message downstream is unchanged.
  */
 export const frameHistogram = async (file) => {
+	const sharp = await loadSharp();
 	let decoded;
 	try {
 		decoded = await sharp(file).raw().toBuffer({ resolveWithObject: true });
@@ -570,6 +586,26 @@ export const claimedStory = (id, surface, leaf) => {
 	if (cut === -1 || id.slice(0, cut) !== surface) return false;
 	const name = id.slice(cut + 2);
 	return name === leaf || overrideDirFor(id) === leaf;
+};
+
+/**
+ * Whether a directory holds at least one FRAME FILE.
+ *
+ * `existsSync` is not the question. An EMPTY `docs/evidence-frames/` - created by
+ * the rig before it wrote anything, or by a checkout whose capture died - means
+ * "no frames here" exactly as an absent one does, and the count guards below are
+ * about frames that EXIST. Keying the stand-down on existence alone reddened a
+ * tree that simply has none (QA round 1, Q-3). Walks the tree, so call it once.
+ */
+export const holdsFrameFiles = (dir) => {
+	if (!existsSync(dir)) return false;
+	try {
+		return readdirSync(dir, { recursive: true }).some((entry) =>
+			isFrameContainer(String(entry)),
+		);
+	} catch {
+		return false;
+	}
 };
 
 /**
@@ -937,7 +973,7 @@ export const stampFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
 	 * tallies) still runs, and `main()` - which refuses before this point when
 	 * the tree is absent - is where the tree half is enforced.
 	 */
-	const tree = existsSync(dir);
+	const tree = holdsFrameFiles(dir);
 
 	/*
 	 * The `srcTree`/`scriptsTree` loop stood here and is RETIRED, not moved: a
@@ -1675,9 +1711,9 @@ export const storyDriftReadings = (manifest, git = gitOut, root = ROOT) => {
 // Exported only for the admitted worker's import; ordinary imports still never
 // sweep frames (capture-evidence imports the single-frame predicates).
 export const main = async () => {
-	if (!existsSync(EVIDENCE)) {
+	if (!holdsFrameFiles(EVIDENCE)) {
 		console.error(
-			`No frames at ${EVIDENCE}. Frames are rig output and are not committed, so a checkout that has never run \`node scripts/capture-evidence.mjs\` has none to decode - capture first, then sweep.`,
+			`No frames at ${EVIDENCE}. Frames are rig output and are not committed, and the tree is ${existsSync(EVIDENCE) ? "EMPTY" : "absent"}, so there is nothing to decode - seed or capture first, then sweep.`,
 		);
 		process.exit(1);
 	}
