@@ -451,6 +451,22 @@ test(
 							capturedAt: "2026-01-01T00:00:00.000Z",
 							capturedAtHead,
 						},
+						/*
+						 * A ZERO-FRAME declaration, which is a state rather than a
+						 * lost directory: `submit-latency` in the shipped manifest is
+						 * the real instance, and its only file is a tracked README, so
+						 * the frames tree has no directory for it. Without the
+						 * `set.frames === 0` allowance in `check-evidence.mjs` this
+						 * entry turns the run red with "names a directory that is not
+						 * in the tree" - measured on 2026-10-20.
+						 */
+						{
+							path: "zero-set",
+							frames: 0,
+							source: "declared at zero frames; no capture has been taken",
+							why: "a declared absence is visible to the gate, an undeclared one is not",
+							capturedAt: "2026-01-01T00:00:00.000Z",
+						},
 					],
 				},
 				null,
