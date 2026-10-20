@@ -1,0 +1,38 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "20b3f337a239",
+  "date": "2026-10-20",
+  "locale": "vi",
+  "status": "passed",
+  "namespace": "ui.hub",
+  "sha256": {
+    "vi": "5c6ebde5de962cc78bf9230df7c7a3cb9677eb7ff1944b9fcc23cc7ded59f99f",
+    "en": "96d5e20f3f1efc19efa36210ea7799af8216a863d7b872c71d69e599d5e59a44"
+  },
+  "scope": "ui.hub.skills.*: download, unpull, unpull_title, unpull_body, unpull_failed, subscribe_failed, local_path, published_by, not_downloaded, subscribed_absent, pulled, manual, detached (13 keys) audited against English ui.hub.json",
+  "keys_audited": [
+    "download",
+    "unpull",
+    "unpull_title",
+    "unpull_body",
+    "unpull_failed",
+    "subscribe_failed",
+    "local_path",
+    "published_by",
+    "not_downloaded",
+    "subscribed_absent",
+    "pulled",
+    "manual",
+    "detached"
+  ],
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.hub.skills.published_by",
+      "current": "Xuất bản bởi {publisher}",
+      "proposed": "Được xuất bản bởi {publisher}",
+      "note": "\"bởi\" without \"được\" is a calque of \"published by\"; the file's own passive is \"được xuất bản\" (remote_empty: \"Chưa có kỹ năng nào được xuất bản ở đây\")."
+    }
+  ]
+}

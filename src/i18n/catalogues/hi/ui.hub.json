@@ -157,13 +157,13 @@
 	"ui.hub.skills.unpull": "स्थानीय कॉपी हटाएँ",
 	"ui.hub.skills.unpull_title": "{item} की स्थानीय कॉपी हटाएँ?",
 	"ui.hub.skills.unpull_body": "फ़ाइलें आपके कौशल फ़ोल्डर से हट जाती हैं। लिंक और उसकी सदस्यता बनी रहती है, इसलिए दोबारा डाउनलोड करने पर मौजूदा संशोधन वापस आ जाता है।",
-	"ui.hub.skills.unpull_failed": "स्थानीय कॉपी हटना पुष्ट नहीं हुआ। फिर से कोशिश करें, फिर लिंक की स्थिति जाँचें।",
+	"ui.hub.skills.unpull_failed": "स्थानीय कॉपी हटने की पुष्टि नहीं हुई। फिर से कोशिश करें, फिर लिंक की स्थिति जाँचें।",
 	"ui.hub.skills.subscribe_failed": "सदस्यता की पुष्टि नहीं हुई। फिर से कोशिश करें।",
 	"ui.hub.skills.local_path": "{path} पर इंस्टॉल",
 	"ui.hub.skills.published_by": "{publisher} द्वारा प्रकाशित",
 	"ui.hub.skills.not_downloaded": "डाउनलोड नहीं हुआ",
 	"ui.hub.skills.subscribed_absent": "सदस्यता है — इंस्टॉल नहीं",
-	"ui.hub.skills.pulled": "डाउनलोड — सदस्यता है",
-	"ui.hub.skills.manual": "डाउनलोड — सदस्यता नहीं",
+	"ui.hub.skills.pulled": "डाउनलोड हो गया — सदस्यता है",
+	"ui.hub.skills.manual": "डाउनलोड हो गया — सदस्यता नहीं",
 	"ui.hub.skills.detached": "लिंक है — कॉपी नहीं"
 }
