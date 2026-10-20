@@ -124,6 +124,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { LibraryPage } from "./src/renderer/src/features/library/components/library-page";
 export { filterAssets, NO_LIBRARY_FILTERS } from "./src/renderer/src/features/library/library-model";
+export * as locale from "./src/i18n/locale";
 
 function Jump() {
 	const navigate = useNavigate();
@@ -196,7 +197,7 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { mountLibrary, filterAssets, NO_LIBRARY_FILTERS } = await import(
+const { mountLibrary, filterAssets, NO_LIBRARY_FILTERS, locale } = await import(
 	bundlePath.href
 );
 await unlink(bundlePath);
@@ -205,6 +206,12 @@ const NOW = new Date(2026, 9, 18, 12, 0, 0).getTime();
 
 /* Class-token readers, hoisted so the layout case allocates no regex per row. */
 const CLASS_TOKENS = /\s+/;
+/* The Librarian row's age in each language this case drives. Top-level because
+ * `useTopLevelRegex` requires it: a literal inside the test body is re-created
+ * per call, and the gate treats that as the defect it is on a hot path. */
+const AGE_EN = /Last organized 2h ago/;
+const AGE_FR = /Dernier classement il y a 2 h/;
+const AGE_ZH_CN = /上次整理于2小时前/;
 const OUT_OF_FLOW = /(^|\s)(absolute|fixed)(\s|$)/;
 
 const tag = (id, name) => ({ id, name, category: "topic" });
@@ -497,10 +504,10 @@ const waitFor = async (predicate, rounds = 24) => {
 
 const MOUNTED = [];
 
-const mount = async () => {
+const mount = async (nowMs = NOW) => {
 	const container = document.createElement("div");
 	document.body.append(container);
-	const { root, client } = mountLibrary(container, NOW);
+	const { root, client } = mountLibrary(container, nowMs);
 	MOUNTED.push({ root, client });
 	await flush();
 	return { container, root, client };
@@ -1169,6 +1176,37 @@ test("a send refusal keeps the draft and writes no link", async () => {
 	);
 	await act(async () => root.unmount());
 	ANSWER.failMessage = false;
+});
+
+/*
+ * THE BUG THIS FIXES, RENDERED. `relative()` returned hardcoded English, so a
+ * French reader saw "Dernier classement 2h ago": the catalogue sentence was
+ * translated and its age tail was not. This mounts the REAL page, pins the
+ * clock two hours after the Librarian's last run, and requires the row to
+ * change language when the app language changes — the assertion the old helper
+ * cannot satisfy. The French line also pins the composition: the age is an
+ * adverbial fragment ("il y a 2 h"), so the row may not keep a "le" that only
+ * fits a date.
+ */
+test("the Librarian row's age is rendered in the app language", async () => {
+	ANSWER.rows = ROWS;
+	const twoHoursLater = 1_700_000_000_000 + 2 * 3_600_000;
+	locale.setLocale("en");
+	const { container, root } = await mount(twoHoursLater);
+	const row = () => container.querySelector("[data-library-librarian]");
+	await waitFor(() => row() !== null);
+	assert.match(text(row()), AGE_EN);
+	await act(async () => locale.setLocale("fr"));
+	assert.match(
+		text(row()),
+		AGE_FR,
+		"the age fragment must be French too, not an English tail",
+	);
+	await act(async () => locale.setLocale("zh-CN"));
+	assert.match(text(row()), AGE_ZH_CN);
+	await act(async () => locale.setLocale("en"));
+	assert.match(text(row()), AGE_EN, "and back again");
+	await act(async () => root.unmount());
 });
 
 after(() => {

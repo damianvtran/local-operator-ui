@@ -11521,8 +11521,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.library",
-			"source_sha256": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
-			"target_sha256": "e30da1148f9d927bd0dd088de9229c338b4835512e83a3b5591efa951a2cb956",
+			"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+			"target_sha256": "cf90f236e786baaf426af113f0b54771e308a2cb64396925a5d2d05f4072bf95",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -11531,20 +11531,18 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-20",
 					"result": "clean",
-					"instance": "f290d34143fb",
+					"instance": "10332831a316",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f290d34143fb.json",
-					"receipt_sha256": "fe00a1582d23089953c6c308cd2de4c7506b9195f04ea0e736552971cf122221",
-					"scope": "hi ui.library vs current en source — main-repair delta audit (16 values across 3 namespaces)",
-					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+					"receipt": "i18n/receipts/10332831a316.json",
+					"receipt_sha256": "9e2a2b87715ce190b265ac3c833db24abc8fc1aaf18069f116c97a7b791b8781"
 				}
 			],
 			"status": "audited",
@@ -11568,6 +11566,30 @@
 							"receipt": "i18n/receipts/1699379ffbee.json",
 							"receipt_sha256": "e538487d30740f70d70bff4388b5c2098621514fb2ee1723dd8854907d246de0",
 							"scope": "hi ui.library vs en source — round 2 remediation-diff audit on final bytes",
+							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
+					"target_sha256": "e30da1148f9d927bd0dd088de9229c338b4835512e83a3b5591efa951a2cb956",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "f290d34143fb",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f290d34143fb.json",
+							"receipt_sha256": "fe00a1582d23089953c6c308cd2de4c7506b9195f04ea0e736552971cf122221",
+							"scope": "hi ui.library vs current en source — main-repair delta audit (16 values across 3 namespaces)",
 							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
 						}
 					],
@@ -15659,8 +15681,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.library",
-			"source_sha256": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
-			"target_sha256": "1161086e3469bfed8c0fc0f4f80f1d6952aaf174cf3b9b92f449ee39299e0021",
+			"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+			"target_sha256": "04e9d9e7224c859b31500dde60aceb16f825df33aecf1e23517eb1e62e4635ac",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -15668,21 +15690,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"agent": "reviewer",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-20",
 					"result": "clean",
-					"instance": "2e23db9ac7c0",
+					"instance": "6efc8add2188",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2e23db9ac7c0.json",
-					"receipt_sha256": "e6f5f7c8a40bb1ab74a0168145c8649325809a745d0c59cf323d5e502570b8dd",
-					"scope": "Post-merge drift: new English keys carried at the final bytes.",
-					"note": "New keys landed on main after the tranche; translated and independently audited."
+					"receipt": "i18n/receipts/6efc8add2188.json",
+					"receipt_sha256": "76398ce62688718c24e0c7c9bd3265cab0a8e807efe7feb1ea03266f1a99718e"
 				}
 			],
 			"status": "audited",
@@ -15707,6 +15727,30 @@
 							"receipt_sha256": "329c276e130179237d9a211a060c0ebcdbeccb09d80e70a4c335375e52610103",
 							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
 							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
+					"target_sha256": "1161086e3469bfed8c0fc0f4f80f1d6952aaf174cf3b9b92f449ee39299e0021",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "2e23db9ac7c0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2e23db9ac7c0.json",
+							"receipt_sha256": "e6f5f7c8a40bb1ab74a0168145c8649325809a745d0c59cf323d5e502570b8dd",
+							"scope": "Post-merge drift: new English keys carried at the final bytes.",
+							"note": "New keys landed on main after the tranche; translated and independently audited."
 						}
 					],
 					"status": "audited"
@@ -16809,8 +16853,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.library",
-			"source_sha256": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
-			"target_sha256": "86566d4a660fcb5303dd9331f859c354f7030cbbd2415245f654c9ef85bae562",
+			"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+			"target_sha256": "6fd498d38471656227382d135020a2e1047950e04044a9c185de43cab9f319f9",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -16822,20 +16866,44 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-20",
 					"result": "clean",
-					"instance": "7f3a1c9e-r2",
+					"instance": "a4607d62363d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7f3a1c9e-r2.json",
-					"receipt_sha256": "3a791ebfb0bc2598474ca59c54b3398ae2eb9cb15277fc0c657ac100d5fac73e",
-					"scope": "fr ui.library vs en source at 75428c035e - wave-1 full namespace pass",
-					"note": "0 BLOCKER/MAJOR; clean pass on the audited bytes."
+					"receipt": "i18n/receipts/a4607d62363d.json",
+					"receipt_sha256": "90c0f567ae7c2f41450c38b5ecde7ad8c5af1641a945c76be6928a4f72c8bad9"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
+					"target_sha256": "86566d4a660fcb5303dd9331f859c354f7030cbbd2415245f654c9ef85bae562",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "7f3a1c9e-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7f3a1c9e-r2.json",
+							"receipt_sha256": "3a791ebfb0bc2598474ca59c54b3398ae2eb9cb15277fc0c657ac100d5fac73e",
+							"scope": "fr ui.library vs en source at 75428c035e - wave-1 full namespace pass",
+							"note": "0 BLOCKER/MAJOR; clean pass on the audited bytes."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -17047,8 +17115,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.library",
-			"source_sha256": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
-			"target_sha256": "37bf8f3e1d5e8785938444bf346ef1aafb2d00b150d34dd5a48aa70b598a2f86",
+			"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+			"target_sha256": "d2bcc2ab1d21fcbe56cc98039b50b1b076219d98bada6636756b1ee80db874f7",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -17056,24 +17124,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "reviewer",
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-20",
 					"result": "clean",
-					"instance": "b28d4e61-r2",
+					"instance": "d96abdb97c68",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b28d4e61-r2.json",
-					"receipt_sha256": "1a105061d61af7a578a2c47e558a798b212df9ff497f53ea766ee31e85cba26a",
-					"scope": "es ui.library vs en source at 75428c035e - wave-1 full namespace pass",
-					"note": "0 BLOCKER/MAJOR; clean pass on the audited bytes."
+					"receipt": "i18n/receipts/d96abdb97c68.json",
+					"receipt_sha256": "f7764696c31ee2c610243eeb356d9738abc071556f358888479d312689a93aec"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
+					"target_sha256": "37bf8f3e1d5e8785938444bf346ef1aafb2d00b150d34dd5a48aa70b598a2f86",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "b28d4e61-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b28d4e61-r2.json",
+							"receipt_sha256": "1a105061d61af7a578a2c47e558a798b212df9ff497f53ea766ee31e85cba26a",
+							"scope": "es ui.library vs en source at 75428c035e - wave-1 full namespace pass",
+							"note": "0 BLOCKER/MAJOR; clean pass on the audited bytes."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
@@ -17321,8 +17413,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.library",
-			"source_sha256": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
-			"target_sha256": "bef961112be6b8fcbf34d87174c7798111c4a869eb60e84f11e429de983b21a6",
+			"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+			"target_sha256": "a5c0458632425986ba1afa6a973a9c42f301b1723f6a219d5957a110aa71ac99",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -17330,24 +17422,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "reviewer",
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-20",
-					"result": "clean",
-					"instance": "c94a2f70",
+					"result": "clean-with-findings",
+					"instance": "02585a00b5d3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c94a2f70.json",
-					"receipt_sha256": "49bcf7665f9a32c19a825151ffa92bb1cd4e3244b20cdcd941a85e9a291416f9",
-					"scope": "zh-CN ui.library vs en source at 75428c035e - wave-1 full namespace pass",
-					"note": "0 BLOCKER/MAJOR; clean pass on the audited bytes."
+					"receipt": "i18n/receipts/02585a00b5d3.json",
+					"receipt_sha256": "62ac9df15cfc53a8f185cb11b80833c1ac12e73756359c97ec2170c310745aed"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
+					"target_sha256": "bef961112be6b8fcbf34d87174c7798111c4a869eb60e84f11e429de983b21a6",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "c94a2f70",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c94a2f70.json",
+							"receipt_sha256": "49bcf7665f9a32c19a825151ffa92bb1cd4e3244b20cdcd941a85e9a291416f9",
+							"scope": "zh-CN ui.library vs en source at 75428c035e - wave-1 full namespace pass",
+							"note": "0 BLOCKER/MAJOR; clean pass on the audited bytes."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",

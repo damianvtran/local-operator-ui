@@ -966,5 +966,61 @@
 		"tone": "Concise neutral desktop UI copy, sentence case.",
 		"note": "English source: This slide has no extractable text..",
 		"length": "English is 35 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.time.just_now": {
+		"role": "Library metadata: relative age of an asset or of the Librarian's last run",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: just now. Shown for anything under a minute old, in a narrow metadata slot.",
+		"length": "English is 8 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.time.minutes_m_ago": {
+		"role": "Library metadata: relative age, minutes",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: {minutes, plural, one {{minutes, number, ::group-off}m ago} other {{minutes, number, ::group-off}m ago}}. The English form is deliberately compact (\"4m ago\"): a single unit letter, no space before it, and it sits in a narrow sidebar and metadata slot. This string is a FRAGMENT composed into a larger sentence by its caller (\"Last organized {at}\", \"Organized by {by} {at}\"), so it must read as an adverbial phrase on its own and must not become a full sentence.",
+		"length": "English is 104 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"minutes": "Whole minutes, floored by the caller; never negative."
+		},
+		"plural": "ICU plural: keep one/other and the minutes variable; French adds many, Russian adds few/many. The compact unit abbreviation is the point — do not spell the unit out."
+	},
+	"ui.library.time.hours_h_ago": {
+		"role": "Library metadata: relative age, hours",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: {hours, plural, one {{hours, number, ::group-off}h ago} other {{hours, number, ::group-off}h ago}}. A compact FRAGMENT composed into a larger sentence by its caller; see ui.library.time.minutes_m_ago.",
+		"length": "English is 98 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"hours": "Whole hours, floored by the caller; never negative."
+		},
+		"plural": "ICU plural: keep one/other and the hours variable; the compact unit abbreviation is the point."
+	},
+	"ui.library.time.days_d_ago": {
+		"role": "Library metadata: relative age, days",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: {days, plural, one {{days, number, ::group-off}d ago} other {{days, number, ::group-off}d ago}}. A compact FRAGMENT composed into a larger sentence by its caller; see ui.library.time.minutes_m_ago.",
+		"length": "English is 95 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"days": "Whole days, floored by the caller; never negative."
+		},
+		"plural": "ICU plural: keep one/other and the days variable; the compact unit abbreviation is the point."
+	},
+	"ui.library.time.months_mo_ago": {
+		"role": "Library metadata: relative age, months",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: {months, plural, one {{months, number, ::group-off}mo ago} other {{months, number, ::group-off}mo ago}}. A compact FRAGMENT composed into a larger sentence by its caller; see ui.library.time.minutes_m_ago. The English month unit is \"mo\" so it cannot be read as minutes.",
+		"length": "English is 103 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"months": "Whole months (30-day units), floored by the caller; never negative."
+		},
+		"plural": "ICU plural: keep one/other and the months variable. Use an unambiguous month word — a bare single-letter abbreviation can be read as minutes."
+	},
+	"ui.library.time.years_y_ago": {
+		"role": "Library metadata: relative age, years",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: {years, plural, one {{years, number, ::group-off}y ago} other {{years, number, ::group-off}y ago}}. A compact FRAGMENT composed into a larger sentence by its caller; see ui.library.time.minutes_m_ago.",
+		"length": "English is 98 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"years": "Whole years (12-month units), floored by the caller; never negative."
+		},
+		"plural": "ICU plural: keep one/other and the years variable; the compact unit abbreviation is the point."
 	}
 }
