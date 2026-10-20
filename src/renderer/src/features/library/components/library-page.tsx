@@ -173,7 +173,18 @@ function useViewportWidth() {
 	return width;
 }
 
-/** The Librarian's compact status row, inside the reserved 40px header track. */
+/**
+ * The Librarian's compact status row, inside the reserved 40px header track.
+ *
+ * THE 40px IS A FLOOR, NOT A FIXED HEIGHT. The row wraps (`flex-wrap`) because
+ * a translation can outgrow one line — ru's "Упорядочить"/"Открыть" pair plus
+ * the unorganized count is 604px of content in a 536px track at the preview-dock
+ * width — and a fixed `h-10` with `overflow-hidden` silently clipped the lower
+ * 9.4px of both 28px buttons, leaving only 18.6px hit-testable. `min-h-10` lets
+ * the wrapped second line grow the row (and the header, whose 136px is also a
+ * floor), so nothing is drawn outside its own box; the track's reserved height
+ * while the status loads is unchanged because one line still fills 40px.
+ */
 const LibrarianRow: FC<{ enabled: boolean; nowMs: number }> = ({
 	enabled,
 	nowMs,
@@ -194,7 +205,7 @@ const LibrarianRow: FC<{ enabled: boolean; nowMs: number }> = ({
 		librarian.unorganized ?? librarian.library?.unorganized ?? null;
 	return (
 		<div
-			className="flex h-10 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 overflow-hidden text-meta text-ink-muted"
+			className="flex min-h-10 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 overflow-hidden text-meta text-ink-muted"
 			data-library-librarian=""
 		>
 			<span className="font-medium text-ink">

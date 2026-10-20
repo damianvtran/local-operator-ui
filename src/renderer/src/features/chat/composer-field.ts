@@ -91,3 +91,39 @@ export function composerField(): HTMLTextAreaElement | null {
 export function focusComposer(): void {
 	composer?.give();
 }
+
+/**
+ * Whether a console `open` reveal may swap the visible conversation.
+ *
+ * Main downgrades `open` to `none` only when the window is unfocused; a FOCUSED
+ * window can still have a caret in the composer (or a paste about to land), and
+ * switching conversations unmounts that field and lets the new composer
+ * self-focus, losing the draft. This is the renderer half of the same rule
+ * `canRetargetWindow` applies to open-conversation requests in main: never
+ * replace the conversation under someone who is typing.
+ *
+ * A reveal for the conversation already on screen swaps nothing, so it is always
+ * allowed. The text-entry test matches the one the composer's own autofocus and
+ * the dictation guard use (INPUT, TEXTAREA, plus contenteditable).
+ */
+export function consoleRevealMayNavigate({
+	targetSessionId,
+	displayedSessionId,
+	activeElement,
+	commandPaletteOpen,
+}: {
+	targetSessionId: string;
+	displayedSessionId: string | null | undefined;
+	activeElement: Element | null;
+	commandPaletteOpen: boolean;
+}): boolean {
+	if (targetSessionId === displayedSessionId) return true;
+	if (commandPaletteOpen) return false;
+	const el = activeElement as HTMLElement | null;
+	const typing =
+		el !== null &&
+		(el.tagName === "INPUT" ||
+			el.tagName === "TEXTAREA" ||
+			el.isContentEditable === true);
+	return !typing;
+}

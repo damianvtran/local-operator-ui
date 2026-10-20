@@ -24,7 +24,6 @@ const bundle = await build({
 	stdin: {
 		contents: `
 export * from "./src/renderer/src/features/chat/chat-tag-groups";
-export * from "./src/renderer/src/features/chat/chat-tag-draft";
 export {moveChatToTag} from "./src/renderer/src/features/chat/chat-tag-move";
 export {parseSidebarView, DEFAULT_SIDEBAR_VIEW} from "./src/renderer/src/features/chat/chat-sidebar-view";
 export {DesktopControlError} from "./src/renderer/src/shared/api/local-operator/desktop-api";
@@ -89,7 +88,6 @@ export const discardPendingSends = () => undefined;
 const {
 	moveChatToTag,
 	groupChatsByTag,
-	deletedTagNameReused,
 	draftPrimary,
 	parseSidebarView,
 	DEFAULT_SIDEBAR_VIEW,
@@ -319,17 +317,33 @@ test("clear uses one assignment and settles the canonical row on the response", 
 	assert.equal(canonical.getState().sessions[0].primary, null);
 });
 
-test("management has one explicit desired-state write and buffered local operations", () => {
+test("management writes every create, rename, reorder and delete immediately with no Apply transaction", () => {
 	const source = readFileSync(
 		"src/renderer/src/features/chat/components/manage-tags-dialog.tsx",
 		"utf8",
 	);
-	assert.equal(source.split("await replaceCategories(").length - 1, 1);
-	assert.ok(source.includes("await replaceCategories(draft)"));
-	assert.ok(source.includes("setDraft(next)"));
-	assert.ok(source.includes('t("ui.chat.tags.cancel")'));
-	assert.ok(source.includes('t("ui.chat.tags.apply")'));
-	assert.ok(!source.includes('t("ui.chat.tags.done")'));
+	assert.ok(!source.includes("setDraft"), "no staged draft remains");
+	assert.ok(!source.includes('t("ui.chat.tags.apply")'), "no Apply action");
+	assert.ok(!source.includes('t("ui.chat.tags.done")'), "no relabelled Apply");
+	assert.ok(
+		source.split("await write(").length - 1 >= 4,
+		"create, rename, reorder and delete each commit",
+	);
+	assert.ok(source.includes('t("ui.chat.tag_dialogs.close")'));
+	// The destructive path keeps a per-action confirmation, not a dialog-wide one.
+	assert.ok(source.includes('t("ui.chat.tags.delete_description"'));
+	assert.ok(source.includes('t("ui.chat.tags.delete_tag")'));
+	const copy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.tag_dialogs.json", "utf8"),
+	);
+	assert.equal(
+		copy["ui.chat.tag_dialogs.manage_description"],
+		"Create, rename, reorder and delete tags. Changes save immediately.",
+	);
+	assert.equal(
+		copy["ui.chat.tag_dialogs.picker_description"],
+		"Changes save immediately. Select a tag to add it, or deselect it to remove it.",
+	);
 });
 test("assignment confirms the exact grouped or Untagged success copy after the write", () => {
 	const copy = JSON.parse(
@@ -348,62 +362,47 @@ test("assignment confirms the exact grouped or Untagged success copy after the w
 		"utf8",
 	);
 	assert.ok(
-		source.indexOf("showSuccessToast(") >
-			source.indexOf("await assignSessionTags("),
-	);
-	assert.ok(
-		source.includes(
-			't("ui.chat.tags.updated_grouped", { tag: primaryTag.name })',
-		),
+		source.includes('t("ui.chat.tags.updated_grouped", { tag: tag.name })'),
 	);
 	assert.ok(source.includes('t("ui.chat.tags.updated_untagged")'));
+	// The confirmation is raised from the write's own answer, so the toast call
+	// follows the awaited toggle rather than hanging off an Apply handler.
+	assert.ok(source.includes("const result = await toggle(id);"));
+	// Create resolves the new tag from the registry the write returned, then
+	// assigns it in the same interaction; it never waits for Apply. Both live in
+	// the one immediate-commit hook the two dialogs share.
+	const hook = readFileSync(
+		"src/renderer/src/features/chat/use-chat-tag-assignment.ts",
+		"utf8",
+	);
+	assert.ok(hook.includes("const registry = await replaceCategories("));
+	assert.ok(hook.includes("registry.find((tag) => tag.name === trimmed)"));
+	assert.ok(hook.includes("await write(next, fallback)"));
+	assert.ok(!hook.includes('t("ui.chat.tags.apply")'));
+	assert.ok(!source.includes('t("ui.chat.tags.apply")'));
 });
 
-test("delete plus name-only recreation is blocked without blocking normal add/delete", () => {
-	const registry = [
-		{ id: "a", name: "Review" },
-		{ id: "b", name: "Project" },
-	];
-	assert.equal(
-		deletedTagNameReused(registry, [
-			{ id: "b", name: "Project" },
-			{ name: "Review" },
-		]),
-		"Review",
-	);
-	assert.equal(
-		deletedTagNameReused(registry, [{ name: " review " }]),
-		" review ",
-	);
-	assert.equal(
-		deletedTagNameReused(registry, [{ id: "b", name: "Project" }]),
-		null,
-	);
-	assert.equal(
-		deletedTagNameReused(registry, [...registry, { name: "Concept" }]),
-		null,
-	);
-	assert.equal(
-		deletedTagNameReused(registry, [
-			{ id: "a", name: "Renamed" },
-			{ name: "Review" },
-		]),
-		null,
-	);
-});
 test("save failures are tag-specific, loading errors are not empty registries, and title has no action ellipsis", () => {
-	for (const file of ["chat-session-tags-dialog", "manage-tags-dialog"]) {
-		const source = readFileSync(
-			`src/renderer/src/features/chat/components/${file}.tsx`,
-			"utf8",
-		);
-		assert.ok(source.includes('"ui.chat.tags.save_failed"'));
-		if (file === "chat-session-tags-dialog") {
-			assert.ok(source.includes('"ui.chat.tags.create_failed"'));
-			assert.ok(source.includes("isTagsConflict(error)"));
-		}
+	const picker = readFileSync(
+		"src/renderer/src/features/chat/components/chat-session-tags-dialog.tsx",
+		"utf8",
+	);
+	const manage = readFileSync(
+		"src/renderer/src/features/chat/components/manage-tags-dialog.tsx",
+		"utf8",
+	);
+	// The picker's own writes moved into the shared immediate-commit hook; the
+	// surface keeps only what it still owns (the move path's conflict handling).
+	const hook = readFileSync(
+		"src/renderer/src/features/chat/use-chat-tag-assignment.ts",
+		"utf8",
+	);
+	assert.ok(manage.includes('"ui.chat.tags.save_failed"'));
+	assert.ok(hook.includes('"ui.chat.tags.save_failed"'));
+	assert.ok(hook.includes('"ui.chat.tags.create_failed"'));
+	assert.ok(picker.includes("isTagsConflict(error)"));
+	for (const source of [manage, picker, hook])
 		assert.ok(!source.includes("userFacingMessage"));
-	}
 	const sidebar = readFileSync(
 		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
 		"utf8",
