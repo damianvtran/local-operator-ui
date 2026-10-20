@@ -10,7 +10,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Plus, X } from "lucide-react";
 import type { FC } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { TeamBridgeMemberInput } from "../../../../shared/team-bridge-contract";
 
 /**
@@ -27,9 +27,17 @@ import type { TeamBridgeMemberInput } from "../../../../shared/team-bridge-contr
  * agent row names its endpoint (the agent's bridge endpoint in this tenant) and
  * stays invited until its owner consents. The dialog does not attempt that
  * consent: it belongs to the owner's machine and is a separate, explicit act.
+ *
+ * A SEEDED OPEN comes from the rail's People section: clicking a reachable
+ * person with no existing DM opens this dialog already addressed to them. The
+ * seed is read on every OPEN, not only at mount — the dialog stays mounted
+ * behind the page, and a second person clicked after a cancelled first attempt
+ * must not inherit the first person's row.
  */
 export const TeamBridgeCreateDialog: FC<{
 	open: boolean;
+	/** Prefill a DM with this person when the dialog opens. */
+	seed?: { accountId: string; displayLabel: string } | null;
 	onClose: () => void;
 	onCreate: (input: {
 		kind: "dm" | "group" | "channel";
@@ -40,7 +48,7 @@ export const TeamBridgeCreateDialog: FC<{
 	}) => void;
 	pending?: boolean;
 	error?: string;
-}> = ({ open, onClose, onCreate, pending = false, error }) => {
+}> = ({ open, seed, onClose, onCreate, pending = false, error }) => {
 	useI18nLocale();
 	const [kind, setKind] = useState<"dm" | "group" | "channel">("dm");
 	const [name, setName] = useState("");
@@ -54,6 +62,30 @@ export const TeamBridgeCreateDialog: FC<{
 			rowId: crypto.randomUUID(),
 		},
 	]);
+	const seedAccountId = seed?.accountId ?? "";
+	const seedDisplayLabel = seed?.displayLabel ?? "";
+
+	/*
+	 * EVERY OPEN STARTS A FRESH FORM. A half-typed group that was cancelled must
+	 * not reappear under a person's name, and a seeded DM must be addressed to
+	 * the person clicked THIS time. The effect runs on close too (the early
+	 * return), which keeps the behind-the-page mount clean for the next open.
+	 * The deps are `seed`'s primitive identity: the object itself is rebuilt by
+	 * the page on every render, so depending on it would reset a typed form.
+	 */
+	useEffect(() => {
+		if (!open) return;
+		setKind("dm");
+		setName("");
+		setMembers([
+			{
+				account_id: seedAccountId,
+				kind: "human",
+				display_label: seedDisplayLabel,
+				rowId: crypto.randomUUID(),
+			},
+		]);
+	}, [open, seedAccountId, seedDisplayLabel]);
 
 	const update = (index: number, patch: Partial<TeamBridgeMemberInput>) => {
 		setMembers((current) =>

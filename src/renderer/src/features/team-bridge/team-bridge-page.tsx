@@ -9,10 +9,11 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { AtSign, BellOff, Bot, Hash, Plus, Send, Users } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type {
 	TeamBridgeConversation,
+	TeamBridgeDirectoryMember,
 	TeamBridgeMessage,
 	TeamBridgeNotify,
 } from "../../../../shared/team-bridge-contract";
@@ -20,6 +21,7 @@ import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
+	type TeamBridgeEligibility,
 	type TeamBridgeOrganization,
 	type TeamBridgeScope,
 	asTeamBridgeTenantId,
@@ -28,12 +30,17 @@ import {
 	conversationMemberCount,
 	conversationOrganizationName,
 	conversationTitle,
+	dmWithPerson,
 	isPreviewConversation,
 	notifyFailureIsVisible,
 	orderedMembers,
 	organizationOptions,
+	personInitial,
+	personRowState,
 	preferredScope,
 	showsMutedGlyph,
+	showsPersonRole,
+	teamBridgeEligibility,
 	visibleConversationRows,
 } from "./team-bridge-model";
 import { TeamBridgeOrgSwitcher } from "./team-bridge-org-switcher";
@@ -44,8 +51,10 @@ import {
 	useSendTeamBridgeMessage,
 	useSetTeamBridgeNotify,
 	useTeamBridgeConversations,
+	useTeamBridgeDirectory,
 	useTeamBridgeIdentity,
 	useTeamBridgeMessages,
+	useTeamBridgeStatus,
 	useTeamBridgeUnread,
 } from "./use-team-bridge";
 
@@ -70,6 +79,284 @@ import {
  * what lets the stories render loading, empty, error and populated states
  * without a backend, and it keeps the visual review honest.
  */
+
+/**
+ * The rail's People section: every active human member of the selected
+ * organization, below its conversations.
+ *
+ * WHY BESIDE THE LIST AND NOT IN IT. A conversation is a room; a person is a
+ * destination that may not have a room yet. Mixing them would make the rail's
+ * unread/paging order say something about people it never meant to say, so the
+ * section is its own block with its own heading and its own loading/error
+ * states. A failed directory read renders HERE and leaves the conversation
+ * list above it untouched — the two reads are independent on purpose.
+ *
+ * THE MERGED SCOPE HAS NO ROSTER. "All organizations" is not a tenant, and a
+ * merged people list would have to invent which organization each person
+ * belongs to; the section states that instead of guessing. The directory query
+ * is not even enabled in that scope (`useTeamBridgeDirectory(null)`).
+ *
+ * ROWS INHERIT THE RAIL'S RHYTHM. 30px rows, a 20px initial, 13px labels, no
+ * borders: the same tokens the conversation rows and the org switcher use. A
+ * person whose bridge is off is still drawn — the point is that you can see who
+ * is potentially reachable — but as an inert, `aria-disabled` row whose cue
+ * explains why, not as a control that silently does nothing.
+ */
+const PersonRow: FC<{
+	member: TeamBridgeDirectoryMember;
+	selfAccountId?: string;
+	/** The conversation this row opens, when one already exists. */
+	existingDm: TeamBridgeConversation | null;
+	onOpenConversation: (conversationId: string) => void;
+	onComposeToPerson?: (member: TeamBridgeDirectoryMember) => void;
+}> = ({
+	member,
+	selfAccountId,
+	existingDm,
+	onOpenConversation,
+	onComposeToPerson,
+}) => {
+	useI18nLocale();
+	const cueId = useId();
+	const state = personRowState(member, selfAccountId);
+	const base =
+		"flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-left text-[13px]";
+	const avatar = (
+		<span
+			aria-hidden="true"
+			className={cn(
+				"flex size-5 shrink-0 items-center justify-center rounded-full bg-sunken text-[10px] font-medium",
+				state === "unavailable" ? "text-ink-disabled" : "text-ink-muted",
+			)}
+		>
+			{personInitial(member.display_label)}
+		</span>
+	);
+	const role =
+		showsPersonRole(member.role) && state !== "self" ? (
+			<span className="shrink-0 text-meta-sm capitalize text-ink-dim">
+				{member.role}
+			</span>
+		) : null;
+
+	if (state === "self") {
+		/* Not a control: mailing yourself is not an action the rail offers. */
+		return (
+			<li>
+				<div className={cn(base, "cursor-default text-ink-muted")}>
+					{avatar}
+					<span className="min-w-0 flex-1 truncate">
+						{t("ui.teamBridge.people.self")}
+					</span>
+					{role}
+				</div>
+			</li>
+		);
+	}
+
+	if (state === "unavailable") {
+		/*
+		 * `aria-disabled`, not the `disabled` attribute: a disabled button is
+		 * removed from the tab order, so its explanation would be unreachable to
+		 * exactly the reader who needs it. The described-by cue is the visible
+		 * tooltip too, so sighted and assistive readers get one sentence.
+		 */
+		return (
+			<li>
+				<button
+					type="button"
+					aria-disabled="true"
+					aria-describedby={cueId}
+					title={t("ui.teamBridge.people.bridge_off")}
+					className={cn(base, "cursor-default text-ink-disabled")}
+				>
+					{avatar}
+					<span className="min-w-0 flex-1 truncate">
+						{member.display_label}
+					</span>
+					{role}
+					<span id={cueId} className="sr-only">
+						{t("ui.teamBridge.people.bridge_off")}
+					</span>
+				</button>
+			</li>
+		);
+	}
+
+	const paused = state === "paused";
+	return (
+		<li>
+			<button
+				type="button"
+				onClick={() =>
+					existingDm
+						? onOpenConversation(existingDm.id)
+						: onComposeToPerson?.(member)
+				}
+				aria-label={
+					paused
+						? t("ui.teamBridge.people.message_paused", {
+								name: member.display_label,
+							})
+						: t("ui.teamBridge.people.message", {
+								name: member.display_label,
+							})
+				}
+				className={cn(
+					base,
+					"text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink",
+				)}
+			>
+				{avatar}
+				<span className="min-w-0 flex-1 truncate">{member.display_label}</span>
+				{role}
+				{paused && (
+					<span className="shrink-0 text-meta-sm text-ink-dim">
+						{t("ui.teamBridge.people.paused")}
+					</span>
+				)}
+			</button>
+		</li>
+	);
+};
+
+const PeopleSection: FC<{
+	scope: TeamBridgeScope;
+	people: readonly TeamBridgeDirectoryMember[];
+	peopleState: "loading" | "error" | "ready";
+	selfAccountId?: string;
+	conversations: readonly TeamBridgeConversation[];
+	onSelect: (conversationId: string) => void;
+	onRetry?: () => void;
+	onComposeToPerson?: (member: TeamBridgeDirectoryMember) => void;
+}> = ({
+	scope,
+	people,
+	peopleState,
+	selfAccountId,
+	conversations,
+	onSelect,
+	onRetry,
+	onComposeToPerson,
+}) => {
+	useI18nLocale();
+	const merged = scope === TEAM_BRIDGE_ALL_SCOPE;
+	return (
+		<section aria-labelledby="team-bridge-people-heading" className="px-1 pb-3">
+			<h3
+				id="team-bridge-people-heading"
+				className="px-2 pb-1 pt-3 text-meta font-medium tracking-wide text-ink-dim"
+			>
+				{t("ui.teamBridge.people.title")}
+			</h3>
+			{merged ? (
+				<p className="px-2 py-1 text-[12px] leading-snug text-ink-dim">
+					{t("ui.teamBridge.people.all_scope")}
+				</p>
+			) : peopleState === "loading" ? (
+				<div className="flex h-[30px] items-center px-2">
+					<Spinner size="sm" label={t("ui.teamBridge.people.loading")} />
+				</div>
+			) : peopleState === "error" ? (
+				<div className="flex flex-col items-start gap-2 px-2 py-1">
+					<p className="text-[12px] leading-snug text-ink-muted">
+						{t("ui.teamBridge.people.error")}
+					</p>
+					{onRetry && (
+						<Button type="button" size="sm" variant="outline" onClick={onRetry}>
+							{t("ui.teamBridge.list.retry")}
+						</Button>
+					)}
+				</div>
+			) : people.length === 0 ? (
+				<p className="px-2 py-1 text-[12px] leading-snug text-ink-dim">
+					{t("ui.teamBridge.people.empty")}
+				</p>
+			) : (
+				<ul className="flex flex-col">
+					{people.map((member) => (
+						<PersonRow
+							key={member.account_id}
+							member={member}
+							selfAccountId={selfAccountId}
+							existingDm={dmWithPerson(
+								conversations,
+								member.account_id,
+								selfAccountId,
+							)}
+							onOpenConversation={onSelect}
+							onComposeToPerson={onComposeToPerson}
+						/>
+					))}
+				</ul>
+			)}
+		</section>
+	);
+};
+
+/**
+ * What a signed-in user sees when the bridge says this account or
+ * organization cannot use it.
+ *
+ * A GATE, NOT AN ADVERTISEMENT. It names the exact reason the server gave and
+ * the value in one sentence; it draws no controls, because every control this
+ * page could offer (create, scope, compose) would be refused. The surface
+ * capability still mounts the page, so this is the honest answer for a build
+ * that can render Team Bridge but no plan can serve it.
+ */
+export const TeamBridgeEligibilityPanel: FC<{
+	reason: TeamBridgeEligibility;
+}> = ({ reason }) => {
+	useI18nLocale();
+	const copy = {
+		plan_required: {
+			title: "ui.teamBridge.plan.title",
+			reason: "ui.teamBridge.plan.reason",
+		},
+		signed_out: {
+			title: "ui.teamBridge.plan.sign_in_title",
+			reason: "ui.teamBridge.plan.sign_in_reason",
+		},
+		update_required: {
+			title: "ui.teamBridge.plan.update_title",
+			reason: "ui.teamBridge.plan.update_reason",
+		},
+		unavailable: {
+			title: "ui.teamBridge.plan.unavailable_title",
+			reason: "ui.teamBridge.plan.unavailable_reason",
+		},
+	} as const satisfies Record<
+		TeamBridgeEligibility,
+		{ title: string; reason: string }
+	>;
+	return (
+		<div
+			data-glass-region="canvas"
+			className="flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-canvas px-6"
+		>
+			<div className="max-w-lg text-center">
+				{/* The one glyph on the panel: Team Bridge is a people surface, and the
+				    mark gives the centred block an anchor without a control. */}
+				<Users
+					size={20}
+					aria-hidden="true"
+					className="mx-auto mb-3 text-ink-dim"
+				/>
+				<h1 className="text-balance text-[16px] font-medium text-ink">
+					{t(copy[reason].title)}
+				</h1>
+				<div className="mt-2">
+					<p className="text-pretty text-[13px] leading-relaxed text-ink-muted">
+						{t("ui.teamBridge.plan.body")}
+					</p>
+					<p className="mt-4 text-[12px] leading-snug text-ink-dim">
+						{t(copy[reason].reason)}
+					</p>
+				</div>
+			</div>
+		</div>
+	);
+};
 
 const ConversationRow: FC<{
 	conversation: TeamBridgeConversation;
@@ -305,6 +592,27 @@ export type TeamBridgePageViewProps = {
 	defaultMenuOpen?: boolean;
 	/** Story/test seed only: the page's real draft is user-owned state. */
 	initialDraft?: string;
+	/**
+	 * The rail's People section. `peopleState` is the directory read's own
+	 * state, deliberately separate from `listState`: a refused directory never
+	 * blanks the conversation list, and a refused list never hides the roster.
+	 */
+	people?: readonly TeamBridgeDirectoryMember[];
+	peopleState?: "loading" | "error" | "ready";
+	/** Retry the directory read behind the People section. */
+	onRetryPeople?: () => void;
+	/**
+	 * Open the new-conversation flow pre-seeded to a DM with this person. The
+	 * view resolves an existing DM itself and selects it instead; this is only
+	 * the no-DM path.
+	 */
+	onComposeToPerson?: (member: TeamBridgeDirectoryMember) => void;
+	/**
+	 * The bridge's eligibility verdict. Non-null replaces the whole page with
+	 * the plan/sign-in panel: an ineligible user must not see conversation or
+	 * member chrome whose every action would be refused.
+	 */
+	eligibility?: TeamBridgeEligibility | null;
 	onSelect: (conversationId: string) => void;
 	onSend: (body: string, clientRef: string) => Promise<unknown> | undefined;
 	onNewConversation: () => void;
@@ -335,6 +643,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onNotifyChange,
 	defaultMenuOpen = false,
 	initialDraft = "",
+	people = [],
+	peopleState = "ready",
+	onRetryPeople,
+	onComposeToPerson,
+	eligibility = null,
 	onSelect,
 	onSend,
 	onNewConversation,
@@ -404,6 +717,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			settle();
 		}
 	};
+
+	/*
+	 * THE GATE COMES BEFORE EVERY OTHER PIECE OF CHROME. An ineligible account
+	 * or organization would otherwise see a rail whose every affordance is
+	 * refused; the surface capability is what mounts the page, so this panel is
+	 * the honest content for that mount.
+	 */
+	if (eligibility) {
+		return <TeamBridgeEligibilityPanel reason={eligibility} />;
+	}
 
 	return (
 		<div
@@ -497,6 +820,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							))}
 						</ul>
 					)}
+					<PeopleSection
+						scope={scope}
+						people={people}
+						peopleState={peopleState}
+						selfAccountId={selfAccountId}
+						conversations={conversations}
+						onSelect={onSelect}
+						onRetry={onRetryPeople}
+						onComposeToPerson={onComposeToPerson}
+					/>
 				</ScrollArea>
 			</aside>
 
@@ -834,6 +1167,26 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	// the bridge status read, which is the one place the hub account is published.
 	const identity = useTeamBridgeIdentity();
 	const selfAccountId = identity.data ?? undefined;
+	/*
+	 * The eligibility gate and the rail's roster. Both are their own reads:
+	 * the status never blocks the first paint (a null verdict is "eligible"),
+	 * and the directory is disabled in the merged scope because there is no
+	 * single tenant whose people that view could show.
+	 */
+	const status = useTeamBridgeStatus();
+	const eligibility = teamBridgeEligibility(status.data);
+	const directory = useTeamBridgeDirectory(
+		scope === TEAM_BRIDGE_ALL_SCOPE ? null : scope,
+	);
+	/*
+	 * The person a rail click asked to compose to, when no DM exists yet. It
+	 * survives only while the create dialog is open: closing (or creating)
+	 * clears it, so the next "New conversation" press starts blank.
+	 */
+	const [composeTo, setComposeTo] = useState<{
+		accountId: string;
+		displayLabel: string;
+	} | null>(null);
 	const [selectedId, setSelectedId] = useState<string | null>(
 		() => requestedConversation,
 	);
@@ -869,6 +1222,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		setScope(next);
 		setSelectedId(null);
 		setCreateOpen(false);
+		setComposeTo(null);
 	};
 
 	// The memberships resolve after the first paint; adopt the only one unless
@@ -1004,7 +1358,29 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 					if (selected === null) return;
 					return send.mutateAsync({ clientRef, body });
 				}}
-				onNewConversation={() => setCreateOpen(true)}
+				onNewConversation={() => {
+					setComposeTo(null);
+					setCreateOpen(true);
+				}}
+				people={directory.data?.members ?? []}
+				peopleState={
+					directory.isPending
+						? "loading"
+						: directory.isError
+							? "error"
+							: "ready"
+				}
+				onRetryPeople={() => {
+					void directory.refetch();
+				}}
+				onComposeToPerson={(member) => {
+					setComposeTo({
+						accountId: member.account_id,
+						displayLabel: member.display_label,
+					});
+					setCreateOpen(true);
+				}}
+				eligibility={eligibility}
 				onRetry={() => {
 					void list.refetch();
 					if (memberships.isError) void memberships.refetch();
@@ -1016,13 +1392,18 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			/>
 			<TeamBridgeCreateDialog
 				open={createOpen}
+				seed={composeTo}
 				pending={create.isPending}
 				error={create.isError ? t("ui.teamBridge.create.error") : undefined}
-				onClose={() => setCreateOpen(false)}
+				onClose={() => {
+					setCreateOpen(false);
+					setComposeTo(null);
+				}}
 				onCreate={(input) => {
 					create.mutate(input, {
 						onSuccess: (created) => {
 							setCreateOpen(false);
+							setComposeTo(null);
 							const conversation = created as { id?: string };
 							if (conversation.id) setSelectedId(conversation.id);
 						},
