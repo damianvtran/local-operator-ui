@@ -35,7 +35,14 @@
  * code in this repository adds it.
  */
 
-import { currentLocale, renderMessage, translate } from "@shared/i18n";
+/*
+ * Relative, not the `@shared/i18n` alias: this module is pulled into the
+ * transport bundle that dozens of `scripts/*.test.mjs` build with their own
+ * esbuild alias maps, and not every harness declares that alias. The core has
+ * no DOM dependency, so reaching it directly is safe here (the same depth as
+ * `desktop-api.ts`'s contract imports).
+ */
+import { currentLocale, renderMessage, translate } from "../../../../../i18n";
 
 /** Where the sentence a reader sees came from. Read by tests and diagnostics. */
 export type EnvelopeSink = "catalogue" | "wire-text" | "generic";

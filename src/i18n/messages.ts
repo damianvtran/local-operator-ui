@@ -160,15 +160,19 @@ export type MessageRender =
  * Named JSON scalars are the transport contract (§3: "Params should remain
  * named JSON scalar values for ICU"). `IntlMessageFormat` does not throw on an
  * object — it strings it into the sentence — so without this guard a corrupt
- * envelope would paint `[object Object]` (or a list) where a word belongs. A
- * `null` is accepted: it is a JSON scalar and formats as an empty value.
+ * envelope would paint `[object Object]` (or a list) where a word belongs.
+ * `null` is accepted (a JSON scalar, formats as an empty value) and so is a
+ * `Date`, because the runtime is shared with `t()` call sites that pass one to
+ * a `{when, date, short}` argument; only values ICU has no meaning for are
+ * refused.
  */
 function isFormatParam(value: unknown): boolean {
 	return (
 		value === null ||
 		typeof value === "string" ||
 		typeof value === "boolean" ||
-		(typeof value === "number" && Number.isFinite(value))
+		(typeof value === "number" && Number.isFinite(value)) ||
+		(value instanceof Date && Number.isFinite(value.getTime()))
 	);
 }
 
