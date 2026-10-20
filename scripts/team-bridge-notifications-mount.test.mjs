@@ -1,0 +1,469 @@
+/**
+ * The Team Bridge notification hook, MOUNTED — not its helper functions.
+ *
+ * WHY THIS SUITE EXISTS. The N9 blocker was not a model bug: the model was
+ * right, and every model test passed while the shipped hook read an answer
+ * with no conversation rows and produced zero candidates. This suite mounts
+ * the REAL `useTeamBridgeNotifications` in jsdom, against the REAL React Query
+ * cache, and observes the tenant fan-out, the bound, the ordering, the
+ * per-organization seeding and the tenant tag each row carries to the banner.
+ *
+ * WHAT IS STUBBED, AND ONLY THIS: the transport (`TeamBridgeApi`), the
+ * membership query, and the preload's `notify`. Those are the hook's edges.
+ * The hook itself, its query keys, its `useQueries` fan-out and its planning
+ * effect are the shipped modules.
+ */
+import assert from "node:assert/strict";
+import { mkdtempSync, unlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { after, test } from "node:test";
+import { pathToFileURL } from "node:url";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { build } from "esbuild";
+import { JSDOM } from "jsdom";
+import React, { act } from "react";
+
+const scratch = mkdtempSync(join(tmpdir(), "team-bridge-notify-mount-"));
+const apiFixturePath = join(scratch, "team-bridge-api-fixture.mjs");
+const membershipsFixturePath = join(scratch, "memberships-fixture.mjs");
+const mountPath = new URL(
+	`./_team-bridge-notifications-mount-${process.pid}.mjs`,
+	import.meta.url,
+);
+
+/*
+ * The transport fixture: every payload the hook can receive, mutable between
+ * polls. `calls` is the observable the assertions read; `listGate` lets a test
+ * hold the conversation list unresolved while the unread answers move.
+ */
+writeFileSync(
+	apiFixturePath,
+	`
+export const fixture = {
+	identity: "acct_alice",
+	account: { total: 0, organizations: [] },
+	tenants: {},
+	conversations: { conversations: [] },
+	listGate: null,
+	calls: { identity: 0, conversations: 0, unread: [] },
+	releaseList: null,
+};
+
+const tenantOf = (scope) =>
+	typeof scope === "string" ? scope : scope.tenantId;
+
+export const TeamBridgeApi = {
+	async identity() {
+		fixture.calls.identity += 1;
+		return fixture.identity;
+	},
+	async listConversations() {
+		fixture.calls.conversations += 1;
+		if (fixture.listGate) await fixture.listGate;
+		return fixture.conversations;
+	},
+	async unread(scope) {
+		const tenant = tenantOf(scope);
+		fixture.calls.unread.push(tenant);
+		if (tenant === "account") return fixture.account;
+		return fixture.tenants[tenant] ?? { total: 0, conversations: [] };
+	},
+};
+`,
+);
+
+writeFileSync(
+	membershipsFixturePath,
+	`
+export function useMembershipsQuery() {
+	return { data: { memberships: [] } };
+}
+`,
+);
+
+const bundled = await build({
+	stdin: {
+		contents: `
+			export { useTeamBridgeNotifications } from "./src/renderer/src/features/team-bridge/use-team-bridge-notifications";
+			export { teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
+			export { fixture, TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
+		`,
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	packages: "external",
+	write: false,
+	alias: {
+		"@shared/api/local-operator/team-bridge-api": apiFixturePath,
+		"@features/agent-hub/hooks/use-memberships-query": membershipsFixturePath,
+		"@features": `${process.cwd()}/src/renderer/src/features`,
+		"@shared": `${process.cwd()}/src/renderer/src/shared`,
+	},
+});
+writeFileSync(mountPath, bundled.outputFiles[0].text);
+
+const api = await import(pathToFileURL(mountPath.pathname).href);
+const { fixture } = api;
+
+after(() => {
+	try {
+		unlinkSync(mountPath);
+	} catch {
+		/* already gone */
+	}
+});
+
+const member = (label, kind, state, accountId = `acct_${label}`) => ({
+	account_id: accountId,
+	kind,
+	display_label: label,
+	role: "member",
+	state,
+});
+
+const conversation = (id, tenantId) => ({
+	id,
+	tenant_id: tenantId,
+	kind: "group",
+	name: `Conversation ${id}`,
+	members: [
+		member("Alice", "human", "active", "acct_alice"),
+		member("Bob", "human", "active", "acct_bob"),
+	],
+	member: true,
+	notify: "all",
+	muted: false,
+	last_read_seq: 0,
+	unread_count: 0,
+});
+
+const notifyRow = (conversationId, latestSeq) => ({
+	conversation_id: conversationId,
+	unread_count: latestSeq,
+	last_read_seq: 0,
+	latest_seq: latestSeq,
+	muted: false,
+});
+
+const mount = async () => {
+	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
+		pretendToBeVisual: true,
+		url: "http://localhost/",
+	});
+	const previous = {
+		window: globalThis.window,
+		document: globalThis.document,
+	};
+	globalThis.window = dom.window;
+	globalThis.document = dom.window.document;
+	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+	const notifications = [];
+	dom.window.api = {
+		desktop: {
+			teamBridge: {
+				notify: async (request) => {
+					notifications.push(request);
+					return { shown: true };
+				},
+				onOpen: () => () => undefined,
+				pendingOpen: async () => null,
+			},
+		},
+	};
+	const { createRoot } = await import("react-dom/client");
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false, gcTime: 1_000 } },
+	});
+	const Probe = () => {
+		api.useTeamBridgeNotifications(true);
+		return null;
+	};
+	const root = createRoot(dom.window.document.getElementById("root"));
+	await act(async () => {
+		root.render(
+			React.createElement(
+				QueryClientProvider,
+				{ client },
+				React.createElement(Probe),
+			),
+		);
+	});
+	return {
+		client,
+		notifications,
+		teardown: async () => {
+			await act(async () => root.unmount());
+			client.clear();
+			dom.window.close();
+			globalThis.window = previous.window;
+			globalThis.document = previous.document;
+			globalThis.IS_REACT_ACT_ENVIRONMENT = false;
+		},
+	};
+};
+
+const until = async (predicate, label) => {
+	for (let attempt = 0; attempt < 300; attempt += 1) {
+		if (predicate()) return;
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		});
+	}
+	assert.fail(`timed out waiting for ${label}`);
+};
+
+/**
+ * One UI-scheduler beat, for effects React Query notified between assertions.
+ * The 30 s poll never fires here, so every wait is bounded by the test.
+ */
+const settle = () =>
+	act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 50));
+	});
+
+const resetFixture = () => {
+	fixture.identity = "acct_alice";
+	fixture.account = { total: 0, organizations: [] };
+	fixture.tenants = {};
+	fixture.conversations = { conversations: [] };
+	fixture.listGate = null;
+	fixture.releaseList = null;
+	fixture.calls = { identity: 0, conversations: 0, unread: [] };
+};
+
+test("the mounted hook bounds the fan-out, orders by unread, filters eligibility, seeds per org and tags each row", async () => {
+	resetFixture();
+	/*
+	 * NINE loud orgs plus a tie for the last slot. `tnt_a` and `tnt_b` both
+	 * report five; the lexicographically smaller tenant must win the tenth slot.
+	 * The ineligible org has the largest count and must not be read at all.
+	 */
+	const eligible = [
+		/* Sorts below the top ten; a server-order slice would wrongly read it. */
+		{ tenant_id: "tnt_low", tenant_name: "Low Org", unread: 1, eligible: true },
+		...Array.from({ length: 9 }, (_, index) => ({
+			tenant_id: `tnt_0${index + 1}`,
+			tenant_name: `Org ${index + 1}`,
+			unread: 10,
+			eligible: true,
+		})),
+		{ tenant_id: "tnt_b", tenant_name: "Org B", unread: 5, eligible: true },
+		{ tenant_id: "tnt_a", tenant_name: "Org A", unread: 5, eligible: true },
+	];
+	fixture.account = {
+		total: 200,
+		organizations: [
+			...eligible,
+			{
+				tenant_id: "tnt_ineligible",
+				tenant_name: "Ineligible Org",
+				unread: 100,
+				eligible: false,
+			},
+		],
+	};
+	fixture.tenants = Object.fromEntries(
+		eligible.map((organization) => [
+			organization.tenant_id,
+			{
+				total: 1,
+				conversations: [notifyRow(`bcv_${organization.tenant_id}`, 1)],
+			},
+		]),
+	);
+	fixture.conversations = {
+		conversations: eligible.map((organization) =>
+			conversation(`bcv_${organization.tenant_id}`, organization.tenant_id),
+		),
+	};
+
+	const mounted = await mount();
+	try {
+		await until(
+			() =>
+				fixture.calls.unread.filter((tenant) => tenant !== "account").length ===
+				10,
+			"ten tenant reads",
+		);
+		const readTenants = fixture.calls.unread.filter(
+			(tenant) => tenant !== "account",
+		);
+		assert.equal(new Set(readTenants).size, 10, "the fan-out is bounded to 10");
+		const expected = [
+			"tnt_01",
+			"tnt_02",
+			"tnt_03",
+			"tnt_04",
+			"tnt_05",
+			"tnt_06",
+			"tnt_07",
+			"tnt_08",
+			"tnt_09",
+			"tnt_a",
+		];
+		assert.deepEqual(
+			[...new Set(readTenants)].sort(),
+			[...expected].sort(),
+			"loudest orgs first, the tenant-id tie-break fills the last slot, ineligible org not read",
+		);
+		assert.equal(
+			fixture.calls.unread.includes("tnt_ineligible"),
+			false,
+			"an ineligible org is never read",
+		);
+		assert.equal(
+			fixture.calls.unread.includes("tnt_low"),
+			false,
+			"a low-count org below the bound is not read",
+		);
+		assert.equal(
+			mounted.notifications.length,
+			0,
+			"the first answered read seeds every organization without a banner",
+		);
+		await until(() => {
+			const queries = mounted.client
+				.getQueryCache()
+				.findAll({ queryKey: api.teamBridgeKeys.unreadPrefix });
+			return (
+				queries.length === 11 &&
+				queries.every((query) => query.state.status === "success")
+			);
+		}, "every seeded organization to answer before the second poll");
+		await settle();
+
+		fixture.tenants.tnt_01.total = 2;
+		fixture.tenants.tnt_01.conversations = [notifyRow("bcv_tnt_01", 2)];
+		fixture.tenants.tnt_a.total = 2;
+		fixture.tenants.tnt_a.conversations = [notifyRow("bcv_tnt_a", 2)];
+		fixture.account.total = 202;
+		fixture.account.organizations = fixture.account.organizations.map(
+			(organization) =>
+				organization.tenant_id === "tnt_01" ||
+				organization.tenant_id === "tnt_a"
+					? { ...organization, unread: 11 }
+					: organization,
+		);
+
+		await act(async () => {
+			await mounted.client.refetchQueries({
+				queryKey: api.teamBridgeKeys.unreadPrefix,
+			});
+		});
+		await until(
+			() => mounted.notifications.length === 2,
+			"one banner for each changed organization",
+		);
+
+		const byTenant = new Map(
+			mounted.notifications.map((notification) => [
+				notification.tenantId,
+				notification,
+			]),
+		);
+		assert.deepEqual(
+			[...byTenant.keys()].sort(),
+			["tnt_01", "tnt_a"],
+			"each row is tagged with the organization it was read in",
+		);
+		assert.equal(byTenant.get("tnt_01").conversationId, "bcv_tnt_01");
+		assert.equal(byTenant.get("tnt_a").conversationId, "bcv_tnt_a");
+		assert.equal(byTenant.get("tnt_01").seq, 2);
+		assert.equal(byTenant.get("tnt_a").seq, 2);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+test("a zero-total org's first message before the conversation list resolves still banners", async () => {
+	resetFixture();
+	fixture.account = {
+		total: 0,
+		organizations: [
+			{
+				tenant_id: "tnt_zero",
+				tenant_name: "Zero Org",
+				unread: 0,
+				eligible: true,
+			},
+		],
+	};
+	fixture.tenants.tnt_zero = { total: 0, conversations: [] };
+	fixture.conversations = {
+		conversations: [conversation("bcv_zero", "tnt_zero")],
+	};
+	/*
+	 * The list read is held open across the first message: this is the race the
+	 * old seed loop lost by sitting below the list guard.
+	 */
+	fixture.listGate = new Promise((resolve) => {
+		fixture.releaseList = resolve;
+	});
+
+	const mounted = await mount();
+	try {
+		await until(
+			() => fixture.calls.unread.includes("account"),
+			"the first account answer",
+		);
+		assert.equal(
+			fixture.calls.unread.includes("tnt_zero"),
+			false,
+			"a zero-total org is not read",
+		);
+		assert.equal(mounted.notifications.length, 0);
+		// The seed from the account answer alone must have landed before the race.
+		await settle();
+
+		/* The message arrives while the conversation list is still unresolved. */
+		fixture.account = {
+			total: 1,
+			organizations: [
+				{
+					tenant_id: "tnt_zero",
+					tenant_name: "Zero Org",
+					unread: 1,
+					eligible: true,
+				},
+			],
+		};
+		fixture.tenants.tnt_zero = {
+			total: 1,
+			conversations: [notifyRow("bcv_zero", 1)],
+		};
+		await act(async () => {
+			await mounted.client.refetchQueries({
+				queryKey: api.teamBridgeKeys.unreadPrefix,
+			});
+		});
+		await until(
+			() => fixture.calls.unread.includes("tnt_zero"),
+			"the org's first tenant read",
+		);
+		await settle();
+		assert.equal(
+			mounted.notifications.length,
+			0,
+			"no banner without conversation metadata",
+		);
+
+		fixture.releaseList();
+		await act(async () => {
+			await mounted.client.refetchQueries({
+				queryKey: api.teamBridgeKeys.conversationsPrefix,
+			});
+		});
+		await until(
+			() => mounted.notifications.length === 1,
+			"the banner after the list resolves",
+		);
+		assert.equal(mounted.notifications[0].conversationId, "bcv_zero");
+		assert.equal(mounted.notifications[0].tenantId, "tnt_zero");
+		assert.equal(mounted.notifications[0].seq, 1);
+	} finally {
+		await mounted.teardown();
+	}
+});
