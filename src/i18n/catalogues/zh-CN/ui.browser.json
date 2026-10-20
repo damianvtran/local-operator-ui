@@ -172,7 +172,7 @@
 	"ui.browser.browser_tab_strip.unmute_tab": "取消标签页静音",
 	"ui.browser.browser_tab_strip.watch": "查看“{title}”",
 	"ui.browser.browser_url_bar.address": "地址",
-	"ui.browser.browser_url_bar.address_required": "请输入网址或选择一条建议。",
+	"ui.browser.browser_url_bar.address_required": "请输入地址或选择一条建议。",
 	"ui.browser.browser_url_bar.address_suggestions_available": "{count, plural, other {{count, number, ::group-off}条建议可用}}",
 	"ui.browser.browser_url_bar.address_suggestions_empty": "此浏览器会话中还没有链接。",
 	"ui.browser.browser_url_bar.address_suggestions_label": "来自此浏览器会话",
