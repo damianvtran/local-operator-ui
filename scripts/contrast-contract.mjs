@@ -3368,15 +3368,20 @@ const STRUCTURAL_CALL_SITES = [
 		 * that component's own comment rather than by a row here, which is the
 		 * gap this entry closes for the canonical transcript.
 		 */
-		what: "transcript quote toolkit floating shell",
-		file: "src/renderer/src/features/chat/canonical/quote-toolkit.tsx",
+		what: "floating toolbar shell (quote, link, selection and row clusters)",
+		file: "src/renderer/src/shared/components/common/floating-toolbar.tsx",
 		/*
-		 * Verbatim, so it tracks the shell as written: the selection round added
-		 * Copy beside Quote and Speak, and the three-control strip needs the tighter
-		 * `gap-0 px-0.5` to fit the outer gutter. The boundary this row protects is
-		 * the `border border-hairline bg-elevated` ground, which is unchanged.
+		 * Verbatim, so it tracks the shell as written. The shell used to live
+		 * inline in `quote-toolkit.tsx` and this row pinned that copy; the
+		 * operator's "they seem to be slightly different styles" report moved
+		 * it here so the quote strip, the link strip, the shared selection
+		 * strip and the row's own clusters cannot drift apart again. The
+		 * boundary this row protects is the `border border-hairline
+		 * bg-elevated` ground, and it is unchanged - only its address is. A
+		 * future edit that repaints the shell on the transcript's canvas now
+		 * fails here even though it would leave every palette row green.
 		 */
-		must: "z-20 flex h-8 items-center gap-0 rounded-md border border-hairline bg-elevated px-0.5",
+		must: "flex h-8 items-center gap-1 rounded-md border border-hairline bg-elevated px-1",
 		why: "the toolkit floats over prose and over a user bubble, so `elevated` plus a hairline is the whole of what makes it read as an object rather than as text that drifted; repainting it on the transcript's own canvas leaves it invisible against the reading column with every palette row still green",
 	},
 	{

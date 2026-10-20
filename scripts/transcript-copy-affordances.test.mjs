@@ -258,7 +258,7 @@ const MULTI_TURN = mod.applyHistoryPage(mod.EMPTY_TRANSCRIPT, {
 	cursor_missing: false,
 });
 
-const mountTranscript = async (transcript) => {
+const mountTranscript = async (transcript, options = {}) => {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		url: "http://localhost/",
 		pretendToBeVisual: true,
@@ -271,7 +271,19 @@ const mountTranscript = async (transcript) => {
 		value: dom.window.navigator,
 	});
 	globalThis.getComputedStyle = dom.window.getComputedStyle.bind(dom.window);
-	globalThis.MutationObserver = dom.window.MutationObserver;
+	/*
+	 * `mutations: false` removes the DOM observer for the handful of tests that
+	 * must prove a behaviour holds WITHOUT it. The shared selection toolbar
+	 * uses an observer as its catch-up path and a layout effect as its
+	 * pre-paint path; a test with the observer present cannot tell which one
+	 * did the work, because the observer arrives inside the same 30ms settle.
+	 */
+	if (options.mutations === false) {
+		dom.window.MutationObserver = undefined;
+		globalThis.MutationObserver = undefined;
+	} else {
+		globalThis.MutationObserver = dom.window.MutationObserver;
+	}
 	/*
 	 * The disclosure body asks `useMediaQuery` for reduced motion on mount.
 	 * jsdom has no media query engine; "no match" is the honest answer and the
@@ -1083,5 +1095,305 @@ test("a selection outside a quotable turn still gets the shared Copy/Speak strip
 	);
 	assert.ok(shared, "the shared Copy/Speak toolbar takes the selection");
 	assert.ok(shared.querySelector('button[aria-label="Copy"]'), "with Copy");
+	await rig.unmount();
+});
+
+/*
+ * THE TOOLBAR STATE MACHINE (operator report, 2026-10-19).
+ *
+ * The defect was not one toolbar's CSS: it was TWO independent booleans, each
+ * read from a different event, and a third surface (the row's own action row)
+ * that read neither. A still frame cannot pin that - what can is the
+ * (selection, hover) matrix below, asserted as "how many toolbars are on
+ * screen" per state rather than as a pixel.
+ *
+ * The four states are the operator's four: neither, hover only, selection on a
+ * row that is ALSO hovered (the overlap the screenshot shows), and a selection
+ * outside a quotable turn (the shared strip's own case, covered above and
+ * extended here with the column marker).
+ *
+ * `hover` is driven as `focus` on the row: the reveal is `group-hover` and
+ * `group-focus-within` over the SAME opacity rule (`message-actions.ts`), and
+ * jsdom has no `:hover`. That is the closest instrument this harness has, and
+ * it is the state the CSS treats identically.
+ */
+test("exactly one toolbar is mounted for every (selection, hover) pair", async () => {
+	const rig = await mountTranscript(MULTI_TURN);
+	const dom = rig.dom;
+	const doc = dom.window.document;
+	const content = doc.querySelector("[data-lo-transcript-content]");
+	assert.ok(content, "the transcript publishes its content root");
+
+	const toolbars = () => [
+		...doc.querySelectorAll(
+			"[data-lo-quote-toolkit], [data-lo-selection-toolbar], [data-lo-link-toolbar]",
+		),
+	];
+	const findText = (node) => {
+		if (node.nodeType === 3 && node.textContent.trim().length > 0) return node;
+		for (const child of node.childNodes) {
+			const found = findText(child);
+			if (found) return found;
+		}
+		return null;
+	};
+	const highlight = async (row) => {
+		const textNode = findText(row);
+		assert.ok(textNode, "the row has a text node to select");
+		const range = doc.createRange();
+		range.selectNodeContents(textNode);
+		const selection = dom.window.getSelection();
+		selection.removeAllRanges();
+		selection.addRange(range);
+		await act(async () => {
+			doc.dispatchEvent(new dom.window.Event("selectionchange"));
+			doc.dispatchEvent(
+				new dom.window.MouseEvent("mouseup", { bubbles: true }),
+			);
+			await new Promise((resolve) => setTimeout(resolve, 30));
+		});
+		return selection;
+	};
+
+	// 1. NEITHER: nothing selected, nothing focused.
+	assert.equal(toolbars().length, 0, "no selection and no hover shows nothing");
+	assert.equal(
+		content.hasAttribute("data-lo-selection-live"),
+		false,
+		"and the column does not claim a live selection",
+	);
+
+	// 2. HOVER ONLY: the row's own cluster is the one toolbar, and it is not
+	//    suppressed - the rule must not be satisfied by hiding everything.
+	const answer = rowOf(dom, "a2");
+	const answerCluster = answer.querySelector("[data-lo-answer-actions]");
+	assert.ok(answerCluster, "the closing answer owns a cluster");
+	await act(async () => {
+		answer.focus();
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	});
+	assert.equal(toolbars().length, 0, "hover alone raises no selection toolbar");
+	assert.equal(
+		answerCluster.hasAttribute("inert"),
+		false,
+		"and the row's own cluster stays interactive",
+	);
+
+	// 3. SELECTION ON A HOVERED ROW: the overlap state. Exactly ONE toolbar -
+	//    the quote strip - and the row's cluster stands down in the same commit.
+	const selection = await highlight(answer);
+	assert.equal(
+		toolbars().length,
+		1,
+		`a hovered row with a selection shows one toolbar, not ${toolbars().length}`,
+	);
+	assert.ok(
+		toolbars()[0].hasAttribute("data-lo-quote-toolkit"),
+		"and it is the quote strip that owns the highlight",
+	);
+	assert.equal(
+		toolbars()[0].querySelectorAll("button").length,
+		3,
+		"Quote, Copy and Speak ride the one strip",
+	);
+	assert.equal(
+		content.hasAttribute("data-lo-selection-live"),
+		true,
+		"the column publishes the live selection before paint",
+	);
+	assert.equal(
+		answer.hasAttribute("data-lo-selection-active"),
+		true,
+		"the row marks that a strip owns its seat",
+	);
+	assert.equal(
+		answerCluster.hasAttribute("inert"),
+		true,
+		"the row's own cluster is out of the hit test",
+	);
+	assert.equal(
+		answerCluster.getAttribute("aria-hidden"),
+		"true",
+		"and out of the accessibility tree",
+	);
+
+	// 4. CLEARED: back to neither, with the row's own controls restored. A
+	//    stale marker here is the "toolbar stays up with no highlight" defect.
+	await act(async () => {
+		selection?.removeAllRanges();
+		doc.dispatchEvent(new dom.window.Event("selectionchange"));
+		await new Promise((resolve) => setTimeout(resolve, 30));
+	});
+	assert.equal(toolbars().length, 0, "clearing removes the selection strip");
+	assert.equal(
+		content.hasAttribute("data-lo-selection-live"),
+		false,
+		"and the column marker",
+	);
+	assert.equal(
+		answer.hasAttribute("data-lo-selection-active"),
+		false,
+		"and the row marker",
+	);
+	assert.equal(
+		answerCluster.hasAttribute("inert"),
+		false,
+		"and the cluster is interactive again",
+	);
+	assert.equal(answerCluster.hasAttribute("aria-hidden"), false);
+
+	await rig.unmount();
+});
+
+test("a non-quotable selection also publishes the column marker", async () => {
+	const rig = await mountTranscript(MULTI_TURN);
+	const dom = rig.dom;
+	const doc = dom.window.document;
+	const bar = doc.querySelector(
+		'[data-turn-summary] button[aria-expanded="false"]',
+	);
+	assert.ok(bar, "the turn opens as a bar");
+	await rig.click(bar);
+	const summary = doc.querySelector("[data-fold-ids] [data-fold-summary]");
+	assert.ok(summary, "the fold header is the line to select");
+	const findText = (node) => {
+		if (node.nodeType === 3 && node.textContent.trim().length > 0) return node;
+		for (const child of node.childNodes) {
+			const found = findText(child);
+			if (found) return found;
+		}
+		return null;
+	};
+	const textNode = findText(summary);
+	const range = doc.createRange();
+	range.selectNodeContents(textNode);
+	const selection = dom.window.getSelection();
+	selection.removeAllRanges();
+	selection.addRange(range);
+	await act(async () => {
+		doc.dispatchEvent(new dom.window.Event("selectionchange"));
+		doc.dispatchEvent(new dom.window.MouseEvent("mouseup", { bubbles: true }));
+		await new Promise((resolve) => setTimeout(resolve, 30));
+	});
+	assert.ok(
+		doc.querySelector("[data-lo-selection-toolbar]"),
+		"the shared strip is the owner",
+	);
+	assert.ok(
+		doc
+			.querySelector("[data-lo-transcript-content]")
+			?.hasAttribute("data-lo-selection-live"),
+		"and the column knows a selection is live, so row clusters stand down",
+	);
+	await rig.unmount();
+});
+
+/*
+ * CLEARING A SELECTION MUST RESTORE *EVERY* ROW'S CONTROLS (agent review round
+ * 1, C1). The shared strip's effect once wrote `inert`/`aria-hidden` on all
+ * three clusters and then refused to remove any of them while a peer strip was
+ * present - so the rows the quote toolkit never owns (the user row and the
+ * intermediate response) kept both attributes after the selection was gone:
+ * their presses did nothing. The regression is asserted on the rows that
+ * expose it, not on the row the quote toolkit happens to own.
+ */
+test("clearing a selection restores the rows the quote toolkit never owned", async () => {
+	const rig = await mountTranscript(MULTI_TURN);
+	const dom = rig.dom;
+	const doc = dom.window.document;
+	const userCluster = rowOf(dom, "u1").querySelector("[data-lo-user-actions]");
+	const responseCluster = rowOf(dom, "a1").querySelector(
+		"[data-lo-gutter-actions]",
+	);
+	assert.ok(userCluster, "the user row owns a cluster");
+	assert.ok(responseCluster, "the intermediate response owns a cluster");
+
+	const answer = rowOf(dom, "a2");
+	const walker = doc.createTreeWalker(answer, dom.window.NodeFilter.SHOW_TEXT);
+	const textNode = walker.nextNode();
+	assert.ok(textNode, "the closing answer has a text node");
+	const range = doc.createRange();
+	range.selectNodeContents(textNode);
+	const selection = dom.window.getSelection();
+	selection.removeAllRanges();
+	selection.addRange(range);
+	await act(async () => {
+		doc.dispatchEvent(new dom.window.Event("selectionchange"));
+		doc.dispatchEvent(new dom.window.MouseEvent("mouseup", { bubbles: true }));
+		await new Promise((resolve) => setTimeout(resolve, 30));
+	});
+	/*
+	 * The visibility of those two rows WHILE the strip is up is the stylesheet's
+	 * `visibility: hidden` (jsdom applies no CSS), so the assertion that matters
+	 * here is the OUTCOME after the selection is gone: a stale `inert` is what
+	 * killed their presses in the review's reproduction.
+	 */
+
+	await act(async () => {
+		selection.removeAllRanges();
+		doc.dispatchEvent(new dom.window.Event("selectionchange"));
+		await new Promise((resolve) => setTimeout(resolve, 30));
+	});
+	assert.equal(
+		userCluster.hasAttribute("inert"),
+		false,
+		"clearing restores the user row - a stale inert kills its presses",
+	);
+	assert.equal(
+		userCluster.getAttribute("aria-hidden"),
+		null,
+		"and returns it to the accessibility tree",
+	);
+	assert.equal(
+		responseCluster.hasAttribute("inert"),
+		false,
+		"clearing restores the intermediate response as well",
+	);
+	assert.equal(responseCluster.getAttribute("aria-hidden"), null);
+	await rig.unmount();
+});
+
+/*
+ * THE PRE-PAINT CHECK IS LOAD-BEARING (agent review round 1, C4; closed in
+ * round 2 after the reviewer proved the mount works here).
+ *
+ * The shared strip has two mechanisms for "an owning strip is already here":
+ * a pre-paint `useLayoutEffect` and a `MutationObserver` catch-up. With the
+ * observer present, a test that waits 30ms cannot tell which one removed the
+ * panel - deleting the layout effect still passes, because the observer
+ * arrives inside the same settle. This case mounts with NO observer, so the
+ * only thing that can keep the panel out of the DOM is the pre-paint check.
+ *
+ * The round-1 rejection claimed this mount was impossible; the round-2
+ * reviewer showed `use-transcript-dom-window.ts:405` is not reached because
+ * `containerRef` is null in this harness. The mount works, so the test exists.
+ */
+test("the shared strip never mounts beside an owning strip without an observer", async () => {
+	const rig = await mountTranscript(MULTI_TURN, { mutations: false });
+	const dom = rig.dom;
+	const doc = dom.window.document;
+	const answer = rowOf(dom, "a2");
+	const walker = doc.createTreeWalker(answer, dom.window.NodeFilter.SHOW_TEXT);
+	const textNode = walker.nextNode();
+	assert.ok(textNode, "the closing answer has a text node");
+	const range = doc.createRange();
+	range.selectNodeContents(textNode);
+	const selection = dom.window.getSelection();
+	selection.removeAllRanges();
+	selection.addRange(range);
+	await act(async () => {
+		doc.dispatchEvent(new dom.window.Event("selectionchange"));
+		doc.dispatchEvent(new dom.window.MouseEvent("mouseup", { bubbles: true }));
+		await new Promise((resolve) => setTimeout(resolve, 30));
+	});
+	assert.ok(
+		doc.querySelector("[data-lo-quote-toolkit]"),
+		"the quote strip owns the highlight",
+	);
+	assert.equal(
+		doc.querySelector("[data-lo-selection-toolbar]"),
+		null,
+		"and the shared strip did not mount beside it without an observer to stand it down",
+	);
 	await rig.unmount();
 });
