@@ -448,29 +448,28 @@ const mountTranscript = async (transcript, options = {}) => {
 	};
 	const openMenu = async (element) => {
 		assert.ok(element, "missing context-menu target");
-		await act(async () => {
-			element.dispatchEvent(
-				new dom.window.MouseEvent("contextmenu", {
-					bubbles: true,
-					cancelable: true,
-					button: 2,
-					clientX: 24,
-					clientY: 24,
-				}),
-			);
-		});
 		/*
-		 * POLL RATHER THAN ONE FIXED SLEEP (CI, 2026-10-20). The Radix portal
-		 * paints from a layout effect, and a loaded desktop-suite runner can
-		 * starve that commit for longer than the old single 15 ms wait - the
-		 * test then failed on `the context menu opened` at 56 s while the same
-		 * file passed in 106 ms locally. The budget is 2 s in 10 ms steps: the
-		 * assertion still fails if the menu never opens, and a healthy run pays
-		 * one step.
+		 * POLL, AND RE-DISPATCH, RATHER THAN ONE FIXED SLEEP (CI, 2026-10-20).
+		 * Radix attaches the trigger's listener in a layout effect and paints the
+		 * portal after that; on a loaded desktop-suite runner both can land later
+		 * than the old single 15 ms wait - the test then failed on `the context
+		 * menu opened` at 56 s while the same file passed in 106 ms locally. The
+		 * loop re-sends the idempotent contextmenu event in 10 ms steps (2 s
+		 * budget), so a listener that mounts late still receives one, and the
+		 * assertion still fails if the menu never opens.
 		 */
 		let menu = null;
 		for (let attempt = 0; attempt < 200; attempt += 1) {
 			await act(async () => {
+				element.dispatchEvent(
+					new dom.window.MouseEvent("contextmenu", {
+						bubbles: true,
+						cancelable: true,
+						button: 2,
+						clientX: 24,
+						clientY: 24,
+					}),
+				);
 				await new Promise((resolve) => setTimeout(resolve, 10));
 			});
 			menu = dom.window.document.querySelector("[data-lo-copy-menu]");
