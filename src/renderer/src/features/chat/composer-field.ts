@@ -113,7 +113,7 @@ export function consoleRevealMayNavigate({
 	commandPaletteOpen,
 }: {
 	targetSessionId: string;
-	displayedSessionId: string | null;
+	displayedSessionId: string | null | undefined;
 	activeElement: Element | null;
 	commandPaletteOpen: boolean;
 }): boolean {
