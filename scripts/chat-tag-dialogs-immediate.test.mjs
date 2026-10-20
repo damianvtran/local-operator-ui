@@ -39,9 +39,11 @@ globalThis.toasts = [];
 const require = createRequire(import.meta.url);
 
 /**
- * Fixtures both bundles share: one React instance, the canonical store, the
- * toast sink and the locale hook. Registered per build because an esbuild
- * plugin instance cannot be reused across builds.
+ * Fixtures the bundle needs: one React instance, the canonical store, the toast
+ * sink and the locale hook. The factory returns esbuild's `setup` callback, so
+ * it must be CALLED at the plugin site: passing the factory itself registers
+ * nothing, which bundles React a second time and makes every hook in the tree an
+ * invalid hook call.
  */
 function tagDialogFixtures() {
 	return (builder) => {
@@ -92,7 +94,7 @@ const tagBundle = (contents) =>
 			"@features": resolve("src/renderer/src/features"),
 			"@shared": resolve("src/renderer/src/shared"),
 		},
-		plugins: [{ name: "tag-dialog-fixtures", setup: tagDialogFixtures }],
+		plugins: [{ name: "tag-dialog-fixtures", setup: tagDialogFixtures() }],
 	});
 
 const loadBundle = (result, name) =>
