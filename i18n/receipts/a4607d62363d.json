@@ -1,0 +1,14 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "a4607d62363d",
+  "locale": "fr",
+  "namespace": "ui.library",
+  "status": "passed",
+  "keys_audited": 158,
+  "sha256": {
+    "en": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+    "fr": "6fd498d38471656227382d135020a2e1047950e04044a9c185de43cab9f319f9"
+  },
+  "findings": []
+}

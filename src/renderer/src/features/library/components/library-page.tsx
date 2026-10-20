@@ -264,11 +264,22 @@ const LibrarianRow: FC<{ enabled: boolean; nowMs: number }> = ({
 	);
 };
 
+/**
+ * The Librarian status row's age, as a localized fragment.
+ *
+ * Deliberately NOT `relativeTime`: this row has always started at the hour unit
+ * (a run under an hour old reads "0h", not "just now"), and it renders in the
+ * 40px header track where the shorter ladder is the contract. The thresholds,
+ * the `Math.max(0, …)` clamp and the rounding are untouched; only the words are
+ * translated now (`ui.library.time.hours_h_ago` / `days_d_ago`).
+ */
 function relative(seconds: number, nowMs: number): string {
 	const delta = Math.max(0, nowMs - seconds * 1000);
 	const hours = Math.floor(delta / 3_600_000);
-	if (hours < 24) return `${hours}h ago`;
-	return `${Math.floor(hours / 24)}d ago`;
+	if (hours < 24) return t("ui.library.time.hours_h_ago", { hours });
+	return t("ui.library.time.days_d_ago", {
+		days: Math.floor(hours / 24),
+	});
 }
 
 /** A stale id: the route exists, the row does not (design spec §8). */

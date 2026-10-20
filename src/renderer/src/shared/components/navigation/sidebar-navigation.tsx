@@ -305,7 +305,12 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const rtl = useTextDirection() === "rtl";
 	const navigate = useNavigate();
 	const currentView = useCurrentView();
-	const { expanded, mode, onCollapse } = useSidebarFrame();
+	const {
+		expanded,
+		mode,
+		onCollapse,
+		chromePadTop = false,
+	} = useSidebarFrame();
 	const openCommandPalette = useUiPreferencesStore(
 		(state) => state.openCommandPalette,
 	);
@@ -1289,6 +1294,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			<div
 				data-sidebar-strip=""
 				data-glass-region="sidebar"
+				data-chrome-pad-top={chromePadTop ? "" : undefined}
 				className="group/sidebar flex h-full min-h-0 flex-col items-center bg-surface"
 			>
 				<StripFeedKeeper />
@@ -1373,6 +1379,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		<div
 			data-sidebar-shell=""
 			data-glass-region="sidebar"
+			data-chrome-pad-top={chromePadTop ? "" : undefined}
 			className="group/sidebar flex h-full min-h-0 flex-col overflow-hidden bg-surface"
 		>
 			{/*
