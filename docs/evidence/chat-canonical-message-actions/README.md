@@ -228,6 +228,15 @@ the cluster's left edge moving 32px left on exactly the states that paint it —
 answer's own rail (107) and stamp (794.6) are untouched, and so is the hover
 proof below, because the box is what the reveal holds.
 
+> **Superseded, 2026-10-19.** The toolbar chrome was unified with the
+> transcript's selection strip (`FloatingToolbar`), so the cluster's reserved
+> box is now **102×32** on the states that paint it; its reveal is still
+> opacity-only, so nothing moves when it appears, and the stamp settles 2px
+> lower with no horizontal shift. The 92×28 figures above describe the frames
+> captured at this set's own head and are kept as the historical measurement.
+> The current before/after pair lives in
+> `docs/evidence/selection-toolbar-steady/`.
+
 ## The accepted cost, restated honestly
 
 The closing line is **28px** tall where the `text-meta` line under an answer was
