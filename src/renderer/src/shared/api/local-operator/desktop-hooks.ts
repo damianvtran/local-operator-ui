@@ -205,7 +205,7 @@ export type DesktopFeature =
 	 * and the fork is byte- and behaviour-identical to the released one. A bump
 	 * of `session_tags` could not answer that question without also hiding the
 	 * tag catalogue, which a daemon without auto-tagging serves perfectly well.
-	 * See `local_operator/server/features.py` on the core branch.
+	 * See `local_operator/server/features.py`.
 	 */
 	| "session_tags_auto_tag"
 	| "session_files"
