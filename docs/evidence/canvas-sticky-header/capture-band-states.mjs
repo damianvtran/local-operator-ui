@@ -59,6 +59,34 @@ prepareDriverContext({ apiUrl: BACKEND });
 const handle = await launchApp({ armed: true, logName: "app-states.log", tag: "states" });
 
 const report = { runs: [] };
+
+/*
+ * THE THEME IS SWITCHED BY PALETTE NAME, AND THE SWITCH IS ASSERTED.
+ *
+ * `setTheme` takes the app's own palette id (`localOperatorDark`), not the
+ * scheme word. Passing "dark"/"light" leaves the palette where it was, and the
+ * first version of this rig did exactly that: the Library's two frames came
+ * back BYTE-IDENTICAL and the "light" one was the dark palette, so the rig was
+ * publishing a mislabeled frame. (Caught by the design round, which compared
+ * the PNGs rather than trusting the filenames.)
+ *
+ * So the name is mapped, and after every switch the rig reads the computed
+ * `--lo-surface` back and REFUSES to capture if the ground did not change.
+ */
+const paletteFor = (scheme) =>
+	scheme === "light" ? "localOperatorLight" : "localOperatorDark";
+
+const switchTheme = async (cdp, scheme) => {
+	await verb(cdp, "setTheme", paletteFor(scheme));
+	await sleep(700);
+	const ground = await cdp.evaluate(
+		`getComputedStyle(document.documentElement).getPropertyValue("--lo-surface").trim()`,
+	);
+	report.themeGrounds = report.themeGrounds || {};
+	report.themeGrounds[scheme] = ground;
+	console.log(`[states/${scheme}] palette ${paletteFor(scheme)} -> --lo-surface ${ground}`);
+	return ground;
+};
 let code = 0;
 
 /** A real pointer move to the centre of an element, and a real click. */
@@ -151,8 +179,7 @@ try {
 	await sleep(900);
 
 	for (const theme of ["dark", "light"]) {
-		await verb(cdp, "setTheme", theme);
-		await sleep(700);
+		await switchTheme(cdp, theme);
 
 		// Scroll so a row's boundary crosses the header's band.
 		const target = await cdp.evaluate(`(() => {
@@ -321,8 +348,7 @@ try {
 		await verb(cdp, "navigate", `/library/assets/${LIBRARY_ASSET}`);
 		await sleep(4500);
 		for (const theme of ["dark", "light"]) {
-			await verb(cdp, "setTheme", theme);
-			await sleep(700);
+			await switchTheme(cdp, theme);
 			// Scroll the sheet so a row passes under the column strip.
 			await cdp.evaluate(`(() => {
 				const cell = document.querySelector("th");
@@ -360,6 +386,13 @@ try {
 		}
 	}
 
+	const grounds = report.themeGrounds || {};
+	if (grounds.dark && grounds.light && grounds.dark === grounds.light) {
+		console.error(
+			`[states] FAILED: dark and light resolved to the same --lo-surface (${grounds.dark}); the frames would be mislabeled`,
+		);
+		code = 1;
+	}
 	writeFileSync(join(OUT, "states.json"), JSON.stringify(report, null, "\t"));
 } catch (error) {
 	console.error(`[states] failed: ${error?.stack ?? error}`);

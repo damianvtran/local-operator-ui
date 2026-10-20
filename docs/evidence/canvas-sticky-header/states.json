@@ -55,7 +55,7 @@
 			"theme": "light",
 			"state": "library",
 			"measured": {
-				"background": "rgb(29, 27, 25)",
+				"background": "rgb(236, 230, 216)",
 				"backdropFilter": "none",
 				"position": "sticky",
 				"height": 26,
@@ -64,5 +64,9 @@
 			},
 			"frame": "/Users/damian/.local-operator/sessions/1fad9ec7917e/scratchpad/rig/states/states-states-library-light.png"
 		}
-	]
+	],
+	"themeGrounds": {
+		"dark": "#2b2721",
+		"light": "#f7f5ee"
+	}
 }
