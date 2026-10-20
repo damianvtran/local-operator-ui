@@ -9,9 +9,9 @@ Two arms, two themes, one fixture and one panel width:
 
 - **BEFORE** — base `c9bbfe25f0`, the shipped `EditableField` / `TagsInputChips`
   preview and the inert media viewer, in `library-tab-before/`.
-- **AFTER** — PR head `96dbca969d`, the borderless `InlineEditText` /
-  `InlineTagEditor` preview and the shared `ImageLightbox` over the listing's
-  media, in `library-tab/`.
+- **AFTER** — PR head `46042530e` (the round-1 remediation; the first after arm
+  was `96dbca969d`), the borderless `InlineEditText` / `InlineTagEditor` preview
+  and the shared `ImageLightbox` over the listing's media, in `library-tab/`.
 
 Both arms mount the same fixture row (`la_0000000000000023`, "March invoices",
 one description, two tags), in a 440px column, at 640x900, with
@@ -22,26 +22,45 @@ to the full-view preview, which is a different surface.
 
 ## The capture
 
-**After arm** (this branch, Storybook 8.6.12):
+**After arm** (this branch's remediation head `46042530e`, Storybook 8.6.12 on
+`:6217`; the first after arm was shot at `96dbca969d` on `:6017`):
 
 ```
-pnpm exec storybook dev -p 6017 --ci --no-open
+env -u XPC_FLAGS LOCAL_OPERATOR_UI_NO_BYTECODE=true pnpm storybook --port 6217 --no-open
 
-node scripts/capture-evidence.mjs http://localhost:6017 \
+env -u XPC_FLAGS node scripts/capture-evidence.mjs http://localhost:6217 \
   --only=library-tab--preview-inline \
-  --themes=localOperatorDark,localOperatorLight --allow-backend
+  --themes=localOperatorDark,localOperatorLight --allow-backend \
+  --theme-settle-ms=30000
 
-node scripts/capture-evidence.mjs http://localhost:6017 \
+env -u XPC_FLAGS node scripts/capture-evidence.mjs http://localhost:6217 \
   --only=library-tab--media-lightbox \
-  --themes=localOperatorDark,localOperatorLight --allow-backend
+  --themes=localOperatorDark,localOperatorLight --allow-backend \
+  --theme-settle-ms=30000
 ```
 
 `--allow-backend` because the operator's own app is listening on the schema's
 default `http://localhost:1111` for the whole pass. None of these stories calls
 it: every read and write goes through the story's scripted
 `window.api.desktop.request` / `.media` bridge, and a story that issues an
-unknown op throws. The two runs are narrowed passes; the manifest's
+unknown op throws. `env -u XPC_FLAGS` because a tool child that inherits it
+cannot resolve DNS on this host (measured; it breaks `getaddrinfo` in children),
+and `--theme-settle-ms=30000` because the host carried a load average of 33 for
+this pass and the shipped 10 s guard window is a 3-7x shortfall under that load
+(the flag's own note). The two runs are narrowed passes; the manifest's
 `partialCapture` records them.
+
+The two runs reported `Captured 18 frames` and `Captured 8 frames`. **Eight of
+the 26 files changed; the other 18 are byte-identical to the first after arm.**
+The changed ones are the three lightbox states whose chrome gained the D1
+`surface/85` plate (`media-lightbox`, `media-lightbox-solo`,
+`media-lightbox-video`, both themes; the video frame's player ring is also
+timing-dependent, which is Q3's documented gap), plus
+`preview-inline-long-name-editing` (both themes), where the Q1 fix opens the
+editor at the start of the value.
+`media-lightbox-dismiss` is unchanged because the overlay is closed and no
+chrome is drawn. Each old frame was replaced in place — the committed tree holds
+one frame per state, not the old beside the new.
 
 **Before arm** (scratch worktree at the base, one uncommitted story and one
 uncommitted tuple block):
@@ -104,7 +123,7 @@ values the design round is asked to judge.
 | the pencil appears on hover | hover on `[data-inline-edit="name"]` matched `:hover`; computed `opacity` **0 -> 1**, and the geometry did not move (`textRight` **351.546875** both reads, gutter left **355.546875**, width **20**) | PASS |
 | long name ends in an ellipsis BEFORE the gutter at rest | `textOverflow` **ellipsis**, `clientWidth` **226** against `scrollWidth` **450**, text right **468** < gutter left **472** | PASS |
 | the same holds on hover | same values; `opacity` **1** | PASS |
-| the same holds while editing | input `textOverflow` **clip**, `clientWidth` **226**, `scrollWidth` **450**, `scrollLeft` **224** (scrolled to the caret at the end), input right **468** < gutter left **472**. **No ellipsis; the visible text starts mid-word ("tes for the fourth quarter close")** | **FAIL — Q1** |
+| the same holds while editing | input `textOverflow` **clip**, `clientWidth` **226**, `scrollWidth` **450**, **`scrollLeft` 0** — the editor opens at the start of the value (the Q1 fix), selection **0..63**, input right **468** < gutter left **472**, X control `opacity` **1** | PASS |
 | Escape restores the previous value | typed `changed`; after Escape the row reads `March invoice reconciliation notes for the fourth quarter close`, control label `Edit Name`, no input | PASS |
 | editing is borderless and opens selected | input/textarea `borderTopWidth` **0px**, background **rgba(0, 0, 0, 0)**; name input focused, selection **0..14**; description textarea focused; X control `opacity` **1**, label `Cancel editing Name/Description` | PASS |
 | the empty tag state is an add affordance, not a box | row text **"Add a tag"**, one `<button>`, **no `<input>`**, border **0px** on both axes, background transparent, height **20px** | PASS |
@@ -123,10 +142,12 @@ values the design round is asked to judge.
 
 - **Frames show**: the whole 440px panel in both themes; the pencil absent at
   rest and painted on hover; the long name's ellipsis and its 4px clearance from
-  the gutter; the borderless selected editor; the restored value after Escape;
-  the empty tag row as `+ Add a tag`; the lightbox open on the third slide with
-  its strip and arrows; the solo overlay without chrome; the closed preview
-  after Escape; the video lightbox over its player and controls.
+  the gutter; the borderless selected editor opened at the START of the long
+  value; the restored value after Escape; the empty tag row as `+ Add a tag`; the
+  lightbox open on the third slide with its strip, arrows and the D1
+  `surface/85` plate under the close/arrow/zoom chrome; the solo overlay without
+  carousel chrome; the closed preview after Escape; the video lightbox over its
+  player and controls.
 - **The run asserted in the DOM, not in a still**: the computed name
   typography; the gutter's 20px width and `opacity: 0` at rest; the ellipsis's
   `scrollWidth`/`clientWidth` relationship; the editor's `text-overflow: clip`
@@ -139,31 +160,22 @@ values the design round is asked to judge.
 
 ## Findings
 
-**Q1 — MAJOR, product: the long name is clipped, not ellipsized, while the
-editor is open.** With the 63-character fixture name, the `<input>` is
-`text-overflow: clip` and Chromium scrolls it to the caret at the end
-(`scrollLeft: 224` of `scrollWidth: 450`), so the reader sees
-`tes for the fourth quarter close` — the beginning of their own asset name is
-off-screen, and the frame `preview-inline-long-name-editing/{dark,light}` shows
-it in both themes. The rest and hover states do satisfy the ellipsis claim. The
-operator's sentence asks for the ellipsis "at rest, on hover, and while
-editing"; this state fails the third. Possible directions (not applied — QA does
-not edit product code): keep the value scrolled to the start while the editor
-opens, or use an editing surface that can ellipsize (a textarea cannot either),
-or add the field's own end fade. The tuple for this frame deliberately claims
-only what the state holds (full value, gutter clearance, X painted), so the
-sweep cannot be green on a claim the frame disproves.
+**Q1 — FIXED at `46042530e` (was MAJOR, product: the long name was clipped,
+not ellipsized, while the editor was open).** The re-captured measurement shows
+`inputScrollLeft: 0` with selection **0..63** and `inputRight` **468** <
+gutter left **472**; the editor opens at the beginning of the 63-character
+value, so the reader sees `March invoice reconciliation no…` instead of the
+tail. The re-taken frame `preview-inline-long-name-editing/{dark,light}` shows
+the start in both themes. The rest and hover states still satisfy the ellipsis
+claim; an `<input>` still resolves `text-overflow: clip` while editing, which
+is why the fix is the opening scroll position rather than an ellipsis.
 
-**Q2 — MAJOR, evidence soundness: the lightbox's route-unchanged assertion is
-vacuous in Storybook.** `MediaLightbox` and `MediaLightboxDismiss` assert
-`location.pathname` before and after opening/walking. In Storybook the document
-is the preview iframe, so that value is `/iframe.html` in every state (measured
-before and after: `/iframe.html`). The product claim is still true — the run
-measured `data-library-preview` at **la_…51** through open, Next, a strip press
-and close — but the story's own assertion cannot fail, and the capture tuple
-inherits the same weakness if it repeats it. The tuple here asserts the DOM
-selection id instead; the stories' assertion should be rewritten in the same
-terms before this evidence is read as a route proof.
+**Q2 — FIXED at `46042530e` (was MAJOR, evidence soundness: the lightbox's
+route-unchanged assertion was vacuous in Storybook).** The stories now assert
+the preview's selected asset id across open, Next, a strip press and close; the
+re-run measured `data-library-preview` **la_…51** at every step, and the
+`/iframe.html` pathname is no longer read as a route proof. The tuple already
+asserted the DOM selection id.
 
 **Q3 — GAP, not a product failure: the video frame is the player's loading
 state.** `--disable-gpu` headless Chromium does not paint the decoded video
@@ -209,15 +221,15 @@ All frames are 640x900 except the four `media-lightbox*` states and
 | `preview-inline-name-hover/` | 18,048 | 18,428 |
 | `preview-inline-long-name/` | 19,646 | 19,788 |
 | `preview-inline-long-name-hover/` | 19,710 | 19,862 |
-| `preview-inline-long-name-editing/` | 19,756 | 20,384 |
+| `preview-inline-long-name-editing/` | 19,704 | 20,336 |
 | `preview-inline-name-editing/` | 18,038 | 18,496 |
 | `preview-inline-name-escape/` | 18,322 | 18,672 |
 | `preview-inline-description-editing/` | 18,816 | 19,498 |
 | `preview-inline-empty-tags/` | 15,900 | 16,360 |
-| `media-lightbox/` (1280x900) | 26,914 | 29,844 |
+| `media-lightbox/` (1280x900) | 26,898 | 30,150 |
 | `media-lightbox-dismiss/` (1280x900) | 42,124 | 42,890 |
-| `media-lightbox-video/` (1280x900) | 31,166 | 38,628 |
-| `media-lightbox-solo/` (1280x900) | 22,594 | 25,306 |
+| `media-lightbox-video/` (1280x900) | 30,828 | 37,278 |
+| `media-lightbox-solo/` (1280x900) | 22,664 | 25,800 |
 
 ### Before (`library-tab-before/`)
 
