@@ -446,20 +446,29 @@ const mountTranscript = async (transcript, options = {}) => {
 			await new Promise((resolve) => setTimeout(resolve, 15));
 		});
 	};
-	const openMenu = async (element) => {
-		assert.ok(element, "missing context-menu target");
+	const openMenu = async (target) => {
+		const resolve = typeof target === "function" ? target : () => target;
+		assert.ok(resolve(), "missing context-menu target");
 		/*
-		 * POLL, AND RE-DISPATCH, RATHER THAN ONE FIXED SLEEP (CI, 2026-10-20).
-		 * Radix attaches the trigger's listener in a layout effect and paints the
-		 * portal after that; on a loaded desktop-suite runner both can land later
-		 * than the old single 15 ms wait - the test then failed on `the context
-		 * menu opened` at 56 s while the same file passed in 106 ms locally. The
-		 * loop re-sends the idempotent contextmenu event in 10 ms steps (2 s
-		 * budget), so a listener that mounts late still receives one, and the
-		 * assertion still fails if the menu never opens.
+		 * POLL, RE-RESOLVE AND RE-DISPATCH RATHER THAN ONE FIXED SLEEP (CI,
+		 * 2026-10-20). Three consecutive heads failed `the context menu opened`
+		 * at 34-56 s on a loaded runner while the file passed in 5-7 s locally.
+		 * The fold re-commits the row under the same DOM path, so a node captured
+		 * before the commit can be detached by the time the event is sent; the
+		 * resolver re-queries it every step, the `isConnected` check skips a
+		 * stale node, and the idempotent contextmenu event is re-sent because
+		 * Radix attaches the trigger's listener in a layout effect. The 2 s
+		 * budget still fails if the menu never opens.
 		 */
 		let menu = null;
 		for (let attempt = 0; attempt < 200; attempt += 1) {
+			const element = resolve();
+			if (element === null || !element.isConnected) {
+				await act(async () => {
+					await new Promise((resolve) => setTimeout(resolve, 10));
+				});
+				continue;
+			}
 			await act(async () => {
 				element.dispatchEvent(
 					new dom.window.MouseEvent("contextmenu", {
@@ -1016,7 +1025,9 @@ test("a tool row opens its own menu and copies its fenced result", async () => {
 		'[data-record-kind="tool"]',
 	);
 	assert.ok(toolRow, "the ledger row is on screen after the bar opens");
-	const menu = await rig.openMenu(toolRow);
+	const menu = await rig.openMenu(() =>
+		dom.window.document.querySelector('[data-record-kind="tool"]'),
+	);
 	assert.deepEqual(
 		[...menu.querySelectorAll('[role="menuitem"]')].map(
 			(node) => node.textContent,
