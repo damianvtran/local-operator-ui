@@ -123,7 +123,7 @@ const supplement = (over) => ({
 	...over,
 });
 
-test("local permission is closed/fetch-free, persists across work folds, resets by identity and never duplicates", async () => {
+test("local permission is open by default, honours Hide, resets by identity and never duplicates", async () => {
 	const requests = [];
 	window.api = {
 		desktop: {
@@ -165,17 +165,63 @@ test("local permission is closed/fetch-free, persists across work folds, resets 
 		await act(async () => button.click());
 	};
 	const count = (selector) => host.querySelectorAll(selector).length;
+	/*
+	 * The viewport gate is the fetch's ONLY trigger now that the local
+	 * permission defaults open: a cold slot off-screen must stay a reserved box.
+	 * The callback is captured so each step says when the row is "near".
+	 */
+	const observers = new Set();
+	globalThis.IntersectionObserver = class {
+		constructor(callback) {
+			this.callback = callback;
+			observers.add(this);
+		}
+		observe() {}
+		disconnect() {
+			observers.delete(this);
+		}
+	};
+	const enterViewport = () => {
+		for (const observer of [...observers]) {
+			observer.callback([{ isIntersecting: true }]);
+		}
+	};
 	try {
 		await render(record, true);
+		assert.equal(
+			count("[data-supplement-slot]"),
+			1,
+			"default-open budgeted head",
+		);
+		assert.equal(
+			count("iframe"),
+			0,
+			"offscreen default-open slot paints no frame",
+		);
+		assert.equal(
+			requests.length,
+			0,
+			"offscreen default-open issues no document request",
+		);
+		const reveal = [...host.querySelectorAll("button")].find(
+			(button) => button.textContent.trim() === "Hide 2 graphics",
+		);
+		assert.ok(reveal, "the default state offers the Hide control");
+		reveal.focus();
+		assert.equal(reveal.getAttribute("aria-expanded"), "true");
+		await click("Hide 2 graphics");
 		assert.equal(count("[data-supplement-slot]"), 0);
 		assert.equal(count("iframe"), 0);
-		assert.equal(requests.length, 0);
-		const reveal = [...host.querySelectorAll("button")].find(
-			(button) => button.textContent.trim() === "Show 1 of 2 graphics",
+		assert.ok(host.textContent.includes("Show 1 of 2 graphics"));
+		await render(record, true);
+		assert.equal(
+			count("[data-supplement-slot]"),
+			0,
+			"Hide survives a re-render of the same identity",
 		);
-		reveal.focus();
-		assert.equal(reveal.getAttribute("aria-expanded"), "false");
 		await click("Show 1 of 2 graphics");
+		assert.equal(count("[data-supplement-slot]"), 1);
+		assert.equal(requests.length, 0, "opening offscreen does not fetch");
 		assert.equal(
 			document.activeElement,
 			reveal,
@@ -186,7 +232,7 @@ test("local permission is closed/fetch-free, persists across work folds, resets 
 			host.querySelector("[data-supplement-condensed]"),
 			"does not expand work",
 		);
-		assert.equal(count("[data-supplement-slot]"), 1, "only the budgeted head");
+		await act(async () => enterViewport());
 		assert.equal(count("iframe"), 1);
 		assert.equal(requests.length, 1);
 		await render(record, false);
@@ -194,6 +240,11 @@ test("local permission is closed/fetch-free, persists across work folds, resets 
 			count("iframe"),
 			1,
 			"expanded work has no duplicate local body",
+		);
+		assert.equal(
+			requests.length,
+			1,
+			"the work bar's expand reuses the document",
 		);
 		await render(record, true);
 		assert.equal(
@@ -203,6 +254,7 @@ test("local permission is closed/fetch-free, persists across work folds, resets 
 		);
 		assert.ok(host.textContent.includes("Hide 2 graphics"));
 		await click("Show all 1 graphic");
+		await act(async () => enterViewport());
 		assert.equal(
 			count("iframe"),
 			2,
@@ -219,6 +271,10 @@ test("local permission is closed/fetch-free, persists across work folds, resets 
 		assert.equal(count("[data-supplement-slot]"), 0);
 		await click("Show 1 of 2 graphics");
 		const beforeReset = requests.length;
+		/*
+		 * A replacement identity starts at the DEFAULT (open). Off-screen that
+		 * still means the reserved box only: the reset is not permission to fetch.
+		 */
 		await render(
 			{
 				...record,
@@ -227,23 +283,43 @@ test("local permission is closed/fetch-free, persists across work folds, resets 
 			},
 			true,
 		);
-		assert.ok(host.textContent.includes("Show 1 graphic"));
-		assert.equal(count("[data-supplement-slot]"), 0);
+		assert.ok(
+			host.textContent.includes("Hide 1 graphic"),
+			"a new identity starts open",
+		);
+		assert.equal(count("[data-supplement-slot]"), 1);
 		assert.equal(count("iframe"), 0);
 		assert.equal(
 			requests.length,
 			beforeReset,
-			"identity reset never fetches replacement document",
+			"offscreen replacement fetches nothing",
 		);
+		await act(async () => enterViewport());
+		assert.equal(
+			requests.length,
+			beforeReset + 1,
+			"in-view replacement fetches exactly once",
+		);
+		assert.equal(count("iframe"), 1);
+		/*
+		 * Returning to the first identity starts OPEN again: the reset is to the
+		 * default, not to that identity's old Hide, so no permission is resurrected.
+		 */
 		await render(record, true);
-		assert.equal(count("iframe"), 0, "old permission cannot resurrect");
+		assert.ok(host.textContent.includes("Hide 2 graphics"));
+		assert.equal(
+			count("[data-supplement-slot]"),
+			1,
+			"old permission cannot resurrect",
+		);
 	} finally {
 		await act(async () => root.unmount());
 		host.remove();
+		globalThis.IntersectionObserver = undefined;
 	}
 });
 
-test("local reveal retains the viewport gate and shows document refusal in place", async () => {
+test("the default-open reveal retains the viewport gate and shows document refusal in place", async () => {
 	const requests = [];
 	let enterViewport;
 	globalThis.IntersectionObserver = class {
@@ -281,13 +357,15 @@ test("local reveal retains the viewport gate and shows document refusal in place
 				}),
 			),
 		);
-		await act(async () => host.querySelector("button").click());
-		assert.equal(host.querySelectorAll("[data-supplement-slot]").length, 1);
-		assert.equal(host.querySelectorAll("iframe").length, 0);
+		assert.equal(
+			host.querySelectorAll("[data-supplement-slot]").length,
+			1,
+			"the graphic is visible by default",
+		);
 		assert.equal(
 			requests.length,
 			0,
-			"opening offscreen must not bypass viewport gate",
+			"the default-open frame offscreen must not bypass the viewport gate",
 		);
 		await act(async () => enterViewport());
 		assert.equal(requests.length, 1);
@@ -297,6 +375,12 @@ test("local reveal retains the viewport gate and shows document refusal in place
 			host.textContent.includes("Hide 1 graphic"),
 			"refusal leaves local close available",
 		);
+		await act(async () => host.querySelector("button").click());
+		assert.equal(
+			host.querySelectorAll("[data-supplement-slot]").length,
+			0,
+			"Hide still folds the refused frame",
+		);
 	} finally {
 		await act(async () => root.unmount());
 		host.remove();
@@ -304,7 +388,7 @@ test("local reveal retains the viewport gate and shows document refusal in place
 	}
 });
 
-test("mixed files and graphics expose the same closed local reveal", async () => {
+test("mixed files and graphics expose the same default-open local reveal", async () => {
 	const host = document.createElement("div");
 	document.body.append(host);
 	const root = createRoot(host);
@@ -331,8 +415,8 @@ test("mixed files and graphics expose the same closed local reveal", async () =>
 			),
 		);
 		assert.ok(host.querySelector("[data-supplement-file]"));
-		assert.ok(host.textContent.includes("Show 1 graphic"));
-		assert.equal(host.querySelectorAll("[data-supplement-slot]").length, 0);
+		assert.ok(host.textContent.includes("Hide 1 graphic"));
+		assert.equal(host.querySelectorAll("[data-supplement-slot]").length, 1);
 	} finally {
 		await act(async () => root.unmount());
 		host.remove();
