@@ -1,3 +1,4 @@
+import { nextPickerEscapeAction } from "@features/chat/chat-tag-escape";
 import {
 	TAG_REGISTRY_LIMIT,
 	TAG_SELECTION_LIMIT,
@@ -263,11 +264,14 @@ export function ChatSessionTagsDialog({
 							event.preventDefault();
 							return;
 						}
-						if (pending) event.preventDefault();
-						else if (listOpen) {
+						const action = nextPickerEscapeAction({ pending, listOpen });
+						if (action === "ignore") event.preventDefault();
+						else if (action === "collapse") {
 							event.preventDefault();
 							setListOpen(false);
 						}
+						// "close" leaves the event unprevented: the dialog layer owns
+						// dismissal, and Escape still writes nothing.
 					}}
 				>
 					<DialogHeader className="shrink-0">
