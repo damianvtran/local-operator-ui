@@ -46,9 +46,29 @@ globalThis.document = dom.window.document;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 globalThis.CSS = { escape: (value) => String(value) };
 let scrollIntoViewCalls = 0;
+let scrollTopWrites = 0;
 dom.window.Element.prototype.scrollIntoView = () => {
 	scrollIntoViewCalls += 1;
 };
+/*
+ * A scrollTop write is the OTHER way a component can move the frame: it sets
+ * the offset on a container it does not own. Counting the writes pins "the
+ * component moved nothing" and not merely "it did not call scrollIntoView".
+ */
+const scrollTopDescriptor = Object.getOwnPropertyDescriptor(
+	dom.window.Element.prototype,
+	"scrollTop",
+);
+if (scrollTopDescriptor?.set) {
+	Object.defineProperty(dom.window.Element.prototype, "scrollTop", {
+		configurable: true,
+		get: scrollTopDescriptor.get,
+		set(value) {
+			scrollTopWrites += 1;
+			scrollTopDescriptor.set.call(this, value);
+		},
+	});
+}
 
 const bundle = await build({
 	stdin: {
@@ -171,7 +191,6 @@ const render = async (overrides = {}) => {
 		onToggleSession: (value) => calls.push(["toggle", value]),
 		onSelectAll: () => calls.push(["select-all"]),
 		onClearSelection: () => calls.push(["clear"]),
-		onPreview: () => calls.push(["preview"]),
 		onConfirmChange: (value) => calls.push(["confirm", value]),
 		onImport: () => calls.push(["import"]),
 		onCancel: () => calls.push(["cancel"]),
@@ -276,11 +295,22 @@ test("search filters rows and select-all is explicit", async () => {
 
 test("a preview without confirmation cannot be imported; confirmation enables it", async () => {
 	scrollIntoViewCalls = 0;
+	scrollTopWrites = 0;
 	const { host, click } = await render({
 		selected: new Set(["omp-one"]),
 		preview,
 	});
-	assert.ok(scrollIntoViewCalls > 0);
+	/*
+	 * THE COMPONENT MUST NOT MOVE THE PAGE. `scrollIntoView` with the default
+	 * `container: "all"` walks EVERY scrolling ancestor, and an
+	 * `overflow: hidden` box is one of them - it is programmatically
+	 * scrollable even though the user cannot scroll it. Measured in the built
+	 * app: building a preview scrolled the app's own shell root 237px, which
+	 * left the whole window shifted up with an empty band at the bottom and no
+	 * way to scroll back. The preview no longer scrolls at all.
+	 */
+	assert.equal(scrollIntoViewCalls, 0);
+	assert.equal(scrollTopWrites, 0);
 	const checkboxes = host.querySelectorAll('[role="checkbox"]');
 	const checkbox = checkboxes.item(checkboxes.length - 1);
 	assert.ok(checkbox);
@@ -316,6 +346,57 @@ test("a stale preview disables the import even when confirmed", async () => {
 	assert.ok(button);
 	assert.equal(button.disabled, true);
 	assert.match(host.textContent ?? "", /preview/i);
+});
+
+test("the acknowledgement and the button it gates share one block", async () => {
+	/*
+	 * THEY USED TO BE IN TWO PLACES, which is why the operator could not tell
+	 * the row's selection box from the acknowledgement box: two identically
+	 * shaped 16px squares, one of which was the gate of a button in another
+	 * section. One bordered block, the acknowledgement directly above the
+	 * button it holds shut, is what makes the pair read as one action.
+	 */
+	const { host } = await render({
+		selected: new Set(["omp-one"]),
+		preview,
+	});
+	const importButton = [...host.querySelectorAll("button")].find((node) =>
+		node.textContent?.includes("Import 1 session"),
+	);
+	assert.ok(importButton);
+	const confirm = [...host.querySelectorAll('[role="checkbox"]')].find((node) =>
+		(node.getAttribute("aria-label") ?? "").includes("I understand"),
+	);
+	assert.ok(confirm, "the acknowledgement is a labelled checkbox");
+	const block = importButton.closest("div.rounded-lg");
+	assert.ok(block, "the import button sits in a bordered block");
+	assert.ok(
+		block.contains(confirm),
+		"the acknowledgement and the button it gates share one block",
+	);
+	// The acknowledgement is ABOVE the button it gates, not below it.
+	assert.ok(
+		confirm.compareDocumentPosition(importButton) &
+			dom.window.Node.DOCUMENT_POSITION_FOLLOWING,
+		"the acknowledgement comes before the button it gates",
+	);
+});
+
+test("the selected row is marked at row level, not only by its tick", async () => {
+	const { host } = await render({
+		selected: new Set(["omp-one"]),
+		preview,
+	});
+	const rows = [...host.querySelectorAll("div.rounded-md")].filter((node) =>
+		node.querySelector('[role="checkbox"]'),
+	);
+	const selected = rows.find((node) =>
+		node.className.includes("bg-row-selected"),
+	);
+	assert.ok(
+		selected,
+		"a selected row carries the app's selected-row treatment, so it reads as selected even if the tick is missed",
+	);
 });
 
 test("progress and result rows carry per-session outcomes and review paths", async () => {

@@ -263,7 +263,8 @@ test("preview, acknowledgement and import are a container gate", async () => {
 	assert.equal(buttonContaining("Import 1 session"), undefined);
 	await click(host.querySelector('[role="checkbox"]'));
 	await waitFor(() => text(host).includes("1 selected"), "selection");
-	await click(buttonContaining("Preview"));
+	// The preview is built from the selection, so it arrives on its own.
+	await waitFor(() => calls.preview === 1, "automatic preview");
 	await waitFor(
 		() => text(host).includes("I understand these conversations"),
 		"preview",
@@ -283,6 +284,34 @@ test("preview, acknowledgement and import are a container gate", async () => {
 	assert.equal(calls.preview, 1);
 });
 
+test("a selection change builds the preview without the user asking", async () => {
+	const second = {
+		...sessions[0],
+		sourceId: "omp-two",
+		title: "Second conversation",
+	};
+	const { mock, calls } = makeMock({
+		fetchImportSessions: async () => [sessions[0], second],
+	});
+	await mount(mock);
+	await waitFor(() => text(host).includes("First conversation"), "sessions");
+	assert.equal(calls.preview, 0);
+	await click(host.querySelector('[role="checkbox"]'));
+	await waitFor(() => calls.preview === 1, "automatic preview");
+	// The preview is debounced, so a second row does not ask the core again
+	// for every tick of the selection.
+	await click(host.querySelectorAll('[role="checkbox"]')[1]);
+	await waitFor(() => calls.preview === 2, "rebuilt preview");
+	// An empty selection has nothing to preview, and asking for one is what
+	// used to be a silent no-op at the user.
+	await click(host.querySelectorAll('[role="checkbox"]')[1]);
+	await click(host.querySelectorAll('[role="checkbox"]')[0]);
+	await act(async () => {
+		await sleep(600);
+	});
+	assert.equal(calls.preview, 2);
+});
+
 test("a running job keeps its monitor when a source card is pressed", async () => {
 	const { mock, calls } = makeMock({
 		fetchImportJob: async () => ({ ...running }),
@@ -291,7 +320,7 @@ test("a running job keeps its monitor when a source card is pressed", async () =
 	await waitFor(() => text(host).includes("First conversation"), "sessions");
 	await click(host.querySelector('[role="checkbox"]'));
 	await waitFor(() => text(host).includes("1 selected"), "selection");
-	await click(buttonContaining("Preview"));
+	await waitFor(() => calls.preview === 1, "automatic preview");
 	await waitFor(
 		() => text(host).includes("I understand these conversations"),
 		"preview",
@@ -321,7 +350,7 @@ test("a running job keeps its monitor when a source card is pressed", async () =
 
 test("one failed job read is retried and clears its error on success", async () => {
 	let jobReads = 0;
-	const { mock } = makeMock({
+	const { mock, calls } = makeMock({
 		fetchImportJob: async () => {
 			jobReads += 1;
 			if (jobReads === 1) throw new Error("transient desktop read");
@@ -332,7 +361,7 @@ test("one failed job read is retried and clears its error on success", async () 
 	await waitFor(() => text(host).includes("First conversation"), "sessions");
 	await click(host.querySelector('[role="checkbox"]'));
 	await waitFor(() => text(host).includes("1 selected"), "selection");
-	await click(buttonContaining("Preview"));
+	await waitFor(() => calls.preview === 1, "automatic preview");
 	await waitFor(
 		() => text(host).includes("I understand these conversations"),
 		"preview",
