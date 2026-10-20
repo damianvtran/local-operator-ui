@@ -864,9 +864,12 @@ export function HubSkillsLibrary({
 									</Button>
 								</DialogFooter>
 							)}
-							{(!selectedLink ||
-								!hasCopy ||
-								selectedState.kind === "update") && (
+							{/*
+							 * The support sentence describes the DOWNLOAD control above it, so it
+							 * follows the same condition — an update state has no Download and the
+							 * update panel owns that action (design round 3, D12).
+							 */}
+							{(!selectedLink || !hasCopy) && (
 								<p className="text-meta text-ink-muted">
 									{selectedLink?.policy.subscribe
 										? t("ui.hub.skills.download_help")
