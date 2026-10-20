@@ -569,6 +569,26 @@ function createApplicationMenu(): void {
 			label: "View",
 			submenu: [
 				{
+					id: "app-new-tab",
+					label: "New Browser Tab",
+					accelerator: "CmdOrCtrl+T",
+					/*
+					 * THE NATIVE ACCELERATOR ROUTE FOR CMD+T, which had no menu item at all.
+					 * The browser owns the command through the same predicate as Reload
+					 * (`ownsPage` for a focused driven page, `ownsChrome` for browser chrome);
+					 * outside the browser this is deliberately a no-op, never a window close.
+					 * When the chrome's own `before-input-event` already claimed the press it
+					 * prevents this accelerator, so rapid/legit presses stay exactly once.
+					 */
+					click: (_item, target) =>
+						runBrowserMenuAction(
+							"new-tab",
+							target,
+							mainWindow,
+							routeBrowserMenu,
+						),
+				},
+				{
 					id: "app-reload",
 					label: "Reload",
 					accelerator: "CmdOrCtrl+R",
