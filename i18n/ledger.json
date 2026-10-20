@@ -17556,7 +17556,7 @@
 			"locale": "ru",
 			"namespace": "ui.library",
 			"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
-			"target_sha256": "4a004038d1808cc9327668fe1d851f596794ce61cc58997a7829435a605a62e4",
+			"target_sha256": "98dd7b5e814ac2739430839c60a5007d9963bd6c53ae0fed870fe6d8379b2481",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -17568,18 +17568,42 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-20",
 					"result": "clean",
-					"instance": "55ba7a641173",
+					"instance": "d4a69b568c33",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/55ba7a641173.json",
-					"receipt_sha256": "1b57531fba4352f5a603870ebba0ae180ec57c9888d5c740e17893efa8eb98db"
+					"receipt": "i18n/receipts/d4a69b568c33.json",
+					"receipt_sha256": "f982752140befcc5aac9ba871992fe1eedf06657bf40fd6e9381b759aa96c71f"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+					"target_sha256": "4a004038d1808cc9327668fe1d851f596794ce61cc58997a7829435a605a62e4",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "55ba7a641173",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/55ba7a641173.json",
+							"receipt_sha256": "1b57531fba4352f5a603870ebba0ae180ec57c9888d5c740e17893efa8eb98db"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }
