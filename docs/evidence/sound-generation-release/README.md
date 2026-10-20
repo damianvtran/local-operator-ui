@@ -32,16 +32,17 @@ LOCAL_OPERATOR_UI_NO_BYTECODE=true \
 SOUNDS_RELEASE_ASSETS="$LOCAL_OPERATOR_SCRATCHPAD/release-assets.json" \
 SOUNDS_RELEASE_BYOK="$LOCAL_OPERATOR_SCRATCHPAD/byok-live/result.json" \
 SOUNDS_RELEASE_BYOK_STORE="$LOCAL_OPERATOR_SCRATCHPAD/byok-live/config/attachments" \
-LOP_SOUNDS_HARNESS="$HOME/local-operator/.worktrees/sound-generation-release" \
+LOP_SOUNDS_HARNESS="$HOME/local-operator/.worktrees/sound-gen-fixed" \  # harness ab58506e
 node scripts/run-sounds-scene.mjs
 ```
 
 Final run: **`sounds-native-Rqp1qi`** (2026-10-20), whose stdout is committed as
 `run/rig-stdout.txt` and whose scene log as `run/scene.txt`. Actual output:
 history preflight HTTP **200**; expired-URL control HTTP **403**, exactly **1**
-control request before/after; **`PASS 7 frames, 7 distinct SHA-256`**;
-**`PASS expired URL remains unused by the app: requests=1`**. The rig exited 0
-after reaping its owned process groups (its `finally` runs on every path). The
+control request in total (`requests=1`); **`PASS 7 frames, 7 distinct SHA-256`**;
+**`PASS expired URL remains unused by the app: requests=1`**. The rig's own `finally`
+reaps every process group it started, and the committed stdout is exactly what
+the run printed. The
 real app was headless, invisible, and unfocused.
 The existing zero-gain graph is armed before any audio element and rejects a
 second arm. Nonzero pre-gain audio with zero post-gain RMS is measured. No host
@@ -86,9 +87,9 @@ Why the first capture missed the card, and the three rig fixes:
   on one run in three. The rig passes `--disable-renderer-backgrounding` and
   `--disable-background-timer-throttling` and polls the clock, re-pressing only
   when the player is paused. Measured on the accepted run: voiceover
-  `time 0.2467, inputRms 0.0947, gain 0, rms 0`. State 6 is read back at
-  `time 1.205743` of `duration 1.578957` with `ownerId sound:b44d1c36…` — the
-  **earlier voiceover** is the playing card, and the later turns are visible
+  `time 0.186863, inputRms 0.0808249478757425, gain 0, rms 0`. State 6 is read
+  back at `time 1.361138` of `duration 1.578957` with `ownerId sound:b44d1c36…` —
+  the **earlier voiceover** is the playing card, and the later turns are visible
   below it.
 
 Distinctness is **asserted by the rig**, not eyeballed: seven frames must hash to
@@ -162,7 +163,7 @@ with Radient unavailable in the isolated config. No secret value was logged or
 written. Arguments:
 `{"prompt":"a short wooden door creak, close perspective","duration_s":0.5}`.
 
-Result: is_error false, provider `elevenlabs`, model `eleven_text_to_sound_v2`,
+Result: the recorded result is a success and carries no `is_error` field; provider `elevenlabs`, model `eleven_text_to_sound_v2`,
 8,820-byte MP3 at digest `d736c1f07f72f3b0bbd13c40871f37e4`, **`duration_s 0.48`**
 — the length derived from the returned bytes by the harness fix this capture
 waited on. `byok-actual.json` is that result verbatim and `byok-actual.mp3` is the
