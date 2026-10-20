@@ -31,6 +31,7 @@ import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { withMockKeychain } from "./chrome-keychain.mjs";
 
 const ROOT = resolve(process.cwd());
 const OUT = resolve(
@@ -152,14 +153,13 @@ env.ELECTRON_ENABLE_LOGGING = "0";
 
 const app = spawn(
 	ELECTRON_BIN,
-	[
+	withMockKeychain([
 		ROOT,
 		`--user-data-dir=${USER_DATA}`,
 		`--remote-debugging-port=${CDP_PORT}`,
 		`--window-size=${WIDTH}x${HEIGHT}`,
 		"--window-mode=headless",
-		"--use-mock-keychain",
-	],
+	]),
 	{
 		cwd: ROOT,
 		env,
