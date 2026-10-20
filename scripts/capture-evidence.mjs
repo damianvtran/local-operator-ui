@@ -12253,12 +12253,15 @@ export const STORIES = [
 	["chat-turn-supplements--supplement-free", 900, 314],
 	/*
 	 * THE CONDENSED FORM'S OWN STATES (design round 1, D1/U3/R2; reworked by
-	 * the operator decision of 2026-10-16): the folded block per content shape
-	 * — the SAME files section as its expanded self (actionable rows, the image
-	 * grid) with no slots and no frames; a graphics-only settle keeps its plain
-	 * count clause — plus the same block at the shell's narrow width. Each
-	 * frame's turn really carries a closed bar (the stories drive the same plan
-	 * the app does).
+	 * the operator decisions of 2026-10-16 and 2026-10-19): the folded block per
+	 * content shape — the SAME files section as its expanded self (actionable
+	 * rows, the image grid) — plus the same block at the shell's narrow width.
+	 * Graphics are VISIBLE BY DEFAULT since the 2026-10-19 operator request, which
+	 * supersedes the 2026-10-16 plain-count-clause ruling: a graphics-bearing
+	 * settle photographs its budgeted head (and its `Source:` caption), with the
+	 * block's Hide control still present. The frame stays viewport-gated like an
+	 * expanded one; each frame's turn really carries a closed bar (the stories
+	 * drive the same plan the app does).
 	 *
 	 * TWO STATES SIT TALLER (agent review round 1's R3, the designer's D1): at
 	 * 900x400, `folded-condensed-counts` ended at the fourth featured row with
@@ -12270,12 +12273,12 @@ export const STORIES = [
 	 */
 	["chat-turn-supplements--folded-condensed-files", 900, 400],
 	["chat-turn-supplements--folded-condensed-counts", 900, 540],
-	["chat-turn-supplements--folded-condensed-components", 900, 400],
-	["chat-turn-supplements--folded-condensed-mixed", 900, 400],
+	["chat-turn-supplements--folded-condensed-components", 900, 760],
+	["chat-turn-supplements--folded-condensed-mixed", 900, 760],
 	[
 		"chat-turn-supplements--folded-condensed-mixed",
 		560,
-		400,
+		760,
 		{ dir: "folded-condensed-narrow" },
 	],
 	/*

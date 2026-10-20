@@ -1,5 +1,11 @@
 # Answer-local graphics disclosure
 
+> **Default superseded (2026-10-19, PR #1247):** the operator asked for the
+> graphic to be visible by default in a condensed turn. The row now starts open
+> and `Hide` reaches the closed state; the closed frames below remain the
+> pre-change default evidence. The `*Closed` story fixtures now press Hide after
+> mount, and the visible fixtures are the default.
+
 Captured 2026-10-19 through the harness **browser tool**, in one owned background tab on the existing desktop browser host; the tab was closed afterwards. No native app, operator session, standalone browser engine, or scratch dependency installation was used. The isolated Storybook server was reaped by its exact process group (95520). Coder model: `openai/gpt-6.1-sol`, temporary fallback after Anthropic quota exhaustion.
 
 ## Reach the states
@@ -8,7 +14,7 @@ From this worktree run `pnpm storybook -- --ci --no-open` (or `pnpm exec storybo
 
 `http://localhost:6017/iframe.html?id=chat-turn-supplements--local-graphics-closed&args=theme:localOperatorDark&viewMode=story`
 
-Use `theme:localOperatorLight` for light. Story IDs use `local-graphic-closed`, `local-graphic-open`, `local-graphics-closed`, `local-graphics-open`, `local-graphics-narrow`, `local-graphic-refused`, and `local-graphic-loading`. The open fixtures click the inner `[data-supplement-graphics-reveal]` span after mount; its click bubbles to the real shared Disclosure trigger. They do not use an initial-open override. The narrow fixture is a **360 CSS px story container**, not a narrow browser viewport.
+Use `theme:localOperatorLight` for light. Story IDs use `local-graphic-closed`, `local-graphic-open`, `local-graphics-closed`, `local-graphics-open`, `local-graphics-narrow`, `local-graphics-mixed`, `local-graphics-mixed-hidden`, `local-graphic-refused`, and `local-graphic-loading`. The visible fixtures are the DEFAULT; the `*Closed`/`*Hidden` fixtures click the inner `[data-supplement-graphics-reveal]` span after mount to press Hide, and its click bubbles to the real shared Disclosure trigger. They do not use an initial-open override or an initial-closed override. The narrow fixture is a **360 CSS px story container**, not a narrow browser viewport.
 
 The new fixtures deliberately use the answer's real ID as `supplement.anchor`. At the original capture, older `FoldedCondensed*` fixtures used `m1` for the answer and a different supplement anchor, so they did not prove the closed state. Round-1 remediation fixes `FoldedCondensedComponents` specifically to use the actual anchor; its newly reachable condensed form was verified by browser snapshot; the duplicate still was withdrawn in round2 below. The other old fixtures were not broadened into this fix. The collapse model remains unchanged.
 
@@ -96,3 +102,52 @@ Merged main bbea8a3db9 (including #1235's authoritative generated files) after t
 Only the five HTML-backed current open frames changed and were re-captured/opened: r1-dark-open.png, r1-dark-open-settled.png, r1-light-open.png, r1-dark-mixed-open.png, r1-light-mixed-open.png. The closed dark control was independently captured to scratch and proved byte-identical; the other18 retained PNGs were left unchanged. The current settled frame is790×364px (previous prelude370px), top297.19px; visible chart bars and the prelude's right-edge scrollbar track are retained as main renders them. The two dark open captures remain byte-identical; the hash above is updated to this generation. One too-early light capture still showed the loading reserve, so it was rejected/replaced only after the accessible loading status disappeared and the iframe measured its settled364px. No rejected still is committed.
 
 Owned browser tabs closed; server groups88835 and14681 reaped; local docgen-only fallback restored; isolated HOME removed. No unaffected frame was re-shot. The prior coverage limits remain unchanged.
+
+## Round-1 remediation of the default-open follow-up — alignment (head `956a24b7b1`)
+
+The reviewer measured the disclosed body indented by the shared Disclosure's one
+chevron column: frame 790px at x=247.5 against the paragraph's 810px at x=227.5,
+so the chart sat 20px right of the answer text and reflowed 20px left when the
+work bar expanded. `SupplementRow` now opts its own graphics body back out of
+that indent with the SAME spacing token (`-ml-5 w-[calc(100%+1.25rem)]`), local
+to this call site; every other disclosure consumer keeps the shared indent.
+
+Measured in the browser on the shipped `folded-condensed-components` /
+`local-graphics-mixed` / `local-graphics-narrow` stories (CSS px):
+
+| State | Paragraph | Frame | Delta |
+| --- | --- | --- | --- |
+| condensed default, 900px story | 810 at x=227.5 | 810 at x=227.5 | 0px |
+| work bar expanded | 810 at x=227.5 | 810 at x=227.5 | 0px |
+| condensed mixed | 810 at x=227.5 | 810 at x=227.5 | 0px |
+| condensed narrow, 360px container | 250 at x=55 | 250 at x=55 | 0px |
+
+The frame's height (390.4px) is the chart document's own; only the horizontal
+alignment changed. This supersedes the "790x364px at top 297.19px" note above,
+which described the pre-alignment indent.
+
+### New frames (browser tool, 1280x720 CSS / 2560x1440 PNG, opened before commit)
+
+| Frame | State |
+| --- | --- |
+| `after-dark-default-open.png` | Condensed default, dark: `Hide 2 graphics` and the chart, aligned to the answer column; work bar still folded. |
+| `after-light-default-open.png` | Light counterpart. |
+| `after-dark-work-expanded-top.png` | Work bar expanded: the trace appears and the chart keeps the same left edge and width (the focus ring on the bar is the synthetic click). |
+| `after-dark-local-mixed-default-open.png` | Condensed mixed finish: actionable file rows then the aligned chart. |
+| `after-dark-narrow-default-open.png` | 360px story container: frame and paragraph both 250px at x=55, no horizontal escape. |
+
+`after-dark-hidden.png` is deliberately NOT committed: with the body hidden the
+frame draws nothing, so it is byte-identical to the retained `r1-dark-closed.png`
+(SHA-256 `faecc64f...`). The `before-*` frames referenced in the PR body are
+those same retained `r1-*-closed.png` files; copying them under new names would
+be a duplicate still.
+
+### Sweep recapture
+
+`docs/evidence/chat-turn-supplements/folded-condensed-components/{localOperatorDark,localOperatorLight}.webp`
+were re-captured at `956a24b7b1` through the repository rig
+(`--only=chat-turn-supplements--folded-condensed-components --themes=localOperatorDark,localOperatorLight --allow-backend`)
+at 900x760, replacing the stale 900x400 frames of the old closed default. The
+`folded-condensed-mixed` and `folded-condensed-narrow` sweeps remain stale: that
+story has a pre-existing answer/supplement anchor mismatch (it renders the
+expanded form) and this change does not touch it.
