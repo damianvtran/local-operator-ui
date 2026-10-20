@@ -37,6 +37,7 @@
 import { spawn } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { withMockKeychain } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
@@ -178,24 +179,18 @@ withTelemetryOff(spawnEnv);
 
 const app = spawn(
 	join(ROOT, "node_modules/.bin/electron"),
-	[
+	withMockKeychain([
 		/*
 		 * THE APP PATH IS ABSOLUTE. With no resolvable app path Electron runs its
 		 * own default app and leaves a window on the operator's screen; `ROOT`
 		 * names this worktree's built app explicitly.
 		 */
 		ROOT,
-		/*
-		 * A SCRATCH HOME HAS NO LOGIN KEYCHAIN. Chromium would otherwise ask macOS
-		 * to create one (the standing rig incident), so the mock keychain keeps the
-		 * whole run inside the scratch tree.
-		 */
-		"--use-mock-keychain",
 		`--remote-debugging-port=${port}`,
 		`--user-data-dir=${USER_DATA}`,
 		`--window-size=${WIDTH}x${HEIGHT}`,
 		"--window-mode=headless",
-	],
+	]),
 	{
 		env: spawnEnv,
 		cwd: ROOT,
