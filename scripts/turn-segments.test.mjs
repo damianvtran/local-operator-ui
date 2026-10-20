@@ -1067,8 +1067,18 @@ test("F5: no declared-finished row and no reader row ever leaves the visible set
  * screen, so its bar survives the tool run around it being folded.
  */
 test("F6: `isFinalResponse` is the calls fact and nothing else", () => {
-	const settled = { kind: "assistant", id: "a", ts: 1, text: "t", streaming: false };
-	assert.equal(isFinalResponse(settled), true, "settled, paints text, no calls");
+	const settled = {
+		kind: "assistant",
+		id: "a",
+		ts: 1,
+		text: "t",
+		streaming: false,
+	};
+	assert.equal(
+		isFinalResponse(settled),
+		true,
+		"settled, paints text, no calls",
+	);
 	assert.equal(
 		isFinalResponse({ ...settled, callsTools: false }),
 		true,

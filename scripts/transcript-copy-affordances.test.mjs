@@ -712,7 +712,14 @@ test("an in-between status row has no in-flow action row and no reserved line", 
 	);
 	assert.ok(bar, "the tool span is a bar at rest");
 	await rig.click(bar);
-	const responseRow = rowOf(dom, "a1");
+	/*
+	 * `[data-lo-message-row]` disambiguates the ROW from the bar: the bar carries
+	 * its anchor row's `data-record-id` as well, and `rowOf` alone would return
+	 * the bar container once the span is open.
+	 */
+	const responseRow = dom.window.document.querySelector(
+		'[data-record-id="a1"][data-lo-message-row]',
+	);
 	assert.ok(responseRow, "the commentary row is on screen once the bar opens");
 	const gutter = responseRow.querySelector("[data-lo-gutter-actions]");
 	assert.ok(gutter, "it keeps a copy control, in the gutter");
