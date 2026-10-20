@@ -240,5 +240,100 @@
 	},
 	"ui.chat.tags.move_failed": {
 		"note": "Move-specific failure and retry guidance; never substitutes for the revision-conflict message."
+	},
+	"ui.chat.tags.selection_count": {
+		"role": "Picker / staged Manage selection count",
+		"tone": "concise, neutral sentence case",
+		"note": "Bounded tag dialog feedback. Preserve ICU arguments; names are user-authored and counts are nonnegative integers. selection count."
+	},
+	"ui.chat.tags.registry_count": {
+		"role": "Picker / staged Manage registry count",
+		"tone": "concise, neutral sentence case",
+		"note": "Bounded tag dialog feedback. Preserve ICU arguments; names are user-authored and counts are nonnegative integers. registry count."
+	},
+	"ui.chat.tags.create_name": {
+		"role": "Picker / staged Manage create name",
+		"tone": "concise, neutral sentence case",
+		"note": "Explicit standalone button outside listbox. Only activation creates; Enter in unmatched search never creates. name is user-authored, 1–24 Unicode code points."
+	},
+	"ui.chat.tags.create_helper": {
+		"role": "Picker / staged Manage create helper",
+		"tone": "concise, neutral sentence case",
+		"note": "Always visible below Create before activation. Registry creation is durable for all conversations, even when conversation assignment is cancelled."
+	},
+	"ui.chat.tags.selection_limit": {
+		"role": "Picker / staged Manage selection limit",
+		"tone": "concise, neutral sentence case",
+		"note": "Assignment limit is eight, distinct from registry capacity of thirty-two. Selected options remain removable."
+	},
+	"ui.chat.tags.registry_limit": {
+		"role": "Picker / staged Manage registry limit",
+		"tone": "concise, neutral sentence case",
+		"note": "Shared category registry capacity, not selection count. Only creation disabled; existing tags remain editable."
+	},
+	"ui.chat.tags.name_long": {
+		"role": "Picker / staged Manage name long",
+		"tone": "concise, neutral sentence case",
+		"note": "Bounded tag dialog feedback. Preserve ICU arguments; names are user-authored and counts are nonnegative integers. name long."
+	},
+	"ui.chat.tags.name_reserved": {
+		"role": "Picker / staged Manage name reserved",
+		"tone": "concise, neutral sentence case",
+		"note": "Literal ASCII name Untagged is reserved case-insensitively by server; do not translate this identifier to the localized empty-group label."
+	},
+	"ui.chat.tags.create_failed": {
+		"role": "Picker / staged Manage create failed",
+		"tone": "concise, neutral sentence case",
+		"note": "Registry creation failure, not assignment Apply; retry reloads authoritative registry before another write."
+	},
+	"ui.chat.tags.remove_named": {
+		"role": "Picker / staged Manage remove named",
+		"tone": "concise, neutral sentence case",
+		"note": "Bounded tag dialog feedback. Preserve ICU arguments; names are user-authored and counts are nonnegative integers. remove named."
+	},
+	"ui.chat.tags.reorder_filtered": {
+		"role": "Picker / staged Manage reorder filtered",
+		"tone": "concise, neutral sentence case",
+		"note": "Manage Up/Down are disabled under any nonblank filter. Clearing search restores full registry ordering."
+	},
+	"ui.chat.tags.created_name": {
+		"role": "Picker / staged Manage created name",
+		"tone": "concise, neutral sentence case",
+		"note": "Bounded tag dialog feedback. Preserve ICU arguments; names are user-authored and counts are nonnegative integers. created name."
+	},
+	"ui.chat.tags.selection_status": {
+		"role": "Picker / staged Manage selection status",
+		"tone": "concise, neutral sentence case",
+		"note": "Polite live announcement after toggle/removal or primary change. name is resulting primary, or localized Untagged."
+	},
+	"ui.chat.tags.tag_usage": {
+		"role": "Picker / staged Manage tag usage",
+		"tone": "concise, neutral sentence case",
+		"note": "Bounded tag dialog feedback. Preserve ICU arguments; names are user-authored and counts are nonnegative integers. tag usage."
+	},
+	"ui.chat.tags.create_pending": {
+		"role": "Picker / staged Manage create pending",
+		"tone": "concise, neutral sentence case",
+		"note": "Visible explanation while durable registry mutation locks dismissal; does not imply that assignment was applied."
+	},
+	"ui.chat.tags.remote": {
+		"role": "Picker / staged Manage remote",
+		"tone": "concise, neutral sentence case",
+		"note": "Bounded tag dialog feedback. Preserve ICU arguments; names are user-authored and counts are nonnegative integers. remote."
+	},
+	"ui.chat.tags.renamed_name": {
+		"role": "Picker / staged Manage renamed name",
+		"tone": "concise, neutral sentence case",
+		"note": "Bounded tag dialog feedback. Preserve ICU arguments; names are user-authored and counts are nonnegative integers. renamed name."
+	},
+	"ui.chat.tags.staged_added": {
+		"role": "Picker / staged Manage staged added",
+		"tone": "concise, neutral sentence case",
+		"note": "Bounded tag dialog feedback. Preserve ICU arguments; names are user-authored and counts are nonnegative integers. staged added."
+	},
+	"ui.chat.tags.registry_changed": {
+		"role": "Picker / staged Manage registry changed",
+		"tone": "concise, neutral sentence case",
+		"note": "A live registry refresh removed/changed a draft tag. Surviving draft and assignment order retained."
 	}
 }
