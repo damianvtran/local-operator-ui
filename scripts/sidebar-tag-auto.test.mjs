@@ -23,10 +23,10 @@ import { mkdir, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
 import { after, test } from "node:test";
 import { pathToFileURL } from "node:url";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 	url: "http://localhost/",
@@ -439,20 +439,22 @@ test("the picker sends the store's fork-time intent, on every press", async () =
 
 	// Flip the persisted setting AFTER mount: the next press must read it at
 	// submit, not from a value captured when the dialog opened.
-	useUiPreferencesStore
-		.getState()
-		.setChatSidebarView({
-			...DEFAULT_SIDEBAR_VIEW,
-			tagsEnabled: true,
-			autoTagForks: false,
-		});
+	useUiPreferencesStore.getState().setChatSidebarView({
+		...DEFAULT_SIDEBAR_VIEW,
+		tagsEnabled: true,
+		autoTagForks: false,
+	});
 	await act(async () => {
 		forkButton().click();
 		await new Promise((resolve) => setTimeout(resolve, 0));
 	});
 	const forks = requests.filter((request) => request.op === "sessions.fork");
 	assert.equal(forks.length, 2, "the second press sent its own fork");
-	assert.equal(forks[1].autoTag, false, "off is a real instruction, not absence");
+	assert.equal(
+		forks[1].autoTag,
+		false,
+		"off is a real instruction, not absence",
+	);
 });
 
 test("an incapable backend's fork carries no autoTag key at all", async () => {

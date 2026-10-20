@@ -3,7 +3,7 @@
 	"ui.chat.tags.apply": "Применить",
 	"ui.chat.tags.apply_deletion_first": "Сначала примените удаление, затем снова добавьте «{name}».",
 	"ui.chat.tags.applying": "Применение тегов…",
-	"ui.chat.tags.auto_tag": "Помечать тегами форки разговоров",
+	"ui.chat.tags.auto_tag": "Автоматически помечать тегами форки разговоров",
 	"ui.chat.tags.auto_tag_help": "Использует ваши существующие теги при названии форка.",
 	"ui.chat.tags.cancel": "Отмена",
 	"ui.chat.tags.clear": "Очистить теги",
