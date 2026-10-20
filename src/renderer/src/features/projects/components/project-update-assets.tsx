@@ -231,7 +231,13 @@ const ProjectVideoTileBody: FC<{
 						preload="metadata"
 						muted={true}
 						playsInline={true}
-						className="h-[76px] w-[115px] object-contain"
+						className={cn(
+							"h-[76px] w-[115px] object-contain",
+							// The chat thumbnail's own hover step: the picture enlarges
+							// inside the fixed frame, so the slot never moves.
+							"motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-quart",
+							"motion-safe:group-hover/tile:scale-[1.04]",
+						)}
 						data-project-video-thumb=""
 					/>
 					{/*
@@ -523,7 +529,13 @@ const FilmstripTileBody: FC<{
 					preload="metadata"
 					muted={true}
 					playsInline={true}
-					className="h-[76px] w-[115px] object-contain"
+					className={cn(
+						"h-[76px] w-[115px] object-contain",
+						// The chat thumbnail's own hover step: the picture enlarges
+						// inside the fixed frame, so the slot never moves.
+						"motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-quart",
+						"motion-safe:group-hover/tile:scale-[1.04]",
+					)}
 				/>
 				<span className="pointer-events-none absolute inset-0 flex items-center justify-center">
 					<Play
