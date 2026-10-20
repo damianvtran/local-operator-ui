@@ -25,6 +25,7 @@ import { useEffect } from "react";
 import {
 	type CatalogueStorage,
 	createCatalogueSupply,
+	resolveCatalogueLocale,
 } from "../../../../i18n/catalogue-supply";
 import { useI18nLocale } from "./use-locale";
 
@@ -53,8 +54,15 @@ export const wireCatalogueSupply = createCatalogueSupply({
 
 export function useI18nCatalogueSync(): void {
 	const { data } = useDesktopCapabilities();
-	const locale = useI18nLocale();
+	const storeLocale = useI18nLocale();
 	const enabled = (data?.features?.i18n ?? 0) >= 1;
+	/*
+	 * `data.language` is the answer that resolved the store, so prefer it: this
+	 * hook is mounted after the writer but its effect runs before the store's
+	 * notification lands on a re-render, and the device tag it would otherwise
+	 * read (`en-US`) is not a shipped catalogue (404 on every startup).
+	 */
+	const locale = resolveCatalogueLocale(data?.language, storeLocale);
 
 	useEffect(() => {
 		if (!enabled || !locale) return;
