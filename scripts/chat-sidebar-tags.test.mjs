@@ -382,29 +382,6 @@ test("assignment confirms the exact grouped or Untagged success copy after the w
 	assert.ok(!source.includes('t("ui.chat.tags.apply")'));
 });
 
-test("picker Escape collapses the list before it dismisses the dialog", () => {
-	// A rendered two-press case belongs to QA: driving Radix's dismiss machinery
-	// twice in jsdom ran away in this environment (reported on PR #1262 round 1),
-	// so the contract is pinned at source instead of pretending a local pass.
-	const source = readFileSync(
-		"src/renderer/src/features/chat/components/chat-session-tags-dialog.tsx",
-		"utf8",
-	);
-	// The picker's handler is the LAST one: the onMove branch above it also
-	// declares onEscapeKeyDown, and slicing from the first occurrence would pin
-	// the wrong contract.
-	const handler = source.slice(source.lastIndexOf("onEscapeKeyDown"));
-	assert.ok(handler.includes("if (pending) event.preventDefault();"));
-	assert.ok(
-		handler.includes("else if (listOpen)") &&
-			handler.includes("setListOpen(false)"),
-		"the first Escape only collapses the open list",
-	);
-	assert.ok(
-		!handler.includes("setIds(") && !handler.includes("setHeld("),
-		"Escape never reverts a committed selection",
-	);
-});
 test("save failures are tag-specific, loading errors are not empty registries, and title has no action ellipsis", () => {
 	const picker = readFileSync(
 		"src/renderer/src/features/chat/components/chat-session-tags-dialog.tsx",

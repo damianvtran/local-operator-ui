@@ -681,3 +681,72 @@ test("a failed create keeps the typed name for correction", async () => {
 		/not created/i,
 	);
 });
+
+test("Escape collapses the picker list, then closes the dialog, without writing", async () => {
+	const row = {
+		session_id: "s1",
+		title: "Chat",
+		tags: [{ id: "a", name: "Alpha" }],
+		primary: "a",
+		tags_revision: "revision-1",
+	};
+	const seen = [];
+	/*
+	 * THE SIDEBAR'S OWN SHAPE, and it is load-bearing: `tagRow` becomes null when
+	 * the dialog asks to close, so a dismissed dialog unmounts instead of lingering
+	 * mounted with `open` still true. That is also what ends Radix's focus scope;
+	 * a dialog that asked to close but stays mounted keeps re-trapping focus, and
+	 * driving that state twice was the case that ran away in an earlier harness.
+	 */
+	const Picker = () => {
+		const [open, setOpen] = React.useState(true);
+		if (!open) return null;
+		return React.createElement(api.ChatSessionTagsDialog, {
+			row,
+			onClose: () => {
+				seen.push("closed");
+				setOpen(false);
+			},
+			returnFocus: () => {},
+		});
+	};
+	await render(React.createElement(Picker));
+	const alpha = () =>
+		[...document.querySelectorAll('[role="option"]')].find((node) =>
+			node.textContent.includes("Alpha"),
+		);
+	assert.equal(alpha().getAttribute("aria-selected"), "true");
+	assert.equal(
+		document
+			.querySelector('[aria-label="Search tags"]')
+			.getAttribute("aria-expanded"),
+		"true",
+		"the suggestion list starts open",
+	);
+
+	await pressEscape();
+	assert.equal(
+		document.querySelector('[role="option"]'),
+		null,
+		"the first Escape only collapses the list",
+	);
+	assert.ok(document.querySelector('[role="dialog"]'), "the dialog stays open");
+	assert.equal(seen.length, 0, "and asks for no close");
+	assert.ok(
+		document.querySelector('[title="Alpha"]'),
+		"the committed selection is untouched",
+	);
+
+	await pressEscape();
+	assert.deepEqual(seen, ["closed"], "the second Escape asks to close");
+	assert.equal(
+		document.querySelector('[role="dialog"]'),
+		null,
+		"and the dialog unmounts",
+	);
+	assert.equal(
+		requests.filter((request) => request.op === "sessions.tags").length,
+		0,
+		"neither Escape writes an assignment",
+	);
+});
