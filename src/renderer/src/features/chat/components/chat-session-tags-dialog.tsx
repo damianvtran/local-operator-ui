@@ -1,14 +1,20 @@
 import { draftPrimary } from "@features/chat/chat-tag-groups";
 import {
+	TAG_REGISTRY_LIMIT,
+	TAG_SELECTION_LIMIT,
+	hasTagName,
+	tagNameIssue,
+	togglePickerTag,
+} from "@features/chat/chat-tag-picker";
+import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
+import {
 	Button,
-	Checkbox,
 	Dialog,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-	Input,
 } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -23,6 +29,7 @@ import {
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useEffect, useRef, useState } from "react";
 import { ManageTagsDialog } from "./manage-tags-dialog";
+import { TagPickerCombobox } from "./tag-picker-combobox";
 
 /** Mount per invocation: assignment is buffered until Apply; registry creation is
  * intentionally a separate durable operation, not an accidental side effect of Cancel.
@@ -67,36 +74,59 @@ export function ChatSessionTagsDialog({
 	const [ids, setIds] = useState(() => row.tags?.map((tag) => tag.id) ?? []);
 	const [primary, setPrimary] = useState(row.primary ?? null);
 	const [query, setQuery] = useState("");
-	const [creating, setCreating] = useState(false);
-	const [name, setName] = useState("");
+	const input = useRef<HTMLInputElement>(null);
+	const [listOpen, setListOpen] = useState(true);
+	const [notice, setNotice] = useState("");
+	const [conflicted, setConflicted] = useState(false);
 	const [pending, setPending] = useState(false);
+	const restoreInput = useRef(false);
+	useEffect(() => {
+		if (!pending && restoreInput.current) {
+			restoreInput.current = false;
+			input.current?.focus();
+		}
+	}, [pending]);
 	const [error, setError] = useState<string | null>(null);
+	useEffect(() => {
+		if (error && pickerBody.current) pickerBody.current.scrollTop = 0;
+	}, [error]);
 	const [retry, setRetry] = useState<"apply" | "create" | null>(null);
+	useEffect(() => {
+		if (pending && retry === "create" && pickerBody.current)
+			pickerBody.current.scrollTop = 0;
+	}, [pending, retry]);
 	// Deleted categories cannot be resubmitted from a stale draft. Preserve the
 	// original assignment order so removing the primary previews server fallback.
-	const selected = ids.filter((id) => categories.some((tag) => tag.id === id));
+	const selected =
+		loading || loadError !== null
+			? ids
+			: ids.filter((id) => categories.some((tag) => tag.id === id));
 	const effectivePrimary = draftPrimary(selected, primary);
 	useEffect(() => {
-		// While loading, focus has a stable, non-action destination outside the
-		// scroller. Move into the choices only if the reader is still waiting there.
-		if (
-			!managing &&
-			!loading &&
-			loadError === null &&
-			categories.length > 0 &&
-			document.activeElement === heading.current
-		) {
-			pickerBody.current
-				?.querySelector<HTMLElement>('[role="checkbox"]')
-				?.focus();
-		}
-	}, [categories, loading, loadError, managing]);
+		if (onMove || loading || loadError) return;
+		const surviving = ids.filter((id) =>
+			categories.some((tag) => tag.id === id),
+		);
+		if (surviving.length === ids.length) return;
+		// Keep the surviving assignment order, but never silently resubmit IDs
+		// removed by another client while this draft was open.
+		setIds(surviving);
+		setPrimary((held) => draftPrimary(surviving, held));
+		setError(t("ui.chat.tags.registry_changed"));
+		setRetry(null);
+	}, [categories, ids, loading, loadError, onMove]);
 	const apply = async () => {
+		if (pending || conflicted) return;
 		setPending(true);
 		setError(null);
 		setRetry("apply");
 		try {
-			await assignSessionTags(row.session_id, selected, effectivePrimary);
+			await assignSessionTags(
+				row.session_id,
+				selected,
+				effectivePrimary,
+				row.tags_revision ?? null,
+			);
 			const saved = useCanonicalSessionsStore
 				.getState()
 				.sessions.find((entry) => entry.session_id === row.session_id);
@@ -111,6 +141,21 @@ export function ChatSessionTagsDialog({
 			);
 			onClose();
 		} catch (error) {
+			if (error instanceof DesktopControlError && error.status === 422)
+				await fetchCategories();
+			if (isTagsConflict(error)) {
+				setConflicted(true);
+				setRetry(null);
+			}
+			if (
+				error instanceof DesktopControlError &&
+				error.code === "session_is_remote"
+			) {
+				setConflicted(true);
+				setRetry(null);
+				setError(t("ui.chat.tags.remote"));
+				return;
+			}
 			setError(
 				t(
 					isTagsConflict(error)
@@ -122,30 +167,85 @@ export function ChatSessionTagsDialog({
 			setPending(false);
 		}
 	};
+	const toggle = (id: string) => {
+		const next = togglePickerTag(selected, id);
+		const fallback = draftPrimary(next, primary);
+		setIds(next);
+		setPrimary(fallback);
+		setNotice(
+			t("ui.chat.tags.selection_status", {
+				count: String(next.length),
+				name:
+					categories.find((tag) => tag.id === fallback)?.name ??
+					t("ui.chat.tags.untagged"),
+			}),
+		);
+	};
+	const issue = tagNameIssue(query);
+	const createIssue =
+		categories.length >= TAG_REGISTRY_LIMIT
+			? t("ui.chat.tags.registry_limit")
+			: selected.length >= TAG_SELECTION_LIMIT
+				? t("ui.chat.tags.selection_limit")
+				: issue === "reserved"
+					? t("ui.chat.tags.name_reserved")
+					: issue === "long"
+						? t("ui.chat.tags.name_long")
+						: hasTagName(categories, query)
+							? t("ui.chat.tags.duplicate_name", { name: query.trim() })
+							: null;
+
 	const create = async () => {
-		if (!name.trim()) return;
+		if (pending || createIssue || issue || loading || loadError) return;
+		const name = query.trim();
 		setPending(true);
 		setError(null);
 		setRetry("create");
 		try {
+			// A timeout/duplicate may have committed remotely. Refresh BEFORE every
+			// attempt, not after submitting a stale full-registry replacement again.
+			await fetchCategories();
+			const fresh = useSessionTagsStore.getState();
+			if (fresh.error) throw new Error();
+			if (hasTagName(fresh.categories, name)) {
+				setError(t("ui.chat.tags.duplicate_name", { name }));
+				setRetry(null);
+				return;
+			}
+			if (fresh.categories.length >= TAG_REGISTRY_LIMIT) {
+				setError(t("ui.chat.tags.registry_limit"));
+				setRetry(null);
+				return;
+			}
 			await replaceCategories([
-				...categories.map((tag) => ({ id: tag.id, name: tag.name })),
-				{ name: name.trim() },
+				...fresh.categories.map((tag) => ({ id: tag.id, name: tag.name })),
+				{ name },
 			]);
 			const created = useSessionTagsStore
 				.getState()
-				.categories.find((tag) => tag.name === name.trim());
+				.categories.find((tag) => tag.name === name);
 			if (created) {
-				setIds((held) =>
-					held.includes(created.id) ? held : [...held, created.id],
-				);
+				const next = [...selected, created.id];
+				setIds(next);
 				setPrimary((held) => held ?? created.id);
+				setNotice(t("ui.chat.tags.created_name", { name: created.name }));
 			}
-			setCreating(false);
-			setName("");
+			setQuery("");
+			input.current?.focus();
 		} catch {
-			setError(t("ui.chat.tags.save_failed"));
+			// A response can be lost after commit. Re-read before claiming that
+			// nothing was created, and never silently select a concurrent duplicate.
+			await fetchCategories();
+			const fresh = useSessionTagsStore.getState();
+			if (fresh.error) {
+				setError(null);
+				setRetry(null);
+			} else if (hasTagName(fresh.categories, name)) {
+				setError(t("ui.chat.tags.duplicate_name", { name }));
+				setRetry(null);
+			} else setError(t("ui.chat.tags.create_failed"));
 		} finally {
+			restoreInput.current = true;
 			setPending(false);
 		}
 	};
@@ -246,23 +346,12 @@ export function ChatSessionTagsDialog({
 				}}
 			>
 				<DialogContent
-					className="flex max-h-[calc(100dvh-32px)] w-[min(420px,calc(100vw-32px))] flex-col"
+					className="flex h-[min(560px,calc(100dvh-32px))] w-[min(420px,calc(100vw-32px))] flex-col max-[359px]:p-4"
 					closeDisabled={pending}
 					onOpenAutoFocus={(event) => {
 						event.preventDefault();
-						// The sibling close and this mount can run in either order. Both
-						// restore the same connected invoker rather than initial selection.
-						if (returningFromManage.current) {
-							returnToPicker();
-							return;
-						}
-						const first =
-							!loading && loadError === null
-								? pickerBody.current?.querySelector<HTMLElement>(
-										'[role="checkbox"]',
-									)
-								: null;
-						(first ?? heading.current)?.focus();
+						if (returningFromManage.current) returnToPicker();
+						else input.current?.focus();
 					}}
 					onCloseAutoFocus={(event) => {
 						event.preventDefault();
@@ -272,201 +361,172 @@ export function ChatSessionTagsDialog({
 						if (pending) event.preventDefault();
 					}}
 					onEscapeKeyDown={(event) => {
+						if (event.isComposing || event.keyCode === 229) {
+							event.preventDefault();
+							return;
+						}
 						if (pending) event.preventDefault();
+						else if (listOpen) {
+							event.preventDefault();
+							setListOpen(false);
+						}
 					}}
 				>
-					<DialogHeader>
-						<DialogTitle
-							ref={heading}
-							tabIndex={-1}
-							className="break-words pr-6"
+					<DialogHeader className="shrink-0">
+						<DialogTitle ref={heading}>{t("ui.chat.tags.label")}</DialogTitle>
+						<DialogDescription
+							className="line-clamp-2 break-words"
+							title={row.title || row.session_id}
 						>
-							{t("ui.chat.tags.picker_title", {
-								title: row.title || row.session_id,
-							})}
-						</DialogTitle>
-						<DialogDescription>
-							{t("ui.chat.tags.picker_description")}
+							{row.title || row.session_id}
 						</DialogDescription>
 					</DialogHeader>
 					<div
 						ref={pickerBody}
-						className="min-h-0 space-y-3 overflow-y-auto p-1"
+						data-tag-dialog-body
+						className="min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto p-1"
+						aria-busy={loading || pending}
 					>
-						{loading ? (
-							<output>{t("ui.chat.tags.loading")}</output>
-						) : loadError !== null ? (
+						{pending && retry === "create" && (
+							<output>{t("ui.chat.tags.create_pending")}</output>
+						)}
+						{error && (
+							<div role="alert" className="text-body-sm text-danger">
+								<p>{error}</p>
+								{retry && (
+									<Button
+										disabled={pending}
+										onClick={() =>
+											void (retry === "create" ? create() : apply())
+										}
+									>
+										{t("ui.chat.tags.retry")}
+									</Button>
+								)}
+							</div>
+						)}
+						<p className="text-body-sm text-ink-muted">
+							{t("ui.chat.tags.picker_description")}
+						</p>
+						<TagPickerCombobox
+							categories={categories}
+							fallbackNames={row.tags ?? []}
+							selected={selected}
+							primary={effectivePrimary}
+							query={query}
+							setQuery={setQuery}
+							listOpen={listOpen}
+							setListOpen={setListOpen}
+							disabled={pending}
+							unready={loading || loadError !== null}
+							input={input}
+							toggle={toggle}
+							create={() => void create()}
+							createIssue={createIssue}
+						/>
+						{loading && <output>{t("ui.chat.tags.loading")}</output>}
+						{loadError && (
 							<div role="alert">
-								<p>{loadError.trim() || t("ui.chat.tags.load_failed")}</p>
+								<p>{t("ui.chat.tags.load_failed")}</p>
 								<Button onClick={() => void fetchCategories()}>
 									{t("ui.chat.tags.retry")}
 								</Button>
 							</div>
-						) : (
-							<>
-								{categories.length > 8 && (
-									<Input
-										aria-label={t("ui.chat.tags.search")}
-										placeholder={t("ui.chat.tags.search")}
-										value={query}
-										onChange={(event) => setQuery(event.target.value)}
-									/>
-								)}
-								{categories.length === 0 && (
-									<p className="text-body-sm text-ink-muted">
-										{t("ui.chat.tags.empty")}
-									</p>
-								)}
-								<div>
-									{categories
-										.filter((tag) =>
-											tag.name
-												.toLocaleLowerCase()
-												.includes(query.toLocaleLowerCase()),
-										)
-										.map((tag) => (
-											<label
-												key={tag.id}
-												htmlFor={`session-tag-${tag.id}`}
-												className="flex min-h-8 cursor-pointer items-center gap-2 rounded-md px-1 text-body-sm hover:bg-row-hover"
-											>
-												<Checkbox
-													id={`session-tag-${tag.id}`}
-													disabled={pending}
-													checked={selected.includes(tag.id)}
-													onCheckedChange={(checked) => {
-														const next = checked
-															? [...selected, tag.id]
-															: selected.filter((id) => id !== tag.id);
-														setIds(next);
-														setPrimary(draftPrimary(next, effectivePrimary));
-													}}
-												/>
-												<span className="min-w-0 break-words">{tag.name}</span>
-											</label>
-										))}
-								</div>
-								{query &&
-									!categories.some((tag) =>
-										tag.name
-											.toLocaleLowerCase()
-											.includes(query.toLocaleLowerCase()),
-									) && <p>{t("ui.chat.tags.no_matches", { query })}</p>}
-								{selected.length >= 2 ? (
-									<fieldset className="min-w-0 border-hairline border-t pt-2">
-										<legend className="text-meta text-ink-muted">
-											{t("ui.chat.tags.group_under")}
-										</legend>
-										{selected.map((id) => (
-											<label
-												key={id}
-												className="flex min-h-8 items-center gap-2 text-body-sm"
-											>
-												<input
-													type="radio"
-													className="accent-accent"
-													name="primary-tag"
-													disabled={pending}
-													checked={effectivePrimary === id}
-													onChange={() => setPrimary(id)}
-												/>
-												<span className="min-w-0 break-words">
-													{categories.find((tag) => tag.id === id)?.name}
-												</span>
-											</label>
-										))}
-									</fieldset>
-								) : (
-									<p className="text-meta text-ink-muted">
-										{selected.length ? (
-											<>
-												{t("ui.chat.tags.primary")}:{" "}
-												{
-													categories.find((tag) => tag.id === effectivePrimary)
-														?.name
-												}
-											</>
-										) : (
-											t("ui.chat.tags.untagged")
-										)}
-									</p>
-								)}
-							</>
 						)}
-						<div className="flex gap-2">
+						{!loading &&
+							!loadError &&
+							(selected.length >= 2 ? (
+								<fieldset className="min-w-0 space-y-1 border-t border-hairline pt-2">
+									<legend className="text-meta text-ink-muted">
+										{t("ui.chat.tags.group_under")}
+									</legend>
+									{selected.map((id) => (
+										<label
+											key={id}
+											className="flex min-h-8 items-center gap-2 text-body-sm"
+										>
+											<input
+												type="radio"
+												className="accent-accent"
+												name="primary-tag"
+												disabled={pending || loading || !!loadError}
+												checked={effectivePrimary === id}
+												onChange={() => {
+													setPrimary(id);
+													setNotice(
+														t("ui.chat.tags.selection_status", {
+															count: String(selected.length),
+															name:
+																categories.find((tag) => tag.id === id)?.name ??
+																"",
+														}),
+													);
+												}}
+											/>
+											<bdi className="min-w-0 break-words">
+												{categories.find((tag) => tag.id === id)?.name}
+											</bdi>
+										</label>
+									))}
+								</fieldset>
+							) : (
+								<p className="text-meta text-ink-muted">
+									{selected.length ? (
+										<>
+											{t("ui.chat.tags.primary")}:{" "}
+											{
+												categories.find((tag) => tag.id === effectivePrimary)
+													?.name
+											}
+										</>
+									) : (
+										t("ui.chat.tags.untagged")
+									)}
+								</p>
+							))}
+						<div className="flex flex-wrap gap-2">
 							<Button
 								variant="ghost"
-								disabled={pending || !selected.length}
+								disabled={pending || loading || !!loadError || !selected.length}
 								onClick={() => {
 									setIds([]);
 									setPrimary(null);
+									setNotice(t("ui.chat.tags.removed_all"));
 								}}
 							>
 								{t("ui.chat.tags.clear")}
 							</Button>
 							<Button
+								ref={manageButton}
 								variant="ghost"
-								disabled={pending || loading || loadError !== null}
-								onClick={() => setCreating(true)}
-							>
-								{t("ui.chat.tags.new")}
-							</Button>
-						</div>
-						{creating && (
-							<form
-								className="flex gap-2"
-								onSubmit={(event) => {
-									event.preventDefault();
-									void create();
+								disabled={pending || loading || !!loadError}
+								onClick={() => {
+									savedScroll.current = pickerBody.current?.scrollTop ?? 0;
+									returningFromManage.current = false;
+									setManaging(true);
 								}}
 							>
-								<Input
-									autoFocus
-									aria-label={t("ui.chat.tags.new_name")}
-									value={name}
-									onChange={(event) => setName(event.target.value)}
-									disabled={pending}
-								/>
-								<Button type="submit" disabled={pending || !name.trim()}>
-									{t("ui.chat.tags.add")}
-								</Button>
-							</form>
-						)}
-						<Button
-							ref={manageButton}
-							variant="ghost"
-							disabled={pending}
-							onClick={() => {
-								// Hide only the modal content, not this component: assignment checks,
-								// primary, search and scroll remain a draft while Manage is open.
-								savedScroll.current = pickerBody.current?.scrollTop ?? 0;
-								returningFromManage.current = false;
-								setManaging(true);
-							}}
-						>
-							{t("ui.chat.tags.manage")}
-						</Button>
-						{error && (
-							<div role="alert" className="text-body-sm text-danger">
-								<p>{error}</p>
-								<Button
-									disabled={pending}
-									onClick={() => void (retry === "create" ? create() : apply())}
-								>
-									{t("ui.chat.tags.retry")}
-								</Button>
-							</div>
-						)}
+								{t("ui.chat.tags.manage")}
+							</Button>
+						</div>
+						<output aria-live="polite" className="sr-only">
+							{notice}
+						</output>
 					</div>
-					<DialogFooter className="flex-row justify-end">
+					<DialogFooter
+						data-tag-dialog-footer
+						className="shrink-0 flex-row justify-end max-[359px]:flex-col-reverse"
+					>
 						<Button variant="ghost" disabled={pending} onClick={onClose}>
 							{t("ui.chat.tags.cancel")}
 						</Button>
 						<Button
-							disabled={pending || loading || loadError !== null}
+							disabled={pending || loading || loadError !== null || conflicted}
 							onClick={() => void apply()}
 						>
-							{pending ? t("ui.chat.tags.applying") : t("ui.chat.tags.apply")}
+							{pending && retry === "apply"
+								? t("ui.chat.tags.applying")
+								: t("ui.chat.tags.apply")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

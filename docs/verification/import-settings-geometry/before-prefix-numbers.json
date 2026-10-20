@@ -1,0 +1,188 @@
+{
+  "importSettingsGeometry": {
+    "viewport": {
+      "width": 1380,
+      "height": 900
+    },
+    "before": {
+      "window": {
+        "scrollY": 0,
+        "scrollX": 0
+      },
+      "document": {
+        "scrollTop": 0
+      },
+      "shell": {
+        "scrollTop": 0,
+        "scrollHeight": 4725,
+        "clientHeight": 900,
+        "overflowY": "hidden"
+      },
+      "content": {
+        "scrollTop": 6513,
+        "scrollHeight": 7458,
+        "clientHeight": 900
+      },
+      "sessionCheckbox": {
+        "dataState": "unchecked",
+        "ariaChecked": "false",
+        "indicatorMounted": false,
+        "fill": "rgb(43, 39, 33)",
+        "border": "rgb(131, 124, 109)",
+        "glyph": null
+      },
+      "selectedRow": null,
+      "importButton": null,
+      "confirmCheckbox": null,
+      "flow": {
+        "previewButtonPresent": false,
+        "importEnabled": false,
+        "acknowledgementPresent": false
+      },
+      "previewFailure": {
+        "stated": false,
+        "inline": false,
+        "retryPresent": true,
+        "retryInGate": false,
+        "spinner": false
+      },
+      "completion": {
+        "ctaPresent": false,
+        "resultHeading": false
+      },
+      "glass": null,
+      "theme": "localOperatorDark",
+      "scheme": "dark"
+    },
+    "selected": {
+      "window": {
+        "scrollY": 0,
+        "scrollX": 0
+      },
+      "document": {
+        "scrollTop": 0
+      },
+      "shell": {
+        "scrollTop": 0,
+        "scrollHeight": 4725,
+        "clientHeight": 900,
+        "overflowY": "hidden"
+      },
+      "content": {
+        "scrollTop": 6513,
+        "scrollHeight": 7603,
+        "clientHeight": 900
+      },
+      "sessionCheckbox": {
+        "dataState": "checked",
+        "ariaChecked": "true",
+        "indicatorMounted": true,
+        "fill": "rgb(43, 39, 33)",
+        "border": "rgb(131, 124, 109)",
+        "glyph": "rgb(22, 19, 14)"
+      },
+      "selectedRow": {
+        "classes": "flex items-start gap-3 rounded-md border border-hairline bg-surface p-3 hover:bg-sunken",
+        "background": "rgb(43, 39, 33)",
+        "border": "rgb(64, 59, 44)"
+      },
+      "importButton": {
+        "label": "Import 1 session",
+        "disabled": true
+      },
+      "confirmCheckbox": {
+        "dataState": "unchecked",
+        "disabled": true
+      },
+      "flow": {
+        "previewButtonPresent": true,
+        "importEnabled": false,
+        "acknowledgementPresent": true
+      },
+      "previewFailure": {
+        "stated": false,
+        "inline": false,
+        "retryPresent": true,
+        "retryInGate": false,
+        "spinner": false
+      },
+      "completion": {
+        "ctaPresent": false,
+        "resultHeading": false
+      },
+      "glass": null,
+      "theme": "localOperatorDark",
+      "scheme": "dark"
+    },
+    "manualPreviewPressed": true,
+    "after": {
+      "window": {
+        "scrollY": 0,
+        "scrollX": 0
+      },
+      "document": {
+        "scrollTop": 0
+      },
+      "shell": {
+        "scrollTop": 237,
+        "scrollHeight": 4725,
+        "clientHeight": 900,
+        "overflowY": "hidden"
+      },
+      "content": {
+        "scrollTop": 6819,
+        "scrollHeight": 7719,
+        "clientHeight": 900
+      },
+      "sessionCheckbox": {
+        "dataState": "checked",
+        "ariaChecked": "true",
+        "indicatorMounted": true,
+        "fill": "rgb(56, 201, 106)",
+        "border": "rgb(56, 201, 106)",
+        "glyph": "rgb(22, 19, 14)"
+      },
+      "selectedRow": {
+        "classes": "flex items-start gap-3 rounded-md border border-hairline bg-surface p-3 hover:bg-sunken",
+        "background": "rgb(43, 39, 33)",
+        "border": "rgb(64, 59, 44)"
+      },
+      "importButton": {
+        "label": "Import 1 session",
+        "disabled": true
+      },
+      "confirmCheckbox": {
+        "dataState": "unchecked",
+        "disabled": false
+      },
+      "flow": {
+        "previewButtonPresent": true,
+        "importEnabled": false,
+        "acknowledgementPresent": true
+      },
+      "previewFailure": {
+        "stated": false,
+        "inline": false,
+        "retryPresent": true,
+        "retryInGate": false,
+        "spinner": false
+      },
+      "completion": {
+        "ctaPresent": false,
+        "resultHeading": false
+      },
+      "glass": null,
+      "theme": "localOperatorDark",
+      "scheme": "dark"
+    },
+    "flow": {
+      "steps": [
+        "select a conversation",
+        "press the Preview button",
+        "tick the acknowledgement"
+      ],
+      "stepCount": 3,
+      "importEnabled": true
+    }
+  }
+}
