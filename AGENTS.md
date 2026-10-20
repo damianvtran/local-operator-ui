@@ -80,8 +80,8 @@ why will get the next case right where a checklist would not name it.
 - **A panel is full-height and starts at y0, including under the invisible
   titlebar.** A route whose panels own their top padding takes the shell's
   `flushTop` mode; the lane is then an absolute drag overlay, and the route
-  must not also receive the shell's reserved row. Never inset a panel or give it a top margin to clear the traffic
-  lights. The clearance is **padding inside the panel**, so the panel's own
+  must not also receive the shell's reserved row. Never inset a panel or give
+  it a top margin to clear the traffic lights. The clearance is **padding inside the panel**, so the panel's own
   ground reaches the window edge while its content starts below the controls.
   The difference is visible in one direction only: padding is invisible, an
   offset panel is a band. This was reported three times (the Library sidebar,
