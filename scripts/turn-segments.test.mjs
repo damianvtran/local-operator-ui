@@ -90,6 +90,7 @@ const {
 	electAnswer,
 	EMPTY_TRANSCRIPT,
 	isCompletionMarker,
+	isFinalResponse,
 	isStatementRow,
 	labelOfSegment,
 	parseTranscriptDisplayMode,
@@ -111,21 +112,29 @@ const {
 const TS = 1_000_000;
 
 /**
- * Tokens: U user, T tool, N narration (settled assistant text, NO `stopReason`),
- * A a settled assistant the provider DECLARED finished (`stopReason: "stop"`),
- * L the lead-in shape (settled text carried with its own `tool_calls`, so
- * `stopReason: "toolUse"`), S a STREAMING assistant, E an assistant that paints
- * nothing (tool calls only), W wake, P peer, J job_result, H hub_message,
- * X monitor_prompt, M terminal notice (Stopped with an error), K closed receipt
- * (complete notice, info), I session_incident, C compaction, O an info notice (no
- * completion), Q a quiet custom (mcp).
+ * Tokens: U user, T tool, N narration (settled assistant text that CARRIES its
+ * own `tool_calls`, the wire fact `isFinalResponse` reads; no `stopReason`, so
+ * the compat rule and the calls rule are asserted together), A a settled
+ * assistant the provider DECLARED finished (`stopReason: "stop"`, no calls), F a
+ * settled assistant with NO calls and no declared phase (a final response by the
+ * wire's own reading - the V5 token), L the lead-in shape (settled text carried
+ * with its own `tool_calls`, so `stopReason: "toolUse"`), S a STREAMING
+ * assistant, E an assistant that paints nothing (tool calls only), W wake, P
+ * peer, J job_result, H hub_message, X monitor_prompt, M terminal notice
+ * (Stopped with an error), K closed receipt (complete notice, info), I
+ * session_incident, C compaction, O an info notice (no completion), Q a quiet
+ * custom (mcp).
  *
- * `A` AND `L` CARRY THE PROVIDER'S PHASE DECLARATION, because the V4 rule reads it
- * (design note §1 and §2.2): `stop_reason: "stop"` is the model saying it had
- * FINISHED, and the durable reducer keeps exactly that field on a text-bearing row
- * (`transcript-reducer.ts:2264`). `N` deliberately carries no `stopReason` at all,
- * so the compat rule (an unknown phase is treated as absent) is asserted rather
- * than assumed.
+ * `N`, `L`, `E` CARRY `callsTools: true`, because that is what the wire says
+ * about them: an assistant message that carries its own calls is mid-turn
+ * narration/status commentary (`tui/narration.py::is_intermediate_narration`),
+ * and a tool-call-only row is the same fact with no prose. `A` and `F` carry no
+ * calls - the handover. `A` AND `L` CARRY THE PROVIDER'S PHASE DECLARATION,
+ * because the V4 rule reads it (design note §1 and §2.2): `stop_reason: "stop"`
+ * is the model saying it had FINISHED, and the durable reducer keeps exactly
+ * that field on a text-bearing row (`transcript-reducer.ts:2264`). `N` and `F`
+ * deliberately carry no `stopReason` at all, so the compat rule (an unknown
+ * phase is treated as absent) is asserted rather than assumed.
  */
 const RECORDS = {
 	U: (id, i) => ({ kind: "user", id, ts: TS + i, text: "hi" }),
@@ -147,6 +156,15 @@ const RECORDS = {
 		ts: TS + i,
 		text: "text",
 		streaming: false,
+		callsTools: true,
+	}),
+	/* A final response with NO declared phase and NO calls: V5's own token. */
+	F: (id, i) => ({
+		kind: "assistant",
+		id,
+		ts: TS + i,
+		text: "text",
+		streaming: false,
 	}),
 	A: (id, i) => ({
 		kind: "assistant",
@@ -163,6 +181,7 @@ const RECORDS = {
 		text: "text",
 		streaming: false,
 		stopReason: "toolUse",
+		callsTools: true,
 	}),
 	S: (id, i) => ({
 		kind: "assistant",
@@ -177,6 +196,7 @@ const RECORDS = {
 		ts: TS + i,
 		text: "",
 		streaming: false,
+		callsTools: true,
 	}),
 	W: (id, i) => ({ kind: "wake", id, ts: TS + i, text: "wake" }),
 	P: (id, i) => ({
@@ -1015,6 +1035,8 @@ test("F5: no declared-finished row and no reader row ever leaves the visible set
 		"U T T T A T T T A K",
 		"U T T T A W T A",
 		"U T T U T A",
+		"U F T T F T A",
+		"U A T T A",
 	];
 	for (const spec of specs) {
 		const records = seq(spec);
@@ -1024,15 +1046,123 @@ test("F5: no declared-finished row and no reader row ever leaves the visible set
 			slice.forEach((record, index) => {
 				if (index < 1) return;
 				const mustStay =
-					record.kind === "user" || reportsCompletedThought(record);
+					record.kind === "user" ||
+					reportsCompletedThought(record) ||
+					isFinalResponse(record);
 				if (!mustStay) return;
 				assert.ok(
 					result.visible.has(index),
-					`${spec} @${index}: a reader row or a declared-finished row left the visible set`,
+					`${spec} @${index}: a reader row or a handover left the visible set`,
 				);
 			});
 		}
 	}
+});
+
+/*
+ * V5, THE OPERATOR'S RULE (2026-10-20): "all final responses to the user even in
+ * between should have the inline action bar". A final response is a settled
+ * text-bearing assistant row that carries no `tool_calls` of its own - the wire
+ * fact, not position, not `closesTurn`, not length. V5 keeps every such row on
+ * screen, so its bar survives the tool run around it being folded.
+ */
+test("F6: `isFinalResponse` is the calls fact and nothing else", () => {
+	const settled = { kind: "assistant", id: "a", ts: 1, text: "t", streaming: false };
+	assert.equal(isFinalResponse(settled), true, "settled, paints text, no calls");
+	assert.equal(
+		isFinalResponse({ ...settled, callsTools: false }),
+		true,
+		"an explicit `false` is the same fact as an absent field",
+	);
+	assert.equal(
+		isFinalResponse({ ...settled, callsTools: true }),
+		false,
+		"a row that carries its own calls is narration",
+	);
+	assert.equal(
+		isFinalResponse({ ...settled, streaming: true }),
+		false,
+		"a streaming prefix is not settled",
+	);
+	assert.equal(
+		isFinalResponse({ ...settled, text: "" }),
+		false,
+		"a row with no prose has nothing to hand over",
+	);
+	assert.equal(
+		isFinalResponse({ kind: "user", id: "u", ts: 1, text: "t", images: [] }),
+		false,
+		"only assistant rows are responses",
+	);
+	/*
+	 * THE PHASE IS NOT CONSULTED. The corpus's known residual - a `toolUse` row
+	 * with empty `tool_calls` - is a final response, and so are the `aborted` /
+	 * `length` rows the phase rule cannot see.
+	 */
+	for (const stopReason of ["stop", "toolUse", null, undefined, "aborted"]) {
+		assert.equal(
+			isFinalResponse({ ...settled, stopReason }),
+			true,
+			`stopReason ${String(stopReason)}: the calls fact is the whole rule`,
+		);
+	}
+});
+
+test("F7: a final response stays visible above the next tool run, and keeps the one answer", () => {
+	// U F T T A: F1 is an undeclared handover followed by calls - the
+	// todo-guardrail shape the phase rule alone could fold. V5 keeps it; the tool
+	// run still condenses; the elected answer is still the LAST close.
+	const p = partition("U F T T A");
+	assert.deepEqual(visibleIds(p), ["F1", "A4"], "both handovers stay");
+	assert.deepEqual(hiddenIds(p), [["T2", "T3"]], "only the tool run folds");
+	assert.equal(answerId(p), "A4", "one elected answer, the last close");
+	assert.deepEqual(
+		[...closingAnswerIds(p.records)],
+		["A4"],
+		"one foot and one stamp: `closesTurn` is untouched",
+	);
+	sound(p);
+});
+
+test("F8: a final response's row survives collapse; a commentary row still folds", () => {
+	const records = seq("U F T T F");
+	const rows = buildRows(records, []);
+	const run = collapsePlan(rows, { live: false }).runs[0];
+	const inSegments = new Set(
+		run.segments.flatMap((segment) => segment.rows.map((row) => row.record.id)),
+	);
+	assert.equal(inSegments.has("F1"), false, "the first handover owns its bar");
+	assert.equal(inSegments.has("F4"), false, "and so does the second");
+	assert.deepEqual(
+		run.segments.map((segment) => segment.rows.map((row) => row.record.kind)),
+		[["tool", "tool"]],
+		"only the tool run between them is a folded span",
+	);
+	assert.equal(run.answerId, "F4", "the last handover is still the answer");
+
+	// The same turn with a COMMENTARY row where the tool run is: it folds.
+	const commentary = buildRows(seq("U F N T F"), []);
+	const folded = collapsePlan(commentary, { live: false }).runs[0];
+	assert.ok(
+		folded.segments.some((segment) =>
+			segment.rows.some((row) => row.record.id === "N2"),
+		),
+		"narration still folds into the span - the new clause did not un-hide it",
+	);
+});
+
+test("F9: a minor wake reply is never the only thing visible", () => {
+	// U F T W F: the reader's substantive handover (F1), then a call, then a wake
+	// reply that is short and is the elected answer (F4). The calls fact keeps F1,
+	// so the wake update cannot be all the reader sees.
+	const p = partition("U F T W F");
+	assert.deepEqual(
+		visibleIds(p),
+		["F1", "F4"],
+		"the substantive handover stays above the wake reply",
+	);
+	assert.equal(answerId(p), "F4", "and the wake reply is the one answer");
+	sound(p);
 });
 
 test("F3c: a genuine mid-work steer stays in place, and `Steered` becomes a backstop", () => {

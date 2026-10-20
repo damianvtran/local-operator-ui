@@ -231,6 +231,34 @@ type TranscriptPayloadRecord =
 			/** Still receiving deltas; the view shows the text without a cursor. */
 			streaming: boolean;
 			/**
+			 * Whether this assistant row carries its OWN `tool_calls` on the wire.
+			 *
+			 * THIS IS THE FINAL-RESPONSE SIGNAL, and it is read from the record rather
+			 * than guessed in the view. The core states the rule in
+			 * `tui/narration.py::is_intermediate_narration`: an assistant message that
+			 * carries `tool_calls` is mid-turn narration/status commentary, and one
+			 * that carries none is a handover to the reader. Position in the turn,
+			 * `closesTurn`, length and text heuristics all disagree with that fact on
+			 * real journals (a wake reply mid-turn is short AND final; a long
+			 * "checking the ledger" paragraph is final-only by accident of length), so
+			 * the wire fact is what `turn-segments.ts::isFinalResponse` reads and the
+			 * one thing the action-bar placement consults.
+			 *
+			 * `stopReason` deliberately does NOT corroborate it on its own: a
+			 * `toolUse` with empty `tool_calls` is reachable (the frozen corpus on
+			 * PR #737 records exactly one such row), and it is a final response.
+			 *
+			 * ABSENT MEANS "no tool calls" here, and that spelling is load-bearing:
+			 * hand-built fixtures and pre-field records have no way to state the
+			 * fact, and treating absence as "maybe" would leave every one of them
+			 * barless. The two paths that can state it (`durableRecord` from the
+			 * journal payload, `message_end` from the assembled frame) set it
+			 * explicitly; the two STREAMING creation paths cannot know it yet and
+			 * omit it - the bar is settled-only (`quotable`), so nothing reads the
+			 * absence there before `message_end` states it.
+			 */
+			callsTools?: boolean;
+			/**
 			 * Viewer-clock ms when this record SETTLED, or absent while it streams.
 			 *
 			 * WHY THE LIVE ROW NEEDS IT: `ts` on a live assistant record is its stream
@@ -3340,6 +3368,8 @@ function durableRecord(
 				text: "",
 				streaming: false,
 				stopReason: String(payload.stop_reason ?? "toolUse"),
+				/* Declared as well as implied: this branch IS the tool-call row. */
+				callsTools: true,
 				error: false,
 			};
 		}
@@ -3350,6 +3380,8 @@ function durableRecord(
 			text,
 			complete: true,
 			streaming: false,
+			/* The final-response fact, read from the journal row's own payload. */
+			callsTools: toolCalls.length > 0,
 			stopReason: (payload.stop_reason as string | null) ?? null,
 			error: Boolean(payload.is_error),
 		};
@@ -5451,6 +5483,12 @@ export function applyEvent(
 					...target,
 					streaming: false,
 					settledAt: target.settledAt ?? now,
+					/*
+					 * The same final-response fact the named path records: the frame's own
+					 * `tool_calls` is the one statement settling can make about it, and the
+					 * completion mark above already reads it for the same reason.
+					 */
+					callsTools: frameToolCalls.length > 0,
 					...(target.text || frameToolCalls.length === 0
 						? { complete: true }
 						: {}),
@@ -5496,6 +5534,14 @@ export function applyEvent(
 				text,
 				...(text || toolCalls.length === 0 ? { complete: true } : {}),
 				streaming: false,
+				/**
+				 * THE FINAL-RESPONSE FACT, recorded at the one moment the frame states it
+				 * (`turn-segments.ts::isFinalResponse` is its only reader). A live row
+				 * created by `message_start`/`message_update` cannot know it - the
+				 * producer assembles `tool_calls` at the end of the call - so this settle
+				 * is where the row learns whether it was narration or a handover.
+				 */
+				callsTools: toolCalls.length > 0,
 				settledAt:
 					previous?.kind === "assistant" && previous.settledAt !== undefined
 						? previous.settledAt

@@ -249,6 +249,49 @@ export function reportsCompletedThought(record: TranscriptRecord): boolean {
 }
 
 /**
+ * Is this row a FINAL RESPONSE to the reader - the agent handing something over
+ * rather than narrating its own work?
+ *
+ * THE RULE IS `tool_calls`, and only `tool_calls`. An assistant message that
+ * carries its own calls is mid-turn narration/status commentary ("Reading the
+ * ledger first." followed by the call it announces); one that carries none is a
+ * handover, whether it is the turn's last row or not. The core states the same
+ * rule in `tui/narration.py::is_intermediate_narration`, and the reducer keeps
+ * the fact on the record (`TranscriptRecord.callsTools`, set from the journal
+ * payload and from `message_end`).
+ *
+ * WHY NOT POSITION, `closesTurn`, LENGTH OR A TEXT TEST. Every one of them is
+ * wrong on real journals: a wake reply mid-turn is short, mid-turn AND final; a
+ * 2,500-character "checking the ledger" paragraph is long AND commentary; and
+ * `closesTurn` elects ONE row per turn while the operator asked for a bar on
+ * EVERY final response, including the ones between tool calls. `stopReason`
+ * does not stand in for the call fact either: a `toolUse` with empty
+ * `tool_calls` is reachable and is a final response (the corpus behind PR #737
+ * records exactly one such row).
+ *
+ * SETTLED AND PAINTING TEXT, because a bar exists to copy/hand over prose: a
+ * streaming prefix is not settled, and a row with no text has nothing to offer
+ * (a tool-call-only row paints nothing at all - `paintsSomething` drops it).
+ * `stopReason` is deliberately NOT consulted, which is what makes this predicate
+ * WIDER than `reportsCompletedThought`: it also covers the `null` and
+ * `aborted`/`length` rows the phase clause cannot see.
+ *
+ * THE DIRECT TEXT CHECK rather than `paintsSomething`: that predicate lives in
+ * `transcript-rows.ts`, which imports this module for `closingAnswerIds`, and a
+ * second import edge would be a cycle. For an assistant record `paintsSomething`
+ * IS `Boolean(record.text)`, so this is the same fact stated once for the one
+ * kind it can be asked of - with the same predicate shape pinned beside it.
+ */
+export function isFinalResponse(record: TranscriptRecord): boolean {
+	return (
+		record.kind === "assistant" &&
+		!record.streaming &&
+		record.callsTools !== true &&
+		record.text.length > 0
+	);
+}
+
+/**
  * A durable COMPLETION MARKER: the notice the transcript paints for a completion
  * attention record (`Stopped with an error`, `Interrupted`, and the neutral
  * `closed` / `retired` receipts).
@@ -527,19 +570,35 @@ export type RunPartition = {
  *   used to be hidden with the work it steered and the bar had to say `Steered` to
  *   admit it (`labelOfSegment`); the surveyed harnesses all keep the reader's own
  *   message in place, and the cost is measured (11.6 % of runs gain one bar);
- * - V4, a settled row the provider declared finished (`reportsCompletedThought`).
+ * - V4, a settled row the provider declared finished (`reportsCompletedThought`);
+ * - V5, a FINAL RESPONSE (`isFinalResponse`): settled, paints text, and carries no
+ *   `tool_calls` of its own. This is the operator's rule rather than the phase's
+ *   (2026-10-20): a row that hands something to the reader must keep its bar even
+ *   when the harness continued past it, because that is exactly the shape the
+ *   todo guardrail manufactures - "stop-then-more-work" - and the reader was
+ *   being shown the later tool run with the earlier handover folded away.
  *
- * WHAT THE FOUR CLAUSES DO NOT COVER (the falsifier agent review round 1 on PR
- * #737 produced, and it is real): a COMMENTARY close that is neither the run's
- * last close (V2) nor `stop`-declared (V4), with no call after it, still hides -
+ * WHAT THE FIVE CLAUSES DO NOT COVER (the falsifier agent review round 1 on PR
+ * #737 produced, and it was real): a COMMENTARY close that is neither the run's
+ * last close (V2) nor `stop`-declared (V4), with no call after it, still hid -
  * e.g. `[N0][W][K][N3][N4]`, where `n3` is commentary and the row after it is
  * another assistant row, not a call. Incidence on this machine's journals: exactly
- * 1 row in the frozen 15,130-run corpus. It is kept as a known residual rather than
- * closed, because
- * the clause that would cover it - "any commentary close, visible" - would un-hide
- * the ambient chatter V1/V2 were already shaped to fold.
+ * 1 row in the frozen 15,130-run corpus. V5 CLOSES THAT RESIDUAL, because that row
+ * carries no `tool_calls` and is therefore a final response by the wire's own
+ * reading - so the clause that would cover it is not "any commentary close,
+ * visible" (which would un-hide the ambient chatter V1/V2 were shaped to fold) but
+ * "any handover, visible".
  *
- * A V4 ROW IS STILL NOT A CLOSE. It is visible while the run has more work after
+ * WHAT V5 ADDS TO THE VISIBLE SET, measured on the same frozen corpus rather than
+ * assumed: rows that are settled, paint text, carry no calls, and declare
+ * something other than `stop` - exactly 1 `toolUse` row (the residual above),
+ * 0 rows with no stop reason, and at most 285 `aborted`/`length` rows - so at most
+ * 286 of 254,999 prose rows (0.11 %). Every one of them is a final response by the
+ * rule. The rows the condensation exists to fold are untouched: 233,783 `toolUse`
+ * rows carry their own `tool_calls`, and the 4 `stop` rows that carry calls were
+ * ALREADY visible under V4 - V5 neither adds nor removes them.
+ *
+ * A V4/V5 ROW IS STILL NOT A CLOSE. It is visible while the run has more work after
  * it, so it splits its segment without splitting its cycle - `isClose`, `cyclesOf`
  * and `electAnswer` are untouched, and the turn keeps exactly ONE answer to carry
  * `closesTurn` (the foot and the one stamp). The segment machinery already renders
@@ -632,7 +691,17 @@ export function partitionRun(
 	records.forEach((record, index) => {
 		if (index < options.from) return;
 		if (record.kind === "user") visible.add(index);
-		else if (options.paints(record) && reportsCompletedThought(record)) {
+		else if (
+			options.paints(record) &&
+			/*
+			 * BOTH HALVES: V4 keeps the stop-declared lead-in rows the shape test
+			 * cannot see (they carry calls), and V5 keeps every handover the phase
+			 * declaration is missing (see the doc's measured deltas). Written as an
+			 * OR rather than folded into one predicate so neither clause can lose
+			 * the population the other exists for.
+			 */
+			(reportsCompletedThought(record) || isFinalResponse(record))
+		) {
 			visible.add(index);
 		}
 	});
