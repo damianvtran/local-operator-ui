@@ -194,6 +194,7 @@ const Frame: FC<{ overrides: Partial<ImportSettingsViewProps> }> = ({
 			selected,
 			preview: null,
 			previewStale: false,
+			previewError: null,
 			confirmed,
 			busy: null,
 			error: null,
@@ -212,7 +213,6 @@ const Frame: FC<{ overrides: Partial<ImportSettingsViewProps> }> = ({
 			onSelectAll: () =>
 				setSelected(new Set(sessions.map((row) => row.sourceId))),
 			onClearSelection: () => setSelected(new Set()),
-			onPreview: noop,
 			onConfirmChange: setConfirmed,
 			onImport: noop,
 			onCancel: noop,
