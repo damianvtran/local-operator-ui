@@ -65,6 +65,13 @@ const RIG = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(RIG, "..");
 const ARGS = process.argv.slice(2);
 const AS_JSON = ARGS.includes("--json");
+/*
+ * The extra states need the CURRENT build's fixtures (an inline failure, a
+ * result-bearing job). A run against the pre-fix build skips them: its own
+ * `after` frame is the defect, and a state it cannot render would abort the
+ * run before the numbers were written.
+ */
+const EXTRA_STATES = !ARGS.includes("--no-states");
 const flag = (name) =>
 	ARGS.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const PORT = Number(flag("port") ?? 5252);
@@ -168,6 +175,47 @@ const PROBE = `(() => {
 			importEnabled: importButton ? !importButton.disabled : false,
 			acknowledgementPresent: Boolean(confirm),
 		},
+		/*
+		 * THE PREVIEW'S FAILURE, WHERE IT IS RENDERED. "inline" is the claim
+		 * that the reason and its Retry are inside the block that holds the
+		 * controls they explain; "retryInGate" is the half that would be false
+		 * if the failure were only in the section banner above the list.
+		 */
+		previewFailure: (() => {
+			const gate = importButton ? importButton.closest('div.rounded-lg') : null;
+			const retryAnywhere = [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Retry');
+			/*
+			 * The Retry is looked for INSIDE the gate, not in the document:
+			 * another section can render its own Retry button, and a
+			 * document-wide find would report that one as the preview's.
+			 */
+			const retryInGate = gate
+				? [...gate.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Retry')
+				: false;
+			const text = gate ? (gate.textContent || '') : '';
+			return {
+				stated: /Could not build the preview/.test(document.body.innerText || ''),
+				inline: /Could not build the preview/.test(text),
+				retryPresent: retryAnywhere,
+				retryInGate,
+				spinner: /Building the preview/.test(document.body.innerText || ''),
+			};
+		})(),
+		/* The completion CTA is only reachable when a result exists. */
+		completion: {
+			ctaPresent: [...document.querySelectorAll('button')].some((b) => b.textContent.includes('Import more conversations')),
+			resultHeading: /Import result/.test(document.body.innerText || ''),
+		},
+		/* What the glass paint applied, read back from the document. */
+		glass: document.documentElement.dataset.glass
+			? {
+					kinds: document.documentElement.dataset.glass,
+					canvasAlpha: getComputedStyle(document.documentElement).getPropertyValue('--lo-glass-a-canvas').trim(),
+					selectedAlpha: getComputedStyle(document.documentElement).getPropertyValue('--lo-glass-a-row-selected').trim(),
+				}
+			: null,
+		theme: document.documentElement.dataset.theme,
+		scheme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
 	};
 })()`;
 
@@ -220,7 +268,16 @@ const SCROLL_TO_SECTION = `(() => {
 const SELECT_A_ROW = `(() => {
 	const box = [...document.querySelectorAll('[role="checkbox"]')].find((b) => !/^I understand/.test(b.getAttribute('aria-label') || ''));
 	if (!box) return false;
-	const title = box.closest('div.rounded-md')?.querySelector('button');
+	const row = box.closest('div.rounded-md');
+	/*
+	 * THE ROW TEXT IS A LABEL on this build, and a second button on the build
+	 * before it. The label is preferred because it is the affordance a user
+	 * actually presses; the button is the fallback that keeps one rig able to
+	 * measure the pre-fix build, where no label exists.
+	 */
+	const label = row?.querySelector('label[for]');
+	if (label) { label.click(); return true; }
+	const title = row?.querySelector('button:not([role="checkbox"])');
 	if (!title) return false;
 	title.click();
 	return true;
@@ -466,6 +523,148 @@ const measureFlow = async (cdp) => {
 	return { steps, stepCount: steps.length, importEnabled: enabled };
 };
 
+/**
+ * Opens the page in one named configuration, ready to be driven.
+ *
+ * Each state is a FRESH PAGE with its own query parameters rather than a
+ * sequence of mutations inside one page: the states the review asked for are
+ * reached by different fixture behaviour (a refusing preview, a result-bearing
+ * job), and carrying one page through all of them would make the fixture lie
+ * about what the component did on its own.
+ */
+const openState = async (cdp, options = {}) => {
+	const {
+		theme = "localOperatorDark",
+		glass = false,
+		previewFail = false,
+		complete = false,
+		width = VIEWPORT.width,
+		height = VIEWPORT.height,
+	} = options;
+	await cdp.send("Emulation.setDeviceMetricsOverride", {
+		width,
+		height,
+		deviceScaleFactor: 1,
+		mobile: false,
+	});
+	await cdp.send("Page.navigate", { url: "about:blank" });
+	await sleep(120);
+	const params = new URLSearchParams({ theme });
+	if (glass) params.set("glass", "1");
+	if (previewFail) params.set("previewFail", "1");
+	if (complete) params.set("complete", "1");
+	await cdp.send("Page.navigate", {
+		url: `${ORIGIN}/import-settings-geometry.html?${params.toString()}`,
+	});
+	await waitFor(cdp, READY, "the import section");
+	await evaluate(cdp, SCROLL_TO_SECTION);
+	// The page fills in asynchronously; content above the section moves the
+	// container by itself, so the baseline is taken after it settles.
+	await sleep(1200);
+};
+
+const shoot = async (cdp, out, name) => {
+	if (!out) return;
+	mkdirSync(out, { recursive: true });
+	const shot = await cdp.send("Page.captureScreenshot", { format: "png" });
+	writeFileSync(join(out, `${name}.png`), Buffer.from(shot.data, "base64"));
+};
+
+const IMPORT_LIVE = `(() => {
+	const button = [...document.querySelectorAll('button')].find((b) => /^Import \\d/.test(b.textContent.trim()));
+	return Boolean(button) && !button.disabled;
+})()`;
+
+const TICK_ACK = `(() => {
+	const boxes = [...document.querySelectorAll('[role="checkbox"]')];
+	const ack = boxes.find((box) => /^I understand/.test(box.getAttribute('aria-label') || ''));
+	if (!ack || ack.getAttribute('data-state') === 'checked') return false;
+	ack.click();
+	return true;
+})()`;
+
+const CLICK_IMPORT = `(() => {
+	const button = [...document.querySelectorAll('button')].find((b) => /^Import \\d/.test(b.textContent.trim()));
+	if (!button || button.disabled) return false;
+	button.click();
+	return true;
+})()`;
+
+/**
+ * The states round-1 review asked to see, each measured and captured.
+ *
+ * `pending` is the frame a user sees between selecting a row and the preview
+ * arriving - the debounce window. It is a frame, not an inference: the spinner
+ * is the only thing on screen that says the build is coming.
+ */
+const captureStates = async (cdp, out) => {
+	const states = {};
+
+	// pending + settled, on the default dark palette.
+	await openState(cdp);
+	await evaluate(cdp, SELECT_A_ROW);
+	states.pending = await evaluate(cdp, PROBE);
+	if (out) await shoot(cdp, out, "pending");
+	await waitFor(cdp, PREVIEW_BUILT, "the automatic preview");
+	await sleep(400);
+	states.settled = await evaluate(cdp, PROBE);
+	if (out) await shoot(cdp, out, "settled");
+
+	// the preview failure, stated beside the controls it disables.
+	await openState(cdp, { previewFail: true });
+	await evaluate(cdp, SELECT_A_ROW);
+	await waitFor(
+		cdp,
+		`(() => /Could not build the preview/.test(document.body.innerText || ''))()`,
+		"the inline preview failure",
+	);
+	await sleep(200);
+	states.failure = await evaluate(cdp, PROBE);
+	if (out) await shoot(cdp, out, "failure");
+
+	// completion: a status carrying a nested result, so the CTA is reachable.
+	await openState(cdp, { complete: true });
+	await evaluate(cdp, SELECT_A_ROW);
+	await waitFor(cdp, PREVIEW_BUILT, "the automatic preview");
+	await evaluate(cdp, TICK_ACK);
+	await waitFor(cdp, IMPORT_LIVE, "an enabled Import button");
+	await evaluate(cdp, CLICK_IMPORT);
+	await waitFor(
+		cdp,
+		`(() => [...document.querySelectorAll('button')].some((b) => b.textContent.includes('Import more conversations')))()`,
+		"the completion CTA",
+	);
+	await sleep(300);
+	states.completion = await evaluate(cdp, PROBE);
+	if (out) await shoot(cdp, out, "completion");
+
+	// glass on: the app's own paint, applied exactly as the hook applies it.
+	await openState(cdp, { glass: true });
+	await evaluate(cdp, SELECT_A_ROW);
+	await waitFor(cdp, PREVIEW_BUILT, "the automatic preview");
+	await sleep(400);
+	states.glass = await evaluate(cdp, PROBE);
+	if (out) await shoot(cdp, out, "glass");
+
+	// narrow: the smallest supported width the settings column is designed for.
+	await openState(cdp, { width: 1000, height: 900 });
+	await evaluate(cdp, SELECT_A_ROW);
+	await waitFor(cdp, PREVIEW_BUILT, "the automatic preview");
+	await sleep(400);
+	states.narrow = await evaluate(cdp, PROBE);
+	if (out) await shoot(cdp, out, "narrow");
+
+	// light: the other scheme, where the role ladder inverts.
+	await openState(cdp, { theme: "localOperatorLight" });
+	await evaluate(cdp, SELECT_A_ROW);
+	await waitFor(cdp, PREVIEW_BUILT, "the automatic preview");
+	await sleep(400);
+	states.light = await evaluate(cdp, PROBE);
+	if (out) await shoot(cdp, out, "light");
+
+	return states;
+};
+
 const main = async () => {
 	await startVite();
 	const cdp = await startChrome();
@@ -603,6 +802,21 @@ const main = async () => {
 				join(OUT_DIR, "flow-complete.png"),
 				Buffer.from(shot.data, "base64"),
 			);
+		}
+
+		/*
+		 * The states a still cannot infer: the debounce window, a refused
+		 * preview, the completion CTA, the translucent ground, a narrow column
+		 * and the light scheme. Each is measured and captured in one run, so the
+		 * frames and the numbers beside them describe one DOM.
+		 *
+		 * AFTER the flow frame above, because this phase navigates the page:
+		 * capturing flow-complete after it would photograph the LAST state
+		 * measured here and label it as the flow's end.
+		 */
+		if (EXTRA_STATES) records.states = await captureStates(cdp, OUT_DIR);
+
+		if (OUT_DIR) {
 			const numbersPath = join(OUT_DIR, "numbers.json");
 			const merged = existsSync(numbersPath)
 				? JSON.parse(readFileSync(numbersPath, "utf8"))
@@ -654,6 +868,30 @@ const main = async () => {
 	console.log(
 		`FROM ARRIVAL TO BUILT:         shell root ${(after.shell?.scrollTop ?? 0) - (before.shell?.scrollTop ?? 0)}px   window ${after.window.scrollY - before.window.scrollY}px   content ${(after.content?.scrollTop ?? 0) - (before.content?.scrollTop ?? 0)}px`,
 	);
+	const st = records.states ?? {};
+	const stLine = (name) => {
+		const m = st[name];
+		if (!m) return `${name}: -`;
+		const glass = m.glass
+			? `  glass=${m.glass.kinds} canvasA=${m.glass.canvasAlpha} selectedA=${m.glass.selectedAlpha}`
+			: "";
+		const failure = m.previewFailure
+			? `  failureInline=${m.previewFailure.inline} retryInGate=${m.previewFailure.retryInGate} spinner=${m.previewFailure.spinner}`
+			: "";
+		return `${name}: theme=${m.theme} scheme=${m.scheme} shellRoot.scrollTop=${m.shell ? m.shell.scrollTop : "-"} window.scrollY=${m.window.scrollY} content.scrollTop=${m.content ? m.content.scrollTop : "-"} checkbox=${m.sessionCheckbox ? m.sessionCheckbox.dataState : "-"} row=${m.selectedRow ? "selected" : "-"}${failure}${glass}`;
+	};
+	console.log("");
+	for (const name of [
+		"pending",
+		"settled",
+		"failure",
+		"completion",
+		"glass",
+		"narrow",
+		"light",
+	]) {
+		console.log(stLine(name));
+	}
 	if (OUT_DIR) console.log(`\nframes and numbers: ${OUT_DIR}`);
 };
 

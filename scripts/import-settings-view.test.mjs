@@ -627,7 +627,9 @@ test("a preview failure is stated inside the preview block, beside its Retry", a
 	assert.ok(message, "the failure's reason is rendered");
 	const retry = buttonByText(host, "Retry");
 	assert.ok(retry, "the failure offers a retry");
-	const block = buttonByText(host, "Import 1 session")?.closest("div.rounded-lg");
+	const block = buttonByText(host, "Import 1 session")?.closest(
+		"div.rounded-lg",
+	);
 	assert.ok(block, "the acknowledgement block is rendered");
 	assert.ok(block.contains(message), "the failure sits beside the gate");
 	assert.ok(block.contains(retry), "the retry sits beside the gate");
