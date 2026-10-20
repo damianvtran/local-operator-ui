@@ -14,14 +14,22 @@ import { build } from "esbuild";
 
 const bundle = await build({
 	stdin: {
-		contents:
+		contents: [
 			'export * from "./src/renderer/src/features/library/library-model";',
+			'export * as locale from "./src/i18n/locale";',
+		].join("\n"),
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
 	platform: "node",
 	format: "esm",
 	write: false,
+	/* `@shared/i18n` is a VALUE import now (t() for the relative-age labels),
+	 * not just the `import type` esbuild used to erase — so the harness needs
+	 * the renderer's alias the app's tsconfig already provides. */
+	alias: {
+		"@shared": `${process.cwd()}/src/renderer/src/shared`,
+	},
 });
 const {
 	LIBRARY_CATEGORIES,
@@ -33,6 +41,8 @@ const {
 	formatDuration,
 	groupTagsByCategory,
 	sortAssets,
+	relativeTime,
+	locale,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -240,4 +250,72 @@ test("byte and duration formatting is compact and honest", () => {
 	assert.equal(formatBytes(18_200_000), "17 MB");
 	assert.equal(formatDuration(61), "1:01");
 	assert.equal(formatDuration(null), "");
+});
+
+/*
+ * RELATIVE AGES — the threshold ladder, then the defect this pins.
+ *
+ * `relativeTime` used to return hardcoded English, so every locale rendered its
+ * translated sentence with an English tail ("Classé par librarian le 2h ago").
+ * The first case freezes the pre-localization behaviour (tests, rounding, the
+ * empty string) so a localization change cannot quietly move a threshold; the
+ * second renders THE SAME AGE at three locales and requires three different
+ * strings, which is the only assertion that fails on the old code.
+ */
+const AGES_NOW = 1_700_000_000_000;
+const ageOf = (ms) => (AGES_NOW - ms) / 1000;
+
+test("relativeTime keeps the pre-localization ladder, rounding and empty case", () => {
+	locale.setLocale("en");
+	const cases = [
+		[0, "just now"],
+		[59_999, "just now"],
+		[60_000, "1m ago"],
+		[59 * 60_000, "59m ago"],
+		[60 * 60_000, "1h ago"],
+		[23 * 3_600_000, "23h ago"],
+		[24 * 3_600_000, "1d ago"],
+		[29 * 86_400_000, "29d ago"],
+		[30 * 86_400_000, "1mo ago"],
+		[359 * 86_400_000, "11mo ago"],
+		[360 * 86_400_000, "1y ago"],
+	];
+	for (const [ms, expected] of cases) {
+		assert.equal(
+			relativeTime(ageOf(ms), AGES_NOW),
+			expected,
+			`${ms}ms old must render ${expected}`,
+		);
+	}
+	assert.equal(relativeTime(null, AGES_NOW), "");
+	assert.equal(relativeTime(undefined, AGES_NOW), "");
+	assert.equal(relativeTime(0, AGES_NOW), "");
+});
+
+test("the same age renders in the reader's language", () => {
+	const ages = [
+		[30_000, { en: "just now", fr: "à l’instant", "zh-CN": "刚刚" }],
+		[120_000, { en: "2m ago", fr: "il y a 2 min", "zh-CN": "2分钟前" }],
+		[2 * 3_600_000, { en: "2h ago", fr: "il y a 2 h", "zh-CN": "2小时前" }],
+		[3 * 86_400_000, { en: "3d ago", fr: "il y a 3 j", "zh-CN": "3天前" }],
+		[
+			5 * 30 * 86_400_000,
+			{ en: "5mo ago", fr: "il y a 5 mois", "zh-CN": "5个月前" },
+		],
+		[
+			2 * 12 * 30 * 86_400_000,
+			{ en: "2y ago", fr: "il y a 2 ans", "zh-CN": "2年前" },
+		],
+	];
+	for (const [ms, expected] of ages) {
+		for (const [tag, rendered] of Object.entries(expected)) {
+			locale.setLocale(tag);
+			assert.equal(
+				relativeTime(ageOf(ms), AGES_NOW),
+				rendered,
+				`${tag} must render ${rendered}, not the English source`,
+			);
+		}
+	}
+	locale.setLocale("en");
 });
