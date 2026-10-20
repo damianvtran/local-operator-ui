@@ -40,7 +40,7 @@ const require = createRequire(import.meta.url);
 const bundled = await build({
 	stdin: {
 		contents:
-			'export {ManageTagsDialog} from "./src/renderer/src/features/chat/components/manage-tags-dialog"; export {ChatSessionTagsDialog} from "./src/renderer/src/features/chat/components/chat-session-tags-dialog"; export {useSessionTagsStore} from "./src/renderer/src/shared/store/session-tags-store";',
+			'export {ManageTagsDialog} from "./src/renderer/src/features/chat/components/manage-tags-dialog"; export {ChatSessionTagsDialog} from "./src/renderer/src/features/chat/components/chat-session-tags-dialog"; export {useSessionTagsStore} from "./src/renderer/src/shared/store/session-tags-store"; export {useCanonicalSessionsStore} from "./src/renderer/src/shared/store/canonical-sessions-store";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -105,6 +105,8 @@ const categories = () => [
 let registry;
 let requests;
 let toggleFailure;
+let replaceFailure;
+let authoritative;
 let closed;
 
 beforeEach(async () => {
@@ -115,6 +117,18 @@ beforeEach(async () => {
 	registry = categories();
 	requests = [];
 	toggleFailure = null;
+	replaceFailure = null;
+	// The canonical row another client would have written. Set in a test that
+	// needs the server to refuse a stale revision; fetchSessions then publishes
+	// it, which is what the real store awaits on a conflict.
+	authoritative = null;
+	api.useCanonicalSessionsStore.setState({
+		sessions: [],
+		fetchSessions: async () => {
+			if (!authoritative) return;
+			api.useCanonicalSessionsStore.setState({ sessions: [authoritative] });
+		},
+	});
 	closed = 0;
 	globalThis.toasts = [];
 	api.useSessionTagsStore.setState({
@@ -129,6 +143,7 @@ beforeEach(async () => {
 				if (request.op === "tags.list")
 					return { status: 200, body: { result: { tags: registry } } };
 				if (request.op === "tags.replace") {
+					if (replaceFailure) return replaceFailure;
 					registry = request.tags.map((tag, index) => ({
 						id: tag.id ?? `new-${index}-${tag.name}`,
 						name: tag.name,
@@ -139,6 +154,21 @@ beforeEach(async () => {
 				}
 				if (request.op === "sessions.tags") {
 					if (toggleFailure) return toggleFailure;
+					// A second client wrote this assignment: refuse any revision other
+					// than the one now held, the way the real server's 409 does.
+					if (
+						authoritative &&
+						request.expected_revision !== authoritative.tags_revision
+					)
+						return {
+							status: 409,
+							body: {
+								detail: {
+									code: "tags_conflict",
+									message: "Tags changed elsewhere",
+								},
+							},
+						};
 					const refs = request.tags.flatMap((id) => {
 						const tag = registry.find((entry) => entry.id === id);
 						return tag ? [{ id: tag.id, name: tag.name }] : [];
@@ -307,7 +337,7 @@ test("manage delete is guarded per action, and Escape dismisses the guard withou
 	]);
 });
 
-test("manage reorder writes the dropped order immediately", async () => {
+test("manage reorder writes the new order immediately", async () => {
 	await manage();
 	await act(() => labelled("Move Beta up").click());
 	await settle();
@@ -355,6 +385,11 @@ test("a tag click assigns immediately and keeps the dialog open", async () => {
 	assert.equal(closed, 0, "the picker stays open");
 	assert.equal(button("Apply"), undefined, "there is no Apply action");
 	assert.ok(button("Close"));
+	assert.deepEqual(
+		globalThis.toasts,
+		["Tags updated. Grouped under Alpha."],
+		"the confirmation names the group the write returned",
+	);
 });
 
 test("creating a tag from the picker creates AND assigns it, and it appears in the list", async () => {
@@ -430,4 +465,219 @@ test("a refused assignment restores the previous selection and reports the failu
 	const alert = document.querySelector('[role="alert"]');
 	assert.ok(alert, "the failure is announced");
 	assert.match(alert.textContent, /not saved/);
+	assert.equal(
+		document.querySelector('output[aria-live="polite"]').textContent.trim(),
+		"",
+		"the optimistic announcement is withdrawn with the rollback",
+	);
+});
+
+test("a 409 reconciles the authoritative assignment and revision before the next press", async () => {
+	const row = {
+		session_id: "s1",
+		title: "Chat",
+		tags: [],
+		primary: null,
+		tags_revision: "revision-1",
+	};
+	authoritative = {
+		session_id: "s1",
+		title: "Chat",
+		tags: [{ id: "b", name: "Beta" }],
+		primary: "b",
+		tags_revision: "revision-2",
+	};
+	await render(
+		React.createElement(api.ChatSessionTagsDialog, {
+			row,
+			onClose: () => {
+				closed++;
+			},
+			returnFocus: () => {},
+		}),
+	);
+	const option = (name) =>
+		[...document.querySelectorAll('[role="option"]')].find((node) =>
+			node.textContent.includes(name),
+		);
+	await act(() => option("Alpha").click());
+	await settle();
+	const refused = requests.filter((request) => request.op === "sessions.tags");
+	assert.equal(refused.length, 1);
+	assert.equal(refused[0].expected_revision, "revision-1");
+	assert.equal(
+		option("Alpha").getAttribute("aria-selected"),
+		"false",
+		"the refused selection is not left showing as applied",
+	);
+	assert.equal(
+		option("Beta").getAttribute("aria-selected"),
+		"true",
+		"the refreshed assignment replaces the stale selection",
+	);
+	assert.match(
+		document.querySelector('[role="alert"]').textContent,
+		/changed elsewhere/i,
+	);
+	await act(() => option("Alpha").click());
+	await settle();
+	const writes = requests.filter((request) => request.op === "sessions.tags");
+	assert.equal(writes.length, 2);
+	assert.equal(
+		writes[1].expected_revision,
+		"revision-2",
+		"the retry carries the refreshed revision, not the stale one",
+	);
+	assert.deepEqual(writes[1].tags, ["b", "a"]);
+	assert.equal(closed, 0, "the picker stays open for the deliberate retry");
+});
+
+test("creating the first tag on an untagged conversation confirms that tag, not Untagged", async () => {
+	const row = {
+		session_id: "s1",
+		title: "Chat",
+		tags: [],
+		primary: null,
+		tags_revision: "revision-1",
+	};
+	await render(
+		React.createElement(api.ChatSessionTagsDialog, {
+			row,
+			onClose: () => {
+				closed++;
+			},
+			returnFocus: () => {},
+		}),
+	);
+	await setValue(document.querySelector('[aria-label="Search tags"]'), "Gamma");
+	await act(() => buttonStartingWith("Create “Gamma”").click());
+	await settle();
+	assert.deepEqual(globalThis.toasts, ["Tags updated. Grouped under Gamma."]);
+});
+
+test("the selection cap refuses a ninth tag without writing", async () => {
+	registry = Array.from({ length: 9 }, (_, index) => ({
+		id: `t${index}`,
+		name: `Tag ${index}`,
+		order: index,
+		conversations: 0,
+	}));
+	api.useSessionTagsStore.setState({ categories: registry });
+	const row = {
+		session_id: "s1",
+		title: "Chat",
+		tags: registry.slice(0, 8).map(({ id, name }) => ({ id, name })),
+		primary: "t0",
+		tags_revision: "revision-1",
+	};
+	await render(
+		React.createElement(api.ChatSessionTagsDialog, {
+			row,
+			onClose: () => {
+				closed++;
+			},
+			returnFocus: () => {},
+		}),
+	);
+	const ninth = [...document.querySelectorAll('[role="option"]')].find((node) =>
+		node.textContent.includes("Tag 8"),
+	);
+	await act(() => ninth.click());
+	await settle();
+	assert.equal(
+		requests.filter((request) => request.op === "sessions.tags").length,
+		0,
+		"the cap refuses before any write",
+	);
+	assert.equal(
+		ninth.getAttribute("aria-selected"),
+		"false",
+		"the refused tag is not left showing as applied",
+	);
+});
+
+test("choosing a different primary writes it immediately", async () => {
+	const row = {
+		session_id: "s1",
+		title: "Chat",
+		tags: [
+			{ id: "a", name: "Alpha" },
+			{ id: "b", name: "Beta" },
+		],
+		primary: "a",
+		tags_revision: "revision-1",
+	};
+	await render(
+		React.createElement(api.ChatSessionTagsDialog, {
+			row,
+			onClose: () => {
+				closed++;
+			},
+			returnFocus: () => {},
+		}),
+	);
+	const radios = [...document.querySelectorAll('input[type="radio"]')];
+	assert.equal(radios.length, 2, "one radio per selected tag");
+	await act(() => radios[1].click());
+	await settle();
+	const write = requests.find((request) => request.op === "sessions.tags");
+	assert.deepEqual(write.tags, ["a", "b"]);
+	assert.equal(write.primary, "b");
+});
+
+test("Clear removes every assignment in one write", async () => {
+	const row = {
+		session_id: "s1",
+		title: "Chat",
+		tags: [{ id: "a", name: "Alpha" }],
+		primary: "a",
+		tags_revision: "revision-1",
+	};
+	await render(
+		React.createElement(api.ChatSessionTagsDialog, {
+			row,
+			onClose: () => {
+				closed++;
+			},
+			returnFocus: () => {},
+		}),
+	);
+	await act(() => button("Clear tags").click());
+	await settle();
+	const write = requests.find((request) => request.op === "sessions.tags");
+	assert.deepEqual(write.tags, []);
+	assert.equal(write.primary, null);
+	assert.deepEqual(globalThis.toasts, ["Tags updated. Shown under Untagged."]);
+});
+
+test("a failed create keeps the typed name for correction", async () => {
+	replaceFailure = { status: 500, body: { detail: { message: "nope" } } };
+	const row = {
+		session_id: "s1",
+		title: "Chat",
+		tags: [],
+		primary: null,
+		tags_revision: "revision-1",
+	};
+	await render(
+		React.createElement(api.ChatSessionTagsDialog, {
+			row,
+			onClose: () => {
+				closed++;
+			},
+			returnFocus: () => {},
+		}),
+	);
+	await setValue(document.querySelector('[aria-label="Search tags"]'), "Gamma");
+	await act(() => buttonStartingWith("Create “Gamma”").click());
+	await settle();
+	assert.equal(
+		document.querySelector('[aria-label="Search tags"]').value,
+		"Gamma",
+		"a failed create leaves the name in place to correct or retry",
+	);
+	assert.match(
+		document.querySelector('[role="alert"]').textContent,
+		/not created/i,
+	);
 });

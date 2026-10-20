@@ -17,7 +17,10 @@ import {
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
-import { isTagsConflict } from "@shared/store/session-tags-store";
+import {
+	isTagsConflict,
+	useSessionTagsStore,
+} from "@shared/store/session-tags-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useEffect, useRef, useState } from "react";
 import { ManageTagsDialog } from "./manage-tags-dialog";
@@ -93,7 +96,13 @@ export function ChatSessionTagsDialog({
 		if (error && pickerBody.current) pickerBody.current.scrollTop = 0;
 	}, [error]);
 	const saved = (fallback: string | null) => {
-		const tag = categories.find((entry) => entry.id === fallback);
+		// Resolve against the store, never this render's closure: create writes the
+		// registry and assigns in one interaction, so a freshly created tag exists
+		// only after the await and a captured category list would name the wrong
+		// group ("Shown under Untagged" for the tag just created as primary).
+		const tag = useSessionTagsStore
+			.getState()
+			.categories.find((entry) => entry.id === fallback);
 		showSuccessToast(
 			tag
 				? t("ui.chat.tags.updated_grouped", { tag: tag.name })
@@ -115,11 +124,14 @@ export function ChatSessionTagsDialog({
 	const create = async () => {
 		if (pending || createIssue || issue || loading || loadError) return;
 		const name = query.trim();
+		const result = await createAndAssign(name);
+		// Only an accepted registry write clears the field: a failed create keeps the
+		// typed name so it can be corrected instead of retyped.
+		if (!result) return;
 		setQuery("");
 		restoreInput.current = true;
 		input.current?.focus();
-		const result = await createAndAssign(name);
-		if (result?.assigned) saved(result.primary);
+		if (result.assigned) saved(result.primary);
 	};
 	const issue = tagNameIssue(query);
 	const createIssue =

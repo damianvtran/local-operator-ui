@@ -8,6 +8,7 @@ import {
 } from "@features/chat/chat-tag-picker";
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import { t } from "@shared/i18n";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	isTagsConflict,
 	useSessionTagsStore,
@@ -31,18 +32,20 @@ export type TagCreateResult = {
 /**
  * The single immediate-commit path for per-conversation tags.
  *
- * WHY A HOOK RATHER THAN DIALOG STATE: the tag dialog, the sidebar and a
- * `/tag` command all perform the same three operations — toggle a tag applied
- * or unapplied, clear all tags, create-and-assign in one action — against the
- * same optimistic store and the same revision contract. A second copy would
- * drift on rollback, on the 8/32 caps, or on the revision each write must carry.
- * UI shells own layout, focus and toasts; this owns state and writes.
+ * WHY A HOOK RATHER THAN DIALOG STATE: the tag picker and the Manage dialog
+ * shell the same three operations — toggle a tag applied or unapplied, clear
+ * all tags, create-and-assign in one action — against the same optimistic store
+ * and the same revision contract. A second copy would drift on rollback, on the
+ * 8/32 caps, or on the revision each write must carry. UI shells own layout,
+ * focus and toasts; this owns state and writes.
  *
  * CALLER CONTRACT: the caller passes the conversation's committed assignment
  * when the surface mounts. Every listed action writes on the press; there is no
  * staged draft, so a surface must not offer Cancel/Escape as an undo. A failed
- * write restores the previous selection and leaves the surface open for the
- * next press, which is the retry.
+ * write restores the previous selection and leaves the surface open: for an
+ * ordinary failure the next press is the retry, and a 409 re-seeds selection and
+ * revision from the canonical refresh first, so the next press is a deliberate
+ * retry against what the server now holds rather than a replay of the refused edit.
  */
 export function useChatTagAssignment({
 	sessionId,
@@ -122,6 +125,10 @@ export function useChatTagAssignment({
 		} catch (caught) {
 			setIds(previous.ids);
 			setHeld(previous.primary);
+			// The optimistic announcement described the selection this failure just
+			// rolled back; withdraw it rather than leaving a polite live region
+			// asserting a state that no longer holds.
+			setNotice("");
 			if (caught instanceof DesktopControlError && caught.status === 422)
 				await fetchCategories();
 			if (
@@ -133,7 +140,24 @@ export function useChatTagAssignment({
 			}
 			if (isTagsConflict(caught)) {
 				await fetchCategories();
-				setError(t("ui.chat.tags.changed_elsewhere"));
+				/*
+				 * The row this surface mounted with is a SNAPSHOT, and the store has just
+				 * awaited a canonical refresh for this conflict. Consume it here: without
+				 * re-seeding the revision, every later press repeats the same stale
+				 * revision and 409s forever; without re-seeding the selection, the retry
+				 * would write our pre-conflict tags over the other client's edit.
+				 */
+				const fresh = useCanonicalSessionsStore
+					.getState()
+					.sessions.find((row) => row.session_id === sessionId);
+				if (fresh) {
+					const freshIds = fresh.tags?.map((tag) => tag.id) ?? [];
+					if (fresh.tags_revision !== undefined)
+						currentRevision.current = fresh.tags_revision;
+					setIds(freshIds);
+					setHeld(draftPrimary(freshIds, fresh.primary ?? null));
+				}
+				setError(t("ui.chat.tag_dialogs.changed_elsewhere"));
 				return { ok: false, reason: "conflict" };
 			}
 			setError(t("ui.chat.tags.save_failed"));

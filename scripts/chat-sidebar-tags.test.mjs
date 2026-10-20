@@ -24,7 +24,6 @@ const bundle = await build({
 	stdin: {
 		contents: `
 export * from "./src/renderer/src/features/chat/chat-tag-groups";
-export * from "./src/renderer/src/features/chat/chat-tag-draft";
 export {moveChatToTag} from "./src/renderer/src/features/chat/chat-tag-move";
 export {parseSidebarView, DEFAULT_SIDEBAR_VIEW} from "./src/renderer/src/features/chat/chat-sidebar-view";
 export {DesktopControlError} from "./src/renderer/src/shared/api/local-operator/desktop-api";
@@ -89,7 +88,6 @@ export const discardPendingSends = () => undefined;
 const {
 	moveChatToTag,
 	groupChatsByTag,
-	deletedTagNameReused,
 	draftPrimary,
 	parseSidebarView,
 	DEFAULT_SIDEBAR_VIEW,
@@ -340,7 +338,7 @@ test("management writes every create, rename, reorder and delete immediately wit
 	);
 	assert.equal(
 		copy["ui.chat.tag_dialogs.manage_description"],
-		"Create, rename and order tags. Changes save immediately.",
+		"Create, rename, reorder and delete tags. Changes save immediately.",
 	);
 	assert.equal(
 		copy["ui.chat.tag_dialogs.picker_description"],
@@ -372,7 +370,7 @@ test("assignment confirms the exact grouped or Untagged success copy after the w
 	assert.ok(source.includes("const result = await toggle(id);"));
 	// Create resolves the new tag from the registry the write returned, then
 	// assigns it in the same interaction; it never waits for Apply. Both live in
-	// the one immediate-commit hook the picker, sidebar and /tag command share.
+	// the one immediate-commit hook the two dialogs share.
 	const hook = readFileSync(
 		"src/renderer/src/features/chat/use-chat-tag-assignment.ts",
 		"utf8",
@@ -384,36 +382,27 @@ test("assignment confirms the exact grouped or Untagged success copy after the w
 	assert.ok(!source.includes('t("ui.chat.tags.apply")'));
 });
 
-test("delete plus name-only recreation is blocked without blocking normal add/delete", () => {
-	const registry = [
-		{ id: "a", name: "Review" },
-		{ id: "b", name: "Project" },
-	];
-	assert.equal(
-		deletedTagNameReused(registry, [
-			{ id: "b", name: "Project" },
-			{ name: "Review" },
-		]),
-		"Review",
+test("picker Escape collapses the list before it dismisses the dialog", () => {
+	// A rendered two-press case belongs to QA: driving Radix's dismiss machinery
+	// twice in jsdom ran away in this environment (reported on PR #1262 round 1),
+	// so the contract is pinned at source instead of pretending a local pass.
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-session-tags-dialog.tsx",
+		"utf8",
 	);
-	assert.equal(
-		deletedTagNameReused(registry, [{ name: " review " }]),
-		" review ",
+	// The picker's handler is the LAST one: the onMove branch above it also
+	// declares onEscapeKeyDown, and slicing from the first occurrence would pin
+	// the wrong contract.
+	const handler = source.slice(source.lastIndexOf("onEscapeKeyDown"));
+	assert.ok(handler.includes("if (pending) event.preventDefault();"));
+	assert.ok(
+		handler.includes("else if (listOpen)") &&
+			handler.includes("setListOpen(false)"),
+		"the first Escape only collapses the open list",
 	);
-	assert.equal(
-		deletedTagNameReused(registry, [{ id: "b", name: "Project" }]),
-		null,
-	);
-	assert.equal(
-		deletedTagNameReused(registry, [...registry, { name: "Concept" }]),
-		null,
-	);
-	assert.equal(
-		deletedTagNameReused(registry, [
-			{ id: "a", name: "Renamed" },
-			{ name: "Review" },
-		]),
-		null,
+	assert.ok(
+		!handler.includes("setIds(") && !handler.includes("setHeld("),
+		"Escape never reverts a committed selection",
 	);
 });
 test("save failures are tag-specific, loading errors are not empty registries, and title has no action ellipsis", () => {

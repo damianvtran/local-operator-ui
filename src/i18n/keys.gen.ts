@@ -1712,6 +1712,7 @@ export type MessageParams = {
 	"ui.chat.sidebar_view.time_basis": undefined;
 	"ui.chat.sidebar_view.time_section": undefined;
 	"ui.chat.tag_dialogs.assign_created_failed": { name: string };
+	"ui.chat.tag_dialogs.changed_elsewhere": undefined;
 	"ui.chat.tag_dialogs.close": undefined;
 	"ui.chat.tag_dialogs.created_assigned": { name: string };
 	"ui.chat.tag_dialogs.deleted_name": { name: string };
