@@ -384,8 +384,8 @@ export function ChatSidebarViewMenu({
 					 */}
 					{view.tagsEnabled && autoTagAvailable && (
 						<>
-							<div className="flex h-7 items-center gap-2 px-1">
-								<span className="flex-1 text-meta text-ink-dim">
+							<div className="flex min-h-7 items-center gap-2 px-1 py-0.5">
+								<span className="min-w-0 flex-1 text-meta text-ink-dim">
 									{t("ui.chat.tags.auto_tag")}
 								</span>
 								<Switch

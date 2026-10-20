@@ -26,6 +26,7 @@ import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 	url: "http://localhost/",
@@ -52,6 +53,14 @@ for (const name of [
 	globalThis[name] =
 		dom.window[name] ?? dom.window.getComputedStyle.bind(dom.window);
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+/* Radix's dialog scroll-lock measures ancestors; jsdom has no layout, so the
+ * observer only has to exist and never fire. Geometry stays a real-browser
+ * claim. */
+globalThis.ResizeObserver ??= class {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+};
 const { createRoot } = await import("react-dom/client");
 
 const dir = resolve("node_modules/.cache/tag-auto-tests");
@@ -64,6 +73,9 @@ export * from "./src/renderer/src/features/chat/chat-auto-tag";
 export {DEFAULT_SIDEBAR_VIEW, parseSidebarView} from "./src/renderer/src/features/chat/chat-sidebar-view";
 export {desktopEndpoint} from "./src/shared/desktop-contract";
 export {ChatSidebarViewMenu} from "./src/renderer/src/features/chat/components/chat-sidebar-view-menu";
+export {ForkPicker} from "./src/renderer/src/features/chat/pickers/destination-pickers";
+export {useUiPreferencesStore} from "./src/renderer/src/shared/store/ui-preferences-store";
+export {desktopKeys} from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
 export {setLocale} from "./src/i18n";
 `,
 		resolveDir: process.cwd(),
@@ -74,7 +86,26 @@ export {setLocale} from "./src/i18n";
 	},
 	bundle: true,
 	jsx: "automatic",
-	packages: "external",
+	// React (and the query client the provider shares) stay external so the
+	// test and the component use ONE instance of each; everything else is
+	// bundled because the picker tree imports MUI by directory paths Node ESM
+	// cannot resolve from a bare external specifier.
+	external: [
+		"react",
+		"react/*",
+		"react-dom",
+		"react-dom/*",
+		"lucide-react",
+		"@tanstack/react-query",
+	],
+	loader: { ".css": "empty" },
+	mainFields: ["module", "main"],
+	// Bundled CJS dependencies call `require("react")`; the bundle is ESM, so
+	// give it a real resolver rooted at its own file rather than esbuild's
+	// throwing stub.
+	banner: {
+		js: 'import { createRequire as __createRequire } from "node:module"; const require = __createRequire(import.meta.url);',
+	},
 	platform: "node",
 	format: "esm",
 	outfile: bundlePath,
@@ -84,10 +115,13 @@ const {
 	AUTO_TAG_MINIMUM_VERSION,
 	ChatSidebarViewMenu,
 	DEFAULT_SIDEBAR_VIEW,
+	ForkPicker,
 	autoTagSupported,
 	desktopEndpoint,
+	desktopKeys,
 	forkAutoTag,
 	setLocale,
+	useUiPreferencesStore,
 } = await import(pathToFileURL(bundlePath));
 const root = createRoot(document.getElementById("root"));
 after(async () => {
@@ -308,4 +342,131 @@ test("neither switch disturbs a grouping the reader chose", async () => {
 	);
 	assert.equal(written.tagsEnabled, false);
 	assert.equal(written.groupBy, "agent", "the Tags switch leaves it alone too");
+});
+
+/* ------------------------------------- the ForkPicker's submit-time wiring */
+
+/*
+ * R1-M1: the pure tests above prove `forkAutoTag` and `desktopEndpoint` apart,
+ * and would stay green if the PICKER read a stale prop, dropped
+ * `parseSidebarView`, or sent `false` where it meant `true`. These mount the
+ * real component, press its own Fork action, and read the request the transport
+ * was handed. The first test also flips the stored setting AFTER mount and
+ * presses again: the second body must follow the store, which is the design's
+ * fork-time rule and the failure a prop copied at open would produce.
+ *
+ * JSDOM has no layout, so this establishes the request and nothing about
+ * pixels, focus or the dialog's real presentation.
+ */
+
+const forkButton = () =>
+	[...document.querySelectorAll("button")].find(
+		(element) => element.textContent?.trim() === "Fork",
+	);
+
+async function mountForkPicker({ features, view }) {
+	const requests = [];
+	// Fresh instance per case: a keyless provider of the same type would reuse
+	// the previous QueryClient's observer and could keep the capable answer.
+	await render(null);
+	window.api = {
+		desktop: {
+			request: async (request) => {
+				requests.push(request);
+				if (request.op === "capabilities") {
+					return { status: 200, body: { result: capabilities(features) } };
+				}
+				if (request.op === "sessions.fork") {
+					return {
+						status: 200,
+						body: {
+							result: {
+								data: {
+									session_id: "child-1",
+									parent_id: "parent-1",
+									boundary: "next_safe",
+								},
+							},
+						},
+					};
+				}
+				throw new Error(`unexpected desktop op ${request.op}`);
+			},
+		},
+	};
+	useUiPreferencesStore
+		.getState()
+		.setChatSidebarView({ ...DEFAULT_SIDEBAR_VIEW, ...view });
+	/*
+	 * Seed the capability query instead of letting the stub settle it: the
+	 * picker's submit closes over `capabilities.data`, and a first press before
+	 * the first answer would test the unknown arm, not the intended one.
+	 */
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	client.setQueryData(desktopKeys.capabilities, capabilities(features));
+	await render(
+		React.createElement(
+			QueryClientProvider,
+			{ client },
+			React.createElement(ForkPicker, {
+				key: "fork-picker",
+				sessionId: "parent-1",
+				action: { args: "", data: {} },
+				onClose() {},
+				rebind() {},
+			}),
+		),
+	);
+	return requests;
+}
+
+test("the picker sends the store's fork-time intent, on every press", async () => {
+	const requests = await mountForkPicker({
+		features: { session_tags: 1, session_tags_auto_tag: 1 },
+		view: { tagsEnabled: true, autoTagForks: true },
+	});
+	const button = forkButton();
+	assert.ok(button, "the dialog drew its Fork action");
+	await act(async () => {
+		button.click();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	const first = requests.find((request) => request.op === "sessions.fork");
+	assert.ok(first, "the press reached the transport");
+	assert.equal(first.autoTag, true, "tags on + auto-tag on sends true");
+
+	// Flip the persisted setting AFTER mount: the next press must read it at
+	// submit, not from a value captured when the dialog opened.
+	useUiPreferencesStore
+		.getState()
+		.setChatSidebarView({
+			...DEFAULT_SIDEBAR_VIEW,
+			tagsEnabled: true,
+			autoTagForks: false,
+		});
+	await act(async () => {
+		forkButton().click();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	const forks = requests.filter((request) => request.op === "sessions.fork");
+	assert.equal(forks.length, 2, "the second press sent its own fork");
+	assert.equal(forks[1].autoTag, false, "off is a real instruction, not absence");
+});
+
+test("an incapable backend's fork carries no autoTag key at all", async () => {
+	const requests = await mountForkPicker({
+		features: { session_tags: 1 },
+		view: { tagsEnabled: true, autoTagForks: true },
+	});
+	const button = forkButton();
+	assert.ok(button, "the dialog drew its Fork action");
+	await act(async () => {
+		button.click();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	const fork = requests.find((request) => request.op === "sessions.fork");
+	assert.ok(fork, "the fork still went out");
+	assert.equal("autoTag" in fork, false, "the released body shape is kept");
 });

@@ -2874,7 +2874,12 @@ export const ForkPicker: FC<PickerContext> = ({
 					...(cutEntryId
 						? { boundary: "at_entry" as const, entryId: cutEntryId }
 						: { boundary: "next_safe" as const }),
-					autoTag,
+					/*
+					 * ABSENT, not `undefined`: on a backend without the capability the
+					 * request object itself keeps the released shape, which is the property
+					 * the call-site test reads (the transport would drop it either way).
+					 */
+					...(autoTag === undefined ? {} : { autoTag }),
 				}),
 			/*
 			 * THE SUCCESS SENTENCE NAMES NO SESSION ID (UX round 1, U5). The child's id

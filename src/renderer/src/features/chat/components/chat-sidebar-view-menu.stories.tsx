@@ -646,13 +646,15 @@ const Readout: FC<{ autoTag?: boolean }> = ({ autoTag = false }) => {
 			/*
 			 * THE AUTO-TAG SETTING'S OWN LINE, drawn only for the stories that turn
 			 * the tags capability on. It reads the CONTROL (present, checked), the
-			 * helper's actual words, and the number of elements inside the panel
-			 * that actually scroll - the "one scroller" claim is a count, not a
+			 * helper's actual words, and the number of elements that actually scroll -
+			 * the panel ITSELF plus anything inside it, because the panel is the
+			 * scroller (a descendant-only walk printed "inner scrollers 0" beside a
+			 * "panel scrolls yes"). The "one scroller" claim is a count, not a
 			 * glance at the pixels.
 			 */
 			const autoTagRow = document.querySelector("[data-sidebar-auto-tag]");
 			const scrollers = panel
-				? [...panel.querySelectorAll<HTMLElement>("*")].filter((el) => {
+				? [panel, ...panel.querySelectorAll<HTMLElement>("*")].filter((el) => {
 						const overflow = getComputedStyle(el).overflowY;
 						return (
 							(overflow === "auto" || overflow === "scroll") &&
@@ -877,6 +879,11 @@ const tagsOnlyState = (width: number) => () => {
 
 export const PopoverTagsBefore220: Story = {
 	render: tagsOnlyState(220),
+	play: autoTagPlay,
+};
+
+export const PopoverTagsBefore260: Story = {
+	render: tagsOnlyState(260),
 	play: autoTagPlay,
 };
 
