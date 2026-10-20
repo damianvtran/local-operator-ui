@@ -70,6 +70,22 @@ export function registerCatalogue(
 	else registered.set(locale, { ...messages });
 }
 
+/**
+ * Replace everything registered for `locale` with `messages`.
+ *
+ * The per-locale bundle is a WHOLE: one payload carrying every eager
+ * namespace, keyed by `content_sha256`. When that identity changes the served
+ * map is the complete truth for the locale, so merging would keep identities
+ * a newer backend removed (and they would render stale text until restart).
+ * Additive `registerCatalogue` remains for partial contributions.
+ */
+export function replaceCatalogue(
+	locale: string,
+	messages: Record<string, string>,
+): void {
+	registered.set(locale, { ...messages });
+}
+
 /** Drop everything registered; bundled en remains. Tests reset with this. */
 export function clearRegisteredCatalogues(): void {
 	registered.clear();

@@ -21,9 +21,16 @@
  * Cache the locales actually used (two by default, active + previous), keyed
  * and versioned, and discard anything that does not parse back into a bundle.
  * A corrupt entry is removed rather than allowed to fail startup.
+ *
+ * REVALIDATION. The client deliberately does not send `If-None-Match`: the
+ * route's 304 path is a server-side contract exercised by the core route
+ * tests, and an intermediary's 304 simply leaves the cache intact. The
+ * mechanism that matters here is the full 200's `content_sha256` compared
+ * with the cached identity, replacing the map when it changes — which is why
+ * the bundle identity must cover the eager/deferred split (core #2724).
  */
 
-import { registerCatalogue } from "./messages";
+import { registerCatalogue, replaceCatalogue } from "./messages";
 
 /** One namespace omitted from the eager bundle, served on demand instead. */
 export type DeferredCatalogue = {
@@ -65,6 +72,24 @@ const SHA256 = /^[a-f0-9]{64}$/;
 const LOCALE_TAG = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const WIRE_NAMESPACE = /^wire(?:\.[A-Za-z0-9_]+)+$/;
 
+/**
+ * The locale the sync hook should load a catalogue for.
+ *
+ * Prefer the capabilities answer's OWN resolved tag. On the first answer the
+ * locale-writer effect notifies the store for the NEXT render, so a hook in
+ * the same commit still reads the pre-mirror device tag (`en-US`), and asking
+ * the route for that tag is a guaranteed 404. Falls back to the store for the
+ * no-answer and blank-tag cases, which is what that store documents anyway.
+ */
+export function resolveCatalogueLocale(
+	backendLanguage: string | undefined,
+	storeLocale: string,
+): string {
+	return backendLanguage && backendLanguage.trim() !== ""
+		? backendLanguage
+		: storeLocale;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -74,9 +99,14 @@ function isSha256(value: unknown): value is string {
 }
 
 function isMessageMap(value: unknown): value is Record<string, string> {
+	// The route serves `wire.*` only, so a `ui.*`/`tui.*` key in a payload or a
+	// cache entry is foreign: registering it would shadow client-owned copy.
 	return (
 		isRecord(value) &&
-		Object.values(value).every((message) => typeof message === "string")
+		Object.entries(value).every(
+			([key, message]) =>
+				key.startsWith("wire.") && typeof message === "string",
+		)
 	);
 }
 
@@ -186,6 +216,23 @@ export function readCachedBundle(
 	// to a reader; a payload that is a bare map is NOT a cache entry.
 	const bundle = parseWireCatalogueBundle(parsed.bundle);
 	if (bundle === null || bundle.locale !== locale) return discard();
+	/*
+	 * A cache read is a USE of that locale. Refresh `savedAt` so eviction keeps
+	 * the two most recently opened locales, not the two most recently written;
+	 * best effort, because read-only storage still serves a valid bundle.
+	 */
+	try {
+		storage.setItem(
+			key,
+			JSON.stringify({
+				version: CACHE_VERSION,
+				savedAt: Date.now(),
+				bundle,
+			}),
+		);
+	} catch {
+		/* Quota/blocked storage: the read itself already succeeded. */
+	}
 	return bundle;
 }
 
@@ -242,6 +289,12 @@ export type CatalogueSupplyOptions = {
 	storage?: CatalogueStorage | null;
 	/** Overridable for tests; production registers into the message runtime. */
 	register?: (locale: string, messages: Record<string, string>) => void;
+	/**
+	 * Overridable for tests. Replaces a locale's whole map when a fetched
+	 * bundle's identity changes: the served bundle is complete, so keys a
+	 * newer backend removed must not survive from the previous registration.
+	 */
+	replace?: (locale: string, messages: Record<string, string>) => void;
 	/** A MALFORMED payload is an integration bug worth a console line, not a toast. */
 	warn?: (message: string) => void;
 };
@@ -259,6 +312,7 @@ export function createCatalogueSupply(
 	options: CatalogueSupplyOptions,
 ): CatalogueSupply {
 	const register = options.register ?? registerCatalogue;
+	const replace = options.replace ?? replaceCatalogue;
 	const warn =
 		options.warn ?? ((message: string) => console.warn(`[i18n] ${message}`));
 	const memory = new Map<string, WireCatalogueBundle>();
@@ -287,7 +341,12 @@ export function createCatalogueSupply(
 		const known = memory.get(locale);
 		if (known?.content_sha256 === fetched.content_sha256) return;
 		memory.set(locale, fetched);
-		register(fetched.locale, fetched.messages);
+		/*
+		 * A changed identity means the whole served map was re-derived: replace
+		 * rather than merge, or a key the backend removed keeps rendering its old
+		 * text for the rest of the session.
+		 */
+		replace(fetched.locale, fetched.messages);
 		writeCachedBundle(options.storage, fetched);
 	}
 

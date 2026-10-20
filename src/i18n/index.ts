@@ -30,6 +30,7 @@ export type { MessageRender } from "./messages";
 export {
 	clearRegisteredCatalogues,
 	registerCatalogue,
+	replaceCatalogue,
 	renderMessage,
 	t,
 	translate,

@@ -20,6 +20,7 @@ const bundle = await build({
 				createCatalogueSupply,
 				parseWireCatalogueBundle,
 				readCachedBundle,
+				resolveCatalogueLocale,
 				writeCachedBundle,
 			} from "./src/i18n/catalogue-supply";
 			export {
@@ -56,6 +57,7 @@ const {
 	parseWireCatalogueBundle,
 	readCachedBundle,
 	renderMessage,
+	resolveCatalogueLocale,
 	setLocale,
 	writeCachedBundle,
 } = mod;
@@ -273,4 +275,73 @@ test("the payload parser rejects a bundle with a bad hash or a non-wire namespac
 test("writeCachedBundle is a no-op without storage", () => {
 	writeCachedBundle(null, payload());
 	assert.equal(readCachedBundle(null, "fr"), null);
+});
+
+test("a changed bundle replaces the locale map, dropping a removed key", async () => {
+	fresh();
+	const storage = new FakeStorage();
+	const removed = "wire.errors.removed.key";
+	writeCachedBundle(storage, {
+		...payload("fr", {
+			[IDENTITY]: "ANCIEN TEXTE",
+			[removed]: "Texte supprimé côté backend",
+		}),
+		content_sha256: sha("d"),
+	});
+	const supply = createCatalogueSupply({
+		fetchBundle: async () => payload("fr"),
+		storage,
+	});
+	await supply.load("fr");
+	assert.equal(renderMessage(IDENTITY, {}, "fr").text, FRENCH);
+	assert.deepEqual(renderMessage(removed, {}, "fr"), { status: "unknown" });
+});
+
+test("a payload holding a client-owned key is rejected", () => {
+	assert.equal(
+		parseWireCatalogueBundle(
+			payload("fr", { "ui.chat.title": "Titre pirate" }),
+		),
+		null,
+	);
+});
+
+test("a cache entry holding a client-owned key is discarded, not registered", () => {
+	fresh();
+	const storage = new FakeStorage();
+	writeCachedBundle(
+		storage,
+		payload("fr", { "ui.chat.title": "Titre pirate" }),
+	);
+	assert.equal(readCachedBundle(storage, "fr"), null);
+	assert.equal(storage.getItem(`${CACHE_KEY}fr`), null);
+});
+
+test("eviction keeps the two most recently READ locales", async () => {
+	fresh();
+	const storage = new FakeStorage();
+	const seed = (locale, savedAt) =>
+		storage.setItem(
+			`${CACHE_KEY}${locale}`,
+			JSON.stringify({ version: 1, savedAt, bundle: payload(locale) }),
+		);
+	seed("fr", 100);
+	seed("es", 200);
+	assert.ok(readCachedBundle(storage, "fr"), "fr is readable");
+	const supply = createCatalogueSupply({
+		fetchBundle: async (locale) => payload(locale),
+		storage,
+	});
+	await supply.load("hi");
+	const cached = storage
+		.keys()
+		.filter((key) => key.startsWith(CACHE_KEY))
+		.sort();
+	assert.deepEqual(cached, [`${CACHE_KEY}fr`, `${CACHE_KEY}hi`]);
+});
+
+test("the sync hook prefers the resolved backend tag over the device tag", () => {
+	assert.equal(resolveCatalogueLocale("fr", "en-US"), "fr");
+	assert.equal(resolveCatalogueLocale(undefined, "en-US"), "en-US");
+	assert.equal(resolveCatalogueLocale("  ", "en-US"), "en-US");
 });
