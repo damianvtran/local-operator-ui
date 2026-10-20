@@ -10271,7 +10271,7 @@
     {
       "path": "transcript-action-bars",
       "frames": 57,
-      "surfaces": 1,
+      "surfaces": 29,
       "themes": 2,
       "source": "QA's real-app CDP rig driving the built desktop app headless against an isolated daemon (`http://127.0.0.1:18731`) and a scratch config, at 1380x900 and at the app's 800px minimum, DPR 2, one theme per run. Before frames are the regression on `origin/main` (`c9bbfe25f0`); after frames are `ceed42e2985` for closing/mid-turn-final/condensed (the remediation changed no visual code there) and `9e8fe58bb410` for the corrected user and commentary placements. Reports: `after-1380.json`, `after-1380-r2.json`, `after-min800-r2.json`.",
       "why": "The operator's rule fixes each message class to one placement, and each half is a pixel claim a unit test cannot make: a final response's bare icons sit on the meta line before the stamp with no container (before: ground + hairline + radius + padding), a user message reserves a row under the bubble with a zero-shift rest/hover pair, and in-between commentary reserves no row while the narrow 800px band wraps prose 12px clear of the overlay. The set also carries the D3 per-button states, the one-toolbar selection probe, and the condensed turn proving a final response stays visible with its bar while the tool run folds. `before/` and `after/` are the same scene pair, so the defect and the fix are photographed rather than argued.",
