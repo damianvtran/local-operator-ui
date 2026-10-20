@@ -538,9 +538,15 @@ test("a selection change clears the acknowledgement and disables Import", async 
 	// Add a row: a different copy, so the acknowledgement must be re-stated.
 	await click(host.querySelectorAll('[role="checkbox"]')[1]);
 	await waitFor(() => calls.preview === 2, "rebuilt preview");
-	await waitFor(() => text(host).includes("2 sessions · 8 messages"), "preview");
+	await waitFor(
+		() => text(host).includes("2 sessions · 8 messages"),
+		"preview",
+	);
 	boxes = host.querySelectorAll('[role="checkbox"]');
-	assert.equal(boxes.item(boxes.length - 1).getAttribute("data-state"), "unchecked");
+	assert.equal(
+		boxes.item(boxes.length - 1).getAttribute("data-state"),
+		"unchecked",
+	);
 	assert.equal(
 		buttonContaining("Import 2 sessions")?.disabled,
 		true,
@@ -595,4 +601,43 @@ test("a failed preview is stated where it happened and Retry rebuilds it", async
 		"preview recovered",
 	);
 	assert.doesNotMatch(text(host), /Could not build the preview/);
+});
+
+/*
+ * ONE CONTROL PER ROW, ONE TOGGLE PER CLICK. The row text used to be a second
+ * button with the same action as the checkbox: two focus stops for one action,
+ * and the second one did not expose the checked state. The text is now the
+ * checkbox's label, so the row has one focusable control and the large pointer
+ * target is preserved.
+ */
+test("a row has one focus stop and its label toggles exactly once", async () => {
+	const { mock } = makeMock();
+	await mount(mock);
+	await waitFor(() => text(host).includes("First conversation"), "sessions");
+	const row = [...host.querySelectorAll("div.rounded-md")].find((node) =>
+		node.querySelector('[role="checkbox"]'),
+	);
+	assert.ok(row);
+	const checkbox = row.querySelector('[role="checkbox"]');
+	const label = row.querySelector("label");
+	assert.ok(checkbox);
+	assert.ok(label, "the row text is a label, not a second button");
+	assert.equal(
+		label.getAttribute("for"),
+		checkbox.id,
+		"the label is associated with the row's checkbox",
+	);
+	// (a) exactly one focusable control in the row.
+	const focusable = row.querySelectorAll(
+		'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+	);
+	assert.equal(focusable.length, 1);
+	assert.equal(focusable[0], checkbox);
+	// (b) one click on the label toggles exactly once.
+	await click(label);
+	await waitFor(() => text(host).includes("1 selected"), "selected once");
+	assert.equal(text(host).includes("2 selected"), false);
+	// (c) no double toggle: it goes back to empty in one more click.
+	await click(label);
+	await waitFor(() => text(host).includes("0 selected"), "deselected once");
 });
