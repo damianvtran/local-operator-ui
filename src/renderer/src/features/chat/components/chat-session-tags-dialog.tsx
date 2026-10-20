@@ -1,12 +1,11 @@
-import { draftPrimary } from "@features/chat/chat-tag-groups";
+import { nextPickerEscapeAction } from "@features/chat/chat-tag-escape";
 import {
 	TAG_REGISTRY_LIMIT,
 	TAG_SELECTION_LIMIT,
 	hasTagName,
 	tagNameIssue,
-	togglePickerTag,
 } from "@features/chat/chat-tag-picker";
-import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
+import { useChatTagAssignment } from "@features/chat/use-chat-tag-assignment";
 import {
 	Button,
 	Dialog,
@@ -18,10 +17,7 @@ import {
 } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import {
-	type CanonicalSessionRow,
-	useCanonicalSessionsStore,
-} from "@shared/store/canonical-sessions-store";
+import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import {
 	isTagsConflict,
 	useSessionTagsStore,
@@ -31,8 +27,10 @@ import { useEffect, useRef, useState } from "react";
 import { ManageTagsDialog } from "./manage-tags-dialog";
 import { TagPickerCombobox } from "./tag-picker-combobox";
 
-/** Mount per invocation: assignment is buffered until Apply; registry creation is
- * intentionally a separate durable operation, not an accidental side effect of Cancel.
+/** Mount per invocation. Every toggle, clear and tag creation writes the
+ * assignment immediately: there is no Apply, so closing the dialog or pressing
+ * Escape cannot discard a change that was already shown as made. A failed write
+ * restores the previous selection and says so; the next press is the retry.
  */
 export function ChatSessionTagsDialog({
 	row,
@@ -46,14 +44,6 @@ export function ChatSessionTagsDialog({
 	onMove?: (target: string) => Promise<void>;
 }) {
 	useI18nLocale();
-	const {
-		categories,
-		loading,
-		error: loadError,
-		fetchCategories,
-		replaceCategories,
-		assignSessionTags,
-	} = useSessionTagsStore();
 	const [managing, setManaging] = useState(false);
 	const pickerBody = useRef<HTMLDivElement>(null);
 	const heading = useRef<HTMLHeadingElement>(null);
@@ -71,14 +61,31 @@ export function ChatSessionTagsDialog({
 			if (pickerBody.current)
 				pickerBody.current.scrollTop = savedScroll.current;
 		});
-	const [ids, setIds] = useState(() => row.tags?.map((tag) => tag.id) ?? []);
-	const [primary, setPrimary] = useState(row.primary ?? null);
+	const {
+		categories,
+		loading,
+		loadError,
+		fetchCategories,
+		selected,
+		primary: effectivePrimary,
+		pending,
+		error,
+		notice,
+		toggle,
+		setPrimaryTag,
+		clear,
+		createAndAssign,
+	} = useChatTagAssignment({
+		sessionId: row.session_id,
+		tags: row.tags,
+		primary: row.primary ?? null,
+		revision: row.tags_revision ?? null,
+	});
+	const [movePending, setMovePending] = useState(false);
+	const [moveError, setMoveError] = useState<string | null>(null);
 	const [query, setQuery] = useState("");
 	const input = useRef<HTMLInputElement>(null);
 	const [listOpen, setListOpen] = useState(true);
-	const [notice, setNotice] = useState("");
-	const [conflicted, setConflicted] = useState(false);
-	const [pending, setPending] = useState(false);
 	const restoreInput = useRef(false);
 	useEffect(() => {
 		if (!pending && restoreInput.current) {
@@ -86,100 +93,46 @@ export function ChatSessionTagsDialog({
 			input.current?.focus();
 		}
 	}, [pending]);
-	const [error, setError] = useState<string | null>(null);
 	useEffect(() => {
 		if (error && pickerBody.current) pickerBody.current.scrollTop = 0;
 	}, [error]);
-	const [retry, setRetry] = useState<"apply" | "create" | null>(null);
-	useEffect(() => {
-		if (pending && retry === "create" && pickerBody.current)
-			pickerBody.current.scrollTop = 0;
-	}, [pending, retry]);
-	// Deleted categories cannot be resubmitted from a stale draft. Preserve the
-	// original assignment order so removing the primary previews server fallback.
-	const selected =
-		loading || loadError !== null
-			? ids
-			: ids.filter((id) => categories.some((tag) => tag.id === id));
-	const effectivePrimary = draftPrimary(selected, primary);
-	useEffect(() => {
-		if (onMove || loading || loadError) return;
-		const surviving = ids.filter((id) =>
-			categories.some((tag) => tag.id === id),
+	const saved = (fallback: string | null) => {
+		// Resolve against the store, never this render's closure: create writes the
+		// registry and assigns in one interaction, so a freshly created tag exists
+		// only after the await and a captured category list would name the wrong
+		// group ("Shown under Untagged" for the tag just created as primary).
+		const tag = useSessionTagsStore
+			.getState()
+			.categories.find((entry) => entry.id === fallback);
+		showSuccessToast(
+			tag
+				? t("ui.chat.tags.updated_grouped", { tag: tag.name })
+				: t("ui.chat.tags.updated_untagged"),
 		);
-		if (surviving.length === ids.length) return;
-		// Keep the surviving assignment order, but never silently resubmit IDs
-		// removed by another client while this draft was open.
-		setIds(surviving);
-		setPrimary((held) => draftPrimary(surviving, held));
-		setError(t("ui.chat.tags.registry_changed"));
-		setRetry(null);
-	}, [categories, ids, loading, loadError, onMove]);
-	const apply = async () => {
-		if (pending || conflicted) return;
-		setPending(true);
-		setError(null);
-		setRetry("apply");
-		try {
-			await assignSessionTags(
-				row.session_id,
-				selected,
-				effectivePrimary,
-				row.tags_revision ?? null,
-			);
-			const saved = useCanonicalSessionsStore
-				.getState()
-				.sessions.find((entry) => entry.session_id === row.session_id);
-			const savedPrimary = saved ? saved.primary : effectivePrimary;
-			const primaryTag = (saved?.tags ?? categories).find(
-				(tag) => tag.id === savedPrimary,
-			);
-			showSuccessToast(
-				primaryTag
-					? t("ui.chat.tags.updated_grouped", { tag: primaryTag.name })
-					: t("ui.chat.tags.updated_untagged"),
-			);
-			onClose();
-		} catch (error) {
-			if (error instanceof DesktopControlError && error.status === 422)
-				await fetchCategories();
-			if (isTagsConflict(error)) {
-				setConflicted(true);
-				setRetry(null);
-			}
-			if (
-				error instanceof DesktopControlError &&
-				error.code === "session_is_remote"
-			) {
-				setConflicted(true);
-				setRetry(null);
-				setError(t("ui.chat.tags.remote"));
-				return;
-			}
-			setError(
-				t(
-					isTagsConflict(error)
-						? "ui.chat.tags.changed_elsewhere"
-						: "ui.chat.tags.save_failed",
-				),
-			);
-		} finally {
-			setPending(false);
-		}
 	};
-	const toggle = (id: string) => {
-		const next = togglePickerTag(selected, id);
-		const fallback = draftPrimary(next, primary);
-		setIds(next);
-		setPrimary(fallback);
-		setNotice(
-			t("ui.chat.tags.selection_status", {
-				count: String(next.length),
-				name:
-					categories.find((tag) => tag.id === fallback)?.name ??
-					t("ui.chat.tags.untagged"),
-			}),
-		);
+	const toggleAndConfirm = async (id: string) => {
+		const result = await toggle(id);
+		if (result.ok) saved(result.primary);
+	};
+	const clearAndConfirm = async () => {
+		const result = await clear();
+		if (result.ok) saved(null);
+	};
+	const setPrimaryAndConfirm = async (id: string) => {
+		const result = await setPrimaryTag(id);
+		if (result.ok) saved(id);
+	};
+	const create = async () => {
+		if (pending || createIssue || issue || loading || loadError) return;
+		const name = query.trim();
+		const result = await createAndAssign(name);
+		// Only an accepted registry write clears the field: a failed create keeps the
+		// typed name so it can be corrected instead of retyped.
+		if (!result) return;
+		setQuery("");
+		restoreInput.current = true;
+		input.current?.focus();
+		if (result.assigned) saved(result.primary);
 	};
 	const issue = tagNameIssue(query);
 	const createIssue =
@@ -195,60 +148,6 @@ export function ChatSessionTagsDialog({
 							? t("ui.chat.tags.duplicate_name", { name: query.trim() })
 							: null;
 
-	const create = async () => {
-		if (pending || createIssue || issue || loading || loadError) return;
-		const name = query.trim();
-		setPending(true);
-		setError(null);
-		setRetry("create");
-		try {
-			// A timeout/duplicate may have committed remotely. Refresh BEFORE every
-			// attempt, not after submitting a stale full-registry replacement again.
-			await fetchCategories();
-			const fresh = useSessionTagsStore.getState();
-			if (fresh.error) throw new Error();
-			if (hasTagName(fresh.categories, name)) {
-				setError(t("ui.chat.tags.duplicate_name", { name }));
-				setRetry(null);
-				return;
-			}
-			if (fresh.categories.length >= TAG_REGISTRY_LIMIT) {
-				setError(t("ui.chat.tags.registry_limit"));
-				setRetry(null);
-				return;
-			}
-			await replaceCategories([
-				...fresh.categories.map((tag) => ({ id: tag.id, name: tag.name })),
-				{ name },
-			]);
-			const created = useSessionTagsStore
-				.getState()
-				.categories.find((tag) => tag.name === name);
-			if (created) {
-				const next = [...selected, created.id];
-				setIds(next);
-				setPrimary((held) => held ?? created.id);
-				setNotice(t("ui.chat.tags.created_name", { name: created.name }));
-			}
-			setQuery("");
-			input.current?.focus();
-		} catch {
-			// A response can be lost after commit. Re-read before claiming that
-			// nothing was created, and never silently select a concurrent duplicate.
-			await fetchCategories();
-			const fresh = useSessionTagsStore.getState();
-			if (fresh.error) {
-				setError(null);
-				setRetry(null);
-			} else if (hasTagName(fresh.categories, name)) {
-				setError(t("ui.chat.tags.duplicate_name", { name }));
-				setRetry(null);
-			} else setError(t("ui.chat.tags.create_failed"));
-		} finally {
-			restoreInput.current = true;
-			setPending(false);
-		}
-	};
 	if (onMove)
 		return (
 			<Dialog
@@ -301,14 +200,14 @@ export function ChatSessionTagsDialog({
 									key={tag.id}
 									variant="ghost"
 									className="min-h-8 w-full justify-start whitespace-normal break-words text-left"
-									disabled={pending}
+									disabled={movePending}
 									onClick={() => {
-										setPending(true);
-										setError(null);
+										setMovePending(true);
+										setMoveError(null);
 										void onMove(tag.id)
 											.then(onClose)
 											.catch((error: unknown) => {
-												setError(
+												setMoveError(
 													t(
 														isTagsConflict(error)
 															? "ui.chat.tags.changed_elsewhere"
@@ -316,7 +215,7 @@ export function ChatSessionTagsDialog({
 													),
 												);
 											})
-											.finally(() => setPending(false));
+											.finally(() => setMovePending(false));
 									}}
 								>
 									{tag.name}
@@ -324,9 +223,9 @@ export function ChatSessionTagsDialog({
 							))
 						)}
 					</div>
-					{error && (
+					{moveError && (
 						<p role="alert" className="text-danger">
-							{error}
+							{moveError}
 						</p>
 					)}
 					<DialogFooter>
@@ -365,11 +264,14 @@ export function ChatSessionTagsDialog({
 							event.preventDefault();
 							return;
 						}
-						if (pending) event.preventDefault();
-						else if (listOpen) {
+						const action = nextPickerEscapeAction({ pending, listOpen });
+						if (action === "ignore") event.preventDefault();
+						else if (action === "collapse") {
 							event.preventDefault();
 							setListOpen(false);
 						}
+						// "close" leaves the event unprevented: the dialog layer owns
+						// dismissal, and Escape still writes nothing.
 					}}
 				>
 					<DialogHeader className="shrink-0">
@@ -387,26 +289,14 @@ export function ChatSessionTagsDialog({
 						className="min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto p-1"
 						aria-busy={loading || pending}
 					>
-						{pending && retry === "create" && (
-							<output>{t("ui.chat.tags.create_pending")}</output>
-						)}
+						{pending && <output>{t("ui.chat.tags.create_pending")}</output>}
 						{error && (
 							<div role="alert" className="text-body-sm text-danger">
 								<p>{error}</p>
-								{retry && (
-									<Button
-										disabled={pending}
-										onClick={() =>
-											void (retry === "create" ? create() : apply())
-										}
-									>
-										{t("ui.chat.tags.retry")}
-									</Button>
-								)}
 							</div>
 						)}
 						<p className="text-body-sm text-ink-muted">
-							{t("ui.chat.tags.picker_description")}
+							{t("ui.chat.tag_dialogs.picker_description")}
 						</p>
 						<TagPickerCombobox
 							categories={categories}
@@ -420,7 +310,7 @@ export function ChatSessionTagsDialog({
 							disabled={pending}
 							unready={loading || loadError !== null}
 							input={input}
-							toggle={toggle}
+							toggle={(id) => void toggleAndConfirm(id)}
 							create={() => void create()}
 							createIssue={createIssue}
 						/>
@@ -451,17 +341,7 @@ export function ChatSessionTagsDialog({
 												name="primary-tag"
 												disabled={pending || loading || !!loadError}
 												checked={effectivePrimary === id}
-												onChange={() => {
-													setPrimary(id);
-													setNotice(
-														t("ui.chat.tags.selection_status", {
-															count: String(selected.length),
-															name:
-																categories.find((tag) => tag.id === id)?.name ??
-																"",
-														}),
-													);
-												}}
+												onChange={() => void setPrimaryAndConfirm(id)}
 											/>
 											<bdi className="min-w-0 break-words">
 												{categories.find((tag) => tag.id === id)?.name}
@@ -488,11 +368,7 @@ export function ChatSessionTagsDialog({
 							<Button
 								variant="ghost"
 								disabled={pending || loading || !!loadError || !selected.length}
-								onClick={() => {
-									setIds([]);
-									setPrimary(null);
-									setNotice(t("ui.chat.tags.removed_all"));
-								}}
+								onClick={() => void clearAndConfirm()}
 							>
 								{t("ui.chat.tags.clear")}
 							</Button>
@@ -518,15 +394,7 @@ export function ChatSessionTagsDialog({
 						className="shrink-0 flex-row justify-end max-[359px]:flex-col-reverse"
 					>
 						<Button variant="ghost" disabled={pending} onClick={onClose}>
-							{t("ui.chat.tags.cancel")}
-						</Button>
-						<Button
-							disabled={pending || loading || loadError !== null || conflicted}
-							onClick={() => void apply()}
-						>
-							{pending && retry === "apply"
-								? t("ui.chat.tags.applying")
-								: t("ui.chat.tags.apply")}
+							{t("ui.chat.tag_dialogs.close")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
