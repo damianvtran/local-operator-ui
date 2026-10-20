@@ -730,11 +730,15 @@ export function partitionRun(
 	 * the last response cycle's close, which are the cycle currently being written.
 	 * Both are covered here so a live handover does not vanish when the next call
 	 * arrives and reappear when its turn closes.
+	 *
+	 * THE TAIL STARTS AT 0, not 1: a head-cut run has no opening user row, so its
+	 * first row is a record whose own bar depends on this clause (round 4, C2 -
+	 * `partitionRun([F, T], { from: 0 })` lost `F0`).
 	 */
 	const last = cycles.at(-1);
 	const openTailFrom =
 		last === undefined
-			? 1
+			? 0
 			: last.class === "response"
 				? last.closeIndex + 1
 				: records.length;
