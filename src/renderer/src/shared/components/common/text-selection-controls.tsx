@@ -418,14 +418,20 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 			written.push(cluster);
 		}
 		return () => {
-			if (
-				root.querySelector(
-					"[data-lo-quote-toolkit], [data-lo-link-toolbar]",
-				) !== null
-			) {
-				return;
-			}
 			for (const cluster of written) {
+				/*
+				 * A peer may have taken the row over since this effect wrote it.
+				 * The quote toolkit's cleanup owns that row's attributes; removing
+				 * them here would strip the owning strip's suppression one commit
+				 * after it wrote them. A node that has left the document is not
+				 * ours to touch either.
+				 */
+				if (
+					!cluster.isConnected ||
+					cluster.closest("[data-lo-selection-active]")
+				) {
+					continue;
+				}
 				cluster.removeAttribute("inert");
 				cluster.removeAttribute("aria-hidden");
 			}
