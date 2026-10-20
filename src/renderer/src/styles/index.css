@@ -53,8 +53,8 @@
  * THE THREE CLUSTERS ARE ONE RULE NOW. `data-lo-selection-active` is written by
  * the quote toolkit on the row it owns, and it covered the two gutter overlays
  * and not the closing answer's in-flow Copy/Speak/Fork row - so a drag painted
- * the selection strip and that row at once for the WHOLE gesture (measured: 94
- * of 97 frames on the base tree). The marker below is the column's own fact, published by the
+ * the selection strip and that row at once for the WHOLE gesture (measured: 84
+ * of 87 drag frames on the base tree in the committed pair). The marker below is the column's own fact, published by the
  * `selectionchange` reader in `canonical-transcript.tsx` before paint, so it is
  * true for a selection the quote toolkit does not own as well (a drag that
  * begins in a ledger row, where the shared strip is the owner).

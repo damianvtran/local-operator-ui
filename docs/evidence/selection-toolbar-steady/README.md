@@ -43,8 +43,8 @@ node scripts/selection-toolbar-flicker-proof.mjs \
 
 | tree | drag frames | frames with TWO toolbars visible |
 | --- | --- | --- |
-| before (merge base `1f285116b3`) | 97 | **94** |
-| after (this branch) | 101 | **0** |
+| before (merge base `1f285116b3`) | 87 | **84** |
+| after (this branch) | 95 | **0** |
 
 The base tree paints the selection strip above the highlight AND the closing
 answer's in-flow Copy/Speak/Fork row for almost the whole drag: the quote
