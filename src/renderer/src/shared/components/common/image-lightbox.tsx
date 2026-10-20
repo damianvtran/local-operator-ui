@@ -141,7 +141,7 @@ const reservedBox = (box: string) =>
  * state — every control works at rest, and the next pointer move or key press
  * brings the cluster back to full inside `duration-fast`.
  */
-const CONTROLS_RESTING_CLASS = "opacity-85";
+export const CONTROLS_RESTING_CLASS = "opacity-85";
 
 /**
  * THE CHROME'S GROUND IS A THEME ROLE, NOT THE PICTURE (design round 1, D1).
