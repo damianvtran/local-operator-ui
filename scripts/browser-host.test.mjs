@@ -212,6 +212,10 @@ class FakeWebContents extends EventEmitter {
 			goBack: () => {},
 			goForward: () => {},
 			length: () => 1,
+			getActiveIndex: () => 0,
+			// The indexed read address suggestions use. The fake models one entry so
+			// the structural shape matches the real API; it is not a history test.
+			getEntryAtIndex: () => ({ url: this.url || "about:blank" }),
 		};
 	}
 

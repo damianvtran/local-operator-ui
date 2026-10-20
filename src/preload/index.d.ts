@@ -6,6 +6,10 @@ import type {
 	BackendUpdateErrorReport,
 } from "../main/update-service";
 import type { DaemonStatusSnapshot } from "../shared/backend-status";
+import type {
+	AddressHistoryRequest,
+	AddressHistoryResponse,
+} from "../shared/browser-address-history";
 import type { HumanTabActionOutcome } from "../shared/browser-tab-action";
 import type {
 	DesktopAPI,
@@ -164,7 +168,13 @@ declare global {
 				 * sessionId }` which main resolves against the live registry. */
 				closeTabs: (intent: unknown) => Promise<unknown>;
 				activateTab: (tabId: number) => Promise<unknown>;
-				navigate: (url: string) => Promise<unknown>;
+				/** Local address suggestions. The expected tab is the one the field's
+				 * draft belongs to; main refuses a request for a tab that is no longer
+				 * active. */
+				addressHistory: (
+					request: AddressHistoryRequest,
+				) => Promise<AddressHistoryResponse>;
+				navigate: (url: string, expectedTabId?: number) => Promise<unknown>;
 				/** Home: no argument, because main owns the start state. */
 				home: () => Promise<unknown>;
 				reload: (hard?: boolean) => Promise<unknown>;

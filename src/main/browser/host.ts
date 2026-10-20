@@ -1,5 +1,9 @@
 import { t } from "../../i18n";
 import type {
+	AddressHistoryRequest,
+	AddressHistoryResponse,
+} from "../../shared/browser-address-history";
+import type {
 	HumanTabAction,
 	HumanTabActionOutcome,
 } from "../../shared/browser-tab-action";
@@ -12,6 +16,7 @@ import * as inputActions from "./actions/input";
 import * as pageActions from "./actions/page";
 import * as tabActions from "./actions/tabs";
 import * as uploadActions from "./actions/upload";
+import { collectAddressHistory } from "./address-history";
 import type { ConsentDecision } from "./approvals";
 import { ChromeTabOrder } from "./chrome-tab-order";
 import { BrowserHostError } from "./errors";
@@ -1527,6 +1532,43 @@ export class BrowserHost implements BrowserActionContext {
 	}
 
 	/**
+	 * Local address suggestions for the field the user is editing.
+	 *
+	 * THE EXPECTED TAB IS A GUARD, not a hint: a response about tab A rendered
+	 * over tab B is how a stale completion navigates a tab the user is no longer
+	 * looking at. Main answers the read only when the request still names the
+	 * active tab; the renderer separately discards responses whose `activeTabId`
+	 * no longer matches, which covers the race between this check and the reply
+	 * landing.
+	 *
+	 * Collection is bounded and derived (`address-history.ts`); this method adds
+	 * only the authority the collector must not pretend to own.
+	 */
+	addressHistory(request: AddressHistoryRequest): AddressHistoryResponse {
+		const activeTabId = this.registry.activeTab?.tabId ?? null;
+		if (activeTabId !== request.expectedTabId) {
+			throw new BrowserHostError(
+				"nav_failed",
+				"the active tab changed before suggestions were read",
+			);
+		}
+		return {
+			requestId: request.requestId,
+			...collectAddressHistory(
+				this.registry.list().map((record) => ({
+					tabId: record.tabId,
+					sessionId: record.sessionId,
+					active: record.tabId === activeTabId,
+					webContents: record.view.webContents,
+					restoreRow: record.restoreRow ?? null,
+				})),
+				request.scope,
+				activeTabId,
+			),
+		};
+	}
+
+	/**
 	 * A URL the USER typed goes through here, and it is deliberately different from
 	 * an agent navigation in one way and identical in another (design 6.1):
 	 *
@@ -1538,10 +1580,22 @@ export class BrowserHost implements BrowserActionContext {
 	 *   `file:` or `javascript:` here would hand a page (or a paste) a way to reach
 	 *   the local filesystem through the app's own URL bar.
 	 */
-	async navigateActive(rawUrl: string): Promise<Record<string, unknown>> {
+	async navigateActive(
+		rawUrl: string,
+		expectedTabId?: number,
+	): Promise<Record<string, unknown>> {
 		const record = this.registry.activeTab;
 		if (!record)
 			throw new BrowserHostError("tab_closed", "no browser tab is open");
+		// ADDITIVE AND OPTIONAL: the URL bar always supplies the tab its draft belongs
+		// to, so a commit that raced a tab switch is refused instead of loading the
+		// new active tab with the old tab's address. Agent/legacy callers omit it.
+		if (expectedTabId !== undefined && record.tabId !== expectedTabId) {
+			throw new BrowserHostError(
+				"nav_failed",
+				"the active tab changed before the address was submitted",
+			);
+		}
 		let url: URL;
 		try {
 			url = new URL(rawUrl.includes("://") ? rawUrl : `https://${rawUrl}`);
