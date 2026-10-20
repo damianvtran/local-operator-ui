@@ -2407,7 +2407,7 @@
 	"ui.projects.project_updates.play_name": {
 		"role": "project updates: accessible name and tooltip of a video thumbnail tile in an update’s attachment grid",
 		"tone": "Direct imperative; verb first, file name last, no colon or quotes.",
-		"note": "The tile paints the clip’s first frame with a decorative play glyph; this string is what a screen reader announces and what the mouse tooltip shows. Pressing it opens the update’s media lightbox at this clip. {name} is the attachment’s display name — a file name, kept verbatim.",
+		"note": "The tile shows a still of the clip with a decorative play glyph; this string is what a screen reader announces and what the mouse tooltip shows. Pressing it opens the update’s media lightbox at this clip. {name} is the attachment’s display name — a file name, kept verbatim.",
 		"length": "English is 11 source characters. A compact control label: verb plus name, not a sentence.",
 		"placeholders": {
 			"name": "Attachment display name (attachmentName in project-update-assets.tsx), passed as String(name); never translated."
@@ -2434,7 +2434,7 @@
 	"ui.projects.project_updates.preview_name": {
 		"role": "project updates: accessible name of a file tile that opens the in-app reader",
 		"tone": "Direct imperative; verb first, file name last, no colon or quotes.",
-		"note": "Used for the file kinds the dialog can render: markdown, JSON, plain text and logs, and code. The tile shows the file name and size as visible text, and this label is what a screen reader announces instead. Deliberately distinct from ui.projects.project_updates.open_name, used when a file with no in-app reader leaves to the OS application.",
+		"note": "Used for the file kinds the dialog can render: markdown, JSON, plain text and logs, and code. The tile shows the file name — and its size when the backend reports one — as visible text, and this label is what a screen reader announces instead. Deliberately distinct from ui.projects.project_updates.open_name, used when a file with no in-app reader leaves to the OS application.",
 		"length": "English is 14 source characters. A compact control label: verb plus name, not a sentence.",
 		"placeholders": {
 			"name": "Attachment display name (attachmentName in project-update-assets.tsx), passed as String(name); never translated."
