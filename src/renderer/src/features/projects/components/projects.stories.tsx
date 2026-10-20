@@ -55,6 +55,7 @@ import {
 import { type SortSpec, writeProjectsSort } from "../project-sort";
 import { REQUEST_UPDATE_NEVER_STARTED_DETAIL } from "../request-update";
 import { BOARD_WINDOW_HINT } from "./board-window-select";
+import { ProjectUpdates } from "./project-updates";
 import { ProjectsPage } from "./projects-page";
 
 /** Sunday 20 September 2026, 2:00 PM local — every label derives from this. */
@@ -389,11 +390,53 @@ const UPDATES: DesktopProjectUpdate[] = [
 		by: "4e92693767fa",
 		attachments: [
 			{
+				name: "dashboard-cutover.png",
+				kind: "image",
+				path: "/Users/dana/work/projects/payments/dashboard-cutover.png",
+				bytes: 182_400,
+				added_at: "2026-09-20T17:45:00Z",
+			},
+			{
+				name: "parity.png",
+				kind: "image",
+				path: "/Users/dana/work/projects/payments/parity.png",
+				bytes: 182_400,
+				added_at: "2026-09-20T17:45:01Z",
+			},
+			{
+				name: "cutover.mp4",
+				kind: "video",
+				path: "/Users/dana/work/projects/payments/cutover.mp4",
+				bytes: 9_437_184,
+				added_at: "2026-09-20T17:45:02Z",
+			},
+			{
+				name: "standup.mp3",
+				kind: "audio",
+				path: "/Users/dana/work/projects/payments/standup.mp3",
+				bytes: 512_000,
+				added_at: "2026-09-20T17:45:03Z",
+			},
+			{
+				name: "release-notes.md",
+				kind: "data",
+				path: "/Users/dana/work/projects/payments/release-notes.md",
+				bytes: 2_048,
+				added_at: "2026-09-20T17:45:04Z",
+			},
+			{
 				name: "cutover-report.csv",
 				kind: "data",
 				path: "/Users/dana/work/projects/payments/cutover-report.csv",
 				bytes: 4_096,
-				added_at: "2026-09-20T17:45:00Z",
+				added_at: "2026-09-20T17:45:05Z",
+			},
+			{
+				name: "migration-plan.pdf",
+				kind: "data",
+				path: "/Users/dana/work/projects/payments/migration-plan.pdf",
+				bytes: 220_200,
+				added_at: "2026-09-20T17:45:06Z",
 			},
 		],
 	},
@@ -1054,24 +1097,48 @@ const installBridge = () => {
 		api?: {
 			desktop?: { request: (r: Parameters<typeof answer>[0]) => unknown };
 			readFileBytes?: (path: string) => unknown;
+			readFile?: (path: string) => unknown;
 		};
 	};
 	const api = page.api ?? {};
 	page.api = api;
 	api.desktop = { request: answer };
 	/*
-	 * The local-file bridge, for the one image the feed carries. Storybook's
-	 * global mock has no `readFileBytes`, so without this the update's picture
-	 * would draw its honest "unavailable" sentence in every frame — a story
-	 * about a state the desktop app does not have. Bytes are drawn here rather
-	 * than committed as an asset (the canvas stories' rule).
+	 * The local-file bridge, for the update feed's attachments. Storybook's
+	 * global mock has neither reader, so without this every picture would draw
+	 * its honest "unavailable" sentence in every frame — a story about a state
+	 * the desktop app does not have. Bytes are drawn here rather than committed
+	 * as an asset (the canvas stories' rule); the clip and the sound only need
+	 * a resolvable blob for their thumbnail/player chrome, not a decodable
+	 * stream, because a still frame cannot show playback.
 	 */
 	api.readFileBytes = async (path: string) => {
-		if (!path.endsWith(".png")) {
-			return { success: false, code: "not-found", error: `No file at ${path}` };
+		if (path.endsWith(".png")) {
+			const bytes = pngBytes();
+			return { success: true, data: bytes, sizeBytes: bytes.byteLength };
 		}
-		const bytes = pngBytes();
-		return { success: true, data: bytes, sizeBytes: bytes.byteLength };
+		if (
+			path.endsWith(".mp3") ||
+			path.endsWith(".wav") ||
+			path.endsWith(".mp4")
+		) {
+			return { success: true, data: new Uint8Array([0, 0, 0, 0]) };
+		}
+		return { success: false, code: "not-found", error: `No file at ${path}` };
+	};
+	/*
+	 * The preview reader the markdown tile calls. It returns the fixture's own
+	 * note, so `lightbox-open`'s sibling story (the preview frame) shows prose
+	 * rather than a failure sentence.
+	 */
+	api.readFile = async (path: string) => {
+		if (path.endsWith(".md")) {
+			return {
+				success: true,
+				data: "# Cutover notes\n\nThe read path is live on staging.\n\n- parity holds\n- retry budget unchanged\n",
+			};
+		}
+		return { success: false, error: `No file at ${path}` };
 	};
 };
 installBridge();
@@ -6246,4 +6313,108 @@ export const TimelineCalloutExpanded: Story = {
 			"the undated names to appear",
 		);
 	}),
+};
+
+/* -------------------------------------------------- update assets and gallery */
+
+/**
+ * The feed's evidence grid on its own, so the four kinds and the lightbox are
+ * photographed without the detail page's scroll context. The production
+ * `ProjectUpdates` is mounted unchanged; only the clock is pinned, the rule
+ * every fixture on this page follows.
+ */
+const UpdatesHost = ({ updates }: { updates: DesktopProjectUpdate[] }) => (
+	<div className="mx-auto flex w-[820px] max-w-full flex-col gap-4 p-6">
+		<ProjectUpdates updates={updates} nowMs={FIXTURE_NOW_MS} />
+	</div>
+);
+
+/** The newest update carries two pictures, a clip, a sound, markdown, CSV and a PDF. */
+export const WithAssets: Story = {
+	render: () => <UpdatesHost updates={UPDATES} />,
+};
+
+/** The shared lightbox over the update's set, opened on its first picture. */
+export const LightboxOpen: Story = {
+	render: () => <UpdatesHost updates={UPDATES} />,
+	play: playOnce("asset-lightbox-open", async () => {
+		const tile =
+			'[data-project-asset-grid] button[aria-label="Open dashboard-cutover.png"]';
+		await poll(
+			() => document.querySelector(tile) !== null,
+			"the first picture tile",
+		);
+		const pressed = document.querySelector(tile);
+		if (!pressed) throw new Error("the picture tile vanished");
+		await userEvent.click(pressed);
+		await poll(
+			() => document.querySelector("[data-image-viewport] img") !== null,
+			"the shared image frame",
+		);
+	}),
+};
+
+/** The same gallery on its video slide: a real `<video controls>` in the frame. */
+export const LightboxVideo: Story = {
+	render: () => <UpdatesHost updates={UPDATES} />,
+	play: playOnce("asset-lightbox-video", async () => {
+		const tile =
+			'[data-project-asset-grid] button[aria-label="Play cutover.mp4"]';
+		await poll(() => document.querySelector(tile) !== null, "the clip tile");
+		const pressed = document.querySelector(tile);
+		if (!pressed) throw new Error("the clip tile vanished");
+		await userEvent.click(pressed);
+		await poll(
+			() => document.querySelector("[data-image-viewport] video") !== null,
+			"the video slide",
+		);
+	}),
+};
+
+/**
+ * Forty updates of three attachments: the laziness budget's frame. A project
+ * that reads every tile up front opens a hundred and twenty files; this one
+ * paints reserved slots and reads only what the viewport reaches.
+ */
+export const ManyUpdates: Story = {
+	render: () => {
+		const many: DesktopProjectUpdate[] = Array.from(
+			{ length: 40 },
+			(_, index) => ({
+				at: new Date(FIXTURE_NOW_MS - index * HOUR_S * 1000).toISOString(),
+				text: `Step ${index + 1}: the suite is green and the next slice is queued.`,
+				by: "4e92693767fa",
+				attachments: [
+					{
+						name: `shot-${index + 1}.png`,
+						kind: "image",
+						path: `/Users/dana/work/projects/payments/many/shot-${index + 1}.png`,
+						bytes: 120_000,
+						added_at: new Date(
+							FIXTURE_NOW_MS - index * HOUR_S * 1000,
+						).toISOString(),
+					},
+					{
+						name: `log-${index + 1}.csv`,
+						kind: "data",
+						path: `/Users/dana/work/projects/payments/many/log-${index + 1}.csv`,
+						bytes: 8_192,
+						added_at: new Date(
+							FIXTURE_NOW_MS - index * HOUR_S * 1000,
+						).toISOString(),
+					},
+					{
+						name: `note-${index + 1}.md`,
+						kind: "data",
+						path: `/Users/dana/work/projects/payments/many/note-${index + 1}.md`,
+						bytes: 1_024,
+						added_at: new Date(
+							FIXTURE_NOW_MS - index * HOUR_S * 1000,
+						).toISOString(),
+					},
+				],
+			}),
+		);
+		return <UpdatesHost updates={many} />;
+	},
 };

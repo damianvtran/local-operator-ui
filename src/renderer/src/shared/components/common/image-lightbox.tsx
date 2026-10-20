@@ -316,6 +316,17 @@ export type ImageLightboxProps = {
 	 * its behaviour.
 	 */
 	layerRef?: RefObject<HTMLDivElement>;
+	/**
+	 * What the slide IS, for a gallery that mixes pictures and clips.
+	 *
+	 * `image` is the component's original and only behaviour, so every existing
+	 * caller is unchanged by omission. `video` renders the same fitted frame
+	 * with a `<video controls autoPlay>` instead of the zoomable `<img>`: the
+	 * zoom ladder is an image-reading affordance (fit, 100%, 200% — no meaning
+	 * for a clip with its own player controls), so a video slide takes the frame
+	 * and the carousel chrome but not the zoom cluster.
+	 */
+	mediaKind?: "image" | "video";
 };
 
 /**
@@ -354,7 +365,9 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	pending = false,
 	group,
 	layerRef,
+	mediaKind = "image",
 }) => {
+	const isVideo = mediaKind === "video";
 	/*
 	 * WHICH PICTURE FAILED, rather than a boolean this component resets. The
 	 * transcript's picture failed once and the store is content-addressed, so a
@@ -533,7 +546,8 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	 * would be the wrong bound one resize after the cache was filled.
 	 */
 	const frameRef = useRef<HTMLDivElement>(null);
-	const canZoom = src !== undefined && !failed;
+	// A clip's own controls are its zoom; the ladder stays an image affordance.
+	const canZoom = !isVideo && src !== undefined && !failed;
 	/*
 	 * BY VALUE, not by reference: the pan state holds a fresh object after every
 	 * drag and clamp, so `pan === VIEWER_PAN_ORIGIN` is false for a view that is
@@ -665,25 +679,45 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 				onPointerUp={endPan}
 				onPointerCancel={endPan}
 			>
-				<img
-					src={src}
-					alt={label}
-					draggable={false}
-					className={cn(box, "block select-none object-contain")}
+				{isVideo ? (
 					/*
-					 * No transform at fit and origin, so the resting DOM is exactly
-					 * the one the pre-zoom frames measured; the transform appears
-					 * only once the view has something to say.
+					 * The clip sits in the SAME fitted box the picture uses, so a mixed
+					 * gallery does not change frame between slides. No zoom transform: a
+					 * scaled video would scale its controls too, and the reader's own
+					 * fullscreen control is the larger view.
 					 */
-					style={
-						atFit
-							? undefined
-							: {
-									transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-								}
-					}
-					onError={() => setFailedFor(src)}
-				/>
+					// biome-ignore lint/a11y/useMediaCaption: a project attachment's own audio is the content; no caption track is stored with it.
+					<video
+						src={src}
+						controls
+						autoPlay
+						className={cn(box, "block object-contain")}
+						data-lightbox-video=""
+						onError={() => setFailedFor(src)}
+					>
+						{label}
+					</video>
+				) : (
+					<img
+						src={src}
+						alt={label}
+						draggable={false}
+						className={cn(box, "block select-none object-contain")}
+						/*
+						 * No transform at fit and origin, so the resting DOM is exactly
+						 * the one the pre-zoom frames measured; the transform appears
+						 * only once the view has something to say.
+						 */
+						style={
+							atFit
+								? undefined
+								: {
+										transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+									}
+						}
+						onError={() => setFailedFor(src)}
+					/>
+				)}
 			</div>
 		) : src === undefined && pending ? (
 			/* The bytes are on their way: an empty reserved box, `aria-hidden` because
@@ -836,46 +870,48 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							</Button>
 						</>
 					) : null}
-					<div className="pointer-events-auto fixed right-4 bottom-4 flex items-center gap-1">
-						{/*
-						 * Disabled is a COLOUR step on the shared button (see its
-						 * `ghost` variant), never an opacity, and the three disabled
-						 * states fall out of the view's own arithmetic rather than out
-						 * of a mode: no zoom-out below fit, no zoom-in past the ladder's
-						 * top, nothing for Reset when the view is already fit and
-						 * centred.
-						 */}
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label="Zoom out"
-							title="Zoom out"
-							disabled={!canZoom || zoom === VIEWER_ZOOM_MIN}
-							onClick={() => applyZoom(stepZoom(zoom, -1))}
-						>
-							<ZoomOut aria-hidden="true" />
-						</Button>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label="Zoom in"
-							title="Zoom in"
-							disabled={!canZoom || zoom === VIEWER_ZOOM_MAX}
-							onClick={() => applyZoom(stepZoom(zoom, 1))}
-						>
-							<ZoomIn aria-hidden="true" />
-						</Button>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label="Reset view"
-							title="Reset view"
-							disabled={!canZoom || atFit}
-							onClick={resetView}
-						>
-							<RotateCcw aria-hidden="true" />
-						</Button>
-					</div>
+					{!isVideo && (
+						<div className="pointer-events-auto fixed right-4 bottom-4 flex items-center gap-1">
+							{/*
+							 * Disabled is a COLOUR step on the shared button (see its
+							 * `ghost` variant), never an opacity, and the three disabled
+							 * states fall out of the view's own arithmetic rather than out
+							 * of a mode: no zoom-out below fit, no zoom-in past the ladder's
+							 * top, nothing for Reset when the view is already fit and
+							 * centred.
+							 */}
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-label="Zoom out"
+								title="Zoom out"
+								disabled={!canZoom || zoom === VIEWER_ZOOM_MIN}
+								onClick={() => applyZoom(stepZoom(zoom, -1))}
+							>
+								<ZoomOut aria-hidden="true" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-label="Zoom in"
+								title="Zoom in"
+								disabled={!canZoom || zoom === VIEWER_ZOOM_MAX}
+								onClick={() => applyZoom(stepZoom(zoom, 1))}
+							>
+								<ZoomIn aria-hidden="true" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-label="Reset view"
+								title="Reset view"
+								disabled={!canZoom || atFit}
+								onClick={resetView}
+							>
+								<RotateCcw aria-hidden="true" />
+							</Button>
+						</div>
+					)}
 					<DialogClose asChild>
 						<Button
 							variant="ghost"
