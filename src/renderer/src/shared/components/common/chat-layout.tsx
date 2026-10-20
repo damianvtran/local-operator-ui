@@ -319,6 +319,15 @@ type SidebarFrame = {
 	 */
 	mode: "docked" | "strip" | "overlay";
 	/**
+	 * Whether this shell route pads the sidebar's own panel for the chrome lane.
+	 *
+	 * The padding belongs INSIDE the panel that owns the ground, not on a shell
+	 * wrapper: a wrapper with a background would sit between `#app` and the glass
+	 * regions and make the window opaque (review round 1, S1). Only `flushTop`
+	 * routes ask for it.
+	 */
+	chromePadTop?: boolean;
+	/**
 	 * The one control that changes the sidebar's shape: collapse the dock, close
 	 * the sheet, or - from the strip - expand (the dock at >=1024, the sheet below).
 	 */
@@ -741,17 +750,12 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 				/>
 			)}
 			<div className="flex min-h-0 flex-1 overflow-hidden">
-				<div
-					className={cn(
-						"h-full shrink-0 bg-surface",
-						flushTop && "pt-[var(--chrome-strip-h)]",
-					)}
-					style={{ width: columnWidth }}
-				>
+				<div className={cn("h-full shrink-0")} style={{ width: columnWidth }}>
 					<SidebarFrameContext.Provider
 						value={{
 							expanded: layout.mode === "docked",
 							mode: layout.mode === "docked" ? "docked" : "strip",
+							chromePadTop: flushTop,
 							onCollapse:
 								viewportWidth >= SIDEBAR_DOCK_MIN_PX
 									? toggleSidebar
@@ -798,7 +802,12 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 				 */}
 				<div
 					ref={contentColumnRef}
-					className="flex h-full min-w-0 grow flex-col overflow-hidden bg-canvas"
+					className="flex h-full min-w-0 grow flex-col overflow-hidden"
+					style={
+						{
+							"--panel-top-pad": flushTop ? "var(--chrome-strip-h)" : "0px",
+						} as CSSProperties
+					}
 				>
 					<LaneLeadingContext.Provider value={setLeadingColumn}>
 						<PanelRailHostContext.Provider value={railHost}>
@@ -957,6 +966,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 						value={{
 							expanded: true,
 							mode: "overlay",
+							chromePadTop: false,
 							onCollapse: () => setSheetRequested(false),
 						}}
 					>

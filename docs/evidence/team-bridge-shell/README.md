@@ -10,7 +10,9 @@ inset below the titlebar by a hard horizontal edge.
   section; both boxes start at y=0 and are 720px tall (measured over CDP:
   `aside rect 260,0 288x720`, `section rect 548,0 732x720`).
 - `lane-reserved-comparison.png` — the same page with the old reserving lane
-  (the pre-fix shape), kept as the comparison.
+  (the pre-fix shape), captured with the mac chrome attributes simulated so
+  the lane actually renders and reserves 32px; the top band is visible above
+  the thread surface.
 
 Both are Storybook frames of `Team Bridge/Page` taken through the operator's
 browser tool; `--chrome-strip-h` is set to 32px on the frame because Storybook
