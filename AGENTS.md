@@ -2298,27 +2298,43 @@ gh pr edit <claim-pr-number> --title 'chore(release): bump version to X.Y.Z'
 gh pr ready <claim-pr-number>
 MERGE_SHA=$(gh pr view <claim-pr-number> --json mergeCommit --jq .mergeCommit.oid)
 
-# 2b. THE PIXEL SWEEP, before the tag - the check CI cannot run any more.
+# 2b. THE PIXEL SWEEP, before the tag - on a checkout that HAS the frames.
 #     Frames are rig output in the ignored `docs/evidence-frames/` and are not
 #     committed, so a fresh CI checkout has none: `ci.yml`'s `Evidence Structure`
 #     job checks the tracked structure (no committed frames, the manifest and its
 #     declarations, the proof artefacts) and CANNOT judge a pixel. The pixels are
-#     checked HERE, on a checkout that has them - this is a MOVE, not a coverage
-#     claim, and the release notes must not describe the release as pixel-checked
-#     if this step was skipped.
-#     Use a checkout with REGENERATED frames matching the images the manifest
-#     describes (re-run `node scripts/capture-evidence.mjs` if it is empty or
-#     stale; it needs Storybook and a browser, ~40 minutes). Clone the tree into
-#     the release worktree (APFS `cp -Rc`: no new bytes) so the verdict is about
-#     the tagged tree, and record the two lines it prints.
-cp -Rc ~/local-operator-ui/docs/evidence-frames "$WT/docs/evidence-frames"
+#     checked HERE, and this is a MOVE from every-PR CI to release-time, not a
+#     coverage claim.
+#
+#     THE FRAMES TREE IS NOT REGENERABLE FOR MOST SETS. `node
+#     scripts/capture-evidence.mjs` regenerates only the story-covered sets -
+#     111 STORIES prefixes against 230 declared sets - while 205 of the 230 sets
+#     have a top-level directory outside that table (189 distinct directories,
+#     4,319 frame containers): live-app captures, hand-taken PNG pairs and rigs
+#     with no producer in `scripts/` (`schedules-page-before` 300 frames,
+#     `right-slot-memory` 120, `sidebar-tags-v2-2` 46 including its 11 `.jpg`,
+#     which the manifest counts in `unjudgedFrames`). A capture-only tree
+#     therefore fails the sweep's arithmetic; dropping just `sidebar-tags-v2-2`
+#     moves `unjudgedFrames.insideDeclaredSets` 803 -> 757.
+#
+#     SO THE TREE IS SEEDED ONCE, from a checkout that already carries the
+#     frames: a pre-split checkout still has every frame at `docs/evidence/`
+#     (`git rm --cached` leaves the files), and the split's own working tree has
+#     them under `docs/evidence-frames/`. Copy that tree once (APFS clone: no new
+#     bytes) into the release worktree. This is a ONE-TIME migration step, not
+#     part of every release - a worktree that already holds the tree needs only
+#     the sweep below.
+cp -Rc <captured-checkout>/docs/evidence-frames "$WT/docs/evidence-frames"
 cd "$WT" && node scripts/check-evidence.mjs
-#    Paste `tree under review: src=... scripts=...` and
-#    `Evidence holds: <n> frames are pictures of their own theme (worst ...)`
-#    into the release PR body and the Release notes' evidence section.
-#    A missing frames tree is a REFUSAL, not a pass (`No frames at <dir>` exit 1);
-#    the sweep takes the machine-wide lease and exits 75 when another holds it -
-#    retry rather than reading 75 as a verdict.
+#    Record, in the release PR body and the Release notes' evidence section:
+#      `tree under review: src=... scripts=...`
+#      `Evidence holds: <n> frames are pictures of their own theme (worst ...)`
+#    IF THE FRAMES TREE IS ABSENT OR EMPTY, THE SWEEP IS NOT PERFORMED: record
+#    `pixel sweep: not performed (no frames tree)` and do NOT claim the release
+#    was pixel-checked. `check-evidence.mjs` exits 1 and says which it found; that
+#    refusal is the honest reading of "cannot check", not a verdict. The sweep
+#    takes the machine-wide lease and exits 75 when another holds it - retry
+#    rather than reading 75 as a verdict.
 
 # 3. RE-DERIVE the window here, then tag and Release in ONE step on that SHA, notes
 #    hand-written from the template. Anything merged since step 1 rides this tag —

@@ -14,9 +14,11 @@
  * checkout can actually answer:
  *
  *   1. NO FRAME IS COMMITTED. `docs/evidence/**` must carry no frame container,
- *      and `docs/evidence-frames/**` must carry nothing at all. A rig default
- *      that regresses to the tracked tree is caught here, on the diff that does
- *      it, rather than by the next release's `df`.
+ *      and `docs/evidence-frames/**` must carry nothing at all. This catches a
+ *      frame that is COMMITTED, on the PR that commits it. It does NOT see a
+ *      regressed rig's untracked write - no diff sees an untracked file - so the
+ *      net for that is the `.gitignore` leftover rules (an unforced `git add -A`
+ *      cannot add one) plus this assertion refusing the commit if one is forced.
  *   2. THE MANIFEST PARSES AND ITS DECLARATIONS ARE SOUND. `manifest.json` has
  *      the numeric count fields, every `supplementary` entry carries its
  *      provenance (`path`, `source`, `why`, `capturedAt`), every path is a

@@ -1085,6 +1085,32 @@ test("the SHIPPED manifest's counts describe the tree it ships in", () => {
 	);
 });
 
+test("an EMPTY frames tree stands the count guards down, like an absent one", (t) => {
+	/*
+	 * QA round 1, Q-3. `stampFailures` keys its tree half on whether the frames
+	 * tree holds FRAMES, not on whether the directory exists: `mkdir -p
+	 * docs/evidence-frames` (a rig that died before writing, or a checkout that
+	 * created the tree) is "no frames here", and firing the committed-count checks
+	 * on it reds a tree that simply has none. The pair below is the discriminating
+	 * control: empty passes, one frame present fails.
+	 */
+	const dir = mkdtempSync(join(tmpdir(), "lop-evidence-empty-tree-"));
+	scratch.push(dir);
+	const manifest = { frames: 7, surfaces: 1, themes: 1, supplementary: [] };
+	assert.deepEqual(
+		stampFailures(manifest, () => null, dir),
+		[],
+		"an empty frames tree must be read as 'no frames', not as a manifest that under-claims",
+	);
+	writeFileSync(join(dir, "localOperatorDark.webp"), "not-a-real-webp");
+	assert.ok(
+		stampFailures(manifest, () => null, dir).some((line) =>
+			/`frames` is 7/.test(line),
+		),
+		"a tree that DOES hold a frame must still fail the declared count",
+	);
+});
+
 /**
  * T3 - THE FILE CARRIES NO TREE STAMP, and this is what makes a resurrection
  * loud rather than silent. After the retirement lands, a branch whose own old
