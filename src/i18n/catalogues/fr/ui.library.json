@@ -150,5 +150,11 @@
 	"ui.library.composer.message_sent_link_failed": "Message envoyé. La liaison avec la conversation a échoué.",
 	"ui.library.composer.retry_link": "Réessayer la liaison",
 	"ui.library.preview.pptx_text": "Texte",
-	"ui.library.preview.pptx_no_text": "Cette diapositive ne contient aucun texte extractible."
+	"ui.library.preview.pptx_no_text": "Cette diapositive ne contient aucun texte extractible.",
+	"ui.library.time.just_now": "à l’instant",
+	"ui.library.time.minutes_m_ago": "{minutes, plural, one {il y a {minutes, number, ::group-off} min} many {il y a {minutes, number, ::group-off} min} other {il y a {minutes, number, ::group-off} min}}",
+	"ui.library.time.hours_h_ago": "{hours, plural, one {il y a {hours, number, ::group-off} h} many {il y a {hours, number, ::group-off} h} other {il y a {hours, number, ::group-off} h}}",
+	"ui.library.time.days_d_ago": "{days, plural, one {il y a {days, number, ::group-off} j} many {il y a {days, number, ::group-off} j} other {il y a {days, number, ::group-off} j}}",
+	"ui.library.time.months_mo_ago": "{months, plural, one {il y a {months, number, ::group-off} mois} many {il y a {months, number, ::group-off} mois} other {il y a {months, number, ::group-off} mois}}",
+	"ui.library.time.years_y_ago": "{years, plural, one {il y a {years, number, ::group-off} an} many {il y a {years, number, ::group-off} ans} other {il y a {years, number, ::group-off} ans}}"
 }
