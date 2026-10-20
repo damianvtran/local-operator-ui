@@ -1,0 +1,18 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "b28d4e61-r3",
+  "locale": "es",
+  "round": 3,
+  "namespaces": {
+    "ui.presence": {
+      "status": "passed",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
+        "es": "8111a12c0d662e7020dcacdfcedd9d6c047a8f6821145901be88e7eb61e70c39"
+      },
+      "findings": []
+    }
+  }
+}
