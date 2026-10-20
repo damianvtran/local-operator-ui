@@ -38,5 +38,10 @@
 		"role": "accessible name of the Copy button on the floating selection toolbar",
 		"tone": "verb phrase, sentence case, no trailing punctuation",
 		"note": "Acts on the highlight, not the whole message. Keep it distinct from the row's own Copy control."
+	},
+	"ui.chat.transcript_copy.selection.toolbar": {
+		"role": "accessible name of the floating toolbar that appears when the reader highlights transcript text, naming the group rather than any one action",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"note": "Screen-reader only: it labels the group that holds the selection's actions (Quote, Copy). Do not name a single action here, or the group and its button announce the same thing."
 	}
 }
