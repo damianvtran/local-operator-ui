@@ -534,9 +534,9 @@ export function HubSkillsLibrary({
 									revision: `${detail.data.content_revision} · ${detail.data.revision}`,
 								})}
 							</p>
-							{selectedLink?.local_path &&
-								selectedState.kind !== "subscribed" &&
-								selectedState.kind !== "detached" && (
+							{selectedLink &&
+								hubLinkContentState(selectedLink) === "present" &&
+								selectedLink.local_path && (
 									<p
 										className="break-all font-mono text-meta text-ink-dim"
 										data-testid="hub-skill-local-path"
@@ -613,10 +613,10 @@ export function HubSkillsLibrary({
 							{/*
 							 * TWO ACTS, NOT ONE WITH A FLAG.
 							 *
-							 * Download writes the copy once and leaves the subscription
-							 * alone; Subscribe records the destination and future revisions
-							 * and writes no files. Both are offered for an unlinked skill,
-							 * and an already-linked one keeps whichever state it has.
+							 * Download writes the copy once and leaves the subscription alone;
+							 * Subscribe records the destination and future revisions and writes no
+							 * files. A linked skill keeps the subscription it has: a download is not
+							 * a policy edit, so it never turns one on or off.
 							 */}
 							<div className="flex flex-wrap gap-2">
 								{/*
