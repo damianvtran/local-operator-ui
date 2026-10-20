@@ -395,6 +395,14 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	argumentQuery: "",
 	commandQuery: "",
 	argumentList: { rows: [], loading: false, error: null, needsSession: false },
+	/* `/tag`'s live state: these frames exercise the shared list, not the tag
+	   surface, so the defaults are inert and no write can be reached. */
+	tagSelectedCount: 0,
+	tagError: null,
+	tagNotice: "",
+	tagPending: false,
+	actOnTagRow: async () => {},
+	reopen: noop,
 	close: noop,
 	setActive: noopIndex,
 	setActiveHover: noopIndex,

@@ -94,6 +94,55 @@ export function useChatTagAssignment({
 		setError(t("ui.chat.tags.registry_changed"));
 	}, [categories, ids, loading, loadError]);
 
+	/*
+	 * ADOPT AUTHORITATIVE CHANGES WHILE THIS HOOK STAYS MOUNTED.
+	 *
+	 * The dialog mounts per invocation, so its props are a snapshot and the
+	 * caller contract above says so. The composer's `/tag` list is the other
+	 * shape: it lives for as long as the composer does, across conversation
+	 * switches, external assignments and a catalogue that another client edits
+	 * while the list is open. Seeding only in `useState` would leave that list
+	 * writing the tags it saw at mount over tags it never read.
+	 *
+	 * The revision is the trigger because it moves exactly when the server has
+	 * acknowledged an assignment. A pending write is never re-seeded underneath
+	 * itself: the rollback in `write` owns that window, and the effect re-reads
+	 * once it settles. A session SWITCH always re-seeds even mid-write, because
+	 * the in-flight ids belong to the conversation that is no longer on screen.
+	 */
+	const seededSession = useRef(sessionId);
+	const seededRevision = useRef(revision ?? null);
+	/** A conversation switch seeds even when both revisions are null. */
+	const seedPending = useRef(false);
+	useEffect(() => {
+		const switched = seededSession.current !== sessionId;
+		const moved = (revision ?? null) !== seededRevision.current;
+		if (switched) {
+			seededSession.current = sessionId;
+			seedPending.current = true;
+		}
+		if (pending) return;
+		if (!switched && !moved && !seedPending.current) return;
+		seededRevision.current = revision ?? null;
+		seedPending.current = false;
+		const nextIds = tags?.map((tag) => tag.id) ?? [];
+		setIds(nextIds);
+		setHeld(draftPrimary(nextIds, primary));
+		currentRevision.current = revision ?? null;
+		/*
+		 * Only a conversation SWITCH retires the error line. A revision move is
+		 * also what a 409 reports, and clearing here would erase the conflict
+		 * sentence in the same commit that rendered it; a successful write has
+		 * already cleared its own error in `write`.
+		 */
+		if (switched) setError(null);
+		/*
+		 * `notice` is deliberately NOT cleared: our own successful write moves the
+		 * revision, and this effect runs right after it. Clearing here would erase
+		 * the selection receipt the popup shows before the user can read it.
+		 */
+	}, [sessionId, revision, pending, tags, primary]);
+
 	const announce = (nextIds: string[], nextPrimary: string | null) =>
 		setNotice(
 			t("ui.chat.tags.selection_status", {
@@ -123,6 +172,14 @@ export function useChatTagAssignment({
 				currentRevision.current = answer.tags_revision;
 			return { ok: true };
 		} catch (caught) {
+			/*
+			 * A write that settles after the surface moved to another conversation
+			 * belongs to the OLD one. Its store rollback already ran; touching this
+			 * hook's selection, revision or error line here would paint the previous
+			 * conversation's answer over the one on screen.
+			 */
+			if (seededSession.current !== sessionId)
+				return { ok: false, reason: "failed" };
 			setIds(previous.ids);
 			setHeld(previous.primary);
 			// The optimistic announcement described the selection this failure just

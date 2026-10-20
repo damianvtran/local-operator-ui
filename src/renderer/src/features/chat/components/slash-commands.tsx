@@ -52,6 +52,7 @@ import type {
 	ReusableTeam,
 } from "@shared/api/local-operator/profile-hooks";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -66,8 +67,14 @@ import {
 	useRef,
 	useState,
 } from "react";
+import type { TagCategory } from "../../../../../shared/desktop-contract";
 import type { CanonicalModel } from "../../../../../shared/desktop-session-contract";
 import { archiveDestinationApplies } from "../chat-archived";
+import {
+	TAG_REGISTRY_LIMIT,
+	TAG_SELECTION_LIMIT,
+	tagNameIssue,
+} from "../chat-tag-picker";
 import {
 	type StoredAccount,
 	useEntities,
@@ -83,12 +90,14 @@ import {
 	type FastModeState,
 	fastModeState,
 } from "../session-status/session-model";
+import { useChatTagAssignment } from "../use-chat-tag-assignment";
 import {
 	type ArgumentActionRow,
 	type ArgumentRow,
 	type ArgumentSource,
 	FLAG_LIST_SOURCES,
 	MCP_EMPTY_SLOT_COPY,
+	appliedFirstTagIds,
 	argumentRows,
 	effectiveInlineArgument,
 	flagTokenDraws,
@@ -99,6 +108,9 @@ import {
 	modelDefaultActionRow,
 	shouldRunArgumentAction,
 	showsUnmatchedList,
+	tagArgumentRows,
+	tagCreateRow,
+	tagPickAction,
 } from "./slash-argument-rows";
 import {
 	type PickDestination,
@@ -120,6 +132,7 @@ import {
 	slashRunAllowed,
 } from "./slash-contract";
 import { firstContentLine } from "./slash-highlight";
+import { withTagCommand } from "./slash-local-commands";
 import { commandSuggestions, matchChoices } from "./slash-rank";
 import {
 	type ArgumentShapeRow,
@@ -285,6 +298,22 @@ export type SlashArgumentListState = {
 	emptyCopy?: string;
 };
 
+/**
+ * What the `/tag` argument list needs, read off the one assignment hook.
+ *
+ * `order` is frozen by the caller while the list is open: applied rows first is
+ * the INITIAL order, not a re-sort on every toggle, because the active row must
+ * not move under the keystroke that just changed it.
+ */
+export type TagListState = {
+	categories: TagCategory[];
+	selected: string[];
+	primary: string | null;
+	loading: boolean;
+	error: string | null;
+	order: readonly string[];
+};
+
 export type SlashCompletionState = {
 	phase: "command" | "argument" | null;
 	open: boolean;
@@ -324,6 +353,25 @@ export type SlashCompletionState = {
 	commandQuery: string;
 	/** The argument list's own loading/error/empty state. */
 	argumentList: SlashArgumentListState;
+	/**
+	 * `/tag`'s own state, read off the SAME assignment hook the merged dialog
+	 * uses. These four are not a cache: every value is the hook's live state and
+	 * every write goes through it.
+	 */
+	tagSelectedCount: number;
+	tagError: string | null;
+	tagNotice: string;
+	tagPending: boolean;
+	/**
+	 * Act on a tag row picked from the inline list. The composer calls this
+	 * INSTEAD of writing a completion: a pick toggles (or creates and applies)
+	 * without touching the draft, and the list stays open so several tags can be
+	 * changed in one visit.
+	 */
+	actOnTagRow(row: ArgumentRow): Promise<void>;
+	/** Re-open a list the user dismissed without changing the draft (typed
+	 *  `/tag <text>` submitted while the popup was closed). */
+	reopen(): void;
 	close(): void;
 	setActive(index: number): void;
 	/** Move the marker WITHOUT marking the choice as hand-made: a hover is not
@@ -443,6 +491,8 @@ function useArgumentRows(
 	argument: string,
 	activeTeam: unknown,
 	activeAgent: unknown,
+	/** `/tag`'s live state, or undefined on every other list. */
+	tags: TagListState | undefined,
 	enabled: boolean,
 ): SlashArgumentListState {
 	const themeName = useUiPreferencesStore((state) => state.themeName);
@@ -757,6 +807,54 @@ function useArgumentRows(
 				needsSession: false,
 			};
 		}
+		if (source === "session-tags") {
+			if (!tags)
+				return {
+					rows: [],
+					loading: false,
+					error: null,
+					needsSession: true,
+				};
+			const rows = tagArgumentRows(
+				tags.categories,
+				tags.selected,
+				tags.primary,
+				tags.order,
+			);
+			/*
+			 * The empty state distinguishes the four facts the tag store can report:
+			 * no registry yet, a name that cannot be created, a cap that forbids it,
+			 * and a query that simply matches nothing. All four reuse the audited
+			 * tag-dialog copy rather than spending a second vocabulary on the same
+			 * sentence.
+			 */
+			let emptyCopy: string | undefined;
+			if (rows.length === 0) {
+				emptyCopy =
+					tags.categories.length === 0 ? t("ui.chat.tags.empty") : undefined;
+			} else if (argument.trim() && matchChoices(argument, rows).length === 0) {
+				const issue = tagNameIssue(argument);
+				emptyCopy =
+					issue === "reserved"
+						? t("ui.chat.tags.name_reserved")
+						: issue === "long"
+							? t("ui.chat.tags.name_long")
+							: tags.categories.length >= TAG_REGISTRY_LIMIT
+								? t("ui.chat.tags.registry_limit")
+								: tags.selected.length >= TAG_SELECTION_LIMIT
+									? t("ui.chat.tags.selection_limit")
+									: t("ui.chat.tags.no_matches", {
+											query: argument.trim(),
+										});
+			}
+			return {
+				rows,
+				emptyCopy,
+				loading: tags.loading,
+				error: tags.error,
+				needsSession: !sessionId,
+			};
+		}
 		if (!sessionId) {
 			// No session, no entity source. Called out rather than rendered as an
 			// empty list, because "not reported yet" would be a lie about a
@@ -789,6 +887,7 @@ function useArgumentRows(
 		argument,
 		current,
 		sessionId,
+		tags,
 		draftRosterSource,
 		draftTeams,
 		draftProfiles,
@@ -847,6 +946,13 @@ export function useSlashCompletion({
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "commands");
 	/*
+	 * The tag surface's own capability. The command description reuses the
+	 * audited `ui.chat.tags.label` key; the slash popup itself is an English
+	 * surface today (its rows and footers are literal), so this memo needs no
+	 * locale subscription of its own.
+	 */
+	const tagsEnabled = desktopFeatureEnabled(capabilities.data, "session_tags");
+	/*
 	 * Whether this backend can archive at all, and what THIS conversation's archive
 	 * state is - the two inputs `archiveDestinationApplies` needs when the command
 	 * rows are built below.
@@ -890,8 +996,67 @@ export function useSlashCompletion({
 		client,
 	);
 
-	const registry = useMemo(() => query.data ?? [], [query.data]);
+	const registry = useMemo(
+		() =>
+			withTagCommand(
+				query.data ?? [],
+				tagsEnabled && Boolean(sessionId),
+				t("ui.chat.tags.label"),
+			),
+		/* `t` is read at build time of this memo; the popup is the existing
+		   English slash surface, so a live language switch is not a promise it
+		   makes. The tag store's own copy is translated where it is shown. */
+		[query.data, tagsEnabled, sessionId],
+	);
 	const vocabulary = useMemo(() => argumentVocabulary(registry), [registry]);
+	/*
+	 * The ONE immediate-assignment hook, mounted by the composer for the same
+	 * reason the merged dialog mounts it: a second copy would drift on rollback,
+	 * the 8/32 caps or the revision each write must carry. Its own comment records
+	 * the caller contract; the long-lived seed effect beside it is what makes a
+	 * persistently mounted surface safe.
+	 */
+	const canonicalRow = useCanonicalSessionsStore((state) =>
+		sessionId
+			? state.sessions.find((row) => row.session_id === sessionId)
+			: undefined,
+	);
+	const tagAssignment = useChatTagAssignment({
+		sessionId: sessionId ?? "",
+		tags: canonicalRow?.tags,
+		primary: canonicalRow?.primary ?? null,
+		revision: canonicalRow?.tags_revision ?? null,
+	});
+	/*
+	 * The applied-first order is captured WHEN THE REGISTRY OR THE CONVERSATION
+	 * CHANGES, never on a toggle: re-sorting the list under the keystroke that
+	 * just changed a row's membership would move the active row and break the
+	 * explicit choice the user already made (the TUI's own rule,
+	 * `command_picker.py:1728`). The marker updates in place; reopening the
+	 * composer re-partitions.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `selected` is read ONCE per registry/session, on purpose; depending on it would re-sort under the cursor after every toggle.
+	const tagOrder = useMemo(() => {
+		return appliedFirstTagIds(tagAssignment.categories, tagAssignment.selected);
+	}, [tagAssignment.categories, sessionId]);
+	const tagList: TagListState = useMemo(
+		() => ({
+			categories: tagAssignment.categories,
+			selected: tagAssignment.selected,
+			primary: tagAssignment.primary,
+			loading: tagAssignment.loading,
+			error: tagAssignment.loadError,
+			order: tagOrder,
+		}),
+		[
+			tagAssignment.categories,
+			tagAssignment.selected,
+			tagAssignment.primary,
+			tagAssignment.loading,
+			tagAssignment.loadError,
+			tagOrder,
+		],
+	);
 	/*
 	 * `argumentWords` lives in completion state because the ARGUMENT spans need a
 	 * list; the planner needs membership in it, and building the Set here rather
@@ -1062,6 +1227,25 @@ export function useSlashCompletion({
 		[inline, capabilities.data],
 	);
 	/*
+	 * A `/tag` list reads the registry through `tags.list`. The sidebar already
+	 * fetches it on mount, but the mini view and a pane opened before that read
+	 * settles would otherwise show an empty list with no retry. Fetch ON OPEN and
+	 * once per session; closing the list clears the latch, so reopening after a
+	 * failed read is the retry the empty copy promises.
+	 */
+	const tagFetchSession = useRef<string | null>(null);
+	const tagListOpen = effectiveInline?.source === "session-tags";
+	const fetchTagCategories = tagAssignment.fetchCategories;
+	useEffect(() => {
+		if (!tagListOpen) {
+			tagFetchSession.current = null;
+			return;
+		}
+		if (!sessionId || tagFetchSession.current === sessionId) return;
+		tagFetchSession.current = sessionId;
+		void fetchTagCategories();
+	}, [tagListOpen, sessionId, fetchTagCategories]);
+	/*
 	 * The same resolution for a COMMAND row's destination: the entry a pick
 	 * routes through, with its inline list dropped when unlicensed — which is
 	 * what keeps `/login`'s pick running its picker on a backend without
@@ -1150,6 +1334,7 @@ export function useSlashCompletion({
 		argumentContext?.value ?? "",
 		activeProfile?.team,
 		activeProfile?.agent,
+		tagList,
 		enabled,
 	);
 
@@ -1170,6 +1355,42 @@ export function useSlashCompletion({
 			);
 			if (action) return [{ kind: "action" as const, row: action }];
 		}
+		/*
+		 * The tag list's explicit create row, APPENDED after the catalogue matches.
+		 * It is not an auto-highlighted fuzzy survivor: only its own row can run a
+		 * create, and its presence also makes a partial query with one matching tag
+		 * ambiguous (two rows), so Enter completes rather than toggling that tag.
+		 * Existing exact names suppress it inside `tagCreateRow`, so the create row
+		 * can never be a second spelling of a tag that already exists.
+		 */
+		if (effectiveInline.source === "session-tags") {
+			const matched = matchChoices(
+				argumentContext.value,
+				argumentList.rows,
+			).map(({ choice }) => ({ kind: "argument" as const, row: choice }));
+			/*
+			 * NEVER OFFER CREATE BEFORE THE REGISTRY IS KNOWN. `replaceCategories`
+			 * writes the WHOLE catalogue, so creating from an empty local list would
+			 * delete every existing tag on the server. The dialog guards the same way
+			 * (`create` refuses while loading or after a load error); this is that
+			 * guard at the row that can reach the same write.
+			 */
+			const create =
+				tagList.loading || tagList.error
+					? null
+					: tagCreateRow(
+							tagList.categories,
+							tagList.selected,
+							argumentContext.value,
+							t("ui.chat.tags.create_name", {
+								name: argumentContext.value.trim(),
+							}),
+							t("ui.chat.tags.create_helper"),
+						);
+			return create
+				? [...matched, { kind: "argument" as const, row: create }]
+				: matched;
+		}
 		return matchChoices(argumentContext.value, argumentList.rows).map(
 			({ choice }) => ({ kind: "argument" as const, row: choice }),
 		);
@@ -1180,6 +1401,7 @@ export function useSlashCompletion({
 		activeModel,
 		inputValue,
 		paneHasSession,
+		tagList,
 	]);
 
 	/*
@@ -1350,6 +1572,67 @@ export function useSlashCompletion({
 	const setActiveHover = useCallback((index: number) => {
 		setState((current) => ({ ...current, active: index }));
 	}, []);
+	/*
+	 * A created tag is not at a predictable index: the registry append, the
+	 * applied-first partition and the query filter all move it. The NAME is the
+	 * identity the user just typed, so the marker follows it on the render that
+	 * adds the row; a failed create leaves the marker where it was.
+	 */
+	const [tagFocus, setTagFocus] = useState<string | null>(null);
+	useEffect(() => {
+		if (!tagFocus) return;
+		const index = matches.findIndex(
+			(row) =>
+				row.kind === "argument" &&
+				!row.row.create &&
+				row.row.value === tagFocus,
+		);
+		if (index < 0) return;
+		setActive(index);
+		setTagFocus(null);
+	}, [matches, tagFocus, setActive]);
+
+	const {
+		pending: tagPending,
+		toggle: toggleTag,
+		createAndAssign,
+	} = tagAssignment;
+	/**
+	 * The tag pick's one write path. It returns with the draft, the caret and the
+	 * open list untouched: a toggle is a mutation of the conversation's tags, not
+	 * a completion, and the pick path in `message-input.tsx` calls this BEFORE
+	 * `completionFor` for exactly that reason.
+	 */
+	const actOnTagRow = useCallback(
+		async (row: ArgumentRow) => {
+			if (!sessionId || tagPending) return;
+			const action = tagPickAction(row, true);
+			if (action === "toggle" && row.tagId) {
+				await toggleTag(row.tagId);
+				return;
+			}
+			if (action === "create") {
+				/* `replaceCategories` rewrites the whole registry; a create while the
+				   catalogue is unknown would delete tags this surface never read. */
+				if (tagList.loading || tagList.error) return;
+				const result = await createAndAssign(row.value);
+				if (result) setTagFocus(result.created.name);
+			}
+		},
+		[
+			sessionId,
+			tagPending,
+			toggleTag,
+			createAndAssign,
+			tagList.loading,
+			tagList.error,
+		],
+	);
+	/** Re-open the list a submit dismissed; the draft itself is not rewritten. */
+	const reopen = useCallback(() => {
+		dismissedPhase.current = null;
+		setState((current) => ({ ...current, open: true }));
+	}, []);
 
 	return {
 		phase: phaseWithFlagList,
@@ -1368,6 +1651,12 @@ export function useSlashCompletion({
 		argumentQuery: argumentContext?.value ?? "",
 		commandQuery: commandContext?.query ?? "",
 		argumentList,
+		tagSelectedCount: tagAssignment.selected.length,
+		tagError: tagAssignment.error ?? tagAssignment.loadError,
+		tagNotice: tagAssignment.notice,
+		tagPending: tagAssignment.pending,
+		actOnTagRow,
+		reopen,
 		close,
 		setActive,
 		setActiveHover,
@@ -1512,6 +1801,42 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 		entry: activeEntry,
 		inlineRuns: state.inline?.runs ?? false,
 	});
+	/*
+	 * The SAME ambiguity gate both footers and the router read, extracted so the
+	 * tag lines below can consult it without spelling a second rule. A tag row's
+	 * Enter may toggle only when the choice is explicit (arrowed or exact), which
+	 * is what keeps a fuzzy survivor from unannounced removal.
+	 */
+	const unambiguousActive = activeArgument
+		? slashRunAllowed({
+				argumentQuery: state.argumentQuery,
+				value: activeArgument.value,
+				total: state.matches.length,
+				destructive: slashDestructive(
+					state.argumentCommand,
+					activeArgument.alert,
+				),
+				chosenByHand: state.chosenByHand,
+				/*
+				 * A FLAG list's row acts on a whole-token vocabulary test rather than on
+				 * the matcher's reach (`slashRunAllowed`'s `selectsFlag`). `undefined`
+				 * for every catalogue list, which is what keeps `/model`, `/theme` and
+				 * the rest byte-identical.
+				 */
+				selectsFlag: FLAG_LIST_SOURCES.has(
+					state.inline?.source as ArgumentSource,
+				)
+					? (query: string) => flagTokenSelects(state.inline?.source, query)
+					: undefined,
+			})
+		: activeCommand
+			? commandChoiceUnambiguous({
+					query: state.commandQuery,
+					label: activeCommand.label,
+					total: state.matches.length,
+					chosenByHand: state.chosenByHand,
+				})
+			: false;
 	const footer = activeAction
 		? {
 				text: activeAction.disabled
@@ -1585,37 +1910,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 					? state.paneHasSession
 					: true,
 				hoists: state.hoists,
-				unambiguous: activeArgument
-					? slashRunAllowed({
-							argumentQuery: state.argumentQuery,
-							value: activeArgument.value,
-							total: state.matches.length,
-							destructive: slashDestructive(
-								state.argumentCommand,
-								activeArgument.alert,
-							),
-							chosenByHand: state.chosenByHand,
-							/*
-							 * A FLAG list's row acts on a whole-token vocabulary test rather than on
-							 * the matcher's reach (`slashRunAllowed`'s `selectsFlag`). `undefined`
-							 * for every catalogue list, which is what keeps `/model`, `/theme` and
-							 * the rest byte-identical.
-							 */
-							selectsFlag: FLAG_LIST_SOURCES.has(
-								state.inline?.source as ArgumentSource,
-							)
-								? (query: string) =>
-										flagTokenSelects(state.inline?.source, query)
-								: undefined,
-						})
-					: activeCommand
-						? commandChoiceUnambiguous({
-								query: state.commandQuery,
-								label: activeCommand.label,
-								total: state.matches.length,
-								chosenByHand: state.chosenByHand,
-							})
-						: false,
+				unambiguous: unambiguousActive,
 				/*
 				 * The ambiguous line's two inputs: the word typed and the prefix the
 				 * candidates share. The SAME `sharedCommandPrefix` the router extends to, so
@@ -1646,6 +1941,34 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 		matched: Boolean(activeRow),
 		connect: activeConnectProvider,
 	});
+	/*
+	 * The tag lines name the OPERATION, not the generic "runs /tag x" the shared
+	 * footer would print: this pick toggles (or creates and applies) and never
+	 * puts the command on the wire. The labels are the tag dialog's existing
+	 * audited verbs, so the composer and the dialog describe the same act with
+	 * the same words. Ambiguous input keeps the shared completion line — the
+	 * first Enter writes the name and mutates nothing.
+	 */
+	const tagListShown = state.inline?.source === "session-tags";
+	const tagVerb = activeArgument?.create
+		? t("ui.chat.tags.create_name", { name: activeArgument.value })
+		: activeArgument?.applied
+			? t("ui.chat.tags.remove_named", { name: activeArgument.value })
+			: t("ui.chat.tags.add");
+	const baseFooter =
+		typeof footer === "string" ? footer : (footer?.text ?? null);
+	const footerText =
+		tagListShown && activeArgument
+			? state.tagPending
+				? t("ui.chat.tags.applying")
+				: unambiguousActive
+					? `Enter ${tagVerb}`
+					: baseFooter
+			: baseFooter;
+	const clickText =
+		tagListShown && activeArgument && !state.tagPending
+			? `Click ${tagVerb}`
+			: click;
 
 	return (
 		/* biome-ignore lint/a11y/useFocusableInteractive: the textarea keeps focus; the listbox is reached through aria-activedescendant, so it is not in the tab order. */
@@ -1671,17 +1994,46 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			 * (round 1 D3 / UX U3). One word, sentence case, an existing role.
 			 */}
 			<div className="border-b border-hairline px-3 py-1 text-meta text-ink-dim">
-				{phaseLabel(
-					argument ? "argument" : "command",
-					state.inline?.source,
-					/*
-					 * The typed argument, for the one per-SLOT label: `/mcp`'s verb list is
-					 * drawn under "Commands" and only the server slot says "Servers"
-					 * (round 1, D6/U7). Every other source ignores it.
-					 */
-					state.argumentQuery,
+				{tagListShown ? (
+					<span className="flex items-center gap-1">
+						<span>{t("ui.chat.tags.label")}</span>
+						<span aria-hidden="true">·</span>
+						<span>
+							{t("ui.chat.tags.selection_count", {
+								count: String(state.tagSelectedCount),
+							})}
+						</span>
+					</span>
+				) : (
+					phaseLabel(
+						argument ? "argument" : "command",
+						state.inline?.source,
+						/*
+						 * The typed argument, for the one per-SLOT label: `/mcp`'s verb list is
+						 * drawn under "Commands" and only the server slot says "Servers"
+						 * (round 1, D6/U7). Every other source ignores it.
+						 */
+						state.argumentQuery,
+					)
 				)}
 			</div>
+			{/*
+			 * The tag surface's own status line. `error` is the hook's translated
+			 * write/conflict sentence and `notice` its selection receipt; the next
+			 * activation is the retry, and the draft beneath is never touched. Rendered
+			 * above the rows so a failed write is not hidden by a long registry.
+			 */}
+			{tagListShown && (state.tagError || state.tagNotice) ? (
+				<div
+					role={state.tagError ? "alert" : "status"}
+					className={cn(
+						"border-b border-hairline px-3 py-1 text-meta",
+						state.tagError ? "text-danger" : "text-ink-muted",
+					)}
+				>
+					{state.tagError ?? state.tagNotice}
+				</div>
+			) : null}
 			{/*
 			 * The row region owns the scroller, and its max-height is a whole number
 			 * of ROW_PITCH: a list that rests on a half-row slice reads as a clipped
@@ -1791,7 +2143,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 					</ul>
 				)}
 			</div>
-			{(footer || click) && (
+			{(footerText || clickText) && (
 				/*
 				 * One bordered strip, two lines: Enter's meaning on the first, the
 				 * pointer's on the second. Both are read off the same active row, so
@@ -1799,10 +2151,8 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 				 * ABSENT whenever there is no row to act on (an empty argument list).
 				 */
 				<div className="border-t border-hairline px-3 py-1 text-meta text-ink-dim">
-					{footer ? (
-						<p>{typeof footer === "string" ? footer : footer.text}</p>
-					) : null}
-					{click ? <p>{click}</p> : null}
+					{footerText ? <p>{footerText}</p> : null}
+					{clickText ? <p>{clickText}</p> : null}
 				</div>
 			)}
 		</div>
@@ -1901,11 +2251,30 @@ function argumentRowContent(
 			 * `aria-current` on the row.
 			 */}
 			<span
-				aria-hidden="true"
-				title={value.current ? "Current" : undefined}
-				className="w-2.5 shrink-0 text-center font-mono text-body-sm text-ink"
+				aria-hidden={source === "session-tags" ? undefined : "true"}
+				title={
+					source === "session-tags"
+						? value.applied
+							? t("ui.chat.tags.remove_named", { name: value.name })
+							: t("ui.chat.tags.add")
+						: value.current
+							? "Current"
+							: undefined
+				}
+				className={cn(
+					"shrink-0 text-center font-mono text-body-sm text-ink",
+					/* The tag marker is three cells, the current bullet one; a shared
+					   width would either clip `[x]` or leave a gap on every catalogue. */
+					source === "session-tags" ? "w-6" : "w-2.5",
+				)}
 			>
-				{value.current ? "●" : ""}
+				{source === "session-tags"
+					? value.applied
+						? "[x]"
+						: "[ ]"
+					: value.current
+						? "●"
+						: ""}
 			</span>
 			<span
 				className={cn(
@@ -1961,7 +2330,7 @@ function argumentRowContent(
 					{value.description}
 				</span>
 			)}
-			{value.detail && (
+			{(value.detail || (source === "session-tags" && value.primary)) && (
 				/* The numbers run sheds FIRST under pressure: the identity is what is
 				   being chosen, so it keeps its cells and the detail column steps
 				   aside rather than truncating a price or a window. `font-mono` because
@@ -1995,7 +2364,7 @@ function argumentRowContent(
 						"text-ink-dim",
 					)}
 				>
-					{value.detail}
+					{value.detail ?? t("ui.chat.tags.primary")}
 				</span>
 			)}
 		</>
