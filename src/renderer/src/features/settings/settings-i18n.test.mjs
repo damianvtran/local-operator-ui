@@ -376,7 +376,7 @@ test("new theme contexts cover every key, UI role, width and ICU placeholder", (
 	assert.ok(Object.keys(catalogue).length > 400);
 });
 
-test("zero-ceiling ratchet rejects a new literal and accepts the extracted control", () => {
+test("a missing baseline entry fails, and a file with no literals needs no entry", () => {
 	const path =
 		"src/renderer/src/features/settings/components/settings-page.tsx";
 	assert.deepEqual(ratchetFindings({ [path]: 1 }, {}), [

@@ -151,8 +151,9 @@ Read `docs/I18N.md` for the contributor HOWTO and audit-evidence contract.
   ceilings with `node scripts/i18n/check-strings.mjs --update <paths>` when
   extracting copy; the only exemptions are `i18n/allowlist.json` entries and
   `i18n: ignore` comments, both of which require a reason. It does not yet scan
-  every string expression. No locale-management CLI is defined in this UI repo; these are
-  its existing developer commands, not a client-side language-setting command.
+  every string expression. No locale-management CLI is defined in this UI repo;
+  these are its existing developer commands, not a client-side
+  language-setting command.
 
 ## Useful Commands
 
