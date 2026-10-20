@@ -1,3 +1,4 @@
+import { placeSharedStrip } from "@features/chat/canonical/quote-anchor";
 import { FloatingToolbar } from "@shared/components/common/floating-toolbar";
 import {
 	SpeakButton,
@@ -417,19 +418,14 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 			written.push(cluster);
 		}
 		return () => {
+			if (
+				root.querySelector(
+					"[data-lo-quote-toolkit], [data-lo-link-toolbar]",
+				) !== null
+			) {
+				return;
+			}
 			for (const cluster of written) {
-				/*
-				 * A peer may have taken the row over since this effect wrote it.
-				 * The quote toolkit's cleanup owns that row's attributes; removing
-				 * them here would strip the owning strip's suppression one commit
-				 * after it wrote them.
-				 */
-				if (
-					!cluster.isConnected ||
-					cluster.closest("[data-lo-selection-active]")
-				) {
-					continue;
-				}
 				cluster.removeAttribute("inert");
 				cluster.removeAttribute("aria-hidden");
 			}
@@ -459,15 +455,24 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	 * comparison is always true. The scroll viewport is the box that answers it;
 	 * the content column is still the coordinate origin for `top`.
 	 */
-	const scrollerTop =
-		scrollableContainerRef?.current?.getBoundingClientRect().top ??
-		containerRect.top;
-	const above = selection.rect.top - scrollerTop >= 40;
+	const placed = placeSharedStrip({
+		selection: {
+			top: selection.rect.top,
+			bottom: selection.rect.bottom,
+			left: selection.rect.left,
+		},
+		container: { top: containerRect.top, left: containerRect.left },
+		scrollerTop:
+			scrollableContainerRef?.current?.getBoundingClientRect().top ??
+			containerRect.top,
+	});
 	const style = {
-		top:
-			(above ? selection.rect.top : selection.rect.bottom) - containerRect.top,
-		left: selection.rect.left - containerRect.left,
-		transform: above ? "translateY(calc(-100% - 8px))" : "translateY(8px)",
+		top: placed.top,
+		left: placed.left,
+		transform:
+			placed.placement === "above"
+				? "translateY(calc(-100% - 8px))"
+				: "translateY(8px)",
 	};
 
 	return (

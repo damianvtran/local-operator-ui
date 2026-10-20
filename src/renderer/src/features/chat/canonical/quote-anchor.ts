@@ -242,3 +242,53 @@ export function placeQuoteControl({
 		placement: above ? "above" : "below",
 	};
 }
+
+/**
+ * Where the COLUMN-LEVEL selection strip sits for a highlight.
+ *
+ * The shared strip (`text-selection-controls.tsx`) is the fallback owner for a
+ * selection that no quote or link strip claims. It is a different object from
+ * the quote strip in one respect only: it is mounted ONCE for the whole
+ * column, so its coordinate origin is the content column rather than a row.
+ * Its flip rule is the same rule, and it is pure so the rule can be asserted
+ * with numbers (code review round 1, C6; design round 2, D1).
+ *
+ * WHY THE SCROLLER DECIDES "ROOM ABOVE". `selection.top` and `container.top`
+ * are client coordinates, but the question "is there room above" is about what
+ * the reader can see. Once the column has scrolled, `container.top` is far
+ * above the pane and a comparison against it always answers yes - the strip
+ * would then paint above the viewport. `scrollerTop` is the visible edge that
+ * answers the question; the returned `top` is still expressed against the
+ * content column, which is where the strip is positioned.
+ *
+ * `SHARED_STRIP_FLIP_MIN` is the shell's height plus the standard clearance
+ * (`FLOATING_TOOLBAR_CHROME` is `h-8`; the gap is `QUOTE_CONTROL_GAP`). It is
+ * derived rather than a bare 40 at the call site, so a shell-height change
+ * moves the rule with it.
+ */
+export const SHARED_STRIP_FLIP_MIN = 32 + QUOTE_CONTROL_GAP;
+
+export type SharedStripPlacement = {
+	/** Offset from the content column's top edge. */
+	top: number;
+	/** Offset from the content column's left edge. */
+	left: number;
+	placement: "above" | "below";
+};
+
+export function placeSharedStrip({
+	selection,
+	container,
+	scrollerTop,
+}: {
+	selection: { top: number; bottom: number; left: number };
+	container: { top: number; left: number };
+	scrollerTop: number;
+}): SharedStripPlacement {
+	const above = selection.top - scrollerTop >= SHARED_STRIP_FLIP_MIN;
+	return {
+		top: (above ? selection.top : selection.bottom) - container.top,
+		left: selection.left - container.left,
+		placement: above ? "above" : "below",
+	};
+}
