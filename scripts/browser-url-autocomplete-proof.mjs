@@ -747,9 +747,15 @@ try {
 	const clickBox = clickArmed.dockViewport?.rect;
 	const dockFocusable = await evaluate(`(() => {
 		const dock = document.querySelector('[data-tour-tag="browser-address-suggestions"]');
-		return dock
-			? [...dock.querySelectorAll('[tabindex], button, input, select, textarea, a[href]')].filter((node) => node.tabIndex >= 0).length
-			: -1;
+		if (!dock) return -1;
+		// A scroll container is click-focusable in Chrome even with no tabindex,
+		// so the count must see it: that was the closed-state bug this guards.
+		return [...dock.querySelectorAll('[tabindex], button, input, select, textarea, a[href], [data-address-suggestions-viewport]')]
+			.filter((node) => {
+				if (node.tabIndex >= 0) return true;
+				const overflow = getComputedStyle(node).overflowY;
+				return overflow === 'auto' || overflow === 'scroll';
+			}).length;
 	})()`);
 	if (clickBox) {
 		const clickX = (clickBox.left + clickBox.right) / 2;
@@ -1367,6 +1373,50 @@ try {
 		afterWheelEdit,
 	);
 	await shot("10-query-reset-wheel");
+
+	// ---- undo/redo write the draft directly; the reset must follow them ----
+	for (let step = 0; step < 5; step += 1) await key("ArrowDown");
+	await sleep(200);
+	const beforeUndo = await readInput();
+	check(
+		"the list is scrolled before the undo",
+		beforeUndo.dockViewport.scrollTop > 0,
+		`scrollTop=${beforeUndo.dockViewport.scrollTop}`,
+	);
+	await key("z", { ctrl: true });
+	await sleep(300);
+	const afterUndo = await readInput();
+	record("undo", afterUndo);
+	checkDock("after undo", afterUndo, true);
+	check(
+		"undo returns the previous query and resets the viewport",
+		afterUndo.value.startsWith("127.0.0") &&
+			afterUndo.dockViewport.scrollTop === 0 &&
+			afterUndo.activeDescendant === null,
+		`value=${afterUndo.value} scrollTop=${afterUndo.dockViewport.scrollTop} active=${afterUndo.activeDescendant}`,
+	);
+	checkTopRows("after undo", afterUndo);
+	checkContentStable("closed baseline -> after undo", closedBefore, afterUndo);
+	await shot("11-undo-reset");
+
+	for (let step = 0; step < 5; step += 1) await key("ArrowDown");
+	await sleep(200);
+	await key("z", { ctrl: true, shift: true });
+	await sleep(300);
+	const afterRedo = await readInput();
+	record("redo", afterRedo);
+	checkDock("after redo", afterRedo, true);
+	check(
+		"redo restores the query and resets the viewport",
+		afterRedo.value.startsWith("127.0.0") &&
+			afterRedo.dockViewport.scrollTop === 0 &&
+			afterRedo.activeDescendant === null,
+		`value=${afterRedo.value} scrollTop=${afterRedo.dockViewport.scrollTop} active=${afterRedo.activeDescendant}`,
+	);
+	checkTopRows("after redo", afterRedo);
+	checkContentStable("closed baseline -> after redo", closedBefore, afterRedo);
+	await shot("12-redo-reset");
+
 	await key("Escape");
 	await sleep(150);
 

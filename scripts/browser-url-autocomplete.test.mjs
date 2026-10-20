@@ -124,6 +124,22 @@ const SIX_ENTRIES = [
 	distanceFromCurrent: 6 - sourceIndex,
 }));
 
+const SWAPPED_SIX = [
+	"/account/z",
+	"/account/y",
+	"/account/x",
+	"/account/w",
+	"/account/v",
+	"/account/u",
+].map((path, sourceIndex) => ({
+	url: `https://example.com${path}`,
+	title: `Other ${sourceIndex}`,
+	sourceTabId: 1,
+	sourceIndex,
+	activeTab: true,
+	distanceFromCurrent: 6 - sourceIndex,
+}));
+
 const FROM_THIS_BROWSER_SESSION = /From this browser session/;
 const ENTER_A_WEB_ADDRESS = /Enter a web address/;
 const ADDRESS_SUGGESTIONS_UNAVAILABLE = /Address suggestions are unavailable/;
@@ -342,17 +358,11 @@ test("the dock is a permanent 104px band: 28px header, 75px viewport, one rule",
 			`the closed dock has no tab stop: ${node.outerHTML}`,
 		);
 	}
-	// A click on the blank band cannot move focus into the dock.
-	await act(async () => {
-		blank.dispatchEvent(
-			new dom.window.MouseEvent("mousedown", { bubbles: true }),
-		);
-		blank.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
-	});
-	assert.ok(
-		!dock.contains(document.activeElement),
-		`focus stayed outside the dock: ${document.activeElement?.outerHTML}`,
-	);
+	// jsdom never moves focus for a click on a div, so a click assertion here
+	// would pass against the old focusable viewport too: the discriminating
+	// real-click check lives in browser-url-autocomplete-proof.mjs. What this
+	// test owns is the structure that made the viewport click-focusable: no
+	// scroll container and no tab stop in the closed dock.
 	await bundle.cleanup();
 });
 
@@ -498,6 +508,131 @@ test("a new query resets the options scroll, even with the same candidate count"
 	await type(bundle, "example.com/accou");
 	assert.equal(options(bundle).length, 5);
 	assert.equal(viewport.scrollTop, 0);
+	await bundle.cleanup();
+});
+
+test("a same-length candidate swap drops the active row and cannot commit it", async () => {
+	let entries = SIX_ENTRIES;
+	let notify = () => {};
+	const bundle = await renderBar({
+		url: "about:blank",
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries,
+		}),
+		onStateChanged: (callback) => {
+			notify = callback;
+			return () => {};
+		},
+	});
+	await type(bundle, "example.com/acc");
+	const viewport = bundle.container.querySelector(
+		"[data-address-suggestions-viewport]",
+	);
+	Object.defineProperty(viewport, "clientHeight", {
+		configurable: true,
+		value: 75,
+	});
+	options(bundle).forEach((row, index) => {
+		Object.defineProperty(row, "offsetTop", {
+			configurable: true,
+			value: 2 + index * 35.5,
+		});
+		Object.defineProperty(row, "offsetHeight", {
+			configurable: true,
+			value: 35.5,
+		});
+	});
+	for (let step = 0; step < 5; step += 1) await key(bundle, "ArrowDown");
+	const staleUrl = options(bundle)[4].getAttribute(
+		"data-address-suggestion-url",
+	);
+	assert.ok(staleUrl, "a row was active before the swap");
+	assert.ok(viewport.scrollTop > 0, "the fifth row was scrolled into view");
+
+	// The same refresh path main uses: a new snapshot arrives while the field is
+	// focused. Five URLs become five DIFFERENT URLs, so only the key can see it.
+	entries = SWAPPED_SIX;
+	await act(async () => notify());
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 150));
+	});
+	await flush();
+
+	assert.equal(options(bundle).length, 5, "the set is still five rows");
+	assert.equal(
+		bundle.input.getAttribute("aria-activedescendant"),
+		null,
+		"no row is active after the set changed",
+	);
+	assert.equal(viewport.scrollTop, 0, "the new set starts at the top");
+	const before = bundle.navigations.length;
+	await key(bundle, "Enter");
+	assert.ok(
+		bundle.navigations.length > before,
+		"Enter still commits the draft",
+	);
+	assert.notEqual(
+		bundle.navigations.at(-1).url,
+		staleUrl,
+		"Enter never commits the row the user could no longer see",
+	);
+	await bundle.cleanup();
+});
+
+test("undo and redo reset the options scroll", async () => {
+	const bundle = await renderBar({
+		url: "about:blank",
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries: SIX_ENTRIES,
+		}),
+	});
+	const viewportFor = () =>
+		bundle.container.querySelector("[data-address-suggestions-viewport]");
+	const patchGeometry = () => {
+		const viewport = viewportFor();
+		Object.defineProperty(viewport, "clientHeight", {
+			configurable: true,
+			value: 75,
+		});
+		options(bundle).forEach((row, index) => {
+			Object.defineProperty(row, "offsetTop", {
+				configurable: true,
+				value: 2 + index * 35.5,
+			});
+			Object.defineProperty(row, "offsetHeight", {
+				configurable: true,
+				value: 35.5,
+			});
+		});
+		return viewport;
+	};
+	await type(bundle, "example.com/acc");
+	let viewport = patchGeometry();
+	for (let step = 0; step < 5; step += 1) await key(bundle, "ArrowDown");
+	assert.ok(viewport.scrollTop > 0, "the fifth row was scrolled into view");
+
+	// One more edit, then scroll away again; undo must return the older query
+	// AND put its result set back at the top.
+	await type(bundle, "example.com/acco");
+	viewport = patchGeometry();
+	for (let step = 0; step < 5; step += 1) await key(bundle, "ArrowDown");
+	assert.ok(viewport.scrollTop > 0);
+	await key(bundle, "z", { ctrlKey: true });
+	assert.equal(bundle.input.value, "example.com/acc");
+	assert.equal(viewport.scrollTop, 0, "undo starts the result set at the top");
+	assert.equal(bundle.input.getAttribute("aria-activedescendant"), null);
+
+	// And redo: the scroll must not survive that write either.
+	viewport = patchGeometry();
+	for (let step = 0; step < 5; step += 1) await key(bundle, "ArrowDown");
+	assert.ok(viewport.scrollTop > 0);
+	await key(bundle, "z", { ctrlKey: true, shiftKey: true });
+	assert.equal(bundle.input.value, "example.com/acco");
+	assert.equal(viewport.scrollTop, 0, "redo starts the result set at the top");
 	await bundle.cleanup();
 });
 

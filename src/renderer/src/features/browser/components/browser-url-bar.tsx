@@ -579,6 +579,17 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		if (viewport) viewport.scrollTop = 0;
 	};
 
+	// A RAW CHANGE IS A NEW QUERY, whichever path made it: typing, a paste, an
+	// accepted suffix, and - the path the change handler cannot see - undo/redo,
+	// which write the draft directly. The effect is the root reset; the handler
+	// and the candidate-set effect above cover the states that have no new raw
+	// value (a background refresh) and the instant before this effect commits.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `raw` is the trigger; the body only touches the viewport ref.
+	useLayoutEffect(() => {
+		const viewport = viewportEl.current;
+		if (viewport) viewport.scrollTop = 0;
+	}, [raw]);
+
 	/** Record USER-AUTHORED text only. Accepting a suffix is not an edit, so it
 	 * never enters this stack: undo must return what the user typed. */
 	const recordEdit = (next: string): void => {
@@ -902,15 +913,19 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	// the active row and the viewport's offset together: an active descendant
 	// naming a vanished row and a scroll offset belonging to the previous set are
 	// the same stale state, and the URL KEY catches swaps the count cannot.
-	const candidateCount = suggestions.candidates.length;
 	const candidateKey = suggestions.candidates
 		.map((candidate) => candidate.url)
 		.join("\n");
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `candidateKey` is the trigger, not a value the body reads - the URL SET changing is what must reset the scroll, and a same-length swap changes no count.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `candidateKey` is the trigger, not a value the body reads - the URL SET changing is what must reset the selection and the scroll, and a same-length swap changes no count.
 	useEffect(() => {
-		setActiveIndex((index) => (index >= candidateCount ? -1 : index));
+		// UNCONDITIONAL (review A-4): a same-length swap can leave the old index
+		// inside the new range while naming a row the new query never ranked
+		// there. `aria-activedescendant` would then point at a row the user never
+		// saw, and Enter would commit that unseen destination. A changed SET is a
+		// new list; nothing in it is selected yet.
+		setActiveIndex(-1);
 		if (viewportEl.current) viewportEl.current.scrollTop = 0;
-	}, [candidateKey, candidateCount]);
+	}, [candidateKey]);
 
 	// The active row must be REACHABLE inside a viewport that is deliberately
 	// shorter than the list (75px holds exactly two 35.5px rows). Scroll the
