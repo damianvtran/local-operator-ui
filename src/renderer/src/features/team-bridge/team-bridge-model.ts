@@ -1,6 +1,8 @@
+import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeConversationList,
+	TeamBridgeDirectoryMember,
 	TeamBridgeMessage,
 	TeamBridgeNotify,
 	TeamBridgeParticipant,
@@ -445,4 +447,122 @@ export function visibleConversationRows(
 		(conversation) =>
 			conversationOrganizationName(conversation, organizations) !== null,
 	);
+}
+
+/**
+ * Why the page cannot be used, or null when it can.
+ *
+ * The order is the server's own ladder, read from ONE status payload: a signed
+ * out account is told to sign in even if the platform is also old, because
+ * signing in is the step that can be taken now; an outdated app is told to
+ * update before anything else is attempted; an unavailable service is named as
+ * such; and a READY account whose surface state is A is the plan gate — the
+ * caller is signed in and current, the organization simply has no Team Bridge.
+ * Every other shape (including a null payload, which is "no answer yet") is
+ * eligible: this function may only withhold the page when the server says so.
+ */
+export type TeamBridgeEligibility =
+	| "signed_out"
+	| "update_required"
+	| "unavailable"
+	| "plan_required";
+
+export function teamBridgeEligibility(
+	status:
+		| Pick<AgentMessagesStatus, "state" | "surface_state" | "update_required">
+		| null
+		| undefined,
+): TeamBridgeEligibility | null {
+	if (!status) return null;
+	if (status.state === "signed_out") return "signed_out";
+	if (status.state === "update_required" || status.update_required) {
+		return "update_required";
+	}
+	if (status.state === "unavailable") return "unavailable";
+	if (status.surface_state === "A") return "plan_required";
+	return null;
+}
+
+/**
+ * How one directory row behaves.
+ *
+ * `self` is the signed-in account: shown as "You" and never a control (mailing
+ * yourself is not a thing the rail offers). `unavailable` is a person whose
+ * bridge is off or gone — the row is visible so the reader can see who is
+ * potentially reachable, but it is inert. `paused` is still OPENABLE: a paused
+ * bridge keeps its history, so the reader can read and message. Only an
+ * explicitly enabled bridge with an active or paused state is openable; an
+ * enabled bit beside `none`/`disabled` is an inconsistent pair and fails closed.
+ */
+export type TeamBridgePersonRowState =
+	| "self"
+	| "openable"
+	| "paused"
+	| "unavailable";
+
+export function personRowState(
+	member: Pick<
+		TeamBridgeDirectoryMember,
+		"account_id" | "bridge_enabled" | "bridge_state"
+	>,
+	selfAccountId?: string,
+): TeamBridgePersonRowState {
+	if (selfAccountId && member.account_id === selfAccountId) return "self";
+	const reachable =
+		member.bridge_enabled &&
+		(member.bridge_state === "active" || member.bridge_state === "paused");
+	if (!reachable) return "unavailable";
+	return member.bridge_state === "paused" ? "paused" : "openable";
+}
+
+/**
+ * The one conversation a person row opens, if it already exists.
+ *
+ * A DM is a two-party conversation: the target must be a non-removed human
+ * member and — when the signed-in account is known — the reader must be one
+ * too, so a conversation that merely mentions the same account id in another
+ * organization can never be opened from this row. Archived DMs are skipped:
+ * they are history the reader has put away, not the live thread a click
+ * promises. Several matches are possible if a previous DM was left and a new
+ * one started; the most recently active wins, matching the rail's own order.
+ */
+export function dmWithPerson(
+	conversations: readonly TeamBridgeConversation[],
+	accountId: string,
+	selfAccountId?: string,
+): TeamBridgeConversation | null {
+	const candidates = conversations.filter((conversation) => {
+		if (conversation.kind !== "dm" || conversation.status === "archived") {
+			return false;
+		}
+		const hasTarget = conversation.members.some(
+			(member) => member.account_id === accountId && member.state !== "removed",
+		);
+		if (!hasTarget) return false;
+		if (!selfAccountId) return true;
+		return conversation.members.some(
+			(member) =>
+				member.kind === "human" &&
+				member.account_id === selfAccountId &&
+				member.state !== "removed",
+		);
+	});
+	if (candidates.length === 0) return null;
+	return mergedConversationOrder(candidates)[0] ?? null;
+}
+
+/**
+ * Whether a row's role earns a badge.
+ *
+ * "Member" is the default every row already says by being in the directory,
+ * so a badge for it would be noise repeated down the rail. Only a role that
+ * changes what the reader may expect of that person (owner, admin) is drawn.
+ */
+export function showsPersonRole(role: string): boolean {
+	return role === "owner" || role === "admin";
+}
+
+/** The avatar initial for a person row (first character, uppercased). */
+export function personInitial(displayLabel: string): string {
+	return displayLabel.trim().charAt(0).toUpperCase() || "?";
 }
