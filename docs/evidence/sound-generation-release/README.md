@@ -37,7 +37,7 @@ node scripts/run-sounds-scene.mjs
 ```
 
 Final run: **`sounds-native-Rqp1qi`** (2026-10-20), whose stdout is committed as
-`run/rig-stdout.log` and whose scene log as `run/scene.log`. Actual output:
+`run/rig-stdout.txt` and whose scene log as `run/scene.txt`. Actual output:
 history preflight HTTP **200**; expired-URL control HTTP **403**, exactly **1**
 control request before/after; **`PASS 7 frames, 7 distinct SHA-256`**;
 **`PASS expired URL remains unused by the app: requests=1`**. The rig exited 0
@@ -133,7 +133,7 @@ settled true, 8,820 bytes, 0.522449 seconds, 44,100 Hz **stereo**. SHA-256:
 `4454c2d9463ecec5dc0a5e46ae363aa57d57984dccd3370f05f2fa912da9935c`.
 
 The real browser decoder accounts for MP3 padding. Facts from the committed run
-(`run/scene.log`): voiceover `time 0.186863` / decoded duration 1.578957, paused
+(`run/scene.txt`): voiceover `time 0.186863` / decoded duration 1.578957, paused
 false, gain 0, input RMS 0.0808249478757425, output RMS 0; SFX `time 0.17538` /
 decoded duration 0.48, input RMS 0.021914229053231683; the state-6 read-back is
 `time 1.361138` with `ownerId sound:b44d1c36…` — the EARLIER voiceover is the
