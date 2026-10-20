@@ -43,6 +43,7 @@ import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiChatPickers from "./catalogues/en/ui.chat.pickers.json";
 import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
 import enUiChatRunDetails from "./catalogues/en/ui.chat.run_details.json";
+import enUiChatSidebar from "./catalogues/en/ui.chat.sidebar.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
 import enUiChatTagDialogs from "./catalogues/en/ui.chat.tag_dialogs.json";
 import enUiChatTags from "./catalogues/en/ui.chat.tags.json";
@@ -525,6 +526,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatPickers,
 	...enUiChatResponseActions,
 	...enUiChatRunDetails,
+	...enUiChatSidebar,
 	...enUiChatSidebarView,
 	...enUiChatTagDialogs,
 	...enUiChatTags,
@@ -1782,6 +1784,49 @@ export type MessageParams = {
 	"ui.chat.response_actions.label": undefined;
 	"ui.chat.run_details.jobs": undefined;
 	"ui.chat.run_details.keep": undefined;
+	"ui.chat.sidebar.agents.clear_filter": undefined;
+	"ui.chat.sidebar.agents.create": undefined;
+	"ui.chat.sidebar.agents.dismiss_offer": undefined;
+	"ui.chat.sidebar.agents.empty": undefined;
+	"ui.chat.sidebar.agents.filter": undefined;
+	"ui.chat.sidebar.agents.loading": undefined;
+	"ui.chat.sidebar.agents.no_match": undefined;
+	"ui.chat.sidebar.drafts.clear_all": undefined;
+	"ui.chat.sidebar.drafts.clear_all_label": undefined;
+	"ui.chat.sidebar.header.create": undefined;
+	"ui.chat.sidebar.header.create_agent": undefined;
+	"ui.chat.sidebar.header.create_team": undefined;
+	"ui.chat.sidebar.header.open_agent": undefined;
+	"ui.chat.sidebar.header.search": undefined;
+	"ui.chat.sidebar.header.view_options": undefined;
+	"ui.chat.sidebar.list.connecting": undefined;
+	"ui.chat.sidebar.list.empty": undefined;
+	"ui.chat.sidebar.list.loading_more": undefined;
+	"ui.chat.sidebar.list.offline": undefined;
+	"ui.chat.sidebar.list.retry_refresh": undefined;
+	"ui.chat.sidebar.list.truncated_legacy": undefined;
+	"ui.chat.sidebar.nav.chats": undefined;
+	"ui.chat.sidebar.pins.drag_title": undefined;
+	"ui.chat.sidebar.pins.failure": { action: string; title: string };
+	"ui.chat.sidebar.row.archived_suffix": undefined;
+	"ui.chat.sidebar.row.in_conversation": undefined;
+	"ui.chat.sidebar.row.matched_in_conversation": undefined;
+	"ui.chat.sidebar.row.not_sent": undefined;
+	"ui.chat.sidebar.row_menu.copy_id": undefined;
+	"ui.chat.sidebar.row_menu.fork": undefined;
+	"ui.chat.sidebar.row_menu.move_down": undefined;
+	"ui.chat.sidebar.row_menu.move_up": undefined;
+	"ui.chat.sidebar.row_menu.rename": undefined;
+	"ui.chat.sidebar.search.clear": undefined;
+	"ui.chat.sidebar.search.include_archived": undefined;
+	"ui.chat.sidebar.search.names_only": undefined;
+	"ui.chat.sidebar.search.no_match": { query: string };
+	"ui.chat.sidebar.search.placeholder": undefined;
+	"ui.chat.sidebar.search.searching": undefined;
+	"ui.chat.sidebar.search.too_long": { max: number };
+	"ui.chat.sidebar.search.unavailable": undefined;
+	"ui.chat.sidebar.teams.create": undefined;
+	"ui.chat.sidebar.teams.loading": undefined;
 	"ui.chat.sidebar_view.active_first": undefined;
 	"ui.chat.sidebar_view.agent_team": undefined;
 	"ui.chat.sidebar_view.clock_hint": undefined;
