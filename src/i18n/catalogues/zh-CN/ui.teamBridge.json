@@ -1,5 +1,5 @@
 {
-	"ui.teamBridge.page.title": "团队互通",
+	"ui.teamBridge.page.title": "Team Bridge",
 	"ui.teamBridge.page.subtitle": "与团队成员及其智能体对话。",
 	"ui.teamBridge.page.new_conversation": "新建对话",
 	"ui.teamBridge.list.empty.title": "还没有对话",
@@ -19,8 +19,8 @@
 	"ui.teamBridge.composer.hint": "按Enter发送，按Shift+Enter换行。",
 	"ui.teamBridge.member.agent": "智能体",
 	"ui.teamBridge.member.invited": "已邀请",
-	"ui.teamBridge.nav.label": "团队互通",
-	"ui.teamBridge.nav.unread": "{count, plural, other {团队互通，{count}条未读消息}}",
+	"ui.teamBridge.nav.label": "Team Bridge",
+	"ui.teamBridge.nav.unread": "{count, plural, other {Team Bridge，{count}条未读消息}}",
 	"ui.teamBridge.create.title": "新建对话",
 	"ui.teamBridge.create.name": "名称",
 	"ui.teamBridge.create.members": "成员",

@@ -21,7 +21,7 @@
 	"ui.agentMessages.settings.action.resume": "Reanudar",
 	"ui.agentMessages.settings.action.turn_off": "Desactivar",
 	"ui.agentMessages.settings.local.label": "Activado en este equipo",
-	"ui.agentMessages.settings.local.stays_enrolled": "Tu inscripción sigue activa para esta cuenta y tus otros equipos.",
+	"ui.agentMessages.settings.local.stays_enrolled": "Tu inscripción sigue activa para esta cuenta y tus otros dispositivos.",
 	"ui.agentMessages.settings.saving": "Guardando…",
 	"ui.agentMessages.settings.consent.show": "Leer el texto de consentimiento",
 	"ui.agentMessages.settings.consent.version": "Versión del consentimiento",
