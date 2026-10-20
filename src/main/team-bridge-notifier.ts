@@ -38,9 +38,6 @@ import {
 } from "./notification-lifetime";
 import type { TeamBridgeNotifyStore } from "./team-bridge-notify-store";
 
-/** The renderer channel a banner click pushes. */
-export const TEAM_BRIDGE_OPEN_CHANNEL = "team-bridge:open";
-
 /**
  * What this module needs from Electron's `Notification`, structural for the
  * same reason `notification-lifetime.ts` is: the tests inject a fake without
@@ -65,14 +62,17 @@ export type TeamBridgeBannerOptions = {
  * imports `index.ts` and never decides window policy itself.
  */
 export type TeamBridgeNotifierHost = {
-	/** Push the target into a loaded window's renderer. */
-	sendOpen: (target: TeamBridgeOpenTarget) => void;
 	/**
-	 * No window at all: ask the app for one. The target is also kept pending,
-	 * because a window that does not exist cannot receive a push and the
-	 * renderer pulls it on mount.
+	 * Tell a loaded renderer that a pending target exists. Deliberately carries
+	 * NO payload: a push into a renderer that is still loading (a reload, a
+	 * just-created window) is dropped silently, so main keeps the target until
+	 * the renderer PULLS it. The signal is an optimisation for the common case;
+	 * the pull is the delivery.
 	 */
-	reopen: (target: TeamBridgeOpenTarget) => void;
+	signalOpen: () => void;
+	/** No window at all: ask the app for one. The pending target waits for the
+	 * new renderer's mount pull, which is why this needs no argument. */
+	reopen: () => void;
 };
 
 export type TeamBridgeNotifierOptions = {
@@ -103,7 +103,7 @@ export type TeamBridgeNotifyResult = { shown: boolean };
  * Electron change) should not be able to make this true for a window that is
  * not there.
  */
-export function teamBridgeWindowIsQuiet(
+function teamBridgeWindowIsQuiet(
 	window: Pick<
 		BrowserWindow,
 		"isDestroyed" | "isVisible" | "isMinimized" | "isFocused"
@@ -190,12 +190,13 @@ export class TeamBridgeNotifier {
 	}
 
 	/**
-	 * The target a click left for a window that did not exist yet.
+	 * The target a click parked for the renderer.
 	 *
-	 * Consumed exactly once: the renderer asks for it on mount, and a later mount
-	 * gets `null` rather than replaying a conversation the user has already seen.
-	 * The value was built from an already-validated notification payload, so this
-	 * read does not re-parse ids.
+	 * Consumed exactly once: the renderer asks for it on mount and on every
+	 * `team-bridge:open` signal, and a later pull gets `null` rather than
+	 * replaying a conversation the user has already seen. The value was built
+	 * from an already-validated notification payload, so this read does not
+	 * re-parse ids.
 	 */
 	takePendingOpen(): TeamBridgeOpenTarget | null {
 		const pending = this.pendingOpen;
@@ -215,13 +216,20 @@ export class TeamBridgeNotifier {
 			conversationId: request.conversationId,
 			tenantId: request.tenantId,
 		};
+		/*
+		 * ALWAYS PARKED FIRST, THEN SIGNALLED. The signal wakes a loaded renderer,
+		 * but a renderer that is loading or reloading has no listener yet and the
+		 * event would be lost. The target therefore stays pending until a renderer
+		 * asks for it (`takePendingOpen`), which happens on mount and on every
+		 * signal - so a dropped signal costs latency, never the click.
+		 */
+		this.pendingOpen = target;
 		const window = this.options.window();
 		if (window && !window.isDestroyed()) {
-			this.options.host.sendOpen(target);
+			this.options.host.signalOpen();
 			this.options.present?.(window);
 			return;
 		}
-		this.pendingOpen = target;
-		this.options.host.reopen(target);
+		this.options.host.reopen();
 	}
 }

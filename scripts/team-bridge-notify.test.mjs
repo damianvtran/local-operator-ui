@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -217,27 +217,6 @@ test("bad payloads are refused, not repaired", () => {
 	}
 });
 
-test("an open target refuses anything but the two ids", () => {
-	assert.deepEqual(
-		limits.parseTeamBridgeOpenTarget({
-			conversationId: "bcv_abc123",
-			tenantId: "tnt_1",
-		}),
-		{ conversationId: "bcv_abc123", tenantId: "tnt_1" },
-	);
-	assert.equal(
-		limits.parseTeamBridgeOpenTarget({ conversationId: "bcv_1" }),
-		null,
-	);
-	assert.equal(
-		limits.parseTeamBridgeOpenTarget({
-			conversationId: "bcv 1",
-			tenantId: "tnt_1",
-		}),
-		null,
-	);
-});
-
 test("the click path names the organization and the conversation", () => {
 	assert.equal(
 		limits.teamBridgeOpenPath({
@@ -433,7 +412,7 @@ function harness({
 	supported = true,
 } = {}) {
 	const banners = [];
-	const sends = [];
+	const signals = [];
 	const reopens = [];
 	const presented = [];
 	const store = new storeModule.TeamBridgeNotifyStore(file);
@@ -442,8 +421,8 @@ function harness({
 		show,
 		store,
 		host: {
-			sendOpen: (target) => sends.push(target),
-			reopen: (target) => reopens.push(target),
+			signalOpen: () => signals.push(true),
+			reopen: () => reopens.push(true),
 		},
 		canNotify: () => supported,
 		createBanner: (options) => {
@@ -453,7 +432,7 @@ function harness({
 		},
 		present: (targetWindow) => presented.push(targetWindow),
 	});
-	return { notifier, banners, sends, reopens, presented, store, window };
+	return { notifier, banners, signals, reopens, presented, store, window };
 }
 
 function tempFile() {
@@ -555,23 +534,31 @@ test("headless and unsupported runs raise nothing", () => {
 	}
 });
 
-test("a click sends the target and presents the window", () => {
+test("a click signals and parks the target until the renderer pulls it", () => {
 	const { dir, file } = tempFile();
 	try {
 		const h = harness({ file });
 		h.notifier.notify(request());
 		h.banners[0].emit("click");
-		assert.deepEqual(h.sends, [
-			{ conversationId: "bcv_abc123", tenantId: "tnt_1" },
-		]);
+		assert.equal(h.signals.length, 1);
 		assert.equal(h.presented.length, 1);
 		assert.equal(h.reopens.length, 0);
+		/*
+		 * THE POINT OF THE PARKED TARGET: the signal may reach a renderer that is
+		 * still loading and be dropped. The target is still here, and the mount
+		 * pull is what delivers it - exactly once.
+		 */
+		assert.deepEqual(h.notifier.takePendingOpen(), {
+			conversationId: "bcv_abc123",
+			tenantId: "tnt_1",
+		});
+		assert.equal(h.notifier.takePendingOpen(), null);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
 });
 
-test("a click with no window parks the target for the next renderer", () => {
+test("a click with no window asks for one and parks the target", () => {
 	const { dir, file } = tempFile();
 	try {
 		const h = harness({ file, window: null });
@@ -579,6 +566,7 @@ test("a click with no window parks the target for the next renderer", () => {
 		assert.equal(h.banners.length, 1);
 		h.banners[0].emit("click");
 		assert.equal(h.reopens.length, 1);
+		assert.equal(h.signals.length, 0);
 		assert.deepEqual(h.notifier.takePendingOpen(), {
 			conversationId: "bcv_abc123",
 			tenantId: "tnt_1",
@@ -598,6 +586,28 @@ test("a corrupt cursor file fails toward a possible duplicate, never a crash", (
 		rmSync(file);
 		const fresh = new storeModule.TeamBridgeNotifyStore(file);
 		assert.equal(fresh.notifiedSeq("bcv_abc123"), undefined);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("load enforces the cursor bound, not only record", () => {
+	const { dir, file } = tempFile();
+	try {
+		const bound = storeModule.TEAM_BRIDGE_NOTIFY_CURSOR_BOUND;
+		const cursors = {};
+		for (let index = 0; index < bound + 3; index += 1) {
+			cursors[`bcv_${index}`] = index + 1;
+		}
+		writeFileSync(file, JSON.stringify({ version: 1, cursors }));
+
+		const store = new storeModule.TeamBridgeNotifyStore(file);
+		assert.equal(store.notifiedSeq("bcv_0"), undefined);
+		assert.equal(store.notifiedSeq(`bcv_${bound + 2}`), bound + 3);
+
+		store.record("bcv_new", 1);
+		const persisted = JSON.parse(readFileSync(file, "utf8")).cursors;
+		assert.equal(Object.keys(persisted).length, bound);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}

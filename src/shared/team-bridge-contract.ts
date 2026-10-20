@@ -40,6 +40,7 @@ export type TeamBridgeParticipant = z.infer<typeof teamBridgeParticipantSchema>;
  */
 export const teamBridgeNotifySchema = z.enum(["all", "mention", "mute"]);
 export type TeamBridgeNotify = z.infer<typeof teamBridgeNotifySchema>;
+
 export const teamBridgeConversationSchema = z
 	.object({
 		id,

@@ -19,9 +19,6 @@
  * limit from being enforced on one side only.
  */
 
-/** Longest conversation/tenant id this channel accepts. */
-export const TEAM_BRIDGE_NOTIFY_MAX_ID = 128;
-
 /**
  * Longest banner title, in code units.
  *
@@ -134,20 +131,6 @@ export function parseTeamBridgeNotifyRequest(
 		return null;
 	}
 	return { conversationId, tenantId, title, body, seq };
-}
-
-/** Parse the conversation/tenant pair carried by a click's open request. */
-export function parseTeamBridgeOpenTarget(
-	value: unknown,
-): TeamBridgeOpenTarget | null {
-	if (value === null || typeof value !== "object" || Array.isArray(value)) {
-		return null;
-	}
-	const input = value as Record<string, unknown>;
-	const conversationId = cleanId(input.conversationId);
-	const tenantId = cleanId(input.tenantId);
-	if (conversationId === null || tenantId === null) return null;
-	return { conversationId, tenantId };
 }
 
 /**

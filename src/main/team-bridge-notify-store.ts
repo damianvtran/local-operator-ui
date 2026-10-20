@@ -76,12 +76,22 @@ export class TeamBridgeNotifyStore {
 		if (previous !== undefined && seq <= previous) return;
 		this.cursors.delete(conversationId);
 		this.cursors.set(conversationId, seq);
+		this.trim();
+		this.persist();
+	}
+
+	/**
+	 * Enforce the bound on BOTH paths: `record` while a run is live and `load` on
+	 * a file written by an older or hand-edited build. A bound enforced only on
+	 * the write path is a promise about files this process wrote itself, which is
+	 * not the file it has just read.
+	 */
+	private trim(): void {
 		while (this.cursors.size > TEAM_BRIDGE_NOTIFY_CURSOR_BOUND) {
 			const oldest = this.cursors.keys().next();
 			if (oldest.done) break;
 			this.cursors.delete(oldest.value);
 		}
-		this.persist();
 	}
 
 	private load(): void {
@@ -108,6 +118,7 @@ export class TeamBridgeNotifyStore {
 			)) {
 				if (isCursor(seq)) this.cursors.set(conversationId, seq);
 			}
+			this.trim();
 		} catch (error) {
 			this.onError("team-bridge notification cursor file is unreadable", error);
 		}
