@@ -1336,9 +1336,10 @@ export const STORIES = [
 	 * text-bearing row is not a close.
 	 *
 	 * THE `by-turn` HALF IS ALREADY COMMITTED: the entries above, with no `prefs`,
-	 * ARE that half, and `partitionRun`'s by-turn path is pinned byte-for-byte by
-	 * `scripts/turn-segments.test.mjs` ("by-turn is the shipped partition,
-	 * byte-for-byte, whether the field is named or absent"). So the pair is one run,
+	 * ARE that half, and `partitionRun`'s by-turn path is pinned by
+	 * `scripts/turn-segments.test.mjs` ("by-turn is the shipped partition apart
+	 * from the declared V5 exception, whether the field is named or absent"). So
+	 * the pair is one run,
 	 * not two trees, and nothing here re-takes a committed frame.
 	 */
 	[
