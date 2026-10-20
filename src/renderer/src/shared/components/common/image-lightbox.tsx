@@ -132,6 +132,26 @@ const reservedBox = (box: string) =>
 const CONTROLS_RESTING_CLASS = "opacity-45";
 
 /**
+ * THE CHROME'S GROUND IS A THEME ROLE, NOT THE PICTURE (design round 1, D1).
+ *
+ * The controls are ghost buttons, so their glyphs used to be painted straight
+ * onto whatever pixels the page put behind the overlay: the light palette's Next
+ * glyph measured `#4e4940` over `#241a37` = 1.84:1, under the 3:1 non-text
+ * floor. A `surface` plate at 85% keeps the borderless look and makes the glyph's
+ * ground a role rather than the media. Measured against the worst picture for
+ * each palette (the plate blended over pure white and pure black, whose extremes
+ * bound every pixel a picture can hold): dark `#c2bcaf` over `#4b4742` 4.87:1,
+ * light `#4e4940` over `#d2d0ca` 5.79:1. The hover and active steps are the
+ * ghost variant's own opaque `accent-wash`, unchanged; the disabled step keeps
+ * the plate so an unreachable zoom step still reads as a control.
+ *
+ * THIS IS SHARED CHROME. The chat transcript and the project feed mount the same
+ * component, so a review of this change must re-check their frames as well as
+ * the Library's; only the button's ground changed, not its geometry or behaviour.
+ */
+const CHROME_PLATE = "bg-surface/85 disabled:bg-surface/85";
+
+/**
  * One picture, expanded over the app.
  *
  * The operator's report: a screenshot in a conversation could not be read at the
@@ -345,7 +365,7 @@ export type ImageLightboxProps = {
 	 * are generic and deliberately say nothing about the surface that mounted it.
 	 * Kept off the props list above because it is not behaviour.
 	 */
-	layerAttributes?: Record<string, string>;
+	layerAttributes?: Partial<Record<`data-${string}`, string>>;
 };
 
 /**
@@ -878,7 +898,10 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 								aria-label={`Previous ${mediaLabel}`}
 								title={`Previous ${mediaLabel}`}
 								onClick={group?.onPrev}
-								className="pointer-events-auto fixed top-0 bottom-0 left-4 my-auto"
+								className={cn(
+									"pointer-events-auto fixed top-0 bottom-0 left-4 my-auto",
+									CHROME_PLATE,
+								)}
 								data-image-viewer-prev=""
 							>
 								<ChevronLeft aria-hidden="true" />
@@ -889,7 +912,10 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 								aria-label={`Next ${mediaLabel}`}
 								title={`Next ${mediaLabel}`}
 								onClick={group?.onNext}
-								className="pointer-events-auto fixed top-0 right-4 bottom-0 my-auto"
+								className={cn(
+									"pointer-events-auto fixed top-0 right-4 bottom-0 my-auto",
+									CHROME_PLATE,
+								)}
 								data-image-viewer-next=""
 							>
 								<ChevronRight aria-hidden="true" />
@@ -913,6 +939,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 								title="Zoom out"
 								disabled={!canZoom || zoom === VIEWER_ZOOM_MIN}
 								onClick={() => applyZoom(stepZoom(zoom, -1))}
+								className={CHROME_PLATE}
 							>
 								<ZoomOut aria-hidden="true" />
 							</Button>
@@ -923,6 +950,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 								title="Zoom in"
 								disabled={!canZoom || zoom === VIEWER_ZOOM_MAX}
 								onClick={() => applyZoom(stepZoom(zoom, 1))}
+								className={CHROME_PLATE}
 							>
 								<ZoomIn aria-hidden="true" />
 							</Button>
@@ -933,6 +961,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 								title="Reset view"
 								disabled={!canZoom || atFit}
 								onClick={resetView}
+								className={CHROME_PLATE}
 							>
 								<RotateCcw aria-hidden="true" />
 							</Button>
@@ -942,7 +971,10 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							className={cn("pointer-events-auto fixed top-4 right-4")}
+							className={cn(
+								"pointer-events-auto fixed top-4 right-4",
+								CHROME_PLATE,
+							)}
 							aria-label={`Close ${mediaLabel}`}
 							title={`Close ${mediaLabel}`}
 						>

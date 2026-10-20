@@ -176,9 +176,31 @@ export const InlineEditText: FC<InlineEditTextProps> = ({
 			if (!input) return;
 			input.focus();
 			input.select();
+			/*
+			 * SELECTING A LONG VALUE SCROLLS THE FIELD TO THE CARET AT ITS END
+			 * (QA round 1, Q1): Chromium paints the tail of the name while the
+			 * reader has just opened the beginning of it, and an `<input>` cannot
+			 * ellipsize. Scrolling back to the start makes the opened editor read
+			 * from the value's first character, which is the only part the field
+			 * can show without a truncation the platform does not offer.
+			 */
+			input.scrollLeft = 0;
+			if (input instanceof HTMLTextAreaElement) input.scrollTop = 0;
 		}, 0);
 		return () => clearTimeout(timer);
 	}, [editing]);
+
+	/*
+	 * A NEW `value` IS A NEW ASSET, not a refresh of this editor. The call site
+	 * keys this component by asset id, so in the app a switch unmounts it; the
+	 * guard is defensive (agent review round 1, M2). While the editor is closed
+	 * the draft must track the committed value, or a later open would start from
+	 * the previous text - and a refused save's refocus would put it back on
+	 * screen.
+	 */
+	useEffect(() => {
+		if (phaseRef.current === "closed") setDraft(value);
+	}, [value]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the signal is a trigger, not a read.
 	useEffect(() => {
@@ -189,6 +211,15 @@ export const InlineEditText: FC<InlineEditTextProps> = ({
 	const onKeyDown = (
 		event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
 	) => {
+		/*
+		 * AN IME'S ENTER IS NOT THIS FIELD'S ENTER (agent review round 1, M1).
+		 * Accepting a zh-CN candidate fires `keydown` with `key === "Enter"` and
+		 * `isComposing === true` (or `keyCode === 229` on hosts that report the
+		 * process key); committing there would write the uncomposed preedit and
+		 * close the editor before the candidate lands. The repository already
+		 * guards this in `manage-tags-dialog.tsx` and `ask-answer-field.tsx`.
+		 */
+		if (event.nativeEvent.isComposing || event.keyCode === 229) return;
 		if (event.key === "Enter") {
 			/* Multiline: Enter commits and Shift+Enter keeps the line break, so
 			 * writing a description has one predictable way to end the edit - the
@@ -417,6 +448,10 @@ export const InlineTagEditor: FC<InlineTagEditorProps> = ({
 	saving = false,
 	startSignal,
 }) => {
+	/* The chip X's accessible name is a translated string; subscribing to the
+	 * locale is what re-renders the row when the reader switches language, the
+	 * same reason `InlineEditText` calls it. */
+	useI18nLocale();
 	const [adding, setAdding] = useState(false);
 	const [draft, setDraft] = useState("");
 	const inputRef = useRef<HTMLInputElement | null>(null);
@@ -447,13 +482,22 @@ export const InlineTagEditor: FC<InlineTagEditorProps> = ({
 	};
 
 	useEffect(() => {
-		if (!adding) return;
-		/* Deferred for the same dropdown-focus reason `InlineEditText` records:
+		if (!adding || saving) return;
+		/*
+		 * Deferred for the same dropdown-focus reason `InlineEditText` records:
 		 * `Edit tags` opens this input while the menu is closing, and Radix's
-		 * focus restoration would otherwise blur it and close it a tick later. */
+		 * focus restoration would otherwise blur it and close it a tick later.
+		 *
+		 * `saving` IS A DEPENDENCY BECAUSE THE COMMIT UNMOUNTS THIS INPUT (agent
+		 * review round 1, N3): `commit(true)` focuses synchronously, but the
+		 * caller's save flips `saving` on the same tick and the add slot becomes
+		 * a `Spinner`, so the focus had no node to land on. When the write
+		 * settles and the input returns, this effect runs again and puts the
+		 * caret back where the next tag can be typed.
+		 */
 		const timer = setTimeout(() => inputRef.current?.focus(), 0);
 		return () => clearTimeout(timer);
-	}, [adding]);
+	}, [adding, saving]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the signal is a trigger, not a read.
 	useEffect(() => {
@@ -462,6 +506,7 @@ export const InlineTagEditor: FC<InlineTagEditorProps> = ({
 	}, [startSignal]);
 
 	const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+		if (event.nativeEvent.isComposing || event.keyCode === 229) return;
 		if (event.key === "Enter") {
 			event.preventDefault();
 			commit(true);
@@ -517,13 +562,22 @@ export const InlineTagEditor: FC<InlineTagEditorProps> = ({
 					{tag}
 					<button
 						type="button"
-						aria-label={`Remove tag ${tag}`}
+						aria-label={t("ui.chat.tags.remove_named", { name: tag })}
 						disabled={saving}
 						onClick={() =>
 							onChange(value.filter((existing) => existing !== tag))
 						}
 						className={cn(
-							"rounded-xs text-ink-dim",
+							/*
+							 * A 12px GLYPH IN A 20px TARGET (design round 1, D2). The pill is
+							 * 23.4px tall, so a 24px target cannot sit inside it without
+							 * growing the silhouette - 20px is the ceiling. `-m-1` pulls the
+							 * target back to the glyph's old 12px layout box, so the pill,
+							 * its gap and its trailing padding measure exactly as before;
+							 * only the pointer's reach grows.
+							 */
+							"inline-flex size-5 -m-1 items-center justify-center rounded-xs",
+							"text-ink-dim",
 							"transition-colors duration-fast ease-out-quart",
 							"hover:text-danger disabled:text-ink-disabled",
 						)}

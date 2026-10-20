@@ -269,6 +269,38 @@ const MEDIA_ROWS: DesktopLibraryAsset[] = [
 	}),
 ];
 
+/*
+ * A LISTING DEEP ENOUGH THAT THE STRIP HAS TO SCROLL. Four siblings always fit
+ * inside the strip lane, so they cannot show whether tile thumbnails are read
+ * before a reader scrolls to them; forty do (agent review round 1, M3). Only the
+ * first few tiles are inside the strip's clip, which is what the `MediaLightboxMany`
+ * play uses to name a tile whose thumbnail must never have been requested.
+ */
+const MANY_ROWS: DesktopLibraryAsset[] = Array.from(
+	{ length: 40 },
+	(_, index) => {
+		const id = `la_${String(9000 + index).padStart(16, "0")}`;
+		return asset(id, {
+			name: `Contact sheet ${index + 1}`,
+			derived_name: `contact-${index + 1}.png`,
+			kind: "image",
+			category: "image",
+			origin: "generated",
+			origin_group: "generated",
+			ref: {
+				type: "artifact",
+				path: null,
+				display_path: `attachments/contact-${index + 1}.png`,
+				digest: String(index).padStart(32, "0"),
+				content_type: "image/png",
+			},
+			width: 1600,
+			height: 1000,
+			size_bytes: 1_200_000,
+		});
+	},
+);
+
 type StubState = {
 	rows: DesktopLibraryAsset[];
 	detail: DesktopLibraryAsset | null;
@@ -305,6 +337,16 @@ let extraTags: { id: string; name: string; category: string }[] = [];
  * move on open). Reset by `page()`, so a story never inherits another's count.
  */
 let contentReads = 0;
+
+/*
+ * WHICH ASSETS THE STUB HAS SERVED A `library.thumbnail` READ FOR. The count of
+ * content reads above answers "does opening the viewer re-read the pixels on
+ * screen"; this list answers the sibling-strip question (agent review round 1,
+ * M3): a viewer must not read a thumbnail for every media row in the listing,
+ * only for the tiles the strip can actually show. Ids rather than a bare count,
+ * so a story can name the tile that must not have been read.
+ */
+let thumbnailReads: string[] = [];
 
 const PptxBytes = (() => {
 	let promise: Promise<Uint8Array> | null = null;
@@ -579,6 +621,7 @@ const install = () => {
 				stub.rows.find((item) => item.id === String(request.assetId ?? "")) ??
 				null;
 			if (request.op === "library.thumbnail") {
+				thumbnailReads.push(String(request.assetId ?? ""));
 				if (row?.kind === "image" && row.exists) {
 					const svg = pictureSvg(
 						assetDisplayName(row),
@@ -734,6 +777,7 @@ const page = (
 	};
 	extraTags = [];
 	contentReads = 0;
+	thumbnailReads = [];
 	install();
 	try {
 		if (state.view) localStorage.setItem("library-view", state.view);
@@ -870,6 +914,16 @@ export const MediaLightbox: Story = {
 		}),
 	play: async () => {
 		const user = userEvent.setup();
+		/*
+		 * THE PREVIEW'S ASSET ID IS "THE PAGE DID NOT NAVIGATE" (QA round 1, Q2).
+		 * `location.pathname` is `/iframe.html` in every Storybook state, so the
+		 * old assertion could not fail; the preview's own `data-library-preview`
+		 * carries what a reader would see move if the viewer pushed a route.
+		 */
+		const previewOf = () =>
+			document
+				.querySelector("[data-library-preview]")
+				?.getAttribute("data-library-preview") ?? null;
 		const trigger = await waitFor(() => {
 			const node = document.querySelector<HTMLElement>(
 				'[data-library-media-trigger="image"]',
@@ -877,6 +931,8 @@ export const MediaLightbox: Story = {
 			if (!node) throw new Error("the preview's picture is not mounted");
 			return node;
 		});
+		const previewBefore = previewOf();
+		expect(previewBefore).toBe(MEDIA_ROWS[0].id);
 		const readsBefore = contentReads;
 		await user.click(trigger);
 		await waitFor(() =>
@@ -887,6 +943,7 @@ export const MediaLightbox: Story = {
 		 * read for the picture already on screen.
 		 */
 		expect(contentReads).toBe(readsBefore);
+		expect(previewOf()).toBe(previewBefore);
 		/*
 		 * The set is the listing's four media rows, in display order, including the
 		 * asset on screen — and the strip marks the slide the reader is on.
@@ -901,19 +958,18 @@ export const MediaLightbox: Story = {
 		expect(currentTile()).toBe(MEDIA_ROWS[0].id);
 		await user.keyboard("{ArrowRight}");
 		await waitFor(() => expect(currentTile()).toBe(MEDIA_ROWS[1].id));
+		expect(previewOf()).toBe(previewBefore);
 		/*
-		 * A strip tile SWITCHES THE SLIDE and does not navigate: the page's route is
-		 * the asset the preview selected, and a viewer for the pixels must not move
-		 * the reader out of it.
+		 * A strip tile SWITCHES THE SLIDE and does not navigate: a viewer for the
+		 * pixels must not move the reader's selection underneath it.
 		 */
-		const pathBefore = location.pathname;
 		const third = document.querySelector<HTMLElement>(
 			`[data-library-lightbox-tile="${MEDIA_ROWS[2].id}"]`,
 		);
 		if (!third) throw new Error("the strip is missing its third tile");
 		await user.click(third);
 		await waitFor(() => expect(currentTile()).toBe(MEDIA_ROWS[2].id));
-		expect(location.pathname).toBe(pathBefore);
+		expect(previewOf()).toBe(previewBefore);
 		/*
 		 * Ends OPEN on purpose: the open overlay is the state the evidence rig
 		 * photographs, and a play that closed it would leave every frame of this
@@ -921,6 +977,49 @@ export const MediaLightbox: Story = {
 		 * `MediaLightboxDismiss`'s, so one story does not do both and neither
 		 * depends on the other's timing.
 		 */
+	},
+};
+
+/*
+ * A LISTING DEEPER THAN THE STRIP'S CLIP (agent review round 1, M3). Opening the
+ * viewer mounts every sibling tile, and each used to issue a `library.thumbnail`
+ * read at mount: a page is 60 media rows, so a 60-image listing read ~59
+ * thumbnails for pixels nobody had scrolled to. The stub's `thumbnailReads` list
+ * makes the claim checkable - the tiles the strip shows still read, and the far
+ * end of a forty-row strip never does.
+ */
+export const MediaLightboxMany: Story = {
+	render: () =>
+		page({
+			rows: MANY_ROWS,
+			route: `/library/assets/${MANY_ROWS[0].id}`,
+			view: "list",
+		}),
+	play: async () => {
+		const user = userEvent.setup();
+		const trigger = await waitFor(() => {
+			const node = document.querySelector<HTMLElement>(
+				'[data-library-media-trigger="image"]',
+			);
+			if (!node) throw new Error("the preview's picture is not mounted");
+			return node;
+		});
+		const readsBefore = thumbnailReads.length;
+		await user.click(trigger);
+		await waitFor(() =>
+			expect(document.querySelector("[data-library-lightbox]")).toBeTruthy(),
+		);
+		/*
+		 * The near tiles still read, so the absence below cannot pass for the wrong
+		 * reason (a viewer that read nothing at all).
+		 */
+		await waitFor(() =>
+			expect(thumbnailReads.length).toBeGreaterThan(readsBefore),
+		);
+		const opened = thumbnailReads.slice(readsBefore);
+		const farTile = MANY_ROWS[MANY_ROWS.length - 1].id;
+		expect(opened).not.toContain(farTile);
+		expect(new Set(opened).size).toBeLessThan(MANY_ROWS.length);
 	},
 };
 
@@ -941,6 +1040,10 @@ export const MediaLightboxDismiss: Story = {
 		}),
 	play: async () => {
 		const user = userEvent.setup();
+		const previewOf = () =>
+			document
+				.querySelector("[data-library-preview]")
+				?.getAttribute("data-library-preview") ?? null;
 		const trigger = await waitFor(() => {
 			const node = document.querySelector<HTMLElement>(
 				'[data-library-media-trigger="image"]',
@@ -948,6 +1051,7 @@ export const MediaLightboxDismiss: Story = {
 			if (!node) throw new Error("the preview's picture is not mounted");
 			return node;
 		});
+		const previewBefore = previewOf();
 		await user.click(trigger);
 		await waitFor(() =>
 			expect(document.querySelector("[data-library-lightbox]")).toBeTruthy(),
@@ -957,7 +1061,12 @@ export const MediaLightboxDismiss: Story = {
 			expect(document.querySelector("[data-library-lightbox]")).toBeNull(),
 		);
 		await waitFor(() => expect(document.activeElement).toBe(trigger));
-		/* The page did not navigate: the preview is still the same asset route. */
+		/*
+		 * The page did not navigate and the preview is still the same asset: the
+		 * shared marker rather than `location.pathname`, which is `/iframe.html` in
+		 * every Storybook state and therefore cannot fail (QA round 1, Q2).
+		 */
+		expect(previewOf()).toBe(previewBefore);
 		expect(document.querySelector('[data-library-media-trigger="image"]')).toBe(
 			trigger,
 		);
@@ -1024,6 +1133,15 @@ export const MediaLightboxVideo: Story = {
 				'[data-library-media-trigger="video-surface"]',
 			);
 			if (!node) throw new Error("the clip's click target is not mounted");
+			/*
+			 * THE TARGET PUBLISHES NO GEOMETRY UNTIL THE CLIP HAS A BOX (UX round 1,
+			 * U1): a zero-height target is not a target, and pressing its centre hit
+			 * the player instead. Waiting for a real height is what makes the centre
+			 * assertion below a claim about the loaded surface rather than about the
+			 * loading one.
+			 */
+			if (!node.getBoundingClientRect().height)
+				throw new Error("the clip's click target has no height yet");
 			return node;
 		});
 		const expand = document.querySelector<HTMLElement>(
@@ -1272,6 +1390,38 @@ export const PreviewInlineLongName: Story = {
 			...ROWS[2],
 			name: "March invoice reconciliation notes for the fourth quarter close",
 		}),
+};
+
+/**
+ * The long name WITH THE EDITOR OPEN, where the first visible character must be
+ * the value's first (QA round 1, Q1). Chromium scrolls a focused, fully selected
+ * input to the caret at the END: the frame showed the tail of the name and no
+ * ellipsis, because `<input>` resolves `text-overflow: clip`. The primitive
+ * scrolls back to the start after selecting, and this play is the assertion that
+ * it stays there; the capture rig photographs the same state off
+ * `PreviewInlineLongName` and `press`.
+ */
+export const PreviewInlineLongNameEditing: Story = {
+	render: () =>
+		previewPane({
+			...ROWS[2],
+			name: "March invoice reconciliation notes for the fourth quarter close",
+		}),
+	play: async () => {
+		const user = userEvent.setup();
+		await user.click(await waitFor(() => inlineControl("name")));
+		const input = await waitFor(() => {
+			const found = inlineInput("name");
+			if (!found) throw new Error("the long-name editor did not open");
+			return found;
+		});
+		expect(input.value).toBe(
+			"March invoice reconciliation notes for the fourth quarter close",
+		);
+		expect(input.selectionStart).toBe(0);
+		expect(input.selectionEnd).toBe(input.value.length);
+		expect(input.scrollLeft).toBe(0);
+	},
 };
 
 /** After a real press on the name's pencil: borderless editor, text selected. */

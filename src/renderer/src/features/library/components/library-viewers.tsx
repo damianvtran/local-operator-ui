@@ -233,11 +233,26 @@ const MediaViewer: FC<{
 		const measure = () => {
 			const paneBox = pane.getBoundingClientRect();
 			const videoBox = video.getBoundingClientRect();
+			const height = Math.max(0, videoBox.height - VIDEO_CONTROL_BAND_PX);
+			/*
+			 * NOTHING IS PUBLISHED UNTIL THE CLIP HAS A BOX (UX round 1, U1).
+			 * Before `loadedmetadata` arrives the element can measure zero tall,
+			 * and a zero-height target cannot be hit: the story's centre press
+			 * fell through to the player and the promise "a press on the picture
+			 * opens the viewer" was false for the first frames of every clip. The
+			 * residual is stated rather than hidden: until the clip has a frame
+			 * there is no target over the picture, and the corner expand control
+			 * (which needs no geometry) is the affordance in that window.
+			 */
+			if (height <= 0 || videoBox.width <= 0) {
+				setVideoSurface((current) => (current === null ? current : null));
+				return;
+			}
 			const next = {
 				top: videoBox.top - paneBox.top,
 				left: videoBox.left - paneBox.left,
 				width: videoBox.width,
-				height: Math.max(0, videoBox.height - VIDEO_CONTROL_BAND_PX),
+				height,
 			};
 			setVideoSurface((current) =>
 				current &&
@@ -250,7 +265,16 @@ const MediaViewer: FC<{
 			);
 		};
 		measure();
+		/*
+		 * `loadedmetadata` is the aspect settling, `loadeddata`/`canplay` the
+		 * first decoded frame, and the window listener covers a pane resize on
+		 * hosts without `ResizeObserver`; the observer below covers the same
+		 * ground where it exists.
+		 */
 		video.addEventListener("loadedmetadata", measure);
+		video.addEventListener("loadeddata", measure);
+		video.addEventListener("canplay", measure);
+		window.addEventListener("resize", measure);
 		const observer =
 			typeof ResizeObserver === "undefined"
 				? null
@@ -260,6 +284,9 @@ const MediaViewer: FC<{
 		return () => {
 			observer?.disconnect();
 			video.removeEventListener("loadedmetadata", measure);
+			video.removeEventListener("loadeddata", measure);
+			video.removeEventListener("canplay", measure);
+			window.removeEventListener("resize", measure);
 		};
 	}, [asset.kind, source]);
 	if (loading) return <Loading />;
@@ -334,14 +361,17 @@ const MediaViewer: FC<{
 						 * The clip's click target. `bg-transparent` and a pointer cursor, sized
 						 * to the picture above the native control band; out of the tab order
 						 * because the corner expand control is the keyboard affordance and two
-						 * identically named stops would be noise, not access.
+						 * identically named stops would be noise, not access. `aria-hidden` for
+						 * the same reason (agent review round 1, N2 / UX U2): it is a pointer
+						 * surface for the same action, so it must not appear in the
+						 * accessibility tree as a second, identically named button. The
+						 * expand control keeps the name.
 						 */}
 						{videoSurface ? (
 							<button
 								type="button"
 								tabIndex={-1}
-								aria-label={fullScreenLabel}
-								title={fullScreenLabel}
+								aria-hidden="true"
 								onClick={() => setLightboxIndex(position)}
 								data-library-media-trigger="video-surface"
 								className="absolute z-[1] cursor-zoom-in bg-transparent"
