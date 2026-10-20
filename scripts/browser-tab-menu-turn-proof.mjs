@@ -36,10 +36,11 @@
  */
 import { spawn } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
+const ROOT = resolve(process.cwd());
 const OUT = process.argv[2] ?? join("/tmp", "lo-browser-tab-menu-turn");
 const BACKEND = process.env.LO_PROOF_BACKEND ?? "http://127.0.0.1:1131";
 const TOKEN = process.env.LO_PROOF_TOKEN ?? "";
