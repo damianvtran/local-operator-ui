@@ -33,12 +33,14 @@ import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
 import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
+import enUiChatCanonical from "./catalogues/en/ui.chat.canonical.json";
 import enUiChatComposer from "./catalogues/en/ui.chat.composer.json";
 import enUiChatComposerMedia from "./catalogues/en/ui.chat.composer_media.json";
 import enUiChatDialogs from "./catalogues/en/ui.chat.dialogs.json";
 import enUiChatHeader from "./catalogues/en/ui.chat.header.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
+import enUiChatRunDetails from "./catalogues/en/ui.chat.run_details.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
 import enUiChatTagDialogs from "./catalogues/en/ui.chat.tag_dialogs.json";
 import enUiChatTags from "./catalogues/en/ui.chat.tags.json";
@@ -50,10 +52,12 @@ import enUiCommonActions from "./catalogues/en/ui.common.actions.json";
 import enUiCommonConnection from "./catalogues/en/ui.common.connection.json";
 import enUiCommonEditing from "./catalogues/en/ui.common.editing.json";
 import enUiCommonErrors from "./catalogues/en/ui.common.errors.json";
+import enUiCommonFileActions from "./catalogues/en/ui.common.file_actions.json";
 import enUiCommonForms from "./catalogues/en/ui.common.forms.json";
 import enUiCommonLoading from "./catalogues/en/ui.common.loading.json";
 import enUiCommonModels from "./catalogues/en/ui.common.models.json";
 import enUiCommonUpdates from "./catalogues/en/ui.common.updates.json";
+import enUiCommonViewer from "./catalogues/en/ui.common.viewer.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
 import enUiHubComments from "./catalogues/en/ui.hub.comments.json";
 import enUiHub from "./catalogues/en/ui.hub.json";
@@ -509,12 +513,14 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiBrowserChrome,
 	...enUiBrowser,
 	...enUiCanvas,
+	...enUiChatCanonical,
 	...enUiChatComposer,
 	...enUiChatComposerMedia,
 	...enUiChatDialogs,
 	...enUiChatHeader,
 	...enUiChat,
 	...enUiChatResponseActions,
+	...enUiChatRunDetails,
 	...enUiChatSidebarView,
 	...enUiChatTagDialogs,
 	...enUiChatTags,
@@ -526,10 +532,12 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiCommonConnection,
 	...enUiCommonEditing,
 	...enUiCommonErrors,
+	...enUiCommonFileActions,
 	...enUiCommonForms,
 	...enUiCommonLoading,
 	...enUiCommonModels,
 	...enUiCommonUpdates,
+	...enUiCommonViewer,
 	...enUiConsole,
 	...enUiHubComments,
 	...enUiHub,
@@ -1626,6 +1634,36 @@ export type MessageParams = {
 	"ui.canvas.files.unreadable": undefined;
 	"ui.canvas.files.videos": undefined;
 	"ui.canvas.files.working": undefined;
+	"ui.chat.canonical.sound.batch_attachment_unavailable": undefined;
+	"ui.chat.canonical.sound.player_failed": undefined;
+	"ui.chat.canonical.sound.stop.confirm_label": undefined;
+	"ui.chat.canonical.sound.stop.keep_waiting": undefined;
+	"ui.chat.canonical.sound.stop.question": undefined;
+	"ui.chat.canonical.sound.stop.request_stop": undefined;
+	"ui.chat.canonical.sound.stop.warning": undefined;
+	"ui.chat.canonical.supplement.adjust_placeholder": undefined;
+	"ui.chat.canonical.supplement.details.attempts": { count: number };
+	"ui.chat.canonical.supplement.details.model": { name: string };
+	"ui.chat.canonical.supplement.file_actions.open_in_canvas": undefined;
+	"ui.chat.canonical.supplement.file_actions.open_in_default_app": undefined;
+	"ui.chat.canonical.supplement.file_actions.reveal_in_finder": undefined;
+	"ui.chat.canonical.supplement.frame.failed": undefined;
+	"ui.chat.canonical.supplement.frame.loading": undefined;
+	"ui.chat.canonical.supplement.frame.source": { name: string };
+	"ui.chat.canonical.supplement.preview_unavailable": undefined;
+	"ui.chat.canonical.supplement.send": undefined;
+	"ui.chat.canonical.transcript.connect_provider": undefined;
+	"ui.chat.canonical.transcript.credential_lost": undefined;
+	"ui.chat.canonical.transcript.edit": undefined;
+	"ui.chat.canonical.transcript.missing_session": undefined;
+	"ui.chat.canonical.transcript.missing_session_detail": undefined;
+	"ui.chat.canonical.transcript.reconnect": undefined;
+	"ui.chat.canonical.transcript.reconnecting": undefined;
+	"ui.chat.canonical.transcript.send_again": undefined;
+	"ui.chat.canonical.transcript.source_unavailable": undefined;
+	"ui.chat.canonical.transcript.stale_caption": undefined;
+	"ui.chat.canonical.transcript.start_new_chat": undefined;
+	"ui.chat.canonical.transcript.stopped_before_finishing": undefined;
 	"ui.chat.composer.ask_aside": undefined;
 	"ui.chat.composer.attach_file": undefined;
 	"ui.chat.composer.cancel_recording": undefined;
@@ -1693,6 +1731,8 @@ export type MessageParams = {
 	"ui.chat.usage.family_caps": undefined;
 	"ui.chat.usage.unlimited": undefined;
 	"ui.chat.response_actions.label": undefined;
+	"ui.chat.run_details.jobs": undefined;
+	"ui.chat.run_details.keep": undefined;
 	"ui.chat.sidebar_view.active_first": undefined;
 	"ui.chat.sidebar_view.agent_team": undefined;
 	"ui.chat.sidebar_view.clock_hint": undefined;
@@ -2007,6 +2047,11 @@ export type MessageParams = {
 	"ui.common.errors.error_boundary.something_went_wrong": undefined;
 	"ui.common.errors.error_boundary.stack_trace": undefined;
 	"ui.common.errors.error_boundary.the_application_encountered_an_error_try_again_or_contact_support": undefined;
+	"ui.common.file_actions.copy_file_path": undefined;
+	"ui.common.file_actions.open_file": undefined;
+	"ui.common.file_actions.open_folder": undefined;
+	"ui.common.file_actions.preview": undefined;
+	"ui.common.file_actions.show_in_canvas": undefined;
 	"ui.common.forms.autocomplete_field.cancel_editing": { label: string };
 	"ui.common.forms.autocomplete_field.enter_value": undefined;
 	"ui.common.forms.autocomplete_field.save": { label: string };
@@ -2248,6 +2293,10 @@ export type MessageParams = {
 		seconds: number;
 	};
 	"ui.common.updates.wait.seconds": { seconds: number };
+	"ui.common.viewer.opening": undefined;
+	"ui.common.viewer.reset_view": undefined;
+	"ui.common.viewer.zoom_in": undefined;
+	"ui.common.viewer.zoom_out": undefined;
 	"ui.console.capacity.archived": { archived: number };
 	"ui.console.capacity.full": undefined;
 	"ui.console.capacity.help": undefined;
