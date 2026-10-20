@@ -150,5 +150,11 @@
 	"ui.library.composer.message_sent_link_failed": "Mensaje enviado. Falló el vínculo con el chat.",
 	"ui.library.composer.retry_link": "Reintentar vínculo",
 	"ui.library.preview.pptx_text": "Texto",
-	"ui.library.preview.pptx_no_text": "Esta diapositiva no contiene texto extraíble."
+	"ui.library.preview.pptx_no_text": "Esta diapositiva no contiene texto extraíble.",
+	"ui.library.time.just_now": "ahora mismo",
+	"ui.library.time.minutes_m_ago": "{minutes, plural, one {hace {minutes, number, ::group-off} min} other {hace {minutes, number, ::group-off} min}}",
+	"ui.library.time.hours_h_ago": "{hours, plural, one {hace {hours, number, ::group-off} h} other {hace {hours, number, ::group-off} h}}",
+	"ui.library.time.days_d_ago": "{days, plural, one {hace {days, number, ::group-off} d} other {hace {days, number, ::group-off} d}}",
+	"ui.library.time.months_mo_ago": "{months, plural, one {hace {months, number, ::group-off} mes} other {hace {months, number, ::group-off} meses}}",
+	"ui.library.time.years_y_ago": "{years, plural, one {hace {years, number, ::group-off} año} other {hace {years, number, ::group-off} años}}"
 }

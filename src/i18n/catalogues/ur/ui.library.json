@@ -150,5 +150,11 @@
 	"ui.library.composer.message_sent_link_failed": "پیغام بھیج دیا گیا۔ چیٹ کا ربط ناکام رہا۔",
 	"ui.library.composer.retry_link": "ربط کی دوبارہ کوشش کریں",
 	"ui.library.preview.pptx_text": "متن",
-	"ui.library.preview.pptx_no_text": "اس سلائیڈ سے متن اخذ نہیں کیا جا سکتا۔"
+	"ui.library.preview.pptx_no_text": "اس سلائیڈ سے متن اخذ نہیں کیا جا سکتا۔",
+	"ui.library.time.just_now": "ابھی",
+	"ui.library.time.minutes_m_ago": "{minutes, plural, one {{minutes, number, ::group-off} منٹ پہلے} other {{minutes, number, ::group-off} منٹ پہلے}}",
+	"ui.library.time.hours_h_ago": "{hours, plural, one {{hours, number, ::group-off} گھنٹہ پہلے} other {{hours, number, ::group-off} گھنٹے پہلے}}",
+	"ui.library.time.days_d_ago": "{days, plural, one {{days, number, ::group-off} دن پہلے} other {{days, number, ::group-off} دن پہلے}}",
+	"ui.library.time.months_mo_ago": "{months, plural, one {{months, number, ::group-off} ماہ پہلے} other {{months, number, ::group-off} ماہ پہلے}}",
+	"ui.library.time.years_y_ago": "{years, plural, one {{years, number, ::group-off} سال پہلے} other {{years, number, ::group-off} سال پہلے}}"
 }

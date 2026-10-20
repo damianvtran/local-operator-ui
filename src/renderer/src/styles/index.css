@@ -305,6 +305,21 @@
 }
 
 /*
+ * THE FLUSH-TOP ROUTE'S SIDEBAR PADDING, ON THE PANEL THAT OWNS THE GROUND.
+ *
+ * Team Bridge opts into `flushTop`, so the lane is an overlay and the sidebar
+ * must clear the traffic lights itself. The padding sits on the sidebar's own
+ * root (the element that paints `surface`) rather than on a shell wrapper:
+ * a wrapper with a background between `#app` and the glass regions makes the
+ * window opaque (review round 1, S1). The attribute is written only when the
+ * shell route asked for flush top; every other route keeps the lane row and
+ * no padding here.
+ */
+[data-chrome-pad-top] {
+	padding-top: var(--chrome-strip-h);
+}
+
+/*
  * THE TRAILING RESERVATION, AS ONE UTILITY.
  *
  * It is a SPACER at the end of a 40px row's first line rather than padding on the

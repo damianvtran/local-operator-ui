@@ -2698,6 +2698,12 @@ export type MessageParams = {
 	"ui.library.status.favorites": undefined;
 	"ui.library.status.highlighted": undefined;
 	"ui.library.status.unorganized": undefined;
+	"ui.library.time.days_d_ago": { days: number };
+	"ui.library.time.hours_h_ago": { hours: number };
+	"ui.library.time.just_now": undefined;
+	"ui.library.time.minutes_m_ago": { minutes: number };
+	"ui.library.time.months_mo_ago": { months: number };
+	"ui.library.time.years_y_ago": { years: number };
 	"ui.mesh.approval.approved_apply_hint": undefined;
 	"ui.mesh.approval.approved_details_missing": undefined;
 	"ui.mesh.approval.approved_pending_apply": undefined;
