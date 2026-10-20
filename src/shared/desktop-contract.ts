@@ -1123,7 +1123,12 @@ export function projectTagRule(tag: string): string | null {
 	return null;
 }
 
-const hubItemKind = z.enum(["agent", "team"]);
+/*
+ * The kinds the updates surface addresses. `skill` joined the same channel in
+ * core PR #2713, so the renderer's kind list and core's `Kind` are one list; a
+ * value here that core refuses would be a 422 a user could not tell from a bug.
+ */
+const hubItemKind = z.enum(["agent", "team", "skill"]);
 
 const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
@@ -1243,6 +1248,36 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			subscribe: z.boolean().optional(),
 			autoPush: z.boolean().optional(),
 			confirmPublicEgress: z.boolean().optional(),
+		})
+		.strict(),
+	/*
+	 * Membership without content: link a remote skill and subscribe to future
+	 * revisions, writing NO managed copy. Same identity fields as the pull and
+	 * none of its install policy -- a subscribe is subscribe-on/auto-push-off by
+	 * definition, and core never rewrites an existing link's policy from it.
+	 */
+	z
+		.object({
+			op: z.literal("hub.skillSubscribe"),
+			requestId,
+			hubId: id,
+			hubSource: z.string().min(1).max(2048),
+			visibility: z.enum(["public", "org"]),
+			tenantId: id.nullable(),
+			localAlias: profileName,
+		})
+		.strict(),
+	/*
+	 * Drop the managed copy while KEEPING the link, alias reservation, policy and
+	 * subscription. Deliberately addressed by `linkId` rather than by remote
+	 * identity: the copy belongs to one local link, and a re-resolution here could
+	 * name a different one after an alias/policy edit.
+	 */
+	z
+		.object({
+			op: z.literal("hub.skillUnpull"),
+			requestId,
+			linkId: z.string().min(1).max(256),
 		})
 		.strict(),
 	z
@@ -4032,7 +4067,11 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
-		if (request.op === "hub.skillPull" || request.op === "hub.skillPublish") {
+		if (
+			request.op === "hub.skillPull" ||
+			request.op === "hub.skillSubscribe" ||
+			request.op === "hub.skillPublish"
+		) {
 			if (
 				(request.visibility === "public" && request.tenantId !== null) ||
 				(request.visibility === "org" && !request.tenantId)
@@ -5665,6 +5704,8 @@ const HUB_WRITE_OPS: ReadonlySet<string> = new Set([
 	"hub.push",
 	"hub.skillPublish",
 	"hub.skillPull",
+	"hub.skillSubscribe",
+	"hub.skillUnpull",
 	"hub.check",
 	"hub.applyAll",
 ]);
@@ -5676,6 +5717,8 @@ function hubWriteDeadlineMs(op: string): number | null {
 		case "hub.push":
 		case "hub.skillPublish":
 		case "hub.skillPull":
+		case "hub.skillSubscribe":
+		case "hub.skillUnpull":
 			return HUB_ITEM_WRITE_DEADLINE_MS;
 		case "hub.check":
 			return HUB_CHECK_DEADLINE_MS;
@@ -7106,6 +7149,28 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.confirmPublicEgress !== undefined
 						? { confirm_public_egress: request.confirmPublicEgress }
 						: {}),
+				},
+			};
+		case "hub.skillSubscribe":
+			return {
+				path: "/v1/desktop/hub/skills/subscribe",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					hub_id: request.hubId,
+					hub_source: request.hubSource,
+					visibility: request.visibility,
+					tenant_id: request.tenantId,
+					local_alias: request.localAlias,
+				},
+			};
+		case "hub.skillUnpull":
+			return {
+				path: "/v1/desktop/hub/skills/unpull",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					link_id: request.linkId,
 				},
 			};
 		case "hub.skillPublish":

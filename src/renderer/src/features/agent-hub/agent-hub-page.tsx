@@ -670,7 +670,7 @@ export const AgentHubPage: React.FC = () => {
 		<div className="flex h-full flex-col gap-8 p-6">
 			<PageHeader
 				title="Agent hub"
-				subtitle="Discover and download community agents on Radient"
+				subtitle="Discover and download agents, teams and skills on Radient"
 				icon={Store}
 			/>
 			{/*
