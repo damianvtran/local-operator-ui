@@ -676,7 +676,6 @@ async function main() {
 		note(false, `failed request: ${failure}`);
 	}
 
-
 	for (const [gesture, frames] of Object.entries(readings)) {
 		for (const [index, frame] of frames.entries()) {
 			const shown = visibleKeys(frame);
