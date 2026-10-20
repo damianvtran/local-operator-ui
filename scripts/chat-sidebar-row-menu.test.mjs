@@ -26,6 +26,14 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
+/**
+ * The menu's copy now lives in the sidebar's own English catalogue: a label
+ * assertion reads the message the user sees AND the key the item renders, so a
+ * keyed row cannot keep passing on a stale literal in this file.
+ */
+const SIDEBAR_COPY = JSON.parse(
+	readFileSync("src/i18n/catalogues/en/ui.chat.sidebar.json", "utf8"),
+);
 const read = (relative) => readFileSync(relative, "utf8");
 /**
  * Comments stripped, so a rule can never be satisfied by prose about the rule -
@@ -131,7 +139,7 @@ test("the menu's items are drawn from the same predicates the pair reads", () =>
 		if (!item.includes("aria-disabled")) continue;
 		assert.match(
 			item,
-			/Move conversation (?:up|down)/,
+			/ui\.chat\.sidebar\.row_menu\.move_(?:up|down)/,
 			"`aria-disabled` is on something other than the two boundary-bearing Move items",
 		);
 	}
@@ -169,12 +177,12 @@ test("the menu's items are drawn from the same predicates the pair reads", () =>
 	);
 	assert.ok(
 		MENU.indexOf('pressRowAct(row.session_id, "pin")') <
-			MENU.indexOf("Move conversation up"),
+			MENU.indexOf('t("ui.chat.sidebar.row_menu.move_up")'),
 		"the menu no longer reads Archive, Pin, then the moves",
 	);
 	assert.ok(
-		MENU.indexOf("Move conversation up") <
-			MENU.indexOf("Move conversation down"),
+		MENU.indexOf('t("ui.chat.sidebar.row_menu.move_up")') <
+			MENU.indexOf('t("ui.chat.sidebar.row_menu.move_down")'),
 		"the menu no longer reads Move up then Move down",
 	);
 	/*
@@ -243,9 +251,14 @@ test("Fork is the menu's third row: its order, copy, withheld condition and wiri
 	 * its siblings - and NO chord, because fork has none. A `KeyboardShortcut`
 	 * here would print a hint for a gesture that does nothing.
 	 */
+	assert.equal(
+		SIDEBAR_COPY["ui.chat.sidebar.row_menu.fork"],
+		"Fork conversation",
+		"the fork message moved: it reads `Fork conversation`",
+	);
 	assert.ok(
-		forkItem.includes("<span>Fork conversation</span>"),
-		"the fork item no longer reads `Fork conversation`",
+		forkItem.includes('{t("ui.chat.sidebar.row_menu.fork")}'),
+		"the fork item no longer renders the `Fork conversation` message",
 	);
 	assert.ok(
 		forkItem.includes('<GitFork aria-hidden="true" />'),
@@ -370,9 +383,14 @@ test("Copy session ID is the menu's sixth row, unconditional and chord-free (#89
 	 * `ClipboardCopy`, which the file-actions menu wears - with the `aria-hidden`
 	 * mark every glyph in this menu carries.
 	 */
-	assert.ok(
-		item.includes("<span>Copy session ID</span>"),
+	assert.equal(
+		SIDEBAR_COPY["ui.chat.sidebar.row_menu.copy_id"],
+		"Copy session ID",
 		"the copy item's label moved: it reads `Copy session ID`, the one spelling both of its doors use",
+	);
+	assert.ok(
+		item.includes('{t("ui.chat.sidebar.row_menu.copy_id")}'),
+		"the copy item no longer renders the `Copy session ID` message",
 	);
 	assert.ok(
 		item.includes('<Copy aria-hidden="true" />'),
@@ -455,9 +473,14 @@ test("Rename conversation is the menu's fifth row, and it acts on the row it was
 	 * own dialog, so the label deliberately carries no ellipsis - the spelling the
 	 * header control and that dialog both use.
 	 */
-	assert.ok(
-		item.includes("<span>Rename conversation</span>"),
+	assert.equal(
+		SIDEBAR_COPY["ui.chat.sidebar.row_menu.rename"],
+		"Rename conversation",
 		"the rename item's label moved: it reads `Rename conversation`, the spelling the header control and the dialog both use",
+	);
+	assert.ok(
+		item.includes('{t("ui.chat.sidebar.row_menu.rename")}'),
+		"the rename item no longer renders the `Rename conversation` message",
 	);
 	assert.ok(
 		item.includes('<Pencil aria-hidden="true" />'),

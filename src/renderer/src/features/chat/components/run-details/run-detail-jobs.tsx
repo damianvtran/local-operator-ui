@@ -50,6 +50,8 @@
  */
 
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { Ref } from "react";
 import { type JobCancelSection, jobRowCanCancel } from "./job-controls-model";
@@ -80,46 +82,49 @@ const JobRow = ({
 }: {
 	row: SubagentRow;
 	cancel: JobCancelSection;
-}) => (
-	<li
-		data-run-panel-row={row.id}
-		className={cn("flex items-start gap-2 px-3 py-1.5")}
-	>
-		<SubagentRowBody row={row} />
-		{jobRowCanCancel(row) && (
-			<Button
-				variant="ghost"
-				size="sm"
-				data-job-cancel={row.id}
-				/* The accessible name names the act and the row, the wakes' rule. */
-				aria-label={`Cancel ${row.label}`}
-				/* The danger wash on hover is the wake line's own cancel ink; nothing
+}) => {
+	useI18nLocale();
+	return (
+		<li
+			data-run-panel-row={row.id}
+			className={cn("flex items-start gap-2 px-3 py-1.5")}
+		>
+			<SubagentRowBody row={row} />
+			{jobRowCanCancel(row) && (
+				<Button
+					variant="ghost"
+					size="sm"
+					data-job-cancel={row.id}
+					/* The accessible name names the act and the row, the wakes' rule. */
+					aria-label={`Cancel ${row.label}`}
+					/* The danger wash on hover is the wake line's own cancel ink; nothing
 				   lifts, and the focus ring is the shared Button's own. `h-6` (24px)
 				   is the HIT floor rather than the row's own rhythm. */
-				className={cn(
-					"h-6 shrink-0 px-1.5 hover:bg-danger-wash hover:text-danger",
-				)}
-				onClick={(event) => {
-					/*
-					 * The rect rides the request, captured HERE at the press: the card
-					 * is anchored to a frozen box rather than to this button, because
-					 * the row can unmount under the canonical re-read
-					 * (`use-job-cancel.ts`).
-					 */
-					const rect = event.currentTarget.getBoundingClientRect();
-					cancel.request(row, {
-						left: rect.left,
-						top: rect.top,
-						bottom: rect.bottom,
-						right: rect.right,
-					});
-				}}
-			>
-				Cancel
-			</Button>
-		)}
-	</li>
-);
+					className={cn(
+						"h-6 shrink-0 px-1.5 hover:bg-danger-wash hover:text-danger",
+					)}
+					onClick={(event) => {
+						/*
+						 * The rect rides the request, captured HERE at the press: the card
+						 * is anchored to a frozen box rather than to this button, because
+						 * the row can unmount under the canonical re-read
+						 * (`use-job-cancel.ts`).
+						 */
+						const rect = event.currentTarget.getBoundingClientRect();
+						cancel.request(row, {
+							left: rect.left,
+							top: rect.top,
+							bottom: rect.bottom,
+							right: rect.right,
+						});
+					}}
+				>
+					{t("ui.common.actions.cancel")}
+				</Button>
+			)}
+		</li>
+	);
+};
 
 export const RunDetailJobs = ({
 	details,
@@ -155,6 +160,7 @@ export const RunDetailJobs = ({
 	 * which rows are still running.
 	 */
 	const rows = details.jobs.filter(isOpenRow);
+	useI18nLocale();
 	return (
 		<section ref={sectionRef} className={cn("flex flex-col pb-1.5")}>
 			{/*
@@ -167,7 +173,9 @@ export const RunDetailJobs = ({
 					"flex items-baseline justify-between gap-2 px-3 pt-2 pb-1",
 				)}
 			>
-				<span className={cn("shrink-0 text-meta text-ink-muted")}>Jobs</span>
+				<span className={cn("shrink-0 text-meta text-ink-muted")}>
+					{t("ui.chat.run_details.jobs")}
+				</span>
 				<span
 					className={cn(
 						"min-w-0 flex-1 truncate text-right text-meta text-ink-dim",

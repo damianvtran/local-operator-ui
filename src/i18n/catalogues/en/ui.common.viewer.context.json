@@ -1,0 +1,30 @@
+{
+	"ui.common.viewer.opening": {
+		"role": "placeholder title in an image or video viewer while its bytes are still being resolved",
+		"tone": "present-participle progress phrase, sentence case, trailing ellipsis kept",
+		"length": "One word plus the ellipsis.",
+		"note": "One key shared by the canvas image preview, the canvas video preview and both of their resolution routes, because they show the same wait at the same step. The ellipsis is shipped copy; do not add a second one in JSX.",
+		"placeholders": {}
+	},
+	"ui.common.viewer.reset_view": {
+		"role": "image lightbox control that returns zoom and pan to fit and centred; used as both accessible name and tooltip",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "One key for the button's aria-label and its title, which must never disagree. Disabled when the view is already fit and centred.",
+		"placeholders": {}
+	},
+	"ui.common.viewer.zoom_in": {
+		"role": "image lightbox control that steps the picture one level up the zoom ladder; used as both accessible name and tooltip",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "One key for aria-label and title. Disabled at the top of the ladder and while the picture is not panning-capable.",
+		"placeholders": {}
+	},
+	"ui.common.viewer.zoom_out": {
+		"role": "image lightbox control that steps the picture one level down the zoom ladder; used as both accessible name and tooltip",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "One key for aria-label and title. Disabled at fit and below, so the pair with Zoom in stays legible side by side.",
+		"placeholders": {}
+	}
+}

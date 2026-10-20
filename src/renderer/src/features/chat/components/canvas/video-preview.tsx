@@ -4,6 +4,8 @@ import {
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type FC, memo, useMemo, useState } from "react";
 import {
@@ -82,6 +84,7 @@ const VideoPreviewComponent: FC<{ document: CanvasDocument }> = ({
 const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 	document,
 }) => {
+	useI18nLocale();
 	const artifact = document.artifact;
 	const source = useAttachmentSource(
 		{
@@ -120,7 +123,7 @@ const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 				) : null}
 			</ViewerChrome>
 			{source.state === "resolving" ? (
-				<FileViewerState quiet title="Opening…" />
+				<FileViewerState quiet title={t("ui.common.viewer.opening")} />
 			) : source.state === "missing" || playbackFailed ? (
 				<FileViewerState
 					title={
@@ -207,6 +210,7 @@ const RouteVideo: FC<{
 	version: string;
 	onUnavailable: () => void;
 }> = ({ document, version, onUnavailable }) => {
+	useI18nLocale();
 	const client = useMemo<LocalOperatorClient>(
 		() => createLocalOperatorClient(apiConfig.baseUrl),
 		[],
@@ -270,7 +274,7 @@ const RouteVideo: FC<{
 		>
 			{loaded ? null : (
 				<div className={cn("absolute inset-0")}>
-					<FileViewerState quiet title="Opening…" />
+					<FileViewerState quiet title={t("ui.common.viewer.opening")} />
 				</div>
 			)}
 			{url === null ? null : (
@@ -303,6 +307,7 @@ const RouteVideo: FC<{
  * other reason is "could not be played".
  */
 const BytesVideo: FC<{ document: CanvasDocument }> = ({ document }) => {
+	useI18nLocale();
 	const state = useFileBlobUrl(document.path, {
 		mtimeMs: document.lastAgentModified,
 		mimeType: mimeTypeForPath(document.path),
@@ -311,7 +316,7 @@ const BytesVideo: FC<{ document: CanvasDocument }> = ({ document }) => {
 	const [playbackFailed, setPlaybackFailed] = useState(false);
 
 	if (state.status === "loading") {
-		return <FileViewerState quiet title="Opening…" />;
+		return <FileViewerState quiet title={t("ui.common.viewer.opening")} />;
 	}
 	if (state.status === "unavailable" || playbackFailed) {
 		const tooLarge =
