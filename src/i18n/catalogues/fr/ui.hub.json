@@ -74,7 +74,7 @@
 	"ui.hub.skills.policy_pending": "La publication a réussi, mais cette machine n’a pas confirmé les politiques de lien. Vérifiez cette publication avant toute autre écriture.",
 	"ui.hub.skills.publish_title": "Publier une compétence",
 	"ui.hub.skills.select_authored": "Compétence à publier",
-	"ui.hub.skills.revision": "Version {revision}",
+	"ui.hub.skills.revision": "Version {revision}",
 	"ui.hub.skills.file_count": "{count, plural, one {{count, number, ::group-off} fichier inclus} many {{count, number, ::group-off} fichiers inclus} other {{count, number, ::group-off} fichiers inclus}}",
 	"ui.hub.skills.files": "Fichiers inclus",
 	"ui.hub.skills.text_limits": "Les compétences prennent en charge jusqu’à 64 fichiers texte UTF-8, 200 Kio par fichier et 1 Mio au total. Les scripts ne sont jamais exécutés lors de la publication ou du pull.",

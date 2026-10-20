@@ -159,7 +159,7 @@
 	"ui.hub.skills.unpull_body": "فائلیں آپ کی مہارتوں کے فولڈر سے نکل جاتی ہیں۔ ربط اور اس کی سبسکرپشن برقرار رہتے ہیں، اس لیے دوبارہ ڈاؤن لوڈ کرنے پر موجودہ ریویژن واپس آ جاتا ہے۔",
 	"ui.hub.skills.unpull_failed": "مقامی نقل ہٹنے کی تصدیق نہیں ہوئی۔ دوبارہ کوشش کریں، پھر ربط کی حالت دیکھیں۔",
 	"ui.hub.skills.subscribe_failed": "سبسکرپشن کی تصدیق نہیں ہوئی۔ دوبارہ کوشش کریں۔",
-	"ui.hub.skills.local_path": "⁨{path}⁩ پر انسٹال",
+	"ui.hub.skills.local_path": "{path} پر انسٹال",
 	"ui.hub.skills.published_by": "{publisher} نے شائع کیا",
 	"ui.hub.skills.not_downloaded": "ڈاؤن لوڈ نہیں ہوا",
 	"ui.hub.skills.subscribed_absent": "سبسکرپشن ہے — انسٹال نہیں",
