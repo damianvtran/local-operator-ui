@@ -177,9 +177,20 @@ const spawnEnv = withNotificationsOff({
 withTelemetryOff(spawnEnv);
 
 const app = spawn(
-	"./node_modules/.bin/electron",
+	join(ROOT, "node_modules/.bin/electron"),
 	[
-		".",
+		/*
+		 * THE APP PATH IS ABSOLUTE. With no resolvable app path Electron runs its
+		 * own default app and leaves a window on the operator's screen; `ROOT`
+		 * names this worktree's built app explicitly.
+		 */
+		ROOT,
+		/*
+		 * A SCRATCH HOME HAS NO LOGIN KEYCHAIN. Chromium would otherwise ask macOS
+		 * to create one (the standing rig incident), so the mock keychain keeps the
+		 * whole run inside the scratch tree.
+		 */
+		"--use-mock-keychain",
 		`--remote-debugging-port=${port}`,
 		`--user-data-dir=${USER_DATA}`,
 		`--window-size=${WIDTH}x${HEIGHT}`,
@@ -187,7 +198,7 @@ const app = spawn(
 	],
 	{
 		env: spawnEnv,
-		cwd: process.cwd(),
+		cwd: ROOT,
 		stdio: ["ignore", "pipe", "pipe"],
 		detached: true,
 	},
