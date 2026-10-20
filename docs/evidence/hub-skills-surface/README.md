@@ -498,7 +498,7 @@ account exists on this machine. Those states are covered by
 `scripts/hub-skill-state.test.mjs` (state derivation and mark precedence) and by
 the design round's own fixture; the QA HTTP receipts cover the core boundary.
 
-## Scene re-run after design round 2 (`247f068ac3`; replays `cbf4408545` content-identically)
+## Scene re-run after design round 3 (`f735b2d50f`; replays `cbf4408545` content-identically plus the D12 one-liner)
 
 The `hub-skills` driver scene reads the shipped dialogs again after the
 remediation restored its hooks. It runs the app's own real `hub.skillPull` and
@@ -512,9 +512,8 @@ $ node scripts/renderer-driver.mjs --scene hub-skills \
     --backend http://127.0.0.1:8131 --backend-records <scratch>/serve-record
 ```
 
-Result, at `247f068ac3` (full transcript in
-`receipts/hub-skills-scene-247f068ac3.txt`; the rebase replayed the pre-rebase
-series content-identically, `git range-diff` reports `=` on every commit): **28 PASS, 0 FAIL, `ALL CHECKS
+Result, at `f735b2d50f` (full transcript in
+`receipts/hub-skills-scene-f735b2d50f.txt`): **28 PASS, 0 FAIL, `ALL CHECKS
 PASSED`, exit 0.** The checks now cover the shipped surface: the source line
 ("2 skills shared with Minerva"), the card press opening the dialog, the detail's
 files, the real pull succeeding ("Downloaded minerva-deploy from Minerva ·
@@ -523,7 +522,7 @@ the publication dialog opening from its toolbar action, its preview rendering th
 server-projected payload, the confirm settling ("Published release-notes-copy to
 Minerva · Private"), and zero CSP violations or off-origin renderer requests.
 
-Frames: `docs/evidence-frames/hub-skills-surface/scene-247f068ac3/` (ignored, not
+Frames: `docs/evidence-frames/hub-skills-surface/scene-f735b2d50f/` (ignored, not
 committed), seven screenshots including `-populated`, `-detail`, `-policy`,
 `-pull-success`, `-publish-preview`, `-publish-complete`, `-search-empty`, plus
 the geometry JSON.
