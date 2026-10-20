@@ -255,6 +255,45 @@ test("an identity the runtime does not know still reaches a desktop reader as te
 	assert.equal(error.status, 409);
 });
 
+test("with NO catalogue registered a wire identity falls back to text, never the key", async () => {
+	// The state on `main` today: no wire.* catalogue is bundled or registered.
+	// A known-to-the-producer identity must therefore degrade to the envelope's
+	// own sentence — never to the raw key, which would be worse than the English
+	// it replaced.
+	clearRegisteredCatalogues();
+	setLocale("fr");
+	const text = "The runtime could not be reached.";
+	const error = await refusalFrom({
+		status: 503,
+		body: { detail: { code: "wire.errors.desktop.runtime_unreachable", text } },
+	});
+	console.log("[zero-catalogue, no params]", JSON.stringify(error.message));
+	assert.equal(error.message, text);
+	assert.notEqual(error.message, "wire.errors.desktop.runtime_unreachable");
+});
+
+test("with NO catalogue registered, supplied params do not turn text into a key", async () => {
+	clearRegisteredCatalogues();
+	setLocale("fr");
+	const text = "The runtime could not be reached.";
+	const error = await refusalFrom({
+		status: 503,
+		body: {
+			detail: {
+				code: "wire.errors.desktop.runtime_unreachable",
+				params: { model: "x" },
+				text,
+			},
+		},
+	});
+	console.log(
+		"[zero-catalogue, params {model:x}]",
+		JSON.stringify(error.message),
+	);
+	assert.equal(error.message, text);
+	assert.notEqual(error.message, "wire.errors.desktop.runtime_unreachable");
+});
+
 test("teardown", () => {
 	// Locale is process-global; leaving it pinned to fr would affect any test
 	// that imports this bundle afterwards in the same run.
