@@ -425,7 +425,13 @@ test("the schema is closed: stray fields, bad kinds and bad ids are refused", ()
 	);
 	assert.equal(
 		parse({ op: "hub.apply", requestId: REQUEST, kind: "skill", name: "x" }),
+		true,
+		"core's Kind carries skills now: the same channel, not a parallel one",
+	);
+	assert.equal(
+		parse({ op: "hub.apply", requestId: REQUEST, kind: "widget", name: "x" }),
 		false,
+		"a kind neither side knows is still refused",
 	);
 	assert.equal(
 		parse({ op: "hub.apply", requestId: "nope", kind: "agent", name: "x" }),

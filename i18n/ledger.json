@@ -3372,8 +3372,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.hub",
-			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
-			"target_sha256": "b0fc7a9d3a3878c6a7e549fa649fef29ee1be3680d77edf2546dda5ce733ca72",
+			"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
+			"target_sha256": "cd6afd28a967652b3bcfbcd3ad74b9bddd7315f205db99a0d89df1b88f3152c4",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3381,20 +3381,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-20",
 					"result": "clean",
-					"instance": "048b49f6c8ad",
+					"instance": "5f812edd42ff",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/048b49f6c8ad.json",
-					"receipt_sha256": "de4e810e4e9fa507fabacfefd94448406d17773fdec9d5fc69fdf6723a1611ab",
-					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+					"receipt": "i18n/receipts/5f812edd42ff.json",
+					"receipt_sha256": "3a1ffb990fd1248720619159192dbfea2e6e04b5446bc1116fae5cdd86d7f2d6",
+					"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
+					"note": "code-review remediation adds one key: the inventory-unknown sentence"
 				}
 			],
 			"status": "audited",
@@ -3441,6 +3442,77 @@
 							"receipt": "i18n/receipts/5668e1dafff2.json",
 							"receipt_sha256": "7c36d2ff50cba3a3045633f49a61ed431077b5c2f2f1d2ccf88c4bc5124def6a",
 							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+					"target_sha256": "b0fc7a9d3a3878c6a7e549fa649fef29ee1be3680d77edf2546dda5ce733ca72",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "048b49f6c8ad",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/048b49f6c8ad.json",
+							"receipt_sha256": "de4e810e4e9fa507fabacfefd94448406d17773fdec9d5fc69fdf6723a1611ab",
+							"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "96d5e20f3f1efc19efa36210ea7799af8216a863d7b872c71d69e599d5e59a44",
+					"target_sha256": "2db2bc36d62ffaacff21f0f1b643b93dcd2752ad16ca9797bcbd2069f55f50a1",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "a2c8e0c4f788",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a2c8e0c4f788.json",
+							"receipt_sha256": "7ee764cfc438fa5aedb90ab2ec5cd113600c49b0119c74f1b6ece63e58981d3d",
+							"scope": "13 new ui.hub.skills keys at this target hash",
+							"note": "13 new ui.hub.skills keys authored by the implementing coder (PR #1269), audited independently by translation-auditor."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "281a4058420d135c4dd8767610f6144ab1597fc2fca50e96253bd5846605905f",
+					"target_sha256": "c9a98e7c88042643953a86f45cfba64f691f87e21161a3ac02753cd307ff8e66",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean-with-findings",
+							"instance": "86e9d43790ad",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/86e9d43790ad.json",
+							"receipt_sha256": "429e91c2a914db5e06c520950d9a870a6dae0964a1398d540948e18ce9266061",
+							"scope": "19 ui.hub.skills keys at this target hash (round 7)",
+							"note": "19 ui.hub.skills keys authored for the Skills surface; round-7 audit of this target hash"
 						}
 					],
 					"status": "audited"
@@ -5324,8 +5396,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.hub",
-			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
-			"target_sha256": "f5d2569d23ca15f1dafa19123cd9428fb0b7eacd94eb32cb337bc6dce38f8015",
+			"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
+			"target_sha256": "3b4468571ff86d11cb6b89fd500b16fe10a5a6bf16edf52209099f32d6911f25",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -5334,20 +5406,21 @@
 			"status": "audited",
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-20",
 					"result": "clean",
-					"instance": "a072264badf6",
+					"instance": "be259bf73124",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a072264badf6.json",
-					"receipt_sha256": "31fedf9efc7fef5c28ede3fe8ede23e678aeadab316a116fdae7a72d4a690805",
-					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+					"receipt": "i18n/receipts/be259bf73124.json",
+					"receipt_sha256": "234956077766ed3003b05d76eadbbf65345ec631c9d5009a361914488505aa4c",
+					"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
+					"note": "code-review remediation adds one key: the inventory-unknown sentence"
 				}
 			],
 			"superseded": [
@@ -5393,6 +5466,101 @@
 							"receipt": "i18n/receipts/868dc5da7584.json",
 							"receipt_sha256": "3bb0c8095756736c9447b5548331ee930f16aac58ddba49c8889aa806f5c08b7",
 							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+					"target_sha256": "f5d2569d23ca15f1dafa19123cd9428fb0b7eacd94eb32cb337bc6dce38f8015",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "a072264badf6",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a072264badf6.json",
+							"receipt_sha256": "31fedf9efc7fef5c28ede3fe8ede23e678aeadab316a116fdae7a72d4a690805",
+							"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "96d5e20f3f1efc19efa36210ea7799af8216a863d7b872c71d69e599d5e59a44",
+					"target_sha256": "478256fadb24d2e8a8bfe4b17798b132f3560d5d803837edb9216752c968ee1e",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "cce72b13e84e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cce72b13e84e.json",
+							"receipt_sha256": "6fc7bbf15ff5885f79c28fdde0f0028603cd8533d6142111eaa35018312fc0b3",
+							"scope": "13 new ui.hub.skills keys at this target hash",
+							"note": "13 new ui.hub.skills keys authored by the implementing coder (PR #1269), audited independently by translation-auditor."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "281a4058420d135c4dd8767610f6144ab1597fc2fca50e96253bd5846605905f",
+					"target_sha256": "7cb3b065014f22615f4f791dee0f06678478b89b7bc2ab825319ad413fbcab59",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean-with-findings",
+							"instance": "e0effb2d9c7f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/e0effb2d9c7f.json",
+							"receipt_sha256": "3194afa73219805720cc65f3e7428e10aba87413a2dd5450bfe1b57c3a098d87",
+							"scope": "19 ui.hub.skills keys at this target hash (round 7)",
+							"note": "19 ui.hub.skills keys authored for the Skills surface; round-7 audit of this target hash"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "281a4058420d135c4dd8767610f6144ab1597fc2fca50e96253bd5846605905f",
+					"target_sha256": "ab1fcdba6028d0f8d44aab114fc6936c49160150871269109c67cc8d59cc35b0",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean-with-findings",
+							"instance": "6444bd85b1ac",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/6444bd85b1ac.json",
+							"receipt_sha256": "81c741e18befd0caf26cdf8dcad56b31f7c3568c6cb4ccd4242a1098d06eb3d1",
+							"scope": "19 ui.hub.skills keys at this target hash (round 8)",
+							"note": "19 ui.hub.skills keys authored for the Skills surface; round-8 audit of this target hash"
 						}
 					],
 					"status": "audited"
@@ -6067,8 +6235,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.hub",
-			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
-			"target_sha256": "42d2d6e93f61786c53069e2786cb0b1e7b46905f1de2e715cab2633f856720a2",
+			"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
+			"target_sha256": "49160a7e7266158ebe263af30b817fb25d96b492b5d840013a2617be0ee7ba20",
 			"translator": {
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18",
@@ -6076,20 +6244,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-20",
 					"result": "clean",
-					"instance": "05f4e8989082",
+					"instance": "cb327f018b5b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/05f4e8989082.json",
-					"receipt_sha256": "ef2fc2e2b4cf218fd2dde424101d8cfc2a300d7addf0528e3ba23b1586d4df3a",
-					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+					"receipt": "i18n/receipts/cb327f018b5b.json",
+					"receipt_sha256": "fd3fa95bf63d39686e5e0c3656183183f0ffc11c00d20ab0a49cf4d65d75d94f",
+					"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
+					"note": "code-review remediation adds one key: the inventory-unknown sentence"
 				}
 			],
 			"status": "audited",
@@ -6136,6 +6305,77 @@
 							"receipt": "i18n/receipts/ae49f006197e.json",
 							"receipt_sha256": "50f158be3ca00d3ddf6b54da9c4ce4246f72eef52be730d865c2b0178316eab2",
 							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+					"target_sha256": "42d2d6e93f61786c53069e2786cb0b1e7b46905f1de2e715cab2633f856720a2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "05f4e8989082",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/05f4e8989082.json",
+							"receipt_sha256": "ef2fc2e2b4cf218fd2dde424101d8cfc2a300d7addf0528e3ba23b1586d4df3a",
+							"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "96d5e20f3f1efc19efa36210ea7799af8216a863d7b872c71d69e599d5e59a44",
+					"target_sha256": "c6919bb909568e7843038da6bf17864f000a9404e250e15f06fb5b9e26759b85",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "a6e594a6363f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a6e594a6363f.json",
+							"receipt_sha256": "91bec468ccb9114ea4eaba774d54626e01c00f9c44b2147be1287d9f7622a331",
+							"scope": "13 new ui.hub.skills keys at this target hash",
+							"note": "13 new ui.hub.skills keys authored by the implementing coder (PR #1269), audited independently by translation-auditor."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "281a4058420d135c4dd8767610f6144ab1597fc2fca50e96253bd5846605905f",
+					"target_sha256": "3ece3188471d016427643fa9f778560588ef158e50426b090a8d39e75d64b9b2",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean-with-findings",
+							"instance": "d64f851b998f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/d64f851b998f.json",
+							"receipt_sha256": "c25b85d274373a9b0c821d672c283530c47b13a6a4cef1ecb42ed85802a44e11",
+							"scope": "19 ui.hub.skills keys at this target hash (round 7)",
+							"note": "19 ui.hub.skills keys authored for the Skills surface; round-7 audit of this target hash"
 						}
 					],
 					"status": "audited"
@@ -7910,8 +8150,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.hub",
-			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
-			"target_sha256": "7f61ec3dd428b9e4392f19e0e4402fb8c9af12979d99a35ca064598d49960c9c",
+			"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
+			"target_sha256": "9c5ca40b0112d0fa6110fcae39abe7ec967a59b177d38150d8b9bf698334f216",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -7920,20 +8160,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-20",
 					"result": "clean",
-					"instance": "b0d60c766ddc",
+					"instance": "c535013a12e4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b0d60c766ddc.json",
-					"receipt_sha256": "0150a192f5fee48a453b1678e976d91b4ed46eaeb9bceb9e719a1a9106e44aec",
-					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+					"receipt": "i18n/receipts/c535013a12e4.json",
+					"receipt_sha256": "6455af2fbee0a614b81a316f917a9e838031b745663e505678e0db98dba734cd",
+					"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
+					"note": "code-review remediation adds one key: the inventory-unknown sentence"
 				}
 			],
 			"status": "audited",
@@ -8005,6 +8246,77 @@
 							"receipt": "i18n/receipts/7be630006bc9.json",
 							"receipt_sha256": "ff63303b3e439e05e0730dabb0ff29e982ee8800b24aaad3252a47e667d578c3",
 							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+					"target_sha256": "7f61ec3dd428b9e4392f19e0e4402fb8c9af12979d99a35ca064598d49960c9c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "b0d60c766ddc",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b0d60c766ddc.json",
+							"receipt_sha256": "0150a192f5fee48a453b1678e976d91b4ed46eaeb9bceb9e719a1a9106e44aec",
+							"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "96d5e20f3f1efc19efa36210ea7799af8216a863d7b872c71d69e599d5e59a44",
+					"target_sha256": "2608524c753442812699063cc47d3a6f48f1cc258b5ac59048cf28c58336f249",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "d7f8d241cfb2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d7f8d241cfb2.json",
+							"receipt_sha256": "dc7cc54adfc0f56005ae0fa0d65310e591ac317037a7fec70d67ec921c69c5b9",
+							"scope": "13 new ui.hub.skills keys at this target hash (round 3)",
+							"note": "13 new ui.hub.skills keys authored by the implementing coder (PR #1269), audited independently by translation-auditor."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "281a4058420d135c4dd8767610f6144ab1597fc2fca50e96253bd5846605905f",
+					"target_sha256": "481720e297adc4d1351fdea0a34d3c239d7b04ac19c3fcd75ba5f939e4e2bec5",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean-with-findings",
+							"instance": "6f30a2b4d901",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/6f30a2b4d901.json",
+							"receipt_sha256": "7641c24301da24a85c5c3da247b81c31f686c5724eac20a6617df666b731d7a3",
+							"scope": "19 ui.hub.skills keys at this target hash (round 7)",
+							"note": "19 ui.hub.skills keys authored for the Skills surface; round-7 audit of this target hash"
 						}
 					],
 					"status": "audited"
@@ -11469,8 +11781,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.hub",
-			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
-			"target_sha256": "49cb5bb823cb0b2af156009c7db0b81dac20603c195273f1615e43430a7b983f",
+			"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
+			"target_sha256": "aa61b5934cb462d7352f73482aebce308bd8be96f9ebb88f2617f29be24814de",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -11478,20 +11790,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-20",
 					"result": "clean",
-					"instance": "e4e4d13f3eac",
+					"instance": "d8ab81def06b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/e4e4d13f3eac.json",
-					"receipt_sha256": "4f04ac0f5a25e77f488305b6d0f375eadb3942b186c6c7b4c7995f5e62e09dbb",
-					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+					"receipt": "i18n/receipts/d8ab81def06b.json",
+					"receipt_sha256": "d96d3513f36abae7371970fae4cf1a418f5b33c9dca537d00187231ff00e2d32",
+					"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
+					"note": "code-review remediation adds one key: the inventory-unknown sentence"
 				}
 			],
 			"status": "audited",
@@ -11539,6 +11852,77 @@
 							"receipt": "i18n/receipts/aa0c67505433.json",
 							"receipt_sha256": "f5af3c987c433569ea8bbd5c1bde60b793eaee9ee74fdf575bc3c228f05fa001",
 							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+					"target_sha256": "49cb5bb823cb0b2af156009c7db0b81dac20603c195273f1615e43430a7b983f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "e4e4d13f3eac",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e4e4d13f3eac.json",
+							"receipt_sha256": "4f04ac0f5a25e77f488305b6d0f375eadb3942b186c6c7b4c7995f5e62e09dbb",
+							"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "96d5e20f3f1efc19efa36210ea7799af8216a863d7b872c71d69e599d5e59a44",
+					"target_sha256": "16944e87c5409827eb9054d67316a36dacde7163027e240b4e5e464b23c0d947",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "e579ad4b665c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e579ad4b665c.json",
+							"receipt_sha256": "6f9e116ed20d56e46bd37d88f39f361fa603872331417f3bfa20fea5334a15e9",
+							"scope": "13 new ui.hub.skills keys at this target hash",
+							"note": "13 new ui.hub.skills keys authored by the implementing coder (PR #1269), audited independently by translation-auditor."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "281a4058420d135c4dd8767610f6144ab1597fc2fca50e96253bd5846605905f",
+					"target_sha256": "74e392f6d0f428153aa65095116f1ac205019ef34abc5bfaa8ceb7b19168d1bb",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean-with-findings",
+							"instance": "ae6bdf9315f1",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ae6bdf9315f1.json",
+							"receipt_sha256": "14e0910d87962e1dbad8a8656d4eb71f4c41c50d3893da0c8ca856ae27245579",
+							"scope": "19 ui.hub.skills keys at this target hash (round 7)",
+							"note": "19 ui.hub.skills keys authored for the Skills surface; round-7 audit of this target hash"
 						}
 					],
 					"status": "audited"
@@ -12860,8 +13244,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.hub",
-			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
-			"target_sha256": "3d8d51e1306e3288836c4ae05a77bc215a1d591f2665ce98f8d01c447f2a4180",
+			"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
+			"target_sha256": "c26ede863ce664b9afaf4b1b7f04126df9fe52106bd67e89b527e2a166fe92b9",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -12869,20 +13253,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-20",
 					"result": "clean",
-					"instance": "566e7bda787b",
+					"instance": "372335612650",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/566e7bda787b.json",
-					"receipt_sha256": "5519f4b4bf193c84faf142769769f2d590cea0588cd8673485be9f792c1d4b50",
-					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+					"receipt": "i18n/receipts/372335612650.json",
+					"receipt_sha256": "094d90db0e6535b66b38bc6996e6f85dfff685226dcfd6d7ffb7a46a5bc006e2",
+					"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
+					"note": "code-review remediation adds one key: the inventory-unknown sentence"
 				}
 			],
 			"status": "audited",
@@ -12930,6 +13315,77 @@
 							"receipt": "i18n/receipts/a8c12fa9263d.json",
 							"receipt_sha256": "fab03a211c04b9a61a46acb414ea01680a8eb70203d868b6b9f79c11858c56ab",
 							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+					"target_sha256": "3d8d51e1306e3288836c4ae05a77bc215a1d591f2665ce98f8d01c447f2a4180",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "566e7bda787b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/566e7bda787b.json",
+							"receipt_sha256": "5519f4b4bf193c84faf142769769f2d590cea0588cd8673485be9f792c1d4b50",
+							"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "96d5e20f3f1efc19efa36210ea7799af8216a863d7b872c71d69e599d5e59a44",
+					"target_sha256": "c124e309473f45f790b2575669abd7ce1de0d065a362e6ee5eb9d2780eb8f1d3",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "2bbbaaf9c97d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2bbbaaf9c97d.json",
+							"receipt_sha256": "c9e616c280d5ca7f9180dd1ce905d1c6ab68d706de356849eef7ba5fbe6b3cf4",
+							"scope": "13 new ui.hub.skills keys at this target hash (round 3)",
+							"note": "13 new ui.hub.skills keys authored by the implementing coder (PR #1269), audited independently by translation-auditor."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "281a4058420d135c4dd8767610f6144ab1597fc2fca50e96253bd5846605905f",
+					"target_sha256": "3c201a9e58c52b39dcf6f56fe9db2318412a4cc52cac0781c7bcf422f36eb06f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "452db1574370",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/452db1574370.json",
+							"receipt_sha256": "ce7cd4b1ec24006007a2b362e91ab40c6b99dfe1b50179b7e0898cb7416334cd",
+							"scope": "19 ui.hub.skills keys at this target hash (round 7)",
+							"note": "19 ui.hub.skills keys authored for the Skills surface; round-7 audit of this target hash"
 						}
 					],
 					"status": "audited"
@@ -16052,8 +16508,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.hub",
-			"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
-			"target_sha256": "3dfff4be9ac6cb020fe943ff3d4f1c42bfcb75c89f0c324616339dc0040d5085",
+			"source_sha256": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52",
+			"target_sha256": "45ff89868535a9caee5000136af22f3fc2ed269b138edc556a10b9dbd76d6eb0",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -16061,20 +16517,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-20",
 					"result": "clean",
-					"instance": "f45134e9108a",
+					"instance": "b0117933f937",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f45134e9108a.json",
-					"receipt_sha256": "9619ce859a0df171b135b835598db940e46a025aec26e28589383db8a2c76e6c",
-					"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+					"receipt": "i18n/receipts/b0117933f937.json",
+					"receipt_sha256": "f5fd75ae6d7e1e6c58f40420e0279ccb87f64dad174dfb300d8d07eafe115ffa",
+					"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
+					"note": "code-review remediation adds one key: the inventory-unknown sentence"
 				}
 			],
 			"status": "audited",
@@ -16122,6 +16579,101 @@
 							"receipt": "i18n/receipts/c1a2cd6946cc.json",
 							"receipt_sha256": "1e9518b0418923402326333cf285e6cf13390d4d78cfce0cba4ee4aac44386b3",
 							"scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "944440e62818e84f800907832326656719fef34b60f6c77e60631c3af5895011",
+					"target_sha256": "3dfff4be9ac6cb020fe943ff3d4f1c42bfcb75c89f0c324616339dc0040d5085",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "f45134e9108a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f45134e9108a.json",
+							"receipt_sha256": "9619ce859a0df171b135b835598db940e46a025aec26e28589383db8a2c76e6c",
+							"scope": "Rewritten source-confirmation conflict copy; semantic, terminology and register audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "96d5e20f3f1efc19efa36210ea7799af8216a863d7b872c71d69e599d5e59a44",
+					"target_sha256": "8fb3bb30c59c47411b3bff9fc7e97a1b6895139ce4b2d06b31c879e1817b2a08",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "7d9fc07bb554",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7d9fc07bb554.json",
+							"receipt_sha256": "547522d73a36de8165c4fbb1c0619e5ecec64ef6c60b84a47621c4ccb8bea759",
+							"scope": "13 new ui.hub.skills keys at this target hash (round 4)",
+							"note": "13 new ui.hub.skills keys authored by the implementing coder (PR #1269), audited independently by translation-auditor."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "281a4058420d135c4dd8767610f6144ab1597fc2fca50e96253bd5846605905f",
+					"target_sha256": "d033c28b0d95e4dbe7109f455253b57b705fc11f3b60a59164199df7f3310d5b",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "5e651ea01be3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5e651ea01be3.json",
+							"receipt_sha256": "619ac6c68e1cadf65f872164fbfd84201e36570ee886c13f0f656625909d13b5",
+							"scope": "19 ui.hub.skills keys at this target hash (round 7)",
+							"note": "19 ui.hub.skills keys authored for the Skills surface; round-7 audit of this target hash"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "281a4058420d135c4dd8767610f6144ab1597fc2fca50e96253bd5846605905f",
+					"target_sha256": "be1d40557c0b4a842136ece8b883895689ddec8f9f73d69290b041ecb4c4ef46",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "c1f38d8b9f38",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c1f38d8b9f38.json",
+							"receipt_sha256": "b315d8a1fca768b19ec1fa69f679f0e7b0cf993ee602c801027f5e91d9f499b3",
+							"scope": "19 ui.hub.skills keys at this target hash (round 8)",
+							"note": "19 ui.hub.skills keys authored for the Skills surface; round-8 audit of this target hash"
 						}
 					],
 					"status": "audited"

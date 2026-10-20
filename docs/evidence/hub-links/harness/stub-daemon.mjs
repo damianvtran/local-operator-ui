@@ -71,7 +71,12 @@ const INSTANCE_ID = randomUUID();
 const startedAt = Date.now() / 1000;
 
 /** One approved, credential-free source. The panel contributes exactly this. */
-const SOURCE = "https://hub.radient.local";
+/**
+ * The hub source the fixture's links name. Default keeps the historic value;
+ * the Skills scene passes the same loopback base the app is built against, so
+ * its links JOIN the catalogue rows instead of reading as a foreign origin.
+ */
+const SOURCE = arg("source", "https://hub.radient.local");
 const TENANT_ID = "org-minerva";
 const TENANT_NAME = "Minerva";
 
