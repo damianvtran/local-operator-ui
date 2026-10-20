@@ -1,0 +1,144 @@
+{
+  "importSettingsGeometry": {
+    "viewport": {
+      "width": 1380,
+      "height": 900
+    },
+    "before": {
+      "window": {
+        "scrollY": 0,
+        "scrollX": 0
+      },
+      "document": {
+        "scrollTop": 0
+      },
+      "shell": {
+        "scrollTop": 0,
+        "scrollHeight": 4725,
+        "clientHeight": 900,
+        "overflowY": "hidden"
+      },
+      "content": {
+        "scrollTop": 6513,
+        "scrollHeight": 7458,
+        "clientHeight": 900
+      },
+      "sessionCheckbox": {
+        "dataState": "unchecked",
+        "ariaChecked": "false",
+        "indicatorMounted": false,
+        "fill": "rgb(43, 39, 33)",
+        "border": "rgb(131, 124, 109)",
+        "glyph": null
+      },
+      "selectedRow": null,
+      "importButton": null,
+      "confirmCheckbox": null,
+      "flow": {
+        "previewButtonPresent": false,
+        "importEnabled": false,
+        "acknowledgementPresent": false
+      }
+    },
+    "selected": {
+      "window": {
+        "scrollY": 0,
+        "scrollX": 0
+      },
+      "document": {
+        "scrollTop": 0
+      },
+      "shell": {
+        "scrollTop": 0,
+        "scrollHeight": 4725,
+        "clientHeight": 900,
+        "overflowY": "hidden"
+      },
+      "content": {
+        "scrollTop": 6513,
+        "scrollHeight": 7661,
+        "clientHeight": 900
+      },
+      "sessionCheckbox": {
+        "dataState": "checked",
+        "ariaChecked": "true",
+        "indicatorMounted": true,
+        "fill": "rgb(43, 39, 33)",
+        "border": "rgb(131, 124, 109)",
+        "glyph": "rgb(22, 19, 14)"
+      },
+      "selectedRow": {
+        "classes": "flex items-start gap-3 rounded-md border p-3 border-accent bg-row-selected",
+        "background": "rgb(55, 47, 36)",
+        "border": "rgb(56, 201, 106)"
+      },
+      "importButton": {
+        "label": "Import 1 session",
+        "disabled": true
+      },
+      "confirmCheckbox": {
+        "dataState": "unchecked",
+        "disabled": true
+      },
+      "flow": {
+        "previewButtonPresent": false,
+        "importEnabled": false,
+        "acknowledgementPresent": true
+      }
+    },
+    "after": {
+      "window": {
+        "scrollY": 0,
+        "scrollX": 0
+      },
+      "document": {
+        "scrollTop": 0
+      },
+      "shell": {
+        "scrollTop": 0,
+        "scrollHeight": 4725,
+        "clientHeight": 900,
+        "overflowY": "hidden"
+      },
+      "content": {
+        "scrollTop": 6513,
+        "scrollHeight": 7748,
+        "clientHeight": 900
+      },
+      "sessionCheckbox": {
+        "dataState": "checked",
+        "ariaChecked": "true",
+        "indicatorMounted": true,
+        "fill": "rgb(56, 201, 106)",
+        "border": "rgb(56, 201, 106)",
+        "glyph": "rgb(22, 19, 14)"
+      },
+      "selectedRow": {
+        "classes": "flex items-start gap-3 rounded-md border p-3 border-accent bg-row-selected",
+        "background": "rgb(55, 47, 36)",
+        "border": "rgb(56, 201, 106)"
+      },
+      "importButton": {
+        "label": "Import 1 session",
+        "disabled": true
+      },
+      "confirmCheckbox": {
+        "dataState": "unchecked",
+        "disabled": false
+      },
+      "flow": {
+        "previewButtonPresent": false,
+        "importEnabled": false,
+        "acknowledgementPresent": true
+      }
+    },
+    "flow": {
+      "steps": [
+        "select a conversation",
+        "tick the acknowledgement"
+      ],
+      "stepCount": 2,
+      "importEnabled": true
+    }
+  }
+}
