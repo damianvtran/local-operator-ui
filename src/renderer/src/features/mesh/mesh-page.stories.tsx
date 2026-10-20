@@ -34,7 +34,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import type { DesktopResponse } from "../../../../shared/desktop-contract";
+import { MoveNotice } from "./mesh-actions";
 import { MeshPage } from "./mesh-page";
+import type { PeerLinkState, PeerRelayState } from "./mesh-types";
 
 type BridgeRequest = { op: string; approvalId?: string };
 
@@ -97,6 +99,14 @@ const peer = (
 		unreachable_reason: string;
 		last_seen_at: number | null;
 		session_count: number;
+		link_state: PeerLinkState;
+		remote_relay: PeerRelayState;
+		attempts: Array<{
+			endpoint: string;
+			connected: boolean;
+			detail: string;
+			latency_ms: number | null;
+		}>;
 	}> = {},
 ) => ({
 	device_id,
@@ -643,6 +653,234 @@ export const Misconfigured: Story = {
 			},
 		});
 		return <MeshPage />;
+	},
+};
+
+/**
+ * THE PEER'S RELAY IS NOT RUNNING: every dialable address answers TCP with a
+ * refusal (host up, nothing listening), and the second address times out.
+ *
+ * REAL INCIDENT VALUES, 0.82.3: `99.79.190.164:4097` refused and
+ * `172.31.22.23:4097` timed out, while the tab said `unreachable` and `no answer`
+ * for every other kind of silence too. The panel must now say the peer's relay is
+ * not running and show each address's own transport result. `session_count: 0`
+ * keeps the empty-conversation sentence on the device.
+ */
+/**
+ * THE RELAY-DOWN WORLD, shared by the canvas/panel frame and the list frame.
+ *
+ * The attempts satisfy the contract's rule for `not_listening`: no endpoint
+ * connected AND at least one refused TCP. The timeout beside the refusal is what
+ * makes the evidence honest - a reader sees that not every address failed the
+ * same way.
+ */
+function relayDownFixture() {
+	return {
+		networks: {
+			self_device_id: DEVICE_SELF,
+			networks: [
+				network(NET_HOME, "damian-mesh", [
+					member(DEVICE_SELF, { name: "damians-MacBook-Pro", role: "admin" }),
+					member(DEVICE_PEER, {
+						name: "cloud-node-1",
+						endpoints: ["99.79.190.164:4097", "172.31.22.23:4097"],
+						reachable: false,
+						reason:
+							"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError; 172.31.22.23:4097 connect_failed:TimeoutError",
+					}),
+				]),
+			],
+		},
+		peers: {
+			self_device_id: DEVICE_SELF,
+			peers: [
+				peer(DEVICE_PEER, {
+					name: "cloud-node-1",
+					reachable: false,
+					link_state: "relay_down",
+					remote_relay: "not_listening",
+					attempts: [
+						{
+							endpoint: "99.79.190.164:4097",
+							connected: false,
+							detail: "connect_failed:ConnectionRefusedError",
+							latency_ms: null,
+						},
+						{
+							endpoint: "172.31.22.23:4097",
+							connected: false,
+							detail: "connect_failed:TimeoutError",
+							latency_ms: null,
+						},
+					],
+					unreachable_reason:
+						"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError; 172.31.22.23:4097 connect_failed:TimeoutError",
+					session_count: 0,
+				}),
+			],
+			degraded: [],
+		},
+	};
+}
+
+export const RelayDown: Story = {
+	render: () => {
+		installBridge(relayDownFixture());
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_PEER);
+	},
+};
+
+/**
+ * THE SAME RELAY-DOWN WORLD IN THE LIST: the half of the evidence the panel frame
+ * cannot photograph.
+ *
+ * The list prints one `<endpoint> — <words>` line per address and the headline
+ * above them; this play presses the real List toggle and waits for the refusal's
+ * own word, so a regression that only dropped the list block fails the frame.
+ */
+export const RelayDownList: Story = {
+	render: () => {
+		installBridge(relayDownFixture());
+		/*
+		 * THE LIST IS THE RENDER, NOT A CLICK. The first attempt drove the toggle
+		 * in `play`; the evidence rig photographed the frame before the click
+		 * landed and committed a Canvas picture under the list's name (design
+		 * review round 1, D1). The tab's control still owns the state after mount.
+		 */
+		return <MeshPage initialPresentation="list" />;
+	},
+	play: async () => {
+		await screen.findByText("Sort devices by");
+		await screen.findByText("the peer's relay is not running");
+		await screen.findByText("99.79.190.164:4097 — nothing listening");
+	},
+};
+
+/**
+ * THE ADDRESS IS UNREACHABLE: no address answers, and the peer itself may be
+ * fine. Two timeouts are the evidence - no refusal, so the host never spoke.
+ *
+ * The point of the frame: this is not `relay not running` (nothing listened) and
+ * not `handshake refused` (something answered and then closed). The operator's
+ * next action is the address/route, not the peer's relay process.
+ */
+export const AddressUnreachable: Story = {
+	render: () => {
+		installBridge({
+			networks: {
+				self_device_id: DEVICE_SELF,
+				networks: [
+					network(NET_HOME, "damian-mesh", [
+						member(DEVICE_SELF, { name: "damians-MacBook-Pro", role: "admin" }),
+						member(DEVICE_PEER, {
+							name: "cloud-node-1",
+							endpoints: ["99.79.190.164:4097", "172.31.22.23:4097"],
+							reachable: false,
+							reason: "no answer",
+						}),
+					]),
+				],
+			},
+			peers: {
+				self_device_id: DEVICE_SELF,
+				peers: [
+					peer(DEVICE_PEER, {
+						name: "cloud-node-1",
+						reachable: false,
+						link_state: "address_unreachable",
+						remote_relay: "unknown",
+						attempts: [
+							{
+								endpoint: "99.79.190.164:4097",
+								connected: false,
+								detail: "connect_failed:TimeoutError",
+								latency_ms: null,
+							},
+							{
+								endpoint: "172.31.22.23:4097",
+								connected: false,
+								detail: "connect_failed:TimeoutError",
+								latency_ms: null,
+							},
+						],
+						unreachable_reason: "no answer",
+						session_count: 0,
+					}),
+				],
+				degraded: [],
+			},
+		});
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_PEER);
+		// THE THIRD STATE THE INCIDENT NAMED: address unreachable is its own word, not
+		// the generic "no answer". It appears on the node state line and in the panel.
+		expect(
+			(await screen.findAllByText("address unreachable")).length,
+		).toBeGreaterThan(0);
+	},
+};
+
+/**
+ * THE HANDSHAKE IS REFUSED: TCP connects, then the peer closes the handshake with
+ * no reason (it does not know this device, or the epoch disagrees).
+ *
+ * THE INCIDENT'S THIRD STATE, and the one the old tab could not distinguish from
+ * the other two: the address answered, so the relay is running, but the peer will
+ * not admit this device - an action on membership/epoch, not on the address or
+ * the relay process. The attempt is `connected: true`; the headline names the
+ * close rather than printing the raw detail token.
+ */
+export const HandshakeRefused: Story = {
+	render: () => {
+		installBridge({
+			networks: {
+				self_device_id: DEVICE_SELF,
+				networks: [
+					network(NET_HOME, "damian-mesh", [
+						member(DEVICE_SELF, { name: "damians-MacBook-Pro", role: "admin" }),
+						member(DEVICE_PEER, {
+							name: "cloud-node-1",
+							endpoints: ["99.79.190.164:4097"],
+							reachable: false,
+							reason: "handshake closed with no reason",
+						}),
+					]),
+				],
+			},
+			peers: {
+				self_device_id: DEVICE_SELF,
+				peers: [
+					peer(DEVICE_PEER, {
+						name: "cloud-node-1",
+						reachable: false,
+						link_state: "handshake_refused",
+						remote_relay: "running",
+						attempts: [
+							{
+								endpoint: "99.79.190.164:4097",
+								connected: true,
+								// TCP connected AND the attempt itself succeeded; the HANDSHAKE is
+								// what closed, which is why the row must read `answered`, not `no answer`.
+								detail: "ok",
+								latency_ms: 41,
+							},
+						],
+						unreachable_reason: "handshake closed with no reason",
+						session_count: 0,
+					}),
+				],
+				degraded: [],
+			},
+		});
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_PEER);
 	},
 };
 
@@ -1326,6 +1564,40 @@ export const DragRefusedOverNetwork: Story = {
 	play: async () => {
 		await screen.findByText(/networks? · /i);
 	},
+};
+
+/**
+ * THE REFUSAL NOTICE WITH A REACH WORD, photographed on its own: the drag/recall
+ * the client refuses pre-flight because the peer's relay is not running.
+ *
+ * Before this pass the notice printed the machine code `unreachable`; the fix
+ * forwards `reach`, and this frame is the rendered proof of the longer label
+ * (design review, refusal-notice check: the drag-hover frame shows the tooltip,
+ * not this output). The sentence is the real `reach_refusal` shape.
+ */
+export const RefusalNotice: Story = {
+	render: () => (
+		<section className="flex min-h-40 flex-col gap-3 bg-surface p-6">
+			<h2 className="m-0 text-body-sm text-ink-dim">
+				Refusal notice — drag or recall refused before the request
+			</h2>
+			<MoveNotice
+				receipt={null}
+				canWait={false}
+				refusal={{
+					code: "unreachable",
+					sentence: "cloud-node-1: relay not running, so nothing was moved.",
+					reach: "relay not running",
+					status: null,
+					unconfirmed: false,
+				}}
+				onWait={() => {}}
+				onRecheck={() => {}}
+				onUndo={() => {}}
+				pending={false}
+			/>
+		</section>
+	),
 };
 
 /** The drop's question: the operation named, the loss stated, the copy offered. */

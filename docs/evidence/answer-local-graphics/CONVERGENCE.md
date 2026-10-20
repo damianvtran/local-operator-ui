@@ -55,3 +55,14 @@ The original coverage limits remain: no daemon driver graphics verb, no physical
 
 
 Round-2 evidence maintenance: the redundant r1-dark-folded-fixture.png was subsequently removed because it equalled r1-dark-closed.png byte-for-byte. The 13/24 capture counts above are historical; the set now retains 12 r1 /23 total PNGs. No product source or surviving image changed in that remediation.
+
+
+## Subsequent main convergence: bbea8a3db9 after B1/N1
+
+Parents: own remediation2f9830b3b2 plus main bbea8a3db9. Main since787f8c6e7e contains six first-parent changes (#1234release,#1229spend,#1225mesh,#1238CI,#1232review-label,#1235prelude fixtures),273 paths. Actual authored-path overlap remains only package.json/manifest.json; all nine owned src/scripts files are byte-identical before/after the merge. Canonical transcript and styles did not move in this interval. Generated supplement-document-fixtures.ts and supplement-closeout.generated.html are exact authoritative main bytes, not an author regeneration.
+
+package.json is main's exact byte stream plus our supplement-disclosure registration; dependencies equal both parents; version0.36.6 is inherited from main's release PR. The repo evidence-fold generator unioned and re-derived the manifest. Before committing, its count test correctly rejected old HEAD1755 stories against the staged merged1760; both counts were derived with declaredStoryRows against HEAD/index/MERGE_HEAD. The committed-head test is the terminal count check, not a hand adjustment back to1755.
+
+Only five current open HTML-backed images moved (prelude-v5), all recaptured and opened. Closed control and all18 other retained images are byte-identical; no broad recapture. Browser proved real bars, local Hide and nested Show all with settled790×364 frame. One not-yet-painted light shutter was rejected and replaced after Loading graphic… disappeared. Source/example chart changes are inherited from #1235, not modifications to its files. See README for the precise image list and teardown.
+
+The corrected consumer's101 cases and all targeted tests passed on reviewed remediation2f9830b3b2 (285tests/284pass/1shallow skip). The new convergence re-ran only the131 affected behavior/shared/collapse cases plus the manifest check; it does not re-audit unrelated spend/mesh/review work or repeat the five-minute unchanged composer suite. No production change, force-exit, manual CI rerun or version edit was introduced for convergence.
