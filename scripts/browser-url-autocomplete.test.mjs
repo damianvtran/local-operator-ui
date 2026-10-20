@@ -686,6 +686,26 @@ test("Escape after accepting keeps the canonical target", async () => {
 	await bundle.cleanup();
 });
 
+test("a second Escape after accepting abandons and clears the target", async () => {
+	const bundle = await renderBar({
+		url: "http://127.0.0.1:8080/account",
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries: HTTP_ENTRIES,
+		}),
+	});
+	await type(bundle, "127.0.0.1:8080/a");
+	await type(bundle, "127.0.0.1:8080/acc");
+	await key(bundle, "ArrowRight");
+	await key(bundle, "Escape");
+	await key(bundle, "Escape");
+	assert.equal(bundle.input.value, "http://127.0.0.1:8080/account");
+	await key(bundle, "Enter");
+	assert.deepEqual(bundle.navigations, []);
+	await bundle.cleanup();
+});
+
 test("switching tabs and back keeps the accepted target", async () => {
 	const canonical = "http://127.0.0.1:8080/account/profile";
 	const bundle = await renderBar({

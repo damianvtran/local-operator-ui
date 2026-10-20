@@ -745,14 +745,12 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 
 		if (event.key === "Escape") {
 			event.preventDefault();
-			const acceptedHere =
-				acceptedTarget !== null &&
-				acceptedTarget.tabId === tabId &&
-				acceptedTarget.raw === raw;
 			// Escape dismisses the list; it does not discard an accepted suffix.
 			// If it did, Right+Escape+Enter would fall back to the display text and
-			// lose the canonical HTTP target the suffix carried.
-			if (current || listVisible || acceptedHere) {
+			// lose the canonical HTTP target the suffix carried. A second Escape,
+			// with the list already dismissed, reaches abandon() and restores the
+			// live URL, clearing the target.
+			if (current || listVisible) {
 				clearGenerated();
 				setHint(false);
 				setDismissedForText(raw);
