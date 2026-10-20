@@ -296,6 +296,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures the backend settings region's height, row pitch, full-width controls and focusables from the live DOM; its first spawn is the vite server that serves the page",
 	),
 	guarded(
+		"scripts/import-settings-geometry.mjs",
+		"spawn",
+		2,
+		"measures the Import conversations surface's three reported defects - the app shell root's scrollTop across an automatic preview build, the selected row's state, and the interaction count to an enabled Import - across the arrival, selected, built, pending, failure, completion, glass, narrow and light states; its first spawn is the vite server that serves the page",
+	),
+	guarded(
 		"scripts/chat-alignment-geometry.mjs",
 		"spawn",
 		1,
