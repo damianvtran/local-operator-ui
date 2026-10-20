@@ -34,10 +34,10 @@
  *   (the stale-row rule);
  * - the FOLDED states (`folded-condensed-*`): while the block's own turn
  *   renders condensed it shows the SAME files section as its expanded self —
- *   the actionable rows and the image grid — with no slots and no frames; a
- *   settled graphics-only or mixed finish offers a local Show/Hide disclosure
- *   (2026-10-19 amendment), and the not-settled arms keep their state line
- *   under the files;
+ *   the actionable rows and the image grid — and a graphics-bearing finish
+ *   shows its graphic BY DEFAULT through the local Hide disclosure (2026-10-19
+ *   operator request, superseding the plain count clause), aligned to the
+ *   answer column; the not-settled arms keep their state line under the files;
  * - a supplement-free turn and the `superseded`/`empty` arms render NOTHING
  *   under the answer — the before/after pair for the fold lane.
  */

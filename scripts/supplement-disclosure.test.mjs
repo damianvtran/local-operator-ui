@@ -213,7 +213,7 @@ test("local permission is open by default, honours Hide, resets by identity and 
 		assert.equal(count("[data-supplement-slot]"), 0);
 		assert.equal(count("iframe"), 0);
 		assert.ok(host.textContent.includes("Show 1 of 2 graphics"));
-		await render(record, true);
+		await render({ ...record }, true);
 		assert.equal(
 			count("[data-supplement-slot]"),
 			0,
@@ -269,8 +269,12 @@ test("local permission is open by default, honours Hide, resets by identity and 
 		assert.equal(count("iframe"), 1);
 		await click("Hide 2 graphics");
 		assert.equal(count("[data-supplement-slot]"), 0);
-		await click("Show 1 of 2 graphics");
 		const beforeReset = requests.length;
+		/*
+		 * Leave THIS identity hidden before switching, so the return below can
+		 * tell reset-to-default (open) from per-identity memory (closed).
+		 */
+		assert.ok(host.textContent.includes("Show 1 of 2 graphics"));
 		/*
 		 * A replacement identity starts at the DEFAULT (open). Off-screen that
 		 * still means the reserved box only: the reset is not permission to fetch.
@@ -305,13 +309,32 @@ test("local permission is open by default, honours Hide, resets by identity and 
 		 * Returning to the first identity starts OPEN again: the reset is to the
 		 * default, not to that identity's old Hide, so no permission is resurrected.
 		 */
-		await render(record, true);
+		await render({ ...record }, true);
 		assert.ok(host.textContent.includes("Hide 2 graphics"));
 		assert.equal(
 			count("[data-supplement-slot]"),
 			1,
 			"old permission cannot resurrect",
 		);
+		/*
+		 * The identity is `(session, anchor, job)`, not the record version: a
+		 * regeneration of the same job is the same graphic to the reader, so a
+		 * Hide survives it; a different job is a different supplement and opens.
+		 */
+		await click("Hide 2 graphics");
+		await render({ ...record, version: record.version + 1 }, true);
+		assert.equal(
+			count("[data-supplement-slot]"),
+			0,
+			"a version bump of the same job keeps the Hide",
+		);
+		assert.ok(host.textContent.includes("Show 1 of 2 graphics"));
+		await render({ ...record, job: "next-job" }, true);
+		assert.ok(
+			host.textContent.includes("Hide 2 graphics"),
+			"a different job starts open",
+		);
+		assert.equal(count("[data-supplement-slot]"), 1);
 	} finally {
 		await act(async () => root.unmount());
 		host.remove();
