@@ -2714,8 +2714,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			/*
 			 * WHETHER THE CHILD SHOULD NAME ITSELF WITH A TAG. Optional and absent
 			 * on every released body: a renderer only sends it after the backend
-			 * advertises `session_tags: 2` (`chat-auto-tag.ts`), because `Fork`
-			 * inherits `extra="forbid"` and an older core would answer 422.
+			 * advertises `session_tags_auto_tag` (`chat-auto-tag.ts`), because
+			 * `Fork` inherits `extra="forbid"` and an older core would answer 422.
 			 */
 			autoTag: z.boolean().optional(),
 		})

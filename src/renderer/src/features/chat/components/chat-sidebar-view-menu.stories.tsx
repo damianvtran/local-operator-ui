@@ -234,15 +234,15 @@ let teamsList: string[] = ["release-crew", "docs-pod"];
 /** `capabilities` answers OK until this flips (the off-route voice story). */
 let capabilitiesFail = false;
 /**
- * The `session_tags` version for the tags stories only: 0 absent, 1 the store
- * without the fork field, 2 the version that reads `auto_tag`.
+ * The tags capability fixture for the tags stories only: 0 is absent, 1 is the
+ * durable store (`session_tags`), 2 adds the fork's `session_tags_auto_tag`.
  *
  * Off by default so every existing frame in this file keeps the panel without a
  * Tags group - the stories above were photographed against a backend that
  * predates `session_tags`, and turning it on globally would change frames whose
  * claim says nothing about tags. The pair below sets it in its own render,
- * exactly as `capabilitiesFail` is a per-story switch. Version 1 is the BEFORE
- * frame: the same Tags group, the same empty registry, no auto-tag row.
+ * exactly as `capabilitiesFail` is a per-story switch. 1 is the BEFORE frame:
+ * the same Tags group, the same empty registry, no auto-tag row.
  */
 let tagsFixture = 0;
 /** `sessions.list` answers OK until this flips (the off-route voice story). */
@@ -301,8 +301,10 @@ const bridge = () => {
 						team_catalogue: 1,
 						session_pins: 1,
 						// The tags stories' switch; every other frame in this file
-						// deliberately predates the tags capability.
-						...(tagsFixture ? { session_tags: tagsFixture } : {}),
+						// deliberately predates the tags capability. 1 is the catalogue
+						// alone, 2 adds the fork's own key (they are separate in core).
+						...(tagsFixture ? { session_tags: 1 } : {}),
+						...(tagsFixture >= 2 ? { session_tags_auto_tag: 1 } : {}),
 					},
 				});
 			case "sessions.list":

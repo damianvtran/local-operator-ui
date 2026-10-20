@@ -1386,11 +1386,12 @@ export function ChatSidebar({
 		"session_tags",
 	);
 	/*
-	 * A SECOND QUESTION ABOUT THE SAME SUBSYSTEM: the tags store shipped first
-	 * (`session_tags: 1`), the fork's `auto_tag` field second (`: 2`). The row
-	 * and the request are both gated on the second without narrowing the first,
-	 * so a v1 backend keeps its whole tag surface and simply never sees the
-	 * fork intent - never a 422 for a field its `Fork` model does not know.
+	 * A SECOND QUESTION ABOUT THE SAME SUBSYSTEM: `session_tags` gates the tag
+	 * catalogue, `session_tags_auto_tag` gates the fork's `auto_tag` field. The
+	 * row and the request are both gated on the second without narrowing the
+	 * first, so a backend with tags and without auto-tagging keeps its whole tag
+	 * surface and simply never sees the fork intent - never a 422 for a field its
+	 * `Fork` model does not know.
 	 */
 	const autoTagAvailable = autoTagSupported(capabilities.data);
 	const tagCategories = useSessionTagsStore((state) => state.categories);

@@ -6,9 +6,11 @@
  *
  * WHY THE GATE IS TESTED, not only the happy path: the core's request models
  * inherit `extra="forbid"`, so `auto_tag` sent to a backend that predates the
- * field is a 422 and the FORK FAILS. The two negative cases below - a v1
- * backend and an unanswered capability read - are the ones that would break
- * forking for every client if the row or the field stopped being gated.
+ * field is a 422 and the FORK FAILS. The two negative cases below - a backend
+ * without `session_tags_auto_tag` and an unanswered capability read - are the
+ * ones that would break forking for every client if the row or the field
+ * stopped being gated. The catalogue key (`session_tags`) is asserted NOT to
+ * be a substitute, because that is the split the core chose.
  *
  * WHAT IT CANNOT SAY: that the row's helper wraps to the height budget, or how
  * the switch looks. Those are pixels and belong to the rendered frames and the
@@ -112,19 +114,28 @@ const request = (over = {}) => ({
 
 /* ------------------------------------------------------ the capability gate */
 
-test("only a backend advertising session_tags 2 is offered the field", () => {
-	assert.equal(AUTO_TAG_MINIMUM_VERSION, 2);
+test("only a backend advertising session_tags_auto_tag is offered the field", () => {
+	assert.equal(AUTO_TAG_MINIMUM_VERSION, 1);
 	assert.equal(autoTagSupported(undefined), false);
 	assert.equal(autoTagSupported(null), false);
 	assert.equal(autoTagSupported(capabilities({}, false)), false);
+	// The catalogue key alone is NOT the fork field's key: a daemon with tags
+	// and without auto-tagging keeps its whole tag surface and never sees this
+	// request key. This assertion is the regression the split exists for.
 	assert.equal(autoTagSupported(capabilities({ session_tags: 1 })), false);
 	assert.equal(
 		autoTagSupported(capabilities({ session_tags: 1 }, false)),
 		false,
 	);
-	assert.equal(autoTagSupported(capabilities({ session_tags: 2 })), true);
+	assert.equal(
+		autoTagSupported(capabilities({ session_tags_auto_tag: 1 })),
+		true,
+	);
 	// A later version still understands the field; the gate is a floor.
-	assert.equal(autoTagSupported(capabilities({ session_tags: 3 })), true);
+	assert.equal(
+		autoTagSupported(capabilities({ session_tags_auto_tag: 2 })),
+		true,
+	);
 });
 
 test("the intent is the design's one conjunction, and absence without the gate", () => {
@@ -244,6 +255,7 @@ test("a press stores the choice on the one persisted view object", async () => {
 	let written = null;
 	await render(
 		React.createElement(Harness, {
+			key: "press",
 			initial: { ...DEFAULT_SIDEBAR_VIEW, tagsEnabled: true },
 			onView: (next) => {
 				written = next;
@@ -254,7 +266,46 @@ test("a press stores the choice on the one persisted view object", async () => {
 	assert.ok(written, "the press wrote a whole next view");
 	assert.equal(written.autoTagForks, false);
 	assert.equal(written.tagsEnabled, true, "the sibling switch is untouched");
+	/*
+	 * NO FORCED CHIPS, NO FORCED MODE: the press is a preference about a FUTURE
+	 * fork, not a statement about how this list draws. A handler that also set
+	 * `groupBy: "tag"` would rearrange the reader's sidebar from a switch that
+	 * never claimed to, so the saved grouping and the view's shape are asserted
+	 * here rather than left to the pixels.
+	 */
+	assert.equal(written.groupBy, DEFAULT_SIDEBAR_VIEW.groupBy);
+	assert.equal("tags" in written, false, "the view carries no tag chips");
 	// And back on, so `off` is not a one-way latch.
 	await act(() => switchOf().click());
 	assert.equal(written.autoTagForks, true);
+});
+
+test("neither switch disturbs a grouping the reader chose", async () => {
+	let written = null;
+	await render(
+		React.createElement(Harness, {
+			key: "grouping",
+			initial: {
+				...DEFAULT_SIDEBAR_VIEW,
+				tagsEnabled: true,
+				groupBy: "agent",
+			},
+			onView: (next) => {
+				written = next;
+			},
+		}),
+	);
+	await act(() => switchOf().click());
+	assert.equal(written.autoTagForks, false);
+	assert.equal(written.groupBy, "agent", "auto-tag leaves the grouping alone");
+	/*
+	 * The Tags master itself is the other half of the same rule: turning it off
+	 * (or on) preserves the saved mode, which is what keeps a reader's Agent and
+	 * team grouping from being rewritten by a switch about tags.
+	 */
+	await act(() =>
+		document.querySelector('[aria-label="Group chats by tag"]').click(),
+	);
+	assert.equal(written.tagsEnabled, false);
+	assert.equal(written.groupBy, "agent", "the Tags switch leaves it alone too");
 });

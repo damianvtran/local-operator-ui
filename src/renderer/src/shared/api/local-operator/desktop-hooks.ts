@@ -194,6 +194,20 @@ export function useDesktopCapabilities() {
 
 export type DesktopFeature =
 	| "session_tags"
+	/**
+	 * The OPTIONAL auto-tag half of a desktop fork: the `auto_tag` body key on
+	 * `sessions.fork` and the naming call's tag contract behind it.
+	 *
+	 * ITS OWN KEY rather than a `session_tags` bump, and the direction of skew is
+	 * why: `Fork` inherits `extra="forbid"`, so an OLDER daemon answers 422 to a
+	 * body carrying `auto_tag` - a refused fork, not a degraded one. A client must
+	 * therefore ASK this key before it sends the field; absent, it omits the key
+	 * and the fork is byte- and behaviour-identical to the released one. A bump
+	 * of `session_tags` could not answer that question without also hiding the
+	 * tag catalogue, which a daemon without auto-tagging serves perfectly well.
+	 * See `local_operator/server/features.py` on the core branch.
+	 */
+	| "session_tags_auto_tag"
 	| "session_files"
 	/**
 	 * The global Library surface (`/v1/desktop/library*` and the Librarian

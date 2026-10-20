@@ -9,22 +9,22 @@
  *
  * THE WIRE FIELD IS ADDITIVE, BUT ONLY A CAPABLE BACKEND MAY RECEIVE IT. The
  * core's request models inherit `extra="forbid"` (`Input` in
- * `local_operator/server/routes/desktop_sessions.py`), so a fork body carrying
+ * `local_operator/server/routes/desktop_lifecycle.py`), so a fork body carrying
  * `auto_tag` against a backend whose `Fork` model predates it is a 422 - the
  * fork fails, which is a worse outcome than no auto-tagging. The field
- * therefore travels only when the backend ADVERSARIES `session_tags` at the
- * version that taught the route the field; older cores keep the exact body
- * they shipped with (`desktop-contract.ts` drops `undefined`).
+ * therefore travels only when the backend advertises its own
+ * `session_tags_auto_tag` key; older cores keep the exact body they shipped
+ * with (`desktop-contract.ts` drops `undefined`).
  *
- * WHY THE TAG SUBSYSTEM'S OWN KEY AND NOT A NEW ONE. The core's feature-map
- * rule (`local_operator/server/features.py`) is that a key exists so an
- * EXISTING surface keeps working against a backend that lacks the new
- * widget; here the existing surface is tags themselves, which keep their
- * `session_tags >= 1` gate, and a bump to 2 is what lets this client ASK
- * whether the fork route understands the field before sending it. Nothing is
- * withheld from a v1 backend: its tag UI is unchanged, only this row and this
- * body field are absent. See `docs/design/sidebar-tags-v2.md` §5.4 and
- * `docs/design/sidebar-tags-flows.md` §9.3.
+ * WHY THE AUTO-TAG HALF HAS ITS OWN KEY. `session_tags: 1` is the durable tag
+ * store every tag surface reads; `session_tags_auto_tag: 1` is the fork field
+ * and the naming contract behind it. The core keeps them separate because a
+ * daemon with the catalogue and without auto-tagging must keep its whole tag
+ * UI, and because a client has to ask a narrower question than "are tags
+ * here?" before it sends a key an older `Fork` model would refuse. Bumping
+ * `session_tags` could only answer that by also hiding a working catalogue.
+ * See `docs/design/sidebar-tags-v2.md` §5.4 and the core's
+ * `local_operator/server/features.py`.
  */
 
 import type { DesktopCapabilities } from "@shared/api/local-operator/desktop-api";
@@ -32,14 +32,12 @@ import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks"
 import type { SidebarView } from "./chat-sidebar-view";
 
 /**
- * The `session_tags` version whose fork body carries `auto_tag`.
+ * The `session_tags_auto_tag` version that introduced the fork field.
  *
- * Version 1 is the durable tag store every shipped client reads; version 2
- * adds the optional fork field on the same routes. A backend on 1 is a working
- * tags backend for every other surface, so readers must keep asking for 1
- * there and ask for 2 only here.
+ * Version 1 is the first and only shape of this key; naming it here keeps the
+ * floor visible beside the predicate rather than as a bare `1` inside it.
  */
-export const AUTO_TAG_MINIMUM_VERSION = 2;
+export const AUTO_TAG_MINIMUM_VERSION = 1;
 
 /** Whether this backend can honour (and will accept) the fork's `auto_tag`. */
 export function autoTagSupported(
@@ -47,7 +45,7 @@ export function autoTagSupported(
 ): boolean {
 	return desktopFeatureEnabled(
 		capabilities,
-		"session_tags",
+		"session_tags_auto_tag",
 		AUTO_TAG_MINIMUM_VERSION,
 	);
 }
