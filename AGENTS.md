@@ -143,11 +143,15 @@ Read `docs/I18N.md` for the contributor HOWTO and audit-evidence contract.
 - **Commands/gate:** `pnpm check-i18n` runs generator freshness (`--check`) plus
   `scripts/i18n/check-strings.mjs`; `pnpm check-types` checks typed call sites.
   The scanner ratchets literal JSX text and copy attributes against
-  `i18n/baseline.json`: only its `enforced` prefixes block, other areas remain
-  advisory. Lower ceilings with `node scripts/i18n/check-strings.mjs --update
-  <paths>` when extracting copy; exemptions in `i18n/allowlist.json` or
-  `i18n: ignore` comments require a reason. It does not yet scan every string
-  expression. No locale-management CLI is defined in this UI repo; these are
+  `i18n/baseline.json`, and every finding blocks: there is no advisory scope.
+  A file with counted literals and no recorded entry fails rather than starting
+  at zero, so a new file is covered from its first commit — capture it with a
+  reviewed `node scripts/i18n/check-strings.mjs --init --force`, whose
+  added/raised/pruned summary is the baseline diff a reviewer reads. Lower
+  ceilings with `node scripts/i18n/check-strings.mjs --update <paths>` when
+  extracting copy; the only exemptions are `i18n/allowlist.json` entries and
+  `i18n: ignore` comments, both of which require a reason. It does not yet scan
+  every string expression. No locale-management CLI is defined in this UI repo; these are
   its existing developer commands, not a client-side language-setting command.
 
 ## Useful Commands
