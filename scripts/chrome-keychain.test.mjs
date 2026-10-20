@@ -565,6 +565,12 @@ const CHROME_LAUNCH_SITES = [
 		1,
 		"runs the supplement mount's escape attempts - script execution, parent/top DOM, cookies, storage, bridge, navigation, popup, form, download, blob self-nav, clipboard, fullscreen, fetch/xhr/beacon/websocket/img/import/file - against the app's own sandbox from one private headless Chrome, its target server and profile its own and everything reaped by exact pid",
 	),
+	guarded(
+		"docs/evidence/library-tab/harness/measure-claims.mjs",
+		"spawn",
+		1,
+		"measures the Library preview states' claims from the live DOM - each case navigating the real Storybook story, waiting for its hook and driving the gesture through CDP pointer and key events - one private headless Chrome for the whole run, its profile under the system temp dir and its process group reaped by exact pid (registered by this PR's review remediation: an unlisted launch site fails Desktop Tests)",
+	),
 ];
 
 const key = (row) => `${row.file}#${row.name}#${row.index}`;

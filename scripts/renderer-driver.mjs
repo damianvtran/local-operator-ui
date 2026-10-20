@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -268,6 +268,7 @@ import {
 	IMAGEGEN_CALL_FOLD,
 	IMAGEGEN_FIXTURE_SESSION,
 } from "./imagegen-card-fixture.mjs";
+import { sceneLibraryAsset } from "./library-asset-scene.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 /*
  * Every python this harness starts is handed an environment it has decided about,
@@ -32815,29 +32816,19 @@ async function scenePaletteRecents(cdp) {
  * QA round 2 ran). That is a statement about the harness, not a defect in this
  * scene, and it is the honest answer while the key does not exist.
  *
- * AND THE ORIGIN IT HAS TO BE SERVED FROM, which is a requirement of its own and
- * cost a QA round its whole diagnosis (QA round 3, Q-6). `src/renderer/index.html`
- * pins the page's `connect-src` to `1111` and `8080` plus three vendor origins and
- * nothing computes it at runtime (`grep -rn "connect-src" src/main src/preload` is
- * empty), so a `--backend` rig on any OTHER loopback port is refused by the page
- * itself: the app's log says
- * `Connecting to 'http://127.0.0.1:<port>/v1/credentials' violates the following
- * Content Security Policy`, the chat route never gets a pane, and this scene throws
- * its composer refusal while the daemon behind the proxy is up and answering —
- * which reads as the wrong cause. ONLY THE SCENE needs this: the picker and the
- * chip are served over main-process IPC, which no CSP touches (measured — QA's
- * round-3 rows were green at 8080 and the port was the only difference). So run the
- * proxy on an allowed port (8080 is what QA used for the green run) and build the
- * renderer with `VITE_LOCAL_OPERATOR_API_URL` set to that same URL.
- *
- * THAT PORT CLAIM IS NOT WHAT GENERALISES, and it is corrected here rather than left as advice a
- * reader would act on. The app's transport is MAIN's - the renderer's `apiBaseUrl` is read over IPC
- * and never fetched - and the driver widens `frame-src`/`media-src` in the gitignored build output,
- * so a rig on a port the policy does not name is reachable. MEASURED 2026-09-27: `--scene
- * session-archive` reads 69 PASS / 0 FAIL at `127.0.0.1:8123`, and the port was the only difference
- * between the two runs of this scene above. What the CSP line quoted here records is a PAGE-side
- * fetch of `/v1/credentials`, so it is a signal to check WHICH surface was refused rather than
- * proof that the port must be allowlisted: read the message beside it before moving the rig. Two
+ * AND THE PORT IT IS SERVED FROM (QA round 3, Q-6), stated as the measurement
+ * rather than as a rule about which ports are allowed. `src/renderer/index.html`
+ * pins the page's `connect-src` to `1111` and `8080` plus three vendor origins,
+ * and nothing computes it at runtime, so a PAGE-side fetch to another loopback
+ * port is refused (`Connecting to 'http://127.0.0.1:<port>/v1/credentials'
+ * violates the following Content Security Policy`) - a signal to check WHICH
+ * surface was refused, not proof that the port must be allowlisted. The app's
+ * transport is MAIN's (the renderer's `apiBaseUrl` is read over IPC and never
+ * fetched) and the driver widens `frame-src`/`media-src` in the gitignored build
+ * output, so a rig on any free loopback port is reachable: MEASURED 2026-09-27,
+ * `--scene session-archive` reads 69 PASS / 0 FAIL at `127.0.0.1:8123`, a port
+ * the policy does not name. Build the renderer with
+ * `VITE_LOCAL_OPERATOR_API_URL` set to the same URL either way. Two
  * further facts this pass cost, for the next reader: a `-c`-cloned `node_modules` needs
  * `node_modules/@babel/plugin-transform-arrow-functions` linked out of `.pnpm/node_modules` or
  * `electron-vite build` dies in its bytecode step, and `pnpm run <script>` in such a tree starts a
@@ -49409,6 +49400,16 @@ async function main() {
 				await sceneSettingsIntegrations(cdp);
 			else if (SCENE === "route-tops") await sceneRouteTops(cdp);
 			else if (SCENE === "project-detail") await sceneProjectDetail(cdp);
+			else if (SCENE === "library-asset")
+				await sceneLibraryAsset({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					waitForCondition,
+					factsOf,
+				});
 			else if (SCENE === "project-update-assets")
 				await sceneProjectUpdateAssets(cdp);
 			else if (SCENE === "project-open") await sceneProjectOpen(cdp);
