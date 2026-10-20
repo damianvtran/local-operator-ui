@@ -1,0 +1,154 @@
+/**
+ * @file envelope-render.ts
+ * @description The ONE renderer for backend-originated `{code, params, text}`
+ * envelopes, per `docs/design/backend-originated-strings.md` §2, §3 and §6.
+ *
+ * WHY THIS EXISTS. The backend has emitted the structured envelope for a while;
+ * this renderer read its `text` verbatim at two adapters (`desktopResult` and
+ * `publicationProse`) and never consulted the catalogue. That made every
+ * translation added to a `wire.*` identity inert on this surface, and it made
+ * the client unable to tell the three states §6 defines. The rule is small and
+ * deliberately not negotiable:
+ *
+ * 1. A KNOWN identity renders from the catalogue with `params` substituted —
+ *    EVEN WHEN `text` is present. Preferring `text` would reproduce the exact
+ *    defect inside its own fix, and would also mean a language switch could
+ *    never re-render a message the server had already resolved.
+ * 2. An UNKNOWN identity (a backend newer than this app) falls back to the
+ *    envelope's own `text`/`message`. That sentence is the compatibility
+ *    guarantee an older client runs on.
+ * 3. A KNOWN identity whose params are malformed or missing produces the
+ *    client's own generic error plus the identity for diagnostics. It does NOT
+ *    fall back to `text`: the server's English sentence would make a genuine
+ *    integration failure (a key/value mismatch across versions) look like a
+ *    normal message, which is the failure §6 says must stay visible.
+ *
+ * WHAT IT MUST NEVER DO: change machine behaviour. The renderer returns a
+ * sentence; every caller keeps its status, refusal code, retryability and
+ * payload untouched. §6's last paragraph is binding — "No localization failure
+ * may change HTTP status, approval outcome, retry policy, exit or job state."
+ *
+ * IDENTITY SELECTION. `message_code ?? code` (§3): `message_code` is the
+ * optional render identity a producer adds when `code` had to carry a machine
+ * category (`runtime_busy`) instead of a catalogue key. Reading it here is the
+ * client half of the contract; PRODUCING it is a separate core change, so no
+ * code in this repository adds it.
+ */
+
+import { currentLocale, renderMessage, translate } from "@shared/i18n";
+
+/** Where the sentence a reader sees came from. Read by tests and diagnostics. */
+export type EnvelopeSink = "catalogue" | "wire-text" | "generic";
+
+export type RenderedEnvelope = {
+	/** The sentence to display — never a raw key and never a placeholder. */
+	text: string;
+	/** Which rule in the module docblock produced `text`. */
+	via: EnvelopeSink;
+	/** The identity that was tried, when the payload carried one. Diagnostics. */
+	identity?: string;
+	/** Why the generic error replaced a known identity. */
+	diagnostic?: "malformed-params";
+};
+
+/**
+ * The generic error shown when a KNOWN identity cannot be formatted.
+ *
+ * Reuses the client's existing calm failure statement rather than adding copy:
+ * this branch means "the backend and this app disagree about a message", not
+ * "the operation failed", and inventing a second sentence here would make that
+ * distinction read as two different severities. The identity travels beside it
+ * in `RenderedEnvelope.identity` for diagnostics; §6 forbids displaying the raw
+ * key when any prose exists, so it is not appended to the sentence.
+ */
+const GENERIC_MESSAGE = "ui.common.errors.error_boundary.something_went_wrong";
+
+function objectDetail(detail: unknown): Record<string, unknown> | null {
+	if (typeof detail !== "object" || detail === null || Array.isArray(detail))
+		return null;
+	return detail as Record<string, unknown>;
+}
+
+/** A non-blank string, or `null`. */
+function sentence(value: unknown): string | null {
+	return typeof value === "string" && value.trim() !== "" ? value : null;
+}
+
+/**
+ * `params` as the named-scalar record ICU expects.
+ *
+ * Anything that is not a plain object is an empty record, so a missing or
+ * corrupt `params` reaches the formatter as "no arguments": a message that
+ * needs one then throws, which is the malformed branch. `renderMessage` rejects
+ * non-scalar VALUES (an object param would otherwise paint `[object Object]`).
+ */
+function paramsOf(value: unknown): Record<string, unknown> {
+	const object = objectDetail(value);
+	return object ?? {};
+}
+
+/**
+ * Render one envelope's human sentence, or `null` when the payload carries
+ * neither a usable identity nor any usable text.
+ *
+ * `null` is deliberate and means "nothing here to show": the two adapters each
+ * own a different, already-established fallback for that state
+ * (`DESKTOP_REFUSAL_PLACEHOLDER`, the publication generic, a bare `detail`
+ * string), and reproducing those here would give the app two authorities for
+ * the same fact (§6's last row: "existing client-owned generic error/status").
+ *
+ * The locale is resolved at CALL time: an envelope is rendered where it is
+ * consumed, so a language switch takes effect for the next refusal without the
+ * producer ever re-sending anything.
+ */
+export function renderEnvelopeDetail(
+	detail: unknown,
+	locale: string = currentLocale(),
+): RenderedEnvelope | null {
+	/*
+	 * Three detail shapes have crossed this wire (see `desktopResult`): a bare
+	 * string (oldest), `{message}` (older object), and the i18n envelope
+	 * `{code, params, text}` (RFC §2.6). Only the object shapes can carry an
+	 * identity; a bare string is always wire text.
+	 */
+	const object = objectDetail(detail);
+	const wireText =
+		sentence(object?.text) ?? sentence(object?.message) ?? sentence(detail);
+	const identity = sentence(object?.message_code) ?? sentence(object?.code);
+	if (!identity) {
+		return wireText ? { text: wireText, via: "wire-text" } : null;
+	}
+
+	const rendered = renderMessage(identity, paramsOf(object?.params), locale);
+	if (rendered.status === "rendered") {
+		return { text: rendered.text, via: "catalogue", identity };
+	}
+	if (rendered.status === "unknown") {
+		/*
+		 * A newer backend's identity. Its own `text` is the compatibility lane;
+		 * when it supplied none there is nothing to show and the caller's
+		 * existing generic/status fallback takes over.
+		 */
+		return wireText
+			? { text: wireText, via: "wire-text", identity }
+			: { text: genericMessage(locale), via: "generic", identity };
+	}
+	/*
+	 * Known identity, unrenderable params. The diagnostic is emitted rather
+	 * than the English fallback so the mismatch is not silently hidden (§6).
+	 * It is a catalogue key, never user data, so it is safe to log.
+	 */
+	console.warn(
+		`[i18n] envelope identity "${identity}" could not be formatted; showing the client's generic error.`,
+	);
+	return {
+		text: genericMessage(locale),
+		via: "generic",
+		identity,
+		diagnostic: "malformed-params",
+	};
+}
+
+function genericMessage(locale: string): string {
+	return translate(GENERIC_MESSAGE, {}, locale);
+}

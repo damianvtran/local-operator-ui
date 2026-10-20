@@ -27,6 +27,7 @@ import {
 	parseDelegatedCleanupNotice,
 	useDelegatedCleanupNoticeStore,
 } from "../../store/delegated-cleanup-notice-store";
+import { renderEnvelopeDetail } from "./envelope-render";
 
 export type {
 	AuthOperation,
@@ -376,24 +377,19 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 	} | null;
 	if (response.status < 200 || response.status >= 300) {
 		/*
-		 * The sentence a user reads, from whichever shape the answering server wrote
-		 * it in. Three have crossed this wire: a bare string (the oldest), an object
-		 * with `message` (the refusal bodies that followed), and the core's i18n
-		 * envelope `{code, params, text}` (RFC §2.6) - whose `text` is exactly the
-		 * sentence string-only readers display, so a settings load, save or reset
-		 * refused by a newer server would otherwise fall to the placeholder below
-		 * instead of the server's own words. For an object, `text` is read before
-		 * `message`: a body carrying both is the newer contract, and the envelope's
-		 * `code` already reaches the error through `desktopErrorMessageCode`.
+		 * The sentence a user reads, through the ONE envelope renderer
+		 * (`./envelope-render`): a known catalogue identity renders with its params
+		 * in the active locale, an identity this runtime does not know falls back to
+		 * the server's own `text`/`message`, and a known identity with unusable
+		 * params becomes the client's generic error rather than the English wire
+		 * text (design §6). The previous ladder read `text` verbatim at the top,
+		 * which made every translation of a `wire.*` identity inert here.
+		 *
+		 * Only the SENTENCE comes from the renderer. The status, the refusal code,
+		 * `retry_after_ms` and the raw `detail` below are read from the body exactly
+		 * as before: no localization outcome may change machine behaviour.
 		 */
-		const detail =
-			typeof envelope?.detail === "string"
-				? envelope.detail
-				: typeof envelope?.detail?.text === "string"
-					? envelope.detail.text
-					: typeof envelope?.detail?.message === "string"
-						? envelope.detail.message
-						: null;
+		const detail = renderEnvelopeDetail(envelope?.detail)?.text ?? null;
 		throw new DesktopControlError(
 			response.status,
 			/*

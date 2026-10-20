@@ -128,20 +128,64 @@ function formatterFor(locale: string, message: string): IntlMessageFormat {
 }
 
 /**
- * Render `key` in `locale` (default: the active locale).
+ * The outcome of one catalogue render, with the two failures KEPT APART.
  *
- * The two degradations named in the module docstring both land on the key:
- * a message missing from every catalogue, and a message that fails to format
- * (a malformed served catalogue — the build-time checks are where that is
- * caught).
+ * `translate()`'s degradation rule (below) is right for a screen that has
+ * nothing else to show: an absent or broken message reads as its key. A
+ * backend-originated envelope cannot use that collapse. The design
+ * (`docs/design/backend-originated-strings.md` §6, "Failure and compatibility
+ * contract") distinguishes the two on purpose:
+ *
+ * - `unknown` — an identity this runtime has never heard of (a newer backend).
+ *   The caller falls back to the envelope's own `text`, which is the sentence
+ *   an older client is guaranteed to receive.
+ * - `malformed` — the identity IS known and its own message could not be
+ *   formatted (missing/ill-typed params, a catalogue entry that is not plain
+ *   text). §6 requires a client-owned generic error and an identity diagnostic
+ *   here, NOT the English wire text: silently showing the fallback sentence
+ *   would hide a real integration failure behind copy that looks normal.
+ *
+ * Encoding both as "returns the key" is what made the distinction unavailable
+ * to the consuming adapter, so it is encoded here once rather than guessed
+ * from a string comparison at the call site.
  */
-export function translate(
+export type MessageRender =
+	| { status: "rendered"; text: string }
+	| { status: "unknown" }
+	| { status: "malformed" };
+
+/**
+ * Whether ICU can receive this parameter value at all.
+ *
+ * Named JSON scalars are the transport contract (§3: "Params should remain
+ * named JSON scalar values for ICU"). `IntlMessageFormat` does not throw on an
+ * object — it strings it into the sentence — so without this guard a corrupt
+ * envelope would paint `[object Object]` (or a list) where a word belongs. A
+ * `null` is accepted: it is a JSON scalar and formats as an empty value.
+ */
+function isFormatParam(value: unknown): boolean {
+	return (
+		value === null ||
+		typeof value === "string" ||
+		typeof value === "boolean" ||
+		(typeof value === "number" && Number.isFinite(value))
+	);
+}
+
+/**
+ * Render `key` in `locale` (default: the active locale), reporting WHY a
+ * render did not happen. See `MessageRender` for the two distinct failures.
+ */
+export function renderMessage(
 	key: string,
 	params: Record<string, unknown> = {},
 	locale: string = currentLocale(),
-): string {
+): MessageRender {
 	const message = messageFor(key, locale);
-	if (message === undefined) return key;
+	if (message === undefined) return { status: "unknown" };
+	for (const value of Object.values(params)) {
+		if (!isFormatParam(value)) return { status: "malformed" };
+	}
 	/*
 	 * Format with the tag that actually ANSWERED (see `sourceTagFor`): a French
 	 * message formats as `fr`, an English fallback as `en`. Falling back on the
@@ -150,10 +194,40 @@ export function translate(
 	const tag = sourceTagFor(key, locale);
 	try {
 		const rendered = formatterFor(tag, message).format(params);
-		return typeof rendered === "string" ? rendered : String(rendered);
+		/*
+		 * Only a plain string is product copy. A rich-text message returns an
+		 * array of parts that a text sink cannot paint; treating it as malformed
+		 * routes it down the diagnostic path instead of `String(...)`-ing tags
+		 * into the sentence.
+		 */
+		return typeof rendered === "string"
+			? { status: "rendered", text: rendered }
+			: { status: "malformed" };
 	} catch {
-		return key;
+		/*
+		 * Missing ICU arguments throw (measured with intl-messageformat 12: a
+		 * message with `{model}` and `params: {}` raises). See `MessageRender`
+		 * for why that is not `unknown`.
+		 */
+		return { status: "malformed" };
 	}
+}
+
+/**
+ * Render `key` in `locale` (default: the active locale).
+ *
+ * The two degradations named in the module docstring both land on the key:
+ * a message missing from every catalogue, and a message that fails to format
+ * (a malformed served catalogue — the build-time checks are where that is
+ * caught). Sites that must TELL those apart use `renderMessage`.
+ */
+export function translate(
+	key: string,
+	params: Record<string, unknown> = {},
+	locale: string = currentLocale(),
+): string {
+	const rendered = renderMessage(key, params, locale);
+	return rendered.status === "rendered" ? rendered.text : key;
 }
 
 // The two-overload declaration — RFC §2.4's proven shape; see the docstring.
