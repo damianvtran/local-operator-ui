@@ -23,6 +23,7 @@
 import type {
 	TeamBridgeConversation,
 	TeamBridgeUnread,
+	TeamBridgeUnreadOrganization,
 } from "../../../../shared/team-bridge-contract";
 import {
 	type TeamBridgeOrganization,
@@ -33,6 +34,33 @@ import {
 
 /** The watcher's cadence. One number, so the hook and the tests agree. */
 export const TEAM_BRIDGE_NOTIFY_POLL_MS = 30_000;
+
+/**
+ * How many organizations one poll may fan out to.
+ *
+ * The account unread answer is the org DISCOVERY read and deliberately carries
+ * no conversation rows; the rows come from one tenant-scoped read per org. A
+ * pathological membership list must not turn a 30 s timer into an unbounded
+ * fan-out, so the poll takes the loudest organizations up to this bound. An
+ * org outside the bound is not skipped permanently: next poll it can enter the
+ * top slice if its count grows.
+ */
+export const TEAM_BRIDGE_NOTIFY_MAX_ORGS = 10;
+
+/**
+ * One tenant-scoped unread row, tagged with the organization it was read in.
+ *
+ * The wire row carries no tenant id (the read scope names it), and a
+ * conversation belongs to exactly one organization, so the tag is the read's
+ * own scope rather than a field the server might omit.
+ */
+export type TeamBridgeNotifyUnreadRow = {
+	conversation_id: string;
+	tenant_id: string;
+	unread_count: number;
+	last_read_seq: number;
+	latest_seq: number;
+};
 
 /**
  * One banner the renderer is asking main to raise.
@@ -51,6 +79,29 @@ export type TeamBridgeNotifyCandidate = {
 	organizationName: string | null;
 	senderLabel: string | null;
 };
+
+/**
+ * The organizations one poll should read tenant-scoped unread for.
+ *
+ * The account answer is the ONLY org discovery source (the UI never invents a
+ * membership list), and only an organization that reports unread can produce a
+ * banner row. Selection is deterministic: loudest first, tenant id breaking
+ * ties, bounded by `TEAM_BRIDGE_NOTIFY_MAX_ORGS`.
+ *
+ * An org with `unread: 0` is deliberately not queried: there can be no row to
+ * notify about, and the next poll re-evaluates it when its total moves.
+ */
+export function teamBridgeNotifyOrganizations(
+	unread: TeamBridgeUnread | undefined,
+	max = TEAM_BRIDGE_NOTIFY_MAX_ORGS,
+): TeamBridgeUnreadOrganization[] {
+	return [...(unread?.organizations ?? [])]
+		.filter((organization) => organization.eligible && organization.unread > 0)
+		.sort(
+			(a, b) => b.unread - a.unread || a.tenant_id.localeCompare(b.tenant_id),
+		)
+		.slice(0, max);
+}
 
 /**
  * Whether the signed-in human is an active member of this conversation.
@@ -140,11 +191,15 @@ export type TeamBridgeNotifyPlan = {
 
 export type TeamBridgeNotifyPlanInput = {
 	conversations: readonly TeamBridgeConversation[];
-	unread: TeamBridgeUnread | undefined;
+	/**
+	 * The tenant-scoped unread rows for ONE organization. The watcher calls this
+	 * once per organization because the account read cannot answer with rows.
+	 */
+	rows: readonly TeamBridgeNotifyUnreadRow[];
 	organizations: readonly TeamBridgeOrganization[];
 	selfAccountId: string | undefined;
 	cursors: TeamBridgeNotifyCursors;
-	/** False until one complete unread + conversation answer has been seen. */
+	/** False until this organization's first unread answer has been seen. */
 	seeded: boolean;
 	/**
 	 * The app window is focused. Quiet when active: the badge and rail still
@@ -165,7 +220,7 @@ export function planTeamBridgeNotifications(
 	input: TeamBridgeNotifyPlanInput,
 ): TeamBridgeNotifyPlan {
 	const cursors = new Map(input.cursors);
-	const rows = input.unread?.conversations ?? [];
+	const rows = input.rows;
 	const firstAnswer = !input.seeded;
 
 	if (firstAnswer) {
@@ -211,7 +266,10 @@ export function planTeamBridgeNotifications(
 
 		candidates.push({
 			conversationId: conversation.id,
-			tenantId: conversation.tenant_id,
+			// The org the unread row was READ in, not a second derivation from the
+			// list row: the click must land in the organization whose unread the
+			// watcher actually saw.
+			tenantId: row.tenant_id,
 			seq: row.latest_seq,
 			...teamBridgeNotificationSubject(
 				conversation,
