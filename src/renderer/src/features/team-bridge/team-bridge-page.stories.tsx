@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import type { CSSProperties } from "react";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import { ChatLayout } from "../../shared/components/common/chat-layout";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
@@ -455,4 +457,78 @@ export const EmptyAllOrganizations: Story = {
 		messages: [],
 		messageState: "idle",
 	},
+};
+
+/**
+ * The page in the real shell, with the chrome lane as an overlay.
+ *
+ * This is the shape the operator's screenshot is about: the panels start at
+ * y0 and the 32px traffic-light clearance is padding INSIDE them, not a band
+ * above them. `--chrome-strip-h` is set on the frame because Storybook has no
+ * native window chrome; the production value comes from the same property.
+ */
+export const FlushToTheWindowTop: Story = {
+	render: () => (
+		<div
+			className="relative flex h-screen flex-col overflow-hidden"
+			style={{ "--chrome-strip-h": "32px" } as CSSProperties}
+		>
+			<ChatLayout
+				flushTop
+				sidebar={<div className="h-full bg-surface" />}
+				content={
+					<main className="flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+						<TeamBridgePageView
+							listState="ready"
+							messageState="ready"
+							conversations={[channel, group, dm]}
+							selected={channel}
+							messages={messages}
+							organizations={[minervaOrganization, northwindOrganization]}
+							scope={asTeamBridgeTenantId("tnt_1")}
+							totalUnread={3}
+							selfAccountId={self}
+							onSelect={() => {}}
+							onSend={() => undefined}
+							onNewConversation={() => {}}
+							onScopeChange={() => {}}
+						/>
+					</main>
+				}
+			/>
+		</div>
+	),
+};
+
+/** The pre-fix shape, kept as the comparison frame: the lane reserves 32px and the page starts below it. */
+export const LaneReservedComparison: Story = {
+	render: () => (
+		<div
+			className="relative flex h-screen flex-col overflow-hidden"
+			style={{ "--chrome-strip-h": "32px" } as CSSProperties}
+		>
+			<ChatLayout
+				sidebar={<div className="h-full bg-surface" />}
+				content={
+					<main className="flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+						<TeamBridgePageView
+							listState="ready"
+							messageState="ready"
+							conversations={[channel, group, dm]}
+							selected={channel}
+							messages={messages}
+							organizations={[minervaOrganization, northwindOrganization]}
+							scope={asTeamBridgeTenantId("tnt_1")}
+							totalUnread={3}
+							selfAccountId={self}
+							onSelect={() => {}}
+							onSend={() => undefined}
+							onNewConversation={() => {}}
+							onScopeChange={() => {}}
+						/>
+					</main>
+				}
+			/>
+		</div>
+	),
 };
