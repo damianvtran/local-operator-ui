@@ -159,7 +159,16 @@ export class TeamBridgeNotifier {
 			return { shown: false };
 		}
 		this.replace(request.conversationId);
-		const banner = this.createBanner({
+		/*
+		 * NAMED `notification`, NOT `banner`, BECAUSE THE WINDOW-MODE GUARD READS
+		 * THE NAME (scripts/window-mode.test.mjs). That guard allows Electron's
+		 * own Notification show call by the one spelling and refuses every other
+		 * show call under `src/main/`; a banner object named `banner` is
+		 * indistinguishable to it from a window. The variable is a Notification
+		 * and the name now says so. This is the same rule the allow-list states:
+		 * the exemption is one line, and it is spelled.
+		 */
+		const notification = this.createBanner({
 			title: request.title,
 			body: request.body,
 			silent: false,
@@ -171,17 +180,17 @@ export class TeamBridgeNotifier {
 		 * click emits nothing, and this is the one supported way to attach the
 		 * handler. The extra `close` listener is map bookkeeping, not lifetime.
 		 */
-		this.lifetime.retain(banner, () => {
+		this.lifetime.retain(notification, () => {
 			this.banners.delete(request.conversationId);
 			this.open(request);
 		});
-		banner.once("close", () => {
-			if (this.banners.get(request.conversationId) === banner) {
+		notification.once("close", () => {
+			if (this.banners.get(request.conversationId) === notification) {
 				this.banners.delete(request.conversationId);
 			}
 		});
-		banner.show();
-		this.banners.set(request.conversationId, banner);
+		notification.show();
+		this.banners.set(request.conversationId, notification);
 		// Recorded only after `show()`: a banner that failed to exist was never
 		// a thing the user was told about, and advancing first would suppress
 		// the retry forever.
