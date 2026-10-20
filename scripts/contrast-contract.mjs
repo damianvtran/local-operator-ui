@@ -7652,6 +7652,41 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 			}
 		}
 	}
+	/*
+	 * THE ISOLATING BAND, which is the one band whose ground is MOVING.
+	 *
+	 * Every other band in the glass model sits on a STATIC ground - the pane's
+	 * own fill - so the published alpha is right for them and the rows above
+	 * cover it. A band that rows scroll UNDER has a ground that is whatever is
+	 * passing beneath it, and its alpha is therefore a CONTRACT: the count
+	 * beside the section label has to clear the 4.5 text floor against it,
+	 * whatever that content is.
+	 *
+	 * The contract asserts the floor's own claim, over EVERY palette and at
+	 * the WORST content colour (the extreme the scheme's ink contrasts
+	 * against: a white thumbnail under a dark band, a black one under a light
+	 * band), and it asserts the floor is not BELOW what the palettes need -
+	 * the same "re-derive, never hand-lower it" rule the alpha floors carry.
+	 */
+	for (const { id, palette } of palettes) {
+		const scheme = glassSchemeOf(palette);
+		const floor = committed.bandFloor?.[scheme];
+		if (floor === undefined) {
+			fail(`${id}: the isolating band's alpha floor is missing for ${scheme}`);
+			continue;
+		}
+		const backdrop = scheme === "dark" ? "#ffffff" : "#000000";
+		const band = glassComposite(palette.elevated, floor, backdrop);
+		for (const ink of GLASS_INKS) {
+			assertions++;
+			const needed = ink === "inkDim" ? GLASS_STATE_DIM_FLOOR : GLASS_INK_FLOOR;
+			const r = glassRatio(palette[ink], band);
+			if (r < needed)
+				fail(
+					`${id}: the isolating band (${scheme}) ${ink} on the band is ${r2(r)}:1, floor ${needed}`,
+				);
+		}
+	}
 	console.log(
 		`Window glass round 2: tightest block veil ΔE00 off canvas glass - dark ${r2(veilMin.dark)}, light ${r2(veilMin.light)}; work row step ${r2(workMin.step)}; chrome inks ${r2(chromeMin.ink)}/${r2(chromeMin.inkMuted)}/${r2(chromeMin.inkDim)}, tab step ${r2(chromeMin.tabStep)}.`,
 	);
