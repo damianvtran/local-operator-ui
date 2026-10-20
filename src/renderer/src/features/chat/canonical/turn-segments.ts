@@ -571,30 +571,38 @@ export type RunPartition = {
  *   admit it (`labelOfSegment`); the surveyed harnesses all keep the reader's own
  *   message in place, and the cost is measured (11.6 % of runs gain one bar);
  * - V4, a settled row the provider declared finished (`reportsCompletedThought`);
- * - V5, a FINAL RESPONSE (`isFinalResponse`): settled, paints text, and carries no
- *   `tool_calls` of its own. This is the operator's rule rather than the phase's
- *   (2026-10-20): a row that hands something to the reader must keep its bar even
- *   when the harness continued past it, because that is exactly the shape the
- *   todo guardrail manufactures - "stop-then-more-work" - and the reader was
- *   being shown the later tool run with the earlier handover folded away.
+ * - V5, a FINAL RESPONSE (`isFinalResponse`) INSIDE A RESPONSE CYCLE: settled,
+ *   paints text, and carries no `tool_calls` of its own. This is the operator's
+ *   rule rather than the phase's (2026-10-20): a row that hands something to the
+ *   reader must keep its bar even when the harness continued past it, because
+ *   that is exactly the shape the todo guardrail manufactures -
+ *   "stop-then-more-work" - and the reader was being shown the later tool run
+ *   with the earlier handover folded away. THE CYCLE CLASS IS THE SECOND HALF
+ *   (round 3): a handover in a cycle that is ANSWERING something is the bar case,
+ *   while a COMMENTARY cycle's close is post-terminal chatter - pinning it made
+ *   a narration-only tail unfold. V2 still keeps the run's LAST close, so the one
+ *   commentary close that ends the run stays on screen.
  *
  * WHAT THE FIVE CLAUSES DO NOT COVER (the falsifier agent review round 1 on PR
  * #737 produced, and it was real): a COMMENTARY close that is neither the run's
  * last close (V2) nor `stop`-declared (V4), with no call after it, still hid -
  * e.g. `[N0][W][K][N3][N4]`, where `n3` is commentary and the row after it is
  * another assistant row, not a call. Incidence on this machine's journals: exactly
- * 1 row in the frozen 15,130-run corpus. V5 CLOSES THAT RESIDUAL, because that row
- * carries no `tool_calls` and is therefore a final response by the wire's own
- * reading - so the clause that would cover it is not "any commentary close,
- * visible" (which would un-hide the ambient chatter V1/V2 were shaped to fold) but
- * "any handover, visible".
+ * 1 row in the frozen 15,130-run corpus. V5 CLOSES THAT RESIDUAL in the shape it
+ * was measured in, because that row carries no `tool_calls`, is therefore a final
+ * response by the wire's own reading, and sits in a cycle the wake/receipt
+ * inherited as a RESPONSE cycle - so the clause that would cover it is not "any
+ * commentary close, visible" (which would un-hide the ambient chatter V1/V2 were
+ * shaped to fold) but "any handover in a response cycle, visible".
  *
  * WHAT V5 ADDS TO THE VISIBLE SET, measured on the same frozen corpus rather than
  * assumed: rows that are settled, paint text, carry no calls, and declare
  * something other than `stop` - exactly 1 `toolUse` row (the residual above),
  * 0 rows with no stop reason, and at most 285 `aborted`/`length` rows - so at most
- * 286 of 254,999 prose rows (0.11 %). Every one of them is a final response by the
- * rule. The rows the condensation exists to fold are untouched: 233,783 `toolUse`
+ * 286 of 254,999 prose rows (0.11 %), and V5's cycle scope narrows that further -
+ * a commentary-cycle close is no longer pinned, so the frozen figure is an UPPER
+ * BOUND for the scoped clause rather than a re-measured count. Every row the
+ * clause still adds is a final response by the rule. The rows the condensation exists to fold are untouched: 233,783 `toolUse`
  * rows carry their own `tool_calls`, and the 4 `stop` rows that carry calls were
  * ALREADY visible under V4 - V5 neither adds nor removes them.
  *
@@ -690,6 +698,49 @@ export function partitionRun(
 			visible.add(last.closeIndex);
 		}
 	}
+	const responseCycleRows = new Set<number>();
+	/*
+	 * V5 IS SCOPED TO A RESPONSE CYCLE (review round 3, finding 2). A handover in a
+	 * cycle that is ANSWERING something (the request, a job, a hub relay, a monitor
+	 * prompt) is the operator's bar case. A COMMENTARY cycle's close is a different
+	 * fact - post-terminal chatter - and pinning it made a narration-only tail
+	 * unfold (measured: `turn-collapse-model.test.mjs`'s post-terminal wake shape).
+	 * V2 still keeps the run's LAST close, so a commentary close that ends the run
+	 * stays on screen; only one that would otherwise fold does.
+	 *
+	 * A ROW IS A MEMBER OF THE CYCLE THAT CONTAINS IT, on its index range: every
+	 * emitted response cycle contributes `start..closeIndex`, and the OPEN TAIL
+	 * (rows after the last close, plus a run with no close at all) is covered
+	 * separately below. An anchor on `closeIndex` alone is not enough - a row that
+	 * is still being written has no close yet, and F5's monotonicity invariant
+	 * caught it (`U F T T F T A`: the row left the set when a step demoted it from
+	 * close to narration, before the cycle that owns it had a close).
+	 */
+	for (const cycle of cycles) {
+		if (cycle.class !== "response") continue;
+		for (let i = cycle.start; i <= cycle.closeIndex; i += 1) {
+			responseCycleRows.add(i);
+		}
+	}
+	/*
+	 * THE OPEN TAIL belongs to the cycle that will own it, and an unfinished cycle
+	 * has stated no close yet. `cyclesOf` only emits a cycle at a close, so two
+	 * shapes would otherwise lose their pin mid-stream: a run with no close at all
+	 * (its FIRST cycle is a response by `cyclesOf`'s head rule) and the rows after
+	 * the last response cycle's close, which are the cycle currently being written.
+	 * Both are covered here so a live handover does not vanish when the next call
+	 * arrives and reappear when its turn closes.
+	 */
+	const last = cycles.at(-1);
+	const openTailFrom =
+		last === undefined
+			? 1
+			: last.class === "response"
+				? last.closeIndex + 1
+				: records.length;
+	for (let i = openTailFrom; i < records.length; i += 1) {
+		responseCycleRows.add(i);
+	}
 	records.forEach((record, index) => {
 		if (index < options.from) return;
 		if (record.kind === "user") visible.add(index);
@@ -698,11 +749,12 @@ export function partitionRun(
 			/*
 			 * BOTH HALVES: V4 keeps the stop-declared lead-in rows the shape test
 			 * cannot see (they carry calls), and V5 keeps every handover the phase
-			 * declaration is missing (see the doc's measured deltas). Written as an
-			 * OR rather than folded into one predicate so neither clause can lose
-			 * the population the other exists for.
+			 * declaration is missing - but only inside a RESPONSE cycle (see above).
+			 * Written as an OR rather than folded into one predicate so neither
+			 * clause can lose the population the other exists for.
 			 */
-			(reportsCompletedThought(record) || isFinalResponse(record))
+			(reportsCompletedThought(record) ||
+				(isFinalResponse(record) && responseCycleRows.has(index)))
 		) {
 			visible.add(index);
 		}
