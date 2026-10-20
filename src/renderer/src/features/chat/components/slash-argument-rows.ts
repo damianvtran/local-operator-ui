@@ -1443,3 +1443,30 @@ export function appliedFirstTagIds(
 		.sort((a, b) => Number(held.has(b.id)) - Number(held.has(a.id)))
 		.map((tag) => tag.id);
 }
+
+/** A frozen order and the registry/session signature it was derived under. */
+export type FrozenTagOrder = { signature: string; order: string[] };
+
+/**
+ * Freeze the applied-first order for one registry and conversation.
+ *
+ * WHY A CONTENT SIGNATURE. Every successful assignment refetches the registry,
+ * and `fetchCategories` installs a FRESH ARRAY even when the content is
+ * identical. Keying the order on that array identity re-partitions the list one
+ * store round-trip after the user's own Enter, so the marker moves and the next
+ * Enter toggles a tag the user was not on (review round 1, F1). The signature is
+ * therefore the conversation plus the registry's ids in registry order: a
+ * refetch of unchanged content keeps the previous order, while a genuinely
+ * different registry (a tag created, deleted or reordered) or another
+ * conversation re-partitions.
+ */
+export function freezeTagOrder(
+	previous: FrozenTagOrder | null,
+	sessionId: string,
+	categories: readonly TagCategory[],
+	selected: readonly string[],
+): FrozenTagOrder {
+	const signature = `${sessionId}\u0000${categories.map((tag) => tag.id).join("\u0000")}`;
+	if (previous !== null && previous.signature === signature) return previous;
+	return { signature, order: appliedFirstTagIds(categories, selected) };
+}

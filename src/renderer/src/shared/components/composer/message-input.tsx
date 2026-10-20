@@ -4547,6 +4547,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * and nothing has been toggled by the Enter that opened it.
 					 */
 					if (spec?.destination === "session.tags") {
+						/*
+						 * `reopen()` runs in BOTH branches. A bare `/tag ` after Escape
+						 * rewrites the draft to the same bytes, so `setNewMessage` bails, the
+						 * phase key is unchanged and the dismissed latch would keep the list
+						 * closed: Enter neither sends, mutates nor reopens (review F3).
+						 */
 						if (!pyTrim(plan.command.args ?? "")) {
 							const start = plan.kind === "splice" ? plan.start : 0;
 							const end = plan.kind === "splice" ? plan.end : draft.length;
@@ -4554,9 +4560,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 							pendingCaret.current = opened.caret;
 							setNewMessage(opened.text);
 							setCaret(opened.caret);
-						} else {
-							slash.reopen();
 						}
+						slash.reopen();
 						return;
 					}
 				}

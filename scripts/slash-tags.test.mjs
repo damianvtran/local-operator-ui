@@ -36,6 +36,7 @@ const {
 	appliedFirstTagIds,
 	argumentRows,
 	effectiveInlineArgument,
+	freezeTagOrder,
 	matchChoices,
 	slashRunAllowed,
 	tagArgumentRows,
@@ -108,6 +109,47 @@ test("applied rows come first, registry order inside each partition", () => {
 		"t-a",
 	]);
 	assert.deepEqual(appliedFirstTagIds(categories, []), ["t-a", "t-b", "t-c"]);
+});
+
+test("two toggles over refetched registries keep the frozen order", () => {
+	// Every successful assignment refetches the registry and the store installs
+	// a FRESH array for identical content. The order must not re-partition under
+	// the cursor across those refetches (review round 1, F1).
+	const frozen = freezeTagOrder(null, "s-1", categories, []);
+	assert.deepEqual(frozen.order, ["t-a", "t-b", "t-c"]);
+
+	// First toggle: Beta applied; the refetch is an equal-content new array.
+	const firstRefetch = categories.map((entry) => ({ ...entry }));
+	const first = freezeTagOrder(frozen, "s-1", firstRefetch, ["t-b"]);
+	assert.equal(first, frozen, "identical content keeps the frozen object");
+	assert.deepEqual(first.order, ["t-a", "t-b", "t-c"]);
+	assert.deepEqual(
+		appliedFirstTagIds(firstRefetch, ["t-b"]),
+		["t-b", "t-a", "t-c"],
+		"the recomputation this freeze replaces would have moved the cursor",
+	);
+
+	// Second toggle: Gamma applied; another fresh array for the same content.
+	const secondRefetch = categories.map((entry) => ({ ...entry }));
+	const second = freezeTagOrder(first, "s-1", secondRefetch, ["t-b", "t-c"]);
+	assert.deepEqual(second.order, ["t-a", "t-b", "t-c"]);
+});
+
+test("a reordered registry or another conversation re-partitions", () => {
+	const frozen = freezeTagOrder(null, "s-1", categories, []);
+	// A genuine content change: the registry's own order moved (a tag created,
+	// deleted or reordered), so the signature changes and the list is rebuilt.
+	const reordered = [categories[2], categories[0], categories[1]];
+	assert.deepEqual(freezeTagOrder(frozen, "s-1", reordered, []).order, [
+		"t-c",
+		"t-a",
+		"t-b",
+	]);
+	// Another conversation is a different scope even with the same registry.
+	assert.notEqual(
+		freezeTagOrder(frozen, "s-2", categories, []).signature,
+		frozen.signature,
+	);
 });
 
 test("rows carry membership, primary and a stable id", () => {

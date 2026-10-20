@@ -135,12 +135,18 @@ export function useChatTagAssignment({
 		 * sentence in the same commit that rendered it; a successful write has
 		 * already cleared its own error in `write`.
 		 */
-		if (switched) setError(null);
-		/*
-		 * `notice` is deliberately NOT cleared: our own successful write moves the
-		 * revision, and this effect runs right after it. Clearing here would erase
-		 * the selection receipt the popup shows before the user can read it.
-		 */
+		if (switched) {
+			setError(null);
+			/*
+			 * The selection receipt describes the conversation that was on screen when
+			 * it was announced. A SWITCH makes it another conversation's sentence
+			 * (and the popup's header count is already the new one), so it goes with
+			 * the switch. A revision move is deliberately different: our own
+			 * successful write moves the revision, and this effect runs right after
+			 * it — clearing then would erase the receipt before the user can read it.
+			 */
+			setNotice("");
+		}
 	}, [sessionId, revision, pending, tags, primary]);
 
 	const announce = (nextIds: string[], nextPrimary: string | null) =>

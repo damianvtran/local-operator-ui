@@ -205,6 +205,43 @@ test("a write error is an alert and the retry copy is the hook's own", async () 
 	assert.equal(text(alert), "Tags were not saved. Try again.");
 });
 
+test("the unapplied footer names the tag it adds", async () => {
+	const node = await render({
+		state: state({
+			matches: [{ kind: "argument", row: tagRow() }],
+		}),
+		onPick: () => {},
+	});
+	// A complete phrase in the popup's English, like its siblings — not the
+	// dialog's bare button label (review F5).
+	assert.match(text(node), /Enter Add “Work”/);
+	assert.match(text(node), /Click Add “Work”/);
+});
+
+test("a registry load failure is printed once", async () => {
+	const failure = "Tags could not be loaded. Try again.";
+	const node = await render({
+		state: state({
+			matches: [],
+			argumentList: {
+				rows: [],
+				loading: false,
+				error: failure,
+				needsSession: false,
+			},
+			tagError: failure,
+		}),
+		onPick: () => {},
+	});
+	const occurrences = text(node).split(failure).length - 1;
+	assert.equal(occurrences, 1, "one sentence, not the same line twice");
+	assert.equal(
+		node.querySelector('[role="alert"]'),
+		null,
+		"the empty row region owns the one line",
+	);
+});
+
 test("a non-tag argument list keeps its existing header and footer", async () => {
 	const node = await render({
 		state: state({

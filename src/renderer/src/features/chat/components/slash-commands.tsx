@@ -96,12 +96,13 @@ import {
 	type ArgumentRow,
 	type ArgumentSource,
 	FLAG_LIST_SOURCES,
+	type FrozenTagOrder,
 	MCP_EMPTY_SLOT_COPY,
-	appliedFirstTagIds,
 	argumentRows,
 	effectiveInlineArgument,
 	flagTokenDraws,
 	flagTokenSelects,
+	freezeTagOrder,
 	isRendererLocalSource,
 	isSessionlessBackendSource,
 	mcpInServerSlot,
@@ -1028,17 +1029,31 @@ export function useSlashCompletion({
 		revision: canonicalRow?.tags_revision ?? null,
 	});
 	/*
-	 * The applied-first order is captured WHEN THE REGISTRY OR THE CONVERSATION
-	 * CHANGES, never on a toggle: re-sorting the list under the keystroke that
-	 * just changed a row's membership would move the active row and break the
-	 * explicit choice the user already made (the TUI's own rule,
+	 * The applied-first order is captured WHEN THE REGISTRY CONTENT OR THE
+	 * CONVERSATION CHANGES, never on a toggle: re-sorting the list under the
+	 * keystroke that just changed a row's membership would move the active row
+	 * and break the explicit choice the user already made (the TUI's own rule,
 	 * `command_picker.py:1728`). The marker updates in place; reopening the
 	 * composer re-partitions.
+	 *
+	 * The freeze lives in a ref rather than in the memo's dependency list because
+	 * it is a BEHAVIORAL invariant, not a cache: every successful assignment
+	 * refetches the registry and the store installs a fresh array for identical
+	 * content, so keying on that identity would re-partition the list under the
+	 * cursor one round-trip after the user's own Enter (review round 1, F1).
+	 * `freezeTagOrder` compares a content signature instead and is unit-tested.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `selected` is read ONCE per registry/session, on purpose; depending on it would re-sort under the cursor after every toggle.
+	const frozenTagOrder = useRef<FrozenTagOrder | null>(null);
 	const tagOrder = useMemo(() => {
-		return appliedFirstTagIds(tagAssignment.categories, tagAssignment.selected);
-	}, [tagAssignment.categories, sessionId]);
+		const next = freezeTagOrder(
+			frozenTagOrder.current,
+			sessionId ?? "",
+			tagAssignment.categories,
+			tagAssignment.selected,
+		);
+		frozenTagOrder.current = next;
+		return next.order;
+	}, [tagAssignment.categories, tagAssignment.selected, sessionId]);
 	const tagList: TagListState = useMemo(
 		() => ({
 			categories: tagAssignment.categories,
@@ -1944,17 +1959,25 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	/*
 	 * The tag lines name the OPERATION, not the generic "runs /tag x" the shared
 	 * footer would print: this pick toggles (or creates and applies) and never
-	 * puts the command on the wire. The labels are the tag dialog's existing
-	 * audited verbs, so the composer and the dialog describe the same act with
-	 * the same words. Ambiguous input keeps the shared completion line — the
-	 * first Enter writes the name and mutates nothing.
+	 * puts the command on the wire. Remove/Create reuse the tag dialog's audited
+	 * copies. The add arm is a COMPLETE phrase in the popup's own English instead
+	 * of the dialog's bare button label `ui.chat.tags.add` ("Add"): "Enter Add"
+	 * named no object, and reading a translated catalogue half-translated the
+	 * line ("Enter Thêm") inside an otherwise-English popup (review F5). A
+	 * translated `add {name}` sibling would stale every audited locale file and
+	 * its ledger hashes, so the popup's vocabulary is the consistent choice here.
+	 * Ambiguous input keeps the shared completion line — the first Enter writes
+	 * the name and mutates nothing.
 	 */
 	const tagListShown = state.inline?.source === "session-tags";
-	const tagVerb = activeArgument?.create
-		? t("ui.chat.tags.create_name", { name: activeArgument.value })
-		: activeArgument?.applied
-			? t("ui.chat.tags.remove_named", { name: activeArgument.value })
-			: t("ui.chat.tags.add");
+	const tagVerb =
+		activeArgument === null
+			? ""
+			: activeArgument.create
+				? t("ui.chat.tags.create_name", { name: activeArgument.value })
+				: activeArgument.applied
+					? t("ui.chat.tags.remove_named", { name: activeArgument.value })
+					: `Add “${activeArgument.value}”`;
 	const baseFooter =
 		typeof footer === "string" ? footer : (footer?.text ?? null);
 	const footerText =
@@ -1969,6 +1992,27 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 		tagListShown && activeArgument && !state.tagPending
 			? `Click ${tagVerb}`
 			: click;
+	/*
+	 * ONE OWNER FOR A REGISTRY LOAD FAILURE. `argumentEmptyCopy` already prints
+	 * the argument list's `error` in the row region, and the tag source feeds the
+	 * registry's load failure into it; the status line reads the same sentence
+	 * from the hook, so with no rows the popup printed it twice back to back
+	 * (review F2). The row region wins when it is showing that exact sentence —
+	 * it is the region the failure empties — while the status line keeps owning
+	 * write/conflict errors and the notice. With rows still on screen (a cached
+	 * registry) the row region prints nothing, so the status line still shows the
+	 * load failure once.
+	 */
+	const emptyArgumentCopy =
+		state.matches.length === 0 && argument
+			? argumentEmptyCopy(state.argumentList)
+			: null;
+	const rowRegionOwnsTagError =
+		state.tagError !== null &&
+		state.tagError === state.argumentList.error &&
+		emptyArgumentCopy !== null;
+	const tagStatusIsError = state.tagError !== null && !rowRegionOwnsTagError;
+	const tagStatus = tagStatusIsError ? state.tagError : state.tagNotice;
 
 	return (
 		/* biome-ignore lint/a11y/useFocusableInteractive: the textarea keeps focus; the listbox is reached through aria-activedescendant, so it is not in the tab order. */
@@ -2023,15 +2067,15 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			 * activation is the retry, and the draft beneath is never touched. Rendered
 			 * above the rows so a failed write is not hidden by a long registry.
 			 */}
-			{tagListShown && (state.tagError || state.tagNotice) ? (
+			{tagListShown && tagStatus ? (
 				<div
-					role={state.tagError ? "alert" : "status"}
+					role={tagStatusIsError ? "alert" : "status"}
 					className={cn(
 						"border-b border-hairline px-3 py-1 text-meta",
-						state.tagError ? "text-danger" : "text-ink-muted",
+						tagStatusIsError ? "text-danger" : "text-ink-muted",
 					)}
 				>
-					{state.tagError ?? state.tagNotice}
+					{tagStatus}
 				</div>
 			) : null}
 			{/*
@@ -2046,9 +2090,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			>
 				{state.matches.length === 0 ? (
 					<div className="px-3 py-2 text-body-sm text-ink-muted">
-						{argument
-							? argumentEmptyCopy(state.argumentList)
-							: "No commands match."}
+						{argument ? emptyArgumentCopy : "No commands match."}
 					</div>
 				) : (
 					<ul>
