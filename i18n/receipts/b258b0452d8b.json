@@ -1,0 +1,75 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session model stated by the runtime (deepseek/deepseek-flash); no fallback observed or declared",
+  "instance": "b258b0452d8b",
+  "instance_source": "generated 12-hex audit-run id; the auditor runs as an in-process subagent without a separate session id",
+  "independent_from_translator_session": true,
+  "independence_basis": "The task states a different agent translated the 22-key delta. This auditor did not author or edit any catalogue value; the catalogue was read only.",
+  "date": "2026-10-19",
+  "locale": "ru",
+  "namespace": "ui.mesh",
+  "round": 1,
+  "re_run": true,
+  "re_run_note": "A prior audit attempt for this delta died with [Errno 28] No space left on device before producing a receipt or findings; this is the first completed pass of round 1.",
+  "worktree": "~/local-operator-ui/.worktrees/mesh-link-states (branch fix/mesh-link-states, HEAD 4406017d5ffd931fa3f6e4c99cd8de3c5d014dfd + uncommitted working-tree translation as audited)",
+  "scope": "ui.mesh ru: 22 new keys (mesh_drop.reach_refusal, mesh_drop.owner_reach_refusal, mesh_graph.*_count, mesh_reach.*) audited in depth; all 245 values read for whole-file consistency. The catalogue was not edited.",
+  "style_guide": {
+    "path": "~/local-operator/i18n/style-guides/ru.md",
+    "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465",
+    "glossary_path": "~/local-operator/i18n/glossary.md",
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "note": "The UI checkout has no local i18n/glossary.md or i18n/style-guides/; docs/I18N.md points to the core repository's binding glossary and per-locale guide, which were used."
+  },
+  "namespaces": {
+    "ui.mesh": {
+      "status": "passed",
+      "keys_audited": 245,
+      "new_keys_audited": 22,
+      "sha256": {
+        "en": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+        "ru": "a0751c98be25425317f5d02e8d2b185f8fd7741d712bc5bae97fb4126649c681"
+      },
+      "context_sha256": "4ceb0a871d50757e49e8079b0446a91fe7fc4ad571f54479a056632cd1f1d533",
+      "findings": [
+        {
+          "id": "RU-M1",
+          "severity": "minor",
+          "keys": [
+            "ui.mesh.mesh_reach.peer_closed_handshake",
+            "ui.mesh.mesh_reach.peer_relay_not_running"
+          ],
+          "current": "другое устройство ответило, но прервало рукопожатие / ретранслятор другого устройства не работает",
+          "problem": "The binding ru style guide records «пиры» for peers (roller S3b call), and the pre-existing ru row ui.mesh.mesh_list.answered_the_peer_read_but_is_in renders peer as «пире». These two new peer_* headlines paraphrase it as «другое устройство», so the namespace has 1/3 «пир» and 2/3 «устройство». The meaning is correct and readable; the defect is terminology consistency, not comprehension.",
+          "suggestion": "пир ответил, но прервал рукопожатие / ретранслятор пира не работает",
+          "blocking": false
+        }
+      ]
+    }
+  },
+  "scrutiny": {
+    "ui.mesh.mesh_reach.addresses_tried": "ACCEPTED. «Попытки подключения» names the connection attempts rather than the addresses; the rows underneath print the addresses, and the heading reads naturally as their label. Sibling locales keep the object literal («Direcciones probadas», «Adresses essayées», «已尝试的地址»), so a stricter rendering would be «Проверенные адреса», but it is not recommended here: it is less precise about attempts and no clearer in a narrow panel.",
+    "ui.mesh.mesh_reach.handshake_refused_hint": "ACCEPTED. «устройство, удалённое из сети» uses the postposed participle with its «из сети» complement, so it unambiguously means a device REMOVED from the network; the prenominal «удалённое устройство» would have been the ambiguous remote reading. «эпоха совпадает» and «приводят к отказу в рукопожатии» preserve the check-not-cause framing and the two named causes.",
+    "ui.mesh.mesh_reach.attempt_bad_address": "ACCEPTED. «некорректный адрес» is the standard professional rendering of bad address; the literal «плохой адрес» would be unidiomatic."
+  },
+  "mechanical": {
+    "json": "valid JSON; 245 unique keys; no duplicate members; tab-indented file preserved",
+    "parity": "245/245 English keys present; no added or dropped keys",
+    "placeholders": "script-checked every key with @formatjs/icu-messageformat-parser: {device}, {reach}, {reason}, {count} names/types identical to EN; no renaming; the only AST delta is the expected extra CLDR arms carrying the same count argument",
+    "icu": "all 18 plural messages in the file parse; the five new *_count keys have exactly one/few/many/other with other present; every arm carries {count, number, ::group-off}; IntlMessageFormat('ru') executed at 1, 2, 5, 1.5, 21, 22, 25, 101 and 1001: one for 1/21/101, few for 2/22, many for 5/25/1001, other for 1.5, and 1001 prints ungrouped",
+    "markup": "no markup, backtick code, commands, flags, paths or identifiers in the new values; only ICU placeholders and the ::group-off skeleton",
+    "script_and_typography": "0 non-NFC values; 0 manual bidi controls; Cyrillic prose with Latin only in machine tokens; sentence case; ё present where required (всё ещё, удалённое); colon, comma and semicolon used per the ru guide; no quotes or ellipses in the delta",
+    "terminology": "device=устройство, network=сеть, member=участник, relay=ретранслятор, handshake=рукопожатие, epoch=эпоха, conversation=разговор, address=адрес, chosen over their literal alternatives consistently with the existing 223-key ru catalogue. The one deviation is peer, recorded as RU-M1.",
+    "fit": "ui.mesh.context.json defines no maxCells/maxChars for these 22 keys. The longest rendered new value is the 162-character hint, which the sidecar places in the device panel with room; the longest per-address word is «не удалось подключиться» (23 characters) in a row whose endpoint cell is min-w-0 truncate and whose words cell is shrink-0; the census labels are short wrapping chips. No rendered or pixel-fit certification was performed."
+  },
+  "validators": {
+    "node scripts/i18n/check-strings.mjs": "exit 0 - 1260 file(s) scanned, 762 literal(s) at or below the baseline; 16 advisory finding(s)",
+    "node scripts/i18n/context-parity.mjs": "exit 0 - every English key covered, apart from 196 allowed gaps in 6 namespaces; 8 allowance keys are now covered (note only)",
+    "node --test scripts/i18n/locale-parity.test.mjs": "43 tests, 43 pass, 0 fail",
+    "node --test scripts/i18n/ru-activation.test.mjs": "3 tests, 3 pass, 0 fail",
+    "node scripts/i18n/generate.mjs --check": "exit 1 - keys.gen.ts stale because the shared worktree contains an untracked src/i18n/catalogues/ur/ directory from another in-flight locale; not a ru defect",
+    "node scripts/i18n/ledger-check.mjs": "exit 1 - 13 finding(s) across 334 ledger entries, all in-flight locale rows (hi, vi, ur and others) stale or absent; expected before this receipt is assembled",
+    "own mechanical script": "executed in the session: JSON parse/duplicate check, key parity, placeholder AST comparison, plural-arm and ::group-off inspection, IntlMessageFormat sample run, NFC and bidi scan"
+  },
+  "notes": "One MINOR remains (RU-M1, peer terminology consistency); no BLOCKER or MAJOR, so the namespace is passed. All 22 new values were read against the English source and sidecar, and the rest of the file was checked for consistency. The catalogue was not edited. This is a copy audit, not a rendered-frame or design/UX certification."
+}

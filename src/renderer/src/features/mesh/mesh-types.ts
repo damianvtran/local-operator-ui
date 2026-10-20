@@ -45,6 +45,25 @@
 
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import { t } from "../../../../i18n/messages";
+import type {
+	PeerAttempt,
+	PeerLinkFacts,
+	PeerLinkState,
+	PeerRelayState,
+} from "../../../../shared/desktop-session-contract";
+
+/*
+ * The peer LINK vocabulary is the shared contract's (see
+ * `desktop-session-contract.ts`), re-exported here because this file is the
+ * feature's public wire-shape module: every mesh consumer imports the shapes from
+ * one place, and a second definition beside the contract is how the two dialects
+ * would drift apart.
+ */
+export type {
+	PeerAttempt,
+	PeerLinkState,
+	PeerRelayState,
+} from "../../../../shared/desktop-session-contract";
 
 /* ------------------------------------------------------------- coercions */
 
@@ -114,7 +133,7 @@ function records(value: unknown): Record<string, unknown>[] {
  * as given, that would draw two React children with one key at every reader of this
  * list.
  */
-export type PeerRow = {
+export type PeerRow = PeerLinkFacts & {
 	device_id: string;
 	name: string;
 	/** True when ANY shared network reached it on this read. */
@@ -199,6 +218,78 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * The link verdicts a CONFORMING backend may send.
+ *
+ * `unreachable_legacy` is deliberately absent: it is this client's fallback for a
+ * backend that predates `link_state`, and accepting it off the wire would let the
+ * backend claim a derivation only this reader is entitled to make.
+ */
+const WIRE_LINK_STATES: readonly PeerLinkState[] = [
+	"reachable",
+	"relay_down",
+	"address_unreachable",
+	"handshake_refused",
+	"not_attempted",
+	"no_endpoint",
+	"not_a_member",
+];
+
+/**
+ * A peer's link verdict, derived ONLY when the wire did not send one.
+ *
+ * The fallback is exactly as strong as the old boolean: reachable, or an
+ * unclassified failure. It deliberately does NOT try to read refused-vs-timeout
+ * out of the aggregate `unreachable_reason` string - that would turn a sentence
+ * into an observed transport fact, and an unrecognised sentence or a new spelling
+ * would silently become a diagnosis. An unrecognised `link_state` from a newer
+ * backend falls back for the same reason: absent and unknown are both "not known".
+ */
+function linkState(value: unknown, reachable: boolean): PeerLinkState {
+	const state = text(value);
+	if ((WIRE_LINK_STATES as readonly string[]).includes(state))
+		return state as PeerLinkState;
+	return reachable ? "reachable" : "unreachable_legacy";
+}
+
+const RELAY_STATES: readonly PeerRelayState[] = [
+	"running",
+	"not_listening",
+	"unknown",
+];
+
+/** The relay reading when the wire sent one; absent stays absent (not a guess). */
+function remoteRelay(value: unknown): PeerRelayState | undefined {
+	const state = text(value);
+	return (RELAY_STATES as readonly string[]).includes(state)
+		? (state as PeerRelayState)
+		: undefined;
+}
+
+/**
+ * The per-address attempts, normalised, or `undefined` when the field is absent.
+ *
+ * AN EMPTY ARRAY IS NOT THE SAME AS AN ABSENT FIELD: the first says the backend
+ * dialled nothing (or reported nothing it dialled), the second says this backend
+ * has no attempts vocabulary at all. The renderer treats both as "no evidence" and
+ * falls back to the older single sentence, but the distinction is preserved so a
+ * future surface can tell the two apart. Entries without an endpoint are dropped -
+ * they name no address and cannot be evidence for one.
+ */
+function linkAttempts(value: unknown): PeerAttempt[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	return value
+		.filter(isRecord)
+		.map((raw) => ({
+			endpoint: text(raw.endpoint),
+			/* `true` ONLY when the wire said so: a missing flag is not a connection. */
+			connected: raw.connected === true,
+			detail: text(raw.detail),
+			latency_ms: time(raw.latency_ms),
+		}))
+		.filter((attempt) => attempt.endpoint !== "");
+}
+
+/**
  * `GET /v1/desktop/peers`, normalised.
  *
  * DEDUPED BY DEVICE ID, kept from #498 (addendum 2, A) even though the backend now
@@ -218,10 +309,17 @@ export function peerList(value: unknown): PeerList {
 		// claim with it, and neither value is "I do not know".
 		if (typeof raw.reachable !== "boolean") continue;
 		seen.add(deviceId);
+		const relay = remoteRelay(raw.remote_relay);
+		const attempts = linkAttempts(raw.attempts);
 		peers.push({
 			device_id: deviceId,
 			name: text(raw.name),
 			reachable: raw.reachable,
+			// Always present on a normalised row: an absent wire verdict is DERIVED as
+			// `reachable`/`unreachable_legacy`, never left as a silent default.
+			link_state: linkState(raw.link_state, raw.reachable),
+			...(relay ? { remote_relay: relay } : {}),
+			...(attempts ? { attempts } : {}),
 			unreachable_reason: textOrNull(raw.unreachable_reason ?? raw.reason),
 			last_seen_at: time(raw.last_seen_at),
 			session_count: nullableCount(raw.session_count),
@@ -579,6 +677,15 @@ export type MeshRefusal = {
 	code: string;
 	/** The route's OWN sentence. Never paraphrased, never composed over. */
 	sentence: string;
+	/**
+	 * The reach word of the device the refusal is about, when this client synthesised
+	 * the refusal with that device in hand (`mesh-drop.ts`'s pre-flight refusals).
+	 * Absent on a refusal from the route: there the sentence is the route's own, and
+	 * this client has no reach reading to add. The notice shows this in place of the
+	 * machine `code` when present, so `relay not running` and `address unreachable`
+	 * do not both arrive as the single word `unreachable`.
+	 */
+	reach?: string;
 	status: number | null;
 	/** True when the outcome is unknown and the request must not be repeated. */
 	unconfirmed: boolean;

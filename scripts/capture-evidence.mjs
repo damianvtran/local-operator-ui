@@ -11047,6 +11047,22 @@ export const STORIES = [
 	 */
 	["mesh-tab--reach-states-list", 1380, 900],
 	/*
+	 * THE THREE TRANSPORT FAILURES, SEPARATELY (mesh link resilience). The shipped set
+	 * proved only the generic "unreachable" face; these frames are the ones the incident
+	 * lacked — a peer whose relay is not listening (TCP refused), an address that timed
+	 * out, and a peer that answered and then closed the handshake. Same 1380x900 frame as
+	 * the rest of the tab so a reader compares the words, not the crop.
+	 */
+	["mesh-tab--relay-down", 1380, 900],
+	/*
+	 * The LIST half of the same evidence: the per-address rows are rendered by a
+	 * different component (`mesh-list.tsx`), so the canvas/panel frame cannot prove
+	 * them. The play presses the real List toggle.
+	 */
+	["mesh-tab--relay-down-list", 1380, 900],
+	["mesh-tab--address-unreachable", 1380, 900],
+	["mesh-tab--handshake-refused", 1380, 900],
+	/*
 	 * THE SCOPE LAYER'S DRAWN TIERS, on addresses that make the collision real: two peers on
 	 * WireGuard's default subnet (dashed, `same prefix`), one on this device's own (solid,
 	 * `shared with this device`), and two that group with nothing.
@@ -11223,6 +11239,12 @@ export const STORIES = [
 		1380,
 		900,
 		{ expectSentence: "Wait for the turn to finish" },
+	],
+	[
+		"mesh-tab--refusal-notice",
+		1380,
+		900,
+		{ expectSentence: "relay not running" },
 	],
 	["mesh-tab--move-copy-with-undo", 1380, 900],
 	/*
@@ -12151,34 +12173,46 @@ export const STORIES = [
 	 * against the others' 184: five items do not fit in 184, and a clipped fifth
 	 * door would be a frame of a layout the app does not have.
 	 */
-	["code-review-pane--populated", 640, 960],
+	/*
+	 * THE TWO HEIGHTS THAT FOLLOW THE ROW'S ANATOMY (the operator's ask).
+	 *
+	 * The row grew a LINE: the identity line carries the repo NAME and the full
+	 * project path sits under it, so every row is one `text-meta` line taller
+	 * than it was. `populated` grew by that line across its ten rows and now
+	 * leads with the operator's own deep-path row, and `narrow` grew by it
+	 * across its five - which is why both are taller than the 960 and 460 they
+	 * were, and why the 320px floor is the frame that has to carry the proof:
+	 * the name is readable and the path is on the line below, in the frame
+	 * where the path used to be cut off mid-segment.
+	 */
+	["code-review-pane--populated", 640, 1665],
 	["code-review-pane--empty", 640, 300],
 	["code-review-pane--loading", 640, 300],
 	["code-review-pane--scanning", 640, 300],
 	["code-review-pane--error-state", 640, 300],
-	["code-review-pane--link-only", 640, 340],
+	["code-review-pane--link-only", 640, 360],
 	["code-review-pane--rate-limited", 640, 340],
 	["code-review-pane--stale", 640, 340],
-	["code-review-pane--could-not-refresh", 640, 520],
+	["code-review-pane--could-not-refresh", 640, 560],
 	/*
 	 * The pending first read (design §4's no-flicker pass): `pendingRevealMs={0}`
 	 * pins the REVEALED frame, so this still is the loading line the fix adds -
 	 * the reveal delay itself is a mechanism no still can show.
 	 */
-	["code-review-pane--pending", 640, 340],
-	["code-review-pane--refresh-failed", 640, 420],
-	["code-review-pane--refreshing", 640, 340],
-	["code-review-pane--narrow", 320, 460],
-	["code-review-pane--narrow-refresh-failed", 320, 420],
+	["code-review-pane--pending", 640, 360],
+	["code-review-pane--refresh-failed", 640, 1241],
+	["code-review-pane--refreshing", 640, 390],
+	["code-review-pane--narrow", 320, 1230],
+	["code-review-pane--narrow-refresh-failed", 320, 450],
 	/*
 	 * The two states round 1's remediation changed, at the same 320px floor
 	 * (design round 1, D2): the pending loading line and the re-shot stale
 	 * copy, so the §10 floor claim has frames for exactly those states.
 	 */
 	["code-review-pane--narrow-pending", 320, 360],
-	["code-review-pane--narrow-could-not-refresh", 320, 560],
-	["code-review-pane--row-hover", 640, 260],
-	["code-review-pane--row-focus", 640, 260],
+	["code-review-pane--narrow-could-not-refresh", 320, 600],
+	["code-review-pane--row-hover", 640, 390],
+	["code-review-pane--row-focus", 640, 390],
 	["navigation-panel-rail--code-item", 132, 220],
 	["navigation-panel-rail--code-attention", 132, 220],
 	["navigation-panel-rail--code-open", 132, 220],

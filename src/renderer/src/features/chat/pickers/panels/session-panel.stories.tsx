@@ -1,3 +1,10 @@
+import {
+	estimatedSpend,
+	legacySpend,
+	mixedSpend,
+	paygoSpend,
+	subscriptionSpend,
+} from "../../session-status/spend-basis-fixtures";
 /**
  * `panels-session` — `/session` in every state it can be in.
  *
@@ -378,3 +385,124 @@ export const Dense: Story = {
 
 /** 720px: the tables shed the Calls column last, the bars first. */
 export const Narrow: Story = { args: { ...base, report: report() } };
+
+/** Own inference uses both credentials in the mixed story, with one model row. */
+const paymentReport = (
+	channels: typeof subscriptionSpend,
+	mixed = false,
+): DesktopSessionReport => {
+	const own = aggregate({
+		calls: mixed ? 3 : 1,
+		ok_calls: mixed ? 3 : 1,
+		cost_micro: mixed ? 1_790_000 : 790_000,
+		cost_known_calls: mixed ? 3 : 1,
+	});
+	const model = { provider: "anthropic", model_id: "claude-sonnet-5-5" };
+	return report({
+		aggregate: own,
+		descendants_aggregate: aggregate({
+			calls: 1,
+			ok_calls: 1,
+			cost_micro: channels.children.total_micro,
+			cost_known_calls: 1,
+		}),
+		descendant_ids: ["synthetic-child"],
+		by_model: [{ ...model, aggregate: own }],
+		descendants_by_basis:
+			channels === legacySpend
+				? undefined
+				: [
+						{
+							billing_basis:
+								channels === paygoSpend
+									? "billed"
+									: "subscription_api_equivalent",
+							aggregate: aggregate({
+								calls: 1,
+								ok_calls: 1,
+								cost_micro: channels.children.total_micro,
+								cost_known_calls: 1,
+							}),
+						},
+					],
+		by_model_basis:
+			channels === legacySpend
+				? undefined
+				: mixed
+					? [
+							{
+								...model,
+								billing_basis: "billed",
+								aggregate: aggregate({
+									calls: 2,
+									cost_known_calls: 2,
+									cost_micro: 790_000,
+								}),
+							},
+							{
+								...model,
+								billing_basis: "subscription_api_equivalent",
+								aggregate: aggregate({
+									calls: 1,
+									cost_known_calls: 1,
+									cost_micro: 1_000_000,
+								}),
+							},
+						]
+					: [{ ...model, billing_basis: "billed", aggregate: own }],
+	});
+};
+
+export const PaymentSubscription: Story = {
+	args: {
+		...base,
+		metric: "cost",
+		report: paymentReport(subscriptionSpend, false),
+	},
+};
+
+export const PaymentMixedSameTurn: Story = {
+	args: { ...base, metric: "cost", report: paymentReport(mixedSpend, true) },
+};
+
+export const PaymentPaygo: Story = {
+	args: { ...base, metric: "cost", report: paymentReport(paygoSpend, false) },
+};
+
+export const PaymentLegacyUntracked: Story = {
+	args: { ...base, metric: "cost", report: paymentReport(legacySpend, false) },
+};
+
+export const PaymentEstimated: Story = {
+	args: {
+		...base,
+		metric: "cost",
+		report: {
+			...paymentReport(estimatedSpend, false),
+			by_model_basis: [
+				{
+					provider: "anthropic",
+					model_id: "claude-sonnet-5-5",
+					billing_basis: "estimated",
+					aggregate: aggregate({
+						calls: 1,
+						ok_calls: 1,
+						cost_known_calls: 1,
+						cost_micro: 790_000,
+					}),
+				},
+			],
+			descendants_by_basis: [
+				{
+					billing_basis: "estimated",
+					aggregate: aggregate({
+						calls: 1,
+						ok_calls: 1,
+						cost_known_calls: 1,
+						cost_micro: 11_620_000,
+					}),
+				},
+			],
+		},
+	},
+};
