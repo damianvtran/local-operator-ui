@@ -1,0 +1,48 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "99cb676d1abc",
+  "locale": "vi",
+  "status": "passed",
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "keys_audited": 158,
+      "sha256": {
+        "vi": "12d60b45ede30c5ad388c1420d4dac5fb25d668fae15f7fc54d5dff011d265d6",
+        "en": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5"
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "key": "ui.library.page.more",
+          "current": "Thêm",
+          "proposed": "Khác",
+          "reason": "'Thêm' is this locale's established word for the ADD action (ui.chat.tags.add = 'Thêm'); the sidebar row it labels is a disclosure that reveals additional navigation destinations, not an add control. The house style for 'More <things>' is 'khác' (ui.agents.navigation.legacy.more_actions: 'More agent actions' -> 'Thao tác khác với tác nhân')."
+        },
+        {
+          "severity": "minor",
+          "key": "ui.library.page.more_destinations",
+          "current": "Thêm điểm đến",
+          "proposed": "Các điểm đến khác",
+          "reason": "This is the aria-label of the same overflow disclosure (sidebar-navigation.tsx:1182,1206), so it reads to a screen reader as 'Add destination(s)' - an action the control does not perform. 'Các điểm đến khác' states 'other destinations' and matches the 'khác' convention used for 'More agent actions'."
+        },
+        {
+          "severity": "INFO",
+          "key": "ui.library.filter.tag_mode",
+          "observation": "REPRODUCED at render: the caller passes filters.tagMode.toUpperCase() (library-filter-rail.tsx:311-312), so this correct catalogue string renders 'Nhãn khớp ALL' / 'Nhãn khớp ANY' with an untranslated English enum. The fix is code-side (map all/any to Vietnamese words); the catalogue itself preserves {mode} correctly and needs no change."
+        },
+        {
+          "severity": "INFO",
+          "key": "ui.library.time.minutes_m_ago",
+          "observation": "Relative-age fragments run ~1.8x the English character count (12 phút trước = 13 chars vs 12m ago = 7), but they are the shortest idiomatic Vietnamese form; no abbreviation is standard. Rendered QA should confirm narrow card metadata does not truncate. The same class was accepted as an observation in the hi audit."
+        },
+        {
+          "severity": "INFO",
+          "key": "ui.projects.project_updates.show_asset_name",
+          "observation": "Pre-existing, outside this file: ui.projects translates English 'asset' as 'tài sản' ('Hiển thị {name}, tài sản {index} trên {count}'), while this new catalogue and the rest of the file surfaces use the stated call 'tệp'. Not introduced by this change; recorded for a future consistency pass."
+        }
+      ]
+    }
+  }
+}
