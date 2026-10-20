@@ -7,7 +7,7 @@ import { build } from "esbuild";
 const bundled = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/api/local-operator/hub-publication"; export * from "./src/renderer/src/features/agents/definition-editor-identity"; export * from "./src/renderer/src/features/agents/hub-link-view"; export * from "./src/renderer/src/features/agents/hub-preview-binding"; export * from "./src/renderer/src/features/agents/hub-link-adapter"; export * from "./src/renderer/src/shared/api/local-operator/hub-links"; export {desktopRequestSchema,desktopEndpoint} from "./src/shared/desktop-contract";',
+			'export * from "./src/renderer/src/shared/api/local-operator/hub-publication"; export * from "./src/renderer/src/features/agents/definition-editor-identity"; export * from "./src/renderer/src/features/agents/hub-link-view"; export * from "./src/renderer/src/features/agents/hub-preview-binding"; export * from "./src/renderer/src/features/agents/hub-link-adapter"; export * from "./src/renderer/src/shared/api/local-operator/hub-links"; export {desktopRequestSchema,desktopEndpoint,desktopRequestDeadlineMs} from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -38,6 +38,7 @@ const {
 	linksForLocalItem,
 	desktopRequestSchema,
 	desktopEndpoint,
+	desktopRequestDeadlineMs,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString("base64")}`
 );
@@ -146,6 +147,105 @@ const policy = (over = {}) => ({
 	expectedPolicyRevision: "opaque-r1",
 	subscribe: false,
 	...over,
+});
+test("skill membership ops name their own routes and share the pull's deadline", () => {
+	const requestId = "00000000-0000-4000-8000-000000000001";
+	const pull = desktopRequestSchema.parse({
+		op: "hub.skillPull",
+		requestId,
+		hubId: "skill-release-notes",
+		hubSource: "https://hub.example/v1",
+		visibility: "public",
+		tenantId: null,
+		localAlias: "release-notes",
+	});
+	const subscribe = desktopRequestSchema.parse({
+		op: "hub.skillSubscribe",
+		requestId,
+		hubId: "skill-release-notes",
+		hubSource: "https://hub.example/v1",
+		visibility: "public",
+		tenantId: null,
+		localAlias: "release-notes",
+	});
+	assert.deepEqual(desktopEndpoint(subscribe), {
+		path: "/v1/desktop/hub/skills/subscribe",
+		method: "POST",
+		body: {
+			request_id: requestId,
+			hub_id: "skill-release-notes",
+			hub_source: "https://hub.example/v1",
+			visibility: "public",
+			tenant_id: null,
+			local_alias: "release-notes",
+		},
+	});
+	assert.equal(
+		desktopRequestDeadlineMs(subscribe),
+		desktopRequestDeadlineMs(pull),
+		"linking without content costs the same round trip as a pull",
+	);
+	const unpull = desktopRequestSchema.parse({
+		op: "hub.skillUnpull",
+		requestId,
+		linkId: "link/with space",
+	});
+	assert.deepEqual(desktopEndpoint(unpull), {
+		path: "/v1/desktop/hub/skills/unpull",
+		method: "POST",
+		body: { request_id: requestId, link_id: "link/with space" },
+	});
+	assert.equal(
+		desktopRequestDeadlineMs(unpull),
+		desktopRequestDeadlineMs(pull),
+	);
+});
+test("skill membership refuses a mismatched scope pair before transport", () => {
+	const base = {
+		op: "hub.skillSubscribe",
+		requestId: "00000000-0000-4000-8000-000000000001",
+		hubId: "skill-release-notes",
+		hubSource: "https://hub.example/v1",
+		localAlias: "release-notes",
+	};
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			...base,
+			visibility: "public",
+			tenantId: "org-minerva",
+		}).success,
+		false,
+		"a public subscribe may not name a tenant",
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			...base,
+			visibility: "org",
+			tenantId: null,
+		}).success,
+		false,
+		"an org subscribe must name its tenant",
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			...base,
+			visibility: "public",
+			tenantId: null,
+			subscribe: true,
+		}).success,
+		false,
+		"a subscribe carries no install policy: it is subscribe-on by definition",
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "hub.skillUnpull",
+			requestId: base.requestId,
+			linkId: "link-1",
+			hubId: "skill-release-notes",
+		}).success,
+		false,
+		"unpull addresses the local link only",
+	);
 });
 test("full inventory supports skills without altering legacy pending route", () => {
 	assert.equal(

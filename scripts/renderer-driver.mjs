@@ -48099,7 +48099,7 @@ async function sceneHubSkills(cdp, app) {
 			const d = document.querySelector('[data-hub-skill-detail]');
 			if (!d) return null;
 			const files = d.querySelectorAll('details').length;
-			const name = d.querySelector('h3');
+			const name = d.querySelector('[data-testid="hub-skill-detail-name"]');
 			return files > 0 && name ? { files, name: name.textContent } : null;
 		})()`,
 		20_000,
@@ -48115,7 +48115,7 @@ async function sceneHubSkills(cdp, app) {
 	const gate = await cdp.evaluate(`(() => {
 		const d = document.querySelector('[data-hub-skill-detail]');
 		if (!d) return null;
-		const create = d.querySelector('[data-testid="hub-skill-create"]');
+		const create = d.querySelector('[data-testid="hub-skill-download"]');
 		return { disabled: create ? create.disabled === true : null, noCredential: /credential|sign in/i.test(d.textContent || '') };
 	})()`);
 	if (gate && gate.disabled === true) {
@@ -48145,65 +48145,8 @@ async function sceneHubSkills(cdp, app) {
 		return;
 	}
 
-	/* THE CONSENT DIALOG, mounted by the LIBRARY's own policy fields. */
-	const autoPushCheckbox = '[data-hub-skill-detail] [id$="-autoPush"]';
-	const checkboxState = await cdp.evaluate(
-		`(() => { const el = document.querySelector(${JSON.stringify(autoPushCheckbox)}); return el ? { state: el.getAttribute('data-state'), disabled: el.disabled === true } : null; })()`,
-	);
-	check(
-		"the detail's policy fields mount the auto-push checkbox",
-		checkboxState && checkboxState.disabled === false,
-		JSON.stringify(checkboxState),
-	);
-	const consentPressed = await verb(cdp, "press", autoPushCheckbox);
-	check(
-		"the auto-push checkbox received the point",
-		consentPressed.hitTest === true,
-		JSON.stringify({ hitTest: consentPressed.hitTest }),
-	);
-	const dialog = await waitForCondition(
-		cdp,
-		`(() => {
-			const d = document.querySelector('[role="dialog"]');
-			return d ? { text: d.textContent.slice(0, 240) } : null;
-		})()`,
-		10_000,
-	);
-	check(
-		"the consent dialog opens from the library's own fields",
-		dialog.ok,
-		`after ${dialog.waitedMs ?? "?"}ms: ${JSON.stringify(dialog.last)}`,
-	);
-	if (expectedScope === "public") {
-		const text = await cdp.evaluate(
-			`document.querySelector('[role="dialog"]').textContent`,
-		);
-		check(
-			"public consent names public publication",
-			/public/i.test(text),
-			text,
-		);
-	}
-	note("consent dialog text", JSON.stringify(dialog.last?.text));
-	await captureSettled(cdp, `hub-skills-${size}-${theme}-consent`);
-	geometry.consent = await box('[role="dialog"]');
-	await verb(cdp, "press", '[data-testid="hub-policy-enable"]');
-	await waitForCondition(
-		cdp,
-		`(() => (!document.querySelector('[role="dialog"]') ? true : null))()`,
-		5_000,
-	);
-	const enabledState = await cdp.evaluate(
-		`(() => { const el = document.querySelector(${JSON.stringify(autoPushCheckbox)}); return el ? el.getAttribute('data-state') : null; })()`,
-	);
-	check(
-		"enabling records the consent on the draft (checkbox checked)",
-		enabledState === "checked",
-		JSON.stringify({ enabledState }),
-	);
-
 	/* THE PULL: alias is pre-filled; the press is the real hub.skillPull write. */
-	const createSelector = '[data-testid="hub-skill-create"]';
+	const createSelector = '[data-testid="hub-skill-download"]';
 	const prePull = await cdp.evaluate(
 		`(() => { const el = document.querySelector(${JSON.stringify(createSelector)}); return el ? { disabled: el.disabled === true } : null; })()`,
 	);
@@ -48252,12 +48195,41 @@ async function sceneHubSkills(cdp, app) {
 		note("pull refusal line", JSON.stringify(pullEnd.last.text));
 	}
 
-	/* THE PUBLICATION PANEL: preview, then confirm (or the pending receipt). */
-	const publication = await box("[data-hub-skill-publication]");
+	/*
+	 * THE LINK'S POLICY CONTROLS. The three-acts form and its initial-policy
+	 * consent left this surface in design round 1; the controls now mount from
+	 * the link the real pull created. The auto-push switch is PRESENT here and
+	 * may be disabled with its reason (the stub destination is not verified for
+	 * safe automatic publication), which is a state to photograph, not a failure.
+	 */
+	const autoPushCheckbox = '[data-hub-skill-detail] [id$="-push"]';
+	const policyControls = await cdp.evaluate(
+		`(() => {
+			const d = document.querySelector('[data-hub-skill-detail]');
+			const push = d?.querySelector('[id$="-push"]');
+			const subscribe = d?.querySelector('[id$="-subscribe"]');
+			return { push: push ? { disabled: push.disabled === true, state: push.getAttribute('data-state') } : null, subscribe: subscribe !== null };
+		})()`,
+	);
 	check(
-		"the publication panel is mounted under the library",
-		publication !== null,
-		JSON.stringify(publication),
+		"the detail's link controls mount subscribe and auto-push",
+		policyControls.subscribe === true && policyControls.push !== null,
+		JSON.stringify(policyControls),
+	);
+	note("auto-push control state", JSON.stringify(policyControls.push));
+	await captureSettled(cdp, `hub-skills-${size}-${theme}-policy`);
+	/* THE PUBLICATION PANEL: preview, then confirm (or the pending receipt). */
+	await verb(cdp, "press", '[data-testid="hub-skill-publish-open"]');
+	check(
+		"the publication panel opens from the toolbar action",
+		(
+			await waitForCondition(
+				cdp,
+				`(() => { const p = document.querySelector("[data-hub-skill-publication]"); return p ? true : null; })()`,
+				10_000,
+			)
+		).ok,
+		"the panel did not mount",
 	);
 	await setValue(
 		'[data-testid="hub-skill-publish-source"]',
@@ -48344,7 +48316,7 @@ async function sceneHubSkills(cdp, app) {
 		await captureSettled(cdp, `hub-skills-${size}-${theme}-publish-complete`);
 	}
 	note("publication outcome", JSON.stringify(publishEnd.last.text));
-	geometry.publication = publication;
+	geometry.publication = await box("[data-hub-skill-publication]");
 
 	/* The signed-out gate is a DIFFERENT library mount (public scope, no org chip). */
 	writeFileSync(
