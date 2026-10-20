@@ -175,6 +175,6 @@
 	"ui.hub.skills.unsubscribe": "取消订阅",
 	"ui.hub.skills.unsubscribe_help": "停止后续更新。已下载的文件会保留。",
 	"ui.hub.skills.public_hub": "公开中心",
-	"ui.hub.skills.count": "{count, plural, other {{scope}中有{count, number, ::group-off}个技能}}",
+	"ui.hub.skills.count": "{count, plural, other {{count, number, ::group-off}个技能}}",
 	"ui.hub.skills.count_shared": "{count, plural, other {与{organization}共享的{count, number, ::group-off}个技能}}"
 }

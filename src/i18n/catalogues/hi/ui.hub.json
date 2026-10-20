@@ -79,7 +79,7 @@
 	"ui.hub.skills.files": "शामिल फ़ाइलें",
 	"ui.hub.skills.text_limits": "कौशल में अधिकतम 64 UTF-8 टेक्स्ट फ़ाइलें, हर फ़ाइल 200 KiB और कुल 1 MiB तक हो सकती हैं। प्रकाशित करते या pull करते समय स्क्रिप्ट कभी नहीं चलतीं।",
 	"ui.hub.skills.local_exists": "यह स्थानीय उपनाम पहले से इस्तेमाल में है। दूसरा चुनें।",
-	"ui.hub.skills.initial_policy_description": "नए लिंक आने वाले अपडेट की सदस्यता लेते हैं। इस गंतव्य के लिए चालू किए जाने तक ऑटो-पुश बंद रहता है।",
+	"ui.hub.skills.initial_policy_description": "नए लिंक आने वाले अपडेट्स की सदस्यता लेते हैं। इस गंतव्य के लिए चालू किए जाने तक ऑटो-पुश बंद रहता है।",
 	"ui.hub.status.not_checked": "अभी जाँच नहीं हुई।",
 	"ui.hub.status.idle": "कोई बदलाव लंबित नहीं है।",
 	"ui.hub.status.checking": "बदलाव जाँचे जा रहे हैं…",
@@ -175,6 +175,6 @@
 	"ui.hub.skills.unsubscribe": "सदस्यता हटाएँ",
 	"ui.hub.skills.unsubscribe_help": "भविष्य के अपडेट रोकता है। डाउनलोड की गई फ़ाइलें बनी रहती हैं।",
 	"ui.hub.skills.public_hub": "सार्वजनिक हब",
-	"ui.hub.skills.count": "{count, plural, one {{scope} में {count, number, ::group-off} कौशल} other {{scope} में {count, number, ::group-off} कौशल}}",
+	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} कौशल} other {{count, number, ::group-off} कौशल}}",
 	"ui.hub.skills.count_shared": "{count, plural, one {{organization} के साथ साझा {count, number, ::group-off} कौशल} other {{organization} के साथ साझा {count, number, ::group-off} कौशल}}"
 }

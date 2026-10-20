@@ -79,7 +79,7 @@
 	"ui.hub.skills.files": "شامل فائلیں",
 	"ui.hub.skills.text_limits": "مہارتوں میں زیادہ سے زیادہ 64 UTF-8 متنی فائلیں، فی فائل 200 KiB اور کل 1 MiB کی گنجائش ہے۔ اشاعت یا ڈاؤن لوڈ کے وقت اسکرپٹس کبھی نہیں چلائے جاتے۔",
 	"ui.hub.skills.local_exists": "وہ مقامی عرف پہلے سے استعمال میں ہے۔ دوسرا منتخب کریں۔",
-	"ui.hub.skills.initial_policy_description": "نئے روابط آنے والی اپ ڈیٹس کے سبسکرائبر ہوتے ہیں۔ اس منزل کے لیے فعال کیے جانے تک خودکار پش بند رہتا ہے۔",
+	"ui.hub.skills.initial_policy_description": "نئے روابط آنے والی اپ ڈیٹس کے سبسکرائبر ہوتے ہیں۔ اس منزل کے لیے فعال کیے جانے تک خودکار push بند رہتا ہے۔",
 	"ui.hub.status.not_checked": "ابھی جانچ نہیں ہوئی۔",
 	"ui.hub.status.idle": "کوئی تبدیلی منتظر نہیں۔",
 	"ui.hub.status.checking": "تبدیلیاں جانچی جا رہی ہیں…",
@@ -159,7 +159,7 @@
 	"ui.hub.skills.unpull_body": "فائلیں آپ کی مہارتوں کے فولڈر سے نکل جاتی ہیں۔ ربط اور اس کی سبسکرپشن برقرار رہتے ہیں، اس لیے دوبارہ ڈاؤن لوڈ کرنے پر موجودہ ریویژن واپس آ جاتا ہے۔",
 	"ui.hub.skills.unpull_failed": "مقامی نقل ہٹنے کی تصدیق نہیں ہوئی۔ دوبارہ کوشش کریں، پھر ربط کی حالت دیکھیں۔",
 	"ui.hub.skills.subscribe_failed": "سبسکرپشن کی تصدیق نہیں ہوئی۔ دوبارہ کوشش کریں۔",
-	"ui.hub.skills.local_path": "{path} پر انسٹال",
+	"ui.hub.skills.local_path": "⁨{path}⁩ پر انسٹال",
 	"ui.hub.skills.published_by": "{publisher} نے شائع کیا",
 	"ui.hub.skills.not_downloaded": "ڈاؤن لوڈ نہیں ہوا",
 	"ui.hub.skills.subscribed_absent": "سبسکرپشن ہے — انسٹال نہیں",
@@ -174,7 +174,7 @@
 	"ui.hub.skills.subscribe_help": "آئندہ ریویژنز کی پیروی کرتا ہے۔ ابھی کچھ ڈاؤن لوڈ نہیں کرتا۔",
 	"ui.hub.skills.unsubscribe": "سبسکرپشن ختم کریں",
 	"ui.hub.skills.unsubscribe_help": "آئندہ اپ ڈیٹس روکتا ہے۔ ڈاؤن لوڈ شدہ فائلیں رہتی ہیں۔",
-	"ui.hub.skills.public_hub": "Public Hub",
-	"ui.hub.skills.count": "{count, plural, one {{scope} میں {count, number, ::group-off} مہارت} other {{scope} میں {count, number, ::group-off} مہارتیں}}",
-	"ui.hub.skills.count_shared": "{count, plural, one {{organization} کے ساتھ شیئر کردہ {count, number, ::group-off} مہارت} other {{organization} کے ساتھ شیئر کردہ {count, number, ::group-off} مہارتیں}}"
+	"ui.hub.skills.public_hub": "عوامی Agent Hub",
+	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} مہارت} other {{count, number, ::group-off} مہارتیں}}",
+	"ui.hub.skills.count_shared": "{count, plural, one {{organization} کے ساتھ مشترک {count, number, ::group-off} مہارت} other {{organization} کے ساتھ مشترک {count, number, ::group-off} مہارتیں}}"
 }

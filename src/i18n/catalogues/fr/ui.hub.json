@@ -71,7 +71,7 @@
 	"ui.hub.skills.pull_title": "Télécharger {item} depuis {source}",
 	"ui.hub.skills.pull_help": "Créez une copie locale distincte avec sa propre source et sa propre politique. Les copies existantes ne sont pas écrasées.",
 	"ui.hub.skills.pull_failed": "Le téléchargement n’a pas été confirmé. Vérifiez les éléments liés avant de réessayer.",
-	"ui.hub.skills.policy_pending": "La publication a réussi, mais cette machine n’a pas confirmé les politiques de lien. Réconciliez cette publication avant toute autre écriture.",
+	"ui.hub.skills.policy_pending": "La publication a réussi, mais cette machine n’a pas confirmé les politiques de lien. Vérifiez cette publication avant toute autre écriture.",
 	"ui.hub.skills.publish_title": "Publier une compétence",
 	"ui.hub.skills.select_authored": "Compétence à publier",
 	"ui.hub.skills.revision": "Version {revision}",
@@ -175,6 +175,6 @@
 	"ui.hub.skills.unsubscribe": "Se désabonner",
 	"ui.hub.skills.unsubscribe_help": "Arrête les futures mises à jour. Les fichiers téléchargés sont conservés.",
 	"ui.hub.skills.public_hub": "Hub public",
-	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} compétence dans {scope}} many {{count, number, ::group-off} de compétences dans {scope}} other {{count, number, ::group-off} compétences dans {scope}}}",
+	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} compétence} many {{count, number, ::group-off} de compétences} other {{count, number, ::group-off} compétences}}",
 	"ui.hub.skills.count_shared": "{count, plural, one {{count, number, ::group-off} compétence partagée avec {organization}} many {{count, number, ::group-off} de compétences partagées avec {organization}} other {{count, number, ::group-off} compétences partagées avec {organization}}}"
 }
