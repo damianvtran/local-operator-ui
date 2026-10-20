@@ -3497,3 +3497,72 @@ test("team_bridge account-scoped reads map scope=account and page on cursor", ()
 		{ message: /An account-scoped page uses cursor, not before/ },
 	);
 });
+
+test("team_bridge join adds the caller and notify rides the read route", () => {
+	/*
+	 * The discoverable-channel slice (agent-server #148) has two writes this
+	 * client owns. Join is the conversation domain's own POST .../join, with the
+	 * row's tenant in the body: in the merged view the rail scope is "all", so a
+	 * join that named no organization would be resolved by the server's default
+	 * — the one way a row could be joined under the wrong tenant.
+	 *
+	 * Notify is a field on the READ route, not a separate route. The op therefore
+	 * sends `notify` and no `seq`: choosing a preference must never advance the
+	 * cursor, and the body shape this test pins is exactly what the route reads.
+	 */
+	const join = jobsCancelEndpoint({
+		op: "team_bridge.conversations.join",
+		conversation_id: "bcv_abc12345",
+		tenant_id: "tnt_2",
+	});
+	assert.equal(join.method, "POST");
+	assert.equal(
+		join.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/join",
+	);
+	assert.deepEqual(join.body, { tenant_id: "tnt_2" });
+
+	const noTenant = jobsCancelEndpoint({
+		op: "team_bridge.conversations.join",
+		conversation_id: "bcv_abc12345",
+	});
+	assert.equal(noTenant.body, undefined);
+
+	const notify = jobsCancelEndpoint({
+		op: "team_bridge.conversations.notify",
+		conversation_id: "bcv_abc12345",
+		tenant_id: "tnt_2",
+		notify: "mention",
+	});
+	assert.equal(notify.method, "POST");
+	assert.equal(
+		notify.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/read",
+	);
+	assert.deepEqual(notify.body, { tenant_id: "tnt_2", notify: "mention" });
+	assert.equal(
+		"seq" in notify.body,
+		false,
+		"a preference write carries no seq",
+	);
+	assert.equal(
+		"muted" in notify.body,
+		false,
+		"the legacy flag is not sent beside notify",
+	);
+
+	// The closed set is the op boundary's, so a typo cannot reach the route.
+	assert.throws(() =>
+		jobsCancelSchema.parse({
+			op: "team_bridge.conversations.notify",
+			conversation_id: "bcv_abc12345",
+			notify: "loud",
+		}),
+	);
+	assert.throws(() =>
+		jobsCancelSchema.parse({
+			op: "team_bridge.conversations.notify",
+			conversation_id: "bcv_abc12345",
+		}),
+	);
+});

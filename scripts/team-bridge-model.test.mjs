@@ -188,3 +188,153 @@ test("notifications are quiet while the window is visible", () => {
 	assert.equal(model.shouldNotify("visible"), false);
 	assert.equal(model.shouldNotify("hidden"), true);
 });
+
+test("only an explicit discoverable non-member is a preview", () => {
+	assert.equal(
+		model.isPreviewConversation(
+			conversation({ discoverable: true, member: false }),
+		),
+		true,
+	);
+	assert.equal(
+		model.isPreviewConversation(
+			conversation({ discoverable: true, member: true }),
+		),
+		false,
+	);
+	// A server older than the discoverable slice sends neither field. Absence
+	// must not turn every row into a preview and suppress its history.
+	assert.equal(model.isPreviewConversation(conversation()), false);
+	assert.equal(
+		model.isPreviewConversation(conversation({ discoverable: true })),
+		false,
+	);
+});
+
+test("the notification register falls back to the legacy muted flag", () => {
+	assert.equal(
+		model.notificationPreference(conversation({ notify: "mention" })),
+		"mention",
+	);
+	assert.equal(
+		model.notificationPreference(
+			conversation({ notify: "mute", muted: false }),
+		),
+		"mute",
+	);
+	assert.equal(
+		model.notificationPreference(conversation({ muted: true })),
+		"mute",
+	);
+	assert.equal(
+		model.notificationPreference(conversation({ muted: false })),
+		"all",
+	);
+});
+
+test("the row's quiet bell follows notify, not only the old flag", () => {
+	assert.equal(
+		model.showsMutedGlyph(conversation({ notify: "mute", muted: false })),
+		true,
+	);
+	// The newer value is authoritative: a row whose notify says mentions is not
+	// muted even if a page raced and carries the old flag.
+	assert.equal(
+		model.showsMutedGlyph(conversation({ notify: "mention", muted: true })),
+		false,
+	);
+	assert.equal(model.showsMutedGlyph(conversation({ muted: true })), true);
+});
+
+test("the immediate mute toggle returns to all, not the previous level", () => {
+	assert.equal(model.toggledMuteNotify("mute"), "all");
+	assert.equal(model.toggledMuteNotify("all"), "mute");
+	assert.equal(model.toggledMuteNotify("mention"), "mute");
+});
+
+test("the optimistic patch moves notify and muted together, on one row", () => {
+	const page = {
+		conversations: [
+			conversation({ id: "bcv_1" }),
+			conversation({ id: "bcv_2", muted: false }),
+		],
+		has_more: true,
+		next_before: "cursor_1",
+	};
+	const patched = model.withNotificationPreference(page, "bcv_2", "mute");
+	assert.deepEqual(
+		patched.conversations.map((row) => [row.id, row.notify, row.muted]),
+		[
+			["bcv_1", undefined, false],
+			["bcv_2", "mute", true],
+		],
+	);
+	// Paging fields survive the optimistic write: dropping them would strand
+	// the rail's next page while the menu's request is in flight.
+	assert.equal(patched.has_more, true);
+	assert.equal(patched.next_before, "cursor_1");
+	// Unmute is the same patch with the loudest register, not a deletion.
+	assert.equal(
+		model.withNotificationPreference(patched, "bcv_2", "all").conversations[1]
+			.muted,
+		false,
+	);
+});
+
+test("the preference menu lists loud, mentions, mute in that order", () => {
+	assert.deepEqual(
+		model.TEAM_BRIDGE_NOTIFY_OPTIONS.map((option) => [
+			option.value,
+			option.labelKey,
+		]),
+		[
+			["all", "ui.teamBridge.notify.all"],
+			["mention", "ui.teamBridge.notify.mention"],
+			["mute", "ui.teamBridge.notify.mute"],
+		],
+	);
+	// Radix hands the group a bare string; an unknown value is loud, never
+	// silently silent.
+	assert.equal(model.asTeamBridgeNotify("mention"), "mention");
+	assert.equal(model.asTeamBridgeNotify("mute"), "mute");
+	assert.equal(model.asTeamBridgeNotify("nonsense"), "all");
+});
+
+test("a late notify refusal only shows under the conversation it belongs to", () => {
+	const failure = {
+		isError: true,
+		variables: { conversationId: "bcv_2" },
+	};
+	assert.equal(model.notifyFailureIsVisible(failure, "bcv_2"), true);
+	// The reader moved to B while A's write was in flight: A's settlement must
+	// not re-arm the line under B.
+	assert.equal(model.notifyFailureIsVisible(failure, "bcv_3"), false);
+	assert.equal(
+		model.notifyFailureIsVisible({ isError: false }, "bcv_2"),
+		false,
+	);
+});
+
+test("a preview header counts member_count when it has no member rows", () => {
+	assert.equal(
+		model.conversationMemberCount(
+			conversation({ member_count: 24, members: [] }),
+		),
+		24,
+	);
+	assert.equal(
+		model.conversationMemberCount(
+			conversation({
+				member_count: 3,
+				members: [
+					member("Ada", "human", "active"),
+					member("Bea", "human", "active"),
+					member("Cy", "human", "invited"),
+				],
+			}),
+		),
+		// member_count counts active + invited; the insider header counts the
+		// active rows only (the avatar strip filters the same state).
+		2,
+	);
+});
