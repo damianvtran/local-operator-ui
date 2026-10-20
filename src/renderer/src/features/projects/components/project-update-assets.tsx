@@ -61,6 +61,7 @@ import { wrapGroupIndex } from "@shared/lib/image-viewer-model";
 import { cn } from "@shared/lib/utils";
 import { Play } from "lucide-react";
 import type { FC } from "react";
+import type { RefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DesktopProjectAttachment } from "../../../../../shared/desktop-control-contract";
 import {
@@ -100,10 +101,23 @@ export function projectAssetKind(
 }
 
 /** The one byte-reader call site's options, shared by the tile and the layer. */
-const blobOptions = (attachment: DesktopProjectAttachment) => ({
-	mimeType: mimeTypeForPath(attachment.name || attachment.path),
-	sizeBytes: attachment.bytes,
-});
+const blobOptions = (attachment: DesktopProjectAttachment) => {
+	const stamp = Date.parse(attachment.added_at);
+	return {
+		mimeType: mimeTypeForPath(attachment.name || attachment.path),
+		sizeBytes: attachment.bytes,
+		/*
+		 * THE SHARED CACHE KEY. A holder without an mtime is keyed per holder, so
+		 * the tile, every filmstrip tile and the lightbox each read the file
+		 * again. A stored copy is immutable and `added_at` is its identity, so
+		 * the stamp names the same bytes for every holder and they share one
+		 * read. A malformed stamp falls back to the per-holder path deliberately:
+		 * re-reading is the safe answer to "I cannot prove this is the same
+		 * file".
+		 */
+		...(Number.isFinite(stamp) ? { mtimeMs: stamp } : {}),
+	};
+};
 
 /** The stable identity of an attachment: the same file added twice is two rows. */
 const assetKey = (attachment: DesktopProjectAttachment): string =>
@@ -184,7 +198,13 @@ const ProjectImageTile: FC<{
 	return (
 		<div
 			ref={anchorRef}
-			className="group relative inline-block"
+			/*
+			 * `flex`, not `block`: `ImageAttachment`'s root is an inline-block, and
+			 * in a block wrapper the line box left a 1px baseline tail (measured
+			 * 79px against the 78px frame). A flex container blockifies the child,
+			 * so the slot is exactly the frame.
+			 */
+			className="group relative flex leading-none"
 			data-project-asset-tile="image"
 		>
 			{near ? (
@@ -214,7 +234,7 @@ const ProjectVideoTileBody: FC<{
 		name: String(name),
 	});
 	return (
-		<div className="group relative">
+		<>
 			<button
 				type="button"
 				className="group/tile block cursor-pointer rounded-sm"
@@ -254,15 +274,7 @@ const ProjectVideoTileBody: FC<{
 					</span>
 				</AttachmentFrame>
 			</button>
-			<div className={ASSET_ACTIONS_REVEAL}>
-				<FileActionsMenu
-					filePath={attachment.path}
-					aria-label={t("ui.projects.project_updates.file_actions_for_name", {
-						name: String(name),
-					})}
-				/>
-			</div>
-		</div>
+		</>
 	);
 };
 
@@ -274,7 +286,7 @@ const ProjectVideoTile: FC<{
 	return (
 		<div
 			ref={anchorRef}
-			className="group relative inline-block"
+			className="group relative block leading-none"
 			data-project-asset-tile="video"
 		>
 			{near ? (
@@ -282,6 +294,15 @@ const ProjectVideoTile: FC<{
 			) : (
 				<ReservedTile kind="video" />
 			)}
+			{/* The actions outlive the bytes: a moved clip keeps its menu. */}
+			<div className={ASSET_ACTIONS_REVEAL}>
+				<FileActionsMenu
+					filePath={attachment.path}
+					aria-label={t("ui.projects.project_updates.file_actions_for_name", {
+						name: String(attachmentName(attachment)),
+					})}
+				/>
+			</div>
 		</div>
 	);
 };
@@ -325,7 +346,7 @@ const ProjectSoundTile: FC<{ attachment: DesktopProjectAttachment }> = ({
 	return (
 		<div
 			ref={anchorRef}
-			className="inline-block sm:col-span-2"
+			className="group relative block leading-none sm:col-span-2"
 			data-project-asset-tile="audio"
 		>
 			{near ? (
@@ -333,6 +354,14 @@ const ProjectSoundTile: FC<{ attachment: DesktopProjectAttachment }> = ({
 			) : (
 				<ReservedTile kind="audio" />
 			)}
+			<div className={ASSET_ACTIONS_REVEAL}>
+				<FileActionsMenu
+					filePath={attachment.path}
+					aria-label={t("ui.projects.project_updates.file_actions_for_name", {
+						name: String(attachmentName(attachment)),
+					})}
+				/>
+			</div>
 		</div>
 	);
 };
@@ -420,9 +449,11 @@ type MediaAsset = {
 const FilmstripTile: FC<{
 	asset: MediaAsset;
 	current: boolean;
+	index: number;
+	count: number;
 	onSelect: () => void;
 	scrollIntoView: boolean;
-}> = ({ asset, current, onSelect, scrollIntoView }) => {
+}> = ({ asset, current, index, count, onSelect, scrollIntoView }) => {
 	useI18nLocale();
 	const [anchorRef, near] = useEverInView();
 	const slotRef = useRef<HTMLLIElement>(null);
@@ -447,12 +478,16 @@ const FilmstripTile: FC<{
 						asset={asset}
 						onSelect={onSelect}
 						current={current}
+						index={index}
+						count={count}
 					/>
 				) : (
 					<button
 						type="button"
-						aria-label={t("ui.projects.project_updates.show_name", {
+						aria-label={t("ui.projects.project_updates.show_asset_name", {
 							name: String(name),
+							index: String(index + 1),
+							count: String(count),
 						})}
 						className="group/tile inline-block cursor-pointer rounded-sm leading-none"
 						onClick={onSelect}
@@ -472,16 +507,20 @@ const FilmstripTile: FC<{
 const FilmstripTileBody: FC<{
 	asset: MediaAsset;
 	current: boolean;
+	index: number;
+	count: number;
 	onSelect: () => void;
-}> = ({ asset, current, onSelect }) => {
+}> = ({ asset, current, index, count, onSelect }) => {
 	useI18nLocale();
 	const name = attachmentName(asset.attachment);
 	const state = useFileBlobUrl(
 		asset.attachment.path,
 		blobOptions(asset.attachment),
 	);
-	const label = t("ui.projects.project_updates.show_name", {
+	const label = t("ui.projects.project_updates.show_asset_name", {
 		name: String(name),
+		index: String(index + 1),
+		count: String(count),
 	});
 	if (asset.kind === "image" && state.status === "ready") {
 		return (
@@ -569,6 +608,8 @@ const ProjectMediaFilmstrip: FC<{
 					key={assetKey(asset.attachment)}
 					asset={asset}
 					current={tileIndex === index}
+					index={tileIndex}
+					count={media.length}
 					onSelect={() => onSelect(tileIndex)}
 					scrollIntoView={index === tileIndex}
 				/>
@@ -588,7 +629,9 @@ const ProjectMediaLightbox: FC<{
 	index: number;
 	onIndexChange: (index: number) => void;
 	onClose: () => void;
-}> = ({ media, index, onIndexChange, onClose }) => {
+	/** The pressed tile, so every exit returns focus where the reader was. */
+	restoreFocusTo: RefObject<HTMLElement | null>;
+}> = ({ media, index, onIndexChange, onClose, restoreFocusTo }) => {
 	useI18nLocale();
 	const asset = media[index];
 	const name = attachmentName(asset.attachment);
@@ -615,6 +658,8 @@ const ProjectMediaLightbox: FC<{
 			pending={state.status === "loading"}
 			label={name}
 			mediaKind={asset.kind}
+			mediaLabel="asset"
+			restoreFocusTo={restoreFocusTo}
 			fallback={<BrokenAttachment name={name} />}
 			group={{
 				index,
@@ -660,6 +705,14 @@ export const ProjectUpdateAssets: FC<ProjectUpdateAssetsProps> = ({
 	const [previewing, setPreviewing] = useState<DesktopProjectAttachment | null>(
 		null,
 	);
+	/*
+	 * The control that opened each layer, captured at press time. Radix's modal
+	 * path restores focus to a DialogTrigger this composition does not have, so
+	 * without these a close lands on `<body>` and the reader's next Tab starts
+	 * from the top of the app (UX, measured in the live app).
+	 */
+	const galleryFocusRef = useRef<HTMLElement | null>(null);
+	const previewFocusRef = useRef<HTMLElement | null>(null);
 	const openedIndex = openKey
 		? media.findIndex((asset) => assetKey(asset.attachment) === openKey)
 		: -1;
@@ -670,13 +723,27 @@ export const ProjectUpdateAssets: FC<ProjectUpdateAssetsProps> = ({
 	 * the FIRST match, which is the one the reader pressed.
 	 */
 	const selectAsset = (attachment: DesktopProjectAttachment) => {
+		const active = document.activeElement;
+		galleryFocusRef.current = active instanceof HTMLElement ? active : null;
 		setOpenKey(assetKey(attachment));
+	};
+	const openPreview = (attachment: DesktopProjectAttachment) => {
+		const active = document.activeElement;
+		previewFocusRef.current = active instanceof HTMLElement ? active : null;
+		setPreviewing(attachment);
 	};
 
 	return (
 		<>
 			<div
-				className="grid grid-cols-[repeat(auto-fill,117px)] items-start gap-2"
+				/*
+				 * FOUR TO A ROW on a wide surface: the 117px column is chat's tile
+				 * width, and 4 x 117 + 3 x 8 = 492. `auto-fill` still wraps to fewer
+				 * columns when the feed is narrower; the cap is what stops a wide
+				 * detail page from stretching one update's evidence across six
+				 * columns, which the operator asked not to do.
+				 */
+				className="grid max-w-[492px] grid-cols-[repeat(auto-fill,117px)] items-start gap-2"
 				data-project-asset-grid=""
 			>
 				{assets.map(({ attachment, kind }) => {
@@ -710,7 +777,7 @@ export const ProjectUpdateAssets: FC<ProjectUpdateAssetsProps> = ({
 						<ProjectFileTile
 							key={assetKey(attachment)}
 							attachment={attachment}
-							onPreview={() => setPreviewing(attachment)}
+							onPreview={() => openPreview(attachment)}
 						/>
 					);
 				})}
@@ -724,12 +791,14 @@ export const ProjectUpdateAssets: FC<ProjectUpdateAssetsProps> = ({
 						if (nextAsset) setOpenKey(assetKey(nextAsset.attachment));
 					}}
 					onClose={() => setOpenKey(null)}
+					restoreFocusTo={galleryFocusRef}
 				/>
 			)}
 			<ProjectFilePreviewDialog
 				open={previewing !== null}
 				attachment={previewing}
 				onClose={() => setPreviewing(null)}
+				restoreFocusTo={previewFocusRef}
 			/>
 		</>
 	);
