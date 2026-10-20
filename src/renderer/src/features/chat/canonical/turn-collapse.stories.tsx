@@ -1802,6 +1802,34 @@ export const QuietClose: Story = {
 	),
 };
 
+/**
+ * An answered turn followed by a bare settled `no_reply` whose opener (the peer
+ * record) has not landed ahead of it - the live path's order, and the shape of
+ * the operator's report: before the fix the quiet row alone became an empty
+ * check-and-chevron bar under the answer.
+ */
+const quietBareCloseTurn = (): TranscriptState => {
+	const S = TS / 1000;
+	return applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			quietEntry("u1", S, userMessage("u1", "Check the staging deploy.")),
+			quietEntry("a1", S + 4, assistantMessage("a1", "Staging is healthy.")),
+			quietEntry("q1", S + 7, quietPayload("c2")),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+};
+
+export const QuietBareCloseAfterAnswer: Story = {
+	render: () => (
+		<Frame
+			transcript={quietBareCloseTurn()}
+			caption="A plain answer, then a bare no_reply with no opener loaded: the silent close paints no empty bar under the answer."
+		/>
+	),
+};
+
 /** The group bar: twelve receipts, one line. */
 export const QuietGroupCollapsed: Story = {
 	render: () => (

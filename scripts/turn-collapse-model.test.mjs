@@ -5552,3 +5552,64 @@ test("R3: announcement ownership aliases only previously known qg episodes, with
 	assert.equal(overflow.reason, "prior-id-limit");
 	assert.equal(aliasesV2(overflow, [bounded]).reason, "prior-id-limit");
 });
+
+test("a peer turn whose only own row is a settled no_reply paints no bar, in either record order", () => {
+	/*
+	 * `[user][tools][answer][peer][no_reply]` is the reload order; the live path
+	 * can land the peer record after the quiet row. Both leave a span with no
+	 * label, count or duration, which must stay loose (its rows paint nothing)
+	 * instead of becoming an empty check-and-chevron bar.
+	 */
+	const orders = {
+		reload: [peerRow("p1"), quiet("q1")],
+		live: [quiet("q1"), peerRow("p1")],
+		quietOnly: [quiet("q1")],
+	};
+	// The bare shape the operator screenshot shows: no work row, only the close.
+	{
+		const [plan] = planOf([
+			user("u1"),
+			answer("a1"),
+			peerRow("p0"),
+			answer("a2"),
+			quiet("q9"),
+		]).runs;
+		for (const seg of plan.segments)
+			assert.equal(
+				seg.collapsed && seg.label === null && seg.facts.actions === 0,
+				false,
+				`bare close: no empty bar (${seg.segmentIds})`,
+			);
+	}
+	for (const [name, tail] of Object.entries(orders)) {
+		if (name === "quietOnly") {
+			const [bare] = planOf([user("u1"), answer("a1"), ...tail]).runs;
+			for (const seg of bare.segments)
+				assert.equal(seg.collapsed, false, "bare close stays loose");
+			continue;
+		}
+		const rows = [
+			user("u1"),
+			tool("t1", { durationS: 3 }, "trace"),
+			answer("a1"),
+			...tail,
+		];
+		const [plan] = planOf(rows).runs;
+		for (const seg of plan.segments) {
+			const empty =
+				seg.label === null &&
+				seg.facts.actions === 0 &&
+				seg.facts.durationS === null &&
+				seg.facts.group === null &&
+				seg.internal === null;
+			assert.equal(
+				seg.collapsed && empty,
+				false,
+				`${name}: no empty collapsed bar (${seg.segmentIds})`,
+			);
+		}
+		const work = plan.segments.find((seg) => seg.segmentIds.includes("t1"));
+		assert.equal(work?.collapsed, true, `${name}: the real work bar remains`);
+		assert.equal(work?.facts.actions, 1, `${name}: Took/actions unchanged`);
+	}
+});
