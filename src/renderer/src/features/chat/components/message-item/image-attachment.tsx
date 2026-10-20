@@ -426,6 +426,18 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 					)}
 					src={src}
 					alt={name}
+					/*
+					 * The browser's own deferral and decode off the main thread. The
+					 * caller may already gate the READ (a feed tile mounts this only
+					 * near the viewport), but the painted `<img>` is the one element
+					 * that can still decode at paint time; `loading="lazy"` keeps a
+					 * burst of tiles from decoding ahead of their row, and
+					 * `decoding="async"` keeps the frames moving while they do. Both
+					 * are no-ops on a picture already in view and neither changes the
+					 * reserved box, so existing callers see the same layout.
+					 */
+					loading="lazy"
+					decoding="async"
 					onLoad={() => setIsLoaded(true)}
 					onError={handleError}
 				/>
