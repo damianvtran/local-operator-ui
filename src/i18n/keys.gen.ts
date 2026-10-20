@@ -41,6 +41,7 @@ import enUiChatHeader from "./catalogues/en/ui.chat.header.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
+import enUiChatTagDialogs from "./catalogues/en/ui.chat.tag_dialogs.json";
 import enUiChatTags from "./catalogues/en/ui.chat.tags.json";
 import enUiChatTranscriptCopy from "./catalogues/en/ui.chat.transcript_copy.json";
 import enUiCodeReview from "./catalogues/en/ui.code_review.json";
@@ -297,6 +298,7 @@ import ruUiHubComments from "./catalogues/ru/ui.hub.comments.json";
 import ruUiHub from "./catalogues/ru/ui.hub.json";
 import ruUiHubTaxonomy from "./catalogues/ru/ui.hub.taxonomy.json";
 import ruUiInstaller from "./catalogues/ru/ui.installer.json";
+import ruUiLibrary from "./catalogues/ru/ui.library.json";
 import ruUiMesh from "./catalogues/ru/ui.mesh.json";
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
@@ -411,6 +413,7 @@ import viUiHubComments from "./catalogues/vi/ui.hub.comments.json";
 import viUiHub from "./catalogues/vi/ui.hub.json";
 import viUiHubTaxonomy from "./catalogues/vi/ui.hub.taxonomy.json";
 import viUiInstaller from "./catalogues/vi/ui.installer.json";
+import viUiLibrary from "./catalogues/vi/ui.library.json";
 import viUiMesh from "./catalogues/vi/ui.mesh.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
 import viUiProjects from "./catalogues/vi/ui.projects.json";
@@ -515,6 +518,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChat,
 	...enUiChatResponseActions,
 	...enUiChatSidebarView,
+	...enUiChatTagDialogs,
 	...enUiChatTags,
 	...enUiChatTranscriptCopy,
 	...enUiCodeReview,
@@ -785,6 +789,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiHub,
 		...ruUiHubTaxonomy,
 		...ruUiInstaller,
+		...ruUiLibrary,
 		...ruUiMesh,
 		...ruUiOnboarding,
 		...ruUiProjects,
@@ -903,6 +908,7 @@ export const bundledCatalogues: Readonly<
 		...viUiHub,
 		...viUiHubTaxonomy,
 		...viUiInstaller,
+		...viUiLibrary,
 		...viUiMesh,
 		...viUiOnboarding,
 		...viUiProjects,
@@ -1712,10 +1718,19 @@ export type MessageParams = {
 	"ui.chat.sidebar_view.sections": undefined;
 	"ui.chat.sidebar_view.time_basis": undefined;
 	"ui.chat.sidebar_view.time_section": undefined;
+	"ui.chat.tag_dialogs.assign_created_failed": { name: string };
+	"ui.chat.tag_dialogs.changed_elsewhere": undefined;
+	"ui.chat.tag_dialogs.close": undefined;
+	"ui.chat.tag_dialogs.created_assigned": { name: string };
+	"ui.chat.tag_dialogs.deleted_name": { name: string };
+	"ui.chat.tag_dialogs.manage_description": undefined;
+	"ui.chat.tag_dialogs.picker_description": undefined;
 	"ui.chat.tags.add": undefined;
 	"ui.chat.tags.apply": undefined;
 	"ui.chat.tags.apply_deletion_first": { name: string };
 	"ui.chat.tags.applying": undefined;
+	"ui.chat.tags.auto_tag": undefined;
+	"ui.chat.tags.auto_tag_help": undefined;
 	"ui.chat.tags.cancel": undefined;
 	"ui.chat.tags.changed_elsewhere": undefined;
 	"ui.chat.tags.clear": undefined;
@@ -4902,10 +4917,36 @@ export type MessageParams = {
 	"ui.teamBridge.page.new_conversation": undefined;
 	"ui.teamBridge.page.subtitle": undefined;
 	"ui.teamBridge.page.title": undefined;
+	"ui.teamBridge.people.all_scope": undefined;
+	"ui.teamBridge.people.bridge_off": undefined;
+	"ui.teamBridge.people.empty": undefined;
+	"ui.teamBridge.people.error": undefined;
+	"ui.teamBridge.people.identity_loading": undefined;
+	"ui.teamBridge.people.list_error": undefined;
+	"ui.teamBridge.people.list_loading": undefined;
+	"ui.teamBridge.people.loading": undefined;
+	"ui.teamBridge.people.message": { name: string };
+	"ui.teamBridge.people.message_paused": { name: string };
+	"ui.teamBridge.people.paused": undefined;
+	"ui.teamBridge.people.self": undefined;
+	"ui.teamBridge.people.title": undefined;
+	"ui.teamBridge.plan.body": undefined;
+	"ui.teamBridge.plan.checking": undefined;
+	"ui.teamBridge.plan.reason": undefined;
+	"ui.teamBridge.plan.sign_in_reason": undefined;
+	"ui.teamBridge.plan.sign_in_title": undefined;
+	"ui.teamBridge.plan.title": undefined;
+	"ui.teamBridge.plan.unavailable_reason": undefined;
+	"ui.teamBridge.plan.unavailable_title": undefined;
+	"ui.teamBridge.plan.update_reason": undefined;
+	"ui.teamBridge.plan.update_title": undefined;
 	"ui.teamBridge.preview.banner": undefined;
 	"ui.teamBridge.preview.chip": undefined;
 	"ui.teamBridge.preview.join": undefined;
 	"ui.teamBridge.preview.join_error": undefined;
+	"ui.teamBridge.read_only.composer": undefined;
+	"ui.teamBridge.read_only.note": undefined;
+	"ui.teamBridge.read_only.person": undefined;
 	"ui.teamBridge.scope.all": undefined;
 	"ui.teamBridge.scope.create_needs_org": undefined;
 	"ui.teamBridge.scope.empty": undefined;

@@ -2711,6 +2711,13 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 */
 			boundary: z.enum(["next_safe", "at_entry"]).optional(),
 			entryId: z.string().max(128).optional(),
+			/*
+			 * WHETHER THE CHILD SHOULD NAME ITSELF WITH A TAG. Optional and absent
+			 * on every released body: a renderer only sends it after the backend
+			 * advertises `session_tags_auto_tag` (`chat-auto-tag.ts`), because
+			 * `Fork` inherits `extra="forbid"` and an older core would answer 422.
+			 */
+			autoTag: z.boolean().optional(),
 		})
 		.strict(),
 	z
@@ -3428,6 +3435,34 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			/* The account aggregate: one read across every active membership. */
 			scope: z.literal("account").optional(),
 			tenant_id: id.optional(),
+		})
+		.strict(),
+	/*
+	 * The directory and the eligibility read (Team Bridge directory slice).
+	 *
+	 * `directory` is TENANT-SCOPED BY CONSTRUCTION: `tenant_id` is required, so
+	 * the renderer can never ask for "everyone in every organization" through
+	 * this op and there is no server-default tenant to resolve. That mirrors the
+	 * tenant-scoped read rule above (a read names one organization or the
+	 * account, never neither) while keeping the whole-account directory off the
+	 * wire: the rail's People section only exists for a selected organization.
+	 *
+	 * `status` is the existing bridge status payload under this namespace's own
+	 * op name. The boundary is optional because a page open is the only context
+	 * this surface reads from; when it is present it is the same enum the
+	 * `agent_messages.status` route validates, so the two spellings cannot
+	 * drift.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.directory"),
+			tenant_id: id,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.status"),
+			boundary: agentMessagesBoundarySchema.optional(),
 		})
 		.strict(),
 	z.object({ op: z.literal("settings.list") }).strict(),
@@ -5784,6 +5819,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"team_bridge.conversations.get",
 	"team_bridge.messages.list",
 	"team_bridge.unread",
+	"team_bridge.directory",
+	"team_bridge.status",
 	"accounts.list",
 	"analytics.get",
 	"analytics.models",
@@ -8196,6 +8233,12 @@ export function desktopEndpoint(request: DesktopRequest): {
 					 * `next_safe` fork sends no `entry_id` key at all.
 					 */
 					entry_id: request.entryId,
+					/*
+					 * Absent unless the capability gate admitted it; `undefined` is
+					 * dropped by `JSON.stringify`, so a released client's body stays
+					 * byte-identical and this key is the only difference.
+					 */
+					auto_tag: request.autoTag,
 				},
 			};
 		case "sessions.stop":
@@ -8551,6 +8594,36 @@ export function desktopEndpoint(request: DesktopRequest): {
 			const suffix = query.size > 0 ? `?${query.toString()}` : "";
 			return {
 				path: `/v1/desktop/team-bridge/unread${suffix}`,
+				method: "GET",
+			};
+		}
+		/*
+		 * The directory route is the LOCAL daemon's (`GET
+		 * /v1/desktop/team-bridge/directory`, local-operator #2712), which validates
+		 * `tenant_id` and forwards to the hub's `/v1/messaging/directory` itself.
+		 * The desktop transport sends every op to the daemon, so the hub path is not
+		 * reachable from here; addressing it directly made every directory read a
+		 * 404. `tenant_id` is encoded as a query value, so a crafted id can never
+		 * compose a second parameter or a path segment.
+		 */
+		case "team_bridge.directory":
+			return {
+				path: `/v1/desktop/team-bridge/directory?tenant_id=${encodeURIComponent(request.tenant_id)}`,
+				method: "GET",
+			};
+		/*
+		 * The same status route `agent_messages.status` reads, under the bridge
+		 * namespace. `boundary` is optional here (the page opens the surface but a
+		 * future caller may only need the platform state), so an absent boundary
+		 * sends no query at all rather than the literal `undefined` the sibling
+		 * op would emit for a missing value.
+		 */
+		case "team_bridge.status": {
+			const query = new URLSearchParams();
+			if (request.boundary) query.set("boundary", request.boundary);
+			const suffix = query.size > 0 ? `?${query.toString()}` : "";
+			return {
+				path: `/v1/desktop/team-bridge/status${suffix}`,
 				method: "GET",
 			};
 		}

@@ -5,6 +5,8 @@
 	"ui.chat.tags.manage": "Quản lý nhãn…",
 	"ui.chat.tags.mode_hint": "Các nhóm nhãn dùng cách nhóm của mục Thời gian.",
 	"ui.chat.tags.use_time": "Dùng mục Thời gian",
+	"ui.chat.tags.auto_tag": "Tự động gắn nhãn cuộc trò chuyện tách nhánh",
+	"ui.chat.tags.auto_tag_help": "Dùng nhãn hiện có của bạn khi đặt tên cho một nhánh.",
 	"ui.chat.tags.discovery": "Nhấp chuột phải vào cuộc trò chuyện rồi chọn Nhãn… (Shift+F10, kèm Fn trên hầu hết bàn phím Mac).",
 	"ui.chat.tags.picker_title": "Nhãn cho “{title}”",
 	"ui.chat.tags.picker_description": "Chọn nhãn rồi nhấn Áp dụng. Nhãn mới được lưu ngay.",
