@@ -8,8 +8,9 @@ screen was added. The operator has not approved release.
 ## Source and execution
 
 UI merge `60948819fed2166f50e9452565d79770349a9cc3` (feature head
-`25c6bd089f79f5ecef52a692fa04944d7f975223`); harness merge
-`01729374e4b1484234d300064b60ce7ac4c015e0`. Extended the existing
+`25c6bd089f79f5ecef52a692fa04944d7f975223`); harness merge **`ab58506e`** (the
+generation whose artifact and duration are shown; the earlier harness pin
+`01729374` is what the first capture ran on). Extended the existing
 `scripts/run-sounds-scene.mjs`, `sounds-fixture.mjs`, and `sounds-scene.mjs`;
 `rig-extension.patch` preserves the exact extension without changing the shipped
 product or the existing committed scripts in this evidence-only commit.
@@ -51,15 +52,17 @@ initializer. Captures use the existing supported plain-JS/npm build switch
 An existing Babel plugin was linked inside the isolated cloned dependencies to
 repair their missing root resolution; the primary installation was untouched.
 
-## Re-capture (2026-10-19)
+## Re-capture (2026-10-19, completed 2026-10-20)
 
 Round 1 of review found that two of the seven frames did not show what their
 filenames claim: the voiceover idle/playing pair was scrolled to the transcript's
 latest turn with no player in view, and `release-earlier-turn-playing.png` was
 byte-identical to `release-voiceover-playing.png` — six distinct images, not
-seven. **Six frames were re-captured. No product source changed**; the app tree
-is still `60948819`, and `rig-recapture.patch` is the rig as run for this pass
-(self-contained: it includes the release-asset extension of the first run).
+seven. **All seven are now re-captured in one run. No product source changed**;
+the app tree is still `60948819`, and `rig-recapture.patch` is the rig as run
+(self-contained: it includes the release-asset extension of the first run). The
+seventh waited on a harness fix (`ab58506e`) because its recording carried a null
+duration — see below.
 
 Why the first capture missed the card, and the three rig fixes:
 
@@ -88,13 +91,17 @@ Why the first capture missed the card, and the three rig fixes:
 Distinctness is **asserted by the rig**, not eyeballed: seven frames must hash to
 seven SHA-256 values or the run fails. The seven committed PNGs do.
 
-**Not re-captured: `release-byok-result.png`.** The BYOK record renders **no
-player at all**, because the recorded tool result carries `duration_s: null` —
-the two Radient rows carry `1.619592` and `0.522449` and do render players. The
-server row for this call reports `0.522449 s`, so the duration was known and is
-absent from the recorded result: a defect in the BYOK result shape, not a capture
-problem. The frame is therefore left as the **pre-re-capture** capture and is
-disclosed as such in state 5 below, rather than being edited into looking newer.
+**`release-byok-result.png` is re-captured from a LIVE BYOK generation, not a
+replay of the old recording.** The old recording carried `duration_s: null` —
+the defect itself — so replaying it could never show a player, and writing the
+server's `0.522449 s` into a recorded result would have been fabricating
+evidence. The defect has since been fixed in the harness (a clip's length is a
+property of its bytes; `audiogen.peaks.compute_duration`), and this frame comes
+from a real ElevenLabs call made on the merged harness **`ab58506e`**. Its tool
+result carries the duration derived from the returned bytes: **`0.48 s`**,
+digest `d736c1f0…`, 8 820 bytes. `byok-actual.json` in this directory is that
+result, verbatim, and the card renders a player and a waveform where it
+previously rendered nothing.
 
 ## Required-state matrix
 
@@ -104,7 +111,7 @@ disclosed as such in state 5 below, rather than being edited into looking newer.
 | 2. SFX with billed cost | **PARTIAL/BLOCKED**: real SFX plays; billed caption is absent; sub-second clock displays `0:00 / 0:00` | `release-sfx-playing.png`; `release-sfx-idle.png` |
 | 3. Invalid arguments + exact server refusal body | **PARTIAL/BLOCKED**: exact HTTP-400 body is replayed and visible; not a newly executed tool refusal and not the requested invalid-arguments labelled row | `release-auto-duration-refusal.png` |
 | 4. Running cancel warning BEFORE action, then pending settlement | **BLOCKED/NOT CAPTURED**: no real pre-action warning/action flow was obtained; the forwarded post-cancel rows do not prove it | No fabricated frame |
-| 5. BYOK `cost:null` plus labelled estimate | **PARTIAL/BLOCKED**: actual merged harness BYOK generation succeeded, but estimate is `$0.0010`, not requested `$0.0020`; estimate caption is absent from merged card; no server `cost:null` row exists for this direct-provider path; **the record renders no player** (`duration_s: null` in the recorded result, see Re-capture) | `release-byok-result.png` (**pre-re-capture**); `byok-actual.json` |
+| 5. BYOK `cost:null` plus labelled estimate | **PARTIAL/BLOCKED**: real BYOK generation on the merged harness succeeded; estimate is `$0.0010`, not the requested `$0.0020`; the estimate caption is absent from the merged card; no server `cost:null` row exists for this direct-provider path. **The record now renders a player and a waveform** — `duration_s` is derived from the returned bytes (`0.48 s`), where it was null before the harness fix | `release-byok-result.png`; `byok-actual.json` |
 | 6. Earlier-turn artifact playing mid-transcript | **PASS**: earlier real voiceover actively playing while later turns remain visible, not a thumbnail | `release-earlier-turn-playing.png` |
 
 Loading/empty states were not captured by this attempt; populated, playing and
