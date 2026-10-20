@@ -185,11 +185,12 @@ export function useTeamBridgeDirectory(
  * The bridge's platform state, for the page's plan/sign-in cue.
  *
  * Read once per page open (`surface_open`) and kept fresh for a minute. The
- * page keeps rendering its normal state while this is pending: the status
- * answer is a gate, and a gate that blocks the first paint would make every
- * signed-in visit wait on a second read. A failure is not surfaced by itself —
- * the conversation list already has its own error state, and a status read
- * that cannot answer must not invent an ineligible verdict.
+ * page HOLDS its first paint on this answer (round-1 U-6): the verdict decides
+ * whether the rest of the read set may fire, so the conversation chrome must
+ * not be drawn — and its requests not spent — before the gate answers. A
+ * failure is not surfaced by itself: the conversation list already has its own
+ * error state, and a status read that cannot answer must not invent an
+ * ineligible verdict.
  */
 export function useTeamBridgeStatus(): UseQueryResult<AgentMessagesStatus> {
 	return useQuery({
