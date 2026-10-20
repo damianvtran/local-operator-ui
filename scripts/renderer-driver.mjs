@@ -89,13 +89,13 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
  *                          where a dropped file attaches, or the base tree, where
  *                          the same gesture leaves nothing behind
- *   --project <key>        (with --scene project-detail, project-inline-edit or
+ *   --project <key>        (with --scene project-detail, project-update-assets, project-inline-edit or
  *                          project-open) the seeded project the scene drives;
  *                          the seed decides the name and a default would
  *                          photograph whatever it happened to use
@@ -43116,6 +43116,193 @@ async function wheelUntilInScroller(
  * calls that would), and the facts check below proves the window stayed
  * hidden. The run log says it used it.
  */
+
+/**
+ * THE PROJECT UPDATE ASSETS GRID, live: open the seeded picture, Next, a
+ * filmstrip jump, Escape, and the markdown note in the in-app reader. Every
+ * claim is read off the DOM the app painted.
+ */
+async function sceneProjectUpdateAssets(cdp) {
+	if (PROJECT === null) {
+		throw new Error(
+			"--scene project-update-assets needs --project <key>: the feed is reached by the project's own key, and a default would drive whatever the lane's seed happened to call its row",
+		);
+	}
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	const theme = (THEME ?? "localOperatorDark")
+		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+		.replace(/^-/, "");
+
+	const seeded = await fetchProjectView(PROJECT);
+	const names = (seeded.body?.result?.project?.updates ?? [])
+		.flatMap((update) => update.attachments ?? [])
+		.map((attachment) => attachment.name);
+	check(
+		"the seeded project exists and carries the evidence attachments",
+		seeded.status === 200 && names.length >= 4,
+		`status=${seeded.status} names=${JSON.stringify(names)}`,
+	);
+
+	await verb(cdp, "navigate", `/projects/${PROJECT}`);
+	const gridWaited = await waitForCondition(
+		cdp,
+		`(() => {
+			const grid = document.querySelector("[data-project-asset-grid]");
+			if (!grid) return null;
+			return {
+				images: grid.querySelectorAll('[data-project-asset-tile="image"]').length,
+				sounds: grid.querySelectorAll('[data-project-asset-tile="audio"]').length,
+				files: grid.querySelectorAll('[data-project-asset-tile="file"]').length,
+			};
+		})()`,
+		30_000,
+	);
+	const counts = gridWaited.last;
+	check(
+		"the update renders an asset grid of pictures, a sound and a note",
+		gridWaited.ok &&
+			counts?.images === 2 &&
+			counts.sounds >= 1 &&
+			counts.files >= 1,
+		`after ${gridWaited.waitedMs}ms counts=${JSON.stringify(counts)}`,
+	);
+	note("asset grid", `${await verb(cdp, "state")}`);
+
+	const firstImageTile =
+		'[data-project-asset-grid] [data-project-asset-tile="image"]';
+	// The tile is lazy: scroll the slot, then wait for its control to mount.
+	await cdp.evaluate(
+		`document.querySelector('${firstImageTile}').scrollIntoView({ block: "center" })`,
+	);
+	const firstImage = `${firstImageTile} button`;
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${firstImage}'))`,
+		15_000,
+	);
+	check(
+		"the lazy picture tile mounts its control once the slot is in view",
+		mounted.ok,
+		`after ${mounted.waitedMs}ms`,
+	);
+	await wait(200);
+	await captureSettled(cdp, `pua-${size}-${theme}-grid`);
+
+	await clickAt(cdp, firstImage);
+	const opened = await waitForCondition(
+		cdp,
+		`(() => {
+			const image = document.querySelector("[data-image-viewport] img");
+			return image ? image.getAttribute("src") : null;
+		})()`,
+		15_000,
+	);
+	const firstSrc = String(opened.last ?? "");
+	check(
+		"pressing the first picture opens the shared lightbox on an image slide",
+		opened.ok && firstSrc.length > 0,
+		`after ${opened.waitedMs}ms src=${firstSrc.slice(0, 48)}`,
+	);
+	await captureSettled(cdp, `pua-${size}-${theme}-lightbox`);
+
+	await clickAt(cdp, '[role="dialog"] [data-image-viewer-next]');
+	const moved = await waitForCondition(
+		cdp,
+		`(() => {
+			const image = document.querySelector("[data-image-viewport] img");
+			if (!image) return null;
+			const src = image.getAttribute("src");
+			return src !== ${JSON.stringify(firstSrc)} ? src : null;
+		})()`,
+		15_000,
+	);
+	check(
+		"Next moves the gallery to the update's second picture",
+		moved.ok,
+		`after ${moved.waitedMs}ms src=${String(moved.last ?? "").slice(0, 48)}`,
+	);
+	await captureSettled(cdp, `pua-${size}-${theme}-next`);
+
+	const stripCaptured = await cdp.evaluate(
+		`document.querySelectorAll("[data-project-asset-filmstrip] button").length`,
+	);
+	check(
+		"the filmstrip lists media tiles",
+		Number(stripCaptured) >= 2,
+		`tiles=${stripCaptured}`,
+	);
+	await clickAt(cdp, "[data-project-asset-filmstrip] button:first-child");
+	// The name, not the src: a re-resolved slide has a new blob URL.
+	const firstName = String(names[0] ?? "");
+	const jumped = await waitForCondition(
+		cdp,
+		`(() => {
+			const image = document.querySelector("[data-image-viewport] img");
+			return image && image.getAttribute("alt") === ${JSON.stringify(firstName)};
+		})()`,
+		15_000,
+	);
+	check(
+		"a filmstrip tile jumps the gallery to the slot it names",
+		jumped.ok,
+		`after ${jumped.waitedMs}ms expected=${firstName}`,
+	);
+	await captureSettled(cdp, `pua-${size}-${theme}-filmstrip`);
+
+	await pressChord(cdp, { key: "Escape", code: "Escape", virtualKeyCode: 27 });
+	const closed = await waitForCondition(
+		cdp,
+		`!document.querySelector("[data-image-viewport]")`,
+		15_000,
+	);
+	check("Escape closes the lightbox", closed.ok, `after ${closed.waitedMs}ms`);
+
+	// The note opens in the app's own reader and shows the seed's own prose.
+	const noteName = names.find((name) => String(name).endsWith(".md"));
+	check(
+		"the seed carries a markdown attachment",
+		typeof noteName === "string",
+		`names=${JSON.stringify(names)}`,
+	);
+	const noteTile = `[data-project-asset-grid] button[aria-label="Preview ${noteName}"]`;
+	await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(noteTile)}).scrollIntoView({ block: "center" })`,
+	);
+	await wait(150);
+	await clickAt(cdp, noteTile);
+	const preview = await waitForCondition(
+		cdp,
+		`(() => {
+			const body = document.querySelector("[data-project-file-preview]");
+			return body && body.textContent.includes("Rig evidence note")
+				? body.textContent
+				: null;
+		})()`,
+		15_000,
+	);
+	check(
+		"the markdown note opens in the in-app preview, rendered as prose",
+		preview.ok,
+		`after ${preview.waitedMs}ms text=${String(preview.last ?? "").slice(0, 80)}`,
+	);
+	await captureSettled(cdp, `pua-${size}-${theme}-preview`);
+	await pressChord(cdp, { key: "Escape", code: "Escape", virtualKeyCode: 27 });
+	await waitForCondition(
+		cdp,
+		`!document.querySelector("[data-project-file-preview]")`,
+		15_000,
+	);
+}
+
 async function sceneProjectOpen(cdp) {
 	if (PROJECT === null) {
 		throw new Error(
@@ -48935,6 +49122,18 @@ async function main() {
 			"--scene project-detail needs --backend: the seeded row, quick-send's message and the picker's create are all real requests to the daemon this run owns, so a run with none would photograph three refusals",
 		);
 	}
+	if (SCENE === "project-update-assets") {
+		if (BACKEND === null) {
+			throw new Error(
+				"--scene project-update-assets needs --backend: the seeded row and the attachment bytes are real requests to the daemon this run owns, so a run with none would photograph a feed with no grid",
+			);
+		}
+		if (PROJECT === null) {
+			throw new Error(
+				"--scene project-update-assets needs --project <key>: the feed is reached by the project's own key",
+			);
+		}
+	}
 	if (SCENE === "project-open") {
 		if (BACKEND === null || BACKEND_RECORDS === null) {
 			throw new Error(
@@ -49210,6 +49409,8 @@ async function main() {
 				await sceneSettingsIntegrations(cdp);
 			else if (SCENE === "route-tops") await sceneRouteTops(cdp);
 			else if (SCENE === "project-detail") await sceneProjectDetail(cdp);
+			else if (SCENE === "project-update-assets")
+				await sceneProjectUpdateAssets(cdp);
 			else if (SCENE === "project-open") await sceneProjectOpen(cdp);
 			else if (SCENE === "agents-ask") await sceneAgentsAsk(cdp);
 			else if (SCENE === "composer-drop") await sceneComposerDrop(cdp);

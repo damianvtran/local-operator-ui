@@ -3393,10 +3393,22 @@ export type MessageParams = {
 	"ui.projects.project_todos.no_to_do_snapshots_from_the_linked_sessions_yet_a_session_publish": undefined;
 	"ui.projects.project_todos.to_dos": undefined;
 	"ui.projects.project_updates.attachment": undefined;
+	"ui.projects.project_updates.attachments": undefined;
 	"ui.projects.project_updates.file_actions_for_name": { name: string };
 	"ui.projects.project_updates.loading": undefined;
 	"ui.projects.project_updates.no_updates_yet_progress_reported_by_you_or_by_the_sessions_workin": undefined;
 	"ui.projects.project_updates.open_name": { name: string };
+	"ui.projects.project_updates.play_name": { name: string };
+	"ui.projects.project_updates.preview_failed": undefined;
+	"ui.projects.project_updates.preview_loading": undefined;
+	"ui.projects.project_updates.preview_moved": undefined;
+	"ui.projects.project_updates.preview_name": { name: string };
+	"ui.projects.project_updates.preview_unavailable": undefined;
+	"ui.projects.project_updates.show_asset_name": {
+		name: string;
+		index: string;
+		count: string;
+	};
 	"ui.projects.project_updates.updates": undefined;
 	"ui.projects.projects_page.checking_the_server_s_projects_support": undefined;
 	"ui.projects.projects_page.clear_all": undefined;
