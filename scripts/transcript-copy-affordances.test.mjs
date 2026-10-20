@@ -823,6 +823,44 @@ test("a non-closing FINAL response reserves an in-flow row with the full answer 
 		1,
 		"one response row, for the one non-closing handover",
 	);
+	/*
+	 * THE FOURTH SEAT STANDS DOWN FOR A SELECTION (review round 1, C1). The CSS
+	 * rule and the sweep in `text-selection-controls.tsx` cover this marker; this
+	 * asserts the DOM half on the SAME mount rather than paying a second one.
+	 */
+	const prose = row.querySelector(".lo-markdown");
+	assert.ok(prose, "the response's prose is on screen");
+	const range = dom.window.document.createRange();
+	range.selectNodeContents(prose.firstChild ?? prose);
+	const selection = dom.window.getSelection();
+	assert.ok(selection, "jsdom exposes a selection");
+	selection.removeAllRanges();
+	selection.addRange(range);
+	await act(async () => {
+		dom.window.document.dispatchEvent(
+			new dom.window.MouseEvent("mouseup", { bubbles: true }),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 30));
+	});
+	assert.ok(
+		control.hasAttribute("inert"),
+		"the response row is inert while a selection is live",
+	);
+	assert.equal(
+		control.getAttribute("aria-hidden"),
+		"true",
+		"and out of the accessibility tree",
+	);
+	await act(async () => {
+		selection.removeAllRanges();
+		dom.window.document.dispatchEvent(new dom.window.Event("selectionchange"));
+		await new Promise((resolve) => setTimeout(resolve, 30));
+	});
+	assert.equal(
+		control.hasAttribute("inert"),
+		false,
+		"and restored to the hit test when the selection clears",
+	);
 	await rig.unmount();
 });
 
@@ -857,14 +895,42 @@ test("the user row's control is a reserved flow row under the bubble, revealed b
 		"IN THE FLOW: the operator asked for a row under the message that takes up space",
 	);
 	/*
-	 * Its seat: a child of the turn's own flex COLUMN, not of the bubble's flex
-	 * ROW. The pre-regression comment on the mount site states why - a second
-	 * flow child of a row container sits BESIDE the bubble instead of under it.
+	 * Its seat: a child of the turn's own flex COLUMN, and the control's previous
+	 * sibling is the horizontal ROW that holds the bubble. Review round 1's B1
+	 * passed the old assertion (`control.parentElement ===
+	 * bubble.parentElement?.parentElement`) while the control was mounted INSIDE
+	 * that row, because the bubble's own wrapper nesting made both sides resolve
+	 * to the row. The assertions below cannot pass in that shape: the parent must
+	 * be the COLUMN (`flex-col`, not `justify-end`), the previous sibling must be
+	 * the bubble's row, and the control must follow the bubble in document order.
 	 */
+	const seat = control.parentElement;
+	assert.ok(seat, "the control has a parent");
+	assert.ok(
+		seat.className.includes("flex-col"),
+		"it is a child of the turn's flex COLUMN, so it stacks under the bubble",
+	);
 	assert.equal(
-		control.parentElement,
-		bubble.parentElement?.parentElement,
-		"a sibling of the bubble's row inside the column, so it lands under the message",
+		seat.className.includes("justify-end") ||
+			seat.className.includes("flex-row"),
+		false,
+		"it is NOT inside the horizontal bubble row",
+	);
+	assert.equal(
+		control.closest("[data-record-id] .justify-end"),
+		null,
+		"no `justify-end` row is one of its ancestors",
+	);
+	const bubbleRow = control.previousElementSibling;
+	assert.ok(
+		bubbleRow?.contains(bubble),
+		"the bubble's own row is its previous sibling - directly under the message",
+	);
+	assert.ok(
+		(bubble.compareDocumentPosition(control) &
+			dom.window.Node.DOCUMENT_POSITION_FOLLOWING) !==
+			0,
+		"and the control follows the bubble in document order",
 	);
 	assert.ok(
 		control.className.includes("group-focus-within:opacity-100"),
@@ -1024,7 +1090,23 @@ test("Shift+F10 opens the focused message's menu, and Mod+Shift+C copies it", as
 test("a partial assistant selection raises one Copy/Quote/Speak strip", async () => {
 	const rig = await mountTranscript(MULTI_TURN);
 	const dom = rig.dom;
-	const answer = rowOf(dom, "a1");
+	/*
+	 * `a1` is COMMENTARY now, so it lives inside the turn's collapsed span and
+	 * the bar carries the same `data-record-id` as its anchor row. Open the bar
+	 * (the reader's own door) and address the ROW marker, then select inside the
+	 * row's PROSE box - the old `findText(row)` picked the bar's "Took " line
+	 * when the row's container began with the collapsed span's header (review
+	 * round 1, C2).
+	 */
+	const bar = dom.window.document.querySelector(
+		'[data-turn-summary] button[aria-expanded="false"]',
+	);
+	assert.ok(bar, "the tool span is a bar at rest");
+	await rig.click(bar);
+	const answer = dom.window.document.querySelector(
+		'[data-record-id="a1"][data-lo-message-row]',
+	);
+	assert.ok(answer, "the commentary row is on screen once the bar opens");
 	const findText = (node) => {
 		if (node.nodeType === 3 && node.textContent.trim().length > 0) return node;
 		for (const child of node.childNodes) {
@@ -1033,7 +1115,7 @@ test("a partial assistant selection raises one Copy/Quote/Speak strip", async ()
 		}
 		return null;
 	};
-	const textNode = findText(answer);
+	const textNode = findText(answer.querySelector(".lo-markdown") ?? answer);
 	assert.ok(textNode, "the answer has a text node to select");
 	const range = dom.window.document.createRange();
 	range.selectNodeContents(textNode);

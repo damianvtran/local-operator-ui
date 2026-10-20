@@ -251,11 +251,12 @@ type TranscriptPayloadRecord =
 			 * ABSENT MEANS "no tool calls" here, and that spelling is load-bearing:
 			 * hand-built fixtures and pre-field records have no way to state the
 			 * fact, and treating absence as "maybe" would leave every one of them
-			 * barless. The two paths that can state it (`durableRecord` from the
-			 * journal payload, `message_end` from the assembled frame) set it
-			 * explicitly; the two STREAMING creation paths cannot know it yet and
-			 * omit it - the bar is settled-only (`quotable`), so nothing reads the
-			 * absence there before `message_end` states it.
+			 * barless. Every SETTLE path states it - `durableRecord` from the journal
+			 * payload, `message_end` from the assembled frame, the id-less settle
+			 * fallback from the frame, and `agent_end`'s abort sweep as `false`
+			 * (an aborted stream never assembled calls) - and `isFinalResponse`
+			 * requires `!streaming`, so the two STREAMING creation paths, which
+			 * cannot know it yet, are never read for it.
 			 */
 			callsTools?: boolean;
 			/**
@@ -5033,6 +5034,15 @@ export function applyEvent(
 						...record,
 						streaming: false,
 						settledAt: now,
+						/*
+						 * AN ABORTED STREAM HAS NO ASSEMBLED CALLS, so this row is a final
+						 * response by the wire's own reading - and the type's absence rule must
+						 * not leave it undefined here, because this is the one settle that can
+						 * happen without `message_end` (review round 1, C3). The text on screen
+						 * is the reader's answer; barring it would be the "minor wake update is
+						 * all you see" shape with the handover removed.
+						 */
+						callsTools: false,
 						stopReason: event.aborted ? "aborted" : record.stopReason,
 					});
 				}

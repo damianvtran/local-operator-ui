@@ -1363,47 +1363,49 @@ const UserRow = memo(function UserRow({
 							onDismiss={link.dismiss}
 						/>
 					)}
-					{/*
-					 * THE USER TURN'S COPY CONTROL, A ROW UNDER THE MESSAGE THAT TAKES
-					 * LAYOUT SPACE (operator, 2026-10-20: "the user message, it should be a
-					 * row under the user's message that takes up space"). It is the pre-
-					 * #1264 shape restored - a flow child of the column (`gap-1`, the same
-					 * 4px rhythm the foot line uses) - not the hover-only overlay the
-					 * regression applied. The operator's reason is the structural one: the
-					 * reader's own message is a handover TO the agent, so its controls own a
-					 * line; only in-between status text is not a handover and must not
-					 * reserve one.
-					 *
-					 * The row reserves its place at rest and reveals on hover
-					 * (`ACTION_ROW_REVEAL_CLASSES`, opacity-only), so the pointer arriving
-					 * moves nothing and no geometry changes between the idle and hovered
-					 * states - the PR's evidence measures the bubble's and the next row's
-					 * boxes in both.
-					 */}
-					{isQuotable(record, remainingContent) && (
-						<AnswerActionRow
-							kind="user"
-							bodyText={remainingContent}
-							revealId={record.id}
-							revealAt={record.ts}
-							/*
-							 * FORK IS OFFERED FROM THE MESSAGE, not only from the sidebar row
-							 * (#739): "fork the conversation from this message on". The entry id
-							 * is `forkEntryId`'s answer for THIS record - the journal entry a
-							 * cut can land at, which is what makes the picker a cut rather than
-							 * a whole-conversation copy. `conversationId` is the picker's
-							 * subject and is deliberately explicit: this transcript can be
-							 * rendered for a conversation that is not the pane's own, and a
-							 * request must never be answered with a substituted conversation.
-							 *
-							 * A transcript mounted with no conversation (the run-details child
-							 * reader) passes neither, so the row offers no Fork there.
-							 */
-							conversationId={conversationId}
-							entryId={forkEntryId(record) ?? undefined}
-						/>
-					)}
 				</div>
+				{/*
+				 * THE USER TURN'S COPY CONTROL, A ROW UNDER THE MESSAGE THAT TAKES LAYOUT
+				 * SPACE (operator, 2026-10-20: "the user message, it should be a row under
+				 * the user's message that takes up space").
+				 *
+				 * MOUNTED FROM THE COLUMN AND NOT FROM INSIDE `turnRef`: that element is a
+				 * single flex ROW holding the bubble, and a second flow child inside it
+				 * would sit BESIDE the bubble rather than under it. This is the pre-494
+				 * placement restored (`git show 494bd38ee7^`), and the review round's B1
+				 * is what an in-row mount looks like: the control measures 28px wide in the
+				 * bubble's own row. As a child of the `flex-col` column it takes the
+				 * column's `gap-1` (4px) under the bubble and the full row's height.
+				 *
+				 * The row reserves its place at rest and reveals on hover
+				 * (`ACTION_ROW_REVEAL_CLASSES`, opacity-only), so the pointer arriving
+				 * moves nothing and no geometry changes between the idle and hovered
+				 * states - the evidence measures the bubble's and the next row's boxes in
+				 * both.
+				 */}
+				{isQuotable(record, remainingContent) && (
+					<AnswerActionRow
+						kind="user"
+						bodyText={remainingContent}
+						revealId={record.id}
+						revealAt={record.ts}
+						/*
+						 * FORK IS OFFERED FROM THE MESSAGE, not only from the sidebar row
+						 * (#739): "fork the conversation from this message on". The entry id
+						 * is `forkEntryId`'s answer for THIS record - the journal entry a cut
+						 * can land at, which is what makes the picker a cut rather than a
+						 * whole-conversation copy. `conversationId` is the picker's subject and
+						 * is deliberately explicit: this transcript can be rendered for a
+						 * conversation that is not the pane's own, and a request must never be
+						 * answered with a substituted conversation.
+						 *
+						 * A transcript mounted with no conversation (the run-details child
+						 * reader) passes neither, so the row offers no Fork there.
+						 */
+						conversationId={conversationId}
+						entryId={forkEntryId(record) ?? undefined}
+					/>
+				)}
 				{/*
 				 * §F3's LINE, ONE ROW UNDER THE BLOCK IT IS ABOUT.
 				 *
@@ -1557,6 +1559,13 @@ const AssistantRow = memo(function AssistantRow({
 	 * call but a second place for the two to drift apart).
 	 */
 	const quotable = isQuotable(record, remainingContent);
+	/*
+	 * THE ONE GATE FOR THE IN-BETWEEN OVERLAY, shared by the prose's reserved
+	 * gutter band and the overlay itself so they cannot drift: commentary is the
+	 * row that carries its own calls (`isFinalResponse` false), is settled, and
+	 * has visible words.
+	 */
+	const commentaryOverlay = !closesTurn && quotable && !isFinalResponse(record);
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			{/*
@@ -1568,6 +1577,17 @@ const AssistantRow = memo(function AssistantRow({
 				ref={turnRef}
 				className={cn(
 					"relative break-words text-ink",
+					/*
+					 * THE NARROW GUTTER BAND (design round 1, D2; UX U2). Below the wide
+					 * breakpoint the commentary overlay sits INSIDE the column's trailing
+					 * edge, over the prose - the designer measured it covering text at the
+					 * app's 800px minimum. Reserving 40px here (28px bare Copy target +
+					 * 12px clearance) makes the prose wrap BEFORE the control instead of
+					 * under it; at >=900 the overlay moves out into the `-right-10` gutter
+					 * and the padding returns to zero, so the wide layout is unchanged.
+					 * A horizontal band only: no reserved ROW, no pill, no smaller target.
+					 */
+					commentaryOverlay && "pr-10 @min-[900px]/chatcol:pr-0",
 					/*
 					 * THE ANSWER'S FOCUS RING, moved off the full-width row wrapper for the
 					 * user bubble's reason: focus is drawn around the content the reader
@@ -1779,7 +1799,7 @@ const AssistantRow = memo(function AssistantRow({
 					</span>
 				</div>
 			)}
-			{!closesTurn && quotable && !isFinalResponse(record) && (
+			{commentaryOverlay && (
 				<AnswerActionRow
 					overlay
 					overlayClassName="@min-[900px]/chatcol:-right-10"

@@ -133,16 +133,19 @@ const TOOLBARS = [
 	{
 		key: "row",
 		/*
-		 * ALL THREE of the row's own action-cluster markers, because which one a
+		 * ALL FOUR of the row's own action-cluster markers, because which one a
 		 * row wears depends on the row's KIND and not on the reader's gesture:
-		 * a user turn wears `data-lo-user-actions`, an intermediate response
-		 * wears `data-lo-gutter-actions`, and the CLOSING answer wears
-		 * `data-lo-answer-actions`. A rig that read only the first two would
-		 * have called the closing answer's cluster "absent" in every frame -
-		 * the same mistake as a presence-only reading, one level down.
+		 * a user turn wears `data-lo-user-actions`, in-between commentary wears
+		 * `data-lo-gutter-actions`, a non-closing final response wears
+		 * `data-lo-response-actions`, and the CLOSING answer wears
+		 * `data-lo-answer-actions` (review round 1 C1 - it landed after the first
+		 * three and was the one seat a drag could still paint). A rig that read
+		 * only the first two would have called the closing answer's cluster
+		 * "absent" in every frame - the same mistake as a presence-only reading,
+		 * one level down.
 		 */
 		selector:
-			"[data-lo-gutter-actions], [data-lo-user-actions], [data-lo-answer-actions]",
+			"[data-lo-gutter-actions], [data-lo-user-actions], [data-lo-answer-actions], [data-lo-response-actions]",
 	},
 ];
 

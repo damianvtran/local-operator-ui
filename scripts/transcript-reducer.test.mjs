@@ -258,11 +258,31 @@ test("the turn end stamps whatever it settles, aborted or not", () => {
 	assert.equal(aborted.records[0].streaming, false);
 	assert.equal(aborted.records[0].stopReason, "aborted");
 	assert.equal(aborted.records[0].settledAt, 5);
+	/*
+	 * C3 (review round 1): this settle must STATE the final-response fact rather
+	 * than leave it absent. An aborted stream never assembled calls, so its text
+	 * is a handover - and the type's absence rule is for hand-built fixtures, not
+	 * for a live path.
+	 */
 	assert.equal(
-		applyEvent(stream(), { type: "agent_end", aborted: false }, 7).records[0]
-			.settledAt,
+		aborted.records[0].kind === "assistant" && aborted.records[0].callsTools,
+		false,
+		"an aborted stream settles as a final response",
+	);
+	const cleanEnd = applyEvent(
+		stream(),
+		{ type: "agent_end", aborted: false },
+		7,
+	);
+	assert.equal(
+		cleanEnd.records[0].settledAt,
 		7,
 		"a clean end that lost its `message_end` settles the same way",
+	);
+	assert.equal(
+		cleanEnd.records[0].kind === "assistant" && cleanEnd.records[0].callsTools,
+		false,
+		"and states the same fact on a clean end",
 	);
 });
 
