@@ -274,7 +274,7 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 						// the label and "combobox".
 						<p
 							id={settingHelpId(setting.key)}
-							className="ml-5 text-meta text-ink-dim"
+							className="ms-5 text-meta text-ink-dim"
 						>
 							{setting.help}
 						</p>

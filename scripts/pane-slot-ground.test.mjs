@@ -121,7 +121,7 @@ function withoutComments(source) {
  * call is work the linter is right to refuse.
  */
 const LANE_GRADIENT =
-	/linear-gradient\(to right, var\((--lo-[\w-]+)\) \$\{[\w-]+\}px, var\((--lo-[\w-]+)\) \$\{[\w-]+\}px, var\((--lo-[\w-]+)\) \$\{([\w.]+)\}px, var\((--lo-[\w-]+)\) \$\{([\w.]+)\}px, var\((--lo-[\w-]+)\) \$\{([\w.]+)\}px, var\((--lo-[\w-]+)\) \$\{([\w.]+)\}px\)/;
+	/linear-gradient\(to \$\{direction === "rtl" \? "left" : "right"\}, var\((--lo-[\w-]+)\) \$\{[\w-]+\}px, var\((--lo-[\w-]+)\) \$\{[\w-]+\}px, var\((--lo-[\w-]+)\) \$\{([\w.]+)\}px, var\((--lo-[\w-]+)\) \$\{([\w.]+)\}px, var\((--lo-[\w-]+)\) \$\{([\w.]+)\}px, var\((--lo-[\w-]+)\) \$\{([\w.]+)\}px\)/;
 /* Every gradient the lane paints (one per ground branch), so the rail's pair is
  * asserted on BOTH rather than on whichever the first regex hit. */
 const LANE_GRADIENT_ALL = new RegExp(LANE_GRADIENT.source, "g");
@@ -248,7 +248,7 @@ function laneStops() {
 	const gradient = read(CHAT_LAYOUT).match(LANE_GRADIENT);
 	assert.ok(
 		gradient,
-		"chat-layout.tsx no longer paints the lane with a six-stop role gradient (band, conversation, slot, rail: `linear-gradient(to right, var(--lo-<role>) ${<band>}px, var(--lo-<role>) ${<band>}px, var(--lo-<role>) ${<edge>}px, var(--lo-<role>) ${<edge>}px, var(--lo-<role>) ${<rail>}px, var(--lo-<role>) ${<rail>}px)`); the panes' ground is derived from that gradient, so any other shape - a three-stop ramp, a literal colour - has to be re-read before this file can assert anything",
+		"chat-layout.tsx no longer paints the lane with a six-stop role gradient in the direction-aware form (band, conversation, slot, rail: `linear-gradient(to ${direction === 'rtl' ? 'left' : 'right'}, var(--lo-<role>) ${<band>}px, var(--lo-<role>) ${<band>}px, var(--lo-<role>) ${<edge>}px, var(--lo-<role>) ${<edge>}px, var(--lo-<role>) ${<rail>}px, var(--lo-<role>) ${<rail>}px)`); the panes' ground is derived from that gradient, so any other shape - a three-stop ramp, a literal colour, a physical `to right` - has to be re-read before this file can assert anything",
 	);
 	const [
 		,
@@ -271,7 +271,7 @@ function laneStops() {
 	assert.equal(
 		firstEdge,
 		slotEdge,
-		`chat-layout.tsx paints its third and fourth stops ${firstEdge}px and ${slotEdge}px from the left — the slot's ground must start exactly where the conversation's ends, or the pair is a ramp with a stop in the middle of it`,
+		`chat-layout.tsx paints its third and fourth stops ${firstEdge}px and ${slotEdge}px from the lane's inline-start edge — the slot's ground must start exactly where the conversation's ends, or the pair is a ramp with a stop in the middle of it`,
 	);
 	/* THE RAIL'S PAIR (#872): the slot's token is repeated to the rail's leading
 	 * edge and the rail's own token starts exactly there, so the lane's last band is

@@ -431,7 +431,7 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 										disabled={jobActive}
 										onClick={() => onSelectSource(source.source)}
 										className={cn(
-											"rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+											"rounded-lg border p-3 text-start transition-colors disabled:cursor-not-allowed disabled:opacity-60",
 											"focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
 											isActive
 												? "border-accent bg-accent-wash"
@@ -500,13 +500,13 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 						<div className="relative">
 							<Search
 								size={15}
-								className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-dim"
+								className="pointer-events-none absolute top-1/2 start-3 -translate-y-1/2 text-ink-dim"
 							/>
 							<Input
 								value={query}
 								onChange={(event) => onQueryChange(event.target.value)}
 								placeholder={t("ui.settings.imports.search_placeholder")}
-								className="pl-9"
+								className="ps-9"
 							/>
 						</div>
 
@@ -566,7 +566,7 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 											/>
 											<label
 												htmlFor={inputId}
-												className="min-w-0 flex-1 cursor-pointer text-left"
+												className="min-w-0 flex-1 cursor-pointer text-start"
 											>
 												<span className="flex flex-wrap items-center gap-2">
 													<span className="min-w-0 truncate text-body-sm text-ink">

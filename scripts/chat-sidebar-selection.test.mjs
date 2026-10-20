@@ -395,7 +395,7 @@ const CURRENT = [
 		 * predicate is declared once now (review round 1, A7) and the row reads the
 		 * name, so the element to resolve is the one carrying `rowStyle`.
 		 */
-		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-left"'),
+		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-start"'),
 		stubs: {
 			revealArmed: true,
 			rowStyle,
@@ -1409,7 +1409,7 @@ const ROW_STATE_GROUNDS = [
 	{
 		what: "the chat sidebar's list panel",
 		rowFile: SIDEBAR,
-		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-left"'),
+		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-start"'),
 		stubs: {
 			rowStyle,
 			rowCurrent,
@@ -1445,7 +1445,7 @@ const ROW_STATE_GROUNDS = [
 		ground: () =>
 			literalClassAt(
 				APP_RAIL,
-				"flex h-10 shrink-0 items-center gap-1 pr-2 pl-4",
+				"flex h-10 shrink-0 items-center gap-1 pe-2 ps-4",
 				"before",
 			),
 		groundFile: APP_RAIL,
@@ -1718,7 +1718,7 @@ test("settings current-page cue occupies the gutter without changing accessible 
 	assert.match(rail, /aria-label=\{labelled \? undefined : section\.label\}/);
 	assert.match(
 		rail,
-		/isActive && \(\s*<span\s+aria-hidden="true"\s+className="absolute left-1 top-1\/2 size-1 -translate-y-1\/2 rounded-full bg-accent"/,
+		/isActive && \(\s*<span\s+aria-hidden="true"\s+className="absolute start-1 top-1\/2 size-1 -translate-y-1\/2 rounded-full bg-accent"/,
 	);
 	assert.match(rail, /isActive \? "text-accent" : "text-ink-dim"/);
 	assert.match(rail, /<Tooltip content=\{section\.label\} side="right">/);

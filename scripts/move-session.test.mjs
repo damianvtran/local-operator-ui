@@ -529,8 +529,19 @@ test("the chip's accessible name carries the phrase its label slot paints (R3-1,
 	);
 	assert.match(
 		chip,
-		/\{pending \? "Moving session:" : "Working directory:"\}/,
-		"and the slot paints the phrase the name carries",
+		/<bdi dir="auto">\s*\{pending \? "Moving session:" : "Working directory:"\}\s*<\/bdi>/,
+		"and the slot paints the phrase the name carries, in a bidi-isolated run so its colon stays with the phrase under RTL",
+	);
+	/*
+	 * THE READ-ONLY CHIP PAINTS THE SAME PHRASE, and it had the same defect: a
+	 * Latin fallback inheriting the row's RTL direction put the colon on the
+	 * visual left. The isolation is pinned on both branches rather than only the
+	 * one the design frame caught.
+	 */
+	assert.match(
+		chip,
+		/<bdi dir="auto">Working directory:<\/bdi>/,
+		"the read-only slot paints its label in the same isolated run",
 	);
 	/*
 	 * The phrases are COMPARED rather than counted: a count moves whenever an
@@ -539,7 +550,7 @@ test("the chip's accessible name carries the phrase its label slot paints (R3-1,
 	 * and asked directly.
 	 */
 	const painted = chip.match(
-		/\{pending \? "(Moving session:)" : "(Working directory:)"\}/,
+		/<bdi dir="auto">\s*\{pending \? "(Moving session:)" : "(Working directory:)"\}\s*<\/bdi>/,
 	);
 	const named = chip.match(
 		/aria-label=\{`\$\{pending \? "(Moving session)" : "(Working directory)"\}/,
