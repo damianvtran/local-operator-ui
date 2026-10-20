@@ -3326,6 +3326,32 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			action: z.enum(["archive", "unarchive", "join", "leave"]),
 		})
 		.strict(),
+	/*
+	 * Self-join and the notification preference are their own ops rather than
+	 * `lifecycle` actions: the tenant is part of the request (a merge-view row
+	 * can name a channel the caller has not joined, and the default tenant
+	 * would be the wrong organization), and `notify` is a value, not an
+	 * action. The join route is the conversation domain's existing
+	 * `POST .../join`; the tenant travels in its body for the same reason the
+	 * create/send/read bodies carry one. The notify op rides the READ route's
+	 * `notify` field (agent-server #148's shape): it sends no `seq`, so the
+	 * cursor cannot move as a side effect of choosing a notification level.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.join"),
+			conversation_id: id,
+			tenant_id: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.notify"),
+			conversation_id: id,
+			tenant_id: id.optional(),
+			notify: z.enum(["all", "mention", "mute"]),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("team_bridge.conversations.members.add"),
@@ -8416,6 +8442,25 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/${request.action}`,
 				method: "POST",
+			};
+		case "team_bridge.conversations.join":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/join`,
+				method: "POST",
+				...(request.tenant_id
+					? { body: { tenant_id: request.tenant_id } }
+					: {}),
+			};
+		case "team_bridge.conversations.notify":
+			return {
+				/* The read route's notify field (agent-server #148); no `seq`, so
+				   this write cannot advance the cursor. */
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/read`,
+				method: "POST",
+				body: {
+					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+					notify: request.notify,
+				},
 			};
 		case "team_bridge.conversations.members.add": {
 			/* The route's body IS the member array and `tenant_id` is a query

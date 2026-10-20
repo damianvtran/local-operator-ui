@@ -30,6 +30,17 @@ export const teamBridgeParticipantSchema = z
 	.passthrough();
 export type TeamBridgeParticipant = z.infer<typeof teamBridgeParticipantSchema>;
 
+/**
+ * How loudly one conversation may notify its reader.
+ *
+ * `mention` is Slack's middle register: the row may still show its unread
+ * count, but only a mention earns the interrupting badge. `mute` is the
+ * existing `muted` flag in its newer spelling — the server keeps both on the
+ * wire for a page so the two eras parse alike.
+ */
+export const teamBridgeNotifySchema = z.enum(["all", "mention", "mute"]);
+export type TeamBridgeNotify = z.infer<typeof teamBridgeNotifySchema>;
+
 export const teamBridgeConversationSchema = z
 	.object({
 		id,
@@ -47,6 +58,17 @@ export const teamBridgeConversationSchema = z
 		last_read_seq: z.number().int().nonnegative(),
 		unread_count: z.number().int().nonnegative(),
 		muted: z.boolean(),
+		/*
+		 * The discoverable-channel slice (agent-server #148) is additive: a server
+		 * older than it sends none of these, and every one is optional so that
+		 * page still parses. `member` absent means "this server cannot say", not
+		 * "the caller is not a member" — the model reads only an explicit false
+		 * beside an explicit discoverable true as a preview.
+		 */
+		discoverable: z.boolean().optional(),
+		member: z.boolean().optional(),
+		member_count: z.number().int().nonnegative().optional(),
+		notify: teamBridgeNotifySchema.optional(),
 	})
 	.passthrough();
 export type TeamBridgeConversation = z.infer<
@@ -151,6 +173,7 @@ export const teamBridgeReadStateSchema = z
 		last_read_seq: z.number().int().nonnegative(),
 		unread_count: z.number().int().nonnegative(),
 		muted: z.boolean(),
+		notify: teamBridgeNotifySchema.optional(),
 	})
 	.passthrough();
 export type TeamBridgeReadState = z.infer<typeof teamBridgeReadStateSchema>;
