@@ -153,7 +153,7 @@ test("a committed frame is refused, in the tracked tree and in the ignored one",
 	assert.match(ignored[0], /must stay empty in git/);
 });
 
-test("a declared set owes its provenance and a tracked directory", () => {
+test("a declared set owes provenance, a sound path and a count", () => {
 	const dir = fixture();
 	const broken = manifest({
 		supplementary: [
@@ -165,10 +165,23 @@ test("a declared set owes its provenance and a tracked directory", () => {
 				// no `why`
 			},
 			{
-				path: "nowhere",
+				path: "../outside",
 				frames: 0,
 				source: "the rig",
 				why: "declared",
+				capturedAt: "2026-01-01T00:00:00.000Z",
+			},
+			{
+				path: "set-a",
+				frames: -1,
+				source: "the rig",
+				why: "the same directory a second time",
+				capturedAt: "2026-01-01T00:00:00.000Z",
+			},
+			{
+				path: "set-b",
+				source: "the rig",
+				why: "no count at all",
 				capturedAt: "2026-01-01T00:00:00.000Z",
 			},
 		],
@@ -178,12 +191,13 @@ test("a declared set owes its provenance and a tracked directory", () => {
 		`${JSON.stringify(broken, null, 2)}\n`,
 	);
 	const out = failures(dir);
-	assert.equal(out.length, 2);
+	assert.equal(out.length, 6, out.join("\n"));
 	assert.match(out[0], /missing why/);
-	assert.match(
-		out[1],
-		/\(nowhere\) names a directory that is not in the tracked tree/,
-	);
+	assert.match(out[1], /is not a repository-relative path/);
+	assert.match(out[2], /repeats the path declared at supplementary\[0\]/);
+	assert.match(out[3], /`frames` as -1/);
+	assert.match(out[4], /declares no non-negative integer/);
+	assert.match(out[5], /set-b/);
 });
 
 test("a missing or unparsable manifest fails closed", () => {

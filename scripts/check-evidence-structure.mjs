@@ -17,12 +17,19 @@
  *      and `docs/evidence-frames/**` must carry nothing at all. A rig default
  *      that regresses to the tracked tree is caught here, on the diff that does
  *      it, rather than by the next release's `df`.
- *   2. THE MANIFEST PARSES AND ITS DECLARATIONS RESOLVE. `manifest.json` has the
- *      numeric count fields, every `supplementary` entry carries its provenance
- *      (`path`, `source`, `why`, `capturedAt`), and every declared set names a
- *      directory that exists in the TRACKED tree - the set's README or proof is
- *      what makes the claim auditable; a set with no artefact is a number that
- *      buys silence.
+ *   2. THE MANIFEST PARSES AND ITS DECLARATIONS ARE SOUND. `manifest.json` has
+ *      the numeric count fields, every `supplementary` entry carries its
+ *      provenance (`path`, `source`, `why`, `capturedAt`), every path is a
+ *      repository-relative path that cannot escape the tree, no path is declared
+ *      twice (a duplicate double-counts the same frames and silently passes the
+ *      sweep), and every declared count is a non-negative integer.
+ *
+ *      It does NOT require a tracked README under each set: 51 of the 229 shipped
+ *      sets hold nothing but their frames, so their tracked directory disappears
+ *      with the split. Demanding one would make this gate a request to author 51
+ *      READMEs, which is not a structural property of the manifest - and when it
+ *      DID demand one, the CI job reported 58 failures on a correct tree
+ *      (measured 2026-10-20, the first run of this gate).
  *   3. THE PROOF ARTEFACTS THE RUNBOOK NAMES ARE STILL TRACKED. Frames became
  *      regenerable; these did not, and a split that quietly untracked one would
  *      take a reader's evidence with it.
@@ -44,7 +51,7 @@
  * not there" is exactly the state that is invisible when it is allowed to pass.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stampFailures } from "./check-evidence.mjs";
@@ -182,6 +189,7 @@ export const structureFailures = ({ root = ROOT, read = gitOut } = {}) => {
 				"manifest.json: `supplementary` is not an array, so no declared set can be checked",
 			);
 		} else {
+			const seen = new Map();
 			for (const [index, set] of sets.entries()) {
 				const where = set?.path
 					? `supplementary[${index}] (${set.path})`
@@ -196,18 +204,51 @@ export const structureFailures = ({ root = ROOT, read = gitOut } = {}) => {
 						`manifest.json: ${where} does not say where it came from (missing ${missing.join(", ")})`,
 					);
 				/*
-				 * The set's TRACKED directory, not the frames tree: the frames are
-				 * regenerable, so the README/proof under `docs/evidence/<path>/` is
-				 * the only artefact that outlives a checkout. `submit-latency`
-				 * declares zero frames and is satisfied by its README - the same
-				 * rule `check-evidence.mjs` applies to the frames tree.
+				 * The path is used as a DIRECTORY under both trees, so it has to be a
+				 * repository-relative one: an absolute path or a `..` segment would
+				 * point the sweep and this gate outside the checkout, and the count
+				 * arithmetic would be about a tree nobody ships.
 				 */
-				const dir = join(evidence, set.path);
-				if (!existsSync(dir) || !statSync(dir).isDirectory())
+				const segments = set.path.split("/");
+				if (
+					set.path.startsWith("/") ||
+					segments.includes("..") ||
+					segments.some((segment) => segment.length === 0 || segment === ".")
+				)
 					out.push(
-						`manifest.json: ${where} names a directory that is not in the tracked tree (${EVIDENCE_PATH}/${set.path}); a declared set owes a reader its README or proof`,
+						`manifest.json: ${where} is not a repository-relative path (${JSON.stringify(set.path)}); it is joined under ${EVIDENCE_PATH}/ and ${FRAMES_PATH}/, so it must stay inside them`,
+					);
+				const previous = seen.get(set.path);
+				if (previous !== undefined)
+					out.push(
+						`manifest.json: ${where} repeats the path declared at supplementary[${previous}]; two entries over one directory count the same frames twice, and the sweep's arithmetic cannot see it because each entry passes its own tree check`,
+					);
+				else seen.set(set.path, index);
+				for (const field of ["frames", "surfaces", "themes"]) {
+					if (!(field in set)) continue;
+					if (!Number.isInteger(set[field]) || set[field] < 0)
+						out.push(
+							`manifest.json: ${where} declares \`${field}\` as ${JSON.stringify(set[field])}; a count is a non-negative integer`,
+						);
+				}
+				if (!Number.isInteger(set.frames) || set.frames < 0)
+					out.push(
+						`manifest.json: ${where} declares no non-negative integer \`frames\`; every set owes that number even when it is 0 (the shipped \`submit-latency\` is the zero-frame spelling)`,
 					);
 			}
+		}
+		const unjudged = manifest.unjudgedFrames;
+		if (unjudged !== undefined) {
+			for (const field of ["insideDeclaredSets", "outsideDeclaredSets"]) {
+				if (!Number.isInteger(unjudged?.[field]) || unjudged[field] < 0)
+					out.push(
+						`manifest.json: \`unjudgedFrames.${field}\` is not a non-negative integer; without it a frame that names no theme is counted by nothing`,
+					);
+			}
+			if (typeof unjudged?.why !== "string" || unjudged.why.trim().length === 0)
+				out.push(
+					"manifest.json: `unjudgedFrames.why` is missing, so a reader is told the count without being told what class it covers",
+				);
 		}
 		/*
 		 * (4) The count checks that need no pixels, asked through the sweep's own
