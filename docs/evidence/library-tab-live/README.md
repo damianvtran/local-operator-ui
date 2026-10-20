@@ -17,6 +17,12 @@ both arms:
 Both arms run the SAME seeded config root, the SAME UI build and the SAME scene
 bytes. The only variable is the daemon's source tree.
 
+The four PNGs are NOT committed: the capture copies them from the rig's
+`$RIG/frames` into the ignored
+`docs/evidence-frames/library-tab-live/<theme>/{before,after}.png` tree. The two
+proof JSONs and this README stay tracked, so a fresh checkout has the readings
+but no pictures until the capture is re-run.
+
 ## Frames
 
 | file | what it shows |

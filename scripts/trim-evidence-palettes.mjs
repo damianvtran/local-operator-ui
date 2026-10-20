@@ -44,7 +44,9 @@ function main() {
 	let kept = 0;
 	for (const [setPath, budget] of Object.entries(SET_BUDGETS)) {
 		if (ONLY && setPath !== ONLY) continue;
-		const setDir = join("docs/evidence", setPath);
+		// The IGNORED frames tree: the frames are rig output and are no longer
+		// committed (see `docs/evidence-frames` in `.gitignore`).
+		const setDir = join("docs/evidence-frames", setPath);
 		if (!existsSync(setDir)) continue;
 		const want = new Set(budget);
 		for (const state of readdirSync(setDir, { withFileTypes: true })) {
