@@ -458,9 +458,24 @@ const mountTranscript = async (transcript, options = {}) => {
 					clientY: 24,
 				}),
 			);
-			await new Promise((resolve) => setTimeout(resolve, 15));
 		});
-		const menu = dom.window.document.querySelector("[data-lo-copy-menu]");
+		/*
+		 * POLL RATHER THAN ONE FIXED SLEEP (CI, 2026-10-20). The Radix portal
+		 * paints from a layout effect, and a loaded desktop-suite runner can
+		 * starve that commit for longer than the old single 15 ms wait - the
+		 * test then failed on `the context menu opened` at 56 s while the same
+		 * file passed in 106 ms locally. The budget is 2 s in 10 ms steps: the
+		 * assertion still fails if the menu never opens, and a healthy run pays
+		 * one step.
+		 */
+		let menu = null;
+		for (let attempt = 0; attempt < 200; attempt += 1) {
+			await act(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 10));
+			});
+			menu = dom.window.document.querySelector("[data-lo-copy-menu]");
+			if (menu !== null) break;
+		}
 		assert.ok(menu, "the context menu opened");
 		return menu;
 	};
