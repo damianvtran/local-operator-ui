@@ -3023,9 +3023,32 @@ function planRun(
 					span.to < liveFrom ||
 					groupKeepsItsBar ||
 					internal !== null);
-			if (internal === null && foldEligible) ordinarySlots.add(i);
+			const facts = factsOf(segRows, {
+				partial: !headLoaded,
+				headLoaded,
+				group,
+			});
+			/*
+			 * A SPAN WITH NOTHING TO SHOW IS NOT A BAR. `factsOf` excludes the quiet
+			 * call from the count, so a span that holds only a settled `no_reply`
+			 * (a peer-triggered turn that ended silently, whose opener record has
+			 * not - or not yet, on the live path - landed ahead of it) states no
+			 * label, no duration and no actions: a bare check and chevron over rows
+			 * that paint nothing. It stays loose, where those rows are invisible, and
+			 * it does so the same way live and on reload because it reads only the
+			 * span's own facts. A labelled bar, a group and an episode are untouched.
+			 */
+			const hasNothingToShow =
+				label === null &&
+				internal === null &&
+				group === null &&
+				facts.actions === 0 &&
+				facts.durationS === null;
+			if (internal === null && foldEligible && !hasNothingToShow)
+				ordinarySlots.add(i);
 			const collapsedHere =
 				foldEligible &&
+				!hasNothingToShow &&
 				!(
 					focusHold !== null &&
 					!openRuns.has(key) &&
@@ -3055,11 +3078,7 @@ function planRun(
 					i === nearest && answerAt !== null && preAnswerCount === 1
 						? records[answerAt].ts
 						: null,
-				facts: factsOf(segRows, {
-					partial: !headLoaded,
-					headLoaded,
-					group,
-				}),
+				facts,
 			};
 		},
 	);
