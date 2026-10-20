@@ -356,6 +356,10 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		enabled: suggestionsEnabled,
 	});
 	const inputEl = useRef<HTMLInputElement | null>(null);
+	/** The toolbar row and the alternatives row it owns: the insets are measured
+	 * between these two, never computed from the controls' widths. */
+	const barEl = useRef<HTMLDivElement | null>(null);
+	const listEl = useRef<HTMLDivElement | null>(null);
 	const setInputEl = (node: HTMLInputElement | null): void => {
 		inputEl.current = node;
 		if (typeof inputRef === "function") inputRef(node);
@@ -512,6 +516,45 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			: raw.length === 0
 				? t("ui.browser.browser_url_bar.address_suggestions_empty")
 				: t("ui.browser.browser_url_bar.address_suggestions_no_match");
+
+	/**
+	 * THE LIST IS INSET TO THE FIELD, NOT THE PANE.
+	 *
+	 * The alternatives are a sibling of the toolbar and must stay IN FLOW (a
+	 * portal or `position: fixed` list paints UNDER the native page view, see
+	 * the list's own note below), so without this they take the pane's full
+	 * width and their rows are wider than the field they belong to.
+	 *
+	 * The inset is READ OFF THE ADDRESS FIELD rather than derived from the
+	 * controls' widths: what sits around the field changes at runtime (the
+	 * downloads folder appears once the host knows one, the zoom reset only
+	 * while the page is zoomed, the Approvals control widens with its label),
+	 * so any hard-coded pixel budget is wrong the first time one of them
+	 * changes. Margins keep the row in the flow, and the observer re-measures
+	 * on a pane resize or a control appearing - neither of which re-renders
+	 * this component.
+	 *
+	 * Sub-pixel values are kept: an inset rounded to integers can leave a 1px
+	 * gutter on one side at a fractional pane width.
+	 */
+	useLayoutEffect(() => {
+		if (!listVisible) return;
+		const bar = barEl.current;
+		const list = listEl.current;
+		const field = inputEl.current;
+		if (!bar || !list || !field) return;
+		const place = (): void => {
+			const barBox = bar.getBoundingClientRect();
+			const fieldBox = field.getBoundingClientRect();
+			list.style.marginLeft = `${Math.max(0, fieldBox.left - barBox.left)}px`;
+			list.style.marginRight = `${Math.max(0, barBox.right - fieldBox.right)}px`;
+		};
+		place();
+		const observer = new ResizeObserver(place);
+		observer.observe(bar);
+		observer.observe(field);
+		return () => observer.disconnect();
+	}, [listVisible]);
 
 	/** Record USER-AUTHORED text only. Accepting a suffix is not an edit, so it
 	 * never enters this stack: undo must return what the user typed. */
@@ -893,6 +936,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			    the drawer's body, so it wears the drawer's rung and is continuous with the
 			    content area below it, with the strip's own rule the only line above. */}
 			<div
+				ref={barEl}
 				/* A CHROME BAND with the strip above it: on the Browser route it wears the
 				 * app sidebar's paint (surface at its floor, raw over the desktop); inside a
 				 * conversation's rail pane it clears into the pane's own alpha (one
@@ -1274,6 +1318,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			 */}
 			{listVisible && (
 				<div
+					ref={listEl}
 					className="border-control border-b bg-elevated"
 					data-tour-tag="browser-address-suggestions"
 				>
