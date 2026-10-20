@@ -422,6 +422,12 @@ const CHROME_LAUNCH_SITES = [
 		"plays the composer cluster's gestures with real key events - the draft-safe recall walk, the `$` list's open/accept/send, and the qualified /theme submit - and photographs what the composer dispatched",
 	),
 	guarded(
+		"scripts/selection-toolbar-flicker-proof.mjs",
+		"spawn",
+		1,
+		"records the selection-toolbar state machine frame by frame - slow drag, plain click, hover - in one private headless Chrome, for the before/after pair on the flicker fix",
+	),
+	guarded(
 		"scripts/usage-real-evidence.mjs",
 		"spawn",
 		1,
