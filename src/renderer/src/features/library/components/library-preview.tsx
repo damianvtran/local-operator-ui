@@ -17,8 +17,10 @@
  * keeps a typed tag and the rail's counts in one registry.
  */
 
-import { EditableField } from "@shared/components/common/editable-field";
-import { TagsInputChips } from "@shared/components/common/tags-input-chips";
+import {
+	InlineEditText,
+	InlineTagEditor,
+} from "@shared/components/common/inline-edit";
 import { Badge, Button, Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -30,7 +32,6 @@ import {
 	Download,
 	ExternalLink,
 	FolderOpen,
-	LoaderCircle,
 	Lock,
 	LockOpen,
 	Maximize2,
@@ -76,6 +77,12 @@ type LibraryPreviewProps = {
 	standalone?: boolean;
 	/** Open the same preview as a full-workspace document view. */
 	onExpand?: () => void;
+	/**
+	 * The listing's image and video rows, in display order, so the media viewer's
+	 * full-screen lightbox can offer its siblings. The page owns the listing; the
+	 * preview only passes it through.
+	 */
+	mediaSiblings?: readonly DesktopLibraryAsset[];
 };
 
 /** The ordered tags an asset's names map to, creating unknown names first. */
@@ -133,6 +140,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 	focusRequest,
 	standalone = false,
 	onExpand,
+	mediaSiblings,
 }) => {
 	useI18nLocale();
 	const update = useUpdateLibraryAsset();
@@ -140,6 +148,43 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 	const rootRef = useRef<HTMLDivElement>(null);
 	const nameRef = useRef<HTMLDivElement>(null);
 	const tagsRef = useRef<HTMLDivElement>(null);
+	/*
+	 * EDIT COMMANDS ARE SIGNALS, not node queries. The card menu and the page's
+	 * focus request used to reach into the metadata field's DOM and click its
+	 * first button; the inline editor has no such button in its read state, and
+	 * a primitive should expose the gesture it supports rather than have callers
+	 * reconstruct it from its markup. Each counter opens the field whose value it
+	 * belongs to.
+	 */
+	const [nameEditSignal, setNameEditSignal] = useState(0);
+	const [tagEditSignal, setTagEditSignal] = useState(0);
+	/* A tag command that must reveal the row before opening it is carried here
+	 * for one commit; `requestTagEdit` below records why the bump cannot batch
+	 * with the reveal. */
+	const [pendingTagEdit, setPendingTagEdit] = useState(false);
+	/*
+	 * A COMMAND BELONGS TO THE ASSET IT WAS ISSUED ON (agent review round 2,
+	 * M2). The editors are keyed by asset id, so a switch remounts them; a
+	 * counter left at its last value would travel into the new mount, and the
+	 * primitive had no way to tell that stale number from a command meant for
+	 * the asset now selected - it opened the new asset's editor with nobody
+	 * having asked, and the next keystroke would have renamed the wrong row.
+	 *
+	 * THE RESET HAPPENS DURING RENDER, NOT IN AN EFFECT, and the difference is
+	 * load-bearing: a card's menu runs `onEditMetadata`/`onEditTags`, which
+	 * navigate to that card AND bump the page's focus request in the SAME
+	 * commit. An effect would clear the counters after that commit and swallow
+	 * the command it carried; adjusting the state here restarts the render
+	 * before anything mounts, so the new asset's editors see a zero baseline and
+	 * the command effect below is free to bump it for the asset it named.
+	 */
+	const [signalAssetId, setSignalAssetId] = useState(asset.id);
+	if (signalAssetId !== asset.id) {
+		setSignalAssetId(asset.id);
+		setNameEditSignal(0);
+		setTagEditSignal(0);
+		setPendingTagEdit(false);
+	}
 	/*
 	 * SHORT PREVIEWS COMPACT THE METADATA (design spec §2): below 700px of
 	 * preview height the description and tag editor collapse behind Details, so
@@ -161,16 +206,53 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 	}, []);
 
 	const names = useMemo(() => asset.tags.map((tag) => tag.name), [asset.tags]);
+	/* The row exists exactly when it is rendered: a compact preview keeps it
+	 * behind Details (see the layout effect above). */
+	const tagRowMounted = !compact || detailsOpen;
+
+	/*
+	 * A TAG COMMAND WAITS FOR THE ROW IT TARGETS (agent review round 3, R3-1).
+	 * A compact preview mounts the tag row only while Details is open. Bumping
+	 * the counter in the same update that reveals Details mounts the row with
+	 * the already-bumped value - and the primitive reads a value present at
+	 * mount as its baseline (a signal is a change, not a mount value: review
+	 * round 2, M2), so `startAdding` never runs. The command therefore only
+	 * records the intent; the effect below performs the bump after the commit
+	 * that mounts the row.
+	 *
+	 * THE PENDING FLAG IS USED EVEN WHEN THE ROW IS MOUNTED, because a preview
+	 * can MOUNT with the command already set (a card's menu navigates to that
+	 * asset and bumps the page's focus request in one commit). On that first
+	 * render the compact measurement has not run: the initial `compact: false`
+	 * paints the row that is about to be hidden, so a "the row exists" test
+	 * there takes the direct path and reproduces the batching bug on the next
+	 * render. Waiting one commit costs a render and holds in every order.
+	 */
+	const requestTagEdit = () => {
+		setPendingTagEdit(true);
+		setDetailsOpen(true);
+	};
+
+	useEffect(() => {
+		if (!pendingTagEdit) return;
+		if (!tagRowMounted) return;
+		const row = tagsRef.current;
+		if (!row) return;
+		setPendingTagEdit(false);
+		row.scrollIntoView({ block: "center" });
+		setTagEditSignal((signal) => signal + 1);
+	}, [pendingTagEdit, tagRowMounted]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the signal is a trigger, not a read.
 	useEffect(() => {
 		if (!focusRequest) return;
 		if (focusRequest.field === "tags") {
-			tagsRef.current?.scrollIntoView({ block: "center" });
-			tagsRef.current?.querySelector("input")?.focus();
+			/* A short preview keeps the tag row behind Details: an edit command
+			 * must reveal the field it is about, not aim at an unmounted node. */
+			requestTagEdit();
 		} else {
 			nameRef.current?.scrollIntoView({ block: "center" });
-			nameRef.current?.querySelector("button")?.click();
+			setNameEditSignal((signal) => signal + 1);
 		}
 	}, [focusRequest?.signal]);
 
@@ -235,18 +317,36 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 						{t("ui.library.page.back")}
 					</Button>
 				)}
-				<div className="flex items-start gap-2">
-					<KindGlyph
-						kind={asset.kind}
-						size={18}
-						className="mt-1.5 text-ink-dim"
-					/>
+				{/*
+				 * THE HEADER IS ONE LINE: kind glyph, name, actions, vertically
+				 * centred. The glyph used to carry a top margin to sit beside a
+				 * labelled form field; with the label gone there is nothing to align
+				 * it to but the name's own line, so the row centres instead of
+				 * offsetting one child.
+				 */}
+				<div className="flex items-center gap-2">
+					<KindGlyph kind={asset.kind} size={18} className="text-ink-dim" />
 					<div ref={nameRef} className="min-w-0 flex-1">
-						<EditableField
-							label={t("ui.library.preview.name")}
+						{/*
+						 * KEYED BY ASSET, NOT BY POSITION (agent review round 1, M2). The
+						 * editor owns an open phase and a draft; an asset switch must
+						 * unmount it rather than let asset A's half-typed name render over
+						 * B, where the next Enter or blur would write A's text onto B. The
+						 * three editors below share the rule. The PREVIEW itself is not
+						 * keyed: the composer keeps a pending link per asset and a switch
+						 * back must restore it (`scripts/library-page.cases.mjs`, "an
+						 * accepted send survives a link failure"), which a full remount
+						 * would discard.
+						 */}
+						<InlineEditText
+							key={`${asset.id}:name`}
 							value={assetDisplayName(asset)}
 							onSave={(value) => saveField({ name: value })}
-							isSaving={update.isPending}
+							label={t("ui.library.preview.name")}
+							textClassName="text-heading font-medium"
+							field="name"
+							startSignal={nameEditSignal}
+							className="min-w-0"
 						/>
 					</div>
 					<div className="flex shrink-0 items-center gap-1">
@@ -316,13 +416,8 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 						<LibraryAssetMenu
 							asset={asset}
 							onAsk={onAsk}
-							onEditMetadata={() => {
-								nameRef.current?.querySelector("button")?.click();
-							}}
-							onEditTags={() => {
-								tagsRef.current?.scrollIntoView({ block: "center" });
-								tagsRef.current?.querySelector("input")?.focus();
-							}}
+							onEditMetadata={() => setNameEditSignal((signal) => signal + 1)}
+							onEditTags={requestTagEdit}
 							onToggleFavorite={onToggleFavorite}
 							onOpenConversation={onOpenConversation}
 							onFilterSession={onFilterSession}
@@ -437,40 +532,38 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 				)}
 				{(!compact || detailsOpen) && (
 					<>
-						<div className="flex flex-col gap-1">
-							<EditableField
-								label={t("ui.library.preview.description")}
-								value={asset.description}
-								multiline
-								rows={3}
-								placeholder={t("ui.library.preview.add_description")}
-								onSave={(value) => saveField({ description: value })}
-								isSaving={update.isPending}
+						<InlineEditText
+							key={`${asset.id}:description`}
+							value={asset.description}
+							onSave={(value) => saveField({ description: value })}
+							label={t("ui.library.preview.description")}
+							placeholder={t("ui.library.preview.add_description")}
+							multiline
+							rows={3}
+							allowEmpty
+							textClassName="text-body-sm"
+							field="description"
+						/>
+						<div ref={tagsRef} className="min-w-0">
+							<InlineTagEditor
+								key={`${asset.id}:tags`}
+								value={names}
+								onChange={(next) => void commit(next)}
+								label={t("ui.library.preview.tags")}
+								addLabel={t("ui.library.preview.add_tag")}
+								saving={tagsSaving}
+								startSignal={tagEditSignal}
 							/>
-						</div>
-						<div ref={tagsRef} className="flex items-start gap-2">
-							<div className="min-w-0 flex-1">
-								<TagsInputChips
-									label={t("ui.library.preview.tags")}
-									value={names}
-									disabled={tagsSaving}
-									onChange={(next) => void commit(next)}
-									placeholder={t("ui.library.preview.add_tag")}
-								/>
-							</div>
-							{tagsSaving && (
-								<LoaderCircle
-									size={14}
-									aria-hidden="true"
-									className="mt-6 motion-safe:animate-spin text-ink-muted"
-								/>
-							)}
 						</div>
 					</>
 				)}
 			</header>
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-sunken">
-				<LibraryViewer asset={asset} dense={compact} />
+				<LibraryViewer
+					asset={asset}
+					dense={compact}
+					mediaSiblings={mediaSiblings}
+				/>
 			</div>
 			<div className="shrink-0">
 				<LibraryComposer

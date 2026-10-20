@@ -12433,7 +12433,9 @@ export const STORIES = [
 			expectAttribute: {
 				selector: VIEWER_CONTROLS,
 				name: "class",
-				includes: "opacity-45",
+				/* The resting opacity is the shared chrome's measured floor, now
+				 * 0.85 (design round 2, D1); the frame is re-captured with it. */
+				includes: "opacity-85",
 			},
 		},
 	],
@@ -12527,6 +12529,329 @@ export const STORIES = [
 			press: VIEWER_TILE_ONE,
 			keys: [...Array(9)].map(() => ({ key: "ArrowRight", settleMs: 120 })),
 			expectPresent: VIEWER_FILMSTRIP,
+		},
+	],
+
+	/*
+	 * THE LIBRARY PREVIEW'S BORDERLESS METADATA AND ITS MEDIA LIGHTBOX (PR
+	 * #1259). The stories mount the preview directly in the 440px column the
+	 * app docks it in, so every frame is the metadata surface rather than a
+	 * catalogue around it.
+	 *
+	 * WHAT THE CLAIMS ARE, and why they are in the tuple rather than only in a
+	 * reader's eye: the operator's requirements are measurable and each has a
+	 * failure a still cannot distinguish from the state it claims - a long name
+	 * that runs UNDER the pencil looks almost right in one theme, and an empty
+	 * tag row that is a bordered box reads as "empty" in a thumbnail the same
+	 * way the add affordance does. The `expect` expressions read the geometry
+	 * the browser resolved (the truncation point, the gutter's width and its
+	 * opacity) and the `expectPresent`/`expectGone` pair reads the gesture's
+	 * outcome at the shutter, so a tuple whose story did not reach its state
+	 * fails the run rather than filing a resting frame under the state's name.
+	 *
+	 * THE HOVER ROWS. `:hover` is browser state, so the rig's own pointer move
+	 * lands them and the `hover` option asserts the element matched `:hover`
+	 * before the shutter. The control's opacity is what the hover changes, and
+	 * a computed-style read is not expressible in `expect` (which runs BEFORE
+	 * the pointer move); the frame carries it, and the QA report's DOM
+	 * measurement records the computed values for both states.
+	 */
+	["library-tab--preview-inline-populated", 640, 900],
+	[
+		"library-tab--preview-inline-name-hover",
+		640,
+		900,
+		{
+			hover: '[data-inline-edit="name"]',
+			expectGone: '[data-inline-edit="name"] [data-inline-edit-input]',
+		},
+	],
+	[
+		"library-tab--preview-inline-long-name",
+		640,
+		900,
+		{
+			expect: {
+				pollMs: 5000,
+				expression: `(() => {
+					const row = document.querySelector('[data-inline-edit="name"]');
+					if (!row) return "the name row is not mounted";
+					const text = row.querySelector("span.truncate");
+					const control = row.querySelector("[data-inline-edit-control]");
+					if (!text || !control) return "the name row is missing its value or its reserved gutter";
+					const t = text.getBoundingClientRect();
+					const c = control.getBoundingClientRect();
+					const style = getComputedStyle(text);
+					const problems = [];
+					if (style.textOverflow !== "ellipsis") problems.push("text-overflow is " + style.textOverflow);
+					if (!(text.scrollWidth > text.clientWidth + 1)) problems.push("the value is not truncated (" + text.scrollWidth + " in " + text.clientWidth + ")");
+					if (c.left - t.right < 0) problems.push("the gutter starts " + Math.round(t.right - c.left) + "px before the value ends");
+					if (Math.round(c.width) !== 20) problems.push("the gutter is " + Math.round(c.width) + "px wide, not 20");
+					if (getComputedStyle(control).opacity !== "0") problems.push("the pencil is painted at rest (opacity " + getComputedStyle(control).opacity + ")");
+					return problems.length ? problems.join("; ") : true;
+				})()`,
+				message:
+					"the long name must end in an ellipsis before an empty 20px gutter, with the pencil invisible at rest",
+			},
+		},
+	],
+	[
+		"library-tab--preview-inline-long-name",
+		640,
+		900,
+		{
+			dir: "preview-inline-long-name-hover",
+			hover: '[data-inline-edit="name"]',
+		},
+	],
+	/*
+	 * The long name WHILE THE EDITOR IS OPEN, which the operator's measurement
+	 * claim names explicitly. This row exists because the claim does not hold in
+	 * this state and the frame is the evidence for that: an `<input>` cannot
+	 * render `text-overflow: ellipsis` (the resolved value is `clip`) and, with
+	 * the value selected, Chromium scrolls it to the caret at the end - so the
+	 * visible text is the tail of the name, not a head ending in an ellipsis.
+	 * The frame is committed rather than suppressed, and the QA report on PR
+	 * #1259 records the measurement; the tuple claims only what the state does
+	 * hold (the stored value, and a gutter the input never runs under), so the
+	 * run cannot be green on a defect it does not photograph.
+	 */
+	[
+		"library-tab--preview-inline-long-name",
+		640,
+		900,
+		{
+			dir: "preview-inline-long-name-editing",
+			press: '[data-inline-edit="name"] [data-inline-edit-control]',
+			expectPresent: '[data-inline-edit="name"] [data-inline-edit-input]',
+			expect: {
+				pollMs: 3000,
+				expression: `(() => {
+					const row = document.querySelector('[data-inline-edit="name"]');
+					const input = row?.querySelector("[data-inline-edit-input]");
+					const control = row?.querySelector("[data-inline-edit-control]");
+					if (!input || !control) return "the long-name editor is not open";
+					const i = input.getBoundingClientRect();
+					const c = control.getBoundingClientRect();
+					const problems = [];
+					if (input.value !== "March invoice reconciliation notes for the fourth quarter close") problems.push("the editor opened with " + JSON.stringify(input.value));
+					if (i.right > c.left + 0.5) problems.push("the input runs " + Math.round(i.right - c.left) + "px under the gutter");
+					if (getComputedStyle(control).opacity === "0") problems.push("the cancel control is invisible while editing");
+					return problems.length ? problems.join("; ") : true;
+				})()`,
+				message:
+					"the long-name editor must open with the stored value and stop before its gutter",
+			},
+		},
+	],
+	[
+		"library-tab--preview-inline-name-editing",
+		640,
+		900,
+		{
+			expectPresent: '[data-inline-edit="name"] [data-inline-edit-input]',
+			expectAttribute: {
+				selector: '[data-inline-edit="name"] [data-inline-edit-control]',
+				name: "aria-label",
+				includes: "Cancel editing",
+			},
+			expect: {
+				pollMs: 3000,
+				expression: `(() => {
+					const row = document.querySelector('[data-inline-edit="name"]');
+					const input = row?.querySelector("[data-inline-edit-input]");
+					const control = row?.querySelector("[data-inline-edit-control]");
+					if (!input || !control) return "the name editor is not open";
+					const i = input.getBoundingClientRect();
+					const c = control.getBoundingClientRect();
+					const problems = [];
+					if (input.value !== "March invoices") problems.push("the editor opened with " + JSON.stringify(input.value));
+					if (i.right > c.left + 0.5) problems.push("the input runs " + Math.round(i.right - c.left) + "px under the gutter");
+					if (getComputedStyle(control).opacity === "0") problems.push("the cancel control is invisible while editing");
+					return problems.length ? problems.join("; ") : true;
+				})()`,
+				message:
+					"the open name editor must show the stored value, stop before the gutter and paint its X",
+			},
+		},
+	],
+	[
+		"library-tab--preview-inline-name-escape",
+		640,
+		900,
+		{
+			expectGone: '[data-inline-edit="name"] [data-inline-edit-input]',
+			expectAttribute: {
+				selector: '[data-inline-edit="name"] [data-inline-edit-control]',
+				name: "aria-label",
+				includes: "Edit Name",
+			},
+			expect: {
+				pollMs: 3000,
+				expression: `(() => {
+					const row = document.querySelector('[data-inline-edit="name"]');
+					if (!row) return "the name row is not mounted";
+					const text = (row.textContent || "").replace(/\\s+/g, " ").trim();
+					return text.includes("March invoices") && !text.includes("changed")
+						? true
+						: "the row reads " + JSON.stringify(text);
+				})()`,
+				message:
+					"Escape must close the editor and put the stored name back, not the typed value",
+			},
+		},
+	],
+	[
+		"library-tab--preview-inline-description-editing",
+		640,
+		900,
+		{
+			expectPresent:
+				'[data-inline-edit="description"] [data-inline-edit-input]',
+			expectAttribute: {
+				selector: '[data-inline-edit="description"] [data-inline-edit-control]',
+				name: "aria-label",
+				includes: "Cancel editing",
+			},
+			expect: {
+				pollMs: 3000,
+				expression: `(() => {
+					const field = document.querySelector('[data-inline-edit="description"]');
+					const input = field?.querySelector("[data-inline-edit-input]");
+					if (!input) return "the description editor is not open";
+					const problems = [];
+					if (input.value !== "Reconciliation notes for the March invoice run.") problems.push("the editor opened with " + JSON.stringify(input.value));
+					if (getComputedStyle(input).borderTopWidth !== "0px") problems.push("the editor is boxed (border " + getComputedStyle(input).borderTopWidth + ")");
+					return problems.length ? problems.join("; ") : true;
+				})()`,
+				message:
+					"the description editor must open with the stored text and no border",
+			},
+		},
+	],
+	[
+		"library-tab--preview-inline-empty-tags",
+		640,
+		900,
+		{
+			expectPresent: "[data-inline-tags]",
+			expectGone: "[data-inline-tags] input",
+			expectSentence: { selector: "[data-inline-tags]", includes: "Add a tag" },
+			expect: {
+				pollMs: 3000,
+				expression: `(() => {
+					const row = document.querySelector("[data-inline-tags]");
+					if (!row) return "the tag row is not mounted";
+					const add = [...row.querySelectorAll("button")].find((node) => (node.textContent || "").includes("Add a tag"));
+					if (!add) return "there is no Add a tag control";
+					const box = getComputedStyle(row);
+					const problems = [];
+					if (box.borderTopWidth !== "0px" || box.borderBottomWidth !== "0px") problems.push("the empty tag row is a box (border " + box.borderTopWidth + ")");
+					if (row.querySelector("input")) problems.push("the empty state renders an input");
+					return problems.length ? problems.join("; ") : true;
+				})()`,
+				message:
+					"the empty tag state must be the Add a tag control, not a bordered or empty box",
+			},
+		},
+	],
+	[
+		"library-tab--media-lightbox",
+		1280,
+		900,
+		{
+			expectPresent: [
+				"[data-library-lightbox]",
+				"[data-library-lightbox-strip]",
+			],
+			expect: {
+				pollMs: 5000,
+				expression: `(() => {
+					const current = document.querySelector('[data-library-lightbox-strip] [aria-current="true"]');
+					if (!current) return "the strip marks no current slide";
+					if (current.getAttribute("data-library-lightbox-tile") !== "la_0000000000000053") return "the strip marks " + current.getAttribute("data-library-lightbox-tile");
+					return true;
+				})()`,
+				message:
+					"the lightbox must be on the third slide its play walked to (ArrowRight, then the third strip tile)",
+			},
+			expectAttribute: {
+				selector: '[data-library-lightbox-strip] [aria-current="true"]',
+				name: "data-library-lightbox-tile",
+				equals: "la_0000000000000053",
+			},
+		},
+	],
+	[
+		"library-tab--media-lightbox-dismiss",
+		1280,
+		900,
+		{
+			expectGone: "[data-library-lightbox]",
+			expectPresent: '[data-library-media-trigger="image"]',
+			expect: {
+				pollMs: 3000,
+				expression: `(() => {
+					const trigger = document.querySelector('[data-library-media-trigger="image"]');
+					if (!trigger) return "the preview's picture is not mounted";
+					const problems = [];
+					if (document.activeElement !== trigger) problems.push("focus is on " + (document.activeElement?.tagName ?? "nothing") + ", not the control that opened the viewer");
+					const selected = document.querySelector("[data-library-preview]")?.getAttribute("data-library-preview");
+					if (selected !== "la_0000000000000051") problems.push("the preview's selected asset moved to " + selected);
+					return problems.length ? problems.join("; ") : true;
+				})()`,
+				message:
+					"Escape must close the viewer, return focus to its trigger and leave the preview's selected asset alone",
+			},
+		},
+	],
+	[
+		"library-tab--media-lightbox-video",
+		1280,
+		900,
+		{
+			expectPresent: [
+				"[data-library-lightbox]",
+				"[data-library-lightbox] [data-lightbox-video]",
+			],
+			expect: {
+				pollMs: 8000,
+				expression: `(() => {
+					const video = document.querySelector("[data-library-lightbox] [data-lightbox-video]");
+					if (!video) return "the lightbox has no video element";
+					if (video.readyState < 3) return "the clip is at readyState " + video.readyState;
+					/*
+					 * NO DECODED-FRAME CLAIM. Headless Chromium with --disable-gpu
+					 * paints the player's loading ring even at readyState 4 and
+					 * leaves autoplay paused (measured: paused true, currentTime 0,
+					 * readyState 4), and seeking currentTime does not change the
+					 * painted surface. The frame therefore evidences the lightbox
+					 * mounted over a real, buffered video and its controls - not a
+					 * decoded picture; the README states the gap.
+					 */
+					return true;
+				})()`,
+				message:
+					"the clip's own click target must have opened the lightbox over a decoded video",
+			},
+		},
+	],
+	[
+		"library-tab--media-lightbox-solo",
+		1280,
+		900,
+		{
+			expectPresent: "[data-library-lightbox]",
+			expectGone: [
+				"[data-library-lightbox-strip]",
+				"[data-image-viewer-prev]",
+				"[data-image-viewer-next]",
+			],
+			expect: {
+				pollMs: 5000,
+				expression: `Boolean(document.querySelector("[data-library-lightbox]")) && !document.querySelector("[data-library-lightbox-strip]") && !document.querySelector("[data-image-viewer-prev]") && !document.querySelector("[data-image-viewer-next]")`,
+				message: "a group of one must open without carousel chrome",
+			},
 		},
 	],
 ];
