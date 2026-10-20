@@ -7,13 +7,15 @@ import { t } from "@shared/i18n";
 import { formatRelativeTime } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { AtSign, Bot, Hash, Plus, Send, Users } from "lucide-react";
+import { AtSign, BellOff, Bot, Hash, Plus, Send, Users } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
+	TeamBridgeNotify,
 } from "../../../../shared/team-bridge-contract";
+import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
@@ -21,18 +23,24 @@ import {
 	type TeamBridgeScope,
 	chronological,
 	conversationGlyph,
+	conversationMemberCount,
 	conversationOrganizationName,
 	conversationTitle,
+	isPreviewConversation,
+	notifyFailureIsVisible,
 	orderedMembers,
 	organizationOptions,
 	preferredScope,
+	showsMutedGlyph,
 	visibleConversationRows,
 } from "./team-bridge-model";
 import { TeamBridgeOrgSwitcher } from "./team-bridge-org-switcher";
 import {
 	useCreateTeamBridgeConversation,
+	useJoinTeamBridgeConversation,
 	useMarkTeamBridgeRead,
 	useSendTeamBridgeMessage,
+	useSetTeamBridgeNotify,
 	useTeamBridgeConversations,
 	useTeamBridgeIdentity,
 	useTeamBridgeMessages,
@@ -84,6 +92,8 @@ const ConversationRow: FC<{
 		conversationTitle(conversation, selfAccountId) ??
 		t("ui.teamBridge.list.untitled");
 	const unread = conversation.unread_count;
+	const preview = isPreviewConversation(conversation);
+	const muted = showsMutedGlyph(conversation);
 	const lastMessage = conversation.last_message_at
 		? relative(conversation.last_message_at, locale)
 		: "";
@@ -109,11 +119,39 @@ const ConversationRow: FC<{
 				<span className="flex min-w-0 flex-1 flex-col">
 					<span className="flex min-w-0 items-center gap-2">
 						<span className="min-w-0 flex-1 truncate text-[13px]">{title}</span>
+						{preview && (
+							<Badge variant="attentionQuiet" className="shrink-0">
+								{t("ui.teamBridge.preview.chip")}
+							</Badge>
+						)}
+						{/*
+						 * The quiet bell is the row's own statement of a mute. It sits before
+						 * the unread count because the count still exists on a muted row (the
+						 * reader may want to look); the bell explains why it is not raising the
+						 * badge. `sr-only` text keeps the glyph out of the sighted-only channel.
+						 */}
+						{muted && (
+							<span
+								className="shrink-0 text-ink-dim"
+								title={t("ui.teamBridge.notify.muted")}
+							>
+								<BellOff size={12} aria-hidden="true" />
+								<span className="sr-only">
+									{t("ui.teamBridge.notify.muted")}
+								</span>
+							</span>
+						)}
 						{/* The merged view moves the timestamp to the chip line: the org
 						    name is the fact that distinguishes two same-named conversations,
 						    so it keeps the title line's room. */}
+						{/*
+						 * The timestamp is the FIRST row item to yield. It keeps its basis
+						 * (`shrink` 1, `min-w-0`) while the title is `flex-1` over a zero basis,
+						 * so an over-full row spends the timestamp's width before the title's:
+						 * the name is the identification task, and Preview/unread stay whole.
+						 */}
 						{lastMessage && !showOrganization && (
-							<span className="shrink-0 text-meta-sm text-ink-dim">
+							<span className="min-w-0 truncate text-meta-sm text-ink-dim">
 								{lastMessage}
 							</span>
 						)}
@@ -251,6 +289,18 @@ export type TeamBridgePageViewProps = {
 	selfAccountId?: string;
 	sending?: boolean;
 	sendFailed?: boolean;
+	/** A join write is in flight; the banner's Join is busy. */
+	joining?: boolean;
+	/** The last join was refused; the banner states it above the action. */
+	joinFailed?: boolean;
+	/** The last notification write was refused; the line under the header says so. */
+	notifyFailed?: boolean;
+	/** Join the selected discoverable channel (the banner's primary action). */
+	onJoin?: () => void;
+	/** Write the selected conversation's notification preference. */
+	onNotifyChange?: (notify: TeamBridgeNotify) => void;
+	/** Story/test seed only: opens the header menu so its rows are visible. */
+	defaultMenuOpen?: boolean;
 	/** Story/test seed only: the page's real draft is user-owned state. */
 	initialDraft?: string;
 	onSelect: (conversationId: string) => void;
@@ -276,6 +326,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	selfAccountId,
 	sending = false,
 	sendFailed = false,
+	joining = false,
+	joinFailed = false,
+	notifyFailed = false,
+	onJoin,
+	onNotifyChange,
+	defaultMenuOpen = false,
 	initialDraft = "",
 	onSelect,
 	onSend,
@@ -290,6 +346,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const ordered = useMemo(() => chronological(messages), [messages]);
 
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
+	const previewSelected = selected !== null && isPreviewConversation(selected);
 	const listRows = useMemo(
 		() => visibleConversationRows(conversations, scope, organizations),
 		[conversations, scope, organizations],
@@ -500,13 +557,17 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							)}
 							<span className="shrink-0 text-meta-sm text-ink-dim">
 								{t("ui.teamBridge.member.count", {
-									count: orderedMembers(selected).filter(
-										(member) => member.state === "active",
-									).length,
+									count: conversationMemberCount(selected),
 								})}
 							</span>
 							<div className="ml-auto flex items-center gap-1">
+								{/*
+								 * The strip draws exactly what the count states: ACTIVE members. The
+								 * server's member_count includes invitees, so an unfiltered strip would
+								 * show three initials beside "2 members".
+								 */}
 								{orderedMembers(selected)
+									.filter((member) => member.state === "active")
 									.slice(0, 6)
 									.map((member) => (
 										<span
@@ -517,11 +578,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 													? "bg-accent-wash text-accent"
 													: "bg-sunken text-ink-muted",
 											)}
-											title={
-												member.state === "invited"
-													? `${member.display_label} — ${t("ui.teamBridge.member.invited")}`
-													: member.display_label
-											}
+											title={member.display_label}
 										>
 											{member.kind === "agent" ? (
 												<Bot size={12} aria-hidden="true" />
@@ -530,8 +587,20 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											)}
 										</span>
 									))}
+								{!previewSelected && onNotifyChange && (
+									<TeamBridgeConversationMenu
+										conversation={selected}
+										onNotifyChange={onNotifyChange}
+										defaultOpen={defaultMenuOpen}
+									/>
+								)}
 							</div>
 						</header>
+						{notifyFailed && (
+							<p role="alert" className="px-3 pb-1 text-[12px] text-danger">
+								{t("ui.teamBridge.notify.error")}
+							</p>
+						)}
 
 						{/* Radix wraps children in an auto-height table cell; these
 						    arbitrary variants make that wrapper fill the viewport so the
@@ -539,50 +608,60 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						    bottom, next to the composer). */}
 						<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block [&_[data-radix-scroll-area-viewport]>div]:h-full">
 							<div className="flex h-full flex-col">
-								{messageState === "loading" && (
-									<div className="flex items-center justify-center py-10">
-										<Spinner
-											size="sm"
-											label={t("ui.teamBridge.thread.loading")}
-										/>
-									</div>
-								)}
-								{messageState === "error" && (
-									<p className="px-4 py-8 text-[13px] text-ink-muted">
-										{t("ui.teamBridge.thread.error")}
-									</p>
-								)}
-								{selectedOrganizationUnknown && (
-									<p className="px-4 py-8 text-[13px] text-ink-muted">
-										{t("ui.teamBridge.scope.thread_unknown")}
-									</p>
-								)}
-								{!selectedOrganizationUnknown &&
-									messageState === "ready" &&
-									ordered.length === 0 && (
-										<p className="px-4 py-10 text-center text-[13px] text-ink-muted">
-											{t("ui.teamBridge.thread.empty")}
-										</p>
-									)}
-								{!selectedOrganizationUnknown &&
-									messageState === "ready" &&
-									ordered.length > 0 && (
-										/* SLACK'S ANCHOR: a short history sits at the BOTTOM of the
+								{previewSelected ? (
+									<TeamBridgePreviewBanner
+										joining={joining}
+										joinFailed={joinFailed}
+										onJoin={onJoin}
+									/>
+								) : (
+									<>
+										{messageState === "loading" && (
+											<div className="flex items-center justify-center py-10">
+												<Spinner
+													size="sm"
+													label={t("ui.teamBridge.thread.loading")}
+												/>
+											</div>
+										)}
+										{messageState === "error" && (
+											<p className="px-4 py-8 text-[13px] text-ink-muted">
+												{t("ui.teamBridge.thread.error")}
+											</p>
+										)}
+										{selectedOrganizationUnknown && (
+											<p className="px-4 py-8 text-[13px] text-ink-muted">
+												{t("ui.teamBridge.scope.thread_unknown")}
+											</p>
+										)}
+										{!selectedOrganizationUnknown &&
+											messageState === "ready" &&
+											ordered.length === 0 && (
+												<p className="px-4 py-10 text-center text-[13px] text-ink-muted">
+													{t("ui.teamBridge.thread.empty")}
+												</p>
+											)}
+										{!selectedOrganizationUnknown &&
+											messageState === "ready" &&
+											ordered.length > 0 && (
+												/* SLACK'S ANCHOR: a short history sits at the BOTTOM of the
 								   pane and grows upward, so the newest message is always next to
 								   the composer. `min-h-full justify-end` does that inside the
 								   scroll area and collapses to plain flow once the list is
 								   taller than the pane. */
-										<ul className="mt-auto flex flex-col gap-3 px-4 py-4">
-											{ordered.map((message) => (
-												<MessageRow
-													key={message.id}
-													message={message}
-													selfAccountId={selfAccountId}
-												/>
-											))}
-											<div ref={threadEnd} />
-										</ul>
-									)}
+												<ul className="mt-auto flex flex-col gap-3 px-4 py-4">
+													{ordered.map((message) => (
+														<MessageRow
+															key={message.id}
+															message={message}
+															selfAccountId={selfAccountId}
+														/>
+													))}
+													<div ref={threadEnd} />
+												</ul>
+											)}
+									</>
+								)}
 							</div>
 						</ScrollArea>
 
@@ -596,67 +675,112 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						    ring inside. Radius is 12 rather than the agent composer's 16:
 						    this box is shorter, so 16 read as a pill at rest. The ground
 						    (`elevated` over `surface`) does the separating, never an edge. */}
-						<div className="shrink-0 px-3 pb-3">
-							{sendFailed && (
-								<p role="alert" className="px-2 pb-1 text-[12px] text-danger">
-									{t("ui.teamBridge.composer.error")}
-								</p>
-							)}
-							<div
-								className={cn(
-									"rounded-xl bg-elevated",
-									"transition-colors duration-fast ease-out-quart",
-									"has-[textarea:focus-visible]:outline-solid has-[textarea:focus-visible]:outline-2",
-									"has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2",
+						{/* No composer in a preview: a non-member cannot write, and a
+						    disabled box would be fake chrome beside a real Join action. */}
+						{!previewSelected && (
+							<div className="shrink-0 px-3 pb-3">
+								{sendFailed && (
+									<p role="alert" className="px-2 pb-1 text-[12px] text-danger">
+										{t("ui.teamBridge.composer.error")}
+									</p>
 								)}
-							>
-								<textarea
-									value={draft}
-									onChange={(event) => setDraft(event.target.value)}
-									onKeyDown={(event) => {
-										// An IME candidate confirmation is Enter too; sending on it
-										// would post the half-composed text.
-										if (
-											event.key === "Enter" &&
-											!event.shiftKey &&
-											!event.nativeEvent.isComposing
-										) {
-											event.preventDefault();
-											submit();
-										}
-									}}
-									rows={1}
-									placeholder={t("ui.teamBridge.composer.placeholder")}
-									aria-label={t("ui.teamBridge.composer.placeholder")}
+								<div
 									className={cn(
-										"block max-h-40 min-h-9 w-full resize-none bg-transparent px-3 pt-2.5 pb-1",
-										"text-[13px] text-ink placeholder:text-ink-dim",
-										"outline-none",
+										"rounded-xl bg-elevated",
+										"transition-colors duration-fast ease-out-quart",
+										"has-[textarea:focus-visible]:outline-solid has-[textarea:focus-visible]:outline-2",
+										"has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2",
 									)}
-								/>
-								<div className="flex items-center gap-2 px-2 pb-2">
-									{/* The hint takes the tools' slot until the bridge has a tool
+								>
+									<textarea
+										value={draft}
+										onChange={(event) => setDraft(event.target.value)}
+										onKeyDown={(event) => {
+											// An IME candidate confirmation is Enter too; sending on it
+											// would post the half-composed text.
+											if (
+												event.key === "Enter" &&
+												!event.shiftKey &&
+												!event.nativeEvent.isComposing
+											) {
+												event.preventDefault();
+												submit();
+											}
+										}}
+										rows={1}
+										placeholder={t("ui.teamBridge.composer.placeholder")}
+										aria-label={t("ui.teamBridge.composer.placeholder")}
+										className={cn(
+											"block max-h-40 min-h-9 w-full resize-none bg-transparent px-3 pt-2.5 pb-1",
+											"text-[13px] text-ink placeholder:text-ink-dim",
+											"outline-none",
+										)}
+									/>
+									<div className="flex items-center gap-2 px-2 pb-2">
+										{/* The hint takes the tools' slot until the bridge has a tool
 									    worth putting here (no attachment route exists yet, and a
 									    disabled paperclip would be fake chrome). */}
-									<span className="min-w-0 flex-1 truncate pl-1 text-meta-sm text-ink-dim">
-										{t("ui.teamBridge.composer.hint")}
-									</span>
-									<Button
-										size="icon-sm"
-										variant="primary"
-										className="rounded-full"
-										disabled={!draft.trim() || sending}
-										aria-label={t("ui.teamBridge.composer.send")}
-										onClick={submit}
-									>
-										<Send size={16} />
-									</Button>
+										<span className="min-w-0 flex-1 truncate pl-1 text-meta-sm text-ink-dim">
+											{t("ui.teamBridge.composer.hint")}
+										</span>
+										<Button
+											size="icon-sm"
+											variant="primary"
+											className="rounded-full"
+											disabled={!draft.trim() || sending}
+											aria-label={t("ui.teamBridge.composer.send")}
+											onClick={submit}
+										>
+											<Send size={16} />
+										</Button>
+									</div>
 								</div>
 							</div>
-						</div>
+						)}
 					</>
 				)}
 			</section>
+		</div>
+	);
+};
+
+/**
+ * What a discoverable non-member sees INSTEAD of a thread.
+ *
+ * The server answers `not_a_member` for a history read, so this banner is not
+ * a loading state and must never sit above message bodies that arrived from a
+ * cache: the caller neither requests nor renders them, and this component is
+ * the only content the pane owns in that state. The primary action is a real
+ * Join (the same write the header menu's absence implies), and a refusal is
+ * stated beside it rather than replacing it — a failed join is retryable.
+ */
+export const TeamBridgePreviewBanner: FC<{
+	joining?: boolean;
+	joinFailed?: boolean;
+	onJoin?: () => void;
+}> = ({ joining = false, joinFailed = false, onJoin }) => {
+	useI18nLocale();
+	return (
+		<div className="flex flex-1 items-center justify-center px-6 py-10">
+			<div className="flex max-w-md flex-col items-center gap-3 text-center">
+				<p className="text-[13px] text-ink">
+					{t("ui.teamBridge.preview.banner")}
+				</p>
+				{joinFailed && (
+					<p role="alert" className="text-[12px] text-danger">
+						{t("ui.teamBridge.preview.join_error")}
+					</p>
+				)}
+				<Button
+					type="button"
+					size="sm"
+					variant="primary"
+					disabled={joining}
+					onClick={onJoin}
+				>
+					{t("ui.teamBridge.preview.join")}
+				</Button>
+			</div>
 		</div>
 	);
 };
@@ -738,12 +862,16 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		visibleConversations.find(
 			(conversation) => conversation.id === selectedId,
 		) ?? null;
+	// A preview is metadata only: requesting its history is the one read the
+	// server refuses (`not_a_member`), so the query is disabled rather than
+	// taught to tolerate an expected error.
+	const previewSelected = selected !== null && isPreviewConversation(selected);
 	// Every thread read and write names the SELECTED CONVERSATION's tenant, not
 	// the rail scope: in the merged view the scope is "all", and a message call
 	// without a tenant would fall back to whatever the server considers default
 	// — the one way a merged row could be read under the wrong organization.
 	const messages = useTeamBridgeMessages(
-		selected?.id ?? null,
+		previewSelected ? null : (selected?.id ?? null),
 		selected?.tenant_id,
 	);
 	const send = useSendTeamBridgeMessage(
@@ -757,6 +885,11 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		selected?.id ?? "",
 		selected?.tenant_id,
 	);
+	const join = useJoinTeamBridgeConversation(
+		selected?.id ?? "",
+		selected?.tenant_id,
+	);
+	const notify = useSetTeamBridgeNotify();
 
 	// Mark read at the newest seq actually rendered. A visible page has shown
 	// these messages; leaving the cursor behind would keep the badge counting a
@@ -767,6 +900,11 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset only when the selection changes.
 	useEffect(() => {
 		send.reset();
+		join.reset();
+		// A refusal is about the conversation the reader was in; the next
+		// selection starts with a clean line, as the next successful write does
+		// (a mutation that succeeds is no longer in its error state).
+		notify.reset();
 	}, [selected?.id]);
 
 	const newest = messages.data?.messages.reduce<number | undefined>(
@@ -811,6 +949,18 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				selfAccountId={selfAccountId}
 				sending={send.isPending}
 				sendFailed={send.isError}
+				joining={join.isPending}
+				joinFailed={join.isError}
+				notifyFailed={notifyFailureIsVisible(notify, selected?.id ?? null)}
+				onJoin={() => join.mutate()}
+				onNotifyChange={(next) => {
+					if (selected === null) return;
+					notify.mutate({
+						conversationId: selected.id,
+						tenantId: selected.tenant_id,
+						notify: next,
+					});
+				}}
 				onSelect={setSelectedId}
 				onSend={(body, clientRef) => {
 					if (selected === null) return;
