@@ -885,6 +885,7 @@ const App: FC = () => {
 
 					<ChatLayout
 						sidebar={<SidebarNavigation />}
+						flushTop={pathname.startsWith("/team-bridge")}
 						content={
 							<main
 								data-glass-region="canvas-backing"
