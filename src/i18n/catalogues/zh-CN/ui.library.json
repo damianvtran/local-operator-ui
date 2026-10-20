@@ -150,5 +150,11 @@
 	"ui.library.composer.message_sent_link_failed": "消息已发送。对话关联失败。",
 	"ui.library.composer.retry_link": "重试关联",
 	"ui.library.preview.pptx_text": "文本",
-	"ui.library.preview.pptx_no_text": "此幻灯片没有可提取的文本。"
+	"ui.library.preview.pptx_no_text": "此幻灯片没有可提取的文本。",
+	"ui.library.time.just_now": "刚刚",
+	"ui.library.time.minutes_m_ago": "{minutes, plural, other {{minutes, number, ::group-off}分钟前}}",
+	"ui.library.time.hours_h_ago": "{hours, plural, other {{hours, number, ::group-off}小时前}}",
+	"ui.library.time.days_d_ago": "{days, plural, other {{days, number, ::group-off}天前}}",
+	"ui.library.time.months_mo_ago": "{months, plural, other {{months, number, ::group-off}个月前}}",
+	"ui.library.time.years_y_ago": "{years, plural, other {{years, number, ::group-off}年前}}"
 }
