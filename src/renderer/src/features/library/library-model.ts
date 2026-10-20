@@ -20,7 +20,7 @@
  * add a category without a renderer release.
  */
 
-import type { WithoutParams } from "@shared/i18n";
+import { type WithoutParams, t } from "@shared/i18n";
 import type {
 	DesktopLibraryAsset,
 	DesktopLibraryCategory,
@@ -343,6 +343,27 @@ export function formatBytes(bytes: number): string {
 /**
  * A compact age label, pinned to an injected clock so a rendered frame does not
  * churn (`nowMs` is a page prop, the schedules/projects rule).
+ *
+ * LOCALIZED, AND STILL A FRAGMENT. The label is composed into a larger sentence
+ * by its caller ("Last organized {at}", "Organized by {by} {at}"), so it is a
+ * phrase in the active locale, never a bare unit suffix appended to an English
+ * one: French renders "il y a 2 h" and Chinese "2小时前". Before this, the
+ * helper returned hardcoded English and every locale rendered a translated
+ * sentence with an English tail.
+ *
+ * WHY CATALOGUE KEYS RATHER THAN `Intl.RelativeTimeFormat`, MEASURED: the
+ * short-formatter's own docs offer `narrow` for compact UI, but CLDR's narrow
+ * style renders a SIGNED number in French and Russian ("-4 min", "-4 мин") —
+ * not prose — so it cannot be used as a sentence fragment. `short` fixes those
+ * two but abbreviates the French MONTH as "m." ("il y a 5 m."), which is
+ * ambiguous with minutes in the same metadata line; it also widens English from
+ * "4m ago" to "4 min. ago". The keys keep the deliberate compact spelling
+ * (a single unit letter, no space before it) while letting each locale own its
+ * own grammar and abbreviation. `ui.settings.integrations.integration_model.*`
+ * is the same pattern on the Settings screen.
+ *
+ * The thresholds, rounding and the empty string for a missing timestamp are the
+ * pre-localization behaviour, unchanged: 60s / 60min / 24h / 30d / 12mo.
  */
 export function relativeTime(
 	seconds: number | null | undefined,
@@ -350,16 +371,18 @@ export function relativeTime(
 ): string {
 	if (!seconds) return "";
 	const deltaMs = nowMs - seconds * 1000;
-	if (deltaMs < 60_000) return "just now";
+	if (deltaMs < 60_000) return t("ui.library.time.just_now");
 	const minutes = Math.floor(deltaMs / 60_000);
-	if (minutes < 60) return `${minutes}m ago`;
+	if (minutes < 60) return t("ui.library.time.minutes_m_ago", { minutes });
 	const hours = Math.floor(minutes / 60);
-	if (hours < 24) return `${hours}h ago`;
+	if (hours < 24) return t("ui.library.time.hours_h_ago", { hours });
 	const days = Math.floor(hours / 24);
-	if (days < 30) return `${days}d ago`;
+	if (days < 30) return t("ui.library.time.days_d_ago", { days });
 	const months = Math.floor(days / 30);
-	if (months < 12) return `${months}mo ago`;
-	return `${Math.floor(months / 12)}y ago`;
+	if (months < 12) return t("ui.library.time.months_mo_ago", { months });
+	return t("ui.library.time.years_y_ago", {
+		years: Math.floor(months / 12),
+	});
 }
 
 /** An absolute timestamp for the preview's metadata line. */

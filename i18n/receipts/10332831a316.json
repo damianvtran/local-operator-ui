@@ -1,0 +1,20 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "10332831a316",
+  "status": "passed",
+  "namespace": "ui.library",
+  "locale": "hi",
+  "scope": "hi ui.library at PR #1254 head 48df044e5f vs English d38247e1: six new ui.library.time.* keys audited; the other 152 keys confirmed byte-identical to the previously audited target e30da114.",
+  "sha256": {
+    "en": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+    "hi": "cf90f236e786baaf426af113f0b54771e308a2cb64396925a5d2d05f4072bf95"
+  },
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "ui.library.time.minutes_m_ago",
+      "note": "Hindi age fragments run ~1.6-1.9x the English character count (e.g. '4 मिनट पहले' 10 chars vs '4m ago' 6). This is the shortest idiomatic form - मि./घं. abbreviations are not standard Hindi - so no shorter variant is proposed; rendered QA should confirm narrow library rows do not truncate hi."
+    }
+  ]
+}
