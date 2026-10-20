@@ -52,7 +52,6 @@ export interface AddressAutocompleteState {
 	entries: AddressHistoryEntry[];
 	loading: boolean;
 	error: boolean;
-	truncated: boolean;
 	/** The field gained focus: read immediately. */
 	onFocus: () => void;
 	/** The field lost focus: drop the snapshot and any outstanding work. */
@@ -70,7 +69,6 @@ export function useAddressAutocomplete(
 	const [entries, setEntries] = useState<AddressHistoryEntry[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(false);
-	const [truncated, setTruncated] = useState(false);
 
 	const focusedRef = useRef(false);
 	const tabIdRef = useRef(tabId);
@@ -121,7 +119,6 @@ export function useAddressAutocomplete(
 				if (scopeKeyRef.current !== requestScopeKey) return;
 				if (response.activeTabId !== expectedTabId) return;
 				setEntries(response.entries);
-				setTruncated(response.truncated);
 				setError(false);
 			})
 			.catch(() => {
@@ -131,7 +128,6 @@ export function useAddressAutocomplete(
 				// Keep the previous entries? No: a failed read must not keep offering
 				// destinations it can no longer vouch for. The field degrades quietly.
 				setEntries([]);
-				setTruncated(false);
 				setError(true);
 			})
 			.finally(() => {
@@ -182,7 +178,6 @@ export function useAddressAutocomplete(
 		previousKeyRef.current = nextKey;
 		latestRequestRef.current += 1;
 		setEntries([]);
-		setTruncated(false);
 		setError(false);
 		setLoading(false);
 		clearDebounce();
@@ -200,10 +195,9 @@ export function useAddressAutocomplete(
 		pendingRef.current = false;
 		clearDebounce();
 		setEntries([]);
-		setTruncated(false);
 		setError(false);
 		setLoading(false);
 	}, [clearDebounce]);
 
-	return { entries, loading, error, truncated, onFocus, onBlur };
+	return { entries, loading, error, onFocus, onBlur };
 }

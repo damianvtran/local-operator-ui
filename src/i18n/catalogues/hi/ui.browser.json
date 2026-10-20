@@ -174,7 +174,7 @@
 	"ui.browser.browser_url_bar.address": "पता",
 	"ui.browser.browser_url_bar.address_required": "वेब पता दर्ज करें या कोई सुझाव चुनें।",
 	"ui.browser.browser_url_bar.address_suggestions_available": "{count, plural, one {{count, number, ::group-off} सुझाव उपलब्ध है} other {{count, number, ::group-off} सुझाव उपलब्ध हैं}}",
-	"ui.browser.browser_url_bar.address_suggestions_empty": "इस ब्राउज़र सत्र से अभी कोई लिंक नहीं है।",
+	"ui.browser.browser_url_bar.address_suggestions_empty": "इन टैब से अभी कोई लिंक नहीं है।",
 	"ui.browser.browser_url_bar.address_suggestions_label": "इस ब्राउज़र सत्र से",
 	"ui.browser.browser_url_bar.address_suggestions_no_match": "इस ब्राउज़र सत्र में कोई मेल खाता लिंक नहीं है।",
 	"ui.browser.browser_url_bar.address_suggestions_unavailable": "पते के सुझाव उपलब्ध नहीं हैं।",

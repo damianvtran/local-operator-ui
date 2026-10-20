@@ -1184,7 +1184,6 @@ const api = {
 			replay_base64: string;
 			from_byte: number;
 			to_byte: number;
-			truncated: boolean;
 		}> => ipcRenderer.invoke("console-subscribe", surface, fromByte),
 		unsubscribe: (surface: string): Promise<unknown> =>
 			ipcRenderer.invoke("console-unsubscribe", surface),

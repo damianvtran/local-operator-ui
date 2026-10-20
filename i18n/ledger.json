@@ -3515,7 +3515,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18"
+				"date": "2026-10-18",
+				"note": "Six new browser_url_bar.address_* keys were authored by the implementing coder job 0f978ef067ae (deepseek/deepseek-flash) on 2026-10-20; all carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
@@ -4854,7 +4855,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18"
+				"date": "2026-10-18",
+				"note": "Six new browser_url_bar.address_* keys were authored by the implementing coder job 0f978ef067ae (deepseek/deepseek-flash) on 2026-10-20; all carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
@@ -5830,7 +5832,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18"
+				"date": "2026-10-18",
+				"note": "Six new browser_url_bar.address_* keys were authored by the implementing coder job 0f978ef067ae (deepseek/deepseek-flash) on 2026-10-20; all carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
@@ -7471,7 +7474,7 @@
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18",
-				"note": "Reworded by the implementing coder (deepseek/deepseek-flash) on 2026-10-18 for the 您→你 register correction, PR #1205, not a translator: 11 strings, 14 您 occurrences. Register-only audit 4c6c213dd0d8 covers the new bytes; prior full audits stay in superseded."
+				"note": "Six new browser_url_bar.address_* keys were authored by the implementing coder job 0f978ef067ae (deepseek/deepseek-flash) on 2026-10-20; all carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
@@ -10459,7 +10462,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-19"
+				"date": "2026-10-19",
+				"note": "Six new browser_url_bar.address_* keys were authored by the implementing coder job 0f978ef067ae (deepseek/deepseek-flash) on 2026-10-20; all carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
@@ -12389,7 +12393,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-18"
+				"date": "2026-10-18",
+				"note": "Six new browser_url_bar.address_* keys were authored by the implementing coder job 0f978ef067ae (deepseek/deepseek-flash) on 2026-10-20; all carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{
@@ -16466,7 +16471,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-19"
+				"date": "2026-10-19",
+				"note": "Six new browser_url_bar.address_* keys were authored by the implementing coder job 0f978ef067ae (deepseek/deepseek-flash) on 2026-10-20; all carried keys are byte-identical to the previously audited translation."
 			},
 			"auditors": [
 				{

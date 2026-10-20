@@ -1132,7 +1132,7 @@
 	"ui.browser.browser_url_bar.address_suggestions_empty": {
 		"role": "empty-state text \u2014 address suggestions",
 		"tone": "quiet, factual, not an error",
-		"note": "Shown while the field is focused and this browser session has no HTTP(S) history to offer. Not a loading state and not a network search. No placeholders."
+		"note": "Shown while the field is focused and the tabs in this display scope have no HTTP(S) history to offer. Not a loading state and not a network search. No placeholders."
 	},
 	"ui.browser.browser_url_bar.address_suggestions_label": {
 		"role": "accessible control/region name \u2014 address suggestions list",

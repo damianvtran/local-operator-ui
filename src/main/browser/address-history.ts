@@ -41,7 +41,6 @@ import type {
 export interface AddressHistoryTab {
 	tabId: number;
 	sessionId: string | null;
-	active: boolean;
 	webContents: DriveableWebContents;
 	/** The restore row, used only when no usable live history exists. `pageState`
 	 * is never copied out (see the module note). */
@@ -57,8 +56,6 @@ interface StackWindow {
 	activeIndex: number;
 	/** The history index of `entries[0]`. */
 	startIndex: number;
-	/** The full stack was deeper than the window. */
-	truncated: boolean;
 }
 
 const CONTROL_CHARS = /[\p{Cc}]/u;
@@ -88,7 +85,6 @@ function windowAround(
 		entries: entries.slice(start, start + max),
 		activeIndex,
 		startIndex: start,
-		truncated: entries.length > max,
 	};
 }
 
@@ -120,7 +116,6 @@ function readStack(tab: AddressHistoryTab): StackWindow | null {
 					entries,
 					activeIndex,
 					startIndex: start,
-					truncated: total > max,
 				};
 			}
 		} catch {
@@ -160,6 +155,10 @@ export function canonicalHistoryUrl(raw: unknown): string | null {
 	if (url.protocol !== "http:" && url.protocol !== "https:") return null;
 	if (url.username !== "" || url.password !== "") return null;
 	if (url.href === "about:blank") return null;
+	// The RAW input bound above is not enough: WHATWG percent-encoding can expand
+	// multi-byte path bytes several times over, so the canonical href needs the
+	// same bound or a short-looking entry can cross the DTO cap.
+	if (url.href.length > ADDRESS_HISTORY_MAX_URL_LENGTH) return null;
 	return url.href;
 }
 
@@ -198,24 +197,16 @@ export function collectAddressHistory(
 		? [active, ...inScope.filter((tab) => tab.tabId !== activeTabId)]
 		: inScope;
 
-	let truncated = inScope.length > ADDRESS_HISTORY_MAX_TABS;
 	const seen = new Set<string>();
 	const entries: AddressHistoryEntry[] = [];
 	for (const tab of ordered.slice(0, ADDRESS_HISTORY_MAX_TABS)) {
 		const stack = readStack(tab);
 		if (!stack) continue;
-		if (stack.truncated) truncated = true;
 		stack.entries.forEach((entry, windowIndex) => {
 			const url = canonicalHistoryUrl(entry.url);
 			if (!url) return;
-			if (seen.has(url)) {
-				truncated = true;
-				return;
-			}
-			if (entries.length >= ADDRESS_HISTORY_MAX_ENTRIES) {
-				truncated = true;
-				return;
-			}
+			if (seen.has(url)) return;
+			if (entries.length >= ADDRESS_HISTORY_MAX_ENTRIES) return;
 			seen.add(url);
 			const sourceIndex = stack.startIndex + windowIndex;
 			entries.push({
@@ -232,5 +223,5 @@ export function collectAddressHistory(
 			});
 		});
 	}
-	return { activeTabId, entries, truncated };
+	return { activeTabId, entries };
 }

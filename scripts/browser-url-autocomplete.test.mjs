@@ -151,7 +151,6 @@ async function renderBar(overrides = {}) {
 				requestId: request.requestId,
 				activeTabId: 1,
 				entries: ENTRIES,
-				truncated: false,
 			};
 		},
 		onStateChanged: () => () => {},
@@ -168,6 +167,14 @@ async function renderBar(overrides = {}) {
 		input,
 		navigations,
 		requests,
+		props,
+		async rerender(overrides = {}) {
+			Object.assign(props, overrides);
+			await act(async () => {
+				root.render(React.createElement(BrowserUrlBar, props));
+			});
+			await flush();
+		},
 		async cleanup() {
 			await act(async () => root.unmount());
 			container.remove();
@@ -392,7 +399,6 @@ test("a tab change clears the snapshot and the completion", async () => {
 					requestId: request.requestId,
 					activeTabId: 2,
 					entries: ENTRIES,
-					truncated: false,
 				}),
 				onStateChanged: () => () => {},
 			}),
@@ -413,5 +419,196 @@ test("an unavailable history read degrades to plain editing", async () => {
 	await flush();
 	assert.match(list(bundle).textContent, ADDRESS_SUGGESTIONS_UNAVAILABLE);
 	assert.equal(bundle.input.value, "https://example.com/account");
+	await bundle.cleanup();
+});
+
+const HTTP_ENTRIES = [
+	{
+		url: "http://127.0.0.1:8080/account",
+		title: "Account",
+		sourceTabId: 1,
+		sourceIndex: 1,
+		activeTab: true,
+		distanceFromCurrent: 1,
+	},
+	{
+		url: "http://127.0.0.1:8080/account/profile",
+		title: "Profile",
+		sourceTabId: 1,
+		sourceIndex: 2,
+		activeTab: true,
+		distanceFromCurrent: 0,
+	},
+];
+
+test("Right then Enter navigates the HTTP target, not an HTTPS upgrade", async () => {
+	const bundle = await renderBar({
+		url: "http://127.0.0.1:8080/account",
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries: HTTP_ENTRIES,
+		}),
+	});
+	await type(bundle, "127.0.0.1:8080/acc");
+	await key(bundle, "ArrowRight");
+	assert.equal(bundle.input.value, "127.0.0.1:8080/account/profile");
+	await key(bundle, "Enter");
+	assert.deepEqual(bundle.navigations, [
+		{ url: "http://127.0.0.1:8080/account/profile", expectedTabId: 1 },
+	]);
+	await bundle.cleanup();
+});
+
+test("a response carrying an older request id is discarded", async () => {
+	const pending = [];
+	const bundle = await renderBar({
+		addressHistory: (request) =>
+			new Promise((resolve) => pending.push({ request, resolve })),
+	});
+	await act(async () => bundle.input.focus());
+	await flush();
+	assert.equal(pending.length, 1);
+	await act(async () => {
+		pending[0].resolve({
+			requestId: pending[0].request.requestId + 100,
+			activeTabId: 1,
+			entries: ENTRIES,
+		});
+	});
+	await flush();
+	assert.equal(options(bundle).length, 0);
+	await bundle.cleanup();
+});
+
+test("a response for a tab that is no longer active is discarded", async () => {
+	const pending = [];
+	const bundle = await renderBar({
+		addressHistory: (request) =>
+			new Promise((resolve) => pending.push({ request, resolve })),
+	});
+	await act(async () => bundle.input.focus());
+	await flush();
+	await act(async () => {
+		pending[0].resolve({
+			requestId: pending[0].request.requestId,
+			activeTabId: 2,
+			entries: ENTRIES,
+		});
+	});
+	await flush();
+	assert.equal(options(bundle).length, 0);
+	await bundle.cleanup();
+});
+
+test("an in-flight response is discarded when the display scope changes", async () => {
+	const pending = [];
+	const bundle = await renderBar({
+		addressHistory: (request) =>
+			new Promise((resolve) => pending.push({ request, resolve })),
+	});
+	await act(async () => bundle.input.focus());
+	await flush();
+	await bundle.rerender({ addressScopeKey: "session:other" });
+	await act(async () => {
+		pending[0].resolve({
+			requestId: pending[0].request.requestId,
+			activeTabId: 1,
+			entries: ENTRIES,
+		});
+	});
+	await flush();
+	assert.equal(options(bundle).length, 0);
+	await bundle.cleanup();
+});
+
+test("paste fills the draft without generating an inline completion", async () => {
+	const bundle = await renderBar();
+	await type(bundle, "example.com/acc");
+	await act(async () => {
+		setValue(bundle.input, "example.com/acc", "insertFromPaste");
+	});
+	await flush();
+	assert.equal(bundle.input.selectionStart, bundle.input.selectionEnd);
+	assert.equal(bundle.input.selectionEnd, "example.com/acc".length);
+	await bundle.cleanup();
+});
+
+test("a background refresh that shrinks the list drops the stale active row", async () => {
+	let entries = ENTRIES;
+	let notify = () => {};
+	const bundle = await renderBar({
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries,
+		}),
+		onStateChanged: (callback) => {
+			notify = callback;
+			return () => {};
+		},
+	});
+	await type(bundle, "example.com/acc");
+	await key(bundle, "ArrowDown");
+	await key(bundle, "ArrowDown");
+	assert.ok(bundle.input.getAttribute("aria-activedescendant"));
+	entries = [ENTRIES[1]];
+	await act(async () => notify());
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 150));
+	});
+	await flush();
+	const active = bundle.input.getAttribute("aria-activedescendant");
+	if (active !== null) {
+		assert.ok(
+			options(bundle).some((option) => option.id === active),
+			"the active descendant names a row that still exists",
+		);
+	}
+	const before = bundle.navigations.length;
+	await key(bundle, "Enter");
+	assert.equal(bundle.navigations.length, before + 1);
+	await bundle.cleanup();
+});
+
+test("aria-controls names the listbox only while a listbox exists", async () => {
+	const populated = await renderBar();
+	await type(populated, "example.com/acc");
+	assert.ok(populated.input.getAttribute("aria-controls"));
+	assert.equal(populated.input.getAttribute("aria-describedby"), null);
+	await populated.cleanup();
+
+	const empty = await renderBar({
+		url: "about:blank",
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries: [],
+		}),
+	});
+	await act(async () => empty.input.focus());
+	await flush();
+	assert.equal(empty.input.getAttribute("aria-controls"), null);
+	const described = empty.input.getAttribute("aria-describedby");
+	assert.ok(described);
+	assert.match(document.getElementById(described).textContent, /No links/);
+	await empty.cleanup();
+});
+
+test("the unavailable notice is described by the field", async () => {
+	const bundle = await renderBar({
+		addressHistory: async () => {
+			throw new Error("proof: unavailable");
+		},
+	});
+	await act(async () => bundle.input.focus());
+	await flush();
+	assert.equal(bundle.input.getAttribute("aria-controls"), null);
+	const described = bundle.input.getAttribute("aria-describedby");
+	assert.ok(described);
+	assert.match(
+		document.getElementById(described).textContent,
+		ADDRESS_SUGGESTIONS_UNAVAILABLE,
+	);
 	await bundle.cleanup();
 });

@@ -366,6 +366,15 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	const completionRef = useRef<InlineCompletion | null>(null);
 	completionRef.current = completion;
 	const [activeIndex, setActiveIndex] = useState(-1);
+	/** The destination an accepted suffix came from. The field's text after
+	 * acceptance is the display spelling (no scheme), which is not enough to
+	 * navigate: Enter must use the canonical HTTP(S) target the suggestion was
+	 * built from, or a typed `127.0.0.1:8080` gets HTTPS-upgraded and fails. */
+	const [acceptedTarget, setAcceptedTarget] = useState<{
+		tabId: number | null;
+		raw: string;
+		targetUrl: string;
+	} | null>(null);
 	const [dismissedForText, setDismissedForText] = useState<string | null>(null);
 	const [composing, setComposing] = useState(false);
 	const composingRef = useRef(false);
@@ -374,6 +383,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	const [announcement, setAnnouncement] = useState("");
 	const listId = useId();
 	const listLabelId = `${listId}-label`;
+	const noticeId = `${listId}-notice`;
 	const optionId = (index: number): string => `${listId}-option-${index}`;
 	/** User edits only. Accepting a generated suffix is deliberately NOT an edit
 	 * here: undo must return the text the user typed, not the model's proposal. */
@@ -520,6 +530,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	};
 
 	const abandon = (): void => {
+		setAcceptedTarget(null);
 		setDraft(null);
 		clearGenerated();
 		setHint(false);
@@ -527,6 +538,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	};
 
 	const commit = (target: string): void => {
+		setAcceptedTarget(null);
 		// An explicit candidate, an accepted suffix or a typed address. The
 		// expected tab is the draft's own, so main refuses a commit that raced a
 		// tab switch instead of loading the new tab with the old address.
@@ -541,6 +553,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	const acceptSuffix = (): void => {
 		const current = completionRef.current;
 		if (!current) return;
+		setAcceptedTarget({
+			tabId,
+			raw: current.text,
+			targetUrl: current.targetUrl,
+		});
 		setDraft(current.text);
 		clearGenerated();
 		setHint(false);
@@ -549,6 +566,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	};
 
 	const undoEdit = (): void => {
+		setAcceptedTarget(null);
 		const undo = undoRef.current;
 		if (undo.stack.length <= 1) return;
 		undo.redo.push(undo.stack.pop() as string);
@@ -560,6 +578,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	};
 
 	const redoEdit = (): void => {
+		setAcceptedTarget(null);
 		const undo = undoRef.current;
 		const next = undo.redo.pop();
 		if (next === undefined) return;
@@ -579,6 +598,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 * the text differs from the text the user dismissed.
 	 */
 	const change = (event: ChangeEvent<HTMLInputElement>): void => {
+		setAcceptedTarget(null);
 		const next = event.target.value;
 		const input = event.currentTarget;
 		const inputType = (event.nativeEvent as InputEvent).inputType ?? "";
@@ -658,6 +678,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 * change: with suggestions on screen, clicking the page is a dismissal, not a
 	 * commitment of text the user never accepted. */
 	const blur = (): void => {
+		setAcceptedTarget(null);
 		setDraft(null);
 		clearGenerated();
 		setDismissedForText(null);
@@ -687,6 +708,14 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				activeIndex >= 0 ? suggestions.candidates[activeIndex] : null;
 			if (candidate) {
 				commit(candidate.url);
+				return;
+			}
+			if (
+				acceptedTarget !== null &&
+				acceptedTarget.tabId === tabId &&
+				acceptedTarget.raw === raw
+			) {
+				commit(acceptedTarget.targetUrl);
 				return;
 			}
 			if (current) {
@@ -792,6 +821,23 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			redoEdit();
 		}
 	};
+
+	// A tab change invalidates the accepted destination: it names the tab it was
+	// accepted on, and a later Enter in another tab must not use it.
+	useEffect(() => {
+		setAcceptedTarget((target) =>
+			target !== null && target.tabId === tabId ? target : null,
+		);
+	}, [tabId]);
+
+	// A background refresh can shrink the alternatives under a row the keyboard
+	// has already selected. Reset rather than leave an active descendant naming
+	// an option that no longer exists.
+	useEffect(() => {
+		setActiveIndex((index) =>
+			index >= suggestions.candidates.length ? -1 : index,
+		);
+	}, [suggestions.candidates.length]);
 
 	// The completion is REAL SELECTED TEXT, set here rather than overlaid: the
 	// user's next keystroke replaces the selection, and Right accepts it.
@@ -1093,7 +1139,16 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						role="combobox"
 						aria-autocomplete="both"
 						aria-expanded={listVisible}
-						aria-controls={listVisible ? listId : undefined}
+						aria-controls={
+							listVisible && suggestions.candidates.length > 0
+								? listId
+								: undefined
+						}
+						aria-describedby={
+							listVisible && suggestions.candidates.length === 0
+								? noticeId
+								: undefined
+						}
 						aria-activedescendant={
 							activeIndex >= 0 && suggestions.candidates[activeIndex]
 								? optionId(activeIndex)
@@ -1255,7 +1310,10 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 							</div>
 						</>
 					) : (
-						<div className="px-3 py-2 text-body-sm text-ink-muted">
+						<div
+							id={noticeId}
+							className="px-3 py-2 text-body-sm text-ink-muted"
+						>
 							{listNotice}
 						</div>
 					)}

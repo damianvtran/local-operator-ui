@@ -174,7 +174,7 @@
 	"ui.browser.browser_url_bar.address": "Address",
 	"ui.browser.browser_url_bar.address_required": "Enter a web address or choose a suggestion.",
 	"ui.browser.browser_url_bar.address_suggestions_available": "{count, plural, one {{count, number, ::group-off} suggestion available} other {{count, number, ::group-off} suggestions available}}",
-	"ui.browser.browser_url_bar.address_suggestions_empty": "No links from this browser session yet.",
+	"ui.browser.browser_url_bar.address_suggestions_empty": "No links from these tabs yet.",
 	"ui.browser.browser_url_bar.address_suggestions_label": "From this browser session",
 	"ui.browser.browser_url_bar.address_suggestions_no_match": "No matching links from this browser session.",
 	"ui.browser.browser_url_bar.address_suggestions_unavailable": "Address suggestions are unavailable.",

@@ -1558,7 +1558,6 @@ export class BrowserHost implements BrowserActionContext {
 				this.registry.list().map((record) => ({
 					tabId: record.tabId,
 					sessionId: record.sessionId,
-					active: record.tabId === activeTabId,
 					webContents: record.view.webContents,
 					restoreRow: record.restoreRow ?? null,
 				})),

@@ -19,6 +19,12 @@
  *   LO_PROOF_WIDTH=1380 LO_PROOF_HEIGHT=900 LO_PROOF_THEME=light \
  *     node scripts/browser-url-autocomplete-proof.mjs <out-dir>
  *
+ *   LO_PROOF_PANE_WIDTH=480 runs the same scene with the browser VIEW at 480
+ *   CSS px. The window cannot go below 800, so this emulates the CSS viewport
+ *   at pane + the measured 56px icon rail; the window itself still launches at
+ *   its 800px floor. The report records both the emulated viewport and the
+ *   measured pane width.
+ *
  * Isolation: scratch HOME, config, log and user-data dirs; CMUX_/LOP_ variables
  * stripped; mock keychain; notifications and telemetry off. The app is spawned by
  * absolute path, detached into its own process group, and the group is reaped by
@@ -37,7 +43,11 @@ const ROOT = resolve(process.cwd());
 const OUT = resolve(
 	process.argv[2] ?? join(tmpdir(), `lo-url-autocomplete-proof-${process.pid}`),
 );
-const WIDTH = Number(process.env.LO_PROOF_WIDTH ?? 1380);
+const REQUESTED_WIDTH = Number(process.env.LO_PROOF_WIDTH ?? 1380);
+const PANE_WIDTH = process.env.LO_PROOF_PANE_WIDTH
+	? Number(process.env.LO_PROOF_PANE_WIDTH)
+	: null;
+const WIDTH = PANE_WIDTH === null ? REQUESTED_WIDTH : PANE_WIDTH + 56;
 const HEIGHT = Number(process.env.LO_PROOF_HEIGHT ?? 900);
 const THEME =
 	process.env.LO_PROOF_THEME === "light"
@@ -157,7 +167,7 @@ const app = spawn(
 		ROOT,
 		`--user-data-dir=${USER_DATA}`,
 		`--remote-debugging-port=${CDP_PORT}`,
-		`--window-size=${WIDTH}x${HEIGHT}`,
+		`--window-size=${Math.max(REQUESTED_WIDTH, 800)}x${HEIGHT}`,
 		"--window-mode=headless",
 	]),
 	{
@@ -429,6 +439,17 @@ const nav = async (path) => {
 
 try {
 	await connectRenderer();
+	if (PANE_WIDTH !== null) {
+		// The window floor is 800; the browser VIEW floor is 480. Emulate the CSS
+		// viewport so the pane is exactly PANE_WIDTH while the native window keeps
+		// its own floor and the native view bounds follow the measured rect.
+		await send("Emulation.setDeviceMetricsOverride", {
+			width: WIDTH,
+			height: HEIGHT,
+			deviceScaleFactor: 1,
+			mobile: false,
+		});
+	}
 	await send("Page.enable", {});
 	await send("Runtime.enable", {});
 	await waitFor(
@@ -531,6 +552,13 @@ try {
 	await clearValue();
 	await sleep(500);
 	const emptyFocus = await readInput();
+	if (PANE_WIDTH !== null && emptyFocus.content) {
+		check(
+			"the browser pane is at the requested floor",
+			Math.abs(emptyFocus.content.width - PANE_WIDTH) <= 1,
+			`pane.width=${emptyFocus.content.width} requested=${PANE_WIDTH}`,
+		);
+	}
 	record("focused empty field", emptyFocus);
 	check(
 		"focus with an empty query shows the session's own entries",
@@ -596,6 +624,25 @@ try {
 			accepted.start === accepted.value.length &&
 			navigations.length === beforeTyping,
 		`value=${accepted.value} selection=${accepted.start}-${accepted.end} requests=${navigations.length}`,
+	);
+
+	// The path the old proof missed: Right accepts, then Enter navigates. The
+	// canonical target must stay HTTP; an HTTPS upgrade would never reach this
+	// fixture server, so both the request count and the live URL are checked.
+	const beforeRightEnter = navigations.length;
+	await key("Enter");
+	await sleep(500);
+	const rightEnter = await readInput();
+	record("right then enter", rightEnter);
+	check(
+		"Right then Enter navigates exactly once",
+		navigations.length === beforeRightEnter + 1,
+		`requests ${navigations.length} vs ${beforeRightEnter + 1}`,
+	);
+	check(
+		"Right then Enter keeps the accepted HTTP target",
+		rightEnter.value === `${ORIGIN}/account/profile`,
+		rightEnter.value,
 	);
 
 	// ---- ArrowDown + Enter commits one candidate -------------------------
@@ -707,10 +754,7 @@ try {
 	await sleep(400);
 	const stateAfter = await evaluate("window.api.browser.state()");
 	if (tabSwitchError) {
-		record("stale section skipped", {
-			reason: tabSwitchError,
-			activeTabId: stateAfter.activeTabId,
-		});
+		check("the stale/no-history section ran", false, tabSwitchError);
 	}
 	record("tab switch", {
 		oldTabId,
@@ -772,7 +816,7 @@ try {
 		record("fresh tab", fresh);
 		check(
 			"a tab with no HTTP(S) history says so quietly",
-			fresh.list?.text.includes("No links from this browser session yet"),
+			fresh.list?.text.includes("No links from these tabs yet"),
 			fresh.list?.text,
 		);
 		await shot("03-empty-history");

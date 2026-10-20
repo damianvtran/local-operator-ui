@@ -336,7 +336,6 @@ declare global {
 					replay_base64: string;
 					from_byte: number;
 					to_byte: number;
-					truncated: boolean;
 				}>;
 				unsubscribe: (surface: string) => Promise<unknown>;
 				/**

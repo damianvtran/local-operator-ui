@@ -41,7 +41,6 @@ const HISTORY_MAX_PER_TAB = mod.ADDRESS_HISTORY_MAX_ENTRIES_PER_TAB;
 function fakeTab({
 	tabId = 1,
 	sessionId = null,
-	active = false,
 	entries = [],
 	activeIndex = entries.length - 1,
 	destroyed = false,
@@ -53,7 +52,6 @@ function fakeTab({
 	return {
 		tabId,
 		sessionId,
-		active,
 		restoreRow,
 		calls,
 		webContents: {
@@ -137,7 +135,6 @@ test("the indexed read is bounded and centred on the current index", () => {
 	const tab = fakeTab({ tabId: 7, entries, activeIndex: 100 });
 	const result = collectAddressHistory([tab], "all", 7);
 	assert.equal(result.entries.length, HISTORY_MAX_PER_TAB);
-	assert.equal(result.truncated, true);
 	assert.ok(
 		result.entries.some((row) => row.url === "https://site100.example/"),
 		"the current entry is inside the window",
@@ -233,7 +230,7 @@ test("scope filters by conversation and the active tab still comes first", () =>
 	assert.equal(scoped.entries[0].activeTab, true);
 });
 
-test("the tab bound is 20 and the omitted tabs are reported as truncated", () => {
+test("the tab bound is 20 and only the window is read", () => {
 	const tabs = Array.from({ length: 25 }, (_, index) =>
 		fakeTab({
 			tabId: index + 1,
@@ -242,7 +239,6 @@ test("the tab bound is 20 and the omitted tabs are reported as truncated", () =>
 	);
 	const result = collectAddressHistory(tabs, "all", 1);
 	assert.equal(result.entries.length, 20);
-	assert.equal(result.truncated, true);
 });
 
 test("dedup is by canonical URL, first occurrence wins, and the duplicate is truncation", () => {
@@ -261,7 +257,6 @@ test("dedup is by canonical URL, first occurrence wins, and the duplicate is tru
 	const result = collectAddressHistory([first, second], "all", 1);
 	assert.equal(result.entries.length, 2);
 	assert.equal(result.entries[0].title, "First");
-	assert.equal(result.truncated, true);
 });
 
 test("the URL cap is 256 deduplicated destinations", () => {
@@ -274,7 +269,6 @@ test("the URL cap is 256 deduplicated destinations", () => {
 		1,
 	);
 	assert.equal(result.entries.length, Math.min(HISTORY_MAX_ENTRIES, 50));
-	assert.equal(result.truncated, true);
 });
 
 test("every DTO is built field-by-field and never carries pageState", () => {
@@ -321,4 +315,41 @@ test("the tab count bound is the shared constant, not a copied literal", () => {
 	assert.equal(HISTORY_MAX_TABS, 20);
 	assert.equal(HISTORY_MAX_ENTRIES, 256);
 	assert.equal(HISTORY_MAX_PER_TAB, 50);
+});
+
+test("canonical URLs are capped after percent-encoding, not only on the raw input", () => {
+	const raw = `https://example.test/${"道".repeat(800)}`;
+	assert.ok(raw.length < 2048, "the raw string is inside the input bound");
+	assert.equal(
+		canonicalHistoryUrl(raw),
+		null,
+		"the expanded href crosses the cap",
+	);
+	assert.equal(
+		canonicalHistoryUrl(`https://example.test/${"b".repeat(2048)}`),
+		null,
+		"a raw string over the cap is refused",
+	);
+});
+
+test("tabIdOrThrow rejects zero and negatives at the IPC boundary", async () => {
+	const guardBundle = await build({
+		stdin: {
+			contents: 'export * from "./src/main/browser/request-guards";',
+			resolveDir: process.cwd(),
+			loader: "ts",
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+		logLevel: "silent",
+	});
+	const guards = await import(
+		`data:text/javascript;base64,${Buffer.from(guardBundle.outputFiles[0].text).toString("base64")}`
+	);
+	assert.throws(() => guards.tabIdOrThrow(0, "tabId"), /positive tab id/);
+	assert.throws(() => guards.tabIdOrThrow(-1, "tabId"), /positive tab id/);
+	assert.throws(() => guards.tabIdOrThrow(1.5, "tabId"), /integer/);
+	assert.equal(guards.tabIdOrThrow(1, "tabId"), 1);
 });

@@ -68,6 +68,4 @@ export interface AddressHistoryResponse {
 	 * value no longer matches the tab it is editing. */
 	activeTabId: number | null;
 	entries: AddressHistoryEntry[];
-	/** True when a bound discarded something: a tab, an entry, or a duplicate. */
-	truncated: boolean;
 }

@@ -10,6 +10,7 @@ import type { BrowserHost, CloseTabsIntent } from "./host";
 import { type BrowserAvailability, MAX_START_ATTEMPTS } from "./lifecycle";
 import type { ClearWhat } from "./profile";
 import type { ContentRect } from "./registry";
+import { numberOrThrow, tabIdOrThrow } from "./request-guards";
 
 /**
  * The renderer IPC surface for the browser feature.
@@ -497,22 +498,6 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
  */
 export function unregisterBrowserIpc(): void {
 	for (const channel of BROWSER_IPC_CHANNELS) ipcMain.removeHandler(channel);
-}
-
-function numberOrThrow(value: unknown, name: string): number {
-	if (typeof value !== "number" || !Number.isInteger(value)) {
-		throw new Error(`${name} must be an integer.`);
-	}
-	return value;
-}
-
-/** A tab id is a HOST-MINTED positive integer. `numberOrThrow` answers the
- * integer question; this adds the sign, because 0 and negatives name no tab and
- * a request carrying one is a mistake rather than a tab that happens to be gone. */
-function tabIdOrThrow(value: unknown, name: string): number {
-	const id = numberOrThrow(value, name);
-	if (id < 0) throw new Error(`${name} must not be negative.`);
-	return id;
 }
 
 /**

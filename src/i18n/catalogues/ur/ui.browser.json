@@ -174,7 +174,7 @@
 	"ui.browser.browser_url_bar.address": "پتہ",
 	"ui.browser.browser_url_bar.address_required": "ویب پتہ درج کریں یا کوئی تجویز منتخب کریں۔",
 	"ui.browser.browser_url_bar.address_suggestions_available": "{count, plural, one {{count, number, ::group-off} تجویز دستیاب ہے} other {{count, number, ::group-off} تجاویز دستیاب ہیں}}",
-	"ui.browser.browser_url_bar.address_suggestions_empty": "اس براؤزر سیشن سے ابھی کوئی لنک نہیں ہے۔",
+	"ui.browser.browser_url_bar.address_suggestions_empty": "ان ٹیب سے ابھی کوئی لنک نہیں ہے۔",
 	"ui.browser.browser_url_bar.address_suggestions_label": "اس براؤزر سیشن سے",
 	"ui.browser.browser_url_bar.address_suggestions_no_match": "اس براؤزر سیشن میں کوئی مماثل لنک نہیں ہے۔",
 	"ui.browser.browser_url_bar.address_suggestions_unavailable": "پتے کی تجاویز دستیاب نہیں ہیں۔",

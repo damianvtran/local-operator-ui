@@ -174,7 +174,7 @@
 	"ui.browser.browser_url_bar.address": "Địa chỉ",
 	"ui.browser.browser_url_bar.address_required": "Nhập địa chỉ web hoặc chọn một gợi ý.",
 	"ui.browser.browser_url_bar.address_suggestions_available": "{count, plural, other {{count, number, ::group-off} gợi ý có sẵn}}",
-	"ui.browser.browser_url_bar.address_suggestions_empty": "Chưa có liên kết nào từ phiên trình duyệt này.",
+	"ui.browser.browser_url_bar.address_suggestions_empty": "Chưa có liên kết nào từ các tab này.",
 	"ui.browser.browser_url_bar.address_suggestions_label": "Từ phiên trình duyệt này",
 	"ui.browser.browser_url_bar.address_suggestions_no_match": "Không có liên kết phù hợp từ phiên trình duyệt này.",
 	"ui.browser.browser_url_bar.address_suggestions_unavailable": "Gợi ý địa chỉ không khả dụng.",
