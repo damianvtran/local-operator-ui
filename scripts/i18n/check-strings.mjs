@@ -334,10 +334,20 @@ export function loadBaseline(path) {
 	return {
 		schema: Number.isInteger(data.schema) ? data.schema : 1,
 		note: typeof data.note === "string" ? data.note : BASELINE_NOTE,
+		/*
+		 * A malformed ceiling is DROPPED, never coerced. `Number("twelve")` is
+		 * NaN, and `ratchetFindings` only fails when `count > ceiling` — false
+		 * for NaN — so coercion would silently exempt the file it was meant to
+		 * hold to. Dropping the entry makes the file unrecorded, which fails
+		 * closed, the same way the reader already treats a damaged FILE as
+		 * empty rather than as an unlimited one.
+		 */
 		files:
 			typeof files === "object" && files !== null
 				? Object.fromEntries(
-						Object.entries(files).map(([key, value]) => [key, Number(value)]),
+						Object.entries(files).flatMap(([key, value]) =>
+							Number.isInteger(value) && value >= 0 ? [[key, value]] : [],
+						),
 					)
 				: {},
 	};
