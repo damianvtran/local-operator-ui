@@ -542,11 +542,12 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	 * not leave an action row pointing at nothing"); it moves here with the menu. Review
 	 * round 1, M-1 — reproduced with the probe the reviewer attached.
 	 *
-	 * THE CARET: while the menu is open, focus is inside it (Radix's layer is modal, so
-	 * the only place the caret can be), and an unmount would drop it to `<body>`. Parking
-	 * on the scroller is the same move a batch close makes, for the same reason — the
-	 * strip is where the caret came from — and it cannot steal a caret that was
-	 * elsewhere, because while this menu is open there is nowhere else it could be.
+	 * THE CARET: while the menu is open, Radix has moved the caret into it, and an
+	 * unmount would drop it to `<body>`. Parking on the scroller is the same move a
+	 * batch close makes, for the same reason — the strip is where the caret came
+	 * from. Since this menu is non-modal, a caret that genuinely moved elsewhere
+	 * also dismissed the menu (outside press or focus departure), so this effect runs
+	 * only while the menu still owns the caret.
 	 */
 	useEffect(() => {
 		if (actionsTabId === null) return;
@@ -1361,6 +1362,23 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										    replaces and why. */}
 										<DropdownMenu
 											open={actionsTabId === tab.tabId}
+											/*
+											 * NON-MODAL ON PURPOSE (operator report: a running turn
+											 * must stay readable and stoppable while a tab menu is
+											 * open). Radix's modal menu is a full-window layer: it
+											 * `aria-hidden`s every sibling, sets `pointer-events:
+											 * none` on body, and traps focus. With a turn streaming,
+											 * that hid the transcript from assistive tech and made
+											 * the Stop control unreachable until the menu was
+											 * dismissed - one gesture could neither surface the turn
+											 * nor interrupt it. This menu is a tab's own actions, not
+											 * a modal decision; the page view is already hidden by
+											 * the overlay policy below, and Escape/outside-press
+											 * still dismiss it. A non-modal dismissal lets the
+											 * outside press itself land, so one press on Stop both
+											 * closes the menu and stops the turn.
+											 */
+											modal={false}
 											onOpenChange={(open) => {
 												setActionsTabId(open ? tab.tabId : null);
 											}}

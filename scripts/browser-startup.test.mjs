@@ -160,6 +160,10 @@ function fixture(failConsole) {
 		mainFrame,
 		send() {},
 		isDestroyed: () => false,
+		// The real Electron API ownsPage reads; this fake must model it so a host
+		// that asks the focus fact cannot crash on the fake's shape.
+		getFocusedWebContents: () =>
+			globalThis.__browserStartupFixture?.focused ?? null,
 		setIgnoreMenuShortcuts(value) {
 			webContents.ignoringMenu = value;
 		},
