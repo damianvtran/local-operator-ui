@@ -83,6 +83,18 @@ Chromium's real input pipeline, and the rig asserts `:hover` before the shutter.
 | `states/states-states-library-dark.png` | the Library's spreadsheet header — opaque, no blur, the rows hidden behind it |
 | `states/states-states-library-light.png` | the same, light theme |
 
+**An evidence correction, recorded rather than quietly re-shot.** The first
+`states/` capture wrote a DARK frame under the light filenames: the rig called
+`setTheme("light")` (the scheme word) where the app takes a palette id
+(`localOperatorLight`), so the palette never moved and the Library pair came
+back byte-identical. The design round caught it by comparing the PNGs rather
+than trusting the filenames. The rig now maps the scheme to the palette id,
+records the resolved `--lo-surface` per theme in `states.json` under
+`themeGrounds`, and **exits 1** if dark and light resolve to the same ground
+instead of writing a mislabeled frame. The committed frames are the re-capture:
+`themeGrounds` is `{dark: "#2b2721", light: "#f7f5ee"}`, all six frames are
+distinct, and the light pair is genuinely light.
+
 ## The numbers
 
 ### The header's own paint, read from the running app
