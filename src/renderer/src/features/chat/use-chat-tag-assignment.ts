@@ -24,6 +24,8 @@ export type TagToggleResult = {
 export type TagCreateResult = {
 	created: TagCategory;
 	assigned: boolean;
+	/** The primary the caller should confirm; only meaningful with `assigned`. */
+	primary: string | null;
 } | null;
 
 /**
@@ -270,12 +272,12 @@ export function useChatTagAssignment({
 			setNotice(
 				t("ui.chat.tag_dialogs.created_assigned", { name: created.name }),
 			);
-			return { created, assigned: true };
+			return { created, assigned: true, primary: fallback };
 		}
 		setError(
 			t("ui.chat.tag_dialogs.assign_created_failed", { name: created.name }),
 		);
-		return { created, assigned: false };
+		return { created, assigned: false, primary: effectivePrimary };
 	};
 
 	return {

@@ -9,10 +9,13 @@ import React, { act } from "react";
 
 // DOM/event plumbing only: jsdom has no layout, so rendered geometry belongs to
 // the browser/Storybook evidence, never to these assertions.
-const dom = new JSDOM("<!doctype html><html><body></body></html>", {
-	url: "http://localhost/",
-	pretendToBeVisual: true,
-});
+const dom = new JSDOM(
+	'<!doctype html><html><body><div id="root"></div></body></html>',
+	{
+		url: "http://localhost/",
+		pretendToBeVisual: true,
+	},
+);
 for (const key of Object.getOwnPropertyNames(dom.window)) {
 	if (key in globalThis) continue;
 	try {
@@ -104,7 +107,11 @@ let requests;
 let toggleFailure;
 let closed;
 
-beforeEach(() => {
+beforeEach(async () => {
+	// React reconciles the same component type into this root and would carry the
+	// previous test's query, listOpen and editing state into the next one, which
+	// reads as a passing or failing behaviour the current test never exercised.
+	await act(() => root.render(null));
 	registry = categories();
 	requests = [];
 	toggleFailure = null;
@@ -180,9 +187,19 @@ const settle = async () => {
 		await new Promise((done) => setTimeout(done, 0));
 	});
 };
+// Two label shapes: buttons whose visible text IS the label, and icon-only
+// controls whose label lives in aria-label (the reorder arrows).
 const button = (label) =>
 	[...document.querySelectorAll("button")].find(
 		(node) => node.textContent.trim() === label,
+	);
+const labelled = (label) =>
+	[...document.querySelectorAll("button")].find(
+		(node) => node.getAttribute("aria-label") === label,
+	);
+const buttonStartingWith = (label) =>
+	[...document.querySelectorAll("button")].find((node) =>
+		node.textContent.trim().startsWith(label),
 	);
 const form = (node) => node.closest("form");
 const setValue = async (input, value) => {
@@ -233,7 +250,10 @@ test("manage creates on the Add action and the new tag is in the list immediatel
 	await manage();
 	assert.equal(button("Apply"), undefined, "no Apply action");
 	assert.equal(button("Cancel"), undefined, "no dialog-wide Cancel");
-	await setValue(document.querySelector('[aria-label="New tag name"]'), "Gamma");
+	await setValue(
+		document.querySelector('[aria-label="New tag name"]'),
+		"Gamma",
+	);
 	await submit(form(button("Add")));
 	assert.equal(requests.filter((r) => r.op === "tags.replace").length, 1);
 	assert.deepEqual(
@@ -241,8 +261,8 @@ test("manage creates on the Add action and the new tag is in the list immediatel
 		["Alpha", "Beta", "Gamma"],
 	);
 	assert.ok(
-		[...document.querySelectorAll("li")].some(
-			(node) => node.textContent.includes("Gamma"),
+		[...document.querySelectorAll("li")].some((node) =>
+			node.textContent.includes("Gamma"),
 		),
 		"the committed tag renders without a second action",
 	);
@@ -256,38 +276,40 @@ test("manage rename persists on Save with no Apply step", async () => {
 		"Renamed",
 	);
 	await submit(form(button("Save")));
-	assert.deepEqual(
-		requests.find((r) => r.op === "tags.replace").tags,
-		[
-			{ id: "a", name: "Renamed" },
-			{ id: "b", name: "Beta" },
-		],
-	);
+	assert.deepEqual(requests.find((r) => r.op === "tags.replace").tags, [
+		{ id: "a", name: "Renamed" },
+		{ id: "b", name: "Beta" },
+	]);
 });
 
 test("manage delete is guarded per action, and Escape dismisses the guard without writing", async () => {
 	await manage();
 	await act(() => button("Delete").click());
 	await settle();
-	assert.equal(requests.some((r) => r.op === "tags.replace"), false);
+	assert.equal(
+		requests.some((r) => r.op === "tags.replace"),
+		false,
+	);
 	assert.ok(button("Delete tag"), "the confirmation is scoped to this tag");
 	await pressEscape();
 	assert.equal(button("Delete tag"), undefined, "Escape closes the guard");
-	assert.equal(requests.some((r) => r.op === "tags.replace"), false);
+	assert.equal(
+		requests.some((r) => r.op === "tags.replace"),
+		false,
+	);
 	assert.equal(closed, 0, "Escape in a sub-action does not close the dialog");
 	await act(() => button("Delete").click());
 	await settle();
 	await act(() => button("Delete tag").click());
 	await settle();
-	assert.deepEqual(
-		requests.find((r) => r.op === "tags.replace").tags,
-		[{ id: "b", name: "Beta" }],
-	);
+	assert.deepEqual(requests.find((r) => r.op === "tags.replace").tags, [
+		{ id: "b", name: "Beta" },
+	]);
 });
 
 test("manage reorder writes the dropped order immediately", async () => {
 	await manage();
-	await act(() => button("Move Beta up").click());
+	await act(() => labelled("Move Beta up").click());
 	await settle();
 	assert.deepEqual(
 		requests.find((r) => r.op === "tags.replace").tags.map((tag) => tag.id),
@@ -299,7 +321,10 @@ test("manage Escape closes without writing or reverting", async () => {
 	await manage();
 	await pressEscape();
 	assert.equal(closed, 1);
-	assert.equal(requests.some((r) => r.op === "tags.replace"), false);
+	assert.equal(
+		requests.some((r) => r.op === "tags.replace"),
+		false,
+	);
 });
 
 test("a tag click assigns immediately and keeps the dialog open", async () => {
@@ -350,7 +375,7 @@ test("creating a tag from the picker creates AND assigns it, and it appears in t
 		}),
 	);
 	await setValue(document.querySelector('[aria-label="Search tags"]'), "Gamma");
-	const create = button("Create “Gamma”");
+	const create = buttonStartingWith("Create “Gamma”");
 	assert.ok(create, "the create action is offered from the search field");
 	await act(() => create.click());
 	await settle();
@@ -363,8 +388,8 @@ test("creating a tag from the picker creates AND assigns it, and it appears in t
 	assert.ok(created);
 	assert.ok(write.tags.includes(created.id), "the new tag is assigned");
 	assert.ok(
-		[...document.querySelectorAll('[role="option"]')].some(
-			(node) => node.textContent.includes("Gamma"),
+		[...document.querySelectorAll('[role="option"]')].some((node) =>
+			node.textContent.includes("Gamma"),
 		),
 		"the new tag is available without reopening the dialog",
 	);

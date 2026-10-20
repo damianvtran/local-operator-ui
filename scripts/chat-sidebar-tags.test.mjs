@@ -364,20 +364,23 @@ test("assignment confirms the exact grouped or Untagged success copy after the w
 		"utf8",
 	);
 	assert.ok(
-		source.indexOf("showSuccessToast(") >
-			source.indexOf("await assignSessionTags("),
-	);
-	assert.ok(
-		source.includes(
-			't("ui.chat.tags.updated_grouped", { tag: tag.name })',
-		),
+		source.includes('t("ui.chat.tags.updated_grouped", { tag: tag.name })'),
 	);
 	assert.ok(source.includes('t("ui.chat.tags.updated_untagged")'));
+	// The confirmation is raised from the write's own answer, so the toast call
+	// follows the awaited toggle rather than hanging off an Apply handler.
+	assert.ok(source.includes("const result = await toggle(id);"));
 	// Create resolves the new tag from the registry the write returned, then
-	// assigns it in the same interaction; it never waits for Apply.
-	assert.ok(source.includes("const registry = await replaceCategories("));
-	assert.ok(source.includes("registry.find((tag) => tag.name === name)"));
-	assert.ok(source.includes("await writeAssignment(next, fallback"));
+	// assigns it in the same interaction; it never waits for Apply. Both live in
+	// the one immediate-commit hook the picker, sidebar and /tag command share.
+	const hook = readFileSync(
+		"src/renderer/src/features/chat/use-chat-tag-assignment.ts",
+		"utf8",
+	);
+	assert.ok(hook.includes("const registry = await replaceCategories("));
+	assert.ok(hook.includes("registry.find((tag) => tag.name === trimmed)"));
+	assert.ok(hook.includes("await write(next, fallback)"));
+	assert.ok(!hook.includes('t("ui.chat.tags.apply")'));
 	assert.ok(!source.includes('t("ui.chat.tags.apply")'));
 });
 
@@ -414,18 +417,26 @@ test("delete plus name-only recreation is blocked without blocking normal add/de
 	);
 });
 test("save failures are tag-specific, loading errors are not empty registries, and title has no action ellipsis", () => {
-	for (const file of ["chat-session-tags-dialog", "manage-tags-dialog"]) {
-		const source = readFileSync(
-			`src/renderer/src/features/chat/components/${file}.tsx`,
-			"utf8",
-		);
-		assert.ok(source.includes('"ui.chat.tags.save_failed"'));
-		if (file === "chat-session-tags-dialog") {
-			assert.ok(source.includes('"ui.chat.tags.create_failed"'));
-			assert.ok(source.includes("isTagsConflict(error)"));
-		}
+	const picker = readFileSync(
+		"src/renderer/src/features/chat/components/chat-session-tags-dialog.tsx",
+		"utf8",
+	);
+	const manage = readFileSync(
+		"src/renderer/src/features/chat/components/manage-tags-dialog.tsx",
+		"utf8",
+	);
+	// The picker's own writes moved into the shared immediate-commit hook; the
+	// surface keeps only what it still owns (the move path's conflict handling).
+	const hook = readFileSync(
+		"src/renderer/src/features/chat/use-chat-tag-assignment.ts",
+		"utf8",
+	);
+	assert.ok(manage.includes('"ui.chat.tags.save_failed"'));
+	assert.ok(hook.includes('"ui.chat.tags.save_failed"'));
+	assert.ok(hook.includes('"ui.chat.tags.create_failed"'));
+	assert.ok(picker.includes("isTagsConflict(error)"));
+	for (const source of [manage, picker, hook])
 		assert.ok(!source.includes("userFacingMessage"));
-	}
 	const sidebar = readFileSync(
 		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
 		"utf8",

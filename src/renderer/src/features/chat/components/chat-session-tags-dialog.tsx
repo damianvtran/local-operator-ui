@@ -40,14 +40,6 @@ export function ChatSessionTagsDialog({
 	onMove?: (target: string) => Promise<void>;
 }) {
 	useI18nLocale();
-	const {
-		categories,
-		loading,
-		error: loadError,
-		fetchCategories,
-		replaceCategories,
-		assignSessionTags,
-	} = useSessionTagsStore();
 	const [managing, setManaging] = useState(false);
 	const pickerBody = useRef<HTMLDivElement>(null);
 	const heading = useRef<HTMLHeadingElement>(null);
