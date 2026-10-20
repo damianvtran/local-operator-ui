@@ -962,16 +962,18 @@ export const partialCaptureFailures = (manifest, git = gitOut) => {
 export const stampFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
 	const out = [];
 	/*
-	 * Whether the FRAMES tree is present at all.
+	 * Whether the frames tree HOLDS a frame.
 	 *
 	 * It is rig output and is not committed (`.gitignore`, `docs/evidence-frames`),
-	 * so a checkout that has never run a capture has none. The tree-dependent
-	 * half below - the swept count, the `countsMean` prose and the unjudged-frame
-	 * accounting - cannot be asked there, and asking it would fail every clean
+	 * so a checkout that has never been captured has none - and a directory that
+	 * exists but holds no frame is the same "none here" (a rig that died before its
+	 * first write, or a checkout that created the tree). The tree-dependent half
+	 * below - the swept count, the `countsMean` prose and the unjudged-frame
+	 * accounting - cannot be asked in either case, and asking it would fail every
 	 * checkout on a manifest that is in fact correct. The tree-INDEPENDENT half
 	 * (surfaces/themes against `HEAD:scripts/capture-evidence.mjs`, and the pass
-	 * tallies) still runs, and `main()` - which refuses before this point when
-	 * the tree is absent - is where the tree half is enforced.
+	 * tallies) still runs, and `main()` - which refuses before this point when the
+	 * tree is absent or empty - is where the tree half is enforced.
 	 */
 	const tree = holdsFrameFiles(dir);
 
