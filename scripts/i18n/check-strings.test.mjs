@@ -8,14 +8,13 @@ import { SyntaxKind } from "typescript/unstable/ast";
 import {
 	ALLOWLIST,
 	BASELINE,
+	BASELINE_NOTE,
 	allowlistReason,
 	countsOf,
-	inEnforcedScope,
 	loadAllowlist,
 	loadBaseline,
 	main,
 	openSnapshot,
-	ratchetFindings,
 	runCheck,
 	saveBaseline,
 	scanSnapshot,
@@ -28,8 +27,8 @@ import {
  * claims to see and every shape it claims NOT to: the assertions below are the
  * difference between the module's docstring and its behaviour. The real-tree
  * case is the gate itself — the same code path CI runs — asserting the tree
- * this PR ships is at-or-below its own committed baseline with nothing in the
- * enforced scope.
+ * this PR ships is at-or-below its own committed baseline, with every counted
+ * file recorded.
  *
  * The compiler note: this suite spawns the TS 7 language server once per API
  * instance (`openSnapshot`), closes it in `after`, and never leaves it behind.
@@ -147,77 +146,83 @@ test("the shipped allowlist parses and every entry carries a reason", () => {
 	}
 });
 
-test("scope: prefixes match by segment, exact paths by equality", () => {
-	// inEnforcedScope reads the same shapes as the allowlist on purpose: both
-	// are review state a human writes, not patterns a machine expands.
-	assert.equal(inEnforcedScope("src/i18n/messages.ts", ["src/i18n/"]), true);
-	assert.equal(inEnforcedScope("src/i18n-extra/x.ts", ["src/i18n/"]), false);
-	assert.equal(
-		inEnforcedScope("src/main/index.ts", ["src/main/index.ts"]),
-		true,
+test("an unbaselined file with literals FAILS", () => {
+	// No entry at all: the fixture's 11 literals must fail, not print as advice.
+	// This is the exact state every new file starts in.
+	const { counts, failures } = runCheck({
+		repo: REPO,
+		extraScan: [FIXTURE],
+		baseline: { files: {}, note: "" },
+	});
+	assert.equal(counts[FIXTURE], 11);
+	assert.deepEqual(
+		failures.map((finding) => finding.path),
+		[FIXTURE],
 	);
-	assert.equal(
-		inEnforcedScope("src/main/index.tsx", ["src/main/index.ts"]),
-		false,
-	);
+	assert.equal(failures[0].ceiling, null);
 });
 
-test("the ratchet fails only inside the enforced scope", () => {
-	const counts = {
-		"src/i18n/keys.gen.ts": 2, // enforced: 2 against ceiling 1
-		"src/renderer/src/app.tsx": 5, // outside: 5 against ceiling 3
-		"src/new-file.tsx": 1, // outside, no ceiling: starts at 0
-		"src/clean.tsx": 0,
-	};
-	const baseline = {
-		files: { "src/i18n/keys.gen.ts": 1, "src/renderer/src/app.tsx": 3 },
-	};
-	const out = ratchetFindings(counts, baseline.files).map(
-		(finding) => finding.path,
-	);
-	assert.deepEqual(out, [
-		"src/i18n/keys.gen.ts",
-		"src/new-file.tsx",
-		"src/renderer/src/app.tsx",
-	]);
+test("a ceiling breach FAILS; a file at its ceiling passes", () => {
+	const count = fixtureFindings().length;
+	const breached = runCheck({
+		repo: REPO,
+		extraScan: [FIXTURE],
+		baseline: { files: { [FIXTURE]: count - 1 }, note: "" },
+	});
+	assert.equal(breached.failures.length, 1);
+	assert.equal(breached.failures[0].count, count);
+	assert.equal(breached.failures[0].ceiling, count - 1);
+
+	const atCeiling = runCheck({
+		repo: REPO,
+		extraScan: [FIXTURE],
+		baseline: { files: { [FIXTURE]: count }, note: "" },
+	});
+	assert.deepEqual(atCeiling.failures, []);
 });
 
-test("baseline files round-trip through save/load, and stay biome-shaped", () => {
+test("an allowlisted file passes with no baseline entry", () => {
+	const { counts, failures } = runCheck({
+		repo: REPO,
+		extraScan: [FIXTURE],
+		baseline: { files: {}, note: "" },
+		allowlist: [{ path: FIXTURE, reason: "fixture: pinned by this suite" }],
+	});
+	assert.deepEqual(counts, {});
+	assert.deepEqual(failures, []);
+});
+
+test("baseline files round-trip as schema 2; a schema-1 scope is ignored", () => {
 	const dir = mkdtempSync(join(tmpdir(), "i18n-baseline-"));
 	try {
 		const path = join(dir, "baseline.json");
-		saveBaseline(
-			path,
-			{ "src/b.tsx": 2, "src/a.tsx": 1 },
-			["src/i18n/", "scripts/i18n/"],
-			"note",
-		);
+		saveBaseline(path, { "src/b.tsx": 2, "src/a.tsx": 1 }, "note");
 		const loaded = loadBaseline(path);
 		assert.deepEqual(loaded.files, { "src/a.tsx": 1, "src/b.tsx": 2 });
-		assert.deepEqual(loaded.enforced, ["src/i18n/", "scripts/i18n/"]);
+		assert.equal(loaded.schema, 2);
+		// The scope concept is gone, not merely empty.
+		assert.equal(loaded.enforced, undefined);
 		/*
-		 * The MULTILINE form: once the enforced list is too long for the 80-column
-		 * inline line, the renderer writes one entry per line - and an earlier cut
-		 * left a trailing comma on the last one, which JSON.parse REJECTS, so the
-		 * whole baseline silently read as EMPTY (ceilings gone, prefixes beyond
-		 * the defaults gone). This case pins the multiline branch to strict JSON.
+		 * A schema-1 baseline is still accepted — its ceilings apply — but its
+		 * `enforced` list is ignored: a stale scope must not resurrect a
+		 * report-only mode on a branch that predates the global rule.
 		 */
-		saveBaseline(
+		writeFileSync(
 			path,
-			{ "src/a.tsx": 1 },
-			["src/i18n/", "src/renderer/src/features/console/", "scripts/i18n/"],
-			"note",
+			JSON.stringify({
+				schema: 1,
+				enforced: ["src/i18n/"],
+				files: { "src/c.tsx": 3 },
+			}),
 		);
-		const multiline = loadBaseline(path);
-		assert.deepEqual(multiline.enforced, [
-			"src/i18n/",
-			"src/renderer/src/features/console/",
-			"scripts/i18n/",
-		]);
-		// A missing baseline reads as the fail-closed default, not a crash.
+		const legacy = loadBaseline(path);
+		assert.equal(legacy.schema, 1);
+		assert.deepEqual(legacy.files, { "src/c.tsx": 3 });
+		assert.equal(legacy.enforced, undefined);
+		// A missing baseline reads as empty (fail closed), not a crash.
 		const missing = loadBaseline(join(dir, "absent.json"));
-		assert.deepEqual(missing.enforced, ["src/i18n/", "scripts/i18n/"]);
 		assert.deepEqual(missing.files, {});
+		assert.equal(missing.note, BASELINE_NOTE);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
@@ -237,22 +242,24 @@ test("countsOf skips allowlisted files before counting", () => {
 	assert.deepEqual(counts, { "src/renderer/src/kept.tsx": 1 });
 });
 
-test("the real tree is at or below its committed baseline; nothing enforced fails", () => {
-	const { scanned, failures, advisories } = runCheck();
+test("the real tree is at or below its baseline, and every counted file is recorded", () => {
+	const { scanned, counts, failures } = runCheck();
 	assert.ok(scanned.size > 1000, `scanned only ${scanned.size} files`);
 	assert.deepEqual(
 		failures,
 		[],
-		`enforced findings: ${failures.map((finding) => finding.path).join(", ")}`,
+		`findings: ${failures.map((finding) => finding.path).join(", ")}`,
 	);
-	// Advisories are the tree's real state and may be non-empty on any branch;
-	// what must hold is that they are NOT failures.
-	for (const advisory of advisories) {
-		assert.equal(
-			inEnforcedScope(advisory.path, loadBaseline(BASELINE).enforced),
-			false,
-		);
-	}
+	/*
+	 * The honesty invariant, in both directions: no stale zero ceiling (an
+	 * entry whose file no longer has literals) and no uncounted entry (a file
+	 * with literals that nobody recorded). The first is a ceiling no slice
+	 * lowers; the second is the silence this gate now refuses to produce.
+	 */
+	assert.deepEqual(
+		Object.keys(counts).sort(),
+		Object.keys(loadBaseline(BASELINE).files).sort(),
+	);
 });
 
 test("--update lowers a ceiling, and refuses every raise", () => {
@@ -270,12 +277,7 @@ test("--update lowers a ceiling, and refuses every raise", () => {
 			"src/renderer/src/features/agent-hub/agent-details-page.tsx";
 		const raiseTarget =
 			"src/renderer/src/features/agent-hub/agent-hub-page.tsx";
-		saveBaseline(
-			baselinePath,
-			{ [lowerTarget]: 99, [raiseTarget]: 1 },
-			["src/i18n/", "scripts/i18n/"],
-			"note",
-		);
+		saveBaseline(baselinePath, { [lowerTarget]: 99, [raiseTarget]: 1 }, "note");
 		const options = { baselinePath, allowlistPath: ALLOWLIST };
 		assert.equal(main(["--update", lowerTarget], options), 0);
 		assert.equal(loadBaseline(baselinePath).files[lowerTarget], 16);
@@ -287,7 +289,7 @@ test("--update lowers a ceiling, and refuses every raise", () => {
 		// a translated product file may legitimately have zero literals now.
 		const afterRaise = loadBaseline(baselinePath);
 		delete afterRaise.files[raiseTarget];
-		saveBaseline(baselinePath, afterRaise.files, afterRaise.enforced, "note");
+		saveBaseline(baselinePath, afterRaise.files, "note");
 		assert.equal(main(["--update", raiseTarget], options), 1);
 		assert.equal(
 			Object.hasOwn(loadBaseline(baselinePath).files, raiseTarget),
@@ -295,6 +297,72 @@ test("--update lowers a ceiling, and refuses every raise", () => {
 		);
 		// A clean file with no entry: nothing to do, no refusal.
 		assert.equal(main(["--update", "src/i18n/index.ts"], options), 0);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/** Run `fn` with stdout captured, returning its exit code and the text. */
+function captureStdout(fn) {
+	const chunks = [];
+	const write = process.stdout.write;
+	process.stdout.write = (chunk) => {
+		chunks.push(String(chunk));
+		return true;
+	};
+	try {
+		return { code: fn(), out: chunks.join("") };
+	} finally {
+		process.stdout.write = write;
+	}
+}
+
+test("--init --force reports added, raised, lowered and pruned files", () => {
+	const dir = mkdtempSync(join(tmpdir(), "i18n-init-"));
+	try {
+		const baselinePath = join(dir, "baseline.json");
+		const { counts } = runCheck();
+		const rels = Object.keys(counts).sort();
+		/*
+		 * A scratch baseline that exercises each branch at once: one counted file
+		 * missing (that is the `added` case), one entry below its count, one above,
+		 * and one entry for a file with no literals (pruned).
+		 */
+		const [added, raised, lowered] = rels;
+		const files = { ...counts };
+		delete files[added];
+		files[raised] = Math.max(0, counts[raised] - 1);
+		files[lowered] = counts[lowered] + 2;
+		files["src/i18n/gone.tsx"] = 4;
+		saveBaseline(baselinePath, files, "note");
+
+		const { code, out } = captureStdout(() =>
+			main(["--init", "--force"], { baselinePath, allowlistPath: ALLOWLIST }),
+		);
+		assert.equal(code, 0);
+		assert.ok(out.includes("added 1:"), out);
+		assert.ok(out.includes("raised 1:"), out);
+		assert.ok(out.includes("lowered 1:"), out);
+		assert.ok(out.includes("pruned 1:"), out);
+		assert.ok(out.includes(`  ${added}: ${counts[added]}`), out);
+		assert.ok(
+			out.includes(
+				`  ${raised}: ${Math.max(0, counts[raised] - 1)} -> ${counts[raised]}`,
+			),
+			out,
+		);
+		assert.ok(
+			out.includes(
+				`  ${lowered}: ${counts[lowered] + 2} -> ${counts[lowered]}`,
+			),
+			out,
+		);
+		assert.ok(out.includes("  src/i18n/gone.tsx: 4 -> 0"), out);
+		// The capture is the tree, not the seeded scratch baseline, and it
+		// stamps the current note rather than inheriting stale prose.
+		const captured = loadBaseline(baselinePath);
+		assert.deepEqual(captured.files, counts);
+		assert.equal(captured.note, BASELINE_NOTE);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
