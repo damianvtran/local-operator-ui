@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import { act, createElement as h } from "react";
@@ -51,7 +52,7 @@ const ROOT = process.cwd();
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { SupplementRow } from "./src/renderer/src/features/chat/canonical/supplement-row"; export { Disclosure } from "./src/renderer/src/shared/components/ui/disclosure";',
+			'export { SupplementRow } from "./src/renderer/src/features/chat/canonical/supplement-row"; export { Disclosure } from "./src/renderer/src/shared/components/ui/disclosure"; export { ComposerStatusRow } from "./src/renderer/src/features/chat/components/composer-status-row";',
 		].join("\n"),
 		resolveDir: ROOT,
 	},
@@ -91,7 +92,9 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(async () => {
 	await unlink(bundlePath);
 });
-const { SupplementRow, Disclosure } = await import(bundlePath.href);
+const { SupplementRow, Disclosure, ComposerStatusRow } = await import(
+	bundlePath.href
+);
 
 const TS = 1_791_000_060;
 const digest = (seed) =>
@@ -406,6 +409,52 @@ test("pending graphic has a nonvisual accessible loading status", async () => {
 		);
 	} finally {
 		await act(async () => root.unmount());
+		host.remove();
+	}
+});
+
+test("goal-chip consumer has no closed controls and resolves its open body", async () => {
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	// Own the provider so this fixture can clear its query GC timers after
+	// unmount, rather than retaining the optional hook's private fallback cache.
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	try {
+		await act(async () =>
+			root.render(
+				h(
+					QueryClientProvider,
+					{ client },
+					h(ComposerStatusRow, {
+						frontend: { goal: "Ship it" },
+						runDetails: null,
+					}),
+				),
+			),
+		);
+		const trigger = host.querySelector(
+			'button[aria-label="Expand the session goal — Ship it"]',
+		);
+		assert.ok(trigger, "real goal-chip trigger mounted");
+		assert.equal(trigger.getAttribute("aria-expanded"), "false");
+		assert.equal(trigger.getAttribute("aria-controls"), null);
+		assert.equal(host.querySelector("[data-status-goal-body]"), null);
+		await act(async () => trigger.click());
+		assert.equal(trigger.getAttribute("aria-expanded"), "true");
+		const id = trigger.getAttribute("aria-controls");
+		assert.ok(id, "open consumer declares its controlled body");
+		const body = document.getElementById(id);
+		assert.ok(body, "open consumer's target exists");
+		assert.ok(body.textContent.includes("Ship it"));
+		await act(async () => trigger.click());
+		assert.equal(trigger.getAttribute("aria-controls"), null);
+		assert.equal(document.getElementById(id), null);
+	} finally {
+		await act(async () => root.unmount());
+		client.clear();
 		host.remove();
 	}
 });

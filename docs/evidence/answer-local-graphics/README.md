@@ -10,7 +10,7 @@ From this worktree run `pnpm storybook -- --ci --no-open` (or `pnpm exec storybo
 
 Use `theme:localOperatorLight` for light. Story IDs use `local-graphic-closed`, `local-graphic-open`, `local-graphics-closed`, `local-graphics-open`, `local-graphics-narrow`, `local-graphic-refused`, and `local-graphic-loading`. The open fixtures click the inner `[data-supplement-graphics-reveal]` span after mount; its click bubbles to the real shared Disclosure trigger. They do not use an initial-open override. The narrow fixture is a **360 CSS px story container**, not a narrow browser viewport.
 
-The new fixtures deliberately use the answer's real ID as `supplement.anchor`. At the original capture, older `FoldedCondensed*` fixtures used `m1` for the answer and a different supplement anchor, so they did not prove the closed state. Round-1 remediation fixes `FoldedCondensedComponents` specifically to use the actual anchor; its newly reachable condensed form is captured below. The other old fixtures were not broadened into this fix. The collapse model remains unchanged.
+The new fixtures deliberately use the answer's real ID as `supplement.anchor`. At the original capture, older `FoldedCondensed*` fixtures used `m1` for the answer and a different supplement anchor, so they did not prove the closed state. Round-1 remediation fixes `FoldedCondensedComponents` specifically to use the actual anchor; its newly reachable condensed form was verified by browser snapshot; the duplicate still was withdrawn in round2 below. The other old fixtures were not broadened into this fix. The collapse model remains unchanged.
 
 ## Original frames (pre-remediation; all opened and visually inspected)
 
@@ -54,7 +54,6 @@ All thirteen `r1-*.png` files were newly captured through one owned browser-tool
 | `r1-dark-mixed-closed.png`, `r1-light-mixed-closed.png` | New `local-graphics-mixed`: actionable existing file rows, followed by the same budget-aware local control; work remains folded. |
 | `r1-dark-mixed-open.png`, `r1-light-mixed-open.png` | Press mixed local control: chart mounts below the files. Wide screenshots emphasize the file/control seam; the lower chart extends below the capture viewport. |
 | `r1-dark-narrow-closed.png`, `r1-light-narrow-closed.png` | `local-graphics-narrow`, then Hide: longer closed wording fits a 360px story container; measured label width 134.02px inside the 280px block. |
-| `r1-dark-folded-fixture.png` | Repaired `folded-condensed-components`: actual answer/anchor identity now reaches the folded form with a local reveal and no iframe. |
 | `r1-light-loading.png` | `local-graphic-loading`: unchanged visible shimmer/Source treatment. Browser accessibility snapshot now includes **Loading graphic…** from the nonvisual semantic output/status. |
 
 Copy rule: `Show H of N graphics` when only H of N belongs to the budgeted head; equal counts keep `Show 1 graphic` / `Show N graphics`. Open copy remains `Hide N graphics` because that control hides the group, including any explicitly granted tail. The tail's `Show all M graphics` / `Show fewer` copy is unchanged. Both graphics-only and mixed file/graphics finishes use this control, positioned after files.
@@ -79,3 +78,12 @@ Gallery preflight found the shared dependency tree missing `baseline-browser-map
 ## Current-base convergence
 
 The thirteen r1 frames were re-captured after merging main `787f8c6e7e` into author head `ae39cfe48d`: upstream moved the user copy row out of flow, lifting the surrounding block by32px. Authored product source remained byte-identical. See [CONVERGENCE.md](CONVERGENCE.md) for conflict unions, exact byte checks, upstream semantic-neighbor review, fresh execution, capture lifecycle and the optional inherited neighbor-test timeout. The updated consecutive-pair hash above describes these re-captures, not the superseded pre-merge PNG bytes.
+
+
+## Round-2 review remediation
+
+B1 updates the registered composer consumer's closed-state assertion: no aria-controls while its body is unmounted. A new mounted test of the real ComposerStatusRow verifies closed/no target → open/existing target → closed/no target. That new fixture owns its QueryClientProvider/cache and clears it after unmount; no production timer change or force-exit is used.
+
+N1 removes `r1-dark-folded-fixture.png`: it was byte-identical to `r1-dark-closed.png`, so its second filename supplied no independent visual signal. The repaired story remains, and its previously observed browser snapshot is described above; the retained closed PNG is not claimed to independently identify that story. Twelve r1 frames (23 total PNGs in this set) remain. Earlier capture counts in this README/CONVERGENCE.md describe those historical runs, before this explicit duplicate removal. No new capture was necessary: production/stories/retained image bytes are unchanged.
+
+Round2 validation: the corrected composer consumer plus the five-file own targeted set and manifest suite ran serially to natural completion: **285 tests,284 pass,0 fail,1 existing shallow-history skip**,344.6s. The legacy composer harness retains its inert fallback QueryClients until their existing five-minute GC expiry; it was not force-exited or modified to shorten production/cache timing. The new goal-consumer fixture independently exits6/6 in about5s because it owns and clears its provider cache. The repository-wide test/story assertion sweep found no other stale always-present shared-Disclosure relationship: browser-chrome's hit is a tab contract, org-teams tests resolve targets only after opening, and the remaining composer match normalizes snapshots rather than asserting presence.
