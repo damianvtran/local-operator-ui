@@ -408,7 +408,9 @@ test("address draft belongs to its tab: a chord-driven tab change drops it and b
 		assert.equal(field().value, "", "new blank tab is empty, not A's text");
 		await act(async () => field().blur());
 		assert.deepEqual(navigated, []);
-		// Typing on the CURRENT tab still commits there (the draft is not lost).
+		// Typing on the CURRENT tab is never committed by blur: the suggestion
+		// contract makes Enter (or a chosen candidate) the only commit, so a click
+		// on the page cannot navigate to text the person did not accept.
 		await act(async () => field().focus());
 		await act(async () => {
 			const setter = Object.getOwnPropertyDescriptor(
@@ -419,6 +421,24 @@ test("address draft belongs to its tab: a chord-driven tab change drops it and b
 			field().dispatchEvent(new dom.window.Event("input", { bubbles: true }));
 		});
 		await act(async () => field().blur());
+		assert.deepEqual(navigated, [], "blur never commits");
+		// Enter on the current tab still commits there (the draft is not lost).
+		await act(async () => field().focus());
+		await act(async () => {
+			const setter = Object.getOwnPropertyDescriptor(
+				dom.window.HTMLInputElement.prototype,
+				"value",
+			).set;
+			setter.call(field(), "https://typed.example/");
+			field().dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+			field().dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: "Enter",
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+		});
 		assert.deepEqual(navigated, ["https://typed.example/"]);
 		await act(async () => root.unmount());
 	} finally {

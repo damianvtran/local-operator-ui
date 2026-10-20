@@ -1,0 +1,392 @@
+/**
+ * Contract tests for the address-completion model: intent, ranking, the inline
+ * suffix's eligibility, and the list's small keyboard arithmetic.
+ *
+ * WHAT THESE ARE: the pure rules, driven against the shipped TypeScript bundled
+ * in memory with esbuild. WHAT THEY ARE NOT: proof that the controlled input's
+ * selection behaves — that is Chromium's behaviour, and the built-app proof is
+ * the run that measures `selectionStart`/`selectionEnd` on the real element.
+ */
+
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { build } from "esbuild";
+
+const bundle = await build({
+	stdin: {
+		contents:
+			'export * from "./src/renderer/src/features/browser/model/address-autocomplete";',
+		resolveDir: process.cwd(),
+		loader: "ts",
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	logLevel: "silent",
+});
+const mod = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
+const {
+	MAX_ADDRESS_ALTERNATIVES,
+	addressIntent,
+	canInlineComplete,
+	candidateTarget,
+	inlineFor,
+	isGeneratedSuffixSelected,
+	moveActive,
+	suggestAddresses,
+	usableRawAddress,
+} = mod;
+
+function entry(url, over = {}) {
+	return {
+		url,
+		title: "",
+		sourceTabId: 1,
+		sourceIndex: 0,
+		activeTab: true,
+		distanceFromCurrent: 0,
+		...over,
+	};
+}
+
+// ---- intent ---------------------------------------------------------------
+
+test("intent: every URL-shape row the proposal settles", () => {
+	assert.equal(addressIntent(""), "empty");
+	assert.equal(addressIntent("exa"), "url");
+	assert.equal(addressIntent("example.com"), "url");
+	assert.equal(addressIntent("https://exa"), "url");
+	assert.equal(addressIntent("http://exa"), "url");
+	assert.equal(addressIntent("host:8080/a"), "url");
+	assert.equal(addressIntent("localhost:3000/a"), "url");
+	assert.equal(addressIntent("127.0.0.1:8080"), "url");
+	assert.equal(addressIntent("[::1]:3000"), "url");
+	assert.equal(addressIntent("example.com/A?Q=X#Y"), "url");
+});
+
+test("intent: natural language, leading ? and a bare fragment are search", () => {
+	assert.equal(addressIntent("hello world"), "search");
+	assert.equal(addressIntent(" hello"), "search");
+	assert.equal(addressIntent("?how do i"), "search");
+	assert.equal(addressIntent("#section"), "search");
+});
+
+test("intent: non-web schemes and invalid ports are blocked, never suggested", () => {
+	assert.equal(addressIntent("about:blank"), "blocked");
+	assert.equal(addressIntent("file:///etc/passwd"), "blocked");
+	assert.equal(addressIntent("javascript:alert(1)"), "blocked");
+	assert.equal(addressIntent("data:text/html,x"), "blocked");
+	assert.equal(addressIntent("localhost:99999"), "blocked");
+});
+
+// ---- ranking --------------------------------------------------------------
+
+const sample = [
+	entry("https://example.com/", {
+		title: "Example",
+		sourceTabId: 1,
+		activeTab: true,
+		distanceFromCurrent: 0,
+	}),
+	entry("https://example.com/account", {
+		title: "Account",
+		sourceTabId: 1,
+		activeTab: true,
+		distanceFromCurrent: 1,
+	}),
+	entry("https://other.example/extra", {
+		title: "Extra",
+		sourceTabId: 2,
+		activeTab: false,
+		distanceFromCurrent: 4,
+	}),
+	entry("https://unrelated.test/", {
+		title: "Example reference",
+		sourceTabId: 2,
+		activeTab: false,
+		distanceFromCurrent: 9,
+	}),
+];
+
+test("host prefix ranks before path prefix; title-only never inlines", () => {
+	const result = suggestAddresses(sample, "exa");
+	assert.equal(result.inline?.text, "example.com/");
+	assert.equal(result.inline?.targetUrl, "https://example.com/");
+	assert.deepEqual(
+		result.candidates.map((row) => row.rank),
+		[0, 2],
+		"the path-prefixed candidate does not start with `exa` and the title match is last",
+	);
+});
+
+test("a query with a path prefix ranks below the host prefix but can inline", () => {
+	const result = suggestAddresses(sample, "example.com/acc");
+	assert.equal(result.inline?.text, "example.com/account");
+	assert.equal(result.inline?.targetUrl, "https://example.com/account");
+});
+
+test("an explicit scheme constrains the destination's scheme", () => {
+	const mixed = [
+		entry("http://example.com/a", { sourceTabId: 1 }),
+		entry("https://example.com/a", { sourceTabId: 2 }),
+	];
+	const http = suggestAddresses(mixed, "http://example");
+	assert.equal(http.inline?.targetUrl, "http://example.com/a");
+	const https = suggestAddresses(mixed, "https://example");
+	assert.equal(https.inline?.targetUrl, "https://example.com/a");
+});
+
+test("a scheme-less query keeps the exact canonical target it was matched from", () => {
+	const result = suggestAddresses(
+		[entry("http://localhost:3000/a")],
+		"localhost:3000",
+	);
+	assert.equal(result.inline?.text, "localhost:3000/a");
+	assert.equal(result.inline?.targetUrl, "http://localhost:3000/a");
+});
+
+test("www is optional for a prefix-preserving candidate, never for dedup", () => {
+	const result = suggestAddresses(
+		[entry("https://www.example.com/path")],
+		"example.com",
+	);
+	assert.equal(result.inline?.text, "example.com/path");
+	assert.equal(result.inline?.targetUrl, "https://www.example.com/path");
+});
+
+test("path case is preserved: /A does not inline-complete /a", () => {
+	const result = suggestAddresses(
+		[entry("https://example.com/a")],
+		"example.com/A",
+	);
+	assert.equal(result.inline, null);
+});
+
+test("host case folds for matching but cannot inline an unfolded prefix", () => {
+	const result = suggestAddresses(
+		[entry("https://example.com/")],
+		"EXAMPLE.com",
+	);
+	assert.equal(
+		result.inline,
+		null,
+		"the field cannot display the typed case exactly",
+	);
+	assert.equal(result.candidates.length, 1);
+	assert.equal(result.candidates[0].displayText, "example.com/");
+});
+
+test("the current tab wins an equal rank before another tab's equal candidate", () => {
+	const active = entry("https://a.example/x", {
+		sourceTabId: 1,
+		activeTab: true,
+		distanceFromCurrent: 30,
+	});
+	const other = entry("https://a.example/y", {
+		sourceTabId: 2,
+		activeTab: false,
+		distanceFromCurrent: 0,
+	});
+	const result = suggestAddresses([other, active], "a.example");
+	assert.equal(
+		result.inline?.targetUrl,
+		"https://a.example/x",
+		"the active tab's candidate wins the inline completion despite the larger distance",
+	);
+	assert.deepEqual(
+		result.candidates.map((row) => row.sourceTabId),
+		[2],
+	);
+});
+
+test("the list is capped at five alternatives and the inline candidate is excluded", () => {
+	const entries = Array.from({ length: 12 }, (_, index) =>
+		entry(`https://site${index}.example/`, {
+			sourceTabId: index + 1,
+			sourceIndex: index,
+			activeTab: index === 0,
+			distanceFromCurrent: index,
+		}),
+	);
+	const result = suggestAddresses(entries, "site");
+	assert.equal(result.inline?.targetUrl, "https://site0.example/");
+	assert.equal(result.candidates.length, MAX_ADDRESS_ALTERNATIVES);
+	assert.ok(
+		result.candidates.every((row) => row.url !== result.inline?.targetUrl),
+	);
+});
+
+test("the empty query offers nearby history entries, active tab first, with no inline", () => {
+	const result = suggestAddresses(sample, "");
+	assert.equal(result.inline, null);
+	assert.deepEqual(
+		result.candidates.map((row) => row.url),
+		[
+			"https://example.com/",
+			"https://example.com/account",
+			"https://other.example/extra",
+			"https://unrelated.test/",
+		],
+	);
+});
+
+test("duplicate destinations collapse to the best-ranked occurrence", () => {
+	const result = suggestAddresses(
+		[
+			entry("https://dup.example/", {
+				title: "Other",
+				sourceTabId: 2,
+				activeTab: false,
+			}),
+			entry("https://dup.example/", {
+				title: "Active",
+				sourceTabId: 1,
+				activeTab: true,
+			}),
+		],
+		"dup",
+	);
+	assert.equal(result.candidates.length + (result.inline ? 1 : 0), 1);
+});
+
+test("a blocked input offers nothing at all", () => {
+	const result = suggestAddresses(sample, "file:///etc");
+	assert.equal(result.intent, "blocked");
+	assert.equal(result.inline, null);
+	assert.deepEqual(result.candidates, []);
+});
+
+// ---- eligibility and key arithmetic ---------------------------------------
+
+test("inline completion requires a collapsed caret at the end", () => {
+	const base = {
+		raw: "exa",
+		composing: false,
+		dismissedForText: null,
+		completionText: null,
+	};
+	assert.equal(
+		canInlineComplete({ ...base, selectionStart: 3, selectionEnd: 3 }),
+		true,
+	);
+	assert.equal(
+		canInlineComplete({ ...base, selectionStart: 1, selectionEnd: 1 }),
+		false,
+		"mid-string edits do not complete",
+	);
+	assert.equal(
+		canInlineComplete({ ...base, selectionStart: 0, selectionEnd: 3 }),
+		false,
+		"an arbitrary selection does not complete",
+	);
+});
+
+test("the field's own selected suffix is eligible; composition and dismissal are not", () => {
+	const suffix = {
+		raw: "exa",
+		selectionStart: 3,
+		selectionEnd: "example.com/a".length,
+		completionText: "example.com/a",
+		dismissedForText: null,
+		composing: false,
+	};
+	assert.equal(canInlineComplete(suffix), true);
+	assert.equal(canInlineComplete({ ...suffix, composing: true }), false);
+	assert.equal(
+		canInlineComplete({ ...suffix, dismissedForText: "exa" }),
+		false,
+	);
+	assert.equal(
+		canInlineComplete({
+			...suffix,
+			selectionStart: 2,
+			selectionEnd: "example.com/a".length,
+		}),
+		false,
+	);
+});
+
+test("isGeneratedSuffixSelected is exact about both offsets", () => {
+	assert.equal(
+		isGeneratedSuffixSelected({
+			raw: "exa",
+			selectionStart: 3,
+			selectionEnd: "example.com/a".length,
+			completionText: "example.com/a",
+		}),
+		true,
+	);
+	assert.equal(
+		isGeneratedSuffixSelected({
+			raw: "exa",
+			selectionStart: 2,
+			selectionEnd: "example.com/a".length,
+			completionText: "example.com/a",
+		}),
+		false,
+	);
+	assert.equal(
+		isGeneratedSuffixSelected({
+			raw: "exa",
+			selectionStart: 3,
+			selectionEnd: "example.com/a".length,
+			completionText: null,
+		}),
+		false,
+	);
+});
+
+test("moveActive wraps and starts from either end", () => {
+	assert.equal(moveActive(-1, 1, 3), 0);
+	assert.equal(moveActive(-1, -1, 3), 2);
+	assert.equal(moveActive(2, 1, 3), 0);
+	assert.equal(moveActive(0, -1, 3), 2);
+	assert.equal(moveActive(1, 1, 0), -1);
+});
+
+test("Enter's target is the active row, else the inline completion, else null", () => {
+	const suggestions = {
+		inline: {
+			text: "example.com/",
+			suffix: "mple.com/",
+			targetUrl: "https://example.com/",
+			raw: "exa",
+		},
+		candidates: [
+			{
+				...entry("https://example.com/account"),
+				displayText: "example.com/account",
+				rank: 1,
+				prefixExact: true,
+			},
+		],
+		intent: "url",
+	};
+	assert.equal(candidateTarget(suggestions, 0), "https://example.com/account");
+	assert.equal(candidateTarget(suggestions, -1), "https://example.com/");
+	assert.equal(candidateTarget({ ...suggestions, inline: null }, -1), null);
+});
+
+test("inlineFor honours the eligibility flag rather than re-deriving it", () => {
+	const suggestions = {
+		inline: {
+			text: "example.com/",
+			suffix: "mple.com/",
+			targetUrl: "https://example.com/",
+			raw: "exa",
+		},
+		candidates: [],
+		intent: "url",
+	};
+	assert.equal(inlineFor(suggestions, false), null);
+	assert.deepEqual(inlineFor(suggestions, true), suggestions.inline);
+});
+
+test("usableRawAddress rejects blank and control-laden input, trims otherwise", () => {
+	assert.equal(usableRawAddress("  "), null);
+	assert.equal(usableRawAddress("exa\u0000mple"), null);
+	assert.equal(usableRawAddress("  example.com  "), "example.com");
+});

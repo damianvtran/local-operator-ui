@@ -1,11 +1,16 @@
 import { type BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
 import { t } from "../../i18n";
+import {
+	ADDRESS_HISTORY_MAX_SESSION_ID_LENGTH,
+	type AddressHistoryRequest,
+} from "../../shared/browser-address-history";
 import { trustedDesktopFrame } from "../desktop-transport";
 import type { WebauthnChooser } from "../webauthn";
 import type { BrowserHost, CloseTabsIntent } from "./host";
 import { type BrowserAvailability, MAX_START_ATTEMPTS } from "./lifecycle";
 import type { ClearWhat } from "./profile";
 import type { ContentRect } from "./registry";
+import { numberOrThrow, tabIdOrThrow } from "./request-guards";
 
 /**
  * The renderer IPC surface for the browser feature.
@@ -79,6 +84,10 @@ export interface RegisterBrowserIpcOptions {
 	log: (message: string) => void;
 }
 
+/** Session ids are names, not free text: a control character cannot appear in
+ * one, and allowing it would store an attribution no scope comparison can match. */
+const CONTROL_CHARS = /[\p{Cc}]/u;
+
 /** The channels this namespace owns, in one place so a test can enumerate them. */
 export const BROWSER_IPC_CHANNELS = [
 	"browser-state",
@@ -92,6 +101,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-close-tab",
 	"browser-close-tabs",
 	"browser-activate-tab",
+	"browser-address-history",
 	"browser-navigate",
 	"browser-home",
 	"browser-reload",
@@ -212,12 +222,35 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		return host.activateTab(numberOrThrow(tabId, "tabId"));
 	});
 
-	ipcMain.handle("browser-navigate", async (event, url: unknown) => {
+	ipcMain.handle(
+		"browser-navigate",
+		async (event, url: unknown, expectedTabId: unknown) => {
+			const host = authorize(event);
+			if (typeof url !== "string" || !url.trim()) {
+				throw new Error("A URL is required.");
+			}
+			return host.navigateActive(
+				url.trim(),
+				expectedTabId === undefined || expectedTabId === null
+					? undefined
+					: tabIdOrThrow(expectedTabId, "expectedTabId"),
+			);
+		},
+	);
+
+	/**
+	 * The address field's local suggestions.
+	 *
+	 * A READ, so it authorizes exactly like `browser-state` (the sender check is
+	 * independent of host readiness) and then validates every field. The renderer
+	 * is untrusted input here like everywhere else on this namespace: a request id
+	 * and an expected tab are integers, and the scope is either the literal `all`
+	 * or a non-empty bounded conversation id. The host owns the stale-tab refusal;
+	 * this boundary owns shape.
+	 */
+	ipcMain.handle("browser-address-history", (event, request: unknown) => {
 		const host = authorize(event);
-		if (typeof url !== "string" || !url.trim()) {
-			throw new Error("A URL is required.");
-		}
-		return host.navigateActive(url.trim());
+		return host.addressHistory(addressHistoryRequestOrThrow(request));
 	});
 
 	ipcMain.handle(
@@ -467,11 +500,48 @@ export function unregisterBrowserIpc(): void {
 	for (const channel of BROWSER_IPC_CHANNELS) ipcMain.removeHandler(channel);
 }
 
-function numberOrThrow(value: unknown, name: string): number {
-	if (typeof value !== "number" || !Number.isInteger(value)) {
-		throw new Error(`${name} must be an integer.`);
+/**
+ * The address-history request, validated at the boundary.
+ *
+ * The scope is a DISPLAY filter over tabs the user can already see, so it grants
+ * nothing: `all` is the route's lens and the conversation object is the pane's.
+ * A session id is bounded here as well as in the shared type, because the shared
+ * type is erased at runtime.
+ */
+function addressHistoryRequestOrThrow(value: unknown): AddressHistoryRequest {
+	if (!value || typeof value !== "object") {
+		throw new Error("An address history request is required.");
 	}
-	return value;
+	const request = value as {
+		requestId?: unknown;
+		expectedTabId?: unknown;
+		scope?: unknown;
+	};
+	const requestId = numberOrThrow(request.requestId, "requestId");
+	const expectedTabId = tabIdOrThrow(request.expectedTabId, "expectedTabId");
+	let scope: AddressHistoryRequest["scope"];
+	if (request.scope === "all") {
+		scope = "all";
+	} else if (
+		request.scope &&
+		typeof request.scope === "object" &&
+		typeof (request.scope as { sessionId?: unknown }).sessionId === "string"
+	) {
+		const sessionId = (request.scope as { sessionId: string }).sessionId.trim();
+		if (
+			!sessionId ||
+			sessionId.length > ADDRESS_HISTORY_MAX_SESSION_ID_LENGTH ||
+			CONTROL_CHARS.test(sessionId)
+		) {
+			throw new Error(
+				"The address history scope needs a valid conversation id.",
+			);
+		}
+		scope = { sessionId };
+	} else {
+		throw new Error("The address history scope is invalid.");
+	}
+	return { requestId, expectedTabId, scope };
 }
 
 /**
