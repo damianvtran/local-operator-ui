@@ -39,6 +39,16 @@ const ROOT = process.cwd();
 const STUB = `
 export const constructorOptions = [];
 export const stubSessions = new Map();
+/**
+ * S3's focus facts read webContents.getFocusedWebContents (this whole stub is
+ * one template literal, so no backticks here). The stub records what the test
+ * wants focused rather than modelling a window: the controller only asks which
+ * id and must survive a null answer.
+ */
+export const focusState = { focused: null };
+export const webContents = {
+	getFocusedWebContents: () => focusState.focused,
+};
 export const session = {
 	fromPartition: (name) => {
 		let entry = stubSessions.get(name);
@@ -72,6 +82,7 @@ export class WebContentsView {
 			loadURL: () => Promise.resolve(),
 			close: () => { self.destroyed = true; },
 			isDestroyed: () => self.destroyed,
+			isFocused: () => Boolean(self.focused),
 			setWindowOpenHandler: (handler) => { self.windowOpenHandler = handler; },
 			on: (event, listener) => {
 				const list = listeners.get(event) ?? [];
@@ -131,6 +142,9 @@ const mod = await import(
 const {
 	AddressOverlayController,
 	ADDRESS_OVERLAY_MAX_HEIGHT_DIP,
+	ADDRESS_OVERLAY_S1_ENV,
+	ADDRESS_OVERLAY_VISIBLE_ENV,
+	ADDRESS_LIST_ENV,
 	ADDRESS_LIST_MAX_HEIGHT_DIP,
 	ADDRESS_LIST_NOTICE_HEIGHT_DIP,
 	ADDRESS_LIST_ROW_HEIGHT,
@@ -205,6 +219,7 @@ function makeView(id, calls) {
 				destroyed = true;
 			},
 			isDestroyed: () => destroyed,
+			isFocused: () => Boolean(view.focused),
 			setWindowOpenHandler: (handler) => {
 				view.windowOpenHandler = handler;
 			},
@@ -243,7 +258,9 @@ function makeOwnerWindow() {
 		calls,
 		children,
 		destroyed: false,
+		focused: false,
 		isDestroyed: () => window.destroyed,
+		isFocused: () => window.focused === true,
 		getContentBounds: () => ({ ...OWNER }),
 		contentView: {
 			get children() {
@@ -292,6 +309,8 @@ function makeController(options = {}) {
 			"file:///app/out/renderer/browser-address-overlay.html",
 		readinessTimeoutMs: options.readinessTimeoutMs ?? 5_000,
 		log: options.log,
+		javascript: options.javascript === true,
+		visible: options.visible === true,
 	};
 	if (!options.defaultFactory) deps.createView = createView;
 	const controller = new AddressOverlayController(deps);
@@ -323,7 +342,7 @@ test("gate: exact opt-in, armed driver and headless are all required", () => {
 			devDriverArmed: true,
 			windowMode: "headless",
 		}),
-		{ asked: false, enabled: false, list: false, reason: null },
+		{ asked: false, enabled: false, list: false, visible: false, reason: null },
 	);
 	for (const value of ["0", "true", "yes", "  "]) {
 		const result = resolveAddressOverlayGate({
@@ -366,6 +385,7 @@ test("gate: exact opt-in, armed driver and headless are all required", () => {
 		asked: true,
 		enabled: true,
 		list: false,
+		visible: false,
 		reason: null,
 	});
 	// S2 is an increment on S1, never a parallel arm.
@@ -381,6 +401,7 @@ test("gate: exact opt-in, armed driver and headless are all required", () => {
 		asked: true,
 		enabled: true,
 		list: true,
+		visible: false,
 		reason: null,
 	});
 	for (const test of [
@@ -405,6 +426,195 @@ test("gate: exact opt-in, armed driver and headless are all required", () => {
 		assert.equal(refused.asked, true, `${test.why}: refusal is printed`);
 		assert.ok(refused.reason, test.why);
 	}
+});
+
+/**
+ * S3's gate table. The shape under test is an ORDERED refusal: every combination
+ * below draws its own sentence, and the sentence is the evidence a rig reads, so
+ * one string per row is asserted rather than a boolean. Rows are written as
+ * literal inputs so a future condition cannot hide behind a helper.
+ */
+test("S3 gate: the visible probe is S1+S2+driver+inactive+unpackaged, and nothing less", () => {
+	const base = { [ADDRESS_OVERLAY_S1_ENV]: "1", [ADDRESS_LIST_ENV]: "1" };
+	const ask = (overrides = {}) =>
+		resolveAddressOverlayGate({
+			devDriverArmed: true,
+			windowMode: "inactive",
+			packaged: false,
+			...overrides,
+			env: overrides.env ?? { ...base, [ADDRESS_OVERLAY_VISIBLE_ENV]: "1" },
+		});
+
+	// The armed shape: every precondition satisfied, the one visible answer.
+	assert.deepEqual(ask(), {
+		asked: true,
+		enabled: true,
+		list: true,
+		visible: true,
+		reason: null,
+	});
+
+	// A lone VISIBLE names BOTH missing opt-ins, not just S1.
+	assert.deepEqual(ask({ env: { [ADDRESS_OVERLAY_VISIBLE_ENV]: "1" } }), {
+		asked: true,
+		enabled: false,
+		list: false,
+		visible: false,
+		reason: `${ADDRESS_OVERLAY_VISIBLE_ENV} needs ${ADDRESS_OVERLAY_S1_ENV}=1 and ${ADDRESS_LIST_ENV}=1: the visible probe is an increment on S1's child and S2's mirror, not a third arm`,
+	});
+	// S1 without S2 is one arm short: the visible probe shows the mirror.
+	assert.equal(
+		ask({
+			env: {
+				[ADDRESS_OVERLAY_S1_ENV]: "1",
+				[ADDRESS_OVERLAY_VISIBLE_ENV]: "1",
+			},
+		}).reason,
+		`${ADDRESS_OVERLAY_VISIBLE_ENV} needs ${ADDRESS_LIST_ENV}=1: S3's visible probe shows S2's mirror, never a bare S1 child`,
+	);
+	// The opt-in itself is exact, like S1/S2.
+	for (const value of ["0", "true", "yes"]) {
+		assert.equal(
+			ask({
+				env: {
+					[ADDRESS_OVERLAY_S1_ENV]: "1",
+					[ADDRESS_LIST_ENV]: "1",
+					[ADDRESS_OVERLAY_VISIBLE_ENV]: value,
+				},
+			}).reason,
+			`${ADDRESS_OVERLAY_VISIBLE_ENV}=${value.trim()} is not an opt-in (accepted: 1); the address overlay stayed off`,
+			`${JSON.stringify(value)} must refuse as a non-opt-in`,
+		);
+	}
+	// A blank VISIBLE is ABSENT, not a refusal: it names no experiment.
+	for (const value of ["", "   ", undefined]) {
+		const result = ask({
+			env: {
+				[ADDRESS_OVERLAY_S1_ENV]: "1",
+				[ADDRESS_LIST_ENV]: "1",
+				[ADDRESS_OVERLAY_VISIBLE_ENV]: value,
+			},
+			windowMode: "headless",
+		});
+		assert.equal(result.asked, true, "S1/S2 still print their own line");
+		assert.equal(result.visible, false);
+		assert.equal(result.enabled, true, "headless S2 behaviour is untouched");
+	}
+
+	assert.equal(
+		ask({ devDriverArmed: false }).reason,
+		"the visible address overlay needs the armed renderer dev driver; it has no product path",
+	);
+	assert.equal(
+		ask({ windowMode: "headless" }).reason,
+		`${ADDRESS_OVERLAY_VISIBLE_ENV} refused in a "headless" window: a headless run labelled visible would misattribute its evidence; use --window-mode=inactive`,
+	);
+	assert.equal(
+		ask({ windowMode: "normal" }).reason,
+		`${ADDRESS_OVERLAY_VISIBLE_ENV} refused in a "normal" window: a visible probe never runs in the product's own mode; use --window-mode=inactive`,
+	);
+	assert.equal(
+		ask({ packaged: true }).reason,
+		`${ADDRESS_OVERLAY_VISIBLE_ENV} refused in a packaged build: S3 is an unpackaged probe, never product surface`,
+	);
+
+	/*
+	 * The old table, pinned through the new field: for EVERY input without VISIBLE,
+	 * the answer is exactly what it was before S3 — same `enabled`, `list`,
+	 * `asked` and reason — with `visible:false` appended. This is the promise that
+	 * makes the visible arm additive rather than a relaxation.
+	 */
+	for (const s1 of [undefined, "1", "0"]) {
+		for (const s2 of [undefined, "1", "true"]) {
+			for (const devDriverArmed of [true, false]) {
+				for (const windowMode of ["headless", "inactive", "normal"]) {
+					for (const packaged of [true, false]) {
+						const env = {};
+						if (s1 !== undefined) env[ADDRESS_OVERLAY_S1_ENV] = s1;
+						if (s2 !== undefined) env[ADDRESS_LIST_ENV] = s2;
+						const result = resolveAddressOverlayGate({
+							env,
+							devDriverArmed,
+							windowMode,
+							packaged,
+						});
+						assert.equal(
+							result.visible,
+							false,
+							`VISIBLE absent must never arm: ${JSON.stringify({ s1, s2, devDriverArmed, windowMode, packaged })}`,
+						);
+						// The accepted arms are still exactly the pre-S3 ones.
+						const expected =
+							s1 === "1" &&
+							(s2 === undefined || s2 === "1") &&
+							devDriverArmed &&
+							windowMode === "headless";
+						assert.equal(
+							result.enabled,
+							expected,
+							`pre-S3 arm table: ${JSON.stringify({ s1, s2, devDriverArmed, windowMode, packaged })}`,
+						);
+						assert.equal(
+							result.list,
+							s1 === "1" &&
+								s2 === "1" &&
+								devDriverArmed &&
+								windowMode === "headless",
+						);
+					}
+				}
+			}
+		}
+	}
+});
+
+test("S3 facts: focus counters and the visible fact are reported, never inferred", async () => {
+	const { controller, views } = makeController({
+		javascript: true,
+		visible: true,
+	});
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const child = views[0];
+	child.webContents.emit("dom-ready");
+	child.webContents.emit("did-finish-load");
+	await pending;
+
+	const empty = controller.facts();
+	assert.equal(empty.visibleMode, true);
+	assert.equal(empty.child.focusEvents, 0);
+	assert.equal(empty.child.blurEvents, 0);
+	assert.equal(empty.child.isFocused, false);
+	assert.equal(empty.ownerWindowFocused, false);
+	assert.equal(empty.ownerFocusedContentsId, null);
+
+	child.webContents.emit("focus");
+	child.webContents.emit("blur");
+	child.focused = true;
+	electron.focusState.focused = child.webContents;
+	const after = controller.facts();
+	assert.equal(after.child.focusEvents, 1, "the child focus listener counts");
+	assert.equal(after.child.blurEvents, 1, "the child blur listener counts");
+	assert.equal(after.child.isFocused, true);
+	assert.equal(after.ownerFocusedContentsId, child.webContents.id);
+	assert.equal(after.listeners.child, 12, "the S2/S3 listener set is pinned");
+
+	// The S1 shape stays what it was: hidden, no visible fact, no extra listeners.
+	const s1 = makeController();
+	s1.controller.onLayout(layout());
+	const s1Pending = s1.controller.showOverlay();
+	await tick();
+	s1.views[0].webContents.emit("dom-ready");
+	s1.views[0].webContents.emit("did-finish-load");
+	await s1Pending;
+	const s1Facts = s1.controller.facts();
+	assert.equal(s1Facts.visibleMode, false);
+	assert.equal(s1Facts.child.focusEvents, 0);
+	assert.equal(s1Facts.listeners.child, 7, "S1's listener set is unchanged");
+	electron.focusState.focused = null;
+	controller.dispose("test");
+	s1.controller.dispose("test");
 });
 
 test("document URL follows the same two shapes as the other second documents", () => {

@@ -45,6 +45,7 @@ import {
 	type WebContents,
 	WebContentsView,
 	session,
+	webContents,
 } from "electron";
 import type { WindowMode } from "../window-mode";
 import {
@@ -64,6 +65,34 @@ import {
 /** The exact opt-in. Absent or anything other than `1` is off. */
 export const ADDRESS_OVERLAY_S1_ENV =
 	"LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S1";
+
+/**
+ * S3's one visible-probe opt-in. Absent or anything other than `1` is off, and
+ * ABSENT IS THE PRODUCT: this variable adds a window to the operator's screen, so
+ * it must never be set by a default, a `.env`, a settings row or a product path.
+ *
+ * WHAT IT UNLOCKS, AND WHY IT IS A SEPARATE SWITCH. Every gate before it proves
+ * the overlay with a headless window: the child paints, the page does not move,
+ * keys are swallowed. None of them can prove what the operator sees, because a
+ * headless window is never composited and a `capturePage()` of the owner returns
+ * page pixels only. A visible run is therefore the one input that can close the
+ * composite/hit-routing gap, and it is also the one input that can leave a window
+ * on someone's screen. It is exact-`1`, requires S1 and S2, requires the armed
+ * dev driver, refuses `normal` and `headless`, refuses a packaged build, and is
+ * capped and launcher-bound (see `ADDRESS_OVERLAY_VISIBLE_MAX_MS`).
+ */
+export const ADDRESS_OVERLAY_VISIBLE_ENV =
+	"LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_VISIBLE";
+
+/**
+ * The hard cap on a visible probe: 120 s from arm to exit, whatever the probe is
+ * doing. `inactive` is not launcher-bound on its own (a person can close a visible
+ * window, so `resolveLauncherWatchPlan` deliberately does not watch that mode), so
+ * a visible run needs a lifetime of its own or a crashed harness leaves an
+ * orphaned window — the exact leak class `AGENTS.md` records. The cap and the
+ * launcher watch are both armed only when this gate says `visible`.
+ */
+export const ADDRESS_OVERLAY_VISIBLE_MAX_MS = 120_000;
 
 /** The packaged document, a sibling of the trusted renderer index. */
 export const ADDRESS_OVERLAY_DOCUMENT = "browser-address-overlay.html";
@@ -113,6 +142,13 @@ export interface AddressOverlayGate {
 	 * passed: S2 is an increment on S1's child and session, never a parallel arm.
 	 */
 	list: boolean;
+	/**
+	 * S3's visible probe. True only when S1 and S2 passed AND the visible opt-in is
+	 * exactly `1` AND the run is unpackaged, driven and `inactive`. It is a fact
+	 * about the LAUNCH, so the host, the launcher watch and the lifetime cap all
+	 * read this one field rather than re-deriving the conditions.
+	 */
+	visible: boolean;
 	/** Why it was refused, in the same shape the dev driver uses. */
 	reason: string | null;
 }
@@ -126,26 +162,58 @@ export interface AddressOverlayGate {
  * operator's screen; a headless window is the only mode where a child can be
  * proven without becoming product surface. Pure so the gate can be asserted
  * without an app.
+ *
+ * S3 LAYERS ON TOP, IT DOES NOT RELAX ANYTHING: with no visible opt-in present
+ * every input reaches exactly the same answer it reached before S3 (the `visible`
+ * field is the only addition, and it is always false there). A visible opt-in
+ * flips the accepted mode from `headless` to `inactive` and adds three refusals —
+ * missing S2, a packaged build, and any mode that is not `inactive` — because a
+ * visible run is the one arm that can be mistaken for product behaviour.
  */
 export function resolveAddressOverlayGate(input: {
 	env: Record<string, string | undefined>;
 	devDriverArmed: boolean;
 	windowMode: WindowMode;
+	/**
+	 * `app.isPackaged` at the launch, passed by the caller that already reads it for
+	 * `windowMode`. Optional and defaulting to `false` so every pre-S3 caller keeps
+	 * its exact input shape; the visible arm is the only branch that reads it.
+	 */
+	packaged?: boolean;
 }): AddressOverlayGate {
 	const raw = input.env[ADDRESS_OVERLAY_S1_ENV];
 	const listRaw = input.env[ADDRESS_LIST_ENV];
+	const visibleRaw = input.env[ADDRESS_OVERLAY_VISIBLE_ENV];
 	const listAsked = listRaw !== undefined && listRaw.trim() !== "";
+	const visibleAsked = visibleRaw !== undefined && visibleRaw.trim() !== "";
 	if (raw === undefined || raw.trim() === "") {
-		// A lone S2 opt-in is a refusal, not silence: the operator named an
-		// experiment and is owed the reason it did not arm.
+		// A lone S2/S3 opt-in is a refusal, not silence: the operator named an
+		// experiment and is owed the reason it did not arm. S3 names BOTH missing
+		// opt-ins, because VISIBLE alone is even less an arm than S2 alone.
+		if (visibleAsked) {
+			return {
+				asked: true,
+				enabled: false,
+				list: false,
+				visible: false,
+				reason: `${ADDRESS_OVERLAY_VISIBLE_ENV} needs ${ADDRESS_OVERLAY_S1_ENV}=1 and ${ADDRESS_LIST_ENV}=1: the visible probe is an increment on S1's child and S2's mirror, not a third arm`,
+			};
+		}
 		return listAsked
 			? {
 					asked: true,
 					enabled: false,
 					list: false,
+					visible: false,
 					reason: `${ADDRESS_LIST_ENV} needs ${ADDRESS_OVERLAY_S1_ENV}=1: S2's list is a mirror inside S1's child, not a second child`,
 				}
-			: { asked: false, enabled: false, list: false, reason: null };
+			: {
+					asked: false,
+					enabled: false,
+					list: false,
+					visible: false,
+					reason: null,
+				};
 	}
 	const asked = true;
 	if (raw.trim() !== "1") {
@@ -153,6 +221,7 @@ export function resolveAddressOverlayGate(input: {
 			asked,
 			enabled: false,
 			list: false,
+			visible: false,
 			reason: `${ADDRESS_OVERLAY_S1_ENV}=${raw.trim()} is not an opt-in (accepted: 1); the address overlay stayed off`,
 		};
 	}
@@ -161,7 +230,81 @@ export function resolveAddressOverlayGate(input: {
 			asked,
 			enabled: false,
 			list: false,
+			visible: false,
 			reason: `${ADDRESS_LIST_ENV}=${listRaw.trim()} is not an opt-in (accepted: 1); the address overlay stayed off`,
+		};
+	}
+	if (visibleAsked) {
+		/*
+		 * S3 is checked in this order for a reason: the opt-in shapes come first so a
+		 * typo is reported as a typo, then the missing S2 arm, then every condition
+		 * that would make a visible run unsafe or self-deceiving. `inactive` is the
+		 * only accepted mode — `normal` is the product's own mode (a probe there could
+		 * be mistaken for product behaviour and could take the operator's focus), and
+		 * `headless` is refused because a headless run labelled "visible" would
+		 * misattribute every pixel claim it wrote down.
+		 */
+		if (visibleRaw.trim() !== "1") {
+			return {
+				asked,
+				enabled: false,
+				list: false,
+				visible: false,
+				reason: `${ADDRESS_OVERLAY_VISIBLE_ENV}=${visibleRaw.trim()} is not an opt-in (accepted: 1); the address overlay stayed off`,
+			};
+		}
+		if (!listAsked) {
+			return {
+				asked,
+				enabled: false,
+				list: false,
+				visible: false,
+				reason: `${ADDRESS_OVERLAY_VISIBLE_ENV} needs ${ADDRESS_LIST_ENV}=1: S3's visible probe shows S2's mirror, never a bare S1 child`,
+			};
+		}
+		if (input.windowMode === "headless") {
+			return {
+				asked,
+				enabled: false,
+				list: false,
+				visible: false,
+				reason: `${ADDRESS_OVERLAY_VISIBLE_ENV} refused in a "headless" window: a headless run labelled visible would misattribute its evidence; use --window-mode=inactive`,
+			};
+		}
+		if (input.windowMode !== "inactive") {
+			return {
+				asked,
+				enabled: false,
+				list: false,
+				visible: false,
+				reason: `${ADDRESS_OVERLAY_VISIBLE_ENV} refused in a "${input.windowMode}" window: a visible probe never runs in the product's own mode; use --window-mode=inactive`,
+			};
+		}
+		if (!input.devDriverArmed) {
+			return {
+				asked,
+				enabled: false,
+				list: false,
+				visible: false,
+				reason:
+					"the visible address overlay needs the armed renderer dev driver; it has no product path",
+			};
+		}
+		if (input.packaged === true) {
+			return {
+				asked,
+				enabled: false,
+				list: false,
+				visible: false,
+				reason: `${ADDRESS_OVERLAY_VISIBLE_ENV} refused in a packaged build: S3 is an unpackaged probe, never product surface`,
+			};
+		}
+		return {
+			asked,
+			enabled: true,
+			list: true,
+			visible: true,
+			reason: null,
 		};
 	}
 	if (!input.devDriverArmed) {
@@ -169,6 +312,7 @@ export function resolveAddressOverlayGate(input: {
 			asked,
 			enabled: false,
 			list: false,
+			visible: false,
 			reason:
 				"the address overlay needs the armed renderer dev driver; it has no user-facing trigger in S1",
 		};
@@ -178,10 +322,17 @@ export function resolveAddressOverlayGate(input: {
 			asked,
 			enabled: false,
 			list: false,
+			visible: false,
 			reason: `the address overlay refused to arm in a "${input.windowMode}" window; S1 has no user-facing path, so use --window-mode=headless`,
 		};
 	}
-	return { asked, enabled: true, list: listAsked, reason: null };
+	return {
+		asked,
+		enabled: true,
+		list: listAsked,
+		visible: false,
+		reason: null,
+	};
 }
 
 export interface OverlayRect {
@@ -306,13 +457,34 @@ export interface AddressOverlayFacts {
 		at: number;
 	} | null;
 	readiness: { domReady: boolean; finished: boolean; loadMs: number | null };
+	/**
+	 * S3 focus facts. They exist so the handoff claim ("focus never leaves the
+	 * parent") is a MEASUREMENT rather than a reading of the source: a probe shows
+	 * and hides the child, clicks into it and sends it keys, then checks that the
+	 * child emitted no focus events, is not focused, and that the app's focused
+	 * webContents is still the owner.
+	 *
+	 * WHAT THESE ARE NOT: `ownerWindowFocused` is `BrowserWindow.isFocused()`, which
+	 * describes the window, not macOS first-responder state; Chromium's focus
+	 * emulation (a CDP switch the probe turns on) can make `document.hasFocus()` true
+	 * in a window the OS never activated. Both are labelled in the evidence matrix.
+	 */
 	child: {
 		webContentsId: number;
 		visible: boolean;
 		bounds: OverlayRect | null;
 		order: number;
 		childCount: number;
+		focusEvents: number;
+		blurEvents: number;
+		isFocused: boolean;
 	} | null;
+	/** True only for an S3 visible arm; false for every product and headless run. */
+	visibleMode: boolean;
+	/** `webContents.getFocusedWebContents()?.id` at facts time, or null. */
+	ownerFocusedContentsId: number | null;
+	/** `BrowserWindow.isFocused()` at facts time. */
+	ownerWindowFocused: boolean;
 	owner: {
 		windowId: number | null;
 		destroyed: boolean;
@@ -395,6 +567,9 @@ export interface AddressOverlayDeps {
 	readinessTimeoutMs?: number;
 	/** S2: the child document runs its own bundled module script. False for S1. */
 	javascript?: boolean;
+	/** S3: the launch gate's visible-probe fact. Facts only; the controller's
+	 * behaviour does not change with it (there is no product path either way). */
+	visible?: boolean;
 	/** S2: where a validated row click is reported (the host forwards it to the
 	 * owner window). Absent means no sink, and the click is counted, not sent. */
 	onEvent?: (event: AddressOverlayCommitEvent) => void;
@@ -515,6 +690,14 @@ export class AddressOverlayController {
 	private mouseMoves: number;
 	private mouseDownRow: number | null;
 	private contextMenuBlocked: number;
+	// ---- S3 focus facts -----------------------------------------------------
+	/** Counted only for the scripted (S2/S3) child, so S1's listener set stays
+	 * exactly what it was; see `wireChild`'s S2 policy comment. */
+	private childFocusEvents: number;
+	private childBlurEvents: number;
+	/** The launch gate's `visible` fact, copied in so `facts()` can report it
+	 * without re-deriving the gate (which it must never do: one pure decision). */
+	private readonly visibleMode: boolean;
 	private lastRejected: string | null;
 	private projectQueue: Promise<unknown>;
 
@@ -576,6 +759,9 @@ export class AddressOverlayController {
 		this.mouseMoves = 0;
 		this.mouseDownRow = null;
 		this.contextMenuBlocked = 0;
+		this.childFocusEvents = 0;
+		this.childBlurEvents = 0;
+		this.visibleMode = deps.visible === true;
 		this.lastRejected = null;
 		this.projectQueue = Promise.resolve();
 		this.attachOwnerListeners();
@@ -689,6 +875,15 @@ export class AddressOverlayController {
 		this.log(`[browser] address overlay hidden: ${reason}`);
 	}
 
+	/** `WebContents.isFocused()` behind a guard: a disposed view throws. */
+	private childIsFocused(view: WebContentsView): boolean {
+		try {
+			return view.webContents.isFocused();
+		} catch {
+			return false;
+		}
+	}
+
 	/** Facts only: identifiers, geometry and counters. No page content. */
 	facts(): AddressOverlayFacts {
 		const view = this.view;
@@ -713,6 +908,9 @@ export class AddressOverlayController {
 				bounds,
 				order,
 				childCount,
+				focusEvents: this.childFocusEvents,
+				blurEvents: this.childBlurEvents,
+				isFocused: this.childIsFocused(view),
 			};
 		}
 		let ownerDestroyed = true;
@@ -722,6 +920,26 @@ export class AddressOverlayController {
 			if (!ownerDestroyed) contentBounds = this.ownerSize();
 		} catch {
 			ownerDestroyed = true;
+		}
+		// Read separately from the block above: a window stub without `isFocused`
+		// must answer "not focused", never turn into "destroyed".
+		let ownerWindowFocused = false;
+		try {
+			ownerWindowFocused = !ownerDestroyed && this.window.isFocused();
+		} catch {
+			ownerWindowFocused = false;
+		}
+		/*
+		 * `getFocusedWebContents` answers "which of THIS app's webContents holds focus",
+		 * which is the only in-process reading of the handoff that Chromium exposes. It
+		 * is read defensively: it can throw before `app` is ready or during teardown,
+		 * and a facts call must never be what fails a probe.
+		 */
+		let ownerFocusedContentsId: number | null = null;
+		try {
+			ownerFocusedContentsId = webContents.getFocusedWebContents()?.id ?? null;
+		} catch {
+			ownerFocusedContentsId = null;
 		}
 		return {
 			documentUrl: this.documentUrl,
@@ -750,6 +968,9 @@ export class AddressOverlayController {
 			},
 			pendingShow: this.showInFlight !== null,
 			readinessTimer: this.readinessTimer !== null,
+			visibleMode: this.visibleMode,
+			ownerFocusedContentsId,
+			ownerWindowFocused,
 			s2: {
 				list: this.javascript,
 				javascript: this.javascript,
@@ -1414,6 +1635,18 @@ export class AddressOverlayController {
 			const event = args[0] as { preventDefault?: () => void } | undefined;
 			event?.preventDefault?.();
 			this.contextMenuBlocked += 1;
+		});
+		/*
+		 * S3's handoff counters. They count and nothing else: the child must never
+		 * take focus, and an observer that re-focuses the parent would hide the very
+		 * defect the probe is looking for. Registered only for the scripted child so
+		 * "S2 off is bit-for-bit S1" stays true of the listener set too.
+		 */
+		on(contents, "focus", () => {
+			this.childFocusEvents += 1;
+		});
+		on(contents, "blur", () => {
+			this.childBlurEvents += 1;
 		});
 		on(contents, "before-mouse-event", (...args) => {
 			const event = args[0] as { preventDefault?: () => void } | undefined;

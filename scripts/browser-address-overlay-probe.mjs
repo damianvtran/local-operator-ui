@@ -47,6 +47,7 @@ import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { loadavg } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
@@ -69,6 +70,16 @@ const OUT = arg("--out");
 /** S2's mirror matrix. Off by default so the S1 matrix stays the same-code
  * control and runs unchanged. */
 const S2 = process.argv.includes("--s2");
+/** S3's handoff matrix: runs the S2 rows as the regression surface and adds the
+ * focus/IME/AX rows. Headless only: the visible arm is `--s3-visible`. */
+const S3 = process.argv.includes("--s3");
+/** S3's operator-attended visible run. One process, one window, ≤120 s. */
+const S3_VISIBLE = process.argv.includes("--s3-visible");
+if (S3_VISIBLE && !process.argv.includes("--window-mode=inactive")) {
+	fail(
+		"--s3-visible must be invoked with --window-mode=inactive on ITS OWN command line, exactly as the design doc spells it: node scripts/browser-address-overlay-probe.mjs --s3-visible --window-mode=inactive --out <dir>. A probe launched without the mode it is about to reason over is a typo, not a run.",
+	);
+}
 if (!OUT) fail("--out <evidence dir> is required");
 const RUN = join(OUT, "run");
 const FRAMES = join(RUN, "frames");
@@ -414,7 +425,15 @@ const boots = [];
 const pageServers = [];
 let bootTag = 0;
 
-async function boot({ s1, s2, s2Raw, driver, tag }) {
+async function boot({
+	s1,
+	s2,
+	s2Raw,
+	driver,
+	tag,
+	visible,
+	mode = "headless",
+}) {
 	bootTag += 1;
 	const home = join(RUN, `home-${bootTag}`);
 	const config = join(RUN, `config-${bootTag}`);
@@ -437,12 +456,15 @@ async function boot({ s1, s2, s2Raw, driver, tag }) {
 		HOME: home,
 		LOCAL_OPERATOR_CONFIG_DIR: config,
 		LOCAL_OPERATOR_LOG_DIR: logs,
-		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
+		LOCAL_OPERATOR_UI_WINDOW_MODE: mode,
 		LOCAL_OPERATOR_UI_DEV_DRIVER: driver ? "1" : undefined,
 		LOCAL_OPERATOR_UI_DEV_DRIVER_OUT: driver ? FRAMES : undefined,
 		LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S1: s1 ? "1" : undefined,
 		LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S2:
 			s2Raw ?? (s2 ? "1" : undefined),
+		LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_VISIBLE: visible
+			? "1"
+			: undefined,
 		VITE_DISABLE_BACKEND_MANAGER: "true",
 	});
 	withTelemetryOff(env);
@@ -455,7 +477,7 @@ async function boot({ s1, s2, s2Raw, driver, tag }) {
 			ROOT,
 			`--user-data-dir=${profile}`,
 			`--remote-debugging-port=${port}`,
-			"--window-mode=headless",
+			`--window-mode=${mode}`,
 			"--window-size=1380x900",
 			// The headless window is occluded; Chromium throttles the child's frame
 			// loop and a WebContentsView resize can sit unapplied indefinitely (native
@@ -472,7 +494,7 @@ async function boot({ s1, s2, s2Raw, driver, tag }) {
 	const logPath = join(OUT, "app.log");
 	appendFileSync(
 		logPath,
-		`\n===== boot ${bootTag} (${tag}) s1=${s1 ? 1 : 0} s2=${s2 ? 1 : 0} driver=${driver ? 1 : 0} pid=${child.pid} =====\n`,
+		`\n===== boot ${bootTag} (${tag}) s1=${s1 ? 1 : 0} s2=${s2 ? 1 : 0} driver=${driver ? 1 : 0} visible=${visible ? 1 : 0} mode=${mode} pid=${child.pid} =====\n`,
 	);
 	const stream = [];
 	const write = () => {
@@ -964,6 +986,18 @@ async function drivenMatrix() {
 		let reused = true;
 		let stale = null;
 		const listenerBaseline = hidden.listeners;
+		baseline = await evaluate(
+			cdp,
+			`(() => {
+				const el = document.querySelector('[data-tour-tag="browser-address"]');
+				return {
+					hasFocus: document.hasFocus(),
+					active: document.activeElement === el,
+					selection: el ? [el.selectionStart, el.selectionEnd] : null,
+					blur: window.__s3?.blur ?? -1,
+				};
+			})()`,
+		);
 		for (let cycle = 0; cycle < 20; cycle += 1) {
 			const one = await probe(cdp, "show");
 			const two = await probe(cdp, "hide");
@@ -3030,7 +3064,7 @@ async function s2SyntheticMatrix() {
 	}
 }
 
-function closeS2Rows() {
+function closeS2Rows(s3 = false) {
 	record(
 		"A5",
 		"asserted-only",
@@ -3056,7 +3090,1056 @@ function closeS2Rows() {
 		"BLOCKED",
 		"sendInputEvent exercises the child, not macOS NSView hit-testing",
 	);
-	record("V4", "BLOCKED", "no visible window, no IME, no AX tree in S2");
+	record(
+		"V4",
+		"BLOCKED",
+		s3
+			? "S2's own matrix ran no visible window; S3's I1/AX1 measured the CDP halves in this same run, and AX2 keeps VoiceOver unmeasured"
+			: "no visible window, no IME, no AX tree in S2",
+	);
+}
+
+// ---- S3: input/focus/IME/AX handoff ---------------------------------------
+
+/*
+ * WHAT THIS SECTION CAN AND CANNOT PROVE.
+ *
+ * The headless rows measure the DOM/native-focus contract through CDP: focus
+ * emulation makes `document.hasFocus()` true in a window the OS never activated,
+ * and `Input.*` events are synthetic. Every row says so in its own evidence text,
+ * because the failure mode this section is built to avoid is a synthetic
+ * measurement read as a native one. The visible run (`--s3-visible`) is the only
+ * place an operator's eyes, clicks and real IME can appear, and its rows are
+ * BLOCKED in every unattended run — not passes.
+ *
+ * Chromium's accessibility tree is not VoiceOver: AX1 proves the parent exposes a
+ * combobox/listbox/option structure and that the child's own tree is inert, not
+ * that a screen reader lands anywhere useful. AX2 keeps that gap visible.
+ */
+
+const S3_RULE = "-".repeat(78);
+const S3_VISIBLE_ENV = "LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_VISIBLE";
+const S3_S1_ENV = "LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S1";
+const S3_S2_ENV = "LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S2";
+const S3_DRIVER_ENV = "LOCAL_OPERATOR_UI_DEV_DRIVER";
+const VISIBLE_CAP_MS = 120_000;
+
+const S3_ROWS = [
+	[
+		"G4a",
+		"S3 visible env in a headless-labelled boot: printed 'not armed' naming headless; no window is shown",
+	],
+	[
+		"G4b",
+		"S3 visible env in a normal-labelled boot: printed 'not armed' naming normal (operator-attended run only)",
+	],
+	[
+		"G4c",
+		"S3 visible env in a packaged launch: refused by the pure gate (unit table, not a packaged boot)",
+	],
+	[
+		"F1",
+		"focus owner stays the parent through 20 hide/raise cycles; child focusEvents=0, childIsFocused=false (focus EMULATED)",
+	],
+	[
+		"F2",
+		"synthetic child mouse/keys move neither the parent's focus nor its selection (SYNTHETIC input)",
+	],
+	[
+		"I1",
+		"IME composition events reach the parent in order; the mirror is hidden while composing and returns after (CDP IME, NOT macOS IME)",
+	],
+	[
+		"I2",
+		"real macOS IME candidate window and marked text in the address field (operator-attended visible run)",
+	],
+	[
+		"K3",
+		"keys: the S2 K1/K2 receipts re-run on this same head (derived from those rows, not re-measured here)",
+	],
+	[
+		"M1",
+		"child mouse down/up commits once on the same row and drops a mismatch (derived from the S2 C1/C2 rows re-run here)",
+	],
+	[
+		"AX1",
+		"parent AX tree exposes a combobox + listbox with one option per mirror row; the child target's tree is all ignored (Chromium AX, NOT VoiceOver)",
+	],
+	[
+		"AX2",
+		"VoiceOver/NVDA and the child's native AXWebArea in the app's accessibility hierarchy",
+	],
+	[
+		"V-ORDER",
+		"child pixels sit above page pixels in the native composite (operator's eyes)",
+	],
+	[
+		"V-HIT",
+		"a click on a child row lands in the child and a click just below the list lands in the page (operator)",
+	],
+	[
+		"V-FOCUS-SHOW",
+		"showing the child in an inactive window does not make the app frontmost (lsappinfo front before/after)",
+	],
+	[
+		"V-FOCUS-CLICK",
+		"a real mouse-down on the child does not blur the parent input or drop the click (operator; the (b)-viability row)",
+	],
+	[
+		"V-FIRSTMOUSE",
+		"in the unfocused inactive window, click #1 vs #2 are recorded separately (acceptFirstMouse is not set)",
+	],
+	[
+		"V-WHEEL",
+		"a wheel over the child is swallowed and the page beneath does not scroll (operator)",
+	],
+	[
+		"V-COMPOSITE-CAP",
+		"owner-target CDP capture as a negative control: it must not contain the child, so composite pixels stay operator-only",
+	],
+	[
+		"T1-visible",
+		"the visible run exits 0 by SIGTERM before the cap, reaps its whole tree and leaves no window or survivor",
+	],
+	[
+		"W1",
+		"Windows/Linux focus, IME and hit routing (unmeasured on this machine)",
+	],
+];
+
+function planS3Rows() {
+	for (const [id, claim] of S3_ROWS) plan(id, claim);
+}
+
+/**
+ * A page built to be TOLD APART from the child: a loud striped band, a marker
+ * per band, and its own click/down/wheel counters. The child sits exactly over
+ * the in-flow dock, so a plain page and a plain dock are pixel-identical at a
+ * glance; the sentinel makes "I am looking at the page" and "I am looking at the
+ * child" different pictures, and makes a click that leaked to the page countable.
+ */
+async function startSentinelPageServer() {
+	const server = createHttpServer((request, response) => {
+		response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+		response.end(`<!doctype html><html><head><title>S3 sentinel page</title></head>
+<body style="margin:0;background:#101418;color:#f5f7fa;font:16px/1.4 -apple-system,system-ui,sans-serif">
+<script>
+window.__s3page = { downs: 0, clicks: 0, wheels: 0, scrollTop: 0 };
+for (const type of ['mousedown', 'click', 'wheel']) {
+  window.addEventListener(type, () => { window.__s3page[type === 'mousedown' ? 'downs' : type === 'click' ? 'clicks' : 'wheels'] += 1; }, true);
+}
+window.addEventListener('scroll', () => { window.__s3page.scrollTop = document.documentElement.scrollTop || document.body.scrollTop || 0; }, true);
+</script>
+<div style="position:sticky;top:0;z-index:2;background:#ff2d55;color:#fff;padding:14px 20px;font-weight:700;letter-spacing:0.02em">
+  S3 SENTINEL PAGE — if you can read this straight through, the overlay is NOT over this strip
+</div>
+${Array.from(
+	{ length: 14 },
+	(_, index) =>
+		`<div style="height:64px;display:flex;align-items:center;padding:0 20px;background:${index % 2 === 0 ? "#ffd60a" : "#0a84ff"};color:#101418;font-weight:600">SENTINEL BAND ${index + 1}</div>`,
+).join("\n")}
+<div style="height:1400px;background:linear-gradient(#101418,#2b3440)"></div>
+</body></html>`);
+	});
+	await new Promise((done) => server.listen(0, "127.0.0.1", done));
+	const address = server.address();
+	const port = typeof address === "object" && address ? address.port : 0;
+	return {
+		url: `http://127.0.0.1:${port}/`,
+		close: () => new Promise((done) => server.close(done)),
+	};
+}
+
+/** The sentinel page's own counters, read from the page target (not the app's). */
+async function connectActivePage(handle, timeoutMs = 15_000) {
+	if (!activePageUrl) throw new Error("no active page was presented");
+	const prefix = activePageUrl;
+	const target = await waitForTarget(
+		handle.port,
+		(entry) => entry.type === "page" && entry.url.startsWith(prefix),
+		timeoutMs,
+	);
+	const cdp = await connect(target.webSocketDebuggerUrl);
+	await cdp.send("Runtime.enable");
+	return cdp;
+}
+
+async function pageCounters(pageCdp) {
+	return evaluate(pageCdp, "window.__s3page");
+}
+
+/** One real press + a synchronous focus/selection snapshot installed first. */
+async function s3FocusField(cdp) {
+	const geometry = await s2Geometry(cdp);
+	if (!geometry) throw new Error("the address field is not on screen");
+	for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) {
+		await cdp.send("Input.dispatchMouseEvent", {
+			type,
+			x: geometry.field.x + Math.round(geometry.field.width / 2),
+			y: geometry.field.y + Math.round(geometry.field.height / 2),
+			button: "left",
+			clickCount: 1,
+		});
+	}
+	await sleep(200);
+	const installed = await evaluate(
+		cdp,
+		`(() => {
+			const el = document.querySelector('[data-tour-tag="browser-address"]');
+			if (!el) return { ok: false };
+			window.__s3 = window.__s3 ?? { blur: 0, ime: [], selection: null };
+			window.__s3.blur = 0;
+			window.__s3.ime = [];
+			el.addEventListener('blur', () => { window.__s3.blur += 1; });
+			for (const type of ['compositionstart', 'compositionupdate', 'compositionend', 'input']) {
+				el.addEventListener(type, (event) => { window.__s3.ime.push(type + (event.data ? ':' + event.data : '')); });
+			}
+			el.select();
+			window.__s3.selection = [el.selectionStart, el.selectionEnd];
+			return { ok: true, hasFocus: document.hasFocus(), active: document.activeElement === el, selection: window.__s3.selection };
+		})()`,
+	);
+	return { geometry, installed };
+}
+
+/** A projection function that takes the live geometry, like the real hook. */
+async function projectS3(cdp, opened, rowCount, overrides = {}) {
+	const geometry = await s2Geometry(cdp);
+	const payload = s2Projection(
+		geometry,
+		opened.page.bounds,
+		opened.page.tabId,
+		{ kind: "rows", rows: s2Rows(rowCount) },
+		overrides,
+	);
+	return projectDirect(cdp, payload);
+}
+
+/**
+ * G4a: the visible opt-in on a headless-labelled boot must print its refusal and
+ * never create a window. Driven, not asserted: this is the one refusal that can
+ * be spawned without putting anything on the operator's screen, and it is the
+ * one a rig is most likely to get wrong.
+ */
+async function s3HeadlessVisibleRefusal() {
+	const handle = await boot({
+		s1: true,
+		s2: true,
+		driver: true,
+		visible: true,
+		tag: "s3-visible-headless-refusal",
+	});
+	let armed = false;
+	let refusal = null;
+	const deadline = Date.now() + 25_000;
+	while (Date.now() < deadline) {
+		const log = existsSync(handle.logPath)
+			? readFileSync(handle.logPath, "utf8")
+			: "";
+		const armedLine = log.match(/\[address-overlay\] ARMED[^\n]*/);
+		const refusedLine = log.match(/\[address-overlay\] not armed: ([^\n]*)/);
+		if (armedLine) {
+			armed = true;
+			refusal = armedLine[0];
+			break;
+		}
+		if (refusedLine) {
+			refusal = refusedLine[1];
+			break;
+		}
+		await sleep(200);
+	}
+	record(
+		"G4a",
+		!armed && typeof refusal === "string" && /headless/.test(refusal)
+			? "PASS"
+			: "FAIL",
+		`armed=${armed} refusal=${JSON.stringify(refusal)} log=${handle.logPath}`,
+	);
+	await handle.stop("SIGTERM");
+	const exit = await Promise.race([
+		handle.exited,
+		sleep(15_000).then(() => null),
+	]);
+	if (exit === null) reapTree(handle.child.pid);
+}
+
+/**
+ * The S2 rows are this section's regression surface: they ran first in the same
+ * process, on the same built app. K3/M1 are DERIVED from those receipts rather
+ * than re-measured, so one run cannot report two different answers for the same
+ * click and still call both measurements.
+ */
+function deriveS3Rows() {
+	const byId = (id) => rows.find((row) => row.id === id);
+	const c1 = byId("C1");
+	const c2 = byId("C2");
+	const k1 = byId("K1");
+	const k2 = byId("K2");
+	record(
+		"K3",
+		k1?.status === "PASS" && k2?.status === "PASS" ? "PASS" : "FAIL",
+		`derived from the S2 rows in this run: K1=${k1?.status ?? "missing"} K2=${k2?.status ?? "missing"}`,
+	);
+	record(
+		"M1",
+		c1?.status === "PASS" && c2?.status === "PASS" ? "PASS" : "FAIL",
+		`derived from the S2 rows in this run: C1=${c1?.status ?? "missing"} C2=${c2?.status ?? "missing"}`,
+	);
+}
+
+/** The headless half: F1, F2, I1, AX1 against the real built app. */
+async function s3HeadlessMatrix() {
+	const handle = await boot({
+		s1: true,
+		s2: true,
+		driver: true,
+		tag: "s3-headless",
+	});
+	const factsLog = [];
+	try {
+		const main = await connectMain(handle);
+		const cdp = main.cdp;
+		await waitForDriver(cdp);
+		await navigate(cdp, "/browser");
+		await waitForSurface(cdp);
+		const pageServer = await startSentinelPageServer();
+		pageServers.push(pageServer);
+		await evaluate(cdp, "window.api.browser.newTab()");
+		await waitForActiveTab(cdp);
+		for (let index = 0; index < 3; index += 1) {
+			await presentActivePage(cdp, pageServer);
+			await sleep(120);
+		}
+
+		// The label is the evidence: without this switch the window is never active
+		// and `document.hasFocus()` is false for a reason that has nothing to do
+		// with the child.
+		await cdp.send("Emulation.setFocusEmulationEnabled", { enabled: true });
+		const focusSetup = await s3FocusField(cdp);
+		await cdp.send("Input.insertText", { text: "127.0.0.1" });
+		const opened = await waitForS2(
+			cdp,
+			(facts) => facts.child?.visible === true,
+			8_000,
+		);
+		if (!opened.child?.visible) {
+			for (const id of ["F1", "F2", "I1", "AX1"]) {
+				record(
+					id,
+					"BLOCKED",
+					`the real input path did not open the mirror in this boot (P3-class failure): ${JSON.stringify(opened?.s2?.view ?? null)}`,
+				);
+			}
+			return;
+		}
+		factsLog.push({ label: "opened", facts: opened });
+
+		// Recaptured by F1 itself: the runs before it (IME, AX) move the caret and
+		// the blur counter, so a snapshot taken at open time would not be the
+		// baseline of the cycle it is compared with.
+		let baseline = null;
+
+		/*
+		 * I1: CDP IME. `imeSetComposition` is Chromium's own composition pipeline,
+		 * which is as close as a headless window can get to a real IME and is still
+		 * NOT the macOS input method (I2 stays operator-only). The mirror must hide
+		 * while composing (`listVisible` requires `!composing`) and come back once
+		 * the composition ends and a matching query is typed.
+		 */
+		await evaluate(
+			cdp,
+			"(() => { const el = document.querySelector('[data-tour-tag=\"browser-address\"]'); el.focus(); el.select(); window.__s3.ime = []; return true; })()",
+		);
+		const composing = [];
+		for (const text of ["に", "にほ", "日本"]) {
+			await cdp.send("Input.imeSetComposition", {
+				text,
+				selectionStart: text.length,
+				selectionEnd: text.length,
+			});
+			await sleep(150);
+			composing.push(await probe(cdp, "facts"));
+		}
+		const hiddenDuringComposition = composing.every(
+			(facts) => facts.child?.visible === false,
+		);
+		await cdp.send("Input.insertText", { text: "日本" });
+		await sleep(400);
+		// End the CDP IME session explicitly: without this the field ignores every
+		// later `Input.insertText` in this document (measured: insertText was a
+		// no-op for the rest of the boot), which would make "the list returns"
+		// untestable for a reason that has nothing to do with the overlay.
+		await cdp.send("Input.imeSetComposition", {
+			text: "",
+			selectionStart: 0,
+			selectionEnd: 0,
+		});
+		await sleep(200);
+		const imeEvents = await evaluate(cdp, "window.__s3.ime");
+		const imeOk =
+			Array.isArray(imeEvents) &&
+			String(imeEvents[0]).startsWith("compositionstart") &&
+			String(imeEvents[imeEvents.length - 1]).startsWith("compositionend") &&
+			String(imeEvents[imeEvents.length - 1]).includes("日本") &&
+			imeEvents.filter((entry) => entry.startsWith("compositionupdate"))
+				.length >= 2 &&
+			["に", "にほ"].every((expected) =>
+				imeEvents.some((entry) => entry.endsWith(`:${expected}`)),
+			);
+		// A matching query after composition must bring the mirror back. Chromium
+		// reverts a CDP composition's text on compositionend, so the query is typed
+		// again; one retry covers the frame where the field is still settling.
+		let reopened = null;
+		let reopenValue = null;
+		let reopenGeometry = null;
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			// A REAL press, not `el.focus()`: measured in this same matrix (P3), a
+			// programmatic focus sets activeElement without running React's onFocus,
+			// and after a composition Chromium's session can swallow inserts aimed at
+			// a merely-focused field.
+			await s3FocusField(cdp);
+			await cdp.send("Input.insertText", { text: "127.0.0.1" });
+			await sleep(500);
+			reopenValue = await evaluate(
+				cdp,
+				"document.querySelector('[data-tour-tag=\"browser-address\"]').value",
+			);
+			reopened = await waitForS2(
+				cdp,
+				(facts) => facts.child?.visible === true,
+				2_500,
+			);
+			reopenGeometry = await s2Geometry(cdp);
+			if (reopened.child?.visible === true) break;
+		}
+		record(
+			"I1",
+			hiddenDuringComposition && imeOk && reopened.child?.visible === true
+				? "PASS"
+				: "FAIL",
+			`CDP IME, not macOS IME. events=${JSON.stringify(imeEvents)} hiddenWhileComposing=${hiddenDuringComposition} reopened=${reopened?.child?.visible} reopenValue=${JSON.stringify(reopenValue)} geometry=${JSON.stringify(reopenGeometry)} view=${JSON.stringify(reopened?.s2?.view ?? null)}`,
+		);
+
+		/*
+		 * AX1: the parent's accessibility tree is the entity a screen reader reads;
+		 * the child's document is `aria-hidden`, so its own tree must be inert. Option
+		 * count is compared with the mirror's row count, not with the DOM's: the whole
+		 * S2 claim is that the mirror equals the parent's list.
+		 */
+		// One real ArrowDown first: `aria-activedescendant` is only present while a
+		// row is active, and an absent attribute would fail a claim that is really
+		// about the row being there.
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "keyDown",
+			key: "ArrowDown",
+			code: "ArrowDown",
+			windowsVirtualKeyCode: 40,
+			nativeVirtualKeyCode: 40,
+		});
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "ArrowDown",
+			code: "ArrowDown",
+			windowsVirtualKeyCode: 40,
+			nativeVirtualKeyCode: 40,
+		});
+		await sleep(350);
+		const axGeometry = await s2Geometry(cdp);
+		await cdp.send("Accessibility.enable");
+		const parentAx = await cdp.send("Accessibility.getFullAXTree");
+		const axFacts = await probe(cdp, "facts");
+		const parentNodes = parentAx.nodes ?? [];
+		const combobox = parentNodes.find(
+			(node) => node.role?.value === "combobox",
+		);
+		const listbox = parentNodes.find((node) => node.role?.value === "listbox");
+		const options = parentNodes.filter((node) => node.role?.value === "option");
+		const property = (node, name) =>
+			node?.properties?.find((entry) => entry.name === name)?.value?.value;
+		let childAx = null;
+		let childAxError = null;
+		try {
+			const { cdp: childCdp } = await connectList(handle);
+			try {
+				await childCdp.send("Accessibility.enable");
+				childAx = await childCdp.send("Accessibility.getFullAXTree");
+			} finally {
+				childCdp.close();
+			}
+		} catch (error) {
+			childAxError = String(error?.message ?? error);
+		}
+		const childNodes = childAx?.nodes ?? [];
+		const childNonRoot = childNodes.filter(
+			(node) => node.role?.value !== "RootWebArea",
+		);
+		const childInert =
+			childAx !== null &&
+			childNodes.length > 0 &&
+			childNonRoot.every((node) => node.ignored === true);
+		record(
+			"AX1",
+			combobox !== undefined &&
+				listbox !== undefined &&
+				property(combobox, "expanded") === true &&
+				property(combobox, "controls") !== undefined &&
+				options.length === axFacts.s2.view.rowCount &&
+				childInert
+				? "PASS"
+				: "FAIL",
+			`Chromium AX, not VoiceOver. combobox=${Boolean(combobox)} expanded=${JSON.stringify(property(combobox, "expanded"))} controls=${Boolean(property(combobox, "controls"))} activeDescendant=${Boolean(property(combobox, "activedescendant"))} options=${options.length} mirrorRows=${axFacts.s2.view.rowCount} mirrorActive=${axFacts.s2.view.active} axActiveDescendant=${Boolean(property(combobox, "activedescendant"))} domActiveDescendant=${JSON.stringify(axGeometry?.activeDescendant ?? null)} childNodes=${childNodes.length} childInert=${childInert} childError=${JSON.stringify(childAxError)}`,
+		);
+
+		/*
+		 * F1: 20 hide/raise cycles. `probe hide` dismisses through the controller's
+		 * own path; each raise is a fresh projection (the same path the renderer's
+		 * hook uses) so the child is re-added last every time. The assertions are the
+		 * four ways focus could leak: the DOM's idea of it, the app's focused
+		 * webContents, the child's own focus events, and the child's isFocused.
+		 */
+		const cycleProblems = [];
+		baseline = await evaluate(
+			cdp,
+			`(() => {
+				const el = document.querySelector('[data-tour-tag="browser-address"]');
+				return {
+					hasFocus: document.hasFocus(),
+					active: document.activeElement === el,
+					selection: el ? [el.selectionStart, el.selectionEnd] : null,
+					blur: window.__s3?.blur ?? -1,
+				};
+			})()`,
+		);
+		for (let cycle = 0; cycle < 20; cycle += 1) {
+			await probe(cdp, "hide");
+			const raised = await projectS3(cdp, opened, 3, { active: -1 });
+			if (raised?.value?.shown !== true) {
+				cycleProblems.push(`cycle ${cycle}: ${JSON.stringify(raised)}`);
+				break;
+			}
+			const facts = await probe(cdp, "facts");
+			if (facts.ownerFocusedContentsId === facts.child.webContentsId) {
+				cycleProblems.push(`cycle ${cycle}: focused contents is the child`);
+			}
+			if (facts.child.focusEvents !== 0 || facts.child.isFocused !== false) {
+				cycleProblems.push(
+					`cycle ${cycle}: child focusEvents=${facts.child.focusEvents} isFocused=${facts.child.isFocused}`,
+				);
+			}
+			if (facts.child.order !== facts.child.childCount - 1) {
+				cycleProblems.push(
+					`cycle ${cycle}: child order ${facts.child.order}/${facts.child.childCount}`,
+				);
+			}
+		}
+		const afterCycles = await probe(cdp, "facts");
+		const afterCyclesDom = await evaluate(
+			cdp,
+			`(() => {
+				const el = document.querySelector('[data-tour-tag="browser-address"]');
+				return {
+					hasFocus: document.hasFocus(),
+					active: document.activeElement === el,
+					selection: el ? [el.selectionStart, el.selectionEnd] : null,
+					blur: window.__s3?.blur ?? -1,
+				};
+			})()`,
+		);
+		factsLog.push({ label: "after-20-cycles", facts: afterCycles });
+		record(
+			"F1",
+			cycleProblems.length === 0 &&
+				afterCyclesDom.hasFocus === true &&
+				afterCyclesDom.active === true &&
+				afterCyclesDom.blur === 0 &&
+				afterCycles.child.focusEvents === 0 &&
+				afterCycles.child.isFocused === false &&
+				afterCycles.ownerFocusedContentsId !==
+					afterCycles.child.webContentsId &&
+				JSON.stringify(afterCyclesDom.selection) ===
+					JSON.stringify(baseline.selection)
+				? "PASS"
+				: "FAIL",
+			`EMULATED FOCUS. cycles=${20 - cycleProblems.length}/20 problems=${JSON.stringify(cycleProblems)} baseline=${JSON.stringify(baseline)} after=${JSON.stringify(afterCyclesDom)} child=${JSON.stringify(afterCycles.child)} focusedContents=${afterCycles.ownerFocusedContentsId} ownerWindowFocused=${afterCycles.ownerWindowFocused}`,
+		);
+
+		/*
+		 * F2: the synthetic child path, exercised last because a row click commits
+		 * and navigates. A key goes through the child's own input pipeline
+		 * (`sendInputEvent`), then a down/up pair on a row; the parent's blur counter
+		 * and selection must be untouched by both, and the child's key count must
+		 * move (otherwise the input never arrived and "no blur" proves nothing).
+		 */
+		// A KNOWN applied model: the renderer's own projection is whatever the last
+		// real query produced, and the click rows must not be guessed from it.
+		await projectS3(cdp, opened, 3, { active: -1 });
+		await sleep(250);
+		// `probeClick` resolves the row against the child's own last measurement;
+		// without this call it refuses ("no applied list to click") even though the
+		// list is on screen.
+		await probe(cdp, "measure");
+		const beforeF2 = await probe(cdp, "facts");
+		const keysAfter = await probe(cdp, "key", { keyCode: "A" });
+		await sleep(200);
+		await probe(cdp, "click", { row: 1 });
+		await sleep(400);
+		const afterF2 = await probe(cdp, "facts");
+		const afterF2Dom = await evaluate(
+			cdp,
+			`(() => {
+				const el = document.querySelector('[data-tour-tag="browser-address"]');
+				return { hasFocus: document.hasFocus(), active: document.activeElement === el, blur: window.__s3?.blur ?? -1 };
+			})()`,
+		);
+		record(
+			"F2",
+			keysAfter.s2.keysBlocked > beforeF2.s2.keysBlocked &&
+				afterF2.child.focusEvents === 0 &&
+				afterF2.child.isFocused === false &&
+				afterF2Dom.hasFocus === true &&
+				afterF2Dom.active === true &&
+				afterF2Dom.blur === 0 &&
+				afterF2.s2.commitsEmitted === beforeF2.s2.commitsEmitted + 1
+				? "PASS"
+				: "FAIL",
+			`SYNTHETIC input. keysBlocked=${beforeF2.s2.keysBlocked}->${keysAfter.s2.keysBlocked} commits=${beforeF2.s2.commitsEmitted}->${afterF2.s2.commitsEmitted} dropped=${JSON.stringify(afterF2.s2.commitsDropped)} childFocusEvents=${afterF2.child.focusEvents} childIsFocused=${afterF2.child.isFocused} dom=${JSON.stringify(afterF2Dom)}`,
+		);
+	} finally {
+		writeFileSync(
+			join(OUT, "facts-s3-headless.json"),
+			`${JSON.stringify(factsLog, null, 2)}\n`,
+		);
+		await handle.stop("SIGTERM");
+		await Promise.race([handle.exited, sleep(15_000)]);
+		if (handle.child.exitCode === null) reapTree(handle.child.pid);
+	}
+}
+
+// ---- S3: the operator-attended visible run --------------------------------
+
+function lsappinfoFront() {
+	const result = spawnSync("lsappinfo", ["front"], { encoding: "utf8" });
+	if (result.error || result.status !== 0) {
+		return {
+			available: false,
+			value: null,
+			error: String(result.error ?? result.status),
+		};
+	}
+	return { available: true, value: result.stdout.trim(), error: null };
+}
+
+function askOperator(rl, question, seconds) {
+	return new Promise((done) => {
+		let settled = false;
+		const timer = setTimeout(() => {
+			if (settled) return;
+			settled = true;
+			done(null);
+		}, seconds * 1000);
+		console.log(
+			`\n${S3_RULE}\n${question}\n(answering window: ${seconds}s — no answer is recorded BLOCKED, never guessed)\n${S3_RULE}`,
+		);
+		rl.question("> ", (answer) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timer);
+			done(answer);
+		});
+	});
+}
+
+const S3_VISIBLE_PROMPTS = [
+	[
+		"V-ORDER",
+		"Look at the window now. Do you see the overlay list — header plus 5 rows, loud accent colours — sitting ON TOP of the sentinel page's striped bands, with page content visible around/below it? Answer 'yes' only if the list is not painted under the page.",
+	],
+	[
+		"V-FOCUS-CLICK",
+		"Click row 2 of the overlay list once. (This is also the first-click row: the window is inactive, so click #1 may only activate it. If nothing happened, click once more and say 'second'.)",
+	],
+	[
+		"V-HIT",
+		"Now click the sentinel page strip just BELOW the list (the bright yellow/blue band immediately under it).",
+	],
+	[
+		"V-WHEEL",
+		"Move the pointer over the overlay list and scroll the wheel two or three notches. Does the sentinel page underneath stay still?",
+	],
+	[
+		"I2",
+		"Click the address field at the top and type 日本 with your real macOS IME (do not commit with Enter). Do you see a candidate window, and does the field show marked text?",
+	],
+];
+
+/**
+ * The operator's own opt-in, checked BEFORE any boot. A typo here must not open
+ * the app's normal window on the way to finding out: the first version ran this
+ * after the refusal boots, so a missing variable still flashed a product window.
+ */
+function checkVisibleOptIn() {
+	const required = [
+		[S3_S1_ENV, "1"],
+		[S3_S2_ENV, "1"],
+		[S3_VISIBLE_ENV, "1"],
+		[S3_DRIVER_ENV, "1"],
+	];
+	const missing = required
+		.filter(([key, value]) => process.env[key] !== value)
+		.map(([key]) => `${key}=1`);
+	if (missing.length > 0) {
+		throw new Error(
+			`--s3-visible needs its own environment opt-in (${missing.join(", ")}); export them on the command line, exactly as docs/agent-driver.md spells it.`,
+		);
+	}
+	if (!process.stdin.isTTY) {
+		throw new Error(
+			"--s3-visible is operator-attended: it needs a TTY for its prompts. No unattended run may start a visible window on this rule.",
+		);
+	}
+}
+
+async function s3VisiblePreflight(handle) {
+	const log = existsSync(handle.logPath)
+		? readFileSync(handle.logPath, "utf8")
+		: "";
+	if (!/\[address-overlay\] ARMED \(S3 VISIBLE probe/.test(log)) {
+		throw new Error(
+			`the visible arm did not print its ARMED line; the app log tail is ${JSON.stringify(log.slice(-600))}`,
+		);
+	}
+}
+
+async function s3VisibleRun() {
+	checkVisibleOptIn();
+	console.log(
+		"[probe] S3 VISIBLE: one operator-attended run. It will (1) prove two refusals, (2) open ONE inactive window for at most 120 s, (3) ask five questions, (4) reap by exact pid. Nothing is captured with screencapture or desktopCapturer.",
+	);
+	// (1a) headless + VISIBLE must refuse and must not show anything.
+	{
+		const refusalBoot = await boot({
+			s1: true,
+			s2: true,
+			driver: true,
+			visible: true,
+			tag: "s3-visible-headless-refusal",
+		});
+		let refusal = null;
+		const deadline = Date.now() + 20_000;
+		while (Date.now() < deadline) {
+			const log = existsSync(refusalBoot.logPath)
+				? readFileSync(refusalBoot.logPath, "utf8")
+				: "";
+			const match = log.match(/\[address-overlay\] not armed: ([^\n]*)/);
+			if (match) {
+				refusal = match[1];
+				break;
+			}
+			await sleep(150);
+		}
+		record(
+			"G4a",
+			typeof refusal === "string" && /headless/.test(refusal) ? "PASS" : "FAIL",
+			`headless-labelled refusal=${JSON.stringify(refusal)} (no window: headless never shows one)`,
+		);
+		await refusalBoot.stop("SIGTERM");
+		await Promise.race([refusalBoot.exited, sleep(12_000)]);
+		if (refusalBoot.child.exitCode === null) reapTree(refusalBoot.child.pid);
+	}
+	// (1b) normal + VISIBLE must refuse. This one DOES open the product's own
+	// window for a few seconds — the operator is attending and has been told.
+	{
+		console.log(
+			"[probe] next: a NORMAL-labelled boot for ~5 s to prove the refusal. It opens the app's own focused window once — the only visible window before the probe. Ctrl-C now aborts.",
+		);
+		const refusalBoot = await boot({
+			s1: true,
+			s2: true,
+			driver: true,
+			visible: true,
+			mode: "normal",
+			tag: "s3-visible-normal-refusal",
+		});
+		let refusal = null;
+		const deadline = Date.now() + 20_000;
+		while (Date.now() < deadline) {
+			const log = existsSync(refusalBoot.logPath)
+				? readFileSync(refusalBoot.logPath, "utf8")
+				: "";
+			const match = log.match(/\[address-overlay\] not armed: ([^\n]*)/);
+			if (match) {
+				refusal = match[1];
+				break;
+			}
+			await sleep(150);
+		}
+		record(
+			"G4b",
+			typeof refusal === "string" && /normal/.test(refusal) ? "PASS" : "FAIL",
+			`normal-labelled refusal=${JSON.stringify(refusal)}; the mode's own window was opened by the boot and reaped`,
+		);
+		await refusalBoot.stop("SIGTERM");
+		await Promise.race([refusalBoot.exited, sleep(12_000)]);
+		if (refusalBoot.child.exitCode === null) reapTree(refusalBoot.child.pid);
+	}
+
+	const before = lsappinfoFront();
+	const launchedAt = Date.now();
+	const handle = await boot({
+		s1: true,
+		s2: true,
+		driver: true,
+		visible: true,
+		mode: "inactive",
+		tag: "s3-visible",
+	});
+	const rl = createInterface({
+		input: process.stdin,
+		output: process.stdout,
+		terminal: true,
+	});
+	let teardown = null;
+	try {
+		await s3VisiblePreflight(handle);
+		const { cdp } = await connectMain(handle);
+		await waitForDriver(cdp);
+		await navigate(cdp, "/browser");
+		await waitForSurface(cdp);
+		const pageServer = await startSentinelPageServer();
+		pageServers.push(pageServer);
+		await evaluate(cdp, "window.api.browser.newTab()");
+		await waitForActiveTab(cdp);
+		for (let index = 0; index < 3; index += 1) {
+			await presentActivePage(cdp, pageServer);
+			await sleep(150);
+		}
+		const pageCdp = await connectActivePage(handle);
+		const focusSetup = await s3FocusField(cdp);
+		await cdp.send("Input.insertText", { text: "127.0.0.1" });
+		const opened = await waitForS2(
+			cdp,
+			(facts) => facts.child?.visible === true,
+			8_000,
+		);
+		if (!opened.child?.visible) {
+			throw new Error(
+				`the real input path never opened the mirror, so there is nothing to look at: ${JSON.stringify(opened?.s2?.view ?? null)}`,
+			);
+		}
+		/*
+		 * The sentinel projection: five rows, a loud accent theme and a label an
+		 * operator can read back. It is the S2 hook's own payload shape posted through
+		 * the same dev-driver channel — no new IPC, no new product path.
+		 */
+		await projectS3(cdp, opened, 5, {
+			label: "S3 CHILD — visible probe",
+			theme: {
+				elevated: "#1b1f24",
+				ink: "#ffffff",
+				inkMuted: "#c7d0dc",
+				accent: "#ff2d55",
+				accentWash: "#3a1020",
+				rowHover: "#2b3440",
+				hairline: "#3a4552",
+				control: "#0a84ff",
+			},
+		});
+		await sleep(400);
+		const shownFacts = await probe(cdp, "facts");
+		const after = lsappinfoFront();
+		factsLog.push({ label: "visible-shown", facts: shownFacts });
+		const focusShowOk =
+			before.available &&
+			after.available &&
+			before.value === after.value &&
+			shownFacts.ownerWindowFocused === false;
+		record(
+			"V-FOCUS-SHOW",
+			focusShowOk ? "PASS" : "FAIL",
+			`lsappinfo front before=${JSON.stringify(before.value)} after=${JSON.stringify(after.value)} appFocused=${shownFacts.ownerWindowFocused} visibleMode=${shownFacts.visibleMode}`,
+		);
+
+		// V-COMPOSITE-CAP: the negative control. An owner-target capture must not
+		// contain the child; if it does, the composite becomes machine-measurable
+		// and the design note says so.
+		const shownShot = await cdp.send("Page.captureScreenshot", {
+			format: "png",
+		});
+		await probe(cdp, "hide");
+		await sleep(350);
+		const hiddenShot = await cdp.send("Page.captureScreenshot", {
+			format: "png",
+		});
+		const shownBytes = Buffer.from(shownShot.data, "base64");
+		const hiddenBytes = Buffer.from(hiddenShot.data, "base64");
+		writeFileSync(join(FRAMES, "s3-owner-shown.png"), shownBytes);
+		writeFileSync(join(FRAMES, "s3-owner-hidden.png"), hiddenBytes);
+		const identical = shownBytes.equals(hiddenBytes);
+		record(
+			"V-COMPOSITE-CAP",
+			identical ? "PASS" : "FAIL",
+			`owner-target CDP captures shown=${shownBytes.length}B hidden=${hiddenBytes.length}B identical=${identical}; ${identical ? "the owner capture excludes the child, as the S2 spike found — composite pixels remain operator-only" : "the owner capture DIFFERS with the child shown: the composite became machine-measurable on this run and must be inspected"}`,
+		);
+		// Re-show for the prompts below.
+		await projectS3(cdp, opened, 5, { label: "S3 CHILD — visible probe" });
+		await sleep(300);
+		await evaluate(
+			cdp,
+			"window.__s3.blur = 0; window.__s3.ime = []; window.__s3.clickOrigin = null;",
+		);
+
+		const results = {};
+		for (const [rowId, question] of S3_VISIBLE_PROMPTS) {
+			const remaining = Math.max(
+				8,
+				Math.floor(
+					(VISIBLE_CAP_MS - 25_000 - (Date.now() - launchedAt)) / 1000,
+				),
+			);
+			const answer = await askOperator(rl, question, Math.min(15, remaining));
+			const facts = await probe(cdp, "facts");
+			const counters = await pageCounters(pageCdp);
+			const dom = await evaluate(
+				cdp,
+				`(() => {
+					const el = document.querySelector('[data-tour-tag="browser-address"]');
+					return { blur: window.__s3.blur, ime: window.__s3.ime, hasFocus: document.hasFocus(), active: document.activeElement === el };
+				})()`,
+			);
+			results[rowId] = { answer, facts, counters, dom };
+			factsLog.push({ label: rowId, facts, counters, dom, answer });
+		}
+
+		const order = results["V-ORDER"];
+		record(
+			"V-ORDER",
+			order?.answer == null
+				? "BLOCKED"
+				: /^y/i.test(order.answer.trim())
+					? "PASS"
+					: "FAIL",
+			`operator answer=${JSON.stringify(order?.answer ?? null)} (their eyes only; no rig pixels)`,
+		);
+		const focusClick = results["V-FOCUS-CLICK"];
+		record(
+			"V-FOCUS-CLICK",
+			focusClick?.answer == null
+				? "BLOCKED"
+				: focusClick.dom.blur === 0 && focusClick.facts.child.focusEvents === 0
+					? "PASS"
+					: "FAIL",
+			`operator answer=${JSON.stringify(focusClick?.answer ?? null)} parentBlur=${focusClick?.dom.blur} childFocusEvents=${focusClick?.facts.child.focusEvents} mouseDowns=${focusClick?.facts.s2.mouseDowns} commits=${focusClick?.facts.s2.commitsEmitted} activeElementIsInput=${focusClick?.dom.active}`,
+		);
+		record(
+			"V-FIRSTMOUSE",
+			focusClick?.answer == null ? "BLOCKED" : "PASS",
+			`click #1 in an unfocused inactive window: answer=${JSON.stringify(focusClick?.answer ?? null)}${/second/i.test(focusClick?.answer ?? "") ? " — the FIRST click did not land (acceptFirstMouse=false), the second did: recorded, not treated as a defect" : " — the first click landed"}`,
+		);
+		const hit = results["V-HIT"];
+		record(
+			"V-HIT",
+			hit?.answer == null
+				? "BLOCKED"
+				: hit.counters.downs > 0
+					? "PASS"
+					: "FAIL",
+			`operator answer=${JSON.stringify(hit?.answer ?? null)} pageCounters=${JSON.stringify(hit?.counters ?? null)} (the page's own listener: a click just below the list must reach it)`,
+		);
+		const wheel = results["V-WHEEL"];
+		record(
+			"V-WHEEL",
+			wheel?.answer == null
+				? "BLOCKED"
+				: wheel.counters.wheels === 0 && wheel.counters.scrollTop === 0
+					? "PASS"
+					: "FAIL",
+			`operator answer=${JSON.stringify(wheel?.answer ?? null)} pageWheels=${wheel?.counters.wheels} pageScrollTop=${wheel?.counters.scrollTop}`,
+		);
+		const ime = results.I2;
+		record(
+			"I2",
+			ime?.answer == null
+				? "BLOCKED"
+				: ime.dom.ime.length > 0
+					? "PASS"
+					: "FAIL",
+			`operator answer=${JSON.stringify(ime?.answer ?? null)} compositionEventsSeenByTheField=${JSON.stringify(ime?.dom.ime ?? [])}`,
+		);
+
+		teardown = { launchedAt, pid: handle.child.pid, reason: "probe-finished" };
+	} catch (error) {
+		appendEvent({
+			event: "s3-visible-failure",
+			error: String(error?.stack ?? error),
+		});
+		throw error;
+	} finally {
+		rl.close();
+		const stopAt = Date.now();
+		await handle.stop("SIGTERM");
+		const exit = await Promise.race([
+			handle.exited,
+			sleep(20_000).then(() => null),
+		]);
+		if (exit === null) reapTree(handle.child.pid);
+		const aliveNow = alive(handle.child.pid);
+		const survivors = descendants(handle.child.pid).map((pid) => pid);
+		const teardownRecord = {
+			pid: handle.child.pid,
+			exitCode: handle.child.exitCode,
+			exitSignal: handle.child.signalCode,
+			stopMs: Date.now() - stopAt,
+			processAlive: aliveNow,
+			leftovers: survivors,
+			capMs: VISIBLE_CAP_MS,
+			ranFor: Date.now() - launchedAt,
+			tag: "s3-visible",
+		};
+		writeFileSync(
+			join(OUT, "teardown.json"),
+			`${JSON.stringify(teardownRecord, null, 2)}\n`,
+		);
+		recordRowVisible(teardownRecord);
+	}
+}
+
+function recordRowVisible(teardown) {
+	record(
+		"T1-visible",
+		teardown.exitCode === 0 &&
+			teardown.processAlive === false &&
+			teardown.leftovers.length === 0
+			? "PASS"
+			: "FAIL",
+		`exit=${teardown.exitCode} signal=${teardown.exitSignal} stopMs=${teardown.stopMs} alive=${teardown.processAlive} leftovers=${JSON.stringify(teardown.leftovers)} ranFor=${teardown.ranFor}ms`,
+	);
+}
+
+/** Rows that only an attending operator can produce: BLOCKED, never passes. */
+function recordS3UnattendedRows() {
+	for (const id of [
+		"G4b",
+		"I2",
+		"AX2",
+		"V-ORDER",
+		"V-HIT",
+		"V-FOCUS-SHOW",
+		"V-FOCUS-CLICK",
+		"V-FIRSTMOUSE",
+		"V-WHEEL",
+		"V-COMPOSITE-CAP",
+		"T1-visible",
+		"W1",
+	]) {
+		// A visible run may already have recorded this row; only the gaps are BLOCKED.
+		if (rows.find((row) => row.id === id)?.at != null) continue;
+		record(
+			id,
+			"BLOCKED",
+			`operator-attended --s3-visible was NOT run in this pass; ${id === "W1" ? "Windows/Linux was not measured" : "this row needs eyes, a real click, a real wheel or a real macOS IME"}`,
+		);
+	}
 }
 
 // ---- asserted-only rows ----------------------------------------------------
@@ -3093,8 +4176,47 @@ function closeAssertedRows() {
 
 console.log(`[probe] evidence: ${OUT}`);
 appendEvent({ event: "start", out: OUT, build: buildIdentity });
+let matrixError = null;
 try {
-	if (S2) {
+	if (S3_VISIBLE) {
+		/*
+		 * One operator-attended run. Its rows are planned first so a crash still
+		 * leaves a matrix that says which claims were never reached, and the
+		 * refusals it can prove are proven BEFORE the visible window opens.
+		 */
+		rows.length = 0;
+		planS3Rows();
+		await s3VisibleRun();
+		record(
+			"G4c",
+			"asserted-only",
+			"the packaged refusal is pinned by scripts/browser-address-overlay.test.mjs's S3 table; a packaged build cannot be spawned from this checkout",
+		);
+		recordS3UnattendedRows();
+	} else if (S3) {
+		/*
+		 * S3 is an increment on S2, so the S2 rows are re-run ON THIS HEAD as the
+		 * regression surface and K3/M1 are derived from those receipts rather than
+		 * re-measured. No S1-only rows: S1's matrix is unchanged and runs with no
+		 * flag.
+		 */
+		rows.length = 0;
+		planS2Rows();
+		planS3Rows();
+		s2BuildRow();
+		await s3HeadlessVisibleRefusal();
+		await s2GateCases();
+		await s2RealInputMatrix();
+		await s2SyntheticMatrix();
+		deriveS3Rows();
+		await s3HeadlessMatrix();
+		record(
+			"G4c",
+			"asserted-only",
+			"the packaged refusal is pinned by scripts/browser-address-overlay.test.mjs's S3 table; a packaged build cannot be spawned from this checkout",
+		);
+		recordS3UnattendedRows();
+	} else if (S2) {
 		// The S1 rows were planned at module load; an S2 run reports only S2 rows.
 		rows.length = 0;
 		planS2Rows();
@@ -3109,15 +4231,17 @@ try {
 		await windowCloseCase();
 	}
 } catch (error) {
+	// Recorded in the finally, AFTER the asserted/blocked close-out rows: those
+	// ids are owned by closeS2Rows/closeAssertedRows and recording them twice is
+	// a probe bug (the first S3 run died exactly there).
+	matrixError = error;
 	console.error(`[probe] matrix failed: ${String(error?.stack ?? error)}`);
 	appendEvent({ event: "failure", error: String(error?.stack ?? error) });
-	for (const row of rows) {
-		if (row.at === null)
-			record(row.id, "FAIL", `matrix aborted: ${String(error)}`);
-	}
 } finally {
-	if (S2) closeS2Rows();
-	else closeAssertedRows();
+	// A visible run plans ONLY S3 rows: the S1/S2 close-out rows belong to the
+	// matrices that were not run, and recording them would be "unknown row".
+	if (S2 || S3) closeS2Rows(S3);
+	else if (!S3_VISIBLE) closeAssertedRows();
 	for (const bootHandle of boots) {
 		if (bootHandle.child.exitCode === null) {
 			reapTree(bootHandle.child.pid);
@@ -3128,9 +4252,39 @@ try {
 			}
 		}
 	}
+	/*
+	 * The teardown receipt, written after every boot was stopped and reaped: one
+	 * entry per launch, by exact pid, so "no survivors" is a file a reviewer can
+	 * read rather than a line a run printed. The visible run writes its own
+	 * detailed `teardown.json` inside `s3VisibleRun`, so this aggregate leaves it
+	 * alone.
+	 */
+	if (!S3_VISIBLE) {
+		const teardown = {
+			at: at(),
+			boots: boots.map((entry) => ({
+				tag: entry.tag,
+				pid: entry.child.pid,
+				exitCode: entry.child.exitCode,
+				exitSignal: entry.child.signalCode,
+				alive: alive(entry.child.pid),
+				leftovers: descendants(entry.child.pid).filter(alive),
+			})),
+		};
+		writeFileSync(
+			join(OUT, "teardown.json"),
+			`${JSON.stringify(teardown, null, 2)}\n`,
+		);
+	}
 	const unresolved = rows.filter((row) => row.at === null);
 	for (const row of unresolved) {
-		record(row.id, "BLOCKED", "not reached by this run");
+		record(
+			row.id,
+			matrixError === null ? "BLOCKED" : "FAIL",
+			matrixError === null
+				? "not reached by this run"
+				: `matrix aborted: ${String(matrixError)}`,
+		);
 	}
 	writeFileSync(join(OUT, "plan.json"), `${JSON.stringify(rows, null, 2)}\n`);
 	const counts = {};

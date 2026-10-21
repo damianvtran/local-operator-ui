@@ -329,6 +329,46 @@ Two mistakes are recorded here because they are the two ways this gate fails:
   `HOME`/config as well as on the same config — so the requirement is one profile
   per launch, which is what the harness does, and not serialisation of runs.
 
+## The address-overlay probe's own opt-ins
+
+The browser's address-overlay child (`src/main/browser/address-overlay.ts`) is not
+the dev driver and is not armed by it: it has its own exact-`1` opt-ins, each an
+increment on the one before, and every refusal prints
+`[address-overlay] not armed: <reason>` on stdout.
+
+| Variable | Arms | Extra requirements |
+| --- | --- | --- |
+| `LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S1` | the inert native child | armed dev driver, `headless` |
+| `…_S2` | the mirror list inside that child | S1, armed driver, `headless` |
+| `…_VISIBLE` | one **visible** probe run of that mirror | S1 + S2, armed driver, `--window-mode=inactive`, unpackaged |
+
+`…_VISIBLE` is the only one that puts anything on the operator's screen, so it
+is also the only one with containment of its own:
+
+- **never a default and never product surface** — absent on every ordinary
+  launch, refused in `normal` (the product's own mode), refused in `headless`
+  (a headless run labelled “visible” would misattribute its evidence), refused in
+  a packaged build;
+- **launcher-bound** — `inactive` is normally not watched (`resolveLauncherWatchPlan`
+  treats a visible window as closeable by a person), but a visible probe passes
+  `boundedVisibleProbe: true` and quits when its launcher goes;
+- **capped at 120 s** — `ADDRESS_OVERLAY_VISIBLE_MAX_MS`, `unref`'d, ending in the
+  same bounded `endHeadlessRun` quit every other non-product run takes;
+- **one self-contained command.** `node scripts/browser-address-overlay-probe.mjs
+  --s3-visible --window-mode=inactive --out <dir>` refuses to start without that
+  argv, without its own environment opt-in, or without a TTY. It proves the
+  headless/normal refusals first, opens one `inactive` window, asks five
+  numbered questions, then reaps its exact pid tree and writes `teardown.json`.
+  Nothing here calls `screencapture`, `desktopCapturer` or any other capture API
+  that could raise a TCC prompt: a composite-pixel claim is the operator's eyes
+  or an operator-supplied screenshot, and an unattended run marks those rows
+  BLOCKED rather than passing them.
+
+The headless half is `--s3` (and `--s2` for the mirror alone). `--s3` re-runs the
+S2 matrix on the current head as its regression surface and adds the focus, IME
+and accessibility rows; `docs/design/browser-address-overlay.md` holds what those
+rows do and do not establish.
+
 ## Isolation: what the run cannot reach
 
 A driver run happens on the operator's desktop, next to his real app. Every path
