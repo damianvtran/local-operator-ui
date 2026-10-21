@@ -13,6 +13,10 @@ import { toggleReaction } from "./team-bridge-emoji-model";
 import { TeamBridgeEmojiPicker } from "./team-bridge-emoji-picker";
 import { useReactionPreferences } from "./team-bridge-reaction-preferences";
 
+// A stable empty snapshot matters: a new [] default on every render retriggers
+// synchronization after setRows and loops on messages with no reactions.
+const EMPTY_REACTIONS: TeamBridgeReaction[] = [];
+
 type Props = {
 	conversationId: string;
 	messageId: string;
@@ -30,7 +34,7 @@ export function TeamBridgeReactions({
 	messageId,
 	accountId,
 	tenantId,
-	reactions = [],
+	reactions = EMPTY_REACTIONS,
 	disabled = false,
 	toggle = TeamBridgeApi.react,
 }: Props) {
