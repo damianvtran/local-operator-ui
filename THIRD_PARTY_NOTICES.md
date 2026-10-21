@@ -221,26 +221,50 @@ Bundled in the app (they run in the hidden voice page; see `src/voice-page/`):
 - **Silero VAD v5** (`silero_vad_v5.onnx`) — MIT licence, Silero Team
   (https://github.com/snakers4/silero-vad). Bundled as shipped by `vad-web`.
 
-### Supertonic use restrictions (OpenRAIL-M attachment)
+### Supertonic use restrictions (OpenRAIL-M, Attachment A)
 
-OpenRAIL-M requires that its use restrictions be passed to anyone who receives
-the model. By using the local voice you agree not to use Supertonic, or output
-made with it, to:
+The Supertonic licence is the BigScience Open RAIL-M License dated August 18,
+2022 (https://huggingface.co/Supertone/supertonic/raw/main/LICENSE, read
+2026-10-20). Its Attachment A must pass to anyone who receives the model; it is
+reproduced here verbatim:
 
-- violate any law, or infringe another person's rights;
-- impersonate a person, or create a voice that deceives people about who is
-  speaking, without that person's consent;
-- harass, defame, exploit or harm any person, including minors;
-- generate or spread disinformation, or content meant to mislead about its
-  origin;
-- make decisions that affect a person's legal rights or access to essential
-  services without human review; or
-- build a system that does any of the above.
+> You agree not to use the Model or Derivatives of the Model:
+> (a) In any way that violates any applicable national, federal, state, local or
+> international law or regulation;
+> (b) For the purpose of exploiting, harming or attempting to exploit or harm
+> minors in any way;
+> (c) To generate or disseminate verifiably false information and/or content with
+> the purpose of harming others;
+> (d) To generate or disseminate personal identifiable information that can be used
+> to harm an individual;
+> (e) To generate or disseminate information and/or content (e.g. images, code,
+> posts, articles), and place the information and/or content in any context (e.g.
+> bot generating tweets) without expressly and intelligibly disclaiming that the
+> information and/or content is machine generated;
+> (f) To defame, disparage or otherwise harass others;
+> (g) To impersonate or attempt to impersonate (e.g. deepfakes) others without
+> their consent;
+> (h) For fully automated decision making that adversely impacts an individual's
+> legal rights or otherwise creates or modifies a binding, enforceable obligation;
+> (i) For any use intended to or which has the effect of discriminating against or
+> harming individuals or groups based on online or offline social behavior or known
+> or predicted personal or personality characteristics;
+> (j) To exploit any of the vulnerabilities of a specific group of persons based on
+> their age, social, physical or mental characteristics, in order to materially
+> distort the behavior of a person pertaining to that group in a manner that causes
+> or is likely to cause that person or another person physical or psychological
+> harm;
+> (k) For any use intended to or which has the effect of discriminating against
+> individuals or groups based on legally protected characteristics or categories;
+> (l) To provide medical advice and medical results interpretation;
+> (m) To generate or disseminate information for the purpose to be used for
+> administration of justice, law enforcement, immigration or asylum processes, such
+> as predicting an individual will commit fraud/crime commitment (e.g. by text
+> profiling, drawing causal relationships between assertions made in documents,
+> indiscriminate and arbitrarily-targeted use).
 
-This is a summary for readers of this notice. The binding text is Attachment A of
-the licence published with the model at https://huggingface.co/Supertone/supertonic
-and it governs where the two differ. Re-check it when the pinned model revision
-in `src/voice-page/model-manifest.ts` changes.
+Re-check the licence text when the pinned model revision in
+`src/voice-page/model-manifest.ts` changes.
 
 ### Code the voice runners port from
 
