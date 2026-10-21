@@ -66,7 +66,7 @@ export const LiveUpdatesPausedBannerView = ({
 						className="min-w-0 flex-1 text-body-sm text-ink"
 						aria-live="polite"
 					>
-						{t("ui.chat.canonical.transcript.live_updates_paused")}
+						{t("ui.chat.live_updates.paused")}
 					</span>
 					<span className="flex shrink-0 items-center gap-2">
 						{/*
@@ -80,11 +80,11 @@ export const LiveUpdatesPausedBannerView = ({
 						 */}
 						{reloading ? (
 							<span className="text-body-sm text-ink-muted" aria-live="polite">
-								{t("ui.chat.canonical.transcript.live_updates_reloading")}
+								{t("ui.chat.live_updates.reloading")}
 							</span>
 						) : (
 							<Button variant="primary" size="sm" onClick={onReload}>
-								{t("ui.chat.canonical.transcript.live_updates_reload")}
+								{t("ui.chat.live_updates.reload")}
 							</Button>
 						)}
 					</span>
