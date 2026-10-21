@@ -2764,11 +2764,27 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * box below - a legacy path has no live stream to be paused.
 						 */}
 						{canonical && (
-							<LiveUpdatesPausedBanner
-								paused={canonical.view.liveUpdatesPaused}
-								reloading={canonical.view.liveUpdatesReloading}
-								onReload={canonical.view.reloadFromHistory}
-							/>
+							/*
+							 * The SAME column contract as the dock and the stopped-turn band
+							 * (`CHAT_COLUMN_CONTAINER` + inset): the band's copy must align
+							 * with the composer's own track, not run full-bleed beside a
+							 * centred box. The banner carries the band grammar; the column is
+							 * the host's, which is also why its story can render the band
+							 * alone.
+							 */
+							<div
+								className={cn(
+									CHAT_COLUMN_CONTAINER,
+									CHAT_COLUMN_INSET,
+									"w-full shrink-0 pt-2",
+								)}
+							>
+								<LiveUpdatesPausedBanner
+									paused={canonical.view.liveUpdatesPaused}
+									reloading={canonical.view.liveUpdatesReloading}
+									onReload={canonical.view.reloadFromHistory}
+								/>
+							</div>
 						)}
 						{/* Message input */}
 						{(canonical || !(isLoadingMessages && messages.length === 0)) && (
