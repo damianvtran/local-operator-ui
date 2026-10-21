@@ -1,0 +1,441 @@
+import assert from "node:assert/strict";
+import Module from "node:module";
+import { test } from "node:test";
+import { build } from "esbuild";
+import { JSDOM } from "jsdom";
+import React, { act } from "react";
+
+// Exercise shipped helpers/hooks, not a second persistence implementation.
+// This is DOM/state and wire-contract proof, not a native/rendered-frame claim.
+const dom = new JSDOM("<!doctype html><div id='root'></div>", {
+	url: "http://localhost/",
+});
+globalThis.window = dom.window;
+globalThis.document = dom.window.document;
+globalThis.localStorage = dom.window.localStorage;
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+const { createRoot } = await import("react-dom/client");
+const bundle = await build({
+	stdin: {
+		contents: `export * from "./src/renderer/src/features/team-bridge/team-bridge-drafts";
+ export * from "./src/renderer/src/features/team-bridge/use-team-bridge-drafts";
+ export * from "./src/renderer/src/features/team-bridge/team-bridge-scheduling";
+ export {desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract";
+ export {TeamBridgeScheduledListView} from "./src/renderer/src/features/team-bridge/team-bridge-scheduled";
+ export {teamBridgeScheduledMessageSchema, teamBridgeScheduledListSchema} from "./src/shared/team-bridge-contract";`,
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "cjs",
+	platform: "node",
+	external: ["react", "react-dom"],
+	// DOM/state test only: CSS is deliberately not claimed as frame evidence.
+	loader: { ".css": "empty" },
+	tsconfig: "tsconfig.app.json",
+	write: false,
+});
+const compiled = new Module(
+	`${process.cwd()}/scripts/team-bridge-drafts-runtime.cjs`,
+);
+compiled.filename = `${process.cwd()}/scripts/team-bridge-drafts-runtime.cjs`;
+compiled.paths = Module._nodeModulePaths(process.cwd());
+compiled._compile(bundle.outputFiles[0].text, compiled.filename);
+const model = compiled.exports;
+const LOST_RESPONSE = /response lost/;
+const person = { type: "person", accountId: "acct_b" };
+const other = { type: "chief", accountId: "acct_b" };
+let current;
+function Probe(props) {
+	current = model.useTeamBridgeDrafts(
+		props.account ?? "acct_a",
+		props.tenant ?? "org_a",
+		props.target ?? person,
+		"",
+		props.signedOut,
+	);
+	return null;
+}
+
+async function mount() {
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	const render = async (props = {}) => {
+		await act(async () => root.render(React.createElement(Probe, props)));
+	};
+	const close = async () => {
+		await act(async () => root.unmount());
+		element.remove();
+	};
+	await render();
+	return { render, close };
+}
+
+test("drafts survive target/org switching and reload, with recipient chips and retry ID", async () => {
+	localStorage.clear();
+	const app = await mount();
+	await act(async () => current.setBody("private person draft"));
+	const ref = current.current.clientRef;
+	await app.render({ target: other });
+	assert.equal(current.body, "");
+	await act(async () => current.setBody("chief draft"));
+	await app.render({ tenant: "org_b" });
+	assert.equal(current.body, "");
+	await act(async () => current.setBody("other org"));
+	await app.render();
+	assert.equal(current.body, "private person draft");
+	assert.equal(current.current.clientRef, ref);
+	const target = {
+		type: "compose",
+		recipients: [{ kind: "human", accountId: "acct_b", label: "Bea" }],
+	};
+	await app.render({ target });
+	await act(async () => current.setBody("group draft"));
+	await act(async () =>
+		current.update({
+			conversationId: "bcv_created",
+			sendAt: "2030-01-01T12:00:00Z",
+		}),
+	);
+	await app.close();
+	const reload = await mount();
+	await reload.render({ target });
+	assert.equal(current.body, "group draft");
+	assert.deepEqual(current.current.target.recipients, target.recipients);
+	assert.equal(current.current.conversationId, "bcv_created");
+	assert.equal(current.current.sendAt, "2030-01-01T12:00:00Z");
+	await reload.close();
+});
+
+test("settling a send clears only the submitted revision in its original target", async () => {
+	localStorage.clear();
+	const app = await mount();
+	await act(async () => current.setBody("same"));
+	const submitted = current;
+	const ref = current.current.clientRef;
+	await app.render({ target: other });
+	await act(async () => current.setBody("same"));
+	await act(async () =>
+		submitted.clearSent(model.draftTargetKey(person), "same", ref),
+	);
+	assert.equal(current.body, "same");
+	await app.render();
+	assert.equal(current.body, "");
+	await act(async () => current.setBody("first"));
+	const old = current;
+	await act(async () => current.setBody("edited"));
+	await act(async () =>
+		old.clearSent(model.draftTargetKey(person), "first", old.current.clientRef),
+	);
+	assert.equal(current.body, "edited");
+	await app.close();
+});
+
+test("authoritative logout/account switch erases old authored bodies but offline reads do not", () => {
+	localStorage.clear();
+	const key = model.draftStorageKey("acct_a", "org_a");
+	localStorage.setItem(
+		key,
+		JSON.stringify({
+			[model.draftTargetKey(person)]: {
+				target: person,
+				body: "private",
+				clientRef: "ref",
+			},
+		}),
+	);
+	model.reconcileDraftAccount(localStorage, { state: "unavailable" });
+	assert.ok(localStorage.getItem(key));
+	model.reconcileDraftAccount(localStorage, {
+		state: "ready",
+		account_id: "acct_b",
+	});
+	assert.equal(localStorage.getItem(key), null);
+	const next = model.draftStorageKey("acct_b", "org_a");
+	localStorage.setItem(next, "{}");
+	model.reconcileDraftAccount(localStorage, { state: "signed_out" });
+	assert.equal(localStorage.getItem(next), null);
+});
+
+test("corrupt recipient storage cannot crash the To bar; scope keys cannot collide", () => {
+	assert.notEqual(
+		model.draftStorageKey("a:b", "c"),
+		model.draftStorageKey("a", "b:c"),
+	);
+	const invalid = {
+		compose: {
+			target: { type: "compose", recipients: [null] },
+			body: "text",
+			clientRef: "ref",
+		},
+	};
+	assert.deepEqual(
+		model.readDrafts({ getItem: () => JSON.stringify(invalid) }, "key"),
+		{},
+	);
+	assert.deepEqual(model.readDrafts({ getItem: () => "{broken" }, "key"), {});
+});
+
+test("first create succeeds, schedule response is lost, reload retry reuses conversation and client_ref", async () => {
+	const events = [];
+	let acknowledged;
+	let fail = true;
+	let creates = 0;
+	const args = {
+		tenantId: "org_a",
+		body: "draft",
+		clientRef: "stable-ref",
+		sendAt: "2030-01-01T12:00:00Z",
+		recipients: [
+			{ kind: "human", accountId: "b", label: "Bea" },
+			{ kind: "human", accountId: "c", label: "Cora" },
+		],
+		remembered: new Map(),
+		onCreated: (id) => {
+			acknowledged = id;
+			events.push("durable-id");
+		},
+		create: async () => {
+			creates++;
+			return { id: "bcv_group", tenant_id: "org_a" };
+		},
+		schedule: async (request) => {
+			events.push("post");
+			assert.equal(request.conversation_id, acknowledged);
+			assert.equal(request.client_ref, "stable-ref");
+			if (fail) throw new Error("response lost");
+			return { id: "scheduled" };
+		},
+	};
+	await assert.rejects(model.scheduleTeamBridgeDraft(args), LOST_RESPONSE);
+	assert.deepEqual(events, ["durable-id", "post"]);
+	fail = false;
+	await model.scheduleTeamBridgeDraft({
+		...args,
+		remembered: new Map(),
+		conversationId: acknowledged,
+	});
+	assert.equal(creates, 1);
+});
+
+test("local date validation rejects normalization and enforces inclusive server window", () => {
+	const value = "2030-04-05T12:30";
+	const at = new Date(value).getTime();
+	assert.equal(
+		model.scheduledSendAt(value, at - 60_000),
+		new Date(at).toISOString(),
+	);
+	assert.equal(model.scheduledSendAt(value, at - 59_999), null);
+	assert.equal(
+		model.scheduledSendAt(value, at - 120 * 86_400_000),
+		new Date(at).toISOString(),
+	);
+	assert.equal(model.scheduledSendAt(value, at - 120 * 86_400_000 - 1), null);
+	assert.equal(
+		model.scheduledSendAt("2030-02-30T12:30", at - 86_400_000),
+		null,
+	);
+	assert.equal(model.scheduledSendAt("not a date"), null);
+});
+
+test("scheduled ops map strict tenant selectors and normal DTOs, including msg-only cancel ack", () => {
+	const create = model.desktopRequestSchema.parse({
+		op: "team_bridge.scheduled.create",
+		tenant_id: "org_a",
+		conversation_id: "bcv_a",
+		client_ref: "ref",
+		body: "private",
+		send_at: "2030-04-05T12:30:00Z",
+	});
+	assert.equal(
+		model.desktopEndpoint(create).path,
+		"/v1/desktop/team-bridge/scheduled",
+	);
+	assert.equal(model.desktopEndpoint(create).method, "POST");
+	const update = model.desktopEndpoint(
+		model.desktopRequestSchema.parse({
+			op: "team_bridge.scheduled.update",
+			tenant_id: "org_a",
+			scheduled_id: "bsch_1",
+			body: "edit",
+		}),
+	);
+	assert.equal(
+		update.path,
+		"/v1/desktop/team-bridge/scheduled/bsch_1?tenant_id=org_a",
+	);
+	assert.deepEqual(update.body, { body: "edit" });
+	const cancel = model.desktopEndpoint(
+		model.desktopRequestSchema.parse({
+			op: "team_bridge.scheduled.cancel",
+			tenant_id: "org_a",
+			scheduled_id: "id",
+		}),
+	);
+	assert.equal(cancel.method, "DELETE");
+	assert.equal(
+		model.desktopRequestSchema.safeParse({
+			op: "team_bridge.scheduled.cancel",
+			scheduled_id: "id",
+		}).success,
+		false,
+	);
+	assert.equal(
+		model.desktopRequestSchema.safeParse({
+			...create,
+			send_at: "2030-04-05T12:30:00",
+		}).success,
+		false,
+	);
+	assert.equal(
+		model.desktopRequestSchema.safeParse({ ...create, unexpected: true })
+			.success,
+		false,
+	);
+	const row = {
+		id: "id",
+		tenant_id: "org_a",
+		conversation_id: "bcv_a",
+		body: "private",
+		send_at: create.send_at,
+		status: "sending",
+		created_at: create.send_at,
+	};
+	assert.equal(
+		model.teamBridgeScheduledListSchema.parse({ scheduled: [row] }).scheduled
+			.length,
+		1,
+	);
+	assert.equal(
+		model.teamBridgeScheduledMessageSchema.safeParse({ ...row, status: "sent" })
+			.success,
+		false,
+	);
+});
+
+test("changed To recipients invalidate an acknowledged group ID, reordering does not", async () => {
+	localStorage.clear();
+	const app = await mount();
+	const b = { kind: "human", accountId: "b", label: "Bea" };
+	const c = { kind: "human", accountId: "c", label: "Cora" };
+	await app.render({ target: { type: "compose", recipients: [b, c] } });
+	await act(async () =>
+		current.update({
+			body: "draft",
+			conversationId: "old_group",
+			sendAt: "2030-01-01T12:00:00Z",
+		}),
+	);
+	const ref = current.current.clientRef;
+	await app.render({ target: { type: "compose", recipients: [c, b] } });
+	assert.equal(current.current.conversationId, "old_group");
+	assert.equal(current.current.clientRef, ref);
+	await app.render({ target: { type: "compose", recipients: [b] } });
+	assert.equal(current.current.conversationId, undefined);
+	assert.equal(current.current.sendAt, undefined);
+	assert.notEqual(current.current.clientRef, ref);
+	assert.equal(current.body, "draft");
+	await app.close();
+});
+
+test("quota failure preserves in-memory work across target switches and refuses durable send setup", async () => {
+	localStorage.clear();
+	const app = await mount();
+	const prototype = Object.getPrototypeOf(localStorage);
+	const original = prototype.setItem;
+	prototype.setItem = () => {
+		throw new Error("quota");
+	};
+	try {
+		let persisted;
+		await act(async () => {
+			persisted = current.update({ body: "do not lose" });
+		});
+		assert.equal(persisted, false);
+		assert.equal(current.storageFailed, true);
+		await app.render({ target: other });
+		await app.render();
+		assert.equal(current.body, "do not lose");
+	} finally {
+		prototype.setItem = original;
+		await app.close();
+	}
+});
+
+test("cancel race and network errors preserve rows, refresh state, and leave an accessible error", async () => {
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	const row = {
+		id: "bsch_a",
+		tenant_id: "org_a",
+		conversation_id: "bcv_a",
+		body: "private fixture",
+		send_at: "2030-04-05T12:30:00Z",
+		status: "scheduled",
+		created_at: "2030-04-05T10:00:00Z",
+	};
+	let refreshes = 0;
+	const requests = [];
+	window.api = {
+		desktop: {
+			request: async (request) => {
+				requests.push(request);
+				return {
+					status: 409,
+					body: {
+						detail: { code: "invalid_transition", message: "already sending" },
+					},
+				};
+			},
+		},
+	};
+	try {
+		await act(async () =>
+			root.render(
+				React.createElement(model.TeamBridgeScheduledListView, {
+					state: "ready",
+					messages: [row],
+					refresh: async () => {
+						refreshes++;
+					},
+				}),
+			),
+		);
+		const cancel = [...element.querySelectorAll("button")].find(
+			(button) => button.textContent === "Cancel message",
+		);
+		assert.ok(cancel);
+		await act(async () => cancel.click());
+		assert.equal(requests[0].op, "team_bridge.scheduled.cancel");
+		assert.equal(requests[0].tenant_id, "org_a");
+		assert.equal(refreshes, 1);
+		assert.ok(element.querySelector('[role="alert"]'));
+		assert.ok(element.textContent.includes("private fixture"));
+		window.api.desktop.request = async () => {
+			throw new Error("offline");
+		};
+		await act(async () => cancel.click());
+		assert.equal(refreshes, 2);
+		assert.equal(cancel.disabled, false);
+		await act(async () =>
+			root.render(
+				React.createElement(model.TeamBridgeScheduledListView, {
+					state: "ready",
+					messages: [{ ...row, status: "sending" }],
+					refresh: async () => {},
+				}),
+			),
+		);
+		assert.equal(
+			[...element.querySelectorAll("button")].some(
+				(button) => button.textContent === "Cancel message",
+			),
+			false,
+		);
+	} finally {
+		await act(async () => root.unmount());
+		element.remove();
+		window.api = undefined;
+	}
+});

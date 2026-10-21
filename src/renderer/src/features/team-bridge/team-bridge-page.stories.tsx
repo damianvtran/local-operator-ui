@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { type CSSProperties, useLayoutEffect } from "react";
+import { type CSSProperties, useLayoutEffect, useState } from "react";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
@@ -933,4 +933,30 @@ export const EmptySections: Story = {
 		messages: [],
 		messageState: "idle",
 	},
+};
+
+/** Interactive per-target draft probe; only this fixture account is touched.
+ * Navigate among channel/group/DM, type independently, then reload the story. */
+function DurableDraftStory() {
+	const [target, setTarget] = useState<
+		import("./team-bridge-model").TeamBridgeTarget
+	>({ type: "conversation", id: channel.id });
+	return (
+		<TeamBridgePageView
+			{...meta.args}
+			selfAccountId="acct_story_drafts"
+			target={target}
+			onTarget={setTarget}
+			initialDraft="The handoff notes are ready for review."
+			onSend={async () => {
+				throw new Error("fixture send refused");
+			}}
+			onSchedule={async () => {
+				throw new Error("fixture schedule refused");
+			}}
+		/>
+	);
+}
+export const DurablePerTargetDrafts: Story = {
+	render: () => <DurableDraftStory />,
 };
