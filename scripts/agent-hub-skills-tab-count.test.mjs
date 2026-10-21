@@ -239,6 +239,8 @@ const mountPage = async ({
 	orgSkills = 6,
 	signedIn = false,
 	withOrg = true,
+	failPublicSkills = false,
+	skillsCapability = true,
 } = {}) => {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		pretendToBeVisual: true,
@@ -263,6 +265,9 @@ const mountPage = async ({
 		if (url.pathname === "/v1/skills") {
 			const page = Number(url.searchParams.get("page") ?? 1);
 			publicSkillReads.push(page);
+			if (failPublicSkills) {
+				return jsonResponse(500, { detail: "The catalogue is unavailable." });
+			}
 			return jsonResponse(200, {
 				msg: "Skills listed successfully",
 				result: {
@@ -291,7 +296,7 @@ const mountPage = async ({
 				desktop_auth: "bearer",
 				features: {
 					radient: 1,
-					hub_skills: 1,
+					...(skillsCapability ? { hub_skills: 1 } : {}),
 					radient_org: 1,
 					hub_links: 1,
 				},
@@ -445,11 +450,17 @@ const click = async (dom, element) => {
  * microtasks the render's own `act` does not flush, so every assertion after an
  * action needs this; the bound is the rig's, so a fixture that never settles
  * fails loudly rather than hanging the runner.
+ *
+ * THE WAIT IS 20MS, NOT 0. React Query's retry delay before the second attempt
+ * is a real second (its default), so a zero-delay loop expires before a 500's
+ * retry has even been issued - measured: the failed-catalogue test settled on
+ * "still pending" at ~0.5s and then left the retry timer armed at teardown, which
+ * kept the whole lane's event loop alive. 200 x 20ms is a four-second budget.
  */
 const settle = async (predicate, label) => {
 	for (let attempt = 0; attempt < 200 && !predicate(); attempt += 1) {
 		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await new Promise((resolve) => setTimeout(resolve, 20));
 		});
 	}
 	assert.ok(predicate(), label);
@@ -525,6 +536,70 @@ test("zero renders as 0 on the tab, never as a blank tab", async () => {
 		await settle(
 			() => ZERO_SKILLS.test(text(mounted.dom)),
 			"the library states the same zero",
+		);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+test("a failed catalogue paints no number at all, not 0 and not a stale one", async () => {
+	const mounted = await mountPage({ failPublicSkills: true });
+	try {
+		await settle(() => {
+			const queries = mounted.queryClient
+				.getQueryCache()
+				.findAll({ queryKey: ["hub-skills"] });
+			return (
+				queries.length > 0 &&
+				queries.every((query) => query.state.status === "error")
+			);
+		}, "the catalogue read failed");
+		assert.ok(
+			mounted.publicSkillReads.length >= 1,
+			"the read was attempted rather than skipped",
+		);
+		assert.equal(
+			tabCount(mounted.dom, "skills"),
+			null,
+			"the tab renders no number after a failure",
+		);
+		assert.equal(
+			tab(mounted.dom, "skills")?.querySelector("span"),
+			null,
+			"there is no count span to misread as zero",
+		);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+test("without the hub_skills capability there is no tab and no catalogue read", async () => {
+	const mounted = await mountPage({ skillsCapability: false });
+	try {
+		await settle(
+			() =>
+				mounted.queryClient.getQueryState(["desktop", "capabilities"])
+					?.status === "success",
+			"capabilities answered",
+		);
+		/* Give a page-mount read every chance to start before saying it did not. */
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		});
+		assert.equal(
+			tab(mounted.dom, "skills"),
+			null,
+			"a backend without the capability gets no Skills tab",
+		);
+		assert.equal(
+			mounted.publicSkillReads.length,
+			0,
+			"and no public catalogue read is issued for a tab that does not exist",
+		);
+		assert.equal(
+			mounted.bridgeReads.includes("org_skills.list"),
+			false,
+			"nor an org catalogue read",
 		);
 	} finally {
 		await mounted.teardown();

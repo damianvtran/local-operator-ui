@@ -479,6 +479,10 @@ export function HubSkillsLibrary({
 	 * line is already suppressed while loading or after a failure, so it is
 	 * reached only by the inaccessible state, where zero rows is the honest
 	 * reading.
+	 *
+	 * If `org_skills.list` ever grows pagination, read its `total_records` in
+	 * preference to `.length`: the length would then be a page size, and this
+	 * line - like the tab's - would state it as the catalogue's total, silently.
 	 */
 	const totalSkills = catalogue.data?.total ?? scopedRows.length;
 	const countLine = catalogue.error

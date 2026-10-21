@@ -62,6 +62,12 @@ function requireSkillsAdapter(client: QueryClient) {
  * The tab strip and the library's count line both read `total`, which is what
  * keeps them from disagreeing with each other and with the server.
  *
+ * IF `org_skills.list` EVER GROWS PAGINATION, read its `total_records` in
+ * preference to `.length`: the length would then be a page size, and the tab
+ * would print that page size as the catalogue's total without any sign that it
+ * had stopped counting. The org branch below is the one place that assumption
+ * is made.
+ *
  * `total_records` is page-independent, so a later page carries the same total
  * as page 1 - which is why the tab strip can observe page 1 and still tell the
  * truth while the library pages through the list.
