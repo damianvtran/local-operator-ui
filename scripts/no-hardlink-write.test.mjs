@@ -77,6 +77,36 @@ const SCRATCH = join(
 	`no-hardlink-write-test-${process.pid}`,
 );
 const CHILD_PATH = join(SCRATCH, "child.mjs");
+/*
+ * THE CHILD'S PROCESS TEMP GROUND, inside this test's own scratch root.
+ *
+ * The evasion test needs a shared file OUTSIDE the process temp ground and a
+ * name for it INSIDE that ground. It took the ground from `os.tmpdir()`, which
+ * is `/tmp` - and GitHub's `ubuntu-latest` runner image moved to Ubuntu 26.04
+ * on 2026-10-21, where `/tmp` is a RAM-backed tmpfs (actions/runner-images
+ * issue #14777). `linkSync` from the workspace into `/tmp` is then EXDEV, the
+ * unguarded control cannot clobber, and the assertion that the control proves
+ * something fails - exactly as it did on `main` (runs 39658605528 and
+ * 39659214597) and on every pull request that day.
+ *
+ * THIS PRESERVES THE BOUNDARY THE CONTROL ASSERTS; it does not weaken it. That
+ * boundary is CONTAINMENT in the process temp directory, not device
+ * separation: the guard's own rule is `isInTempGround`, which compares the
+ * REALPATH of the source and destination against the REALPATH of `tmpdir()`
+ * (device ids appear only as the `dev:ino` key for declared inodes). The ground
+ * here is still a directory OUTSIDE the `evasion` fixture and INSIDE the
+ * child's declared temp directory, so the unguarded run still performs the
+ * exact prohibited sequence - link a shared file from outside the ground to a
+ * name inside it, then write through that name - and still clobbers the shared
+ * inode. The guarded run still refuses the link itself.
+ *
+ * A cross-device ground cannot host the evasion at all: the link is impossible
+ * before the guard is consulted, so the sequence the guard refuses only exists
+ * on one filesystem. `TMPDIR` is what `os.tmpdir()` reads, in the child and in
+ * the guard preload (`tempGround()` in no-hardlink-write.mjs), which is why pointing
+ * it here keeps the rule and the fixture on the same boundary.
+ */
+const GROUND_TMP = join(SCRATCH, "tmp");
 const ORIGINAL = "ORIGINAL SHARED CONTENT";
 
 /** Biome's `useTopLevelRegex`: every pattern this file matches on, named. */
@@ -344,6 +374,7 @@ const EVASION_PATH = join(SCRATCH, "evasion.mjs");
 test.before(() => {
 	rmSync(SCRATCH, { recursive: true, force: true });
 	mkdirSync(SCRATCH, { recursive: true });
+	mkdirSync(GROUND_TMP, { recursive: true });
 	writeFileSync(CHILD_PATH, CHILD);
 	writeFileSync(SURFACES_PATH, SURFACES_CHILD);
 	writeFileSync(EVASION_PATH, EVASION_CHILD);
@@ -582,12 +613,13 @@ test("a name given to a shared inode inside the temp ground does not launder it"
 	const dir = fixture("evasion");
 	const shared = join(dir, "base");
 	const sibling = join(dir, "b");
+	const env = { ...process.env, TMPDIR: GROUND_TMP };
 	for (const guard of [false, true]) {
 		reset(dir);
 		const args = guard
 			? [`--import=${PRELOAD}`, EVASION_PATH, shared, sibling]
 			: [EVASION_PATH, shared, sibling];
-		const result = spawnSync(process.execPath, args, { encoding: "utf8" });
+		const result = spawnSync(process.execPath, args, { encoding: "utf8", env });
 		if (guard) {
 			assert.match(
 				result.stdout,
