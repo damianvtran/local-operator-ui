@@ -137,6 +137,7 @@ let registry;
 let requests;
 let toggleFailure;
 let replaceFailure;
+let replaceGate;
 let authoritative;
 let closed;
 
@@ -149,6 +150,7 @@ beforeEach(async () => {
 	requests = [];
 	toggleFailure = null;
 	replaceFailure = null;
+	replaceGate = null;
 	// The canonical row another client would have written. Set in a test that
 	// needs the server to refuse a stale revision; fetchSessions then publishes
 	// it, which is what the real store awaits on a conflict.
@@ -174,6 +176,7 @@ beforeEach(async () => {
 				if (request.op === "tags.list")
 					return { status: 200, body: { result: { tags: registry } } };
 				if (request.op === "tags.replace") {
+					if (replaceGate) await replaceGate();
 					if (replaceFailure) return replaceFailure;
 					registry = request.tags.map((tag, index) => ({
 						id: tag.id ?? `new-${index}-${tag.name}`,
@@ -306,7 +309,7 @@ let announced = [];
  * conversations, so delete asks first) above Beta's, plus the tag footer with
  * Beta as an unused tag. No dialog is mounted for any of it.
  */
-const manage = () => {
+const manage = (withPicker = false) => {
 	announced = [];
 	const announce = (sentence) => announced.push(sentence);
 	return render(
@@ -336,6 +339,20 @@ const manage = () => {
 				announce,
 				chord: "⌘⇧L",
 			}),
+			withPicker &&
+				React.createElement(api.ChatTagPopover, {
+					grouped: true,
+					onShowGroups: () => {},
+					row: {
+						session_id: "s1",
+						title: "Chat",
+						tags: [],
+						primary: null,
+						tags_revision: "revision-1",
+					},
+					onClose: () => {},
+					returnFocus: () => {},
+				}),
 		),
 	);
 };
@@ -438,6 +455,148 @@ test("a refused rename keeps the field open and says why", async () => {
 	assert.match(
 		document.querySelector('[role="alert"]').textContent,
 		/not saved/,
+	);
+});
+
+test("two headers serialize delayed whole-registry edits without losing an acknowledged rename (C1)", async () => {
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	replaceGate = () => gate;
+	await manage();
+	try {
+		await keyOn(headerStop("a"), "F2");
+		const alpha = document.querySelector('[aria-label="Rename Alpha"]');
+		await setValue(alpha, "Alpha2");
+		await keyOn(alpha, "Enter");
+		await keyOn(headerStop("b"), "F2");
+		const beta = document.querySelector('[aria-label="Rename Beta"]');
+		await setValue(beta, "Beta2");
+		await keyOn(beta, "Enter");
+		assert.equal(
+			requests.filter((r) => r.op === "tags.replace").length,
+			1,
+			"the second editor queues an intent, not a stale transport snapshot",
+		);
+	} finally {
+		replaceGate = null;
+		await act(async () => {
+			release();
+			await gate;
+		});
+		await settle();
+	}
+	const writes = requests.filter((r) => r.op === "tags.replace");
+	assert.deepEqual(
+		writes.map((r) => r.tags.map((tag) => tag.name)),
+		[
+			["Alpha2", "Beta"],
+			["Alpha2", "Beta2"],
+		],
+	);
+	assert.deepEqual(
+		registry.map((tag) => tag.name),
+		["Alpha2", "Beta2"],
+	);
+	assert.deepEqual(announced, ["Renamed to “Alpha2”", "Renamed to “Beta2”"]);
+});
+
+test("picker creation shares header registry ownership and preserves a pending rename (C1)", async () => {
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	replaceGate = () => gate;
+	await manage(true);
+	try {
+		await keyOn(headerStop("a"), "F2");
+		const alpha = document.querySelector('[aria-label="Rename Alpha"]');
+		await setValue(alpha, "Alpha2");
+		await keyOn(alpha, "Enter");
+		const input = document.querySelector('[aria-label="Search tags"]');
+		await setValue(input, "Gamma");
+		await keyOn(input, "Enter");
+		assert.equal(requests.filter((r) => r.op === "tags.replace").length, 1);
+	} finally {
+		replaceGate = null;
+		await act(async () => {
+			release();
+			await gate;
+		});
+		await settle();
+	}
+	const writes = requests.filter((r) => r.op === "tags.replace");
+	assert.deepEqual(
+		writes.map((r) => r.tags.map((tag) => tag.name)),
+		[
+			["Alpha2", "Beta"],
+			["Alpha2", "Beta", "Gamma"],
+		],
+	);
+	assert.deepEqual(
+		registry.map((tag) => tag.name),
+		["Alpha2", "Beta", "Gamma"],
+	);
+	assert.equal(requests.filter((r) => r.op === "sessions.tags").length, 1);
+});
+
+test("an older catalogue read cannot overwrite an acknowledged registry edit before the next intent (C1)", async () => {
+	let resolveList;
+	const old = categories();
+	const transport = window.api.desktop.request;
+	window.api.desktop.request = async (request) =>
+		request.op === "tags.list"
+			? new Promise((resolve) => {
+					resolveList = () =>
+						resolve({ status: 200, body: { result: { tags: old } } });
+				})
+			: transport(request);
+	const listing = api.useSessionTagsStore.getState().fetchCategories();
+	await api.useSessionTagsStore.getState().replaceCategories((current) =>
+		current.map((tag) => ({
+			id: tag.id,
+			name: tag.id === "a" ? "Alpha2" : tag.name,
+		})),
+	);
+	resolveList();
+	await listing;
+	await api.useSessionTagsStore.getState().replaceCategories((current) =>
+		current.map((tag) => ({
+			id: tag.id,
+			name: tag.id === "b" ? "Beta2" : tag.name,
+		})),
+	);
+	assert.deepEqual(
+		registry.map((tag) => tag.name),
+		["Alpha2", "Beta2"],
+	);
+});
+
+test("failed blur-save retains the typed rename, alert, retry and focus (C2)", async () => {
+	replaceFailure = { status: 500, body: { detail: { message: "nope" } } };
+	await manage();
+	await keyOn(headerStop("a"), "F2");
+	const field = document.querySelector('[aria-label="Rename Alpha"]');
+	await setValue(field, "Alpha2");
+	await act(() => headerStop("b").focus());
+	await settle();
+	assert.equal(requests.filter((r) => r.op === "tags.replace").length, 1);
+	assert.equal(document.querySelector('[aria-label="Rename Alpha"]'), field);
+	assert.equal(field.value, "Alpha2");
+	assert.equal(document.activeElement, field);
+	assert.ok(document.querySelector('[role="alert"]'));
+	assert.ok(button("Retry"), "the save failure stays retryable, not cancelled");
+	assert.deepEqual(
+		registry.map((tag) => tag.name),
+		["Alpha", "Beta"],
+	);
+	replaceFailure = null;
+	await act(() => button("Retry").click());
+	await settle();
+	assert.deepEqual(
+		registry.map((tag) => tag.name),
+		["Alpha2", "Beta"],
 	);
 });
 

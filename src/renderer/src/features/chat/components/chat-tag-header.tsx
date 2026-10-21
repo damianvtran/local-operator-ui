@@ -1,6 +1,7 @@
 import { TAG_REGISTRY_LIMIT } from "@features/chat/chat-tag-picker";
 import {
 	type RegistryEditResult,
+	registryNameIssue,
 	useChatTagRegistry,
 } from "@features/chat/use-chat-tag-registry";
 import {
@@ -73,6 +74,7 @@ function TagNameField({
 	errorId,
 	busy,
 	keepOpen,
+	renameId,
 	onCommit,
 	onCancel,
 }: {
@@ -84,6 +86,8 @@ function TagNameField({
 	busy: boolean;
 	/** `+ New tag` stays open and empty after a create; rename closes. */
 	keepOpen?: boolean;
+	/** Exclude this registry ID when validating rename-on-blur duplicates. */
+	renameId?: string;
 	onCommit: (value: string, restoreFocus?: boolean) => Promise<boolean>;
 	onCancel: (restoreFocus?: boolean) => void;
 }) {
@@ -139,9 +143,13 @@ function TagNameField({
 				// Blur commits a valid change and otherwise reverts (spec D2): an
 				// empty or unchanged field is simply closed.
 				if (!value.trim() || value.trim() === initial.trim()) onCancel();
+				else if (registryNameIssue(value, renameId)) onCancel();
 				else
 					void onCommit(value, false).then((ok) => {
-						if (!ok) onCancel();
+						// Blur is a SAVE, not cancellation. A transport refusal must
+						// retain the typed draft and the alert/retry set by the owner,
+						// just like Enter failure, and return focus for correction.
+						if (!ok) field.current?.focus({ preventScroll: true });
 					});
 			}}
 		/>
@@ -360,6 +368,7 @@ export function ChatTagHeader({
 				{renaming ? (
 					<TagNameField
 						initial={name}
+						renameId={id}
 						label={t("ui.chat.tags.rename_label", { name })}
 						error={error}
 						errorId={errorId}

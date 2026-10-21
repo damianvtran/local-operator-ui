@@ -308,7 +308,7 @@ test("registry replacement failure keeps the loaded categories and editable draf
 		body: { detail: "synthetic write refusal" },
 	});
 	await assert.rejects(
-		tags.getState().replaceCategories([{ id: "a", name: "Renamed" }]),
+		tags.getState().replaceCategories(() => [{ id: "a", name: "Renamed" }]),
 	);
 	assert.deepEqual(tags.getState().categories, categories);
 	assert.equal(
@@ -385,10 +385,10 @@ test("management writes every create, rename, reorder and delete immediately wit
 		assert.ok(!source.includes('t("ui.chat.tags.apply")'), "no Apply action");
 	}
 	assert.ok(
-		registry.split("return write(").length - 1 >= 4,
+		registry.split("write((categories)").length - 1 >= 4,
 		"create, rename, move and delete each commit",
 	);
-	assert.ok(registry.includes("useSessionTagsStore.getState().categories"));
+	assert.ok(registry.includes("await replaceCategories(derive)"));
 	// The destructive path keeps a per-action confirmation, anchored, not modal.
 	assert.ok(header.includes('role="alertdialog"'));
 	assert.ok(header.includes('t("ui.chat.tags.delete_description"'));

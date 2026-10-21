@@ -74,3 +74,50 @@ changed. The convergence-neighbour runner exercised `test-inventory` plus
 upstream's `hub-skill-alias`: **7 PASS, 0 FAIL**. The initial inventory attempt
 while package.json still held merge markers failed JSON parsing; it is not
 counted as a pass. The resolved-file run above passed.
+
+## Unified round-1 remediation
+
+C1 (major): registry ownership now lives in the shared store. `replaceCategories`
+accepts a **mutation intent**, not a precomputed full-registry snapshot. It
+acquires a queue position synchronously, then derives and validates against the
+preceding writer's acknowledged categories. All header/footer mutations and
+picker creation use that path. A failed intent releases ownership in `finally`.
+A generation check also prevents an older in-flight list response from replacing
+an acknowledged edit before the next intent derives its state.
+
+C2 (major): blur validation may still revert an invalid/unchanged rename, but a
+failed blur **save** no longer cancels the editor or clears its failure state.
+The typed draft, alert, Retry and editor focus remain recoverable, just as for
+Enter failure. The regression also retries successfully after HTTP500.
+
+Q1 (minor): the keyboard story waits for settled originating-row focus, not only
+popover unmount. Three rendered navigations passed. The auto-tag regression now
+queries the grouping switch's stable ID (its accessible name comes from the real
+label), retaining the assertion that neither switch changes saved `groupBy`.
+
+[Execution receipts](assets/sidebar-tags-v3/remediation-test-receipts.json): the
+three new discriminating C1/C2 cases all FAIL against the frozen `fde244` control
+(two headers, picker-vs-header, failed blur), then PASS with the fixes. The final
+bounded affected union is **133 PASS / 0 FAIL / 0 skipped** across 13 files,
+including composer `/tag` neighbours; main/renderer typechecks, i18n, changed
+script/source lint and evidence structure pass. No duplicate full CI suite ran.
+[Rendered receipts](assets/sidebar-tags-v3/remediation-rendered-receipts.json)
+record the delayed two-header success, preserved failed-blur state, and the
+three settled keyboard-focus runs. These use the synthetic Storybook bridge,
+not a claim of new live-core coverage.
+
+D1 (minor): seven individual error/limit/Unicode companion crops and an
+error/limit sheet now accompany the original full-window placement frames;
+[integer crop receipts](assets/sidebar-tags-v3/detail-crop-receipts.json) name the
+original bytes and crop rectangles. No original content was repainted or
+re-rendered. Dense/empty/Unicode full-frame names now correctly say **220**, not
+260. The new failed-blur discriminator has its own full frame and companion.
+
+Normal visual sign-off is compatible: `chat-sidebar`, `chat-sidebar-view-menu`,
+`chat-tag-popover`, `tag-picker-combobox` source bytes are unchanged against
+`fde244`; all header `className` expressions are unchanged. No theme/CSS,
+normal-flow geometry, wire response shape, catalogue or audit receipt changed.
+Only failure handling/shared write ownership and test/evidence changed; the
+normal UX/design acceptance is retained, while code and QA must review this
+delta. I2-1 remains explicitly deferred (non-gating English referent ambiguity);
+no semantic receipts were invalidated for it. No version bump.
