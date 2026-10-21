@@ -927,7 +927,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						{createHint}
 					</p>
 				)}
-				<ScrollArea className="min-h-0 flex-1">
+				{/*
+				 * Radix wraps children in a display:table cell that sizes to its
+				 * content. At a narrow rail that made every row ~575px wide inside a
+				 * 248px viewport, so the name ran past the edge and the badge was
+				 * unreachable. Force the wrapper to block, exactly as the thread pane
+				 * already does, so the row is width-constrained and the name ellipsises.
+				 */}
+				<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block">
 					{listState === "loading" && (
 						<div className="flex items-center justify-center py-8">
 							<Spinner size="sm" label={t("ui.teamBridge.list.loading")} />
