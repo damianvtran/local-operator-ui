@@ -19,10 +19,16 @@
  * mocked globally, so every expectation below is arithmetic on one fixed pair of
  * numbers and cannot drift with the wall clock or the test's timezone.
  *
- * The four states the change must distinguish, all here: a stamp with no stop
- * recorded, a stamp with a recorded stop, no stamp at all, and a LIVE row —
- * which carries `last_activity_s` too and must keep rendering uptime, because a
- * stop line over a running session would claim an end that has not happened.
+ * The states the change must distinguish, all here: a stamp with no stop
+ * recorded, a stamp with a recorded stop (short reason, long measured reason,
+ * empty token), no stamp at all, a zero stamp, and a LIVE row — which carries
+ * `last_activity_s` too and must keep rendering uptime, because a stop line over
+ * a running session would claim an end that has not happened.
+ *
+ * The two labels are part of the acceptance rather than decoration: `last
+ * active …` beside `stopped …` is what tells a reader a session left no exit
+ * record (design round 1, D1), and `reason:` is what tells them the token after
+ * it came from the core (D2).
  */
 
 import assert from "node:assert/strict";
@@ -85,6 +91,12 @@ const NOW = STAMP + 5 * 3600;
  */
 const EPOCH_DURATION_DAYS = /\b\d{4,}d\b/;
 const STOP_CLAIM = /stopped/;
+/*
+ * The clause separator carries NON-BREAKING spaces (`\u00A0`) so the stop cell
+ * cannot wrap with a dangling `·` (design round 1, D7). Asserted as the shipped
+ * character rather than by normalising it away, because the character IS the fix.
+ */
+const SEP = "\u00A0·\u00A0";
 
 /** One stored registry row, in the shape `info.get` sends. */
 const storedLine = (over = {}) => ({
@@ -113,7 +125,7 @@ const uptimeOf = (line, nowS = NOW) =>
 
 test("an epoch stamp renders as an age, not as half a million hours", () => {
 	const uptime = uptimeOf(storedLine({ last_activity_s: STAMP }));
-	assert.equal(uptime, "5h 0m ago");
+	assert.equal(uptime, "last active 5h 0m ago");
 	/*
 	 * The BUG ITSELF, rebuilt from the same formatter: `formatDuration(stamp)`
 	 * over the raw field. A future regression renders exactly this, so it is
@@ -126,7 +138,7 @@ test("an epoch stamp renders as an age, not as half a million hours", () => {
 test("the same stamp read a day later is a day older, not a new absolute", () => {
 	assert.equal(
 		uptimeOf(storedLine({ last_activity_s: STAMP }), NOW + 86_400),
-		"1d 5h ago",
+		"last active 1d 5h ago",
 	);
 });
 
@@ -143,7 +155,7 @@ test("a recorded stop shows its own age and the raw reason token", () => {
 			stop_requested: false,
 		}),
 	);
-	assert.equal(uptime, "stopped 2h 0m ago · idle-exit");
+	assert.equal(uptime, `stopped 2h 0m ago${SEP}reason: idle-exit`);
 });
 
 test("a recorded stop with no reason still claims only the stop", () => {
@@ -163,7 +175,7 @@ test("no recorded stop keeps last activity as the only claim", () => {
 	const uptime = uptimeOf(
 		storedLine({ last_activity_s: NOW - 3 * 3600, stopped_at_s: null }),
 	);
-	assert.equal(uptime, "3h 0m ago");
+	assert.equal(uptime, "last active 3h 0m ago");
 	assert.doesNotMatch(uptime, STOP_CLAIM);
 });
 
@@ -173,7 +185,26 @@ test("an older backend that sends no stop fields at all is unchanged", () => {
 	 * An ABSENT field and a `null` one reach the same decision here, which is why
 	 * both are exercised.
 	 */
-	assert.equal(uptimeOf(storedLine({ last_activity_s: NOW - 600 })), "10m ago");
+	assert.equal(
+		uptimeOf(storedLine({ last_activity_s: NOW - 600 })),
+		"last active 10m ago",
+	);
+});
+
+test("the core's long measured reason is kept whole behind the label", () => {
+	const reason =
+		"idle-exit (busy probe unusable for 3 samples: no heartbeat after 90s)";
+	const uptime = uptimeOf(
+		storedLine({ stopped_at_s: NOW - 60, stop_reason: reason }),
+	);
+	assert.equal(uptime, `stopped 1m ago${SEP}reason: ${reason}`);
+});
+
+test("the core's empty reason token is no reason, not an empty clause", () => {
+	assert.equal(
+		uptimeOf(storedLine({ stopped_at_s: NOW - 60, stop_reason: "" })),
+		"stopped 1m ago",
+	);
 });
 
 test("a LIVE row renders uptime even when it carries a stamp", () => {
@@ -194,4 +225,12 @@ test("a stamp from the future clamps to zero rather than a negative age", () => 
 	assert.equal(stampAge(NOW + 60, NOW), "0s");
 	assert.equal(stampAge(null, NOW), null);
 	assert.equal(stampAge(undefined, NOW), null);
+});
+
+test("a zero stamp is the never-recorded spelling, not January 1970", () => {
+	assert.equal(stampAge(0, NOW), null);
+	assert.equal(
+		uptimeOf(storedLine({ last_activity_s: 0, stopped_at_s: 0 })),
+		"unknown",
+	);
 });

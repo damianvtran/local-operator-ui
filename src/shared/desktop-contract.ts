@@ -9595,14 +9595,19 @@ export type DesktopInfoSessionLine = {
 	last_activity_s: number | null;
 	/*
 	 * The stop record the core adds with its session-exit work, declared here in
-	 * parallel. All three are OPTIONAL: an older backend sends none of them, and
-	 * a row with no stop to report carries `null`. The panel prints nothing for a
-	 * missing stamp rather than claiming a stop that was never recorded.
+	 * parallel. All three are OPTIONAL: an older backend sends none of them. The
+	 * core's no-record spelling is `stopped_at_s: null` with `stop_reason: ""` —
+	 * an empty token, not a null one — so the panel treats both as "nothing was
+	 * recorded" and prints no stop claim at all.
 	 */
 	/** When the session stopped, ABSOLUTE epoch seconds like `last_activity_s`. */
 	stopped_at_s?: number | null;
-	/** The core's stop token (e.g. `idle-exit`), printed as recorded. */
-	stop_reason?: string | null;
+	/**
+	 * The core's stop token (e.g. `idle-exit`), printed after a `reason:` label.
+	 * `""` when no stop was recorded — the core's own spelling, which the panel
+	 * reads exactly like an absent field.
+	 */
+	stop_reason?: string;
 	/**
 	 * The core's own flag for that stop. Carried so the contract matches the
 	 * wire whole; no row copy reads it, because the reason already names the
