@@ -3047,7 +3047,12 @@ test("S3 the REAL page adapter: the app page has the narrow preload, the microph
 	const nav = (url) => {
 		let prevented = false;
 		for (const f of c.views[0].listeners["will-navigate"])
-			f({ url, preventDefault: () => (prevented = true) });
+			f({
+				url,
+				preventDefault: () => {
+					prevented = true;
+				},
+			});
 		return prevented;
 	};
 	assert.equal(nav(APP_PAGE), false);
