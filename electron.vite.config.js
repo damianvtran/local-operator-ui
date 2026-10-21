@@ -109,6 +109,17 @@ export default defineConfig({
 				__dirname,
 				"src/renderer/browser-address-overlay.html",
 			),
+			/*
+			 * S2's scripted mirror document. Unlike S1's inert document it has a real
+			 * module entry, so it MUST be in both halves of the config for the same
+			 * measured reason as the documents above: the dev server serves this list
+			 * and the BUILD emits `rollupOptions.input`. Declaring only one ships a
+			 * document whose script 404s at the first projection.
+			 */
+			addressOverlayList: resolve(
+				__dirname,
+				"src/renderer/browser-address-overlay-list.html",
+			),
 		},
 		build: {
 			// electron-vite defaults the renderer to minify:false on the assumption
@@ -158,6 +169,14 @@ export default defineConfig({
 					addressOverlay: resolve(
 						__dirname,
 						"src/renderer/browser-address-overlay.html",
+					),
+					/*
+					 * S2's mirror document: the BUILD half of the pair above, with its own
+					 * module script and stylesheet emitted as assets.
+					 */
+					addressOverlayList: resolve(
+						__dirname,
+						"src/renderer/browser-address-overlay-list.html",
 					),
 				},
 			},

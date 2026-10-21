@@ -60,6 +60,7 @@ import {
 	usableRawAddress,
 } from "../model/address-autocomplete";
 import { isSecurityLoadFailure, siteInfoForUrl } from "../model/site-info";
+import { useAddressOverlayMirror } from "../overlay/use-address-overlay-mirror";
 
 /**
  * The URL bar and the navigation controls. Design: docs/design/ui-browser-tab.md
@@ -666,6 +667,40 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		setDismissedForText(null);
 		setCaretRequest((count) => count + 1);
 	};
+
+	/*
+	 * S2's visual mirror. The in-flow dock stays exactly as it is — this only
+	 * MIRRORS what it already shows into the native child, and a row click comes
+	 * back through the same `commit()` the dock's own rows use. The hook is inert
+	 * unless this launch is an armed S1+S2 dev-driver run; an ordinary launch and
+	 * an S1-only probe get a no-op (see `address-overlay-port`).
+	 */
+	useAddressOverlayMirror({
+		enabled: suggestionsEnabled,
+		tabId,
+		visible: listVisible,
+		active: activeIndex,
+		rows: suggestions.candidates.map((candidate) => ({
+			text: candidate.displayText,
+			title: candidate.title ?? "",
+			key: candidate.url,
+		})),
+		noticeKind: autocomplete.error
+			? "error"
+			: hint
+				? "hint"
+				: raw.length === 0
+					? "empty"
+					: "no_match",
+		noticeText: listNotice,
+		label: t("ui.browser.browser_url_bar.address_suggestions_label"),
+		fieldRef: inputEl,
+		listRef: listEl,
+		onCommit: (index) => {
+			const candidate = suggestions.candidates[index];
+			if (candidate) commit(candidate.url);
+		},
+	});
 
 	/**
 	 * Ordinary typing is the ONLY change that regenerates a completion.

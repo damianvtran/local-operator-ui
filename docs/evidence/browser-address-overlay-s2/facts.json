@@ -1,0 +1,5196 @@
+[
+  {
+    "at": "2026-10-21T07:04:13.713Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay.html",
+      "state": "absent",
+      "failedReason": null,
+      "hiddenReason": "layout",
+      "generation": 6,
+      "childCreatedCount": 0,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": false,
+        "finished": false,
+        "loadMs": null
+      },
+      "child": null,
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 0
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": false,
+        "javascript": false,
+        "lastSeq": 0,
+        "shownSeq": -1,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 0,
+        "view": {
+          "kind": "none",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": null,
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95277,
+          "type": "Browser"
+        },
+        {
+          "pid": 95291,
+          "type": "GPU"
+        },
+        {
+          "pid": 95292,
+          "type": "Utility"
+        },
+        {
+          "pid": 95298,
+          "type": "Tab"
+        },
+        {
+          "pid": 95300,
+          "type": "Tab"
+        },
+        {
+          "pid": 95301,
+          "type": "Tab"
+        },
+        {
+          "pid": 95304,
+          "type": "Tab"
+        },
+        {
+          "pid": 95313,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:13.786Z",
+    "action": "show",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 7,
+      "childCreatedCount": 1,
+      "shownCount": 1,
+      "lastShow": {
+        "shown": true,
+        "reason": null,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 160
+        },
+        "at": 1792566253784
+      },
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 67
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 160
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": false,
+        "javascript": false,
+        "lastSeq": 0,
+        "shownSeq": -1,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 0,
+        "view": {
+          "kind": "none",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": null,
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95277,
+          "type": "Browser"
+        },
+        {
+          "pid": 95291,
+          "type": "GPU"
+        },
+        {
+          "pid": 95292,
+          "type": "Utility"
+        },
+        {
+          "pid": 95298,
+          "type": "Tab"
+        },
+        {
+          "pid": 95300,
+          "type": "Tab"
+        },
+        {
+          "pid": 95301,
+          "type": "Tab"
+        },
+        {
+          "pid": 95304,
+          "type": "Tab"
+        },
+        {
+          "pid": 95313,
+          "type": "Tab"
+        },
+        {
+          "pid": 95314,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:18.724Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "absent",
+      "failedReason": null,
+      "hiddenReason": "layout",
+      "generation": 6,
+      "childCreatedCount": 0,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": false,
+        "finished": false,
+        "loadMs": null
+      },
+      "child": null,
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 0
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 0,
+        "shownSeq": -1,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 0,
+        "view": {
+          "kind": "none",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": null,
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:18.867Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "absent",
+      "failedReason": null,
+      "hiddenReason": "layout",
+      "generation": 6,
+      "childCreatedCount": 0,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": false,
+        "finished": false,
+        "loadMs": null
+      },
+      "child": null,
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 0
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 0,
+        "shownSeq": -1,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 0,
+        "view": {
+          "kind": "none",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": null,
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:19.005Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "absent",
+      "failedReason": null,
+      "hiddenReason": "layout",
+      "generation": 6,
+      "childCreatedCount": 0,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": false,
+        "finished": false,
+        "loadMs": null
+      },
+      "child": null,
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 0
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 0,
+        "shownSeq": -1,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 0,
+        "view": {
+          "kind": "none",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": null,
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:19.129Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "absent",
+      "failedReason": null,
+      "hiddenReason": "layout",
+      "generation": 6,
+      "childCreatedCount": 0,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": false,
+        "finished": false,
+        "loadMs": null
+      },
+      "child": null,
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 0
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 0,
+        "shownSeq": -1,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 0,
+        "view": {
+          "kind": "none",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": null,
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:20.607Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 8,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 140
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 2,
+        "shownSeq": 2,
+        "lastRejected": null,
+        "theme": "resolved",
+        "applyCount": 2,
+        "view": {
+          "kind": "rows",
+          "rowCount": 2,
+          "active": -1
+        },
+        "measured": {
+          "appliedSeq": 2,
+          "rowCount": 2,
+          "headerHeight": 28,
+          "rowRects": [
+            {
+              "top": 2,
+              "height": 35.5
+            },
+            {
+              "top": 37.5,
+              "height": 35.5
+            }
+          ],
+          "viewportHeight": 75,
+          "scrollHeight": 75,
+          "innerHeight": 104,
+          "activeRowRect": null
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        },
+        {
+          "pid": 95527,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:20.650Z",
+    "action": "measure",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 8,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 140
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 2,
+        "shownSeq": 2,
+        "lastRejected": null,
+        "theme": "resolved",
+        "applyCount": 2,
+        "view": {
+          "kind": "rows",
+          "rowCount": 2,
+          "active": -1
+        },
+        "measured": {
+          "appliedSeq": 2,
+          "rowCount": 2,
+          "headerHeight": 28,
+          "rowRects": [
+            {
+              "top": 2,
+              "height": 35.5
+            },
+            {
+              "top": 37.5,
+              "height": 35.5
+            }
+          ],
+          "viewportHeight": 75,
+          "scrollHeight": 75,
+          "innerHeight": 104,
+          "activeRowRect": null
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        },
+        {
+          "pid": 95527,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:21.035Z",
+    "action": "measure",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 9,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 140
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 3,
+        "shownSeq": 3,
+        "lastRejected": null,
+        "theme": "resolved",
+        "applyCount": 3,
+        "view": {
+          "kind": "rows",
+          "rowCount": 2,
+          "active": 0
+        },
+        "measured": {
+          "appliedSeq": 3,
+          "rowCount": 2,
+          "headerHeight": 28,
+          "rowRects": [
+            {
+              "top": 2,
+              "height": 35.5
+            },
+            {
+              "top": 37.5,
+              "height": 35.5
+            }
+          ],
+          "viewportHeight": 75,
+          "scrollHeight": 75,
+          "innerHeight": 104,
+          "activeRowRect": {
+            "top": 2,
+            "height": 35.5
+          }
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        },
+        {
+          "pid": 95527,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:21.039Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 9,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 140
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 3,
+        "shownSeq": 3,
+        "lastRejected": null,
+        "theme": "resolved",
+        "applyCount": 3,
+        "view": {
+          "kind": "rows",
+          "rowCount": 2,
+          "active": 0
+        },
+        "measured": {
+          "appliedSeq": 3,
+          "rowCount": 2,
+          "headerHeight": 28,
+          "rowRects": [
+            {
+              "top": 2,
+              "height": 35.5
+            },
+            {
+              "top": 37.5,
+              "height": 35.5
+            }
+          ],
+          "viewportHeight": 75,
+          "scrollHeight": 75,
+          "innerHeight": 104,
+          "activeRowRect": {
+            "top": 2,
+            "height": 35.5
+          }
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        },
+        {
+          "pid": 95527,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:21.083Z",
+    "action": "click",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "ready",
+      "failedReason": null,
+      "hiddenReason": "projection_hidden",
+      "generation": 10,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 140
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": false,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 4,
+        "shownSeq": -1,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 3,
+        "view": {
+          "kind": "rows",
+          "rowCount": 2,
+          "active": 0
+        },
+        "measured": null,
+        "commitsEmitted": 1,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 1
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 1,
+        "mouseUps": 1,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        },
+        {
+          "pid": 95527,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:21.987Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "ready",
+      "failedReason": null,
+      "hiddenReason": "projection_hidden",
+      "generation": 10,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 140
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": false,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 4,
+        "shownSeq": -1,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 3,
+        "view": {
+          "kind": "rows",
+          "rowCount": 2,
+          "active": 0
+        },
+        "measured": null,
+        "commitsEmitted": 1,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 1
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 1,
+        "mouseUps": 1,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        },
+        {
+          "pid": 95527,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:21.990Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "ready",
+      "failedReason": null,
+      "hiddenReason": "projection_hidden",
+      "generation": 10,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 140
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": false,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 4,
+        "shownSeq": -1,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 3,
+        "view": {
+          "kind": "rows",
+          "rowCount": 2,
+          "active": 0
+        },
+        "measured": null,
+        "commitsEmitted": 1,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 1
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 1,
+        "mouseUps": 1,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        },
+        {
+          "pid": 95527,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:22.015Z",
+    "action": "key",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "ready",
+      "failedReason": null,
+      "hiddenReason": "projection_hidden",
+      "generation": 10,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 140
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": false,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 4,
+        "shownSeq": -1,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 3,
+        "view": {
+          "kind": "rows",
+          "rowCount": 2,
+          "active": 0
+        },
+        "measured": null,
+        "commitsEmitted": 1,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 1
+        },
+        "keysBlocked": 1,
+        "mouseDowns": 1,
+        "mouseUps": 1,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        },
+        {
+          "pid": 95527,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:22.836Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 11,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 140
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 5,
+        "shownSeq": 5,
+        "lastRejected": null,
+        "theme": "resolved",
+        "applyCount": 4,
+        "view": {
+          "kind": "notice",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": {
+          "appliedSeq": 5,
+          "rowCount": 0,
+          "headerHeight": 28,
+          "rowRects": [],
+          "viewportHeight": 75,
+          "scrollHeight": 75,
+          "innerHeight": 104,
+          "activeRowRect": null
+        },
+        "commitsEmitted": 1,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 1
+        },
+        "keysBlocked": 1,
+        "mouseDowns": 1,
+        "mouseUps": 1,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        },
+        {
+          "pid": 95527,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:22.842Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 11,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 140
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 5,
+        "shownSeq": 5,
+        "lastRejected": null,
+        "theme": "resolved",
+        "applyCount": 4,
+        "view": {
+          "kind": "notice",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": {
+          "appliedSeq": 5,
+          "rowCount": 0,
+          "headerHeight": 28,
+          "rowRects": [],
+          "viewportHeight": 75,
+          "scrollHeight": 75,
+          "innerHeight": 104,
+          "activeRowRect": null
+        },
+        "commitsEmitted": 1,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 1
+        },
+        "keysBlocked": 1,
+        "mouseDowns": 1,
+        "mouseUps": 1,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        },
+        {
+          "pid": 95527,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:22.969Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "ready",
+      "failedReason": null,
+      "hiddenReason": "projection_hidden",
+      "generation": 12,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 140
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": false,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 6,
+        "shownSeq": -1,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 4,
+        "view": {
+          "kind": "notice",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": null,
+        "commitsEmitted": 1,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 2
+        },
+        "keysBlocked": 1,
+        "mouseDowns": 1,
+        "mouseUps": 1,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        },
+        {
+          "pid": 95527,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:23.380Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 13,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 140
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 7,
+        "shownSeq": 7,
+        "lastRejected": null,
+        "theme": "resolved",
+        "applyCount": 5,
+        "view": {
+          "kind": "notice",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": {
+          "appliedSeq": 7,
+          "rowCount": 0,
+          "headerHeight": 28,
+          "rowRects": [],
+          "viewportHeight": 75,
+          "scrollHeight": 75,
+          "innerHeight": 104,
+          "activeRowRect": null
+        },
+        "commitsEmitted": 1,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 2
+        },
+        "keysBlocked": 1,
+        "mouseDowns": 1,
+        "mouseUps": 1,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        },
+        {
+          "pid": 95527,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:24.298Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 16,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 140
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 680,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1180,
+          "height": 820
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 920,
+          "height": 606
+        },
+        "revision": 11
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 9,
+        "shownSeq": 9,
+        "lastRejected": null,
+        "theme": "resolved",
+        "applyCount": 7,
+        "view": {
+          "kind": "notice",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": {
+          "appliedSeq": 9,
+          "rowCount": 0,
+          "headerHeight": 28,
+          "rowRects": [],
+          "viewportHeight": 75,
+          "scrollHeight": 75,
+          "innerHeight": 104,
+          "activeRowRect": null
+        },
+        "commitsEmitted": 1,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 7,
+          "projection_hidden": 2
+        },
+        "keysBlocked": 1,
+        "mouseDowns": 1,
+        "mouseUps": 1,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        },
+        {
+          "pid": 95527,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 920,
+          "height": 606
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:24.566Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "ready",
+      "failedReason": null,
+      "hiddenReason": "stale_tab",
+      "generation": 20,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 140
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": false,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 13
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 1001,
+        "shownSeq": -1,
+        "lastRejected": "stale_tab",
+        "theme": "absent",
+        "applyCount": 8,
+        "view": {
+          "kind": "notice",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": null,
+        "commitsEmitted": 1,
+        "commitsDropped": {
+          "stale_seq": 1,
+          "stale_tab": 1
+        },
+        "hideCounts": {
+          "layout": 8,
+          "projection_hidden": 3,
+          "stale_tab": 1
+        },
+        "keysBlocked": 1,
+        "mouseDowns": 1,
+        "mouseUps": 1,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        },
+        {
+          "pid": 95527,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:24.567Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "ready",
+      "failedReason": null,
+      "hiddenReason": "stale_tab",
+      "generation": 20,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 140
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": false,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 13
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 1001,
+        "shownSeq": -1,
+        "lastRejected": "stale_tab",
+        "theme": "absent",
+        "applyCount": 8,
+        "view": {
+          "kind": "notice",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": null,
+        "commitsEmitted": 1,
+        "commitsDropped": {
+          "stale_seq": 1,
+          "stale_tab": 1
+        },
+        "hideCounts": {
+          "layout": 8,
+          "projection_hidden": 3,
+          "stale_tab": 1
+        },
+        "keysBlocked": 1,
+        "mouseDowns": 1,
+        "mouseUps": 1,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        },
+        {
+          "pid": 95527,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:24.721Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "ready",
+      "failedReason": null,
+      "hiddenReason": "projection_hidden",
+      "generation": 60,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 140
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": false,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 140
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 13
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 1042,
+        "shownSeq": -1,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 28,
+        "view": {
+          "kind": "rows",
+          "rowCount": 3,
+          "active": -1
+        },
+        "measured": null,
+        "commitsEmitted": 1,
+        "commitsDropped": {
+          "stale_seq": 1,
+          "stale_tab": 1
+        },
+        "hideCounts": {
+          "layout": 8,
+          "projection_hidden": 23,
+          "stale_tab": 1
+        },
+        "keysBlocked": 1,
+        "mouseDowns": 1,
+        "mouseUps": 1,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95472,
+          "type": "Browser"
+        },
+        {
+          "pid": 95480,
+          "type": "GPU"
+        },
+        {
+          "pid": 95481,
+          "type": "Utility"
+        },
+        {
+          "pid": 95489,
+          "type": "Tab"
+        },
+        {
+          "pid": 95491,
+          "type": "Tab"
+        },
+        {
+          "pid": 95492,
+          "type": "Tab"
+        },
+        {
+          "pid": 95514,
+          "type": "Tab"
+        },
+        {
+          "pid": 95518,
+          "type": "Tab"
+        },
+        {
+          "pid": 95527,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:26.493Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "absent",
+      "failedReason": null,
+      "hiddenReason": "layout",
+      "generation": 6,
+      "childCreatedCount": 0,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": false,
+        "finished": false,
+        "loadMs": null
+      },
+      "child": null,
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 0
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 0,
+        "shownSeq": -1,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 0,
+        "view": {
+          "kind": "none",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": null,
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95982,
+          "type": "Browser"
+        },
+        {
+          "pid": 95988,
+          "type": "GPU"
+        },
+        {
+          "pid": 95989,
+          "type": "Utility"
+        },
+        {
+          "pid": 95995,
+          "type": "Tab"
+        },
+        {
+          "pid": 96000,
+          "type": "Tab"
+        },
+        {
+          "pid": 96002,
+          "type": "Tab"
+        },
+        {
+          "pid": 96008,
+          "type": "Tab"
+        },
+        {
+          "pid": 96032,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:26.494Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "absent",
+      "failedReason": null,
+      "hiddenReason": "layout",
+      "generation": 6,
+      "childCreatedCount": 0,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": false,
+        "finished": false,
+        "loadMs": null
+      },
+      "child": null,
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 0
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 0,
+        "shownSeq": -1,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 0,
+        "view": {
+          "kind": "none",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": null,
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95982,
+          "type": "Browser"
+        },
+        {
+          "pid": 95988,
+          "type": "GPU"
+        },
+        {
+          "pid": 95989,
+          "type": "Utility"
+        },
+        {
+          "pid": 95995,
+          "type": "Tab"
+        },
+        {
+          "pid": 96000,
+          "type": "Tab"
+        },
+        {
+          "pid": 96002,
+          "type": "Tab"
+        },
+        {
+          "pid": 96008,
+          "type": "Tab"
+        },
+        {
+          "pid": 96032,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:26.684Z",
+    "action": "measure",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 7,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 75
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 69
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 1043,
+        "shownSeq": 1043,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 1,
+        "view": {
+          "kind": "rows",
+          "rowCount": 1,
+          "active": -1
+        },
+        "measured": {
+          "appliedSeq": 1043,
+          "rowCount": 1,
+          "headerHeight": 28,
+          "rowRects": [
+            {
+              "top": 2,
+              "height": 35.5
+            }
+          ],
+          "viewportHeight": 40,
+          "scrollHeight": 40,
+          "innerHeight": 69,
+          "activeRowRect": null
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95982,
+          "type": "Browser"
+        },
+        {
+          "pid": 95988,
+          "type": "GPU"
+        },
+        {
+          "pid": 95989,
+          "type": "Utility"
+        },
+        {
+          "pid": 95995,
+          "type": "Tab"
+        },
+        {
+          "pid": 96000,
+          "type": "Tab"
+        },
+        {
+          "pid": 96002,
+          "type": "Tab"
+        },
+        {
+          "pid": 96008,
+          "type": "Tab"
+        },
+        {
+          "pid": 96032,
+          "type": "Tab"
+        },
+        {
+          "pid": 96036,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:26.690Z",
+    "action": "measure",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 8,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 75
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 140
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 1044,
+        "shownSeq": 1044,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 2,
+        "view": {
+          "kind": "rows",
+          "rowCount": 3,
+          "active": -1
+        },
+        "measured": {
+          "appliedSeq": 1044,
+          "rowCount": 3,
+          "headerHeight": 28,
+          "rowRects": [
+            {
+              "top": 2,
+              "height": 35.5
+            },
+            {
+              "top": 37.5,
+              "height": 35.5
+            },
+            {
+              "top": 73,
+              "height": 35.5
+            }
+          ],
+          "viewportHeight": 111,
+          "scrollHeight": 111,
+          "innerHeight": 140,
+          "activeRowRect": null
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95982,
+          "type": "Browser"
+        },
+        {
+          "pid": 95988,
+          "type": "GPU"
+        },
+        {
+          "pid": 95989,
+          "type": "Utility"
+        },
+        {
+          "pid": 95995,
+          "type": "Tab"
+        },
+        {
+          "pid": 96000,
+          "type": "Tab"
+        },
+        {
+          "pid": 96002,
+          "type": "Tab"
+        },
+        {
+          "pid": 96008,
+          "type": "Tab"
+        },
+        {
+          "pid": 96032,
+          "type": "Tab"
+        },
+        {
+          "pid": 96036,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:26.695Z",
+    "action": "measure",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 9,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 75
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 211
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 1045,
+        "shownSeq": 1045,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 3,
+        "view": {
+          "kind": "rows",
+          "rowCount": 5,
+          "active": -1
+        },
+        "measured": {
+          "appliedSeq": 1045,
+          "rowCount": 5,
+          "headerHeight": 28,
+          "rowRects": [
+            {
+              "top": 2,
+              "height": 35.5
+            },
+            {
+              "top": 37.5,
+              "height": 35.5
+            },
+            {
+              "top": 73,
+              "height": 35.5
+            },
+            {
+              "top": 108.5,
+              "height": 35.5
+            },
+            {
+              "top": 144,
+              "height": 35.5
+            }
+          ],
+          "viewportHeight": 182,
+          "scrollHeight": 182,
+          "innerHeight": 140,
+          "activeRowRect": null
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95982,
+          "type": "Browser"
+        },
+        {
+          "pid": 95988,
+          "type": "GPU"
+        },
+        {
+          "pid": 95989,
+          "type": "Utility"
+        },
+        {
+          "pid": 95995,
+          "type": "Tab"
+        },
+        {
+          "pid": 96000,
+          "type": "Tab"
+        },
+        {
+          "pid": 96002,
+          "type": "Tab"
+        },
+        {
+          "pid": 96008,
+          "type": "Tab"
+        },
+        {
+          "pid": 96032,
+          "type": "Tab"
+        },
+        {
+          "pid": 96036,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:26.698Z",
+    "action": "measure",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 10,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 75
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 1046,
+        "shownSeq": 1046,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 4,
+        "view": {
+          "kind": "notice",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": {
+          "appliedSeq": 1046,
+          "rowCount": 0,
+          "headerHeight": 28,
+          "rowRects": [],
+          "viewportHeight": 75,
+          "scrollHeight": 75,
+          "innerHeight": 140,
+          "activeRowRect": null
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95982,
+          "type": "Browser"
+        },
+        {
+          "pid": 95988,
+          "type": "GPU"
+        },
+        {
+          "pid": 95989,
+          "type": "Utility"
+        },
+        {
+          "pid": 95995,
+          "type": "Tab"
+        },
+        {
+          "pid": 96000,
+          "type": "Tab"
+        },
+        {
+          "pid": 96002,
+          "type": "Tab"
+        },
+        {
+          "pid": 96008,
+          "type": "Tab"
+        },
+        {
+          "pid": 96032,
+          "type": "Tab"
+        },
+        {
+          "pid": 96036,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:26.701Z",
+    "action": "measure",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 11,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 75
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 1047,
+        "shownSeq": 1047,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 5,
+        "view": {
+          "kind": "notice",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": {
+          "appliedSeq": 1047,
+          "rowCount": 0,
+          "headerHeight": 28,
+          "rowRects": [],
+          "viewportHeight": 75,
+          "scrollHeight": 75,
+          "innerHeight": 140,
+          "activeRowRect": null
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95982,
+          "type": "Browser"
+        },
+        {
+          "pid": 95988,
+          "type": "GPU"
+        },
+        {
+          "pid": 95989,
+          "type": "Utility"
+        },
+        {
+          "pid": 95995,
+          "type": "Tab"
+        },
+        {
+          "pid": 96000,
+          "type": "Tab"
+        },
+        {
+          "pid": 96002,
+          "type": "Tab"
+        },
+        {
+          "pid": 96008,
+          "type": "Tab"
+        },
+        {
+          "pid": 96032,
+          "type": "Tab"
+        },
+        {
+          "pid": 96036,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:26.703Z",
+    "action": "measure",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 12,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 75
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 1048,
+        "shownSeq": 1048,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 6,
+        "view": {
+          "kind": "notice",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": {
+          "appliedSeq": 1048,
+          "rowCount": 0,
+          "headerHeight": 28,
+          "rowRects": [],
+          "viewportHeight": 75,
+          "scrollHeight": 75,
+          "innerHeight": 140,
+          "activeRowRect": null
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95982,
+          "type": "Browser"
+        },
+        {
+          "pid": 95988,
+          "type": "GPU"
+        },
+        {
+          "pid": 95989,
+          "type": "Utility"
+        },
+        {
+          "pid": 95995,
+          "type": "Tab"
+        },
+        {
+          "pid": 96000,
+          "type": "Tab"
+        },
+        {
+          "pid": 96002,
+          "type": "Tab"
+        },
+        {
+          "pid": 96008,
+          "type": "Tab"
+        },
+        {
+          "pid": 96032,
+          "type": "Tab"
+        },
+        {
+          "pid": 96036,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:26.706Z",
+    "action": "measure",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 13,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 75
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 1049,
+        "shownSeq": 1049,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 7,
+        "view": {
+          "kind": "notice",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": {
+          "appliedSeq": 1049,
+          "rowCount": 0,
+          "headerHeight": 28,
+          "rowRects": [],
+          "viewportHeight": 75,
+          "scrollHeight": 75,
+          "innerHeight": 140,
+          "activeRowRect": null
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95982,
+          "type": "Browser"
+        },
+        {
+          "pid": 95988,
+          "type": "GPU"
+        },
+        {
+          "pid": 95989,
+          "type": "Utility"
+        },
+        {
+          "pid": 95995,
+          "type": "Tab"
+        },
+        {
+          "pid": 96000,
+          "type": "Tab"
+        },
+        {
+          "pid": 96002,
+          "type": "Tab"
+        },
+        {
+          "pid": 96008,
+          "type": "Tab"
+        },
+        {
+          "pid": 96032,
+          "type": "Tab"
+        },
+        {
+          "pid": 96036,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:26.711Z",
+    "action": "measure",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 15,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 75
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 140
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 1051,
+        "shownSeq": 1051,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 8,
+        "view": {
+          "kind": "rows",
+          "rowCount": 3,
+          "active": 1
+        },
+        "measured": {
+          "appliedSeq": 1051,
+          "rowCount": 3,
+          "headerHeight": 28,
+          "rowRects": [
+            {
+              "top": 2,
+              "height": 35.5
+            },
+            {
+              "top": 37.5,
+              "height": 35.5
+            },
+            {
+              "top": 73,
+              "height": 35.5
+            }
+          ],
+          "viewportHeight": 111,
+          "scrollHeight": 111,
+          "innerHeight": 140,
+          "activeRowRect": {
+            "top": 37.5,
+            "height": 35.5
+          }
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 1
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95982,
+          "type": "Browser"
+        },
+        {
+          "pid": 95988,
+          "type": "GPU"
+        },
+        {
+          "pid": 95989,
+          "type": "Utility"
+        },
+        {
+          "pid": 95995,
+          "type": "Tab"
+        },
+        {
+          "pid": 96000,
+          "type": "Tab"
+        },
+        {
+          "pid": 96002,
+          "type": "Tab"
+        },
+        {
+          "pid": 96008,
+          "type": "Tab"
+        },
+        {
+          "pid": 96032,
+          "type": "Tab"
+        },
+        {
+          "pid": 96036,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:27.159Z",
+    "action": "measure",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 21,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 75
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 1057,
+        "shownSeq": 1057,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 14,
+        "view": {
+          "kind": "notice",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": {
+          "appliedSeq": 1057,
+          "rowCount": 0,
+          "headerHeight": 28,
+          "rowRects": [],
+          "viewportHeight": 75,
+          "scrollHeight": 75,
+          "innerHeight": 104,
+          "activeRowRect": null
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 1
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95982,
+          "type": "Browser"
+        },
+        {
+          "pid": 95988,
+          "type": "GPU"
+        },
+        {
+          "pid": 95989,
+          "type": "Utility"
+        },
+        {
+          "pid": 95995,
+          "type": "Tab"
+        },
+        {
+          "pid": 96000,
+          "type": "Tab"
+        },
+        {
+          "pid": 96002,
+          "type": "Tab"
+        },
+        {
+          "pid": 96008,
+          "type": "Tab"
+        },
+        {
+          "pid": 96032,
+          "type": "Tab"
+        },
+        {
+          "pid": 96036,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:27.261Z",
+    "action": "measure",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 22,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 75
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 1058,
+        "shownSeq": 1058,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 15,
+        "view": {
+          "kind": "notice",
+          "rowCount": 0,
+          "active": -1
+        },
+        "measured": {
+          "appliedSeq": 1058,
+          "rowCount": 0,
+          "headerHeight": 28,
+          "rowRects": [],
+          "viewportHeight": 75,
+          "scrollHeight": 75,
+          "innerHeight": 104,
+          "activeRowRect": null
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 1
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95982,
+          "type": "Browser"
+        },
+        {
+          "pid": 95988,
+          "type": "GPU"
+        },
+        {
+          "pid": 95989,
+          "type": "Utility"
+        },
+        {
+          "pid": 95995,
+          "type": "Tab"
+        },
+        {
+          "pid": 96000,
+          "type": "Tab"
+        },
+        {
+          "pid": 96002,
+          "type": "Tab"
+        },
+        {
+          "pid": 96008,
+          "type": "Tab"
+        },
+        {
+          "pid": 96032,
+          "type": "Tab"
+        },
+        {
+          "pid": 96036,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:27.393Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 23,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 75
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 104
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 1059,
+        "shownSeq": 1059,
+        "lastRejected": null,
+        "theme": "fallback",
+        "applyCount": 16,
+        "view": {
+          "kind": "rows",
+          "rowCount": 2,
+          "active": -1
+        },
+        "measured": {
+          "appliedSeq": 1059,
+          "rowCount": 2,
+          "headerHeight": 28,
+          "rowRects": [
+            {
+              "top": 2,
+              "height": 35.5
+            },
+            {
+              "top": 37.5,
+              "height": 35.5
+            }
+          ],
+          "viewportHeight": 75,
+          "scrollHeight": 75,
+          "innerHeight": 104,
+          "activeRowRect": null
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 1
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95982,
+          "type": "Browser"
+        },
+        {
+          "pid": 95988,
+          "type": "GPU"
+        },
+        {
+          "pid": 95989,
+          "type": "Utility"
+        },
+        {
+          "pid": 95995,
+          "type": "Tab"
+        },
+        {
+          "pid": 96000,
+          "type": "Tab"
+        },
+        {
+          "pid": 96002,
+          "type": "Tab"
+        },
+        {
+          "pid": 96008,
+          "type": "Tab"
+        },
+        {
+          "pid": 96032,
+          "type": "Tab"
+        },
+        {
+          "pid": 96036,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:27.498Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 24,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 75
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 140
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 1060,
+        "shownSeq": 1060,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 17,
+        "view": {
+          "kind": "rows",
+          "rowCount": 3,
+          "active": 0
+        },
+        "measured": {
+          "appliedSeq": 1060,
+          "rowCount": 3,
+          "headerHeight": 28,
+          "rowRects": [
+            {
+              "top": 2,
+              "height": 35.5
+            },
+            {
+              "top": 37.5,
+              "height": 35.5
+            },
+            {
+              "top": 73,
+              "height": 35.5
+            }
+          ],
+          "viewportHeight": 111,
+          "scrollHeight": 111,
+          "innerHeight": 140,
+          "activeRowRect": {
+            "top": 2,
+            "height": 35.5
+          }
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 1
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95982,
+          "type": "Browser"
+        },
+        {
+          "pid": 95988,
+          "type": "GPU"
+        },
+        {
+          "pid": 95989,
+          "type": "Utility"
+        },
+        {
+          "pid": 95995,
+          "type": "Tab"
+        },
+        {
+          "pid": 96000,
+          "type": "Tab"
+        },
+        {
+          "pid": 96002,
+          "type": "Tab"
+        },
+        {
+          "pid": 96008,
+          "type": "Tab"
+        },
+        {
+          "pid": 96032,
+          "type": "Tab"
+        },
+        {
+          "pid": 96036,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:27.544Z",
+    "action": "click",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 24,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 75
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 140
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 1060,
+        "shownSeq": 1060,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 17,
+        "view": {
+          "kind": "rows",
+          "rowCount": 3,
+          "active": 0
+        },
+        "measured": {
+          "appliedSeq": 1060,
+          "rowCount": 3,
+          "headerHeight": 28,
+          "rowRects": [
+            {
+              "top": 2,
+              "height": 35.5
+            },
+            {
+              "top": 37.5,
+              "height": 35.5
+            },
+            {
+              "top": 73,
+              "height": 35.5
+            }
+          ],
+          "viewportHeight": 111,
+          "scrollHeight": 111,
+          "innerHeight": 140,
+          "activeRowRect": {
+            "top": 2,
+            "height": 35.5
+          }
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {
+          "mouse_mismatch": 1
+        },
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 1
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 1,
+        "mouseUps": 1,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95982,
+          "type": "Browser"
+        },
+        {
+          "pid": 95988,
+          "type": "GPU"
+        },
+        {
+          "pid": 95989,
+          "type": "Utility"
+        },
+        {
+          "pid": 95995,
+          "type": "Tab"
+        },
+        {
+          "pid": 96000,
+          "type": "Tab"
+        },
+        {
+          "pid": 96002,
+          "type": "Tab"
+        },
+        {
+          "pid": 96008,
+          "type": "Tab"
+        },
+        {
+          "pid": 96032,
+          "type": "Tab"
+        },
+        {
+          "pid": 96036,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T07:04:27.547Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file://<home>/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 24,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 75
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 140
+        },
+        "order": 2,
+        "childCount": 3
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 10
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 1060,
+        "shownSeq": 1060,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 17,
+        "view": {
+          "kind": "rows",
+          "rowCount": 3,
+          "active": 0
+        },
+        "measured": {
+          "appliedSeq": 1060,
+          "rowCount": 3,
+          "headerHeight": 28,
+          "rowRects": [
+            {
+              "top": 2,
+              "height": 35.5
+            },
+            {
+              "top": 37.5,
+              "height": 35.5
+            },
+            {
+              "top": 73,
+              "height": 35.5
+            }
+          ],
+          "viewportHeight": 111,
+          "scrollHeight": 111,
+          "innerHeight": 140,
+          "activeRowRect": {
+            "top": 2,
+            "height": 35.5
+          }
+        },
+        "commitsEmitted": 0,
+        "commitsDropped": {
+          "mouse_mismatch": 1
+        },
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 1
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 1,
+        "mouseUps": 1,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 95982,
+          "type": "Browser"
+        },
+        {
+          "pid": 95988,
+          "type": "GPU"
+        },
+        {
+          "pid": 95989,
+          "type": "Utility"
+        },
+        {
+          "pid": 95995,
+          "type": "Tab"
+        },
+        {
+          "pid": 96000,
+          "type": "Tab"
+        },
+        {
+          "pid": 96002,
+          "type": "Tab"
+        },
+        {
+          "pid": 96008,
+          "type": "Tab"
+        },
+        {
+          "pid": 96032,
+          "type": "Tab"
+        },
+        {
+          "pid": 96036,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  }
+]

@@ -47,6 +47,19 @@ import {
 	session,
 } from "electron";
 import type { WindowMode } from "../window-mode";
+import {
+	ADDRESS_LIST_DOCUMENT,
+	ADDRESS_LIST_ENV,
+	ADDRESS_LIST_HEADER_HEIGHT,
+	ADDRESS_LIST_ROW_HEIGHT,
+	type AddressListMeasurement,
+	type AddressListProjection,
+	addressListBoundsFor,
+	addressListMeasurementProblem,
+	addressListRowIndexAt,
+	addressListViewModel,
+	sanitizeProjection,
+} from "./address-overlay-list";
 
 /** The exact opt-in. Absent or anything other than `1` is off. */
 export const ADDRESS_OVERLAY_S1_ENV =
@@ -76,15 +89,30 @@ const TRAILING_SLASH = /\/$/;
  * caller must pass the app's resolved trusted URL, never a path from outside.
  */
 export function addressOverlayDocumentUrlFor(rendererUrl: string): string {
+	return documentUrlFor(rendererUrl, ADDRESS_OVERLAY_DOCUMENT);
+}
+
+/** S2's scripted document, resolved by the same rule and never by a
+ * renderer-supplied path. */
+export function addressListDocumentUrlFor(rendererUrl: string): string {
+	return documentUrlFor(rendererUrl, ADDRESS_LIST_DOCUMENT);
+}
+
+function documentUrlFor(rendererUrl: string, document: string): string {
 	return INDEX_DOCUMENT_SUFFIX.test(rendererUrl)
-		? rendererUrl.replace(INDEX_DOCUMENT_SUFFIX, `/${ADDRESS_OVERLAY_DOCUMENT}`)
-		: `${rendererUrl.replace(TRAILING_SLASH, "")}/${ADDRESS_OVERLAY_DOCUMENT}`;
+		? rendererUrl.replace(INDEX_DOCUMENT_SUFFIX, `/${document}`)
+		: `${rendererUrl.replace(TRAILING_SLASH, "")}/${document}`;
 }
 
 export interface AddressOverlayGate {
 	/** Whether the environment named the experiment at all. Drives the log line. */
 	asked: boolean;
 	enabled: boolean;
+	/**
+	 * S2's list mirror. True only when the S2 opt-in is present AND every S1 gate
+	 * passed: S2 is an increment on S1's child and session, never a parallel arm.
+	 */
+	list: boolean;
 	/** Why it was refused, in the same shape the dev driver uses. */
 	reason: string | null;
 }
@@ -105,21 +133,42 @@ export function resolveAddressOverlayGate(input: {
 	windowMode: WindowMode;
 }): AddressOverlayGate {
 	const raw = input.env[ADDRESS_OVERLAY_S1_ENV];
+	const listRaw = input.env[ADDRESS_LIST_ENV];
+	const listAsked = listRaw !== undefined && listRaw.trim() !== "";
 	if (raw === undefined || raw.trim() === "") {
-		return { asked: false, enabled: false, reason: null };
+		// A lone S2 opt-in is a refusal, not silence: the operator named an
+		// experiment and is owed the reason it did not arm.
+		return listAsked
+			? {
+					asked: true,
+					enabled: false,
+					list: false,
+					reason: `${ADDRESS_LIST_ENV} needs ${ADDRESS_OVERLAY_S1_ENV}=1: S2's list is a mirror inside S1's child, not a second child`,
+				}
+			: { asked: false, enabled: false, list: false, reason: null };
 	}
 	const asked = true;
 	if (raw.trim() !== "1") {
 		return {
 			asked,
 			enabled: false,
+			list: false,
 			reason: `${ADDRESS_OVERLAY_S1_ENV}=${raw.trim()} is not an opt-in (accepted: 1); the address overlay stayed off`,
+		};
+	}
+	if (listAsked && listRaw.trim() !== "1") {
+		return {
+			asked,
+			enabled: false,
+			list: false,
+			reason: `${ADDRESS_LIST_ENV}=${listRaw.trim()} is not an opt-in (accepted: 1); the address overlay stayed off`,
 		};
 	}
 	if (!input.devDriverArmed) {
 		return {
 			asked,
 			enabled: false,
+			list: false,
 			reason:
 				"the address overlay needs the armed renderer dev driver; it has no user-facing trigger in S1",
 		};
@@ -128,10 +177,11 @@ export function resolveAddressOverlayGate(input: {
 		return {
 			asked,
 			enabled: false,
+			list: false,
 			reason: `the address overlay refused to arm in a "${input.windowMode}" window; S1 has no user-facing path, so use --window-mode=headless`,
 		};
 	}
-	return { asked, enabled: true, reason: null };
+	return { asked, enabled: true, list: listAsked, reason: null };
 }
 
 export interface OverlayRect {
@@ -278,6 +328,30 @@ export interface AddressOverlayFacts {
 	page?: AddressOverlayPageFacts | null;
 	/** OS process ids/types only, when the host supplies them. Never page content. */
 	metrics: unknown;
+	/** S2 mirror counters. Present in every controller so a probe can prove the
+	 * S1 path leaves them at zero rather than inferring it from silence. */
+	s2: {
+		list: boolean;
+		javascript: boolean;
+		lastSeq: number;
+		shownSeq: number;
+		lastRejected: string | null;
+		theme: string;
+		applyCount: number;
+		view: {
+			kind: "none" | "rows" | "notice";
+			rowCount: number;
+			active: number;
+		};
+		measured: AddressListMeasurement | null;
+		commitsEmitted: number;
+		commitsDropped: Record<string, number>;
+		hideCounts: Record<string, number>;
+		keysBlocked: number;
+		mouseDowns: number;
+		mouseUps: number;
+		contextMenuBlocked: number;
+	};
 }
 
 /** What the probe reports about the presented page: ids and geometry, no content. */
@@ -294,15 +368,46 @@ export interface AddressOverlayShowResult {
 	bounds: OverlayRect | null;
 }
 
+/** What one projection call decided. `accepted` is about the payload; `shown`
+ * is the child's resulting visibility, so a refusal and a hide stay distinct. */
+export interface AddressOverlayProjectResult {
+	accepted: boolean;
+	shown: boolean;
+	reason: string | null;
+	/** The rectangle the child was given, when one was computed. */
+	bounds: OverlayRect | null;
+}
+
+/** Integer + tolerance compare for two rectangles in the same CSS-px space. */
+function sameRect(a: OverlayRect, b: OverlayRect | null): boolean {
+	if (b === null) return false;
+	return (
+		a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
+	);
+}
+
 export interface AddressOverlayDeps {
 	window: BrowserWindow;
 	documentUrl: string;
 	/** Test seam. Production uses the hardened factory below. */
 	createView?: () => WebContentsView;
 	readinessTimeoutMs?: number;
+	/** S2: the child document runs its own bundled module script. False for S1. */
+	javascript?: boolean;
+	/** S2: where a validated row click is reported (the host forwards it to the
+	 * owner window). Absent means no sink, and the click is counted, not sent. */
+	onEvent?: (event: AddressOverlayCommitEvent) => void;
 	log?: (message: string) => void;
 	now?: () => number;
 	appMetrics?: () => unknown;
+}
+
+/** The one event main sends back to the renderer: a row index inside the
+ * projection with that seq. Never a URL, never a string the renderer trusts. */
+export interface AddressOverlayCommitEvent {
+	type: "commit";
+	seq: number;
+	index: number;
 }
 
 /** Opaque, neutral, and deliberately not a theme claim (S4 owns theming). */
@@ -312,8 +417,14 @@ const OVERLAY_BACKGROUND = "#1b1f24";
  * The production child. A dedicated non-persistent session means this document
  * has its own cookie jar (empty, and discarded with the child), and the session
  * handlers deny the whole capability vocabulary before the page is created.
+ *
+ * S2 opens exactly one switch: `javascript`. S1's document stays JS-off, so an
+ * unintended script in it cannot run; S2's list document needs its module entry
+ * to paint rows. Everything else — sandbox, context isolation, no Node, no
+ * preload, denials — is the same object for both, which is what keeps S2 from
+ * becoming a second, weaker trust boundary.
  */
-function createHardenedView(): WebContentsView {
+function createHardenedView(options: { javascript: boolean }): WebContentsView {
 	const partition = `address-overlay-${randomUUID()}`;
 	const childSession = session.fromPartition(partition);
 	childSession.setPermissionRequestHandler(
@@ -333,10 +444,9 @@ function createHardenedView(): WebContentsView {
 			nodeIntegration: false,
 			webSecurity: true,
 			allowRunningInsecureContent: false,
-			// No `preload`, and no script in the document: nothing can ask for a
-			// bridge, and the renderer never runs JavaScript even if the document
-			// changes by accident.
-			javascript: false,
+			// No `preload`, and no app imports in either document. The flag is the
+			// S1/S2 split: false for the inert document, true for the mirror list.
+			javascript: options.javascript,
 		},
 	});
 	view.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
@@ -348,6 +458,8 @@ export class AddressOverlayController {
 	private readonly window: BrowserWindow;
 	private readonly documentUrl: string;
 	private readonly createView: () => WebContentsView;
+	private readonly javascript: boolean;
+	private readonly onEvent: ((event: AddressOverlayCommitEvent) => void) | null;
 	private readonly readinessTimeoutMs: number;
 	private readonly log: (message: string) => void;
 	private readonly now: () => number;
@@ -376,11 +488,36 @@ export class AddressOverlayController {
 	private disposed: boolean;
 	private ownerListeners: Array<() => void>;
 	private childListeners: Array<() => void>;
+	// ---- S2 mirror state ----------------------------------------------------
+	private lastSeq: number;
+	private shownSeq: number;
+	private lastProjection: AddressListProjection | null;
+	/** The rectangle last applied for a projection. `onLayout`'s unchanged-key
+	 * re-assert uses THIS, never the S1 top-strip rule: an S2 child sits at the
+	 * dock, and re-raising it with the S1 rectangle would move the list. */
+	private lastAppliedBounds: OverlayRect | null;
+	private lastMeasurement: AddressListMeasurement | null;
+	private themeFact: string;
+	private applyCount: number;
+	private commitsEmitted: number;
+	private commitsDropped: Map<string, number>;
+	private hideCounts: Map<string, number>;
+	private keysBlocked: number;
+	private mouseDowns: number;
+	private mouseUps: number;
+	private mouseDownRow: number | null;
+	private contextMenuBlocked: number;
+	private lastRejected: string | null;
+	private projectQueue: Promise<unknown>;
 
 	constructor(deps: AddressOverlayDeps) {
 		this.window = deps.window;
 		this.documentUrl = deps.documentUrl;
-		this.createView = deps.createView ?? createHardenedView;
+		this.createView =
+			deps.createView ??
+			(() => createHardenedView({ javascript: deps.javascript === true }));
+		this.javascript = deps.javascript === true;
+		this.onEvent = deps.onEvent ?? null;
 		this.readinessTimeoutMs =
 			deps.readinessTimeoutMs ?? ADDRESS_OVERLAY_READY_TIMEOUT_MS;
 		this.log = deps.log ?? (() => {});
@@ -415,6 +552,23 @@ export class AddressOverlayController {
 		this.disposed = false;
 		this.ownerListeners = [];
 		this.childListeners = [];
+		this.lastSeq = 0;
+		this.shownSeq = -1;
+		this.lastProjection = null;
+		this.lastAppliedBounds = null;
+		this.lastMeasurement = null;
+		this.themeFact = "absent";
+		this.applyCount = 0;
+		this.commitsEmitted = 0;
+		this.commitsDropped = new Map();
+		this.hideCounts = new Map();
+		this.keysBlocked = 0;
+		this.mouseDowns = 0;
+		this.mouseUps = 0;
+		this.mouseDownRow = null;
+		this.contextMenuBlocked = 0;
+		this.lastRejected = null;
+		this.projectQueue = Promise.resolve();
 		this.attachOwnerListeners();
 	}
 
@@ -446,7 +600,10 @@ export class AddressOverlayController {
 		if (this.state !== "shown") return;
 		const view = this.view;
 		if (!view || this.viewUsable(view) === false) return;
-		const bounds = overlayBoundsFor(next.contentRect, this.ownerSize());
+		const bounds =
+			this.lastProjection !== null
+				? this.lastAppliedBounds
+				: overlayBoundsFor(next.contentRect, this.ownerSize());
 		if (bounds === null || !next.presented) {
 			this.hide("layout_invalid");
 			return;
@@ -498,6 +655,13 @@ export class AddressOverlayController {
 		this.generation += 1;
 		this.settleReady(false);
 		this.hiddenReason = reason;
+		this.hideCounts.set(reason, (this.hideCounts.get(reason) ?? 0) + 1);
+		// A hidden child can route nothing: drop the row under the pointer and the
+		// seq a commit would have to match, so a late mouse-up cannot commit a row
+		// the user can no longer see.
+		this.shownSeq = -1;
+		this.mouseDownRow = null;
+		this.lastMeasurement = null;
 		const view = this.view;
 		if (view && this.viewUsable(view)) {
 			try {
@@ -577,11 +741,42 @@ export class AddressOverlayController {
 			},
 			pendingShow: this.showInFlight !== null,
 			readinessTimer: this.readinessTimer !== null,
+			s2: {
+				list: this.javascript,
+				javascript: this.javascript,
+				lastSeq: this.lastSeq,
+				shownSeq: this.shownSeq,
+				lastRejected: this.lastRejected,
+				theme: this.themeFact,
+				applyCount: this.applyCount,
+				view:
+					this.lastProjection === null
+						? { kind: "none", rowCount: 0, active: -1 }
+						: {
+								kind: this.lastProjection.view.kind,
+								rowCount:
+									this.lastProjection.view.kind === "rows"
+										? this.lastProjection.view.rows.length
+										: 0,
+								active: this.lastProjection.active,
+							},
+				measured: this.lastMeasurement,
+				commitsEmitted: this.commitsEmitted,
+				commitsDropped: Object.fromEntries(this.commitsDropped),
+				hideCounts: Object.fromEntries(this.hideCounts),
+				keysBlocked: this.keysBlocked,
+				mouseDowns: this.mouseDowns,
+				mouseUps: this.mouseUps,
+				contextMenuBlocked: this.contextMenuBlocked,
+			},
 			metrics: this.appMetrics ? this.appMetrics() : null,
 		};
 	}
 
-	async probe(action: "show" | "hide" | "facts"): Promise<AddressOverlayFacts> {
+	async probe(
+		action: "show" | "hide" | "facts" | "click" | "measure" | "key",
+		argument?: unknown,
+	): Promise<AddressOverlayFacts> {
 		if (action === "show") {
 			await this.showOverlay();
 			return this.facts();
@@ -590,7 +785,341 @@ export class AddressOverlayController {
 			this.hide("probe");
 			return this.facts();
 		}
+		if (action === "click") {
+			this.probeClick(argument);
+			await new Promise((done) => setTimeout(done, 40));
+			return this.facts();
+		}
+		if (action === "measure") {
+			await this.probeMeasure();
+			return this.facts();
+		}
+		if (action === "key") {
+			this.probeKey(argument);
+			await new Promise((done) => setTimeout(done, 20));
+			return this.facts();
+		}
 		return this.facts();
+	}
+
+	/**
+	 * Apply one renderer projection (S2). Everything arriving here was or will be
+	 * revalidated: JSON size, shape, every string, tab/layout freshness, zoom,
+	 * anchor geometry and — after the child paints — the child's own measurements.
+	 *
+	 * Serialized: a per-frame renderer can outpace `executeJavaScript`, and two
+	 * overlapping applies would let an older model win. The queue is per
+	 * controller, so a burst between frames costs one apply each in arrival order.
+	 */
+	project(raw: unknown): Promise<AddressOverlayProjectResult> {
+		const run = (): Promise<AddressOverlayProjectResult> =>
+			this.projectOnce(raw);
+		const next = this.projectQueue.then(run, run);
+		this.projectQueue = next.then(
+			() => undefined,
+			() => undefined,
+		);
+		return next;
+	}
+
+	private async projectOnce(
+		raw: unknown,
+	): Promise<AddressOverlayProjectResult> {
+		const parsed = sanitizeProjection(raw);
+		if (!parsed.ok) {
+			this.drop(parsed.reason);
+			return {
+				accepted: false,
+				shown: false,
+				reason: parsed.reason,
+				bounds: null,
+			};
+		}
+		const projection = parsed.projection;
+		this.themeFact = projection.themeFact;
+
+		if (!projection.visible) {
+			if (projection.seq > this.lastSeq) this.lastSeq = projection.seq;
+			this.hide("projection_hidden");
+			return { accepted: true, shown: false, reason: null, bounds: null };
+		}
+		if (this.disposed) {
+			return this.refuseProjection("disposed");
+		}
+		if (projection.seq < this.lastSeq) {
+			// An out-of-order frame is dropped WITHOUT hiding: the list on screen is
+			// newer than this projection, and hiding it would be a visible regression.
+			this.drop("stale_seq");
+			return {
+				accepted: false,
+				shown: this.state === "shown",
+				reason: "stale_seq",
+				bounds: null,
+			};
+		}
+		if (projection.seq === this.lastSeq && projection.seq === this.shownSeq) {
+			return {
+				accepted: true,
+				shown: this.state === "shown",
+				reason: null,
+				bounds:
+					this.view && this.viewUsable(this.view)
+						? this.view.getBounds()
+						: null,
+			};
+		}
+		if (this.failedReason) return this.refuseProjection("overlay_failed");
+		if (this.ownerUnavailable()) {
+			this.releaseChild("owner_unavailable");
+			return this.refuseProjection("owner_unavailable");
+		}
+
+		// ZOOM FAILS CLOSED. At a zoom factor other than 1 a DOM rect keeps its
+		// CSS-px left while the window's inner size shrinks, so CSS px and DIP stop
+		// being interchangeable; scaling only this child would make it disagree with
+		// the page. The page-at-zoom question is pre-existing and not measured here.
+		const zoom = this.ownerZoom();
+		if (zoom === null || Math.abs(zoom - 1) > 1e-3) {
+			return this.refuseProjection("zoomed");
+		}
+
+		const layout = this.layout;
+		if (projection.tabId !== layout.activeTabId) {
+			return this.refuseProjection("stale_tab");
+		}
+		if (
+			!layout.presented ||
+			!sameRect(projection.pageRect, layout.contentRect)
+		) {
+			return this.refuseProjection("stale_layout");
+		}
+		const bounds = addressListBoundsFor(
+			projection.field,
+			projection.listTop,
+			projection.view,
+			this.ownerSize(),
+		);
+		if (bounds === null) return this.refuseProjection("anchor_inconsistent");
+
+		this.generation += 1;
+		const generation = this.generation;
+		this.boundTabId = projection.tabId;
+		if (!this.view) {
+			const created = this.createChild(bounds);
+			if (!created) {
+				return this.refuseProjection(
+					this.failedReason ?? "child_create_failed",
+				);
+			}
+		}
+		if (!(this.domReady && this.finished)) {
+			this.state = "loading";
+			const ready = await this.waitForReady();
+			if (!ready)
+				return this.refuseProjection(this.failedReason ?? "invalidated");
+		}
+		if (this.disposed || generation !== this.generation) {
+			return this.refuseProjection("invalidated");
+		}
+		const view = this.view;
+		if (!view || !this.viewUsable(view)) {
+			return this.refuseProjection("child_unavailable");
+		}
+
+		// SIZE BEFORE PAINT, and WAIT until the child's own layout viewport is the
+		// size we asked for. The child measures its rows to prove what it painted, so
+		// a model with five rows cannot be judged against the 69-DIP view that one
+		// row sized. A hidden (headless) window throttles its frame loop, so a native
+		// resize can land up to ~1 s later; re-assert it and poll `innerHeight`
+		// instead of guessing with one fixed sleep. A visible window lands on the
+		// next frame, so this costs one evaluation there.
+		view.setBounds(bounds);
+		const model = addressListViewModel(projection);
+		let measured: unknown = null;
+		let problem: string | null = null;
+		try {
+			for (let attempt = 0; attempt < 8; attempt += 1) {
+				// A dropped resize loses the attempt, not the request: re-assert the
+				// rectangle every time rather than only before the first apply.
+				view.setBounds(bounds);
+				// A FIXED function name with a main-built JSON argument: the child never
+				// receives code, only data. `JSON.stringify` escapes quotes, U+2028/2029
+				// and `</script>` for this call by construction, and the strings inside
+				// have already been stripped of control/bidi characters.
+				measured = await view.webContents.executeJavaScript(
+					`window.__loAddressOverlay && window.__loAddressOverlay.apply(${JSON.stringify(model)})`,
+					false,
+				);
+				problem = addressListMeasurementProblem(measured, projection);
+				if (problem === null) break;
+				// A native view resize can take a compositor frame to reach the child's
+				// layout. That shows up as a viewport smaller than the model needs
+				// (`measure_scroll`) on the first apply after a height change; wait one
+				// frame and re-apply. Any OTHER mismatch is a real defect and refuses
+				// on the spot.
+				if (problem !== "measure_scroll") break;
+				await new Promise((done) => setTimeout(done, 30));
+			}
+		} catch {
+			return this.refuseProjection("apply_error");
+		}
+		if (problem !== null) return this.refuseProjection(problem, bounds);
+
+		this.applyCount += 1;
+		this.lastSeq = projection.seq;
+		this.shownSeq = projection.seq;
+		this.lastProjection = projection;
+		this.lastAppliedBounds = bounds;
+		this.lastMeasurement = measured as AddressListMeasurement;
+		this.lastRejected = null;
+		this.state = "shown";
+		this.hiddenReason = null;
+		this.raiseChild(view);
+		view.setVisible(true);
+		return { accepted: true, shown: true, reason: null, bounds };
+	}
+
+	private refuseProjection(
+		reason: string,
+		bounds: OverlayRect | null = null,
+	): AddressOverlayProjectResult {
+		this.lastRejected = reason;
+		this.drop(reason);
+		this.hide(reason);
+		return { accepted: false, shown: false, reason, bounds };
+	}
+
+	private drop(reason: string): void {
+		this.commitsDropped.set(reason, (this.commitsDropped.get(reason) ?? 0) + 1);
+	}
+
+	private ownerZoom(): number | null {
+		try {
+			const zoom = this.window.webContents.getZoomFactor();
+			return typeof zoom === "number" && Number.isFinite(zoom) ? zoom : null;
+		} catch {
+			return null;
+		}
+	}
+
+	private rowAt(y: number): number | null {
+		if (this.state !== "shown") return null;
+		if (this.lastProjection === null) return null;
+		if (this.shownSeq !== this.lastSeq || this.shownSeq < 1) return null;
+		const projection = this.lastProjection;
+		if (projection.view.kind !== "rows") return null;
+		const index = addressListRowIndexAt(projection.view, y);
+		if (index === null || index >= projection.view.rows.length) return null;
+		return index;
+	}
+
+	private emitCommit(index: number): void {
+		const projection = this.lastProjection;
+		const sink = this.onEvent;
+		if (projection === null || sink === null) {
+			this.drop("no_sink");
+			return;
+		}
+		if (
+			projection.view.kind !== "rows" ||
+			index >= projection.view.rows.length
+		) {
+			this.drop("commit_index");
+			return;
+		}
+		this.commitsEmitted += 1;
+		sink({ type: "commit", seq: projection.seq, index });
+		this.log(
+			`[browser] address overlay commit emitted: seq=${projection.seq} index=${index}`,
+		);
+	}
+
+	/**
+	 * Probe-only mouse path: `sendInputEvent` into the child's own input pipeline.
+	 * This exercises the child and the before-mouse-event observer; it does NOT
+	 * exercise macOS NSView hit-testing between sibling views (matrix V3).
+	 */
+	private probeClick(argument: unknown): void {
+		const view = this.view;
+		const measurement = this.lastMeasurement;
+		if (!view || !this.viewUsable(view) || !measurement) {
+			throw new Error("address_overlay_click: no applied list to click");
+		}
+		const arg = (argument ?? {}) as { row?: unknown; upRow?: unknown };
+		const row = arg.row;
+		const upRow = arg.upRow === undefined ? row : arg.upRow;
+		const rows = measurement.rowRects;
+		if (typeof row !== "number" || !Number.isInteger(row) || !rows[row]) {
+			throw new Error(
+				"address_overlay_click: row must be a rendered row index",
+			);
+		}
+		if (typeof upRow !== "number" || !Number.isInteger(upRow)) {
+			throw new Error("address_overlay_click: upRow must be an integer");
+		}
+		// Child measurements are viewport-relative; `sendInputEvent` (and the
+		// before-mouse-event coordinates it produces) are document-relative. The
+		// header and the list's top padding are the difference.
+		const point = (index: number): { x: number; y: number } => {
+			const rect = rows[index];
+			const fallbackY =
+				ADDRESS_LIST_HEADER_HEIGHT +
+				2 +
+				(index + 0.5) * ADDRESS_LIST_ROW_HEIGHT;
+			return rect
+				? {
+						x: 40,
+						y: ADDRESS_LIST_HEADER_HEIGHT + 2 + rect.top + rect.height / 2,
+					}
+				: { x: 40, y: fallbackY };
+		};
+		const receive = (
+			type: "mouseMove" | "mouseDown" | "mouseUp",
+			index: number,
+		): void => {
+			const { x, y } = point(index);
+			view.webContents.sendInputEvent({
+				type,
+				x: Math.round(x),
+				y: Math.round(y),
+				button: "left",
+				clickCount: 1,
+			});
+		};
+		receive("mouseMove", row);
+		receive("mouseDown", row);
+		receive("mouseUp", upRow);
+	}
+
+	/**
+	 * Probe-only key into the child's own input pipeline. It is how the gated
+	 * harness proves `before-input-event` swallows keys; CDP-injected keys go
+	 * through a different path and were measured NOT to fire it.
+	 */
+	private probeKey(argument: unknown): void {
+		const view = this.view;
+		if (!view || !this.viewUsable(view)) {
+			throw new Error("address_overlay_key: no child");
+		}
+		const arg = (argument ?? {}) as { keyCode?: unknown };
+		const keyCode =
+			typeof arg.keyCode === "string" && arg.keyCode.length > 0
+				? arg.keyCode.slice(0, 32)
+				: "A";
+		view.webContents.sendInputEvent({ type: "keyDown", keyCode });
+		view.webContents.sendInputEvent({ type: "keyUp", keyCode });
+	}
+
+	private async probeMeasure(): Promise<void> {
+		const view = this.view;
+		if (!view || !this.viewUsable(view)) {
+			throw new Error("address_overlay_measure: no child");
+		}
+		const measured = await view.webContents.executeJavaScript(
+			"window.__loAddressOverlay && window.__loAddressOverlay.measure()",
+			false,
+		);
+		this.lastMeasurement = measured as AddressListMeasurement;
 	}
 
 	/**
@@ -840,6 +1369,57 @@ export class AddressOverlayController {
 			if (url === this.documentUrl) return;
 			event?.preventDefault?.();
 			this.log(`[browser] address overlay refused redirect to ${url}`);
+		});
+		/*
+		 * S2's input policy. The child is a PRESENTATION surface: it never owns
+		 * keyboard, focus or native hit routing (S3), so every key is swallowed and
+		 * counted, and the context menu is refused. Mouse events are observed in main
+		 * and always prevented — preventing the down/up is what keeps a click on a
+		 * row from moving focus out of the parent input (a lost click is acceptable;
+		 * a wrong navigation is not).
+		 */
+		on(contents, "before-input-event", (...args) => {
+			const event = args[0] as { preventDefault?: () => void } | undefined;
+			event?.preventDefault?.();
+			this.keysBlocked += 1;
+		});
+		on(contents, "context-menu", (...args) => {
+			const event = args[0] as { preventDefault?: () => void } | undefined;
+			event?.preventDefault?.();
+			this.contextMenuBlocked += 1;
+		});
+		on(contents, "before-mouse-event", (...args) => {
+			const event = args[0] as { preventDefault?: () => void } | undefined;
+			event?.preventDefault?.();
+			const mouse = args[1] as
+				| { type?: string; x?: number; y?: number }
+				| undefined;
+			if (
+				!mouse ||
+				typeof mouse.x !== "number" ||
+				typeof mouse.y !== "number"
+			) {
+				return;
+			}
+			if (mouse.type === "mouseDown") {
+				this.mouseDowns += 1;
+				this.mouseDownRow = this.rowAt(mouse.y);
+				return;
+			}
+			if (mouse.type !== "mouseUp") return;
+			this.mouseUps += 1;
+			const row = this.rowAt(mouse.y);
+			const downRow = this.mouseDownRow;
+			this.mouseDownRow = null;
+			if (downRow === null || row === null) {
+				this.drop("mouse_no_row");
+				return;
+			}
+			if (downRow !== row) {
+				this.drop("mouse_mismatch");
+				return;
+			}
+			this.emitCommit(row);
 		});
 	}
 
