@@ -17991,7 +17991,7 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-21",
 					"result": "clean",
 					"instance": "tbs-r2-fr",
@@ -18565,7 +18565,7 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-21",
 					"result": "clean",
 					"instance": "tbs-r2-zh-cn",
@@ -19055,7 +19055,7 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-21",
 					"result": "clean",
 					"instance": "tbs-r2-ur",
@@ -19115,7 +19115,7 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-21",
 					"result": "clean",
 					"instance": "tbs-r2-vi",

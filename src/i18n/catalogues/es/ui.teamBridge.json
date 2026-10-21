@@ -134,5 +134,13 @@
 	"ui.teamBridge.schedule.create_uncertain": "No se confirmó la creación del grupo. Es posible que ya exista. Revisa Grupos antes de crear otro grupo. Tu borrador se conserva.",
 	"ui.teamBridge.schedule.create_retry": "He revisado Grupos — permitir otro intento de creación",
 	"ui.teamBridge.schedule.edit_body": "Mensaje",
-	"ui.teamBridge.schedule.retry": "Reintentar la programación anterior"
+	"ui.teamBridge.schedule.retry": "Reintentar la programación anterior",
+	"ui.teamBridge.replies.action": "Responder en el hilo",
+	"ui.teamBridge.replies.title": "Hilo",
+	"ui.teamBridge.replies.close": "Cerrar hilo",
+	"ui.teamBridge.replies.count": "{count, plural, one {# respuesta} many {# de respuestas} other {# respuestas}}",
+	"ui.teamBridge.replies.last": "última respuesta: {time}",
+	"ui.teamBridge.replies.empty": "Aún no hay respuestas. Inicia el hilo.",
+	"ui.teamBridge.replies.placeholder": "Responde en el hilo",
+	"ui.teamBridge.replies.more": "Cargar más respuestas"
 }

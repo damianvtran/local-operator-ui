@@ -224,6 +224,7 @@ export class TeamBridgeNotifier {
 		const target: TeamBridgeOpenTarget = {
 			conversationId: request.conversationId,
 			tenantId: request.tenantId,
+			...(request.threadId ? { threadId: request.threadId } : {}),
 		};
 		/*
 		 * ALWAYS PARKED FIRST, THEN SIGNALLED. The signal wakes a loaded renderer,
