@@ -181,3 +181,26 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
+## Local voice models and code (`Moonshine`, `Supertonic`, `transformers.js`)
+
+Not bundled: the local voice engine downloads its model files on first use, and
+checks each one against a pinned SHA-256 (`src/voice-page/model-manifest.ts`).
+Credit and terms for what it downloads and ports:
+
+- **Moonshine Base** (`onnx-community/moonshine-base-ONNX`) — Useful Sensors.
+  The model weights are MIT-licensed. The decode loop in
+  `src/voice-page/moonshine.ts` follows the MIT-licensed `useful-moonshine-onnx`
+  reference (https://github.com/moonshine-ai/moonshine).
+- **Supertonic** (`onnx-community/Supertonic-TTS-ONNX`) — Supertone Inc. The model
+  weights are released under the OpenRAIL-M licence
+  (https://huggingface.co/Supertone/supertonic). It is not an OSI licence: it
+  carries use restrictions that bind anyone who uses the model, and they are
+  passed on here. Do not use it to impersonate a person, to deceive, or for any
+  other use the licence prohibits; read the full text at the link before relying
+  on it.
+- **transformers.js** — Hugging Face. `src/voice-page/supertonic.ts` is a port of
+  `SupertonicForConditionalGeneration.generate_speech` from transformers.js 4.3.1
+  (https://github.com/huggingface/transformers.js), licensed Apache-2.0
+  (https://www.apache.org/licenses/LICENSE-2.0). Changes: rewritten in
+  TypeScript against `onnxruntime-web` directly.
