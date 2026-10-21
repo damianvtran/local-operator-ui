@@ -565,6 +565,52 @@ test("the picker offers this device first, then one section per network by name"
 	assert.equal(rowFor(model, PIXEL).facts.includes("1 conversation"), true);
 });
 
+test("a revoked member is never a row and never counted, even with the same name as a live one", () => {
+	/*
+	 * The damian-mesh shape (2026-10-21): a machine re-joined under a new id, and the
+	 * old identity's tombstone - same name, `active: false` - sat beside it. The picker
+	 * drew `cloud-node-1` twice (`drive · unreachable` and `drive · 33 conversations`)
+	 * and headed the section "2 devices". The topology keeps a plain revocation for the
+	 * Mesh tab, so the picker must drop it itself.
+	 */
+	const OLD = "d_old_cloud";
+	const NEW = "d_new_cloud";
+	const model = picker({
+		placement: { kind: "draft", deviceId: null, name: "" },
+		networks: [
+			{
+				network_id: "n_mesh",
+				name: "damian-mesh",
+				epoch: 4,
+				trust: "operator",
+				members: [
+					member({}),
+					member({
+						device_id: OLD,
+						name: "cloud-node-1",
+						role: "drive",
+						active: false,
+						reachable: false,
+						reason: "it did not answer",
+					}),
+					member({ device_id: NEW, name: "cloud-node-1", role: "drive" }),
+				],
+			},
+		],
+		peers: [
+			{ ...PEERS[0], device_id: NEW, name: "cloud-node-1", session_count: 33 },
+		],
+	});
+	const [section] = model.sections;
+	assert.equal(section.count, 1, "one live peer is one device");
+	assert.deepEqual(
+		section.rows.map((row) => [row.deviceId, row.facts]),
+		[[NEW, ["drive", "33 conversations"]]],
+	);
+	// The revoked row is not "unreachable", so it does not ask for a re-read either.
+	assert.equal(model.offerCheckAgain, false);
+});
+
 test("a new chat is a free and reversible choice: no fixed consequence, and nobody is ineligible yet", () => {
 	const model = picker({
 		placement: { kind: "draft", deviceId: null, name: "" },
