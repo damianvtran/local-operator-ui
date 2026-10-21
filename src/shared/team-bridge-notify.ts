@@ -80,12 +80,15 @@ export type TeamBridgeNotifyRequest = {
 	title: string;
 	body: string;
 	seq: number;
+	/** Optional conversation reply root; #1298 uses this exact click contract. */
+	threadId?: string;
 };
 
 /** What a click names: the organization and the conversation to open. */
 export type TeamBridgeOpenTarget = {
 	conversationId: string;
 	tenantId: string;
+	threadId?: string;
 };
 
 function cleanId(value: unknown): string | null {
@@ -118,7 +121,10 @@ export function parseTeamBridgeNotifyRequest(
 	const title = cleanText(input.title, TEAM_BRIDGE_NOTIFY_MAX_TITLE);
 	const body = cleanText(input.body, TEAM_BRIDGE_NOTIFY_MAX_BODY);
 	const seq = input.seq;
+	const threadId =
+		input.threadId === undefined ? undefined : cleanId(input.threadId);
 	if (
+		threadId === null ||
 		conversationId === null ||
 		tenantId === null ||
 		title === null ||
@@ -130,7 +136,14 @@ export function parseTeamBridgeNotifyRequest(
 	) {
 		return null;
 	}
-	return { conversationId, tenantId, title, body, seq };
+	return {
+		conversationId,
+		tenantId,
+		title,
+		body,
+		seq,
+		...(threadId ? { threadId } : {}),
+	};
 }
 
 /**
@@ -146,6 +159,7 @@ export function teamBridgeOpenPath(target: TeamBridgeOpenTarget): string {
 	const query = new URLSearchParams({
 		tenant: target.tenantId,
 		conversation: target.conversationId,
+		...(target.threadId ? { thread: target.threadId } : {}),
 	});
 	return `/team-bridge?${query.toString()}`;
 }

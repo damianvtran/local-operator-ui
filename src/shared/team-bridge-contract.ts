@@ -75,6 +75,8 @@ export const teamBridgeConversationSchema = z
 		 * server that does not publish this label falls back to "New message".
 		 */
 		last_sender_label: z.string().min(1).max(64).optional(),
+		/* Latest activity root, for reply notification clicks; absent on a channel post. */
+		last_thread_root_id: id.optional(),
 		/*
 		 * A BUILT-IN CHANNEL'S IDENTITY (agent-server, built-in channels slice).
 		 * Every eligible organization has two server-provisioned channels whose
