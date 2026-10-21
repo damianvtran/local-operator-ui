@@ -550,14 +550,17 @@ export const EffortDisplaced: Story = {
 
 /** The displaced chip's tooltip, opened by keyboard focus. */
 /**
- * The narrowest composer that still draws the effort chip (it yields below a
- * 750px column, `@max-[750px]/chatcol:hidden`): the mark must not push the
+ * A narrow composer that still draws the effort chip (it yields below a
+ * 750px content box, `@max-[750px]/chatcol:hidden`): the mark must not push the
  * readings off the row or truncate the level itself.
  */
 export const EffortDisplacedNarrow: Story = {
 	render: () => (
 		<div className="flex flex-col gap-4 bg-canvas p-2">
-			<Frame width={760} label="Displaced at 760px, the chip's narrowest">
+			<Frame
+				width={800}
+				label="Displaced at 800px outer / 766px content: the chip fits"
+			>
 				<SessionStatusStrip
 					frontend={displacedFrontend}
 					onCommand={() => undefined}
@@ -565,6 +568,34 @@ export const EffortDisplacedNarrow: Story = {
 			</Frame>
 		</div>
 	),
+	play: async ({ canvasElement }) => {
+		const box = canvasElement.querySelector<HTMLElement>(
+			'[class*="@container/chatcol"]',
+		);
+		const chip = canvasElement.querySelector<HTMLElement>(
+			'[aria-label^="Reasoning effort:"]',
+		);
+		if (!box || !chip)
+			throw new Error("Narrow evidence lacks its container or effort chip");
+		const css = getComputedStyle(box);
+		const content =
+			box.getBoundingClientRect().width -
+			Number.parseFloat(css.paddingLeft) -
+			Number.parseFloat(css.paddingRight) -
+			Number.parseFloat(css.borderLeftWidth) -
+			Number.parseFloat(css.borderRightWidth);
+		if (
+			content <= 750 ||
+			chip.getBoundingClientRect().width <= 0 ||
+			!chip.querySelector("svg")
+		)
+			throw new Error(`Effort mark hidden at ${content}px content width`);
+		if (box.scrollWidth > box.clientWidth)
+			throw new Error("Narrow composer overflows horizontally");
+		const label = canvasElement.querySelector("p");
+		if (label)
+			label.textContent = `Measured: ${content}px content; effort mark visible; no horizontal overflow`;
+	},
 };
 
 export const EffortDisplacedTooltip: Story = {

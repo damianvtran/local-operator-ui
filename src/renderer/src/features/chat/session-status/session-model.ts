@@ -365,16 +365,33 @@ export function effortDisplacementNote(
 	const block = frontend?.effort_displacement;
 	const raw = block?.note;
 	if (typeof raw !== "string" || !raw.trim()) return null;
-	let note = raw.trim();
+	const labels = new Map<string, string>();
 	for (const spec of [frontend?.effective_model, frontend?.selected_model]) {
 		const name =
 			typeof spec?.display_name === "string" ? spec.display_name.trim() : "";
 		if (!spec || !name || !spec.provider || !spec.model_id) continue;
 		const slug = `${spec.provider}/${spec.model_id}`;
 		if (slug !== block?.serving && slug !== block?.selected) continue;
-		note = note.split(slug).join(name);
+		labels.set(slug, name);
 	}
-	return note;
+	if (!labels.size) return raw.trim();
+	// Match whole identifiers in ONE pass (review R1): `p/m` must never eat
+	// `p/m-mini`, and a display name containing another slug is prose, not a
+	// second substitution target. Sentence punctuation delimits the producer's
+	// identifiers; a dot inside a model id is not a delimiter.
+	const escaped = [...labels.keys()]
+		.sort((a, b) => b.length - a.length)
+		.map((slug) => slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+	const occurrences = new RegExp(
+		`(^|[\\s(])(${escaped.join("|")})(?=$|[\\s;,)\\]}]|\\.(?=\\s|$))`,
+		"g",
+	);
+	return raw
+		.trim()
+		.replace(
+			occurrences,
+			(_match, before, slug) => `${before}${labels.get(slug)}`,
+		);
 }
 
 /**

@@ -83,7 +83,7 @@ const EFFORT_DEFAULT_STAYS =
 /* Case-insensitive: ticked, the label opens with "Default for new sessions:". */
 const MODEL_DEFAULT_LABEL = /default for new sessions/i;
 import type { FC, ReactNode } from "react";
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useState } from "react";
 import "../../../styles/index.css";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
@@ -172,6 +172,7 @@ type BridgeRequest = {
 	key?: string;
 	value?: unknown;
 	command?: string;
+	args?: string;
 };
 
 /** A promise that never settles: the frame is the state while it is pending. */
@@ -252,8 +253,7 @@ const installBridge = (
 				}
 				if (
 					request.op === "commands.entities" &&
-					request.command === "effort" &&
-					request.live
+					request.command === "effort"
 				) {
 					const response = await frameBridge(request);
 					if (response !== undefined) return response;
@@ -510,6 +510,7 @@ type FrameProps = {
 	picker?: "model" | "effort";
 	/** A whole frame in place of `{selected_model: selected}`, for states such as an effort displacement. */
 	frontend?: Record<string, unknown>;
+	onClose?: () => void;
 };
 
 /**
@@ -525,6 +526,7 @@ const Frame: FC<FrameProps> = ({
 	selected = CURRENT,
 	picker = "model",
 	frontend,
+	onClose = noop,
 }) => {
 	installBridge(storyBridge, commandResponse);
 	const isEffort = picker === "effort";
@@ -544,7 +546,7 @@ const Frame: FC<FrameProps> = ({
 			},
 		} as unknown as CanonicalSessionHandle,
 		commands: [MODEL_SPEC],
-		onClose: noop,
+		onClose,
 		note: noop,
 		dispatch: noop,
 		rebind: noop,
@@ -901,51 +903,133 @@ export const SetCurrentAsDefault: Story = {
  * conversation's CHOICE, so `max` is the row marked current. Ticking `high`
  * here would offer a "change" to the level that is already merely a fallback's.
  */
+/** A tiny owner fixture: command acceptance updates the next frontend read. */
+const DisplacedChoiceFrame: FC = () => {
+	const [chosen, setChosen] = useState("max");
+	const [generation, setGeneration] = useState(0);
+	const [open, setOpen] = useState(true);
+	return (
+		<div className="flex flex-col gap-3 p-4">
+			<p data-testid="effort-choice-readback">
+				Selected: {effortChoiceLabel(chosen)}; in force: High
+			</p>
+			<button
+				type="button"
+				onClick={() => {
+					setGeneration((n) => n + 1);
+					setOpen(true);
+				}}
+			>
+				Reopen effort picker
+			</button>
+			{open && (
+				<Frame
+					key={generation}
+					onClose={() => setOpen(false)}
+					picker="effort"
+					frontend={{
+						selected_model: {
+							provider: "acme",
+							model_id: "flash-1",
+							reasoning_effort: chosen,
+						},
+						effective_model: {
+							provider: "anthropic",
+							model_id: "claude-sonnet-5-5",
+							reasoning_effort: "high",
+						},
+						effort_displacement:
+							chosen === "max"
+								? {
+										chosen: "max",
+										effective: "high",
+										selected: "acme/flash-1",
+										serving: "anthropic/claude-sonnet-5-5",
+										note: "Effort: high on anthropic/claude-sonnet-5-5; max resumes on acme/flash-1.",
+									}
+								: {},
+					}}
+					bridge={(request) => {
+						if (request.op === "commands.entities")
+							return Promise.resolve(
+								ok({
+									entities: ["low", "medium", "high", "max"].map((value) => ({
+										value,
+										name: value,
+									})),
+									current: chosen,
+								}),
+							);
+						if (request.op === "sessions.command") {
+							// Match the server's SlashOutcome envelope. Updating the owner
+							// frame makes a reopen verify read-back, not just the picker's
+							// transient acceptedRung latch (UX round 1, U1).
+							const accepted = String(request.args);
+							setChosen(accepted);
+							return Promise.resolve(
+								ok({
+									result: {
+										kind: "notice",
+										text: `Effort set to ${accepted}`,
+										style: "info",
+										data: {},
+									},
+								}),
+							);
+						}
+						return Promise.resolve(undefined);
+					}}
+				/>
+			)}
+		</div>
+	);
+};
+const effortChoiceLabel = (value: string) =>
+	value === "max" ? "Max" : value === "high" ? "High" : value;
+
 export const EffortDisplacedMarksChoice: Story = {
-	render: () => (
-		<Frame
-			picker="effort"
-			frontend={{
-				selected_model: {
-					provider: "acme",
-					model_id: "flash-1",
-					reasoning_effort: "max",
-				},
-				effective_model: {
-					provider: "anthropic",
-					model_id: "claude-sonnet-5-5",
-					reasoning_effort: "high",
-				},
-				effort_displacement: {
-					chosen: "max",
-					effective: "high",
-					selected: "acme/flash-1",
-					serving: "anthropic/claude-sonnet-5-5",
-					note: "Effort: high on anthropic/claude-sonnet-5-5; max resumes on acme/flash-1.",
-				},
-			}}
-			bridge={(request) => {
-				if (request.op === "commands.entities")
-					return Promise.resolve(
-						ok({
-							entities: [
-								{ value: "low", name: "low" },
-								{ value: "medium", name: "medium" },
-								{ value: "high", name: "high" },
-								{ value: "max", name: "max" },
-							],
-							current: "high",
-						}),
-					);
-				return Promise.resolve(ok({}));
-			}}
-		/>
-	),
+	render: () => <DisplacedChoiceFrame />,
 	play: async () => {
 		const max = await screen.findByRole("option", { name: /^Max/ });
 		await waitFor(() => expect(max.getAttribute("data-current")).toBe("true"));
 		const high = await screen.findByRole("option", { name: /^High/ });
 		expect(high.getAttribute("data-current")).toBeNull();
+	},
+};
+
+/** Acceptance then remount: a fresh picker reads High back from the owner. */
+export const EffortDisplacedChangeAndReadBack: Story = {
+	render: () => <DisplacedChoiceFrame />,
+	play: async () => {
+		await waitFor(async () =>
+			expect(
+				(await screen.findByRole("option", { name: /^Max/ })).getAttribute(
+					"data-current",
+				),
+			).toBe("true"),
+		);
+		await userEvent.click(await screen.findByRole("option", { name: /^High/ }));
+		await waitFor(() =>
+			expect(screen.getByTestId("effort-choice-readback").textContent).toBe(
+				"Selected: High; in force: High",
+			),
+		);
+		await userEvent.click(screen.getAllByRole("button", { name: "Close" })[0]);
+		await userEvent.click(
+			screen.getByRole("button", { name: "Reopen effort picker" }),
+		);
+		await waitFor(async () =>
+			expect(
+				(await screen.findByRole("option", { name: /^High/ })).getAttribute(
+					"data-current",
+				),
+			).toBe("true"),
+		);
+		expect(
+			(await screen.findByRole("option", { name: /^Max/ })).getAttribute(
+				"data-current",
+			),
+		).toBeNull();
 	},
 };
 

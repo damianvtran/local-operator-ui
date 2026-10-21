@@ -3196,3 +3196,45 @@ test("effortChosenRung: the picker marks the CHOICE while displaced", () => {
 		assert.equal(effortChosenRung(frontend), null, JSON.stringify(frontend));
 	}
 });
+
+test("effort names: overlapping identifiers in both directions and no cascading labels", () => {
+	const run = (serving, selected, servingName, selectedName) =>
+		effortDisplacementNote({
+			effective_model: {
+				provider: "openai",
+				model_id: serving,
+				display_name: servingName,
+			},
+			selected_model: {
+				provider: "openai",
+				model_id: selected,
+				display_name: selectedName,
+			},
+			effort_displacement: {
+				serving: `openai/${serving}`,
+				selected: `openai/${selected}`,
+				note: `Effort: high on openai/${serving}; max resumes on openai/${selected}.`,
+			},
+		});
+	assert.equal(
+		run("gpt-5", "gpt-5-mini", "GPT 5", "GPT 5 Mini"),
+		"Effort: high on GPT 5; max resumes on GPT 5 Mini.",
+	);
+	assert.equal(
+		run("gpt-5-mini", "gpt-5", "GPT 5 Mini", "GPT 5"),
+		"Effort: high on GPT 5 Mini; max resumes on GPT 5.",
+	);
+	assert.equal(
+		run(
+			"gpt-5",
+			"gpt-5-mini",
+			"Label containing openai/gpt-5-mini",
+			"GPT 5 Mini",
+		),
+		"Effort: high on Label containing openai/gpt-5-mini; max resumes on GPT 5 Mini.",
+	);
+	assert.equal(
+		run("gpt-5.1", "gpt-5.1-mini", "GPT 5.1", "Mini"),
+		"Effort: high on GPT 5.1; max resumes on Mini.",
+	);
+});
