@@ -1479,10 +1479,14 @@ test("S3: each local status and the download notice render their own copy", asyn
 		readyAt: null,
 		tick: null,
 	});
-	const view = (rig) => composerVoiceView(base(rig), "aaaaaaaaaaaa", Date.now());
-	assert.deepEqual(view({ rig: "stopped", webui_url: null, notice: "download_models" }), {
-		kind: "download_notice",
-	});
+	const view = (rig) =>
+		composerVoiceView(base(rig), "aaaaaaaaaaaa", Date.now());
+	assert.deepEqual(
+		view({ rig: "stopped", webui_url: null, notice: "download_models" }),
+		{
+			kind: "download_notice",
+		},
+	);
 	const dl = view({
 		rig: "starting",
 		webui_url: null,
