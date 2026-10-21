@@ -644,6 +644,14 @@ test("not-attempted remote reach does not claim idle or link loss", () => {
 	assert.doesNotMatch(html, /Idle|link down|lucide-circle /);
 });
 
+/* The reconnecting cell's patterns, at TOP LEVEL per the scripts lint ratchet. */
+const WIFI_OFF_RE = /lucide-wifi-off/;
+const STALE_IDLE_RE = /lucide-circle |Idle/;
+const DIM_INK_RE = /text-ink-dim/;
+const WARNING_INK_RE = /text-warning/;
+const RECONNECTING_AGE_RE = /Reconnecting · 3m ago/;
+const LINK_DOWN_AGE_RE = /link down · last seen 3m ago/;
+
 test("a remote row inside the relay's redial grace says Reconnecting in dim ink", () => {
 	const row = {
 		session_id: "reconnecting-fixture",
@@ -657,12 +665,12 @@ test("a remote row inside the relay's redial grace says Reconnecting in dim ink"
 		createElement(ChatSessionStatus, { row, nowSeconds: 280 }),
 	);
 	// Still the lost-link SHAPE and still no stale idle claim...
-	assert.match(html, /lucide-wifi-off/);
-	assert.doesNotMatch(html, /lucide-circle |Idle/);
+	assert.match(html, WIFI_OFF_RE);
+	assert.doesNotMatch(html, STALE_IDLE_RE);
 	// ...but quiet ink and the reconnecting sentence with a real last-seen age.
-	assert.match(html, /text-ink-dim/);
-	assert.doesNotMatch(html, /text-warning/);
-	assert.match(html, /Reconnecting · 3m ago/);
+	assert.match(html, DIM_INK_RE);
+	assert.doesNotMatch(html, WARNING_INK_RE);
+	assert.match(html, RECONNECTING_AGE_RE);
 	// Escalated: the same row once the relay says `down` is amber "link down".
 	const down = renderToStaticMarkup(
 		createElement(ChatSessionStatus, {
@@ -670,6 +678,6 @@ test("a remote row inside the relay's redial grace says Reconnecting in dim ink"
 			nowSeconds: 280,
 		}),
 	);
-	assert.match(down, /text-warning/);
-	assert.match(down, /link down · last seen 3m ago/);
+	assert.match(down, WARNING_INK_RE);
+	assert.match(down, LINK_DOWN_AGE_RE);
 });
