@@ -484,6 +484,14 @@ export function voicePhaseOf(
 	const rig = state.rig?.rig;
 	// A RIG error wins over this window's exchange (UX round 2, U9): a stale
 	// "not sent" would hide the rig's reason and its "Try again".
+	// ...except an unusable microphone that is really a denied permission:
+	// that is the Open Settings state, not a generic failure.
+	if (
+		rig === "error" &&
+		state.rig?.local?.code === "mic_unavailable" &&
+		state.rig.mic === "denied"
+	)
+		return "mic_blocked";
 	if (rig === "error") return "error";
 	// A failed take is the state the person must act on, even while they talk.
 	if (

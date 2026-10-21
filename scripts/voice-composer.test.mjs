@@ -1501,7 +1501,11 @@ test("S3: each local status and the download notice render their own copy", asyn
 	]) {
 		const v = view({ rig: "error", webui_url: null, local: { code } });
 		assert.equal(v.chip, "error", code);
-		assert.equal(v.action, "try_again", code);
+		assert.equal(
+			v.action,
+			code === "mic_unavailable" ? "settings_retry" : "try_again",
+			code,
+		);
 		assert.equal(v.caption.kind, "reason");
 		assert.match(v.caption.text, /\S/);
 	}
@@ -1526,10 +1530,80 @@ test("S3: each local status and the download notice render their own copy", asyn
 	assert.equal(texts.size, 5);
 	assert.equal(
 		localStatusText({ code: "speech_too_slow" }),
-		"Voice reads replies on screen on this computer",
+		"Too slow to speak here — replies stay on screen. Still listening.",
 	);
+	// A mic_unavailable caused by a denied permission is the mic_blocked state.
+	const denied = view({
+		rig: "error",
+		webui_url: null,
+		mic: "denied",
+		local: { code: "mic_unavailable" },
+	});
+	assert.equal(denied.chip, "mic_blocked");
+	assert.equal(denied.action, "settings");
 	assert.equal(
 		localStatusText({ code: "models_downloading", progress: 0.5 }),
 		"Downloading voice models… 50%",
 	);
+});
+
+test("S3 D2/D3: the notice has a Not now button; mic_unavailable offers Open Settings and Try again", async () => {
+	const FR = process.env.VOICE_FRAMES_DIR;
+	const dump = async (name) => {
+		if (!FR) return;
+		const { mkdirSync, writeFileSync } = await import("node:fs");
+		mkdirSync(FR, { recursive: true });
+		const el = strip() ?? window.document.querySelector("[data-voice-notice]");
+		const text = [...el.querySelectorAll("*")]
+			.filter((n) => n.children.length === 0)
+			.map((n) => n.textContent)
+			.join("");
+		writeFileSync(`${FR}/${name}.txt`, `${text}\n`);
+		writeFileSync(`${FR}/${name}.html`, el.outerHTML);
+	};
+	useVoiceStore.setState({
+		active: slot(AT),
+		rig: { rig: "stopped", webui_url: null, notice: "download_models" },
+	});
+	await mountStrip();
+	const notice = window.document.querySelector(
+		'[data-voice-notice="download"]',
+	);
+	assert.ok(notice.querySelector('[data-voice-action="accept_notice"]'));
+	assert.equal(
+		notice.querySelector('[data-voice-action="decline_notice"]').textContent,
+		"Not now",
+	);
+	await dump("01-download-notice");
+	for (const [name, code, mic] of [
+		["05-mic-unavailable", "mic_unavailable", "unknown"],
+		["06-listening-failed", "listening_failed", "granted"],
+		["04-model-integrity", "model_integrity", "granted"],
+	]) {
+		useVoiceStore.setState({
+			active: slot(AT),
+			rig: { rig: "error", webui_url: null, mic, local: { code } },
+		});
+		await mountStrip();
+		const actions = [...strip().querySelectorAll("[data-voice-action]")].map(
+			(b) => b.getAttribute("data-voice-action"),
+		);
+		assert.deepEqual(
+			actions,
+			code === "mic_unavailable" ? ["settings", "try_again"] : ["try_again"],
+			code,
+		);
+		await dump(name);
+	}
+	useVoiceStore.setState({
+		active: slot(AT),
+		rig: {
+			rig: "ready",
+			webui_url: null,
+			clients: 1,
+			local: { code: "speech_too_slow" },
+		},
+	});
+	await mountStrip();
+	await dump("07-speech-too-slow");
 });

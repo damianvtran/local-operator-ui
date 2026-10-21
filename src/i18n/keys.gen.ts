@@ -1189,6 +1189,7 @@ export type MessageParams = {
 	"ui.chat.voice.disable_failed": { reason: string };
 	"ui.chat.voice.download_notice": undefined;
 	"ui.chat.voice.download_notice_accept": undefined;
+	"ui.chat.voice.download_notice_decline": undefined;
 	"ui.chat.voice.empty_history": undefined;
 	"ui.chat.voice.empty_transcript": undefined;
 	"ui.chat.voice.enable_failed": { reason: string };

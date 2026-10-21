@@ -26,6 +26,9 @@ export const VOICE_PAGE_CHANNELS = {
 	status: "voice-page:status",
 } as const;
 
+/** One utterance is at most 64 s; its text is far below this. */
+export const TRANSCRIPT_MAX_CHARS = 4_000;
+
 export type PlaybackKind = "started" | "ended" | "cancelled";
 
 /** What the page may say about itself; main maps each to a status and its copy. */

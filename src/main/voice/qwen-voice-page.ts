@@ -85,7 +85,7 @@ export interface QwenVoicePagePort {
 	 * Local provider (S3): create the app's own `voice-page.html` at `pageUrl`
 	 * (from `appVoicePageUrl`), with the narrow preload. Idempotent.
 	 */
-	openApp(pageUrl: string): void;
+	openApp(pageUrl: string, onLoadFailed?: () => void): boolean;
 	/** Local provider: send a reply's sentences to the page to synthesize. */
 	speak(message: { replyId: string; segments: string[] }): boolean;
 	/** Local provider: stop the page's speech now. */
@@ -103,7 +103,7 @@ export function noQwenVoicePage(): QwenVoicePagePort {
 		close: () => {},
 		setMuted: () => {},
 		prepareMicrophone: async () => "unknown",
-		openApp: () => {},
+		openApp: () => false,
 		speak: () => false,
 		stopSpeech: () => {},
 	};
@@ -341,18 +341,18 @@ export class QwenVoicePage implements QwenVoicePagePort {
 	 * WebUI page, plus the one narrow preload; the permission verdict and the
 	 * navigation lock are for this exact URL only.
 	 */
-	openApp(pageUrl: string): void {
-		if (this.view) return;
+	openApp(pageUrl: string, onLoadFailed?: () => void): boolean {
+		if (this.view) return true;
 		let url: URL;
 		try {
 			url = new URL(pageUrl);
 		} catch {
 			this.log("qwen-page: refusing a malformed app page URL");
-			return;
+			return false;
 		}
 		if (!this.deps.appPreloadPath) {
 			this.log("qwen-page: no preload for the app page; not opening it");
-			return;
+			return false;
 		}
 		const view = this.deps.createView({
 			webPreferences: {
@@ -375,11 +375,17 @@ export class QwenVoicePage implements QwenVoicePagePort {
 		this.installCrashRecovery(view.webContents);
 		if (this.deps.devTools) view.webContents.openDevTools?.({ mode: "detach" });
 		this.log("qwen-page: loading the app voice page");
-		void Promise.resolve(view.webContents.loadURL(this.appUrl)).catch((error) =>
-			this.log(
-				`qwen-page: load failed: ${error instanceof Error ? error.message : String(error)}`,
-			),
+		void Promise.resolve(view.webContents.loadURL(this.appUrl)).catch(
+			(error) => {
+				this.log(
+					`qwen-page: load failed: ${error instanceof Error ? error.message : String(error)}`,
+				);
+				// Only while this view is still the current one (a close or crash
+				// reopen supersedes it).
+				if (this.view?.webContents === view.webContents) onLoadFailed?.();
+			},
 		);
+		return true;
 	}
 
 	/** Sentences for the page to say. False when there is no page to say them. */

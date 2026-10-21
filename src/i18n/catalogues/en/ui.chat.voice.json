@@ -73,10 +73,11 @@
 	"ui.chat.voice.unmute": "Hear the voice again",
 	"ui.chat.voice.local_models_downloading": "Downloading voice models… {percent}%",
 	"ui.chat.voice.local_models_offline": "Voice models could not be downloaded. Check your connection, then try again.",
-	"ui.chat.voice.local_model_integrity": "A voice model failed its safety check and was removed. Try again to download it afresh.",
-	"ui.chat.voice.local_mic_unavailable": "Voice cannot use the microphone.",
-	"ui.chat.voice.local_listening_failed": "Voice could not start listening.",
-	"ui.chat.voice.local_speech_too_slow": "Voice reads replies on screen on this computer",
-	"ui.chat.voice.download_notice": "Voice runs on this computer. Turning it on downloads about 330 MB of speech models from Hugging Face, once. After that, what you say and what is read to you stay on this computer.",
-	"ui.chat.voice.download_notice_accept": "Download and turn on"
+	"ui.chat.voice.local_model_integrity": "A voice model download was damaged and has been removed. Try again to download it again.",
+	"ui.chat.voice.local_mic_unavailable": "Voice can't use the microphone. Check that one is connected and allowed in System Settings.",
+	"ui.chat.voice.local_listening_failed": "Voice could not start listening. Try again, or turn voice off and on.",
+	"ui.chat.voice.local_speech_too_slow": "Too slow to speak here — replies stay on screen. Still listening.",
+	"ui.chat.voice.download_notice": "Voice runs on this computer. Turning it on downloads about 330 MB of speech models from Hugging Face. This happens once. After that, what you say and what is read to you stay on this computer.",
+	"ui.chat.voice.download_notice_accept": "Download and turn on",
+	"ui.chat.voice.download_notice_decline": "Not now"
 }

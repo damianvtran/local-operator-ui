@@ -1,4 +1,7 @@
-import { VOICE_PAGE_CHANNELS as C } from "../../voice-page/channels";
+import {
+	VOICE_PAGE_CHANNELS as C,
+	TRANSCRIPT_MAX_CHARS,
+} from "../../voice-page/channels";
 
 /**
  * The app voice page's IPC handlers (S3). Electron-free: `ipc` is injected, so
@@ -35,7 +38,7 @@ export type VoicePageIpcDeps = {
 export const MODEL_NAME_SHAPE = /^[a-z]{1,16}\/[A-Za-z0-9_.-]{1,64}$/;
 
 /** One utterance is at most 64 s; its text is far below this. */
-export const TRANSCRIPT_MAX_CHARS = 4_000;
+export { TRANSCRIPT_MAX_CHARS };
 
 export function registerVoicePageIPC(
 	ipc: VoicePageIpc,

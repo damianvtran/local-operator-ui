@@ -142,16 +142,27 @@ async function download(
 
 /** Makes every manifest file present and verified; fetches only what is not. */
 export function ensureModels(opts: EnsureModelsOptions): Promise<void> {
-	// Concurrent callers on one store share a single download.
+	// Concurrent callers on one store share a single download - unless the run
+	// they would join was cancelled: it carries the first caller's signal and
+	// progress callback, so a new start (voice off, then on) must wait for it
+	// to settle and download afresh rather than inherit its "aborted" ending.
 	const key = opts.dir;
 	const running = inFlight.get(key);
-	if (running) return running;
-	const run = ensureModelsOnce(opts).finally(() => inFlight.delete(key));
-	inFlight.set(key, run);
+	if (running && !running.signal?.aborted) return running.run;
+	const previous = running ? running.run.catch(() => {}) : Promise.resolve();
+	const run: Promise<void> = previous
+		.then(() => ensureModelsOnce(opts))
+		.finally(() => {
+			if (inFlight.get(key)?.run === run) inFlight.delete(key);
+		});
+	inFlight.set(key, { run, signal: opts.signal });
 	return run;
 }
 
-const inFlight = new Map<string, Promise<void>>();
+const inFlight = new Map<
+	string,
+	{ run: Promise<void>; signal: AbortSignal | undefined }
+>();
 
 async function ensureModelsOnce(opts: EnsureModelsOptions): Promise<void> {
 	const manifest = opts.manifest ?? MODEL_MANIFEST;

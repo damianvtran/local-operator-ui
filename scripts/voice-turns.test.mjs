@@ -13,7 +13,7 @@ import { build } from "esbuild";
  */
 const ERROR_CASE = /case "error":/;
 const RETRY_ONLY_FOR_THE_RIG =
-	/action: state\.rig\?\.rig === "error" \? "try_again" : null,/;
+	/state\.rig\?\.rig === "error"\s*\? state\.rig\.local\?\.code === "mic_unavailable"\s*\? "settings_retry"\s*: "try_again"\s*: null,/;
 const RIG_REASON_SHOWN = /const reason = rig\.reason\?\.trim\(\);/;
 
 /*

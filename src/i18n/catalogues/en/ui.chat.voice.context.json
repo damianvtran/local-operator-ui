@@ -389,6 +389,11 @@
 		"tone": "three sentences, plain",
 		"note": "Shown once, before anything is downloaded. 330 MB is approximate. Hugging Face is a proper name."
 	},
+	"ui.chat.voice.download_notice_decline": {
+		"role": "ghost button on the download notice",
+		"tone": "short, neutral, sentence case",
+		"note": "Declines the download and turns voice back off."
+	},
 	"ui.chat.voice.download_notice_accept": {
 		"role": "button on the download notice",
 		"tone": "imperative, sentence case",

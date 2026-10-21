@@ -2621,7 +2621,10 @@ function localRig({
 	mic = "granted",
 	models = null,
 	enabled = true,
+	openAppResult = undefined,
+	loadFails = false,
 } = {}) {
+	const timers = [];
 	const log = {
 		downloads: 0,
 		openApp: [],
@@ -2640,7 +2643,11 @@ function localRig({
 		},
 		setMuted: () => {},
 		prepareMicrophone: async () => mic,
-		openApp: (u) => log.openApp.push(u),
+		openApp: (u, onLoadFailed) => {
+			log.openApp.push(u);
+			if (loadFails) queueMicrotask(() => onLoadFailed?.());
+			return openAppResult;
+		},
 		speak: (message) => {
 			log.spoken.push(message);
 			return true;
@@ -2682,15 +2689,21 @@ function localRig({
 			return true;
 		},
 		now: () => 1_000_000,
-		setTimer: () => ({}),
-		clearTimer: () => {},
+		setTimer: (fn) => {
+			const h = { fn, cleared: false };
+			timers.push(h);
+			return h;
+		},
+		clearTimer: (h) => {
+			if (h) h.cleared = true;
+		},
 	});
 	if (enabled) void voice.setEnabled(true);
 	const statuses = () =>
 		toRenderer
 			.filter((x) => x.channel === "voice.qwen.status")
 			.map((x) => x.payload);
-	return { voice, log, toRenderer, statuses };
+	return { voice, log, toRenderer, statuses, timers };
 }
 const holdSlot = (r, id = "aaaaaaaaaaaa") =>
 	r.voice.noteDesktopAnswer(
@@ -2937,6 +2950,85 @@ test("S3 speech_too_slow keeps listening and stops speaking", async () => {
 	// Phrases are not spoken either.
 	const n = r.log.spoken.length;
 	r.voice.result({ taskId: "t", ok: false, code: "approval_pending" });
+	assert.equal(r.log.spoken.length, n);
+});
+
+/** A start that must fail, then a Retry that must be a fresh start. */
+async function failedThenRetry(r, trigger) {
+	holdSlot(r);
+	const first = r.voice.start("renderer");
+	await tick();
+	await tick();
+	await trigger();
+	const status = await first;
+	assert.notEqual(status.rig, "starting");
+	const opens = r.log.openApp.length;
+	holdSlot(r);
+	const retry = r.voice.start("renderer");
+	await tick();
+	await tick();
+	assert.equal(r.log.openApp.length, opens + 1, "Retry opened a new page");
+	r.voice.onPageStatus("listening");
+	assert.equal((await retry).rig, "ready");
+}
+
+test("S3 hang: the page never reporting fails the start on the time limit; Retry works", async () => {
+	const r = localRig();
+	await failedThenRetry(r, async () => {
+		const t = r.timers.find((x) => !x.cleared);
+		assert.ok(t, "a time limit is armed");
+		t.fn();
+	});
+});
+
+test("S3 hang: an app page that cannot be opened fails the start; Retry works", async () => {
+	const r = localRig({ openAppResult: false });
+	let n = 0;
+	// First open fails (returns false); the retry succeeds.
+	const orig = r.voice.deps.page.openApp;
+	r.voice.deps.page.openApp = (u, cb) => {
+		n += 1;
+		return n === 1 ? orig(u, cb) : (r.log.openApp.push(u), true);
+	};
+	await failedThenRetry(r, async () => {});
+	assert.equal(r.voice.getStatus().local ?? null, null);
+});
+
+test("S3 hang: a page load failure fails the start; Retry works", async () => {
+	const r = localRig({ loadFails: true });
+	let n = 0;
+	const orig = r.voice.deps.page.openApp;
+	r.voice.deps.page.openApp = (u, cb) => {
+		n += 1;
+		return n === 1 ? orig(u, cb) : (r.log.openApp.push(u), true);
+	};
+	await failedThenRetry(r, async () => {});
+});
+
+test("S3 hang: the page crashing before it reports fails the start; Retry works", async () => {
+	const r = localRig();
+	await failedThenRetry(r, async () =>
+		r.voice.pageFailed("The voice page stopped"),
+	);
+});
+
+test("S3 hang: the holder leaving during the start settles it; Retry works", async () => {
+	const r = localRig();
+	await failedThenRetry(r, async () =>
+		r.voice.noteDesktopAnswer(
+			{ op: "voice.status" },
+			{ status: 200, body: { result: { active: null } } },
+		),
+	);
+});
+
+test("S3 localResult drops refusal phrases while speech_too_slow is set", async () => {
+	const r = await readyLocal();
+	relay(r, "Hello.", ["Hello."]);
+	r.voice.onPageStatus("speech_too_slow");
+	const n = r.log.spoken.length;
+	for (const code of ["approval_pending", "not_allowed", "busy"])
+		r.voice.result({ taskId: "t", ok: false, code });
 	assert.equal(r.log.spoken.length, n);
 });
 
