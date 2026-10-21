@@ -32,12 +32,31 @@ import {
 	teamBridgeDirectorySchema,
 	teamBridgeIdentitySchema,
 	teamBridgeMessagePageSchema,
+	teamBridgeReactionsSchema,
 	teamBridgeReadStateSchema,
 	teamBridgeUnreadSchema,
 } from "../../../../../shared/team-bridge-contract";
 import { desktopResult } from "./desktop-api";
 
 export const TeamBridgeApi = {
+	async react(
+		conversationId: string,
+		messageId: string,
+		emoji: string,
+		active: boolean,
+		tenantId?: string,
+	) {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.reactions.toggle",
+			conversation_id: conversationId,
+			message_id: messageId,
+			emoji,
+			active,
+			...(tenantId ? { tenant_id: tenantId } : {}),
+		});
+		return teamBridgeReactionsSchema.parse(answer);
+	},
+
 	/**
 	 * The conversation page for one read scope.
 	 *
