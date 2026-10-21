@@ -73,6 +73,10 @@ import {
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
+import {
+	addressOverlayDocumentUrlFor,
+	resolveAddressOverlayGate,
+} from "./browser/address-overlay";
 import { runBrowserMenuAction } from "./browser/browser-chord";
 import {
 	CONSENT_ATTENTION_CHANNEL,
@@ -1485,6 +1489,30 @@ const devDriverLine = describeDevDriverArming(devDriverArming);
 if (devDriverLine) console.log(devDriverLine);
 
 /*
+ * S1's address-overlay gate, resolved ONCE here for the same reason the window
+ * mode and the dev driver are: it is a fact about the LAUNCH, decided before a
+ * window or a host exists. It needs the exact opt-in AND the already-armed dev
+ * driver AND `headless`; anything else refuses with a printed reason. Pure in
+ * `browser/address-overlay.ts`, so its edges are asserted without an app.
+ *
+ * Nothing here reaches the product: an ordinary launch has no opt-in, so the
+ * host receives no `addressOverlay` option, registers no probe channel and
+ * creates no native child. The in-flow address editor and its list are untouched.
+ */
+const addressOverlayGate = resolveAddressOverlayGate({
+	env: launchEnv,
+	devDriverArmed: devDriverArming.armed,
+	windowMode: windowLaunch.mode,
+});
+if (addressOverlayGate.asked) {
+	console.log(
+		addressOverlayGate.enabled
+			? "[address-overlay] ARMED (S1 probe: native child, no product path)"
+			: `[address-overlay] not armed: ${addressOverlayGate.reason}`,
+	);
+}
+
+/*
  * The renderer's half of that decision, as `webPreferences` for whichever window
  * is created. Empty in an unarmed launch, so a normal run's window options are
  * the options they would have had: the preload reads this entry out of its own
@@ -2519,6 +2547,13 @@ app
 		 * test, in `console/capture-url.ts`.
 		 */
 		const consoleCaptureUrl = consoleCaptureUrlFor(rendererUrl);
+		/*
+		 * S1's inert document, derived from the same trusted URL rather than spelled
+		 * a second time: a dev server on another port or a moved bundle cannot leave
+		 * the overlay pointing at a document that is not there. The host only receives
+		 * it when the gate passed; the URL itself is never renderer- or caller-supplied.
+		 */
+		const addressOverlayDocumentUrl = addressOverlayDocumentUrlFor(rendererUrl);
 		/*
 		 * The machine-wide feed's two consumers, and the split between them is the
 		 * design: main takes the notifications (so a completion banners with no
@@ -4038,6 +4073,16 @@ app
 					// document, and the preload every renderer in this app gets, which is what
 					// lets main feed the reconstruction to it.
 					consoleCaptureUrl,
+					// S1: only a gated headless probe arm gets this option at all. The
+					// URL is this app's own packaged document, not a caller's string.
+					...(addressOverlayGate.enabled
+						? {
+								addressOverlay: {
+									enabled: true,
+									documentUrl: addressOverlayDocumentUrl,
+								},
+							}
+						: {}),
 					preloadPath: join(__dirname, "../preload/index.js"),
 					/*
 					 * The console's surfaces are handed the user's own PATH, from the same

@@ -30,6 +30,8 @@
 
 import { contextBridge, ipcRenderer } from "electron";
 import {
+	type AddressOverlayProbeAction,
+	DEV_DRIVER_ADDRESS_OVERLAY,
 	DEV_DRIVER_CAPTURE,
 	DEV_DRIVER_FACTS,
 	DEV_DRIVER_WORLD_KEY,
@@ -54,6 +56,13 @@ export interface DevDriverBridge {
 	capture(label: string): Promise<unknown>;
 	/** Window facts from MAIN: mode, window vs content size, visibility, focus. */
 	facts(): Promise<unknown>;
+	/**
+	 * S1's native overlay probe: show/hide the inert child or read structural
+	 * facts. Main accepts only these three exact words and refuses the call
+	 * entirely (no handler) unless the launch gate passed; the renderer side
+	 * types the vocabulary, it does not grant it.
+	 */
+	addressOverlay(action: AddressOverlayProbeAction): Promise<unknown>;
 }
 
 function armedArgument(): { armed: true; outDir: string } | null {
@@ -101,6 +110,8 @@ export function installDevDriverBridge(): boolean {
 		},
 		capture: (label) => ipcRenderer.invoke(DEV_DRIVER_CAPTURE, label),
 		facts: () => ipcRenderer.invoke(DEV_DRIVER_FACTS),
+		addressOverlay: (action) =>
+			ipcRenderer.invoke(DEV_DRIVER_ADDRESS_OVERLAY, action),
 	};
 
 	contextBridge.exposeInMainWorld(DEV_DRIVER_WORLD_KEY, bridge);

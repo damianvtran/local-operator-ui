@@ -32,6 +32,10 @@ import {
 	focusBrowserChordTarget,
 	presentPopupWindow,
 } from "../window-raise";
+import {
+	AddressOverlayController,
+	type AddressOverlayFacts,
+} from "./address-overlay";
 import { ApprovalStore } from "./approvals";
 import {
 	browserChromeOwnsChord,
@@ -213,6 +217,15 @@ export interface StartBrowserHostOptions {
 	 * answer "what is this user's PATH" differently.
 	 */
 	userShellPath?: UserShellPath;
+	/**
+	 * S1's inert address overlay, resolved by the app from its launch gate.
+	 *
+	 * Absent means off, which is every ordinary launch: the host then owns no
+	 * controller at all, registers no probe channel and adds no native child. The
+	 * document URL is the app's own trusted packaged document, derived from the
+	 * same renderer URL the sender checks use — never a caller-supplied path.
+	 */
+	addressOverlay?: { enabled: boolean; documentUrl: string };
 	log: (message: string) => void;
 }
 
@@ -226,6 +239,13 @@ export interface BrowserHostHandle {
 	 * run can report it without reading the log, and so a test can assert the
 	 * restore ran before any page loaded. */
 	sessionCookies: () => RestoreReport | null;
+	/** The S1 probe, internal to this host: present only when the launch gate
+	 * passed. It is deliberately NOT a browser-tool wire method — the agent-facing
+	 * protocol is unchanged, and this surface takes an exact enum action and no
+	 * arguments. */
+	addressOverlay?: (
+		action: "show" | "hide" | "facts",
+	) => Promise<AddressOverlayFacts>;
 	stop: () => Promise<void>;
 }
 
@@ -411,6 +431,26 @@ export function startBrowserHost(
 		retry: async () => {
 			await startBrowserHost(options).catch(() => {});
 		},
+		/*
+		 * S1's probe channel is registered ONLY when this launch's gate passed, and
+		 * then it reads the current attempt's callback through `bindings` (a retry
+		 * replaces it) rather than capturing a controller here.
+		 */
+		...(options.addressOverlay?.enabled
+			? {
+					addressOverlayProbe: (
+						action: "show" | "hide" | "facts",
+					): Promise<AddressOverlayFacts> => {
+						const probe = bindings.addressOverlayProbe;
+						if (!probe) {
+							throw new Error(
+								"address_overlay_unavailable: the overlay controller is not running.",
+							);
+						}
+						return probe(action);
+					},
+				}
+			: {}),
 		log: options.log,
 	});
 	starting = startWithRetries({
@@ -678,6 +718,27 @@ async function initializeBrowserHost(
 		let stateWriter: BrowserStateWriter | null = null;
 
 		/**
+		 * S1's child, created only when the launch gate passed. The controller is
+		 * lightweight here: no native child exists until an explicit probe show
+		 * (`AddressOverlayController.show`). It is declared before the registry
+		 * because the registry's post-layout observer is the only source of page
+		 * geometry it trusts.
+		 */
+		const addressOverlay =
+			options.addressOverlay?.enabled === true
+				? new AddressOverlayController({
+						window: options.window,
+						documentUrl: options.addressOverlay.documentUrl,
+						log,
+						appMetrics: () =>
+							app.getAppMetrics().map((metric) => ({
+								pid: metric.pid,
+								type: metric.type,
+							})),
+					})
+				: null;
+
+		/**
 		 * The tab-restore file (design 7.2): the hand-over of session state between two
 		 * runs of the app.
 		 *
@@ -753,7 +814,17 @@ async function initializeBrowserHost(
 
 		const notifyChanged = (): void => {
 			stateWriter?.publishNow();
-			options.window.webContents.send("browser-state-changed");
+			// A WINDOW CLOSE DESTROYS ITS WEB CONTENTS BEFORE `closed` REACHES THIS
+			// HOST. `stop()` then tears tabs down, and each teardown notifies; reading
+			// `webContents` from a destroyed `BrowserWindow` throws "Object has been
+			// destroyed". Guarding both objects keeps the quit-time teardown silent,
+			// which is the S1 acceptance row's "no destroyed-object callbacks".
+			if (
+				!options.window.isDestroyed() &&
+				!options.window.webContents.isDestroyed()
+			) {
+				options.window.webContents.send("browser-state-changed");
+			}
 			// The tab list is durable state now (design 7.2): a create, a close and a
 			// navigation are what changes it, and every one of those paths ends here.
 			// Teardown fires it too; what keeps a teardown capture out of the file is
@@ -770,6 +841,7 @@ async function initializeBrowserHost(
 			},
 			releaseTab,
 			notifyChanged,
+			(snapshot) => addressOverlay?.onLayout(snapshot),
 		);
 		registryForDownloads = registry;
 		rollback.add(async () => {
@@ -778,6 +850,10 @@ async function initializeBrowserHost(
 			registry.destroyAll();
 			await Promise.allSettled([...releases]);
 		});
+		// Added AFTER the registry's rollback entry, so reverse-order rollback runs
+		// this FIRST: the overlay's webContents must be closed before the pages it
+		// sits above are destroyed, or a teardown can call into a destroyed view.
+		rollback.add(() => addressOverlay?.dispose("startup-rollback"));
 
 		/**
 		 * Release everything one tab holds: its child view, its debugger session and
@@ -792,6 +868,9 @@ async function initializeBrowserHost(
 		 * three (R5).
 		 */
 		function releaseTab(tabId: number, webContentsId: number): void {
+			// Before the page's own release: the overlay's child is bound to this tab's
+			// geometry, and a later explicit show must lazily create a fresh one.
+			addressOverlay?.onTabReleased(tabId);
 			const view = views.get(tabId);
 			views.delete(tabId);
 			// A CLOSED TAB MUST NOT STAY ARMED: the capture writes into a directory the
@@ -836,7 +915,14 @@ async function initializeBrowserHost(
 		const approvals = new ApprovalStore({
 			dir: join(options.userDataDir, "browser"),
 			onChanged: () => {
-				options.window.webContents.send("browser-consent-changed");
+				// The same destroyed-window ordering `notifyChanged` documents: this
+				// fires from `resetPending()` inside the stop path.
+				if (
+					!options.window.isDestroyed() &&
+					!options.window.webContents.isDestroyed()
+				) {
+					options.window.webContents.send("browser-consent-changed");
+				}
 				// One banner per pending request, raised HERE rather than from the renderer:
 				// the renderer is exactly what may be behind another window, which is the
 				// case the banner exists for (design 9.2).
@@ -939,6 +1025,8 @@ async function initializeBrowserHost(
 			host.clearPageFocus();
 		};
 		const resetMenuShortcutSuppression = () => {
+			// `webContents` itself throws on a destroyed window (see `notifyChanged`).
+			if (options.window.isDestroyed()) return;
 			if (!options.window.webContents.isDestroyed())
 				options.window.webContents.setIgnoreMenuShortcuts(false);
 		};
@@ -971,6 +1059,12 @@ async function initializeBrowserHost(
 		options.window.webContents.on("render-process-gone", resetChordFocus);
 		const detachChords = (): void => {
 			host.clearChordState();
+			// A WINDOW CLOSE DESTROYS THE WINDOW BEFORE THIS HOST STOPS: the `closed`
+			// hook calls `stop()`, and every `webContents` access below then throws
+			// "Object has been destroyed". Nothing is left to detach from in that case;
+			// the listeners died with the renderer. S1's clean-stop row is what made
+			// this ordering visible.
+			if (options.window.isDestroyed()) return;
 			options.window.webContents.removeListener(
 				"before-input-event",
 				onChromeInput,
@@ -1114,6 +1208,39 @@ async function initializeBrowserHost(
 		rollback.add(() => stateWriter?.clear());
 		stateWriter.start(server.port, sessionKey);
 
+		/**
+		 * The probe's answer, enriched with the ACTIVE PAGE's structural facts from
+		 * the registry this host owns. The controller deliberately has no registry
+		 * reference; the matrix's "page bounds and visibility identical before/show/
+		 * after" is a claim about the page, so the host merges it here rather than
+		 * teaching the child about its sibling.
+		 */
+		const probeAddressOverlay = async (
+			action: "show" | "hide" | "facts",
+		): Promise<AddressOverlayFacts> => {
+			if (!addressOverlay) {
+				throw new Error(
+					"address_overlay_unavailable: this host owns no controller.",
+				);
+			}
+			const facts = await addressOverlay.probe(action);
+			const record = registry.activeTab;
+			const page = record
+				? {
+						tabId: record.tabId,
+						presented: record.presented,
+						bounds: record.view.getBounds?.() ?? null,
+						visible: record.view.getVisible?.() ?? false,
+					}
+				: null;
+			return { ...facts, page };
+		};
+		if (addressOverlay) {
+			// Reads the CURRENT controller through the bindings slot per call. A retry
+			// replaces the slot and no handler can keep a stale attempt's controller.
+			bindings.addressOverlayProbe = probeAddressOverlay;
+		}
+
 		Object.assign(bindings, {
 			window: () => options.window,
 			expectedUrl: options.expectedUrl,
@@ -1150,6 +1277,7 @@ async function initializeBrowserHost(
 			profileDir,
 			agentTabs: () => registry.agentTabCount(),
 			sessionCookies: () => restoreReport,
+			...(addressOverlay ? { addressOverlay: probeAddressOverlay } : {}),
 			stop: async () => {
 				detachChords();
 				/*
@@ -1188,6 +1316,9 @@ async function initializeBrowserHost(
 				// decision, and the per-view `destroyed` handlers below still fire a capture
 				// each (a strip that no longer exists is another way to lose the session).
 				sessionStore.flush();
+				// The overlay child goes before the page views: its webContents is a
+				// child of the same window, and disposal is idempotent with rollback.
+				addressOverlay?.dispose("host-stop");
 				registry.destroyAll();
 				await Promise.allSettled([...releases]);
 				await cdp.close();
@@ -1465,6 +1596,12 @@ async function initializeBrowserHost(
 			});
 			contents.on("did-stop-loading", notifyChrome);
 			contents.on("page-title-updated", notifyChrome);
+			// A crashed page keeps its webContents (unlike a closed tab), so the
+			// `destroyed` handler below never runs for it. The S1 overlay is bound to
+			// this tab's rectangle and must go with the renderer it was covering.
+			contents.on("render-process-gone", () => {
+				addressOverlay?.onPageGone(tabId);
+			});
 			contents.on(
 				"did-fail-load",
 				(_event, code, description, url, isMainFrame) => {
