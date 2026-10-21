@@ -233,6 +233,14 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/browser-address-overlay-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to drive S1's native child; its environment carries the notification kill switch like every other app rig",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/renderer-driver.mjs",
 		"spawn",
 		1,

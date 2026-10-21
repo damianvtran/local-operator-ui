@@ -251,6 +251,14 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/browser-address-overlay-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to drive S1's native child; the build carries the live PostHog key, so this launch needs the same switch every app rig has",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/renderer-driver.mjs",
 		"spawn",
 		1,

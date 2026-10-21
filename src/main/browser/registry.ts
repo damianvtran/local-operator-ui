@@ -35,6 +35,21 @@ export interface ContentRect {
 	height: number;
 }
 
+/** The post-layout observation the fourth constructor callback receives.
+ *
+ * Deliberately COPIED (`contentRect` is a fresh object and the fields are
+ * primitives): an observer must not be able to mutate the registry's live
+ * rectangle, and a later pass must not rewrite a snapshot already delivered. */
+export interface LayoutSnapshot {
+	activeTabId: number | null;
+	/** The active tab's own presentation bit after this pass. */
+	presented: boolean;
+	contentRect: ContentRect | null;
+	/** Monotone per registry, so a consumer can tell "another pass" from "a pass
+	 * with the same values" without diffing objects. */
+	revision: number;
+}
+
 export interface TabRecord {
 	/** Host-minted, monotonic, stable for the tab's life. The `<n>` in the
 	 * surface token; the only id either actor is shown. */
@@ -248,7 +263,27 @@ export class TabRegistry {
 	private readonly epochListeners: Array<
 		(tabId: number, epoch: number) => void
 	> = [];
+	/** Monotone count of layout passes, for an observer that needs identity, not
+	 * just values (S1's address overlay). */
+	private layoutRevision = 0;
 
+	/**
+	 * The fourth callback is a post-layout observer, optional and defaulted so
+	 * every existing three-argument construction is unchanged.
+	 *
+	 * WHY IT EXISTS: a native child positioned over a page has to know that the
+	 * presented tab, its presentation bit or the content rectangle moved. Polling
+	 * the registry would read a rectangle that is already stale, and `onChanged`
+	 * is deliberately NOT that signal (`setContentRect` does not call it). The
+	 * snapshot is copied and delivered after every pass — including null and
+	 * suppressed layouts — because "nothing is presented now" is exactly when a
+	 * stale overlay must hide.
+	 *
+	 * WHY IT CANNOT FAIL THE LAYOUT: page geometry is the product's behaviour and
+	 * an observer is infrastructure around it. A throwing observer is swallowed
+	 * here (the controller logs its own failure) so one experimental child can
+	 * never leave pages unlaid-out.
+	 */
 	constructor(
 		private readonly viewFactory: (
 			options: CreateTabOptions,
@@ -256,6 +291,7 @@ export class TabRegistry {
 		) => DriveableView,
 		private readonly onRemove: (tabId: number, webContentsId: number) => void,
 		private readonly onChanged: () => void,
+		private readonly onLayout: (snapshot: LayoutSnapshot) => void = () => {},
 	) {}
 
 	// ---- creation, addressing, listing ---------------------------------------
@@ -618,6 +654,26 @@ export class TabRegistry {
 				isActive && this.contentRect ? this.contentRect : BACKGROUND_VIEWPORT,
 			);
 			record.view.setVisible(record.presented);
+		}
+		this.layoutRevision += 1;
+		const rect = this.contentRect;
+		try {
+			this.onLayout({
+				activeTabId: this.activeTabId,
+				presented: active?.presented === true,
+				contentRect: rect
+					? {
+							x: rect.x,
+							y: rect.y,
+							width: rect.width,
+							height: rect.height,
+						}
+					: null,
+				revision: this.layoutRevision,
+			});
+		} catch {
+			// An observer must never interrupt page layout. The controller logs its
+			// own failures; this catch is the load-bearing last resort.
 		}
 	}
 
