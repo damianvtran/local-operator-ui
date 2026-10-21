@@ -134,5 +134,7 @@
 	"ui.teamBridge.schedule.create_uncertain": "No se confirmó la creación del grupo. Es posible que ya exista. Revisa Grupos antes de crear otro grupo. Tu borrador se conserva.",
 	"ui.teamBridge.schedule.create_retry": "He revisado Grupos — permitir otro intento de creación",
 	"ui.teamBridge.schedule.edit_body": "Mensaje",
-	"ui.teamBridge.schedule.retry": "Reintentar la programación anterior"
+	"ui.teamBridge.schedule.retry": "Reintentar la programación anterior",
+	"ui.teamBridge.schedule.held": "Es posible que aún exista una programación anterior. Revisa Programados y, si es necesario, cancela el envío antes de descartar este intento. Tu borrador se conserva.",
+	"ui.teamBridge.schedule.discard_attempt": "He revisado Programados — descartar este intento"
 }

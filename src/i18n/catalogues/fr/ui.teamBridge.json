@@ -134,5 +134,7 @@
 	"ui.teamBridge.schedule.create_uncertain": "La création du groupe n’a pas été confirmée. Il existe peut-être déjà. Vérifiez la section Groupes avant de créer un autre groupe. Votre brouillon est conservé.",
 	"ui.teamBridge.schedule.create_retry": "J’ai vérifié la section Groupes — autoriser un nouvel essai",
 	"ui.teamBridge.schedule.edit_body": "Contenu",
-	"ui.teamBridge.schedule.retry": "Réessayer la planification précédente"
+	"ui.teamBridge.schedule.retry": "Réessayer la planification précédente",
+	"ui.teamBridge.schedule.held": "Une planification précédente existe peut-être encore. Vérifiez « Planifiés » et annulez-la si nécessaire avant d’abandonner cet essai. Votre brouillon est conservé.",
+	"ui.teamBridge.schedule.discard_attempt": "J’ai vérifié « Planifiés » — abandonner cet essai"
 }

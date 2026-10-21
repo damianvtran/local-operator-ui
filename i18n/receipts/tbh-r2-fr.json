@@ -1,0 +1,61 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbh-r2-fr",
+ "session": "1a89c9920568",
+ "date": "2026-10-21",
+ "locale": "fr",
+ "translator": "translator",
+ "translator_session": "7f91449c7aa6",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 2,
+ "scope": "Round-2 remediation delta: 2 changed keys (ui.teamBridge.schedule.held, ui.teamBridge.schedule.discard_attempt; « cette tentative » → « cet essai ») audited versus round-1 snapshot fr.r1.json (21289e3b…); 136 other values verified byte-identical to HEAD, key set and order unchanged; inherits the round-1 2-key audit (tbh-r1-fr) and the 136-key base (tbs-r2-fr); catalogue audit only, not rendered-fit/activation/release.",
+ "sha256": {
+  "en": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+  "fr": "1d888863b58369dc278d348d20f1975216e91daa54cd51c7e8e882db3d52540a",
+  "context": "02e7be8fe466cd83941fcead89f234a705d0aa40765d274b9d92390333e4337c"
+ },
+ "findings": [],
+ "previous_round": {
+  "path": "i18n/receipts/tbh-r1-fr.json",
+  "sha256": "0bc3c31ede31793ed472f2771a2c7915526f613af8062f57966f0d4ebe6feed1",
+  "target_sha256": "21289e3b3f5f54dcd3c5f67486f2e089448cf611f3e864efd953b820bc049809"
+ },
+ "remediation": [
+  {
+   "key": "ui.teamBridge.schedule.held",
+   "r1_severity": "NIT",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "Une planification précédente existe peut-être encore. Vérifiez « Planifiés » et annulez-la si nécessaire avant d’abandonner cet essai. Votre brouillon est conservé."
+  },
+  {
+   "key": "ui.teamBridge.schedule.discard_attempt",
+   "r1_severity": "NIT",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "J’ai vérifié « Planifiés » — abandonner cet essai"
+  }
+ ],
+ "inherited_receipt": {
+  "base": "c06b457be9",
+  "path": "i18n/receipts/tbs-r2-fr.json",
+  "sha256": "a22cd7571d983c4b3a81c433d4d59edb3616de87e9b573348a48a58a9795918e",
+  "keys_inherited": 136,
+  "base_target_sha256": "551c9ae899c431dfd85d4e9ce30ca4942eb698df4b032f6943dc2c3af2418ce4",
+  "unchanged_values_verified": 136
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+ },
+ "validation": {
+  "independence": "Auditor session 1a89c9920568 is distinct from translator session 7f91449c7aa6; values read from working-tree bytes (sha 1d888863…, matching the coordinator's expected hash); no repo file edited, staged or committed; round-1 receipt left untouched and re-verified at 0bc3c31e….",
+  "semantics": "diff of round-1 snapshot vs current touches exactly held and discard_attempt, replacing « cette tentative » with « cet essai » (masculine demonstrative agrees with essai). “Attempt” now maps to « essai » across the composer-footer recovery set, matching create_retry « autoriser un nouvel essai » — the round-1 drift is resolved. Everything else in both strings is byte-identical to round 1: « Planifiés » reference, « annulez-la » vs « abandonner » cancel/discard distinction, explicit « J’ai vérifié … — … » acknowledgement, uncertainty and draft-kept sentence.",
+  "icu": "Re-parsed both values with @formatjs/icu-messageformat-parser from the repo node_modules: single literal node each, no arguments in en or fr; formatted with intl-messageformat (fr) → output byte-equal to the catalogue text.",
+  "typography": "Both values NFC; no U+200E/F, U+202A–E, U+2066–9 or U+061C; no ASCII apostrophe (’ U+2019); « » with U+202F inside; spaced em dash. Key set and order equal en (138); 136 non-delta values byte-identical to HEAD (sha 551c9ae8… = tbs-r2-fr sha256.fr).",
+  "overflow": "Fix shortens both: held 164 vs 128 chars (1.28×, wrapping <p>); discard_attempt 49 vs 42 (1.17×, nowrap ghost Button) — now shorter than its sibling create_retry; rendered check at 800 px minimum width still pending as in round 1.",
+  "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+ }
+}
