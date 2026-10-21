@@ -326,6 +326,20 @@ const MAIN_BUNDLE_ROOT_FILES = new Set([
 ]);
 
 /**
+ * Everything the language-coverage gate reads, and therefore everything whose
+ * change must re-run it.
+ *
+ * `src/i18n/**` is the catalogue tree and the generated key types;
+ * `i18n/**` is the shared language manifest plus `coverage-allowance.json` - the
+ * allowance is the one file the gate exists to police, so a diff that touches
+ * ONLY it (pure data, no code) must still run the growth comparison;
+ * `scripts/i18n/**` is the checker itself and the sibling gates `pnpm check-i18n`
+ * chains beside it. All three classify as `other`, which is why this is a path
+ * predicate rather than a category.
+ */
+const I18N_PREFIXES = ["src/i18n/", "i18n/", "scripts/i18n/"];
+
+/**
  * Whether the category table NAMED this path's tree, rather than reaching its
  * answer through the `other` catch-all. See `KNOWN_LIVE_PREFIXES`.
  */
@@ -391,6 +405,7 @@ export const FLAGS = [
 	"unit",
 	"bytecode",
 	"evidence",
+	"i18n",
 	"runtime_deps",
 	"audit",
 	"pack",
@@ -408,6 +423,7 @@ export const FLAGS = [
  */
 export const JOB_FLAGS = {
 	lint: ["lint"],
+	"i18n-coverage": ["i18n"],
 	"runtime-deps": ["runtime_deps"],
 	"check-types": ["types"],
 	test: ["unit"],
@@ -469,6 +485,11 @@ export const PERMISSIVE_DEPS = [
  */
 export const JOB_COMMANDS = {
 	lint: ["pnpm lint", "pnpm lint:scripts"],
+	// The two halves of `pnpm check-i18n`, in the order CI runs them. The local
+	// spelling of the coverage half resolves its base to `origin/main`; CI is the
+	// only caller that can supply `HEAD^1` (`--allowance-base`), and that base is
+	// the only difference between the two runs.
+	"i18n-coverage": ["pnpm check-i18n:catalogues", "pnpm check-i18n:coverage"],
 	"runtime-deps": [
 		// The CI spelling, wrapper and all, because the wrapper is part of what the
 		// job verifies: `require-report.sh` refuses to read a silent success as a
@@ -538,6 +559,7 @@ export const FLAG_REASONS = {
 	evidence: `a \`docs/evidence/**\` change (the STRUCTURAL gate reads the tracked tree; the pixel sweep runs at release), one of the modules that produce the gate's verdict (${[...EVIDENCE_SOURCES].join(", ")}), a palette change (the palettes ARE the grounds a frame is judged against, so a ground that moves must be swept before the next tag), or a change to the install (\`package.json\` or a lockfile): \`sharp\`, the decoder the sweep uses at release, is a devDependency`,
 	runtime_deps:
 		"`package.json` or one of the scripts the runtime-dependency step executes (`scripts/check-runtime-deps.mjs`, `scripts/require-report.sh`)",
+	i18n: "a path under `src/i18n/**` (catalogues and generated key types), `i18n/**` (the language manifest or `coverage-allowance.json` — an allowance-only change is data and must still re-run the growth comparison) or `scripts/i18n/**` (the checker)",
 	audit: "`package.json` or a lockfile change",
 	pack: "a changed path that is neither prose nor committed evidence",
 };
@@ -683,6 +705,17 @@ export function flagsFor(categories, paths, releaseBump) {
 	const evidence = [...pathSet].some(
 		(path) => EVIDENCE_SOURCES.has(path) || path.startsWith(PALETTE_PREFIX),
 	);
+	/*
+	 * The language-coverage gate's selection (see `I18N_PREFIXES`). Fails closed
+	 * for the one diff that looks inert: an allowance-only change is data, sets no
+	 * other flag differently, and is exactly the change the gate must judge.
+	 * The install is in the predicate too: `pnpm check-i18n` executes script
+	 * definitions from `package.json` and its parser/compiler come from the
+	 * lockfile, so a manifest or lock change can change what the gate runs.
+	 */
+	const i18nPaths = [...pathSet].some((path) =>
+		I18N_PREFIXES.some((prefix) => path.startsWith(prefix)),
+	);
 
 	return {
 		lint: live,
@@ -691,6 +724,7 @@ export function flagsFor(categories, paths, releaseBump) {
 		bytecode: manifest || cats.has(CAT_LOCK) || mainBundleInput,
 		evidence:
 			cats.has(CAT_EVIDENCE) || evidence || manifest || cats.has(CAT_LOCK),
+		i18n: manifest || cats.has(CAT_LOCK) || i18nPaths,
 		runtime_deps:
 			manifest || [...pathSet].some((path) => RUNTIME_DEP_SCRIPTS.has(path)),
 		audit: manifest || cats.has(CAT_LOCK),
