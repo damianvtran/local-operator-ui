@@ -28,16 +28,12 @@ import type { TeamBridgeMemberInput } from "../../../../shared/team-bridge-contr
  * stays invited until its owner consents. The dialog does not attempt that
  * consent: it belongs to the owner's machine and is a separate, explicit act.
  *
- * A SEEDED OPEN comes from the rail's People section: clicking a reachable
- * person with no existing DM opens this dialog already addressed to them. The
- * seed is read on every OPEN, not only at mount — the dialog stays mounted
- * behind the page, and a second person clicked after a cancelled first attempt
- * must not inherit the first person's row.
+ * THE RAIL'S PEOPLE ROWS DO NOT USE THIS DIALOG. Clicking a person opens the
+ * existing DM or creates one in the background; this form remains the path for
+ * groups and channels, where the member set is the thing being composed.
  */
 export const TeamBridgeCreateDialog: FC<{
 	open: boolean;
-	/** Prefill a DM with this person when the dialog opens. */
-	seed?: { accountId: string; displayLabel: string } | null;
 	onClose: () => void;
 	onCreate: (input: {
 		kind: "dm" | "group" | "channel";
@@ -48,7 +44,7 @@ export const TeamBridgeCreateDialog: FC<{
 	}) => void;
 	pending?: boolean;
 	error?: string;
-}> = ({ open, seed, onClose, onCreate, pending = false, error }) => {
+}> = ({ open, onClose, onCreate, pending = false, error }) => {
 	useI18nLocale();
 	const [kind, setKind] = useState<"dm" | "group" | "channel">("dm");
 	const [name, setName] = useState("");
@@ -62,16 +58,10 @@ export const TeamBridgeCreateDialog: FC<{
 			rowId: crypto.randomUUID(),
 		},
 	]);
-	const seedAccountId = seed?.accountId ?? "";
-	const seedDisplayLabel = seed?.displayLabel ?? "";
-
 	/*
 	 * EVERY OPEN STARTS A FRESH FORM. A half-typed group that was cancelled must
-	 * not reappear under a person's name, and a seeded DM must be addressed to
-	 * the person clicked THIS time. The effect runs on close too (the early
-	 * return), which keeps the behind-the-page mount clean for the next open.
-	 * The deps are `seed`'s primitive identity: the object itself is rebuilt by
-	 * the page on every render, so depending on it would reset a typed form.
+	 * not reappear on the next open. The effect runs on close too (the early
+	 * return), which keeps the behind-the-page mount clean.
 	 */
 	useEffect(() => {
 		if (!open) return;
@@ -79,13 +69,13 @@ export const TeamBridgeCreateDialog: FC<{
 		setName("");
 		setMembers([
 			{
-				account_id: seedAccountId,
+				account_id: "",
 				kind: "human",
-				display_label: seedDisplayLabel,
+				display_label: "",
 				rowId: crypto.randomUUID(),
 			},
 		]);
-	}, [open, seedAccountId, seedDisplayLabel]);
+	}, [open]);
 
 	const update = (index: number, patch: Partial<TeamBridgeMemberInput>) => {
 		setMembers((current) =>

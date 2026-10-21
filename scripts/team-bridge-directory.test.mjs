@@ -730,6 +730,39 @@ test("the merged row also keeps its visible time out of the row", () => {
 	assert.match(visible(row), /Minerva/);
 });
 
+test("an agent DM is labelled with its owner and opens from the rail", () => {
+	const agentDm = conversation({
+		id: "bcv_dm_aida",
+		kind: "dm",
+		name: "",
+		members: [
+			selfMember,
+			{
+				account_id: "acct_ben",
+				kind: "agent",
+				display_label: "Aida",
+				role: "member",
+				state: "active",
+			},
+		],
+	});
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				conversations: [agentDm],
+				selected: null,
+				organizations: [
+					{ tenantId: "tnt_1", name: "Minerva", role: "owner", unread: 0 },
+				],
+				people: [person({ account_id: "acct_ben", display_label: "Ben" })],
+			}),
+		),
+	);
+	assert.match(html, /Aida \(Ben\)/);
+	assert.match(html, /data-team-bridge-agent-contact="acct_ben"/);
+});
+
 test("a local 422 is named as a validation cause, not an outdated client", () => {
 	const html = renderToStaticMarkup(
 		createElement(
