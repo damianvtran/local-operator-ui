@@ -729,7 +729,11 @@ test("a liveness dip cannot fold a run whose own rows say it is still being writ
 		tool("t1", { ts: TS + 1_000, durationS: 3 }),
 		answer("a1", { ts: TS + 3_000, settledAt: TS + 3_000, stopReason: "stop" }),
 		tool("t2", { ts: TS + 4_000, phase: "running" }),
-		row("a2", "assistant", { ts: TS + 5_000, text: "writing", streaming: true }),
+		row("a2", "assistant", {
+			ts: TS + 5_000,
+			text: "writing",
+			streaming: true,
+		}),
 	];
 	const live = planOf(rows, true);
 	const dip = planOf(rows, false);
@@ -5281,10 +5285,8 @@ test("the settle latch: a watched episode's gate cannot move on a liveness flip 
 		"an unwatched run with no live row is not frozen: its dip still moves the plan",
 	);
 	assert.equal(
-		internalSpanOf(
-			collapsePlan(settledRows, { live: false }),
-			"dip-w1",
-		).collapsed,
+		internalSpanOf(collapsePlan(settledRows, { live: false }), "dip-w1")
+			.collapsed,
 		true,
 		"the unwatched dip folds the episode into its bar",
 	);
