@@ -934,7 +934,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				 * unreachable. Force the wrapper to block, exactly as the thread pane
 				 * already does, so the row is width-constrained and the name ellipsises.
 				 */}
-				<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block">
+				<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block!">
 					{listState === "loading" && (
 						<div className="flex items-center justify-center py-8">
 							<Spinner size="sm" label={t("ui.teamBridge.list.loading")} />
@@ -1114,7 +1114,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						    arbitrary variants make that wrapper fill the viewport so the
 						    list can justify-end (Slack anchors a short history at the
 						    bottom, next to the composer). */}
-						<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block [&_[data-radix-scroll-area-viewport]>div]:h-full">
+						<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block! [&_[data-radix-scroll-area-viewport]>div]:h-full">
 							<div className="flex h-full flex-col">
 								{previewSelected ? (
 									<TeamBridgePreviewBanner
