@@ -673,6 +673,18 @@ const IDENTICAL_OK = new Map([
 		"ui.agentMessages.settings.allowlist.kind_agent",
 		"French cognate: « agent » has the same spelling.",
 	],
+	// --- ui.shell / ui.command_palette. "Agent Hub" is the product surface's
+	// established name; ur keeps the Latin proper name (the programme glossary
+	// already does this for `hub.skills.public_hub`), so the value is correctly
+	// identical to English rather than a stub.
+	[
+		"ui.command_palette.use_palette_sources.agent_hub",
+		"Product name (Agent Hub), preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.shell.sidebar_navigation.agent_hub",
+		"Product name (Agent Hub), preserved verbatim by the programme glossary.",
+	],
 ]);
 
 function localeDirs() {
