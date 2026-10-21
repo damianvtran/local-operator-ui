@@ -1805,25 +1805,32 @@ const AssistantRow = memo(function AssistantRow({
 			 *   32px per settled paragraph for a control nobody could see - it was
 			 *   just applied to the wrong population.
 			 *
-			 * `quotable` is the settled-and-has-words gate for both: a streaming
-			 * prefix has nothing settled to offer.
+			 * `quotable` is the settled-and-has-words gate for the ACTION ROW, not
+			 * for the row's time: a reply-only final response (its body is only the
+			 * `<reply-to>` transport markup) has no words to copy and so no toolbar,
+			 * but it is still a final response and still states its own time. The
+			 * meta row therefore renders on `isFinalResponse` alone; the toolbar is
+			 * the optional child (review round 1, C3: "if it is a final response, it
+			 * has a time" has no reply-only exception).
 			 *
 			 * NO `revealId` on either: the one-time arrival flash is the closing
 			 * answer's discoverability cue. Passing it here would flash a control
 			 * under every paragraph a live turn settles - the per-paragraph churn
 			 * #698 removed.
 			 */}
-			{!closesTurn && quotable && isFinalResponse(record) && (
+			{!closesTurn && isFinalResponse(record) && (
 				<div className={cn("mt-1 flex items-center gap-2 text-meta")}>
 					<span className={cn("ml-auto flex shrink-0 items-center gap-2")}>
-						<AnswerActionRow
-							kind="response"
-							bodyText={remainingContent}
-							agentId={conversationId}
-							speechId={record.id}
-							conversationId={conversationId}
-							entryId={forkEntryId(record) ?? undefined}
-						/>
+						{quotable && (
+							<AnswerActionRow
+								kind="response"
+								bodyText={remainingContent}
+								agentId={conversationId}
+								speechId={record.id}
+								conversationId={conversationId}
+								entryId={forkEntryId(record) ?? undefined}
+							/>
+						)}
 						<TurnTimestamp timestamp={record.ts} scope="answer" />
 					</span>
 				</div>
@@ -1841,10 +1848,12 @@ const AssistantRow = memo(function AssistantRow({
 				 * THE TURN-FOOT LINE (§E3), and the one line D9 leaves behind.
 				 *
 				 * `Worked for 1m 12s · 8 actions · 1 failed`, at the turn's own left edge,
-				 * with the stamp at the far end. It REPLACES the per-message and
-				 * per-tool-group stamps the transcript used to carry: D9 found those were
-				 * about a third of a long thread's vertical run, and they said nothing the
-				 * foot does not say once.
+				 * with the stamp at the far end. The stamp dates the CLOSING ANSWER; it
+				 * is not an alternative to the per-message stamps, which are stated on
+				 * every user message and every non-closing final response. What D9
+				 * removed was the PER-TOOL-GROUP clock: those were about a third of a
+				 * long thread's vertical run and said nothing the foot does not say
+				 * once, so the per-call clock stays gone.
 				 *
 				 * THE FAILURE COUNT IS A CONTROL (U14, Cursor 3's `3 Files Edited -
 				 * Review`): it opens the first failed row and scrolls to it, which is the

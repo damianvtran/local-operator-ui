@@ -1168,6 +1168,46 @@ test("a working turn stamps each settled final response, and paints no closing c
 	}
 });
 
+test("a reply-only final response still states its time, without a toolbar", async () => {
+	/*
+	 * REVIEW ROUND 1, C3. The row used to be gated on `quotable`, so a settled
+	 * non-closing handover whose whole body is the `<reply-to>` transport markup
+	 * had no visible text to copy and shipped no row at all - no stamp either -
+	 * while a CLOSING answer in the same shape kept its foot stamp. The operator's
+	 * rule has no such exception ("If it is a final response, it has a time"), so
+	 * the row now renders on `isFinalResponse` and only the toolbar stays behind
+	 * the copy gate.
+	 */
+	const { container, unmount } = mount([
+		userRecord("user:1"),
+		answerRecord("answer:1", {
+			text: "<reply-to>What was the total?</reply-to>",
+		}),
+		toolRecord("tool:1"),
+		answerRecord("answer:2", { text: "Four were late." }),
+	]);
+	const row = container.querySelector('[data-record-id="answer:1"]');
+	assert.ok(row, "the reply-only handover is on screen");
+	assert.equal(
+		row.querySelector("[data-lo-response-actions]"),
+		null,
+		"no words to copy, so no toolbar",
+	);
+	const stamp = row.querySelector('time[data-stamp="answer"]');
+	assert.ok(stamp, "and it still states its own time");
+	assert.equal(
+		stamp.closest("[data-lo-response-actions]"),
+		null,
+		"outside the (absent) toolbar",
+	);
+	assert.equal(
+		stamps(container, "answer").length,
+		2,
+		"the reply-only handover and the closing answer each state one",
+	);
+	unmount();
+});
+
 test("a statement after the answer does not take the answer's caption away", async () => {
 	/*
 	 * DESIGN ROUND 2's D2-1 and DESIGN ROUND 3's D3-1: the FIVE statement kinds, and
