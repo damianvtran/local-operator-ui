@@ -141,6 +141,7 @@ export async function sceneSidebarLayout({
 }) {
 	const MOVE_TO_MORE = "Move to More";
 	const SHOW_IN_SIDEBAR = "Show in sidebar";
+	const RESET_LAYOUT = "Reset sidebar layout";
 	/*
 	 * Longer than the row's colour transition (`duration-fast`, 120ms), so a
 	 * frame after a pointer move is of the settled row rather than one caught
@@ -250,7 +251,10 @@ export async function sceneSidebarLayout({
 				},
 				area: area === null ? null : { box: box(area), dragging: area.hasAttribute('data-sidebar-dragging') },
 				indicator,
-				band: document.querySelector('[data-sidebar-drop-band]') === null ? null : box(document.querySelector('[data-sidebar-drop-band]')),
+				band: document.querySelector('[data-sidebar-drop-band]') === null ? null : (() => {
+					const node = document.querySelector('[data-sidebar-drop-band]');
+					return { ...box(node), text: (node.textContent || '').trim() };
+				})(),
 				menu: menu === null ? null : {
 					items: Array.from(menu.querySelectorAll('[role="menuitem"]')).map((item) => ({
 						label: (item.textContent || '').trim(),
@@ -612,9 +616,12 @@ export async function sceneSidebarLayout({
 		JSON.stringify({ indicatorTop: indicator?.top, schedulesTop }),
 	);
 	check(
-		"the drop band's direction is stated while a visible row's drag is live",
-		dragOut.held.band !== null,
-		JSON.stringify(dragOut.held.band),
+		"the drop band states the direction of a More row's drag",
+		dragOut.held.band !== null && dragOut.held.band.text === SHOW_IN_SIDEBAR,
+		JSON.stringify({
+			band: dragOut.held.band,
+			expected: SHOW_IN_SIDEBAR,
+		}),
 	);
 	await releaseAt(dragOut.x, dragOut.y);
 	const landed = await waitForSidebar((state) => {
@@ -658,6 +665,16 @@ export async function sceneSidebarLayout({
 	 */
 	const agentsTop = afterDrop.rows.find((row) => row.id === "agents").box.y;
 	const reorder = await dragRowTo("browser", agentsTop + 3);
+	/*
+	 * THE OTHER DIRECTION (agent review round 1, R1-6a): the band's label is read,
+	 * not merely its existence - a "Show in sidebar" band during a visible row's
+	 * drag would otherwise pass the older check.
+	 */
+	check(
+		"the drop band states the direction of a visible row's drag",
+		reorder.held.band !== null && reorder.held.band.text === MOVE_TO_MORE,
+		JSON.stringify({ band: reorder.held.band, expected: MOVE_TO_MORE }),
+	);
 	await releaseAt(reorder.x, reorder.y);
 	const reordered = await waitForSidebar((state) => {
 		const browser = state.visible.indexOf("browser");
@@ -850,6 +867,44 @@ export async function sceneSidebarLayout({
 	);
 
 	/*
+	 * 6b. RESET THROUGH THE MENU (agent review round 1, R1-6b). Design § 8 names
+	 * reset in the keyboard-only sequence; until now the scene never pressed it.
+	 * The layout differs from default here (library was moved into the fold), so
+	 * the item is drawn; the default order and the default More contents are both
+	 * read back from the DOM, with the fold opened so its rows are drawn.
+	 */
+	await openRowMenu("projects", { via: "ellipsis" });
+	require("the menu offers Reset sidebar layout", await chooseMenuItem(
+		RESET_LAYOUT,
+	), JSON.stringify(await menuItemAt(RESET_LAYOUT)));
+	await wait(SETTLE_MS);
+	await ensureFoldOpen();
+	const afterReset = await readSidebar();
+	check(
+		"Reset sidebar layout restores the default visible order",
+		JSON.stringify(afterReset.visible) === JSON.stringify(DEFAULT_VISIBLE),
+		JSON.stringify({
+			visible: afterReset.visible,
+			expected: DEFAULT_VISIBLE,
+		}),
+	);
+	/*
+	 * READ FROM THE STORE, not from the fold: `mesh` is gated on mesh membership
+	 * and this fixture is in no mesh, so the drawn More region is the default
+	 * MINUS that row. The reset's claim is about the stored document (all nine
+	 * ids, defaults restored); the drawn visible order above is the render claim.
+	 */
+	const storedAfterReset = await readStoredLayout();
+	check(
+		"Reset sidebar layout stores the default arrangement, including the gated row",
+		JSON.stringify(storedAfterReset?.visible) ===
+			JSON.stringify(DEFAULT_VISIBLE) &&
+			JSON.stringify(storedAfterReset?.more) === JSON.stringify(DEFAULT_MORE),
+		JSON.stringify({ stored: storedAfterReset, more: afterReset.more }),
+	);
+	await frame("sidebar-reset");
+
+	/*
 	 * 7. THE FOLD EMPTIED. Every remaining row is moved out through its own menu
 	 * (the ellipsis trigger, the discoverability door), two rows at a time as the
 	 * list shrinks; the More control must disappear with the last one rather than
@@ -929,18 +984,17 @@ export async function sceneSidebarLayout({
 		aidaInMore.moreRow !== null && aidaInMore.more.includes("aida"),
 		JSON.stringify({ moreRow: aidaInMore.moreRow, more: aidaInMore.more }),
 	);
-	if (aidaInMore.moreRow?.badge === true) {
-		check(
-			"the More control carries Aida's attention badge while she waits inside it",
-			aidaInMore.moreRow.badge === true,
-			JSON.stringify(aidaInMore.moreRow),
-		);
-	} else {
-		note(
-			"Aida-in-More badge",
-			"not drawn: this fixture has no attention count (that needs a completed turn with the conversation unseen, which is the QA turn path). The Aida-in-More layout is captured anyway; the badge state is not asserted here.",
-		);
-	}
+	/*
+	 * A NOTE, NOT A CHECK (agent review round 1, R1-5; QA round 1, Q3). The old
+	 * branch asserted `moreRow.badge === true` only when it was already true, so it
+	 * could not fail. This fixture has no attention count (that needs a completed
+	 * turn with the conversation unseen), so the scene states what it did not
+	 * assert; QA's matrix row 8 is the real proof on that surface.
+	 */
+	note(
+		"Aida-in-More badge",
+		`not asserted: this fixture cannot raise a count. More badge drawn: ${aidaInMore.moreRow?.badge === true}; the layout is captured either way, and QA's completed-turn run is the real check.`,
+	);
 	await frame("sidebar-aida-in-more");
 
 	/*

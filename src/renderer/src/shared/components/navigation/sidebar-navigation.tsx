@@ -21,6 +21,10 @@ import { ChatSidebar } from "@features/chat/components/chat-sidebar";
  * which is the shape `chat-sidebar-selection.test.mjs` reads for.
  */
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
+import {
+	rowDragging,
+	rowDraggingMark,
+} from "@features/chat/components/chat-sidebar";
 import { newChatShortcutCap } from "@features/chat/new-chat-shortcut";
 import { openConversation } from "@features/chat/open-conversation";
 import {
@@ -730,7 +734,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		canCustomise,
 		save: saveSidebarLayout,
 		reset: resetSidebarLayout,
-		isSaving,
 	} = useSidebarLayout(layoutCapable);
 	/*
 	 * Every render below reads `effectiveLayout`, not `layout`: the fallback is
@@ -1140,20 +1143,53 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		setDragId(null);
 		setIndicatorTop(null);
 		setDragFoldOpen(false);
-		/*
-		 * CLEARED ON THE NEXT TASK, not here: the click that ends a press is
-		 * dispatched in the same turn as the release. See `suppressClickRef`.
-		 */
-		window.setTimeout(() => {
-			suppressClickRef.current = false;
-		}, 0);
 		if (!live.armed) return;
 		if (!commit) {
+			/*
+			 * A CANCELLED GESTURE'S RELEASE IS STILL A PRESS THE BROWSER DELIVERS
+			 * (agent review round 1, R1-2; QA round 1, Q2, reproduced in the built
+			 * app). Escape settles while the pointer is DOWN and still captured, so
+			 * the eventual release is retargeted to the row's button and a `click`
+			 * follows. A next-task timer cannot cover that gap - it fires in the
+			 * ESCAPE's task, long before the release - so suppression stays armed and
+			 * is consumed by that click (`onClick`), the one place that can tell a
+			 * cancelled release from the reader's next real press.
+			 *
+			 * These listeners are the doors where no click will come: a
+			 * `pointercancel`, a window blur (the gesture is abandoned, not released),
+			 * or a release the button never receives. The clear is scheduled on the
+			 * release's own task so the click, dispatched in that same task, still
+			 * runs first.
+			 */
+			const clearOnNextTask = () => {
+				window.setTimeout(() => {
+					suppressClickRef.current = false;
+				}, 0);
+			};
+			const removeReleaseDoors = () => {
+				window.removeEventListener("pointerup", onRelease, true);
+				window.removeEventListener("pointercancel", onRelease, true);
+				window.removeEventListener("blur", onRelease, true);
+			};
+			const onRelease = () => {
+				removeReleaseDoors();
+				clearOnNextTask();
+			};
+			window.addEventListener("pointerup", onRelease, true);
+			window.addEventListener("pointercancel", onRelease, true);
+			window.addEventListener("blur", onRelease, true);
 			/* Esc, or the pointer taken away: the gesture's sentence ends rather
 			   than leaving "Moving …" standing (design § 5). */
 			setAnnouncement("");
 			return;
 		}
+		/*
+		 * A DROP's click is dispatched in the release's own task, so the flag can be
+		 * cleared on the next task as before; `onClick` consumes it first.
+		 */
+		window.setTimeout(() => {
+			suppressClickRef.current = false;
+		}, 0);
 		if (target === null) return;
 		applyDrop(live.id, target);
 	};
@@ -1300,7 +1336,34 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		return item.working && item.workingName ? item.workingName : attentionLabel;
 	};
 
-	const renderDestinationRow = (id: SidebarDestinationId) => {
+	/**
+	 * ONE ROW, BOTH WIDTHS, AND THE `<li>` IS THIS FUNCTION'S (agent review round
+	 * 1, R1-3; design round 1, D1/D2/D5).
+	 *
+	 * THE CONTENT IS A FRAGMENT INSIDE ONE ITEM: the main button and the menu's
+	 * root are children of the row's `<li>`; the collapsed tooltip wraps the
+	 * BUTTON only. The strip used to wrap the whole `<li>` in a tooltip inside
+	 * another `<li>`, which the repo's own mount harness reports as
+	 * `validateDOMNesting: <li> cannot appear as a descendant of <li>`.
+	 *
+	 * WHY THE MARKS SIT AFTER THE ELLIPSIS (D1). The ellipsis lane is reserved at
+	 * the trailing edge, and the badge/working glyph used to be inside the main
+	 * button, so they sat 26px in - two trailing columns, with an attention mark
+	 * no longer aligned with More's chevron or the actions' keycaps. The marks now
+	 * follow the lane and take the SAME 8px inset the chevron takes, so a 16px
+	 * mark occupies the chevron's column; the button's own name still states the
+	 * count (`markLabel`), which is what assistive tech reads. They are outside
+	 * the button by construction - a row must not nest controls - so a pointer
+	 * landing on a mark is a status glyph, not a press.
+	 *
+	 * WHY THE HELD ROW WEARS THE PINNED CHAT'S MARK (D2): Chromium keeps `:hover`
+	 * on the capture target, so during a drag the held row was filled with the
+	 * same `row-hover` the OTHER rows wear, and the only filled row on screen was
+	 * not the target. `rowDragging` says "this row is held" and `rowDraggingMark`
+	 * adds the outline the pinned reorder uses; the ellipsis stands down for the
+	 * gesture so the mark is the only trailing thing drawn.
+	 */
+	const renderDestinationRowForWidth = (id: SidebarDestinationId) => {
 		const item = destinationItems.get(id);
 		if (item === undefined) return null;
 		const region: SidebarRegion = regionOf(effectiveLayout, id);
@@ -1317,6 +1380,14 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		const atBottom = index === -1 || index >= regionRows.length - 1;
 		const attention = item.attention ?? 0;
 		const markLabel = rowName(item);
+		const held = dragId === id;
+		/*
+		 * THE MENU OPENS AWAY FROM THE COLUMN'S INLINE-END EDGE (D5). `right` is a
+		 * physical side: in an RTL column the rail sits at the window's right edge,
+		 * so a right-opening menu would depend on Radix's collision flip rather than
+		 * on placement, and the strip's anchor would be on the wrong side.
+		 */
+		const menuSide = rtl ? "left" : "right";
 		const rowState = item.isActive
 			? rowCurrent
 			: "text-ink-muted hover:bg-row-hover hover:text-ink";
@@ -1327,6 +1398,267 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				className={cn("shrink-0", item.isActive && "text-accent")}
 			/>
 		);
+		const button = (
+			<button
+				type="button"
+				/*
+				 * THE ROW'S FOCUS HANDLE (agent review round 1, R1-1). Nothing wrote
+				 * `rowButtonsRef`, so every restore was a no-op - and the menu's
+				 * `onCloseAutoFocus` first suppressed Radix's own return, which is how a
+				 * keyboard reorder dropped focus to `<body>`. The callback is keyed by id so
+				 * a row that MOVED is focused where it landed.
+				 */
+				ref={(node) => {
+					if (node) rowButtonsRef.current.set(id, node);
+					else rowButtonsRef.current.delete(id);
+				}}
+				onClick={() => {
+					/*
+					 * A DRAG IS NEVER A NAVIGATION (design § 5), and a CANCELLED drag's
+					 * release is still a press the browser dispatches (agent review round 1,
+					 * R1-2): the flag stays armed until that click arrives, so the click is
+					 * consumed here and the flag cleared - the one place that can tell the
+					 * cancelled release from the reader's next real press.
+					 */
+					if (suppressClickRef.current) {
+						suppressClickRef.current = false;
+						return;
+					}
+					if (item.onSelect) item.onSelect();
+					else navigate(item.path);
+				}}
+				onPointerDown={
+					canCustomise ? (event) => startRowDrag(id, event) : undefined
+				}
+				onPointerMove={canCustomise ? moveRowDrag : undefined}
+				onPointerUp={
+					canCustomise
+						? (event) => {
+								if (dragRef.current?.pointerId !== event.pointerId) return;
+								settleDrag(true);
+							}
+						: undefined
+				}
+				onPointerCancel={canCustomise ? () => settleDrag(false) : undefined}
+				onKeyDown={
+					canCustomise
+						? (event) => {
+								/*
+								 * THE KEYBOARD'S OWN MENU KEY (design § 6): `Shift+F10` is the
+								 * Windows convention, `ContextMenu` the dedicated key. Both open
+								 * the panel the ellipsis opens, anchored to the row.
+								 */
+								if (
+									event.key === "ContextMenu" ||
+									(event.shiftKey && event.key === "F10")
+								) {
+									event.preventDefault();
+									setMenuRow(id);
+									return;
+								}
+								/* Alt+Arrow reorders within the row's own region, the chord
+								   twin of the menu's two Move items. */
+								if (!event.altKey) return;
+								if (event.key !== "ArrowUp" && event.key !== "ArrowDown")
+									return;
+								event.preventDefault();
+								runRowAction(id, {
+									kind: "move",
+									delta: event.key === "ArrowUp" ? -1 : 1,
+								});
+							}
+						: undefined
+				}
+				data-tour-tag={item.tourTag}
+				/*
+				 * A ROW THAT NAVIGATES IS A DESTINATION (design review round 1, D3):
+				 * `New chat` and `Search` above already set this attribute on their
+				 * buttons, and this one needs it for a different reason - the tour that
+				 * clicks it is not the only thing that looks; the screenshot rig opens a
+				 * destination by this tag. `aria-current` stays as it was: a destination
+				 * row is a link in a rail, and "current" is the word for the route in
+				 * front of the user, said only while open.
+				 */
+				aria-current={item.isActive ? "page" : undefined}
+				/*
+				 * THE DISCLOSURE CUE (agent review round 1, N5): Radix puts
+				 * `aria-haspopup` on the ellipsis trigger, and in the strip that trigger
+				 * is an `aria-hidden` zero-width anchor - so an AT user at that width had
+				 * no cue that Shift+F10 opens a menu on the row. The row button states it
+				 * at both widths, where the key is handled.
+				 */
+				aria-haspopup={canCustomise ? "menu" : undefined}
+				/*
+				 * EQUAL LABEL AND ARIA-LABEL OMIT THE ATTRIBUTE (design round 1, D2):
+				 * the visible text is the name whenever it is complete on its own, and a
+				 * redundant `aria-label` only risks disagreeing with it. A badge's
+				 * counting form is NOT equal to the label, so it is stated in both
+				 * widths - while a row is working, the sentence names the state.
+				 */
+				aria-label={
+					expanded && markLabel === item.label ? undefined : markLabel
+				}
+				className={cn(
+					"flex h-full min-w-0 flex-1 items-center gap-2 rounded-md",
+					expanded ? "px-2" : "justify-center px-0",
+				)}
+			>
+				{expanded ? (
+					glyph
+				) : (
+					/*
+					 * THE STRIP'S COUNT IS A CORNER MARK (#1083). The in-flow slot the
+					 * expanded row's marks take does not exist here: collapsed there is no
+					 * label and no trailing edge, so a mark in flow followed the glyph
+					 * after the row's 8px gap and `justify-center` centred the PAIR - the
+					 * icon sat 12px left of the strip's centre line with the count beside
+					 * it. Here the glyph sits in a 28px box (the strip's hit target, inside
+					 * the 30px row) and the mark is the panel rail's corner mark
+					 * (`panel-rail.tsx`, the browser item's block states the geometry):
+					 * 14px, pinned at -2px/-2px of the box, so the glyph is the button's
+					 * only in-flow content and stays centred. The register stays the quiet
+					 * one below; only the size and the place are the rail's. The busy mark
+					 * keeps its in-flow slot: where a spinner goes in the strip is a
+					 * design call #1083 does not make.
+					 */
+					<span className="relative flex size-7 shrink-0 items-center justify-center">
+						{glyph}
+						{attention > 0 && (
+							<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
+								<Badge
+									variant="attentionQuiet"
+									shape="pill"
+									size="count"
+									className="h-3.5 min-w-3.5 px-0.75 leading-none"
+									data-tour-tag={item.attentionTag}
+								>
+									{attention}
+								</Badge>
+							</span>
+						)}
+					</span>
+				)}
+				{/*
+				 * THE STRIP'S BUSY MARK, in flow after the glyph (design #1083's own note:
+				 * where a spinner goes in the strip is a design call that was not made, so
+				 * it keeps the in-flow slot the expanded row used before D1 moved the
+				 * marks out of the button). The name above still states the state.
+				 */}
+				{!expanded && item.working && (
+					<span className="inline-flex">
+						<LoaderCircle
+							size={16}
+							aria-hidden="true"
+							className="text-accent motion-safe:animate-spin"
+						/>
+					</span>
+				)}
+				{expanded && <span className="truncate">{item.label}</span>}
+			</button>
+		);
+		const menu = canCustomise ? (
+			/*
+			 * THE MENU'S TRIGGER (design § 6). Expanded, the trailing ellipsis IS
+			 * the trigger - the discoverability path for a reader who never guesses
+			 * that rows drag. Collapsed there is no room for a second control, so
+			 * the trigger is an invisible zero-width anchor at the row's INLINE-END
+			 * edge, and the menu is opened from `contextmenu` / `Shift+F10` on the
+			 * row. The anchor is at `end-0` rather than `start-1` (design round 1,
+			 * D3): anchored at the leading edge the panel opened 24px inside the
+			 * 56px strip and covered the row it acts on; `sideOffset` adds the gap
+			 * that puts it clear of the column.
+			 */
+			<DropdownMenu
+				open={menuRow === id}
+				onOpenChange={(open) => setMenuRow(open ? id : null)}
+			>
+				<DropdownMenuTrigger asChild>
+					{expanded ? (
+						<button
+							type="button"
+							data-sidebar-row-menu=""
+							aria-label={t("ui.shell.sidebar_navigation.row_actions", {
+								name: item.label,
+							})}
+							className={cn(
+								"me-0.5 flex size-6 shrink-0 items-center justify-center rounded-sm",
+								"text-ink-muted opacity-0 transition-opacity duration-fast ease-out-quart",
+								"hover:bg-row-hover hover:text-ink",
+								"group-hover/row:opacity-100 group-focus-within/row:opacity-100",
+								"focus-visible:opacity-100 data-[state=open]:opacity-100",
+								/* The held row draws the mark alone (D2): hover must not
+								   re-reveal the control on the row being moved. */
+								dragId !== null && "pointer-events-none opacity-0!",
+							)}
+						>
+							<Ellipsis size={16} aria-hidden="true" />
+						</button>
+					) : (
+						<span
+							aria-hidden="true"
+							className="pointer-events-none absolute inset-y-1 end-0 w-0"
+						/>
+					)}
+				</DropdownMenuTrigger>
+				<DropdownMenuContent
+					align="start"
+					side={menuSide}
+					sideOffset={expanded ? 6 : 8}
+					className="min-w-44"
+					/*
+					 * FOCUS GOES BACK TO THE ROW, not to the trigger (design § 6):
+					 * after a move the row has changed place, and the reader's next
+					 * key must land on the row they moved rather than on a strip
+					 * button or a zero-width anchor.
+					 */
+					onCloseAutoFocus={(event) => {
+						event.preventDefault();
+						focusDestinationRow(id);
+					}}
+				>
+					<DropdownMenuItem
+						disabled={atTop}
+						onSelect={() => runRowAction(id, { kind: "move", delta: -1 })}
+					>
+						{t("ui.shell.sidebar_navigation.move_up")}
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						disabled={atBottom}
+						onSelect={() => runRowAction(id, { kind: "move", delta: 1 })}
+					>
+						{t("ui.shell.sidebar_navigation.move_down")}
+					</DropdownMenuItem>
+					<DropdownMenuSeparator />
+					{region === "more" ? (
+						<DropdownMenuItem
+							onSelect={() =>
+								runRowAction(id, { kind: "region", region: "visible" })
+							}
+						>
+							{t("ui.shell.sidebar_navigation.show_in_sidebar")}
+						</DropdownMenuItem>
+					) : (
+						<DropdownMenuItem
+							onSelect={() =>
+								runRowAction(id, { kind: "region", region: "more" })
+							}
+						>
+							{t("ui.shell.sidebar_navigation.move_to_more")}
+						</DropdownMenuItem>
+					)}
+					{!layoutEquals(effectiveLayout, DEFAULT_SIDEBAR_LAYOUT) && (
+						<>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								onSelect={() => runRowAction(id, { kind: "reset" })}
+							>
+								{t("ui.shell.sidebar_navigation.reset_layout")}
+							</DropdownMenuItem>
+						</>
+					)}
+				</DropdownMenuContent>
+			</DropdownMenu>
+		) : null;
 		return (
 			/*
 			 * THE TAG STAYS ON THE BUTTON (design review round 1, F2 / the tour's own
@@ -1336,7 +1668,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			 * rig reads geometry from the row while the tour still reads the control.
 			 */
 			<li
-				key={expanded ? item.tourTag : undefined}
+				key={item.tourTag}
 				data-sidebar-row={id}
 				data-sidebar-region={region}
 				onContextMenu={
@@ -1356,144 +1688,53 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					"group/row relative flex h-[30px] w-full items-center rounded-md",
 					"transition-colors duration-fast ease-out-quart",
 					rowState,
+					held && rowDragging,
+					held && rowDraggingMark,
 				)}
 			>
-				<button
-					type="button"
-					onClick={() => {
-						/*
-						 * A DRAG IS NEVER A NAVIGATION (design § 5). The flag is set at the
-						 * threshold and cleared on the next task, so the click the browser
-						 * dispatches in the release's own turn is swallowed here.
-						 */
-						if (suppressClickRef.current) return;
-						if (item.onSelect) item.onSelect();
-						else navigate(item.path);
-					}}
-					onPointerDown={
-						canCustomise ? (event) => startRowDrag(id, event) : undefined
-					}
-					onPointerMove={canCustomise ? moveRowDrag : undefined}
-					onPointerUp={
-						canCustomise
-							? (event) => {
-									if (dragRef.current?.pointerId !== event.pointerId) return;
-									settleDrag(true);
-								}
-							: undefined
-					}
-					onPointerCancel={canCustomise ? () => settleDrag(false) : undefined}
-					onKeyDown={
-						canCustomise
-							? (event) => {
-									/*
-									 * THE KEYBOARD'S OWN MENU KEY (design § 6): `Shift+F10` is the
-									 * Windows convention, `ContextMenu` the dedicated key. Both open
-									 * the panel the ellipsis opens, anchored to the row.
-									 */
-									if (
-										event.key === "ContextMenu" ||
-										(event.shiftKey && event.key === "F10")
-									) {
-										event.preventDefault();
-										setMenuRow(id);
-										return;
-									}
-									/* Alt+Arrow reorders within the row's own region, the chord
-									   twin of the menu's two Move items. */
-									if (!event.altKey) return;
-									if (event.key !== "ArrowUp" && event.key !== "ArrowDown")
-										return;
-									event.preventDefault();
-									runRowAction(id, {
-										kind: "move",
-										delta: event.key === "ArrowUp" ? -1 : 1,
-									});
-								}
-							: undefined
-					}
-					data-tour-tag={item.tourTag}
-					/*
-					 * A ROW THAT NAVIGATES IS A DESTINATION (design review round 1, D3):
-					 * `New chat` and `Search` above already set this attribute on their
-					 * buttons, and this one needs it for a different reason - the tour that
-					 * clicks it is not the only thing that looks; the screenshot rig opens a
-					 * destination by this tag. `aria-current` stays as it was: a destination
-					 * row is a link in a rail, and "current" is the word for the route in
-					 * front of the user, said only while open.
-					 */
-					aria-current={item.isActive ? "page" : undefined}
-					/*
-					 * EQUAL LABEL AND ARIA-LABEL OMIT THE ATTRIBUTE (design round 1, D2):
-					 * the visible text is the name whenever it is complete on its own, and a
-					 * redundant `aria-label` only risks disagreeing with it. A badge's
-					 * counting form is NOT equal to the label, so it is stated in both
-					 * widths - while a row is working, the sentence names the state.
-					 */
-					aria-label={
-						expanded && markLabel === item.label ? undefined : markLabel
-					}
-					className={cn(
-						"flex h-full min-w-0 flex-1 items-center gap-2 rounded-md",
-						expanded ? "px-2" : "justify-center px-0",
-					)}
-				>
-					{expanded ? (
-						glyph
-					) : (
-						/*
-						 * THE STRIP'S COUNT IS A CORNER MARK (#1083). The in-flow slot below
-						 * is the expanded row's: collapsed there is no label and no trailing
-						 * edge, so a mark in flow followed the glyph after the row's 8px gap
-						 * and `justify-center` centred the PAIR - the icon sat 12px left of
-						 * the strip's centre line with the count beside it. Here the glyph
-						 * sits in a 28px box (the strip's hit target, inside the 30px row) and
-						 * the mark is the panel rail's corner mark (`panel-rail.tsx`, the
-						 * browser item's block states the geometry): 14px, pinned at -2px/-2px
-						 * of the box, so the glyph is the button's only in-flow content and
-						 * stays centred. The register stays the quiet one below; only the
-						 * size and the place are the rail's. The busy mark keeps its in-flow
-						 * slot: where a spinner goes in the strip is a design call #1083 does
-						 * not make.
-						 */
-						<span className="relative flex size-7 shrink-0 items-center justify-center">
-							{glyph}
-							{attention > 0 && (
-								<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
-									<Badge
-										variant="attentionQuiet"
-										shape="pill"
-										size="count"
-										className="h-3.5 min-w-3.5 px-0.75 leading-none"
-										data-tour-tag={item.attentionTag}
-									>
-										{attention}
-									</Badge>
-								</span>
-							)}
-						</span>
-					)}
-					{expanded && <span className="truncate">{item.label}</span>}
-					{expanded && attention > 0 && (
-						/*
-						 * THE SAME BADGE THE HEADER'S GLOBE CARRIES (design 5.1). In flow at
-						 * the row's trailing edge rather than absolutely positioned: the row is
-						 * 30px with a 13px label, so the trailing edge IS its top-right at any
-						 * size a badge would use, and a 16px badge inside a 30px row moves
-						 * neither the label's start nor the row's height.
-						 */
-						<span className="ms-auto inline-flex">
-							{/*
-							 * THE QUIET COUNT (operator ask, 2026-09-30): the rail's badge is
-							 * the `attentionQuiet` register rather than the bordered `attention`
-							 * mark - borderless, an `elevated` whisper instead of the warning
-							 * wash, and the count family's own `ink-dim` / `text-meta-sm`
-							 * numeral, so it reads with the sidebar's team-count lines. The
-							 * header's globe keeps the bordered mark: it sits in a glyph
-							 * cluster, where the ring is what separates it from neighbouring
-							 * icons and the wash is the feature's "an agent is blocked on
-							 * you" meaning.
-							 */}
+				{/*
+				 * THE TOOLTIP CARRIES THE SENTENCE, NOT THE BARE LABEL (UX round 1,
+				 * U3; design round 1, D2). Collapsed, this is the only text the row
+				 * ever shows, so a tooltip carrying the bare label would leave a
+				 * badge's number scope-less. Suppressed - not `disabled` - while a drag
+				 * is live: `disabled` renders the child bare and would remount the row
+				 * out from under the pointer capture, while `suppressed` keeps the tree
+				 * and closes the panel. It wraps the BUTTON, inside the row's own item
+				 * (R1-3), never a second `<li>`.
+				 */}
+				{expanded ? (
+					button
+				) : (
+					<Tooltip
+						content={rowName(item)}
+						side={menuSide}
+						suppressed={dragId !== null}
+					>
+						{button}
+					</Tooltip>
+				)}
+				{menu}
+				{/*
+				 * THE TRAILING MARKS (design round 1, D1): after the ellipsis lane and
+				 * at the chevron's own 8px inset, so the badge and the spinner are the
+				 * row's outermost marks and sit in ONE trailing column with More's
+				 * chevron. `pointer-events-none`: the count is a status glyph, and the
+				 * row's button (which names it) is the control.
+				 */}
+				{expanded && (attention > 0 || item.working) && (
+					<span
+						aria-hidden="true"
+						className="pointer-events-none inline-flex shrink-0 items-center gap-1 pe-2"
+					>
+						{attention > 0 && (
+							/*
+							 * THE QUIET COUNT (operator ask, 2026-09-30): the rail's badge
+							 * is the `attentionQuiet` register rather than the bordered
+							 * `attention` mark - borderless, an `elevated` whisper instead
+							 * of the warning wash, and the count family's own `ink-dim` /
+							 * `text-meta-sm` numeral, so it reads with the sidebar's
+							 * team-count lines.
+							 */
 							<Badge
 								variant="attentionQuiet"
 								shape="pill"
@@ -1502,157 +1743,23 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 							>
 								{attention}
 							</Badge>
-						</span>
-					)}
-					{item.working && (
-						/*
-						 * THE BUSY MARK, at rail scale: the sidebar row's own working glyph -
-						 * `LoaderCircle`, the accent ink, and `motion-safe:animate-spin`, so a
-						 * reduced-motion user keeps the STATIC glyph this app already renders
-						 * for the state rather than a second animation. Same trailing slot as
-						 * the badge, in flow for the same reason (a 16px mark inside a 30px
-						 * row moves neither the label's start nor the row's height); the two
-						 * cannot coexist, because a busy row draws no unread mark.
-						 */
-						<span className={cn(expanded && "ms-auto", "inline-flex")}>
+						)}
+						{item.working && (
+							/*
+							 * THE BUSY MARK, at rail scale: the sidebar row's own working
+							 * glyph - `LoaderCircle`, the accent ink, and
+							 * `motion-safe:animate-spin`, so a reduced-motion user keeps the
+							 * STATIC glyph this app already renders for the state rather
+							 * than a second animation.
+							 */
 							<LoaderCircle
 								size={16}
 								aria-hidden="true"
 								className="text-accent motion-safe:animate-spin"
 							/>
-						</span>
-					)}
-				</button>
-				{canCustomise && (
-					/*
-					 * THE MENU'S TRIGGER (design § 6). Expanded, the trailing ellipsis IS
-					 * the trigger - the discoverability path for a reader who never guesses
-					 * that rows drag. Collapsed there is no room for a second control, so
-					 * the trigger is an invisible zero-width anchor at the row's leading
-					 * edge and the menu is opened from `contextmenu` / `Shift+F10` on the
-					 * row; anchoring it to the row (not the strip) is what gives the panel
-					 * a sensible place to open.
-					 */
-					<DropdownMenu
-						open={menuRow === id}
-						onOpenChange={(open) => setMenuRow(open ? id : null)}
-					>
-						<DropdownMenuTrigger asChild>
-							{expanded ? (
-								<button
-									type="button"
-									data-sidebar-row-menu=""
-									aria-label={t("ui.shell.sidebar_navigation.row_actions", {
-										name: item.label,
-									})}
-									className={cn(
-										"me-0.5 flex size-6 shrink-0 items-center justify-center rounded-sm",
-										"text-ink-muted opacity-0 transition-opacity duration-fast ease-out-quart",
-										"hover:bg-row-hover hover:text-ink",
-										"group-hover/row:opacity-100 group-focus-within/row:opacity-100",
-										"focus-visible:opacity-100 data-[state=open]:opacity-100",
-									)}
-								>
-									<Ellipsis size={16} aria-hidden="true" />
-								</button>
-							) : (
-								<span
-									aria-hidden="true"
-									className="pointer-events-none absolute inset-y-1 start-1 w-0"
-								/>
-							)}
-						</DropdownMenuTrigger>
-						<DropdownMenuContent
-							align="start"
-							side="right"
-							className="min-w-44"
-							/*
-							 * FOCUS GOES BACK TO THE ROW, not to the trigger (design § 6):
-							 * after a move the row has changed place, and the reader's next
-							 * key must land on the row they moved rather than on a strip
-							 * button or a zero-width anchor.
-							 */
-							onCloseAutoFocus={(event) => {
-								event.preventDefault();
-								focusDestinationRow(id);
-							}}
-						>
-							<DropdownMenuItem
-								disabled={atTop}
-								onSelect={() => runRowAction(id, { kind: "move", delta: -1 })}
-							>
-								{t("ui.shell.sidebar_navigation.move_up")}
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								disabled={atBottom}
-								onSelect={() => runRowAction(id, { kind: "move", delta: 1 })}
-							>
-								{t("ui.shell.sidebar_navigation.move_down")}
-							</DropdownMenuItem>
-							<DropdownMenuSeparator />
-							{region === "more" ? (
-								<DropdownMenuItem
-									onSelect={() =>
-										runRowAction(id, { kind: "region", region: "visible" })
-									}
-								>
-									{t("ui.shell.sidebar_navigation.show_in_sidebar")}
-								</DropdownMenuItem>
-							) : (
-								<DropdownMenuItem
-									onSelect={() =>
-										runRowAction(id, { kind: "region", region: "more" })
-									}
-								>
-									{t("ui.shell.sidebar_navigation.move_to_more")}
-								</DropdownMenuItem>
-							)}
-							{!layoutEquals(effectiveLayout, DEFAULT_SIDEBAR_LAYOUT) && (
-								<>
-									<DropdownMenuSeparator />
-									<DropdownMenuItem
-										onSelect={() => runRowAction(id, { kind: "reset" })}
-									>
-										{t("ui.shell.sidebar_navigation.reset_layout")}
-									</DropdownMenuItem>
-								</>
-							)}
-						</DropdownMenuContent>
-					</DropdownMenu>
+						)}
+					</span>
 				)}
-			</li>
-		);
-	};
-
-	/*
-	 * Collapsed, the tooltip is the only name a row shows on screen; the
-	 * accessible name is the button's own `aria-label`. Wrapping the `<li>` keeps
-	 * one DOM shape in both widths, so the rows MOVED between the two renders
-	 * rather than being rebuilt in a second layout.
-	 */
-	const renderDestinationRowForWidth = (id: SidebarDestinationId) => {
-		const row = renderDestinationRow(id);
-		if (row === null) return null;
-		if (expanded) return row;
-		const item = destinationItems.get(id);
-		if (item === undefined) return null;
-		return (
-			/*
-			 * THE TOOLTIP CARRIES THE SENTENCE, NOT THE BARE LABEL (UX round 1, U3;
-			 * design round 1, D2). Collapsed, this is the only text the row ever shows,
-			 * so a tooltip carrying the bare label would leave a badge's number
-			 * scope-less. Suppressed - not `disabled` - while a drag is live: `disabled`
-			 * renders the child bare and would remount the row out from under the
-			 * pointer capture, while `suppressed` keeps the tree and closes the panel.
-			 */
-			<li key={item.tourTag}>
-				<Tooltip
-					content={rowName(item)}
-					side="right"
-					suppressed={dragId !== null}
-				>
-					{row}
-				</Tooltip>
 			</li>
 		);
 	};
@@ -1683,19 +1790,29 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			 * the direction of the move it makes. It exists so pulling a row out of
 			 * the fold never depends on hitting a 30px row, and it is a visible
 			 * affordance rather than a hidden gesture.
+			 *
+			 * AN OVERLAY, NOT A ROW (design round 1, D8): in flow, arming a drag grew
+			 * the column by the band's height and moved the chat list under the
+			 * pointer's neighbourhood (measured: the toolbar glyph 905→985 device px,
+			 * back on drop). `absolute top-full` draws it over the list below and moves
+			 * nothing. `border-control` rather than `hairline` (D4): the band is the
+			 * drop zone's only visible bound, and the branding floor is ≥3:1 for a line
+			 * whose removal loses information.
 			 */
 			<div
 				data-sidebar-drop-band=""
-				className="mt-1 flex h-7 shrink-0 items-center justify-center rounded-md border border-dashed border-hairline text-meta text-ink-dim"
+				className="absolute inset-x-0 top-full z-20 mt-1 flex h-7 items-center justify-center rounded-md border border-dashed border-control bg-surface text-meta text-ink-dim"
 			>
 				{bandLabel}
 			</div>
 		) : (
-			/* The strip has no room for a sentence; its language is the tooltip. */
-			<Tooltip content={bandLabel} side="right">
+			/* The strip has no room for a sentence; its language is the tooltip. Its
+			   side follows the column (design round 1, D5): in RTL the strip is on the
+			   window's right edge and a right-opening panel would cover it. */
+			<Tooltip content={bandLabel} side={rtl ? "left" : "right"}>
 				<div
 					data-sidebar-drop-band=""
-					className="mt-1 flex h-6 w-8 items-center justify-center rounded-sm border border-dashed border-hairline"
+					className="absolute inset-x-0 top-full z-20 mx-auto mt-1 flex h-6 w-8 items-center justify-center rounded-sm border border-dashed border-control bg-surface"
 				>
 					<span
 						aria-hidden="true"
@@ -2219,8 +2336,8 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						{renderOverflowGroup()}
 					</ul>
 					{dropIndicator}
+					{dropBand}
 				</div>
-				{dropBand}
 				{announcementRegion}
 				<div className="mt-auto flex flex-col items-center gap-1 pb-2">
 					{/*
@@ -2304,23 +2421,21 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				 * window with an unusually long visible region: exactly the state the drag
 				 * auto-scroll exists for (design § 5).
 				 */}
-				<div
-					ref={destinationsRef}
-					data-sidebar-destinations-area=""
-					data-sidebar-dragging={dragId !== null ? "" : undefined}
-					className="relative min-h-0 max-h-[50dvh] overflow-y-auto select-none"
-				>
-					<ul
-						data-sidebar-destinations=""
-						aria-busy={isSaving || undefined}
-						className="flex flex-col gap-0.5"
+				<div className="relative">
+					<div
+						ref={destinationsRef}
+						data-sidebar-destinations-area=""
+						data-sidebar-dragging={dragId !== null ? "" : undefined}
+						className="relative min-h-0 max-h-[50dvh] overflow-y-auto select-none"
 					>
-						{visibleRows.map(renderDestinationRowForWidth)}
-						{renderOverflowGroup()}
-					</ul>
-					{dropIndicator}
+						<ul data-sidebar-destinations="" className="flex flex-col gap-0.5">
+							{visibleRows.map(renderDestinationRowForWidth)}
+							{renderOverflowGroup()}
+						</ul>
+						{dropIndicator}
+					</div>
+					{dropBand}
 				</div>
-				{dropBand}
 				{announcementRegion}
 			</div>
 
