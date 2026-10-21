@@ -1,10 +1,10 @@
+import { aliasConflict } from "@features/agent-hub/hub-skill-alias";
 import {
 	HubLinkPolicyControls,
 	hubLinkSourceName,
 } from "@features/agents/components/hub-link-policy-controls";
 import { HubUpdatePanel } from "@features/agents/components/hub-update-panel";
 import { HubStateIcon } from "@features/chat/components/hub-update-mark";
-import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -172,27 +172,6 @@ function SkillMarkChip({ mark }: { mark: HubMark | null }) {
 			<HubStateIcon mark={mark} />
 			<span>{t(MARK_KEY[mark.kind])}</span>
 		</span>
-	);
-}
-
-/**
- * The refusal code behind a failed write, when the failure carried one.
- *
- * Core answers an alias collision and a confirmed-origin conflict with the same
- * `origin-conflict` code, and that is the one failure with a remedy the generic
- * sentences cannot name: choose another local alias.
- */
-/**
- * `origin-conflict` covers TWO refusals: an alias collision (with a rename
- * remedy) and a source/scope mismatch (QA F1's class, where renaming is the
- * wrong advice — review round 1, minor 7). The code alone cannot tell them
- * apart, so the alias sentence is shown only when the answer names the alias.
- */
-function aliasConflict(error: unknown): boolean {
-	return (
-		error instanceof DesktopControlError &&
-		error.code === "origin-conflict" &&
-		/alias/i.test(error.message)
 	);
 }
 
