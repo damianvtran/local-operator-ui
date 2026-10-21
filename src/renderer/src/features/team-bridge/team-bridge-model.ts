@@ -528,6 +528,8 @@ export function personDisplayLabel(
 export type DirectoryFailureKind =
 	| "sign_in"
 	| "plan"
+	| "outdated"
+	| "refused"
 	| "unreachable"
 	| "server";
 
@@ -537,7 +539,18 @@ export function directoryFailureKind(error: unknown): DirectoryFailureKind {
 		typeof candidate?.status === "number" ? candidate.status : null;
 	const code = typeof candidate?.code === "string" ? candidate.code : null;
 	if (status === 401) return "sign_in";
-	if (status === 403 || code === "bridge_not_available") return "plan";
+	if (status === 403 && code === "bridge_not_available") return "plan";
+	if (status === 403) return "refused";
+	// A route this daemon predates (404), a request it rejects (400/422), or a
+	// payload this client cannot parse (ZodError) are not transient. Retrying
+	// them is deterministic and reads as a broken button.
+	if (
+		status === 400 ||
+		status === 404 ||
+		status === 422 ||
+		(candidate as { name?: unknown } | null)?.name === "ZodError"
+	)
+		return "outdated";
 	if (status === null) return "unreachable";
 	return "server";
 }
