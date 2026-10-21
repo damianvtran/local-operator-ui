@@ -53,6 +53,7 @@ const componentBundle = await build({
 	stdin: {
 		contents: `
 			export { TeamBridgePageView, TeamBridgeEligibilityPanel } from "./src/renderer/src/features/team-bridge/team-bridge-page";
+			export { setLocale } from "./src/i18n";
 		`,
 		resolveDir: ROOT,
 		sourcefile: "team-bridge-directory.mjs",
@@ -85,6 +86,15 @@ process.on("exit", () => {
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
 const ui = await import(modulePath.href);
+// Relative-time formatting follows the active locale. Pin it so the suite
+// asserts the English source under a non-English host locale too.
+ui.setLocale("en");
+
+const visible = (fragment) =>
+	fragment
+		.replace(/<[^>]+>/g, " ")
+		.replace(/\s+/g, " ")
+		.trim();
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -648,6 +658,95 @@ test("a payload whose every row is unrenderable says so, not 'nobody joined'", (
 	);
 	assert.match(html, /People could not be loaded/);
 	assert.doesNotMatch(html, /No one else has joined/);
+});
+
+test("the row time moves to the header and a relative+absolute tooltip", () => {
+	const channel = conversation({
+		id: "bcv_channel_long",
+		kind: "channel",
+		name: "a-very-long-channel-name-that-would-crowd-the-row-at-narrow-width",
+		last_message_at: new Date(Date.now() - 10 * 60 * 60_000).toISOString(),
+	});
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				conversations: [channel],
+				selected: channel,
+				messages: [],
+			}),
+		),
+	);
+	const row = html.match(
+		/<button[^>]*data-conversation-id="bcv_channel_long"[\s\S]*?<\/button>/,
+	)?.[0];
+	const header = html
+		.match(/<header[^>]*flex h-11[^>]*>[\s\S]*?<\/header>/g)
+		?.at(-1);
+	assert.ok(row, "row rendered");
+	assert.ok(header, "header rendered");
+	// The row still carries the name and its relative+absolute tooltip, but the
+	// visible row text has no timestamp to clip at the edge.
+	assert.match(visible(row), /a-very-long-channel-name/);
+	assert.doesNotMatch(visible(row), /10 hours ago/);
+	assert.match(row, /title="10 hours ago · [^"]+"/);
+	// The selected header carries the relative time for every surface, including
+	// touch where a hover tooltip does not exist.
+	assert.match(visible(header), /10 hours ago/);
+});
+
+test("the merged row also keeps its visible time out of the row", () => {
+	const channel = conversation({
+		id: "bcv_channel_merged",
+		kind: "channel",
+		name: "a-very-long-channel-name",
+		last_message_at: new Date(Date.now() - 10 * 60 * 60_000).toISOString(),
+	});
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				scope: "all",
+				totalUnread: 0,
+				organizations: [
+					{ tenantId: "tnt_1", name: "Minerva", role: "owner", unread: 0 },
+				],
+				conversations: [channel],
+				selected: channel,
+				messages: [],
+			}),
+		),
+	);
+	const row = html.match(
+		/<button[^>]*data-conversation-id="bcv_channel_merged"[\s\S]*?<\/button>/,
+	)?.[0];
+	const header = html
+		.match(/<header[^>]*flex h-11[^>]*>[\s\S]*?<\/header>/g)
+		?.at(-1);
+	assert.ok(row, "merged row rendered");
+	assert.ok(header, "merged header rendered");
+	assert.doesNotMatch(visible(row), /10 hours ago/);
+	assert.match(visible(header), /10 hours ago/);
+	assert.match(visible(row), /Minerva/);
+});
+
+test("a local 422 is named as a validation cause, not an outdated client", () => {
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				peopleState: "error",
+				peopleError: {
+					status: 422,
+					code: "invalid_request",
+					message: "tenant_id was not in a shape this client accepts",
+				},
+			}),
+		),
+	);
+	assert.match(html, /tenant_id was not in a shape this client accepts/);
+	assert.doesNotMatch(html, /needs a newer version of Radient/);
+	assert.doesNotMatch(html, /Try again/);
 });
 
 test("a signed-out directory failure names sign-in and offers no retry", () => {

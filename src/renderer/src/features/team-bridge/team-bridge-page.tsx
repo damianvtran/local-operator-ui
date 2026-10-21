@@ -272,14 +272,19 @@ const PeopleFailure: FC<{
 }> = ({ error, onRetry }) => {
 	useI18nLocale();
 	const kind = directoryFailureKind(error);
+	const rawMessage = (error as { message?: unknown } | null | undefined)
+		?.message;
+	const detail = typeof rawMessage === "string" ? rawMessage.trim() : "";
 	const reason =
 		kind === "sign_in"
 			? t("ui.teamBridge.plan.sign_in_reason")
 			: kind === "plan"
 				? t("ui.teamBridge.plan.reason")
-				: kind === "outdated"
-					? t("ui.teamBridge.plan.update_reason")
-					: t("ui.teamBridge.plan.unavailable_reason");
+				: kind === "invalid"
+					? detail || t("ui.teamBridge.scope.error")
+					: kind === "outdated"
+						? t("ui.teamBridge.plan.update_reason")
+						: t("ui.teamBridge.plan.unavailable_reason");
 	const retryable = kind === "unreachable" || kind === "server";
 	return (
 		<div className="flex flex-col items-start gap-2 px-2 py-1">
@@ -495,15 +500,19 @@ const ConversationRow: FC<{
 	const unread = conversation.unread_count;
 	const preview = isPreviewConversation(conversation);
 	const muted = showsMutedGlyph(conversation);
-	const lastMessage = conversation.last_message_at
-		? relative(conversation.last_message_at, locale)
-		: "";
+	const lastMessageAt = conversation.last_message_at;
+	const lastMessage = lastMessageAt ? relative(lastMessageAt, locale) : "";
 
 	return (
 		<li>
 			<button
 				type="button"
 				onClick={onSelect}
+				title={
+					lastMessage
+						? `${lastMessage} · ${absolute(lastMessageAt, locale)}`
+						: undefined
+				}
 				aria-current={selected ? "page" : undefined}
 				data-conversation-id={conversation.id}
 				data-conversation-tenant={conversation.tenant_id}
@@ -542,20 +551,13 @@ const ConversationRow: FC<{
 								</span>
 							</span>
 						)}
-						{/* The merged view moves the timestamp to the chip line: the org
-						    name is the fact that distinguishes two same-named conversations,
-						    so it keeps the title line's room. */}
 						{/*
-						 * The timestamp is the FIRST row item to yield. It keeps its basis
-						 * (`shrink` 1, `min-w-0`) while the title is `flex-1` over a zero basis,
-						 * so an over-full row spends the timestamp's width before the title's:
-						 * the name is the identification task, and Preview/unread stay whole.
+						 * THE ROW CARRIES NAME, BADGE, MUTE AND UNREAD ONLY. The relative
+						 * time used to compete with the name here and clipped to "10 hours
+						 * a" at the panel edge. It now lives in the selected header (always
+						 * visible, including touch/mobile) and in the row tooltip with the
+						 * absolute value; the title is the only item allowed to ellipsise.
 						 */}
-						{lastMessage && !showOrganization && (
-							<span className="min-w-0 truncate text-meta-sm text-ink-dim">
-								{lastMessage}
-							</span>
-						)}
 						{unread > 0 && (
 							<span className="ml-1 inline-flex shrink-0">
 								<Badge
@@ -576,11 +578,6 @@ const ConversationRow: FC<{
 							<span className="truncate rounded-sm border border-control bg-elevated px-1 text-meta-sm text-ink-dim">
 								{organizationName ?? t("ui.teamBridge.scope.unknown")}
 							</span>
-							{lastMessage && (
-								<span className="shrink-0 text-meta-sm text-ink-dim">
-									{lastMessage}
-								</span>
-							)}
 						</span>
 					)}
 				</span>
@@ -588,6 +585,16 @@ const ConversationRow: FC<{
 		</li>
 	);
 };
+
+function absolute(iso: string | null | undefined, locale: string): string {
+	if (!iso) return "";
+	const then = Date.parse(iso);
+	if (Number.isNaN(then)) return "";
+	return new Intl.DateTimeFormat(locale, {
+		dateStyle: "medium",
+		timeStyle: "short",
+	}).format(new Date(then));
+}
 
 function relative(iso: string, locale: string): string {
 	const then = Date.parse(iso);
@@ -783,12 +790,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onScopeChange,
 	onRetryMemberships,
 }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const [draft, setDraft] = useState(initialDraft);
 	const threadEnd = useRef<HTMLDivElement>(null);
 	const ordered = useMemo(() => chronological(messages), [messages]);
 
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
+	const selectedLastMessage = selected?.last_message_at
+		? relative(selected.last_message_at, locale)
+		: "";
 	const previewSelected = selected !== null && isPreviewConversation(selected);
 	const listRows = useMemo(
 		() => visibleConversationRows(conversations, scope, organizations),
@@ -917,7 +927,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						{createHint}
 					</p>
 				)}
-				<ScrollArea className="min-h-0 flex-1">
+				{/*
+				 * Radix wraps children in a display:table cell that sizes to its
+				 * content. At a narrow rail that made every row ~575px wide inside a
+				 * 248px viewport, so the name ran past the edge and the badge was
+				 * unreachable. Force the wrapper to block, exactly as the thread pane
+				 * already does, so the row is width-constrained and the name ellipsises.
+				 */}
+				<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block!">
 					{listState === "loading" && (
 						<div className="flex items-center justify-center py-8">
 							<Spinner size="sm" label={t("ui.teamBridge.list.loading")} />
@@ -1043,6 +1060,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									count: conversationMemberCount(selected),
 								})}
 							</span>
+							{selectedLastMessage && (
+								<span
+									className="shrink-0 text-meta-sm text-ink-dim"
+									title={absolute(selected.last_message_at as string, locale)}
+								>
+									<span aria-hidden="true">·</span> {selectedLastMessage}
+								</span>
+							)}
 							<div className="ml-auto flex items-center gap-1">
 								{/*
 								 * The strip draws exactly what the count states: ACTIVE members. The
@@ -1089,7 +1114,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						    arbitrary variants make that wrapper fill the viewport so the
 						    list can justify-end (Slack anchors a short history at the
 						    bottom, next to the composer). */}
-						<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block [&_[data-radix-scroll-area-viewport]>div]:h-full">
+						<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block! [&_[data-radix-scroll-area-viewport]>div]:h-full">
 							<div className="flex h-full flex-col">
 								{previewSelected ? (
 									<TeamBridgePreviewBanner
