@@ -2988,7 +2988,9 @@ test("S3 hang: an app page that cannot be opened fails the start; Retry works", 
 	const orig = r.voice.deps.page.openApp;
 	r.voice.deps.page.openApp = (u, cb) => {
 		n += 1;
-		return n === 1 ? orig(u, cb) : (r.log.openApp.push(u), true);
+		if (n === 1) return orig(u, cb);
+		r.log.openApp.push(u);
+		return true;
 	};
 	await failedThenRetry(r, async () => {});
 	assert.equal(r.voice.getStatus().local ?? null, null);
@@ -3000,7 +3002,9 @@ test("S3 hang: a page load failure fails the start; Retry works", async () => {
 	const orig = r.voice.deps.page.openApp;
 	r.voice.deps.page.openApp = (u, cb) => {
 		n += 1;
-		return n === 1 ? orig(u, cb) : (r.log.openApp.push(u), true);
+		if (n === 1) return orig(u, cb);
+		r.log.openApp.push(u);
+		return true;
 	};
 	await failedThenRetry(r, async () => {});
 });
