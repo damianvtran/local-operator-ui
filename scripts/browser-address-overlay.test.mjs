@@ -1,0 +1,993 @@
+/**
+ * S1's address overlay, DRIVEN rather than read.
+ *
+ * Two halves, both real code:
+ *
+ * 1. the pure gate/geometry/document-URL helpers and the real
+ *    `AddressOverlayController` bundled with `electron` replaced by a recording
+ *    stub. The stub exposes a `WebContentsView` factory that records every call,
+ *    so the assertions are about the order and the vocabulary the controller
+ *    actually uses — not about a regex over its source:
+ *    - no show before BOTH readiness events, no visibility before show;
+ *    - one child across 20 show/hide cycles; no re-load on a reuse;
+ *    - a changed layout hides and invalidates, an unchanged one re-raises;
+ *    - owner loss releases a child, a child crash/load failure latches off;
+ *    - disposal is idempotent and closes before detaching.
+ * 2. the real `TabRegistry`'s post-layout observer: every pass is delivered,
+ *    including null/suppressed ones, and a throwing observer cannot stop page
+ *    geometry.
+ *
+ * WHAT THIS CANNOT SHOW (and the probe must not quietly claim): whether the
+ * native child actually paints above the page, whether it receives native input,
+ * or whether macOS composes the two surfaces. Those are built-app observations;
+ * the real-app matrix is `scripts/browser-address-overlay-probe.mjs`.
+ *
+ * Run: node --test scripts/browser-address-overlay.test.mjs
+ */
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { test } from "node:test";
+import { build } from "esbuild";
+
+const ROOT = process.cwd();
+
+/** The recording stub `electron` resolves to. Exports only what the bundled
+ * modules import at runtime; `WebContentsView` records its constructor options so
+ * the hardened factory's webPreferences are asserted on the real object. */
+const STUB = `
+export const constructorOptions = [];
+export const stubSessions = new Map();
+export const session = {
+	fromPartition: (name) => {
+		let entry = stubSessions.get(name);
+		if (!entry) {
+			entry = {
+				name,
+				handlers: new Map(),
+				permissionRequest: null,
+				permissionCheck: null,
+				on(event, listener) { this.handlers.set(event, listener); },
+				setPermissionRequestHandler(fn) { this.permissionRequest = fn; },
+				setPermissionCheckHandler(fn) { this.permissionCheck = fn; },
+			};
+			stubSessions.set(name, entry);
+		}
+		return entry;
+	},
+};
+export class WebContentsView {
+	constructor(options) {
+		constructorOptions.push(options);
+		this.options = options;
+		this.visible = false;
+		this.bounds = null;
+		this.destroyed = false;
+		const listeners = new Map();
+		this.listeners = listeners;
+		const self = this;
+		this.webContents = {
+			id: 900 + constructorOptions.length,
+			loadURL: () => Promise.resolve(),
+			close: () => { self.destroyed = true; },
+			isDestroyed: () => self.destroyed,
+			setWindowOpenHandler: (handler) => { self.windowOpenHandler = handler; },
+			on: (event, listener) => {
+				const list = listeners.get(event) ?? [];
+				list.push(listener);
+				listeners.set(event, list);
+			},
+			removeListener: (event, listener) => {
+				const list = listeners.get(event) ?? [];
+				const index = list.indexOf(listener);
+				if (index >= 0) list.splice(index, 1);
+			},
+		};
+	}
+	setBounds(bounds) { this.bounds = { ...bounds }; }
+	setVisible(visible) { this.visible = visible; }
+	getBounds() { return this.bounds ? { ...this.bounds } : null; }
+	getVisible() { return this.visible; }
+	setBackgroundColor(color) { this.backgroundColor = color; }
+}
+`;
+
+const stubPlugin = {
+	name: "electron-stub",
+	setup(b) {
+		b.onResolve({ filter: /^electron$/ }, () => ({
+			path: "electron",
+			namespace: "stub",
+		}));
+		b.onLoad({ filter: /.*/, namespace: "stub" }, () => ({
+			contents: STUB,
+			loader: "js",
+		}));
+	},
+};
+
+/** One bundle for both modules so `esbuild` runs once per file, not once per case. */
+const bundle = await build({
+	stdin: {
+		contents: `
+			export * from "./src/main/browser/address-overlay";
+			export * from "./src/main/browser/registry";
+			export * as electron from "electron";
+		`,
+		resolveDir: ROOT,
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	plugins: [stubPlugin],
+});
+const mod = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
+const {
+	AddressOverlayController,
+	ADDRESS_OVERLAY_MAX_HEIGHT_DIP,
+	addressOverlayDocumentUrlFor,
+	layoutKeyOf,
+	overlayBoundsFor,
+	resolveAddressOverlayGate,
+	TabRegistry,
+} = mod;
+const electron = mod.electron;
+
+// ---- fixtures --------------------------------------------------------------
+
+const RECT = { x: 260, y: 110, width: 1120, height: 790 };
+const OWNER = { width: 1380, height: 872 };
+
+function makeEmitter(record) {
+	const listeners = new Map();
+	return {
+		on(event, listener) {
+			const list = listeners.get(event) ?? [];
+			list.push(listener);
+			listeners.set(event, list);
+		},
+		removeListener(event, listener) {
+			const list = listeners.get(event) ?? [];
+			const index = list.indexOf(listener);
+			if (index >= 0) list.splice(index, 1);
+		},
+		emit(event, ...args) {
+			for (const listener of [...(listeners.get(event) ?? [])])
+				listener(...args);
+		},
+		listenerCount(event) {
+			return (listeners.get(event) ?? []).length;
+		},
+		record,
+	};
+}
+
+/**
+ * A view the controller is allowed to drive. Every setter records into `calls`
+ * so ordering assertions ("hidden before load", "never visible before ready")
+ * are made on the actual call sequence.
+ */
+function makeView(id, calls) {
+	const emitter = makeEmitter(calls);
+	let destroyed = false;
+	const view = {
+		id,
+		visible: false,
+		bounds: null,
+		windowOpenHandler: null,
+		calls,
+		webContents: {
+			id,
+			loadURL: (url) => {
+				calls.push(["loadURL", id, url]);
+				return Promise.resolve();
+			},
+			close: () => {
+				calls.push(["close", id]);
+				destroyed = true;
+			},
+			isDestroyed: () => destroyed,
+			setWindowOpenHandler: (handler) => {
+				view.windowOpenHandler = handler;
+			},
+			on: emitter.on,
+			removeListener: emitter.removeListener,
+			emit: emitter.emit,
+			listenerCount: emitter.listenerCount,
+			focus: () => {
+				calls.push(["forbidden:webContents.focus", id]);
+			},
+		},
+		setBounds: (bounds) => {
+			calls.push(["bounds", id, { ...bounds }]);
+			view.bounds = { ...bounds };
+		},
+		setVisible: (visible) => {
+			calls.push(["visible", id, visible]);
+			view.visible = visible;
+		},
+		getBounds: () => (view.bounds ? { ...view.bounds } : null),
+		getVisible: () => view.visible,
+		emit: emitter.emit,
+		listenerCount: emitter.listenerCount,
+	};
+	return view;
+}
+
+/** The two owner emitters need one shared listener registry, not two. */
+function makeOwnerWindow() {
+	const calls = [];
+	const children = [];
+	const owner = makeEmitter(calls);
+	const windowEvents = makeEmitter(calls);
+	const window = {
+		id: 7,
+		calls,
+		children,
+		destroyed: false,
+		isDestroyed: () => window.destroyed,
+		getContentBounds: () => ({ ...OWNER }),
+		contentView: {
+			get children() {
+				return children;
+			},
+			addChildView: (view) => {
+				calls.push(["addChildView", view.id]);
+				const index = children.indexOf(view);
+				if (index >= 0) children.splice(index, 1);
+				children.push(view);
+			},
+			removeChildView: (view) => {
+				calls.push(["removeChildView", view.id]);
+				const index = children.indexOf(view);
+				if (index >= 0) children.splice(index, 1);
+			},
+		},
+		webContents: owner,
+		on: windowEvents.on,
+		removeListener: windowEvents.removeListener,
+		show: () => calls.push(["forbidden:window.show"]),
+		showInactive: () => calls.push(["forbidden:window.showInactive"]),
+		focus: () => calls.push(["forbidden:window.focus"]),
+		owner,
+		windowEvents,
+	};
+	owner.id = 1;
+	owner.isDestroyed = () => window.destroyed;
+	return window;
+}
+
+function makeController(options = {}) {
+	const window = options.window ?? makeOwnerWindow();
+	const calls = window.calls;
+	let nextId = 100;
+	const views = [];
+	const createView = () => {
+		const view = makeView(nextId++, calls);
+		views.push(view);
+		return view;
+	};
+	const deps = {
+		window,
+		documentUrl:
+			options.documentUrl ??
+			"file:///app/out/renderer/browser-address-overlay.html",
+		readinessTimeoutMs: options.readinessTimeoutMs ?? 5_000,
+		log: options.log,
+	};
+	if (!options.defaultFactory) deps.createView = createView;
+	const controller = new AddressOverlayController(deps);
+	return { controller, window, calls, views };
+}
+
+const tick = () => new Promise((resolve) => setImmediate(resolve));
+
+function layout(overrides = {}) {
+	return {
+		activeTabId: 1,
+		presented: true,
+		contentRect: { ...RECT },
+		revision: 1,
+		...overrides,
+	};
+}
+
+// ---- gate and document URL ------------------------------------------------
+
+test("gate: exact opt-in, armed driver and headless are all required", () => {
+	const env = (value) =>
+		value === undefined
+			? {}
+			: { LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S1: value };
+	assert.deepEqual(
+		resolveAddressOverlayGate({
+			env: env(undefined),
+			devDriverArmed: true,
+			windowMode: "headless",
+		}),
+		{ asked: false, enabled: false, reason: null },
+	);
+	for (const value of ["0", "true", "yes", "  "]) {
+		const result = resolveAddressOverlayGate({
+			env: env(value),
+			devDriverArmed: true,
+			windowMode: "headless",
+		});
+		assert.equal(
+			result.enabled,
+			false,
+			`value ${JSON.stringify(value)} must be off`,
+		);
+	}
+	assert.equal(
+		resolveAddressOverlayGate({
+			env: env("1"),
+			devDriverArmed: false,
+			windowMode: "headless",
+		}).enabled,
+		false,
+		"the driver arming is required, not merely the env",
+	);
+	for (const mode of ["normal", "inactive"]) {
+		assert.equal(
+			resolveAddressOverlayGate({
+				env: env("1"),
+				devDriverArmed: true,
+				windowMode: mode,
+			}).enabled,
+			false,
+			`${mode} must refuse: S1 has no user-facing path`,
+		);
+	}
+	const armed = resolveAddressOverlayGate({
+		env: env("1"),
+		devDriverArmed: true,
+		windowMode: "headless",
+	});
+	assert.deepEqual(armed, { asked: true, enabled: true, reason: null });
+});
+
+test("document URL follows the same two shapes as the other second documents", () => {
+	assert.equal(
+		addressOverlayDocumentUrlFor("file:///app/out/renderer/index.html"),
+		"file:///app/out/renderer/browser-address-overlay.html",
+	);
+	assert.equal(
+		addressOverlayDocumentUrlFor("file:///app/out/renderer/index.html?x=1"),
+		"file:///app/out/renderer/browser-address-overlay.html",
+	);
+	assert.equal(
+		addressOverlayDocumentUrlFor("http://localhost:5173"),
+		"http://localhost:5173/browser-address-overlay.html",
+	);
+	assert.equal(
+		addressOverlayDocumentUrlFor("http://localhost:5173/"),
+		"http://localhost:5173/browser-address-overlay.html",
+	);
+});
+
+// ---- S1 geometry -----------------------------------------------------------
+
+test("overlay bounds: top 160 dip of the content rect, clamped and validated", () => {
+	assert.equal(overlayBoundsFor(null, OWNER), null);
+	assert.deepEqual(overlayBoundsFor(RECT, OWNER), {
+		x: 260,
+		y: 110,
+		width: 1120,
+		height: ADDRESS_OVERLAY_MAX_HEIGHT_DIP,
+	});
+	assert.equal(ADDRESS_OVERLAY_MAX_HEIGHT_DIP, 160);
+	// A short content rect is not padded up to 160.
+	assert.equal(overlayBoundsFor({ ...RECT, height: 40 }, OWNER).height, 40);
+	// Rounding happens once, on every edge.
+	assert.deepEqual(
+		overlayBoundsFor(
+			{ x: 10.4, y: 20.6, width: 100.5, height: 500 },
+			{ width: 1380.2, height: 871.5 },
+		),
+		{ x: 10, y: 21, width: 101, height: 160 },
+	);
+	// Non-finite and out-of-int32 inputs refuse rather than clamp.
+	for (const bad of [
+		{ x: Number.NaN, y: 0, width: 10, height: 10 },
+		{ x: 0, y: Number.POSITIVE_INFINITY, width: 10, height: 10 },
+		{ x: 0, y: 0, width: 2 ** 31, height: 10 },
+	]) {
+		assert.equal(overlayBoundsFor(bad, OWNER), null, JSON.stringify(bad));
+	}
+	for (const zero of [
+		{ x: 0, y: 0, width: 0, height: 10 },
+		{ x: 0, y: 0, width: 10, height: 0 },
+		{ x: 0, y: 0, width: -10, height: 10 },
+	]) {
+		assert.equal(overlayBoundsFor(zero, OWNER), null, JSON.stringify(zero));
+	}
+	// Off-window rectangles intersect; an empty intersection gives null.
+	assert.deepEqual(
+		overlayBoundsFor({ x: -50, y: -20, width: 100, height: 500 }, OWNER),
+		{
+			x: 0,
+			y: 0,
+			width: 50,
+			// The strip is 160 tall but starts 20 above the window: only 140 is inside.
+			height: 140,
+		},
+	);
+	assert.equal(
+		overlayBoundsFor({ x: 4000, y: 110, width: 100, height: 500 }, OWNER),
+		null,
+	);
+	assert.equal(
+		overlayBoundsFor({ x: 260, y: 900, width: 1120, height: 100 }, OWNER),
+		null,
+	);
+	// Taller than the window: clipped to the owner, never past it.
+	assert.deepEqual(
+		overlayBoundsFor({ x: 0, y: 0, width: 2000, height: 2000 }, OWNER),
+		{
+			x: 0,
+			y: 0,
+			width: OWNER.width,
+			height: ADDRESS_OVERLAY_MAX_HEIGHT_DIP,
+		},
+	);
+});
+
+test("layout key distinguishes tab, presentation and rectangle; never revision alone", () => {
+	const base = layout();
+	assert.equal(layoutKeyOf(base), layoutKeyOf({ ...base, revision: 9 }));
+	assert.notEqual(layoutKeyOf(base), layoutKeyOf({ ...base, activeTabId: 2 }));
+	assert.notEqual(
+		layoutKeyOf(base),
+		layoutKeyOf({ ...base, presented: false }),
+	);
+	assert.notEqual(
+		layoutKeyOf(base),
+		layoutKeyOf({ ...base, contentRect: { ...RECT, x: RECT.x + 1 } }),
+	);
+	assert.notEqual(
+		layoutKeyOf(base),
+		layoutKeyOf({ ...base, contentRect: null }),
+	);
+});
+
+// ---- controller: first show / hide ----------------------------------------
+
+test("first show: attach, nonzero bounds, hidden, load, then visible only after both readiness events", async () => {
+	const { controller, calls, views } = makeController();
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views[0];
+	assert.ok(view, "a child was created lazily on the first show");
+	const sequence = calls.map((call) => call[0]);
+	assert.ok(sequence.indexOf("addChildView") < sequence.indexOf("bounds"));
+	assert.ok(sequence.indexOf("bounds") < sequence.indexOf("visible"));
+	assert.ok(sequence.indexOf("visible") < sequence.indexOf("loadURL"));
+	assert.deepEqual(
+		calls.filter((call) => call[0] === "visible")[0].slice(2),
+		[false],
+		"the child is hidden before it loads",
+	);
+	assert.equal(
+		calls.filter((call) => call[0] === "visible" && call[2] === true).length,
+		0,
+		"nothing made it visible before readiness",
+	);
+	view.webContents.emit("dom-ready");
+	assert.equal(view.visible, false, "dom-ready alone is not readiness");
+	view.webContents.emit("did-finish-load");
+	const result = await pending;
+	assert.equal(result.shown, true);
+	assert.deepEqual(result.bounds, {
+		x: RECT.x,
+		y: RECT.y,
+		width: RECT.width,
+		height: ADDRESS_OVERLAY_MAX_HEIGHT_DIP,
+	});
+	assert.equal(view.visible, true);
+	assert.equal(view.bounds.height, ADDRESS_OVERLAY_MAX_HEIGHT_DIP);
+	const facts = controller.facts();
+	assert.equal(facts.state, "shown");
+	assert.equal(facts.child.webContentsId, view.webContents.id);
+	assert.equal(
+		facts.child.order,
+		facts.child.childCount - 1,
+		"child is topmost",
+	);
+	assert.equal(facts.readiness.domReady, true);
+	assert.equal(facts.readiness.finished, true);
+	assert.equal(facts.childCreatedCount, 1);
+	controller.dispose("test");
+});
+
+test("first hide keeps the reusable child; the next show does not re-load it", async () => {
+	const { controller, calls, views } = makeController();
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const child = views[0];
+	child.webContents.emit("dom-ready");
+	child.webContents.emit("did-finish-load");
+	const first = await pending;
+	assert.equal(first.shown, true);
+	controller.hide("test-hide");
+	assert.equal(child.visible, false);
+	assert.equal(
+		calls.filter((call) => call[0] === "close").length,
+		0,
+		"hide retains the child",
+	);
+	await controller.showOverlay();
+	assert.equal(child.visible, true);
+	assert.equal(
+		calls.filter((call) => call[0] === "loadURL").length,
+		1,
+		"a reused child is not re-loaded",
+	);
+	controller.dispose("test");
+});
+
+test("20 show/hide cycles reuse exactly one child and one webContents id", async () => {
+	const { controller, calls, views } = makeController();
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views[0];
+	view.webContents.emit("dom-ready");
+	view.webContents.emit("did-finish-load");
+	await pending;
+	for (let cycle = 0; cycle < 20; cycle += 1) {
+		controller.hide(`cycle-${cycle}`);
+		await controller.showOverlay();
+		assert.equal(view.visible, true, `cycle ${cycle} visible`);
+	}
+	const facts = controller.facts();
+	assert.equal(facts.childCreatedCount, 1);
+	assert.equal(views.length, 1);
+	assert.equal(
+		calls.filter((call) => call[0] === "loadURL").length,
+		1,
+		"exactly one load across 20 cycles",
+	);
+	assert.equal(facts.shownCount, 21);
+	controller.dispose("test");
+});
+
+// ---- controller: layout, owner and crash ----------------------------------
+
+test("a changed layout hides first and requires an explicit show", async () => {
+	const { controller, views } = makeController();
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views[0];
+	view.webContents.emit("dom-ready");
+	view.webContents.emit("did-finish-load");
+	await pending;
+	assert.equal(view.visible, true);
+	controller.onLayout(layout({ contentRect: { ...RECT, width: 900 } }));
+	assert.equal(view.visible, false, "geometry change hid the child");
+	assert.equal(controller.facts().state, "ready");
+	assert.equal(controller.facts().shownCount, 1, "no implicit re-open");
+	await controller.showOverlay();
+	assert.equal(view.visible, true, "an explicit show recomputes and shows");
+	controller.dispose("test");
+});
+
+test("an unchanged layout pass re-raises the child above a newly added page", async () => {
+	const { controller, window, views } = makeController();
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views.at(-1);
+	view.webContents.emit("dom-ready");
+	view.webContents.emit("did-finish-load");
+	await pending;
+	const page = { id: 5000 };
+	window.contentView.children.push(page);
+	assert.notEqual(window.contentView.children.at(-1), view);
+	controller.onLayout(layout({ revision: 2 }));
+	assert.equal(window.contentView.children.at(-1), view, "re-added last");
+	assert.equal(view.visible, true, "an unchanged layout does not hide");
+	controller.dispose("test");
+});
+
+test("background creation (same key) never re-opens after a hide; null layout stays hidden", async () => {
+	const { controller, views } = makeController();
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views.at(-1);
+	view.webContents.emit("dom-ready");
+	view.webContents.emit("did-finish-load");
+	await pending;
+	controller.onLayout(
+		layout({ contentRect: null, presented: false, revision: 2 }),
+	);
+	assert.equal(view.visible, false);
+	assert.equal(controller.facts().state, "ready");
+	controller.onLayout(
+		layout({ contentRect: null, presented: false, revision: 3 }),
+	);
+	assert.equal(view.visible, false);
+	assert.equal(controller.facts().shownCount, 1);
+	controller.dispose("test");
+});
+
+test("owner blur/minimize hide without disposing; owner crash releases the child", async () => {
+	const { controller, window, views } = makeController();
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views.at(-1);
+	view.webContents.emit("dom-ready");
+	view.webContents.emit("did-finish-load");
+	await pending;
+	window.windowEvents.emit("blur");
+	assert.equal(view.visible, false);
+	assert.equal(controller.facts().child !== null, true, "blur keeps the child");
+	controller.onLayout(layout({ revision: 2 }));
+	await controller.showOverlay();
+	assert.equal(view.visible, true);
+	window.owner.emit("render-process-gone", {}, { reason: "crashed" });
+	assert.equal(
+		view.webContents.isDestroyed(),
+		true,
+		"owner crash closed the child",
+	);
+	assert.equal(
+		window.children.includes(view),
+		false,
+		"owner crash detached it",
+	);
+	assert.equal(controller.facts().state, "absent");
+	// A fresh explicit show may lazily create one new child.
+	const next = controller.showOverlay();
+	await tick();
+	const replacement = views.at(-1);
+	assert.notEqual(replacement, view);
+	replacement.webContents.emit("dom-ready");
+	replacement.webContents.emit("did-finish-load");
+	assert.equal((await next).shown, true);
+	controller.dispose("test");
+});
+
+test("child crash and load failure latch off for this host lifetime", async () => {
+	for (const event of ["render-process-gone", "did-fail-load"]) {
+		const { controller, views } = makeController();
+		controller.onLayout(layout());
+		const pending = controller.showOverlay();
+		await tick();
+		const view = views.at(-1);
+		if (event === "render-process-gone") {
+			view.webContents.emit("render-process-gone", {}, { reason: "crashed" });
+			assert.equal((await pending).shown, false);
+		} else {
+			view.webContents.emit(
+				"did-fail-load",
+				{},
+				-105,
+				"NAME_NOT_RESOLVED",
+				"",
+				true,
+			);
+			assert.equal((await pending).shown, false);
+		}
+		const facts = controller.facts();
+		assert.equal(facts.state, "failed", event);
+		assert.ok(facts.failedReason, `${event} must carry a reason`);
+		assert.equal(facts.child, null);
+		const again = await controller.showOverlay();
+		assert.equal(again.shown, false);
+		assert.equal(
+			again.reason,
+			facts.failedReason,
+			"the latch refuses, not retries",
+		);
+		assert.equal(views.length, 1, "no replacement child after a latch");
+		controller.dispose("test");
+	}
+});
+
+test("a readiness timeout fails closed and rejects the pending show", async () => {
+	const { controller, views } = makeController({ readinessTimeoutMs: 10 });
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views.at(-1);
+	// dom-ready only: did-finish-load never arrives.
+	view.webContents.emit("dom-ready");
+	const result = await pending;
+	assert.equal(result.shown, false);
+	assert.equal(controller.facts().state, "failed");
+	assert.match(controller.facts().failedReason, /load_timeout/);
+	assert.equal(view.visible, false);
+	assert.equal(view.webContents.isDestroyed(), true);
+	controller.dispose("test");
+});
+
+test("hide during a pending load invalidates the show and ignores late readiness", async () => {
+	const { controller, views } = makeController();
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views.at(-1);
+	controller.hide("pending");
+	assert.equal(view.visible, false);
+	view.webContents.emit("dom-ready");
+	view.webContents.emit("did-finish-load");
+	const result = await pending;
+	assert.equal(result.shown, false);
+	assert.equal(result.reason, "invalidated");
+	assert.equal(view.visible, false);
+	assert.equal(
+		controller.facts().state,
+		"ready",
+		"the child itself is ready and reusable",
+	);
+	controller.dispose("test");
+});
+
+test("dispose is idempotent, closes before detaching and refuses later shows", async () => {
+	const { controller, window, calls, views } = makeController();
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views.at(-1);
+	view.webContents.emit("dom-ready");
+	view.webContents.emit("did-finish-load");
+	await pending;
+	const listenersBefore = view.listenerCount("dom-ready");
+	controller.dispose("stop");
+	controller.dispose("stop-again");
+	assert.equal(view.webContents.isDestroyed(), true);
+	assert.equal(window.children.includes(view), false);
+	assert.equal(
+		calls.filter((call) => call[0] === "close").length,
+		1,
+		"close exactly once",
+	);
+	assert.equal(
+		calls.filter((call) => call[0] === "removeChildView").length,
+		1,
+		"detach exactly once",
+	);
+	assert.equal(view.listenerCount("dom-ready"), 0, "listeners removed");
+	assert.ok(listenersBefore > 0);
+	const refused = await controller.showOverlay();
+	assert.equal(refused.shown, false);
+	assert.equal(refused.reason, "disposed");
+	assert.equal(controller.facts().state, "disposed");
+});
+
+test("forbidden calls: no window raise/focus and no child focus, ever", async () => {
+	const { controller, window, calls, views } = makeController();
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views.at(-1);
+	view.webContents.emit("dom-ready");
+	view.webContents.emit("did-finish-load");
+	await pending;
+	controller.hide("test");
+	await controller.showOverlay();
+	controller.dispose("test");
+	assert.deepEqual(
+		calls.filter((call) => String(call[0]).startsWith("forbidden:")),
+		[],
+	);
+	assert.equal(
+		window.show,
+		window.show,
+		"sanity: the counters are not invoked",
+	);
+});
+
+test("show refuses with no layout, a missing tab or an invalid rectangle", async () => {
+	const cases = [
+		{ name: "no layout", snapshot: null },
+		{ name: "no active tab", snapshot: layout({ activeTabId: null }) },
+		{ name: "not presented", snapshot: layout({ presented: false }) },
+		{ name: "null rect", snapshot: layout({ contentRect: null }) },
+		{
+			name: "zero rect",
+			snapshot: layout({ contentRect: { x: 0, y: 0, width: 0, height: 0 } }),
+		},
+	];
+	for (const item of cases) {
+		const { controller, views } = makeController();
+		if (item.snapshot) controller.onLayout(item.snapshot);
+		const result = await controller.showOverlay();
+		assert.equal(result.shown, false, item.name);
+		assert.equal(result.reason, "no_layout", item.name);
+		assert.equal(views.length, 0, `${item.name}: no child is created`);
+		controller.dispose("test");
+	}
+});
+
+test("the hardened factory's webPreferences and session handlers are real", async () => {
+	electron.constructorOptions.length = 0;
+	electron.stubSessions.clear();
+	const { controller } = makeController({ defaultFactory: true });
+	controller.onLayout(layout());
+	void controller.showOverlay();
+	await tick();
+	const created = electron.constructorOptions.at(-1);
+	assert.ok(created, "the default factory ran");
+	const prefs = created.webPreferences;
+	assert.equal(prefs.sandbox, true);
+	assert.equal(prefs.contextIsolation, true);
+	assert.equal(prefs.nodeIntegration, false);
+	assert.equal(prefs.webSecurity, true);
+	assert.equal(prefs.allowRunningInsecureContent, false);
+	assert.equal(prefs.javascript, false);
+	assert.equal("preload" in prefs, false, "the child receives no preload");
+	assert.equal(
+		String(prefs.partition).startsWith("persist:"),
+		false,
+		"a dedicated in-memory session, not the browsing partition",
+	);
+	const entry = [...electron.stubSessions.values()].at(-1);
+	assert.ok(entry, "the child session was configured");
+	let allowed = null;
+	entry.permissionRequest({}, "media", (value) => {
+		allowed = value;
+	});
+	assert.equal(allowed, false, "permission requests deny");
+	assert.equal(
+		entry.permissionCheck({}, "media", {}),
+		false,
+		"permission checks deny",
+	);
+	const download = {
+		prevented: false,
+		preventDefault() {
+			this.prevented = true;
+		},
+	};
+	entry.handlers.get("will-download")?.(download);
+	assert.equal(download.prevented, true, "downloads are denied");
+	controller.dispose("test");
+});
+
+// ---- registry post-layout observer ----------------------------------------
+
+function makeRegistry(observer) {
+	const views = [];
+	const removals = [];
+	let changed = 0;
+	const registry = new TabRegistry(
+		() => {
+			const view = makeView(7000 + views.length, []);
+			views.push(view);
+			return view;
+		},
+		(tabId) => removals.push(tabId),
+		() => {
+			changed += 1;
+		},
+		observer,
+	);
+	return { registry, views, removals, changed: () => changed };
+}
+
+test("registry delivers every layout revision, including null and suppressed", () => {
+	const snapshots = [];
+	const { registry, views } = makeRegistry((snapshot) =>
+		snapshots.push(snapshot),
+	);
+	registry.create({ owner: "user" });
+	const created = registry.activeTab.tabId;
+	assert.equal(snapshots.length, 1, "creation runs one layout pass");
+	assert.equal(snapshots[0].activeTabId, created);
+	assert.equal(snapshots[0].presented, false);
+	assert.equal(snapshots[0].contentRect, null);
+	registry.setContentRect({ x: 10, y: 20, width: 300, height: 400 });
+	assert.equal(snapshots.at(-1).presented, true);
+	assert.deepEqual(snapshots.at(-1).contentRect, {
+		x: 10,
+		y: 20,
+		width: 300,
+		height: 400,
+	});
+	const delivered = snapshots.at(-1).contentRect;
+	registry.setContentRect({ x: 11, y: 20, width: 300, height: 400 });
+	assert.deepEqual(
+		delivered,
+		{ x: 10, y: 20, width: 300, height: 400 },
+		"snapshots are copies",
+	);
+	registry.setViewVisible(false);
+	assert.equal(snapshots.at(-1).presented, false);
+	assert.equal(snapshots.at(-1).contentRect.width, 300);
+	registry.setContentRect(null);
+	assert.equal(snapshots.at(-1).contentRect, null);
+	assert.equal(snapshots.at(-1).presented, false);
+	const revisions = snapshots.map((snapshot) => snapshot.revision);
+	assert.deepEqual(
+		revisions,
+		[...revisions].sort((a, b) => a - b),
+	);
+	assert.equal(
+		new Set(revisions).size,
+		revisions.length,
+		"revisions are unique",
+	);
+	assert.equal(
+		views.every((view) => view.bounds !== null),
+		true,
+	);
+});
+
+test("a throwing layout observer cannot interrupt page layout", () => {
+	const { registry } = makeRegistry(() => {
+		throw new Error("observer exploded");
+	});
+	assert.doesNotThrow(() => registry.create({ owner: "user" }));
+	registry.setContentRect({ x: 1, y: 2, width: 3, height: 4 });
+	const view = registry.activeTab.view;
+	assert.deepEqual(view.getBounds(), { x: 1, y: 2, width: 3, height: 4 });
+	assert.equal(view.visible, true);
+});
+
+// ---- static contract of the inert document and build inputs ---------------
+
+test("the overlay document is inert and its CSP hash matches its only style block", () => {
+	const html = readFileSync(
+		join(ROOT, "src/renderer/browser-address-overlay.html"),
+		"utf8",
+	);
+	assert.equal(/<script\b/i.test(html), false, "no script tag");
+	assert.equal(/autofocus/i.test(html), false, "no autofocus");
+	assert.equal(
+		/<input\b|<textarea\b|<select\b/i.test(html),
+		false,
+		"no controls",
+	);
+	assert.equal(/unsafe-inline/i.test(html), false, "no unsafe-inline");
+	for (const directive of [
+		"default-src 'none'",
+		"script-src 'none'",
+		"connect-src 'none'",
+		"object-src 'none'",
+		"base-uri 'none'",
+		"form-action 'none'",
+	]) {
+		assert.ok(html.includes(directive), directive);
+	}
+	const style = html.match(/<style>([\s\S]*?)<\/style>/)?.[1];
+	assert.ok(style, "the style block exists");
+	const hash = createHash("sha256").update(style).digest("base64");
+	assert.ok(
+		html.includes(`style-src 'sha256-${hash}'`),
+		`style hash ${hash} matches the block`,
+	);
+});
+
+test("the document is a dev-server AND build input, and the probe/factory source keeps its boundaries", () => {
+	const config = readFileSync(join(ROOT, "electron.vite.config.js"), "utf8");
+	const occurrences =
+		config.match(/src\/renderer\/browser-address-overlay\.html/g) ?? [];
+	assert.equal(occurrences.length, 2, "renderer input and rollupOptions.input");
+	const source = readFileSync(
+		join(ROOT, "src/main/browser/address-overlay.ts"),
+		"utf8",
+	)
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/^\s*\/\/.*$/gm, "");
+	assert.equal(
+		/executeJavaScript|\.focus\(\)|showInactive/.test(source),
+		false,
+	);
+	assert.equal(/preload:/.test(source), false, "no preload is configured");
+	assert.equal(
+		/persist:/.test(source),
+		false,
+		"no persistent partition is named",
+	);
+});

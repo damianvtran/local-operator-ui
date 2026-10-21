@@ -5,7 +5,9 @@ import {
 	type AddressHistoryRequest,
 } from "../../shared/browser-address-history";
 import { trustedDesktopFrame } from "../desktop-transport";
+import { DEV_DRIVER_ADDRESS_OVERLAY } from "../dev-driver";
 import type { WebauthnChooser } from "../webauthn";
+import type { AddressOverlayFacts } from "./address-overlay";
 import type { BrowserHost, CloseTabsIntent } from "./host";
 import { type BrowserAvailability, MAX_START_ATTEMPTS } from "./lifecycle";
 import type { ClearWhat } from "./profile";
@@ -71,6 +73,19 @@ export interface RegisterBrowserIpcOptions {
 	 * otherwise — so a failure is shown rather than thrown: a reveal that fails is a
 	 * Finder problem, not a fault in the agent's download. */
 	revealDownloads: () => Promise<string>;
+	/**
+	 * S1's probe-only overlay channel, present ONLY when the launch gate passed
+	 * (see `StartBrowserHostOptions.addressOverlay`). It is registered under a
+	 * dev-driver channel rather than a `browser-*` one on purpose: the browser
+	 * namespace is the agent/tool protocol and its trust boundary is unchanged,
+	 * while this experimental surface exists for the armed headless probe alone.
+	 *
+	 * The callback reads the host's CURRENT controller per call; a retry replaces
+	 * it, so no handler holds a stale attempt's controller.
+	 */
+	addressOverlayProbe?: (
+		action: "show" | "hide" | "facts",
+	) => Promise<AddressOverlayFacts>;
 	/** Ask the host to start again for this window (design round 1, D1a). Injected
 	 * rather than imported so this module does not reach back into `index.ts`'s
 	 * lifecycle; `index.ts` supplies the same `startBrowserHost` the app already
@@ -122,6 +137,13 @@ export const BROWSER_IPC_CHANNELS = [
 	/** The user's own recovery click on the `unavailable` state (round 1, D1a).
 	 * Named here so the namespace stays the one place that lists its channels. */
 	"browser-retry",
+	/**
+	 * S1's probe-only channel. Listed here for unregistration only: the handler
+	 * below is registered only when the launch gate passed, and this entry makes
+	 * `unregisterBrowserIpc` remove it on a stop/retry like every other channel
+	 * (removing an unregistered handler is a no-op).
+	 */
+	DEV_DRIVER_ADDRESS_OVERLAY,
 ] as const;
 
 export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
@@ -486,6 +508,38 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		await options.retry();
 		return { retried: true };
 	});
+
+	/*
+	 * S1's probe. Registered NOTHING unless the launch gate resolved a probe
+	 * callback, so an off-gate invocation reaches Electron's own
+	 * "No handler registered for 'dev-driver-address-overlay'" — the same
+	 * fail-closed shape the dev driver's own channels use.
+	 *
+	 * The ONLY accepted input is one of three exact action words. There is no
+	 * URL, script, geometry, tab selection, commit, navigation, clipboard or file
+	 * argument, because this surface exists to operate the real host's child, not
+	 * to become a second browser API. Sender authorization is the existing owner
+	 * check: the owner window's own main frame at the trusted document URL. A
+	 * driven page, a popup, a foreign window or a subframe is refused before the
+	 * action is read.
+	 */
+	if (options.addressOverlayProbe) {
+		ipcMain.handle(DEV_DRIVER_ADDRESS_OVERLAY, (event, action: unknown) => {
+			authorizeSender(event);
+			if (action !== "show" && action !== "hide" && action !== "facts") {
+				throw new Error(
+					"address_overlay_invalid_action: expected 'show', 'hide' or 'facts'.",
+				);
+			}
+			const probe = options.addressOverlayProbe;
+			if (!probe) {
+				throw new Error(
+					"address_overlay_unavailable: the overlay probe is not running.",
+				);
+			}
+			return probe(action);
+		});
+	}
 }
 
 /**
