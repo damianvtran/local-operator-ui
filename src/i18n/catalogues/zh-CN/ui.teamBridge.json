@@ -134,5 +134,13 @@
 	"ui.teamBridge.schedule.create_uncertain": "未能确认群组是否已创建，可能已经存在。再次创建群组前，请先查看“群组”。草稿已保留。",
 	"ui.teamBridge.schedule.create_retry": "我已查看“群组”，允许再次尝试创建",
 	"ui.teamBridge.schedule.edit_body": "消息",
-	"ui.teamBridge.schedule.retry": "重试上次定时发送"
+	"ui.teamBridge.schedule.retry": "重试上次定时发送",
+	"ui.teamBridge.replies.action": "在讨论串中回复",
+	"ui.teamBridge.replies.title": "讨论串",
+	"ui.teamBridge.replies.close": "关闭讨论串",
+	"ui.teamBridge.replies.count": "{count, plural, other {#条回复}}",
+	"ui.teamBridge.replies.last": "最后回复于{time}",
+	"ui.teamBridge.replies.empty": "还没有回复。发起讨论吧。",
+	"ui.teamBridge.replies.placeholder": "在讨论串中回复",
+	"ui.teamBridge.replies.more": "加载更多回复"
 }

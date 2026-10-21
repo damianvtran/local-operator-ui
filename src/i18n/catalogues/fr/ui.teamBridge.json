@@ -134,5 +134,13 @@
 	"ui.teamBridge.schedule.create_uncertain": "La création du groupe n’a pas été confirmée. Il existe peut-être déjà. Vérifiez la section Groupes avant de créer un autre groupe. Votre brouillon est conservé.",
 	"ui.teamBridge.schedule.create_retry": "J’ai vérifié la section Groupes — autoriser un nouvel essai",
 	"ui.teamBridge.schedule.edit_body": "Contenu",
-	"ui.teamBridge.schedule.retry": "Réessayer la planification précédente"
+	"ui.teamBridge.schedule.retry": "Réessayer la planification précédente",
+	"ui.teamBridge.replies.action": "Répondre dans le fil",
+	"ui.teamBridge.replies.title": "Fil de discussion",
+	"ui.teamBridge.replies.close": "Fermer le fil",
+	"ui.teamBridge.replies.count": "{count, plural, one {# réponse} many {# de réponses} other {# réponses}}",
+	"ui.teamBridge.replies.last": "dernière réponse à {time}",
+	"ui.teamBridge.replies.empty": "Aucune réponse pour l’instant. Lancez le fil.",
+	"ui.teamBridge.replies.placeholder": "Répondre dans le fil",
+	"ui.teamBridge.replies.more": "Charger plus de réponses"
 }

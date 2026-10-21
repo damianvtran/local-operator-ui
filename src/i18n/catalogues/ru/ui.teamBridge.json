@@ -134,5 +134,13 @@
 	"ui.teamBridge.schedule.create_uncertain": "Создание группы не подтверждено. Возможно, она уже существует. Прежде чем создавать ещё одну группу, проверьте раздел «Группы». Черновик сохранён.",
 	"ui.teamBridge.schedule.create_retry": "Раздел «Группы» проверен — разрешить повторное создание",
 	"ui.teamBridge.schedule.edit_body": "Сообщение",
-	"ui.teamBridge.schedule.retry": "Повторить планирование"
+	"ui.teamBridge.schedule.retry": "Повторить планирование",
+	"ui.teamBridge.replies.action": "Ответить в ветке",
+	"ui.teamBridge.replies.title": "Ветка",
+	"ui.teamBridge.replies.close": "Закрыть ветку",
+	"ui.teamBridge.replies.count": "{count, plural, one {# ответ} few {# ответа} many {# ответов} other {# ответа}}",
+	"ui.teamBridge.replies.last": "последний ответ: {time}",
+	"ui.teamBridge.replies.empty": "Ответов пока нет. Начните ветку.",
+	"ui.teamBridge.replies.placeholder": "Ответить в ветке",
+	"ui.teamBridge.replies.more": "Загрузить ещё ответы"
 }

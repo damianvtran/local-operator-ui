@@ -70,6 +70,11 @@ import {
 	scheduleTeamBridgeDraft,
 	scheduledTargetAfterSuccess,
 } from "./team-bridge-scheduling";
+import { TeamBridgeThreadPane } from "./team-bridge-thread-pane";
+import {
+	type ThreadTarget,
+	threadTargetFromSearch,
+} from "./team-bridge-thread-read";
 import {
 	useCreateTeamBridgeConversation,
 	useJoinTeamBridgeConversation,
@@ -276,6 +281,8 @@ export function relative(iso: string, locale: string): string {
 }
 
 export type TeamBridgePageViewProps = {
+	threadLink?: ThreadTarget | null;
+	onCloseThread?: () => void;
 	listState: "loading" | "error" | "ready";
 	messageState: "idle" | "loading" | "error" | "ready";
 	conversations: TeamBridgeConversation[];
@@ -336,6 +343,8 @@ export type TeamBridgePageViewProps = {
 };
 
 export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
+	threadLink,
+	onCloseThread,
 	listState,
 	messageState,
 	conversations,
@@ -399,6 +408,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		onTarget(next);
 	};
 
+	// Thread identity is checked against the current selection before mounting.
+	const [threadSelection, setThreadSelection] = useState<ThreadTarget | null>(
+		threadLink ?? null,
+	);
+	useEffect(() => {
+		if (threadLink) setThreadSelection(threadLink);
+	}, [threadLink]);
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
 	const identityKnown = selfAccountId !== undefined;
 
@@ -1192,6 +1208,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									<TeamBridgeMessageList
 										messages={messages}
 										labelFor={(sender) => labelFor(sender)}
+										onReply={(message) => {
+											if (shown)
+												setThreadSelection({
+													tenantId: shown.tenant_id,
+													conversationId: shown.id,
+													rootId: message.id,
+												});
+										}}
 									/>
 								)}
 							</div>
@@ -1369,6 +1393,27 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					</>
 				)}
 			</section>
+			{/* Threads: a ground-separated sibling; no rail or compose routing changes. */}
+			{threadSelection &&
+				shown &&
+				threadSelection.conversationId === shown.id &&
+				threadSelection.tenantId === shown.tenant_id &&
+				!previewSelected &&
+				!selectedOrganizationUnknown && (
+					<TeamBridgeThreadPane
+						key={`${threadSelection.tenantId}:${threadSelection.conversationId}:${threadSelection.rootId}`}
+						target={threadSelection}
+						initialRoot={messages.find(
+							(message) => message.id === threadSelection.rootId,
+						)}
+						labelFor={labelFor}
+						readOnly={readOnly}
+						onClose={() => {
+							setThreadSelection(null);
+							onCloseThread?.();
+						}}
+					/>
+				)}
 		</div>
 	);
 };
@@ -1442,6 +1487,10 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const requestedConversation = searchParams.get("conversation");
 	const requestedTenant = searchParams.get("tenant");
+	const requestedRoot = searchParams.get("thread");
+	const [threadLink, setThreadLink] = useState<ThreadTarget | null>(() =>
+		threadTargetFromSearch(searchParams),
+	);
 	const [scope, setScope] = useState<TeamBridgeScope>(() =>
 		requestedTenant
 			? asTeamBridgeTenantId(requestedTenant)
@@ -1490,15 +1539,25 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		scopeChosen.current = true;
 		setScope(asTeamBridgeTenantId(requestedTenant));
 		setTarget({ type: "conversation", id: requestedConversation });
+		setThreadLink(
+			threadTargetFromSearch(
+				new URLSearchParams({
+					tenant: requestedTenant,
+					conversation: requestedConversation,
+					...(requestedRoot ? { thread: requestedRoot } : {}),
+				}),
+			),
+		);
 		setChannelFormOpen(false);
 		setSearchParams({}, { replace: true });
-	}, [requestedConversation, requestedTenant, setSearchParams]);
+	}, [requestedConversation, requestedTenant, requestedRoot, setSearchParams]);
 
 	// A conversation id and a person both belong to one organization; a scope
 	// change clears the target so a stale thread is never shown under a new title.
 	const changeScope = (next: TeamBridgeScope) => {
 		scopeChosen.current = true;
 		setScope(next);
+		setThreadLink(null);
 		setTarget(null);
 		setChannelFormOpen(false);
 	};
@@ -1741,6 +1800,8 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	return (
 		<>
 			<TeamBridgePageView
+				threadLink={threadLink}
+				onCloseThread={() => setThreadLink(null)}
 				listState={
 					list.isPending || (mergedView && memberships.isLoading)
 						? "loading"
@@ -1781,6 +1842,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 					});
 				}}
 				onTarget={(next) => {
+					setThreadLink(null);
 					setChannelFormOpen(false);
 					setTarget(next);
 				}}

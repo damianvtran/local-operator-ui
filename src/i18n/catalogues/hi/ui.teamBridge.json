@@ -134,5 +134,13 @@
 	"ui.teamBridge.schedule.create_uncertain": "समूह बनने की पुष्टि नहीं हुई। हो सकता है वह पहले ही बन चुका हो। दूसरा समूह बनाने से पहले “समूह” देखें। आपका ड्राफ़्ट सुरक्षित है।",
 	"ui.teamBridge.schedule.create_retry": "मैंने “समूह” देख लिया — दोबारा बनाने की कोशिश करने दें",
 	"ui.teamBridge.schedule.edit_body": "संदेश",
-	"ui.teamBridge.schedule.retry": "पिछले शेड्यूल से फिर कोशिश करें"
+	"ui.teamBridge.schedule.retry": "पिछले शेड्यूल से फिर कोशिश करें",
+	"ui.teamBridge.replies.action": "थ्रेड में जवाब दें",
+	"ui.teamBridge.replies.title": "थ्रेड",
+	"ui.teamBridge.replies.close": "थ्रेड बंद करें",
+	"ui.teamBridge.replies.count": "{count, plural, one {# जवाब} other {# जवाब}}",
+	"ui.teamBridge.replies.last": "अंतिम जवाब {time}",
+	"ui.teamBridge.replies.empty": "अभी कोई जवाब नहीं। थ्रेड शुरू करें।",
+	"ui.teamBridge.replies.placeholder": "थ्रेड में जवाब लिखें",
+	"ui.teamBridge.replies.more": "और जवाब लोड करें"
 }

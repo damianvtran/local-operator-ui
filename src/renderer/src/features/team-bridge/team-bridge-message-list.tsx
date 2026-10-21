@@ -1,11 +1,12 @@
 import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Bot } from "lucide-react";
+import { Bot, MessageSquare } from "lucide-react";
 import type { FC } from "react";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
 import { type ThreadItem, threadItems } from "./team-bridge-model";
+import { threadSummary } from "./team-bridge-threads-model";
 
 /**
  * The thread, drawn the way Slack and Discord draw a channel, not a messenger.
@@ -39,7 +40,8 @@ import { type ThreadItem, threadItems } from "./team-bridge-model";
 export const TeamBridgeMessageList: FC<{
 	messages: readonly TeamBridgeMessage[];
 	labelFor: (sender: TeamBridgeMessage["sender"]) => string;
-}> = ({ messages, labelFor }) => {
+	onReply?: (message: TeamBridgeMessage) => void;
+}> = ({ messages, labelFor, onReply }) => {
 	const locale = useI18nLocale();
 	const items = threadItems(messages, new Date());
 	return (
@@ -54,6 +56,7 @@ export const TeamBridgeMessageList: FC<{
 						continuation={item.continuation}
 						label={labelFor(item.message.sender)}
 						locale={locale}
+						onReply={onReply}
 					/>
 				),
 			)}
@@ -96,7 +99,9 @@ const MessageRow: FC<{
 	continuation: boolean;
 	label: string;
 	locale: string;
-}> = ({ message, continuation, label, locale }) => {
+	onReply?: (message: TeamBridgeMessage) => void;
+}> = ({ message, continuation, label, locale, onReply }) => {
+	const summary = threadSummary(message);
 	const agent = message.sender.kind === "agent";
 	const at = new Date(message.created_at);
 	const valid = !Number.isNaN(at.getTime());
@@ -108,8 +113,9 @@ const MessageRow: FC<{
 		: "";
 	return (
 		<li
+			data-message-id={message.id}
 			className={cn(
-				"group/message flex gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
+				"group/message relative flex gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
 				continuation ? "py-0.5" : "mt-2 pt-1.5 pb-0.5",
 			)}
 		>
@@ -150,6 +156,17 @@ const MessageRow: FC<{
 					</span>
 				)}
 			</div>
+			{onReply && !message.thread_root_id && (
+				<button
+					type="button"
+					aria-label={t("ui.teamBridge.replies.action")}
+					title={t("ui.teamBridge.replies.action")}
+					onClick={() => onReply(message)}
+					className="absolute right-4 top-0 rounded-md bg-elevated p-1.5 text-ink-muted opacity-0 hover:text-ink focus-visible:opacity-100 group-hover/message:opacity-100"
+				>
+					<MessageSquare size={16} />
+				</button>
+			)}
 			<div className="min-w-0 flex-1">
 				{!continuation && (
 					<div className="flex items-baseline gap-2">
@@ -177,6 +194,37 @@ const MessageRow: FC<{
 					<TeamBridgeMarkdown className="team-bridge-message-body text-[14px] text-ink">
 						{message.body}
 					</TeamBridgeMarkdown>
+				)}
+				{onReply && summary.count > 0 && (
+					<button
+						type="button"
+						onClick={() => onReply(message)}
+						className="mt-1 flex items-center gap-2 rounded-md py-1 text-[12px] text-accent hover:bg-row-hover"
+					>
+						<span aria-hidden="true" className="flex gap-0.5">
+							{summary.participants.map((name, index) => (
+								<span
+									key={`${index}:${name}`}
+									className="flex size-5 items-center justify-center rounded bg-sunken text-[10px] text-ink-muted"
+								>
+									{name.trim().charAt(0).toUpperCase()}
+								</span>
+							))}
+						</span>
+						{t("ui.teamBridge.replies.count", { count: summary.count })}
+						{summary.lastReply && (
+							<span className="text-ink-dim">
+								·{" "}
+								{t("ui.teamBridge.replies.last", {
+									time: formatTime(
+										summary.lastReply,
+										{ hour: "numeric", minute: "2-digit" },
+										locale,
+									),
+								})}
+							</span>
+						)}
+					</button>
 				)}
 			</div>
 		</li>

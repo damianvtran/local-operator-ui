@@ -134,5 +134,13 @@
 	"ui.teamBridge.schedule.create_uncertain": "گروپ بننے کی تصدیق نہیں ہوئی۔ ممکن ہے یہ پہلے ہی بن چکا ہو۔ دوسرا گروپ بنانے سے پہلے “گروپس” دیکھ لیں۔ آپ کا مسودہ برقرار ہے۔",
 	"ui.teamBridge.schedule.create_retry": "میں نے “گروپس” دیکھ لیے ہیں — دوبارہ کوشش کی اجازت دیں",
 	"ui.teamBridge.schedule.edit_body": "پیغام",
-	"ui.teamBridge.schedule.retry": "پچھلے شیڈول کی دوبارہ کوشش کریں"
+	"ui.teamBridge.schedule.retry": "پچھلے شیڈول کی دوبارہ کوشش کریں",
+	"ui.teamBridge.replies.action": "تھریڈ میں جواب دیں",
+	"ui.teamBridge.replies.title": "تھریڈ",
+	"ui.teamBridge.replies.close": "تھریڈ بند کریں",
+	"ui.teamBridge.replies.count": "{count, plural, one {# جواب} other {# جوابات}}",
+	"ui.teamBridge.replies.last": "آخری جواب {time}",
+	"ui.teamBridge.replies.empty": "ابھی کوئی جواب نہیں۔ تھریڈ شروع کریں۔",
+	"ui.teamBridge.replies.placeholder": "تھریڈ میں جواب دیں",
+	"ui.teamBridge.replies.more": "مزید جوابات لوڈ کریں"
 }

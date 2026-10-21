@@ -134,5 +134,13 @@
 	"ui.teamBridge.schedule.create_uncertain": "The group creation was not confirmed. It may already exist. Check Groups before creating another group. Your draft is kept.",
 	"ui.teamBridge.schedule.create_retry": "I checked Groups — allow another creation attempt",
 	"ui.teamBridge.schedule.edit_body": "Message",
-	"ui.teamBridge.schedule.retry": "Retry previous schedule"
+	"ui.teamBridge.schedule.retry": "Retry previous schedule",
+	"ui.teamBridge.replies.action": "Reply in thread",
+	"ui.teamBridge.replies.title": "Thread",
+	"ui.teamBridge.replies.close": "Close thread",
+	"ui.teamBridge.replies.count": "{count, plural, one {# reply} other {# replies}}",
+	"ui.teamBridge.replies.last": "last reply {time}",
+	"ui.teamBridge.replies.empty": "No replies yet. Start the thread.",
+	"ui.teamBridge.replies.placeholder": "Reply in thread",
+	"ui.teamBridge.replies.more": "Load more replies"
 }
