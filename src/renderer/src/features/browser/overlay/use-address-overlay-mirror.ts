@@ -148,12 +148,24 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 	latest.current = input;
 
 	useEffect(() => {
-		if (!input.enabled) return;
+		/*
+		 * THE LOOP EXISTS ONLY WHILE THERE IS A VISIBLE LIST (the OOM this shape
+		 * fixes): the previous version scheduled `requestAnimationFrame` at the TOP
+		 * of `tick`, before asking whether the mirror was enabled or the list open,
+		 * so a renderer with the hook mounted and the list closed kept a frame loop
+		 * alive for the life of the surface. Under a synchronous RAF polyfill that
+		 * is unbounded recursion; in jsdom-heavy tests it accumulated until the
+		 * process died. Scheduling now happens only from a running tick, and the
+		 * effect itself is keyed on visibility and the bound tab, so closing the
+		 * list cancels the frame and sends the one hide.
+		 */
+		if (!input.enabled || !input.visible || input.tabId === null) return;
 		const port = addressOverlayPort();
 		if (!port) return;
 
+		const boundTabId = input.tabId;
 		let frame = 0;
-		let wasVisible = false;
+		let wasVisible = true;
 		let lastSignature = "";
 		let projected: { seq: number; keys: string[] } | null = null;
 		/**
@@ -206,13 +218,11 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 		});
 
 		const sendHide = (): void => {
-			const current = latest.current;
-			if (current.tabId === null) return;
 			void port
 				.project({
 					v: 2,
 					seq: nextAddressOverlaySeq(),
-					tabId: current.tabId,
+					tabId: boundTabId,
 					visible: false,
 				})
 				.catch(() => {});
@@ -227,21 +237,15 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 
 		const tick = (): void => {
 			if (stopped) return;
-			frame = requestAnimationFrame(tick);
+			frame = 0;
 			const current = latest.current;
-			if (!current.enabled) return;
-			if (!current.visible || current.tabId === null) {
-				if (wasVisible) {
-					wasVisible = false;
-					lastSignature = "";
-					projected = null;
-					sendHide();
-				}
-				return;
-			}
+			if (!current.enabled || !current.visible) return;
 			const pageRect = lastDeliveredContentRect();
 			const anchor = current.anchor;
-			if (pageRect === null || anchor === null || anchor.width <= 0) return;
+			if (pageRect === null || anchor === null || anchor.width <= 0) {
+				if (!stopped) frame = requestAnimationFrame(tick);
+				return;
+			}
 			const view = viewOf(current);
 			const theme = resolveTheme();
 			const dir: "ltr" | "rtl" =
@@ -260,9 +264,15 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 				dir,
 				...(theme ? { theme } : {}),
 			};
-			if (pending) return;
+			if (pending) {
+				if (!stopped) frame = requestAnimationFrame(tick);
+				return;
+			}
 			const signature = JSON.stringify(body);
-			if (signature === lastSignature) return;
+			if (signature === lastSignature) {
+				if (!stopped) frame = requestAnimationFrame(tick);
+				return;
+			}
 			lastSignature = signature;
 			pending = true;
 			wasVisible = true;
@@ -297,6 +307,9 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 					}
 					lastSignature = "";
 				});
+			// The ONE scheduling point: a frame is queued only after a tick that is
+			// still eligible, so closing the list ends the loop with the effect.
+			if (!stopped && latest.current.visible) frame = requestAnimationFrame(tick);
 		};
 
 		tick();
@@ -306,5 +319,5 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 			window.removeEventListener("focus", onWindowFocus);
 			if (wasVisible) sendHide();
 		};
-	}, [input.enabled]);
+	}, [input.enabled, input.visible, input.tabId]);
 }

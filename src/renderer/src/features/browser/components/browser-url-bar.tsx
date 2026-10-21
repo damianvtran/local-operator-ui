@@ -189,6 +189,20 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		enabled: suggestionsEnabled,
 	});
 	const inputEl = useRef<HTMLInputElement | null>(null);
+	/**
+	 * False once THIS popout/bar is unmounting. React removes the focused input
+	 * during an unmount, which fires a blur; running the blur handler then would
+	 * schedule state on a component that no longer exists (and leaves an `act()`
+	 * waiting for a render that can never happen). The popout closing is the
+	 * surface's decision, not a blur event's.
+	 */
+	const activeRef = useRef(true);
+	useLayoutEffect(() => {
+		activeRef.current = true;
+		return () => {
+			activeRef.current = false;
+		};
+	}, []);
 	const setInputEl = (node: HTMLInputElement | null): void => {
 		inputEl.current = node;
 		if (typeof inputRef === "function") inputRef(node);
@@ -580,6 +594,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 * change: with suggestions on screen, clicking the page is a dismissal, not a
 	 * commitment of text the user never accepted. */
 	const blur = (event: FocusEvent<HTMLInputElement>): void => {
+		if (!activeRef.current) return;
 		autocomplete.onBlur();
 		/*
 		 * A NULL `relatedTarget` IS AMBIGUOUS (design §4, F6): it can be a click on

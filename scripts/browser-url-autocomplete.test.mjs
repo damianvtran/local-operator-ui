@@ -431,7 +431,9 @@ test("one Escape discards the draft and lowers the popout", async () => {
 	assert.equal(listbox(bundle), null);
 	assert.equal(bundle.dismissals.filter((d) => d === "dismiss").length, 1);
 	assert.equal(bundle.navigations.length, 0);
+	console.error("S4B asserted all");
 	await bundle.cleanup();
+	console.error("S4B cleaned");
 });
 
 test("Backspace removes the suggestion before it edits the draft", async () => {
