@@ -380,6 +380,39 @@ export type CanonicalSessionView = {
 	 */
 	failure: SessionFailureNotice | null;
 	/**
+	 * The live stream has told us it could not deliver deltas, and the painted
+	 * conversation may be behind the owner's.
+	 *
+	 * THE NOTICE THE VIEW WAS MISSING. The backend replaces any frame over its
+	 * 1 MiB socket cap with a passive notice; before this flag the desktop app
+	 * folded the notice's empty `changes`, painted a trace-tier line, and went on
+	 * claiming the conversation was live - a long-lived session froze with no
+	 * affordance. Set by a `frontend.update` carrying `degraded` or `paused`, or
+	 * by an `event` notice whose `action` is `reload`; cleared only by a frame
+	 * that can PROVE the view current again - a snapshot, a `frontend.replace`,
+	 * or an accepted `frontend.update` that carries neither flag.
+	 *
+	 * Deliberately NOT `status`: the stream is still open in the paused case, and
+	 * `status` already means "can the transport reach the owner" to the pane's
+	 * failure notice, the working line and the composer. Two facts, two fields;
+	 * the banner is the one surface that reads this one.
+	 */
+	liveUpdatesPaused: boolean;
+	/**
+	 * A "Reload from history" press is out, and no frame has proved the view
+	 * current since.
+	 *
+	 * Its only job is the banner's own loading state: the press re-arms the
+	 * stream (a fresh subscription answers with a snapshot), and until that
+	 * snapshot lands the reader is owed the acknowledgement that their press did
+	 * something. A separate field from `liveUpdatesPaused` because the two have
+	 * different lifetimes - the press does not clear the banner, only the
+	 * answer does - and collapsing them would either hide the notice on a press
+	 * that failed or leave the button live for a second press that stacks
+	 * reconnects.
+	 */
+	liveUpdatesReloading: boolean;
+	/**
 	 * True while the painted rows came from the LOCAL PAINT CACHE rather than
 	 * from the owner (M2), which is what a notification click's first frame is.
 	 *
@@ -598,6 +631,23 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	 * opened, or this one unmounted).
 	 */
 	retry: () => void;
+	/**
+	 * Repaint this conversation from authoritative history.
+	 *
+	 * The action behind the live-update banner's "Reload from history" control.
+	 * It re-opens the subscription WITHOUT a receipt cursor, which is what makes
+	 * the backend answer with a complete snapshot instead of resuming after the
+	 * frames the stream already dropped (`resync`'s own note). The snapshot is
+	 * then the frame that proves the view current and clears the banner; a
+	 * client-side clear at press time would take the notice away before anything
+	 * had repainted, which is the claim the banner exists to refuse.
+	 *
+	 * Echo rows and the composer's `sendUnsettled` survive because the repaint
+	 * MERGES: the snapshot's page is applied over the transcript the pane already
+	 * holds (`applyHistoryPage`, durable rows win by id), and the draft row that
+	 * carries the send lives in the store, which this action never touches.
+	 */
+	reloadFromHistory: () => void;
 	/**
 	 * Ask for the authoritative history read again, now.
 	 *
@@ -2460,6 +2510,11 @@ export function useCanonicalSessionStream(
 			terminal: null,
 			turnsCompleted: 0,
 			failure: null,
+			// A mount has received no stream notice yet, so nothing has said this
+			// view is behind. Setting it optimistically would paint a banner over
+			// every cold open and train the reader to ignore the one that matters.
+			liveUpdatesPaused: false,
+			liveUpdatesReloading: false,
 			/*
 			 * SEEDED, and only here. A panel mounted while a send for its own identity
 			 * is already painted must paint that row in its FIRST frame: on the
@@ -2724,6 +2779,12 @@ export function useCanonicalSessionStream(
 	 * all.
 	 */
 	const retryRef = useRef<(() => void) | null>(null);
+	/**
+	 * The banner's reload, on `retryRef`'s lifetime rule: addressable only while
+	 * this effect owns the stream, so a press after a session switch cannot
+	 * reconnect the conversation the pane has left.
+	 */
+	const reloadRef = useRef<(() => void) | null>(null);
 	/*
 	 * `rehydrate`'s own door, on the same lifetime rule as `retryRef`: non-null
 	 * only while this effect owns the stream, so a click after the session
@@ -3534,6 +3595,8 @@ export function useCanonicalSessionStream(
 						status: "unavailable",
 						failure: HISTORY_UNREADABLE,
 						heldFrontend: null,
+						// The read gave up, so the banner's press has no answer coming.
+						liveUpdatesReloading: false,
 					}));
 					return false;
 				} finally {
@@ -4687,6 +4750,18 @@ export function useCanonicalSessionStream(
 								hydrated:
 									next.hydrated ||
 									(pageUsable && snapshot.history.entries.length > 0),
+								/*
+								 * A SNAPSHOT IS THE FIRST PROOF THE VIEW IS CURRENT AGAIN. It is the
+								 * frame a reconnect or a fresh subscription starts from, so whatever
+								 * the paused stream could not deliver is behind this point by
+								 * construction. Cleared here rather than in the resync itself: the
+								 * BANNER must outlive the press that asked (see
+								 * `reloadFromHistory`), and only the answer may take it down.
+								 */
+								liveUpdatesPaused: false,
+								// The answer arrived, so the press's own acknowledgement retires with
+								// the banner it was for.
+								liveUpdatesReloading: false,
 								transcript,
 							};
 							snapshotted = true;
@@ -4711,6 +4786,25 @@ export function useCanonicalSessionStream(
 					}
 					if (frame.type === "frontend.update") {
 						const update = frame.payload;
+						/*
+						 * THE STREAM'S OWN NOTICE, read BEFORE the state fold and independently
+						 * of its sequence gate. A degraded or paused frame is a statement about
+						 * the TRANSPORT (the backend replaced a frame over its 1 MiB cap, or
+						 * stopped publishing this session's deltas) rather than a delta about
+						 * the facade, so an older sequence does not make it untrue - and
+						 * swallowing it behind `next.frontend.sequence < update.sequence` is
+						 * how the view froze with no affordance in the first place.
+						 */
+						if (update.degraded === true || update.paused === true) {
+							if (!next.liveUpdatesPaused)
+								next = {
+									...next,
+									liveUpdatesPaused: true,
+									// A new notice means the attempt that was out did not repair
+									// the stream; the reader must be able to press again.
+									liveUpdatesReloading: false,
+								};
+						}
 						if (!next.frontend) continue;
 						// An owner epoch rollover (a cold session's first owner binding,
 						// or a replaced owner) arrives as an update whose changes carry
@@ -4758,10 +4852,39 @@ export function useCanonicalSessionStream(
 									? { cold: update.cold }
 									: {}),
 							};
+							/*
+							 * AND AN ACCEPTED CLEAN UPDATE CLEARS IT. This is the second of the two
+							 * proofs the view may accept: the owner spoke, at the next sequence, and
+							 * said nothing about a lost or paused stream. Only a CLEAN frame clears -
+							 * a degraded one just set the flag above and must not take it back on
+							 * its way through the same branch.
+							 */
+							if (
+								next.liveUpdatesPaused &&
+								update.degraded !== true &&
+								update.paused !== true
+							)
+								next = {
+									...next,
+									liveUpdatesPaused: false,
+									liveUpdatesReloading: false,
+								};
 						}
 						continue;
 					}
 					if (frame.type === "frontend.replace") {
+						/*
+						 * A REPLACEMENT IS A COMPLETE PROJECTION, so it proves the view current
+						 * the same way a snapshot does. Kept beside the snapshot's own clear
+						 * rather than inferred from it: the two are different frames and a
+						 * later branch could accept one without the other.
+						 */
+						if (next.liveUpdatesPaused)
+							next = {
+								...next,
+								liveUpdatesPaused: false,
+								liveUpdatesReloading: false,
+							};
 						/*
 						 * An accepted move's own authoritative repaint, and the reason it is
 						 * not a delta.
@@ -4823,6 +4946,19 @@ export function useCanonicalSessionStream(
 					}
 					if (frame.type === "event") {
 						const eventType = String(frame.payload.type ?? "");
+						/*
+						 * THE SECOND NOTICE SHAPE. The bridge's paused stream is announced as
+						 * an `event` whose `action` is `reload`: not an AgentEvent, so
+						 * `applyEvent` below must leave it alone, but the same statement about
+						 * the stream as `frontend.update.paused` and the same banner. Read
+						 * before the transcript fold so it can never be mistaken for a row.
+						 */
+						if (frame.payload.action === "reload" && !next.liveUpdatesPaused)
+							next = {
+								...next,
+								liveUpdatesPaused: true,
+								liveUpdatesReloading: false,
+							};
 						if (TERMINAL_EVENTS.has(eventType)) {
 							next = {
 								...next,
@@ -5128,6 +5264,9 @@ export function useCanonicalSessionStream(
 					subscriptionId: null,
 					status: "unavailable",
 					failure: streamFailureNotice(DESKTOP_STREAM_DETAIL.ended),
+					// The connection is terminal for this attempt: no answer is coming for
+					// the banner's press, so the reader must get an actionable state back.
+					liveUpdatesReloading: false,
 					// A connection that accepted and then said nothing is the frozen-owner
 					// case, and it is TERMINAL for this attempt: the pane states the
 					// failure and offers Reconnect rather than holding readings over a
@@ -5218,6 +5357,7 @@ export function useCanonicalSessionStream(
 								status: "unavailable",
 								missing: true,
 								failure: null,
+								liveUpdatesReloading: false,
 								// 404 is about the SESSION, so it is the one terminal state
 								// that must take the readings with it: the conversation this
 								// machine does not have has no model, no context window and no
@@ -5246,6 +5386,9 @@ export function useCanonicalSessionStream(
 								// transport; the reader gets the product sentence for that
 								// condition instead (D1).
 								failure: streamFailureNotice(detail),
+								// The retry budget is spent: the banner's press has no answer left
+								// to wait for.
+								liveUpdatesReloading: false,
 								// The retry budget is spent, and that is the state R3 keeps
 								// terminal: what says the connection is not live is the
 								// failure notice and its Reconnect, so a reading held past it
@@ -5463,6 +5606,25 @@ export function useCanonicalSessionStream(
 		// Non-null only while this effect owns the stream, so a Retry pressed after
 		// the session changed (or after unmount) cannot re-open the old session.
 		retryRef.current = reopen;
+		/*
+		 * THE BANNER'S RELOAD. It is `resync` rather than `reopen`: the reader has
+		 * not reported a dead connection (the stream may be open and merely unable
+		 * to deliver deltas), so the repair is the one that discards the cursor and
+		 * asks for a complete projection - not the one that resets the retry
+		 * budget and the failure state as well.
+		 *
+		 * `liveUpdatesReloading` is written in the same commit as the press so the
+		 * control acknowledges it before the socket round trip; the banner itself
+		 * stays until a snapshot or a clean update proves the view current.
+		 */
+		reloadRef.current = () => {
+			commitView((current) =>
+				current.liveUpdatesReloading
+					? current
+					: { ...current, liveUpdatesReloading: true },
+			);
+			resync();
+		};
 		/*
 		 * `rehydrate` fires the walk `reopen` fires for an unhydrated view, without
 		 * the stream re-arm - the slot's "Try again" is a question about the
@@ -6709,6 +6871,10 @@ export function useCanonicalSessionStream(
 		retryRef.current?.();
 	}, []);
 
+	const reloadFromHistory = useCallback(() => {
+		reloadRef.current?.();
+	}, []);
+
 	const rehydrate = useCallback(() => {
 		hydrateRef.current?.();
 	}, []);
@@ -6803,6 +6969,7 @@ export function useCanonicalSessionStream(
 			clearPendingModel,
 			retry,
 			rehydrate,
+			reloadFromHistory,
 		}),
 		[
 			view,
@@ -6818,6 +6985,7 @@ export function useCanonicalSessionStream(
 			clearPendingModel,
 			retry,
 			rehydrate,
+			reloadFromHistory,
 		],
 	);
 }

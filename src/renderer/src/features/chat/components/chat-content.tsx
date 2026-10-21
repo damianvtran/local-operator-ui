@@ -93,6 +93,7 @@ import {
 } from "../ask-queue";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { UndeliveredTurn } from "../canonical/canonical-transcript";
+import { LiveUpdatesPausedBanner } from "../canonical/live-updates-paused-banner";
 import { openFrameFacts } from "../canonical/open-frame";
 import {
 	canonicalTranscriptSpeaks,
@@ -2752,6 +2753,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									</p>
 								</div>
 							)}
+						{/*
+						 * THE PAUSED LIVE STREAM, directly above the composer (agent report:
+						 * a long-lived session froze with no affordance after a frame over
+						 * the backend's socket cap was replaced by a passive notice). It
+						 * sits on the composer band rather than inside the transcript's
+						 * scroller because it must stay visible while the reader scrolls:
+						 * the claim is about the view as a whole, and the control repaints
+						 * the view as a whole. `canonical` gates it exactly as it gates the
+						 * box below - a legacy path has no live stream to be paused.
+						 */}
+						{canonical && (
+							<LiveUpdatesPausedBanner
+								paused={canonical.view.liveUpdatesPaused}
+								reloading={canonical.view.liveUpdatesReloading}
+								onReload={canonical.view.reloadFromHistory}
+							/>
+						)}
 						{/* Message input */}
 						{(canonical || !(isLoadingMessages && messages.length === 0)) && (
 							<MessageInput
