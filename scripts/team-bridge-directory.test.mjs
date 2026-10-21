@@ -610,9 +610,19 @@ test("the directory schema accepts an empty or long label instead of failing the
 				bridge_enabled: false,
 				bridge_state: "none",
 			},
+			{
+				// A future field value this client has not learned. It must cost
+				// this row, not the two valid rows beside it.
+				account_id: "acct_unrecognized",
+				display_label: "Future",
+				role: "member",
+				bridge_enabled: false,
+				bridge_state: "unknown-state",
+			},
 		],
 	});
 	assert.equal(parsed.members.length, 2);
+	assert.equal(parsed.unavailable_count, 1);
 	assert.equal(model.personDisplayLabel(parsed.members[0]), "acct_deleted");
 	assert.match(
 		model.personDisplayLabel(parsed.members[1]),

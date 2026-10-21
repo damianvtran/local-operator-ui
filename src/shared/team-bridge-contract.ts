@@ -225,8 +225,26 @@ export type TeamBridgeDirectoryMember = z.infer<
  * directory the hub serves. The array is the whole answer this read returns.
  */
 export const teamBridgeDirectorySchema = z
-	.object({ members: z.array(teamBridgeDirectoryMemberSchema) })
-	.passthrough();
+	.object({ members: z.array(z.unknown()) })
+	.passthrough()
+	.transform((payload) => {
+		/*
+		 * PER-ROW TOLERANCE, NOT PER-ARRAY. One unrecognized member row used to
+		 * throw the whole parse and blank every member the hub did send. A row is
+		 * now dropped on its own and counted, so a schema assumption that goes
+		 * stale for one account costs that account's row and a visible count,
+		 * never the directory. `unavailable_count` is derived here, not sent by
+		 * the hub.
+		 */
+		const members: TeamBridgeDirectoryMember[] = [];
+		let unavailableCount = 0;
+		for (const row of payload.members) {
+			const parsed = teamBridgeDirectoryMemberSchema.safeParse(row);
+			if (parsed.success) members.push(parsed.data);
+			else unavailableCount += 1;
+		}
+		return { ...payload, members, unavailable_count: unavailableCount };
+	});
 export type TeamBridgeDirectory = z.infer<typeof teamBridgeDirectorySchema>;
 
 /** The status read's identity slice: the signed-in hub account, or null. */
