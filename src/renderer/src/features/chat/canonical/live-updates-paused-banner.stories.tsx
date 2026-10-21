@@ -37,7 +37,9 @@ const Stage = (props: LiveUpdatesPausedBannerViewProps) => (
 				The conversation stays readable while the stream is paused.
 			</p>
 		</div>
-		<LiveUpdatesPausedBannerView {...props} />
+		<div className="px-6">
+			<LiveUpdatesPausedBannerView {...props} />
+		</div>
 		<div className="shrink-0 border-t border-hairline bg-elevated px-6 py-4">
 			<p className="text-body-sm text-ink-dim">
 				Message composer band (neighbour, not part of this component)
