@@ -1,3 +1,6 @@
+/// <reference lib="es2022.intl" />
+// Electron 44 and the renderer both provide Intl.Segmenter; import only its
+// standard declarations rather than widening the main project's ES target.
 /**
  * The narrow contract between the renderer's Team Bridge watcher and main.
  *
@@ -12,9 +15,10 @@
  * the display strings (sender, place, and a short single-line preview of the
  * newest message the signed-in HUMAN member was entitled to read through the
  * history route), and the sequence number the banner is about. Main hands the
- * strings to the OS and drops them: nothing here is persisted except that
- * sequence number (`team-bridge-notify-store.ts`), and no field is ever
- * logged. The bridge's no-body-cache rule is about the server and the logs;
+ * strings to the native Notification (retained for its click lifetime); our
+ * routing closures keep only IDs, not this preview-bearing request. Nothing
+ * here is persisted except that sequence number (`team-bridge-notify-store.ts`),
+ * and no field is ever logged. The bridge's no-body-cache rule is about the server and the logs;
  * Notification Center holding the banner the person asked for is the feature.
  *
  * WHY VALIDATE IN A SHARED MODULE. Main is the security boundary, but the
@@ -56,36 +60,83 @@ const MAX_SEQ = Number.MAX_SAFE_INTEGER;
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,128}$/;
 
 /**
- * Characters forbidden in banner text.
- *
- * `<` and `>` are refused rather than escaped: a native notification has no
- * HTML renderer, but accepting markup-shaped text would make a future surface
- * that DOES render it inherit an injection. Control characters are refused
- * because one line is all an OS banner can show, and a newline in a title is
- * how a sender label learns to impersonate a second line. The tab is included
- * for the same reason.
+ * One unsafe-character policy for every banner line, at BOTH ends of IPC.
+ * C1 and bidi marks matter as much as newlines: a sender name can otherwise
+ * reorder its own title or impersonate the place line. Angle brackets are not
+ * markup on the native surface, but refusing them keeps future HTML consumers
+ * from inheriting markup-shaped text. ZWJ/variation selectors stay: they are
+ * necessary parts of emoji, not directional controls.
  */
-/**
- * Whether the text contains a character a one-line native banner must not
- * carry.
- *
- * A code-point loop rather than a regex: the forbidden set is exactly "markup
- * delimiters and control characters", and a loop states that without the
- * escaping a control-character regex needs in source.
- */
+function unsafeBannerCharacter(character: string): boolean {
+	const code = character.codePointAt(0) ?? 0;
+	return (
+		character === "<" ||
+		character === ">" ||
+		code < 0x20 ||
+		(code >= 0x7f && code <= 0x9f) ||
+		code === 0x061c ||
+		code === 0x200e ||
+		code === 0x200f ||
+		(code >= 0x202a && code <= 0x202e) ||
+		(code >= 0x2066 && code <= 0x2069) ||
+		code === 0x2028 ||
+		code === 0x2029
+	);
+}
+
 function hasUnsafeText(value: string): boolean {
-	for (const character of value) {
-		const code = character.codePointAt(0) ?? 0;
-		if (
-			character === "<" ||
-			character === ">" ||
-			code < 0x20 ||
-			code === 0x7f
-		) {
-			return true;
-		}
+	return Array.from(value).some(unsafeBannerCharacter);
+}
+
+const BANNER_WHITESPACE = /\s+/g;
+const bannerSegments = new Intl.Segmenter(undefined, {
+	granularity: "grapheme",
+});
+
+/**
+ * Keep whole graphemes within a payload budget. The preview's budget counts
+ * code points; IPC limits count UTF-16 code units. Neither may split a flag,
+ * ZWJ family or combining accent, even if that leaves a little unused space.
+ * The ellipsis is in addition to the content budget, as on the original preview.
+ */
+export function truncateTeamBridgeText(
+	text: string,
+	max: number,
+	measure: "points" | "units" = "points",
+): string {
+	let used = 0;
+	let result = "";
+	for (const { segment } of bannerSegments.segment(text)) {
+		const size =
+			measure === "points" ? Array.from(segment).length : segment.length;
+		if (used + size > max) return `${result.trimEnd()}…`;
+		result += segment;
+		used += size;
 	}
-	return false;
+	return result;
+}
+
+/**
+ * Sanitise, rather than lose, an otherwise useful banner for a hostile label.
+ * All title/place/body inputs use this before IPC; main still refuses the same
+ * unsafe set as a strict backstop. Comparisons retain their meaning using
+ * guillemets, and controls become spaces so adjacent words cannot run together.
+ * `maxUnits` INCLUDES the ellipsis and matches the shared parser's wire limit.
+ */
+export function safeTeamBridgeBannerText(
+	value: string,
+	maxUnits: number,
+): string {
+	let safe = "";
+	for (const character of value) {
+		if (character === "<") safe += "‹";
+		else if (character === ">") safe += "›";
+		else safe += unsafeBannerCharacter(character) ? " " : character;
+	}
+	const line = safe.replace(BANNER_WHITESPACE, " ").trim();
+	return line.length <= maxUnits
+		? line
+		: truncateTeamBridgeText(line, Math.max(0, maxUnits - 1), "units");
 }
 
 export type TeamBridgeNotifyRequest = {
@@ -133,7 +184,7 @@ function cleanText(value: unknown, max: number): string | null {
 	if (typeof value !== "string") return null;
 	const trimmed = value.trim();
 	if (trimmed.length === 0 || trimmed.length > max) return null;
-	if (hasUnsafeText(trimmed)) return null;
+	if (hasUnsafeText(value)) return null;
 	return trimmed;
 }
 

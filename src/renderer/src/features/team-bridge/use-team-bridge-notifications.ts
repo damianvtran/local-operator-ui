@@ -189,8 +189,6 @@ async function deliverTeamBridgeBanner(
 	} catch {
 		// Degrade to the metadata banner: a person is still told someone wrote.
 	}
-	// The account may have switched while the reads were in flight.
-	if (!stillCurrent()) return;
 	const bridge = window.api?.desktop?.teamBridge;
 	if (!bridge) return;
 	const text = teamBridgeBannerText(
@@ -207,6 +205,10 @@ async function deliverTeamBridgeBanner(
 	// Fire and forget: a refused banner is not something the user can act on,
 	// and the cursor has already advanced, so a retry would duplicate rather
 	// than repair. The next message is the retry.
+	// Reads above may span a settings change, sign-out or capability disable.
+	// Read the LIVE policy at the last synchronous boundary before IPC, not the
+	// snapshot that started the request. Cursors advance independently.
+	if (!stillCurrent()) return;
 	await bridge
 		.notify({
 			conversationId: candidate.conversationId,
@@ -265,6 +267,8 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 	notificationsOffRef.current = notificationsOff;
 	const accountRef = useRef(selfAccountId);
 	accountRef.current = selfAccountId;
+	const activeRef = useRef(active);
+	activeRef.current = active;
 	const membershipsData = memberships.data;
 
 	const accountUnread = useTeamBridgeUnread(active, TEAM_BRIDGE_ALL_SCOPE, {
@@ -442,7 +446,10 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 					client,
 					candidate,
 					account,
-					() => accountRef.current === account,
+					() =>
+						accountRef.current === account &&
+						activeRef.current &&
+						!notificationsOffRef.current,
 				);
 			}
 		}

@@ -268,15 +268,16 @@ export class TeamBridgeNotifier {
 		 * click emits nothing, and this is the one supported way to attach the
 		 * handler. The extra `close` listener is map bookkeeping, not lifetime.
 		 */
-		this.lifetime.retain(notification, () => {
-			this.banners.delete(request.conversationId);
-			this.open(request);
-		});
-		notification.once("close", () => {
-			if (this.banners.get(request.conversationId) === notification) {
-				this.banners.delete(request.conversationId);
-			}
-		});
+		// Native Notification owns the displayed text until OS dismissal. Our
+		// long-lived click/close handlers need only routing IDs, never preview
+		// text: do not capture the preview-bearing IPC request in these closures.
+		const conversationId = request.conversationId;
+		const target: TeamBridgeOpenTarget = {
+			conversationId,
+			tenantId: request.tenantId,
+			...(request.threadId ? { threadId: request.threadId } : {}),
+		};
+		this.retainTarget(notification, target);
 		notification.show();
 		this.banners.set(request.conversationId, notification);
 		this.raisedAt.set(request.conversationId, now);
@@ -309,12 +310,24 @@ export class TeamBridgeNotifier {
 		previous.close?.();
 	}
 
-	private open(request: TeamBridgeNotifyRequest): void {
-		const target: TeamBridgeOpenTarget = {
-			conversationId: request.conversationId,
-			tenantId: request.tenantId,
-			...(request.threadId ? { threadId: request.threadId } : {}),
-		};
+	/** Separate scope makes it impossible for handlers to retain the IPC request. */
+	private retainTarget(
+		notification: TeamBridgeBanner,
+		target: TeamBridgeOpenTarget,
+	): void {
+		const conversationId = target.conversationId;
+		this.lifetime.retain(notification, () => {
+			this.banners.delete(conversationId);
+			this.open(target);
+		});
+		notification.once("close", () => {
+			if (this.banners.get(conversationId) === notification) {
+				this.banners.delete(conversationId);
+			}
+		});
+	}
+
+	private open(target: TeamBridgeOpenTarget): void {
 		/*
 		 * ALWAYS PARKED FIRST, THEN SIGNALLED. The signal wakes a loaded renderer,
 		 * but a renderer that is loading or reloading has no listener yet and the
