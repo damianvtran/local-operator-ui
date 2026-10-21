@@ -1947,6 +1947,24 @@ export type DesktopSessionFrame =
 				 * stale"); the difference is whether waiting can fix it.
 				 */
 				paused?: boolean;
+				/**
+				 * The live roster's DELTA form, replacing `changes.jobs` on a tick.
+				 *
+				 * WHY THE ROSTER IS NOT IN `changes` ANY MORE. It is the largest bounded
+				 * part of the frontend payload and the backend writes it on every tick;
+				 * re-sending the whole list both costs the socket cap and is the frame
+				 * class that used to be replaced by a passive notice. `changes.jobs`
+				 * remains the full list on a snapshot, and when an update carries BOTH
+				 * the full list wins (a producer that sends everything knows more than a
+				 * delta does). Additive: a daemon that predates the field keeps sending
+				 * `changes.jobs` and an older renderer ignores this one.
+				 */
+				job_deltas?: {
+					upserted?: Array<Record<string, unknown>>;
+					removed?: string[];
+					order?: string[];
+					roster_size?: number;
+				};
 				job_trajectory_appends: Record<string, never>;
 				job_trajectory_replacements: never[];
 			}

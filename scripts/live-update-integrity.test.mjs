@@ -248,7 +248,12 @@ function makeRuntime() {
 
 /* ------------------------------------------------------------------- the wire */
 
-const frontendState = ({ cwd = "/repo", sequence, sessionId = SESSION }) => ({
+const frontendState = ({
+	cwd = "/repo",
+	sequence,
+	sessionId = SESSION,
+	jobs = [],
+}) => ({
 	state_version: 1,
 	session_id: sessionId,
 	epoch: OWNER_EPOCH,
@@ -268,7 +273,7 @@ const frontendState = ({ cwd = "/repo", sequence, sessionId = SESSION }) => ({
 	history_cursor: null,
 	live_events: [],
 	queued_steering: [],
-	jobs: [],
+	jobs,
 	todos: [],
 	wakes: [],
 	mcp_servers: [],
@@ -288,7 +293,7 @@ const openFrame = (seq, gap = false) => ({
 	payload: { subscription_id: `sub-${seq}`, gap, watch_ttl_seconds: 45 },
 });
 
-const snapshotFrame = (seq, ownerSequence = 1) => ({
+const snapshotFrame = (seq, ownerSequence = 1, jobs = []) => ({
 	session_id: SESSION,
 	epoch: BRIDGE_EPOCH,
 	seq,
@@ -299,7 +304,7 @@ const snapshotFrame = (seq, ownerSequence = 1) => ({
 			epoch: OWNER_EPOCH,
 			sequence: ownerSequence,
 			live_cursor: null,
-			snapshot: frontendState({ sequence: ownerSequence }),
+			snapshot: frontendState({ sequence: ownerSequence, jobs }),
 		},
 		history: { entries: [], has_more: false, cursor_missing: false },
 		cold: false,
@@ -346,6 +351,25 @@ const foreignReplaceFrame = (seq) => ({
 	},
 });
 
+/**
+ * A live roster tick: the delta form `frontend.update.job_deltas`. The
+ * snapshot's `changes.jobs` path is untouched (the fixture above seeds it).
+ */
+const jobDeltaFrame = (seq, ownerSequence, jobDeltas) => ({
+	session_id: SESSION,
+	epoch: BRIDGE_EPOCH,
+	seq,
+	type: "frontend.update",
+	payload: {
+		epoch: OWNER_EPOCH,
+		sequence: ownerSequence,
+		changes: {},
+		job_deltas: jobDeltas,
+		job_trajectory_appends: {},
+		job_trajectory_replacements: [],
+	},
+});
+
 const reloadNoticeFrame = (seq) => ({
 	session_id: SESSION,
 	epoch: BRIDGE_EPOCH,
@@ -376,7 +400,10 @@ async function pump() {
 }
 
 /** Mount the shipped hook, deliver `frames`, and hand back its handle. */
-async function mount(frames = [], { paintSend = false } = {}) {
+async function mount(
+	frames = [],
+	{ paintSend = false, snapshotJobs = [] } = {},
+) {
 	subscriptions.length = 0;
 	requests.length = 0;
 	rafQueue = [];
@@ -408,7 +435,7 @@ async function mount(frames = [], { paintSend = false } = {}) {
 	assert.equal(subscriptions.length, 1, "the panel subscribes on mount");
 	let seq = 1;
 	deliver(openFrame(seq++));
-	deliver(snapshotFrame(seq++));
+	deliver(snapshotFrame(seq++, 1, snapshotJobs));
 	await pump();
 	for (const frame of frames) deliver(frame);
 	await pump();
@@ -452,6 +479,76 @@ test("a paused delta raises the banner even when its sequence is behind the pain
 	 */
 	const view = await mount([updateFrame(3, 1, { paused: true })]);
 	assert.equal(view().liveUpdatesPaused, true);
+});
+
+test("a job_deltas tick upserts and removes rows on the live roster", async () => {
+	const view = await mount(
+		[
+			jobDeltaFrame(3, 2, {
+				upserted: [{ id: "job-b", title: "B updated" }],
+				removed: ["job-c"],
+				order: ["job-b", "job-a"],
+				roster_size: 2,
+			}),
+		],
+		{
+			snapshotJobs: [
+				{ id: "job-a", title: "A" },
+				{ id: "job-b", title: "B" },
+				{ id: "job-c", title: "C" },
+			],
+		},
+	);
+	assert.deepEqual(
+		view().frontend.jobs.map((row) => row.id),
+		["job-b", "job-a"],
+		"the removed row left, the order was applied, and no row was dropped",
+	);
+	assert.equal(
+		view().frontend.jobs.find((row) => row.id === "job-b").title,
+		"B updated",
+		"the upsert replaced the same-id row",
+	);
+});
+
+test("a frame carrying the full roster and a delta applies the full list", async () => {
+	const view = await mount(
+		[
+			{
+				session_id: SESSION,
+				epoch: BRIDGE_EPOCH,
+				seq: 3,
+				type: "frontend.update",
+				payload: {
+					epoch: OWNER_EPOCH,
+					sequence: 2,
+					changes: {
+						jobs: [
+							{ id: "job-x", title: "X" },
+							{ id: "job-y", title: "Y" },
+						],
+					},
+					job_deltas: {
+						upserted: [{ id: "job-z", title: "Z" }],
+						removed: ["job-x"],
+					},
+					job_trajectory_appends: {},
+					job_trajectory_replacements: [],
+				},
+			},
+		],
+		{
+			snapshotJobs: [
+				{ id: "job-a", title: "A" },
+				{ id: "job-x", title: "old X" },
+			],
+		},
+	);
+	assert.deepEqual(
+		view().frontend.jobs.map((row) => row.id),
+		["job-x", "job-y"],
+		"the full list wins; the delta is not folded over it",
+	);
 });
 
 test("a replacement for another conversation does not clear the banner", async () => {
