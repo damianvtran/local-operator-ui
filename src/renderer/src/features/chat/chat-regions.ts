@@ -276,6 +276,37 @@ export const chatRowActCap = (act: ChatRowAct, isMac: boolean): string => {
 export const chatRowActCapJoined = (act: ChatRowAct, isMac: boolean): string =>
 	isMac ? `⌘+⇧+${act === "pin" ? "P" : "A"}` : chatRowActCap(act, isMac);
 
+/**
+ * `⌘⇧L` / `Ctrl+Shift+L` on a focused conversation row: open its Tags popover
+ * (sidebar tags v3, D8).
+ *
+ * NOT A `ChatRowAct`. Those chords press a control found on the row by its data
+ * attribute; there is no Tags control on the row (the spec keeps the row's acts
+ * cluster at its measured width), so this opens the popover directly. Bare `L`
+ * (Gmail, Linear) is impossible here for the reason `chatRowAct` states: a
+ * printable key on a row is type-to-filter. `primary+shift+l` is reserved in
+ * `RESERVED_CHORDS` in the same change, so no user binding can shadow it.
+ */
+export const chatTagsChord = (event: {
+	key: string;
+	metaKey: boolean;
+	ctrlKey: boolean;
+	shiftKey: boolean;
+	altKey: boolean;
+}): boolean =>
+	(event.metaKey || event.ctrlKey) &&
+	event.shiftKey &&
+	!event.altKey &&
+	event.key.toLowerCase() === "l";
+
+/** The chord as `KeyboardShortcut` prop text (split on `+`), as `chatRowActCapJoined`. */
+export const chatTagsChordCap = (isMac: boolean): string =>
+	isMac ? "⌘+⇧+L" : "Ctrl+Shift+L";
+
+/** The chord as printed prose (`⌘⇧L`), for a sentence rather than a key cap. */
+export const chatTagsChordText = (isMac: boolean): string =>
+	isMac ? "⌘⇧L" : "Ctrl+Shift+L";
+
 /** The attribute each row act's control carries, so the chord can find it. */
 export const CHAT_ROW_ACT_ATTR: Record<ChatRowAct, string> = {
 	pin: "data-session-pin",

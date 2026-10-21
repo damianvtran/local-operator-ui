@@ -186,11 +186,8 @@
 			"missing": [
 				"ui.chat.tag_dialogs.assign_created_failed",
 				"ui.chat.tag_dialogs.changed_elsewhere",
-				"ui.chat.tag_dialogs.close",
 				"ui.chat.tag_dialogs.created_assigned",
-				"ui.chat.tag_dialogs.deleted_name",
-				"ui.chat.tag_dialogs.manage_description",
-				"ui.chat.tag_dialogs.picker_description"
+				"ui.chat.tag_dialogs.deleted_name"
 			]
 		},
 		{
@@ -404,11 +401,8 @@
 			"missing": [
 				"ui.chat.tag_dialogs.assign_created_failed",
 				"ui.chat.tag_dialogs.changed_elsewhere",
-				"ui.chat.tag_dialogs.close",
 				"ui.chat.tag_dialogs.created_assigned",
-				"ui.chat.tag_dialogs.deleted_name",
-				"ui.chat.tag_dialogs.manage_description",
-				"ui.chat.tag_dialogs.picker_description"
+				"ui.chat.tag_dialogs.deleted_name"
 			]
 		},
 		{
@@ -622,11 +616,8 @@
 			"missing": [
 				"ui.chat.tag_dialogs.assign_created_failed",
 				"ui.chat.tag_dialogs.changed_elsewhere",
-				"ui.chat.tag_dialogs.close",
 				"ui.chat.tag_dialogs.created_assigned",
-				"ui.chat.tag_dialogs.deleted_name",
-				"ui.chat.tag_dialogs.manage_description",
-				"ui.chat.tag_dialogs.picker_description"
+				"ui.chat.tag_dialogs.deleted_name"
 			]
 		},
 		{
@@ -1098,11 +1089,8 @@
 			"missing": [
 				"ui.chat.tag_dialogs.assign_created_failed",
 				"ui.chat.tag_dialogs.changed_elsewhere",
-				"ui.chat.tag_dialogs.close",
 				"ui.chat.tag_dialogs.created_assigned",
-				"ui.chat.tag_dialogs.deleted_name",
-				"ui.chat.tag_dialogs.manage_description",
-				"ui.chat.tag_dialogs.picker_description"
+				"ui.chat.tag_dialogs.deleted_name"
 			]
 		},
 		{
@@ -1454,11 +1442,8 @@
 			"missing": [
 				"ui.chat.tag_dialogs.assign_created_failed",
 				"ui.chat.tag_dialogs.changed_elsewhere",
-				"ui.chat.tag_dialogs.close",
 				"ui.chat.tag_dialogs.created_assigned",
-				"ui.chat.tag_dialogs.deleted_name",
-				"ui.chat.tag_dialogs.manage_description",
-				"ui.chat.tag_dialogs.picker_description"
+				"ui.chat.tag_dialogs.deleted_name"
 			]
 		},
 		{
@@ -1903,11 +1888,8 @@
 			"missing": [
 				"ui.chat.tag_dialogs.assign_created_failed",
 				"ui.chat.tag_dialogs.changed_elsewhere",
-				"ui.chat.tag_dialogs.close",
 				"ui.chat.tag_dialogs.created_assigned",
-				"ui.chat.tag_dialogs.deleted_name",
-				"ui.chat.tag_dialogs.manage_description",
-				"ui.chat.tag_dialogs.picker_description"
+				"ui.chat.tag_dialogs.deleted_name"
 			]
 		},
 		{
@@ -2457,11 +2439,8 @@
 			"missing": [
 				"ui.chat.tag_dialogs.assign_created_failed",
 				"ui.chat.tag_dialogs.changed_elsewhere",
-				"ui.chat.tag_dialogs.close",
 				"ui.chat.tag_dialogs.created_assigned",
-				"ui.chat.tag_dialogs.deleted_name",
-				"ui.chat.tag_dialogs.manage_description",
-				"ui.chat.tag_dialogs.picker_description"
+				"ui.chat.tag_dialogs.deleted_name"
 			]
 		},
 		{

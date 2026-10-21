@@ -237,7 +237,7 @@ export const InlineEditText: FC<InlineEditTextProps> = ({
 		 * `isComposing === true` (or `keyCode === 229` on hosts that report the
 		 * process key); committing there would write the uncomposed preedit and
 		 * close the editor before the candidate lands. The repository already
-		 * guards this in `manage-tags-dialog.tsx` and `ask-answer-field.tsx`.
+		 * guards this in `chat-tag-header.tsx` and `ask-answer-field.tsx`.
 		 */
 		if (event.nativeEvent.isComposing || event.keyCode === 229) return;
 		if (event.key === "Enter") {

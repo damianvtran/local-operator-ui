@@ -32,8 +32,8 @@ export type TagCreateResult = {
 /**
  * The single immediate-commit path for per-conversation tags.
  *
- * WHY A HOOK RATHER THAN DIALOG STATE: the tag picker and the Manage dialog
- * shell the same three operations — toggle a tag applied or unapplied, clear
+ * WHY A HOOK RATHER THAN SURFACE STATE: the sidebar's Tags popover and the
+ * composer's `/tag` list shell the same operations — toggle a tag applied or unapplied, clear
  * all tags, create-and-assign in one action — against the same optimistic store
  * and the same revision contract. A second copy would drift on rollback, on the
  * 8/32 caps, or on the revision each write must carry. UI shells own layout,
@@ -264,6 +264,33 @@ export function useChatTagAssignment({
 		};
 	};
 
+	/**
+	 * Add the tag if this conversation does not carry it yet, then make it the
+	 * group the conversation is shown under - in ONE write (sidebar tags v3, D5).
+	 * It is the popover's keyboard/pointer twin of dropping a row on a header, so
+	 * it shares that act's rule: whatever was dropped on is primary. Two writes
+	 * (toggle, then promote) would show the row regrouping twice and could leave
+	 * it half-applied if the second refused.
+	 */
+	const showUnder = async (id: string): Promise<TagToggleResult> => {
+		if (pending) return { ok: false, primary: effectivePrimary };
+		if (selected.includes(id)) return setPrimaryTag(id);
+		if (selected.length >= TAG_SELECTION_LIMIT) {
+			setNotice(t("ui.chat.tags.selection_limit"));
+			return { ok: false, primary: effectivePrimary, reason: "full" };
+		}
+		const next = [...selected, id];
+		setIds(next);
+		setHeld(id);
+		announce(next, id);
+		const result = await write(next, id);
+		return {
+			ok: result.ok,
+			primary: id,
+			reason: result.ok ? undefined : result.reason,
+		};
+	};
+
 	const clear = async (): Promise<TagToggleResult> => {
 		if (pending || !selected.length)
 			return { ok: false, primary: effectivePrimary };
@@ -378,6 +405,7 @@ export function useChatTagAssignment({
 		notice,
 		toggle,
 		setPrimaryTag,
+		showUnder,
 		clear,
 		createAndAssign,
 	};
