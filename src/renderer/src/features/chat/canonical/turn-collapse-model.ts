@@ -2515,6 +2515,19 @@ function settledCloseOf(
  * whose turn has not resumed yet (the inter-cycle gap). Nothing in the rows can
  * separate that from a run that has genuinely finished, so the pane's latch
  * (`watchedRunId`) still owns it - see `collapsePlan`'s option.
+ *
+ * THE RELEASE IS THE ROW, AND THERE IS NO TIMEOUT (agent review round 1, F1).
+ * The normal operator is `agent_end`, which settles every streaming row and
+ * every non-`done` call (`transcript-reducer.ts`'s sweep), and a durable page
+ * always carries settled rows. The residue is a LOST TERMINAL FRAME - a process
+ * killed mid-turn with no `agent_end` and no `session_incident` - where the row
+ * keeps claiming to be live and this run therefore never condenses. That
+ * direction is chosen: a stale card that still says it is running is a wrong
+ * row the reader can see and act on, while folding rows on a wall clock would
+ * hide work under a bar the moment a slow call outlived the guess. The escape
+ * already exists in the data - any terminal marker (an error-level `custom`, a
+ * completion notice) condenses the run again - and a re-read of the session
+ * replaces the stale rows outright.
  */
 function runStatesItsOwnLiveness(
 	records: readonly TranscriptRecord[],

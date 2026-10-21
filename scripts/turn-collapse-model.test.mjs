@@ -808,6 +808,29 @@ test("a lead-in's user row steers into the turn instead of opening the next one"
 		2,
 		"a settled answer with no calls still ends the turn",
 	);
+	/*
+	 * THE RESIDUE, PINNED (agent review round 1, F2): the rows genuinely cannot
+	 * tell a steer from a user message after a turn whose declared calls never
+	 * landed. A terminal marker can, and still closes the run - so the merge costs
+	 * a mis-grouped bar only when the turn died invisibly, never when it said so.
+	 */
+	const withMarker = rows.flatMap((entry, index) =>
+		index === 2
+			? [
+					entry,
+					row("m1", "custom", {
+						text: "the turn died",
+						level: "error",
+						customType: "session_incident",
+					}),
+				]
+			: [entry],
+	);
+	assert.equal(
+		runsOf(withMarker).length,
+		2,
+		"a terminal marker after the lead-in closes it: the next user row opens a turn",
+	);
 });
 
 /*

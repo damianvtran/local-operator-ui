@@ -192,7 +192,7 @@ function walkTurns<T>(
 	const closed = (): boolean =>
 		sawTerminal || sawQuietClose || settledTail() || nothingHasRunYet();
 	/**
-	 * Whether the open run's tail is a settled answer (the OLD closure test).
+	 * Whether the open run's tail is a settled answer - the closure test, now\n	 * reading the handover fact as well as the row's kind.
 	 *
 	 * A LEAD-IN IS NOT A HANDOVER. An assistant row that CARRIES TOOL CALLS is
 	 * narration ("Reading the ledger first.") followed by the call it announces:
@@ -205,11 +205,24 @@ function walkTurns<T>(
 	 * alternation (2026-10-21: "condensing the messages before it and expanding
 	 * them").
 	 *
-	 * The rule is the transcript's OWN handover predicate, not a second one:
-	 * `turn-segments.ts::isFinalResponse` states the same fact for the answer
-	 * rail from the same field (`callsTools`, set from the journal payload and
-	 * from `message_end`). It is deliberately `!== true` rather than `=== false`
-	 * so a record written before the field existed keeps the old behaviour.
+	 * The rule is the transcript's own handover fact, not a second one:
+	 * `turn-segments.ts::isFinalResponse` states it from the same field
+	 * (`callsTools`, set from the journal payload and from `message_end`),
+	 * together with the paint test (`text.length > 0`). This closure deliberately
+	 * reads the SAME TWO FACTS MINUS THE PAINT TEST - a settled assistant that
+	 * says nothing is still a close, because the run is over whether or not it
+	 * had prose to hand over (agent review round 1, F3). It is `!== true` rather
+	 * than `=== false` so a record written before the field existed keeps the old
+	 * behaviour.
+	 *
+	 * THE RESIDUE (agent review round 1, F2). An assistant row that DECLARES calls
+	 * which never land - a turn that died without its tool rows and without a
+	 * terminal marker - makes the next user message a steer into that dead run
+	 * rather than the next turn's opener, because from the rows alone it is
+	 * indistinguishable from the steer this rule exists for. A marker settles the
+	 * question (any terminal marker still closes the run), so the merge only bites
+	 * when the death is invisible; the cost is a bar over two turns' work, never
+	 * lost data.
 	 */
 	const settledTail = (): boolean =>
 		last !== null &&
