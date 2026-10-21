@@ -60,6 +60,7 @@ import {
 	RailSection,
 	isTargetRow,
 } from "./team-bridge-rail";
+import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
 import {
 	useCreateTeamBridgeConversation,
 	useJoinTeamBridgeConversation,
@@ -434,9 +435,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	);
 
 	const composeRecipients = target?.type === "compose" ? target.recipients : [];
-	// `selected` already resolves a one-recipient draft to its existing DM
+// `selected` already resolves a one-recipient draft to its existing DM
 	// (`targetConversation`), so the view and the container agree on it.
 	const shown = selected;
+	// A focused window is quiet only for the conversation actually on screen.
+	useReportTeamBridgeViewing(shown?.id);
 	const canCompose =
 		!readOnly &&
 		!previewSelected &&

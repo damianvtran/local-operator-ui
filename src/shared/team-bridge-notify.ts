@@ -7,11 +7,15 @@
  * conversation metadata it already holds, and main must not trust either
  * string just because a preload sent it.
  *
- * NO BODY EVER CROSSES THIS CHANNEL. The payload carries a conversation id, a
- * tenant id used to open the right organization, the two display strings the
- * server already exposed (a conversation name, an organization name and a
- * sender label), and the sequence number the banner is about. Nothing here is
- * persisted except that sequence number (`team-bridge-notify-store.ts`).
+ * A MESSAGE PREVIEW MAY CROSS THIS CHANNEL, AND NOTHING KEEPS IT. The payload
+ * carries a conversation id, a tenant id used to open the right organization,
+ * the display strings (sender, place, and a short single-line preview of the
+ * newest message the signed-in HUMAN member was entitled to read through the
+ * history route), and the sequence number the banner is about. Main hands the
+ * strings to the OS and drops them: nothing here is persisted except that
+ * sequence number (`team-bridge-notify-store.ts`), and no field is ever
+ * logged. The bridge's no-body-cache rule is about the server and the logs;
+ * Notification Center holding the banner the person asked for is the feature.
  *
  * WHY VALIDATE IN A SHARED MODULE. Main is the security boundary, but the
  * renderer and the tests must agree about what a "valid" payload is and what
@@ -28,8 +32,18 @@
  */
 export const TEAM_BRIDGE_NOTIFY_MAX_TITLE = 320;
 
-/** Longest banner body. The composed sentence is short by construction. */
-export const TEAM_BRIDGE_NOTIFY_MAX_BODY = 200;
+/**
+ * Longest banner body, in code units.
+ *
+ * The preview is bounded at 140 CODE POINTS (`team-bridge-banner-format.ts`),
+ * and an emoji or CJK-supplementary preview is two code units per point, so
+ * this has to cover 280 plus the "N new messages: " lead rather than the 140
+ * a Latin preview would need.
+ */
+export const TEAM_BRIDGE_NOTIFY_MAX_BODY = 360;
+
+/** Longest subtitle: a channel or group name (128) and an organization. */
+export const TEAM_BRIDGE_NOTIFY_MAX_SUBTITLE = 320;
 
 /**
  * Sequence numbers are non-negative integers. `Number.isSafeInteger` is what
@@ -80,12 +94,35 @@ export type TeamBridgeNotifyRequest = {
 	title: string;
 	body: string;
 	seq: number;
+	/**
+	 * Where the message was posted ("#general · Minerva"). ADDITIVE and optional:
+	 * a renderer that predates it sends none and the banner keeps two lines.
+	 * macOS renders it as the native subtitle; elsewhere main folds it into the
+	 * body, because Electron documents `subtitle` as macOS-only.
+	 */
+	subtitle?: string;
+	/**
+	 * THE THREAD HOOK. A banner about a reply names its thread root so the click
+	 * can open the thread lane. Carried through to the click target untouched;
+	 * nothing sends it until the thread lane lands.
+	 */
+	threadId?: string;
+	/**
+	 * The renderer is showing THIS conversation right now. Main still owns
+	 * quiet (only it knows real focus); this tells it that a focused window is
+	 * on this conversation, so quiet applies. A banner for a DIFFERENT
+	 * conversation is allowed through even while the window is focused, which
+	 * is Slack's rule: a person reading #general still hears about a DM.
+	 */
+	viewing?: boolean;
 };
 
 /** What a click names: the organization and the conversation to open. */
 export type TeamBridgeOpenTarget = {
 	conversationId: string;
 	tenantId: string;
+	/** See `TeamBridgeNotifyRequest.threadId`. Absent unless one was sent. */
+	threadId?: string;
 };
 
 function cleanId(value: unknown): string | null {
@@ -118,6 +155,26 @@ export function parseTeamBridgeNotifyRequest(
 	const title = cleanText(input.title, TEAM_BRIDGE_NOTIFY_MAX_TITLE);
 	const body = cleanText(input.body, TEAM_BRIDGE_NOTIFY_MAX_BODY);
 	const seq = input.seq;
+	/*
+	 * The additive fields are refused WHOLE when present and malformed, the
+	 * same rule as the required ones: a subtitle that failed the text check is
+	 * a caller bug, and silently dropping it would hide that bug behind a
+	 * banner that looks almost right.
+	 */
+	const subtitle =
+		input.subtitle === undefined
+			? undefined
+			: cleanText(input.subtitle, TEAM_BRIDGE_NOTIFY_MAX_SUBTITLE);
+	const threadId =
+		input.threadId === undefined ? undefined : cleanId(input.threadId);
+	const viewing = input.viewing;
+	if (
+		subtitle === null ||
+		threadId === null ||
+		(viewing !== undefined && typeof viewing !== "boolean")
+	) {
+		return null;
+	}
 	if (
 		conversationId === null ||
 		tenantId === null ||
@@ -130,7 +187,16 @@ export function parseTeamBridgeNotifyRequest(
 	) {
 		return null;
 	}
-	return { conversationId, tenantId, title, body, seq };
+	return {
+		conversationId,
+		tenantId,
+		title,
+		body,
+		seq,
+		...(subtitle === undefined ? {} : { subtitle }),
+		...(threadId === undefined ? {} : { threadId }),
+		...(viewing === undefined ? {} : { viewing }),
+	};
 }
 
 /**
@@ -146,6 +212,8 @@ export function teamBridgeOpenPath(target: TeamBridgeOpenTarget): string {
 	const query = new URLSearchParams({
 		tenant: target.tenantId,
 		conversation: target.conversationId,
+		// The thread lane's hook: the page ignores an unknown parameter today.
+		...(target.threadId ? { thread: target.threadId } : {}),
 	});
 	return `/team-bridge?${query.toString()}`;
 }
