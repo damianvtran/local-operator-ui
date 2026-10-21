@@ -229,7 +229,13 @@ export interface StartBrowserHostOptions {
 	 * document URL is the app's own trusted packaged document, derived from the
 	 * same renderer URL the sender checks use — never a caller-supplied path.
 	 */
-	addressOverlay?: { enabled: boolean; list?: boolean; documentUrl: string };
+	addressOverlay?: {
+		enabled: boolean;
+		list?: boolean;
+		/** S3: the launch gate's visible-probe fact, forwarded to facts only. */
+		visible?: boolean;
+		documentUrl: string;
+	};
 	log: (message: string) => void;
 }
 
@@ -753,6 +759,7 @@ async function initializeBrowserHost(
 						window: options.window,
 						documentUrl: options.addressOverlay.documentUrl,
 						javascript: options.addressOverlay.list === true,
+						visible: options.addressOverlay.visible === true,
 						// The only consumer of a validated row click: the owner window's own
 						// renderer. Guarded because a stop can race a queued mouse event.
 						onEvent: (event) => {
