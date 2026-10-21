@@ -230,7 +230,20 @@ export const TeamBridgeEligibilityPanel: FC<{
 	);
 };
 
-function relative(iso: string, locale: string): string {
+export function absolute(
+	iso: string | null | undefined,
+	locale: string,
+): string {
+	if (!iso) return "";
+	const then = Date.parse(iso);
+	if (Number.isNaN(then)) return "";
+	return new Intl.DateTimeFormat(locale, {
+		dateStyle: "medium",
+		timeStyle: "short",
+	}).format(new Date(then));
+}
+
+export function relative(iso: string, locale: string): string {
 	const then = Date.parse(iso);
 	if (Number.isNaN(then)) return "";
 	const minutes = Math.round((then - Date.now()) / 60_000);
@@ -806,7 +819,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									</span>
 								)}
 								{shown?.last_message_at && shown.latest_seq > 0 && (
-									<span className="shrink-0 text-meta-sm text-ink-dim">
+									<span
+										className="shrink-0 text-meta-sm text-ink-dim"
+										title={absolute(shown.last_message_at, locale)}
+									>
 										<span aria-hidden="true">·</span>{" "}
 										{relative(shown.last_message_at, locale)}
 									</span>

@@ -103,7 +103,7 @@ const conversation = (patch = {}) => ({
 const viewProps = (patch = {}) => ({
 	selfAccountId: "acct_self",
 	conversations: [],
-	selected: null,
+	target: null,
 	messages: [],
 	organizations: [
 		{ tenantId: "tnt_1", name: "Minerva", role: "owner", unread: 0 },
@@ -112,14 +112,28 @@ const viewProps = (patch = {}) => ({
 	totalUnread: 0,
 	listState: "ready",
 	messageState: "idle",
-	onSelect: () => {},
+	onTarget: () => {},
 	onSend: () => {},
-	onNewConversation: () => {},
+	onNewChannel: () => {},
 	onRetry: () => {},
 	onScopeChange: () => {},
 	onJoin: () => {},
 	onNotifyChange: () => {},
 	...patch,
+	/*
+	 * The view selects by TARGET and resolves the conversation from the list,
+	 * so a fixture that names the selected conversation must also list it.
+	 */
+	...(patch.selectedConversation
+		? {
+				target: { type: "conversation", id: patch.selectedConversation.id },
+				conversations: patch.conversations?.some(
+					(row) => row.id === patch.selectedConversation.id,
+				)
+					? patch.conversations
+					: [...(patch.conversations ?? []), patch.selectedConversation],
+			}
+		: {}),
 });
 
 const message = (conversationId, body) => ({
@@ -143,7 +157,7 @@ test("a preview shows the join banner and never a message body", () => {
 		createElement(
 			ui.TeamBridgePageView,
 			viewProps({
-				selected: preview,
+				target: { type: "conversation", id: preview.id },
 				conversations: [preview],
 				messages: [message(preview.id, "SECRET PREVIEW BODY")],
 				messageState: "ready",
@@ -165,7 +179,7 @@ test("a refused notification write is stated under the header", () => {
 		createElement(
 			ui.TeamBridgePageView,
 			viewProps({
-				selected,
+				selectedConversation: selected,
 				conversations: [selected],
 				notifyFailed: true,
 				messageState: "ready",

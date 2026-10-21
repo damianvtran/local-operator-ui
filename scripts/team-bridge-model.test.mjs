@@ -338,3 +338,296 @@ test("a preview header counts member_count when it has no member rows", () => {
 		2,
 	);
 });
+
+// ---------------------------------------------------------------------------
+// Rail targets, send-first drafts, labels and the Slack-style thread
+// (operator review 2026-10-21). Pure decisions, asserted by name.
+// ---------------------------------------------------------------------------
+
+const msg = (patch) => ({
+	id: `m${patch.seq}`,
+	conversation_id: "bcv_1",
+	body: "hi",
+	origin: "human",
+	sender: { account_id: "acct_a", kind: "human", display_label: "A" },
+	...patch,
+});
+
+test("a thread groups same-sender runs within five minutes and divides days", () => {
+	const now = new Date(2026, 9, 21, 12, 0);
+	const items = model.threadItems(
+		[
+			msg({ seq: 4, created_at: new Date(2026, 9, 21, 9, 10).toISOString() }),
+			msg({ seq: 1, created_at: new Date(2026, 9, 20, 9, 0).toISOString() }),
+			msg({ seq: 2, created_at: new Date(2026, 9, 21, 9, 0).toISOString() }),
+			msg({ seq: 3, created_at: new Date(2026, 9, 21, 9, 4).toISOString() }),
+			msg({
+				seq: 5,
+				created_at: new Date(2026, 9, 21, 9, 11).toISOString(),
+				sender: { account_id: "acct_a", kind: "agent", display_label: "Aida" },
+			}),
+		],
+		now,
+	);
+	assert.deepEqual(
+		items.map((item) =>
+			item.type === "day"
+				? `day:${item.relative}`
+				: `${item.message.seq}${item.continuation ? "+" : ""}`,
+		),
+		// Seq order; yesterday, today; 3 continues 2 (4 min); 4 is 6 min after 3
+		// so it starts a new run; 5 is the same ACCOUNT but an agent, so a new
+		// speaker: a person and their own agent never share a header.
+		["day:yesterday", "1", "day:today", "2", "3+", "4", "5"],
+	);
+});
+
+test("an unparseable time never glues two messages into one run", () => {
+	const items = model.threadItems(
+		[
+			msg({ seq: 1, created_at: "2026-10-21T09:00:00Z" }),
+			msg({ seq: 2, created_at: "not a time" }),
+		],
+		new Date("2026-10-21T12:00:00Z"),
+	);
+	const second = items.find(
+		(item) => item.type === "message" && item.message.seq === 2,
+	);
+	assert.equal(second.continuation, false);
+});
+
+test("a draft's first send makes a DM for one recipient and a group for more", () => {
+	assert.equal(model.draftCreateInput([]), null);
+	const ben = { kind: "human", accountId: "acct_ben", label: "Ben" };
+	const aida = {
+		kind: "agent",
+		accountId: "acct_ben",
+		endpointId: "bep_ben",
+		label: "Aida (Ben)",
+	};
+	assert.deepEqual(model.draftCreateInput([ben]), {
+		kind: "dm",
+		visibility: "private",
+		agentCapable: false,
+		members: [{ account_id: "acct_ben", kind: "human", display_label: "Ben" }],
+	});
+	const dmWithAgent = model.draftCreateInput([aida]);
+	assert.equal(dmWithAgent.kind, "dm");
+	assert.equal(dmWithAgent.agentCapable, true);
+	assert.deepEqual(dmWithAgent.members[0], {
+		account_id: "acct_ben",
+		kind: "agent",
+		endpoint_id: "bep_ben",
+		display_label: "Aida (Ben)",
+	});
+	const group = model.draftCreateInput([ben, aida]);
+	assert.equal(group.kind, "group");
+	assert.equal(group.agentCapable, true);
+	// The wire member carries exactly the strict schema's keys: a stray form
+	// field here is what broke every dialog create (`rowId`).
+	for (const member of group.members) {
+		assert.deepEqual(
+			Object.keys(member).sort(),
+			member.kind === "agent"
+				? ["account_id", "display_label", "endpoint_id", "kind"]
+				: ["account_id", "display_label", "kind"],
+		);
+	}
+});
+
+test("a participant is named from the live directory, not the stored label", () => {
+	const people = [
+		{
+			account_id: "acct_ben",
+			display_label: "Ben Tran",
+			role: "admin",
+			bridge_enabled: true,
+			bridge_state: "active",
+			agent: { endpoint_id: "bep_ben", name: "Aida", state: "active" },
+		},
+	];
+	const chief = (agent, person) => `${agent} (${person})`;
+	// The hub stored the creator as the placeholder "Member": the directory wins.
+	assert.equal(
+		model.participantLabel(
+			{ account_id: "acct_ben", kind: "human", display_label: "Member" },
+			people,
+			chief,
+		),
+		"Ben Tran",
+	);
+	assert.equal(
+		model.participantLabel(
+			{ account_id: "acct_ben", kind: "agent", display_label: "Member" },
+			people,
+			chief,
+		),
+		"Aida (Ben Tran)",
+	);
+	// Someone no longer in the directory keeps the stored label.
+	assert.equal(
+		model.participantLabel(
+			{ account_id: "acct_gone", kind: "human", display_label: "Former" },
+			people,
+			chief,
+		),
+		"Former",
+	);
+});
+
+test("person and agent DMs with the same owner never resolve to each other", () => {
+	const base = {
+		tenant_id: "t",
+		visibility: "private",
+		agent_capable: true,
+		status: "open",
+		created_by: "acct_self",
+		last_message_at: "2026-10-21T00:00:00Z",
+		latest_seq: 1,
+		last_read_seq: 0,
+		unread_count: 0,
+		muted: false,
+	};
+	const self = {
+		account_id: "acct_self",
+		kind: "human",
+		display_label: "Me",
+		role: "owner",
+		state: "active",
+	};
+	const humanDm = {
+		...base,
+		id: "bcv_h",
+		kind: "dm",
+		members: [
+			self,
+			{
+				account_id: "acct_ben",
+				kind: "human",
+				display_label: "Ben",
+				role: "member",
+				state: "active",
+			},
+		],
+	};
+	const agentDm = {
+		...base,
+		id: "bcv_a",
+		kind: "dm",
+		members: [
+			self,
+			{
+				account_id: "acct_ben",
+				kind: "agent",
+				display_label: "Aida",
+				role: "member",
+				state: "active",
+			},
+		],
+	};
+	assert.equal(
+		model.dmWithPerson([agentDm, humanDm], "acct_ben", "acct_self")?.id,
+		"bcv_h",
+	);
+	assert.equal(model.dmWithAgent([humanDm, agentDm], "acct_ben")?.id, "bcv_a");
+	assert.equal(model.dmWithPerson([agentDm], "acct_ben", "acct_self"), null);
+	assert.equal(model.dmWithAgent([humanDm], "acct_ben"), null);
+});
+
+test("chiefs of staff exclude the reader and disabled agents", () => {
+	const row = (id, agent) => ({
+		account_id: id,
+		display_label: id,
+		role: "member",
+		bridge_enabled: true,
+		bridge_state: "active",
+		...(agent ? { agent } : {}),
+	});
+	const chiefs = model.chiefsOfStaff(
+		[
+			row("acct_self", { endpoint_id: "e0", name: "Aida", state: "active" }),
+			row("acct_ben", { endpoint_id: "e1", name: "Aida", state: "active" }),
+			row("acct_sana", { endpoint_id: "e2", name: "Juno", state: "paused" }),
+			row("acct_off", { endpoint_id: "e3", name: "X", state: "disabled" }),
+			row("acct_none"),
+		],
+		"acct_self",
+	);
+	assert.deepEqual(
+		chiefs.map((chief) => [
+			chief.person.account_id,
+			chief.agentName,
+			chief.paused,
+		]),
+		[
+			["acct_ben", "Aida", false],
+			["acct_sana", "Juno", true],
+		],
+	);
+});
+
+test("a person or chief target resolves its DM once it exists, a compose never does", () => {
+	const self = {
+		account_id: "acct_self",
+		kind: "human",
+		display_label: "Me",
+		role: "owner",
+		state: "active",
+	};
+	const dm = {
+		id: "bcv_dm",
+		tenant_id: "t",
+		kind: "dm",
+		visibility: "private",
+		agent_capable: false,
+		status: "open",
+		created_by: "acct_self",
+		last_message_at: "2026-10-21T00:00:00Z",
+		latest_seq: 1,
+		last_read_seq: 0,
+		unread_count: 0,
+		muted: false,
+		members: [
+			self,
+			{
+				account_id: "acct_ben",
+				kind: "human",
+				display_label: "Ben",
+				role: "member",
+				state: "active",
+			},
+		],
+	};
+	assert.equal(
+		model.targetConversation(
+			{ type: "person", accountId: "acct_ben" },
+			[],
+			"acct_self",
+		),
+		null,
+	);
+	assert.equal(
+		model.targetConversation(
+			{ type: "person", accountId: "acct_ben" },
+			[dm],
+			"acct_self",
+		)?.id,
+		"bcv_dm",
+	);
+	assert.equal(
+		model.targetConversation(
+			{ type: "compose", recipients: [] },
+			[dm],
+			"acct_self",
+		),
+		null,
+	);
+	assert.equal(
+		model.targetConversation(
+			{ type: "conversation", id: "bcv_dm" },
+			[dm],
+			"acct_self",
+		)?.id,
+		"bcv_dm",
+	);
+});
