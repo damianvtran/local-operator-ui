@@ -74,7 +74,48 @@ export interface AddressOverlayPort {
 
 const NO_HANDLER = /No handler registered/;
 
-let latchedOff = false;
+/**
+ * Refusals main will repeat for the rest of this host's life: the child failed to
+ * load (latched), the controller was disposed or the owner went away. A renderer
+ * that retries these every frame turns one terminal failure into a runaway IPC
+ * loop (QA round 1 measured 540 log lines on a load-timeout boot), so the hook
+ * stops its projection loop on the first one.
+ */
+const PERMANENT_REFUSALS: ReadonlySet<string> = new Set([
+	"overlay_failed",
+	"disposed",
+	"owner_unavailable",
+]);
+
+export function isPermanentOverlayRefusal(reason: unknown): boolean {
+	return typeof reason === "string" && PERMANENT_REFUSALS.has(reason);
+}
+
+/**
+ * Latch + single-flight state lives on the RENDERER GLOBAL, not in this module.
+ * A code-split bundle can contain two copies of this module (the URL bar and a
+ * lazily loaded browser surface), and per-copy state let both copies invoke once
+ * — the residual two "No handler registered" lines QA measured on the S2-off
+ * path. One renderer-wide object makes the first no-handler answer stop every
+ * copy, and keeps one projection in flight process-wide.
+ */
+interface AddressOverlayPortState {
+	latched: boolean;
+	inFlight: Promise<unknown> | null;
+}
+const PORT_STATE_KEY = "__loAddressOverlayPortState";
+
+function portState(): AddressOverlayPortState {
+	const holder = globalThis as unknown as Record<
+		string,
+		AddressOverlayPortState | undefined
+	>;
+	const existing = holder[PORT_STATE_KEY];
+	if (existing) return existing;
+	const created: AddressOverlayPortState = { latched: false, inFlight: null };
+	holder[PORT_STATE_KEY] = created;
+	return created;
+}
 /**
  * Monotone across mounts. Main refuses a seq it has already accepted, and this
  * field survives route remounts inside one renderer process — a per-hook counter
@@ -92,8 +133,14 @@ function looksLikeNoHandler(error: unknown): boolean {
 	return NO_HANDLER.test(message);
 }
 
+function unavailable(): Error {
+	return new Error(
+		"address_overlay_unavailable: the S2 projection channel is not armed in this launch",
+	);
+}
+
 export function addressOverlayPort(): AddressOverlayPort | null {
-	if (latchedOff) return null;
+	if (portState().latched) return null;
 	const bridge =
 		typeof window === "undefined" ? undefined : window.__loDevDriver;
 	if (!bridge || bridge.armed !== true) return null;
@@ -104,11 +151,32 @@ export function addressOverlayPort(): AddressOverlayPort | null {
 		return null;
 	}
 	return {
-		project: (payload) =>
-			bridge.addressOverlayProject(payload).catch((error: unknown) => {
-				if (looksLikeNoHandler(error)) latchedOff = true;
-				throw error;
-			}),
+		project: (payload) => {
+			// The latch is checked INSIDE the returned method as well as before it:
+			// a caller that captured this object before the first no-handler answer
+			// (the mirror hook does, for the life of its effect) must not keep
+			// invoking a channel this process has proved is not registered.
+			const state = portState();
+			if (state.latched) {
+				return Promise.reject(unavailable());
+			}
+			const run = (): Promise<unknown> => {
+				if (state.latched) return Promise.reject(unavailable());
+				return bridge.addressOverlayProject(payload).catch((error: unknown) => {
+					if (looksLikeNoHandler(error)) state.latched = true;
+					throw error;
+				});
+			};
+			const previous = state.inFlight;
+			const next = (previous ?? Promise.resolve()).then(run, run);
+			state.inFlight = next;
+			void next
+				.catch(() => undefined)
+				.then(() => {
+					if (state.inFlight === next) state.inFlight = null;
+				});
+			return next;
+		},
 		onEvent: (callback) => bridge.onAddressOverlayEvent(callback),
 	};
 }

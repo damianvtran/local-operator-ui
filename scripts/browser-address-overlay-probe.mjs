@@ -45,6 +45,7 @@ import {
 import { createServer as createHttpServer } from "node:http";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
+import { loadavg } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
@@ -92,6 +93,12 @@ function plan(id, claim, mode = "driven") {
 function record(id, status, evidence) {
 	const row = rows.find((entry) => entry.id === id);
 	if (!row) throw new Error(`unknown row ${id}`);
+	// A second record for one id silently replaced the first receipt and let two
+	// different claims share a row (QA round 1, Q-2). Ids are now unique per row;
+	// a duplicate is a probe bug, not last-wins.
+	if (row.at !== null) {
+		throw new Error(`row ${id} was already recorded at ${row.at}`);
+	}
 	row.status = status;
 	row.evidence = evidence;
 	row.at = at();
@@ -137,6 +144,23 @@ const buildIdentity = {
 		cwd: ROOT,
 		encoding: "utf8",
 	}).stdout.trim(),
+	// QA round 1's Q-3: `gitHead` alone named the parent commit when the evidence
+	// was built from a working tree. Record the DIRTY state and a hash of the
+	// uncommitted diff so the metadata says exactly what produced these bytes.
+	gitDirty:
+		spawnSync("git", ["status", "--porcelain"], {
+			cwd: ROOT,
+			encoding: "utf8",
+		}).stdout.trim() !== "",
+	worktreeDiffSha256: createHash("sha256")
+		.update(
+			spawnSync("git", ["diff", "HEAD"], { cwd: ROOT, encoding: "utf8" })
+				.stdout ?? "",
+		)
+		.digest("hex"),
+	// Q-4: a shared host's load is part of a run's identity; a child readiness
+	// timeout under load is BLOCKED evidence, not a matrix pass.
+	hostLoad: loadavg()[0],
 	node: process.version,
 	electron: ELECTRON_VERSION,
 	artifacts: Object.fromEntries(
@@ -433,6 +457,14 @@ async function boot({ s1, s2, s2Raw, driver, tag }) {
 			`--remote-debugging-port=${port}`,
 			"--window-mode=headless",
 			"--window-size=1380x900",
+			// The headless window is occluded; Chromium throttles the child's frame
+			// loop and a WebContentsView resize can sit unapplied indefinitely (native
+			// bounds 211, renderer viewport still 140). A VISIBLE window applies it on
+			// the next frame. These switches keep the rig's frame behaviour closer to
+			// the visible product path without making anything visible.
+			"--disable-backgrounding-occluded-windows",
+			"--disable-renderer-backgrounding",
+			"--disable-background-timer-throttling",
 			MOCK_KEYCHAIN_SWITCH,
 		],
 		{ env, cwd, stdio: ["ignore", "pipe", "pipe"] },
@@ -1489,6 +1521,10 @@ const S2_ROWS = [
 	["G2b", "S1+S2 without the armed driver: printed refusal, no bridge"],
 	["G2c", "S2=1 with a non-opt-in spelling: printed refusal"],
 	[
+		"G1b",
+		"S2 off: typing in the real address field invokes the missing projection channel at most once (latch stops the loop)",
+	],
+	[
 		"P3",
 		"real input drivability: CDP can focus and type into the real address field in a focusable:false window",
 	],
@@ -1509,27 +1545,46 @@ const S2_ROWS = [
 		"out-of-range/NaN/huge/negative/inconsistent/extra-key/oversize projections are refused (unit)",
 	],
 	[
+		"R1-real",
+		"under real input the child's own measurement reports a 28 header and 35.5 rows",
+	],
+	[
 		"R1",
 		"1/3/5 rows render with 35.5 row height and 28 header; rowCount equals the model",
 	],
 	["R2", "each notice kind renders at 104 DIP; loading-with-no-rows is hidden"],
 	[
 		"R3",
-		"exactly one active row; its rect equals the parent's aria-activedescendant index",
+		"exactly one active row; its rect equals the parent's aria-activedescendant index (real input)",
+	],
+	[
+		"R3-synthetic",
+		"synthetic projection: exactly one active row and its rect at the documented offset (no parent ARIA)",
 	],
 	["R4", "hostile text is literal and capped; no img/script executes"],
-	["R5", "ru and ur header/notice render (child pixels)"],
+	[
+		"R5",
+		"ru and ur header/notice (and ur rows, RTL) render with the catalogues' own strings (child pixels)",
+	],
+	[
+		"R5b",
+		"real-copy notice at a narrow field width stays inside the 104-DIP block (no clipping)",
+	],
 	["R6", "alpha theme is rejected and the opaque fallback is used"],
 	[
 		"C1",
 		"synthetic mouse down/up on row 0 commits through the renderer's real navigate",
 	],
 	["C2", "down row i / up row j commits nothing"],
-	["C3", "stale seq is refused; an out-of-range index names no row"],
+	["C3", "stale seq is refused without hiding the newer model"],
+	[
+		"C3b",
+		"a probe click naming a row outside the applied model is refused and commits nothing",
+	],
 	["C4", "candidate set change between project and click is dropped (unit)"],
 	[
 		"K1",
-		"ArrowDown/Enter/Escape/Tab behave as today; the mirror hides on dismissal",
+		"ArrowDown/Enter/Escape/Tab drive the parent exactly as today and the mirror hides on each dismissal",
 	],
 	[
 		"K2",
@@ -1555,6 +1610,23 @@ function planS2Rows() {
 		plan(id, claim, mode === "BLOCKED" ? "blocked" : "driven");
 	}
 }
+
+// The child shows only strings the renderer already localizes. Reading the
+// catalogues here (rather than writing fixture copy) is what makes the frames
+// real-copy evidence (design review D4).
+const CATALOGUES = Object.fromEntries(
+	["en", "ru", "ur"].map((locale) => [
+		locale,
+		JSON.parse(
+			readFileSync(
+				join(ROOT, "src/i18n/catalogues", locale, "ui.browser.json"),
+				"utf8",
+			),
+		),
+	]),
+);
+const copy = (locale, key) =>
+	CATALOGUES[locale][`ui.browser.browser_url_bar.${key}`];
 
 let s2Seq = 1000;
 const nextS2Seq = () => {
@@ -1672,7 +1744,7 @@ function s2Projection(geometry, pageRect, tabId, view, overrides = {}) {
 		listTop: geometry.listTop,
 		active: -1,
 		view,
-		label: "Suggestions",
+		label: copy("en", "address_suggestions_label"),
 		dir: "ltr",
 		...overrides,
 	};
@@ -1727,7 +1799,12 @@ async function s2GateCases() {
 			pageServers.push(pageServer);
 			await evaluate(cdp, "window.api.browser.newTab()");
 			await waitForActiveTab(cdp);
-			await presentActivePage(cdp, pageServer);
+			// Three navigations, like P3: one page leaves no history to open the
+			// list with, and the G1b claim is about a list that IS open.
+			for (let index = 0; index < 3; index += 1) {
+				await presentActivePage(cdp, pageServer);
+				await sleep(120);
+			}
 			const shown = await probe(cdp, "show");
 			const answer = await evaluate(
 				cdp,
@@ -1749,6 +1826,62 @@ async function s2GateCases() {
 					? "PASS"
 					: "FAIL",
 				`state=${shown.state} s2.list=${shown.s2.list} projection=${JSON.stringify(answer)}`,
+			);
+			// G1b: the S2-off retry storm (QA Q-1). Type in the real field with the
+			// list open for 3 s and count how many times the unregistered channel was
+			// invoked. The latch must stop the loop after the first answer.
+			// Baseline AFTER G1's own direct invoke has been logged: Electron's handler
+			// error is written asynchronously, and reading a byte offset straight after
+			// the await counted G1's line as a hook invoke (QA round 1's "2").
+			const countUnregistered = () =>
+				(
+					readFileSync(join(OUT, "app.log"), "utf8").match(
+						/No handler registered for 'dev-driver-address-overlay-project'/g,
+					) ?? []
+				).length;
+			await sleep(500);
+			const logBefore = countUnregistered();
+			const geometry = await s2Geometry(cdp);
+			const clickX = geometry.field.x + Math.round(geometry.field.width / 2);
+			const clickY = geometry.field.y + Math.round(geometry.field.height / 2);
+			for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) {
+				await cdp.send("Input.dispatchMouseEvent", {
+					type,
+					x: clickX,
+					y: clickY,
+					button: "left",
+					clickCount: 1,
+				});
+			}
+			await sleep(200);
+			const focused = await evaluate(
+				cdp,
+				`(() => {
+					const el = document.querySelector('[data-tour-tag="browser-address"]');
+					if (!el) return { ok: false };
+					el.focus();
+					el.select();
+					return { ok: document.activeElement === el, active: document.activeElement?.tagName ?? null };
+				})()`,
+			);
+			await cdp.send("Input.insertText", { text: "127.0.0.1" });
+			await sleep(500);
+			const afterType = await s2Geometry(cdp);
+			await sleep(2_500);
+			const invokes = countUnregistered() - logBefore;
+			const typed = await s2Geometry(cdp);
+			const targets = await cdp.send("Target.getTargets");
+			const pages = (targets.targetInfos ?? [])
+				.filter((target) => target.type === "page")
+				.map((target) => target.url);
+			record(
+				"G1b",
+				invokes <= 1 && afterType?.dockOpen === true && focused?.ok === true
+					? "PASS"
+					: invokes <= 1
+						? "BLOCKED"
+						: "FAIL",
+				`focused=${JSON.stringify(focused)} afterType=${JSON.stringify(afterType)} end=${JSON.stringify(typed)} pages=${JSON.stringify(pages)} unregisteredProjectionErrors=${invokes} over 3s (pre-fix QA measured 386)`,
 			);
 			cdp.close();
 		} finally {
@@ -2014,14 +2147,15 @@ async function s2RealInputMatrix() {
 			`child=${JSON.stringify(childFacts)}`,
 		);
 
-		// R1: the child's own measurements.
+		// R1-real: the child's own measurements under real input. The 1/3/5
+		// geometry sweep is the separate synthetic R1 row.
 		const measured = await probe(cdp, "measure");
 		const rowRects = measured.s2?.measured?.rowRects ?? [];
 		const rowHeightsOk =
 			rowRects.length === measured.s2.view.rowCount &&
 			rowRects.every((row) => Math.abs(row.height - 35.5) <= 0.5);
 		record(
-			"R1",
+			"R1-real",
 			measured.s2.view.rowCount >= 1 &&
 				measured.s2.view.rowCount <= 5 &&
 				rowHeightsOk &&
@@ -2141,12 +2275,103 @@ async function s2RealInputMatrix() {
 			(facts) => facts.child?.visible === false,
 			3_000,
 		);
+		// Enter: re-open, select the first alternative, commit it; the page must
+		// navigate and the mirror must hide. This is the in-flow commit path, now
+		// driven WITH the child open (m3's narrowed K1).
+		const press = async (key, keyCode) => {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: "keyDown",
+				key,
+				code: key,
+				windowsVirtualKeyCode: keyCode,
+				nativeVirtualKeyCode: keyCode,
+			});
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: "keyUp",
+				key,
+				code: key,
+				windowsVirtualKeyCode: keyCode,
+				nativeVirtualKeyCode: keyCode,
+			});
+		};
+		await evaluate(
+			cdp,
+			`(() => {
+				const el = document.querySelector('[data-tour-tag="browser-address"]');
+				if (!el) return null;
+				el.focus();
+				el.select();
+				return true;
+			})()`,
+		);
+		await cdp.send("Input.insertText", { text: "127.0.0.1" });
+		await sleep(400);
+		await press("ArrowDown", 40);
+		await sleep(250);
+		const enterGeometry = await s2Geometry(cdp);
+		const enterTarget = enterGeometry?.candidateUrls?.[0] ?? null;
+		const enterOpened = await waitForS2(
+			cdp,
+			(facts) => facts.child?.visible === true,
+			3_000,
+		);
+		await press("Enter", 13);
+		let enterUrl = null;
+		const enterDeadline = Date.now() + 6_000;
+		while (Date.now() < enterDeadline) {
+			enterUrl = (await browserState(cdp))?.url ?? null;
+			if (enterTarget !== null && enterUrl === enterTarget) break;
+			await sleep(150);
+		}
+		const enterHidden = await waitForS2(
+			cdp,
+			(facts) => facts.child?.visible === false,
+			3_000,
+		);
+
+		// Tab: re-open, select a row, press Tab; focus moves and the mirror hides
+		// without navigating (the input's own Tab semantics, unchanged).
+		await evaluate(
+			cdp,
+			`(() => {
+				const el = document.querySelector('[data-tour-tag="browser-address"]');
+				if (!el) return null;
+				el.focus();
+				el.select();
+				return true;
+			})()`,
+		);
+		await cdp.send("Input.insertText", { text: "127.0.0.1" });
+		await sleep(400);
+		await press("ArrowDown", 40);
+		await sleep(250);
+		const tabOpened = await waitForS2(
+			cdp,
+			(facts) => facts.child?.visible === true,
+			3_000,
+		);
+		const beforeTabUrl = (await browserState(cdp))?.url ?? null;
+		await press("Tab", 9);
+		const tabHidden = await waitForS2(
+			cdp,
+			(facts) => facts.child?.visible === false,
+			3_000,
+		);
+		const afterTabUrl = (await browserState(cdp))?.url ?? null;
 		record(
 			"K1",
-			reopened.child?.visible === true && hidden.child?.visible === false
+			reopened.child?.visible === true &&
+				hidden.child?.visible === false &&
+				enterOpened.child?.visible === true &&
+				enterTarget !== null &&
+				enterUrl === enterTarget &&
+				enterHidden.child?.visible === false &&
+				tabOpened.child?.visible === true &&
+				tabHidden.child?.visible === false &&
+				afterTabUrl === beforeTabUrl
 				? "PASS"
 				: "FAIL",
-			`reopened=${JSON.stringify(reopened.child)} afterEscape=${JSON.stringify(hidden.child)} hiddenReason=${hidden.hiddenReason}`,
+			`arrowReopened=${reopened.child?.visible} escapeHidden=${hidden.child?.visible} enterTarget=${JSON.stringify(enterTarget)} enterUrl=${JSON.stringify(enterUrl)} enterHidden=${enterHidden.child?.visible} tabOpened=${tabOpened.child?.visible} tabHidden=${tabHidden.child?.visible} tabUrl=${JSON.stringify(beforeTabUrl)}->${JSON.stringify(afterTabUrl)}`,
 		);
 
 		// A4: resize while the list is open. Re-open, then shrink the window.
@@ -2310,7 +2535,7 @@ async function s2RealInputMatrix() {
 					"A2",
 					"A3",
 					"A4",
-					"R1",
+					"R1-real",
 					"R3",
 					"C1",
 					"K1",
@@ -2392,6 +2617,8 @@ async function s2SyntheticMatrix() {
 				viewport: measured.s2.measured?.viewportHeight,
 				scroll: measured.s2.measured?.scrollHeight,
 				inner: measured.s2.measured?.innerHeight,
+				visual: measured.s2.measured?.visualHeight,
+				native: measured.child?.bounds ?? null,
 			});
 		}
 		const r1Ok = counts.every(
@@ -2438,7 +2665,7 @@ async function s2SyntheticMatrix() {
 		const activeRect = activeMeasured.s2.measured?.activeRowRect;
 		const geometryOpen = await s2Geometry(cdp);
 		record(
-			"R3",
+			"R3-synthetic",
 			activeProjection.value?.shown === true &&
 				activeMeasured.s2.view.active === 1 &&
 				activeRect !== null &&
@@ -2446,7 +2673,7 @@ async function s2SyntheticMatrix() {
 				geometryOpen.activeIndex === -1
 				? "PASS"
 				: "FAIL",
-			`active=${activeMeasured.s2.view.active} rect=${JSON.stringify(activeRect)} (parent aria index is -1 here: no real input; the dock path covers that)`,
+			`active=${activeMeasured.s2.view.active} rect=${JSON.stringify(activeRect)} parentActiveIndex=${geometryOpen.activeIndex} (synthetic projection: the real-input R3 row is the ARIA agreement)`,
 		);
 
 		// R4: hostile text.
@@ -2495,7 +2722,7 @@ async function s2SyntheticMatrix() {
 			JSON.stringify(hostileFacts),
 		);
 
-		// R5 + V1: ru and ur frames, plus the standard states.
+		// R5 + V1: the catalogues' own strings, RTL rows, and both notice shapes.
 		const shots = [];
 		await project({ kind: "rows", rows: s2Rows(3) });
 		shots.push({
@@ -2510,7 +2737,7 @@ async function s2SyntheticMatrix() {
 		await project({
 			kind: "notice",
 			notice: "empty",
-			text: "Nothing here yet.",
+			text: copy("en", "address_suggestions_empty"),
 		});
 		shots.push({
 			label: "child-notice",
@@ -2525,8 +2752,12 @@ async function s2SyntheticMatrix() {
 			...(await captureChild(handle, "child-hostile")),
 		});
 		await project(
-			{ kind: "notice", notice: "empty", text: "Здесь пока ничего нет." },
-			{ label: "Подсказки", dir: "ltr" },
+			{
+				kind: "notice",
+				notice: "empty",
+				text: copy("ru", "address_suggestions_empty"),
+			},
+			{ label: copy("ru", "address_suggestions_label"), dir: "ltr" },
 		);
 		shots.push({
 			label: "child-ru",
@@ -2534,26 +2765,98 @@ async function s2SyntheticMatrix() {
 		});
 		const ruFacts = await probe(cdp, "measure");
 		await project(
-			{ kind: "notice", notice: "hint", text: "یہاں ابھی کچھ نہیں ہے۔" },
-			{ label: "تجاویز", dir: "rtl" },
+			{
+				kind: "notice",
+				notice: "no_match",
+				text: copy("ur", "address_suggestions_no_match"),
+			},
+			{ label: copy("ur", "address_suggestions_label"), dir: "rtl" },
 		);
 		const urFacts = await probe(cdp, "measure");
 		shots.push({
 			label: "child-ur",
 			...(await captureChild(handle, "child-ur")),
 		});
+		// D3: RTL ROWS with an active row — the fixture-only ur notice left the
+		// bar side, row order and truncation side unseen.
+		await project(
+			{ kind: "rows", rows: s2Rows(3) },
+			{ active: 1, label: copy("ur", "address_suggestions_label"), dir: "rtl" },
+		);
+		const urRowsFacts = await probe(cdp, "measure");
+		shots.push({
+			label: "child-ur-rows",
+			...(await captureChild(handle, "child-ur-rows")),
+		});
+		// D4: real copy in the widest real state that can wrap, at the narrow field
+		// width the design named (480 DIP). The 104-DIP block must contain it.
+		await project(
+			{
+				kind: "notice",
+				// `unavailable` is the renderer's ERROR notice kind; the copy is the
+				// catalogue's unavailable string.
+				notice: "error",
+				text: copy("en", "address_suggestions_unavailable"),
+			},
+			{
+				active: -1,
+				field: { ...geometry.field, width: 480 },
+				label: copy("en", "address_suggestions_label"),
+			},
+		);
+		shots.push({
+			label: "child-notice-narrow",
+			...(await captureChild(handle, "child-notice-narrow")),
+		});
+		const narrowFacts = await probe(cdp, "measure");
+		const { cdp: noticeChild } = await connectList(handle);
+		let narrowBox;
+		try {
+			narrowBox = await childEvaluate(
+				noticeChild,
+				`(() => {
+					const notice = document.getElementById('address-list-notice');
+					const viewport = document.getElementById('address-list-viewport');
+					const root = document.getElementById('address-list-root');
+					if (!notice || !viewport || !root) return null;
+					const n = notice.getBoundingClientRect();
+					const v = viewport.getBoundingClientRect();
+					const r = root.getBoundingClientRect();
+					return {
+						rootHeight: r.height,
+						noticeBottom: n.bottom - r.top,
+						viewportBottom: v.bottom - r.top,
+						text: notice.textContent,
+					};
+				})()`,
+			);
+		} finally {
+			noticeChild.close();
+		}
 		record(
 			"R5",
 			ruFacts.s2.measured?.rowCount === 0 &&
 				urFacts.s2.measured?.rowCount === 0 &&
+				urRowsFacts.s2.measured?.rowCount === 3 &&
+				urRowsFacts.s2.measured?.activeRowRect !== null &&
 				shots.every((shot) => shot.bytes > 1_000)
 				? "PASS"
 				: "FAIL",
-			`shots=${JSON.stringify(shots)}`,
+			`shots=${JSON.stringify(shots)} urRowsActive=${JSON.stringify(urRowsFacts.s2.measured?.activeRowRect)}`,
+		);
+		record(
+			"R5b",
+			narrowFacts.s2.measured?.rowCount === 0 &&
+				narrowBox !== null &&
+				narrowBox.rootHeight === 104 &&
+				narrowBox.noticeBottom <= narrowBox.viewportBottom + 1
+				? "PASS"
+				: "FAIL",
+			`narrow=${JSON.stringify(narrowBox)}`,
 		);
 		record(
 			"V1",
-			shots.length === 6 && shots.every((shot) => shot.bytes > 1_000)
+			shots.length === 8 && shots.every((shot) => shot.bytes > 1_000)
 				? "PASS"
 				: "FAIL",
 			`child-only CDP captures, viewed: ${shots.map((shot) => `${shot.label}=${shot.bytes}B`).join(" ")}`,
@@ -2611,7 +2914,26 @@ async function s2SyntheticMatrix() {
 			staleAnswer.ok && staleAnswer.value?.reason === "stale_seq"
 				? "PASS"
 				: "FAIL",
-			`${JSON.stringify(staleAnswer)}; an index beyond rowCount names no row by construction (rowAt bounds-checks the row array)`,
+			`${JSON.stringify(staleAnswer)}; the newer shown model is not hidden`,
+		);
+		// C3b: an out-of-range index is refused by the probe's own validation, and
+		// no commit is emitted. This replaces the old "by construction" clause.
+		const beforeC3b = await probe(cdp, "facts");
+		let outOfRangeError = null;
+		try {
+			await probe(cdp, "click", { row: 99 });
+		} catch (error) {
+			outOfRangeError = String(error?.message ?? error);
+		}
+		const afterC3b = await probe(cdp, "facts");
+		record(
+			"C3b",
+			outOfRangeError !== null &&
+				/rendered row index/.test(outOfRangeError) &&
+				afterC3b.s2.commitsEmitted === beforeC3b.s2.commitsEmitted
+				? "PASS"
+				: "FAIL",
+			`error=${JSON.stringify(outOfRangeError)} commits=${beforeC3b.s2.commitsEmitted}->${afterC3b.s2.commitsEmitted}`,
 		);
 
 		// X1: the child's capability surface.
@@ -2675,9 +2997,20 @@ async function s2SyntheticMatrix() {
 	} catch (error) {
 		for (const row of rows) {
 			if (
-				["R1", "R2", "R3", "R4", "R5", "R6", "C2", "C3", "V1", "X1"].includes(
-					row.id,
-				) &&
+				[
+					"R1",
+					"R2",
+					"R3-synthetic",
+					"R4",
+					"R5",
+					"R5b",
+					"R6",
+					"C2",
+					"C3",
+					"C3b",
+					"V1",
+					"X1",
+				].includes(row.id) &&
 				row.at === null
 			) {
 				record(row.id, "BLOCKED", `synthetic matrix aborted: ${String(error)}`);

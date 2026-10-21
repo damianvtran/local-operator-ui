@@ -71,6 +71,10 @@ export function measure(): {
 	viewportHeight: number;
 	scrollHeight: number;
 	innerHeight: number;
+	/** The visual viewport, when the browser reports one. A pinned document can
+	 * leave `innerHeight` stale on a hidden window while the visible viewport is
+	 * already the new rectangle; main trusts whichever it can prove. */
+	visualHeight: number | null;
 	activeRowRect: { top: number; height: number } | null;
 } {
 	const rows = Array.from(rowsHost.children) as HTMLElement[];
@@ -89,6 +93,7 @@ export function measure(): {
 		viewportHeight: viewport.getBoundingClientRect().height,
 		scrollHeight: viewport.scrollHeight,
 		innerHeight: window.innerHeight,
+		visualHeight: window.visualViewport?.height ?? null,
 		activeRowRect: active
 			? (() => {
 					const rect = rectOf(active);

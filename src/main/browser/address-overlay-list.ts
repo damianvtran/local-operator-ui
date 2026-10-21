@@ -21,7 +21,16 @@
  * reaches `executeJavaScript`.
  */
 
-/** The exact S2 opt-in, honoured only on top of the S1 opt-in and its gates. */
+/**
+ * The exact S2 opt-in, honoured only on top of the S1 opt-in and its gates.
+ *
+ * BUILT APP ONLY: the child's CSP (`style-src 'self'`, `connect-src 'none'`)
+ * deliberately forbids Vite's dev-server style injection and HMR socket, so an
+ * S2 launch against `pnpm dev` fails closed at the first measurement
+ * (`measure_header`) rather than rendering. The probe runs the built document;
+ * a dev-mode allowance would be a second, weaker trust boundary for no product
+ * path (review round 1, n1).
+ */
 export const ADDRESS_LIST_ENV = "LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S2";
 
 /** The S2 document (script + stylesheet, unlike S1's inert one). */
@@ -447,6 +456,8 @@ export interface AddressListMeasurement {
 	/** The child's own viewport height, so a failed resize is distinguishable
 	 * from a layout bug. Optional: the first shipped document did not report it. */
 	innerHeight?: number;
+	/** The child's visual viewport, when it reports one. */
+	visualHeight?: number;
 	activeRowRect: { top: number; height: number } | null;
 }
 
@@ -469,6 +480,7 @@ function measurementValue(value: unknown): AddressListMeasurement | null {
 		rowRects.push({ top, height });
 	}
 	const innerHeight = finite(value.innerHeight);
+	const visualHeight = finite(value.visualHeight);
 	let activeRowRect: { top: number; height: number } | null = null;
 	if (value.activeRowRect !== null && value.activeRowRect !== undefined) {
 		if (!isRecord(value.activeRowRect)) return null;
@@ -489,24 +501,38 @@ function measurementValue(value: unknown): AddressListMeasurement | null {
 		viewportHeight,
 		scrollHeight,
 		...(innerHeight === null ? {} : { innerHeight }),
+		...(visualHeight === null ? {} : { visualHeight }),
 		activeRowRect,
 	};
 }
 
 /**
- * Did the child actually render the model main sent?
+ * Did the child actually render the model main sent — INSIDE the paint box?
  *
- * A failed check is a HIDE, not a retry: main would otherwise route a mouse
- * click onto a row the user cannot see. The tolerances are the rendered values'
- * own (±0.5 CSS px for sub-pixel row height; 1 px of scroll slop).
+ * The child pins its own layout to the model height, so `viewportHeight` alone
+ * cannot prove the native view was resized: a deferred native resize leaves the
+ * layout viewport at the model height while the view still paints the previous
+ * rectangle. `innerHeight` is the only signal for that case, and comparing it
+ * with the requested height is what stops main from claiming "shown" over rows
+ * that are outside the view. A mismatch is retryable (`measure_viewport`), not a
+ * permanent defect: the compositor may need a frame.
+ *
+ * A failed check is still a HIDE when it persists: main must never route a mouse
+ * click onto a row the user cannot see. Tolerances are the rendered values' own
+ * (±0.5 CSS px for sub-pixel row height; 1 px of scroll/view slop).
  */
 export function addressListMeasurementProblem(
 	raw: unknown,
 	projection: AddressListProjection,
+	requestedHeight: number,
 ): string | null {
 	const measurement = measurementValue(raw);
 	if (measurement === null) return "measure_invalid";
 	if (measurement.appliedSeq !== projection.seq) return "measure_stale";
+	const reported = measurement.visualHeight ?? measurement.innerHeight;
+	if (reported !== undefined && Math.abs(reported - requestedHeight) > 1) {
+		return "measure_viewport";
+	}
 	if (projection.view.kind !== "rows") {
 		return measurement.rowCount === 0 ? null : "measure_extra_rows";
 	}
@@ -526,8 +552,14 @@ export function addressListMeasurementProblem(
 	}
 	if (projection.active >= 0) {
 		if (measurement.activeRowRect === null) return "measure_active_missing";
+		// The paint box is the native view (`innerHeight`), not the child's own
+		// pinned layout. A row whose document-space bottom is below it is painted
+		// nowhere, even though the model says it exists.
+		const paintBox =
+			measurement.visualHeight ?? measurement.innerHeight ?? requestedHeight;
 		const { top, height } = measurement.activeRowRect;
-		if (top < -0.5 || top + height > measurement.viewportHeight + 0.5) {
+		const documentBottom = measurement.headerHeight + top + height;
+		if (top < -0.5 || documentBottom > paintBox + 0.5) {
 			return "active_not_visible";
 		}
 	}

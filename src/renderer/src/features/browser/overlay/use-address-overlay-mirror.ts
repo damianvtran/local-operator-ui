@@ -24,6 +24,7 @@ import {
 	type AddressOverlayTheme,
 	type AddressOverlayView,
 	addressOverlayPort,
+	isPermanentOverlayRefusal,
 	nextAddressOverlaySeq,
 } from "./address-overlay-port";
 
@@ -164,6 +165,26 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 		let wasVisible = false;
 		let lastSignature = "";
 		let projected: { seq: number; keys: string[] } | null = null;
+		/**
+		 * Terminal stop. Main's no-handler latch, a disposed/failed controller or a
+		 * vanished owner cannot become healthy inside this renderer's lifetime, and
+		 * retrying them per frame is the S2-off retry storm QA round 1 measured.
+		 * The effect stays subscribed for commits; it just stops projecting.
+		 */
+		let stopped = false;
+		/**
+		 * One projection in flight at a time. Without this, the first refusal's
+		 * round trip outlasts a frame and several invokes are already queued before
+		 * the no-handler latch can stop the loop (QA round 1 measured the shape of
+		 * that storm; 2 errors is the residual). Serialising makes the S2-off path
+		 * exactly one invoke, and costs S2-on at most one skipped frame.
+		 */
+		let pending = false;
+		const stop = (): void => {
+			stopped = true;
+			if (frame !== 0) cancelAnimationFrame(frame);
+			frame = 0;
+		};
 
 		const unsubscribe = port.onEvent((event) => {
 			if (!event || typeof event !== "object") return;
@@ -202,6 +223,7 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 		};
 
 		const tick = (): void => {
+			if (stopped) return;
 			frame = requestAnimationFrame(tick);
 			const current = latest.current;
 			if (!current.enabled) return;
@@ -239,9 +261,11 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 				dir,
 				...(theme ? { theme } : {}),
 			};
+			if (pending) return;
 			const signature = JSON.stringify(body);
 			if (signature === lastSignature) return;
 			lastSignature = signature;
+			pending = true;
 			wasVisible = true;
 			const seq = nextAddressOverlaySeq();
 			projected = {
@@ -252,25 +276,33 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 			void port
 				.project(payload)
 				.then((result) => {
-					// A refusal other than an out-of-order frame means what is on the
-					// child no longer matches; let the next frame project again.
+					pending = false;
 					const answer = result as { accepted?: unknown; reason?: unknown };
-					if (
-						answer &&
-						answer.accepted === false &&
-						answer.reason !== "stale_seq"
-					) {
-						lastSignature = "";
+					if (!answer || answer.accepted !== false) return;
+					// Terminal refusals stop the loop; everything else (a stale frame, a
+					// layout race) is retried by the next frame.
+					if (isPermanentOverlayRefusal(answer.reason)) {
+						stop();
+						return;
 					}
+					if (answer.reason !== "stale_seq") lastSignature = "";
 				})
 				.catch(() => {
+					pending = false;
+					// The port latches on the first "No handler registered" answer and
+					// then returns null, which is the observable "this launch has no S2
+					// channel". A reject for any other reason is retried next frame.
+					if (addressOverlayPort() === null) {
+						stop();
+						return;
+					}
 					lastSignature = "";
 				});
 		};
 
 		tick();
 		return () => {
-			cancelAnimationFrame(frame);
+			stop();
 			unsubscribe();
 			if (wasVisible) sendHide();
 		};

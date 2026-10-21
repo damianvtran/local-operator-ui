@@ -136,7 +136,10 @@ body {
 
 .lo-row-title {
 	min-width: 0;
-	flex: 1 1 auto;
+	/* The dock's `flex-1` is `1 1 0%`, not `auto`: with a zero basis the title
+	 * takes no width when the URL overflows, so the URL gets the row instead of
+	 * both fields shrinking proportionally (design review D1). */
+	flex: 1 1 0%;
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
@@ -150,7 +153,8 @@ body {
 	padding: 8px 12px;
 	color: var(--lo-ink-muted);
 	font-size: 13px;
-	line-height: 1.35;
+	/* The dock's `text-body-sm` line-height is 1.5 (design review D2). */
+	line-height: 1.5;
 	overflow-wrap: anywhere;
 }
 

@@ -112,6 +112,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export * from "./src/main/browser/address-overlay";
+			export * from "./src/renderer/src/features/browser/overlay/address-overlay-port";
 			export * from "./src/main/browser/address-overlay-list";
 			export * from "./src/main/browser/registry";
 			export * as electron from "electron";
@@ -140,6 +141,8 @@ const {
 	addressListRowIndexAt,
 	addressListViewModel,
 	addressOverlayDocumentUrlFor,
+	addressOverlayPort,
+	isPermanentOverlayRefusal,
 	layoutKeyOf,
 	overlayBoundsFor,
 	resolveAddressOverlayGate,
@@ -1306,9 +1309,45 @@ test("S2 measurement: the child must prove what it painted", () => {
 		})),
 		viewportHeight: 110,
 		scrollHeight: 110,
+		innerHeight: 140,
 		activeRowRect: { top: 37.5, height: 35.5 },
 	};
-	assert.equal(addressListMeasurementProblem(good, model), null);
+	assert.equal(addressListMeasurementProblem(good, model, 140), null);
+	// M1's negative control: the layout viewport is pinned to the model, so only
+	// innerHeight can prove the native view is the requested rectangle. A view
+	// 71 DIP short is exactly the shipped run's 211-requested/140-painted case.
+	assert.equal(
+		addressListMeasurementProblem({ ...good, innerHeight: 69 }, model, 140),
+		"measure_viewport",
+	);
+	assert.equal(
+		addressListMeasurementProblem({ ...good, innerHeight: 139 }, model, 140),
+		null,
+		"one DIP of rounding is tolerated",
+	);
+	const shortPaint = sanitizeProjection(
+		projection({
+			view: { kind: "notice", notice: "empty", text: "x" },
+			active: -1,
+		}),
+	).projection;
+	assert.equal(
+		addressListMeasurementProblem(
+			{
+				appliedSeq: shortPaint.seq,
+				rowCount: 0,
+				headerHeight: 28,
+				rowRects: [],
+				viewportHeight: 75,
+				scrollHeight: 0,
+				innerHeight: 104,
+				activeRowRect: null,
+			},
+			shortPaint,
+			104,
+		),
+		null,
+	);
 	assert.equal(
 		addressListMeasurementProblem(
 			{ ...good, appliedSeq: model.seq + 1 },
@@ -1317,13 +1356,14 @@ test("S2 measurement: the child must prove what it painted", () => {
 		"measure_stale",
 	);
 	assert.equal(
-		addressListMeasurementProblem({ ...good, rowCount: 2 }, model),
+		addressListMeasurementProblem({ ...good, rowCount: 2 }, model, 140),
 		"measure_row_count",
 	);
 	assert.equal(
 		addressListMeasurementProblem(
 			{ ...good, rowRects: [{ top: 2, height: 30 }] },
 			model,
+			140,
 		),
 		"measure_row_rects",
 	);
@@ -1334,11 +1374,12 @@ test("S2 measurement: the child must prove what it painted", () => {
 				rowRects: good.rowRects.map((row) => ({ ...row, height: 34 })),
 			},
 			model,
+			140,
 		),
 		"measure_row_height",
 	);
 	assert.equal(
-		addressListMeasurementProblem({ ...good, scrollHeight: 400 }, model),
+		addressListMeasurementProblem({ ...good, scrollHeight: 400 }, model, 140),
 		"measure_scroll",
 		"rows are capped so the mirror never scrolls",
 	);
@@ -1346,6 +1387,7 @@ test("S2 measurement: the child must prove what it painted", () => {
 		addressListMeasurementProblem(
 			{ ...good, activeRowRect: { top: -40, height: 35.5 } },
 			model,
+			140,
 		),
 		"active_not_visible",
 	);
@@ -1417,4 +1459,75 @@ test("S2 document and bundle: strict CSP, no accessibility claim, no app imports
 		addressListDocumentUrlFor("file:///app/out/renderer/index.html"),
 		"file:///app/out/renderer/browser-address-overlay-list.html",
 	);
+});
+
+test("S2 port: the no-handler latch invokes the bridge once and stops", async () => {
+	let calls = 0;
+	globalThis.window = {
+		__loDevDriver: {
+			armed: true,
+			addressOverlayProject: async () => {
+				calls += 1;
+				throw new Error(
+					"Error invoking remote method 'dev-driver-address-overlay-project': Error: No handler registered for 'dev-driver-address-overlay-project'",
+				);
+			},
+			onAddressOverlayEvent: () => () => undefined,
+		},
+	};
+	try {
+		const port = addressOverlayPort();
+		assert.ok(port, "an armed bridge exposes the port");
+		await assert.rejects(port.project({ v: 1 }));
+		assert.equal(calls, 1);
+		// The SAME captured port must not invoke again after the latch.
+		await assert.rejects(port.project({ v: 1 }));
+		assert.equal(calls, 1, "the latch is checked inside the returned method");
+		assert.equal(
+			addressOverlayPort(),
+			null,
+			"the port disappears after latching",
+		);
+	} finally {
+		globalThis.window = undefined;
+	}
+});
+
+test("S2 permanent refusals are recognised, transient ones are not", () => {
+	for (const reason of ["overlay_failed", "disposed", "owner_unavailable"]) {
+		assert.equal(isPermanentOverlayRefusal(reason), true, reason);
+	}
+	for (const reason of [
+		"stale_seq",
+		"stale_layout",
+		"stale_tab",
+		"measure_viewport",
+		"anchor_inconsistent",
+		undefined,
+		null,
+		42,
+	]) {
+		assert.equal(isPermanentOverlayRefusal(reason), false, String(reason));
+	}
+});
+
+test("S2 escaping: the sanitizer, not JSON.stringify, removes line separators", () => {
+	// JSON.stringify does NOT escape these; S3/S4 must not rely on the old claim.
+	const json = JSON.stringify({ a: "x\u2028y\u2029z</script>" });
+	assert.ok(json.includes("\u2028"), "U+2028 survives JSON.stringify");
+	assert.ok(json.includes("\u2029"), "U+2029 survives JSON.stringify");
+	assert.ok(json.includes("</script>"), "</script> survives JSON.stringify");
+	const result = sanitizeProjection(
+		projection({
+			label: "a\u2028b\u2029c",
+			view: {
+				kind: "rows",
+				rows: [{ text: "x\u2028y", title: "p\u2029q" }],
+			},
+		}),
+	);
+	assert.equal(result.ok, true);
+	assert.equal(result.projection.label, "abc");
+	assert.equal(result.projection.view.rows[0].text, "xy");
+	assert.equal(result.projection.view.rows[0].title, "pq");
 });

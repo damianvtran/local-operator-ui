@@ -350,6 +350,7 @@ export interface AddressOverlayFacts {
 		keysBlocked: number;
 		mouseDowns: number;
 		mouseUps: number;
+		mouseMoves: number;
 		contextMenuBlocked: number;
 	};
 }
@@ -447,6 +448,12 @@ function createHardenedView(options: { javascript: boolean }): WebContentsView {
 			// No `preload`, and no app imports in either document. The flag is the
 			// S1/S2 split: false for the inert document, true for the mirror list.
 			javascript: options.javascript,
+			// The mirror is a tiny document that must stay frame-accurate while the
+			// owner window is hidden, unfocused or occluded (headless probe, a
+			// background app window). Chromium otherwise throttles its frame loop,
+			// and a native resize can sit unapplied for ~1 s — the exact interval
+			// `measure_viewport` is there to catch. S1 keeps the default.
+			...(options.javascript ? { backgroundThrottling: false } : {}),
 		},
 	});
 	view.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
@@ -505,6 +512,7 @@ export class AddressOverlayController {
 	private keysBlocked: number;
 	private mouseDowns: number;
 	private mouseUps: number;
+	private mouseMoves: number;
 	private mouseDownRow: number | null;
 	private contextMenuBlocked: number;
 	private lastRejected: string | null;
@@ -565,6 +573,7 @@ export class AddressOverlayController {
 		this.keysBlocked = 0;
 		this.mouseDowns = 0;
 		this.mouseUps = 0;
+		this.mouseMoves = 0;
 		this.mouseDownRow = null;
 		this.contextMenuBlocked = 0;
 		this.lastRejected = null;
@@ -767,6 +776,7 @@ export class AddressOverlayController {
 				keysBlocked: this.keysBlocked,
 				mouseDowns: this.mouseDowns,
 				mouseUps: this.mouseUps,
+				mouseMoves: this.mouseMoves,
 				contextMenuBlocked: this.contextMenuBlocked,
 			},
 			metrics: this.appMetrics ? this.appMetrics() : null,
@@ -926,39 +936,55 @@ export class AddressOverlayController {
 			return this.refuseProjection("child_unavailable");
 		}
 
-		// SIZE BEFORE PAINT, and WAIT until the child's own layout viewport is the
-		// size we asked for. The child measures its rows to prove what it painted, so
-		// a model with five rows cannot be judged against the 69-DIP view that one
-		// row sized. A hidden (headless) window throttles its frame loop, so a native
-		// resize can land up to ~1 s later; re-assert it and poll `innerHeight`
-		// instead of guessing with one fixed sleep. A visible window lands on the
-		// next frame, so this costs one evaluation there.
+		// SIZE BEFORE PAINT. The child pins its layout height from the model, so the
+		// measurement must ALSO prove the native view is the size main asked for
+		// (`innerHeight`); otherwise a deferred resize lets main claim "shown" over
+		// rows the view is not painting. A hidden (headless) window throttles its
+		// frame loop, so the mismatch is retried; a visible window lands next frame.
 		view.setBounds(bounds);
+		// VISIBLE BEFORE MEASUREMENT. Chromium does not deliver a resize to a hidden
+		// WebContentsView: the native bounds read back correctly while the renderer
+		// viewport stays at the previous height indefinitely (measured at 140→211).
+		// The child is about to be shown, and the apply below lands before the next
+		// compositor frame, so the worst case after a refusal is one frame at the
+		// new rectangle showing the model being replaced.
+		this.raiseChild(view);
+		view.setVisible(true);
 		const model = addressListViewModel(projection);
 		let measured: unknown = null;
 		let problem: string | null = null;
 		try {
 			for (let attempt = 0; attempt < 8; attempt += 1) {
-				// A dropped resize loses the attempt, not the request: re-assert the
-				// rectangle every time rather than only before the first apply.
-				view.setBounds(bounds);
+				// Re-assert only on alternate attempts: a `setBounds` per iteration
+				// would supersede the previous native resize before the compositor
+				// can apply it, starving the very transition this loop waits for.
+				if (attempt % 2 === 1) view.setBounds(bounds);
 				// A FIXED function name with a main-built JSON argument: the child never
-				// receives code, only data. `JSON.stringify` escapes quotes, U+2028/2029
-				// and `</script>` for this call by construction, and the strings inside
-				// have already been stripped of control/bidi characters.
+				// receives code, only data. `JSON.stringify` does NOT escape U+2028/2029
+				// or `</script>`; the guarantee here is that `sanitizeProjection` strips
+				// those code points from every string before this point, and that this is
+				// `executeJavaScript` rather than an HTML parsing context.
 				measured = await view.webContents.executeJavaScript(
 					`window.__loAddressOverlay && window.__loAddressOverlay.apply(${JSON.stringify(model)})`,
 					false,
 				);
-				problem = addressListMeasurementProblem(measured, projection);
+				problem = addressListMeasurementProblem(
+					measured,
+					projection,
+					bounds.height,
+				);
 				if (problem === null) break;
-				// A native view resize can take a compositor frame to reach the child's
-				// layout. That shows up as a viewport smaller than the model needs
-				// (`measure_scroll`) on the first apply after a height change; wait one
-				// frame and re-apply. Any OTHER mismatch is a real defect and refuses
-				// on the spot.
-				if (problem !== "measure_scroll") break;
-				await new Promise((done) => setTimeout(done, 30));
+				// Two mismatches are timing, not defects: the child's scrollport can
+				// predate the model height (`measure_scroll`), and the native view can
+				// still be the previous rectangle (`measure_viewport`) while the
+				// compositor catches up. Retry both, then fail closed. The spacing is
+				// 150 ms, not one frame: a HIDDEN (headless) window throttles its frame
+				// loop, and the shipped S2 matrix measured up to ~1 s before a native
+				// resize reached the child's layout. Eight attempts bound this at
+				// 1.2 s; a visible window lands on the first or second.
+				if (problem !== "measure_scroll" && problem !== "measure_viewport")
+					break;
+				await new Promise((done) => setTimeout(done, 150));
 			}
 		} catch {
 			return this.refuseProjection("apply_error");
@@ -974,8 +1000,6 @@ export class AddressOverlayController {
 		this.lastRejected = null;
 		this.state = "shown";
 		this.hiddenReason = null;
-		this.raiseChild(view);
-		view.setVisible(true);
 		return { accepted: true, shown: true, reason: null, bounds };
 	}
 
@@ -1371,13 +1395,16 @@ export class AddressOverlayController {
 			this.log(`[browser] address overlay refused redirect to ${url}`);
 		});
 		/*
-		 * S2's input policy. The child is a PRESENTATION surface: it never owns
-		 * keyboard, focus or native hit routing (S3), so every key is swallowed and
-		 * counted, and the context menu is refused. Mouse events are observed in main
-		 * and always prevented — preventing the down/up is what keeps a click on a
-		 * row from moving focus out of the parent input (a lost click is acceptable;
-		 * a wrong navigation is not).
+		 * S2's input policy, and ONLY for S2's scripted child: S1's inert document
+		 * keeps the exact listener set it had, so "S2 off is bit-for-bit S1" stays
+		 * literally true. The child is a PRESENTATION surface — it never owns
+		 * keyboard, focus or native hit routing (S3) — so every key is swallowed and
+		 * counted and the context menu is refused. Mouse DOWN/UP are observed and
+		 * prevented (preventing them is what keeps a click on a row from moving focus
+		 * out of the parent input; a lost click is acceptable, a wrong navigation is
+		 * not). MOVE is delivered untouched so the row's `:hover` can paint.
 		 */
+		if (!this.javascript) return;
 		on(contents, "before-input-event", (...args) => {
 			const event = args[0] as { preventDefault?: () => void } | undefined;
 			event?.preventDefault?.();
@@ -1390,7 +1417,6 @@ export class AddressOverlayController {
 		});
 		on(contents, "before-mouse-event", (...args) => {
 			const event = args[0] as { preventDefault?: () => void } | undefined;
-			event?.preventDefault?.();
 			const mouse = args[1] as
 				| { type?: string; x?: number; y?: number }
 				| undefined;
@@ -1401,6 +1427,14 @@ export class AddressOverlayController {
 			) {
 				return;
 			}
+			// HOVER IS NOT A CLICK. Only down/up are prevented; a prevented move
+			// never reaches the page and would make `.lo-row:hover` dead. The move
+			// is counted so a probe can prove delivery.
+			if (mouse.type === "mouseMove") {
+				this.mouseMoves += 1;
+				return;
+			}
+			event?.preventDefault?.();
 			if (mouse.type === "mouseDown") {
 				this.mouseDowns += 1;
 				this.mouseDownRow = this.rowAt(mouse.y);
