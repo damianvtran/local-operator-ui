@@ -62,7 +62,7 @@ export class Moonshine implements Listener {
 					past[`past_key_values.${layer}.${kind}.${part}`] = new ort.Tensor(
 						"float32",
 						new Float32Array(0),
-						[0, HEADS, 1, HEAD_SIZE],
+						[1, HEADS, 0, HEAD_SIZE],
 					);
 				}
 			}

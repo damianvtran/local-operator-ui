@@ -111,8 +111,8 @@ export class Supertonic implements Speaker {
 		]);
 
 		const stepCount = new ort.Tensor(
-			"int64",
-			BigInt64Array.of(BigInt(STEPS)),
+			"float32",
+			Float32Array.of(STEPS),
 			[1],
 		);
 		for (let step = 0; step < STEPS; step++) {
@@ -122,7 +122,7 @@ export class Supertonic implements Speaker {
 				latent_mask: mask,
 				encoder_outputs: hidden,
 				attention_mask: attention,
-				timestep: new ort.Tensor("int64", BigInt64Array.of(BigInt(step)), [1]),
+				timestep: new ort.Tensor("float32", Float32Array.of(step), [1]),
 				num_inference_steps: stepCount,
 			});
 			latents = out.denoised_latents;

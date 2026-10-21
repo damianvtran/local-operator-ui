@@ -110,7 +110,7 @@ test("moonshine tokens: byte tokens join as UTF-8 (é and an emoji)", () => {
 });
 
 const vocabEntries = Object.fromEntries(
-	[..." abcdefghijklmnopqrstuvwxyz-.?"].map((c, i) => [c, i]),
+	[..." abcdefghijklmnopqrstuvwxyz-.?\u0301£"].map((c, i) => [c, i]),
 );
 const stVocab = m.parseSupertonicTokenizer(
 	JSON.stringify({ model: { vocab: vocabEntries } }),
@@ -121,8 +121,9 @@ test("supertonic tokens: NFKD, whitespace, dashes, dropped symbols", () => {
 	const at = (c) => vocabEntries[c];
 	assert.deepEqual(ids("a  \n\tb"), [at("a"), at(" "), at("b")]);
 	assert.deepEqual(ids("a–b—c"), [at("a"), at("-"), at("b"), at("-"), at("c")]);
-	// NFKD splits é into e + a combining mark; the mark is outside the vocab.
-	assert.deepEqual(ids("é"), [at("e")]);
+	// NFKD splits é into e + U+0301; the pinned tokenizer.json vocabulary
+	// includes U+0301 (and £), so both survive.
+	assert.deepEqual(ids("é"), [at("e"), at("\u0301")]);
 	assert.deepEqual(ids("a😀#b"), [at("a"), at("b")]);
 	assert.deepEqual(ids("😀"), []);
 	assert.deepEqual(ids("ﬁ"), [at("f"), at("i")], "compatibility form");
@@ -214,7 +215,7 @@ test("moonshine: input names, shapes, cache feedback, stops at token 2", async (
 	assert.ok(names.includes("past_key_values.7.encoder.value"));
 	for (const n of names) {
 		assert.equal(first[n].data.length, 0, "empty past on step 0");
-		assert.deepEqual(first[n].dims, [0, 8, 1, 52]);
+		assert.deepEqual(first[n].dims, [1, 8, 0, 52]);
 	}
 	assert.deepEqual(first.encoder_hidden_states.dims, [1, 2, 2]);
 	const second = calls.decoder[1];
@@ -351,8 +352,10 @@ test("supertonic: feeds, shapes, exactly 5 denoiser calls, trimming, 44.1 kHz", 
 		]);
 		assert.deepEqual(f.noisy_latents.dims, [1, 144, latentLen]);
 		assert.deepEqual(f.latent_mask.dims, [1, latentLen]);
-		assert.equal(f.timestep.data[0], BigInt(step));
-		assert.equal(f.num_inference_steps.data[0], 5n);
+		assert.equal(f.timestep.type, "float32");
+		assert.equal(f.timestep.data[0], step);
+		assert.equal(f.num_inference_steps.type, "float32");
+		assert.equal(f.num_inference_steps.data[0], 5);
 	});
 	// Each step's output feeds the next (+1 per fake step).
 	assert.equal(
@@ -678,6 +681,45 @@ test("ensureModels: abort leaves no part and no final file", async () => {
 	await assert.rejects(run, { code: "aborted" });
 	assert.deepEqual(partsIn(dir), []);
 	assert.equal(existsSync(join(dir, "g", "a.bin")), false);
+});
+
+test("ensureModels: an oversized stream aborts model_integrity before it ends", async () => {
+	m.resetVerifiedModels();
+	const manifest = fixture({ "g/a.bin": "hello world" });
+	const dir = dirOf("oversize");
+	let pulledAll = false;
+	const big = async () => ({
+		ok: true,
+		status: 200,
+		body: new ReadableStream({
+			pull(c) {
+				c.enqueue(Buffer.alloc(8));
+				if (++big.n > 100) {
+					pulledAll = true;
+					c.close();
+				}
+			},
+		}),
+	});
+	big.n = 0;
+	await assert.rejects(m.ensureModels({ dir, fetch: big, manifest }), {
+		code: "model_integrity",
+	});
+	assert.equal(pulledAll, false);
+	assert.deepEqual(partsIn(dir), []);
+});
+
+test("ensureModels: concurrent calls share one in-flight run", async () => {
+	m.resetVerifiedModels();
+	const contents = { "g/a.bin": "hello world", "g/b.bin": "second file" };
+	const manifest = fixture(contents);
+	const dir = dirOf("shared");
+	const log = [];
+	const f = fakeFetch(contents, log);
+	const a = m.ensureModels({ dir, fetch: f, manifest });
+	const b = m.ensureModels({ dir, fetch: f, manifest });
+	await Promise.all([a, b]);
+	assert.equal(log.length, 2, "each file fetched once");
 });
 
 test("readModel refuses a name outside the manifest, and a missing file", async () => {
