@@ -262,8 +262,8 @@ test("old-root pane load, visible-reply read clears badge, and late old-target r
 		disconnect() {}
 	};
 	const api = mod.TeamBridgeApi;
-	const originalRead = api.markRead,
-		originalReplies = api.listReplies;
+	const originalRead = api.markRead;
+	const originalReplies = api.listReplies;
 	const calls = [];
 	let badge = 1;
 	let finishOld;
