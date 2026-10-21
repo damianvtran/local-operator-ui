@@ -31,6 +31,14 @@
  * ("the subtitle names the channel and the org") rather than one locale.
  */
 
+import {
+	TEAM_BRIDGE_NOTIFY_MAX_BODY,
+	TEAM_BRIDGE_NOTIFY_MAX_SUBTITLE,
+	TEAM_BRIDGE_NOTIFY_MAX_TITLE,
+	safeTeamBridgeBannerText,
+	truncateTeamBridgeText,
+} from "../../../../shared/team-bridge-notify";
+
 /** Longest preview, in code points, before the ellipsis. Slack's order of size:
  * enough to read a sentence, short enough to leave the title and subtitle room
  * in a macOS banner's ~5-line budget. */
@@ -60,22 +68,6 @@ const STRONG = /(\*\*|__)(?=\S)([\s\S]*?\S)\1/g;
 const STRIKE = /~~(?=\S)([\s\S]*?\S)~~/g;
 const EMPHASIS = /(^|[^\w*])\*(?=\S)([^*]*?\S)\*(?!\w)/g;
 const UNDERSCORE_EMPHASIS = /(^|[^\w])_(?=\S)([^_]*?\S)_(?!\w)/g;
-const WHITESPACE = /\s+/g;
-
-/**
- * Whether a code point must not reach a one-line native banner: C0/C1 controls
- * (a newline in a banner is how text impersonates a second line) and the bidi
- * embedding/override/isolate controls (how a preview could visually reorder the
- * sender line it sits under).
- */
-function isUnsafeCodePoint(code: number): boolean {
-	return (
-		code < 0x20 ||
-		(code >= 0x7f && code <= 0x9f) ||
-		(code >= 0x202a && code <= 0x202e) ||
-		(code >= 0x2066 && code <= 0x2069)
-	);
-}
 
 /**
  * A single-line, markdown-free, bounded preview of a message body, or `null`
@@ -84,7 +76,8 @@ function isUnsafeCodePoint(code: number): boolean {
  *
  * Angle brackets become their single-guillemet look-alikes rather than being
  * dropped: `a > b` must still read as a comparison, and main refuses the real
- * characters. Truncation counts code points, so an emoji is never split.
+ * characters. Truncation budgets code points but keeps whole graphemes (D1), so neither
+ * a flag nor a ZWJ/combining sequence is split.
  */
 export function teamBridgePreviewText(
 	body: string | null | undefined,
@@ -107,20 +100,11 @@ export function teamBridgePreviewText(
 		.replace(STRIKE, "$1")
 		.replace(EMPHASIS, "$1$2")
 		.replace(UNDERSCORE_EMPHASIS, "$1$2");
-	let clean = "";
-	for (const character of words) {
-		const code = character.codePointAt(0) ?? 0;
-		if (character === "<") clean += "‹";
-		else if (character === ">") clean += "›";
-		// A control becomes a space so "line one\nline two" stays two words.
-		else if (isUnsafeCodePoint(code)) clean += " ";
-		else clean += character;
-	}
-	const line = clean.replace(WHITESPACE, " ").trim();
+	// The policy is shared with title/subtitle sanitisation AND main's strict
+	// parser, so a safe body cannot still lose its banner to a hostile label.
+	const line = safeTeamBridgeBannerText(words, Number.MAX_SAFE_INTEGER);
 	if (line.length === 0) return null;
-	const points = Array.from(line);
-	if (points.length <= max) return line;
-	return `${points.slice(0, max).join("").trimEnd()}…`;
+	return truncateTeamBridgeText(line, max);
 }
 
 /** Where the message was posted, as the subtitle names it. */
@@ -200,5 +184,15 @@ export function teamBridgeBannerText(
 				? copy.countPreview(count, facts.preview)
 				: copy.count(count)
 			: (facts.preview ?? copy.fallback);
-	return { title, subtitle, body };
+	return {
+		title:
+			safeTeamBridgeBannerText(title, TEAM_BRIDGE_NOTIFY_MAX_TITLE) ||
+			copy.untitled,
+		subtitle:
+			safeTeamBridgeBannerText(subtitle, TEAM_BRIDGE_NOTIFY_MAX_SUBTITLE) ||
+			copy.untitled,
+		body:
+			safeTeamBridgeBannerText(body, TEAM_BRIDGE_NOTIFY_MAX_BODY) ||
+			copy.fallback,
+	};
 }

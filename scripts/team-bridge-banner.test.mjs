@@ -466,3 +466,131 @@ test("the additive fields are optional and refused whole when malformed", () => 
 		);
 	}
 });
+
+// R1-1: all native lines share one policy. A hostile label must neither spoof
+// another line nor make the watcher silently lose the whole banner.
+test("hostile sender/place/body labels are sanitised before IPC and strictly refused raw", () => {
+	const hostile = [
+		"\n",
+		"\t",
+		"\u0005",
+		"\u007f",
+		"\u0085",
+		"\u009f",
+		"\u061c",
+		"\u200e",
+		"\u200f",
+		"\u2028",
+		"\u2029",
+	];
+	for (let code = 0x202a; code <= 0x202e; code += 1)
+		hostile.push(String.fromCodePoint(code));
+	for (let code = 0x2066; code <= 0x2069; code += 1)
+		hostile.push(String.fromCodePoint(code));
+	for (const unsafe of hostile) {
+		const text = format.teamBridgeBannerText(
+			facts({
+				senderLabel: `Ada${unsafe}<admin>`,
+				place: { kind: "channel", name: `general${unsafe}<ops>` },
+				organizationName: `Minerva${unsafe}<org>`,
+				preview: `hello${unsafe}<world>`,
+			}),
+			copy,
+		);
+		assert.deepEqual(text, {
+			title: "Ada ‹admin›",
+			subtitle: "#general ‹ops› · Minerva ‹org›",
+			body: "hello ‹world›",
+		});
+		assert.ok(contract.parseTeamBridgeNotifyRequest(request(text)));
+		for (const field of ["title", "subtitle", "body"]) {
+			assert.equal(
+				contract.parseTeamBridgeNotifyRequest(
+					request({ [field]: `Ada${unsafe}FAKE` }),
+				),
+				null,
+			);
+			assert.equal(
+				contract.parseTeamBridgeNotifyRequest(
+					request({ [field]: `Ada${unsafe}` }),
+				),
+				null,
+			);
+		}
+	}
+	for (const unsafe of ["<", ">"]) {
+		for (const field of ["title", "subtitle", "body"]) {
+			assert.equal(
+				contract.parseTeamBridgeNotifyRequest(
+					request({ [field]: `Ada${unsafe}admin` }),
+				),
+				null,
+			);
+		}
+	}
+});
+
+test("oversized labels and bodies are bounded to each IPC limit without dropping the banner", () => {
+	const text = format.teamBridgeBannerText(
+		facts({
+			senderLabel: "👩‍💻".repeat(500),
+			place: { kind: "channel", name: "long".repeat(500) },
+			organizationName: "Org".repeat(500),
+			preview: "🙂".repeat(500),
+		}),
+		copy,
+	);
+	assert.ok(text.title.length <= contract.TEAM_BRIDGE_NOTIFY_MAX_TITLE);
+	assert.ok(text.subtitle.length <= contract.TEAM_BRIDGE_NOTIFY_MAX_SUBTITLE);
+	assert.ok(text.body.length <= contract.TEAM_BRIDGE_NOTIFY_MAX_BODY);
+	assert.ok(contract.parseTeamBridgeNotifyRequest(request(text)));
+	assert.ok(text.title.endsWith("👩‍💻…"));
+});
+
+// D1: fit the longest whole-grapheme prefix within the 140-codepoint content
+// budget, not the first 140 points of a family emoji, flag or accented letter.
+test("preview truncation keeps ZWJ emoji, flags and combining marks whole", () => {
+	for (const grapheme of ["👩‍💻", "👨‍👩‍👧‍👦", "🇻🇳", "e\u0301"]) {
+		const size = Array.from(grapheme).length;
+		const shortPrefix = "x".repeat(140 - size + 1);
+		assert.equal(
+			format.teamBridgePreviewText(`${shortPrefix}${grapheme}tail`),
+			`${shortPrefix}…`,
+		);
+		const exactPrefix = "x".repeat(140 - size);
+		assert.equal(
+			format.teamBridgePreviewText(`${exactPrefix}${grapheme}tail`),
+			`${exactPrefix}${grapheme}…`,
+		);
+		assert.equal(
+			format.teamBridgePreviewText(`${exactPrefix}${grapheme}`),
+			`${exactPrefix}${grapheme}`,
+		);
+	}
+});
+
+test("retained handlers receive only routing IDs, never the preview-bearing request", () => {
+	const h = harness();
+	try {
+		const retained = [];
+		const original = h.notifier.retainTarget.bind(h.notifier);
+		h.notifier.retainTarget = (notification, target) => {
+			retained.push(target);
+			return original(notification, target);
+		};
+		h.notifier.notify(
+			request({ threadId: "bms_root1", body: "private preview fixture" }),
+		);
+		assert.deepEqual(retained, [
+			{
+				conversationId: "bcv_abc123",
+				tenantId: "tnt_1",
+				threadId: "bms_root1",
+			},
+		]);
+		h.banners[0].emit("click");
+		assert.deepEqual(h.notifier.takePendingOpen(), retained[0]);
+	} finally {
+		h.cleanup();
+	}
+});
