@@ -296,6 +296,52 @@ export const REGISTRY_UNAVAILABLE_NOTICE =
 	"Could not scan the session registry. Close and reopen this panel to try again.";
 
 /**
+ * An ABSOLUTE stamp as an age, in the panel's duration spelling.
+ *
+ * `last_activity_s` and `stopped_at_s` are epoch seconds, not ages: the registry
+ * row carries the transcript file's mtime (`builtin.py::_sessions_list` puts
+ * `session_row.mtime` on `last_activity_s`), and the CLI's own table already
+ * subtracts it (`time.time() - row["last_activity_s"]`). Formatting the stamp
+ * itself painted a 56-year duration on every stopped session — `20747d 4h ago`
+ * at this panel's own formatter, `497932h` in the terminal's hours spelling — a
+ * number nobody can read as "when", which is how it was found on the fleet.
+ *
+ * The subtraction lives here, once, so the panel and the terminal table cannot
+ * disagree about what the field means. `nowS` is injectable so a test can pin the
+ * clock; the panel passes nothing. A stamp in the future (a clock skew across
+ * machines) formats as `0s` rather than a negative age, because `formatDuration`
+ * clamps — the same rule the terminal path gets from its own `max(0.0, …)`.
+ *
+ * `null` comes back as `null` rather than the unknown word: the caller decides
+ * which spelling applies when a stamp is absent.
+ */
+export function stampAge(
+	stamp: number | null | undefined,
+	nowS: number = Date.now() / 1000,
+): string | null {
+	/*
+	 * `0` is the never-recorded spelling, not 1970: a transcript mtime of zero
+	 * means the core had no stamp to send, and formatting it as a duration is
+	 * the same 56-year lie this helper exists to remove (`0` rendered
+	 * `20747d 5h ago`, design round 1 D6). A stamp in the FUTURE is different:
+	 * that is a real reading skewed by a clock, so it stays a clamp to `0s`.
+	 */
+	if (stamp === null || stamp === undefined || stamp <= 0) return null;
+	return formatDuration(nowS - stamp);
+}
+
+/**
+ * The separator between a stored row's stop age and its reason.
+ *
+ * NON-BREAKING spaces on both sides: with a plain ` · ` the stop sentence wraps
+ * at 768 px and leaves a dangling `·` at the end of the first line, with the
+ * reason starting the next (design round 1, D7). Gluing the token to the words
+ * on either side moves the break to a normal space before `reason:`, which is
+ * where prose breaks anyway.
+ */
+const CLAUSE_SEPARATOR = "\u00A0·\u00A0";
+
+/**
  * Section 3's table rows.
  *
  * `this session` is matched on the id the panel was opened for, so a host
@@ -305,8 +351,38 @@ export const REGISTRY_UNAVAILABLE_NOTICE =
 export function sessionLineRows(
 	lines: DesktopInfoData["sessions"]["lines"],
 	thisSessionId: string,
+	/** Epoch seconds; injectable for tests, defaulted for the panel. */
+	nowS: number = Date.now() / 1000,
 ): SessionLineRow[] {
 	return lines.map((line) => {
+		/*
+		 * The stored half of the row below: what the core RECORDED about this
+		 * session's end, or nothing. Everything here is a stamp the wire sends, so
+		 * both ages go through `stampAge` — never `formatDuration` on the raw field.
+		 */
+		const lastActive = stampAge(line.last_activity_s, nowS);
+		const stoppedAge = stampAge(line.stopped_at_s, nowS);
+		/* The trimmed token, so a padded reason does not pad the row. */
+		const stopReason = line.stop_reason?.trim() || null;
+		/*
+		 * A recorded stop outranks "last active": it is the fact the reader came
+		 * for, and last activity alone cannot separate a session that was closed
+		 * from one that merely fell out of the registry.
+		 *
+		 * The reason is printed RAW and LABELLED. Raw, because this repository
+		 * has no table of the core's stop tokens and inventing one would be a
+		 * second vocabulary for a backend-owned value (`idle-exit` is what its
+		 * log line says; the long shape carries a measured clause). Labelled,
+		 * because the token alone reads as engineer vocabulary in a user-facing
+		 * cell (design round 1, D2) — `reason:` says what the token is without
+		 * changing it.
+		 */
+		const stopLine =
+			stoppedAge === null
+				? null
+				: stopReason === null
+					? `stopped ${stoppedAge} ago`
+					: `stopped ${stoppedAge} ago${CLAUSE_SEPARATOR}reason: ${stopReason}`;
 		const markers: SessionLineRow["markers"] = [];
 		if (line.session_id === thisSessionId) {
 			markers.push({ label: "this session", tone: "neutral" });
@@ -323,14 +399,23 @@ export function sessionLineRows(
 			model: line.model_label,
 			/*
 			 * A `stored` row has no uptime to report — it is not running — so it
-			 * reports how long ago it was last active instead. A row that showed
-			 * `0s` uptime for a stored session would read as running.
+			 * reports how long ago it was last active instead, and how it ended when
+			 * the core recorded a stop. A row that showed `0s` uptime for a stored
+			 * session would read as running, and a stop line on a LIVE row would
+			 * claim an end that has not happened, so the stopped spelling is gated on
+			 * `state === "stored"` as well as on the stamp.
+			 *
+			 * The last-active spelling carries its own label for the same reason the
+			 * reason does: `1h 11m ago` beside `stopped 1h 10m ago` is two durations
+			 * with no visible difference in kind, so a SIGKILLed session — one with
+			 * no stop record — would read as stopped (design round 1, D1).
 			 */
 			uptime:
 				line.state === "stored"
-					? line.last_activity_s === null
-						? "unknown"
-						: `${formatDuration(line.last_activity_s)} ago`
+					? (stopLine ??
+						(lastActive === null
+							? UNKNOWN_WORD
+							: `last active ${lastActive} ago`))
 					: formatDuration(line.uptime_s),
 			memory: formatBytes(line.footprint_bytes ?? line.rss_bytes),
 			markers,
