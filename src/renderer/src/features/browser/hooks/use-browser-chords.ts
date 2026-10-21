@@ -296,7 +296,49 @@ export function useBrowserChords(
 				},
 				platform,
 			);
-			if (!intent) return;
+			if (!intent) {
+				/*
+				 * THE PRINTABLE-KEY SEED (design §4, entry 2). A single character typed
+				 * while the browser's own root owns focus — and the target is not
+				 * editable — opens the popout with that character. This must NEVER run
+				 * for a key that reached the driven page: that is a separate native
+				 * view with no DOM target here. Space/Enter on a real control are
+				 * activations, and a modifier combination is not typing.
+				 */
+				if (
+					event.key.length !== 1 ||
+					event.metaKey ||
+					event.ctrlKey ||
+					event.altKey ||
+					event.repeat ||
+					event.isComposing
+				)
+					return;
+				if (event.key === " ") {
+					// Space activates a focused button/tab; only text fields take it as
+					// a character, and those are excluded below.
+					const focused = event.target;
+					if (
+						focused instanceof Element &&
+						focused.closest("button, [role=tab], [role=menuitem], a[href]")
+					)
+						return;
+				}
+				const target = event.target;
+				if (target instanceof Element) {
+					if (
+						target.closest(
+							'input, textarea, [contenteditable="true"], [contenteditable=""], [role=menu], [role=dialog], [role=combobox]',
+						)
+					)
+						return;
+				} else if (!(target instanceof Node)) return;
+				event.preventDefault();
+				event.stopPropagation();
+				report(true, true);
+				address.current?.raise({ origin: "chrome", seed: event.key });
+				return;
+			}
 			event.preventDefault();
 			event.stopPropagation();
 			// Main clears its report on restart/teardown; a real accepted DOM press

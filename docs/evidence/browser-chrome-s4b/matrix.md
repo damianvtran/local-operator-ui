@@ -1,0 +1,20 @@
+| Row | Claim | Status | Actual evidence |
+| --- | --- | --- | --- |
+| B0 | built artifacts exist and the product logs the darwin chrome arm | PASS | {"armed":true,"identity":{"main":"9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046","renderer":"85faa87c0ff78cf76ab15b78fee26c9dbb1499d48e07c8fe3dd6ce414897824b","listDocument":"9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e"}} |
+| R1 | rest: no bar, no dock, no popout; page starts at the strip's bottom | PASS | {"rest":{"content":{"x":260,"y":69,"width":1120,"height":831},"strip":{"x":260,"y":32,"width":1120,"height":37},"popout":null,"barCount":0,"dockCount":0,"popoutPresent":false,"addressTrigger":true,"triggerText":"127.0.0.1:62815","triggerWidth":115,"hash":"#/browser"},"restPage":{"scrollY":1200,"innerHeight":831,"markerY":300}} |
+| P1 | Cmd+L raises the popout over the strip at the strip's width | PASS | {"raised":true,"open":{"content":{"x":260,"y":69,"width":1120,"height":831},"strip":{"x":260,"y":32,"width":1120,"height":37},"popout":{"x":260,"y":32,"width":1120,"height":37},"barCount":1,"dockCount":0,"popoutPresent":true,"addressTrigger":true,"triggerText":"127.0.0.1:62815","triggerWidth":115,"hash":"#/browser"}} |
+| P2 | page content rect and scroll are identical before/open/after | PASS | {"restContent":{"x":260,"y":69,"width":1120,"height":831},"openContent":{"x":260,"y":69,"width":1120,"height":831},"restPage":{"scrollY":1200,"innerHeight":831,"markerY":300},"openPage":{"scrollY":1200,"innerHeight":831,"markerY":300}} |
+| P3 | the native list child exists and its viewport width is the strip width | PASS | {"childTarget":{"type":"page","url":"file:///Users/damian/local-operator-ui/.worktrees/browser-chrome-s4b/out/renderer/browser-address-overlay-list.html"},"childViewport":{"innerWidth":1120,"innerHeight":69},"stripWidth":1120,"note":"child viewport read, not WebContentsView.getBounds(); innerHeight is the content-sized list, not a dock"} |
+| D1 | Escape lowers the popout and restores the page geometry | PASS | {"escaped":true,"after":{"content":{"x":260,"y":69,"width":1120,"height":831},"strip":{"x":260,"y":32,"width":1120,"height":37},"popout":null,"barCount":0,"dockCount":0,"popoutPresent":false,"addressTrigger":true,"triggerText":"127.0.0.1:62815","triggerWidth":115,"hash":"#/browser"},"afterPage":{"scrollY":1200,"innerHeight":831,"markerY":300}} |
+| D2 | a native page-focus event lowers the popout (headless focus helper refuses) | BLOCKED | {"clickDismissed":false,"reason":"headless/unfocused window: focusBrowserChordTarget refuses the page focus, so main's `focus` event never fires. Needs a focused window (QA/operator)."} |
+| D3 | a main-frame navigation lowers the popout | PASS | {"navDismissed":true} |
+| T1 | the strip address trigger raises the same popout as Cmd+L | PASS | {"triggerRaised":true,"triggerState":{"value":"127.0.0.1:62815/second","active":"browser-address"}} |
+| T2 | a printable key on the chrome root raises the popout seeded with it | PASS | {"seeded":true,"seededValue":"s","seedFocus":{"tag":"browser-tab","role":"tab"},"synthetic":{"popout":true,"value":"s"},"note":"CDP key event"} |
+| T3 | opening another tab lowers the popout (layout dismissal) | PASS | {"tabDismissed":true} |
+| E1 | typing an address and pressing Enter navigates and lowers the popout | PASS | {"enteredGone":true,"enteredUrl":"http://127.0.0.1:62815/entered"} |
+| F1 | Tier 1/2 fallbacks are source-only here; native failure injection is BLOCKED | BLOCKED | Tier 1 (child unavailable) and Tier 2 (two focus failures) need fault injection in a debug build; source paths are browser-surface.tsx (addressFallback, overlayMode) and address-overlay.ts (mode). No user env var exists by design. |
+| BL1 | native composite pixels/hit routing/AX and other platforms | BLOCKED | Composite pixels, native hit routing, real macOS IME, VoiceOver, Windows and Linux are unmeasured. The child viewport width is a renderer read, not native bounds. |
+
+At least one driven row passed; read FAIL rows before claiming the slice.
+
+Limitation: no native composite, hit routing, IME, AX or non-darwin measurement.

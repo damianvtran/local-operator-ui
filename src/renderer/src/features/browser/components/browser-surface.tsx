@@ -11,6 +11,7 @@ import { Button, Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { chordCaption } from "@shared/keymap/keymap-chord";
+import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	AlertTriangle,
@@ -399,7 +400,10 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				field?.select();
 				return;
 			}
-			if (popoutRef.current && seed === undefined) {
+			if (popoutRef.current) {
+				// The row is already raised; its own input owns typing. A chord raise
+				// re-selects; a seed that arrives while it is open has no second field
+				// to go to, so it is dropped rather than replacing the draft.
 				addressRef.current?.focus();
 				addressRef.current?.select();
 				return;
@@ -928,15 +932,20 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 								<Button
 									variant="ghost"
 									size="icon-sm"
-									className="ml-2 shrink-0 gap-1 self-center px-1"
+									className={cn(
+										"ml-2 min-w-7 shrink-0 gap-1 self-center",
+										siteHost && anchor !== null && anchor.width >= 672
+											? "h-7 w-auto px-1"
+											: "size-7",
+									)}
 									aria-label={t("ui.browser.browser_url_bar.address")}
 									aria-keyshortcuts={addressChord.aria}
 									onClick={() => raiseAddress({ origin: "chrome" })}
 									data-tour-tag="browser-address-trigger"
 								>
 									<SiteTriggerIcon aria-hidden className="size-3.5" />
-									{siteHost && (
-										<span className="hidden max-w-[104px] truncate text-meta text-ink-dim @2xl:inline">
+									{siteHost && anchor !== null && anchor.width >= 672 && (
+										<span className="max-w-[104px] truncate text-meta text-ink-dim">
 											{siteHost}
 										</span>
 									)}

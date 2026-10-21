@@ -1,0 +1,214 @@
+{
+  "generatedAt": "2026-10-21T18:42:48.857Z",
+  "durationMs": 7293,
+  "source": "node scripts/browser-chrome-s4b-probe.mjs",
+  "identity": {
+    "main": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046",
+    "renderer": "85faa87c0ff78cf76ab15b78fee26c9dbb1499d48e07c8fe3dd6ce414897824b",
+    "listDocument": "9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e"
+  },
+  "rest": {
+    "content": {
+      "x": 260,
+      "y": 69,
+      "width": 1120,
+      "height": 831
+    },
+    "strip": {
+      "x": 260,
+      "y": 32,
+      "width": 1120,
+      "height": 37
+    },
+    "popout": null,
+    "barCount": 0,
+    "dockCount": 0,
+    "popoutPresent": false,
+    "addressTrigger": true,
+    "triggerText": "127.0.0.1:62815",
+    "triggerWidth": 115,
+    "hash": "#/browser"
+  },
+  "restPage": {
+    "scrollY": 1200,
+    "innerHeight": 831,
+    "markerY": 300
+  },
+  "open": {
+    "content": {
+      "x": 260,
+      "y": 69,
+      "width": 1120,
+      "height": 831
+    },
+    "strip": {
+      "x": 260,
+      "y": 32,
+      "width": 1120,
+      "height": 37
+    },
+    "popout": {
+      "x": 260,
+      "y": 32,
+      "width": 1120,
+      "height": 37
+    },
+    "barCount": 1,
+    "dockCount": 0,
+    "popoutPresent": true,
+    "addressTrigger": true,
+    "triggerText": "127.0.0.1:62815",
+    "triggerWidth": 115,
+    "hash": "#/browser"
+  },
+  "openPage": {
+    "scrollY": 1200,
+    "innerHeight": 831,
+    "markerY": 300
+  },
+  "after": {
+    "content": {
+      "x": 260,
+      "y": 69,
+      "width": 1120,
+      "height": 831
+    },
+    "strip": {
+      "x": 260,
+      "y": 32,
+      "width": 1120,
+      "height": 37
+    },
+    "popout": null,
+    "barCount": 0,
+    "dockCount": 0,
+    "popoutPresent": false,
+    "addressTrigger": true,
+    "triggerText": "127.0.0.1:62815",
+    "triggerWidth": 115,
+    "hash": "#/browser"
+  },
+  "afterPage": {
+    "scrollY": 1200,
+    "innerHeight": 831,
+    "markerY": 300
+  },
+  "childViewport": {
+    "innerWidth": 1120,
+    "innerHeight": 69
+  },
+  "rows": [
+    {
+      "id": "B0",
+      "claim": "built artifacts exist and the product logs the darwin chrome arm",
+      "mode": "source+boot",
+      "status": "PASS",
+      "evidence": "{\"armed\":true,\"identity\":{\"main\":\"9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046\",\"renderer\":\"85faa87c0ff78cf76ab15b78fee26c9dbb1499d48e07c8fe3dd6ce414897824b\",\"listDocument\":\"9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e\"}}",
+      "at": "2026-10-21T18:42:42.444Z"
+    },
+    {
+      "id": "R1",
+      "claim": "rest: no bar, no dock, no popout; page starts at the strip's bottom",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"rest\":{\"content\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"strip\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"popout\":null,\"barCount\":0,\"dockCount\":0,\"popoutPresent\":false,\"addressTrigger\":true,\"triggerText\":\"127.0.0.1:62815\",\"triggerWidth\":115,\"hash\":\"#/browser\"},\"restPage\":{\"scrollY\":1200,\"innerHeight\":831,\"markerY\":300}}",
+      "at": "2026-10-21T18:42:43.342Z"
+    },
+    {
+      "id": "P1",
+      "claim": "Cmd+L raises the popout over the strip at the strip's width",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"raised\":true,\"open\":{\"content\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"strip\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"popout\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"barCount\":1,\"dockCount\":0,\"popoutPresent\":true,\"addressTrigger\":true,\"triggerText\":\"127.0.0.1:62815\",\"triggerWidth\":115,\"hash\":\"#/browser\"}}",
+      "at": "2026-10-21T18:42:43.471Z"
+    },
+    {
+      "id": "P2",
+      "claim": "page content rect and scroll are identical before/open/after",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"restContent\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"openContent\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"restPage\":{\"scrollY\":1200,\"innerHeight\":831,\"markerY\":300},\"openPage\":{\"scrollY\":1200,\"innerHeight\":831,\"markerY\":300}}",
+      "at": "2026-10-21T18:42:43.471Z"
+    },
+    {
+      "id": "P3",
+      "claim": "the native list child exists and its viewport width is the strip width",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"childTarget\":{\"type\":\"page\",\"url\":\"file:///Users/damian/local-operator-ui/.worktrees/browser-chrome-s4b/out/renderer/browser-address-overlay-list.html\"},\"childViewport\":{\"innerWidth\":1120,\"innerHeight\":69},\"stripWidth\":1120,\"note\":\"child viewport read, not WebContentsView.getBounds(); innerHeight is the content-sized list, not a dock\"}",
+      "at": "2026-10-21T18:42:43.472Z"
+    },
+    {
+      "id": "D1",
+      "claim": "Escape lowers the popout and restores the page geometry",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"escaped\":true,\"after\":{\"content\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"strip\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"popout\":null,\"barCount\":0,\"dockCount\":0,\"popoutPresent\":false,\"addressTrigger\":true,\"triggerText\":\"127.0.0.1:62815\",\"triggerWidth\":115,\"hash\":\"#/browser\"},\"afterPage\":{\"scrollY\":1200,\"innerHeight\":831,\"markerY\":300}}",
+      "at": "2026-10-21T18:42:43.482Z"
+    },
+    {
+      "id": "D2",
+      "claim": "a native page-focus event lowers the popout (headless focus helper refuses)",
+      "mode": "driven",
+      "status": "BLOCKED",
+      "evidence": "{\"clickDismissed\":false,\"reason\":\"headless/unfocused window: focusBrowserChordTarget refuses the page focus, so main's `focus` event never fires. Needs a focused window (QA/operator).\"}",
+      "at": "2026-10-21T18:42:48.612Z"
+    },
+    {
+      "id": "D3",
+      "claim": "a main-frame navigation lowers the popout",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"navDismissed\":true}",
+      "at": "2026-10-21T18:42:48.641Z"
+    },
+    {
+      "id": "T1",
+      "claim": "the strip address trigger raises the same popout as Cmd+L",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"triggerRaised\":true,\"triggerState\":{\"value\":\"127.0.0.1:62815/second\",\"active\":\"browser-address\"}}",
+      "at": "2026-10-21T18:42:48.652Z"
+    },
+    {
+      "id": "T2",
+      "claim": "a printable key on the chrome root raises the popout seeded with it",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"seeded\":true,\"seededValue\":\"s\",\"seedFocus\":{\"tag\":\"browser-tab\",\"role\":\"tab\"},\"synthetic\":{\"popout\":true,\"value\":\"s\"},\"note\":\"CDP key event\"}",
+      "at": "2026-10-21T18:42:48.682Z"
+    },
+    {
+      "id": "T3",
+      "claim": "opening another tab lowers the popout (layout dismissal)",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"tabDismissed\":true}",
+      "at": "2026-10-21T18:42:48.856Z"
+    },
+    {
+      "id": "E1",
+      "claim": "typing an address and pressing Enter navigates and lowers the popout",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"enteredGone\":true,\"enteredUrl\":\"http://127.0.0.1:62815/entered\"}",
+      "at": "2026-10-21T18:42:48.727Z"
+    },
+    {
+      "id": "F1",
+      "claim": "Tier 1/2 fallbacks are source-only here; native failure injection is BLOCKED",
+      "mode": "source",
+      "status": "BLOCKED",
+      "evidence": "Tier 1 (child unavailable) and Tier 2 (two focus failures) need fault injection in a debug build; source paths are browser-surface.tsx (addressFallback, overlayMode) and address-overlay.ts (mode). No user env var exists by design.",
+      "at": "2026-10-21T18:42:48.856Z"
+    },
+    {
+      "id": "BL1",
+      "claim": "native composite pixels/hit routing/AX and other platforms",
+      "mode": "blocked",
+      "status": "BLOCKED",
+      "evidence": "Composite pixels, native hit routing, real macOS IME, VoiceOver, Windows and Linux are unmeasured. The child viewport width is a renderer read, not native bounds.",
+      "at": "2026-10-21T18:42:48.856Z"
+    }
+  ]
+}

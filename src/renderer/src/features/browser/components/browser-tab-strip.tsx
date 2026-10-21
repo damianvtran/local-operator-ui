@@ -964,7 +964,14 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			 * only nothing selects it and the flat `sunken` track is unchanged.
 			 */
 			data-glass-region="chrome"
-			className="flex flex-col border-hairline border-b bg-sunken"
+			className={cn(
+				"flex flex-col border-hairline border-b bg-sunken",
+				// The popout is opaque and covers this band; `invisible` is what
+				// stops the trailing controls and `+` painting THROUGH it (measured
+				// in the S4b owner frame: the trigger/host and plus sat over the
+				// field, because inert hides interaction but not pixels).
+				chromeInert && "invisible",
+			)}
 			role="tablist"
 			aria-label={t("ui.browser.browser_tab_strip.browser_tabs")}
 			data-tour-tag="browser-tab-strip"
