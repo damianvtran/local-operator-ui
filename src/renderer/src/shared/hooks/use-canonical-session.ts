@@ -31,6 +31,7 @@
  * measurable in the browser's own timeline rather than estimated.
  */
 
+import { applyJobDeltas } from "@features/chat/canonical/job-deltas";
 import {
 	type JournalOrderRead,
 	currentOrderRevision,
@@ -4830,6 +4831,20 @@ export function useCanonicalSessionStream(
 								frontend: {
 									...next.frontend,
 									...update.changes,
+									/*
+									 * THE LIVE ROSTER'S DELTA, folded over the roster this view already
+									 * paints. `changes.jobs` (the snapshot's full list) OUTRANKS it when
+									 * both are present - see the module's own note - so the delta is
+									 * applied only when the update did not carry the whole list.
+									 */
+									...(update.changes.jobs === undefined && update.job_deltas
+										? {
+												jobs: applyJobDeltas(
+													next.frontend.jobs,
+													update.job_deltas,
+												),
+											}
+										: {}),
 									attention: mergeCompletionAttention(
 										next.frontend.attention,
 										update.changes.attention,
