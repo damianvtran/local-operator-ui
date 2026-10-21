@@ -41,9 +41,11 @@ import {
 	organizationOptions,
 	participantLabel,
 	personDisplayLabel,
-	personRowState,
 	preferredScope,
 	railSections,
+	recipientCandidates,
+	recipientKey,
+	sendFirstMessage,
 	targetConversation,
 	teamBridgeEligibility,
 	unmatchedDirects,
@@ -423,28 +425,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * The compose draft's candidates: every reachable person (not you) and
 	 * every chief of staff, labelled the way the rail labels them.
 	 */
-	const candidates = useMemo<TeamBridgeRecipient[]>(() => {
-		const humans: TeamBridgeRecipient[] = people
-			.filter((member) => {
-				const state = personRowState(member, selfAccountId);
-				return state === "openable" || state === "paused";
-			})
-			.map((member) => ({
-				kind: "human",
-				accountId: member.account_id,
-				label: personDisplayLabel(member),
-			}));
-		const agents: TeamBridgeRecipient[] = chiefs.map((chief) => ({
-			kind: "agent",
-			accountId: chief.person.account_id,
-			endpointId: chief.endpointId,
-			label: t("ui.teamBridge.chief.label", {
-				agent: chief.agentName,
-				person: personDisplayLabel(chief.person),
-			}),
-		}));
-		return [...humans, ...agents];
-	}, [people, chiefs, selfAccountId]);
+	const candidates = useMemo(
+		() =>
+			recipientCandidates(people, selfAccountId, (agent, person) =>
+				t("ui.teamBridge.chief.label", { agent, person }),
+			),
+		[people, selfAccountId],
+	);
 
 	const composeRecipients = target?.type === "compose" ? target.recipients : [];
 	// `selected` already resolves a one-recipient draft to its existing DM
@@ -599,6 +586,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					<RailSection
 						id="team-bridge-channels-heading"
 						title={t("ui.teamBridge.section.channels")}
+						add={
+							createDisabled
+								? undefined
+								: {
+										label: t("ui.teamBridge.section.channels_add"),
+										onAdd: onNewChannel,
+									}
+						}
 						empty={
 							listState === "ready" && sections.channels.length === 0
 								? {
@@ -619,6 +614,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					<RailSection
 						id="team-bridge-groups-heading"
 						title={t("ui.teamBridge.section.groups")}
+						add={
+							createDisabled
+								? undefined
+								: {
+										label: t("ui.teamBridge.section.groups_add"),
+										onAdd: () => onTarget({ type: "compose", recipients: [] }),
+									}
+						}
 						empty={
 							listState === "ready" && sections.groups.length === 0
 								? {
@@ -728,7 +731,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 													"chief",
 													chief.person.account_id,
 												)}
-												dm={dmWithAgent(listRows, chief.person.account_id)}
+												dm={dmWithAgent(
+													listRows,
+													chief.person.account_id,
+													selfAccountId,
+												)}
 												readOnly={readOnly}
 												onSelect={() =>
 													onTarget({
@@ -754,6 +761,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					<div className="flex flex-1 items-center justify-center px-6">
 						{listState === "loading" ? (
 							<Spinner size="sm" label={t("ui.teamBridge.list.loading")} />
+						) : listState === "error" ? (
+							/* A failed read never claims emptiness (design round 1, D7):
+							   the rail already states the failure and offers Try again. */
+							<p className="max-w-sm text-center text-[13px] text-ink-muted">
+								{t("ui.teamBridge.list.error_pane")}
+							</p>
 						) : (
 							<div className="max-w-sm text-center">
 								<p className="font-medium text-[13px] text-ink">
@@ -860,18 +873,59 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										{t("ui.teamBridge.scope.thread_unknown")}
 									</p>
 								) : shown === null ? (
-									/* No thread yet: an addressed, empty draft. Slack shows the
-									   person's card here; the line says the thread starts with the
-									   first message, so nobody wonders whether a click created one. */
-									<p className="mt-auto px-5 pb-4 text-[13px] text-ink-muted">
-										{target.type === "compose"
-											? composeRecipients.length === 0
-												? t("ui.teamBridge.compose.empty")
-												: t("ui.teamBridge.thread.draft_group")
-											: t("ui.teamBridge.thread.draft", {
-													name: paneTitle ?? "",
-												})}
-									</p>
+									/*
+									 * No thread yet: an addressed, empty draft, introduced the way
+									 * Slack and Discord open an empty DM (design round 1, D5): a
+									 * bottom-anchored block with the person's mark, their name and
+									 * one line. The copy never says "created": that nothing is
+									 * written until the first send is the code's fact, not the
+									 * reader's concern. A compose draft names who it will reach
+									 * (D6) instead of the generic thread line.
+									 */
+									<div className="mt-auto flex flex-col gap-2 px-5 pb-5">
+										{target.type === "compose" ? (
+											<p className="text-[13px] text-ink-muted">
+												{composeRecipients.length === 0
+													? t("ui.teamBridge.compose.empty")
+													: t("ui.teamBridge.thread.intro_group", {
+															names: composeRecipients
+																.map((recipient) => recipient.label)
+																.join(", "),
+														})}
+											</p>
+										) : (
+											<>
+												<span
+													aria-hidden="true"
+													className={cn(
+														"flex size-14 items-center justify-center rounded-xl font-semibold text-[22px]",
+														target.type === "chief"
+															? "bg-accent-wash text-accent"
+															: "bg-sunken text-ink-muted",
+													)}
+												>
+													{target.type === "chief" ? (
+														<Bot size={26} />
+													) : (
+														(paneTitle ?? "").trim().charAt(0).toUpperCase() ||
+														"?"
+													)}
+												</span>
+												<p className="font-semibold text-[17px] text-ink">
+													{paneTitle}
+												</p>
+												<p className="text-[13px] text-ink-muted">
+													{target.type === "chief"
+														? t("ui.teamBridge.thread.intro_chief", {
+																name: paneTitle ?? "",
+															})
+														: t("ui.teamBridge.thread.intro_person", {
+																name: paneTitle ?? "",
+															})}
+												</p>
+											</>
+										)}
+									</div>
 								) : messageState === "loading" ? (
 									<div className="flex items-center justify-center py-10">
 										<Spinner
@@ -940,23 +994,44 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											rows={1}
 											disabled={!canCompose}
 											placeholder={
-												paneTitle && target.type !== "compose"
+												target.type === "compose" &&
+												composeRecipients.length > 0
 													? t("ui.teamBridge.composer.placeholder_to", {
-															name: paneTitle,
+															name: composeRecipients
+																.map((recipient) => recipient.label)
+																.join(", "),
 														})
-													: t("ui.teamBridge.composer.placeholder")
+													: paneTitle && target.type !== "compose"
+														? t("ui.teamBridge.composer.placeholder_to", {
+																name: paneTitle,
+															})
+														: t("ui.teamBridge.composer.placeholder")
 											}
 											aria-label={t("ui.teamBridge.composer.placeholder")}
 											className="block max-h-40 min-h-10 w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-[14px] text-ink outline-none placeholder:text-ink-dim disabled:cursor-not-allowed"
 										/>
 										<div className="flex items-center gap-2 px-2 pb-2">
-											<span className="min-w-0 flex-1 truncate pl-1.5 text-meta-sm text-ink-dim">
+											{/*
+											 * The key hint shows only while there is something to send
+											 * (design round 1, D8): permanent chrome the agent composer,
+											 * Slack and Discord do not carry. The slot stays, so Send
+											 * does not move when the hint appears.
+											 */}
+											<span
+												className={cn(
+													"min-w-0 flex-1 truncate pl-1.5 text-meta-sm text-ink-dim transition-opacity duration-fast",
+													draft.trim() ? "opacity-100" : "opacity-0",
+												)}
+												aria-hidden={!draft.trim()}
+											>
 												{t("ui.teamBridge.composer.hint")}
 											</span>
 											<Button
 												size="icon-sm"
 												variant="primary"
-												className="rounded-lg"
+												/* A rounded square, the avatar's shape (design round 1,
+												   D11), not the pill the size's default radius gave. */
+												className="rounded-md"
 												disabled={!draft.trim() || sending || !canCompose}
 												aria-label={t("ui.teamBridge.composer.send")}
 												onClick={submit}
@@ -1076,6 +1151,12 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	const conversations = list.data?.conversations ?? [];
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
 	const people = directory.data?.members ?? [];
+	// The channel form offers the same people and chiefs of staff as the To: bar.
+	const channelCandidates = recipientCandidates(
+		people,
+		selfAccountId,
+		(agent, person) => t("ui.teamBridge.chief.label", { agent, person }),
+	);
 
 	const [target, setTarget] = useState<TeamBridgeTarget | null>(() =>
 		requestedConversation
@@ -1210,31 +1291,67 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	 */
 	const [creating, setCreating] = useState(false);
 	const [firstSendFailed, setFirstSendFailed] = useState(false);
+	/*
+	 * THE CONVERSATION A DRAFT ALREADY CREATED, keyed by the draft's identity
+	 * (review round 1, R1-2). A first send is two writes: create, then post.
+	 * When the create lands and the post fails, the target is still the draft,
+	 * so a retry would create AGAIN: harmless for a DM (find-or-create) but a
+	 * second, duplicate GROUP, because groups are not find-or-create and the
+	 * `client_ref` only dedupes inside one conversation. The retry reuses the
+	 * remembered id instead, so a group draft creates at most one group however
+	 * many times the post is retried. A ref, not state: nothing renders from it.
+	 */
+	const createdForDraft = useRef(
+		new Map<string, { id: string; tenantId: string | undefined }>(),
+	);
+	/*
+	 * The target the reader is looking at NOW, for an async send to compare
+	 * against after it resolves (review round 1, R1-6): the closure's `target`
+	 * is the one from the render that started the send.
+	 */
+	const targetRef = useRef(target);
+	targetRef.current = target;
+
 	const sendBody = async (body: string, clientRef: string) => {
 		if (selected !== null) return send.mutateAsync({ clientRef, body });
-		const input = draftCreateInput(draftRecipients());
+		const recipients = draftRecipients();
+		const input = draftCreateInput(recipients);
 		if (input === null) return undefined;
+		const draftKey = `${mergedView ? "*" : scope}|${input.kind}|${recipients
+			.map(recipientKey)
+			.sort()
+			.join(",")}`;
+		const startedOn = target;
 		setCreating(true);
 		setFirstSendFailed(false);
 		try {
-			const created = (await create.mutateAsync(input)) as {
-				id?: string;
-				tenant_id?: string;
-			};
-			if (!created.id) throw new Error("create returned no conversation id");
-			// The send goes straight to the API rather than through the selected
-			// conversation's mutation hook: that hook is bound to the conversation
-			// selected at RENDER time, which a just-created row is not yet.
-			await TeamBridgeApi.send(created.id, {
-				clientRef,
+			const { id: conversationId } = await sendFirstMessage({
+				draftKey,
+				input,
 				body,
-				tenantId: created.tenant_id ?? (mergedView ? undefined : scope),
+				clientRef,
+				tenantId: mergedView ? undefined : scope,
+				remembered: createdForDraft.current,
+				create: (createInput) =>
+					create.mutateAsync(createInput) as Promise<{
+						id?: string;
+						tenant_id?: string;
+					}>,
+				// Straight to the API rather than the selected conversation's
+				// mutation hook: that hook is bound to the conversation selected at
+				// RENDER time, which a just-created row is not yet.
+				post: (id, message) => TeamBridgeApi.send(id, message),
 			});
-			if (target?.type === "compose") {
-				setTarget({ type: "conversation", id: created.id });
+			/*
+			 * Move to the new group only if the reader is STILL on the draft that
+			 * sent it. A person or chief target needs no move: once the list
+			 * refetches, the same target resolves to the new DM by itself.
+			 */
+			if (startedOn?.type === "compose" && targetRef.current === startedOn) {
+				setTarget({ type: "conversation", id: conversationId });
 			}
 			await list.refetch();
-			return created;
+			return { id: conversationId };
 		} catch (error) {
 			setFirstSendFailed(true);
 			throw error;
@@ -1342,6 +1459,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			/>
 			<TeamBridgeCreateDialog
 				open={channelFormOpen}
+				candidates={channelCandidates}
 				pending={create.isPending}
 				error={create.isError ? t("ui.teamBridge.create.error") : undefined}
 				onClose={() => setChannelFormOpen(false)}

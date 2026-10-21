@@ -4,7 +4,7 @@ import { cn } from "@shared/lib/utils";
 import { Bot } from "lucide-react";
 import type { FC } from "react";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
-import { ProjectMarkdown } from "../projects/project-markdown";
+import { TeamBridgeMarkdown } from "./team-bridge-markdown";
 import { type ThreadItem, threadItems } from "./team-bridge-model";
 
 /**
@@ -27,7 +27,7 @@ import { type ThreadItem, threadItems } from "./team-bridge-model";
  * THE BODY IS MARKDOWN. Agents post structured write-ups (headings, lists,
  * code, links) and the operator's QA-coordination traffic is exactly that, so
  * the body goes through the app's one sanctioned prose renderer
- * (`ProjectMarkdown`: GFM, external links open in the browser, nothing else
+ * (`TeamBridgeMarkdown`: GFM, external links open in the browser, images as text, nothing else
  * is a link). That renderer emits no raw HTML, so a hostile body cannot inject
  * markup.
  *
@@ -174,9 +174,9 @@ const MessageRow: FC<{
 						{t("ui.teamBridge.thread.withheld")}
 					</p>
 				) : (
-					<ProjectMarkdown className="team-bridge-message-body text-[14px] text-ink">
+					<TeamBridgeMarkdown className="team-bridge-message-body text-[14px] text-ink">
 						{message.body}
-					</ProjectMarkdown>
+					</TeamBridgeMarkdown>
 				)}
 			</div>
 		</li>

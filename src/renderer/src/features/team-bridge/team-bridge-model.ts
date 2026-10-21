@@ -6,7 +6,6 @@ import type {
 	TeamBridgeMemberInput,
 	TeamBridgeMessage,
 	TeamBridgeNotify,
-	TeamBridgeParticipant,
 	TeamBridgeTenantId,
 } from "../../../../shared/team-bridge-contract";
 
@@ -89,15 +88,6 @@ export function conversationTitle(
 	if (labels.length === 0) return null;
 	if (labels.length <= 3) return labels.join(", ");
 	return `${labels.slice(0, 2).join(", ")} +${labels.length - 2}`;
-}
-
-/** The icon/glyph family a conversation row uses, before Lucide picks one. */
-export function conversationGlyph(
-	conversation: TeamBridgeConversation,
-): "hash" | "users" | "at" {
-	if (conversation.kind === "channel") return "hash";
-	if (conversation.kind === "group") return "users";
-	return "at";
 }
 
 /**
@@ -238,34 +228,6 @@ export function conversationMemberCount(
 			.length;
 	}
 	return conversation.member_count ?? 0;
-}
-
-/** True when at least one ACTIVE member is an agent. Badges read this. */
-export function hasAgentParticipant(
-	conversation: TeamBridgeConversation,
-): boolean {
-	return conversation.members.some(
-		(member) => member.kind === "agent" && member.state === "active",
-	);
-}
-
-/**
- * The members a reader sees, in a stable order.
- *
- * Active people first, then agents, then invited people: the header's badges
- * and the create dialog's summary both read this order, so "who is in this
- * conversation" answers the same way wherever it is asked.
- */
-export function orderedMembers(
-	conversation: TeamBridgeConversation,
-): TeamBridgeParticipant[] {
-	const rank = (member: TeamBridgeParticipant): number => {
-		if (member.state === "active" && member.kind === "human") return 0;
-		if (member.state === "active" && member.kind === "agent") return 1;
-		if (member.state === "invited") return 2;
-		return 3;
-	};
-	return [...conversation.members].sort((a, b) => rank(a) - rank(b));
 }
 
 /**
@@ -618,17 +580,6 @@ export function dmWithPerson(
 	return mergedConversationOrder(candidates)[0] ?? null;
 }
 
-/**
- * Whether a row's role earns a badge.
- *
- * "Member" is the default every row already says by being in the directory,
- * so a badge for it would be noise repeated down the rail. Only a role that
- * changes what the reader may expect of that person (owner, admin) is drawn.
- */
-export function showsPersonRole(role: string): boolean {
-	return role === "owner" || role === "admin";
-}
-
 /** The avatar initial for a person row (first character, uppercased). */
 export function personInitial(displayLabel: string): string {
 	return displayLabel.trim().charAt(0).toUpperCase() || "?";
@@ -687,6 +638,7 @@ export function chiefsOfStaff(
 export function dmWithAgent(
 	conversations: readonly TeamBridgeConversation[],
 	ownerAccountId: string,
+	selfAccountId?: string,
 ): TeamBridgeConversation | null {
 	const candidates = conversations.filter(
 		(conversation) =>
@@ -697,7 +649,21 @@ export function dmWithAgent(
 					member.kind === "agent" &&
 					member.account_id === ownerAccountId &&
 					member.state !== "removed",
-			),
+			) &&
+			/*
+			 * THE READER MUST BE THE OTHER END (review round 1, R1-5). An
+			 * agent-to-agent DM (the reader's own chief of staff talking to Ben's)
+			 * also carries Ben's agent; without this check Ben's chief row would
+			 * claim it, and the reader's "DM with Aida (Ben)" would open a
+			 * conversation between two agents.
+			 */
+			(!selfAccountId ||
+				conversation.members.some(
+					(member) =>
+						member.kind === "human" &&
+						member.account_id === selfAccountId &&
+						member.state !== "removed",
+				)),
 	);
 	if (candidates.length === 0) return null;
 	return mergedConversationOrder(candidates)[0] ?? null;
@@ -756,11 +722,19 @@ export function unmatchedDirects(
 ): TeamBridgeConversation[] {
 	const painted = new Set<string>();
 	for (const person of people) {
+		/*
+		 * THE READER'S OWN ROW PAINTS NOTHING (review round 1, R1-1). It is not a
+		 * control, and `dmWithPerson(self, self)` matches EVERY DM the reader is
+		 * in, so counting it marked the newest DM as shown while no row showed
+		 * it: a DM with someone who had left the org vanished from the rail.
+		 */
+		if (selfAccountId !== undefined && person.account_id === selfAccountId)
+			continue;
 		const dm = dmWithPerson(directs, person.account_id, selfAccountId);
 		if (dm) painted.add(dm.id);
 	}
 	for (const chief of chiefs) {
-		const dm = dmWithAgent(directs, chief.person.account_id);
+		const dm = dmWithAgent(directs, chief.person.account_id, selfAccountId);
 		if (dm) painted.add(dm.id);
 	}
 	return directs.filter((conversation) => !painted.has(conversation.id));
@@ -811,7 +785,7 @@ export function targetConversation(
 		case "person":
 			return dmWithPerson(conversations, target.accountId, selfAccountId);
 		case "chief":
-			return dmWithAgent(conversations, target.accountId);
+			return dmWithAgent(conversations, target.accountId, selfAccountId);
 		case "compose": {
 			/*
 			 * A draft to exactly ONE recipient who already has a thread with the
@@ -823,7 +797,7 @@ export function targetConversation(
 			if (target.recipients.length !== 1) return null;
 			const [only] = target.recipients;
 			return only.kind === "agent"
-				? dmWithAgent(conversations, only.accountId)
+				? dmWithAgent(conversations, only.accountId, selfAccountId)
 				: dmWithPerson(conversations, only.accountId, selfAccountId);
 		}
 	}
@@ -837,6 +811,64 @@ export function targetConversation(
  * agent-capable exactly when a chief of staff is among them. Returns null for
  * an empty draft: there is no one to send to.
  */
+/**
+ * One addressed recipient as the create op's STRICT member shape: exactly the
+ * wire keys, never a UI field (the `rowId` that refused every dialog create is
+ * why this is one function both create paths share). The label is capped at
+ * the schema's 64.
+ */
+export function recipientMemberInput(
+	recipient: TeamBridgeRecipient,
+): TeamBridgeMemberInput {
+	return recipient.kind === "agent"
+		? {
+				account_id: recipient.accountId,
+				kind: "agent",
+				endpoint_id: recipient.endpointId,
+				display_label: recipient.label.slice(0, 64),
+			}
+		: {
+				account_id: recipient.accountId,
+				kind: "human",
+				display_label: recipient.label.slice(0, 64),
+			};
+}
+
+/**
+ * Who a To: picker (the compose bar, the channel form) may address: every
+ * reachable person except the reader, then every chief of staff, labelled the
+ * way the rail labels them. A bridge-off person is not offered, because a
+ * conversation with them would hold messages they cannot receive; they stay
+ * visible on the rail with the reason. `chiefLabel` is injected because the
+ * "{agent} ({person})" composition is a catalogue string.
+ */
+export function recipientCandidates(
+	people: readonly TeamBridgeDirectoryMember[],
+	selfAccountId: string | undefined,
+	chiefLabel: (agent: string, person: string) => string,
+): TeamBridgeRecipient[] {
+	const humans: TeamBridgeRecipient[] = people
+		.filter((member) => {
+			const state = personRowState(member, selfAccountId);
+			return state === "openable" || state === "paused";
+		})
+		.map((member) => ({
+			kind: "human",
+			accountId: member.account_id,
+			label: personDisplayLabel(member),
+		}));
+	const agents: TeamBridgeRecipient[] = chiefsOfStaff(
+		people,
+		selfAccountId,
+	).map((chief) => ({
+		kind: "agent",
+		accountId: chief.person.account_id,
+		endpointId: chief.endpointId,
+		label: chiefLabel(chief.agentName, personDisplayLabel(chief.person)),
+	}));
+	return [...humans, ...agents];
+}
+
 export function draftCreateInput(recipients: readonly TeamBridgeRecipient[]): {
 	kind: "dm" | "group";
 	visibility: "private";
@@ -844,20 +876,7 @@ export function draftCreateInput(recipients: readonly TeamBridgeRecipient[]): {
 	members: TeamBridgeMemberInput[];
 } | null {
 	if (recipients.length === 0) return null;
-	const members: TeamBridgeMemberInput[] = recipients.map((recipient) =>
-		recipient.kind === "agent"
-			? {
-					account_id: recipient.accountId,
-					kind: "agent",
-					endpoint_id: recipient.endpointId,
-					display_label: recipient.label.slice(0, 64),
-				}
-			: {
-					account_id: recipient.accountId,
-					kind: "human",
-					display_label: recipient.label.slice(0, 64),
-				},
-	);
+	const members = recipients.map(recipientMemberInput);
 	return {
 		kind: recipients.length === 1 ? "dm" : "group",
 		visibility: "private",
@@ -958,4 +977,56 @@ export function threadItems(
 		if (day !== null) previousDay = day;
 	}
 	return items;
+}
+
+/**
+ * A draft's FIRST SEND: create the conversation, then post into it.
+ *
+ * WHY A PURE FUNCTION (review round 1, R1-8). The two writes, and what a
+ * retry does after one of them fails, are the riskiest path on the page and
+ * the one R1-2 found broken. Kept here, with its effects injected, it is
+ * tested directly rather than through a rendered container.
+ *
+ * THE RULES IT ENFORCES:
+ * - A retry after "create landed, post failed" REUSES the created id (the
+ *   `remembered` map, keyed by the draft): a group is not find-or-create, so a
+ *   second create would be a second group with the message in both.
+ * - The post carries the caller's `clientRef` every time, so the hub dedupes
+ *   a post that landed but whose response was lost.
+ * - The memory is cleared only after a successful post, so a later, different
+ *   message from the same recipients after success is a fresh draft only if
+ *   the target is still a draft (in practice it is the conversation by then).
+ */
+export async function sendFirstMessage(args: {
+	draftKey: string;
+	input: NonNullable<ReturnType<typeof draftCreateInput>>;
+	body: string;
+	clientRef: string;
+	tenantId: string | undefined;
+	remembered: Map<string, { id: string; tenantId: string | undefined }>;
+	create: (
+		input: NonNullable<ReturnType<typeof draftCreateInput>>,
+	) => Promise<{ id?: string; tenant_id?: string }>;
+	post: (
+		conversationId: string,
+		message: { clientRef: string; body: string; tenantId: string | undefined },
+	) => Promise<unknown>;
+}): Promise<{ id: string; tenantId: string | undefined }> {
+	let created = args.remembered.get(args.draftKey);
+	if (created === undefined) {
+		const response = await args.create(args.input);
+		if (!response.id) throw new Error("create returned no conversation id");
+		created = {
+			id: response.id,
+			tenantId: response.tenant_id ?? args.tenantId,
+		};
+		args.remembered.set(args.draftKey, created);
+	}
+	await args.post(created.id, {
+		clientRef: args.clientRef,
+		body: args.body,
+		tenantId: created.tenantId,
+	});
+	args.remembered.delete(args.draftKey);
+	return created;
 }

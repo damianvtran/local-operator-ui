@@ -3,7 +3,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Bot, X } from "lucide-react";
 import type { FC } from "react";
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { type TeamBridgeRecipient, recipientKey } from "./team-bridge-model";
 
 /**
@@ -35,6 +35,16 @@ export const TeamBridgeComposeBar: FC<{
 	const [query, setQuery] = useState("");
 	const [open, setOpen] = useState(false);
 	const [active, setActive] = useState(0);
+	/*
+	 * Keep the highlighted option visible as the arrows move it (review round 1,
+	 * R1-10): the popup scrolls at 8 rows, and a highlight below the fold is a
+	 * selection the reader cannot see.
+	 */
+	useEffect(() => {
+		document
+			.getElementById(`${listId}-${active}`)
+			?.scrollIntoView({ block: "nearest" });
+	}, [active, listId]);
 	const chosen = useMemo(
 		() => new Set(recipients.map(recipientKey)),
 		[recipients],
@@ -119,7 +129,11 @@ export const TeamBridgeComposeBar: FC<{
 						if (event.key === "ArrowDown") {
 							event.preventDefault();
 							setOpen(true);
-							setActive((index) => Math.min(index + 1, options.length - 1));
+							// Clamped at 0 too: with no options there is nothing to land on,
+							// and -1 would leave aria-activedescendant naming no element.
+							setActive((index) =>
+								Math.max(0, Math.min(index + 1, options.length - 1)),
+							);
 						} else if (event.key === "ArrowUp") {
 							event.preventDefault();
 							setActive((index) => Math.max(index - 1, 0));
@@ -141,27 +155,30 @@ export const TeamBridgeComposeBar: FC<{
 				/>
 			</div>
 			{showList && (
-				<ul
+				<div
 					id={listId}
+					tabIndex={-1}
+					// biome-ignore lint/a11y/useSemanticElements: an ARIA combobox popup (input + aria-activedescendant + arrows/Enter); a native <select> cannot hold the person/agent glyph rows or stay open under a typing field. Same shape as `mini-view/mini-sheet.tsx`.
 					role="listbox"
 					aria-label={t("ui.teamBridge.compose.label")}
 					className="absolute top-full right-5 left-5 z-20 mt-1 max-h-64 overflow-y-auto rounded-lg bg-elevated p-1 shadow-lg"
 				>
 					{options.map((option, index) => (
-						<li
+						<button
 							key={recipientKey(option)}
 							id={`${listId}-${index}`}
+							type="button"
+							tabIndex={-1}
+							// biome-ignore lint/a11y/useSemanticElements: the option of the combobox popup above; `<option>` cannot carry the glyph and label row.
 							role="option"
 							aria-selected={index === active}
-							// mousedown, not click: the field's blur would close the list
-							// before a click could land on the option.
-							onMouseDown={(event) => {
-								event.preventDefault();
-								add(option);
-							}}
+							// mousedown default prevented: the field keeps focus (so its
+							// blur does not close the list before the click lands).
+							onMouseDown={(event) => event.preventDefault()}
+							onClick={() => add(option)}
 							onMouseEnter={() => setActive(index)}
 							className={cn(
-								"flex h-[30px] cursor-default items-center gap-2 rounded-md px-2 text-[13px]",
+								"flex h-[30px] w-full cursor-default items-center gap-2 rounded-md px-2 text-left text-[13px]",
 								index === active ? "bg-row-hover text-ink" : "text-ink-muted",
 							)}
 						>
@@ -181,9 +198,9 @@ export const TeamBridgeComposeBar: FC<{
 								)}
 							</span>
 							<span className="min-w-0 flex-1 truncate">{option.label}</span>
-						</li>
+						</button>
 					))}
-				</ul>
+				</div>
 			)}
 		</div>
 	);
