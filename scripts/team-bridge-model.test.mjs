@@ -631,3 +631,63 @@ test("a person or chief target resolves its DM once it exists, a compose never d
 		"bcv_dm",
 	);
 });
+
+test("a one-recipient draft resolves to the existing DM; a group draft never does", () => {
+	const self = {
+		account_id: "acct_self",
+		kind: "human",
+		display_label: "Me",
+		role: "owner",
+		state: "active",
+	};
+	const dm = {
+		id: "bcv_dm",
+		tenant_id: "t",
+		kind: "dm",
+		visibility: "private",
+		agent_capable: false,
+		status: "open",
+		created_by: "acct_self",
+		last_message_at: "2026-10-21T00:00:00Z",
+		latest_seq: 1,
+		last_read_seq: 0,
+		unread_count: 0,
+		muted: false,
+		members: [
+			self,
+			{
+				account_id: "acct_ben",
+				kind: "human",
+				display_label: "Ben",
+				role: "member",
+				state: "active",
+			},
+		],
+	};
+	const ben = { kind: "human", accountId: "acct_ben", label: "Ben" };
+	const sana = { kind: "human", accountId: "acct_sana", label: "Sana" };
+	assert.equal(
+		model.targetConversation(
+			{ type: "compose", recipients: [ben] },
+			[dm],
+			"acct_self",
+		)?.id,
+		"bcv_dm",
+	);
+	assert.equal(
+		model.targetConversation(
+			{ type: "compose", recipients: [ben, sana] },
+			[dm],
+			"acct_self",
+		),
+		null,
+	);
+	assert.equal(
+		model.targetConversation(
+			{ type: "compose", recipients: [sana] },
+			[dm],
+			"acct_self",
+		),
+		null,
+	);
+});

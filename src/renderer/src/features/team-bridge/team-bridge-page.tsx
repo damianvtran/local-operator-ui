@@ -447,18 +447,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	}, [people, chiefs, selfAccountId]);
 
 	const composeRecipients = target?.type === "compose" ? target.recipients : [];
-	/*
-	 * A compose draft whose recipients ALREADY have a thread (one person with
-	 * an existing DM) shows that thread under the bar, Slack-style, so the
-	 * reader sees what they are about to add to.
-	 */
-	const composeExisting =
-		target?.type === "compose" && composeRecipients.length === 1
-			? composeRecipients[0].kind === "agent"
-				? dmWithAgent(listRows, composeRecipients[0].accountId)
-				: dmWithPerson(listRows, composeRecipients[0].accountId, selfAccountId)
-			: null;
-	const shown = selected ?? composeExisting;
+	// `selected` already resolves a one-recipient draft to its existing DM
+	// (`targetConversation`), so the view and the container agree on it.
+	const shown = selected;
 	const canCompose =
 		!readOnly &&
 		!previewSelected &&

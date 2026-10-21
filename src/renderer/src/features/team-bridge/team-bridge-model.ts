@@ -812,8 +812,20 @@ export function targetConversation(
 			return dmWithPerson(conversations, target.accountId, selfAccountId);
 		case "chief":
 			return dmWithAgent(conversations, target.accountId);
-		case "compose":
-			return null;
+		case "compose": {
+			/*
+			 * A draft to exactly ONE recipient who already has a thread with the
+			 * reader IS that thread (Slack shows it under the To: bar), so the
+			 * history loads and the first send goes to it rather than through a
+			 * create. Two or more recipients are always a new group: groups are
+			 * not find-or-create, so there is nothing to resolve.
+			 */
+			if (target.recipients.length !== 1) return null;
+			const [only] = target.recipients;
+			return only.kind === "agent"
+				? dmWithAgent(conversations, only.accountId)
+				: dmWithPerson(conversations, only.accountId, selfAccountId);
+		}
 	}
 }
 

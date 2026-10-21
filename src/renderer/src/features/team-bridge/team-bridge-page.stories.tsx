@@ -719,3 +719,218 @@ export const UpdateRequired: Story = {
 		people: [],
 	},
 };
+
+/*
+ * ---------------------------------------------------------------------------
+ * The Slack-shaped rail (operator review 2026-10-21): built-in channels,
+ * section headers that survive empty, a person's row as their DM, chiefs of
+ * staff named "{agent} ({person})" from the live directory, the addressed
+ * draft that creates nothing until the first send, and the To: compose bar.
+ * ---------------------------------------------------------------------------
+ */
+
+const at = (minutesAgo: number) =>
+	new Date(Date.now() - minutesAgo * 60_000).toISOString();
+
+const humansChannel: TeamBridgeConversation = {
+	...channel,
+	id: "bcv_builtin_humans",
+	name: "humans",
+	builtin: "humans",
+	unread_count: 2,
+	last_message_at: at(3),
+};
+const agentsChannel: TeamBridgeConversation = {
+	...channel,
+	id: "bcv_builtin_agents",
+	name: "agents",
+	builtin: "agents",
+	unread_count: 0,
+	notify: "mention",
+	last_message_at: at(40),
+};
+
+/** The roster with each member's chief of staff, as the directory publishes it. */
+const rosterWithChiefs = [
+	{
+		account_id: self,
+		display_label: "Damian Tran",
+		role: "owner",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+		agent: { endpoint_id: "bep_self", name: "Aida", state: "active" },
+	},
+	{
+		account_id: "acct_ben",
+		display_label: "Ben Tran",
+		role: "admin",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+		agent: { endpoint_id: "bep_ben", name: "Aida", state: "active" },
+	},
+	{
+		account_id: "acct_sherman",
+		display_label: "Sherman Tsui",
+		role: "admin",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+		agent: { endpoint_id: "bep_sherman", name: "Juno", state: "active" },
+	},
+	{
+		account_id: "acct_sana",
+		display_label: "Sana Ketabchi",
+		role: "admin",
+		bridge_enabled: false,
+		bridge_state: "none" as const,
+	},
+	{
+		account_id: "acct_ola",
+		display_label: "Ola Fagbemi",
+		role: "admin",
+		bridge_enabled: false,
+		bridge_state: "none" as const,
+	},
+];
+
+/** A DM with Ben whose creator label the hub stored as "Member". */
+const benDm: TeamBridgeConversation = {
+	...dm,
+	id: "bcv_dm_ben",
+	unread_count: 1,
+	last_message_at: at(2),
+	members: [
+		{
+			account_id: self,
+			kind: "human",
+			display_label: "Member",
+			role: "owner",
+			state: "active",
+		},
+		{
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Ben Tran",
+			role: "member",
+			state: "active",
+		},
+	],
+};
+
+const benThread: TeamBridgeMessage[] = [
+	{
+		id: "bcmsg_y1",
+		conversation_id: benDm.id,
+		seq: 1,
+		sender: {
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Ben Tran",
+		},
+		body: "Hi, will miss the standup this morning. Deploying the remote cloud to the new AWS infra.",
+		origin: "human",
+		created_at: new Date(Date.now() - 26 * 60 * 60_000).toISOString(),
+	},
+	{
+		id: "bcmsg_t1",
+		conversation_id: benDm.id,
+		seq: 2,
+		sender: { account_id: self, kind: "human", display_label: "Member" },
+		body: "Also FYI, user-dashboard is fully ported to shadcn/tailwind components.",
+		origin: "human",
+		created_at: at(9),
+	},
+	{
+		id: "bcmsg_t2",
+		conversation_id: benDm.id,
+		seq: 3,
+		sender: { account_id: self, kind: "human", display_label: "Member" },
+		body: "New features there should look better out of the box, without the **MUI** jank.",
+		origin: "human",
+		created_at: at(8),
+	},
+	{
+		id: "bcmsg_t3",
+		conversation_id: benDm.id,
+		seq: 4,
+		sender: {
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Ben Tran",
+		},
+		body: "**What happened**\n\n- A pre-push hook pushed its own seed commit to `main`\n- `main` was restored 9 minutes later by `aa72763`\n\nI'll write up the fix.",
+		origin: "human",
+		created_at: at(2),
+	},
+];
+
+const slackRail = {
+	conversations: [humansChannel, agentsChannel, channel, benDm],
+	people: rosterWithChiefs,
+	organizations: [minervaOrganization],
+	scope: minervaOrganization.tenantId,
+};
+
+/** Ben's row is selected and IS the DM: no "@ Ben" row exists above People. */
+export const PersonRowIsTheDm: Story = {
+	args: {
+		...slackRail,
+		target: { type: "person", accountId: "acct_ben" },
+		messages: benThread,
+	},
+};
+
+/** Built-in #humans first, with its topic in the header. */
+export const BuiltinHumansChannel: Story = {
+	args: {
+		...slackRail,
+		target: { type: "conversation", id: humansChannel.id },
+		messages: [],
+	},
+};
+
+/** A person with no DM: an addressed draft; nothing has been created. */
+export const PersonDraft: Story = {
+	args: {
+		...slackRail,
+		conversations: [humansChannel, agentsChannel],
+		target: { type: "person", accountId: "acct_sherman" },
+		messages: [],
+		messageState: "idle",
+	},
+};
+
+/** A chief of staff selected: "Aida (Ben)", the DM created on first send. */
+export const ChiefOfStaffDraft: Story = {
+	args: {
+		...slackRail,
+		target: { type: "chief", accountId: "acct_ben" },
+		messages: [],
+		messageState: "idle",
+	},
+};
+
+/** "Start a group conversation": the To: bar seeded with one recipient. */
+export const ComposeGroup: Story = {
+	args: {
+		...slackRail,
+		target: {
+			type: "compose",
+			recipients: [{ kind: "human", accountId: "acct_ben", label: "Ben Tran" }],
+		},
+		messages: [],
+		messageState: "idle",
+	},
+};
+
+/** A new organization: every header stays, each empty line is the create action. */
+export const EmptySections: Story = {
+	args: {
+		conversations: [],
+		people: [rosterWithChiefs[0]],
+		organizations: [minervaOrganization],
+		scope: minervaOrganization.tenantId,
+		target: null,
+		messages: [],
+		messageState: "idle",
+	},
+};
