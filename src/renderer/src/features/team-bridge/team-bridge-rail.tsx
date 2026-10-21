@@ -15,6 +15,7 @@ import {
 	Bot,
 	Hash,
 	MoreHorizontal,
+	Plus,
 	Users,
 } from "lucide-react";
 import type { FC, ReactNode } from "react";
@@ -65,13 +66,27 @@ const ROW =
 	"group/row relative flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-left text-[13px] transition-colors duration-fast ease-out-quart";
 
 /** The unread pill every row shares, the sidebar's quiet attention badge. */
-const Unread: FC<{ count: number }> = ({ count }) =>
+const Unread: FC<{ count: number; yieldsToMenu?: boolean }> = ({
+	count,
+	yieldsToMenu = false,
+}) =>
 	count > 0 ? (
 		<Badge
 			variant="attentionQuiet"
 			shape="pill"
 			size="count"
-			className="shrink-0"
+			/*
+			 * ONE BADGE COLUMN (design round 1, D4). Person and chief rows used to
+			 * reserve `pr-8` for the hover "…", which pushed their counts 24px left
+			 * of every channel's. Now every row ends at the same edge, and on a row
+			 * that has a menu the badge yields that slot while the row is hovered or
+			 * focused, Slack's pattern: the count and the menu never sit side by side.
+			 */
+			className={cn(
+				"shrink-0",
+				yieldsToMenu &&
+					"group-focus-within/row:invisible group-hover/row:invisible",
+			)}
 			aria-label={t("ui.teamBridge.unread.count", { count })}
 		>
 			{countLabel(count, 99)}
@@ -84,16 +99,36 @@ export const RailSection: FC<{
 	children?: ReactNode;
 	/** One quiet line when the section is empty; omitted when it has rows. */
 	empty?: { text: string; onCreate?: () => void };
-}> = ({ id, title, children, empty }) => {
+	/**
+	 * A "+" on the header, Slack's "Add channels": the way to create one when
+	 * the section is NOT empty (review round 1, R1-3 — once the built-ins exist
+	 * the empty line is gone, and with it the only route to a new channel).
+	 * Revealed on hover/focus of the header so a resting rail stays quiet.
+	 */
+	add?: { label: string; onAdd: () => void };
+}> = ({ id, title, children, empty, add }) => {
 	useI18nLocale();
 	return (
 		<section aria-labelledby={id} className="px-1 pb-1">
-			<h2
-				id={id}
-				className="px-2 pt-3 pb-1 font-medium text-meta text-ink-dim tracking-wide"
-			>
-				{title}
-			</h2>
+			<div className="group/section flex items-center pt-3 pr-1 pb-1 pl-2">
+				<h2
+					id={id}
+					className="min-w-0 flex-1 truncate font-medium text-meta text-ink-dim tracking-wide"
+				>
+					{title}
+				</h2>
+				{add && (
+					<button
+						type="button"
+						onClick={add.onAdd}
+						aria-label={add.label}
+						title={add.label}
+						className="flex size-5 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/section:opacity-100"
+					>
+						<Plus size={13} aria-hidden="true" />
+					</button>
+				)}
+			</div>
 			{empty ? (
 				empty.onCreate ? (
 					<button
@@ -212,12 +247,17 @@ const RowMenu: FC<{ label: string; onStartGroup: () => void }> = ({
 			<button
 				type="button"
 				aria-label={t("ui.teamBridge.row.menu", { name: label })}
-				className="absolute right-1 flex size-6 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100"
+				className="absolute right-1.5 flex size-6 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100"
 			>
 				<MoreHorizontal size={14} aria-hidden="true" />
 			</button>
 		</DropdownMenuTrigger>
-		<DropdownMenuContent align="start" side="right">
+		<DropdownMenuContent
+			align="start"
+			side="right"
+			/* Borderless chrome (design round 1, D3): the menu rises on its shadow. */
+			className="border-transparent shadow-lg"
+		>
 			<DropdownMenuItem onSelect={onStartGroup}>
 				<Users size={14} aria-hidden="true" />
 				{t("ui.teamBridge.row.start_group")}
@@ -339,7 +379,6 @@ export const PersonRailRow: FC<{
 				aria-label={t("ui.teamBridge.people.message", { name: label })}
 				className={cn(
 					ROW,
-					canStartGroup && "pr-8",
 					selected
 						? rowCurrent
 						: unread > 0
@@ -354,7 +393,7 @@ export const PersonRailRow: FC<{
 						{t("ui.teamBridge.people.paused")}
 					</span>
 				)}
-				<Unread count={unread} />
+				<Unread count={unread} yieldsToMenu />
 			</button>
 			{canStartGroup && (
 				<RowMenu
@@ -390,7 +429,6 @@ export const ChiefRailRow: FC<{
 				aria-label={t("ui.teamBridge.people.message", { name: label })}
 				className={cn(
 					ROW,
-					!readOnly && "pr-8",
 					selected
 						? rowCurrent
 						: unread > 0
@@ -410,7 +448,7 @@ export const ChiefRailRow: FC<{
 						{t("ui.teamBridge.people.paused")}
 					</span>
 				)}
-				<Unread count={unread} />
+				<Unread count={unread} yieldsToMenu />
 			</button>
 			{!readOnly && (
 				<RowMenu

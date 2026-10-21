@@ -6,13 +6,6 @@
 		"placeholders": {},
 		"note": "The page's name. \"Team Bridge\" is the product surface name — never translate the words separately, they name one feature."
 	},
-	"ui.teamBridge.page.subtitle": {
-		"role": "page subheading",
-		"tone": "plain, factual",
-		"length": "One sentence; may wrap.",
-		"placeholders": {},
-		"note": "Says who the user talks to here: teammates and their agents. \"Agent\" is the product noun."
-	},
 	"ui.teamBridge.list.empty.title": {
 		"role": "empty-state heading",
 		"tone": "neutral",
@@ -118,13 +111,6 @@
 		"placeholders": {},
 		"note": "Names both key gestures. Key names stay untranslated; only \"to send\" and \"for a new line\" are copy."
 	},
-	"ui.teamBridge.member.invited": {
-		"role": "participant state badge",
-		"tone": "neutral",
-		"length": "1 word.",
-		"placeholders": {},
-		"note": "A human invited to the conversation who has not joined yet. An invited agent is never shown to other members, so this is human-only in practice."
-	},
 	"ui.teamBridge.nav.label": {
 		"role": "sidebar navigation row label",
 		"tone": "neutral",
@@ -193,62 +179,6 @@
 			"count": "number of participants; a positive integer"
 		},
 		"note": "Sits beside the conversation title. Plural forms matter."
-	},
-	"ui.teamBridge.create.member_account": {
-		"role": "form field label",
-		"tone": "neutral",
-		"length": "2 words.",
-		"placeholders": {},
-		"note": "The organization account id of the person or agent to include. Shown because the app has no directory picker yet; the label is technical on purpose."
-	},
-	"ui.teamBridge.create.member_name": {
-		"role": "form field label",
-		"tone": "neutral",
-		"length": "2 words.",
-		"placeholders": {},
-		"note": "The name other members will see. This is the only name that crosses the wire, so it is required rather than derived."
-	},
-	"ui.teamBridge.create.member_kind": {
-		"role": "form field label",
-		"tone": "neutral",
-		"length": "2 words.",
-		"placeholders": {},
-		"note": "Chooses whether the row names a person or an agent."
-	},
-	"ui.teamBridge.create.member_person": {
-		"role": "select option",
-		"tone": "neutral",
-		"length": "1 word.",
-		"placeholders": {},
-		"note": "A human member. Keep distinct from the product noun 'Agent'."
-	},
-	"ui.teamBridge.create.member_agent": {
-		"role": "select option",
-		"tone": "neutral",
-		"length": "1 word.",
-		"placeholders": {},
-		"note": "An agent member. Product noun, same capitalization as elsewhere."
-	},
-	"ui.teamBridge.create.remove_member": {
-		"role": "icon button accessible name",
-		"tone": "imperative",
-		"length": "2 words.",
-		"placeholders": {},
-		"note": "Removes one row from the create form. Must work as a button name on its own."
-	},
-	"ui.teamBridge.create.add_member": {
-		"role": "row-adding button",
-		"tone": "imperative",
-		"length": "2 words.",
-		"placeholders": {},
-		"note": "Appends one empty member row to the form."
-	},
-	"ui.teamBridge.create.account_placeholder": {
-		"role": "input placeholder",
-		"tone": "technical",
-		"length": "One short token.",
-		"placeholders": {},
-		"note": "An example account id prefix. The ellipsis is part of the example; keep the 'acct_' prefix untranslated."
 	},
 	"ui.teamBridge.group.more": {
 		"role": "sidebar overflow group label",
@@ -342,15 +272,6 @@
 		"length": "One sentence.",
 		"placeholders": {},
 		"note": "Explains why New conversation is disabled while the account-wide scope is selected: a conversation must belong to exactly one organization."
-	},
-	"ui.teamBridge.group.more_unread": {
-		"role": "sidebar overflow disclosure, accessible name",
-		"tone": "concise, factual",
-		"length": "One short phrase.",
-		"placeholders": {
-			"count": "the unread total carried by the group"
-		},
-		"note": "States the count when the More row carries a badge, so a screen-reader user hears the same fact the badge shows. Do not name a single destination."
 	},
 	"ui.teamBridge.preview.chip": {
 		"role": "conversation row chip",
@@ -776,22 +697,6 @@
 		},
 		"note": "Composer placeholder naming who the message goes to, as in Slack."
 	},
-	"ui.teamBridge.thread.draft": {
-		"role": "pane hint",
-		"tone": "plain, sentence case",
-		"length": "One or two sentences.",
-		"placeholders": {
-			"name": "The person or agent label, verbatim."
-		},
-		"note": "Shown above the composer when the selected person or agent has no conversation yet."
-	},
-	"ui.teamBridge.thread.draft_group": {
-		"role": "pane hint",
-		"tone": "plain, sentence case",
-		"length": "One sentence.",
-		"placeholders": {},
-		"note": "Shown in a draft with recipients but no conversation yet."
-	},
 	"ui.teamBridge.thread.today": {
 		"role": "day divider",
 		"tone": "plain, sentence case",
@@ -819,5 +724,74 @@
 		"length": "One sentence; may truncate.",
 		"placeholders": {},
 		"note": "Describes the built-in #agents channel: every enrolled agent is a member, and ordinary messages do not wake them; a mention does."
+	},
+	"ui.teamBridge.section.channels_add": {
+		"role": "icon button label (aria-label and tooltip)",
+		"tone": "Imperative, sentence case.",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "The '+' revealed on the Channels section heading in the Team Bridge rail. Opens the new-channel form."
+	},
+	"ui.teamBridge.section.groups_add": {
+		"role": "icon button label (aria-label and tooltip)",
+		"tone": "Imperative, sentence case.",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "The '+' revealed on the Groups section heading. Opens a To: draft where several people or agents can be added; the group is made when the first message is sent."
+	},
+	"ui.teamBridge.create.channel_description": {
+		"role": "dialog description",
+		"tone": "Plain, reassuring.",
+		"length": "One or two short sentences.",
+		"placeholders": {},
+		"note": "Under the title of the New channel form. 'Agents' are teammates' AI agents (chiefs of staff), which can also be channel members."
+	},
+	"ui.teamBridge.create.name_placeholder": {
+		"role": "input placeholder",
+		"tone": "Example, lower case.",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Example channel name inside the Name field. Channel names are lower case with hyphens; keep 'qa-coordination' as an untranslated slug or use an equivalent lower-case-hyphen example in the target language."
+	},
+	"ui.teamBridge.create.topic": {
+		"role": "field label",
+		"tone": "Sentence case.",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Label of an optional field describing what the channel is for; shown under the channel name in its header."
+	},
+	"ui.teamBridge.thread.intro_person": {
+		"role": "empty-state sentence",
+		"tone": "Warm, plain.",
+		"length": "One sentence.",
+		"placeholders": {
+			"name": "a teammate's display name, e.g. 'Ben Tran'"
+		},
+		"note": "Shown under a large avatar and the person's name when a DM with them has no messages yet. Mirrors how Slack/Discord open an empty DM."
+	},
+	"ui.teamBridge.thread.intro_chief": {
+		"role": "empty-state sentence",
+		"tone": "Plain; sets expectations.",
+		"length": "Two short sentences.",
+		"placeholders": {
+			"name": "the agent's label, e.g. 'Aida (Ben Tran)'"
+		},
+		"note": "Shown when the reader opens a DM with another person's primary AI agent and there are no messages yet. The second sentence is a safety expectation: the agent treats inbound messages as untrusted and does not take orders from them on its own."
+	},
+	"ui.teamBridge.thread.intro_group": {
+		"role": "empty-state sentence",
+		"tone": "Plain.",
+		"length": "One sentence.",
+		"placeholders": {
+			"names": "comma-separated list of recipient labels, e.g. 'Ben Tran, Aida (Sherman Tsui)'"
+		},
+		"note": "Shown in a new group draft once at least one recipient is added in the To: bar."
+	},
+	"ui.teamBridge.list.error_pane": {
+		"role": "main-pane state message",
+		"tone": "Plain, no blame.",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown in the main pane when the conversation list failed to load; the retry button lives in the rail on the left. ('left' is the inline-start side; in RTL locales say the side the list is actually on, i.e. right.)"
 	}
 }

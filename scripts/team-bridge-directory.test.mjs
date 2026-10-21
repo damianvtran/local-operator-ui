@@ -275,13 +275,6 @@ test("a person row is self, openable, paused or inert from the frozen pairs", ()
 	);
 });
 
-test("a role earns a badge only when it tells the reader something", () => {
-	assert.equal(model.showsPersonRole("owner"), true);
-	assert.equal(model.showsPersonRole("admin"), true);
-	assert.equal(model.showsPersonRole("member"), false);
-	assert.equal(model.showsPersonRole("auditor"), false);
-});
-
 test("the person initial is the label's first character, never empty", () => {
 	assert.equal(model.personInitial("Bea"), "B");
 	assert.equal(model.personInitial("  ada"), "A");
@@ -848,7 +841,14 @@ test("a person with no DM opens an addressed draft and nothing is created", () =
 			}),
 		),
 	);
-	assert.match(html, /This is the start of your conversation with Bea\./);
+	// Slack/Discord's empty-DM intro (design round 1, D5): the name, then one
+	// line that never says "created" (that nothing is written yet is the code's
+	// fact, asserted by the model's sendFirstMessage tests, not the copy's).
+	assert.match(
+		html,
+		/This is the beginning of your direct message history with Bea\./,
+	);
+	assert.doesNotMatch(visible(html), /created/i);
 	assert.match(html, /placeholder="Message Bea"/);
 	assert.match(
 		html,

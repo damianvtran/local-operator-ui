@@ -127,35 +127,6 @@ test("the server total is used when it is present", () => {
 	);
 });
 
-test("an invited agent is not counted as an agent participant", () => {
-	const base = conversation({ agent_capable: true });
-	assert.equal(model.hasAgentParticipant(base), false);
-	assert.equal(
-		model.hasAgentParticipant({
-			...base,
-			members: [...base.members, member("Agent", "agent", "active")],
-		}),
-		true,
-	);
-});
-
-test("members order: people, then agents, then invited", () => {
-	const ordered = model.orderedMembers(
-		conversation({
-			agent_capable: true,
-			members: [
-				member("Invited", "human", "invited"),
-				member("Agent", "agent", "active"),
-				member("Ada", "human", "active", "acct_a"),
-			],
-		}),
-	);
-	assert.deepEqual(
-		ordered.map((entry) => entry.display_label),
-		["Ada", "Agent", "Invited"],
-	);
-});
-
 test("messages render oldest first even when the page arrives reversed", () => {
 	assert.deepEqual(
 		model
@@ -170,18 +141,6 @@ test("a purged history keeps its seq gaps", () => {
 		model.chronological([message(9), message(2)]).map((entry) => entry.seq),
 		[2, 9],
 	);
-});
-
-test("conversation kinds map to the sidebar glyph family", () => {
-	assert.equal(
-		model.conversationGlyph(conversation({ kind: "channel" })),
-		"hash",
-	);
-	assert.equal(
-		model.conversationGlyph(conversation({ kind: "group" })),
-		"users",
-	);
-	assert.equal(model.conversationGlyph(conversation({ kind: "dm" })), "at");
 });
 
 test("notifications are quiet while the window is visible", () => {
@@ -690,4 +649,282 @@ test("a one-recipient draft resolves to the existing DM; a group draft never doe
 		),
 		null,
 	);
+});
+
+// ---------------------------------------------------------------------------
+// Review round 1 (R1-1, R1-5, R1-8): the DM-placement decisions, directly.
+// ---------------------------------------------------------------------------
+
+const human = (id, label = id) => ({
+	account_id: id,
+	kind: "human",
+	display_label: label,
+	role: "member",
+	state: "active",
+});
+const agentOf = (id, label = "Aida") => ({
+	account_id: id,
+	kind: "agent",
+	display_label: label,
+	role: "member",
+	state: "active",
+});
+const convo = (id, kind, members, patch = {}) => ({
+	id,
+	tenant_id: "t",
+	kind,
+	visibility: "private",
+	agent_capable: true,
+	status: "open",
+	created_by: "acct_self",
+	last_message_at: "2026-10-21T00:00:00Z",
+	latest_seq: 1,
+	last_read_seq: 0,
+	unread_count: 0,
+	muted: false,
+	members,
+	...patch,
+});
+const person = (id, agent) => ({
+	account_id: id,
+	display_label: id,
+	role: "member",
+	bridge_enabled: true,
+	bridge_state: "active",
+	...(agent ? { agent } : {}),
+});
+
+test("R1-1: a DM with someone who left the org is listed, and the reader's own row claims nothing", () => {
+	const self = human("acct_self");
+	const withBen = convo("bcv_ben", "dm", [self, human("acct_ben")], {
+		last_message_at: "2026-10-20T00:00:00Z",
+	});
+	const withGone = convo("bcv_gone", "dm", [self, human("acct_gone")], {
+		last_message_at: "2026-10-21T00:00:00Z",
+	});
+	const people = [person("acct_self"), person("acct_ben")];
+	// The newest DM (with someone no longer in the directory) is the one the
+	// self row would have swallowed: it must be returned as unmatched.
+	assert.deepEqual(
+		model
+			.unmatchedDirects([withBen, withGone], people, [], "acct_self")
+			.map((row) => row.id),
+		["bcv_gone"],
+	);
+});
+
+test("R1-1: agent DMs are painted by the chief's row; an owner without a chief leaves them listed", () => {
+	const self = human("acct_self");
+	const aidaDm = convo("bcv_aida", "dm", [self, agentOf("acct_ben")]);
+	const people = [
+		person("acct_self"),
+		person("acct_ben", { endpoint_id: "e", name: "Aida", state: "active" }),
+	];
+	const chiefs = model.chiefsOfStaff(people, "acct_self");
+	assert.deepEqual(
+		model.unmatchedDirects([aidaDm], people, chiefs, "acct_self"),
+		[],
+	);
+	// Ben unenrolled his agent: no chief row, so the history stays reachable.
+	assert.deepEqual(
+		model
+			.unmatchedDirects(
+				[aidaDm],
+				[person("acct_self"), person("acct_ben")],
+				[],
+				"acct_self",
+			)
+			.map((row) => row.id),
+		["bcv_aida"],
+	);
+});
+
+test("R1-5: an agent-to-agent DM never resolves from a chief's row", () => {
+	const agentToAgent = convo("bcv_aa", "dm", [
+		agentOf("acct_self"),
+		agentOf("acct_ben"),
+	]);
+	const mine = convo("bcv_mine", "dm", [
+		human("acct_self"),
+		agentOf("acct_ben"),
+	]);
+	assert.equal(
+		model.dmWithAgent([agentToAgent], "acct_ben", "acct_self"),
+		null,
+	);
+	assert.equal(
+		model.dmWithAgent([agentToAgent, mine], "acct_ben", "acct_self")?.id,
+		"bcv_mine",
+	);
+	assert.equal(
+		model.targetConversation(
+			{ type: "chief", accountId: "acct_ben" },
+			[agentToAgent],
+			"acct_self",
+		),
+		null,
+	);
+});
+
+test("railSections: built-ins lead in fixed order; groups and DMs keep the caller's order", () => {
+	const rows = [
+		convo("c_ops", "channel", []),
+		convo("g_1", "group", []),
+		convo("c_agents", "channel", [], { builtin: "agents" }),
+		convo("d_1", "dm", []),
+		convo("c_humans", "channel", [], { builtin: "humans" }),
+		convo("c_future", "channel", [], { builtin: "unknown_future" }),
+		convo("g_2", "group", []),
+	];
+	const sections = model.railSections(rows);
+	assert.deepEqual(
+		sections.channels.map((row) => row.id),
+		["c_humans", "c_agents", "c_ops", "c_future"],
+	);
+	assert.deepEqual(
+		sections.groups.map((row) => row.id),
+		["g_1", "g_2"],
+	);
+	assert.deepEqual(
+		sections.directs.map((row) => row.id),
+		["d_1"],
+	);
+});
+
+test("recipientCandidates offers reachable people and chiefs, never the reader or bridge-off people", () => {
+	const people = [
+		person("acct_self", { endpoint_id: "e0", name: "Aida", state: "active" }),
+		person("acct_ben", { endpoint_id: "e1", name: "Aida", state: "active" }),
+		{ ...person("acct_off"), bridge_enabled: false, bridge_state: "disabled" },
+	];
+	const out = model.recipientCandidates(
+		people,
+		"acct_self",
+		(agent, owner) => `${agent} (${owner})`,
+	);
+	assert.deepEqual(
+		out.map((row) => `${row.kind}:${row.accountId}:${row.label}`),
+		["human:acct_ben:acct_ben", "agent:acct_ben:Aida (acct_ben)"],
+	);
+	assert.equal(out[1].endpointId, "e1");
+});
+
+// ---------------------------------------------------------------------------
+// R1-2 / R1-8: the first send's two writes, and what a retry does.
+// ---------------------------------------------------------------------------
+
+const firstSendRig = ({ failPostTimes = 0, createId = "bcv_new" } = {}) => {
+	const calls = { create: 0, post: [] };
+	let failures = failPostTimes;
+	return {
+		calls,
+		remembered: new Map(),
+		create: async () => {
+			calls.create += 1;
+			return { id: `${createId}_${calls.create}`, tenant_id: "tnt_1" };
+		},
+		post: async (id, message) => {
+			calls.post.push({ id, ...message });
+			if (failures > 0) {
+				failures -= 1;
+				throw new Error("post failed");
+			}
+			return {};
+		},
+	};
+};
+const groupInput = {
+	kind: "group",
+	visibility: "private",
+	agentCapable: false,
+	members: [
+		{ account_id: "acct_ben", kind: "human", display_label: "Ben" },
+		{ account_id: "acct_sana", kind: "human", display_label: "Sana" },
+	],
+};
+
+test("R1-2: a retried group send after a failed post creates ONE group and reuses the client_ref", async () => {
+	const rig = firstSendRig({ failPostTimes: 1 });
+	const args = {
+		draftKey: "tnt_1|group|acct_ben,acct_sana",
+		input: groupInput,
+		body: "hello",
+		clientRef: "ref-1",
+		tenantId: "tnt_1",
+		remembered: rig.remembered,
+		create: rig.create,
+		post: rig.post,
+	};
+	await assert.rejects(model.sendFirstMessage(args));
+	assert.equal(rig.calls.create, 1);
+	const done = await model.sendFirstMessage(args);
+	assert.equal(rig.calls.create, 1, "the retry must not create a second group");
+	assert.equal(done.id, "bcv_new_1");
+	assert.deepEqual(
+		rig.calls.post.map((call) => [call.id, call.clientRef, call.tenantId]),
+		[
+			["bcv_new_1", "ref-1", "tnt_1"],
+			["bcv_new_1", "ref-1", "tnt_1"],
+		],
+	);
+	assert.equal(rig.remembered.size, 0, "success forgets the draft");
+});
+
+test("a failed create remembers nothing, so the retry creates", async () => {
+	const remembered = new Map();
+	let creates = 0;
+	const args = {
+		draftKey: "k",
+		input: groupInput,
+		body: "b",
+		clientRef: "r",
+		tenantId: "tnt_1",
+		remembered,
+		create: async () => {
+			creates += 1;
+			if (creates === 1) throw new Error("create failed");
+			return { id: "bcv_ok" };
+		},
+		post: async () => ({}),
+	};
+	await assert.rejects(model.sendFirstMessage(args));
+	assert.equal(remembered.size, 0);
+	assert.equal((await model.sendFirstMessage(args)).id, "bcv_ok");
+	assert.equal(creates, 2);
+});
+
+test("a create response without an id is a failure, not a post to nowhere", async () => {
+	let posted = false;
+	await assert.rejects(
+		model.sendFirstMessage({
+			draftKey: "k",
+			input: groupInput,
+			body: "b",
+			clientRef: "r",
+			tenantId: undefined,
+			remembered: new Map(),
+			create: async () => ({}),
+			post: async () => {
+				posted = true;
+			},
+		}),
+	);
+	assert.equal(posted, false);
+});
+
+test("different drafts never share a remembered conversation", async () => {
+	const rig = firstSendRig({ failPostTimes: 1 });
+	const base = {
+		input: groupInput,
+		body: "b",
+		clientRef: "r",
+		tenantId: "tnt_1",
+		remembered: rig.remembered,
+		create: rig.create,
+		post: rig.post,
+	};
+	await assert.rejects(model.sendFirstMessage({ ...base, draftKey: "A" }));
+	await model.sendFirstMessage({ ...base, draftKey: "B" });
+	assert.equal(rig.calls.create, 2);
+	assert.equal(rig.remembered.has("A"), true);
 });

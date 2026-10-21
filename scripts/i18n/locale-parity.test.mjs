@@ -650,10 +650,6 @@ const IDENTICAL_OK = new Map([
 		"Product name (Team Bridge), preserved verbatim by the programme glossary.",
 	],
 	[
-		"ui.teamBridge.create.account_placeholder",
-		"Literal example account id (acct_…) shown in an input placeholder, not prose to translate.",
-	],
-	[
 		"ui.teamBridge.notify.title",
 		"Placeholders and brackets only ({conversation} ({organization})); the notification title is assembled from already-translated parts.",
 	],
