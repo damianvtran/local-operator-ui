@@ -3954,17 +3954,20 @@ for (const outcome of [
 			const source = shippedSource(
 				"src/renderer/src/features/browser/components/browser-surface.tsx",
 			);
-			const marker = "onTabAction={(id, action) => {";
-			const start = source.indexOf(marker) + marker.length;
-			assert.ok(start >= marker.length);
-			const end = source.indexOf("\n\t\t\t\t}}", start);
-			assert.ok(end > start);
+			// The callback's indentation moved when S4b nested the strip inside the
+			// surface's popout branch; the END is found by its next sibling prop, not
+			// by a fixed tab count that a re-indent silently shifts.
+			const match =
+				/onTabAction=\{\(id, action\) => \{([\s\S]*?)\n\t*\}\}\n\t*newTabLabel=/.exec(
+					source,
+				);
+			assert.ok(match, "onTabAction callback found");
 			let reveals = 0;
 			const callback = new Function(
 				"chrome",
 				"tabScope",
 				"onShowAllTabs",
-				`return (id,action)=>{${source.slice(start, end)}}`,
+				`return (id,action)=>{${match[1]}}`,
 			)(chrome, "conversation", () => {
 				reveals++;
 			});

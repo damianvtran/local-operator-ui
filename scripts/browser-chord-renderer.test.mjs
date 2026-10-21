@@ -159,7 +159,17 @@ async function rig({
 		const [, render] = React.useState(0);
 		redraw = () => render((n) => n + 1);
 		chrome.state = { activeTabId: active, pageControls: { find } };
-		const address = useRef(null);
+		const inputRef = useRef(null);
+		// S4b's hook talks to an AddressController, not directly to an input. The
+		// rig keeps a real focusable field so "Cmd+L puts the caret in the field"
+		// remains the measured property, not a mock call count.
+		const address = useRef({
+			raise: () => {
+				inputRef.current?.focus();
+				inputRef.current?.select();
+			},
+			close: () => inputRef.current?.blur(),
+		});
 		const {
 			root: ref,
 			closeTab,
@@ -177,7 +187,7 @@ async function rig({
 				"data-tour-tag": pane ? "browser-pane-surface" : "browser-route",
 			},
 			React.createElement("input", {
-				ref: address,
+				ref: inputRef,
 				defaultValue: "https://example.test/one",
 				id: "address",
 			}),
@@ -401,20 +411,18 @@ test("address draft belongs to its tab: a chord-driven tab change drops it and b
 			document.querySelector('[data-tour-tag="browser-address"]');
 		await draw(1, "https://a.example/one");
 		await act(async () => field().focus());
-		assert.equal(field().value, "https://a.example/one", "Cmd+L shows A");
+		assert.equal(field().value, "a.example/one", "Cmd+L shows A");
 		// The keyboard moves to tab B while the field still has focus.
 		await draw(2, "https://b.example/two");
-		assert.equal(
-			field().value,
-			"https://b.example/two",
-			"B's own URL, not A's draft",
-		);
+		assert.equal(field().value, "b.example/two", "B's own URL, not A's draft");
 		await act(async () => field().blur());
 		assert.deepEqual(navigated, [], "blur must not commit A's text into B");
 		// A fresh blank tab (Cmd+T / last-tab replacement) shows an empty field.
 		await act(async () => field().focus());
 		await draw(3, "about:blank");
-		assert.equal(field().value, "", "new blank tab is empty, not A's text");
+		// A blank tab projects no address; the start page's own field is what a
+		// user sees there.
+		assert.equal(field().value, "", "new blank tab is empty, not A's draft");
 		await act(async () => field().blur());
 		assert.deepEqual(navigated, []);
 		// Typing on the CURRENT tab is never committed by blur: the suggestion
@@ -801,7 +809,10 @@ test("StageA focused A survives hidden B mount/update/unmount and one incoming i
 			false,
 			"B cannot overwrite A's one main-process boolean",
 		);
-		assert.equal(document.activeElement.id, "address");
+		// S4b: the replacement tab is a start page, whose own field autofocuses on
+		// mount; the popout is lowered. This rig has no start page, so body is the
+		// honest focus owner after the new-tab close.
+		assert.equal(document.activeElement, document.body);
 		await r.key("r");
 		assert.equal(r.events.filter((e) => e[0] === "reload").length, 1);
 	} finally {
@@ -843,7 +854,8 @@ test("StageA loading and failed selected tabs keep BODY reload targeted and new 
 			[["new", null]],
 		);
 		assert.equal(r.tabs().length, 3);
-		assert.equal(document.activeElement.id, "address");
+		// The new tab is a start page with its own field (not modeled here).
+		assert.equal(document.activeElement, document.body);
 	} finally {
 		await act(async () => r.root.unmount());
 		r.finish();
@@ -905,7 +917,9 @@ test("the browser's own state pages keep L/T/R and main's messages; a real modal
 				[["new", "a"]],
 				`Cmd+T opens a browser tab in the existing scope (${id})`,
 			);
-			assert.equal(document.activeElement.id, "address");
+			// Cmd+T lands on a start page whose own field owns focus; the popout was
+			// lowered, and this rig has no start page to focus.
+			assert.equal(document.activeElement, document.body);
 			await act(async () => release());
 		}
 

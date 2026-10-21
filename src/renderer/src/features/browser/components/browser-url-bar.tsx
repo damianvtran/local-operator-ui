@@ -116,7 +116,10 @@ const TRAILING_SLASH = /\/$/;
 
 /** The display spelling of a URL: the scheme and a bare trailing slash go. */
 export function displayUrl(url: string): string {
-	if (!url) return "";
+	if (!url || url === "about:blank") {
+		// A blank tab has no address to show; the start page owns its own field.
+		return "";
+	}
 	return url.replace(HTTP_SCHEME, "").replace(TRAILING_SLASH, "");
 }
 
