@@ -945,6 +945,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									<TeamBridgeMessageList
 										messages={messages}
 										labelFor={(sender) => labelFor(sender)}
+										reactionContext={
+											selfAccountId && selected
+												? {
+														accountId: selfAccountId,
+														tenantId: selected.tenant_id,
+														disabled: !canCompose || selected.status !== "open",
+													}
+												: undefined
+										}
 									/>
 								)}
 							</div>

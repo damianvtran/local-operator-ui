@@ -104,6 +104,23 @@ export type TeamBridgeConversationList = z.infer<
 	typeof teamBridgeConversationListSchema
 >;
 
+/** Additive reaction summary: no reactor IDs or message bodies are persisted here. */
+export const teamBridgeReactionSchema = z
+	.object({
+		emoji: z.string().min(1),
+		count: z.number().int().positive(),
+		reacted_by_me: z.boolean(),
+		sample_labels: z.array(z.string()).max(3),
+	})
+	.passthrough();
+export type TeamBridgeReaction = z.infer<typeof teamBridgeReactionSchema>;
+export const teamBridgeReactionsSchema = z
+	.object({
+		message_id: id,
+		reactions: z.array(teamBridgeReactionSchema).max(50),
+	})
+	.passthrough();
+
 export const teamBridgeMessageSchema = z
 	.object({
 		id,
@@ -121,6 +138,7 @@ export const teamBridgeMessageSchema = z
 		origin: z.enum(["human", "agent", "system"]),
 		agent_label: z.string().optional(),
 		created_at: z.string(),
+		reactions: z.array(teamBridgeReactionSchema).max(50).optional(),
 	})
 	.passthrough();
 export type TeamBridgeMessage = z.infer<typeof teamBridgeMessageSchema>;

@@ -6,6 +6,7 @@ import type { FC } from "react";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
 import { type ThreadItem, threadItems } from "./team-bridge-model";
+import { TeamBridgeReactions } from "./team-bridge-reactions";
 
 /**
  * The thread, drawn the way Slack and Discord draw a channel, not a messenger.
@@ -39,7 +40,8 @@ import { type ThreadItem, threadItems } from "./team-bridge-model";
 export const TeamBridgeMessageList: FC<{
 	messages: readonly TeamBridgeMessage[];
 	labelFor: (sender: TeamBridgeMessage["sender"]) => string;
-}> = ({ messages, labelFor }) => {
+	reactionContext?: { accountId: string; tenantId: string; disabled?: boolean };
+}> = ({ messages, labelFor, reactionContext }) => {
 	const locale = useI18nLocale();
 	const items = threadItems(messages, new Date());
 	return (
@@ -54,6 +56,7 @@ export const TeamBridgeMessageList: FC<{
 						continuation={item.continuation}
 						label={labelFor(item.message.sender)}
 						locale={locale}
+						reactionContext={reactionContext}
 					/>
 				),
 			)}
@@ -96,7 +99,8 @@ const MessageRow: FC<{
 	continuation: boolean;
 	label: string;
 	locale: string;
-}> = ({ message, continuation, label, locale }) => {
+	reactionContext?: { accountId: string; tenantId: string; disabled?: boolean };
+}> = ({ message, continuation, label, locale, reactionContext }) => {
 	const agent = message.sender.kind === "agent";
 	const at = new Date(message.created_at);
 	const valid = !Number.isNaN(at.getTime());
@@ -177,6 +181,15 @@ const MessageRow: FC<{
 					<TeamBridgeMarkdown className="team-bridge-message-body text-[14px] text-ink">
 						{message.body}
 					</TeamBridgeMarkdown>
+				)}
+				{reactionContext && message.body !== null && (
+					<TeamBridgeReactions
+						key={message.id}
+						conversationId={message.conversation_id}
+						messageId={message.id}
+						{...reactionContext}
+						reactions={message.reactions}
+					/>
 				)}
 			</div>
 		</li>
