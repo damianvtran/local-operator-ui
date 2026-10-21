@@ -112,6 +112,8 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export * from "./src/main/browser/address-overlay";
+			export * from "./src/renderer/src/features/browser/overlay/address-overlay-port";
+			export * from "./src/main/browser/address-overlay-list";
 			export * from "./src/main/browser/registry";
 			export * as electron from "electron";
 		`,
@@ -129,10 +131,22 @@ const mod = await import(
 const {
 	AddressOverlayController,
 	ADDRESS_OVERLAY_MAX_HEIGHT_DIP,
+	ADDRESS_LIST_MAX_HEIGHT_DIP,
+	ADDRESS_LIST_NOTICE_HEIGHT_DIP,
+	ADDRESS_LIST_ROW_HEIGHT,
+	addressListBoundsFor,
+	addressListDocumentUrlFor,
+	addressListHeightFor,
+	addressListMeasurementProblem,
+	addressListRowIndexAt,
+	addressListViewModel,
 	addressOverlayDocumentUrlFor,
+	addressOverlayPort,
+	isPermanentOverlayRefusal,
 	layoutKeyOf,
 	overlayBoundsFor,
 	resolveAddressOverlayGate,
+	sanitizeProjection,
 	TabRegistry,
 } = mod;
 const electron = mod.electron;
@@ -309,7 +323,7 @@ test("gate: exact opt-in, armed driver and headless are all required", () => {
 			devDriverArmed: true,
 			windowMode: "headless",
 		}),
-		{ asked: false, enabled: false, reason: null },
+		{ asked: false, enabled: false, list: false, reason: null },
 	);
 	for (const value of ["0", "true", "yes", "  "]) {
 		const result = resolveAddressOverlayGate({
@@ -348,7 +362,49 @@ test("gate: exact opt-in, armed driver and headless are all required", () => {
 		devDriverArmed: true,
 		windowMode: "headless",
 	});
-	assert.deepEqual(armed, { asked: true, enabled: true, reason: null });
+	assert.deepEqual(armed, {
+		asked: true,
+		enabled: true,
+		list: false,
+		reason: null,
+	});
+	// S2 is an increment on S1, never a parallel arm.
+	const listArmed = resolveAddressOverlayGate({
+		env: {
+			LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S1: "1",
+			LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S2: "1",
+		},
+		devDriverArmed: true,
+		windowMode: "headless",
+	});
+	assert.deepEqual(listArmed, {
+		asked: true,
+		enabled: true,
+		list: true,
+		reason: null,
+	});
+	for (const test of [
+		{
+			env: { LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S2: "1" },
+			why: "S2 alone has no child of its own",
+		},
+		{
+			env: {
+				LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S1: "1",
+				LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S2: "true",
+			},
+			why: "S2's opt-in is exact",
+		},
+	]) {
+		const refused = resolveAddressOverlayGate({
+			env: test.env,
+			devDriverArmed: true,
+			windowMode: "headless",
+		});
+		assert.equal(refused.enabled, false, test.why);
+		assert.equal(refused.asked, true, `${test.why}: refusal is printed`);
+		assert.ok(refused.reason, test.why);
+	}
 });
 
 test("document URL follows the same two shapes as the other second documents", () => {
@@ -980,14 +1036,498 @@ test("the document is a dev-server AND build input, and the probe/factory source
 	)
 		.replace(/\/\*[\s\S]*?\*\//g, "")
 		.replace(/^\s*\/\/.*$/gm, "");
-	assert.equal(
-		/executeJavaScript|\.focus\(\)|showInactive/.test(source),
-		false,
-	);
+	// S2 adds exactly two scripted calls, both into the child's own fixed
+	// functions with main-built JSON. Anything else that runs code is refused
+	// here: `eval`, a bare string built from renderer input, or a second sink.
+	const scripts = source.match(/executeJavaScript\(([\s\S]{0,220}?)\)/g) ?? [];
+	assert.ok(scripts.length >= 2, "the apply and measure calls exist");
+	for (const call of scripts) {
+		assert.match(
+			call,
+			/window\.__loAddressOverlay/,
+			"executeJavaScript only targets the child's fixed functions",
+		);
+	}
+	assert.equal(/\beval\(/.test(source), false, "no eval");
+	assert.equal(/\.focus\(\)|showInactive/.test(source), false);
 	assert.equal(/preload:/.test(source), false, "no preload is configured");
 	assert.equal(
 		/persist:/.test(source),
 		false,
 		"no persistent partition is named",
 	);
+});
+
+// ---- S2: the mirror list's pure decisions ---------------------------------
+
+const S2_FIELD = { x: 300, y: 60, width: 604, height: 32 };
+const S2_OWNER = { width: 1380, height: 872 };
+const S2_LIST_TOP = 97; // field bottom 92 + the toolbar's ~5px rule
+
+function rows(n) {
+	return Array.from({ length: n }, (_, index) => ({
+		text: `host-${index}.example.com/path`,
+		title: `Title ${index}`,
+	}));
+}
+
+function projection(overrides = {}) {
+	return {
+		v: 1,
+		seq: 7,
+		tabId: 3,
+		visible: true,
+		pageRect: { x: 260, y: 110, width: 1120, height: 790 },
+		field: { ...S2_FIELD },
+		listTop: S2_LIST_TOP,
+		active: 0,
+		view: { kind: "rows", rows: rows(3) },
+		label: "Suggestions",
+		dir: "ltr",
+		...overrides,
+	};
+}
+
+test("S2 list geometry: the dock's numbers, computed by main and capped", () => {
+	assert.equal(addressListHeightFor({ kind: "rows", rows: rows(1) }), 69);
+	assert.equal(addressListHeightFor({ kind: "rows", rows: rows(3) }), 140);
+	assert.equal(addressListHeightFor({ kind: "rows", rows: rows(5) }), 211);
+	assert.ok(
+		addressListHeightFor({ kind: "rows", rows: rows(5) }) <=
+			ADDRESS_LIST_MAX_HEIGHT_DIP,
+	);
+	assert.equal(ADDRESS_LIST_ROW_HEIGHT, 35.5);
+	assert.equal(
+		addressListHeightFor({ kind: "notice", notice: "empty", text: "" }),
+		ADDRESS_LIST_NOTICE_HEIGHT_DIP,
+	);
+	const bounds = addressListBoundsFor(
+		S2_FIELD,
+		S2_LIST_TOP,
+		{ kind: "rows", rows: rows(3) },
+		S2_OWNER,
+	);
+	assert.deepEqual(bounds, {
+		x: S2_FIELD.x,
+		y: S2_LIST_TOP,
+		width: S2_FIELD.width,
+		height: 140,
+	});
+	// The list can never overlap the field it belongs to.
+	assert.ok(bounds.y >= S2_FIELD.y + S2_FIELD.height);
+});
+
+test("S2 anchor: the 0..24 gap is measured, and every bad rectangle refuses", () => {
+	const view = { kind: "rows", rows: rows(3) };
+	const at = (listTop) =>
+		addressListBoundsFor(S2_FIELD, listTop, view, S2_OWNER);
+	const fieldBottom = S2_FIELD.y + S2_FIELD.height;
+	assert.ok(at(fieldBottom), "flush is allowed");
+	assert.ok(at(fieldBottom + 24), "24 DIP is the documented maximum");
+	assert.equal(at(fieldBottom + 25), null, "further is another surface");
+	assert.equal(at(fieldBottom - 1), null, "never covers the field");
+	for (const bad of [
+		{ ...S2_FIELD, width: 0 },
+		{ ...S2_FIELD, height: -4 },
+		{ ...S2_FIELD, x: Number.NaN },
+	]) {
+		assert.equal(addressListBoundsFor(bad, S2_LIST_TOP, view, S2_OWNER), null);
+	}
+	assert.equal(
+		addressListBoundsFor(S2_FIELD, Number.POSITIVE_INFINITY, view, S2_OWNER),
+		null,
+	);
+	// The horizontal edge is clamped to the owner's content box (the list can
+	// never paint past the window), while a VERTICAL shortage is refused: a
+	// clamped height would hide rows the model says exist.
+	assert.deepEqual(
+		addressListBoundsFor(S2_FIELD, S2_LIST_TOP, view, {
+			width: 900,
+			height: 872,
+		}),
+		{ x: 300, y: S2_LIST_TOP, width: 600, height: 140 },
+	);
+	assert.equal(
+		addressListBoundsFor(
+			{ ...S2_FIELD, y: 800 },
+			837,
+			{ kind: "notice", notice: "empty", text: "x" },
+			{ width: 1380, height: 900 },
+		),
+		null,
+		"a notice that would cross the bottom edge is refused",
+	);
+});
+
+test("S2 projection: every field revalidated, unknown keys refused", () => {
+	const ok = sanitizeProjection(projection());
+	assert.equal(ok.ok, true);
+	assert.equal(ok.projection.seq, 7);
+
+	const refused = (payload) => {
+		const result = sanitizeProjection(payload);
+		assert.equal(result.ok, false, JSON.stringify(payload).slice(0, 120));
+		return result.reason;
+	};
+	assert.equal(refused({ ...projection(), v: 2 }), "bad_version");
+	assert.equal(refused({ ...projection(), seq: 0 }), "bad_seq");
+	assert.equal(refused({ ...projection(), seq: 1.5 }), "bad_seq");
+	assert.equal(refused({ ...projection(), tabId: "3" }), "bad_tab");
+	assert.equal(refused({ ...projection(), visible: "true" }), "bad_visible");
+	assert.equal(refused({ ...projection(), dir: "auto" }), "bad_dir");
+	assert.equal(refused({ ...projection(), extra: 1 }), "unknown_key");
+	assert.equal(
+		refused({ ...projection(), field: { ...S2_FIELD, width: Number.NaN } }),
+		"bad_rect",
+	);
+	assert.equal(
+		refused({ ...projection(), view: { kind: "rows", rows: rows(6) } }),
+		"bad_rows",
+	);
+	assert.equal(
+		refused({
+			...projection(),
+			view: { kind: "notice", notice: "info", text: "x" },
+		}),
+		"bad_notice",
+	);
+	assert.equal(
+		refused({ ...projection(), active: 3 }),
+		"bad_active",
+		"active cannot name a row that does not exist",
+	);
+	assert.equal(
+		refused({
+			...projection(),
+			view: { kind: "rows", rows: [{ text: "", title: "" }] },
+			active: -1,
+		}),
+		"bad_rows",
+	);
+	// The size cap is on ACTUAL bytes, not on a field count.
+	const huge = projection();
+	huge.label = "x".repeat(20_000);
+	assert.equal(refused(huge), "payload_too_large");
+});
+
+test("S2 projection: hostile strings are stripped and capped, never interpreted", () => {
+	const hostile = `a\u202Eb\u202Ac${String.fromCharCode(0)}d\u2028e<img src=x onerror=alert(1)>`;
+	const result = sanitizeProjection(
+		projection({
+			active: -1,
+			view: {
+				kind: "rows",
+				rows: [{ text: hostile, title: "y".repeat(600) }],
+			},
+		}),
+	);
+	assert.equal(result.ok, true);
+	const [row] = result.projection.view.rows;
+	assert.equal(row.text.includes("\u202E"), false);
+	assert.equal(row.text.includes("\u202A"), false);
+	assert.equal(row.text.includes(String.fromCharCode(0)), false);
+	assert.equal(row.text.includes("\u2028"), false);
+	assert.equal(row.text.includes("<img"), true, "literal text stays literal");
+	assert.ok(row.text.length <= 512);
+	assert.ok(row.title.length <= 256);
+	// A string that is ALL disallowed becomes empty, which is then refused —
+	// the mirror never paints an invisible row.
+	const stripped = sanitizeProjection(
+		projection({
+			active: -1,
+			view: { kind: "rows", rows: [{ text: "\u202E\u0000", title: "" }] },
+		}),
+	);
+	assert.equal(stripped.ok, false);
+});
+
+test("S2 theme: opaque colours only; alpha or junk falls back to one neutral", () => {
+	const resolved = sanitizeProjection(
+		projection({
+			theme: {
+				elevated: "#1b1f24",
+				ink: "rgb(230, 232, 234)",
+				inkMuted: "rgb(154,160,166)",
+				accent: "#5b9dd9",
+				accentWash: "#23303d",
+				rowHover: "#24282e",
+				hairline: "#2f343b",
+				control: "#3a4048",
+			},
+		}),
+	);
+	assert.equal(resolved.projection.themeFact, "resolved");
+	assert.equal(resolved.projection.theme.elevated, "#1b1f24");
+
+	const alpha = sanitizeProjection(
+		projection({
+			theme: {
+				elevated: "rgba(1, 2, 3, 0.5)",
+				ink: "#ffffff",
+				inkMuted: "#ffffff",
+				accent: "#ffffff",
+				accentWash: "#ffffff",
+				rowHover: "#ffffff",
+				hairline: "#ffffff",
+				control: "#ffffff",
+			},
+		}),
+	);
+	assert.equal(alpha.ok, true);
+	assert.equal(alpha.projection.themeFact, "fallback");
+	assert.equal(alpha.projection.theme, null);
+
+	assert.equal(sanitizeProjection(projection()).projection.themeFact, "absent");
+});
+
+test("S2 hit-test: rows only, in the child's own viewport coordinates", () => {
+	const view = { kind: "rows", rows: rows(3) };
+	assert.equal(addressListRowIndexAt(view, 0), null, "header");
+	assert.equal(addressListRowIndexAt(view, 29), null, "header/rule boundary");
+	assert.equal(addressListRowIndexAt(view, 30), 0, "first row's first pixel");
+	assert.equal(addressListRowIndexAt(view, 64), 0);
+	assert.equal(addressListRowIndexAt(view, 65.5), 1);
+	assert.equal(addressListRowIndexAt(view, 100), 1);
+	assert.equal(addressListRowIndexAt(view, 136), 2);
+	assert.equal(addressListRowIndexAt(view, 141), null, "below the last row");
+	assert.equal(
+		addressListRowIndexAt({ kind: "notice", notice: "empty", text: "" }, 40),
+		null,
+		"a notice has no rows",
+	);
+});
+
+test("S2 measurement: the child must prove what it painted", () => {
+	const model = sanitizeProjection(projection({ active: 1 })).projection;
+	const good = {
+		appliedSeq: model.seq,
+		rowCount: 3,
+		headerHeight: 28,
+		rowRects: [0, 1, 2].map((index) => ({
+			top: 2 + index * 35.5,
+			height: 35.5,
+		})),
+		viewportHeight: 110,
+		scrollHeight: 110,
+		innerHeight: 140,
+		activeRowRect: { top: 37.5, height: 35.5 },
+	};
+	assert.equal(addressListMeasurementProblem(good, model, 140), null);
+	// M1's negative control: the layout viewport is pinned to the model, so only
+	// innerHeight can prove the native view is the requested rectangle. A view
+	// 71 DIP short is exactly the shipped run's 211-requested/140-painted case.
+	assert.equal(
+		addressListMeasurementProblem({ ...good, innerHeight: 69 }, model, 140),
+		"measure_viewport",
+	);
+	assert.equal(
+		addressListMeasurementProblem({ ...good, innerHeight: 139 }, model, 140),
+		null,
+		"one DIP of rounding is tolerated",
+	);
+	const shortPaint = sanitizeProjection(
+		projection({
+			view: { kind: "notice", notice: "empty", text: "x" },
+			active: -1,
+		}),
+	).projection;
+	assert.equal(
+		addressListMeasurementProblem(
+			{
+				appliedSeq: shortPaint.seq,
+				rowCount: 0,
+				headerHeight: 28,
+				rowRects: [],
+				viewportHeight: 75,
+				scrollHeight: 0,
+				innerHeight: 104,
+				activeRowRect: null,
+			},
+			shortPaint,
+			104,
+		),
+		null,
+	);
+	assert.equal(
+		addressListMeasurementProblem(
+			{ ...good, appliedSeq: model.seq + 1 },
+			model,
+		),
+		"measure_stale",
+	);
+	assert.equal(
+		addressListMeasurementProblem({ ...good, rowCount: 2 }, model, 140),
+		"measure_row_count",
+	);
+	assert.equal(
+		addressListMeasurementProblem(
+			{ ...good, rowRects: [{ top: 2, height: 30 }] },
+			model,
+			140,
+		),
+		"measure_row_rects",
+	);
+	assert.equal(
+		addressListMeasurementProblem(
+			{
+				...good,
+				rowRects: good.rowRects.map((row) => ({ ...row, height: 34 })),
+			},
+			model,
+			140,
+		),
+		"measure_row_height",
+	);
+	assert.equal(
+		addressListMeasurementProblem({ ...good, scrollHeight: 400 }, model, 140),
+		"measure_scroll",
+		"rows are capped so the mirror never scrolls",
+	);
+	assert.equal(
+		addressListMeasurementProblem(
+			{ ...good, activeRowRect: { top: -40, height: 35.5 } },
+			model,
+			140,
+		),
+		"active_not_visible",
+	);
+	assert.equal(addressListMeasurementProblem(null, model), "measure_invalid");
+});
+
+test("S2 view model: the child never receives page identity or a URL-bearing key", () => {
+	const model = addressListViewModel(
+		sanitizeProjection(
+			projection({ active: 2, view: { kind: "rows", rows: rows(3) } }),
+		).projection,
+	);
+	for (const forbidden of ["tabId", "pageRect", "field", "listTop", "url"]) {
+		assert.equal(
+			JSON.stringify(model).includes(`"${forbidden}"`),
+			false,
+			`${forbidden} does not travel to the child`,
+		);
+	}
+	assert.equal(model.active, 2);
+	assert.equal(model.view.rows.length, 3);
+});
+
+test("S2 document and bundle: strict CSP, no accessibility claim, no app imports", () => {
+	const html = readFileSync(
+		join(ROOT, "src/renderer/browser-address-overlay-list.html"),
+		"utf8",
+	);
+	const csp = html.match(
+		/http-equiv="Content-Security-Policy"\s+content="([^"]+)"/,
+	)?.[1];
+	assert.equal(
+		csp,
+		"default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; font-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'",
+	);
+	assert.equal(/unsafe-inline|unsafe-eval/i.test(html), false);
+	assert.equal(/\brole=|\btabindex=|\bautofocus/i.test(html), false);
+	assert.equal(/aria-hidden="true"/.test(html), true);
+
+	const script = readFileSync(
+		join(ROOT, "src/renderer/src/address-overlay-list/main.ts"),
+		"utf8",
+	);
+	const imports = [...script.matchAll(/from\s+"([^"]+)"/g)].map(
+		(match) => match[1],
+	);
+	assert.deepEqual(
+		imports,
+		[],
+		"the child bundles no app module (the stylesheet is a side-effect import)",
+	);
+	assert.match(script, /textContent =/);
+	assert.equal(
+		/innerHTML|insertAdjacentHTML|document\.write/.test(script),
+		false,
+	);
+	assert.equal(/ipcRenderer|window\.api/.test(script), false);
+
+	const config = readFileSync(join(ROOT, "electron.vite.config.js"), "utf8");
+	const occurrences =
+		config.match(/src\/renderer\/browser-address-overlay-list\.html/g) ?? [];
+	assert.equal(
+		occurrences.length,
+		2,
+		"renderer input and rollupOptions.input both name the S2 document",
+	);
+	// Both documents are resolved by the same URL rule.
+	assert.equal(
+		addressListDocumentUrlFor("file:///app/out/renderer/index.html"),
+		"file:///app/out/renderer/browser-address-overlay-list.html",
+	);
+});
+
+test("S2 port: the no-handler latch invokes the bridge once and stops", async () => {
+	let calls = 0;
+	globalThis.window = {
+		__loDevDriver: {
+			armed: true,
+			addressOverlayProject: async () => {
+				calls += 1;
+				throw new Error(
+					"Error invoking remote method 'dev-driver-address-overlay-project': Error: No handler registered for 'dev-driver-address-overlay-project'",
+				);
+			},
+			onAddressOverlayEvent: () => () => undefined,
+		},
+	};
+	try {
+		const port = addressOverlayPort();
+		assert.ok(port, "an armed bridge exposes the port");
+		await assert.rejects(port.project({ v: 1 }));
+		assert.equal(calls, 1);
+		// The SAME captured port must not invoke again after the latch.
+		await assert.rejects(port.project({ v: 1 }));
+		assert.equal(calls, 1, "the latch is checked inside the returned method");
+		assert.equal(
+			addressOverlayPort(),
+			null,
+			"the port disappears after latching",
+		);
+	} finally {
+		globalThis.window = undefined;
+	}
+});
+
+test("S2 permanent refusals are recognised, transient ones are not", () => {
+	for (const reason of ["overlay_failed", "disposed", "owner_unavailable"]) {
+		assert.equal(isPermanentOverlayRefusal(reason), true, reason);
+	}
+	for (const reason of [
+		"stale_seq",
+		"stale_layout",
+		"stale_tab",
+		"measure_viewport",
+		"anchor_inconsistent",
+		undefined,
+		null,
+		42,
+	]) {
+		assert.equal(isPermanentOverlayRefusal(reason), false, String(reason));
+	}
+});
+
+test("S2 escaping: the sanitizer, not JSON.stringify, removes line separators", () => {
+	// JSON.stringify does NOT escape these; S3/S4 must not rely on the old claim.
+	const json = JSON.stringify({ a: "x\u2028y\u2029z</script>" });
+	assert.ok(json.includes("\u2028"), "U+2028 survives JSON.stringify");
+	assert.ok(json.includes("\u2029"), "U+2029 survives JSON.stringify");
+	assert.ok(json.includes("</script>"), "</script> survives JSON.stringify");
+	const result = sanitizeProjection(
+		projection({
+			label: "a\u2028b\u2029c",
+			view: {
+				kind: "rows",
+				rows: [{ text: "x\u2028y", title: "p\u2029q" }],
+			},
+		}),
+	);
+	assert.equal(result.ok, true);
+	assert.equal(result.projection.label, "abc");
+	assert.equal(result.projection.view.rows[0].text, "xy");
+	assert.equal(result.projection.view.rows[0].title, "pq");
 });

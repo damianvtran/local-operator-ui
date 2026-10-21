@@ -74,6 +74,7 @@ import {
 	stopBrowserHost,
 } from "./browser";
 import {
+	addressListDocumentUrlFor,
 	addressOverlayDocumentUrlFor,
 	resolveAddressOverlayGate,
 } from "./browser/address-overlay";
@@ -1507,7 +1508,7 @@ const addressOverlayGate = resolveAddressOverlayGate({
 if (addressOverlayGate.asked) {
 	console.log(
 		addressOverlayGate.enabled
-			? "[address-overlay] ARMED (S1 probe: native child, no product path)"
+			? `[address-overlay] ARMED (S${addressOverlayGate.list ? "2 probe: mirror list" : "1 probe: native child"}, no product path)`
 			: `[address-overlay] not armed: ${addressOverlayGate.reason}`,
 	);
 }
@@ -2553,7 +2554,9 @@ app
 		 * the overlay pointing at a document that is not there. The host only receives
 		 * it when the gate passed; the URL itself is never renderer- or caller-supplied.
 		 */
-		const addressOverlayDocumentUrl = addressOverlayDocumentUrlFor(rendererUrl);
+		const addressOverlayDocumentUrl = addressOverlayGate.list
+			? addressListDocumentUrlFor(rendererUrl)
+			: addressOverlayDocumentUrlFor(rendererUrl);
 		/*
 		 * The machine-wide feed's two consumers, and the split between them is the
 		 * design: main takes the notifications (so a completion banners with no
@@ -4079,6 +4082,7 @@ app
 						? {
 								addressOverlay: {
 									enabled: true,
+									list: addressOverlayGate.list,
 									documentUrl: addressOverlayDocumentUrl,
 								},
 							}

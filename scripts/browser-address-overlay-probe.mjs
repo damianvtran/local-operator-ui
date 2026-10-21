@@ -45,6 +45,7 @@ import {
 import { createServer as createHttpServer } from "node:http";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
+import { loadavg } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
@@ -65,6 +66,9 @@ function arg(name) {
 }
 
 const OUT = arg("--out");
+/** S2's mirror matrix. Off by default so the S1 matrix stays the same-code
+ * control and runs unchanged. */
+const S2 = process.argv.includes("--s2");
 if (!OUT) fail("--out <evidence dir> is required");
 const RUN = join(OUT, "run");
 const FRAMES = join(RUN, "frames");
@@ -89,6 +93,12 @@ function plan(id, claim, mode = "driven") {
 function record(id, status, evidence) {
 	const row = rows.find((entry) => entry.id === id);
 	if (!row) throw new Error(`unknown row ${id}`);
+	// A second record for one id silently replaced the first receipt and let two
+	// different claims share a row (QA round 1, Q-2). Ids are now unique per row;
+	// a duplicate is a probe bug, not last-wins.
+	if (row.at !== null) {
+		throw new Error(`row ${id} was already recorded at ${row.at}`);
+	}
 	row.status = status;
 	row.evidence = evidence;
 	row.at = at();
@@ -112,11 +122,15 @@ const emitted = {
 	preload: join(ROOT, "out/preload/index.js"),
 	renderer: join(ROOT, "out/renderer/index.html"),
 	overlayDocument: join(ROOT, "out/renderer/browser-address-overlay.html"),
+	listDocument: join(ROOT, "out/renderer/browser-address-overlay-list.html"),
 };
 for (const [name, path] of Object.entries(emitted)) {
 	if (!existsSync(path)) fail(`missing built artifact ${name}: ${path}`);
 }
 const overlayHtml = readFileSync(emitted.overlayDocument, "utf8");
+const listHtml = existsSync(emitted.listDocument)
+	? readFileSync(emitted.listDocument, "utf8")
+	: "";
 const csp = overlayHtml.match(
 	/http-equiv="Content-Security-Policy"\s+content="([^"]+)"/,
 )?.[1];
@@ -130,6 +144,23 @@ const buildIdentity = {
 		cwd: ROOT,
 		encoding: "utf8",
 	}).stdout.trim(),
+	// QA round 1's Q-3: `gitHead` alone named the parent commit when the evidence
+	// was built from a working tree. Record the DIRTY state and a hash of the
+	// uncommitted diff so the metadata says exactly what produced these bytes.
+	gitDirty:
+		spawnSync("git", ["status", "--porcelain"], {
+			cwd: ROOT,
+			encoding: "utf8",
+		}).stdout.trim() !== "",
+	worktreeDiffSha256: createHash("sha256")
+		.update(
+			spawnSync("git", ["diff", "HEAD"], { cwd: ROOT, encoding: "utf8" })
+				.stdout ?? "",
+		)
+		.digest("hex"),
+	// Q-4: a shared host's load is part of a run's identity; a child readiness
+	// timeout under load is BLOCKED evidence, not a matrix pass.
+	hostLoad: loadavg()[0],
 	node: process.version,
 	electron: ELECTRON_VERSION,
 	artifacts: Object.fromEntries(
@@ -138,6 +169,15 @@ const buildIdentity = {
 			{ path, sha256: sha256(path), bytes: readFileSync(path).byteLength },
 		]),
 	),
+	listDocument: {
+		present: listHtml !== "",
+		csp: listHtml.match(
+			/http-equiv="Content-Security-Policy"\s+content="([^"]+)"/,
+		)?.[1],
+		assets: [...listHtml.matchAll(/(?:src|href)="\.\/([^"]+)"/g)].map(
+			(match) => match[1],
+		),
+	},
 	overlayDocument: {
 		csp,
 		hasScriptTag: /<script\b/i.test(overlayHtml),
@@ -374,7 +414,7 @@ const boots = [];
 const pageServers = [];
 let bootTag = 0;
 
-async function boot({ s1, driver, tag }) {
+async function boot({ s1, s2, s2Raw, driver, tag }) {
 	bootTag += 1;
 	const home = join(RUN, `home-${bootTag}`);
 	const config = join(RUN, `config-${bootTag}`);
@@ -401,6 +441,8 @@ async function boot({ s1, driver, tag }) {
 		LOCAL_OPERATOR_UI_DEV_DRIVER: driver ? "1" : undefined,
 		LOCAL_OPERATOR_UI_DEV_DRIVER_OUT: driver ? FRAMES : undefined,
 		LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S1: s1 ? "1" : undefined,
+		LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S2:
+			s2Raw ?? (s2 ? "1" : undefined),
 		VITE_DISABLE_BACKEND_MANAGER: "true",
 	});
 	withTelemetryOff(env);
@@ -415,6 +457,14 @@ async function boot({ s1, driver, tag }) {
 			`--remote-debugging-port=${port}`,
 			"--window-mode=headless",
 			"--window-size=1380x900",
+			// The headless window is occluded; Chromium throttles the child's frame
+			// loop and a WebContentsView resize can sit unapplied indefinitely (native
+			// bounds 211, renderer viewport still 140). A VISIBLE window applies it on
+			// the next frame. These switches keep the rig's frame behaviour closer to
+			// the visible product path without making anything visible.
+			"--disable-backgrounding-occluded-windows",
+			"--disable-renderer-backgrounding",
+			"--disable-background-timer-throttling",
 			MOCK_KEYCHAIN_SWITCH,
 		],
 		{ env, cwd, stdio: ["ignore", "pipe", "pipe"] },
@@ -422,7 +472,7 @@ async function boot({ s1, driver, tag }) {
 	const logPath = join(OUT, "app.log");
 	appendFileSync(
 		logPath,
-		`\n===== boot ${bootTag} (${tag}) s1=${s1 ? 1 : 0} driver=${driver ? 1 : 0} pid=${child.pid} =====\n`,
+		`\n===== boot ${bootTag} (${tag}) s1=${s1 ? 1 : 0} s2=${s2 ? 1 : 0} driver=${driver ? 1 : 0} pid=${child.pid} =====\n`,
 	);
 	const stream = [];
 	const write = () => {
@@ -555,14 +605,14 @@ async function evaluate(cdp, expression) {
 }
 
 /** The gated probe, or a thrown refusal — never a fabricated answer. */
-async function probe(cdp, action) {
+async function probe(cdp, action, argument) {
 	return evaluate(
 		cdp,
 		`(async () => {
 			try {
 				return { ok: true, value: await window.__loDevDriver.addressOverlay(${JSON.stringify(
 					action,
-				)}) };
+				)}, ${JSON.stringify(argument ?? null)}) };
 			} catch (error) {
 				return { ok: false, error: String(error && error.message ? error.message : error) };
 			}
@@ -1453,6 +1503,1562 @@ async function windowCloseCase() {
 	}
 }
 
+// ---- S2: the mirror list --------------------------------------------------
+
+const S2_CSP =
+	"default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; font-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
+
+const S2_ROWS = [
+	[
+		"P1",
+		"built S2 document exists with its script and stylesheet; its CSP equals the pinned one",
+	],
+	[
+		"G1",
+		"S2 off (S1 armed): the probe works and the projection channel is absent ('No handler')",
+	],
+	["G2a", "S2 env alone: printed refusal, no controller"],
+	["G2b", "S1+S2 without the armed driver: printed refusal, no bridge"],
+	["G2c", "S2=1 with a non-opt-in spelling: printed refusal"],
+	[
+		"G1b",
+		"S2 off: typing in the real address field invokes the missing projection channel at most once (latch stops the loop)",
+	],
+	[
+		"P3",
+		"real input drivability: CDP can focus and type into the real address field in a focusable:false window",
+	],
+	[
+		"A1",
+		"child x/width = field rect (±1 DIP), y = dock top, never over the field",
+	],
+	["A2", "page bounds and visibility identical before/open/after"],
+	["A3", "child is last in contentView.children and visible"],
+	[
+		"A4",
+		"window resize while open re-anchors to the new field/dock geometry; no stale frame",
+	],
+	["A5", "zoom != 1 hides with reason 'zoomed' (pure gate)"],
+	["A6", "a projection for another tab is refused ('stale_tab') and hides"],
+	[
+		"A7",
+		"out-of-range/NaN/huge/negative/inconsistent/extra-key/oversize projections are refused (unit)",
+	],
+	[
+		"R1-real",
+		"under real input the child's own measurement reports a 28 header and 35.5 rows",
+	],
+	[
+		"R1",
+		"1/3/5 rows render with 35.5 row height and 28 header; rowCount equals the model",
+	],
+	["R2", "each notice kind renders at 104 DIP; loading-with-no-rows is hidden"],
+	[
+		"R3",
+		"exactly one active row; its rect equals the parent's aria-activedescendant index (real input)",
+	],
+	[
+		"R3-synthetic",
+		"synthetic projection: exactly one active row and its rect at the documented offset (no parent ARIA)",
+	],
+	["R4", "hostile text is literal and capped; no img/script executes"],
+	[
+		"R5",
+		"ru and ur header/notice (and ur rows, RTL) render with the catalogues' own strings (child pixels)",
+	],
+	[
+		"R5b",
+		"real-copy notice at a narrow field width stays inside the 104-DIP block (no clipping)",
+	],
+	["R6", "alpha theme is rejected and the opaque fallback is used"],
+	[
+		"C1",
+		"synthetic mouse down/up on row 0 commits through the renderer's real navigate",
+	],
+	["C2", "down row i / up row j commits nothing"],
+	["C3", "stale seq is refused without hiding the newer model"],
+	[
+		"C3b",
+		"a probe click naming a row outside the applied model is refused and commits nothing",
+	],
+	["C4", "candidate set change between project and click is dropped (unit)"],
+	[
+		"K1",
+		"ArrowDown/Enter/Escape/Tab drive the parent exactly as today and the mirror hides on each dismissal",
+	],
+	[
+		"K2",
+		"keys sent into the child are prevented, counted, and navigate nothing",
+	],
+	[
+		"X1",
+		"child has no node/electron/require; inline script blocked; navigation refused",
+	],
+	["L1", "20 apply/hide cycles reuse one child; listener counts flat"],
+	["L1-teardown", "the S2 matrix boot stops with exit 0 and no survivors"],
+	[
+		"V1",
+		"child-only pixels captured and viewed (rows3, rows5-active, notice, hostile, ru, ur)",
+	],
+	["V2", "native-composite pixels (child over page)", "BLOCKED"],
+	["V3", "native hit routing between sibling views", "BLOCKED"],
+	["V4", "IME, AX tree, visible-window focus, theme contrast", "BLOCKED"],
+];
+
+function planS2Rows() {
+	for (const [id, claim, mode] of S2_ROWS) {
+		plan(id, claim, mode === "BLOCKED" ? "blocked" : "driven");
+	}
+}
+
+// The child shows only strings the renderer already localizes. Reading the
+// catalogues here (rather than writing fixture copy) is what makes the frames
+// real-copy evidence (design review D4).
+const CATALOGUES = Object.fromEntries(
+	["en", "ru", "ur"].map((locale) => [
+		locale,
+		JSON.parse(
+			readFileSync(
+				join(ROOT, "src/i18n/catalogues", locale, "ui.browser.json"),
+				"utf8",
+			),
+		),
+	]),
+);
+const copy = (locale, key) =>
+	CATALOGUES[locale][`ui.browser.browser_url_bar.${key}`];
+
+let s2Seq = 1000;
+const nextS2Seq = () => {
+	s2Seq += 1;
+	return s2Seq;
+};
+
+const isListTarget = (target) =>
+	target.type === "page" &&
+	target.url.endsWith("browser-address-overlay-list.html");
+
+async function connectList(handle) {
+	const target = await waitForTarget(handle.port, isListTarget, 20_000);
+	const cdp = await connect(target.webSocketDebuggerUrl);
+	await cdp.send("Page.enable");
+	await cdp.send("Runtime.enable");
+	return { cdp, target };
+}
+
+async function childEvaluate(cdp, expression) {
+	const result = await cdp.send("Runtime.evaluate", {
+		expression,
+		awaitPromise: true,
+		returnByValue: true,
+	});
+	if (result.exceptionDetails) {
+		throw new Error(
+			`child exception: ${
+				result.exceptionDetails.exception?.description ??
+				result.exceptionDetails.text
+			}`,
+		);
+	}
+	return result.result?.value;
+}
+
+async function s2Geometry(cdp) {
+	return evaluate(
+		cdp,
+		`(() => {
+			const field = document.querySelector('[data-tour-tag="browser-address"]');
+			const dock = document.querySelector('[data-tour-tag="browser-address-suggestions"]');
+			if (!field || !dock) return null;
+			const f = field.getBoundingClientRect();
+			const d = dock.getBoundingClientRect();
+			const content = document.querySelector('[data-tour-tag="browser-content"]');
+			const c = content ? content.getBoundingClientRect() : null;
+			return {
+				content: c ? { x: Math.round(c.left), y: Math.round(c.top), width: Math.round(c.width), height: Math.round(c.height) } : null,
+				field: { x: Math.round(f.left), y: Math.round(f.top), width: Math.round(f.width), height: Math.round(f.height) },
+				listTop: Math.round(d.top),
+				dockOpen: dock.getAttribute('data-address-dock-open') === 'true',
+				editing: field.getAttribute('data-address-editing'),
+				value: field.value ?? null,
+				candidates: Number(field.getAttribute('data-address-candidates') || '0'),
+				activeDescendant: field.getAttribute('aria-activedescendant'),
+				activeIndex: (() => {
+					const id = field.getAttribute('aria-activedescendant');
+					if (!id) return -1;
+					const rows = [...document.querySelectorAll('[data-address-suggestion]')];
+					return rows.findIndex((row) => row.id === id);
+				})(),
+				firstCandidateUrl: document.querySelector('[data-address-suggestion]')?.getAttribute('data-address-suggestion-url') ?? null,
+				candidateUrls: [...document.querySelectorAll('[data-address-suggestion-url]')].map((row) => row.getAttribute('data-address-suggestion-url')),
+			};
+		})()`,
+	);
+}
+
+async function projectDirect(cdp, payload) {
+	const answer = await evaluate(
+		cdp,
+		`(async () => {
+			try {
+				return { ok: true, value: await window.__loDevDriver.addressOverlayProject(${JSON.stringify(payload)}) };
+			} catch (error) {
+				return { ok: false, error: String(error && error.message ? error.message : error) };
+			}
+		})()`,
+	);
+	appendEvent({
+		event: "project",
+		payload: { ...payload, view: payload.view?.kind },
+		answer,
+	});
+	return answer;
+}
+
+async function waitForS2(cdp, predicate, timeoutMs = 8_000) {
+	const deadline = Date.now() + timeoutMs;
+	let last = null;
+	while (Date.now() < deadline) {
+		last = await probe(cdp, "facts");
+		if (predicate(last)) return last;
+		await sleep(120);
+	}
+	return last;
+}
+
+function s2Rows(n) {
+	return Array.from({ length: n }, (_, index) => ({
+		text: `example-${index + 1}.test/some/considerably/long/path/for/truncation`,
+		title: `Example page ${index + 1}`,
+	}));
+}
+
+function s2Projection(geometry, pageRect, tabId, view, overrides = {}) {
+	return {
+		v: 1,
+		seq: nextS2Seq(),
+		tabId,
+		visible: true,
+		pageRect,
+		field: geometry.field,
+		listTop: geometry.listTop,
+		active: -1,
+		view,
+		label: copy("en", "address_suggestions_label"),
+		dir: "ltr",
+		...overrides,
+	};
+}
+
+async function captureChild(handle, label) {
+	const { cdp } = await connectList(handle);
+	try {
+		const shot = await cdp.send("Page.captureScreenshot", { format: "png" });
+		const path = join(FRAMES, `${label}.png`);
+		const buffer = Buffer.from(shot.data, "base64");
+		writeFileSync(path, buffer);
+		return { path, bytes: buffer.byteLength };
+	} finally {
+		cdp.close();
+	}
+}
+
+/** P1 — run before any boot: the built S2 document and its bundle are real. */
+function s2BuildRow() {
+	const assets = (buildIdentity.listDocument.assets ?? []).map((asset) =>
+		join(ROOT, "out/renderer", asset),
+	);
+	const present = assets.filter((asset) => existsSync(asset));
+	record(
+		"P1",
+		buildIdentity.listDocument.present &&
+			buildIdentity.listDocument.csp === S2_CSP &&
+			assets.length === 2 &&
+			present.length === 2
+			? "PASS"
+			: "FAIL",
+		`document=${buildIdentity.listDocument.present} cspMatch=${buildIdentity.listDocument.csp === S2_CSP} assets=${JSON.stringify(buildIdentity.listDocument.assets)} present=${present.length}/${assets.length} htmlSha=${buildIdentity.artifacts.listDocument?.sha256?.slice(0, 12)}`,
+	);
+}
+
+async function s2GateCases() {
+	// G1: S2 off, S1 armed. The probe exists; the projection channel does not.
+	{
+		const handle = await boot({
+			s1: true,
+			s2: false,
+			driver: true,
+			tag: "s2-off",
+		});
+		try {
+			const { cdp } = await connectMain(handle);
+			await waitForDriver(cdp);
+			await navigate(cdp, "/browser");
+			await waitForSurface(cdp);
+			const pageServer = await startPageServer();
+			pageServers.push(pageServer);
+			await evaluate(cdp, "window.api.browser.newTab()");
+			await waitForActiveTab(cdp);
+			// Three navigations, like P3: one page leaves no history to open the
+			// list with, and the G1b claim is about a list that IS open.
+			for (let index = 0; index < 3; index += 1) {
+				await presentActivePage(cdp, pageServer);
+				await sleep(120);
+			}
+			const shown = await probe(cdp, "show");
+			const answer = await evaluate(
+				cdp,
+				`(async () => {
+					try {
+						await window.__loDevDriver.addressOverlayProject({});
+						return { refused: false };
+					} catch (error) {
+						return { refused: true, error: String(error && error.message ? error.message : error) };
+					}
+				})()`,
+			);
+			record(
+				"G1",
+				shown.state === "shown" &&
+					shown.s2.list === false &&
+					answer.refused &&
+					/No handler registered/.test(answer.error ?? "")
+					? "PASS"
+					: "FAIL",
+				`state=${shown.state} s2.list=${shown.s2.list} projection=${JSON.stringify(answer)}`,
+			);
+			// G1b: the S2-off retry storm (QA Q-1). Type in the real field with the
+			// list open for 3 s and count how many times the unregistered channel was
+			// invoked. The latch must stop the loop after the first answer.
+			// Baseline AFTER G1's own direct invoke has been logged: Electron's handler
+			// error is written asynchronously, and reading a byte offset straight after
+			// the await counted G1's line as a hook invoke (QA round 1's "2").
+			const countUnregistered = () =>
+				(
+					readFileSync(join(OUT, "app.log"), "utf8").match(
+						/No handler registered for 'dev-driver-address-overlay-project'/g,
+					) ?? []
+				).length;
+			await sleep(500);
+			const logBefore = countUnregistered();
+			const geometry = await s2Geometry(cdp);
+			const clickX = geometry.field.x + Math.round(geometry.field.width / 2);
+			const clickY = geometry.field.y + Math.round(geometry.field.height / 2);
+			for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) {
+				await cdp.send("Input.dispatchMouseEvent", {
+					type,
+					x: clickX,
+					y: clickY,
+					button: "left",
+					clickCount: 1,
+				});
+			}
+			await sleep(200);
+			const focused = await evaluate(
+				cdp,
+				`(() => {
+					const el = document.querySelector('[data-tour-tag="browser-address"]');
+					if (!el) return { ok: false };
+					el.focus();
+					el.select();
+					return { ok: document.activeElement === el, active: document.activeElement?.tagName ?? null };
+				})()`,
+			);
+			await cdp.send("Input.insertText", { text: "127.0.0.1" });
+			await sleep(500);
+			const afterType = await s2Geometry(cdp);
+			await sleep(2_500);
+			const invokes = countUnregistered() - logBefore;
+			const typed = await s2Geometry(cdp);
+			const targets = await cdp.send("Target.getTargets");
+			const pages = (targets.targetInfos ?? [])
+				.filter((target) => target.type === "page")
+				.map((target) => target.url);
+			record(
+				"G1b",
+				invokes <= 1 && afterType?.dockOpen === true && focused?.ok === true
+					? "PASS"
+					: invokes <= 1
+						? "BLOCKED"
+						: "FAIL",
+				`focused=${JSON.stringify(focused)} afterType=${JSON.stringify(afterType)} end=${JSON.stringify(typed)} pages=${JSON.stringify(pages)} unregisteredProjectionErrors=${invokes} over 3s (pre-fix QA measured 386)`,
+			);
+			cdp.close();
+		} finally {
+			handle.stop("SIGTERM");
+			await handle.exited;
+		}
+	}
+
+	// G2a: S2 alone.
+	{
+		const handle = await boot({
+			s1: false,
+			s2: true,
+			driver: true,
+			tag: "s2-alone",
+		});
+		try {
+			const { cdp } = await connectMain(handle);
+			await waitForDriver(cdp);
+			const bridge = await evaluate(cdp, "typeof window.__loDevDriver");
+			await sleep(300);
+			const log = readFileSync(join(OUT, "app.log"), "utf8");
+			const line = log
+				.split("\n")
+				.filter((entry) =>
+					/address-overlay\].*not armed: LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S2/.test(
+						entry,
+					),
+				)
+				.pop();
+			record(
+				"G2a",
+				bridge === "object" && Boolean(line) ? "PASS" : "FAIL",
+				`bridge=${bridge} line=${line ?? "(none)"}`,
+			);
+			cdp.close();
+		} finally {
+			handle.stop("SIGTERM");
+			await handle.exited;
+		}
+	}
+
+	// G2b: S1+S2 without the armed driver.
+	{
+		const handle = await boot({
+			s1: true,
+			s2: true,
+			driver: false,
+			tag: "s2-no-driver",
+		});
+		try {
+			const { cdp } = await connectMain(handle);
+			const bridge = await evaluate(cdp, "typeof window.__loDevDriver");
+			await sleep(300);
+			const log = readFileSync(join(OUT, "app.log"), "utf8");
+			const line = log
+				.split("\n")
+				.filter((entry) =>
+					/address-overlay\].*not armed: the address overlay needs the armed renderer dev driver/.test(
+						entry,
+					),
+				)
+				.pop();
+			record(
+				"G2b",
+				bridge === "undefined" && Boolean(line) ? "PASS" : "FAIL",
+				`bridge=${bridge} line=${line ?? "(none)"}`,
+			);
+			cdp.close();
+		} finally {
+			handle.stop("SIGTERM");
+			await handle.exited;
+		}
+	}
+
+	// G2c: a non-opt-in S2 spelling.
+	{
+		const handle = await boot({
+			s1: true,
+			s2: false,
+			s2Raw: "true",
+			driver: true,
+			tag: "s2-bad-value",
+		});
+		try {
+			const { cdp } = await connectMain(handle);
+			await waitForDriver(cdp);
+			await sleep(300);
+			const log = readFileSync(join(OUT, "app.log"), "utf8");
+			const line = log
+				.split("\n")
+				.filter((entry) =>
+					/address-overlay\].*not armed: LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S2=true/.test(
+						entry,
+					),
+				)
+				.pop();
+			record("G2c", line ? "PASS" : "FAIL", line ?? "(none)");
+			cdp.close();
+		} finally {
+			handle.stop("SIGTERM");
+			await handle.exited;
+		}
+	}
+}
+
+async function s2RealInputMatrix() {
+	const handle = await boot({
+		s1: true,
+		s2: true,
+		driver: true,
+		tag: "s2-real",
+	});
+	let cdp = null;
+	const factsLog = [];
+	try {
+		const main = await connectMain(handle);
+		cdp = main.cdp;
+		await waitForDriver(cdp);
+		await navigate(cdp, "/browser");
+		await waitForSurface(cdp);
+		const pageServer = await startPageServer();
+		pageServers.push(pageServer);
+		await evaluate(cdp, "window.api.browser.newTab()");
+		await waitForActiveTab(cdp);
+		for (let index = 0; index < 3; index += 1) {
+			await presentActivePage(cdp, pageServer);
+			await sleep(120);
+		}
+		const initial = await probe(cdp, "facts");
+		factsLog.push({ label: "initial", facts: initial });
+		const geometryBefore = await s2Geometry(cdp);
+
+		// P3: the unknown the brief named. Focus the REAL input the way a user does
+		// — a mouse press inside it — and type. `el.focus()` alone was measured to
+		// set activeElement while React's onFocus (and therefore the history
+		// snapshot) did not run in this unfocused document; a real press does.
+		const fieldBox = geometryBefore.field;
+		const clickX = fieldBox.x + Math.round(fieldBox.width / 2);
+		const clickY = fieldBox.y + Math.round(fieldBox.height / 2);
+		for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) {
+			await cdp.send("Input.dispatchMouseEvent", {
+				type,
+				x: clickX,
+				y: clickY,
+				button: "left",
+				clickCount: 1,
+			});
+		}
+		await sleep(250);
+		const focus = await evaluate(
+			cdp,
+			`(() => {
+				const el = document.querySelector('[data-tour-tag="browser-address"]');
+				if (!el) return { ok: false, why: 'no input' };
+				return { ok: document.activeElement === el, active: document.activeElement?.tagName ?? null };
+			})()`,
+		);
+		// The field keeps its live URL on focus; typing must REPLACE it, the way a
+		// user types over the selected address. `Input.insertText` inserts at the
+		// caret, so select the value first (the unfocused document would otherwise
+		// leave the caret at the end and produce a string that prefix-matches nothing).
+		await evaluate(
+			cdp,
+			`(() => {
+				const el = document.querySelector('[data-tour-tag="browser-address"]');
+				if (!el) return false;
+				el.select();
+				return el.selectionStart === 0 && el.selectionEnd === el.value.length;
+			})()`,
+		);
+		await cdp.send("Input.insertText", { text: "127.0.0.1" });
+		await sleep(1_200);
+		const typed = await s2Geometry(cdp);
+		const diagnostics = await evaluate(
+			cdp,
+			`(async () => {
+				const notice = document.querySelector('[data-address-suggestions-notice]')?.textContent ?? null;
+				try {
+					const state = await window.api.browser.state();
+					const answer = await window.api.browser.addressHistory({ requestId: 993, expectedTabId: state.activeTabId, scope: "all" });
+					return { notice, entries: answer.entries.length, urls: answer.entries.map((entry) => entry.url), activeTabId: state.activeTabId };
+				} catch (error) {
+					return { notice, error: String(error && error.message ? error.message : error) };
+				}
+			})()`,
+		);
+		appendEvent({ event: "p3-diagnostics", diagnostics });
+		const realInput =
+			focus.ok &&
+			typed !== null &&
+			typed.editing === "true" &&
+			typed.dockOpen === true &&
+			typed.candidates > 0;
+		record(
+			"P3",
+			realInput ? "PASS" : "BLOCKED",
+			`focus=${JSON.stringify(focus)} afterType=${JSON.stringify(typed)} diagnostics=${JSON.stringify(diagnostics)}`,
+		);
+
+		if (!realInput) {
+			for (const id of [
+				"A1",
+				"A2",
+				"A3",
+				"A4",
+				"R1",
+				"R3",
+				"C1",
+				"K1",
+				"K2",
+				"L1",
+			]) {
+				record(
+					id,
+					"BLOCKED",
+					"real-input path not drivable in this headless window (P3); the synthetic-projection matrix is the measured substitute",
+				);
+			}
+			return;
+		}
+
+		// The hook projects on its own. Wait for the child to be actually applied.
+		const applied = await waitForS2(
+			cdp,
+			(facts) =>
+				facts.s2?.view?.kind === "rows" &&
+				facts.s2?.applyCount > 0 &&
+				facts.child?.visible === true,
+		);
+		factsLog.push({ label: "applied", facts: applied });
+		const geometryOpen = await s2Geometry(cdp);
+		const expectedQuarter = Math.round(geometryOpen.field.x);
+		const bounds = applied.child?.bounds ?? null;
+		const anchorOk =
+			bounds !== null &&
+			Math.abs(bounds.x - geometryOpen.field.x) <= 1 &&
+			Math.abs(bounds.width - geometryOpen.field.width) <= 1 &&
+			Math.abs(bounds.y - geometryOpen.listTop) <= 1 &&
+			bounds.y >= geometryOpen.field.y + geometryOpen.field.height;
+		record(
+			"A1",
+			anchorOk ? "PASS" : "FAIL",
+			`child=${JSON.stringify(bounds)} field=${JSON.stringify(geometryOpen.field)} listTop=${geometryOpen.listTop} expectedX=${expectedQuarter}`,
+		);
+		record(
+			"A2",
+			applied.page?.visible === true &&
+				applied.page?.presented === true &&
+				sameRect(applied.page.bounds, initial.page.bounds)
+				? "PASS"
+				: "FAIL",
+			`before=${JSON.stringify(initial.page)} open=${JSON.stringify(applied.page)}`,
+		);
+		const childFacts = applied.child;
+		record(
+			"A3",
+			childFacts !== null &&
+				childFacts.visible === true &&
+				childFacts.order === childFacts.childCount - 1
+				? "PASS"
+				: "FAIL",
+			`child=${JSON.stringify(childFacts)}`,
+		);
+
+		// R1-real: the child's own measurements under real input. The 1/3/5
+		// geometry sweep is the separate synthetic R1 row.
+		const measured = await probe(cdp, "measure");
+		const rowRects = measured.s2?.measured?.rowRects ?? [];
+		const rowHeightsOk =
+			rowRects.length === measured.s2.view.rowCount &&
+			rowRects.every((row) => Math.abs(row.height - 35.5) <= 0.5);
+		record(
+			"R1-real",
+			measured.s2.view.rowCount >= 1 &&
+				measured.s2.view.rowCount <= 5 &&
+				rowHeightsOk &&
+				Math.abs((measured.s2.measured?.headerHeight ?? 0) - 28) <= 0.5
+				? "PASS"
+				: "FAIL",
+			`rowCount=${measured.s2.view.rowCount} header=${measured.s2.measured?.headerHeight} rows=${JSON.stringify(rowRects)}`,
+		);
+
+		// R3: ArrowDown moves the parent's active row; the child must agree.
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "keyDown",
+			key: "ArrowDown",
+			code: "ArrowDown",
+			windowsVirtualKeyCode: 40,
+			nativeVirtualKeyCode: 40,
+		});
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "ArrowDown",
+			code: "ArrowDown",
+			windowsVirtualKeyCode: 40,
+			nativeVirtualKeyCode: 40,
+		});
+		await sleep(350);
+		const afterArrow = await probe(cdp, "measure");
+		const afterArrowGeometry = await s2Geometry(cdp);
+		record(
+			"R3",
+			afterArrow.s2.view.active === 0 &&
+				afterArrowGeometry.activeIndex === 0 &&
+				afterArrow.s2.measured?.activeRowRect !== null
+				? "PASS"
+				: "FAIL",
+			`active=${afterArrow.s2.view.active} ariaIndex=${afterArrowGeometry.activeIndex} activeRect=${JSON.stringify(afterArrow.s2.measured?.activeRowRect)}`,
+		);
+
+		// C1: the synthetic mouse path through the child, then the REAL navigate.
+		const targetUrl = afterArrowGeometry.candidateUrls?.[0] ?? null;
+		const beforeC1 = await probe(cdp, "facts");
+		await probe(cdp, "click", { row: 0 });
+		await sleep(900);
+		const afterC1 = await probe(cdp, "facts");
+		const state = await browserState(cdp);
+		record(
+			"C1",
+			targetUrl !== null &&
+				afterC1.s2.commitsEmitted === beforeC1.s2.commitsEmitted + 1 &&
+				state?.url === targetUrl
+				? "PASS"
+				: "FAIL",
+			`url=${JSON.stringify(targetUrl)} committed=${beforeC1.s2.commitsEmitted}->${afterC1.s2.commitsEmitted} activeUrl=${JSON.stringify(state?.url)}`,
+		);
+
+		// K2: a key sent through the CHILD's input pipeline is prevented and
+		// counted. CDP-injected keys were measured NOT to reach before-input-event
+		// (0/0), so the probe uses main's sendInputEvent through the gated channel.
+		{
+			const beforeKeys = (await probe(cdp, "facts")).s2.keysBlocked;
+			const beforeUrl = (await browserState(cdp))?.url ?? null;
+			const afterKeyFacts = await probe(cdp, "key", { keyCode: "A" });
+			await sleep(250);
+			const afterUrl = (await browserState(cdp))?.url ?? null;
+			record(
+				"K2",
+				afterKeyFacts.s2.keysBlocked > beforeKeys && afterUrl === beforeUrl
+					? "PASS"
+					: "FAIL",
+				`keysBlocked=${beforeKeys}->${afterKeyFacts.s2.keysBlocked} url=${JSON.stringify(beforeUrl)}->${JSON.stringify(afterUrl)}`,
+			);
+		}
+
+		// K1: dismissal paths hide the mirror. Type again first: the commit in C1
+		// cleared the draft and closed the list.
+		await evaluate(
+			cdp,
+			"document.querySelector('[data-tour-tag=\"browser-address\"]').focus()",
+		);
+		await cdp.send("Input.insertText", { text: "127.0.0.1" });
+		await sleep(350);
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "keyDown",
+			key: "ArrowDown",
+			code: "ArrowDown",
+			windowsVirtualKeyCode: 40,
+			nativeVirtualKeyCode: 40,
+		});
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "ArrowDown",
+			code: "ArrowDown",
+			windowsVirtualKeyCode: 40,
+			nativeVirtualKeyCode: 40,
+		});
+		await sleep(200);
+		const reopened = await waitForS2(
+			cdp,
+			(facts) => facts.child?.visible === true,
+			3_000,
+		);
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "keyDown",
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+			nativeVirtualKeyCode: 27,
+		});
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+			nativeVirtualKeyCode: 27,
+		});
+		const hidden = await waitForS2(
+			cdp,
+			(facts) => facts.child?.visible === false,
+			3_000,
+		);
+		// Enter: re-open, select the first alternative, commit it; the page must
+		// navigate and the mirror must hide. This is the in-flow commit path, now
+		// driven WITH the child open (m3's narrowed K1).
+		const press = async (key, keyCode) => {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: "keyDown",
+				key,
+				code: key,
+				windowsVirtualKeyCode: keyCode,
+				nativeVirtualKeyCode: keyCode,
+			});
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: "keyUp",
+				key,
+				code: key,
+				windowsVirtualKeyCode: keyCode,
+				nativeVirtualKeyCode: keyCode,
+			});
+		};
+		await evaluate(
+			cdp,
+			`(() => {
+				const el = document.querySelector('[data-tour-tag="browser-address"]');
+				if (!el) return null;
+				el.focus();
+				el.select();
+				return true;
+			})()`,
+		);
+		await cdp.send("Input.insertText", { text: "127.0.0.1" });
+		await sleep(400);
+		await press("ArrowDown", 40);
+		await sleep(250);
+		const enterGeometry = await s2Geometry(cdp);
+		const enterTarget = enterGeometry?.candidateUrls?.[0] ?? null;
+		const enterOpened = await waitForS2(
+			cdp,
+			(facts) => facts.child?.visible === true,
+			3_000,
+		);
+		await press("Enter", 13);
+		let enterUrl = null;
+		const enterDeadline = Date.now() + 6_000;
+		while (Date.now() < enterDeadline) {
+			enterUrl = (await browserState(cdp))?.url ?? null;
+			if (enterTarget !== null && enterUrl === enterTarget) break;
+			await sleep(150);
+		}
+		const enterHidden = await waitForS2(
+			cdp,
+			(facts) => facts.child?.visible === false,
+			3_000,
+		);
+
+		// Tab: re-open, select a row, press Tab; focus moves and the mirror hides
+		// without navigating (the input's own Tab semantics, unchanged).
+		await evaluate(
+			cdp,
+			`(() => {
+				const el = document.querySelector('[data-tour-tag="browser-address"]');
+				if (!el) return null;
+				el.focus();
+				el.select();
+				return true;
+			})()`,
+		);
+		await cdp.send("Input.insertText", { text: "127.0.0.1" });
+		await sleep(400);
+		await press("ArrowDown", 40);
+		await sleep(250);
+		const tabOpened = await waitForS2(
+			cdp,
+			(facts) => facts.child?.visible === true,
+			3_000,
+		);
+		const beforeTabUrl = (await browserState(cdp))?.url ?? null;
+		await press("Tab", 9);
+		const tabHidden = await waitForS2(
+			cdp,
+			(facts) => facts.child?.visible === false,
+			3_000,
+		);
+		const afterTabUrl = (await browserState(cdp))?.url ?? null;
+		record(
+			"K1",
+			reopened.child?.visible === true &&
+				hidden.child?.visible === false &&
+				enterOpened.child?.visible === true &&
+				enterTarget !== null &&
+				enterUrl === enterTarget &&
+				enterHidden.child?.visible === false &&
+				tabOpened.child?.visible === true &&
+				tabHidden.child?.visible === false &&
+				afterTabUrl === beforeTabUrl
+				? "PASS"
+				: "FAIL",
+			`arrowReopened=${reopened.child?.visible} escapeHidden=${hidden.child?.visible} enterTarget=${JSON.stringify(enterTarget)} enterUrl=${JSON.stringify(enterUrl)} enterHidden=${enterHidden.child?.visible} tabOpened=${tabOpened.child?.visible} tabHidden=${tabHidden.child?.visible} tabUrl=${JSON.stringify(beforeTabUrl)}->${JSON.stringify(afterTabUrl)}`,
+		);
+
+		// A4: resize while the list is open. Re-open, then shrink the window.
+		await evaluate(
+			cdp,
+			"document.querySelector('[data-tour-tag=\"browser-address\"]').focus()",
+		);
+		await cdp.send("Input.insertText", { text: "127.0.0.1" });
+		await sleep(400);
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "keyDown",
+			key: "ArrowDown",
+			code: "ArrowDown",
+			windowsVirtualKeyCode: 40,
+			nativeVirtualKeyCode: 40,
+		});
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "ArrowDown",
+			code: "ArrowDown",
+			windowsVirtualKeyCode: 40,
+			nativeVirtualKeyCode: 40,
+		});
+		const openAgain = await waitForS2(
+			cdp,
+			(facts) => facts.child?.visible === true,
+			3_000,
+		);
+		factsLog.push({ label: "before-resize", facts: openAgain });
+		const version = await (
+			await fetch(`http://127.0.0.1:${handle.port}/json/version`, {
+				signal: AbortSignal.timeout(5_000),
+			})
+		).json();
+		const browserCdp = await connect(version.webSocketDebuggerUrl);
+		let resizedVia = "browser-cdp";
+		try {
+			await browserCdp.send("Browser.setWindowBounds", {
+				windowId: openAgain.owner.windowId ?? 1,
+				bounds: { width: 1180, height: 820 },
+			});
+		} catch (error) {
+			resizedVia = `window.resizeTo (browser-cdp failed: ${String(error)})`;
+			await evaluate(cdp, "window.resizeTo(1180, 820)");
+		}
+		browserCdp.close();
+		await sleep(900);
+		const geometryResized = await s2Geometry(cdp);
+		const resizedFacts = await waitForS2(
+			cdp,
+			(facts) =>
+				facts.child?.visible === true &&
+				facts.child?.bounds !== null &&
+				Math.abs(facts.child.bounds.width - geometryResized.field.width) <= 1,
+			6_000,
+		);
+		factsLog.push({ label: "after-resize", facts: resizedFacts });
+		const resizedOk =
+			resizedFacts.child?.visible === true &&
+			resizedFacts.child.bounds !== null &&
+			Math.abs(resizedFacts.child.bounds.x - geometryResized.field.x) <= 1 &&
+			Math.abs(resizedFacts.child.bounds.y - geometryResized.listTop) <= 1 &&
+			geometryResized.content !== null &&
+			sameRect(resizedFacts.page.bounds, geometryResized.content);
+		record(
+			"A4",
+			resizedOk ? "PASS" : "FAIL",
+			`via=${resizedVia} child=${JSON.stringify(resizedFacts.child)} field=${JSON.stringify(geometryResized?.field)} listTop=${geometryResized?.listTop} page=${JSON.stringify(resizedFacts.page?.bounds)} hides=${JSON.stringify(resizedFacts.s2.hideCounts)}`,
+		);
+		// Restore the window for the teardown row.
+		const restore = await fetch(
+			`http://127.0.0.1:${handle.port}/json/version`,
+			{
+				signal: AbortSignal.timeout(5_000),
+			},
+		).then((response) => response.json());
+		const restoreCdp = await connect(restore.webSocketDebuggerUrl);
+		try {
+			await restoreCdp.send("Browser.setWindowBounds", {
+				windowId: resizedFacts.owner.windowId ?? 1,
+				bounds: { width: 1380, height: 900 },
+			});
+		} catch {
+			await evaluate(cdp, "window.resizeTo(1380, 900)");
+		}
+		restoreCdp.close();
+
+		// Close the renderer's own mirror before the probe takes over: its
+		// projection is the newest, and a synthetic one must not race a per-frame
+		// re-send from the hook.
+		await projectDirect(cdp, {
+			v: 1,
+			seq: nextS2Seq(),
+			tabId: applied.page.tabId,
+			visible: false,
+		});
+		await sleep(200);
+
+		// A6: a projection naming another tab is refused.
+		const stale = await projectDirect(
+			cdp,
+			s2Projection(
+				geometryResized,
+				applied.page.bounds,
+				(applied.page.tabId ?? 1) + 999,
+				{ kind: "rows", rows: s2Rows(3) },
+			),
+		);
+		record(
+			"A6",
+			stale.ok && stale.value?.reason === "stale_tab" ? "PASS" : "FAIL",
+			JSON.stringify(stale),
+		);
+
+		// L1: reuse and a clean stop. Twenty apply/hide cycles on a hidden list.
+		const cycleGeometry = await s2Geometry(cdp);
+		const cyclePage = (await probe(cdp, "facts")).page;
+		const beforeCycles = await probe(cdp, "facts");
+		const childStarted = beforeCycles.child?.webContentsId ?? null;
+		const listenersBefore = JSON.stringify(beforeCycles.listeners);
+		for (let index = 0; index < 20; index += 1) {
+			const shown = await projectDirect(
+				cdp,
+				s2Projection(cycleGeometry, cyclePage.bounds, cyclePage.tabId, {
+					kind: "rows",
+					rows: s2Rows(3),
+				}),
+			);
+			if (!shown.ok || shown.value?.shown !== true) {
+				record(
+					"L1",
+					"FAIL",
+					`cycle ${index} did not show: ${JSON.stringify(shown)}`,
+				);
+				break;
+			}
+			await projectDirect(cdp, {
+				v: 1,
+				seq: nextS2Seq(),
+				tabId: cyclePage.tabId,
+				visible: false,
+			});
+		}
+		const afterCycles = await probe(cdp, "facts");
+		record(
+			"L1",
+			afterCycles.childCreatedCount === 1 &&
+				afterCycles.child !== null &&
+				afterCycles.child.webContentsId === childStarted &&
+				JSON.stringify(afterCycles.listeners) === listenersBefore
+				? "PASS"
+				: "FAIL",
+			`childCreatedCount=${afterCycles.childCreatedCount} childId=${childStarted}->${afterCycles.child?.webContentsId} listeners=${JSON.stringify(afterCycles.listeners)} hides=${JSON.stringify(afterCycles.s2.hideCounts)}`,
+		);
+	} catch (error) {
+		for (const row of rows) {
+			if (
+				[
+					"P3",
+					"A1",
+					"A2",
+					"A3",
+					"A4",
+					"R1-real",
+					"R3",
+					"C1",
+					"K1",
+					"K2",
+					"L1",
+				].includes(row.id) &&
+				row.at === null
+			) {
+				record(
+					row.id,
+					"BLOCKED",
+					`real-input matrix aborted: ${String(error)}`,
+				);
+			}
+		}
+	} finally {
+		if (cdp) cdp.close();
+		const pid = handle.child.pid;
+		handle.stop("SIGTERM");
+		const result = await Promise.race([handle.exited, sleep(8_000)]);
+		await sleep(500);
+		const survivors = descendants(pid).filter(alive);
+		writeFileSync(
+			join(OUT, "teardown.json"),
+			`${JSON.stringify({ result, survivors }, null, 2)}\n`,
+		);
+		reapTree(pid);
+		appendEvent({ event: "teardown", result, survivors });
+		record(
+			"L1-teardown",
+			result?.code === 0 && survivors.length === 0 ? "PASS" : "FAIL",
+			`exit=${JSON.stringify(result)} survivors=${JSON.stringify(survivors)}`,
+		);
+	}
+}
+
+async function s2SyntheticMatrix() {
+	const handle = await boot({
+		s1: true,
+		s2: true,
+		driver: true,
+		tag: "s2-synthetic",
+	});
+	let cdp = null;
+	try {
+		const main = await connectMain(handle);
+		cdp = main.cdp;
+		await waitForDriver(cdp);
+		await navigate(cdp, "/browser");
+		await waitForSurface(cdp);
+		const pageServer = await startPageServer();
+		pageServers.push(pageServer);
+		await evaluate(cdp, "window.api.browser.newTab()");
+		await waitForActiveTab(cdp);
+		await presentActivePage(cdp, pageServer);
+		const facts = await probe(cdp, "facts");
+		const geometry = await s2Geometry(cdp);
+		const pageRect = facts.page.bounds;
+		const tabId = facts.page.tabId;
+
+		const project = (view, overrides = {}) =>
+			projectDirect(
+				cdp,
+				s2Projection(geometry, pageRect, tabId, view, overrides),
+			);
+
+		// R1: 1, 3 and 5 rows.
+		const counts = [];
+		for (const n of [1, 3, 5]) {
+			const answer = await project({ kind: "rows", rows: s2Rows(n) });
+			const measured = await probe(cdp, "measure");
+			counts.push({
+				n,
+				shown: answer.value?.shown === true,
+				rowCount: measured.s2.measured?.rowCount,
+				header: measured.s2.measured?.headerHeight,
+				heights: measured.s2.measured?.rowRects?.map((row) => row.height),
+				bounds: answer.value?.bounds ?? null,
+				viewport: measured.s2.measured?.viewportHeight,
+				scroll: measured.s2.measured?.scrollHeight,
+				inner: measured.s2.measured?.innerHeight,
+				visual: measured.s2.measured?.visualHeight,
+				native: measured.child?.bounds ?? null,
+			});
+		}
+		const r1Ok = counts.every(
+			(count) =>
+				count.shown &&
+				count.rowCount === count.n &&
+				Math.abs((count.header ?? 0) - 28) <= 0.5 &&
+				(count.heights ?? []).every((height) => Math.abs(height - 35.5) <= 0.5),
+		);
+		record("R1", r1Ok ? "PASS" : "FAIL", JSON.stringify(counts));
+
+		// R2: each notice kind at the dock's 104.
+		const notices = [];
+		for (const kind of ["error", "hint", "empty", "no_match"]) {
+			const answer = await project({
+				kind: "notice",
+				notice: kind,
+				text: `notice-${kind}`,
+			});
+			const measured = await probe(cdp, "measure");
+			notices.push({
+				kind,
+				shown: answer.value?.shown === true,
+				height: answer.value?.bounds?.height,
+				rowCount: measured.s2.measured?.rowCount,
+			});
+		}
+		record(
+			"R2",
+			notices.every(
+				(entry) => entry.shown && entry.height === 104 && entry.rowCount === 0,
+			)
+				? "PASS"
+				: "FAIL",
+			`${JSON.stringify(notices)}; loading-with-no-rows is hidden by the renderer's listVisible rule (projection visible:false is the same path: ${JSON.stringify((await projectDirect(cdp, { v: 1, seq: nextS2Seq(), tabId, visible: false })).value)})`,
+		);
+
+		// R3: one active row, matching index.
+		const activeProjection = await project(
+			{ kind: "rows", rows: s2Rows(3) },
+			{ active: 1 },
+		);
+		const activeMeasured = await probe(cdp, "measure");
+		const activeRect = activeMeasured.s2.measured?.activeRowRect;
+		const geometryOpen = await s2Geometry(cdp);
+		record(
+			"R3-synthetic",
+			activeProjection.value?.shown === true &&
+				activeMeasured.s2.view.active === 1 &&
+				activeRect !== null &&
+				Math.abs(activeRect.top - (2 + 35.5)) <= 1 &&
+				geometryOpen.activeIndex === -1
+				? "PASS"
+				: "FAIL",
+			`active=${activeMeasured.s2.view.active} rect=${JSON.stringify(activeRect)} parentActiveIndex=${geometryOpen.activeIndex} (synthetic projection: the real-input R3 row is the ARIA agreement)`,
+		);
+
+		// R4: hostile text.
+		const hostile = `<img src=x onerror="window.__pwned=1">\u202E\u202A\u0000${"A".repeat(
+			10_000,
+		)}`;
+		await project({
+			kind: "rows",
+			rows: [{ text: hostile, title: "<script>window.__pwned2=1</script>" }],
+		});
+		const { cdp: child } = await connectList(handle);
+		let hostileFacts;
+		try {
+			hostileFacts = await childEvaluate(
+				child,
+				`(() => {
+					const row = document.querySelector('.lo-row-text');
+					const title = document.querySelector('.lo-row-title');
+					return {
+						textLength: row ? row.textContent.length : -1,
+						titleLength: title ? title.textContent.length : -1,
+						imgs: document.querySelectorAll('img').length,
+						scripts: document.querySelectorAll('script').length,
+						pwned: window.__pwned ?? null,
+						pwned2: window.__pwned2 ?? null,
+						text: row ? row.textContent.slice(0, 40) : null,
+					};
+				})()`,
+			);
+		} finally {
+			child.close();
+		}
+		record(
+			"R4",
+			// One <script> is the document's own module entry; an injected second
+			// one would make this > 1.
+			hostileFacts.imgs === 0 &&
+				hostileFacts.scripts <= 1 &&
+				hostileFacts.pwned === null &&
+				hostileFacts.pwned2 === null &&
+				hostileFacts.textLength === 512 &&
+				hostileFacts.titleLength <= 256 &&
+				hostileFacts.text?.startsWith("<img src=x")
+				? "PASS"
+				: "FAIL",
+			JSON.stringify(hostileFacts),
+		);
+
+		// R5 + V1: the catalogues' own strings, RTL rows, and both notice shapes.
+		const shots = [];
+		await project({ kind: "rows", rows: s2Rows(3) });
+		shots.push({
+			label: "child-rows3",
+			...(await captureChild(handle, "child-rows3")),
+		});
+		await project({ kind: "rows", rows: s2Rows(5) }, { active: 4 });
+		shots.push({
+			label: "child-rows5-active",
+			...(await captureChild(handle, "child-rows5-active")),
+		});
+		await project({
+			kind: "notice",
+			notice: "empty",
+			text: copy("en", "address_suggestions_empty"),
+		});
+		shots.push({
+			label: "child-notice",
+			...(await captureChild(handle, "child-notice")),
+		});
+		await project({
+			kind: "rows",
+			rows: [{ text: hostile.slice(0, 200), title: "hostile" }],
+		});
+		shots.push({
+			label: "child-hostile",
+			...(await captureChild(handle, "child-hostile")),
+		});
+		await project(
+			{
+				kind: "notice",
+				notice: "empty",
+				text: copy("ru", "address_suggestions_empty"),
+			},
+			{ label: copy("ru", "address_suggestions_label"), dir: "ltr" },
+		);
+		shots.push({
+			label: "child-ru",
+			...(await captureChild(handle, "child-ru")),
+		});
+		const ruFacts = await probe(cdp, "measure");
+		await project(
+			{
+				kind: "notice",
+				notice: "no_match",
+				text: copy("ur", "address_suggestions_no_match"),
+			},
+			{ label: copy("ur", "address_suggestions_label"), dir: "rtl" },
+		);
+		const urFacts = await probe(cdp, "measure");
+		shots.push({
+			label: "child-ur",
+			...(await captureChild(handle, "child-ur")),
+		});
+		// D3: RTL ROWS with an active row — the fixture-only ur notice left the
+		// bar side, row order and truncation side unseen.
+		await project(
+			{ kind: "rows", rows: s2Rows(3) },
+			{ active: 1, label: copy("ur", "address_suggestions_label"), dir: "rtl" },
+		);
+		const urRowsFacts = await probe(cdp, "measure");
+		shots.push({
+			label: "child-ur-rows",
+			...(await captureChild(handle, "child-ur-rows")),
+		});
+		// D4: real copy in the widest real state that can wrap, at the narrow field
+		// width the design named (480 DIP). The 104-DIP block must contain it.
+		await project(
+			{
+				kind: "notice",
+				// `unavailable` is the renderer's ERROR notice kind; the copy is the
+				// catalogue's unavailable string.
+				notice: "error",
+				text: copy("en", "address_suggestions_unavailable"),
+			},
+			{
+				active: -1,
+				field: { ...geometry.field, width: 480 },
+				label: copy("en", "address_suggestions_label"),
+			},
+		);
+		shots.push({
+			label: "child-notice-narrow",
+			...(await captureChild(handle, "child-notice-narrow")),
+		});
+		const narrowFacts = await probe(cdp, "measure");
+		const { cdp: noticeChild } = await connectList(handle);
+		let narrowBox;
+		try {
+			narrowBox = await childEvaluate(
+				noticeChild,
+				`(() => {
+					const notice = document.getElementById('address-list-notice');
+					const viewport = document.getElementById('address-list-viewport');
+					const root = document.getElementById('address-list-root');
+					if (!notice || !viewport || !root) return null;
+					const n = notice.getBoundingClientRect();
+					const v = viewport.getBoundingClientRect();
+					const r = root.getBoundingClientRect();
+					return {
+						rootHeight: r.height,
+						noticeBottom: n.bottom - r.top,
+						viewportBottom: v.bottom - r.top,
+						text: notice.textContent,
+					};
+				})()`,
+			);
+		} finally {
+			noticeChild.close();
+		}
+		record(
+			"R5",
+			ruFacts.s2.measured?.rowCount === 0 &&
+				urFacts.s2.measured?.rowCount === 0 &&
+				urRowsFacts.s2.measured?.rowCount === 3 &&
+				urRowsFacts.s2.measured?.activeRowRect !== null &&
+				shots.every((shot) => shot.bytes > 1_000)
+				? "PASS"
+				: "FAIL",
+			`shots=${JSON.stringify(shots)} urRowsActive=${JSON.stringify(urRowsFacts.s2.measured?.activeRowRect)}`,
+		);
+		record(
+			"R5b",
+			narrowFacts.s2.measured?.rowCount === 0 &&
+				narrowBox !== null &&
+				narrowBox.rootHeight === 104 &&
+				narrowBox.noticeBottom <= narrowBox.viewportBottom + 1
+				? "PASS"
+				: "FAIL",
+			`narrow=${JSON.stringify(narrowBox)}`,
+		);
+		record(
+			"V1",
+			shots.length === 8 && shots.every((shot) => shot.bytes > 1_000)
+				? "PASS"
+				: "FAIL",
+			`child-only CDP captures, viewed: ${shots.map((shot) => `${shot.label}=${shot.bytes}B`).join(" ")}`,
+		);
+
+		// R6: an alpha theme is rejected.
+		const alpha = await project(
+			{ kind: "rows", rows: s2Rows(2) },
+			{
+				theme: {
+					elevated: "rgba(20,24,30,0.5)",
+					ink: "#ffffff",
+					inkMuted: "#ffffff",
+					accent: "#ffffff",
+					accentWash: "#ffffff",
+					rowHover: "#ffffff",
+					hairline: "#ffffff",
+					control: "#ffffff",
+				},
+			},
+		);
+		const alphaFacts = await probe(cdp, "facts");
+		record(
+			"R6",
+			alpha.value?.shown === true && alphaFacts.s2.theme === "fallback"
+				? "PASS"
+				: "FAIL",
+			`project=${JSON.stringify(alpha.value)} themeFact=${alphaFacts.s2.theme} theme=${JSON.stringify(alphaFacts.s2.view)}`,
+		);
+
+		// C2: down row 0, up row 1.
+		await project({ kind: "rows", rows: s2Rows(3) }, { active: 0 });
+		const beforeC2 = await probe(cdp, "facts");
+		await probe(cdp, "click", { row: 0, upRow: 1 });
+		const afterC2 = await probe(cdp, "facts");
+		record(
+			"C2",
+			afterC2.s2.commitsEmitted === beforeC2.s2.commitsEmitted &&
+				(afterC2.s2.commitsDropped.mouse_mismatch ?? 0) >= 1
+				? "PASS"
+				: "FAIL",
+			`commits=${beforeC2.s2.commitsEmitted}->${afterC2.s2.commitsEmitted} dropped=${JSON.stringify(afterC2.s2.commitsDropped)}`,
+		);
+
+		// C3: a stale seq is refused without hiding the newer model.
+		const staleAnswer = await projectDirect(cdp, {
+			...s2Projection(geometry, pageRect, tabId, {
+				kind: "rows",
+				rows: s2Rows(2),
+			}),
+			seq: 5,
+		});
+		record(
+			"C3",
+			staleAnswer.ok && staleAnswer.value?.reason === "stale_seq"
+				? "PASS"
+				: "FAIL",
+			`${JSON.stringify(staleAnswer)}; the newer shown model is not hidden`,
+		);
+		// C3b: an out-of-range index is refused by the probe's own validation, and
+		// no commit is emitted. This replaces the old "by construction" clause.
+		const beforeC3b = await probe(cdp, "facts");
+		let outOfRangeError = null;
+		try {
+			await probe(cdp, "click", { row: 99 });
+		} catch (error) {
+			outOfRangeError = String(error?.message ?? error);
+		}
+		const afterC3b = await probe(cdp, "facts");
+		record(
+			"C3b",
+			outOfRangeError !== null &&
+				/rendered row index/.test(outOfRangeError) &&
+				afterC3b.s2.commitsEmitted === beforeC3b.s2.commitsEmitted
+				? "PASS"
+				: "FAIL",
+			`error=${JSON.stringify(outOfRangeError)} commits=${beforeC3b.s2.commitsEmitted}->${afterC3b.s2.commitsEmitted}`,
+		);
+
+		// X1: the child's capability surface.
+		const { cdp: xchild } = await connectList(handle);
+		let xFacts;
+		let navRefused;
+		try {
+			xFacts = await childEvaluate(
+				xchild,
+				`(() => ({
+					electron: typeof window.electron,
+					process: typeof window.process,
+					require: typeof window.require,
+					ipc: typeof window.ipcRenderer,
+					api: typeof window.api,
+					rootAriaHidden: document.getElementById('address-list-root')?.getAttribute('aria-hidden'),
+					roles: document.querySelectorAll('[role]').length,
+					focusables: document.querySelectorAll('[tabindex],input,button,a[href]').length,
+				}))()`,
+			);
+			const beforeUrl =
+				(await targets(handle.port)).find(isListTarget)?.url ?? "";
+			await childEvaluate(
+				xchild,
+				`location.href = "https://example.com/"`,
+			).catch(() => {});
+			await sleep(600);
+			await childEvaluate(
+				xchild,
+				`(() => {
+					const script = document.createElement('script');
+					script.textContent = 'window.__pwned3 = 1';
+					document.body.append(script);
+					return window.__pwned3 ?? null;
+				})()`,
+			);
+			await sleep(200);
+			const afterUrl =
+				(await targets(handle.port)).find(isListTarget)?.url ?? "";
+			const pwned3 = await childEvaluate(xchild, "window.__pwned3 ?? null");
+			navRefused = { beforeUrl, afterUrl, pwned3 };
+		} finally {
+			xchild.close();
+		}
+		record(
+			"X1",
+			xFacts.electron === "undefined" &&
+				xFacts.process === "undefined" &&
+				xFacts.require === "undefined" &&
+				xFacts.ipc === "undefined" &&
+				xFacts.api === "undefined" &&
+				xFacts.rootAriaHidden === "true" &&
+				xFacts.roles === 0 &&
+				xFacts.focusables === 0 &&
+				navRefused.beforeUrl === navRefused.afterUrl &&
+				navRefused.pwned3 === null
+				? "PASS"
+				: "FAIL",
+			`${JSON.stringify(xFacts)} nav=${JSON.stringify(navRefused)}`,
+		);
+	} catch (error) {
+		for (const row of rows) {
+			if (
+				[
+					"R1",
+					"R2",
+					"R3-synthetic",
+					"R4",
+					"R5",
+					"R5b",
+					"R6",
+					"C2",
+					"C3",
+					"C3b",
+					"V1",
+					"X1",
+				].includes(row.id) &&
+				row.at === null
+			) {
+				record(row.id, "BLOCKED", `synthetic matrix aborted: ${String(error)}`);
+			}
+		}
+	} finally {
+		if (cdp) cdp.close();
+		const pid = handle.child.pid;
+		handle.stop("SIGTERM");
+		const result = await Promise.race([handle.exited, sleep(8_000)]);
+		appendEvent({
+			event: "synthetic-teardown",
+			result,
+			survivors: descendants(pid).filter(alive),
+		});
+		reapTree(pid);
+	}
+}
+
+function closeS2Rows() {
+	record(
+		"A5",
+		"asserted-only",
+		"resolveAddressOverlayGate/projectOnce read getZoomFactor and hide at |z-1|>1e-3; the headless probe has no zoom verb, so no built-app observation",
+	);
+	record(
+		"A7",
+		"asserted-only",
+		"unit tests drive sanitizeProjection/addressListBoundsFor with NaN, negative, oversize, extra-key, inconsistent-gap inputs",
+	);
+	record(
+		"C4",
+		"asserted-only",
+		"renderer hook drops a commit whose seq or candidate key no longer matches; covered by source contract, not driven here",
+	);
+	record(
+		"V2",
+		"BLOCKED",
+		"owner capture returns no child pixels; screen capture permission is denied (S1 spike)",
+	);
+	record(
+		"V3",
+		"BLOCKED",
+		"sendInputEvent exercises the child, not macOS NSView hit-testing",
+	);
+	record("V4", "BLOCKED", "no visible window, no IME, no AX tree in S2");
+}
+
 // ---- asserted-only rows ----------------------------------------------------
 
 function closeAssertedRows() {
@@ -1488,10 +3094,20 @@ function closeAssertedRows() {
 console.log(`[probe] evidence: ${OUT}`);
 appendEvent({ event: "start", out: OUT, build: buildIdentity });
 try {
-	await gateOffCase();
-	await s1WithoutDriverCase();
-	await drivenMatrix();
-	await windowCloseCase();
+	if (S2) {
+		// The S1 rows were planned at module load; an S2 run reports only S2 rows.
+		rows.length = 0;
+		planS2Rows();
+		s2BuildRow();
+		await s2GateCases();
+		await s2RealInputMatrix();
+		await s2SyntheticMatrix();
+	} else {
+		await gateOffCase();
+		await s1WithoutDriverCase();
+		await drivenMatrix();
+		await windowCloseCase();
+	}
 } catch (error) {
 	console.error(`[probe] matrix failed: ${String(error?.stack ?? error)}`);
 	appendEvent({ event: "failure", error: String(error?.stack ?? error) });
@@ -1500,7 +3116,8 @@ try {
 			record(row.id, "FAIL", `matrix aborted: ${String(error)}`);
 	}
 } finally {
-	closeAssertedRows();
+	if (S2) closeS2Rows();
+	else closeAssertedRows();
 	for (const bootHandle of boots) {
 		if (bootHandle.child.exitCode === null) {
 			reapTree(bootHandle.child.pid);
@@ -1533,6 +3150,19 @@ try {
 		"",
 	].join("\n");
 	writeFileSync(join(OUT, "matrix.md"), table);
+	// facts.json is the run's own probe receipts, in order. Derived from the
+	// append-only events file so nothing here can be edited after the fact.
+	const facts = readFileSync(eventsFile, "utf8")
+		.split("\n")
+		.filter(Boolean)
+		.map((line) => JSON.parse(line))
+		.filter((entry) => entry.event === "probe")
+		.map((entry) => ({
+			at: entry.at,
+			action: entry.action,
+			facts: entry.value,
+		}));
+	writeFileSync(join(OUT, "facts.json"), `${JSON.stringify(facts, null, 2)}\n`);
 	appendEvent({ event: "finish", counts });
 	console.log(`[probe] ${JSON.stringify(counts)}`);
 	console.log(`[probe] matrix: ${join(OUT, "matrix.md")}`);
