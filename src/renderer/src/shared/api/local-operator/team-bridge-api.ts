@@ -35,9 +35,58 @@ import {
 	teamBridgeReadStateSchema,
 	teamBridgeUnreadSchema,
 } from "../../../../../shared/team-bridge-contract";
+import { reconcileDraftAccount } from "../../../features/team-bridge/team-bridge-drafts";
 import { desktopResult } from "./desktop-api";
 
+import {
+	teamBridgeScheduledListSchema,
+	teamBridgeScheduledMessageSchema,
+} from "../../../../../shared/team-bridge-contract";
+
 export const TeamBridgeApi = {
+	async scheduledList(tenantId: string) {
+		return teamBridgeScheduledListSchema.parse(
+			await desktopResult<unknown>({
+				op: "team_bridge.scheduled.list",
+				tenant_id: tenantId,
+			}),
+		);
+	},
+	async scheduledCreate(input: {
+		tenant_id: string;
+		conversation_id: string;
+		client_ref: string;
+		body: string;
+		send_at: string;
+	}) {
+		return teamBridgeScheduledMessageSchema.parse(
+			await desktopResult<unknown>({
+				op: "team_bridge.scheduled.create",
+				...input,
+			}),
+		);
+	},
+	async scheduledUpdate(
+		tenantId: string,
+		scheduledId: string,
+		patch: { body?: string; send_at?: string },
+	) {
+		return teamBridgeScheduledMessageSchema.parse(
+			await desktopResult<unknown>({
+				op: "team_bridge.scheduled.update",
+				tenant_id: tenantId,
+				scheduled_id: scheduledId,
+				...patch,
+			}),
+		);
+	},
+	async scheduledCancel(tenantId: string, scheduledId: string) {
+		return desktopResult<unknown>({
+			op: "team_bridge.scheduled.cancel",
+			tenant_id: tenantId,
+			scheduled_id: scheduledId,
+		});
+	},
 	/**
 	 * The conversation page for one read scope.
 	 *
@@ -149,6 +198,7 @@ export const TeamBridgeApi = {
 			boundary: "surface_open",
 		});
 		const parsed = teamBridgeIdentitySchema.parse(answer);
+		reconcileDraftAccount(localStorage, parsed);
 		return parsed.account_id ?? null;
 	},
 
@@ -196,7 +246,9 @@ export const TeamBridgeApi = {
 			op: "team_bridge.status",
 			...(boundary ? { boundary } : {}),
 		});
-		return agentMessagesStatusSchema.parse(answer);
+		const parsed = agentMessagesStatusSchema.parse(answer);
+		reconcileDraftAccount(localStorage, parsed);
+		return parsed;
 	},
 
 	async setArchived(

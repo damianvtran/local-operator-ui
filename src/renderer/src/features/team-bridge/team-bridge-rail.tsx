@@ -15,6 +15,7 @@ import {
 	Bot,
 	Hash,
 	MoreHorizontal,
+	Pencil,
 	Plus,
 	Users,
 } from "lucide-react";
@@ -152,6 +153,7 @@ export const RailSection: FC<{
 
 /** A channel or group row (and an orphaned DM under Direct messages). */
 export const ConversationRailRow: FC<{
+	hasDraft?: boolean;
 	conversation: TeamBridgeConversation;
 	selected: boolean;
 	selfAccountId?: string;
@@ -163,6 +165,7 @@ export const ConversationRailRow: FC<{
 	organizationName?: string;
 	onSelect: () => void;
 }> = ({
+	hasDraft = false,
 	conversation,
 	selected,
 	selfAccountId,
@@ -228,6 +231,17 @@ export const ConversationRailRow: FC<{
 						<span className="sr-only">{t("ui.teamBridge.notify.muted")}</span>
 					</span>
 				)}
+				{hasDraft && (
+					<span
+						title={t("ui.teamBridge.drafts.indicator")}
+						className="shrink-0 text-ink-dim"
+					>
+						<Pencil size={12} aria-hidden="true" />
+						<span className="sr-only">
+							{t("ui.teamBridge.drafts.indicator")}
+						</span>
+					</span>
+				)}
 				<Unread count={unread} />
 			</button>
 		</li>
@@ -275,6 +289,7 @@ const RowMenu: FC<{ label: string; onStartGroup: () => void }> = ({
  * reachable, and the cue says what they need to do.
  */
 export const PersonRailRow: FC<{
+	hasDraft?: boolean;
 	member: TeamBridgeDirectoryMember;
 	selfAccountId?: string;
 	identityKnown: boolean;
@@ -284,6 +299,7 @@ export const PersonRailRow: FC<{
 	onSelect: () => void;
 	onStartGroup: (recipient: TeamBridgeRecipient) => void;
 }> = ({
+	hasDraft = false,
 	member,
 	selfAccountId,
 	identityKnown,
@@ -393,6 +409,17 @@ export const PersonRailRow: FC<{
 						{t("ui.teamBridge.people.paused")}
 					</span>
 				)}
+				{hasDraft && (
+					<span
+						title={t("ui.teamBridge.drafts.indicator")}
+						className="shrink-0 text-ink-dim"
+					>
+						<Pencil size={12} aria-hidden="true" />
+						<span className="sr-only">
+							{t("ui.teamBridge.drafts.indicator")}
+						</span>
+					</span>
+				)}
 				<Unread count={unread} yieldsToMenu />
 			</button>
 			{canStartGroup && (
@@ -409,6 +436,7 @@ export const PersonRailRow: FC<{
 
 /** One chief of staff: "Aida (Ben)", opening a DM with that person's agent. */
 export const ChiefRailRow: FC<{
+	hasDraft?: boolean;
 	chief: TeamBridgeChiefOfStaff;
 	label: string;
 	selected: boolean;
@@ -416,7 +444,16 @@ export const ChiefRailRow: FC<{
 	readOnly: boolean;
 	onSelect: () => void;
 	onStartGroup: (recipient: TeamBridgeRecipient) => void;
-}> = ({ chief, label, selected, dm, readOnly, onSelect, onStartGroup }) => {
+}> = ({
+	hasDraft = false,
+	chief,
+	label,
+	selected,
+	dm,
+	readOnly,
+	onSelect,
+	onStartGroup,
+}) => {
 	useI18nLocale();
 	const unread = dm?.unread_count ?? 0;
 	return (
@@ -446,6 +483,17 @@ export const ChiefRailRow: FC<{
 				{chief.paused && (
 					<span className="shrink-0 text-meta-sm text-ink-dim">
 						{t("ui.teamBridge.people.paused")}
+					</span>
+				)}
+				{hasDraft && (
+					<span
+						title={t("ui.teamBridge.drafts.indicator")}
+						className="shrink-0 text-ink-dim"
+					>
+						<Pencil size={12} aria-hidden="true" />
+						<span className="sr-only">
+							{t("ui.teamBridge.drafts.indicator")}
+						</span>
 					</span>
 				)}
 				<Unread count={unread} yieldsToMenu />
