@@ -323,3 +323,52 @@ activation and renderer leaks. Missing platform/AX/native-composite proof means
 hold overlay rollout on that platform, not claim cross-platform success. No
 implementation, feature flag, release, new permission or compositor rewrite is
 included in this proposal.
+
+## S3 outcome (2026-10-21): the input/focus/IME handoff stays in the parent
+
+S3 accepted **(a) is not warranted yet; the parent keeps the editing surface**
+and made that decision provable rather than merely argued. The parent still owns
+the `combobox` role, the draft, the undo stack, the IME composition ref, Escape/
+Tab/Enter, the blur dismissal and the chord ownership (`browser-chord.ts` needs a
+visible **and focused** window, which a child surface cannot give it). The child
+is visual-only: `before-input-event` prevents and counts every key,
+`before-mouse-event` prevents everything except `mouseMove`, and the document is
+`aria-hidden` with no focusable nodes.
+
+**Measured on the built app (`--s3`, headless, this repository's matrix).** The
+S2 rows were re-run as the regression surface on the same head; every one still
+passes. The S3 rows:
+
+- **F1 — focus owner stays the parent** through 20 hide/raise cycles: parent
+  `document.hasFocus()` true, `activeElement` is the real URL input, an injected
+  `blur` counter stayed 0, the child emitted 0 focus events, `isFocused` false,
+  and `webContents.getFocusedWebContents()` was never the child. **Focus is
+  EMULATED** (`Emulation.setFocusEmulationEnabled`); this says nothing about
+  macOS first-responder.
+- **F2 — synthetic child mouse/keys** move neither focus nor selection; the key
+  is counted as blocked and the row click commits exactly once. SYNTHETIC input,
+  not native hit routing.
+- **I1 — IME composition reaches the parent in order** (`compositionstart`,
+  ≥2 `compositionupdate`, `compositionend:日本`) and the mirror is hidden for the
+  whole composition, returning once a matching query is typed again. This is
+  Chromium's own CDP IME pipeline, **not** the macOS input method.
+- **AX1 — the accessible surface is the parent**: Chromium's AX tree has a
+  `combobox` (`expanded`, `controls`) and a `listbox` with one `option` per
+  mirror row, while the child target's tree is entirely ignored. Chromium AX,
+  **not VoiceOver**.
+- K3/M1 are derived from the S2 K1/K2 and C1/C2 receipts in the same run rather
+  than re-measured, so one run cannot report two answers for one event.
+
+**BLOCKED, not claimed:** the real macOS IME (candidate window, marked text), the
+composite pixel order, real hit routing and first-responder behaviour
+(`V-FOCUS-CLICK`, the row that would reopen (a) if a real mouse-down blurred the
+parent input before mouse-up), VoiceOver/NVDA (`AX2`), Windows/Linux (`W1`), and
+anything on a packaged build. Those need an operator attending
+`--s3-visible`; the headless matrix marks them BLOCKED rather than passing them,
+and the visible command's rows stay BLOCKED whenever nobody answers its prompts.
+
+One containment note for reviewers: the visible arm is a probe, not a feature.
+It is off by default, refused in `normal`, `headless` and a packaged build, capped
+at 120 s and launcher-bound. S3 adds no user-reachable path, no product flag, no
+IPC surface and no new document; the composite-pixel gap from S2 is **not**
+closed until an operator runs that command once.
