@@ -367,16 +367,16 @@ const meta = {
 	args: {
 		selfAccountId: self,
 		conversations: [dm, channel, group],
-		selected: dm,
+		target: { type: "conversation", id: dm.id },
 		messages,
 		organizations: [minervaOrganization, northwindOrganization],
 		scope: minervaOrganization.tenantId,
 		totalUnread: minervaOrganization.unread + northwindOrganization.unread,
 		listState: "ready",
 		messageState: "ready",
-		onSelect: () => {},
+		onTarget: () => {},
 		onSend: () => {},
-		onNewConversation: () => {},
+		onNewChannel: () => {},
 		onRetry: () => {},
 		onScopeChange: () => {},
 		onJoin: () => {},
@@ -392,7 +392,7 @@ export const PopulatedDirectMessage: Story = {};
 
 export const ChannelSelected: Story = {
 	args: {
-		selected: channel,
+		target: { type: "conversation", id: channel.id },
 		messages: messages.map((message) => ({
 			...message,
 			conversation_id: channel.id,
@@ -409,7 +409,7 @@ export const ChannelSelected: Story = {
  */
 export const PreviewChannel: Story = {
 	args: {
-		selected: previewChannel,
+		target: { type: "conversation", id: previewChannel.id },
 		conversations: [dm, previewChannel, group],
 		messages: messages.map((message) => ({
 			...message,
@@ -421,7 +421,7 @@ export const PreviewChannel: Story = {
 /** A muted member channel: the rail draws its quiet bell beside the unread count. */
 export const MutedChannel: Story = {
 	args: {
-		selected: mutedChannel,
+		target: { type: "conversation", id: mutedChannel.id },
 		conversations: [dm, mutedChannel, group],
 		messages: messages.map((message) => ({
 			...message,
@@ -433,7 +433,7 @@ export const MutedChannel: Story = {
 /** The header menu open on its three-level preference section. */
 export const NotificationMenu: Story = {
 	args: {
-		selected: channel,
+		target: { type: "conversation", id: channel.id },
 		defaultMenuOpen: true,
 	},
 };
@@ -441,7 +441,7 @@ export const NotificationMenu: Story = {
 export const EmptyAccount: Story = {
 	args: {
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -451,7 +451,7 @@ export const Loading: Story = {
 	args: {
 		listState: "loading",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -468,7 +468,7 @@ export const ErrorState: Story = {
 	args: {
 		listState: "error",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -502,7 +502,7 @@ export const AllOrganizations: Story = {
 	args: {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		conversations: [dm, channel, group, northwindChannel],
-		selected: dm,
+		target: { type: "conversation", id: dm.id },
 		messageState: "ready",
 	},
 };
@@ -513,7 +513,7 @@ export const EmptyOrganization: Story = {
 		organizations: [minervaOrganization, northwindOrganization],
 		scope: northwindOrganization.tenantId,
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -527,7 +527,7 @@ export const OrganizationsUnavailable: Story = {
 		organizationsFailed: true,
 		listState: "error",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -539,7 +539,7 @@ export const LoadingAllOrganizations: Story = {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		listState: "loading",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -550,7 +550,7 @@ export const EmptyAllOrganizations: Story = {
 	args: {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -581,15 +581,15 @@ export const FlushToTheWindowTop: Story = {
 								listState="ready"
 								messageState="ready"
 								conversations={[channel, group, dm]}
-								selected={channel}
+								target={{ type: "conversation", id: channel.id }}
 								messages={messages}
 								organizations={[minervaOrganization, northwindOrganization]}
 								scope={asTeamBridgeTenantId("tnt_1")}
 								totalUnread={3}
 								selfAccountId={self}
-								onSelect={() => {}}
+								onTarget={() => {}}
 								onSend={() => undefined}
-								onNewConversation={() => {}}
+								onNewChannel={() => {}}
 								onScopeChange={() => {}}
 							/>
 						</main>
@@ -617,15 +617,15 @@ export const LaneReservedComparison: Story = {
 								listState="ready"
 								messageState="ready"
 								conversations={[channel, group, dm]}
-								selected={channel}
+								target={{ type: "conversation", id: channel.id }}
 								messages={messages}
 								organizations={[minervaOrganization, northwindOrganization]}
 								scope={asTeamBridgeTenantId("tnt_1")}
 								totalUnread={3}
 								selfAccountId={self}
-								onSelect={() => {}}
+								onTarget={() => {}}
 								onSend={() => undefined}
-								onNewConversation={() => {}}
+								onNewChannel={() => {}}
 								onScopeChange={() => {}}
 							/>
 						</main>
@@ -644,7 +644,7 @@ export const LaneReservedComparison: Story = {
 export const People: Story = {
 	args: {
 		conversations: [dm, beaDm, channel, group],
-		selected: dm,
+		target: { type: "conversation", id: dm.id },
 		people: directoryPeople,
 	},
 };
@@ -689,7 +689,7 @@ export const PlanRequired: Story = {
 	args: {
 		eligibility: "plan_required",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 		people: [],
@@ -701,7 +701,7 @@ export const SignedOut: Story = {
 	args: {
 		eligibility: "signed_out",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 		people: [],
@@ -713,7 +713,7 @@ export const UpdateRequired: Story = {
 	args: {
 		eligibility: "update_required",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 		people: [],
