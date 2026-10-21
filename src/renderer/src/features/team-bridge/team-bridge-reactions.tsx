@@ -115,6 +115,7 @@ export function TeamBridgeReactions({
 					</PopoverTrigger>
 					<PopoverContent className="w-auto p-3" align="start">
 						<TeamBridgeEmojiPicker
+							disabled={unavailable}
 							accountId={accountId}
 							onSelect={(emoji) => void choose(emoji)}
 							onClose={() => setOpen(false)}

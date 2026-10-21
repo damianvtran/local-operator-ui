@@ -121,6 +121,16 @@ export const teamBridgeReactionsSchema = z
 	})
 	.passthrough();
 
+// History is a forward-compatible read: future server caps must not make a whole page unreadable.
+// Retain today's display bounds by trimming only optional reaction metadata; toggle writes keep
+// their strict response schema above so incompatible mutation responses remain visible failures.
+const historyReactionSchema = teamBridgeReactionSchema.extend({
+	sample_labels: z.array(z.string()).transform((labels) => labels.slice(0, 3)),
+});
+const historyReactionsSchema = z
+	.array(historyReactionSchema)
+	.transform((rows) => rows.slice(0, 50));
+
 export const teamBridgeMessageSchema = z
 	.object({
 		id,
@@ -138,7 +148,7 @@ export const teamBridgeMessageSchema = z
 		origin: z.enum(["human", "agent", "system"]),
 		agent_label: z.string().optional(),
 		created_at: z.string(),
-		reactions: z.array(teamBridgeReactionSchema).max(50).optional(),
+		reactions: historyReactionsSchema.optional(),
 	})
 	.passthrough();
 export type TeamBridgeMessage = z.infer<typeof teamBridgeMessageSchema>;

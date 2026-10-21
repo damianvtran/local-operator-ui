@@ -31,10 +31,12 @@ export function TeamBridgeEmojiPicker({
 	accountId,
 	onSelect,
 	onClose,
+	disabled = false,
 }: {
 	accountId: string;
 	onSelect: (emoji: string) => void;
 	onClose: () => void;
+	disabled?: boolean;
 }) {
 	const id = useId();
 	const preferences = useReactionPreferences((s) => s.accounts[accountId]);
@@ -49,7 +51,8 @@ export function TeamBridgeEmojiPicker({
 	const frequent = frequentEmoji(preferences?.usage ?? {}, Date.now());
 	const tone = preferences?.tone ?? 0;
 	const select = (emoji: string) => {
-		onSelect(query ? emoji : tonedEmoji(emoji, tone));
+		if (disabled) return;
+		onSelect(tonedEmoji(emoji, tone));
 		onClose();
 	};
 	const reset = () => {
@@ -63,7 +66,10 @@ export function TeamBridgeEmojiPicker({
 		startRow + Math.ceil(HEIGHT / CELL) + 3,
 	);
 	return (
-		<div className="w-80 max-w-[calc(100vw-32px)] space-y-2">
+		<div
+			className="w-80 max-w-[calc(100vw-32px)] space-y-2"
+			aria-busy={disabled}
+		>
 			<input
 				aria-label={t("ui.teamBridge.reactions.search")}
 				placeholder={t("ui.teamBridge.reactions.search")}
@@ -149,6 +155,7 @@ export function TeamBridgeEmojiPicker({
 						type="button"
 						title={EMOJI_ENTRIES.find((e) => e.emoji === emoji)?.name ?? emoji}
 						className="h-9 rounded text-[22px] hover:bg-row-hover"
+						disabled={disabled}
 						onClick={() => select(emoji)}
 					>
 						{tonedEmoji(emoji, tone)}
@@ -238,9 +245,10 @@ export function TeamBridgeEmojiPicker({
 																		: "h-9 w-full rounded text-[22px] hover:bg-row-hover"
 																}
 																onMouseEnter={() => setActive(index)}
+																disabled={disabled}
 																onClick={() => select(entry.emoji)}
 															>
-																{entry.emoji}
+																{tonedEmoji(entry.emoji, tone)}
 															</button>
 														</td>
 													);
