@@ -4874,18 +4874,6 @@ export function useCanonicalSessionStream(
 					}
 					if (frame.type === "frontend.replace") {
 						/*
-						 * A REPLACEMENT IS A COMPLETE PROJECTION, so it proves the view current
-						 * the same way a snapshot does. Kept beside the snapshot's own clear
-						 * rather than inferred from it: the two are different frames and a
-						 * later branch could accept one without the other.
-						 */
-						if (next.liveUpdatesPaused)
-							next = {
-								...next,
-								liveUpdatesPaused: false,
-								liveUpdatesReloading: false,
-							};
-						/*
 						 * An accepted move's own authoritative repaint, and the reason it is
 						 * not a delta.
 						 *
@@ -4909,6 +4897,11 @@ export function useCanonicalSessionStream(
 						 * branch is only about ACCEPTING the replacement: the next real owner
 						 * delta at sequence N+1 must still apply over a replacement at N, and
 						 * an ordinary stale delta must still be rejected.
+						 *
+						 * THE BANNER CLEARS INSIDE THIS ARM, not before it: a replacement for
+						 * another session or one refused as stale proves nothing about THIS
+						 * view, and clearing on it would retract the notice without a repaint -
+						 * exactly the claim the banner exists to refuse.
 						 */
 						if (
 							next.frontend &&
@@ -4940,6 +4933,12 @@ export function useCanonicalSessionStream(
 								},
 								ownerEpoch: replaced.epoch,
 								cold: frame.payload.cold,
+								...(next.liveUpdatesPaused
+									? {
+											liveUpdatesPaused: false,
+											liveUpdatesReloading: false,
+										}
+									: {}),
 							};
 						}
 						continue;

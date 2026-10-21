@@ -248,9 +248,9 @@ function makeRuntime() {
 
 /* ------------------------------------------------------------------- the wire */
 
-const frontendState = ({ cwd = "/repo", sequence }) => ({
+const frontendState = ({ cwd = "/repo", sequence, sessionId = SESSION }) => ({
 	state_version: 1,
-	session_id: SESSION,
+	session_id: sessionId,
 	epoch: OWNER_EPOCH,
 	sequence,
 	cwd,
@@ -318,6 +318,31 @@ const updateFrame = (seq, ownerSequence, extra = {}) => ({
 		job_trajectory_appends: {},
 		job_trajectory_replacements: [],
 		...extra,
+	},
+});
+
+/**
+ * A replacement that belongs to ANOTHER conversation. The bridge checks the
+ * payload's session id (`acceptFrontendReplace`) and the renderer must refuse
+ * it; the banner must not clear on a frame that proves nothing about this view.
+ */
+const foreignReplaceFrame = (seq) => ({
+	session_id: SESSION,
+	epoch: BRIDGE_EPOCH,
+	seq,
+	type: "frontend.replace",
+	payload: {
+		frontend: {
+			state_version: 1,
+			epoch: OWNER_EPOCH,
+			sequence: 2,
+			live_cursor: null,
+			snapshot: frontendState({
+				sequence: 2,
+				sessionId: "bbbbbbbbbbbb",
+			}),
+		},
+		cold: false,
 	},
 });
 
@@ -427,6 +452,18 @@ test("a paused delta raises the banner even when its sequence is behind the pain
 	 */
 	const view = await mount([updateFrame(3, 1, { paused: true })]);
 	assert.equal(view().liveUpdatesPaused, true);
+});
+
+test("a replacement for another conversation does not clear the banner", async () => {
+	const view = await mount([
+		updateFrame(3, 2, { degraded: true }),
+		foreignReplaceFrame(4),
+	]);
+	assert.equal(
+		view().liveUpdatesPaused,
+		true,
+		"a refused replacement proves nothing about this view",
+	);
 });
 
 test("an event notice asking for a reload raises the banner", async () => {
