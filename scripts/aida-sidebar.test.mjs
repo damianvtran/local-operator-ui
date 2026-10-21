@@ -336,7 +336,7 @@ test("the row's press RESOLVES rather than navigates, through the shared opener"
 	 */
 	assert.match(
 		nav,
-		/onClick=\{\(\) => \{\s*if \(suppressClickRef\.current\) return;\s*if \(item\.onSelect\) item\.onSelect\(\);\s*else navigate\(item\.path\);\s*\}\}/,
+		/onClick=\{\(\) => \{\s*if \(suppressClickRef\.current\) \{\s*suppressClickRef\.current = false;\s*return;\s*\}\s*if \(item\.onSelect\) item\.onSelect\(\);\s*else navigate\(item\.path\);\s*\}\}/,
 		"the button honours `onSelect` when the row has one, and a drag's release is not a press",
 	);
 	assert.match(nav, /onSelect: selectAida,/, "and the row declares it");

@@ -129,18 +129,16 @@ export function useSidebarLayout(canCustomise: boolean) {
 			}
 			showErrorToast(t("ui.shell.sidebar_navigation.save_failed"));
 		},
-		onSuccess: (saved) => {
-			/*
-			 * The route's answer wins over the optimistic guess. The route VALIDATES
-			 * and stores the document it was sent; it does not fill missing ids or
-			 * drop unknown ones — `sanitizeSidebarLayout` owns that merge on this
-			 * side of the wire. Replacing the cache with the answered document is
-			 * what makes the next read of this resource return exactly what the
-			 * backend holds, including the subset a local sanitizer would have
-			 * completed.
-			 */
-			queryClient.setQueryData(sidebarLayoutKeys.layout, saved);
-		},
+		/*
+		 * NO `onSuccess` CACHE WRITE (agent review round 1, R1-4). The route stores
+		 * exactly the document it is sent; the client always sends a full sanitised
+		 * layout, so the optimistic value IS the stored value and the next read
+		 * returns it. Writing the answer here as well queued one write per gesture:
+		 * with two quick moves A then B, B's optimistic layout was replaced by A's
+		 * answered document when A landed, then by B's - a visible snap back and
+		 * forward. `scope` serialises the PUTs; this leaves the cache's last word to
+		 * the latest gesture.
+		 */
 	});
 
 	const readSucceeded =
@@ -178,13 +176,5 @@ export function useSidebarLayout(canCustomise: boolean) {
 		save,
 		reset,
 		isSaving: mutation.isPending,
-		/*
-		 * A failed write is a surface state, not only a toast: the row menu's
-		 * disabled/pending state has to stop showing the optimistic move as saved
-		 * once the rollback happened. `isSuccess` rather than "has errored ever"
-		 * would clear it on the next save, which `mutation.isError` also does
-		 * because React Query resets the mutation's status on `mutate`.
-		 */
-		saveFailed: mutation.isError,
 	};
 }
