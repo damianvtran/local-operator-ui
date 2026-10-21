@@ -70,6 +70,22 @@ export function registerCatalogue(
 	else registered.set(locale, { ...messages });
 }
 
+/**
+ * Replace everything registered for `locale` with `messages`.
+ *
+ * The per-locale bundle is a WHOLE: one payload carrying every eager
+ * namespace, keyed by `content_sha256`. When that identity changes the served
+ * map is the complete truth for the locale, so merging would keep identities
+ * a newer backend removed (and they would render stale text until restart).
+ * Additive `registerCatalogue` remains for partial contributions.
+ */
+export function replaceCatalogue(
+	locale: string,
+	messages: Record<string, string>,
+): void {
+	registered.set(locale, { ...messages });
+}
+
 /** Drop everything registered; bundled en remains. Tests reset with this. */
 export function clearRegisteredCatalogues(): void {
 	registered.clear();
@@ -110,21 +126,33 @@ function sourceTagFor(key: string, locale: string): string {
 }
 
 /*
- * Parsed messages, cached per (locale, message). Construction is the expensive
- * half of `IntlMessageFormat` (it parses the ICU source); a UI render loop asks
- * for the same handful of messages over and over, and the parse result depends
- * only on these two strings.
+ * Parsed messages and their argument kinds, cached per (locale, message).
+ * Construction is the expensive half of `IntlMessageFormat` (it parses the ICU
+ * source), and the AST walk that finds plural/number arguments is paid once
+ * with it — the previous shape re-walked `getAst()` on every `t()` call, which
+ * measured 262 -> 702 ns (2.7x) for the same sentence. A UI render loop asks
+ * for the same handful of messages over and over, and both halves depend only
+ * on these two strings, so they are cached together.
  */
-const formats = new Map<string, IntlMessageFormat>();
+type ParsedMessage = {
+	format: IntlMessageFormat;
+	/** ICU arguments and the STRICTEST kind each is used as. */
+	arguments: Map<string, IcuArgumentKind>;
+};
 
-function formatterFor(locale: string, message: string): IntlMessageFormat {
+const formats = new Map<string, ParsedMessage>();
+
+function parsedMessageFor(locale: string, message: string): ParsedMessage {
 	const cacheKey = `${locale}\u0000${message}`;
-	let format = formats.get(cacheKey);
-	if (format === undefined) {
-		format = new IntlMessageFormat(message, locale);
-		formats.set(cacheKey, format);
+	let parsed = formats.get(cacheKey);
+	if (parsed === undefined) {
+		const format = new IntlMessageFormat(message, locale);
+		const argumentsInMessage = new Map<string, IcuArgumentKind>();
+		collectIcuArguments(format.getAst(), argumentsInMessage);
+		parsed = { format, arguments: argumentsInMessage };
+		formats.set(cacheKey, parsed);
 	}
-	return format;
+	return parsed;
 }
 
 /**
@@ -186,6 +214,32 @@ const ICU_SELECT = 5;
 const ICU_PLURAL = 6;
 const ICU_TAG = 8;
 
+/*
+ * How strictly an argument's value is checked when ONE name appears more than
+ * once in a message. A message may mix a plural and a bare interpolation of the
+ * same argument ("{count, plural, ...} (value: {count})"). The bare use would
+ * admit a string, but the plural requires a finite number, and letting the later
+ * AST node overwrite the stricter earlier one made `{count: "abc"}` render a
+ * fabricated "NaN elements (value: abc)" instead of taking the malformed-params
+ * branch. Highest rank wins and is never downgraded: number > date > scalar.
+ */
+const ICU_KIND_RANK: Record<IcuArgumentKind, number> = {
+	scalar: 0,
+	date: 1,
+	number: 2,
+};
+
+function rememberIcuArgument(
+	into: Map<string, IcuArgumentKind>,
+	name: string,
+	kind: IcuArgumentKind,
+): void {
+	const previous = into.get(name);
+	if (previous === undefined || ICU_KIND_RANK[kind] > ICU_KIND_RANK[previous]) {
+		into.set(name, kind);
+	}
+}
+
 function collectIcuArguments(
 	nodes: readonly unknown[],
 	into: Map<string, IcuArgumentKind>,
@@ -200,11 +254,11 @@ function collectIcuArguments(
 		};
 		if (typeof node.value === "string") {
 			if (node.type === ICU_NUMBER || node.type === ICU_PLURAL) {
-				into.set(node.value, "number");
+				rememberIcuArgument(into, node.value, "number");
 			} else if (node.type === ICU_DATE || node.type === ICU_TIME) {
-				into.set(node.value, "date");
+				rememberIcuArgument(into, node.value, "date");
 			} else if (node.type === ICU_ARGUMENT || node.type === ICU_SELECT) {
-				into.set(node.value, "scalar");
+				rememberIcuArgument(into, node.value, "scalar");
 			}
 		}
 		/*
@@ -293,20 +347,19 @@ export function renderMessage(
 	 */
 	const tag = sourceTagFor(key, locale);
 	try {
-		const formatter = formatterFor(tag, message);
+		const parsed = parsedMessageFor(tag, message);
 		/*
 		 * ICU-TYPE, not JS-TYPE (review round 1, MAJOR-1): the formatter coerces a
 		 * string/boolean/null in a plural or number slot instead of throwing, so
 		 * `typeof` alone would let "NaN éléments" through as a normal message.
 		 */
-		const argumentsInMessage = new Map<string, IcuArgumentKind>();
-		collectIcuArguments(formatter.getAst(), argumentsInMessage);
+		const argumentsInMessage = parsed.arguments;
 		for (const [name, kind] of argumentsInMessage) {
 			if (!matchesIcuKind(params[name], kind)) {
 				return { status: "malformed" };
 			}
 		}
-		const rendered = formatter.format(params);
+		const rendered = parsed.format.format(params);
 		/*
 		 * Only a plain string is product copy. A rich-text message returns an
 		 * array of parts that a text sink cannot paint; treating it as malformed

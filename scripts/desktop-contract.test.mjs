@@ -1100,6 +1100,7 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 			"/v1/auth/accounts/1",
 			"DELETE",
 		],
+		[{ op: "i18n.catalogues", locale: "fr" }, "/v1/i18n/catalogues/fr", "GET"],
 		/*
 		 * The previews' sign op (file-serving RFC § 4, Phase A adoption): NOT
 		 * under `/v1/desktop/` - the core's sign route accepts the desktop bearer
