@@ -6,7 +6,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@shared/components/ui/dropdown-menu";
-import { t } from "@shared/i18n";
+import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -134,7 +134,7 @@ export const ConversationRailRow: FC<{
 	organizationName,
 	onSelect,
 }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const Icon =
 		conversation.kind === "group"
 			? Users
@@ -147,11 +147,15 @@ export const ConversationRailRow: FC<{
 		t("ui.teamBridge.list.untitled");
 	const preview = isPreviewConversation(conversation);
 	const unread = conversation.unread_count;
+	const lastActive = lastActiveTooltip(conversation.last_message_at, locale);
 	return (
 		<li>
 			<button
 				type="button"
 				onClick={onSelect}
+				/* The row carries no visible time (it clipped at narrow widths, #1293);
+				   the relative+absolute pair lives in the tooltip and the header. */
+				title={lastActive || undefined}
 				aria-current={selected ? "page" : undefined}
 				data-conversation-id={conversation.id}
 				data-conversation-builtin={conversation.builtin}
@@ -426,4 +430,36 @@ export function isTargetRow(
 	accountId: string,
 ): boolean {
 	return target?.type === type && target.accountId === accountId;
+}
+
+/**
+ * "10 hours ago · Oct 21, 2026, 1:04 AM" for a row tooltip. Kept here rather
+ * than imported from the page so the rail module has no dependency on the
+ * page (the page imports the rail).
+ */
+function lastActiveTooltip(
+	iso: string | null | undefined,
+	locale: string,
+): string {
+	if (!iso) return "";
+	const then = Date.parse(iso);
+	if (Number.isNaN(then)) return "";
+	const minutes = Math.round((then - Date.now()) / 60_000);
+	const hours = Math.round(minutes / 60);
+	const rel =
+		Math.abs(minutes) < 60
+			? formatRelativeTime(minutes, "minute", { numeric: "auto" }, locale)
+			: Math.abs(hours) < 24
+				? formatRelativeTime(hours, "hour", { numeric: "auto" }, locale)
+				: formatRelativeTime(
+						Math.round(hours / 24),
+						"day",
+						{ numeric: "auto" },
+						locale,
+					);
+	const abs = new Intl.DateTimeFormat(locale, {
+		dateStyle: "medium",
+		timeStyle: "short",
+	}).format(new Date(then));
+	return `${rel} · ${abs}`;
 }
