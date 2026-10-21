@@ -186,7 +186,12 @@ declare global {
 				setContentRect: (
 					rect: { x: number; y: number; width: number; height: number } | null,
 				) => Promise<unknown>;
-				setViewVisible: (visible: boolean) => Promise<unknown>;
+				setViewVisible: (
+					visible: boolean,
+					/** Why the view is hidden, when it is: the browser's own state
+					 * page rather than an overlay. See `registry.ts:chromeVisible`. */
+					ownPage?: boolean,
+				) => Promise<unknown>;
 				handOver: (tabId: number, sessionId: string) => Promise<unknown>;
 				revokeHandOver: (tabId: number) => Promise<unknown>;
 				respondToConsent: (

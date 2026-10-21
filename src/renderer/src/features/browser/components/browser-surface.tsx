@@ -31,6 +31,7 @@ import {
 	requestsInScope,
 	useApprovalQueue,
 } from "../model/approval-queue-model";
+import { browserOverlaySuppressing } from "../model/self-suppression";
 import { isStartPageUrl } from "../model/start-page";
 import {
 	type SurfaceScope,
@@ -258,6 +259,20 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		: t("ui.browser.browser_surface.new_tab");
 	const suppressed = useBrowserViewSuppressed();
 	const suppressedBy = useSuppressedOverlayIds();
+	/**
+	 * Whether something OTHER than this surface's own state pages is covering the
+	 * content area.
+	 *
+	 * The surface registers in the SAME registry every dialog, menu and tooltip
+	 * uses (that is the point: one policy), but the start page and the failure
+	 * panel are the browser, not an overlay over it. Two consumers need the
+	 * difference: the paused note below (an overlay's note must never hide the
+	 * browser's own panel) and main's shortcut ownership, which is told the reason
+	 * with the hide so Cmd+L/T/R survive those two states. The id list lives in
+	 * `model/self-suppression`, shared with the chord hook that filters the same
+	 * snapshot.
+	 */
+	const overlaySuppressing = browserOverlaySuppressing(suppressedBy);
 	const contentRef = useRef<HTMLDivElement | null>(null);
 	const approvalsTriggerRef = useRef<HTMLButtonElement | null>(null);
 	const [dockOpen, setDockOpen] = useState(false);
@@ -369,8 +384,12 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// deliberately NOT part of this: it narrows the content rect instead, which is
 	// the whole reason the queue lives in a dock rather than a sheet (spec §2).
 	useEffect(() => {
-		chrome.setViewVisible(!suppressed);
-	}, [chrome.setViewVisible, suppressed]);
+		// `ownPage` is the reason half of this call: the view is hidden EITHER so an
+		// overlay can paint (chords belong to the overlay) OR so the browser's own
+		// start page / failure panel can (the browser still owns its keys). Main
+		// keeps shortcut ownership for the second and refuses it for the first.
+		chrome.setViewVisible(!suppressed, suppressed && !overlaySuppressing);
+	}, [chrome.setViewVisible, suppressed, overlaySuppressing]);
 
 	// A banner click names the pending request; the band is already rendering it,
 	// so the only job here is to make sure this surface is showing current state.
@@ -479,7 +498,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// the same hide-and-restore lever the overlay policy uses; the id says which
 	// reason applied, so a paused page is never mistaken for a broken one.
 	const navFailure = state?.navFailure ?? null;
-	const suppressionIds = suppressedBy ? suppressedBy.split(",") : [];
 	// WHICH OF THE TWO EXPLANATIONS THE USER GETS WHEN BOTH ARE TRUE.
 	//
 	// A dialog can be open over a tab whose last load failed, and the two states say
@@ -490,22 +508,11 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// panel. Letting the panel win instead left "close it to bring the page back"
 	// unreachable in exactly the state it was written for.
 	//
-	// `SELF_SUPPRESSION_IDS` is every registration THIS component makes. It is a
-	// list rather than one prefix because the start page (LOH-13 slice B) is a
-	// second one: its registration is in `suppressedBy` for exactly as long as the
-	// failure's is, so a filter that only knew the failure's prefix would read the
-	// start page's own registration as an overlay and hide the start page - which
-	// is what shipped in this slice's first cut, caught by reading the interstitial
-	// frame rather than the markup.
-	const SELF_SUPPRESSION_IDS = [
-		"browser-load-failure:",
-		// The start page's own registration (see the block below): listed here so it
-		// is not read as an overlay that hides the page it registers for.
-		"browser-start-page:",
-	];
-	const overlaySuppressing = suppressionIds.some(
-		(id) => id && !SELF_SUPPRESSION_IDS.some((prefix) => id.startsWith(prefix)),
-	);
+	// `overlaySuppressing` (above) is the filter, and it must stay one: every
+	// registration THIS component makes is the browser itself, so a filter that
+	// read one of them as "a dialog is open" would hide the state it registers for.
+	// The list lives in `model/self-suppression` because the chord hook needs the
+	// same answer; a second copy here is the drift that module prevents.
 	const showingFailure =
 		navFailure !== null &&
 		state !== null &&
