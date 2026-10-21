@@ -111,7 +111,8 @@ async function download(
 					received += chunk.length;
 					// Stop at the first byte past the pinned size, not after the
 					// whole (possibly huge) stream has been written.
-					if (received > f.bytes) throw new ModelError("model_integrity", f.name);
+					if (received > f.bytes)
+						throw new ModelError("model_integrity", f.name);
 					opts.onProgress?.({
 						file: f.name,
 						received: doneBefore + received,
