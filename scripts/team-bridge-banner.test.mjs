@@ -42,7 +42,8 @@ const electronFixture = {
 			namespace: "fixture",
 		}));
 		builder.onLoad({ filter: ANY_FILE, namespace: "fixture" }, () => ({
-			contents: "export class Notification { static isSupported() { return true; } }",
+			contents:
+				"export class Notification { static isSupported() { return true; } }",
 		}));
 	},
 };
