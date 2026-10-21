@@ -473,6 +473,134 @@ export const EffortStates: Story = {
 };
 
 /**
+ * The level the conversation CHOSE is not the level now serving (operator
+ * report, 2026-10-21: a remote session set to `Max` read `High` after a send,
+ * with nothing saying why). The chip still names the level IN FORCE, which is
+ * its job; the backend's `effort_displacement.note` adds the reason. A warning
+ * mark on the chip, with the sentence first in the tooltip and in the
+ * accessible name. The first frame is the control: same in-force level, no
+ * displacement, an unchanged chip. 960px wide because the effort chip yields
+ * below a 750px column (`@max-[750px]/chatcol:hidden`).
+ */
+const SONNET_HIGH = {
+	...GPT_5,
+	provider: "anthropic",
+	model_id: "claude-sonnet-5-5",
+	display_name: "Claude Sonnet 5.5",
+	reasoning_effort: "high",
+	reasoning_efforts: ["low", "medium", "high", "max"],
+};
+const DISPLACED = {
+	chosen: "max",
+	effective: "high",
+	selected: "acme/flash-1",
+	serving: "anthropic/claude-sonnet-5-5",
+	note: "Effort: high on anthropic/claude-sonnet-5-5; max resumes on acme/flash-1.",
+};
+// The selected model carries its catalog name, so the frame shows the note
+// with both models' display names rather than their raw slugs.
+const FLASH_MAX = {
+	...SONNET_HIGH,
+	provider: "acme",
+	model_id: "flash-1",
+	display_name: "Acme Flash",
+	reasoning_effort: "max",
+};
+const displacedFrontend = state({
+	selected_model: FLASH_MAX,
+	effective_model: SONNET_HIGH,
+	effort_displacement: DISPLACED,
+	context_tokens: 13_591,
+	context_window: 200_000,
+	cumulative_parent_cost: 0.31,
+	cost_knowledge: "exact",
+});
+
+export const EffortDisplaced: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<Frame
+				width={960}
+				label="Control: the chosen level is the level in force, so no mark"
+			>
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: SONNET_HIGH,
+						effort_displacement: {},
+						context_tokens: 13_591,
+						context_window: 200_000,
+						cumulative_parent_cost: 0.31,
+						cost_knowledge: "exact",
+					})}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+			<Frame
+				width={960}
+				label="Displaced: chose Max, a fallback serves at High; the chip says so"
+			>
+				<SessionStatusStrip
+					frontend={displacedFrontend}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+		</div>
+	),
+};
+
+/** The displaced chip's tooltip, opened by keyboard focus. */
+/**
+ * The narrowest composer that still draws the effort chip (it yields below a
+ * 750px column, `@max-[750px]/chatcol:hidden`): the mark must not push the
+ * readings off the row or truncate the level itself.
+ */
+export const EffortDisplacedNarrow: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<Frame width={760} label="Displaced at 760px, the chip's narrowest">
+				<SessionStatusStrip
+					frontend={displacedFrontend}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+		</div>
+	),
+};
+
+export const EffortDisplacedTooltip: Story = {
+	render: () => {
+		const Focused: FC<{ frontend: CanonicalFrontendState }> = ({
+			frontend,
+		}) => {
+			const host = useRef<HTMLDivElement>(null);
+			useEffect(() => {
+				const effort = Array.from(
+					host.current?.querySelectorAll("button") ?? [],
+				).find((button) =>
+					button.getAttribute("aria-label")?.startsWith("Reasoning effort"),
+				);
+				(effort as HTMLButtonElement | undefined)?.focus();
+			}, []);
+			return (
+				<div ref={host}>
+					<SessionStatusStrip frontend={frontend} onCommand={() => undefined} />
+				</div>
+			);
+		};
+		return (
+			<div className="flex min-h-[320px] flex-col justify-end bg-canvas p-2">
+				<Frame
+					width={960}
+					label="The reason, first after the value, in the backend's own words"
+				>
+					<Focused frontend={displacedFrontend} />
+				</Frame>
+			</div>
+		);
+	},
+};
+
+/**
  * A model name long enough to overrun the row, at three widths — one of them
  * with the fast bolt showing, so the truncated-name floor is photographed with
  * and without the badge (design D2, round 1).

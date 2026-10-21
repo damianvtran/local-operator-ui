@@ -96,6 +96,8 @@ const {
 	contextTooltipLines,
 	costTooltip,
 	cumulativeCostKnowledge,
+	effortChosenRung,
+	effortDisplacementNote,
 	effortDisplay,
 	effortQueryModel,
 	effortState,
@@ -3100,4 +3102,97 @@ test("the real page/content/composer wires the tested serving context and decisi
 			"!modelAccessOwnsRadientStatus(modelAccess) && radientIssueBlock",
 		),
 	);
+});
+
+test("effortDisplacementNote: the backend's reason, or no claim", () => {
+	// Operator report, 2026-10-21: `Max` read `High` after a send with nothing
+	// saying why. The backend's own sentence is what the chip shows; it is never
+	// re-derived here, so the TUI notice and the desktop say the same words.
+	const note =
+		"Effort: high on anthropic/claude-sonnet-5-5; max resumes on deepseek/deepseek-flash.";
+	assert.equal(
+		effortDisplacementNote({
+			effort_displacement: {
+				chosen: "max",
+				effective: "high",
+				selected: "deepseek/deepseek-flash",
+				serving: "anthropic/claude-sonnet-5-5",
+				note: `  ${note} `,
+			},
+		}),
+		note,
+	);
+	// No displacement, an older host that omits the key, a block with no usable
+	// sentence, and no frame at all are all the same answer: nothing to say.
+	for (const frontend of [
+		{ effort_displacement: {} },
+		{},
+		{ effort_displacement: { chosen: "max", effective: "high" } },
+		{ effort_displacement: { note: 7 } },
+		{ effort_displacement: { note: "   " } },
+		null,
+		undefined,
+	]) {
+		assert.equal(
+			effortDisplacementNote(frontend),
+			null,
+			JSON.stringify(frontend),
+		);
+	}
+});
+
+test("effortDisplacementNote: catalog names replace the slugs they describe", () => {
+	// Design review: the model chip reads the curated name, so a raw
+	// `provider/model_id` in the same chip's tooltip is a second vocabulary.
+	const frontend = {
+		selected_model: {
+			provider: "acme",
+			model_id: "flash-1",
+			display_name: "Acme Flash",
+		},
+		effective_model: {
+			provider: "anthropic",
+			model_id: "claude-sonnet-5-5",
+			display_name: "Claude Sonnet 5.5",
+		},
+		effort_displacement: {
+			chosen: "max",
+			effective: "high",
+			selected: "acme/flash-1",
+			serving: "anthropic/claude-sonnet-5-5",
+			note: "Effort: high on anthropic/claude-sonnet-5-5; max resumes on acme/flash-1.",
+		},
+	};
+	assert.equal(
+		effortDisplacementNote(frontend),
+		"Effort: high on Claude Sonnet 5.5; max resumes on Acme Flash.",
+	);
+	// A spec with no name, or one whose pair the block does not name, leaves
+	// the backend's words alone: a name is never put on another model.
+	assert.equal(
+		effortDisplacementNote({
+			...frontend,
+			selected_model: { provider: "acme", model_id: "flash-1" },
+			effective_model: {
+				provider: "other",
+				model_id: "m",
+				display_name: "Other",
+			},
+		}),
+		frontend.effort_displacement.note,
+	);
+});
+
+test("effortChosenRung: the picker marks the CHOICE while displaced", () => {
+	// Max chosen, High in force: the `/effort` picker ticks `max`, the rung the
+	// user picked and the one a tick would keep.
+	assert.equal(
+		effortChosenRung({
+			effort_displacement: { chosen: " MAX ", effective: "high", note: "x" },
+		}),
+		"max",
+	);
+	for (const frontend of [{}, { effort_displacement: {} }, null, undefined]) {
+		assert.equal(effortChosenRung(frontend), null, JSON.stringify(frontend));
+	}
 });

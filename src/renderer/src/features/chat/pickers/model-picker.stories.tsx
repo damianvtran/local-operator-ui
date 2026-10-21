@@ -508,6 +508,8 @@ type FrameProps = {
 	/** The model the session is on (the session frame's stand-in). */
 	selected?: { provider: string; model_id: string } | null;
 	picker?: "model" | "effort";
+	/** A whole frame in place of `{selected_model: selected}`, for states such as an effort displacement. */
+	frontend?: Record<string, unknown>;
 };
 
 /**
@@ -522,6 +524,7 @@ const Frame: FC<FrameProps> = ({
 	commandResponse,
 	selected = CURRENT,
 	picker = "model",
+	frontend,
 }) => {
 	installBridge(storyBridge, commandResponse);
 	const isEffort = picker === "effort";
@@ -530,7 +533,7 @@ const Frame: FC<FrameProps> = ({
 		spec: isEffort ? EFFORT_SPEC : MODEL_SPEC,
 		sessionId: "sess",
 		canonical: {
-			frontend: selected ? { selected_model: selected } : null,
+			frontend: frontend ?? (selected ? { selected_model: selected } : null),
 			// U1's half that lives in the picker: paint before the await, drop it
 			// when the owner refuses. Recorded so a play can assert the order.
 			paintPendingModel: (model: { provider: string; model_id: string }) => {
@@ -889,6 +892,60 @@ export const SetCurrentAsDefault: Story = {
 				screen.getByText("Default for new sessions: Claude Opus 5"),
 			).toBeTruthy(),
 		);
+	},
+};
+
+/**
+ * Max chosen, a fallback serving at High (operator report, 2026-10-21). The
+ * live frame's effective spec reads `high`, but the dialog changes the
+ * conversation's CHOICE, so `max` is the row marked current. Ticking `high`
+ * here would offer a "change" to the level that is already merely a fallback's.
+ */
+export const EffortDisplacedMarksChoice: Story = {
+	render: () => (
+		<Frame
+			picker="effort"
+			frontend={{
+				selected_model: {
+					provider: "acme",
+					model_id: "flash-1",
+					reasoning_effort: "max",
+				},
+				effective_model: {
+					provider: "anthropic",
+					model_id: "claude-sonnet-5-5",
+					reasoning_effort: "high",
+				},
+				effort_displacement: {
+					chosen: "max",
+					effective: "high",
+					selected: "acme/flash-1",
+					serving: "anthropic/claude-sonnet-5-5",
+					note: "Effort: high on anthropic/claude-sonnet-5-5; max resumes on acme/flash-1.",
+				},
+			}}
+			bridge={(request) => {
+				if (request.op === "commands.entities")
+					return Promise.resolve(
+						ok({
+							entities: [
+								{ value: "low", name: "low" },
+								{ value: "medium", name: "medium" },
+								{ value: "high", name: "high" },
+								{ value: "max", name: "max" },
+							],
+							current: "high",
+						}),
+					);
+				return Promise.resolve(ok({}));
+			}}
+		/>
+	),
+	play: async () => {
+		const max = await screen.findByRole("option", { name: /^Max/ });
+		await waitFor(() => expect(max.getAttribute("data-current")).toBe("true"));
+		const high = await screen.findByRole("option", { name: /^High/ });
+		expect(high.getAttribute("data-current")).toBeNull();
 	},
 };
 

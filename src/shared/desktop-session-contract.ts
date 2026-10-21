@@ -1360,6 +1360,15 @@ export type CanonicalSpendChannels = {
 	vocabulary?: CanonicalSpendVocabulary;
 };
 
+/** See `CanonicalFrontendState.effort_displacement`. Every key is untrusted wire text. */
+export type CanonicalEffortDisplacement = {
+	chosen?: string;
+	effective?: string;
+	selected?: string;
+	serving?: string;
+	note?: string;
+};
+
 export type CanonicalFrontendState = {
 	attention?: CompletionAttention;
 	state_version: number;
@@ -1413,6 +1422,22 @@ export type CanonicalFrontendState = {
 	effective_identity?: CanonicalEffectiveIdentity;
 	selected_model: CanonicalModel | null;
 	effective_model: CanonicalModel | null;
+	/**
+	 * The level the conversation CHOSE when it is NOT the level now serving.
+	 * Published by the backend's `frontend_state.effort_displacement`.
+	 *
+	 * The effort chip reads `effective_model`, so it correctly names the level
+	 * in force. But a fallback route (a chain entry pinning its own level, or a
+	 * ladder that clamps the choice) then makes `Max` read `High` with nothing
+	 * on screen saying why. The operator reported exactly that on a remote
+	 * session (2026-10-21). This block is that "why": `{chosen, effective,
+	 * selected, serving, note}`, where `note` is the backend's own sentence,
+	 * shared with the TUI notice, so no client words the fact differently.
+	 *
+	 * Optional and `{}`-when-nothing: an older host omits it, and both mean
+	 * "no displacement to report". Read it through `effortDisplacementNote`.
+	 */
+	effort_displacement?: CanonicalEffortDisplacement;
 	/**
 	 * Whether the model this session runs can still authenticate (see
 	 * `CanonicalModelAccess`). Optional: an older host omits it, and absence
