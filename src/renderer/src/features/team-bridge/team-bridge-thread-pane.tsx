@@ -10,13 +10,18 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { ArrowUp, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
-import { teamBridgeKeys } from "./use-team-bridge";
+import {
+	type ThreadTarget,
+	loadThreadPage,
+	observeDisplayedThreadReplies,
+} from "./team-bridge-thread-read";
+import { teamBridgeKeys, useMarkTeamBridgeRead } from "./use-team-bridge";
 
 export type ThreadPaneProps = {
-	root: TeamBridgeMessage;
+	root: TeamBridgeMessage | null;
 	replies: readonly TeamBridgeMessage[];
 	state: "loading" | "error" | "ready";
 	labelFor: (sender: TeamBridgeMessage["sender"]) => string;
@@ -27,6 +32,7 @@ export type ThreadPaneProps = {
 	hasMore?: boolean;
 	loadingMore?: boolean;
 	onMore?: () => void;
+	onRead?: (seq: number) => Promise<unknown>;
 };
 
 /** A sibling surface, not a dialog: the channel stays visible beside its thread.
@@ -45,8 +51,14 @@ export function TeamBridgeThreadPaneView({
 	hasMore = false,
 	loadingMore = false,
 	onMore,
+	onRead,
 }: ThreadPaneProps) {
 	useI18nLocale();
+	const pane = useRef<HTMLElement>(null);
+	useEffect(() => {
+		if (!pane.current || state !== "ready" || !onRead) return;
+		return observeDisplayedThreadReplies(pane.current, replies, onRead);
+	}, [replies, state, onRead]);
 	const [draft, setDraft] = useState("");
 	const [sending, setSending] = useState(false);
 	const [failed, setFailed] = useState(false);
@@ -76,6 +88,7 @@ export function TeamBridgeThreadPaneView({
 	};
 	return (
 		<aside
+			ref={pane}
 			aria-label={t("ui.teamBridge.replies.title")}
 			className="flex h-full min-h-0 w-[min(26rem,45%)] min-w-72 shrink-0 flex-col bg-canvas pt-[var(--panel-top-pad,0px)]"
 		>
@@ -93,10 +106,12 @@ export function TeamBridgeThreadPaneView({
 				</Button>
 			</header>
 			<ScrollArea className="min-h-0 flex-1">
-				<TeamBridgeMessageList messages={[root]} labelFor={labelFor} />
+				{root && (
+					<TeamBridgeMessageList messages={[root]} labelFor={labelFor} />
+				)}
 				<div className="px-5 py-3 text-[12px] text-ink-dim">
 					{t("ui.teamBridge.replies.count", {
-						count: root.reply_count ?? replies.length,
+						count: root?.reply_count ?? replies.length,
 					})}
 				</div>
 				{state === "loading" ? (
@@ -187,51 +202,69 @@ export function TeamBridgeThreadPaneView({
  * invalidates both the pane and timeline rollup, never inserts replies there.
  */
 export function TeamBridgeThreadPane({
-	root,
-	tenantId,
+	target,
+	initialRoot,
 	readOnly,
 	labelFor,
 	onClose,
 }: {
-	root: TeamBridgeMessage;
-	tenantId: string;
+	target: ThreadTarget;
+	initialRoot?: TeamBridgeMessage;
 	readOnly: boolean;
 	labelFor: ThreadPaneProps["labelFor"];
 	onClose: () => void;
 }) {
 	const client = useQueryClient();
+	const { tenantId, conversationId, rootId } = target;
+	const read = useMarkTeamBridgeRead(conversationId, tenantId);
+	// Observer recreation (paging/refetch) must not turn a successful read into a
+	// second mutation loop. This ref belongs to the keyed tenant/conversation/root.
+	const acknowledged = useRef(-1);
+	const acknowledge = useCallback(
+		async (seq: number) => {
+			if (seq <= acknowledged.current) return;
+			acknowledged.current = seq;
+			try {
+				await read.mutateAsync({ seq });
+			} catch (error) {
+				if (acknowledged.current === seq) acknowledged.current = -1;
+				throw error;
+			}
+		},
+		[read.mutateAsync],
+	);
 	const key = [
 		...teamBridgeKeys.all,
 		"replies",
 		tenantId,
-		root.conversation_id,
-		root.id,
+		conversationId,
+		rootId,
 	] as const;
 	const query = useInfiniteQuery({
 		queryKey: key,
 		initialPageParam: undefined as number | undefined,
-		queryFn: ({ pageParam }) =>
-			TeamBridgeApi.listReplies(root.conversation_id, root.id, {
-				tenantId,
-				afterSeq: pageParam,
-			}),
+		queryFn: ({ pageParam }) => loadThreadPage(target, pageParam),
 		getNextPageParam: (page) =>
 			page.has_more ? page.next_after_seq : undefined,
 		refetchInterval: 8_000,
 	});
+	const replies = useMemo(
+		() => query.data?.pages.flatMap((page) => page.replies) ?? [],
+		[query.data],
+	);
 	const send = useMutation({
 		mutationFn: ({ body, clientRef }: { body: string; clientRef: string }) =>
-			TeamBridgeApi.send(root.conversation_id, {
+			TeamBridgeApi.send(conversationId, {
 				body,
 				clientRef,
 				tenantId,
-				threadRootId: root.id,
+				threadRootId: rootId,
 			}),
 		onSuccess: async () => {
 			await Promise.all([
 				client.invalidateQueries({ queryKey: key }),
 				client.invalidateQueries({
-					queryKey: teamBridgeKeys.messages(root.conversation_id, tenantId),
+					queryKey: teamBridgeKeys.messages(conversationId, tenantId),
 				}),
 				client.invalidateQueries({
 					queryKey: teamBridgeKeys.conversationsPrefix,
@@ -241,11 +274,12 @@ export function TeamBridgeThreadPane({
 	});
 	return (
 		<TeamBridgeThreadPaneView
-			root={query.data?.pages[0]?.root ?? root}
-			replies={query.data?.pages.flatMap((page) => page.replies) ?? []}
+			root={query.data?.pages[0]?.root ?? initialRoot ?? null}
+			replies={replies}
 			state={query.isPending ? "loading" : query.isError ? "error" : "ready"}
 			labelFor={labelFor}
 			onClose={onClose}
+			onRead={acknowledge}
 			onRetry={() => void query.refetch()}
 			onSend={(body, clientRef) => send.mutateAsync({ body, clientRef })}
 			readOnly={readOnly}

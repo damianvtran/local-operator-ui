@@ -268,6 +268,7 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 				void bridge
 					.notify({
 						conversationId: candidate.conversationId,
+						...(candidate.threadId ? { threadId: candidate.threadId } : {}),
 						tenantId: candidate.tenantId,
 						seq: candidate.seq,
 						title,
