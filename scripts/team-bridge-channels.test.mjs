@@ -32,6 +32,42 @@ import { build } from "esbuild";
  * suites.
  */
 
+/*
+ * THE RAIL'S ONE IMPORT FROM THE CHAT SIDEBAR IS ITS SELECTED-ROW ROLE.
+ * `team-bridge-rail.tsx` imports `rowCurrent` from `chat-sidebar.tsx` so the
+ * selected person/channel paints the one role every sidebar shares (the
+ * selection guard in `scripts/chat-sidebar-selection.test.mjs` asserts that).
+ * That module drags MUI and the whole chat tree into a node bundle, which
+ * cannot load MUI's directory imports; the stub exports the SAME literal, read
+ * from the shipped source, so these tests render the real class string without
+ * the chat sidebar's dependency weight.
+ */
+const chatSidebarSource = readFileSync(
+	`${process.cwd()}/src/renderer/src/features/chat/components/chat-sidebar.tsx`,
+	"utf8",
+);
+const rowCurrentLiteral = chatSidebarSource.match(
+	/export const rowCurrent =\s*("[^"]+")/,
+)?.[1];
+if (!rowCurrentLiteral)
+	throw new Error("rowCurrent literal not found in chat-sidebar.tsx");
+const chatSidebarStub = {
+	name: "chat-sidebar-stub",
+	setup(pluginBuild) {
+		pluginBuild.onResolve(
+			{ filter: /chat\/components\/chat-sidebar$/ },
+			() => ({
+				path: "chat-sidebar-stub",
+				namespace: "stub",
+			}),
+		);
+		pluginBuild.onLoad({ filter: /.*/, namespace: "stub" }, () => ({
+			contents: `export const rowCurrent = ${rowCurrentLiteral};`,
+			loader: "js",
+		}));
+	},
+};
+
 const ROOT = process.cwd();
 const bundle = await build({
 	stdin: {
@@ -49,6 +85,7 @@ const bundle = await build({
 	packages: "external",
 	jsx: "automatic",
 	loader: { ".css": "empty" },
+	plugins: [chatSidebarStub],
 	alias: {
 		"@shared": `${ROOT}/src/renderer/src/shared`,
 		"@features": `${ROOT}/src/renderer/src/features`,

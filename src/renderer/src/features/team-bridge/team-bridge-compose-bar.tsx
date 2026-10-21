@@ -171,7 +171,7 @@ export const TeamBridgeComposeBar: FC<{
 									"flex size-5 shrink-0 items-center justify-center rounded-[5px] text-[10px] font-medium",
 									option.kind === "agent"
 										? "bg-accent-wash text-accent"
-										: "bg-sunken text-ink-muted",
+										: "border border-control bg-sunken text-ink-muted",
 								)}
 							>
 								{option.kind === "agent" ? (

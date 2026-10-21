@@ -23,6 +23,7 @@ import type {
 	TeamBridgeConversation,
 	TeamBridgeDirectoryMember,
 } from "../../../../shared/team-bridge-contract";
+import { rowCurrent } from "../chat/components/chat-sidebar";
 import {
 	type TeamBridgeChiefOfStaff,
 	type TeamBridgeRecipient,
@@ -163,7 +164,7 @@ export const ConversationRailRow: FC<{
 					ROW,
 					organizationName && "h-auto min-h-[38px] py-1",
 					selected
-						? "bg-row-selected text-ink"
+						? rowCurrent
 						: unread > 0
 							? "font-medium text-ink hover:bg-row-hover"
 							: "text-ink-muted hover:bg-row-hover hover:text-ink",
@@ -301,13 +302,25 @@ export const PersonRailRow: FC<{
 					type="button"
 					aria-disabled="true"
 					aria-describedby={cueId}
-					title={inertCue}
-					className={cn(ROW, "cursor-default text-ink-disabled")}
+					/*
+					 * THE REASON IS ON THE ROW, NOT BEHIND IT (design round 1, D1).
+					 * A sighted reader got only a tooltip, and the dimmed name alone
+					 * read as "broken" rather than "not yet". The cue is a second
+					 * line at `ink-dim` (the muted step that still clears contrast),
+					 * the name keeps `ink-muted`, and `aria-describedby` points at the
+					 * same visible text so both readers get one sentence.
+					 */
+					className={cn(
+						ROW,
+						"h-auto min-h-[30px] cursor-default py-1 text-ink-muted",
+					)}
 				>
-					{avatar}
-					<span className="min-w-0 flex-1 truncate">{label}</span>
-					<span id={cueId} className="sr-only">
-						{inertCue}
+					<span className="opacity-60">{avatar}</span>
+					<span className="flex min-w-0 flex-1 flex-col text-start">
+						<span className="truncate">{label}</span>
+						<span id={cueId} className="truncate text-meta-sm text-ink-dim">
+							{inertCue}
+						</span>
 					</span>
 				</button>
 			</li>
@@ -328,7 +341,7 @@ export const PersonRailRow: FC<{
 					ROW,
 					canStartGroup && "pr-8",
 					selected
-						? "bg-row-selected text-ink"
+						? rowCurrent
 						: unread > 0
 							? "font-medium text-ink hover:bg-row-hover"
 							: "text-ink-muted hover:bg-row-hover hover:text-ink",
@@ -379,7 +392,7 @@ export const ChiefRailRow: FC<{
 					ROW,
 					!readOnly && "pr-8",
 					selected
-						? "bg-row-selected text-ink"
+						? rowCurrent
 						: unread > 0
 							? "font-medium text-ink hover:bg-row-hover"
 							: "text-ink-muted hover:bg-row-hover hover:text-ink",

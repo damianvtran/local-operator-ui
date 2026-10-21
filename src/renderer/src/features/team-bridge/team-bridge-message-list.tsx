@@ -134,7 +134,12 @@ const MessageRow: FC<{
 							// Slack's people are squares, and a circle here would read as
 							// the app's own account avatar.
 							"mt-0.5 flex size-9 items-center justify-center rounded-md font-medium text-[14px]",
-							agent ? "bg-accent-wash text-accent" : "bg-sunken text-ink-muted",
+							/* `border-control` because the row's hover is a row state:
+							   `sunken` sits on the hover's own rung on some palettes, and
+							   the plate would vanish into the row (selection guard). */
+							agent
+								? "border border-control bg-accent-wash text-accent"
+								: "border border-control bg-sunken text-ink-muted",
 						)}
 					>
 						{agent ? (
