@@ -685,11 +685,6 @@ test("the row time moves to the header and a relative+absolute tooltip", () => {
 		?.at(-1);
 	assert.ok(row, "row rendered");
 	assert.ok(header, "header rendered");
-	const visible = (fragment) =>
-		fragment
-			.replace(/<[^>]+>/g, " ")
-			.replace(/\s+/g, " ")
-			.trim();
 	// The row still carries the name and its relative+absolute tooltip, but the
 	// visible row text has no timestamp to clip at the edge.
 	assert.match(visible(row), /a-very-long-channel-name/);
@@ -730,11 +725,6 @@ test("the merged row also keeps its visible time out of the row", () => {
 		?.at(-1);
 	assert.ok(row, "merged row rendered");
 	assert.ok(header, "merged header rendered");
-	const visible = (fragment) =>
-		fragment
-			.replace(/<[^>]+>/g, " ")
-			.replace(/\s+/g, " ")
-			.trim();
 	assert.doesNotMatch(visible(row), /10 hours ago/);
 	assert.match(visible(header), /10 hours ago/);
 	assert.match(visible(row), /Minerva/);
