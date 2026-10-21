@@ -565,15 +565,16 @@ test("the picker offers this device first, then one section per network by name"
 	assert.equal(rowFor(model, PIXEL).facts.includes("1 conversation"), true);
 });
 
-test("a revoked member is never a row and never counted, even with the same name as a live one", () => {
+test("a revoked member is never a row and never counted", () => {
 	/*
-	 * The damian-mesh shape (2026-10-21): a machine re-joined under a new id, and the
-	 * old identity's tombstone - same name, `active: false` - sat beside it. The picker
-	 * drew `cloud-node-1` twice (`drive · unreachable` and `drive · 33 conversations`)
-	 * and headed the section "2 devices". The topology keeps a plain revocation for the
-	 * Mesh tab, so the picker must drop it itself.
+	 * The shape the backend sends after local-operator #2752: a PLAIN revocation stays
+	 * on the wire as `active: false` (the Mesh tab draws it as revoked), while a
+	 * re-joined machine's superseded tombstone is dropped server-side. So the picker
+	 * receives `old-laptop` - removed, a different name from every live member - beside
+	 * the live `cloud-node-1` (33 conversations), and it must offer and count only the
+	 * live one. The damian-mesh bug read "2 devices" for one peer.
 	 */
-	const OLD = "d_old_cloud";
+	const OLD = "d_old_laptop";
 	const NEW = "d_new_cloud";
 	const model = picker({
 		placement: { kind: "draft", deviceId: null, name: "" },
@@ -587,7 +588,7 @@ test("a revoked member is never a row and never counted, even with the same name
 					member({}),
 					member({
 						device_id: OLD,
-						name: "cloud-node-1",
+						name: "old-laptop",
 						role: "drive",
 						active: false,
 						reachable: false,
