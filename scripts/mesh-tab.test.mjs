@@ -2106,7 +2106,7 @@ test("the Mesh rail row is gated on MEMBERSHIP, and the route on the capability"
 	);
 	assert.match(
 		nav,
-		/\.\.\.\(meshMembership === "member"\s*\?\s*\[\s*\{\s*icon: Network,\s*label: t\("ui\.shell\.sidebar_navigation\.mesh"\),\s*path: "\/mesh",/,
+		/if \(meshMembership === "member"\) \{\s*destinationItems\.set\("mesh", \{\s*icon: Network,\s*label: t\("ui\.shell\.sidebar_navigation\.mesh"\),\s*path: "\/mesh",/,
 		"a row appears only for a device KNOWN to be in a mesh - not for an unknown or empty answer",
 	);
 	assert.doesNotMatch(

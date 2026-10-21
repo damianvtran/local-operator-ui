@@ -277,13 +277,35 @@ test("the rail's row is gated twice, and the second gate is the READ's enabled",
 
 test("Aida is the FIRST destination, above Agents (R3)", () => {
 	const nav = source(NAV);
-	const items = nav.indexOf("const navItems: NavItem[] = [");
-	const aida = nav.indexOf('tourTag: "nav-item-aida"');
-	const agents = nav.indexOf('tourTag: "nav-item-agents"');
-	assert.ok(items >= 0 && aida > items, "the row belongs to navItems");
+	/*
+	 * THE ORDER NOW LIVES IN THE MODEL, not in a literal array in the component:
+	 * the default arrangement is the first render, and customisation only
+	 * permutes it. R3 is therefore pinned where the default is stated - the id
+	 * tuple, which `DEFAULT_SIDEBAR_LAYOUT.visible` derives by filtering its
+	 * visible-region ids - and the row at its table entry in the component.
+	 */
+	const contract = source("src/shared/desktop-control-contract.ts");
+	const ids = contract.slice(
+		contract.indexOf("export const SIDEBAR_DESTINATION_IDS = ["),
+	);
+	assert.match(
+		ids,
+		/^export const SIDEBAR_DESTINATION_IDS = \[\s*"aida",/,
+		"R3: the default order starts with her, so the first render does too",
+	);
 	assert.ok(
-		aida < agents,
-		"R3: her row sits above Agents — a later insertion would satisfy every other pin here and fail the requirement",
+		ids.indexOf('"aida"') < ids.indexOf('"agents"'),
+		"and she precedes Agents in that order — a later insertion would satisfy every other pin here and fail the requirement",
+	);
+	assert.match(
+		nav,
+		/destinationItems\.set\("aida", \{/,
+		"the row is the destination table's entry for her id",
+	);
+	assert.ok(
+		nav.indexOf('destinationItems.set("aida"') <
+			nav.indexOf('destinationItems.set("agents"'),
+		"and the table defines her row before Agents' (the same default order)",
 	);
 	assert.match(nav, /icon: ChevronsUp,/, "R4's icon");
 	assert.match(
@@ -299,7 +321,7 @@ test("Aida is the FIRST destination, above Agents (R3)", () => {
 	assert.match(
 		nav,
 		/label: aidaName,/,
-		"the row's own label; the collapsed strip's tooltip reads the same string via renderNavRow",
+		"the row's own label; the collapsed strip's tooltip reads the same string via renderDestinationRowForWidth",
 	);
 });
 
@@ -314,8 +336,8 @@ test("the row's press RESOLVES rather than navigates, through the shared opener"
 	 */
 	assert.match(
 		nav,
-		/onClick=\{\(\) =>\s*item\.onSelect \? item\.onSelect\(\) : navigate\(item\.path\)\s*\}/,
-		"the button honours `onSelect` when the row has one",
+		/onClick=\{\(\) => \{\s*if \(suppressClickRef\.current\) return;\s*if \(item\.onSelect\) item\.onSelect\(\);\s*else navigate\(item\.path\);\s*\}\}/,
+		"the button honours `onSelect` when the row has one, and a drag's release is not a press",
 	);
 	assert.match(nav, /onSelect: selectAida,/, "and the row declares it");
 	assert.match(
