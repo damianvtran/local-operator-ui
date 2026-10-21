@@ -637,7 +637,12 @@ test("a relay redial verdict softens link-down to reconnecting, then escalates",
 	// An older backend sends no verdict: link-down stays loud, as before.
 	const legacyAt = store.getState().beginAnswer();
 	store.getState().settlePeerCatalogue([], legacyAt, {
-		d_node: { reachable: false, last_seen_at: 100, reason: "timeout", at: legacyAt },
+		d_node: {
+			reachable: false,
+			last_seen_at: 100,
+			reason: "timeout",
+			at: legacyAt,
+		},
 	});
 	assert.equal(store.getState().sessions[0].link_reconnecting, false);
 });
