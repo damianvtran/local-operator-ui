@@ -865,6 +865,19 @@ export async function sceneSidebarLayout({
 		closed.ok === true,
 		JSON.stringify(closed),
 	);
+	/*
+	 * AGENT REVIEW ROUND 1, R1-1 / QA ROUND 1, Q1: the menu's `onCloseAutoFocus`
+	 * suppresses Radix's own return and hands focus to the moved row's button.
+	 * The reviewer read the map as never written; this is the built app's answer.
+	 */
+	const focusReturned = await readSidebar();
+	check(
+		"focus returns to the moved row's button after the menu closes",
+		focusReturned.active?.inMenu === false &&
+			focusReturned.active?.tag === "BUTTON" &&
+			(focusReturned.active?.text ?? "").startsWith("Library"),
+		JSON.stringify(focusReturned.active),
+	);
 
 	/*
 	 * 6b. RESET THROUGH THE MENU (agent review round 1, R1-6b). Design § 8 names
