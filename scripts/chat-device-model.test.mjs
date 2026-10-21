@@ -565,6 +565,53 @@ test("the picker offers this device first, then one section per network by name"
 	assert.equal(rowFor(model, PIXEL).facts.includes("1 conversation"), true);
 });
 
+test("a revoked member is never a row and never counted", () => {
+	/*
+	 * The shape the backend sends after local-operator #2752: a PLAIN revocation stays
+	 * on the wire as `active: false` (the Mesh tab draws it as revoked), while a
+	 * re-joined machine's superseded tombstone is dropped server-side. So the picker
+	 * receives `old-laptop` - removed, a different name from every live member - beside
+	 * the live `cloud-node-1` (33 conversations), and it must offer and count only the
+	 * live one. The damian-mesh bug read "2 devices" for one peer.
+	 */
+	const OLD = "d_old_laptop";
+	const NEW = "d_new_cloud";
+	const model = picker({
+		placement: { kind: "draft", deviceId: null, name: "" },
+		networks: [
+			{
+				network_id: "n_mesh",
+				name: "damian-mesh",
+				epoch: 4,
+				trust: "operator",
+				members: [
+					member({}),
+					member({
+						device_id: OLD,
+						name: "old-laptop",
+						role: "drive",
+						active: false,
+						reachable: false,
+						reason: "it did not answer",
+					}),
+					member({ device_id: NEW, name: "cloud-node-1", role: "drive" }),
+				],
+			},
+		],
+		peers: [
+			{ ...PEERS[0], device_id: NEW, name: "cloud-node-1", session_count: 33 },
+		],
+	});
+	const [section] = model.sections;
+	assert.equal(section.count, 1, "one live peer is one device");
+	assert.deepEqual(
+		section.rows.map((row) => [row.deviceId, row.facts]),
+		[[NEW, ["drive", "33 conversations"]]],
+	);
+	// The revoked row is not "unreachable", so it does not ask for a re-read either.
+	assert.equal(model.offerCheckAgain, false);
+});
+
 test("a new chat is a free and reversible choice: no fixed consequence, and nobody is ineligible yet", () => {
 	const model = picker({
 		placement: { kind: "draft", deviceId: null, name: "" },
