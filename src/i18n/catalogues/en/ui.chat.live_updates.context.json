@@ -19,5 +19,12 @@
 		"length": "One word plus the ellipsis.",
 		"note": "Replaces the reload control only until a frame proves the view current. Preserve the ellipsis: it is the established in-flight cue in this composer band.",
 		"placeholders": {}
+	},
+	"ui.chat.live_updates.reload_failed": {
+		"role": "sentence in the live-updates-paused band after the reload control's press failed",
+		"tone": "plain statement plus a short remedy; sentence case; full stops",
+		"length": "Two short sentences.",
+		"note": "Says the reload did not happen and offers the one action that retries it (the band's own button). It must not claim the conversation is lost or that anything was deleted.",
+		"placeholders": {}
 	}
 }

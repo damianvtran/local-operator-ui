@@ -451,34 +451,188 @@ async function mount(
 
 /* ----------------------------------------------------------------- the cases */
 
-test("a degraded delta raises the banner, and a clean accepted delta clears it", async () => {
-	const view = await mount([updateFrame(3, 2, { degraded: true })]);
+/*
+ * The EXACT shape `relay_frame_or_degraded` emits when it sheds an oversized
+ * body: epoch, sequence, degraded, degraded_reason, paused - and NO `changes`.
+ * The handler must fold this frame without throwing; a `...update.changes`
+ * spread tolerates undefined, but anything that reads a field off it does not.
+ */
+const degradedFrame = (seq, ownerSequence) => ({
+	session_id: SESSION,
+	epoch: BRIDGE_EPOCH,
+	seq,
+	type: "frontend.update",
+	payload: {
+		epoch: OWNER_EPOCH,
+		sequence: ownerSequence,
+		degraded: true,
+		degraded_reason: "frame_too_large",
+		paused: false,
+	},
+});
+
+/** A full-state rollover: a new owner epoch, which is the one update that proves current. */
+const rolloverFrame = (seq, ownerSequence, epoch) => ({
+	session_id: SESSION,
+	epoch: BRIDGE_EPOCH,
+	seq,
+	type: "frontend.update",
+	payload: {
+		epoch,
+		sequence: ownerSequence,
+		changes: { epoch, cwd: "/repo" },
+		job_trajectory_appends: {},
+		job_trajectory_replacements: [],
+	},
+});
+
+function deliverEvent(event) {
+	const active = subscriptions.filter((entry) => !entry.disposed).at(-1);
+	assert.ok(active, "no live subscription to deliver to");
+	active.onEvent(event);
+}
+
+test("a degraded frame with no changes raises the banner and does not throw", async () => {
+	const view = await mount([degradedFrame(3, 2)]);
 	assert.equal(
 		view().liveUpdatesPaused,
 		true,
-		"a degraded update must say the view may be stale",
+		"the runtime's own degraded shape must be tolerated",
 	);
+	assert.equal(view().liveUpdatesNotice, "update");
 	assert.equal(view().liveUpdatesReloading, false);
+});
 
-	const cleanView = await mount([
-		updateFrame(3, 2, { degraded: true }),
-		updateFrame(4, 3),
-	]);
+test("an ordinary clean update does not clear the banner; a rollover does", async () => {
+	const view = await mount([degradedFrame(3, 2), updateFrame(4, 3)]);
 	assert.equal(
-		cleanView().liveUpdatesPaused,
+		view().liveUpdatesPaused,
+		true,
+		"one field delta cannot restore a shed body",
+	);
+	deliver(rolloverFrame(5, 4, "owner-epoch-2"));
+	await pump();
+	assert.equal(
+		view().liveUpdatesPaused,
 		false,
-		"the owner speaking at the next sequence, with no notice, proves the view current",
+		"a rollover carries the whole state and proves the view current",
+	);
+	assert.equal(view().liveUpdatesNotice, "none");
+});
+
+test("an event-origin notice outlives unrelated ticks and clears on a snapshot", async () => {
+	const view = await mount([reloadNoticeFrame(3), updateFrame(4, 2)]);
+	assert.equal(
+		view().liveUpdatesPaused,
+		true,
+		"a dropped transcript fact is not repaired by a roster tick",
+	);
+	assert.equal(view().liveUpdatesNotice, "event");
+	deliver(openFrame(5, true));
+	deliver(snapshotFrame(6));
+	await pump();
+	assert.equal(
+		view().liveUpdatesPaused,
+		false,
+		"a snapshot proves the transcript whole",
 	);
 });
 
-test("a paused delta raises the banner even when its sequence is behind the painted clock", async () => {
-	/*
-	 * The notice describes the TRANSPORT, not the facade, so the same-sequence /
-	 * older-sequence gate that rejects a stale delta must not swallow it. This is
-	 * the frame that used to freeze a long-lived session with no affordance.
-	 */
-	const view = await mount([updateFrame(3, 1, { paused: true })]);
+test("an event notice is a banner statement, never a transcript row", async () => {
+	const view = await mount([reloadNoticeFrame(3)]);
+	const notices = view().transcript.records.filter(
+		(record) => record.kind === "notice",
+	);
+	assert.equal(
+		notices.length,
+		0,
+		"the band owns the sentence; a second row would state it twice",
+	);
+});
+
+test("a new notice while the press is out gives the control back", async () => {
+	const view = await mount([degradedFrame(3, 2)], { paintSend: true });
+	view().reloadFromHistory();
+	assert.equal(view().liveUpdatesReloading, true);
+	deliver(degradedFrame(5, 3));
+	await pump();
+	assert.equal(
+		view().liveUpdatesReloading,
+		false,
+		"the attempt did not repair the stream, so the reader can press again",
+	);
 	assert.equal(view().liveUpdatesPaused, true);
+});
+
+test("a reload press that ends in a failed stream says so", async () => {
+	const view = await mount([degradedFrame(3, 2)]);
+	view().reloadFromHistory();
+	deliverEvent({ kind: "error", status: 404, detail: "not found" });
+	await pump();
+	assert.equal(view().liveUpdatesReloading, false);
+	assert.equal(
+		view().liveUpdatesReloadFailed,
+		true,
+		"the band owns the failure sentence rather than silently reverting",
+	);
+	assert.equal(view().missing, true, "404 is the session-gone terminal state");
+});
+
+test("reload re-arms the stream, acknowledges the press, and the snapshot clears both", async () => {
+	const view = await mount([degradedFrame(3, 2)], { paintSend: true });
+	assert.equal(view().liveUpdatesPaused, true);
+	assert.equal(
+		hasPendingSend(SESSION, "request-echo"),
+		true,
+		"precondition: the in-flight message's row is retained",
+	);
+
+	view().reloadFromHistory();
+	assert.equal(
+		view().liveUpdatesReloading,
+		true,
+		"the press acknowledges itself before the socket answers",
+	);
+	assert.equal(
+		view().liveUpdatesPaused,
+		true,
+		"the press must NOT clear the banner - only an answer may",
+	);
+	assert.equal(
+		subscriptions.filter((entry) => !entry.disposed).length,
+		1,
+		"resync replaced the subscription rather than stacking a second one",
+	);
+	assert.equal(subscriptions.length, 2, "a fresh subscription was opened");
+
+	/*
+	 * The replacement stream's first complete projection. `gap: true` is what
+	 * the bridge answers a cursor-less subscription with - there is no earlier
+	 * epoch to resume - and it is the frame pair that makes the snapshot
+	 * authoritative over a pane that was already painting.
+	 */
+	deliver(openFrame(5, true));
+	deliver(snapshotFrame(6));
+	await pump();
+	assert.equal(
+		view().liveUpdatesPaused,
+		false,
+		"the snapshot cleared the banner",
+	);
+	assert.equal(view().liveUpdatesReloading, false);
+	assert.equal(view().liveUpdatesReloadFailed, false);
+	/*
+	 * THE IN-FLIGHT MESSAGE SURVIVES THE REPAINT. The snapshot's page is merged
+	 * over the transcript that was already painted, so the echo row is still
+	 * there exactly once - and the retained pending send still names it, so a
+	 * later retract can find the row it owns.
+	 */
+	const echoes = view().transcript.records.filter(
+		(record) => record.id === "request-echo",
+	);
+	assert.equal(echoes.length, 1, "the echo was neither dropped nor duplicated");
+	assert.equal(hasPendingSend(SESSION, "request-echo"), true);
+	assert.equal(pendingSendForView(SESSION)?.id, "request-echo");
 });
 
 test("a job_deltas tick upserts and removes rows on the live roster", async () => {
@@ -552,80 +706,10 @@ test("a frame carrying the full roster and a delta applies the full list", async
 });
 
 test("a replacement for another conversation does not clear the banner", async () => {
-	const view = await mount([
-		updateFrame(3, 2, { degraded: true }),
-		foreignReplaceFrame(4),
-	]);
+	const view = await mount([degradedFrame(3, 2), foreignReplaceFrame(4)]);
 	assert.equal(
 		view().liveUpdatesPaused,
 		true,
 		"a refused replacement proves nothing about this view",
 	);
-});
-
-test("an event notice asking for a reload raises the banner", async () => {
-	const view = await mount([reloadNoticeFrame(3)]);
-	assert.equal(view().liveUpdatesPaused, true);
-});
-
-test("reload re-arms the stream, acknowledges the press, and the snapshot clears both", async () => {
-	const view = await mount(
-		[
-			updateFrame(3, 2, { degraded: true }),
-			updateFrame(4, 3, { degraded: true }),
-		],
-		{ paintSend: true },
-	);
-	assert.equal(view().liveUpdatesPaused, true);
-	assert.equal(
-		hasPendingSend(SESSION, "request-echo"),
-		true,
-		"precondition: the in-flight message's row is retained",
-	);
-
-	view().reloadFromHistory();
-	assert.equal(
-		view().liveUpdatesReloading,
-		true,
-		"the press acknowledges itself before the socket answers",
-	);
-	assert.equal(
-		view().liveUpdatesPaused,
-		true,
-		"the press must NOT clear the banner - only an answer may",
-	);
-	assert.equal(
-		subscriptions.filter((entry) => !entry.disposed).length,
-		1,
-		"resync replaced the subscription rather than stacking a second one",
-	);
-	assert.equal(subscriptions.length, 2, "a fresh subscription was opened");
-
-	/*
-	 * The replacement stream's first complete projection. `gap: true` is what
-	 * the bridge answers a cursor-less subscription with - there is no earlier
-	 * epoch to resume - and it is the frame pair that makes the snapshot
-	 * authoritative over a pane that was already painting.
-	 */
-	deliver(openFrame(5, true));
-	deliver(snapshotFrame(6));
-	await pump();
-	assert.equal(
-		view().liveUpdatesPaused,
-		false,
-		"the snapshot cleared the banner",
-	);
-	assert.equal(view().liveUpdatesReloading, false);
-	/*
-	 * THE IN-FLIGHT MESSAGE SURVIVES THE REPAINT. The snapshot's page is merged
-	 * over the transcript that was already painted, so the echo row is still
-	 * there exactly once - and the retained pending send still names it, so a
-	 * later retract can find the row it owns.
-	 */
-	const echoes = view().transcript.records.filter(
-		(record) => record.id === "request-echo",
-	);
-	assert.equal(echoes.length, 1, "the echo was neither dropped nor duplicated");
-	assert.equal(hasPendingSend(SESSION, "request-echo"), true);
-	assert.equal(pendingSendForView(SESSION)?.id, "request-echo");
 });

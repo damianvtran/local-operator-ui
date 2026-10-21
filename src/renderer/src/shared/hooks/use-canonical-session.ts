@@ -400,6 +400,29 @@ export type CanonicalSessionView = {
 	 */
 	liveUpdatesPaused: boolean;
 	/**
+	 * WHICH notice raised the banner, because the two have different proof
+	 * requirements for clearing it.
+	 *
+	 * A `frontend.update` notice means one delta was too large to send; the body
+	 * it carried is gone, but the next complete projection can replace it. An
+	 * `event` notice means a TRANSCRIPT fact was dropped (the incident is a lost
+	 * `agent_end`), and no later tick repairs it: only a full snapshot, an
+	 * accepted replacement, or the reader's reload proves the transcript whole.
+	 * Kept as its own field rather than inferred from copy or status, because a
+	 * clean roster tick arrives within a tick of the notice and must not take
+	 * the banner away on the event-origin path (UX round 1, U1).
+	 */
+	liveUpdatesNotice: "none" | "update" | "event";
+	/**
+	 * The last reload press spent the stream's retry budget without an answer.
+	 *
+	 * The band says so in the same place the paused sentence lives, so a press
+	 * that failed does not simply revert to a button with no explanation (UX
+	 * round 1, U5). Cleared by the next notice, the next press, and every frame
+	 * that proves the view current.
+	 */
+	liveUpdatesReloadFailed: boolean;
+	/**
 	 * A "Reload from history" press is out, and no frame has proved the view
 	 * current since.
 	 *
@@ -2515,6 +2538,8 @@ export function useCanonicalSessionStream(
 			// view is behind. Setting it optimistically would paint a banner over
 			// every cold open and train the reader to ignore the one that matters.
 			liveUpdatesPaused: false,
+			liveUpdatesNotice: "none",
+			liveUpdatesReloadFailed: false,
 			liveUpdatesReloading: false,
 			/*
 			 * SEEDED, and only here. A panel mounted while a send for its own identity
@@ -3597,6 +3622,9 @@ export function useCanonicalSessionStream(
 						failure: HISTORY_UNREADABLE,
 						heldFrontend: null,
 						// The read gave up, so the banner's press has no answer coming.
+						...(state.liveUpdatesReloading
+							? { liveUpdatesReloadFailed: true }
+							: {}),
 						liveUpdatesReloading: false,
 					}));
 					return false;
@@ -4760,6 +4788,8 @@ export function useCanonicalSessionStream(
 								 * `reloadFromHistory`), and only the answer may take it down.
 								 */
 								liveUpdatesPaused: false,
+								liveUpdatesNotice: "none",
+								liveUpdatesReloadFailed: false,
 								// The answer arrived, so the press's own acknowledgement retires with
 								// the banner it was for.
 								liveUpdatesReloading: false,
@@ -4788,6 +4818,16 @@ export function useCanonicalSessionStream(
 					if (frame.type === "frontend.update") {
 						const update = frame.payload;
 						/*
+						 * A DEGRADED FRAME CARRIES NO `changes` AT ALL. The runtime's
+						 * `relay_frame_or_degraded` emits exactly `{epoch, sequence, degraded,
+						 * degraded_reason, paused}` when it sheds an oversized body, so the
+						 * whole handler reads the delta through one normalized object. The
+						 * pre-change spread tolerated `undefined`; anything added later must
+						 * not be the line that makes the feature's own frame throw (UX round 1,
+						 * U2).
+						 */
+						const changes = update.changes ?? {};
+						/*
 						 * THE STREAM'S OWN NOTICE, read BEFORE the state fold and independently
 						 * of its sequence gate. A degraded or paused frame is a statement about
 						 * the TRANSPORT (the backend replaced a frame over its 1 MiB cap, or
@@ -4795,16 +4835,23 @@ export function useCanonicalSessionStream(
 						 * the facade, so an older sequence does not make it untrue - and
 						 * swallowing it behind `next.frontend.sequence < update.sequence` is
 						 * how the view froze with no affordance in the first place.
+						 *
+						 * A NEW NOTICE ALWAYS RE-OPENS THE PRESS. `liveUpdatesReloading` is
+						 * hoisted out of the `!liveUpdatesPaused` guard: a second notice while
+						 * the banner is already up is the answer that the press did not repair
+						 * the stream, and leaving the flag true would replace the control with a
+						 * status word that never becomes pressable again (code review round 1,
+						 * M1). The origin is overwritten too: a later update-origin notice must
+						 * not inherit an event-origin notice's stricter clear rule.
 						 */
 						if (update.degraded === true || update.paused === true) {
-							if (!next.liveUpdatesPaused)
-								next = {
-									...next,
-									liveUpdatesPaused: true,
-									// A new notice means the attempt that was out did not repair
-									// the stream; the reader must be able to press again.
-									liveUpdatesReloading: false,
-								};
+							next = {
+								...next,
+								liveUpdatesPaused: true,
+								liveUpdatesNotice: "update",
+								liveUpdatesReloading: false,
+								liveUpdatesReloadFailed: false,
+							};
 						}
 						if (!next.frontend) continue;
 						// An owner epoch rollover (a cold session's first owner binding,
@@ -4814,7 +4861,7 @@ export function useCanonicalSessionStream(
 						// some other epoch that does not announce itself is stale.
 						const rollover =
 							update.epoch !== next.ownerEpoch &&
-							update.changes.epoch === update.epoch;
+							changes.epoch === update.epoch;
 						if (
 							rollover ||
 							(update.epoch === next.ownerEpoch &&
@@ -4830,24 +4877,26 @@ export function useCanonicalSessionStream(
 								ownerEpoch: rollover ? update.epoch : next.ownerEpoch,
 								frontend: {
 									...next.frontend,
-									...update.changes,
+									...changes,
 									/*
 									 * THE LIVE ROSTER'S DELTA, folded over the roster this view already
 									 * paints. `changes.jobs` (the snapshot's full list) OUTRANKS it when
 									 * both are present - see the module's own note - so the delta is
-									 * applied only when the update did not carry the whole list.
+									 * applied only when the update did not carry the whole list. `== null`
+									 * covers a producer that states an absent roster as null; folding a
+									 * delta over `null` would throw inside the frame loop.
 									 */
-									...(update.changes.jobs === undefined && update.job_deltas
+									...(changes.jobs == null && update.job_deltas
 										? {
 												jobs: applyJobDeltas(
-													next.frontend.jobs,
+													next.frontend.jobs ?? [],
 													update.job_deltas,
 												),
 											}
 										: {}),
 									attention: mergeCompletionAttention(
 										next.frontend.attention,
-										update.changes.attention,
+										changes.attention,
 										sessionId,
 									),
 									sequence: update.sequence,
@@ -4868,21 +4917,20 @@ export function useCanonicalSessionStream(
 									: {}),
 							};
 							/*
-							 * AND AN ACCEPTED CLEAN UPDATE CLEARS IT. This is the second of the two
-							 * proofs the view may accept: the owner spoke, at the next sequence, and
-							 * said nothing about a lost or paused stream. Only a CLEAN frame clears -
-							 * a degraded one just set the flag above and must not take it back on
-							 * its way through the same branch.
+							 * ONLY A ROLLOVER CLEARS IT. A rollover carries the whole state (the
+							 * comment above), so it is a complete projection in the same sense as
+							 * a snapshot. An ordinary clean `frontend.update` does NOT: it carries
+							 * one field delta and cannot restore a shed body, so clearing on it
+							 * would retract the warning while the view is still missing text
+							 * (UX round 1, U1; code review M3).
 							 */
-							if (
-								next.liveUpdatesPaused &&
-								update.degraded !== true &&
-								update.paused !== true
-							)
+							if (rollover && next.liveUpdatesPaused)
 								next = {
 									...next,
 									liveUpdatesPaused: false,
+									liveUpdatesNotice: "none",
 									liveUpdatesReloading: false,
+									liveUpdatesReloadFailed: false,
 								};
 						}
 						continue;
@@ -4951,7 +4999,9 @@ export function useCanonicalSessionStream(
 								...(next.liveUpdatesPaused
 									? {
 											liveUpdatesPaused: false,
+											liveUpdatesNotice: "none",
 											liveUpdatesReloading: false,
+											liveUpdatesReloadFailed: false,
 										}
 									: {}),
 							};
@@ -4962,17 +5012,30 @@ export function useCanonicalSessionStream(
 						const eventType = String(frame.payload.type ?? "");
 						/*
 						 * THE SECOND NOTICE SHAPE. The bridge's paused stream is announced as
-						 * an `event` whose `action` is `reload`: not an AgentEvent, so
-						 * `applyEvent` below must leave it alone, but the same statement about
-						 * the stream as `frontend.update.paused` and the same banner. Read
-						 * before the transcript fold so it can never be mistaken for a row.
+						 * an `event` whose `action` is `reload`: not an AgentEvent, but the
+						 * same statement about the stream as `frontend.update.paused` and
+						 * the same banner. It is REMEMBERED AS EVENT-ORIGIN, because the
+						 * fact it names is a dropped transcript event: a clean roster tick
+						 * within the next second must not take the warning down (UX round 1,
+						 * U1), and only a snapshot, an accepted replacement, or the reader's
+						 * reload may.
+						 *
+						 * AND IT ENDS THE FRAME HERE. `applyEvent` paints a
+						 * `type: "notice"` payload as a transcript row, which would state
+						 * the same fact a second time beside the band that now owns it
+						 * (code review round 1, M4). `continue` is the whole fix: nothing
+						 * else in this frame is a transcript fact.
 						 */
-						if (frame.payload.action === "reload" && !next.liveUpdatesPaused)
+						if (frame.payload.action === "reload") {
 							next = {
 								...next,
 								liveUpdatesPaused: true,
+								liveUpdatesNotice: "event",
 								liveUpdatesReloading: false,
+								liveUpdatesReloadFailed: false,
 							};
+							continue;
+						}
 						if (TERMINAL_EVENTS.has(eventType)) {
 							next = {
 								...next,
@@ -5279,7 +5342,11 @@ export function useCanonicalSessionStream(
 					status: "unavailable",
 					failure: streamFailureNotice(DESKTOP_STREAM_DETAIL.ended),
 					// The connection is terminal for this attempt: no answer is coming for
-					// the banner's press, so the reader must get an actionable state back.
+					// the banner's press, so the band must say the reload failed and give
+					// the control back.
+					...(current.liveUpdatesReloading
+						? { liveUpdatesReloadFailed: true }
+						: {}),
 					liveUpdatesReloading: false,
 					// A connection that accepted and then said nothing is the frozen-owner
 					// case, and it is TERMINAL for this attempt: the pane states the
@@ -5371,6 +5438,9 @@ export function useCanonicalSessionStream(
 								status: "unavailable",
 								missing: true,
 								failure: null,
+								...(current.liveUpdatesReloading
+									? { liveUpdatesReloadFailed: true }
+									: {}),
 								liveUpdatesReloading: false,
 								// 404 is about the SESSION, so it is the one terminal state
 								// that must take the readings with it: the conversation this
@@ -5401,7 +5471,10 @@ export function useCanonicalSessionStream(
 								// condition instead (D1).
 								failure: streamFailureNotice(detail),
 								// The retry budget is spent: the banner's press has no answer left
-								// to wait for.
+								// to wait for, so the band says it failed and re-arms the press.
+								...(current.liveUpdatesReloading
+									? { liveUpdatesReloadFailed: true }
+									: {}),
 								liveUpdatesReloading: false,
 								// The retry budget is spent, and that is the state R3 keeps
 								// terminal: what says the connection is not live is the
@@ -5632,11 +5705,35 @@ export function useCanonicalSessionStream(
 		 * stays until a snapshot or a clean update proves the view current.
 		 */
 		reloadRef.current = () => {
-			commitView((current) =>
-				current.liveUpdatesReloading
-					? current
-					: { ...current, liveUpdatesReloading: true },
-			);
+			/*
+			 * ONE PRESS, ONE RECONNECT. The button is `aria-disabled` while the
+			 * press is out, but a double click can beat the render, and two
+			 * cursor-less subscriptions would churn the stream for no question
+			 * (UX round 1, U8).
+			 */
+			if (viewRef.current.liveUpdatesReloading) return;
+			commitView((current) => ({
+				...current,
+				liveUpdatesReloading: true,
+				liveUpdatesReloadFailed: false,
+			}));
+			/*
+			 * THE SIBLING'S BUDGET, because this is the sibling's repair. A Reload
+			 * after the retry budget is spent must get a full window, not the one
+			 * attempt `resync` leaves it with (UX round 1, U5); the timers are
+			 * cancelled for the same reason `reopen` cancels them - a timer armed
+			 * before the press fires after it and opens a second subscription over
+			 * the first.
+			 */
+			attempt = 0;
+			if (retryTimer) {
+				window.clearTimeout(retryTimer);
+				retryTimer = 0;
+			}
+			if (recheckTimer) {
+				window.clearTimeout(recheckTimer);
+				recheckTimer = 0;
+			}
 			resync();
 		};
 		/*
@@ -5703,6 +5800,7 @@ export function useCanonicalSessionStream(
 			generationRef.current += 1;
 			retryRef.current = null;
 			hydrateRef.current = null;
+			reloadRef.current = null;
 			ensurePeerRebindRef.current = null;
 			unsubscribePeerRebind();
 			if (sourceWaveTimerRef.current) {
