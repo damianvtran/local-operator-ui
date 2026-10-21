@@ -1741,3 +1741,55 @@ test("S2 escaping: the sanitizer, not JSON.stringify, removes line separators", 
 	assert.equal(result.projection.view.rows[0].text, "xy");
 	assert.equal(result.projection.view.rows[0].title, "pq");
 });
+
+/**
+ * The probe harness is plain ESM, so `noUndeclaredVariables` is off and an
+ * assignment to a name that was never declared fails only when that branch runs
+ * — which for the operator-attended `--s3-visible` path is once, on a screen, in
+ * front of a person. Round 1 shipped exactly that twice (`factsLog` in the
+ * visible run, `baseline` in the S1 matrix). These are source pins, in the same
+ * spirit as `launcher-watch.test.mjs`: they do not prove the branches run, they
+ * prove the declarations exist and precede their first use.
+ */
+test("probe harness: branches that push a facts log declare it first", () => {
+	const source = readFileSync(
+		join(ROOT, "scripts/browser-address-overlay-probe.mjs"),
+		"utf8",
+	);
+	const sections = [
+		["async function s3VisibleRun()", "function recordRowVisible("],
+		["async function drivenMatrix()", "async function windowCloseCase()"],
+		[
+			"async function s2RealInputMatrix()",
+			"async function s2SyntheticMatrix()",
+		],
+	];
+	for (const [startMarker, endMarker] of sections) {
+		const start = source.indexOf(startMarker);
+		const end = source.indexOf(endMarker);
+		assert.ok(start >= 0 && end > start, `${startMarker} is a function`);
+		const body = source.slice(start, end);
+		const declaration = body.indexOf("const factsLog");
+		assert.ok(declaration >= 0, `${startMarker} declares its facts log`);
+		const firstPush = body.indexOf("factsLog.push");
+		assert.ok(
+			firstPush === -1 || declaration < firstPush,
+			`${startMarker} declares factsLog before the first push`,
+		);
+	}
+});
+
+test("probe harness: the S1 20-cycle baseline is declared, not assigned", () => {
+	const source = readFileSync(
+		join(ROOT, "scripts/browser-address-overlay-probe.mjs"),
+		"utf8",
+	);
+	const start = source.indexOf("async function drivenMatrix()");
+	const end = source.indexOf("async function windowCloseCase()");
+	const body = source.slice(start, end);
+	assert.match(
+		body,
+		/const baseline = await evaluate\(/,
+		"the S1 matrix's baseline must be a declaration; a bare assignment is a ReferenceError at run time",
+	);
+});

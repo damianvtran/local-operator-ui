@@ -327,6 +327,18 @@ test("every way a headless run can end is bounded by the same deadline", () => {
 		"the window-close path",
 		/\[window-mode\] all windows closed in a headless run; quitting/,
 	);
+	// S3's visible probe: same watch, same bounded quit, and a cap that must never
+	// be what keeps the process alive. Pinned here because the wiring lives in
+	// `index.ts` and no unit can boot a visible window to observe it.
+	wired(
+		"the visible launcher watch",
+		/boundedVisibleProbe: addressOverlayGate\.visible,/,
+	);
+	wired(
+		"the visible cap",
+		/if \(addressOverlayGate\.visible\) \{[\s\S]{0,700}?ADDRESS_OVERLAY_VISIBLE_MAX_MS\)/,
+	);
+	wired("the visible cap's unref", /cap\.unref\(\);/);
 	// And the signal path is not wired into the shipped app as a bare headless
 	// exit: outside the headless gate, SIGTERM is handled ONLY by the quit-gated
 	// handler pinned in the sibling test below.

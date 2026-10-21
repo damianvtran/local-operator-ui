@@ -1,6 +1,6 @@
 [
   {
-    "at": "2026-10-21T10:34:00.272Z",
+    "at": "2026-10-21T11:53:32.404Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay.html",
@@ -72,35 +72,35 @@
       },
       "metrics": [
         {
-          "pid": 57084,
+          "pid": 30450,
           "type": "Browser"
         },
         {
-          "pid": 57088,
+          "pid": 30462,
           "type": "GPU"
         },
         {
-          "pid": 57090,
+          "pid": 30463,
           "type": "Utility"
         },
         {
-          "pid": 57093,
+          "pid": 30465,
           "type": "Tab"
         },
         {
-          "pid": 57095,
+          "pid": 30467,
           "type": "Tab"
         },
         {
-          "pid": 57096,
+          "pid": 30468,
           "type": "Tab"
         },
         {
-          "pid": 57097,
+          "pid": 30469,
           "type": "Tab"
         },
         {
-          "pid": 57099,
+          "pid": 30471,
           "type": "Tab"
         }
       ],
@@ -118,7 +118,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:00.416Z",
+    "at": "2026-10-21T11:53:32.544Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay.html",
@@ -190,35 +190,35 @@
       },
       "metrics": [
         {
-          "pid": 57084,
+          "pid": 30450,
           "type": "Browser"
         },
         {
-          "pid": 57088,
+          "pid": 30462,
           "type": "GPU"
         },
         {
-          "pid": 57090,
+          "pid": 30463,
           "type": "Utility"
         },
         {
-          "pid": 57093,
+          "pid": 30465,
           "type": "Tab"
         },
         {
-          "pid": 57095,
+          "pid": 30467,
           "type": "Tab"
         },
         {
-          "pid": 57096,
+          "pid": 30468,
           "type": "Tab"
         },
         {
-          "pid": 57097,
+          "pid": 30469,
           "type": "Tab"
         },
         {
-          "pid": 57099,
+          "pid": 30471,
           "type": "Tab"
         }
       ],
@@ -236,7 +236,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:00.556Z",
+    "at": "2026-10-21T11:53:32.692Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay.html",
@@ -308,35 +308,35 @@
       },
       "metrics": [
         {
-          "pid": 57084,
+          "pid": 30450,
           "type": "Browser"
         },
         {
-          "pid": 57088,
+          "pid": 30462,
           "type": "GPU"
         },
         {
-          "pid": 57090,
+          "pid": 30463,
           "type": "Utility"
         },
         {
-          "pid": 57093,
+          "pid": 30465,
           "type": "Tab"
         },
         {
-          "pid": 57095,
+          "pid": 30467,
           "type": "Tab"
         },
         {
-          "pid": 57096,
+          "pid": 30468,
           "type": "Tab"
         },
         {
-          "pid": 57097,
+          "pid": 30469,
           "type": "Tab"
         },
         {
-          "pid": 57099,
+          "pid": 30471,
           "type": "Tab"
         }
       ],
@@ -354,7 +354,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:00.747Z",
+    "at": "2026-10-21T11:53:32.921Z",
     "action": "show",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay.html",
@@ -373,12 +373,12 @@
           "width": 1120,
           "height": 160
         },
-        "at": 1792578840745
+        "at": 1792583612920
       },
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 66
+        "loadMs": 102
       },
       "child": {
         "webContentsId": 6,
@@ -450,39 +450,39 @@
       },
       "metrics": [
         {
-          "pid": 57084,
+          "pid": 30450,
           "type": "Browser"
         },
         {
-          "pid": 57088,
+          "pid": 30462,
           "type": "GPU"
         },
         {
-          "pid": 57090,
+          "pid": 30463,
           "type": "Utility"
         },
         {
-          "pid": 57093,
+          "pid": 30465,
           "type": "Tab"
         },
         {
-          "pid": 57095,
+          "pid": 30467,
           "type": "Tab"
         },
         {
-          "pid": 57096,
+          "pid": 30468,
           "type": "Tab"
         },
         {
-          "pid": 57097,
+          "pid": 30469,
           "type": "Tab"
         },
         {
-          "pid": 57099,
+          "pid": 30471,
           "type": "Tab"
         },
         {
-          "pid": 57105,
+          "pid": 30472,
           "type": "Tab"
         }
       ],
@@ -500,7 +500,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:09.348Z",
+    "at": "2026-10-21T11:53:41.681Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -572,35 +572,35 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         }
       ],
@@ -618,7 +618,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:09.486Z",
+    "at": "2026-10-21T11:53:41.824Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -690,35 +690,35 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         }
       ],
@@ -736,7 +736,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:09.628Z",
+    "at": "2026-10-21T11:53:41.963Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -808,35 +808,35 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         }
       ],
@@ -854,7 +854,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:09.752Z",
+    "at": "2026-10-21T11:53:42.088Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -926,35 +926,35 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         }
       ],
@@ -972,7 +972,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:11.225Z",
+    "at": "2026-10-21T11:53:43.556Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -986,7 +986,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -1077,39 +1077,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -1127,7 +1127,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:11.227Z",
+    "at": "2026-10-21T11:53:43.562Z",
     "action": "measure",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -1141,7 +1141,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -1232,39 +1232,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -1282,7 +1282,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:11.582Z",
+    "at": "2026-10-21T11:53:43.926Z",
     "action": "measure",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -1296,7 +1296,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -1390,39 +1390,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -1440,7 +1440,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:11.583Z",
+    "at": "2026-10-21T11:53:43.930Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -1454,7 +1454,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -1548,39 +1548,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -1598,7 +1598,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:11.627Z",
+    "at": "2026-10-21T11:53:43.975Z",
     "action": "click",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -1612,7 +1612,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -1685,39 +1685,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -1735,7 +1735,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:12.530Z",
+    "at": "2026-10-21T11:53:44.880Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -1749,7 +1749,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -1822,39 +1822,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -1872,7 +1872,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:12.533Z",
+    "at": "2026-10-21T11:53:44.884Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -1886,7 +1886,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -1959,39 +1959,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -2009,7 +2009,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:12.557Z",
+    "at": "2026-10-21T11:53:44.910Z",
     "action": "key",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -2023,7 +2023,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -2096,39 +2096,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -2146,7 +2146,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:13.366Z",
+    "at": "2026-10-21T11:53:45.728Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -2160,7 +2160,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -2243,39 +2243,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -2293,7 +2293,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:13.370Z",
+    "at": "2026-10-21T11:53:45.731Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -2307,7 +2307,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -2390,39 +2390,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -2440,7 +2440,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:13.492Z",
+    "at": "2026-10-21T11:53:45.856Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -2454,7 +2454,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -2527,39 +2527,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -2577,7 +2577,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:14.155Z",
+    "at": "2026-10-21T11:53:46.524Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -2591,7 +2591,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -2686,39 +2686,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -2736,7 +2736,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:14.180Z",
+    "at": "2026-10-21T11:53:46.561Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -2750,7 +2750,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -2823,39 +2823,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -2873,7 +2873,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:14.837Z",
+    "at": "2026-10-21T11:53:47.223Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -2887,7 +2887,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -2982,39 +2982,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -3032,166 +3032,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:14.845Z",
-    "action": "facts",
-    "facts": {
-      "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
-      "state": "shown",
-      "failedReason": null,
-      "hiddenReason": null,
-      "generation": 17,
-      "childCreatedCount": 1,
-      "shownCount": 0,
-      "lastShow": null,
-      "readiness": {
-        "domReady": true,
-        "finished": true,
-        "loadMs": 70
-      },
-      "child": {
-        "webContentsId": 6,
-        "visible": true,
-        "bounds": {
-          "x": 460,
-          "y": 110,
-          "width": 880,
-          "height": 104
-        },
-        "order": 2,
-        "childCount": 3,
-        "focusEvents": 0,
-        "blurEvents": 0,
-        "isFocused": false
-      },
-      "owner": {
-        "windowId": 2,
-        "destroyed": false,
-        "contentBounds": {
-          "width": 1380,
-          "height": 900
-        }
-      },
-      "layout": {
-        "activeTabId": 2,
-        "presented": true,
-        "contentRect": {
-          "x": 260,
-          "y": 214,
-          "width": 1120,
-          "height": 686
-        },
-        "revision": 9
-      },
-      "listeners": {
-        "owner": 6,
-        "child": 12
-      },
-      "pendingShow": false,
-      "readinessTimer": false,
-      "visibleMode": false,
-      "ownerFocusedContentsId": null,
-      "ownerWindowFocused": false,
-      "s2": {
-        "list": true,
-        "javascript": true,
-        "lastSeq": 11,
-        "shownSeq": 11,
-        "lastRejected": null,
-        "theme": "resolved",
-        "applyCount": 8,
-        "view": {
-          "kind": "rows",
-          "rowCount": 2,
-          "active": 0
-        },
-        "measured": {
-          "appliedSeq": 11,
-          "rowCount": 2,
-          "headerHeight": 28,
-          "rowRects": [
-            {
-              "top": 2,
-              "height": 35.5
-            },
-            {
-              "top": 37.5,
-              "height": 35.5
-            }
-          ],
-          "viewportHeight": 75,
-          "scrollHeight": 75,
-          "innerHeight": 104,
-          "visualHeight": 104,
-          "activeRowRect": {
-            "top": 2,
-            "height": 35.5
-          }
-        },
-        "commitsEmitted": 1,
-        "commitsDropped": {},
-        "hideCounts": {
-          "layout": 6,
-          "projection_hidden": 3
-        },
-        "keysBlocked": 1,
-        "mouseDowns": 1,
-        "mouseUps": 1,
-        "mouseMoves": 1,
-        "contextMenuBlocked": 0
-      },
-      "metrics": [
-        {
-          "pid": 57233,
-          "type": "Browser"
-        },
-        {
-          "pid": 57238,
-          "type": "GPU"
-        },
-        {
-          "pid": 57240,
-          "type": "Utility"
-        },
-        {
-          "pid": 57251,
-          "type": "Tab"
-        },
-        {
-          "pid": 57253,
-          "type": "Tab"
-        },
-        {
-          "pid": 57254,
-          "type": "Tab"
-        },
-        {
-          "pid": 57257,
-          "type": "Tab"
-        },
-        {
-          "pid": 57271,
-          "type": "Tab"
-        },
-        {
-          "pid": 57287,
-          "type": "Tab"
-        }
-      ],
-      "page": {
-        "tabId": 2,
-        "presented": true,
-        "bounds": {
-          "x": 260,
-          "y": 214,
-          "width": 1120,
-          "height": 686
-        },
-        "visible": true
-      }
-    }
-  },
-  {
-    "at": "2026-10-21T10:34:14.968Z",
+    "at": "2026-10-21T11:53:47.253Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -3205,7 +3046,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -3278,39 +3119,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -3328,7 +3169,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:15.377Z",
+    "at": "2026-10-21T11:53:47.665Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -3342,7 +3183,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -3425,39 +3266,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -3475,7 +3316,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:16.285Z",
+    "at": "2026-10-21T11:53:48.579Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -3489,7 +3330,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -3572,39 +3413,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -3622,21 +3463,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:16.498Z",
+    "at": "2026-10-21T11:53:48.811Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "stale_tab",
-      "generation": 25,
+      "generation": 26,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -3644,7 +3485,7 @@
         "bounds": {
           "x": 460,
           "y": 110,
-          "width": 680,
+          "width": 880,
           "height": 104
         },
         "order": 2,
@@ -3688,7 +3529,7 @@
         "shownSeq": -1,
         "lastRejected": "stale_tab",
         "theme": "absent",
-        "applyCount": 11,
+        "applyCount": 12,
         "view": {
           "kind": "notice",
           "rowCount": 0,
@@ -3697,7 +3538,7 @@
         "measured": null,
         "commitsEmitted": 1,
         "commitsDropped": {
-          "stale_seq": 2,
+          "stale_seq": 1,
           "stale_tab": 1
         },
         "hideCounts": {
@@ -3713,39 +3554,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -3763,21 +3604,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:16.499Z",
+    "at": "2026-10-21T11:53:48.815Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "stale_tab",
-      "generation": 25,
+      "generation": 26,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -3785,7 +3626,7 @@
         "bounds": {
           "x": 460,
           "y": 110,
-          "width": 680,
+          "width": 880,
           "height": 104
         },
         "order": 2,
@@ -3829,7 +3670,7 @@
         "shownSeq": -1,
         "lastRejected": "stale_tab",
         "theme": "absent",
-        "applyCount": 11,
+        "applyCount": 12,
         "view": {
           "kind": "notice",
           "rowCount": 0,
@@ -3838,7 +3679,7 @@
         "measured": null,
         "commitsEmitted": 1,
         "commitsDropped": {
-          "stale_seq": 2,
+          "stale_seq": 1,
           "stale_tab": 1
         },
         "hideCounts": {
@@ -3854,39 +3695,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -3904,21 +3745,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:16.543Z",
+    "at": "2026-10-21T11:53:48.875Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "projection_hidden",
-      "generation": 65,
+      "generation": 66,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 70
+        "loadMs": 67
       },
       "child": {
         "webContentsId": 6,
@@ -3970,7 +3811,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 31,
+        "applyCount": 32,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -3979,7 +3820,7 @@
         "measured": null,
         "commitsEmitted": 1,
         "commitsDropped": {
-          "stale_seq": 2,
+          "stale_seq": 1,
           "stale_tab": 1
         },
         "hideCounts": {
@@ -3995,39 +3836,39 @@
       },
       "metrics": [
         {
-          "pid": 57233,
+          "pid": 30574,
           "type": "Browser"
         },
         {
-          "pid": 57238,
+          "pid": 30578,
           "type": "GPU"
         },
         {
-          "pid": 57240,
+          "pid": 30579,
           "type": "Utility"
         },
         {
-          "pid": 57251,
+          "pid": 30584,
           "type": "Tab"
         },
         {
-          "pid": 57253,
+          "pid": 30587,
           "type": "Tab"
         },
         {
-          "pid": 57254,
+          "pid": 30591,
           "type": "Tab"
         },
         {
-          "pid": 57257,
+          "pid": 30600,
           "type": "Tab"
         },
         {
-          "pid": 57271,
+          "pid": 30609,
           "type": "Tab"
         },
         {
-          "pid": 57287,
+          "pid": 30628,
           "type": "Tab"
         }
       ],
@@ -4045,7 +3886,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:18.395Z",
+    "at": "2026-10-21T11:53:50.698Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -4117,35 +3958,35 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         }
       ],
@@ -4163,7 +4004,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:18.398Z",
+    "at": "2026-10-21T11:53:50.700Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -4235,35 +4076,35 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         }
       ],
@@ -4281,7 +4122,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:18.506Z",
+    "at": "2026-10-21T11:53:50.775Z",
     "action": "measure",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -4295,7 +4136,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -4382,39 +4223,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -4432,7 +4273,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:18.510Z",
+    "at": "2026-10-21T11:53:50.781Z",
     "action": "measure",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -4446,7 +4287,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -4541,39 +4382,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -4591,7 +4432,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:19.581Z",
+    "at": "2026-10-21T11:53:51.860Z",
     "action": "measure",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -4605,7 +4446,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -4708,39 +4549,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -4758,7 +4599,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:19.585Z",
+    "at": "2026-10-21T11:53:51.869Z",
     "action": "measure",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -4772,7 +4613,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -4854,39 +4695,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -4904,7 +4745,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:19.587Z",
+    "at": "2026-10-21T11:53:51.875Z",
     "action": "measure",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -4918,7 +4759,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -5000,39 +4841,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -5050,7 +4891,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:19.589Z",
+    "at": "2026-10-21T11:53:51.880Z",
     "action": "measure",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -5064,7 +4905,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -5146,39 +4987,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -5196,7 +5037,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:19.591Z",
+    "at": "2026-10-21T11:53:51.887Z",
     "action": "measure",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -5210,7 +5051,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -5292,39 +5133,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -5342,7 +5183,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:19.595Z",
+    "at": "2026-10-21T11:53:51.892Z",
     "action": "measure",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -5356,7 +5197,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -5455,39 +5296,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -5505,7 +5346,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:19.765Z",
+    "at": "2026-10-21T11:53:52.213Z",
     "action": "measure",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -5519,7 +5360,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -5602,39 +5443,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -5652,7 +5493,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:19.774Z",
+    "at": "2026-10-21T11:53:52.220Z",
     "action": "measure",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -5666,7 +5507,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -5749,39 +5590,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -5799,7 +5640,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:19.806Z",
+    "at": "2026-10-21T11:53:52.257Z",
     "action": "measure",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -5813,7 +5654,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -5912,39 +5753,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -5962,7 +5803,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:19.877Z",
+    "at": "2026-10-21T11:53:52.315Z",
     "action": "measure",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -5976,7 +5817,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -6059,39 +5900,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -6109,7 +5950,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:19.884Z",
+    "at": "2026-10-21T11:53:52.323Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -6123,7 +5964,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -6215,39 +6056,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -6265,7 +6106,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:20.039Z",
+    "at": "2026-10-21T11:53:52.325Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -6279,7 +6120,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -6378,39 +6219,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -6428,7 +6269,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:20.083Z",
+    "at": "2026-10-21T11:53:52.368Z",
     "action": "click",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -6442,7 +6283,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -6543,39 +6384,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -6593,7 +6434,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:20.084Z",
+    "at": "2026-10-21T11:53:52.369Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -6607,7 +6448,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -6708,39 +6549,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -6758,7 +6599,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:20.086Z",
+    "at": "2026-10-21T11:53:52.371Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -6772,7 +6613,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -6874,39 +6715,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -6924,7 +6765,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:20.087Z",
+    "at": "2026-10-21T11:53:52.372Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -6938,7 +6779,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 93
+        "loadMs": 63
       },
       "child": {
         "webContentsId": 6,
@@ -7040,39 +6881,39 @@
       },
       "metrics": [
         {
-          "pid": 57432,
+          "pid": 30722,
           "type": "Browser"
         },
         {
-          "pid": 57436,
+          "pid": 30725,
           "type": "GPU"
         },
         {
-          "pid": 57437,
+          "pid": 30726,
           "type": "Utility"
         },
         {
-          "pid": 57441,
+          "pid": 30730,
           "type": "Tab"
         },
         {
-          "pid": 57446,
+          "pid": 30732,
           "type": "Tab"
         },
         {
-          "pid": 57448,
+          "pid": 30733,
           "type": "Tab"
         },
         {
-          "pid": 57458,
+          "pid": 30734,
           "type": "Tab"
         },
         {
-          "pid": 57481,
+          "pid": 30736,
           "type": "Tab"
         },
         {
-          "pid": 57490,
+          "pid": 30737,
           "type": "Tab"
         }
       ],
@@ -7090,7 +6931,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:22.552Z",
+    "at": "2026-10-21T11:53:54.583Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -7162,35 +7003,35 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         }
       ],
@@ -7208,7 +7049,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:22.690Z",
+    "at": "2026-10-21T11:53:54.724Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -7280,35 +7121,35 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         }
       ],
@@ -7326,7 +7167,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:22.830Z",
+    "at": "2026-10-21T11:53:54.876Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -7398,35 +7239,35 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         }
       ],
@@ -7444,21 +7285,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:23.173Z",
+    "at": "2026-10-21T11:53:55.235Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 8,
+      "generation": 7,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -7467,7 +7308,7 @@
           "x": 460,
           "y": 110,
           "width": 880,
-          "height": 104
+          "height": 69
         },
         "order": 2,
         "childCount": 3,
@@ -7545,39 +7386,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -7595,25 +7436,436 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:23.334Z",
+    "at": "2026-10-21T11:53:55.408Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "projection_hidden",
-      "generation": 9,
+      "generation": 8,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
         "visible": false,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 69
+        },
+        "order": 2,
+        "childCount": 3,
+        "focusEvents": 0,
+        "blurEvents": 0,
+        "isFocused": false
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 12
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "visibleMode": false,
+      "ownerFocusedContentsId": null,
+      "ownerWindowFocused": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 2,
+        "shownSeq": -1,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 1,
+        "view": {
+          "kind": "rows",
+          "rowCount": 1,
+          "active": -1
+        },
+        "measured": null,
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 1
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "mouseMoves": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 30816,
+          "type": "Browser"
+        },
+        {
+          "pid": 30823,
+          "type": "GPU"
+        },
+        {
+          "pid": 30824,
+          "type": "Utility"
+        },
+        {
+          "pid": 30831,
+          "type": "Tab"
+        },
+        {
+          "pid": 30835,
+          "type": "Tab"
+        },
+        {
+          "pid": 30837,
+          "type": "Tab"
+        },
+        {
+          "pid": 30839,
+          "type": "Tab"
+        },
+        {
+          "pid": 30843,
+          "type": "Tab"
+        },
+        {
+          "pid": 30847,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T11:53:55.566Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
+      "state": "ready",
+      "failedReason": null,
+      "hiddenReason": "projection_hidden",
+      "generation": 8,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 73
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": false,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 69
+        },
+        "order": 2,
+        "childCount": 3,
+        "focusEvents": 0,
+        "blurEvents": 0,
+        "isFocused": false
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 12
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "visibleMode": false,
+      "ownerFocusedContentsId": null,
+      "ownerWindowFocused": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 2,
+        "shownSeq": -1,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 1,
+        "view": {
+          "kind": "rows",
+          "rowCount": 1,
+          "active": -1
+        },
+        "measured": null,
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 1
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "mouseMoves": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 30816,
+          "type": "Browser"
+        },
+        {
+          "pid": 30823,
+          "type": "GPU"
+        },
+        {
+          "pid": 30824,
+          "type": "Utility"
+        },
+        {
+          "pid": 30831,
+          "type": "Tab"
+        },
+        {
+          "pid": 30835,
+          "type": "Tab"
+        },
+        {
+          "pid": 30837,
+          "type": "Tab"
+        },
+        {
+          "pid": 30839,
+          "type": "Tab"
+        },
+        {
+          "pid": 30843,
+          "type": "Tab"
+        },
+        {
+          "pid": 30847,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T11:53:55.740Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
+      "state": "ready",
+      "failedReason": null,
+      "hiddenReason": "projection_hidden",
+      "generation": 8,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 73
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": false,
+        "bounds": {
+          "x": 460,
+          "y": 110,
+          "width": 880,
+          "height": 69
+        },
+        "order": 2,
+        "childCount": 3,
+        "focusEvents": 0,
+        "blurEvents": 0,
+        "isFocused": false
+      },
+      "owner": {
+        "windowId": 2,
+        "destroyed": false,
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        }
+      },
+      "layout": {
+        "activeTabId": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "revision": 9
+      },
+      "listeners": {
+        "owner": 6,
+        "child": 12
+      },
+      "pendingShow": false,
+      "readinessTimer": false,
+      "visibleMode": false,
+      "ownerFocusedContentsId": null,
+      "ownerWindowFocused": false,
+      "s2": {
+        "list": true,
+        "javascript": true,
+        "lastSeq": 2,
+        "shownSeq": -1,
+        "lastRejected": null,
+        "theme": "absent",
+        "applyCount": 1,
+        "view": {
+          "kind": "rows",
+          "rowCount": 1,
+          "active": -1
+        },
+        "measured": null,
+        "commitsEmitted": 0,
+        "commitsDropped": {},
+        "hideCounts": {
+          "layout": 6,
+          "projection_hidden": 1
+        },
+        "keysBlocked": 0,
+        "mouseDowns": 0,
+        "mouseUps": 0,
+        "mouseMoves": 0,
+        "contextMenuBlocked": 0
+      },
+      "metrics": [
+        {
+          "pid": 30816,
+          "type": "Browser"
+        },
+        {
+          "pid": 30823,
+          "type": "GPU"
+        },
+        {
+          "pid": 30824,
+          "type": "Utility"
+        },
+        {
+          "pid": 30831,
+          "type": "Tab"
+        },
+        {
+          "pid": 30835,
+          "type": "Tab"
+        },
+        {
+          "pid": 30837,
+          "type": "Tab"
+        },
+        {
+          "pid": 30839,
+          "type": "Tab"
+        },
+        {
+          "pid": 30843,
+          "type": "Tab"
+        },
+        {
+          "pid": 30847,
+          "type": "Tab"
+        }
+      ],
+      "page": {
+        "tabId": 2,
+        "presented": true,
+        "bounds": {
+          "x": 260,
+          "y": 214,
+          "width": 1120,
+          "height": 686
+        },
+        "visible": true
+      }
+    }
+  },
+  {
+    "at": "2026-10-21T11:53:57.073Z",
+    "action": "facts",
+    "facts": {
+      "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
+      "state": "shown",
+      "failedReason": null,
+      "hiddenReason": null,
+      "generation": 10,
+      "childCreatedCount": 1,
+      "shownCount": 0,
+      "lastShow": null,
+      "readiness": {
+        "domReady": true,
+        "finished": true,
+        "loadMs": 73
+      },
+      "child": {
+        "webContentsId": 6,
+        "visible": true,
         "bounds": {
           "x": 460,
           "y": 110,
@@ -7657,17 +7909,36 @@
       "s2": {
         "list": true,
         "javascript": true,
-        "lastSeq": 3,
-        "shownSeq": -1,
+        "lastSeq": 4,
+        "shownSeq": 4,
         "lastRejected": null,
-        "theme": "absent",
-        "applyCount": 2,
+        "theme": "resolved",
+        "applyCount": 3,
         "view": {
           "kind": "rows",
           "rowCount": 2,
           "active": -1
         },
-        "measured": null,
+        "measured": {
+          "appliedSeq": 4,
+          "rowCount": 2,
+          "headerHeight": 28,
+          "rowRects": [
+            {
+              "top": 2,
+              "height": 35.5
+            },
+            {
+              "top": 37.5,
+              "height": 35.5
+            }
+          ],
+          "viewportHeight": 75,
+          "scrollHeight": 75,
+          "innerHeight": 104,
+          "visualHeight": 104,
+          "activeRowRect": null
+        },
         "commitsEmitted": 0,
         "commitsDropped": {},
         "hideCounts": {
@@ -7682,39 +7953,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -7732,281 +8003,7 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:23.488Z",
-    "action": "facts",
-    "facts": {
-      "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
-      "state": "ready",
-      "failedReason": null,
-      "hiddenReason": "projection_hidden",
-      "generation": 9,
-      "childCreatedCount": 1,
-      "shownCount": 0,
-      "lastShow": null,
-      "readiness": {
-        "domReady": true,
-        "finished": true,
-        "loadMs": 78
-      },
-      "child": {
-        "webContentsId": 6,
-        "visible": false,
-        "bounds": {
-          "x": 460,
-          "y": 110,
-          "width": 880,
-          "height": 104
-        },
-        "order": 2,
-        "childCount": 3,
-        "focusEvents": 0,
-        "blurEvents": 0,
-        "isFocused": false
-      },
-      "owner": {
-        "windowId": 2,
-        "destroyed": false,
-        "contentBounds": {
-          "width": 1380,
-          "height": 900
-        }
-      },
-      "layout": {
-        "activeTabId": 2,
-        "presented": true,
-        "contentRect": {
-          "x": 260,
-          "y": 214,
-          "width": 1120,
-          "height": 686
-        },
-        "revision": 9
-      },
-      "listeners": {
-        "owner": 6,
-        "child": 12
-      },
-      "pendingShow": false,
-      "readinessTimer": false,
-      "visibleMode": false,
-      "ownerFocusedContentsId": null,
-      "ownerWindowFocused": false,
-      "s2": {
-        "list": true,
-        "javascript": true,
-        "lastSeq": 3,
-        "shownSeq": -1,
-        "lastRejected": null,
-        "theme": "absent",
-        "applyCount": 2,
-        "view": {
-          "kind": "rows",
-          "rowCount": 2,
-          "active": -1
-        },
-        "measured": null,
-        "commitsEmitted": 0,
-        "commitsDropped": {},
-        "hideCounts": {
-          "layout": 6,
-          "projection_hidden": 1
-        },
-        "keysBlocked": 0,
-        "mouseDowns": 0,
-        "mouseUps": 0,
-        "mouseMoves": 0,
-        "contextMenuBlocked": 0
-      },
-      "metrics": [
-        {
-          "pid": 57602,
-          "type": "Browser"
-        },
-        {
-          "pid": 57609,
-          "type": "GPU"
-        },
-        {
-          "pid": 57610,
-          "type": "Utility"
-        },
-        {
-          "pid": 57621,
-          "type": "Tab"
-        },
-        {
-          "pid": 57623,
-          "type": "Tab"
-        },
-        {
-          "pid": 57624,
-          "type": "Tab"
-        },
-        {
-          "pid": 57625,
-          "type": "Tab"
-        },
-        {
-          "pid": 57631,
-          "type": "Tab"
-        },
-        {
-          "pid": 57646,
-          "type": "Tab"
-        }
-      ],
-      "page": {
-        "tabId": 2,
-        "presented": true,
-        "bounds": {
-          "x": 260,
-          "y": 214,
-          "width": 1120,
-          "height": 686
-        },
-        "visible": true
-      }
-    }
-  },
-  {
-    "at": "2026-10-21T10:34:23.644Z",
-    "action": "facts",
-    "facts": {
-      "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
-      "state": "ready",
-      "failedReason": null,
-      "hiddenReason": "projection_hidden",
-      "generation": 9,
-      "childCreatedCount": 1,
-      "shownCount": 0,
-      "lastShow": null,
-      "readiness": {
-        "domReady": true,
-        "finished": true,
-        "loadMs": 78
-      },
-      "child": {
-        "webContentsId": 6,
-        "visible": false,
-        "bounds": {
-          "x": 460,
-          "y": 110,
-          "width": 880,
-          "height": 104
-        },
-        "order": 2,
-        "childCount": 3,
-        "focusEvents": 0,
-        "blurEvents": 0,
-        "isFocused": false
-      },
-      "owner": {
-        "windowId": 2,
-        "destroyed": false,
-        "contentBounds": {
-          "width": 1380,
-          "height": 900
-        }
-      },
-      "layout": {
-        "activeTabId": 2,
-        "presented": true,
-        "contentRect": {
-          "x": 260,
-          "y": 214,
-          "width": 1120,
-          "height": 686
-        },
-        "revision": 9
-      },
-      "listeners": {
-        "owner": 6,
-        "child": 12
-      },
-      "pendingShow": false,
-      "readinessTimer": false,
-      "visibleMode": false,
-      "ownerFocusedContentsId": null,
-      "ownerWindowFocused": false,
-      "s2": {
-        "list": true,
-        "javascript": true,
-        "lastSeq": 3,
-        "shownSeq": -1,
-        "lastRejected": null,
-        "theme": "absent",
-        "applyCount": 2,
-        "view": {
-          "kind": "rows",
-          "rowCount": 2,
-          "active": -1
-        },
-        "measured": null,
-        "commitsEmitted": 0,
-        "commitsDropped": {},
-        "hideCounts": {
-          "layout": 6,
-          "projection_hidden": 1
-        },
-        "keysBlocked": 0,
-        "mouseDowns": 0,
-        "mouseUps": 0,
-        "mouseMoves": 0,
-        "contextMenuBlocked": 0
-      },
-      "metrics": [
-        {
-          "pid": 57602,
-          "type": "Browser"
-        },
-        {
-          "pid": 57609,
-          "type": "GPU"
-        },
-        {
-          "pid": 57610,
-          "type": "Utility"
-        },
-        {
-          "pid": 57621,
-          "type": "Tab"
-        },
-        {
-          "pid": 57623,
-          "type": "Tab"
-        },
-        {
-          "pid": 57624,
-          "type": "Tab"
-        },
-        {
-          "pid": 57625,
-          "type": "Tab"
-        },
-        {
-          "pid": 57631,
-          "type": "Tab"
-        },
-        {
-          "pid": 57646,
-          "type": "Tab"
-        }
-      ],
-      "page": {
-        "tabId": 2,
-        "presented": true,
-        "bounds": {
-          "x": 260,
-          "y": 214,
-          "width": 1120,
-          "height": 686
-        },
-        "visible": true
-      }
-    }
-  },
-  {
-    "at": "2026-10-21T10:34:24.962Z",
+    "at": "2026-10-21T11:53:57.445Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
@@ -8020,7 +8017,7 @@
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -8076,166 +8073,10 @@
         "view": {
           "kind": "rows",
           "rowCount": 2,
-          "active": -1
-        },
-        "measured": {
-          "appliedSeq": 5,
-          "rowCount": 2,
-          "headerHeight": 28,
-          "rowRects": [
-            {
-              "top": 2,
-              "height": 35.5
-            },
-            {
-              "top": 37.5,
-              "height": 35.5
-            }
-          ],
-          "viewportHeight": 75,
-          "scrollHeight": 75,
-          "innerHeight": 104,
-          "visualHeight": 104,
-          "activeRowRect": null
-        },
-        "commitsEmitted": 0,
-        "commitsDropped": {},
-        "hideCounts": {
-          "layout": 6,
-          "projection_hidden": 1
-        },
-        "keysBlocked": 0,
-        "mouseDowns": 0,
-        "mouseUps": 0,
-        "mouseMoves": 0,
-        "contextMenuBlocked": 0
-      },
-      "metrics": [
-        {
-          "pid": 57602,
-          "type": "Browser"
-        },
-        {
-          "pid": 57609,
-          "type": "GPU"
-        },
-        {
-          "pid": 57610,
-          "type": "Utility"
-        },
-        {
-          "pid": 57621,
-          "type": "Tab"
-        },
-        {
-          "pid": 57623,
-          "type": "Tab"
-        },
-        {
-          "pid": 57624,
-          "type": "Tab"
-        },
-        {
-          "pid": 57625,
-          "type": "Tab"
-        },
-        {
-          "pid": 57631,
-          "type": "Tab"
-        },
-        {
-          "pid": 57646,
-          "type": "Tab"
-        }
-      ],
-      "page": {
-        "tabId": 2,
-        "presented": true,
-        "bounds": {
-          "x": 260,
-          "y": 214,
-          "width": 1120,
-          "height": 686
-        },
-        "visible": true
-      }
-    }
-  },
-  {
-    "at": "2026-10-21T10:34:25.325Z",
-    "action": "facts",
-    "facts": {
-      "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
-      "state": "shown",
-      "failedReason": null,
-      "hiddenReason": null,
-      "generation": 12,
-      "childCreatedCount": 1,
-      "shownCount": 0,
-      "lastShow": null,
-      "readiness": {
-        "domReady": true,
-        "finished": true,
-        "loadMs": 78
-      },
-      "child": {
-        "webContentsId": 6,
-        "visible": true,
-        "bounds": {
-          "x": 460,
-          "y": 110,
-          "width": 880,
-          "height": 104
-        },
-        "order": 2,
-        "childCount": 3,
-        "focusEvents": 0,
-        "blurEvents": 0,
-        "isFocused": false
-      },
-      "owner": {
-        "windowId": 2,
-        "destroyed": false,
-        "contentBounds": {
-          "width": 1380,
-          "height": 900
-        }
-      },
-      "layout": {
-        "activeTabId": 2,
-        "presented": true,
-        "contentRect": {
-          "x": 260,
-          "y": 214,
-          "width": 1120,
-          "height": 686
-        },
-        "revision": 9
-      },
-      "listeners": {
-        "owner": 6,
-        "child": 12
-      },
-      "pendingShow": false,
-      "readinessTimer": false,
-      "visibleMode": false,
-      "ownerFocusedContentsId": null,
-      "ownerWindowFocused": false,
-      "s2": {
-        "list": true,
-        "javascript": true,
-        "lastSeq": 6,
-        "shownSeq": 6,
-        "lastRejected": null,
-        "theme": "resolved",
-        "applyCount": 5,
-        "view": {
-          "kind": "rows",
-          "rowCount": 2,
           "active": 0
         },
         "measured": {
-          "appliedSeq": 6,
+          "appliedSeq": 5,
           "rowCount": 2,
           "headerHeight": 28,
           "rowRects": [
@@ -8271,39 +8112,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -8321,21 +8162,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.333Z",
+    "at": "2026-10-21T11:53:57.455Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 13,
+      "generation": 12,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -8383,11 +8224,11 @@
       "s2": {
         "list": true,
         "javascript": true,
-        "lastSeq": 6,
+        "lastSeq": 5,
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "resolved",
-        "applyCount": 5,
+        "applyCount": 4,
         "view": {
           "kind": "rows",
           "rowCount": 2,
@@ -8409,39 +8250,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -8459,21 +8300,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.337Z",
+    "at": "2026-10-21T11:53:57.460Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 14,
+      "generation": 13,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -8525,7 +8366,7 @@
         "shownSeq": 1064,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 6,
+        "applyCount": 5,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -8570,39 +8411,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -8620,21 +8461,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.338Z",
+    "at": "2026-10-21T11:53:57.462Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 15,
+      "generation": 14,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -8686,7 +8527,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 6,
+        "applyCount": 5,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -8708,39 +8549,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -8758,21 +8599,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.341Z",
+    "at": "2026-10-21T11:53:57.465Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 16,
+      "generation": 15,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -8824,7 +8665,7 @@
         "shownSeq": 1065,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 7,
+        "applyCount": 6,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -8869,39 +8710,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -8919,21 +8760,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.342Z",
+    "at": "2026-10-21T11:53:57.470Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 17,
+      "generation": 16,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -8985,7 +8826,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 7,
+        "applyCount": 6,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -9007,39 +8848,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -9057,21 +8898,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.345Z",
+    "at": "2026-10-21T11:53:57.473Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 18,
+      "generation": 17,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -9123,7 +8964,7 @@
         "shownSeq": 1066,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 8,
+        "applyCount": 7,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -9168,39 +9009,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -9218,21 +9059,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.346Z",
+    "at": "2026-10-21T11:53:57.474Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 19,
+      "generation": 18,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -9284,7 +9125,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 8,
+        "applyCount": 7,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -9306,39 +9147,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -9356,21 +9197,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.349Z",
+    "at": "2026-10-21T11:53:57.480Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 20,
+      "generation": 19,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -9422,7 +9263,7 @@
         "shownSeq": 1067,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 9,
+        "applyCount": 8,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -9467,39 +9308,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -9517,21 +9358,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.351Z",
+    "at": "2026-10-21T11:53:57.481Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 21,
+      "generation": 20,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -9583,7 +9424,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 9,
+        "applyCount": 8,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -9605,39 +9446,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -9655,21 +9496,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.354Z",
+    "at": "2026-10-21T11:53:57.484Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 22,
+      "generation": 21,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -9721,7 +9562,7 @@
         "shownSeq": 1068,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 10,
+        "applyCount": 9,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -9766,39 +9607,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -9816,21 +9657,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.356Z",
+    "at": "2026-10-21T11:53:57.485Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 23,
+      "generation": 22,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -9882,7 +9723,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 10,
+        "applyCount": 9,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -9904,39 +9745,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -9954,21 +9795,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.361Z",
+    "at": "2026-10-21T11:53:57.487Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 24,
+      "generation": 23,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -10020,7 +9861,7 @@
         "shownSeq": 1069,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 11,
+        "applyCount": 10,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -10065,39 +9906,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -10115,21 +9956,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.366Z",
+    "at": "2026-10-21T11:53:57.488Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 25,
+      "generation": 24,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -10181,7 +10022,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 11,
+        "applyCount": 10,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -10203,39 +10044,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -10253,21 +10094,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.369Z",
+    "at": "2026-10-21T11:53:57.490Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 26,
+      "generation": 25,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -10319,7 +10160,7 @@
         "shownSeq": 1070,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 12,
+        "applyCount": 11,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -10364,39 +10205,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -10414,21 +10255,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.371Z",
+    "at": "2026-10-21T11:53:57.491Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 27,
+      "generation": 26,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -10480,7 +10321,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 12,
+        "applyCount": 11,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -10502,39 +10343,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -10552,21 +10393,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.373Z",
+    "at": "2026-10-21T11:53:57.493Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 28,
+      "generation": 27,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -10618,7 +10459,7 @@
         "shownSeq": 1071,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 13,
+        "applyCount": 12,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -10663,39 +10504,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -10713,21 +10554,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.374Z",
+    "at": "2026-10-21T11:53:57.494Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 29,
+      "generation": 28,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -10779,7 +10620,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 13,
+        "applyCount": 12,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -10801,39 +10642,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -10851,21 +10692,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.376Z",
+    "at": "2026-10-21T11:53:57.496Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 30,
+      "generation": 29,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -10917,7 +10758,7 @@
         "shownSeq": 1072,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 14,
+        "applyCount": 13,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -10962,39 +10803,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -11012,21 +10853,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.376Z",
+    "at": "2026-10-21T11:53:57.497Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 31,
+      "generation": 30,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -11078,7 +10919,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 14,
+        "applyCount": 13,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -11100,39 +10941,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -11150,21 +10991,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.379Z",
+    "at": "2026-10-21T11:53:57.499Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 32,
+      "generation": 31,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -11216,7 +11057,7 @@
         "shownSeq": 1073,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 15,
+        "applyCount": 14,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -11261,39 +11102,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -11311,21 +11152,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.380Z",
+    "at": "2026-10-21T11:53:57.500Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 33,
+      "generation": 32,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -11377,7 +11218,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 15,
+        "applyCount": 14,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -11399,39 +11240,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -11449,21 +11290,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.381Z",
+    "at": "2026-10-21T11:53:57.501Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 34,
+      "generation": 33,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -11515,7 +11356,7 @@
         "shownSeq": 1074,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 16,
+        "applyCount": 15,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -11560,39 +11401,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -11610,21 +11451,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.383Z",
+    "at": "2026-10-21T11:53:57.502Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 35,
+      "generation": 34,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -11676,7 +11517,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 16,
+        "applyCount": 15,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -11698,39 +11539,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -11748,21 +11589,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.385Z",
+    "at": "2026-10-21T11:53:57.503Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 36,
+      "generation": 35,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -11814,7 +11655,7 @@
         "shownSeq": 1075,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 17,
+        "applyCount": 16,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -11859,39 +11700,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -11909,21 +11750,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.386Z",
+    "at": "2026-10-21T11:53:57.504Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 37,
+      "generation": 36,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -11975,7 +11816,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 17,
+        "applyCount": 16,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -11997,39 +11838,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -12047,21 +11888,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.389Z",
+    "at": "2026-10-21T11:53:57.506Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 38,
+      "generation": 37,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -12113,7 +11954,7 @@
         "shownSeq": 1076,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 18,
+        "applyCount": 17,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -12158,39 +11999,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -12208,21 +12049,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.390Z",
+    "at": "2026-10-21T11:53:57.507Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 39,
+      "generation": 38,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -12274,7 +12115,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 18,
+        "applyCount": 17,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -12296,39 +12137,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -12346,21 +12187,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.392Z",
+    "at": "2026-10-21T11:53:57.509Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 40,
+      "generation": 39,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -12412,7 +12253,7 @@
         "shownSeq": 1077,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 19,
+        "applyCount": 18,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -12457,39 +12298,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -12507,21 +12348,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.393Z",
+    "at": "2026-10-21T11:53:57.510Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 41,
+      "generation": 40,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -12573,7 +12414,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 19,
+        "applyCount": 18,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -12595,39 +12436,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -12645,21 +12486,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.395Z",
+    "at": "2026-10-21T11:53:57.511Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 42,
+      "generation": 41,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -12711,7 +12552,7 @@
         "shownSeq": 1078,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 20,
+        "applyCount": 19,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -12756,39 +12597,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -12806,21 +12647,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.396Z",
+    "at": "2026-10-21T11:53:57.512Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 43,
+      "generation": 42,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -12872,7 +12713,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 20,
+        "applyCount": 19,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -12894,39 +12735,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -12944,21 +12785,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.398Z",
+    "at": "2026-10-21T11:53:57.514Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 44,
+      "generation": 43,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -13010,7 +12851,7 @@
         "shownSeq": 1079,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 21,
+        "applyCount": 20,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -13055,39 +12896,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -13105,21 +12946,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.399Z",
+    "at": "2026-10-21T11:53:57.515Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 45,
+      "generation": 44,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -13171,7 +13012,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 21,
+        "applyCount": 20,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -13193,39 +13034,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -13243,21 +13084,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.400Z",
+    "at": "2026-10-21T11:53:57.516Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 46,
+      "generation": 45,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -13309,7 +13150,7 @@
         "shownSeq": 1080,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 22,
+        "applyCount": 21,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -13354,39 +13195,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -13404,21 +13245,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.401Z",
+    "at": "2026-10-21T11:53:57.517Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 47,
+      "generation": 46,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -13470,7 +13311,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 22,
+        "applyCount": 21,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -13492,39 +13333,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -13542,21 +13383,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.403Z",
+    "at": "2026-10-21T11:53:57.519Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 48,
+      "generation": 47,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -13608,7 +13449,7 @@
         "shownSeq": 1081,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 23,
+        "applyCount": 22,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -13653,39 +13494,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -13703,21 +13544,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.404Z",
+    "at": "2026-10-21T11:53:57.519Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 49,
+      "generation": 48,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -13769,7 +13610,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 23,
+        "applyCount": 22,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -13791,39 +13632,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -13841,21 +13682,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.406Z",
+    "at": "2026-10-21T11:53:57.521Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 50,
+      "generation": 49,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -13907,7 +13748,7 @@
         "shownSeq": 1082,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 24,
+        "applyCount": 23,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -13952,39 +13793,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -14002,21 +13843,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.408Z",
+    "at": "2026-10-21T11:53:57.522Z",
     "action": "hide",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "ready",
       "failedReason": null,
       "hiddenReason": "probe",
-      "generation": 51,
+      "generation": 50,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -14068,7 +13909,7 @@
         "shownSeq": -1,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 24,
+        "applyCount": 23,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -14090,39 +13931,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -14140,21 +13981,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.410Z",
+    "at": "2026-10-21T11:53:57.523Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 52,
+      "generation": 51,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -14206,7 +14047,7 @@
         "shownSeq": 1083,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 25,
+        "applyCount": 24,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -14251,39 +14092,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -14301,21 +14142,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.411Z",
+    "at": "2026-10-21T11:53:57.524Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 52,
+      "generation": 51,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -14367,7 +14208,7 @@
         "shownSeq": 1083,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 25,
+        "applyCount": 24,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -14412,39 +14253,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -14462,21 +14303,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.666Z",
+    "at": "2026-10-21T11:53:57.780Z",
     "action": "measure",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 53,
+      "generation": 52,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -14528,7 +14369,7 @@
         "shownSeq": 1084,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 26,
+        "applyCount": 25,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -14573,39 +14414,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -14623,21 +14464,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.667Z",
+    "at": "2026-10-21T11:53:57.783Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 53,
+      "generation": 52,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -14689,7 +14530,7 @@
         "shownSeq": 1084,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 26,
+        "applyCount": 25,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -14734,39 +14575,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -14784,21 +14625,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.690Z",
+    "at": "2026-10-21T11:53:57.808Z",
     "action": "key",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 53,
+      "generation": 52,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -14850,7 +14691,7 @@
         "shownSeq": 1084,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 26,
+        "applyCount": 25,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -14895,39 +14736,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -14945,21 +14786,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:25.936Z",
+    "at": "2026-10-21T11:53:58.055Z",
     "action": "click",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 53,
+      "generation": 52,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -15011,7 +14852,7 @@
         "shownSeq": 1084,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 26,
+        "applyCount": 25,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -15056,39 +14897,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],
@@ -15106,21 +14947,21 @@
     }
   },
   {
-    "at": "2026-10-21T10:34:26.340Z",
+    "at": "2026-10-21T11:53:58.459Z",
     "action": "facts",
     "facts": {
       "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s3/out/renderer/browser-address-overlay-list.html",
       "state": "shown",
       "failedReason": null,
       "hiddenReason": null,
-      "generation": 53,
+      "generation": 52,
       "childCreatedCount": 1,
       "shownCount": 0,
       "lastShow": null,
       "readiness": {
         "domReady": true,
         "finished": true,
-        "loadMs": 78
+        "loadMs": 73
       },
       "child": {
         "webContentsId": 6,
@@ -15172,7 +15013,7 @@
         "shownSeq": 1084,
         "lastRejected": null,
         "theme": "absent",
-        "applyCount": 26,
+        "applyCount": 25,
         "view": {
           "kind": "rows",
           "rowCount": 3,
@@ -15217,39 +15058,39 @@
       },
       "metrics": [
         {
-          "pid": 57602,
+          "pid": 30816,
           "type": "Browser"
         },
         {
-          "pid": 57609,
+          "pid": 30823,
           "type": "GPU"
         },
         {
-          "pid": 57610,
+          "pid": 30824,
           "type": "Utility"
         },
         {
-          "pid": 57621,
+          "pid": 30831,
           "type": "Tab"
         },
         {
-          "pid": 57623,
+          "pid": 30835,
           "type": "Tab"
         },
         {
-          "pid": 57624,
+          "pid": 30837,
           "type": "Tab"
         },
         {
-          "pid": 57625,
+          "pid": 30839,
           "type": "Tab"
         },
         {
-          "pid": 57631,
+          "pid": 30843,
           "type": "Tab"
         },
         {
-          "pid": 57646,
+          "pid": 30847,
           "type": "Tab"
         }
       ],

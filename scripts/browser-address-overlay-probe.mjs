@@ -986,7 +986,7 @@ async function drivenMatrix() {
 		let reused = true;
 		let stale = null;
 		const listenerBaseline = hidden.listeners;
-		baseline = await evaluate(
+		const baseline = await evaluate(
 			cdp,
 			`(() => {
 				const el = document.querySelector('[data-tour-tag="browser-address"]');
@@ -3555,8 +3555,27 @@ async function s3HeadlessMatrix() {
 		);
 		const listbox = parentNodes.find((node) => node.role?.value === "listbox");
 		const options = parentNodes.filter((node) => node.role?.value === "option");
-		const property = (node, name) =>
-			node?.properties?.find((entry) => entry.name === name)?.value?.value;
+		/*
+		 * CDP sends an AXProperty's value as `{type, value}`; an idref may also
+		 * arrive as related nodes. Read both shapes rather than assuming one: the
+		 * first version read only `.value.value`, which is why `activedescendant`
+		 * read false while the DOM carried `aria-activedescendant` (U4). The row
+		 * does not depend on the property, but the evidence now says what CDP sent.
+		 */
+		const property = (node, name) => {
+			const entry = node?.properties?.find((item) => item.name === name);
+			if (!entry) return undefined;
+			const value = entry.value?.value;
+			if (value !== undefined) return value;
+			const related = entry.value?.relatedNodes;
+			return Array.isArray(related)
+				? related.map((node) => node.id)
+				: undefined;
+		};
+		const comboboxProperties = (combobox?.properties ?? []).map((entry) => ({
+			name: entry.name,
+			value: entry.value?.value ?? entry.value?.relatedNodes ?? null,
+		}));
 		let childAx = null;
 		let childAxError = null;
 		try {
@@ -3588,7 +3607,7 @@ async function s3HeadlessMatrix() {
 				childInert
 				? "PASS"
 				: "FAIL",
-			`Chromium AX, not VoiceOver. combobox=${Boolean(combobox)} expanded=${JSON.stringify(property(combobox, "expanded"))} controls=${Boolean(property(combobox, "controls"))} activeDescendant=${Boolean(property(combobox, "activedescendant"))} options=${options.length} mirrorRows=${axFacts.s2.view.rowCount} mirrorActive=${axFacts.s2.view.active} axActiveDescendant=${Boolean(property(combobox, "activedescendant"))} domActiveDescendant=${JSON.stringify(axGeometry?.activeDescendant ?? null)} childNodes=${childNodes.length} childInert=${childInert} childError=${JSON.stringify(childAxError)}`,
+			`Chromium AX, not VoiceOver. combobox=${Boolean(combobox)} expanded=${JSON.stringify(property(combobox, "expanded"))} controls=${Boolean(property(combobox, "controls"))} activeDescendant=${Boolean(property(combobox, "activedescendant"))} options=${options.length} mirrorRows=${axFacts.s2.view.rowCount} mirrorActive=${axFacts.s2.view.active} axActiveDescendant=${Boolean(property(combobox, "activedescendant"))} domActiveDescendant=${JSON.stringify(axGeometry?.activeDescendant ?? null)} comboboxProperties=${JSON.stringify(comboboxProperties)} childNodes=${childNodes.length} childInert=${childInert} childError=${JSON.stringify(childAxError)}`,
 		);
 
 		/*
@@ -3733,27 +3752,38 @@ function lsappinfoFront() {
 function askOperator(rl, question, seconds) {
 	return new Promise((done) => {
 		let settled = false;
-		const timer = setTimeout(() => {
-			if (settled) return;
-			settled = true;
-			done(null);
-		}, seconds * 1000);
-		console.log(
-			`\n${S3_RULE}\n${question}\n(answering window: ${seconds}s — no answer is recorded BLOCKED, never guessed)\n${S3_RULE}`,
-		);
-		rl.question("> ", (answer) => {
+		/*
+		 * A REMOVABLE line listener, not `rl.question`: `question` leaves its
+		 * callback queued on the interface, so an answer that arrives after the
+		 * timeout would be delivered to the NEXT question — one operator typo
+		 * silently answering the wrong row. The listener is removed on either end.
+		 */
+		const onLine = (answer) => {
 			if (settled) return;
 			settled = true;
 			clearTimeout(timer);
+			rl.off("line", onLine);
 			done(answer);
-		});
+		};
+		const timer = setTimeout(() => {
+			if (settled) return;
+			settled = true;
+			rl.off("line", onLine);
+			done(null);
+		}, seconds * 1000);
+		console.log(
+			`\n${S3_RULE}\n${question}\n(answering window: ${seconds}s — no answer is recorded BLOCKED, never guessed)\nType an answer and press Return.\n${S3_RULE}`,
+		);
+		rl.setPrompt("> ");
+		rl.prompt();
+		rl.on("line", onLine);
 	});
 }
 
 const S3_VISIBLE_PROMPTS = [
 	[
 		"V-ORDER",
-		"Look at the window now. Do you see the overlay list — header plus 5 rows, loud accent colours — sitting ON TOP of the sentinel page's striped bands, with page content visible around/below it? Answer 'yes' only if the list is not painted under the page.",
+		"Find the Local Operator UI window on your screen: 1380x900, titled like the app, INACTIVE (its title bar is grey and it did not take focus). A local page with loud striped bands is loaded in it, and an overlay list — header plus 5 rows in accent colours — should sit ON TOP of those bands. Do you see the list above the page (not painted under it)? Answer 'yes' only if the list is above the page.",
 	],
 	[
 		"V-FOCUS-CLICK",
@@ -3851,7 +3881,7 @@ async function s3VisibleRun() {
 	// window for a few seconds — the operator is attending and has been told.
 	{
 		console.log(
-			"[probe] next: a NORMAL-labelled boot for ~5 s to prove the refusal. It opens the app's own focused window once — the only visible window before the probe. Ctrl-C now aborts.",
+			"[probe] next: a NORMAL-labelled boot proves the refusal. It opens the app's own window ONCE, focused, and closes it on its own within about 10 seconds (no input, no overlay, nothing to do). It is the only visible window before the probe; the probe window itself never takes focus. Ctrl-C now aborts.",
 		);
 		const refusalBoot = await boot({
 			s1: true,
@@ -3900,6 +3930,7 @@ async function s3VisibleRun() {
 		terminal: true,
 	});
 	let teardown = null;
+	const factsLog = [];
 	try {
 		await s3VisiblePreflight(handle);
 		const { cdp } = await connectMain(handle);
@@ -3991,6 +4022,9 @@ async function s3VisibleRun() {
 
 		const results = {};
 		for (const [rowId, question] of S3_VISIBLE_PROMPTS) {
+			// Each row gets its own focus baseline: a blur counted by an earlier
+			// click must not be attributed to this one.
+			await evaluate(cdp, "window.__s3.blur = 0");
 			const remaining = Math.max(
 				8,
 				Math.floor(
@@ -4026,7 +4060,9 @@ async function s3VisibleRun() {
 			"V-FOCUS-CLICK",
 			focusClick?.answer == null
 				? "BLOCKED"
-				: focusClick.dom.blur === 0 && focusClick.facts.child.focusEvents === 0
+				: focusClick.dom.blur === 0 &&
+						focusClick.facts.child.focusEvents === 0 &&
+						focusClick.facts.s2.commitsEmitted >= 1
 					? "PASS"
 					: "FAIL",
 			`operator answer=${JSON.stringify(focusClick?.answer ?? null)} parentBlur=${focusClick?.dom.blur} childFocusEvents=${focusClick?.facts.child.focusEvents} mouseDowns=${focusClick?.facts.s2.mouseDowns} commits=${focusClick?.facts.s2.commitsEmitted} activeElementIsInput=${focusClick?.dom.active}`,
@@ -4057,11 +4093,13 @@ async function s3VisibleRun() {
 			`operator answer=${JSON.stringify(wheel?.answer ?? null)} pageWheels=${wheel?.counters.wheels} pageScrollTop=${wheel?.counters.scrollTop}`,
 		);
 		const ime = results.I2;
+		const imeAffirmative =
+			ime?.answer != null && /^(y|yes|はい|是)/i.test(ime.answer.trim());
 		record(
 			"I2",
 			ime?.answer == null
 				? "BLOCKED"
-				: ime.dom.ime.length > 0
+				: imeAffirmative && ime.dom.ime.length > 0
 					? "PASS"
 					: "FAIL",
 			`operator answer=${JSON.stringify(ime?.answer ?? null)} compositionEventsSeenByTheField=${JSON.stringify(ime?.dom.ime ?? [])}`,
@@ -4109,7 +4147,8 @@ function recordRowVisible(teardown) {
 		"T1-visible",
 		teardown.exitCode === 0 &&
 			teardown.processAlive === false &&
-			teardown.leftovers.length === 0
+			teardown.leftovers.length === 0 &&
+			teardown.ranFor < teardown.capMs
 			? "PASS"
 			: "FAIL",
 		`exit=${teardown.exitCode} signal=${teardown.exitSignal} stopMs=${teardown.stopMs} alive=${teardown.processAlive} leftovers=${JSON.stringify(teardown.leftovers)} ranFor=${teardown.ranFor}ms`,

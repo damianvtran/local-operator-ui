@@ -1,9 +1,9 @@
 {
-  "at": "2026-10-21T10:34:26.499Z",
+  "at": "2026-10-21T11:53:58.722Z",
   "boots": [
     {
       "tag": "s3-visible-headless-refusal",
-      "pid": 57062,
+      "pid": 30435,
       "exitCode": 0,
       "exitSignal": null,
       "alive": false,
@@ -11,7 +11,7 @@
     },
     {
       "tag": "s2-off",
-      "pid": 57084,
+      "pid": 30450,
       "exitCode": 0,
       "exitSignal": null,
       "alive": false,
@@ -19,7 +19,7 @@
     },
     {
       "tag": "s2-alone",
-      "pid": 57158,
+      "pid": 30515,
       "exitCode": 0,
       "exitSignal": null,
       "alive": false,
@@ -27,7 +27,7 @@
     },
     {
       "tag": "s2-no-driver",
-      "pid": 57186,
+      "pid": 30539,
       "exitCode": 0,
       "exitSignal": null,
       "alive": false,
@@ -35,7 +35,7 @@
     },
     {
       "tag": "s2-bad-value",
-      "pid": 57212,
+      "pid": 30560,
       "exitCode": 0,
       "exitSignal": null,
       "alive": false,
@@ -43,7 +43,7 @@
     },
     {
       "tag": "s2-real",
-      "pid": 57233,
+      "pid": 30574,
       "exitCode": 0,
       "exitSignal": null,
       "alive": false,
@@ -51,7 +51,7 @@
     },
     {
       "tag": "s2-synthetic",
-      "pid": 57432,
+      "pid": 30722,
       "exitCode": 0,
       "exitSignal": null,
       "alive": false,
@@ -59,7 +59,7 @@
     },
     {
       "tag": "s3-headless",
-      "pid": 57602,
+      "pid": 30816,
       "exitCode": 0,
       "exitSignal": null,
       "alive": false,
