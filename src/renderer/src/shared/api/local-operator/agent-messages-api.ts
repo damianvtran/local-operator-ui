@@ -9,7 +9,7 @@ import {
 	agentMessagesSettingsResultSchema,
 	agentMessagesStatusSchema,
 } from "../../../../../shared/agent-messages-contract";
-import { reconcileDraftAccount } from "../../../features/team-bridge/team-bridge-drafts";
+import { reconcileDraftAccount } from "../../store/team-bridge-draft-account";
 import { desktopResult } from "./desktop-api";
 
 /** No Radient JWT or direct hub request crosses the renderer boundary. */

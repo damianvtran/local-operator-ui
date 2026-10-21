@@ -1,4 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+	TEAM_BRIDGE_DRAFT_PREFIX,
+	draftAccountEpoch,
+} from "../../shared/store/team-bridge-draft-account";
 import {
 	type TeamBridgeDraft,
 	type TeamBridgeDrafts,
@@ -23,6 +27,21 @@ export function useTeamBridgeDrafts(
 ) {
 	const key =
 		accountId && !signedOut ? draftStorageKey(accountId, tenantId) : null;
+	// Fence by account lifetime, not target: an authorized old-target send may
+	// settle after navigation, but no callback survives logout or account reuse.
+	const liveAccount = signedOut ? null : (accountId ?? null);
+	const lifetime = useRef({ account: liveAccount, epoch: 0 });
+	if (lifetime.current.account !== liveAccount)
+		lifetime.current = {
+			account: liveAccount,
+			epoch: lifetime.current.epoch + 1,
+		};
+	const renderEpoch = lifetime.current.epoch;
+	const accountEpoch = accountId ? draftAccountEpoch(accountId) : 0;
+	const authorized = () =>
+		!signedOut &&
+		lifetime.current.epoch === renderEpoch &&
+		(!accountId || draftAccountEpoch(accountId) === accountEpoch);
 	const [snapshot, setSnapshot] = useState<{
 		key: string | null;
 		drafts: TeamBridgeDrafts;
@@ -61,6 +80,7 @@ export function useTeamBridgeDrafts(
 	const current = targetKey ? drafts[targetKey] : undefined;
 	const body = current?.body ?? "";
 	const write = (entryKey: string, entry: TeamBridgeDraft | null) => {
+		if (!authorized()) return false;
 		// Persist synchronously, including request idempotency state, before a write
 		// leaves this renderer. A failed persistence cannot pretend reload is safe.
 		const next = { ...load() };
@@ -81,7 +101,7 @@ export function useTeamBridgeDrafts(
 		return true;
 	};
 	const update = (patch: Partial<TeamBridgeDraft>) => {
-		if (!target || !targetKey) return false;
+		if (!authorized() || !target || !targetKey) return false;
 		const existing = load()[targetKey];
 		return write(targetKey, {
 			...(existing ?? { target, body, clientRef: crypto.randomUUID() }),
@@ -125,6 +145,7 @@ export function useTeamBridgeDrafts(
 		});
 
 	const clearSent = (entryKey: string, sentBody: string, clientRef: string) => {
+		if (!authorized()) return;
 		const entry = load()[entryKey];
 		if (entry?.clientRef !== clientRef) return;
 		if (entry.body.trim() === sentBody) write(entryKey, null);
@@ -135,10 +156,26 @@ export function useTeamBridgeDrafts(
 				clientRef: crypto.randomUUID(),
 			});
 	};
-	const listScopes =
-		accountId && listAll
-			? accountDraftScopes(localStorage, accountId)
-			: new Map<string, TeamBridgeDrafts>();
+	const [storageRevision, setStorageRevision] = useState(0);
+	useEffect(() => {
+		const changed = (event: StorageEvent) => {
+			if (event.key === null || event.key.startsWith(TEAM_BRIDGE_DRAFT_PREFIX))
+				setStorageRevision((revision) => revision + 1);
+		};
+		window.addEventListener("storage", changed);
+		return () => window.removeEventListener("storage", changed);
+	}, []);
+	// Local writes overlay scopes below; unrelated rerenders/keystrokes need not
+	// enumerate and parse every organization's stored drafts again.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: revision represents external storage writes.
+	const storedScopes = useMemo(
+		() =>
+			accountId && !signedOut && listAll
+				? accountDraftScopes(localStorage, accountId)
+				: new Map<string, TeamBridgeDrafts>(),
+		[accountId, signedOut, listAll, storageRevision],
+	);
+	const listScopes = new Map(storedScopes);
 	for (const [scopeKey, values] of scopes.current)
 		if (
 			scopeKey &&

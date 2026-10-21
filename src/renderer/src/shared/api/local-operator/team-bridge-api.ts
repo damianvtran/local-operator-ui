@@ -33,15 +33,12 @@ import {
 	teamBridgeIdentitySchema,
 	teamBridgeMessagePageSchema,
 	teamBridgeReadStateSchema,
-	teamBridgeUnreadSchema,
-} from "../../../../../shared/team-bridge-contract";
-import { reconcileDraftAccount } from "../../../features/team-bridge/team-bridge-drafts";
-import { desktopResult } from "./desktop-api";
-
-import {
 	teamBridgeScheduledListSchema,
 	teamBridgeScheduledMessageSchema,
+	teamBridgeUnreadSchema,
 } from "../../../../../shared/team-bridge-contract";
+import { reconcileDraftAccount } from "../../store/team-bridge-draft-account";
+import { desktopResult } from "./desktop-api";
 
 export const TeamBridgeApi = {
 	async scheduledList(tenantId: string) {

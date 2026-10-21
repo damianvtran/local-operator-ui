@@ -13,6 +13,19 @@ const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 globalThis.window = dom.window;
 globalThis.document = dom.window.document;
 globalThis.localStorage = dom.window.localStorage;
+for (const name of [
+	"HTMLElement",
+	"Element",
+	"Node",
+	"NodeFilter",
+	"MutationObserver",
+	"DocumentFragment",
+	"CustomEvent",
+	"HTMLInputElement",
+])
+	globalThis[name] = dom.window[name];
+globalThis.getComputedStyle = dom.window.getComputedStyle;
+
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { createRoot } = await import("react-dom/client");
 const bundle = await build({
@@ -21,7 +34,7 @@ const bundle = await build({
  export * from "./src/renderer/src/features/team-bridge/use-team-bridge-drafts";
  export * from "./src/renderer/src/features/team-bridge/team-bridge-scheduling";
  export {desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract";
- export {TeamBridgeScheduledListView} from "./src/renderer/src/features/team-bridge/team-bridge-scheduled";
+ export {TeamBridgeScheduledListView, TeamBridgeScheduledRow, TeamBridgeScheduleDialog} from "./src/renderer/src/features/team-bridge/team-bridge-scheduled";
  export {teamBridgeScheduledMessageSchema, teamBridgeScheduledListSchema} from "./src/shared/team-bridge-contract";`,
 		resolveDir: process.cwd(),
 	},
@@ -437,5 +450,380 @@ test("cancel race and network errors preserve rows, refresh state, and leave an 
 		await act(async () => root.unmount());
 		element.remove();
 		window.api = undefined;
+	}
+});
+
+test("late draft callbacks cannot restore private bodies after logout or account replacement", async () => {
+	localStorage.clear();
+	const app = await mount();
+	await act(async () => current.setBody("private deferred body"));
+	const stale = current;
+	let resolve;
+	const deferred = new Promise((done) => {
+		resolve = done;
+	});
+	const completion = deferred.then(() => {
+		stale.update({ conversationId: "late_group" });
+		stale.update({ createUncertain: false, sendAt: undefined });
+		stale.clearSent(
+			model.draftTargetKey(person),
+			"different body",
+			stale.current.clientRef,
+		);
+	});
+	model.reconcileDraftAccount(localStorage, { state: "signed_out" });
+	await app.render({ signedOut: true });
+	await act(async () => {
+		resolve();
+		await completion;
+	});
+	assert.equal(
+		localStorage.getItem(model.draftStorageKey("acct_a", "org_a")),
+		null,
+	);
+	await app.render({ account: "acct_b" });
+	await act(async () => stale.setBody("late edit"));
+	assert.equal(
+		localStorage.getItem(model.draftStorageKey("acct_a", "org_a")),
+		null,
+	);
+	await app.close();
+});
+
+test("two schedules after first-group success reuse the created conversation", async () => {
+	const compose = {
+		type: "compose",
+		recipients: [
+			{ kind: "human", accountId: "b", label: "Bea" },
+			{ kind: "human", accountId: "c", label: "Cora" },
+		],
+	};
+	let target = compose;
+	let groups = 0;
+	const run = async () => {
+		const startedOn = target;
+		await model.scheduleTeamBridgeDraft({
+			tenantId: "org_a",
+			recipients: compose.recipients,
+			conversationId: target.type === "conversation" ? target.id : undefined,
+			body: "scheduled draft",
+			clientRef: crypto.randomUUID(),
+			sendAt: "2030-01-01T12:00:00Z",
+			remembered: new Map(),
+			onCreated: () => {},
+			create: async () => ({ id: `group_${++groups}` }),
+			schedule: async () => ({}),
+			onScheduled: (id) => {
+				const next = model.scheduledTargetAfterSuccess(startedOn, target, id);
+				if (next) target = next;
+			},
+		});
+	};
+	await run();
+	await run();
+	assert.equal(groups, 1);
+	assert.equal(target.id, "group_1");
+});
+
+test("account revocation fences callbacks after page unmount and same-account login", async () => {
+	localStorage.clear();
+	const app = await mount();
+	await act(async () => current.setBody("unmounted private body"));
+	const stale = current;
+	await app.close();
+	model.reconcileDraftAccount(localStorage, { state: "signed_out" });
+	const again = await mount();
+	await act(async () => stale.update({ conversationId: "late_group" }));
+	assert.equal(
+		localStorage.getItem(model.draftStorageKey("acct_a", "org_a")),
+		null,
+	);
+	await again.close();
+});
+
+test("schedule completion does not navigate away from a subsequently selected target", async () => {
+	const started = { type: "compose", recipients: [] };
+	const selected = { type: "conversation", id: "other" };
+	assert.equal(
+		model.scheduledTargetAfterSuccess(started, selected, "created"),
+		null,
+	);
+	assert.deepEqual(
+		model.scheduledTargetAfterSuccess(started, started, "created"),
+		{ type: "conversation", id: "created" },
+	);
+	assert.equal(
+		model.canResetScheduleAttempt("2030-01-01T12:00:00Z", 429),
+		false,
+	);
+	assert.equal(
+		model.canResetScheduleAttempt("2030-01-01T12:00:00Z", 400),
+		false,
+	);
+	assert.equal(model.canResetScheduleAttempt(undefined, 400), true);
+});
+
+test("one organization refusal preserves another organization's pending schedule", async () => {
+	const row = {
+		id: "bsch_a",
+		tenant_id: "org_ok",
+		send_at: "2030-01-01T12:00:00Z",
+	};
+	const result = await model.listScheduledTenants(
+		["org_ok", "org_refused"],
+		async (tenant) => {
+			if (tenant === "org_refused") throw new Error("refused");
+			return { scheduled: [row] };
+		},
+	);
+	assert.deepEqual(result.scheduled, [row]);
+	assert.deepEqual(result.failedTenants, ["org_refused"]);
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	try {
+		await act(async () =>
+			root.render(
+				React.createElement(model.TeamBridgeScheduledListView, {
+					state: "ready",
+					failedTenants: result.failedTenants,
+					messages: [
+						{
+							...row,
+							conversation_id: "bcv_a",
+							body: "pending fixture",
+							status: "scheduled",
+							created_at: row.send_at,
+						},
+					],
+					refresh: async () => {},
+				}),
+			),
+		);
+		assert.ok(element.textContent.includes("org_refused"));
+		assert.ok(
+			[...element.querySelectorAll("button")].some(
+				(button) => button.textContent === "Cancel message",
+			),
+		);
+	} finally {
+		await act(async () => root.unmount());
+		element.remove();
+	}
+});
+
+test("body-only edits omit send_at, unchanged fields and original second precision survive", () => {
+	const row = { body: "old", send_at: "2030-04-05T12:30:45Z" };
+	assert.deepEqual(model.scheduledEditPatch(row, row.send_at, "edited"), {
+		body: "edited",
+	});
+	assert.deepEqual(model.scheduledEditPatch(row, row.send_at, "old"), {});
+	assert.deepEqual(
+		model.scheduledEditPatch(row, "2030-04-05T13:30:00Z", "old"),
+		{ send_at: "2030-04-05T13:30:00Z" },
+	);
+});
+
+test("edit failures refresh the list for 429, 409 and offline; failed edits stay in the dialog", async () => {
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	const row = {
+		id: "bsch_edit",
+		tenant_id: "org_a",
+		conversation_id: "bcv_a",
+		body: "original fixture",
+		send_at: new Date(Date.now() + 600_000).toISOString(),
+		status: "scheduled",
+		created_at: new Date().toISOString(),
+	};
+	let refreshes = 0;
+	let status = 429;
+	const requests = [];
+	window.api = {
+		desktop: {
+			request: async (request) => {
+				requests.push(request);
+				if (status === null) throw new Error("offline");
+				return {
+					status,
+					body: { detail: { code: "invalid_transition", message: "refused" } },
+				};
+			},
+		},
+	};
+	try {
+		await act(async () =>
+			root.render(
+				React.createElement(model.TeamBridgeScheduledRow, {
+					message: row,
+					refresh: async () => {
+						refreshes++;
+					},
+				}),
+			),
+		);
+		await act(async () =>
+			[...element.querySelectorAll("button")]
+				.find((button) => button.textContent === "Reschedule")
+				.click(),
+		);
+		const dialog = document.querySelector('[role="dialog"]');
+		assert.ok(dialog);
+		const input = dialog.querySelector('input[type="datetime-local"]');
+		assert.equal(input.value, model.scheduledLocalInput(row.send_at));
+		const textarea = dialog.querySelector("textarea");
+		await act(async () => {
+			Object.getOwnPropertyDescriptor(
+				dom.window.HTMLTextAreaElement.prototype,
+				"value",
+			).set.call(textarea, "edited fixture");
+			textarea.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+		});
+		const action = () =>
+			[...dialog.querySelectorAll("button")].find(
+				(button) =>
+					button.textContent === "Review schedule" ||
+					button.textContent === "Confirm schedule",
+			);
+		assert.equal(action().disabled, false);
+		await act(async () => action().click());
+		for (const refusal of [429, 409, null]) {
+			status = refusal;
+			await act(async () => action().click());
+		}
+		assert.equal(refreshes, 3);
+		assert.equal(textarea.value, "edited fixture");
+		assert.ok(dialog.querySelector('[role="alert"]'));
+		assert.ok(
+			requests.every(
+				(request) =>
+					request.body === "edited fixture" && request.send_at === undefined,
+			),
+		);
+		await act(async () =>
+			[...dialog.querySelectorAll("button")]
+				.find((button) => button.getAttribute("aria-label") === "Close")
+				.click(),
+		);
+		await act(async () =>
+			root.render(
+				React.createElement(model.TeamBridgeScheduledRow, {
+					message: { ...row, body: "latest server body" },
+					refresh: async () => {},
+				}),
+			),
+		);
+		await act(async () =>
+			[...element.querySelectorAll("button")]
+				.find((button) => button.textContent === "Reschedule")
+				.click(),
+		);
+		assert.equal(
+			document.querySelector('[role="dialog"] textarea').value,
+			"latest server body",
+		);
+	} finally {
+		await act(async () => root.unmount());
+		element.remove();
+		window.api = undefined;
+	}
+});
+
+test("a pending group schedule does not steal selection after target switch", async () => {
+	const started = {
+		type: "compose",
+		recipients: [
+			{ kind: "human", accountId: "b", label: "Bea" },
+			{ kind: "human", accountId: "c", label: "Cora" },
+		],
+	};
+	let target = started;
+	let resolve;
+	let posted;
+	const began = new Promise((done) => {
+		posted = done;
+	});
+	const response = new Promise((done) => {
+		resolve = done;
+	});
+	const pending = model.scheduleTeamBridgeDraft({
+		tenantId: "org_a",
+		recipients: started.recipients,
+		body: "draft",
+		clientRef: "ref",
+		sendAt: "2030-01-01T12:00:00Z",
+		remembered: new Map(),
+		onCreated: () => {},
+		create: async () => ({ id: "created" }),
+		schedule: async () => {
+			posted();
+			await response;
+			return {};
+		},
+		onScheduled: (id) => {
+			const next = model.scheduledTargetAfterSuccess(started, target, id);
+			if (next) target = next;
+		},
+	});
+	await began;
+	target = { type: "person", accountId: "other" };
+	resolve();
+	await pending;
+	assert.deepEqual(target, { type: "person", accountId: "other" });
+});
+
+test("direct account replacement and return never reauthorize an old draft callback", async () => {
+	localStorage.clear();
+	const app = await mount();
+	await act(async () => current.setBody("old account body"));
+	const stale = current;
+	await app.render({ account: "acct_replacement" });
+	await act(async () => stale.update({ conversationId: "late" }));
+	assert.equal(
+		localStorage.getItem(model.draftStorageKey("acct_a", "org_a")),
+		null,
+	);
+	await app.render();
+	await act(async () => stale.setBody("late body"));
+	assert.equal(
+		localStorage.getItem(model.draftStorageKey("acct_a", "org_a")),
+		null,
+	);
+	await app.close();
+});
+
+test("merged draft enumeration is memoized across rerenders and local writes", async () => {
+	localStorage.clear();
+	const foreignKey = model.draftStorageKey("acct_a", "org_cached");
+	localStorage.setItem(
+		foreignKey,
+		JSON.stringify({
+			[model.draftTargetKey(person)]: {
+				target: person,
+				body: "cached",
+				clientRef: "cached-ref",
+			},
+		}),
+	);
+	const prototype = Object.getPrototypeOf(localStorage);
+	const original = prototype.getItem;
+	let reads = 0;
+	prototype.getItem = function (key) {
+		if (key === foreignKey) reads++;
+		return original.call(this, key);
+	};
+	const app = await mount();
+	try {
+		await app.render({ tenant: "all" });
+		const first = reads;
+		await app.render({ tenant: "all" });
+		await act(async () => current.setBody("local write"));
+		assert.ok(first > 0);
+		assert.equal(reads, first);
+		assert.ok(current.entries.some(({ entry }) => entry.body === "cached"));
+	} finally {
+		prototype.getItem = original;
+		await app.close();
 	}
 });

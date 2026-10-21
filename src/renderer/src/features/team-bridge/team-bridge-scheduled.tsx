@@ -10,10 +10,15 @@ import {
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useQuery } from "@tanstack/react-query";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { TeamBridgeScheduledMessage } from "../../../../shared/team-bridge-contract";
 import { scheduledSendAt } from "./team-bridge-drafts";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
+import {
+	listScheduledTenants,
+	scheduledEditPatch,
+	scheduledLocalInput,
+} from "./team-bridge-scheduling";
 
 export function TeamBridgeScheduleDialog({
 	open,
@@ -21,20 +26,41 @@ export function TeamBridgeScheduleDialog({
 	busy,
 	onSchedule,
 	initialBody,
+	initialSendAt,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	busy: boolean;
 	onSchedule: (sendAt: string, body?: string) => Promise<unknown>;
 	initialBody?: string;
+	initialSendAt?: string;
 }) {
 	const locale = useI18nLocale();
 	const id = useId();
-	const [value, setValue] = useState("");
+	const [value, setValue] = useState(
+		initialSendAt ? scheduledLocalInput(initialSendAt) : "",
+	);
 	const [body, setBody] = useState(initialBody ?? "");
 	const [failed, setFailed] = useState(false);
 	const [confirming, setConfirming] = useState<string | null>(null);
-	const at = scheduledSendAt(value);
+	const unchangedTime = Boolean(
+		initialSendAt && value === scheduledLocalInput(initialSendAt),
+	);
+	const at = unchangedTime ? initialSendAt : scheduledSendAt(value);
+	const changed =
+		initialBody === undefined || body.trim() !== initialBody || !unchangedTime;
+	const wasOpen = useRef(false);
+	useEffect(() => {
+		// Refreshes may update the row while a failed edit is still open. Preserve
+		// those edits, but reopening must start from the latest server post-state.
+		if (open && !wasOpen.current) {
+			setBody(initialBody ?? "");
+			setValue(initialSendAt ? scheduledLocalInput(initialSendAt) : "");
+			setConfirming(null);
+			setFailed(false);
+		}
+		wasOpen.current = open;
+	}, [open, initialBody, initialSendAt]);
 	const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	return (
 		<Dialog
@@ -107,9 +133,16 @@ export function TeamBridgeScheduleDialog({
 					</p>
 				)}
 				<Button
-					disabled={!at || busy || (initialBody !== undefined && !body.trim())}
+					disabled={
+						!at ||
+						!changed ||
+						busy ||
+						(initialBody !== undefined && !body.trim())
+					}
 					onClick={() => {
-						const currentAt = scheduledSendAt(value);
+						const currentAt = unchangedTime
+							? initialSendAt
+							: scheduledSendAt(value);
 						if (!currentAt) {
 							setConfirming(null);
 							return;
@@ -148,22 +181,23 @@ export function TeamBridgeScheduledList({
 }: { accountId: string; tenantIds: string[]; readOnly?: boolean }) {
 	const query = useQuery({
 		queryKey: ["team-bridge", "scheduled", accountId, ...[...tenantIds].sort()],
-		queryFn: async () => ({
-			scheduled: (
-				await Promise.all(
-					tenantIds.map((tenant) => TeamBridgeApi.scheduledList(tenant)),
-				)
-			)
-				.flatMap((page) => page.scheduled)
-				.sort((a, b) => a.send_at.localeCompare(b.send_at)),
-		}),
+		queryFn: () => listScheduledTenants(tenantIds, TeamBridgeApi.scheduledList),
 		staleTime: 0,
 		gcTime: 0,
 	});
 	return (
 		<TeamBridgeScheduledListView
-			state={query.isPending ? "loading" : query.isError ? "error" : "ready"}
+			state={
+				query.isPending
+					? "loading"
+					: query.isError ||
+							(tenantIds.length > 0 &&
+								query.data?.failedTenants.length === tenantIds.length)
+						? "error"
+						: "ready"
+			}
 			messages={query.data?.scheduled ?? []}
+			failedTenants={query.data?.failedTenants ?? []}
 			readOnly={readOnly}
 			refresh={() => query.refetch()}
 		/>
@@ -175,11 +209,13 @@ export function TeamBridgeScheduledList({
 export function TeamBridgeScheduledListView({
 	state,
 	messages,
+	failedTenants = [],
 	readOnly = false,
 	refresh,
 }: {
 	state: "loading" | "error" | "ready";
 	messages: TeamBridgeScheduledMessage[];
+	failedTenants?: string[];
 	readOnly?: boolean;
 	refresh: () => Promise<unknown>;
 }) {
@@ -193,6 +229,21 @@ export function TeamBridgeScheduledListView({
 			<h2 className="text-lg font-medium text-ink">
 				{t("ui.teamBridge.schedule.list")}
 			</h2>
+			{state === "ready" &&
+				failedTenants.map((tenant) => (
+					<div key={tenant} role="alert" className="text-sm text-danger">
+						<p>
+							{t("ui.teamBridge.schedule.load_failed")} <span>{tenant}</span>
+						</p>
+						<Button
+							onClick={() => {
+								void refresh();
+							}}
+						>
+							{t("ui.teamBridge.list.retry")}
+						</Button>
+					</div>
+				))}
 			{cancelFailed && (
 				<p role="alert" className="text-sm text-danger">
 					{t("ui.teamBridge.schedule.cancel_failed")}
@@ -288,14 +339,19 @@ export function TeamBridgeScheduledRow({
 				onOpenChange={setEdit}
 				busy={busy}
 				initialBody={message.body}
+				initialSendAt={message.send_at}
 				onSchedule={async (sendAt, body) => {
 					setBusy(true);
 					try {
-						await TeamBridgeApi.scheduledUpdate(message.tenant_id, message.id, {
-							send_at: sendAt,
-							body,
-						});
+						await TeamBridgeApi.scheduledUpdate(
+							message.tenant_id,
+							message.id,
+							scheduledEditPatch(message, sendAt, body),
+						);
 						await refresh();
+					} catch (error) {
+						await refresh();
+						throw error;
 					} finally {
 						setBusy(false);
 					}

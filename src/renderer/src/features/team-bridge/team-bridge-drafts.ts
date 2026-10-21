@@ -1,3 +1,9 @@
+import { TEAM_BRIDGE_DRAFT_PREFIX as PREFIX } from "../../shared/store/team-bridge-draft-account";
+export {
+	draftStorageKey,
+	eraseAccountDrafts,
+	reconcileDraftAccount,
+} from "../../shared/store/team-bridge-draft-account";
 import { z } from "zod";
 import type { TeamBridgeTarget } from "./team-bridge-model";
 
@@ -45,10 +51,6 @@ const draftSchema = z.object({
  * them across navigation/reload, but erase the previous account on sign-out or
  * account replacement; the runtime's no-body-cache invariant remains intact.
  */
-const PREFIX = "team-bridge-authored-drafts:v1:";
-export function draftStorageKey(accountId: string, tenantId: string): string {
-	return `${PREFIX}${encodeURIComponent(accountId)}:${encodeURIComponent(tenantId)}`;
-}
 
 export function draftTargetKey(target: TeamBridgeTarget): string {
 	switch (target.type) {
@@ -101,13 +103,6 @@ export function draftTenantFromStorageKey(key: string): string {
 	return decodeURIComponent(key.slice(key.lastIndexOf(":") + 1));
 }
 
-export function eraseAccountDrafts(storage: Storage, accountId: string): void {
-	const prefix = `${PREFIX}${encodeURIComponent(accountId)}:`;
-	for (const key of Object.keys(storage)) {
-		if (key.startsWith(prefix)) storage.removeItem(key);
-	}
-}
-
 const LOCAL_TIME = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/;
 
 /** The server accepts an inclusive one-minute..120-day window. Local datetime
@@ -136,25 +131,4 @@ export function scheduledSendAt(
 		at <= now + 120 * 86_400_000
 		? new Date(at).toISOString()
 		: null;
-}
-
-/** An authoritative status response prunes every other account's drafts,
- * including across app restarts. Pending/offline reads never mean sign-out.
- * If browser storage is unavailable the account-scoped reader still fails
- * closed; a storage refusal must not turn the status API into a failed read. */
-export function reconcileDraftAccount(
-	storage: Storage,
-	status: { account_id?: string | null; state?: unknown },
-): void {
-	if (status.state !== "signed_out" && !status.account_id) return;
-	const next =
-		status.state === "signed_out" ? null : (status.account_id ?? null);
-	try {
-		const allowed = next ? `${PREFIX}${encodeURIComponent(next)}:` : null;
-		for (const key of Object.keys(storage))
-			if (key.startsWith(PREFIX) && (!allowed || !key.startsWith(allowed)))
-				storage.removeItem(key);
-	} catch {
-		/* The draft editor reports storage unavailability; bodies never enter a status error or telemetry. */
-	}
 }

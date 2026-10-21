@@ -17,6 +17,7 @@ assert.ok(authorization, "test-only proxy authorization required");
 const bundle = await build({
 	stdin: {
 		contents: `export {TeamBridgeApi} from "./src/renderer/src/shared/api/local-operator/team-bridge-api";
+ export {scheduledEditPatch} from "./src/renderer/src/features/team-bridge/team-bridge-scheduling";
  export {desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract";`,
 		resolveDir: process.cwd(),
 	},
@@ -33,8 +34,12 @@ const compiled = new Module(
 compiled.filename = `${process.cwd()}/scripts/team-bridge-proxy-runtime.cjs`;
 compiled.paths = Module._nodeModulePaths(process.cwd());
 compiled._compile(bundle.outputFiles[0].text, compiled.filename);
-const { TeamBridgeApi, desktopEndpoint, desktopRequestSchema } =
-	compiled.exports;
+const {
+	TeamBridgeApi,
+	desktopEndpoint,
+	desktopRequestSchema,
+	scheduledEditPatch,
+} = compiled.exports;
 const receipts = [];
 globalThis.window = {
 	api: {
@@ -81,9 +86,9 @@ try {
 		(await TeamBridgeApi.scheduledList("org-a")).scheduled[0].id,
 		row.id,
 	);
-	const edited = await TeamBridgeApi.scheduledUpdate("org-a", row.id, {
-		body: "synthetic edited draft",
-	});
+	const patch = scheduledEditPatch(row, row.send_at, "synthetic edited draft");
+	assert.deepEqual(patch, { body: "synthetic edited draft" });
+	const edited = await TeamBridgeApi.scheduledUpdate("org-a", row.id, patch);
 	assert.equal(edited.body, "synthetic edited draft");
 	assert.deepEqual(await TeamBridgeApi.scheduledCancel("org-a", row.id), {});
 	assert.deepEqual(await TeamBridgeApi.scheduledList("org-a"), {
