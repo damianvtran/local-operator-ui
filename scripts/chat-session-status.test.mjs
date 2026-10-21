@@ -643,3 +643,33 @@ test("not-attempted remote reach does not claim idle or link loss", () => {
 	);
 	assert.doesNotMatch(html, /Idle|link down|lucide-circle /);
 });
+
+test("a remote row inside the relay's redial grace says Reconnecting in dim ink", () => {
+	const row = {
+		session_id: "reconnecting-fixture",
+		locality: "remote",
+		link_down: true,
+		link_reconnecting: true,
+		last_seen_at: 100,
+		status: { code: "idle", label: "Idle" },
+	};
+	const html = renderToStaticMarkup(
+		createElement(ChatSessionStatus, { row, nowSeconds: 280 }),
+	);
+	// Still the lost-link SHAPE and still no stale idle claim...
+	assert.match(html, /lucide-wifi-off/);
+	assert.doesNotMatch(html, /lucide-circle |Idle/);
+	// ...but quiet ink and the reconnecting sentence with a real last-seen age.
+	assert.match(html, /text-ink-dim/);
+	assert.doesNotMatch(html, /text-warning/);
+	assert.match(html, /Reconnecting · 3m ago/);
+	// Escalated: the same row once the relay says `down` is amber "link down".
+	const down = renderToStaticMarkup(
+		createElement(ChatSessionStatus, {
+			row: { ...row, link_reconnecting: false },
+			nowSeconds: 280,
+		}),
+	);
+	assert.match(down, /text-warning/);
+	assert.match(down, /link down · last seen 3m ago/);
+});
