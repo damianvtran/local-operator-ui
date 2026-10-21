@@ -277,7 +277,9 @@ const PeopleFailure: FC<{
 			? t("ui.teamBridge.plan.sign_in_reason")
 			: kind === "plan"
 				? t("ui.teamBridge.plan.reason")
-				: t("ui.teamBridge.plan.unavailable_reason");
+				: kind === "outdated"
+					? t("ui.teamBridge.plan.update_reason")
+					: t("ui.teamBridge.plan.unavailable_reason");
 	const retryable = kind === "unreachable" || kind === "server";
 	return (
 		<div className="flex flex-col items-start gap-2 px-2 py-1">
@@ -300,6 +302,8 @@ const PeopleSection: FC<{
 	peopleState: "loading" | "error" | "ready";
 	/** The failed directory read, when `peopleState` is "error". */
 	peopleError?: unknown;
+	/** True when the parse had to discard rows that had no stable account id. */
+	peopleIncomplete?: boolean;
 	selfAccountId?: string;
 	identityKnown: boolean;
 	listState: "loading" | "error" | "ready";
@@ -313,6 +317,7 @@ const PeopleSection: FC<{
 	people,
 	peopleState,
 	peopleError,
+	peopleIncomplete = false,
 	selfAccountId,
 	identityKnown,
 	listState,
@@ -347,6 +352,10 @@ const PeopleSection: FC<{
 				</div>
 			) : peopleState === "error" ? (
 				<PeopleFailure error={peopleError} onRetry={onRetry} />
+			) : people.length === 0 && peopleIncomplete ? (
+				<p className="px-2 py-1 text-[12px] leading-snug text-ink-muted">
+					{t("ui.teamBridge.people.error")}
+				</p>
 			) : people.length === 0 ? (
 				<p className="px-2 py-1 text-[12px] leading-snug text-ink-dim">
 					{t("ui.teamBridge.people.empty")}
@@ -704,6 +713,8 @@ export type TeamBridgePageViewProps = {
 	peopleState?: "loading" | "error" | "ready";
 	/** The failed directory read, when `peopleState` is "error". */
 	peopleError?: unknown;
+	/** True when the parse had to discard rows that had no stable account id. */
+	peopleIncomplete?: boolean;
 	/** Retry the directory read behind the People section. */
 	onRetryPeople?: () => void;
 	/**
@@ -759,6 +770,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	people = [],
 	peopleState = "ready",
 	peopleError,
+	peopleIncomplete = false,
 	onRetryPeople,
 	onComposeToPerson,
 	eligibility = null,
@@ -952,6 +964,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						people={people}
 						peopleState={peopleState}
 						peopleError={peopleError}
+						peopleIncomplete={peopleIncomplete}
 						selfAccountId={selfAccountId}
 						identityKnown={selfAccountId !== undefined}
 						listState={listState}
@@ -1048,12 +1061,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 													? "bg-accent-wash text-accent"
 													: "bg-sunken text-ink-muted",
 											)}
-											title={member.display_label}
+											title={personDisplayLabel(member)}
 										>
 											{member.kind === "agent" ? (
 												<Bot size={12} aria-hidden="true" />
 											) : (
-												(member.display_label[0] ?? "?")
+												(personDisplayLabel(member)[0] ?? "?")
 											)}
 										</span>
 									))}
@@ -1540,13 +1553,14 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 							: "ready"
 				}
 				peopleError={directory.error}
+				peopleIncomplete={(directory.data?.unavailable_count ?? 0) > 0}
 				onRetryPeople={() => {
 					void directory.refetch();
 				}}
 				onComposeToPerson={(member) => {
 					setComposeTo({
 						accountId: member.account_id,
-						displayLabel: member.display_label,
+						displayLabel: personDisplayLabel(member),
 					});
 					setCreateOpen(true);
 				}}

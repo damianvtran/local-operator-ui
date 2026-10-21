@@ -611,23 +611,43 @@ test("the directory schema accepts an empty or long label instead of failing the
 				bridge_state: "none",
 			},
 			{
-				// A future field value this client has not learned. It must cost
-				// this row, not the two valid rows beside it.
+				// A future field value this client has not learned. The row is
+				// salvaged into the inert state rather than hidden.
 				account_id: "acct_unrecognized",
 				display_label: "Future",
 				role: "member",
 				bridge_enabled: false,
 				bridge_state: "unknown-state",
 			},
+			{
+				// No stable account id: genuinely unrenderable, and counted.
+				display_label: "No id",
+			},
 		],
 	});
-	assert.equal(parsed.members.length, 2);
+	assert.equal(parsed.members.length, 3);
 	assert.equal(parsed.unavailable_count, 1);
+	assert.equal(parsed.members[2].bridge_state, "none");
 	assert.equal(model.personDisplayLabel(parsed.members[0]), "acct_deleted");
 	assert.match(
 		model.personDisplayLabel(parsed.members[1]),
 		/long@example\.com/,
 	);
+});
+
+test("a payload whose every row is unrenderable says so, not 'nobody joined'", () => {
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				people: [],
+				peopleState: "ready",
+				peopleIncomplete: true,
+			}),
+		),
+	);
+	assert.match(html, /People could not be loaded/);
+	assert.doesNotMatch(html, /No one else has joined/);
 });
 
 test("a signed-out directory failure names sign-in and offers no retry", () => {
