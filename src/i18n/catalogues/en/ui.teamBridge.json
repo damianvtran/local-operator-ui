@@ -134,5 +134,7 @@
 	"ui.teamBridge.schedule.create_uncertain": "The group creation was not confirmed. It may already exist. Check Groups before creating another group. Your draft is kept.",
 	"ui.teamBridge.schedule.create_retry": "I checked Groups — allow another creation attempt",
 	"ui.teamBridge.schedule.edit_body": "Message",
-	"ui.teamBridge.schedule.retry": "Retry previous schedule"
+	"ui.teamBridge.schedule.retry": "Retry previous schedule",
+	"ui.teamBridge.schedule.held": "A previous schedule may still exist. Check Scheduled and cancel it if needed before discarding this attempt. Your draft is kept.",
+	"ui.teamBridge.schedule.discard_attempt": "I checked Scheduled — discard this attempt"
 }

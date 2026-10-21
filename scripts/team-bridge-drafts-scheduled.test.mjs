@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import Module from "node:module";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -28,9 +29,32 @@ globalThis.getComputedStyle = dom.window.getComputedStyle;
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { createRoot } = await import("react-dom/client");
+// Same selected-row import seam as the directory suite: keep the shipped role
+// literal without pulling the unrelated full chat sidebar into this DOM probe.
+const sidebarRole = readFileSync(
+	"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+	"utf8",
+).match(/export const rowCurrent =\s*("[^"]+")/)?.[1];
+assert.ok(sidebarRole);
+const SIDEBAR_IMPORT = /chat\/components\/chat-sidebar$/;
+const ANY_PATH = /.*/;
+const sidebarStub = {
+	name: "chat-sidebar-stub",
+	setup(build) {
+		build.onResolve({ filter: SIDEBAR_IMPORT }, () => ({
+			path: "sidebar-role",
+			namespace: "stub",
+		}));
+		build.onLoad({ filter: ANY_PATH, namespace: "stub" }, () => ({
+			contents: `export const rowCurrent = ${sidebarRole};`,
+			loader: "js",
+		}));
+	},
+};
 const bundle = await build({
 	stdin: {
-		contents: `export * from "./src/renderer/src/features/team-bridge/team-bridge-drafts";
+		contents: `export {TeamBridgePageView} from "./src/renderer/src/features/team-bridge/team-bridge-page";
+ export * from "./src/renderer/src/features/team-bridge/team-bridge-drafts";
  export * from "./src/renderer/src/features/team-bridge/use-team-bridge-drafts";
  export * from "./src/renderer/src/features/team-bridge/team-bridge-scheduling";
  export {desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract";
@@ -42,6 +66,7 @@ const bundle = await build({
 	format: "cjs",
 	platform: "node",
 	external: ["react", "react-dom"],
+	plugins: [sidebarStub],
 	// DOM/state test only: CSS is deliberately not claimed as frame evidence.
 	loader: { ".css": "empty" },
 	tsconfig: "tsconfig.app.json",
@@ -587,6 +612,7 @@ test("one organization refusal preserves another organization's pending schedule
 				React.createElement(model.TeamBridgeScheduledListView, {
 					state: "ready",
 					failedTenants: result.failedTenants,
+					organizationNames: { org_refused: "Northwind team" },
 					messages: [
 						{
 							...row,
@@ -600,12 +626,24 @@ test("one organization refusal preserves another organization's pending schedule
 				}),
 			),
 		);
-		assert.ok(element.textContent.includes("org_refused"));
+		assert.ok(element.textContent.includes("Northwind team"));
+		assert.equal(element.textContent.includes("org_refused"), false);
 		assert.ok(
 			[...element.querySelectorAll("button")].some(
 				(button) => button.textContent === "Cancel message",
 			),
 		);
+		await act(async () =>
+			root.render(
+				React.createElement(model.TeamBridgeScheduledListView, {
+					state: "ready",
+					failedTenants: ["org_unknown"],
+					messages: [],
+					refresh: async () => {},
+				}),
+			),
+		);
+		assert.ok(element.textContent.includes("org_unknown"));
 	} finally {
 		await act(async () => root.unmount());
 		element.remove();
@@ -825,5 +863,160 @@ test("merged draft enumeration is memoized across rerenders and local writes", a
 	} finally {
 		prototype.getItem = original;
 		await app.close();
+	}
+});
+
+test("a held schedule can be explicitly discarded before a fresh send or schedule", async () => {
+	for (const mode of ["send", "schedule"]) {
+		localStorage.clear();
+		const element = document.createElement("div");
+		document.body.append(element);
+		let root = createRoot(element);
+		const key = model.draftStorageKey("acct_recovery", "org_recovery");
+		const target = { type: "conversation", id: "bcv_recovery" };
+		const body = "recover this draft";
+		const heldTime = new Date(Date.now() + 3_600_000).toISOString();
+		localStorage.setItem(
+			key,
+			JSON.stringify({
+				[model.draftTargetKey(target)]: {
+					target,
+					body,
+					clientRef: "held-reference",
+					sendAt: heldTime,
+				},
+			}),
+		);
+		const sends = [];
+		const schedules = [];
+		let refuse = true;
+		const conversation = {
+			id: target.id,
+			tenant_id: "org_recovery",
+			kind: "group",
+			name: "Recovery",
+			members: [],
+			visibility: "private",
+			agent_capable: false,
+			status: "open",
+			created_by: "acct_recovery",
+			last_message_at: heldTime,
+			latest_seq: 0,
+			last_read_seq: 0,
+			unread_count: 0,
+			muted: false,
+		};
+		const props = {
+			selfAccountId: "acct_recovery",
+			scope: "org_recovery",
+			target,
+			conversations: [conversation],
+			messages: [],
+			organizations: [
+				{
+					tenantId: "org_recovery",
+					name: "Recovery organization",
+					role: "owner",
+					unread: 0,
+				},
+			],
+			totalUnread: 0,
+			listState: "ready",
+			messageState: "ready",
+			onTarget: () => {},
+			onNewChannel: () => {},
+			onScopeChange: () => {},
+			onSend: async (...args) => {
+				sends.push(args);
+			},
+			onSchedule: async (...args) => {
+				schedules.push(args);
+				if (refuse)
+					throw Object.assign(new Error("outside window"), { status: 400 });
+			},
+		};
+		try {
+			await act(async () =>
+				root.render(React.createElement(model.TeamBridgePageView, props)),
+			);
+			await act(async () =>
+				[...element.querySelectorAll("button")]
+					.find((button) => button.textContent === "Retry previous schedule")
+					.click(),
+			);
+			assert.equal(schedules.length, 1);
+			assert.equal(
+				JSON.parse(localStorage.getItem(key))[model.draftTargetKey(target)]
+					.clientRef,
+				"held-reference",
+			);
+			// Re-mount from disk: recovery must not depend on clearing renderer memory.
+			await act(async () => root.unmount());
+			root = createRoot(element);
+			await act(async () =>
+				root.render(React.createElement(model.TeamBridgePageView, props)),
+			);
+			const send =
+				element.querySelector('button[aria-label="Send message"]') ??
+				[...element.querySelectorAll("button")].find(
+					(button) => button.getAttribute("aria-label") === "Send",
+				);
+			assert.ok(send);
+			assert.equal(send.disabled, true);
+			assert.ok(send.getAttribute("aria-describedby"));
+			const discard = [...element.querySelectorAll("button")].find(
+				(button) =>
+					button.textContent === "I checked Scheduled — discard this attempt",
+			);
+			assert.ok(discard);
+			await act(async () => discard.click());
+			const entry = JSON.parse(localStorage.getItem(key))[
+				model.draftTargetKey(target)
+			];
+			assert.equal(entry.sendAt, undefined);
+			assert.notEqual(entry.clientRef, "held-reference");
+			assert.equal(entry.body, body);
+			refuse = false;
+			if (mode === "send") {
+				await act(async () => send.click());
+				assert.equal(sends.length, 1);
+				assert.equal(sends[0][0], body);
+				assert.equal(sends[0][1], entry.clientRef);
+			} else {
+				await act(async () =>
+					element
+						.querySelector('button[aria-label="Schedule message"]')
+						.click(),
+				);
+				const dialog = document.querySelector('[role="dialog"]');
+				const input = dialog.querySelector('input[type="datetime-local"]');
+				await act(async () => {
+					Object.getOwnPropertyDescriptor(
+						dom.window.HTMLInputElement.prototype,
+						"value",
+					).set.call(
+						input,
+						model.scheduledLocalInput(
+							new Date(Date.now() + 7_200_000).toISOString(),
+						),
+					);
+					input.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+				});
+				const action = () =>
+					[...dialog.querySelectorAll("button")].find(
+						(button) =>
+							button.textContent === "Review schedule" ||
+							button.textContent === "Confirm schedule",
+					);
+				await act(async () => action().click());
+				await act(async () => action().click());
+				assert.equal(schedules.length, 2);
+				assert.notEqual(schedules[1][1], "held-reference");
+				assert.notEqual(schedules[1][2], heldTime);
+			}
+		} finally {
+			await act(async () => root.unmount());
+			element.remove();
+		}
 	}
 });

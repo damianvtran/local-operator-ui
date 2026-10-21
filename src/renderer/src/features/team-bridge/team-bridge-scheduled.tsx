@@ -177,8 +177,14 @@ export function TeamBridgeScheduleDialog({
 export function TeamBridgeScheduledList({
 	accountId,
 	tenantIds,
+	organizationNames,
 	readOnly = false,
-}: { accountId: string; tenantIds: string[]; readOnly?: boolean }) {
+}: {
+	accountId: string;
+	tenantIds: string[];
+	organizationNames?: Readonly<Record<string, string>>;
+	readOnly?: boolean;
+}) {
 	const query = useQuery({
 		queryKey: ["team-bridge", "scheduled", accountId, ...[...tenantIds].sort()],
 		queryFn: () => listScheduledTenants(tenantIds, TeamBridgeApi.scheduledList),
@@ -198,6 +204,7 @@ export function TeamBridgeScheduledList({
 			}
 			messages={query.data?.scheduled ?? []}
 			failedTenants={query.data?.failedTenants ?? []}
+			organizationNames={organizationNames}
 			readOnly={readOnly}
 			refresh={() => query.refetch()}
 		/>
@@ -210,12 +217,14 @@ export function TeamBridgeScheduledListView({
 	state,
 	messages,
 	failedTenants = [],
+	organizationNames = {},
 	readOnly = false,
 	refresh,
 }: {
 	state: "loading" | "error" | "ready";
 	messages: TeamBridgeScheduledMessage[];
 	failedTenants?: string[];
+	organizationNames?: Readonly<Record<string, string>>;
 	readOnly?: boolean;
 	refresh: () => Promise<unknown>;
 }) {
@@ -233,7 +242,8 @@ export function TeamBridgeScheduledListView({
 				failedTenants.map((tenant) => (
 					<div key={tenant} role="alert" className="text-sm text-danger">
 						<p>
-							{t("ui.teamBridge.schedule.load_failed")} <span>{tenant}</span>
+							{t("ui.teamBridge.schedule.load_failed")}{" "}
+							<span>{organizationNames[tenant]?.trim() || tenant}</span>
 						</p>
 						<Button
 							onClick={() => {

@@ -986,5 +986,19 @@
 		"length": "Short action.",
 		"placeholders": {},
 		"note": "Replays the previously confirmed scheduling request with its original delivery time and idempotency key, even if the time has since passed. Never creates a new schedule key on an ambiguous failure."
+	},
+	"ui.teamBridge.schedule.held": {
+		"role": "Held scheduling attempt recovery explanation",
+		"tone": "Clear, calm, explicit about uncertainty and user acknowledgement",
+		"length": "Permit wrapping; do not shorten away the Scheduled check or cancellation distinction.",
+		"placeholders": {},
+		"note": "Scheduled is the existing named quick link. A lost server response may hide a pending scheduled message. This action clears only the local attempt/idempotency reference and retains the authored draft; it does NOT cancel server delivery. The reader must check Scheduled and cancel any unwanted server message before acknowledging. Keep this distinct from the Cancel message server action."
+	},
+	"ui.teamBridge.schedule.discard_attempt": {
+		"role": "Explicit local scheduling-attempt discard acknowledgement",
+		"tone": "Clear, calm, explicit about uncertainty and user acknowledgement",
+		"length": "Permit wrapping; do not shorten away the Scheduled check or cancellation distinction.",
+		"placeholders": {},
+		"note": "Scheduled is the existing named quick link. A lost server response may hide a pending scheduled message. This action clears only the local attempt/idempotency reference and retains the authored draft; it does NOT cancel server delivery. The reader must check Scheduled and cancel any unwanted server message before acknowledging. Keep this distinct from the Cancel message server action."
 	}
 }
