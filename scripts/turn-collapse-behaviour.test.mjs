@@ -1866,7 +1866,10 @@ test("a fresh pane's first pass cannot fold a run whose rows say it is still wri
 	await mounted.render(rows, { frontend, waiting: true });
 	assert.deepEqual(barIds(), ["tool:1"], "the live pass moves nothing");
 	assert.ok(rowBox(mounted, "tool:2"), "t2 was never handed to a bar");
-	assert.ok(rowBox(mounted, "answer:2"), "and the streaming row never vanished");
+	assert.ok(
+		rowBox(mounted, "answer:2"),
+		"and the streaming row never vanished",
+	);
 	// THE ROWS SETTLE: the turn condenses once, because its data changed.
 	const settled = rows.map((record) =>
 		record.id === "answer:2"
