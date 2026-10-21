@@ -20,6 +20,10 @@ import { startConsoleHost } from "../console";
 import type { ConsoleCompletionNotifier } from "../console/completion";
 import { isConsoleDispatchMethod } from "../console/dispatch";
 import { ConsoleError } from "../console/errors";
+import {
+	type AddressOverlayProbeAction,
+	DEV_DRIVER_ADDRESS_OVERLAY_EVENT,
+} from "../dev-driver";
 import type { UserShellPath } from "../shell-path";
 import {
 	WebauthnChooser,
@@ -225,7 +229,7 @@ export interface StartBrowserHostOptions {
 	 * document URL is the app's own trusted packaged document, derived from the
 	 * same renderer URL the sender checks use — never a caller-supplied path.
 	 */
-	addressOverlay?: { enabled: boolean; documentUrl: string };
+	addressOverlay?: { enabled: boolean; list?: boolean; documentUrl: string };
 	log: (message: string) => void;
 }
 
@@ -244,7 +248,8 @@ export interface BrowserHostHandle {
 	 * protocol is unchanged, and this surface takes an exact enum action and no
 	 * arguments. */
 	addressOverlay?: (
-		action: "show" | "hide" | "facts",
+		action: AddressOverlayProbeAction,
+		argument?: unknown,
 	) => Promise<AddressOverlayFacts>;
 	stop: () => Promise<void>;
 }
@@ -439,7 +444,8 @@ export function startBrowserHost(
 		...(options.addressOverlay?.enabled
 			? {
 					addressOverlayProbe: (
-						action: "show" | "hide" | "facts",
+						action: AddressOverlayProbeAction,
+						argument?: unknown,
 					): Promise<AddressOverlayFacts> => {
 						const probe = bindings.addressOverlayProbe;
 						if (!probe) {
@@ -447,8 +453,25 @@ export function startBrowserHost(
 								"address_overlay_unavailable: the overlay controller is not running.",
 							);
 						}
-						return probe(action);
+						return probe(action, argument);
 					},
+					/* S2's projection. Registered only with the S1 probe, because the
+					 * projection can only drive a child the probe's gate also armed. The
+					 * current attempt's handler is read through `bindings` per call, like
+					 * the probe above, so a retry cannot leave a stale controller. */
+					...(options.addressOverlay.list === true
+						? {
+								addressOverlayProject: (payload: unknown): Promise<unknown> => {
+									const project = bindings.addressOverlayProject;
+									if (!project) {
+										throw new Error(
+											"address_overlay_unavailable: the overlay controller is not running.",
+										);
+									}
+									return project(payload);
+								},
+							}
+						: {}),
 				}
 			: {}),
 		log: options.log,
@@ -729,6 +752,17 @@ async function initializeBrowserHost(
 				? new AddressOverlayController({
 						window: options.window,
 						documentUrl: options.addressOverlay.documentUrl,
+						javascript: options.addressOverlay.list === true,
+						// The only consumer of a validated row click: the owner window's own
+						// renderer. Guarded because a stop can race a queued mouse event.
+						onEvent: (event) => {
+							if (!options.window.isDestroyed()) {
+								options.window.webContents.send(
+									DEV_DRIVER_ADDRESS_OVERLAY_EVENT,
+									event,
+								);
+							}
+						},
 						log,
 						appMetrics: () =>
 							app.getAppMetrics().map((metric) => ({
@@ -1216,14 +1250,15 @@ async function initializeBrowserHost(
 		 * teaching the child about its sibling.
 		 */
 		const probeAddressOverlay = async (
-			action: "show" | "hide" | "facts",
+			action: AddressOverlayProbeAction,
+			argument?: unknown,
 		): Promise<AddressOverlayFacts> => {
 			if (!addressOverlay) {
 				throw new Error(
 					"address_overlay_unavailable: this host owns no controller.",
 				);
 			}
-			const facts = await addressOverlay.probe(action);
+			const facts = await addressOverlay.probe(action, argument);
 			const record = registry.activeTab;
 			const page = record
 				? {
@@ -1235,10 +1270,26 @@ async function initializeBrowserHost(
 				: null;
 			return { ...facts, page };
 		};
+		/**
+		 * S2's projection entry. The controller revalidates every field against its
+		 * own layout snapshot; this function only proves the host still owns one.
+		 * It returns the controller's decision, never a fabricated acceptance.
+		 */
+		const projectAddressOverlay = (payload: unknown): Promise<unknown> => {
+			if (!addressOverlay) {
+				throw new Error(
+					"address_overlay_unavailable: this host owns no controller.",
+				);
+			}
+			return addressOverlay.project(payload);
+		};
 		if (addressOverlay) {
 			// Reads the CURRENT controller through the bindings slot per call. A retry
 			// replaces the slot and no handler can keep a stale attempt's controller.
 			bindings.addressOverlayProbe = probeAddressOverlay;
+			if (options.addressOverlay?.list === true) {
+				bindings.addressOverlayProject = projectAddressOverlay;
+			}
 		}
 
 		Object.assign(bindings, {

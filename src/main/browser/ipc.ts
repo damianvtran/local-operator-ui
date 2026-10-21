@@ -5,7 +5,10 @@ import {
 	type AddressHistoryRequest,
 } from "../../shared/browser-address-history";
 import { trustedDesktopFrame } from "../desktop-transport";
-import { DEV_DRIVER_ADDRESS_OVERLAY } from "../dev-driver";
+import {
+	DEV_DRIVER_ADDRESS_OVERLAY,
+	DEV_DRIVER_ADDRESS_OVERLAY_PROJECT,
+} from "../dev-driver";
 import type { WebauthnChooser } from "../webauthn";
 import type { AddressOverlayFacts } from "./address-overlay";
 import type { BrowserHost, CloseTabsIntent } from "./host";
@@ -84,8 +87,16 @@ export interface RegisterBrowserIpcOptions {
 	 * it, so no handler holds a stale attempt's controller.
 	 */
 	addressOverlayProbe?: (
-		action: "show" | "hide" | "facts",
+		action: "show" | "hide" | "facts" | "click" | "measure" | "key",
+		argument?: unknown,
 	) => Promise<AddressOverlayFacts>;
+	/**
+	 * S2's projection handler, same lifetime and sender rules as the probe above.
+	 * Its argument is revalidated in the controller (`sanitizeProjection`), so a
+	 * renderer cannot widen what reaches the child document; absent means the
+	 * channel is not registered at all and the renderer's port latches off.
+	 */
+	addressOverlayProject?: (payload: unknown) => Promise<unknown>;
 	/** Ask the host to start again for this window (design round 1, D1a). Injected
 	 * rather than imported so this module does not reach back into `index.ts`'s
 	 * lifecycle; `index.ts` supplies the same `startBrowserHost` the app already
@@ -144,6 +155,7 @@ export const BROWSER_IPC_CHANNELS = [
 	 * (removing an unregistered handler is a no-op).
 	 */
 	DEV_DRIVER_ADDRESS_OVERLAY,
+	DEV_DRIVER_ADDRESS_OVERLAY_PROJECT,
 ] as const;
 
 export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
@@ -524,21 +536,51 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 	 * action is read.
 	 */
 	if (options.addressOverlayProbe) {
-		ipcMain.handle(DEV_DRIVER_ADDRESS_OVERLAY, (event, action: unknown) => {
-			authorizeSender(event);
-			if (action !== "show" && action !== "hide" && action !== "facts") {
-				throw new Error(
-					"address_overlay_invalid_action: expected 'show', 'hide' or 'facts'.",
-				);
-			}
-			const probe = options.addressOverlayProbe;
-			if (!probe) {
-				throw new Error(
-					"address_overlay_unavailable: the overlay probe is not running.",
-				);
-			}
-			return probe(action);
-		});
+		ipcMain.handle(
+			DEV_DRIVER_ADDRESS_OVERLAY,
+			(event, action: unknown, argument: unknown) => {
+				authorizeSender(event);
+				if (
+					action !== "show" &&
+					action !== "hide" &&
+					action !== "facts" &&
+					action !== "click" &&
+					action !== "measure" &&
+					action !== "key"
+				) {
+					throw new Error(
+						"address_overlay_invalid_action: expected 'show', 'hide', 'facts', 'click', 'measure' or 'key'.",
+					);
+				}
+				const probe = options.addressOverlayProbe;
+				if (!probe) {
+					throw new Error(
+						"address_overlay_unavailable: the overlay probe is not running.",
+					);
+				}
+				// Only the three probe-only actions read a second argument. A stray
+				// payload on show/hide/facts is DROPPED rather than carried, so the
+				// probe surface cannot grow a second meaning by accident.
+				const readsArgument =
+					action === "click" || action === "measure" || action === "key";
+				return probe(action, readsArgument ? argument : undefined);
+			},
+		);
+	}
+	if (options.addressOverlayProject) {
+		ipcMain.handle(
+			DEV_DRIVER_ADDRESS_OVERLAY_PROJECT,
+			(event, payload: unknown) => {
+				authorizeSender(event);
+				const project = options.addressOverlayProject;
+				if (!project) {
+					throw new Error(
+						"address_overlay_unavailable: the overlay projection is not running.",
+					);
+				}
+				return project(payload);
+			},
+		);
 	}
 }
 

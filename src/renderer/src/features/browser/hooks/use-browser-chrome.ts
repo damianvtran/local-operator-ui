@@ -283,9 +283,25 @@ export { browserBridgeAvailable };
  * would put a message there for a transient during a drag.
  */
 function deliverContentRect(rect: ContentRect | null): void {
+	lastDeliveredRect = rect;
 	void bridge()
 		?.setContentRect(rect)
 		.catch(() => {});
+}
+
+/**
+ * The last rectangle this renderer actually SENT main, for S2's projection echo.
+ *
+ * Main refuses a projection whose `pageRect` does not equal the layout it applied,
+ * so the mirror must echo the same value the page reporter sent rather than
+ * measuring the content element a second time: two measurements can disagree by a
+ * frame during a resize, and that disagreement would read as a stale layout. A
+ * reader after an unmount sees null, which is exactly "nowhere to paint".
+ */
+let lastDeliveredRect: ContentRect | null = null;
+
+export function lastDeliveredContentRect(): ContentRect | null {
+	return lastDeliveredRect === null ? null : { ...lastDeliveredRect };
 }
 
 export interface BrowserChrome {
