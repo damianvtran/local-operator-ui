@@ -31,7 +31,8 @@ const ROOT = process.cwd();
 /** The model bundle: no JSX, no DOM — a data URL is enough. */
 const modelBundle = await build({
 	stdin: {
-		contents: `export * from "./src/renderer/src/features/team-bridge/team-bridge-model";`,
+		contents: `export * from "./src/renderer/src/features/team-bridge/team-bridge-model";
+			export { teamBridgeDirectorySchema } from "./src/shared/team-bridge-contract";`,
 		resolveDir: ROOT,
 	},
 	bundle: true,
@@ -585,6 +586,111 @@ test("a directory failure is stated in the rail and does not blank the list", ()
 	// independent, which is the whole reason the directory has its own state.
 	assert.match(html, /data-conversation-id="bcv_dm_bea"/);
 	assert.match(html, /Bea/);
+});
+
+test("the directory schema accepts an empty or long label instead of failing the whole roster", () => {
+	// The hub keeps a membership row when its account was deleted between the
+	// membership and account reads, and the row's label is then empty; names and
+	// email fallbacks can also exceed the old 64-character cap. Either one used to
+	// throw in the array parse, which the page reports as "People could not be
+	// loaded" for every member.
+	const parsed = model.teamBridgeDirectorySchema.parse({
+		members: [
+			{
+				account_id: "acct_deleted",
+				display_label: "",
+				role: "member",
+				bridge_enabled: false,
+				bridge_state: "none",
+			},
+			{
+				account_id: "acct_long",
+				display_label: `${"A".repeat(120)} <long@example.com>`,
+				role: "member",
+				bridge_enabled: false,
+				bridge_state: "none",
+			},
+			{
+				// A future field value this client has not learned. The row is
+				// salvaged into the inert state rather than hidden.
+				account_id: "acct_unrecognized",
+				display_label: "Future",
+				role: "member",
+				bridge_enabled: false,
+				bridge_state: "unknown-state",
+			},
+			{
+				// No stable account id: genuinely unrenderable, and counted.
+				display_label: "No id",
+			},
+		],
+	});
+	assert.equal(parsed.members.length, 3);
+	assert.equal(parsed.unavailable_count, 1);
+	assert.equal(parsed.members[2].bridge_state, "none");
+	assert.equal(model.personDisplayLabel(parsed.members[0]), "acct_deleted");
+	assert.match(
+		model.personDisplayLabel(parsed.members[1]),
+		/long@example\.com/,
+	);
+});
+
+test("a payload whose every row is unrenderable says so, not 'nobody joined'", () => {
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				people: [],
+				peopleState: "ready",
+				peopleIncomplete: true,
+			}),
+		),
+	);
+	assert.match(html, /People could not be loaded/);
+	assert.doesNotMatch(html, /No one else has joined/);
+});
+
+test("a signed-out directory failure names sign-in and offers no retry", () => {
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				peopleState: "error",
+				peopleError: { status: 401 },
+			}),
+		),
+	);
+	assert.match(html, /People could not be loaded/);
+	assert.match(html, /Sign in to use Team Bridge/);
+	assert.doesNotMatch(html, /Try again/);
+});
+
+test("a plan refusal names the plan instead of offering a retry", () => {
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				peopleState: "error",
+				peopleError: { status: 403, code: "bridge_not_available" },
+			}),
+		),
+	);
+	assert.match(html, /does not include Team Bridge/);
+	assert.doesNotMatch(html, /Try again/);
+});
+
+test("a transport failure keeps Try again and says the service is unavailable", () => {
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				peopleState: "error",
+				peopleError: { status: null },
+			}),
+		),
+	);
+	assert.match(html, /not available right now/);
+	assert.match(html, /Try again/);
 });
 
 test("people loading is announced without displacing the conversation list", () => {
