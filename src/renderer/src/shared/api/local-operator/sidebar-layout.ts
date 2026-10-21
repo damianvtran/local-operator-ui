@@ -81,10 +81,9 @@ export function useSidebarLayout(canCustomise: boolean) {
 		queryFn: readSidebarLayout,
 		/*
 		 * `staleTime: Infinity`: the layout is a preference this client itself
-		 * writes, and the design contract says the read happens ONCE per mount.
-		 * React Query remounts the sidebar on route changes; a finite stale time
-		 * would spend a request per navigation on a document that cannot change
-		 * under this window (last writer wins, single-window app).
+		 * writes, so React Query must not spend a request per navigation. The read
+		 * happens at mount plus one deliberate re-read when the latest queued write
+		 * settles (`onSettled` invalidates below); nothing else refetches it.
 		 */
 		staleTime: Number.POSITIVE_INFINITY,
 		retry: retryDesktopQuery,
@@ -165,8 +164,14 @@ export function useSidebarLayout(canCustomise: boolean) {
 		},
 	});
 
-	const readSucceeded =
-		canCustomise && query.isSuccess && query.data !== undefined;
+	/*
+	 * DATA, NOT `isSuccess` (agent review round 3, R3-2). A failed BACKGROUND
+	 * refetch flips `isSuccess` to false while the last good layout is still in
+	 * `data`; keying editability off it would drop the rail to the default order
+	 * and disable customisation until a later read succeeded. The initial failed
+	 * read has no data at all, so the fail-closed contract is unchanged.
+	 */
+	const readSucceeded = canCustomise && query.data !== undefined;
 	const layout = readSucceeded ? query.data : DEFAULT_SIDEBAR_LAYOUT;
 
 	const save = (next: SidebarLayout) => {

@@ -186,8 +186,10 @@ announcement after every move.
 
 ## 7. Persistence and failure
 
-The read happens once per mount (React Query, keyed under `["desktop",
-"sidebar_layout"]`). Writes are optimistic and one per completed gesture; on
+The read happens at mount (React Query, keyed under `["desktop",
+"sidebar_layout"]`), plus ONE deliberate re-read when the latest queued write
+settles - a failed earlier save must not leave the rail showing a snapshot the
+backend does not hold. Writes are optimistic and one per completed gesture; on
 failure the previous layout is restored and a toast says the order could not be
 saved. Restarting the app re-reads the stored layout, so the arrangement
 survives: that is the acceptance test, not a local-storage side effect.
