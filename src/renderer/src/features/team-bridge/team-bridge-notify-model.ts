@@ -78,6 +78,12 @@ export type TeamBridgeNotifyCandidate = {
 	conversationName: string | null;
 	organizationName: string | null;
 	senderLabel: string | null;
+	/** What the banner's subtitle names: a DM, a group, or a channel. */
+	kind: TeamBridgeConversation["kind"];
+	/** The conversation's own name (a channel's `name`), not the derived title. */
+	name: string | null;
+	/** The server's unread count for the reader, for the "N new messages" line. */
+	unreadCount: number;
 };
 
 /**
@@ -137,13 +143,22 @@ export function isTeamBridgeMember(
 export function shouldNotifyTeamBridge(
 	conversation: Pick<
 		TeamBridgeConversation,
-		"member" | "members" | "notify" | "muted"
+		"member" | "members" | "notify" | "muted" | "builtin"
 	>,
 	selfAccountId: string | undefined,
 ): boolean {
 	return (
 		isTeamBridgeMember(conversation, selfAccountId) &&
-		notificationPreference(conversation) === "all"
+		notificationPreference(conversation) === "all" &&
+		/*
+		 * THE BUILT-IN #agents CHANNEL IS AGENT-TO-AGENT TRAFFIC. Its membership
+		 * is every enrolled chief of staff, and a person who can see it sees a
+		 * firehose of coordination they did not take part in; Slack's rule for a
+		 * busy channel is "only when mentioned". Mention parsing does not exist
+		 * yet, so "unless mentioned" is never true and the channel never raises
+		 * a banner. When mentions ship, this is the line that learns them.
+		 */
+		conversation.builtin !== "agents"
 	);
 }
 
@@ -277,6 +292,9 @@ export function planTeamBridgeNotifications(
 				input.selfAccountId,
 				input.organizations,
 			),
+			kind: conversation.kind,
+			name: conversation.name?.trim() || null,
+			unreadCount: row.unread_count,
 		});
 	}
 
