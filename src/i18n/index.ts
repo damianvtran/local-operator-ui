@@ -26,9 +26,11 @@ export type {
 	WithParams,
 	WithoutParams,
 } from "./keys.gen";
+export type { MessageRender } from "./messages";
 export {
 	clearRegisteredCatalogues,
 	registerCatalogue,
+	renderMessage,
 	t,
 	translate,
 } from "./messages";

@@ -14,6 +14,7 @@ export type {
 	LocaleState,
 	MessageKey,
 	MessageParams,
+	MessageRender,
 	WithParams,
 	WithoutParams,
 } from "../../../../i18n";
@@ -33,6 +34,7 @@ export {
 	I18N_FEATURE,
 	LANGUAGE_SETTING_KEY,
 	registerCatalogue,
+	renderMessage,
 	resolveLocale,
 	setLocale,
 	subscribeLocale,
