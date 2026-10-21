@@ -24,6 +24,7 @@ import {
 	type TeamBridgeEligibility,
 	type TeamBridgeOrganization,
 	type TeamBridgeScope,
+	agentDmContacts,
 	asTeamBridgeTenantId,
 	chronological,
 	conversationGlyph,
@@ -115,7 +116,9 @@ const PersonRow: FC<{
 	/** The conversation this row opens, when one already exists. */
 	existingDm: TeamBridgeConversation | null;
 	onOpenConversation: (conversationId: string) => void;
-	onComposeToPerson?: (member: TeamBridgeDirectoryMember) => void;
+	onOpenPerson?: (member: TeamBridgeDirectoryMember) => void;
+	/** A DM create is in flight for this row. */
+	pending?: boolean;
 }> = ({
 	member,
 	selfAccountId,
@@ -124,7 +127,8 @@ const PersonRow: FC<{
 	readOnly,
 	existingDm,
 	onOpenConversation,
-	onComposeToPerson,
+	onOpenPerson,
+	pending = false,
 }) => {
 	useI18nLocale();
 	const cueId = useId();
@@ -225,8 +229,9 @@ const PersonRow: FC<{
 				onClick={() =>
 					existingDm
 						? onOpenConversation(existingDm.id)
-						: onComposeToPerson?.(member)
+						: onOpenPerson?.(member)
 				}
+				aria-busy={pending || undefined}
 				aria-label={
 					paused
 						? t("ui.teamBridge.people.message_paused", {
@@ -245,6 +250,9 @@ const PersonRow: FC<{
 				<span className="min-w-0 flex-1 truncate">
 					{personDisplayLabel(member)}
 				</span>
+				{pending && (
+					<Spinner size="sm" label={t("ui.teamBridge.people.loading")} />
+				)}
 				{role}
 				{paused && (
 					<span className="shrink-0 text-meta-sm text-ink-dim">
@@ -316,7 +324,9 @@ const PeopleSection: FC<{
 	conversations: readonly TeamBridgeConversation[];
 	onSelect: (conversationId: string) => void;
 	onRetry?: () => void;
-	onComposeToPerson?: (member: TeamBridgeDirectoryMember) => void;
+	onOpenPerson?: (member: TeamBridgeDirectoryMember) => void;
+	pendingPersonId?: string | null;
+	startError?: boolean;
 }> = ({
 	scope,
 	people,
@@ -330,7 +340,9 @@ const PeopleSection: FC<{
 	conversations,
 	onSelect,
 	onRetry,
-	onComposeToPerson,
+	onOpenPerson,
+	pendingPersonId = null,
+	startError = false,
 }) => {
 	useI18nLocale();
 	const merged = scope === TEAM_BRIDGE_ALL_SCOPE;
@@ -381,10 +393,16 @@ const PeopleSection: FC<{
 								selfAccountId,
 							)}
 							onOpenConversation={onSelect}
-							onComposeToPerson={onComposeToPerson}
+							onOpenPerson={onOpenPerson}
+							pending={pendingPersonId === member.account_id}
 						/>
 					))}
 				</ul>
+			)}
+			{startError && (
+				<p role="alert" className="px-2 pt-1 text-[12px] text-danger">
+					{t("ui.teamBridge.create.error")}
+				</p>
 			)}
 		</section>
 	);
@@ -725,11 +743,14 @@ export type TeamBridgePageViewProps = {
 	/** Retry the directory read behind the People section. */
 	onRetryPeople?: () => void;
 	/**
-	 * Open the new-conversation flow pre-seeded to a DM with this person. The
-	 * view resolves an existing DM itself and selects it instead; this is only
-	 * the no-DM path.
+	 * Open a person's DM. The view selects an existing row itself; this is the
+	 * no-DM path, which creates the DM in the background.
 	 */
-	onComposeToPerson?: (member: TeamBridgeDirectoryMember) => void;
+	onOpenPerson?: (member: TeamBridgeDirectoryMember) => void;
+	/** The person whose DM is being started in the background. */
+	pendingPersonId?: string | null;
+	/** The last person-initiated DM create failed. */
+	personStartError?: boolean;
 	/**
 	 * The bridge's eligibility verdict. Non-null replaces the whole page with
 	 * the plan/sign-in panel: an ineligible user must not see conversation or
@@ -779,7 +800,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	peopleError,
 	peopleIncomplete = false,
 	onRetryPeople,
-	onComposeToPerson,
+	onOpenPerson,
+	pendingPersonId = null,
+	personStartError = false,
 	eligibility = null,
 	gatePending = false,
 	readOnly = false,
@@ -796,6 +819,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const ordered = useMemo(() => chronological(messages), [messages]);
 
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
+	const agentContacts = mergedView
+		? []
+		: agentDmContacts(conversations, people);
 	const selectedLastMessage = selected?.last_message_at
 		? relative(selected.last_message_at, locale)
 		: "";
@@ -989,8 +1015,48 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						conversations={conversations}
 						onSelect={onSelect}
 						onRetry={onRetryPeople}
-						onComposeToPerson={onComposeToPerson}
+						onOpenPerson={onOpenPerson}
+						pendingPersonId={pendingPersonId}
+						startError={personStartError}
 					/>
+					{!mergedView && agentContacts.length > 0 && (
+						<section
+							aria-labelledby="team-bridge-agents-heading"
+							className="px-1 pb-3"
+						>
+							<h2
+								id="team-bridge-agents-heading"
+								className="px-2 pb-1 pt-3 text-meta font-medium tracking-wide text-ink-dim"
+							>
+								{t("ui.teamBridge.member.agent")}
+							</h2>
+							<ul className="flex flex-col">
+								{agentContacts.map((contact) => (
+									<li key={contact.conversationId + contact.label}>
+										<button
+											type="button"
+											data-team-bridge-agent-contact={contact.accountId}
+											onClick={() => onSelect(contact.conversationId)}
+											aria-label={t("ui.teamBridge.people.message", {
+												name: contact.label,
+											})}
+											className="flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-left text-[13px] text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+										>
+											<span
+												aria-hidden="true"
+												className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent-wash text-accent"
+											>
+												<Bot size={12} />
+											</span>
+											<span className="min-w-0 flex-1 truncate">
+												{contact.label}
+											</span>
+										</button>
+									</li>
+								))}
+							</ul>
+						</section>
+					)}
 				</ScrollArea>
 			</aside>
 
@@ -1388,14 +1454,15 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	 * survives only while the create dialog is open: closing (or creating)
 	 * clears it, so the next "New conversation" press starts blank.
 	 */
-	const [composeTo, setComposeTo] = useState<{
-		accountId: string;
-		displayLabel: string;
-	} | null>(null);
 	const [selectedId, setSelectedId] = useState<string | null>(
 		() => requestedConversation,
 	);
 	const [createOpen, setCreateOpen] = useState(false);
+	// A direct DM starts on click: the row is busy for the one create round trip,
+	// then the thread is selected. No dialog stands between the person and the
+	// composer.
+	const [pendingPersonId, setPendingPersonId] = useState<string | null>(null);
+	const [personStartError, setPersonStartError] = useState(false);
 	const conversations = list.data?.conversations ?? [];
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
 
@@ -1427,7 +1494,6 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		setScope(next);
 		setSelectedId(null);
 		setCreateOpen(false);
-		setComposeTo(null);
 	};
 
 	// The memberships resolve after the first paint; adopt the only one unless
@@ -1479,6 +1545,67 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	const create = useCreateTeamBridgeConversation(
 		scope === TEAM_BRIDGE_ALL_SCOPE ? undefined : scope,
 	);
+
+	/*
+	 * PEOPLE ARE DESTINATIONS, NOT A FORM. A click opens the existing DM when
+	 * there is one; otherwise it creates the DM in the background and selects
+	 * it as soon as the server returns the row. The new-conversation dialog is
+	 * still the path for groups and channels, but a person never needs it.
+	 */
+	const openPerson = (member: TeamBridgeDirectoryMember) => {
+		const existing = dmWithPerson(
+			conversations,
+			member.account_id,
+			selfAccountId,
+		);
+		if (existing) {
+			setSelectedId(existing.id);
+			return;
+		}
+		if (readOnly || pendingPersonId !== null) return;
+		setPendingPersonId(member.account_id);
+		setPersonStartError(false);
+		create.mutate(
+			{
+				kind: "dm",
+				visibility: "private",
+				agentCapable: false,
+				members: [
+					{
+						account_id: member.account_id,
+						kind: "human",
+						display_label: personDisplayLabel(member),
+					},
+				],
+			},
+			{
+				onSuccess: (created) => {
+					setPendingPersonId(null);
+					const conversation = created as { id?: string };
+					if (conversation.id) setSelectedId(conversation.id);
+				},
+				onError: () => {
+					setPendingPersonId(null);
+					// A duplicate DM (another click, another window) arrives as a
+					// refusal even though the destination exists. Re-read the list and
+					// land on the row instead of leaving the person with an error.
+					void list.refetch().then((result) => {
+						const created = dmWithPerson(
+							result.data?.conversations ?? [],
+							member.account_id,
+							selfAccountId,
+						);
+						if (created) {
+							setPersonStartError(false);
+							setSelectedId(created.id);
+						} else {
+							setPersonStartError(true);
+						}
+					});
+				},
+			},
+		);
+	};
 	const markRead = useMarkTeamBridgeRead(
 		selected?.id ?? "",
 		selected?.tenant_id,
@@ -1566,7 +1693,6 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				}}
 				onNewConversation={() => {
 					if (readOnly) return;
-					setComposeTo(null);
 					setCreateOpen(true);
 				}}
 				people={directory.data?.members ?? []}
@@ -1582,13 +1708,9 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				onRetryPeople={() => {
 					void directory.refetch();
 				}}
-				onComposeToPerson={(member) => {
-					setComposeTo({
-						accountId: member.account_id,
-						displayLabel: personDisplayLabel(member),
-					});
-					setCreateOpen(true);
-				}}
+				onOpenPerson={openPerson}
+				pendingPersonId={pendingPersonId}
+				personStartError={personStartError}
 				eligibility={eligibility}
 				gatePending={gatePending}
 				readOnly={readOnly}
@@ -1603,18 +1725,15 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			/>
 			<TeamBridgeCreateDialog
 				open={createOpen}
-				seed={composeTo}
 				pending={create.isPending}
 				error={create.isError ? t("ui.teamBridge.create.error") : undefined}
 				onClose={() => {
 					setCreateOpen(false);
-					setComposeTo(null);
 				}}
 				onCreate={(input) => {
 					create.mutate(input, {
 						onSuccess: (created) => {
 							setCreateOpen(false);
-							setComposeTo(null);
 							const conversation = created as { id?: string };
 							if (conversation.id) setSelectedId(conversation.id);
 						},

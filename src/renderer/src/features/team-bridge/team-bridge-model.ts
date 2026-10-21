@@ -626,3 +626,49 @@ export function showsPersonRole(role: string): boolean {
 export function personInitial(displayLabel: string): string {
 	return displayLabel.trim().charAt(0).toUpperCase() || "?";
 }
+
+/**
+ * The agent members this reader already has a DM with, labelled for the rail.
+ *
+ * An agent member's `account_id` is its owner's account (the server validates
+ * the named endpoint against that account), so the owner label can be joined
+ * from the same People directory without a second identity source. Only DMs are
+ * returned: an agent seen in a channel is a participant there, not a direct
+ * destination. If the label already carries the owner, it is left alone.
+ */
+export type TeamBridgeAgentContact = {
+	accountId: string;
+	label: string;
+	conversationId: string;
+};
+
+export function agentDmContacts(
+	conversations: readonly TeamBridgeConversation[],
+	people: readonly TeamBridgeDirectoryMember[],
+): TeamBridgeAgentContact[] {
+	const ownerLabels = new Map(
+		people.map((person) => [person.account_id, person.display_label]),
+	);
+	const seen = new Set<string>();
+	const contacts: TeamBridgeAgentContact[] = [];
+	for (const conversation of conversations) {
+		if (conversation.kind !== "dm") continue;
+		for (const member of conversation.members) {
+			if (member.kind !== "agent" || member.state !== "active") continue;
+			const key = `${member.account_id}:${member.display_label}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			const owner = ownerLabels.get(member.account_id);
+			const label =
+				owner && !member.display_label.includes(`(${owner})`)
+					? `${member.display_label} (${owner})`
+					: member.display_label;
+			contacts.push({
+				accountId: member.account_id,
+				label,
+				conversationId: conversation.id,
+			});
+		}
+	}
+	return contacts;
+}
