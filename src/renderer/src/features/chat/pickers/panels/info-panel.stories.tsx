@@ -32,11 +32,12 @@
  * - `RemoteHost` is the label that keeps the panel honest when the backend is
  *   not on this machine: the host facts describe the machine the app is
  *   CONNECTED TO, which is why section 2's meta says exactly that.
- * - `StoredWithStopRecorded` and `StoredWithoutStopRecorded` are a stopped
- *   session's two endings: an age plus the core's own stop token, and last
- *   activity alone when no stop was recorded. A stored row's stamps are epoch
- *   seconds, so the pair is also what proves an age is painted rather than a
- *   56-year duration.
+ * - The `Stored*` frames are the stored row's readings, all four: a recorded
+ *   stop with its raw token (`StoredWithStopRecorded`), last activity alone
+ *   (`StoredWithoutStopRecorded`), the core's long measured reason
+ *   (`StoredLongStopReason`) and no stamp at all (`StoredUnknownAge`). Stored
+ *   stamps are epoch seconds, so these are also what proves an age is painted
+ *   rather than a 56-year duration.
  * - `MCP` counts come from the live `mcp_servers`, never from `env.mcp_*`: those
  *   are empty defaults on this payload and would paint a confident zero.
  */
@@ -430,7 +431,8 @@ export const StoredWithStopRecorded: Story = {
  * It is the counter-frame to `StoredWithStopRecorded`: the backend that does not
  * record a stop (or has not yet) must not get a `stopped` line painted from a
  * missing stamp. `null` here, not an absent field, because that is what the
- * newer backend sends for a session it never saw stop.
+ * newer backend sends for a session it never saw stop: `stopped_at_s: null` with
+ * the empty token, which is the core's own no-record spelling.
  */
 export const StoredWithoutStopRecorded: Story = {
 	args: {
@@ -443,7 +445,7 @@ export const StoredWithoutStopRecorded: Story = {
 						? {
 								...line,
 								stopped_at_s: null,
-								stop_reason: null,
+								stop_reason: "",
 								stop_requested: null,
 							}
 						: line,
@@ -453,6 +455,68 @@ export const StoredWithoutStopRecorded: Story = {
 		frontend,
 	},
 	/* The stored row is the third line of section 3, below the fold (D2). */
+	play: () => scrollPanelToSection("Sessions on this machine"),
+};
+
+/**
+ * The LONG stop reason: the core records a measured clause as well as the token.
+ *
+ * `idle-exit (busy probe unusable for 14 samples: ps exited 1: operation not
+ * permitted)` is the core's real long shape (`process._idle_exit_reason`, as the
+ * design round 1 probe reported it), and its length is the point: it wraps the
+ * Activity cell, and the separator has to survive that wrap without a dangling
+ * `·` (design round 1, D7). The reason is printed as recorded; no rewriting
+ * happens here.
+ */
+export const StoredLongStopReason: Story = {
+	args: {
+		...base,
+		data: info({
+			sessions: {
+				...info().sessions,
+				lines: info().sessions.lines.map((line) =>
+					line.state === "stored"
+						? {
+								...line,
+								stop_reason:
+									"idle-exit (busy probe unusable for 14 samples: ps exited 1: operation not permitted)",
+							}
+						: line,
+				),
+			},
+		}),
+		frontend,
+	},
+	play: () => scrollPanelToSection("Sessions on this machine"),
+};
+
+/**
+ * No stamp at all: `unknown`, which is the absence of a reading and not `0s`.
+ *
+ * It is the state an older backend's row, or a transcript whose mtime could not
+ * be read, lands in. `stop_reason: ""` is the core's no-record spelling beside
+ * `stopped_at_s: null`, so the row must say neither "stopped" nor an age.
+ */
+export const StoredUnknownAge: Story = {
+	args: {
+		...base,
+		data: info({
+			sessions: {
+				...info().sessions,
+				lines: info().sessions.lines.map((line) =>
+					line.state === "stored"
+						? {
+								...line,
+								last_activity_s: null,
+								stopped_at_s: null,
+								stop_reason: "",
+							}
+						: line,
+				),
+			},
+		}),
+		frontend,
+	},
 	play: () => scrollPanelToSection("Sessions on this machine"),
 };
 

@@ -319,9 +319,27 @@ export function stampAge(
 	stamp: number | null | undefined,
 	nowS: number = Date.now() / 1000,
 ): string | null {
-	if (stamp === null || stamp === undefined) return null;
+	/*
+	 * `0` is the never-recorded spelling, not 1970: a transcript mtime of zero
+	 * means the core had no stamp to send, and formatting it as a duration is
+	 * the same 56-year lie this helper exists to remove (`0` rendered
+	 * `20747d 5h ago`, design round 1 D6). A stamp in the FUTURE is different:
+	 * that is a real reading skewed by a clock, so it stays a clamp to `0s`.
+	 */
+	if (stamp === null || stamp === undefined || stamp <= 0) return null;
 	return formatDuration(nowS - stamp);
 }
+
+/**
+ * The separator between a stored row's stop age and its reason.
+ *
+ * NON-BREAKING spaces on both sides: with a plain ` · ` the stop sentence wraps
+ * at 768 px and leaves a dangling `·` at the end of the first line, with the
+ * reason starting the next (design round 1, D7). Gluing the token to the words
+ * on either side moves the break to a normal space before `reason:`, which is
+ * where prose breaks anyway.
+ */
+const CLAUSE_SEPARATOR = "\u00A0·\u00A0";
 
 /**
  * Section 3's table rows.
@@ -349,17 +367,22 @@ export function sessionLineRows(
 		/*
 		 * A recorded stop outranks "last active": it is the fact the reader came
 		 * for, and last activity alone cannot separate a session that was closed
-		 * from one that merely fell out of the registry. The reason is printed
-		 * RAW — this repository has no table of the core's stop tokens, and
-		 * inventing one here would be a second vocabulary for a value the backend
-		 * owns (`idle-exit` is what its log line says).
+		 * from one that merely fell out of the registry.
+		 *
+		 * The reason is printed RAW and LABELLED. Raw, because this repository
+		 * has no table of the core's stop tokens and inventing one would be a
+		 * second vocabulary for a backend-owned value (`idle-exit` is what its
+		 * log line says; the long shape carries a measured clause). Labelled,
+		 * because the token alone reads as engineer vocabulary in a user-facing
+		 * cell (design round 1, D2) — `reason:` says what the token is without
+		 * changing it.
 		 */
 		const stopLine =
 			stoppedAge === null
 				? null
 				: stopReason === null
 					? `stopped ${stoppedAge} ago`
-					: `stopped ${stoppedAge} ago · ${stopReason}`;
+					: `stopped ${stoppedAge} ago${CLAUSE_SEPARATOR}reason: ${stopReason}`;
 		const markers: SessionLineRow["markers"] = [];
 		if (line.session_id === thisSessionId) {
 			markers.push({ label: "this session", tone: "neutral" });
@@ -381,11 +404,18 @@ export function sessionLineRows(
 			 * session would read as running, and a stop line on a LIVE row would
 			 * claim an end that has not happened, so the stopped spelling is gated on
 			 * `state === "stored"` as well as on the stamp.
+			 *
+			 * The last-active spelling carries its own label for the same reason the
+			 * reason does: `1h 11m ago` beside `stopped 1h 10m ago` is two durations
+			 * with no visible difference in kind, so a SIGKILLed session — one with
+			 * no stop record — would read as stopped (design round 1, D1).
 			 */
 			uptime:
 				line.state === "stored"
 					? (stopLine ??
-						(lastActive === null ? UNKNOWN_WORD : `${lastActive} ago`))
+						(lastActive === null
+							? UNKNOWN_WORD
+							: `last active ${lastActive} ago`))
 					: formatDuration(line.uptime_s),
 			memory: formatBytes(line.footprint_bytes ?? line.rss_bytes),
 			markers,
