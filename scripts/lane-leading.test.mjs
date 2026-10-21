@@ -1,39 +1,36 @@
 /**
- * The shell lane's band, and the hand-over a route-owned leading column makes.
+ * The shell's top edge: one transparent lane, panels that own their ground.
  *
- * WHY THIS EXISTS AT ALL. The operator reported one defect twice - "for sub-views
- * like the settings page, the sidebar and view doesn't go all the way to the top"
- * (2026-09-26) and "Same issue with agents and teams" (2026-09-27) - and the fix
- * for the first report (#535, which stood the route band down where the lane is
- * drawn) was in the tree on both days. What the second report was about is the
- * OTHER half: the lane's band is a MIRROR of the columns' grounds, it knows only
- * the app sidebar's width, and a route that draws a leading column of its own
- * (the settings rail, the agents list pane) therefore gets the content ground
- * painted over its width. So the mechanism here is a hand-over - a route gives
- * the shell the element that is its leading column, and the band is measured off
- * it - and this file is what keeps the three call sites from drifting apart.
+ * WHY THIS EXISTS. The operator reported the same seam three times - "for
+ * sub-views like the settings page, the sidebar and view doesn't go all the way
+ * to the top" (2026-09-26), "Same issue with agents and teams" (2026-09-27),
+ * and the Library right-hand dock starting 32px down (2026-10-20). The first
+ * two rounds kept the shell's lane as a RESERVED ROW and taught the lane to
+ * paint a mirror of each column's ground; the third route opt-in (`flushTop`)
+ * lifted a route's columns over that row. The mirror could only ever know the
+ * columns it was told about, and the opt-in is what left every other route -
+ * and every panel that was not a leading column - 32px down.
  *
- * WHAT IT PROVES, AND WHAT IT CANNOT. It reads source text: each route still
- * passes a `ref` from `useLaneLeadingColumn` to its column, the marker is still
- * written by that hook rather than spelled beside it where the two could separate,
- * the marker's VALUE is the rung the lane must paint across the column's width
- * (`surface` on every column — the settings rail was re-grounded flat on
- * 2026-09-30 after a round on `elevated`; the two agent rosters were already
- * `surface`), the file each column is painted in still carries that same rung's
- * `bg-<ground>` (so the value and the paint fail together - review round 1, M1),
- * and the band is still derived from the measured edge rather than from
- * the sidebar's width alone. The columns draw no right rule any more: the
- * operator's report of 2026-09-27 - "the right border doesn't go all the way up
- * ... either make it extend all the way up or remove the right border" - is
- * answered with the removal, because every boundary those rules drew is a tone
- * step now (the rail's `surface` against the `canvas` content, the rosters'
- * `surface` against the same content), and a rule over a tone step is the
- * redundant second mark this fleet removes (#564 took the dock's leading rule for
- * the same reason). It does NOT prove the lane reaches the column on screen -
- * that is geometry, and `--scene route-tops` measures it in the running app (the
- * readings the fix was built on: the band stopped at 260 against a rail ending at
- * 480 and a list pane ending at 516). The pair is deliberate: this one runs on
- * every PR without a window, the scene needs a built app and a backend.
+ * THE CONTRACT THIS FILE PINS:
+ *   1. The lane is ONE absolute, transparent overlay for every route. It
+ *      reserves no height and paints no ground. The drag surface and the
+ *      `data-slot-edge` geometry handle are all that remain on it.
+ *   2. A full-height panel reaches y0 and paints its own ground through the
+ *      strip. Two utilities in `styles/index.css` state it once: `panel-flush`
+ *      (a route root that cancels the shell's ordinary-content pad) and
+ *      `panel-top-pad` (a panel column whose first row starts below the strip).
+ *   3. A route's first content row is never under y32 on macOS: ordinary pages
+ *      get the shell's single pad on `<main>`; panels pad their own columns.
+ *   4. A scroll region clips at the panel's content edge, so its pad must sit
+ *      OUTSIDE the scroller, never on it.
+ *
+ * WHAT A TEXT SWEEP CAN AND CANNOT PROVE. It proves the source shape - one
+ * lane, no route opt-in, every migrated panel wearing the shared utility and
+ * the ground it paints. It cannot prove pixels; that is the captured frames
+ * (`docs/evidence-frames/panel-titlebar-seam/`, 1280x900 at strip 32: dock,
+ * rail and page root at y0, every pixel at y8 a panel's own ground) and the
+ * `route-tops` scene. The pair is deliberate: this runs on every PR without a
+ * window.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -42,184 +39,252 @@ import { test } from "node:test";
 const ROOT = process.cwd();
 const readSource = (path) => readFileSync(`${ROOT}/${path}`, "utf8");
 
-/**
- * The legacy roster's drawable box - the pane the wrapper hands over, where
- * that route's right rule used to live, and the file its ground is painted in.
- * Kept beside the list (and above it, since the list names it) because the rule
- * sweep has to follow the element rather than the file that wraps it.
- */
 const AGENTS_SIDEBAR =
 	"src/renderer/src/features/agents/components/agents-sidebar.tsx";
+const LIBRARY_PAGE =
+	"src/renderer/src/features/library/components/library-page.tsx";
 
 /**
- * Every route that draws a leading column of its own, the element it hands
- * over, the rung it stands on, and the file its box is PAINTED in. The list is
- * the sweep the operator asked for, not the two views he screenshotted: a route
- * added to this list without the hand-over fails below, and `agents-page.tsx` /
- * `legacy-agents-page.tsx` are two separate components that draw the SAME
- * roster - which is exactly how a fix carried by one fails to reach the other.
- * The ground is part of each entry because the hand-over now NAMES it: the lane
- * paints that role across the column's width, so a route that moves its column
- * without moving its ground (or the reverse) is the drift this list exists to
- * catch. `paintedBy` is the file the box's ground lives in - the same file for
- * `/agents`, where the ref sits on the painted `<aside>` itself, and one hop
- * further out for the settings rail and the legacy roster, whose wrappers hand
- * over the component whose ROOT box is painted - so the handed value and the
- * painted class are read together and fail together (review round 1, M1).
+ * Every full-height panel that has to paint through the strip, the file it is
+ * defined in, and the class list that proves it. The list is the migration the
+ * operator asked for, not only the screenshot: the app sidebar, the shell's
+ * pane rail, every right-slot occupant, the Library rail/header/dock, the
+ * settings rail, both agents rosters, Team Bridge's two columns and the browser
+ * route. A panel added later without the utility fails here rather than in a
+ * screenshot review.
  */
-const LEADING_COLUMN_ROUTES = [
+const PANEL_COLUMNS = [
 	{
-		path: "src/renderer/src/features/settings/components/settings-page.tsx",
-		ground: "surface",
-		paintedBy:
-			"src/renderer/src/features/settings/components/settings-sidebar.tsx",
+		path: "src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
+		classes: [
+			'className="panel-top-pad group/sidebar flex h-full min-h-0 flex-col items-center bg-surface"',
+			'className="panel-top-pad group/sidebar flex h-full min-h-0 flex-col overflow-hidden bg-surface"',
+		],
+	},
+	{
+		path: "src/renderer/src/shared/components/common/chat-layout.tsx",
+		classes: ['className="panel-top-pad h-full shrink-0 bg-surface"'],
+	},
+	{
+		path: "src/renderer/src/features/chat/components/canvas/index.tsx",
+		classes: [
+			'className={cn("panel-top-pad flex h-full flex-col bg-elevated")}',
+		],
+	},
+	{
+		path: "src/renderer/src/features/chat/components/asks/ask-drawer.tsx",
+		classes: [
+			'className={cn("panel-top-pad flex h-full flex-col bg-elevated")}',
+		],
+	},
+	{
+		path: "src/renderer/src/features/chat/components/run-details/run-panel.tsx",
+		classes: [
+			'className={cn("panel-top-pad flex h-full flex-col bg-elevated")}',
+		],
+	},
+	{
+		path: "src/renderer/src/features/browser/components/browser-pane.tsx",
+		classes: [
+			'"panel-top-pad flex h-full flex-col bg-elevated @container/bpane"',
+		],
+	},
+	{
+		path: "src/renderer/src/features/console/components/console-pane.tsx",
+		classes: [
+			'className={cn("panel-top-pad flex h-full flex-col bg-elevated")}',
+			'"panel-top-pad relative flex h-full flex-col bg-elevated @container/consolepane"',
+		],
+	},
+	{
+		path: LIBRARY_PAGE,
+		classes: [
+			'className="panel-top-pad flex h-full w-48 shrink-0 flex-col overflow-hidden bg-surface"',
+			'className="panel-top-pad flex min-w-0 flex-1 flex-col"',
+			'className="panel-top-pad flex h-full w-[448px] shrink-0 bg-surface"',
+			'className="panel-top-pad min-w-0 flex-1"',
+			'className="panel-top-pad hidden h-full w-[448px] shrink-0 items-start justify-center bg-surface p-8 lg:flex"',
+		],
+	},
+	{
+		path: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
+		classes: [
+			'className="panel-top-pad flex h-full w-full flex-col overflow-hidden bg-surface"',
+		],
 	},
 	{
 		path: "src/renderer/src/features/agents/components/agents-page.tsx",
-		ground: "surface",
-		paintedBy: "src/renderer/src/features/agents/components/agents-page.tsx",
+		classes: [
+			'className="panel-top-pad flex w-72 shrink-0 flex-col gap-3 bg-surface px-4 pb-4 max-[999px]:data-[open=true]:hidden"',
+			'className="panel-top-pad flex min-w-0 flex-1 flex-col"',
+		],
 	},
 	{
-		path: "src/renderer/src/features/agents/components/legacy-agents-page.tsx",
-		ground: "surface",
-		paintedBy: AGENTS_SIDEBAR,
+		path: AGENTS_SIDEBAR,
+		classes: [
+			'className="panel-top-pad flex h-full w-full flex-col overflow-hidden bg-surface"',
+		],
 	},
 	{
-		path: "src/renderer/src/features/library/components/library-page.tsx",
-		ground: "surface",
-		paintedBy: "src/renderer/src/features/library/components/library-page.tsx",
+		path: "src/renderer/src/features/team-bridge/team-bridge-page.tsx",
+		classes: [
+			'className="panel-top-pad flex w-72 shrink-0 flex-col"',
+			'className="panel-top-pad flex min-w-0 flex-1 flex-col bg-surface"',
+		],
 	},
 ];
 
-test("every route that draws a leading column hands it to the shell", () => {
-	for (const { path, ground } of LEADING_COLUMN_ROUTES) {
+test("every full-height panel owns the strip and pads its own first row", () => {
+	for (const { path, classes } of PANEL_COLUMNS) {
 		const source = readSource(path);
-		assert.match(
-			source,
-			/useLaneLeadingColumn/,
-			`${path} must take the shell's hand-over hook: a leading column nobody hands over keeps the lane's ground painted across its width, which is the defect this exists to stop`,
-		);
-		assert.match(
-			source,
-			new RegExp(`useLaneLeadingColumn\\(\\s*"${ground}"\\s*\\)`),
-			`${path} must hand its column over on the rung it actually stands on ("${ground}"): the lane paints the ground the marker names across the column's width, so a stale value paints the wrong rung from y0 down - the same class of defect, one layer up`,
-		);
-		assert.match(
-			source,
-			/ref=\{laneLeadingColumn\}/,
-			`${path} must attach the hand-over's ref to the column element itself: a hook call with no ref measures nothing`,
+		for (const literal of classes) {
+			assert.ok(
+				source.includes(literal),
+				`${path} lost a migrated panel: expected ${literal}. A panel that does not wear panel-top-pad starts its first row under the traffic lights, and one that paints from y32 leaves the wrong ground in the strip - the seam the operator reported three times`,
+			);
+		}
+	}
+});
+
+test("the panel root utility is the only way a route reaches y0", () => {
+	/*
+	 * The roots are asserted separately from the columns because they do a
+	 * different job: they cancel the shell's `<main>` pad so the panel's own
+	 * ground can paint from y0, and their columns pad themselves. A root that
+	 * keeps `h-full` without `flex-1` loses the 32px at the BOTTOM (the negative
+	 * margin is compensated by the grow), which is a bottom seam nobody has
+	 * photographed yet.
+	 */
+	const roots = [
+		{
+			path: LIBRARY_PAGE,
+			literal:
+				'className="panel-flush flex min-h-0 flex-1 overflow-hidden bg-canvas"',
+		},
+		{
+			path: "src/renderer/src/features/settings/components/settings-page.tsx",
+			literal:
+				'className="panel-flush flex min-h-0 flex-1 overflow-hidden bg-canvas"',
+		},
+		{
+			path: "src/renderer/src/features/agents/components/agents-page.tsx",
+			literal: 'className="panel-flush flex min-h-0 flex-1 bg-canvas text-ink"',
+		},
+		{
+			path: "src/renderer/src/features/agents/components/legacy-agents-page.tsx",
+			literal: 'className="panel-flush flex min-h-0 flex-1 overflow-hidden"',
+		},
+		{
+			path: "src/renderer/src/features/team-bridge/team-bridge-page.tsx",
+			literal:
+				'className="panel-flush flex min-h-0 flex-1 w-full overflow-hidden bg-canvas"',
+		},
+		{
+			path: "src/renderer/src/features/browser/components/browser-surface.tsx",
+			literal:
+				'"panel-flush flex min-h-0 flex-1 flex-col bg-elevated outline-none!"',
+		},
+	];
+	for (const { path, literal } of roots) {
+		assert.ok(
+			readSource(path).includes(literal),
+			`${path} lost its flush root (${literal}): without it the page starts at the shell's ordinary-content pad and its own ground cannot reach y0`,
 		);
 	}
 });
 
-test("the box a route hands over is painted in the ground it names", () => {
+test("the Library dock and rail are the measured panels, and the dock scrolls inside its pad", () => {
+	const page = readSource(LIBRARY_PAGE);
 	/*
-	 * THE PAINTED GROUND AND THE HANDED VALUE FAIL TOGETHER (review round 1,
-	 * M1). The sweep read the hand-over file per route - and `agents-sidebar.tsx`
-	 * only for rule spellings - so re-grounding the painting box alone passed
-	 * every gate and was caught only by the `route-tops` scene, which needs a
-	 * built app and a backend. What a text sweep can resolve is the FILE the box
-	 * is painted in, named per entry above, and the class is read there in its
-	 * className form so a box's own ground is what is asserted: the rail's
-	 * `bg-surface` root, the rosters' `bg-surface` boxes. The token is exact
-	 * (review round 2's nit): a slash form (`bg-surface/50`) is a wash OF the
-	 * rung, not the rung, and the lookahead refuses it. A file that loses the
-	 * class, or a value the file never paints, fails on this line instead of on a
-	 * review of two files that were each moved alone.
-	 */
-	for (const { path, ground, paintedBy } of LEADING_COLUMN_ROUTES) {
-		assert.match(
-			readSource(paintedBy),
-			new RegExp(`className="[^"]*(?<![:\\w-])bg-${ground}(?![\\w/-])[^"]*"`),
-			`${paintedBy} no longer paints the ground ${path} hands over ("${ground}") as a box's own className: the value and the paint are one decision, and a re-grounding that moves only one of them paints the wrong rung from y0 down - the same drift this list exists to catch`,
-		);
-	}
-});
-
-test("the marker and the registration are one thing", () => {
-	const layout = readSource(
-		"src/renderer/src/shared/components/common/chat-layout.tsx",
-	);
-	/*
-	 * The attribute is what a rig reads the column by and what the hook registers;
-	 * spelled in a route's JSX it could be added to an element the shell was never
-	 * handed, and the rig would then describe a column the band does not know about.
-	 * So the only writer is the hook.
+	 * THE ONE SCROLLER THAT COULD REINTRODUCE THE SEAM: the dock is a fixed
+	 * header plus a scrolling viewer. Its pad must sit on the ASIDE (outside the
+	 * scroller). A `panel-top-pad` on the viewer's own class list would clip at
+	 * its padding BOX, so scrolled text could paint through the strip - the
+	 * scroll pair the operator asked to be photographed.
 	 */
 	assert.match(
-		layout,
-		/column\.setAttribute\(LANE_LEADING_COLUMN, ground\)/,
-		"the hand-over hook writes the marker itself, with the ground it was handed",
+		page,
+		/data-library-rail=""[\s\S]{0,400}?className="panel-top-pad[^"]*bg-surface"/,
+		"the Library rail must be a panel: `surface` from y0, rows below the strip",
 	);
-	/*
-	 * GATED ON A SHELL (review round 1, N1): the marker's one meaning is "this
-	 * element was handed to the shell", so its write is conditioned on a `register`
-	 * existing - a route rendered outside the shell (a story) must mark nothing. The
-	 * match is whitespace-tolerant for the same reason `chat-sidebar-selection`'s
-	 * anchor read now is: what is asserted is the gate, not the line break a format
-	 * pass may put inside it.
-	 */
 	assert.match(
-		layout,
-		/if \(\s*(?:column\s*&&\s*register|register\s*&&\s*column)\s*\)[\s\S]{0,80}?setAttribute\(\s*LANE_LEADING_COLUMN, ground\s*\)/,
-		"the hand-over hook writes the marker only while a shell (`register`) is there to hand the column to: written from outside the shell, the marker describes a hand-over that never happened",
+		page,
+		/data-library-page=""/,
+		"the Library page root must stay marked for the geometry rigs",
+	);
+	const asideStart = page.indexOf('aria-label={t("ui.library.page.preview")}');
+	assert.notEqual(asideStart, -1);
+	const aside = page.slice(
+		page.lastIndexOf("<aside", asideStart),
+		page.indexOf(">", asideStart),
+	);
+	assert.match(
+		aside,
+		/panel-top-pad/,
+		"the dock aside must carry the pad itself, so its scroller begins at the panel's content edge",
 	);
 	assert.doesNotMatch(
-		layout.replace(/column\.setAttribute\([^)]*\)/, ""),
-		/data-lane-leading-column=/,
-		"nothing else may spell the marker out: two writers is how the attribute and the registration separate",
+		page.slice(
+			page.indexOf("<LibraryPreview"),
+			page.indexOf("/>", page.indexOf("<LibraryPreview")),
+		),
+		/panel-top-pad/,
+		"the pad must not move into the preview: the panel owns the strip, the viewer owns only its scroll",
 	);
-	for (const { path } of LEADING_COLUMN_ROUTES) {
-		assert.doesNotMatch(
-			readSource(path),
-			/data-lane-leading-column=/,
-			`${path} must not spell the marker itself - it comes from the hand-over, so that an element wearing it is exactly an element the shell was handed`,
-		);
-	}
 });
 
-test("the lane is an overlay and panels paint from y0", () => {
+test("the lane is one transparent overlay, and no route opts out", () => {
 	const layout = readSource(
 		"src/renderer/src/shared/components/common/chat-layout.tsx",
 	);
-	assert.match(
-		layout,
-		/data-titlebar-lane=""/,
-		"the shell must still draw its drag lane over the window's top edge",
+	assert.equal(
+		layout.split('data-titlebar-lane=""').length - 1,
+		1,
+		"the shell must render exactly one lane",
 	);
 	assert.match(
 		layout,
 		/className="absolute inset-x-0 top-0 z-30 h-\[var\(--chrome-strip-h\)\]"/,
-		"the lane must be an OVERLAY at y0, not a row that reserves height: a reserved row is exactly the band that makes the sidebar and view start 32px down (operator report, 2026-10-20, third occurrence)",
+		"the lane must be an absolute overlay at y0: a reserved row is the band that made every panel start 32px down",
+	);
+	assert.doesNotMatch(
+		layout,
+		/linear-gradient|data-lane-leading-column|useLaneLeadingColumn|useLaneLeadingEdge/,
+		"the lane must paint no ground and hold no leading-column hand-over: both only existed to mirror columns that now paint themselves",
+	);
+	assert.doesNotMatch(
+		layout,
+		/flushTop/,
+		"the per-route opt-in must stay gone",
+	);
+	assert.doesNotMatch(
+		readSource("src/renderer/src/app.tsx"),
+		/flushTop/,
+		"the app must not grant a route the old lane exception",
 	);
 	assert.match(
 		layout,
-		/\{flushTop \? \(/,
-		"the absolute overlay must be the flushTop branch: routes that have not opted into full-bleed panels keep the painted lane row and their previous first-row position",
+		/"--panel-top-pad": "var\(--chrome-strip-h\)"/,
+		"the content column must publish the strip's height to every route, unconditionally",
+	);
+});
+
+test("the two panel utilities are defined once, in the stylesheet", () => {
+	const css = readSource("src/renderer/src/styles/index.css");
+	assert.match(
+		css,
+		/@utility panel-flush \{\s*margin-top: calc\(-1 \* var\(--panel-top-pad, 0px\)\);\s*\}/,
+		"panel-flush must cancel exactly the shell's pad",
 	);
 	assert.match(
-		layout,
-		/flushTop\?: boolean/,
-		"the shell must let a route whose own panels reach y0 opt out of the column padding; otherwise the padding starts the panel 32px down",
-	);
-	const app = readSource("src/renderer/src/app.tsx");
-	assert.match(
-		app,
-		/flushTop=\{pathname\.startsWith\("\/team-bridge"\)\}/,
-		"the Team Bridge route must opt into flushTop, the same way chat and browser own their top row",
-	);
-	const page = readSource(
-		"src/renderer/src/features/team-bridge/team-bridge-page.tsx",
+		css,
+		/@utility panel-top-pad \{\s*padding-top: var\(--panel-top-pad, var\(--chrome-strip-h, 0px\)\);\s*\}/,
+		"panel-top-pad must be the one pad, with the document-level strip as its outside-the-shell fallback (the sidebar and the sheet)",
 	);
 	assert.match(
-		page,
-		/className="flex h-full min-h-0 w-full overflow-hidden bg-canvas"/,
-		"the Team Bridge canvas must reach y0 on its own ground",
-	);
-	assert.match(
-		page,
-		/pt-\[var\(--panel-top-pad,0px\)\]/,
-		"Team Bridge's panels must move the traffic-light clearance INSIDE the panel as padding, never as an offset of the panel",
+		css,
+		/@utility panel-scroll \{\s*margin-top: var\(--panel-top-pad, var\(--chrome-strip-h, 0px\)\);\s*height: calc\(100% - var\(--panel-top-pad, var\(--chrome-strip-h, 0px\)\)\);\s*\}/,
+		"panel-scroll must move the whole scroll box below the strip (a padding on the scroller would clip at the padding box, letting scrolled text paint through the strip)",
 	);
 });
 
@@ -236,7 +301,7 @@ const PANEL_SURFACES = [
 	"src/renderer/src/features/settings/components/settings-sidebar.tsx",
 	AGENTS_SIDEBAR,
 	"src/renderer/src/features/agents/components/legacy-agents-page.tsx",
-	"src/renderer/src/features/library/components/library-page.tsx",
+	LIBRARY_PAGE,
 ];
 
 test("panel surfaces are borderless and the Library rail fades at the top", () => {
@@ -265,91 +330,26 @@ test("panel surfaces are borderless and the Library rail fades at the top", () =
 test("no route column draws a right rule any more", () => {
 	/*
 	 * THE OPERATOR'S FIRST SENTENCE, as a guard (2026-09-27): "the right border
-	 * doesn't go all the way up ... either make it extend all the way up or remove
-	 * the right border". It is the removal, on every route column, and for the same
-	 * reason on each: the boundary those rules drew is a tone step now (the rail's
-	 * `surface` against the `canvas` content, the rosters' `surface` against the
-	 * same content) and a rule over a tone step is the redundant second mark
-	 * this fleet removes (`#564` took the dock's leading rule for the same reason).
+	 * doesn't go all the way up ... either make it extend all the way up or
+	 * remove the right border". It is the removal, on every route column: the
+	 * boundary those rules drew is a tone step now, and a rule over a tone step
+	 * is the redundant second mark this fleet removes.
 	 *
-	 * AND A RULE COULD NEVER HAVE BEEN EXTENDED FROM THE ROUTE ITSELF: nothing a
-	 * route renders reaches y0 - two clipped ancestors - so its top 32px are the
-	 * shell lane's to paint, and a rule that came back would begin at the lane's
-	 * lower edge, which is the half-drawn edge being reported. If a rule is ever
-	 * wanted here, it is a lane feature and this test is where that conversation
-	 * starts.
+	 * Under the panel contract a rule COULD now reach y0, because the columns do
+	 * - so the reason is no longer "it can only begin at the lane's lower edge",
+	 * it is the design rule itself. If a rule is ever wanted here, this test is
+	 * where that conversation starts.
 	 */
-	for (const { path } of LEADING_COLUMN_ROUTES) {
+	for (const path of PANEL_SURFACES) {
 		assert.doesNotMatch(
 			readSource(path),
 			/border-r border-hairline/,
-			`${path} draws a right rule again: the boundary beside it is a tone step, and the rule can only begin at the lane's lower edge (y 32) - the operator's report verbatim`,
+			`${path} draws a right rule again: the boundary beside it is a tone step, and the operator asked for the rule to go`,
 		);
 	}
-	/*
-	 * The legacy roster's rule lives one file further in - the wrapper hands over
-	 * `AgentsSidebar`, which is where the drawable box actually is - so the sweep
-	 * follows the element rather than the wrapper's file. `border-hairline
-	 * border-r` was its spelling (order and all); both spellings are refused.
-	 */
 	assert.doesNotMatch(
 		readSource(AGENTS_SIDEBAR),
 		/(border-hairline border-r|border-r border-hairline)/,
-		`${AGENTS_SIDEBAR} draws the roster's right rule again: the roster's \`surface\` against the \`canvas\` content is a tone step, and the rule would stop at the lane's lower edge - the operator's report verbatim`,
-	);
-});
-
-test("the non-flush lane still paints the measured grounds", () => {
-	/*
-	 * The flushTop branch is an overlay, but the routes that have NOT opted in
-	 * keep the painted lane row exactly as it was: its width is the leading
-	 * column's measured edge with the sidebar as the floor, and the ground the
-	 * hand-over names is the role it paints. Losing these pins would let the
-	 * untouched branch drift while the new one is reviewed.
-	 */
-	const layout = readSource(
-		"src/renderer/src/shared/components/common/chat-layout.tsx",
-	);
-	assert.match(
-		layout,
-		/const laneEdge = Math\.max\(columnWidth, leading\?\.edge \?\? 0\);/,
-		"the lane's width must stay the measured leading edge with the sidebar as its floor",
-	);
-	assert.match(
-		layout,
-		/laneGround === "surface"/,
-		"the non-flush lane must still branch on the ground the marker names",
-	);
-	assert.match(
-		layout,
-		/var\(--lo-\$\{laneGround\}\)/,
-		"the non-surface ground must be a role, not a literal",
-	);
-	assert.match(
-		layout,
-		/var\(--lo-canvas\) \$\{laneEdge\}px/,
-		"the non-flush lane must paint its canvas stop from the measured width",
-	);
-});
-
-test("the flush-top app sidebar pads its own surface root", () => {
-	const sidebar = readSource(
-		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
-	);
-	assert.match(
-		sidebar,
-		/data-chrome-pad-top=\{chromePadTop \? "" : undefined\}/,
-		"the sidebar must write the pad marker only when the shell route asked for flush top",
-	);
-	assert.match(
-		sidebar,
-		/className="group\/sidebar flex h-full min-h-0 flex-col overflow-hidden bg-surface"/,
-		"the padded panel must remain the element that paints `surface`; a shell wrapper with a ground would defeat glass (round 1 S1)",
-	);
-	const css = readSource("src/renderer/src/styles/index.css");
-	assert.match(
-		css,
-		/\[data-chrome-pad-top\] \{\s*padding-top: var\(--chrome-strip-h\);\s*\}/,
-		"the pad must be CSS on the marker, so the panel's ground reaches y0 while its content clears the traffic lights",
+		`${AGENTS_SIDEBAR} draws the roster's right rule again: the roster's \`surface\` against the \`canvas\` content is a tone step`,
 	);
 });

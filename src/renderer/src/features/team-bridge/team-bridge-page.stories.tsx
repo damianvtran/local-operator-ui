@@ -573,46 +573,9 @@ export const FlushToTheWindowTop: Story = {
 				style={{ "--chrome-strip-h": "32px" } as CSSProperties}
 			>
 				<ChatLayout
-					flushTop
-					sidebar={<div className="h-full bg-surface" />}
+					sidebar={<div className="panel-top-pad h-full bg-surface" />}
 					content={
-						<main className="flex min-w-0 grow flex-col overflow-hidden bg-canvas">
-							<TeamBridgePageView
-								listState="ready"
-								messageState="ready"
-								conversations={[channel, group, dm]}
-								selected={channel}
-								messages={messages}
-								organizations={[minervaOrganization, northwindOrganization]}
-								scope={asTeamBridgeTenantId("tnt_1")}
-								totalUnread={3}
-								selfAccountId={self}
-								onSelect={() => {}}
-								onSend={() => undefined}
-								onNewConversation={() => {}}
-								onScopeChange={() => {}}
-							/>
-						</main>
-					}
-				/>
-			</div>
-		);
-	},
-};
-
-/** The pre-fix shape, kept as the comparison frame: the lane reserves 32px and the page starts below it. */
-export const LaneReservedComparison: Story = {
-	render: () => {
-		useMacChromeSimulation();
-		return (
-			<div
-				className="relative flex h-screen flex-col overflow-hidden"
-				style={{ "--chrome-strip-h": "32px" } as CSSProperties}
-			>
-				<ChatLayout
-					sidebar={<div className="h-full bg-surface" />}
-					content={
-						<main className="flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+						<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
 							<TeamBridgePageView
 								listState="ready"
 								messageState="ready"

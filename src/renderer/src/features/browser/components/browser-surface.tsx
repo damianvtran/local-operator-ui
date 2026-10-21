@@ -643,7 +643,17 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			// `outline-none` exactly when "focus is moved there programmatically and a
 			// ring would be noise". Every focusable CHILD keeps its own ring.
 			tabIndex={-1}
-			className="flex h-full min-h-0 flex-col bg-elevated outline-none!"
+			/*
+			 * THE ROUTE HOST IS A FULL-HEIGHT PANEL and the pane host is not. On the
+			 * route the pane's ground reaches y0 and its toolbar starts below the
+			 * strip (`panel-flush` cancels the shell's ordinary-content pad); in the
+			 * slot the enclosing column already starts at y0, so `h-full` is right.
+			 */
+			className={
+				isRoutePage
+					? "panel-flush flex min-h-0 flex-1 flex-col bg-elevated outline-none!"
+					: "flex h-full min-h-0 flex-col bg-elevated outline-none!"
+			}
 			/* The pane ground of the Browser ROUTE (inside the pane slot the enclosing
 			   `pane` region already owns the alpha and this one is cleared as nested).
 			   `data-glass-split` only on the route host: nothing may paint beneath the
