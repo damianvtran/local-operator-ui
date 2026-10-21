@@ -650,6 +650,31 @@ test("a payload whose every row is unrenderable says so, not 'nobody joined'", (
 	assert.doesNotMatch(html, /No one else has joined/);
 });
 
+test("the row time moves to the header and a relative+absolute tooltip", () => {
+	const channel = conversation({
+		id: "bcv_channel_long",
+		kind: "channel",
+		name: "a-very-long-channel-name-that-would-crowd-the-row-at-narrow-width",
+		last_message_at: new Date(Date.now() - 10 * 60 * 60_000).toISOString(),
+	});
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				conversations: [channel],
+				selected: channel,
+				messages: [],
+			}),
+		),
+	);
+	// The row still carries the name and its tooltip, but no visible time.
+	assert.match(html, /data-conversation-id="bcv_channel_long"/);
+	assert.match(html, /title="10 hours ago · [^"]+"/);
+	// The selected header carries the relative time for every surface, including
+	// touch where a hover tooltip does not exist.
+	assert.match(html, /10 hours ago/);
+});
+
 test("a signed-out directory failure names sign-in and offers no retry", () => {
 	const html = renderToStaticMarkup(
 		createElement(
