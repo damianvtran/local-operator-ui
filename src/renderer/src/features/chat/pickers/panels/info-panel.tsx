@@ -240,7 +240,14 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 			},
 		},
 		{ key: "model", header: "Model", cell: (row) => row.model },
-		{ key: "uptime", header: "Uptime", cell: (row) => row.uptime },
+		/*
+		 * `Activity`, not `Uptime`: the cell carries an uptime for a running row
+		 * and a last-active or stopped sentence for a stored one, and a header
+		 * naming only the first mislabels the two thirds of the column that are
+		 * not running (design round 1, D3). `State` would collide with the badge
+		 * column beside it and `Last seen` would mislabel a live row's uptime.
+		 */
+		{ key: "uptime", header: "Activity", cell: (row) => row.uptime },
 		{
 			key: "memory",
 			header: "Memory",
