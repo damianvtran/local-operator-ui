@@ -476,11 +476,17 @@ test("the inline list's entity ids are exactly the ones the route serves", () =>
 		"utf8",
 	);
 	const localUnion =
-		/RendererArgumentSource = ([^;]+);/.exec(rowSource)?.[1] ?? "";
+		/RendererArgumentSource\s*=\s*([^;]+);/.exec(rowSource)?.[1] ?? "";
 	const localIds = [...localUnion.matchAll(/"([a-z-]+)"/g)]
 		.map((match) => match[1])
 		.sort();
-	assert.deepEqual(localIds, ["theme", "title-refresh"]);
+	/*
+	 * `session-tags` joins the two renderer-local sources in this slice. It is
+	 * declared by `TAG_INLINE_ARGUMENT` in `slash-argument-rows.ts` and read by
+	 * the destination table, so the union, the table and the shaper's own case
+	 * are the same three statements the comment above requires.
+	 */
+	assert.deepEqual(localIds, ["session-tags", "theme", "title-refresh"]);
 	const sessionlessUnion =
 		/SessionlessArgumentSource =\s*([^;]+);/.exec(rowSource)?.[1] ?? "";
 	const sessionlessIds = [...sessionlessUnion.matchAll(/"([a-z-]+)"/g)]
