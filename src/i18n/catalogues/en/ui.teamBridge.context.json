@@ -668,5 +668,207 @@
 		"length": "2-4 words.",
 		"placeholders": {},
 		"note": "Also the spinner's accessible label. Names the product, not a generic loading."
+	},
+	"ui.teamBridge.section.channels": {
+		"role": "rail section heading",
+		"tone": "plain, sentence case",
+		"length": "Short; one word.",
+		"placeholders": {},
+		"note": "Heading above the organization's channels in the conversation rail. Same sense as Slack's Channels."
+	},
+	"ui.teamBridge.section.channels_empty": {
+		"role": "clickable empty-state line",
+		"tone": "plain, sentence case",
+		"length": "One short line; may truncate in a narrow rail.",
+		"placeholders": {},
+		"note": "Shown under the Channels heading when the organization has no channels; the whole line is a button that opens the new-channel form. No trailing period: it reads as an action."
+	},
+	"ui.teamBridge.section.channels_none": {
+		"role": "empty-state line",
+		"tone": "plain, sentence case",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Channels heading's empty line when the reader cannot create one here (all organizations view, or read-only organization)."
+	},
+	"ui.teamBridge.section.groups": {
+		"role": "rail section heading",
+		"tone": "plain, sentence case",
+		"length": "Short; one word.",
+		"placeholders": {},
+		"note": "Heading above private group conversations (several people and/or agents)."
+	},
+	"ui.teamBridge.section.groups_empty": {
+		"role": "clickable empty-state line",
+		"tone": "plain, sentence case",
+		"length": "One short line; may truncate.",
+		"placeholders": {},
+		"note": "Shown under Groups when there are none; the line is a button that opens a new-message draft with a To: field. No trailing period."
+	},
+	"ui.teamBridge.section.groups_none": {
+		"role": "empty-state line",
+		"tone": "plain, sentence case",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Groups heading's empty line when the reader cannot start one here."
+	},
+	"ui.teamBridge.section.directs": {
+		"role": "rail section heading",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Heading above one-to-one conversations. Same sense as Slack's Direct messages."
+	},
+	"ui.teamBridge.section.chiefs": {
+		"role": "rail section heading",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Heading above each teammate's primary agent. 'Chief of staff' is the product's name for a person's primary agent; keep the glossary term."
+	},
+	"ui.teamBridge.section.chiefs_empty": {
+		"role": "empty-state line",
+		"tone": "plain, sentence case",
+		"length": "One sentence; may wrap.",
+		"placeholders": {},
+		"note": "Shown under Chiefs of staff when no other member has enrolled their agent."
+	},
+	"ui.teamBridge.chief.label": {
+		"role": "row label composition",
+		"tone": "plain, sentence case",
+		"length": "Short; must fit a 30px rail row.",
+		"placeholders": {
+			"agent": "The agent's current display name, verbatim (for example Aida).",
+			"person": "The owning teammate's display name, verbatim."
+		},
+		"note": "Names a teammate's chief of staff, e.g. 'Aida (Ben)'. Locales may reorder or change the brackets, but both placeholders must stay."
+	},
+	"ui.teamBridge.chief.fallback": {
+		"role": "fallback name",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Used in place of the agent's name when the server has not published one."
+	},
+	"ui.teamBridge.people.self_named": {
+		"role": "row label",
+		"tone": "plain, sentence case",
+		"length": "Short; must fit a 30px rail row.",
+		"placeholders": {
+			"name": "The signed-in person's display name, verbatim."
+		},
+		"note": "The reader's own row in People. Not a control."
+	},
+	"ui.teamBridge.row.menu": {
+		"role": "icon button accessible name",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {
+			"name": "The person or chief-of-staff label on that row, verbatim."
+		},
+		"note": "Screen-reader name of the '…' button revealed when hovering a People or Chiefs of staff row."
+	},
+	"ui.teamBridge.row.start_group": {
+		"role": "menu item",
+		"tone": "plain, sentence case",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Opens a new-message draft already addressed to this row's person or agent, so more people can be added before the first message."
+	},
+	"ui.teamBridge.compose.new": {
+		"role": "icon button accessible name",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "The rail's compose button: opens an empty draft with a To: field."
+	},
+	"ui.teamBridge.compose.to": {
+		"role": "field prefix",
+		"tone": "plain, sentence case",
+		"length": "Very short.",
+		"placeholders": {},
+		"note": "Label in front of the recipient chips in a new-message draft, as in an email header."
+	},
+	"ui.teamBridge.compose.label": {
+		"role": "combobox accessible name",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Accessible name of the recipient field and its suggestion list."
+	},
+	"ui.teamBridge.compose.placeholder": {
+		"role": "input placeholder",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Placeholder of the empty recipient field."
+	},
+	"ui.teamBridge.compose.remove": {
+		"role": "icon button accessible name",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {
+			"name": "The recipient's label, verbatim."
+		},
+		"note": "Removes one recipient chip from the draft."
+	},
+	"ui.teamBridge.compose.empty": {
+		"role": "pane hint",
+		"tone": "plain, sentence case",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown in the empty thread of a new-message draft with no recipients yet. Nothing is created until the first message is sent."
+	},
+	"ui.teamBridge.composer.placeholder_to": {
+		"role": "textarea placeholder",
+		"tone": "plain, sentence case",
+		"length": "Short; may truncate.",
+		"placeholders": {
+			"name": "The conversation's title (a person, agent label or #channel), verbatim."
+		},
+		"note": "Composer placeholder naming who the message goes to, as in Slack."
+	},
+	"ui.teamBridge.thread.draft": {
+		"role": "pane hint",
+		"tone": "plain, sentence case",
+		"length": "One or two sentences.",
+		"placeholders": {
+			"name": "The person or agent label, verbatim."
+		},
+		"note": "Shown above the composer when the selected person or agent has no conversation yet."
+	},
+	"ui.teamBridge.thread.draft_group": {
+		"role": "pane hint",
+		"tone": "plain, sentence case",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown in a draft with recipients but no conversation yet."
+	},
+	"ui.teamBridge.thread.today": {
+		"role": "day divider",
+		"tone": "plain, sentence case",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "Divider label above today's messages."
+	},
+	"ui.teamBridge.thread.yesterday": {
+		"role": "day divider",
+		"tone": "plain, sentence case",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "Divider label above yesterday's messages."
+	},
+	"ui.teamBridge.builtin.humans_topic": {
+		"role": "channel header topic",
+		"tone": "plain, sentence case",
+		"length": "One sentence; may truncate.",
+		"placeholders": {},
+		"note": "Describes the built-in #humans channel, which always contains every person in the organization."
+	},
+	"ui.teamBridge.builtin.agents_topic": {
+		"role": "channel header topic",
+		"tone": "plain, sentence case",
+		"length": "One sentence; may truncate.",
+		"placeholders": {},
+		"note": "Describes the built-in #agents channel: every enrolled agent is a member, and ordinary messages do not wake them; a mention does."
 	}
 }
