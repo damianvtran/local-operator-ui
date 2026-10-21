@@ -17978,30 +17978,32 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "e91f2bf2629014cb458bb30d2c92cf5083644d8709317527c50b84909274a22c",
-			"target_sha256": "cf750ae869a97b1c248d89f1e8ff55d74201e25f7bafba583eb00700b5445237",
+			"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+			"target_sha256": "b28cfcd21792bd85822daffe240797f932dbf2c6fa9e11b1917c1c20759438fb",
 			"translator": {
 				"agent": "translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-20"
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-21",
+				"session": "d3285bf04767",
+				"remediation_job": "4ecadc4327d8"
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
-					"result": "clean-with-findings",
-					"instance": "tbd-r1-fr",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-21",
+					"result": "clean",
+					"instance": "tbd-r3-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 3
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbd-r1-fr.json",
-					"receipt_sha256": "adb374b4f34ee1a3fb4997825a2e80075aad37b7dc3af9f55356def0058bf038",
-					"scope": "fr ui.teamBridge vs en source at e91f2bf262 - round-1 remediation (directory + plan cues)",
-					"note": "0 BLOCKER/MAJOR. Covers the 26 new keys and the read-only/gate copy; round-1 U-3 re-audit."
+					"receipt": "i18n/receipts/tbd-r3-fr.json",
+					"receipt_sha256": "fe0341dd78a19bfe03e02625f56ec08e77aab77f27123a57b00e3cd4a045fbcd",
+					"scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
+					"note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
 				}
 			],
 			"status": "audited",
@@ -18053,6 +18055,35 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "e91f2bf2629014cb458bb30d2c92cf5083644d8709317527c50b84909274a22c",
+					"target_sha256": "cf750ae869a97b1c248d89f1e8ff55d74201e25f7bafba583eb00700b5445237",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean-with-findings",
+							"instance": "tbd-r1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/tbd-r1-fr.json",
+							"receipt_sha256": "adb374b4f34ee1a3fb4997825a2e80075aad37b7dc3af9f55356def0058bf038",
+							"scope": "fr ui.teamBridge vs en source at e91f2bf262 - round-1 remediation (directory + plan cues)",
+							"note": "0 BLOCKER/MAJOR. Covers the 26 new keys and the read-only/gate copy; round-1 U-3 re-audit."
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "translator",
+						"model": "deepseek/deepseek-flash",
+						"date": "2026-10-20"
+					}
 				}
 			]
 		},
@@ -18383,30 +18414,32 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "e91f2bf2629014cb458bb30d2c92cf5083644d8709317527c50b84909274a22c",
-			"target_sha256": "5b1bb5df0ad84c50b0290317356d9cc3b3583bf0ee08db750b4215e8778157d5",
+			"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+			"target_sha256": "83f83edf103c94c8f6cdbb4c678853fbcfb1d23a207adc9143dfb6497eea0bdd",
 			"translator": {
 				"agent": "translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-20"
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-21",
+				"session": "28b7e95e4a5d",
+				"remediation_job": "829b5b70a7aa"
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
-					"result": "clean-with-findings",
-					"instance": "tbd-r1-es",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-21",
+					"result": "clean",
+					"instance": "tbd-r4-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 5
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbd-r1-es.json",
-					"receipt_sha256": "89146cfc7b928d0c9841bda9689a0f314b8880e08675e62c515f69ee2073ebb8",
-					"scope": "es ui.teamBridge vs en source at e91f2bf262 - round-1 remediation (directory + plan cues)",
-					"note": "0 BLOCKER/MAJOR. Covers the 26 new keys and the read-only/gate copy; round-1 U-3 re-audit."
+					"receipt": "i18n/receipts/tbd-r4-es.json",
+					"receipt_sha256": "b06e9c976f832eeeba013442147c81173bf6c15122f9031e3c58c563edc58782",
+					"scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
+					"note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
 				}
 			],
 			"status": "audited",
@@ -18434,36 +18467,67 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "e91f2bf2629014cb458bb30d2c92cf5083644d8709317527c50b84909274a22c",
+					"target_sha256": "5b1bb5df0ad84c50b0290317356d9cc3b3583bf0ee08db750b4215e8778157d5",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean-with-findings",
+							"instance": "tbd-r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 5
+							},
+							"receipt": "i18n/receipts/tbd-r1-es.json",
+							"receipt_sha256": "89146cfc7b928d0c9841bda9689a0f314b8880e08675e62c515f69ee2073ebb8",
+							"scope": "es ui.teamBridge vs en source at e91f2bf262 - round-1 remediation (directory + plan cues)",
+							"note": "0 BLOCKER/MAJOR. Covers the 26 new keys and the read-only/gate copy; round-1 U-3 re-audit."
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "translator",
+						"model": "deepseek/deepseek-flash",
+						"date": "2026-10-20"
+					}
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "e91f2bf2629014cb458bb30d2c92cf5083644d8709317527c50b84909274a22c",
-			"target_sha256": "653c35021ba09ed7629818586a85b70615f87cd718315e5d853f860fb0949c5f",
+			"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+			"target_sha256": "a461bd1121e50a3091f42da7ec75196ff94efa0eecc3e87bd99ea352d3e33672",
 			"translator": {
 				"agent": "translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-20"
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-21",
+				"session": "2dc29b01117d",
+				"remediation_job": "5f2f08349f3a"
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-21",
 					"result": "clean",
-					"instance": "tbd-r1-zhcn",
+					"instance": "tbd-r4-zhcn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbd-r1-zhcn.json",
-					"receipt_sha256": "9a49751a108e1f07bad461b6293b50991b45b4f0db264a0cb8d35ba3a43ba4df",
-					"scope": "zh-CN ui.teamBridge vs en source at e91f2bf262 - round-1 remediation (directory + plan cues)",
-					"note": "0 BLOCKER/MAJOR. Covers the 26 new keys and the read-only/gate copy; round-1 U-3 re-audit."
+					"receipt": "i18n/receipts/tbd-r4-zhcn.json",
+					"receipt_sha256": "85d1f0e0870d1a20d82e242187fbb7fba745a88189d98965e51010bd0e7125e9",
+					"scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
+					"note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
 				}
 			],
 			"status": "audited",
@@ -18491,6 +18555,35 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "e91f2bf2629014cb458bb30d2c92cf5083644d8709317527c50b84909274a22c",
+					"target_sha256": "653c35021ba09ed7629818586a85b70615f87cd718315e5d853f860fb0949c5f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "tbd-r1-zhcn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbd-r1-zhcn.json",
+							"receipt_sha256": "9a49751a108e1f07bad461b6293b50991b45b4f0db264a0cb8d35ba3a43ba4df",
+							"scope": "zh-CN ui.teamBridge vs en source at e91f2bf262 - round-1 remediation (directory + plan cues)",
+							"note": "0 BLOCKER/MAJOR. Covers the 26 new keys and the read-only/gate copy; round-1 U-3 re-audit."
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "translator",
+						"model": "deepseek/deepseek-flash",
+						"date": "2026-10-20"
+					}
 				}
 			]
 		},
@@ -18750,6 +18843,138 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.teamBridge",
+			"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+			"target_sha256": "cd1c54f380c8e15c394e7dbec468cae2ed1c54073464f841072cdede69702cce",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-21",
+				"session": "11ad72b65a40",
+				"remediation_job": "c5b203ce8ab7"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-21",
+					"result": "clean",
+					"instance": "tbd-r3-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbd-r3-ru.json",
+					"receipt_sha256": "7a53ac8b7187dd88eaeca49cc456ba89ee53fc72f441fa894b6fc204fee39445",
+					"scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
+					"note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.teamBridge",
+			"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+			"target_sha256": "78ff808697020fdde224fe7609a18d4aee9ab63f1f8719d2447d204a39933b7c",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-21",
+				"session": "9560f0b857c1",
+				"remediation_job": "5e1d1a302ea0"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-21",
+					"result": "clean",
+					"instance": "tbd-r3-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbd-r3-hi.json",
+					"receipt_sha256": "b0a3d96a6fce52dab28f89094ee16997846e8301cedbe06d90733e8d450b0313",
+					"scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
+					"note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.teamBridge",
+			"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+			"target_sha256": "76bfaa1fa565994bbeeb8c76450042111a405525442a1ba2e0a956e1ba2e5397",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-21",
+				"session": "19f8ac2970ae",
+				"remediation_job": "0188f13ef5aa"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-21",
+					"result": "clean",
+					"instance": "tbd-r3-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbd-r3-ur.json",
+					"receipt_sha256": "84aef64e4d8e735ad57713e54ec6f5b514ad89ba3d02b387e44a67c68b26a0a4",
+					"scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
+					"note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.teamBridge",
+			"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+			"target_sha256": "71339f089127558ebe551d701ab8fbb394322a61bb44843002310cb294195fdc",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-21",
+				"session": "c95bd671fb4a",
+				"remediation_job": "8a1b9c8937ae"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-21",
+					"result": "clean",
+					"instance": "tbd-r2-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbd-r2-vi.json",
+					"receipt_sha256": "b06b33c45ad38222050412836b2f095a369eab4905066f0e96b9443045851bd8",
+					"scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
+					"note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
