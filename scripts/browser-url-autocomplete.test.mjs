@@ -275,6 +275,13 @@ const listbox = (bundle) =>
 const options = (bundle) => [
 	...bundle.container.querySelectorAll("[data-address-suggestion]"),
 ];
+/** The notice the combobox points at; the visible list is the native child in
+ * the product, so every empty/hint/error sentence is announced through this
+ * `aria-describedby` target rather than painted in DOM. */
+const describedNotice = (bundle) => {
+	const id = bundle.input.getAttribute("aria-describedby");
+	return id ? document.getElementById(id) : null;
+};
 
 test("focus fetches once and an empty query shows the session's entries", async () => {
 	const bundle = await renderBar();
@@ -304,29 +311,11 @@ test("a same-length candidate swap drops the active row and cannot commit it", a
 		},
 	});
 	await type(bundle, "example.com/acc");
-	const viewport = bundle.container.querySelector(
-		"[data-address-suggestions-viewport]",
-	);
-	Object.defineProperty(viewport, "clientHeight", {
-		configurable: true,
-		value: 75,
-	});
-	options(bundle).forEach((row, index) => {
-		Object.defineProperty(row, "offsetTop", {
-			configurable: true,
-			value: 2 + index * 35.5,
-		});
-		Object.defineProperty(row, "offsetHeight", {
-			configurable: true,
-			value: 35.5,
-		});
-	});
 	for (let step = 0; step < 5; step += 1) await key(bundle, "ArrowDown");
 	const staleUrl = options(bundle)[4].getAttribute(
 		"data-address-suggestion-url",
 	);
 	assert.ok(staleUrl, "a row was active before the swap");
-	assert.ok(viewport.scrollTop > 0, "the fifth row was scrolled into view");
 
 	// The same refresh path main uses: a new snapshot arrives while the field is
 	// focused. Five URLs become five DIFFERENT URLs, so only the key can see it.
@@ -343,7 +332,6 @@ test("a same-length candidate swap drops the active row and cannot commit it", a
 		null,
 		"no row is active after the set changed",
 	);
-	assert.equal(viewport.scrollTop, 0, "the new set starts at the top");
 	const before = bundle.navigations.length;
 	await key(bundle, "Enter");
 	assert.ok(
@@ -424,16 +412,12 @@ test("blur never navigates and only drops the draft on a named target", async ()
 test("one Escape discards the draft and lowers the popout", async () => {
 	const bundle = await renderBar();
 	await type(bundle, "example.com/acc");
-	console.error("before escape");
 	await key(bundle, "Escape");
-	console.error("after escape");
 	assert.equal(bundle.input.value, "example.com/account");
-	assert.equal(listbox(bundle), null);
+	assert.ok(!listbox(bundle));
 	assert.equal(bundle.dismissals.filter((d) => d === "dismiss").length, 1);
 	assert.equal(bundle.navigations.length, 0);
-	console.error("S4B asserted all");
 	await bundle.cleanup();
-	console.error("S4B cleaned");
 });
 
 test("Backspace removes the suggestion before it edits the draft", async () => {
@@ -441,8 +425,8 @@ test("Backspace removes the suggestion before it edits the draft", async () => {
 	await type(bundle, "example.com/acc");
 	await key(bundle, "Backspace");
 	assert.equal(bundle.input.value, "example.com/acc");
-	assert.equal(listbox(bundle), null);
-	assert.equal(list(bundle).textContent.trim(), "");
+	assert.ok(!listbox(bundle));
+	assert.ok(!list(bundle));
 	assert.equal(bundle.navigations.length, 0);
 	await bundle.cleanup();
 });
@@ -460,7 +444,7 @@ test("a search-intent Enter shows the address hint instead of navigating", async
 	await type(bundle, "hello world");
 	await key(bundle, "Enter");
 	assert.equal(bundle.navigations.length, 0);
-	assert.match(list(bundle).textContent, ENTER_A_WEB_ADDRESS);
+	assert.match(describedNotice(bundle).textContent, ENTER_A_WEB_ADDRESS);
 	await bundle.cleanup();
 });
 
@@ -535,7 +519,7 @@ test("a tab change clears the snapshot and the completion", async () => {
 		);
 	});
 	await flush();
-	assert.equal(bundle.input.value, "https://other.example/");
+	assert.equal(bundle.input.value, "other.example");
 	await bundle.cleanup();
 });
 
@@ -547,7 +531,10 @@ test("an unavailable history read degrades to plain editing", async () => {
 	});
 	await act(async () => bundle.input.focus());
 	await flush();
-	assert.match(list(bundle).textContent, ADDRESS_SUGGESTIONS_UNAVAILABLE);
+	assert.match(
+		describedNotice(bundle).textContent,
+		ADDRESS_SUGGESTIONS_UNAVAILABLE,
+	);
 	assert.equal(bundle.input.value, "example.com/account");
 	await bundle.cleanup();
 });
@@ -709,7 +696,7 @@ test("aria-controls names the listbox only while a listbox exists", async () => 
 	await populated.cleanup();
 
 	const empty = await renderBar({
-		url: "about:blank",
+		url: "",
 		addressHistory: async (request) => ({
 			requestId: request.requestId,
 			activeTabId: 1,
@@ -788,12 +775,13 @@ test("an accepted target is not reused after an invalidating action", async () =
 	]);
 	await redone.cleanup();
 
-	const blurred = await arm();
-	await act(async () => blurred.input.blur());
-	await flush();
-	await key(blurred, "Enter");
-	assert.deepEqual(blurred.navigations, [], "blur reverts to the live URL");
-	await blurred.cleanup();
+	const dismissed = await arm();
+	// S4b: Escape is the one-stage dismissal (blur no longer discards a draft;
+	// the surface/main decide that). After it, Enter must not reuse the target.
+	await key(dismissed, "Escape");
+	await key(dismissed, "Enter");
+	assert.deepEqual(dismissed.navigations, [], "Escape reverts to the live URL");
+	await dismissed.cleanup();
 });
 
 test("switching tabs and back keeps the accepted target", async () => {

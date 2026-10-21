@@ -192,7 +192,8 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 		const unsubscribe = port.onEvent((event) => {
 			if (!event || typeof event !== "object") return;
 			if (event.type === "dismiss") {
-				if (typeof event.reason === "string") latest.current.onDismiss(event.reason);
+				if (typeof event.reason === "string")
+					latest.current.onDismiss(event.reason);
 				return;
 			}
 			const commit = event as {
@@ -240,6 +241,11 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 			frame = 0;
 			const current = latest.current;
 			if (!current.enabled || !current.visible) return;
+			const tabId = current.tabId;
+			if (tabId === null) {
+				if (!stopped) frame = requestAnimationFrame(tick);
+				return;
+			}
 			const pageRect = lastDeliveredContentRect();
 			const anchor = current.anchor;
 			if (pageRect === null || anchor === null || anchor.width <= 0) {
@@ -254,7 +260,7 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 					: "ltr";
 			const body = {
 				v: 2 as const,
-				tabId: current.tabId,
+				tabId,
 				visible: true,
 				pageRect,
 				anchor: { x: Math.round(anchor.x), width: Math.round(anchor.width) },
@@ -309,7 +315,8 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 				});
 			// The ONE scheduling point: a frame is queued only after a tick that is
 			// still eligible, so closing the list ends the loop with the effect.
-			if (!stopped && latest.current.visible) frame = requestAnimationFrame(tick);
+			if (!stopped && latest.current.visible)
+				frame = requestAnimationFrame(tick);
 		};
 
 		tick();

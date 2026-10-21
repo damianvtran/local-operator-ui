@@ -1232,7 +1232,7 @@ test("rapid double Cmd+W closes two different tabs, never the same one twice (UX
 	}
 });
 
-test("closing the last tab opens the fresh blank tab and puts the caret in the address bar", async () => {
+test("closing the last tab opens the fresh blank tab and keeps the browser as focus owner", async () => {
 	const r = await rig({ tabIds: [7], activeId: 7 });
 	const { events, key, flush } = r;
 	try {
@@ -1241,7 +1241,11 @@ test("closing the last tab opens the fresh blank tab and puts the caret in the a
 		await key("w");
 		await flush(40);
 		assert.deepEqual(events.filter((e) => e[0] === "new").at(-1), ["new", "a"]);
-		assert.equal(document.activeElement.id, "address");
+		// S4b: the replacement is a START PAGE, whose own field autofocuses on
+		// mount; the popout is lowered rather than focusing an address bar that no
+		// longer exists at rest. This rig has no start page, so the surface root is
+		// the honest focus owner here.
+		assert.equal(document.activeElement.id, "surface");
 		assert.deepEqual(events.filter((e) => e[0] === "focus").at(-1), [
 			"focus",
 			true,

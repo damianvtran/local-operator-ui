@@ -1371,7 +1371,6 @@ test("S2 anchor: the 0..24 gap is measured, and every bad rectangle refuses", ()
 	);
 });
 
-
 function projectionV2(overrides = {}) {
 	return {
 		v: 2,
@@ -1406,12 +1405,7 @@ test("S4b anchor geometry: strip width, page top, and a 240 DIP floor", () => {
 	// The strip band is clipped to the page rect on both sides: a pane whose
 	// chrome is wider than its page can never paint the child beside the page.
 	assert.deepEqual(
-		addressListBoundsV2For(
-			{ x: 100, width: 900 },
-			pageRect,
-			view,
-			S2_OWNER,
-		),
+		addressListBoundsV2For({ x: 100, width: 900 }, pageRect, view, S2_OWNER),
 		{ x: 260, y: 69, width: 740, height: 140 },
 	);
 	// A rail pane narrower than the design's floor refuses instead of drawing a
@@ -1449,10 +1443,7 @@ test("S4b projection: v2 replaces field/listTop and keeps the strict key set", (
 		return result.reason;
 	};
 	assert.equal(refused({ ...projectionV2(), v: 1 }), "unknown_key");
-	assert.equal(
-		refused({ ...projectionV2(), anchor: { x: 0 } }),
-		"bad_anchor",
-	);
+	assert.equal(refused({ ...projectionV2(), anchor: { x: 0 } }), "bad_anchor");
 	assert.equal(
 		refused({ ...projectionV2(), anchor: { x: 0, width: 0 } }),
 		"bad_anchor",

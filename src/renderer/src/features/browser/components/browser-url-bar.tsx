@@ -109,10 +109,15 @@ export interface BrowserUrlBarProps {
 	onStateChanged?: (listener: () => void) => () => void;
 }
 
+/** Top-level because a function-scope regex literal is rebuilt on every call;
+ * Biome's performance rule is about exactly that. */
+const HTTP_SCHEME = /^https?:\/\//;
+const TRAILING_SLASH = /\/$/;
+
 /** The display spelling of a URL: the scheme and a bare trailing slash go. */
 export function displayUrl(url: string): string {
 	if (!url) return "";
-	return url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+	return url.replace(HTTP_SCHEME, "").replace(TRAILING_SLASH, "");
 }
 
 export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
@@ -149,9 +154,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		tabId: number | null;
 		text: string;
 	} | null>(() =>
-		placement === "popout" && seed !== undefined
-			? { tabId, text: seed }
-			: null,
+		placement === "popout" && seed !== undefined ? { tabId, text: seed } : null,
 	);
 	const draft = typed && typed.tabId === tabId ? typed.text : null;
 	const setDraft = (
@@ -1022,24 +1025,32 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			    the visual rows are the native child, which is `aria-hidden`. One
 			    option per mirrored row keeps `aria-activedescendant` and the row
 			    the user actually presses naming the same candidate. */}
-			{suggestions.candidates.length > 0 && (
+			{listVisible && suggestions.candidates.length > 0 && (
 				<div className="sr-only" data-tour-tag="browser-address-suggestions">
 					<span id={listLabelId}>
 						{t("ui.browser.browser_url_bar.address_suggestions_label")}
 					</span>
+					{/* biome-ignore lint/a11y/useFocusableInteractive: DOM focus stays in the input; the listbox is reached through aria-activedescendant. */}
+					{/* biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a listbox cannot be a native <select> and must stay a list of options. */}
+					{/* biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>. */}
 					<div
 						id={listId}
+						// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>.
 						role="listbox"
 						aria-labelledby={listLabelId}
 						data-address-suggestions-list
 					>
 						{suggestions.candidates.map((candidate, index) => (
+							// biome-ignore lint/a11y/useFocusableInteractive: DOM focus stays in the input; the active option is announced through aria-activedescendant.
+							// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>.
 							<div
 								key={candidate.url}
 								id={optionId(index)}
+								// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>.
 								role="option"
 								aria-selected={index === activeIndex}
 								data-address-suggestion
+								data-address-suggestion-url={candidate.url}
 							>
 								{candidate.displayText}
 							</div>

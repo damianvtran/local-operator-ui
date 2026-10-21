@@ -334,7 +334,10 @@ export interface BrowserHostOptions {
 	forgetSiteData: (origin: string) => Promise<void>;
 	/** S4b: the popout's health, supplied by the wiring that owns the overlay
 	 * controller. Absent means no controller was built, which is `suspend`. */
-	addressOverlayMode?: () => { mode: "popout" | "suspend"; reason: string | null };
+	addressOverlayMode?: () => {
+		mode: "popout" | "suspend";
+		reason: string | null;
+	};
 }
 
 export class BrowserHost implements BrowserActionContext {
@@ -406,7 +409,8 @@ export class BrowserHost implements BrowserActionContext {
 		this.facts = options.facts;
 		this.forgetSiteData = options.forgetSiteData;
 		this.addressOverlayMode =
-			options.addressOverlayMode ?? (() => ({ mode: "suspend", reason: "unavailable" }));
+			options.addressOverlayMode ??
+			(() => ({ mode: "suspend", reason: "unavailable" }));
 	}
 
 	/** Answer one wire request. The only place a method name becomes an action. */

@@ -168,12 +168,14 @@ function unavailable(): Error {
 export function addressOverlayPort(): AddressOverlayPort | null {
 	if (portState().latched) return null;
 	const product =
-		typeof window === "undefined" ? undefined : window.api?.browser?.addressOverlay;
+		typeof window === "undefined"
+			? undefined
+			: window.api?.browser?.addressOverlay;
 	if (product) {
 		return makePort(
-		(payload) => product.project(payload),
-		(callback) => product.onEvent(callback as (event: unknown) => void),
-	);
+			(payload) => product.project(payload),
+			(callback) => product.onEvent(callback as (event: unknown) => void),
+		);
 	}
 	const bridge =
 		typeof window === "undefined" ? undefined : window.__loDevDriver;
@@ -191,7 +193,9 @@ export function addressOverlayPort(): AddressOverlayPort | null {
 }
 
 function makePort(
-	invoke: (payload: AddressOverlayPost | AddressOverlayHide) => Promise<unknown>,
+	invoke: (
+		payload: AddressOverlayPost | AddressOverlayHide,
+	) => Promise<unknown>,
 	subscribe: (callback: (event: unknown) => void) => () => void,
 ): AddressOverlayPort {
 	return {
@@ -221,7 +225,6 @@ function makePort(
 				});
 			return next;
 		},
-		onEvent: (callback) =>
-			subscribe(callback as (event: unknown) => void),
+		onEvent: (callback) => subscribe(callback as (event: unknown) => void),
 	};
 }

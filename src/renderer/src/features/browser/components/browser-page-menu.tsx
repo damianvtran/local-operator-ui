@@ -90,13 +90,16 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 	useSuppressBrowserView(open, "browser-page-menu");
 	return (
 		<DropdownMenu open={open} onOpenChange={setOpen}>
-			<Tooltip content={t("ui.browser.browser_page_menu.label")} side="top">
+			<Tooltip
+				content={t("ui.settings.appearance.window_glass.material_menu")}
+				side="top"
+			>
 				<DropdownMenuTrigger asChild>
 					<Button
 						variant="ghost"
 						size="icon-sm"
 						className={cn("shrink-0", placement === "popout" && "size-7")}
-						aria-label={t("ui.browser.browser_page_menu.label")}
+						aria-label={t("ui.settings.appearance.window_glass.material_menu")}
 						disabled={disabled}
 						data-tour-tag="browser-page-menu"
 					>
@@ -109,7 +112,7 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 					onSelect={onAddress}
 					data-tour-tag="browser-page-menu-address"
 				>
-					{t("ui.browser.browser_page_menu.go_to_address")}
+					{t("ui.browser.browser_url_bar.address")}
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem
@@ -134,10 +137,7 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 						{t("ui.browser.browser_url_bar.stop_loading")}
 					</DropdownMenuItem>
 				) : (
-					<DropdownMenuItem
-						onSelect={onReload}
-						data-tour-tag="browser-reload"
-					>
+					<DropdownMenuItem onSelect={onReload} data-tour-tag="browser-reload">
 						<RotateCw aria-hidden className="size-4" />
 						{t("ui.browser.browser_url_bar.reload")}
 					</DropdownMenuItem>
@@ -156,10 +156,7 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 					{t("ui.browser.browser_url_bar.print_page")}
 				</DropdownMenuItem>
 				{pageZoom !== 1 && (
-					<DropdownMenuItem
-						onSelect={onResetZoom}
-						data-tour-tag="browser-zoom"
-					>
+					<DropdownMenuItem onSelect={onResetZoom} data-tour-tag="browser-zoom">
 						{t("ui.browser.browser_url_bar.page_zoom_reset", {
 							zoom: Math.round(pageZoom * 100),
 						})}

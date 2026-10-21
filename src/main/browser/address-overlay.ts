@@ -827,8 +827,7 @@ export class AddressOverlayController {
 			// tells it to come down rather than only hiding the native list.
 			this.hide("layout");
 			// The first layout pass has no popout to lower (previousKey "none").
-			if (this.product && previousKey !== "none")
-				this.emitDismiss("layout");
+			if (this.product && previousKey !== "none") this.emitDismiss("layout");
 			return;
 		}
 		if (this.product && next.presented && next.contentRect !== null) {

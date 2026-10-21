@@ -6,10 +6,11 @@ import {
 	useSuppressedOverlayIds,
 } from "@shared/browser-view-policy";
 import { Spinner } from "@shared/components/common/spinner";
+import { Badge, countLabel } from "@shared/components/ui";
 import { Button, Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
-import { chordCaption } from "@shared/keymap/keymap-chord";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { chordCaption } from "@shared/keymap/keymap-chord";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	AlertTriangle,
@@ -880,40 +881,55 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 									align="end"
 									content={t("ui.browser.chrome.approvals")}
 								>
-									<Button
-										ref={approvalsTriggerRef}
-										variant={queue.count > 0 ? "outline" : "ghost"}
-										size={queue.count > 0 ? "sm" : "icon-sm"}
-										className="ml-2 shrink-0 self-center"
-										onClick={() => setDockOpen((open) => !open)}
-										aria-label={
-											queue.count > 0
-												? t("ui.browser.browser_url_bar.approvals_waiting", {
-														count: queue.count,
-													})
-												: t("ui.browser.chrome.approvals")
-										}
-										data-tour-tag="browser-approvals"
-									>
-										<ShieldCheck aria-hidden className="size-3.5" />
-										{queue.count > 0 &&
-											t("ui.browser.browser_approvals_dock.approvals")}
-									</Button>
+									{/* The control moved with the chrome (S4b): it now sits in the
+									    strip's trailing cluster, and it is rendered only when there
+									    is a demand for it or its dock is open. The badge is the
+									    strip's own reading of the count. */}
+									<span className="relative ml-2 inline-flex shrink-0 self-center">
+										<Button
+											ref={approvalsTriggerRef}
+											variant={queue.count > 0 ? "outline" : "ghost"}
+											size={queue.count > 0 ? "sm" : "icon-sm"}
+											className={queue.count > 0 ? "pr-5" : undefined}
+											onClick={() => setDockOpen((open) => !open)}
+											aria-label={
+												queue.count > 0
+													? t("ui.browser.browser_url_bar.approvals_waiting", {
+															count: queue.count,
+														})
+													: t("ui.browser.chrome.approvals")
+											}
+											data-tour-tag="browser-approvals"
+										>
+											<ShieldCheck aria-hidden className="size-3.5" />
+											{queue.count > 0 &&
+												t("ui.browser.browser_approvals_dock.approvals")}
+										</Button>
+										{queue.count > 0 && (
+											<span className="pointer-events-none absolute -top-1.5 -right-1.5">
+												<Badge
+													variant="attention"
+													shape="pill"
+													size="count"
+													className="ring-2 ring-canvas"
+													data-tour-tag="browser-approvals-badge"
+												>
+													{countLabel(queue.count)}
+												</Badge>
+											</span>
+										)}
+									</span>
 								</Tooltip>
 							)}
 							<Tooltip
 								side="top"
-								content={t("ui.browser.browser_url_bar.address_trigger", {
-									shortcut: addressChord.glyph,
-								})}
+								content={`${t("ui.browser.browser_url_bar.address")} (${addressChord.glyph})`}
 							>
 								<Button
 									variant="ghost"
 									size="icon-sm"
 									className="ml-2 shrink-0 gap-1 self-center px-1"
-									aria-label={t("ui.browser.browser_url_bar.address_trigger", {
-										shortcut: addressChord.glyph,
-									})}
+									aria-label={t("ui.browser.browser_url_bar.address")}
 									aria-keyshortcuts={addressChord.aria}
 									onClick={() => raiseAddress({ origin: "chrome" })}
 									data-tour-tag="browser-address-trigger"
@@ -984,19 +1000,13 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					anchor={null}
 				/>
 			)}
-			{addressFallback && (
-				<output className="sr-only" role="status" aria-live="polite">
-					{t("ui.browser.browser_url_bar.address_bar_shown")}
-				</output>
-			)}
 			{popout && !addressFallback && !onStartPage && (
 				<div
 					className="absolute inset-x-0 top-0 z-30"
 					data-tour-tag="browser-address-popout"
 					onBlurCapture={(event) => {
 						const next = event.relatedTarget as Node | null;
-						if (next && !event.currentTarget.contains(next))
-							dismissAddress();
+						if (next && !event.currentTarget.contains(next)) dismissAddress();
 					}}
 				>
 					<BrowserUrlBar

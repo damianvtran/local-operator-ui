@@ -1,6 +1,4 @@
 {
-	"ui.browser.browser_page_menu.go_to_address": "Перейти к адресу…",
-	"ui.browser.browser_page_menu.label": "Меню страницы",
 	"ui.browser.chrome.accessible_tab": "{title}{loading, select, yes{, загрузка} other{}}{failed, select, yes{, ошибка загрузки} other{}}{owner, select, agent{, вкладка агента} shared{, доступна агенту} other{}}{waiting, select, none{} other{, ожидает запрос {waiting}}}{restored, select, yes{, восстановлена} other{}}",
 	"ui.browser.chrome.approvals": "Одобрения и доступ к сайтам",
 	"ui.browser.chrome.duplicate": "Дублировать вкладку",
