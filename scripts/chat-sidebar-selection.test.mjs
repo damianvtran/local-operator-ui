@@ -377,6 +377,7 @@ const rowStyle = literalOf(SIDEBAR, "rowStyle");
 const rowBoxStyle = literalOf(SIDEBAR, "rowBoxStyle");
 const rowCurrent = literalOf(SIDEBAR, "rowCurrent");
 const rowDragging = literalOf(SIDEBAR, "rowDragging");
+const rowDraggingMark = literalOf(SIDEBAR, "rowDraggingMark");
 
 /*
  * The current row's mark, and which elements carry it.
@@ -1454,7 +1455,19 @@ const ROW_STATE_GROUNDS = [
 		 * only element that can carry it for the pair.
 		 */
 		expression: () => expressionBefore(APP_RAIL, "rowState,"),
-		stubs: { expanded: true, rowState: rowCurrent },
+		/*
+		 * THE HELD BRANCH IS PART OF THE SAME EXPRESSION (sidebar customisation,
+		 * design D2): a row being dragged wears `rowDragging` plus
+		 * `rowDraggingMark` on the same `<li>`, so the call site paints one of the
+		 * row roles in either state and both are resolved here.
+		 */
+		stubs: {
+			expanded: true,
+			rowState: rowCurrent,
+			held: true,
+			rowDragging,
+			rowDraggingMark,
+		},
 		ground: () =>
 			literalClassAt(
 				APP_RAIL,

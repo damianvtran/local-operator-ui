@@ -42,7 +42,7 @@
 	"ui.command_palette.palette_search.unread": "Unread",
 	"ui.command_palette.palette_search.untitled_chat": "Untitled chat",
 	"ui.command_palette.use_palette_sources.agent_chat": "Agent chat",
-	"ui.command_palette.use_palette_sources.agent_hub": "Agent hub",
+	"ui.command_palette.use_palette_sources.agent_hub": "Agent Hub",
 	"ui.command_palette.use_palette_sources.agent_settings": "Agent settings",
 	"ui.command_palette.use_palette_sources.analytics": "Analytics",
 	"ui.command_palette.use_palette_sources.app_backend_and_environment": "App, backend and environment",
