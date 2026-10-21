@@ -1919,6 +1919,34 @@ export type DesktopSessionFrame =
 				 * flip re-reads through `/history` as it always did.
 				 */
 				cold?: boolean;
+				/**
+				 * The bridge could not deliver this frame's real delta, and sent a passive
+				 * notice instead.
+				 *
+				 * WHY A FLAG RATHER THAN A NEW FRAME TYPE. The backend replaces any frame
+				 * larger than its 1 MiB socket cap with this notice, and the cap is a
+				 * transport fact about THIS frame rather than a new kind of state: an
+				 * older renderer that ignores the field still folds `changes` exactly as
+				 * before, so the frame stays additive and replay-compatible. A renderer
+				 * that reads it must say the view may be stale instead of silently
+				 * freezing - which is the measured defect this field is for (a long-lived
+				 * session stopped updating with only a quiet trace line to show for it).
+				 *
+				 * ABSENT MEANS HEALTHY: only `true` is a notice, and a daemon that
+				 * predates the field never sets it.
+				 */
+				degraded?: boolean;
+				/**
+				 * The bridge has STOPPED publishing this session's deltas, and a complete
+				 * snapshot is the only thing that will resume them.
+				 *
+				 * Distinct from `degraded` because the reader's action differs: a degraded
+				 * frame is one lost delta the next complete frame may repair, while a
+				 * paused stream stays paused until the client asks for history again. Both
+				 * raise the same banner - the honest claim is identical ("this may be
+				 * stale"); the difference is whether waiting can fix it.
+				 */
+				paused?: boolean;
 				job_trajectory_appends: Record<string, never>;
 				job_trajectory_replacements: never[];
 			}
@@ -1957,7 +1985,15 @@ export type DesktopSessionFrame =
 				cold: boolean;
 			}
 	  >
-	| Receipt<"event", { type: string; [key: string]: unknown }>
+	/**
+	 * An `event` frame is normally a typed canonical AgentEvent the transcript
+	 * reducer paints. ONE shape is not: a bridge notice carrying
+	 * `action: "reload"`, which tells the viewer its delta stream could not be
+	 * delivered and the conversation should be re-read from history. It is read
+	 * by the same banner as the paused `frontend.update` flags (see
+	 * `use-canonical-session.ts`), never by `applyEvent`.
+	 */
+	| Receipt<"event", { type: string; action?: string; [key: string]: unknown }>
 	// Additive and replay-exempt: an older renderer falls through every branch
 	// of the frame loop, advances its receipt cursor on `seq`, and paints
 	// nothing. Deliberately NOT an `event`, which is a typed canonical

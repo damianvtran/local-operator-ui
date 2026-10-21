@@ -1674,6 +1674,9 @@ export type MessageParams = {
 	"ui.chat.canonical.transcript.connect_provider": undefined;
 	"ui.chat.canonical.transcript.credential_lost": undefined;
 	"ui.chat.canonical.transcript.edit": undefined;
+	"ui.chat.canonical.transcript.live_updates_paused": undefined;
+	"ui.chat.canonical.transcript.live_updates_reload": undefined;
+	"ui.chat.canonical.transcript.live_updates_reloading": undefined;
 	"ui.chat.canonical.transcript.missing_session": undefined;
 	"ui.chat.canonical.transcript.missing_session_detail": undefined;
 	"ui.chat.canonical.transcript.reconnect": undefined;
