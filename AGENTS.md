@@ -175,7 +175,11 @@ The mechanics:
   with the exact sorted missing key IDs, an owner and a payoff (ticket or ISO
   date). That list is shrink-only: a listed key that is no longer missing fails
   until `--update` drops it, and the check fails when the allowance grows
-  relative to the base branch. `pnpm check-types` checks typed call sites. The
+  relative to the base branch. CI runs this gate in the `Language Coverage` job
+  for any change under `src/i18n/**`, `i18n/**` or `scripts/i18n/**` — including
+  an allowance-only edit — with the comparison base taken from the pull
+  request, so the policy is enforced at merge rather than by convention.
+  `pnpm check-types` checks typed call sites. The
   scanner ratchets literal JSX text and copy attributes against
   `i18n/baseline.json`, and every finding blocks: there is no advisory scope.
   A file with counted literals and no recorded entry fails rather than starting

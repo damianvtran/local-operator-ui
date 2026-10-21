@@ -16,21 +16,34 @@
  * WHAT IT ENFORCES:
  *
  *  1. the manifest is well formed — exact fields, unique codes, known statuses
- *     and directions, exactly one `source` row for English;
+ *     and directions, exactly one `source` row for English, and at least one
+ *     `supported` target. A manifest with nothing to compare against is not a
+ *     clean gate, it is a disabled one, so it fails rather than printing an
+ *     "ok" over zero target languages;
  *  2. every locale directory under `src/i18n/catalogues/` is listed in the
  *     manifest (an unlisted locale would escape the gate);
- *  3. every `supported` language carries every key of every populated English
+ *  3. the English source carries at least one namespace, and at least one key;
+ *     an English namespace with no keys is a broken source, not full coverage
+ *     (every locale trivially "covers" it), unless the audited
+ *     `i18n/ledger.json` records that exact empty source — the record the
+ *     ledger check already reviews. A namespace that is empty in every locale
+ *     without that record fails, so a newly added or newly emptied empty
+ *     namespace cannot ride in;
+ *  4. every `supported` language carries every key of every populated English
  *     namespace, compared KEY BY KEY;
- *  4. the allowance is exact and attributed: each `(locale, namespace)` entry
+ *  5. the allowance is exact and attributed: each `(locale, namespace)` entry
  *     lists the sorted, duplicate-free key IDs that locale is missing, plus a
- *     reason, an owner and a payoff (ticket or ISO date). An empty list, a
- *     duplicate pair or key, an unsorted list, a key outside the namespace, a
- *     missing owner/payoff or a key the namespace does not contain fails;
- *  5. the allowance is SHRINK-ONLY in both directions: a missing key not listed
+ *     reason, an owner and a payoff. The payoff is checked against the contract
+ *     `AGENTS.md` states — a real `YYYY-MM-DD` date or a tracker key such as
+ *     `MIN-1234` — because a payoff nobody can look up ("eventually") is
+ *     indistinguishable from no payoff at all. An empty list, a duplicate pair
+ *     or key, an unsorted list, a key outside the namespace, a missing or
+ *     unparseable attribution or a key the namespace does not contain fails;
+ *  6. the allowance is SHRINK-ONLY in both directions: a missing key not listed
  *     fails (including a new key added to an already-incomplete namespace),
  *     and a listed key that is no longer missing fails until `--update` drops
  *     it. `--update` can only remove keys, never add them;
- *  6. the allowance cannot GROW relative to a base ref: when
+ *  7. the allowance cannot GROW relative to a base ref: when
  *     `--allowance-base <ref>` (or the CI pull-request base, or `origin/main`)
  *     is available, every `(locale, namespace, key)` the head adds over the
  *     base is named. A base without the file is the introduction case and is
@@ -55,6 +68,7 @@
  */
 
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
 	existsSync,
 	readFileSync,
@@ -70,6 +84,12 @@ const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const CATALOGUES = join(REPO, "src", "i18n", "catalogues");
 export const MANIFEST = join(REPO, "i18n", "languages.json");
 export const ALLOWANCE = join(REPO, "i18n", "coverage-allowance.json");
+/**
+ * The audited translation ledger. Read here only to answer ONE question: is an
+ * English-empty namespace a recorded, reviewed placeholder, or a namespace that
+ * lost its keys after it was audited? See `sourceProblems` in `checkCoverage`.
+ */
+export const LEDGER = join(REPO, "i18n", "ledger.json");
 export const SOURCE_LOCALE = "en";
 
 const STATUSES = new Set(["source", "supported"]);
@@ -77,6 +97,21 @@ const DIRECTIONS = new Set(["ltr", "rtl"]);
 /** Target languages whose catalogue must be complete. `source` is the reference. */
 const GATED_STATUSES = new Set(["supported"]);
 const FIELDS = ["code", "native", "english", "dir", "status"];
+/**
+ * The payoff contract, enforced rather than documented.
+ *
+ * `AGENTS.md` and the allowance's own note say the payoff is a ticket or an ISO
+ * date; checking only "non-empty string" accepts "eventually", which reads as
+ * attributed while carrying no plan. The date is parsed as a REAL calendar
+ * date, so `2026-02-30` cannot pass a shape-only test.
+ *
+ * The ticket form is an uppercase tracker key (`MIN-1234`): the repositories in
+ * this workspace use `<PREFIX>-<number>` identifiers, and accepting arbitrary
+ * prose would reopen the hole this closes.
+ */
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TICKET_RE = /^[A-Z][A-Z0-9]*-\d+$/;
+
 /** Mirrors the core checker's allowance fields exactly. */
 const ALLOWANCE_FIELDS = [
 	"locale",
@@ -89,6 +124,26 @@ const ALLOWANCE_FIELDS = [
 
 function readJson(path) {
 	return JSON.parse(readFileSync(path, "utf8"));
+}
+
+/** Byte hash, the same convention `scripts/i18n/ledger-check.mjs` verifies. */
+function sha256File(path) {
+	return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+/** Whether a value satisfies the payoff contract (see `ISO_DATE_RE`). */
+export function isPayoff(value) {
+	if (typeof value !== "string") return false;
+	if (ISO_DATE_RE.test(value)) {
+		const parsed = new Date(`${value}T00:00:00Z`);
+		// A real calendar date, not just its shape: `2026-02-30` parses to 2 March
+		// and `2026-13-01` does not parse at all.
+		return (
+			!Number.isNaN(parsed.valueOf()) &&
+			parsed.toISOString().slice(0, "YYYY-MM-DD".length) === value
+		);
+	}
+	return TICKET_RE.test(value);
 }
 
 /** English namespace names, sidecars excluded — the keys every locale owes. */
@@ -169,6 +224,16 @@ export function manifestProblems(manifest) {
 		);
 	else if (sources[0]?.code !== SOURCE_LOCALE)
 		problems.push(`the source language must be ${SOURCE_LOCALE}`);
+	// A source with no target compares English to nothing and reports "ok — 0
+	// gated language(s)". Refusing that is what keeps the gate a gate; it does
+	// not freeze WHICH languages are supported.
+	const targets = manifest.languages.filter((row) =>
+		GATED_STATUSES.has(row?.status),
+	);
+	if (targets.length === 0)
+		problems.push(
+			`no language has status "supported": a gate with no target language has nothing to compare and cannot report success`,
+		);
 	if (manifest.source !== undefined && manifest.source !== SOURCE_LOCALE)
 		problems.push(`\`source\`, when present, must be ${SOURCE_LOCALE}`);
 	return problems;
@@ -234,10 +299,14 @@ export function validateAllowance(allowance) {
 			);
 		if (extraFields.length > 0)
 			problems.push(`${where} has unknown field(s): ${extraFields.join(", ")}`);
-		for (const field of ["locale", "namespace", "reason", "owner", "payoff"]) {
+		for (const field of ["locale", "namespace", "reason", "owner"]) {
 			if (typeof entry[field] !== "string" || entry[field].trim().length === 0)
 				problems.push(`${where}.${field} must be a non-empty string`);
 		}
+		if (!isPayoff(entry.payoff))
+			problems.push(
+				`${where}.payoff ${JSON.stringify(entry.payoff) ?? "undefined"} is not a payoff: use an ISO date (YYYY-MM-DD) or a ticket reference such as MIN-1234`,
+			);
 		const locale = entry.locale;
 		const namespace = entry.namespace;
 		if (typeof locale !== "string" || typeof namespace !== "string") continue;
@@ -298,6 +367,7 @@ export function checkCoverage({
 	cataloguesDir = CATALOGUES,
 	manifestPath = MANIFEST,
 	allowancePath = ALLOWANCE,
+	ledgerPath = LEDGER,
 } = {}) {
 	const manifest = readJson(manifestPath);
 	const allowance = readJson(allowancePath);
@@ -308,6 +378,80 @@ export function checkCoverage({
 	const byCode = new Map(languages.map((row) => [row?.code, row]));
 	const namespaces = catalogueNamespaces(cataloguesDir);
 	const localesOnDisk = catalogueLocales(cataloguesDir);
+
+	/*
+	 * An English source with nothing in it is a BROKEN source, not full coverage:
+	 * `missingKeys` returns [] for a namespace with no source keys, so every
+	 * locale trivially covers it and the gate prints "ok". Each shape fails:
+	 *
+	 *  - no namespace files at all (nothing to compare);
+	 *  - no English keys anywhere (a green verdict over nothing);
+	 *  - an English namespace emptied while a locale still carries its keys (the
+	 *    source was truncated, so no remaining key can be reported missing).
+	 *
+	 * ONE namespace is legitimately empty in every locale today: `ui.agents` is
+	 * `{}` in all eight catalogues, carries no copy of its own (its children are
+	 * separate namespaces - `ui.agents.dialogs`, `.models`, `.settings`, ...)
+	 * and was recorded audited-empty in `i18n/ledger.json` by the commit that
+	 * introduced the i18n mechanism. THE LEDGER IS THE EXEMPTION, not a list in
+	 * this file: a namespace born empty has no ledger entry and fails, and a
+	 * namespace emptied after translation carries a stale `source_sha256` and
+	 * fails, so there is no second place to keep in step with the tree.
+	 */
+	const sourceProblems = [];
+	if (namespaces.length === 0)
+		sourceProblems.push(
+			"the English source carries no namespace catalogue, so there is nothing to compare and a clean verdict would be vacuous",
+		);
+	const ledger = existsSync(ledgerPath)
+		? readJson(ledgerPath)
+		: { entries: [] };
+	const ledgerEntries = Array.isArray(ledger.entries) ? ledger.entries : [];
+	const sourceKeyCount = (namespace) =>
+		Object.keys(
+			readJson(join(cataloguesDir, SOURCE_LOCALE, `${namespace}.json`)),
+		).length;
+	let totalSourceKeys = 0;
+	for (const namespace of namespaces) {
+		const keyCount = sourceKeyCount(namespace);
+		totalSourceKeys += keyCount;
+		if (keyCount > 0) continue;
+		// A locale that has no file for this namespace carries none of its keys;
+		// only the ones that do can prove the source was truncated.
+		const carriers = localesOnDisk.filter((locale) => {
+			const path = join(cataloguesDir, locale, `${namespace}.json`);
+			return existsSync(path) && Object.keys(readJson(path)).length > 0;
+		});
+		if (carriers.length > 0) {
+			sourceProblems.push(
+				`English namespace ${namespace} carries no keys while ${carriers.join(", ")} still do: the source was truncated, not translated`,
+			);
+			continue;
+		}
+		const recorded = ledgerEntries.filter(
+			(entry) => entry?.namespace === namespace,
+		);
+		if (recorded.length === 0) {
+			sourceProblems.push(
+				`English namespace ${namespace} carries no keys in any locale and i18n/ledger.json has no audited entry for it; an empty namespace must be recorded as an audited empty source, never added silently`,
+			);
+			continue;
+		}
+		const sourceHash = sha256File(
+			join(cataloguesDir, SOURCE_LOCALE, `${namespace}.json`),
+		);
+		const stale = recorded.filter(
+			(entry) => entry.source_sha256 !== sourceHash,
+		);
+		if (stale.length > 0)
+			sourceProblems.push(
+				`English namespace ${namespace} carries no keys and i18n/ledger.json records another source for ${stale.map((entry) => entry.locale).join(", ")}: it was emptied after it was audited`,
+			);
+	}
+	if (namespaces.length > 0 && totalSourceKeys === 0)
+		sourceProblems.push(
+			"the English source carries no keys at all, so every locale trivially covers every namespace and a clean verdict would be vacuous",
+		);
 
 	const unlistedLocales = localesOnDisk.filter((locale) => !byCode.has(locale));
 
@@ -392,6 +536,7 @@ export function checkCoverage({
 		manifest,
 		allowance,
 		problems,
+		sourceProblems,
 		allowanceProblems,
 		extraNamespaces,
 		unlistedLocales,
@@ -408,6 +553,7 @@ export function checkCoverage({
 export function failureCount(result) {
 	return (
 		result.problems.length +
+		result.sourceProblems.length +
 		result.allowanceProblems.length +
 		result.extraNamespaces.length +
 		result.unlistedLocales.length +
@@ -629,6 +775,8 @@ export function main(argv, options = {}) {
 
 	for (const problem of result.problems)
 		process.stderr.write(`coverage-check: manifest — ${problem}\n`);
+	for (const problem of result.sourceProblems)
+		process.stderr.write(`coverage-check: source — ${problem}\n`);
 	for (const problem of result.allowanceProblems)
 		process.stderr.write(`coverage-check: allowance — ${problem}\n`);
 	for (const problem of result.extraNamespaces)

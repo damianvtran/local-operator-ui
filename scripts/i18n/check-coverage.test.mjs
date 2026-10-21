@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -21,6 +28,13 @@ const NO_MISSING_KEYS = /no missing keys/;
 const UNSORTED_KEYS = /not sorted/;
 const DUPLICATE_KEYS = /duplicate keys/;
 const OUTSIDE_NAMESPACE = /outside ui\.demo/;
+const NO_NAMESPACES = /carries no namespace catalogue/;
+const NO_SOURCE_KEYS = /carries no keys at all/;
+const TRUNCATED_SOURCE = /the source was truncated/;
+const UNRECORDED_EMPTY = /no audited entry/;
+const EMPTIED_AFTER_AUDIT = /emptied after it was audited/;
+const NO_TARGET = /no language has status "supported"/;
+const BAD_PAYOFF = /is not a payoff/;
 
 /*
  * EXECUTABLE CONTRACT FOR THE COVERAGE GATE.
@@ -54,6 +68,36 @@ function row(code, status = "supported", dir = "ltr") {
 	return { code, native: code, english: code, dir, status };
 }
 
+/** Byte hash, the convention `i18n/ledger.json` records. */
+function sha256File(path) {
+	return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+/**
+ * The ledger entries a fixture's own bytes would produce, one per translated
+ * (locale, namespace) file. Deriving them keeps the fixture honest to the real
+ * tree, where an audited-empty namespace carries the hash of its empty file:
+ * a test that wants an UNRECORDED or STALE entry overrides or edits it.
+ */
+function deriveLedger(cataloguesDir, locales) {
+	const entries = [];
+	for (const locale of Object.keys(locales)) {
+		if (locale === "en") continue;
+		for (const namespace of Object.keys(locales[locale] ?? {})) {
+			const source = join(cataloguesDir, "en", `${namespace}.json`);
+			const target = join(cataloguesDir, locale, `${namespace}.json`);
+			if (!existsSync(source) || !existsSync(target)) continue;
+			entries.push({
+				locale,
+				namespace,
+				source_sha256: sha256File(source),
+				target_sha256: sha256File(target),
+			});
+		}
+	}
+	return entries;
+}
+
 function build({
 	languages = [row("en", "source"), row("fr")],
 	locales = {
@@ -63,6 +107,7 @@ function build({
 		},
 	},
 	allowance = [],
+	ledger,
 	manifestOverride,
 } = {}) {
 	const root = mkdtempSync(join(tmpdir(), "coverage-check-"));
@@ -108,8 +153,98 @@ function build({
 			"\t",
 		)}\n`,
 	);
-	return { cataloguesDir, manifestPath, allowancePath };
+	const ledgerPath = join(root, "ledger.json");
+	writeFileSync(
+		ledgerPath,
+		`${JSON.stringify(
+			{
+				schema: 1,
+				note: "fixture",
+				entries: ledger ?? deriveLedger(cataloguesDir, locales),
+			},
+			null,
+			"\t",
+		)}\n`,
+	);
+	return { cataloguesDir, manifestPath, allowancePath, ledgerPath };
 }
+
+test("an English source with no namespace fails instead of covering nothing", () => {
+	const tree = build({ locales: { en: {}, fr: {} } });
+	const result = checkCoverage(tree);
+	assert.deepEqual(result.sourceProblems.length, 1);
+	assert.match(result.sourceProblems[0], NO_NAMESPACES);
+	assert.equal(main([], tree), 1);
+});
+
+test("an English source with no keys anywhere fails", () => {
+	// The reviewer's `{}`-everywhere control: every namespace exists and every
+	// object is empty, so every locale trivially covers every namespace.
+	const tree = build({
+		locales: { en: { "ui.demo": {} }, fr: { "ui.demo": {} } },
+	});
+	const result = checkCoverage(tree);
+	assert.ok(
+		result.sourceProblems.some((problem) => NO_SOURCE_KEYS.test(problem)),
+	);
+	assert.equal(main([], tree), 1);
+});
+
+test("an empty namespace recorded audited-empty in the ledger passes", () => {
+	// `ui.agents` in the real tree: `{}` in all eight catalogues, no copy of its
+	// own, audited-empty in i18n/ledger.json. The ledger record is what makes the
+	// empty state legitimate rather than silent.
+	const tree = build({
+		locales: {
+			en: { "ui.demo": { "ui.demo.hello": "Hello" }, "ui.placeholder": {} },
+			fr: { "ui.demo": { "ui.demo.hello": "Bonjour" }, "ui.placeholder": {} },
+		},
+	});
+	assert.equal(failureCount(checkCoverage(tree)), 0);
+});
+
+test("an empty namespace with no ledger record fails closed", () => {
+	const tree = build();
+	// Born empty: written after the ledger, so no audit ever recorded it.
+	writeFileSync(join(tree.cataloguesDir, "en", "ui.new.json"), "{}\n");
+	writeFileSync(join(tree.cataloguesDir, "fr", "ui.new.json"), "{}\n");
+	const result = checkCoverage(tree);
+	assert.ok(
+		result.sourceProblems.some((problem) => UNRECORDED_EMPTY.test(problem)),
+	);
+	assert.equal(main([], tree), 1);
+});
+
+test("an English namespace emptied while a locale carries it fails", () => {
+	const tree = build();
+	writeFileSync(join(tree.cataloguesDir, "en", "ui.demo.json"), "{}\n");
+	const result = checkCoverage(tree);
+	assert.ok(
+		result.sourceProblems.some((problem) => TRUNCATED_SOURCE.test(problem)),
+	);
+	assert.equal(main([], tree), 1);
+});
+
+test("an English namespace emptied after its audit fails even when the locale is emptied too", () => {
+	const tree = build();
+	writeFileSync(join(tree.cataloguesDir, "en", "ui.demo.json"), "{}\n");
+	writeFileSync(join(tree.cataloguesDir, "fr", "ui.demo.json"), "{}\n");
+	const result = checkCoverage(tree);
+	assert.ok(
+		result.sourceProblems.some((problem) => EMPTIED_AFTER_AUDIT.test(problem)),
+	);
+	assert.equal(main([], tree), 1);
+});
+
+test("a manifest with no supported target fails instead of gating nothing", () => {
+	const tree = build({
+		languages: [row("en", "source")],
+		locales: { en: { "ui.demo": { "ui.demo.hello": "Hello" } } },
+	});
+	const result = checkCoverage(tree);
+	assert.ok(result.problems.some((problem) => NO_TARGET.test(problem)));
+	assert.equal(main([], tree), 1);
+});
 
 test("a complete tree passes", () => {
 	const tree = build();
@@ -328,26 +463,39 @@ test("a duplicate allowance pair fails", () => {
 	assert.match(result.allowanceProblems[0], DUPLICATE_PAIR);
 });
 
-test("an allowance row needs a reason, an owner and a payoff", () => {
-	for (const field of ["reason", "owner", "payoff"]) {
-		const tree = build({
-			locales: {
-				en: { "ui.demo": { "ui.demo.hello": "Hello" } },
-				fr: {},
-			},
-			allowance: [
-				{ locale: "fr", namespace: "ui.demo", missing: ["ui.demo.hello"] },
-			],
-		});
-		const saved = JSON.parse(readFileSync(tree.allowancePath, "utf8"));
-		saved.pairs[0][field] = "  ";
-		writeFileSync(tree.allowancePath, `${JSON.stringify(saved, null, "\t")}\n`);
+test("a payoff must be a real ISO date or a ticket reference", () => {
+	const locales = {
+		en: { "ui.demo": { "ui.demo.hello": "Hello" } },
+		fr: {},
+	};
+	const allowanceFor = (payoff) => [
+		{ locale: "fr", namespace: "ui.demo", missing: ["ui.demo.hello"], payoff },
+	];
+	// Shape-only checks are not enough: `2026-02-30` is the right shape and no
+	// date, and prose reads as attributed while naming nothing anyone can chase.
+	for (const payoff of [
+		"eventually",
+		"soon",
+		"2026-02-30",
+		"2026-13-01",
+		"MIN",
+		"min-1234",
+		" 2026-12-31",
+	]) {
+		const tree = build({ locales, allowance: allowanceFor(payoff) });
 		const result = checkCoverage(tree);
 		assert.ok(
-			result.allowanceProblems.some((problem) =>
-				problem.includes(`.${field} must be a non-empty string`),
-			),
-			`${field} should be required`,
+			result.allowanceProblems.some((problem) => BAD_PAYOFF.test(problem)),
+			`${JSON.stringify(payoff)} should fail the payoff contract`,
+		);
+		assert.equal(main([], tree), 1);
+	}
+	for (const payoff of ["2026-12-31", "MIN-1234"]) {
+		const tree = build({ locales, allowance: allowanceFor(payoff) });
+		assert.equal(
+			failureCount(checkCoverage(tree)),
+			0,
+			`${payoff} should satisfy the payoff contract`,
 		);
 	}
 });
@@ -392,7 +540,9 @@ test("a corrupt target catalogue fails loudly instead of reading as a gap", () =
 });
 
 test("an unknown status fails", () => {
-	const tree = build({ languages: [row("en", "source"), row("fr", "beta")] });
+	const tree = build({
+		languages: [row("en", "source"), row("fr"), row("de", "beta")],
+	});
 	const result = checkCoverage(tree);
 	assert.ok(result.problems.some((problem) => problem.includes("not one of")));
 	assert.equal(failureCount(result), 1);
