@@ -196,7 +196,18 @@ export type TeamBridgePersonBridgeState = z.infer<
 export const teamBridgeDirectoryMemberSchema = z
 	.object({
 		account_id: id,
-		display_label: z.string().min(1).max(64),
+		/*
+		 * THE DIRECTORY DOES NOT PROMISE A NON-EMPTY LABEL. The hub keeps a
+		 * membership row when the account behind it was deleted between the two
+		 * reads (bridge_read_service.go: "keeps its row with an empty label"), and
+		 * an account may have neither a name nor an email. `min(1)` here made ONE
+		 * such row fail the whole `members` array and the People section rendered
+		 * "People could not be loaded." with no cause. The cap is likewise the
+		 * server's to enforce, not a render-time parser's: display names and email
+		 * fallbacks routinely exceed the old 64 characters. The row renderer
+		 * supplies a stable fallback label.
+		 */
+		display_label: z.string().max(320),
 		role: z.string().min(1).max(32),
 		bridge_enabled: z.boolean(),
 		bridge_state: teamBridgePersonBridgeStateSchema,
