@@ -81,11 +81,23 @@ function chordOwner(
  * focus. The DOM door also answers scripted KeyboardEvents (which never pass
  * Electron's hook). It claims the event before app navigation bubbles to window.
  * Commands are queued, not debounced: legitimate rapid tab cycling is retained. */
+/**
+ * The address surface's own door. S4b removed the always-mounted input, so a
+ * `RefObject<HTMLInputElement>` is null at rest and every `focusAddress()` was a
+ * silent no-op (design §4). The handle raises the popout instead; when the
+ * active tab is the start page the surface focuses that page's own field.
+ */
+export interface AddressController {
+	raise: (options?: { origin?: "page" | "chrome"; seed?: string }) => void;
+	/** Lower without restoring focus (a new tab's start page takes it). */
+	close: () => void;
+}
+
 export function useBrowserChords(
 	chrome: BrowserChrome,
 	tabs: BrowserTabView[],
 	sessionId: string | null,
-	address: RefObject<HTMLInputElement>,
+	address: RefObject<AddressController>,
 ) {
 	const [root, setRoot] = useState<HTMLDivElement | null>(null);
 	const findReturnToPage = useRef(false);
@@ -178,10 +190,6 @@ export function useBrowserChords(
 			reportedFocus.set(document, focused);
 			void api.setChordFocus(focused).catch(() => {});
 		};
-		const focusAddress = () => {
-			address.current?.focus();
-			address.current?.select();
-		};
 		const projectionDropped = async (tabId: number): Promise<void> => {
 			for (let waited = 0; waited < 1000; waited += 5) {
 				if (!latest.current.tabs.some((tab) => tab.tabId === tabId)) return;
@@ -209,12 +217,15 @@ export function useBrowserChords(
 				return;
 			}
 			if (intent === "focus-address") {
-				focusAddress();
+				address.current?.raise({ origin });
 				return;
 			}
 			if (intent === "new-tab") {
 				await c.newTab(current.sessionId);
-				focusAddress();
+				// The new tab IS its start page, whose own field autofocuses on mount.
+				// Raising the popout here would paint over the strip the start page
+				// lives under and leave a second, emptier address field on screen.
+				address.current?.close();
 				return;
 			}
 			if (intent === "reopen-tab") {
@@ -242,7 +253,8 @@ export function useBrowserChords(
 					// waits for the projection (a bound, not a debounce: it ends the
 					// moment the tab leaves the list), so rapid presses stay ordered.
 					if (closed) await projectionDropped(id);
-					if (replaced) focusAddress();
+					// A replacement blank tab is a start page; its own field takes focus.
+					if (replaced) address.current?.close();
 				}
 			} else {
 				const target = chordTarget(current.tabs, cursor, intent);

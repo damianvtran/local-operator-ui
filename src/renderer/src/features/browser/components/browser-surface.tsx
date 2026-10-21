@@ -6,11 +6,21 @@ import {
 	useSuppressedOverlayIds,
 } from "@shared/browser-view-policy";
 import { Spinner } from "@shared/components/common/spinner";
-import { Button } from "@shared/components/ui";
+import { Button, Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
+import { chordCaption } from "@shared/keymap/keymap-chord";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { AlertTriangle, Globe, X } from "lucide-react";
+import {
+	AlertTriangle,
+	File,
+	Globe,
+	Lock,
+	LockOpen,
+	Search,
+	ShieldCheck,
+	X,
+} from "lucide-react";
 import type { FC } from "react";
 import {
 	useCallback,
@@ -21,7 +31,10 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useBrowserChords } from "../hooks/use-browser-chords";
+import {
+	type AddressController,
+	useBrowserChords,
+} from "../hooks/use-browser-chords";
 import {
 	type BrowserTabView,
 	useBrowserChrome,
@@ -31,7 +44,9 @@ import {
 	requestsInScope,
 	useApprovalQueue,
 } from "../model/approval-queue-model";
+import { browserBridge } from "../model/browser-projection-store";
 import { browserOverlaySuppressing } from "../model/self-suppression";
+import { siteInfoForUrl } from "../model/site-info";
 import { isStartPageUrl } from "../model/start-page";
 import {
 	type SurfaceScope,
@@ -47,6 +62,7 @@ import { BrowserFindRow } from "./browser-find-row";
 import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
 import { BrowserLoadFailure } from "./browser-load-failure";
 import { BrowserNewTab } from "./browser-new-tab";
+import { BrowserPageMenu } from "./browser-page-menu";
 import { BrowserTabStrip } from "./browser-tab-strip";
 import { BrowserUrlBar } from "./browser-url-bar";
 
@@ -122,6 +138,8 @@ import { BrowserUrlBar } from "./browser-url-bar";
 
 /** The rect in CSS pixels, rounded, because Electron positions a native view in
  * device-independent pixels and a fractional origin shows as a seam. */
+const MAC_PLATFORM = /Mac|iPhone|iPad/;
+
 function measure(element: HTMLElement): {
 	x: number;
 	y: number;
@@ -326,12 +344,112 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	const activeTab =
 		tabs.find((tab) => tab.tabId === state?.activeTabId) ?? null;
 	const addressRef = useRef<HTMLInputElement>(null);
+	/**
+	 * S4b's popout state. There is no address field at rest: `popout` is the
+	 * entire lifetime of the raised row, and `nonce` remounts it for a second
+	 * raise so the seed/select contract runs again.
+	 */
+	const [popout, setPopout] = useState<{
+		tabId: number | null;
+		seed?: string;
+		selectAll: boolean;
+		origin: "page" | "chrome";
+		nonce: number;
+	} | null>(null);
+	const popoutRef = useRef(popout);
+	popoutRef.current = popout;
+	const popoutNonce = useRef(0);
+	const startPageRef = useRef(false);
+	/** Tier 2: the popout failed its focus contract twice; the in-flow bar is
+	 * the fallback for the rest of this surface's life. */
+	const [addressFallback, setAddressFallback] = useState(false);
+	const addressFocusFailures = useRef(0);
+	const stripRef = useRef<HTMLDivElement | null>(null);
+	const [anchor, setAnchor] = useState<{ x: number; width: number } | null>(
+		null,
+	);
+
+	const chordRootRef = useRef<HTMLDivElement | null>(null);
+	const dismissAddress = useCallback((restoreFocus = true) => {
+		const origin = popoutRef.current?.origin ?? "chrome";
+		setPopout(null);
+		if (!restoreFocus) return;
+		if (origin === "page") {
+			void browserBridge()
+				?.focusPage()
+				.catch(() => {});
+			return;
+		}
+		chordRootRef.current?.focus({ preventScroll: true });
+	}, []);
+
+	const raiseAddress = useCallback(
+		(options?: { origin?: "page" | "chrome"; seed?: string }) => {
+			const origin = options?.origin ?? "chrome";
+			const seed = options?.seed;
+			// THE START PAGE KEEPS ITS OWN FIELD (S4a's own semantics): the page is
+			// DOM under a hidden native view, so a popout over the strip would be a
+			// second address field on top of one the user can already type into.
+			if (startPageRef.current) {
+				const field = chordRootRef.current?.querySelector<HTMLInputElement>(
+					'[data-tour-tag="browser-start-page-address"]',
+				);
+				field?.focus({ preventScroll: true });
+				field?.select();
+				return;
+			}
+			if (popoutRef.current && seed === undefined) {
+				addressRef.current?.focus();
+				addressRef.current?.select();
+				return;
+			}
+			popoutNonce.current += 1;
+			setPopout({
+				tabId: state?.activeTabId ?? null,
+				seed,
+				selectAll: seed === undefined,
+				origin,
+				nonce: popoutNonce.current,
+			});
+		},
+		[state?.activeTabId],
+	);
+
+	const addressController = useRef<AddressController>({
+		raise: raiseAddress,
+		close: () => setPopout(null),
+	});
+	addressController.current = {
+		raise: raiseAddress,
+		close: () => setPopout(null),
+	};
+
 	const {
 		root: chordRoot,
 		closeTab,
 		findReturnToPage,
 		openFind,
-	} = useBrowserChords(chrome, tabs, hostSessionId, addressRef);
+	} = useBrowserChords(chrome, tabs, hostSessionId, addressController);
+
+	// The strip's own band, remeasured on anything that can move it: the child
+	// list is positioned by main from this anchor, and a stale width would paint
+	// it under the wrong part of the row.
+	useLayoutEffect(() => {
+		const element = stripRef.current;
+		if (!element) return;
+		const measureAnchor = (): void => {
+			const rect = element.getBoundingClientRect();
+			setAnchor({ x: Math.round(rect.left), width: Math.round(rect.width) });
+		};
+		measureAnchor();
+		const observer = new ResizeObserver(measureAnchor);
+		observer.observe(element);
+		window.addEventListener("resize", measureAnchor);
+		return () => {
+			observer.disconnect();
+			window.removeEventListener("resize", measureAnchor);
+		};
+	}, []);
 
 	// THE ONE CLOCK (spec 3.3). The queue model owns the 1s interval and the
 	// ordinal, so the tray, the dock, the tab chips and the badge cannot disagree.
@@ -561,6 +679,63 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		!chrome.pendingUrl;
 	const showingNewTab =
 		onStartPage && navFailure === null && !overlaySuppressing;
+	startPageRef.current = onStartPage;
+
+	const overlayHealth = state?.addressOverlay;
+	const overlayMode: "popout" | "suspend" =
+		overlayHealth?.mode === "popout" ? "popout" : "suspend";
+	const addressChord = chordCaption(
+		"primary+l",
+		MAC_PLATFORM.test(navigator.platform) ? "mac" : "linux",
+	);
+	// The trigger's at-rest origin register: the same classification the field
+	// uses, from the same live url, so the two cannot disagree.
+	const triggerSiteInfo = siteInfoForUrl(
+		state?.url ?? "",
+		state?.navFailure ?? null,
+	);
+	const siteHost = triggerSiteInfo.origin
+		? new URL(triggerSiteInfo.origin).host
+		: "";
+	const SiteTriggerIcon =
+		triggerSiteInfo.kind === "secure"
+			? Lock
+			: triggerSiteInfo.kind === "not-secure" ||
+					triggerSiteInfo.kind === "unverified"
+				? LockOpen
+				: triggerSiteInfo.kind === "file"
+					? File
+					: Search;
+
+	// A tab change ends the raise: the draft belonged to the old tab, and main's
+	// own layout dismissal covers the native child. This is the renderer half of
+	// the same fact, so the field row cannot outlive its tab even if an event is
+	// lost in flight.
+	useEffect(() => {
+		if (popout && popout.tabId !== (state?.activeTabId ?? null))
+			setPopout(null);
+	}, [popout, state?.activeTabId]);
+
+	// TIER 2's health contract (design §6): the raise is healthy only if the
+	// input takes focus within 300ms. Twice failing moves the address field into
+	// the flow for the rest of the surface's life; the page shifts down once and
+	// stays there, which is visible and stable, unlike a popout that silently
+	// refuses the keyboard.
+	useEffect(() => {
+		if (!popout || addressFallback || overlayMode !== "popout") return;
+		const timer = setTimeout(() => {
+			if (document.activeElement === addressRef.current) {
+				addressFocusFailures.current = 0;
+				return;
+			}
+			addressFocusFailures.current += 1;
+			if (addressFocusFailures.current >= 2) {
+				setPopout(null);
+				setAddressFallback(true);
+			}
+		}, 300);
+		return () => clearTimeout(timer);
+	}, [popout, addressFallback, overlayMode]);
 	/*
 	 * WHETHER THE OPAQUE WEBVIEW IS WHAT THE BARS SIT ABOVE. Window glass keys the
 	 * route host's paint on this: with a live page the chrome band and the native
@@ -639,7 +814,10 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		   conversation's, and the strip/client area above and below are continuous
 		   with it. */
 		<div
-			ref={chordRoot}
+			ref={(node) => {
+				chordRoot(node);
+				chordRootRef.current = node;
+			}}
 			// A programmatic rest-stop, not a control (UX U9): the keyboard close parks
 			// focus here so the chord keeps its owner when the closing tab button
 			// unmounts. `outline-none!` because Chromium counts a scripted `.focus()`
@@ -650,7 +828,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			// `outline-none` exactly when "focus is moved there programmatically and a
 			// ring would be noise". Every focusable CHILD keeps its own ring.
 			tabIndex={-1}
-			className="flex h-full min-h-0 flex-col bg-elevated outline-none!"
+			className="relative flex h-full min-h-0 flex-col bg-elevated outline-none!"
 			/* The pane ground of the Browser ROUTE (inside the pane slot the enclosing
 			   `pane` region already owns the alpha and this one is cleared as nested).
 			   `data-glass-split` only on the route host: nothing may paint beneath the
@@ -665,85 +843,226 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			    round 2, A-2), and discarding it here would leave the one caller that needs
 			    the answer with nothing to read. Every other chrome call stays fired-and-
 			    forgotten, which is what `void` says. */}
-			<BrowserTabStrip
-				tabPanelId={tabPanelId}
-				tabs={tabs}
-				sessions={sessions}
-				activeTabId={state?.activeTabId ?? null}
-				waiting={queue.waiting}
-				onActivate={(tabId) => void chrome.activateTab(tabId)}
-				onClose={closeTab}
-				onCloseTabs={(intent) => chrome.closeTabs(intent)}
-				onNewTab={() => void chrome.newTab(hostSessionId)}
-				onReorder={(ids) => chrome.reorderTabs(ids)}
-				onTabAction={(id, action) => {
-					void chrome.actOnTab(id, action).then((outcome) => {
-						// A failed navigation still retains an active plain-user copy. Reveal
-						// an actual destination, never a refusal that created none; do not
-						// copy conversation association just to make the failure inspectable.
-						if (
-							outcome?.tabId != null &&
-							action === "duplicate" &&
-							tabScope !== "all"
-						)
-							onShowAllTabs?.();
-					});
-				}}
-				newTabLabel={newTabLabel}
-				onHandOver={(tab) => setHandOverTab(tab)}
-				onRevokeHandOver={(tabId) => void chrome.revokeHandOver(tabId)}
-			/>
-			<BrowserUrlBar
-				inputRef={addressRef}
-				tabId={state?.activeTabId ?? null}
-				url={state?.url ?? ""}
-				pendingUrl={chrome.pendingUrl}
-				loading={Boolean(state?.loading)}
-				canGoBack={Boolean(state?.canGoBack)}
-				canGoForward={Boolean(state?.canGoForward)}
-				disabled={tabs.length === 0}
-				onNavigate={(url, expectedTabId) =>
-					void chrome.navigate(url, expectedTabId)
-				}
-				onBack={() => void chrome.history("back")}
-				onForward={() => void chrome.history("forward")}
-				onHome={() => void chrome.home()}
-				loadFailure={state?.navFailure ?? null}
-				onReload={() => void chrome.reload()}
-				onStop={() => void chrome.stop()}
-				onOpenApprovals={() => setDockOpen((open) => !open)}
-				waitingCount={queue.count}
-				triggerRef={approvalsTriggerRef}
-				// The durable route to the download folder (review round 1, U2): main's own path,
-				// present for as long as the host has written one, so the strip's row is free to be
-				// the notification it is meant to be.
-				downloadsDir={chrome.state?.transfers?.dir ?? null}
-				// WHAT THE DURABLE CONTROL SAYS IT OPENS (review round 2, U12): once the row has
-				// retired, this control is the only download-related thing on screen, and a user
-				// who was reading Chat during the transfer had no way in the app to learn that
-				// anything arrived. The newest save and the session count ride the projection,
-				// so the control cannot describe a save the host does not have.
-				downloadsRecent={chrome.state?.transfers?.recent ?? null}
-				onFind={() => void openFind("chrome")}
-				onPrint={() => {
-					if (state?.activeTabId != null)
-						void chrome.pageControl(state.activeTabId, "print");
-				}}
-				pageZoom={state?.pageControls?.zoom ?? 1}
-				onResetZoom={() => {
-					if (state?.activeTabId != null)
-						void chrome.pageControl(state.activeTabId, "reset");
-				}}
-				onOpenDownloads={() => void chrome.revealDownloads()}
-				// The address suggestions follow the SAME display scope as the strip: the
-				// route offers every tab, a conversation pane offers its own. The scope is
-				// passed with its primitive key because the pane builds `{ sessionId }`
-				// fresh each render.
-				addressScope={tabScope}
-				addressScopeKey={scopeField}
-				addressHistory={(request) => chrome.addressHistory(request)}
-				onStateChanged={chrome.onStateChanged}
-			/>
+			<div ref={stripRef}>
+				<BrowserTabStrip
+					tabPanelId={tabPanelId}
+					tabs={tabs}
+					sessions={sessions}
+					activeTabId={state?.activeTabId ?? null}
+					waiting={queue.waiting}
+					onActivate={(tabId) => void chrome.activateTab(tabId)}
+					onClose={closeTab}
+					onCloseTabs={(intent) => chrome.closeTabs(intent)}
+					onNewTab={() => void chrome.newTab(hostSessionId)}
+					onReorder={(ids) => chrome.reorderTabs(ids)}
+					onTabAction={(id, action) => {
+						void chrome.actOnTab(id, action).then((outcome) => {
+							// A failed navigation still retains an active plain-user copy. Reveal
+							// an actual destination, never a refusal that created none; do not
+							// copy conversation association just to make the failure inspectable.
+							if (
+								outcome?.tabId != null &&
+								action === "duplicate" &&
+								tabScope !== "all"
+							)
+								onShowAllTabs?.();
+						});
+					}}
+					newTabLabel={newTabLabel}
+					onHandOver={(tab) => setHandOverTab(tab)}
+					onRevokeHandOver={(tabId) => void chrome.revokeHandOver(tabId)}
+					chromeInert={popout !== null}
+					trailing={
+						<>
+							{(queue.count > 0 || dockOpen) && (
+								<Tooltip
+									side="top"
+									align="end"
+									content={t("ui.browser.chrome.approvals")}
+								>
+									<Button
+										ref={approvalsTriggerRef}
+										variant={queue.count > 0 ? "outline" : "ghost"}
+										size={queue.count > 0 ? "sm" : "icon-sm"}
+										className="ml-2 shrink-0 self-center"
+										onClick={() => setDockOpen((open) => !open)}
+										aria-label={
+											queue.count > 0
+												? t("ui.browser.browser_url_bar.approvals_waiting", {
+														count: queue.count,
+													})
+												: t("ui.browser.chrome.approvals")
+										}
+										data-tour-tag="browser-approvals"
+									>
+										<ShieldCheck aria-hidden className="size-3.5" />
+										{queue.count > 0 &&
+											t("ui.browser.browser_approvals_dock.approvals")}
+									</Button>
+								</Tooltip>
+							)}
+							<Tooltip
+								side="top"
+								content={t("ui.browser.browser_url_bar.address_trigger", {
+									shortcut: addressChord.glyph,
+								})}
+							>
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									className="ml-2 shrink-0 gap-1 self-center px-1"
+									aria-label={t("ui.browser.browser_url_bar.address_trigger", {
+										shortcut: addressChord.glyph,
+									})}
+									aria-keyshortcuts={addressChord.aria}
+									onClick={() => raiseAddress({ origin: "chrome" })}
+									data-tour-tag="browser-address-trigger"
+								>
+									<SiteTriggerIcon aria-hidden className="size-3.5" />
+									{siteHost && (
+										<span className="hidden max-w-[104px] truncate text-meta text-ink-dim @2xl:inline">
+											{siteHost}
+										</span>
+									)}
+								</Button>
+							</Tooltip>
+							<BrowserPageMenu
+								placement="strip"
+								disabled={tabs.length === 0}
+								loading={Boolean(state?.loading)}
+								canGoBack={Boolean(state?.canGoBack)}
+								canGoForward={Boolean(state?.canGoForward)}
+								pageZoom={state?.pageControls?.zoom ?? 1}
+								waitingCount={queue.count}
+								downloadsDir={chrome.state?.transfers?.dir ?? null}
+								onAddress={() => raiseAddress({ origin: "chrome" })}
+								onBack={() => void chrome.history("back")}
+								onForward={() => void chrome.history("forward")}
+								onReload={() => void chrome.reload()}
+								onStop={() => void chrome.stop()}
+								onHome={() => void chrome.home()}
+								onFind={() => void openFind("chrome")}
+								onPrint={() => {
+									if (state?.activeTabId != null)
+										void chrome.pageControl(state.activeTabId, "print");
+								}}
+								onResetZoom={() => {
+									if (state?.activeTabId != null)
+										void chrome.pageControl(state.activeTabId, "reset");
+								}}
+								onOpenDownloads={() => void chrome.revealDownloads()}
+								onOpenApprovals={() => setDockOpen((open) => !open)}
+							/>
+						</>
+					}
+				/>
+			</div>
+			{/* TIER 2 (design §6): the popout failed its focus contract twice, so the
+			    same component re-mounts in the flow. One 41px shift, then stable; no
+			    dock, no suggestions, no second implementation. */}
+			{addressFallback && (
+				<BrowserUrlBar
+					placement="bar"
+					inputRef={addressRef}
+					tabId={state?.activeTabId ?? null}
+					url={state?.url ?? ""}
+					pendingUrl={chrome.pendingUrl}
+					loading={Boolean(state?.loading)}
+					canGoBack={Boolean(state?.canGoBack)}
+					canGoForward={Boolean(state?.canGoForward)}
+					disabled={tabs.length === 0}
+					onNavigate={(url, expectedTabId) =>
+						void chrome.navigate(url, expectedTabId)
+					}
+					onBack={() => void chrome.history("back")}
+					onForward={() => void chrome.history("forward")}
+					onHome={() => void chrome.home()}
+					loadFailure={state?.navFailure ?? null}
+					onReload={() => void chrome.reload()}
+					onStop={() => void chrome.stop()}
+					overlayMode="suspend"
+					anchor={null}
+				/>
+			)}
+			{addressFallback && (
+				<output className="sr-only" role="status" aria-live="polite">
+					{t("ui.browser.browser_url_bar.address_bar_shown")}
+				</output>
+			)}
+			{popout && !addressFallback && !onStartPage && (
+				<div
+					className="absolute inset-x-0 top-0 z-30"
+					data-tour-tag="browser-address-popout"
+					onBlurCapture={(event) => {
+						const next = event.relatedTarget as Node | null;
+						if (next && !event.currentTarget.contains(next))
+							dismissAddress();
+					}}
+				>
+					<BrowserUrlBar
+						key={popout.nonce}
+						placement="popout"
+						inputRef={addressRef}
+						tabId={state?.activeTabId ?? null}
+						url={state?.url ?? ""}
+						pendingUrl={chrome.pendingUrl}
+						loading={Boolean(state?.loading)}
+						canGoBack={Boolean(state?.canGoBack)}
+						canGoForward={Boolean(state?.canGoForward)}
+						disabled={tabs.length === 0}
+						onNavigate={(url, expectedTabId) =>
+							void chrome.navigate(url, expectedTabId)
+						}
+						onBack={() => void chrome.history("back")}
+						onForward={() => void chrome.history("forward")}
+						onHome={() => void chrome.home()}
+						loadFailure={state?.navFailure ?? null}
+						onReload={() => void chrome.reload()}
+						onStop={() => void chrome.stop()}
+						overlayMode={overlayMode}
+						anchor={anchor}
+						seed={popout.seed}
+						selectOnMount={popout.selectAll}
+						onDismiss={() => dismissAddress()}
+						onCommitted={() => setPopout(null)}
+						menu={
+							<BrowserPageMenu
+								placement="popout"
+								disabled={tabs.length === 0}
+								loading={Boolean(state?.loading)}
+								canGoBack={Boolean(state?.canGoBack)}
+								canGoForward={Boolean(state?.canGoForward)}
+								pageZoom={state?.pageControls?.zoom ?? 1}
+								waitingCount={queue.count}
+								downloadsDir={chrome.state?.transfers?.dir ?? null}
+								onAddress={() => raiseAddress({ origin: "chrome" })}
+								onBack={() => void chrome.history("back")}
+								onForward={() => void chrome.history("forward")}
+								onReload={() => void chrome.reload()}
+								onStop={() => void chrome.stop()}
+								onHome={() => void chrome.home()}
+								onFind={() => void openFind("chrome")}
+								onPrint={() => {
+									if (state?.activeTabId != null)
+										void chrome.pageControl(state.activeTabId, "print");
+								}}
+								onResetZoom={() => {
+									if (state?.activeTabId != null)
+										void chrome.pageControl(state.activeTabId, "reset");
+								}}
+								onOpenDownloads={() => void chrome.revealDownloads()}
+								onOpenApprovals={() => setDockOpen((open) => !open)}
+							/>
+						}
+						// The address suggestions follow the SAME display scope as the strip:
+						// the route offers every tab, a conversation pane offers its own.
+						addressScope={tabScope}
+						addressScopeKey={scopeField}
+						addressHistory={(request) => chrome.addressHistory(request)}
+						onStateChanged={chrome.onStateChanged}
+					/>
+				</div>
+			)}
 			<BrowserFindRow chrome={chrome} returnToPage={findReturnToPage} />
 			{state?.pageControls?.notice && (
 				<output

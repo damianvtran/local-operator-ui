@@ -123,6 +123,9 @@ export interface ApprovalView {
 }
 
 export interface BrowserChromeState {
+	/** S4b: which list presenter the product chrome has. `suspend` is Tier 1 —
+	 * the field works, the native list does not. Absent on a pre-S4b main. */
+	addressOverlay?: { mode: "popout" | "suspend"; reason: string | null };
 	pageControls?: {
 		find: {
 			tabId: number;

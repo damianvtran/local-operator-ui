@@ -44,21 +44,31 @@ export interface AddressOverlayTheme {
 	control: string;
 }
 
-/** What the renderer is allowed to say: display text, its own measured
- * geometry, a seq and a theme. No URL, no HTML, no destination. */
+/**
+ * What the renderer is allowed to say: display text, the strip's own anchor, a
+ * seq and a theme. No URL, no HTML, no destination, and no child rectangle —
+ * main derives the child's box from the trusted page rect and this anchor.
+ */
 export interface AddressOverlayPost {
-	v: 1;
+	v: 2;
 	seq: number;
 	tabId: number;
 	visible: boolean;
 	pageRect: AddressOverlayRect;
-	field: AddressOverlayRect;
-	listTop: number;
+	anchor: { x: number; width: number };
 	active: number;
 	view: AddressOverlayView;
 	label: string;
 	dir: "ltr" | "rtl";
 	theme?: AddressOverlayTheme;
+}
+
+/** A hide is the one projection that carries no geometry. */
+export interface AddressOverlayHide {
+	v: 2;
+	seq: number;
+	tabId: number;
+	visible: false;
 }
 
 export interface AddressOverlayCommit {
@@ -67,9 +77,16 @@ export interface AddressOverlayCommit {
 	index: number;
 }
 
+export interface AddressOverlayEvent {
+	type: "commit" | "dismiss";
+	seq?: number;
+	index?: number;
+	reason?: string;
+}
+
 export interface AddressOverlayPort {
-	project(payload: AddressOverlayPost): Promise<unknown>;
-	onEvent(callback: (event: unknown) => void): () => void;
+	project(payload: AddressOverlayPost | AddressOverlayHide): Promise<unknown>;
+	onEvent(callback: (event: AddressOverlayEvent) => void): () => void;
 }
 
 const NO_HANDLER = /No handler registered/;
@@ -139,8 +156,25 @@ function unavailable(): Error {
 	);
 }
 
+/**
+ * The PRODUCT door first, the probe door second.
+ *
+ * S4b's popout is default-on (darwin) and must not read `__loDevDriver`: that
+ * object exists only for an armed evidence launch. The ordinary app bridge is
+ * the product path; the dev-driver path remains reachable so the S1–S3 probe
+ * script keeps driving the same controller. A product launch never has the
+ * driver object, so the order costs it one property read.
+ */
 export function addressOverlayPort(): AddressOverlayPort | null {
 	if (portState().latched) return null;
+	const product =
+		typeof window === "undefined" ? undefined : window.api?.browser?.addressOverlay;
+	if (product) {
+		return makePort(
+		(payload) => product.project(payload),
+		(callback) => product.onEvent(callback as (event: unknown) => void),
+	);
+	}
 	const bridge =
 		typeof window === "undefined" ? undefined : window.__loDevDriver;
 	if (!bridge || bridge.armed !== true) return null;
@@ -150,6 +184,16 @@ export function addressOverlayPort(): AddressOverlayPort | null {
 	) {
 		return null;
 	}
+	return makePort(
+		(payload) => bridge.addressOverlayProject(payload),
+		(callback) => bridge.onAddressOverlayEvent(callback),
+	);
+}
+
+function makePort(
+	invoke: (payload: AddressOverlayPost | AddressOverlayHide) => Promise<unknown>,
+	subscribe: (callback: (event: unknown) => void) => () => void,
+): AddressOverlayPort {
 	return {
 		project: (payload) => {
 			// The latch is checked INSIDE the returned method as well as before it:
@@ -162,7 +206,7 @@ export function addressOverlayPort(): AddressOverlayPort | null {
 			}
 			const run = (): Promise<unknown> => {
 				if (state.latched) return Promise.reject(unavailable());
-				return bridge.addressOverlayProject(payload).catch((error: unknown) => {
+				return invoke(payload).catch((error: unknown) => {
 					if (looksLikeNoHandler(error)) state.latched = true;
 					throw error;
 				});
@@ -177,6 +221,7 @@ export function addressOverlayPort(): AddressOverlayPort | null {
 				});
 			return next;
 		},
-		onEvent: (callback) => bridge.onAddressOverlayEvent(callback),
+		onEvent: (callback) =>
+			subscribe(callback as (event: unknown) => void),
 	};
 }

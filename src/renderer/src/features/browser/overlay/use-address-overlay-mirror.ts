@@ -17,7 +17,7 @@
  * compares a signature; identical frames send nothing.
  */
 
-import { type RefObject, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { lastDeliveredContentRect } from "../hooks/use-browser-chrome";
 import {
 	type AddressOverlayPost,
@@ -45,9 +45,14 @@ export interface AddressMirrorInput {
 	noticeKind: "error" | "hint" | "empty" | "no_match";
 	noticeText: string;
 	label: string;
-	fieldRef: RefObject<HTMLInputElement | null>;
-	listRef: RefObject<HTMLDivElement | null>;
+	/** The strip's own measured band, in CSS px. The surface reads it from the
+	 * strip element; main intersects it with the trusted page rect. Null until the
+	 * strip is measured, which is the correct "nothing to project yet". */
+	anchor: { x: number; width: number } | null;
 	onCommit: (index: number) => void;
+	/** A main-decided dismissal (page focus, navigation, layout, tab change).
+	 * The renderer owns what "come down" means; main owns the fact. */
+	onDismiss: (reason: string) => void;
 }
 
 /** The dock's theme tokens, read through a scratch element because the app's
@@ -124,20 +129,6 @@ function resolveTheme(): AddressOverlayTheme | null {
 	return resolved;
 }
 
-function roundRect(rect: DOMRect): {
-	x: number;
-	y: number;
-	width: number;
-	height: number;
-} {
-	return {
-		x: Math.round(rect.left),
-		y: Math.round(rect.top),
-		width: Math.round(rect.width),
-		height: Math.round(rect.height),
-	};
-}
-
 function viewOf(input: AddressMirrorInput): AddressOverlayView {
 	if (input.rows.length > 0) {
 		return {
@@ -188,6 +179,10 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 
 		const unsubscribe = port.onEvent((event) => {
 			if (!event || typeof event !== "object") return;
+			if (event.type === "dismiss") {
+				if (typeof event.reason === "string") latest.current.onDismiss(event.reason);
+				return;
+			}
 			const commit = event as {
 				type?: unknown;
 				seq?: unknown;
@@ -213,14 +208,22 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 		const sendHide = (): void => {
 			const current = latest.current;
 			if (current.tabId === null) return;
-			const hidden: AddressOverlayPost = {
-				v: 1,
-				seq: nextAddressOverlaySeq(),
-				tabId: current.tabId,
-				visible: false,
-			} as AddressOverlayPost;
-			void port.project(hidden).catch(() => {});
+			void port
+				.project({
+					v: 2,
+					seq: nextAddressOverlaySeq(),
+					tabId: current.tabId,
+					visible: false,
+				})
+				.catch(() => {});
 		};
+		// A window that comes back from the background has a child that main hid on
+		// blur (the draft and the field row survive). Clearing the signature makes
+		// the next frame re-project instead of comparing equal to a hidden child.
+		const onWindowFocus = (): void => {
+			lastSignature = "";
+		};
+		window.addEventListener("focus", onWindowFocus);
 
 		const tick = (): void => {
 			if (stopped) return;
@@ -236,12 +239,9 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 				}
 				return;
 			}
-			const field = current.fieldRef.current;
-			const list = current.listRef.current;
 			const pageRect = lastDeliveredContentRect();
-			if (!field || !list || pageRect === null) return;
-			const fieldRect = roundRect(field.getBoundingClientRect());
-			const listTop = Math.round(list.getBoundingClientRect().top);
+			const anchor = current.anchor;
+			if (pageRect === null || anchor === null || anchor.width <= 0) return;
 			const view = viewOf(current);
 			const theme = resolveTheme();
 			const dir: "ltr" | "rtl" =
@@ -249,12 +249,11 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 					? "rtl"
 					: "ltr";
 			const body = {
-				v: 1 as const,
+				v: 2 as const,
 				tabId: current.tabId,
 				visible: true,
 				pageRect,
-				field: fieldRect,
-				listTop,
+				anchor: { x: Math.round(anchor.x), width: Math.round(anchor.width) },
 				active: current.active,
 				view,
 				label: current.label,
@@ -272,7 +271,7 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 				seq,
 				keys: view.kind === "rows" ? current.rows.map((row) => row.key) : [],
 			};
-			const payload = { ...body, seq } as AddressOverlayPost;
+			const payload: AddressOverlayPost = { ...body, seq };
 			void port
 				.project(payload)
 				.then((result) => {
@@ -304,6 +303,7 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 		return () => {
 			stop();
 			unsubscribe();
+			window.removeEventListener("focus", onWindowFocus);
 			if (wasVisible) sendHide();
 		};
 	}, [input.enabled]);

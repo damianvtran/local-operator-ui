@@ -1333,6 +1333,8 @@ export type MessageParams = {
 	"ui.agents.starters.summary.sentence": { parts: string };
 	"ui.agents.starters.summary.separator": undefined;
 	"ui.agents.starters.summary.skipped": { count: number };
+	"ui.browser.browser_page_menu.go_to_address": undefined;
+	"ui.browser.browser_page_menu.label": undefined;
 	"ui.browser.chrome.accessible_tab": {
 		title: string;
 		loading: string;
@@ -1541,12 +1543,14 @@ export type MessageParams = {
 	"ui.browser.browser_tab_strip.unmute_tab": undefined;
 	"ui.browser.browser_tab_strip.watch": { title: string };
 	"ui.browser.browser_url_bar.address": undefined;
+	"ui.browser.browser_url_bar.address_bar_shown": undefined;
 	"ui.browser.browser_url_bar.address_required": undefined;
 	"ui.browser.browser_url_bar.address_suggestions_available": { count: number };
 	"ui.browser.browser_url_bar.address_suggestions_empty": undefined;
 	"ui.browser.browser_url_bar.address_suggestions_label": undefined;
 	"ui.browser.browser_url_bar.address_suggestions_no_match": undefined;
 	"ui.browser.browser_url_bar.address_suggestions_unavailable": undefined;
+	"ui.browser.browser_url_bar.address_trigger": { shortcut: string };
 	"ui.browser.browser_url_bar.approvals_waiting": { count: number };
 	"ui.browser.browser_url_bar.back": undefined;
 	"ui.browser.browser_url_bar.back_shortcut": { shortcut: string };

@@ -332,6 +332,9 @@ export interface BrowserHostOptions {
 	 * Injected from the wiring that owns the session, so this module does not
 	 * depend on the session object. */
 	forgetSiteData: (origin: string) => Promise<void>;
+	/** S4b: the popout's health, supplied by the wiring that owns the overlay
+	 * controller. Absent means no controller was built, which is `suspend`. */
+	addressOverlayMode?: () => { mode: "popout" | "suspend"; reason: string | null };
 }
 
 export class BrowserHost implements BrowserActionContext {
@@ -364,6 +367,14 @@ export class BrowserHost implements BrowserActionContext {
 	readonly facts: () => HostFacts;
 	/** The session's per-origin storage clear, injected (see `BrowserHostOptions`). */
 	private readonly forgetSiteData: (origin: string) => Promise<void>;
+	/** S4b's popout health, read from the controller (or the launch's platform
+	 * answer when no controller exists). The strip reads this from the same
+	 * projection as the tabs, so the renderer has one source for "child or
+	 * fallback" and never guesses from a failed IPC call. */
+	private readonly addressOverlayMode: () => {
+		mode: "popout" | "suspend";
+		reason: string | null;
+	};
 
 	/**
 	 * The last main-frame load failure per tab, cleared by the next load.
@@ -394,6 +405,8 @@ export class BrowserHost implements BrowserActionContext {
 		this.tabAudio = new TabAudioTracker(() => this.onChanged());
 		this.facts = options.facts;
 		this.forgetSiteData = options.forgetSiteData;
+		this.addressOverlayMode =
+			options.addressOverlayMode ?? (() => ({ mode: "suspend", reason: "unavailable" }));
 	}
 
 	/** Answer one wire request. The only place a method name becomes an action. */
@@ -787,6 +800,7 @@ export class BrowserHost implements BrowserActionContext {
 			new Set(this.registry.snapshot().map((entry) => entry.tabId)),
 		);
 		return {
+			addressOverlay: this.addressOverlayMode(),
 			pageControls: this.pageControls.state(active),
 			tabs: this.chromeTabOrder
 				.project(this.registry.snapshot())
