@@ -15,6 +15,7 @@ import type {
 import { ChatSidebar } from "./chat-sidebar";
 
 let calls: DesktopRequest[] = [];
+let finishFirstRegistryWrite: (() => void) | null = null;
 type Scenario =
 	| "drop-ux"
 	| "held-pin"
@@ -41,13 +42,16 @@ type Scenario =
 	| "picker-remote"
 	| "manage-error"
 	| "unused"
-	| "load-failed";
+	| "load-failed"
+	| "management-concurrency";
 /** The actual sidebar and contract-shaped desktop bridge, not a proposed mock.
  * Mutable fixture data makes immediate assignment and registry edits observable through the
  * same catalogue refresh as production. No operator backend or config is used.
  */
 function installBridge(scenario: Scenario) {
 	calls = [];
+	finishFirstRegistryWrite = null;
+	let registryRequestIndex = 0;
 	document.body.dataset.tagsProof = "";
 	document.body.dataset.tagsOpened = "";
 	let categories: TagCategory[] = ["no-categories", "picker-empty"].includes(
@@ -236,6 +240,13 @@ function installBridge(scenario: Scenario) {
 					return new Promise<DesktopResponse>(() => {});
 				return ok({ tags: categories });
 			case "tags.replace":
+				if (
+					scenario === "management-concurrency" &&
+					registryRequestIndex++ === 0
+				)
+					await new Promise<void>((resolve) => {
+						finishFirstRegistryWrite = resolve;
+					});
 				if (scenario === "picker-create-loading")
 					await new Promise<void>(() => {});
 				if (scenario === "picker-create-error" || scenario === "manage-error")
@@ -615,7 +626,7 @@ export const PickerKeyboardRoundTrip: Story = {
 		await waitFor(() =>
 			expect(document.querySelector("[data-chat-tag-popover]")).toBeNull(),
 		);
-		expect(document.activeElement).toHaveAttribute("data-chat-row");
+		await waitFor(() => expect(document.activeElement).toBe(sourceRow()));
 		document.body.dataset.tagsProof =
 			"PASS: chord → type → Enter creates+assigns, Escape returns row focus; no dialog or Apply";
 	},
@@ -631,6 +642,74 @@ export const PickerConflict: Story = {
 			"Tags changed elsewhere. The list now shows their current tags; select again to apply your change.",
 		);
 		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1);
+	},
+};
+export const HeaderRenameBlurFailure: Story = {
+	...story("manage-error"),
+	play: async () => {
+		await ready();
+		headerStop().focus();
+		await userEvent.keyboard("{F2}");
+		const field = await within(document.body).findByRole("textbox", {
+			name: "Rename Review",
+		});
+		await userEvent.clear(field);
+		await userEvent.type(field, "Retained draft");
+		headerStop("project").focus();
+		await within(document.body).findByText("Tags were not saved. Try again.");
+		await waitFor(() => expect(field).toHaveFocus());
+		expect(field).toHaveValue("Retained draft");
+		expect(
+			within(document.body).getByRole("button", { name: "Retry" }),
+		).toBeVisible();
+		document.body.dataset.tagsProof =
+			"PASS C2: blur HTTP503 keeps typed draft, alert, Retry and restores editor focus";
+	},
+};
+export const ConcurrentHeaderRenames: Story = {
+	...story("management-concurrency"),
+	play: async () => {
+		await ready();
+		headerStop().focus();
+		await userEvent.keyboard("{F2}");
+		const first = await within(document.body).findByRole("textbox", {
+			name: "Rename Review",
+		});
+		await userEvent.clear(first);
+		await userEvent.type(first, "Review2{Enter}");
+		headerStop("project").focus();
+		await userEvent.keyboard("{F2}");
+		const second = await within(document.body).findByRole("textbox", {
+			name: "Rename Project",
+		});
+		await userEvent.clear(second);
+		await userEvent.type(second, "Project2{Enter}");
+		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(1);
+		if (!finishFirstRegistryWrite)
+			throw new Error("First registry write was not deferred");
+		finishFirstRegistryWrite();
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(
+				2,
+			),
+		);
+		const writes = calls.filter(
+			(call): call is Extract<DesktopRequest, { op: "tags.replace" }> =>
+				call.op === "tags.replace",
+		);
+		expect(writes[1].tags.map((tag) => tag.name)).toEqual([
+			"Review2",
+			"Project2",
+			"Concept",
+		]);
+		await waitFor(() =>
+			expect(headerStop("project")).toHaveAttribute(
+				"aria-label",
+				"Tag actions: Project2",
+			),
+		);
+		document.body.dataset.tagsProof =
+			"PASS C1: second header queues before transport; acknowledged Review2 survives Project2 desired-state write";
 	},
 };
 export const HeaderRenameFailure: Story = {

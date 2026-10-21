@@ -348,10 +348,22 @@ export function useChatTagAssignment({
 				setError(t("ui.chat.tags.registry_limit"));
 				return null;
 			}
-			const registry = await replaceCategories([
-				...fresh.categories.map((tag) => ({ id: tag.id, name: tag.name })),
-				{ name: trimmed },
-			]);
+			const registry = await replaceCategories((current) => {
+				// Picker creation shares the headers/footer's registry queue. The
+				// refresh above is discovery, not ownership: a preceding rename or
+				// create may settle while queued, so revalidate and derive HERE.
+				if (
+					hasTagName(current, trimmed) ||
+					current.length >= TAG_REGISTRY_LIMIT
+				)
+					throw new Error(
+						"Registry changed before creation acquired ownership",
+					);
+				return [
+					...current.map((tag) => ({ id: tag.id, name: tag.name })),
+					{ name: trimmed },
+				];
+			});
 			created = registry.find((tag) => tag.name === trimmed);
 		} catch {
 			// A response can be lost after commit. Re-read before claiming that
@@ -361,6 +373,8 @@ export function useChatTagAssignment({
 			if (fresh.error) setError(null);
 			else if (hasTagName(fresh.categories, trimmed))
 				setError(t("ui.chat.tags.duplicate_name", { name: trimmed }));
+			else if (fresh.categories.length >= TAG_REGISTRY_LIMIT)
+				setError(t("ui.chat.tags.registry_limit"));
 			else setError(t("ui.chat.tags.create_failed"));
 			return null;
 		} finally {
