@@ -1917,25 +1917,8 @@ test("a reconnect frame cannot collapse the reader's opened bar (operator report
 		"the reader opened the bar",
 	);
 	assert.ok(rowBox(mounted, "tool:1"), "and its rows are on screen");
-	/*
-	 * A LIVE PASS ARMS THE SETTLE LATCH (agent review round 1, F4). Both stores are
-	 * re-keyed by this change, and the latch is the one the plan reads directly;
-	 * proving only the expansions survive would leave half the fix unpinned.
-	 */
-	await mounted.render(rows, { frontend, waiting: true });
-	const latched = watchedRunOf("chat-gap");
-	assert.equal(
-		latched,
-		"user:1",
-		"the live pass latched the watched run by its opening row",
-	);
 	// THE GAP: frontend goes away entirely, exactly as the reconnect arm writes it.
 	await mounted.render(rows, { frontend: null, waiting: false });
-	assert.equal(
-		watchedRunOf("chat-gap"),
-		latched,
-		"the gap does not drop the latch to the empty bucket",
-	);
 	assert.equal(
 		barTrigger(mounted).getAttribute("aria-expanded"),
 		"true",
@@ -1952,6 +1935,56 @@ test("a reconnect frame cannot collapse the reader's opened bar (operator report
 		"true",
 		"the re-entry reads the same bucket",
 	);
+});
+
+test("a reconnect gap cannot fold a run the pane was watching (operator report, 2026-10-21)", async (t) => {
+	/*
+	 * THE LATCH HALF, MEASURED WHERE IT IS PAINTED (review round 2, M1). The
+	 * previous case proves the reader's EXPANSIONS survive a `frontend: null`
+	 * pass - which the store held even on the base, so it does not discriminate.
+	 * This one does: a run mid-flight after its first settled cycle has no
+	 * live-phase row (every call reported, no answer yet), so only the settle
+	 * latch can keep it open. The pane arms it on the live pass; the gap must not
+	 * drop it, or the work after the settled answer folds behind a bar and comes
+	 * back with the snapshot.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const frontend = { session_id: "chat-gap-latch" };
+	const rows = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+		answerRecord("answer:1", {
+			ts: TS + 3_000,
+			settledAt: TS + 3_000,
+			stopReason: "stop",
+		}),
+		toolRecord("tool:2", { ts: TS + 4_000, durationS: 4 }),
+	];
+	const mounted = await mount(t, rows, { frontend, waiting: true });
+	const barIds = () =>
+		barsOf(mounted).map((element) => element.getAttribute("data-record-id"));
+	assert.equal(
+		watchedRunOf("chat-gap-latch"),
+		"user:1",
+		"the live pass latched the run it is watching",
+	);
+	assert.deepEqual(barIds(), ["tool:1"], "only the settled span is barred");
+	assert.ok(rowBox(mounted, "tool:2"), "the work after the answer is in place");
+	// THE GAP: frontend goes away, so the pane reads not-live.
+	await mounted.render(rows, { frontend: null, waiting: false });
+	assert.deepEqual(
+		barIds(),
+		["tool:1"],
+		"the dip does not add a bar over the work being watched",
+	);
+	assert.ok(
+		rowBox(mounted, "tool:2"),
+		"and the work after the answer stays on screen through the gap",
+	);
+	// The snapshot returns: same plan, nothing handed back or taken.
+	await mounted.render(rows, { frontend, waiting: false });
+	assert.deepEqual(barIds(), ["tool:1"], "the re-entry reaches the same plan");
 });
 
 test("a steer before its lead-in's calls report does not condense the turn (operator report, 2026-10-21)", async (t) => {

@@ -834,6 +834,73 @@ test("a lead-in's user row steers into the turn instead of opening the next one"
 });
 
 /*
+ * THE RELEASE THE FIX RELIES ON, DRIVEN THROUGH THE REDUCER (ux round 1, U2;
+ * review round 2, M2). `runStatesItsOwnLiveness` keeps a run open while its rows
+ * claim to be live; `agent_end` is what makes them stop, and this pins that the
+ * turn then condenses - for a clean end and for an abort, which is the one
+ * settle that happens without a `message_end` (the reducer's own sweep).
+ */
+const liveTurn = () => {
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: userMessage("u1", "Which invoices?") },
+		TS,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "t1",
+			tool_name: "bash",
+			args: { command: "pnpm test" },
+		},
+		TS + 500,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "t1",
+			tool_name: "bash",
+			result: { content: [{ type: "text", text: "ok\n" }] },
+			is_error: false,
+			duration_s: 2,
+		},
+		TS + 1_500,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistantMessage("a1", "") },
+		TS + 2_000,
+	);
+	return state;
+};
+
+for (const aborted of [false, true]) {
+	test(`agent_end (${aborted ? "aborted" : "clean"}) settles the rows and condenses the turn`, () => {
+		const state = applyEvent(
+			liveTurn(),
+			{ type: "agent_end", aborted },
+			TS + 3_000,
+		);
+		const rows = buildRows(state.records, []);
+		const answer = state.records.find((record) => record.id === "a1");
+		assert.equal(
+			answer?.kind === "assistant" && answer.streaming,
+			false,
+			"the turn end settled the streaming row",
+		);
+		const plan = collapsePlan(rows, { live: false });
+		assert.equal(plan.runs.length, 1, "one turn, not a split");
+		assert.equal(
+			plan.runs[0].collapses,
+			true,
+			"and it condenses: nothing is left claiming to be live",
+		);
+	});
+}
+
+/*
  * THE WINDOW SNAP MOVES THE SLICE ON THE DIP FRAME (agent review round 1,
  * R1-1). `openingIndex` is slice-relative: for a run whose head the window
  * cuts it names the run's first VISIBLE row, and the snap grows the window to

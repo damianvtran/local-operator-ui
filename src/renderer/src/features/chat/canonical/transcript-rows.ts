@@ -192,7 +192,8 @@ function walkTurns<T>(
 	const closed = (): boolean =>
 		sawTerminal || sawQuietClose || settledTail() || nothingHasRunYet();
 	/**
-	 * Whether the open run's tail is a settled answer - the closure test, now\n	 * reading the handover fact as well as the row's kind.
+	 * Whether the open run's tail is a settled answer - the closure test, now
+	 * reading the handover fact as well as the row's kind.
 	 *
 	 * A LEAD-IN IS NOT A HANDOVER. An assistant row that CARRIES TOOL CALLS is
 	 * narration ("Reading the ledger first.") followed by the call it announces:
