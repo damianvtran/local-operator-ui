@@ -53,6 +53,7 @@ const componentBundle = await build({
 	stdin: {
 		contents: `
 			export { TeamBridgePageView, TeamBridgeEligibilityPanel } from "./src/renderer/src/features/team-bridge/team-bridge-page";
+			export { setLocale } from "./src/i18n";
 		`,
 		resolveDir: ROOT,
 		sourcefile: "team-bridge-directory.mjs",
@@ -85,6 +86,15 @@ process.on("exit", () => {
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
 const ui = await import(modulePath.href);
+// Relative-time formatting follows the active locale. Pin it so the suite
+// asserts the English source under a non-English host locale too.
+ui.setLocale("en");
+
+const visible = (fragment) =>
+	fragment
+		.replace(/<[^>]+>/g, " ")
+		.replace(/\s+/g, " ")
+		.trim();
 
 // ---------------------------------------------------------------------------
 // Fixtures
