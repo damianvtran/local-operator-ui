@@ -370,13 +370,23 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		return host.setContentRect(contentRectOrNull(rect));
 	});
 
-	ipcMain.handle("browser-set-visible", (event, visible: unknown) => {
-		const host = authorize(event);
-		if (typeof visible !== "boolean") {
-			throw new Error("Visibility must be a boolean.");
-		}
-		return host.setViewVisible(visible);
-	});
+	ipcMain.handle(
+		"browser-set-visible",
+		(event, visible: unknown, ownPage: unknown) => {
+			const host = authorize(event);
+			if (typeof visible !== "boolean") {
+				throw new Error("Visibility must be a boolean.");
+			}
+			// The reason half of the report (S4a). Absent is "no reason given", which
+			// keeps every pre-S4a caller's meaning: a hide with no reason is an overlay
+			// hide and refuses shortcuts. A truthy non-boolean is refused rather than
+			// coerced: this fact decides whether the browser consumes the user's keys.
+			if (ownPage !== undefined && typeof ownPage !== "boolean") {
+				throw new Error("The view-hidden reason must be a boolean.");
+			}
+			return host.setViewVisible(visible, ownPage === true);
+		},
+	);
 
 	ipcMain.handle(
 		"browser-hand-over",

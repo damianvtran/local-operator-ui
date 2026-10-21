@@ -257,6 +257,13 @@ export class TabRegistry {
 	private nextTabId = 1;
 	private activeTabId: number | null = null;
 	private visible = true;
+	/** WHY the view is hidden when it is: the renderer is painting one of the
+	 * browser's OWN state pages (start page, load failure), not an overlay that
+	 * covers the chrome band. Only shortcut ownership reads this. Presentation
+	 * reads `visible` alone, so a state page never makes a native view
+	 * "presented"; and every report overwrites it, so a reason cannot outlive the
+	 * hide it described. */
+	private ownStatePage = false;
 	private contentRect: ContentRect | null = null;
 	/** Tabs with a command in flight, keyed by tabId. See `lane`. */
 	private readonly busy = new Set<number>();
@@ -402,12 +409,20 @@ export class TabRegistry {
 		return null;
 	}
 
-	/** Native shortcut eligibility needs the main-owned chrome visibility fact,
-	 * not an active page's presentation bit: blank browser chrome still owns
-	 * New tab, while a real blocking overlay must refuse it. Read-only and
-	 * main-internal; no layout behavior or agent projection changes. */
+	/** Whether the browser's chrome band is the presented UI and therefore owns
+	 * the native shortcut keys (Cmd+L/T/R and the rest).
+	 *
+	 * NOT the same fact as "the native view is visible". The browser's own state
+	 * pages - start page, load-failure panel - hide the view ON PURPOSE so their
+	 * DOM can paint (design 11.3), and they are still the browser the user is
+	 * looking at. Reading `visible` alone dropped every chord on those two states,
+	 * and on main's side the press was not even consumed, so the app menu's Reload
+	 * reloaded the whole window. Only an overlay hide, or an unmounted surface (no
+	 * rect), takes the chords away. The native window floor in
+	 * `browserChromeOwnsChord` is untouched: this says whose keys they are, never
+	 * that the window is foreground. */
 	get chromeVisible(): boolean {
-		return this.visible && this.contentRect !== null;
+		return this.contentRect !== null && (this.visible || this.ownStatePage);
 	}
 
 	get activeTab(): TabRecord | null {
@@ -631,9 +646,17 @@ export class TabRegistry {
 	}
 
 	/** Full-window overlays hide the view (design 11.3): a native view paints
-	 * above all DOM, so an overlay is invisible unless the view goes away. */
-	setViewVisible(visible: boolean): void {
+	 * above all DOM, so an overlay is invisible unless the view goes away.
+	 *
+	 * `ownPage` separates the two reasons a hide can have, because they mean
+	 * opposite things for the KEYBOARD: an overlay (dialog, menu, picker) owns it,
+	 * while the browser's own start page / failure panel does not - that surface is
+	 * still the browser, and `chromeVisible` keeps its shortcuts. Normalised
+	 * against `visible` so the invariant held is "a reason only exists while the
+	 * view is hidden", never two facts that disagree. */
+	setViewVisible(visible: boolean, ownPage = false): void {
 		this.visible = visible;
+		this.ownStatePage = !visible && ownPage;
 		this.applyLayout();
 	}
 
