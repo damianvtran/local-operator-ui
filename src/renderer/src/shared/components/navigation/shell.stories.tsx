@@ -613,7 +613,7 @@ const ShellFrame: FC<{ children: ReactNode; windows?: boolean }> = ({
 			<ChatLayout
 				sidebar={<SidebarNavigation />}
 				content={
-					<main className="flex min-w-0 grow flex-col overflow-hidden">
+					<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden">
 						{children}
 					</main>
 				}
@@ -1235,7 +1235,7 @@ const ChatShellFrame: FC<{
 			<ChatLayout
 				sidebar={<SidebarNavigation />}
 				content={
-					<main className="flex min-w-0 grow flex-col overflow-hidden">
+					<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden">
 						<div
 							ref={rowRef}
 							data-tour-tag="pane-row"

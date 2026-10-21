@@ -305,18 +305,58 @@
 }
 
 /*
- * THE FLUSH-TOP ROUTE'S SIDEBAR PADDING, ON THE PANEL THAT OWNS THE GROUND.
+ * THE PANEL TOP CONTRACT, AS TWO UTILITIES AND ONE VARIABLE.
  *
- * Team Bridge opts into `flushTop`, so the lane is an overlay and the sidebar
- * must clear the traffic lights itself. The padding sits on the sidebar's own
- * root (the element that paints `surface`) rather than on a shell wrapper:
- * a wrapper with a background between `#app` and the glass regions makes the
- * window opaque (review round 1, S1). The attribute is written only when the
- * shell route asked for flush top; every other route keeps the lane row and
- * no padding here.
+ * THE LANE IS ALWAYS AN OVERLAY. It never reserves height, so the columns
+ * behind it reach y0 and paint their own ground through the traffic lights'
+ * 32px. That is the operator's rule stated in `docs/branding.md` ("Full-height
+ * panels extend through the titlebar strip; no top inset on the panel; the
+ * scroll region clips and fades under it"), and it replaced the shell's
+ * gradient band - a reserved row that could only paint a MIRROR of the
+ * columns' grounds and was wrong the moment a panel started inside the route
+ * (the Library dock, the right slot, the canvas tabs).
+ *
+ * `--panel-top-pad` is the shell's statement of how far the OS's controls
+ * reach into the window. It is set on the content column for EVERY route
+ * (`chat-layout.tsx`), and inherited by everything inside it. Outside the
+ * column - the app sidebar, a portal such as the sheet - the utility falls
+ * back to `--chrome-strip-h`, the same number from the same chrome facts.
+ *
+ * TWO UTILITIES, ONE DECISION, because a route root and a column inside it do
+ * different jobs and conflating them is how the seam returns:
+ *
+ *   - `panel-flush` is the route root that owns the whole window height. It
+ *     cancels the shell's ordinary-content pad with a negative margin, so the
+ *     root's box begins at y0 (and, because it is a flex child, its height
+ *     absorbs the same 32px at the bottom). It does NOT pad its own content:
+ *     its columns each own a ground and pad themselves.
+ *   - `panel-top-pad` is a full-height PANEL COLUMN: it starts at y0 (from the
+ *     flush root or from the shell row) and pushes its first content row below
+ *     the strip. The box keeps its full height; only the inside moves.
+ *
+ * A simple page that is not a panel needs neither: the shell pads it once on
+ * `<main>`, which is what keeps every ordinary route's first row clear without
+ * a per-page inset. No route opts into the LANE; a route only says whether it
+ * is a panel.
  */
-[data-chrome-pad-top] {
-	padding-top: var(--chrome-strip-h);
+@utility panel-flush {
+	margin-top: calc(-1 * var(--panel-top-pad, 0px));
+}
+
+@utility panel-top-pad {
+	padding-top: var(--panel-top-pad, var(--chrome-strip-h, 0px));
+}
+
+/*
+ * And the same contract for a panel whose ROOT is the scroll region. The pad has
+ * to be a margin here, not padding: a scroll container's `padding-top` is inside
+ * its clip, so scrolled text would still paint through the strip. The margin
+ * moves the box below the strip and the height takes back exactly that number,
+ * which is why the region clips at the panel's content edge.
+ */
+@utility panel-scroll {
+	margin-top: var(--panel-top-pad, var(--chrome-strip-h, 0px));
+	height: calc(100% - var(--panel-top-pad, var(--chrome-strip-h, 0px)));
 }
 
 /*
