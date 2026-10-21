@@ -272,14 +272,19 @@ const PeopleFailure: FC<{
 }> = ({ error, onRetry }) => {
 	useI18nLocale();
 	const kind = directoryFailureKind(error);
+	const rawMessage = (error as { message?: unknown } | null | undefined)
+		?.message;
+	const detail = typeof rawMessage === "string" ? rawMessage.trim() : "";
 	const reason =
 		kind === "sign_in"
 			? t("ui.teamBridge.plan.sign_in_reason")
 			: kind === "plan"
 				? t("ui.teamBridge.plan.reason")
-				: kind === "outdated"
-					? t("ui.teamBridge.plan.update_reason")
-					: t("ui.teamBridge.plan.unavailable_reason");
+				: kind === "invalid"
+					? detail || t("ui.teamBridge.scope.error")
+					: kind === "outdated"
+						? t("ui.teamBridge.plan.update_reason")
+						: t("ui.teamBridge.plan.unavailable_reason");
 	const retryable = kind === "unreachable" || kind === "server";
 	return (
 		<div className="flex flex-col items-start gap-2 px-2 py-1">
