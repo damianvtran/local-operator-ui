@@ -343,10 +343,10 @@ test("CSP: the page's policy is the plan's, and the html carries exactly it", ()
 	assert.equal(meta?.[1], m.VOICE_PAGE_CSP);
 });
 
-test("CHANNELS: seven distinct, namespaced channels", () => {
+test("CHANNELS: ten distinct, namespaced channels", () => {
 	const values = Object.values(m.VOICE_PAGE_CHANNELS);
-	assert.equal(values.length, 7);
-	assert.equal(new Set(values).size, 7);
+	assert.equal(values.length, 10);
+	assert.equal(new Set(values).size, 10);
 	for (const v of values) assert.match(v, /^voice-page:/);
 });
 

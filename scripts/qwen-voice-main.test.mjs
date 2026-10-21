@@ -38,7 +38,10 @@ const bundle = await build({
 			'export { QwenSpeechProcess, resolveQwenPorts, s2sArgs, s2sEnv, s2sLauncherPathFor, qwenMemoryBudget, qwenMachineTooSmall, QWEN_MEM_BUDGET_BYTES, QWEN_MIN_MACHINE_BYTES, QWEN_MACHINE_TOO_SMALL, FOOTPRINT_INTERVAL_MS, DEFAULT_QWEN_PORTS, isOurS2s, S2S_RECORD_FILE } from "./src/main/voice/qwen-rig";',
 			'export { appVoicePageUrl, isAppVoicePageUrl, appVoicePageVerdict } from "./src/main/voice/qwen-voice-page";',
 			'export { QwenVoicePage, noQwenVoicePage, voicePageUrl, voicePageAllowed, QWEN_NO_VOICE_WINDOW, QWEN_VOICE_PARTITION, PAGE_CRASH_WINDOW_MS } from "./src/main/voice/qwen-voice-page";',
-			'export { readQwenVoiceEnabled, writeQwenVoiceEnabled } from "./src/main/voice/qwen-voice-setting";',
+			'export { readQwenVoiceEnabled, writeQwenVoiceEnabled, readVoiceNoticeAccepted, writeVoiceNoticeAccepted } from "./src/main/voice/qwen-voice-setting";',
+			'export { registerVoicePageIPC, MODEL_NAME_SHAPE, TRANSCRIPT_MAX_CHARS } from "./src/main/voice/voice-page-ipc";',
+			'export { createLocalProvider } from "./src/main/voice/local-provider";',
+			'export { MODEL_MANIFEST } from "./src/voice-page/model-manifest";',
 			'export { requestDesktopMedia } from "./src/main/desktop-media";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -902,6 +905,7 @@ function fakeSession() {
 
 /** A fake view: what it loads, closes, listens for, and opens in DevTools. */
 function fakeView() {
+	const sent = [];
 	const loaded = [];
 	const listeners = {};
 	const webContents = {
@@ -929,12 +933,16 @@ function fakeView() {
 		setAudioMuted(value) {
 			this.muted = value;
 		},
+		send(...args) {
+			sent.push(args);
+		},
 	};
-	return { view: { webContents }, webContents, loaded, listeners };
+	return { view: { webContents }, webContents, loaded, listeners, sent };
 }
 
 /** A page with the given fakes; `created` holds every view factory call. */
 function pageCase({
+	appPreloadPath = undefined,
 	mic = "granted",
 	ask = async () => true,
 	devTools = false,
@@ -957,6 +965,7 @@ function pageCase({
 		mediaAccess: { status: () => mic, ask },
 		gatewayOrigin: origin,
 		devTools,
+		appPreloadPath,
 		onStopped: (reason) => stopped.push(reason),
 		now: () => now,
 		...(timers
@@ -2346,8 +2355,7 @@ test("SWITCH: off means no start, no spawn, no page, no timer, no message, whate
 	assert.deepEqual(r.toRenderer, [], "no status or take pushed");
 });
 
-// TODO(U2): this must also assert that the app page URL is never loaded.
-test("SWITCH (U1): off means the REAL page adapter never creates a view, and the app page URL is only computed, never loaded", async () => {
+test("SWITCH (U1): off means the REAL page adapter never creates a view, and the app page URL is never loaded", async () => {
 	const c = pageCase();
 	const r = rig({ enabled: false, page: c.page });
 	await r.voice.start("renderer");
@@ -2599,4 +2607,394 @@ test("SWITCH: off then on during that window leaves exactly one s2s", async () =
 	assert.equal(t.alive.size, 1, "exactly one s2s owned");
 	await t.proc.stop();
 	assert.equal(t.alive.size, 0);
+});
+
+/* ------------------------------------------------------------------------ */
+/* S3: THE LOCAL PROVIDER (plan S3, L1, L3, L4, L6)                          */
+/* ------------------------------------------------------------------------ */
+
+const APP_PAGE = "file:///app/out/renderer/voice-page.html";
+
+/** A coordinator on the local path, with every cost recorded. */
+function localRig({ accepted = true, mic = "granted", models = null, enabled = true } = {}) {
+	const log = { downloads: 0, openApp: [], spoken: [], stopSpeech: 0, closed: 0, opened: [] };
+	let acceptedNow = accepted;
+	const toRenderer = [];
+	const page = {
+		allowed: true,
+		open: (u) => log.opened.push(u),
+		close: () => {
+			log.closed += 1;
+		},
+		setMuted: () => {},
+		prepareMicrophone: async () => mic,
+		openApp: (u) => log.openApp.push(u),
+		speak: (message) => {
+			log.spoken.push(message);
+			return true;
+		},
+		stopSpeech: () => {
+			log.stopSpeech += 1;
+		},
+	};
+	const local = {
+		noticeAccepted: () => acceptedNow,
+		acceptNotice: () => {
+			acceptedNow = true;
+		},
+		pageUrl: () => APP_PAGE,
+		ensureModels: async (onProgress, signal) => {
+			log.downloads += 1;
+			if (models) return models(onProgress, signal);
+			onProgress(0.5);
+			onProgress(1);
+		},
+	};
+	const voice = new m.QwenVoice({
+		gateway: { running: false, start: async () => "x", stop() {}, send: () => false },
+		speech: { running: false, start: async () => {}, stop: async () => {}, killNow() {} },
+		local,
+		page,
+		toRenderer: (channel, payload) => {
+			toRenderer.push({ channel, payload });
+			return true;
+		},
+		now: () => 1_000_000,
+		setTimer: () => ({}),
+		clearTimer: () => {},
+	});
+	if (enabled) void voice.setEnabled(true);
+	const statuses = () =>
+		toRenderer.filter((x) => x.channel === "voice.qwen.status").map((x) => x.payload);
+	return { voice, log, toRenderer, statuses };
+}
+const holdSlot = (r, id = "aaaaaaaaaaaa") =>
+	r.voice.noteDesktopAnswer(
+		{ op: "voice.status" },
+		{ status: 200, body: { result: { active: { session_id: id } } } },
+	);
+const tick = () => new Promise((r) => setImmediate(r));
+
+test("S3 off: zero downloads, zero page creations, the app page URL never loaded", async () => {
+	const r = localRig({ enabled: false });
+	await r.voice.start("renderer");
+	await r.voice.start("enable");
+	r.voice.onPageStatus("listening");
+	r.voice.onPageTranscript("hello");
+	assert.equal(r.log.downloads, 0);
+	assert.deepEqual(r.log.openApp, []);
+	assert.deepEqual(r.log.opened, []);
+	assert.deepEqual(r.toRenderer, []);
+});
+
+test("S3 on without the acknowledgement: no download, no page, the notice is the status", async () => {
+	const r = localRig({ accepted: false });
+	holdSlot(r);
+	const status = await r.voice.start("renderer");
+	assert.equal(r.log.downloads, 0);
+	assert.deepEqual(r.log.openApp, []);
+	assert.equal(status.notice, "download_models");
+	assert.equal(status.rig, "stopped");
+});
+
+test("S3 start order: notice acknowledged, models, microphone, then the app page", async () => {
+	const r = localRig({ accepted: false });
+	holdSlot(r);
+	const order = [];
+	r.voice.deps ??= null;
+	await r.voice.start("renderer");
+	const started = r.voice.acceptNotice();
+	await tick();
+	await tick();
+	// The page is open and waiting for its own "listening".
+	assert.equal(r.log.downloads, 1);
+	assert.deepEqual(r.log.openApp, [APP_PAGE]);
+	assert.equal(r.voice.getStatus().rig, "starting");
+	r.voice.onPageStatus("listening");
+	const status = await started;
+	assert.equal(status.rig, "ready");
+	assert.equal(status.local ?? null, null);
+	void order;
+});
+
+test("S3 progress: models_downloading carries a fraction and no other status leaks", async () => {
+	const r = localRig();
+	holdSlot(r);
+	const run = r.voice.start("renderer");
+	await tick();
+	const seen = r.statuses().map((s) => s.local?.code);
+	assert.ok(seen.includes("models_downloading"));
+	assert.ok(r.statuses().some((s) => s.local?.progress === 0.5));
+	r.voice.onPageStatus("listening");
+	await run;
+});
+
+test("S3 download failures: offline and integrity are distinct statuses and open no page", async () => {
+	for (const [code, expected] of [
+		["model_download", "models_offline"],
+		["model_integrity", "model_integrity"],
+		["anything_else", "models_offline"],
+	]) {
+		const r = localRig({
+			models: async () => {
+				throw Object.assign(new Error(code), { code });
+			},
+		});
+		holdSlot(r);
+		const status = await r.voice.start("renderer");
+		assert.equal(status.rig, "error");
+		assert.equal(status.local.code, expected);
+		assert.deepEqual(r.log.openApp, []);
+	}
+});
+
+test("S3 mic: a denied microphone stops before the page; the page's own failures map to statuses", async () => {
+	const denied = localRig({ mic: "denied" });
+	holdSlot(denied);
+	const status = await denied.voice.start("renderer");
+	assert.equal(status.mic, "denied");
+	assert.deepEqual(denied.log.openApp, []);
+
+	for (const code of ["mic_unavailable", "listening_failed"]) {
+		const r = localRig();
+		holdSlot(r);
+		const run = r.voice.start("renderer");
+		await tick();
+		await tick();
+		r.voice.onPageStatus(code);
+		const end = await run;
+		assert.equal(end.rig, "error");
+		assert.equal(end.local.code, code);
+	}
+	// A status outside the closed set changes nothing.
+	const r = localRig();
+	holdSlot(r);
+	const run = r.voice.start("renderer");
+	await tick();
+	await tick();
+	const before = r.statuses().length;
+	r.voice.onPageStatus("<script>");
+	r.voice.onPageStatus({ code: "listening" });
+	assert.equal(r.statuses().length, before);
+	r.voice.onPageStatus("listening");
+	await run;
+});
+
+async function readyLocal() {
+	const r = localRig();
+	holdSlot(r);
+	const run = r.voice.start("renderer");
+	await tick();
+	await tick();
+	r.voice.onPageStatus("listening");
+	await run;
+	return r;
+}
+
+test("S3 a transcript is relayed as a take with origin local_moonshine; bad ones are dropped", async () => {
+	const r = await readyLocal();
+	r.voice.onPageTranscript("  open the pod bay doors ");
+	const takes = r.toRenderer.filter((x) => x.channel === "voice.qwen.take");
+	assert.equal(takes.length, 1);
+	assert.equal(takes[0].payload.text, "open the pod bay doors");
+	assert.equal(takes[0].payload.origin, "local_moonshine");
+	r.voice.onPageTranscript("");
+	r.voice.onPageTranscript("x".repeat(m.LOCAL_TRANSCRIPT_MAX_CHARS + 1));
+	r.voice.onPageTranscript({ text: "no" });
+	assert.equal(r.toRenderer.filter((x) => x.channel === "voice.qwen.take").length, 1);
+	// No holder: nothing relays.
+	r.voice.noteDesktopAnswer({ op: "voice.status" }, { status: 200, body: { result: { active: null } } });
+	r.voice.onPageTranscript("hello");
+	assert.equal(r.toRenderer.filter((x) => x.channel === "voice.qwen.take").length, 1);
+});
+
+const relay = (r, text, segments, id = "aaaaaaaaaaaa") =>
+	r.voice.noteDesktopAnswer(
+		{ op: "voice.text", sessionId: id, source: { kind: "message" } },
+		{ status: 200, body: { result: { text, segments } } },
+	);
+
+test("S3 speak sends only relayed segments; a text that was not relayed is refused", async () => {
+	const r = await readyLocal();
+	assert.deepEqual(r.voice.speak({ text: "made up", kind: "reply" }), {
+		spoken: false,
+		reason: "not_relayed",
+	});
+	assert.equal(r.log.spoken.length, 0);
+	relay(r, "One. Two.", ["One.", "Two."]);
+	assert.deepEqual(r.voice.speak({ text: "One. Two.", kind: "reply" }), { spoken: true });
+	assert.deepEqual(r.log.spoken[0].segments, ["One.", "Two."]);
+	// Consumed once.
+	assert.equal(r.voice.speak({ text: "One. Two.", kind: "reply" }).spoken, false);
+	// No segments from the server: the whole text is the one segment.
+	relay(r, "Whole.", undefined);
+	r.voice.speak({ text: "Whole.", kind: "reply" });
+	assert.deepEqual(r.log.spoken[1].segments, ["Whole."]);
+	// Junk segments are filtered, not spoken.
+	relay(r, "Ok.", ["Ok.", 7, "", null]);
+	r.voice.speak({ text: "Ok.", kind: "reply" });
+	assert.deepEqual(r.log.spoken[2].segments, ["Ok."]);
+});
+
+test("S3 phrases: main sends a closed-set phrase's own text, never renderer text", async () => {
+	const r = await readyLocal();
+	assert.equal(r.voice.result({ taskId: "t1", ok: false, code: "approval_pending" }), true);
+	assert.deepEqual(r.log.spoken.at(-1).segments, [relayCore.PHRASES.on_screen_first]);
+	r.voice.result({ taskId: "t2", ok: false, code: "whatever it likes <b>" });
+	assert.deepEqual(r.log.spoken.at(-1).segments, [relayCore.PHRASES.failed]);
+	const n = r.log.spoken.length;
+	r.voice.result({ taskId: "t3", ok: true });
+	r.voice.result({ taskId: "t4", ok: false, code: "echo" });
+	assert.equal(r.log.spoken.length, n, "success and echo are silent");
+	for (const code of ["approval_pending", "voice_not_enabled", "echo", "cancelled", "closed", "other"])
+		assert.equal(
+			m.phraseKeyForOutcome({ ok: false, code }),
+			relayCore.phraseForOutcome({ ok: false, code }),
+			code,
+		);
+});
+
+test("S3 a slot switch stops the page's speech and drops in-flight segments", async () => {
+	const r = await readyLocal();
+	relay(r, "Old.", ["Old."]);
+	const stops = r.log.stopSpeech;
+	holdSlot(r, "bbbbbbbbbbbb");
+	assert.equal(r.log.stopSpeech, stops + 1);
+	// The old holder's relayed text is gone: it can no longer be spoken.
+	assert.equal(r.voice.speak({ text: "Old.", kind: "reply" }).reason, "not_relayed");
+});
+
+test("S3 speech_too_slow keeps listening and stops speaking", async () => {
+	const r = await readyLocal();
+	relay(r, "Hello.", ["Hello."]);
+	r.voice.onPageStatus("speech_too_slow");
+	assert.equal(r.voice.getStatus().rig, "ready");
+	assert.equal(r.voice.getStatus().local.code, "speech_too_slow");
+	assert.equal(r.log.stopSpeech >= 1, true);
+	assert.deepEqual(r.voice.speak({ text: "Hello.", kind: "reply" }), {
+		spoken: false,
+		reason: "speech_too_slow",
+	});
+	// Still listening: a transcript still becomes a take.
+	r.voice.onPageTranscript("still here");
+	assert.equal(r.toRenderer.filter((x) => x.channel === "voice.qwen.take").length, 1);
+	// Phrases are not spoken either.
+	const n = r.log.spoken.length;
+	r.voice.result({ taskId: "t", ok: false, code: "approval_pending" });
+	assert.equal(r.log.spoken.length, n);
+});
+
+test("S3 turning voice off aborts a download in flight and opens nothing", async () => {
+	let aborted = false;
+	const r = localRig({
+		models: (_p, signal) =>
+			new Promise((_resolve, reject) => {
+				signal.addEventListener("abort", () => {
+					aborted = true;
+					reject(Object.assign(new Error("aborted"), { code: "aborted" }));
+				});
+			}),
+	});
+	holdSlot(r);
+	const run = r.voice.start("renderer");
+	await tick();
+	await r.voice.setEnabled(false);
+	await run;
+	assert.equal(aborted, true);
+	assert.deepEqual(r.log.openApp, []);
+});
+
+test("S3 page IPC: only the page's own sender; model names are manifest-shaped; transcripts are capped", async () => {
+	const handlers = new Map();
+	const calls = { transcript: [], status: [], read: [] };
+	m.registerVoicePageIPC(
+		{
+			on: (c, f) => handlers.set(c, f),
+			handle: (c, f) => handlers.set(c, f),
+		},
+		{
+			isPageSender: (e) => e?.page === true,
+			readModel: async (name) => {
+				calls.read.push(name);
+				return new Uint8Array([1]);
+			},
+			onTranscript: (t) => calls.transcript.push(t),
+			onStatus: (c) => calls.status.push(c),
+			onPlayback: () => {},
+			onVad: () => {},
+		},
+	);
+	const page = { page: true };
+	const other = { page: false };
+	await assert.rejects(handlers.get("voice-page:model")(other, "moonshine/tokenizer.json"));
+	await assert.rejects(handlers.get("voice-page:model")(page, "../../etc/passwd"));
+	await assert.rejects(handlers.get("voice-page:model")(page, 7));
+	assert.deepEqual(calls.read, []);
+	await handlers.get("voice-page:model")(page, "moonshine/tokenizer.json");
+	assert.deepEqual(calls.read, ["moonshine/tokenizer.json"]);
+	handlers.get("voice-page:transcript")(other, "hi");
+	handlers.get("voice-page:transcript")(page, "x".repeat(m.TRANSCRIPT_MAX_CHARS + 1));
+	handlers.get("voice-page:transcript")(page, 5);
+	handlers.get("voice-page:transcript")(page, "hi");
+	assert.deepEqual(calls.transcript, ["hi"]);
+	handlers.get("voice-page:status")(other, "listening");
+	handlers.get("voice-page:status")(page, "listening");
+	assert.deepEqual(calls.status, ["listening"]);
+});
+
+test("S3 page IPC: every pinned manifest name passes the shape", () => {
+	assert.ok(m.MODEL_MANIFEST.length > 10);
+	for (const f of m.MODEL_MANIFEST) assert.match(f.name, m.MODEL_NAME_SHAPE, f.name);
+	assert.doesNotMatch("a/b/c", m.MODEL_NAME_SHAPE);
+	assert.doesNotMatch("..", m.MODEL_NAME_SHAPE);
+});
+
+test("S3 the REAL page adapter: the app page has the narrow preload, the microphone for its own URL only, and reloads only itself", async () => {
+	const c = pageCase({ appPreloadPath: "/app/out/preload/voice-page.js" });
+	c.page.openApp(APP_PAGE);
+	assert.equal(c.created.length, 1);
+	assert.equal(c.created[0].webPreferences.preload, "/app/out/preload/voice-page.js");
+	assert.equal(c.created[0].webPreferences.sandbox, true);
+	assert.equal(c.created[0].webPreferences.nodeIntegration, false);
+	assert.equal(c.views[0].loaded[0], APP_PAGE);
+	const grant = (requestingUrl, mediaTypes = ["audio"]) => {
+		let result;
+		c.session.installed.request(
+			null,
+			"media",
+			(g) => {
+				result = g;
+			},
+			{ mediaTypes, isMainFrame: true, requestingUrl },
+		);
+		return result;
+	};
+	assert.equal(grant(APP_PAGE), true);
+	assert.equal(grant(APP_PAGE, ["audio", "video"]), false, "no camera");
+	assert.equal(grant("file:///app/out/renderer/index.html"), false, "not the main window");
+	// Navigation: a reload of itself passes, anything else is prevented.
+	const nav = (url) => {
+		let prevented = false;
+		for (const f of c.views[0].listeners["will-navigate"])
+			f({ url, preventDefault: () => (prevented = true) });
+		return prevented;
+	};
+	assert.equal(nav(APP_PAGE), false);
+	assert.equal(nav("https://example.com/"), true);
+	assert.equal(nav("file:///app/out/renderer/index.html"), true);
+	// Closing forgets the grant.
+	c.page.close();
+	assert.equal(grant(APP_PAGE), false);
+});
+
+test("S3 the REAL page adapter: speak and stop reach only an open app page", async () => {
+	const c = pageCase({ appPreloadPath: "/p.js" });
+	assert.equal(c.page.speak({ replyId: "r", segments: ["Hi."] }), false, "no page");
+	c.page.openApp(APP_PAGE);
+	assert.equal(c.page.speak({ replyId: "r", segments: ["Hi."] }), true);
+	c.page.stopSpeech();
+	assert.deepEqual(c.views[0].sent, [
+		["voice-page:speak", { replyId: "r", segments: ["Hi."] }],
+		["voice-page:stop"],
+	]);
 });

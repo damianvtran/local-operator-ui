@@ -1187,6 +1187,8 @@ export type MessageParams = {
 	"ui.chat.voice.dictation_off_voice": undefined;
 	"ui.chat.voice.dictation_off_voice_elsewhere": { title: string };
 	"ui.chat.voice.disable_failed": { reason: string };
+	"ui.chat.voice.download_notice": undefined;
+	"ui.chat.voice.download_notice_accept": undefined;
 	"ui.chat.voice.empty_history": undefined;
 	"ui.chat.voice.empty_transcript": undefined;
 	"ui.chat.voice.enable_failed": { reason: string };
@@ -1201,6 +1203,12 @@ export type MessageParams = {
 	"ui.chat.voice.idle_caption": undefined;
 	"ui.chat.voice.interrupted_at": { time: string };
 	"ui.chat.voice.interrupted_caption": { time: string };
+	"ui.chat.voice.local_listening_failed": undefined;
+	"ui.chat.voice.local_mic_unavailable": undefined;
+	"ui.chat.voice.local_model_integrity": undefined;
+	"ui.chat.voice.local_models_downloading": { percent: string };
+	"ui.chat.voice.local_models_offline": undefined;
+	"ui.chat.voice.local_speech_too_slow": undefined;
 	"ui.chat.voice.marker": undefined;
 	"ui.chat.voice.mic_blocked": undefined;
 	"ui.chat.voice.mic_blocked_caption": undefined;
@@ -3994,6 +4002,7 @@ export type MessageParams = {
 	"ui.settings.updates.update_following.update_notifications": undefined;
 	"ui.settings.voice.description": undefined;
 	"ui.settings.voice.label": undefined;
+	"ui.settings.voice.local_note": undefined;
 	"ui.shell.collapsible_app_logo.local_operator": undefined;
 	"ui.shell.panel_rail.panels": undefined;
 	"ui.shell.sidebar_navigation.agent_hub": undefined;

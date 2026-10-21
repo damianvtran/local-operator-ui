@@ -137,6 +137,7 @@ import { titlebarOptions } from "./titlebar-options";
 import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
+import { createLocalProvider } from "./voice/local-provider";
 import { QwenGatewayHost, launcherPathFor } from "./voice/qwen-gateway";
 import {
 	DEFAULT_QWEN_RIG_DIR,
@@ -156,8 +157,11 @@ import {
 } from "./voice/qwen-voice-page";
 import {
 	readQwenVoiceEnabled,
+	readVoiceNoticeAccepted,
 	writeQwenVoiceEnabled,
+	writeVoiceNoticeAccepted,
 } from "./voice/qwen-voice-setting";
+import { registerVoicePageIPC } from "./voice/voice-page-ipc";
 import { resolveLaunchWindowChrome } from "./window-chrome";
 import {
 	type ResolvedLaunchGlass,
@@ -1551,7 +1555,19 @@ const qwenRigDir = process.env.LOP_QWEN_RIG_DIR || DEFAULT_QWEN_RIG_DIR;
 const qwenStateDir = join(app.getPath("userData"), "qwen-voice");
 /** Layers 1 and 3 share this one number (§9). */
 const qwenMemBudgetBytes = qwenMemoryBudget(process.env);
+/** The live app voice page, for the IPC sender check; set by the page adapter. */
+let voicePageLive: QwenVoicePage | null = null;
+const localVoice = createLocalProvider({
+	userDataDir: app.getPath("userData"),
+	rendererUrl: () => rendererDocumentUrl(),
+	noticeAccepted: () => readVoiceNoticeAccepted(app.getPath("userData")),
+	writeNoticeAccepted: () => {
+		writeVoiceNoticeAccepted(app.getPath("userData"));
+	},
+	fetch: (input, init) => fetch(input, init),
+});
 const qwenVoice: QwenVoice = new QwenVoice({
+	local: localVoice,
 	gateway: new QwenGatewayHost(
 		launcherPathFor(app.getAppPath(), process.resourcesPath, app.isPackaged),
 		qwenRigDir,
@@ -1619,7 +1635,7 @@ const qwenVoice: QwenVoice = new QwenVoice({
 			return noQwenVoicePage();
 		let page: QwenVoicePage | null = null;
 		const instance = (): QwenVoicePage => {
-			page ??= new QwenVoicePage({
+			page ??= voicePageLive = new QwenVoicePage({
 				// The seams are structural subsets of Electron's Session and
 				// WebContentsView; Electron's overloaded `on` is not assignable to
 				// one signature, so the adapter casts once, here.
@@ -1640,6 +1656,7 @@ const qwenVoice: QwenVoice = new QwenVoice({
 				devTools: process.env.LOP_QWEN_VOICE_DEBUG === "1",
 				log: (message) => logger.info(message, LogFileType.BACKEND),
 				onStopped: (reason) => qwenVoice.pageFailed(reason),
+				appPreloadPath: join(__dirname, "../preload/voice-page.js"),
 			});
 			return page;
 		};
@@ -1658,6 +1675,9 @@ const qwenVoice: QwenVoice = new QwenVoice({
 			// voice", no `mic` field ever reported).
 			prepareMicrophone: async (options) =>
 				instance().prepareMicrophone(options),
+			openApp: (url: string) => instance().openApp(url),
+			speak: (message) => page?.speak(message) ?? false,
+			stopSpeech: () => page?.stopSpeech(),
 		};
 	})(),
 	log: (message) => logger.info(message, LogFileType.BACKEND),
@@ -3090,6 +3110,27 @@ app
 			 */
 			supplementMounts,
 		);
+		/*
+		 * The app voice page's channels: admitted only for the live page's own
+		 * webContents and main frame (never the main window or the mini view).
+		 */
+		registerVoicePageIPC(ipcMain as never, {
+			isPageSender: (event) => {
+				const e = event as { sender?: unknown; senderFrame?: unknown };
+				const contents = voicePageLive?.contents;
+				return (
+					contents !== null &&
+					contents !== undefined &&
+					e.sender === contents &&
+					e.senderFrame === contents.mainFrame
+				);
+			},
+			readModel: (name) => localVoice.readModel(name),
+			onTranscript: (text) => qwenVoice.onPageTranscript(text),
+			onStatus: (code) => qwenVoice.onPageStatus(code),
+			onPlayback: (kind) => qwenVoice.onPagePlayback(kind),
+			onVad: (kind) => qwenVoice.onPageVad(kind),
+		});
 		registerQwenVoiceIPC(() => mainWindow, rendererUrl, {
 			getEnabled: () => qwenVoice.isEnabled(),
 			setEnabled: async (on) => {
@@ -3104,6 +3145,7 @@ app
 			result: (input) => qwenVoice.result(input),
 			speak: (input) => qwenVoice.speak(input),
 			start: (reason) => qwenVoice.start(reason),
+			acceptNotice: () => qwenVoice.acceptNotice(),
 			getStatus: () => qwenVoice.getStatus(),
 			openMicSettings: openMicrophoneSettings,
 			pause: () => qwenVoice.pause(),

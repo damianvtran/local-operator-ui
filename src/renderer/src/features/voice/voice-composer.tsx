@@ -65,6 +65,7 @@ import {
 import type { QwenVoiceStatus } from "../../../../shared/desktop-contract";
 import type { DesktopVoiceActive } from "../../../../shared/desktop-control-contract";
 import {
+	acceptVoiceNotice,
 	openMicrophoneSettings,
 	openVoiceSession,
 	pauseQwenVoice,
@@ -150,10 +151,14 @@ export type VoiceCaption =
 	| { kind: "waiting_mic" }
 	| { kind: "connecting" }
 	| { kind: "silenced" }
+	| { kind: "downloading"; percent: number }
+	| { kind: "speech_slow" }
 	| { kind: "reason"; text: string };
 
 export type VoiceComposerView =
 	| { kind: "off" }
+	/** Local provider: the one-time download notice, waiting for an answer. */
+	| { kind: "download_notice" }
 	| { kind: "elsewhere"; holder: string; holderTitle: string | null }
 	| {
 			kind: "here";
@@ -170,10 +175,33 @@ export type VoiceComposerView =
  * rig's own sentence ("Port 8765 is in use; ...") because the cause is what the
  * reader can act on; the generic line is only the fallback.
  */
+/** The six local statuses' sentences (S3); one place, so the copy cannot fork. */
+export function localStatusText(
+	local: NonNullable<QwenVoiceStatus["local"]>,
+): string {
+	switch (local.code) {
+		case "models_downloading":
+			return t("ui.chat.voice.local_models_downloading", {
+				percent: String(Math.round((local.progress ?? 0) * 100)),
+			});
+		case "models_offline":
+			return t("ui.chat.voice.local_models_offline");
+		case "model_integrity":
+			return t("ui.chat.voice.local_model_integrity");
+		case "mic_unavailable":
+			return t("ui.chat.voice.local_mic_unavailable");
+		case "listening_failed":
+			return t("ui.chat.voice.local_listening_failed");
+		case "speech_too_slow":
+			return t("ui.chat.voice.local_speech_too_slow");
+	}
+}
+
 function errorReason(
 	rig: QwenVoiceStatus | undefined,
 	exchange: string | undefined,
 ): string {
+	if (rig?.rig === "error" && rig.local) return localStatusText(rig.local);
 	if (rig?.rig === "error") {
 		if (rig.cause === "unexpected_exit") return t("ui.chat.voice.error_exited");
 		const reason = rig.reason?.trim();
@@ -233,6 +261,10 @@ export function composerVoiceView(
 ): VoiceComposerView {
 	const holder = state.active?.session_id ?? null;
 	if (!sessionId) return { kind: "off" };
+	/* The download notice is app-global, like the microphone: the person turned
+	   voice on and nothing has been fetched until they answer it. */
+	if (state.rig?.notice === "download_models")
+		return { kind: "download_notice" };
 	if (!holder || holder !== sessionId) {
 		/*
 		 * THE MICROPHONE IS APP-GLOBAL AND IS DRAWN BEFORE THE ELSEWHERE NOTICE (QA
@@ -351,7 +383,13 @@ export function composerVoiceView(
 			return {
 				kind: "here",
 				chip: "starting",
-				caption: { kind: "starting" },
+				caption:
+					state.rig?.local?.code === "models_downloading"
+						? {
+								kind: "downloading",
+								percent: Math.round((state.rig.local.progress ?? 0) * 100),
+							}
+						: { kind: "starting" },
 				action: null,
 				cut,
 			};
@@ -488,7 +526,11 @@ export function composerVoiceView(
 	return {
 		kind: "here",
 		chip: "listening",
-		caption: { kind: "idle" },
+		/* Listening, but replies are read on screen: say so where the idle hint is. */
+		caption:
+			state.rig?.local?.code === "speech_too_slow"
+				? { kind: "speech_slow" }
+				: { kind: "idle" },
 		action: null,
 		cut,
 	};
@@ -679,6 +721,16 @@ const Caption: FC<{ caption: VoiceCaption }> = ({ caption }) => {
 			return <>{t("ui.chat.voice.connecting_caption")}</>;
 		case "silenced":
 			return <>{t("ui.chat.voice.silenced_caption")}</>;
+		case "downloading":
+			return (
+				<>
+					{t("ui.chat.voice.local_models_downloading", {
+						percent: String(caption.percent),
+					})}
+				</>
+			);
+		case "speech_slow":
+			return <>{t("ui.chat.voice.local_speech_too_slow")}</>;
 		case "reason":
 			return <span className="truncate">{caption.text}</span>;
 	}
@@ -1020,6 +1072,28 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 	 * Pause, no History - neither belongs to this session - and two text
 	 * actions: move the slot here, or go to where it is.
 	 */
+	if (view.kind === "download_notice") {
+		return (
+			<div
+				data-voice-notice="download"
+				className={cn("flex items-start gap-2 border-b py-2", inset, box, pad)}
+			>
+				<p className="min-w-0 flex-1 text-meta text-ink-muted">
+					{t("ui.chat.voice.download_notice")}
+				</p>
+				<Button
+					type="button"
+					variant="ghost"
+					size="sm"
+					data-voice-action="accept_notice"
+					className="shrink-0 text-meta text-ink"
+					onClick={() => void acceptVoiceNotice()}
+				>
+					{t("ui.chat.voice.download_notice_accept")}
+				</Button>
+			</div>
+		);
+	}
 	if (view.kind === "elsewhere") {
 		const holder = view.holder;
 		return (

@@ -141,7 +141,7 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			// The route's own `RequestID`; refused here rather than as its 422.
 			requestId: z.string().regex(REQUEST_ID_PATTERN),
 			text: z.string().min(1).max(16_000),
-			textOrigin: z.literal("qwen_s2s").optional(),
+			textOrigin: z.enum(["qwen_s2s", "local_moonshine"]).optional(),
 		})
 		.strict(),
 ]);

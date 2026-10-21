@@ -506,6 +506,8 @@ export function registerQwenVoiceIPC(
 		result: (input: unknown) => boolean;
 		speak: (input: unknown) => { spoken: boolean; reason?: string };
 		start: (reason: "renderer") => Promise<unknown>;
+		/** The one-time local-model download notice was accepted. */
+		acceptNotice: () => Promise<unknown>;
 		getStatus: () => unknown;
 		/** Open the OS microphone pane (macOS); a fixed main-only URL. */
 		openMicSettings: () => void;
@@ -543,6 +545,10 @@ export function registerQwenVoiceIPC(
 	ipcMain.handle("voice.qwen.start", (event) => {
 		authorize(event);
 		return voice.start("renderer");
+	});
+	ipcMain.handle("voice.qwen.accept-notice", (event) => {
+		authorize(event);
+		return voice.acceptNotice();
 	});
 	ipcMain.handle("voice.qwen.status.get", (event) => {
 		authorize(event);

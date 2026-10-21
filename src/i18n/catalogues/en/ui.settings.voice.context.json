@@ -10,5 +10,10 @@
 		"tone": "Plain, reassuring second person.",
 		"length": "Wrapping paragraph in the settings column; keep every fact.",
 		"note": "States that voice is off by default, that nothing runs while off, that on adds a composer button, and that off stops voice and frees the microphone at once."
+	},
+	"ui.settings.voice.local_note": {
+		"role": "second sentence of the session voice setting's description",
+		"tone": "plain, two short sentences",
+		"note": "Follows the description; 330 MB is approximate."
 	}
 }

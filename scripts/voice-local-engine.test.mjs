@@ -760,6 +760,13 @@ async function inputsOf(entry) {
 						path: a.path,
 						external: true,
 					}));
+					// A dynamic import is a load that happens later, on demand: it is
+					// the shape "off means nothing" allows, so the walk stops there.
+					b.onResolve({ filter: /.*/ }, (a) =>
+						a.kind === "dynamic-import"
+							? { path: a.path, external: true }
+							: undefined,
+					);
 				},
 			},
 		],

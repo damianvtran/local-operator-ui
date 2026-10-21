@@ -1,4 +1,10 @@
-import type { PlayMessage, VadEventKind } from "./channels";
+import type {
+	PageStatusCode,
+	PlayMessage,
+	PlaybackKind,
+	SpeakMessage,
+	VadEventKind,
+} from "./channels";
 
 /**
  * What the preload exposes to the page as `window.voicePage`. A type-only file
@@ -13,5 +19,8 @@ export interface VoicePageBridge {
 	/** Verified bytes of a manifest file; main refuses any other name. */
 	loadModel(name: string): Promise<Uint8Array>;
 	sendTranscript(text: string): void;
+	sendStatus(code: PageStatusCode): void;
+	sendPlayback(kind: PlaybackKind): void;
+	onSpeak(handler: (message: SpeakMessage) => void): void;
 	onMute(handler: (muted: boolean) => void): void;
 }
