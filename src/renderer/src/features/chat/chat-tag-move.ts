@@ -40,7 +40,9 @@ export async function moveChatToTag(
 		const message =
 			target === "untagged"
 				? t("ui.chat.tags.removed_all")
-				: t("ui.chat.tags.moved_to", { name });
+				: // A drop ADDS the tag and makes it primary (`movedTagAssignment`); the
+					// other tags stay. "Moved to" read as if they had been replaced.
+					t("ui.chat.tags.dropped_on", { name });
 		announce(message);
 		showSuccessToast(message, {
 			action: {

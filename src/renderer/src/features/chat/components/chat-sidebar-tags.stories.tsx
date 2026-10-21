@@ -1,5 +1,4 @@
 import { DEFAULT_SIDEBAR_VIEW } from "@features/chat/chat-sidebar-view";
-import { t } from "@shared/i18n";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useSessionTagsStore } from "@shared/store/session-tags-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -15,11 +14,7 @@ import type {
 } from "../../../../../shared/desktop-contract";
 import { ChatSidebar } from "./chat-sidebar";
 
-const CREATE_RELEASE = /Create “Release 東京”/;
-const REMOVE_TAG_MENU_ITEM = /Remove (all tags|tag)/;
 let calls: DesktopRequest[] = [];
-let finishRegistry: (() => void) | null = null;
-let finishCreation: (() => void) | null = null;
 type Scenario =
 	| "drop-ux"
 	| "held-pin"
@@ -44,25 +39,26 @@ type Scenario =
 	| "picker-create-error"
 	| "picker-create-loading"
 	| "picker-remote"
-	| "manage-error";
+	| "manage-error"
+	| "unused"
+	| "load-failed";
 /** The actual sidebar and contract-shaped desktop bridge, not a proposed mock.
- * Mutable fixture data makes Apply/Clear/registry edits observable through the
+ * Mutable fixture data makes immediate assignment and registry edits observable through the
  * same catalogue refresh as production. No operator backend or config is used.
  */
 function installBridge(scenario: Scenario) {
 	calls = [];
-	finishRegistry = null;
-	finishCreation = null;
 	document.body.dataset.tagsProof = "";
 	document.body.dataset.tagsOpened = "";
-	let categories: TagCategory[] =
-		scenario === "no-categories"
-			? []
-			: [
-					{ id: "review", name: "Review", order: 0, conversations: 2 },
-					{ id: "project", name: "Project", order: 1, conversations: 2 },
-					{ id: "concept", name: "Concept", order: 2, conversations: 1 },
-				];
+	let categories: TagCategory[] = ["no-categories", "picker-empty"].includes(
+		scenario,
+	)
+		? []
+		: [
+				{ id: "review", name: "Review", order: 0, conversations: 2 },
+				{ id: "project", name: "Project", order: 1, conversations: 2 },
+				{ id: "concept", name: "Concept", order: 2, conversations: 1 },
+			];
 	if (
 		[
 			"picker-dense",
@@ -91,6 +87,13 @@ function installBridge(scenario: Scenario) {
 				}),
 			),
 		];
+	if (scenario === "unused")
+		categories.push({
+			id: "unused",
+			name: "Next project",
+			order: 3,
+			conversations: 0,
+		});
 	if (scenario === "picker-one") categories = categories.slice(0, 1);
 	if (scenario === "picker-empty") categories = [];
 	if (scenario === "picker-unicode") {
@@ -149,6 +152,13 @@ function installBridge(scenario: Scenario) {
 						row.id === "222222222222"
 					? true
 					: row.pinned,
+		...(scenario === "picker-remote"
+			? {
+					locality: "remote" as const,
+					owner_device: "synthetic-peer",
+					owner_device_name: "Fixture peer",
+				}
+			: {}),
 		mtime: now - index * 60,
 		created_at: now - index * 60,
 		preview: "",
@@ -211,18 +221,23 @@ function installBridge(scenario: Scenario) {
 					),
 				});
 			case "tags.list":
+				if (scenario === "load-failed")
+					return {
+						status: 503,
+						body: { detail: "Fixture registry unavailable" },
+					};
+				for (const tag of categories)
+					tag.conversations = rows.filter((row) =>
+						row.tags.some((held) => held.id === tag.id),
+					).length;
 				if (scenario === "old-backend")
 					throw new Error("Old backend must not receive a tags request");
 				if (scenario === "picker-loading")
-					return new Promise<DesktopResponse>((resolve) => {
-						finishRegistry = () => resolve(ok({ tags: categories }));
-					});
+					return new Promise<DesktopResponse>(() => {});
 				return ok({ tags: categories });
 			case "tags.replace":
 				if (scenario === "picker-create-loading")
-					await new Promise<void>((resolve) => {
-						finishCreation = resolve;
-					});
+					await new Promise<void>(() => {});
 				if (scenario === "picker-create-error" || scenario === "manage-error")
 					return {
 						status: 503,
@@ -266,7 +281,7 @@ function installBridge(scenario: Scenario) {
 				const row = rows.find((entry) => entry.id === request.sessionId);
 				if (!row) throw new Error("Unknown fixture conversation");
 				if (scenario === "move-conflict") {
-					// Simulate another client changing assignments after this dialog opened.
+					// Simulate another client changing assignments after this popover opened.
 					row.tags = tags("project");
 					row.primary = "project";
 					row.tags_revision = "2";
@@ -354,96 +369,45 @@ function installBridge(scenario: Scenario) {
 function Page({ scenario, width }: { scenario: Scenario; width: number }) {
 	const client = useQueryClient();
 	useState(() => {
-		// Changing scenario on one story ID must not reuse the previous fixture's
-		// cached capabilities/catalogue (especially the old-backend negative control).
 		client.clear();
 		installBridge(scenario);
 	});
 	const [geometry, setGeometry] = useState("");
-	const [dialogGeometry, setDialogGeometry] = useState("");
 	useEffect(() => {
 		const measure = () => {
-			const rows = [
-				...document.querySelectorAll<HTMLElement>(
-					"[data-session-row] [data-chat-row]",
-				),
-			];
 			const headers = [
 				...document.querySelectorAll<HTMLElement>(
-					"[data-chat-tag-group] > div:first-child",
+					"[data-tag-drop-target]:not([data-tag-drop-body])",
 				),
 			];
-			const modal = document.querySelector<HTMLElement>("[role=dialog]");
-			if (modal) {
-				const body = modal.querySelector<HTMLElement>("[data-tag-dialog-body]");
-				const footer = modal.querySelector<HTMLElement>(
-					"[data-tag-dialog-footer]",
-				);
-				const rect = modal.getBoundingClientRect();
-				const footerRect = footer?.getBoundingClientRect();
-				setDialogGeometry(
-					JSON.stringify({
-						viewport: [innerWidth, innerHeight],
-						dialog: [rect.width, rect.height],
-						body: body
-							? [
-									body.clientWidth,
-									body.scrollWidth,
-									body.clientHeight,
-									body.scrollHeight,
-								]
-							: null,
-						footerVisible:
-							!!footerRect &&
-							footerRect.bottom <= innerHeight &&
-							footerRect.top >= 0,
-						horizontalOverflow: modal.scrollWidth > modal.clientWidth,
-						optionHeights: [
-							...new Set(
-								[...modal.querySelectorAll<HTMLElement>("[role=option]")].map(
-									(node) => node.getBoundingClientRect().height,
-								),
-							),
-						],
-						options: modal.querySelectorAll("[role=option]").length,
-						rovingStops: modal.querySelectorAll('[role=option][tabindex="0"]')
-							.length,
-						registryWrites: calls.filter((call) => call.op === "tags.replace")
-							.length,
-						assignmentWrites: calls.filter(
-							(call) => call.op === "sessions.tags",
-						).length,
-					}),
-				);
-				// Expose real child-frame measurements as inert CSS metadata: the
-				// harness can inspect the frame but cannot query its child DOM.
-				const frame = window.frameElement as HTMLElement | null;
-				if (frame) {
-					frame.title = `V2-2 measured viewport ${innerWidth}x${innerHeight}; dialog ${rect.width}x${rect.height}; body ${body?.clientHeight}/${body?.scrollHeight}; footer ${!!footerRect && footerRect.bottom <= innerHeight && footerRect.top >= 0}; overflowX ${modal.scrollWidth > modal.clientWidth}; ${document.body.dataset.tagsProof ?? ""}`;
-					for (const [key, value] of Object.entries({
-						width: rect.width,
-						height: rect.height,
-						bodyClient: body?.clientHeight ?? 0,
-						bodyScroll: body?.scrollHeight ?? 0,
-						footerVisible:
-							footerRect &&
-							footerRect.bottom <= innerHeight &&
-							footerRect.top >= 0
-								? 1
-								: 0,
-						xOverflow: modal.scrollWidth > modal.clientWidth ? 1 : 0,
-					}))
-						frame.style.setProperty(`--v22-${key}`, String(value));
-				}
-			}
-			setGeometry(
-				`rows ${rows.length} · row heights ${[...new Set(rows.map((row) => row.getBoundingClientRect().height))].join(",")} · subheaders ${headers.length} × ${[...new Set(headers.map((header) => header.getBoundingClientRect().height))].join(",")}px · modal ${modal ? Math.round(modal.getBoundingClientRect().width) : "none"} · assignment writes ${calls.filter((call) => call.op === "sessions.tags").length} · ${document.body.dataset.tagsProof ?? ""}`,
+			const panel = document.querySelector<HTMLElement>(
+				"[data-chat-tag-popover]",
 			);
+			const metrics = {
+				active: document.activeElement?.outerHTML.slice(0, 400),
+				headers: headers.map((node) => ({
+					id: node.dataset.tagDropTarget,
+					height: node.getBoundingClientRect().height,
+					width: node.getBoundingClientRect().width,
+				})),
+				popover: panel
+					? {
+							width: panel.getBoundingClientRect().width,
+							height: panel.getBoundingClientRect().height,
+							overflowX: panel.scrollWidth > panel.clientWidth,
+						}
+					: null,
+				registryWrites: calls.filter((call) => call.op === "tags.replace")
+					.length,
+				assignmentWrites: calls.filter((call) => call.op === "sessions.tags")
+					.length,
+				proof: document.body.dataset.tagsProof ?? "",
+			};
+			setGeometry(JSON.stringify(metrics));
 		};
 		const timer = setInterval(measure, 200);
 		return () => clearInterval(timer);
 	}, []);
-
 	return (
 		<div className="flex h-screen bg-canvas text-ink">
 			<div className="shrink-0 border-hairline border-r" style={{ width }}>
@@ -455,13 +419,10 @@ function Page({ scenario, width }: { scenario: Scenario; width: number }) {
 					onStageDraft={() => undefined}
 				/>
 			</div>
-			<main className="p-6 text-body-sm text-ink-muted">
-				Implemented tag grouping · {width}px sidebar · {scenario}
-				<output data-tags-geometry className="mt-3 block">
+			<main className="min-w-0 p-6 text-body-sm text-ink-muted">
+				Sidebar tags v3 · {width}px · {scenario}
+				<output data-tags-geometry className="sr-only">
 					{geometry}
-				</output>
-				<output data-v22-geometry className="mt-2 block break-words">
-					{dialogGeometry}
 				</output>
 			</main>
 		</div>
@@ -476,17 +437,19 @@ const meta = {
 		scenario: {
 			control: "select",
 			options: [
-				"tags-off",
 				"tags-on",
+				"tags-off",
+				"unused",
 				"no-categories",
 				"old-backend",
 				"picker",
-				"manage",
 				"picker-error",
 				"picker-loading",
+				"picker-remote",
+				"load-failed",
 			],
 		},
-		width: { control: "select", options: [220, 260, 320, 640] },
+		width: { control: "select", options: [220, 260, 320] },
 		theme: {
 			control: "select",
 			options: ["localOperatorLight", "localOperatorDark"],
@@ -501,30 +464,36 @@ const ready = async () =>
 			document.querySelectorAll("[data-session-row]").length,
 		).toBeGreaterThan(0),
 	);
+const sourceRow = () => {
+	const row = document.querySelector<HTMLElement>(
+		'[data-session-row="111111111111"] [data-chat-row]',
+	);
+	if (!row) throw new Error("Missing source conversation");
+	return row;
+};
 const picker = async () => {
 	await ready();
-	const row = document.querySelector<HTMLElement>(
-		"[data-session-row] [data-chat-row]",
-	);
-	if (!row) throw new Error("No fixture row");
-	row.focus();
+	sourceRow().focus();
 	await userEvent.keyboard("{Shift>}{F10}{/Shift}");
 	await userEvent.click(
-		await within(document.body).findByText(t("ui.chat.tags.menu")),
+		await within(document.body).findByRole("menuitem", { name: /^Tags…/ }),
 	);
-	await within(document.body).findByRole("dialog");
+	await waitFor(() =>
+		expect(document.querySelector("[data-chat-tag-popover]")).not.toBeNull(),
+	);
+};
+const headerStop = (id = "review") => {
+	const stop = document.querySelector<HTMLElement>(
+		`[data-chat-tag-header="${id}"]`,
+	);
+	if (!stop) throw new Error(`Missing ${id} header`);
+	return stop;
 };
 const manage = async () => {
 	await ready();
-	const trigger = document.querySelector<HTMLElement>(
-		"[data-sidebar-view-options]",
-	);
-	if (!trigger) throw new Error("No view options trigger");
-	await userEvent.click(trigger);
-	await userEvent.click(
-		await within(document.body).findByText(t("ui.chat.tags.manage")),
-	);
-	await within(document.body).findByRole("dialog");
+	headerStop().focus();
+	await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+	await within(document.body).findByRole("menuitem", { name: "Rename" });
 };
 const story = (
 	scenario: Scenario,
@@ -532,37 +501,42 @@ const story = (
 	theme = "localOperatorDark",
 ): Story => ({
 	args: { scenario, width, theme },
-	// Args drive both the actual fixture and its interaction, not a closure over
-	// an export's convenience defaults. This enables the complete URL matrix.
 	render: ({ scenario, width }) => (
 		<Page key={scenario} scenario={scenario} width={width} />
 	),
 	play: async ({ args }) => {
-		if (args.scenario.startsWith("picker") && args.scenario !== "picker-error")
-			await picker();
-		else if (args.scenario.startsWith("manage")) await manage();
-		else if (args.scenario === "picker-error") {
-			await picker();
-			await userEvent.click(
-				within(document.body).getByRole("button", { name: "Apply" }),
+		if (args.scenario === "picker-remote") {
+			await ready();
+			sourceRow().focus();
+			await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+			expect(
+				await within(document.body).findByRole("menuitem", { name: /^Tags…/ }),
+			).toHaveAttribute("aria-disabled", "true");
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				0,
 			);
-			await within(document.body).findByRole("alert");
-			await within(document.body).findByText("Tags were not saved. Try again.");
-			expect(
-				within(document.body).getByRole("button", { name: "Retry" }),
-			).toBeEnabled();
-			expect(
-				within(document.body).getByRole("option", { name: "Review" }),
-			).toHaveAttribute("aria-selected", "true");
-			document.body.dataset.tagsProof =
-				"PASS: assignment 503 shows tag-specific save failure + Retry and preserves draft";
-		} else {
+		} else if (
+			args.scenario.startsWith("picker") ||
+			args.scenario === "load-failed"
+		) {
+			await picker();
+			if (args.scenario === "picker-error") {
+				await userEvent.click(
+					within(document.body).getByRole("option", { name: "Concept" }),
+				);
+				await within(document.body).findByText(
+					"Tags were not saved. Try again.",
+				);
+				expect(
+					within(document.body).getByRole("option", { name: "Concept" }),
+				).toHaveAttribute("aria-selected", "false");
+			}
+		} else if (args.scenario.startsWith("manage")) await manage();
+		else {
 			await ready();
 			if (args.scenario === "old-backend") {
 				expect(calls.filter((call) => call.op === "tags.list")).toHaveLength(0);
-				expect(document.querySelector("[data-chat-tag-group]")).toBeNull();
-				document.body.dataset.tagsProof =
-					"PASS: old backend requests no tags.list and renders no tag groups";
+				expect(document.querySelector("[data-chat-tag-footer]")).toBeNull();
 			}
 		}
 	},
@@ -575,467 +549,404 @@ export const Picker = story("picker");
 export const Manage = story("manage");
 export const PickerError = story("picker-error");
 export const PickerLoading = story("picker-loading");
+export const PickerLoadFailed = story("load-failed");
 export const Narrow220 = story("tags-on", 220);
 export const Wide320 = story("tags-on", 320);
 export const Light = story("tags-on", 260, "localOperatorLight");
 export const PickerLight = story("picker", 220, "localOperatorLight");
 export const ManageLight = story("manage", 320, "localOperatorLight");
-
-/** Real mounted UI path: Cancel writes nothing; Clear + Apply emits exactly one
- * desired-state request and returns focus to the stable originating row. */
-export const AssignClearRoundTrip: Story = {
-	...story("tags-on"),
+export const PickerDense = story("picker-dense", 220);
+export const PickerDenseLight = story(
+	"picker-dense",
+	220,
+	"localOperatorLight",
+);
+export const PickerEight = story("picker-eight");
+export const PickerEmpty = story("picker-empty", 220);
+export const PickerOne = story("picker-one", 320);
+export const PickerUnicode = story("picker-unicode", 220);
+export const PickerRemoteRefusal = story("picker-remote");
+export const UnusedTags = story("unused");
+export const PickerNoMatch: Story = {
+	...story("picker"),
+	play: async () => {
+		await picker();
+		await userEvent.type(
+			within(document.body).getByRole("combobox"),
+			"Future work",
+		);
+		expect(
+			await within(document.body).findByRole("option", {
+				name: /Create “Future work”/,
+			}),
+		).toHaveAttribute("aria-disabled", "false");
+	},
+};
+export const PickerCreateError: Story = {
+	...story("picker-create-error"),
+	play: async () => {
+		await picker();
+		await userEvent.type(
+			within(document.body).getByRole("combobox"),
+			"Future work",
+		);
+		await userEvent.keyboard("{Enter}");
+		await within(document.body).findByText("Tag was not created. Try again.");
+	},
+};
+export const PickerKeyboardRoundTrip: Story = {
+	...story("picker"),
+	play: async () => {
+		await ready();
+		sourceRow().focus();
+		await userEvent.keyboard("{Control>}{Shift>}L{/Shift}{/Control}");
+		await userEvent.type(
+			await within(document.body).findByRole("combobox"),
+			"Release 東京",
+		);
+		await userEvent.keyboard("{Enter}");
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				1,
+			),
+		);
+		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(1);
+		await userEvent.keyboard("{Escape}");
+		await waitFor(() =>
+			expect(document.querySelector("[data-chat-tag-popover]")).toBeNull(),
+		);
+		expect(document.activeElement).toHaveAttribute("data-chat-row");
+		document.body.dataset.tagsProof =
+			"PASS: chord → type → Enter creates+assigns, Escape returns row focus; no dialog or Apply";
+	},
+};
+export const PickerConflict: Story = {
+	...story("move-conflict"),
 	play: async () => {
 		await picker();
 		await userEvent.click(
 			within(document.body).getByRole("option", { name: "Concept" }),
 		);
-		await userEvent.click(
-			within(document.body).getByRole("button", { name: "Cancel" }),
-		);
-		await waitFor(() =>
-			expect(document.querySelector("[role=dialog]")).toBeNull(),
-		);
-		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
-		await picker();
-		await userEvent.click(
-			within(document.body).getByRole("button", { name: "Clear tags" }),
-		);
-		await userEvent.click(
-			within(document.body).getByRole("button", { name: "Apply" }),
-		);
-		await waitFor(() =>
-			expect(document.querySelector("[role=dialog]")).toBeNull(),
-		);
-		expect(calls.filter((call) => call.op === "sessions.tags")).toEqual([
-			{
-				op: "sessions.tags",
-				sessionId: "111111111111",
-				tags: [],
-				primary: null,
-				expected_revision: "0",
-			},
-		]);
-		expect(
-			useCanonicalSessionsStore
-				.getState()
-				.sessions.find((row) => row.session_id === "111111111111")?.tags,
-		).toEqual([]);
-		await waitFor(() =>
-			expect(document.activeElement).toBe(
-				document.querySelector(
-					'[data-session-row="111111111111"] [data-chat-row]',
-				),
-			),
-		);
 		await within(document.body).findByText(
-			"Tags updated. Shown under Untagged.",
+			"Tags changed elsewhere. The list now shows their current tags; select again to apply your change.",
 		);
-		document.body.dataset.tagsProof =
-			"PASS: Cancel 0 writes; Clear 1 atomic write; canonical tags []; focus returned";
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1);
 	},
 };
-
-/** Exercise all four local mutations without touching the registry until Apply. */
-const editRegistryDraft = async () => {
-	const body = within(document.body);
-	await userEvent.type(
-		body.getByRole("textbox", { name: "New tag name" }),
-		"New category",
-	);
-	await userEvent.click(body.getByRole("button", { name: "Add" }));
-	await body.findByText("New category");
-	const review = document.querySelector<HTMLElement>('[data-tag-id="review"]');
-	if (!review) throw new Error("Review category missing");
-	await userEvent.click(within(review).getByRole("button", { name: "Rename" }));
-	const rename = body.getByRole("textbox", { name: "Rename Review" });
-	fireEvent.change(rename, { target: { value: "Review renamed" } });
-	await waitFor(() => expect(rename).toHaveValue("Review renamed"));
-	await userEvent.click(body.getByRole("button", { name: "Save" }));
-	await body.findByText("Review renamed");
-	for (let index = 0; index < 3; index++) {
+export const HeaderRenameFailure: Story = {
+	...story("manage-error"),
+	play: async () => {
+		await ready();
+		headerStop().focus();
+		await userEvent.keyboard("{F2}");
+		const field = await within(document.body).findByRole("textbox", {
+			name: "Rename Review",
+		});
+		await userEvent.clear(field);
+		await userEvent.type(field, "Uncommitted{Enter}");
+		await within(document.body).findByText("Tags were not saved. Try again.");
+	},
+};
+export const HeaderRenameSaving: Story = {
+	...story("picker-create-loading"),
+	play: async () => {
+		await ready();
+		headerStop().focus();
+		await userEvent.keyboard("{F2}");
+		const field = await within(document.body).findByRole("textbox", {
+			name: "Rename Review",
+		});
+		await userEvent.clear(field);
+		await userEvent.type(field, "Saving name{Enter}");
+		expect(field).toHaveAttribute("aria-busy", "true");
+	},
+};
+export const FooterAtLimit: Story = { ...story("picker-dense"), play: ready };
+export const HeaderDeleteConfirm: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await manage();
 		await userEvent.click(
-			body.getByRole("button", { name: "Move New category up" }),
+			within(document.body).getByRole("menuitem", { name: "Delete" }),
+		);
+		const confirm = await within(document.body).findByRole("alertdialog");
+		expect(
+			within(confirm).getByRole("button", { name: "Cancel" }),
+		).toHaveFocus();
+		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
+	},
+};
+export const DeleteRoundTrip: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await manage();
+		await userEvent.click(
+			within(document.body).getByRole("menuitem", { name: "Delete" }),
+		);
+		const confirm = await within(document.body).findByRole("alertdialog");
+		await userEvent.click(
+			within(confirm).getByRole("button", { name: "Delete tag" }),
+		);
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(
+				1,
+			),
 		);
 		await waitFor(() =>
 			expect(
-				document.activeElement
-					?.closest("[data-tag-id]")
-					?.getAttribute("data-tag-id"),
-			).toBe("new:New category"),
+				document.querySelector('[data-chat-tag-header="review"]'),
+			).toBeNull(),
 		);
-	}
-	expect(
-		body.getByRole("button", { name: "Move New category up" }),
-	).toBeDisabled();
-	const project = document.querySelector<HTMLElement>(
-		'[data-tag-id="project"]',
-	);
-	if (!project) throw new Error("Project category missing");
-	await userEvent.click(
-		within(project).getByRole("button", { name: "Delete" }),
-	);
-	await body.findByText(
-		"Remove this tag from 2 conversations. Conversations grouped here move to their oldest remaining tag, or Untagged. Conversations will not be deleted.",
-	);
-	const confirmation = document.querySelector<HTMLElement>(
-		'section[aria-label="Delete “Project”?"]',
-	);
-	if (!confirmation) throw new Error("No delete confirmation");
-	await waitFor(() =>
-		expect(document.activeElement).toBe(
-			within(confirmation).getByRole("button", { name: "Cancel" }),
-		),
-	);
-	expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
-	await userEvent.click(body.getByRole("button", { name: "Delete tag" }));
-	await waitFor(() =>
-		expect(document.querySelector('[data-tag-id="project"]')).toBeNull(),
-	);
-	expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
-	expect(useSessionTagsStore.getState().categories).toHaveLength(3);
+		document.body.dataset.tagsProof =
+			"PASS: anchored confirmation defaults to Cancel; confirmed deletion replaces registry once without deleting chats";
+	},
+};
+export const PopoverFloor600: Story = {
+	...story("tags-on"),
+	render: () => (
+		<iframe
+			title="Tags popover at 600×600 app floor"
+			style={{ width: 600, height: 600, border: 0 }}
+			src="/iframe.html?id=chat-sidebar-tags--picker&viewMode=story&args=width:220"
+		/>
+	),
+	play: undefined,
+};
+export const HeaderRename: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await ready();
+		headerStop().focus();
+		await userEvent.keyboard("{F2}");
+		await userEvent.clear(
+			await within(document.body).findByRole("textbox", {
+				name: "Rename Review",
+			}),
+		);
+		await userEvent.type(
+			within(document.body).getByRole("textbox", { name: "Rename Review" }),
+			"Release review",
+		);
+	},
+};
+export const HeaderRenameInvalid: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await ready();
+		headerStop().focus();
+		await userEvent.keyboard("{F2}");
+		const field = await within(document.body).findByRole("textbox", {
+			name: "Rename Review",
+		});
+		await userEvent.clear(field);
+		await userEvent.type(field, "Untagged{Enter}");
+		expect(field).toHaveAttribute("aria-invalid", "true");
+	},
 };
 export const ManagementRoundTrip: Story = {
 	...story("tags-on"),
 	play: async () => {
-		await manage();
-		await editRegistryDraft();
-		await userEvent.click(
-			within(document.body).getByRole("button", { name: "Cancel" }),
-		);
+		await ready();
+		headerStop().focus();
+		await userEvent.keyboard("{F2}");
+		const field = await within(document.body).findByRole("textbox", {
+			name: "Rename Review",
+		});
+		await userEvent.clear(field);
+		await userEvent.type(field, "Review renamed{Enter}");
 		await waitFor(() =>
-			expect(document.querySelector("[role=dialog]")).toBeNull(),
-		);
-		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
-		expect(
-			useSessionTagsStore.getState().categories.map((tag) => tag.name),
-		).toEqual(["Review", "Project", "Concept"]);
-		await manage();
-		await editRegistryDraft();
-		await userEvent.click(
-			within(document.body).getByRole("button", { name: "Apply" }),
-		);
-		await waitFor(() =>
-			expect(document.querySelector("[role=dialog]")).toBeNull(),
-		);
-		expect(calls.filter((call) => call.op === "tags.replace")).toEqual([
-			{
-				op: "tags.replace",
-				tags: [
-					{ name: "New category" },
-					{ id: "review", name: "Review renamed" },
-					{ id: "concept", name: "Concept" },
-				],
-			},
-		]);
-		await waitFor(() =>
-			expect(
-				useCanonicalSessionsStore
-					.getState()
-					.sessions.every(
-						(row) => !row.tags?.some((tag) => tag.id === "project"),
-					),
-			).toBe(true),
-		);
-		expect(useCanonicalSessionsStore.getState().sessions).toHaveLength(5);
-		await waitFor(() =>
-			expect(document.activeElement).toBe(
-				document.querySelector("[data-sidebar-view-options]"),
+			expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(
+				1,
 			),
 		);
+		await userEvent.click(
+			within(document.body).getByRole("button", { name: "New tag" }),
+		);
+		await userEvent.type(
+			await within(document.body).findByRole("textbox", {
+				name: "New tag name",
+			}),
+			"Unused next{Enter}",
+		);
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(
+				2,
+			),
+		);
+		await within(document.body).findByText("Unused next");
+		expect(document.querySelector('[role="dialog"]')).toBeNull();
 		document.body.dataset.tagsProof =
-			"PASS: local add/rename/reorder/delete; confirmation 0 writes; Cancel 0 writes; Apply 1 desired-state request; 5 chats retained; trigger focus returned";
+			"PASS: inline rename and footer create write on press, unused group expands, no Apply or dialog";
 	},
 };
-
+export const FooterNewTag: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await ready();
+		await userEvent.click(
+			within(document.body).getByRole("button", { name: "New tag" }),
+		);
+	},
+};
+export const UnusedExpanded: Story = {
+	...story("unused"),
+	play: async () => {
+		await ready();
+		await userEvent.click(
+			within(document.body).getByRole("button", { name: "Unused tags (1)" }),
+		);
+	},
+};
 export const ViewOptions220: Story = {
 	...story("tags-on", 220),
-	play: async ({ args }) => {
+	play: async () => {
 		await ready();
-		const trigger = document.querySelector<HTMLElement>(
-			"[data-sidebar-view-options]",
+		await userEvent.click(
+			document.querySelector<HTMLElement>(
+				"[data-sidebar-view-options]",
+			) as HTMLElement,
 		);
-		if (!trigger) throw new Error("No view trigger");
-		await userEvent.click(trigger);
-		const action = await within(document.body).findByRole("button", {
-			name: "Manage tags…",
+		const body = within(document.body);
+		expect(
+			await body.findByRole("switch", { name: "Group chats by tag" }),
+		).toBeVisible();
+		expect(body.queryByText("Manage tags…")).toBeNull();
+	},
+};
+export const HeaderArrowRing: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await ready();
+		const header = headerStop();
+		header.focus();
+		await userEvent.keyboard("{ArrowDown}");
+		expect(document.activeElement).toHaveAttribute("data-chat-row");
+		await userEvent.keyboard("{ArrowUp}");
+		expect(document.activeElement).toBe(header);
+		await userEvent.keyboard("{ArrowDown}");
+		expect(document.activeElement).toHaveAttribute("data-chat-row");
+		document.body.dataset.tagsProof =
+			"PASS: header → row → header → row physical keyboard arrow walk";
+	},
+};
+export const KeyboardDismiss: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await picker();
+		await userEvent.keyboard("{Escape}");
+		await waitFor(() =>
+			expect(document.querySelector("[data-chat-tag-popover]")).toBeNull(),
+		);
+		await waitFor(() => expect(document.activeElement).toBe(sourceRow()));
+		document.body.dataset.tagsProof =
+			"PASS: Escape dismisses picker in one press and returns to the originating row";
+	},
+};
+export const KeyboardCreate: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await ready();
+		sourceRow().focus();
+		await userEvent.keyboard("{Meta>}{Shift>}l{/Shift}{/Meta}");
+		const input = await within(document.body).findByRole("combobox", {
+			name: "Search tags",
 		});
-		const group = action.closest<HTMLElement>("[data-sidebar-tags-options]");
-		if (!group) throw new Error("No Tags row");
-		const box = group.getBoundingClientRect();
-		const button = action.getBoundingClientRect();
-		const range = document.createRange();
-		range.selectNodeContents(action);
-		const lines = range.getClientRects().length;
-		const content = group.firstElementChild?.getBoundingClientRect();
-		const baseHeight =
-			(content?.height ?? 0) +
-			Number.parseFloat(getComputedStyle(group).borderBottomWidth);
-		expect(baseHeight).toBe(40);
-		expect(lines).toBe(1);
-		expect(action.scrollWidth).toBeLessThanOrEqual(action.clientWidth);
-		if (args.scenario === "no-categories") {
-			await within(document.body).findByText("No tags yet");
-			for (
-				let step = 0;
-				step < 60 &&
-				document.activeElement?.getAttribute("data-sidebar-view-section") !==
-					"older";
-				step++
-			)
-				await userEvent.tab();
-			expect(
-				document.activeElement?.getAttribute("data-sidebar-view-section"),
-			).toBe("older");
-			const panel = document.querySelector<HTMLElement>(
-				"[data-sidebar-view-panel]",
-			);
-			if (!panel) throw new Error("No scrollable View panel");
-			const focused = document.activeElement?.getBoundingClientRect();
-			expect(focused?.bottom ?? 0).toBeLessThanOrEqual(
-				panel.getBoundingClientRect().bottom,
-			);
-		}
-		document.body.dataset.tagsProof = `PASS: ${args.width}px sidebar; base Tags row ${baseHeight}px; Tags row ${box.width}×${box.height}px; Manage ${button.width}×${button.height}px; text lines ${lines}; no horizontal overflow`;
-	},
-};
-
-export const PickerManageRoundTrip: Story = {
-	...story("picker-many", 220),
-	play: async () => {
-		await picker();
-		const body = within(document.body);
-		await userEvent.click(body.getByRole("option", { name: "Concept" }));
-		await userEvent.click(body.getByRole("radio", { name: "Project" }));
-		await userEvent.type(
-			body.getByRole("combobox", { name: "Search tags" }),
-			"e",
-		);
-		const scroll = document.querySelector<HTMLElement>(
-			"[role=dialog] .overflow-y-auto",
-		);
-		if (!scroll) throw new Error("No picker scroller");
-		scroll.scrollTop = 60;
-		let heldScroll = scroll.scrollTop;
-		expect(heldScroll).toBeGreaterThan(0);
-		const openManager = async () => {
-			const invokingScroller = document.querySelector<HTMLElement>(
-				"[role=dialog] .overflow-y-auto",
-			);
-			const button = body.getByRole("button", { name: "Manage tags…" });
-			// Capture after the click's own scroll-into-view, before React unmounts
-			// the old modal content (detached nodes report scrollTop = 0).
-			button.addEventListener(
-				"click",
-				() => {
-					heldScroll = invokingScroller?.scrollTop ?? 0;
-				},
-				{ once: true, capture: true },
-			);
-			await userEvent.click(button);
-			await body.findByRole("heading", { name: "Manage tags" });
-			await new Promise((resolve) =>
-				requestAnimationFrame(() => requestAnimationFrame(resolve)),
-			);
-			expect(document.activeElement?.closest('[role="dialog"]')).not.toBeNull();
-			expect(document.querySelectorAll("[role=dialog]")).toHaveLength(1);
-		};
-		const restored = async () => {
-			await body.findByRole("heading", {
-				name: "Tags",
-			});
-			expect(body.getByRole("option", { name: "Concept" })).toHaveAttribute(
-				"aria-selected",
-				"true",
-			);
-			expect(body.getByRole("radio", { name: "Project" })).toBeChecked();
-			expect(body.getByRole("combobox", { name: "Search tags" })).toHaveValue(
-				"e",
-			);
-			await waitFor(() =>
-				expect(
-					document.activeElement,
-					`Picker return focus: ${document.activeElement?.getAttribute("role") ?? "button"} ${document.activeElement?.textContent}`,
-				).toBe(body.getByRole("button", { name: "Manage tags…" })),
-			);
-			expect(
-				document.querySelector<HTMLElement>("[role=dialog] .overflow-y-auto")
-					?.scrollTop,
-			).toBe(heldScroll);
-		};
-		await openManager();
-		await userEvent.click(body.getByRole("button", { name: "Cancel" }));
-		await restored();
-		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
-		await openManager();
-		await userEvent.type(
-			body.getByRole("textbox", { name: "New tag name" }),
-			"Nested category",
-		);
-		await userEvent.click(body.getByRole("button", { name: "Add" }));
-		await userEvent.click(body.getByRole("button", { name: "Apply" }));
-		await restored();
-		expect(
-			body.getByRole("option", { name: "Nested category" }),
-		).toHaveAttribute("aria-selected", "false");
-		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(1);
-		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
-		await userEvent.click(body.getByRole("button", { name: "Cancel" }));
+		await userEvent.type(input, "Keyboard tag{Enter}");
 		await waitFor(() =>
-			expect(document.activeElement).toBe(
-				document.querySelector(
-					'[data-session-row="111111111111"] [data-chat-row]',
-				),
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				1,
 			),
 		);
 		document.body.dataset.tagsProof =
-			"PASS: picker checks/primary/search/scroll survive Manage Cancel and Apply; refreshed categories; one modal; no assignment; row focus returned";
+			"PASS: primary+shift+l → type → Enter creates and assigns in one keyboard flow";
 	},
 };
-
-export const ManagementFailureRetry: Story = {
-	...story("tags-on"),
+export const UnusedTagDragPreview: Story = {
+	...story("unused"),
 	play: async () => {
-		await manage();
-		const original = window.api.desktop.request;
-		let attempts = 0;
-		window.api.desktop.request = async (request) => {
-			if (request.op === "tags.replace" && attempts++ === 0) {
-				calls.push(request);
-				return {
-					status: 503,
-					body: {
-						detail: "Fixture registry save failed. Retry keeps the draft.",
-					},
-				};
-			}
-			return original(request);
+		await ready();
+		const source = document.querySelector<HTMLElement>(
+			'[data-session-row="222222222222"] [data-chat-row]',
+		);
+		if (!source) throw new Error("No drag source");
+		const before = source.getBoundingClientRect();
+		const pointer = {
+			pointerId: 78,
+			pointerType: "mouse",
+			isPrimary: true,
+			button: 0,
+			clientX: before.left + 40,
+			clientY: before.top + 16,
 		};
-		const body = within(document.body);
-		await userEvent.type(
-			body.getByRole("textbox", { name: "New tag name" }),
-			"Retry category",
+		fireEvent.pointerDown(source, pointer);
+		await new Promise((done) => setTimeout(done, 200));
+		const slot = document.querySelector<HTMLElement>(
+			'[data-tag-unused-slot][data-tag-drop-target="unused"]',
 		);
-		await userEvent.click(body.getByRole("button", { name: "Add" }));
-		await userEvent.click(body.getByRole("button", { name: "Apply" }));
-		await body.findByRole("alert");
-		await body.findByText("Tags were not saved. Try again.");
-		expect(body.getByText("Retry category")).toBeTruthy();
-		expect(useSessionTagsStore.getState().categories).toHaveLength(3);
-		await userEvent.click(body.getByRole("button", { name: "Retry" }));
-		await waitFor(() =>
-			expect(document.querySelector("[role=dialog]")).toBeNull(),
-		);
-		expect(
-			useSessionTagsStore
-				.getState()
-				.categories.some((tag) => tag.name === "Retry category"),
-		).toBe(true);
-		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(2);
-		window.api.desktop.request = original;
-		document.body.dataset.tagsProof =
-			"PASS: failed Apply retains draft; Retry repeats one full desired-state request and closes on success";
-	},
-};
-
-export const AssignPrimaryAnnouncement: Story = {
-	...story("tags-on"),
-	play: async () => {
-		await picker();
-		await userEvent.click(
-			within(document.body).getByRole("radio", { name: "Project" }),
-		);
-		await userEvent.click(
-			within(document.body).getByRole("button", { name: "Apply" }),
-		);
-		await within(document.body).findByText(
-			"Tags updated. Grouped under Project.",
-		);
-		await waitFor(() =>
-			expect(document.querySelector("[role=dialog]")).toBeNull(),
-		);
-		await waitFor(() =>
-			expect(document.activeElement).toBe(
-				document.querySelector(
-					'[data-session-row="111111111111"] [data-chat-row]',
-				),
-			),
-		);
-		document.body.dataset.tagsProof =
-			"PASS: primary assignment announces Tags updated. Grouped under Project.; row focus returned";
-	},
-};
-
-export const DeleteNameReuseGuard: Story = {
-	...story("tags-on"),
-	play: async () => {
-		await manage();
-		const body = within(document.body);
-		const project = document.querySelector<HTMLElement>(
-			'[data-tag-id="project"]',
-		);
-		if (!project) throw new Error("Missing Project tag");
-		await userEvent.click(
-			within(project).getByRole("button", { name: "Delete" }),
-		);
-		await userEvent.click(body.getByRole("button", { name: "Delete tag" }));
-		fireEvent.change(body.getByRole("textbox", { name: "New tag name" }), {
-			target: { value: "Project" },
+		if (!slot) throw new Error("Missing unused slot");
+		await waitFor(() => expect(slot.getBoundingClientRect().height).toBe(28));
+		expect(source.getBoundingClientRect().top).toBe(before.top);
+		const rect = slot.getBoundingClientRect();
+		fireEvent.pointerMove(window, {
+			...pointer,
+			clientX: rect.left + 40,
+			clientY: rect.top + 14,
 		});
-		await userEvent.click(body.getByRole("button", { name: "Add" }));
-		await waitFor(() =>
-			expect(
-				document.querySelector('[data-tag-id="new:Project"]'),
-			).not.toBeNull(),
-		);
-		await userEvent.click(body.getByRole("button", { name: "Apply" }));
-		await body.findByText(
-			"Apply the deletion first, then add “Project” again.",
-		);
-		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
-		expect(
-			useSessionTagsStore
-				.getState()
-				.categories.some((tag) => tag.id === "project"),
-		).toBe(true);
-		await userEvent.click(body.getByRole("button", { name: "Cancel" }));
-		await waitFor(() =>
-			expect(document.querySelector("[role=dialog]")).toBeNull(),
-		);
+		await waitFor(() => expect(slot).toHaveClass("bg-row-selected"));
 		document.body.dataset.tagsProof =
-			"PASS: delete + same-name ID-less add blocks Apply; zero registry writes; existing assignments retained";
+			"PASS: armed unused-tag preview; source top unchanged; no write before release";
 	},
 };
-
-export const PickerLoadingFocus: Story = {
-	...story("picker-loading", 220),
+export const UnusedTagDrop: Story = {
+	...story("unused"),
 	play: async () => {
-		await picker();
-		const body = within(document.body);
-		const input = body.getByRole("combobox");
-		expect(document.activeElement).toBe(input);
-		await userEvent.type(input, "Pro");
-		await userEvent.tab();
-		const heldFocus = document.activeElement;
-		expect(heldFocus).not.toBe(input);
-		expect(finishRegistry).not.toBeNull();
-		finishRegistry?.();
-		await body.findByRole("option", { name: "Project" });
-		expect(input).toHaveValue("Pro");
-		expect(document.activeElement).toBe(heldFocus);
-		expect(
-			calls.filter(
-				(call) => call.op === "tags.replace" || call.op === "sessions.tags",
+		await ready();
+		const source = document.querySelector<HTMLElement>(
+			'[data-session-row="222222222222"] [data-chat-row]',
+		);
+		if (!source) throw new Error("No drag source");
+		const before = source.getBoundingClientRect();
+		const pointer = {
+			pointerId: 77,
+			pointerType: "mouse",
+			isPrimary: true,
+			button: 0,
+			clientX: before.left + 40,
+			clientY: before.top + 16,
+		};
+		fireEvent.pointerDown(source, pointer);
+		await new Promise((done) => setTimeout(done, 200));
+		const slot = document.querySelector<HTMLElement>(
+			'[data-tag-unused-slot][data-tag-drop-target="unused"]',
+		);
+		if (!slot) throw new Error("Missing unused slot");
+		await waitFor(() => expect(slot.getBoundingClientRect().height).toBe(28));
+		expect(source.getBoundingClientRect().top).toBe(before.top);
+		const target = slot.getBoundingClientRect();
+		fireEvent.pointerMove(window, {
+			...pointer,
+			clientX: target.left + 40,
+			clientY: target.top + 14,
+		});
+		await waitFor(() => expect(slot).toHaveClass("bg-row-selected"));
+		fireEvent.pointerUp(window, {
+			...pointer,
+			clientX: target.left + 40,
+			clientY: target.top + 14,
+		});
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				1,
 			),
-		).toHaveLength(0);
+		);
+		expect(calls.find((call) => call.op === "sessions.tags")).toMatchObject({
+			tags: ["project", "unused"],
+			primary: "unused",
+		});
 		document.body.dataset.tagsProof =
-			"PASS: loading input keeps query; completion never steals moved focus; no writes";
+			"PASS: armed drag expands unused slots without moving source; drop adds unused tag and makes primary";
 	},
 };
-
-/** Real sidebar DOM/optimistic bridge proof. Synthetic pointer events exercise
- * the component lifecycle, not native capture/touch; independent native QA owns
- * those browser delivery guarantees. The node lane separately tests revisions. */
 const dragRoundTrip = async (crossSection: boolean, targetBody = false) => {
 	await ready();
 	const row = () =>
@@ -1229,66 +1140,6 @@ export const SameSectionDragRoundTrip: Story = {
 	play: async () => dragRoundTrip(false),
 };
 
-export const MoveMenuRoundTrip: Story = {
-	...story("tags-on"),
-	play: async () => {
-		await ready();
-		const body = within(document.body);
-		const button = () =>
-			document.querySelector<HTMLElement>(
-				'[data-session-row="111111111111"] [data-chat-row]',
-			);
-		const source = button();
-		if (!source) throw new Error("Missing move source");
-		fireEvent.contextMenu(source);
-		await body.findByRole("menuitem", { name: "Move to tag…" });
-		expect(body.getAllByRole("menuitem")).toHaveLength(9);
-		await userEvent.click(
-			await body.findByRole("menuitem", { name: "Move to tag…" }),
-		);
-		await body.findByRole("heading", {
-			name: "Move “Review the migration safety checks”",
-		});
-		await userEvent.click(body.getByRole("button", { name: "Concept" }));
-		await waitFor(() =>
-			expect(document.querySelector("[role=dialog]")).toBeNull(),
-		);
-		await waitFor(() => expect(document.activeElement).toBe(button()));
-		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1);
-		expect(calls.find((call) => call.op === "sessions.tags")).toMatchObject({
-			tags: ["review", "project", "concept"],
-			primary: "concept",
-		});
-		const moved = button();
-		if (!moved) throw new Error("Moved row missing");
-		fireEvent.contextMenu(moved);
-		await userEvent.click(
-			await body.findByRole("menuitem", { name: "Remove all tags (3)" }),
-		);
-		await waitFor(() =>
-			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
-				2,
-			),
-		);
-		expect(
-			calls.filter((call) => call.op === "sessions.tags")[1],
-		).toMatchObject({ tags: [], primary: null });
-		const cleared = button();
-		if (!cleared) throw new Error("Cleared source missing");
-		fireEvent.contextMenu(cleared);
-		await body.findByRole("menuitem", { name: "Move to tag…" });
-		expect(body.getAllByRole("menuitem")).toHaveLength(8);
-		expect(
-			body.queryByRole("menuitem", { name: REMOVE_TAG_MENU_ITEM }),
-		).toBeNull();
-		fireEvent.keyDown(document.activeElement ?? document.body, {
-			key: "Escape",
-		});
-		document.body.dataset.tagsProof =
-			"PASS: Move picker preserves assignments and returns row focus; tagged Remove all tags (3) clears once; untagged menu omits Remove and retains Move to tag";
-	},
-};
-
 export const DragPreview: Story = {
 	...story("tags-on"),
 	play: async () => {
@@ -1336,151 +1187,6 @@ export const TagActionsMenu: Story = {
 		});
 	},
 };
-export const MovePicker: Story = {
-	...story("tags-on"),
-	play: async () => {
-		await ready();
-		const row = document.querySelector<HTMLElement>(
-			'[data-session-row="111111111111"] [data-chat-row]',
-		);
-		if (!row) throw new Error("Missing move source");
-		fireEvent.contextMenu(row);
-		await userEvent.click(
-			await within(document.body).findByRole("menuitem", {
-				name: "Move to tag…",
-			}),
-		);
-		await within(document.body).findByRole("heading", {
-			name: "Move “Review the migration safety checks”",
-		});
-	},
-};
-
-export const MoveConflict: Story = {
-	...story("move-conflict"),
-	play: async () => {
-		await ready();
-		const body = within(document.body);
-		const row = document.querySelector<HTMLElement>(
-			'[data-session-row="111111111111"] [data-chat-row]',
-		);
-		if (!row) throw new Error("Missing conflict source");
-		const reads = calls.filter((call) => call.op === "sessions.list").length;
-		fireEvent.contextMenu(row);
-		await userEvent.click(
-			await body.findByRole("menuitem", { name: "Move to tag…" }),
-		);
-		await userEvent.click(await body.findByRole("button", { name: "Concept" }));
-		await body.findByRole("alert");
-		await waitFor(() =>
-			expect(
-				body.getAllByText("Tags changed elsewhere").length,
-			).toBeGreaterThan(0),
-		);
-		await waitFor(() =>
-			expect(
-				calls.filter((call) => call.op === "sessions.list").length,
-			).toBeGreaterThan(reads),
-		);
-		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1);
-		expect(calls.find((call) => call.op === "sessions.tags")).toMatchObject({
-			expected_revision: "0",
-		});
-		const current = useCanonicalSessionsStore
-			.getState()
-			.sessions.find((entry) => entry.session_id === "111111111111");
-		expect(current).toMatchObject({
-			primary: "project",
-			tags_revision: "2",
-			tags: [{ id: "project", name: "Project" }],
-		});
-		expect(body.queryByRole("button", { name: "Undo" })).toBeNull();
-		document.body.dataset.tagsProof =
-			"PASS: core-shaped detail.code/detail.result 409 refreshed Project revision 2, showed Tags changed elsewhere, one write attempt, no retry/overwrite/Undo (fixture, not real-core QA)";
-	},
-};
-
-/** The application floor is 600px. An actual nested browsing context supplies
- * that viewport, so 50dvh measures 300px rather than borrowing the host's 720px. */
-export const TagActionsMenu600: Story = {
-	...story("menu-wide", 220),
-	render: () => (
-		<>
-			<iframe
-				title="Sidebar menu at the 600px application floor"
-				src="./iframe.html?id=chat-sidebar-tags--tag-actions-menu&viewMode=story&args=width:220"
-				style={{ width: 1000, height: 600, border: 0 }}
-			/>
-			<output data-floor-proof>Waiting for 600px menu assertions</output>
-		</>
-	),
-	play: async ({ canvasElement }) => {
-		const frame = canvasElement.querySelector("iframe");
-		if (!frame) throw new Error("Missing 600px viewport");
-		await waitFor(
-			() =>
-				expect(
-					frame.contentDocument?.querySelectorAll('[role="menuitem"]').length,
-				).toBe(10),
-			{ timeout: 15000 },
-		);
-		const doc = frame.contentDocument;
-		const win = frame.contentWindow;
-		if (!doc || !win) throw new Error("Missing frame document");
-		const menu = doc.querySelector<HTMLElement>('[role="menu"]');
-		if (!menu) throw new Error("Missing menu");
-		expect(win.innerHeight).toBe(600);
-		const items = Array.from(
-			doc.querySelectorAll<HTMLElement>('[role="menuitem"]'),
-		);
-		expect(win.getComputedStyle(menu).overflowY).toBe("auto");
-		expect(menu.scrollHeight).toBeGreaterThan(menu.clientHeight);
-		for (const item of items)
-			expect(item.getBoundingClientRect().height).toBeGreaterThanOrEqual(32);
-		menu.focus();
-		fireEvent.keyDown(menu, { key: "End" });
-		await waitFor(() => expect(doc.activeElement).toBe(items.at(-1)));
-		expect(menu.scrollTop).toBeGreaterThan(0);
-		fireEvent.keyDown(doc.activeElement ?? menu, { key: "Home" });
-		await waitFor(() => expect(doc.activeElement).toBe(items[0]));
-		fireEvent.keyDown(items[0], { key: "End" });
-		await waitFor(() => expect(doc.activeElement).toBe(items.at(-1)));
-		document.body.dataset.tagsProof = `PASS: 220px sidebar, 600px viewport floor, 10 rows, max-height ${win.getComputedStyle(menu).maxHeight}, scroll ${menu.clientHeight}/${menu.scrollHeight}, >=32px targets, End/Home reach all items`;
-		const proof = canvasElement.querySelector("[data-floor-proof]");
-		if (proof) proof.textContent = document.body.dataset.tagsProof;
-	},
-};
-
-export const MoveFailure: Story = {
-	...story("picker-error"),
-	play: async () => {
-		await ready();
-		const body = within(document.body);
-		const row = document.querySelector<HTMLElement>(
-			'[data-session-row="111111111111"] [data-chat-row]',
-		);
-		if (!row) throw new Error("Missing failure source");
-		fireEvent.contextMenu(row);
-		await userEvent.click(
-			await body.findByRole("menuitem", { name: "Move to tag…" }),
-		);
-		await userEvent.click(await body.findByRole("button", { name: "Concept" }));
-		await waitFor(() =>
-			expect(
-				body.getAllByText("Tags were not moved. Try again.").length,
-			).toBeGreaterThan(0),
-		);
-		expect(
-			useCanonicalSessionsStore
-				.getState()
-				.sessions.find((entry) => entry.session_id === "111111111111")?.primary,
-		).toBe("review");
-		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1);
-		document.body.dataset.tagsProof =
-			"PASS: move 503 rolled back Review, showed Tags were not moved. Try again., no retry/Undo";
-	},
-};
-
 export const HeldPinnedTagDrop: Story = {
 	...story("held-pin"),
 	play: async () => {
@@ -1634,233 +1340,4 @@ export const DragPreviewLight: Story = {
 export const PinnedHeaderPreviewLight: Story = {
 	...story("pinned-tags", 260, "localOperatorLight"),
 	play: PinnedHeaderPreview.play,
-};
-
-/** V2-2 density/constraint states run the actual sidebar/dialog with one shared
- * synthetic desktop bridge; no operator sessions or extra browser are used. */
-export const PickerDense = story("picker-dense", 220);
-export const PickerDenseLight = story(
-	"picker-dense",
-	320,
-	"localOperatorLight",
-);
-export const PickerEight = story("picker-eight", 260);
-export const PickerEmpty = story("picker-empty", 220);
-export const PickerOne = story("picker-one", 320);
-export const PickerUnicode = story("picker-unicode", 220);
-export const ManageDense = story("manage-dense", 220);
-export const PickerCreateError: Story = {
-	...story("picker-create-error"),
-	play: async () => {
-		await picker();
-		const body = within(document.body);
-		await userEvent.type(body.getByRole("combobox"), "Release 東京");
-		await userEvent.click(body.getByRole("button", { name: CREATE_RELEASE }));
-		await body.findByText("Tag was not created. Try again.");
-		expect(body.getByRole("combobox")).toHaveValue("Release 東京");
-		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
-	},
-};
-export const PickerKeyboardRoundTrip: Story = {
-	...story("picker"),
-	play: async () => {
-		await picker();
-		const body = within(document.body);
-		const input = body.getByRole("combobox");
-		await userEvent.click(input);
-		await userEvent.keyboard("{Enter}");
-		expect(
-			calls.filter(
-				(call) => call.op === "tags.replace" || call.op === "sessions.tags",
-			),
-		).toHaveLength(0);
-		await userEvent.type(input, "Release 東京");
-		await userEvent.keyboard("{Enter}");
-		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
-		await userEvent.click(body.getByRole("button", { name: CREATE_RELEASE }));
-		await body.findByRole("button", { name: "Remove Release 東京" });
-		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(1);
-		await userEvent.click(body.getByRole("button", { name: "Cancel" }));
-		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
-		await manage();
-		await body.findByText("Release 東京");
-		document.body.dataset.tagsProof =
-			"PASS: empty/no-match Enter writes nothing; explicit Create persists; Cancel never assigns";
-	},
-};
-
-export const ManageSearchDraftRoundTrip: Story = {
-	...story("manage-dense"),
-	play: async () => {
-		await manage();
-		const body = within(document.body);
-		const search = body.getByRole("searchbox", { name: "Search tags" });
-		await userEvent.type(search, "Project");
-		const row = document.querySelector<HTMLElement>('[data-tag-id="project"]');
-		if (!row) throw new Error("Missing Project");
-		expect(
-			within(row).getByRole("button", { name: "Move Project up" }),
-		).toBeDisabled();
-		expect(
-			within(row).getByRole("button", { name: "Move Project down" }),
-		).toBeDisabled();
-		await userEvent.click(within(row).getByRole("button", { name: "Rename" }));
-		const name = body.getByRole("textbox", { name: "Rename Project" });
-		await userEvent.clear(name);
-		await userEvent.type(name, "Project renamed");
-		await userEvent.click(body.getByRole("button", { name: "Save" }));
-		expect(search).toHaveValue("");
-		await body.findByText("Project renamed");
-		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
-		await userEvent.click(body.getByRole("button", { name: "Cancel" }));
-		await manage();
-		await within(body.getByRole("dialog")).findByText("Project");
-		expect(body.queryByText("Project renamed")).toBeNull();
-		document.body.dataset.tagsProof =
-			"PASS: filtered reorder blocked; rename stages only; search clears after rename; Cancel restores baseline; zero writes";
-	},
-};
-export const EightSelectionRoundTrip: Story = {
-	...story("picker-eight"),
-	play: async () => {
-		await picker();
-		const body = within(document.body);
-		const input = body.getByRole("combobox");
-		await userEvent.type(input, "Fresh release");
-		expect(body.queryByRole("button", { name: CREATE_RELEASE })).toBeNull();
-		expect(body.queryByText("Fresh release")).toBeNull();
-		await userEvent.click(body.getByRole("button", { name: "Remove Review" }));
-		await userEvent.type(input, "Fresh release");
-		const create = body.getByRole("button", {
-			name: "Create “Fresh release” Saved for all conversations",
-		});
-		await userEvent.click(create);
-		await body.findByRole("button", { name: "Remove Fresh release" });
-		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(1);
-		await userEvent.click(body.getByRole("button", { name: "Apply" }));
-		await body.findByText("Tags updated. Grouped under Project.");
-		const assignments = calls.filter((call) => call.op === "sessions.tags");
-		expect(assignments).toHaveLength(1);
-		const assignment = assignments[0];
-		if (assignment.op !== "sessions.tags")
-			throw new Error("Missing assignment");
-		expect(assignment.tags).toHaveLength(8);
-		expect(assignment.tags[0]).toBe("project");
-		expect(assignment.primary).toBe("project");
-		document.body.dataset.tagsProof =
-			"PASS: cap8 blocks creation; removal enables explicit Create; assignment order/primary preserved; one registry and one assignment write";
-	},
-};
-
-export const PickerPendingCreate: Story = {
-	...story("picker-create-loading"),
-	play: async () => {
-		await picker();
-		const body = within(document.body);
-		await userEvent.type(body.getByRole("combobox"), "Release 東京");
-		await userEvent.click(body.getByRole("button", { name: CREATE_RELEASE }));
-		await body.findByText("Saving tag…");
-		expect(body.getByRole("button", { name: "Cancel" })).toBeDisabled();
-		expect(body.getByRole("button", { name: "Apply" })).toBeDisabled();
-		await userEvent.keyboard("{Escape}");
-		expect(body.getByRole("dialog")).toBeTruthy();
-		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(1);
-		if (!finishCreation) throw new Error("No pending creation");
-		finishCreation();
-		await body.findByRole("button", { name: "Remove Release 東京" });
-		await userEvent.click(body.getByRole("button", { name: "Cancel" }));
-		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
-		document.body.dataset.tagsProof =
-			"PASS: pending durable Create visibly locks dismissal; Escape does not hide it; completion permits Cancel with zero assignments";
-	},
-};
-export const PickerAssignmentConflict: Story = {
-	...story("move-conflict"),
-	play: async () => {
-		await picker();
-		const body = within(document.body);
-		await userEvent.click(body.getByRole("button", { name: "Apply" }));
-		await body.findByText("Tags changed elsewhere");
-		expect(body.getByRole("button", { name: "Apply" })).toBeDisabled();
-		expect(body.queryByRole("button", { name: "Retry" })).toBeNull();
-		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1);
-		document.body.dataset.tagsProof =
-			"PASS: 409 tags_conflict refreshes; no overwrite or generic Retry; Apply disabled until a fresh edit";
-	},
-};
-export const PickerRemoteRefusal: Story = {
-	...story("picker-remote"),
-	play: async () => {
-		await picker();
-		const body = within(document.body);
-		await userEvent.click(body.getByRole("button", { name: "Apply" }));
-		await body.findByText("Tags cannot be changed on a remote conversation.");
-		expect(body.queryByRole("button", { name: "Retry" })).toBeNull();
-		expect(body.getByRole("button", { name: "Apply" })).toBeDisabled();
-		document.body.dataset.tagsProof =
-			"PASS: remote refusal is distinct from conflict/transport failure; no retry or overwrite";
-	},
-};
-
-export const PickerLastOption: Story = {
-	...story("picker-dense"),
-	play: async () => {
-		await picker();
-		const body = within(document.body);
-		const first = body.getByRole("option", { name: "Review" });
-		first.focus();
-		await userEvent.keyboard("{End}");
-		const last = body.getByRole("option", { name: "Extra vocabulary 32" });
-		await waitFor(() => expect(document.activeElement).toBe(last));
-		await waitFor(() => {
-			const bounds = document
-				.querySelector("[data-tag-dialog-body]")
-				?.getBoundingClientRect();
-			const rect = last.getBoundingClientRect();
-			if (!bounds) throw new Error("No scroll body");
-			expect(rect.bottom).toBeLessThanOrEqual(bounds.bottom - 3);
-			expect(rect.top).toBeGreaterThanOrEqual(bounds.top);
-		});
-		document.body.dataset.tagsProof =
-			"PASS: last of32 options keyboard-reachable and fully inside scroll/focus gutter; footer pinned";
-	},
-};
-
-export const ManageError: Story = {
-	...story("manage-error"),
-	play: async () => {
-		await manage();
-		const body = within(document.body);
-		await userEvent.type(
-			body.getByRole("textbox", { name: "New tag name" }),
-			"Retry category",
-		);
-		await userEvent.click(body.getByRole("button", { name: "Add" }));
-		await userEvent.click(body.getByRole("button", { name: "Apply" }));
-		await body.findByText("Tags were not saved. Try again.");
-		expect(useSessionTagsStore.getState().categories).toHaveLength(3);
-		document.body.dataset.tagsProof =
-			"PASS: failed Manage Apply keeps staged addition and query; server registry unchanged; operation-specific retry visible";
-	},
-};
-
-/** Validation belongs to the staged editor, not a global error that scrolls it away. */
-export const ManageNameValidation: Story = {
-	...story("manage"),
-	play: async () => {
-		await manage();
-		const row = document.querySelector<HTMLElement>('[data-tag-id="project"]');
-		if (!row) throw new Error("Missing Project row");
-		await userEvent.click(within(row).getByRole("button", { name: "Rename" }));
-		const input = within(row).getByRole("textbox", { name: "Rename Project" });
-		await userEvent.clear(input);
-		await userEvent.type(input, "Review");
-		await userEvent.click(within(row).getByRole("button", { name: "Save" }));
-		const alert = await within(row).findByRole("alert");
-		expect(alert.closest("form")).toBe(input.closest("form"));
-		expect(within(document.body).getAllByRole("alert")).toHaveLength(1);
-		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
-		document.body.dataset.tagsProof =
-			"PASS: duplicate name stays in its staged editor; one inline alert; no merge or write";
-	},
 };

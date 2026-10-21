@@ -1,0 +1,183 @@
+{
+  "schema": 1,
+  "date": "2026-10-21T16:59:51.904413+00:00",
+  "instance": "0ae714016b24",
+  "auditor": "ux-reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "model_provenance": "Actual audit performed on openai/gpt-6.1-sol after runtime fallback from anthropic/claude-sonnet-5-5 due unavailable credentials. No pin or tool permissions changed.",
+  "status": "clean",
+  "independence": "Auditor authored no implementation or initial translations. Coder translator provenance supplied via manager: coder / anthropic/claude-opus-5-5 before fallback. Auditor made explicitly recorded copy/context corrections after freeze ACK; these are remediation, not independent authorship of the original translations.",
+  "locales": [
+    "fr",
+    "es",
+    "zh-CN",
+    "ru",
+    "vi",
+    "ur",
+    "hi"
+  ],
+  "namespaces": {
+    "ui.chat.tags": {
+      "status": "clean",
+      "findings": [],
+      "sha256": {
+        "en": "fcd94edb2c844efd7c14fbbcf477cb427c1a2d920531c83751a4b4cadf6e955d",
+        "context": "447d9d720043245f6ce216dafe83d185740601b41c51a69706879ca17640997a",
+        "fr": "6344e81de0599bdf58d3364bc23262ddbcd1420b6a8b345d04996062903e8f52",
+        "es": "4b571f2e7a178ac92be6245c9ea303445c7317c7e6f5e54508d6b32cedb3d974",
+        "zh-CN": "8eb7048d122c06ed45705612c7a5d4d25cc3986a4b2f3d3c3b3d32841f2f91d5",
+        "ru": "700d1386afcd07441c1820ca6534e1f03eb35bd1b7f9b45f50bd58f9162a9071",
+        "vi": "e394931d20dd6772b135057b75784986aebe096397451f7cd5c049df3a994e73",
+        "ur": "3e541bf0e6fcf1f5245f6cf12478e563ce9da395eeda472028435ac9c9ac9a51",
+        "hi": "952896d0472d6ad0cced66e43e31d27c3cbe6b5976b74470ff499449e0a09a13"
+      },
+      "keys_reviewed": 67,
+      "scope": "Independent semantic/context review of all retained messages and 19 new/changed messages in EN plus seven targets; 23 removals checked. Context linked to anchored picker, sidebar group controls, first-use footer and immediate-delete semantics."
+    }
+  },
+  "delta": {
+    "base_ref": "origin/main",
+    "base_sha": "1c9910fcdc5d9ad2da5408aae2defdceda01b452",
+    "added": [
+      "ui.chat.tags.dropped_on",
+      "ui.chat.tags.show_under",
+      "ui.chat.tags.shown_under",
+      "ui.chat.tags.shown_untagged",
+      "ui.chat.tags.hidden",
+      "ui.chat.tags.show_groups",
+      "ui.chat.tags.header_actions",
+      "ui.chat.tags.header_first",
+      "ui.chat.tags.header_last",
+      "ui.chat.tags.moved_tag",
+      "ui.chat.tags.new_tag",
+      "ui.chat.tags.name_placeholder",
+      "ui.chat.tags.unused",
+      "ui.chat.tags.empty_title",
+      "ui.chat.tags.empty_hint"
+    ],
+    "changed": [
+      "ui.chat.tags.discovery",
+      "ui.chat.tags.empty",
+      "ui.chat.tags.delete_description",
+      "ui.chat.tags.selection_status"
+    ],
+    "removed": [
+      "ui.chat.tags.manage",
+      "ui.chat.tags.picker_title",
+      "ui.chat.tags.picker_description",
+      "ui.chat.tags.apply",
+      "ui.chat.tags.clear",
+      "ui.chat.tags.new",
+      "ui.chat.tags.group_under",
+      "ui.chat.tags.save",
+      "ui.chat.tags.manage_description",
+      "ui.chat.tags.updated_grouped",
+      "ui.chat.tags.updated_untagged",
+      "ui.chat.tags.none_yet",
+      "ui.chat.tags.manage_title",
+      "ui.chat.tags.apply_deletion_first",
+      "ui.chat.tags.moved_to",
+      "ui.chat.tags.move_menu",
+      "ui.chat.tags.move_title",
+      "ui.chat.tags.move_description",
+      "ui.chat.tags.registry_count",
+      "ui.chat.tags.reorder_filtered",
+      "ui.chat.tags.tag_usage",
+      "ui.chat.tags.create_pending",
+      "ui.chat.tags.staged_added"
+    ]
+  },
+  "fixed_findings": [
+    {
+      "id": "T1",
+      "severity": "MINOR",
+      "locales": [
+        "fr",
+        "es"
+      ],
+      "key": "ui.chat.tags.empty_hint",
+      "issue": "Feminine pronoun can refer to preceding conversation rather than tag.",
+      "resolution": "Explicitly names creating an étiquette/etiqueta."
+    },
+    {
+      "id": "T2",
+      "severity": "MINOR",
+      "locales": [
+        "fr",
+        "es"
+      ],
+      "key": "ui.chat.tags.discovery",
+      "issue": "Translated literal Command/Shift key names contrary to context instruction.",
+      "resolution": "Restored Command+Shift+L / Ctrl+Shift+L."
+    },
+    {
+      "id": "T3",
+      "severity": "MINOR",
+      "locales": [
+        "fr",
+        "es",
+        "zh-CN",
+        "ru",
+        "vi",
+        "ur",
+        "hi"
+      ],
+      "key": "ui.chat.tags.discovery",
+      "issue": "Selected/open chat is not necessarily keyboard-focused row.",
+      "resolution": "Explicit keyboard-focus prerequisite in each target."
+    },
+    {
+      "id": "T4",
+      "severity": "MINOR",
+      "key": "ui.chat.tags.delete_description",
+      "issue": "Context still described Apply/staged management and 420px modal.",
+      "resolution": "Refreshed stale context notes to popover/inline immediate-delete controls; first-use tag referent clarified."
+    }
+  ],
+  "limitations": [
+    "Semantic/source/context audit only. No native or browser rendered-fit, pseudo-localization geometry, focus walkthrough or Urdu RTL layout executed in this bounded translation task.",
+    "One independent language audit here; high-visibility second independent audit remains delivery-owner responsibility.",
+    "Style punctuation and unchanged baseline wording are not churned. No claims of native-speaker certification."
+  ],
+  "validation": [
+    {
+      "command": "IntlMessageFormat parse + placeholder/key parity matrix",
+      "actual_output": "8 locales × 67 keys × 6 count values (0,1,2,5,21,1000000): 3216 formats PASS. Dynamic name includes Latin, CJK, Arabic; no layout inference."
+    },
+    {
+      "command": "node scripts/i18n/context-parity.mjs",
+      "actual_output": "ok; 196 allowed gaps in 6 unrelated namespaces; 8 newly covered allowance keys noted in ui.mesh."
+    },
+    {
+      "command": "node scripts/i18n/check-coverage.mjs",
+      "actual_output": "ok; 7 gated languages over 70 namespaces; 1757 allowed keys across 79 pairs."
+    },
+    {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "actual_output": "keys.gen.ts byte-identical to fresh generation."
+    }
+  ],
+  "references": {
+    "core/i18n/glossary.md": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "core/i18n/style-guides/fr.md": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39",
+    "core/i18n/style-guides/es.md": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39",
+    "core/i18n/style-guides/zh-CN.md": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+    "core/i18n/style-guides/ru.md": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465",
+    "core/i18n/style-guides/vi.md": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+    "core/i18n/style-guides/ur.md": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c",
+    "core/i18n/style-guides/hi.md": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "artifacts": {
+    "english": "src/i18n/catalogues/en/ui.chat.tags.json",
+    "context": "src/i18n/catalogues/en/ui.chat.tags.context.json",
+    "targets": {
+      "fr": "src/i18n/catalogues/fr/ui.chat.tags.json",
+      "es": "src/i18n/catalogues/es/ui.chat.tags.json",
+      "zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.tags.json",
+      "ru": "src/i18n/catalogues/ru/ui.chat.tags.json",
+      "vi": "src/i18n/catalogues/vi/ui.chat.tags.json",
+      "ur": "src/i18n/catalogues/ur/ui.chat.tags.json",
+      "hi": "src/i18n/catalogues/hi/ui.chat.tags.json"
+    }
+  }
+}

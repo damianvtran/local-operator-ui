@@ -88,6 +88,8 @@ export const discardPendingSends = () => undefined;
 const {
 	moveChatToTag,
 	groupChatsByTag,
+	moveTagPast,
+	unusedTags,
 	draftPrimary,
 	parseSidebarView,
 	DEFAULT_SIDEBAR_VIEW,
@@ -132,8 +134,55 @@ test("opt-in grouping is primary-only, ordered, stable, once per section", () =>
 	assert.equal(groups.flatMap((group) => group.rows).length, rows.length);
 	assert.equal(groupChatsByTag(rows, categories, false), null);
 	assert.equal(groupChatsByTag(rows, [], true), null);
-	assert.equal(groupChatsByTag([row("x", null)], categories, true), null);
-	assert.equal(groupChatsByTag([row("x", "deleted")], categories, true), null);
+	for (const primary of [null, "deleted"])
+		assert.deepEqual(
+			groupChatsByTag([row("x", primary)], categories, true).map(
+				(group) => group.id,
+			),
+			["untagged"],
+			"all-Untagged sections still permit the first drag onto an unused tag",
+		);
+});
+test("unused tags are the zero-conversation registry entries, in registry order (v3 D3)", () => {
+	const registry = [
+		{ id: "c", name: "C", order: 2, conversations: 0 },
+		{ id: "a", name: "A", order: 0, conversations: 3 },
+		{ id: "b", name: "B", order: 1, conversations: 0 },
+	];
+	assert.deepEqual(
+		unusedTags(registry).map((tag) => tag.id),
+		["b", "c"],
+	);
+});
+test("a header move repositions past the VISIBLE neighbour, not the registry neighbour (v3 D2)", () => {
+	// Registry a,b,c,d; this section only draws a and d (b, c carry no chat here).
+	const registry = ["a", "b", "c", "d"].map((id, order) => ({
+		id,
+		name: id.toUpperCase(),
+		order,
+		conversations: 1,
+	}));
+	const ids = (next) => next.map((tag) => tag.id);
+	// A registry-index swap would give a,c,b,d and d's header would not move.
+	assert.deepEqual(ids(moveTagPast(registry, "d", "a", "up")), [
+		"d",
+		"a",
+		"b",
+		"c",
+	]);
+	assert.deepEqual(ids(moveTagPast(registry, "a", "d", "down")), [
+		"b",
+		"c",
+		"d",
+		"a",
+	]);
+	assert.deepEqual(moveTagPast(registry, "a", "b", "up")[0], {
+		id: "a",
+		name: "A",
+	});
+	assert.equal(moveTagPast(registry, "a", "a", "up"), null);
+	assert.equal(moveTagPast(registry, "gone", "a", "up"), null);
+	assert.equal(moveTagPast(registry, "a", "gone", "up"), null);
 });
 test("grouping is suspended outside Time sections and while searching", () => {
 	const source = readFileSync(
@@ -318,59 +367,53 @@ test("clear uses one assignment and settles the canonical row on the response", 
 });
 
 test("management writes every create, rename, reorder and delete immediately with no Apply transaction", () => {
-	const source = readFileSync(
-		"src/renderer/src/features/chat/components/manage-tags-dialog.tsx",
+	/*
+	 * v3 (spec D2/D3): management lives on the group headers and the tag footer,
+	 * through ONE registry hook. Each act is its own `tags.replace` desired state
+	 * built from the store at press time; nothing is staged for an Apply.
+	 */
+	const registry = readFileSync(
+		"src/renderer/src/features/chat/use-chat-tag-registry.ts",
 		"utf8",
 	);
-	assert.ok(!source.includes("setDraft"), "no staged draft remains");
-	assert.ok(!source.includes('t("ui.chat.tags.apply")'), "no Apply action");
-	assert.ok(!source.includes('t("ui.chat.tags.done")'), "no relabelled Apply");
-	assert.ok(
-		source.split("await write(").length - 1 >= 4,
-		"create, rename, reorder and delete each commit",
+	const header = readFileSync(
+		"src/renderer/src/features/chat/components/chat-tag-header.tsx",
+		"utf8",
 	);
-	assert.ok(source.includes('t("ui.chat.tag_dialogs.close")'));
-	// The destructive path keeps a per-action confirmation, not a dialog-wide one.
-	assert.ok(source.includes('t("ui.chat.tags.delete_description"'));
-	assert.ok(source.includes('t("ui.chat.tags.delete_tag")'));
+	for (const source of [registry, header]) {
+		assert.ok(!source.includes("setDraft"), "no staged draft remains");
+		assert.ok(!source.includes('t("ui.chat.tags.apply")'), "no Apply action");
+	}
+	assert.ok(
+		registry.split("return write(").length - 1 >= 4,
+		"create, rename, move and delete each commit",
+	);
+	assert.ok(registry.includes("useSessionTagsStore.getState().categories"));
+	// The destructive path keeps a per-action confirmation, anchored, not modal.
+	assert.ok(header.includes('role="alertdialog"'));
+	assert.ok(header.includes('t("ui.chat.tags.delete_description"'));
+	assert.ok(header.includes('t("ui.chat.tags.delete_tag")'));
+	assert.ok(!header.includes("<Dialog"), "no modal dialog");
 	const copy = JSON.parse(
 		readFileSync("src/i18n/catalogues/en/ui.chat.tag_dialogs.json", "utf8"),
 	);
-	assert.equal(
-		copy["ui.chat.tag_dialogs.manage_description"],
-		"Create, rename, reorder and delete tags. Changes save immediately.",
-	);
-	assert.equal(
-		copy["ui.chat.tag_dialogs.picker_description"],
-		"Changes save immediately. Select a tag to add it, or deselect it to remove it.",
-	);
+	for (const key of ["picker_description", "manage_description", "close"])
+		assert.equal(copy[`ui.chat.tag_dialogs.${key}`], undefined);
 });
-test("assignment confirms the exact grouped or Untagged success copy after the write", () => {
-	const copy = JSON.parse(
-		readFileSync("src/i18n/catalogues/en/ui.chat.tags.json", "utf8"),
-	);
-	assert.equal(
-		copy["ui.chat.tags.updated_grouped"],
-		"Tags updated. Grouped under {tag}.",
-	);
-	assert.equal(
-		copy["ui.chat.tags.updated_untagged"],
-		"Tags updated. Shown under Untagged.",
-	);
-	const source = readFileSync(
-		"src/renderer/src/features/chat/components/chat-session-tags-dialog.tsx",
+test("assignment writes through the shared immediate-commit hook from an anchored popover", () => {
+	const popover = readFileSync(
+		"src/renderer/src/features/chat/components/chat-tag-popover.tsx",
 		"utf8",
 	);
+	assert.ok(popover.includes("useChatTagAssignment({"));
+	assert.ok(popover.includes("<PopoverAnchor virtualRef="));
+	assert.ok(!popover.includes("<Dialog"), "no modal dialog");
 	assert.ok(
-		source.includes('t("ui.chat.tags.updated_grouped", { tag: tag.name })'),
+		popover.includes('t("ui.chat.tags.shown_under", { tag: shownUnder })'),
 	);
-	assert.ok(source.includes('t("ui.chat.tags.updated_untagged")'));
-	// The confirmation is raised from the write's own answer, so the toast call
-	// follows the awaited toggle rather than hanging off an Apply handler.
-	assert.ok(source.includes("const result = await toggle(id);"));
+	assert.ok(popover.includes('t("ui.chat.tags.shown_untagged")'));
 	// Create resolves the new tag from the registry the write returned, then
-	// assigns it in the same interaction; it never waits for Apply. Both live in
-	// the one immediate-commit hook the two dialogs share.
+	// assigns it in the same interaction; it never waits for Apply.
 	const hook = readFileSync(
 		"src/renderer/src/features/chat/use-chat-tag-assignment.ts",
 		"utf8",
@@ -378,41 +421,41 @@ test("assignment confirms the exact grouped or Untagged success copy after the w
 	assert.ok(hook.includes("const registry = await replaceCategories("));
 	assert.ok(hook.includes("registry.find((tag) => tag.name === trimmed)"));
 	assert.ok(hook.includes("await write(next, fallback)"));
+	assert.ok(hook.includes("const showUnder = async"));
 	assert.ok(!hook.includes('t("ui.chat.tags.apply")'));
-	assert.ok(!source.includes('t("ui.chat.tags.apply")'));
+	assert.ok(!popover.includes('t("ui.chat.tags.apply")'));
 });
 
-test("save failures are tag-specific, loading errors are not empty registries, and title has no action ellipsis", () => {
-	const picker = readFileSync(
-		"src/renderer/src/features/chat/components/chat-session-tags-dialog.tsx",
+test("save failures are tag-specific, loading errors are not empty registries", () => {
+	const registry = readFileSync(
+		"src/renderer/src/features/chat/use-chat-tag-registry.ts",
 		"utf8",
 	);
-	const manage = readFileSync(
-		"src/renderer/src/features/chat/components/manage-tags-dialog.tsx",
-		"utf8",
-	);
-	// The picker's own writes moved into the shared immediate-commit hook; the
-	// surface keeps only what it still owns (the move path's conflict handling).
 	const hook = readFileSync(
 		"src/renderer/src/features/chat/use-chat-tag-assignment.ts",
 		"utf8",
 	);
-	assert.ok(manage.includes('"ui.chat.tags.save_failed"'));
+	const popover = readFileSync(
+		"src/renderer/src/features/chat/components/chat-tag-popover.tsx",
+		"utf8",
+	);
+	assert.ok(registry.includes('"ui.chat.tags.save_failed"'));
 	assert.ok(hook.includes('"ui.chat.tags.save_failed"'));
 	assert.ok(hook.includes('"ui.chat.tags.create_failed"'));
-	assert.ok(picker.includes("isTagsConflict(error)"));
-	for (const source of [manage, picker, hook])
+	assert.ok(popover.includes('t("ui.chat.tags.load_failed")'));
+	for (const source of [registry, popover, hook])
 		assert.ok(!source.includes("userFacingMessage"));
 	const sidebar = readFileSync(
 		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
 		"utf8",
 	);
+	// The tag footer (and its empty state) waits for a settled registry.
 	assert.ok(sidebar.includes("tagCategoriesError === null"));
 	const copy = JSON.parse(
 		readFileSync("src/i18n/catalogues/en/ui.chat.tags.json", "utf8"),
 	);
-	assert.equal(copy["ui.chat.tags.manage_title"], "Manage tags");
-	assert.equal(copy["ui.chat.tags.done"], undefined);
+	for (const key of ["manage_title", "manage", "move_menu", "none_yet", "done"])
+		assert.equal(copy[`ui.chat.tags.${key}`], undefined);
 });
 
 test("opaque revision is sent only when supplied and the response revision is returned", async () => {
@@ -583,7 +626,10 @@ test("move helper guards edited snapshot and Undo uses the produced revision, sh
 		"8",
 		"a newer canonical revision must not authorize a stale menu snapshot",
 	);
-	assert.equal(globalThis.tagMoveToasts[0].message, "Moved to “Project”");
+	assert.equal(
+		globalThis.tagMoveToasts[0].message,
+		"Added “Project” and grouped under it",
+	);
 	conflict = true;
 	globalThis.tagMoveToasts[0].options.action.onClick();
 	for (
