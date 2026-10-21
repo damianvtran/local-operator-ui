@@ -57,3 +57,20 @@ The rendered pass caught a real Radix interaction mismatch: ArrowDown on a Dropd
 - Loading/saving input is read-only rather than HTML-disabled: the input must retain focus and the typed filter while unavailable. All mutating paths still refuse until ready. This intentionally resolves the spec's contradictory “disabled but focused” wording.
 - Minor second-audit I2-1: English first-use `or create one here` has an ambiguous referent. Target translations explicitly name the tag. Deferred in the PR thread rather than changing audited English bytes without refreshing both receipts.
 - Actual implementation model began as anthropic/claude-opus-5-5; provider quota forced a transient fallback through sonnet to openai/gpt-6.1-sol. No role/default model or tool configuration was changed.
+
+## Published-head convergence
+
+GitHub reported the initially opened PR conflicting after main advanced from
+`3a5477b` to `1c9910f` (the alias-conflict predicate fix). The sole conflict was
+adjacent package scripts: preserve upstream's `hub-skill-alias.test.mjs`
+registration while removing the deleted dialog Escape test from `test:tag-dialogs`.
+
+The rebased implementation is `5307a81e23`; `fa3d103452` also retains the
+already-published `096cedac1b` ancestry so publishing needs a normal fast-forward
+push, **not a force-push**. Derived after resolution: **87 feature paths
+byte-identical**, and **all feature added/removed lines byte-identical** to the
+original patch (each compared against its own base). No implementation or frame
+changed. The convergence-neighbour runner exercised `test-inventory` plus
+upstream's `hub-skill-alias`: **7 PASS, 0 FAIL**. The initial inventory attempt
+while package.json still held merge markers failed JSON parsing; it is not
+counted as a pass. The resolved-file run above passed.
