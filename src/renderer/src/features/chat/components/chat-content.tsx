@@ -2651,25 +2651,32 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * the view as a whole. `canonical` gates it exactly as it gates the
 						 * box below - a legacy path has no live stream to be paused.
 						 */}
-						{canonical?.view.liveUpdatesPaused && (
-							/*
-							 * The SAME column contract as the dock and the stopped-turn band
-							 * (`CHAT_COLUMN_CONTAINER` + inset): the band's copy must align
-							 * with the composer's own track, not run full-bleed beside a
-							 * centred box. The banner carries the band grammar; the column is
-							 * the host's, which is also why its story can render the band
-							 * alone.
-							 */
+						{/*
+						 * THE SAME COLUMN CONTRACT AS THE DOCK AND THE COMPOSER, applied
+						 * exactly once. `CHAT_MEASURE` is what makes the band resolve to the
+						 * composer's 810px track instead of running full-bleed at a wide
+						 * column; `CHAT_COLUMN_INSET` is the 24px gutter, and the band root
+						 * deliberately carries no padding of its own (design round 1, D1 -
+						 * two insets stacked to 48px against the composer's 24px).
+						 *
+						 * HIDDEN FOR A MISSING SESSION: the transcript replaces itself with
+						 * "this conversation is no longer on this machine", and a paused
+						 * warning over a conversation that does not exist would be a claim
+						 * about nothing.
+						 */}
+						{canonical?.view.liveUpdatesPaused && !canonical.view.missing && (
 							<div
 								className={cn(
 									CHAT_COLUMN_CONTAINER,
 									CHAT_COLUMN_INSET,
+									CHAT_MEASURE,
 									"w-full shrink-0 pt-2",
 								)}
 							>
 								<LiveUpdatesPausedBanner
 									paused={canonical.view.liveUpdatesPaused}
 									reloading={canonical.view.liveUpdatesReloading}
+									reloadFailed={canonical.view.liveUpdatesReloadFailed}
 									onReload={canonical.view.reloadFromHistory}
 								/>
 							</div>

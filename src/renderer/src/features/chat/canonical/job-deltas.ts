@@ -49,7 +49,9 @@ export function applyJobDeltas(
 	jobs: ReadonlyArray<Record<string, unknown>>,
 	deltas: JobDelta,
 ): Array<Record<string, unknown>> {
-	const removed = new Set(deltas.removed ?? []);
+	// Coerced like the row ids: a numeric `removed` entry must name the same job a
+	// numeric row id does (`idOf`'s rule).
+	const removed = new Set((deltas.removed ?? []).map(String));
 	const next = jobs.filter((row) => {
 		const id = idOf(row);
 		return id === null || !removed.has(id);

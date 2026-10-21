@@ -1768,6 +1768,7 @@ export type MessageParams = {
 	"ui.chat.usage.unlimited": undefined;
 	"ui.chat.live_updates.paused": undefined;
 	"ui.chat.live_updates.reload": undefined;
+	"ui.chat.live_updates.reload_failed": undefined;
 	"ui.chat.live_updates.reloading": undefined;
 	"ui.chat.pickers.approvals.title": undefined;
 	"ui.chat.pickers.commands.title": undefined;
