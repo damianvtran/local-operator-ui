@@ -12,7 +12,7 @@ export * from "./src/renderer/src/features/chat/chat-tag-drag";
 export * from "./src/renderer/src/features/chat/chat-tag-groups";
 export * from "./src/renderer/src/features/chat/chat-pin-order";
 export {CHAT_ROW_MENU_SCROLL_CLASS} from "./src/renderer/src/features/chat/chat-row-menu";
-export {tagHeaderAt} from "./src/renderer/src/features/chat/use-chat-tag-drag";
+export {tagDropTargetAt, tagHeaderAt} from "./src/renderer/src/features/chat/use-chat-tag-drag";
 `,
 		resolveDir: process.cwd(),
 	},
@@ -31,6 +31,7 @@ const {
 	tagBucketRowIds,
 	movePinnedOrderTo,
 	pinDragSlot,
+	tagDropTargetAt,
 	tagHeaderAt,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -167,15 +168,67 @@ test("header hit testing clips targets to owning list and ignores empty/offscree
 		}),
 		querySelectorAll: () => [header, hidden],
 	};
-	assert.equal(tagHeaderAt(owner, 100, 55, section), header);
+	assert.equal(tagDropTargetAt(owner, 100, 55, section), header);
 	assert.equal(
-		tagHeaderAt(owner, 100, 55, {}),
+		tagDropTargetAt(owner, 100, 55, {}),
 		null,
 		"occupied header in another section is ineligible",
 	);
-	assert.equal(tagHeaderAt(owner, 100, 45, section), null);
-	assert.equal(tagHeaderAt(owner, 201, 55, section), null);
-	assert.equal(tagHeaderAt(owner, 100, 90, section), null);
+	assert.equal(tagDropTargetAt(owner, 100, 45, section), null);
+	assert.equal(tagDropTargetAt(owner, 201, 55, section), null);
+	assert.equal(tagDropTargetAt(owner, 100, 90, section), null);
+});
+test("group body accepts Untagged across sections but keeps tagged sources section-local", () => {
+	const source = {};
+	const other = {};
+	const body = {
+		closest: () => other,
+		dataset: { tagDropTarget: "work" },
+		getBoundingClientRect: () => ({
+			left: 0,
+			right: 200,
+			top: 30,
+			bottom: 100,
+			height: 70,
+		}),
+	};
+	const owner = {
+		getBoundingClientRect: () => ({ left: 0, right: 200, top: 0, bottom: 200 }),
+		querySelectorAll: () => [body],
+	};
+	assert.equal(tagDropTargetAt(owner, 100, 80, source, "untagged"), body);
+	assert.equal(tagDropTargetAt(owner, 100, 80, source, "personal"), null);
+	assert.equal(tagDropTargetAt(owner, 100, 80, other, "personal"), body);
+	assert.equal(tagDropTargetAt(owner, 100, 150, source, "untagged"), null);
+	body.dataset.tagDropBody = "";
+	assert.equal(
+		tagDropTargetAt(owner, 100, 80, other, "work"),
+		null,
+		"own-bucket body remains reorder space",
+	);
+	body.dataset.tagDropTarget = "untagged";
+	assert.equal(
+		tagDropTargetAt(owner, 100, 80, source, "untagged"),
+		null,
+		"own Untagged body is not an assignment",
+	);
+	const sidebar = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.ok(sidebar.includes("cursor-grab"));
+	assert.ok(sidebar.includes("cursor-grabbing"));
+	let selector;
+	owner.querySelectorAll = (value) => {
+		selector = value;
+		return [];
+	};
+	assert.equal(tagHeaderAt(owner, 100, 80, other), null);
+	assert.equal(
+		selector,
+		"[data-tag-drop-target]:not([data-tag-drop-body])",
+		"pinned reorder stays header-only",
+	);
 });
 test("copy has singular/plural count, named move/cancel/undo/conflict announcements", () => {
 	const en = JSON.parse(
@@ -242,7 +295,7 @@ test("remove action formatting is exact singular only at one, including Russian 
 		const catalogue = JSON.parse(
 			readFileSync(`src/i18n/catalogues/${locale}/ui.chat.tags.json`, "utf8"),
 		);
-		assert.equal(Object.keys(catalogue).length, 54);
+		assert.equal(Object.keys(catalogue).length, 75);
 		const message = new IntlMessageFormat(
 			catalogue["ui.chat.tags.remove_all"],
 			locale,
@@ -269,7 +322,7 @@ test("shipping Chinese tag namespace preserves exact-one removal semantics", () 
 	const zh = JSON.parse(
 		readFileSync("src/i18n/catalogues/zh-CN/ui.chat.tags.json", "utf8"),
 	);
-	assert.equal(Object.keys(zh).length, 54);
+	assert.equal(Object.keys(zh).length, 75);
 	const message = new IntlMessageFormat(zh["ui.chat.tags.remove_all"], "zh-CN");
 	assert.equal(message.format({ count: 1 }), "移除标签（1）");
 	for (const count of [2, 21, 101])

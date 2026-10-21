@@ -34,9 +34,10 @@
  *   (the stale-row rule);
  * - the FOLDED states (`folded-condensed-*`): while the block's own turn
  *   renders condensed it shows the SAME files section as its expanded self —
- *   the actionable rows and the image grid — with no slots and no frames; a
- *   graphics-only finish keeps its plain count clause, and the not-settled
- *   arms keep their state line under the files;
+ *   the actionable rows and the image grid — and a graphics-bearing finish
+ *   shows its graphic BY DEFAULT through the local Hide disclosure (2026-10-19
+ *   operator request, superseding the plain count clause), aligned to the
+ *   answer column; the not-settled arms keep their state line under the files;
  * - a supplement-free turn and the `superseded`/`empty` arms render NOTHING
  *   under the answer — the before/after pair for the fold lane.
  */
@@ -887,15 +888,16 @@ export const Narrow: StoryObj = {
 
 /*
  * THE CONDENSED FORM (design round 1, D1/U3/R2; reworked by the operator
- * decision of 2026-10-16): while the block's own turn renders condensed — one
- * closed bar over its run — the block shows the SAME files section as its
- * expanded self (the actionable rows and the image grid; no slots, no frames),
- * a graphics-only settle keeps its plain count clause, and the not-settled arms
- * keep their state line under the files. Each state below mounts the SAME
- * shipped component through the SAME transcript walk the app runs (`prompt` +
- * `turnCall` + `answer` + the block, so the plan really collapses the call and
- * really hands the block `condensed={true}`); no story-only prop is invented
- * here.
+ * decisions of 2026-10-16 and 2026-10-19): while the block's own turn renders
+ * condensed — one closed bar over its run — the block shows the SAME files
+ * section as its expanded self (the actionable rows and the image grid), a
+ * graphics-bearing settle shows its budgeted graphic BY DEFAULT through a local
+ * Hide disclosure (2026-10-19, superseding the plain count clause), and the
+ * not-settled arms keep their state line under the files. Each state below
+ * mounts the SAME shipped component through the SAME transcript walk the app
+ * runs (`prompt` + `turnCall` + `answer` + the block, so the plan really
+ * collapses the call and really hands the block `condensed={true}`); no
+ * story-only prop is invented here.
  */
 
 /** Files only, ≤ 2: the actionable rows, identical to the expanded form. */
@@ -938,15 +940,15 @@ export const FoldedCondensedCounts: StoryObj = {
 	),
 };
 
-/** Components only: the plain count clause — the bar is the expansion. */
+/** Components only: the graphic is visible by default; the work bar stays folded. */
 export const FoldedCondensedComponents: StoryObj = {
 	render: () => (
 		<Frame
-			height={400}
+			height={720}
 			records={[
 				prompt("u0", "Chart the bench results."),
 				turnCall("c1"),
-				answer("m1", "Both views are drawn from the same bench."),
+				answer(ANCHOR, "Both views are drawn from the same bench."),
 				supplement({
 					id: "s1",
 					components: [
@@ -1058,7 +1060,7 @@ export const CloseoutFourDeliverables: StoryObj = {
 export const FoldedCondensedMixed: StoryObj = {
 	render: () => (
 		<Frame
-			height={400}
+			height={720}
 			records={[
 				prompt("u0", "Summarise with the chart."),
 				turnCall("c1"),
@@ -1139,6 +1141,105 @@ export const FoldedCondensedPreparingFiles: StoryObj = {
 					more: ["reports/q1.md", "reports/q2.md", "data/raw.csv"],
 				}),
 			]}
+		/>
+	),
+};
+
+/**
+ * Answer-local graphics (2026-10-19 amendment; default flipped by the operator
+ * request of the same day). Use the real transcript fold and shared Disclosure,
+ * not a visual imitation or an initial-open prop. Visible fixtures are the
+ * DEFAULT; the `*Closed` fixtures press the same button the reader does to Hide
+ * after mount.
+ */
+const localGraphicsRecords = (
+	seeds: string[],
+	files: SupplementRecord["files"] = [],
+): TranscriptRecord[] => [
+	prompt("u0", "Chart the bench results."),
+	turnCall("c1"),
+	answer(ANCHOR, "Both views are drawn from the same bench."),
+	supplement({
+		id: "s1",
+		files,
+		components: seeds.map((seed, index) =>
+			component(
+				seed,
+				index === 0 ? "Latency by region (ms)" : "Throughput by region",
+				320,
+			),
+		),
+	}),
+];
+const localReveal = "[data-supplement-graphics-reveal]";
+export const LocalGraphicClosed: StoryObj = {
+	render: () => (
+		<Frame
+			height={720}
+			click={localReveal}
+			records={localGraphicsRecords(["chart-a"])}
+		/>
+	),
+};
+export const LocalGraphicOpen: StoryObj = {
+	render: () => (
+		<Frame height={720} records={localGraphicsRecords(["chart-a"])} />
+	),
+};
+export const LocalGraphicsClosed: StoryObj = {
+	render: () => (
+		<Frame
+			height={720}
+			click={localReveal}
+			records={localGraphicsRecords(["chart-a", "chart-b"])}
+		/>
+	),
+};
+export const LocalGraphicsOpen: StoryObj = {
+	render: () => (
+		<Frame
+			height={720}
+			records={localGraphicsRecords(["chart-a", "chart-b"])}
+		/>
+	),
+};
+export const LocalGraphicsNarrow: StoryObj = {
+	render: () => (
+		<Frame
+			height={720}
+			width="360px"
+			records={localGraphicsRecords(["chart-a", "chart-b"])}
+		/>
+	),
+};
+export const LocalGraphicRefused: StoryObj = {
+	render: () => (
+		<Frame height={720} records={localGraphicsRecords(["error-document"])} />
+	),
+};
+export const LocalGraphicLoading: StoryObj = {
+	render: () => (
+		<Frame height={720} records={localGraphicsRecords(["hold-forever"])} />
+	),
+};
+
+/** Files remain actionable above the same budget-aware graphics disclosure, open by default. */
+export const LocalGraphicsMixed: StoryObj = {
+	render: () => (
+		<Frame
+			height={720}
+			records={localGraphicsRecords(["chart-a", "chart-b"], FILES)}
+		/>
+	),
+};
+
+/** The mixed block after its own Hide press. */
+export const LocalGraphicsMixedHidden: StoryObj = {
+	render: () => (
+		<Frame
+			height={720}
+			click={localReveal}
+			records={localGraphicsRecords(["chart-a", "chart-b"], FILES)}
 		/>
 	),
 };

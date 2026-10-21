@@ -9,7 +9,8 @@
  * /tmp, killed on exit), with no browser-automation dependency in the repo —
  * Node's built-in WebSocket speaks the DevTools protocol directly. One
  * screenshot per theme per story, written to
- * `docs/evidence/<feature>/<story>/<theme>.webp`.
+ * `docs/evidence-frames/<feature>/<story>/<theme>.webp` - the IGNORED frames
+ * tree (see `.gitignore`); the manifest it stamps stays in `docs/evidence/`.
  *
  * Why this file exists. The review process for this app is visual: there is
  * no test runner, and the design contract (docs/branding.md) is judged by
@@ -51,7 +52,25 @@ import { EVIDENCE_TZ, pinnedEvidenceEnv } from "./evidence-tz.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const OUT = join(ROOT, "docs", "evidence");
+/*
+ * The FRAMES tree and the PROOF tree are two trees, split by whether a
+ * checkout can reproduce the file.
+ *
+ * A frame is rig output: `node scripts/capture-evidence.mjs` regenerates it,
+ * which is why `docs-library-captures/` is ignored for the same reason (see
+ * `.gitignore`). Committing them made every worktree materialise its own copy
+ * of the pixels - 955 MB measured at origin/main on 2026-10-20 - that it will
+ * never read. The manifest, each
+ * set's README and the proof JSONs are the rationale and the assertions the
+ * gate reads - small, and meaningless if nobody has them - so they stay in
+ * `docs/evidence/`.
+ *
+ * The two are declared together because moving one without the other is this
+ * change's failure mode: a manifest that describes a tree no checkout has is
+ * what `check-evidence.mjs` exists to refuse.
+ */
+const OUT = join(ROOT, "docs", "evidence-frames");
+const MANIFEST_DIR = join(ROOT, "docs", "evidence");
 const ARGS = process.argv.slice(2);
 const flag = (name, args = ARGS) => {
 	const hit = args.find((a) => a.startsWith(`--${name}=`));
@@ -1336,9 +1355,10 @@ export const STORIES = [
 	 * text-bearing row is not a close.
 	 *
 	 * THE `by-turn` HALF IS ALREADY COMMITTED: the entries above, with no `prefs`,
-	 * ARE that half, and `partitionRun`'s by-turn path is pinned byte-for-byte by
-	 * `scripts/turn-segments.test.mjs` ("by-turn is the shipped partition,
-	 * byte-for-byte, whether the field is named or absent"). So the pair is one run,
+	 * ARE that half, and `partitionRun`'s by-turn path is pinned by
+	 * `scripts/turn-segments.test.mjs` ("by-turn is the shipped partition apart
+	 * from the declared V5 exception, whether the field is named or absent"). So
+	 * the pair is one run,
 	 * not two trees, and nothing here re-takes a committed frame.
 	 */
 	[
@@ -11047,6 +11067,22 @@ export const STORIES = [
 	 */
 	["mesh-tab--reach-states-list", 1380, 900],
 	/*
+	 * THE THREE TRANSPORT FAILURES, SEPARATELY (mesh link resilience). The shipped set
+	 * proved only the generic "unreachable" face; these frames are the ones the incident
+	 * lacked — a peer whose relay is not listening (TCP refused), an address that timed
+	 * out, and a peer that answered and then closed the handshake. Same 1380x900 frame as
+	 * the rest of the tab so a reader compares the words, not the crop.
+	 */
+	["mesh-tab--relay-down", 1380, 900],
+	/*
+	 * The LIST half of the same evidence: the per-address rows are rendered by a
+	 * different component (`mesh-list.tsx`), so the canvas/panel frame cannot prove
+	 * them. The play presses the real List toggle.
+	 */
+	["mesh-tab--relay-down-list", 1380, 900],
+	["mesh-tab--address-unreachable", 1380, 900],
+	["mesh-tab--handshake-refused", 1380, 900],
+	/*
 	 * THE SCOPE LAYER'S DRAWN TIERS, on addresses that make the collision real: two peers on
 	 * WireGuard's default subnet (dashed, `same prefix`), one on this device's own (solid,
 	 * `shared with this device`), and two that group with nothing.
@@ -11223,6 +11259,12 @@ export const STORIES = [
 		1380,
 		900,
 		{ expectSentence: "Wait for the turn to finish" },
+	],
+	[
+		"mesh-tab--refusal-notice",
+		1380,
+		900,
+		{ expectSentence: "relay not running" },
 	],
 	["mesh-tab--move-copy-with-undo", 1380, 900],
 	/*
@@ -12151,34 +12193,46 @@ export const STORIES = [
 	 * against the others' 184: five items do not fit in 184, and a clipped fifth
 	 * door would be a frame of a layout the app does not have.
 	 */
-	["code-review-pane--populated", 640, 960],
+	/*
+	 * THE TWO HEIGHTS THAT FOLLOW THE ROW'S ANATOMY (the operator's ask).
+	 *
+	 * The row grew a LINE: the identity line carries the repo NAME and the full
+	 * project path sits under it, so every row is one `text-meta` line taller
+	 * than it was. `populated` grew by that line across its ten rows and now
+	 * leads with the operator's own deep-path row, and `narrow` grew by it
+	 * across its five - which is why both are taller than the 960 and 460 they
+	 * were, and why the 320px floor is the frame that has to carry the proof:
+	 * the name is readable and the path is on the line below, in the frame
+	 * where the path used to be cut off mid-segment.
+	 */
+	["code-review-pane--populated", 640, 1665],
 	["code-review-pane--empty", 640, 300],
 	["code-review-pane--loading", 640, 300],
 	["code-review-pane--scanning", 640, 300],
 	["code-review-pane--error-state", 640, 300],
-	["code-review-pane--link-only", 640, 340],
+	["code-review-pane--link-only", 640, 360],
 	["code-review-pane--rate-limited", 640, 340],
 	["code-review-pane--stale", 640, 340],
-	["code-review-pane--could-not-refresh", 640, 520],
+	["code-review-pane--could-not-refresh", 640, 560],
 	/*
 	 * The pending first read (design §4's no-flicker pass): `pendingRevealMs={0}`
 	 * pins the REVEALED frame, so this still is the loading line the fix adds -
 	 * the reveal delay itself is a mechanism no still can show.
 	 */
-	["code-review-pane--pending", 640, 340],
-	["code-review-pane--refresh-failed", 640, 420],
-	["code-review-pane--refreshing", 640, 340],
-	["code-review-pane--narrow", 320, 460],
-	["code-review-pane--narrow-refresh-failed", 320, 420],
+	["code-review-pane--pending", 640, 360],
+	["code-review-pane--refresh-failed", 640, 1241],
+	["code-review-pane--refreshing", 640, 390],
+	["code-review-pane--narrow", 320, 1230],
+	["code-review-pane--narrow-refresh-failed", 320, 450],
 	/*
 	 * The two states round 1's remediation changed, at the same 320px floor
 	 * (design round 1, D2): the pending loading line and the re-shot stale
 	 * copy, so the §10 floor claim has frames for exactly those states.
 	 */
 	["code-review-pane--narrow-pending", 320, 360],
-	["code-review-pane--narrow-could-not-refresh", 320, 560],
-	["code-review-pane--row-hover", 640, 260],
-	["code-review-pane--row-focus", 640, 260],
+	["code-review-pane--narrow-could-not-refresh", 320, 600],
+	["code-review-pane--row-hover", 640, 390],
+	["code-review-pane--row-focus", 640, 390],
 	["navigation-panel-rail--code-item", 132, 220],
 	["navigation-panel-rail--code-attention", 132, 220],
 	["navigation-panel-rail--code-open", 132, 220],
@@ -12219,12 +12273,15 @@ export const STORIES = [
 	["chat-turn-supplements--supplement-free", 900, 314],
 	/*
 	 * THE CONDENSED FORM'S OWN STATES (design round 1, D1/U3/R2; reworked by
-	 * the operator decision of 2026-10-16): the folded block per content shape
-	 * — the SAME files section as its expanded self (actionable rows, the image
-	 * grid) with no slots and no frames; a graphics-only settle keeps its plain
-	 * count clause — plus the same block at the shell's narrow width. Each
-	 * frame's turn really carries a closed bar (the stories drive the same plan
-	 * the app does).
+	 * the operator decisions of 2026-10-16 and 2026-10-19): the folded block per
+	 * content shape — the SAME files section as its expanded self (actionable
+	 * rows, the image grid) — plus the same block at the shell's narrow width.
+	 * Graphics are VISIBLE BY DEFAULT since the 2026-10-19 operator request, which
+	 * supersedes the 2026-10-16 plain-count-clause ruling: a graphics-bearing
+	 * settle photographs its budgeted head (and its `Source:` caption), with the
+	 * block's Hide control still present. The frame stays viewport-gated like an
+	 * expanded one; each frame's turn really carries a closed bar (the stories
+	 * drive the same plan the app does).
 	 *
 	 * TWO STATES SIT TALLER (agent review round 1's R3, the designer's D1): at
 	 * 900x400, `folded-condensed-counts` ended at the fourth featured row with
@@ -12236,12 +12293,12 @@ export const STORIES = [
 	 */
 	["chat-turn-supplements--folded-condensed-files", 900, 400],
 	["chat-turn-supplements--folded-condensed-counts", 900, 540],
-	["chat-turn-supplements--folded-condensed-components", 900, 400],
-	["chat-turn-supplements--folded-condensed-mixed", 900, 400],
+	["chat-turn-supplements--folded-condensed-components", 900, 760],
+	["chat-turn-supplements--folded-condensed-mixed", 900, 760],
 	[
 		"chat-turn-supplements--folded-condensed-mixed",
 		560,
-		400,
+		760,
 		{ dir: "folded-condensed-narrow" },
 	],
 	/*
@@ -12377,7 +12434,9 @@ export const STORIES = [
 			expectAttribute: {
 				selector: VIEWER_CONTROLS,
 				name: "class",
-				includes: "opacity-45",
+				/* The resting opacity is the shared chrome's measured floor, now
+				 * 0.85 (design round 2, D1); the frame is re-captured with it. */
+				includes: "opacity-85",
 			},
 		},
 	],
@@ -12473,6 +12532,329 @@ export const STORIES = [
 			expectPresent: VIEWER_FILMSTRIP,
 		},
 	],
+
+	/*
+	 * THE LIBRARY PREVIEW'S BORDERLESS METADATA AND ITS MEDIA LIGHTBOX (PR
+	 * #1259). The stories mount the preview directly in the 440px column the
+	 * app docks it in, so every frame is the metadata surface rather than a
+	 * catalogue around it.
+	 *
+	 * WHAT THE CLAIMS ARE, and why they are in the tuple rather than only in a
+	 * reader's eye: the operator's requirements are measurable and each has a
+	 * failure a still cannot distinguish from the state it claims - a long name
+	 * that runs UNDER the pencil looks almost right in one theme, and an empty
+	 * tag row that is a bordered box reads as "empty" in a thumbnail the same
+	 * way the add affordance does. The `expect` expressions read the geometry
+	 * the browser resolved (the truncation point, the gutter's width and its
+	 * opacity) and the `expectPresent`/`expectGone` pair reads the gesture's
+	 * outcome at the shutter, so a tuple whose story did not reach its state
+	 * fails the run rather than filing a resting frame under the state's name.
+	 *
+	 * THE HOVER ROWS. `:hover` is browser state, so the rig's own pointer move
+	 * lands them and the `hover` option asserts the element matched `:hover`
+	 * before the shutter. The control's opacity is what the hover changes, and
+	 * a computed-style read is not expressible in `expect` (which runs BEFORE
+	 * the pointer move); the frame carries it, and the QA report's DOM
+	 * measurement records the computed values for both states.
+	 */
+	["library-tab--preview-inline-populated", 640, 900],
+	[
+		"library-tab--preview-inline-name-hover",
+		640,
+		900,
+		{
+			hover: '[data-inline-edit="name"]',
+			expectGone: '[data-inline-edit="name"] [data-inline-edit-input]',
+		},
+	],
+	[
+		"library-tab--preview-inline-long-name",
+		640,
+		900,
+		{
+			expect: {
+				pollMs: 5000,
+				expression: `(() => {
+					const row = document.querySelector('[data-inline-edit="name"]');
+					if (!row) return "the name row is not mounted";
+					const text = row.querySelector("span.truncate");
+					const control = row.querySelector("[data-inline-edit-control]");
+					if (!text || !control) return "the name row is missing its value or its reserved gutter";
+					const t = text.getBoundingClientRect();
+					const c = control.getBoundingClientRect();
+					const style = getComputedStyle(text);
+					const problems = [];
+					if (style.textOverflow !== "ellipsis") problems.push("text-overflow is " + style.textOverflow);
+					if (!(text.scrollWidth > text.clientWidth + 1)) problems.push("the value is not truncated (" + text.scrollWidth + " in " + text.clientWidth + ")");
+					if (c.left - t.right < 0) problems.push("the gutter starts " + Math.round(t.right - c.left) + "px before the value ends");
+					if (Math.round(c.width) !== 20) problems.push("the gutter is " + Math.round(c.width) + "px wide, not 20");
+					if (getComputedStyle(control).opacity !== "0") problems.push("the pencil is painted at rest (opacity " + getComputedStyle(control).opacity + ")");
+					return problems.length ? problems.join("; ") : true;
+				})()`,
+				message:
+					"the long name must end in an ellipsis before an empty 20px gutter, with the pencil invisible at rest",
+			},
+		},
+	],
+	[
+		"library-tab--preview-inline-long-name",
+		640,
+		900,
+		{
+			dir: "preview-inline-long-name-hover",
+			hover: '[data-inline-edit="name"]',
+		},
+	],
+	/*
+	 * The long name WHILE THE EDITOR IS OPEN, which the operator's measurement
+	 * claim names explicitly. This row exists because the claim does not hold in
+	 * this state and the frame is the evidence for that: an `<input>` cannot
+	 * render `text-overflow: ellipsis` (the resolved value is `clip`) and, with
+	 * the value selected, Chromium scrolls it to the caret at the end - so the
+	 * visible text is the tail of the name, not a head ending in an ellipsis.
+	 * The frame is committed rather than suppressed, and the QA report on PR
+	 * #1259 records the measurement; the tuple claims only what the state does
+	 * hold (the stored value, and a gutter the input never runs under), so the
+	 * run cannot be green on a defect it does not photograph.
+	 */
+	[
+		"library-tab--preview-inline-long-name",
+		640,
+		900,
+		{
+			dir: "preview-inline-long-name-editing",
+			press: '[data-inline-edit="name"] [data-inline-edit-control]',
+			expectPresent: '[data-inline-edit="name"] [data-inline-edit-input]',
+			expect: {
+				pollMs: 3000,
+				expression: `(() => {
+					const row = document.querySelector('[data-inline-edit="name"]');
+					const input = row?.querySelector("[data-inline-edit-input]");
+					const control = row?.querySelector("[data-inline-edit-control]");
+					if (!input || !control) return "the long-name editor is not open";
+					const i = input.getBoundingClientRect();
+					const c = control.getBoundingClientRect();
+					const problems = [];
+					if (input.value !== "March invoice reconciliation notes for the fourth quarter close") problems.push("the editor opened with " + JSON.stringify(input.value));
+					if (i.right > c.left + 0.5) problems.push("the input runs " + Math.round(i.right - c.left) + "px under the gutter");
+					if (getComputedStyle(control).opacity === "0") problems.push("the cancel control is invisible while editing");
+					return problems.length ? problems.join("; ") : true;
+				})()`,
+				message:
+					"the long-name editor must open with the stored value and stop before its gutter",
+			},
+		},
+	],
+	[
+		"library-tab--preview-inline-name-editing",
+		640,
+		900,
+		{
+			expectPresent: '[data-inline-edit="name"] [data-inline-edit-input]',
+			expectAttribute: {
+				selector: '[data-inline-edit="name"] [data-inline-edit-control]',
+				name: "aria-label",
+				includes: "Cancel editing",
+			},
+			expect: {
+				pollMs: 3000,
+				expression: `(() => {
+					const row = document.querySelector('[data-inline-edit="name"]');
+					const input = row?.querySelector("[data-inline-edit-input]");
+					const control = row?.querySelector("[data-inline-edit-control]");
+					if (!input || !control) return "the name editor is not open";
+					const i = input.getBoundingClientRect();
+					const c = control.getBoundingClientRect();
+					const problems = [];
+					if (input.value !== "March invoices") problems.push("the editor opened with " + JSON.stringify(input.value));
+					if (i.right > c.left + 0.5) problems.push("the input runs " + Math.round(i.right - c.left) + "px under the gutter");
+					if (getComputedStyle(control).opacity === "0") problems.push("the cancel control is invisible while editing");
+					return problems.length ? problems.join("; ") : true;
+				})()`,
+				message:
+					"the open name editor must show the stored value, stop before the gutter and paint its X",
+			},
+		},
+	],
+	[
+		"library-tab--preview-inline-name-escape",
+		640,
+		900,
+		{
+			expectGone: '[data-inline-edit="name"] [data-inline-edit-input]',
+			expectAttribute: {
+				selector: '[data-inline-edit="name"] [data-inline-edit-control]',
+				name: "aria-label",
+				includes: "Edit Name",
+			},
+			expect: {
+				pollMs: 3000,
+				expression: `(() => {
+					const row = document.querySelector('[data-inline-edit="name"]');
+					if (!row) return "the name row is not mounted";
+					const text = (row.textContent || "").replace(/\\s+/g, " ").trim();
+					return text.includes("March invoices") && !text.includes("changed")
+						? true
+						: "the row reads " + JSON.stringify(text);
+				})()`,
+				message:
+					"Escape must close the editor and put the stored name back, not the typed value",
+			},
+		},
+	],
+	[
+		"library-tab--preview-inline-description-editing",
+		640,
+		900,
+		{
+			expectPresent:
+				'[data-inline-edit="description"] [data-inline-edit-input]',
+			expectAttribute: {
+				selector: '[data-inline-edit="description"] [data-inline-edit-control]',
+				name: "aria-label",
+				includes: "Cancel editing",
+			},
+			expect: {
+				pollMs: 3000,
+				expression: `(() => {
+					const field = document.querySelector('[data-inline-edit="description"]');
+					const input = field?.querySelector("[data-inline-edit-input]");
+					if (!input) return "the description editor is not open";
+					const problems = [];
+					if (input.value !== "Reconciliation notes for the March invoice run.") problems.push("the editor opened with " + JSON.stringify(input.value));
+					if (getComputedStyle(input).borderTopWidth !== "0px") problems.push("the editor is boxed (border " + getComputedStyle(input).borderTopWidth + ")");
+					return problems.length ? problems.join("; ") : true;
+				})()`,
+				message:
+					"the description editor must open with the stored text and no border",
+			},
+		},
+	],
+	[
+		"library-tab--preview-inline-empty-tags",
+		640,
+		900,
+		{
+			expectPresent: "[data-inline-tags]",
+			expectGone: "[data-inline-tags] input",
+			expectSentence: { selector: "[data-inline-tags]", includes: "Add a tag" },
+			expect: {
+				pollMs: 3000,
+				expression: `(() => {
+					const row = document.querySelector("[data-inline-tags]");
+					if (!row) return "the tag row is not mounted";
+					const add = [...row.querySelectorAll("button")].find((node) => (node.textContent || "").includes("Add a tag"));
+					if (!add) return "there is no Add a tag control";
+					const box = getComputedStyle(row);
+					const problems = [];
+					if (box.borderTopWidth !== "0px" || box.borderBottomWidth !== "0px") problems.push("the empty tag row is a box (border " + box.borderTopWidth + ")");
+					if (row.querySelector("input")) problems.push("the empty state renders an input");
+					return problems.length ? problems.join("; ") : true;
+				})()`,
+				message:
+					"the empty tag state must be the Add a tag control, not a bordered or empty box",
+			},
+		},
+	],
+	[
+		"library-tab--media-lightbox",
+		1280,
+		900,
+		{
+			expectPresent: [
+				"[data-library-lightbox]",
+				"[data-library-lightbox-strip]",
+			],
+			expect: {
+				pollMs: 5000,
+				expression: `(() => {
+					const current = document.querySelector('[data-library-lightbox-strip] [aria-current="true"]');
+					if (!current) return "the strip marks no current slide";
+					if (current.getAttribute("data-library-lightbox-tile") !== "la_0000000000000053") return "the strip marks " + current.getAttribute("data-library-lightbox-tile");
+					return true;
+				})()`,
+				message:
+					"the lightbox must be on the third slide its play walked to (ArrowRight, then the third strip tile)",
+			},
+			expectAttribute: {
+				selector: '[data-library-lightbox-strip] [aria-current="true"]',
+				name: "data-library-lightbox-tile",
+				equals: "la_0000000000000053",
+			},
+		},
+	],
+	[
+		"library-tab--media-lightbox-dismiss",
+		1280,
+		900,
+		{
+			expectGone: "[data-library-lightbox]",
+			expectPresent: '[data-library-media-trigger="image"]',
+			expect: {
+				pollMs: 3000,
+				expression: `(() => {
+					const trigger = document.querySelector('[data-library-media-trigger="image"]');
+					if (!trigger) return "the preview's picture is not mounted";
+					const problems = [];
+					if (document.activeElement !== trigger) problems.push("focus is on " + (document.activeElement?.tagName ?? "nothing") + ", not the control that opened the viewer");
+					const selected = document.querySelector("[data-library-preview]")?.getAttribute("data-library-preview");
+					if (selected !== "la_0000000000000051") problems.push("the preview's selected asset moved to " + selected);
+					return problems.length ? problems.join("; ") : true;
+				})()`,
+				message:
+					"Escape must close the viewer, return focus to its trigger and leave the preview's selected asset alone",
+			},
+		},
+	],
+	[
+		"library-tab--media-lightbox-video",
+		1280,
+		900,
+		{
+			expectPresent: [
+				"[data-library-lightbox]",
+				"[data-library-lightbox] [data-lightbox-video]",
+			],
+			expect: {
+				pollMs: 8000,
+				expression: `(() => {
+					const video = document.querySelector("[data-library-lightbox] [data-lightbox-video]");
+					if (!video) return "the lightbox has no video element";
+					if (video.readyState < 3) return "the clip is at readyState " + video.readyState;
+					/*
+					 * NO DECODED-FRAME CLAIM. Headless Chromium with --disable-gpu
+					 * paints the player's loading ring even at readyState 4 and
+					 * leaves autoplay paused (measured: paused true, currentTime 0,
+					 * readyState 4), and seeking currentTime does not change the
+					 * painted surface. The frame therefore evidences the lightbox
+					 * mounted over a real, buffered video and its controls - not a
+					 * decoded picture; the README states the gap.
+					 */
+					return true;
+				})()`,
+				message:
+					"the clip's own click target must have opened the lightbox over a decoded video",
+			},
+		},
+	],
+	[
+		"library-tab--media-lightbox-solo",
+		1280,
+		900,
+		{
+			expectPresent: "[data-library-lightbox]",
+			expectGone: [
+				"[data-library-lightbox-strip]",
+				"[data-image-viewer-prev]",
+				"[data-image-viewer-next]",
+			],
+			expect: {
+				pollMs: 5000,
+				expression: `Boolean(document.querySelector("[data-library-lightbox]")) && !document.querySelector("[data-library-lightbox-strip]") && !document.querySelector("[data-image-viewer-prev]") && !document.querySelector("[data-image-viewer-next]")`,
+				message: "a group of one must open without carousel chrome",
+			},
+		},
+	],
 ];
 
 /**
@@ -12536,8 +12918,15 @@ export const STORIES = [
  * a directory emptied of its frames is removed; a file the sweep did not write
  * is not the sweep's to delete.
  */
-export const clearSweptFrames = (out) => {
-	const manifestPath = join(out, "manifest.json");
+export const clearSweptFrames = (out, manifestDir = MANIFEST_DIR) => {
+	/*
+	 * The manifest lives in the TRACKED tree, not in `out`: the sweep wipes
+	 * `out`, and the declaration of what it must not wipe cannot be one of the
+	 * files it wipes. `manifestDir` is a parameter so the preservation rule
+	 * stays exercisable on a throwaway tree (see `capture-evidence.test.mjs`);
+	 * the rig always uses the default it declares above.
+	 */
+	const manifestPath = join(manifestDir, "manifest.json");
 	const supplementary = existsSync(manifestPath)
 		? (JSON.parse(readFileSync(manifestPath, "utf8")).supplementary ?? [])
 		: [];
@@ -13349,8 +13738,9 @@ const main = async () => {
 		? (() => {
 				try {
 					return (
-						JSON.parse(readFileSync(join(OUT, "manifest.json"), "utf8"))
-							.supplementary ?? []
+						JSON.parse(
+							readFileSync(join(MANIFEST_DIR, "manifest.json"), "utf8"),
+						).supplementary ?? []
 					);
 				} catch {
 					return [];
@@ -16142,7 +16532,7 @@ const main = async () => {
 	 * a citation names carries the frames this record declares. The same rule is
 	 * stated for readers in the manifest's `citationConvention`.
 	 */
-	const manifestPath = join(OUT, "manifest.json");
+	const manifestPath = join(MANIFEST_DIR, "manifest.json");
 	let previous = {};
 	try {
 		previous = JSON.parse(readFileSync(manifestPath, "utf8"));
@@ -16245,6 +16635,12 @@ const main = async () => {
 	 * settles on, this line has to match it, so a capture never re-indents a
 	 * 9k-line file as a side effect of stamping it.
 	 */
+	/*
+	 * The manifest's own directory is created here rather than borrowed from a
+	 * frames-tree `mkdirSync`: on a checkout whose frames tree has never been
+	 * captured, that would be the one write that fails.
+	 */
+	mkdirSync(MANIFEST_DIR, { recursive: true });
 	writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
 	console.log(`Captured ${captured} frames into ${OUT} at ${head.slice(0, 9)}`);

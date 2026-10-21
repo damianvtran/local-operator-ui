@@ -1,0 +1,18 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "c94a2f70-r2",
+  "locale": "zh-CN",
+  "round": 2,
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 67,
+      "sha256": {
+        "en": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
+        "zh-CN": "d330678abdb13c8d6ff4ebbe1008239dabe91c2dddc740a5dc0815bf4153b069"
+      },
+      "findings": []
+    }
+  }
+}

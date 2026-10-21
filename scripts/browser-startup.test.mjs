@@ -40,8 +40,10 @@ export class WebContentsView {
    close: () => { if (!wc.destroyed) { wc.destroyed = true; wc.emit('destroyed'); f().views.delete(wc.id); } },
    debugger: { isAttached: () => false },
    navigationHistory: { canGoBack: () => false, canGoForward: () => false,
+     length: () => 1, getActiveIndex: () => 0,
+     getEntryAtIndex: () => ({ url: wc.url || 'about:blank' }),
      restore: async ({ entries }) => { wc.url = entries[0]?.url; },
-     getAllEntries: () => [{ url: wc.url || 'about:blank' }], getActiveIndex: () => 0 }
+     getAllEntries: () => [{ url: wc.url || 'about:blank' }] }
   });
   this.webContents = wc; this.setBounds = () => {}; this.setVisible = () => {};
   f().views.add(wc.id); f().peak = Math.max(f().peak, f().views.size);
@@ -160,6 +162,10 @@ function fixture(failConsole) {
 		mainFrame,
 		send() {},
 		isDestroyed: () => false,
+		// The real Electron API ownsPage reads; this fake must model it so a host
+		// that asks the focus fact cannot crash on the fake's shape.
+		getFocusedWebContents: () =>
+			globalThis.__browserStartupFixture?.focused ?? null,
 		setIgnoreMenuShortcuts(value) {
 			webContents.ignoringMenu = value;
 		},

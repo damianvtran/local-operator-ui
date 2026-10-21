@@ -178,6 +178,20 @@ const LOCK_PATHS = new Set(["pnpm-lock.yaml", "pnpm-workspace.yaml"]);
 const EVIDENCE_PREFIX = "docs/evidence/";
 
 /**
+ * `docs/evidence-frames/**` - the capture rig's IGNORED output tree.
+ *
+ * Frames are regenerable and are not committed (`.gitignore`), so a path here
+ * is never "committed evidence": there is nothing under it for a job to read,
+ * and classifying it as the evidence category would claim the suite had an
+ * input it does not have. It is not prose either. The only way it can appear in
+ * a diff is a force-add - a deliberate act that re-materialises a whole capture
+ * set per worktree (955 MB at origin/main, measured 2026-10-20) - so it is
+ * classified `other`, which runs everything and prints the unknown-path
+ * warning. Fail-closed, and loud rather than inert.
+ */
+const FRAMES_PREFIX = "docs/evidence-frames/";
+
+/**
  * The scripts the `runtime-deps` job's own step runs. Named so that a change to
  * either keeps that job selected: the check is the allowlist (`pnpm
  * check-runtime-deps`) executed through `scripts/require-report.sh` so a silent
@@ -221,6 +235,7 @@ const RUNTIME_DEP_SCRIPTS = new Set([
  */
 export const EVIDENCE_SOURCES = new Set([
 	"scripts/capture-evidence.mjs",
+	"scripts/check-evidence-structure.mjs",
 	"scripts/check-evidence.mjs",
 	"scripts/chrome-keychain.mjs",
 	"scripts/color.mjs",
@@ -349,6 +364,8 @@ export function categoryOf(path) {
 	const p = normalise(path);
 	if (!p) return CAT_OTHER;
 	if (p === ".github" || p.startsWith(".github/")) return CAT_CI;
+	if (p === "docs/evidence-frames" || p.startsWith(FRAMES_PREFIX))
+		return CAT_OTHER;
 	if (p === "docs/evidence" || p.startsWith(EVIDENCE_PREFIX))
 		return CAT_EVIDENCE;
 	if (p.startsWith("docs/")) return CAT_DOCS;
@@ -478,6 +495,12 @@ export const JOB_COMMANDS = {
 	// the four `VITE_*` values the build config refuses to start without. CI
 	// substitutes placeholders; neither set ends up in a shipped artifact.
 	"bytecode-build": ["pnpm build"],
+	// The STRUCTURAL half of the evidence gate - the command CI's `Evidence
+	// Structure` job runs. It is cheap (a git listing, the manifest and one
+	// guard call) because the pixel sweep is NOT here: `pnpm check-evidence`
+	// decodes the captured frames tree, which is rig output in an ignored tree,
+	// so it runs at release on a captured checkout (AGENTS.md).
+	evidence: ["node scripts/check-evidence-structure.mjs"],
 };
 
 /**
@@ -500,20 +523,6 @@ export const LOCAL_EXCLUSIONS = {
 		"launch leg installs the tarball through `npx` on a macOS runner. Neither " +
 		"belongs in a default local pass; `pnpm pack` and `node " +
 		"scripts/npx-smoke-test.mjs <tarball>` remain the manual spellings.",
-	evidence:
-		"the sweep pays a WHOLE-TREE DECODE of the committed frames - 15,553 of " +
-		"them, ~5 minutes locally and 11m27s on the runner - and admits ONE run " +
-		"per MACHINE through a permanent lease, exiting 75 DEFERRED (not failing) " +
-		"when another check holds it. On a fleet of concurrent sessions a local " +
-		"`check-changed` would therefore either spend five minutes on every " +
-		"evidence-touching diff or be locked out of its own gate. Excluded rather " +
-		"than kept as a gate that cries wolf, and the fast half of the SAME gate " +
-		"still runs locally and in CI: `scripts/evidence-manifest.test.mjs` binds " +
-		"the counts, the stamps and the declarations against the shipped manifest " +
-		"in under a second, under the `test` job. `pnpm check-evidence` remains the " +
-		"manual spelling - its 75 is the DEFERRED code `runJobs` reports as a " +
-		"deferral rather than a failure - and `ci.yml`'s `evidence` job is the " +
-		"whole-tree gate.",
 };
 
 /**
@@ -526,7 +535,7 @@ export const FLAG_REASONS = {
 	unit: "a changed path that is neither prose nor committed evidence, or a `docs/evidence/**` change (the desktop suite reads committed evidence at runtime)",
 	bytecode:
 		"a path compiled into the main bundle (`src/main/**`, `src/shared/**`, `src/i18n/**`, `scripts/vite-plugins/**`, `electron.vite.config.js`, `tsconfig.json`, `tsconfig.node.json`), the install (`package.json` or a lockfile), an unrecognised path, or `.github/**` (every flag is true there)",
-	evidence: `a \`docs/evidence/**\` change, one of the modules that produce the sweep's verdict (${[...EVIDENCE_SOURCES].join(", ")}), a palette change (the palettes ARE the grounds a frame is judged against), or a change to the install (\`package.json\` or a lockfile): \`sharp\`, the decoder the verdict is produced with, is a devDependency`,
+	evidence: `a \`docs/evidence/**\` change (the STRUCTURAL gate reads the tracked tree; the pixel sweep runs at release), one of the modules that produce the gate's verdict (${[...EVIDENCE_SOURCES].join(", ")}), a palette change (the palettes ARE the grounds a frame is judged against, so a ground that moves must be swept before the next tag), or a change to the install (\`package.json\` or a lockfile): \`sharp\`, the decoder the sweep uses at release, is a devDependency`,
 	runtime_deps:
 		"`package.json` or one of the scripts the runtime-dependency step executes (`scripts/check-runtime-deps.mjs`, `scripts/require-report.sh`)",
 	audit: "`package.json` or a lockfile change",

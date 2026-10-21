@@ -1,0 +1,595 @@
+{
+  "importSettingsGeometry": {
+    "viewport": {
+      "width": 1380,
+      "height": 900
+    },
+    "before": {
+      "window": {
+        "scrollY": 0,
+        "scrollX": 0
+      },
+      "document": {
+        "scrollTop": 0
+      },
+      "shell": {
+        "scrollTop": 0,
+        "scrollHeight": 4725,
+        "clientHeight": 900,
+        "overflowY": "hidden"
+      },
+      "content": {
+        "scrollTop": 6513,
+        "scrollHeight": 7458,
+        "clientHeight": 900
+      },
+      "sessionCheckbox": {
+        "dataState": "unchecked",
+        "ariaChecked": "false",
+        "indicatorMounted": false,
+        "fill": "rgb(43, 39, 33)",
+        "border": "rgb(131, 124, 109)",
+        "glyph": null
+      },
+      "selectedRow": null,
+      "importButton": null,
+      "confirmCheckbox": null,
+      "flow": {
+        "previewButtonPresent": false,
+        "importEnabled": false,
+        "acknowledgementPresent": false
+      },
+      "previewFailure": {
+        "stated": false,
+        "inline": false,
+        "retryPresent": true,
+        "retryInGate": false,
+        "spinner": false
+      },
+      "completion": {
+        "ctaPresent": false,
+        "resultHeading": false
+      },
+      "glass": null,
+      "theme": "localOperatorDark",
+      "scheme": "dark"
+    },
+    "selected": {
+      "window": {
+        "scrollY": 0,
+        "scrollX": 0
+      },
+      "document": {
+        "scrollTop": 0
+      },
+      "shell": {
+        "scrollTop": 0,
+        "scrollHeight": 4725,
+        "clientHeight": 900,
+        "overflowY": "hidden"
+      },
+      "content": {
+        "scrollTop": 6513,
+        "scrollHeight": 7661,
+        "clientHeight": 900
+      },
+      "sessionCheckbox": {
+        "dataState": "checked",
+        "ariaChecked": "true",
+        "indicatorMounted": true,
+        "fill": "rgb(43, 39, 33)",
+        "border": "rgb(131, 124, 109)",
+        "glyph": "rgb(22, 19, 14)"
+      },
+      "selectedRow": {
+        "classes": "flex items-start gap-3 rounded-md border p-3 border-accent bg-row-selected",
+        "background": "rgb(55, 47, 36)",
+        "border": "rgb(56, 201, 106)"
+      },
+      "importButton": {
+        "label": "Import 1 session",
+        "disabled": true
+      },
+      "confirmCheckbox": {
+        "dataState": "unchecked",
+        "disabled": true
+      },
+      "flow": {
+        "previewButtonPresent": false,
+        "importEnabled": false,
+        "acknowledgementPresent": true
+      },
+      "previewFailure": {
+        "stated": false,
+        "inline": false,
+        "retryPresent": true,
+        "retryInGate": false,
+        "spinner": true
+      },
+      "completion": {
+        "ctaPresent": false,
+        "resultHeading": false
+      },
+      "glass": null,
+      "theme": "localOperatorDark",
+      "scheme": "dark"
+    },
+    "after": {
+      "window": {
+        "scrollY": 0,
+        "scrollX": 0
+      },
+      "document": {
+        "scrollTop": 0
+      },
+      "shell": {
+        "scrollTop": 0,
+        "scrollHeight": 4725,
+        "clientHeight": 900,
+        "overflowY": "hidden"
+      },
+      "content": {
+        "scrollTop": 6513,
+        "scrollHeight": 7748,
+        "clientHeight": 900
+      },
+      "sessionCheckbox": {
+        "dataState": "checked",
+        "ariaChecked": "true",
+        "indicatorMounted": true,
+        "fill": "rgb(56, 201, 106)",
+        "border": "rgb(56, 201, 106)",
+        "glyph": "rgb(22, 19, 14)"
+      },
+      "selectedRow": {
+        "classes": "flex items-start gap-3 rounded-md border p-3 border-accent bg-row-selected",
+        "background": "rgb(55, 47, 36)",
+        "border": "rgb(56, 201, 106)"
+      },
+      "importButton": {
+        "label": "Import 1 session",
+        "disabled": true
+      },
+      "confirmCheckbox": {
+        "dataState": "unchecked",
+        "disabled": false
+      },
+      "flow": {
+        "previewButtonPresent": false,
+        "importEnabled": false,
+        "acknowledgementPresent": true
+      },
+      "previewFailure": {
+        "stated": false,
+        "inline": false,
+        "retryPresent": true,
+        "retryInGate": false,
+        "spinner": false
+      },
+      "completion": {
+        "ctaPresent": false,
+        "resultHeading": false
+      },
+      "glass": null,
+      "theme": "localOperatorDark",
+      "scheme": "dark"
+    },
+    "flow": {
+      "steps": [
+        "select a conversation",
+        "tick the acknowledgement"
+      ],
+      "stepCount": 2,
+      "importEnabled": true
+    },
+    "states": {
+      "pending": {
+        "window": {
+          "scrollY": 0,
+          "scrollX": 0
+        },
+        "document": {
+          "scrollTop": 0
+        },
+        "shell": {
+          "scrollTop": 0,
+          "scrollHeight": 4725,
+          "clientHeight": 900,
+          "overflowY": "hidden"
+        },
+        "content": {
+          "scrollTop": 6513,
+          "scrollHeight": 7661,
+          "clientHeight": 900
+        },
+        "sessionCheckbox": {
+          "dataState": "checked",
+          "ariaChecked": "true",
+          "indicatorMounted": true,
+          "fill": "rgb(43, 39, 33)",
+          "border": "rgb(131, 124, 109)",
+          "glyph": "rgb(22, 19, 14)"
+        },
+        "selectedRow": {
+          "classes": "flex items-start gap-3 rounded-md border p-3 border-accent bg-row-selected",
+          "background": "rgb(55, 47, 36)",
+          "border": "rgb(56, 201, 106)"
+        },
+        "importButton": {
+          "label": "Import 1 session",
+          "disabled": true
+        },
+        "confirmCheckbox": {
+          "dataState": "unchecked",
+          "disabled": true
+        },
+        "flow": {
+          "previewButtonPresent": false,
+          "importEnabled": false,
+          "acknowledgementPresent": true
+        },
+        "previewFailure": {
+          "stated": false,
+          "inline": false,
+          "retryPresent": true,
+          "retryInGate": false,
+          "spinner": true
+        },
+        "completion": {
+          "ctaPresent": false,
+          "resultHeading": false
+        },
+        "glass": null,
+        "theme": "localOperatorDark",
+        "scheme": "dark"
+      },
+      "settled": {
+        "window": {
+          "scrollY": 0,
+          "scrollX": 0
+        },
+        "document": {
+          "scrollTop": 0
+        },
+        "shell": {
+          "scrollTop": 0,
+          "scrollHeight": 4725,
+          "clientHeight": 900,
+          "overflowY": "hidden"
+        },
+        "content": {
+          "scrollTop": 6513,
+          "scrollHeight": 7748,
+          "clientHeight": 900
+        },
+        "sessionCheckbox": {
+          "dataState": "checked",
+          "ariaChecked": "true",
+          "indicatorMounted": true,
+          "fill": "rgb(56, 201, 106)",
+          "border": "rgb(56, 201, 106)",
+          "glyph": "rgb(22, 19, 14)"
+        },
+        "selectedRow": {
+          "classes": "flex items-start gap-3 rounded-md border p-3 border-accent bg-row-selected",
+          "background": "rgb(55, 47, 36)",
+          "border": "rgb(56, 201, 106)"
+        },
+        "importButton": {
+          "label": "Import 1 session",
+          "disabled": true
+        },
+        "confirmCheckbox": {
+          "dataState": "unchecked",
+          "disabled": false
+        },
+        "flow": {
+          "previewButtonPresent": false,
+          "importEnabled": false,
+          "acknowledgementPresent": true
+        },
+        "previewFailure": {
+          "stated": false,
+          "inline": false,
+          "retryPresent": true,
+          "retryInGate": false,
+          "spinner": false
+        },
+        "completion": {
+          "ctaPresent": false,
+          "resultHeading": false
+        },
+        "glass": null,
+        "theme": "localOperatorDark",
+        "scheme": "dark"
+      },
+      "failure": {
+        "window": {
+          "scrollY": 0,
+          "scrollX": 0
+        },
+        "document": {
+          "scrollTop": 0
+        },
+        "shell": {
+          "scrollTop": 0,
+          "scrollHeight": 4725,
+          "clientHeight": 900,
+          "overflowY": "hidden"
+        },
+        "content": {
+          "scrollTop": 6513,
+          "scrollHeight": 7697,
+          "clientHeight": 900
+        },
+        "sessionCheckbox": {
+          "dataState": "checked",
+          "ariaChecked": "true",
+          "indicatorMounted": true,
+          "fill": "rgb(56, 201, 106)",
+          "border": "rgb(56, 201, 106)",
+          "glyph": "rgb(22, 19, 14)"
+        },
+        "selectedRow": {
+          "classes": "flex items-start gap-3 rounded-md border p-3 border-accent bg-row-selected",
+          "background": "rgb(55, 47, 36)",
+          "border": "rgb(56, 201, 106)"
+        },
+        "importButton": {
+          "label": "Import 1 session",
+          "disabled": true
+        },
+        "confirmCheckbox": {
+          "dataState": "unchecked",
+          "disabled": true
+        },
+        "flow": {
+          "previewButtonPresent": false,
+          "importEnabled": false,
+          "acknowledgementPresent": true
+        },
+        "previewFailure": {
+          "stated": true,
+          "inline": true,
+          "retryPresent": true,
+          "retryInGate": true,
+          "spinner": false
+        },
+        "completion": {
+          "ctaPresent": false,
+          "resultHeading": false
+        },
+        "glass": null,
+        "theme": "localOperatorDark",
+        "scheme": "dark"
+      },
+      "completion": {
+        "window": {
+          "scrollY": 0,
+          "scrollX": 0
+        },
+        "document": {
+          "scrollTop": 0
+        },
+        "shell": {
+          "scrollTop": 0,
+          "scrollHeight": 4725,
+          "clientHeight": 900,
+          "overflowY": "hidden"
+        },
+        "content": {
+          "scrollTop": 6458,
+          "scrollHeight": 7358,
+          "clientHeight": 900
+        },
+        "sessionCheckbox": null,
+        "selectedRow": null,
+        "importButton": null,
+        "confirmCheckbox": null,
+        "flow": {
+          "previewButtonPresent": false,
+          "importEnabled": false,
+          "acknowledgementPresent": false
+        },
+        "previewFailure": {
+          "stated": false,
+          "inline": false,
+          "retryPresent": true,
+          "retryInGate": false,
+          "spinner": false
+        },
+        "completion": {
+          "ctaPresent": true,
+          "resultHeading": true
+        },
+        "glass": null,
+        "theme": "localOperatorDark",
+        "scheme": "dark"
+      },
+      "glass": {
+        "window": {
+          "scrollY": 0,
+          "scrollX": 0
+        },
+        "document": {
+          "scrollTop": 0
+        },
+        "shell": {
+          "scrollTop": 0,
+          "scrollHeight": 4725,
+          "clientHeight": 900,
+          "overflowY": "hidden"
+        },
+        "content": {
+          "scrollTop": 6513,
+          "scrollHeight": 7748,
+          "clientHeight": 900
+        },
+        "sessionCheckbox": {
+          "dataState": "checked",
+          "ariaChecked": "true",
+          "indicatorMounted": true,
+          "fill": "rgb(56, 201, 106)",
+          "border": "rgb(56, 201, 106)",
+          "glyph": "rgb(22, 19, 14)"
+        },
+        "selectedRow": {
+          "classes": "flex items-start gap-3 rounded-md border p-3 border-accent bg-row-selected",
+          "background": "color(srgb 0.945098 0.933333 0.901961 / 0.08)",
+          "border": "rgb(56, 201, 106)"
+        },
+        "importButton": {
+          "label": "Import 1 session",
+          "disabled": true
+        },
+        "confirmCheckbox": {
+          "dataState": "unchecked",
+          "disabled": false
+        },
+        "flow": {
+          "previewButtonPresent": false,
+          "importEnabled": false,
+          "acknowledgementPresent": true
+        },
+        "previewFailure": {
+          "stated": false,
+          "inline": false,
+          "retryPresent": true,
+          "retryInGate": false,
+          "spinner": false
+        },
+        "completion": {
+          "ctaPresent": false,
+          "resultHeading": false
+        },
+        "glass": {
+          "kinds": "sidebar canvas pane",
+          "canvasAlpha": "0.66",
+          "selectedAlpha": "0.08"
+        },
+        "theme": "localOperatorDark",
+        "scheme": "dark"
+      },
+      "narrow": {
+        "window": {
+          "scrollY": 0,
+          "scrollX": 0
+        },
+        "document": {
+          "scrollTop": 0
+        },
+        "shell": {
+          "scrollTop": 0,
+          "scrollHeight": 4725,
+          "clientHeight": 900,
+          "overflowY": "hidden"
+        },
+        "content": {
+          "scrollTop": 6513,
+          "scrollHeight": 7883,
+          "clientHeight": 900
+        },
+        "sessionCheckbox": {
+          "dataState": "checked",
+          "ariaChecked": "true",
+          "indicatorMounted": true,
+          "fill": "rgb(56, 201, 106)",
+          "border": "rgb(56, 201, 106)",
+          "glyph": "rgb(22, 19, 14)"
+        },
+        "selectedRow": {
+          "classes": "flex items-start gap-3 rounded-md border p-3 border-accent bg-row-selected",
+          "background": "rgb(55, 47, 36)",
+          "border": "rgb(56, 201, 106)"
+        },
+        "importButton": {
+          "label": "Import 1 session",
+          "disabled": true
+        },
+        "confirmCheckbox": {
+          "dataState": "unchecked",
+          "disabled": false
+        },
+        "flow": {
+          "previewButtonPresent": false,
+          "importEnabled": false,
+          "acknowledgementPresent": true
+        },
+        "previewFailure": {
+          "stated": false,
+          "inline": false,
+          "retryPresent": true,
+          "retryInGate": false,
+          "spinner": false
+        },
+        "completion": {
+          "ctaPresent": false,
+          "resultHeading": false
+        },
+        "glass": null,
+        "theme": "localOperatorDark",
+        "scheme": "dark"
+      },
+      "light": {
+        "window": {
+          "scrollY": 0,
+          "scrollX": 0
+        },
+        "document": {
+          "scrollTop": 0
+        },
+        "shell": {
+          "scrollTop": 0,
+          "scrollHeight": 4725,
+          "clientHeight": 900,
+          "overflowY": "hidden"
+        },
+        "content": {
+          "scrollTop": 6513,
+          "scrollHeight": 7748,
+          "clientHeight": 900
+        },
+        "sessionCheckbox": {
+          "dataState": "checked",
+          "ariaChecked": "true",
+          "indicatorMounted": true,
+          "fill": "rgb(19, 119, 66)",
+          "border": "rgb(19, 119, 66)",
+          "glyph": "rgb(246, 250, 248)"
+        },
+        "selectedRow": {
+          "classes": "flex items-start gap-3 rounded-md border p-3 border-accent bg-row-selected",
+          "background": "rgb(235, 231, 216)",
+          "border": "rgb(19, 119, 66)"
+        },
+        "importButton": {
+          "label": "Import 1 session",
+          "disabled": true
+        },
+        "confirmCheckbox": {
+          "dataState": "unchecked",
+          "disabled": false
+        },
+        "flow": {
+          "previewButtonPresent": false,
+          "importEnabled": false,
+          "acknowledgementPresent": true
+        },
+        "previewFailure": {
+          "stated": false,
+          "inline": false,
+          "retryPresent": true,
+          "retryInGate": false,
+          "spinner": false
+        },
+        "completion": {
+          "ctaPresent": false,
+          "resultHeading": false
+        },
+        "glass": null,
+        "theme": "localOperatorLight",
+        "scheme": "light"
+      }
+    }
+  }
+}

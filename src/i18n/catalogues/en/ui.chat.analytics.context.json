@@ -1,0 +1,79 @@
+{
+	"ui.chat.analytics.filters.top_level_only": {
+		"role": "checkbox label filtering the by-session table to top-level sessions",
+		"tone": "label phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Sits beside the session search field in the analytics panel. It hides subagent rows rather than sorting them, so the word 'only' is load-bearing.",
+		"placeholders": {}
+	},
+	"ui.chat.analytics.search.clear": {
+		"role": "accessible name of the button that empties the session search field",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Screen-reader only: the button shows an icon. It clears the query and returns focus to the field beside it.",
+		"placeholders": {}
+	},
+	"ui.chat.analytics.search.sessions": {
+		"role": "shared accessible name and placeholder of the by-session search field",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "One message used twice on the same input: as its aria-label and as its placeholder. It names what searching narrows — the session rows of this window — not the whole app.",
+		"placeholders": {}
+	},
+	"ui.chat.analytics.sections.by_channel": {
+		"role": "heading of the by-channel spend table",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Heads the section that breaks published spend down per channel. It renders only on a backend that advertises the channel ledger.",
+		"placeholders": {}
+	},
+	"ui.chat.analytics.sections.by_model": {
+		"role": "heading of the by-model usage table",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Heads the table that ranks models by output tokens for the selected window. The meta beside it says it comes from the ledger and is ranked by output tokens.",
+		"placeholders": {}
+	},
+	"ui.chat.analytics.sections.by_provider": {
+		"role": "heading of the by-provider usage table",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Heads the table that groups ledger calls per provider. It is one of three table headings that share the 'By …' shape, so keep the preposition consistent.",
+		"placeholders": {}
+	},
+	"ui.chat.analytics.sections.by_session": {
+		"role": "heading of the by-session usage table",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Heads the sortable table of own figures per session. The meta beside it notes that totals include subagents, which is why the top-level filter sits above the table.",
+		"placeholders": {}
+	},
+	"ui.chat.analytics.sections.totals": {
+		"role": "heading of the analytics panel's aggregate stat cards",
+		"tone": "noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Heads the requests, tokens and cost cards above the charts. The meta beside it names the window and scope those totals cover.",
+		"placeholders": {}
+	},
+	"ui.chat.analytics.title": {
+		"role": "dialog title of the analytics panel",
+		"tone": "noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Heads the read-only analytics panel opened from the picker. The description beneath it names the backend ledger as the source.",
+		"placeholders": {}
+	},
+	"ui.chat.analytics.toolbar.refreshing": {
+		"role": "status text beside the analytics toolbar controls while a refetch is in flight",
+		"tone": "plain status, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Pushed to the toolbar's far edge while the next read is in flight; it states that the numbers below may move rather than blocking the panel.",
+		"placeholders": {}
+	},
+	"ui.chat.analytics.toolbar.this_session_only": {
+		"role": "checkbox label scoping the analytics panel to the open session",
+		"tone": "label phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Renders in the toolbar only when the panel may scope to a session. It narrows every section of the panel, and the window meta names the resulting scope.",
+		"placeholders": {}
+	}
+}

@@ -3497,3 +3497,116 @@ test("team_bridge account-scoped reads map scope=account and page on cursor", ()
 		{ message: /An account-scoped page uses cursor, not before/ },
 	);
 });
+
+test("team_bridge directory is tenant-scoped and status is the shared status route", () => {
+	/*
+	 * The directory slice's two reads. `directory` names its tenant in the QUERY
+	 * and refuses an op without one: there is no account-wide directory in this
+	 * client, so a missing tenant must be a 422 at this boundary rather than a
+	 * server-default organization the reader never chose. `status` is the
+	 * existing status payload under the bridge namespace; an absent boundary is
+	 * no query at all, not the literal "undefined" the sibling settings op
+	 * emits when its boundary is missing.
+	 */
+	assert.throws(() => jobsCancelSchema.parse({ op: "team_bridge.directory" }));
+	const directory = jobsCancelEndpoint({
+		op: "team_bridge.directory",
+		tenant_id: "tnt_1",
+	});
+	assert.equal(directory.method, "GET");
+	assert.equal(
+		directory.path,
+		"/v1/desktop/team-bridge/directory?tenant_id=tnt_1",
+	);
+	// The tenant is an encoded query VALUE: a crafted id cannot add a second
+	// parameter or a path segment.
+	const crafted = jobsCancelEndpoint({
+		op: "team_bridge.directory",
+		tenant_id: "tnt_1&scope=account",
+	});
+	assert.equal(
+		crafted.path,
+		"/v1/desktop/team-bridge/directory?tenant_id=tnt_1%26scope%3Daccount",
+	);
+
+	const status = jobsCancelEndpoint({
+		op: "team_bridge.status",
+		boundary: "surface_open",
+	});
+	assert.equal(status.method, "GET");
+	assert.equal(
+		status.path,
+		"/v1/desktop/team-bridge/status?boundary=surface_open",
+	);
+	const bareStatus = jobsCancelEndpoint({ op: "team_bridge.status" });
+	assert.equal(bareStatus.path, "/v1/desktop/team-bridge/status");
+});
+
+test("team_bridge join adds the caller and notify rides the read route", () => {
+	/*
+	 * The discoverable-channel slice (agent-server #148) has two writes this
+	 * client owns. Join is the conversation domain's own POST .../join, with the
+	 * row's tenant in the body: in the merged view the rail scope is "all", so a
+	 * join that named no organization would be resolved by the server's default
+	 * — the one way a row could be joined under the wrong tenant.
+	 *
+	 * Notify is a field on the READ route, not a separate route. The op therefore
+	 * sends `notify` and no `seq`: choosing a preference must never advance the
+	 * cursor, and the body shape this test pins is exactly what the route reads.
+	 */
+	const join = jobsCancelEndpoint({
+		op: "team_bridge.conversations.join",
+		conversation_id: "bcv_abc12345",
+		tenant_id: "tnt_2",
+	});
+	assert.equal(join.method, "POST");
+	assert.equal(
+		join.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/join",
+	);
+	assert.deepEqual(join.body, { tenant_id: "tnt_2" });
+
+	const noTenant = jobsCancelEndpoint({
+		op: "team_bridge.conversations.join",
+		conversation_id: "bcv_abc12345",
+	});
+	assert.equal(noTenant.body, undefined);
+
+	const notify = jobsCancelEndpoint({
+		op: "team_bridge.conversations.notify",
+		conversation_id: "bcv_abc12345",
+		tenant_id: "tnt_2",
+		notify: "mention",
+	});
+	assert.equal(notify.method, "POST");
+	assert.equal(
+		notify.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/read",
+	);
+	assert.deepEqual(notify.body, { tenant_id: "tnt_2", notify: "mention" });
+	assert.equal(
+		"seq" in notify.body,
+		false,
+		"a preference write carries no seq",
+	);
+	assert.equal(
+		"muted" in notify.body,
+		false,
+		"the legacy flag is not sent beside notify",
+	);
+
+	// The closed set is the op boundary's, so a typo cannot reach the route.
+	assert.throws(() =>
+		jobsCancelSchema.parse({
+			op: "team_bridge.conversations.notify",
+			conversation_id: "bcv_abc12345",
+			notify: "loud",
+		}),
+	);
+	assert.throws(() =>
+		jobsCancelSchema.parse({
+			op: "team_bridge.conversations.notify",
+			conversation_id: "bcv_abc12345",
+		}),
+	);
+});

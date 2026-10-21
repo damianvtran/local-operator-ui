@@ -105,6 +105,18 @@ export const DEV_DRIVER_FACTS = "dev-driver-facts";
 /** The world key the preload exposes. Namespaced so it cannot collide with the app's own. */
 export const DEV_DRIVER_WORLD_KEY = "__loDevDriver";
 
+/**
+ * S1's address-overlay probe channel, handled by the BROWSER namespace's IPC
+ * (`browser/ipc.ts`) because the overlay it operates belongs to the browser
+ * host. Registered only when the launch gate passed; the bridge below exists
+ * only in an armed launch, so an ordinary run has neither half.
+ */
+export const DEV_DRIVER_ADDRESS_OVERLAY = "dev-driver-address-overlay";
+
+/** The complete input vocabulary, re-exported so main's handler and the preload
+ * wrapper cannot drift on a spelling. */
+export type AddressOverlayProbeAction = "show" | "hide" | "facts";
+
 /** Values that count as "yes". Anything else that is set is a typo, not an opt-in. */
 const TRUTHY = new Set(["1", "true"]);
 

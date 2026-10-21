@@ -233,6 +233,14 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/browser-address-overlay-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to drive S1's native child; its environment carries the notification kill switch like every other app rig",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/renderer-driver.mjs",
 		"spawn",
 		1,
@@ -325,6 +333,22 @@ const APP_SPAWN_SITES = [
 		/(?:\{|,)\s*env\s*,/,
 		"boots the app headless to measure the environment it hands the backend it spawns, so the app and that backend both banner here if the switch is missing",
 		/withNotificationsOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-url-autocomplete-proof.mjs",
+		"spawn",
+		1,
+		/env,\s*detached:/,
+		"boots the built app headless against local fixture sites to exercise the address bar's local autocomplete with real input and real keys",
+		/const env = withTelemetryOff\(\s*withNotificationsOff\(\{/,
+	),
+	guarded(
+		"scripts/browser-tab-menu-turn-proof.mjs",
+		"spawn",
+		1,
+		/env:\s*spawnEnv,/,
+		"boots the built app headless against an isolated backend to open the tab-actions menu over a REAL running turn - a stopped turn is exactly the state a notification is posted from, so a missing switch here banners the operator about a stop they just made themselves",
+		/const spawnEnv = withNotificationsOff\(\{/,
 	),
 	guarded(
 		"scripts/interrupt-esc-proof.mjs",

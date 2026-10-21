@@ -19,6 +19,10 @@ import {
 	type DaemonStatusSnapshot,
 } from "../shared/backend-status";
 import type {
+	AddressHistoryRequest,
+	AddressHistoryResponse,
+} from "../shared/browser-address-history";
+import type {
 	HumanTabAction,
 	HumanTabActionOutcome,
 } from "../shared/browser-tab-action";
@@ -50,6 +54,10 @@ import {
 	isMiniViewSummonedPayload,
 } from "../shared/mini-view";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
+import type {
+	TeamBridgeNotifyRequest,
+	TeamBridgeOpenTarget,
+} from "../shared/team-bridge-notify";
 import {
 	type WebauthnRequestPayload,
 	type WebauthnSettledOutcome,
@@ -124,6 +132,26 @@ const api = {
 		releaseWatchHeartbeat: (args: { sessionId: string }) =>
 			ipcRenderer.invoke("desktop-watch-release", args),
 		closeWindow: () => ipcRenderer.invoke("desktop-close-window"),
+		/**
+		 * Team Bridge banners: the renderer composes the two display strings from
+		 * conversation metadata; main validates, dedupes and delivers them. A click
+		 * wakes `onOpen`, which carries no payload: the target stays parked in main
+		 * until the renderer pulls it via `pendingOpen`, so a click that lands while
+		 * the renderer is loading is delivered on the next pull rather than dropped.
+		 */
+		teamBridge: {
+			notify: (input: TeamBridgeNotifyRequest): Promise<{ shown: boolean }> =>
+				ipcRenderer.invoke("team-bridge:notify", input),
+			onOpen: (callback: () => void) => {
+				const handler = () => callback();
+				ipcRenderer.on("team-bridge:open", handler);
+				return () => {
+					ipcRenderer.removeListener("team-bridge:open", handler);
+				};
+			},
+			pendingOpen: (): Promise<TeamBridgeOpenTarget | null> =>
+				ipcRenderer.invoke("team-bridge:pending-open"),
+		},
 		/**
 		 * The conversation main launched this window to show, read from THIS
 		 * process's argv (`webPreferences.additionalArguments`, set only when the
@@ -899,8 +927,12 @@ const api = {
 			ipcRenderer.invoke("browser-close-tabs", intent),
 		activateTab: (tabId: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-activate-tab", tabId),
-		navigate: (url: string): Promise<unknown> =>
-			ipcRenderer.invoke("browser-navigate", url),
+		addressHistory: (
+			request: AddressHistoryRequest,
+		): Promise<AddressHistoryResponse> =>
+			ipcRenderer.invoke("browser-address-history", request),
+		navigate: (url: string, expectedTabId?: number): Promise<unknown> =>
+			ipcRenderer.invoke("browser-navigate", url, expectedTabId),
 		home: (): Promise<unknown> => ipcRenderer.invoke("browser-home"),
 		reload: (hard = false): Promise<unknown> =>
 			ipcRenderer.invoke("browser-reload", hard),

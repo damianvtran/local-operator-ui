@@ -365,5 +365,308 @@
 			"count": "the unread total carried by the group"
 		},
 		"note": "States the count when the More row carries a badge, so a screen-reader user hears the same fact the badge shows. Do not name a single destination."
+	},
+	"ui.teamBridge.preview.chip": {
+		"role": "conversation row chip",
+		"tone": "neutral, quiet",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Marks a discoverable channel the reader has not joined. It is a state, not an action; keep it short and do not translate it as a verb."
+	},
+	"ui.teamBridge.preview.banner": {
+		"role": "preview thread call to action",
+		"tone": "plain, inviting",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "The reader can see the channel's metadata but not its history because they are not a member. States both consequences of joining: history and notifications."
+	},
+	"ui.teamBridge.preview.join": {
+		"role": "primary action in the preview banner",
+		"tone": "imperative",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Joins the channel. Same word the invitation flow uses; do not add \"channel\" because the banner already names it."
+	},
+	"ui.teamBridge.preview.join_error": {
+		"role": "inline error beside the Join action",
+		"tone": "factual, no blame",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "A refused join (server or transport). The action stays available, so the sentence must not imply the channel is unreachable."
+	},
+	"ui.teamBridge.menu.label": {
+		"role": "icon button accessible name",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "Opens the conversation's own menu (mute, notification level). It must work as a button name on its own and not name a specific action."
+	},
+	"ui.teamBridge.menu.mute": {
+		"role": "conversation menu action",
+		"tone": "imperative",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "Silences the conversation immediately. Keep the object explicit (conversation) because the same menu also has a Mute radio row."
+	},
+	"ui.teamBridge.menu.unmute": {
+		"role": "conversation menu action",
+		"tone": "imperative",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "The inverse of Mute conversation, shown while the conversation is muted. Restores all messages."
+	},
+	"ui.teamBridge.notify.label": {
+		"role": "menu section heading / radio group label",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "Names the three-level notification choice below it. \"Preferences\" is the product's word for a remembered setting."
+	},
+	"ui.teamBridge.notify.all": {
+		"role": "notification level",
+		"tone": "neutral",
+		"length": "2 words.",
+		"placeholders": {},
+		"note": "Every message may notify. Parallel with Mentions and Mute; do not say \"everything\"."
+	},
+	"ui.teamBridge.notify.mention": {
+		"role": "notification level",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Only a mention notifies. Plural describes the class of messages, not a count."
+	},
+	"ui.teamBridge.notify.mute": {
+		"role": "notification level",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "The silent level. Same word as the immediate action's verb, but here it names the state the radio selects."
+	},
+	"ui.teamBridge.notify.muted": {
+		"role": "row glyph accessible name",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "States why a muted conversation's unread count does not raise the sidebar badge. Past participle; not an action."
+	},
+	"ui.teamBridge.notify.error": {
+		"role": "inline error under the thread header",
+		"tone": "factual, no blame",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "A refused notification-preference write. The menu has closed and the previous value is restored; this line explains why. Mirrors the composer's send-failure sentence."
+	},
+	"ui.teamBridge.notify.title": {
+		"role": "OS notification title",
+		"tone": "plain, factual",
+		"length": "One short line; the OS may truncate.",
+		"placeholders": {
+			"conversation": "the conversation name as the list row shows it",
+			"organization": "the organization the conversation belongs to"
+		},
+		"note": "Names where the message is. Keep the two nouns in the given order and keep both, because two same-named conversations in different organizations are the case this line disambiguates."
+	},
+	"ui.teamBridge.notify.body": {
+		"role": "OS notification body",
+		"tone": "neutral, one sentence",
+		"length": "One short sentence.",
+		"placeholders": {
+			"sender": "the display label the server already shows for the sender"
+		},
+		"note": "States who sent a message. No message text is available to this surface by design, so do not imply the body is quoted."
+	},
+	"ui.teamBridge.notify.body_fallback": {
+		"role": "OS notification body when no sender label is published",
+		"tone": "neutral",
+		"length": "2-4 words.",
+		"placeholders": {},
+		"note": "The honest sentence when the server does not expose a sender label. Do not invent a sender name."
+	},
+	"ui.teamBridge.people.title": {
+		"role": "rail section heading",
+		"tone": "neutral, sentence-case noun",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "Names the block of people below the conversation list. The same noun the org directory uses."
+	},
+	"ui.teamBridge.people.loading": {
+		"role": "loading state for the People section",
+		"tone": "neutral",
+		"length": "2-3 words.",
+		"placeholders": {},
+		"note": "Also the spinner's accessible label. Says what is loading, not just that something is."
+	},
+	"ui.teamBridge.people.error": {
+		"role": "error state for the People section",
+		"tone": "factual, no blame",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The directory read failed. It sits inside the rail and must not imply the conversations above it also failed."
+	},
+	"ui.teamBridge.people.empty": {
+		"role": "empty state for the People section",
+		"tone": "neutral",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "No other active person is in this organization. Do not apologise and do not offer an invite action this surface does not have."
+	},
+	"ui.teamBridge.people.self": {
+		"role": "the signed-in person's own row",
+		"tone": "neutral",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "Replaces the account's own display label. The row is not clickable; this word is not an action."
+	},
+	"ui.teamBridge.people.paused": {
+		"role": "a person's bridge status note",
+		"tone": "neutral, one word",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "The person paused Team Bridge. The row still opens their DM history, so this is a state note, not a warning."
+	},
+	"ui.teamBridge.people.bridge_off": {
+		"role": "explanation for an inert person row",
+		"tone": "plain, not judgemental",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "The reason the row cannot be clicked. Shown as the row's tooltip and its assistive description; it states the person's choice, never a failure."
+	},
+	"ui.teamBridge.people.all_scope": {
+		"role": "People section note in the merged organization view",
+		"tone": "helpful, one sentence",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The merged view has no single roster. Tells the reader how to see one; do not imply people are missing."
+	},
+	"ui.teamBridge.people.message": {
+		"role": "accessible name of a reachable person row",
+		"tone": "imperative",
+		"length": "2-3 words plus a name.",
+		"placeholders": {
+			"name": "the person's display label"
+		},
+		"note": "Names the action the row performs (open a DM). It replaces the row's visible text for screen readers, so the label must contain the person's name."
+	},
+	"ui.teamBridge.people.message_paused": {
+		"role": "accessible name of a reachable person row whose bridge is paused",
+		"tone": "imperative plus a state note",
+		"length": "3-5 words.",
+		"placeholders": {
+			"name": "the person's display label"
+		},
+		"note": "Same action as the message row, with the paused state attached so the state is not lost when the visible note is overridden by the accessible name."
+	},
+	"ui.teamBridge.plan.title": {
+		"role": "eligibility panel heading for a plan without Team Bridge",
+		"tone": "factual, calm",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The organization is signed in and current; its plan lacks the feature. Do not suggest a trial upgrade this surface cannot start."
+	},
+	"ui.teamBridge.plan.body": {
+		"role": "value sentence on every eligibility panel",
+		"tone": "plain, one sentence",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Explains what Team Bridge is for. Keep both halves: people talking to people's agents, and agents collaborating with agents."
+	},
+	"ui.teamBridge.plan.reason": {
+		"role": "eligibility reason for surface state A",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The honest state reason. It must not read as the user's fault."
+	},
+	"ui.teamBridge.plan.sign_in_title": {
+		"role": "eligibility panel heading when signed out",
+		"tone": "direct, calm",
+		"length": "3-4 words.",
+		"placeholders": {},
+		"note": "The panel draws no control; the title is the instruction the reader would see in the app's own sign-in flow."
+	},
+	"ui.teamBridge.plan.sign_in_reason": {
+		"role": "eligibility reason when signed out",
+		"tone": "factual",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "States the state and the next step. No fake button: the surface has no sign-in control of its own."
+	},
+	"ui.teamBridge.plan.update_title": {
+		"role": "eligibility panel heading when the app is too old",
+		"tone": "direct, calm",
+		"length": "3-5 words.",
+		"placeholders": {},
+		"note": "Names the remedy (update) without pretending this panel can run it."
+	},
+	"ui.teamBridge.plan.update_reason": {
+		"role": "eligibility reason when the app is too old",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Says the version is the constraint; do not name a version number this client does not know."
+	},
+	"ui.teamBridge.plan.unavailable_title": {
+		"role": "eligibility panel heading when the service is unavailable",
+		"tone": "factual",
+		"length": "3-4 words.",
+		"placeholders": {},
+		"note": "A service state, not a plan or account problem."
+	},
+	"ui.teamBridge.plan.unavailable_reason": {
+		"role": "eligibility reason when the service is unavailable",
+		"tone": "factual, no blame",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "Says the service, not the organization, is the cause. 'Try again later' is the only honest action this panel offers."
+	},
+	"ui.teamBridge.people.list_loading": {
+		"role": "explanation for an inert person row while conversations load",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The row cannot know whether a DM already exists until the list answers, so it does not act. Do not imply the person is unavailable."
+	},
+	"ui.teamBridge.people.list_error": {
+		"role": "explanation for an inert person row after a list failure",
+		"tone": "factual, no blame",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The conversation list failed, so a DM cannot be resolved and a duplicate must not be started. This is about the read, not the person."
+	},
+	"ui.teamBridge.people.identity_loading": {
+		"role": "explanation for an inert person row before the account is known",
+		"tone": "neutral",
+		"length": "3-4 words.",
+		"placeholders": {},
+		"note": "Without the signed-in account the rail cannot tell the viewer's own row from a colleague's, so every row waits. Do not name the person."
+	},
+	"ui.teamBridge.read_only.note": {
+		"role": "note beside the disabled New conversation action in surface F",
+		"tone": "factual",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "The organization's Team Bridge is read-only. A state, not the reader's mistake; the server would refuse any write."
+	},
+	"ui.teamBridge.read_only.composer": {
+		"role": "replacement for the composer in a read-only organization",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Says the history is readable but sending is not. Do not offer a disabled composer."
+	},
+	"ui.teamBridge.read_only.person": {
+		"role": "explanation for an inert person row with no existing DM in surface F",
+		"tone": "factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Opening an existing DM is a read and stays available; starting one is a write and is not. Inline the reason so the row is not a silent no-op."
+	},
+	"ui.teamBridge.plan.checking": {
+		"role": "first-paint loading state while the eligibility read answers",
+		"tone": "neutral",
+		"length": "2-4 words.",
+		"placeholders": {},
+		"note": "Also the spinner's accessible label. Names the product, not a generic loading."
 	}
 }

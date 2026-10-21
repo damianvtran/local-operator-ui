@@ -24,9 +24,9 @@ import type { CanvasDocument } from "@features/chat/types/canvas";
 import { Button } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { Download, LoaderCircle } from "lucide-react";
+import { Download, LoaderCircle, Maximize2 } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import * as XLSX from "xlsx";
@@ -34,7 +34,9 @@ import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-
 import { useLibraryBytes, useObjectUrl } from "../hooks/use-library-queries";
 import { saveAssetCopy } from "../library-download";
 import { libraryMarkdownDocument } from "../library-markdown";
+import { assetDisplayName } from "../library-model";
 import { KindGlyph } from "./library-glyph";
+import { LibraryMediaLightbox } from "./library-media-lightbox";
 import { PptxViewer } from "./pptx-viewer";
 
 const Loading: FC<{ label?: string }> = ({ label }) => (
@@ -116,27 +118,233 @@ const Unsupported: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => (
 	</div>
 );
 
-/** Image, audio and video share one byte fetch and one media element. */
-const MediaViewer: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
+/**
+ * How much of the clip's bottom edge the click target must leave to the player.
+ *
+ * Chromium draws the media control panel INSIDE the element, and at this app's
+ * preview size (the story fixture's 320x180 clip) it is two rows: the scrubber
+ * sits ~21 CSS pixels above the element's bottom edge and the play/pause row's
+ * glyph centre ~48px above it, inside a panel that reaches ~64px up. A press at
+ * the visible play icon's centre must reach the player - a 32px band left the
+ * icon under the target, so pressing it opened the viewer instead of playing
+ * (QA round 2, Q5). The band is the panel's full height plus the few pixels of
+ * its own padding, so every native control row belongs to the player and the
+ * picture above the band still opens the viewer.
+ *
+ * The number is stated once here rather than recomputed per render because it
+ * is a property of the player, not of the asset. Measured at the fixture's
+ * 320x180 and re-measured with the element stretched to 800x450, the panel
+ * stays around 64px tall; it shrinks only for very small elements (200x112 put
+ * the play row about 30px up), where this band is conservative rather than
+ * short — the picture above it still takes the press. Re-measure it if Chromium
+ * changes its media controls; the story's play asserts a point in the panel's
+ * middle and a point in the picture.
+ */
+export const VIDEO_CONTROL_BAND_PX = 72;
+
+/**
+ * Image, audio and video share one byte fetch and one media element.
+ *
+ * THE PICTURE AND THE CLIP OPEN THE FULL-SCREEN VIEWER. The preview's media was
+ * inert: clicking the picture did nothing, and the only way to see the pixels
+ * larger was the full-window details view, which is a different surface rather
+ * than a bigger picture (operator item 7: "click the image or video in the
+ * details view to see it full screen, without opening the full-screen details
+ * view"). So the image is a button and the clip is covered by a click target
+ * over its picture; both mount `LibraryMediaLightbox`, the shared
+ * `ImageLightbox` over the listing's media rows, and neither touches the page's
+ * selection route.
+ *
+ * THE VIDEO'S CONTROL BAND IS THE ONE LANE THE TARGET LEAVES ALONE, and that is
+ * a measurement, not a preference: play/pause, the scrubber and volume live
+ * INSIDE the element, so a target that covered their rows would take those
+ * presses before the player saw them. The target is sized from the CLIP's own
+ * box (not the pane's, which is larger whenever the clip letterboxes) and stops
+ * `VIDEO_CONTROL_BAND_PX` above its bottom edge - the measured full height of
+ * the native panel, not just the scrubber row (QA round 2, Q5); `ResizeObserver`
+ * keeps those numbers true across a pane resize or the clip's aspect settling
+ * after metadata. Measured on the story fixture: a press on the visible play
+ * icon's centre starts the clip, a press on the scrubber seeks, and a press on
+ * the picture above the band opens the viewer. The expand control in the corner
+ * stays as the keyboard and first-run affordance, painted above the target.
+ */
+const MediaViewer: FC<{
+	asset: DesktopLibraryAsset;
+	/**
+	 * The listing's image and video rows, in display order, threaded from the
+	 * page. The lightbox's set; omitted means this asset stands alone.
+	 */
+	mediaSiblings?: readonly DesktopLibraryAsset[];
+}> = ({ asset, mediaSiblings }) => {
 	const { bytes, mimeType, error, loading } = useLibraryBytes(
 		asset.id,
 		"content",
 		true,
 	);
 	const source = useObjectUrl(bytes, mimeType || asset.ref.content_type);
+	const imageTriggerRef = useRef<HTMLButtonElement>(null);
+	const videoTriggerRef = useRef<HTMLButtonElement>(null);
+	const videoPaneRef = useRef<HTMLDivElement>(null);
+	const videoRef = useRef<HTMLVideoElement>(null);
+	/*
+	 * The clip's box inside its pane, for the click target. Null until the video
+	 * has been measured; the target renders only then, so it is never painted at
+	 * a guessed size (the first frame before metadata is a 0x0 box).
+	 */
+	const [videoSurface, setVideoSurface] = useState<{
+		top: number;
+		left: number;
+		width: number;
+		height: number;
+	} | null>(null);
+	/*
+	 * Local to the viewer: the slide the lightbox shows is the overlay's state,
+	 * not the page's selection. A strip tile press stays in the lightbox — the
+	 * viewer must not move where the reader is — so the preview underneath keeps
+	 * showing the asset the route selected.
+	 */
+	const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+	/*
+	 * The set is the LISTING's media in display order, filtered to what the
+	 * lightbox can show (`mediaKind` is image or video). If the selected asset
+	 * is not in the loaded pages — a deep link into a filtered listing, or a
+	 * detail row the cursor has since paged past — it stands alone rather than
+	 * dropping into a group it is not a member of.
+	 */
+	const siblings = useMemo(() => {
+		const media = (mediaSiblings ?? []).filter(
+			(row) => row.kind === "image" || row.kind === "video",
+		);
+		return media.some((row) => row.id === asset.id) ? [...media] : [asset];
+	}, [mediaSiblings, asset]);
+	const position = Math.max(
+		0,
+		siblings.findIndex((row) => row.id === asset.id),
+	);
+	/*
+	 * The accessible name is the asset's own name. A written-out "view full
+	 * screen" sentence would be new English copy, which this repository prices at
+	 * a translation tranche: `locale-parity` requires all seven shipped locales to
+	 * carry every new key and `ledger-check` requires audited receipts for the
+	 * rewritten source, so copy is not added in a wiring change.
+	 */
+	const fullScreenLabel = assetDisplayName(asset);
+	/*
+	 * MEASURE THE CLIP, NOT THE PANE. The pane is larger than a letterboxed clip,
+	 * so a pane-sized target would either miss the picture or cover the native bar;
+	 * the target's box is the video element's own rect relative to the pane, minus
+	 * the control band at its bottom edge. `ResizeObserver` covers pane resizes
+	 * and the aspect settling after metadata; jsdom has no observer, and there the
+	 * geometry is not what the suite is testing, so the measurement is simply
+	 * skipped.
+	 */
+	useEffect(() => {
+		if (asset.kind !== "video" || !source) return;
+		const pane = videoPaneRef.current;
+		const video = videoRef.current;
+		if (!pane || !video) return;
+		const measure = () => {
+			const paneBox = pane.getBoundingClientRect();
+			const videoBox = video.getBoundingClientRect();
+			const height = Math.max(0, videoBox.height - VIDEO_CONTROL_BAND_PX);
+			/*
+			 * NOTHING IS PUBLISHED UNTIL THE CLIP HAS A BOX (UX round 1, U1).
+			 * Before `loadedmetadata` arrives the element can measure zero tall,
+			 * and a zero-height target cannot be hit: the story's centre press
+			 * fell through to the player and the promise "a press on the picture
+			 * opens the viewer" was false for the first frames of every clip. The
+			 * residual is stated rather than hidden: until the clip has a frame
+			 * there is no target over the picture, and the corner expand control
+			 * (which needs no geometry) is the affordance in that window.
+			 */
+			if (height <= 0 || videoBox.width <= 0) {
+				setVideoSurface((current) => (current === null ? current : null));
+				return;
+			}
+			const next = {
+				top: videoBox.top - paneBox.top,
+				left: videoBox.left - paneBox.left,
+				width: videoBox.width,
+				height,
+			};
+			setVideoSurface((current) =>
+				current &&
+				current.top === next.top &&
+				current.left === next.left &&
+				current.width === next.width &&
+				current.height === next.height
+					? current
+					: next,
+			);
+		};
+		measure();
+		/*
+		 * `loadedmetadata` is the aspect settling, `loadeddata`/`canplay` the
+		 * first decoded frame, and the window listener covers a pane resize on
+		 * hosts without `ResizeObserver`; the observer below covers the same
+		 * ground where it exists.
+		 */
+		video.addEventListener("loadedmetadata", measure);
+		video.addEventListener("loadeddata", measure);
+		video.addEventListener("canplay", measure);
+		window.addEventListener("resize", measure);
+		const observer =
+			typeof ResizeObserver === "undefined"
+				? null
+				: new ResizeObserver(measure);
+		observer?.observe(video);
+		observer?.observe(pane);
+		return () => {
+			observer?.disconnect();
+			video.removeEventListener("loadedmetadata", measure);
+			video.removeEventListener("loadeddata", measure);
+			video.removeEventListener("canplay", measure);
+			window.removeEventListener("resize", measure);
+		};
+	}, [asset.kind, source]);
 	if (loading) return <Loading />;
 	if (error || !source)
 		return <Failure detail={error || "The bytes were empty."} asset={asset} />;
+	/*
+	 * ALWAYS MOUNTED, opened and closed through `open`. See
+	 * `LibraryMediaLightboxProps.open`: unmounting the dialog from the close
+	 * callback skips Radix's close-auto-focus and loses the focus return.
+	 */
+	const lightbox = (
+		<LibraryMediaLightbox
+			open={lightboxIndex !== null}
+			siblings={siblings}
+			index={lightboxIndex ?? position}
+			onIndexChange={setLightboxIndex}
+			onClose={() => setLightboxIndex(null)}
+			/* The bytes this viewer already resolved, so opening costs no read. */
+			resolved={{ assetId: asset.id, url: source }}
+			restoreFocusTo={
+				asset.kind === "video" ? videoTriggerRef : imageTriggerRef
+			}
+		/>
+	);
 	switch (asset.kind) {
 		case "image":
 			return (
-				<div className="flex h-full min-h-0 w-full min-w-0 flex-1 items-center justify-center overflow-hidden bg-canvas p-3">
-					<img
-						src={source}
-						alt={asset.name || asset.derived_name}
-						className="block h-auto max-h-full w-auto max-w-full object-contain"
-					/>
-				</div>
+				<>
+					<button
+						type="button"
+						ref={imageTriggerRef}
+						aria-label={fullScreenLabel}
+						title={fullScreenLabel}
+						onClick={() => setLightboxIndex(position)}
+						data-library-media-trigger="image"
+						className="flex h-full min-h-0 w-full min-w-0 flex-1 cursor-zoom-in items-center justify-center overflow-hidden bg-canvas p-3"
+					>
+						<img
+							src={source}
+							alt={asset.name || asset.derived_name}
+							className="block h-auto max-h-full w-auto max-w-full object-contain"
+						/>
+					</button>
+					{lightbox}
+				</>
 			);
 		case "audio":
 			return (
@@ -149,15 +357,60 @@ const MediaViewer: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
 			);
 		default:
 			return (
-				<div className="flex h-full min-h-0 w-full min-w-0 flex-1 items-center justify-center overflow-hidden bg-canvas p-3">
-					<video
-						src={source}
-						controls
-						className="max-h-full max-w-full rounded-sm"
+				<>
+					<div
+						ref={videoPaneRef}
+						className="relative flex h-full min-h-0 w-full min-w-0 flex-1 items-center justify-center overflow-hidden bg-canvas p-3"
 					>
-						<track kind="captions" />
-					</video>
-				</div>
+						<video
+							ref={videoRef}
+							src={source}
+							controls
+							className="max-h-full max-w-full rounded-sm"
+						>
+							<track kind="captions" />
+						</video>
+						{/*
+						 * The clip's click target. `bg-transparent` and a pointer cursor, sized
+						 * to the picture above the native control band; out of the tab order
+						 * because the corner expand control is the keyboard affordance and two
+						 * identically named stops would be noise, not access. `aria-hidden` for
+						 * the same reason (agent review round 1, N2 / UX U2): it is a pointer
+						 * surface for the same action, so it must not appear in the
+						 * accessibility tree as a second, identically named button. The
+						 * expand control keeps the name.
+						 */}
+						{videoSurface ? (
+							<button
+								type="button"
+								tabIndex={-1}
+								aria-hidden="true"
+								onClick={() => setLightboxIndex(position)}
+								data-library-media-trigger="video-surface"
+								className="absolute z-[1] cursor-zoom-in bg-transparent"
+								style={{
+									top: videoSurface.top,
+									left: videoSurface.left,
+									width: videoSurface.width,
+									height: videoSurface.height,
+								}}
+							/>
+						) : null}
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							ref={videoTriggerRef}
+							aria-label={fullScreenLabel}
+							title={fullScreenLabel}
+							onClick={() => setLightboxIndex(position)}
+							data-library-media-trigger="video"
+							className="absolute top-2 right-2 z-[2]"
+						>
+							<Maximize2 aria-hidden="true" />
+						</Button>
+					</div>
+					{lightbox}
+				</>
 			);
 	}
 };
@@ -338,7 +591,31 @@ const SpreadsheetTable: FC<{
 			<table className="w-full border-collapse text-meta">
 				<thead>
 					<tr>
-						<th className="sticky top-0 bg-sunken px-2 py-1 text-left text-ink-muted">
+						<th
+							/*
+							 * THE LIBRARY'S COLUMN STRIP IS NOT A BAND, and it must
+							 * not be turned into one.
+							 *
+							 * The Files tab's section headers were a 5% ink wash
+							 * over the rows scrolling beneath them, so a file name
+							 * read through the `Images 86` label. This header was
+							 * never that: it carries `bg-sunken`, an OPAQUE role fill
+							 * with no glass opt-in, so the sheet's rows are hidden
+							 * behind it outright. Measured on the running app, the
+							 * pre-change paint shows no row content through the
+							 * strip at all; a translucent band here would show
+							 * `row-008` under the `A` column label - text over
+							 * text, which is the seam the glass model says a
+							 * translucent sticky header creates.
+							 *
+							 * So the Library keeps its own answer, and the shared
+							 * plane (`data-glass-plane="band-backdrop"`) is for the
+							 * bands that actually need isolating. The two families
+							 * are different cases, and the census measured them
+							 * as such.
+							 */
+							className="sticky top-0 bg-sunken px-2 py-1 text-left text-ink-muted"
+						>
 							#
 						</th>
 						{(rows[0] ?? []).slice(0, MAX_COLS).map((_, index) => (
@@ -388,7 +665,9 @@ const SpreadsheetTable: FC<{
 export const LibraryViewer: FC<{
 	asset: DesktopLibraryAsset;
 	dense?: boolean;
-}> = ({ asset, dense = false }) => {
+	/** The listing's media rows, in display order: the lightbox's set. */
+	mediaSiblings?: readonly DesktopLibraryAsset[];
+}> = ({ asset, dense = false, mediaSiblings }) => {
 	if (asset.kind === "pptx") {
 		return <PptxPreview asset={asset} dense={dense} />;
 	}
@@ -397,7 +676,7 @@ export const LibraryViewer: FC<{
 		asset.kind === "audio" ||
 		asset.kind === "video"
 	)
-		return <MediaViewer asset={asset} />;
+		return <MediaViewer asset={asset} mediaSiblings={mediaSiblings} />;
 	if (asset.kind === "pdf" || asset.kind === "html")
 		return <FrameViewer asset={asset} />;
 	if (

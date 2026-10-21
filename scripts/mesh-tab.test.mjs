@@ -141,6 +141,7 @@ const {
 	deviceReach,
 	reachWords,
 	reachSentence,
+	attemptWords,
 	deviceActivity,
 	REACH_INK,
 	NOT_ATTEMPTED_SENTENCES,
@@ -228,9 +229,7 @@ const overlapping = () => ({
 					name: "workshop-mini",
 					// The wire's own agreement: a device that is not reachable is not reachable on
 					// any membership either (the relay answers both reads from one peer table).
-					// The MISMATCHED pair is pinned in its own test below, where the rule - a
-					// membership or a peer row can only ever CONFIRM reachability - is the
-					// subject rather than an accident of a fixture.
+					// A stale membership disagreeing with a fresh peer answer is covered below.
 					reachable: false,
 					reason: "no route to it",
 					last_seen_at: 1_700_000_000,
@@ -456,22 +455,46 @@ test("state precedence: self, then a suspected identity, then unreachable", () =
 	assert.ok(base, "fixture sanity");
 });
 
-test("the peer catalogue can only ever CONFIRM reachability, never withdraw it", () => {
-	const members = [member(DEVICE_B)];
-	const graph = meshGraph({
-		topology: networkTopology({ networks: [network(NET_ONE, members)] }),
-		peers: peerList({ peers: [peer(DEVICE_B, { reachable: false })] }),
+test("a peer-link answer overrides stale membership reachability and clears on recovery", () => {
+	const topology = networkTopology({
+		networks: [network(NET_ONE, [member(DEVICE_B)])],
 	});
+	const down = meshGraph({
+		topology,
+		peers: peerList({
+			peers: [
+				peer(DEVICE_B, {
+					reachable: false,
+					session_count: null,
+					unreachable_reason: "relay timeout",
+					last_seen_at: 100,
+				}),
+			],
+		}),
+	}).devices[0];
+	assert.equal(down.reachable, false);
+	assert.equal(down.state, "unreachable");
+	assert.equal(down.sessionCount, null);
+	assert.equal(mesh.conversationCountLabel(down.sessionCount), "unknown");
 	assert.equal(
-		graph.devices[0].reachable,
-		true,
-		"the relay dials a device: one membership answering is a fact about the device",
+		mesh.conversationsLinkDown(down, 340),
+		"Link down · relay timeout · last seen 4m ago",
 	);
-	assert.equal(
-		graph.devices[0].reason,
-		"",
-		"a reachable device carries no reason",
-	);
+	const up = meshGraph({
+		topology,
+		peers: peerList({
+			peers: [
+				peer(DEVICE_B, {
+					reachable: true,
+					session_count: 0,
+					last_seen_at: 340,
+				}),
+			],
+		}),
+	}).devices[0];
+	assert.equal(up.reachable, true);
+	assert.equal(mesh.conversationCountLabel(up.sessionCount), "0");
+	assert.equal(mesh.conversationsLinkDown(up, 340), null);
 });
 
 test("an unreachable device carries the backend's own reason", () => {
@@ -594,8 +617,240 @@ test("a device nobody dialled is `not asked`, and never `unreachable` (D2)", () 
 	assert.equal(
 		[...Object.entries(REACH_INK)].filter(([, ink]) => ink === "text-warning")
 			.length,
-		1,
-		"exactly one reach state spends the warning hue, and it is the one the relay answered",
+		4,
+		"the four OBSERVED transport failures spend the warning hue (unanswered, relay down, handshake refused, address unreachable); their distinction is carried in words and glyphs, and no-endpoint/not-a-member/not-attempted/unknown take no hue",
+	);
+});
+
+test("refused TCP, a timeout and a closed handshake are three states, not one", () => {
+	/*
+	 * THE INCIDENT'S THREE CASES (mesh link resilience). The backend now publishes
+	 * `link_state` plus the per-address `attempts`; before it did, every one of these
+	 * arrived as `reachable: false` and one sentence, so the tab told the operator to
+	 * look for one problem when there were three. This executes the wire shapes the
+	 * three stories photograph.
+	 */
+	const relayDown = peerList({
+		peers: [
+			peer(DEVICE_B, {
+				reachable: false,
+				link_state: "relay_down",
+				remote_relay: "not_listening",
+				unreachable_reason:
+					"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError",
+				attempts: [
+					{
+						endpoint: "99.79.190.164:4097",
+						connected: false,
+						detail: "connect_failed:ConnectionRefusedError",
+						latency_ms: null,
+					},
+					{
+						endpoint: "172.31.22.23:4097",
+						connected: false,
+						detail: "connect_failed:TimeoutError",
+						latency_ms: null,
+					},
+				],
+			}),
+		],
+	});
+	assert.equal(relayDown.peers[0].link_state, "relay_down");
+	assert.equal(relayDown.peers[0].remote_relay, "not_listening");
+	assert.deepEqual(
+		relayDown.peers[0].attempts.map((attempt) => attempt.detail),
+		["connect_failed:ConnectionRefusedError", "connect_failed:TimeoutError"],
+		"the per-address evidence survives the normaliser in wire order",
+	);
+	const relayGraph = meshGraph({
+		topology: networkTopology({
+			networks: [network(NET_ONE, [member(DEVICE_B, { reachable: false })])],
+		}),
+		peers: relayDown,
+	});
+	const relayDevice = relayGraph.devices[0];
+	assert.equal(relayDevice.state, "relay_down");
+	assert.equal(deviceReach(relayDevice), "relay-down");
+	assert.equal(deviceStatLine(relayDevice, 1_700_000_100), "relay not running");
+	assert.equal(reachWords(deviceReach(relayDevice)), "relay not running");
+	assert.equal(
+		attemptWords("connect_failed:ConnectionRefusedError"),
+		"nothing listening",
+		"the exception class never reaches the screen",
+	);
+	assert.equal(attemptWords("connect_failed:TimeoutError"), "no answer");
+	assert.equal(attemptWords("ok"), "answered");
+	assert.equal(attemptWords("bad_endpoint"), "bad address");
+	assert.equal(
+		attemptWords("connect_failed:gaierror"),
+		"could not connect",
+		"an open exception family is never printed as a class name",
+	);
+	assert.equal(attemptWords("some_future_detail"), "some_future_detail");
+
+	const refusedHandshake = peerList({
+		peers: [
+			peer(DEVICE_C, {
+				reachable: false,
+				link_state: "handshake_refused",
+				remote_relay: "running",
+				unreachable_reason: "handshake closed with no reason",
+				attempts: [
+					{
+						endpoint: "99.79.190.164:4097",
+						connected: true,
+						detail: "ok",
+						latency_ms: 41,
+					},
+				],
+			}),
+		],
+	});
+	const handshakeGraph = meshGraph({
+		topology: networkTopology({
+			networks: [network(NET_ONE, [member(DEVICE_C, { reachable: false })])],
+		}),
+		peers: refusedHandshake,
+	});
+	const handshakeDevice = handshakeGraph.devices[0];
+	assert.equal(handshakeDevice.state, "handshake_refused");
+	assert.equal(deviceReach(handshakeDevice), "handshake-refused");
+	assert.equal(
+		deviceStatLine(handshakeDevice, 1_700_000_100),
+		"handshake refused",
+	);
+	assert.equal(
+		refusedHandshake.peers[0].attempts[0].connected,
+		true,
+		"the attempt connected; the HANDSHAKE is what closed",
+	);
+	assert.equal(
+		attemptWords(refusedHandshake.peers[0].attempts[0].detail),
+		"answered",
+		"so the row says `answered`, never `no answer`, under the handshake headline",
+	);
+	assert.equal(
+		attemptWords(relayDown.peers[0].attempts[1].detail),
+		"no answer",
+		"and an attempt that never connected keeps the opposite word",
+	);
+
+	/*
+	 * AN OLDER BACKEND HAS NO LINK VOCABULARY, and the client must derive only what
+	 * the old boolean supported: `unreachable_legacy`, which maps to the generic
+	 * `unreachable` state and the old `no answer` words. It must never guess one of
+	 * the new verdicts from the aggregate sentence.
+	 */
+	const legacy = peerList({
+		peers: [
+			peer(DEVICE_D, {
+				reachable: false,
+				unreachable_reason:
+					"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError",
+			}),
+		],
+	});
+	assert.equal(legacy.peers[0].link_state, "unreachable_legacy");
+	assert.equal(legacy.peers[0].attempts, undefined);
+	const legacyGraph = meshGraph({
+		topology: networkTopology({
+			networks: [network(NET_ONE, [member(DEVICE_D, { reachable: false })])],
+		}),
+		peers: legacy,
+	});
+	assert.equal(legacyGraph.devices[0].state, "unreachable");
+	assert.equal(
+		deviceStatLine(legacyGraph.devices[0], 1_700_000_100),
+		"no answer",
+		"a legacy row is never presented as a refused connection it did not observe",
+	);
+});
+
+test("address, no-endpoint and membership verdicts keep their own words", () => {
+	/*
+	 * THE OTHER THREE VERDICTS the wire can send. `address_unreachable` is a dialled
+	 * address that never answered; `no_endpoint` means nothing was dialled; and
+	 * `not_a_member` is a membership/access fact. Folding any of them into `no answer`
+	 * is the same conflation the relay-down fix exists to remove.
+	 */
+	for (const [id, linkState, reach, words] of [
+		[
+			DEVICE_D,
+			"address_unreachable",
+			"address-unreachable",
+			"address unreachable",
+		],
+		[DEVICE_E, "no_endpoint", "no-endpoint", "no address to dial"],
+		[`d_${"f".repeat(32)}`, "not_a_member", "not-a-member", "not a member"],
+	]) {
+		const graph = meshGraph({
+			topology: networkTopology({
+				networks: [network(NET_ONE, [member(id, { reachable: false })])],
+			}),
+			peers: peerList({
+				peers: [
+					peer(id, {
+						reachable: false,
+						link_state: linkState,
+						unreachable_reason: "",
+					}),
+				],
+			}),
+		});
+		const device = graph.devices[0];
+		assert.equal(deviceReach(device), reach);
+		assert.equal(deviceStatLine(device, 1_700_000_100), words);
+		assert.equal(reachWords(deviceReach(device)), words);
+	}
+});
+
+test("the summary names each observed failure class, never one `unreachable`", () => {
+	const graph = meshGraph({
+		topology: networkTopology({
+			networks: [
+				network(NET_ONE, [
+					member(DEVICE_B, { reachable: false }),
+					member(DEVICE_C, { reachable: false }),
+					member(DEVICE_D, { reachable: false }),
+					member(DEVICE_E, { reachable: false }),
+					member(`d_${"f".repeat(32)}`, { reachable: false }),
+				]),
+			],
+		}),
+		peers: peerList({
+			peers: [
+				peer(DEVICE_B, {
+					reachable: false,
+					link_state: "relay_down",
+					remote_relay: "not_listening",
+					unreachable_reason: "no answer",
+				}),
+				peer(DEVICE_C, {
+					reachable: false,
+					unreachable_reason: "no route to it",
+				}),
+				peer(DEVICE_D, {
+					reachable: false,
+					link_state: "address_unreachable",
+					unreachable_reason: "",
+				}),
+				peer(DEVICE_E, {
+					reachable: false,
+					link_state: "no_endpoint",
+					unreachable_reason: "",
+				}),
+				peer(`d_${"f".repeat(32)}`, {
+					reachable: false,
+					link_state: "not_a_member",
+					unreachable_reason: "",
+				}),
+			],
+		}),
+	});
+	assert.equal(
+		meshSummary(graph),
+		"1 network · 5 devices · 1 relay down · 1 address unreachable · 1 no address to dial · 1 not a member · 1 no answer",
+		"a mixed failure census names every verdict; none is folded into one `unreachable`",
 	);
 });
 
@@ -1851,7 +2106,7 @@ test("the Mesh rail row is gated on MEMBERSHIP, and the route on the capability"
 	);
 	assert.match(
 		nav,
-		/\.\.\.\(meshMembership === "member"\s*\?\s*\[\s*\{\s*icon: Network,\s*label: t\("ui\.shell\.sidebar_navigation\.mesh"\),\s*path: "\/mesh",/,
+		/if \(meshMembership === "member"\) \{\s*destinationItems\.set\("mesh", \{\s*icon: Network,\s*label: t\("ui\.shell\.sidebar_navigation\.mesh"\),\s*path: "\/mesh",/,
 		"a row appears only for a device KNOWN to be in a mesh - not for an unknown or empty answer",
 	);
 	assert.doesNotMatch(
@@ -3641,6 +3896,49 @@ test("the one gesture the protocol refuses is not a drag, and every drag has a m
 	);
 });
 
+test("the client's reach word survives both forwarding layers", () => {
+	/*
+	 * ROUND-2 MAJOR: `resolveDrop` computed `reach`, the notice rendered
+	 * `refusal.reach ?? refusal.code`, and both layers in between dropped it - so
+	 * a relay-down drag still printed the machine code `unreachable` under a
+	 * sentence saying "relay not running". The leaf expression was pinned; the
+	 * forwarding was not. Pin both halves: the verdict carries the word, and the
+	 * two call sites pass it.
+	 */
+	const { context } = dropFixture();
+	const peer = context.devices.get(PEER);
+	context.devices.set(PEER, {
+		...peer,
+		state: "relay_down",
+		reachable: false,
+		linkState: "relay_down",
+		remoteRelay: "not_listening",
+		reason:
+			"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError",
+	});
+	const verdict = resolveDrop(
+		drag(session(), SELF, SELF_LABEL),
+		{ kind: "device", deviceId: PEER },
+		context,
+	);
+	assert.equal(verdict.kind, "refused");
+	assert.equal(
+		verdict.reach,
+		"relay not running",
+		"the refusal carries the device's own reach word, not the code",
+	);
+	assert.match(
+		source("src/renderer/src/features/mesh/mesh-canvas.tsx"),
+		/reach: decided\.reach,/,
+		"the canvas forwards it",
+	);
+	assert.match(
+		source("src/renderer/src/features/mesh/mesh-page.tsx"),
+		/reach: verdict\.reach,/,
+		"the page's own drop path forwards it",
+	);
+});
+
 test("a refusal is rendered from the receipt rather than paraphrased", () => {
 	const actions = source("src/renderer/src/features/mesh/mesh-actions.tsx");
 	assert.match(
@@ -3650,8 +3948,8 @@ test("a refusal is rendered from the receipt rather than paraphrased", () => {
 	);
 	assert.match(
 		actions,
-		/\{refusal\?\.code\}/,
-		"with its code beside it, so a support conversation and a log agree",
+		/\{refusal\?\.reach \?\? refusal\?\.code\}/,
+		"with the client's reach word when it has one (the pre-flight refusal has the device in hand), and the route's code otherwise - so a log still agrees with the machine vocabulary",
 	);
 	assert.match(actions, /ui\.mesh\.mesh_actions\.wait_for_the_turn_to_finish/);
 	/*
@@ -4418,4 +4716,65 @@ test("mesh extraction keeps pinned labels and source-language plural fallback", 
 		mesh.clearRegisteredCatalogues();
 		restoreLocale();
 	}
+});
+
+test("nullable counts preserve unknown versus zero and reject timestamp-shaped invalid counts", () => {
+	for (const value of [
+		null,
+		undefined,
+		-1,
+		1.5,
+		Number.NaN,
+		Number.POSITIVE_INFINITY,
+		"2",
+	]) {
+		assert.equal(mesh.nullableCount(value), null);
+	}
+	assert.equal(mesh.nullableCount(0), 0);
+	assert.equal(mesh.nullableCount(2), 2);
+	const [row] = mesh.sessionRows({
+		sessions: [
+			{
+				id: "count-fixture",
+				locality: "remote",
+				owner_device: DEVICE_B,
+				subagents_running: -2,
+				subagents_queued: 1.5,
+				waiting_on: 2,
+				jobs_running: 0,
+			},
+		],
+	});
+	assert.equal(row.subagents_running, null);
+	assert.equal(row.subagents_queued, null);
+	assert.equal(row.waiting_on, 2);
+	assert.equal(row.jobs_running, 0);
+});
+
+test("reach-state story neighbors distinguish suspect unanswered from not-attempted", () => {
+	const oldLaptop = {
+		state: "suspect",
+		suspect: true,
+		reachable: false,
+		reason: "no route to it",
+		sessionCount: null,
+		lastSeenAt: 100,
+	};
+	assert.equal(mesh.deviceReach(oldLaptop), "unanswered");
+	assert.equal(
+		mesh.conversationsLinkDown(oldLaptop, 340),
+		"Link down · no route to it · last seen 4m ago",
+	);
+	const buildBox = {
+		...oldLaptop,
+		state: "unreachable",
+		suspect: false,
+		reason: mesh.NOT_ATTEMPTED_SENTENCES[0],
+	};
+	assert.equal(mesh.deviceReach(buildBox), "not-attempted");
+	assert.match(mesh.conversationsLinkDown(buildBox, 340), /^not asked/);
+	assert.doesNotMatch(mesh.conversationsLinkDown(buildBox, 340), /Link down/);
+	const unknown = { ...buildBox, reason: "" };
+	assert.equal(mesh.deviceReach(unknown), "unknown");
+	assert.equal(mesh.conversationsLinkDown(unknown, 340), "unknown");
 });

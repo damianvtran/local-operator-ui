@@ -502,10 +502,23 @@ test("a completed run arrives collapsed: one bar, the work unmounted, the answer
 		WORKED_RE,
 		"the foot line yields to the bar: one summary per turn",
 	);
-	const stamps = mounted.container.querySelectorAll("time");
-	assert.equal(stamps.length, 1, "one stamp for the turn");
+	/*
+	 * TWO STAMPS, per message (operator, 2026-10-20): the reader's own message
+	 * keeps its time on its action line, and the closing answer's re-homes to the
+	 * bar with the foot it replaces. The answer-side count is what this test is
+	 * about - one per turn, on the bar - and the reader's stamp is a different
+	 * carrier with a different name.
+	 */
+	const userStamps = mounted.container.querySelectorAll(
+		'time[data-stamp="turn"]',
+	);
+	assert.equal(userStamps.length, 1, "the user message states its own time");
+	const answerStamps = mounted.container.querySelectorAll(
+		'time[data-stamp="answer"]',
+	);
+	assert.equal(answerStamps.length, 1, "one answer stamp for the turn");
 	assert.ok(
-		summary.contains(stamps[0]),
+		summary.contains(answerStamps[0]),
 		"and it lives on the bar rather than on the answer it closed",
 	);
 });
@@ -2051,7 +2064,7 @@ test("a pinned row between two hidden spans stays BETWEEN their bars, before and
 	);
 });
 
-test("one stamp per turn with several bars: the answer's foot keeps it", async (t) => {
+test("one answer stamp per turn with several bars: the answer's foot keeps it", async (t) => {
 	__resetTurnCollapseOpen();
 	const mounted = await mount(t, [
 		userRecord("user:1"),
@@ -2060,9 +2073,16 @@ test("one stamp per turn with several bars: the answer's foot keeps it", async (
 		toolRecord("tool:2", { ts: TS + 3_000 }),
 		answerRecord("answer:1", { ts: TS + 4_000, settledAt: TS + 4_000 }),
 	]);
-	assert.equal(mounted.container.querySelectorAll("time").length, 1);
+	assert.equal(
+		mounted.container.querySelectorAll('time[data-stamp="answer"]').length,
+		1,
+	);
+	assert.equal(
+		mounted.container.querySelectorAll('time[data-stamp="turn"]').length,
+		1,
+	);
 	assert.ok(
-		rowBox(mounted, "answer:1").querySelector("time"),
+		rowBox(mounted, "answer:1").querySelector('time[data-stamp="answer"]'),
 		"the stamp is on the answer's own foot, since no single bar states the turn",
 	);
 	assert.match(rowBox(mounted, "answer:1").textContent, WORKED_RE);

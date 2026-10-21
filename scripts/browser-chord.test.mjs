@@ -25,6 +25,7 @@ async function moduleAt(file) {
 const { browserChordIntent } = await moduleAt("src/shared/browser-chord.ts");
 const {
 	browserChromeOwnsChord,
+	browserPageOwnsChord,
 	createBrowserChordRouter,
 	runBrowserMenuAction,
 } = await moduleAt("src/main/browser/browser-chord.ts");
@@ -507,6 +508,86 @@ test("router menu fallback ownership and rapid genuine presses have no debounce"
 		false,
 	);
 });
+test("page ownership accepts the view's own focus fact when getFocusedWebContents answers null", () => {
+	const activeTab = { tabId: 7, webContentsId: 21, presented: true };
+	const foreground = (overrides = {}) => ({
+		isDestroyed: () => false,
+		isVisible: () => true,
+		isFocused: () => true,
+		...overrides,
+	});
+	assert.equal(
+		browserPageOwnsChord({
+			activeTab,
+			focusedContents: () => 21,
+			focusedViewTabId: null,
+			window: foreground(),
+		}),
+		true,
+		"the documented focused-contents fact still owns the page",
+	);
+	// Measured on Electron 44.3.0: page.focus() emits the view's focus event while
+	// getFocusedWebContents() stays null in a not-yet-activated window.
+	assert.equal(
+		browserPageOwnsChord({
+			activeTab,
+			focusedContents: () => null,
+			focusedViewTabId: 7,
+			window: foreground(),
+		}),
+		true,
+		"a view's tracked focus owns the page when the getter is null",
+	);
+	assert.equal(
+		browserPageOwnsChord({
+			activeTab,
+			focusedContents: () => null,
+			focusedViewTabId: 8,
+			window: foreground(),
+		}),
+		false,
+		"a stale focus fact for another tab never routes into the active page",
+	);
+	assert.equal(
+		browserPageOwnsChord({
+			activeTab: { ...activeTab, presented: false },
+			focusedContents: () => 21,
+			focusedViewTabId: 7,
+			window: foreground(),
+		}),
+		false,
+		"a hidden/suppressed page is never the accelerator owner",
+	);
+	assert.equal(
+		browserPageOwnsChord({
+			activeTab: null,
+			focusedContents: () => 21,
+			focusedViewTabId: 7,
+			window: foreground(),
+		}),
+		false,
+		"no active tab is no page owner",
+	);
+	// THE SAME WINDOW FLOOR AS CHROME OWNERSHIP (review M1): a stale focus fact is
+	// never authorization for a destroyed, hidden or unfocused window.
+	for (const [label, windowFacts] of [
+		["destroyed", foreground({ isDestroyed: () => true })],
+		["hidden", foreground({ isVisible: () => false })],
+		["unfocused", foreground({ isFocused: () => false })],
+	]) {
+		assert.equal(
+			browserPageOwnsChord({
+				activeTab,
+				focusedContents: () => 21,
+				focusedViewTabId: 7,
+				window: windowFacts,
+			}),
+			false,
+			`a ${label} window never routes a page accelerator`,
+		);
+	}
+});
+
 test("menu fallback respects actual popup/mini target even with stale main chrome focus", () => {
 	const calls = [];
 	const window = (name) => ({
@@ -529,9 +610,48 @@ test("menu fallback respects actual popup/mini target even with stale main chrom
 	assert.equal(calls.at(-1), "browser:reload");
 	runBrowserMenuAction("close-tab", main, main, () => false);
 	assert.equal(calls.at(-1), "main:close");
-	const count = calls.length;
+	/*
+	 * NO CALLBACK WINDOW IS NOT "NO OWNER". A focused WebContentsView can reach an
+	 * accelerator with `target` undefined; the browser's native route is asked
+	 * first, and only when it declines does the missing target mean no action.
+	 */
 	runBrowserMenuAction("reload", null, main, route);
+	assert.equal(calls.at(-1), "browser:reload");
+	const count = calls.length;
+	runBrowserMenuAction("reload", null, main, () => false);
 	assert.equal(calls.length, count);
+});
+
+test("Cmd+T has a native menu route that never falls through to a window action", () => {
+	const calls = [];
+	const main = {
+		webContents: {
+			reload: () => calls.push("main:reload"),
+			reloadIgnoringCache: () => calls.push("main:hard"),
+		},
+		close: () => calls.push("main:close"),
+	};
+	assert.equal(
+		runBrowserMenuAction("new-tab", main, main, (intent) => {
+			calls.push(`browser:${intent}`);
+			return true;
+		}),
+		undefined,
+	);
+	assert.deepEqual(calls, ["browser:new-tab"]);
+	// Outside browser ownership, Cmd+T must do nothing: the old fallback branch
+	// would have closed the window for any intent that was not reload/close-tab.
+	calls.length = 0;
+	runBrowserMenuAction("new-tab", main, main, () => false);
+	assert.deepEqual(calls, []);
+	// With no callback window the browser route still wins when it owns the key.
+	const nullTargetRoutes = [];
+	runBrowserMenuAction("new-tab", null, main, (intent) => {
+		nullTargetRoutes.push(intent);
+		return true;
+	});
+	assert.deepEqual(nullTargetRoutes, ["new-tab"]);
+	assert.deepEqual(calls, []);
 });
 
 test("tab digits fall back to the physical key on layouts whose digit row types symbols (review R11)", () => {
@@ -587,8 +707,19 @@ test("owned menu aliases replace destructive roles; suppression is per input and
 	const browser = readFileSync("src/main/browser/index.ts", "utf8");
 	for (const role of ["reload", "forceReload", "close"])
 		assert.ok(!app.includes(`role: "${role}"`));
-	for (const id of ["app-reload", "app-force-reload", "app-close"])
+	for (const id of [
+		"app-new-tab",
+		"app-reload",
+		"app-force-reload",
+		"app-close",
+	])
 		assert.ok(app.includes(`id: "${id}"`));
+	// Cmd+T now has a native menu route, and it goes through the browser owner
+	// predicate rather than a window role (the missing item was the T gap).
+	assert.match(
+		app,
+		/id: "app-new-tab",[\s\S]{0,900}?accelerator: "CmdOrCtrl\+T"[\s\S]{0,900}?runBrowserMenuAction\(\s*"new-tab"/,
+	);
 	assert.match(browser, /setIgnoreMenuShortcuts\(handled\)/);
 	assert.match(browser, /host\.clearChordState\(\)/);
 	assert.match(

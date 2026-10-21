@@ -354,13 +354,22 @@ test("address draft belongs to its tab: a chord-driven tab change drops it and b
 		"Element",
 		"HTMLElement",
 		"HTMLInputElement",
+		// The URL bar measures its permanent suggestions dock on mount, and the
+		// chrome hover test's own harness already ships this stub: jsdom has no
+		// ResizeObserver, and the component only needs one to exist.
+		"ResizeObserver",
 		"IS_REACT_ACT_ENVIRONMENT",
 	]) {
 		previous[key] = Object.getOwnPropertyDescriptor(globalThis, key);
-		Object.defineProperty(globalThis, key, {
-			configurable: true,
-			value: key === "IS_REACT_ACT_ENVIRONMENT" ? true : dom.window[key],
-		});
+		let value = dom.window[key];
+		if (key === "IS_REACT_ACT_ENVIRONMENT") value = true;
+		else if (key === "ResizeObserver")
+			value = class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			};
+		Object.defineProperty(globalThis, key, { configurable: true, value });
 	}
 	const navigated = [];
 	const props = (tabId, url) => ({
@@ -408,7 +417,9 @@ test("address draft belongs to its tab: a chord-driven tab change drops it and b
 		assert.equal(field().value, "", "new blank tab is empty, not A's text");
 		await act(async () => field().blur());
 		assert.deepEqual(navigated, []);
-		// Typing on the CURRENT tab still commits there (the draft is not lost).
+		// Typing on the CURRENT tab is never committed by blur: the suggestion
+		// contract makes Enter (or a chosen candidate) the only commit, so a click
+		// on the page cannot navigate to text the person did not accept.
 		await act(async () => field().focus());
 		await act(async () => {
 			const setter = Object.getOwnPropertyDescriptor(
@@ -419,6 +430,24 @@ test("address draft belongs to its tab: a chord-driven tab change drops it and b
 			field().dispatchEvent(new dom.window.Event("input", { bubbles: true }));
 		});
 		await act(async () => field().blur());
+		assert.deepEqual(navigated, [], "blur never commits");
+		// Enter on the current tab still commits there (the draft is not lost).
+		await act(async () => field().focus());
+		await act(async () => {
+			const setter = Object.getOwnPropertyDescriptor(
+				dom.window.HTMLInputElement.prototype,
+				"value",
+			).set;
+			setter.call(field(), "https://typed.example/");
+			field().dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+			field().dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: "Enter",
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+		});
 		assert.deepEqual(navigated, ["https://typed.example/"]);
 		await act(async () => root.unmount());
 	} finally {

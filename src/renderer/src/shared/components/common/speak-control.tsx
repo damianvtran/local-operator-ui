@@ -263,6 +263,18 @@ export type SpeakButtonProps = {
 	control: SpeakControl;
 	/** Tooltip side, for a strip placed below its subject. */
 	side?: "top" | "bottom";
+	/**
+	 * Extra classes for the button, merged over the shared ink step.
+	 *
+	 * WHY THIS EXISTS: the transcript's action row is a BARE icon line
+	 * (`message-actions-row.tsx`'s no-container rule), and the shared default's
+	 * `hover:bg-accent-wash` would paint a background surface under one of its
+	 * icons - the operator's reported regression. The selection toolbars keep
+	 * the wash because they float over a selection and need a readable ground;
+	 * the transcript row passes `hover:bg-transparent`, and this seam keeps the
+	 * exception at the caller rather than making every surface bare.
+	 */
+	className?: string;
 };
 
 /**
@@ -277,7 +289,11 @@ export type SpeakButtonProps = {
  * The wrapper span is what makes the DISABLED tooltip reachable: a disabled
  * button fires no pointer events, so the reason needs a parent that does.
  */
-export const SpeakButton = ({ control, side = "top" }: SpeakButtonProps) => {
+export const SpeakButton = ({
+	control,
+	side = "top",
+	className,
+}: SpeakButtonProps) => {
 	/*
 	 * The disabled state's reason needs a non-pointer path (design review round
 	 * 1, D2; design round 2, D7): the tooltip is the only place the sentence
@@ -303,7 +319,10 @@ export const SpeakButton = ({ control, side = "top" }: SpeakButtonProps) => {
 					variant="ghost"
 					size="icon-sm"
 					aria-label={control.label}
-					className={cn("text-ink-dim hover:bg-accent-wash hover:text-accent")}
+					className={cn(
+						"text-ink-dim hover:bg-accent-wash hover:text-accent",
+						className,
+					)}
 					onClick={control.press}
 					disabled={control.disabled}
 				>

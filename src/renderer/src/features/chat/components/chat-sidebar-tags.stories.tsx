@@ -1,4 +1,5 @@
 import { DEFAULT_SIDEBAR_VIEW } from "@features/chat/chat-sidebar-view";
+import { t } from "@shared/i18n";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useSessionTagsStore } from "@shared/store/session-tags-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -14,10 +15,13 @@ import type {
 } from "../../../../../shared/desktop-contract";
 import { ChatSidebar } from "./chat-sidebar";
 
+const CREATE_RELEASE = /Create “Release 東京”/;
 const REMOVE_TAG_MENU_ITEM = /Remove (all tags|tag)/;
 let calls: DesktopRequest[] = [];
 let finishRegistry: (() => void) | null = null;
+let finishCreation: (() => void) | null = null;
 type Scenario =
+	| "drop-ux"
 	| "held-pin"
 	| "pinned-tags"
 	| "move-conflict"
@@ -29,7 +33,18 @@ type Scenario =
 	| "picker"
 	| "manage"
 	| "picker-error"
-	| "picker-loading";
+	| "picker-loading"
+	| "picker-many"
+	| "picker-dense"
+	| "picker-eight"
+	| "picker-one"
+	| "picker-empty"
+	| "picker-unicode"
+	| "manage-dense"
+	| "picker-create-error"
+	| "picker-create-loading"
+	| "picker-remote"
+	| "manage-error";
 /** The actual sidebar and contract-shaped desktop bridge, not a proposed mock.
  * Mutable fixture data makes Apply/Clear/registry edits observable through the
  * same catalogue refresh as production. No operator backend or config is used.
@@ -37,6 +52,7 @@ type Scenario =
 function installBridge(scenario: Scenario) {
 	calls = [];
 	finishRegistry = null;
+	finishCreation = null;
 	document.body.dataset.tagsProof = "";
 	document.body.dataset.tagsOpened = "";
 	let categories: TagCategory[] =
@@ -47,6 +63,41 @@ function installBridge(scenario: Scenario) {
 					{ id: "project", name: "Project", order: 1, conversations: 2 },
 					{ id: "concept", name: "Concept", order: 2, conversations: 1 },
 				];
+	if (
+		[
+			"picker-dense",
+			"manage-dense",
+			"picker-eight",
+			"picker-unicode",
+			"picker-many",
+		].includes(scenario)
+	)
+		categories = [
+			...categories,
+			...Array.from(
+				{
+					length:
+						scenario === "picker-eight"
+							? 9
+							: scenario === "picker-many"
+								? 7
+								: 29,
+				},
+				(_, index) => ({
+					id: `extra-${index}`,
+					name: `Extra vocabulary ${index + 4}`,
+					order: index + 3,
+					conversations: 0,
+				}),
+			),
+		];
+	if (scenario === "picker-one") categories = categories.slice(0, 1);
+	if (scenario === "picker-empty") categories = [];
+	if (scenario === "picker-unicode") {
+		categories[3].name = "界".repeat(24);
+		categories[4].name = "مشروع 東京 é Γνώση";
+		categories[5].name = String.fromCodePoint(0x1f331).repeat(24);
+	}
 	const now = Date.now() / 1000;
 	const tags = (...ids: string[]) =>
 		categories
@@ -92,10 +143,12 @@ function installBridge(scenario: Scenario) {
 	].map((row, index) => ({
 		...row,
 		pinned:
-			["held-pin", "pinned-tags"].includes(scenario) &&
-			row.id === "222222222222"
+			scenario === "drop-ux" && row.id === "555555555555"
 				? true
-				: row.pinned,
+				: ["held-pin", "pinned-tags"].includes(scenario) &&
+						row.id === "222222222222"
+					? true
+					: row.pinned,
 		mtime: now - index * 60,
 		created_at: now - index * 60,
 		preview: "",
@@ -108,6 +161,17 @@ function installBridge(scenario: Scenario) {
 		status_epoch: "tag-fixture-epoch",
 		tags_revision: "0",
 	}));
+	if (scenario === "picker-eight")
+		rows[0].tags = tags(...categories.slice(0, 8).map((tag) => tag.id));
+	if (scenario === "picker-unicode")
+		rows[0].tags = tags("review", "extra-0", "extra-1", "extra-2");
+	for (const row of rows)
+		if (!row.tags.some((tag) => tag.id === row.primary))
+			row.primary = row.tags[0]?.id ?? null;
+	for (const tag of categories)
+		tag.conversations = rows.filter((row) =>
+			row.tags.some((held) => held.id === tag.id),
+		).length;
 	const ok = (result: unknown): DesktopResponse => ({
 		status: 200,
 		body: { result },
@@ -155,6 +219,15 @@ function installBridge(scenario: Scenario) {
 					});
 				return ok({ tags: categories });
 			case "tags.replace":
+				if (scenario === "picker-create-loading")
+					await new Promise<void>((resolve) => {
+						finishCreation = resolve;
+					});
+				if (scenario === "picker-create-error" || scenario === "manage-error")
+					return {
+						status: 503,
+						body: { detail: "Fixture durable Create refused" },
+					};
 				categories = request.tags.map((tag, index) => ({
 					id: tag.id ?? `new-${index}`,
 					name: tag.name,
@@ -176,6 +249,13 @@ function installBridge(scenario: Scenario) {
 				}
 				return ok({ tags: categories });
 			case "sessions.tags": {
+				if (scenario === "picker-remote")
+					return {
+						status: 409,
+						body: {
+							detail: { code: "session_is_remote", text: "Session is remote" },
+						},
+					};
 				if (scenario === "picker-error")
 					return {
 						status: 503,
@@ -206,7 +286,27 @@ function installBridge(scenario: Scenario) {
 						},
 					};
 				}
+				if (
+					request.expected_revision !== undefined &&
+					request.expected_revision !== row.tags_revision
+				)
+					return {
+						status: 409,
+						body: {
+							detail: {
+								code: "tags_conflict",
+								text: "Tags changed elsewhere",
+								result: {
+									session_id: row.id,
+									tags: row.tags,
+									primary: row.primary,
+									tags_revision: row.tags_revision,
+								},
+							},
+						},
+					};
 				revealHeld = true;
+				row.tags_revision = String(Number(row.tags_revision) + 1);
 				row.tags = request.tags.flatMap((id) => {
 					const tag = categories.find((entry) => entry.id === id);
 					return tag ? [{ id, name: tag.name }] : [];
@@ -260,6 +360,7 @@ function Page({ scenario, width }: { scenario: Scenario; width: number }) {
 		installBridge(scenario);
 	});
 	const [geometry, setGeometry] = useState("");
+	const [dialogGeometry, setDialogGeometry] = useState("");
 	useEffect(() => {
 		const measure = () => {
 			const rows = [
@@ -273,6 +374,68 @@ function Page({ scenario, width }: { scenario: Scenario; width: number }) {
 				),
 			];
 			const modal = document.querySelector<HTMLElement>("[role=dialog]");
+			if (modal) {
+				const body = modal.querySelector<HTMLElement>("[data-tag-dialog-body]");
+				const footer = modal.querySelector<HTMLElement>(
+					"[data-tag-dialog-footer]",
+				);
+				const rect = modal.getBoundingClientRect();
+				const footerRect = footer?.getBoundingClientRect();
+				setDialogGeometry(
+					JSON.stringify({
+						viewport: [innerWidth, innerHeight],
+						dialog: [rect.width, rect.height],
+						body: body
+							? [
+									body.clientWidth,
+									body.scrollWidth,
+									body.clientHeight,
+									body.scrollHeight,
+								]
+							: null,
+						footerVisible:
+							!!footerRect &&
+							footerRect.bottom <= innerHeight &&
+							footerRect.top >= 0,
+						horizontalOverflow: modal.scrollWidth > modal.clientWidth,
+						optionHeights: [
+							...new Set(
+								[...modal.querySelectorAll<HTMLElement>("[role=option]")].map(
+									(node) => node.getBoundingClientRect().height,
+								),
+							),
+						],
+						options: modal.querySelectorAll("[role=option]").length,
+						rovingStops: modal.querySelectorAll('[role=option][tabindex="0"]')
+							.length,
+						registryWrites: calls.filter((call) => call.op === "tags.replace")
+							.length,
+						assignmentWrites: calls.filter(
+							(call) => call.op === "sessions.tags",
+						).length,
+					}),
+				);
+				// Expose real child-frame measurements as inert CSS metadata: the
+				// harness can inspect the frame but cannot query its child DOM.
+				const frame = window.frameElement as HTMLElement | null;
+				if (frame) {
+					frame.title = `V2-2 measured viewport ${innerWidth}x${innerHeight}; dialog ${rect.width}x${rect.height}; body ${body?.clientHeight}/${body?.scrollHeight}; footer ${!!footerRect && footerRect.bottom <= innerHeight && footerRect.top >= 0}; overflowX ${modal.scrollWidth > modal.clientWidth}; ${document.body.dataset.tagsProof ?? ""}`;
+					for (const [key, value] of Object.entries({
+						width: rect.width,
+						height: rect.height,
+						bodyClient: body?.clientHeight ?? 0,
+						bodyScroll: body?.scrollHeight ?? 0,
+						footerVisible:
+							footerRect &&
+							footerRect.bottom <= innerHeight &&
+							footerRect.top >= 0
+								? 1
+								: 0,
+						xOverflow: modal.scrollWidth > modal.clientWidth ? 1 : 0,
+					}))
+						frame.style.setProperty(`--v22-${key}`, String(value));
+				}
+			}
 			setGeometry(
 				`rows ${rows.length} · row heights ${[...new Set(rows.map((row) => row.getBoundingClientRect().height))].join(",")} · subheaders ${headers.length} × ${[...new Set(headers.map((header) => header.getBoundingClientRect().height))].join(",")}px · modal ${modal ? Math.round(modal.getBoundingClientRect().width) : "none"} · assignment writes ${calls.filter((call) => call.op === "sessions.tags").length} · ${document.body.dataset.tagsProof ?? ""}`,
 			);
@@ -297,6 +460,9 @@ function Page({ scenario, width }: { scenario: Scenario; width: number }) {
 				<output data-tags-geometry className="mt-3 block">
 					{geometry}
 				</output>
+				<output data-v22-geometry className="mt-2 block break-words">
+					{dialogGeometry}
+				</output>
 			</main>
 		</div>
 	);
@@ -320,7 +486,7 @@ const meta = {
 				"picker-loading",
 			],
 		},
-		width: { control: "select", options: [220, 260, 320] },
+		width: { control: "select", options: [220, 260, 320, 640] },
 		theme: {
 			control: "select",
 			options: ["localOperatorLight", "localOperatorDark"],
@@ -343,7 +509,9 @@ const picker = async () => {
 	if (!row) throw new Error("No fixture row");
 	row.focus();
 	await userEvent.keyboard("{Shift>}{F10}{/Shift}");
-	await userEvent.click(await within(document.body).findByText("Tags…"));
+	await userEvent.click(
+		await within(document.body).findByText(t("ui.chat.tags.menu")),
+	);
 	await within(document.body).findByRole("dialog");
 };
 const manage = async () => {
@@ -353,7 +521,9 @@ const manage = async () => {
 	);
 	if (!trigger) throw new Error("No view options trigger");
 	await userEvent.click(trigger);
-	await userEvent.click(await within(document.body).findByText("Manage tags…"));
+	await userEvent.click(
+		await within(document.body).findByText(t("ui.chat.tags.manage")),
+	);
 	await within(document.body).findByRole("dialog");
 };
 const story = (
@@ -368,9 +538,9 @@ const story = (
 		<Page key={scenario} scenario={scenario} width={width} />
 	),
 	play: async ({ args }) => {
-		if (args.scenario === "picker" || args.scenario === "picker-loading")
+		if (args.scenario.startsWith("picker") && args.scenario !== "picker-error")
 			await picker();
-		else if (args.scenario === "manage") await manage();
+		else if (args.scenario.startsWith("manage")) await manage();
 		else if (args.scenario === "picker-error") {
 			await picker();
 			await userEvent.click(
@@ -382,8 +552,8 @@ const story = (
 				within(document.body).getByRole("button", { name: "Retry" }),
 			).toBeEnabled();
 			expect(
-				within(document.body).getByRole("checkbox", { name: "Review" }),
-			).toBeChecked();
+				within(document.body).getByRole("option", { name: "Review" }),
+			).toHaveAttribute("aria-selected", "true");
 			document.body.dataset.tagsProof =
 				"PASS: assignment 503 shows tag-specific save failure + Retry and preserves draft";
 		} else {
@@ -418,7 +588,7 @@ export const AssignClearRoundTrip: Story = {
 	play: async () => {
 		await picker();
 		await userEvent.click(
-			within(document.body).getByRole("checkbox", { name: "Concept" }),
+			within(document.body).getByRole("option", { name: "Concept" }),
 		);
 		await userEvent.click(
 			within(document.body).getByRole("button", { name: "Cancel" }),
@@ -443,6 +613,7 @@ export const AssignClearRoundTrip: Story = {
 				sessionId: "111111111111",
 				tags: [],
 				primary: null,
+				expected_revision: "0",
 			},
 		]);
 		expect(
@@ -630,25 +801,14 @@ export const ViewOptions220: Story = {
 };
 
 export const PickerManageRoundTrip: Story = {
-	...story("tags-on", 220),
+	...story("picker-many", 220),
 	play: async () => {
 		await picker();
 		const body = within(document.body);
-		useSessionTagsStore.setState({
-			categories: [
-				...useSessionTagsStore.getState().categories,
-				...Array.from({ length: 7 }, (_, index) => ({
-					id: `extra-${index}`,
-					name: `Extra ${index}`,
-					order: index + 3,
-					conversations: 0,
-				})),
-			],
-		});
-		await userEvent.click(body.getByRole("checkbox", { name: "Concept" }));
+		await userEvent.click(body.getByRole("option", { name: "Concept" }));
 		await userEvent.click(body.getByRole("radio", { name: "Project" }));
 		await userEvent.type(
-			body.getByRole("textbox", { name: "Search tags" }),
+			body.getByRole("combobox", { name: "Search tags" }),
 			"e",
 		);
 		const scroll = document.querySelector<HTMLElement>(
@@ -682,11 +842,14 @@ export const PickerManageRoundTrip: Story = {
 		};
 		const restored = async () => {
 			await body.findByRole("heading", {
-				name: "Tags for “Review the migration safety checks”",
+				name: "Tags",
 			});
-			expect(body.getByRole("checkbox", { name: "Concept" })).toBeChecked();
+			expect(body.getByRole("option", { name: "Concept" })).toHaveAttribute(
+				"aria-selected",
+				"true",
+			);
 			expect(body.getByRole("radio", { name: "Project" })).toBeChecked();
-			expect(body.getByRole("textbox", { name: "Search tags" })).toHaveValue(
+			expect(body.getByRole("combobox", { name: "Search tags" })).toHaveValue(
 				"e",
 			);
 			await waitFor(() =>
@@ -713,8 +876,8 @@ export const PickerManageRoundTrip: Story = {
 		await userEvent.click(body.getByRole("button", { name: "Apply" }));
 		await restored();
 		expect(
-			body.getByRole("checkbox", { name: "Nested category" }),
-		).not.toBeChecked();
+			body.getByRole("option", { name: "Nested category" }),
+		).toHaveAttribute("aria-selected", "false");
 		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(1);
 		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
 		await userEvent.click(body.getByRole("button", { name: "Cancel" }));
@@ -848,43 +1011,32 @@ export const PickerLoadingFocus: Story = {
 	...story("picker-loading", 220),
 	play: async () => {
 		await picker();
-		const heading = within(document.body).getByRole("heading", {
-			name: "Tags for “Review the migration safety checks”",
-		});
-		expect(document.activeElement).toBe(heading);
-		const scroller = document.querySelector<HTMLElement>(
-			"[role=dialog] .overflow-y-auto",
-		);
-		if (!scroller) throw new Error("No picker scroll body");
-		const padding = getComputedStyle(scroller);
-		expect(padding.paddingLeft).toBe("4px");
-		expect(padding.paddingBottom).toBe("4px");
-		const manageButton = within(document.body).getByRole("button", {
-			name: "Manage tags…",
-		});
-		const bodyBox = scroller.getBoundingClientRect();
-		const manageBox = manageButton.getBoundingClientRect();
-		expect(manageBox.left - bodyBox.left).toBeGreaterThanOrEqual(4);
-		expect(bodyBox.bottom - manageBox.bottom).toBeGreaterThanOrEqual(4);
-		const measurements = `loading body ${bodyBox.width}×${bodyBox.height}px, ring inset left ${manageBox.left - bodyBox.left}px bottom ${bodyBox.bottom - manageBox.bottom}px`;
+		const body = within(document.body);
+		const input = body.getByRole("combobox");
+		expect(document.activeElement).toBe(input);
+		await userEvent.type(input, "Pro");
+		await userEvent.tab();
+		const heldFocus = document.activeElement;
+		expect(heldFocus).not.toBe(input);
 		expect(finishRegistry).not.toBeNull();
 		finishRegistry?.();
-		await waitFor(() =>
-			expect(document.activeElement).toBe(
-				within(document.body).getByRole("checkbox", { name: "Review" }),
+		await body.findByRole("option", { name: "Project" });
+		expect(input).toHaveValue("Pro");
+		expect(document.activeElement).toBe(heldFocus);
+		expect(
+			calls.filter(
+				(call) => call.op === "tags.replace" || call.op === "sessions.tags",
 			),
-		);
-		await userEvent.click(
-			within(document.body).getByRole("button", { name: "Cancel" }),
-		);
-		document.body.dataset.tagsProof = `PASS: initial focus heading; loaded focus first checkbox; ${measurements}`;
+		).toHaveLength(0);
+		document.body.dataset.tagsProof =
+			"PASS: loading input keeps query; completion never steals moved focus; no writes";
 	},
 };
 
 /** Real sidebar DOM/optimistic bridge proof. Synthetic pointer events exercise
  * the component lifecycle, not native capture/touch; independent native QA owns
  * those browser delivery guarantees. The node lane separately tests revisions. */
-const dragRoundTrip = async (crossSection: boolean) => {
+const dragRoundTrip = async (crossSection: boolean, targetBody = false) => {
 	await ready();
 	const row = () =>
 		document.querySelector<HTMLButtonElement>(
@@ -918,7 +1070,7 @@ const dragRoundTrip = async (crossSection: boolean) => {
 	const sourceSection = button.closest<HTMLElement>("[data-chat-section]");
 	const header = crossSection
 		? document.querySelector<HTMLElement>(
-				'[data-chat-section="pinned"] [data-tag-drop-target="review"]',
+				`[data-chat-section="pinned"] [data-tag-drop-target="review"]${targetBody ? "[data-tag-drop-body]" : ":not([data-tag-drop-body])"}`,
 			)
 		: sourceSection?.querySelector<HTMLElement>(
 				'[data-tag-drop-target="review"]',
@@ -980,9 +1132,97 @@ const dragRoundTrip = async (crossSection: boolean) => {
 	document.body.dataset.tagsProof =
 		"PASS: >5px pending movement wrote nothing; 180ms hold painted occupied header; same-section header assigned/preserved tags without pinning; Undo restored bucket (synthetic DOM pointers, not native capture proof)";
 };
+/** The operator's Untagged source can cross sections into occupied body space.
+ * Keep the tagged-source negative first so its zero-write assertion is independent. */
 export const DragAssignRoundTrip: Story = {
-	...story("tags-on"),
-	play: async () => dragRoundTrip(true),
+	...story("drop-ux"),
+	play: async () => {
+		await dragRoundTrip(true);
+		await dragRoundTrip(true, true);
+		await untaggedBodyDrop(false);
+	},
+};
+
+const untaggedBodyDrop = async (previewOnly: boolean) => {
+	await ready();
+	const source = document.querySelector<HTMLElement>(
+		'[data-session-row="555555555555"] [data-chat-row]',
+	);
+	const target = document.querySelector<HTMLElement>(
+		'[data-chat-section="today"] [data-tag-drop-body][data-tag-drop-target="review"]',
+	);
+	if (!source || !target) throw new Error("Missing Untagged/body fixture");
+	expect(getComputedStyle(source).cursor).toBe("grab");
+	const box = source.getBoundingClientRect();
+	const pointer = {
+		pointerId: 81,
+		pointerType: "mouse",
+		isPrimary: true,
+		button: 0,
+		clientX: box.left + 60,
+		clientY: box.top + 16,
+	};
+	fireEvent.pointerDown(source, pointer);
+	await new Promise((resolve) => setTimeout(resolve, 200));
+	await waitFor(() => expect(getComputedStyle(source).cursor).toBe("grabbing"));
+	const rect = target.getBoundingClientRect();
+	const over = {
+		...pointer,
+		clientX: rect.left + 60,
+		clientY: rect.top + rect.height / 2,
+	};
+	fireEvent.pointerMove(window, over);
+	await waitFor(() =>
+		expect(target.closest("[data-chat-tag-group]")).toHaveAttribute(
+			"data-tag-drop-preview",
+			"true",
+		),
+	);
+	const group = target.closest("[data-chat-tag-group]");
+	const header = group?.querySelector<HTMLElement>(
+		"[data-tag-drop-target]:not([data-tag-drop-body])",
+	);
+	if (!header) throw new Error("Missing matching group header");
+	expect(header.dataset.tagDropTarget).toBe(target.dataset.tagDropTarget);
+	expect(
+		document
+			.elementFromPoint(over.clientX, over.clientY)
+			?.closest("[data-tag-drop-body]"),
+	).toBe(target);
+	document.body.dataset.tagsProof = `PASS: cursor grab → grabbing; header/body ID ${header.dataset.tagDropTarget}; body ${rect.width}×${rect.height}px; tagged cross-section 0 writes; synthetic pointer preview (not native delivery proof)`;
+	if (previewOnly) return;
+	fireEvent.pointerUp(window, over);
+	await waitFor(() =>
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1),
+	);
+	expect(calls.find((call) => call.op === "sessions.tags")).toMatchObject({
+		primary: "review",
+		tags: ["review"],
+	});
+	await waitFor(() =>
+		expect(
+			document
+				.querySelector('[data-session-row="555555555555"]')
+				?.closest("[data-chat-tag-group]"),
+		).toHaveAttribute("data-chat-tag-group", "review"),
+	);
+	await userEvent.click(
+		within(document.body).getByRole("button", { name: "Undo" }),
+	);
+	await waitFor(() =>
+		expect(
+			document
+				.querySelector('[data-session-row="555555555555"]')
+				?.closest("[data-chat-tag-group]"),
+		).toHaveAttribute("data-chat-tag-group", "untagged"),
+	);
+	expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(2);
+	document.body.dataset.tagsProof +=
+		"; Untagged→tagged body 1 write; Undo restored Untagged (2 total)";
+};
+export const CursorAndBodyTarget: Story = {
+	...story("drop-ux", 220),
+	play: async () => untaggedBodyDrop(true),
 };
 export const SameSectionDragRoundTrip: Story = {
 	...story("tags-on"),
@@ -1394,4 +1634,233 @@ export const DragPreviewLight: Story = {
 export const PinnedHeaderPreviewLight: Story = {
 	...story("pinned-tags", 260, "localOperatorLight"),
 	play: PinnedHeaderPreview.play,
+};
+
+/** V2-2 density/constraint states run the actual sidebar/dialog with one shared
+ * synthetic desktop bridge; no operator sessions or extra browser are used. */
+export const PickerDense = story("picker-dense", 220);
+export const PickerDenseLight = story(
+	"picker-dense",
+	320,
+	"localOperatorLight",
+);
+export const PickerEight = story("picker-eight", 260);
+export const PickerEmpty = story("picker-empty", 220);
+export const PickerOne = story("picker-one", 320);
+export const PickerUnicode = story("picker-unicode", 220);
+export const ManageDense = story("manage-dense", 220);
+export const PickerCreateError: Story = {
+	...story("picker-create-error"),
+	play: async () => {
+		await picker();
+		const body = within(document.body);
+		await userEvent.type(body.getByRole("combobox"), "Release 東京");
+		await userEvent.click(body.getByRole("button", { name: CREATE_RELEASE }));
+		await body.findByText("Tag was not created. Try again.");
+		expect(body.getByRole("combobox")).toHaveValue("Release 東京");
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
+	},
+};
+export const PickerKeyboardRoundTrip: Story = {
+	...story("picker"),
+	play: async () => {
+		await picker();
+		const body = within(document.body);
+		const input = body.getByRole("combobox");
+		await userEvent.click(input);
+		await userEvent.keyboard("{Enter}");
+		expect(
+			calls.filter(
+				(call) => call.op === "tags.replace" || call.op === "sessions.tags",
+			),
+		).toHaveLength(0);
+		await userEvent.type(input, "Release 東京");
+		await userEvent.keyboard("{Enter}");
+		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
+		await userEvent.click(body.getByRole("button", { name: CREATE_RELEASE }));
+		await body.findByRole("button", { name: "Remove Release 東京" });
+		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(1);
+		await userEvent.click(body.getByRole("button", { name: "Cancel" }));
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
+		await manage();
+		await body.findByText("Release 東京");
+		document.body.dataset.tagsProof =
+			"PASS: empty/no-match Enter writes nothing; explicit Create persists; Cancel never assigns";
+	},
+};
+
+export const ManageSearchDraftRoundTrip: Story = {
+	...story("manage-dense"),
+	play: async () => {
+		await manage();
+		const body = within(document.body);
+		const search = body.getByRole("searchbox", { name: "Search tags" });
+		await userEvent.type(search, "Project");
+		const row = document.querySelector<HTMLElement>('[data-tag-id="project"]');
+		if (!row) throw new Error("Missing Project");
+		expect(
+			within(row).getByRole("button", { name: "Move Project up" }),
+		).toBeDisabled();
+		expect(
+			within(row).getByRole("button", { name: "Move Project down" }),
+		).toBeDisabled();
+		await userEvent.click(within(row).getByRole("button", { name: "Rename" }));
+		const name = body.getByRole("textbox", { name: "Rename Project" });
+		await userEvent.clear(name);
+		await userEvent.type(name, "Project renamed");
+		await userEvent.click(body.getByRole("button", { name: "Save" }));
+		expect(search).toHaveValue("");
+		await body.findByText("Project renamed");
+		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
+		await userEvent.click(body.getByRole("button", { name: "Cancel" }));
+		await manage();
+		await within(body.getByRole("dialog")).findByText("Project");
+		expect(body.queryByText("Project renamed")).toBeNull();
+		document.body.dataset.tagsProof =
+			"PASS: filtered reorder blocked; rename stages only; search clears after rename; Cancel restores baseline; zero writes";
+	},
+};
+export const EightSelectionRoundTrip: Story = {
+	...story("picker-eight"),
+	play: async () => {
+		await picker();
+		const body = within(document.body);
+		const input = body.getByRole("combobox");
+		await userEvent.type(input, "Fresh release");
+		expect(body.queryByRole("button", { name: CREATE_RELEASE })).toBeNull();
+		expect(body.queryByText("Fresh release")).toBeNull();
+		await userEvent.click(body.getByRole("button", { name: "Remove Review" }));
+		await userEvent.type(input, "Fresh release");
+		const create = body.getByRole("button", {
+			name: "Create “Fresh release” Saved for all conversations",
+		});
+		await userEvent.click(create);
+		await body.findByRole("button", { name: "Remove Fresh release" });
+		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(1);
+		await userEvent.click(body.getByRole("button", { name: "Apply" }));
+		await body.findByText("Tags updated. Grouped under Project.");
+		const assignments = calls.filter((call) => call.op === "sessions.tags");
+		expect(assignments).toHaveLength(1);
+		const assignment = assignments[0];
+		if (assignment.op !== "sessions.tags")
+			throw new Error("Missing assignment");
+		expect(assignment.tags).toHaveLength(8);
+		expect(assignment.tags[0]).toBe("project");
+		expect(assignment.primary).toBe("project");
+		document.body.dataset.tagsProof =
+			"PASS: cap8 blocks creation; removal enables explicit Create; assignment order/primary preserved; one registry and one assignment write";
+	},
+};
+
+export const PickerPendingCreate: Story = {
+	...story("picker-create-loading"),
+	play: async () => {
+		await picker();
+		const body = within(document.body);
+		await userEvent.type(body.getByRole("combobox"), "Release 東京");
+		await userEvent.click(body.getByRole("button", { name: CREATE_RELEASE }));
+		await body.findByText("Saving tag…");
+		expect(body.getByRole("button", { name: "Cancel" })).toBeDisabled();
+		expect(body.getByRole("button", { name: "Apply" })).toBeDisabled();
+		await userEvent.keyboard("{Escape}");
+		expect(body.getByRole("dialog")).toBeTruthy();
+		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(1);
+		if (!finishCreation) throw new Error("No pending creation");
+		finishCreation();
+		await body.findByRole("button", { name: "Remove Release 東京" });
+		await userEvent.click(body.getByRole("button", { name: "Cancel" }));
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
+		document.body.dataset.tagsProof =
+			"PASS: pending durable Create visibly locks dismissal; Escape does not hide it; completion permits Cancel with zero assignments";
+	},
+};
+export const PickerAssignmentConflict: Story = {
+	...story("move-conflict"),
+	play: async () => {
+		await picker();
+		const body = within(document.body);
+		await userEvent.click(body.getByRole("button", { name: "Apply" }));
+		await body.findByText("Tags changed elsewhere");
+		expect(body.getByRole("button", { name: "Apply" })).toBeDisabled();
+		expect(body.queryByRole("button", { name: "Retry" })).toBeNull();
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1);
+		document.body.dataset.tagsProof =
+			"PASS: 409 tags_conflict refreshes; no overwrite or generic Retry; Apply disabled until a fresh edit";
+	},
+};
+export const PickerRemoteRefusal: Story = {
+	...story("picker-remote"),
+	play: async () => {
+		await picker();
+		const body = within(document.body);
+		await userEvent.click(body.getByRole("button", { name: "Apply" }));
+		await body.findByText("Tags cannot be changed on a remote conversation.");
+		expect(body.queryByRole("button", { name: "Retry" })).toBeNull();
+		expect(body.getByRole("button", { name: "Apply" })).toBeDisabled();
+		document.body.dataset.tagsProof =
+			"PASS: remote refusal is distinct from conflict/transport failure; no retry or overwrite";
+	},
+};
+
+export const PickerLastOption: Story = {
+	...story("picker-dense"),
+	play: async () => {
+		await picker();
+		const body = within(document.body);
+		const first = body.getByRole("option", { name: "Review" });
+		first.focus();
+		await userEvent.keyboard("{End}");
+		const last = body.getByRole("option", { name: "Extra vocabulary 32" });
+		await waitFor(() => expect(document.activeElement).toBe(last));
+		await waitFor(() => {
+			const bounds = document
+				.querySelector("[data-tag-dialog-body]")
+				?.getBoundingClientRect();
+			const rect = last.getBoundingClientRect();
+			if (!bounds) throw new Error("No scroll body");
+			expect(rect.bottom).toBeLessThanOrEqual(bounds.bottom - 3);
+			expect(rect.top).toBeGreaterThanOrEqual(bounds.top);
+		});
+		document.body.dataset.tagsProof =
+			"PASS: last of32 options keyboard-reachable and fully inside scroll/focus gutter; footer pinned";
+	},
+};
+
+export const ManageError: Story = {
+	...story("manage-error"),
+	play: async () => {
+		await manage();
+		const body = within(document.body);
+		await userEvent.type(
+			body.getByRole("textbox", { name: "New tag name" }),
+			"Retry category",
+		);
+		await userEvent.click(body.getByRole("button", { name: "Add" }));
+		await userEvent.click(body.getByRole("button", { name: "Apply" }));
+		await body.findByText("Tags were not saved. Try again.");
+		expect(useSessionTagsStore.getState().categories).toHaveLength(3);
+		document.body.dataset.tagsProof =
+			"PASS: failed Manage Apply keeps staged addition and query; server registry unchanged; operation-specific retry visible";
+	},
+};
+
+/** Validation belongs to the staged editor, not a global error that scrolls it away. */
+export const ManageNameValidation: Story = {
+	...story("manage"),
+	play: async () => {
+		await manage();
+		const row = document.querySelector<HTMLElement>('[data-tag-id="project"]');
+		if (!row) throw new Error("Missing Project row");
+		await userEvent.click(within(row).getByRole("button", { name: "Rename" }));
+		const input = within(row).getByRole("textbox", { name: "Rename Project" });
+		await userEvent.clear(input);
+		await userEvent.type(input, "Review");
+		await userEvent.click(within(row).getByRole("button", { name: "Save" }));
+		const alert = await within(row).findByRole("alert");
+		expect(alert.closest("form")).toBe(input.closest("form"));
+		expect(within(document.body).getAllByRole("alert")).toHaveLength(1);
+		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
+		document.body.dataset.tagsProof =
+			"PASS: duplicate name stays in its staged editor; one inline alert; no merge or write";
+	},
 };

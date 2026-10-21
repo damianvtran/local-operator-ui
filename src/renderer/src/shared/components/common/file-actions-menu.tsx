@@ -6,9 +6,12 @@ import {
 	DropdownMenuTrigger,
 	Tooltip,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	ClipboardCopy,
 	Ellipsis,
+	Eye,
 	File as FileIcon,
 	FolderOpen,
 	LayoutGrid,
@@ -39,6 +42,16 @@ export type FileActionsMenuProps = {
 	 * Optional: callback to show the file in the canvas.
 	 */
 	onShowInCanvas?: (() => void) | undefined;
+	/**
+	 * Optional: callback for an in-app preview of a readable file.
+	 *
+	 * The menu is shared, so the item only exists where a surface CAN preview:
+	 * the project feed's markdown/text tiles pass this, and every existing
+	 * caller (which has no in-app reader for the file) omits it and keeps the
+	 * four established entries unchanged. The item is FIRST because it is the
+	 * cheapest door — it reads the stored copy rather than leaving the app.
+	 */
+	onPreview?: (() => void) | undefined;
 };
 
 /**
@@ -51,7 +64,9 @@ export const FileActionsMenu = ({
 	icon,
 	"aria-label": ariaLabel = "File actions",
 	onShowInCanvas,
+	onPreview,
 }: FileActionsMenuProps) => {
+	useI18nLocale();
 	const handleCopyFilePath = async () => {
 		if (!filePath) return;
 		try {
@@ -91,25 +106,31 @@ export const FileActionsMenu = ({
 				className="min-w-45"
 				onClick={(e) => e.stopPropagation()}
 			>
+				{onPreview && (
+					<DropdownMenuItem onSelect={onPreview}>
+						<Eye aria-hidden="true" />
+						<span>{t("ui.common.file_actions.preview")}</span>
+					</DropdownMenuItem>
+				)}
 				{onShowInCanvas && (
 					<DropdownMenuItem onSelect={onShowInCanvas}>
 						<LayoutGrid aria-hidden="true" />
-						<span>Show in canvas</span>
+						<span>{t("ui.common.file_actions.show_in_canvas")}</span>
 					</DropdownMenuItem>
 				)}
 				<DropdownMenuItem onSelect={handleOpenFile}>
 					<FileIcon aria-hidden="true" />
-					<span>Open file</span>
+					<span>{t("ui.common.file_actions.open_file")}</span>
 				</DropdownMenuItem>
 				<DropdownMenuItem
 					onSelect={() => window.api.showItemInFolder(filePath)}
 				>
 					<FolderOpen aria-hidden="true" />
-					<span>Open folder</span>
+					<span>{t("ui.common.file_actions.open_folder")}</span>
 				</DropdownMenuItem>
 				<DropdownMenuItem onSelect={handleCopyFilePath}>
 					<ClipboardCopy aria-hidden="true" />
-					<span>Copy file path</span>
+					<span>{t("ui.common.file_actions.copy_file_path")}</span>
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>

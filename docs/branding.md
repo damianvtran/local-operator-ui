@@ -1073,6 +1073,7 @@ opaque root behind opaque descendants.
 | Pressed (`active:bg-sunken`) | stays opaque `sunken` | a sub-200 ms state of the control, not a surface |
 | Primary buttons, avatars, brand mark, banners | unchanged, opaque | small deliberate marks, not grounds |
 | Sticky headers (scroll-under) | `data-glass-plane="band"`: the field overlay | a solid plate in a translucent column is the seam the operator reported; the band's own inks are contract rows |
+| Sticky headers over MOVING content (a section header that rows scroll under) | `data-glass-plane="band-backdrop"`: the pane's own `elevated` role, floored at the elevated alpha, plus a `backdrop-filter` blur | a 5% ink wash over moving content hides nothing, and the band's ground is whatever is scrolling under it, so the band needs an alpha FLOOR of its own - the count beside the label must clear 4.5:1 against it (design round 1's D1) |
 | Popout (quick send) | card ground `surface` at its floor raw; input a field; picker sheet solid | a single floating HUD on the window's material |
 
 **Planes, bands and lanes (round 3).** The operator's report: the left sidebar
@@ -1086,6 +1087,7 @@ be on glass:
 | Ground (a column: the pane root, the page canvas) | `data-glass-region` | the role alpha, one alpha-owning layer per region (unchanged) |
 | Plane (a scroll container, list body, viewer body, tab strip) | `data-glass-plane="clear"` | nothing: the region owns the alpha, and a second role fill is the opaque island the report is about |
 | Band (a sticky section header, a toolbar that masks what scrolls under it) | `data-glass-plane="band"` | the field overlay (ink 5%), the same step a track or a field wears |
+| Isolating band (a band whose content MOVES under it) | `data-glass-plane="band-backdrop"` | the pane's own ground role, floored at that role's alpha, with a `backdrop-filter` blur: the band's ground is the content passing under it, so a published alpha derived against a static ground is not enough for the ink on the band to clear its floor |
 | Block (a text-bearing card whose fill is its boundary) | `data-glass-block` | the derived veil (unchanged) |
 | Lane (a well that must read under veiled cards) | `data-glass-lane` | the derived scheme role at `pageAlpha * scale` (tracks the slider) |
 
@@ -1219,7 +1221,8 @@ equally important**, and the interface must not present them as though they are.
   the turn; a parked turn is unsettled, so nothing condenses). A finished turn
   also carries one turn-foot line (`Worked for 1m 12s · 8 actions`) — EXCEPT a
   turn that has condensed to ONE summary bar: there the foot stands down and the
-  bar IS the line (its own stamp replaces the foot's, one stamp per turn).
+  bar IS the line (its own stamp replaces the foot's, so the answer keeps one
+  stamp for the turn).
   A turn's hidden rows condense as SEGMENTS: one bar per contiguous hidden span,
   in place, around the rows that stay on screen (a compaction, a stop or incident
   marker, the turn's answer). When a pinned row splits the work into several
