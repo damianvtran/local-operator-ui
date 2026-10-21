@@ -13,13 +13,6 @@
 		"placeholders": {},
 		"note": "Says who the user talks to here: teammates and their agents. \"Agent\" is the product noun."
 	},
-	"ui.teamBridge.page.new_conversation": {
-		"role": "primary action button",
-		"tone": "imperative, short",
-		"length": "2-3 words.",
-		"placeholders": {},
-		"note": "Opens the create dialog. Used for DMs, groups and channels alike, so it must not say \"channel\"."
-	},
 	"ui.teamBridge.list.empty.title": {
 		"role": "empty-state heading",
 		"tone": "neutral",
@@ -124,13 +117,6 @@
 		"length": "One short sentence.",
 		"placeholders": {},
 		"note": "Names both key gestures. Key names stay untranslated; only \"to send\" and \"for a new line\" are copy."
-	},
-	"ui.teamBridge.member.agent": {
-		"role": "participant badge",
-		"tone": "neutral",
-		"length": "1 word.",
-		"placeholders": {},
-		"note": "Marks a participant whose messages come from an agent rather than a person. Product noun."
 	},
 	"ui.teamBridge.member.invited": {
 		"role": "participant state badge",
@@ -511,13 +497,6 @@
 		"placeholders": {},
 		"note": "No other active person is in this organization. Do not apologise and do not offer an invite action this surface does not have."
 	},
-	"ui.teamBridge.people.self": {
-		"role": "the signed-in person's own row",
-		"tone": "neutral",
-		"length": "One word.",
-		"placeholders": {},
-		"note": "Replaces the account's own display label. The row is not clickable; this word is not an action."
-	},
 	"ui.teamBridge.people.paused": {
 		"role": "a person's bridge status note",
 		"tone": "neutral, one word",
@@ -547,15 +526,6 @@
 			"name": "the person's display label"
 		},
 		"note": "Names the action the row performs (open a DM). It replaces the row's visible text for screen readers, so the label must contain the person's name."
-	},
-	"ui.teamBridge.people.message_paused": {
-		"role": "accessible name of a reachable person row whose bridge is paused",
-		"tone": "imperative plus a state note",
-		"length": "3-5 words.",
-		"placeholders": {
-			"name": "the person's display label"
-		},
-		"note": "Same action as the message row, with the paused state attached so the state is not lost when the visible note is overridden by the accessible name."
 	},
 	"ui.teamBridge.plan.title": {
 		"role": "eligibility panel heading for a plan without Team Bridge",
@@ -620,20 +590,6 @@
 		"placeholders": {},
 		"note": "Says the service, not the organization, is the cause. 'Try again later' is the only honest action this panel offers."
 	},
-	"ui.teamBridge.people.list_loading": {
-		"role": "explanation for an inert person row while conversations load",
-		"tone": "factual",
-		"length": "One sentence.",
-		"placeholders": {},
-		"note": "The row cannot know whether a DM already exists until the list answers, so it does not act. Do not imply the person is unavailable."
-	},
-	"ui.teamBridge.people.list_error": {
-		"role": "explanation for an inert person row after a list failure",
-		"tone": "factual, no blame",
-		"length": "One sentence.",
-		"placeholders": {},
-		"note": "The conversation list failed, so a DM cannot be resolved and a duplicate must not be started. This is about the read, not the person."
-	},
 	"ui.teamBridge.people.identity_loading": {
 		"role": "explanation for an inert person row before the account is known",
 		"tone": "neutral",
@@ -654,13 +610,6 @@
 		"length": "One sentence.",
 		"placeholders": {},
 		"note": "Says the history is readable but sending is not. Do not offer a disabled composer."
-	},
-	"ui.teamBridge.read_only.person": {
-		"role": "explanation for an inert person row with no existing DM in surface F",
-		"tone": "factual",
-		"length": "One sentence.",
-		"placeholders": {},
-		"note": "Opening an existing DM is a read and stays available; starting one is a write and is not. Inline the reason so the row is not a silent no-op."
 	},
 	"ui.teamBridge.plan.checking": {
 		"role": "first-paint loading state while the eligibility read answers",

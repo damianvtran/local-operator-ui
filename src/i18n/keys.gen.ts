@@ -5097,7 +5097,6 @@ export type MessageParams = {
 	"ui.teamBridge.list.loading": undefined;
 	"ui.teamBridge.list.retry": undefined;
 	"ui.teamBridge.list.untitled": undefined;
-	"ui.teamBridge.member.agent": undefined;
 	"ui.teamBridge.member.count": { count: number };
 	"ui.teamBridge.member.invited": undefined;
 	"ui.teamBridge.menu.label": undefined;
@@ -5114,7 +5113,6 @@ export type MessageParams = {
 	"ui.teamBridge.notify.mute": undefined;
 	"ui.teamBridge.notify.muted": undefined;
 	"ui.teamBridge.notify.title": { conversation: string; organization: string };
-	"ui.teamBridge.page.new_conversation": undefined;
 	"ui.teamBridge.page.subtitle": undefined;
 	"ui.teamBridge.page.title": undefined;
 	"ui.teamBridge.people.all_scope": undefined;
@@ -5122,13 +5120,9 @@ export type MessageParams = {
 	"ui.teamBridge.people.empty": undefined;
 	"ui.teamBridge.people.error": undefined;
 	"ui.teamBridge.people.identity_loading": undefined;
-	"ui.teamBridge.people.list_error": undefined;
-	"ui.teamBridge.people.list_loading": undefined;
 	"ui.teamBridge.people.loading": undefined;
 	"ui.teamBridge.people.message": { name: string };
-	"ui.teamBridge.people.message_paused": { name: string };
 	"ui.teamBridge.people.paused": undefined;
-	"ui.teamBridge.people.self": undefined;
 	"ui.teamBridge.people.self_named": { name: string };
 	"ui.teamBridge.people.title": undefined;
 	"ui.teamBridge.plan.body": undefined;
@@ -5147,7 +5141,6 @@ export type MessageParams = {
 	"ui.teamBridge.preview.join_error": undefined;
 	"ui.teamBridge.read_only.composer": undefined;
 	"ui.teamBridge.read_only.note": undefined;
-	"ui.teamBridge.read_only.person": undefined;
 	"ui.teamBridge.row.menu": { name: string };
 	"ui.teamBridge.row.start_group": undefined;
 	"ui.teamBridge.scope.all": undefined;
