@@ -15,7 +15,27 @@
  * compile or, worse, render as `undefined`.
  */
 
-export type HubItemKind = "agent" | "team";
+/**
+ * Every kind the updates surface reports. `skill` arrived with core PR #2713,
+ * which brought skills onto the same channel as agents and teams rather than a
+ * parallel status story; a row for any other kind is an unknown-backend row and
+ * degrades through `hubMarkFor`'s default, not a crash.
+ */
+export type HubItemKind = "agent" | "team" | "skill";
+
+/** What one row of a kind is called in a sentence (English, like the sentences beside it). */
+export const HUB_KIND_NOUN: Record<HubItemKind, string> = {
+	agent: "agent",
+	team: "team",
+	skill: "skill",
+};
+
+/** The sidebar section that hosts a kind's rows. */
+export const HUB_SECTION: Record<HubItemKind, string> = {
+	agent: "agents",
+	team: "teams",
+	skill: "skills",
+};
 
 export type HubItemState =
 	| "up-to-date"

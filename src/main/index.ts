@@ -73,6 +73,10 @@ import {
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
+import {
+	addressOverlayDocumentUrlFor,
+	resolveAddressOverlayGate,
+} from "./browser/address-overlay";
 import { runBrowserMenuAction } from "./browser/browser-chord";
 import {
 	CONSENT_ATTENTION_CHANNEL,
@@ -125,6 +129,8 @@ import {
 	installSupplementProtocol,
 	registerSupplementScheme,
 } from "./supplement-protocol";
+import { TeamBridgeNotifier } from "./team-bridge-notifier";
+import { TeamBridgeNotifyStore } from "./team-bridge-notify-store";
 import {
 	describeTelemetryLaunch,
 	resolveTelemetryLaunch,
@@ -568,6 +574,26 @@ function createApplicationMenu(): void {
 		{
 			label: "View",
 			submenu: [
+				{
+					id: "app-new-tab",
+					label: "New Browser Tab",
+					accelerator: "CmdOrCtrl+T",
+					/*
+					 * THE NATIVE ACCELERATOR ROUTE FOR CMD+T, which had no menu item at all.
+					 * The browser owns the command through the same predicate as Reload
+					 * (`ownsPage` for a focused driven page, `ownsChrome` for browser chrome);
+					 * outside the browser this is deliberately a no-op, never a window close.
+					 * When the chrome's own `before-input-event` already claimed the press it
+					 * prevents this accelerator, so rapid/legit presses stay exactly once.
+					 */
+					click: (_item, target) =>
+						runBrowserMenuAction(
+							"new-tab",
+							target,
+							mainWindow,
+							routeBrowserMenu,
+						),
+				},
 				{
 					id: "app-reload",
 					label: "Reload",
@@ -1461,6 +1487,30 @@ const devDriverArming = resolveDevDriverArming({
 });
 const devDriverLine = describeDevDriverArming(devDriverArming);
 if (devDriverLine) console.log(devDriverLine);
+
+/*
+ * S1's address-overlay gate, resolved ONCE here for the same reason the window
+ * mode and the dev driver are: it is a fact about the LAUNCH, decided before a
+ * window or a host exists. It needs the exact opt-in AND the already-armed dev
+ * driver AND `headless`; anything else refuses with a printed reason. Pure in
+ * `browser/address-overlay.ts`, so its edges are asserted without an app.
+ *
+ * Nothing here reaches the product: an ordinary launch has no opt-in, so the
+ * host receives no `addressOverlay` option, registers no probe channel and
+ * creates no native child. The in-flow address editor and its list are untouched.
+ */
+const addressOverlayGate = resolveAddressOverlayGate({
+	env: launchEnv,
+	devDriverArmed: devDriverArming.armed,
+	windowMode: windowLaunch.mode,
+});
+if (addressOverlayGate.asked) {
+	console.log(
+		addressOverlayGate.enabled
+			? "[address-overlay] ARMED (S1 probe: native child, no product path)"
+			: `[address-overlay] not armed: ${addressOverlayGate.reason}`,
+	);
+}
 
 /*
  * The renderer's half of that decision, as `webPreferences` for whichever window
@@ -2410,6 +2460,43 @@ app
 			// line is what tells that trigger apart from the other four.
 			reportRaise,
 		);
+		/*
+		 * Team Bridge message banners. A SEPARATE owner from the notifier above: its
+		 * vocabulary is the renderer's (a conversation and a sender label), not the
+		 * backend's composition, and its dedupe cursor is per conversation rather
+		 * than per backend dedupe key.
+		 *
+		 * The store is a small file in `userData`: only conversation ids and the
+		 * newest seq a banner was raised for. The window and the raise policy are
+		 * the same ones every other banner click uses, so a click lands where the
+		 * app already brings itself forward. `reopen` asks the app for a window the
+		 * only way it knows how (the Dock-click path); the target stays pending for
+		 * the new renderer to pull on mount.
+		 */
+		const teamBridgeNotifier = new TeamBridgeNotifier({
+			window: () => mainWindow,
+			show: windowLaunch.show,
+			icon: image,
+			store: new TeamBridgeNotifyStore(
+				join(app.getPath("userData"), "team-bridge-notifications.json"),
+				(message, error) =>
+					logger.warn(`${message}: ${String(error)}`, LogFileType.BACKEND),
+			),
+			host: {
+				signalOpen: () => {
+					const window = mainWindow;
+					if (window && !window.isDestroyed()) {
+						window.webContents.send("team-bridge:open");
+					}
+				},
+				reopen: () => app.emit("activate"),
+			},
+			present: (window) =>
+				raiseWindow(window, windowLaunch.show, {
+					trigger: "banner-click",
+					report: reportRaise,
+				}),
+		});
 		// Read `features.notification_contract` whenever the backend becomes
 		// reachable, NOT here: the desktop token is minted inside
 		// `backendService.start()` below, so a capability request issued now
@@ -2460,6 +2547,13 @@ app
 		 * test, in `console/capture-url.ts`.
 		 */
 		const consoleCaptureUrl = consoleCaptureUrlFor(rendererUrl);
+		/*
+		 * S1's inert document, derived from the same trusted URL rather than spelled
+		 * a second time: a dev server on another port or a moved bundle cannot leave
+		 * the overlay pointing at a document that is not there. The host only receives
+		 * it when the gate passed; the URL itself is never renderer- or caller-supplied.
+		 */
+		const addressOverlayDocumentUrl = addressOverlayDocumentUrlFor(rendererUrl);
 		/*
 		 * The machine-wide feed's two consumers, and the split between them is the
 		 * design: main takes the notifications (so a completion banners with no
@@ -2864,6 +2958,7 @@ app
 			 * and the guard are two halves of one decision and must share one list.
 			 */
 			supplementMounts,
+			teamBridgeNotifier,
 		);
 
 		/*
@@ -3978,6 +4073,16 @@ app
 					// document, and the preload every renderer in this app gets, which is what
 					// lets main feed the reconstruction to it.
 					consoleCaptureUrl,
+					// S1: only a gated headless probe arm gets this option at all. The
+					// URL is this app's own packaged document, not a caller's string.
+					...(addressOverlayGate.enabled
+						? {
+								addressOverlay: {
+									enabled: true,
+									documentUrl: addressOverlayDocumentUrl,
+								},
+							}
+						: {}),
 					preloadPath: join(__dirname, "../preload/index.js"),
 					/*
 					 * The console's surfaces are handed the user's own PATH, from the same

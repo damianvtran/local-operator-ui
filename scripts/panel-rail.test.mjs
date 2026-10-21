@@ -2851,8 +2851,13 @@ test("the lit bar is clear of the focus ring, flush with the rail's leading edge
 		"src/renderer/src/shared/components/navigation/panel-rail-item.tsx",
 	);
 	assert.ok(
-		item.includes("before:-left-[6px]"),
-		"the bar is 6px outside the 32px control - the item is centred in the 44px rail, so the gutter is 6px a side - and its 2px width therefore starts ON the rail's leading edge",
+		item.includes("before:-start-[6px]"),
+		"the bar is 6px outside the 32px control - the item is centred in the 44px rail, so the gutter is 6px a side - and its 2px width therefore starts ON the rail's leading (inline-start) edge in either writing direction",
+	);
+	assert.ok(
+		!item.includes("before:-left-[6px]") &&
+			!item.includes("before:-right-[6px]"),
+		"the bar must be anchored to the rail's inline-start edge, not a physical side: in RTL the rail stands at the window's left and the content boundary is its right edge",
 	);
 	assert.ok(
 		!item.includes("before:-left-[6.5px]"),
@@ -2868,7 +2873,7 @@ test("the count badge is the small mark anchored to the corner (D4)", () => {
 	const rail = read(
 		"src/renderer/src/shared/components/navigation/panel-rail.tsx",
 	);
-	assert.match(rail, /absolute -top-0\.5 -right-0\.5 flex/);
+	assert.match(rail, /absolute -top-0\.5 -end-0\.5 flex/);
 	assert.ok(
 		rail.includes("text-meta-sm"),
 		"the type token, not a literal size",

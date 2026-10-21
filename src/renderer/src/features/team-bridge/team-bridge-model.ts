@@ -1,6 +1,10 @@
+import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
 import type {
 	TeamBridgeConversation,
+	TeamBridgeConversationList,
+	TeamBridgeDirectoryMember,
 	TeamBridgeMessage,
+	TeamBridgeNotify,
 	TeamBridgeParticipant,
 	TeamBridgeTenantId,
 } from "../../../../shared/team-bridge-contract";
@@ -93,6 +97,146 @@ export function conversationGlyph(
 	if (conversation.kind === "channel") return "hash";
 	if (conversation.kind === "group") return "users";
 	return "at";
+}
+
+/**
+ * Whether the caller is looking at a discoverable channel they have not joined.
+ *
+ * An EXPLICIT pair is required: `discoverable: true` beside `member: false`.
+ * A server older than the discoverable slice omits both, and a page that read
+ * an absent `member` as false would turn every row into a preview and stop
+ * fetching its history. Absence therefore means "cannot say", never "not a
+ * member".
+ *
+ * A preview row is readable metadata only: the rail may show its name and
+ * count, but the thread must not request or render bodies — the server answers
+ * `not_a_member` for exactly that read.
+ */
+export function isPreviewConversation(
+	conversation: Pick<TeamBridgeConversation, "discoverable" | "member">,
+): boolean {
+	return conversation.discoverable === true && conversation.member === false;
+}
+
+/**
+ * The notification register a conversation row carries.
+ *
+ * `notify` is the newer field; `muted` predates it and every page still carries
+ * it. Reading the pair here — one place — is what keeps the row's bell glyph,
+ * the menu's checked row and the optimistic write from disagreeing about what
+ * "muted" means while servers roll forward at different speeds.
+ */
+export function notificationPreference(
+	conversation: Pick<TeamBridgeConversation, "notify" | "muted">,
+): TeamBridgeNotify {
+	return conversation.notify ?? (conversation.muted ? "mute" : "all");
+}
+
+/** True exactly when the row's quiet bell should be drawn. */
+export function showsMutedGlyph(
+	conversation: Pick<TeamBridgeConversation, "notify" | "muted">,
+): boolean {
+	return notificationPreference(conversation) === "mute";
+}
+
+/**
+ * The immediate Mute/Unmute item's next value.
+ *
+ * Unmute returns to `all`, Slack's behaviour: the item is a toggle, not a
+ * restore of whatever level preceded the mute. A reader who wants `mention`
+ * back picks it from the radio rows, which are the explicit statement of the
+ * preference.
+ */
+export function toggledMuteNotify(notify: TeamBridgeNotify): TeamBridgeNotify {
+	return notify === "mute" ? "all" : "mute";
+}
+
+/** The three notification values, in the menu's order (loudest first). */
+export const TEAM_BRIDGE_NOTIFY_OPTIONS: ReadonlyArray<{
+	value: TeamBridgeNotify;
+	labelKey:
+		| "ui.teamBridge.notify.all"
+		| "ui.teamBridge.notify.mention"
+		| "ui.teamBridge.notify.mute";
+}> = [
+	{ value: "all", labelKey: "ui.teamBridge.notify.all" },
+	{ value: "mention", labelKey: "ui.teamBridge.notify.mention" },
+	{ value: "mute", labelKey: "ui.teamBridge.notify.mute" },
+];
+
+/**
+ * A radio value back into the notify union.
+ *
+ * Radix hands `onValueChange` a plain string built from our own radio values;
+ * this is the one boundary that needs the narrowing, and an unknown value
+ * falls back to the loudest register rather than muting by accident.
+ */
+export function asTeamBridgeNotify(value: string): TeamBridgeNotify {
+	return value === "mention" || value === "mute" ? value : "all";
+}
+
+/**
+ * The optimistic patch for one conversation's notification preference.
+ *
+ * A conversation list page is scope-keyed, and the same row can live in the
+ * merged page and its organization's page; the caller patches every cached
+ * page with this function. The pair moves together (`notify` and the legacy
+ * `muted`) so no render can read one without the other, and every other row
+ * and the page's own paging fields are preserved — an optimistic write must
+ * not drop `has_more`/`next_before` and strand the rail's paging.
+ */
+export function withNotificationPreference(
+	page: TeamBridgeConversationList,
+	conversationId: string,
+	notify: TeamBridgeNotify,
+): TeamBridgeConversationList {
+	return {
+		...page,
+		conversations: page.conversations.map((row) =>
+			row.id === conversationId
+				? { ...row, notify, muted: notify === "mute" }
+				: row,
+		),
+	};
+}
+
+/**
+ * Whether a refused notification write belongs to the visible conversation.
+ *
+ * A write settles against the hook instance that started it, and the reader may
+ * have selected another conversation while it was in flight. The mutation's
+ * variables name the conversation the write belonged to, so comparing them
+ * with the current selection keeps A's late refusal from appearing under B.
+ */
+export function notifyFailureIsVisible(
+	failure: {
+		isError: boolean;
+		variables?: { conversationId: string };
+	},
+	selectedId: string | null,
+): boolean {
+	return failure.isError && failure.variables?.conversationId === selectedId;
+}
+
+/**
+ * The count the thread header states.
+ *
+ * Insiders keep the live member array and count its ACTIVE rows: the server's
+ * `member_count` also includes invitees (agent-server counts active + invited),
+ * so preferring it for an insider would make the header disagree with both the
+ * avatars beside it and the previous UI's number. A discoverable non-member has
+ * no `members` rows at all — membership is the fact the preview withholds — so
+ * `member_count` is the only metadata there, and its invited-inclusive total is
+ * the honest number the preview can state.
+ */
+export function conversationMemberCount(
+	conversation: Pick<TeamBridgeConversation, "member_count" | "members">,
+): number {
+	if (conversation.members.length > 0) {
+		return conversation.members.filter((member) => member.state === "active")
+			.length;
+	}
+	return conversation.member_count ?? 0;
 }
 
 /** True when at least one ACTIVE member is an agent. Badges read this. */
@@ -303,4 +447,177 @@ export function visibleConversationRows(
 		(conversation) =>
 			conversationOrganizationName(conversation, organizations) !== null,
 	);
+}
+
+/**
+ * Why the page cannot be used, or null when it can.
+ *
+ * The order is the server's own ladder, read from ONE status payload: a signed
+ * out account is told to sign in even if the platform is also old, because
+ * signing in is the step that can be taken now; an outdated app is told to
+ * update before anything else is attempted; an unavailable service is named as
+ * such; and a READY account whose surface state is A is the plan gate — the
+ * caller is signed in and current, the organization simply has no Team Bridge.
+ * Every other shape (including a null payload, which is "no answer yet") is
+ * eligible: this function may only withhold the page when the server says so.
+ */
+export type TeamBridgeEligibility =
+	| "signed_out"
+	| "update_required"
+	| "unavailable"
+	| "plan_required";
+
+export function teamBridgeEligibility(
+	status:
+		| Pick<AgentMessagesStatus, "state" | "surface_state" | "update_required">
+		| null
+		| undefined,
+): TeamBridgeEligibility | null {
+	if (!status) return null;
+	if (status.state === "signed_out") return "signed_out";
+	if (status.state === "update_required" || status.update_required) {
+		return "update_required";
+	}
+	if (status.state === "unavailable") return "unavailable";
+	if (status.surface_state === "A") return "plan_required";
+	return null;
+}
+
+/**
+ * How one directory row behaves.
+ *
+ * `self` is the signed-in account: shown as "You" and never a control (mailing
+ * yourself is not a thing the rail offers). `unavailable` is a person whose
+ * bridge is off or gone — the row is visible so the reader can see who is
+ * potentially reachable, but it is inert. `paused` is still OPENABLE: a paused
+ * bridge keeps its history, so the reader can read and message. Only an
+ * explicitly enabled bridge with an active or paused state is openable; an
+ * enabled bit beside `none`/`disabled` is an inconsistent pair and fails closed.
+ */
+export type TeamBridgePersonRowState =
+	| "self"
+	| "openable"
+	| "paused"
+	| "unavailable";
+
+/**
+ * The label a People row paints.
+ *
+ * The directory may carry an empty label for an account that was deleted between
+ * the membership and account reads (the hub keeps the membership row on purpose).
+ * An empty row is still a member the reader can recognize by the stable account
+ * id, so fall back to that rather than painting a blank row or rejecting the
+ * whole directory in the schema.
+ */
+export function personDisplayLabel(
+	member: Pick<TeamBridgeDirectoryMember, "account_id" | "display_label">,
+): string {
+	return member.display_label.trim() || member.account_id;
+}
+
+/**
+ * Classify a failed directory read so the People section can name the cause.
+ *
+ * The desktop transport reports the HTTP status separately from the backend's
+ * code. The four cases people actually hit are: signed out (401), not entitled
+ * or not a member of this organization (403 / bridge_not_available), the backend
+ * never answered (status null), and a server that answered with an error. The
+ * old single string made all four look like a retryable load failure, which is
+ * how a signed-out user ends up pressing Try again forever.
+ */
+export type DirectoryFailureKind =
+	| "sign_in"
+	| "plan"
+	| "outdated"
+	| "refused"
+	| "unreachable"
+	| "server";
+
+export function directoryFailureKind(error: unknown): DirectoryFailureKind {
+	const candidate = error as { status?: unknown; code?: unknown } | null;
+	const status =
+		typeof candidate?.status === "number" ? candidate.status : null;
+	const code = typeof candidate?.code === "string" ? candidate.code : null;
+	if (status === 401) return "sign_in";
+	if (status === 403 && code === "bridge_not_available") return "plan";
+	if (status === 403) return "refused";
+	// A route this daemon predates (404), a request it rejects (400/422), or a
+	// payload this client cannot parse (ZodError) are not transient. Retrying
+	// them is deterministic and reads as a broken button.
+	if (
+		status === 400 ||
+		status === 404 ||
+		status === 422 ||
+		(candidate as { name?: unknown } | null)?.name === "ZodError"
+	)
+		return "outdated";
+	if (status === null) return "unreachable";
+	return "server";
+}
+
+export function personRowState(
+	member: Pick<
+		TeamBridgeDirectoryMember,
+		"account_id" | "bridge_enabled" | "bridge_state"
+	>,
+	selfAccountId?: string,
+): TeamBridgePersonRowState {
+	if (selfAccountId && member.account_id === selfAccountId) return "self";
+	const reachable =
+		member.bridge_enabled &&
+		(member.bridge_state === "active" || member.bridge_state === "paused");
+	if (!reachable) return "unavailable";
+	return member.bridge_state === "paused" ? "paused" : "openable";
+}
+
+/**
+ * The one conversation a person row opens, if it already exists.
+ *
+ * A DM is a two-party conversation: the target must be a non-removed human
+ * member and — when the signed-in account is known — the reader must be one
+ * too, so a conversation that merely mentions the same account id in another
+ * organization can never be opened from this row. Archived DMs are skipped:
+ * they are history the reader has put away, not the live thread a click
+ * promises. Several matches are possible if a previous DM was left and a new
+ * one started; the most recently active wins, matching the rail's own order.
+ */
+export function dmWithPerson(
+	conversations: readonly TeamBridgeConversation[],
+	accountId: string,
+	selfAccountId?: string,
+): TeamBridgeConversation | null {
+	const candidates = conversations.filter((conversation) => {
+		if (conversation.kind !== "dm" || conversation.status === "archived") {
+			return false;
+		}
+		const hasTarget = conversation.members.some(
+			(member) => member.account_id === accountId && member.state !== "removed",
+		);
+		if (!hasTarget) return false;
+		if (!selfAccountId) return true;
+		return conversation.members.some(
+			(member) =>
+				member.kind === "human" &&
+				member.account_id === selfAccountId &&
+				member.state !== "removed",
+		);
+	});
+	if (candidates.length === 0) return null;
+	return mergedConversationOrder(candidates)[0] ?? null;
+}
+
+/**
+ * Whether a row's role earns a badge.
+ *
+ * "Member" is the default every row already says by being in the directory,
+ * so a badge for it would be noise repeated down the rail. Only a role that
+ * changes what the reader may expect of that person (owner, admin) is drawn.
+ */
+export function showsPersonRole(role: string): boolean {
+	return role === "owner" || role === "admin";
+}
+
+/** The avatar initial for a person row (first character, uppercased). */
+export function personInitial(displayLabel: string): string {
+	return displayLabel.trim().charAt(0).toUpperCase() || "?";
 }

@@ -33,6 +33,7 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import {
 	ClipboardCopy,
@@ -147,6 +148,7 @@ export const FileActionsMenu = memo(function FileActionsMenu({
 	pane,
 	overlay = false,
 }: FileActionsMenuProps) {
+	useI18nLocale();
 	const { canOpenInCanvas, withTarget } = useFileTargets(actionPath, cwd, pane);
 	const [copied, setCopied] = useState(false);
 	const ariaLabel = `Actions for ${label || "this file"}`;
@@ -189,7 +191,9 @@ export const FileActionsMenu = memo(function FileActionsMenu({
 						}}
 					>
 						<LayoutGrid aria-hidden="true" />
-						<span>Open in canvas</span>
+						<span>
+							{t("ui.chat.canonical.supplement.file_actions.open_in_canvas")}
+						</span>
 					</DropdownMenuItem>
 				)}
 				<DropdownMenuItem
@@ -198,7 +202,9 @@ export const FileActionsMenu = memo(function FileActionsMenu({
 					}}
 				>
 					<FileIcon aria-hidden="true" />
-					<span>Open in default app</span>
+					<span>
+						{t("ui.chat.canonical.supplement.file_actions.open_in_default_app")}
+					</span>
 				</DropdownMenuItem>
 				<DropdownMenuItem
 					onSelect={() => {
@@ -206,7 +212,9 @@ export const FileActionsMenu = memo(function FileActionsMenu({
 					}}
 				>
 					<FolderOpen aria-hidden="true" />
-					<span>Reveal in Finder</span>
+					<span>
+						{t("ui.chat.canonical.supplement.file_actions.reveal_in_finder")}
+					</span>
 				</DropdownMenuItem>
 				<DropdownMenuItem
 					onSelect={() => {

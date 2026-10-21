@@ -534,6 +534,21 @@ test("closing a section nobody widened returns the same map", () => {
  * longer); this asserts the other half - the persisted view a relaunch reads
  * carries no cap field for it to come back through.
  */
+test("auto-tag default is on, and only a stored boolean can turn it off", () => {
+	/*
+	 * The setting is opt-out (§5.4), so TWO absences read as ON: a view stored
+	 * before the field existed, and a stored non-boolean from tampered storage.
+	 * `false` is only ever the reader's own press - which is what makes turning
+	 * it off survive a relaunch rather than being re-defaulted at launch.
+	 */
+	assert.equal(DEFAULT_SIDEBAR_VIEW.autoTagForks, true);
+	assert.equal(parseSidebarView({}).autoTagForks, true);
+	assert.equal(parseSidebarView({ autoTagForks: "no" }).autoTagForks, true);
+	assert.equal(parseSidebarView({ autoTagForks: 0 }).autoTagForks, true);
+	assert.equal(parseSidebarView({ autoTagForks: true }).autoTagForks, true);
+	assert.equal(parseSidebarView({ autoTagForks: false }).autoTagForks, false);
+});
+
 test("the persisted view carries no section cap", () => {
 	const view = parseSidebarView(
 		persistedUiPreferences(useUiPreferencesStore.getState()).chatSidebarView,
@@ -1530,13 +1545,30 @@ test("the component draws the band's controls and the popover's four groups", ()
 			source.includes('navigate("/agents?create=team")'),
 		"the create menu is not wired to the two existing authoring flows",
 	);
-	assert.ok(
-		source.includes('aria-label="Search chats and agents"'),
-		"the band's search control has no accessible name",
+	/*
+	 * Both names are catalogue messages now: the anchor is the key the control
+	 * renders, and the copy beside it is what a screen reader announces.
+	 */
+	const sidebarCopy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.sidebar.json", "utf8"),
 	);
 	assert.ok(
-		source.includes('aria-label="Open agent…"'),
+		source.includes('aria-label={t("ui.chat.sidebar.header.search")}'),
+		"the band's search control has no accessible name",
+	);
+	assert.equal(
+		sidebarCopy["ui.chat.sidebar.header.search"],
+		"Search chats and agents",
+		"the band's search control announces a different message",
+	);
+	assert.ok(
+		source.includes('aria-label={t("ui.chat.sidebar.header.open_agent")}'),
 		"the band's agent jump has no accessible name",
+	);
+	assert.equal(
+		sidebarCopy["ui.chat.sidebar.header.open_agent"],
+		"Open agent…",
+		"the band's agent jump announces a different message",
 	);
 });
 
@@ -1767,12 +1799,16 @@ test("every view setting the popover writes survives a relaunch", () => {
 	// The pin is the roster's own field and rides the same object: one press, in
 	// the module's own spelling, so the relaunch below proves it comes back.
 	const pinned = togglePinnedAgent(ordered, "release-captain");
-	store.getState().setChatSidebarView(pinned);
+	// The fork's auto-tag intent rides the same object and is opted OUT here:
+	// `true` is the default, so only the non-default value proves the write is
+	// the reader's and not the parser's fallback.
+	const optedOut = { ...pinned, autoTagForks: false };
+	store.getState().setChatSidebarView(optedOut);
 	// The store is the writer, and the filter the middleware keeps is the one it
 	// ships: assert the field is IN the persisted blob rather than assuming it.
 	assert.deepEqual(
 		persistedUiPreferences(store.getState()).chatSidebarView,
-		pinned,
+		optedOut,
 	);
 	// The bytes on disk, parsed the way the next launch parses them.
 	const key = [...memory.keys()].find((entry) => {
@@ -1799,6 +1835,11 @@ test("every view setting the popover writes survives a relaunch", () => {
 		relaunched.pinnedAgents,
 		["release-captain"],
 		"the pin came back",
+	);
+	assert.equal(
+		relaunched.autoTagForks,
+		false,
+		"the fork's auto-tag intent came back",
 	);
 	// And the one control with a non-default value nothing else writes: the page
 	// ladder, whose counter is the only field that can only ever grow.

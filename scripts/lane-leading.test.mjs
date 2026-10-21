@@ -178,34 +178,48 @@ test("the marker and the registration are one thing", () => {
 	}
 });
 
-test("the lane paints the column's own rung, and a surface column keeps the old band", () => {
+test("the lane is an overlay and panels paint from y0", () => {
 	const layout = readSource(
 		"src/renderer/src/shared/components/common/chat-layout.tsx",
 	);
 	assert.match(
 		layout,
-		/const laneEdge = Math\.max\(columnWidth, leading\?\.edge \?\? 0\);/,
-		"the band's width is the measured leading edge with the sidebar's width as its floor: max() rather than the measured value, because a route column is always to the RIGHT of the sidebar and a stale or absent measurement must not narrow the band below the column the lane already carried",
+		/data-titlebar-lane=""/,
+		"the shell must still draw its drag lane over the window's top edge",
 	);
 	assert.match(
 		layout,
-		/laneGround === "surface"/,
-		"the lane must branch on the ground the marker names: a `surface` column IS the band (the historic two-stop gradient), and any other rung splits it so the sidebar's width stays `surface` and the column's width takes the named role",
+		/className="absolute inset-x-0 top-0 z-30 h-\[var\(--chrome-strip-h\)\]"/,
+		"the lane must be an OVERLAY at y0, not a row that reserves height: a reserved row is exactly the band that makes the sidebar and view start 32px down (operator report, 2026-10-20, third occurrence)",
 	);
 	assert.match(
 		layout,
-		/var\(--lo-\$\{laneGround\}\)/,
-		"the non-`surface` shape must paint the role rather than a colour: a literal here is a value the next palette cannot move",
+		/\{flushTop \? \(/,
+		"the absolute overlay must be the flushTop branch: routes that have not opted into full-bleed panels keep the painted lane row and their previous first-row position",
 	);
 	assert.match(
 		layout,
-		/var\(--lo-canvas\) \$\{laneEdge\}px/,
-		"the lane's gradient must be painted from the measured width rather than the sidebar's - the sidebar's alone is the defect",
+		/flushTop\?: boolean/,
+		"the shell must let a route whose own panels reach y0 opt out of the column padding; otherwise the padding starts the panel 32px down",
 	);
-	assert.doesNotMatch(
-		layout,
-		/\$\{columnWidth\}px, var\(--lo-canvas\) \$\{columnWidth\}px/,
-		"the lane must not go back to stopping at the app sidebar's edge",
+	const app = readSource("src/renderer/src/app.tsx");
+	assert.match(
+		app,
+		/flushTop=\{pathname\.startsWith\("\/team-bridge"\)\}/,
+		"the Team Bridge route must opt into flushTop, the same way chat and browser own their top row",
+	);
+	const page = readSource(
+		"src/renderer/src/features/team-bridge/team-bridge-page.tsx",
+	);
+	assert.match(
+		page,
+		/className="flex h-full min-h-0 w-full overflow-hidden bg-canvas"/,
+		"the Team Bridge canvas must reach y0 on its own ground",
+	);
+	assert.match(
+		page,
+		/pt-\[var\(--panel-top-pad,0px\)\]/,
+		"Team Bridge's panels must move the traffic-light clearance INSIDE the panel as padding, never as an offset of the panel",
 	);
 });
 
@@ -282,5 +296,60 @@ test("no route column draws a right rule any more", () => {
 		readSource(AGENTS_SIDEBAR),
 		/(border-hairline border-r|border-r border-hairline)/,
 		`${AGENTS_SIDEBAR} draws the roster's right rule again: the roster's \`surface\` against the \`canvas\` content is a tone step, and the rule would stop at the lane's lower edge - the operator's report verbatim`,
+	);
+});
+
+test("the non-flush lane still paints the measured grounds", () => {
+	/*
+	 * The flushTop branch is an overlay, but the routes that have NOT opted in
+	 * keep the painted lane row exactly as it was: its width is the leading
+	 * column's measured edge with the sidebar as the floor, and the ground the
+	 * hand-over names is the role it paints. Losing these pins would let the
+	 * untouched branch drift while the new one is reviewed.
+	 */
+	const layout = readSource(
+		"src/renderer/src/shared/components/common/chat-layout.tsx",
+	);
+	assert.match(
+		layout,
+		/const laneEdge = Math\.max\(columnWidth, leading\?\.edge \?\? 0\);/,
+		"the lane's width must stay the measured leading edge with the sidebar as its floor",
+	);
+	assert.match(
+		layout,
+		/laneGround === "surface"/,
+		"the non-flush lane must still branch on the ground the marker names",
+	);
+	assert.match(
+		layout,
+		/var\(--lo-\$\{laneGround\}\)/,
+		"the non-surface ground must be a role, not a literal",
+	);
+	assert.match(
+		layout,
+		/var\(--lo-canvas\) \$\{laneEdge\}px/,
+		"the non-flush lane must paint its canvas stop from the measured width",
+	);
+});
+
+test("the flush-top app sidebar pads its own surface root", () => {
+	const sidebar = readSource(
+		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
+	);
+	assert.match(
+		sidebar,
+		/data-chrome-pad-top=\{chromePadTop \? "" : undefined\}/,
+		"the sidebar must write the pad marker only when the shell route asked for flush top",
+	);
+	assert.match(
+		sidebar,
+		/className="group\/sidebar flex h-full min-h-0 flex-col overflow-hidden bg-surface"/,
+		"the padded panel must remain the element that paints `surface`; a shell wrapper with a ground would defeat glass (round 1 S1)",
+	);
+	const css = readSource("src/renderer/src/styles/index.css");
+	assert.match(
+		css,
+		/\[data-chrome-pad-top\] \{\s*padding-top: var\(--chrome-strip-h\);\s*\}/,
+		"the pad must be CSS on the marker, so the panel's ground reaches y0 while its content clears the traffic lights",
 	);
 });

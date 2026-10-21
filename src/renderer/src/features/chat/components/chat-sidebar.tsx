@@ -39,6 +39,7 @@ import {
 	unresolvedForLocalItem,
 } from "@shared/api/local-operator/hub-links";
 import {
+	HUB_SECTION,
 	type HubItemKind,
 	type HubMark,
 	hubAvailableCount,
@@ -143,6 +144,11 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import { AGENT_ROSTER_SEED } from "../../command-palette/palette-search";
+import {
+	peerLinkDownLabel,
+	peerLinkDownVisibleLabel,
+	peerUncertainLabel,
+} from "../../mesh/peer-presence";
 import { focusRowAfterRemoval } from "../archive-confirm";
 import { ARCHIVE_FAILURE_TOAST_MS } from "../archive-undo";
 import {
@@ -156,6 +162,12 @@ import {
 	archivedSearchWidened,
 	visibleRows,
 } from "../chat-archived";
+/*
+ * The fork's auto-tag intent is decided in its own module so the View-options
+ * row and the fork body cannot disagree about whether this backend understands
+ * the field (`chat-auto-tag.ts` owns both halves).
+ */
+import { autoTagSupported } from "../chat-auto-tag";
 import {
 	CHAT_LIST_SECTION_LABEL,
 	type ChatListSection,
@@ -1374,6 +1386,15 @@ export function ChatSidebar({
 		capabilities.data,
 		"session_tags",
 	);
+	/*
+	 * A SECOND QUESTION ABOUT THE SAME SUBSYSTEM: `session_tags` gates the tag
+	 * catalogue, `session_tags_auto_tag` gates the fork's `auto_tag` field. The
+	 * row and the request are both gated on the second without narrowing the
+	 * first, so a backend with tags and without auto-tagging keeps its whole tag
+	 * surface and simply never sees the fork intent - never a 422 for a field its
+	 * `Fork` model does not know.
+	 */
+	const autoTagAvailable = autoTagSupported(capabilities.data);
 	const tagCategories = useSessionTagsStore((state) => state.categories);
 	const tagCategoriesLoading = useSessionTagsStore((state) => state.loading);
 	const tagCategoriesError = useSessionTagsStore((state) => state.error);
@@ -3008,7 +3029,7 @@ export function ChatSidebar({
 								void fetchCatalogueTail();
 							}}
 						>
-							Retry
+							{t("ui.common.actions.retry")}
 						</button>
 					</p>
 				)}
@@ -4231,7 +4252,11 @@ export function ChatSidebar({
 		);
 		if (!groups) return rows.map((row) => sessionRow(row));
 		return groups.map((bucket) => (
-			<div key={bucket.id} data-chat-tag-group={bucket.id}>
+			<div
+				key={bucket.id}
+				data-chat-tag-group={bucket.id}
+				className="[&[data-tag-drop-preview]_[data-chat-row]]:bg-row-selected [&[data-tag-drop-preview]_[data-session-row]]:bg-row-selected"
+			>
 				<div
 					data-tag-drop-target={bucket.id}
 					className="flex h-7 items-center gap-2 px-2 text-meta text-ink-dim"
@@ -4243,11 +4268,17 @@ export function ChatSidebar({
 					</span>
 					<span>{bucket.rows.length}</span>
 				</div>
-				{bucket.rows.map((row) => sessionRow(row))}
+				<div data-tag-drop-target={bucket.id} data-tag-drop-body>
+					{bucket.rows.map((row) => sessionRow(row, false, true))}
+				</div>
 			</div>
 		));
 	};
-	const sessionRow = (row: CanonicalSessionRow, nested = false) => {
+	const sessionRow = (
+		row: CanonicalSessionRow,
+		nested = false,
+		tagDraggable = false,
+	) => {
 		const trailing = rowTrailingStatement({
 			marked: conversationMatches.has(row.session_id),
 			unstarted: unstarted.has(row.session_id),
@@ -4328,7 +4359,7 @@ export function ChatSidebar({
 		 * `teamBubbleFocused`), which is what lets the flyout stand down while the mark
 		 * is speaking.
 		 *
-		 * `ml-1` sits on the wrapper rather than on the bubble so the gap is the same
+		 * `ms-1` sits on the wrapper rather than on the bubble so the gap is the same
 		 * 4px step the trailing slots before it used, and `inline-flex` keeps the row's
 		 * own flex line untouched. The four handlers are `onPointerEnter`/`Leave` and
 		 * `onFocus`/`onBlur` (the latter two bubble from the mark inside, which is the
@@ -4341,7 +4372,7 @@ export function ChatSidebar({
 		 */
 		const teamMark = (name: string, slug: string) => (
 			<span
-				className="ml-1 inline-flex shrink-0"
+				className="ms-1 inline-flex shrink-0"
 				onPointerEnter={() => setTeamBubbleHovered(row.session_id)}
 				onPointerLeave={() => setTeamBubbleHovered(null)}
 				onFocus={() => setTeamBubbleFocused(row.session_id)}
@@ -4559,10 +4590,13 @@ export function ChatSidebar({
 					{bindingClause(row)}
 				</span>
 				<span className="block">
-					{row.status?.label ??
-						(synthesized.has(row.session_id)
-							? "found by search, beyond the chats listed here"
-							: "Recent")}
+					{row.link_down === true
+						? peerLinkDownLabel(row, listNow / 1000)
+						: (peerUncertainLabel(row) ??
+							row.status?.label ??
+							(synthesized.has(row.session_id)
+								? "found by search, beyond the chats listed here"
+								: "Recent"))}
 					{silent ? ` · ${SILENT_REMEDY}` : ""}
 					{openedByNote(row)}
 					{unstarted.has(row.session_id) ? ", not sent yet" : ""}
@@ -4628,8 +4662,13 @@ export function ChatSidebar({
 					// `w-full` became `min-w-0 grow` when the wrapper arrived: the button shares
 					// the row's box with whatever the wrapper carries beside it, and a full-width
 					// button inside a flex wrapper with a sibling is a row that overflows.
-					"min-w-0 grow text-left",
-					nested && "pl-7",
+					"min-w-0 grow text-start",
+					// Only grouped rows participate; keep held feedback through pointer capture.
+					tagDraggable &&
+						(rowTagDrag.armedId === row.session_id
+							? "cursor-grabbing"
+							: "cursor-grab active:cursor-grabbing"),
+					nested && "ps-7",
 					current && rowCurrent,
 					// m4: the unread mark is NOT here. `font-semibold` on this
 					// `flex-1 truncate` title rewrote the visible string when the
@@ -4730,10 +4769,12 @@ export function ChatSidebar({
 					className="flex size-3.5 shrink-0 items-center justify-center"
 				>
 					{row.locality === "remote" && (
-						<ChatRemoteMark unreachable={row.reachable === false} />
+						<ChatRemoteMark
+							unreachable={row.link_down === true || row.reachable === false}
+						/>
 					)}
 				</span>
-				<ChatSessionStatus row={row} />
+				<ChatSessionStatus row={row} nowSeconds={listNow / 1000} />
 				{/*
 				 * THE OUTSTANDING-ASKS MARK, beside the status mark and BEFORE the title.
 				 * A leading fact rather than a trailing one, for the reason the archived
@@ -4769,9 +4810,11 @@ export function ChatSidebar({
 					<>
 						<Archive
 							aria-hidden="true"
-							className="ml-1 size-3.5 shrink-0 text-ink-dim"
+							className="ms-1 size-3.5 shrink-0 text-ink-dim"
 						/>
-						<span className="sr-only">, archived</span>
+						<span className="sr-only">
+							{t("ui.chat.sidebar.row.archived_suffix")}
+						</span>
 					</>
 				)}
 				{/* ONE trailing statement per row, decided by `rowTrailingStatement`
@@ -4833,23 +4876,23 @@ export function ChatSidebar({
 				 * evidence rigs address the mark by, following the row's existing
 				 * convention (`data-session-time`, `data-session-archived`).
 				 *
-				 * NOTE FOR THE REVIEWER: the row is `gap-1` (4px), so `ml-1` on top of
+				 * NOTE FOR THE REVIEWER: the row is `gap-1` (4px), so `ms-1` on top of
 				 * it makes the gap before each glyph 8px and one mark cost 22px rather
-				 * than the spec's 18px. `ml-1` is the spec's explicit class list and is
+				 * than the spec's 18px. `ms-1` is the spec's explicit class list and is
 				 * kept; if the 240px frames show the title starved, dropping `ml-1` is
 				 * the one-word fix that restores the spec's own arithmetic.
 				 */}
 				{marks.running && (
 					<SubagentRunningMark
 						mark="running"
-						className="ml-1 size-3.5 text-accent"
+						className="ms-1 size-3.5 text-accent"
 					/>
 				)}
 				{marks.queued && (
 					<Hourglass
 						aria-hidden="true"
 						data-subagent-mark="queued"
-						className="ml-1 size-3.5 shrink-0 text-ink-muted"
+						className="ms-1 size-3.5 shrink-0 text-ink-muted"
 					/>
 				)}
 				{/* In a flat list nothing else names the profile answering, so two
@@ -4902,13 +4945,13 @@ export function ChatSidebar({
 					(row.binding?.team ? (
 						teamMark(teamLabelFor(row.binding.team), row.binding.team)
 					) : (
-						<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
+						<span className="ms-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
 							· {bindingDisplayName(row)}
 						</span>
 					))}
 				{trailing === "not_sent" && (
-					<span className="ml-1 shrink-0 text-meta text-ink-muted">
-						· Not sent yet
+					<span className="ms-1 shrink-0 text-meta text-ink-muted">
+						· {t("ui.chat.sidebar.row.not_sent")}
 					</span>
 				)}
 				{/* Says WHY a row is in a filtered list when its visible text does not
@@ -4923,11 +4966,13 @@ export function ChatSidebar({
 					<>
 						<span
 							aria-hidden="true"
-							className="ml-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
+							className="ms-1 shrink-0 whitespace-nowrap text-meta text-ink-muted"
 						>
-							· in conversation
+							· {t("ui.chat.sidebar.row.in_conversation")}
 						</span>
-						<span className="sr-only">, matched in conversation</span>
+						<span className="sr-only">
+							{t("ui.chat.sidebar.row.matched_in_conversation")}
+						</span>
 					</>
 				)}
 				{/* THE REMOTE ROW'S OWN SENTENCE, joined to the name here rather than
@@ -4992,19 +5037,33 @@ export function ChatSidebar({
 				 * read after the title, so the row's name stays `state — title` with the
 				 * time as its tail (U21).
 				 */}
-				{!isRunningRow(row) && relativeTime(row, listNow, view.basis) && (
-					<>
-						<span
-							aria-hidden="true"
-							data-session-time
-							className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-has-[:focus-visible]:hidden group-data-[session-hover-intent]:hidden"
-						>
-							{relativeTime(row, listNow, view.basis)}
-						</span>
-						<span className="sr-only">
-							, {relativeTimeSentence(row, listNow, view.basis)}
-						</span>
-					</>
+				{peerUncertainLabel(row) ? (
+					<span className="shrink-0 text-meta text-ink-dim">
+						{peerUncertainLabel(row)}
+					</span>
+				) : row.link_down === true ? (
+					<span
+						className="shrink-0 text-meta text-warning"
+						title={peerLinkDownLabel(row, listNow / 1000)}
+					>
+						{peerLinkDownVisibleLabel(row, listNow / 1000)}
+					</span>
+				) : (
+					!isRunningRow(row) &&
+					relativeTime(row, listNow, view.basis) && (
+						<>
+							<span
+								aria-hidden="true"
+								data-session-time
+								className="ms-auto shrink-0 ps-2 font-mono text-ink-dim text-mono-sm tabular-nums group-has-[:focus-visible]:hidden group-data-[session-hover-intent]:hidden"
+							>
+								{relativeTime(row, listNow, view.basis)}
+							</span>
+							<span className="sr-only">
+								, {relativeTimeSentence(row, listNow, view.basis)}
+							</span>
+						</>
+					)
 				)}
 			</button>
 		);
@@ -5376,7 +5435,7 @@ export function ChatSidebar({
 								data-session-pin-grip
 								tabIndex={-1}
 								aria-hidden="true"
-								title="Drag to reorder · Esc cancels"
+								title={t("ui.chat.sidebar.pins.drag_title")}
 								onPointerDown={(event) =>
 									startPinDrag(row.session_id, label, event)
 								}
@@ -6221,7 +6280,7 @@ export function ChatSidebar({
 							<span>
 								{archived ? "Unarchive conversation" : "Archive conversation"}
 							</span>
-							<span className="ml-auto pl-6">
+							<span className="ms-auto ps-6">
 								<KeyboardShortcut
 									shortcut={chatRowActCapJoined("archive", isMac)}
 									joined
@@ -6239,7 +6298,7 @@ export function ChatSidebar({
 								<Pin aria-hidden="true" />
 							)}
 							<span>{pinned ? "Unpin conversation" : "Pin conversation"}</span>
-							<span className="ml-auto pl-6">
+							<span className="ms-auto ps-6">
 								<KeyboardShortcut
 									shortcut={chatRowActCapJoined("pin", isMac)}
 									joined
@@ -6285,7 +6344,7 @@ export function ChatSidebar({
 							}}
 						>
 							<GitFork aria-hidden="true" />
-							<span>Fork conversation</span>
+							<span>{t("ui.chat.sidebar.row_menu.fork")}</span>
 						</ContextMenuItem>
 					)}
 					{/*
@@ -6315,7 +6374,7 @@ export function ChatSidebar({
 					 */}
 					<ContextMenuItem onSelect={() => void copySessionId(row.session_id)}>
 						<Copy aria-hidden="true" />
-						<span>Copy session ID</span>
+						<span>{t("ui.chat.sidebar.row_menu.copy_id")}</span>
 					</ContextMenuItem>
 					{/*
 					 * RENAME CONVERSATION (#920), SLOT 5, and the seventh row the menu has carried.
@@ -6369,7 +6428,7 @@ export function ChatSidebar({
 						}}
 					>
 						<Pencil aria-hidden="true" />
-						<span>Rename conversation</span>
+						<span>{t("ui.chat.sidebar.row_menu.rename")}</span>
 					</ContextMenuItem>
 					{tagsAvailable && (
 						<ContextMenuItem
@@ -6470,8 +6529,8 @@ export function ChatSidebar({
 								)}
 							>
 								<ChevronUp aria-hidden="true" />
-								<span>Move conversation up</span>
-								<span className="ml-auto pl-6">
+								<span>{t("ui.chat.sidebar.row_menu.move_up")}</span>
+								<span className="ms-auto ps-6">
 									<KeyboardShortcut
 										shortcut={chatPinMoveCapJoined(-1, isMac)}
 										joined
@@ -6490,8 +6549,8 @@ export function ChatSidebar({
 								)}
 							>
 								<ChevronDown aria-hidden="true" />
-								<span>Move conversation down</span>
-								<span className="ml-auto pl-6">
+								<span>{t("ui.chat.sidebar.row_menu.move_down")}</span>
+								<span className="ms-auto ps-6">
 									<KeyboardShortcut
 										shortcut={chatPinMoveCapJoined(1, isMac)}
 										joined
@@ -6545,7 +6604,7 @@ export function ChatSidebar({
 			if (active && active !== document.body) return;
 			document
 				.querySelector<HTMLElement>(
-					`[data-chat-section="${kind === "agent" ? "agents" : "teams"}"]`,
+					`[data-chat-section="${HUB_SECTION[kind]}"]`,
 				)
 				?.focus();
 		});
@@ -6857,7 +6916,7 @@ export function ChatSidebar({
 						type="button"
 						data-chat-row
 						data-entity-name
-						className={cn(rowStyle, "flex-1 text-left", staged && rowCurrent)}
+						className={cn(rowStyle, "flex-1 text-start", staged && rowCurrent)}
 						onClick={() => onStageDraft({ kind, name })}
 						// The visible label is the bare name, which says who but not what
 						// pressing it does. The accessible name states the action and still
@@ -6908,7 +6967,7 @@ export function ChatSidebar({
 							 * at all.
 							 */
 							title={badge > 0 ? groupBadgeLabel(badge) : undefined}
-							className="min-w-4 shrink-0 text-right text-meta tabular-nums text-ink-dim"
+							className="min-w-4 shrink-0 text-end text-meta tabular-nums text-ink-dim"
 						>
 							{badge || ""}
 						</span>
@@ -7125,7 +7184,7 @@ export function ChatSidebar({
 							aria-live="polite"
 							className={
 								view.state !== "rows" && view.sentence !== null
-									? "py-1 pl-7"
+									? "py-1 ps-7"
 									: "sr-only"
 							}
 						>
@@ -7154,7 +7213,7 @@ export function ChatSidebar({
 										className="text-meta text-ink-dim underline hover:text-ink"
 										onClick={() => void fetchScopePage(kind, name, null)}
 									>
-										Retry
+										{t("ui.common.actions.retry")}
 									</button>
 								</p>
 							)}
@@ -7177,10 +7236,10 @@ export function ChatSidebar({
 						{view.state === "rows" &&
 							(catalogueScopes[key]?.loading ? (
 								<p
-									className="py-1 pl-7 text-meta text-ink-dim"
+									className="py-1 ps-7 text-meta text-ink-dim"
 									aria-live="polite"
 								>
-									Loading more…
+									{t("ui.chat.sidebar.list.loading_more")}
 								</p>
 							) : view.retry ? (
 								/*
@@ -7193,12 +7252,12 @@ export function ChatSidebar({
 								 */
 								<>
 									<p
-										className="line-clamp-2 py-1 pl-7 text-meta text-ink-dim"
+										className="line-clamp-2 py-1 ps-7 text-meta text-ink-dim"
 										aria-live="polite"
 									>
 										{view.sentence}
 									</p>
-									<p className="py-1 pl-7">
+									<p className="py-1 ps-7">
 										<button
 											type="button"
 											className="text-meta text-ink-dim underline hover:text-ink"
@@ -7212,7 +7271,7 @@ export function ChatSidebar({
 												)
 											}
 										>
-											Retry
+											{t("ui.common.actions.retry")}
 										</button>
 									</p>
 								</>
@@ -7250,7 +7309,7 @@ export function ChatSidebar({
 									data-entity-more={key}
 									aria-label={`${foot.aria} in ${displayName}`}
 									title={`${foot.aria} in ${displayName}`}
-									className="block w-full py-1 pl-7 text-left text-meta text-ink-dim underline hover:text-ink"
+									className="block w-full py-1 ps-7 text-start text-meta text-ink-dim underline hover:text-ink"
 									onClick={pressEntityMore}
 								>
 									{/*
@@ -7438,7 +7497,7 @@ export function ChatSidebar({
 								className: "size-3.5 shrink-0 text-ink-dim",
 							})
 						: null}
-					<span className="min-w-0 flex-1 truncate text-left">{label}</span>
+					<span className="min-w-0 flex-1 truncate text-start">{label}</span>
 					{/* A zero badge next to a group that already says it is empty is the
 			    same fact twice; only a non-zero count carries information. */}
 					{count !== undefined && count !== 0 && countBadge(count)}
@@ -7593,7 +7652,7 @@ export function ChatSidebar({
 							sectionFootFocusRef.current = { key, at: cap };
 							setSectionCaps((previous) => raiseSectionCap(previous, key));
 						}}
-						className="flex h-7 w-full items-center rounded-md px-2 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+						className="flex h-7 w-full items-center rounded-md px-2 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 					>
 						{sectionMoreLabel(hidden)}
 					</button>
@@ -8251,7 +8310,7 @@ export function ChatSidebar({
 		>
 			{capabilities.isLoading && (
 				<p aria-live="polite" className="text-meta text-ink-dim">
-					Connecting to chats…
+					{t("ui.chat.sidebar.list.connecting")}
 				</p>
 			)}
 			{/*
@@ -8296,7 +8355,7 @@ export function ChatSidebar({
 							className="underline"
 							onClick={() => void capabilities.refetch()}
 						>
-							Retry refresh
+							{t("ui.chat.sidebar.list.retry_refresh")}
 						</button>
 					</div>
 				)}
@@ -8324,7 +8383,7 @@ export function ChatSidebar({
 						className="underline"
 						onClick={() => void capabilities.refetch()}
 					>
-						Retry refresh
+						{t("ui.chat.sidebar.list.retry_refresh")}
 					</button>
 				</div>
 			)}
@@ -8382,7 +8441,7 @@ export function ChatSidebar({
 								<>
 									{profiles.isLoading && (
 										<p aria-live="polite" className="text-meta text-ink-dim">
-											Loading agents…
+											{t("ui.chat.sidebar.agents.loading")}
 										</p>
 									)}
 									{hubLines("agent")}
@@ -8440,9 +8499,9 @@ export function ChatSidebar({
 											<input
 												ref={rosterFilterRef}
 												data-roster-filter
-												aria-label="Filter agents"
-												placeholder="Filter agents"
-												className="h-8 w-full rounded-md bg-row-hover pr-9 pl-2 text-body-sm"
+												aria-label={t("ui.chat.sidebar.agents.filter")}
+												placeholder={t("ui.chat.sidebar.agents.filter")}
+												className="h-8 w-full rounded-md bg-row-hover pe-9 ps-2 text-body-sm"
 												value={rosterFilter}
 												onChange={(event) =>
 													setRosterFilter(event.target.value)
@@ -8485,14 +8544,14 @@ export function ChatSidebar({
 												<Button
 													variant="ghost"
 													size="icon-sm"
-													className="absolute top-1/2 right-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
+													className="absolute top-1/2 end-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
 													onClick={() =>
 														clearSearch(
 															rosterFilterRef.current,
 															setRosterFilter,
 														)
 													}
-													aria-label="Clear agent filter"
+													aria-label={t("ui.chat.sidebar.agents.clear_filter")}
 												>
 													<X aria-hidden="true" />
 												</Button>
@@ -8580,14 +8639,16 @@ export function ChatSidebar({
 														 */}
 														<div className="flex items-center justify-between gap-2">
 															<p className="text-body-sm text-ink">
-																No agents yet
+																{t("ui.chat.sidebar.agents.empty")}
 															</p>
 															{builtinOfferOnScreen && !agentsOfferBusy && (
 																<Button
 																	variant="ghost"
 																	size="icon-sm"
 																	data-testid="agents-offer-dismiss"
-																	aria-label="Dismiss built-in agents suggestion"
+																	aria-label={t(
+																		"ui.chat.sidebar.agents.dismiss_offer",
+																	)}
 																	onClick={() => {
 																		offerDismissedByPressRef.current = true;
 																		dismissBuiltinOffer(offerSignature);
@@ -8651,7 +8712,7 @@ export function ChatSidebar({
 														)
 													) : (
 														<p className="text-meta text-ink-muted">
-															No agents match
+															{t("ui.chat.sidebar.agents.no_match")}
 														</p>
 													)
 												) : (
@@ -8678,7 +8739,7 @@ export function ChatSidebar({
 										onClick={() => navigate("/agents?create=agent")}
 									>
 										<Plus className="size-4" />
-										Create agent
+										{t("ui.chat.sidebar.agents.create")}
 									</button>
 								</>
 							)}
@@ -8731,7 +8792,7 @@ export function ChatSidebar({
 								<>
 									{teams.isLoading && (
 										<p aria-live="polite" className="text-meta text-ink-dim">
-											Loading teams…
+											{t("ui.chat.sidebar.teams.loading")}
 										</p>
 									)}
 									{hubLines("team")}
@@ -8746,7 +8807,7 @@ export function ChatSidebar({
 										onClick={() => navigate("/agents?create=team")}
 									>
 										<Plus className="size-4" />
-										Create team
+										{t("ui.chat.sidebar.teams.create")}
 									</button>
 								</>
 							)}
@@ -8775,7 +8836,10 @@ export function ChatSidebar({
 		 * 1, m-1).
 		 */
 		<p ref={pinRef} className="pb-2 text-meta text-warning">
-			Could not {pinFailure.pinned ? "pin" : "unpin"} “{pinFailure.title}”.
+			{t("ui.chat.sidebar.pins.failure", {
+				action: pinFailure.pinned ? "pin" : "unpin",
+				title: pinFailure.title,
+			})}
 			{pinFailure.detail ? ` ${pinFailure.detail}` : ""}{" "}
 			<button
 				type="button"
@@ -8784,7 +8848,7 @@ export function ChatSidebar({
 					void setSessionPin(pinFailure.sessionId, pinFailure.pinned)
 				}
 			>
-				Retry
+				{t("ui.common.actions.retry")}
 			</button>
 		</p>
 	) : null;
@@ -9008,7 +9072,7 @@ export function ChatSidebar({
 									}}
 									className={cn(
 										rowStyle,
-										"min-w-0 flex-1 text-left",
+										"min-w-0 flex-1 text-start",
 										current && rowCurrent,
 									)}
 								>
@@ -9219,7 +9283,7 @@ export function ChatSidebar({
 							aria-describedby={
 								clearableDraftRows.length === 0 ? CLEAR_ALL_WHY_ID : undefined
 							}
-							aria-label="Clear all drafts"
+							aria-label={t("ui.chat.sidebar.drafts.clear_all_label")}
 							title={
 								clearableDraftRows.length === 0
 									? CLEAR_ALL_WHY
@@ -9291,7 +9355,7 @@ export function ChatSidebar({
 								"aria-disabled:hover:bg-transparent! aria-disabled:hover:text-ink-disabled!",
 							)}
 						>
-							Clear all
+							{t("ui.chat.sidebar.drafts.clear_all")}
 						</button>
 						{/*
 						 * The why the control points at while inapplicable (D7/U6): the trash's
@@ -9394,7 +9458,7 @@ export function ChatSidebar({
 							ref={pinIndicatorRef}
 							aria-hidden="true"
 							data-session-pin-indicator=""
-							className="pointer-events-none absolute right-1 left-1 h-0.5 rounded-full bg-accent"
+							className="pointer-events-none absolute start-1 end-1 h-0.5 rounded-full bg-accent"
 						/>
 					)}
 				</section>
@@ -9470,7 +9534,7 @@ export function ChatSidebar({
 					type="button"
 					data-sidebar-page-more
 					onClick={pressPageMore}
-					className="flex h-7 w-full items-center rounded-md px-2 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+					className="flex h-7 w-full items-center rounded-md px-2 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 				>
 					{pageMoreLabel(
 						view.loads,
@@ -9519,7 +9583,7 @@ export function ChatSidebar({
 				// as the group's, one register wider.
 				(catalogueCounts === null || catalogueCounts.total === 0) && (
 					<p className="text-meta text-ink-muted">
-						No chats yet. Choose an agent, team or New chat.
+						{t("ui.chat.sidebar.list.empty")}
 					</p>
 				)}
 			{/*
@@ -9543,7 +9607,7 @@ export function ChatSidebar({
 			)}
 			{truncated && !pageable && (
 				<p className="text-meta text-ink-muted">
-					Showing up to 500 chats. Older chats remain available in the terminal.
+					{t("ui.chat.sidebar.list.truncated_legacy")}
 				</p>
 			)}
 			{/*
@@ -9598,7 +9662,7 @@ export function ChatSidebar({
 								: "text-warning",
 						)}
 					>
-						Not connected to the backend — showing the last known state.
+						{t("ui.chat.sidebar.list.offline")}
 					</p>
 				)}
 		</div>
@@ -9620,7 +9684,7 @@ export function ChatSidebar({
 	return (
 		<nav
 			ref={navRef}
-			aria-label="Chats"
+			aria-label={t("ui.chat.sidebar.nav.chats")}
 			/*
 			 * THE SIDEBAR IS THE FIRST REGION OF THE KEYBOARD WALK (§C4). `tabIndex={-1}`
 			 * is what makes it a DOOR rather than a stop: the panel is entered by `F6`
@@ -9731,7 +9795,7 @@ export function ChatSidebar({
 								variant="ghost"
 								size="icon-sm"
 								data-sidebar-search
-								aria-label="Search chats and agents"
+								aria-label={t("ui.chat.sidebar.header.search")}
 								onClick={() => {
 									/*
 									 * The field is drawn only while filtering (`filterOpen`), so this
@@ -9756,7 +9820,7 @@ export function ChatSidebar({
 										variant="ghost"
 										size="icon-sm"
 										data-sidebar-view-options
-										aria-label="View options"
+										aria-label={t("ui.chat.sidebar.header.view_options")}
 										aria-expanded={viewOpen}
 										/*
 										 * THE FILLED PILL THE REFERENCE DRAWS (dsh's middle button fills
@@ -9815,6 +9879,7 @@ export function ChatSidebar({
 									view={view}
 									counts={viewCounts}
 									tagsAvailable={tagsAvailable}
+									autoTagAvailable={autoTagAvailable}
 									tagsEmpty={
 										!tagCategoriesLoading &&
 										tagCategoriesError === null &&
@@ -9839,7 +9904,7 @@ export function ChatSidebar({
 										variant="ghost"
 										size="icon-sm"
 										data-sidebar-create
-										aria-label="New agent or team"
+										aria-label={t("ui.chat.sidebar.header.create")}
 										aria-expanded={createOpen}
 									>
 										<FolderPlus aria-hidden="true" />
@@ -9867,10 +9932,12 @@ export function ChatSidebar({
 										setCreateOpen(false);
 										navigate("/agents?create=agent");
 									}}
-									className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+									className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 								>
 									<UserPlus aria-hidden="true" className="size-3.5 shrink-0" />
-									<span className="min-w-0 flex-1 truncate">New agent</span>
+									<span className="min-w-0 flex-1 truncate">
+										{t("ui.chat.sidebar.header.create_agent")}
+									</span>
 								</button>
 								<button
 									type="button"
@@ -9879,10 +9946,12 @@ export function ChatSidebar({
 										setCreateOpen(false);
 										navigate("/agents?create=team");
 									}}
-									className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
+									className="flex h-7 w-full items-center gap-2 rounded-md px-1 text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 								>
 									<Users aria-hidden="true" className="size-3.5 shrink-0" />
-									<span className="min-w-0 flex-1 truncate">New team</span>
+									<span className="min-w-0 flex-1 truncate">
+										{t("ui.chat.sidebar.header.create_team")}
+									</span>
 								</button>
 							</PopoverContent>
 						</Popover>
@@ -9925,7 +9994,7 @@ export function ChatSidebar({
 								variant="ghost"
 								size="icon-sm"
 								data-sidebar-open-agent
-								aria-label="Open agent…"
+								aria-label={t("ui.chat.sidebar.header.open_agent")}
 								onClick={() => {
 									openCommandPalette();
 									setCommandPaletteQuery(AGENT_ROSTER_SEED);
@@ -9953,9 +10022,9 @@ export function ChatSidebar({
 				<div className={cn("relative mb-2", !filterShown && "hidden")}>
 					<input
 						ref={searchRef}
-						aria-label="Search chats and agents"
-						placeholder="Filter chats and agents"
-						className="h-8 w-full rounded-md bg-row-hover pr-9 pl-2 text-body-sm"
+						aria-label={t("ui.chat.sidebar.header.search")}
+						placeholder={t("ui.chat.sidebar.search.placeholder")}
+						className="h-8 w-full rounded-md bg-row-hover pe-9 ps-2 text-body-sm"
 						value={query}
 						onChange={(event) => setQuery(event.target.value)}
 						onBlur={() => {
@@ -9979,9 +10048,9 @@ export function ChatSidebar({
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							className="absolute top-1/2 right-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
+							className="absolute top-1/2 end-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
 							onClick={() => clearSearch(searchRef.current, setQuery)}
-							aria-label="Clear search"
+							aria-label={t("ui.chat.sidebar.search.clear")}
 						>
 							<X aria-hidden="true" />
 						</Button>
@@ -10022,7 +10091,7 @@ export function ChatSidebar({
 							htmlFor={INCLUDE_ARCHIVED_ID}
 							className="text-meta text-ink-muted"
 						>
-							Include archived
+							{t("ui.chat.sidebar.search.include_archived")}
 						</Label>
 					</div>
 				)}
@@ -10041,26 +10110,26 @@ export function ChatSidebar({
 		    notice returns for the reason it was written for. */}
 				{overLong && ready && (
 					<p className="pb-2 text-meta text-ink-muted">
-						Search terms are limited to {SESSION_SEARCH_MAX_CHARS} characters.
-						This one is longer, so only chat names are being searched.
+						{t("ui.chat.sidebar.search.too_long", {
+							max: SESSION_SEARCH_MAX_CHARS,
+						})}
 					</p>
 				)}
 				{query && ready && !searchSupported && !overLong && (
 					<p className="pb-2 text-meta text-ink-muted">
-						Searching chat names only. Update Local Operator to search inside
-						conversations.
+						{t("ui.chat.sidebar.search.names_only")}
 					</p>
 				)}
 				{query && searchSupported && search.isError && (
 					<p className="pb-2 text-meta text-ink-muted">
-						Conversation search is unavailable, so these are name matches.{" "}
+						{t("ui.chat.sidebar.search.unavailable")}{" "}
 						<Button
 							variant="link"
 							size="sm"
 							type="button"
 							onClick={() => void search.refetch()}
 						>
-							Retry
+							{t("ui.common.actions.retry")}
 						</Button>
 					</p>
 				)}
@@ -10089,7 +10158,9 @@ export function ChatSidebar({
 		    the previous question's hits (review round 2, R10). */}
 				{query.trim() && showList && !matching.length && answered && (
 					<p className="pb-2 text-meta text-ink-muted">
-						Nothing in your chats matches “{query.trim()}”.
+						{t("ui.chat.sidebar.search.no_match", {
+							query: query.trim(),
+						})}
 					</p>
 				)}
 				{awaiting &&
@@ -10098,7 +10169,7 @@ export function ChatSidebar({
 						matching.length,
 					) && (
 						<p className="pb-2 text-meta text-ink-muted">
-							Searching conversations…
+							{t("ui.chat.sidebar.search.searching")}
 						</p>
 					)}
 				{/* Mounted at all times and filled later: a live region added to the
@@ -10196,7 +10267,7 @@ export function ChatSidebar({
 									void teams.refetch();
 								}}
 							>
-								Retry refresh
+								{t("ui.chat.sidebar.list.retry_refresh")}
 							</button>
 						</div>
 					)}

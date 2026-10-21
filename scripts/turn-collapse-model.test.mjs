@@ -1957,11 +1957,19 @@ const narratedTurns = (turns) => {
 		for (let i = 0; i < 13; i += 1)
 			rows.push(tool(`nt${turn}-${i}`, { ts: at + 1_000 + i }, "trace"));
 		/*
-		 * The narration: settled assistant text with no `stopReason` and a call after
-		 * it, so `cyclesOf` reads it as narration rather than a close - hidden by
-		 * `by-turn`, kept by `by-response`. That difference is the whole fixture.
+		 * The narration: settled assistant text that CARRIES its own calls (the wire
+		 * fact `isFinalResponse` reads) and has a call after it, so `cyclesOf` reads
+		 * it as narration rather than a close - hidden by `by-turn`, kept by
+		 * `by-response`. That difference is the whole fixture; omitting `callsTools`
+		 * let V5 pin the row in by-turn and erase it (review round 3, finding 3).
 		 */
-		rows.push(answer(`nn${turn}`, { ts: at + 50_000, text: "still working" }));
+		rows.push(
+			answer(`nn${turn}`, {
+				ts: at + 50_000,
+				text: "still working",
+				callsTools: true,
+			}),
+		);
 		for (let i = 0; i < 14; i += 1)
 			rows.push(tool(`nb${turn}-${i}`, { ts: at + 60_000 + i }, "trace"));
 		rows.push(answer(`na${turn}`, { ts: at + 90_000 }));
@@ -5551,4 +5559,86 @@ test("R3: announcement ownership aliases only previously known qg episodes, with
 	]);
 	assert.equal(overflow.reason, "prior-id-limit");
 	assert.equal(aliasesV2(overflow, [bounded]).reason, "prior-id-limit");
+});
+
+test("a peer turn whose only own row is a settled no_reply paints no bar, in either record order", () => {
+	/*
+	 * `[user][tools][answer][peer][no_reply]` is the reload order; the live path
+	 * can land the peer record after the quiet row. Both leave a span with no
+	 * label, count or duration, which must stay loose (its rows paint nothing)
+	 * instead of becoming an empty check-and-chevron bar.
+	 */
+	const orders = {
+		reload: [peerRow("p1"), quiet("q1")],
+		live: [quiet("q1"), peerRow("p1")],
+	};
+	for (const [name, tail] of Object.entries(orders)) {
+		const rows = [
+			user("u1"),
+			tool("t1", { durationS: 3 }, "trace"),
+			answer("a1"),
+			...tail,
+		];
+		const [plan] = planOf(rows).runs;
+		for (const seg of plan.segments) {
+			const empty =
+				seg.label === null &&
+				seg.facts.actions === 0 &&
+				seg.facts.durationS === null &&
+				seg.facts.group === null &&
+				seg.internal === null;
+			assert.equal(
+				seg.collapsed && empty,
+				false,
+				`${name}: no empty collapsed bar (${seg.segmentIds})`,
+			);
+		}
+		const work = plan.segments.find((seg) => seg.segmentIds.includes("t1"));
+		assert.equal(work?.collapsed, true, `${name}: the real work bar remains`);
+		assert.equal(work?.facts.actions, 1, `${name}: Took/actions unchanged`);
+	}
+});
+
+const emptyBarsOf = (rows) =>
+	planOf(rows).runs.flatMap((run) =>
+		run.segments.filter(
+			(seg) => seg.collapsed && seg.label === null && seg.facts.actions === 0,
+		),
+	);
+
+test("a bare no_reply close after an unlabelled boundary paints no empty bar", () => {
+	// Fails on main: a quiet close with no answer after a new user message
+	// (and one after an answer) became a collapsed bar with nothing to show.
+	assert.equal(
+		emptyBarsOf([user("u1"), answer("a1"), user("u2"), quiet("q1")]).length,
+		0,
+	);
+	assert.equal(emptyBarsOf([user("u1"), quiet("q1")]).length, 0);
+	assert.equal(emptyBarsOf([user("u1"), answer("a1"), quiet("q1")]).length, 0);
+});
+
+test("a lone custom or supplement span stays loose instead of an empty bar", () => {
+	// Deliberate widening: the predicate is not specific to no_reply.
+	const custom = row(
+		"c1",
+		"custom",
+		{
+			customType: "job_result",
+			level: "info",
+			category: null,
+		},
+		"trace",
+	);
+	const supplement = row(
+		"s1",
+		"supplement",
+		{
+			anchor: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+			job: "3f9c1a7e5b20",
+			version: 1,
+		},
+		"trace",
+	);
+	for (const r of [custom, supplement])
+		assert.equal(emptyBarsOf([user("u1"), r]).length, 0, r.record.kind);
 });

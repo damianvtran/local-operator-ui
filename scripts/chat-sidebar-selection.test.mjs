@@ -99,6 +99,14 @@ const LIBRARY_FILTER_RAIL =
 const LIBRARY_PAGE =
 	"src/renderer/src/features/library/components/library-page.tsx";
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
+/**
+ * The sidebar nav's accessible name comes from the English catalogue now: the
+ * ground below is found by the key the nav renders AND the message a reader
+ * hears, so a renamed key cannot leave this table reading an unrelated element.
+ */
+const SIDEBAR_COPY = JSON.parse(
+	read("src/i18n/catalogues/en/ui.chat.sidebar.json"),
+);
 
 /*
  * React stays out of this bundle and so does every package: `packages:
@@ -369,6 +377,7 @@ const rowStyle = literalOf(SIDEBAR, "rowStyle");
 const rowBoxStyle = literalOf(SIDEBAR, "rowBoxStyle");
 const rowCurrent = literalOf(SIDEBAR, "rowCurrent");
 const rowDragging = literalOf(SIDEBAR, "rowDragging");
+const rowDraggingMark = literalOf(SIDEBAR, "rowDraggingMark");
 
 /*
  * The current row's mark, and which elements carry it.
@@ -395,13 +404,17 @@ const CURRENT = [
 		 * predicate is declared once now (review round 1, A7) and the row reads the
 		 * name, so the element to resolve is the one carrying `rowStyle`.
 		 */
-		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-left"'),
+		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-start"'),
 		stubs: {
 			revealArmed: true,
 			rowStyle,
 			rowCurrent,
 			nested: false,
 			current: true,
+			// Grouped, current, but not held: cursor opt-in must coexist with selection.
+			tagDraggable: true,
+			rowTagDrag: { armedId: null },
+			row: { session_id: "synthetic-current-row" },
 		},
 		ground: true,
 	},
@@ -783,6 +796,25 @@ test("the mark is colour plus weight, and neither one can move the row", () => {
 	assert.ok(
 		!rowCurrent.includes("outline-control"),
 		`the current row is drawn with a \`border-control\`-role boundary again; that role is § 2's *sole boundary of an input, select, checkbox or outlined button*, and the ring rendered as the search field one row below the list (design round 1, D3):\n${rowCurrent}`,
+	);
+});
+
+test("the grouped current conversation keeps selection while its cursor is held", () => {
+	const site = CURRENT.find(
+		(entry) => entry.what === "the selected conversation",
+	);
+	assert.ok(site, "the selected conversation must remain in CURRENT");
+	const idle = merged(site.file, site.expression(), site.stubs).split(/\s+/);
+	assert.ok(idle.includes("cursor-grab"));
+	const held = merged(site.file, site.expression(), {
+		...site.stubs,
+		rowTagDrag: { armedId: "synthetic-current-row" },
+	}).split(/\s+/);
+	assert.ok(held.includes("cursor-grabbing"));
+	assert.ok(!held.includes("cursor-grab"));
+	assert.ok(
+		carriesGround(held),
+		"the held cursor must not replace the current-row ground",
 	);
 });
 
@@ -1386,9 +1418,22 @@ const ROW_STATE_GROUNDS = [
 	{
 		what: "the chat sidebar's list panel",
 		rowFile: SIDEBAR,
-		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-left"'),
-		stubs: { rowStyle, rowCurrent, nested: false, current: true },
-		ground: () => literalClassAt(SIDEBAR, 'aria-label="Chats"', "after"),
+		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-start"'),
+		stubs: {
+			rowStyle,
+			rowCurrent,
+			nested: false,
+			current: true,
+			tagDraggable: true,
+			rowTagDrag: { armedId: null },
+			row: { session_id: "synthetic-current-row" },
+		},
+		ground: () =>
+			literalClassAt(
+				SIDEBAR,
+				'aria-label={t("ui.chat.sidebar.nav.chats")}',
+				"after",
+			),
 		groundFile: SIDEBAR,
 	},
 	{
@@ -1410,11 +1455,23 @@ const ROW_STATE_GROUNDS = [
 		 * only element that can carry it for the pair.
 		 */
 		expression: () => expressionBefore(APP_RAIL, "rowState,"),
-		stubs: { expanded: true, rowState: rowCurrent },
+		/*
+		 * THE HELD BRANCH IS PART OF THE SAME EXPRESSION (sidebar customisation,
+		 * design D2): a row being dragged wears `rowDragging` plus
+		 * `rowDraggingMark` on the same `<li>`, so the call site paints one of the
+		 * row roles in either state and both are resolved here.
+		 */
+		stubs: {
+			expanded: true,
+			rowState: rowCurrent,
+			held: true,
+			rowDragging,
+			rowDraggingMark,
+		},
 		ground: () =>
 			literalClassAt(
 				APP_RAIL,
-				"flex h-10 shrink-0 items-center gap-1 pr-2 pl-4",
+				"flex h-10 shrink-0 items-center gap-1 pe-2 ps-4",
 				"before",
 			),
 		groundFile: APP_RAIL,
@@ -1585,6 +1642,12 @@ test("every call site that paints a row state is painted on `surface`", () => {
 		`${painters.length} file(s) in the tree paint or name \`rowCurrent\` and ${named.length} are named in ROW_STATE_GROUNDS. A surface that paints the role has to have its ground asserted here; one that only names it in prose belongs in neither list, which is why the read excludes comments: ${JSON.stringify(painters)} vs ${JSON.stringify(named)}`,
 	);
 
+	assert.equal(
+		SIDEBAR_COPY["ui.chat.sidebar.nav.chats"],
+		"Chats",
+		"the sidebar's nav announces something other than `Chats`; the ground below is read from the element that name finds",
+	);
+
 	for (const entry of ROW_STATE_GROUNDS) {
 		const row = merged(entry.rowFile, entry.expression(), entry.stubs);
 		assert.ok(
@@ -1687,7 +1750,7 @@ test("settings current-page cue occupies the gutter without changing accessible 
 	assert.match(rail, /aria-label=\{labelled \? undefined : section\.label\}/);
 	assert.match(
 		rail,
-		/isActive && \(\s*<span\s+aria-hidden="true"\s+className="absolute left-1 top-1\/2 size-1 -translate-y-1\/2 rounded-full bg-accent"/,
+		/isActive && \(\s*<span\s+aria-hidden="true"\s+className="absolute start-1 top-1\/2 size-1 -translate-y-1\/2 rounded-full bg-accent"/,
 	);
 	assert.match(rail, /isActive \? "text-accent" : "text-ink-dim"/);
 	assert.match(rail, /<Tooltip content=\{section\.label\} side="right">/);

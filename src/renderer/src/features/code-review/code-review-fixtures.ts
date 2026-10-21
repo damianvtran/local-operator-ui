@@ -352,6 +352,117 @@ export const viaRows = (): DesktopCodeRequestRow[] => [
 	}),
 ];
 
+/**
+ * THE DEEP PATH (the operator's own shape, the row this change is about).
+ *
+ * The operator's complaint was a row that read `minervai/services/cor… !276`
+ * - the project path, truncated at the slot's width, with the repo NAME cut
+ * off exactly where the identity began. This fixture is that row, in the
+ * shape the operator actually has: a GitLab SUBGROUP project, whose path is
+ * `group/subgroup/project` - three segments, so the path is long enough to
+ * truncate and the name (`core`) is a word of its own rather than the tail
+ * of a longer name.
+ *
+ * It is a separate set rather than one more row in `populatedRows`, because
+ * the two frames that have to PROVE the anatomy are the default-width
+ * `Populated` frame and the 320px `Narrow` frame, and the narrow frame is
+ * built from its own worst-case rows. Folding this row into the general set
+ * would put it in frames that say nothing about it.
+ */
+export const deepPathRows = (): DesktopCodeRequestRow[] => [
+	row({
+		key: "gl:276",
+		number: 276,
+		relation: "opened",
+		forge: "gitlab",
+		project: "minervaai/services/core",
+		url: "https://gitlab.com/minervaai/services/core/-/merge_requests/276",
+		via: { agent_role: "coder", path: ["coder", "reviewer"] },
+		summary: {
+			state: "open",
+			draft: false,
+			title: "feat(core): the request ledger, read from the session's own rows",
+			head_sha: "5b2f77e0c4",
+			ci: {
+				status: "success",
+				passed: null,
+				failed: null,
+				pending: null,
+				total: null,
+				url: "https://gitlab.com/minervaai/services/core/-/pipelines/2924686797",
+			},
+			updated_at: at(4),
+			comments: 3,
+		},
+		lanes: [
+			lane({
+				lane: "agent",
+				round: 1,
+				state: "findings_open",
+				reviewed_head: "5b2f77e0c4",
+			}),
+		],
+	}),
+];
+
+/**
+ * A repository name of EXACTLY `length` characters, built by padding a real
+ * name with the word `suite`: the fixture has to be a NAME (one path
+ * segment), because the identity line's budget is spent on the name.
+ */
+const longName = (length: number): string =>
+	"operator-console-web".padEnd(length, "-suite");
+
+/**
+ * THE LONG NAMES (the shape that broke the identity line, agent review round
+ * 1, R1-1).
+ *
+ * The operator's own row is short, and every other fixture name was short
+ * too - which is why NO shipped frame could show the defect: at the 320px
+ * floor a 28-character name put the `!N` under the state pill, and a
+ * 40-character one pushed it out of the pane altogether.
+ *
+ * These rows are the long end of the same axis, on a two-segment path so
+ * both lines of the new anatomy are exercised at once: the long name on the
+ * identity line, the full path under it. They carry the worst-case relation
+ * marker (`via subagent coder › reviewer`), because the marker is the longest
+ * thing the row can have to say about its relation, and the annotations line
+ * has to carry it whole at the 320px floor.
+ */
+export const longNameRows = (): DesktopCodeRequestRow[] =>
+	[
+		{ length: 20, key: "gh:2201", number: 2201, state: "open" },
+		{ length: 30, key: "gh:2202", number: 2202, state: "open" },
+		{ length: 40, key: "gh:2203", number: 2203, state: "merged" },
+	].map(({ length, key, number, state }) => {
+		const name = longName(length);
+		return row({
+			key,
+			number,
+			relation: "opened",
+			project: `minervaai/${name}`,
+			url: `https://github.com/minervaai/${name}/pull/${number}`,
+			via: { agent_role: "coder", path: ["coder", "reviewer"] },
+			summary: {
+				state,
+				draft: false,
+				title: `feat(${name.slice(0, 24)}): a repository whose name is long`,
+				head_sha: "5b2f77e0c4",
+				ci: {
+					status: "success",
+					passed: null,
+					failed: null,
+					pending: null,
+					total: null,
+					url: null,
+				},
+				updated_at: at(6),
+				comments: 1,
+			},
+			lanes: [],
+		});
+	});
+
 /** The store's own list envelope, minus the rows the caller overrides. */
 export const list = (
 	rows: DesktopCodeRequestRow[],

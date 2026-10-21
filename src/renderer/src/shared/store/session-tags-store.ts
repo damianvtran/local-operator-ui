@@ -21,7 +21,9 @@ type State = {
 	loading: boolean;
 	error: string | null;
 	fetchCategories: () => Promise<void>;
-	replaceCategories: (desired: DesiredTag[]) => Promise<void>;
+	/** Returns the registry the server acknowledged, so a caller can resolve a
+	 * tag it just created without racing an unrelated catalogue refresh. */
+	replaceCategories: (desired: DesiredTag[]) => Promise<TagCategory[]>;
 	assignSessionTags: (
 		sessionId: string,
 		tagIds: string[],
@@ -57,6 +59,7 @@ export const useSessionTagsStore = create<State>((set, get) => ({
 		set({ categories: result.tags });
 		// Only the catalogue knows assignment age and primary deletion fallback.
 		void useCanonicalSessionsStore.getState().fetchSessions();
+		return result.tags;
 	},
 	assignSessionTags: async (sessionId, tags, primary, expectedRevision) => {
 		const canonical = useCanonicalSessionsStore;

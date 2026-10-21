@@ -1118,5 +1118,35 @@
 		"role": "content prop \u2014 address and navigation bar",
 		"tone": "concise, neutral, sentence case",
 		"note": "Tooltip naming the reset-zoom chord. shortcut is runtime technical data and stays unchanged."
+	},
+	"ui.browser.browser_url_bar.address_required": {
+		"role": "status or explanatory text \u2014 address suggestions",
+		"tone": "concise, neutral, sentence case; a hint, never an alarm",
+		"note": "Shown in the suggestion list after Enter on input that is natural-language/search intent with no selected candidate. The app has no web-search provider by design, so this asks for an address or an offered row instead of inventing a search. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_available": {
+		"role": "status or explanatory text \u2014 address suggestions",
+		"tone": "concise, neutral, sentence case",
+		"note": "Screen-reader announcement when the suggestion list opens with alternatives. count is the number of visible rows, not the size of the history; the announcement is emitted once on the open transition, never per keystroke. Numeric formatting uses ICU number ::group-off on the count. Placeholders: count = alternative rows. Plural guidance: use the target locale's complete CLDR cardinal categories, preserving the count placeholder."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_empty": {
+		"role": "empty-state text \u2014 address suggestions",
+		"tone": "quiet, factual, not an error",
+		"note": "Shown while the field is focused and the tabs in this display scope have no HTTP(S) history to offer. Not a loading state and not a network search. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_label": {
+		"role": "accessible control/region name \u2014 address suggestions list",
+		"tone": "concise, neutral, sentence case",
+		"note": "Names the in-flow suggestion list. The claim must stay TRUE: suggestions are derived from live tabs in this browser session (and restored tabs), never from a popularity table or a network service. Keep the label short, around the English footprint. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_no_match": {
+		"role": "empty-state text \u2014 address suggestions",
+		"tone": "quiet, factual, not an error",
+		"note": "Shown when history exists but the typed prefix and titles match nothing. Distinct from the no-history message and from the unavailable message. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_unavailable": {
+		"role": "status or explanatory text \u2014 address suggestions",
+		"tone": "plain, restrained; the field still works",
+		"note": "Shown when the local history read failed. It states the degradation and nothing more: typing and Enter still navigate normally, and no retry control is offered. No placeholders."
 	}
 }

@@ -20,6 +20,7 @@ import {
 	type SessionCostInput,
 	type SpendChannelsReading,
 	channelBreakdown,
+	childBasisLine,
 	costTooltip,
 	sessionCost,
 } from "./session-cost";
@@ -469,12 +470,27 @@ export const FAST_MODE_ON_NOTE = "Fast mode on";
  *
  * The primitive's 256 px measure wrapped every breakdown row onto two lines
  * with its amount orphaned behind a dangling dash (measured: 34.8 px per row;
- * design round 1, D3). 22 rem leaves the longest fixture name
+ * design round 1, D3). 24 rem leaves the longest fixture name
  * (`Inference · anthropic/claude-sonnet-5-5`) and its amount on ONE line with
- * room to spare, inside the 320-360 px the design asked for; every other
+ * room for the unbroken API-equivalent qualifier (payment-basis D1); every other
  * tooltip in the app keeps the primitive's own measure.
  */
-const CHANNEL_TOOLTIP_WIDTH = "max-w-[22rem]";
+const CHANNEL_TOOLTIP_WIDTH = "max-w-[24rem]";
+const API_EQUIVALENT_UNIT =
+	/(\(API-equivalent(?:, not charged)?\)|API-equivalent)/gi;
+
+/** Keep the honesty qualifier intact at native tooltip widths, without shrinking type. */
+function basisTooltipText(text: string | null): ReactNode {
+	return text?.split(API_EQUIVALENT_UNIT).map((part, index) =>
+		index % 2 === 1 ? (
+			<span key={`${index}:${part}`} className="whitespace-nowrap">
+				{part}
+			</span>
+		) : (
+			part
+		),
+	);
+}
 
 /**
  * The channel variant of the spend tooltip: the published breakdown, then the
@@ -519,8 +535,16 @@ const ChannelTooltipBody: FC<{
 		<span className="flex flex-col gap-1">
 			<span className="font-mono text-mono-sm text-ink">{cost.text}</span>
 			<span className="text-ink-muted">{costTooltip(cost)}</span>
+			{!breakdown.byAgent.some((entry) => entry.channel === "subagents") &&
+				childBasisLine(reading) && (
+					<span className="text-ink-muted">
+						{basisTooltipText(childBasisLine(reading))}
+					</span>
+				)}
 			{breakdown.planClause && (
-				<span className="text-ink-muted">{breakdown.planClause}</span>
+				<span className="text-ink-muted">
+					{basisTooltipText(breakdown.planClause)}
+				</span>
 			)}
 			{/*
 			 * The agent split (parent vs subagents): one line per entry, no
@@ -535,7 +559,12 @@ const ChannelTooltipBody: FC<{
 						>
 							<span className="min-w-0">{entry.name}</span>
 							<span className="shrink-0 font-mono text-mono-sm">
-								{entry.amount}
+								{basisTooltipText(
+									entry.channel === "subagents"
+										? (childBasisLine(reading)?.replace(/^Subagents /, "") ??
+												entry.amount)
+										: entry.amount,
+								)}
 							</span>
 						</span>
 					))}
@@ -573,7 +602,7 @@ const ChannelTooltipBody: FC<{
 							</span>
 							{entry.markers && (
 								<span className="text-ink-dim text-meta-sm">
-									{entry.markers}
+									{basisTooltipText(entry.markers)}
 								</span>
 							)}
 						</span>
@@ -597,7 +626,9 @@ const ChannelTooltipBody: FC<{
 			 * opening clause rather than its own statement.
 			 */}
 			{breakdown.summary && (
-				<span className="mt-1 text-ink-muted">{breakdown.summary}</span>
+				<span className="mt-1 text-ink-muted">
+					{basisTooltipText(breakdown.summary)}
+				</span>
 			)}
 			{/*
 			 * The rows are their own group, spaced off the prose above so the

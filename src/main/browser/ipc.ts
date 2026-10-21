@@ -1,11 +1,18 @@
 import { type BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
 import { t } from "../../i18n";
+import {
+	ADDRESS_HISTORY_MAX_SESSION_ID_LENGTH,
+	type AddressHistoryRequest,
+} from "../../shared/browser-address-history";
 import { trustedDesktopFrame } from "../desktop-transport";
+import { DEV_DRIVER_ADDRESS_OVERLAY } from "../dev-driver";
 import type { WebauthnChooser } from "../webauthn";
+import type { AddressOverlayFacts } from "./address-overlay";
 import type { BrowserHost, CloseTabsIntent } from "./host";
 import { type BrowserAvailability, MAX_START_ATTEMPTS } from "./lifecycle";
 import type { ClearWhat } from "./profile";
 import type { ContentRect } from "./registry";
+import { numberOrThrow, tabIdOrThrow } from "./request-guards";
 
 /**
  * The renderer IPC surface for the browser feature.
@@ -66,6 +73,19 @@ export interface RegisterBrowserIpcOptions {
 	 * otherwise — so a failure is shown rather than thrown: a reveal that fails is a
 	 * Finder problem, not a fault in the agent's download. */
 	revealDownloads: () => Promise<string>;
+	/**
+	 * S1's probe-only overlay channel, present ONLY when the launch gate passed
+	 * (see `StartBrowserHostOptions.addressOverlay`). It is registered under a
+	 * dev-driver channel rather than a `browser-*` one on purpose: the browser
+	 * namespace is the agent/tool protocol and its trust boundary is unchanged,
+	 * while this experimental surface exists for the armed headless probe alone.
+	 *
+	 * The callback reads the host's CURRENT controller per call; a retry replaces
+	 * it, so no handler holds a stale attempt's controller.
+	 */
+	addressOverlayProbe?: (
+		action: "show" | "hide" | "facts",
+	) => Promise<AddressOverlayFacts>;
 	/** Ask the host to start again for this window (design round 1, D1a). Injected
 	 * rather than imported so this module does not reach back into `index.ts`'s
 	 * lifecycle; `index.ts` supplies the same `startBrowserHost` the app already
@@ -78,6 +98,10 @@ export interface RegisterBrowserIpcOptions {
 	focusPage?: () => void;
 	log: (message: string) => void;
 }
+
+/** Session ids are names, not free text: a control character cannot appear in
+ * one, and allowing it would store an attribution no scope comparison can match. */
+const CONTROL_CHARS = /[\p{Cc}]/u;
 
 /** The channels this namespace owns, in one place so a test can enumerate them. */
 export const BROWSER_IPC_CHANNELS = [
@@ -92,6 +116,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-close-tab",
 	"browser-close-tabs",
 	"browser-activate-tab",
+	"browser-address-history",
 	"browser-navigate",
 	"browser-home",
 	"browser-reload",
@@ -112,6 +137,13 @@ export const BROWSER_IPC_CHANNELS = [
 	/** The user's own recovery click on the `unavailable` state (round 1, D1a).
 	 * Named here so the namespace stays the one place that lists its channels. */
 	"browser-retry",
+	/**
+	 * S1's probe-only channel. Listed here for unregistration only: the handler
+	 * below is registered only when the launch gate passed, and this entry makes
+	 * `unregisterBrowserIpc` remove it on a stop/retry like every other channel
+	 * (removing an unregistered handler is a no-op).
+	 */
+	DEV_DRIVER_ADDRESS_OVERLAY,
 ] as const;
 
 export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
@@ -212,12 +244,35 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		return host.activateTab(numberOrThrow(tabId, "tabId"));
 	});
 
-	ipcMain.handle("browser-navigate", async (event, url: unknown) => {
+	ipcMain.handle(
+		"browser-navigate",
+		async (event, url: unknown, expectedTabId: unknown) => {
+			const host = authorize(event);
+			if (typeof url !== "string" || !url.trim()) {
+				throw new Error("A URL is required.");
+			}
+			return host.navigateActive(
+				url.trim(),
+				expectedTabId === undefined || expectedTabId === null
+					? undefined
+					: tabIdOrThrow(expectedTabId, "expectedTabId"),
+			);
+		},
+	);
+
+	/**
+	 * The address field's local suggestions.
+	 *
+	 * A READ, so it authorizes exactly like `browser-state` (the sender check is
+	 * independent of host readiness) and then validates every field. The renderer
+	 * is untrusted input here like everywhere else on this namespace: a request id
+	 * and an expected tab are integers, and the scope is either the literal `all`
+	 * or a non-empty bounded conversation id. The host owns the stale-tab refusal;
+	 * this boundary owns shape.
+	 */
+	ipcMain.handle("browser-address-history", (event, request: unknown) => {
 		const host = authorize(event);
-		if (typeof url !== "string" || !url.trim()) {
-			throw new Error("A URL is required.");
-		}
-		return host.navigateActive(url.trim());
+		return host.addressHistory(addressHistoryRequestOrThrow(request));
 	});
 
 	ipcMain.handle(
@@ -453,6 +508,38 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		await options.retry();
 		return { retried: true };
 	});
+
+	/*
+	 * S1's probe. Registered NOTHING unless the launch gate resolved a probe
+	 * callback, so an off-gate invocation reaches Electron's own
+	 * "No handler registered for 'dev-driver-address-overlay'" — the same
+	 * fail-closed shape the dev driver's own channels use.
+	 *
+	 * The ONLY accepted input is one of three exact action words. There is no
+	 * URL, script, geometry, tab selection, commit, navigation, clipboard or file
+	 * argument, because this surface exists to operate the real host's child, not
+	 * to become a second browser API. Sender authorization is the existing owner
+	 * check: the owner window's own main frame at the trusted document URL. A
+	 * driven page, a popup, a foreign window or a subframe is refused before the
+	 * action is read.
+	 */
+	if (options.addressOverlayProbe) {
+		ipcMain.handle(DEV_DRIVER_ADDRESS_OVERLAY, (event, action: unknown) => {
+			authorizeSender(event);
+			if (action !== "show" && action !== "hide" && action !== "facts") {
+				throw new Error(
+					"address_overlay_invalid_action: expected 'show', 'hide' or 'facts'.",
+				);
+			}
+			const probe = options.addressOverlayProbe;
+			if (!probe) {
+				throw new Error(
+					"address_overlay_unavailable: the overlay probe is not running.",
+				);
+			}
+			return probe(action);
+		});
+	}
 }
 
 /**
@@ -467,11 +554,48 @@ export function unregisterBrowserIpc(): void {
 	for (const channel of BROWSER_IPC_CHANNELS) ipcMain.removeHandler(channel);
 }
 
-function numberOrThrow(value: unknown, name: string): number {
-	if (typeof value !== "number" || !Number.isInteger(value)) {
-		throw new Error(`${name} must be an integer.`);
+/**
+ * The address-history request, validated at the boundary.
+ *
+ * The scope is a DISPLAY filter over tabs the user can already see, so it grants
+ * nothing: `all` is the route's lens and the conversation object is the pane's.
+ * A session id is bounded here as well as in the shared type, because the shared
+ * type is erased at runtime.
+ */
+function addressHistoryRequestOrThrow(value: unknown): AddressHistoryRequest {
+	if (!value || typeof value !== "object") {
+		throw new Error("An address history request is required.");
 	}
-	return value;
+	const request = value as {
+		requestId?: unknown;
+		expectedTabId?: unknown;
+		scope?: unknown;
+	};
+	const requestId = numberOrThrow(request.requestId, "requestId");
+	const expectedTabId = tabIdOrThrow(request.expectedTabId, "expectedTabId");
+	let scope: AddressHistoryRequest["scope"];
+	if (request.scope === "all") {
+		scope = "all";
+	} else if (
+		request.scope &&
+		typeof request.scope === "object" &&
+		typeof (request.scope as { sessionId?: unknown }).sessionId === "string"
+	) {
+		const sessionId = (request.scope as { sessionId: string }).sessionId.trim();
+		if (
+			!sessionId ||
+			sessionId.length > ADDRESS_HISTORY_MAX_SESSION_ID_LENGTH ||
+			CONTROL_CHARS.test(sessionId)
+		) {
+			throw new Error(
+				"The address history scope needs a valid conversation id.",
+			);
+		}
+		scope = { sessionId };
+	} else {
+		throw new Error("The address history scope is invalid.");
+	}
+	return { requestId, expectedTabId, scope };
 }
 
 /**

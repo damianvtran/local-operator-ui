@@ -51,6 +51,7 @@
  */
 
 import {
+	HUB_KIND_NOUN,
 	type HubItemKind,
 	type HubMark,
 	type HubNote,
@@ -243,7 +244,7 @@ export function HubHeadingControls({
 }) {
 	const offerAll = available >= UPDATE_ALL_FROM;
 	if (!offerAll && !onCheck) return null;
-	const noun = kind === "agent" ? "agent" : "team";
+	const noun = HUB_KIND_NOUN[kind];
 	return (
 		<>
 			{offerAll && (

@@ -30,6 +30,17 @@ export const teamBridgeParticipantSchema = z
 	.passthrough();
 export type TeamBridgeParticipant = z.infer<typeof teamBridgeParticipantSchema>;
 
+/**
+ * How loudly one conversation may notify its reader.
+ *
+ * `mention` is Slack's middle register: the row may still show its unread
+ * count, but only a mention earns the interrupting badge. `mute` is the
+ * existing `muted` flag in its newer spelling — the server keeps both on the
+ * wire for a page so the two eras parse alike.
+ */
+export const teamBridgeNotifySchema = z.enum(["all", "mention", "mute"]);
+export type TeamBridgeNotify = z.infer<typeof teamBridgeNotifySchema>;
+
 export const teamBridgeConversationSchema = z
 	.object({
 		id,
@@ -47,6 +58,23 @@ export const teamBridgeConversationSchema = z
 		last_read_seq: z.number().int().nonnegative(),
 		unread_count: z.number().int().nonnegative(),
 		muted: z.boolean(),
+		/*
+		 * The discoverable-channel slice (agent-server #148) is additive: a server
+		 * older than it sends none of these, and every one is optional so that
+		 * page still parses. `member` absent means "this server cannot say", not
+		 * "the caller is not a member" — the model reads only an explicit false
+		 * beside an explicit discoverable true as a preview.
+		 */
+		discoverable: z.boolean().optional(),
+		member: z.boolean().optional(),
+		member_count: z.number().int().nonnegative().optional(),
+		notify: teamBridgeNotifySchema.optional(),
+		/*
+		 * The sender label the list row already shows, for a notification body.
+		 * Metadata only: no message body is read or stored for a banner, and a
+		 * server that does not publish this label falls back to "New message".
+		 */
+		last_sender_label: z.string().min(1).max(64).optional(),
 	})
 	.passthrough();
 export type TeamBridgeConversation = z.infer<
@@ -139,6 +167,123 @@ export const teamBridgeUnreadSchema = z
 	.passthrough();
 export type TeamBridgeUnread = z.infer<typeof teamBridgeUnreadSchema>;
 
+/**
+ * One person in an organization's Team Bridge directory.
+ *
+ * WHY `role` IS A STRING, NOT THE PARTICIPANT UNION. A conversation's member
+ * roles are the conversation's own (owner/member); the directory publishes the
+ * ORGANIZATION role, which the hub adds to over time (owner, admin, member,
+ * auditor, …). Parsing it as an enum would fail closed on the first role this
+ * client has not learned, and a directory row is exactly the surface where an
+ * unknown role must still render.
+ *
+ * `bridge_state` is the person's bridge eligibility: `active` and `paused` are
+ * reachable (the row opens their DM; a paused person still has history),
+ * `none`/`disabled` mean no bridge is on for them. `bridge_enabled` is a
+ * separate bit because the server gives it separately; the renderer reads both
+ * so an inconsistent pair fails closed rather than painting a dead row as live.
+ */
+export const teamBridgePersonBridgeStateSchema = z.enum([
+	"active",
+	"paused",
+	"disabled",
+	"none",
+]);
+export type TeamBridgePersonBridgeState = z.infer<
+	typeof teamBridgePersonBridgeStateSchema
+>;
+
+export const teamBridgeDirectoryMemberSchema = z
+	.object({
+		account_id: id,
+		/*
+		 * THE DIRECTORY DOES NOT PROMISE A NON-EMPTY LABEL. The hub keeps a
+		 * membership row when the account behind it was deleted between the two
+		 * reads (bridge_read_service.go: "keeps its row with an empty label"), and
+		 * an account may have neither a name nor an email. `min(1)` here made ONE
+		 * such row fail the whole `members` array and the People section rendered
+		 * "People could not be loaded." with no cause. The cap is likewise the
+		 * server's to enforce, not a render-time parser's: display names and email
+		 * fallbacks routinely exceed the old 64 characters. The row renderer
+		 * supplies a stable fallback label.
+		 */
+		display_label: z.string(),
+		role: z.string().min(1).max(32),
+		bridge_enabled: z.boolean(),
+		bridge_state: teamBridgePersonBridgeStateSchema,
+	})
+	.passthrough();
+export type TeamBridgeDirectoryMember = z.infer<
+	typeof teamBridgeDirectoryMemberSchema
+>;
+
+/**
+ * The tenant's active human members, ordered server-side.
+ *
+ * NO CLIENT SORT. The order is the server's (it knows activity and role
+ * weight); re-sorting here would make the rail disagree with every other
+ * directory the hub serves. The array is the whole answer this read returns.
+ */
+function salvageDirectoryMember(
+	row: unknown,
+): TeamBridgeDirectoryMember | null {
+	if (row === null || typeof row !== "object") return null;
+	const candidate = row as Record<string, unknown>;
+	const accountId = candidate.account_id;
+	if (typeof accountId !== "string" || accountId.length === 0) return null;
+	const label =
+		typeof candidate.display_label === "string" ? candidate.display_label : "";
+	const role =
+		typeof candidate.role === "string" && candidate.role.length > 0
+			? candidate.role
+			: "member";
+	const bridgeEnabled = candidate.bridge_enabled === true;
+	const state = teamBridgePersonBridgeStateSchema.safeParse(
+		candidate.bridge_state,
+	);
+	return {
+		account_id: accountId,
+		display_label: label,
+		role,
+		bridge_enabled: bridgeEnabled,
+		bridge_state: state.success ? state.data : "none",
+	};
+}
+
+export const teamBridgeDirectorySchema = z
+	.object({ members: z.array(z.unknown()) })
+	.passthrough()
+	.transform((payload) => {
+		/*
+		 * PER-ROW TOLERANCE, NOT PER-ARRAY. One unrecognized member row used to
+		 * throw the whole parse and blank every member the hub did send. A row is
+		 * now dropped on its own and counted, so a schema assumption that goes
+		 * stale for one account costs that account's row and a visible count,
+		 * never the directory. `unavailable_count` is derived here, not sent by
+		 * the hub.
+		 */
+		const members: TeamBridgeDirectoryMember[] = [];
+		let unavailableCount = 0;
+		for (const row of payload.members) {
+			const parsed = teamBridgeDirectoryMemberSchema.safeParse(row);
+			if (parsed.success) {
+				members.push(parsed.data);
+				continue;
+			}
+			/*
+			 * A row WITH a stable account id is salvaged into the inert state
+			 * rather than hidden: one future role/state value must not remove a
+			 * person from the directory. Only a row with no usable account id is
+			 * genuinely unrenderable, and only that increments the count.
+			 */
+			const salvaged = salvageDirectoryMember(row);
+			if (salvaged) members.push(salvaged);
+			else unavailableCount += 1;
+		}
+		return { ...payload, members, unavailable_count: unavailableCount };
+	});
+export type TeamBridgeDirectory = z.infer<typeof teamBridgeDirectorySchema>;
+
 /** The status read's identity slice: the signed-in hub account, or null. */
 export const teamBridgeIdentitySchema = z
 	.object({ account_id: z.string().min(1).nullable().optional() })
@@ -151,6 +296,7 @@ export const teamBridgeReadStateSchema = z
 		last_read_seq: z.number().int().nonnegative(),
 		unread_count: z.number().int().nonnegative(),
 		muted: z.boolean(),
+		notify: teamBridgeNotifySchema.optional(),
 	})
 	.passthrough();
 export type TeamBridgeReadState = z.infer<typeof teamBridgeReadStateSchema>;

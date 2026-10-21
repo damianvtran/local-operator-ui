@@ -4532,6 +4532,38 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 							return;
 						}
 					}
+					/*
+					 * `/tag` OPENS ITS LIST; IT IS NOT RUN FROM THE SUBMIT.
+					 *
+					 * The destination is renderer-local: the tag list is the composer's own
+					 * inline surface, a pick toggles through the assignment hook, and the
+					 * backend has no `/tag` command to post. A submit is therefore the
+					 * gesture that OPENS the list, never the mutation.
+					 *
+					 * With no argument, write the trailing space the argument phase needs
+					 * at the token's own span (`replaceSpan`), so prose before and after it
+					 * survives. With an argument, leave the draft byte-identical and clear
+					 * the dismissed latch: the list reopens on the query already typed,
+					 * and nothing has been toggled by the Enter that opened it.
+					 */
+					if (spec?.destination === "session.tags") {
+						/*
+						 * `reopen()` runs in BOTH branches. A bare `/tag ` after Escape
+						 * rewrites the draft to the same bytes, so `setNewMessage` bails, the
+						 * phase key is unchanged and the dismissed latch would keep the list
+						 * closed: Enter neither sends, mutates nor reopens (review F3).
+						 */
+						if (!pyTrim(plan.command.args ?? "")) {
+							const start = plan.kind === "splice" ? plan.start : 0;
+							const end = plan.kind === "splice" ? plan.end : draft.length;
+							const opened = replaceSpan(draft, start, end, `/${spec.name} `);
+							pendingCaret.current = opened.caret;
+							setNewMessage(opened.text);
+							setCaret(opened.caret);
+						}
+						slash.reopen();
+						return;
+					}
 				}
 				if (plan.kind === "list-open") {
 					// The roster owns the next Enter — but only while it can give a row.
@@ -4701,6 +4733,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				// inline list's rows, whose own `connected` it asks about.
 				slash.commands,
 				slash.argumentList.rows,
+				// `/tag`'s submit re-opens the list it dismissed; the setter is a
+				// stable callback, but the lint reads it off the object like the rest.
+				slash.reopen,
 				stage,
 				// The reassembly's note carries the pane's own clause too (review F3):
 				// the promise is conditioned on this pane being able to address a
@@ -5103,6 +5138,28 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * the popup is a sibling of the textarea, not a keystroke in it.
 				 */
 				if (isInputDisabled) return;
+				/*
+				 * A TAG PICK IS A MUTATION, NOT A COMPLETION.
+				 *
+				 * The tag list runs on pick (`inline.runs`), but its rows must never go
+				 * through `completionFor`/`applyPlan`: that path writes the value into the
+				 * box, clears or splices the command, and asks the dispatcher to run
+				 * `/tag <name>` — while what the user asked for is one assignment toggle
+				 * with the draft, the caret and the open list all preserved so more tags
+				 * can follow. The write is the merged hook's (`actOnTagRow`), so rollback,
+				 * the 8/32 caps and the revision each write carries keep their one owner.
+				 *
+				 * `disposition.run` is the SAME gate the router applied: Tab and an
+				 * ambiguous Enter still complete the name and mutate nothing.
+				 */
+				if (
+					row.kind === "argument" &&
+					slash.inline?.source === "session-tags" &&
+					disposition.run
+				) {
+					await slash.actOnTagRow(row.row);
+					return;
+				}
 				const completion = completionFor(
 					newMessage,
 					caret,

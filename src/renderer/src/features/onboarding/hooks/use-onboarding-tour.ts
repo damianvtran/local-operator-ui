@@ -51,7 +51,7 @@ const tourSteps: StepOptions[] = [
 	{
 		id: "welcome",
 		title: "Welcome to Local Operator",
-		text: `Local Operator is an AI agents platform that allows you to create a team of proactive AI agents that support you and help to reduce your daily workload.<br/><img src="${tourChatFullViewImage}" alt="Chat full view" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/><br />These agents are different from simple chatbots because they can actually do things for you on your computer like create files, run code and analytics, edit images, videos, and PDFs, organize your system, and much more.<br/><br/>In this walkthrough we'll cover:<ul><li>Creating agents</li><li>Making agents do things</li><li>The canvas workspace</li><li>Customizing agents</li><li>Agent hub for sharing and collaborating</li><li>Schedules for proactive agents</li><li>Settings for customization</li></ul>Let's explore how it works.`,
+		text: `Local Operator is an AI agents platform that allows you to create a team of proactive AI agents that support you and help to reduce your daily workload.<br/><img src="${tourChatFullViewImage}" alt="Chat full view" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/><br />These agents are different from simple chatbots because they can actually do things for you on your computer like create files, run code and analytics, edit images, videos, and PDFs, organize your system, and much more.<br/><br/>In this walkthrough we'll cover:<ul><li>Creating agents</li><li>Making agents do things</li><li>The canvas workspace</li><li>Customizing agents</li><li>Agent Hub for sharing and collaborating</li><li>Schedules for proactive agents</li><li>Settings for customization</li></ul>Let's explore how it works.`,
 		buttons: [
 			{
 				text: "Next",
@@ -66,7 +66,7 @@ const tourSteps: StepOptions[] = [
 		id: "agent-list",
 		attachTo: { element: '[data-tour-tag="agent-list-panel"]', on: "right" },
 		title: "Your agents",
-		text: "On the left, you'll see a list of your available AI agents. You can select an agent to start a conversation or manage its settings.  Think of this as your messenger contacts list, but for AI agents.  There are no limits to how many agents you can have, so create as many as you need to handle all your daily tasks.<br/><br/>Use the create agents button at the top of the toolbar to create a new agent at any time.  You can also import agents from the Agent hub, which we will cover later in this tour.",
+		text: "On the left, you'll see a list of your available AI agents. You can select an agent to start a conversation or manage its settings.  Think of this as your messenger contacts list, but for AI agents.  There are no limits to how many agents you can have, so create as many as you need to handle all your daily tasks.<br/><br/>Use the create agents button at the top of the toolbar to create a new agent at any time.  You can also import agents from the Agent Hub, which we will cover later in this tour.",
 		buttons: [
 			{
 				text: "Back",
@@ -759,7 +759,7 @@ A good description helps you and others understand what the agent does and any s
 		// Targets the NavItemButton for Agent Hub via its icon's aria-label
 		attachTo: { element: '[data-tour-tag="nav-item-agent-hub"]', on: "right" },
 		title: "Discover more agents",
-		text: 'Let\'s visit the Agent hub to find community-created agents. Click on the "Agent hub" icon in the navigation bar.',
+		text: 'Let\'s visit the Agent Hub to find community-created agents. Click on the "Agent Hub" icon in the navigation bar.',
 		buttons: [
 			{
 				text: "Back",
@@ -810,7 +810,7 @@ A good description helps you and others understand what the agent does and any s
 			element: '[data-tour-tag="agent-hub-sidebar-container"]',
 			on: "right",
 		},
-		title: "The Agent hub",
+		title: "The Agent Hub",
 		text: "Here you can browse agents by category or search for specific ones. These agents are shared by the community and can perform various specialized tasks.",
 		buttons: [
 			{
@@ -871,7 +871,7 @@ A good description helps you and others understand what the agent does and any s
 			on: "bottom",
 		},
 		title: "Share your agents",
-		text: "If you create a useful agent, you can also share it with the community by uploading it to the Agent hub from the agent options menu.",
+		text: "If you create a useful agent, you can also share it with the community by uploading it to the Agent Hub from the agent options menu.",
 		buttons: [
 			{
 				text: "Back",

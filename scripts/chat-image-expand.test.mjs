@@ -148,6 +148,7 @@ const bundle = await build({
 				wrapGroupIndex,
 			} from "./src/renderer/src/shared/lib/image-viewer-model";
 			export { SCROLLBAR_HOLD_MS } from "./src/renderer/src/shared/lib/scrollbar-activity";
+			export { CONTROLS_RESTING_CLASS } from "./src/renderer/src/shared/components/common/image-lightbox";
 		`,
 		resolveDir: ROOT,
 	},
@@ -203,6 +204,7 @@ const {
 	VIEWER_ZOOM_MAX,
 	wrapGroupIndex,
 	SCROLLBAR_HOLD_MS,
+	CONTROLS_RESTING_CLASS,
 } = await import(pathToFileURL(bundlePath).href);
 
 /* ------------------------------------------------------------------ fixtures */
@@ -2683,8 +2685,15 @@ test("the controls fade to their resting floor after the hold, and activity wake
 				setTimeout(resolve, SCROLLBAR_HOLD_MS + 400),
 			);
 		});
+		/*
+		 * The resting floor is the shipped component's own
+		 * `CONTROLS_RESTING_CLASS` (design round 1, D1; agent review round 3,
+		 * R3-2): imported rather than copied, so changing the floor cannot leave
+		 * this assertion pinning the previous value - which is how this suite
+		 * went red when 0.45 became 0.85.
+		 */
 		assert.ok(
-			controls.className.split(" ").includes("opacity-45"),
+			controls.className.split(" ").includes(CONTROLS_RESTING_CLASS),
 			"after the hold the cluster sinks to its resting floor",
 		);
 

@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { type CSSProperties, useLayoutEffect } from "react";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import { ChatLayout } from "../../shared/components/common/chat-layout";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
@@ -24,6 +26,33 @@ import { TeamBridgePageView } from "./team-bridge-page";
  */
 
 const self = "acct_self";
+
+/**
+ * Storybook has no native window chrome, so the lane's CSS gates stay off.
+ * Set the same document attributes `main.tsx` writes before render; without
+ * them the comparison story is not the pre-fix shape (the lane is `display:
+ * none`, so nothing is reserved above the page).
+ */
+const useMacChromeSimulation = () => {
+	useLayoutEffect(() => {
+		const root = document.documentElement;
+		const previous = {
+			mode: root.getAttribute("data-chrome-mode"),
+			platform: root.getAttribute("data-chrome-platform"),
+			leading: root.getAttribute("data-chrome-leading"),
+		};
+		root.setAttribute("data-chrome-mode", "integrated");
+		root.setAttribute("data-chrome-platform", "mac");
+		root.setAttribute("data-chrome-leading", "false");
+		return () => {
+			for (const [key, value] of Object.entries(previous)) {
+				const name = `data-chrome-${key}`;
+				if (value === null) root.removeAttribute(name);
+				else root.setAttribute(name, value);
+			}
+		};
+	}, []);
+};
 
 const dm: TeamBridgeConversation = {
 	id: "bcv_dm_1",
@@ -96,6 +125,10 @@ const channel: TeamBridgeConversation = {
 	last_read_seq: 9,
 	unread_count: 3,
 	muted: false,
+	// What agent-server sends on every row: active + invited (Damian, Bea, Cy).
+	// The header must still read 2 active members, not 3, so this fixture is the
+	// insider branch of `conversationMemberCount` rather than a decorative field.
+	member_count: 3,
 };
 
 const group: TeamBridgeConversation = {
@@ -208,6 +241,115 @@ const northwindChannel: TeamBridgeConversation = {
 	last_message_at: new Date(Date.now() - 2 * 60 * 60_000).toISOString(),
 };
 
+/**
+ * A discoverable channel the caller has not joined.
+ *
+ * `members` is EMPTY on purpose: the preview's whole point is that membership
+ * is the fact withheld, so the header's count has to come from `member_count`
+ * and the rail has no participant rows to draw. The messages beside it in the
+ * story are a trap for the component test — they must never be rendered.
+ */
+const previewChannel: TeamBridgeConversation = {
+	...channel,
+	id: "bcv_ch_preview",
+	name: "product-design",
+	topic: "Design critiques and reviews",
+	visibility: "tenant",
+	discoverable: true,
+	member: false,
+	member_count: 24,
+	members: [],
+	latest_seq: 41,
+	last_read_seq: 0,
+	unread_count: 0,
+	muted: false,
+	last_message_at: new Date(Date.now() - 30 * 60_000).toISOString(),
+};
+
+/** A joined channel whose notification register is the middle-low `mute`. */
+const mutedChannel: TeamBridgeConversation = {
+	...channel,
+	id: "bcv_ch_muted",
+	name: "alerts",
+	discoverable: true,
+	member: true,
+	notify: "mute",
+	muted: true,
+	latest_seq: 12,
+	last_read_seq: 10,
+	unread_count: 2,
+	last_message_at: new Date(Date.now() - 8 * 60_000).toISOString(),
+};
+
+/**
+ * The rail's roster, one row per state the directory can answer with.
+ *
+ * The fixtures are deliberately ordered like the server orders them (no
+ * client sort): the signed-in owner first, then a reachable member, a paused
+ * admin, and two people whose bridge is off in each of its two spellings. The
+ * screen capture therefore shows the quiet states beside the live ones, which
+ * is the comparison this section exists to make.
+ */
+const directoryPeople = [
+	{
+		account_id: self,
+		display_label: "Damian",
+		role: "owner",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+	},
+	{
+		account_id: "acct_bea",
+		display_label: "Bea",
+		role: "member",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+	},
+	{
+		account_id: "acct_ada",
+		display_label: "Ada",
+		role: "admin",
+		bridge_enabled: true,
+		bridge_state: "paused" as const,
+	},
+	{
+		account_id: "acct_cy",
+		display_label: "Cy",
+		role: "member",
+		bridge_enabled: false,
+		bridge_state: "none" as const,
+	},
+	{
+		account_id: "acct_dee",
+		display_label: "Dee",
+		role: "member",
+		bridge_enabled: false,
+		bridge_state: "disabled" as const,
+	},
+];
+
+/** A DM with one of the roster's people, so that row's DM already exists. */
+const beaDm: TeamBridgeConversation = {
+	...dm,
+	id: "bcv_dm_bea",
+	members: [
+		{
+			account_id: self,
+			kind: "human",
+			display_label: "Damian",
+			role: "owner",
+			state: "active",
+		},
+		{
+			account_id: "acct_bea",
+			kind: "human",
+			display_label: "Bea",
+			role: "member",
+			state: "active",
+		},
+	],
+};
+
 const meta = {
 	title: "Team Bridge/Page",
 	component: TeamBridgePageView,
@@ -237,6 +379,9 @@ const meta = {
 		onNewConversation: () => {},
 		onRetry: () => {},
 		onScopeChange: () => {},
+		onJoin: () => {},
+		onNotifyChange: () => {},
+		onRetryPeople: () => {},
 	},
 } satisfies Meta<typeof TeamBridgePageView>;
 
@@ -252,6 +397,44 @@ export const ChannelSelected: Story = {
 			...message,
 			conversation_id: channel.id,
 		})),
+	},
+};
+
+/**
+ * The preview state: header metadata and the join banner, never a body.
+ *
+ * The messages are deliberately attached to the preview conversation in this
+ * story. A regression that renders cached history under a non-member banner
+ * would be visible here (and is asserted in the component test).
+ */
+export const PreviewChannel: Story = {
+	args: {
+		selected: previewChannel,
+		conversations: [dm, previewChannel, group],
+		messages: messages.map((message) => ({
+			...message,
+			conversation_id: previewChannel.id,
+		})),
+	},
+};
+
+/** A muted member channel: the rail draws its quiet bell beside the unread count. */
+export const MutedChannel: Story = {
+	args: {
+		selected: mutedChannel,
+		conversations: [dm, mutedChannel, group],
+		messages: messages.map((message) => ({
+			...message,
+			conversation_id: mutedChannel.id,
+		})),
+	},
+};
+
+/** The header menu open on its three-level preference section. */
+export const NotificationMenu: Story = {
+	args: {
+		selected: channel,
+		defaultMenuOpen: true,
 	},
 };
 
@@ -370,5 +553,169 @@ export const EmptyAllOrganizations: Story = {
 		selected: null,
 		messages: [],
 		messageState: "idle",
+	},
+};
+
+/**
+ * The page in the real shell, with the chrome lane as an overlay.
+ *
+ * This is the shape the operator's screenshot is about: the panels start at
+ * y0 and the 32px traffic-light clearance is padding INSIDE them, not a band
+ * above them. `--chrome-strip-h` is set on the frame because Storybook has no
+ * native window chrome; the production value comes from the same property.
+ */
+export const FlushToTheWindowTop: Story = {
+	render: () => {
+		useMacChromeSimulation();
+		return (
+			<div
+				className="relative flex h-screen flex-col overflow-hidden"
+				style={{ "--chrome-strip-h": "32px" } as CSSProperties}
+			>
+				<ChatLayout
+					flushTop
+					sidebar={<div className="h-full bg-surface" />}
+					content={
+						<main className="flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+							<TeamBridgePageView
+								listState="ready"
+								messageState="ready"
+								conversations={[channel, group, dm]}
+								selected={channel}
+								messages={messages}
+								organizations={[minervaOrganization, northwindOrganization]}
+								scope={asTeamBridgeTenantId("tnt_1")}
+								totalUnread={3}
+								selfAccountId={self}
+								onSelect={() => {}}
+								onSend={() => undefined}
+								onNewConversation={() => {}}
+								onScopeChange={() => {}}
+							/>
+						</main>
+					}
+				/>
+			</div>
+		);
+	},
+};
+
+/** The pre-fix shape, kept as the comparison frame: the lane reserves 32px and the page starts below it. */
+export const LaneReservedComparison: Story = {
+	render: () => {
+		useMacChromeSimulation();
+		return (
+			<div
+				className="relative flex h-screen flex-col overflow-hidden"
+				style={{ "--chrome-strip-h": "32px" } as CSSProperties}
+			>
+				<ChatLayout
+					sidebar={<div className="h-full bg-surface" />}
+					content={
+						<main className="flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+							<TeamBridgePageView
+								listState="ready"
+								messageState="ready"
+								conversations={[channel, group, dm]}
+								selected={channel}
+								messages={messages}
+								organizations={[minervaOrganization, northwindOrganization]}
+								scope={asTeamBridgeTenantId("tnt_1")}
+								totalUnread={3}
+								selfAccountId={self}
+								onSelect={() => {}}
+								onSend={() => undefined}
+								onNewConversation={() => {}}
+								onScopeChange={() => {}}
+							/>
+						</main>
+					}
+				/>
+			</div>
+		);
+	},
+};
+
+/**
+ * The People section, fully populated: self, an openable DM, a paused person
+ * and the two "bridge off" spellings. Bea's DM already exists, so her row
+ * opens it; the others resolve through the seeded compose flow.
+ */
+export const People: Story = {
+	args: {
+		conversations: [dm, beaDm, channel, group],
+		selected: dm,
+		people: directoryPeople,
+	},
+};
+
+/** The directory read in flight: one quiet 30px row under the conversation list. */
+export const PeopleLoading: Story = {
+	args: {
+		people: [],
+		peopleState: "loading",
+	},
+};
+
+/** A refused directory: stated in the rail, with the conversations untouched. */
+export const PeopleError: Story = {
+	args: {
+		people: [],
+		peopleState: "error",
+	},
+};
+
+/** Everyone but the reader has their bridge off: the roster is visible, inert. */
+export const PeopleDisabled: Story = {
+	args: {
+		people: directoryPeople.filter(
+			(member) =>
+				member.account_id === self || member.bridge_state === "disabled",
+		),
+	},
+};
+
+/** The merged scope has no single roster, and says so instead of guessing. */
+export const PeopleAllOrganizations: Story = {
+	args: {
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: [dm, beaDm, channel, group, northwindChannel],
+		people: directoryPeople,
+	},
+};
+
+/** The plan gate: signed in and current, but the organization has no Team Bridge. */
+export const PlanRequired: Story = {
+	args: {
+		eligibility: "plan_required",
+		conversations: [],
+		selected: null,
+		messages: [],
+		messageState: "idle",
+		people: [],
+	},
+};
+
+/** Signed out: the panel says so; there is no fake sign-in control to press. */
+export const SignedOut: Story = {
+	args: {
+		eligibility: "signed_out",
+		conversations: [],
+		selected: null,
+		messages: [],
+		messageState: "idle",
+		people: [],
+	},
+};
+
+/** An outdated app is named as such; another panel state on the same surface. */
+export const UpdateRequired: Story = {
+	args: {
+		eligibility: "update_required",
+		conversations: [],
+		selected: null,
+		messages: [],
+		messageState: "idle",
+		people: [],
 	},
 };
