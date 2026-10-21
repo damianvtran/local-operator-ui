@@ -1,0 +1,87 @@
+{
+  "date": "2026-10-21",
+  "locale": "hi",
+  "namespace": "ui.teamBridge",
+  "audit_id": "tb-direct-dm-20261021",
+  "source_commit": "7bf957741a",
+  "status": "audited",
+  "translator": {
+    "agent": "translator",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-10-21",
+    "session": "9560f0b857c1",
+    "remediation_job": "5e1d1a302ea0"
+  },
+  "auditors": [
+    {
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "date": "2026-10-21",
+      "result": "clean",
+      "instance": "tbd-r3-hi",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/tbd-r3-hi.json",
+      "receipt_sha256": "b0a3d96a6fce52dab28f89094ee16997846e8301cedbe06d90733e8d450b0313",
+      "scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
+      "note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
+    }
+  ],
+  "independence": "Auditor subagent is separate from translator and coordinator; no auditor modified catalogues.",
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+      "sha256": "78ff808697020fdde224fe7609a18d4aee9ab63f1f8719d2447d204a39933b7c"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "17b7e1450dc7fa529d8e2e684bb8653fcc4f6cf220bf8261631d078d26545de5"
+    }
+  },
+  "references": {
+    "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "retained_rounds": [
+    {
+      "path": "i18n/receipts/tbd-r1-hi.json",
+      "sha256": "48c6c90dc1cda69478373a5f312bec377ac13ca4d4286dd2101d3df25e1b2cae",
+      "instance": "tbd-r1-hi",
+      "model": "anthropic/claude-opus-5-5",
+      "session": "2e6dc2959949"
+    },
+    {
+      "path": "i18n/receipts/tbd-r2-hi.json",
+      "sha256": "ff72f6659121b330fa88f57fc8bf00816c35fd3df56dfaca736655b5cc92eadd",
+      "instance": "tbd-r2-hi",
+      "model": "anthropic/claude-opus-5-5",
+      "session": "2e6dc2959949"
+    },
+    {
+      "path": "i18n/receipts/tbd-r3-hi.json",
+      "sha256": "b0a3d96a6fce52dab28f89094ee16997846e8301cedbe06d90733e8d450b0313",
+      "instance": "tbd-r3-hi",
+      "model": "openai/gpt-6.1-sol",
+      "session": "2e6dc2959949"
+    }
+  ],
+  "limitations": [
+    "Catalogue semantics, ICU and source/target/context hashes verified; no rendered-fit, screenshot, pseudo-localization or runtime activation evidence is claimed.",
+    "Earlier full audits bind the exact prior bytes; final remediation receipts inherit unchanged semantic coverage and verify the changed keys and direct regression surfaces."
+  ]
+}
