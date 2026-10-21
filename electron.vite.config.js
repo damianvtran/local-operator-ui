@@ -99,7 +99,7 @@ export default defineConfig({
 			tailwindcss(),
 			tsconfigPaths(),
 			desktopProxyPlugin(),
-			voicePageVadPlugin(),
+			voicePageVadPlugin(__dirname),
 		],
 		input: {
 			index: resolve(__dirname, "src/renderer/index.html"),

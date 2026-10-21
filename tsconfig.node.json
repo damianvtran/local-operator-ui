@@ -1,6 +1,6 @@
 {
   "extends": "@electron-toolkit/tsconfig/tsconfig.node.json",
-  "include": ["electron.vite.config.*", "src/main/**/*", "src/preload/**/*", "src/voice-page/bridge.ts", "src/voice-page/channels.ts", "src/shared/**/*", "src/i18n/**/*"],
+  "include": ["electron.vite.config.*", "src/main/**/*", "src/preload/**/*", "src/voice-page/bridge.ts", "src/voice-page/channels.ts", "src/voice-page/model-manifest.ts", "src/shared/**/*", "src/i18n/**/*"],
   "compilerOptions": {
     "composite": true,
     "types": ["electron-vite/node"],

@@ -14,6 +14,10 @@ export const VOICE_PAGE_CHANNELS = {
 	stop: "voice-page:stop",
 	/** main -> page: silence (or restore) the page's own output. */
 	mute: "voice-page:mute",
+	/** page -> main (invoke): the verified bytes of one manifest file, by name. */
+	model: "voice-page:model",
+	/** page -> main: the text of one local transcription. */
+	transcript: "voice-page:transcript",
 } as const;
 
 export type VadEventKind = "speech_start" | "speech_end";

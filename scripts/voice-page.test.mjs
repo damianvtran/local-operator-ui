@@ -343,10 +343,10 @@ test("CSP: the page's policy is the plan's, and the html carries exactly it", ()
 	assert.equal(meta?.[1], m.VOICE_PAGE_CSP);
 });
 
-test("CHANNELS: five distinct, namespaced channels", () => {
+test("CHANNELS: seven distinct, namespaced channels", () => {
 	const values = Object.values(m.VOICE_PAGE_CHANNELS);
-	assert.equal(values.length, 5);
-	assert.equal(new Set(values).size, 5);
+	assert.equal(values.length, 7);
+	assert.equal(new Set(values).size, 7);
 	for (const v of values) assert.match(v, /^voice-page:/);
 });
 
@@ -584,7 +584,7 @@ test("INBOX (m1): a new replyId resets the inbox - the old reply's leftovers are
 	}
 	assert.match(
 		readFileSync("electron.vite.config.js", "utf8"),
-		/voicePageVadPlugin\(\)/,
+		/voicePageVadPlugin\(__dirname\)/,
 	);
 	assert.ok(m.VOICE_PAGE_CSP.includes("'wasm-unsafe-eval'"));
 	assert.ok(!m.VOICE_PAGE_CSP.includes("'unsafe-eval'"));
