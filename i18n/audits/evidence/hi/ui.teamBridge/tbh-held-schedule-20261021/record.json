@@ -1,0 +1,99 @@
+{
+ "audit_id": "tbh-held-schedule-20261021",
+ "date": "2026-10-21",
+ "locale": "hi",
+ "namespace": "ui.teamBridge",
+ "source_commit": "c06b457be90a58b3a330f361f9e260cf88a4dfa4",
+ "source_base": "51dceb5a09",
+ "scope": "2 keys added at c06b457be9: ui.teamBridge.schedule.held and ui.teamBridge.schedule.discard_attempt (git diff 51dceb5a09..c06b457be9 of en). The other 136 values are inherited unchanged from the tbs-drafts-schedule-20261021 audit.",
+ "status": "audited",
+ "translator": {
+  "agent": "translator",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "632a8fd68227",
+  "job": "4ca9e8a81d54"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-21",
+   "result": "clean",
+   "instance": "tbh-r1-hi",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/tbh-r1-hi.json",
+   "receipt_sha256": "e45b8b1e0467ccaab493e77cc2e385d046c15427266f012ae8c3147cea5aaff2",
+   "scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-hi with no findings; other 136 values inherited unchanged from c06b457be9 (tbs-r2-hi). Catalogue audit only, not rendered-fit, activation or release approval.",
+   "note": "Independent 2-key delta audit, clean in round 1 (no remediation delta, so no round 2). Record: i18n/audits/evidence/hi/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "tbh-r1-hi",
+   "session": "974acfeecff9",
+   "job": "be7d20b91ab6",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 2,
+   "target_sha256": "4e453d80c3efcf76bdd6524d149839c0d0016d68f6a1188e578535bf4c4d0e08",
+   "findings": [],
+   "receipt": {
+    "path": "i18n/receipts/tbh-r1-hi.json",
+    "sha256": "e45b8b1e0467ccaab493e77cc2e385d046c15427266f012ae8c3147cea5aaff2"
+   }
+  }
+ ],
+ "inherited_receipt": {
+  "base": "c06b457be9",
+  "path": "i18n/receipts/tbs-r2-hi.json",
+  "sha256": "b6312b60c3b68b2abf8d4a5313b545e80c05ffc72d44e0f905fa3aaa8451049e",
+  "keys_inherited": 136,
+  "base_source_sha256": "145e5d2de5165a0fa6e5ce1cff91f6e6909007e448b4a6e229b47a87a71cb46b",
+  "base_target_sha256": "ecc9fec207ec0685265caedbb99d3acbc75c3e7285e526c7e78a9b7aa911761b",
+  "unchanged_values_verified": 136
+ },
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+   "sha256": "4e453d80c3efcf76bdd6524d149839c0d0016d68f6a1188e578535bf4c4d0e08"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "02e7be8fe466cd83941fcead89f234a705d0aa40765d274b9d92390333e4337c"
+  }
+ },
+ "references": {
+  "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/hi.md",
+   "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  }
+ },
+ "independence": "Translator and auditor are different agents (translator vs translation-auditor) in different sessions; the auditor never edited catalogues; the coordinator neither translated nor audited and only assembled evidence with scripts/i18n/ledger-assemble.mjs.",
+ "limitations": [
+  "Browser unavailable by task constraint; no rendered-fit, screenshots, glyph metrics, pseudo-localization, native bidi rendering or activation evidence claimed.",
+  "schedule.discard_attempt sits in a whitespace-nowrap ghost Button; auditors flagged it for a rendered-width check that has not been performed."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/tbh-r1-hi.json",
+   "sha256": "e45b8b1e0467ccaab493e77cc2e385d046c15427266f012ae8c3147cea5aaff2"
+  }
+ ],
+ "note": "Round 1 was clean (0 findings), so there was no remediation delta and no round 2."
+}

@@ -1,0 +1,40 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbh-r1-vi",
+ "session": "b79dcedce63e",
+ "date": "2026-10-21",
+ "locale": "vi",
+ "translator": "translator",
+ "translator_session": "8c0c0af95212",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 2,
+ "scope": "2-key held-schedule recovery delta (ui.teamBridge.schedule.held, schedule.discard_attempt) per git diff 51dceb5a09..c06b457 of en; 136 other values verified byte-unchanged vs HEAD and inherited from tbs-r2-vi; catalogue audit only, not rendered-fit/activation/release.",
+ "sha256": {
+  "en": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+  "vi": "0b6d510710c29488180fc315a4f44fdb62bf9e24a76fe172cb893964a09eaab8",
+  "context": "02e7be8fe466cd83941fcead89f234a705d0aa40765d274b9d92390333e4337c"
+ },
+ "findings": [],
+ "inherited_receipt": {
+  "base": "c06b457be9",
+  "path": "i18n/receipts/tbs-r2-vi.json",
+  "sha256": "fbc9a2b9e3ba894b62c9c716dcc4af3fc00220854ba008ae212d86a19360ecd9",
+  "keys_inherited": 136,
+  "base_target_sha256": "f58d7e6209ff630ac5cf98eae89c0803ed7b032c568482820ac1c77e4691789c",
+  "unchanged_values_verified": 136
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+ },
+ "validation": {
+  "independence": "Auditor session b79dcedce63e is distinct from translator session 8c0c0af95212; values read from working-tree bytes, not from any summary; tbs-r2-vi (fbc9a2b9…) and tbs-r1-vi (fbb64cbb…) receipts hash-verified and untouched; no repo edits, no git add/commit.",
+  "semantics": "held: «Lịch gửi trước đó có thể vẫn còn» keeps the uncertainty (có thể) and reuses «lịch gửi trước đó» from schedule.retry; «hủy lịch đó nếu cần» uses the hủy verb of schedule.cancel («Hủy gửi») for the server-side cancel; «trước khi bỏ lần thử này» renders discarding the local attempt; «Bản nháp của bạn vẫn được giữ.» is byte-identical to the closing sentence of schedule.create_uncertain and the draft clause of schedule.failed. discard_attempt: «Tôi đã kiểm tra mục “Đã lên lịch” — bỏ lần thử này» mirrors schedule.create_retry («Tôi đã kiểm tra mục “Nhóm” — …») structurally, keeps the explicit first-person acknowledgement, and uses «bỏ» (drop the local attempt), not «hủy», so it cannot be read as the Cancel message server action. Scheduled reference «mục “Đã lên lịch”» matches schedule.list «Đã lên lịch» and the form used in schedule.failed/schedule.success. Register: bạn only in the shared draft sentence, consistent with neighbours; sentence case; no «Vui lòng» (en has no please); idiomatic, not calqued.",
+  "icu": "Key set and order equal English (138); vs HEAD (sha f58d7e62…): 136 values byte-identical, 0 changed, 2 added = the two scoped keys; git diff is 3 insertions/1 deletion (trailing comma on schedule.retry + 2 lines); file ends '}\\n'. @formatjs/icu-messageformat-parser: en and vi both parse to a single literal node (no arguments, as in English); intl-messageformat 'vi' format returns each string unchanged.",
+  "typography": "Whole file NFC; no U+200E/F, U+202A–E, U+2066–9, U+061C in any value; curly quotes “ ” (U+201C/U+201D), spaced em dash ' — ' (U+2014), no ASCII quotes, no space before punctuation, no '!'; hủy spelled per wave orthography.",
+  "overflow": "held 144 code points vs en 128 (+12%), sibling create_uncertain is 138 vs 123: wrapping <p> in the composer footer, no risk. discard_attempt 50 vs en 42 (+19%) inside a ghost Button whose shared base class carries whitespace-nowrap; same shape and length class as the previously approved create_retry (vi 49, en 49) in the same footer; no shorter phrasing proposed without losing the Scheduled check or the acknowledgement the sidecar requires; flagged for a rendered check at narrow composer widths, not a finding.",
+  "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+ }
+}

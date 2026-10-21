@@ -134,5 +134,7 @@
 	"ui.teamBridge.schedule.create_uncertain": "Chưa xác nhận được việc tạo nhóm. Nhóm có thể đã được tạo. Hãy kiểm tra mục “Nhóm” trước khi tạo nhóm khác. Bản nháp của bạn vẫn được giữ.",
 	"ui.teamBridge.schedule.create_retry": "Tôi đã kiểm tra mục “Nhóm” — cho phép thử tạo lại",
 	"ui.teamBridge.schedule.edit_body": "Tin nhắn",
-	"ui.teamBridge.schedule.retry": "Thử lại lịch gửi trước đó"
+	"ui.teamBridge.schedule.retry": "Thử lại lịch gửi trước đó",
+	"ui.teamBridge.schedule.held": "Lịch gửi trước đó có thể vẫn còn. Hãy kiểm tra mục “Đã lên lịch” và hủy lịch đó nếu cần trước khi bỏ lần thử này. Bản nháp của bạn vẫn được giữ.",
+	"ui.teamBridge.schedule.discard_attempt": "Tôi đã kiểm tra mục “Đã lên lịch” — bỏ lần thử này"
 }
