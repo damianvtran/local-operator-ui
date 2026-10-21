@@ -107,6 +107,7 @@ import {
 } from "../draft-selection";
 import {
 	bandReadings,
+	effortChosenRung,
 	effortDisplay,
 	effortLadder,
 	effortLevel,
@@ -2028,7 +2029,13 @@ export const EffortPicker: FC<PickerContext> = ({
 			: null;
 	const currentRung = draft
 		? (draftModel?.reasoning_effort ?? null)
-		: (liveRung ?? entities.data?.current ?? null);
+		: // A published displacement names the conversation's CHOICE, which is the
+			// rung this dialog changes; the live reading is then the level a
+			// fallback serves at (`effortChosenRung` says why it outranks it).
+			(effortChosenRung(runningFrontend(canonical)) ??
+			liveRung ??
+			entities.data?.current ??
+			null);
 	/*
 	 * The accepted rung bridges the gap until the owner's frame names it, then
 	 * the frame is the authority again - the same hand-over the model dialog's
