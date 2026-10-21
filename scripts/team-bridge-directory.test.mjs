@@ -675,6 +675,25 @@ test("the row time moves to the header and a relative+absolute tooltip", () => {
 	assert.match(html, /10 hours ago/);
 });
 
+test("a local 422 is named as a validation cause, not an outdated client", () => {
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				peopleState: "error",
+				peopleError: {
+					status: 422,
+					code: "invalid_request",
+					message: "tenant_id was not in a shape this client accepts",
+				},
+			}),
+		),
+	);
+	assert.match(html, /tenant_id was not in a shape this client accepts/);
+	assert.doesNotMatch(html, /needs a newer version of Radient/);
+	assert.doesNotMatch(html, /Try again/);
+});
+
 test("a signed-out directory failure names sign-in and offers no retry", () => {
 	const html = renderToStaticMarkup(
 		createElement(
