@@ -51,7 +51,23 @@ function requireSkillsAdapter(client: QueryClient) {
 	}
 }
 
-/** Scope and API origin are part of each key. A private refusal never goes public. */
+/**
+ * One page of the skill catalogue, plus THE CATALOGUE'S OWN TOTAL.
+ *
+ * `total` exists because two very different numbers are easy to confuse here:
+ * the rows a page holds, and how many skills the catalogue has. The public
+ * listing is PAGINATED, so `rows.length` answers for the page (at most twenty)
+ * and `total_records` answers for the whole catalogue; the organization's
+ * listing is unpaginated and returns every skill, so its length IS the total.
+ * The tab strip and the library's count line both read `total`, which is what
+ * keeps them from disagreeing with each other and with the server.
+ *
+ * `total_records` is page-independent, so a later page carries the same total
+ * as page 1 - which is why the tab strip can observe page 1 and still tell the
+ * truth while the library pages through the list.
+ *
+ * Scope and API origin are part of each key. A private refusal never goes public.
+ */
 export function useRemoteSkills(
 	scope: HubSkillScope,
 	page: number,
@@ -78,6 +94,9 @@ export function useRemoteSkills(
 				return {
 					rows: result.skills,
 					pages: 1,
+					// Unpaginated: the response carries the whole roster, so its length is
+					// the catalogue's total and not a page's.
+					total: result.skills.length,
 					contract: result.sync_contract,
 				};
 			}
@@ -87,6 +106,8 @@ export function useRemoteSkills(
 			return {
 				rows: result.records,
 				pages: result.total_pages,
+				// The server's own count for the query, NOT the rows on this page.
+				total: result.total_records,
 				contract: result.sync_contract,
 			};
 		},
