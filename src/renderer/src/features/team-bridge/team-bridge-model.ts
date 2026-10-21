@@ -546,13 +546,13 @@ export function directoryFailureKind(error: unknown): DirectoryFailureKind {
 	// server. Before this branch it was classified as `outdated`, so a current
 	// client told the user to update Radient to fix its own rejected value.
 	if (status === 422 || code === "invalid_request") return "invalid";
-	// A route this daemon predates (404), a request it rejects (400/422), or a
+	// A route this daemon predates (404), a request it rejects (400), or a
 	// payload this client cannot parse (ZodError) are not transient. Retrying
-	// them is deterministic and reads as a broken button.
+	// them is deterministic and reads as a broken button. A 422 is handled above
+	// as a local validation refusal.
 	if (
 		status === 400 ||
 		status === 404 ||
-		status === 422 ||
 		(candidate as { name?: unknown } | null)?.name === "ZodError"
 	)
 		return "outdated";
