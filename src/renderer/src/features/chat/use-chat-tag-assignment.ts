@@ -94,6 +94,59 @@ export function useChatTagAssignment({
 		setError(t("ui.chat.tags.registry_changed"));
 	}, [categories, ids, loading, loadError]);
 
+	/*
+	 * ADOPT AUTHORITATIVE CHANGES WHILE THIS HOOK STAYS MOUNTED.
+	 *
+	 * The dialog mounts per invocation, so its props are a snapshot and the
+	 * caller contract above says so. The composer's `/tag` list is the other
+	 * shape: it lives for as long as the composer does, across conversation
+	 * switches, external assignments and a catalogue that another client edits
+	 * while the list is open. Seeding only in `useState` would leave that list
+	 * writing the tags it saw at mount over tags it never read.
+	 *
+	 * The revision is the trigger because it moves exactly when the server has
+	 * acknowledged an assignment. A pending write is never re-seeded underneath
+	 * itself: the rollback in `write` owns that window, and the effect re-reads
+	 * once it settles. A session SWITCH always re-seeds even mid-write, because
+	 * the in-flight ids belong to the conversation that is no longer on screen.
+	 */
+	const seededSession = useRef(sessionId);
+	const seededRevision = useRef(revision ?? null);
+	/** A conversation switch seeds even when both revisions are null. */
+	const seedPending = useRef(false);
+	useEffect(() => {
+		const switched = seededSession.current !== sessionId;
+		const moved = (revision ?? null) !== seededRevision.current;
+		if (switched) {
+			seededSession.current = sessionId;
+			seedPending.current = true;
+			/*
+			 * WHY THE RECEIPT AND THE ERROR LINE ARE RETIRED HERE (review round 2,
+			 * F4 residual): a switch can land while a write is still pending, and the
+			 * reseed below is deliberately deferred until that write settles (the
+			 * rollback owns that window). Clearing only in the reseed pass left the
+			 * previous conversation's "selected, grouped under" sentence over the new
+			 * one for the whole write — and the deferred pass could not repair it, because
+			 * the session ref above had already moved, so it read `switched === false`.
+			 * The SELECTION stays deferred; only the sentence about it does not.
+			 *
+			 * A revision move is deliberately different: our own successful write moves
+			 * the revision and the reseed runs right after it, so clearing then would
+			 * erase the receipt before the user can read it.
+			 */
+			setError(null);
+			setNotice("");
+		}
+		if (pending) return;
+		if (!switched && !moved && !seedPending.current) return;
+		seededRevision.current = revision ?? null;
+		seedPending.current = false;
+		const nextIds = tags?.map((tag) => tag.id) ?? [];
+		setIds(nextIds);
+		setHeld(draftPrimary(nextIds, primary));
+		currentRevision.current = revision ?? null;
+	}, [sessionId, revision, pending, tags, primary]);
+
 	const announce = (nextIds: string[], nextPrimary: string | null) =>
 		setNotice(
 			t("ui.chat.tags.selection_status", {
@@ -123,6 +176,14 @@ export function useChatTagAssignment({
 				currentRevision.current = answer.tags_revision;
 			return { ok: true };
 		} catch (caught) {
+			/*
+			 * A write that settles after the surface moved to another conversation
+			 * belongs to the OLD one. Its store rollback already ran; touching this
+			 * hook's selection, revision or error line here would paint the previous
+			 * conversation's answer over the one on screen.
+			 */
+			if (seededSession.current !== sessionId)
+				return { ok: false, reason: "failed" };
 			setIds(previous.ids);
 			setHeld(previous.primary);
 			// The optimistic announcement described the selection this failure just
