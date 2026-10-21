@@ -436,6 +436,26 @@ export function layoutKeyOf(snapshot: AddressOverlayLayoutSnapshot): string {
 	}`;
 }
 
+/** The identity of the CONTENT a projection hangs from: the tab and the
+ * rectangle, WITHOUT presentation.
+ *
+ * A presentation flip alone is not a reason to lower the product popout.
+ * Opening the page menu suppresses the native page by design (the panel paints
+ * into the content rect, where a native view wins), which flips `presented` to
+ * false while the tab and the rectangle stay identical. Keying the dismissal on
+ * `layoutKeyOf` made every menu item — and the menu's own view suppression —
+ * close the field row it was opened from (agent review round 1, MAJOR-1). A
+ * moved page, a changed tab or a torn-down rect still changes this key, and
+ * those are the facts the renderer must obey. */
+export function layoutContentKeyOf(
+	snapshot: AddressOverlayLayoutSnapshot,
+): string {
+	const rect = snapshot.contentRect;
+	return `${snapshot.activeTabId}:${
+		rect ? `${rect.x},${rect.y},${rect.width},${rect.height}` : "null"
+	}`;
+}
+
 export type AddressOverlayState =
 	| "absent"
 	| "loading"
@@ -586,6 +606,12 @@ export interface AddressOverlayDeps {
 	 * (the host forwards it to the owner window). Absent means no sink, and the
 	 * event is counted, not sent. */
 	onEvent?: (event: AddressOverlayEvent) => void;
+	/** The child's health changed in a way `mode()` reports (a terminal failure,
+	 * or a release that clears one). The host re-projects chrome state from this,
+	 * because the renderer reads `addressOverlay.mode` out of the projection and
+	 * has no other way to learn the list went away (QA round 1, Q-F1: a raise
+	 * that raced a failing child kept announcing suggestions). */
+	onHealthChange?: () => void;
 	log?: (message: string) => void;
 	now?: () => number;
 	appMetrics?: () => unknown;
@@ -671,6 +697,7 @@ export class AddressOverlayController {
 	private readonly createView: () => WebContentsView;
 	private readonly javascript: boolean;
 	private readonly onEvent: ((event: AddressOverlayEvent) => void) | null;
+	private readonly onHealthChange: (() => void) | null;
 	private readonly readinessTimeoutMs: number;
 	private readonly log: (message: string) => void;
 	private readonly now: () => number;
@@ -687,6 +714,9 @@ export class AddressOverlayController {
 	private lastShow: AddressOverlayFacts["lastShow"];
 	private layout: AddressOverlayLayoutSnapshot;
 	private layoutKey: string;
+	/** The layout's content identity (tab + rect), the fact a product dismissal
+	 * is allowed to rest on; see `layoutContentKeyOf`. */
+	private layoutContentKey: string;
 	private boundTabId: number | null;
 	private domReady: boolean;
 	private finished: boolean;
@@ -731,6 +761,14 @@ export class AddressOverlayController {
 	private warmScheduled: boolean;
 	private lastRejected: string | null;
 	private projectQueue: Promise<unknown>;
+	/** The native page is hidden for a reason that says nothing about the popout
+	 * (the page menu suppresses it while its panel is open). The row stays
+	 * raised, so the child's paint stops and its "shown" state does not. */
+	private presentationSuspended: boolean;
+	/** A projection that arrived while the page was suppressed. Applied on
+	 * resume rather than refused: a refusal would make the mirror re-project
+	 * every frame until the menu closed. */
+	private deferredProjection: unknown;
 
 	constructor(deps: AddressOverlayDeps) {
 		this.window = deps.window;
@@ -740,6 +778,7 @@ export class AddressOverlayController {
 			(() => createHardenedView({ javascript: deps.javascript === true }));
 		this.javascript = deps.javascript === true;
 		this.onEvent = deps.onEvent ?? null;
+		this.onHealthChange = deps.onHealthChange ?? null;
 		this.readinessTimeoutMs =
 			deps.readinessTimeoutMs ?? ADDRESS_OVERLAY_READY_TIMEOUT_MS;
 		this.log = deps.log ?? (() => {});
@@ -762,6 +801,7 @@ export class AddressOverlayController {
 			revision: 0,
 		};
 		this.layoutKey = "none";
+		this.layoutContentKey = "none";
 		this.boundTabId = null;
 		this.domReady = false;
 		this.finished = false;
@@ -797,6 +837,8 @@ export class AddressOverlayController {
 		this.warmScheduled = false;
 		this.lastRejected = null;
 		this.projectQueue = Promise.resolve();
+		this.presentationSuspended = false;
+		this.deferredProjection = null;
 		this.attachOwnerListeners();
 	}
 
@@ -819,14 +861,28 @@ export class AddressOverlayController {
 		const next = copyLayout(snapshot);
 		const nextKey = layoutKeyOf(next);
 		const previousKey = this.layoutKey;
+		const nextContentKey = layoutContentKeyOf(next);
+		const previousContentKey = this.layoutContentKey;
 		this.layout = next;
 		this.layoutKey = nextKey;
+		this.layoutContentKey = nextContentKey;
 		if (previousKey !== nextKey) {
+			const contentChanged = previousContentKey !== nextContentKey;
+			if (!contentChanged) {
+				// PRESENTATION ONLY: the page menu hides the native page while ITS panel is
+				// open (a panel anchored in the strip paints into the content rect, where the
+				// native view wins). That is not a fact about the popout — it must stay
+				// raised — so the child only stops painting and the "shown" state the
+				// re-assert below relies on is preserved (agent review round 1, MAJOR-1).
+				if (next.presented) this.resumePresentation();
+				else this.suspendPresentation();
+				return;
+			}
 			// A moved page, a changed tab or a torn-down presentation invalidates the
 			// popout as a whole. The product field row lives in the renderer, so main
 			// tells it to come down rather than only hiding the native list.
 			this.hide("layout");
-			// The first layout pass has no popout to lower (previousKey "none").
+			// The first pass has no popout to lower (previousKey "none").
 			if (this.product && previousKey !== "none") this.emitDismiss("layout");
 			return;
 		}
@@ -850,6 +906,47 @@ export class AddressOverlayController {
 		} catch (error) {
 			this.releaseChild("layout_error");
 			this.log(`[browser] address overlay layout failed: ${String(error)}`);
+		}
+	}
+
+	/** Hide the child's paint without dropping the popout's state; see `onLayout`. */
+	private suspendPresentation(): void {
+		this.presentationSuspended = true;
+		const view = this.view;
+		if (!view || this.viewUsable(view) === false) return;
+		try {
+			view.setVisible(false);
+		} catch {
+			// The window is closing; the visibility claim is moot.
+		}
+	}
+
+	/** The page is back. Re-present the child from the bounds last applied, or
+	 * apply the projection that arrived while the page was hidden. */
+	private resumePresentation(): void {
+		if (!this.presentationSuspended) return;
+		this.presentationSuspended = false;
+		const deferred = this.deferredProjection;
+		this.deferredProjection = null;
+		if (deferred !== null) {
+			void this.project(deferred);
+			return;
+		}
+		if (this.state !== "shown") return;
+		// The S1 show path has no projection, so it has no applied bounds either; the
+		// same rule `onLayout`'s re-assert uses covers it.
+		const bounds =
+			this.lastAppliedBounds ??
+			overlayBoundsFor(this.layout.contentRect, this.ownerSize());
+		if (bounds === null) return;
+		const view = this.view;
+		if (!view || this.viewUsable(view) === false) return;
+		try {
+			view.setBounds(bounds);
+			this.raiseChild(view);
+			view.setVisible(true);
+		} catch {
+			this.releaseChild("layout_error");
 		}
 	}
 
@@ -954,6 +1051,10 @@ export class AddressOverlayController {
 
 	hide(reason = "hide"): void {
 		if (this.disposed) return;
+		// A hide is the end of the row's native life: whatever the page-menu
+		// suppression was holding must not come back on a later layout pass.
+		this.presentationSuspended = false;
+		this.deferredProjection = null;
 		this.generation += 1;
 		this.settleReady(false);
 		this.hiddenReason = reason;
@@ -1150,6 +1251,18 @@ export class AddressOverlayController {
 	 * controller, so a burst between frames costs one apply each in arrival order.
 	 */
 	project(raw: unknown): Promise<AddressOverlayProjectResult> {
+		if (this.presentationSuspended) {
+			// The page is hidden for a reason that does not involve the field. Keep the
+			// newest payload for `resumePresentation` and answer as accepted so the
+			// mirror does not re-project the same frame sixty times a second.
+			this.deferredProjection = raw;
+			return Promise.resolve({
+				accepted: true,
+				shown: false,
+				reason: null,
+				bounds: null,
+			});
+		}
 		const run = (): Promise<AddressOverlayProjectResult> =>
 			this.projectOnce(raw);
 		const next = this.projectQueue.then(run, run);
@@ -1822,6 +1935,9 @@ export class AddressOverlayController {
 		this.settleReady(false);
 		this.destroyChild();
 		this.log(`[browser] address overlay failed: ${reason}`);
+		// The renderer's Tier 1 notice rests on `mode()`, so a failure that lands
+		// while the field is already raised must reach it as a projection.
+		this.onHealthChange?.();
 	}
 
 	/** Recoverable: the child goes, a later explicit show may lazily recreate one. */
@@ -1835,6 +1951,7 @@ export class AddressOverlayController {
 		this.finished = false;
 		this.loadStartedAt = null;
 		this.log(`[browser] address overlay child released: ${reason}`);
+		this.onHealthChange?.();
 	}
 
 	private destroyChild(): void {

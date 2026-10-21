@@ -313,6 +313,9 @@ function makeController(options = {}) {
 		log: options.log,
 		javascript: options.javascript === true,
 		visible: options.visible === true,
+		product: options.product === true,
+		onEvent: options.onEvent,
+		onHealthChange: options.onHealthChange,
 	};
 	if (!options.defaultFactory) deps.createView = createView;
 	const controller = new AddressOverlayController(deps);
@@ -960,6 +963,121 @@ test("child crash and load failure latch off for this host lifetime", async () =
 		assert.equal(views.length, 1, "no replacement child after a latch");
 		controller.dispose("test");
 	}
+});
+
+/**
+ * S4b round-2 regressions. Both mechanisms below were found by reading in round
+ * 1 and are reproduced here against the REAL controller (electron stubbed), not
+ * a model of it.
+ */
+test("S4b: a presentation-only flip lowers nothing, and the child comes back", async () => {
+	const events = [];
+	let health = 0;
+	const { controller, views } = makeController({
+		product: true,
+		onEvent: (event) => events.push(event),
+		onHealthChange: () => {
+			health += 1;
+		},
+	});
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views[0];
+	view.webContents.emit("dom-ready");
+	view.webContents.emit("did-finish-load");
+	assert.equal((await pending).shown, true);
+	assert.equal(view.visible, true);
+
+	// The page menu suppresses the native page for as long as its panel is open:
+	// presented flips, the tab and the rectangle do not.
+	controller.onLayout(layout({ presented: false, revision: 2 }));
+	assert.deepEqual(events, [], "opening the menu must not dismiss the popout");
+	assert.equal(view.visible, false, "the child must yield to the menu panel");
+	assert.equal(controller.facts().state, "shown", "the row is still raised");
+
+	controller.onLayout(layout({ presented: true, revision: 3 }));
+	assert.deepEqual(events, [], "closing the menu must not dismiss either");
+	assert.equal(view.visible, true, "the list returns with the page");
+	assert.equal(health, 0, "presentation is not a health fact");
+
+	// A REAL layout change is still a dismissal.
+	controller.onLayout(
+		layout({ contentRect: { ...RECT, x: RECT.x + 40 }, revision: 4 }),
+	);
+	assert.deepEqual(
+		events.map((event) => [event.type, event.reason]),
+		[["dismiss", "layout"]],
+	);
+	controller.dispose("test");
+});
+
+test("S4b: a presentation-only flip does not drop a projection that arrives meanwhile", async () => {
+	const events = [];
+	const { controller, views } = makeController({
+		product: true,
+		onEvent: (event) => events.push(event),
+	});
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views[0];
+	view.webContents.emit("dom-ready");
+	view.webContents.emit("did-finish-load");
+	await pending;
+	controller.onLayout(layout({ presented: false, revision: 2 }));
+	// The renderer keeps projecting while the menu owns focus. Refusing would make
+	// the mirror re-project the same frame every animation frame.
+	const answer = await controller.project({
+		v: 2,
+		seq: 900,
+		tabId: 1,
+		visible: true,
+		pageRect: { ...RECT },
+		anchor: { x: RECT.x, width: 640 },
+		active: 0,
+		view: { kind: "rows", rows: [{ text: "example.com", title: "Example" }] },
+		label: "From this browser session",
+		dir: "ltr",
+	});
+	assert.equal(answer.accepted, true, JSON.stringify(answer));
+	assert.deepEqual(events, []);
+	assert.equal(controller.facts().state, "shown", "the row is still raised");
+	// Resuming hands the deferred payload to the projection queue. The stub view
+	// cannot answer `executeJavaScript`, so what is asserted here is the decision
+	// (accepted, deferred, no dismissal), not the paint.
+	controller.onLayout(layout({ presented: true, revision: 3 }));
+	assert.deepEqual(events, []);
+	controller.dispose("test");
+});
+
+test("S4b: a child failure while the field is raised pushes a health change", async () => {
+	let health = 0;
+	const { controller, views } = makeController({
+		product: true,
+		onHealthChange: () => {
+			health += 1;
+		},
+	});
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	assert.equal(health, 0, "warming the child is not a health fact");
+	views[0].webContents.emit(
+		"did-fail-load",
+		{},
+		-105,
+		"NAME_NOT_RESOLVED",
+		"",
+		true,
+	);
+	await pending;
+	assert.equal(health, 1, "the renderer reads Tier 1 from the projection");
+	assert.deepEqual(controller.mode(), {
+		mode: "suspend",
+		reason: "load_failed:-105",
+	});
+	controller.dispose("test");
 });
 
 test("a readiness timeout fails closed and rejects the pending show", async () => {

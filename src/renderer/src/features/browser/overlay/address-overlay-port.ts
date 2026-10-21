@@ -118,6 +118,10 @@ export function isPermanentOverlayRefusal(reason: unknown): boolean {
  */
 interface AddressOverlayPortState {
 	latched: boolean;
+	/** The product channel answered "No handler registered", so this launch is a
+	 * probe without the product door. Sticky for the renderer process: the answer
+	 * cannot change without a relaunch. */
+	productDoorRefused: boolean;
 	inFlight: Promise<unknown> | null;
 }
 const PORT_STATE_KEY = "__loAddressOverlayPortState";
@@ -129,7 +133,11 @@ function portState(): AddressOverlayPortState {
 	>;
 	const existing = holder[PORT_STATE_KEY];
 	if (existing) return existing;
-	const created: AddressOverlayPortState = { latched: false, inFlight: null };
+	const created: AddressOverlayPortState = {
+		latched: false,
+		productDoorRefused: false,
+		inFlight: null,
+	};
 	holder[PORT_STATE_KEY] = created;
 	return created;
 }
@@ -156,27 +164,16 @@ function unavailable(): Error {
 	);
 }
 
-/**
- * The PRODUCT door first, the probe door second.
- *
- * S4b's popout is default-on (darwin) and must not read `__loDevDriver`: that
- * object exists only for an armed evidence launch. The ordinary app bridge is
- * the product path; the dev-driver path remains reachable so the S1–S3 probe
- * script keeps driving the same controller. A product launch never has the
- * driver object, so the order costs it one property read.
- */
-export function addressOverlayPort(): AddressOverlayPort | null {
-	if (portState().latched) return null;
-	const product =
-		typeof window === "undefined"
-			? undefined
-			: window.api?.browser?.addressOverlay;
-	if (product) {
-		return makePort(
-			(payload) => product.project(payload),
-			(callback) => product.onEvent(callback as (event: unknown) => void),
-		);
-	}
+/** One door's pair of calls. A door is a transport, not a trust decision. */
+interface AddressOverlayDoor {
+	project: (
+		payload: AddressOverlayPost | AddressOverlayHide,
+	) => Promise<unknown>;
+	onEvent: (callback: (event: AddressOverlayEvent) => void) => () => void;
+}
+
+/** The armed evidence launch's door, or null when this renderer has no driver. */
+function devDoor(): AddressOverlayDoor | null {
 	const bridge =
 		typeof window === "undefined" ? undefined : window.__loDevDriver;
 	if (!bridge || bridge.armed !== true) return null;
@@ -186,17 +183,51 @@ export function addressOverlayPort(): AddressOverlayPort | null {
 	) {
 		return null;
 	}
-	return makePort(
-		(payload) => bridge.addressOverlayProject(payload),
-		(callback) => bridge.onAddressOverlayEvent(callback),
-	);
+	return {
+		project: (payload) => bridge.addressOverlayProject(payload),
+		onEvent: (callback) =>
+			bridge.onAddressOverlayEvent(callback as (event: unknown) => void),
+	};
+}
+
+/**
+ * The PRODUCT door first, the probe door second, and a no-handler answer DEMOTES
+ * the product door instead of latching everything off.
+ *
+ * S4b's popout is default-on (darwin) and must not read `__loDevDriver`: that
+ * object exists only for an armed evidence launch. The ordinary app bridge is
+ * the product path. But the bridge is defined by PRELOAD unconditionally, while
+ * main registers `browser-address-overlay-project` only when the product
+ * controller is wired — so in an S1–S3 probe launch the first projection used to
+ * reject "No handler registered" and set the renderer-wide latch, which also hid
+ * the dev-driver door for the rest of the run (agent review round 1, MINOR-1).
+ * A refusal now remembers only that the PRODUCT door is closed.
+ *
+ * Both event subscriptions are opened while both doors exist. In a product
+ * launch the driver object is absent; in a probe launch the product channel is
+ * never sent on. Nothing can arrive twice.
+ */
+export function addressOverlayPort(): AddressOverlayPort | null {
+	if (portState().latched) return null;
+	const productBridge =
+		typeof window === "undefined"
+			? undefined
+			: window.api?.browser?.addressOverlay;
+	const product: AddressOverlayDoor | null = productBridge
+		? {
+				project: (payload) => productBridge.project(payload),
+				onEvent: (callback) =>
+					productBridge.onEvent(callback as (event: unknown) => void),
+			}
+		: null;
+	const dev = devDoor();
+	if (!product && !dev) return null;
+	return makePort(product, dev);
 }
 
 function makePort(
-	invoke: (
-		payload: AddressOverlayPost | AddressOverlayHide,
-	) => Promise<unknown>,
-	subscribe: (callback: (event: unknown) => void) => () => void,
+	product: AddressOverlayDoor | null,
+	dev: AddressOverlayDoor | null,
 ): AddressOverlayPort {
 	return {
 		project: (payload) => {
@@ -208,12 +239,31 @@ function makePort(
 			if (state.latched) {
 				return Promise.reject(unavailable());
 			}
-			const run = (): Promise<unknown> => {
-				if (state.latched) return Promise.reject(unavailable());
-				return invoke(payload).catch((error: unknown) => {
-					if (looksLikeNoHandler(error)) state.latched = true;
-					throw error;
-				});
+			const run = async (): Promise<unknown> => {
+				if (state.latched) throw unavailable();
+				if (product && !state.productDoorRefused) {
+					try {
+						return await product.project(payload);
+					} catch (error) {
+						if (!looksLikeNoHandler(error)) throw error;
+						state.productDoorRefused = true;
+						if (!dev) {
+							state.latched = true;
+							throw error;
+						}
+					}
+				}
+				if (dev) {
+					try {
+						return await dev.project(payload);
+					} catch (error) {
+						// The dev door is the last one: its no-handler answer is the latch.
+						if (looksLikeNoHandler(error)) state.latched = true;
+						throw error;
+					}
+				}
+				state.latched = true;
+				throw unavailable();
 			};
 			const previous = state.inFlight;
 			const next = (previous ?? Promise.resolve()).then(run, run);
@@ -225,6 +275,13 @@ function makePort(
 				});
 			return next;
 		},
-		onEvent: (callback) => subscribe(callback as (event: unknown) => void),
+		onEvent: (callback) => {
+			const offProduct = product?.onEvent(callback) ?? (() => {});
+			const offDev = dev?.onEvent(callback) ?? (() => {});
+			return () => {
+				offProduct();
+				offDev();
+			};
+		},
 	};
 }

@@ -12,6 +12,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { chordCaption } from "@shared/keymap/keymap-chord";
 import { cn } from "@shared/lib/utils";
+import { chordPlatform } from "@shared/navigation-gesture";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	AlertTriangle,
@@ -41,14 +42,20 @@ import {
 	type BrowserTabView,
 	useBrowserChrome,
 } from "../hooks/use-browser-chrome";
+import { planAddressRaise } from "../model/address-raise";
 import {
 	originOfUrl,
 	requestsInScope,
 	useApprovalQueue,
 } from "../model/approval-queue-model";
 import { browserBridge } from "../model/browser-projection-store";
+import { isPortalledChromeTarget } from "../model/floating-chrome";
 import { browserOverlaySuppressing } from "../model/self-suppression";
-import { siteInfoForUrl } from "../model/site-info";
+import {
+	compactHost,
+	isLoopbackHost,
+	siteInfoForUrl,
+} from "../model/site-info";
 import { isStartPageUrl } from "../model/start-page";
 import {
 	type SurfaceScope,
@@ -140,7 +147,6 @@ import { BrowserUrlBar } from "./browser-url-bar";
 
 /** The rect in CSS pixels, rounded, because Electron positions a native view in
  * device-independent pixels and a fractional origin shows as a seam. */
-const MAC_PLATFORM = /Mac|iPhone|iPad/;
 
 function measure(element: HTMLElement): {
 	x: number;
@@ -385,14 +391,34 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		chordRootRef.current?.focus({ preventScroll: true });
 	}, []);
 
+	/**
+	 * Radix returns focus to the menu trigger when a menu closes, and the popout's
+	 * trigger lives INSIDE the popout — so the Address item raised the field and
+	 * the menu's close immediately moved focus back out of it (UX U2's control
+	 * case). Suppress that only while the row is up; at rest Radix's own return to
+	 * the strip trigger is the right answer.
+	 */
+	const returnFocusToAddress = useCallback((event: Event) => {
+		const target = addressRef.current;
+		if (!target || !popoutRef.current) return;
+		event.preventDefault();
+		target.focus({ preventScroll: true });
+		if (popoutRef.current.selectAll) target.select();
+	}, []);
+
 	const raiseAddress = useCallback(
 		(options?: { origin?: "page" | "chrome"; seed?: string }) => {
 			const origin = options?.origin ?? "chrome";
 			const seed = options?.seed;
-			// THE START PAGE KEEPS ITS OWN FIELD (S4a's own semantics): the page is
-			// DOM under a hidden native view, so a popout over the strip would be a
-			// second address field on top of one the user can already type into.
-			if (startPageRef.current) {
+			const plan = planAddressRaise({
+				startPage: startPageRef.current,
+				fallback: addressFallback,
+				open: popoutRef.current !== null,
+			});
+			if (plan === "start-page") {
+				// THE START PAGE KEEPS ITS OWN FIELD (S4a's own semantics): the page is
+				// DOM under a hidden native view, so a popout over the strip would be a
+				// second address field on top of one the user can already type into.
 				const field = chordRootRef.current?.querySelector<HTMLInputElement>(
 					'[data-tour-tag="browser-start-page-address"]',
 				);
@@ -400,7 +426,14 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				field?.select();
 				return;
 			}
-			if (popoutRef.current) {
+			if (plan === "fallback") {
+				// TIER 2 NEVER RAISES A POPOUT (agent review round 1, MAJOR-2). Every
+				// entry point lands on the in-flow field, which shares this ref.
+				addressRef.current?.focus({ preventScroll: true });
+				addressRef.current?.select();
+				return;
+			}
+			if (plan === "refocus") {
 				// The row is already raised; its own input owns typing. A chord raise
 				// re-selects; a seed that arrives while it is open has no second field
 				// to go to, so it is dropped rather than replacing the draft.
@@ -417,7 +450,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				nonce: popoutNonce.current,
 			});
 		},
-		[state?.activeTabId],
+		[state?.activeTabId, addressFallback],
 	);
 
 	const addressController = useRef<AddressController>({
@@ -689,10 +722,16 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	const overlayHealth = state?.addressOverlay;
 	const overlayMode: "popout" | "suspend" =
 		overlayHealth?.mode === "popout" ? "popout" : "suspend";
-	const addressChord = chordCaption(
-		"primary+l",
-		MAC_PLATFORM.test(navigator.platform) ? "mac" : "linux",
-	);
+	/**
+	 * WHAT IS ACTUALLY PAINTED, and the only thing allowed to make the strip
+	 * inert. `popout !== null` used to be that test on its own, which assumed the
+	 * popout branch always renders; under Tier 2 it does not, so the strip went
+	 * invisible and inert with no row over it (agent review round 1, MAJOR-2).
+	 */
+	const popoutShown = popout !== null && !addressFallback && !onStartPage;
+	/** The page menu owns Escape while it is open; the popout must not eat it. */
+	const pageMenuOpenRef = useRef(false);
+	const addressChord = chordCaption("primary+l", chordPlatform());
 	// The trigger's at-rest origin register: the same classification the field
 	// uses, from the same live url, so the two cannot disagree.
 	const triggerSiteInfo = siteInfoForUrl(
@@ -876,7 +915,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					newTabLabel={newTabLabel}
 					onHandOver={(tab) => setHandOverTab(tab)}
 					onRevokeHandOver={(tabId) => void chrome.revokeHandOver(tabId)}
-					chromeInert={popout !== null}
+					chromeInert={popoutShown}
 					trailing={
 						<>
 							{(queue.count > 0 || dockOpen) && (
@@ -927,26 +966,47 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 							)}
 							<Tooltip
 								side="top"
-								content={`${t("ui.browser.browser_url_bar.address")} (${addressChord.glyph})`}
+								content={
+									siteHost
+										? `${siteHost} — ${t("ui.browser.browser_url_bar.address")} (${addressChord.glyph})`
+										: `${t("ui.browser.browser_url_bar.address")} (${addressChord.glyph})`
+								}
 							>
 								<Button
 									variant="ghost"
 									size="icon-sm"
 									className={cn(
-										"ml-2 min-w-7 shrink-0 gap-1 self-center",
+										// A PILL, NOT A TAB (design round 1, D1). The trigger wears a
+										// resting border and fill so the icon+label pair reads as a
+										// control that opens something, not as a third tab: tabs carry
+										// no border at rest and a close button when they are tabs. The
+										// 28px height is the operator-approved strip step and does not
+										// move.
+										"ml-2 min-w-7 shrink-0 gap-1 self-center rounded-sm border border-control bg-elevated",
 										siteHost && anchor !== null && anchor.width >= 672
-											? "h-7 w-auto px-1"
+											? "h-7 w-auto px-1.5"
 											: "size-7",
 									)}
-									aria-label={t("ui.browser.browser_url_bar.address")}
+									// The accessible name carries the origin the icon alone cannot
+									// (UX U9); the host is elided in the label only where a display
+									// budget forces it.
+									aria-label={
+										siteHost
+											? `${t("ui.browser.browser_url_bar.address")} — ${siteHost}`
+											: t("ui.browser.browser_url_bar.address")
+									}
 									aria-keyshortcuts={addressChord.aria}
 									onClick={() => raiseAddress({ origin: "chrome" })}
 									data-tour-tag="browser-address-trigger"
 								>
-									<SiteTriggerIcon aria-hidden className="size-3.5" />
+									{isLoopbackHost(siteHost) ? (
+										<Globe aria-hidden className="size-3.5" />
+									) : (
+										<SiteTriggerIcon aria-hidden className="size-3.5" />
+									)}
 									{siteHost && anchor !== null && anchor.width >= 672 && (
-										<span className="max-w-[104px] truncate text-meta text-ink-dim">
-											{siteHost}
+										<span className="max-w-[128px] truncate text-meta text-ink-dim">
+											{compactHost(siteHost)}
 										</span>
 									)}
 								</Button>
@@ -1005,6 +1065,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					loadFailure={state?.navFailure ?? null}
 					onReload={() => void chrome.reload()}
 					onStop={() => void chrome.stop()}
+					onDismiss={() => chordRootRef.current?.focus({ preventScroll: true })}
 					overlayMode="suspend"
 					anchor={null}
 				/>
@@ -1013,9 +1074,25 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				<div
 					className="absolute inset-x-0 top-0 z-30"
 					data-tour-tag="browser-address-popout"
+					onKeyDownCapture={(event) => {
+						// ESCAPE IS THE POPOUT'S, NOT THE INPUT'S (UX U3). Tab order runs
+						// Back, Forward, Reload, Home, site mark, input, ⋯ — five of seven
+						// stops had no Escape route before this. The menu keeps its own
+						// Escape while it is open (it closes only itself).
+						if (event.key !== "Escape" || pageMenuOpenRef.current) return;
+						event.preventDefault();
+						event.stopPropagation();
+						dismissAddress();
+					}}
 					onBlurCapture={(event) => {
 						const next = event.relatedTarget as Node | null;
-						if (next && !event.currentTarget.contains(next)) dismissAddress();
+						// Focus that lands in the page menu's portal is still INSIDE this
+						// row's chrome; dismissing on it closed the menu the user just
+						// opened (agent review round 1, MAJOR-1 / UX U1).
+						if (next && !event.currentTarget.contains(next)) {
+							if (isPortalledChromeTarget(next)) return;
+							dismissAddress();
+						}
 					}}
 				>
 					<BrowserUrlBar
@@ -1054,6 +1131,10 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 								pageZoom={state?.pageControls?.zoom ?? 1}
 								waitingCount={queue.count}
 								downloadsDir={chrome.state?.transfers?.dir ?? null}
+								onOpenChange={(open) => {
+									pageMenuOpenRef.current = open;
+								}}
+								onCloseAutoFocus={returnFocusToAddress}
 								onAddress={() => raiseAddress({ origin: "chrome" })}
 								onBack={() => void chrome.history("back")}
 								onForward={() => void chrome.history("forward")}

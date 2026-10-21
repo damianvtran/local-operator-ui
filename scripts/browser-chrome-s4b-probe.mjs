@@ -185,7 +185,17 @@ async function waitFor(cdp, expression, timeoutMs = 15_000) {
 let pageServer = null;
 let pageBase = "";
 async function startFixturePage() {
-	pageServer = createHttpServer((_request, response) => {
+	pageServer = createHttpServer((request, response) => {
+		// `/slow` keeps a navigation in flight long enough to capture the loading
+		// state; every other path answers immediately. Nothing else is routed, so
+		// the "several rows" state is seeded by real navigations to distinct URLs.
+		if (new URL(request.url ?? "/", "http://fixture").pathname === "/slow") {
+			setTimeout(() => {
+				response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+				response.end("<title>slow</title><p>slow</p>");
+			}, 4_000);
+			return;
+		}
 		response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
 		response.end(`<!doctype html><html><head><title>S4b fixture</title>
 <style>body{margin:0;font:16px/1.5 sans-serif}section{height:240px;border-bottom:1px solid #ddd}
@@ -345,6 +355,40 @@ plan(
 	"typing an address and pressing Enter navigates and lowers the popout",
 	"driven",
 );
+plan(
+	"V1",
+	"the page menu opens at rest and suppresses the native page",
+	"driven",
+);
+plan(
+	"V2",
+	"the page menu opened from the popout keeps the field row raised",
+	"driven",
+);
+plan(
+	"V3",
+	"the Address item raises/keeps the field and focus lands in it",
+	"driven",
+);
+plan("V4", "list with several rows, one selected", "driven");
+plan("V5", "list with a query that matches nothing", "driven");
+plan(
+	"V6",
+	"loading: the strip/popout while a slow page is in flight",
+	"driven",
+);
+plan(
+	"V7",
+	"error: a refused navigation paints the load-failure panel",
+	"driven",
+);
+plan("V8", "narrow pane: the trigger collapses to its icon", "driven");
+plan("V9", "approvals with a live waiting request", "blocked");
+plan("V10", "zero tabs", "blocked");
+plan("V11", "light theme at rest and popout", "driven");
+plan("V12", "the at-rest trigger's hover state", "driven");
+plan("V13", "the at-rest trigger's keyboard focus state", "driven");
+plan("V14", "a tab-filled strip at rest", "driven");
 plan(
 	"F1",
 	"Tier 1/2 fallbacks are source-only here; native failure injection is BLOCKED",
@@ -811,6 +855,525 @@ try {
 	);
 	record("T3", tabDismissed ? "PASS" : "FAIL", { tabDismissed });
 
+	// ---- visual states (design/UX round 2) --------------------------------
+	//
+	// These are the states round 1 listed as BLOCKED-for-want-of-a-frame. Each is
+	// captured from the real built app and recorded with its ACTUAL reading; a
+	// state the rig cannot reach is labelled BLOCKED here rather than softened.
+	const states = {};
+	const frame = async (name, target = cdp) =>
+		writeFileSync(join(FRAMES, name), await shot(target));
+	const pointOf = (selector) =>
+		evaluate(
+			cdp,
+			`(() => {
+				const el = document.querySelector(${JSON.stringify(selector)});
+				if (!el) return null;
+				const r = el.getBoundingClientRect();
+				return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), width: Math.round(r.width), height: Math.round(r.height) };
+			})()`,
+		);
+	const clickAt = async (point) => {
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mousePressed",
+			x: point.x,
+			y: point.y,
+			button: "left",
+			clickCount: 1,
+		});
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseReleased",
+			x: point.x,
+			y: point.y,
+			button: "left",
+			clickCount: 1,
+		});
+	};
+	// A raised row, always by the VISIBLE trigger. Cmd+L needs DOM focus inside the
+	// surface's root, and a Radix menu that just closed leaves focus somewhere the
+	// chord door may not own; the trigger is the product path T1 already proves and
+	// it works regardless of where focus sits.
+	const raisePopout = async () => {
+		const already = await evaluate(
+			cdp,
+			`!!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+		);
+		if (already) return true;
+		const trigger = await pointOf('[data-tour-tag="browser-address-trigger"]');
+		if (!trigger) return false;
+		await clickAt(trigger);
+		return waitFor(
+			cdp,
+			`!!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+			5_000,
+		);
+	};
+	const menuFacts = () =>
+		evaluate(
+			cdp,
+			`(() => {
+				const menu = document.querySelector('[role="menu"]');
+				const popout = document.querySelector('[data-tour-tag="browser-address-popout"]');
+				const input = document.querySelector('[data-tour-tag="browser-address"]');
+				return {
+					menu: menu ? menu.getBoundingClientRect().toJSON() : null,
+					portal: !!document.querySelector('[data-radix-popper-content-wrapper]'),
+					popout: !!popout,
+					activeElement: document.activeElement?.getAttribute('data-tour-tag') ?? document.activeElement?.tagName ?? null,
+					value: input?.value ?? null,
+				};
+			})()`,
+		);
+	const pressEscape = async () => {
+		await sendKey("keyDown", "Escape", "Escape");
+		await sendKey("keyUp", "Escape", "Escape");
+		await sleep(250);
+	};
+
+	try {
+		// T3 left the surface on a fresh blank tab, and the start page has its own
+		// address field: a raise there is a no-op by design (no popout). Put a real
+		// page back before capturing the popout states.
+		await evaluate(
+			cdp,
+			`(async () => {
+				const state = await window.api.browser.state();
+				await window.api.browser.navigate(${JSON.stringify(fixtureUrl)}, state.activeTabId);
+			})()`,
+		);
+		await waitFor(
+			cdp,
+			"(async () => !(await window.api.browser.state()).loading)()",
+			15_000,
+		);
+		await sleep(300);
+
+		// V1: the page menu at rest.
+		const trigger = await pointOf('[data-tour-tag="browser-page-menu"]');
+		await clickAt(trigger);
+		const restMenu = await waitFor(
+			cdp,
+			`!!document.querySelector('[role="menu"]')`,
+			4_000,
+		);
+		states.menuRest = { opened: restMenu, ...(await menuFacts()) };
+		await frame("menu-rest.png");
+		record(
+			"V1",
+			restMenu && states.menuRest.portal ? "PASS" : "FAIL",
+			states.menuRest,
+		);
+		await pressEscape();
+		await waitFor(cdp, `!document.querySelector('[role="menu"]')`, 3_000);
+
+		// V2: the menu opened from the RAISED popout — round 1's MAJOR-1.
+		await raisePopout();
+		// THE POPOUT'S OWN TRIGGER, not the strip's: both carry the same tag and the
+		// strip's copy stays in the DOM (invisible and inert) under the row, so an
+		// unscoped query clicks the wrong control.
+		const popoutMenu = await pointOf(
+			'[data-tour-tag="browser-address-popout"] [data-tour-tag="browser-page-menu"]',
+		);
+		await clickAt(popoutMenu);
+		const popoutMenuOpen = await waitFor(
+			cdp,
+			`!!document.querySelector('[role="menu"]')`,
+			4_000,
+		);
+		await sleep(300);
+		states.menuFromPopout = { opened: popoutMenuOpen, ...(await menuFacts()) };
+		await frame("menu-popout.png");
+		record(
+			"V2",
+			popoutMenuOpen && states.menuFromPopout.popout ? "PASS" : "FAIL",
+			states.menuFromPopout,
+		);
+
+		// V3: the Address item, from the popout's menu, must keep the field and
+		// put focus in it — the control case round 1 measured failing.
+		const addressItem = await pointOf(
+			'[data-tour-tag="browser-page-menu-address"]',
+		);
+		await clickAt(addressItem);
+		await sleep(400);
+		states.addressItem = await menuFacts();
+		await frame("menu-address-item.png");
+		record(
+			"V3",
+			states.addressItem.popout &&
+				states.addressItem.activeElement === "browser-address" &&
+				states.addressItem.menu === null
+				? "PASS"
+				: "FAIL",
+			states.addressItem,
+		);
+
+		// V4: several suggestion rows, one selected. History is seeded by real
+		// navigations, then filtered by a shared prefix.
+		for (const path of ["/alpha", "/alpine", "/alto"]) {
+			await evaluate(
+				cdp,
+				`(async () => {
+					const state = await window.api.browser.state();
+					await window.api.browser.navigate(${JSON.stringify(pageBase)} + ${JSON.stringify(path)}, state.activeTabId);
+				})()`,
+			);
+			await waitFor(
+				cdp,
+				"(async () => !(await window.api.browser.state()).loading)()",
+				10_000,
+			);
+		}
+		await raisePopout();
+		await cdp.send("Input.insertText", { text: `${pageBase}/al` });
+		await sleep(400);
+		await sendKey("keyDown", "ArrowDown", "ArrowDown");
+		await sendKey("keyUp", "ArrowDown", "ArrowDown");
+		await sleep(300);
+		const listRows = await evaluate(
+			cdp,
+			`(() => ({
+				candidates: Number(document.querySelector('[data-tour-tag="browser-address"]')?.getAttribute('data-address-candidates') ?? 0),
+				active: document.querySelector('[data-tour-tag="browser-address"]')?.getAttribute('aria-activedescendant') ?? null,
+				options: document.querySelectorAll('[data-address-suggestion]').length,
+			}))()`,
+		);
+		const listChild = await waitForTarget(
+			bootHandle.port,
+			(t) => t.url.endsWith("browser-address-overlay-list.html"),
+			5_000,
+		).catch(() => null);
+		if (listChild) {
+			const childCdp = await connect(listChild.webSocketDebuggerUrl);
+			await frame("child-rows.png", childCdp);
+			childCdp.close();
+		}
+		await frame("list-rows.png");
+		states.listRows = listRows;
+		record(
+			"V4",
+			listRows.candidates >= 2 && listRows.active !== null ? "PASS" : "FAIL",
+			listRows,
+		);
+
+		// V5: a query that matches nothing (the notice arm).
+		await cdp.send("Input.insertText", { text: "/zzzz-no-match" });
+		await sleep(500);
+		const noMatch = await evaluate(
+			cdp,
+			`(() => ({
+				candidates: Number(document.querySelector('[data-tour-tag="browser-address"]')?.getAttribute('data-address-candidates') ?? 0),
+				notice: document.querySelector('[data-tour-tag="browser-address"]')?.getAttribute('aria-describedby') ?? null,
+				body: document.body.innerText.match(/No matching links[^\\n]*/)?.[0] ?? null,
+			}))()`,
+		);
+		await frame("list-no-match.png");
+		states.noMatch = noMatch;
+		record("V5", noMatch.candidates === 0 ? "PASS" : "FAIL", noMatch);
+		await pressEscape();
+		await waitFor(
+			cdp,
+			`!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+			3_000,
+		);
+
+		// V6: loading. The fixture's /slow endpoint answers after 4s.
+		// NOT awaited: `loadURL`'s promise resolves when the page FINISHES, so awaiting
+		// it here would sleep through the very state this row captures.
+		await evaluate(
+			cdp,
+			`(async () => {
+				const state = await window.api.browser.state();
+				void window.api.browser.navigate(${JSON.stringify(pageBase)} + "/slow", state.activeTabId).catch(() => {});
+				return true;
+			})()`,
+		);
+		// Poll rather than sleep a fixed 600 ms: the projection's `loading` flag is a
+		// push, and one push can land after the navigate call resolves.
+		const loading = await evaluate(
+			cdp,
+			`(async () => {
+				for (let i = 0; i < 30; i += 1) {
+					const state = await window.api.browser.state();
+					if (state.loading === true)
+						return { loading: true, url: state.url, activeTabId: state.activeTabId };
+					await new Promise((r) => setTimeout(r, 100));
+				}
+				const state = await window.api.browser.state();
+				return { loading: state.loading, url: state.url, activeTabId: state.activeTabId };
+			})()`,
+		);
+		await frame("loading.png");
+		states.loading = loading;
+		record("V6", loading.loading === true ? "PASS" : "FAIL", loading);
+		await waitFor(
+			cdp,
+			"(async () => !(await window.api.browser.state()).loading)()",
+			15_000,
+		);
+
+		// V7: a refused navigation. The port came back from `freePort`, so nothing
+		// listens on it; port 1 is not usable for this (Chromium refuses it as an
+		// unsafe port before any network attempt).
+		const refusedPort = await freePort();
+		// The IPC rejects on a refused connection (ERR_CONNECTION_REFUSED); the
+		// failure is still recorded in the projection, which is what paints the panel.
+		await evaluate(
+			cdp,
+			`(async () => {
+				const state = await window.api.browser.state();
+				await window.api.browser.navigate(${JSON.stringify(`http://127.0.0.1:${refusedPort}/`)}, state.activeTabId).catch(() => null);
+				return true;
+			})()`,
+		);
+		await sleep(1200);
+		const failed = await evaluate(
+			cdp,
+			`(async () => {
+				const state = await window.api.browser.state();
+				return {
+					navFailure: state.navFailure ?? null,
+					panel: !!document.querySelector('[data-tour-tag="browser-load-failure"]'),
+					body: document.body.innerText.match(/[^\\n]*not reachable[^\\n]*/i)?.[0] ?? null,
+				};
+			})()`,
+		);
+		await frame("load-failure.png");
+		states.loadFailure = failed;
+		record("V7", failed.panel ? "PASS" : "FAIL", failed);
+
+		// V8: narrow. The window has an 800px floor, so the pane cannot be driven
+		// below the 672px origin threshold by resizing; the renderer is emulated.
+		await evaluate(
+			cdp,
+			`(async () => {
+				const state = await window.api.browser.state();
+				await window.api.browser.navigate(${JSON.stringify(fixtureUrl)}, state.activeTabId);
+			})()`,
+		);
+		await sleep(800);
+		await cdp.send("Emulation.setDeviceMetricsOverride", {
+			width: 560,
+			height: 900,
+			deviceScaleFactor: 1,
+			mobile: false,
+		});
+		await sleep(600);
+		const narrow = await evaluate(
+			cdp,
+			`(() => {
+				const trigger = document.querySelector('[data-tour-tag="browser-address-trigger"]');
+				const strip = document.querySelector('[data-tour-tag="browser-tab-strip"]');
+				return {
+					strip: strip ? Math.round(strip.getBoundingClientRect().width) : null,
+					trigger: trigger ? Math.round(trigger.getBoundingClientRect().width) : null,
+					text: trigger?.textContent ?? null,
+					label: trigger?.getAttribute('aria-label') ?? null,
+				};
+			})()`,
+		);
+		await frame("narrow.png");
+		states.narrow = narrow;
+		record(
+			"V8",
+			narrow.strip !== null && narrow.strip < 672 && narrow.trigger === 28
+				? "PASS"
+				: "FAIL",
+			narrow,
+		);
+		await cdp.send("Emulation.clearDeviceMetricsOverride");
+
+		// V9/V10: not reachable headlessly here, and labelled as such.
+		record(
+			"V9",
+			"BLOCKED",
+			"a live pending approval cannot be injected from the renderer; the dock-open half is documented in docs/evidence/browser-address-overlay and the queue model is unit-tested. Needs a main-side fixture or a real agent request.",
+		);
+		const tabCount = await evaluate(
+			cdp,
+			"(async () => (await window.api.browser.state()).tabs.length)()",
+		);
+		record(
+			"V10",
+			"BLOCKED",
+			`closing the last tab creates a fresh blank tab by design (browser-chord-renderer.test.mjs), so the zero-tab state has no reachable door; measured tabs=${tabCount}.`,
+		);
+
+		// V11: light theme. Seeded the way the app persists it, then reloaded.
+		try {
+			await evaluate(
+				cdp,
+				`(() => {
+					const key = 'ui-preferences-storage';
+					const parsed = JSON.parse(localStorage.getItem(key) || '{"state":{},"version":0}');
+					parsed.state = { ...(parsed.state ?? {}), themeName: 'localOperatorLight' };
+					localStorage.setItem(key, JSON.stringify(parsed));
+					return parsed.state.themeName;
+				})()`,
+			);
+			await cdp.send("Page.reload", { ignoreCache: false });
+			await sleep(2500);
+			const themed = await evaluate(
+				cdp,
+				`(() => ({
+					theme: JSON.parse(localStorage.getItem('ui-preferences-storage') || '{}')?.state?.themeName ?? null,
+					dark: document.documentElement.classList.contains('dark'),
+				}))()`,
+			);
+			await evaluate(cdp, `location.hash = "#/browser"`);
+			const themedReady = await waitFor(
+				cdp,
+				`!!document.querySelector('[data-tour-tag="browser-tab-strip"]')`,
+				30_000,
+			);
+			await sleep(800);
+			await frame("theme-light-rest.png");
+			const themedPopout = await raisePopout();
+			await frame("theme-light-popout.png");
+			await pressEscape();
+			states.lightTheme = { ...themed, themedReady, themedPopout };
+			record(
+				"V11",
+				themed.theme === "localOperatorLight" && themedReady && themedPopout
+					? "PASS"
+					: "FAIL",
+				states.lightTheme,
+			);
+		} catch (error) {
+			record("V11", "BLOCKED", `light-theme pass failed: ${String(error)}`);
+		}
+		// V12/V13: the trigger's hover and keyboard-focus affordances. The pill's
+		// resting border is only half the question; these are the two states the
+		// design review needed in order to judge it.
+		const hoverPoint = await pointOf(
+			'[data-tour-tag="browser-address-trigger"]',
+		);
+		if (hoverPoint) {
+			await cdp.send("Input.dispatchMouseEvent", {
+				type: "mouseMoved",
+				x: hoverPoint.x,
+				y: hoverPoint.y,
+			});
+			await sleep(500);
+			const hovered = await evaluate(
+				cdp,
+				`(() => {
+					const el = document.querySelector('[data-tour-tag="browser-address-trigger"]');
+					return { hover: el?.matches(':hover') ?? false, width: el ? Math.round(el.getBoundingClientRect().width) : null };
+				})()`,
+			);
+			await frame("trigger-hover.png");
+			states.triggerHover = hovered;
+			record("V12", hovered.hover ? "PASS" : "FAIL", hovered);
+			// Park the pointer away again so the focus frame is a keyboard state.
+			await cdp.send("Input.dispatchMouseEvent", {
+				type: "mouseMoved",
+				x: 600,
+				y: 500,
+			});
+		} else {
+			record("V12", "BLOCKED", "the trigger was not present to hover");
+		}
+
+		const focusWalk = await evaluate(
+			cdp,
+			`(() => {
+				const trigger = document.querySelector('[data-tour-tag="browser-address-trigger"]');
+				const tab = document.querySelector('[data-tour-tag="browser-tab"]');
+				if (!trigger) return { found: false };
+				(tab ?? trigger).focus({ preventScroll: true });
+				return { found: true };
+			})()`,
+		);
+		let focused = { focused: false };
+		if (focusWalk.found) {
+			for (let step = 0; step < 12; step += 1) {
+				await cdp.send("Input.dispatchKeyEvent", {
+					type: "keyDown",
+					key: "Tab",
+					code: "Tab",
+					windowsVirtualKeyCode: 9,
+				});
+				await cdp.send("Input.dispatchKeyEvent", {
+					type: "keyUp",
+					key: "Tab",
+					code: "Tab",
+					windowsVirtualKeyCode: 9,
+				});
+				focused = await evaluate(
+					cdp,
+					`(() => {
+						const el = document.activeElement;
+						return {
+							focused: el?.getAttribute('data-tour-tag') === 'browser-address-trigger',
+							focusVisible: el?.matches?.(':focus-visible') ?? false,
+							tag: el?.getAttribute('data-tour-tag') ?? el?.tagName ?? null,
+						};
+					})()`,
+				);
+				if (focused.focused) break;
+			}
+		}
+		await frame("trigger-focus.png");
+		states.triggerFocus = focused;
+		record("V13", focused.focused ? "PASS" : "FAIL", focused);
+
+		// V14: a full strip. Six tabs is enough to run the tab grammar up against
+		// the trailing cluster without a pane resize.
+		for (let i = 0; i < 6; i += 1) {
+			await evaluate(cdp, "window.api.browser.newTab(null)");
+			await sleep(150);
+		}
+		await sleep(500);
+		const filled = await evaluate(
+			cdp,
+			`(() => {
+				const strip = document.querySelector('[data-tour-tag="browser-tab-strip"]');
+				const tabs = document.querySelectorAll('[data-tour-tag="browser-tab"]').length;
+				const trigger = document.querySelector('[data-tour-tag="browser-address-trigger"]');
+				const r = trigger?.getBoundingClientRect();
+				return {
+					tabs,
+					tabsOffScreen: document.querySelector('[data-tour-tag="browser-tab-overflow"]')?.textContent ?? null,
+					triggerRight: r ? Math.round(r.right) : null,
+					stripRight: strip ? Math.round(strip.getBoundingClientRect().right) : null,
+				};
+			})()`,
+		);
+		await frame("tabs-fill.png");
+		states.tabsFill = filled;
+		record(
+			"V14",
+			filled.tabs >= 5 &&
+				filled.triggerRight !== null &&
+				filled.stripRight !== null
+				? "PASS"
+				: "FAIL",
+			filled,
+		);
+	} catch (error) {
+		// A state rig failure must not discard the rows that already passed: it is
+		// recorded once, and the rest of the matrix still runs.
+		event({ event: "visual-states-error", message: String(error) });
+		for (const id of [
+			"V1",
+			"V2",
+			"V3",
+			"V4",
+			"V5",
+			"V6",
+			"V7",
+			"V8",
+			"V11",
+			"V12",
+			"V13",
+			"V14",
+		]) {
+			if (!rows.find((row) => row.id === id)?.at)
+				record(id, "BLOCKED", `rig error: ${String(error)}`);
+		}
+	}
+
 	record(
 		"F1",
 		"BLOCKED",
@@ -834,6 +1397,7 @@ try {
 		after,
 		afterPage,
 		childViewport,
+		states,
 		rows,
 	};
 	writeFileSync(join(OUT, "facts.json"), JSON.stringify(facts, null, 2));

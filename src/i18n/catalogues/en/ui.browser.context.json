@@ -779,6 +779,11 @@
 		"tone": "Short imperative",
 		"note": "Reloads the selected tab\u2019s current URL. Length: keep the content prop compact, around the English footprint; no hard cell cap is defined."
 	},
+	"ui.browser.browser_url_bar.page_menu": {
+		"role": "accessible control/region name \u2014 browser page menu trigger",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "The strip and popout overflow trigger, naming the menu of page actions (address, history, find, print, zoom, downloads, approvals). Keep it a short noun phrase naming the PAGE: a borrow of the settings glass-material segment label was rejected in review because a control name has different length and translation constraints from a segmented-tab label. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
 	"ui.browser.browser_url_bar.address": {
 		"role": "accessible control/region name \u2014 address and navigation bar",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",

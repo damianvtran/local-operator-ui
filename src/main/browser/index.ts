@@ -767,6 +767,15 @@ async function initializeBrowserHost(
 		let stateWriter: BrowserStateWriter | null = null;
 
 		/**
+		 * Where the address-overlay controller's health pushes land. Declared before
+		 * the controller because the controller is constructed first and only the
+		 * host knows how to broadcast; assigned once `notifyChanged` exists. A
+		 * failure can only arrive after a layout pass, which is after that
+		 * assignment, so the placeholder never swallows a real change.
+		 */
+		let notifyAddressOverlayHealth: () => void = () => {};
+
+		/**
 		 * S1's child, created only when the launch gate passed. The controller is
 		 * lightweight here: no native child exists until an explicit probe show
 		 * (`AddressOverlayController.show`). It is declared before the registry
@@ -792,6 +801,9 @@ async function initializeBrowserHost(
 								event,
 							);
 						},
+						// The renderer reads Tier 1 out of the projection, so a child that
+						// fails while the field is already raised must push one.
+						onHealthChange: () => notifyAddressOverlayHealth(),
 						log,
 						appMetrics: () =>
 							app.getAppMetrics().map((metric) => ({
@@ -876,8 +888,7 @@ async function initializeBrowserHost(
 		};
 
 		const notifyChanged = (): void => {
-			stateWriter?.publishNow();
-			// A WINDOW CLOSE DESTROYS ITS WEB CONTENTS BEFORE `closed` REACHES THIS
+			stateWriter?.publishNow(); // A WINDOW CLOSE DESTROYS ITS WEB CONTENTS BEFORE `closed` REACHES THIS
 			// HOST. `stop()` then tears tabs down, and each teardown notifies; reading
 			// `webContents` from a destroyed `BrowserWindow` throws "Object has been
 			// destroyed". Guarding both objects keeps the quit-time teardown silent,
@@ -894,7 +905,7 @@ async function initializeBrowserHost(
 			// the store's own seal, not a check here.
 			captureSession();
 		};
-
+		notifyAddressOverlayHealth = notifyChanged;
 		const registry = new TabRegistry(
 			(_createOptions, tabId) => {
 				const view = buildView(options.window);
@@ -1512,8 +1523,13 @@ async function initializeBrowserHost(
 			// bound tab's main frame and not to a background tab's load.
 			contents.on(
 				"did-start-navigation",
-				(_event, _url, _isInPlace, isMainFrame) => {
-					if (isMainFrame) addressOverlay?.dismissForTab(tabId, "navigation");
+				(_event, _url, isInPlace, isMainFrame) => {
+					// A SAME-DOCUMENT NAVIGATION IS NOT A NAVIGATION the user made: a SPA
+					// route change or a hash rewrite while the field is raised must not
+					// discard the draft. The owner-level listener excludes it for the same
+					// reason (nit round 1, NIT-1 / UX U4).
+					if (isMainFrame && !isInPlace)
+						addressOverlay?.dismissForTab(tabId, "navigation");
 				},
 			);
 

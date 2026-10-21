@@ -5,10 +5,16 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
+	DropdownMenuShortcut,
 	DropdownMenuTrigger,
 } from "@shared/components/ui/dropdown-menu";
 import { t } from "@shared/i18n";
+import { chordCaption } from "@shared/keymap/keymap-chord";
 import { cn } from "@shared/lib/utils";
+import {
+	chordPlatform,
+	navigationShortcutLabel,
+} from "@shared/navigation-gesture";
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -37,6 +43,13 @@ import { useState } from "react";
  * The address popout is different: its field row is over the STRIP, outside the
  * page rect, so it never needs suppression.
  *
+ * THE SUPPRESSION MUST NOT LOWER THE POPOUT. `useSuppressBrowserView(open)`
+ * flips the registry's presentation, and the surface used to read that as "the
+ * layout moved" and dismiss the field row — so opening this menu from the popout
+ * closed both (agent review round 1, MAJOR-1). The controller now keys the
+ * dismissal on the tab and rectangle, never on presentation, and the surface's
+ * blur rule admits focus that lands in this portal.
+ *
  * ONE IMPLEMENTATION for the two surfaces that need it (the strip's trailing
  * cluster and the popout's ⋯). The popout passes `placement="popout"` only for
  * its tighter trigger; the item list cannot drift between them.
@@ -61,6 +74,19 @@ export interface BrowserPageMenuProps {
 	onResetZoom: () => void;
 	onOpenDownloads: () => void;
 	onOpenApprovals: () => void;
+	/**
+	 * The popout's owner needs the open state: while this menu is open it owns
+	 * Escape, and the row must not read the menu's focus as leaving (agent review
+	 * round 1, MAJOR-1; UX U3).
+	 */
+	onOpenChange?: (open: boolean) => void;
+	/**
+	 * Where focus goes when the panel closes. Radix returns it to the trigger,
+	 * which for the popout is a control INSIDE the row — so choosing Address
+	 * raised the field and the close immediately moved focus back out of it
+	 * (UX U2's control case). The popout supplies its input.
+	 */
+	onCloseAutoFocus?: (event: Event) => void;
 }
 
 export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
@@ -83,23 +109,39 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 	onResetZoom,
 	onOpenDownloads,
 	onOpenApprovals,
+	onOpenChange,
+	onCloseAutoFocus,
 }) => {
 	const [open, setOpen] = useState(false);
 	// The menu panel lands in the content rect; the page must yield while it is
 	// there, for the reason the file header states.
 	useSuppressBrowserView(open, "browser-page-menu");
+	const platform = chordPlatform();
+	// The pointer is the only way a mouse user meets Find, Print, Zoom and
+	// Downloads now that the toolbar is gone, so each row that HAS a chord says
+	// it (UX U6). `aria-keyshortcuts` was not added per item: the rows are menu
+	// items, not buttons, and the shortcut column is the visible half.
+	const back = navigationShortcutLabel("back", platform === "mac");
+	const forward = navigationShortcutLabel("forward", platform === "mac");
+	const address = chordCaption("primary+l", platform).glyph;
+	const reload = chordCaption("primary+r", platform).glyph;
+	const find = chordCaption("primary+f", platform).glyph;
+	const zoomReset = chordCaption("primary+0", platform).glyph;
 	return (
-		<DropdownMenu open={open} onOpenChange={setOpen}>
-			<Tooltip
-				content={t("ui.settings.appearance.window_glass.material_menu")}
-				side="top"
-			>
+		<DropdownMenu
+			open={open}
+			onOpenChange={(next) => {
+				setOpen(next);
+				onOpenChange?.(next);
+			}}
+		>
+			<Tooltip content={t("ui.browser.browser_url_bar.page_menu")} side="top">
 				<DropdownMenuTrigger asChild>
 					<Button
 						variant="ghost"
 						size="icon-sm"
 						className={cn("shrink-0", placement === "popout" && "size-7")}
-						aria-label={t("ui.settings.appearance.window_glass.material_menu")}
+						aria-label={t("ui.browser.browser_url_bar.page_menu")}
 						disabled={disabled}
 						data-tour-tag="browser-page-menu"
 					>
@@ -107,12 +149,17 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 					</Button>
 				</DropdownMenuTrigger>
 			</Tooltip>
-			<DropdownMenuContent align="end" sideOffset={4}>
+			<DropdownMenuContent
+				align="end"
+				sideOffset={4}
+				onCloseAutoFocus={onCloseAutoFocus}
+			>
 				<DropdownMenuItem
 					onSelect={onAddress}
 					data-tour-tag="browser-page-menu-address"
 				>
 					{t("ui.browser.browser_url_bar.address")}
+					<DropdownMenuShortcut>{address}</DropdownMenuShortcut>
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem
@@ -122,6 +169,7 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 				>
 					<ArrowLeft aria-hidden className="size-4" />
 					{t("ui.browser.browser_url_bar.back")}
+					<DropdownMenuShortcut>{back}</DropdownMenuShortcut>
 				</DropdownMenuItem>
 				<DropdownMenuItem
 					disabled={!canGoForward}
@@ -130,6 +178,7 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 				>
 					<ArrowRight aria-hidden className="size-4" />
 					{t("ui.browser.browser_url_bar.forward")}
+					<DropdownMenuShortcut>{forward}</DropdownMenuShortcut>
 				</DropdownMenuItem>
 				{loading ? (
 					<DropdownMenuItem onSelect={onStop} data-tour-tag="browser-stop">
@@ -140,6 +189,7 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 					<DropdownMenuItem onSelect={onReload} data-tour-tag="browser-reload">
 						<RotateCw aria-hidden className="size-4" />
 						{t("ui.browser.browser_url_bar.reload")}
+						<DropdownMenuShortcut>{reload}</DropdownMenuShortcut>
 					</DropdownMenuItem>
 				)}
 				<DropdownMenuItem onSelect={onHome} data-tour-tag="browser-home">
@@ -150,6 +200,7 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 				<DropdownMenuItem onSelect={onFind} data-tour-tag="browser-find">
 					<Search aria-hidden className="size-4" />
 					{t("ui.browser.browser_url_bar.find_in_page")}
+					<DropdownMenuShortcut>{find}</DropdownMenuShortcut>
 				</DropdownMenuItem>
 				<DropdownMenuItem onSelect={onPrint} data-tour-tag="browser-print">
 					<Printer aria-hidden className="size-4" />
@@ -160,6 +211,7 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 						{t("ui.browser.browser_url_bar.page_zoom_reset", {
 							zoom: Math.round(pageZoom * 100),
 						})}
+						<DropdownMenuShortcut>{zoomReset}</DropdownMenuShortcut>
 					</DropdownMenuItem>
 				)}
 				{downloadsDir && (

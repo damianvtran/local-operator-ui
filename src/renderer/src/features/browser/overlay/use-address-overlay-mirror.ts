@@ -53,6 +53,11 @@ export interface AddressMirrorInput {
 	/** A main-decided dismissal (page focus, navigation, layout, tab change).
 	 * The renderer owns what "come down" means; main owns the fact. */
 	onDismiss: (reason: string) => void;
+	/** The pane is below the list's width floor, so main will refuse every
+	 * projection until the anchor changes. The caller turns this into the
+	 * field-only state; the loop stops here rather than re-asking each frame
+	 * (nit round 1, MINOR-5). */
+	onUnavailable?: () => void;
 }
 
 /** The dock's theme tokens, read through a scratch element because the app's
@@ -294,6 +299,14 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 					pending = false;
 					const answer = result as { accepted?: unknown; reason?: unknown };
 					if (!answer || answer.accepted !== false) return;
+					// A pane below the floor is a CONDITION, not a failure: stop asking (the
+					// answer cannot change without a resize) and let the field say so. Any
+					// anchor width change re-runs the effect and re-enables projection.
+					if (answer.reason === "anchor_too_narrow") {
+						stop();
+						latest.current.onUnavailable?.();
+						return;
+					}
 					// Terminal refusals stop the loop; everything else (a stale frame, a
 					// layout race) is retried by the next frame.
 					if (isPermanentOverlayRefusal(answer.reason)) {

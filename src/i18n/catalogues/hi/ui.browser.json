@@ -189,6 +189,7 @@
 	"ui.browser.browser_url_bar.home_destination": "होम — शुरुआती पेज पर जाएँ (खाली)",
 	"ui.browser.browser_url_bar.latest_download": "डाउनलोड फ़ोल्डर खोलें — {name} वहाँ सहेजी गई थी",
 	"ui.browser.browser_url_bar.newest_download": "डाउनलोड फ़ोल्डर खोलें — {name} वहाँ सबसे हाल में सहेजी गई थी ({count, plural, other {इस सत्र में {count, number, ::group-off}}})",
+	"ui.browser.browser_url_bar.page_menu": "पेज विकल्प",
 	"ui.browser.browser_url_bar.page_zoom_reset": "पेज ज़ूम {zoom, number, ::group-off}%, 100% पर रीसेट करें",
 	"ui.browser.browser_url_bar.print_page": "पेज प्रिंट करें",
 	"ui.browser.browser_url_bar.reload": "फिर लोड करें",

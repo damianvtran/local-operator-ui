@@ -50,6 +50,7 @@ import {
 	suggestAddresses,
 	usableRawAddress,
 } from "../model/address-autocomplete";
+import { isPortalledChromeTarget } from "../model/floating-chrome";
 import { isSecurityLoadFailure, siteInfoForUrl } from "../model/site-info";
 import { useAddressOverlayMirror } from "../overlay/use-address-overlay-mirror";
 
@@ -153,6 +154,22 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	onStateChanged,
 }) => {
 	useI18nLocale();
+	/**
+	 * A pane narrower than main's list floor cannot host a usable child, so main
+	 * refuses the projection and the field is all there is. Without this the
+	 * mirror re-projected the same refused frame about sixty times a second and
+	 * never told the user why (nit round 1, MINOR-5): the refusal is now a state,
+	 * and the field announces the field-only answer. ANY anchor width change
+	 * clears it, because that is the one fact that can make the child usable
+	 * again.
+	 */
+	const [narrowAnchor, setNarrowAnchor] = useState(false);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the width is the trigger; reading it is the point.
+	useEffect(() => {
+		setNarrowAnchor(false);
+	}, [anchor?.width]);
+	const mode: "popout" | "suspend" =
+		narrowAnchor || overlayMode !== "popout" ? "suspend" : "popout";
 	const [typed, setTyped] = useState<{
 		tabId: number | null;
 		text: string;
@@ -181,9 +198,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 * query with no presenter is work whose result nobody sees.
 	 */
 	const suggestionsEnabled =
-		placement === "popout" &&
-		overlayMode === "popout" &&
-		addressHistory !== undefined;
+		placement === "popout" && mode === "popout" && addressHistory !== undefined;
 	const autocomplete = useAddressAutocomplete({
 		tabId,
 		scope: addressScope,
@@ -510,6 +525,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			if (candidate) commit(candidate.url);
 		},
 		onDismiss: () => onDismiss?.(),
+		onUnavailable: () => setNarrowAnchor(true),
 	});
 
 	/**
@@ -611,6 +627,20 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		 * can name; the surface's own focusout decides whether that node is still
 		 * inside the popout.
 		 */
+		/**
+		 * If focus went INTO chrome the popout owns (the page menu's portal), this is
+		 * not the user leaving the field: keep the draft, as a click on the child row
+		 * or a window deactivation does. The surface applies the same rule to decide
+		 * whether to lower the row (agent review round 1, MAJOR-1).
+		 */
+		if (
+			placement === "popout" &&
+			isPortalledChromeTarget(event.relatedTarget)
+		) {
+			clearGenerated();
+			setHint(false);
+			return;
+		}
 		if (placement === "popout" && event.relatedTarget === null) {
 			// The draft survives a window deactivation, but a generated suffix is
 			// not part of what the user typed: the field must show the raw draft
@@ -850,11 +880,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 
 	// Tier 1 is a fact the user must be told once, not a silent missing list.
 	useEffect(() => {
-		if (placement === "popout" && overlayMode === "suspend")
+		if (placement === "popout" && mode === "suspend")
 			setAnnouncement(
 				t("ui.browser.browser_url_bar.address_suggestions_unavailable"),
 			);
-	}, [placement, overlayMode]);
+	}, [placement, mode]);
 
 	return (
 		<div
@@ -1001,7 +1031,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					autoComplete="off"
 					aria-label={t("ui.browser.browser_url_bar.address")}
 					placeholder={
-						overlayMode === "suspend" && placement === "popout"
+						mode === "suspend" && placement === "popout"
 							? t("ui.browser.browser_url_bar.address_suggestions_unavailable")
 							: loading && !live
 								? (pendingUrl ?? undefined)
@@ -1023,6 +1053,18 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					</span>
 				)}
 			</div>
+			{/* TIER 1 IS TOLD, NOT HINTED (UX U5). The placeholder only shows on an
+			    empty field, and both a Cmd+L selection and a typed seed are non-empty,
+			    so the "unavailable" sentence used to reach screen readers only. It is
+			    now painted beside the field as well. */}
+			{placement === "popout" && mode === "suspend" && (
+				<span
+					className="max-w-64 shrink-0 truncate pl-1 text-meta text-ink-dim"
+					data-tour-tag="browser-address-unavailable"
+				>
+					{t("ui.browser.browser_url_bar.address_suggestions_unavailable")}
+				</span>
+			)}
 			{menu}
 			{/* THE ACCESSIBLE LIST lives in the parent and is clipped, never in flow:
 			    the visual rows are the native child, which is `aria-hidden`. One

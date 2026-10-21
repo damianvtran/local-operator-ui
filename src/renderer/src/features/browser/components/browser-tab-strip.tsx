@@ -1902,7 +1902,21 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						</Button>
 					</Tooltip>
 				)}
-				{trailing}
+				{/* THE TRAILING CLUSTER HOLDS THE RIGHT EDGE (design round 1, D1). It used
+				    to follow the last tab, so the site/address trigger and its menu moved
+				    with the tab count — the page menu sat ~490px further left at rest than
+				    when the popout replaced the strip. `ml-auto` parks the cluster against
+				    the far edge and the leading hairline separates it from the tab run;
+				    the new-tab control stays outside it, because `+` belongs to the tabs,
+				    not to the origin. */}
+				{trailing != null && (
+					<div
+						className="ml-auto flex shrink-0 items-center border-hairline border-l pl-1"
+						data-tour-tag="browser-strip-trailing"
+					>
+						{trailing}
+					</div>
+				)}
 				{tabs.length > 0 && (
 					<Tooltip
 						content={`${newTabLabel} (${newChord.glyph})`}

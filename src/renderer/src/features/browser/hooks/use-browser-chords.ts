@@ -13,12 +13,12 @@ import {
 	subscribeBrowserView,
 	suppressedOverlayIdsSnapshot,
 } from "../../../shared/browser-view-policy";
+import { chordPlatform } from "../../../shared/navigation-gesture";
 import { browserBridge } from "../model/browser-projection-store";
 import { browserOverlaySuppressing } from "../model/self-suppression";
 import { chordTarget } from "../model/tab-index-model";
 import type { BrowserChrome, BrowserTabView } from "./use-browser-chrome";
 
-const MAC_PLATFORM = /Mac|iPhone|iPad/;
 const STANDALONE_BROWSER_ROUTE = /^#\/browser(?:[/?]|$)/;
 
 // A document can mount more than one scoped browser. Resolve ONE owner before
@@ -277,9 +277,7 @@ export function useBrowserChords(
 				chordOwner(document, event.target) !== root
 			)
 				return;
-			const platform = MAC_PLATFORM.test(navigator.platform)
-				? "darwin"
-				: "linux";
+			const platform = chordPlatform() ? "darwin" : "linux";
 			const intent = browserChordIntent(
 				{
 					type: "keyDown",
@@ -305,8 +303,12 @@ export function useBrowserChords(
 				 * view with no DOM target here. Space/Enter on a real control are
 				 * activations, and a modifier combination is not typing.
 				 */
+				// CODE POINTS, not UTF-16 units (nit round 1, NIT-2): `event.key.length`
+				// is 2 for every astral character, so an emoji or a CJK character
+				// outside the BMP could not seed the field. A spread counts the
+				// character the user actually pressed.
 				if (
-					event.key.length !== 1 ||
+					[...event.key].length !== 1 ||
 					event.metaKey ||
 					event.ctrlKey ||
 					event.altKey ||
