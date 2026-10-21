@@ -65,7 +65,11 @@ import {
 	TeamBridgeScheduleDialog,
 	TeamBridgeScheduledList,
 } from "./team-bridge-scheduled";
-import { scheduleTeamBridgeDraft } from "./team-bridge-scheduling";
+import {
+	canResetScheduleAttempt,
+	scheduleTeamBridgeDraft,
+	scheduledTargetAfterSuccess,
+} from "./team-bridge-scheduling";
 import {
 	useCreateTeamBridgeConversation,
 	useJoinTeamBridgeConversation,
@@ -576,7 +580,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			// A definitive client refusal cannot have created a group. A lost response
 			// can: require a deliberate Groups check before another create attempt.
 			const status = (error as { status?: number | null })?.status;
-			if (status && status >= 400 && status < 500 && status !== 409)
+			if (canResetScheduleAttempt(draftState.current?.sendAt, status))
 				draftState.update({ createUncertain: false, sendAt: undefined });
 			throw error;
 		} finally {
@@ -1685,6 +1689,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	) => {
 		if (readOnly || (mergedView && !selected) || target === null)
 			throw new Error("schedule requires organization");
+		const startedOn = target;
 		return scheduleTeamBridgeDraft({
 			tenantId: selected?.tenant_id ?? scope,
 			conversationId: selected?.id ?? conversationId,
@@ -1694,6 +1699,15 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			sendAt,
 			remembered: createdForDraft.current,
 			onCreated,
+			onScheduled: (id) => {
+				const next = scheduledTargetAfterSuccess(
+					startedOn,
+					targetRef.current,
+					id,
+				);
+				if (next) setTarget(next);
+				void list.refetch();
+			},
 			create: (input) =>
 				create.mutateAsync(input) as Promise<{
 					id?: string;
