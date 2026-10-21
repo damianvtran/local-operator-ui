@@ -190,7 +190,7 @@ type NavItem = {
 	attentionTag?: string;
 	/**
 	 * WHAT THE NUMBER IS, in the control's name (see the name-carries-the-number
-	 * rule at `renderDestinationRow`): the row's own sentence for its count, because
+	 * rule at `renderDestinationRowForWidth`): the row's own sentence for its count, because
 	 * "waiting" is what an approval does and a completion receipt is a missed
 	 * message. Set beside `attention` on every row that draws a badge; a row
 	 * without one would draw a badge its name could not state.
@@ -1161,23 +1161,37 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			 * release's own task so the click, dispatched in that same task, still
 			 * runs first.
 			 */
+			const clearNow = () => {
+				suppressClickRef.current = false;
+			};
 			const clearOnNextTask = () => {
-				window.setTimeout(() => {
-					suppressClickRef.current = false;
-				}, 0);
+				window.setTimeout(clearNow, 0);
 			};
 			const removeReleaseDoors = () => {
-				window.removeEventListener("pointerup", onRelease, true);
-				window.removeEventListener("pointercancel", onRelease, true);
-				window.removeEventListener("blur", onRelease, true);
+				window.removeEventListener("pointerup", onPointerUp, true);
+				window.removeEventListener("pointercancel", onAbandon, true);
+				window.removeEventListener("blur", onAbandon, true);
 			};
-			const onRelease = () => {
+			/*
+			 * ONLY A RELEASE HAS A CLICK TO WAIT FOR (agent review round 2, R2-1).
+			 * `pointerup` is followed, in the same task, by the click this flag exists
+			 * to swallow - so its clear is deferred. `pointercancel` and `blur` have
+			 * no click: by the time they fire the browser has already abandoned the
+			 * gesture, and a deferred clear would leave the flag armed into the
+			 * reader's NEXT press, whose click would then be eaten. They clear
+			 * synchronously.
+			 */
+			const onPointerUp = () => {
 				removeReleaseDoors();
 				clearOnNextTask();
 			};
-			window.addEventListener("pointerup", onRelease, true);
-			window.addEventListener("pointercancel", onRelease, true);
-			window.addEventListener("blur", onRelease, true);
+			const onAbandon = () => {
+				removeReleaseDoors();
+				clearNow();
+			};
+			window.addEventListener("pointerup", onPointerUp, true);
+			window.addEventListener("pointercancel", onAbandon, true);
+			window.addEventListener("blur", onAbandon, true);
 			/* Esc, or the pointer taken away: the gesture's sentence ends rather
 			   than leaving "Moving …" standing (design § 5). */
 			setAnnouncement("");
@@ -1565,8 +1579,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			 * edge, and the menu is opened from `contextmenu` / `Shift+F10` on the
 			 * row. The anchor is at `end-0` rather than `start-1` (design round 1,
 			 * D3): anchored at the leading edge the panel opened 24px inside the
-			 * 56px strip and covered the row it acts on; `sideOffset` adds the gap
-			 * that puts it clear of the column.
+			 * 56px strip and covered the row it acts on.
+			 *
+			 * THE OFFSET IS MEASURED FROM THE ROW, NOT THE STRIP (design round 2,
+			 * D10; QA round 2, Q2-1). The 32px row ends at x=44 in the 56px column,
+			 * so an 8px offset still put the panel's leading edge at x=52 - 4px inside
+			 * the strip. 16px puts it at x=60, clear of the column; expanded keeps the
+			 * 6px gap because its anchor is already at the row's edge outside it.
 			 */
 			<DropdownMenu
 				open={menuRow === id}
@@ -1603,7 +1622,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				<DropdownMenuContent
 					align="start"
 					side={menuSide}
-					sideOffset={expanded ? 6 : 8}
+					sideOffset={expanded ? 6 : 16}
 					className="min-w-44"
 					/*
 					 * FOCUS GOES BACK TO THE ROW, not to the trigger (design § 6):
