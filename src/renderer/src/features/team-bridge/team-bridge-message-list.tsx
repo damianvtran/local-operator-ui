@@ -184,7 +184,7 @@ const MessageRow: FC<{
 				)}
 				{reactionContext && message.body !== null && (
 					<TeamBridgeReactions
-						key={message.id}
+						key={`${reactionContext.accountId}:${message.id}`}
 						conversationId={message.conversation_id}
 						messageId={message.id}
 						{...reactionContext}
