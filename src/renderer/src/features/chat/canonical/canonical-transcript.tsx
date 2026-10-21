@@ -1006,8 +1006,9 @@ const UserRow = memo(function UserRow({
 	return (
 		<MessageContainer isUser isSmallView={isSmallView}>
 			{/*
-			 * The turn is a COLUMN - the bubble's row, then its stamp - and the stamp
-			 * is a sibling of the bubble rather than a line inside it.
+			 * The turn is a COLUMN - the bubble's row, then the action line that
+			 * carries the controls and the stamp - and the stamp is a sibling of the
+			 * bubble rather than a line inside it.
 			 *
 			 * `items-end` on the column is what puts the stamp against the BUBBLE's
 			 * right edge: the bubble's row is justified to the same edge, so both
@@ -1382,30 +1383,49 @@ const UserRow = memo(function UserRow({
 				 * moves nothing and no geometry changes between the idle and hovered
 				 * states - the evidence measures the bubble's and the next row's boxes in
 				 * both.
+				 *
+				 * THE STAMP RIDES THIS LINE AND SITS OUTSIDE THE REVEAL (operator,
+				 * 2026-10-20): every user message carries its own absolute time "at the
+				 * right of the action line, below the message, which is where `10:16 PM`
+				 * already sits", and "the time must not move the icons, and the icons must
+				 * not move the time". `ACTION_ROW_REVEAL_CLASSES` is opacity-only and the
+				 * icons keep their 32px box (`h-8`) and 4px gaps at rest, so the line's
+				 * width is the same before and after the pointer arrives; the wrapper's
+				 * `gap-2` between the icons and the stamp is static for the same reason,
+				 * and the stamps do not animate. The stamp is a SIBLING of the toolbar,
+				 * never inside it, so it is painted at rest and cannot fade with the
+				 * icons.
+				 *
+				 * IT RENDERS FOR EVERY USER MESSAGE WITH A TIME, including one that has no
+				 * words of its own (an attachment-only send): the action row is the
+				 * quotable gate's, the stamp is the message's.
 				 */}
-				{isQuotable(record, remainingContent) && (
-					<AnswerActionRow
-						kind="user"
-						bodyText={remainingContent}
-						revealId={record.id}
-						revealAt={record.ts}
-						/*
-						 * FORK IS OFFERED FROM THE MESSAGE, not only from the sidebar row
-						 * (#739): "fork the conversation from this message on". The entry id
-						 * is `forkEntryId`'s answer for THIS record - the journal entry a cut
-						 * can land at, which is what makes the picker a cut rather than a
-						 * whole-conversation copy. `conversationId` is the picker's subject and
-						 * is deliberately explicit: this transcript can be rendered for a
-						 * conversation that is not the pane's own, and a request must never be
-						 * answered with a substituted conversation.
-						 *
-						 * A transcript mounted with no conversation (the run-details child
-						 * reader) passes neither, so the row offers no Fork there.
-						 */
-						conversationId={conversationId}
-						entryId={forkEntryId(record) ?? undefined}
-					/>
-				)}
+				<span className={cn("flex h-8 items-center gap-2")}>
+					{isQuotable(record, remainingContent) && (
+						<AnswerActionRow
+							kind="user"
+							bodyText={remainingContent}
+							revealId={record.id}
+							revealAt={record.ts}
+							/*
+							 * FORK IS OFFERED FROM THE MESSAGE, not only from the sidebar row
+							 * (#739): "fork the conversation from this message on". The entry id
+							 * is `forkEntryId`'s answer for THIS record - the journal entry a cut
+							 * can land at, which is what makes the picker a cut rather than a
+							 * whole-conversation copy. `conversationId` is the picker's subject and
+							 * is deliberately explicit: this transcript can be rendered for a
+							 * conversation that is not the pane's own, and a request must never be
+							 * answered with a substituted conversation.
+							 *
+							 * A transcript mounted with no conversation (the run-details child
+							 * reader) passes neither, so the row offers no Fork there.
+							 */
+							conversationId={conversationId}
+							entryId={forkEntryId(record) ?? undefined}
+						/>
+					)}
+					<TurnTimestamp timestamp={record.ts} scope="turn" />
+				</span>
 				{/*
 				 * §F3's LINE, ONE ROW UNDER THE BLOCK IT IS ABOUT.
 				 *
@@ -1475,15 +1495,6 @@ const UserRow = memo(function UserRow({
 						</button>
 					</div>
 				)}
-				{/*
-				 * NO STAMP UNDER THE USER'S BLOCK (§D1; design round 1, D7). The turn's
-				 * one stamp is on its foot line (§E3), at the end of the agent's answer,
-				 * where it dates the exchange rather than one side of it: six stamp lines
-				 * in one 1380 viewport - one under every user block and one under every
-				 * answer - were a third of the rhythm problem the round measured. The
-				 * moment the message was sent is still in the record (`record.ts`), and
-				 * the foot's stamp is read from the reducer's frame time the same way.
-				 */}
 			</div>
 		</MessageContainer>
 	);
@@ -1770,10 +1781,21 @@ const AssistantRow = memo(function AssistantRow({
 			 *   foot line uses, with the action row at the trailing edge. It reserves
 			 *   its line at rest, exactly as the foot line does, because the reader is
 			 *   being handed something and the control belongs to that handover. No
-			 *   `Worked for` caption and no stamp: those are the TURN's facts (the
-			 *   foot), and a mid-turn handover has none to state - the timestamps an
-			 *   opt-in feature would add are open PR #1236's surface, and this change
-			 *   does not pre-empt it.
+			 *   `Worked for` caption: that is the TURN's fact, stated once, on the foot.
+			 *   The message's own time IS stated here (operator, 2026-10-20: "if it is a
+			 *   final response, it has a time" - every one of them, including the
+			 *   in-between responses this row exists for). Placements: a closing answer
+			 *   keeps the stamp on its foot, which is why this row is the NON-closing
+			 *   branch and the two cannot double-paint one message; a mid-turn final
+			 *   states the stamp after the action row inside the same right-aligned span.
+			 *
+			 *   THE STAMP CANNOT MOVE THE ICONS, and the icons cannot move it: the action
+			 *   row is `ACTION_ROW_REVEAL_CLASSES` (opacity-only, width reserved at rest),
+			 *   the stamp is its sibling AFTER the toolbar rather than inside it, and the
+			 *   span's `gap-2` is static. So the pointer arriving fades icons in beside a
+			 *   stamp that was already painted, and the stamp is never part of the reveal.
+			 *   Open PR #1236's opt-in relative-time setting is a separate product
+			 *   decision; this surface states absolute time and adds no setting.
 			 *
 			 * - AN IN-BETWEEN STATUS ROW (an assistant message that carries its own
 			 *   `tool_calls`) is the ONLY class the hover-only overlay was ever for:
@@ -1793,7 +1815,7 @@ const AssistantRow = memo(function AssistantRow({
 			 */}
 			{!closesTurn && quotable && isFinalResponse(record) && (
 				<div className={cn("mt-1 flex items-center gap-2 text-meta")}>
-					<span className={cn("ml-auto flex shrink-0")}>
+					<span className={cn("ml-auto flex shrink-0 items-center gap-2")}>
 						<AnswerActionRow
 							kind="response"
 							bodyText={remainingContent}
@@ -1802,6 +1824,7 @@ const AssistantRow = memo(function AssistantRow({
 							conversationId={conversationId}
 							entryId={forkEntryId(record) ?? undefined}
 						/>
+						<TurnTimestamp timestamp={record.ts} scope="answer" />
 					</span>
 				</div>
 			)}

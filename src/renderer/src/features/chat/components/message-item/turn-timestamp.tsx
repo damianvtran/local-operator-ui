@@ -25,19 +25,24 @@
  * tool intent/response) don't have a time displayed on them"), which is why the
  * in-progress half of that sentence is a rule here rather than a detail.
  *
- * IT SITS IN EXACTLY THREE PLACES, and the container decides which: `scope="turn"`
- * under a user turn's bubble (one per turn, the anchor the hover model was
- * missing), `scope="answer"` under a turn's CLOSING answer on the agent rail, and
- * `scope="tool"` at the foot of an OPEN tool disclosure (the collapsed ledger
- * keeps the quiet it was given, so a run of twenty calls stays twenty lines). The
- * turn's closing answer is the narrower reading of the operator's sentence above
- * and the one this module implements: "just the final responses, not the
- * in-progress tool intent/response" is about the prose an agent writes BETWEEN
- * calls, so a turn that narrates between calls carries ONE caption on the answer
- * it ends on rather than one clock per paragraph (design round 1, D1; QA round 1,
- * Q-2). `closingAnswerIds` in `canonical/transcript-rows.ts` is the rule, and it
- * is a rule about a TURN rather than about a record — `!record.streaming` alone
- * is a fact about a record, which is what painted the four identical stamps.
+ * IT SITS IN TWO PLACES IN THE TRANSCRIPT, and the container decides which:
+ * `scope="turn"` on a user message's action line (one per message, the anchor
+ * the hover model was missing), and `scope="answer"` under EVERY final response
+ * on the agent rail - the closing answer on the turn's foot line, and every
+ * non-closing final response on its own meta row. `scope="tool"` survives as a
+ * contract (the union, the verb, and the accessible name a disclosure would
+ * need) but no surface mounts it any more: §E2 removed the per-call clock, so a
+ * run of twenty calls stays twenty lines.
+ *
+ * THE ANSWER PLACEMENT WAS WIDENED (operator, 2026-10-20: "The timestamp must
+ * appear on ALL final responses and on user messages ... If it is a final
+ * response, it has a time"). The earlier reading stamped only the CLOSING answer
+ * ("just the final responses, not the in-progress tool intent/response"), which
+ * is still what keeps the overlay population quiet: narration that carries its
+ * own `tool_calls` is in-progress and gets none, while a settled text-only
+ * response gets one wherever it lands in the turn. `closingAnswerIds` in
+ * `canonical/transcript-rows.ts` still decides the closing foot; the mid-turn
+ * placement rides the final response's own meta row.
  *
  * THE FOOTER LINE IS GONE. It was a carrier only in the sense that this
  * component owned it: it stated when the last thing in the conversation
