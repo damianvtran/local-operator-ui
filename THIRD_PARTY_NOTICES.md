@@ -192,8 +192,9 @@ Credit and terms for what it downloads and ports:
   The model weights are MIT-licensed. The decode loop in
   `src/voice-page/moonshine.ts` follows the MIT-licensed `useful-moonshine-onnx`
   reference (https://github.com/moonshine-ai/moonshine).
-- **Supertonic** (`onnx-community/Supertonic-TTS-ONNX`) — Supertone Inc. The model
-  weights are released under the OpenRAIL-M licence
+- **Supertonic** (`Supertone/supertonic`; downloaded as the ONNX conversion
+  `onnx-community/Supertonic-TTS-ONNX`) — Supertone Inc. The conversion is a
+  conversion of `Supertone/supertonic` and carries its OpenRAIL-M licence
   (https://huggingface.co/Supertone/supertonic). It is not an OSI licence: it
   carries use restrictions that bind anyone who uses the model, and they are
   passed on here. Do not use it to impersonate a person, to deceive, or for any
@@ -223,7 +224,8 @@ Bundled in the app (they run in the hidden voice page; see `src/voice-page/`):
 
 ### Supertonic use restrictions (OpenRAIL-M, Attachment A)
 
-The Supertonic licence is the BigScience Open RAIL-M License dated August 18,
+The Supertonic licence (`Supertone/supertonic`, which the downloaded
+`onnx-community/Supertonic-TTS-ONNX` conversion carries) is the BigScience Open RAIL-M License dated August 18,
 2022 (https://huggingface.co/Supertone/supertonic/raw/main/LICENSE, read
 2026-10-20). Its Attachment A must pass to anyone who receives the model; it is
 reproduced here verbatim:

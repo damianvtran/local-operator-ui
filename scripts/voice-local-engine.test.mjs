@@ -649,6 +649,59 @@ test("ensureModels: a present file is re-hashed once per run; a corrupted one is
 	assert.equal(readFileSync(join(dir, "g", "a.bin"), "utf8"), "hello world");
 });
 
+test("ensureModels: a cancelled in-flight run is not shared; the next call downloads afresh", async () => {
+	m.resetVerifiedModels();
+	const contents = { "g/a.bin": "hello world", __hang: true };
+	const manifest = fixture({ "g/a.bin": "hello world" });
+	const dir = dirOf("cancelled-share");
+	const abort = new AbortController();
+	const first = m.ensureModels({
+		dir,
+		fetch: fakeFetch(contents, []),
+		manifest,
+		signal: abort.signal,
+	});
+	const settled = first.then(
+		() => "ok",
+		() => "rejected",
+	);
+	await new Promise((r) => setImmediate(r));
+	abort.abort();
+	const log = [];
+	const progress = [];
+	const second = m.ensureModels({
+		dir,
+		fetch: fakeFetch({ "g/a.bin": "hello world" }, log),
+		manifest,
+		onProgress: (p) => progress.push(p),
+	});
+	await second;
+	assert.equal(await settled, "rejected");
+	assert.equal(log.length, 1, "the new call fetched on its own");
+	assert.ok(progress.length > 0, "and reported to its own listener");
+});
+
+test("ensureModels: a retry after a failed attempt runs fresh", async () => {
+	m.resetVerifiedModels();
+	const manifest = fixture({ "g/a.bin": "hello world" });
+	const dir = dirOf("retry-after-fail");
+	await assert.rejects(
+		m.ensureModels({
+			dir,
+			fetch: fakeFetch({ "g/a.bin": "HELLO WORLD" }, []),
+			manifest,
+		}),
+		{ code: "model_integrity" },
+	);
+	const log = [];
+	await m.ensureModels({
+		dir,
+		fetch: fakeFetch({ "g/a.bin": "hello world" }, log),
+		manifest,
+	});
+	assert.equal(log.length, 1);
+});
+
 test("ensureModels: a hash mismatch deletes the part and fails model_integrity", async () => {
 	m.resetVerifiedModels();
 	const manifest = fixture({ "g/a.bin": "hello world" });

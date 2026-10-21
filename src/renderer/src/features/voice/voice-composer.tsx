@@ -74,6 +74,7 @@ import {
 	startQwenRig,
 } from "./qwen-voice-controller";
 import { controlVoice, useVoiceCapability } from "./use-voice-status";
+import { setVoiceSwitch } from "./use-voice-switch";
 import {
 	type VoiceExchangeError,
 	type VoiceStoryRow,
@@ -165,7 +166,14 @@ export type VoiceComposerView =
 			chip: VoiceChipKind;
 			caption: VoiceCaption | null;
 			/** The one action this state offers: a failure's remedy, or the card. */
-			action: "retry" | "try_again" | "settings" | "start" | "approve" | null;
+			action:
+				| "retry"
+				| "try_again"
+				| "settings"
+				| "settings_retry"
+				| "start"
+				| "approve"
+				| null;
 			/** The reply was cut at the cap and the next take has not started. */
 			cut: boolean;
 	  };
@@ -346,7 +354,12 @@ export function composerVoiceView(
 					text: errorReason(state.rig, state.exchange?.reason),
 				},
 				/* "Try again" restarts the RIG; a failed take has nothing to restart. */
-				action: state.rig?.rig === "error" ? "try_again" : null,
+				action:
+					state.rig?.rig === "error"
+						? state.rig.local?.code === "mic_unavailable"
+							? "settings_retry"
+							: "try_again"
+						: null,
 				cut,
 			};
 		case "mic_blocked":
@@ -1046,25 +1059,38 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 	 */
 	const failureAction =
 		view.kind === "here" && view.action && view.action !== "approve" ? (
-			<Button
-				type="button"
-				variant="ghost"
-				size="sm"
-				data-voice-action={view.action}
-				className="shrink-0 text-meta text-ink"
-				onClick={() => {
-					if (view.action === "settings") void openMicrophoneSettings();
-					else void startQwenRig();
-				}}
-			>
-				{view.action === "settings"
-					? t("ui.chat.voice.open_settings")
-					: view.action === "start"
-						? t("ui.chat.voice.start_rig")
-						: view.action === "retry"
-							? t("ui.chat.voice.retry")
-							: t("ui.chat.voice.try_again")}
-			</Button>
+			<>
+				{view.action === "settings" || view.action === "settings_retry" ? (
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						data-voice-action="settings"
+						className="shrink-0 text-meta text-ink"
+						onClick={() => void openMicrophoneSettings()}
+					>
+						{t("ui.chat.voice.open_settings")}
+					</Button>
+				) : null}
+				{view.action !== "settings" ? (
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						data-voice-action={
+							view.action === "settings_retry" ? "try_again" : view.action
+						}
+						className="shrink-0 text-meta text-ink"
+						onClick={() => void startQwenRig()}
+					>
+						{view.action === "start"
+							? t("ui.chat.voice.start_rig")
+							: view.action === "retry"
+								? t("ui.chat.voice.retry")
+								: t("ui.chat.voice.try_again")}
+					</Button>
+				) : null}
+			</>
 		) : null;
 
 	/*
@@ -1090,6 +1116,16 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 					onClick={() => void acceptVoiceNotice()}
 				>
 					{t("ui.chat.voice.download_notice_accept")}
+				</Button>
+				<Button
+					type="button"
+					variant="ghost"
+					size="sm"
+					data-voice-action="decline_notice"
+					className="shrink-0 text-meta text-ink-muted"
+					onClick={() => void setVoiceSwitch(false)}
+				>
+					{t("ui.chat.voice.download_notice_decline")}
 				</Button>
 			</div>
 		);

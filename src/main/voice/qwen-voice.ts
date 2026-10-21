@@ -41,6 +41,7 @@ import PHRASES from "../../../resources/qwen-voice/phrases.json";
 import {
 	PAGE_STATUS_CODES,
 	type PageStatusCode,
+	TRANSCRIPT_MAX_CHARS,
 } from "../../voice-page/channels";
 import type { GatewayDownMessage, GatewayUpMessage } from "./qwen-gateway";
 import { qwenMachineTooSmall } from "./qwen-rig";
@@ -234,7 +235,10 @@ type Relayed = {
 };
 
 /** A transcript longer than this is not one utterance (the page caps at 64 s). */
-export const LOCAL_TRANSCRIPT_MAX_CHARS = 4_000;
+export const LOCAL_TRANSCRIPT_MAX_CHARS = TRANSCRIPT_MAX_CHARS;
+
+/** How long a start waits for the page to report before it fails (models load in the page). */
+export const LOCAL_PAGE_REPORT_MS = 120_000;
 
 /** Q7 phrase key for a refused take; the twin of `phraseForOutcome` in relay-core. */
 export function phraseKeyForOutcome(
@@ -712,8 +716,18 @@ export class QwenVoice {
 				const reported = new Promise<boolean>((resolve) => {
 					this.pageReport = resolve;
 				});
-				this.openPage(pageUrl);
-				await reported;
+				// A page that never reports (bad URL, load failure, crash, holder
+				// gone) must not leave the start pending: Retry re-returns it.
+				const timer = this.setTimer(() => {
+					if (this.pageReport && !stale())
+						this.onPageStatus("listening_failed");
+				}, LOCAL_PAGE_REPORT_MS);
+				try {
+					this.openPage(pageUrl);
+					await reported;
+				} finally {
+					this.clearTimer(timer);
+				}
 			} catch (error) {
 				if (stale()) return this.getStatus();
 				const code = (error as { code?: unknown })?.code;
@@ -924,6 +938,18 @@ export class QwenVoice {
 	private closePageForEmptySlot(): void {
 		this.playing = false;
 		this.deps.page.close();
+		if (this.pageReport) {
+			// The holder left while the start waited for the page: nothing to wait
+			// for. Back to stopped; the page opens when a holder appears.
+			this.pageReport(false);
+			this.pageReport = null;
+			if (this.status.rig === "starting")
+				this.setStatus({
+					rig: "stopped",
+					webui_url: null,
+					mic: this.status.mic,
+				});
+		}
 		if (this.clients !== 0 || this.status.clients !== 0) {
 			this.clients = 0;
 			this.setStatus({ ...this.status, clients: 0 });
@@ -936,8 +962,13 @@ export class QwenVoice {
 		if (this.paused) return;
 		// No holder, no microphone: every open path (start, retry, mic grant) stops here.
 		if (this.slot === null) return;
-		if (this.deps.local) this.deps.page.openApp(this.deps.local.pageUrl());
-		else this.deps.page.open(webuiUrl);
+		if (this.deps.local) {
+			const failed = () => {
+				if (this.pageReport) this.onPageStatus("listening_failed");
+			};
+			if (this.deps.page.openApp(this.deps.local.pageUrl(), failed) === false)
+				failed();
+		} else this.deps.page.open(webuiUrl);
 		if (this.muted) this.deps.page.setMuted(true);
 	}
 
@@ -978,6 +1009,12 @@ export class QwenVoice {
 	 * rig stops and the header says why.
 	 */
 	pageFailed(reason: string): void {
+		if (this.pageReport) {
+			// Crashed before it ever reported: settle the pending start.
+			this.log(`qwen-voice: ${reason}`);
+			this.onPageStatus("listening_failed");
+			return;
+		}
 		if (this.status.rig !== "ready") return;
 		this.log(`qwen-voice: ${reason}`);
 		this.paused = false;
