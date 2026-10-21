@@ -9699,9 +9699,16 @@ async function sceneTurnCollapse(cdp) {
 			(finished.runIds ?? "").split(" ").length >= 3,
 		JSON.stringify(finished),
 	);
+	/*
+	 * TWO STAMPS, per message (operator, 2026-10-20): the reader's own message
+	 * keeps its time on its action line, and the collapsed run carries the closing
+	 * answer's on the bar. The count was one while the stamp was a fact about the
+	 * turn; it is two now, and the assertion is `===` rather than `>=` because a
+	 * third would mean a stamp the per-message rule does not own.
+	 */
 	check(
-		"completed: the bar carries the turn's one stamp and the foot stands down",
-		finished !== null && finished.stamps === 1 && finished.foot === false,
+		"completed: the bar carries the answer's stamp and the message keeps its own",
+		finished !== null && finished.stamps === 2 && finished.foot === false,
 		JSON.stringify(finished),
 	);
 	const completedFrame = await captureSettled(cdp, "turn-collapse-completed");

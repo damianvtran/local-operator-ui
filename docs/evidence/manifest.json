@@ -10306,6 +10306,17 @@
       "capturedAtHeadNote": "`08aaa178ffc6` changes tests and comments only (no renderer path), so every frame still matches the head. The closing, mid-turn-final and condensed after frames were captured at `ceed42e2985e` where the remediation changed no visual code."
     },
     {
+      "path": "transcript-action-bar-timestamps",
+      "frames": 28,
+      "surfaces": 14,
+      "themes": 2,
+      "source": "QA's real-app CDP rig driving the built desktop app headless against an isolated daemon (`http://127.0.0.1:18731`) and a scratch config, at 1380x900 and at the app's 800px minimum, DPR 2, both localOperator palettes. The 28 webp frames are rig output in the ignored `docs/evidence-frames/transcript-action-bar-timestamps/` tree and are also hosted on the `evidence/1285-action-bar-timestamps` branch under `docs/pr-evidence/1285-action-bar-timestamps/`; no frame is committed on the PR branch (the post-#1256 split).",
+      "why": "The operator's rule is a pixel claim a unit test cannot make: every user message and every final response carries an always-visible absolute time at the right of its action line, while only the action icons are hover-revealed and their width stays reserved. The rest/hover pairs prove the timestamp's pixel box is identical before and after the pointer arrives, on the user row, the mid-turn final response and the closing answer, in both palettes and at the app's 800px minimum. The set also records the closing answer at rest and the 800px fit (8px gap, no clipping or overlap).",
+      "capturedAt": "2026-10-21T03:00:00.000Z",
+      "capturedAtHead": "f542db56e0a3631839f6bdc55573587ad26d770f",
+      "capturedAtHeadNote": "The C3 remediation widens the mid-turn final row to a textless reply-only record behind a unit test; the captured surfaces are text-bearing and unchanged by that condition. The closing-answer arm is unchanged by this PR."
+    },
+    {
       "path": "team-bridge-shell",
       "frames": 0,
       "capturedAt": "2026-10-20T15:39:35.000Z",
