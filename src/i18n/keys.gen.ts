@@ -270,7 +270,6 @@ import hiUiSettingsSpeech from "./catalogues/hi/ui.settings.speech.json";
 import hiUiSettingsUpdates from "./catalogues/hi/ui.settings.updates.json";
 import hiUiShell from "./catalogues/hi/ui.shell.json";
 import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
-import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
 import ruUiAgentsDialogs from "./catalogues/ru/ui.agents.dialogs.json";
 import ruUiAgents from "./catalogues/ru/ui.agents.json";
@@ -328,7 +327,6 @@ import ruUiSettingsSpeech from "./catalogues/ru/ui.settings.speech.json";
 import ruUiSettingsUpdates from "./catalogues/ru/ui.settings.updates.json";
 import ruUiShell from "./catalogues/ru/ui.shell.json";
 import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
-import ruUiTeamBridge from "./catalogues/ru/ui.teamBridge.json";
 import urUiAgentMessages from "./catalogues/ur/ui.agentMessages.json";
 import urUiAgentMessagesSettings from "./catalogues/ur/ui.agentMessages.settings.json";
 import urUiAgentsDialogs from "./catalogues/ur/ui.agents.dialogs.json";
@@ -387,7 +385,6 @@ import urUiSettingsSpeech from "./catalogues/ur/ui.settings.speech.json";
 import urUiSettingsUpdates from "./catalogues/ur/ui.settings.updates.json";
 import urUiShell from "./catalogues/ur/ui.shell.json";
 import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
-import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
 import viUiAgentsDialogs from "./catalogues/vi/ui.agents.dialogs.json";
 import viUiAgents from "./catalogues/vi/ui.agents.json";
@@ -444,7 +441,6 @@ import viUiSettingsSpeech from "./catalogues/vi/ui.settings.speech.json";
 import viUiSettingsUpdates from "./catalogues/vi/ui.settings.updates.json";
 import viUiShell from "./catalogues/vi/ui.shell.json";
 import viUiShellRail from "./catalogues/vi/ui.shell.rail.json";
-import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
 import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
 import zhCNUiAgentMessagesSettings from "./catalogues/zh-CN/ui.agentMessages.settings.json";
 import zhCNUiAgentsDialogs from "./catalogues/zh-CN/ui.agents.dialogs.json";
@@ -770,7 +766,6 @@ export const bundledCatalogues: Readonly<
 		...hiUiSettingsUpdates,
 		...hiUiShell,
 		...hiUiShellRail,
-		...hiUiTeamBridge,
 	},
 	ru: {
 		...ruUiAgentMessages,
@@ -830,7 +825,6 @@ export const bundledCatalogues: Readonly<
 		...ruUiSettingsUpdates,
 		...ruUiShell,
 		...ruUiShellRail,
-		...ruUiTeamBridge,
 	},
 	ur: {
 		...urUiAgentMessages,
@@ -891,7 +885,6 @@ export const bundledCatalogues: Readonly<
 		...urUiSettingsUpdates,
 		...urUiShell,
 		...urUiShellRail,
-		...urUiTeamBridge,
 	},
 	vi: {
 		...viUiAgentMessages,
@@ -950,7 +943,6 @@ export const bundledCatalogues: Readonly<
 		...viUiSettingsUpdates,
 		...viUiShell,
 		...viUiShellRail,
-		...viUiTeamBridge,
 	},
 	"zh-CN": {
 		...zhCNUiAgentMessages,
@@ -5142,6 +5134,14 @@ export type MessageParams = {
 	"ui.teamBridge.preview.join_error": undefined;
 	"ui.teamBridge.read_only.composer": undefined;
 	"ui.teamBridge.read_only.note": undefined;
+	"ui.teamBridge.replies.action": undefined;
+	"ui.teamBridge.replies.close": undefined;
+	"ui.teamBridge.replies.count": { count: number };
+	"ui.teamBridge.replies.empty": undefined;
+	"ui.teamBridge.replies.last": { time: string };
+	"ui.teamBridge.replies.more": undefined;
+	"ui.teamBridge.replies.placeholder": undefined;
+	"ui.teamBridge.replies.title": undefined;
 	"ui.teamBridge.row.menu": { name: string };
 	"ui.teamBridge.row.start_group": undefined;
 	"ui.teamBridge.scope.all": undefined;

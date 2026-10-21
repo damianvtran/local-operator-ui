@@ -121,9 +121,36 @@ export const teamBridgeMessageSchema = z
 		origin: z.enum(["human", "agent", "system"]),
 		agent_label: z.string().optional(),
 		created_at: z.string(),
+		/*
+		 * Threads (agent-server #164). All optional: a hub older than threads
+		 * sends none of them, and a root with no replies omits its rollup, so a
+		 * message parses whether or not the server knows about threads.
+		 * `thread_root_id` marks a REPLY (it never appears on the timeline page,
+		 * which excludes replies); the rollup sits on a ROOT.
+		 */
+		thread_root_id: id.optional(),
+		reply_count: z.number().int().nonnegative().optional(),
+		last_reply_at: z.string().optional(),
+		/* Up to three distinct repliers' display labels — a facepile, not a roster. */
+		reply_participants: z.array(z.string()).optional(),
 	})
 	.passthrough();
 export type TeamBridgeMessage = z.infer<typeof teamBridgeMessageSchema>;
+
+/*
+ * One thread: the root (with its rollup) and its replies OLDEST-first — a
+ * thread reads top-down, unlike the newest-first timeline page.
+ * `next_after_seq` is the inclusive cursor for the next page.
+ */
+export const teamBridgeThreadPageSchema = z
+	.object({
+		root: teamBridgeMessageSchema,
+		replies: z.array(teamBridgeMessageSchema),
+		next_after_seq: z.number().int().nonnegative().optional(),
+		has_more: z.boolean().optional(),
+	})
+	.passthrough();
+export type TeamBridgeThreadPage = z.infer<typeof teamBridgeThreadPageSchema>;
 
 export const teamBridgeMessagePageSchema = z
 	.object({

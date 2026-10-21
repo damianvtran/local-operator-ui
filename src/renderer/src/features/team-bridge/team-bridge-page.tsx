@@ -60,6 +60,7 @@ import {
 	RailSection,
 	isTargetRow,
 } from "./team-bridge-rail";
+import { TeamBridgeThreadPane } from "./team-bridge-thread-pane";
 import {
 	useCreateTeamBridgeConversation,
 	useJoinTeamBridgeConversation,
@@ -355,6 +356,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 }) => {
 	const locale = useI18nLocale();
 	const [draft, setDraft] = useState(initialDraft);
+	// Thread identity is checked against the current selection before mounting.
+	const [threadRoot, setThreadRoot] = useState<TeamBridgeMessage | null>(null);
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
 	const identityKnown = selfAccountId !== undefined;
 
@@ -945,6 +948,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									<TeamBridgeMessageList
 										messages={messages}
 										labelFor={(sender) => labelFor(sender)}
+										onReply={setThreadRoot}
 									/>
 								)}
 							</div>
@@ -1049,6 +1053,21 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					</>
 				)}
 			</section>
+			{/* Threads: a ground-separated sibling; no rail or compose routing changes. */}
+			{threadRoot &&
+				shown &&
+				threadRoot.conversation_id === shown.id &&
+				!previewSelected &&
+				!selectedOrganizationUnknown && (
+					<TeamBridgeThreadPane
+						key={`${shown.tenant_id}:${threadRoot.id}`}
+						root={threadRoot}
+						tenantId={shown.tenant_id}
+						labelFor={labelFor}
+						readOnly={readOnly}
+						onClose={() => setThreadRoot(null)}
+					/>
+				)}
 		</div>
 	);
 };
