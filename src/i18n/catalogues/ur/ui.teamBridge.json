@@ -107,5 +107,13 @@
 	"ui.teamBridge.thread.intro_person": "یہ {name} کے ساتھ آپ کے براہ راست پیغامات کا آغاز ہے۔",
 	"ui.teamBridge.thread.intro_chief": "یہ {name} کے ساتھ آپ کی گفتگو کا آغاز ہے، جو ٹیم کے ایک رکن کا چیف آف اسٹاف ایجنٹ ہے۔ یہ آپ کے پیغامات کو غیر معتبر ان پٹ سمجھتا ہے، اور اس کا مالک طے کرتا ہے کہ یہ کس بات پر عمل کرے۔",
 	"ui.teamBridge.thread.intro_group": "آپ کا پہلا پیغام {names} کے ساتھ گفتگو شروع کرے گا۔",
-	"ui.teamBridge.list.error_pane": "گفتگوئیں لوڈ نہیں ہو سکیں۔ دائیں جانب کی فہرست سے دوبارہ کوشش کریں۔"
+	"ui.teamBridge.list.error_pane": "گفتگوئیں لوڈ نہیں ہو سکیں۔ دائیں جانب کی فہرست سے دوبارہ کوشش کریں۔",
+	"ui.teamBridge.replies.action": "تھریڈ میں جواب دیں",
+	"ui.teamBridge.replies.title": "تھریڈ",
+	"ui.teamBridge.replies.close": "تھریڈ بند کریں",
+	"ui.teamBridge.replies.count": "{count, plural, one {# جواب} other {# جوابات}}",
+	"ui.teamBridge.replies.last": "آخری جواب {time}",
+	"ui.teamBridge.replies.empty": "ابھی کوئی جواب نہیں۔ تھریڈ شروع کریں۔",
+	"ui.teamBridge.replies.placeholder": "تھریڈ میں جواب دیں",
+	"ui.teamBridge.replies.more": "مزید جوابات لوڈ کریں"
 }
