@@ -110,11 +110,7 @@ export class Supertonic implements Speaker {
 			latentLength,
 		]);
 
-		const stepCount = new ort.Tensor(
-			"float32",
-			Float32Array.of(STEPS),
-			[1],
-		);
+		const stepCount = new ort.Tensor("float32", Float32Array.of(STEPS), [1]);
 		for (let step = 0; step < STEPS; step++) {
 			const out = await this.sessions.latentDenoiser.run({
 				style,
