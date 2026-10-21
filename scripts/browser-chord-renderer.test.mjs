@@ -168,7 +168,13 @@ async function rig({
 				inputRef.current?.focus();
 				inputRef.current?.select();
 			},
-			close: () => inputRef.current?.blur(),
+			// `close` lowers the popout for a new tab. The product's start page
+			// focuses its OWN field INSIDE the same surface root; the rig focuses the
+			// root as that field's stand-in, so the DOM owner survives the change.
+			close: () => {
+				inputRef.current?.blur();
+				document.getElementById("surface")?.focus();
+			},
 		});
 		const {
 			root: ref,
@@ -634,7 +640,9 @@ test("StageA BODY route owns selected reload and distinct rapid new tabs, not a 
 				["new", null],
 			],
 		);
-		assert.equal(document.activeElement.id, "address");
+		// Cmd+T closes the popout and the start page's own field (inside the same
+		// root) takes focus; the rig's stand-in is the surface root.
+		assert.equal(document.activeElement.id, "surface");
 	} finally {
 		await act(async () => r.root.unmount());
 		r.finish();
@@ -812,7 +820,7 @@ test("StageA focused A survives hidden B mount/update/unmount and one incoming i
 		// S4b: the replacement tab is a start page, whose own field autofocuses on
 		// mount; the popout is lowered. This rig has no start page, so body is the
 		// honest focus owner after the new-tab close.
-		assert.equal(document.activeElement, document.body);
+		assert.equal(document.activeElement.id, "surface");
 		await r.key("r");
 		assert.equal(r.events.filter((e) => e[0] === "reload").length, 1);
 	} finally {
@@ -854,8 +862,10 @@ test("StageA loading and failed selected tabs keep BODY reload targeted and new 
 			[["new", null]],
 		);
 		assert.equal(r.tabs().length, 3);
-		// The new tab is a start page with its own field (not modeled here).
-		assert.equal(document.activeElement, document.body);
+		// The new tab is a start page with its own field (not modeled here). A
+		// BOOLEAN is the assertion subject: `assert.equal` on a DOM node prints the
+		// node on failure, and inspecting a live jsdom element can allocate GBs.
+		assert.equal(document.activeElement.id, "surface");
 	} finally {
 		await act(async () => r.root.unmount());
 		r.finish();
@@ -919,7 +929,7 @@ test("the browser's own state pages keep L/T/R and main's messages; a real modal
 			);
 			// Cmd+T lands on a start page whose own field owns focus; the popout was
 			// lowered, and this rig has no start page to focus.
-			assert.equal(document.activeElement, document.body);
+			assert.equal(document.activeElement.id, "surface");
 			await act(async () => release());
 		}
 
