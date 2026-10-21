@@ -309,7 +309,7 @@ export const AgentDetailsPage: React.FC = () => {
 						variant="ghost"
 						size="icon"
 						onClick={handleBack}
-						aria-label="Back to Agent hub"
+						aria-label="Back to Agent Hub"
 					>
 						<ArrowLeft />
 					</Button>
@@ -421,7 +421,7 @@ export const AgentDetailsPage: React.FC = () => {
 					</Tooltip>
 
 					{isOwner && !isOrgRow && (
-						<Tooltip content="Permanently delist this agent from Agent hub">
+						<Tooltip content="Permanently delist this agent from Agent Hub">
 							<span>
 								<Button
 									variant="ghost"

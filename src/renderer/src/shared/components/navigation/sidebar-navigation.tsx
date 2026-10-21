@@ -3,6 +3,13 @@ import { useAidaMissedMessages } from "@features/aida/use-aida-missed-messages";
 import { useAidaOpener, useAidaTarget } from "@features/aida/use-aida-target";
 import { useAidaWorking } from "@features/aida/use-aida-working";
 import { useAppWideApprovals } from "@features/browser/hooks/use-app-wide-approvals";
+/*
+ * THE MIDPOINT RULE IS IMPORTED, not re-derived (design § 5): the pinned chat
+ * reorder's `pinDragSlot` is the shipped answer to "which slot is the pointer
+ * over", and a second copy here would be a second rule the two gestures could
+ * drift apart on.
+ */
+import { pinDragSlot } from "@features/chat/chat-pin-order";
 import { sidebarToggleCap } from "@features/chat/chat-sidebar-layout";
 import { ChatSidebar } from "@features/chat/components/chat-sidebar";
 /*
@@ -32,12 +39,32 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
+import { useSidebarLayout } from "@shared/api/local-operator/sidebar-layout";
 import { useSidebarFrame } from "@shared/components/common/chat-layout";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { UpdateFootIcon } from "@shared/components/common/update-foot-icon";
 import { CollapsibleAppLogo } from "@shared/components/navigation/collapsible-app-logo";
+import {
+	DEFAULT_SIDEBAR_LAYOUT,
+	type SidebarDestinationId,
+	type SidebarLayout,
+	type SidebarRegion,
+	layoutEquals,
+	moveToRegion,
+	moveWithinRegion,
+	placeInRegion,
+	regionOf,
+	renderedRegion,
+} from "@shared/components/navigation/sidebar-destinations";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
 import { Badge, Button, Tooltip } from "@shared/components/ui";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@shared/components/ui/dropdown-menu";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { useCurrentView } from "@shared/hooks/use-route-params";
 import { useTextDirection } from "@shared/i18n/use-document-direction";
@@ -70,8 +97,8 @@ import {
 	Store,
 	X,
 } from "lucide-react";
-import { useCallback, useEffect } from "react";
-import type { FC, ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { FC, ReactNode, PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { t } from "../../../../../i18n/messages";
 
@@ -159,7 +186,7 @@ type NavItem = {
 	attentionTag?: string;
 	/**
 	 * WHAT THE NUMBER IS, in the control's name (see the name-carries-the-number
-	 * rule at `renderNavItem`): the row's own sentence for its count, because
+	 * rule at `renderDestinationRow`): the row's own sentence for its count, because
 	 * "waiting" is what an approval does and a completion receipt is a missed
 	 * message. Set beside `attention` on every row that draws a badge; a row
 	 * without one would draw a badge its name could not state.
@@ -194,6 +221,35 @@ type NavItem = {
 	 */
 	onSelect?: () => void;
 };
+
+/**
+ * WHERE A LIVE DRAG WOULD LAND (design § 5).
+ *
+ * The three spellings are the three targets the design names, and they are
+ * deliberately not one "index": the fold is a boundary the list does not have
+ * a row for, so "append to More" and "append to the other region" cannot be
+ * written as a slot without inventing a row that is not drawn.
+ *
+ *   * `slot` - between two destination rows, `beforeId` naming the rendered row
+ *     the dropped row would precede (`null` = the end of `region`);
+ *   * `more` - the More row itself: append to More (design § 5);
+ *   * `band` - the trailing band: append to the OTHER region's end.
+ */
+type SidebarDropTarget =
+	| {
+			kind: "slot";
+			region: SidebarRegion;
+			beforeId: SidebarDestinationId | null;
+			slot: number;
+	  }
+	| { kind: "more" }
+	| { kind: "band" };
+
+/** A row menu's action, so the menu and the chord share one writer. */
+type SidebarRowAction =
+	| { kind: "move"; delta: -1 | 1 }
+	| { kind: "region"; region: SidebarRegion }
+	| { kind: "reset" };
 
 /**
  * THE STRIP KEEPS THE FEED ALIVE (the collapsed-rail requirement).
@@ -477,197 +533,724 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		);
 	};
 
-	const navItems: NavItem[] = [
+	/*
+	 * THE DESTINATION TABLE, keyed by the ids the stored layout names.
+	 *
+	 * WHY A MAP AND ONE TABLE: the customisation is a list of IDS (design § 2),
+	 * and an id has to outlive the gate that hides its row - a capability can come
+	 * and go between launches while the saved order stays, and the merge back to
+	 * the full order is `sanitizeSidebarLayout`'s, not this file's. This table is
+	 * the one place a row's icon, press, badge and tour tag are defined, so both
+	 * widths and both regions draw the same row from the same facts.
+	 *
+	 * WHAT IS DELIBERATELY NOT HERE: `New chat` and `Search` above are ACTIONS,
+	 * not destinations (design § 1). They never join the layout, never drag and
+	 * have no stored id.
+	 */
+	const destinationItems = new Map<SidebarDestinationId, NavItem>();
+	if (aidaVisible) {
 		/*
-		 * AIDA SITS ABOVE AGENTS (R3): she is the operator's chief of staff, and the
+		 * AIDA SITS ABOVE AGENTS: she is the operator's chief of staff, and the
 		 * row is the first destination in the column when the backend offers her.
-		 * The row itself is the ordinary destination row — 30px, one line, the
-		 * same `renderNavItem` every neighbour uses — with one difference: its
-		 * press resolves rather than navigates (`onSelect`), because her id is not
-		 * known until the desktop route answers. Collapsed, it is the same
-		 * icon-only row with its tooltip (`renderNavRow`), which is why nothing here
-		 * has a second rendering.
+		 * The row is the ordinary destination row - 30px, one line, the same
+		 * renderer every neighbour uses - with one difference: its press resolves
+		 * rather than navigates (`onSelect`), because her id is not known until the
+		 * desktop route answers.
 		 */
-		...(aidaVisible
-			? [
-					{
-						icon: ChevronsUp,
-						label: aidaName,
-						path: "/chat",
-						isActive:
-							currentView === "chat" &&
-							Boolean(aida.data?.session_id) &&
-							activeSessionId === aida.data?.session_id,
-						tourTag: "nav-item-aida",
-						onSelect: selectAida,
-						/*
-						 * Her count (operator ask, 2026-09-28): the missed-messages badge,
-						 * the same primitive as the Browser row's approvals pill - zero
-						 * draws nothing. `use-aida-missed-messages.ts` says what one receipt
-						 * counts; `renderNavItem` the name/badge rules these three fields
-						 * inherit.
-						 */
-						attention: aidaMissed,
-						attentionTag: "nav-aida-badge",
-						attentionName: (count: number) =>
-							t("ui.shell.sidebar_navigation.aida_missed", {
-								name: aidaName,
-								count,
-							}),
-						/*
-						 * Her working mark: the same two facts the badge carries, for the state
-						 * that is true while she is mid-turn (see `use-aida-working.ts`), with
-						 * the row's own sentence for the name.
-						 */
-						working: aidaWorking,
-						workingName: t("ui.shell.sidebar_navigation.aida_working", {
-							name: aidaName,
-						}),
-					},
-				]
-			: []),
-		/*
-		 * The Library sits directly under Aida: it is the cross-conversation
-		 * catalog the operator reaches for after a conversation, and the operator's
-		 * IA put it above the things they own. Gated on `features.library`.
-		 */
-		...(libraryEnabled
-			? [
-					{
-						icon: LibraryBig,
-						label: t("ui.library.page.title"),
-						path: "/library",
-						isActive: currentView === "library",
-						tourTag: "nav-item-library",
-					},
-				]
-			: []),
-		/*
-		 * Projects sits beside Agents — the two are the "things I own" pair — but
-		 * only on a backend that carries the surface; see `projectsEnabled` above.
-		 */
-		...(projectsEnabled
-			? [
-					{
-						icon: FolderKanban,
-						label: t("ui.shell.sidebar_navigation.projects"),
-						path: "/projects",
-						isActive: currentView === "projects",
-						tourTag: "nav-item-projects",
-					},
-				]
-			: []),
-		{
-			icon: Bot,
-			label: t("ui.shell.sidebar_navigation.agents"),
-			path: "/agents",
-			isActive: currentView === "agents",
-			tourTag: "nav-item-agents",
-		},
-		{
-			icon: CalendarDays,
-			label: t("ui.shell.sidebar_navigation.schedules"),
-			path: "/schedules",
-			isActive: currentView === "schedules",
-			tourTag: "nav-item-schedules",
-		},
-		{
-			// Named "Browser" rather than "Web" or "Pages": the feature is a browser
-			// the user can use and an agent can drive, and the design's own word for
-			// it is the tab it opens (design 11.9).
-			icon: Globe,
-			label: t("ui.shell.sidebar_navigation.browser"),
-			path: "/browser",
-			isActive: currentView === "browser",
-			tourTag: "nav-item-browser",
-			attention: browserApprovals,
+		destinationItems.set("aida", {
+			icon: ChevronsUp,
+			label: aidaName,
+			path: "/chat",
+			isActive:
+				currentView === "chat" &&
+				Boolean(aida.data?.session_id) &&
+				activeSessionId === aida.data?.session_id,
+			tourTag: "nav-item-aida",
+			onSelect: selectAida,
 			/*
-			 * This row's badge words and handle, beside the count they serve (see
-			 * `NavItem.attentionTag` / `attentionName`): the name states the count
-			 * whenever the badge is drawn, in BOTH widths.
+			 * Her count (operator ask, 2026-09-28): the missed-messages badge, the
+			 * same primitive as the Browser row's approvals pill - zero draws
+			 * nothing. `use-aida-missed-messages.ts` says what one receipt counts;
+			 * `rowName` the name/badge rules these three fields inherit.
 			 */
-			attentionTag: "nav-browser-badge",
-			attentionName: (count) =>
-				t("ui.shell.sidebar_navigation.browser_waiting", {
+			attention: aidaMissed,
+			attentionTag: "nav-aida-badge",
+			attentionName: (count: number) =>
+				t("ui.shell.sidebar_navigation.aida_missed", {
+					name: aidaName,
+					count,
+				}),
+			/*
+			 * Her working mark: the same two facts the badge carries, for the state
+			 * that is true while she is mid-turn (see `use-aida-working.ts`), with
+			 * the row's own sentence for the name.
+			 */
+			working: aidaWorking,
+			workingName: t("ui.shell.sidebar_navigation.aida_working", {
+				name: aidaName,
+			}),
+		});
+	}
+	/*
+	 * The Library sits directly under Aida: it is the cross-conversation catalog
+	 * the operator reaches for after a conversation, and the operator's IA put it
+	 * above the things they own. Gated on `features.library`.
+	 */
+	if (libraryEnabled) {
+		destinationItems.set("library", {
+			icon: LibraryBig,
+			label: t("ui.library.page.title"),
+			path: "/library",
+			isActive: currentView === "library",
+			tourTag: "nav-item-library",
+		});
+	}
+	/*
+	 * Projects sits beside Agents - the two are the "things I own" pair - but
+	 * only on a backend that carries the surface; see `projectsEnabled` above.
+	 */
+	if (projectsEnabled) {
+		destinationItems.set("projects", {
+			icon: FolderKanban,
+			label: t("ui.shell.sidebar_navigation.projects"),
+			path: "/projects",
+			isActive: currentView === "projects",
+			tourTag: "nav-item-projects",
+		});
+	}
+	destinationItems.set("agents", {
+		icon: Bot,
+		label: t("ui.shell.sidebar_navigation.agents"),
+		path: "/agents",
+		isActive: currentView === "agents",
+		tourTag: "nav-item-agents",
+	});
+	destinationItems.set("schedules", {
+		icon: CalendarDays,
+		label: t("ui.shell.sidebar_navigation.schedules"),
+		path: "/schedules",
+		isActive: currentView === "schedules",
+		tourTag: "nav-item-schedules",
+	});
+	destinationItems.set("browser", {
+		// Named "Browser" rather than "Web" or "Pages": the feature is a browser
+		// the user can use and an agent can drive, and the design's own word for
+		// it is the tab it opens (design 11.9).
+		icon: Globe,
+		label: t("ui.shell.sidebar_navigation.browser"),
+		path: "/browser",
+		isActive: currentView === "browser",
+		tourTag: "nav-item-browser",
+		attention: browserApprovals,
+		/*
+		 * This row's badge words and handle, beside the count they serve (see
+		 * `rowName` for why the name carries the number).
+		 */
+		attentionTag: "nav-browser-badge",
+		attentionName: (count: number) =>
+			t("ui.shell.sidebar_navigation.browser_waiting", {
+				count,
+				countText: String(count),
+			}),
+	});
+	/*
+	 * The low-frequency destinations keep their rows, badges and gates; the
+	 * DEFAULT layout folds them behind More, and the reader decides from there.
+	 *
+	 * THE INBOX LEADS THE FOLD by default (see `DEFAULT_SIDEBAR_LAYOUT`): it is
+	 * the most frequent reason to open the group.
+	 */
+	if (teamBridgeNav) {
+		destinationItems.set("team-bridge", {
+			...teamBridgeNav,
+			isActive: currentView === "team-bridge",
+		});
+	}
+	destinationItems.set("agent-hub", {
+		icon: Store,
+		label: t("ui.shell.sidebar_navigation.agent_hub"),
+		path: "/agent-hub",
+		isActive: currentView === "agent-hub",
+		tourTag: "nav-item-agent-hub",
+	});
+	/*
+	 * The Mesh tab, ONLY for a device that is in a mesh: a rail item for a mesh the
+	 * user is not in would be a dead end on the one piece of chrome that is on screen
+	 * everywhere (R1-1).
+	 *
+	 * ITS BADGE IS THE WAITING COUNT (`features.approvals`), the same shape the
+	 * Browser row uses for its own approvals: one number, only while something
+	 * WAITS ON THE OPERATOR, and a name that states it in both widths. The count
+	 * is exactly the records the tray's live panel draws (`waitingApprovalCount`),
+	 * so the badge and the panel it opens can never disagree (operator round,
+	 * 2026-10-03: a spent approval is a record, not a prompt). Zero draws nothing,
+	 * so a mesh at rest renders the row exactly as it shipped.
+	 */
+	if (meshMembership === "member") {
+		destinationItems.set("mesh", {
+			icon: Network,
+			label: t("ui.shell.sidebar_navigation.mesh"),
+			path: "/mesh",
+			isActive: currentView === "mesh",
+			tourTag: "nav-item-mesh",
+			attention: meshWaiting,
+			attentionTag: "nav-mesh-badge",
+			attentionName: (count: number) =>
+				t("ui.shell.sidebar_navigation.mesh_waiting", {
 					count,
 					countText: String(count),
 				}),
-		},
-	];
+		});
+	}
+	/*
+	 * The gate the model's pure functions take. It is the rows this launch can
+	 * actually draw - NOT the stored order - so a hidden destination neither
+	 * renders nor takes a slot in a move; its saved position is the merge's
+	 * business when it comes back (design § 2).
+	 */
+	const available: ReadonlySet<SidebarDestinationId> = new Set(
+		destinationItems.keys(),
+	);
 
 	/*
-	 * THE OVERFLOW GROUP (operator IA, 2026-10-18). Agent Hub and Mesh are
-	 * low-frequency destinations: they keep their rows, badges and gates, but sit
-	 * behind one collapsed "More" row rather than as rows of their own. Future
-	 * low-frequency destinations join this array; the primary list stays the six
-	 * destinations the operator reads most.
+	 * THE STORED ORDER (design § 2, § 7), read once per mount by the hook.
 	 *
-	 * WHERE THE GROUP IS DRAWN (operator IA, 2026-10-19): it left the footer
-	 * region - the strip of column immediately above the account row, where it
-	 * used to sit - and became the LAST ROW of the destinations list, directly
-	 * under Browser. The operator's report was that a disclosure pinned to the
-	 * column's bottom, a screen away from the destinations it opens, was not
-	 * discoverable; the same reasoning applies to the collapsed strip, where the
-	 * ellipsis now reads under the destinations' own glyphs instead of above the
-	 * foot. The group is still ONE collapsed disclosure with its own persisted
-	 * preference: the move changed where the row is drawn, not what it is or
-	 * what it opens.
+	 * `canCustomise` IS THE HOOK'S ANSWER, NOT THE CAPABILITY'S: true only when
+	 * the backend advertises `sidebar_layout` v1 AND the read succeeded. Fail-closed
+	 * means the fixed default order with no drag and no menu (design § 4) - the
+	 * column never offers a gesture it cannot store.
 	 */
-	const overflowNavItems: NavItem[] = [
-		/* The inbox is the most frequent reason to open this group, so it leads. */
-		...(teamBridgeNav
-			? [{ ...teamBridgeNav, isActive: currentView === "team-bridge" }]
-			: []),
-		{
-			icon: Store,
-			label: t("ui.shell.sidebar_navigation.agent_hub"),
-			path: "/agent-hub",
-			isActive: currentView === "agent-hub",
-			tourTag: "nav-item-agent-hub",
-		},
-		/*
-		 * The Mesh tab, ONLY for a device that is in a mesh: a rail item for a mesh the
-		 * user is not in would be a dead end on the one piece of chrome that is on screen
-		 * everywhere (R1-1). Placed after Agent hub and before the Settings row - it is a
-		 * view of THIS machine's infrastructure, which is nearer to Settings than to any
-		 * chat surface.
-		 *
-		 * ITS BADGE IS THE WAITING COUNT (`features.approvals`), the same shape the
-		 * Browser row uses for its own approvals: one number, only while something
-		 * WAITS ON THE OPERATOR, and a name that states it in both widths. The count
-		 * is exactly the records the tray's live panel draws (`waitingApprovalCount`),
-		 * so the badge and the panel it opens can never disagree (operator round,
-		 * 2026-10-03: a spent approval is a record, not a prompt). Zero draws nothing,
-		 * so a mesh at rest renders the row exactly as it shipped.
-		 */
-		...(meshMembership === "member"
-			? [
-					{
-						icon: Network,
-						label: t("ui.shell.sidebar_navigation.mesh"),
-						path: "/mesh",
-						isActive: currentView === "mesh",
-						tourTag: "nav-item-mesh",
-						attention: meshWaiting,
-						attentionTag: "nav-mesh-badge",
-						attentionName: (count: number) =>
-							t("ui.shell.sidebar_navigation.mesh_waiting", {
-								count,
-								countText: String(count),
-							}),
-					},
-				]
-			: []),
-	];
+	const layoutCapable = desktopFeatureEnabled(
+		capabilities.data,
+		"sidebar_layout",
+		1,
+	);
+	const {
+		layout,
+		canCustomise,
+		save: saveSidebarLayout,
+		reset: resetSidebarLayout,
+		isSaving,
+	} = useSidebarLayout(layoutCapable);
+	/*
+	 * Every render below reads `effectiveLayout`, not `layout`: the fallback is
+	 * the SHIPPED arrangement, not a second opinion about the order. It is also
+	 * what keeps the column's order stable while the read is in flight.
+	 */
+	const effectiveLayout: SidebarLayout = canCustomise
+		? layout
+		: DEFAULT_SIDEBAR_LAYOUT;
+	/*
+	 * THE TWO REGIONS AS DRAWN. `renderedRegion` applies the availability gate and
+	 * the stored order in one pass, so a destination hidden by a capability keeps
+	 * its slot in the stored layout without this file reconstructing the merge.
+	 */
+	const visibleRows = renderedRegion(effectiveLayout, "visible", available);
+	const moreRows = renderedRegion(effectiveLayout, "more", available);
 
+	/*
+	 * THE FOLD'S STATE IS STILL THE DISCLOSURE PREFERENCE, with one TRANSIENT
+	 * addition for the drag (design § 3, § 5). The dwell that opens More while a
+	 * visible row hovers it is a REVEAL, like the direct-route rule below, so it
+	 * must not write what the reader saved; it lasts only as long as the gesture.
+	 * A committed drop into More DOES write it - the landing has to stay visible -
+	 * and so does the More press.
+	 */
+	const [dragFoldOpen, setDragFoldOpen] = useState(false);
 	/*
 	 * A DIRECT ROUTE TO A HIDDEN DESTINATION REVEALS ITS GROUP for that visit,
 	 * without overwriting the saved preference: a reader who lands on Agent Hub
 	 * through the palette must be able to see where they are. The preference is
-	 * written only by the More press itself.
+	 * written only by the More press itself, or by a drop that landed there.
 	 */
 	const overflowRevealed =
-		overflowExpanded || overflowNavItems.some((item) => item.isActive);
+		overflowExpanded ||
+		dragFoldOpen ||
+		moreRows.some((id) => destinationItems.get(id)?.isActive);
+
+	/*
+	 * THE COLUMN'S ONE LIVE REGION (design § 6). Every move made through the menu
+	 * or the chord is announced here; the drag's arming and its landing share the
+	 * region so a pointer gesture that ends nowhere can END the sentence rather
+	 * than leave "Moving …" standing as the last thing a screen reader heard.
+	 */
+	const [announcement, setAnnouncement] = useState("");
+	/*
+	 * THE ROW MENU (design § 6). One controlled menu, keyed by the row it belongs
+	 * to, so a right-click, Shift+F10 and the ellipsis all open the SAME panel;
+	 * an uncontrolled menu per row would let two rows' menus exist at once.
+	 */
+	const [menuRow, setMenuRow] = useState<SidebarDestinationId | null>(null);
+	/*
+	 * The row buttons, by id, for the ONE focus rule this feature adds: after a
+	 * move the row is focusable where it landed, so a keyboard reader is not sent
+	 * back to the top of the column by their own reorder. The map is a ref rather
+	 * than state because it is written by refs and never read during render.
+	 */
+	const rowButtonsRef = useRef(
+		new Map<SidebarDestinationId, HTMLButtonElement>(),
+	);
+	const focusDestinationRow = (id: SidebarDestinationId) => {
+		requestAnimationFrame(() => rowButtonsRef.current.get(id)?.focus());
+	};
+
+	/*
+	 * DRAG STATE (design § 5). `dragId` is the RENDERED fact - the armed row, the
+	 * indicator and the band all follow it - while `dragRef` is the GESTURE's own
+	 * record. The split matters for the same reason it does on the pinned-chat
+	 * reorder: a rAF loop and a window listener must read the live gesture without
+	 * being re-bound on every render, and the drop must land where the indicator
+	 * was drawn rather than at a hit test taken in the release's own tick.
+	 */
+	const [dragId, setDragId] = useState<SidebarDestinationId | null>(null);
+	const [indicatorTop, setIndicatorTop] = useState<number | null>(null);
+	const destinationsRef = useRef<HTMLDivElement | null>(null);
+	const dragRef = useRef<{
+		pointerId: number;
+		id: SidebarDestinationId;
+		armed: boolean;
+		startX: number;
+		startY: number;
+	} | null>(null);
+	const dropTargetRef = useRef<SidebarDropTarget | null>(null);
+	const dragXRef = useRef(0);
+	const dragYRef = useRef(0);
+	const autoScrollRef = useRef<number | null>(null);
+	const dwellRef = useRef<number | null>(null);
+	/*
+	 * A CLICK THAT FOLLOWS A DRAG IS NOT A PRESS. The flag is armed at the
+	 * threshold and cleared on the next TASK, not at the release: the browser
+	 * dispatches `click` in the same turn as `pointerup`, so clearing it
+	 * synchronously would let the navigation through. It is a ref because
+	 * `onClick` reads it, and a state write would arrive one render too late.
+	 */
+	const suppressClickRef = useRef(false);
+
+	/**
+	 * The destination rows as drawn, in document order, minus the dragged row -
+	 * the list `pinDragSlot` counts against. Document order IS the single order
+	 * the fold cuts (design § 2): visible rows, then More's own rows while open.
+	 */
+	const destinationBoxes = (exclude?: SidebarDestinationId | null) => {
+		const root = destinationsRef.current;
+		if (root === null) return [];
+		return Array.from(root.querySelectorAll<HTMLElement>("[data-sidebar-row]"))
+			.filter((node) => node.dataset.sidebarRow !== exclude)
+			.map((node) => {
+				const rect = node.getBoundingClientRect();
+				return {
+					id: (node.dataset.sidebarRow ?? "") as SidebarDestinationId,
+					top: rect.top,
+					bottom: rect.bottom,
+				};
+			});
+	};
+
+	/**
+	 * Where the 2px insertion line is drawn for a live target, in the
+	 * destinations wrapper's own scrolled coordinates (design § 5).
+	 *
+	 * WHY THE TARGET ROW'S TOP RATHER THAN THE PREVIOUS ROW'S BOTTOM: the two are
+	 * the same line between contiguous rows, but the fold is a row the list does
+	 * not count (`pinDragSlot` never sees it). A drop into the START of More draws
+	 * under the More control, at the first More row's top - using the previous
+	 * visible row's bottom would draw the line ABOVE the More control, one row
+	 * away from the landing it describes.
+	 */
+	const placeDropIndicator = (
+		target: SidebarDropTarget,
+		draggedId: SidebarDestinationId,
+	) => {
+		const root = destinationsRef.current;
+		if (root === null) return null;
+		const rect = root.getBoundingClientRect();
+		const boxes = destinationBoxes(draggedId);
+		const regionBoxes = (region: SidebarRegion) =>
+			boxes.filter((box) => regionOf(effectiveLayout, box.id) === region);
+		let edge: number | null = null;
+		if (target.kind === "more") {
+			const last = regionBoxes("more").at(-1);
+			if (last) edge = last.bottom;
+			else {
+				const moreRow = root.querySelector<HTMLElement>("[data-sidebar-more]");
+				edge = moreRow ? moreRow.getBoundingClientRect().bottom : rect.top + 2;
+			}
+		} else if (target.kind === "band") {
+			const from = regionOf(effectiveLayout, draggedId);
+			const to: SidebarRegion = from === "more" ? "visible" : "more";
+			const last = regionBoxes(to).at(-1);
+			if (last) edge = last.bottom;
+			else if (from === "more") {
+				/*
+				 * EVERYTHING IS IN MORE, so the end of the visible region is the TOP OF
+				 * THE MORE CONTROL - the place a visible row would be drawn if one
+				 * existed. `boxes[0]` would be the first row INSIDE the fold, below the
+				 * control, so the line would sit one row too low and describe a landing
+				 * the drop does not make (the drop appends to `visible`, which is drawn
+				 * above the fold line).
+				 */
+				const moreRow = root.querySelector<HTMLElement>("[data-sidebar-more]");
+				edge = moreRow ? moreRow.getBoundingClientRect().top : rect.top + 2;
+			}
+			/* Moving visible -> More while the fold is closed draws NO line: the
+			   landing is inside a fold that has no rows on screen. The band's own
+			   label is the affordance there (design § 5). */
+		} else {
+			const next = boxes[target.slot];
+			if (next) edge = next.top;
+			else edge = boxes.at(-1)?.bottom ?? rect.top + 2;
+		}
+		return edge === null ? null : Math.round(edge - rect.top + root.scrollTop);
+	};
+
+	const clearDwell = () => {
+		if (dwellRef.current !== null) {
+			window.clearTimeout(dwellRef.current);
+			dwellRef.current = null;
+		}
+	};
+
+	/**
+	 * The live hit test: the pointer's position decides ONE target, and the
+	 * indicator is a consequence of it (design § 5).
+	 *
+	 * THE MORE ROW IS FOUND BY `elementFromPoint`, not by its rect, because the
+	 * row is a BUTTON: the `<li>` around it grows to contain the open fold, so a
+	 * rect test would keep answering "over More" for every row inside it.
+	 */
+	const updateDropTarget = (x: number, y: number) => {
+		const live = dragRef.current;
+		if (live === null || !live.armed) return;
+		const hovered = document.elementFromPoint(x, y) as HTMLElement | null;
+		const overMore = Boolean(hovered?.closest("[data-sidebar-more]"));
+		const overBand = Boolean(hovered?.closest("[data-sidebar-drop-band]"));
+		let target: SidebarDropTarget;
+		if (overMore) {
+			target = { kind: "more" };
+			/*
+			 * THE DWELL (design § 5): ~400ms over More opens the fold so an
+			 * insertion point INSIDE it can be chosen. Only a VISIBLE row needs
+			 * it - one already in More has nothing to reveal - and only while the
+			 * fold is closed. The reveal is transient; see `dragFoldOpen`.
+			 */
+			if (
+				regionOf(effectiveLayout, live.id) === "visible" &&
+				!overflowRevealed &&
+				dwellRef.current === null
+			) {
+				dwellRef.current = window.setTimeout(() => {
+					dwellRef.current = null;
+					setDragFoldOpen(true);
+					/* Re-derive once against the rows the reveal just added. */
+					requestAnimationFrame(() =>
+						updateDropTargetRef.current(dragXRef.current, dragYRef.current),
+					);
+				}, 400);
+			}
+		} else {
+			clearDwell();
+			if (overBand) {
+				target = { kind: "band" };
+			} else {
+				const boxes = destinationBoxes(live.id);
+				const slot = pinDragSlot(boxes, live.id, y);
+				const before = boxes[slot];
+				let region: SidebarRegion = "visible";
+				if (before) {
+					region = regionOf(effectiveLayout, before.id);
+				} else {
+					const last = boxes.at(-1);
+					region = last ? regionOf(effectiveLayout, last.id) : "visible";
+				}
+				target = { kind: "slot", slot, beforeId: before?.id ?? null, region };
+			}
+		}
+		dropTargetRef.current = target;
+		setIndicatorTop(placeDropIndicator(target, live.id));
+	};
+	const updateDropTargetRef = useRef(updateDropTarget);
+	updateDropTargetRef.current = updateDropTarget;
+
+	const stopAutoScroll = () => {
+		if (autoScrollRef.current !== null) {
+			cancelAnimationFrame(autoScrollRef.current);
+			autoScrollRef.current = null;
+		}
+	};
+
+	/*
+	 * AUTO-SCROLL (design § 5): one 8px step per FRAME while the pointer is inside
+	 * the 24px edge zone. The frame, not a timer, because the frame is what
+	 * redraws the boxes the drop is measured against - a timer fast enough to feel
+	 * right would outrun the layout and re-apply the step to stale rows.
+	 */
+	const runAutoScroll = () => {
+		autoScrollRef.current = null;
+		const live = dragRef.current;
+		const scroller = destinationsRef.current;
+		if (live === null || !live.armed || scroller === null) return;
+		const rect = scroller.getBoundingClientRect();
+		const y = dragYRef.current;
+		const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+		let direction = 0;
+		if (y - rect.top < 24 && scroller.scrollTop > 0) direction = -1;
+		else if (rect.bottom - y < 24 && scroller.scrollTop < maxScroll)
+			direction = 1;
+		if (direction !== 0) {
+			scroller.scrollTop += direction * 8;
+			updateDropTargetRef.current(dragXRef.current, y);
+		}
+		autoScrollRef.current = requestAnimationFrame(runAutoScroll);
+	};
+
+	/**
+	 * The press: the ONLY place a gesture begins.
+	 *
+	 * NO `preventDefault`, unlike the pinned-chat grip: this row's press is a
+	 * NAVIGATION when it never arms, and suppressing the default press would also
+	 * suppress focus and the click the row exists for. Capture is guarded for the
+	 * same reason it is there: a synthetic pointer owns no active pointer and
+	 * `setPointerCapture` throws for one.
+	 */
+	const startRowDrag = (
+		id: SidebarDestinationId,
+		event: ReactPointerEvent<HTMLButtonElement>,
+	) => {
+		if (!canCustomise) return;
+		if (event.button !== 0) return;
+		if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+			return;
+		try {
+			event.currentTarget.setPointerCapture(event.pointerId);
+		} catch {
+			/* synthetic pointer: the dispatched moves still arrive here */
+		}
+		dragRef.current = {
+			pointerId: event.pointerId,
+			id,
+			armed: false,
+			startX: event.clientX,
+			startY: event.clientY,
+		};
+		dragXRef.current = event.clientX;
+		dragYRef.current = event.clientY;
+	};
+
+	const moveRowDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+		const live = dragRef.current;
+		if (live === null || live.pointerId !== event.pointerId) return;
+		dragXRef.current = event.clientX;
+		dragYRef.current = event.clientY;
+		if (!live.armed) {
+			/*
+			 * 5px of movement ARMS the gesture (design § 5). A press that never
+			 * moves stays a click; a drag that passes the threshold can no longer
+			 * become a navigation, which is what `suppressClickRef` states.
+			 */
+			if (
+				Math.hypot(event.clientX - live.startX, event.clientY - live.startY) < 5
+			)
+				return;
+			live.armed = true;
+			suppressClickRef.current = true;
+			setDragId(live.id);
+			const item = destinationItems.get(live.id);
+			if (item)
+				setAnnouncement(
+					t("ui.shell.sidebar_navigation.drag_armed", { name: item.label }),
+				);
+			if (autoScrollRef.current === null)
+				autoScrollRef.current = requestAnimationFrame(runAutoScroll);
+		}
+		updateDropTarget(event.clientX, event.clientY);
+	};
+
+	/** The order after a drop, or the layout unchanged. */
+	const layoutAfterDrop = (
+		id: SidebarDestinationId,
+		target: SidebarDropTarget,
+	): SidebarLayout | null => {
+		if (target.kind === "slot") {
+			return placeInRegion(
+				effectiveLayout,
+				id,
+				target.region,
+				target.beforeId,
+				available,
+			);
+		}
+		const from = regionOf(effectiveLayout, id);
+		const to: SidebarRegion =
+			target.kind === "more" ? "more" : from === "more" ? "visible" : "more";
+		return moveToRegion(effectiveLayout, id, to);
+	};
+
+	/**
+	 * One completed gesture, one write (design § 5, § 7).
+	 *
+	 * A DROP THAT LANDS WHERE THE ROW ALREADY IS WRITES NOTHING - and says
+	 * nothing, because nothing happened. Writing the on-screen order for a move
+	 * nobody made would rewrite the preference for nothing.
+	 */
+	const applyDrop = (id: SidebarDestinationId, target: SidebarDropTarget) => {
+		const item = destinationItems.get(id);
+		if (item === undefined) return;
+		const next = layoutAfterDrop(id, target);
+		if (next === null || layoutEquals(next, effectiveLayout)) return;
+		const to = regionOf(next, id);
+		if (to === "more") setOverflowExpanded(true);
+		saveSidebarLayout(next);
+		if (target.kind === "slot") {
+			announceMove(next, id);
+			return;
+		}
+		setAnnouncement(
+			to === "more"
+				? t("ui.shell.sidebar_navigation.move_to_more_note", {
+						name: item.label,
+					})
+				: t("ui.shell.sidebar_navigation.show_in_sidebar_note", {
+						name: item.label,
+					}),
+		);
+	};
+
+	/** What the live region says after a move landed, inside a region. */
+	const announceMove = (next: SidebarLayout, id: SidebarDestinationId) => {
+		const item = destinationItems.get(id);
+		const region = regionOf(next, id);
+		const rows = renderedRegion(next, region, available);
+		setAnnouncement(
+			t("ui.shell.sidebar_navigation.move_note", {
+				name: item?.label ?? "",
+				position: String(rows.indexOf(id) + 1),
+				total: String(rows.length),
+			}),
+		);
+	};
+
+	const settleDrag = (commit: boolean) => {
+		const live = dragRef.current;
+		if (live === null) return;
+		dragRef.current = null;
+		stopAutoScroll();
+		clearDwell();
+		const target = dropTargetRef.current;
+		dropTargetRef.current = null;
+		setDragId(null);
+		setIndicatorTop(null);
+		setDragFoldOpen(false);
+		/*
+		 * CLEARED ON THE NEXT TASK, not here: the click that ends a press is
+		 * dispatched in the same turn as the release. See `suppressClickRef`.
+		 */
+		window.setTimeout(() => {
+			suppressClickRef.current = false;
+		}, 0);
+		if (!live.armed) return;
+		if (!commit) {
+			/* Esc, or the pointer taken away: the gesture's sentence ends rather
+			   than leaving "Moving …" standing (design § 5). */
+			setAnnouncement("");
+			return;
+		}
+		if (target === null) return;
+		applyDrop(live.id, target);
+	};
+	const settleDragRef = useRef(settleDrag);
+	settleDragRef.current = settleDrag;
+
+	/*
+	 * THE GESTURE'S DOORS, bound ONCE on the first armed render (the pinned-chat
+	 * rule): the window listener is what keeps a gesture from being left armed
+	 * when the browser takes the pointer away - a `pointercancel` anywhere settles
+	 * it with no write. `settleDrag` nulls `dragRef` first, so the row's own
+	 * `onPointerUp` and this listener cannot double-write.
+	 */
+	useEffect(() => {
+		if (dragId === null) return;
+		const onKeyDown = (event: WindowEventMap["keydown"]) => {
+			if (event.key !== "Escape") return;
+			/*
+			 * THE CLAIM IS STATED (the pinned-chat rule): Escape during a drag must
+			 * cancel the drag and NOT also interrupt a running turn - the press was
+			 * addressed to the gesture. `preventDefault` after the settle, because
+			 * the interrupt hook reads `defaultPrevented` in a microtask.
+			 */
+			settleDragRef.current(false);
+			event.preventDefault();
+		};
+		const onPointerUp = (event: PointerEvent) => {
+			if (dragRef.current?.pointerId !== event.pointerId) return;
+			settleDragRef.current(true);
+		};
+		const onCancel = () => settleDragRef.current(false);
+		window.addEventListener("keydown", onKeyDown);
+		window.addEventListener("pointerup", onPointerUp);
+		window.addEventListener("pointercancel", onCancel);
+		window.addEventListener("blur", onCancel);
+		return () => {
+			window.removeEventListener("keydown", onKeyDown);
+			window.removeEventListener("pointerup", onPointerUp);
+			window.removeEventListener("pointercancel", onCancel);
+			window.removeEventListener("blur", onCancel);
+		};
+	}, [dragId]);
+
+	/* The frame and the dwell outlive no gesture, and no unmount (the board's rule). */
+	useEffect(
+		() => () => {
+			if (autoScrollRef.current !== null)
+				cancelAnimationFrame(autoScrollRef.current);
+			if (dwellRef.current !== null) window.clearTimeout(dwellRef.current);
+		},
+		[],
+	);
+
+	/**
+	 * ONE WRITER for the menu and the chord (design § 6): the two paths must not
+	 * be able to disagree about what a move costs or where it lands.
+	 */
+	const runRowAction = (id: SidebarDestinationId, action: SidebarRowAction) => {
+		if (!canCustomise) return;
+		const item = destinationItems.get(id);
+		if (item === undefined) return;
+		if (action.kind === "reset") {
+			resetSidebarLayout();
+			setAnnouncement(t("ui.shell.sidebar_navigation.reset_note"));
+			focusDestinationRow(id);
+			return;
+		}
+		if (action.kind === "move") {
+			const next = moveWithinRegion(
+				effectiveLayout,
+				id,
+				action.delta,
+				available,
+			);
+			/* A boundary is a disabled item and a silent chord: the row is already
+			   where the reader asked it to go (the pinned-chat rule 5 one axis over). */
+			if (next === null) return;
+			saveSidebarLayout(next);
+			announceMove(next, id);
+			focusDestinationRow(id);
+			return;
+		}
+		const next = moveToRegion(effectiveLayout, id, action.region);
+		if (layoutEquals(next, effectiveLayout)) return;
+		if (action.region === "more") setOverflowExpanded(true);
+		saveSidebarLayout(next);
+		setAnnouncement(
+			action.region === "more"
+				? t("ui.shell.sidebar_navigation.move_to_more_note", {
+						name: item.label,
+					})
+				: t("ui.shell.sidebar_navigation.show_in_sidebar_note", {
+						name: item.label,
+					}),
+		);
+		focusDestinationRow(id);
+	};
 
 	/*
 	 * THE BODY. The list brings its own actions - its `New chat` row stages an
@@ -717,13 +1300,21 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		return item.working && item.workingName ? item.workingName : attentionLabel;
 	};
 
-	const renderNavItem = (item: NavItem) => {
+	const renderDestinationRow = (id: SidebarDestinationId) => {
+		const item = destinationItems.get(id);
+		if (item === undefined) return null;
+		const region: SidebarRegion = regionOf(effectiveLayout, id);
+		const regionRows = region === "more" ? moreRows : visibleRows;
+		const index = regionRows.indexOf(id);
 		/*
-		 * The tour clicks these by `[data-tour-tag="nav-item-agents"]` and its
-		 * siblings, so the tag has to stay on the button itself. Putting it on a
-		 * wrapper would leave the tour dispatching a click at a div and silently
-		 * doing nothing.
+		 * A BOUNDARY IS A DISABLED ITEM, not a failed press (design § 6, the
+		 * pinned-chat rule 5 one axis over): the menu draws the item inapplicable at
+		 * the region's own ends instead of letting a press do nothing. The chord
+		 * shares the same model (`moveWithinRegion` returns null there), so the two
+		 * paths agree about where the edge is.
 		 */
+		const atTop = index <= 0;
+		const atBottom = index === -1 || index >= regionRows.length - 1;
 		const attention = item.attention ?? 0;
 		const markLabel = rowName(item);
 		const rowState = item.isActive
@@ -737,36 +1328,108 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			/>
 		);
 		return (
+			/*
+			 * THE TAG STAYS ON THE BUTTON (design review round 1, F2 / the tour's own
+			 * rule): `data-tour-tag` on a wrapper would leave the tour dispensing a
+			 * click at a div and silently doing nothing. The `<li>` carries the drag's
+			 * own addresses - `data-sidebar-row` and the region it is drawn in - so a
+			 * rig reads geometry from the row while the tour still reads the control.
+			 */
 			<li
-				/*
-				 * KEYED BY THE TAG, not by `path` (design review round 1, F2). `path` names
-				 * the ROUTE a destination row lands on - a shape every row carries, and not
-				 * an identity: Aida's row carries `/chat` while the conversation it opens is
-				 * RESOLVED asynchronously, so a route is not a safe React key. The tag is the
-				 * row's own name and is already unique per row.
-				 */
-				key={item.tourTag}
+				key={expanded ? item.tourTag : undefined}
+				data-sidebar-row={id}
+				data-sidebar-region={region}
+				onContextMenu={
+					canCustomise
+						? (event) => {
+								/*
+								 * THE SAME MENU WITHOUT THE ELLIPSIS (design § 6): right-click
+								 * anywhere on the row opens it, which is also the only path to it
+								 * in the 56px strip, where no ellipsis is drawn.
+								 */
+								event.preventDefault();
+								setMenuRow(id);
+							}
+						: undefined
+				}
 				className={cn(
-					"flex h-[30px] w-full items-center rounded-md",
+					"group/row relative flex h-[30px] w-full items-center rounded-md",
 					"transition-colors duration-fast ease-out-quart",
 					rowState,
 				)}
 			>
 				<button
 					type="button"
-					onClick={() =>
-						item.onSelect ? item.onSelect() : navigate(item.path)
+					onClick={() => {
+						/*
+						 * A DRAG IS NEVER A NAVIGATION (design § 5). The flag is set at the
+						 * threshold and cleared on the next task, so the click the browser
+						 * dispatches in the release's own turn is swallowed here.
+						 */
+						if (suppressClickRef.current) return;
+						if (item.onSelect) item.onSelect();
+						else navigate(item.path);
+					}}
+					onPointerDown={
+						canCustomise ? (event) => startRowDrag(id, event) : undefined
+					}
+					onPointerMove={canCustomise ? moveRowDrag : undefined}
+					onPointerUp={
+						canCustomise
+							? (event) => {
+									if (dragRef.current?.pointerId !== event.pointerId) return;
+									settleDrag(true);
+								}
+							: undefined
+					}
+					onPointerCancel={canCustomise ? () => settleDrag(false) : undefined}
+					onKeyDown={
+						canCustomise
+							? (event) => {
+									/*
+									 * THE KEYBOARD'S OWN MENU KEY (design § 6): `Shift+F10` is the
+									 * Windows convention, `ContextMenu` the dedicated key. Both open
+									 * the panel the ellipsis opens, anchored to the row.
+									 */
+									if (
+										event.key === "ContextMenu" ||
+										(event.shiftKey && event.key === "F10")
+									) {
+										event.preventDefault();
+										setMenuRow(id);
+										return;
+									}
+									/* Alt+Arrow reorders within the row's own region, the chord
+									   twin of the menu's two Move items. */
+									if (!event.altKey) return;
+									if (event.key !== "ArrowUp" && event.key !== "ArrowDown")
+										return;
+									event.preventDefault();
+									runRowAction(id, {
+										kind: "move",
+										delta: event.key === "ArrowUp" ? -1 : 1,
+									});
+								}
+							: undefined
 					}
 					data-tour-tag={item.tourTag}
 					/*
 					 * A ROW THAT NAVIGATES IS A DESTINATION (design review round 1, D3):
-					 * `aria-current="page"` says "you are here", which is what a press that
-					 * lands on `path` means.
+					 * `New chat` and `Search` above already set this attribute on their
+					 * buttons, and this one needs it for a different reason - the tour that
+					 * clicks it is not the only thing that looks; the screenshot rig opens a
+					 * destination by this tag. `aria-current` stays as it was: a destination
+					 * row is a link in a rail, and "current" is the word for the route in
+					 * front of the user, said only while open.
 					 */
 					aria-current={item.isActive ? "page" : undefined}
-					/* Collapsed there is no text in the row, and the tooltip cannot
-					   supply the name: Radix's `Trigger` adds `aria-describedby`, and
-					   only while open. */
+					/*
+					 * EQUAL LABEL AND ARIA-LABEL OMIT THE ATTRIBUTE (design round 1, D2):
+					 * the visible text is the name whenever it is complete on its own, and a
+					 * redundant `aria-label` only risks disagreeing with it. A badge's
+					 * counting form is NOT equal to the label, so it is stated in both
+					 * widths - while a row is working, the sentence names the state.
+					 */
 					aria-label={
 						expanded && markLabel === item.label ? undefined : markLabel
 					}
@@ -860,6 +1523,103 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						</span>
 					)}
 				</button>
+				{canCustomise && (
+					/*
+					 * THE MENU'S TRIGGER (design § 6). Expanded, the trailing ellipsis IS
+					 * the trigger - the discoverability path for a reader who never guesses
+					 * that rows drag. Collapsed there is no room for a second control, so
+					 * the trigger is an invisible zero-width anchor at the row's leading
+					 * edge and the menu is opened from `contextmenu` / `Shift+F10` on the
+					 * row; anchoring it to the row (not the strip) is what gives the panel
+					 * a sensible place to open.
+					 */
+					<DropdownMenu
+						open={menuRow === id}
+						onOpenChange={(open) => setMenuRow(open ? id : null)}
+					>
+						<DropdownMenuTrigger asChild>
+							{expanded ? (
+								<button
+									type="button"
+									data-sidebar-row-menu=""
+									aria-label={t("ui.shell.sidebar_navigation.row_actions", {
+										name: item.label,
+									})}
+									className={cn(
+										"me-0.5 flex size-6 shrink-0 items-center justify-center rounded-sm",
+										"text-ink-muted opacity-0 transition-opacity duration-fast ease-out-quart",
+										"hover:bg-row-hover hover:text-ink",
+										"group-hover/row:opacity-100 group-focus-within/row:opacity-100",
+										"focus-visible:opacity-100 data-[state=open]:opacity-100",
+									)}
+								>
+									<Ellipsis size={16} aria-hidden="true" />
+								</button>
+							) : (
+								<span
+									aria-hidden="true"
+									className="pointer-events-none absolute inset-y-1 start-1 w-0"
+								/>
+							)}
+						</DropdownMenuTrigger>
+						<DropdownMenuContent
+							align="start"
+							side="right"
+							className="min-w-44"
+							/*
+							 * FOCUS GOES BACK TO THE ROW, not to the trigger (design § 6):
+							 * after a move the row has changed place, and the reader's next
+							 * key must land on the row they moved rather than on a strip
+							 * button or a zero-width anchor.
+							 */
+							onCloseAutoFocus={(event) => {
+								event.preventDefault();
+								focusDestinationRow(id);
+							}}
+						>
+							<DropdownMenuItem
+								disabled={atTop}
+								onSelect={() => runRowAction(id, { kind: "move", delta: -1 })}
+							>
+								{t("ui.shell.sidebar_navigation.move_up")}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								disabled={atBottom}
+								onSelect={() => runRowAction(id, { kind: "move", delta: 1 })}
+							>
+								{t("ui.shell.sidebar_navigation.move_down")}
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							{region === "more" ? (
+								<DropdownMenuItem
+									onSelect={() =>
+										runRowAction(id, { kind: "region", region: "visible" })
+									}
+								>
+									{t("ui.shell.sidebar_navigation.show_in_sidebar")}
+								</DropdownMenuItem>
+							) : (
+								<DropdownMenuItem
+									onSelect={() =>
+										runRowAction(id, { kind: "region", region: "more" })
+									}
+								>
+									{t("ui.shell.sidebar_navigation.move_to_more")}
+								</DropdownMenuItem>
+							)}
+							{!layoutEquals(effectiveLayout, DEFAULT_SIDEBAR_LAYOUT) && (
+								<>
+									<DropdownMenuSeparator />
+									<DropdownMenuItem
+										onSelect={() => runRowAction(id, { kind: "reset" })}
+									>
+										{t("ui.shell.sidebar_navigation.reset_layout")}
+									</DropdownMenuItem>
+								</>
+							)}
+						</DropdownMenuContent>
+					</DropdownMenu>
+				)}
 			</li>
 		);
 	};
@@ -870,24 +1630,91 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * one DOM shape in both widths, so the rows MOVED between the two renders
 	 * rather than being rebuilt in a second layout.
 	 */
-	const renderNavRow = (item: NavItem) =>
-		expanded ? (
-			renderNavItem(item)
-		) : (
+	const renderDestinationRowForWidth = (id: SidebarDestinationId) => {
+		const row = renderDestinationRow(id);
+		if (row === null) return null;
+		if (expanded) return row;
+		const item = destinationItems.get(id);
+		if (item === undefined) return null;
+		return (
 			/*
 			 * THE TOOLTIP CARRIES THE SENTENCE, NOT THE BARE LABEL (UX round 1, U3;
 			 * design round 1, D2). Collapsed, this is the only text the row ever shows,
 			 * so a tooltip carrying the bare label would leave a badge's number
-			 * scope-less in the one width where the row has no other words. It prints
-			 * `rowName`, the same string the expanded row's accessible name uses, so the
-			 * hover text and the name cannot disagree about one count.
+			 * scope-less. Suppressed - not `disabled` - while a drag is live: `disabled`
+			 * renders the child bare and would remount the row out from under the
+			 * pointer capture, while `suppressed` keeps the tree and closes the panel.
 			 */
 			<li key={item.tourTag}>
-				<Tooltip content={rowName(item)} side="right">
-					{renderNavItem(item)}
+				<Tooltip
+					content={rowName(item)}
+					side="right"
+					suppressed={dragId !== null}
+				>
+					{row}
 				</Tooltip>
 			</li>
 		);
+	};
+
+	/*
+	 * THE LIVE INDICATOR AND THE TRAILING BAND (design § 5), drawn from the same
+	 * state in both widths so neither is a second implementation.
+	 */
+	const dropIndicator =
+		indicatorTop === null ? null : (
+			<span
+				aria-hidden="true"
+				data-sidebar-drop-indicator=""
+				className="pointer-events-none absolute inset-x-1 z-10 h-0.5 -translate-y-px rounded-full bg-accent"
+				style={{ top: indicatorTop }}
+			/>
+		);
+	const draggingRegion =
+		dragId === null ? null : regionOf(effectiveLayout, dragId);
+	const bandLabel =
+		draggingRegion === "more"
+			? t("ui.shell.sidebar_navigation.show_in_sidebar")
+			: t("ui.shell.sidebar_navigation.move_to_more");
+	const dropBand =
+		dragId === null ? null : expanded ? (
+			/*
+			 * THE OUTSIDE ZONE (design § 5): a thin band under the list, labelled by
+			 * the direction of the move it makes. It exists so pulling a row out of
+			 * the fold never depends on hitting a 30px row, and it is a visible
+			 * affordance rather than a hidden gesture.
+			 */
+			<div
+				data-sidebar-drop-band=""
+				className="mt-1 flex h-7 shrink-0 items-center justify-center rounded-md border border-dashed border-hairline text-meta text-ink-dim"
+			>
+				{bandLabel}
+			</div>
+		) : (
+			/* The strip has no room for a sentence; its language is the tooltip. */
+			<Tooltip content={bandLabel} side="right">
+				<div
+					data-sidebar-drop-band=""
+					className="mt-1 flex h-6 w-8 items-center justify-center rounded-sm border border-dashed border-hairline"
+				>
+					<span
+						aria-hidden="true"
+						className="h-0.5 w-4 rounded-full bg-ink-dim"
+					/>
+				</div>
+			</Tooltip>
+		);
+	/*
+	 * THE LIVE REGION (design § 6, § 5): polite, so a move is never urgent - and
+	 * `aria-atomic` because every note REPLACES the sentence rather than appending
+	 * to it; a reader that only announces the changed text node could otherwise
+	 * drop the row's name when two consecutive notes share their ending.
+	 */
+	const announcementRegion = (
+		<span className="sr-only" aria-live="polite" aria-atomic="true">
+			{announcement}
+		</span>
+	);
 
 	/*
 	 * THE ONE TOGGLE, and its glyph follows WHERE the sidebar is drawn (design
@@ -1071,6 +1898,15 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			   destination rows use, so a collapsed More can say something waits. */
 			attention?: number;
 			attentionTag?: string;
+			/*
+			 * A group with a hidden row WORKING says so on the collapsed More row
+			 * (design § 3): the 56px strip has no trailing lane, so the spinner is the
+			 * second corner mark rather than an in-flow glyph. It sits at the opposite
+			 * corner from the count, because the two can both be true at once - one
+			 * hidden destination waiting while another works - and neither may hide
+			 * the other.
+			 */
+			working?: boolean;
 		},
 	) => {
 		const Icon = icon;
@@ -1102,6 +1938,15 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 								>
 									{props.attention}
 								</Badge>
+							</span>
+						)}
+						{props.working && (
+							<span className="pointer-events-none absolute -bottom-0.5 -end-0.5 flex">
+								<LoaderCircle
+									size={12}
+									aria-hidden="true"
+									className="text-accent motion-safe:animate-spin"
+								/>
 							</span>
 						)}
 					</span>
@@ -1171,20 +2016,35 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * follows document order in both states.
 	 */
 	const renderOverflowGroup = () => {
-		if (overflowNavItems.length === 0) return null;
-		/* The count the group carries on its own row, in both widths. Team Bridge
-		   is the only waiting-style badge in this group today; the Mesh row's
-		   approval count is already the header's, and summing them would double a
-		   number the user sees twice. */
-		const overflowAttention = teamBridgeNav?.attention ?? 0;
-		/* The mark is visual; the disclosure's name carries the same fact for a
-		   reader who gets no badge (design round 4, D3). */
+		if (moreRows.length === 0) return null;
+		const hiddenItems = moreRows
+			.map((id) => destinationItems.get(id))
+			.filter((item): item is NavItem => item !== undefined);
+		/*
+		 * THE AGGREGATE (design § 3): every hidden destination's attention is summed
+		 * into this row's badge and any hidden row working draws the spinner. It is
+		 * the requirement that an unread chief of staff can never be hidden by
+		 * customisation - Aida folded into More still says, on the row that hides her,
+		 * that something is waiting.
+		 *
+		 * THE ATTENTION COUNT WINS THE NAME when both exist: the number is what the
+		 * reader acts on, and only one sentence can be the control's name. The
+		 * spinner is still drawn beside it, so the state is not lost to sight.
+		 */
+		const moreAttention = hiddenItems.reduce(
+			(sum, item) => sum + (item.attention ?? 0),
+			0,
+		);
+		const moreWorking = hiddenItems.some((item) => item.working === true);
 		const moreName =
-			overflowAttention > 0
-				? t("ui.teamBridge.group.more_unread", {
-						count: overflowAttention,
+			moreAttention > 0
+				? t("ui.shell.sidebar_navigation.more_waiting", {
+						count: moreAttention,
+						countText: String(moreAttention),
 					})
-				: t("ui.library.page.more_destinations");
+				: moreWorking
+					? t("ui.shell.sidebar_navigation.more_working")
+					: t("ui.library.page.more_destinations");
 		return (
 			<li
 				key="nav-overflow"
@@ -1197,6 +2057,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					<button
 						type="button"
 						data-tour-tag="nav-item-more"
+						data-sidebar-more=""
 						aria-expanded={overflowRevealed}
 						aria-controls="sidebar-more-destinations"
 						aria-label={moreName}
@@ -1210,16 +2071,25 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						<span className="min-w-0 flex-1 truncate text-start">
 							{t("ui.library.page.more")}
 						</span>
-						{overflowAttention > 0 && (
-							<span className="inline-flex shrink-0">
-								<Badge
-									variant="attentionQuiet"
-									shape="pill"
-									size="count"
-									data-tour-tag="nav-more-badge"
-								>
-									{overflowAttention}
-								</Badge>
+						{(moreAttention > 0 || moreWorking) && (
+							<span className="inline-flex shrink-0 items-center gap-1">
+								{moreAttention > 0 && (
+									<Badge
+										variant="attentionQuiet"
+										shape="pill"
+										size="count"
+										data-tour-tag="nav-more-badge"
+									>
+										{moreAttention}
+									</Badge>
+								)}
+								{moreWorking && (
+									<LoaderCircle
+										size={16}
+										aria-hidden="true"
+										className="text-accent motion-safe:animate-spin"
+									/>
+								)}
 							</span>
 						)}
 						<ChevronDown
@@ -1234,12 +2104,14 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				) : (
 					stripButton(Ellipsis, moreName, {
 						onClick: () => setOverflowExpanded(!overflowRevealed),
-						attention: overflowAttention,
+						attention: moreAttention,
 						attentionTag: "nav-more-badge",
+						working: moreWorking,
 						attrs: {
 							"aria-expanded": overflowRevealed,
 							"aria-controls": "sidebar-more-destinations",
 							"data-tour-tag": "nav-item-more",
+							"data-sidebar-more": "",
 						},
 					})
 				)}
@@ -1251,7 +2123,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 							!expanded && "items-center gap-1",
 						)}
 					>
-						{overflowNavItems.map(renderNavRow)}
+						{moreRows.map(renderDestinationRowForWidth)}
 					</ul>
 				)}
 			</li>
@@ -1326,17 +2198,30 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					</li>
 				</ul>
 				{/*
-				 * THE MORE GROUP IS THE LAST ITEM OF THIS LIST (operator IA,
-				 * 2026-10-19): the ellipsis used to be drawn in the `mt-auto`
-				 * foot above the update icon, the gear and the avatar, where the
-				 * column's bottom pinned it away from the destinations it opens.
-				 * It now reads under the Browser glyph, beside the rows it
-				 * belongs with.
+				 * THE DESTINATION RAIL, and it is the SAME list as the expanded column's:
+				 * `visibleRows` in the stored order, then the More group (design § 3). The
+				 * strip has no ellipsis (there is no room for a second control in 56px), but
+				 * right-click and Shift+F10 still open the row menu, and a drag here is the
+				 * same gesture with the same 5px threshold - which is why the wrapper, the
+				 * indicator and the band are the same elements in both widths.
 				 */}
-				<ul className="mt-4 flex flex-col items-center gap-1">
-					{navItems.map(renderNavRow)}
-					{renderOverflowGroup()}
-				</ul>
+				<div
+					ref={destinationsRef}
+					data-sidebar-destinations-area=""
+					data-sidebar-dragging={dragId !== null ? "" : undefined}
+					className="relative mt-4 flex flex-col items-center gap-1 select-none"
+				>
+					<ul
+						data-sidebar-destinations=""
+						className="flex flex-col items-center gap-1"
+					>
+						{visibleRows.map(renderDestinationRowForWidth)}
+						{renderOverflowGroup()}
+					</ul>
+					{dropIndicator}
+				</div>
+				{dropBand}
+				{announcementRegion}
 				<div className="mt-auto flex flex-col items-center gap-1 pb-2">
 					{/*
 					 * THE STANDING UPDATE NOTICE SITS IN THIS COLUMN ABOVE THE GEAR
@@ -1407,29 +2292,36 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					{searchRowExpanded}
 				</div>
 				{/*
-				 * THE DESTINATIONS GROUP, four 30px rows: the same routes in the same
-				 * order the old rail carried, minus Chat (which is the list itself) and
-				 * minus Settings (which the foot owns).
+				 * THE DESTINATIONS GROUP. One ordered list cut by the fold (design § 2):
+				 * the visible region, then the More row, then More's own rows while it is
+				 * open. `renderedRegion` has already applied the stored order and the
+				 * availability gate, so this block is order-only.
 				 *
-				 * THE MORE GROUP IS THE LAST ROW OF THIS LIST (operator IA,
-				 * 2026-10-19), directly under Browser. It used to be drawn in its
-				 * own footer block immediately above the account row: a
-				 * low-frequency disclosure pinned to the column's bottom was far
-				 * from the destinations it opens, and the operator's report was
-				 * that it was not discoverable. It shares this list's own row gap
-				 * (`gap-0.5`), so it reads as a destination row rather than as
-				 * chrome.
-				 *
-				 * WHAT DID NOT MOVE WITH IT: the group is still ONE collapsed
-				 * disclosure with its own persisted preference
-				 * (`sidebarOverflowExpanded`), still reveals in place when a
-				 * hidden destination is the current view, and still carries the
-				 * count badge. Only the row's position in the column changed.
+				 * THE SCROLL REGION IS THE DRAG'S OWN: `min-h-0` lets it give way before the
+				 * conversation list does, and the height cap means the rail can never take
+				 * more than half the window - below that the list it sits over would be
+				 * squeezed to nothing. Nine rows is 286px, so the cap only bites in a short
+				 * window with an unusually long visible region: exactly the state the drag
+				 * auto-scroll exists for (design § 5).
 				 */}
-				<ul className="flex flex-col gap-0.5">
-					{navItems.map(renderNavRow)}
-					{renderOverflowGroup()}
-				</ul>
+				<div
+					ref={destinationsRef}
+					data-sidebar-destinations-area=""
+					data-sidebar-dragging={dragId !== null ? "" : undefined}
+					className="relative min-h-0 max-h-[50dvh] overflow-y-auto select-none"
+				>
+					<ul
+						data-sidebar-destinations=""
+						aria-busy={isSaving || undefined}
+						className="flex flex-col gap-0.5"
+					>
+						{visibleRows.map(renderDestinationRowForWidth)}
+						{renderOverflowGroup()}
+					</ul>
+					{dropIndicator}
+				</div>
+				{dropBand}
+				{announcementRegion}
 			</div>
 
 			{/*
