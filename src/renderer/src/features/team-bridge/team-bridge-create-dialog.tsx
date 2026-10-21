@@ -228,10 +228,22 @@ export const TeamBridgeCreateDialog: FC<{
 								...(name.trim() ? { name: name.trim() } : {}),
 								visibility: kind === "channel" ? "tenant" : "private",
 								agentCapable: members.some((member) => member.kind === "agent"),
-								members: members.filter(
-									(member) =>
-										member.account_id.trim() && member.display_label.trim(),
-								),
+								/*
+								 * The wire member, not the form row. `rowId` is the form's React
+								 * key; the desktop op's member schema is STRICT, so forwarding it
+								 * made every dialog create fail in the renderer before a request
+								 * left the app (the operator's "could not be created" error).
+								 */
+								members: members
+									.filter(
+										(member) =>
+											member.account_id.trim() && member.display_label.trim(),
+									)
+									.map(({ rowId: _rowId, ...member }) => ({
+										...member,
+										account_id: member.account_id.trim(),
+										display_label: member.display_label.trim(),
+									})),
 							})
 						}
 					>
