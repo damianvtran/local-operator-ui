@@ -2487,6 +2487,53 @@ function settledCloseOf(
 }
 
 /**
+ * Does this run's OWN data say it is still being written?
+ *
+ * WHY THIS EXISTS BESIDE THE SETTLE LATCH (operator report, 2026-10-21). The
+ * latch was built on "the rows cannot state whether a turn will resume", which
+ * is true of exactly one window: the INTER-CYCLE gap, where a finished call and
+ * a dead run are the same rows. It is false for the rest of a live turn, and
+ * reading the pane's `live` flag alone there is what made a one-frame flicker
+ * out of every liveness dip:
+ *
+ * - an assistant row still `streaming` cannot be a finished turn's last word;
+ * - a tool row whose `phase` is not `done` has not reported its outcome, so the
+ *   turn that called it is still open.
+ *
+ * Both are facts about the run's own records, so anchoring on them is
+ * idempotent under `live`: the plan can only change when the rows change, which
+ * is the requirement this whole tier exists to hold. A dip (a tool-segment
+ * boundary) and a blank (the reconnect arm sets `frontend: null`, which drops
+ * `working` and even the latch's store key) both stop mattering here.
+ *
+ * WHEN IT RELEASES. The moment the last row stops claiming to be live: the
+ * streaming flag clears and the pending tool reports `done`. That is the pass
+ * on which a completed turn condenses - a real change in the data under the
+ * rows, not a sample of a flag.
+ *
+ * WHAT IT DELIBERATELY DOES NOT COVER. A run whose rows are all settled and
+ * whose turn has not resumed yet (the inter-cycle gap). Nothing in the rows can
+ * separate that from a run that has genuinely finished, so the pane's latch
+ * (`watchedRunId`) still owns it - see `collapsePlan`'s option.
+ */
+function runStatesItsOwnLiveness(
+	records: readonly TranscriptRecord[],
+): boolean {
+	for (const record of records) {
+		if (record.kind === "assistant" && record.streaming === true) return true;
+		if (
+			record.kind === "tool" &&
+			(record.phase === "running" ||
+				record.phase === "composing" ||
+				record.phase === "queued")
+		) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
  * The fact for this run, found by its STABLE identity rather than by the run's
  * live key (agent review round 1, F3).
  *
@@ -2906,7 +2953,7 @@ function planRun(
 	 * watched (a fresh open, a finished transcript), which is what keeps the
 	 * idle-residual shape (R2) exactly as it was.
 	 */
-	const anchored = live || watched;
+	const anchored = live || watched || runStatesItsOwnLiveness(records);
 	const settledAt = anchored ? settledCloseOf(records, partition.cycles) : -1;
 	const liveFrom = anchored ? settledAt + 1 : -1;
 
