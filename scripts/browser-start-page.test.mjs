@@ -167,10 +167,22 @@ export function mount(container, options = {}) {
 		navFailure: null,
 	};
 	const refused = [];
+	/**
+	 * EVERY view-visibility report, in order, as [visible, ownPage].
+	 *
+	 * "ownPage" is the surface's answer to "why is the native view hidden?": its
+	 * own state page (start page / load failure) versus an overlay covering the
+	 * content area. Main keys shortcut ownership on the difference, so the pair
+	 * is the wire contract this fake bridge records rather than infers.
+	 */
+	const visibility = [];
 	/** Republish what state now holds, so every mounted reader sees the change. */
 	let notify = () => {};
 	const explicit = {
 		state: async () => structuredClone(state),
+		setViewVisible: async (visible, ownPage) => {
+			visibility.push([visible, ownPage === true]);
+		},
 		// The projection store subscribes on the 0 -> 1 consumer edge and stops on
 		// the way back, so these have to answer an unsubscribe function. The app's own
 		// push is what notify imitates: a real host fires it on every change, and
@@ -217,6 +229,8 @@ export function mount(container, options = {}) {
 	root.render(surface());
 	return {
 		refused: () => refused,
+		/** The visibility reports the surface has sent, in order. */
+		visibility: () => visibility,
 		/** Unmount everything, as leaving the route (or a tab switch that unmounts
 		 * the start page) does. Used to prove restoreAddress is what puts the
 		 * address back rather than a surviving draft (F6). */
@@ -266,6 +280,7 @@ export function mount(container, options = {}) {
 		},
 	};
 }
+export { suppressBrowserView } from "./src/renderer/src/shared/browser-view-policy";
 `;
 
 const bundle = await build({
@@ -294,9 +309,10 @@ const bundle = await build({
 });
 const bundlePath = new URL(`./_start-page-${process.pid}.mjs`, import.meta.url);
 let mount;
+let suppressBrowserView;
 try {
 	await writeFile(bundlePath, bundle.outputFiles[0].text);
-	({ mount } = await import(bundlePath.href));
+	({ mount, suppressBrowserView } = await import(bundlePath.href));
 } finally {
 	await unlink(bundlePath).catch(() => {});
 }
@@ -560,6 +576,67 @@ test("an ACCEPTED navigation does not linger under the start page (F4, round 3)"
 	assert.ok(
 		!after.startPage,
 		`an accepted submit does not leave the start page over the navigation (reading: ${JSON.stringify(after)})`,
+	);
+	await act(async () => {
+		handle.unmount();
+	});
+});
+
+/*
+ * THE REASON IS PART OF THE CONTRACT (S4a).
+ *
+ * The surface hides the native view for its own state pages — the start page and
+ * the load-failure panel — because the view is a blank native rectangle that
+ * would paint OVER their DOM (design 11.3). Main used to read that hide as "no
+ * browser chrome" and refuse Cmd+L/T/R, so the chords died on exactly the two
+ * states where the user can see the browser but not a page.
+ *
+ * WHAT IS ASSERTED HERE: the two facts the surface sends main. `ownPage` true is
+ * "this hide is my own state page"; false is "an overlay covers the content
+ * area". Main's `chromeVisible` keeps shortcuts for the first and refuses them
+ * for the second (`scripts/browser-chord.test.mjs`). jsdom has no native view,
+ * so the view's actual paint is not what this reads — the wire contract is.
+ */
+test("the surface reports WHY the view is hidden: its own state page versus a real overlay", async () => {
+	const container = freshContainer();
+	const handle = mount(container);
+	await flush();
+	const visibility = handle.visibility();
+	assert.deepEqual(
+		visibility.at(-1),
+		[false, true],
+		`the start page hides the view for its OWN page (reports: ${JSON.stringify(visibility)})`,
+	);
+
+	// A real dialog over the start page is a DIFFERENT fact: the keyboard belongs
+	// to the dialog, not to the browser.
+	let release;
+	await act(async () => {
+		release = suppressBrowserView("dialog:test");
+	});
+	await flush();
+	assert.deepEqual(
+		visibility.at(-1),
+		[false, false],
+		`an overlay is not the browser's own page (reports: ${JSON.stringify(visibility)})`,
+	);
+	await act(async () => release());
+	await flush();
+	assert.deepEqual(
+		visibility.at(-1),
+		[false, true],
+		"closing the dialog restores the state page's reason",
+	);
+
+	// Landing a page restores the native view; the reason no longer applies.
+	await act(async () => {
+		handle.land("https://example.test/");
+	});
+	await flush();
+	assert.deepEqual(
+		visibility.at(-1),
+		[true, false],
+		`a live page shows the native view again (reports: ${JSON.stringify(visibility)})`,
 	);
 	await act(async () => {
 		handle.unmount();
