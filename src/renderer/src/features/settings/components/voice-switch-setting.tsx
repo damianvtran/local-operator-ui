@@ -24,7 +24,7 @@ export const VoiceSwitchSetting: FC = () => {
 		<ToggleSetting
 			value={enabled}
 			label={t("ui.settings.voice.label")}
-			description={t("ui.settings.voice.description")}
+			description={`${t("ui.settings.voice.description")} ${t("ui.settings.voice.local_note")}`}
 			onChange={setVoiceSwitch}
 		/>
 	);

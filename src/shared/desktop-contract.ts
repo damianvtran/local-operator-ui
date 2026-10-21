@@ -5850,7 +5850,7 @@ export type DesktopMediaRequest =
 			sessionId: string;
 			requestId: string;
 			text: string;
-			textOrigin?: "qwen_s2s";
+			textOrigin?: "qwen_s2s" | "local_moonshine";
 	  };
 
 /**
@@ -5950,6 +5950,22 @@ export type QwenVoiceStatus = {
 	/** Why the rig is in `error` when it was not a start failure. */
 	cause?: "unexpected_exit" | null;
 	/**
+	 * Local provider: which of the six statuses this is (copy lives in
+	 * `ui.chat.voice.local_*`), and the download's progress (0..1).
+	 */
+	local?: {
+		code:
+			| "models_downloading"
+			| "models_offline"
+			| "model_integrity"
+			| "mic_unavailable"
+			| "listening_failed"
+			| "speech_too_slow";
+		progress?: number;
+	} | null;
+	/** Local provider: the one-time download notice is waiting for an answer. */
+	notice?: "download_models" | null;
+	/**
 	 * The macOS microphone verdict for this app's identity. `prompting` is the
 	 * bounded wait: the OS dialog is up and unanswered.
 	 */
@@ -5963,7 +5979,12 @@ export type QwenVoiceStatus = {
 	/** The page's own playback silenced (`webContents.setAudioMuted`). */
 	muted?: boolean;
 };
-export type QwenVoiceTake = { taskId: string; text: string };
+export type QwenVoiceTake = {
+	taskId: string;
+	text: string;
+	/** Local provider: where the words came from; the take path posts it. */
+	origin?: "local_moonshine";
+};
 export type QwenVoiceEvent = {
 	type: string;
 	/** ISO-8601, the Gateway's own clock. */
@@ -5987,6 +6008,8 @@ export type QwenVoiceBridge = {
 		kind: "reply" | "gate";
 	}) => Promise<{ spoken: boolean; reason?: string }>;
 	start: () => Promise<QwenVoiceStatus>;
+	/** The person accepted the one-time download notice. */
+	acceptNotice: () => Promise<QwenVoiceStatus>;
 	getStatus: () => Promise<QwenVoiceStatus>;
 	onStatus: (listener: (status: QwenVoiceStatus) => void) => () => void;
 	openMicrophoneSettings: () => Promise<void>;

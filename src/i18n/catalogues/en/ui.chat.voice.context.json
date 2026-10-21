@@ -353,5 +353,45 @@
 		"role": "strip caption beside the chip",
 		"tone": "sentence, no full stop",
 		"note": "Where the words the person cannot hear are; the reply is in the transcript."
+	},
+	"ui.chat.voice.local_models_downloading": {
+		"role": "strip caption while the speech models download",
+		"tone": "sentence, ends with an ellipsis",
+		"note": "{percent} is a whole number 0-100, without the % sign."
+	},
+	"ui.chat.voice.local_models_offline": {
+		"role": "error line in the strip when the download failed on the network",
+		"tone": "two short sentences",
+		"note": "Shown beside Try again."
+	},
+	"ui.chat.voice.local_model_integrity": {
+		"role": "error line in the strip when a downloaded file did not match its pinned checksum",
+		"tone": "plain, calm, no jargon",
+		"note": "The file is deleted; Try again downloads it again. Do not say hash or checksum."
+	},
+	"ui.chat.voice.local_mic_unavailable": {
+		"role": "error line in the strip when the page could not open the microphone",
+		"tone": "one short sentence",
+		"note": "Different from the macOS blocked state, which has its own chip."
+	},
+	"ui.chat.voice.local_listening_failed": {
+		"role": "error line in the strip when the speech models loaded but listening could not start",
+		"tone": "one short sentence",
+		"note": "Shown beside Try again."
+	},
+	"ui.chat.voice.local_speech_too_slow": {
+		"role": "strip caption while voice listens but this computer is too slow to speak",
+		"tone": "statement, no full stop",
+		"note": "Replies appear on screen and are not read aloud. Voice keeps listening."
+	},
+	"ui.chat.voice.download_notice": {
+		"role": "one-time notice in the composer before the first model download",
+		"tone": "three sentences, plain",
+		"note": "Shown once, before anything is downloaded. 330 MB is approximate. Hugging Face is a proper name."
+	},
+	"ui.chat.voice.download_notice_accept": {
+		"role": "button on the download notice",
+		"tone": "imperative, sentence case",
+		"note": "Accepts the download and turns voice on."
 	}
 }

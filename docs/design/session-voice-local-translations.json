@@ -1,0 +1,69 @@
+{
+	"_note": "Draft translations of the S3 local-voice strings (ui.chat.voice.local_*, download_notice*, ui.settings.voice.local_note). NOT shipped: i18n/ledger.json requires an independent audit receipt per locale file (scripts/i18n/ledger-check.mjs), and check-i18n fails closed on an unaudited file. Audit, then move each block into src/i18n/catalogues/<locale>/ui.chat.voice.json and ui.settings.voice.json and add ledger entries.",
+	"es": {
+		"ui.chat.voice.local_models_downloading": "Descargando los modelos de voz… {percent} %",
+		"ui.chat.voice.local_models_offline": "No se pudieron descargar los modelos de voz. Revisa tu conexión e inténtalo de nuevo.",
+		"ui.chat.voice.local_model_integrity": "Un modelo de voz no superó la comprobación de seguridad y se eliminó. Inténtalo de nuevo para descargarlo otra vez.",
+		"ui.chat.voice.local_mic_unavailable": "La voz no puede usar el micrófono.",
+		"ui.chat.voice.local_listening_failed": "La voz no pudo empezar a escuchar.",
+		"ui.chat.voice.local_speech_too_slow": "En este ordenador, la voz muestra las respuestas en pantalla",
+		"ui.chat.voice.download_notice": "La voz funciona en este ordenador. Al activarla se descargan una sola vez unos 330 MB de modelos de voz desde Hugging Face. Después, lo que dices y lo que se te lee se queda en este ordenador.",
+		"ui.chat.voice.download_notice_accept": "Descargar y activar",
+		"ui.settings.voice.local_note": "La primera vez descarga una sola vez unos 330 MB de modelos de voz. Después, la voz funciona en este ordenador."
+	},
+	"fr": {
+		"ui.chat.voice.local_models_downloading": "Téléchargement des modèles vocaux… {percent} %",
+		"ui.chat.voice.local_models_offline": "Les modèles vocaux n’ont pas pu être téléchargés. Vérifiez votre connexion, puis réessayez.",
+		"ui.chat.voice.local_model_integrity": "Un modèle vocal n’a pas réussi la vérification de sécurité et a été supprimé. Réessayez pour le télécharger à nouveau.",
+		"ui.chat.voice.local_mic_unavailable": "La voix ne peut pas utiliser le microphone.",
+		"ui.chat.voice.local_listening_failed": "La voix n’a pas pu commencer à écouter.",
+		"ui.chat.voice.local_speech_too_slow": "Sur cet ordinateur, la voix affiche les réponses à l’écran",
+		"ui.chat.voice.download_notice": "La voix fonctionne sur cet ordinateur. L’activer télécharge une seule fois environ 330 Mo de modèles vocaux depuis Hugging Face. Ensuite, ce que vous dites et ce qui vous est lu restent sur cet ordinateur.",
+		"ui.chat.voice.download_notice_accept": "Télécharger et activer",
+		"ui.settings.voice.local_note": "La première fois, elle télécharge une seule fois environ 330 Mo de modèles vocaux. Ensuite, la voix fonctionne sur cet ordinateur."
+	},
+	"ru": {
+		"ui.chat.voice.local_models_downloading": "Загрузка голосовых моделей… {percent} %",
+		"ui.chat.voice.local_models_offline": "Не удалось загрузить голосовые модели. Проверьте подключение и повторите попытку.",
+		"ui.chat.voice.local_model_integrity": "Голосовая модель не прошла проверку безопасности и была удалена. Повторите попытку, чтобы загрузить её заново.",
+		"ui.chat.voice.local_mic_unavailable": "Голосу недоступен микрофон.",
+		"ui.chat.voice.local_listening_failed": "Голосу не удалось начать слушать.",
+		"ui.chat.voice.local_speech_too_slow": "На этом компьютере голос показывает ответы на экране",
+		"ui.chat.voice.download_notice": "Голос работает на этом компьютере. При включении один раз загружается около 330 МБ речевых моделей с Hugging Face. После этого то, что вы говорите, и то, что вам зачитывают, остаётся на этом компьютере.",
+		"ui.chat.voice.download_notice_accept": "Загрузить и включить",
+		"ui.settings.voice.local_note": "В первый раз один раз загружается около 330 МБ речевых моделей. После этого голос работает на этом компьютере."
+	},
+	"vi": {
+		"ui.chat.voice.local_models_downloading": "Đang tải mô hình giọng nói… {percent}%",
+		"ui.chat.voice.local_models_offline": "Không tải được mô hình giọng nói. Hãy kiểm tra kết nối rồi thử lại.",
+		"ui.chat.voice.local_model_integrity": "Một mô hình giọng nói không qua được bước kiểm tra an toàn và đã bị xóa. Hãy thử lại để tải lại.",
+		"ui.chat.voice.local_mic_unavailable": "Giọng nói không dùng được micrô.",
+		"ui.chat.voice.local_listening_failed": "Giọng nói không bắt đầu nghe được.",
+		"ui.chat.voice.local_speech_too_slow": "Trên máy tính này, giọng nói hiển thị câu trả lời trên màn hình",
+		"ui.chat.voice.download_notice": "Giọng nói chạy ngay trên máy tính này. Khi bật, ứng dụng tải khoảng 330 MB mô hình giọng nói từ Hugging Face, chỉ một lần. Sau đó, những gì bạn nói và những gì được đọc cho bạn vẫn ở trên máy tính này.",
+		"ui.chat.voice.download_notice_accept": "Tải xuống và bật",
+		"ui.settings.voice.local_note": "Lần đầu, ứng dụng tải khoảng 330 MB mô hình giọng nói, chỉ một lần. Sau đó, giọng nói chạy trên máy tính này."
+	},
+	"hi": {
+		"ui.chat.voice.local_models_downloading": "वॉइस मॉडल डाउनलोड हो रहे हैं… {percent}%",
+		"ui.chat.voice.local_models_offline": "वॉइस मॉडल डाउनलोड नहीं हो सके। अपना कनेक्शन जाँचें, फिर दोबारा कोशिश करें।",
+		"ui.chat.voice.local_model_integrity": "एक वॉइस मॉडल सुरक्षा जाँच में विफल रहा और हटा दिया गया। उसे फिर से डाउनलोड करने के लिए दोबारा कोशिश करें।",
+		"ui.chat.voice.local_mic_unavailable": "वॉइस माइक्रोफ़ोन का उपयोग नहीं कर सकता।",
+		"ui.chat.voice.local_listening_failed": "वॉइस सुनना शुरू नहीं कर सका।",
+		"ui.chat.voice.local_speech_too_slow": "इस कंप्यूटर पर वॉइस जवाब स्क्रीन पर दिखाता है",
+		"ui.chat.voice.download_notice": "वॉइस इसी कंप्यूटर पर चलता है। इसे चालू करने पर Hugging Face से लगभग 330 MB के स्पीच मॉडल एक बार डाउनलोड होते हैं। उसके बाद आप जो कहते हैं और जो आपको पढ़कर सुनाया जाता है, वह इसी कंप्यूटर पर रहता है।",
+		"ui.chat.voice.download_notice_accept": "डाउनलोड करें और चालू करें",
+		"ui.settings.voice.local_note": "पहली बार में यह लगभग 330 MB के स्पीच मॉडल एक बार डाउनलोड करता है। उसके बाद वॉइस इसी कंप्यूटर पर चलता है।"
+	},
+	"zh-CN": {
+		"ui.chat.voice.local_models_downloading": "正在下载语音模型… {percent}%",
+		"ui.chat.voice.local_models_offline": "无法下载语音模型。请检查网络连接后重试。",
+		"ui.chat.voice.local_model_integrity": "有一个语音模型未通过安全检查，已被删除。请重试以重新下载。",
+		"ui.chat.voice.local_mic_unavailable": "语音无法使用麦克风。",
+		"ui.chat.voice.local_listening_failed": "语音无法开始聆听。",
+		"ui.chat.voice.local_speech_too_slow": "在这台电脑上，语音会在屏幕上显示回复",
+		"ui.chat.voice.download_notice": "语音在这台电脑上运行。开启时会从 Hugging Face 下载约 330 MB 的语音模型，仅此一次。之后，你说的话和朗读给你的内容都只留在这台电脑上。",
+		"ui.chat.voice.download_notice_accept": "下载并开启",
+		"ui.settings.voice.local_note": "首次使用时会下载约 330 MB 的语音模型，仅此一次。之后，语音在这台电脑上运行。"
+	}
+}

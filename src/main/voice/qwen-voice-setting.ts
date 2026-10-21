@@ -30,6 +30,25 @@ export function readQwenVoiceEnabled(userDataDir: string): boolean {
 	);
 }
 
+/**
+ * The one-time download notice (S3, L4): accepted once, remembered, and never
+ * implied by turning voice on. Missing or malformed reads as NOT accepted.
+ */
+export const QWEN_VOICE_NOTICE_FILE = "voice-notice.json";
+
+export function readVoiceNoticeAccepted(userDataDir: string): boolean {
+	return (
+		readJson<{ accepted?: unknown }>(join(userDataDir, QWEN_VOICE_NOTICE_FILE))
+			?.accepted === true
+	);
+}
+
+export function writeVoiceNoticeAccepted(userDataDir: string): boolean {
+	return writeJsonAtomic(join(userDataDir, QWEN_VOICE_NOTICE_FILE), {
+		accepted: true,
+	});
+}
+
 export function writeQwenVoiceEnabled(
 	userDataDir: string,
 	enabled: boolean,

@@ -70,5 +70,13 @@
 	"ui.chat.voice.strip_pause": "Pause voice",
 	"ui.chat.voice.strip_resume": "Resume voice",
 	"ui.chat.voice.mute": "Silence the voice",
-	"ui.chat.voice.unmute": "Hear the voice again"
+	"ui.chat.voice.unmute": "Hear the voice again",
+	"ui.chat.voice.local_models_downloading": "Downloading voice models… {percent}%",
+	"ui.chat.voice.local_models_offline": "Voice models could not be downloaded. Check your connection, then try again.",
+	"ui.chat.voice.local_model_integrity": "A voice model failed its safety check and was removed. Try again to download it afresh.",
+	"ui.chat.voice.local_mic_unavailable": "Voice cannot use the microphone.",
+	"ui.chat.voice.local_listening_failed": "Voice could not start listening.",
+	"ui.chat.voice.local_speech_too_slow": "Voice reads replies on screen on this computer",
+	"ui.chat.voice.download_notice": "Voice runs on this computer. Turning it on downloads about 330 MB of speech models from Hugging Face, once. After that, what you say and what is read to you stay on this computer.",
+	"ui.chat.voice.download_notice_accept": "Download and turn on"
 }

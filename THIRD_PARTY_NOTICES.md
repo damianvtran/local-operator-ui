@@ -204,3 +204,50 @@ Credit and terms for what it downloads and ports:
   (https://github.com/huggingface/transformers.js), licensed Apache-2.0
   (https://www.apache.org/licenses/LICENSE-2.0). Changes: rewritten in
   TypeScript against `onnxruntime-web` directly.
+
+### Voice page runtime packages
+
+Bundled in the app (they run in the hidden voice page; see `src/voice-page/`):
+
+- **`@ricky0123/vad-web`** — ISC licence. Voice-activity detection around the
+  Silero model.
+- **`onnxruntime-web`** — MIT licence, Microsoft Corporation. Runs the Silero VAD
+  and, once downloaded, the Moonshine and Supertonic models. Its WebAssembly and
+  WebGPU builds are copied into the app unchanged
+  (`src/voice-page/engine-assets.ts`). Its own dependencies (`flatbuffers`,
+  `guid-typescript`, `long`, `platform`, `protobufjs` and the `@protobufjs/*`
+  packages) are Apache-2.0, BSD-3-Clause or MIT; each ships its licence in
+  `node_modules/<package>/LICENSE`, which the packaged app carries.
+- **Silero VAD v5** (`silero_vad_v5.onnx`) — MIT licence, Silero Team
+  (https://github.com/snakers4/silero-vad). Bundled as shipped by `vad-web`.
+
+### Supertonic use restrictions (OpenRAIL-M attachment)
+
+OpenRAIL-M requires that its use restrictions be passed to anyone who receives
+the model. By using the local voice you agree not to use Supertonic, or output
+made with it, to:
+
+- violate any law, or infringe another person's rights;
+- impersonate a person, or create a voice that deceives people about who is
+  speaking, without that person's consent;
+- harass, defame, exploit or harm any person, including minors;
+- generate or spread disinformation, or content meant to mislead about its
+  origin;
+- make decisions that affect a person's legal rights or access to essential
+  services without human review; or
+- build a system that does any of the above.
+
+This is a summary for readers of this notice. The binding text is Attachment A of
+the licence published with the model at https://huggingface.co/Supertone/supertonic
+and it governs where the two differ. Re-check it when the pinned model revision
+in `src/voice-page/model-manifest.ts` changes.
+
+### Code the voice runners port from
+
+- **`useful-moonshine-onnx`** — MIT licence, Useful Sensors
+  (https://github.com/moonshine-ai/moonshine). The decoder loop in
+  `src/voice-page/moonshine.ts` follows it.
+- **transformers.js 4.3.1** — Apache-2.0, Hugging Face. The Supertonic runner
+  (`src/voice-page/supertonic.ts`) and the Moonshine feeds follow its
+  `modeling_supertonic.js` and `utils/tensor.js`. Changes: rewritten in
+  TypeScript against `onnxruntime-web` directly.

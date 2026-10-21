@@ -422,7 +422,10 @@ function utteranceFailure(result: DesktopMediaResponse): string {
  * `voiceTake(text)` both come through here, so there is no second thing to
  * review.
  */
-export async function sendVoiceTake(text: string): Promise<VoiceTakeOutcome> {
+export async function sendVoiceTake(
+	text: string,
+	origin: "qwen_s2s" | "local_moonshine" = "qwen_s2s",
+): Promise<VoiceTakeOutcome> {
 	const sessionId = useVoiceStore.getState().active?.session_id ?? null;
 	/*
 	 * THE ECHO GUARD RUNS FIRST, before the slot and card checks, because each of
@@ -478,7 +481,7 @@ export async function sendVoiceTake(text: string): Promise<VoiceTakeOutcome> {
 				sessionId,
 				requestId,
 				text,
-				textOrigin: "qwen_s2s",
+				textOrigin: origin,
 			},
 			null,
 		);
@@ -521,8 +524,12 @@ export async function sendVoiceTake(text: string): Promise<VoiceTakeOutcome> {
 }
 
 /** One rig take: the take path, then its admission back to the launcher. */
-async function onRigTake(take: { taskId: string; text: string }) {
-	const outcome = await sendVoiceTake(take.text);
+async function onRigTake(take: {
+	taskId: string;
+	text: string;
+	origin?: "local_moonshine";
+}) {
+	const outcome = await sendVoiceTake(take.text, take.origin);
 	/*
 	 * A SUCCESS IS SILENT (plan §7), and so are an echo, a cancel and a close;
 	 * every other refusal is answered with a phrase, and only then can that
@@ -821,6 +828,12 @@ async function speakSource(
  */
 export async function openMicrophoneSettings(): Promise<void> {
 	await bridge()?.openMicrophoneSettings();
+}
+
+/** The person accepted the one-time download notice; main starts the download. */
+export async function acceptVoiceNotice(): Promise<void> {
+	const status = await bridge()?.acceptNotice();
+	if (status) useVoiceStore.getState().setRig(status);
 }
 
 /** Ask main to start the rig for the slot already held (the relaunch case). */

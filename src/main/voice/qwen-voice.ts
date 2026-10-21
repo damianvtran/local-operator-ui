@@ -37,6 +37,11 @@
  */
 
 import { totalmem } from "node:os";
+import PHRASES from "../../../resources/qwen-voice/phrases.json";
+import {
+	PAGE_STATUS_CODES,
+	type PageStatusCode,
+} from "../../voice-page/channels";
 import type { GatewayDownMessage, GatewayUpMessage } from "./qwen-gateway";
 import { qwenMachineTooSmall } from "./qwen-rig";
 import {
@@ -47,6 +52,18 @@ import {
 } from "./qwen-voice-page";
 
 export type QwenRigState = "stopped" | "starting" | "ready" | "error";
+
+/**
+ * The local provider's six statuses (S3, L3, L4). A closed set of words: copy
+ * lives in the renderer's catalogues, never in this file or on the wire.
+ */
+export type LocalVoiceCode =
+	| "models_downloading"
+	| "models_offline"
+	| "model_integrity"
+	| "mic_unavailable"
+	| "listening_failed"
+	| "speech_too_slow";
 
 /** `voice.qwen.event`, one allowlisted thing the voice did (plan §10). */
 export type QwenVoiceEvent = {
@@ -77,6 +94,16 @@ export type QwenVoiceStatus = {
 	 * Settings", and `prompting` is the bounded wait going on right now.
 	 */
 	mic?: QwenMicAccess;
+	/**
+	 * Local provider only: which of the six statuses this state is, and the
+	 * download's progress (0..1) while `models_downloading`.
+	 */
+	local?: { code: LocalVoiceCode; progress?: number } | null;
+	/**
+	 * Local provider only: voice is on but the one-time download notice has not
+	 * been accepted, so nothing was downloaded and nothing will be until it is.
+	 */
+	notice?: "download_models" | null;
 	/**
 	 * PAUSED: the hidden page is closed, so the microphone is released, while the
 	 * Gateway and the speech models stay warm. Nothing is heard and nothing is
@@ -124,6 +151,7 @@ export const MIC_PROMPT_BUDGET_MS = 5_000;
 export const QWEN_IDLE_STOP_MS = 10 * 60_000;
 export const QWEN_SPEAK_GUARD_MS = 10 * 60_000;
 const RELAYED_LIMIT = 64;
+const RELAYED_SEGMENTS_LIMIT = 200;
 /** A refusal code main forwards to the launcher: a word, never free text. */
 const OUTCOME_CODE = /^[a-z_]{1,64}$/;
 
@@ -143,6 +171,8 @@ export const QWEN_CHANNEL = {
 	mute: "voice.qwen.mute",
 	/** Open the OS microphone pane; a main-only path, no renderer URL. */
 	openMicSettings: "voice.qwen.open-mic-settings",
+	/** The person accepted the one-time download notice; start the download. */
+	acceptNotice: "voice.qwen.accept-notice",
 } as const;
 
 export interface QwenGatewayPort {
@@ -159,9 +189,27 @@ export interface QwenSpeechPort {
 	readonly running: boolean;
 }
 
+/**
+ * The local provider's seams (S3). Present means the coordinator runs the
+ * page-based path: no Gateway, no s2s, no machine-size gate. Every member is
+ * called only after the switch is on AND the notice was accepted.
+ */
+export interface QwenLocalPort {
+	noticeAccepted(): boolean;
+	acceptNotice(): void;
+	/** Download and verify the pinned models; rejects with a `ModelError`-like `code`. */
+	ensureModels(
+		onProgress: (fraction: number) => void,
+		signal: AbortSignal,
+	): Promise<void>;
+	/** The app voice page's URL. */
+	pageUrl(): string;
+}
+
 export type QwenVoiceDeps = {
 	gateway: QwenGatewayPort;
 	speech: QwenSpeechPort;
+	local?: QwenLocalPort;
 	/** Push to the renderer; false when there is no window to receive it. */
 	toRenderer: (channel: string, payload: unknown) => boolean;
 	/** The hidden voice page (plan §1-§3); a no-op in agent-driven runs. */
@@ -177,7 +225,35 @@ export type QwenVoiceDeps = {
 	clearTimer?: (handle: unknown) => void;
 };
 
-type Relayed = { text: string; kind: "reply" | "gate"; at: number };
+type Relayed = {
+	text: string;
+	/** The sentences the server cut `text` into (`/voice/text` `segments`). */
+	segments: string[];
+	kind: "reply" | "gate";
+	at: number;
+};
+
+/** A transcript longer than this is not one utterance (the page caps at 64 s). */
+export const LOCAL_TRANSCRIPT_MAX_CHARS = 4_000;
+
+/** Q7 phrase key for a refused take; the twin of `phraseForOutcome` in relay-core. */
+export function phraseKeyForOutcome(
+	outcome: { ok: true } | { ok: false; code: string },
+): keyof typeof PHRASES | null {
+	if (outcome.ok) return null;
+	switch (outcome.code) {
+		case "echo":
+		case "cancelled":
+		case "closed":
+			return null;
+		case "approval_pending":
+			return "on_screen_first";
+		case "voice_not_enabled":
+			return "voice_off";
+		default:
+			return "failed";
+	}
+}
 
 /** The slot's session id from a `{active}` payload, or null. */
 function slotOf(payload: unknown): string | null {
@@ -230,6 +306,13 @@ export class QwenVoice {
 	 */
 	private awaitingMic = false;
 	private starting: Promise<QwenVoiceStatus> | null = null;
+	/** Local provider: aborts a model download when the switch goes off. */
+	private localAbort: AbortController | null = null;
+	/** Local provider: settles the pending start when the page reports in. */
+	private pageReport: ((ok: boolean) => void) | null = null;
+	/** Local provider: set by `speech_too_slow`; replies stay on screen only. */
+	private speechOff = false;
+	private takeCounter = 0;
 	/**
 	 * Start generation. Bumped by every start and every stop/switch-off: a start
 	 * that finds its number stale was cancelled, and must neither stop processes
@@ -286,6 +369,7 @@ export class QwenVoice {
 		this.relayed = [];
 		this.awaitingMic = false;
 		this.starting = null;
+		this.abortLocal();
 		await this.stop();
 		return this.getStatus();
 	}
@@ -386,6 +470,8 @@ export class QwenVoice {
 			// Whatever was relayed for the old holder may never be spoken now.
 			this.relayed = [];
 			this.deps.gateway.send({ type: "cancel_all" });
+			// Local: sentences already handed to the page are the old holder's.
+			if (this.deps.local) this.deps.page.stopSpeech();
 			this.deps.gateway.send({
 				type: "slot",
 				active: next ? { session_id: next } : null,
@@ -450,6 +536,7 @@ export class QwenVoice {
 	 */
 	start(reason: "enable" | "renderer"): Promise<QwenVoiceStatus> {
 		if (!this.enabled) return Promise.resolve(this.getStatus());
+		if (this.deps.local) return this.startLocal(reason);
 		if (this.rigUp()) return this.readyAgain(reason);
 		/*
 		 * A MACHINE THAT CANNOT HOLD THE RIG IS TOLD SO, FIRST (review R1): the
@@ -549,6 +636,218 @@ export class QwenVoice {
 	}
 
 	/**
+	 * THE LOCAL START (S3, L1, L4): switch on, then the download notice
+	 * acknowledged, then the models, then the microphone, then the page. Each
+	 * step is a gate: nothing after a failed one runs, and nothing before the
+	 * notice is accepted touches the network or creates a page.
+	 */
+	private startLocal(reason: "enable" | "renderer"): Promise<QwenVoiceStatus> {
+		const local = this.deps.local as QwenLocalPort;
+		if (this.status.rig === "ready") return this.readyAgain(reason);
+		if (this.starting) return this.starting;
+		if (this.deps.page.allowed === false) {
+			this.log(`qwen-voice: refusing to start: ${QWEN_NO_VOICE_WINDOW}`);
+			this.setStatus({
+				rig: "error",
+				webui_url: null,
+				reason: QWEN_NO_VOICE_WINDOW,
+			});
+			return Promise.resolve(this.getStatus());
+		}
+		if (!local.noticeAccepted()) {
+			// Nothing downloaded, nothing opened: the strip shows the notice.
+			this.setStatus({
+				rig: "stopped",
+				webui_url: null,
+				notice: "download_models",
+			});
+			return Promise.resolve(this.getStatus());
+		}
+		this.disarmIdleStop();
+		this.speechOff = false;
+		const generation = ++this.generation;
+		const stale = () => generation !== this.generation;
+		const abort = new AbortController();
+		this.localAbort = abort;
+		this.setStatus({
+			rig: "starting",
+			webui_url: null,
+			local: { code: "models_downloading", progress: 0 },
+			notice: null,
+		});
+		const run: Promise<QwenVoiceStatus> = (async () => {
+			try {
+				let last = -1;
+				await local.ensureModels((fraction) => {
+					const step = Math.floor(fraction * 100);
+					if (stale() || step === last) return;
+					last = step;
+					this.setStatus({
+						rig: "starting",
+						webui_url: null,
+						local: { code: "models_downloading", progress: fraction },
+					});
+				}, abort.signal);
+				if (stale()) return this.getStatus();
+				const mic = await this.preflightMic();
+				if (stale()) return this.getStatus();
+				if (mic === "denied" || mic === "prompting") {
+					this.awaitingMic = mic === "prompting";
+					this.setStatus({ rig: "stopped", webui_url: null, mic });
+					return this.getStatus();
+				}
+				// No holder or paused: no page, so nothing to wait for. The page opens
+				// when a holder appears (applySlot) or on resume.
+				if (this.slot === null || this.paused) {
+					this.setStatus({ rig: "stopped", webui_url: null, mic });
+					return this.getStatus();
+				}
+				const pageUrl = local.pageUrl();
+				this.setStatus({
+					rig: "starting",
+					webui_url: pageUrl,
+					mic,
+					local: null,
+				});
+				const reported = new Promise<boolean>((resolve) => {
+					this.pageReport = resolve;
+				});
+				this.openPage(pageUrl);
+				await reported;
+			} catch (error) {
+				if (stale()) return this.getStatus();
+				const code = (error as { code?: unknown })?.code;
+				const local: LocalVoiceCode =
+					code === "model_integrity" ? "model_integrity" : "models_offline";
+				this.log(`qwen-voice: local start failed: ${String(code ?? error)}`);
+				this.deps.page.close();
+				this.setStatus({
+					rig: "error",
+					webui_url: null,
+					local: { code: local },
+				});
+			}
+			return this.getStatus();
+		})().finally(() => {
+			if (this.starting === run) this.starting = null;
+			if (this.localAbort === abort) this.localAbort = null;
+		});
+		this.starting = run;
+		return run;
+	}
+
+	private abortLocal(): void {
+		this.localAbort?.abort();
+		this.localAbort = null;
+		this.pageReport?.(false);
+		this.pageReport = null;
+	}
+
+	/** The person accepted the one-time notice (renderer button). */
+	acceptNotice(): Promise<QwenVoiceStatus> {
+		if (!this.enabled || !this.deps.local)
+			return Promise.resolve(this.getStatus());
+		this.deps.local.acceptNotice();
+		return this.start("renderer");
+	}
+
+	/**
+	 * What the app voice page says about itself, from a closed set. `listening`
+	 * is the only message that makes the rig ready.
+	 */
+	onPageStatus(code: unknown): void {
+		if (!this.enabled || !this.deps.local) return;
+		if (!(PAGE_STATUS_CODES as readonly unknown[]).includes(code)) return;
+		const known = code as PageStatusCode;
+		if (known === "listening") {
+			if (this.status.rig !== "starting" && this.status.rig !== "ready") return;
+			this.clients = 1;
+			this.setStatus({
+				...this.status,
+				rig: "ready",
+				clients: 1,
+				local: this.speechOff ? { code: "speech_too_slow" } : null,
+			});
+			this.pageReport?.(true);
+			this.pageReport = null;
+			return;
+		}
+		if (known === "speech_too_slow") {
+			// Keep listening; stop speaking. The reply stays on screen.
+			this.speechOff = true;
+			this.deps.page.stopSpeech();
+			if (this.status.rig === "ready" || this.status.rig === "starting")
+				this.setStatus({ ...this.status, local: { code: "speech_too_slow" } });
+			return;
+		}
+		// listening_failed | mic_unavailable: nothing can hear.
+		this.log(`qwen-voice: the page reported ${known}`);
+		this.deps.page.close();
+		this.clients = 0;
+		this.setStatus({
+			rig: "error",
+			webui_url: null,
+			clients: 0,
+			local: { code: known },
+		});
+		this.pageReport?.(false);
+		this.pageReport = null;
+	}
+
+	/** A transcript from the page: relayed into the renderer's take path. */
+	onPageTranscript(input: unknown): void {
+		if (!this.enabled || !this.deps.local) return;
+		if (typeof input !== "string") return;
+		const text = input.trim();
+		if (!text || text.length > LOCAL_TRANSCRIPT_MAX_CHARS) return;
+		// Nothing relays without a holder, or while paused (privacy).
+		if (this.slot === null || this.paused || this.status.rig !== "ready")
+			return;
+		const taskId = `local-${++this.takeCounter}`;
+		this.deps.toRenderer(QWEN_CHANNEL.take, {
+			taskId,
+			text,
+			origin: "local_moonshine",
+		});
+	}
+
+	/** The page's own speech/playback state, shaped as the Gateway's events were. */
+	onPagePlayback(kind: unknown): void {
+		if (!this.enabled || !this.deps.local || this.paused) return;
+		const type =
+			kind === "started"
+				? "realtime.playback.started"
+				: kind === "ended"
+					? "realtime.playback.ended"
+					: kind === "cancelled"
+						? "realtime.playback.cancelled"
+						: null;
+		if (!type) return;
+		this.playing = kind === "started";
+		this.deps.toRenderer(QWEN_CHANNEL.event, {
+			type,
+			at: new Date(this.now()).toISOString(),
+			// The page played it, so this connection is the one playing.
+			accepted: true,
+		});
+	}
+
+	onPageVad(kind: unknown): void {
+		if (!this.enabled || !this.deps.local || this.paused) return;
+		const type =
+			kind === "speech_start"
+				? "realtime.provider.speech_started"
+				: kind === "speech_end"
+					? "realtime.provider.speech_stopped"
+					: null;
+		if (!type) return;
+		this.deps.toRenderer(QWEN_CHANNEL.event, {
+			type,
+			at: new Date(this.now()).toISOString(),
+		});
+	}
+
+	/**
 	 * The rig is already up and nothing restarts. Two callers mean different
 	 * things:
 	 *
@@ -637,12 +936,14 @@ export class QwenVoice {
 		if (this.paused) return;
 		// No holder, no microphone: every open path (start, retry, mic grant) stops here.
 		if (this.slot === null) return;
-		this.deps.page.open(webuiUrl);
+		if (this.deps.local) this.deps.page.openApp(this.deps.local.pageUrl());
+		else this.deps.page.open(webuiUrl);
 		if (this.muted) this.deps.page.setMuted(true);
 	}
 
 	/** Both processes are up and the status says so. */
 	private rigUp(): boolean {
+		if (this.deps.local) return this.status.rig === "ready";
 		return (
 			this.status.rig === "ready" &&
 			this.deps.gateway.running &&
@@ -726,6 +1027,7 @@ export class QwenVoice {
 	}
 
 	private async stopProcesses(): Promise<void> {
+		this.abortLocal();
 		this.clients = 0;
 		this.playing = false;
 		this.deps.page.close();
@@ -744,6 +1046,7 @@ export class QwenVoice {
 	 * runs behind (review Q-3): see `QwenSpeechProcess.killNow`.
 	 */
 	stopNow(clearRecord = false): void {
+		this.abortLocal();
 		this.paused = false;
 		this.clients = 0;
 		this.playing = false;
@@ -881,6 +1184,7 @@ export class QwenVoice {
 		const value = input as { taskId?: unknown; ok?: unknown; code?: unknown };
 		if (typeof value?.taskId !== "string" || value.taskId.length > 128)
 			return false;
+		if (this.deps.local) return this.localResult(value);
 		if (value.ok === true)
 			return this.deps.gateway.send({
 				type: "outcome",
@@ -896,6 +1200,25 @@ export class QwenVoice {
 			taskId: value.taskId,
 			ok: false,
 			code,
+		});
+	}
+
+	/**
+	 * A refused take is answered with a phrase from the closed set, said by the
+	 * page: main sends the phrase's own text, never anything the renderer wrote.
+	 */
+	private localResult(value: { ok?: unknown; code?: unknown }): boolean {
+		const code =
+			typeof value.code === "string" && OUTCOME_CODE.test(value.code)
+				? value.code
+				: "failed";
+		const key = phraseKeyForOutcome(
+			value.ok === true ? { ok: true } : { ok: false, code },
+		);
+		if (!key || this.speechOff || this.paused) return true;
+		return this.deps.page.speak({
+			replyId: `phrase-${key}`,
+			segments: [PHRASES[key]],
 		});
 	}
 
@@ -925,11 +1248,21 @@ export class QwenVoice {
 		if (request?.op !== "voice.text") return;
 		if (response.status < 200 || response.status >= 300) return;
 		if (request.sessionId !== this.slot) return;
-		const text = (response.body as { result?: { text?: unknown } } | null)
-			?.result?.text;
+		const result = (
+			response.body as {
+				result?: { text?: unknown; segments?: unknown };
+			} | null
+		)?.result;
+		const text = result?.text;
 		if (typeof text !== "string" || !text.trim()) return;
 		const kind = request.source?.kind === "gate" ? "gate" : "reply";
-		this.relayed.push({ text, kind, at: this.now() });
+		/* The server's own sentence cuts, kept so the first one speaks early (L6). */
+		const segments = Array.isArray(result?.segments)
+			? (result.segments as unknown[])
+					.filter((s): s is string => typeof s === "string" && s.trim() !== "")
+					.slice(0, RELAYED_SEGMENTS_LIMIT)
+			: [];
+		this.relayed.push({ text, segments, kind, at: this.now() });
 		if (this.relayed.length > RELAYED_LIMIT)
 			this.relayed.splice(0, this.relayed.length - RELAYED_LIMIT);
 	}
@@ -956,7 +1289,18 @@ export class QwenVoice {
 			return { spoken: false, reason: "rig_not_ready" };
 		// No voice page connected: nothing would be heard, so nothing is claimed.
 		if (this.clients === 0) return { spoken: false, reason: "no_client" };
+		if (this.deps.local && this.speechOff)
+			return { spoken: false, reason: "speech_too_slow" };
 		const [entry] = this.relayed.splice(index, 1);
+		if (this.deps.local) {
+			const sentLocal = this.deps.page.speak({
+				replyId: `reply-${this.now()}`,
+				segments: entry.segments.length > 0 ? entry.segments : [entry.text],
+			});
+			return sentLocal
+				? { spoken: true }
+				: { spoken: false, reason: "rig_not_ready" };
+		}
 		const sent = this.deps.gateway.send({
 			type: "speak",
 			text: entry.text,

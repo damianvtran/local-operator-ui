@@ -67,6 +67,21 @@ export class ReplyInbox {
 		});
 	}
 
+	/**
+	 * The reply ends early at `lastIndex` (-1: nothing was made). Used when a
+	 * later segment cannot be synthesized, so the schedule drains instead of
+	 * waiting for audio that will never come.
+	 */
+	end(replyId: string, lastIndex: number): void {
+		if (replyId !== this.replyId) return;
+		this.lastIndex = lastIndex;
+		if (this.waiter && this.waiter.index > lastIndex) {
+			const { resolve } = this.waiter;
+			this.waiter = null;
+			resolve(null);
+		}
+	}
+
 	/** Stop or barge-in: drop the reply and refuse its late segments. */
 	stop(): void {
 		this.retire();

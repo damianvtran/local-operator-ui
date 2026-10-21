@@ -202,7 +202,7 @@ window.api = {
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { VoiceComposerStrip, ComposerVoiceButton, composerVoiceView, dictationOffReason, storyTime } from "./src/renderer/src/features/voice/voice-composer";
+			export { VoiceComposerStrip, ComposerVoiceButton, composerVoiceView, dictationOffReason, storyTime, localStatusText } from "./src/renderer/src/features/voice/voice-composer";
 			export { useVoiceStore } from "./src/renderer/src/features/voice/voice-store";
 			export { applyVoiceActive, controlVoice } from "./src/renderer/src/features/voice/use-voice-status";
 			export { MessageInput } from "./src/renderer/src/shared/components/composer/message-input.tsx";
@@ -239,6 +239,7 @@ const {
 	composerVoiceView,
 	dictationOffReason,
 	storyTime,
+	localStatusText,
 	controlVoice,
 	MessageInput,
 	QueryClient,
@@ -1460,4 +1461,71 @@ test("SWITCH: with the switch off the wave button does not render", async () => 
 	} finally {
 		useVoiceSwitchStore.setState({ enabled: true });
 	}
+});
+
+/* ----------------------- S3: the local provider's statuses ---------------- */
+
+test("S3: each local status and the download notice render their own copy", async () => {
+	const base = (rig) => ({
+		active: { session_id: "aaaaaaaaaaaa", enabled_at: 1 },
+		rig,
+		exchange: null,
+		activity: null,
+		cardPending: {},
+		lastTake: null,
+		lastSpoken: null,
+		lastRefused: null,
+		muted: false,
+		readyAt: null,
+		tick: null,
+	});
+	const view = (rig) => composerVoiceView(base(rig), "aaaaaaaaaaaa", Date.now());
+	assert.deepEqual(view({ rig: "stopped", webui_url: null, notice: "download_models" }), {
+		kind: "download_notice",
+	});
+	const dl = view({
+		rig: "starting",
+		webui_url: null,
+		local: { code: "models_downloading", progress: 0.42 },
+	});
+	assert.deepEqual(dl.caption, { kind: "downloading", percent: 42 });
+	for (const code of [
+		"models_offline",
+		"model_integrity",
+		"mic_unavailable",
+		"listening_failed",
+	]) {
+		const v = view({ rig: "error", webui_url: null, local: { code } });
+		assert.equal(v.chip, "error", code);
+		assert.equal(v.action, "try_again", code);
+		assert.equal(v.caption.kind, "reason");
+		assert.match(v.caption.text, /\S/);
+	}
+	const slow = view({
+		rig: "ready",
+		webui_url: null,
+		clients: 1,
+		local: { code: "speech_too_slow" },
+	});
+	assert.equal(slow.chip, "listening", "still listening");
+	assert.deepEqual(slow.caption, { kind: "speech_slow" });
+	// Six distinct sentences, and the speed one is the plan's words.
+	const texts = new Set(
+		[
+			"models_offline",
+			"model_integrity",
+			"mic_unavailable",
+			"listening_failed",
+			"speech_too_slow",
+		].map((code) => localStatusText({ code })),
+	);
+	assert.equal(texts.size, 5);
+	assert.equal(
+		localStatusText({ code: "speech_too_slow" }),
+		"Voice reads replies on screen on this computer",
+	);
+	assert.equal(
+		localStatusText({ code: "models_downloading", progress: 0.5 }),
+		"Downloading voice models… 50%",
+	);
 });

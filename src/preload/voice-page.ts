@@ -14,6 +14,10 @@ const bridge: VoicePageBridge = {
 	sendVad: (kind) => ipcRenderer.send(C.vad, kind),
 	loadModel: (name) => ipcRenderer.invoke(C.model, name),
 	sendTranscript: (text) => ipcRenderer.send(C.transcript, text),
+	sendStatus: (code) => ipcRenderer.send(C.status, code),
+	sendPlayback: (kind) => ipcRenderer.send(C.playback, kind),
+	onSpeak: (handler) =>
+		ipcRenderer.on(C.speak, (_event, message) => handler(message)),
 	onPlay: (handler) =>
 		ipcRenderer.on(C.play, (_event, message) => handler(message)),
 	onStop: (handler) => ipcRenderer.on(C.stop, () => handler()),

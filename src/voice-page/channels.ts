@@ -18,7 +18,27 @@ export const VOICE_PAGE_CHANNELS = {
 	model: "voice-page:model",
 	/** page -> main: the text of one local transcription. */
 	transcript: "voice-page:transcript",
+	/** main -> page: one reply's segments (text) for the local speaker (L6). */
+	speak: "voice-page:speak",
+	/** page -> main: `started | ended | cancelled`, what the speaker is doing. */
+	playback: "voice-page:playback",
+	/** page -> main: the page's own health, from a closed set (S3). */
+	status: "voice-page:status",
 } as const;
+
+export type PlaybackKind = "started" | "ended" | "cancelled";
+
+/** What the page may say about itself; main maps each to a status and its copy. */
+export const PAGE_STATUS_CODES = [
+	"listening",
+	"speech_too_slow",
+	"listening_failed",
+	"mic_unavailable",
+] as const;
+export type PageStatusCode = (typeof PAGE_STATUS_CODES)[number];
+
+/** Main -> page: a reply as sentences. The page synthesizes; no audio crosses. */
+export type SpeakMessage = { replyId: string; segments: string[] };
 
 export type VadEventKind = "speech_start" | "speech_end";
 

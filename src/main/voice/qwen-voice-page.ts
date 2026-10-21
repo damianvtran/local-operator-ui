@@ -26,6 +26,7 @@
  * from `index.ts`, so the rules here are tested as plain code.
  */
 
+import { VOICE_PAGE_CHANNELS } from "../../voice-page/channels";
 import {
 	type PermissionQuery,
 	appVoicePagePermissionVerdict,
@@ -80,6 +81,15 @@ export interface QwenVoicePagePort {
 	setMuted(muted: boolean): void;
 	/** Ask the OS for the microphone before a page is created (§2). */
 	prepareMicrophone(options?: MicrophonePreflight): Promise<QwenMicAccess>;
+	/**
+	 * Local provider (S3): create the app's own `voice-page.html` at `pageUrl`
+	 * (from `appVoicePageUrl`), with the narrow preload. Idempotent.
+	 */
+	openApp(pageUrl: string): void;
+	/** Local provider: send a reply's sentences to the page to synthesize. */
+	speak(message: { replyId: string; segments: string[] }): boolean;
+	/** Local provider: stop the page's speech now. */
+	stopSpeech(): void;
 }
 
 /**
@@ -93,6 +103,9 @@ export function noQwenVoicePage(): QwenVoicePagePort {
 		close: () => {},
 		setMuted: () => {},
 		prepareMicrophone: async () => "unknown",
+		openApp: () => {},
+		speak: () => false,
+		stopSpeech: () => {},
 	};
 }
 
@@ -207,6 +220,10 @@ export type VoicePageWebContents = {
 	 * cooperating (it is third-party code and is told nothing).
 	 */
 	setAudioMuted(muted: boolean): void;
+	/** Electron's `webContents.send`; main -> page messages (local provider). */
+	send?: (channel: string, ...args: unknown[]) => void;
+	/** The top frame; IPC from any other frame of the page is refused. */
+	readonly mainFrame?: unknown;
 };
 
 export type VoicePageView = { webContents: VoicePageWebContents };
@@ -273,6 +290,8 @@ export type QwenVoicePageDeps = {
 	/** A page that cannot be brought back; the rig cannot hear, so say so. */
 	onStopped: (reason: string) => void;
 	now?: () => number;
+	/** `out/preload/voice-page.js`: the app page's one narrow preload. */
+	appPreloadPath?: string;
 };
 
 export class QwenVoicePage implements QwenVoicePagePort {
@@ -281,6 +300,9 @@ export class QwenVoicePage implements QwenVoicePagePort {
 	/** Remembered across a close/reopen; see `setMuted`. */
 	private muted = false;
 	private lastUrl: string | null = null;
+	/** The app-owned page's URL while one is open (permission + navigation lock). */
+	private appUrl: string | null = null;
+	private lastKind: "webui" | "app" = "webui";
 	private lastCrashAt: number | null = null;
 	private readonly log: (message: string) => void;
 	private readonly now: () => number;
@@ -307,6 +329,69 @@ export class QwenVoicePage implements QwenVoicePagePort {
 	/** True while a page exists (a crashed one is dropped by its handler). */
 	get isOpen(): boolean {
 		return this.view !== null;
+	}
+
+	/** The page's webContents, for IPC sender checks; null when no page exists. */
+	get contents(): VoicePageWebContents | null {
+		return this.view?.webContents ?? null;
+	}
+
+	/**
+	 * The app-owned page (local provider). Same smallest-surface view as the
+	 * WebUI page, plus the one narrow preload; the permission verdict and the
+	 * navigation lock are for this exact URL only.
+	 */
+	openApp(pageUrl: string): void {
+		if (this.view) return;
+		let url: URL;
+		try {
+			url = new URL(pageUrl);
+		} catch {
+			this.log("qwen-page: refusing a malformed app page URL");
+			return;
+		}
+		if (!this.deps.appPreloadPath) {
+			this.log("qwen-page: no preload for the app page; not opening it");
+			return;
+		}
+		const view = this.deps.createView({
+			webPreferences: {
+				partition: QWEN_VOICE_PARTITION,
+				preload: this.deps.appPreloadPath,
+				sandbox: true,
+				contextIsolation: true,
+				nodeIntegration: false,
+				backgroundThrottling: false,
+				autoplayPolicy: "no-user-gesture-required",
+				devTools: Boolean(this.deps.devTools),
+			},
+		});
+		this.view = view;
+		this.lastUrl = pageUrl;
+		this.lastKind = "app";
+		this.appUrl = url.toString();
+		if (this.muted) view.webContents.setAudioMuted(true);
+		this.installNavigationLock(view.webContents);
+		this.installCrashRecovery(view.webContents);
+		if (this.deps.devTools) view.webContents.openDevTools?.({ mode: "detach" });
+		this.log("qwen-page: loading the app voice page");
+		void Promise.resolve(view.webContents.loadURL(this.appUrl)).catch((error) =>
+			this.log(
+				`qwen-page: load failed: ${error instanceof Error ? error.message : String(error)}`,
+			),
+		);
+	}
+
+	/** Sentences for the page to say. False when there is no page to say them. */
+	speak(message: { replyId: string; segments: string[] }): boolean {
+		const contents = this.view?.webContents;
+		if (!contents?.send || !this.appUrl) return false;
+		contents.send(VOICE_PAGE_CHANNELS.speak, message);
+		return true;
+	}
+
+	stopSpeech(): void {
+		if (this.appUrl) this.view?.webContents.send?.(VOICE_PAGE_CHANNELS.stop);
 	}
 
 	open(webuiUrl: string): void {
@@ -342,6 +427,8 @@ export class QwenVoicePage implements QwenVoicePagePort {
 		});
 		this.view = view;
 		this.lastUrl = webuiUrl;
+		this.lastKind = "webui";
+		this.appUrl = null;
 		/*
 		 * MUTE IS A PROPERTY OF THE PERSON, NOT OF THE VIEW. Applied here, on
 		 * CREATE, so a page recreated by a pause/resume, a Retry or a crash
@@ -377,6 +464,9 @@ export class QwenVoicePage implements QwenVoicePagePort {
 	close(): void {
 		const view = this.view;
 		this.view = null;
+		// A closed page grants nothing: the app URL goes with the view (a crash
+		// recovery reopens from `lastUrl`, which sets it again).
+		this.appUrl = null;
 		if (!view) return;
 		try {
 			// An unattached view leaks its renderer unless it is closed; destroying
@@ -458,7 +548,8 @@ export class QwenVoicePage implements QwenVoicePagePort {
 	/** Grant audio, main frame, the Gateway's origin; deny everything else. */
 	private installPermissions(): void {
 		const verdict = (query: PermissionQuery): boolean =>
-			voicePagePermissionVerdict(query, this.deps.gatewayOrigin);
+			voicePagePermissionVerdict(query, this.deps.gatewayOrigin) ||
+			(this.appUrl !== null && appVoicePageVerdict(query, this.appUrl));
 		this.deps.session.setPermissionRequestHandler(
 			(_contents, permission, callback, details) => {
 				const granted = verdict({
@@ -507,6 +598,13 @@ export class QwenVoicePage implements QwenVoicePagePort {
 				}
 			}
 			if (origin === this.deps.gatewayOrigin) return;
+			// The app page may only reload itself.
+			if (
+				this.appUrl !== null &&
+				typeof url === "string" &&
+				isAppVoicePageUrl(url, this.appUrl)
+			)
+				return;
 			event?.preventDefault?.();
 			this.log(
 				`qwen-page: blocked navigation to ${(url ?? "<no url>").slice(0, 200)}`,
@@ -556,6 +654,8 @@ export class QwenVoicePage implements QwenVoicePagePort {
 	/** Recreate once (a fresh view); the crash handler owns the limit. */
 	private reopen(): void {
 		const url = this.lastUrl;
-		if (url) this.open(url);
+		if (!url) return;
+		if (this.lastKind === "app") this.openApp(url);
+		else this.open(url);
 	}
 }

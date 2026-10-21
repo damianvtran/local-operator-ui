@@ -29,6 +29,8 @@ export type VadFactory = (
 export type VadControllerDeps = {
 	createVad: VadFactory;
 	sendTake(wav: Uint8Array): void;
+	/** Local mode: the raw 16 kHz samples go to the listener instead of a WAV up. */
+	onUtterance?(samples: Float32Array): void;
 	sendVad(kind: VadEventKind): void;
 	/** Whether a reply is audible right now. */
 	isPlaying(): boolean;
@@ -62,7 +64,8 @@ export class VadController {
 			onSpeechEnd: (samples) => {
 				if (this.closed) return;
 				this.deps.sendVad("speech_end");
-				this.deps.sendTake(encodeWav(samples));
+				if (this.deps.onUtterance) this.deps.onUtterance(samples);
+				else this.deps.sendTake(encodeWav(samples));
 			},
 		});
 		if (this.closed) {
