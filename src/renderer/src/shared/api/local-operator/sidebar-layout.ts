@@ -6,6 +6,7 @@ import {
 import { t } from "@shared/i18n";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 import type { DesktopSidebarLayoutResponse } from "../../../../../shared/desktop-control-contract";
 import { retryDesktopMutation, retryDesktopQuery } from "./backend-error";
 import { desktopResult } from "./desktop-api";
@@ -29,11 +30,15 @@ import { desktopResult } from "./desktop-api";
  *
  * WHY THE WRITE IS OPTIMISTIC. A drag or a menu move must land in the frame the
  * gesture ends in; waiting for a loopback round trip before the row moves would
- * make every reorder visibly lag the pointer. The cache is updated in
- * `onMutate`, the answered layout (the route normalises) replaces it in
- * `onSuccess`, and `onError` restores the snapshot and raises the one toast the
- * design contract promises. Nothing is written before the drop, so a cancelled
- * gesture costs one rollback of nothing.
+ * make every reorder visibly lag the pointer. `onMutate` puts the gesture's
+ * layout in the cache and that value IS the stored document - the route stores
+ * exactly what it is sent and this client always sends a full sanitised layout
+ * - so there is no `onSuccess` write to make. A failure restores the snapshot
+ * and raises the one toast the design contract promises; when the LATEST queued
+ * gesture settles, the backend's own answer is re-read, so the stored truth is
+ * what the rail keeps once the queue drains (a newer gesture must not be undone
+ * by an older failure - see the sequence ref at the mutation). Nothing is
+ * written before the drop, so a cancelled gesture costs one rollback of nothing.
  */
 export const sidebarLayoutKeys = {
 	layout: ["desktop", "sidebar_layout"] as const,
@@ -85,6 +90,7 @@ export function useSidebarLayout(canCustomise: boolean) {
 		retry: retryDesktopQuery,
 	});
 
+	const mutationSequence = useRef(0);
 	const mutation = useMutation({
 		/*
 		 * ONE WRITE AT A TIME, IN ORDER (architecture review round 1). React Query
@@ -107,6 +113,7 @@ export function useSidebarLayout(canCustomise: boolean) {
 		},
 		retry: retryDesktopMutation,
 		onMutate: async (next: SidebarLayout) => {
+			const seq = ++mutationSequence.current;
 			/*
 			 * Cancel in-flight reads before writing the optimistic value: a GET
 			 * that was already on the wire would otherwise land after this PUT and
@@ -121,24 +128,41 @@ export function useSidebarLayout(canCustomise: boolean) {
 				sidebarLayoutKeys.layout,
 			);
 			queryClient.setQueryData(sidebarLayoutKeys.layout, next);
-			return { previous };
+			return { previous, seq };
 		},
 		onError: (_error, _next, context) => {
-			if (context?.previous) {
+			/*
+			 * AN OLDER FAILURE MUST NOT UNDO A NEWER GESTURE (agent review round
+			 * 2, R2-2). `onMutate` runs for every queued mutation at `mutate()`
+			 * time, so B's optimistic layout can be in the cache while A is still
+			 * on the wire; restoring A's snapshot here would erase B, and with
+			 * `staleTime: Infinity` nothing would refetch it. Only the latest
+			 * gesture has a snapshot that describes the cache's current intent.
+			 */
+			if (context?.seq === mutationSequence.current && context.previous) {
 				queryClient.setQueryData(sidebarLayoutKeys.layout, context.previous);
 			}
 			showErrorToast(t("ui.shell.sidebar_navigation.save_failed"));
 		},
 		/*
-		 * NO `onSuccess` CACHE WRITE (agent review round 1, R1-4). The route stores
-		 * exactly the document it is sent; the client always sends a full sanitised
-		 * layout, so the optimistic value IS the stored value and the next read
-		 * returns it. Writing the answer here as well queued one write per gesture:
-		 * with two quick moves A then B, B's optimistic layout was replaced by A's
-		 * answered document when A landed, then by B's - a visible snap back and
-		 * forward. `scope` serialises the PUTs; this leaves the cache's last word to
-		 * the latest gesture.
+		 * THE QUEUE'S LAST WORD IS THE BACKEND'S (R2-2). Only the latest gesture
+		 * re-reads: it settles after every earlier scoped PUT, so this is when the
+		 * stored document is final. `invalidateQueries` forces the read despite
+		 * `staleTime: Infinity`; if the latest failed, its rollback (above) already
+		 * restored the store's answer and this read returns the same document.
+		 *
+		 * THERE IS NO `onSuccess` WRITE (round 1, R1-4): the route stores what it
+		 * is sent and the optimistic value is that document, so writing the answer
+		 * per mutation would let an earlier save's answer replace a later
+		 * gesture's optimistic layout.
 		 */
+		onSettled: (_data, _error, _next, context) => {
+			if (context?.seq === mutationSequence.current) {
+				void queryClient.invalidateQueries({
+					queryKey: sidebarLayoutKeys.layout,
+				});
+			}
+		},
 	});
 
 	const readSucceeded =
@@ -175,6 +199,5 @@ export function useSidebarLayout(canCustomise: boolean) {
 		canCustomise: readSucceeded,
 		save,
 		reset,
-		isSaving: mutation.isPending,
 	};
 }

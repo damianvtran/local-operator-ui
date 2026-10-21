@@ -256,6 +256,7 @@ export async function sceneSidebarLayout({
 					return { ...box(node), text: (node.textContent || '').trim() };
 				})(),
 				menu: menu === null ? null : {
+					left: Math.round(menu.getBoundingClientRect().left),
 					items: Array.from(menu.querySelectorAll('[role="menuitem"]')).map((item) => ({
 						label: (item.textContent || '').trim(),
 						disabled: item.getAttribute('data-disabled') !== null || item.getAttribute('aria-disabled') === 'true',
@@ -707,6 +708,39 @@ export async function sceneSidebarLayout({
 			menuOpen.menu.items.some((item) => item.label === "Move up") &&
 			menuOpen.menu.items.some((item) => item.label === "Move down"),
 		JSON.stringify(menuOpen.menu?.items),
+	);
+	/*
+	 * DESIGN ROUND 2, D10 / QA ROUND 2, Q2-1: the collapsed panel's leading edge
+	 * must sit at or outside the strip's trailing edge. Measured here before the
+	 * menu is used, so a strip run reports it even though the expanded-only
+	 * ellipsis assertions below stop that run later.
+	 */
+	/*
+	 * THE COLUMN IS 56px, and the destinations AREA inside it is narrower than
+	 * that (its box is the row's 32px lane), so the edge this must clear is the
+	 * strip's own width, not the area's box. 56 is the shipped collapsed width
+	 * (`chat-sidebar-layout.ts`), and the design's D10 measurement is against it.
+	 * Expanded skips the claim: its panel leaves from the row's own edge outside
+	 * the column and is checked by the menu's own frames.
+	 */
+	const railCollapsed = (menuOpen.area?.box.w ?? 0) <= 64;
+	check(
+		"the row menu opens clear of the 56px strip when the rail is collapsed",
+		menuOpen.menu === null || !railCollapsed || menuOpen.menu.left >= 56,
+		JSON.stringify({
+			menuLeft: menuOpen.menu?.left,
+			stripWidth: 56,
+			rail: menuOpen.area?.box,
+			collapsed: railCollapsed,
+		}),
+	);
+	/* Recorded, not inferred: a strip run reports the panel's leading edge. */
+	note(
+		"row menu geometry",
+		JSON.stringify({
+			menuLeft: menuOpen.menu?.left,
+			rail: menuOpen.area?.box,
+		}),
 	);
 	await frame("sidebar-menu-open");
 	require("the menu's Move to More item is pressed", await chooseMenuItem(
