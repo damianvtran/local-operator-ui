@@ -1917,8 +1917,25 @@ test("a reconnect frame cannot collapse the reader's opened bar (operator report
 		"the reader opened the bar",
 	);
 	assert.ok(rowBox(mounted, "tool:1"), "and its rows are on screen");
+	/*
+	 * A LIVE PASS ARMS THE SETTLE LATCH (agent review round 1, F4). Both stores are
+	 * re-keyed by this change, and the latch is the one the plan reads directly;
+	 * proving only the expansions survive would leave half the fix unpinned.
+	 */
+	await mounted.render(rows, { frontend, waiting: true });
+	const latched = watchedRunOf("chat-gap");
+	assert.equal(
+		latched,
+		"user:1",
+		"the live pass latched the watched run by its opening row",
+	);
 	// THE GAP: frontend goes away entirely, exactly as the reconnect arm writes it.
 	await mounted.render(rows, { frontend: null, waiting: false });
+	assert.equal(
+		watchedRunOf("chat-gap"),
+		latched,
+		"the gap does not drop the latch to the empty bucket",
+	);
 	assert.equal(
 		barTrigger(mounted).getAttribute("aria-expanded"),
 		"true",
@@ -1934,6 +1951,62 @@ test("a reconnect frame cannot collapse the reader's opened bar (operator report
 		barTrigger(mounted)?.getAttribute("aria-expanded"),
 		"true",
 		"the re-entry reads the same bucket",
+	);
+});
+
+test("a steer before its lead-in's calls report does not condense the turn (operator report, 2026-10-21)", async (t) => {
+	/*
+	 * THE MOUNTED HALF OF THE LEAD-IN FIX (agent review round 1, U3): the model
+	 * test says the run does not split, this says what the reader sees - the turn
+	 * stays whole and drawn in place while it is being steered, and its steer row
+	 * survives the condense when the closing answer lands.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const frontend = { session_id: "chat-lead-in" };
+	const rows = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+		answerRecord("answer:1", {
+			ts: TS + 3_000,
+			text: "Reading the ledger first.",
+			settledAt: TS + 3_000,
+			stopReason: "toolUse",
+			callsTools: true,
+		}),
+		userRecord("user:2", { ts: TS + 4_000, text: "also check the ledger" }),
+		toolRecord("tool:2", { ts: TS + 5_000, durationS: 4 }),
+	];
+	const mounted = await mount(t, rows, { frontend, waiting: true });
+	const barIds = () =>
+		barsOf(mounted).map((element) => element.getAttribute("data-record-id"));
+	assert.deepEqual(
+		barIds(),
+		[],
+		"the steer did not condense the turn it interrupted",
+	);
+	assert.ok(
+		rowBox(mounted, "tool:1"),
+		"the work before the steer is on screen",
+	);
+	assert.ok(rowBox(mounted, "user:2"), "and the steer itself");
+	assert.ok(rowBox(mounted, "tool:2"), "and the work after it");
+	// The closing answer lands: the turn condenses ONCE, and keeps its steer.
+	await mounted.render(
+		[
+			...rows,
+			answerRecord("answer:2", {
+				ts: TS + 7_000,
+				settledAt: TS + 7_000,
+				stopReason: "stop",
+			}),
+		],
+		{ frontend, waiting: false },
+	);
+	assert.ok(barIds().length > 0, "the finished turn wears its bar");
+	assert.ok(
+		rowBox(mounted, "user:2"),
+		"and the steer stays on screen under it (V3)",
 	);
 });
 
