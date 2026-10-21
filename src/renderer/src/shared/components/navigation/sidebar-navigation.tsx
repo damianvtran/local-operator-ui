@@ -1132,7 +1132,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		);
 	};
 
-	const settleDrag = (commit: boolean) => {
+	const settleDrag = (commit: boolean, abandoned = false) => {
 		const live = dragRef.current;
 		if (live === null) return;
 		dragRef.current = null;
@@ -1145,6 +1145,19 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		setDragFoldOpen(false);
 		if (!live.armed) return;
 		if (!commit) {
+			if (abandoned) {
+				/*
+				 * AN ABANDONED GESTURE HAS NO CLICK COMING (agent review round 3,
+				 * R3-1). `pointercancel` settles DURING its own dispatch, so a
+				 * `pointercancel` door installed here can never hear it - the old shape
+				 * left the flag armed and ate the reader's next row click. A blur is
+				 * the same fact: the browser has taken the gesture away. Clear now;
+				 * there is no release to wait for.
+				 */
+				suppressClickRef.current = false;
+				setAnnouncement("");
+				return;
+			}
 			/*
 			 * A CANCELLED GESTURE'S RELEASE IS STILL A PRESS THE BROWSER DELIVERS
 			 * (agent review round 1, R1-2; QA round 1, Q2, reproduced in the built
@@ -1234,7 +1247,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			if (dragRef.current?.pointerId !== event.pointerId) return;
 			settleDragRef.current(true);
 		};
-		const onCancel = () => settleDragRef.current(false);
+		const onCancel = () => settleDragRef.current(false, true);
 		window.addEventListener("keydown", onKeyDown);
 		window.addEventListener("pointerup", onPointerUp);
 		window.addEventListener("pointercancel", onCancel);
@@ -1453,7 +1466,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 							}
 						: undefined
 				}
-				onPointerCancel={canCustomise ? () => settleDrag(false) : undefined}
+				onPointerCancel={
+					canCustomise ? () => settleDrag(false, true) : undefined
+				}
 				onKeyDown={
 					canCustomise
 						? (event) => {
