@@ -4947,15 +4947,34 @@ export type MessageParams = {
 	};
 	"ui.shell.sidebar_navigation.close_sidebar": undefined;
 	"ui.shell.sidebar_navigation.collapse_sidebar": undefined;
+	"ui.shell.sidebar_navigation.drag_armed": { name: string };
 	"ui.shell.sidebar_navigation.expand_sidebar": undefined;
 	"ui.shell.sidebar_navigation.mesh": undefined;
 	"ui.shell.sidebar_navigation.mesh_waiting": {
 		count: number;
 		countText: string;
 	};
+	"ui.shell.sidebar_navigation.more_waiting": {
+		count: number;
+		countText: string;
+	};
+	"ui.shell.sidebar_navigation.more_working": undefined;
+	"ui.shell.sidebar_navigation.move_down": undefined;
+	"ui.shell.sidebar_navigation.move_note": {
+		name: string;
+		position: string;
+		total: string;
+	};
+	"ui.shell.sidebar_navigation.move_to_more": undefined;
+	"ui.shell.sidebar_navigation.move_to_more_note": { name: string };
+	"ui.shell.sidebar_navigation.move_up": undefined;
 	"ui.shell.sidebar_navigation.new_chat": undefined;
 	"ui.shell.sidebar_navigation.new_chat_shortcut": { shortcut: string };
 	"ui.shell.sidebar_navigation.projects": undefined;
+	"ui.shell.sidebar_navigation.reset_layout": undefined;
+	"ui.shell.sidebar_navigation.reset_note": undefined;
+	"ui.shell.sidebar_navigation.row_actions": { name: string };
+	"ui.shell.sidebar_navigation.save_failed": undefined;
 	"ui.shell.sidebar_navigation.schedules": undefined;
 	"ui.shell.sidebar_navigation.search": undefined;
 	"ui.shell.sidebar_navigation.search_accessible": {
@@ -4967,6 +4986,8 @@ export type MessageParams = {
 		chats: string;
 	};
 	"ui.shell.sidebar_navigation.settings": undefined;
+	"ui.shell.sidebar_navigation.show_in_sidebar": undefined;
+	"ui.shell.sidebar_navigation.show_in_sidebar_note": { name: string };
 	"ui.shell.user_profile_sidebar.account_settings": undefined;
 	"ui.shell.user_profile_sidebar.account_unavailable": undefined;
 	"ui.shell.user_profile_sidebar.checking_account": undefined;

@@ -12,6 +12,10 @@ export type DesiredTag = { id?: string; name: string };
 
 import { z } from "zod";
 import { agentMessagesBoundarySchema } from "./agent-messages-contract";
+// The sidebar's destination vocabulary is the same list the route validates
+// against, so the request schema below and the renderer's pure model cannot
+// disagree about what an id is.
+import { SIDEBAR_DESTINATION_IDS } from "./desktop-control-contract";
 // The feed's frame family lives beside the session stream's, so the two cannot
 // drift into disagreeing about the envelope they deliberately share.
 import type { DesktopFeedFrame } from "./desktop-session-contract";
@@ -1129,6 +1133,26 @@ export function projectTagRule(tag: string): string | null {
  * value here that core refuses would be a 422 a user could not tell from a bug.
  */
 const hubItemKind = z.enum(["agent", "team", "skill"]);
+
+/*
+ * The sidebar customisation resource's wire schema (design contract § 2, § 4).
+ *
+ * `SIDEBAR_DESTINATION_IDS` is the one allow-list shared with the control DTOs
+ * and the renderer's pure model, so an id this schema accepts is an id the route
+ * accepts and the drag layer can name. `max(...)` rather than a pin to nine is
+ * deliberate: a legitimate write may carry FEWER ids (the route fills the rest
+ * from the default, and the design contract says so explicitly), while a list
+ * longer than the vocabulary is a different class of bug. What must never reach
+ * the wire is an id outside the list; duplicates are possible in the type but
+ * are refused by the route and removed by the client's sanitiser.
+ */
+const sidebarDestinationId = z.enum(SIDEBAR_DESTINATION_IDS);
+const sidebarLayoutSchema = z
+	.object({
+		visible: z.array(sidebarDestinationId).max(SIDEBAR_DESTINATION_IDS.length),
+		more: z.array(sidebarDestinationId).max(SIDEBAR_DESTINATION_IDS.length),
+	})
+	.strict();
 
 const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
@@ -4046,6 +4070,27 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			op: z.literal("library.librarian"),
 			/** `status` is the read's own op; the other four are the writes. */
 			action: z.enum(["status", "open", "pause", "resume", "run"]).optional(),
+		})
+		.strict(),
+	/*
+	 * THE SIDEBAR LAYOUT RESOURCE (design contract § 2, § 4). One read and one
+	 * write, mirroring the two HTTP verbs: the resource is a single document, and
+	 * a patch vocabulary over a nine-entry ordered list would have to invent
+	 * operations for moves the client already knows how to compute.
+	 *
+	 * The write carries the WHOLE layout rather than a delta because the route
+	 * normalises and persists a complete document (last writer wins, atomic file
+	 * replace). Sending the full list is also what makes an optimistic write
+	 * self-describing on the retry path: the body a retry replays is the layout
+	 * the user saw, not a move that could be applied twice.
+	 */
+	z
+		.object({ op: z.literal("sidebar_layout.get") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("sidebar_layout.set"),
+			layout: sidebarLayoutSchema,
 		})
 		.strict(),
 ]);
@@ -9007,6 +9052,22 @@ export function desktopEndpoint(request: DesktopRequest): {
 					path: request.path,
 					ttl_s: request.ttlS,
 				},
+			};
+		/*
+		 * The sidebar customisation resource (design contract § 4). A GET/PUT pair
+		 * on one route, with the layout in an envelope rather than as the bare body:
+		 * the route answers `{layout}` and accepts `{layout}`, so a future field
+		 * beside it is additive instead of a breaking shape change. The PUT sends
+		 * the stored ids verbatim - the client owns the order, the route owns
+		 * validation and the default fill - so nothing is re-sorted in transit.
+		 */
+		case "sidebar_layout.get":
+			return { path: "/v1/desktop/sidebar-layout", method: "GET" };
+		case "sidebar_layout.set":
+			return {
+				path: "/v1/desktop/sidebar-layout",
+				method: "PUT",
+				body: { layout: request.layout },
 			};
 	}
 }
