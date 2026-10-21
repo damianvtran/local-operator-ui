@@ -650,6 +650,10 @@ const IDENTICAL_OK = new Map([
 		"Product name (Team Bridge), preserved verbatim by the programme glossary.",
 	],
 	[
+		"ui.teamBridge.chief.label",
+		"Placeholders and brackets only ({agent} ({person})); both names are inserted verbatim. Locales with full-width brackets (zh-CN) differ, the rest are identical by design.",
+	],
+	[
 		"ui.teamBridge.notify.title",
 		"Placeholders and brackets only ({conversation} ({organization})); the notification title is assembled from already-translated parts.",
 	],
