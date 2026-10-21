@@ -376,6 +376,13 @@ const carriesGround = (classes) => classes.includes("bg-row-selected");
 const rowStyle = literalOf(SIDEBAR, "rowStyle");
 const rowBoxStyle = literalOf(SIDEBAR, "rowBoxStyle");
 const rowCurrent = literalOf(SIDEBAR, "rowCurrent");
+const TEAM_BRIDGE_PAGE =
+	"src/renderer/src/features/team-bridge/team-bridge-page.tsx";
+const TEAM_BRIDGE_RAIL =
+	"src/renderer/src/features/team-bridge/team-bridge-rail.tsx";
+/** The rail's own row base, as the module spells it (stubbed into its `cn`). */
+const ROW = literalOf(TEAM_BRIDGE_RAIL, "ROW");
+
 const rowDragging = literalOf(SIDEBAR, "rowDragging");
 const rowDraggingMark = literalOf(SIDEBAR, "rowDraggingMark");
 
@@ -1507,6 +1514,31 @@ const ROW_STATE_GROUNDS = [
 		groundFile: AGENTS_SIDEBAR,
 	},
 	{
+		/*
+		 * The Team Bridge rail's conversation rows (and, by the same `selected ?
+		 * rowCurrent` shape, its person and chief-of-staff rows). The rows live in
+		 * the rail module and the ground on the page's `<aside>`, which is why the
+		 * ground is read from a different file than the row. Design round 1 (D2)
+		 * measured the selected row at 1.06:1 on `paper` while the aside had no
+		 * ground of its own; this entry is what keeps it on `surface`.
+		 */
+		what: "the Team Bridge rail",
+		rowFile: TEAM_BRIDGE_RAIL,
+		expression: () =>
+			expressionAfter(
+				TEAM_BRIDGE_RAIL,
+				"data-conversation-id={conversation.id}",
+			),
+		stubs: { ROW, selected: true, unread: 0, organizationName: "", rowCurrent },
+		ground: () =>
+			literalClassAt(
+				TEAM_BRIDGE_PAGE,
+				'data-glass-region="page-sidebar"',
+				"after",
+			),
+		groundFile: TEAM_BRIDGE_PAGE,
+	},
+	{
 		what: "the agents page's roster row",
 		rowFile: AGENTS_PAGE,
 		expression: () =>
@@ -1802,8 +1834,10 @@ test("the settings rail's group lists carry no ground of their own", () => {
  */
 const ACCOUNT_ROW =
 	"src/renderer/src/shared/components/navigation/user-profile-sidebar.tsx";
-const TEAM_BRIDGE_PAGE =
-	"src/renderer/src/features/team-bridge/team-bridge-page.tsx";
+const TEAM_BRIDGE_MESSAGES =
+	"src/renderer/src/features/team-bridge/team-bridge-message-list.tsx";
+const TEAM_BRIDGE_COMPOSE =
+	"src/renderer/src/features/team-bridge/team-bridge-compose-bar.tsx";
 const TEAM_BUBBLE =
 	"src/renderer/src/features/chat/components/team-avatar-bubble.tsx";
 
@@ -2317,15 +2351,26 @@ const PLATES_INSIDE_ROW_STATES = [
 	},
 	{
 		/*
-		 * The merged Team Bridge list's organization chip. `elevated` against
-		 * `rowHover` measures ΔE00 0.00 on `arcade`, so the fill alone is no
-		 * boundary on that palette; `border-control` is what keeps the chip
-		 * readable when the row under it is hovered or selected.
+		 * The Team Bridge thread's sender avatar. A message row takes `rowHover`
+		 * under the pointer, and `sunken` can sit on that rung, so the square
+		 * plate wears `border-control` to stay a shape on every palette. (The
+		 * merged list's organization chip this entry used to name is gone: the
+		 * Slack-style rail states the organization as a plain second line with
+		 * no plate of its own.)
 		 */
-		what: "the merged list's organization chip",
-		file: TEAM_BRIDGE_PAGE,
+		what: "the Team Bridge thread's sender avatar",
+		file: TEAM_BRIDGE_MESSAGES,
 		element: "span",
-		ground: "bg-elevated",
+		ground: "bg-sunken",
+		edge: true,
+	},
+	{
+		/* The To: suggestion list's person initial; same reason, the option takes
+		   `rowHover` when it is the active descendant. */
+		what: "the Team Bridge compose suggestion's initial",
+		file: TEAM_BRIDGE_COMPOSE,
+		element: "span",
+		ground: "bg-sunken",
 		edge: true,
 	},
 	{

@@ -544,8 +544,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			<aside
 				data-glass-region="page-sidebar"
 				/* BORDERLESS CHROME: the column is separated by its own ground, not a
-				   rule; the top inset is padding inside the full-height panel. */
-				className="flex w-72 shrink-0 flex-col pt-[var(--panel-top-pad,0px)]"
+				   rule; the top inset is padding inside the full-height panel.
+				   `bg-surface` is the ground every page sidebar paints (Settings,
+				   Agents, Library) and the one `rowCurrent`'s fill is tuned against:
+				   on the canvas ground the selected row measured 1.06:1 on `paper`
+				   (design round 1, D2). */
+				className="flex w-72 shrink-0 flex-col bg-surface pt-[var(--panel-top-pad,0px)]"
 			>
 				<h1 className="sr-only">{t("ui.teamBridge.page.title")}</h1>
 				<header className="flex h-11 shrink-0 items-center gap-2 px-3">
