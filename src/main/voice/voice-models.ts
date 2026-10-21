@@ -109,6 +109,9 @@ async function download(
 				for await (const chunk of source) {
 					hash.update(chunk);
 					received += chunk.length;
+					// Stop at the first byte past the pinned size, not after the
+					// whole (possibly huge) stream has been written.
+					if (received > f.bytes) throw new ModelError("model_integrity", f.name);
 					opts.onProgress?.({
 						file: f.name,
 						received: doneBefore + received,
@@ -137,7 +140,19 @@ async function download(
 }
 
 /** Makes every manifest file present and verified; fetches only what is not. */
-export async function ensureModels(opts: EnsureModelsOptions): Promise<void> {
+export function ensureModels(opts: EnsureModelsOptions): Promise<void> {
+	// Concurrent callers on one store share a single download.
+	const key = opts.dir;
+	const running = inFlight.get(key);
+	if (running) return running;
+	const run = ensureModelsOnce(opts).finally(() => inFlight.delete(key));
+	inFlight.set(key, run);
+	return run;
+}
+
+const inFlight = new Map<string, Promise<void>>();
+
+async function ensureModelsOnce(opts: EnsureModelsOptions): Promise<void> {
 	const manifest = opts.manifest ?? MODEL_MANIFEST;
 	const total = manifest.reduce((sum, f) => sum + f.bytes, 0);
 	let done = 0;
