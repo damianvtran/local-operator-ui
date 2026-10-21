@@ -332,6 +332,10 @@ try {
 	console.log("EVASION=wrote");
 } catch (error) {
 	console.log("EVASION=refused:" + error.name);
+	// A native link/write failure is also named Error. Preserve its cause in
+	// the assertion's captured stdout; otherwise the unguarded control cannot
+	// distinguish a filesystem boundary from an installed guard on CI.
+	console.log("EVASION_ERROR=" + JSON.stringify({ code: error.code ?? null, syscall: error.syscall ?? null, message: error.message }));
 }
 console.log("SHARED=" + fs.readFileSync(shared, "utf8"));
 console.log("SIBLING=" + fs.readFileSync(sibling, "utf8"));
