@@ -19143,8 +19143,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
-			"target_sha256": "38638efe5066b2358e5f39278af89b51aa7de50e030f245f6bb9b85a9093fc5e",
+			"source_sha256": "f940f0c6b7bd896e49c691c1afa4cdb21a0c7dcf8179b81e3c9071503f168448",
+			"target_sha256": "607c19eb57e813e849639bbe93f19583d5580a83e9a5d9c1d0376dacf2cee515",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19155,19 +19155,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "tbstack-r1-1304-fr",
+					"instance": "tbstack-r2-1308-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbstack-r1-1304-fr.json",
-					"receipt_sha256": "e9012773034610692c7afcadcb52aac24eb376308877070bca4a37186d03718d",
-					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1304 b5b80ea4b4)"
+					"receipt": "i18n/receipts/tbstack-r2-1308-fr.json",
+					"receipt_sha256": "f6a7fbc96e5855aabe2031bd3913e67fe6ae7b814c2abf0183fba09f2c65a5be",
+					"note": "Independent r2 delta audit, 0 findings. Record: i18n/audits/evidence/fr/ui.teamBridge/tbstack-1308-r2-20261022/."
 				}
 			],
 			"status": "audited",
@@ -19375,6 +19375,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
+					"target_sha256": "38638efe5066b2358e5f39278af89b51aa7de50e030f245f6bb9b85a9093fc5e",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -19731,8 +19737,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
-			"target_sha256": "233715faa3f557fa5555714b09ffb43d6b27d7973cb2f1b81bc7edf2fae889e4",
+			"source_sha256": "f940f0c6b7bd896e49c691c1afa4cdb21a0c7dcf8179b81e3c9071503f168448",
+			"target_sha256": "03bc1adbb00c3b6de507e6dbbc4188d00e66b8f0e857181790e3228ac30483bd",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19743,19 +19749,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "tbstack-r1-1304-es",
+					"instance": "tbstack-r2-1308-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbstack-r1-1304-es.json",
-					"receipt_sha256": "812c7d20d8a57340fe719a4cf1bee49e10ab33a0d09ba5b4d5e640f5bdb24da9",
-					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1304 b5b80ea4b4)"
+					"receipt": "i18n/receipts/tbstack-r2-1308-es.json",
+					"receipt_sha256": "d9cd99ca66ffa8c1d673d7f075ebb45a8dca20484c5c6707611d78b804102fbd",
+					"note": "Independent r2 delta audit, 0 findings. Record: i18n/audits/evidence/es/ui.teamBridge/tbstack-1308-r2-20261022/."
 				}
 			],
 			"status": "audited",
@@ -19939,14 +19945,20 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
+					"target_sha256": "233715faa3f557fa5555714b09ffb43d6b27d7973cb2f1b81bc7edf2fae889e4",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
-			"target_sha256": "4553af7d93530765caadceb7b0ad20a3ea2195ac4a4805893043cf5cf80200eb",
+			"source_sha256": "f940f0c6b7bd896e49c691c1afa4cdb21a0c7dcf8179b81e3c9071503f168448",
+			"target_sha256": "c358b9a8f3b728ddb7e9a4de0c70a708b619fb69833d2047daeb36f7ec69799e",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19957,19 +19969,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "tbstack-r1-1304-zh-cn",
+					"instance": "tbstack-r2-1308-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbstack-r1-1304-zh-cn.json",
-					"receipt_sha256": "9e220e5c16563078fcc6543a30f95b6ed68ddf397cc350c03e447833dadfe5a1",
-					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1304 b5b80ea4b4)"
+					"receipt": "i18n/receipts/tbstack-r2-1308-zh-cn.json",
+					"receipt_sha256": "51241c18ab95bf40730e5f7abdbfd238e984f2c188ada0e8c55f370c3e528ddc",
+					"note": "Independent r2 delta audit, 0 findings. Record: i18n/audits/evidence/zh-CN/ui.teamBridge/tbstack-1308-r2-20261022/."
 				}
 			],
 			"status": "audited",
@@ -20153,6 +20165,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
+					"target_sha256": "4553af7d93530765caadceb7b0ad20a3ea2195ac4a4805893043cf5cf80200eb",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -20442,8 +20460,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
-			"target_sha256": "0bcc87d0cf38b1fe154deb784781aefb3c12d1423bbaa8f1481e43671de0ec49",
+			"source_sha256": "f940f0c6b7bd896e49c691c1afa4cdb21a0c7dcf8179b81e3c9071503f168448",
+			"target_sha256": "4e19d6ae2e530e0ebbd94017fa178f78bc1507e18228796fcb3aa1f2e9dc6b29",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -20455,19 +20473,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "tbstack-r1-1304-ru",
+					"instance": "tbstack-r2-1308-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbstack-r1-1304-ru.json",
-					"receipt_sha256": "be184b140162a302a183ca0e3dc40649c02894a67d355d664af7b8feea168ed9",
-					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1304 b5b80ea4b4)"
+					"receipt": "i18n/receipts/tbstack-r2-1308-ru.json",
+					"receipt_sha256": "bd7b5894f3e983dd0dee7c20dc1bbfc8bba5354bc59354e81924971a7a75ec3a",
+					"note": "Independent r2 delta audit, 0 findings. Record: i18n/audits/evidence/ru/ui.teamBridge/tbstack-1308-r2-20261022/."
 				}
 			],
 			"status": "audited",
@@ -20629,14 +20647,20 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
+					"target_sha256": "0bcc87d0cf38b1fe154deb784781aefb3c12d1423bbaa8f1481e43671de0ec49",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
-			"target_sha256": "06895da5bbe9dd3db23bbdf4393f8dc081ad789e1ffebacb85d36aa4002648e6",
+			"source_sha256": "f940f0c6b7bd896e49c691c1afa4cdb21a0c7dcf8179b81e3c9071503f168448",
+			"target_sha256": "8605bbd445bccf538d72b14b3f1aa5669c19cf5453d6b2c5d4327abfebbe6b47",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -20647,19 +20671,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "tbstack-r1-1304-hi",
+					"instance": "tbstack-r2-1308-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbstack-r1-1304-hi.json",
-					"receipt_sha256": "1b8c443d814ec607043f84e93120d6925042eeca93e6e455b41584b0dfc17711",
-					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1304 b5b80ea4b4)"
+					"receipt": "i18n/receipts/tbstack-r2-1308-hi.json",
+					"receipt_sha256": "9e292dbea2a98d7953ae4da16a02e3c62224b1eb57478e1e90de4d08d154d8ee",
+					"note": "Independent r2 delta audit, 0 findings. Record: i18n/audits/evidence/hi/ui.teamBridge/tbstack-1308-r2-20261022/."
 				}
 			],
 			"status": "audited",
@@ -20790,14 +20814,20 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
+					"target_sha256": "06895da5bbe9dd3db23bbdf4393f8dc081ad789e1ffebacb85d36aa4002648e6",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
-			"target_sha256": "a950b15cfb0bda53bb32d5fb7083a99b265012adf44f56a9096121dc2d5b694d",
+			"source_sha256": "f940f0c6b7bd896e49c691c1afa4cdb21a0c7dcf8179b81e3c9071503f168448",
+			"target_sha256": "2843dbcd23ea3fcaa98f67d9bfdcb2f49c442688915470fa61c4e1b0f4af66ae",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -20808,19 +20838,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "tbstack-r1-1304-ur",
+					"instance": "tbstack-r2-1308-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbstack-r1-1304-ur.json",
-					"receipt_sha256": "0a2b6715ccf1c85b4c4b2417b7b0e7f68e37ffccae605af5675663e7a9c23e2e",
-					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1304 b5b80ea4b4)"
+					"receipt": "i18n/receipts/tbstack-r2-1308-ur.json",
+					"receipt_sha256": "5b1a685b3774e07d83a91a4e84d4a0f63fea419acd7f8e20b3936f6b4af9a7e2",
+					"note": "Independent r2 delta audit, 0 findings. Record: i18n/audits/evidence/ur/ui.teamBridge/tbstack-1308-r2-20261022/."
 				}
 			],
 			"status": "audited",
@@ -20951,14 +20981,20 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
+					"target_sha256": "a950b15cfb0bda53bb32d5fb7083a99b265012adf44f56a9096121dc2d5b694d",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
-			"target_sha256": "6343bd88ea7bed5fd8e349bf0828756a2855039135b6ef558874dfd819fa5c70",
+			"source_sha256": "f940f0c6b7bd896e49c691c1afa4cdb21a0c7dcf8179b81e3c9071503f168448",
+			"target_sha256": "ec030246033e09e59cc9493ec31395cbef430dfb51b2f728d63ed6fc9e836dd8",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -20970,19 +21006,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "tbstack-r1-1304-vi",
+					"instance": "tbstack-r2-1308-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbstack-r1-1304-vi.json",
-					"receipt_sha256": "4efd5236365ada7699ed801e69b05027aef02c3cf30180af55fc178c6ff76866",
-					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1304 b5b80ea4b4)"
+					"receipt": "i18n/receipts/tbstack-r2-1308-vi.json",
+					"receipt_sha256": "0173b5e75a7d9a8f648cf91bd885e63a87274caf8c110cabc8e5f0a0c3673749",
+					"note": "Independent r2 delta audit, 0 findings. Record: i18n/audits/evidence/vi/ui.teamBridge/tbstack-1308-r2-20261022/."
 				}
 			],
 			"status": "audited",
@@ -21144,6 +21180,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
+					"target_sha256": "6343bd88ea7bed5fd8e349bf0828756a2855039135b6ef558874dfd819fa5c70",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
