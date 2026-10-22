@@ -1,0 +1,20 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "3fe393199d96",
+  "locale": "ur",
+  "status": "passed",
+  "namespace": "ui.console",
+  "sha256": {
+    "en": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
+    "target": "8bad094e4ae1ef383004454eb38d74daff624255c5f9a2287822de6fb829229a"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.console.ended.app_quit",
+      "issue": "At 37 cells against the 30-cell English source (+23%) this is the longest of the seven app_quit renderings; the whole banner measures 60 cells against the English 53, and the string sits in the banner's non-wrapping monospace span beside a 23-cell label, so it is the first to overrun a narrow pane. The exact fit still needs a rendered check at the 460 px container breakpoint.",
+      "suggestion": "ایپ بند ہونے پر یہ بند ہو گیا (29 cells, English parity; also removes the doubled بند)"
+    }
+  ]
+}

@@ -311,6 +311,16 @@ const APP_SPAWN_SITES = [
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(
+		"scripts/console-ended-proof.mjs",
+		"spawn",
+		/* #2, not #1: the `lop serve` daemon is spawned first; the app's own spawn is
+		 * the second and is the one this table exists to check. */
+		2,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the BUILT app twice over one quit (the run's own evidence path), on a scratch profile against a real `lop serve` daemon - two chances to banner the operator, and the second launch is a restore",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-file-transfer-proof.mjs",
 		"spawn",
 		1,
