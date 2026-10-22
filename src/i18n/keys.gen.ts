@@ -275,6 +275,7 @@ import hiUiSettingsUpdates from "./catalogues/hi/ui.settings.updates.json";
 import hiUiShell from "./catalogues/hi/ui.shell.json";
 import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
+import ruUiAgentMessagesSettings from "./catalogues/ru/ui.agentMessages.settings.json";
 import ruUiAgentsDialogs from "./catalogues/ru/ui.agents.dialogs.json";
 import ruUiAgents from "./catalogues/ru/ui.agents.json";
 import ruUiAgentsModels from "./catalogues/ru/ui.agents.models.json";
@@ -392,6 +393,7 @@ import urUiSettingsUpdates from "./catalogues/ur/ui.settings.updates.json";
 import urUiShell from "./catalogues/ur/ui.shell.json";
 import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
+import viUiAgentMessagesSettings from "./catalogues/vi/ui.agentMessages.settings.json";
 import viUiAgentsDialogs from "./catalogues/vi/ui.agents.dialogs.json";
 import viUiAgents from "./catalogues/vi/ui.agents.json";
 import viUiAgentsModels from "./catalogues/vi/ui.agents.models.json";
@@ -781,6 +783,7 @@ export const bundledCatalogues: Readonly<
 	},
 	ru: {
 		...ruUiAgentMessages,
+		...ruUiAgentMessagesSettings,
 		...ruUiAgentsDialogs,
 		...ruUiAgents,
 		...ruUiAgentsModels,
@@ -902,6 +905,7 @@ export const bundledCatalogues: Readonly<
 	},
 	vi: {
 		...viUiAgentMessages,
+		...viUiAgentMessagesSettings,
 		...viUiAgentsDialogs,
 		...viUiAgents,
 		...viUiAgentsModels,
@@ -1099,6 +1103,9 @@ export type MessageParams = {
 	"ui.agentMessages.settings.error.retry": undefined;
 	"ui.agentMessages.settings.error.title": undefined;
 	"ui.agentMessages.settings.error.unreadable": undefined;
+	"ui.agentMessages.settings.hold.chief_of_staff": { count: number };
+	"ui.agentMessages.settings.hold.chief_of_staff_unlinked": { count: number };
+	"ui.agentMessages.settings.hold.open": undefined;
 	"ui.agentMessages.settings.local.label": undefined;
 	"ui.agentMessages.settings.local.stays_enrolled": undefined;
 	"ui.agentMessages.settings.off_by_default": undefined;
@@ -1541,10 +1548,14 @@ export type MessageParams = {
 	"ui.browser.browser_tab_strip.unmute_tab": undefined;
 	"ui.browser.browser_tab_strip.watch": { title: string };
 	"ui.browser.browser_url_bar.address": undefined;
-	"ui.browser.browser_url_bar.address_required": undefined;
+	"ui.browser.browser_url_bar.address_search_row": { query: string };
+	"ui.browser.browser_url_bar.address_suggestion_open_tab": { title: string };
+	"ui.browser.browser_url_bar.address_suggestion_open_tab_untitled": undefined;
 	"ui.browser.browser_url_bar.address_suggestions_available": { count: number };
+	"ui.browser.browser_url_bar.address_suggestions_blocked": undefined;
 	"ui.browser.browser_url_bar.address_suggestions_empty": undefined;
 	"ui.browser.browser_url_bar.address_suggestions_label": undefined;
+	"ui.browser.browser_url_bar.address_suggestions_label_mixed": undefined;
 	"ui.browser.browser_url_bar.address_suggestions_no_match": undefined;
 	"ui.browser.browser_url_bar.address_suggestions_unavailable": undefined;
 	"ui.browser.browser_url_bar.approvals_waiting": { count: number };
@@ -2440,9 +2451,14 @@ export type MessageParams = {
 	"ui.console.dismiss_history": undefined;
 	"ui.console.empty.detail": undefined;
 	"ui.console.empty.title": undefined;
+	"ui.console.ended.app_quit": undefined;
 	"ui.console.ended.exit_code": { code: string };
+	"ui.console.ended.exit_signal": { signal: string };
 	"ui.console.ended.exit_unknown": undefined;
+	"ui.console.ended.input_blocked": undefined;
 	"ui.console.ended.live": undefined;
+	"ui.console.ended.marker": undefined;
+	"ui.console.ended.marker_detail": undefined;
 	"ui.console.ended.restored": undefined;
 	"ui.console.loading.create": undefined;
 	"ui.console.loading.read": undefined;
@@ -2468,6 +2484,7 @@ export type MessageParams = {
 	};
 	"ui.console.tab.close_label": { title: string; index: number; total: number };
 	"ui.console.tab.ended": undefined;
+	"ui.console.tab.exit_code": { code: string };
 	"ui.console.terminal.prompt_label": undefined;
 	"ui.console.terminal.too_much_output": undefined;
 	"ui.console.unavailable.disabled.detail": undefined;

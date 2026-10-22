@@ -75,6 +75,7 @@ import { decidePopup, effectivePresentation } from "./popups";
 import {
 	BROWSER_PARTITION,
 	type ClearWhat,
+	type HistoryClearer,
 	browserStoragePath,
 	browserUserAgent,
 	clearBrowsingData,
@@ -275,6 +276,20 @@ export interface BrowserHostHandle {
  * honest about the fact that this app runs one host.
  */
 let activeHost: BrowserHostHandle | null = null;
+
+/**
+ * The quit path's history flush.
+ *
+ * REGISTERED ONCE, at module load, and it reads `activeHost` at the moment the
+ * event fires: an `app.on` per host would accumulate a listener per restart,
+ * each holding a dead host. The stop path ALSO flushes (`stop()` above): a
+ * window close is not a quit, and the history the user just visited must be on
+ * disk either way. `before-quit` is kept because a quit can begin before the
+ * stop's async work reaches the host.
+ */
+app.on("before-quit", () => {
+	activeHost?.host.flushHistory();
+});
 
 /** Explicit menu clicks use the same owner decision as keys. Outside the browser
  * the caller retains its original app-window action, never a global tab binding. */
@@ -722,6 +737,17 @@ async function initializeBrowserHost(
 		const detachWebauthn = attachWebauthnChooser(browserSession, webauthn, log);
 		rollback.add(detachWebauthn);
 
+		/**
+		 * The suggestion history's clear entry points, handed to the session's
+		 * clear paths BELOW the host is built. A holder rather than a direct
+		 * reference because `SessionCookieVault` is constructed first and its
+		 * `clearSessionData` callback runs long after this function returns; by then
+		 * the slot names the live host's store.
+		 */
+		const historyClearer: { current: HistoryClearer | null } = {
+			current: null,
+		};
+
 		/*
 		 * Session-only cookie persistence, restored BEFORE anything can load a page.
 		 *
@@ -745,7 +771,8 @@ async function initializeBrowserHost(
 			cipher: browserProfileCipher(),
 			...sessionCookiePaths(options.userDataDir),
 			flushStore: () => browserSession.cookies.flushStore(),
-			clearSessionData: (what) => clearBrowsingData(browserSession, what),
+			clearSessionData: (what) =>
+				clearBrowsingData(browserSession, what, historyClearer.current),
 			log,
 		});
 		let restoreReport: RestoreReport | null = null;
@@ -1025,7 +1052,9 @@ async function initializeBrowserHost(
 			log,
 			onChanged: notifyChanged,
 			facts: () => facts,
-			forgetSiteData: (origin) => clearOriginData(browserSession, origin),
+			forgetSiteData: (origin) =>
+				clearOriginData(browserSession, origin, historyClearer.current),
+			historyFilePath: join(options.userDataDir, "browser-history.json"),
 			addressOverlayMode: () =>
 				addressOverlay
 					? addressOverlay.mode()
@@ -1037,6 +1066,13 @@ async function initializeBrowserHost(
 									: "platform",
 						},
 		});
+		// The store exists from here on; every later clear reaches it. Assigned
+		// together with `historyFilePath`, so a host without a store leaves the
+		// slot null and the clear paths simply do not touch history.
+		historyClearer.current = {
+			clear: () => host.clearHistory(),
+			clearOrigin: (origin) => host.clearOriginHistory(origin),
+		};
 
 		// Logical ownership includes the standalone BODY / pane header. Native
 		// commands still require the real foreground window and visible chrome;
@@ -1382,6 +1418,7 @@ async function initializeBrowserHost(
 			...(addressOverlay ? { addressOverlay: probeAddressOverlay } : {}),
 			stop: async () => {
 				detachChords();
+				host.flushHistory();
 				/*
 				 * The quit-time capture, taken BEFORE the views are destroyed
 				 * (`captureTabs` reads each view's live navigation history and a destroyed
@@ -1717,7 +1754,14 @@ async function initializeBrowserHost(
 				notifyChrome();
 			});
 			contents.on("did-stop-loading", notifyChrome);
-			contents.on("page-title-updated", notifyChrome);
+			contents.on("page-title-updated", (_event, title) => {
+				// The title belongs to the document that just announced it, so the URL
+				// is read from the view at this moment rather than remembered from the
+				// last navigation: a title event that races a commit must not attach a
+				// page's title to the URL it just left.
+				host.recordHistoryTitle(contents.getURL(), title);
+				notifyChrome();
+			});
 			// A crashed page keeps its webContents (unlike a closed tab), so the
 			// `destroyed` handler below never runs for it. The S1 overlay is bound to
 			// this tab's rectangle and must go with the renderer it was covering.
@@ -1765,6 +1809,11 @@ async function initializeBrowserHost(
 				stopLogCapture(contents.id);
 				startLogCapture(contents.id);
 				log(`[browser] tab ${tabId} navigated to ${url}`);
+				// The suggestion history records every committed top-level navigation;
+				// the store drops anything that is not HTTP(S), so `about:blank` and a
+				// refused scheme never enter it. This is a user-visible memory, not
+				// agent telemetry: it is the same URL the chrome already shows.
+				host.recordHistoryVisit(url);
 				// A real navigation is durable state (the session file records the URL), so
 				// this is the full path rather than the light notification above.
 				notifyChanged();
@@ -1773,6 +1822,9 @@ async function initializeBrowserHost(
 				if (!isMainFrame) return;
 				registry.bumpEpoch(tabId, false);
 				log(`[browser] tab ${tabId} navigated in page to ${url}`);
+				// A same-document route change is still a destination the user reached
+				// (a dashboard's `/settings` tab), and it is what they will retype.
+				host.recordHistoryVisit(url);
 				notifyChanged();
 			});
 

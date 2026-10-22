@@ -88,10 +88,15 @@ export function togglePanelRailItem(
 			return true;
 		case "console": {
 			/*
-			 * A CLOSE ALWAYS ACTS — the pane is on screen and the press means "put
-			 * it away" even on a route whose conversation has gone (the claim can
-			 * outlive the route; the slot's resolver is what refuses to draw it,
-			 * and the same close the item's own press performs is the honest one).
+			 * THE ITEM IS A TOGGLE WHILE THE PANE IS OPEN, ALWAYS (U5/m-5).
+			 *
+			 * The branch's first cut made a press on history-only pane mean "create a
+			 * terminal", so the rail stopped closing the pane and a keyboard user who
+			 * pressed the chord to put it away got a new shell. Openness is the pane's
+			 * own state, not liveness: an unlit item on an open history pane still hides
+			 * the pane when pressed, and a CLOSED pane is the open that may create
+			 * (`requestConsoleOpen` + `consoleOpenAction`). The lit paint stays keyed to
+			 * a running surface, which is a different fact from the toggle.
 			 */
 			if (state.isConsolePaneOpen) {
 				state.setConsolePaneOpen(false);

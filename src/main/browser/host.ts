@@ -16,10 +16,14 @@ import * as inputActions from "./actions/input";
 import * as pageActions from "./actions/page";
 import * as tabActions from "./actions/tabs";
 import * as uploadActions from "./actions/upload";
-import { collectAddressHistory } from "./address-history";
+import { collectAddressHistory, mergeAddressHistory } from "./address-history";
 import type { ConsentDecision } from "./approvals";
 import { ChromeTabOrder } from "./chrome-tab-order";
 import { BrowserHostError } from "./errors";
+import {
+	type BrowserHistoryStore,
+	createBrowserHistoryStore,
+} from "./history-store";
 import { PageControls, type PageZoomCommand } from "./page-controls";
 import { COMMAND_TIMEOUTS_S, type Method, PROTO_VERSION } from "./protocol";
 import type { ContentRect, TabRecord } from "./registry";
@@ -338,6 +342,11 @@ export interface BrowserHostOptions {
 		mode: "popout" | "suspend";
 		reason: string | null;
 	};
+	/** Where the persistent suggestion history lives. Absent means no store
+	 * (a test or a story): suggestions still come from live tabs, and nothing
+	 * is recorded or written. The production wiring passes
+	 * `<userData>/browser-history.json`. */
+	historyFilePath?: string;
 }
 
 export class BrowserHost implements BrowserActionContext {
@@ -378,6 +387,9 @@ export class BrowserHost implements BrowserActionContext {
 		mode: "popout" | "suspend";
 		reason: string | null;
 	};
+	/** One instance per host, constructed once in the constructor. `null` when
+	 * no path was supplied (see `BrowserHostOptions.historyFilePath`). */
+	private readonly historyStore: BrowserHistoryStore | null;
 
 	/**
 	 * The last main-frame load failure per tab, cleared by the next load.
@@ -411,6 +423,9 @@ export class BrowserHost implements BrowserActionContext {
 		this.addressOverlayMode =
 			options.addressOverlayMode ??
 			(() => ({ mode: "suspend", reason: "unavailable" }));
+		this.historyStore = options.historyFilePath
+			? createBrowserHistoryStore(options.historyFilePath)
+			: null;
 	}
 
 	/** Answer one wire request. The only place a method name becomes an action. */
@@ -1559,8 +1574,13 @@ export class BrowserHost implements BrowserActionContext {
 	 * no longer matches, which covers the race between this check and the reply
 	 * landing.
 	 *
-	 * Collection is bounded and derived (`address-history.ts`); this method adds
-	 * only the authority the collector must not pretend to own.
+	 * RANKING MOVED HERE with the persistent store: the renderer used to rank a
+	 * snapshot of every stack, which cannot scale to a 5000-entry history either
+	 * in memory or across IPC. Main now asks the store for its top matches, puts
+	 * them ahead of the live-tab rows (`mergeAddressHistory`), and bounds the
+	 * answer by `request.limit`. The renderer still derives display text, the
+	 * target URL and the inline suffix, because those depend on exactly what the
+	 * user typed.
 	 */
 	addressHistory(request: AddressHistoryRequest): AddressHistoryResponse {
 		const activeTabId = this.registry.activeTab?.tabId ?? null;
@@ -1570,19 +1590,64 @@ export class BrowserHost implements BrowserActionContext {
 				"the active tab changed before suggestions were read",
 			);
 		}
+		const live = collectAddressHistory(
+			this.registry.list().map((record) => ({
+				tabId: record.tabId,
+				sessionId: record.sessionId,
+				webContents: record.view.webContents,
+				restoreRow: record.restoreRow ?? null,
+			})),
+			activeTabId,
+		);
+		const historyMatches =
+			this.historyStore?.suggest(request.query, request.limit) ?? [];
 		return {
 			requestId: request.requestId,
-			...collectAddressHistory(
-				this.registry.list().map((record) => ({
-					tabId: record.tabId,
-					sessionId: record.sessionId,
-					webContents: record.view.webContents,
-					restoreRow: record.restoreRow ?? null,
-				})),
-				request.scope,
-				activeTabId,
+			activeTabId: live.activeTabId,
+			entries: mergeAddressHistory(
+				live.entries,
+				historyMatches,
+				request.query,
+				request.limit,
 			),
 		};
+	}
+
+	/**
+	 * Record one committed top-level navigation.
+	 *
+	 * Called from the per-view wiring in `index.ts`, which is the only place that
+	 * sees the event for every tab. A non-HTTP(S) URL is dropped by the store, so
+	 * `about:blank`, `chrome://` and a refused scheme never enter the document.
+	 * The title is filled in by `recordHistoryTitle` when Chromium announces it;
+	 * recording the visit first is deliberate, because the commit is the fact and
+	 * the title is a later, optional update.
+	 */
+	recordHistoryVisit(url: string): void {
+		this.historyStore?.record(url, "");
+	}
+
+	/** Update the stored title for a URL that is already in the history. Never
+	 * increments a visit: `page-title-updated` fires for a page that has already
+	 * been counted, sometimes several times. */
+	recordHistoryTitle(url: string, title: string): void {
+		this.historyStore?.updateTitle(url, title);
+	}
+
+	/** Write any debounced history change now (quit, and the host's own stop). */
+	flushHistory(): void {
+		this.historyStore?.flush();
+	}
+
+	/** "Clear everything" also forgets the suggestion history (`profile.ts` is
+	 * the path that calls this, so cookies/cache alone cannot reach it). */
+	clearHistory(): void {
+		this.historyStore?.clear();
+	}
+
+	/** "Forget this site" drops that origin's rows; other origins stay. */
+	clearOriginHistory(origin: string): void {
+		this.historyStore?.clearOrigin(origin);
 	}
 
 	/**

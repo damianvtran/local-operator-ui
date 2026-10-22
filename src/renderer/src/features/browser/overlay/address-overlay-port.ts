@@ -29,7 +29,7 @@ export type AddressOverlayView =
 	| { kind: "rows"; rows: AddressOverlayRow[] }
 	| {
 			kind: "notice";
-			notice: "error" | "hint" | "empty" | "no_match";
+			notice: "error" | "empty" | "no_match";
 			text: string;
 	  };
 

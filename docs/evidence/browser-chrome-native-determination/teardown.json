@@ -1,0 +1,13 @@
+{
+  "quitRequested": "quit requested",
+  "natural": {
+    "exited": {
+      "code": 0,
+      "signal": null
+    }
+  },
+  "pid": 63405,
+  "groupAfterQuit": [],
+  "aliveAfter": false,
+  "groupAliveAfter": 0
+}

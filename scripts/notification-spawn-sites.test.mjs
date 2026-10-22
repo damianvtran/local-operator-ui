@@ -233,6 +233,14 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/browser-native-determination.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless for the post-merge S4b native determination; it launches Electron directly, so the notification kill switch must ride the launch env",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-chrome-s4b-probe.mjs",
 		"spawn",
 		1,
@@ -300,6 +308,16 @@ const APP_SPAWN_SITES = [
 		2,
 		/(?:\{|,)\s*env\s*,/,
 		"boots the built app headless and forks a REAL pty inside it, driving the console host over the app's own /rpc - and with `--packaged` it launches an electron-builder bundle the same way, so this rig is two separate chances to banner the operator",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
+		"scripts/console-ended-proof.mjs",
+		"spawn",
+		/* #2, not #1: the `lop serve` daemon is spawned first; the app's own spawn is
+		 * the second and is the one this table exists to check. */
+		2,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the BUILT app twice over one quit (the run's own evidence path), on a scratch profile against a real `lop serve` daemon - two chances to banner the operator, and the second launch is a restore",
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(
