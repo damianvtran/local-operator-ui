@@ -10,13 +10,14 @@
  * band beside a real composer edge, the same reading register the compatibility
  * banner and the status strip share (`NOTICE_BAND`).
  *
- * THE STAGE IS THE REAL COLUMN CONTRACT, not a padded approximation. It applies
- * `CHAT_COLUMN_CONTAINER` + `CHAT_COLUMN_INSET` + `CHAT_MEASURE` exactly as
- * `chat-content` mounts the band, and paints a composer-shaped box on the same
- * measure below it - the previous stage wrapped the band in its own `px-6`, which
- * doubled the inset and hid the very defect the column fix removes (design round
- * 1, D1). `width` narrows the whole column so a 390px frame is a real narrow
- * column rather than a wide page with a squeezed child.
+ * THE STAGE IS THE REAL COLUMN CONTRACT, not a padded approximation. Like
+ * `chat-content`, it puts `CHAT_COLUMN_CONTAINER` + `CHAT_COLUMN_INSET` on the
+ * OUTER element and hands `CHAT_MEASURE` to the band itself; the composer-shaped
+ * box below takes the same measure inside its own inset wrapper. Putting the
+ * inset and the measure on one element charged the gutter to the 810px cap (the
+ * 762px defect of design round 2, D1), and the earlier stage's own `px-6` hid
+ * it. `width` narrows the whole column so a 390px frame is a real narrow column
+ * rather than a wide page with a squeezed child.
  *
  * No English furniture copy: the composer below is a shape, not a sentence, so a
  * non-en capture contains only translated product copy.
