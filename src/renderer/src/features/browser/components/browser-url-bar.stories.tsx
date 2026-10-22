@@ -31,7 +31,7 @@ const menu = (
 		onPrint={() => {}}
 		onResetZoom={() => {}}
 		onOpenDownloads={() => {}}
-		onOpenApprovals={() => {}}
+		onOpenApprovals={() => false}
 		showApprovalsFolded={false}
 	/>
 );
@@ -120,7 +120,7 @@ export const Narrow: Story = {
 				onPrint={() => {}}
 				onResetZoom={() => {}}
 				onOpenDownloads={() => {}}
-				onOpenApprovals={() => {}}
+				onOpenApprovals={() => false}
 				showApprovalsFolded={false}
 			/>
 		),

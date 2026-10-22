@@ -438,7 +438,11 @@ export interface BrowserChrome {
 	 * load failure) rather than an overlay covering the content area. Main keeps
 	 * shortcut ownership for the first and refuses it for the second; see
 	 * `browser-surface.tsx` and `registry.ts:chromeVisible`. */
-	setViewVisible: (visible: boolean, ownPage?: boolean) => void;
+	setViewVisible: (
+		visible: boolean,
+		ownPage?: boolean,
+		ownStatePage?: boolean,
+	) => void;
 	respondToConsent: (
 		entryId: string,
 		decision: ConsentDecision,
@@ -740,19 +744,23 @@ export function useBrowserChrome(): BrowserChrome {
 	 * and the cleanup would hide the view once per change — a flicker rather than
 	 * a policy.
 	 *
-	 * `ownPage` is forwarded unchanged: it is the reason half of the report, not a
-	 * second visibility flag. Dropping it here would leave main unable to tell the
-	 * browser's own start page from a dialog covering it, which is the S4a bug.
+	 * `ownPage` and `ownStatePage` are forwarded unchanged: they are reasons, not
+	 * visibility flags. `ownPage` drives keyboard ownership (cleared by an
+	 * overlay); `ownStatePage` survives one, so controls stay refused on the start
+	 * page while a menu is open over it (QA Q3-1).
 	 */
-	const setViewVisible = useCallback((visible: boolean, ownPage = false) => {
-		void bridge()
-			?.setViewVisible(visible, ownPage)
-			.catch(() => {
-				// Losing a visibility update corrects itself on the next policy change;
-				// surfacing it would put a message in the band for a race the user cannot
-				// act on.
-			});
-	}, []);
+	const setViewVisible = useCallback(
+		(visible: boolean, ownPage = false, ownStatePage = ownPage) => {
+			void bridge()
+				?.setViewVisible(visible, ownPage, ownStatePage)
+				.catch(() => {
+					// Losing a visibility update corrects itself on the next policy change;
+					// surfacing it would put a message in the band for a race the user cannot
+					// act on.
+				});
+		},
+		[],
+	);
 
 	const api = bridge();
 	return useMemo<BrowserChrome>(

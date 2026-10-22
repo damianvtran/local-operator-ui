@@ -10047,8 +10047,14 @@ test("page controls work while an app overlay hides the view, and only then (Q2-
 	assert.equal(host.chromeState().pageControls.find?.tabId, id);
 	await host.controlPage(id, "reset");
 	assert.equal(host.chromeState().pageControls.notice, null);
-	// An own-state page (start/failure) owns the keyboard and is not a page to
-	// control: the old refusal stands.
+	// An own-state page (start/failure) is not a page to control, and it stays
+	// refused while an overlay ALSO hides it (Q3-1): true in the third slot means
+	// "the browser's own content, whatever else is over it".
+	host.setViewVisible(false, false, true);
+	await assert.rejects(
+		() => host.controlPage(id, "open"),
+		/no longer presented/,
+	);
 	host.setViewVisible(false, true);
 	await assert.rejects(
 		() => host.controlPage(id, "open"),

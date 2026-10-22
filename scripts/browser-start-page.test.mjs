@@ -168,7 +168,7 @@ export function mount(container, options = {}) {
 	};
 	const refused = [];
 	/**
-	 * EVERY view-visibility report, in order, as [visible, ownPage].
+	 * EVERY view-visibility report, in order, as [visible, ownPage, ownStatePage].
 	 *
 	 * "ownPage" is the surface's answer to "why is the native view hidden?": its
 	 * own state page (start page / load failure) versus an overlay covering the
@@ -180,8 +180,12 @@ export function mount(container, options = {}) {
 	let notify = () => {};
 	const explicit = {
 		state: async () => structuredClone(state),
-		setViewVisible: async (visible, ownPage) => {
-			visibility.push([visible, ownPage === true]);
+		setViewVisible: async (visible, ownPage, ownStatePage) => {
+			visibility.push([
+				visible,
+				ownPage === true,
+				(ownStatePage ?? ownPage) === true,
+			]);
 		},
 		// The projection store subscribes on the 0 -> 1 consumer edge and stops on
 		// the way back, so these have to answer an unsubscribe function. The app's own
@@ -611,7 +615,7 @@ test("the surface reports WHY the view is hidden: its own state page versus a re
 	const visibility = handle.visibility();
 	assert.deepEqual(
 		visibility.at(-1),
-		[false, true],
+		[false, true, true],
 		`the start page hides the view for its OWN page (reports: ${JSON.stringify(visibility)})`,
 	);
 
@@ -624,15 +628,15 @@ test("the surface reports WHY the view is hidden: its own state page versus a re
 	await flush();
 	assert.deepEqual(
 		visibility.at(-1),
-		[false, false],
-		`an overlay is not the browser's own page (reports: ${JSON.stringify(visibility)})`,
+		[false, false, true],
+		`an overlay owns the keyboard, but the START PAGE is still not a controllable page (reports: ${JSON.stringify(visibility)})`,
 	);
 	await act(async () => release());
 	await flush();
 	assert.deepEqual(
 		visibility.at(-1),
-		[false, true],
-		"closing the dialog restores the state page's reason",
+		[false, true, true],
+		"closing the dialog restores the state page's keyboard reason",
 	);
 
 	// Landing a page restores the native view; the reason no longer applies.
@@ -642,7 +646,7 @@ test("the surface reports WHY the view is hidden: its own state page versus a re
 	await flush();
 	assert.deepEqual(
 		visibility.at(-1),
-		[true, false],
+		[true, false, false],
 		`a live page shows the native view again (reports: ${JSON.stringify(visibility)})`,
 	);
 	await act(async () => {

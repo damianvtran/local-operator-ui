@@ -132,6 +132,9 @@ export interface BrowserUrlBarProps {
 	startPage?: boolean;
 	/** The field's placeholder when empty (the start page's `example.com`). */
 	placeholder?: string;
+	/** The row is too narrow for the hint sentence to sit beside typed text: keep
+	 * it as the field's description only (round 3, U18). */
+	narrow?: boolean;
 	/** The view is hidden for a browser-owned state (start page, load failure), so
 	 * main refuses suggestion projections. The field says so once the user types,
 	 * rather than leaving a silent dead list. */
@@ -186,6 +189,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	anchor,
 	focusRequest = null,
 	placeholder,
+	narrow = false,
 	suggestionsUnavailable = false,
 	onDismiss,
 	onCommitted,
@@ -1212,17 +1216,22 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				    cannot afford that, and the sentence belongs to the field that still
 				    works. `pointer-events-none` keeps the input clickable underneath. */}
 				{hintShown && (
-					<output
+					<span
 						id={unavailableId}
-						aria-live="polite"
-						/* An opaque ground, because the sentence overlays the field the
-						   user is typing into: without it a long address runs under the
-						   text and both become unreadable (round-2 U10). */
-						className="pointer-events-none absolute top-1/2 right-7 max-w-[45%] -translate-y-1/2 truncate rounded-sm bg-elevated px-1 text-meta text-ink-dim"
+						/* AT reaches it through `aria-describedby`; the suspend copy is
+						   already announced by the field's own status sentence, so this
+						   node must not be a second live region (round 3, U18). Below the
+						   width the sentence can share with typed text it is description
+						   only, never painted over the address. */
+						className={
+							narrow
+								? "sr-only"
+								: "pointer-events-none absolute top-1/2 right-7 max-w-[45%] -translate-y-1/2 truncate rounded-sm bg-elevated px-1 text-meta text-ink-dim"
+						}
 						data-tour-tag="browser-address-unavailable"
 					>
 						{t("ui.browser.browser_url_bar.address_suggestions_unavailable")}
-					</output>
+					</span>
 				)}
 			</div>
 			{menu}

@@ -4005,15 +4005,38 @@ test("the unavailable sentence is announced and does not name implementation sta
 		"src/renderer/src/features/browser/components/browser-url-bar.tsx",
 		"utf8",
 	);
-	assert.match(bar, /<output\s+id=\{unavailableId\}/);
-	assert.match(bar, /aria-live="polite"/);
-	assert.match(
-		bar,
-		/bg-elevated px-1 text-meta text-ink-dim/,
-		"the hint needs an opaque ground over the text it covers",
+	assert.match(bar, /id=\{unavailableId\}/);
+	assert.ok(
+		bar.includes('? "sr-only"'),
+		"below the width it can share, the sentence is description only (U18)",
 	);
-	assert.match(bar, /hintShown \? unavailableId : null/);
-	// N2: the Home tooltip says where the control goes, not "start page (blank)".
+	assert.ok(bar.includes("bg-elevated px-1"));
+	const hint = bar.slice(
+		bar.indexOf("hintShown && ("),
+		bar.indexOf("hintShown && (") + 1200,
+	);
+	assert.ok(!hint.includes("aria-live"), "one announcement path (U18)");
 	assert.match(bar, /content=\{t\("ui\.browser\.browser_url_bar\.home"\)\}/);
 	assert.doesNotMatch(bar, /home_destination/);
+});
+
+test("the start/failure page stays non-controllable while an overlay is open (Q3-1)", () => {
+	const surface = readFileSync(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+		"utf8",
+	);
+	assert.match(
+		surface,
+		/const browserOwnState = onStartPage \|\| navFailure !== null;/,
+		"own-state is a property of the state, not of the overlay filter",
+	);
+	assert.match(
+		surface,
+		/setViewVisible\(\s*!suppressed,\s*suppressed && !overlaySuppressing,\s*suppressed && browserOwnState,\s*\)/,
+	);
+	assert.match(
+		surface,
+		/approvalsTriggerRef\.current \?\? pageMenuTriggerRef\.current/,
+		"brand-empty handoff must reach the folded trigger too",
+	);
 });

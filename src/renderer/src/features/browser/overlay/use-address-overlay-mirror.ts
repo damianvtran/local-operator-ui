@@ -14,7 +14,10 @@
  * WHY IT MEASURES EVERY FRAME: a position-only shift (a sidebar collapse moves
  * the toolbar sideways without resizing it) is invisible to ResizeObserver and
  * to the page's own rectangle reporter. Only while the list is open, the hook
- * compares a signature; identical frames send nothing.
+ * compares a signature; identical frames send nothing. A `stale_layout` refusal
+ * gets four frame-spaced retries (~67 ms) and then idles; a real change resets
+ * that budget, so a page that lands later is picked up by the next keystroke or
+ * rect move rather than by a poll.
  */
 
 import { useEffect, useRef } from "react";
@@ -194,6 +197,8 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 		 * the per-frame storm; any real change resets the budget, and after four
 		 * refusals the loop idles until the projection body changes. */
 		let staleAttempts = 0;
+		/** Four frame-spaced retries: about 67 ms at 60 Hz (round 3, U19). A view
+		 * that lands later is picked up by the next real change, not by waiting. */
 		const STALE_LAYOUT_ATTEMPTS = 4;
 		let forceProject = false;
 		const stop = (): void => {
@@ -292,7 +297,10 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 				if (!stopped) frame = requestAnimationFrame(tick);
 				return;
 			}
-			if (!forceProject) staleAttempts = 0;
+			/* A REAL change resets the budget even when it lands ON a forced retry:
+			   the signature differs from the refused body, so this is a new
+			   condition, not another attempt at the old one (round 3, U11 NIT). */
+			if (signature !== lastSignature) staleAttempts = 0;
 			forceProject = false;
 			lastSignature = signature;
 			pending = true;

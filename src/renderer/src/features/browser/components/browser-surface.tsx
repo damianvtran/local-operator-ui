@@ -287,6 +287,9 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	   from (round-2 Q2-2). */
 	const pageMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
 	const [dockOpen, setDockOpen] = useState(false);
+	/* A menu-opened dock mounts while Radix is still closing; the heading focus is
+	   re-requested once the menu has handed focus back (round 3, U13). */
+	const [dockFocusRequest, setDockFocusRequest] = useState(0);
 	/** Which request's card is expanded. View state, defaulting to the attention
 	 * entry and then to the oldest — exactly the band's rule before this feature
 	 * (spec 4.1), never a second copy of main's queue. */
@@ -463,20 +466,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		};
 	}, [chrome.setContentRect]);
 
-	// ---- the overlay policy -------------------------------------------------
-	// One boolean → one IPC call → `setVisible(false)` on open and `(true)` on
-	// close (design 11.3). The strip and the URL bar are outside the view's rect,
-	// so they stay painted and the screen never looks empty. The approvals dock is
-	// deliberately NOT part of this: it narrows the content rect instead, which is
-	// the whole reason the queue lives in a dock rather than a sheet (spec §2).
-	useEffect(() => {
-		// `ownPage` is the reason half of this call: the view is hidden EITHER so an
-		// overlay can paint (chords belong to the overlay) OR so the browser's own
-		// start page / failure panel can (the browser still owns its keys). Main
-		// keeps shortcut ownership for the second and refuses it for the first.
-		chrome.setViewVisible(!suppressed, suppressed && !overlaySuppressing);
-	}, [chrome.setViewVisible, suppressed, overlaySuppressing]);
-
 	// A banner click names the pending request; the band is already rendering it,
 	// so the only job here is to make sure this surface is showing current state.
 	useEffect(() => {
@@ -566,7 +555,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		if (bandShowing || !wasShowing) return;
 		if (dockOpen) return;
 		if (document.activeElement !== document.body) return;
-		approvalsTriggerRef.current?.focus();
+		(approvalsTriggerRef.current ?? pageMenuTriggerRef.current)?.focus();
 	}, [bandShowing, dockOpen]);
 
 	const closeDock = useCallback(() => {
@@ -655,6 +644,28 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		!chrome.pendingUrl;
 	const showingNewTab =
 		onStartPage && navFailure === null && !overlaySuppressing;
+
+	// ---- the overlay policy -------------------------------------------------
+	// One boolean → one IPC call → `setVisible(false)` on open and `(true)` on
+	// close (design 11.3). The strip and the URL bar are outside the view's rect,
+	// so they stay painted and the screen never looks empty. The approvals dock is
+	// deliberately NOT part of this: it narrows the content rect instead, which is
+	// the whole reason the queue lives in a dock rather than a sheet (spec §2).
+	//
+	// `ownPage` is the reason half: the view is hidden EITHER so an overlay can
+	// paint OR so the browser's own start/failure state can. It is a property of
+	// the STATE, not of `overlaySuppressing` — an overlay opened ON the start page
+	// is still a start page, and main must keep refusing page controls there
+	// (QA Q3-1: deriving it from the overlay filter turned the own-state refusal
+	// off the moment the ⋯ menu opened).
+	const browserOwnState = onStartPage || navFailure !== null;
+	useEffect(() => {
+		chrome.setViewVisible(
+			!suppressed,
+			suppressed && !overlaySuppressing,
+			suppressed && browserOwnState,
+		);
+	}, [chrome.setViewVisible, suppressed, overlaySuppressing, browserOwnState]);
 
 	const overlayHealth = state?.addressOverlay;
 	const overlayMode: "popout" | "suspend" =
@@ -974,6 +985,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						: undefined
 				}
 				suggestionsUnavailable={onStartPage || navFailure !== null}
+				narrow={rowWidth > 0 && rowWidth < 360}
 				onNavigate={(url, expectedTabId) =>
 					void chrome.navigate(url, expectedTabId)
 				}
@@ -995,7 +1007,10 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						    and disappears would reflow the field every time an agent asked
 						    for a site. Below a 300px row it FOLDS into ⋯ (round-1 D5): the
 						    field would otherwise fall under its text floor, and the menu
-						    item already carries the count. Its ring rides the ROW ground,
+						    item already carries the count. At this width that item is the
+						    ONLY route into a dock whose 25px column is unreadable; that is
+						    deferred to S6 (D11/U17), not fixed by widening here. Its ring
+						    rides the ROW ground,
 						    not `canvas`, or the halo reads as a lighter box against the
 						    strip it overhangs (D6). */}
 						{!(rowWidth > 0 && rowWidth < 300) && (
@@ -1062,7 +1077,12 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 									void chrome.pageControl(state.activeTabId, "reset");
 							}}
 							onOpenDownloads={() => void chrome.revealDownloads()}
-							onOpenApprovals={() => setDockOpen((open) => !open)}
+							onOpenApprovals={() => {
+								const opening = !dockOpen;
+								setDockOpen(opening);
+								return opening;
+							}}
+							onDockOpened={() => setDockFocusRequest((n) => n + 1)}
 							triggerRef={pageMenuTriggerRef}
 							showApprovalsFolded={rowWidth > 0 && rowWidth < 300}
 						/>
@@ -1332,6 +1352,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				</div>
 				<BrowserApprovalsDock
 					open={dockOpen}
+					focusRequest={dockFocusRequest}
 					rows={queue.rows}
 					resolved={queue.resolved}
 					selectedEntryId={pendingSelected?.entryId ?? null}

@@ -289,6 +289,17 @@ export const Tooltip = ({
 	useEffect(() => {
 		if (controlling) reportOpen.current?.(shown);
 	}, [controlling, shown]);
+	/*
+	 * CLEAR THE STALE OPEN (round 3, U14). Suppression closes the panel but leaves
+	 * `open` true; lifting suppression then re-shows it with no new hover or focus,
+	 * measured as "Page options" reappearing ~400ms after Approvals was chosen and
+	 * ghost rail labels after a route change. A controller must not hold an open it
+	 * was forced out of: close it while suppressed, so lifting suppression leaves
+	 * the panel closed until the user asks again.
+	 */
+	useEffect(() => {
+		if (controlling && suppressed && open) setOpen(false);
+	}, [controlling, suppressed, open]);
 
 	const bare =
 		(disabled && !suppressed) ||

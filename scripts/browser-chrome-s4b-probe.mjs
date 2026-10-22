@@ -1266,7 +1266,7 @@ plan(
 );
 plan(
 	"V2",
-	"the page menu opened from the popout keeps the field row raised",
+	"the page menu opened from the permanent row reports its portal and pause",
 	"driven",
 );
 plan(

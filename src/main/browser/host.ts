@@ -1787,8 +1787,12 @@ export class BrowserHost implements BrowserActionContext {
 	 * main tell the browser's own state pages (start page, load failure - hidden so
 	 * their DOM can paint) from an overlay covering them. Shortcut ownership keys
 	 * on it; presentation does not. See `TabRegistry.chromeVisible`. */
-	setViewVisible(visible: boolean, ownPage = false): Record<string, unknown> {
-		this.registry.setViewVisible(visible, ownPage);
+	setViewVisible(
+		visible: boolean,
+		ownPage = false,
+		ownStatePage = ownPage,
+	): Record<string, unknown> {
+		this.registry.setViewVisible(visible, ownPage, ownStatePage);
 		// Suppressed by an overlay: the page must not keep the native key owner.
 		// True for a state page too - there is no presented page either way.
 		if (!visible) this.clearPageFocus();
