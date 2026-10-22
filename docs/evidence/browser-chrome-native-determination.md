@@ -6,7 +6,7 @@
 - **Source equivalence:** the S4b branch tip `8f9fe72ec7` and `c5503204ed` have identical trees (`git diff --quiet 8f9fe72ec7 c5503204ed` → 0; both trees `64104d143d20…`). This run built a fresh app from `c5503204ed`; it did not reuse the S4b worktree's `out/`.
 - **Since the run:** `origin/main` moved to `b40e62fffdd6` (#1315). That commit touches only `scripts/trace-fold-model.test.mjs`, `scripts/turn-collapse-behaviour.test.mjs`, and two chat canonical files — no browser or address-overlay path — so this determination is still the S4b chrome's state on current main.
 - **Build identity:** fresh `pnpm build` in `.worktrees/browser-native-determination`; Electron `44.3.0`, Chrome `152.0.7977.78`, app `0.39.4`. Hashes are in `docs/evidence/browser-chrome-native-determination/build-identity.json` (`main/index.js` `9a0e2c54…`, `main/index.jsc` `269d88d0…`, `renderer/index.html` `a0e2b36e…`, `overlay-list.html` `9c8bf7a5…`). The S4b artifact's renderer/bytecode hashes differ, which is one reason its build was not reused.
-- **Probe:** `scripts/browser-native-determination.mjs`; machine facts in `docs/evidence/browser-chrome-native-determination/` (`facts.json`, `matrix.md`, `events.jsonl`, `app.log`, `teardown.json`); pixels in that directory's `frames/` (git-ignored, regenerable).
+- **Probe:** `scripts/browser-native-determination.mjs`; machine facts in `docs/evidence/browser-chrome-native-determination/` (`facts.json`, `matrix.md`, `events.jsonl`, `teardown.json`; `app.log` is written locally but is git-ignored); pixels in that directory's `frames/` (git-ignored, regenerable).
 - **Question:** does the S4b popout — the field row over the tab strip and its native suggestion list — paint over the driven page, and would a click reach it?
 
 ## Verdict
