@@ -365,7 +365,11 @@ export async function requestDesktopMediaOutcome(
 	} else if (request.op === "team_bridge.attachment.upload") {
 		if (!bytes || bytes.byteLength === 0) {
 			return {
-				response: { status: 422, kind: "error", detail: "An image is required." },
+				response: {
+					status: 422,
+					kind: "error",
+					detail: "An image is required.",
+				},
 				answered: false,
 			};
 		}

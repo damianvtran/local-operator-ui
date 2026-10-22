@@ -5,6 +5,7 @@ export {
 	reconcileDraftAccount,
 } from "../../shared/store/team-bridge-draft-account";
 import { z } from "zod";
+import type { DraftAttachment } from "./team-bridge-attachments-model";
 import type { TeamBridgeTarget } from "./team-bridge-model";
 
 export type TeamBridgeDraft = {
@@ -14,6 +15,8 @@ export type TeamBridgeDraft = {
 	conversationId?: string;
 	sendAt?: string;
 	createUncertain?: boolean;
+	/* Staged uploads: the hub's DESCRIPTORS only, never bytes or base64 (D9). */
+	attachments?: DraftAttachment[];
 };
 export type TeamBridgeDrafts = Record<string, TeamBridgeDraft>;
 const recipientSchema = z.discriminatedUnion("kind", [
@@ -44,6 +47,27 @@ const draftSchema = z.object({
 	conversationId: z.string().min(1).optional(),
 	sendAt: z.string().datetime({ offset: true }).optional(),
 	createUncertain: z.boolean().optional(),
+	/*
+	 * Bounded and closed (`.strict()`): a descriptor is a handful of numbers and
+	 * ids, so anything carrying more - a `data:` string, base64 - fails the parse
+	 * and the entry is dropped rather than read back into the composer.
+	 */
+	attachments: z
+		.array(
+			z
+				.object({
+					id: z.string().regex(/^[a-zA-Z0-9_-]{1,128}$/),
+					conversationId: z.string().min(1).max(128),
+					mime: z.enum(["image/png", "image/jpeg"]),
+					size: z.number().int().nonnegative(),
+					width: z.number().int().nonnegative(),
+					height: z.number().int().nonnegative(),
+					expiresAt: z.string().max(64).optional(),
+				})
+				.strict(),
+		)
+		.max(4)
+		.optional(),
 });
 
 /** Explicitly authored drafts are NOT the inbound message-body cache. They are
