@@ -597,6 +597,41 @@ test("an unanswered gate holds the page and draws no conversation chrome", () =>
 	assert.doesNotMatch(html, /People<\/h2>/);
 });
 
+test("the merged rail lists a hub tenant's rows when memberships are empty", () => {
+	// F6 on #1314: the container builds organizations from the hub's status
+	// tenants; an empty memberships read must not empty the rail or fall back
+	// to "Unknown organization".
+	const organizations = model.organizationOptions(
+		[],
+		[],
+		[
+			{
+				tenant_id: "tnt_2",
+				tenant_name: "Northwind Collective",
+				eligible: true,
+				endpoint: null,
+			},
+		],
+	);
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				organizations,
+				scope: "all",
+				conversations: [
+					conversation({ id: "bcv_t2", tenant_id: "tnt_2" }),
+					conversation({ id: "bcv_t3", tenant_id: "tnt_3" }),
+				],
+			}),
+		),
+	);
+	assert.match(html, /data-conversation-id="bcv_t2"/);
+	assert.doesNotMatch(html, /data-conversation-id="bcv_t3"/);
+	assert.match(visible(html), /Northwind Collective/);
+	assert.doesNotMatch(visible(html), /Unknown organization/);
+});
+
 test("the People heading is an h2 under the page's h1", () => {
 	// ROUND-1 U-7: the sr-only page h1 had no h2 before the section's h3.
 	const html = renderToStaticMarkup(
@@ -945,6 +980,90 @@ test("the merged scope explains why it has no People list and queries none", () 
 	);
 	assert.match(html, /Choose an organization to see its people/);
 	assert.doesNotMatch(html, /Message Bea/);
+});
+
+// ---------------------------------------------------------------------------
+// View: sender names (the legacy "Member" label)
+// ---------------------------------------------------------------------------
+
+/*
+ * OPERATOR REPORT 2026-10-22: every message, their own included, was signed
+ * "Member" with an "M" avatar. The hub stored that placeholder as the label of
+ * creators and self-joins, so these fixtures carry it exactly as prod rows do.
+ */
+const legacyThread = (conversationId) =>
+	[
+		["acct_self", "mine"],
+		["acct_bea", "from bea"],
+		["acct_gone", "from someone who left"],
+	].map(([accountId, body], index) => ({
+		id: `bcmsg_${index + 1}`,
+		conversation_id: conversationId,
+		seq: index + 1,
+		// Ten minutes apart, so each message draws its own header and avatar.
+		sender: { account_id: accountId, kind: "human", display_label: "Member" },
+		body,
+		origin: "human",
+		created_at: new Date(Date.UTC(2026, 9, 19, 10, index * 10)).toISOString(),
+	}));
+
+const senderNames = (html) =>
+	[...html.matchAll(/data-sender="[^"]*"[^>]*>([^<]*)</g)].map(
+		(match) => match[1],
+	);
+
+test('a legacy "Member" sender is named from the directory, the identity, or an unknown placeholder', () => {
+	const dm = conversation({
+		members: [
+			{ ...selfMember, display_label: "Member" },
+			{ ...conversation().members[1], display_label: "Member" },
+		],
+	});
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				// The directory lists Bea but neither the reader nor the leaver.
+				people: [person()],
+				selfName: "Damian Tran",
+				selectedConversation: dm,
+				messages: legacyThread(dm.id),
+				messageState: "ready",
+			}),
+		),
+	);
+	assert.deepEqual(senderNames(html), ["Damian Tran", "Bea", "Unknown person"]);
+	// The unknown sender wears a neutral glyph, not the initial of a placeholder.
+	assert.match(html, /data-sender-avatar="unknown"/);
+	assert.doesNotMatch(visible(html), /\bMember\b/);
+	assert.doesNotMatch(html, /data-sender-avatar="initial"[^>]*>U</);
+});
+
+test("the merged view names senders from the conversation's own organization directory", () => {
+	const dm = conversation({
+		members: [
+			{ ...selfMember, display_label: "Member" },
+			{ ...conversation().members[1], display_label: "Member" },
+		],
+	});
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				scope: "all",
+				people: [],
+				directories: { tnt_1: [person()] },
+				selfName: "Damian Tran",
+				selectedConversation: dm,
+				messages: legacyThread(dm.id),
+				messageState: "ready",
+			}),
+		),
+	);
+	assert.deepEqual(senderNames(html), ["Damian Tran", "Bea", "Unknown person"]);
+	// The rail's DM row is titled from the same directory, not "Member".
+	assert.match(html, /data-conversation-id="bcv_dm_bea"[\s\S]*?Bea/);
+	assert.doesNotMatch(visible(html), /\bMember\b/);
 });
 
 test("an empty roster says so instead of rendering a blank section", () => {

@@ -170,5 +170,7 @@
 	"ui.teamBridge.schedule.discard_attempt": "He revisado Programados — descartar este intento",
 	"ui.teamBridge.attachments.expired_staged_retry": "Esta imagen ya no está lista para enviarse. Vuelve a intentarlo o quítala.",
 	"ui.teamBridge.attachments.preview_unavailable": "Vista previa no disponible",
-	"ui.teamBridge.attachments.failed_count": "{count, plural, one {No se puede enviar # imagen.} other {No se pueden enviar # imágenes.}}"
+	"ui.teamBridge.attachments.failed_count": "{count, plural, one {No se puede enviar # imagen.} other {No se pueden enviar # imágenes.}}",
+	"ui.teamBridge.sender.unknown_person": "Persona desconocida",
+	"ui.teamBridge.sender.unknown_agent": "Agente desconocido"
 }

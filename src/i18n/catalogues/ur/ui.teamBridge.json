@@ -170,5 +170,7 @@
 	"ui.teamBridge.schedule.discard_attempt": "میں نے “شیڈول شدہ” دیکھ لیا ہے — یہ کوشش ترک کریں",
 	"ui.teamBridge.attachments.expired_staged_retry": "یہ تصویر اب بھیجنے کے لیے تیار نہیں ہے۔ دوبارہ کوشش کریں یا اسے ہٹا دیں۔",
 	"ui.teamBridge.attachments.preview_unavailable": "پیش منظر دستیاب نہیں",
-	"ui.teamBridge.attachments.failed_count": "{count, plural, one {# تصویر نہیں بھیجی جا سکتی۔} other {# تصاویر نہیں بھیجی جا سکتیں۔}}"
+	"ui.teamBridge.attachments.failed_count": "{count, plural, one {# تصویر نہیں بھیجی جا سکتی۔} other {# تصاویر نہیں بھیجی جا سکتیں۔}}",
+	"ui.teamBridge.sender.unknown_person": "نامعلوم شخص",
+	"ui.teamBridge.sender.unknown_agent": "نامعلوم ایجنٹ"
 }

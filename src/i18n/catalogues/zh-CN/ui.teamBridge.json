@@ -170,5 +170,7 @@
 	"ui.teamBridge.schedule.discard_attempt": "我已查看“定时消息”，放弃本次尝试",
 	"ui.teamBridge.attachments.expired_staged_retry": "此图片当前无法发送。请重试或将其移除。",
 	"ui.teamBridge.attachments.preview_unavailable": "无法预览",
-	"ui.teamBridge.attachments.failed_count": "{count, plural, other {#张图片无法发送。}}"
+	"ui.teamBridge.attachments.failed_count": "{count, plural, other {#张图片无法发送。}}",
+	"ui.teamBridge.sender.unknown_person": "未知用户",
+	"ui.teamBridge.sender.unknown_agent": "未知智能体"
 }
