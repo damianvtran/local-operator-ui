@@ -19,7 +19,7 @@ import {
 	File,
 	Globe,
 	Lock,
-	LockOpen,
+	LockKeyholeOpen,
 	Search,
 	ShieldCheck,
 	X,
@@ -698,11 +698,15 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// landed non-blank url, it stayed set with the tab back on `about:blank`, so the
 	// start page was suppressed for good behind a blank view. Two things changed and
 	// make the term correct rather than dangerous. First, the note is RELEASED when
-	// an attempt is refused (`navigate` in the hook) and when a read shows the start
-	// state with nothing in flight (`refresh`) — so it can no longer outlive its
-	// attempt. Second, it is KEYED to the tab that made it (F3), so the hook only
-	// reports it for the active tab, and neither the round-2 leak across tabs nor a
-	// fresh tab reading another tab's state is possible.
+	// an attempt is refused (`navigate` in the hook), when a read lands a non-blank
+	// page for that same tab (`refresh`), and by the explicit `home`/`stop`
+	// controls — so it can no longer outlive its attempt. A start-state read
+	// deliberately does NOT release it: an accepted navigate looks identical to an
+	// idle start state until main pushes `did-start-loading`, so releasing there
+	// would clear a legitimate submit (F4). Second, it is KEYED to the tab that
+	// made it (F3), so the hook only reports it for the active tab, and neither the
+	// round-2 leak across tabs nor a fresh tab reading another tab's state is
+	// possible.
 	//
 	// WHY IT IS NEEDED AT ALL (F4). Without it the start page lingered over an
 	// ACCEPTED navigation for the window between the user's submit and main's own
@@ -756,7 +760,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			? Lock
 			: triggerSiteInfo.kind === "not-secure" ||
 					triggerSiteInfo.kind === "unverified"
-				? LockOpen
+				? LockKeyholeOpen
 				: triggerSiteInfo.kind === "file"
 					? File
 					: Search;
@@ -1164,10 +1168,9 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 								onOpenApprovals={() => setDockOpen((open) => !open)}
 							/>
 						}
-						// The address suggestions follow the SAME display scope as the strip:
-						// the route offers every tab, a conversation pane offers its own.
-						addressScope={tabScope}
-						addressScopeKey={scopeField}
+						// Suggestions are one list for the field: persistent history is
+						// session-agnostic, so there is no display scope to pass. The
+						// strip's `tabScope` still governs which TABS are shown.
 						addressHistory={(request) => chrome.addressHistory(request)}
 						onStateChanged={chrome.onStateChanged}
 					/>

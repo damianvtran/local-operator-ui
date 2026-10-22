@@ -1,0 +1,29 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "748f4aa733da",
+  "instance_derivation": "sha256('877cbcdfaf60:hi')[:12] from session 877cbcdfaf60",
+  "locale": "hi",
+  "status": "passed",
+  "namespace": "ui.console",
+  "date": "2026-10-22",
+  "scope": "Independent full pass over all 63 ui.console keys at the current bytes: read en/ui.console.json and en/ui.console.context.json, console-states.tsx (ended banner) and console-pane.tsx (tab strip), the core glossary and locale style guides, and docs/I18N.md; checked accuracy, register, glossary consistency, placeholder/ICU integrity, CLDR plurals, ur RTL and cell widths. No catalogue, ledger or code changes.",
+  "sha256": {
+    "en": "70587d7052f6129b3f56420f78427a588f64ce79a500e39c00d8a3a6d923aa52",
+    "target": "9feafec660fdc5657b9315a673eff86850c3b5575743190a0f13782206b5c7c5"
+  },
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "ui.console.ended.exit_signal",
+      "issue": "\"बंद किया गया\" uses the pane's close-action verb (close.confirm \"टर्मिनल बंद करें\") for a signalled kill, while the ended state in this namespace is \"समाप्त\"; it reads \"closed by SIGKILL\" rather than killed.",
+      "suggestion": "{signal} से समाप्त किया गया (25 cells, two more than the current 23)"
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.console.ended.app_quit",
+      "issue": "The two बंद forms two words apart mirror \"the app closed it when it quit\" word for word; \"ऐप ने बंद होते समय इसे समाप्त किया\" keeps the app as the actor without the repetition.",
+      "suggestion": "ऐप ने बंद होते समय इसे समाप्त किया (33 cells, two more than the current 31)"
+    }
+  ]
+}

@@ -135,7 +135,13 @@ body {
 }
 
 .lo-row-title {
-	min-width: 0;
+	/* A FLOOR, not zero: the title carries the open-tab source marker, and a
+	 * long URL could otherwise take the whole row and starve the marker to 0px,
+	 * making a tab row indistinguishable from a history row (design D3).
+	 * "Already open" measures 79.8px at 13px, so the floor is 8em (104px), which
+	 * fits the marker and its trailing space; the URL ellipsizes slightly earlier
+	 * instead. */
+	min-width: 8em;
 	/* The dock's `flex-1` is `1 1 0%`, not `auto`: with a zero basis the title
 	 * takes no width when the URL overflows, so the URL gets the row instead of
 	 * both fields shrinking proportionally (design review D1). */

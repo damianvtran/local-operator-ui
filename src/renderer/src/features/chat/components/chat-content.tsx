@@ -1757,6 +1757,19 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			[consoleUnseenAll, sessionId],
 		);
 		const consoleUnseenPulsing = useConsoleBlipPulse(consoleUnseenMarks);
+		/*
+		 * THE CONSOLE'S LIVENESS FACT, for the rail item's active treatment. The pane
+		 * publishes the running count it already reads (`consoleLiveSurface`), so this
+		 * is a projection rather than a second subscription or a poll - the same
+		 * discipline the unseen marks above follow.
+		 */
+		const consoleLiveSurface = useUiPreferencesStore(
+			(s) => s.consoleLiveSurface,
+		);
+		const consoleLiveCount =
+			consoleLiveSurface !== null && consoleLiveSurface.sessionId === sessionId
+				? consoleLiveSurface.count
+				: 0;
 
 		/*
 		 * THE CODE REQUEST LEDGER, read here for the rail item's name and its
@@ -3529,6 +3542,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						askScope={headerAsksScope}
 						consoleUnseenCount={consoleUnseenMarks.length}
 						consoleUnseenPulsing={consoleUnseenPulsing}
+						consoleLiveCount={consoleLiveCount}
 						fileCount={mentionedFileCount}
 						codeOpened={codeGroups.opened.length}
 						codeMentioned={codeGroups.mentioned.length}
