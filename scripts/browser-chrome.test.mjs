@@ -59,9 +59,13 @@ globalThis.localStorage = {
  * `requestAnimationFrame` on its own. That is enough to call the hook's returned
  * API by hand and watch what it delivers — which is what R4's fix is about.
  */
-/** The surface's own view-registration exclusion list, read as source (LOH-13 B):
- * hoisted per `useTopLevelRegex`, the same as LANDED_CLOSE_CARET below. */
-const SELF_SUPPRESSION_BLOCK = /const SELF_SUPPRESSION_IDS = \[([\s\S]*?)\];/;
+/** The browser's own view-registration exclusion list, read as source (LOH-13 B).
+ * It lives in ONE module since S4a because the chord hook filters the same
+ * snapshot; reading it from there is what keeps the guard coupled to the list
+ * the app actually uses rather than to a copy in the surface. Hoisted per
+ * `useTopLevelRegex`, the same as LANDED_CLOSE_CARET below. */
+const SELF_SUPPRESSION_BLOCK =
+	/export const BROWSER_SELF_SUPPRESSION_PREFIXES = \[([\s\S]*?)\] as const;/;
 
 const PROBE = `
 	import { createElement } from "react";
@@ -3261,6 +3265,11 @@ test("the surface's own view registrations are not read as the overlay that hide
 	// the paused note. The fix is the exclusion list, and its completeness is the
 	// thing to pin: every `useSuppressBrowserView` id this component registers must
 	// appear in it, or that state is invisible and its own registration is why.
+	//
+	// S4a WIDENED THE LIST'S CONSUMERS: main's shortcut ownership and the chord
+	// hook now read the same exclusion, so the list moved to
+	// `model/self-suppression`. The registrations are still read from the surface:
+	// a new self-registration that nobody excluded fails here either way.
 	const surface = shippedSource(
 		"src/renderer/src/features/browser/components/browser-surface.tsx",
 	);
@@ -3271,7 +3280,9 @@ test("the surface's own view registrations are not read as the overlay that hide
 		registered.length >= 2,
 		`both registrations are read: ${registered.join(", ")}`,
 	);
-	const exclusionBlock = surface.match(SELF_SUPPRESSION_BLOCK);
+	const exclusionBlock = shippedSource(
+		"src/renderer/src/features/browser/model/self-suppression.ts",
+	).match(SELF_SUPPRESSION_BLOCK);
 	assert.ok(exclusionBlock, "the exclusion list exists");
 	for (const name of registered) {
 		assert.ok(
@@ -3943,17 +3954,20 @@ for (const outcome of [
 			const source = shippedSource(
 				"src/renderer/src/features/browser/components/browser-surface.tsx",
 			);
-			const marker = "onTabAction={(id, action) => {";
-			const start = source.indexOf(marker) + marker.length;
-			assert.ok(start >= marker.length);
-			const end = source.indexOf("\n\t\t\t\t}}", start);
-			assert.ok(end > start);
+			// The callback's indentation moved when S4b nested the strip inside the
+			// surface's popout branch; the END is found by its next sibling prop, not
+			// by a fixed tab count that a re-indent silently shifts.
+			const match =
+				/onTabAction=\{\(id, action\) => \{([\s\S]*?)\n\t*\}\}\n\t*newTabLabel=/.exec(
+					source,
+				);
+			assert.ok(match, "onTabAction callback found");
 			let reveals = 0;
 			const callback = new Function(
 				"chrome",
 				"tabScope",
 				"onShowAllTabs",
-				`return (id,action)=>{${source.slice(start, end)}}`,
+				`return (id,action)=>{${match[1]}}`,
 			)(chrome, "conversation", () => {
 				reveals++;
 			});

@@ -52,10 +52,12 @@ import {
 	ADDRESS_LIST_DOCUMENT,
 	ADDRESS_LIST_ENV,
 	ADDRESS_LIST_HEADER_HEIGHT,
+	ADDRESS_LIST_MIN_WIDTH_DIP,
 	ADDRESS_LIST_ROW_HEIGHT,
 	type AddressListMeasurement,
 	type AddressListProjection,
 	addressListBoundsFor,
+	addressListBoundsV2For,
 	addressListMeasurementProblem,
 	addressListRowIndexAt,
 	addressListViewModel,
@@ -434,6 +436,26 @@ export function layoutKeyOf(snapshot: AddressOverlayLayoutSnapshot): string {
 	}`;
 }
 
+/** The identity of the CONTENT a projection hangs from: the tab and the
+ * rectangle, WITHOUT presentation.
+ *
+ * A presentation flip alone is not a reason to lower the product popout.
+ * Opening the page menu suppresses the native page by design (the panel paints
+ * into the content rect, where a native view wins), which flips `presented` to
+ * false while the tab and the rectangle stay identical. Keying the dismissal on
+ * `layoutKeyOf` made every menu item — and the menu's own view suppression —
+ * close the field row it was opened from (agent review round 1, MAJOR-1). A
+ * moved page, a changed tab or a torn-down rect still changes this key, and
+ * those are the facts the renderer must obey. */
+export function layoutContentKeyOf(
+	snapshot: AddressOverlayLayoutSnapshot,
+): string {
+	const rect = snapshot.contentRect;
+	return `${snapshot.activeTabId}:${
+		rect ? `${rect.x},${rect.y},${rect.width},${rect.height}` : "null"
+	}`;
+}
+
 export type AddressOverlayState =
 	| "absent"
 	| "loading"
@@ -570,9 +592,26 @@ export interface AddressOverlayDeps {
 	/** S3: the launch gate's visible-probe fact. Facts only; the controller's
 	 * behaviour does not change with it (there is no product path either way). */
 	visible?: boolean;
-	/** S2: where a validated row click is reported (the host forwards it to the
-	 * owner window). Absent means no sink, and the click is counted, not sent. */
-	onEvent?: (event: AddressOverlayCommitEvent) => void;
+	/**
+	 * S4b: this controller is the PRODUCT chrome, not a probe.
+	 *
+	 * The difference is lifecycle, not trust: the product controller is built by
+	 * every darwin launch and warms its child after the first presented layout so
+	 * the first Cmd+L finds a loaded list; a probe creates its child only when a
+	 * script calls `show`. Both use the same hardened child, the same projection
+	 * sanitiser and the same commit sink.
+	 */
+	product?: boolean;
+	/** S2: where a validated row click or a main-decided dismissal is reported
+	 * (the host forwards it to the owner window). Absent means no sink, and the
+	 * event is counted, not sent. */
+	onEvent?: (event: AddressOverlayEvent) => void;
+	/** The child's health changed in a way `mode()` reports (a terminal failure,
+	 * or a release that clears one). The host re-projects chrome state from this,
+	 * because the renderer reads `addressOverlay.mode` out of the projection and
+	 * has no other way to learn the list went away (QA round 1, Q-F1: a raise
+	 * that raced a failing child kept announcing suggestions). */
+	onHealthChange?: () => void;
 	log?: (message: string) => void;
 	now?: () => number;
 	appMetrics?: () => unknown;
@@ -585,6 +624,22 @@ export interface AddressOverlayCommitEvent {
 	seq: number;
 	index: number;
 }
+
+/**
+ * The other event main sends: the popout must come down, and the reason is
+ * main's own observation (the page took focus, the bound tab navigated, the tab
+ * changed or the layout moved). The renderer lowers its field row; it never
+ * decides these facts itself, because a renderer-only dismissal cannot see a
+ * click that lands on the native page view.
+ */
+export interface AddressOverlayDismissEvent {
+	type: "dismiss";
+	reason: string;
+}
+
+export type AddressOverlayEvent =
+	| AddressOverlayCommitEvent
+	| AddressOverlayDismissEvent;
 
 /** Opaque, neutral, and deliberately not a theme claim (S4 owns theming). */
 const OVERLAY_BACKGROUND = "#1b1f24";
@@ -641,7 +696,8 @@ export class AddressOverlayController {
 	private readonly documentUrl: string;
 	private readonly createView: () => WebContentsView;
 	private readonly javascript: boolean;
-	private readonly onEvent: ((event: AddressOverlayCommitEvent) => void) | null;
+	private readonly onEvent: ((event: AddressOverlayEvent) => void) | null;
+	private readonly onHealthChange: (() => void) | null;
 	private readonly readinessTimeoutMs: number;
 	private readonly log: (message: string) => void;
 	private readonly now: () => number;
@@ -658,6 +714,9 @@ export class AddressOverlayController {
 	private lastShow: AddressOverlayFacts["lastShow"];
 	private layout: AddressOverlayLayoutSnapshot;
 	private layoutKey: string;
+	/** The layout's content identity (tab + rect), the fact a product dismissal
+	 * is allowed to rest on; see `layoutContentKeyOf`. */
+	private layoutContentKey: string;
 	private boundTabId: number | null;
 	private domReady: boolean;
 	private finished: boolean;
@@ -698,8 +757,18 @@ export class AddressOverlayController {
 	/** The launch gate's `visible` fact, copied in so `facts()` can report it
 	 * without re-deriving the gate (which it must never do: one pure decision). */
 	private readonly visibleMode: boolean;
+	private readonly product: boolean;
+	private warmScheduled: boolean;
 	private lastRejected: string | null;
 	private projectQueue: Promise<unknown>;
+	/** The native page is hidden for a reason that says nothing about the popout
+	 * (the page menu suppresses it while its panel is open). The row stays
+	 * raised, so the child's paint stops and its "shown" state does not. */
+	private presentationSuspended: boolean;
+	/** A projection that arrived while the page was suppressed. Applied on
+	 * resume rather than refused: a refusal would make the mirror re-project
+	 * every frame until the menu closed. */
+	private deferredProjection: unknown;
 
 	constructor(deps: AddressOverlayDeps) {
 		this.window = deps.window;
@@ -709,6 +778,7 @@ export class AddressOverlayController {
 			(() => createHardenedView({ javascript: deps.javascript === true }));
 		this.javascript = deps.javascript === true;
 		this.onEvent = deps.onEvent ?? null;
+		this.onHealthChange = deps.onHealthChange ?? null;
 		this.readinessTimeoutMs =
 			deps.readinessTimeoutMs ?? ADDRESS_OVERLAY_READY_TIMEOUT_MS;
 		this.log = deps.log ?? (() => {});
@@ -731,6 +801,7 @@ export class AddressOverlayController {
 			revision: 0,
 		};
 		this.layoutKey = "none";
+		this.layoutContentKey = "none";
 		this.boundTabId = null;
 		this.domReady = false;
 		this.finished = false;
@@ -762,8 +833,12 @@ export class AddressOverlayController {
 		this.childFocusEvents = 0;
 		this.childBlurEvents = 0;
 		this.visibleMode = deps.visible === true;
+		this.product = deps.product === true;
+		this.warmScheduled = false;
 		this.lastRejected = null;
 		this.projectQueue = Promise.resolve();
+		this.presentationSuspended = false;
+		this.deferredProjection = null;
 		this.attachOwnerListeners();
 	}
 
@@ -773,24 +848,49 @@ export class AddressOverlayController {
 	 * The registry's post-layout hook. Called after every page layout pass,
 	 * including null and suppressed ones.
 	 *
-	 * A changed key (tab, presentation or rectangle) hides and invalidates first:
-	 * a moved page must never keep a stale rectangle floating over it, and a
-	 * resized window invalidates old geometry until a fresh renderer rect
-	 * arrives. An unchanged key is the background-page-creation case: the layout
-	 * pass may have added a page above the child, so the child is re-added last
-	 * and given the same rectangle. It never re-opens by itself; showing again is
-	 * always an explicit probe call.
+	 * A changed key (tab, presentation or rectangle) is handled by ONE of two
+	 * rules, and the split is load-bearing (agent review round 1, MAJOR-1):
+	 * a CONTENT change (tab or rectangle) hides and invalidates, while a
+	 * PRESENTATION-only change is a suppression that belongs to someone else —
+	 * the page menu, which paints into the content rect — so it only stops the
+	 * child's paint and keeps the shown state. Collapsing the two made opening
+	 * the menu dismiss the popout it was opened from. An unchanged key is the
+	 * background-page-creation case: the layout pass may have added a page above
+	 * the child, so the child is re-added last and given the same rectangle. It
+	 * never re-opens by itself; showing again is always an explicit probe call.
 	 */
 	onLayout(snapshot: AddressOverlayLayoutSnapshot): void {
 		if (this.disposed) return;
 		const next = copyLayout(snapshot);
 		const nextKey = layoutKeyOf(next);
 		const previousKey = this.layoutKey;
+		const nextContentKey = layoutContentKeyOf(next);
+		const previousContentKey = this.layoutContentKey;
 		this.layout = next;
 		this.layoutKey = nextKey;
+		this.layoutContentKey = nextContentKey;
 		if (previousKey !== nextKey) {
+			const contentChanged = previousContentKey !== nextContentKey;
+			if (!contentChanged) {
+				// PRESENTATION ONLY: the page menu hides the native page while ITS panel is
+				// open (a panel anchored in the strip paints into the content rect, where the
+				// native view wins). That is not a fact about the popout — it must stay
+				// raised — so the child only stops painting and the "shown" state the
+				// re-assert below relies on is preserved (agent review round 1, MAJOR-1).
+				if (next.presented) this.resumePresentation();
+				else this.suspendPresentation();
+				return;
+			}
+			// A moved page, a changed tab or a torn-down presentation invalidates the
+			// popout as a whole. The product field row lives in the renderer, so main
+			// tells it to come down rather than only hiding the native list.
 			this.hide("layout");
+			// The first pass has no popout to lower (previousKey "none").
+			if (this.product && previousKey !== "none") this.emitDismiss("layout");
 			return;
+		}
+		if (this.product && next.presented && next.contentRect !== null) {
+			this.ensureChild();
 		}
 		if (this.state !== "shown") return;
 		const view = this.view;
@@ -812,6 +912,47 @@ export class AddressOverlayController {
 		}
 	}
 
+	/** Hide the child's paint without dropping the popout's state; see `onLayout`. */
+	private suspendPresentation(): void {
+		this.presentationSuspended = true;
+		const view = this.view;
+		if (!view || this.viewUsable(view) === false) return;
+		try {
+			view.setVisible(false);
+		} catch {
+			// The window is closing; the visibility claim is moot.
+		}
+	}
+
+	/** The page is back. Re-present the child from the bounds last applied, or
+	 * apply the projection that arrived while the page was hidden. */
+	private resumePresentation(): void {
+		if (!this.presentationSuspended) return;
+		this.presentationSuspended = false;
+		const deferred = this.deferredProjection;
+		this.deferredProjection = null;
+		if (deferred !== null) {
+			void this.project(deferred);
+			return;
+		}
+		if (this.state !== "shown") return;
+		// The S1 show path has no projection, so it has no applied bounds either; the
+		// same rule `onLayout`'s re-assert uses covers it.
+		const bounds =
+			this.lastAppliedBounds ??
+			overlayBoundsFor(this.layout.contentRect, this.ownerSize());
+		if (bounds === null) return;
+		const view = this.view;
+		if (!view || this.viewUsable(view) === false) return;
+		try {
+			view.setBounds(bounds);
+			this.raiseChild(view);
+			view.setVisible(true);
+		} catch {
+			this.releaseChild("layout_error");
+		}
+	}
+
 	/** The bound page is going away. Dispose the child before the page release. */
 	onTabReleased(tabId: number): void {
 		if (this.disposed) return;
@@ -826,6 +967,72 @@ export class AddressOverlayController {
 		if (this.disposed) return;
 		if (this.boundTabId !== tabId) return;
 		this.releaseChild("page-crash");
+	}
+
+	/**
+	 * The popout's current health, in the one shape the renderer reads.
+	 *
+	 * `suspend` is sticky for the app run: the child is either latched failed or
+	 * gone, and the restart that would clear it is a new process. A conditional
+	 * refusal (`zoomed`, `anchor_too_narrow`, `stale_*`) is NOT reported here —
+	 * those clear themselves, and the projection answer names them while they
+	 * last.
+	 */
+	mode(): { mode: "popout" | "suspend"; reason: string | null } {
+		if (this.disposed) return { mode: "suspend", reason: "disposed" };
+		if (this.failedReason)
+			return { mode: "suspend", reason: this.failedReason };
+		return { mode: "popout", reason: null };
+	}
+
+	/**
+	 * A main-decided dismissal (the page took focus, the bound tab's main frame
+	 * navigated, the tab went away). Idempotent: a second reason for a popout that
+	 * is already hidden sends nothing.
+	 */
+	dismiss(reason: string): void {
+		if (this.disposed) return;
+		// The PRODUCT renderer may be raised before any projection exists (the field
+		// is usable while the child loads or after it failed), so "was the child
+		// shown" is not the question: a dismissal is main's fact about the popout,
+		// and a renderer with nothing open ignores it.
+		this.hide(reason);
+		if (this.product) this.emitDismiss(reason);
+	}
+
+	/** The page `tabId` took focus. Only the bound tab can dismiss its own list;
+	 * a background tab's focus event is not this popout's business. */
+	dismissForTab(tabId: number, reason: string): void {
+		if (this.disposed) return;
+		if (this.boundTabId !== null && this.boundTabId !== tabId) return;
+		if (this.layout.activeTabId !== null && this.layout.activeTabId !== tabId)
+			return;
+		this.dismiss(reason);
+	}
+
+	/**
+	 * Warm the list child once the page has a presented layout, so the first
+	 * raise finds a loaded document instead of paying the load after Cmd+L. The
+	 * child is created hidden and stays hidden until a projection shows it.
+	 */
+	private ensureChild(): void {
+		if (!this.product || this.view || this.failedReason || this.warmScheduled)
+			return;
+		const bounds = overlayBoundsFor(this.layout.contentRect, this.ownerSize());
+		if (bounds === null || !this.layout.presented) return;
+		this.warmScheduled = true;
+		setTimeout(() => {
+			this.warmScheduled = false;
+			if (this.disposed || this.view || this.failedReason) return;
+			if (!this.layout.presented) return;
+			const rect = overlayBoundsFor(this.layout.contentRect, this.ownerSize());
+			if (rect === null) return;
+			if (this.createChild(rect)) this.state = "loading";
+		}, 0);
+	}
+
+	private emitDismiss(reason: string): void {
+		this.onEvent?.({ type: "dismiss", reason });
 	}
 
 	// ---- probe surface ------------------------------------------------------
@@ -847,6 +1054,10 @@ export class AddressOverlayController {
 
 	hide(reason = "hide"): void {
 		if (this.disposed) return;
+		// A hide is the end of the row's native life: whatever the page-menu
+		// suppression was holding must not come back on a later layout pass.
+		this.presentationSuspended = false;
+		this.deferredProjection = null;
 		this.generation += 1;
 		this.settleReady(false);
 		this.hiddenReason = reason;
@@ -1043,6 +1254,18 @@ export class AddressOverlayController {
 	 * controller, so a burst between frames costs one apply each in arrival order.
 	 */
 	project(raw: unknown): Promise<AddressOverlayProjectResult> {
+		if (this.presentationSuspended) {
+			// The page is hidden for a reason that does not involve the field. Keep the
+			// newest payload for `resumePresentation` and answer as accepted so the
+			// mirror does not re-project the same frame sixty times a second.
+			this.deferredProjection = raw;
+			return Promise.resolve({
+				accepted: true,
+				shown: false,
+				reason: null,
+				bounds: null,
+			});
+		}
 		const run = (): Promise<AddressOverlayProjectResult> =>
 			this.projectOnce(raw);
 		const next = this.projectQueue.then(run, run);
@@ -1124,13 +1347,30 @@ export class AddressOverlayController {
 		) {
 			return this.refuseProjection("stale_layout");
 		}
-		const bounds = addressListBoundsFor(
-			projection.field,
-			projection.listTop,
-			projection.view,
-			this.ownerSize(),
-		);
-		if (bounds === null) return this.refuseProjection("anchor_inconsistent");
+		const bounds =
+			projection.v === 2
+				? projection.anchor.width < ADDRESS_LIST_MIN_WIDTH_DIP
+					? null
+					: addressListBoundsV2For(
+							projection.anchor,
+							projection.pageRect,
+							projection.view,
+							this.ownerSize(),
+						)
+				: addressListBoundsFor(
+						projection.field,
+						projection.listTop,
+						projection.view,
+						this.ownerSize(),
+					);
+		if (bounds === null) {
+			const tooNarrow =
+				projection.v === 2 &&
+				projection.anchor.width < ADDRESS_LIST_MIN_WIDTH_DIP;
+			return this.refuseProjection(
+				tooNarrow ? "anchor_too_narrow" : "anchor_inconsistent",
+			);
+		}
 
 		this.generation += 1;
 		const generation = this.generation;
@@ -1698,6 +1938,9 @@ export class AddressOverlayController {
 		this.settleReady(false);
 		this.destroyChild();
 		this.log(`[browser] address overlay failed: ${reason}`);
+		// The renderer's Tier 1 notice rests on `mode()`, so a failure that lands
+		// while the field is already raised must reach it as a projection.
+		this.onHealthChange?.();
 	}
 
 	/** Recoverable: the child goes, a later explicit show may lazily recreate one. */
@@ -1711,6 +1954,7 @@ export class AddressOverlayController {
 		this.finished = false;
 		this.loadStartedAt = null;
 		this.log(`[browser] address overlay child released: ${reason}`);
+		this.onHealthChange?.();
 	}
 
 	private destroyChild(): void {

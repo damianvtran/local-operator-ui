@@ -1,0 +1,342 @@
+{
+  "generatedAt": "2026-10-22T07:16:00Z",
+  "headUnderTest": "ca944e127c73d9824e636bcd1b14180db790171d",
+  "baseBranchHead": "c5503204ed0bc88e20dadb624de949788dc52b80",
+  "buildTimeLocal": "2026-10-22 03:13 EDT (07:13 UTC)",
+  "buildIdentity": {
+    "main": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046",
+    "renderer": "6a157a328025eb88ad7dbf78831d8d4cde93aae61fcacb9c760c14dc5779886a",
+    "listDocument": "4f8775c2d53bb3fc9d7770df7a4e97a72c691e3bd38bcf752bb27698a1cc2c0c",
+    "mainBytecode": "bace2ad91ce92bf277b0616182e939099f3f09df30252163329854e50ff6c6eb",
+    "rendererIndex": "6a157a328025eb88ad7dbf78831d8d4cde93aae61fcacb9c760c14dc5779886a"
+  },
+  "command": "node scripts/browser-chrome-s4b-probe.mjs --out <scratch>/s4b-r3b-1792653343",
+  "rows": [
+    {
+      "id": "H1",
+      "status": "PASS",
+      "claim": "a visit recorded in an earlier app run is suggested from history with no tab open on it",
+      "evidence": {
+        "stoppedOne": {
+          "code": 0,
+          "signal": null
+        },
+        "openOnFixture": false,
+        "query": "127.0.0.1:58419",
+        "ownerRows": [
+          {
+            "url": "http://127.0.0.1:58419/history-target-b",
+            "source": "history"
+          },
+          {
+            "url": "http://127.0.0.1:58419/history-other",
+            "source": "history"
+          },
+          {
+            "url": "http://127.0.0.1:58419/history-target",
+            "source": "history"
+          }
+        ],
+        "childHeader": "From your history"
+      }
+    },
+    {
+      "id": "H2",
+      "status": "PASS",
+      "claim": "typing \"github\" shows the Search DuckDuckGo row first and selected",
+      "evidence": {
+        "row0": {
+          "text": "Search DuckDuckGo for \"github\"",
+          "search": true,
+          "selected": true
+        },
+        "active": ":r1s:-option-0",
+        "childHeader": "Suggestions"
+      }
+    },
+    {
+      "id": "H3",
+      "status": "PASS",
+      "claim": "typing \"what is a vpn\" shows the same search row first and selected",
+      "evidence": {
+        "row0": {
+          "text": "Search DuckDuckGo for \"what is a vpn\"",
+          "search": true,
+          "selected": true
+        },
+        "active": ":r2c:-option-0",
+        "childHeader": "Suggestions"
+      }
+    },
+    {
+      "id": "H4",
+      "status": "PASS",
+      "claim": "Enter commits the highlighted search row's DuckDuckGo URL on the active tab",
+      "evidence": {
+        "githubUrl": "https://duckduckgo.com/?q=github",
+        "vpnUrl": "https://duckduckgo.com/?q=what%20is%20a%20vpn",
+        "githubCommitted": true,
+        "vpnCommitted": true
+      }
+    },
+    {
+      "id": "H9",
+      "status": "PASS",
+      "claim": "Cmd+L, ArrowDown, Enter commits the highlighted history row",
+      "evidence": {
+        "selected": {
+          "text": "127.0.0.1:58419/history-target-b",
+          "url": "http://127.0.0.1:58419/history-target-b",
+          "source": "history",
+          "selected": true
+        },
+        "active": ":r2c:-option-0",
+        "arrowCommitted": true
+      }
+    },
+    {
+      "id": "H10",
+      "status": "PASS",
+      "claim": "Enter on an untouched field with no row lowers the popout and navigates nothing",
+      "evidence": {
+        "untouchedClosed": true,
+        "untouchedUrl": "http://127.0.0.1:58419/history-other",
+        "afterUntouchedUrl": "http://127.0.0.1:58419/history-other"
+      }
+    },
+    {
+      "id": "H5",
+      "status": "PASS",
+      "claim": "an open tab with no stored history row is suggested with its source mark",
+      "evidence": {
+        "query": "127.0.0.1:58419",
+        "ownerRows": [
+          {
+            "url": "http://127.0.0.1:58419/history-other",
+            "source": "tab"
+          }
+        ],
+        "childHeader": "Suggestions",
+        "childRowTitle": "Already open \u2014 S4b fixture",
+        "path": "driven through forgetSite(origin), the same store path as Forget this site"
+      }
+    },
+    {
+      "id": "H8",
+      "status": "PASS",
+      "claim": "at narrow width the open-tab title/marker keeps a floor and does not collapse",
+      "evidence": {
+        "child": {
+          "dir": "ltr",
+          "rows": 1,
+          "rowText": "127.0.0.1:58419/history-other",
+          "titleText": "Already open \u2014 S4b fixture",
+          "titleWidth": 104,
+          "viewport": 304
+        },
+        "threshold": "viewport <= 360, titleWidth >= 100; before the CSS floor the same row had no title column"
+      }
+    },
+    {
+      "id": "R2-notices",
+      "status": "PASS",
+      "claim": "error, empty and no_match notices each paint at 104px with no rows",
+      "evidence": {
+        "notices": [
+          {
+            "kind": "error",
+            "rootHeight": 104,
+            "rows": 0,
+            "noticeHidden": false,
+            "noticeText": "notice-error"
+          },
+          {
+            "kind": "empty",
+            "rootHeight": 104,
+            "rows": 0,
+            "noticeHidden": false,
+            "noticeText": "notice-empty"
+          },
+          {
+            "kind": "no_match",
+            "rootHeight": 104,
+            "rows": 0,
+            "noticeHidden": false,
+            "noticeText": "notice-no_match"
+          }
+        ],
+        "note": "driven on the same child document the S4b matrix uses; the S2 probe aborts on the deleted dock"
+      }
+    },
+    {
+      "id": "H6",
+      "status": "PASS",
+      "claim": "a query with no match shows the no-match notice and no rows",
+      "evidence": {
+        "ownerRows": [],
+        "value": "zzz-nohistory.example",
+        "childNotice": "No matching pages in your history.",
+        "childHeader": "Suggestions"
+      }
+    },
+    {
+      "id": "H7",
+      "status": "PASS",
+      "claim": "an RTL owner chrome paints an RTL child and the row text is dir=auto",
+      "evidence": {
+        "child": {
+          "dir": "rtl",
+          "textDir": "auto"
+        },
+        "childHeader": "Suggestions",
+        "limitation": "the owner document direction was forced to rtl; the app locale was not switched, so the row text is the English sentence"
+      }
+    },
+    {
+      "id": "H11",
+      "status": "PASS",
+      "claim": "a complete host query does not match the lookalike domain",
+      "evidence": {
+        "value": "www.example.com",
+        "rows": [
+          {
+            "url": "https://www.example.com/",
+            "source": "history"
+          },
+          {
+            "url": "https://www.example.com/page",
+            "source": "history"
+          },
+          {
+            "url": "https://www.example.com/other",
+            "source": "history"
+          }
+        ],
+        "evilPresent": false,
+        "childRows": [
+          "www.example.com/Www example",
+          "www.example.com/pageWww page",
+          "www.example.com/otherWww other"
+        ],
+        "note": "the lookalike is excluded from HISTORY matches; it is still an open tab in this profile, so it appears as a source:tab row"
+      }
+    },
+    {
+      "id": "H12",
+      "status": "PASS",
+      "claim": "the prefix www recalls a stored www page through a fresh IPC response",
+      "evidence": {
+        "request": {
+          "query": "www",
+          "limit": 6
+        },
+        "urls": [
+          "https://www.example.com.evil.test/",
+          "https://www.example.com/",
+          "https://www.example.com/page",
+          "https://www.example.com/other"
+        ],
+        "note": "read from a fresh addressHistory response in the running app, not from the renderer rows, so H11 cannot satisfy it"
+      }
+    }
+  ],
+  "heuristicTable": [
+    {
+      "input": "example.com",
+      "intent": "url"
+    },
+    {
+      "input": "example.com/path?q=1",
+      "intent": "url"
+    },
+    {
+      "input": "https://example.com",
+      "intent": "url"
+    },
+    {
+      "input": "http://example.com",
+      "intent": "url"
+    },
+    {
+      "input": "file:///tmp/a.txt",
+      "intent": "url",
+      "note": "URL intent, never searched; the field refuses it before Enter"
+    },
+    {
+      "input": "localhost:3000",
+      "intent": "url"
+    },
+    {
+      "input": "127.0.0.1:8080",
+      "intent": "url"
+    },
+    {
+      "input": "192.168.1.1",
+      "intent": "url"
+    },
+    {
+      "input": "intranet/wiki",
+      "intent": "url",
+      "note": "host/path, URL intent"
+    },
+    {
+      "input": "foo bar",
+      "intent": "search"
+    },
+    {
+      "input": "what is a vpn",
+      "intent": "search"
+    },
+    {
+      "input": "how to cook rice",
+      "intent": "search"
+    },
+    {
+      "input": "github",
+      "intent": "search"
+    },
+    {
+      "input": "1.2",
+      "intent": "search"
+    },
+    {
+      "input": "javascript:alert(1)",
+      "intent": "blocked"
+    },
+    {
+      "input": "data:text/html,x",
+      "intent": "blocked"
+    },
+    {
+      "input": "about:blank",
+      "intent": "blocked"
+    }
+  ],
+  "frames": {
+    "child-boundary.png": "95eeed6c440a6ca53f533f3efc8f5fcbf28f9961e61f1808639b7c4bd062147b",
+    "child-history.png": "bcfc1469120df6409dcfbeb9a1d2e178b746db08abab2f5709fc1866689c1b69",
+    "child-narrow-open-tab.png": "899e5988bfaf048e9d4d4e96bcef423fc493aba2c5b7316efca531dc68e752cd",
+    "child-no-match.png": "b42fddf5e3161a95354391603df1dbe97f5a8915362627230e3387d2ab2b54de",
+    "child-open-tab.png": "76db164d58dbd42538752ed29a71ae2eac89b4fb6d5f14a4329247a9525a1fd7",
+    "child-rtl-search.png": "1fe5cda748a890b6eb9ee45de5af1abe323c06d1a0c5a1f250f5e7f9d4f0c70f",
+    "child-search-github.png": "0db8c54ed823fdf5ae0670f3266bc07e85d614eb28f2ea74f18de4cd06f9554c",
+    "child-search-vpn.png": "346ca6c41794385792ec8b9ac572c4e8f069d22e6b2355fc3180b54a8bdd714b",
+    "owner-boundary.png": "1e38eff4ae34da7a8d470b3b084becb6dc55903a72f53e5c79f6991c9cc5a228",
+    "owner-history.png": "416bb3d33d0608b83e947e05e77f44c5620dee27c09c5ee1d5475ee462039ca8",
+    "owner-narrow-open-tab.png": "461849f9d40162e91e2abd69e02acb9960d75961c6e42ba55550edb749258e3b",
+    "owner-no-match.png": "1a28cf975204b7261175b67cbdf86d7c8b51e4720e16b189f8de04b35183d646",
+    "owner-open-tab.png": "416bb3d33d0608b83e947e05e77f44c5620dee27c09c5ee1d5475ee462039ca8",
+    "owner-rtl-search.png": "225858f414818af096a9b7fe6feb3b5b9a059c4c5316db25c1ab59537d8c7bfd",
+    "owner-search-github.png": "b890e98e2a3d724345dad143b514328b7b68bd9bcbc024ddfe506af6fc4eb269",
+    "owner-search-vpn.png": "57ca146ef184e152dd766ac646b619d4c58bf7c330a3772c59894ea36660c580",
+    "owner-www.png": "818218b282fbe97e492c31102cff663f1bdb1b5bea3b9b2891879098934e678d",
+    "child-rows.png": "b27a4f0135c1bb1ea0896bcc89498344ba607da7df19f9de42657f00043b8273",
+    "owner-popout.png": "6a18daa1ead7560c582c9ea74a39272b6745f7b1dc09d198941422fb79cc5349"
+  },
+  "notProven": [
+    "native composite pixels, native hit routing, macOS IME and VoiceOver",
+    "Windows and Linux runs",
+    "DuckDuckGo page content: Enter is asserted on the committed navigation URL, not the page body",
+    "the Urdu sentence in the child: direction and dir=auto were driven, the app locale was not switched"
+  ]
+}
