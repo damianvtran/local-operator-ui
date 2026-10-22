@@ -244,7 +244,12 @@ export const TeamBridgeApi = {
 				answer.kind === "error" ? answer.status : null,
 				answer.kind === "error" ? answer.code : undefined,
 			);
-		return teamBridgeAttachmentUploadSchema.parse(answer.body).attachment;
+		// The runtime wraps the hub's `{attachment}` in its house CRUD envelope
+		// (`{status, message, result}`), like every other relay JSON answer.
+		const body = answer.body as { result?: unknown } | null;
+		return teamBridgeAttachmentUploadSchema.parse(
+			body && typeof body === "object" && "result" in body ? body.result : body,
+		).attachment;
 	},
 
 	/** Discard a staged upload the author removed. Idempotent on the hub. */
