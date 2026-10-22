@@ -41,7 +41,10 @@ import {
 	teamBridgeThreadPageSchema,
 	teamBridgeUnreadSchema,
 } from "../../../../../shared/team-bridge-contract";
-import { reconcileDraftAccount } from "../../store/team-bridge-draft-account";
+import {
+	browserDraftStorage,
+	reconcileDraftAccount,
+} from "../../store/team-bridge-draft-account";
 import { desktopMedia, desktopResult } from "./desktop-api";
 
 /*
@@ -314,7 +317,8 @@ export const TeamBridgeApi = {
 			boundary: "surface_open",
 		});
 		const parsed = teamBridgeIdentitySchema.parse(answer);
-		reconcileDraftAccount(localStorage, parsed);
+		// Nullable: a denied or absent storage must not fail the identity read.
+		reconcileDraftAccount(browserDraftStorage(), parsed);
 		return parsed.account_id ?? null;
 	},
 
@@ -363,7 +367,8 @@ export const TeamBridgeApi = {
 			...(boundary ? { boundary } : {}),
 		});
 		const parsed = agentMessagesStatusSchema.parse(answer);
-		reconcileDraftAccount(localStorage, parsed);
+		// Nullable: a denied or absent storage must not fail the status read.
+		reconcileDraftAccount(browserDraftStorage(), parsed);
 		return parsed;
 	},
 
