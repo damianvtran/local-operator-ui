@@ -157,15 +157,18 @@
 	"ui.teamBridge.attachments.error_size": "Изображение слишком большое для отправки.",
 	"ui.teamBridge.attachments.error_invalid": "Не удалось прочитать изображение. Возможно, файл повреждён.",
 	"ui.teamBridge.attachments.error_rate": "Слишком много изображений сразу. Подождите минуту и повторите попытку.",
-	"ui.teamBridge.attachments.error_quota": "Слишком много изображений ожидают отправки. Отправьте или удалите часть из них и повторите попытку.",
+	"ui.teamBridge.attachments.error_quota": "Слишком много изображений ожидает отправки. Отправьте или удалите часть из них и повторите попытку.",
 	"ui.teamBridge.attachments.error_offline": "Не удалось загрузить изображение: Local Operator недоступен. Повторите попытку, когда он снова будет доступен.",
 	"ui.teamBridge.attachments.error_upload": "Не удалось загрузить изображение. Повторите попытку или удалите его.",
-	"ui.teamBridge.attachments.expired_staged": "Это изображение больше нельзя отправить. Удалите его или повторите попытку, если превью ещё отображается.",
+	"ui.teamBridge.attachments.expired_staged": "Это изображение больше не готово к отправке. Удалите его и добавьте снова.",
 	"ui.teamBridge.attachments.expired": "Срок хранения изображения истёк",
 	"ui.teamBridge.attachments.unavailable": "Изображение недоступно",
 	"ui.teamBridge.attachments.retry_load": "Повторить",
 	"ui.teamBridge.attachments.send_blocked": "Перед отправкой удалите изображения с ошибкой или повторите их загрузку.",
 	"ui.teamBridge.attachments.remove_all": "Удалить изображения",
 	"ui.teamBridge.schedule.held": "Возможно, отправка уже запланирована предыдущей попыткой. Прежде чем сбросить эту попытку, проверьте раздел «Запланированные» и при необходимости отмените отправку. Черновик сохранён.",
-	"ui.teamBridge.schedule.discard_attempt": "Раздел «Запланированные» проверен — сбросить попытку"
+	"ui.teamBridge.schedule.discard_attempt": "Раздел «Запланированные» проверен — сбросить попытку",
+	"ui.teamBridge.attachments.expired_staged_retry": "Это изображение больше не готово к отправке. Повторите попытку или удалите его.",
+	"ui.teamBridge.attachments.with_status": "{label}: {status}",
+	"ui.teamBridge.attachments.preview_unavailable": "Предпросмотр недоступен"
 }

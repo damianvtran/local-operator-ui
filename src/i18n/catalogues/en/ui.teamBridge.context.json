@@ -1185,7 +1185,7 @@
 		"tone": "plain, concise",
 		"length": "One sentence.",
 		"placeholders": {},
-		"note": "An uploaded-but-unsent image expired on the server (after about 3 days) or was refused at send time."
+		"note": "An uploaded-but-unsent image expired on the server (after about 3 days) or was refused at send time, and this device no longer holds its bytes, so the only action is to remove the chip and add the picture again. Shown on its own and as the {status} of attachments.with_status."
 	},
 	"ui.teamBridge.attachments.expired": {
 		"role": "image attachment control or status",
@@ -1235,5 +1235,29 @@
 		"length": "Permit wrapping; do not shorten away the Scheduled check or cancellation distinction.",
 		"placeholders": {},
 		"note": "Scheduled is the existing named quick link. A lost server response may hide a pending scheduled message. This action clears only the local attempt/idempotency reference and retains the authored draft; it does NOT cancel server delivery. The reader must check Scheduled and cancel any unwanted server message before acknowledging. Keep this distinct from the Cancel message server action."
+	},
+	"ui.teamBridge.attachments.expired_staged_retry": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Same situation as attachments.expired_staged, but this device still holds the image, so a Retry button is shown on the chip next to Remove. 'Retry' re-uploads the same picture."
+	},
+	"ui.teamBridge.attachments.with_status": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"label": "positional label such as 'Image 2 of 3' (attachments.position)",
+			"status": "a full sentence or short status from another attachments.* key, e.g. 'Uploading image…' or 'Image expired'"
+		},
+		"note": "Joins an image's position with what is wrong with it, for screen-reader names and the one-line note under the composer's images. Reorder or change the separator as the locale needs; do not drop either part."
+	},
+	"ui.teamBridge.attachments.preview_unavailable": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "Two or three words.",
+		"placeholders": {},
+		"note": "Tooltip and screen-reader status on an image that IS attached (to a draft or a scheduled message) but cannot be drawn on this device because its bytes were not kept. Not an error."
 	}
 }

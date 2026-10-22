@@ -5075,10 +5075,12 @@ export type MessageParams = {
 	"ui.teamBridge.attachments.error_upload": undefined;
 	"ui.teamBridge.attachments.expired": undefined;
 	"ui.teamBridge.attachments.expired_staged": undefined;
+	"ui.teamBridge.attachments.expired_staged_retry": undefined;
 	"ui.teamBridge.attachments.in_message": { count: number };
 	"ui.teamBridge.attachments.limit": { max: number };
 	"ui.teamBridge.attachments.open": { index: string; count: string };
 	"ui.teamBridge.attachments.position": { index: string; count: string };
+	"ui.teamBridge.attachments.preview_unavailable": undefined;
 	"ui.teamBridge.attachments.remove": { label: string };
 	"ui.teamBridge.attachments.remove_all": undefined;
 	"ui.teamBridge.attachments.retry": { label: string };
@@ -5088,6 +5090,7 @@ export type MessageParams = {
 	"ui.teamBridge.attachments.unavailable": undefined;
 	"ui.teamBridge.attachments.unsupported": undefined;
 	"ui.teamBridge.attachments.uploading": undefined;
+	"ui.teamBridge.attachments.with_status": { label: string; status: string };
 	"ui.teamBridge.builtin.agents_topic": undefined;
 	"ui.teamBridge.builtin.humans_topic": undefined;
 	"ui.teamBridge.chief.fallback": undefined;

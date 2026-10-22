@@ -37,12 +37,13 @@ import { cn } from "@shared/lib/utils";
 import {
 	AlertCircle,
 	Clock,
+	ImageIcon,
 	ImageOff,
 	ImagePlus,
 	RotateCw,
 	X,
 } from "lucide-react";
-import type { ClipboardEvent, DragEvent, FC } from "react";
+import type { ClipboardEvent, DragEvent, FC, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import type {
 	TeamBridgeAttachment,
@@ -103,21 +104,29 @@ export const TeamBridgeAttachmentChip: FC<{
 		count: String(count),
 	});
 	const failed = chip.status === "error" || chip.status === "expired";
-	const reason =
-		chip.status === "expired"
-			? t("ui.teamBridge.attachments.expired_staged")
-			: failed
-				? failureCopy(chip.reason)
-				: chip.status === "uploading" || chip.status === "preparing"
-					? t("ui.teamBridge.attachments.uploading")
-					: null;
+	const working = chip.status === "uploading" || chip.status === "preparing";
+	const reason = chipStatusCopy(chip);
 	return (
 		<li
 			className="group/chip relative"
 			data-attachment-chip={chip.status}
-			aria-label={reason ? `${label}. ${reason}` : label}
+			/* One keyed pattern, not `${label}. ${reason}`: locales order and
+			   punctuate the pair themselves (zh-CN audit, att-r1). */
+			aria-label={
+				reason
+					? t("ui.teamBridge.attachments.with_status", {
+							label,
+							status: reason,
+						})
+					: label
+			}
 		>
 			<div
+				title={
+					!chip.previewUrl && chip.status === "ready"
+						? t("ui.teamBridge.attachments.preview_unavailable")
+						: undefined
+				}
 				className={cn(
 					"relative flex size-16 items-center justify-center overflow-hidden rounded-md border bg-sunken",
 					failed ? "border-danger" : "border-hairline",
@@ -129,20 +138,28 @@ export const TeamBridgeAttachmentChip: FC<{
 						alt=""
 						className={cn(
 							"size-full object-cover",
-							chip.status === "ready" || chip.status === "held"
-								? "opacity-100"
-								: "opacity-50",
+							working ? "opacity-70" : "opacity-100",
 						)}
 					/>
-				) : (
+				) : failed ? (
 					<ImageOff size={18} aria-hidden="true" className="text-ink-dim" />
+				) : working ? null : (
+					/*
+					 * A restored descriptor with no bytes in this session is a GOOD
+					 * attachment we just cannot draw: a neutral picture glyph, never
+					 * the broken-image one a failure wears (design round 1, D1).
+					 */
+					<ImageIcon size={18} aria-hidden="true" className="text-ink-dim" />
 				)}
-				{(chip.status === "uploading" || chip.status === "preparing") && (
-					<span className="absolute inset-0 flex items-center justify-center bg-canvas/40">
-						<Spinner
-							size="sm"
-							label={t("ui.teamBridge.attachments.uploading")}
-						/>
+				{working && (
+					/* A solid disc so the spinner reads over any picture (D3). */
+					<span className="absolute inset-0 flex items-center justify-center">
+						<span className="flex size-7 items-center justify-center rounded-full bg-elevated shadow-sm">
+							<Spinner
+								size="sm"
+								label={t("ui.teamBridge.attachments.uploading")}
+							/>
+						</span>
 					</span>
 				)}
 				{failed && (
@@ -158,29 +175,66 @@ export const TeamBridgeAttachmentChip: FC<{
 					</span>
 				)}
 			</div>
-			<button
-				type="button"
+			<ChipAction
+				position="top"
+				label={t("ui.teamBridge.attachments.remove", { label })}
 				onClick={onRemove}
-				aria-label={t("ui.teamBridge.attachments.remove", { label })}
-				title={t("ui.teamBridge.attachments.remove", { label })}
-				className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full border border-control bg-elevated text-ink-muted hover:text-ink"
 			>
 				<X size={12} aria-hidden="true" />
-			</button>
+			</ChipAction>
 			{failed && chip.prepared && (
-				<button
-					type="button"
+				<ChipAction
+					position="bottom"
+					label={t("ui.teamBridge.attachments.retry", { label })}
 					onClick={onRetry}
-					aria-label={t("ui.teamBridge.attachments.retry", { label })}
-					title={t("ui.teamBridge.attachments.retry", { label })}
-					className="absolute -bottom-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full border border-control bg-elevated text-ink-muted hover:text-ink"
 				>
 					<RotateCw size={12} aria-hidden="true" />
-				</button>
+				</ChipAction>
 			)}
 		</li>
 	);
 };
+
+/*
+ * The chip's corner controls: a 24px hit target (WCAG 2.5.8) around the 20px
+ * disc the design asks for, so the look is unchanged and adjacent chips' X
+ * buttons are no longer 4px apart at a 20px target (design round 1, D2).
+ */
+const ChipAction: FC<{
+	position: "top" | "bottom";
+	label: string;
+	onClick: () => void;
+	children: ReactNode;
+}> = ({ position, label, onClick, children }) => (
+	<button
+		type="button"
+		onClick={onClick}
+		aria-label={label}
+		title={label}
+		className={cn(
+			"group/action absolute -right-2 flex size-6 items-center justify-center rounded-full",
+			position === "top" ? "-top-2" : "-bottom-2",
+		)}
+	>
+		<span className="flex size-5 items-center justify-center rounded-full border border-control bg-elevated text-ink-muted group-hover/action:text-ink group-focus-visible/action:text-ink">
+			{children}
+		</span>
+	</button>
+);
+
+/** What a chip says about itself, or null when it is simply ready. */
+function chipStatusCopy(chip: AttachmentChip): string | null {
+	if (chip.status === "expired")
+		// Name the action that is really there: Retry exists only while this
+		// session still holds the bytes (design round 1, D1).
+		return chip.prepared
+			? t("ui.teamBridge.attachments.expired_staged_retry")
+			: t("ui.teamBridge.attachments.expired_staged");
+	if (chip.status === "error") return failureCopy(chip.reason);
+	if (chip.status === "uploading" || chip.status === "preparing")
+		return t("ui.teamBridge.attachments.uploading");
+	return null;
+}
 
 /**
  * The strip above the composer field, plus the one-line status under it (the
@@ -191,22 +245,41 @@ export const TeamBridgeAttachmentStrip: FC<{
 	state: TeamBridgeAttachmentsState;
 }> = ({ state }) => {
 	useI18nLocale();
-	const firstFailure = state.chips.find(
+	const failureIndex = state.chips.findIndex(
 		(chip) => chip.status === "error" || chip.status === "expired",
 	);
+	const failure = failureIndex >= 0 ? state.chips[failureIndex] : null;
+	const working = state.chips.some(
+		(chip) => chip.status === "uploading" || chip.status === "preparing",
+	);
+	/*
+	 * One line, most actionable first. A failure NAMES its chip ("Image 2 of 3:
+	 * …") so the sentence is tied to the red-edged tile it describes (design
+	 * round 1, D10); progress gets visible text, not only a spinner (D3).
+	 */
 	const notice =
-		state.notice === "unsupported"
+		state.notice === "unsupported" || state.unsupported
 			? t("ui.teamBridge.attachments.unsupported")
 			: state.notice === "limit"
 				? t("ui.teamBridge.attachments.limit", { max: state.max })
-				: firstFailure
-					? firstFailure.status === "expired"
-						? t("ui.teamBridge.attachments.expired_staged")
-						: failureCopy(firstFailure.reason)
-					: null;
+				: failure
+					? t("ui.teamBridge.attachments.with_status", {
+							label: t("ui.teamBridge.attachments.position", {
+								index: String(failureIndex + 1),
+								count: String(state.chips.length),
+							}),
+							status: chipStatusCopy(failure) ?? "",
+						})
+					: working
+						? t("ui.teamBridge.attachments.uploading")
+						: null;
+	const tone: "danger" | "muted" =
+		failure && !state.notice && !state.unsupported ? "danger" : "muted";
 	if (state.chips.length === 0 && !notice) return null;
 	return (
-		<div className="px-3 pt-3">
+		/* `px-3.5` is the field's own inset, so chips and the note share the
+		   text's left edge (design round 1, D9). */
+		<div className="px-3.5 pt-3">
 			{state.chips.length > 0 && (
 				<ul
 					aria-label={t("ui.teamBridge.attachments.strip")}
@@ -226,10 +299,10 @@ export const TeamBridgeAttachmentStrip: FC<{
 			)}
 			{notice && (
 				<p
-					role={state.notice ? "status" : "alert"}
+					role={tone === "danger" ? "alert" : "status"}
 					className={cn(
 						"pt-1.5 text-[12px]",
-						state.notice ? "text-ink-muted" : "text-danger",
+						tone === "danger" ? "text-danger" : "text-ink-muted",
 					)}
 				>
 					{notice}
@@ -380,11 +453,20 @@ function useBridgeAttachmentUrl(
 	return state;
 }
 
+/*
+ * DELETED AND WITHHELD LOOK THE SAME ON PURPOSE (design round 1, D7): the
+ * reader is told the picture is not available to them, never why - "withheld"
+ * vs "deleted" would tell a member what an agent's screening or another
+ * member's account did. Only retention ("expired") is a fact about time that
+ * is safe to state. The box is the tile's own `boxFor` size, so a retry that
+ * succeeds does not move the message below it (D4).
+ */
 const Placeholder: FC<{
 	kind: "expired" | "unavailable" | "failed";
 	label: string;
+	box: { width: number; height: number };
 	onRetry?: () => void;
-}> = ({ kind, label, onRetry }) => {
+}> = ({ kind, label, box, onRetry }) => {
 	const copy =
 		kind === "expired"
 			? t("ui.teamBridge.attachments.expired")
@@ -392,9 +474,13 @@ const Placeholder: FC<{
 	return (
 		<div
 			role="img"
-			aria-label={`${label}. ${copy}`}
+			aria-label={t("ui.teamBridge.attachments.with_status", {
+				label,
+				status: copy,
+			})}
 			data-attachment-placeholder={kind}
-			className="flex h-24 w-36 flex-col items-center justify-center gap-1 rounded-sm border border-control bg-sunken px-2 text-center text-[12px] text-ink-dim"
+			style={{ width: box.width, height: box.height }}
+			className="flex flex-col items-center justify-center gap-1 rounded-sm border border-control bg-sunken px-2 text-center text-[12px] text-ink-dim"
 		>
 			{kind === "expired" ? (
 				<Clock size={16} aria-hidden="true" />
@@ -406,7 +492,8 @@ const Placeholder: FC<{
 				<button
 					type="button"
 					onClick={onRetry}
-					className="text-accent hover:underline"
+					/* 24px tall hit area for a text control (D5). */
+					className="min-h-6 rounded-sm px-1.5 text-accent hover:underline"
 				>
 					{t("ui.teamBridge.attachments.retry_load")}
 				</button>
@@ -473,11 +560,13 @@ const MessageImage: FC<{
 	const url = source.state === "ready" ? source.url : null;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: publish the URL to the lightbox set when it changes.
 	useEffect(() => register(index, url), [url, index]);
+	const box = boxFor(attachment, count === 1);
 	if (view !== "fetch")
 		return (
 			<Placeholder
 				kind={view === "expired" ? "expired" : "unavailable"}
 				label={label}
+				box={box}
 			/>
 		);
 	if (source.state === "failed")
@@ -485,10 +574,10 @@ const MessageImage: FC<{
 			<Placeholder
 				kind="failed"
 				label={label}
+				box={box}
 				onRetry={() => setAttempt((value) => value + 1)}
 			/>
 		);
-	const box = boxFor(attachment, count === 1);
 	return (
 		<button
 			ref={buttonRef}
@@ -594,7 +683,13 @@ export const TeamBridgeMessageAttachments: FC<{
 					if (!next) setOpen(null);
 				}}
 				restoreFocusTo={restore}
-				fallback={<Placeholder kind="unavailable" label={label} />}
+				fallback={
+					<Placeholder
+						kind="unavailable"
+						label={label}
+						box={{ width: 240, height: 160 }}
+					/>
+				}
 				group={
 					count > 1 && open !== null
 						? {
@@ -653,13 +748,29 @@ export const TeamBridgeScheduledAttachments: FC<{
 						<AttachmentFrame
 							className="size-16"
 							role="img"
-							aria-label={label}
+							aria-label={
+								url
+									? label
+									: t("ui.teamBridge.attachments.with_status", {
+											label,
+											status: t(
+												"ui.teamBridge.attachments.preview_unavailable",
+											),
+										})
+							}
+							title={
+								url
+									? undefined
+									: t("ui.teamBridge.attachments.preview_unavailable")
+							}
 							data-attachment-scheduled={url ? "preview" : "descriptor"}
 						>
 							{url ? (
 								<img src={url} alt="" className="size-full object-cover" />
 							) : (
-								<ImageOff
+								/* Attached and reserved, just not drawable here: a neutral
+								   picture glyph, never the broken one (design round 1, D6). */
+								<ImageIcon
 									size={16}
 									aria-hidden="true"
 									className="text-ink-dim"

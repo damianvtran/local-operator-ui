@@ -25,6 +25,7 @@ import {
 import {
 	attachmentCapability,
 	isAttachmentNotFound,
+	sendAttachmentIds,
 } from "./team-bridge-attachments-model";
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
@@ -452,26 +453,36 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * text, so switching conversations swaps both together; uploads go straight
 	 * to an existing conversation and are HELD in memory for a draft whose
 	 * conversation the first send will create.
+	 *
+	 * The conversation is the RESOLVED one (`targetConversation`, the same
+	 * resolution the pane and the send use), not just a `conversation` target:
+	 * a People/Chiefs row or a one-recipient To: draft whose DM already exists
+	 * IS that DM, and treating it as "no conversation yet" held its images
+	 * while the send posted the text alone (review round 1, R1-01).
 	 */
-	const stagedConversationId =
-		target?.type === "conversation"
-			? target.id
-			: (draftState.current?.conversationId ?? null);
+	const resolvedForImages = targetConversation(
+		target,
+		conversations,
+		selfAccountId,
+	);
 	const images = useTeamBridgeAttachments({
 		scopeKey: `${draftTenant}|${target ? draftTargetKey(target) : ""}`,
 		accountId: selfAccountId,
 		tenantId:
-			target?.type === "conversation"
-				? (conversations.find((row) => row.id === target.id)?.tenant_id ??
-					(draftTenant === TEAM_BRIDGE_ALL_SCOPE ? undefined : draftTenant))
-				: draftTenant === TEAM_BRIDGE_ALL_SCOPE
-					? undefined
-					: draftTenant,
-		conversationId: stagedConversationId,
+			resolvedForImages?.tenant_id ??
+			(draftTenant === TEAM_BRIDGE_ALL_SCOPE ? undefined : draftTenant),
+		conversationId:
+			resolvedForImages?.id ?? draftState.current?.conversationId ?? null,
 		capability: imageCapability,
 		persisted: draftState.current?.attachments,
 		onPersist: (next) => {
-			draftState.setAttachments(next);
+			/*
+			 * While a send or schedule is in flight its idempotency key is already
+			 * on the wire, and staging held images INSIDE that request must not
+			 * rotate it, or the settled request can no longer clear its own draft
+			 * (review round 1, R1-02).
+			 */
+			draftState.setAttachments(next, { keepClientRef: writing.current });
 		},
 	});
 	const [imagesBlocked, setImagesBlocked] = useState(false);
@@ -606,12 +617,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		if (!draftState.update({ clientRef })) return;
 		setImagesBlocked(false);
 		const sentIds = images.readyIds();
+		// Fenced BEFORE the call: held images stage inside it (R1-02).
+		writing.current = true;
 		const result = onSend(body, clientRef, {
 			ids: sentIds,
 			...(images.held ? { stageHeld: images.uploadHeld } : {}),
 		});
+		if (!(result instanceof Promise)) writing.current = false;
 		if (result instanceof Promise) {
-			writing.current = true;
 			void result
 				.then(() => {
 					const bound = images.readyIds();
@@ -1868,7 +1881,13 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			return send.mutateAsync({
 				clientRef,
 				body,
-				attachmentIds: attachments?.ids,
+				// Held images stage into the selected conversation FIRST; a failed
+				// upload throws here, so the text never posts alone (R1-01).
+				attachmentIds: await sendAttachmentIds(
+					attachments,
+					selected.id,
+					selected.tenant_id,
+				),
 			});
 		const recipients = draftRecipients();
 		const input = draftCreateInput(recipients);
@@ -1898,12 +1917,15 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				// RENDER time, which a just-created row is not yet. Held images are
 				// staged INTO the new conversation first; a failed upload throws so
 				// the message is never posted text-only behind the author's back.
-				post: async (id, message) => {
-					const attachmentIds = attachments?.stageHeld
-						? await attachments.stageHeld(id, message.tenantId)
-						: [...(attachments?.ids ?? [])];
-					return TeamBridgeApi.send(id, { ...message, attachmentIds });
-				},
+				post: async (id, message) =>
+					TeamBridgeApi.send(id, {
+						...message,
+						attachmentIds: await sendAttachmentIds(
+							attachments,
+							id,
+							message.tenantId,
+						),
+					}),
 			});
 			/*
 			 * Move to the new group only if the reader is STILL on the draft that

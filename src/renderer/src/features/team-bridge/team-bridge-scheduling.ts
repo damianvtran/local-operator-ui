@@ -137,10 +137,22 @@ export function scheduledEditPatch(
 		attachmentIds !== undefined &&
 		(attachmentIds.length !== before.length ||
 			attachmentIds.some((id, index) => id !== before[index]));
+	/*
+	 * An edit that empties the caption but keeps the images is image-only, and
+	 * the contract (like the hub) accepts an empty body only beside a non-empty
+	 * set, so the set rides along even when unchanged (review round 1, R1-03).
+	 */
+	const imageOnly =
+		body !== undefined &&
+		body.trim() === "" &&
+		body !== message.body &&
+		(attachmentIds?.length ?? 0) > 0;
 	return {
 		...(body !== undefined && body !== message.body ? { body } : {}),
 		...(sendAt !== message.send_at ? { send_at: sendAt } : {}),
-		...(imagesChanged ? { attachment_ids: [...attachmentIds] } : {}),
+		...(imagesChanged || imageOnly
+			? { attachment_ids: [...(attachmentIds ?? [])] }
+			: {}),
 	};
 }
 

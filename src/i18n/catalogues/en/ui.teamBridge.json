@@ -160,12 +160,15 @@
 	"ui.teamBridge.attachments.error_quota": "You have too many images waiting to be sent. Send or remove some, then retry.",
 	"ui.teamBridge.attachments.error_offline": "The image couldn’t be uploaded because Local Operator isn’t reachable. Retry when it’s back.",
 	"ui.teamBridge.attachments.error_upload": "The image couldn’t be uploaded. Retry or remove it.",
-	"ui.teamBridge.attachments.expired_staged": "This image is no longer ready to send. Remove it, or retry if it’s still shown.",
+	"ui.teamBridge.attachments.expired_staged": "This image is no longer ready to send. Remove it and add the image again.",
 	"ui.teamBridge.attachments.expired": "Image expired",
 	"ui.teamBridge.attachments.unavailable": "Image unavailable",
 	"ui.teamBridge.attachments.retry_load": "Try again",
 	"ui.teamBridge.attachments.send_blocked": "Remove or retry the images marked with an error before sending.",
 	"ui.teamBridge.attachments.remove_all": "Remove images",
 	"ui.teamBridge.schedule.held": "A previous schedule may still exist. Check Scheduled and cancel it if needed before discarding this attempt. Your draft is kept.",
-	"ui.teamBridge.schedule.discard_attempt": "I checked Scheduled — discard this attempt"
+	"ui.teamBridge.schedule.discard_attempt": "I checked Scheduled — discard this attempt",
+	"ui.teamBridge.attachments.expired_staged_retry": "This image is no longer ready to send. Retry it or remove it.",
+	"ui.teamBridge.attachments.with_status": "{label}: {status}",
+	"ui.teamBridge.attachments.preview_unavailable": "Preview unavailable"
 }

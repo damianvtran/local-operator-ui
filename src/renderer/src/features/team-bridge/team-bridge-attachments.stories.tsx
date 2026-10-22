@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import type { FC } from "react";
+import { expect, screen, userEvent, waitFor, within } from "@storybook/test";
+import type { FC, ReactNode } from "react";
 import type {
 	TeamBridgeAttachment,
 	TeamBridgeMessage,
@@ -43,15 +44,26 @@ const BYTES: Record<string, string> = {
 const decode = (b64: string) =>
 	Uint8Array.from(atob(b64), (character) => character.charCodeAt(0));
 
+const DELAY_PREFIX = /^batt_delay_/;
 const installMedia = () => {
 	// biome-ignore lint/suspicious/noExplicitAny: the preload bridge is a mock here.
 	const api = (window as any).api ?? {};
 	api.desktop = {
 		...api.desktop,
 		media: async (request: { op?: string; attachmentId?: string }) => {
+			const id = request.attachmentId ?? "";
+			/*
+			 * Loading-state ids. `batt_hold_*` NEVER answers, so the reserved box
+			 * can be captured for as long as needed; `batt_delay_*` answers after
+			 * 1.5 s with a real picture, so consecutive loading -> loaded frames show
+			 * whether anything moves when the bytes land (design round 1, D4 gap).
+			 */
+			if (id.startsWith("batt_hold_")) return new Promise(() => {});
+			if (id.startsWith("batt_delay_"))
+				await new Promise((done) => setTimeout(done, 1500));
 			const b64 =
-				request.op === "team_bridge.attachment" && request.attachmentId
-					? BYTES[request.attachmentId]
+				request.op === "team_bridge.attachment"
+					? BYTES[id.replace(DELAY_PREFIX, "batt_")]
 					: undefined;
 			return b64
 				? {
@@ -96,6 +108,13 @@ const message = (overrides: Partial<TeamBridgeMessage>): TeamBridgeMessage => ({
 	...overrides,
 });
 
+const CAPABILITY = {
+	enabled: true,
+	max_count: 4,
+	max_bytes: 5 * 1024 * 1024,
+	mime_types: ["image/png", "image/jpeg"],
+};
+
 /* ------------------------------- composer -------------------------------- */
 
 const chipState = (
@@ -118,6 +137,7 @@ const chipState = (
 	count: chips.length,
 	max: 4,
 	enabled: notice !== "unsupported",
+	unsupported: false,
 });
 
 const prepared = {
@@ -187,11 +207,50 @@ export const ChipsError: Story = {
 	},
 };
 
+/** Restored from a draft after a reload: expired (remove-only) beside a good
+ * chip whose bytes this session no longer holds (neutral glyph, D1). */
 export const ChipsExpiredRestored: Story = {
 	args: {
 		state: chipState([
 			{ key: "a", status: "expired" },
 			{ key: "b", status: "ready" },
+		]),
+	},
+};
+
+/** Expired while this session still holds the bytes: Retry is offered and the
+ * note says so (D1). */
+export const ChipsExpiredRetryable: Story = {
+	args: {
+		state: chipState([
+			{
+				key: "a",
+				status: "expired",
+				previewUrl: blobUrl(SHOT_GREEN_B64),
+				prepared,
+			},
+		]),
+	},
+};
+
+/** Two failures: the note names the chip it describes ("Image 2 of 3: …", D10). */
+export const ChipsMultipleErrors: Story = {
+	args: {
+		state: chipState([
+			{ key: "a", status: "ready", previewUrl: blobUrl(SHOT_WIDE_B64) },
+			{
+				key: "b",
+				status: "error",
+				reason: "too_large",
+				previewUrl: blobUrl(SHOT_TALL_B64),
+				prepared,
+			},
+			{
+				key: "c",
+				status: "error",
+				reason: "unsupported",
+				prepared,
+			},
 		]),
 	},
 };
@@ -340,12 +399,7 @@ export const ThreadReplyWithImages: StoryObj<typeof TeamBridgeThreadPaneView> =
 						tenantId="tnt_story"
 						conversationId="bcv_story"
 						accountId="acct_ada"
-						attachmentCapability={{
-							enabled: true,
-							max_count: 4,
-							max_bytes: 5 * 1024 * 1024,
-							mime_types: ["image/png", "image/jpeg"],
-						}}
+						attachmentCapability={CAPABILITY}
 					/>
 				</div>
 			);
@@ -384,5 +438,193 @@ export const ScheduledWithImages: StoryObj<typeof TeamBridgeScheduledRow> = {
 				/>
 			</div>
 		);
+	},
+};
+
+/* ------------------------- widths (design round 2) ------------------------ */
+
+/*
+ * Width decorators: the composer, the four-image message and the thread at the
+ * two widths the desktop window realistically spans. The containers FLEX here
+ * (no fixed `w-[560px]`), so wrap behaviour is what is on screen.
+ */
+const AtWidth: FC<{ width: number; children: ReactNode }> = ({
+	width,
+	children,
+}) => (
+	<div style={{ width }} className="flex flex-col bg-surface text-ink">
+		{children}
+	</div>
+);
+
+const fourImages = message({
+	body: "All four states from QA:",
+	attachments: [
+		descriptor("batt_wide", 240, 150),
+		descriptor("batt_tall", 120, 180),
+		descriptor("batt_green", 200, 140),
+		descriptor("batt_red", 160, 160),
+	],
+});
+
+const fourChips = chipState([
+	{ key: "a", status: "ready", previewUrl: blobUrl(SHOT_WIDE_B64) },
+	{
+		key: "b",
+		status: "uploading",
+		previewUrl: blobUrl(SHOT_TALL_B64),
+		prepared,
+	},
+	{
+		key: "c",
+		status: "error",
+		reason: "too_large",
+		previewUrl: blobUrl(SHOT_GREEN_B64),
+		prepared,
+	},
+	{ key: "d", status: "ready" },
+]);
+
+const widthStories = (width: number) => ({
+	grid: {
+		parameters: { layout: "fullscreen" },
+		render: () => (
+			<AtWidth width={width}>
+				<TeamBridgeMessageList
+					messages={[fourImages]}
+					labelFor={(sender) => sender.display_label}
+					tenantId="tnt_story"
+				/>
+			</AtWidth>
+		),
+	},
+	chips: {
+		parameters: { layout: "fullscreen" },
+		render: () => (
+			<AtWidth width={width}>
+				<div className="p-4">
+					<div className="rounded-xl bg-elevated">
+						<TeamBridgeAttachmentStrip state={fourChips} />
+						<div className="px-3.5 pt-3 pb-3 text-[14px] text-ink-dim">
+							Message #design-review
+						</div>
+					</div>
+				</div>
+			</AtWidth>
+		),
+	},
+	thread: {
+		parameters: { layout: "fullscreen" },
+		render: () => (
+			<div style={{ width }} className="flex h-[640px] bg-surface text-ink">
+				<div className="flex-1 p-6 text-ink-muted">#design-review</div>
+				<TeamBridgeThreadPaneView
+					root={message({
+						id: "bmsg_root",
+						body: "Chip states?",
+						reply_count: 1,
+					})}
+					replies={[
+						{
+							...fourImages,
+							id: "bmsg_reply",
+							seq: 2,
+							thread_root_id: "bmsg_root",
+						},
+					]}
+					state="ready"
+					labelFor={(sender) => sender.display_label}
+					onClose={() => {}}
+					onRetry={() => {}}
+					onSend={async () => {}}
+					tenantId="tnt_story"
+					conversationId="bcv_story"
+					accountId="acct_ada"
+					attachmentCapability={CAPABILITY}
+				/>
+			</div>
+		),
+	},
+});
+const narrow = widthStories(800);
+const wide = widthStories(1440);
+export const NarrowFourImageGrid: StoryObj = narrow.grid;
+export const NarrowChips: StoryObj = narrow.chips;
+export const NarrowThread: StoryObj = narrow.thread;
+export const WideFourImageGrid: StoryObj = wide.grid;
+export const WideChips: StoryObj = wide.chips;
+export const WideThread: StoryObj = wide.thread;
+
+/* ----------------------------- loading frames ----------------------------- */
+
+/** The reserved box held indefinitely (the relay never answers). */
+export const BubbleLoadingHeld: StoryObj<typeof Thread> = {
+	render: () => (
+		<Thread
+			messages={[
+				message({
+					body: "Reserved boxes while bytes are on their way:",
+					attachments: [
+						descriptor("batt_hold_1", 240, 150),
+						descriptor("batt_hold_2", 120, 180),
+					],
+				}),
+				message({
+					id: "bmsg_after",
+					seq: 2,
+					body: "The message below must not move.",
+				}),
+			]}
+		/>
+	),
+};
+
+/** Loads after 1.5 s: capture frames before and after to compare geometry. */
+export const BubbleLoadingDelayed: StoryObj<typeof Thread> = {
+	render: () => (
+		<Thread
+			messages={[
+				message({
+					body: "Single image, delayed relay:",
+					attachments: [descriptor("batt_delay_wide", 240, 150)],
+				}),
+				message({
+					id: "bmsg_after",
+					seq: 2,
+					body: "The message below must not move.",
+				}),
+			]}
+		/>
+	),
+};
+
+/* ------------------------------ lightbox keys ----------------------------- */
+
+/**
+ * Opens image 2 of 4, walks with ArrowRight/ArrowLeft, closes with Escape and
+ * asserts focus returns to the tile that opened it.
+ */
+export const LightboxKeyboard: StoryObj<typeof Thread> = {
+	render: () => <Thread messages={[fourImages]} />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const tile = await canvas.findByRole("button", {
+			name: "Open image 2 of 4",
+		});
+		await waitFor(() => expect(tile).not.toBeDisabled());
+		await userEvent.click(tile);
+		const dialog = await screen.findByRole("dialog");
+		await expect(within(dialog).getByText("Image 2 of 4")).toBeInTheDocument();
+		await userEvent.keyboard("{ArrowRight}");
+		await waitFor(() =>
+			expect(within(dialog).getByText("Image 3 of 4")).toBeInTheDocument(),
+		);
+		await userEvent.keyboard("{ArrowLeft}{ArrowLeft}");
+		await waitFor(() =>
+			expect(within(dialog).getByText("Image 1 of 4")).toBeInTheDocument(),
+		);
+		await userEvent.keyboard("{Escape}");
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => expect(tile).toHaveFocus());
 	},
 };

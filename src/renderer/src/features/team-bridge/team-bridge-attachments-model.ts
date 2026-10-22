@@ -144,13 +144,39 @@ export function uploadFailure(
 	}
 }
 
-/** A send refused because a staged id no longer binds (D2: 72 h staged TTL). */
+/**
+ * A send refused because a staged id no longer binds (D2: 72 h staged TTL).
+ * Only the DECLARED code counts: a bare 404 can be the conversation itself
+ * (the author was removed), and reading that as "your images expired" would
+ * drop descriptors that are still good (review round 1, R1-05). The runtime
+ * proxy forwards the hub's `attachment_not_found` code on this path.
+ */
 export function isAttachmentNotFound(error: unknown): boolean {
-	const code = (error as { code?: unknown })?.code;
-	const status = (error as { status?: unknown })?.status;
-	return (
-		code === "attachment_not_found" || (status === 404 && code === undefined)
-	);
+	return (error as { code?: unknown })?.code === "attachment_not_found";
+}
+
+/**
+ * The ids a send or schedule carries into `conversationId`: held images are
+ * staged there FIRST (a failure throws, so the request never goes out
+ * text-only), otherwise the already-staged ids. One helper for every send
+ * path, so no branch can forget the held set again (review round 1, R1-01).
+ */
+export async function sendAttachmentIds(
+	attachments:
+		| {
+				ids: readonly string[];
+				stageHeld?: (
+					conversationId: string,
+					tenantId: string | undefined,
+				) => Promise<string[]>;
+		  }
+		| undefined,
+	conversationId: string,
+	tenantId: string | undefined,
+): Promise<string[]> {
+	if (attachments?.stageHeld)
+		return attachments.stageHeld(conversationId, tenantId);
+	return [...(attachments?.ids ?? [])];
 }
 
 export class AttachmentPrepareError extends Error {
