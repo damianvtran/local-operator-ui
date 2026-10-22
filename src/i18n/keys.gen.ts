@@ -275,6 +275,7 @@ import hiUiSettingsUpdates from "./catalogues/hi/ui.settings.updates.json";
 import hiUiShell from "./catalogues/hi/ui.shell.json";
 import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
+import ruUiAgentMessagesSettings from "./catalogues/ru/ui.agentMessages.settings.json";
 import ruUiAgentsDialogs from "./catalogues/ru/ui.agents.dialogs.json";
 import ruUiAgents from "./catalogues/ru/ui.agents.json";
 import ruUiAgentsModels from "./catalogues/ru/ui.agents.models.json";
@@ -392,6 +393,7 @@ import urUiSettingsUpdates from "./catalogues/ur/ui.settings.updates.json";
 import urUiShell from "./catalogues/ur/ui.shell.json";
 import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
+import viUiAgentMessagesSettings from "./catalogues/vi/ui.agentMessages.settings.json";
 import viUiAgentsDialogs from "./catalogues/vi/ui.agents.dialogs.json";
 import viUiAgents from "./catalogues/vi/ui.agents.json";
 import viUiAgentsModels from "./catalogues/vi/ui.agents.models.json";
@@ -781,6 +783,7 @@ export const bundledCatalogues: Readonly<
 	},
 	ru: {
 		...ruUiAgentMessages,
+		...ruUiAgentMessagesSettings,
 		...ruUiAgentsDialogs,
 		...ruUiAgents,
 		...ruUiAgentsModels,
@@ -902,6 +905,7 @@ export const bundledCatalogues: Readonly<
 	},
 	vi: {
 		...viUiAgentMessages,
+		...viUiAgentMessagesSettings,
 		...viUiAgentsDialogs,
 		...viUiAgents,
 		...viUiAgentsModels,
@@ -1099,6 +1103,9 @@ export type MessageParams = {
 	"ui.agentMessages.settings.error.retry": undefined;
 	"ui.agentMessages.settings.error.title": undefined;
 	"ui.agentMessages.settings.error.unreadable": undefined;
+	"ui.agentMessages.settings.hold.chief_of_staff": { count: number };
+	"ui.agentMessages.settings.hold.chief_of_staff_unlinked": { count: number };
+	"ui.agentMessages.settings.hold.open": undefined;
 	"ui.agentMessages.settings.local.label": undefined;
 	"ui.agentMessages.settings.local.stays_enrolled": undefined;
 	"ui.agentMessages.settings.off_by_default": undefined;
