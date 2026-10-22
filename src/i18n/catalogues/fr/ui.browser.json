@@ -168,6 +168,7 @@
 	"ui.browser.browser_url_bar.print_page": "Imprimer la page",
 	"ui.browser.browser_url_bar.forward": "Avancer",
 	"ui.browser.browser_url_bar.reset_page_zoom_shortcut": "Réinitialiser le zoom de la page ({shortcut})",
+	"ui.browser.browser_url_bar.page_menu": "Options de la page",
 	"ui.browser.browser_url_bar.page_zoom_reset": "Zoom de la page {zoom, number, ::group-off} %, réinitialiser à 100 %",
 	"ui.browser.browser_url_bar.stop_loading": "Arrêter le chargement",
 	"ui.browser.browser_url_bar.reload": "Recharger",

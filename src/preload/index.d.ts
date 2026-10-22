@@ -155,6 +155,13 @@ declare global {
 					) => void,
 				) => () => void;
 				state: () => Promise<unknown>;
+				/** S4b's product popout: a display projection in, a validated commit
+				 * or a main-decided dismissal out. Absent on a launch with no
+				 * controller (pre-S4b builds, tests). */
+				addressOverlay: {
+					project: (payload: unknown) => Promise<unknown>;
+					onEvent: (callback: (event: unknown) => void) => () => void;
+				};
 				/** `sessionId` attributes the new tab to the conversation it was opened
 				 * from; `null` (and absent) mean it belongs to no conversation. */
 				reorderTabs: (ids: number[]) => Promise<unknown>;

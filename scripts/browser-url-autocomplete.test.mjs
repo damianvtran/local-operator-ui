@@ -160,10 +160,16 @@ const flush = async () => {
 async function renderBar(overrides = {}) {
 	const navigations = [];
 	const requests = [];
+	const dismissals = [];
 	const container = document.createElement("div");
 	document.body.appendChild(container);
 	const root = createRoot(container);
 	const props = {
+		// S4b: the component now has two placements; these are the product
+		// popout's, because the suggestion contract lives there.
+		placement: "popout",
+		overlayMode: "popout",
+		anchor: { x: 0, width: 800 },
 		tabId: 1,
 		url: "https://example.com/account",
 		pendingUrl: null,
@@ -177,6 +183,8 @@ async function renderBar(overrides = {}) {
 		onForward: () => {},
 		onReload: () => {},
 		onStop: () => {},
+		onDismiss: () => dismissals.push("dismiss"),
+		onCommitted: () => dismissals.push("commit"),
 		onOpenApprovals: () => {},
 		waitingCount: 0,
 		downloadsDir: null,
@@ -205,6 +213,7 @@ async function renderBar(overrides = {}) {
 		input,
 		navigations,
 		requests,
+		dismissals,
 		props,
 		async rerender(overrides = {}) {
 			Object.assign(props, overrides);
@@ -266,6 +275,13 @@ const listbox = (bundle) =>
 const options = (bundle) => [
 	...bundle.container.querySelectorAll("[data-address-suggestion]"),
 ];
+/** The notice the combobox points at; the visible list is the native child in
+ * the product, so every empty/hint/error sentence is announced through this
+ * `aria-describedby` target rather than painted in DOM. */
+const describedNotice = (bundle) => {
+	const id = bundle.input.getAttribute("aria-describedby");
+	return id ? document.getElementById(id) : null;
+};
 
 test("focus fetches once and an empty query shows the session's entries", async () => {
 	const bundle = await renderBar();
@@ -276,238 +292,6 @@ test("focus fetches once and an empty query shows the session's entries", async 
 	assert.equal(bundle.requests[0].scope, "all");
 	assert.ok(options(bundle).length > 0);
 	assert.match(list(bundle).textContent, FROM_THIS_BROWSER_SESSION);
-	await bundle.cleanup();
-});
-
-test("the list is inset to the address field's bounds, not the pane's", async () => {
-	// jsdom has no layout, so the only way to pin the INSET ARITHMETIC here is to
-	// hand the component the boxes the real app measures: a 1380px window whose
-	// 260px icon rail leaves a 1120px pane, the field inset by the bar's left
-	// controls (200px) and the Approvals control (40px). What this owns is the
-	// arithmetic; the measured claim is `browser-url-autocomplete-proof.mjs`.
-	const box = (left, right) => ({
-		left,
-		right,
-		width: right - left,
-		top: 0,
-		bottom: 32,
-		height: 32,
-		x: left,
-		y: 0,
-		toJSON: () => ({}),
-	});
-	// The dock's margins are placed once, at mount, so the boxes the real app
-	// measures have to exist BEFORE the component first lays out.
-	const original = dom.window.Element.prototype.getBoundingClientRect;
-	dom.window.Element.prototype.getBoundingClientRect = function () {
-		const tag = this.getAttribute?.("data-tour-tag");
-		if (tag === "browser-url-bar") return box(260, 1380);
-		if (tag === "browser-address") return box(460, 1340);
-		return original.call(this);
-	};
-	const bundle = await renderBar();
-	try {
-		await act(async () => bundle.input.focus());
-		await flush();
-		const listEl = list(bundle);
-		assert.ok(listEl, "the suggestion list mounted");
-		assert.equal(listEl.style.marginLeft, "200px");
-		assert.equal(listEl.style.marginRight, "40px");
-		const barWidth = 1380 - 260;
-		const listLeft = 260 + Number.parseFloat(listEl.style.marginLeft);
-		const listRight = 1380 - Number.parseFloat(listEl.style.marginRight);
-		assert.ok(Math.abs(listLeft - 460) <= 1, `list.left=${listLeft}`);
-		assert.ok(Math.abs(listRight - 1340) <= 1, `list.right=${listRight}`);
-		assert.ok(
-			listRight - listLeft < barWidth,
-			`list.width=${listRight - listLeft} bar.width=${barWidth}`,
-		);
-	} finally {
-		dom.window.Element.prototype.getBoundingClientRect = original;
-		await bundle.cleanup();
-	}
-});
-
-test("the dock is a permanent 104px band: 28px header, 75px viewport, one rule", async () => {
-	const bundle = await renderBar();
-	const dock = list(bundle);
-	assert.ok(dock, "the dock is mounted before the field is ever focused");
-	assert.equal(dock.getAttribute("data-address-dock-height"), "104");
-	assert.match(dock.className, FIXED_DOCK_HEIGHT);
-	assert.match(dock.className, BOTTOM_RULE);
-	const header = dock.querySelector("[data-address-suggestions-header]");
-	const blank = dock.querySelector("[data-address-suggestions-blank]");
-	assert.match(header.className, HEADER_ZONE_HEIGHT);
-	// The scroll container exists only while open: a closed dock must not mount
-	// anything Chrome can make keyboard- or click-focusable.
-	assert.equal(
-		dock.querySelector("[data-address-suggestions-viewport]"),
-		null,
-		"the closed dock has no scroll viewport",
-	);
-	assert.ok(blank, "the closed dock still reserves the 75px zone");
-	assert.match(blank.className, OPTIONS_VIEWPORT_HEIGHT);
-	assert.equal(blank.getAttribute("aria-hidden"), "true");
-	// Closed: blank chrome. No copy, no rows, no hint, nothing in the Tab order.
-	assert.equal(dock.getAttribute("data-address-dock-open"), "false");
-	assert.equal(dock.textContent.trim(), "");
-	assert.equal(options(bundle).length, 0);
-	for (const node of dock.querySelectorAll("*")) {
-		assert.ok(
-			node.tabIndex < 0,
-			`the closed dock has no tab stop: ${node.outerHTML}`,
-		);
-	}
-	// jsdom never moves focus for a click on a div, so a click assertion here
-	// would pass against the old focusable viewport too: the discriminating
-	// real-click check lives in browser-url-autocomplete-proof.mjs. What this
-	// test owns is the structure that made the viewport click-focusable: no
-	// scroll container and no tab stop in the closed dock.
-	await bundle.cleanup();
-});
-
-test("opening keeps the zones and puts the rows inside the 75px viewport", async () => {
-	const bundle = await renderBar();
-	await type(bundle, "example.com/acc");
-	const dock = list(bundle);
-	assert.equal(dock.getAttribute("data-address-dock-open"), "true");
-	assert.equal(dock.getAttribute("data-address-dock-height"), "104");
-	assert.match(dock.className, FIXED_DOCK_HEIGHT);
-	const viewport = dock.querySelector("[data-address-suggestions-viewport]");
-	assert.ok(
-		viewport.contains(listbox(bundle)),
-		"the listbox lives inside the scroll viewport",
-	);
-	assert.equal(options(bundle).length, 1);
-	for (const row of options(bundle)) {
-		assert.match(row.className, FIXED_ROW_HEIGHT);
-	}
-	assert.match(dock.textContent, FROM_THIS_BROWSER_SESSION);
-	await bundle.cleanup();
-});
-
-test("the status notice lives in the options viewport, under the header label", async () => {
-	const bundle = await renderBar({
-		url: "about:blank",
-		addressHistory: async (request) => ({
-			requestId: request.requestId,
-			activeTabId: 1,
-			entries: [],
-		}),
-	});
-	await act(async () => bundle.input.focus());
-	await flush();
-	const dock = list(bundle);
-	const header = dock.querySelector("[data-address-suggestions-header]");
-	const viewport = dock.querySelector("[data-address-suggestions-viewport]");
-	const notice = viewport.querySelector("[data-address-suggestions-notice]");
-	assert.match(header.textContent, FROM_THIS_BROWSER_SESSION);
-	assert.ok(notice, "the notice is inside the 75px zone");
-	assert.match(notice.textContent, NO_LINKS_YET);
-	assert.ok(
-		!notice.className.includes("truncate"),
-		"the notice wraps and scrolls instead of truncating at 480px",
-	);
-	assert.equal(
-		header.querySelectorAll("[data-address-suggestions-notice]").length,
-		0,
-	);
-	assert.equal(options(bundle).length, 0);
-	await bundle.cleanup();
-});
-
-test("a fifth active row scrolls inside the viewport, never the page", async () => {
-	const bundle = await renderBar({
-		url: "about:blank",
-		addressHistory: async (request) => ({
-			requestId: request.requestId,
-			activeTabId: 1,
-			entries: SIX_ENTRIES,
-		}),
-	});
-	await type(bundle, "example.com/acc");
-	const viewport = bundle.container.querySelector(
-		"[data-address-suggestions-viewport]",
-	);
-	Object.defineProperty(viewport, "clientHeight", {
-		configurable: true,
-		value: 75,
-	});
-	const rows = options(bundle);
-	assert.equal(rows.length, 5);
-	// jsdom has no layout; hand the effect the geometry the 75px viewport has:
-	// 2px padding, then five 35.5px rows.
-	rows.forEach((row, index) => {
-		Object.defineProperty(row, "offsetTop", {
-			configurable: true,
-			value: 2 + index * 35.5,
-		});
-		Object.defineProperty(row, "offsetHeight", {
-			configurable: true,
-			value: 35.5,
-		});
-	});
-	for (let step = 0; step < 5; step += 1) await key(bundle, "ArrowDown");
-	assert.equal(bundle.input.getAttribute("aria-activedescendant"), rows[4].id);
-	assert.equal(
-		viewport.scrollTop,
-		2 + 5 * 35.5 - 75,
-		"the fifth row is brought fully into the viewport",
-	);
-	await key(bundle, "ArrowUp");
-	await key(bundle, "ArrowUp");
-	assert.equal(viewport.scrollTop, 2 + 2 * 35.5, "rows 3 and 4 are shown");
-	assert.equal(document.activeElement, bundle.input);
-	await bundle.cleanup();
-});
-
-test("a new query resets the options scroll, even with the same candidate count", async () => {
-	const bundle = await renderBar({
-		url: "about:blank",
-		addressHistory: async (request) => ({
-			requestId: request.requestId,
-			activeTabId: 1,
-			entries: SIX_ENTRIES,
-		}),
-	});
-	await type(bundle, "example.com/acc");
-	const viewport = bundle.container.querySelector(
-		"[data-address-suggestions-viewport]",
-	);
-	assert.equal(options(bundle).length, 5);
-	// jsdom has no layout: the 75px scrollport and the row geometry the effect
-	// reads are handed to it explicitly (2px padding, then 35.5px rows).
-	Object.defineProperty(viewport, "clientHeight", {
-		configurable: true,
-		value: 75,
-	});
-	options(bundle).forEach((row, index) => {
-		Object.defineProperty(row, "offsetTop", {
-			configurable: true,
-			value: 2 + index * 35.5,
-		});
-		Object.defineProperty(row, "offsetHeight", {
-			configurable: true,
-			value: 35.5,
-		});
-	});
-	const scrolledToFifth = 2 + 5 * 35.5 - 75;
-	for (let step = 0; step < 5; step += 1) await key(bundle, "ArrowDown");
-	assert.equal(viewport.scrollTop, scrolledToFifth, "the fifth row is in view");
-
-	// Keyboard path: appending one character keeps all six entries matching, so
-	// the candidate count is unchanged and only the query differs.
-	await type(bundle, "example.com/acco");
-	assert.equal(options(bundle).length, 5, "the candidate count is unchanged");
-	assert.equal(viewport.scrollTop, 0, "the new result set starts at the top");
-	assert.equal(bundle.input.getAttribute("aria-activedescendant"), null);
-
-	// Wheel path: the pointer leaves the same offset behind; the next query change
-	// must clear it just the same.
-	viewport.scrollTop = scrolledToFifth;
-	await type(bundle, "example.com/accou");
-	assert.equal(options(bundle).length, 5);
-	assert.equal(viewport.scrollTop, 0);
 	await bundle.cleanup();
 });
 
@@ -527,29 +311,11 @@ test("a same-length candidate swap drops the active row and cannot commit it", a
 		},
 	});
 	await type(bundle, "example.com/acc");
-	const viewport = bundle.container.querySelector(
-		"[data-address-suggestions-viewport]",
-	);
-	Object.defineProperty(viewport, "clientHeight", {
-		configurable: true,
-		value: 75,
-	});
-	options(bundle).forEach((row, index) => {
-		Object.defineProperty(row, "offsetTop", {
-			configurable: true,
-			value: 2 + index * 35.5,
-		});
-		Object.defineProperty(row, "offsetHeight", {
-			configurable: true,
-			value: 35.5,
-		});
-	});
 	for (let step = 0; step < 5; step += 1) await key(bundle, "ArrowDown");
 	const staleUrl = options(bundle)[4].getAttribute(
 		"data-address-suggestion-url",
 	);
 	assert.ok(staleUrl, "a row was active before the swap");
-	assert.ok(viewport.scrollTop > 0, "the fifth row was scrolled into view");
 
 	// The same refresh path main uses: a new snapshot arrives while the field is
 	// focused. Five URLs become five DIFFERENT URLs, so only the key can see it.
@@ -566,7 +332,6 @@ test("a same-length candidate swap drops the active row and cannot commit it", a
 		null,
 		"no row is active after the set changed",
 	);
-	assert.equal(viewport.scrollTop, 0, "the new set starts at the top");
 	const before = bundle.navigations.length;
 	await key(bundle, "Enter");
 	assert.ok(
@@ -578,61 +343,6 @@ test("a same-length candidate swap drops the active row and cannot commit it", a
 		staleUrl,
 		"Enter never commits the row the user could no longer see",
 	);
-	await bundle.cleanup();
-});
-
-test("undo and redo reset the options scroll", async () => {
-	const bundle = await renderBar({
-		url: "about:blank",
-		addressHistory: async (request) => ({
-			requestId: request.requestId,
-			activeTabId: 1,
-			entries: SIX_ENTRIES,
-		}),
-	});
-	const viewportFor = () =>
-		bundle.container.querySelector("[data-address-suggestions-viewport]");
-	const patchGeometry = () => {
-		const viewport = viewportFor();
-		Object.defineProperty(viewport, "clientHeight", {
-			configurable: true,
-			value: 75,
-		});
-		options(bundle).forEach((row, index) => {
-			Object.defineProperty(row, "offsetTop", {
-				configurable: true,
-				value: 2 + index * 35.5,
-			});
-			Object.defineProperty(row, "offsetHeight", {
-				configurable: true,
-				value: 35.5,
-			});
-		});
-		return viewport;
-	};
-	await type(bundle, "example.com/acc");
-	let viewport = patchGeometry();
-	for (let step = 0; step < 5; step += 1) await key(bundle, "ArrowDown");
-	assert.ok(viewport.scrollTop > 0, "the fifth row was scrolled into view");
-
-	// One more edit, then scroll away again; undo must return the older query
-	// AND put its result set back at the top.
-	await type(bundle, "example.com/acco");
-	viewport = patchGeometry();
-	for (let step = 0; step < 5; step += 1) await key(bundle, "ArrowDown");
-	assert.ok(viewport.scrollTop > 0);
-	await key(bundle, "z", { ctrlKey: true });
-	assert.equal(bundle.input.value, "example.com/acc");
-	assert.equal(viewport.scrollTop, 0, "undo starts the result set at the top");
-	assert.equal(bundle.input.getAttribute("aria-activedescendant"), null);
-
-	// And redo: the scroll must not survive that write either.
-	viewport = patchGeometry();
-	for (let step = 0; step < 5; step += 1) await key(bundle, "ArrowDown");
-	assert.ok(viewport.scrollTop > 0);
-	await key(bundle, "z", { ctrlKey: true, shiftKey: true });
-	assert.equal(bundle.input.value, "example.com/acco");
-	assert.equal(viewport.scrollTop, 0, "redo starts the result set at the top");
 	await bundle.cleanup();
 });
 
@@ -682,25 +392,30 @@ test("Enter with only an inline completion commits its canonical target", async 
 	await bundle.cleanup();
 });
 
-test("blur dismisses and never navigates", async () => {
+test("blur never navigates and only drops the draft on a named target", async () => {
 	const bundle = await renderBar();
 	await type(bundle, "example.com/acc");
+	// A NULL relatedTarget is the ambiguous case (page click, child click or
+	// window deactivation). The popout keeps the draft; main's page-focus event
+	// is what lowers it, and a window blur must not discard text.
 	await act(async () => bundle.input.blur());
 	await flush();
 	assert.equal(bundle.navigations.length, 0);
-	assert.equal(bundle.input.value, "https://example.com/account");
+	assert.equal(bundle.input.value, "example.com/acc");
+	// The SURFACE owns the rest: a named focus target outside the popout is its
+	// focusout handler's decision, and main's page-focus event covers the native
+	// page. This component must not navigate on any blur.
+	assert.equal(bundle.dismissals.length, 0);
 	await bundle.cleanup();
 });
 
-test("Escape dismisses, then abandons", async () => {
+test("one Escape discards the draft and lowers the popout", async () => {
 	const bundle = await renderBar();
 	await type(bundle, "example.com/acc");
 	await key(bundle, "Escape");
-	assert.equal(bundle.input.value, "example.com/acc");
-	assert.equal(listbox(bundle), null);
-	assert.equal(list(bundle).textContent.trim(), "");
-	await key(bundle, "Escape");
-	assert.equal(bundle.input.value, "https://example.com/account");
+	assert.equal(bundle.input.value, "example.com/account");
+	assert.ok(!listbox(bundle));
+	assert.equal(bundle.dismissals.filter((d) => d === "dismiss").length, 1);
 	assert.equal(bundle.navigations.length, 0);
 	await bundle.cleanup();
 });
@@ -710,8 +425,8 @@ test("Backspace removes the suggestion before it edits the draft", async () => {
 	await type(bundle, "example.com/acc");
 	await key(bundle, "Backspace");
 	assert.equal(bundle.input.value, "example.com/acc");
-	assert.equal(listbox(bundle), null);
-	assert.equal(list(bundle).textContent.trim(), "");
+	assert.ok(!listbox(bundle));
+	assert.ok(!list(bundle));
 	assert.equal(bundle.navigations.length, 0);
 	await bundle.cleanup();
 });
@@ -729,7 +444,7 @@ test("a search-intent Enter shows the address hint instead of navigating", async
 	await type(bundle, "hello world");
 	await key(bundle, "Enter");
 	assert.equal(bundle.navigations.length, 0);
-	assert.match(list(bundle).textContent, ENTER_A_WEB_ADDRESS);
+	assert.match(describedNotice(bundle).textContent, ENTER_A_WEB_ADDRESS);
 	await bundle.cleanup();
 });
 
@@ -804,7 +519,7 @@ test("a tab change clears the snapshot and the completion", async () => {
 		);
 	});
 	await flush();
-	assert.equal(bundle.input.value, "https://other.example/");
+	assert.equal(bundle.input.value, "other.example");
 	await bundle.cleanup();
 });
 
@@ -816,8 +531,11 @@ test("an unavailable history read degrades to plain editing", async () => {
 	});
 	await act(async () => bundle.input.focus());
 	await flush();
-	assert.match(list(bundle).textContent, ADDRESS_SUGGESTIONS_UNAVAILABLE);
-	assert.equal(bundle.input.value, "https://example.com/account");
+	assert.match(
+		describedNotice(bundle).textContent,
+		ADDRESS_SUGGESTIONS_UNAVAILABLE,
+	);
+	assert.equal(bundle.input.value, "example.com/account");
 	await bundle.cleanup();
 });
 
@@ -978,7 +696,7 @@ test("aria-controls names the listbox only while a listbox exists", async () => 
 	await populated.cleanup();
 
 	const empty = await renderBar({
-		url: "about:blank",
+		url: "",
 		addressHistory: async (request) => ({
 			requestId: request.requestId,
 			activeTabId: 1,
@@ -1057,52 +775,13 @@ test("an accepted target is not reused after an invalidating action", async () =
 	]);
 	await redone.cleanup();
 
-	const blurred = await arm();
-	await act(async () => blurred.input.blur());
-	await flush();
-	await key(blurred, "Enter");
-	assert.deepEqual(blurred.navigations, [], "blur reverts to the live URL");
-	await blurred.cleanup();
-});
-
-test("Escape after accepting keeps the canonical target", async () => {
-	const canonical = "http://127.0.0.1:8080/account/profile";
-	const bundle = await renderBar({
-		url: "http://127.0.0.1:8080/account",
-		addressHistory: async (request) => ({
-			requestId: request.requestId,
-			activeTabId: 1,
-			entries: HTTP_ENTRIES,
-		}),
-	});
-	await type(bundle, "127.0.0.1:8080/a");
-	await type(bundle, "127.0.0.1:8080/acc");
-	await key(bundle, "ArrowRight");
-	await key(bundle, "Escape");
-	assert.equal(bundle.input.value, "127.0.0.1:8080/account/profile");
-	await key(bundle, "Enter");
-	assert.deepEqual(bundle.navigations, [{ url: canonical, expectedTabId: 1 }]);
-	await bundle.cleanup();
-});
-
-test("a second Escape after accepting abandons and clears the target", async () => {
-	const bundle = await renderBar({
-		url: "http://127.0.0.1:8080/account",
-		addressHistory: async (request) => ({
-			requestId: request.requestId,
-			activeTabId: 1,
-			entries: HTTP_ENTRIES,
-		}),
-	});
-	await type(bundle, "127.0.0.1:8080/a");
-	await type(bundle, "127.0.0.1:8080/acc");
-	await key(bundle, "ArrowRight");
-	await key(bundle, "Escape");
-	await key(bundle, "Escape");
-	assert.equal(bundle.input.value, "http://127.0.0.1:8080/account");
-	await key(bundle, "Enter");
-	assert.deepEqual(bundle.navigations, []);
-	await bundle.cleanup();
+	const dismissed = await arm();
+	// S4b: Escape is the one-stage dismissal (blur no longer discards a draft;
+	// the surface/main decide that). After it, Enter must not reuse the target.
+	await key(dismissed, "Escape");
+	await key(dismissed, "Enter");
+	assert.deepEqual(dismissed.navigations, [], "Escape reverts to the live URL");
+	await dismissed.cleanup();
 });
 
 test("switching tabs and back keeps the accepted target", async () => {

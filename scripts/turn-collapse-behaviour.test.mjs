@@ -419,7 +419,7 @@ const mount = async (t, records, over = {}) => {
 						onLoadOlder: nextOver.onLoadOlder ?? (async () => true),
 						containerRef: { current: mounted.container },
 						isSmallView: nextOver.isSmallView ?? false,
-						status: "live",
+						status: nextOver.status ?? "live",
 						failure: null,
 						awaitingHydration: false,
 						onReconnect: () => {},
@@ -1934,6 +1934,233 @@ test("a reconnect frame cannot collapse the reader's opened bar (operator report
 		barTrigger(mounted)?.getAttribute("aria-expanded"),
 		"true",
 		"the re-entry reads the same bucket",
+	);
+});
+
+test("a turn that GROWS while the live flag is down stops condensing (operator frames, 2026-10-21)", async (t) => {
+	/*
+	 * THE SECOND MECHANISM BEHIND THE FRAMES. Captured from a live turn: the
+	 * turn's rows out (the working line saying it is thinking), then the same
+	 * turn painted as its bar a frame later, then out again.
+	 *
+	 * The plan's `anchored` falls back to the pane's instantaneous `live` in the
+	 * gap between two calls, where no row is streaming and no call is in flight.
+	 * A pane that never caught a live pass for this run holds no latch, so every
+	 * dip alternates the whole turn. Growth of the newest run is the fact that
+	 * does not dip: rows are appended only while the turn is being written.
+	 *
+	 * Prose between the calls keeps the TOOL-GROUP tier out of this fixture
+	 * (`foldRuns` only folds a run of three or more adjacent actions), so the bar
+	 * these assertions are about is the turn's own.
+	 *
+	 * WHAT THIS PROVES, EXACTLY (agent review round 1, M2): the assertion is the
+	 * state after the arming pass has committed - the growth pass renders once
+	 * unarmed and the effect's setState re-renders it armed - so it proves the
+	 * turn does not STAY condensed once growth is observed, not that the very first
+	 * frame of the append is already expanded. The frame between the two is the
+	 * pass the effect cannot preempt.
+	 */
+	const prose = (id) => ({
+		kind: "assistant",
+		id,
+		ts: TS,
+		text: "Working through it.",
+		streaming: false,
+		stopReason: null,
+	});
+	const records = [
+		userRecord("grow-user"),
+		toolRecord("grow-t0"),
+		prose("grow-p0"),
+		toolRecord("grow-t1"),
+		prose("grow-p1"),
+	];
+	const over = { frontend: { session_id: "synthetic-grow" }, waiting: false };
+	__resetWatchedRuns();
+	const mounted = await mount(t, records, over);
+	assert.ok(
+		bar(mounted) !== null,
+		"the baseline pass paints the turn's bar (no latch before growth)",
+	);
+	await mounted.render(
+		[...records, prose("grow-p2"), toolRecord("grow-t2")],
+		over,
+	);
+	assert.ok(
+		bar(mounted) === null,
+		"a run that gained a row is being written: no bar while the flag is down",
+	);
+	assert.ok(
+		rowBox(mounted, "grow-t2") !== null,
+		"the new row is painted in place",
+	);
+
+	/*
+	 * AND A PAGE LANDING ABOVE IS NOT GROWTH (QA round 1, Q-F1). Loading older
+	 * history lengthens a head-cut run too, but the reader asked for it and no
+	 * turn is being written; only a row appended at the TAIL moves the run's last
+	 * id, which is the append this arm is about.
+	 */
+	__resetWatchedRuns();
+	const page = await mount(
+		t,
+		[
+			userRecord("page-old"),
+			toolRecord("page-t0"),
+			prose("page-p0"),
+			toolRecord("page-t1"),
+		],
+		{ frontend: { session_id: "synthetic-page" }, waiting: false },
+	);
+	assert.ok(bar(page) !== null, "the page fixture starts collapsed");
+	await page.render(
+		[
+			userRecord("page-cut"),
+			toolRecord("page-t-1"),
+			userRecord("page-old"),
+			toolRecord("page-t0"),
+			prose("page-p0"),
+			toolRecord("page-t1"),
+		],
+		{ frontend: { session_id: "synthetic-page" }, waiting: false },
+	);
+	assert.ok(
+		bar(page) !== null,
+		"older rows landing above a finished run do not arm the latch",
+	);
+});
+
+test("a job response cannot reopen a tool group the pane has already folded (operator report, 2026-10-21)", async (t) => {
+	/*
+	 * THE REPORT: "some of the job messages/responses will alternate between
+	 * forcing the tool group open and then closing it back again".
+	 *
+	 * The licensing rule is positional - a run folds on its TRAILING receipt
+	 * stretch - so one continuous run changed shape on every job response:
+	 * `[t1, j1, j2]` folds, the next call ends the stretch and the rows paint
+	 * loose, two more receipts fold it again. This drives the SHIPPED transcript
+	 * and asserts the reader-visible consequence: the tool rows stay unmounted
+	 * while the turn is live, and the group's header carries the new call.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const job = (id) => ({
+		kind: "custom",
+		id,
+		ts: TS + 1_000,
+		customType: "job_result",
+		text: "job finished",
+		attribution: "job",
+	});
+	const frontend = { session_id: "chat-job-fold" };
+	const first = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+		job("job:1"),
+		job("job:2"),
+	];
+	const mounted = await mount(t, first, { frontend, waiting: true });
+	const folded = () =>
+		rowBox(mounted, "tool:1") === null && rowBox(mounted, "tool:2") === null;
+	assert.equal(
+		rowBox(mounted, "tool:1"),
+		null,
+		"the wall folds on its trailing receipts",
+	);
+	// The next call arrives: the run's trailing stretch ends, and the group used
+	// to open here.
+	const withCall = [
+		...first,
+		toolRecord("tool:2", { ts: TS + 2_000, durationS: 4 }),
+	];
+	await mounted.render(withCall, { frontend, waiting: true });
+	assert.ok(folded(), "the new call did not reopen the fold");
+	assert.ok(
+		mounted.container.textContent?.includes("2 shell"),
+		"and the header counts it instead",
+	);
+	// Two more job responses: still one group, still closed.
+	await mounted.render([...withCall, job("job:3"), job("job:4")], {
+		frontend,
+		waiting: true,
+	});
+	assert.ok(folded(), "a further receipt pair did not refold from scratch");
+	/*
+	 * A RECONNECT GAP IS NOT A SETTLE (design review round 1, U1). With no
+	 * snapshot the pane has observed nothing about the turn, so the latch is
+	 * retained and the group stays closed; the clear used to run here and the
+	 * return pass folded it again - the same open/close for a reader who only
+	 * watched the connection blink.
+	 */
+	await mounted.render(withCall, {
+		frontend: null,
+		waiting: false,
+		status: "reconnecting",
+	});
+	assert.ok(folded(), "the group stayed folded through the gap");
+	await mounted.render([...withCall, job("job:5")], {
+		frontend,
+		waiting: true,
+	});
+	assert.ok(folded(), "and the return pass did not refold from scratch");
+	// THE LATCH IS LIVE-ONLY: on the settled list the final rows decide, so the
+	// run with no trailing receipts paints its rows again - one transition, at
+	// the turn's end, not on every response.
+	await mounted.render(withCall, { frontend, waiting: false });
+	assert.ok(
+		rowBox(mounted, "tool:1") !== null,
+		"settled, the same rows paint as ordinary rows",
+	);
+});
+
+test("a child reader's null snapshot is not a gap: its settle releases the fold (agent review round 4)", async (t) => {
+	/*
+	 * THE RUN PANEL'S CHILD READER passes `frontend: null` for its whole life
+	 * with `status: "live"`. Reading the gap off the SNAPSHOT therefore held its
+	 * fold across the settle, and a finished child turn never painted its rows;
+	 * the pane's own `status` is the signal. This case mounts the reader's exact
+	 * prop shape and drives its live frame and its settle, so a revert of the
+	 * status reading fails HERE - the earlier assertion in the job-fold case runs
+	 * after a connected settle has already spent the latch and cannot see it.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const job = (id) => ({
+		kind: "custom",
+		id,
+		ts: TS + 1_000,
+		customType: "job_result",
+		text: "job finished",
+		attribution: "job",
+	});
+	const records = [
+		userRecord("child:u"),
+		toolRecord("child:1"),
+		job("child:j1"),
+		job("child:j2"),
+	];
+	const live = {
+		frontend: null,
+		status: "live",
+		workingLine: { activity: "running", phase: "running" },
+	};
+	const child = await mount(t, records, live);
+	assert.ok(
+		rowBox(child, "child:1") === null,
+		"the child's live frame folds the wall",
+	);
+	/*
+	 * The settle frame ends the receipt stretch with a call (`[t1, j1, j2, t2]`):
+	 * two actions, no trailing receipt pair, so the rows only stay folded if the
+	 * latch is still consulted - which is what a snapshot-derived gap did.
+	 */
+	await child.render([...records, toolRecord("child:2", { ts: TS + 2_000 })], {
+		frontend: null,
+		status: "live",
+	});
+	assert.ok(
+		rowBox(child, "child:1") !== null,
+		"and its settle paints the rows",
 	);
 });
 
