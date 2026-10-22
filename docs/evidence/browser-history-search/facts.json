@@ -1,0 +1,174 @@
+{
+  "generatedAt": "2026-10-22T04:43:00Z",
+  "headUnderTest": "e6d4773fbc0baeb7ab0e3f1a67545ca81548985c",
+  "baseBranchHead": "1e52d32b8828d0861efde1a5a6e59f1077ada5f4",
+  "buildIdentity": {
+    "main": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046",
+    "renderer": "cfc37c8a3d5e9828d2deb97134a2cee30d2712f9ff330eb12fcc30621a3bd265",
+    "listDocument": "9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e",
+    "mainBytecode": "9b882e178654200e5befdab1385381be114dd394d6c8a4b13a499d8ae606735e",
+    "rendererIndex": "cfc37c8a3d5e9828d2deb97134a2cee30d2712f9ff330eb12fcc30621a3bd265"
+  },
+  "command": "node scripts/browser-chrome-s4b-probe.mjs --out <scratch>/s4b-history-evidence-1792644111",
+  "rows": [
+    {
+      "id": "H1",
+      "status": "PASS",
+      "claim": "a visit recorded in an earlier app run is suggested from history with no tab open on it",
+      "evidence": {
+        "stoppedOne": {
+          "code": 0,
+          "signal": null
+        },
+        "openOnFixture": false,
+        "query": "127.0.0.1:54144",
+        "ownerRows": [
+          {
+            "url": "http://127.0.0.1:54144/history-other",
+            "source": "history"
+          },
+          {
+            "url": "http://127.0.0.1:54144/history-target",
+            "source": "history"
+          }
+        ],
+        "childHeader": "From your history",
+        "childRows": [
+          "127.0.0.1:54144/history-other S4b fixture",
+          "127.0.0.1:54144/history-target S4b fixture"
+        ]
+      }
+    },
+    {
+      "id": "H2",
+      "status": "PASS",
+      "claim": "typing \"github\" shows the Search DuckDuckGo row first and selected",
+      "evidence": {
+        "value": "github",
+        "active": ":r1s:-option-0",
+        "row0": {
+          "text": "Search DuckDuckGo for \"github\"",
+          "search": true,
+          "selected": true
+        },
+        "childRows": [
+          "Search DuckDuckGo for \"github\""
+        ]
+      }
+    },
+    {
+      "id": "H3",
+      "status": "PASS",
+      "claim": "typing \"what is a vpn\" shows the same search row first and selected",
+      "evidence": {
+        "value": "what is a vpn",
+        "active": ":r2c:-option-0",
+        "row0": {
+          "text": "Search DuckDuckGo for \"what is a vpn\"",
+          "search": true,
+          "selected": true
+        },
+        "childRows": [
+          "Search DuckDuckGo for \"what is a vpn\""
+        ]
+      }
+    },
+    {
+      "id": "H4",
+      "status": "PASS",
+      "claim": "Enter commits the highlighted search row's DuckDuckGo URL on the active tab",
+      "evidence": {
+        "stoppedTwo": {
+          "code": 0,
+          "signal": null
+        },
+        "githubUrl": "https://duckduckgo.com/?q=github",
+        "vpnUrl": "https://duckduckgo.com/?q=what+is+a+vpn",
+        "note": "github committed as ...?q=github and stayed; the vpn query committed as ...?q=what%20is%20a%20vpn and DuckDuckGo redirected it to the +/&ia=web spelling before the read, so the assertion is on the duckduckgo.com/?q= prefix plus the decoded query."
+      }
+    }
+  ],
+  "heuristicTable": [
+    {
+      "input": "example.com",
+      "intent": "url"
+    },
+    {
+      "input": "example.com/path?q=1",
+      "intent": "url"
+    },
+    {
+      "input": "https://example.com",
+      "intent": "url"
+    },
+    {
+      "input": "http://example.com",
+      "intent": "url"
+    },
+    {
+      "input": "file:///tmp/a.txt",
+      "intent": "url",
+      "note": "URL intent, never searched; the host still refuses to navigate it"
+    },
+    {
+      "input": "localhost:3000",
+      "intent": "url"
+    },
+    {
+      "input": "127.0.0.1:8080",
+      "intent": "url"
+    },
+    {
+      "input": "192.168.1.1",
+      "intent": "url"
+    },
+    {
+      "input": "foo bar",
+      "intent": "search"
+    },
+    {
+      "input": "what is a vpn",
+      "intent": "search"
+    },
+    {
+      "input": "how to cook rice",
+      "intent": "search"
+    },
+    {
+      "input": "github",
+      "intent": "search"
+    },
+    {
+      "input": "1.2",
+      "intent": "search"
+    },
+    {
+      "input": "javascript:alert(1)",
+      "intent": "blocked"
+    },
+    {
+      "input": "data:text/html,x",
+      "intent": "blocked"
+    },
+    {
+      "input": "about:blank",
+      "intent": "blocked"
+    }
+  ],
+  "frames": {
+    "child-history.png": "71080df8a24ecce23202168894437b087a82c2fb31ac0ba93ce68345494060d7",
+    "child-search-github.png": "6a9401ac14cadd4411452b75c7f5efbc9d171340d2c09e1aa2f7c683bf4413d3",
+    "child-search-vpn.png": "451a04cabc1159e4c4f8c0692399bee150af98de1d35f80fab061d4dec31fa0f",
+    "owner-history.png": "aafe14e00b72587d88e327b28c109725466c146a878037af8e42f78146e28d6c",
+    "owner-search-github.png": "5b182624ada99941a80fea0d4ac4e282e6b98ffd81a77b53775864578585699e",
+    "owner-search-vpn.png": "57ca146ef184e152dd766ac646b619d4c58bf7c330a3772c59894ea36660c580",
+    "child-rows.png": "b27a4f0135c1bb1ea0896bcc89498344ba607da7df19f9de42657f00043b8273",
+    "owner-popout.png": "6a18daa1ead7560c582c9ea74a39272b6745f7b1dc09d198941422fb79cc5349"
+  },
+  "beforeFramesFrom": "S4b round-3 run: $LOCAL_OPERATOR_SCRATCHPAD/s4b-r3-fix/frames (owner-popout.png, child-rows.png)",
+  "notProven": [
+    "native composite pixels, native hit routing, macOS IME and VoiceOver",
+    "Windows and Linux runs",
+    "DuckDuckGo page content: Enter is asserted on the committed navigation URL, not the page body"
+  ]
+}
