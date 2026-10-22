@@ -1937,6 +1937,56 @@ test("a reconnect frame cannot collapse the reader's opened bar (operator report
 	);
 });
 
+test("a turn that GROWS while the live flag is down does not condense (operator frames, 2026-10-21)", async (t) => {
+	/*
+	 * THE SECOND MECHANISM BEHIND THE FRAMES. Captured from a live turn: the
+	 * turn's rows out (the working line saying it is thinking), then the same
+	 * turn painted as its bar a frame later, then out again.
+	 *
+	 * The plan's `anchored` falls back to the pane's instantaneous `live` in the
+	 * gap between two calls, where no row is streaming and no call is in flight.
+	 * A pane that never caught a live pass for this run holds no latch, so every
+	 * dip alternates the whole turn. Growth of the newest run is the fact that
+	 * does not dip: rows are appended only while the turn is being written.
+	 *
+	 * Prose between the calls keeps the TOOL-GROUP tier out of this fixture
+	 * (`foldRuns` only folds a run of three or more adjacent actions), so the bar
+	 * these assertions are about is the turn's own.
+	 */
+	const prose = (id) => ({
+		kind: "assistant",
+		id,
+		ts: TS,
+		text: "Working through it.",
+		streaming: false,
+	});
+	const records = [
+		userRecord("grow-user"),
+		toolRecord("grow-t0"),
+		prose("grow-p0"),
+		toolRecord("grow-t1"),
+		prose("grow-p1"),
+	];
+	const over = { frontend: { session_id: "synthetic-grow" }, waiting: false };
+	const mounted = await mount(t, records, over);
+	assert.ok(
+		bar(mounted) !== null,
+		"the baseline pass paints the turn's bar (no latch before growth)",
+	);
+	await mounted.render(
+		[...records, prose("grow-p2"), toolRecord("grow-t2")],
+		over,
+	);
+	assert.ok(
+		bar(mounted) === null,
+		"a run that gained a row is being written: no bar while the flag is down",
+	);
+	assert.ok(
+		rowBox(mounted, "grow-t2") !== null,
+		"the new row is painted in place",
+	);
+});
+
 test("a reconnect gap cannot fold a run the pane was watching (operator report, 2026-10-21)", async (t) => {
 	/*
 	 * THE LATCH HALF, MEASURED WHERE IT IS PAINTED (review round 2, M1). The
