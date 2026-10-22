@@ -5,9 +5,10 @@
  * only. The hub stores png/jpeg ONLY (it sniffs the bytes and refuses
  * everything else with 415 - manager decision D3), so every other clipboard
  * format has to become png/jpeg HERE, before upload, and every image is
- * bounded to the same 1024px / 1 MiB envelope the agent composer uses
- * (`boundImageForWire`) so the hub's 5 MiB cap is headroom rather than the
- * normal path.
+ * bounded to a hard 1024px edge (`boundImageForWire` with `edgeIsHard`) and
+ * the agent composer's byte ladder, so it is <= 1 MiB in practice. The HARD
+ * byte limit is the capability cap (`maxBytes` below, then the hub's 413);
+ * the hub's 5 MiB is headroom rather than the normal path.
  *
  * CONSTRAINTS this module owns:
  * - The type is SNIFFED from the bytes, never read from `File.type` or the

@@ -28,6 +28,7 @@ import {
 	loadThreadPage,
 	observeDisplayedThreadReplies,
 } from "./team-bridge-thread-read";
+import { useStickToBottom } from "./use-stick-to-bottom";
 import { teamBridgeKeys, useMarkTeamBridgeRead } from "./use-team-bridge";
 import { useTeamBridgeAttachments } from "./use-team-bridge-attachments";
 
@@ -110,6 +111,12 @@ export function TeamBridgeThreadPaneView({
 		clientRef: string;
 	} | null>(null);
 	const lock = useRef(false);
+	// Same stick-to-bottom as the channel timeline (F9): opens at the newest
+	// reply and follows new ones only while the reader is at the bottom.
+	const scroll = useStickToBottom({
+		resetKey: `${tenantId ?? ""}:${conversationId ?? ""}:${root?.id ?? ""}:${state}`,
+		contentKey: `${replies.length}:${replies.at(-1)?.id ?? ""}`,
+	});
 	const hasContent = Boolean(draft.trim()) || images.count > 0;
 	const submit = async () => {
 		const body = draft.trim();
@@ -138,6 +145,7 @@ export function TeamBridgeThreadPaneView({
 		setSending(true);
 		setFailed(false);
 		setImagesBlocked(false);
+		scroll.pin();
 		try {
 			await onSend(body, entry.clientRef, ids);
 			pending.current = null;
@@ -171,7 +179,7 @@ export function TeamBridgeThreadPaneView({
 					<X size={16} />
 				</Button>
 			</header>
-			<ScrollArea className="min-h-0 flex-1">
+			<ScrollArea ref={scroll.rootRef} className="min-h-0 flex-1">
 				{root && (
 					<TeamBridgeMessageList
 						messages={[root]}

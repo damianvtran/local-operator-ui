@@ -1292,3 +1292,25 @@ export const ThreadReadAcknowledgement: Story = {
 		);
 	},
 };
+
+/*
+ * F9 frames: enough history to overflow, so the designer can confirm the
+ * timeline OPENS at the newest message (not scrollTop 0) and that a send keeps
+ * it in view. The newest body names itself so the frame is self-checking.
+ */
+const longHistory: TeamBridgeMessage[] = Array.from(
+	{ length: 24 },
+	(_, index) => ({
+		...messages[index % messages.length],
+		id: `bcmsg_long_${index + 1}`,
+		seq: index + 1,
+		body:
+			index === 23
+				? "Newest message — this should be in view when the conversation opens."
+				: `Earlier message ${index + 1} in a long conversation.`,
+		created_at: new Date(Date.now() - (24 - index) * 5 * 60_000).toISOString(),
+	}),
+);
+export const LongHistoryOpensAtNewest: Story = {
+	args: { messages: longHistory },
+};

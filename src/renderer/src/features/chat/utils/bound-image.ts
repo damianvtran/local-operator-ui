@@ -225,10 +225,12 @@ async function reEncode(
 	// not an optimisation - manager decision D3 bounds every uploaded image to
 	// 1024 px, and a recipient's client renders and stores what was sent. So an
 	// over-edge original is never returned just because its downscale did not
-	// shrink the bytes (an incompressible or noisy PNG; QA round 1, Q1). The
-	// byte cap still applies: `best` is only ever a candidate within
-	// IMAGE_MAX_BYTES or the JPEG rung, and the upload path refuses anything
-	// over the hub's cap. Chat keeps the never-grow rule above unchanged.
+	// shrink the bytes (an incompressible or noisy PNG; QA round 1, Q1). Bytes
+	// are <= 1 MiB IN PRACTICE, not by construction: the PNG rung is capped at
+	// IMAGE_MAX_BYTES but the JPEG fallback is not (a 1024 px q85 JPEG lands
+	// well under it). The HARD byte limit is the capability cap the upload
+	// path refuses over (`prepareImageForUpload`, then the hub's 413). Chat
+	// keeps the never-grow rule above unchanged.
 	if (edgeIsHard && scale < 1)
 		return { data_b64: toBase64(best.bytes), mime_type: best.mime_type };
 	if (bestBytes >= originalBytes) return original;

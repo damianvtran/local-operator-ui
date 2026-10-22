@@ -91,6 +91,8 @@ const bundle = await build({
  export {TeamBridgePageView} from "./src/renderer/src/features/team-bridge/team-bridge-page";
  export {registerCatalogue, setLocale} from "./src/i18n";
  export {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+ export {useStickToBottom} from "./src/renderer/src/features/team-bridge/use-stick-to-bottom";
+ export {TeamBridgeThreadPaneView} from "./src/renderer/src/features/team-bridge/team-bridge-thread-pane";
  export {TeamBridgeAttachmentChip} from "./src/renderer/src/features/team-bridge/team-bridge-attachments";
  export {t} from "./src/renderer/src/shared/i18n";
  export {browserDraftStorage} from "./src/renderer/src/shared/store/team-bridge-draft-account";
@@ -1175,17 +1177,21 @@ async function mountPage(props) {
 	const client = new m.QueryClient({
 		defaultOptions: { queries: { retry: false } },
 	});
-	await act(async () =>
-		root.render(
-			React.createElement(
-				m.QueryClientProvider,
-				{ client },
-				React.createElement(m.TeamBridgePageView, props),
+	const draw = (next) =>
+		act(async () =>
+			root.render(
+				React.createElement(
+					m.QueryClientProvider,
+					{ client },
+					React.createElement(m.TeamBridgePageView, next),
+				),
 			),
-		),
-	);
+		);
+	await draw(props);
 	return {
 		element,
+		// Re-render with new props on the SAME root (a new message arriving).
+		render: draw,
 		close: async () => {
 			await act(async () => root.unmount());
 			element.remove();
@@ -1800,7 +1806,8 @@ test("QA Q3: a 401 upload marks the chip signed_out and says so with the sign-in
 		status: 401,
 		kind: "error",
 		detail: "x",
-		code: "pairing.refused",
+		// The runtime's real refusal code for a lost sign-in (review r7 N1).
+		code: "bridge_signin_required",
 	});
 	const app = await mountHook({
 		scopeKey: "q3",
@@ -1846,9 +1853,256 @@ test("QA Q3: a 401 upload marks the chip signed_out and says so with the sign-in
 				),
 			"the chip names the sign-in fact, not a generic upload failure",
 		);
+		// r7 M2: Retry would 401 again until sign-in, so it is not offered.
+		const retryLabel = m.t("ui.teamBridge.attachments.retry", {
+			label: m.t("ui.teamBridge.attachments.position", {
+				index: "1",
+				count: "1",
+			}),
+		});
+		assert.equal(
+			view.querySelector(`[aria-label="${retryLabel}"]`),
+			null,
+			"a signed_out chip offers Remove only",
+		);
+		assert.ok(view.querySelector("button"), "Remove is still there");
 		await act(async () => root.unmount());
 		view.remove();
 	} finally {
 		await app.close();
 	}
 });
+
+/*
+ * F9 (live E2E): stick-to-bottom. JSDOM has no layout, so the Radix viewport's
+ * geometry is modelled here: `scrollHeight` grows with the rendered rows
+ * (ROW px each), `clientHeight` is fixed, and `scrollTop` is clamped to
+ * [0, scrollHeight - clientHeight] like a browser does. What is measured is
+ * the hook's DECISIONS (open at bottom, pin on own send, follow vs not yank),
+ * not Chromium's scroll physics; the story frames cover the rendered pixels.
+ */
+const ROW = 120;
+const CLIENT = 400;
+function withScrollGeometry(run) {
+	const proto = window.HTMLElement.prototype;
+	const saved = {
+		scrollHeight: Object.getOwnPropertyDescriptor(proto, "scrollHeight"),
+		clientHeight: Object.getOwnPropertyDescriptor(proto, "clientHeight"),
+		scrollTop: Object.getOwnPropertyDescriptor(proto, "scrollTop"),
+	};
+	const tops = new WeakMap();
+	const isViewport = (el) => el.hasAttribute("data-radix-scroll-area-viewport");
+	const height = (el) =>
+		isViewport(el)
+			? el.querySelectorAll("[data-message-id]").length * ROW + 200
+			: 0;
+	Object.defineProperty(proto, "scrollHeight", {
+		configurable: true,
+		get() {
+			return height(this);
+		},
+	});
+	Object.defineProperty(proto, "clientHeight", {
+		configurable: true,
+		get() {
+			return isViewport(this) ? CLIENT : 0;
+		},
+	});
+	Object.defineProperty(proto, "scrollTop", {
+		configurable: true,
+		get() {
+			return tops.get(this) ?? 0;
+		},
+		set(value) {
+			const max = Math.max(0, height(this) - CLIENT);
+			tops.set(this, Math.max(0, Math.min(max, value)));
+		},
+	});
+	const restore = () => {
+		for (const [name, descriptor] of Object.entries(saved))
+			if (descriptor) Object.defineProperty(proto, name, descriptor);
+			else Reflect.deleteProperty(proto, name);
+	};
+	return Promise.resolve().then(run).finally(restore);
+}
+const viewportOf = (element) =>
+	element.querySelector("[data-radix-scroll-area-viewport]");
+const atBottom = (viewport) =>
+	viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight <= 1;
+const thread = (n) =>
+	Array.from({ length: n }, (_, i) =>
+		message({
+			id: `bmsg_r${i + 1}`,
+			seq: i + 2,
+			body: `reply ${i + 1}`,
+			thread_root_id: "bmsg_1",
+		}),
+	);
+async function scrollTo(viewport, top) {
+	await act(async () => {
+		viewport.scrollTop = top;
+		viewport.dispatchEvent(new window.Event("scroll"));
+	});
+}
+
+test("F9 harness self-check: an overflowing viewport left alone is NOT at the bottom", () =>
+	withScrollGeometry(async () => {
+		const viewport = document.createElement("div");
+		viewport.setAttribute("data-radix-scroll-area-viewport", "");
+		for (let i = 0; i < 8; i += 1) {
+			const row = document.createElement("div");
+			row.dataset.messageId = `x${i}`;
+			viewport.append(row);
+		}
+		// What F9 measured: scrollTop 0 with the newest row below the fold.
+		assert.equal(viewport.scrollTop, 0);
+		assert.ok(viewport.scrollHeight > viewport.clientHeight);
+		assert.equal(
+			atBottom(viewport),
+			false,
+			"the pre-fix state fails the assertion",
+		);
+		viewport.scrollTop = 1e9;
+		assert.ok(atBottom(viewport), "clamped like a browser");
+	}));
+
+test(
+	"F9 thread pane: opens at the newest reply, follows when pinned, never yanks a reader who scrolled up",
+	{ timeout: 30_000 },
+	() =>
+		withScrollGeometry(async () => {
+			const element = document.createElement("div");
+			document.body.append(element);
+			const root = createRoot(element);
+			const props = (replies, extra = {}) => ({
+				root: message({ id: "bmsg_1", body: "root" }),
+				replies,
+				state: "ready",
+				labelFor: (sender) => sender.display_label,
+				onClose: () => {},
+				onRetry: () => {},
+				onSend: async () => {},
+				tenantId: "tnt_1",
+				conversationId: "bcv_1",
+				...extra,
+			});
+			const render = (replies, extra) =>
+				act(async () =>
+					root.render(
+						React.createElement(
+							m.TeamBridgeThreadPaneView,
+							props(replies, extra),
+						),
+					),
+				);
+			try {
+				await render(thread(8));
+				const viewport = viewportOf(element);
+				assert.ok(viewport, "the thread has a Radix viewport");
+				assert.ok(
+					viewport.scrollHeight > viewport.clientHeight,
+					"the fixture overflows",
+				);
+				assert.ok(
+					atBottom(viewport),
+					"opens at the newest reply, not scrollTop 0",
+				);
+
+				// Pinned: a new reply keeps the view at the bottom.
+				await render(thread(9));
+				assert.ok(atBottom(viewport), "a new reply while pinned stays in view");
+
+				// Scrolled up: a new reply does not move the reader.
+				await scrollTo(viewport, 100);
+				await render(thread(10));
+				assert.equal(
+					viewport.scrollTop,
+					100,
+					"a reader who scrolled up is not yanked",
+				);
+
+				// Own send: jump to the bottom, then the reply lands in view.
+				const field = element.querySelector("textarea");
+				const setter = Object.getOwnPropertyDescriptor(
+					window.HTMLTextAreaElement.prototype,
+					"value",
+				).set;
+				await act(async () => {
+					setter.call(field, "mine");
+					field.dispatchEvent(new window.Event("input", { bubbles: true }));
+				});
+				const send = sendButton(element);
+				assert.ok(send, "thread send button");
+				await act(async () => send.click());
+				await settle();
+				assert.ok(atBottom(viewport), "own send scrolls to the bottom");
+				await render(thread(11));
+				assert.ok(atBottom(viewport), "the sent reply lands in view");
+			} finally {
+				await act(async () => root.unmount());
+				element.remove();
+			}
+		}),
+);
+
+test(
+	"F9 channel timeline: opens at the newest message, own send pins, scrolled-up reader stays put",
+	{ timeout: 30_000 },
+	() =>
+		withScrollGeometry(async () => {
+			localStorage.clear();
+			const many = (n) =>
+				Array.from({ length: n }, (_, i) =>
+					message({
+						id: `bmsg_t${i + 1}`,
+						seq: i + 1,
+						conversation_id: "bcv_dm",
+						body: `m ${i + 1}`,
+					}),
+				);
+			const sends = [];
+			const base = {
+				target: { type: "conversation", id: "bcv_dm" },
+				onSend: async (body) => {
+					sends.push(body);
+				},
+			};
+			const app = await mountPage(pageProps({ ...base, messages: many(10) }));
+			try {
+				const viewports = [
+					...app.element.querySelectorAll("[data-radix-scroll-area-viewport]"),
+				].filter((node) => node.querySelector("[data-message-id]"));
+				assert.equal(viewports.length, 1, "one timeline viewport");
+				const [viewport] = viewports;
+				assert.ok(
+					viewport.scrollHeight > viewport.clientHeight,
+					"the fixture overflows",
+				);
+				assert.ok(atBottom(viewport), "opens at the newest message");
+
+				await app.render(pageProps({ ...base, messages: many(11) }));
+				assert.ok(
+					atBottom(viewport),
+					"an incoming message while pinned stays in view",
+				);
+
+				await scrollTo(viewport, 50);
+				await app.render(pageProps({ ...base, messages: many(12) }));
+				assert.equal(
+					viewport.scrollTop,
+					50,
+					"a reader who scrolled up is not yanked",
+				);
+
+				await typeBody(app.element, "mine");
+				await act(async () => sendButton(app.element).click());
+				await settle();
+				assert.deepEqual(sends, ["mine"]);
+				assert.ok(atBottom(viewport), "own send scrolls to the bottom");
+				await app.render(pageProps({ ...base, messages: many(13) }));
+				assert.ok(atBottom(viewport), "the sent message lands in view");
+			} finally {
+				await app.close();
+			}
+		}),
+);

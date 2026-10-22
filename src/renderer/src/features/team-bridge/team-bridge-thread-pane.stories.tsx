@@ -93,3 +93,19 @@ export const Sending: Story = {
 		);
 	},
 };
+
+/* F9 frame: an overflowing thread opens at its newest reply. */
+export const LongThreadOpensAtNewest: Story = {
+	args: {
+		root: { ...root, reply_count: 18 },
+		replies: Array.from({ length: 18 }, (_, index) => ({
+			...reply,
+			id: `bcmsg_long_reply_${index + 1}`,
+			seq: index + 2,
+			body:
+				index === 17
+					? "Newest reply — this should be in view when the thread opens."
+					: `Earlier reply ${index + 1}.`,
+		})),
+	},
+};
