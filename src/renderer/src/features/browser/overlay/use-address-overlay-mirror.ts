@@ -42,7 +42,7 @@ export interface AddressMirrorInput {
 	visible: boolean;
 	active: number;
 	rows: AddressMirrorRow[];
-	noticeKind: "error" | "hint" | "empty" | "no_match";
+	noticeKind: "error" | "empty" | "no_match";
 	noticeText: string;
 	label: string;
 	/** The strip's own measured band, in CSS px. The surface reads it from the

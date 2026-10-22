@@ -3707,8 +3707,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.browser",
-			"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
-			"target_sha256": "58df1f2d4c9a3533f57eb3254f0dfe8102632a8bd9d7136f148ce57359651eab",
+			"source_sha256": "73c3a1a3544e3c8a41cb9d7383e22f97bbe4ebb1a2363125600519b21ba333dd",
+			"target_sha256": "5998a28e968deaf1e4753c0ff3513e4f02b83a14f1fc449cb07cbd974cc7ca1f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3719,18 +3719,17 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-21",
+					"date": "2026-10-22",
 					"result": "clean-with-findings",
-					"instance": "53c8b35e20a6",
+					"instance": "6dd665ed3af2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/53c8b35e20a6.json",
-					"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
-					"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
+					"receipt": "i18n/receipts/6dd665ed3af2.json",
+					"receipt_sha256": "cbe3aec63b07b970a1cf33d5a36b36a3d3275b4880c52affdb363de233be6e0b"
 				}
 			],
 			"status": "audited",
@@ -3802,6 +3801,51 @@
 							"receipt": "i18n/receipts/099bfdb46faf.json",
 							"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
 							"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
+					"target_sha256": "58df1f2d4c9a3533f57eb3254f0dfe8102632a8bd9d7136f148ce57359651eab",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-21",
+							"result": "clean-with-findings",
+							"instance": "53c8b35e20a6",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/53c8b35e20a6.json",
+							"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
+							"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "92fbc04ad54924928e912a9d4bf2b930d19049e1dbdf7dc1bdba846d08a692bd",
+					"target_sha256": "deac25c1f2592634880f14e913064a263c1131212fdd741305a007f098146a72",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "837ea3f0157c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/837ea3f0157c.json",
+							"receipt_sha256": "8a8fcd6e585537d8268355cd81b323bd812983abee5750eaa97dbf767769409f"
 						}
 					],
 					"status": "audited"
@@ -5093,8 +5137,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.browser",
-			"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
-			"target_sha256": "b3e7a85234ea661dc1679f83243b5fc885d54d90624635692a12637fd48c9d25",
+			"source_sha256": "73c3a1a3544e3c8a41cb9d7383e22f97bbe4ebb1a2363125600519b21ba333dd",
+			"target_sha256": "255e981d0b73dd2a93ce67f5f30b9cd15a6b9035c920c797b62253968809a263",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -5105,18 +5149,17 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-21",
+					"date": "2026-10-22",
 					"result": "clean-with-findings",
-					"instance": "53c8b35e20a6",
+					"instance": "6dd665ed3af2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/53c8b35e20a6.json",
-					"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
-					"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
+					"receipt": "i18n/receipts/6dd665ed3af2.json",
+					"receipt_sha256": "cbe3aec63b07b970a1cf33d5a36b36a3d3275b4880c52affdb363de233be6e0b"
 				}
 			],
 			"status": "audited",
@@ -5188,6 +5231,51 @@
 							"receipt": "i18n/receipts/099bfdb46faf.json",
 							"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
 							"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
+					"target_sha256": "b3e7a85234ea661dc1679f83243b5fc885d54d90624635692a12637fd48c9d25",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-21",
+							"result": "clean-with-findings",
+							"instance": "53c8b35e20a6",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/53c8b35e20a6.json",
+							"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
+							"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "92fbc04ad54924928e912a9d4bf2b930d19049e1dbdf7dc1bdba846d08a692bd",
+					"target_sha256": "ddd283fa13dbaa72629c4d7d06e27e174092505074680217eba02527f05d183f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "837ea3f0157c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/837ea3f0157c.json",
+							"receipt_sha256": "8a8fcd6e585537d8268355cd81b323bd812983abee5750eaa97dbf767769409f"
 						}
 					],
 					"status": "audited"
@@ -6212,8 +6300,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.browser",
-			"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
-			"target_sha256": "382eebe287da833ca29cfde49dd530d02a7dee5391c216de28b0b2f07fd5d189",
+			"source_sha256": "73c3a1a3544e3c8a41cb9d7383e22f97bbe4ebb1a2363125600519b21ba333dd",
+			"target_sha256": "081fa9dc3b82d0b7808460be3b8902f7f0e4dca5a1d794a74baf37c81afc3b9a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6224,18 +6312,17 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-21",
+					"date": "2026-10-22",
 					"result": "clean-with-findings",
-					"instance": "53c8b35e20a6",
+					"instance": "6dd665ed3af2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/53c8b35e20a6.json",
-					"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
-					"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
+					"receipt": "i18n/receipts/6dd665ed3af2.json",
+					"receipt_sha256": "cbe3aec63b07b970a1cf33d5a36b36a3d3275b4880c52affdb363de233be6e0b"
 				}
 			],
 			"status": "audited",
@@ -6306,6 +6393,51 @@
 							"receipt": "i18n/receipts/099bfdb46faf.json",
 							"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
 							"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
+					"target_sha256": "382eebe287da833ca29cfde49dd530d02a7dee5391c216de28b0b2f07fd5d189",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-21",
+							"result": "clean-with-findings",
+							"instance": "53c8b35e20a6",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/53c8b35e20a6.json",
+							"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
+							"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "92fbc04ad54924928e912a9d4bf2b930d19049e1dbdf7dc1bdba846d08a692bd",
+					"target_sha256": "107983521cb4108dae7be6ce2c66c54a7756fb50c00d944e7cc159b23a5af86e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "837ea3f0157c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/837ea3f0157c.json",
+							"receipt_sha256": "8a8fcd6e585537d8268355cd81b323bd812983abee5750eaa97dbf767769409f"
 						}
 					],
 					"status": "audited"
@@ -8191,8 +8323,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.browser",
-			"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
-			"target_sha256": "53b26388dc59f3ea0df998f740972ebd1e1eb3b1d7e26ac373d5f697e7b71aa9",
+			"source_sha256": "73c3a1a3544e3c8a41cb9d7383e22f97bbe4ebb1a2363125600519b21ba333dd",
+			"target_sha256": "deb19169ac123a6b545530909ba4092c7dc1b69d08765b1f859f94c7db2f72f6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -8203,18 +8335,17 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-21",
+					"date": "2026-10-22",
 					"result": "clean-with-findings",
-					"instance": "53c8b35e20a6",
+					"instance": "6dd665ed3af2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/53c8b35e20a6.json",
-					"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
-					"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
+					"receipt": "i18n/receipts/6dd665ed3af2.json",
+					"receipt_sha256": "cbe3aec63b07b970a1cf33d5a36b36a3d3275b4880c52affdb363de233be6e0b"
 				}
 			],
 			"status": "audited",
@@ -8310,6 +8441,51 @@
 							"receipt": "i18n/receipts/099bfdb46faf.json",
 							"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
 							"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
+					"target_sha256": "53b26388dc59f3ea0df998f740972ebd1e1eb3b1d7e26ac373d5f697e7b71aa9",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-21",
+							"result": "clean-with-findings",
+							"instance": "53c8b35e20a6",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/53c8b35e20a6.json",
+							"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
+							"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "92fbc04ad54924928e912a9d4bf2b930d19049e1dbdf7dc1bdba846d08a692bd",
+					"target_sha256": "013c7ea57dc9f343619ebdf277150a896aed1260d6c62807fdb2537834167bec",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "837ea3f0157c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/837ea3f0157c.json",
+							"receipt_sha256": "8a8fcd6e585537d8268355cd81b323bd812983abee5750eaa97dbf767769409f"
 						}
 					],
 					"status": "audited"
@@ -11413,8 +11589,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.browser",
-			"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
-			"target_sha256": "e7c7f8840567fba7320e529db72d010e123490a59b755d3612f69478a569e342",
+			"source_sha256": "73c3a1a3544e3c8a41cb9d7383e22f97bbe4ebb1a2363125600519b21ba333dd",
+			"target_sha256": "a7c51bba92daf2ea0a6394461053be0c84fa457b823b3ea3c1db902c1ee23562",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -11425,18 +11601,17 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-21",
+					"date": "2026-10-22",
 					"result": "clean-with-findings",
-					"instance": "53c8b35e20a6",
+					"instance": "6dd665ed3af2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/53c8b35e20a6.json",
-					"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
-					"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
+					"receipt": "i18n/receipts/6dd665ed3af2.json",
+					"receipt_sha256": "cbe3aec63b07b970a1cf33d5a36b36a3d3275b4880c52affdb363de233be6e0b"
 				}
 			],
 			"status": "audited",
@@ -11508,6 +11683,51 @@
 							"receipt": "i18n/receipts/099bfdb46faf.json",
 							"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
 							"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
+					"target_sha256": "e7c7f8840567fba7320e529db72d010e123490a59b755d3612f69478a569e342",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-21",
+							"result": "clean-with-findings",
+							"instance": "53c8b35e20a6",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/53c8b35e20a6.json",
+							"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
+							"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "92fbc04ad54924928e912a9d4bf2b930d19049e1dbdf7dc1bdba846d08a692bd",
+					"target_sha256": "91b158f9bc776ae4fc540679655b898ff65d79c0391f7bc1f671d189e59e1ce7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "837ea3f0157c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/837ea3f0157c.json",
+							"receipt_sha256": "8a8fcd6e585537d8268355cd81b323bd812983abee5750eaa97dbf767769409f"
 						}
 					],
 					"status": "audited"
@@ -13599,8 +13819,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.browser",
-			"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
-			"target_sha256": "24dd282d676b13a21d80e15a00c9a3f952a02ba8272fbb7d593a3faf3267542f",
+			"source_sha256": "73c3a1a3544e3c8a41cb9d7383e22f97bbe4ebb1a2363125600519b21ba333dd",
+			"target_sha256": "eb4ef34548fb920fa1e0a457c746f669d56f97c8fd53ac2c5816d8d9a7be512d",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -13611,18 +13831,17 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-21",
+					"date": "2026-10-22",
 					"result": "clean-with-findings",
-					"instance": "53c8b35e20a6",
+					"instance": "6dd665ed3af2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/53c8b35e20a6.json",
-					"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
-					"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
+					"receipt": "i18n/receipts/6dd665ed3af2.json",
+					"receipt_sha256": "cbe3aec63b07b970a1cf33d5a36b36a3d3275b4880c52affdb363de233be6e0b"
 				}
 			],
 			"status": "audited",
@@ -13694,6 +13913,51 @@
 							"receipt": "i18n/receipts/099bfdb46faf.json",
 							"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
 							"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
+					"target_sha256": "24dd282d676b13a21d80e15a00c9a3f952a02ba8272fbb7d593a3faf3267542f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-21",
+							"result": "clean-with-findings",
+							"instance": "53c8b35e20a6",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/53c8b35e20a6.json",
+							"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
+							"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "92fbc04ad54924928e912a9d4bf2b930d19049e1dbdf7dc1bdba846d08a692bd",
+					"target_sha256": "253b14bc1cb1bdeb38983a8c9b78328bfd265c458b6108f181d192808fde101a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "837ea3f0157c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/837ea3f0157c.json",
+							"receipt_sha256": "8a8fcd6e585537d8268355cd81b323bd812983abee5750eaa97dbf767769409f"
 						}
 					],
 					"status": "audited"
@@ -18118,8 +18382,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.browser",
-			"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
-			"target_sha256": "c15b238e15a687a6f6eaf80083a0b83748384ce3910ce95aba762321f62ece50",
+			"source_sha256": "73c3a1a3544e3c8a41cb9d7383e22f97bbe4ebb1a2363125600519b21ba333dd",
+			"target_sha256": "4c5055b5cf3346b288cd64045a5b3eaf38021bc357606f6aff86e2ffb0967db7",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -18130,18 +18394,17 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-21",
-					"result": "clean",
-					"instance": "9997c00cf545",
+					"date": "2026-10-22",
+					"result": "clean-with-findings",
+					"instance": "6dd665ed3af2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/9997c00cf545.json",
-					"receipt_sha256": "e9be6c6d3b7e2aa22b2a18398c7b7080c780d28743db1d283dec2173b38f3180",
-					"scope": "S4b page-menu key; ur only; 230 other keys byte-identical to the audited bytes"
+					"receipt": "i18n/receipts/6dd665ed3af2.json",
+					"receipt_sha256": "cbe3aec63b07b970a1cf33d5a36b36a3d3275b4880c52affdb363de233be6e0b"
 				}
 			],
 			"status": "audited",
@@ -18236,6 +18499,51 @@
 							"receipt": "i18n/receipts/53c8b35e20a6.json",
 							"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
 							"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
+					"target_sha256": "c15b238e15a687a6f6eaf80083a0b83748384ce3910ce95aba762321f62ece50",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "9997c00cf545",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9997c00cf545.json",
+							"receipt_sha256": "e9be6c6d3b7e2aa22b2a18398c7b7080c780d28743db1d283dec2173b38f3180",
+							"scope": "S4b page-menu key; ur only; 230 other keys byte-identical to the audited bytes"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "92fbc04ad54924928e912a9d4bf2b930d19049e1dbdf7dc1bdba846d08a692bd",
+					"target_sha256": "9920669a4490b5bcfbefc2b9356a00ff167d2ee6a872296799688439b7181229",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "837ea3f0157c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/837ea3f0157c.json",
+							"receipt_sha256": "8a8fcd6e585537d8268355cd81b323bd812983abee5750eaa97dbf767769409f"
 						}
 					],
 					"status": "audited"

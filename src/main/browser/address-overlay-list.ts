@@ -72,11 +72,10 @@ export const ADDRESS_LIST_THEME_FALLBACK = "#1b1f24";
 
 const DIP_INT32_MAX = 2 ** 31 - 1;
 
-export type AddressListNoticeKind = "error" | "hint" | "empty" | "no_match";
+export type AddressListNoticeKind = "error" | "empty" | "no_match";
 
 const NOTICE_KINDS: readonly AddressListNoticeKind[] = [
 	"error",
-	"hint",
 	"empty",
 	"no_match",
 ];
