@@ -189,6 +189,7 @@
 	"ui.browser.browser_url_bar.home_destination": "主页——前往起始页（空白页）",
 	"ui.browser.browser_url_bar.latest_download": "打开下载文件夹——{name}已保存于此",
 	"ui.browser.browser_url_bar.newest_download": "打开下载文件夹——最新保存的文件为{name}（本次会话共{count, plural, other {{count, number, ::group-off}个}}）",
+	"ui.browser.browser_url_bar.page_menu": "页面选项",
 	"ui.browser.browser_url_bar.page_zoom_reset": "页面缩放{zoom, number, ::group-off}%，重置为100%",
 	"ui.browser.browser_url_bar.print_page": "打印页面",
 	"ui.browser.browser_url_bar.reload": "重新加载",

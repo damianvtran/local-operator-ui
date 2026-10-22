@@ -97,6 +97,12 @@ export interface RegisterBrowserIpcOptions {
 	 * channel is not registered at all and the renderer's port latches off.
 	 */
 	addressOverlayProject?: (payload: unknown) => Promise<unknown>;
+	/**
+	 * S4b's product projection handler. Registered whenever the launch built a
+	 * product controller, independently of the probe gate: the product has no
+	 * environment variable to turn it on, so this channel is the only door.
+	 */
+	addressOverlayProduct?: (payload: unknown) => Promise<unknown>;
 	/** Ask the host to start again for this window (design round 1, D1a). Injected
 	 * rather than imported so this module does not reach back into `index.ts`'s
 	 * lifecycle; `index.ts` supplies the same `startBrowserHost` the app already
@@ -114,6 +120,13 @@ export interface RegisterBrowserIpcOptions {
  * one, and allowing it would store an attribution no scope comparison can match. */
 const CONTROL_CHARS = /[\p{Cc}]/u;
 
+/**
+ * S4b's product event channel (main -> owner renderer): a validated row click or
+ * a main-decided dismissal. Distinct from the dev-driver's event so a product
+ * launch never depends on, or exposes, the probe bridge.
+ */
+export const PRODUCT_ADDRESS_OVERLAY_EVENT = "browser-address-overlay-event";
+
 /** The channels this namespace owns, in one place so a test can enumerate them. */
 export const BROWSER_IPC_CHANNELS = [
 	"browser-state",
@@ -128,6 +141,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-close-tabs",
 	"browser-activate-tab",
 	"browser-address-history",
+	"browser-address-overlay-project",
 	"browser-navigate",
 	"browser-home",
 	"browser-reload",
@@ -574,6 +588,21 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 				const readsArgument =
 					action === "click" || action === "measure" || action === "key";
 				return probe(action, readsArgument ? argument : undefined);
+			},
+		);
+	}
+	if (options.addressOverlayProduct) {
+		ipcMain.handle(
+			"browser-address-overlay-project",
+			(event, payload: unknown) => {
+				authorizeSender(event);
+				const project = options.addressOverlayProduct;
+				if (!project) {
+					throw new Error(
+						"address_overlay_unavailable: the overlay projection is not running.",
+					);
+				}
+				return project(payload);
 			},
 		);
 	}

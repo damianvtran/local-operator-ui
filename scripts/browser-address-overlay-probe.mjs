@@ -32,6 +32,12 @@
  *
  * Evidence written into <out>: plan.json, build-identity.json, matrix.md,
  * events.jsonl, facts.json, app.log, teardown.json.
+ *
+ * SUPERSEDED IN PART BY S4b (2026-10-21). The S2 `measure` action still reads
+ * `data-address-dock-open`; S4b deleted the dock (there is no bar and no dock at
+ * rest), so that field is permanently false here. Keep the reads that describe
+ * the v1 child document; do not read this probe's chrome geometry as the shipped
+ * one. The S4b rig is `browser-chrome-s4b-probe.mjs`.
  */
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";

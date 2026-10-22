@@ -1558,6 +1558,7 @@ export type MessageParams = {
 	"ui.browser.browser_url_bar.home_destination": undefined;
 	"ui.browser.browser_url_bar.latest_download": { name: string };
 	"ui.browser.browser_url_bar.newest_download": { name: string; count: number };
+	"ui.browser.browser_url_bar.page_menu": undefined;
 	"ui.browser.browser_url_bar.page_zoom_reset": { zoom: number };
 	"ui.browser.browser_url_bar.print_page": undefined;
 	"ui.browser.browser_url_bar.reload": undefined;

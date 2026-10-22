@@ -189,6 +189,7 @@
 	"ui.browser.browser_url_bar.home_destination": "Trang chủ — đến trang bắt đầu (trống)",
 	"ui.browser.browser_url_bar.latest_download": "Mở thư mục tải xuống — {name} đã được lưu ở đó",
 	"ui.browser.browser_url_bar.newest_download": "Mở thư mục tải xuống — {name} là tệp mới nhất được lưu ở đó ({count, plural, other {{count, number, ::group-off} trong phiên này}})",
+	"ui.browser.browser_url_bar.page_menu": "Tùy chọn trang",
 	"ui.browser.browser_url_bar.page_zoom_reset": "Thu phóng trang {zoom, number, ::group-off}%, đặt lại về 100%",
 	"ui.browser.browser_url_bar.print_page": "In trang",
 	"ui.browser.browser_url_bar.reload": "Tải lại",

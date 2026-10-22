@@ -3707,8 +3707,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.browser",
-			"source_sha256": "9eb5d2057e3b53ea1da6c6e33fa964269ca0733b3c1cffed1135aeafd95801fd",
-			"target_sha256": "01a7c80a541f53cd52f763cac5af1256cc46f3d052e8d1d88fa2e415b033b3cc",
+			"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
+			"target_sha256": "58df1f2d4c9a3533f57eb3254f0dfe8102632a8bd9d7136f148ce57359651eab",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3719,18 +3719,18 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"date": "2026-10-21",
 					"result": "clean-with-findings",
-					"instance": "099bfdb46faf",
+					"instance": "53c8b35e20a6",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/099bfdb46faf.json",
-					"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
-					"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
+					"receipt": "i18n/receipts/53c8b35e20a6.json",
+					"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
+					"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
 				}
 			],
 			"status": "audited",
@@ -3779,6 +3779,29 @@
 							"receipt_sha256": "6aba3e0d4b36f0c0c702303229a1d86986fd6c380aebbcb228e9c242ba6d941a",
 							"scope": "ui.browser six new browser_url_bar.address_* keys at 35a3bbe740; carried keys byte-identical to previously audited base 70356afc91",
 							"note": "Translator delta: the six new address_* keys were authored by the implementation coder job 0f978ef067ae (deepseek/deepseek-flash); all carried keys are byte-identical to the previously audited translation."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9eb5d2057e3b53ea1da6c6e33fa964269ca0733b3c1cffed1135aeafd95801fd",
+					"target_sha256": "01a7c80a541f53cd52f763cac5af1256cc46f3d052e8d1d88fa2e415b033b3cc",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean-with-findings",
+							"instance": "099bfdb46faf",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/099bfdb46faf.json",
+							"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
+							"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
 						}
 					],
 					"status": "audited"
@@ -5070,8 +5093,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.browser",
-			"source_sha256": "9eb5d2057e3b53ea1da6c6e33fa964269ca0733b3c1cffed1135aeafd95801fd",
-			"target_sha256": "3cc2e2279741efe7b744a8eed5af40fbe9cef0662835be54baf261e896a2ea09",
+			"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
+			"target_sha256": "b3e7a85234ea661dc1679f83243b5fc885d54d90624635692a12637fd48c9d25",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -5082,18 +5105,18 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"date": "2026-10-21",
 					"result": "clean-with-findings",
-					"instance": "099bfdb46faf",
+					"instance": "53c8b35e20a6",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/099bfdb46faf.json",
-					"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
-					"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
+					"receipt": "i18n/receipts/53c8b35e20a6.json",
+					"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
+					"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
 				}
 			],
 			"status": "audited",
@@ -5142,6 +5165,29 @@
 							"receipt_sha256": "6aba3e0d4b36f0c0c702303229a1d86986fd6c380aebbcb228e9c242ba6d941a",
 							"scope": "ui.browser six new browser_url_bar.address_* keys at 35a3bbe740; carried keys byte-identical to previously audited base 70356afc91",
 							"note": "Translator delta: the six new address_* keys were authored by the implementation coder job 0f978ef067ae (deepseek/deepseek-flash); all carried keys are byte-identical to the previously audited translation."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9eb5d2057e3b53ea1da6c6e33fa964269ca0733b3c1cffed1135aeafd95801fd",
+					"target_sha256": "3cc2e2279741efe7b744a8eed5af40fbe9cef0662835be54baf261e896a2ea09",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean-with-findings",
+							"instance": "099bfdb46faf",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/099bfdb46faf.json",
+							"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
+							"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
 						}
 					],
 					"status": "audited"
@@ -6166,8 +6212,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.browser",
-			"source_sha256": "9eb5d2057e3b53ea1da6c6e33fa964269ca0733b3c1cffed1135aeafd95801fd",
-			"target_sha256": "f4aa678e8c90f3146dc0a7bee1654f27c9623cc84a78d24661569ddecba5e3bd",
+			"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
+			"target_sha256": "382eebe287da833ca29cfde49dd530d02a7dee5391c216de28b0b2f07fd5d189",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6178,18 +6224,18 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"date": "2026-10-21",
 					"result": "clean-with-findings",
-					"instance": "099bfdb46faf",
+					"instance": "53c8b35e20a6",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/099bfdb46faf.json",
-					"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
-					"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
+					"receipt": "i18n/receipts/53c8b35e20a6.json",
+					"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
+					"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
 				}
 			],
 			"status": "audited",
@@ -6237,6 +6283,29 @@
 							"receipt_sha256": "6aba3e0d4b36f0c0c702303229a1d86986fd6c380aebbcb228e9c242ba6d941a",
 							"scope": "ui.browser six new browser_url_bar.address_* keys at 35a3bbe740; carried keys byte-identical to previously audited base 70356afc91",
 							"note": "Translator delta: the six new address_* keys were authored by the implementation coder job 0f978ef067ae (deepseek/deepseek-flash); all carried keys are byte-identical to the previously audited translation."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9eb5d2057e3b53ea1da6c6e33fa964269ca0733b3c1cffed1135aeafd95801fd",
+					"target_sha256": "f4aa678e8c90f3146dc0a7bee1654f27c9623cc84a78d24661569ddecba5e3bd",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean-with-findings",
+							"instance": "099bfdb46faf",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/099bfdb46faf.json",
+							"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
+							"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
 						}
 					],
 					"status": "audited"
@@ -8122,8 +8191,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.browser",
-			"source_sha256": "9eb5d2057e3b53ea1da6c6e33fa964269ca0733b3c1cffed1135aeafd95801fd",
-			"target_sha256": "963f08f783336d0f40d0f2f54aa7a73e9235eca70319e38b161b553b74dd9253",
+			"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
+			"target_sha256": "53b26388dc59f3ea0df998f740972ebd1e1eb3b1d7e26ac373d5f697e7b71aa9",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -8134,18 +8203,18 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"date": "2026-10-21",
 					"result": "clean-with-findings",
-					"instance": "099bfdb46faf",
+					"instance": "53c8b35e20a6",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/099bfdb46faf.json",
-					"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
-					"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
+					"receipt": "i18n/receipts/53c8b35e20a6.json",
+					"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
+					"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
 				}
 			],
 			"status": "audited",
@@ -8218,6 +8287,29 @@
 							"receipt_sha256": "6aba3e0d4b36f0c0c702303229a1d86986fd6c380aebbcb228e9c242ba6d941a",
 							"scope": "ui.browser six new browser_url_bar.address_* keys at 35a3bbe740; carried keys byte-identical to previously audited base 70356afc91",
 							"note": "Translator delta: the six new address_* keys were authored by the implementation coder job 0f978ef067ae (deepseek/deepseek-flash); all carried keys are byte-identical to the previously audited translation."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9eb5d2057e3b53ea1da6c6e33fa964269ca0733b3c1cffed1135aeafd95801fd",
+					"target_sha256": "963f08f783336d0f40d0f2f54aa7a73e9235eca70319e38b161b553b74dd9253",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean-with-findings",
+							"instance": "099bfdb46faf",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/099bfdb46faf.json",
+							"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
+							"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
 						}
 					],
 					"status": "audited"
@@ -11321,8 +11413,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.browser",
-			"source_sha256": "9eb5d2057e3b53ea1da6c6e33fa964269ca0733b3c1cffed1135aeafd95801fd",
-			"target_sha256": "af652fd11970f617d0667060517e2e02220a6c0e239ef21c261a6d21551e1339",
+			"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
+			"target_sha256": "e7c7f8840567fba7320e529db72d010e123490a59b755d3612f69478a569e342",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -11333,18 +11425,18 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"date": "2026-10-21",
 					"result": "clean-with-findings",
-					"instance": "099bfdb46faf",
+					"instance": "53c8b35e20a6",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/099bfdb46faf.json",
-					"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
-					"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
+					"receipt": "i18n/receipts/53c8b35e20a6.json",
+					"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
+					"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
 				}
 			],
 			"status": "audited",
@@ -11393,6 +11485,29 @@
 							"receipt_sha256": "6aba3e0d4b36f0c0c702303229a1d86986fd6c380aebbcb228e9c242ba6d941a",
 							"scope": "ui.browser six new browser_url_bar.address_* keys at 35a3bbe740; carried keys byte-identical to previously audited base 70356afc91",
 							"note": "Translator delta: the six new address_* keys were authored by the implementation coder job 0f978ef067ae (deepseek/deepseek-flash); all carried keys are byte-identical to the previously audited translation."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9eb5d2057e3b53ea1da6c6e33fa964269ca0733b3c1cffed1135aeafd95801fd",
+					"target_sha256": "af652fd11970f617d0667060517e2e02220a6c0e239ef21c261a6d21551e1339",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean-with-findings",
+							"instance": "099bfdb46faf",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/099bfdb46faf.json",
+							"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
+							"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
 						}
 					],
 					"status": "audited"
@@ -13484,8 +13599,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.browser",
-			"source_sha256": "9eb5d2057e3b53ea1da6c6e33fa964269ca0733b3c1cffed1135aeafd95801fd",
-			"target_sha256": "5c8680b7874eaeb2da2152223e88879c649460ad73b171e912dd1cae48746149",
+			"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
+			"target_sha256": "24dd282d676b13a21d80e15a00c9a3f952a02ba8272fbb7d593a3faf3267542f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -13496,18 +13611,18 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"date": "2026-10-21",
 					"result": "clean-with-findings",
-					"instance": "099bfdb46faf",
+					"instance": "53c8b35e20a6",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/099bfdb46faf.json",
-					"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
-					"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
+					"receipt": "i18n/receipts/53c8b35e20a6.json",
+					"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
+					"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
 				}
 			],
 			"status": "audited",
@@ -13556,6 +13671,29 @@
 							"receipt_sha256": "6aba3e0d4b36f0c0c702303229a1d86986fd6c380aebbcb228e9c242ba6d941a",
 							"scope": "ui.browser six new browser_url_bar.address_* keys at 35a3bbe740; carried keys byte-identical to previously audited base 70356afc91",
 							"note": "Translator delta: the six new address_* keys were authored by the implementation coder job 0f978ef067ae (deepseek/deepseek-flash); all carried keys are byte-identical to the previously audited translation."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9eb5d2057e3b53ea1da6c6e33fa964269ca0733b3c1cffed1135aeafd95801fd",
+					"target_sha256": "5c8680b7874eaeb2da2152223e88879c649460ad73b171e912dd1cae48746149",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean-with-findings",
+							"instance": "099bfdb46faf",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/099bfdb46faf.json",
+							"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
+							"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
 						}
 					],
 					"status": "audited"
@@ -17980,8 +18118,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.browser",
-			"source_sha256": "9eb5d2057e3b53ea1da6c6e33fa964269ca0733b3c1cffed1135aeafd95801fd",
-			"target_sha256": "a5408a26963c02b2009dde5a50c0cd51fa38d1504fd74dc1730c4851d373eead",
+			"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
+			"target_sha256": "c15b238e15a687a6f6eaf80083a0b83748384ce3910ce95aba762321f62ece50",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -17992,18 +18130,18 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
-					"result": "clean-with-findings",
-					"instance": "099bfdb46faf",
+					"date": "2026-10-21",
+					"result": "clean",
+					"instance": "9997c00cf545",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/099bfdb46faf.json",
-					"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
-					"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
+					"receipt": "i18n/receipts/9997c00cf545.json",
+					"receipt_sha256": "e9be6c6d3b7e2aa22b2a18398c7b7080c780d28743db1d283dec2173b38f3180",
+					"scope": "S4b page-menu key; ur only; 230 other keys byte-identical to the audited bytes"
 				}
 			],
 			"status": "audited",
@@ -18052,6 +18190,52 @@
 							"receipt_sha256": "6aba3e0d4b36f0c0c702303229a1d86986fd6c380aebbcb228e9c242ba6d941a",
 							"scope": "ui.browser six new browser_url_bar.address_* keys at 35a3bbe740; carried keys byte-identical to previously audited base 70356afc91",
 							"note": "Translator delta: the six new address_* keys were authored by the implementation coder job 0f978ef067ae (deepseek/deepseek-flash); all carried keys are byte-identical to the previously audited translation."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9eb5d2057e3b53ea1da6c6e33fa964269ca0733b3c1cffed1135aeafd95801fd",
+					"target_sha256": "a5408a26963c02b2009dde5a50c0cd51fa38d1504fd74dc1730c4851d373eead",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean-with-findings",
+							"instance": "099bfdb46faf",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/099bfdb46faf.json",
+							"receipt_sha256": "4c189af976e6157eb32331a9b0cc4b2a79f9d667a4df3c3e2b7c1d3c833992b5",
+							"scope": "ui.browser at 0498268b36: empty-state copy change re-audited; 229 other keys byte-identical to 35a3bbe740"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
+					"target_sha256": "3d44288e334c67e8456c68e8791a099f9705b55a1cf988c74384178110cc072d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-21",
+							"result": "clean-with-findings",
+							"instance": "53c8b35e20a6",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/53c8b35e20a6.json",
+							"receipt_sha256": "52ee440cce4bb69addcf393bf2502efd8db6a1f1057d75e07fd9d7db1c711864",
+							"scope": "S4b page_menu key; 230 other keys byte-identical to the audited bytes (HEAD b3cbb89); en+7 locales key-complete at 231 keys"
 						}
 					],
 					"status": "audited"

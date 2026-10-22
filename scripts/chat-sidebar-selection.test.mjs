@@ -2312,14 +2312,6 @@ const PLATES_INSIDE_ROW_STATES = [
 		fact: "object-cover",
 	},
 	{
-		what: "the browser tab strip's notch",
-		file: BROWSER_TABS,
-		element: "span",
-		ground: "bg-elevated",
-		edge: false,
-		fact: "-bottom-px",
-	},
-	{
 		/*
 		 * The merged Team Bridge list's organization chip. `elevated` against
 		 * `rowHover` measures ΔE00 0.00 on `arcade`, so the fill alone is no
