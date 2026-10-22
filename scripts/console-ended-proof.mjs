@@ -115,6 +115,7 @@ async function startDaemon() {
 		join(CONFIG_DIR, "config.yml"),
 		"values:\n  hosting: test\n  model_name: mock-model\n",
 	);
+	const env = isolatedEnv();
 	const child = spawn(
 		"lop",
 		[
@@ -621,7 +622,35 @@ async function main() {
 	});
 	await shot("ended-pane-open");
 
-	// 3. A key typed at the ended terminal.
+	// 3. The rail with 0 live, photographed BEFORE any key so the frame is the
+	// state it claims and not the refusal band's after-state (Q-4).
+	await shot("rail-zero-live");
+
+	// 4. Keyboard focus on the history: the outline the caret can no longer give.
+	await evaluate(
+		`(() => { const t = document.querySelector(".xterm-helper-textarea"); if (!t) return false; t.focus(); return true; })()`,
+	);
+	await sleep(300);
+	const focused = await evaluate(`
+		(() => {
+			const mirror = document.querySelector('[data-console-mirror]');
+			const t = document.querySelector('.xterm-helper-textarea');
+			if (!mirror || !t) return null;
+			const style = getComputedStyle(mirror);
+			return {
+				active: document.activeElement === t,
+				focusedWithin: mirror.matches(':focus-within'),
+				focusVisible: t.matches(':focus-visible'),
+				outlineWidth: style.outlineWidth,
+				outlineStyle: style.outlineStyle,
+				outlineColor: style.outlineColor,
+			};
+		})()
+	`);
+	say("history focused", focused);
+	await shot("history-focused");
+
+	// 5. A key typed at the ended terminal.
 	await evaluate(
 		`(() => { const t = document.querySelector(".xterm-helper-textarea"); if (!t) return false; t.focus(); return true; })()`,
 	);
@@ -630,9 +659,9 @@ async function main() {
 	say("ended, one key typed", await read());
 	await shot("ended-key");
 
-	// 4. The rail while the pane shows ended history.
+	// 6. The rail reading while the pane shows ended history (the frame above is
+	// the same state before the key).
 	say("rail with 0 live, pane open", (await read()).rail);
-	await shot("rail-zero-live");
 
 	// 5. Close the pane, then the user's open with nothing live.
 	await closePane();
@@ -658,6 +687,22 @@ async function main() {
 	// 6. One live and one ended: the open must focus the live one.
 	const liveAfterReopen = afterReopen.surfaces.find((row) => row.running);
 	if (liveAfterReopen) {
+		// Set the persisted lens to the ENDED row first, so the frame and reading can
+		// tell "focus the live surface" from "the lens happened to already be live"
+		// (UX U4's evidence caveat).
+		const endedId = beforeReopen.surfaces.find((row) => !row.running)?.surface;
+		if (endedId) {
+			await evaluate(
+				`(() => {
+					const row = document.querySelector('[data-surface=${JSON.stringify(endedId)}]');
+					const tab = row ? row.querySelector('[role="tab"]') : null;
+					if (!tab) return false;
+					tab.click();
+					return true;
+				})()`,
+			);
+			await sleep(600);
+		}
 		await closePane();
 		await sleep(400);
 		const beforeFocus = await consoleState(sessionId);
@@ -685,7 +730,7 @@ async function main() {
 	await openPane();
 	await sleep(2500);
 	const afterTwoEnded = await consoleState(sessionId);
-	say("two ended, user opens", {
+	say("all ended, user opens", {
 		surfacesBefore: beforeTwoEnded.surfaces.map((row) => ({
 			surface: row.surface,
 			running: row.running,
@@ -697,7 +742,7 @@ async function main() {
 		created: afterTwoEnded.surfaces.length > beforeTwoEnded.surfaces.length,
 		view: await read(),
 	});
-	await shot("two-ended-open");
+	await shot("all-ended-open");
 
 	// 8. A console that ended while the pane was CLOSED carries the unseen mark,
 	//    and the mark is cleared when its row is looked at.
@@ -711,6 +756,7 @@ async function main() {
 		);
 		await sleep(1500);
 		say("ended while the pane was closed", (await read()).rail);
+		await shot("rail-unread-dot");
 		await openPane();
 		await sleep(1200);
 		const reopened = await consoleState(sessionId);
@@ -734,7 +780,40 @@ async function main() {
 		await shot("ended-row-looked-at");
 	}
 
-	// 9. Quit with a live surface: the sidecar must carry what the app could observe.
+	// 9. A glyph under the (now invisible) cursor: the D1 case. A carriage return
+	// leaves the record's cursor over the first column's character, then SIGKILL
+	// ends the process without a newline moving it.
+	await pressDom('[data-tour-tag="console-new-surface"]');
+	await sleep(2500);
+	latest = await consoleState(sessionId);
+	const glyphSurface = latest.surfaces.find((row) => row.running);
+	if (glyphSurface) {
+		await evaluate(
+			`window.api.console.input(${JSON.stringify(glyphSurface.surface)}, ${JSON.stringify("printf ABC\r\r")})`,
+		);
+		await sleep(400);
+		await evaluate(
+			`window.api.console.input(${JSON.stringify(glyphSurface.surface)}, ${JSON.stringify("kill -9 $$\r")})`,
+		);
+		await sleep(1200);
+		await evaluate(
+			`(() => {
+				const row = document.querySelector('[data-surface=${JSON.stringify(glyphSurface.surface)}]');
+				const tab = row ? row.querySelector('[role="tab"]') : null;
+				if (!tab) return false;
+				tab.click();
+				return true;
+			})()`,
+		);
+		await sleep(900);
+		say("a glyph under the history cursor", {
+			surface: glyphSurface.surface,
+			view: await read(),
+		});
+		await shot("history-glyph-cursor");
+	}
+
+	// 10. Quit with a live surface: the sidecar must carry what the app could observe.
 	latest = await consoleState(sessionId);
 	let toQuit = latest.surfaces.find((row) => row.running);
 	if (!toQuit) {
