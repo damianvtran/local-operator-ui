@@ -2111,20 +2111,56 @@ test("a job response cannot reopen a tool group the pane has already folded (ope
 		rowBox(mounted, "tool:1") !== null,
 		"settled, the same rows paint as ordinary rows",
 	);
+});
+
+test("a child reader's null snapshot is not a gap: its settle releases the fold (agent review round 4)", async (t) => {
 	/*
-	 * AND A NULL SNAPSHOT IS NOT A GAP (agent review round 3). The run panel's
-	 * child reader passes `frontend: null` for its whole life with `status:
-	 * "live"`; treating that as a gap would keep its settled turn folded forever.
-	 * The pane's own status is the signal, so this frame releases like any settle.
+	 * THE RUN PANEL'S CHILD READER passes `frontend: null` for its whole life
+	 * with `status: "live"`. Reading the gap off the SNAPSHOT therefore held its
+	 * fold across the settle, and a finished child turn never painted its rows;
+	 * the pane's own `status` is the signal. This case mounts the reader's exact
+	 * prop shape and drives its live frame and its settle, so a revert of the
+	 * status reading fails HERE - the earlier assertion in the job-fold case runs
+	 * after a connected settle has already spent the latch and cannot see it.
 	 */
-	await mounted.render(withCall, {
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const job = (id) => ({
+		kind: "custom",
+		id,
+		ts: TS + 1_000,
+		customType: "job_result",
+		text: "job finished",
+		attribution: "job",
+	});
+	const records = [
+		userRecord("child:u"),
+		toolRecord("child:1"),
+		job("child:j1"),
+		job("child:j2"),
+	];
+	const live = {
 		frontend: null,
-		waiting: false,
+		status: "live",
+		workingLine: { activity: "running", phase: "running" },
+	};
+	const child = await mount(t, records, live);
+	assert.ok(
+		rowBox(child, "child:1") === null,
+		"the child's live frame folds the wall",
+	);
+	/*
+	 * The settle frame ends the receipt stretch with a call (`[t1, j1, j2, t2]`):
+	 * two actions, no trailing receipt pair, so the rows only stay folded if the
+	 * latch is still consulted - which is what a snapshot-derived gap did.
+	 */
+	await child.render([...records, toolRecord("child:2", { ts: TS + 2_000 })], {
+		frontend: null,
 		status: "live",
 	});
 	assert.ok(
-		rowBox(mounted, "tool:1") !== null,
-		"a null frontend with a live status is not a gap",
+		rowBox(child, "child:1") !== null,
+		"and its settle paints the rows",
 	);
 });
 
