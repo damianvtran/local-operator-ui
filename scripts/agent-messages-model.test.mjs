@@ -106,6 +106,23 @@ test("signed out fires no read; natural boundaries coalesce with a five-minute f
 	}
 });
 
+test("invalidateStatus makes the next boundary read fresh without reading itself (chief-of-staff hold)", async () => {
+	const { model, calls } = rig();
+	model.setAccount("account-a");
+	await model.check("surface_open");
+	assert.equal(calls.status.length, 1);
+	await model.check("surface_open");
+	assert.equal(calls.status.length, 1, "the five-minute cache answers");
+	model.invalidateStatus();
+	assert.equal(calls.status.length, 1, "dropping the cache is not a read");
+	await model.check("surface_open");
+	assert.deepEqual(calls.status, ["surface_open", "surface_open"]);
+	/* Signed out: nothing to forget, and still no read. */
+	model.setAccount(null);
+	model.invalidateStatus();
+	assert.equal(calls.status.length, 2);
+});
+
 test("only ready B mounts; unknown, no plan, dark, mismatched identity and unknown shapes are absent", () => {
 	assert.ok(agentMessagesOnboardingContext(status(), "account-a"));
 	for (const surface of ["A", "C", "D", "E", "F", "G", null])

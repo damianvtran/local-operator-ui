@@ -1,0 +1,20 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "53ef66c9d7df",
+  "locale": "hi",
+  "status": "passed",
+  "namespace": "ui.console",
+  "sha256": {
+    "en": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
+    "target": "96a44783d6b161952e7b75d12001b76b6876344ff795fa78d9e718c018b6dd77"
+  },
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "ui.console.ended.app_quit",
+      "issue": "The two बंद forms sit two words apart and read as a literal mirror of \"the app closed it when it quit\", where a native fragment would let the intransitive carry the second clause.",
+      "suggestion": "ऐप बंद होने पर यह बंद हो गया (28 cells, three fewer than the current 31)"
+    }
+  ]
+}

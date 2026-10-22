@@ -1,10 +1,10 @@
+import { aliasConflict } from "@features/agent-hub/hub-skill-alias";
 import {
 	HubLinkPolicyControls,
 	hubLinkSourceName,
 } from "@features/agents/components/hub-link-policy-controls";
 import { HubUpdatePanel } from "@features/agents/components/hub-update-panel";
 import { HubStateIcon } from "@features/chat/components/hub-update-mark";
-import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -172,27 +172,6 @@ function SkillMarkChip({ mark }: { mark: HubMark | null }) {
 			<HubStateIcon mark={mark} />
 			<span>{t(MARK_KEY[mark.kind])}</span>
 		</span>
-	);
-}
-
-/**
- * The refusal code behind a failed write, when the failure carried one.
- *
- * Core answers an alias collision and a confirmed-origin conflict with the same
- * `origin-conflict` code, and that is the one failure with a remedy the generic
- * sentences cannot name: choose another local alias.
- */
-/**
- * `origin-conflict` covers TWO refusals: an alias collision (with a rename
- * remedy) and a source/scope mismatch (QA F1's class, where renaming is the
- * wrong advice — review round 1, minor 7). The code alone cannot tell them
- * apart, so the alias sentence is shown only when the answer names the alias.
- */
-function aliasConflict(error: unknown): boolean {
-	return (
-		error instanceof DesktopControlError &&
-		error.code === "origin-conflict" &&
-		/alias/i.test(error.message)
 	);
 }
 
@@ -490,16 +469,32 @@ export function HubSkillsLibrary({
 	 * embed a scope noun a locale would have to decline (translation round 6),
 	 * and the source line keeps the hook the driver scene reads.
 	 */
+	/*
+	 * THE CATALOGUE'S TOTAL, not the rows this page happens to hold. The public
+	 * listing is paginated and the response carries `total_records` (the hook
+	 * exposes it as `total`), so counting rendered rows would print "20 skills"
+	 * for a catalogue of fourteen or fourteen hundred alike - and would make this
+	 * line disagree with the tab strip's count, which reads the same field. The
+	 * fallback is for an unavailable/disabled read whose body never arrived; the
+	 * line is already suppressed while loading or after a failure, so it is
+	 * reached only by the inaccessible state, where zero rows is the honest
+	 * reading.
+	 *
+	 * If `org_skills.list` ever grows pagination, read its `total_records` in
+	 * preference to `.length`: the length would then be a page size, and this
+	 * line - like the tab's - would state it as the catalogue's total, silently.
+	 */
+	const totalSkills = catalogue.data?.total ?? scopedRows.length;
 	const countLine = catalogue.error
 		? null
 		: catalogue.isLoading
 			? t("ui.hub.skills.loading")
 			: scope.organization
 				? t("ui.hub.skills.count_shared", {
-						count: scopedRows.length,
+						count: totalSkills,
 						organization: scope.organization,
 					})
-				: t("ui.hub.skills.count", { count: scopedRows.length });
+				: t("ui.hub.skills.count", { count: totalSkills });
 
 	return (
 		<section className="flex min-w-0 flex-col gap-4" data-hub-skills-library>

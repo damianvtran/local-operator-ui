@@ -264,6 +264,9 @@ const installBridge = ({
 	const calls = { create: 0, state: 0, close: [] };
 	const listeners = [];
 	let listing = surfaces;
+	// Main's own displayed-surface acknowledgement: `openPane`/`closePane` write it
+	// and the push re-reads, exactly as the host does (Q-2's second cut).
+	let displayedSurface = null;
 	const setListing = (next) => {
 		listing = next;
 	};
@@ -277,6 +280,7 @@ const installBridge = ({
 					reason: null,
 					detail: null,
 					surfaces: listing,
+					displayed_surface: displayedSurface,
 				};
 			},
 			createSurface: async () => {
@@ -302,8 +306,13 @@ const installBridge = ({
 				};
 			},
 			setContentRect: async () => ({ available: true, surfaces: listing }),
-			openPane: async () => {},
-			closePane: async () => {},
+			openPane: async (surface) => {
+				displayedSurface = surface;
+				for (const listener of [...listeners]) listener();
+			},
+			closePane: async () => {
+				displayedSurface = null;
+			},
 		},
 	};
 	return {
@@ -893,11 +902,19 @@ test("an empty-state create whose listing commits before its reply still gives t
 	}
 });
 
-test("the + stays disabled until an overlapping press and open have both answered (m-1)", async () => {
+test("an open that arrives while a create is in flight joins it instead of making a second (m-1)", async () => {
 	resetIntent();
 	/*
-	 * An empty pane: the open-from-outside path only creates when there is no surface,
-	 * and an empty-state press followed by an open is the overlap that reaches both.
+	 * THE OVERLAP THE OLD m-1 CELL DROVE, with the answer this branch chose: a `+`
+	 * press starts a create, and the user then opens the console before it answers.
+	 * The open is a request for a terminal, and one is already being made — so it
+	 * JOINS that create (the pane is still disabled and the request stays filed)
+	 * rather than making a second shell behind the pane. When the create answers, the
+	 * created surface takes the lens and the caret, and the request is cleared.
+	 *
+	 * The alternative — two creates from one pair of gestures — was the behaviour the
+	 * old cell pinned; it is also a second shell nobody asked for once the first
+	 * answers, which is the class of defect this branch exists to remove.
 	 */
 	const answers = [];
 	installBridge({
@@ -919,22 +936,32 @@ test("the + stays disabled until an overlapping press and open have both answere
 		await press(plus);
 		pressOpenConsole();
 		assert.ok(
-			await waitFor(() => answers.length === 2),
-			"both creates are in flight",
+			await waitFor(() => answers.length === 1),
+			"the open waited for the create already in flight",
 		);
-		answers[0]();
 		await settle(120);
 		assert.equal(
 			container.querySelector('[data-tour-tag="console-new-surface"]').disabled,
 			true,
-			"the + stays disabled while the other create runs",
+			"the + stays disabled while that create runs",
 		);
-		answers[1]();
-		const plusNow = () =>
-			container.querySelector('[data-tour-tag="console-new-surface"]');
+		answers[0]();
 		assert.ok(
-			await waitFor(() => plusNow()?.disabled === false),
-			"the + is enabled once both answered",
+			await waitFor(
+				() =>
+					harness.useUiPreferencesStore.getState().consoleOpenIntent === null,
+			),
+			"the answered create served the open, which cleared its request",
+		);
+		assert.equal(
+			answers.length,
+			1,
+			"and no second create was made for the same pair of gestures",
+		);
+		assert.match(
+			container.textContent ?? "",
+			TERMINAL,
+			"the created terminal is the one on screen",
 		);
 	} finally {
 		root.unmount();
@@ -1471,6 +1498,377 @@ test("the terminal's box paints the terminal's ground across the gutter, and the
 		assert.ok(
 			box.classList.contains("bg-sunken"),
 			"the terminal's box does not paint the terminal's ground, so the pane's ground frames it (#929)",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+/* ------------------------------------------------------------------ ended */
+
+/**
+ * THE OPERATOR'S FRAME (2026-10-21): an exited console looked alive. These cells
+ * pin the three painterly facts the report named — no live-looking treatment, a
+ * pane-owned end marker where the prompt was, and a key that announces itself
+ * instead of vanishing — plus the open decision beside them, because the same
+ * defect had a navigation half: opening with nothing live landed on the dead
+ * history.
+ */
+const HISTORY_MARKER = '[data-tour-tag="console-history-end"]';
+const HISTORY_ANNOUNCE = '[data-tour-tag="console-history-announce"]';
+
+test("an ended surface paints dimmed history and a pane-owned end marker, never a live prompt", async () => {
+	resetIntent();
+	installBridge({
+		surfaces: [
+			surfaceRow("con:1:ended", { running: false, exit_code: 0, live: true }),
+		],
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() => ENDED_NOTICE.test(container.textContent ?? ""));
+		const marker = container.querySelector(HISTORY_MARKER);
+		assert.ok(marker, "the ended surface has no end-of-history marker");
+		assert.match(
+			container.textContent ?? "",
+			/End of history/,
+			"the marker is English in the English locale",
+		);
+		assert.match(
+			container.textContent ?? "",
+			/read-only/,
+			"and says what the state means, not just that something ended",
+		);
+		const mirror = container.querySelector('[data-tour-tag="console-mirror"]');
+		assert.ok(mirror, "the mirror should still be mounted over the history");
+		assert.equal(
+			mirror.contains(marker),
+			false,
+			"the marker is the pane's chrome, not bytes inside the terminal",
+		);
+		const live = container.querySelector(
+			'[data-tour-tag="console-history-end"]',
+		);
+		assert.ok(live, "and it stays present while the history is shown");
+		assert.equal(
+			container.querySelector(HISTORY_ANNOUNCE)?.textContent,
+			"",
+			"nothing is announced until a key arrives",
+		);
+
+		// A key into the ended terminal. jsdom has no xterm DOM, so the event is
+		// dispatched from a child of the mirror's own host — the subtree the pane's
+		// capture guard addresses.
+		const target = document.createElement("div");
+		mirror.append(target);
+		target.dispatchEvent(
+			new KeyboardEvent("keydown", { key: "a", bubbles: true }),
+		);
+		await waitFor(() =>
+			/that key was not sent/.test(
+				container.querySelector(HISTORY_ANNOUNCE)?.textContent ?? "",
+			),
+		);
+		assert.match(
+			container.querySelector(HISTORY_ANNOUNCE)?.textContent ?? "",
+			/that key was not sent/,
+			"a swallowed key is said out loud rather than silently ignored",
+		);
+		const announce = container.querySelector(HISTORY_ANNOUNCE);
+		assert.equal(
+			announce?.tagName,
+			"OUTPUT",
+			"the announcement is an <output>, whose implicit role is status",
+		);
+		assert.equal(
+			announce?.getAttribute("aria-live"),
+			"polite",
+			"and it is a polite live region a screen reader announces",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("a live surface has no history marker, so the ended treatment cannot leak", async () => {
+	resetIntent();
+	installBridge({ surfaces: [surfaceRow("con:1:live")] });
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() => TERMINAL.test(container.textContent ?? ""));
+		assert.equal(
+			container.querySelector(HISTORY_MARKER),
+			null,
+			"a running terminal must not carry the ended marker",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("a refused key re-announces, and navigation never claims it was not sent (U2/m-3)", async () => {
+	resetIntent();
+	installBridge({
+		surfaces: [
+			surfaceRow("con:1:ended", { running: false, exit_code: 0, live: true }),
+		],
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() => ENDED_NOTICE.test(container.textContent ?? ""));
+		const mirror = container.querySelector('[data-tour-tag="console-mirror"]');
+		const announce = () => container.querySelector(HISTORY_ANNOUNCE);
+		const dispatch = (key, options = {}) => {
+			const target = document.createElement("div");
+			mirror.append(target);
+			target.dispatchEvent(
+				new KeyboardEvent("keydown", { key, bubbles: true, ...options }),
+			);
+		};
+
+		// Navigation and chords are somebody else's: no refusal sentence.
+		for (const key of ["Tab", "Escape", "PageUp", "ArrowUp", "Home"]) {
+			dispatch(key);
+			await settle(70);
+			assert.equal(
+				announce()?.textContent,
+				"",
+				`${key} is not terminal input and must not be announced as refused`,
+			);
+		}
+		dispatch("a", { metaKey: true });
+		await settle(70);
+		assert.equal(announce()?.textContent, "", "a chord is not announced");
+
+		// A printable key announces, and a second press of the same key announces
+		// AGAIN: the live region's text changes on every press.
+		dispatch("a");
+		await waitFor(() =>
+			/that key was not sent/.test(announce()?.textContent ?? ""),
+		);
+		const first = Number(announce()?.getAttribute("data-announce-seq"));
+		dispatch("b");
+		await waitFor(
+			() => Number(announce()?.getAttribute("data-announce-seq")) > first,
+		);
+		await waitFor(() =>
+			/that key was not sent/.test(announce()?.textContent ?? ""),
+		);
+		assert.ok(first >= 1, "the first refusal was counted");
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("an ended tab labels its code, and a signalled exit says how it died (D5/Q-3)", async () => {
+	resetIntent();
+	installBridge({
+		surfaces: [
+			surfaceRow("con:1:code", {
+				running: false,
+				exit_code: 7,
+				live: true,
+				last_activity: 100,
+			}),
+			surfaceRow("con:2:signal", {
+				running: false,
+				exit_code: 0,
+				exit_signal: "SIGKILL",
+				live: true,
+				last_activity: 200,
+			}),
+		],
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() => container.querySelector('[data-surface="con:1:code"]'));
+		const codeTab = container.querySelector('[data-surface="con:1:code"]');
+		assert.match(codeTab.textContent ?? "", /exit 7/);
+		const signalTab = container.querySelector('[data-surface="con:2:signal"]');
+		assert.match(
+			signalTab.textContent ?? "",
+			/SIGKILL/,
+			"a signalled exit shows its signal, not a clean zero",
+		);
+		await waitFor(() => /killed by SIGKILL/.test(container.textContent ?? ""));
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("a create's round trip shows its pending cue beside existing history (U5)", async () => {
+	resetIntent();
+	const ended = [
+		surfaceRow("con:1:a", { running: false, exit_code: 0, live: true }),
+	];
+	installBridge({
+		surfaces: ended,
+		create: async ({ setListing }) => {
+			await new Promise((r) => setTimeout(r, 300));
+			const fresh = surfaceRow("con:2:fresh");
+			setListing([...ended, fresh]);
+			return { surface: fresh.surface };
+		},
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() => ENDED_NOTICE.test(container.textContent ?? ""));
+		pressOpenConsole();
+		await waitFor(() =>
+			/Starting a console/.test(
+				container.querySelector('[data-tour-tag="console-starting"]')
+					?.textContent ?? "",
+			),
+		);
+		await waitFor(
+			() =>
+				container.querySelector('[data-tour-tag="console-starting"]') === null,
+			{ timeoutMs: 5000 },
+		);
+		assert.match(container.textContent ?? "", TERMINAL);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("a hidden completion's mark survives the open's fallback display until its row is looked at (Q-2)", async () => {
+	resetIntent();
+	const ended = surfaceRow("con:1:ended", {
+		running: false,
+		exit_code: 0,
+		live: true,
+	});
+	harness.useUiPreferencesStore.setState({
+		consoleUnseen: [
+			{ sessionId: SESSION, surface: "con:1:ended", at: Date.now() },
+		],
+	});
+	installBridge({
+		surfaces: [ended],
+		create: async ({ setListing }) => {
+			await new Promise((r) => setTimeout(r, 200));
+			const fresh = surfaceRow("con:2:fresh");
+			setListing([ended, fresh]);
+			return { surface: fresh.surface };
+		},
+	});
+	const marked = () =>
+		harness.useUiPreferencesStore
+			.getState()
+			.consoleUnseen.some((mark) => mark.surface === "con:1:ended");
+	// jsdom reports no window focus; the clearing rule has a focus half, so the cell
+	// supplies it rather than testing the branch that returns early.
+	const realHasFocus = document.hasFocus;
+	document.hasFocus = () => true;
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() => ENDED_NOTICE.test(container.textContent ?? ""));
+		pressOpenConsole();
+		// While the create runs, the pane's fallback display is the ended row. The
+		// mark must NOT be consumed by that transient paint.
+		await settle(80);
+		assert.equal(marked(), true, "the mark survived the creating window");
+		await waitFor(
+			() => container.querySelector('[data-surface="con:2:fresh"]') !== null,
+			{ timeoutMs: 5000 },
+		);
+		await settle(80);
+		assert.equal(
+			marked(),
+			true,
+			"and it survives the new live surface being selected: it names the ended one",
+		);
+		// Looking at the ended row itself is what clears it.
+		await press(
+			container.querySelector('[data-surface="con:1:ended"] [role="tab"]'),
+		);
+		await waitFor(() => !marked(), {
+			timeoutMs: 3000,
+		});
+	} finally {
+		document.hasFocus = realHasFocus;
+		harness.useUiPreferencesStore.setState({ consoleUnseen: [] });
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("two ended surfaces are created over, not focused, by the user's open", async () => {
+	resetIntent();
+	const ended = [
+		surfaceRow("con:1:a", { running: false, exit_code: 0, live: true }),
+		surfaceRow("con:2:b", { running: false, exit_code: 1, live: true }),
+	];
+	installBridge({
+		surfaces: ended,
+		create: async ({ setListing }) => {
+			const fresh = surfaceRow("con:3:fresh");
+			setListing([...ended, fresh]);
+			return { surface: fresh.surface };
+		},
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() => ENDED_NOTICE.test(container.textContent ?? ""));
+		pressOpenConsole();
+		await waitFor(() => container.querySelector(HISTORY_MARKER) === null, {
+			timeoutMs: 5000,
+		});
+		assert.ok(
+			container.querySelector(HISTORY_MARKER) === null,
+			"the open replaced the recording with a live terminal",
+		);
+		assert.match(container.textContent ?? "", TERMINAL);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("one live and one ended: the open focuses the live one and creates nothing", async () => {
+	resetIntent();
+	// The lens is the memory a previous cell could have left; null makes the pane
+	// fall back to the most recent row, which is the ended one here.
+	harness.useUiPreferencesStore.getState().setConsoleActiveSurface(null);
+	installBridge({
+		surfaces: [
+			surfaceRow("con:1:live", { last_activity: 100 }),
+			surfaceRow("con:2:ended", {
+				running: false,
+				exit_code: 0,
+				live: true,
+				last_activity: 300,
+			}),
+		],
+		create: async () => {
+			throw new Error("the open must not create when a live surface exists");
+		},
+	});
+	const { root, container } = await mountPane();
+	try {
+		// The lens starts on the newest row, which is the ended one; the open moves it.
+		await waitFor(() => ENDED_NOTICE.test(container.textContent ?? ""));
+		pressOpenConsole();
+		await waitFor(
+			() =>
+				harness.useUiPreferencesStore.getState().consoleActiveSurface ===
+				"con:1:live",
+		);
+		assert.equal(
+			harness.useUiPreferencesStore.getState().consoleActiveSurface,
+			"con:1:live",
+			"the caret lands on the running terminal, not the recording",
+		);
+		assert.equal(
+			container.querySelector(HISTORY_MARKER),
+			null,
+			"and the ended treatment leaves the pane with it",
 		);
 	} finally {
 		root.unmount();
