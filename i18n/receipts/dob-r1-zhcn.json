@@ -1,0 +1,63 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "instance": "dob-r1-zhcn",
+ "date": "2026-10-22",
+ "locale": "zh-CN",
+ "round": 1,
+ "translator": "coder subagent (identity not recorded in the audit request)",
+ "model_fallback": "Audit began on anthropic/claude-opus-5-5 and finished (edits, receipts, gates) on anthropic/claude-sonnet-5-5 after a quota fallback; the served model at receipt time is recorded as the model.",
+ "scope": "15 new default-on banner keys (10 in ui.agentMessages, 5 in ui.agentMessages.settings) at the post-audit bytes; remaining keys unchanged from their prior audited rows.",
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+ },
+ "namespaces": {
+  "ui.agentMessages": {
+   "status": "passed",
+   "keys_audited": 10,
+   "sha256": {
+    "en": "f1de50d192ed3935d5f1eaffae182986653e2fd703c33dd1804f05aa9de3cc71",
+    "zh-CN": "7114e27ddbd820f0f9bf55eea5bcc39eb543ae01fa9cdbd9596525fe15c96e4d",
+    "context": "16cb7b83431bd14dc73059bdc07d6dde2c8ca19e4fa241232912ae982d6e0c89"
+   },
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.agentMessages.banner.title",
+     "note": "Space between CJK and Latin run (Team Bridge); zh-CN guide forbids it. Fixed (also banner.turn_off_failed).",
+     "disposition": "fixed in catalogue by auditor"
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.agentMessages.banner.turn_off_failed",
+     "note": "Space between CJK and Latin run. Fixed.",
+     "disposition": "fixed in catalogue by auditor"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.agentMessages.banner.turning_off",
+     "note": "Ellipsis is one … ; zh-CN guide requires ……. Fixed.",
+     "disposition": "fixed in catalogue by auditor"
+    }
+   ]
+  },
+  "ui.agentMessages.settings": {
+   "status": "passed",
+   "keys_audited": 5,
+   "sha256": {
+    "en": "dc4d78d84cd84092cc3f67d10dbf733f2ef0bea5eb3011250b39fa78637e6a74",
+    "zh-CN": "42796468af5592e6a09e6df7c76d7ca205e9c2662b343cad1e4fad7fbc81f685",
+    "context": "a2ef251885d17fea571c6ff698557b449a01f9d9dba29da435b828920931e10a"
+   },
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.agentMessages.settings.default_on.b_title",
+     "note": "Space between CJK and Latin run (also default_on.b_body, default_on.e_body). Fixed.",
+     "disposition": "fixed in catalogue by auditor"
+    }
+   ]
+  }
+ }
+}

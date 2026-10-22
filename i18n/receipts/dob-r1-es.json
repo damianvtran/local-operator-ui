@@ -1,0 +1,37 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "instance": "dob-r1-es",
+ "date": "2026-10-22",
+ "locale": "es",
+ "round": 1,
+ "translator": "coder subagent (identity not recorded in the audit request)",
+ "model_fallback": "Audit began on anthropic/claude-opus-5-5 and finished (edits, receipts, gates) on anthropic/claude-sonnet-5-5 after a quota fallback; the served model at receipt time is recorded as the model.",
+ "scope": "15 new default-on banner keys (10 in ui.agentMessages, 5 in ui.agentMessages.settings) at the post-audit bytes; remaining keys unchanged from their prior audited rows.",
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+ },
+ "namespaces": {
+  "ui.agentMessages": {
+   "status": "passed",
+   "keys_audited": 10,
+   "sha256": {
+    "en": "f1de50d192ed3935d5f1eaffae182986653e2fd703c33dd1804f05aa9de3cc71",
+    "es": "7ea979b5d9129c3e28ccbb61b8504c8b1f8c298143d926a06db09c903c8585ac",
+    "context": "16cb7b83431bd14dc73059bdc07d6dde2c8ca19e4fa241232912ae982d6e0c89"
+   },
+   "findings": []
+  },
+  "ui.agentMessages.settings": {
+   "status": "passed",
+   "keys_audited": 5,
+   "sha256": {
+    "en": "dc4d78d84cd84092cc3f67d10dbf733f2ef0bea5eb3011250b39fa78637e6a74",
+    "es": "cb575a99b94bd78d8e7c4093a6efb1d30a848253ec5fcdd9c15443fd77315874",
+    "context": "a2ef251885d17fea571c6ff698557b449a01f9d9dba29da435b828920931e10a"
+   },
+   "findings": []
+  }
+ }
+}

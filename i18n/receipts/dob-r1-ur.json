@@ -1,0 +1,44 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "instance": "dob-r1-ur",
+ "date": "2026-10-22",
+ "locale": "ur",
+ "round": 1,
+ "translator": "coder subagent (identity not recorded in the audit request)",
+ "model_fallback": "Audit began on anthropic/claude-opus-5-5 and finished (edits, receipts, gates) on anthropic/claude-sonnet-5-5 after a quota fallback; the served model at receipt time is recorded as the model.",
+ "scope": "15 new default-on banner keys (10 in ui.agentMessages, 5 in ui.agentMessages.settings) at the post-audit bytes; remaining keys unchanged from their prior audited rows.",
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+ },
+ "namespaces": {
+  "ui.agentMessages": {
+   "status": "passed",
+   "keys_audited": 10,
+   "sha256": {
+    "en": "f1de50d192ed3935d5f1eaffae182986653e2fd703c33dd1804f05aa9de3cc71",
+    "ur": "a9eac735647610b5a6c5d77a7c773e4650ea5b820a4136e1909f13803f998636",
+    "context": "16cb7b83431bd14dc73059bdc07d6dde2c8ca19e4fa241232912ae982d6e0c89"
+   },
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.agentMessages.banner.read",
+     "note": "Calque word order \"جانیں اس کا کیا مطلب ہے\" (reads as \"learn what this means\" question); replaced by \"اس کا مطلب پڑھیں\", matching sibling consent.show \"رضامندی کا متن پڑھیں\". Fixed.",
+     "disposition": "fixed in catalogue by auditor"
+    }
+   ]
+  },
+  "ui.agentMessages.settings": {
+   "status": "passed",
+   "keys_audited": 5,
+   "sha256": {
+    "en": "dc4d78d84cd84092cc3f67d10dbf733f2ef0bea5eb3011250b39fa78637e6a74",
+    "ur": "77f9482d2561f379449c12f22a0916263c8341bbb4fac7719c3b00e39b6da779",
+    "context": "a2ef251885d17fea571c6ff698557b449a01f9d9dba29da435b828920931e10a"
+   },
+   "findings": []
+  }
+ }
+}

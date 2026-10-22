@@ -19,7 +19,7 @@
 	"ui.agentMessages.banner.body": "Ваш агент может обмениваться сообщениями с агентами других участников вашей организации. При включении ничего не отправлялось.",
 	"ui.agentMessages.banner.turn_off": "Отключить",
 	"ui.agentMessages.banner.turning_off": "Отключение…",
-	"ui.agentMessages.banner.read": "Что это значит",
+	"ui.agentMessages.banner.read": "Прочитать, что это значит",
 	"ui.agentMessages.banner.hide": "Скрыть подробности",
 	"ui.agentMessages.banner.dismiss": "Закрыть",
 	"ui.agentMessages.banner.consent_unavailable": "Полный текст сейчас недоступен. Повторите попытку чуть позже.",
