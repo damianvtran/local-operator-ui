@@ -151,12 +151,23 @@ export function useTeamBridgeDrafts(
 	 * would be refused as a conflict. Same rule as `setBody`: a fresh key, except
 	 * while an uncertain schedule holds its original one.
 	 */
-	const setAttachments = (next: DraftAttachment[]) => {
-		const before = (current?.attachments ?? []).map((row) => row.id).join(",");
+	const setAttachments = (
+		next: DraftAttachment[],
+		options: { keepClientRef?: boolean } = {},
+	) => {
+		// Read the STORED entry, not this render's `current`: uploads settle
+		// asynchronously, after renders that predate the send's key.
+		const stored = targetKey ? load()[targetKey] : undefined;
+		const before = (stored?.attachments ?? []).map((row) => row.id).join(",");
 		const after = next.map((row) => row.id).join(",");
 		return update({
 			attachments: next.length > 0 ? next : undefined,
-			...(before !== after && !current?.sendAt
+			/*
+			 * `keepClientRef`: a send/schedule is in flight and its key is already
+			 * on the wire. Images it stages are PART of that request, so rotating
+			 * here would orphan the request from its own draft (R1-02).
+			 */
+			...(before !== after && !stored?.sendAt && !options.keepClientRef
 				? { clientRef: crypto.randomUUID() }
 				: {}),
 		});

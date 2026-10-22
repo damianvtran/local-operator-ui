@@ -273,9 +273,13 @@ export function useTeamBridgeAttachments(args: {
 	};
 
 	const readyIds = () =>
-		live.current.flatMap((chip) =>
-			chip.status === "ready" && chip.attachment ? [chip.attachment.id] : [],
-		);
+		capability === null
+			? []
+			: live.current.flatMap((chip) =>
+					chip.status === "ready" && chip.attachment
+						? [chip.attachment.id]
+						: [],
+				);
 
 	/** The send's uniform 404: every staged id is suspect (no oracle says which). */
 	const markExpired = () => {
@@ -288,24 +292,34 @@ export function useTeamBridgeAttachments(args: {
 		);
 	};
 
-	/** After a confirmed send: the hub bound these ids, so they leave the strip. */
+	/**
+	 * After a confirmed send: the hub bound these ids, so they leave the strip.
+	 * Persisted through `write` like every other change, so a later reload can
+	 * never restore an already-bound id as a ready chip (R1-02).
+	 */
 	const clearSent = (ids: readonly string[]) => {
 		const sent = new Set(ids);
 		const keep = live.current.filter(
 			(chip) => !(chip.attachment && sent.has(chip.attachment.id)),
 		);
 		revokeAll(live.current.filter((chip) => !keep.includes(chip)));
-		live.current = keep;
-		setChips(keep);
+		write(keep);
 		setNotice(null);
 	};
 
 	const busy = chips.some(
 		(chip) => chip.status === "preparing" || chip.status === "uploading",
 	);
-	const blocked = chips.some(
-		(chip) => chip.status === "error" || chip.status === "expired",
-	);
+	/*
+	 * No capability (an old or rolled-back hub) makes every restored chip
+	 * unsendable: that hub answers `attachment_ids` with a 400. The chips stay
+	 * visible and removable, but block the send rather than going out (R1-04).
+	 */
+	const blocked =
+		chips.some(
+			(chip) => chip.status === "error" || chip.status === "expired",
+		) ||
+		(capability === null && chips.length > 0);
 	const held = chips.some((chip) => chip.status === "held");
 	return {
 		chips,
@@ -327,6 +341,8 @@ export function useTeamBridgeAttachments(args: {
 		count: chips.length,
 		max: maxAttachments(capability),
 		enabled: capability !== null,
+		/** Restored chips on a hub that cannot take images (R1-04). */
+		unsupported: capability === null && chips.length > 0,
 	};
 }
 
