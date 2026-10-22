@@ -53,7 +53,8 @@ const sidebarStub = {
 };
 const bundle = await build({
 	stdin: {
-		contents: `export {TeamBridgePageView} from "./src/renderer/src/features/team-bridge/team-bridge-page";
+		contents: `export {registerCatalogue, setLocale} from "./src/i18n";
+ export {TeamBridgePageView} from "./src/renderer/src/features/team-bridge/team-bridge-page";
  export * from "./src/renderer/src/features/team-bridge/team-bridge-drafts";
  export * from "./src/renderer/src/features/team-bridge/use-team-bridge-drafts";
  export * from "./src/renderer/src/features/team-bridge/team-bridge-scheduling";
@@ -1016,6 +1017,136 @@ test("a held schedule can be explicitly discarded before a fresh send or schedul
 			}
 		} finally {
 			await act(async () => root.unmount());
+			element.remove();
+		}
+	}
+});
+
+test("normal first scheduling never flashes held recovery; only settled failure reveals it", async () => {
+	const russian = JSON.parse(
+		readFileSync("src/i18n/catalogues/ru/ui.teamBridge.json", "utf8"),
+	);
+	model.registerCatalogue("ru", russian);
+	for (const outcome of ["success", "failure"]) {
+		localStorage.clear();
+		const element = document.createElement("div");
+		document.body.append(element);
+		const root = createRoot(element);
+		let settle;
+		const response = new Promise((resolve, reject) => {
+			settle = () =>
+				outcome === "success"
+					? resolve({})
+					: reject(new Error("fixture lost response"));
+		});
+		const time = new Date(Date.now() + 3_600_000).toISOString();
+		const conversation = {
+			id: "bcv_pending",
+			tenant_id: "org_pending",
+			kind: "group",
+			name: "Pending schedule",
+			members: [],
+			visibility: "private",
+			agent_capable: false,
+			status: "open",
+			created_by: "acct_pending",
+			last_message_at: time,
+			latest_seq: 0,
+			last_read_seq: 0,
+			unread_count: 0,
+			muted: false,
+		};
+		const props = {
+			selfAccountId: "acct_pending",
+			scope: "org_pending",
+			target: { type: "conversation", id: conversation.id },
+			conversations: [conversation],
+			messages: [],
+			organizations: [
+				{
+					tenantId: "org_pending",
+					name: "Pending organization",
+					role: "owner",
+					unread: 0,
+				},
+			],
+			totalUnread: 0,
+			listState: "ready",
+			messageState: "ready",
+			initialDraft: "pending fixture draft",
+			onTarget: () => {},
+			onNewChannel: () => {},
+			onScopeChange: () => {},
+			onSend: async () => {},
+			onSchedule: () => response,
+		};
+		try {
+			await act(async () =>
+				root.render(React.createElement(model.TeamBridgePageView, props)),
+			);
+			await act(async () =>
+				element.querySelector('button[aria-label="Schedule message"]').click(),
+			);
+			const dialog = document.querySelector('[role="dialog"]');
+			const input = dialog.querySelector('input[type="datetime-local"]');
+			await act(async () => {
+				Object.getOwnPropertyDescriptor(
+					dom.window.HTMLInputElement.prototype,
+					"value",
+				).set.call(input, model.scheduledLocalInput(time));
+				input.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+			});
+			const action = () =>
+				[...dialog.querySelectorAll("button")].find(
+					(button) =>
+						button.textContent === "Review schedule" ||
+						button.textContent === "Confirm schedule",
+				);
+			await act(async () => action().click());
+			await act(async () => action().click());
+			assert.equal(
+				element.textContent.includes("A previous schedule may still exist"),
+				false,
+			);
+			assert.equal(element.textContent.includes("I checked Scheduled"), false);
+			assert.equal(
+				element.textContent.includes("Retry previous schedule"),
+				false,
+			);
+			assert.equal(
+				element
+					.querySelector(
+						'button[aria-label="Send"], button[aria-label="Send message"]',
+					)
+					?.getAttribute("aria-describedby"),
+				null,
+			);
+			await act(async () => {
+				settle();
+				await response.catch(() => {});
+			});
+			if (outcome === "failure") {
+				await act(async () => model.setLocale("ru"));
+				const discard = [...element.querySelectorAll("button")].find(
+					(button) =>
+						button.textContent ===
+						russian["ui.teamBridge.schedule.discard_attempt"],
+				);
+				assert.ok(discard);
+				assert.equal(discard.classList.contains("whitespace-normal"), true);
+				assert.equal(discard.classList.contains("h-auto"), true);
+				const composer = discard.closest(".bg-elevated");
+				assert.ok(composer?.querySelector("textarea"));
+			} else
+				assert.equal(
+					element.textContent.includes("A previous schedule may still exist"),
+					false,
+				);
+		} finally {
+			await act(async () => {
+				root.unmount();
+				model.setLocale("en");
+			});
 			element.remove();
 		}
 	}

@@ -1,4 +1,5 @@
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
+import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import {
 	Dialog,
@@ -260,7 +261,7 @@ export function TeamBridgeScheduledListView({
 				</p>
 			)}
 			{state === "loading" ? (
-				<p aria-live="polite">{t("ui.teamBridge.schedule.loading")}</p>
+				<Spinner size="sm" label={t("ui.teamBridge.schedule.loading")} />
 			) : state === "error" ? (
 				<div role="alert">
 					<p>{t("ui.teamBridge.schedule.load_failed")}</p>
@@ -316,11 +317,13 @@ export function TeamBridgeScheduledRow({
 			{message.status === "sending" ? (
 				<p aria-live="polite">{t("ui.teamBridge.schedule.sending")}</p>
 			) : (
-				<div className="flex gap-2">
+				<div className="flex flex-wrap gap-2">
 					<Button disabled={busy || readOnly} onClick={() => setEdit(true)}>
 						{t("ui.teamBridge.schedule.reschedule")}
 					</Button>
 					<Button
+						variant="ghost"
+						className="h-auto min-h-8 max-w-full whitespace-normal text-left text-danger hover:text-danger"
 						disabled={busy || readOnly}
 						onClick={() => {
 							setBusy(true);
