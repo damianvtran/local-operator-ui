@@ -30,6 +30,7 @@ import {
 	isPermanentOverlayRefusal,
 	nextAddressOverlaySeq,
 } from "./address-overlay-port";
+import { nextStaleAttempt } from "./stale-layout-retry";
 
 export interface AddressMirrorRow {
 	text: string;
@@ -197,9 +198,6 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 		 * the per-frame storm; any real change resets the budget, and after four
 		 * refusals the loop idles until the projection body changes. */
 		let staleAttempts = 0;
-		/** Four frame-spaced retries: about 67 ms at 60 Hz (round 3, U19). A view
-		 * that lands later is picked up by the next real change, not by waiting. */
-		const STALE_LAYOUT_ATTEMPTS = 4;
 		let forceProject = false;
 		const stop = (): void => {
 			stopped = true;
@@ -300,7 +298,12 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 			/* A REAL change resets the budget even when it lands ON a forced retry:
 			   the signature differs from the refused body, so this is a new
 			   condition, not another attempt at the old one (round 3, U11 NIT). */
-			if (signature !== lastSignature) staleAttempts = 0;
+			if (signature !== lastSignature)
+				staleAttempts = nextStaleAttempt({
+					attempts: staleAttempts,
+					refused: false,
+					signatureChanged: true,
+				}).attempts;
 			forceProject = false;
 			lastSignature = signature;
 			pending = true;
@@ -334,9 +337,13 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 					// keeps pointing at the refused body, so nothing loops, and the next
 					// real change (typing, a rect move) is a fresh attempt.
 					if (answer.reason === "stale_layout") {
-						if (staleAttempts >= STALE_LAYOUT_ATTEMPTS) return;
-						staleAttempts += 1;
-						forceProject = true;
+						const step = nextStaleAttempt({
+							attempts: staleAttempts,
+							refused: true,
+							signatureChanged: false,
+						});
+						staleAttempts = step.attempts;
+						forceProject = step.retry;
 						return;
 					}
 					// Terminal refusals stop the loop; everything else (a stale frame, a

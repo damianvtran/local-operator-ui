@@ -75,6 +75,11 @@ test("the trigger is the fixed icon-only overflow control", () => {
 		"the trigger's own tooltip must not capture Escape or linger after close",
 	);
 	assert.match(menu, /disableHoverableContent/);
+	assert.match(
+		menu,
+		/discardWhileSuppressed=\{open \|\| returning\}/,
+		"the page-menu panel opts into discard; the shared default resumes (U14)",
+	);
 	assert.match(menu, /data-tour-tag="browser-page-menu"/);
 	assert.match(menu, /aria-label=\{pageMenuLabel\}/);
 	assert.match(menu, /showApprovalsFolded && waitingCount > 0/);
@@ -89,6 +94,15 @@ test("the folded Approvals count rides the trigger (U12) and is not re-announced
 	assert.match(menu, /showApprovalsFolded && waitingCount > 0/);
 	assert.match(menu, /countLabel\(waitingCount, 99\)/);
 	assert.match(menu, /aria-hidden="true"/);
+});
+
+test("page controls are disabled where main will refuse them (Q4-3)", () => {
+	assert.match(menu, /canControlPage: boolean/);
+	assert.equal(
+		(menu.match(/disabled=\{!canControlPage\}/g) ?? []).length,
+		3,
+		"Find, Print and Reset zoom are the page-control items",
+	);
 });
 
 test("Find travels the one openFind path while the panel pauses the page", () => {

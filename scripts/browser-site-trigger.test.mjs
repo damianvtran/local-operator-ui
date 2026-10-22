@@ -66,4 +66,9 @@ test("the mark is the field's leading-edge description, not a tab stop (U4)", ()
 	assert.match(bar, /const siteDescId = `\$\{listId\}-site`/);
 	assert.match(bar, /<span id=\{siteDescId\} className="sr-only">/);
 	assert.match(bar, /siteDescId,/);
+	assert.match(
+		bar,
+		/aria-describedby=\{[\s\S]{0,220}siteDescId/,
+		"the field must actually name the mark's sentence",
+	);
 });

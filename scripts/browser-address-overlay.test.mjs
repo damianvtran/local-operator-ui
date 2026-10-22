@@ -124,6 +124,7 @@ const bundle = await build({
 		contents: `
 			export * from "./src/main/browser/address-overlay";
 			export * from "./src/renderer/src/features/browser/overlay/address-overlay-port";
+			export { nextStaleAttempt, STALE_LAYOUT_ATTEMPTS } from "./src/renderer/src/features/browser/overlay/stale-layout-retry";
 			export * from "./src/main/browser/address-overlay-list";
 			export * from "./src/main/browser/registry";
 			export * as electron from "electron";
@@ -159,6 +160,8 @@ const {
 	addressOverlayDocumentUrlFor,
 	addressOverlayPort,
 	isPermanentOverlayRefusal,
+	nextStaleAttempt,
+	STALE_LAYOUT_ATTEMPTS,
 	layoutKeyOf,
 	overlayBoundsFor,
 	resolveAddressOverlayGate,
@@ -1960,14 +1963,35 @@ test("S5: a stale_layout refusal keeps the frame signature, so the mirror idles"
 	);
 	assert.match(
 		src,
-		/staleAttempts >= STALE_LAYOUT_ATTEMPTS/,
-		"the retry is bounded; the per-frame storm must not come back",
+		/nextStaleAttempt\(/,
+		"the retry is the bounded budget, not a per-frame storm",
 	);
-	assert.match(
-		src,
-		/forceProject = true;/,
-		"a refused frame is re-attempted only through the bounded budget",
-	);
+	assert.match(src, /forceProject = step\.retry;/);
+});
+
+test("S5: the stale_layout budget is bounded and a real change restarts it (U11)", () => {
+	let attempts = 0;
+	const refused = () =>
+		nextStaleAttempt({ attempts, refused: true, signatureChanged: false });
+	for (let i = 0; i < STALE_LAYOUT_ATTEMPTS; i++) {
+		const step = refused();
+		assert.equal(step.retry, true, `attempt ${i + 1} retries`);
+		attempts = step.attempts;
+	}
+	const spent = refused();
+	assert.equal(spent.retry, false, "the budget stops the retry storm");
+	assert.equal(spent.attempts, STALE_LAYOUT_ATTEMPTS);
+
+	// A real projection change lands while the spent budget idles: it starts a new
+	// budget, so the next refusal gets its retries again.
+	const changed = nextStaleAttempt({
+		attempts: spent.attempts,
+		refused: false,
+		signatureChanged: true,
+	});
+	assert.equal(changed.attempts, 0);
+	attempts = changed.attempts;
+	assert.equal(refused().retry, true, "the next condition may be retried");
 });
 
 test("S2 escaping: the sanitizer, not JSON.stringify, removes line separators", () => {

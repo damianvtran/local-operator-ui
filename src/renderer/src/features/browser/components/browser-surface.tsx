@@ -290,6 +290,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	/* A menu-opened dock mounts while Radix is still closing; the heading focus is
 	   re-requested once the menu has handed focus back (round 3, U13). */
 	const [dockFocusRequest, setDockFocusRequest] = useState(0);
+
 	/** Which request's card is expanded. View state, defaulting to the attention
 	 * entry and then to the oldest — exactly the band's rule before this feature
 	 * (spec 4.1), never a second copy of main's queue. */
@@ -1085,6 +1086,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 							onDockOpened={() => setDockFocusRequest((n) => n + 1)}
 							triggerRef={pageMenuTriggerRef}
 							showApprovalsFolded={rowWidth > 0 && rowWidth < 300}
+							canControlPage={!browserOwnState && activeTab !== null}
 						/>
 					</>
 				}

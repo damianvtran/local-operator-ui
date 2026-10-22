@@ -649,6 +649,21 @@ test("the surface reports WHY the view is hidden: its own state page versus a re
 		[true, false, false],
 		`a live page shows the native view again (reports: ${JSON.stringify(visibility)})`,
 	);
+	// The renderer wire for the loaded page under an overlay: neither reason is
+	// "own page", so main's `hiddenByOverlay` admits a page control (round-4
+	// reviewer minor). This is the counterpart of the start-page case above.
+	await act(async () => {
+		release = suppressBrowserView("dialog:landed");
+	});
+	await flush();
+	assert.deepEqual(
+		visibility.at(-1),
+		[false, false, false],
+		`a loaded page under an overlay reports no own-state reason (reports: ${JSON.stringify(visibility)})`,
+	);
+	await act(async () => release());
+	await flush();
+	assert.deepEqual(visibility.at(-1), [true, false, false]);
 	await act(async () => {
 		handle.unmount();
 	});

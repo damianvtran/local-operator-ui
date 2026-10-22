@@ -237,6 +237,17 @@ export type TooltipProps = {
 	 */
 	suppressed?: boolean;
 	/**
+	 * Close the panel while `suppressed` is true, instead of only hiding it.
+	 *
+	 * DEFAULT IS RESUME, and that is load-bearing (round 4, U14 regression): the
+	 * chat sidebar's drag flyouts, Tags and team mark set `suppressed` for the
+	 * duration of a drag and expect the panel back when it ends. A browser-view
+	 * surface is the opposite: the label was suppressed because a native page is
+	 * over it, and letting it repaint when the view goes away is a ghost. Those
+	 * call sites opt in with this flag.
+	 */
+	discardWhileSuppressed?: boolean;
+	/**
 	 * Told every time the panel opens or closes, for a caller whose own state must
 	 * follow it. (The browser-view suppression the panel rail first built on this,
 	 * #872, now lives inside this component and no longer needs it.)
@@ -271,6 +282,7 @@ export const Tooltip = ({
 	collisionPadding,
 	disabled = false,
 	suppressed,
+	discardWhileSuppressed = false,
 	onOpenChange,
 	className,
 }: TooltipProps) => {
@@ -298,8 +310,9 @@ export const Tooltip = ({
 	 * the panel closed until the user asks again.
 	 */
 	useEffect(() => {
-		if (controlling && suppressed && open) setOpen(false);
-	}, [controlling, suppressed, open]);
+		if (discardWhileSuppressed && controlling && suppressed && open)
+			setOpen(false);
+	}, [controlling, discardWhileSuppressed, suppressed, open]);
 
 	const bare =
 		(disabled && !suppressed) ||

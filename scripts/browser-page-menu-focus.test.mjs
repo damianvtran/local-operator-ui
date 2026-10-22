@@ -162,6 +162,7 @@ const mountMenu = async ({ openResult }) => {
 		},
 		triggerRef: { current: null },
 		showApprovalsFolded: true,
+		canControlPage: true,
 	};
 	const container = document.createElement("div");
 	document.body.appendChild(container);
@@ -203,7 +204,7 @@ const mountMenu = async ({ openResult }) => {
 };
 
 test("choosing Approvals opens the dock and focuses its heading after the menu closes", async () => {
-	const { calls, cleanup } = await mountMenu({ openResult: true });
+	const { calls, trigger, cleanup } = await mountMenu({ openResult: true });
 	assert.equal(calls.open, 1, "the item asks the surface to open the dock");
 	assert.equal(
 		calls.settled,
@@ -211,6 +212,22 @@ test("choosing Approvals opens the dock and focuses its heading after the menu c
 		"the heading focus is re-requested AFTER the panel has closed, not before",
 	);
 	assert.equal(document.querySelector('[role="menu"]'), null);
+	/* Q4-1: the close's programmatic focus must not open the trigger tooltip. The
+	   close grace covers >1.3s in the measured failure; wait past it. */
+	await flush(40);
+	assert.equal(
+		document.querySelector('[role="tooltip"]'),
+		null,
+		"Page options must not repaint after the menu chose Approvals",
+	);
+	await act(async () => trigger.blur());
+	await flush(2);
+	await act(async () => trigger.focus());
+	await flush(30);
+	assert.ok(
+		document.querySelector('[role="tooltip"]'),
+		"a fresh focus later still opens the label",
+	);
 	await cleanup();
 });
 
