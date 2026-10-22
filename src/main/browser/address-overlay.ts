@@ -848,13 +848,16 @@ export class AddressOverlayController {
 	 * The registry's post-layout hook. Called after every page layout pass,
 	 * including null and suppressed ones.
 	 *
-	 * A changed key (tab, presentation or rectangle) hides and invalidates first:
-	 * a moved page must never keep a stale rectangle floating over it, and a
-	 * resized window invalidates old geometry until a fresh renderer rect
-	 * arrives. An unchanged key is the background-page-creation case: the layout
-	 * pass may have added a page above the child, so the child is re-added last
-	 * and given the same rectangle. It never re-opens by itself; showing again is
-	 * always an explicit probe call.
+	 * A changed key (tab, presentation or rectangle) is handled by ONE of two
+	 * rules, and the split is load-bearing (agent review round 1, MAJOR-1):
+	 * a CONTENT change (tab or rectangle) hides and invalidates, while a
+	 * PRESENTATION-only change is a suppression that belongs to someone else —
+	 * the page menu, which paints into the content rect — so it only stops the
+	 * child's paint and keeps the shown state. Collapsing the two made opening
+	 * the menu dismiss the popout it was opened from. An unchanged key is the
+	 * background-page-creation case: the layout pass may have added a page above
+	 * the child, so the child is re-added last and given the same rectangle. It
+	 * never re-opens by itself; showing again is always an explicit probe call.
 	 */
 	onLayout(snapshot: AddressOverlayLayoutSnapshot): void {
 		if (this.disposed) return;
