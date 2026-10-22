@@ -100,6 +100,16 @@ export function resolveChatTitle(input: {
 		return draftTarget ? `New chat with ${draftTarget}` : "New chat";
 	if (!isBlankTitle(liveTitle)) return liveTitle as string;
 	if (!isBlankTitle(catalogueTitle)) return catalogueTitle as string;
+	/*
+	 * A CONVERSATION THAT HAS NO NAME YET KEEPS ITS TARGET'S (design review round
+	 * 1's D1). The create writes `sessionId` before the message is acknowledged,
+	 * and the name arrives a read later - so falling straight through to
+	 * `UNTITLED_CHAT` would blank the header to "Untitled chat" for exactly the
+	 * window the user is watching their first send. The binding is the durable
+	 * identity the header's description line already names, so it is the honest
+	 * stand-in; a draft with no target keeps the existing untitled fallback.
+	 */
+	if (draftKey) return draftTarget ?? UNTITLED_CHAT;
 	return UNTITLED_CHAT;
 }
 

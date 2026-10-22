@@ -5144,24 +5144,92 @@ function retiredDraftPayload(draft: ChatDraft): {
 }
 
 /**
+ * Put a retired pointer's payload back where its draft can show it.
+ *
+ * TWO SOURCES, because a failed message can leave words in two places: the CLAIM
+ * (`submittedText`/`undelivered`, the request that failed) and the COMPOSER row
+ * keyed by the conversation identity (`composerIdentityFor`, which is the session
+ * id once the create answered) - text typed after the failure, before the user
+ * knew it had failed. Both are the operator's own words and the conversation
+ * they were addressed to is gone, so both come home to the new-chat row.
+ *
+ * ORDER MATTERS AND IS THE COMPOSER'S OWN RULE: `foldReturn` puts the returned
+ * message first and anything already in the box after a blank line, so the claim
+ * is handed over AFTER the typed text has moved. That is the same order the live
+ * failure path produces.
+ *
+ * WHY THE IN-FLIGHT ROW IS SKIPPED (agent review round 1's MAJOR-1): a row
+ * whose claim is still on the wire is not retired at all
+ * (`retireDraftSession`'s `pending` guard), and if an `inFlight` record survived
+ * a reload the claim is already the same message - folding it back and then
+ * returning the claim would duplicate it in the box.
+ */
+function restoreRetiredDraftPayload(
+	key: string,
+	sessionId: string | undefined,
+	payload: { text: string; attachments: string[] } | null,
+): void {
+	const input = useConversationInputStore.getState();
+	if (sessionId && sessionId !== key) {
+		const typed = input.inputByConversation[sessionId];
+		if (
+			typed &&
+			typed.inFlight === undefined &&
+			((typed.currentInput ?? "") !== "" ||
+				(typed.attachments?.length ?? 0) > 0)
+		)
+			input.returnInFlight(sessionId, key);
+	}
+	if (payload)
+		input.returnPayload(key, {
+			text: payload.text,
+			attachments: payload.attachments,
+			replies: [],
+		});
+}
+
+/**
  * The same map with every pointer to a TOMBSTONED conversation unbound.
  *
  * Identity-preserving when nothing moves (`drafts === returned`), so the merge
  * that calls it does not repaint every draft on a launch with no tombstones. See
  * `mergePersistedSession` for why this runs at hydration rather than in an
  * effect: a frame is already committed by the time an effect runs.
+ *
+ * IT ALSO RETURNS WHAT EACH RETIRED ROW OWES ITS COMPOSER, because the merge is
+ * the one caller that has to hand the words back itself: it runs inside
+ * `persist`, and there is no later hook that knows the payload was dropped
+ * (`agent review round 1's MINOR-1` measured the text going missing from the
+ * after frame).
  */
 function draftsWithoutTombstonedPointers(
 	drafts: Record<string, ChatDraft>,
 	forgotten: Record<string, ForgottenFact>,
-): Record<string, ChatDraft> {
+): {
+	drafts: Record<string, ChatDraft>;
+	restored: Array<{
+		key: string;
+		sessionId: string;
+		payload: { text: string; attachments: string[] } | null;
+	}>;
+} {
 	let next: Record<string, ChatDraft> | null = null;
+	const restored: Array<{
+		key: string;
+		sessionId: string;
+		payload: { text: string; attachments: string[] } | null;
+	}> = [];
 	for (const [key, draft] of Object.entries(drafts)) {
 		if (!draft.sessionId || forgotten[draft.sessionId] === undefined) continue;
 		next ??= { ...drafts };
 		next[key] = unboundDraftRow(draft);
+		restored.push({
+			key,
+			sessionId: draft.sessionId,
+			payload: retiredDraftPayload(draft),
+		});
 	}
-	return next ?? drafts;
+	return { drafts: next ?? drafts, restored };
 }
 
 /** Full list responses replace membership; a disappeared row is not immortal.
@@ -5467,18 +5535,21 @@ export function mergePersistedSession(
 	 * frame after a relaunch a new chat rather than the terminal notice, which no
 	 * effect could do: a frame has already been committed by then.
 	 *
-	 * THE PAYLOAD IS NOT HANDED BACK HERE, and that is a boundary rather than an
-	 * omission: this merge runs inside `persist`, before the composer's own store
-	 * has hydrated, so writing to it here would be overwritten by that hydration
-	 * in an order this module does not control. `retireDraftSession` (the live
-	 * path) does hand it back; a payload that reached a tombstone without passing
-	 * through a live delete has no box to come home to any more.
+	 * THE WORDS COME BACK HERE TOO, and the ordering that makes it safe is
+	 * structural rather than lucky: `conversation-input-store` imports nothing
+	 * from this module, this module imports IT, so the composer's `persist` has
+	 * already hydrated by the time this merge runs. `restoreRetiredDraftPayload`
+	 * is therefore writing into a live, hydrated store - the same write the
+	 * delete-time retirement makes (agent review round 1's MINOR-1 measured the
+	 * text going missing from the after frame before this).
 	 */
-	const drafts = draftsWithoutTombstonedPointers(
+	const { drafts, restored } = draftsWithoutTombstonedPointers(
 		merged.drafts,
 		merged.forgotten,
 	);
 	const next = drafts === merged.drafts ? merged : { ...merged, drafts };
+	for (const fact of restored)
+		restoreRetiredDraftPayload(fact.key, fact.sessionId, fact.payload);
 	const target = launchTarget();
 	if (target.kind === "session") {
 		return { ...next, activeSessionId: target.sessionId };
@@ -7183,7 +7254,30 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * the user following the message they just sent rather than starting a
 				 * new one. A settled or abandoned row is the case this exists for.
 				 */
-				if (existing?.sessionId && !existing.pending) {
+				/*
+				 * AND A PRESS ON THE CONVERSATION ALREADY ON SCREEN IS NOT A FORK (UX
+				 * review round 1's U2). The team row is highlighted while its draft is
+				 * staged, and a reader standing in the failed conversation's own pane
+				 * presses that row to mean "I am here" - before this rule it was a no-op,
+				 * and forking a blank chat under them reads as losing their failure. The
+				 * comparison is the VIEW's id (`panelSessionIdOfView`, the expression the
+				 * pane itself reads), not `activeSessionId`, which a staged draft leaves
+				 * pointing at the conversation the reader came FROM: a press made from a
+				 * fresh draft whose last conversation happens to be this one must still
+				 * fork, or the defect comes back through the other door.
+				 */
+				const viewId = panelSessionIdOfView(
+					get().activeDraftKey,
+					get().activeDraftKey
+						? get().drafts[get().activeDraftKey as string]?.sessionId
+						: undefined,
+					get().activeSessionId,
+				);
+				if (
+					existing?.sessionId &&
+					!existing.pending &&
+					existing.sessionId !== viewId
+				) {
 					const movedKey = get().drafts[`send:${existing.sessionId}`]
 						? `draft:${crypto.randomUUID()}`
 						: `send:${existing.sessionId}`;
@@ -7493,25 +7587,31 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			 */
 			retireDraftSession: (key) => {
 				const draft = get().drafts[key];
-				if (!draft?.sessionId) return;
+				/*
+				 * A LIVE SEND IS NOT RETIRED (agent review round 1's MAJOR-1). `pending` is
+				 * true from the press until the admission settles, and `admitChatDraft`
+				 * holds this key string across that whole window - unbinding the row under
+				 * it would wipe the claim, re-mint both request ids, and (because a row in
+				 * flight makes `returnPayload` a no-op) destroy the user's message. The
+				 * same rule `stageDraft` states for its move. A 404 that arrives mid-send
+				 * is also not a verdict about the conversation the create just returned:
+				 * the settled row is retired by the next verdict, or by a later 404.
+				 */
+				if (!draft?.sessionId || draft.pending) return;
+				const sessionId = draft.sessionId;
 				const payload = retiredDraftPayload(draft);
 				set((state) => {
 					const row = state.drafts[key];
-					if (!row?.sessionId) return {};
+					if (!row?.sessionId || row.pending) return {};
 					return { drafts: { ...state.drafts, [key]: unboundDraftRow(row) } };
 				});
 				/*
 				 * The payload goes to the ROW'S OWN KEY, which is the identity the pane
-				 * reads once the pointer is gone (`panelIdentityFor(null, key)`).
-				 * `returnPayload` merges rather than overwrites, so a box the user has
-				 * typed into keeps their words after a blank line.
+				 * reads once the pointer is gone (`panelIdentityFor(null, key)`). The
+				 * helper also moves text typed under the conversation identity while the
+				 * failure was already standing (agent review round 1's MINOR-2).
 				 */
-				if (payload)
-					useConversationInputStore.getState().returnPayload(key, {
-						text: payload.text,
-						attachments: payload.attachments,
-						replies: [],
-					});
+				restoreRetiredDraftPayload(key, sessionId, payload);
 			},
 			retireDraftsForSession: (sessionId) => {
 				/*

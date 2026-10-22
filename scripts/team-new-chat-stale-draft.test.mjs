@@ -424,4 +424,138 @@ test("a relaunch unbinds a remembered draft whose conversation this window had t
 		),
 		undefined,
 	);
+	/*
+	 * AND THE WORDS SURVIVE THE HYDRATION (agent review round 1's MINOR-1): the
+	 * composer store has already hydrated when this merge runs, because this
+	 * module imports it and it imports nothing from here.
+	 */
+	assert.equal(
+		useConversationInputStore.getState().inputByConversation[stable]
+			?.pendingText,
+		"the message that failed",
+	);
+});
+
+test("a verdict that lands mid-send does not retire the live claim", () => {
+	reset();
+	const stable = seedBoundDraft();
+	useConversationInputStore.setState({
+		inputByConversation: {
+			[DEAD]: {
+				currentInput: "typed while the failure stood",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+			},
+		},
+	});
+	store.setState({
+		drafts: {
+			...store.getState().drafts,
+			[stable]: { ...store.getState().drafts[stable], pending: true },
+		},
+	});
+	/*
+	 * A 404 can arrive while the create's own message is still on the wire.
+	 * `admitChatDraft` holds this key string and will settle under it, so the
+	 * row must not be rewritten under the request (MAJOR-1).
+	 */
+	store.getState().retireDraftsForSession(DEAD);
+	store.getState().retireDraftSession(stable);
+	const row = store.getState().drafts[stable];
+	assert.equal(
+		row.sessionId,
+		DEAD,
+		"the pointer survives while a send is live",
+	);
+	assert.equal(row.pending, true);
+	assert.equal(row.submittedText, "the message that failed");
+	assert.equal(
+		row.createRequestId,
+		"create-1",
+		"no request id is re-minted mid-send",
+	);
+	assert.equal(
+		useConversationInputStore.getState().inputByConversation[stable],
+		undefined,
+		"and nothing is moved into the new-chat box behind the live send",
+	);
+});
+
+test("text typed under the conversation identity comes home with the claim", () => {
+	reset();
+	const stable = seedBoundDraft();
+	useConversationInputStore.setState({
+		inputByConversation: {
+			[DEAD]: {
+				currentInput: "and one more thing",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+			},
+		},
+	});
+	store.getState().retireDraftSession(stable);
+	assert.equal(
+		useConversationInputStore.getState().inputByConversation[stable]
+			?.pendingText,
+		"the message that failed\n\nand one more thing",
+		"the failed message first, then what was typed after it (MINOR-2)",
+	);
+});
+
+test("pressing the team row while its own failed conversation is on screen is a no-op", () => {
+	reset();
+	const stable = seedBoundDraft();
+	/*
+	 * The reader is IN the failed conversation (opened from its row, so no draft
+	 * is staged) and presses the highlighted team row. Before the fix this was a
+	 * no-op; forking a blank chat under them would read as losing their failure
+	 * (UX review round 1's U2).
+	 */
+	store.setState({ activeSessionId: DEAD, activeDraftKey: null });
+	const staged = store
+		.getState()
+		.stageDraft({ kind: "team", name: STABLE_TEAM });
+	assert.equal(staged, stable);
+	assert.equal(
+		store.getState().drafts[stable].sessionId,
+		DEAD,
+		"the press resolves the conversation already on screen, and it is alive",
+	);
+	assert.equal(
+		Object.keys(store.getState().drafts).length,
+		1,
+		"nothing is moved aside",
+	);
+});
+
+test("but a press from a fresh draft still forks when the last conversation happens to be that one", () => {
+	reset();
+	const stable = seedBoundDraft();
+	/*
+	 * `stageDraft` leaves `activeSessionId` at the conversation the reader came
+	 * FROM, so an `activeSessionId` test alone would let the defect back in
+	 * whenever that conversation is the bound row's.
+	 */
+	store.setState({ activeSessionId: DEAD, activeDraftKey: null });
+	const fresh = store.getState().stageDraft(undefined, true);
+	store.setState({ activeDraftKey: fresh, activeSessionId: DEAD });
+	const staged = store
+		.getState()
+		.stageDraft({ kind: "team", name: STABLE_TEAM });
+	assert.equal(staged, stable);
+	assert.equal(
+		store.getState().drafts[stable].sessionId,
+		undefined,
+		"a new chat is what the press asked for",
+	);
+	assert.ok(
+		Object.values(store.getState().drafts).some(
+			(row) => row.sessionId === DEAD && row.key !== stable,
+		),
+		"and the failed conversation's retry moved aside",
+	);
 });

@@ -226,6 +226,31 @@ test("a draft that has already created a conversation names the conversation, no
 		"Retention sweep notes",
 		"and a live conversation shows its own title while the draft is still staged",
 	);
+	/*
+	 * THE FIRST SEND'S WINDOW (design review round 1's D1): the create writes
+	 * `sessionId` before the name exists, so the header must not fall to
+	 * "Untitled chat" while the team is a fact.
+	 */
+	assert.equal(
+		resolveChatTitle({
+			draftKey: "draft:team:minerva-development",
+			draftSessionId: "aaaa11112222",
+			draftTarget: "minerva-development",
+			liveTitle: "",
+			catalogueTitle: "",
+		}),
+		"minerva-development",
+	);
+	assert.equal(
+		resolveChatTitle({
+			draftKey: "draft:team:minerva-development",
+			draftSessionId: "aaaa11112222",
+			draftTarget: null,
+			liveTitle: "",
+			catalogueTitle: "",
+		}),
+		UNTITLED_CHAT,
+	);
 });
 
 test("a streaming tick with an empty live title leaves the row's name standing", () => {
