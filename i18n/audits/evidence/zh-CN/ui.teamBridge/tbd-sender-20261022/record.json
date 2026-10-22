@@ -1,0 +1,83 @@
+{
+  "audit_id": "tbd-sender-20261022",
+  "date": "2026-10-22",
+  "locale": "zh-CN",
+  "namespace": "ui.teamBridge",
+  "source_commit": "f1520f143e (HEAD) + uncommitted PR #1296 working tree as audited",
+  "scope": "2-key delta of PR #1296: ui.teamBridge.sender.unknown_person, ui.teamBridge.sender.unknown_agent (new). The other 109 values are byte-identical to the previously audited target a461bd1121e50a3091f42da7ec75196ff94efa0eecc3e87bd99ea352d3e33672.",
+  "status": "audited",
+  "translator": {
+    "row_translator": {
+      "agent": "translator",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-21",
+      "session": "2dc29b01117d",
+      "remediation_job": "5f2f08349f3a"
+    },
+    "delta_translator": {
+      "agent": "coder",
+      "label": "ui1296-member-fallback",
+      "model": "anthropic/claude-opus-5-5",
+      "session": "51333032ede5",
+      "job": "2cb7c6eb3a49",
+      "date": "2026-10-22"
+    }
+  },
+  "auditors": [
+    {
+      "agent": "reviewer",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-22",
+      "result": "clean",
+      "instance": "tbd-sender-r1-zhcn",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/tbd-sender-r1-zhcn.json",
+      "receipt_sha256": "474f0b573354241171940bb43e50cf1a89c93e4667300fe35c0e7bcad0ab0f82",
+      "scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
+      "note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
+    }
+  ],
+  "independence": "Auditor reviewer subagent session b2fa9b669196 (label i18n-1296-audit) is separate from the delta translator coder session 51333032ede5 and from the coordinator 17cd3e74c66f; it did not modify any catalogue.",
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+      "sha256": "764ad74c15e1d0e4eadeb4338a06eb42721dd995e8aa4b33110e2c56bfb581ca"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "f27dbb405c98a145cfd610464a1c661f1dd3bf5663c7c7cf3a263c1f9737d968"
+    }
+  },
+  "references": {
+    "core_revision": "24dbccbb78",
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  },
+  "retained_rounds": [
+    {
+      "path": "i18n/receipts/tbd-r4-zhcn.json",
+      "sha256": "85d1f0e0870d1a20d82e242187fbb7fba745a88189d98965e51010bd0e7125e9",
+      "instance": "tbd-r4-zhcn",
+      "model": "anthropic/claude-opus-5-5"
+    }
+  ],
+  "limitations": [
+    "Catalogue semantics and source/target/context hashes verified; no rendered-fit, screenshot, pseudo-localization or runtime activation evidence is claimed.",
+    "The ledger row keeps the namespace's original translator; the delta translator is recorded here and in the receipt because the UI ledger schema has one translator per row."
+  ]
+}

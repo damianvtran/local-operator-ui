@@ -657,8 +657,8 @@ const IDENTICAL_OK = new Map([
 		"Product name (Team Bridge), preserved verbatim by the programme glossary.",
 	],
 	[
-		"ui.teamBridge.create.account_placeholder",
-		"Literal example account id (acct_…) shown in an input placeholder, not prose to translate.",
+		"ui.teamBridge.chief.label",
+		"Placeholders and brackets only ({agent} ({person})); both names are inserted verbatim. Locales with full-width brackets (zh-CN) differ, the rest are identical by design.",
 	],
 	[
 		"ui.teamBridge.notify.title",

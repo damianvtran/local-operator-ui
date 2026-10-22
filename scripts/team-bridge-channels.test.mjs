@@ -32,6 +32,42 @@ import { build } from "esbuild";
  * suites.
  */
 
+/*
+ * THE RAIL'S ONE IMPORT FROM THE CHAT SIDEBAR IS ITS SELECTED-ROW ROLE.
+ * `team-bridge-rail.tsx` imports `rowCurrent` from `chat-sidebar.tsx` so the
+ * selected person/channel paints the one role every sidebar shares (the
+ * selection guard in `scripts/chat-sidebar-selection.test.mjs` asserts that).
+ * That module drags MUI and the whole chat tree into a node bundle, which
+ * cannot load MUI's directory imports; the stub exports the SAME literal, read
+ * from the shipped source, so these tests render the real class string without
+ * the chat sidebar's dependency weight.
+ */
+const chatSidebarSource = readFileSync(
+	`${process.cwd()}/src/renderer/src/features/chat/components/chat-sidebar.tsx`,
+	"utf8",
+);
+const rowCurrentLiteral = chatSidebarSource.match(
+	/export const rowCurrent =\s*("[^"]+")/,
+)?.[1];
+if (!rowCurrentLiteral)
+	throw new Error("rowCurrent literal not found in chat-sidebar.tsx");
+const chatSidebarStub = {
+	name: "chat-sidebar-stub",
+	setup(pluginBuild) {
+		pluginBuild.onResolve(
+			{ filter: /chat\/components\/chat-sidebar$/ },
+			() => ({
+				path: "chat-sidebar-stub",
+				namespace: "stub",
+			}),
+		);
+		pluginBuild.onLoad({ filter: /.*/, namespace: "stub" }, () => ({
+			contents: `export const rowCurrent = ${rowCurrentLiteral};`,
+			loader: "js",
+		}));
+	},
+};
+
 const ROOT = process.cwd();
 const bundle = await build({
 	stdin: {
@@ -49,6 +85,7 @@ const bundle = await build({
 	packages: "external",
 	jsx: "automatic",
 	loader: { ".css": "empty" },
+	plugins: [chatSidebarStub],
 	alias: {
 		"@shared": `${ROOT}/src/renderer/src/shared`,
 		"@features": `${ROOT}/src/renderer/src/features`,
@@ -103,7 +140,7 @@ const conversation = (patch = {}) => ({
 const viewProps = (patch = {}) => ({
 	selfAccountId: "acct_self",
 	conversations: [],
-	selected: null,
+	target: null,
 	messages: [],
 	organizations: [
 		{ tenantId: "tnt_1", name: "Minerva", role: "owner", unread: 0 },
@@ -112,14 +149,28 @@ const viewProps = (patch = {}) => ({
 	totalUnread: 0,
 	listState: "ready",
 	messageState: "idle",
-	onSelect: () => {},
+	onTarget: () => {},
 	onSend: () => {},
-	onNewConversation: () => {},
+	onNewChannel: () => {},
 	onRetry: () => {},
 	onScopeChange: () => {},
 	onJoin: () => {},
 	onNotifyChange: () => {},
 	...patch,
+	/*
+	 * The view selects by TARGET and resolves the conversation from the list,
+	 * so a fixture that names the selected conversation must also list it.
+	 */
+	...(patch.selectedConversation
+		? {
+				target: { type: "conversation", id: patch.selectedConversation.id },
+				conversations: patch.conversations?.some(
+					(row) => row.id === patch.selectedConversation.id,
+				)
+					? patch.conversations
+					: [...(patch.conversations ?? []), patch.selectedConversation],
+			}
+		: {}),
 });
 
 const message = (conversationId, body) => ({
@@ -143,7 +194,7 @@ test("a preview shows the join banner and never a message body", () => {
 		createElement(
 			ui.TeamBridgePageView,
 			viewProps({
-				selected: preview,
+				target: { type: "conversation", id: preview.id },
 				conversations: [preview],
 				messages: [message(preview.id, "SECRET PREVIEW BODY")],
 				messageState: "ready",
@@ -165,7 +216,7 @@ test("a refused notification write is stated under the header", () => {
 		createElement(
 			ui.TeamBridgePageView,
 			viewProps({
-				selected,
+				selectedConversation: selected,
 				conversations: [selected],
 				notifyFailed: true,
 				messageState: "ready",

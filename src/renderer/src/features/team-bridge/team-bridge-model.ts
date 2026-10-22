@@ -3,9 +3,9 @@ import type {
 	TeamBridgeConversation,
 	TeamBridgeConversationList,
 	TeamBridgeDirectoryMember,
+	TeamBridgeMemberInput,
 	TeamBridgeMessage,
 	TeamBridgeNotify,
-	TeamBridgeParticipant,
 	TeamBridgeTenantId,
 } from "../../../../shared/team-bridge-contract";
 
@@ -80,23 +80,15 @@ export function conversationTitle(
 	if (conversation.kind === "dm") {
 		const other =
 			others.find((member) => member.state === "active") ?? others[0];
-		return other?.display_label ?? null;
+		return other ? storedLabel(other.display_label) : null;
 	}
 	const labels = others
 		.filter((member) => member.state === "active")
-		.map((member) => member.display_label);
+		.map((member) => storedLabel(member.display_label))
+		.filter((label): label is string => label !== null);
 	if (labels.length === 0) return null;
 	if (labels.length <= 3) return labels.join(", ");
 	return `${labels.slice(0, 2).join(", ")} +${labels.length - 2}`;
-}
-
-/** The icon/glyph family a conversation row uses, before Lucide picks one. */
-export function conversationGlyph(
-	conversation: TeamBridgeConversation,
-): "hash" | "users" | "at" {
-	if (conversation.kind === "channel") return "hash";
-	if (conversation.kind === "group") return "users";
-	return "at";
 }
 
 /**
@@ -239,34 +231,6 @@ export function conversationMemberCount(
 	return conversation.member_count ?? 0;
 }
 
-/** True when at least one ACTIVE member is an agent. Badges read this. */
-export function hasAgentParticipant(
-	conversation: TeamBridgeConversation,
-): boolean {
-	return conversation.members.some(
-		(member) => member.kind === "agent" && member.state === "active",
-	);
-}
-
-/**
- * The members a reader sees, in a stable order.
- *
- * Active people first, then agents, then invited people: the header's badges
- * and the create dialog's summary both read this order, so "who is in this
- * conversation" answers the same way wherever it is asked.
- */
-export function orderedMembers(
-	conversation: TeamBridgeConversation,
-): TeamBridgeParticipant[] {
-	const rank = (member: TeamBridgeParticipant): number => {
-		if (member.state === "active" && member.kind === "human") return 0;
-		if (member.state === "active" && member.kind === "agent") return 1;
-		if (member.state === "invited") return 2;
-		return 3;
-	};
-	return [...conversation.members].sort((a, b) => rank(a) - rank(b));
-}
-
 /**
  * The badge'able total: unmuted unread, exactly the server's `total`.
  *
@@ -316,7 +280,7 @@ export function shouldNotify(
 
 /** The messages in display order: oldest first, gaps allowed (purged history). */
 export function chronological(
-	messages: TeamBridgeMessage[],
+	messages: readonly TeamBridgeMessage[],
 ): TeamBridgeMessage[] {
 	return [...messages].sort((a, b) => a.seq - b.seq);
 }
@@ -675,8 +639,14 @@ export function dmWithPerson(
 		if (conversation.kind !== "dm" || conversation.status === "archived") {
 			return false;
 		}
+		// HUMAN members only: an agent member carries its OWNER's account id, so
+		// without the kind check a DM with Ben's chief of staff would be opened
+		// by Ben's own person row.
 		const hasTarget = conversation.members.some(
-			(member) => member.account_id === accountId && member.state !== "removed",
+			(member) =>
+				member.kind === "human" &&
+				member.account_id === accountId &&
+				member.state !== "removed",
 		);
 		if (!hasTarget) return false;
 		if (!selfAccountId) return true;
@@ -691,18 +661,495 @@ export function dmWithPerson(
 	return mergedConversationOrder(candidates)[0] ?? null;
 }
 
-/**
- * Whether a row's role earns a badge.
- *
- * "Member" is the default every row already says by being in the directory,
- * so a badge for it would be noise repeated down the rail. Only a role that
- * changes what the reader may expect of that person (owner, admin) is drawn.
- */
-export function showsPersonRole(role: string): boolean {
-	return role === "owner" || role === "admin";
-}
-
 /** The avatar initial for a person row (first character, uppercased). */
 export function personInitial(displayLabel: string): string {
 	return displayLabel.trim().charAt(0).toUpperCase() || "?";
+}
+
+/**
+ * A chief of staff the rail can open: a person's primary agent in this org.
+ *
+ * WHERE THE IDENTITY COMES FROM. The directory publishes each person's agent
+ * (`agent.endpoint_id`, `agent.name`) beside the person, so the row needs no
+ * second identity source and never hardcodes "Aida": `name` is whatever the
+ * owner currently calls their chief of staff. The label is composed by the
+ * caller through the `chief.label` catalogue key ("{agent} ({person})"), so a
+ * locale may reorder or re-punctuate it.
+ *
+ * WHO IS LISTED. Every OTHER person whose agent is enrolled and not disabled.
+ * The reader's own chief of staff is excluded: talking to your own agent is
+ * the chat surface's job, and a bridge DM with yourself would be a second,
+ * screened path to the same session.
+ */
+export type TeamBridgeChiefOfStaff = {
+	person: TeamBridgeDirectoryMember;
+	endpointId: string;
+	agentName: string;
+	paused: boolean;
+};
+
+export function chiefsOfStaff(
+	people: readonly TeamBridgeDirectoryMember[],
+	selfAccountId?: string,
+): TeamBridgeChiefOfStaff[] {
+	const chiefs: TeamBridgeChiefOfStaff[] = [];
+	for (const person of people) {
+		if (selfAccountId && person.account_id === selfAccountId) continue;
+		const agent = person.agent;
+		if (!agent || agent.state === "disabled") continue;
+		chiefs.push({
+			person,
+			endpointId: agent.endpoint_id,
+			agentName: agent.name.trim(),
+			paused: agent.state === "paused",
+		});
+	}
+	return chiefs;
+}
+
+/**
+ * The open DM between the reader and one person's AGENT, if it exists.
+ *
+ * The participant view deliberately withholds other members' endpoint ids, so
+ * the match is on the agent member's `account_id` (its owner). That is exact
+ * because an organization member has exactly one chief-of-staff endpoint, and
+ * it keeps a person DM and that person's agent DM distinct: the person row
+ * matches only a HUMAN member (`dmWithPerson`), this only an AGENT member.
+ */
+export function dmWithAgent(
+	conversations: readonly TeamBridgeConversation[],
+	ownerAccountId: string,
+	selfAccountId?: string,
+): TeamBridgeConversation | null {
+	const candidates = conversations.filter(
+		(conversation) =>
+			conversation.kind === "dm" &&
+			conversation.status !== "archived" &&
+			conversation.members.some(
+				(member) =>
+					member.kind === "agent" &&
+					member.account_id === ownerAccountId &&
+					member.state !== "removed",
+			) &&
+			/*
+			 * THE READER MUST BE THE OTHER END (review round 1, R1-5). An
+			 * agent-to-agent DM (the reader's own chief of staff talking to Ben's)
+			 * also carries Ben's agent; without this check Ben's chief row would
+			 * claim it, and the reader's "DM with Aida (Ben)" would open a
+			 * conversation between two agents.
+			 */
+			(!selfAccountId ||
+				conversation.members.some(
+					(member) =>
+						member.kind === "human" &&
+						member.account_id === selfAccountId &&
+						member.state !== "removed",
+				)),
+	);
+	if (candidates.length === 0) return null;
+	return mergedConversationOrder(candidates)[0] ?? null;
+}
+
+/** Built-in channels first, in this order; everything else after. */
+const BUILTIN_ORDER = ["humans", "agents"];
+
+/**
+ * The rail's sections, Slack-style: channels, groups and direct messages.
+ *
+ * BUILT-INS LEAD THE CHANNELS. #humans and #agents exist in every organization
+ * and are the rail's fixed landmarks, so they sit above user channels in a
+ * stable order rather than moving with activity. Every other row keeps the
+ * order the caller passed in (the server's / merged activity order).
+ *
+ * DMs are returned separately: a single-org rail folds them into the People
+ * and Chiefs of staff rows (the person IS the DM), while the merged view, which
+ * has no directory, lists them under their own header.
+ */
+export function railSections(rows: readonly TeamBridgeConversation[]): {
+	channels: TeamBridgeConversation[];
+	groups: TeamBridgeConversation[];
+	directs: TeamBridgeConversation[];
+} {
+	const builtins: TeamBridgeConversation[] = [];
+	const channels: TeamBridgeConversation[] = [];
+	const groups: TeamBridgeConversation[] = [];
+	const directs: TeamBridgeConversation[] = [];
+	for (const row of rows) {
+		if (row.kind === "channel") {
+			if (row.builtin && BUILTIN_ORDER.includes(row.builtin))
+				builtins.push(row);
+			else channels.push(row);
+		} else if (row.kind === "group") groups.push(row);
+		else directs.push(row);
+	}
+	builtins.sort(
+		(a, b) =>
+			BUILTIN_ORDER.indexOf(a.builtin as string) -
+			BUILTIN_ORDER.indexOf(b.builtin as string),
+	);
+	return { channels: [...builtins, ...channels], groups, directs };
+}
+
+/**
+ * DMs no directory row will paint, so the single-org rail lists them as plain
+ * conversation rows instead of dropping them: a person who left the org, or an
+ * agent DM whose owner unenrolled, still has a history the reader may open.
+ */
+export function unmatchedDirects(
+	directs: readonly TeamBridgeConversation[],
+	people: readonly TeamBridgeDirectoryMember[],
+	chiefs: readonly TeamBridgeChiefOfStaff[],
+	selfAccountId?: string,
+): TeamBridgeConversation[] {
+	const painted = new Set<string>();
+	for (const person of people) {
+		/*
+		 * THE READER'S OWN ROW PAINTS NOTHING (review round 1, R1-1). It is not a
+		 * control, and `dmWithPerson(self, self)` matches EVERY DM the reader is
+		 * in, so counting it marked the newest DM as shown while no row showed
+		 * it: a DM with someone who had left the org vanished from the rail.
+		 */
+		if (selfAccountId !== undefined && person.account_id === selfAccountId)
+			continue;
+		const dm = dmWithPerson(directs, person.account_id, selfAccountId);
+		if (dm) painted.add(dm.id);
+	}
+	for (const chief of chiefs) {
+		const dm = dmWithAgent(directs, chief.person.account_id, selfAccountId);
+		if (dm) painted.add(dm.id);
+	}
+	return directs.filter((conversation) => !painted.has(conversation.id));
+}
+
+/**
+ * What the reader has chosen in the rail, before or after a conversation exists.
+ *
+ * WHY A TARGET AND NOT A CONVERSATION ID (operator review, 2026-10-21). Slack's
+ * model: clicking a person selects THAT PERSON'S ROW and shows the thread with
+ * them; when no thread exists yet the pane is an empty draft addressed to
+ * them, and the conversation is created by the first send. Creating on click
+ * made a stray conversation per curious click and painted a second "@ Ben"
+ * row beside Ben's People row. The target keeps the person as the selection,
+ * so there is exactly one row per person and nothing is written until the
+ * reader actually says something.
+ *
+ * - `conversation`: a channel/group (or a DM no directory row paints).
+ * - `person` / `chief`: a People or Chiefs-of-staff row; the DM is resolved
+ *   from the list each render, so it appears in place once created.
+ * - `compose`: the "To:" draft for a new group, seeded from a row's menu.
+ */
+export type TeamBridgeTarget =
+	| { type: "conversation"; id: string }
+	| { type: "person"; accountId: string }
+	| { type: "chief"; accountId: string }
+	| { type: "compose"; recipients: TeamBridgeRecipient[] };
+
+/** One addressee of a draft: a person, or a person's chief of staff. */
+export type TeamBridgeRecipient =
+	| { kind: "human"; accountId: string; label: string }
+	| { kind: "agent"; accountId: string; endpointId: string; label: string };
+
+export function recipientKey(recipient: TeamBridgeRecipient): string {
+	return `${recipient.kind}:${recipient.accountId}`;
+}
+
+/** The conversation a target currently shows, if one exists yet. */
+export function targetConversation(
+	target: TeamBridgeTarget | null,
+	conversations: readonly TeamBridgeConversation[],
+	selfAccountId?: string,
+): TeamBridgeConversation | null {
+	if (target === null) return null;
+	switch (target.type) {
+		case "conversation":
+			return conversations.find((row) => row.id === target.id) ?? null;
+		case "person":
+			return dmWithPerson(conversations, target.accountId, selfAccountId);
+		case "chief":
+			return dmWithAgent(conversations, target.accountId, selfAccountId);
+		case "compose": {
+			/*
+			 * A draft to exactly ONE recipient who already has a thread with the
+			 * reader IS that thread (Slack shows it under the To: bar), so the
+			 * history loads and the first send goes to it rather than through a
+			 * create. Two or more recipients are always a new group: groups are
+			 * not find-or-create, so there is nothing to resolve.
+			 */
+			if (target.recipients.length !== 1) return null;
+			const [only] = target.recipients;
+			return only.kind === "agent"
+				? dmWithAgent(conversations, only.accountId, selfAccountId)
+				: dmWithPerson(conversations, only.accountId, selfAccountId);
+		}
+	}
+}
+
+/**
+ * The create request a draft's first send makes.
+ *
+ * One recipient is a DM (find-or-create on the server, so a retry or a race
+ * with another window lands on the same row); two or more is a private group,
+ * agent-capable exactly when a chief of staff is among them. Returns null for
+ * an empty draft: there is no one to send to.
+ */
+/**
+ * One addressed recipient as the create op's STRICT member shape: exactly the
+ * wire keys, never a UI field (the `rowId` that refused every dialog create is
+ * why this is one function both create paths share). The label is capped at
+ * the schema's 64.
+ */
+export function recipientMemberInput(
+	recipient: TeamBridgeRecipient,
+): TeamBridgeMemberInput {
+	return recipient.kind === "agent"
+		? {
+				account_id: recipient.accountId,
+				kind: "agent",
+				endpoint_id: recipient.endpointId,
+				display_label: recipient.label.slice(0, 64),
+			}
+		: {
+				account_id: recipient.accountId,
+				kind: "human",
+				display_label: recipient.label.slice(0, 64),
+			};
+}
+
+/**
+ * Who a To: picker (the compose bar, the channel form) may address: every
+ * reachable person except the reader, then every chief of staff, labelled the
+ * way the rail labels them. A bridge-off person is not offered, because a
+ * conversation with them would hold messages they cannot receive; they stay
+ * visible on the rail with the reason. `chiefLabel` is injected because the
+ * "{agent} ({person})" composition is a catalogue string.
+ */
+export function recipientCandidates(
+	people: readonly TeamBridgeDirectoryMember[],
+	selfAccountId: string | undefined,
+	chiefLabel: (agent: string, person: string) => string,
+): TeamBridgeRecipient[] {
+	const humans: TeamBridgeRecipient[] = people
+		.filter((member) => {
+			const state = personRowState(member, selfAccountId);
+			return state === "openable" || state === "paused";
+		})
+		.map((member) => ({
+			kind: "human",
+			accountId: member.account_id,
+			label: personDisplayLabel(member),
+		}));
+	const agents: TeamBridgeRecipient[] = chiefsOfStaff(
+		people,
+		selfAccountId,
+	).map((chief) => ({
+		kind: "agent",
+		accountId: chief.person.account_id,
+		endpointId: chief.endpointId,
+		label: chiefLabel(chief.agentName, personDisplayLabel(chief.person)),
+	}));
+	return [...humans, ...agents];
+}
+
+export function draftCreateInput(recipients: readonly TeamBridgeRecipient[]): {
+	kind: "dm" | "group";
+	visibility: "private";
+	agentCapable: boolean;
+	members: TeamBridgeMemberInput[];
+} | null {
+	if (recipients.length === 0) return null;
+	const members = recipients.map(recipientMemberInput);
+	return {
+		kind: recipients.length === 1 ? "dm" : "group",
+		visibility: "private",
+		agentCapable: recipients.some((recipient) => recipient.kind === "agent"),
+		members,
+	};
+}
+
+/**
+ * The placeholder the hub stored as a member's label before it knew a name.
+ *
+ * WHY IT IS TREATED AS NO LABEL. agent-server's bridge membership writer used
+ * the literal "Member" as its fallback `display_label` for a conversation's
+ * creator and for self-joins (fixed for NEW rows by agent-server #166). Rows
+ * written before that fix are still in production, and rendered as-is they put
+ * "Member" — and an "M" avatar — on every message whose sender the directory
+ * does not resolve, the reader's own messages included (operator report,
+ * 2026-10-22). It reads as a real name, so it is worse than no name.
+ *
+ * Exact and case-sensitive on purpose: it matches the server's one fallback
+ * string, never a label somebody chose ("member", "Members' rep").
+ */
+export const LEGACY_PLACEHOLDER_LABEL = "Member";
+
+/** A stored label, or null when it is blank or the legacy placeholder. */
+export function storedLabel(label: string): string | null {
+	const trimmed = label.trim();
+	return trimmed === "" || trimmed === LEGACY_PLACEHOLDER_LABEL
+		? null
+		: trimmed;
+}
+
+/** The signed-in reader, when the account read has answered with a name. */
+export type TeamBridgeSelf = { accountId: string; name: string };
+
+/**
+ * The name to paint for a participant or message sender, or null when none is
+ * known.
+ *
+ * ORDER. The directory first: it is the live account name, and a conversation
+ * stores each member's label only at add time. Then, for the reader's own human
+ * messages, the signed-in identity (`self`): the directory may not list the
+ * reader, and the merged view may have no directory for the thread's
+ * organization yet, but the reader's own name is always known locally. The
+ * stored label last, for someone no longer in the directory, unless it is the
+ * legacy placeholder (`storedLabel`). An agent is named "{agent} ({person})"
+ * with its CURRENT name when the directory publishes one; the reader's own
+ * agent is not the reader, so `self` never names an agent.
+ *
+ * NULL IS THE CALLER'S TO PAINT. The caller renders an "Unknown person" /
+ * "Unknown agent" placeholder that is visibly not a name: inventing one here
+ * is how "Member" reached the screen. `chiefLabel` is injected because the
+ * composition is a catalogue string.
+ */
+export function participantLabel(
+	participant: {
+		account_id: string;
+		kind: "human" | "agent";
+		display_label: string;
+	},
+	people: readonly TeamBridgeDirectoryMember[],
+	chiefLabel: (agent: string, person: string) => string,
+	self?: TeamBridgeSelf | null,
+): string | null {
+	const person = people.find(
+		(row) => row.account_id === participant.account_id,
+	);
+	const personName = person ? personDisplayLabel(person) : null;
+	const stored = storedLabel(participant.display_label);
+	if (participant.kind === "human") {
+		const selfName =
+			self && self.accountId === participant.account_id
+				? self.name.trim() || null
+				: null;
+		return personName ?? selfName ?? stored;
+	}
+	const agentName = person?.agent?.name.trim() || stored;
+	if (!agentName) return null;
+	return personName ? chiefLabel(agentName, personName) : agentName;
+}
+
+export type ThreadItem =
+	| {
+			type: "day";
+			key: string;
+			date: Date;
+			relative: "today" | "yesterday" | null;
+	  }
+	| { type: "message"; message: TeamBridgeMessage; continuation: boolean };
+
+/** Slack's run window: a same-sender follow-up within it skips the header. */
+const RUN_WINDOW_MS = 5 * 60_000;
+
+function dayKey(date: Date): string {
+	return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+/**
+ * The thread as rows: a divider per calendar day, and same-sender runs.
+ *
+ * Input is any order; output is oldest first. A message is a CONTINUATION when
+ * the previous row is the same sender (same account AND kind: a person and
+ * their own agent are different speakers), on the same day, within five
+ * minutes. A message with an unparseable time never continues a run and gets
+ * no divider, so a bad timestamp cannot glue two speakers together.
+ */
+export function threadItems(
+	messages: readonly TeamBridgeMessage[],
+	now: Date,
+): ThreadItem[] {
+	const today = dayKey(now);
+	const yesterday = dayKey(
+		new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1),
+	);
+	const items: ThreadItem[] = [];
+	let previous: TeamBridgeMessage | null = null;
+	let previousDay: string | null = null;
+	for (const message of chronological(messages)) {
+		const at = new Date(message.created_at);
+		const valid = !Number.isNaN(at.getTime());
+		const day = valid ? dayKey(at) : null;
+		if (day !== null && day !== previousDay) {
+			items.push({
+				type: "day",
+				key: day,
+				date: at,
+				relative:
+					day === today ? "today" : day === yesterday ? "yesterday" : null,
+			});
+		}
+		const continuation =
+			previous !== null &&
+			valid &&
+			day === previousDay &&
+			previous.sender.account_id === message.sender.account_id &&
+			previous.sender.kind === message.sender.kind &&
+			at.getTime() - Date.parse(previous.created_at) < RUN_WINDOW_MS;
+		items.push({ type: "message", message, continuation });
+		previous = message;
+		if (day !== null) previousDay = day;
+	}
+	return items;
+}
+
+/**
+ * A draft's FIRST SEND: create the conversation, then post into it.
+ *
+ * WHY A PURE FUNCTION (review round 1, R1-8). The two writes, and what a
+ * retry does after one of them fails, are the riskiest path on the page and
+ * the one R1-2 found broken. Kept here, with its effects injected, it is
+ * tested directly rather than through a rendered container.
+ *
+ * THE RULES IT ENFORCES:
+ * - A retry after "create landed, post failed" REUSES the created id (the
+ *   `remembered` map, keyed by the draft): a group is not find-or-create, so a
+ *   second create would be a second group with the message in both.
+ * - The post carries the caller's `clientRef` every time, so the hub dedupes
+ *   a post that landed but whose response was lost.
+ * - The memory is cleared only after a successful post, so a later, different
+ *   message from the same recipients after success is a fresh draft only if
+ *   the target is still a draft (in practice it is the conversation by then).
+ */
+export async function sendFirstMessage(args: {
+	draftKey: string;
+	input: NonNullable<ReturnType<typeof draftCreateInput>>;
+	body: string;
+	clientRef: string;
+	tenantId: string | undefined;
+	remembered: Map<string, { id: string; tenantId: string | undefined }>;
+	create: (
+		input: NonNullable<ReturnType<typeof draftCreateInput>>,
+	) => Promise<{ id?: string; tenant_id?: string }>;
+	post: (
+		conversationId: string,
+		message: { clientRef: string; body: string; tenantId: string | undefined },
+	) => Promise<unknown>;
+}): Promise<{ id: string; tenantId: string | undefined }> {
+	let created = args.remembered.get(args.draftKey);
+	if (created === undefined) {
+		const response = await args.create(args.input);
+		if (!response.id) throw new Error("create returned no conversation id");
+		created = {
+			id: response.id,
+			tenantId: response.tenant_id ?? args.tenantId,
+		};
+		args.remembered.set(args.draftKey, created);
+	}
+	await args.post(created.id, {
+		clientRef: args.clientRef,
+		body: args.body,
+		tenantId: created.tenantId,
+	});
+	args.remembered.delete(args.draftKey);
+	return created;
 }

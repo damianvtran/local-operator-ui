@@ -368,16 +368,16 @@ const meta = {
 	args: {
 		selfAccountId: self,
 		conversations: [dm, channel, group],
-		selected: dm,
+		target: { type: "conversation", id: dm.id },
 		messages,
 		organizations: [minervaOrganization, northwindOrganization],
 		scope: minervaOrganization.tenantId,
 		totalUnread: minervaOrganization.unread + northwindOrganization.unread,
 		listState: "ready",
 		messageState: "ready",
-		onSelect: () => {},
+		onTarget: () => {},
 		onSend: () => {},
-		onNewConversation: () => {},
+		onNewChannel: () => {},
 		onRetry: () => {},
 		onScopeChange: () => {},
 		onJoin: () => {},
@@ -393,7 +393,7 @@ export const PopulatedDirectMessage: Story = {};
 
 export const ChannelSelected: Story = {
 	args: {
-		selected: channel,
+		target: { type: "conversation", id: channel.id },
 		messages: messages.map((message) => ({
 			...message,
 			conversation_id: channel.id,
@@ -410,7 +410,7 @@ export const ChannelSelected: Story = {
  */
 export const PreviewChannel: Story = {
 	args: {
-		selected: previewChannel,
+		target: { type: "conversation", id: previewChannel.id },
 		conversations: [dm, previewChannel, group],
 		messages: messages.map((message) => ({
 			...message,
@@ -422,7 +422,7 @@ export const PreviewChannel: Story = {
 /** A muted member channel: the rail draws its quiet bell beside the unread count. */
 export const MutedChannel: Story = {
 	args: {
-		selected: mutedChannel,
+		target: { type: "conversation", id: mutedChannel.id },
 		conversations: [dm, mutedChannel, group],
 		messages: messages.map((message) => ({
 			...message,
@@ -434,7 +434,7 @@ export const MutedChannel: Story = {
 /** The header menu open on its three-level preference section. */
 export const NotificationMenu: Story = {
 	args: {
-		selected: channel,
+		target: { type: "conversation", id: channel.id },
 		defaultMenuOpen: true,
 	},
 };
@@ -442,7 +442,7 @@ export const NotificationMenu: Story = {
 export const EmptyAccount: Story = {
 	args: {
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -452,7 +452,7 @@ export const Loading: Story = {
 	args: {
 		listState: "loading",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -469,7 +469,7 @@ export const ErrorState: Story = {
 	args: {
 		listState: "error",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -503,7 +503,7 @@ export const AllOrganizations: Story = {
 	args: {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		conversations: [dm, channel, group, northwindChannel],
-		selected: dm,
+		target: { type: "conversation", id: dm.id },
 		messageState: "ready",
 	},
 };
@@ -532,7 +532,8 @@ export const AllOrganizationsHubOnly: Story = {
 		),
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		conversations: [dm, channel, group, northwindChannel],
-		selected: dm,
+		// #1296 selects by `target` (the view resolves the conversation itself).
+		target: { type: "conversation", id: dm.id },
 		messageState: "ready",
 	},
 };
@@ -543,7 +544,7 @@ export const EmptyOrganization: Story = {
 		organizations: [minervaOrganization, northwindOrganization],
 		scope: northwindOrganization.tenantId,
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -557,7 +558,7 @@ export const OrganizationsUnavailable: Story = {
 		organizationsFailed: true,
 		listState: "error",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -569,7 +570,7 @@ export const LoadingAllOrganizations: Story = {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		listState: "loading",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -580,7 +581,7 @@ export const EmptyAllOrganizations: Story = {
 	args: {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -611,15 +612,15 @@ export const FlushToTheWindowTop: Story = {
 								listState="ready"
 								messageState="ready"
 								conversations={[channel, group, dm]}
-								selected={channel}
+								target={{ type: "conversation", id: channel.id }}
 								messages={messages}
 								organizations={[minervaOrganization, northwindOrganization]}
 								scope={asTeamBridgeTenantId("tnt_1")}
 								totalUnread={3}
 								selfAccountId={self}
-								onSelect={() => {}}
+								onTarget={() => {}}
 								onSend={() => undefined}
-								onNewConversation={() => {}}
+								onNewChannel={() => {}}
 								onScopeChange={() => {}}
 							/>
 						</main>
@@ -647,15 +648,15 @@ export const LaneReservedComparison: Story = {
 								listState="ready"
 								messageState="ready"
 								conversations={[channel, group, dm]}
-								selected={channel}
+								target={{ type: "conversation", id: channel.id }}
 								messages={messages}
 								organizations={[minervaOrganization, northwindOrganization]}
 								scope={asTeamBridgeTenantId("tnt_1")}
 								totalUnread={3}
 								selfAccountId={self}
-								onSelect={() => {}}
+								onTarget={() => {}}
 								onSend={() => undefined}
-								onNewConversation={() => {}}
+								onNewChannel={() => {}}
 								onScopeChange={() => {}}
 							/>
 						</main>
@@ -674,7 +675,7 @@ export const LaneReservedComparison: Story = {
 export const People: Story = {
 	args: {
 		conversations: [dm, beaDm, channel, group],
-		selected: dm,
+		target: { type: "conversation", id: dm.id },
 		people: directoryPeople,
 	},
 };
@@ -719,7 +720,7 @@ export const PlanRequired: Story = {
 	args: {
 		eligibility: "plan_required",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 		people: [],
@@ -731,7 +732,7 @@ export const SignedOut: Story = {
 	args: {
 		eligibility: "signed_out",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 		people: [],
@@ -743,9 +744,309 @@ export const UpdateRequired: Story = {
 	args: {
 		eligibility: "update_required",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 		people: [],
+	},
+};
+
+/*
+ * ---------------------------------------------------------------------------
+ * The Slack-shaped rail (operator review 2026-10-21): built-in channels,
+ * section headers that survive empty, a person's row as their DM, chiefs of
+ * staff named "{agent} ({person})" from the live directory, the addressed
+ * draft that creates nothing until the first send, and the To: compose bar.
+ * ---------------------------------------------------------------------------
+ */
+
+const at = (minutesAgo: number) =>
+	new Date(Date.now() - minutesAgo * 60_000).toISOString();
+
+const humansChannel: TeamBridgeConversation = {
+	...channel,
+	id: "bcv_builtin_humans",
+	name: "humans",
+	builtin: "humans",
+	unread_count: 2,
+	last_message_at: at(3),
+};
+const agentsChannel: TeamBridgeConversation = {
+	...channel,
+	id: "bcv_builtin_agents",
+	name: "agents",
+	builtin: "agents",
+	unread_count: 0,
+	notify: "mention",
+	last_message_at: at(40),
+};
+
+/** The roster with each member's chief of staff, as the directory publishes it. */
+const rosterWithChiefs = [
+	{
+		account_id: self,
+		display_label: "Damian Tran",
+		role: "owner",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+		agent: { endpoint_id: "bep_self", name: "Aida", state: "active" },
+	},
+	{
+		account_id: "acct_ben",
+		display_label: "Ben Tran",
+		role: "admin",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+		agent: { endpoint_id: "bep_ben", name: "Aida", state: "active" },
+	},
+	{
+		account_id: "acct_sherman",
+		display_label: "Sherman Tsui",
+		role: "admin",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+		agent: { endpoint_id: "bep_sherman", name: "Juno", state: "active" },
+	},
+	{
+		account_id: "acct_sana",
+		display_label: "Sana Ketabchi",
+		role: "admin",
+		bridge_enabled: false,
+		bridge_state: "none" as const,
+	},
+	{
+		account_id: "acct_ola",
+		display_label: "Ola Fagbemi",
+		role: "admin",
+		bridge_enabled: false,
+		bridge_state: "none" as const,
+	},
+];
+
+/** A DM with Ben whose creator label the hub stored as "Member". */
+const benDm: TeamBridgeConversation = {
+	...dm,
+	id: "bcv_dm_ben",
+	unread_count: 1,
+	last_message_at: at(2),
+	members: [
+		{
+			account_id: self,
+			kind: "human",
+			display_label: "Member",
+			role: "owner",
+			state: "active",
+		},
+		{
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Ben Tran",
+			role: "member",
+			state: "active",
+		},
+	],
+};
+
+const benThread: TeamBridgeMessage[] = [
+	{
+		id: "bcmsg_y1",
+		conversation_id: benDm.id,
+		seq: 1,
+		sender: {
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Ben Tran",
+		},
+		body: "Hi, will miss the standup this morning. Deploying the remote cloud to the new AWS infra.",
+		origin: "human",
+		created_at: new Date(Date.now() - 26 * 60 * 60_000).toISOString(),
+	},
+	{
+		id: "bcmsg_t1",
+		conversation_id: benDm.id,
+		seq: 2,
+		sender: { account_id: self, kind: "human", display_label: "Member" },
+		body: "Also FYI, user-dashboard is fully ported to shadcn/tailwind components.",
+		origin: "human",
+		created_at: at(9),
+	},
+	{
+		id: "bcmsg_t2",
+		conversation_id: benDm.id,
+		seq: 3,
+		sender: { account_id: self, kind: "human", display_label: "Member" },
+		body: "New features there should look better out of the box, without the **MUI** jank.",
+		origin: "human",
+		created_at: at(8),
+	},
+	{
+		id: "bcmsg_t3",
+		conversation_id: benDm.id,
+		seq: 4,
+		sender: {
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Ben Tran",
+		},
+		body: "**What happened**\n\n- A pre-push hook pushed its own seed commit to `main`\n- `main` was restored 9 minutes later by `aa72763`\n\nI'll write up the fix.",
+		origin: "human",
+		created_at: at(2),
+	},
+];
+
+const slackRail = {
+	conversations: [humansChannel, agentsChannel, channel, benDm],
+	people: rosterWithChiefs,
+	organizations: [minervaOrganization],
+	scope: minervaOrganization.tenantId,
+};
+
+/** Ben's row is selected and IS the DM: no "@ Ben" row exists above People. */
+export const PersonRowIsTheDm: Story = {
+	args: {
+		...slackRail,
+		target: { type: "person", accountId: "acct_ben" },
+		messages: benThread,
+	},
+};
+
+/** Built-in #humans first, with its topic in the header. */
+export const BuiltinHumansChannel: Story = {
+	args: {
+		...slackRail,
+		target: { type: "conversation", id: humansChannel.id },
+		messages: [],
+	},
+};
+
+/** A person with no DM: an addressed draft; nothing has been created. */
+export const PersonDraft: Story = {
+	args: {
+		...slackRail,
+		conversations: [humansChannel, agentsChannel],
+		target: { type: "person", accountId: "acct_sherman" },
+		messages: [],
+		messageState: "idle",
+	},
+};
+
+/** A chief of staff selected: "Aida (Ben)", the DM created on first send. */
+export const ChiefOfStaffDraft: Story = {
+	args: {
+		...slackRail,
+		target: { type: "chief", accountId: "acct_ben" },
+		messages: [],
+		messageState: "idle",
+	},
+};
+
+/** "Start a group conversation": the To: bar seeded with one recipient. */
+export const ComposeGroup: Story = {
+	args: {
+		...slackRail,
+		target: {
+			type: "compose",
+			recipients: [{ kind: "human", accountId: "acct_ben", label: "Ben Tran" }],
+		},
+		messages: [],
+		messageState: "idle",
+	},
+};
+
+/** A new organization: every header stays, each empty line is the create action. */
+export const EmptySections: Story = {
+	args: {
+		conversations: [],
+		people: [rosterWithChiefs[0]],
+		organizations: [minervaOrganization],
+		scope: minervaOrganization.tenantId,
+		target: null,
+		messages: [],
+		messageState: "idle",
+	},
+};
+
+/*
+ * THE LEGACY "Member" LABEL (operator report, 2026-10-22). Production rows
+ * written before agent-server #166 carry the hub's placeholder "Member" as the
+ * stored label for creators and self-joins. These boards hold every sender at
+ * that label: the reader (resolved from the signed-in identity, since this
+ * roster leaves them out), Ben (resolved from the directory) and a member who
+ * left (in no directory: rendered as an unknown person with a neutral glyph).
+ */
+const legacyGroup: TeamBridgeConversation = {
+	...dm,
+	id: "bcv_grp_legacy",
+	kind: "group",
+	name: "release-ops",
+	unread_count: 0,
+	last_read_seq: 3,
+	latest_seq: 3,
+	last_message_at: at(4),
+	members: [
+		{
+			account_id: self,
+			kind: "human",
+			display_label: "Member",
+			role: "owner",
+			state: "active",
+		},
+		{
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Member",
+			role: "member",
+			state: "active",
+		},
+		{
+			account_id: "acct_departed",
+			kind: "human",
+			display_label: "Member",
+			role: "member",
+			state: "removed",
+		},
+	],
+};
+
+const legacyThread: TeamBridgeMessage[] = [
+	["acct_ben", "Cutting the 0.42 release branch now.", 30],
+	[self, "Thanks. I'll take the changelog.", 20],
+	["acct_departed", "Handing my open tickets over before I go.", 12],
+	[self, "Got them, thank you.", 4],
+].map(([accountId, body, minutesAgo], index) => ({
+	id: `bcmsg_legacy_${index + 1}`,
+	conversation_id: legacyGroup.id,
+	seq: index + 1,
+	sender: {
+		account_id: accountId as string,
+		kind: "human" as const,
+		display_label: "Member",
+	},
+	body: body as string,
+	origin: "human" as const,
+	created_at: at(minutesAgo as number),
+}));
+
+/** Every stored label is "Member": names come from directory and identity. */
+export const LegacyMemberLabels: Story = {
+	args: {
+		conversations: [humansChannel, legacyGroup],
+		// The roster leaves the reader out, as a self-excluding directory does.
+		people: rosterWithChiefs.slice(1),
+		organizations: [minervaOrganization],
+		scope: minervaOrganization.tenantId,
+		selfName: "Damian Tran",
+		target: { type: "conversation", id: legacyGroup.id },
+		messages: legacyThread,
+	},
+};
+
+/** The same thread in the merged view, named from its organization's roster. */
+export const LegacyMemberLabelsAllOrganizations: Story = {
+	args: {
+		...LegacyMemberLabels.args,
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		people: [],
+		directories: { [minervaOrganization.tenantId]: rosterWithChiefs.slice(1) },
 	},
 };
