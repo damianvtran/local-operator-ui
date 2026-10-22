@@ -1520,49 +1520,134 @@ test("hook R3-02: a 404 expires only the ids the request carried", async () => {
 });
 
 /*
+ * Fail-fast guards for page tests that can regress into a runaway. Reverting
+ * the R4-02 fix put the page into an unbounded render/memory loop (a 3 GB,
+ * 120 s capped run timed out instead of failing; two uncapped runs were
+ * killed by the host's memory guard). A regression must be an ASSERTION:
+ * - `renderBudget` throws from inside render once a component has rendered
+ *   more than `limit` times, which stops a synchronous render loop that would
+ *   otherwise starve every timer;
+ * - `within` rejects when an async step has not settled in `ms`, which stops
+ *   a loop that keeps yielding to the event loop.
+ */
+function renderBudget(limit, what) {
+	let renders = 0;
+	return {
+		tick() {
+			renders += 1;
+			if (renders > limit)
+				throw new assert.AssertionError({
+					message: `${what} rendered more than ${limit} times (runaway render loop)`,
+				});
+		},
+		get count() {
+			return renders;
+		},
+	};
+}
+function within(ms, promise, what) {
+	let timer;
+	return Promise.race([
+		promise,
+		new Promise((_, reject) => {
+			timer = setTimeout(
+				() =>
+					reject(
+						new assert.AssertionError({
+							message: `${what} did not settle within ${ms} ms`,
+						}),
+					),
+				ms,
+			);
+		}),
+	]).finally(() => clearTimeout(timer));
+}
+
+test("fail-fast guards: the render budget and the settle bound turn a runaway into an assertion", async () => {
+	const budget = renderBudget(3, "probe");
+	budget.tick();
+	budget.tick();
+	budget.tick();
+	assert.equal(budget.count, 3);
+	assert.throws(() => budget.tick(), /rendered more than 3 times/);
+	await assert.rejects(
+		within(20, new Promise(() => {}), "a step that never settles"),
+		/did not settle within 20 ms/,
+	);
+	assert.equal(
+		await within(1000, Promise.resolve("ok"), "a settled step"),
+		"ok",
+	);
+});
+
+/*
  * Round 4 (R4-02): with a thread open, the Drafts/Scheduled quick views must
  * close it. Below 1024px the thread overlays the whole region and hides the
  * section, so a quick view under an open thread changed nothing visible. JSDOM
  * cannot evaluate container queries, so this pins the state the CSS keys on:
  * the overlay is unmounted and the close hook fires.
  */
-test("page R4-02: opening Drafts or Scheduled closes an open thread", async () => {
-	for (const label of ["Drafts", "Scheduled"]) {
-		localStorage.clear();
-		let closed = 0;
-		const app = await mountPage(
-			pageProps({
-				target: { type: "conversation", id: "bcv_dm" },
-				threadLink: {
-					tenantId: "org_page",
-					conversationId: "bcv_dm",
-					rootId: "bcmsg_root",
-				},
-				renderThreadPane: () =>
-					React.createElement("div", { "data-thread-probe": "" }),
-				onCloseThread: () => {
-					closed += 1;
-				},
-				onSend: async () => {},
-			}),
-		);
-		assert.ok(
-			app.element.querySelector("[data-thread-probe]"),
-			"the thread is open before the quick view",
-		);
-		const button = [...app.element.querySelectorAll("nav button")].find(
-			(node) => node.textContent === label,
-		);
-		assert.ok(button, `${label} quick view button`);
-		await act(async () => button.click());
-		await settle();
-		assert.equal(
-			app.element.querySelector("[data-thread-probe]"),
-			null,
-			`${label} closes the thread overlay`,
-		);
-		assert.equal(closed, 1, `${label} notifies the thread owner once`);
-		assert.equal(button.getAttribute("aria-current"), "page");
-		await app.close();
-	}
-});
+test(
+	"page R4-02: opening Drafts or Scheduled closes an open thread",
+	{ timeout: 30_000 },
+	async () => {
+		for (const label of ["Drafts", "Scheduled"]) {
+			localStorage.clear();
+			let closed = 0;
+			// Each page render while the thread is open calls the probe; a handful
+			// is normal (mount, effects, the click). Far more is the runaway.
+			const budget = renderBudget(40, "the thread probe");
+			const app = await mountPage(
+				pageProps({
+					target: { type: "conversation", id: "bcv_dm" },
+					threadLink: {
+						tenantId: "org_page",
+						conversationId: "bcv_dm",
+						rootId: "bcmsg_root",
+					},
+					renderThreadPane: () => {
+						budget.tick();
+						return React.createElement("div", { "data-thread-probe": "" });
+					},
+					onCloseThread: () => {
+						closed += 1;
+					},
+					onSend: async () => {},
+				}),
+			);
+			// try/finally: a failing assertion must still unmount, or the mounted
+			// Scheduled view keeps the test process alive (seen as a runaway run
+			// while negative-controlling this fix).
+			try {
+				assert.ok(
+					app.element.querySelector("[data-thread-probe]"),
+					"the thread is open before the quick view",
+				);
+				const button = [...app.element.querySelectorAll("nav button")].find(
+					(node) => node.textContent === label,
+				);
+				assert.ok(button, `${label} quick view button`);
+				await within(
+					5_000,
+					// An async wrapper, not `act(...).then(...)`: React's act thenable
+					// does not return a promise from `then`, so the race would win
+					// at once and leave the act scope open.
+					(async () => {
+						await act(async () => button.click());
+						await settle();
+					})(),
+					`${label} click`,
+				);
+				assert.equal(
+					app.element.querySelector("[data-thread-probe]"),
+					null,
+					`${label} closes the thread overlay`,
+				);
+				assert.equal(closed, 1, `${label} notifies the thread owner once`);
+				assert.equal(button.getAttribute("aria-current"), "page");
+			} finally {
+				await app.close();
+			}
+		}
+	},
+);
