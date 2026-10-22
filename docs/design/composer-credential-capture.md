@@ -222,15 +222,27 @@ gate is the *first* branch, ahead of every size and whitespace rule:
 
 **Esc** depends on which sub-state you are in, and only one of them disarms:
 
-- **typing** (the space was typed: open span, empty or not) → **cancel**: the
-  held characters are written back into the buffer **as ordinary text** — the
-  only route by which a typed secret enters the document — the arm ends, and the
-  operator is told, in the TUI's words, that the characters are now plain text
-  and Enter will expose them (`CREDENTIAL_UNREDACTED_NOTICE`, "… characters are
-  now PLAIN TEXT in the composer — Enter will expose them"). The `/credential `
-  token is left behind as inert literal text. With no characters to restore the
-  cancel still ends the mode (the TUI's R1/U2 regression: it used to re-arm
-  itself and capture the prose that followed).
+- **typing, with characters held** → the FIRST Esc is **held**: nothing in the box
+  changes (the mask cells stay, the value stays in `Capture.value`, the draft is not
+  written) and the sentence above the box becomes `still masked — Esc again discards
+  it, Enter turns it into a pill` (`escapeHolds`, `CREDENTIAL_ESCAPE_HELD_NOTICE`). A
+  **second** Esc on the same state **discards**: the cells come out of the buffer, the
+  value is dropped, the arm ends, and the `/credential ` token is left behind as inert
+  literal text — the empty-span shape below. Any edit between the two presses ends the
+  hold, so the operator's first Esc after resuming is held again rather than an
+  unwarned discard. Deleting the cells by hand reaches the same empty span through
+  `maskEdit`.
+  **This replaces the TUI's unredact** (operator-approved, 2026-10-22). The port used
+  to follow `_cancel_credential_typing` and write the held characters back as ordinary
+  text, which was the only route by which a typed secret entered the document — and
+  the document is what the draft store persists, so every cancelled credential sat in
+  `localStorage` in plaintext. The hold keeps what the unredact was for (one stray
+  press must not throw away a secret the operator cannot retype) without the leak.
+  The held-press and restored-run rules below remain only for drafts persisted by a
+  build from before this change.
+- **typing, empty span** → **cancel**: the arm ends and nothing is held. With no
+  characters to restore the cancel still ends the mode (the TUI's R1/U2 regression: it
+  used to re-arm itself and capture the prose that followed).
 - **The cancel's own edit is suspended from the sync** (`_cancel_credential_typing`,
   `editor.py:6452`), and the port needs the equivalent for the EMPTY sub-state: a
   cancel that restores nothing produces no buffer change, so an edit the cancel

@@ -34,6 +34,7 @@ import {
 	CREDENTIAL_CLEAR_UNDO_LABEL,
 	CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
 	CREDENTIAL_EMPTY_SPAN_NOTICE,
+	CREDENTIAL_ESCAPE_HELD_NOTICE,
 	CREDENTIAL_TOKEN,
 	CREDENTIAL_TYPING_NOTICE,
 	CREDENTIAL_WORDS,
@@ -54,6 +55,7 @@ import {
 	clearCitedCredential,
 	clearedToastLine,
 	credentialNamesFrom,
+	escapeHolds,
 	holdsCancelledToken,
 	isArmed,
 	isTyping,
@@ -2234,6 +2236,28 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			captureRef.current = next;
 			setCaptureState(next);
 		}, []);
+		/*
+		 * THE STATE A FIRST ESC WAS HELD OVER, or `null` (see `escapeHolds`): the buffer
+		 * and the held value together, compared field by field.
+		 *
+		 * Not a flag: a flag survives a typed character, so the operator's first Esc after
+		 * resuming would discard without the warning. Not the `Capture` object: caret
+		 * syncs rebuild it with the same contents, which would silently drop the hold.
+		 * Not the buffer alone: every cell is the same bullet, so a backspace-and-retype
+		 * of a different character leaves it byte-identical. The pair changes on every
+		 * edit to the span and on nothing else. In-memory only, like `Capture.value`.
+		 */
+		const [escapeHeldOver, setEscapeHeldOver] = useState<{
+			buffer: string;
+			value: string;
+		} | null>(null);
+		const escapeIsHeld = useCallback(
+			(buffer: string, held: Capture): boolean =>
+				escapeHeldOver !== null &&
+				escapeHeldOver.buffer === buffer &&
+				escapeHeldOver.value === held.value,
+			[escapeHeldOver],
+		);
 		const payloadsRef = useRef(new Map<number, CredentialPayload>());
 		const nextIndexRef = useRef(1);
 		/*
@@ -3646,6 +3670,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 */
 			lockedRun.current = null;
 			setDisclosure(null);
+			// The held Esc is about this box's capture, which was just torn down: kept, a
+			// same-length secret typed in the next conversation would open already held.
+			setEscapeHeldOver(null);
 		}, [conversationId, setCapture, setDisclosure]);
 
 		/*
@@ -3856,6 +3883,20 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				}
 
 				if (event.key === "Escape") {
+					/*
+					 * THE FIRST ESC ON A SPAN WITH CHARACTERS IS CLAIMED AND CHANGES NOTHING
+					 * (operator-approved fix, 2026-10-22). It used to unredact the value into
+					 * the buffer, and `applyCapture` below persists the buffer — so a cancelled
+					 * credential reached `localStorage` in plaintext. The mask, the value and
+					 * the draft stay exactly as they were; only the notice changes, to name what
+					 * the second press does. Claimed (`true`) so the press does not fall through
+					 * to the composer's other Escape meanings while a capture is open.
+					 */
+					if (escapeHolds(current) && !escapeIsHeld(newMessage, current)) {
+						setEscapeHeldOver({ buffer: newMessage, value: current.value });
+						return true;
+					}
+					setEscapeHeldOver(null);
 					const cancelled = cancelTypedCredential(current, newMessage);
 					if (!cancelled.cancelled) return false;
 					/*
@@ -3880,21 +3921,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 */
 					cancelledToken.current = cancelled.token;
 					/*
-					 * THE ONE DISCLOSURE THE APP ANNOUNCES, because the frame cannot
-					 * say it on its own: after the unredact the composer looks entirely
-					 * ordinary while holding characters that are now plain text, and
-					 * the very next Enter exposes them. The length is the count, never
-					 * the value. An empty cancel owes no warning — it put nothing in
-					 * the buffer — and the count travels with the draft it describes, so
-					 * the same sentence comes back on a reload (design round 2, D2).
-					 *
-					 * SET BEFORE `applyCapture`, deliberately, because that call is what
-					 * PERSISTS the draft: it asks `disclosureOver` for this buffer, and a
-					 * cancel that wrote the characters first and the disclosure second would
-					 * put a disclosure-free plaintext draft on disk — silently, and only
-					 * after a reload, which is exactly the shape D2 filed. There is ONE such
-					 * pair here: the remediation briefly had two, and the duplicate made the
-					 * ordering invisible to the pin (code review round 3, MINOR 2).
+					 * THE DISCLOSURE IS ALWAYS CLEARED NOW. The cancel discards rather than
+					 * unredacts (`cancelTypedCredential`), so `restored` is 0 and no Escape
+					 * puts a plain-text secret in the box for a sentence to warn about. The
+					 * call stays, and stays BEFORE `applyCapture` (which persists the draft
+					 * with `disclosureOver` this buffer), so a disclosure left over from a
+					 * restored pre-fix draft cannot ride the post-cancel write (design round
+					 * 2, D2; code review round 3, MINOR 2).
 					 */
 					setDisclosure(
 						cancelled.restored > 0
@@ -3955,6 +3988,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				// dependency here.
 				submitCapture,
 				setDisclosure,
+				escapeIsHeld,
 			],
 		);
 
@@ -7588,7 +7622,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const credentialNotice = isTyping(capture)
 			? capture.value !== ""
-				? CREDENTIAL_TYPING_NOTICE
+				? // By identity, so the first edit after the held Esc restores the
+					// ordinary typing sentence without any reset path.
+					escapeIsHeld(newMessage, capture)
+					? CREDENTIAL_ESCAPE_HELD_NOTICE
+					: CREDENTIAL_TYPING_NOTICE
 				: credentialSessionId
 					? CREDENTIAL_EMPTY_SPAN_NOTICE
 					: CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE

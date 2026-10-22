@@ -1437,7 +1437,7 @@ export const InterruptLeftWorkRunning: Story = {
  * keyboard/mask/citation path, and a story that rendered `•` directly would
  * photograph the paint while proving nothing about the gesture. `userEvent.type`
  * dispatches the same keydowns a person does, so the mask, the mint and the
- * Escape restore are exercised by the frames.
+ * Escape hold are exercised by the frames.
  *
  * The canary value is deliberate. `docs/design/composer-credential-capture.md`
  * §10 requires that a typed secret is greppable NOWHERE after a store-and-send
@@ -1457,7 +1457,7 @@ const CREDENTIAL_CANARY = "sk-live-CANARY-4417";
    call and `lint/performance/useTopLevelRegex` is the rule that says so. */
 const ARMED_NOTICE = /armed — add a space/;
 const MASKED_NOTICE = /masked as you type/;
-const PLAINTEXT_NOTICE = /now PLAIN TEXT in the composer/;
+const HELD_NOTICE = /still masked — Esc again discards it/;
 /*
  * The cleared sentence as the copy authority writes it now: the key, the ordinal the
  * chip's face carries, and the composer's own key as the way back (UX round 3, U15/U16).
@@ -2310,17 +2310,20 @@ export const CredentialPillUnbacked: Story = {
 };
 
 /**
- * ESCAPED: the operator cancelled, and the characters came back as ORDINARY
- * TEXT. This is the only exit that leaves a secret in the composer, and the
- * frame cannot say so on its own — the masked span is gone and the composer
- * looks entirely normal while holding the characters the next Enter will expose
- * — so the warning sentence is the state, not decoration. It is the one frame
- * here where the canary IS on screen, and it is there because the operator asked
- * for it.
+ * ESCAPED: the operator pressed Esc once, and the capture is HELD, still masked.
+ *
+ * Before the 2026-10-22 fix this frame showed the characters back as ORDINARY TEXT
+ * under a plain-text warning, and that was the leak: the box is what the draft store
+ * persists, so a cancelled credential reached `localStorage`. The first Esc now
+ * changes nothing in the box (the cells, the value in memory, the draft unwritten)
+ * and only the sentence moves, to say what the second press does. The export keeps
+ * its name because the evidence manifest and the capture list address the story by
+ * its id. The play asserts the canary is still NOT in the document, the same check
+ * `CredentialMasked` makes.
  */
 export const CredentialEscaped: Story = {
 	render: () => (
-		<Frame label="escaped: Esc gave the characters back as plain text, and the composer says so">
+		<Frame label="escaped once: the capture is held, still masked, and Esc again discards it">
 			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
 				<MessageInput
 					isLoading={false}
@@ -2338,11 +2341,12 @@ export const CredentialEscaped: Story = {
 			`/credential ${CREDENTIAL_CANARY}`,
 		);
 		await userEvent.type(box, "{Escape}");
-		await screen.findByText(PLAINTEXT_NOTICE);
-		if (!composerValue(box).endsWith(CREDENTIAL_CANARY)) {
-			throw new Error(
-				`the characters did not come back: ${composerValue(box)}`,
-			);
+		await screen.findByText(HELD_NOTICE);
+		if (composerValue(box).includes(CREDENTIAL_CANARY)) {
+			throw new Error("Esc put the typed secret in the buffer");
+		}
+		if (!composerValue(box).includes("•")) {
+			throw new Error("the held capture lost its mask cells");
 		}
 		releaseShutter();
 	},
