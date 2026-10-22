@@ -194,6 +194,23 @@ test("a panel that mounts AFTER its always-mounted wrapper still arms the pause 
 		false,
 		"negative control: no registered view, no pause, whatever the panel does",
 	);
+	// IN-BAND NEGATIVE CONTROL: registered, mounted, and not overlapping.
+	const far = mod.registerBrowserViewRect(() => ({
+		x: 2000,
+		y: 0,
+		width: 300,
+		height: 300,
+	}));
+	await act(async () => view.show(true));
+	await flush(8);
+	assert.equal(
+		mod.browserViewSuppressed(),
+		false,
+		"a mounted panel outside the view rect must not pause",
+	);
+	await act(async () => view.show(false));
+	await flush(6);
+	far();
 	await act(async () => view.unmount());
 });
 

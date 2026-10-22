@@ -660,6 +660,22 @@ export class TabRegistry {
 		this.applyLayout();
 	}
 
+	/**
+	 * Whether an APP OVERLAY (menu, dialog, picker) is what hides this tab's view.
+	 *
+	 * The page is still the active, laid-out tab - our own chrome asked the view to
+	 * stand down so a DOM panel could be seen - and the difference matters to
+	 * `controlPage`: Find/Print/Reset zoom are chrome-initiated commands on the
+	 * page, and "hidden so our menu is visible" must not read as "this tab is
+	 * gone" (QA Q2-F1). A route teardown drops `contentRect` and an own-state page
+	 * (start/failure) sets `ownStatePage`, so neither qualifies.
+	 */
+	hiddenByOverlay(tabId: number): boolean {
+		const record = this.tabs.get(tabId);
+		if (!record || record.tabId !== this.activeTabId) return false;
+		return this.contentRect !== null && !this.visible && !this.ownStatePage;
+	}
+
 	activate(tabId: number): void {
 		if (!this.tabs.has(tabId)) return;
 		this.activeTabId = tabId;

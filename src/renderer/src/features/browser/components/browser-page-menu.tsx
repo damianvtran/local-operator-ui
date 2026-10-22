@@ -1,4 +1,4 @@
-import { Button, Tooltip } from "@shared/components/ui";
+import { Badge, Button, Tooltip, countLabel } from "@shared/components/ui";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -22,8 +22,8 @@ import {
 	Search,
 	ShieldCheck,
 } from "lucide-react";
-import type { FC } from "react";
-import { useState } from "react";
+import type { FC, Ref } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * The page menu: what is left after the address row became permanent.
@@ -68,6 +68,12 @@ export interface BrowserPageMenuProps {
 	onResetZoom: () => void;
 	onOpenDownloads: () => void;
 	onOpenApprovals: () => void;
+	/** The trigger node, so a caller can return focus to it when the control that
+	 * opened the menu is gone (the folded Approvals row). */
+	triggerRef?: Ref<HTMLButtonElement>;
+	/** Approvals is folded into this menu at narrow widths; carry its count on the
+	 * trigger so the signal is not lost with the row control (round-2 U12). */
+	showApprovalsFolded: boolean;
 }
 
 export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
@@ -85,8 +91,26 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 	onResetZoom,
 	onOpenDownloads,
 	onOpenApprovals,
+	triggerRef,
+	showApprovalsFolded,
 }) => {
 	const [open, setOpen] = useState(false);
+	/* A tooltip that opens on the focus the menu returns must not read as a
+	   stray label after an item was chosen (round-2 D12): suppress it through the
+	   close and for a moment after, so the focus event cannot open a panel. */
+	const [returning, setReturning] = useState(false);
+	const quietTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	useEffect(
+		() => () => {
+			if (quietTimer.current) clearTimeout(quietTimer.current);
+		},
+		[],
+	);
+	/* The dock is opened by an item, but Radix's close auto-focus returns focus to
+	   THIS trigger afterwards and beats the dock's own heading focus (round-2
+	   Q2-2/U13). The item sets this flag; the close handler then declines the
+	   focus move, leaving the heading focus the dock just took. */
+	const dockRequested = useRef(false);
 	const platform = chordPlatform();
 	// The pointer is the only way a mouse user meets Find, Print and Zoom, so
 	// each row that HAS a chord says it (UX U6).
@@ -95,22 +119,62 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 	const zoomReset = chordCaption("primary+0", platform).glyph;
 	const folded = showForward || showHome;
 	return (
-		<DropdownMenu open={open} onOpenChange={setOpen}>
-			<Tooltip content={t("ui.browser.browser_url_bar.page_menu")} side="top">
+		<DropdownMenu
+			open={open}
+			onOpenChange={(next) => {
+				setOpen(next);
+				if (next) {
+					if (quietTimer.current) clearTimeout(quietTimer.current);
+					setReturning(false);
+					return;
+				}
+				setReturning(true);
+				quietTimer.current = setTimeout(() => setReturning(false), 500);
+			}}
+		>
+			<Tooltip
+				content={t("ui.browser.browser_url_bar.page_menu")}
+				side="top"
+				suppressed={open || returning}
+				disableHoverableContent
+			>
 				<DropdownMenuTrigger asChild>
 					<Button
+						ref={triggerRef}
 						variant="ghost"
 						size="icon-sm"
-						className="shrink-0"
+						className="relative shrink-0"
 						aria-label={t("ui.browser.browser_url_bar.page_menu")}
 						disabled={disabled}
 						data-tour-tag="browser-page-menu"
 					>
 						<MoreHorizontal aria-hidden className="size-4" />
+						{showApprovalsFolded && waitingCount > 0 && (
+							<span className="pointer-events-none absolute -top-0.5 -right-0.5">
+								<Badge
+									variant="attention"
+									shape="pill"
+									size="count"
+									className="ring-2 ring-elevated"
+									aria-hidden="true"
+									data-tour-tag="browser-approvals-folded-badge"
+								>
+									{countLabel(waitingCount, 99)}
+								</Badge>
+							</span>
+						)}
 					</Button>
 				</DropdownMenuTrigger>
 			</Tooltip>
-			<DropdownMenuContent align="end" sideOffset={4}>
+			<DropdownMenuContent
+				align="end"
+				sideOffset={4}
+				onCloseAutoFocus={(event) => {
+					if (!dockRequested.current) return;
+					dockRequested.current = false;
+					event.preventDefault();
+				}}
+			>
 				{folded && (
 					<>
 						{showForward && (
@@ -164,7 +228,10 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 				)}
 				<DropdownMenuSeparator />
 				<DropdownMenuItem
-					onSelect={onOpenApprovals}
+					onSelect={() => {
+						dockRequested.current = true;
+						onOpenApprovals();
+					}}
 					data-tour-tag="browser-approvals"
 				>
 					<ShieldCheck aria-hidden className="size-4" />

@@ -32,6 +32,7 @@ const menu = (
 		onResetZoom={() => {}}
 		onOpenDownloads={() => {}}
 		onOpenApprovals={() => {}}
+		showApprovalsFolded={false}
 	/>
 );
 
@@ -120,6 +121,7 @@ export const Narrow: Story = {
 				onResetZoom={() => {}}
 				onOpenDownloads={() => {}}
 				onOpenApprovals={() => {}}
+				showApprovalsFolded={false}
 			/>
 		),
 	},

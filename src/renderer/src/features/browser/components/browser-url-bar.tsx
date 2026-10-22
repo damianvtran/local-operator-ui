@@ -154,7 +154,8 @@ const TRAILING_SLASH = /\/$/;
 /** The display spelling of a URL: the scheme and a bare trailing slash go. */
 export function displayUrl(url: string): string {
 	if (!url || url === "about:blank") {
-		// A blank tab has no address to show; the start page owns its own field.
+		// A blank tab has no address to show; the row's placeholder carries the start
+		// page's hint (one field since S5).
 		return "";
 	}
 	return url.replace(HTTP_SCHEME, "").replace(TRAILING_SLASH, "");
@@ -284,6 +285,8 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	const listId = useId();
 	const listLabelId = `${listId}-label`;
 	const noticeId = `${listId}-notice`;
+	const siteDescId = `${listId}-site`;
+	const unavailableId = `${listId}-unavailable`;
 	const optionId = (index: number): string => `${listId}-option-${index}`;
 	/** User edits only. Accepting a generated suffix is deliberately NOT an edit
 	 * here: undo must return the text the user typed, not the model's proposal. */
@@ -402,6 +405,10 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		completion && completion.raw === raw ? completion : null;
 	const value = currentCompletion ? currentCompletion.text : raw;
 	const editing = draft !== null;
+	/** The unavailable-suggestions sentence, shown wherever the list cannot be. */
+	const hintShown =
+		(mode === "suspend" && !editing) ||
+		(suggestionsUnavailable && editing && raw.length > 0);
 	const suggestions = useMemo(
 		() =>
 			suggestAddresses(autocomplete.entries, query, {
@@ -1107,10 +1114,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				</Tooltip>
 			)}
 			{onHome && !hideHome && (
-				<Tooltip
-					content={t("ui.browser.browser_url_bar.home_destination")}
-					side="top"
-				>
+				<Tooltip content={t("ui.browser.browser_url_bar.home")} side="top">
 					<Button
 						type="button"
 						size="icon-sm"
@@ -1127,10 +1131,12 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			)}
 			<div className="relative min-w-0 grow">
 				<Tooltip content={siteInfoLabel} side="top">
+					{/* NOT A TAB STOP (round-1 U4): the mark has no action, so it is
+					    described from the field (`aria-describedby`) and keeps its
+					    pointer tooltip, without a keyboard stop between Home and the
+					    field for the same information. */}
 					<span
 						role="img"
-						// biome-ignore lint/a11y/noNoninteractiveTabindex: focus is taken only to be READ (the tooltip is the origin in words); the mark has no action.
-						tabIndex={0}
 						aria-label={siteInfoLabel}
 						data-site-info={siteInfo.kind}
 						className={cn(
@@ -1141,6 +1147,9 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						<SiteInfoIcon aria-hidden className="size-3.5" />
 					</span>
 				</Tooltip>
+				<span id={siteDescId} className="sr-only">
+					{siteInfoLabel}
+				</span>
 				<Input
 					ref={setInputEl}
 					inputSize="sm"
@@ -1154,7 +1163,13 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						listVisible && suggestions.rows.length > 0 ? listId : undefined
 					}
 					aria-describedby={
-						listVisible && suggestions.rows.length === 0 ? noticeId : undefined
+						[
+							siteDescId,
+							hintShown ? unavailableId : null,
+							listVisible && suggestions.rows.length === 0 ? noticeId : null,
+						]
+							.filter(Boolean)
+							.join(" ") || undefined
 					}
 					aria-activedescendant={
 						activeIndex >= 0 && suggestions.rows[activeIndex]
@@ -1196,14 +1211,18 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				    width every time the list was unavailable (S4b U5); the permanent row
 				    cannot afford that, and the sentence belongs to the field that still
 				    works. `pointer-events-none` keeps the input clickable underneath. */}
-				{((mode === "suspend" && !editing) ||
-					(suggestionsUnavailable && editing && raw.length > 0)) && (
-					<span
-						className="pointer-events-none absolute top-1/2 right-7 max-w-[45%] -translate-y-1/2 truncate text-meta text-ink-dim"
+				{hintShown && (
+					<output
+						id={unavailableId}
+						aria-live="polite"
+						/* An opaque ground, because the sentence overlays the field the
+						   user is typing into: without it a long address runs under the
+						   text and both become unreadable (round-2 U10). */
+						className="pointer-events-none absolute top-1/2 right-7 max-w-[45%] -translate-y-1/2 truncate rounded-sm bg-elevated px-1 text-meta text-ink-dim"
 						data-tour-tag="browser-address-unavailable"
 					>
 						{t("ui.browser.browser_url_bar.address_suggestions_unavailable")}
-					</span>
+					</output>
 				)}
 			</div>
 			{menu}

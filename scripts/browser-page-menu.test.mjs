@@ -67,11 +67,41 @@ test("folded controls appear only when the row folded them", () => {
 
 test("the trigger is the fixed icon-only overflow control", () => {
 	assert.match(menu, /size="icon-sm"/);
+	assert.match(menu, /triggerRef\?: Ref<HTMLButtonElement>/);
+	assert.match(menu, /ref=\{triggerRef\}/);
+	assert.match(
+		menu,
+		/suppressed=\{open \|\| returning\}/,
+		"the trigger's own tooltip must not capture Escape or linger after close",
+	);
+	assert.match(menu, /disableHoverableContent/);
 	assert.match(menu, /data-tour-tag="browser-page-menu"/);
 	assert.match(
 		menu,
 		/aria-label=\{t\("ui\.browser\.browser_url_bar\.page_menu"\)\}/,
 	);
+});
+
+test("opening the dock from a folded item keeps the dock's heading focus", () => {
+	assert.match(menu, /const dockRequested = useRef\(false\)/);
+	assert.match(menu, /onCloseAutoFocus=\{\(event\) => \{/);
+	assert.match(menu, /event\.preventDefault\(\)/);
+	assert.match(menu, /dockRequested\.current = true;/);
+});
+
+test("the folded Approvals count rides the trigger (U12) and is not re-announced (D6a)", () => {
+	assert.match(menu, /showApprovalsFolded && waitingCount > 0/);
+	assert.match(menu, /countLabel\(waitingCount, 99\)/);
+	assert.match(menu, /aria-hidden="true"/);
+});
+
+test("Find travels the one openFind path while the panel pauses the page", () => {
+	const surface = readFileSync(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+		"utf8",
+	);
+	assert.match(menu, /onSelect=\{onFind\}/);
+	assert.match(surface, /onFind=\{\(\) => void openFind\("chrome"\)\}/);
 });
 
 test("the panel is the shared menu primitive, whose pause is measured", () => {
@@ -85,4 +115,17 @@ test("the panel is the shared menu primitive, whose pause is measured", () => {
 		primitive,
 		/useMeasuredBrowserViewPanel<HTMLDivElement>\("menu"\)/,
 	);
+});
+
+test("closing a narrow Approvals dock returns focus to the ⋯ that opened it", () => {
+	const surface = readFileSync(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+		"utf8",
+	);
+	assert.match(
+		surface,
+		/\(approvalsTriggerRef\.current \?\? pageMenuTriggerRef\.current\)\?\.focus\(\)/,
+		"the wide path keeps the shield; the folded path must not drop focus to body",
+	);
+	assert.match(surface, /triggerRef=\{pageMenuTriggerRef\}/);
 });

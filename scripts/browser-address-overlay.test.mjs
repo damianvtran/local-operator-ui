@@ -1955,8 +1955,18 @@ test("S5: a stale_layout refusal keeps the frame signature, so the mirror idles"
 	);
 	assert.match(
 		src,
-		/if \(answer\.reason === "stale_layout"\) return;/,
-		"stale_layout must not reach the signature reset",
+		/if \(answer\.reason === "stale_layout"\) \{/,
+		"stale_layout is handled before the signature reset",
+	);
+	assert.match(
+		src,
+		/staleAttempts >= STALE_LAYOUT_ATTEMPTS/,
+		"the retry is bounded; the per-frame storm must not come back",
+	);
+	assert.match(
+		src,
+		/forceProject = true;/,
+		"a refused frame is re-attempted only through the bounded budget",
 	);
 });
 

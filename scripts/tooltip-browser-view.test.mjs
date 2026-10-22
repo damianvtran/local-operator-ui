@@ -156,6 +156,21 @@ test("the collapsed sidebar and profile tooltips are restored conditionally", ()
 	}
 });
 
+test("BrowserSafeTooltip keeps ONE tree and uses the Tooltip's suppressed prop (U8)", () => {
+	const wrapper = read(
+		"src/renderer/src/shared/components/ui/browser-safe-tooltip.tsx",
+	);
+	assert.match(
+		wrapper,
+		/<Tooltip \{\.\.\.props\} suppressed=\{viewPresent \|\| props\.suppressed\} \/>/,
+	);
+	assert.doesNotMatch(
+		wrapper,
+		/<\/>/,
+		"a bare-children branch replaces the trigger and drops focus",
+	);
+});
+
 test("the surface still publishes why the page is hidden", () => {
 	const surface = read(
 		"src/renderer/src/features/browser/components/browser-surface.tsx",

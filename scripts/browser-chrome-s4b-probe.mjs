@@ -2117,7 +2117,7 @@ try {
 		record(
 			"V2",
 			popoutMenuOpen &&
-				states.menuFromPopout.row &&
+				states.menuFromPopout.portal &&
 				/(^|,)menu:[^,]*/.test(states.menuFromPopout.suppressedBy ?? "")
 				? "PASS"
 				: "FAIL",

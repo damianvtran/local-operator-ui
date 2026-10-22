@@ -267,8 +267,13 @@ test("wiring pins: Home intent and the native context-menu handler stay connecte
 	assert.match(surface, /loadFailure=\{state\?\.navFailure \?\? null\}/);
 	assert.match(urlBar, /siteInfoForUrl\(url, loadFailure\)/);
 	assert.match(urlBar, /siteInfoWarns \? "text-ink" : "text-ink-muted"/);
-	assert.match(urlBar, /tabIndex=\{0\}/);
-	assert.match(urlBar, /home_destination/);
+	assert.doesNotMatch(
+		urlBar,
+		/tabIndex=\{0\}/,
+		"the site mark is described from the field, not a tab stop (U4)",
+	);
+	assert.match(urlBar, /const siteDescId = `\$\{listId\}-site`/);
+	assert.match(urlBar, /browser_url_bar\.home"\)/);
 	// D2/U3: main passes the editable facts and the page address through.
 	assert.match(main, /isEditable: params\.isEditable/);
 	assert.match(main, /pageUrl: contents\.getURL\(\)/);

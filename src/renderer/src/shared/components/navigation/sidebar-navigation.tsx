@@ -61,12 +61,7 @@ import {
 	renderedRegion,
 } from "@shared/components/navigation/sidebar-destinations";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
-import {
-	Badge,
-	BrowserSafeTooltip,
-	Button,
-	Tooltip,
-} from "@shared/components/ui";
+import { Badge, BrowserSafeTooltip, Button } from "@shared/components/ui";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -1739,13 +1734,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				{expanded ? (
 					button
 				) : (
-					<Tooltip
+					<BrowserSafeTooltip
 						content={rowName(item)}
 						side={menuSide}
 						suppressed={dragId !== null}
 					>
 						{button}
-					</Tooltip>
+					</BrowserSafeTooltip>
 				)}
 				{menu}
 				{/*
@@ -1843,7 +1838,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			/* The strip has no room for a sentence; its language is the tooltip. Its
 			   side follows the column (design round 1, D5): in RTL the strip is on the
 			   window's right edge and a right-opening panel would cover it. */
-			<Tooltip content={bandLabel} side={rtl ? "left" : "right"}>
+			<BrowserSafeTooltip content={bandLabel} side={rtl ? "left" : "right"}>
 				<div
 					data-sidebar-drop-band=""
 					className="absolute inset-x-0 top-full z-20 mx-auto mt-1 flex h-6 w-8 items-center justify-center rounded-sm border border-dashed border-control bg-surface"
@@ -1853,7 +1848,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						className="h-0.5 w-4 rounded-full bg-ink-dim"
 					/>
 				</div>
-			</Tooltip>
+			</BrowserSafeTooltip>
 		);
 	/*
 	 * THE LIVE REGION (design § 6, § 5): polite, so a move is never urgent - and
@@ -2282,7 +2277,10 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	};
 
 	const settingsGear = (
-		<Tooltip content={t("ui.shell.sidebar_navigation.settings")} side="top">
+		<BrowserSafeTooltip
+			content={t("ui.shell.sidebar_navigation.settings")}
+			side="top"
+		>
 			<button
 				type="button"
 				data-tour-tag="nav-item-settings"
@@ -2298,7 +2296,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			>
 				<Settings size={16} aria-hidden="true" />
 			</button>
-		</Tooltip>
+		</BrowserSafeTooltip>
 	);
 
 	if (!expanded) {
