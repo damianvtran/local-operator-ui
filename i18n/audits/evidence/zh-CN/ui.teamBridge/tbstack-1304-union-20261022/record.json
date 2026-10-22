@@ -1,0 +1,131 @@
+{
+ "audit_id": "tbstack-1304-union-20261022",
+ "date": "2026-10-22",
+ "locale": "zh-CN",
+ "namespace": "ui.teamBridge",
+ "source_commit": "b5b80ea4b44754b9f0fd482b0d7f920a8127889e",
+ "source_base": "9aa14137de",
+ "scope": "PR #1304 at b5b80ea4b4: union-integrity audit of the 119-key zh-CN catalogue after integration merge b5b80ea4b4 (fe2d670699 + 9aa14137de); no new or changed zh-CN value, every value traced byte-identical (with unchanged English and context) to an audited ref; shared-term consistency rechecked; catalogue audit only, not rendered-fit/activation/release.",
+ "status": "audited",
+ "translator": {
+  "agent": "translator",
+  "model": "openai/gpt-6.1-sol",
+  "session": "29c96cdc7f87",
+  "date": "2026-10-21"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-22",
+   "result": "clean",
+   "instance": "tbstack-r1-1304-zh-cn",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/tbstack-r1-1304-zh-cn.json",
+   "receipt_sha256": "9e220e5c16563078fcc6543a30f95b6ed68ddf397cc350c03e447833dadfe5a1",
+   "scope": "Team Bridge integration union at b5b80ea4b4: 119 keys verified byte-identical to audited refs, 0 dropped, 0 altered. Catalogue audit only.",
+   "note": "Independent translation-auditor, 0 findings. Record: i18n/audits/evidence/zh-CN/ui.teamBridge/tbstack-1304-union-20261022/."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "tbstack-r1-1304-zh-cn",
+   "session": "c17c30b3cfaf",
+   "job": "59c8bebee69c",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 0,
+   "en_sha256": "966671be592ecd97389f9675637f3d2acd0f402e123c9732f157035dba809c99",
+   "context_sha256": "d67dbef319011a8ae0ee5ca15634fbd320b63e3e9c2f1a9ba292a21f1b8dec50",
+   "target_sha256": "44b2fa29cff7a749e1875c781052c45c09e480976ce68aff747fddf5fc5f2410",
+   "findings": [],
+   "receipt": {
+    "path": "i18n/receipts/tbstack-r1-1304-zh-cn.json",
+    "sha256": "9e220e5c16563078fcc6543a30f95b6ed68ddf397cc350c03e447833dadfe5a1"
+   }
+  }
+ ],
+ "inherited_receipts": [
+  {
+   "base": "9aa14137de",
+   "path": "i18n/receipts/tbd-sender-r1-zhcn.json",
+   "sha256": "474f0b573354241171940bb43e50cf1a89c93e4667300fe35c0e7bcad0ab0f82",
+   "instance": "tbd-sender-r1-zhcn",
+   "keys_inherited": 111,
+   "base_target_sha256": "764ad74c15e1d0e4eadeb4338a06eb42721dd995e8aa4b33110e2c56bfb581ca",
+   "base_en_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
+   "unchanged_values_verified": 111
+  },
+  {
+   "base": "fe2d670699",
+   "path": "i18n/receipts/threads1304-r2-zh-cn.json",
+   "sha256": "b236fe1a3ee58803e312a23db16fbeeb2d6f0c208b89448d9e0a478c8aae9a97",
+   "instance": "threads1304-r2-zh-cn",
+   "keys_inherited": 8,
+   "base_target_sha256": "9432d3e8bb4c53f99f9d557e9473c5b3f4fe93d4c7f41a4dfb834f6a5e95a8d3",
+   "base_en_sha256": "7de891f2cf03b7563747c440847c853f1c1356aa0a50480ec28eae347e6581e9",
+   "unchanged_values_verified": 8
+  }
+ ],
+ "union_integrity": {
+  "method": "Every key of the merged head's en, zh-CN catalogue and en context traced to an audited ref (a ledger row whose source/target hashes equal that ref's bytes) carrying the identical zh-CN value AND identical English value and context entry; plus scripts/i18n/catalogue-union-parity.mjs (origin/main blob a2b0b35726) run read-only via --repo against git objects for en, ru, zh-CN catalogues and the en context.",
+  "merge": {
+   "head": "b5b80ea4b44754b9f0fd482b0d7f920a8127889e",
+   "parents": [
+    "fe2d670699ccaf7a3054401bbd6bc98ec8a31040",
+    "9aa14137dec1562dac0ee72a5f056010d5438432"
+   ],
+   "merge_base": "f1520f143ee5830b0c93c2ddfe0d0e40351ddf4f"
+  },
+  "keys_merged": 119,
+  "keys_dropped": 0,
+  "shared_keys_altered": 0,
+  "keys_unsourced": [],
+  "parity_tool": {
+   "command": "node scripts/i18n/catalogue-union-parity.mjs --pr 1304 --head b5b80ea4b4 --old-head fe2d670699 --base 9aa14137de --file src/i18n/catalogues/en/ui.teamBridge.json --file src/i18n/catalogues/zh-CN/ui.teamBridge.json --file src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "result": "exit 0, RESULT: PASS (missing from base [], missing from PR [], value differences [] for every file)"
+  }
+ },
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "966671be592ecd97389f9675637f3d2acd0f402e123c9732f157035dba809c99"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+   "sha256": "44b2fa29cff7a749e1875c781052c45c09e480976ce68aff747fddf5fc5f2410"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "d67dbef319011a8ae0ee5ca15634fbd320b63e3e9c2f1a9ba292a21f1b8dec50"
+  }
+ },
+ "references": {
+  "core_revision": "91261f530cc485b38793ee8db9958349aa028163",
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+   "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  }
+ },
+ "independence": "Translator(s) and auditor are different agents in different sessions; this auditor (translation-auditor, session c17c30b3cfaf) never edited catalogues and wrote only scratch files outside the repository.",
+ "limitations": [
+  "No per-locale rendered-fit, screen-reader, pseudo-localization, activation or release evidence claimed.",
+  "Receipt and record are staged under ~/workspace/tb-i18n-audit (scratch); they become artifacts of record only when committed under i18n/receipts/ and i18n/audits/evidence/."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/tbstack-r1-1304-zh-cn.json",
+   "sha256": "9e220e5c16563078fcc6543a30f95b6ed68ddf397cc350c03e447833dadfe5a1"
+  }
+ ]
+}

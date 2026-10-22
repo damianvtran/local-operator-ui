@@ -19152,8 +19152,25 @@
 				"session": "f891af4def29",
 				"job": "488a4e87df21"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1304-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1304-fr.json",
+					"receipt_sha256": "e9012773034610692c7afcadcb52aac24eb376308877070bca4a37186d03718d",
+					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1304 b5b80ea4b4)"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
@@ -19723,8 +19740,25 @@
 				"session": "b10c3d8f006b",
 				"job": "80a7098c0f62"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1304-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1304-es.json",
+					"receipt_sha256": "812c7d20d8a57340fe719a4cf1bee49e10ab33a0d09ba5b4d5e640f5bdb24da9",
+					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1304 b5b80ea4b4)"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
@@ -19920,8 +19954,25 @@
 				"session": "bd2e5924642c",
 				"job": "c963252cda72"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1304-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1304-zh-cn.json",
+					"receipt_sha256": "9e220e5c16563078fcc6543a30f95b6ed68ddf397cc350c03e447833dadfe5a1",
+					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1304 b5b80ea4b4)"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
@@ -20401,8 +20452,25 @@
 				"job": "523c17f178b6",
 				"remediation_job": "1450cb12bc98"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1304-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1304-ru.json",
+					"receipt_sha256": "be184b140162a302a183ca0e3dc40649c02894a67d355d664af7b8feea168ed9",
+					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1304 b5b80ea4b4)"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -20576,8 +20644,25 @@
 				"session": "6e73d9cbd3b4",
 				"job": "09973563c6e2"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1304-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1304-hi.json",
+					"receipt_sha256": "1b8c443d814ec607043f84e93120d6925042eeca93e6e455b41584b0dfc17711",
+					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1304 b5b80ea4b4)"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -20720,8 +20805,25 @@
 				"session": "487a920c0aa1",
 				"job": "2026c477c489"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1304-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1304-ur.json",
+					"receipt_sha256": "0a2b6715ccf1c85b4c4b2417b7b0e7f68e37ffccae605af5675663e7a9c23e2e",
+					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1304 b5b80ea4b4)"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -20865,8 +20967,25 @@
 				"job": "ff8ce0cb39b8",
 				"remediation_job": "e3b57694d3ea"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1304-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1304-vi.json",
+					"receipt_sha256": "4efd5236365ada7699ed801e69b05027aef02c3cf30180af55fc178c6ff76866",
+					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1304 b5b80ea4b4)"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
