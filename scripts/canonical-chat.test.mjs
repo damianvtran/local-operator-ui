@@ -1148,6 +1148,76 @@ test("an admitted send is observable while it is in flight, and gone once it set
 	assert.equal(store.getState().drafts[key], undefined);
 });
 
+/**
+ * The composer's send state is retired by the POST, not by the event stream.
+ *
+ * WHY THIS IS ITS OWN CASE. The draft row's `pending` feeds
+ * `sendUnsettledForSession`, which is the composer's "Sending your message"
+ * placeholder. The reported failure mode was that placeholder outliving an
+ * answered POST because the settle rode the stream: a degraded socket drops the
+ * admission frame, and a view that waits for it says the message is still going
+ * out forever. This harness has NO stream at all - `desktopResult` is the only
+ * seam it fakes, and no echo registry entry is ever resolved - so a row that
+ * stops being pending here can only have been settled by the HTTP answer.
+ */
+test("the composer's send state settles from the POST alone, with no stream frame", async () => {
+	reset();
+	let release;
+	const held = new Promise((resolve) => {
+		release = () => resolve({ status: "admitted" });
+	});
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "444444444444",
+				binding: { agent: null, team: null },
+			};
+		if (request.op === "sessions.list")
+			return { sessions: [], truncated: false };
+		if (request.op === "sessions.message") return held;
+		return {};
+	};
+	const settle = async (predicate) => {
+		for (let i = 0; i < 50; i++) {
+			if (predicate()) return;
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		}
+		assert.fail("the message request never reached the transport");
+	};
+	const key = store.getState().stageDraft();
+	const send = admitChatDraft(key, input);
+	await settle(() =>
+		calls.some((request) => request.op === "sessions.message"),
+	);
+	const id = "444444444444";
+	assert.equal(
+		sendUnsettledForSession(store.getState().drafts, id),
+		true,
+		"while the POST is unanswered the row is the composer's claim",
+	);
+	// The immediate settle path depends on `finishDraft` deleting the row under
+	// the SAME identity the composer reads - assert the identity is live before
+	// the answer, so a lookup that silently missed cannot make the next assertion
+	// pass for the wrong reason.
+	assert.ok(
+		store.getState().drafts[draftIdentityFor(key, id)],
+		"the row is reachable under the conversation identity",
+	);
+	release();
+	await send;
+	assert.equal(
+		sendUnsettledForSession(store.getState().drafts, id),
+		false,
+		"the answered POST retires the composer's send state without any stream frame",
+	);
+	assert.equal(
+		store.getState().drafts[draftIdentityFor(key, id)],
+		undefined,
+		"the settled row is gone, not merely unpending",
+	);
+});
+
 test("an existing session's in-flight send is found under its own key, and a failure clears it", async () => {
 	reset();
 	/*

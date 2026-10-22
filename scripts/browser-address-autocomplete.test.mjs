@@ -29,11 +29,12 @@ const mod = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 const {
+	ADDRESS_SEARCH_URL_PREFIX,
 	MAX_ADDRESS_ALTERNATIVES,
 	addressIntent,
 	canInlineComplete,
-	candidateTarget,
 	inlineFor,
+	rowTarget,
 	isGeneratedSuffixSelected,
 	moveActive,
 	suggestAddresses,
@@ -44,6 +45,9 @@ function entry(url, over = {}) {
 	return {
 		url,
 		title: "",
+		visitCount: 0,
+		lastVisitedAt: 0,
+		source: "tab",
 		sourceTabId: 1,
 		sourceIndex: 0,
 		activeTab: true,
@@ -54,32 +58,59 @@ function entry(url, over = {}) {
 
 // ---- intent ---------------------------------------------------------------
 
-test("intent: every URL-shape row the proposal settles", () => {
+test("intent: every navigate row the operator's table settles", () => {
 	assert.equal(addressIntent(""), "empty");
-	assert.equal(addressIntent("exa"), "url");
 	assert.equal(addressIntent("example.com"), "url");
-	assert.equal(addressIntent("https://exa"), "url");
-	assert.equal(addressIntent("http://exa"), "url");
-	assert.equal(addressIntent("host:8080/a"), "url");
-	assert.equal(addressIntent("localhost:3000/a"), "url");
+	assert.equal(addressIntent("example.com/path?q=1"), "url");
+	assert.equal(addressIntent("https://example.com"), "url");
+	assert.equal(addressIntent("http://example.com"), "url");
+	assert.equal(
+		addressIntent("file:///tmp/a.txt"),
+		"url",
+		"file: is URL intent and must never be searched; the host still refuses to navigate it",
+	);
+	assert.equal(addressIntent("localhost:3000"), "url");
+	assert.equal(addressIntent("localhost"), "url");
 	assert.equal(addressIntent("127.0.0.1:8080"), "url");
+	assert.equal(addressIntent("192.168.1.1"), "url");
 	assert.equal(addressIntent("[::1]:3000"), "url");
 	assert.equal(addressIntent("example.com/A?Q=X#Y"), "url");
+	assert.equal(addressIntent("example.com:8080/a"), "url");
+	assert.equal(addressIntent("host:8080/a"), "url");
+	assert.equal(
+		addressIntent("intranet/wiki"),
+		"url",
+		"a no-whitespace host/path is a site path, not a single-word search (UX U1)",
+	);
+	assert.equal(addressIntent("nas/d/1"), "url");
 });
 
-test("intent: natural language, leading ? and a bare fragment are search", () => {
-	assert.equal(addressIntent("hello world"), "search");
+test("intent: every search row the operator's table settles", () => {
+	assert.equal(addressIntent("foo bar"), "search");
+	assert.equal(addressIntent("what is a vpn"), "search");
+	assert.equal(addressIntent("how to cook rice"), "search");
+	assert.equal(
+		addressIntent("github"),
+		"search",
+		"a single word with no dot is a word, not a host",
+	);
+	assert.equal(
+		addressIntent("1.2"),
+		"search",
+		"a dotted numeric last label is a version, not a TLD",
+	);
 	assert.equal(addressIntent(" hello"), "search");
 	assert.equal(addressIntent("?how do i"), "search");
 	assert.equal(addressIntent("#section"), "search");
 });
 
-test("intent: non-web schemes and invalid ports are blocked, never suggested", () => {
+test("intent: executable, embedded and browser-internal schemes stay blocked", () => {
 	assert.equal(addressIntent("about:blank"), "blocked");
-	assert.equal(addressIntent("file:///etc/passwd"), "blocked");
 	assert.equal(addressIntent("javascript:alert(1)"), "blocked");
 	assert.equal(addressIntent("data:text/html,x"), "blocked");
+	assert.equal(addressIntent("mailto:a@b.example"), "blocked");
 	assert.equal(addressIntent("localhost:99999"), "blocked");
+	assert.equal(addressIntent("example.com:99999"), "blocked");
 });
 
 // ---- ranking --------------------------------------------------------------
@@ -112,13 +143,25 @@ const sample = [
 ];
 
 test("host prefix ranks before path prefix; title-only never inlines", () => {
-	const result = suggestAddresses(sample, "exa");
+	const withTitleMatch = [
+		...sample,
+		entry("https://notes.test/", {
+			title: "example.com reading list",
+			sourceTabId: 3,
+			activeTab: false,
+			distanceFromCurrent: 2,
+		}),
+	];
+	const result = suggestAddresses(withTitleMatch, "example.com");
 	assert.equal(result.inline?.text, "example.com/");
 	assert.equal(result.inline?.targetUrl, "https://example.com/");
 	assert.deepEqual(
-		result.candidates.map((row) => row.rank),
-		[0, 2],
-		"the path-prefixed candidate does not start with `exa` and the title match is last",
+		result.candidates.map((row) => [row.url, row.rank]),
+		[
+			["https://example.com/account", 0],
+			["https://notes.test/", 2],
+		],
+		"the exact host prefix wins; the title-only row is list-only and last",
 	);
 });
 
@@ -202,7 +245,7 @@ test("the current tab wins an equal rank before another tab's equal candidate", 
 	);
 });
 
-test("the list is capped at five alternatives and the inline candidate is excluded", () => {
+test("the list is capped at five rows and the search row takes one slot", () => {
 	const entries = Array.from({ length: 12 }, (_, index) =>
 		entry(`https://site${index}.example/`, {
 			sourceTabId: index + 1,
@@ -212,10 +255,40 @@ test("the list is capped at five alternatives and the inline candidate is exclud
 		}),
 	);
 	const result = suggestAddresses(entries, "site");
-	assert.equal(result.inline?.targetUrl, "https://site0.example/");
-	assert.equal(result.candidates.length, MAX_ADDRESS_ALTERNATIVES);
-	assert.ok(
-		result.candidates.every((row) => row.url !== result.inline?.targetUrl),
+	assert.equal(
+		result.inline,
+		null,
+		"`site` is search intent, so nothing may be shown as selected text",
+	);
+	assert.equal(result.rows.length, 5, "the search row takes one of the five");
+	assert.equal(result.rows[0].kind, "search");
+	assert.equal(result.candidates.length, MAX_ADDRESS_ALTERNATIVES - 1);
+});
+
+test("the inline target is excluded only when the suffix is actually shown", () => {
+	const entries = [
+		entry("https://github.com/", { source: "history", visitCount: 40 }),
+		entry("https://github.com/damianvtran", { source: "history" }),
+	];
+	const shown = suggestAddresses(entries, "github.co", { inlineShown: true });
+	assert.equal(shown.inline?.targetUrl, "https://github.com/");
+	assert.deepEqual(
+		shown.candidates.map((row) => row.url),
+		["https://github.com/damianvtran"],
+		"the destination shown as selected text is not repeated as a row",
+	);
+	const hidden = suggestAddresses(entries, "github.co", {
+		inlineShown: false,
+	});
+	assert.equal(
+		hidden.inline?.targetUrl,
+		"https://github.com/",
+		"the model still computes the candidate",
+	);
+	assert.deepEqual(
+		hidden.candidates.map((row) => row.url),
+		["https://github.com/", "https://github.com/damianvtran"],
+		"with no suffix on screen the best prefix match must stay a row (UX U2)",
 	);
 });
 
@@ -253,10 +326,57 @@ test("duplicate destinations collapse to the best-ranked occurrence", () => {
 });
 
 test("a blocked input offers nothing at all", () => {
-	const result = suggestAddresses(sample, "file:///etc");
+	const result = suggestAddresses(sample, "javascript:alert(1)");
 	assert.equal(result.intent, "blocked");
 	assert.equal(result.inline, null);
-	assert.deepEqual(result.candidates, []);
+	assert.deepEqual(result.rows, []);
+});
+
+test("a searched input puts the DuckDuckGo row first and highlighted", () => {
+	const result = suggestAddresses(sample, "what is a vpn");
+	assert.equal(result.intent, "search");
+	assert.equal(result.rows[0].kind, "search");
+	assert.equal(
+		result.rows[0].targetUrl,
+		`${ADDRESS_SEARCH_URL_PREFIX}what%20is%20a%20vpn`,
+	);
+	assert.equal(result.search?.query, "what is a vpn");
+});
+
+test("history rows precede open-tab rows and keep main's score order", () => {
+	const history = [
+		entry("https://daily.example/", {
+			source: "history",
+			visitCount: 20,
+			lastVisitedAt: 1,
+			sourceTabId: undefined,
+			sourceIndex: undefined,
+			activeTab: undefined,
+			distanceFromCurrent: undefined,
+		}),
+		entry("https://once.example/", {
+			source: "history",
+			visitCount: 1,
+			lastVisitedAt: 1,
+			sourceTabId: undefined,
+			sourceIndex: undefined,
+			activeTab: undefined,
+			distanceFromCurrent: undefined,
+		}),
+	];
+	const tab = entry("https://daily.example/", {
+		title: "An open tab",
+		sourceTabId: 9,
+	});
+	const result = suggestAddresses([...history, tab], "");
+	assert.deepEqual(
+		result.candidates.map((row) => [row.url, row.source]),
+		[
+			["https://daily.example/", "history"],
+			["https://once.example/", "history"],
+		],
+		"history keeps its order, the open-tab duplicate is deduped behind it",
+	);
 });
 
 // ---- eligibility and key arithmetic ---------------------------------------
@@ -363,11 +483,23 @@ test("Enter's target is the active row, else the inline completion, else null", 
 				prefixExact: true,
 			},
 		],
+		rows: [
+			{
+				kind: "candidate",
+				candidate: {
+					...entry("https://example.com/account"),
+					displayText: "example.com/account",
+					rank: 1,
+					prefixExact: true,
+				},
+			},
+		],
+		search: null,
 		intent: "url",
 	};
-	assert.equal(candidateTarget(suggestions, 0), "https://example.com/account");
-	assert.equal(candidateTarget(suggestions, -1), "https://example.com/");
-	assert.equal(candidateTarget({ ...suggestions, inline: null }, -1), null);
+	assert.equal(rowTarget(suggestions, 0), "https://example.com/account");
+	assert.equal(rowTarget(suggestions, -1), "https://example.com/");
+	assert.equal(rowTarget({ ...suggestions, inline: null }, -1), null);
 });
 
 test("inlineFor honours the eligibility flag rather than re-deriving it", () => {

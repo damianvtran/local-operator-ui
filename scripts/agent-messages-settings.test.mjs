@@ -49,7 +49,7 @@ const require = createRequire(import.meta.url);
 const bundled = await build({
 	stdin: {
 		contents:
-			'export {AgentMessagesSettings} from "./src/renderer/src/features/agent-messages/agent-messages-settings"; export {desktopEndpoint} from "./src/shared/desktop-contract"; export {agentMessagesSettingsAvailability,agentMessagesSettingsState,agentMessagesSectionMounted,allowlistReplaceSet,allowlistSaveGate,allowlistDraft,allowlistIdentifierError,settingsRefusalSentence} from "./src/renderer/src/features/agent-messages/agent-messages-settings-model"; export {agentMessagesSettingsResultSchema,agentMessagesAllowlistResultSchema} from "./src/shared/agent-messages-contract"; export {DesktopControlError} from "./src/renderer/src/shared/api/local-operator/desktop-api"; export {agentMessagesRefusal} from "./src/renderer/src/features/agent-messages/agent-messages-refusal";',
+			'export {AgentMessagesSettings} from "./src/renderer/src/features/agent-messages/agent-messages-settings"; export {desktopEndpoint} from "./src/shared/desktop-contract"; export {agentMessagesSettingsAvailability,agentMessagesSettingsState,agentMessagesSectionMounted,allowlistReplaceSet,allowlistSaveGate,allowlistDraft,allowlistIdentifierError,settingsRefusalSentence,agentMessagesChiefOfStaffHold} from "./src/renderer/src/features/agent-messages/agent-messages-settings-model"; export {agentMessagesSettingsResultSchema,agentMessagesAllowlistResultSchema,agentMessagesStatusSchema} from "./src/shared/agent-messages-contract"; export {DesktopControlError} from "./src/renderer/src/shared/api/local-operator/desktop-api"; export {agentMessagesRefusal} from "./src/renderer/src/features/agent-messages/agent-messages-refusal";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -182,6 +182,7 @@ async function mount(t, options = {}) {
 			{ session_id: "aaaaaaaaaaaa", title: "Research" },
 			{ session_id: "bbbbbbbbbbbb", title: "Triage" },
 		],
+		onOpenSession,
 	} = options;
 	window.__agentMessagesState = { accountId, snapshot: { status } };
 	const built = suppliedApi
@@ -210,6 +211,7 @@ async function mount(t, options = {}) {
 		api: next.api ?? api,
 		onRefreshStatus: refresh,
 		sessions,
+		onOpenSession,
 	});
 	await act(async () =>
 		root.render(React.createElement(mod.AgentMessagesSettings, props())),
@@ -1066,4 +1068,209 @@ test("a failed write renders the refusal sentence, never the raw exception", asy
 		}),
 		"Sign in to Radient to manage agent messages.",
 	);
+});
+
+// ---------------------------------------------------------------------------
+// The chief-of-staff delivery hold (runtime #2777, F8)
+// ---------------------------------------------------------------------------
+
+const HOLD_SESSION = "aaaaaaaaaaaa";
+const holdNotice = () =>
+	document.querySelector('[data-agent-messages-hold="open_chief_of_staff"]');
+const holdStatus = (delivery_hold) =>
+	statusWith({
+		surface_state: "C",
+		local: { enabled: true, session: HOLD_SESSION },
+		delivery_hold,
+	});
+
+test("the status schema accepts delivery_hold present, null or absent, and degrades a malformed one", () => {
+	const absent = mod.agentMessagesStatusSchema.parse(statusFixture);
+	assert.equal(absent.delivery_hold, undefined, "an older runtime omits it");
+	assert.equal(
+		mod.agentMessagesStatusSchema.parse({
+			...statusFixture,
+			delivery_hold: null,
+		}).delivery_hold,
+		null,
+	);
+	const present = mod.agentMessagesStatusSchema.parse({
+		...statusFixture,
+		delivery_hold: {
+			code: "open_chief_of_staff",
+			count: 2,
+			session: HOLD_SESSION,
+		},
+	});
+	assert.deepEqual(present.delivery_hold, {
+		code: "open_chief_of_staff",
+		count: 2,
+		session: HOLD_SESSION,
+	});
+	/* A bad hint must not fail the status read that gates the whole surface. */
+	const malformed = mod.agentMessagesStatusSchema.parse({
+		...statusFixture,
+		delivery_hold: { code: "open_chief_of_staff", count: "two" },
+	});
+	assert.equal(malformed.delivery_hold, null);
+	assert.equal(malformed.account_id, statusFixture.account_id);
+});
+
+test("the hold model answers only for open_chief_of_staff with a positive count", () => {
+	const hold = (delivery_hold, session = HOLD_SESSION) =>
+		mod.agentMessagesChiefOfStaffHold(
+			statusWith({ local: { session }, delivery_hold }),
+		);
+	assert.equal(mod.agentMessagesChiefOfStaffHold(null), null);
+	assert.equal(hold(undefined), null);
+	assert.equal(hold(null), null);
+	assert.equal(hold({ code: "open_chief_of_staff", count: 0 }), null);
+	assert.equal(hold({ code: "some_future_hold", count: 3 }), null);
+	assert.deepEqual(
+		hold({ code: "open_chief_of_staff", count: 3, session: "runtime-cos" }),
+		{ count: 3, sessionId: "runtime-cos" },
+		"the runtime's designation wins",
+	);
+	assert.deepEqual(hold({ code: "open_chief_of_staff", count: 1 }), {
+		count: 1,
+		sessionId: HOLD_SESSION,
+	});
+	assert.deepEqual(hold({ code: "open_chief_of_staff", count: 1 }, ""), {
+		count: 1,
+		sessionId: null,
+	});
+});
+
+test("the hold notice renders singular copy at count 1 and opens the chief of staff", async (t) => {
+	const opened = [];
+	await mount(t, {
+		status: holdStatus({
+			code: "open_chief_of_staff",
+			count: 1,
+			session: HOLD_SESSION,
+		}),
+		onOpenSession: (id) => opened.push(id),
+	});
+	const notice = holdNotice();
+	assert.ok(notice, "the notice renders");
+	assert.match(
+		notice.textContent,
+		/^1 message is waiting for your chief of staff\. Send one message in that conversation to receive it\./,
+	);
+	await press(button("Message chief of staff", notice));
+	assert.deepEqual(opened, [HOLD_SESSION]);
+});
+
+test("the hold notice renders plural copy at count N", async (t) => {
+	await mount(t, {
+		status: holdStatus({
+			code: "open_chief_of_staff",
+			count: 4,
+			session: HOLD_SESSION,
+		}),
+		onOpenSession: () => {},
+	});
+	assert.match(
+		holdNotice()?.textContent ?? "",
+		/^4 messages are waiting for your chief of staff\. Send one message in that conversation to receive them\./,
+	);
+});
+
+test("the hold notice is absent at count 0, for null and for an older runtime", async (t) => {
+	for (const delivery_hold of [
+		{ code: "open_chief_of_staff", count: 0, session: HOLD_SESSION },
+		null,
+		undefined,
+	]) {
+		const { root } = await mount(t, {
+			status: holdStatus(delivery_hold),
+			onOpenSession: () => {},
+		});
+		assert.ok(
+			document.querySelector("[data-agent-messages-section]"),
+			"the section itself still renders",
+		);
+		assert.equal(holdNotice(), null, JSON.stringify(delivery_hold));
+		await act(async () => root.unmount());
+	}
+});
+
+test("the hold notice offers no button when there is nothing to open", async (t) => {
+	await mount(t, {
+		status: statusWith({
+			surface_state: "C",
+			local: { enabled: true, session: "" },
+			delivery_hold: { code: "open_chief_of_staff", count: 2, session: null },
+		}),
+		onOpenSession: () => {},
+	});
+	assert.ok(holdNotice());
+	assert.equal(button("Message chief of staff", holdNotice()), undefined);
+	/* Design D2: no button, so the sentence says where to go instead. */
+	assert.match(
+		holdNotice().textContent,
+		/^2 messages are waiting for your chief of staff\. Find that conversation in the sidebar and send one message to receive them\./,
+	);
+});
+
+test("a malformed hold session degrades only the target, never the count (R1-2)", () => {
+	const parsed = mod.agentMessagesStatusSchema.parse({
+		...statusFixture,
+		delivery_hold: { code: "open_chief_of_staff", count: 2, session: "" },
+	});
+	assert.deepEqual(parsed.delivery_hold, {
+		code: "open_chief_of_staff",
+		count: 2,
+		session: null,
+	});
+	const wrongType = mod.agentMessagesStatusSchema.parse({
+		...statusFixture,
+		delivery_hold: { code: "open_chief_of_staff", count: 2, session: 42 },
+	});
+	assert.equal(wrongType.delivery_hold?.count, 2);
+	assert.equal(wrongType.delivery_hold?.session, null);
+});
+
+test("the hold button reads at full ink while staying a ghost button (design D3)", async (t) => {
+	await mount(t, {
+		status: holdStatus({
+			code: "open_chief_of_staff",
+			count: 1,
+			session: HOLD_SESSION,
+		}),
+		onOpenSession: () => {},
+	});
+	const control = button("Message chief of staff", holdNotice());
+	assert.ok(control);
+	assert.match(control.className, /(^|\s)text-ink(\s|$)/);
+	assert.doesNotMatch(control.className, /(^|\s)text-ink-muted(\s|$)/);
+});
+
+/*
+ * R1-3: the section only knows `onOpenSession`; what makes the button real is
+ * the page passing it, through the shared switch rule. A dropped prop is a
+ * SUPPORTED state (no button, sidebar copy), so it would fail silently - pin
+ * the wiring at its source, the same way session-switch.test.mjs pins the
+ * entrances. The cache drop (QA follow-up) has to come before the switch, so
+ * Settings' mount boundary on the way back reads the hold fresh.
+ */
+test("settings-page wires onOpenSession to openConversation after dropping the status cache", () => {
+	const page = readFileSync(
+		"src/renderer/src/features/settings/components/settings-page.tsx",
+		"utf8",
+	);
+	assert.match(
+		page,
+		/import \{ openConversation \} from "@features\/chat\/open-conversation";/,
+	);
+	const wiring = page.match(
+		/onOpenSession=\{\(sessionId\) => \{([\s\S]*?)\}\}/,
+	);
+	assert.ok(wiring, "AgentMessagesSettings receives onOpenSession");
+	const body = wiring[1];
+	const invalidate = body.indexOf("agentMessagesModel.invalidateStatus();");
+	const open = body.indexOf("openConversation(navigate, sessionId)");
+	assert.ok(invalidate >= 0, "the status cache is dropped");
+	assert.ok(open > invalidate, "then the shared switch rule opens the session");
+	assert.doesNotMatch(body, /\/chat\//, "no hand-built chat URL");
 });

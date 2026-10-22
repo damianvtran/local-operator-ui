@@ -45,8 +45,21 @@ export const ADDRESS_LIST_ROWS_MAX = 5;
 export const ADDRESS_LIST_MAX_HEIGHT_DIP = 212;
 /** The dock's closed/open notice height (`data-address-dock-height="104"`). */
 export const ADDRESS_LIST_NOTICE_HEIGHT_DIP = 104;
-/** The toolbar's `py-1` plus its rule; anything further is a different surface. */
+/** The toolbar's `py-1` plus its rule; anything further is a different surface.
+ * S4b's v2 projection has no field/list pair to relate, so this constant is read
+ * only by the v1 path the S1/S2 probe script still drives. */
 export const ADDRESS_LIST_ANCHOR_GAP_MAX = 24;
+/**
+ * S4b's floor for the popout's width.
+ *
+ * The child is placed at the STRIP's width (design §3), and a rail pane can be
+ * narrower than a usable list: at 240 DIP a row still fits a title and a URL,
+ * and below it the design's answer is to stop painting a native popout at all
+ * and let the renderer show the field alone (mode `suspend`). Refusing here is
+ * what makes that state observable instead of a clipped row the user cannot map
+ * to the row they clicked.
+ */
+export const ADDRESS_LIST_MIN_WIDTH_DIP = 240;
 /** JSON-byte ceiling for one projection. The real payload is ~1 KB with five
  * rows; the cap exists so a runaway/hostile renderer cannot turn the handler
  * into a memory amplifier. */
@@ -59,11 +72,10 @@ export const ADDRESS_LIST_THEME_FALLBACK = "#1b1f24";
 
 const DIP_INT32_MAX = 2 ** 31 - 1;
 
-export type AddressListNoticeKind = "error" | "hint" | "empty" | "no_match";
+export type AddressListNoticeKind = "error" | "empty" | "no_match";
 
 const NOTICE_KINDS: readonly AddressListNoticeKind[] = [
 	"error",
-	"hint",
 	"empty",
 	"no_match",
 ];
@@ -97,7 +109,45 @@ export interface AddressListTheme {
 
 export type AddressListThemeFact = "resolved" | "fallback" | "absent";
 
-export interface AddressListProjection {
+/**
+ * The projection the SHIPPED popout sends.
+ *
+ * WHY `anchor` IS ONLY THE STRIP'S x/width: the renderer may say where the
+ * chrome band is, but it may not say where the native child goes. Main owns the
+ * page rectangle (the registry's trusted `contentRect`), derives the child's x
+ * and width as the intersection of the strip band with that rectangle, and puts
+ * its y at the page's top edge. A compromised renderer can therefore misplace the
+ * field row inside the chrome, but it can never paint the child anywhere except
+ * over the page it names — and it cannot name a page either (the tab id and rect
+ * are both re-checked against the layout main applied).
+ */
+export interface AddressListAnchor {
+	x: number;
+	width: number;
+}
+
+export interface AddressListProjectionV2 {
+	v: 2;
+	seq: number;
+	tabId: number;
+	visible: boolean;
+	pageRect: AddressListRect;
+	anchor: AddressListAnchor;
+	active: number;
+	view: AddressListView;
+	label: string;
+	dir: "ltr" | "rtl";
+	theme: AddressListTheme | null;
+	themeFact: AddressListThemeFact;
+}
+
+/**
+ * The pre-S4b shape, still accepted because the S1–S3 probe script constructs
+ * v1 payloads itself (`s2Projection`) against the same controller. Product code
+ * never sends it; the two shapes are distinguished by `v` and each has its own
+ * strict key set, so an extra key from either side is still a refusal.
+ */
+export interface AddressListProjectionV1 {
 	v: 1;
 	seq: number;
 	tabId: number;
@@ -113,6 +163,10 @@ export interface AddressListProjection {
 	themeFact: AddressListThemeFact;
 }
 
+export type AddressListProjection =
+	| AddressListProjectionV1
+	| AddressListProjectionV2;
+
 export type AddressListSanitizeResult =
 	| { ok: true; projection: AddressListProjection }
 	| { ok: false; reason: string };
@@ -123,7 +177,7 @@ export type AddressListSanitizeResult =
 const HOSTILE_STRING = /[\p{Cc}\u2028\u2029\u202A-\u202E\u2066-\u2069]/gu;
 const COLOR = /^(#[0-9a-f]{6}|rgb\(\d{1,3}, ?\d{1,3}, ?\d{1,3}\))$/i;
 
-const PROJECTION_KEYS = new Set([
+const PROJECTION_KEYS_V1 = new Set([
 	"v",
 	"seq",
 	"tabId",
@@ -137,6 +191,20 @@ const PROJECTION_KEYS = new Set([
 	"dir",
 	"theme",
 ]);
+const PROJECTION_KEYS_V2 = new Set([
+	"v",
+	"seq",
+	"tabId",
+	"visible",
+	"pageRect",
+	"anchor",
+	"active",
+	"view",
+	"label",
+	"dir",
+	"theme",
+]);
+const ANCHOR_KEYS = ["x", "width"] as const;
 const RECT_KEYS = ["x", "y", "width", "height"] as const;
 const THEME_KEYS: readonly (keyof AddressListTheme)[] = [
 	"elevated",
@@ -246,10 +314,10 @@ export function sanitizeProjection(raw: unknown): AddressListSanitizeResult {
 		return { ok: false, reason: "payload_too_large" };
 	}
 	if (!isRecord(raw)) return { ok: false, reason: "not_an_object" };
-	if (!hasOnlyKeys(raw, PROJECTION_KEYS)) {
-		return { ok: false, reason: "unknown_key" };
-	}
-	if (raw.v !== 1) return { ok: false, reason: "bad_version" };
+	if (raw.v !== 1 && raw.v !== 2) return { ok: false, reason: "bad_version" };
+	const version = raw.v;
+	const keys = version === 2 ? PROJECTION_KEYS_V2 : PROJECTION_KEYS_V1;
+	if (!hasOnlyKeys(raw, keys)) return { ok: false, reason: "unknown_key" };
 	if (!Number.isInteger(raw.seq) || (raw.seq as number) < 1) {
 		return { ok: false, reason: "bad_seq" };
 	}
@@ -261,35 +329,68 @@ export function sanitizeProjection(raw: unknown): AddressListSanitizeResult {
 	// A hide carries only the identity fields. Reading geometry it does not need
 	// is how a hide path becomes a place a malformed rectangle can throw.
 	if (!raw.visible) {
+		const empty = { x: 0, y: 0, width: 0, height: 0 };
 		return {
 			ok: true,
-			projection: {
-				v: 1,
-				seq: raw.seq as number,
-				tabId: raw.tabId as number,
-				visible: false,
-				pageRect: { x: 0, y: 0, width: 0, height: 0 },
-				field: { x: 0, y: 0, width: 0, height: 0 },
-				listTop: 0,
-				active: -1,
-				view: { kind: "notice", notice: "empty", text: "" },
-				label: "",
-				dir: "ltr",
-				theme: null,
-				themeFact: "absent",
-			},
+			projection:
+				version === 2
+					? {
+							v: 2,
+							seq: raw.seq as number,
+							tabId: raw.tabId as number,
+							visible: false,
+							pageRect: empty,
+							anchor: { x: 0, width: 0 },
+							active: -1,
+							view: { kind: "notice", notice: "empty", text: "" },
+							label: "",
+							dir: "ltr",
+							theme: null,
+							themeFact: "absent",
+						}
+					: {
+							v: 1,
+							seq: raw.seq as number,
+							tabId: raw.tabId as number,
+							visible: false,
+							pageRect: empty,
+							field: empty,
+							listTop: 0,
+							active: -1,
+							view: { kind: "notice", notice: "empty", text: "" },
+							label: "",
+							dir: "ltr",
+							theme: null,
+							themeFact: "absent",
+						},
 		};
 	}
 
 	const pageRect = rect(raw.pageRect);
-	const field = rect(raw.field);
-	if (pageRect === null || field === null) {
-		return { ok: false, reason: "bad_rect" };
-	}
-	const listTop = finite(raw.listTop);
-	if (listTop === null) return { ok: false, reason: "bad_list_top" };
-	if (field.width <= 0 || field.height <= 0) {
-		return { ok: false, reason: "bad_field" };
+	if (pageRect === null) return { ok: false, reason: "bad_rect" };
+	let field: AddressListRect | null = null;
+	let listTop = 0;
+	let anchor: AddressListAnchor | null = null;
+	if (version === 2) {
+		if (!isRecord(raw.anchor) || !hasOnlyKeys(raw.anchor, ANCHOR_KEYS)) {
+			return { ok: false, reason: "bad_anchor" };
+		}
+		const x = finite(raw.anchor.x);
+		const width = finite(raw.anchor.width);
+		if (x === null || width === null) {
+			return { ok: false, reason: "bad_anchor" };
+		}
+		if (width <= 0) return { ok: false, reason: "bad_anchor" };
+		anchor = { x, width };
+	} else {
+		field = rect(raw.field);
+		if (field === null) return { ok: false, reason: "bad_rect" };
+		const top = finite(raw.listTop);
+		if (top === null) return { ok: false, reason: "bad_list_top" };
+		listTop = top;
+		if (field.width <= 0 || field.height <= 0) {
+			return { ok: false, reason: "bad_field" };
+		}
 	}
 	if (!Number.isInteger(raw.active)) return { ok: false, reason: "bad_active" };
 	const active = raw.active as number;
@@ -337,6 +438,27 @@ export function sanitizeProjection(raw: unknown): AddressListSanitizeResult {
 	}
 	const { theme, fact } = sanitizeTheme(raw.theme);
 
+	if (version === 2) {
+		if (anchor === null) return { ok: false, reason: "bad_anchor" };
+		return {
+			ok: true,
+			projection: {
+				v: 2,
+				seq: raw.seq as number,
+				tabId: raw.tabId as number,
+				visible: true,
+				pageRect,
+				anchor,
+				active,
+				view,
+				label,
+				dir: raw.dir,
+				theme,
+				themeFact: fact,
+			},
+		};
+	}
+	if (field === null) return { ok: false, reason: "bad_rect" };
 	return {
 		ok: true,
 		projection: {
@@ -356,7 +478,6 @@ export function sanitizeProjection(raw: unknown): AddressListSanitizeResult {
 		},
 	};
 }
-
 function int32(value: number): number | null {
 	if (!Number.isFinite(value)) return null;
 	const rounded = Math.round(value);
@@ -427,6 +548,55 @@ export function addressListBoundsFor(
 	// Never shorten: a clamped surface would hide rows the model claims exist.
 	if (bottom - top !== height) return null;
 	return { x: left, y: top, width: right - left, height };
+}
+
+/**
+ * S4b's geometry: the list surface starts at the page's own top edge and spans
+ * the intersection of the strip band and the page rectangle.
+ *
+ * WHY THE PAGE RECT, NOT THE FIELD: the field row is now painted over the STRIP
+ * (design §3) and is removed from the flow, so `field.y + field.height` no
+ * longer names where the page begins — and the old gap rule would refuse every
+ * projection. The trusted `pageRect` is the registry's `contentRect`, which is
+ * exactly where the page view starts. Using its `y` is also the requirement
+ * "the page does not move": the native child is the only thing that changes
+ * rectangle when the popout opens.
+ *
+ * The child is never allowed to leave the owner's box and never shortened: a
+ * clamped surface would hide rows the model says exist (the S2 rule, unchanged).
+ */
+export function addressListBoundsV2For(
+	anchor: AddressListAnchor,
+	pageRect: AddressListRect,
+	view: AddressListView,
+	owner: { width: number; height: number },
+): AddressListRect | null {
+	const ax = int32(anchor.x);
+	const aw = int32(anchor.width);
+	const px = int32(pageRect.x);
+	const pw = int32(pageRect.width);
+	const py = int32(pageRect.y);
+	const ownerWidth = int32(owner.width);
+	const ownerHeight = int32(owner.height);
+	if (
+		ax === null ||
+		aw === null ||
+		px === null ||
+		pw === null ||
+		py === null ||
+		ownerWidth === null ||
+		ownerHeight === null
+	) {
+		return null;
+	}
+	if (aw <= 0 || pw <= 0 || ownerWidth <= 0 || ownerHeight <= 0) return null;
+	const left = Math.max(0, Math.max(ax, px));
+	const right = Math.min(ownerWidth, Math.min(ax + aw, px + pw));
+	if (right - left < ADDRESS_LIST_MIN_WIDTH_DIP) return null;
+	const height = addressListHeightFor(view);
+	if (height > ADDRESS_LIST_MAX_HEIGHT_DIP) return null;
+	if (py < 0 || py + height > ownerHeight) return null;
+	return { x: left, y: py, width: right - left, height };
 }
 
 /** Child-local y → row index, using the dock's own fixed geometry. Padding above

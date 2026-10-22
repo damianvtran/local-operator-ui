@@ -149,12 +149,43 @@ export type PeerRow = PeerLinkFacts & {
 	 */
 	session_count: number | null;
 	/**
+	 * The relay's verdict on a LOST link it is redialling (core `network/redial.py`),
+	 * or absent when the backend predates it or the link is up. `reconnecting` holds
+	 * for the relay's grace window (90 s AND three failed redials); only `down` is an
+	 * escalation. Absent is "no claim", never "connected".
+	 */
+	redial?: PeerRedial;
+	/**
 	 * ALWAYS `null` in this build, and honestly so: no link records a round trip, and
 	 * the backend's own comment explains that the only way to fill this would be a
 	 * probe per row per poll. Nothing in this app may draw a latency figure from it.
 	 */
 	rtt_ms: number | null;
 };
+
+export type PeerRedial = {
+	state: "reconnecting" | "down";
+	attempts: number;
+	/** The lost link's last frame, epoch seconds: the tooltip's "last seen". */
+	last_frame_at: number | null;
+	next_retry_at: number | null;
+	/** The last redial failure in the backend's words; `""` when none yet. */
+	last_error: string;
+};
+
+/** A redial block, or `undefined` for `connected`/unknown/malformed. */
+function redial(value: unknown): PeerRedial | undefined {
+	if (!isRecord(value)) return undefined;
+	const state = value.state;
+	if (state !== "reconnecting" && state !== "down") return undefined;
+	return {
+		state,
+		attempts: count(value.attempts),
+		last_frame_at: time(value.last_frame_at),
+		next_retry_at: time(value.next_retry_at),
+		last_error: text(value.last_error),
+	};
+}
 
 export type PeerList = {
 	peers: PeerRow[];
@@ -311,6 +342,7 @@ export function peerList(value: unknown): PeerList {
 		seen.add(deviceId);
 		const relay = remoteRelay(raw.remote_relay);
 		const attempts = linkAttempts(raw.attempts);
+		const redialing = raw.reachable ? undefined : redial(raw.redial);
 		peers.push({
 			device_id: deviceId,
 			name: text(raw.name),
@@ -320,6 +352,7 @@ export function peerList(value: unknown): PeerList {
 			link_state: linkState(raw.link_state, raw.reachable),
 			...(relay ? { remote_relay: relay } : {}),
 			...(attempts ? { attempts } : {}),
+			...(redialing ? { redial: redialing } : {}),
 			unreachable_reason: textOrNull(raw.unreachable_reason ?? raw.reason),
 			last_seen_at: time(raw.last_seen_at),
 			session_count: nullableCount(raw.session_count),

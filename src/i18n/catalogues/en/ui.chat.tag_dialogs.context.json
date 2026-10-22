@@ -1,19 +1,4 @@
 {
-	"ui.chat.tag_dialogs.picker_description": {
-		"role": "tag dialog copy",
-		"tone": "concise, neutral sentence case",
-		"note": "States the save model before the tag list. Every selection is committed on the press; there is no Apply step and nothing is staged. Do not promise a transaction."
-	},
-	"ui.chat.tag_dialogs.manage_description": {
-		"role": "tag dialog copy",
-		"tone": "concise, neutral sentence case",
-		"note": "States that create, rename, reorder and delete save on the action. There is no Apply and nothing for Escape or Close to discard."
-	},
-	"ui.chat.tag_dialogs.close": {
-		"role": "tag dialog copy",
-		"tone": "concise, neutral sentence case",
-		"note": "Closes the dialog. Changes are already saved; this is not Cancel and must not read as discarding."
-	},
 	"ui.chat.tag_dialogs.deleted_name": {
 		"role": "tag dialog copy",
 		"tone": "concise, neutral sentence case",

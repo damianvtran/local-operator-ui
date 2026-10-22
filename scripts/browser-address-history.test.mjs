@@ -31,7 +31,12 @@ const bundle = await build({
 const mod = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
-const { canonicalHistoryUrl, historyTitle, collectAddressHistory } = mod;
+const {
+	canonicalHistoryUrl,
+	historyTitle,
+	collectAddressHistory,
+	mergeAddressHistory,
+} = mod;
 
 const HISTORY_MAX_TABS = mod.ADDRESS_HISTORY_MAX_TABS;
 const HISTORY_MAX_ENTRIES = mod.ADDRESS_HISTORY_MAX_ENTRIES;
@@ -133,7 +138,7 @@ test("the indexed read is bounded and centred on the current index", () => {
 		entry(`https://site${index}.example/`),
 	);
 	const tab = fakeTab({ tabId: 7, entries, activeIndex: 100 });
-	const result = collectAddressHistory([tab], "all", 7);
+	const result = collectAddressHistory([tab], 7);
 	assert.equal(result.entries.length, HISTORY_MAX_PER_TAB);
 	assert.ok(
 		result.entries.some((row) => row.url === "https://site100.example/"),
@@ -160,7 +165,7 @@ test("the restore row is the fallback only when no live history exists", () => {
 			activeIndex: 1,
 		},
 	});
-	const result = collectAddressHistory([restored], "all", 2);
+	const result = collectAddressHistory([restored], 2);
 	assert.deepEqual(
 		result.entries.map((row) => row.url),
 		["https://restored.example/one", "https://restored.example/two"],
@@ -178,7 +183,7 @@ test("live history wins over the restore row", () => {
 			activeIndex: 0,
 		},
 	});
-	const result = collectAddressHistory([tab], "all", 3);
+	const result = collectAddressHistory([tab], 3);
 	assert.deepEqual(
 		result.entries.map((row) => row.url),
 		["https://live.example/"],
@@ -191,11 +196,11 @@ test("a destroyed view contributes nothing", () => {
 		destroyed: true,
 		entries: [entry("https://dead.example/")],
 	});
-	const result = collectAddressHistory([tab], "all", 4);
+	const result = collectAddressHistory([tab], 4);
 	assert.deepEqual(result.entries, []);
 });
 
-test("scope filters by conversation and the active tab still comes first", () => {
+test("every tab contributes and the active tab still comes first", () => {
 	const first = fakeTab({
 		tabId: 5,
 		sessionId: "session-a",
@@ -204,7 +209,6 @@ test("scope filters by conversation and the active tab still comes first", () =>
 	const second = fakeTab({
 		tabId: 6,
 		sessionId: "session-a",
-		active: true,
 		entries: [entry("https://b.example/")],
 	});
 	const other = fakeTab({
@@ -212,22 +216,14 @@ test("scope filters by conversation and the active tab still comes first", () =>
 		sessionId: "session-b",
 		entries: [entry("https://other.example/")],
 	});
-	const all = collectAddressHistory([first, second, other], "all", 6);
+	const all = collectAddressHistory([first, second, other], 6);
 	assert.deepEqual(
 		all.entries.map((row) => row.sourceTabId),
 		[6, 5, 7],
-		"the active tab is first, then registry order",
+		"there is no display scope any more: the active tab is first, then registry order",
 	);
-	const scoped = collectAddressHistory(
-		[first, second, other],
-		{ sessionId: "session-a" },
-		6,
-	);
-	assert.deepEqual(
-		scoped.entries.map((row) => row.url),
-		["https://b.example/", "https://a.example/"],
-	);
-	assert.equal(scoped.entries[0].activeTab, true);
+	assert.equal(all.entries[0].activeTab, true);
+	assert.ok(all.entries.every((row) => row.source === "tab"));
 });
 
 test("the tab bound is 20 and only the window is read", () => {
@@ -237,7 +233,7 @@ test("the tab bound is 20 and only the window is read", () => {
 			entries: [entry(`https://tab${index + 1}.example/`)],
 		}),
 	);
-	const result = collectAddressHistory(tabs, "all", 1);
+	const result = collectAddressHistory(tabs, 1);
 	assert.equal(result.entries.length, 20);
 });
 
@@ -254,7 +250,7 @@ test("dedup is by canonical URL and first occurrence wins", () => {
 		tabId: 2,
 		entries: [entry("https://dup.example/", "Second")],
 	});
-	const result = collectAddressHistory([first, second], "all", 1);
+	const result = collectAddressHistory([first, second], 1);
 	assert.equal(result.entries.length, 2);
 	assert.equal(result.entries[0].title, "First");
 });
@@ -282,14 +278,17 @@ test("every DTO is built field-by-field and never carries pageState", () => {
 			},
 		],
 	});
-	const result = collectAddressHistory([tab], "all", 9);
+	const result = collectAddressHistory([tab], 9);
 	assert.deepEqual(Object.keys(result.entries[0]).sort(), [
 		"activeTab",
 		"distanceFromCurrent",
+		"lastVisitedAt",
+		"source",
 		"sourceIndex",
 		"sourceTabId",
 		"title",
 		"url",
+		"visitCount",
 	]);
 	assert.ok(!JSON.stringify(result).includes("BASE64-PAGE-STATE"));
 });
@@ -304,7 +303,7 @@ test("a non-web entry inside a live stack is skipped without failing the rest", 
 		],
 		activeIndex: 2,
 	});
-	const result = collectAddressHistory([tab], "all", 10);
+	const result = collectAddressHistory([tab], 10);
 	assert.deepEqual(
 		result.entries.map((row) => row.url),
 		["https://kept.example/"],
@@ -352,4 +351,74 @@ test("tabIdOrThrow rejects zero and negatives at the IPC boundary", async () => 
 	assert.throws(() => guards.tabIdOrThrow(-1, "tabId"), /positive tab id/);
 	assert.throws(() => guards.tabIdOrThrow(1.5, "tabId"), /integer/);
 	assert.equal(guards.tabIdOrThrow(1, "tabId"), 1);
+});
+
+// ---- mergeAddressHistory ---------------------------------------------------
+
+test("merge puts ranked history first, then live tabs, and dedupes on history", () => {
+	const tabEntries = collectAddressHistory(
+		[
+			fakeTab({
+				tabId: 1,
+				entries: [
+					entry("https://visited.example/", "Open tab"),
+					entry("https://only-tab.example/", "Only a tab"),
+				],
+			}),
+		],
+		1,
+	);
+	const history = [
+		{
+			url: "https://visited.example/",
+			title: "Stored title",
+			visitCount: 4,
+			lastVisitedAt: 100,
+		},
+	];
+	const merged = mergeAddressHistory(tabEntries.entries, history, "", 8);
+	assert.deepEqual(
+		merged.map((row) => [row.url, row.source]),
+		[
+			["https://visited.example/", "history"],
+			["https://only-tab.example/", "tab"],
+		],
+	);
+	assert.equal(merged[0].visitCount, 4);
+	assert.equal(merged[0].lastVisitedAt, 100);
+	assert.equal(merged[0].title, "Stored title");
+});
+
+test("merge filters live tabs by the query before applying the limit", () => {
+	const tabEntries = collectAddressHistory(
+		[
+			fakeTab({
+				tabId: 1,
+				entries: [
+					entry("https://unrelated.example/", "Nope"),
+					entry("https://match.example/", "A matching title"),
+				],
+			}),
+		],
+		1,
+	);
+	const merged = mergeAddressHistory(tabEntries.entries, [], "matching", 1);
+	assert.deepEqual(
+		merged.map((row) => row.url),
+		["https://match.example/"],
+		"the non-matching row did not consume the only slot",
+	);
+});
+
+test("merge honours the limit and an invalid stored URL is skipped", () => {
+	const history = [
+		{ url: "file:///etc/passwd", title: "", visitCount: 1, lastVisitedAt: 1 },
+		{ url: "https://a.example/", title: "A", visitCount: 2, lastVisitedAt: 2 },
+		{ url: "https://b.example/", title: "B", visitCount: 1, lastVisitedAt: 3 },
+	];
+	const merged = mergeAddressHistory([], history, "", 2);
+	assert.deepEqual(
+		merged.map((row) => row.url),
+		["https://a.example/", "https://b.example/"],
+	);
 });
