@@ -9,6 +9,7 @@ import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
 	asTeamBridgeTenantId,
+	organizationOptions,
 } from "./team-bridge-model";
 import { TeamBridgePageView } from "./team-bridge-page";
 
@@ -502,6 +503,36 @@ export const AllOrganizations: Story = {
 	args: {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		conversations: [dm, channel, group, northwindChannel],
+		target: { type: "conversation", id: dm.id },
+		messageState: "ready",
+	},
+};
+
+/**
+ * The hub lists both tenants, the memberships read has returned nothing (F6 on
+ * #1314). The organizations are built through `organizationOptions` exactly as
+ * the page builds them, so this frame shows the fix itself: before it, the
+ * merged rail was empty here; now every row carries the hub's org name.
+ */
+export const AllOrganizationsHubOnly: Story = {
+	args: {
+		organizations: organizationOptions(
+			[],
+			[
+				{ tenant_id: minervaOrganization.tenantId, unread: 5 },
+				{ tenant_id: northwindOrganization.tenantId, unread: 4 },
+			],
+			[
+				{ tenant_id: minervaOrganization.tenantId, tenant_name: "Minerva" },
+				{
+					tenant_id: northwindOrganization.tenantId,
+					tenant_name: "Northwind Collective",
+				},
+			],
+		),
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: [dm, channel, group, northwindChannel],
+		// #1296 selects by `target` (the view resolves the conversation itself).
 		target: { type: "conversation", id: dm.id },
 		messageState: "ready",
 	},

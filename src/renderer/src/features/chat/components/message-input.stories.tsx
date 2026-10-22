@@ -1437,7 +1437,7 @@ export const InterruptLeftWorkRunning: Story = {
  * keyboard/mask/citation path, and a story that rendered `•` directly would
  * photograph the paint while proving nothing about the gesture. `userEvent.type`
  * dispatches the same keydowns a person does, so the mask, the mint and the
- * Escape restore are exercised by the frames.
+ * Escape hold are exercised by the frames.
  *
  * The canary value is deliberate. `docs/design/composer-credential-capture.md`
  * §10 requires that a typed secret is greppable NOWHERE after a store-and-send
@@ -1457,7 +1457,9 @@ const CREDENTIAL_CANARY = "sk-live-CANARY-4417";
    call and `lint/performance/useTopLevelRegex` is the rule that says so. */
 const ARMED_NOTICE = /armed — add a space/;
 const MASKED_NOTICE = /masked as you type/;
-const PLAINTEXT_NOTICE = /now PLAIN TEXT in the composer/;
+const HELD_NOTICE = /^Esc again discards it — still masked/;
+const DISCARDED_NOTICE = /^credential discarded/;
+const MINTED_PILL = /\[Credential #1, \d+ chars\]/;
 /*
  * The cleared sentence as the copy authority writes it now: the key, the ordinal the
  * chip's face carries, and the composer's own key as the way back (UX round 3, U15/U16).
@@ -2310,17 +2312,20 @@ export const CredentialPillUnbacked: Story = {
 };
 
 /**
- * ESCAPED: the operator cancelled, and the characters came back as ORDINARY
- * TEXT. This is the only exit that leaves a secret in the composer, and the
- * frame cannot say so on its own — the masked span is gone and the composer
- * looks entirely normal while holding the characters the next Enter will expose
- * — so the warning sentence is the state, not decoration. It is the one frame
- * here where the canary IS on screen, and it is there because the operator asked
- * for it.
+ * ESCAPED: the operator pressed Esc once, and the capture is HELD, still masked.
+ *
+ * Before the 2026-10-22 fix this frame showed the characters back as ORDINARY TEXT
+ * under a plain-text warning, and that was the leak: the box is what the draft store
+ * persists, so a cancelled credential reached `localStorage`. The first Esc now
+ * changes nothing in the box (the cells, the value in memory, the draft unwritten)
+ * and only the sentence moves, to say what the second press does. The export keeps
+ * its name because the evidence manifest and the capture list address the story by
+ * its id. The play asserts the canary is still NOT in the document, the same check
+ * `CredentialMasked` makes.
  */
 export const CredentialEscaped: Story = {
 	render: () => (
-		<Frame label="escaped: Esc gave the characters back as plain text, and the composer says so">
+		<Frame label="escaped once: the capture is held, still masked, and Esc again discards it">
 			<div className={cn("@container/chatcol")} style={{ width: 1024 }}>
 				<MessageInput
 					isLoading={false}
@@ -2338,12 +2343,124 @@ export const CredentialEscaped: Story = {
 			`/credential ${CREDENTIAL_CANARY}`,
 		);
 		await userEvent.type(box, "{Escape}");
-		await screen.findByText(PLAINTEXT_NOTICE);
-		if (!composerValue(box).endsWith(CREDENTIAL_CANARY)) {
-			throw new Error(
-				`the characters did not come back: ${composerValue(box)}`,
-			);
+		await screen.findByText(HELD_NOTICE);
+		if (composerValue(box).includes(CREDENTIAL_CANARY)) {
+			throw new Error("Esc put the typed secret in the buffer");
 		}
+		if (!composerValue(box).includes("•")) {
+			throw new Error("the held capture lost its mask cells");
+		}
+		releaseShutter();
+	},
+};
+
+/*
+ * THE HELD CAPTURE'S NEIGHBOURING STATES (design review round 1, D4/D5). The escaped
+ * frame proves the box is unchanged by the first Esc; these hold the states the
+ * operator meets deciding what to do next: focused and held, one more keystroke
+ * (typing resumes and the hold ends), Enter on the held span (it still mints), the
+ * second Esc (the discard line), and the held sentence at the small-view width.
+ * Each play asserts the state arrived and that the canary never entered the box.
+ */
+const typeAndHold = async (canvasElement: HTMLElement) => {
+	const box = await typeIntoComposer(
+		canvasElement,
+		`/credential ${CREDENTIAL_CANARY}`,
+	);
+	await userEvent.type(box, "{Escape}");
+	await screen.findByText(HELD_NOTICE);
+	if (composerValue(box).includes(CREDENTIAL_CANARY)) {
+		throw new Error("Esc put the typed secret in the buffer");
+	}
+	return box;
+};
+
+const heldFrame =
+	(label: string, width = 1024, isSmallView = false) =>
+	() => (
+		<Frame label={label}>
+			<div className={cn("@container/chatcol")} style={{ width }}>
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId="story"
+					isSmallView={isSmallView}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</Frame>
+	);
+
+/** Held, with the caret still in the box: the state the second press is decided in. */
+export const CredentialEscapeHeldFocused: Story = {
+	render: heldFrame(
+		"held, focused: the caret is still in the box and the span carries the not-stored edge",
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeAndHold(canvasElement);
+		if (document.activeElement !== box) {
+			throw new Error("the held Esc moved focus out of the box");
+		}
+		releaseShutter();
+	},
+};
+
+/** Held, then one more character: typing resumes and the hold is over. */
+export const CredentialEscapeHeldThenTyped: Story = {
+	render: heldFrame(
+		"held, then one more keystroke: typing resumes, so the next Esc is held again",
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeAndHold(canvasElement);
+		await userEvent.type(box, "4");
+		await screen.findByText(MASKED_NOTICE);
+		releaseShutter();
+	},
+};
+
+/** Held, then Enter: the value was never lost, so it mints a pill of its full length. */
+export const CredentialEscapeHeldThenEnter: Story = {
+	render: heldFrame("held, then Enter: the held value still mints the pill"),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeAndHold(canvasElement);
+		await userEvent.type(box, "{Enter}");
+		if (!MINTED_PILL.test(composerValue(box))) {
+			throw new Error(`no pill was minted: ${composerValue(box)}`);
+		}
+		releaseShutter();
+	},
+};
+
+/** The second Esc: the cells and the value are gone, and the line says so. */
+export const CredentialEscapeDiscarded: Story = {
+	render: heldFrame(
+		"Esc twice: the value is discarded, the token is left inert, and the line says nothing was stored",
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const box = await typeAndHold(canvasElement);
+		await userEvent.type(box, "{Escape}");
+		await screen.findByText(DISCARDED_NOTICE);
+		if (composerValue(box).includes("•")) {
+			throw new Error("the mask cells survived the discard");
+		}
+		releaseShutter();
+	},
+};
+
+/** The held sentence at the small-view width, where a wrap would push the box. */
+export const CredentialEscapeHeldSmallView: Story = {
+	render: heldFrame(
+		"held at small view (a 440px column): the held sentence above the box",
+		440,
+		true,
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		await typeAndHold(canvasElement);
 		releaseShutter();
 	},
 };
