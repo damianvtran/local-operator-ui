@@ -329,6 +329,16 @@ const APP_SPAWN_SITES = [
 		/withTelemetryOff\(env\);/,
 	),
 	guarded(
+		"scripts/console-ended-proof.mjs",
+		"spawn",
+		/* #2, not #1: the `lop serve` daemon is spawned first; the app's own spawn is
+		 * the second and is the one this table exists to check. */
+		2,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the BUILT app twice over one quit on a scratch profile, so this rig is two chances to report a rig run as a product user",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/browser-file-transfer-proof.mjs",
 		"spawn",
 		1,
