@@ -3,6 +3,7 @@ import {
 	TEAM_BRIDGE_DRAFT_PREFIX,
 	draftAccountEpoch,
 } from "../../shared/store/team-bridge-draft-account";
+import type { DraftAttachment } from "./team-bridge-attachments-model";
 import {
 	type TeamBridgeDraft,
 	type TeamBridgeDrafts,
@@ -144,14 +145,44 @@ export function useTeamBridgeDrafts(
 				: {}),
 		});
 
-	const clearSent = (entryKey: string, sentBody: string, clientRef: string) => {
+	/*
+	 * Images change what a client_ref means: the hub's replay check compares
+	 * (body_hash, attachments_hash), so reusing a key for a different image set
+	 * would be refused as a conflict. Same rule as `setBody`: a fresh key, except
+	 * while an uncertain schedule holds its original one.
+	 */
+	const setAttachments = (next: DraftAttachment[]) => {
+		const before = (current?.attachments ?? []).map((row) => row.id).join(",");
+		const after = next.map((row) => row.id).join(",");
+		return update({
+			attachments: next.length > 0 ? next : undefined,
+			...(before !== after && !current?.sendAt
+				? { clientRef: crypto.randomUUID() }
+				: {}),
+		});
+	};
+
+	const clearSent = (
+		entryKey: string,
+		sentBody: string,
+		clientRef: string,
+		sentAttachmentIds: readonly string[] = [],
+	) => {
 		if (!authorized()) return;
 		const entry = load()[entryKey];
 		if (entry?.clientRef !== clientRef) return;
-		if (entry.body.trim() === sentBody) write(entryKey, null);
+		// Images the hub just bound are gone from the staging set either way: a
+		// bound id can never bind again, so leaving it would guarantee a 404.
+		const sent = new Set(sentAttachmentIds);
+		const remaining = (entry.attachments ?? []).filter(
+			(row) => !sent.has(row.id),
+		);
+		if (entry.body.trim() === sentBody && remaining.length === 0)
+			write(entryKey, null);
 		else
 			write(entryKey, {
 				...entry,
+				attachments: remaining.length > 0 ? remaining : undefined,
 				sendAt: undefined,
 				clientRef: crypto.randomUUID(),
 			});
@@ -203,6 +234,7 @@ export function useTeamBridgeDrafts(
 		current,
 		body,
 		setBody,
+		setAttachments,
 		update,
 		clearSent,
 		storageFailed,
